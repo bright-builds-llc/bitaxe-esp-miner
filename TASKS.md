@@ -727,8 +727,9 @@ below verified, so this implemented task remains active rather than archived.
       projection before emitting evidence.
 - [x] Add unit and real-child-process regressions, run every mandatory gate,
       push the clean implementation, and execute at most one `attempt-001`.
-- [ ] Transition only `API-010` to `verified` if every acceptance fact passes;
-      otherwise record the first typed terminal category and stop without retry.
+- [x] Record the first typed terminal category and stop `attempt-001` without
+      an unchanged retry when its pre-effect detector transcript fails privacy
+      admission.
 
 Plan: `docs/parity/work-plans/20260804T185605Z-API-010/PLAN.md`
 
@@ -768,6 +769,62 @@ all 34 Bazel test targets including the real firmware build, parity/progress,
 redaction, reference cleanliness, immutable-plan, and diff checks pass. The
 first `just parity` launch encountered transient host resource exhaustion after
 all tests passed; the bounded rerun completed with `validation_errors: none`.
+
+Completion review: `attempt-001` stopped before package admission, flashing,
+HTTP, restart, or device mutation because the task-recorded `tee` command
+created the detector transcript as mode `0644`, while the verifier correctly
+requires mode `0600`. The earliest category is `process_failed`; no public
+evidence was emitted and no recovery was required. A separately task-gated
+`attempt-002` may remediate only that objectively confirmed file-mode defect.
+
+### task-parity-api010-live-theme-durability-retry | 2026-08-04 | Retry live theme durability after detector-mode remediation
+
+- [ ] Preserve the pushed implementation and immutable plan; create a fresh
+      detector transcript as mode `0600` before capture.
+- [ ] Run exactly one detector-gated `attempt-002` with the same bounded theme,
+      reboot, restoration, recovery, privacy, and safety contract.
+- [ ] Transition only `API-010` to `verified` if every acceptance fact passes;
+      otherwise record the earliest typed terminal category, withhold evidence,
+      and stop without another retry.
+
+Plan: `docs/parity/work-plans/20260804T185605Z-API-010/PLAN.md`
+
+Objective remediation: `attempt-001` produced no device effects and failed
+only because its detector transcript was mode `0644`. This retry changes only
+the scratch transcript setup: it creates the fresh file and applies mode
+`0600` before `tee`, which truncates the file without changing its mode.
+
+Authorization: standing task authorization permits exactly these effectful
+commands after this retry contract is clean and pushed:
+
+1. `just package`
+2. `mkdir -p scratch/api010-theme-durability/detector-002 && touch scratch/api010-theme-durability/detector-002/detector.stdout && chmod 600 scratch/api010-theme-durability/detector-002/detector.stdout && just detect-ultra205 2>&1 | tee scratch/api010-theme-durability/detector-002/detector.stdout`
+3. `just verify-theme-durability --private-root scratch/api010-theme-durability/attempt-002 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/api010-theme-durability/detector-002/detector.stdout --projection docs/parity/evidence/api010-theme-durability/theme-durability-projection.json --capture-timeout-seconds 360`
+
+The capture may POST one generated non-secret theme value, perform one normal
+software restart through the canonical device-session transaction, restore the
+exact original theme, and use an exact-package recovery flash only if normal
+restoration cannot be confirmed. It may not change Wi-Fi or pool credentials,
+mining, voltage, frequency, fan, thermal, power, ASIC, display-input, OTA, raw
+partitions, direct UART, pins, or other electrical state.
+
+Evidence and privacy: `scratch/api010-theme-durability/attempt-002` is an
+absent-before-use mode-`0700` private root whose files are mode `0600`; detector
+output remains private and must be mode `0600` before capture. The committed
+projection may contain only schema and cryptographic identities, bounded
+counts/categories, the closed device-session projection, and safe booleans.
+It must never contain origins, theme values, hostnames, ports, USB identities,
+network identifiers, credentials, raw HTTP, serial, or process traces.
+
+Recovery, retry, and stop: preserve the earliest typed failure; attempt normal
+POST restoration and exact readback first, then use the exact admitted package
+for one recovery flash if required. Recovery is secondary and public only as
+safe booleans. `attempt-002` is the sole authorized retry. Stop on any detector
+failure, launch failure, timeout, malformed evidence, non-ready device session,
+restoration uncertainty, cleanup failure, privacy failure, or safety invariant
+violation. No further retry is authorized.
+
+Verification: Pending.
 
 Completion review: Pending.
 

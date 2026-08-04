@@ -53,3 +53,20 @@
 - Outcome: Software implementation is clean and ready to commit and push.
 - Blocker or next safe action: Commit and push the exact implementation, then
   run only the task-recorded package, detector, and `attempt-001` commands.
+
+## 2026-08-04 | attempt-001 pre-effect privacy admission failure
+
+- Source commit: `f30df231`.
+- Actions: Built the exact package, passed the detector against one admitted
+  Ultra 205, and invoked the sole task-recorded `attempt-001` command.
+- Verification: The verifier rejected the detector transcript before creating
+  the private attempt root or admitting the package because the transcript was
+  mode `0644`, not the required private mode `0600`. The attempt root and
+  public projection are absent.
+- Evidence: Earliest category `process_failed`; zero flash, HTTP, restart,
+  device mutation, or recovery effects occurred.
+- Outcome: `attempt-001` failed closed at a host privacy boundary. No parity
+  evidence was emitted and `API-010` remains `implemented`.
+- Blocker or next safe action: Use the new targeted retry task to pre-create a
+  fresh detector transcript as mode `0600`, commit and push that contract, and
+  run its sole bounded `attempt-002` without changing the implementation.
