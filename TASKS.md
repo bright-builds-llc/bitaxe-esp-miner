@@ -938,13 +938,14 @@ other-board, or release parity.
 
 ### task-parity-api010-live-theme-durability-attempt-004 | 2026-08-04 | Run typed post-fix theme durability
 
-- [ ] Preserve the pushed baseline, selector, and initial-child diagnostic
-      fixes, freeze the exact planning-commit package, and privately admit
-      exactly one Ultra 205.
-- [ ] Run exactly one bounded `attempt-004` theme GET/POST, reboot durability,
-      persistence, restoration, cleanup, and redaction transaction.
-- [ ] Promote only `API-010` on complete typed evidence; otherwise record the
-      earliest closed terminal signature, withhold evidence, and stop.
+- [x] Preserve the pushed baseline, selector, and initial-child diagnostic
+      fixes and freeze the exact planning-commit package; the one private
+      Ultra 205 detector admission terminated before capture.
+- [x] Withhold the bounded `attempt-004` capture after the detector failure;
+      no theme GET/POST, flash-monitor, software restart, or recovery fallback
+      was launched.
+- [x] Record the earliest closed detector signature, withhold evidence, keep
+      only `API-010` at `implemented`, and stop without retry.
 
 Plan: `docs/parity/work-plans/20260804T204310Z-API-010/PLAN.md`. This immutable
 plan directly continues
@@ -998,11 +999,21 @@ and redaction all pass. Otherwise record the closed automation category and
 declared signature/recovery booleans, withhold `RESULT.md` and evidence, keep
 `API-010` at `implemented`, and stop.
 
-Verification: Pending.
+Verification: The exact package was built from planning commit
+`3fbd7db361fb5dac02ee0412056e58bbdc760b7e`. The sole authorized detector
+command exited `1` with the closed durable-USB category
+`bootloader_connect_failed`. The protected wrapper and detector transcript
+retained modes `0700` and `0600`; the attempt root, verifier streams, and
+public projection remain absent. No second detector or capture was run.
 
-Completion review: Pending. This task claims no installed AxeOS browser,
-networking, mining, ASIC, hardware-control, OTA, recovery, other-board, or
-release parity beyond the exact admitted transaction.
+Completion review: `attempt-004` is exhausted at detector admission. It
+produced no promotable evidence, so `API-010` remains `implemented`. No
+firmware flash, theme mutation, software restart, recovery fallback, mining,
+ASIC work, hardware-control action, OTA, direct UART, or pin work occurred.
+The closed detector category is the only new blocker fact; private device,
+port, USB, network, credential, and trace values remain unreported. This task
+claims no installed AxeOS browser, networking, mining, ASIC, hardware-control,
+OTA, recovery, other-board, or release parity.
 
 ## Future
 
