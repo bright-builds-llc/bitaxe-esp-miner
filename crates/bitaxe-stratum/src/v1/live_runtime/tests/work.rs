@@ -413,17 +413,23 @@ fn below_target_candidate_is_counted_without_blocking_or_submitting() {
     };
 
     // Act
-    let outcome = runtime
-        .apply_bridge_observation(observation)
+    let receipt = runtime
+        .apply_bridge_observation_with_receipt(observation)
         .expect("candidate should classify");
 
     // Assert
     assert_eq!(
-        outcome,
+        receipt.outcome,
         BridgeObservationOutcome::Ignored {
             reason: NonSubmitReason::BelowPoolTarget
         }
     );
+    let candidate = receipt
+        .maybe_scoreboard_candidate
+        .expect("valid below-target nonce should reach scoreboard");
+    assert!(candidate.difficulty().is_finite());
+    assert!(candidate.difficulty() > 0.0);
+    assert_eq!(candidate.submission().job_id, "synthetic-job");
     assert_eq!(runtime.state().counters.below_pool_target, 1);
     assert_eq!(runtime.state().counters.qualified_candidates, 0);
     assert!(runtime.drain_actions().is_empty());

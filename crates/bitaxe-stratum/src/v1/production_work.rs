@@ -13,7 +13,7 @@ use crate::error::StratumV1Error;
 use crate::v1::messages::PoolDifficulty;
 use crate::v1::mining::{MiningWork, ShareSubmission};
 use crate::v1::queue::{BoundedWorkQueue, STRATUM_WORK_QUEUE_CAPACITY};
-use crate::v1::share_validation::nonce_meets_pool_target;
+use crate::v1::share_validation::{nonce_difficulty, nonce_difficulty_meets_pool_target};
 
 const SEEN_SHARE_CANDIDATE_CAPACITY: usize = 64;
 
@@ -142,6 +142,34 @@ pub(crate) struct SubmitIntent {
     submission: ShareSubmission,
 }
 
+/// Valid current-generation nonce fields admitted to the upstream scoreboard.
+#[derive(Clone, PartialEq)]
+pub struct ScoreboardCandidate {
+    difficulty: f64,
+    submission: ShareSubmission,
+}
+
+impl ScoreboardCandidate {
+    #[must_use]
+    pub const fn difficulty(&self) -> f64 {
+        self.difficulty
+    }
+
+    #[must_use]
+    pub const fn submission(&self) -> &ShareSubmission {
+        &self.submission
+    }
+}
+
+impl fmt::Debug for ScoreboardCandidate {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ScoreboardCandidate")
+            .field("redaction", &"scoreboard_candidate_redacted")
+            .finish()
+    }
+}
+
 impl SubmitIntent {
     #[must_use]
     pub const fn submission(&self) -> &ShareSubmission {
@@ -165,6 +193,20 @@ pub(crate) enum CorrelationOutcome {
     SubmitIntent(SubmitIntent),
     Ignored { reason: NonSubmitReason },
     Blocked { reason: ProductionAsicBlocker },
+}
+
+pub(crate) struct CorrelationReceipt {
+    pub outcome: CorrelationOutcome,
+    pub maybe_scoreboard_candidate: Option<ScoreboardCandidate>,
+}
+
+impl CorrelationReceipt {
+    fn blocked(reason: ProductionAsicBlocker) -> Self {
+        Self {
+            outcome: CorrelationOutcome::Blocked { reason },
+            maybe_scoreboard_candidate: None,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -290,44 +332,63 @@ impl ProductionWorkRegistry {
     }
 
     #[must_use]
+    #[cfg(test)]
     pub fn correlate_nonce_result(
         &mut self,
         observation: ProductionNonceObservation,
     ) -> CorrelationOutcome {
+        self.correlate_nonce_result_with_receipt(observation)
+            .outcome
+    }
+
+    #[must_use]
+    pub(crate) fn correlate_nonce_result_with_receipt(
+        &mut self,
+        observation: ProductionNonceObservation,
+    ) -> CorrelationReceipt {
         if observation.observed_generation != self.generation {
-            return CorrelationOutcome::Blocked {
-                reason: ProductionAsicBlocker::WrongSession,
-            };
+            return CorrelationReceipt::blocked(ProductionAsicBlocker::WrongSession);
         }
 
         let maybe_record = self
             .active_work
             .get_mut(&observation.result.job_id.lookup_key());
         let Some(record) = maybe_record else {
-            return CorrelationOutcome::Blocked {
-                reason: ProductionAsicBlocker::JobUncorrelated,
-            };
+            return CorrelationReceipt::blocked(ProductionAsicBlocker::JobUncorrelated);
         };
 
         if record.generation != self.generation {
-            return CorrelationOutcome::Blocked {
-                reason: ProductionAsicBlocker::WorkStale,
-            };
+            return CorrelationReceipt::blocked(ProductionAsicBlocker::WorkStale);
         }
 
         if !stored_work_context_matches_nonce_result(record, observation.result) {
-            return CorrelationOutcome::Blocked {
-                reason: ProductionAsicBlocker::TargetMismatch,
-            };
+            return CorrelationReceipt::blocked(ProductionAsicBlocker::TargetMismatch);
         }
+
+        let difficulty = nonce_difficulty(&record.work, observation.result);
+        let Ok(submission) = ShareSubmission::from_nonce_result(&record.work, observation.result)
+        else {
+            return CorrelationReceipt::blocked(ProductionAsicBlocker::TargetMismatch);
+        };
+        let meets_pool_target = match nonce_difficulty_meets_pool_target(&record.work, difficulty) {
+            Ok(meets_pool_target) => meets_pool_target,
+            Err(_) => return CorrelationReceipt::blocked(ProductionAsicBlocker::TargetMismatch),
+        };
+        let scoreboard_candidate = ScoreboardCandidate {
+            difficulty,
+            submission: submission.clone(),
+        };
 
         let candidate_key = ShareCandidateKey {
             nonce: observation.result.nonce,
             version_bits: observation.result.version_bits,
         };
         if record.seen_candidates.contains(&candidate_key) {
-            return CorrelationOutcome::Ignored {
-                reason: NonSubmitReason::DuplicateCandidate,
+            return CorrelationReceipt {
+                outcome: CorrelationOutcome::Ignored {
+                    reason: NonSubmitReason::DuplicateCandidate,
+                },
+                maybe_scoreboard_candidate: Some(scoreboard_candidate),
             };
         }
         if record.seen_candidates.len() == SEEN_SHARE_CANDIDATE_CAPACITY {
@@ -336,32 +397,23 @@ impl ProductionWorkRegistry {
         record.seen_candidates.push_back(candidate_key);
         record.observed_candidate_count = record.observed_candidate_count.saturating_add(1);
 
-        match nonce_meets_pool_target(&record.work, observation.result) {
-            Ok(true) => {}
-            Ok(false) => {
-                return CorrelationOutcome::Ignored {
+        if !meets_pool_target {
+            return CorrelationReceipt {
+                outcome: CorrelationOutcome::Ignored {
                     reason: NonSubmitReason::BelowPoolTarget,
-                };
-            }
-            Err(_) => {
-                return CorrelationOutcome::Blocked {
-                    reason: ProductionAsicBlocker::TargetMismatch,
-                };
-            }
+                },
+                maybe_scoreboard_candidate: Some(scoreboard_candidate),
+            };
         }
 
-        let Ok(submission) = ShareSubmission::from_nonce_result(&record.work, observation.result)
-        else {
-            return CorrelationOutcome::Blocked {
-                reason: ProductionAsicBlocker::TargetMismatch,
-            };
-        };
-
-        CorrelationOutcome::SubmitIntent(SubmitIntent {
-            generation: self.generation,
-            asic_job_id: record.asic_job_id,
-            submission,
-        })
+        CorrelationReceipt {
+            outcome: CorrelationOutcome::SubmitIntent(SubmitIntent {
+                generation: self.generation,
+                asic_job_id: record.asic_job_id,
+                submission,
+            }),
+            maybe_scoreboard_candidate: Some(scoreboard_candidate),
+        }
     }
 
     #[must_use]

@@ -3,13 +3,10 @@
 mod asic_worker;
 mod campaign_status;
 mod hashrate;
+mod notifications;
+mod scoreboard;
 mod transport;
 pub(crate) mod watchdog;
-
-use std::collections::VecDeque;
-use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
-use std::sync::OnceLock;
-use std::time::{Duration, Instant};
 
 use bitaxe_core::runtime_orchestration::{PeriodicDeadline, PRODUCTION_REREAD_CADENCE_MS};
 use bitaxe_safety::observation::{MonotonicMillis, Observation};
@@ -17,15 +14,20 @@ use bitaxe_safety::power::POWER_SAMPLE_STALE_AFTER_MS;
 use bitaxe_stratum::v1::production_session::{
     AsicPollCompletion, ProductionAsicFailure, ProductionMiningSession, ProductionPool,
     ProductionReadiness, ProductionSessionEffect, ProductionSessionEvent,
-    ProductionSessionNotificationOutcome, ProductionSessionSnapshot, ProductionSessionWakeup,
-    ProductionTransportFailure,
+    ProductionSessionSnapshot, ProductionSessionWakeup, ProductionTransportFailure,
 };
 use bitaxe_stratum::v1::production_work::ProductionNonceObservation;
+use std::collections::VecDeque;
+use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
+use std::sync::OnceLock;
+use std::time::{Duration, Instant};
 
 use self::asic_worker::{AsicWorker, AsicWorkerCommand, AsicWorkerEvent};
 use self::campaign_status::{CampaignObservationFreshness, CampaignStatusTracker};
 use self::hashrate::ProductionHashrateMonitor;
 use self::transport::{PoolTransportCommand, PoolTransportEvent, PoolTransportWorkers};
+
+pub use notifications::notify;
 
 const OWNER_STACK_BYTES: usize = 16 * 1024;
 const NOTIFICATION_CAPACITY: usize = 16;
@@ -51,22 +53,6 @@ pub fn start() -> anyhow::Result<()> {
         .spawn(move || run_owner(receiver, adapter))
         .map(|_| ())
         .map_err(Into::into)
-}
-
-/// Non-blockingly wakes the owner with a category-only notification.
-#[must_use]
-pub fn notify(wakeup: ProductionSessionWakeup) -> ProductionSessionNotificationOutcome {
-    let Some(sender) = NOTIFICATIONS.get() else {
-        return ProductionSessionNotificationOutcome::OwnerUnavailable;
-    };
-
-    match sender.try_send(OwnerInboxMessage::Wake(wakeup)) {
-        Ok(()) => ProductionSessionNotificationOutcome::Queued,
-        Err(TrySendError::Full(_)) => ProductionSessionNotificationOutcome::Coalesced,
-        Err(TrySendError::Disconnected(_)) => {
-            ProductionSessionNotificationOutcome::OwnerUnavailable
-        }
-    }
 }
 
 fn run_owner(
@@ -493,6 +479,9 @@ impl OrdinaryEspProductionSessionAdapter {
                         })
                     }
                 }
+            }
+            ProductionSessionEffect::RecordScoreboard { candidate } => {
+                scoreboard::record(candidate)
             }
         }
     }

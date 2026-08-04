@@ -5,14 +5,13 @@ use bitaxe_stratum::v1::telemetry_projection::{
 };
 use serde_json::Value;
 
-use crate::{ApiSnapshot, ScoreboardEntry, StatisticsSample, SystemInfoWire};
+use crate::{ApiSnapshot, StatisticsSample, SystemInfoWire};
 
 /// Projection-backed API view bundle for HTTP and WebSocket adapters.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProjectedApiViews {
     pub snapshot: ApiSnapshot,
     pub statistics_samples: Vec<StatisticsSample>,
-    pub scoreboard_entries: Vec<ScoreboardEntry>,
     pub telemetry_payload: Value,
 }
 
@@ -43,14 +42,12 @@ pub fn project_api_views(
         })
         .into_iter()
         .collect();
-    let scoreboard_entries = Vec::new();
     let telemetry_payload = serde_json::to_value(SystemInfoWire::from_snapshot(&base))
         .expect("system info DTO should serialize to JSON");
 
     ProjectedApiViews {
         snapshot: base,
         statistics_samples,
-        scoreboard_entries,
         telemetry_payload,
     }
 }
@@ -72,8 +69,8 @@ mod tests {
 
     use super::{project_api_views, project_system_info, ProjectedApiViews};
     use crate::{
-        retained_runtime_health_record, scoreboard_response, statistics_response, ApiSnapshot,
-        SystemInfoWire, WebSocketRouteKind, WebSocketState,
+        retained_runtime_health_record, statistics_response, ApiSnapshot, SystemInfoWire,
+        WebSocketRouteKind, WebSocketState,
     };
 
     #[test]
@@ -257,32 +254,6 @@ mod tests {
     }
 
     #[test]
-    fn projection_scoreboard_empty_without_parsed_share_outcome() {
-        // Arrange
-        let states = [
-            blocked_projection("blocked_safe_prerequisite"),
-            blocked_projection("deterministic_session_only"),
-            stale_generation_projection(),
-            stopped_projection(),
-            RuntimeTelemetryProjection::new(PoolSessionGeneration::initial()),
-        ];
-
-        // Act
-        let projected_scoreboards = states
-            .iter()
-            .map(|projection| {
-                project_api_views(ApiSnapshot::safe_ultra_205(), projection, None, 30_000, 0.0)
-                    .scoreboard_entries
-            })
-            .collect::<Vec<_>>();
-
-        // Assert
-        for entries in projected_scoreboards {
-            assert!(entries.is_empty());
-        }
-    }
-
-    #[test]
     fn projection_live_telemetry_safe_stop_not_active() {
         // Arrange
         let active_projection = active_projection_with_share_counters();
@@ -390,20 +361,6 @@ mod tests {
         assert!(public_json.get("source").is_none());
     }
 
-    #[test]
-    fn projection_scoreboard_response_remains_upstream_empty_array() {
-        // Arrange
-        let projection = active_projection_with_share_counters();
-        let views = project_api_views(ApiSnapshot::safe_ultra_205(), &projection, None, 1, 0.0);
-
-        // Act
-        let response = scoreboard_response(&views.scoreboard_entries);
-        let public_json = serde_json::to_value(response).expect("scoreboard should serialize");
-
-        // Assert
-        assert_eq!(public_json, serde_json::json!([]));
-    }
-
     fn active_projection_with_share_counters() -> RuntimeTelemetryProjection {
         let generation = PoolSessionGeneration::initial();
         let mut projection = RuntimeTelemetryProjection::new(generation);
@@ -448,27 +405,6 @@ mod tests {
                 reason: RedactedSubmitRejectReason::PoolRejectedShare,
             },
             maybe_share_difficulty: None,
-        });
-        projection
-    }
-
-    fn blocked_projection(reason: &'static str) -> RuntimeTelemetryProjection {
-        let mut projection = RuntimeTelemetryProjection::new(PoolSessionGeneration::initial());
-        let _blocked = projection.fold(RuntimeTelemetryEvent::Blocked {
-            sequence: RuntimeTelemetrySequence::new(1),
-            reason,
-        });
-        projection
-    }
-
-    fn stale_generation_projection() -> RuntimeTelemetryProjection {
-        let generation = PoolSessionGeneration::initial();
-        let mut projection = RuntimeTelemetryProjection::new(generation);
-        let _stale = projection.fold(RuntimeTelemetryEvent::SubmitClassified {
-            sequence: RuntimeTelemetrySequence::new(1),
-            generation: generation.next(),
-            classification: SubmitClassification::Accepted,
-            maybe_share_difficulty: Some(ShareDifficulty::new(64.0)),
         });
         projection
     }

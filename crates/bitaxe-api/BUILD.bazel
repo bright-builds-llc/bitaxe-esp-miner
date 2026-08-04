@@ -59,6 +59,7 @@ rust_library(
         "src/runtime_boot_attestation/accumulator.rs",
         "src/runtime_projection.rs",
         "src/scoreboard.rs",
+        "src/scoreboard/owner.rs",
         "src/settings.rs",
         "src/settings/patch.rs",
         "src/settings/persistence.rs",

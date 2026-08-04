@@ -96,7 +96,10 @@ pub use runtime_boot_attestation::{
     RUNTIME_BOOT_ATTESTATION_SCHEMA_VERSION,
 };
 pub use runtime_projection::{project_api_views, project_system_info, ProjectedApiViews};
-pub use scoreboard::{scoreboard_response, ScoreboardEntry, ScoreboardEntryWire};
+pub use scoreboard::{
+    scoreboard_response, Scoreboard, ScoreboardEntry, ScoreboardEntryWire, ScoreboardError,
+    ScoreboardMutation, ScoreboardOwner, ScoreboardOwnerError, MAX_SCOREBOARD_ENTRIES,
+};
 pub use settings::{
     execute_settings_persistence_plan, plan_settings_patch_body, plan_settings_patch_value,
     AcceptedSettingsPatch, SettingsAdapterFailure, SettingsPatchFailure,

@@ -342,6 +342,21 @@ rust_test(
 )
 
 rust_test(
+    name = "scoreboard_source_ownership_tests",
+    srcs = [
+        "src/production_mining_session.rs",
+        "src/production_mining_session/scoreboard.rs",
+        "src/runtime_snapshot.rs",
+        "src/scoreboard_adapter.rs",
+        "src/scoreboard_source_ownership_test.rs",
+        "src/startup.rs",
+    ],
+    crate_name = "scoreboard_source_ownership_tests",
+    crate_root = "src/scoreboard_source_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "wifi_source_ownership_tests",
     srcs = [
         "src/http_api.rs",

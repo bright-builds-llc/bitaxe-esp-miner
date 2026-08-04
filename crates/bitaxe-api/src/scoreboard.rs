@@ -7,6 +7,13 @@
 
 use serde::{Deserialize, Serialize};
 
+mod owner;
+
+pub use owner::{
+    Scoreboard, ScoreboardError, ScoreboardMutation, ScoreboardOwner, ScoreboardOwnerError,
+    MAX_SCOREBOARD_ENTRIES,
+};
+
 /// Typed scoreboard entry held by firmware/runtime adapters.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ScoreboardEntry {
@@ -37,6 +44,16 @@ impl ScoreboardEntry {
             nonce,
             version_bits,
         }
+    }
+
+    /// Parses one exact upstream indexed-NVS scoreboard record.
+    pub fn from_persisted(value: &str) -> Result<Self, ScoreboardError> {
+        owner::parse_persisted_entry(value)
+    }
+
+    /// Formats one exact upstream indexed-NVS scoreboard record.
+    pub fn to_persisted(&self) -> Result<String, ScoreboardError> {
+        owner::format_persisted_entry(self)
     }
 }
 

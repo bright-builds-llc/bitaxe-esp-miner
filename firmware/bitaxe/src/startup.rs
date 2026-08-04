@@ -5,8 +5,8 @@ use esp_idf_svc::sys;
 use crate::{
     asic_adapter, boot_evidence, boot_validation, display_adapter, filesystem, http_api,
     operator_sensor_runtime, production_mining_session, runtime_snapshot, runtime_uptime,
-    safety_adapter, settings_adapter, statistics_runtime, wifi_adapter, BOOT_LOG_LINE, RUST_TARGET,
-    SAFE_STATE_LOG_LINE,
+    safety_adapter, scoreboard_adapter, settings_adapter, statistics_runtime, wifi_adapter,
+    BOOT_LOG_LINE, RUST_TARGET, SAFE_STATE_LOG_LINE,
 };
 
 pub(crate) fn run() -> anyhow::Result<()> {
@@ -39,6 +39,9 @@ fn initialize_boot_identity_and_settings() -> StartupDebugText {
     crate::retain_build_identity();
     if let Err(error) = settings_adapter::initialize_current_settings_snapshot() {
         log::warn!("axeos_settings_snapshot=startup_refresh_failed error={error}");
+    }
+    if let Err(error) = scoreboard_adapter::initialize() {
+        log::warn!("scoreboard=unavailable category={}", error.category());
     }
     runtime_snapshot::apply_boot_mining_preference(settings_adapter::start_mining_on_boot());
     StartupDebugText::new(

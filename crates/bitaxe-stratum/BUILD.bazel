@@ -42,6 +42,7 @@ rust_library(
         "src/v1/production_session/tests/job_transition.rs",
         "src/v1/production_session/tests/lifecycle.rs",
         "src/v1/production_session/tests/recovery.rs",
+        "src/v1/production_session/tests/scoreboard.rs",
         "src/v1/production_session/types.rs",
         "src/v1/recovery_policy.rs",
         "src/v1/share_validation.rs",

@@ -28,24 +28,34 @@ impl ProductionMiningSession {
             return Ok(());
         }
 
-        let maybe_outcome = self
+        let maybe_receipt = self
             .maybe_pool_runtime_mut(active_pool)
-            .map(|pool_runtime| pool_runtime.runtime.apply_bridge_observation(observation))
+            .map(|pool_runtime| {
+                pool_runtime
+                    .runtime
+                    .apply_bridge_observation_with_receipt(observation)
+            })
             .transpose()?;
-        if let Some(outcome) = maybe_outcome {
+        let maybe_scoreboard_candidate = maybe_receipt
+            .as_ref()
+            .and_then(|receipt| receipt.maybe_scoreboard_candidate.clone());
+        if let Some(receipt) = &maybe_receipt {
             self.asic_diagnostics.note_correlation(
                 observation.observed_generation,
-                correlation_category(outcome),
+                correlation_category(receipt.outcome),
                 now_ms,
             );
         }
-        if maybe_outcome
-            .is_some_and(|outcome| !matches!(outcome, BridgeObservationOutcome::Blocked { .. }))
-        {
+        if maybe_receipt.as_ref().is_some_and(|receipt| {
+            !matches!(receipt.outcome, BridgeObservationOutcome::Blocked { .. })
+        }) {
             self.job_transition
                 .note_correlated_result(observation.observed_generation);
         }
         self.drain_runtime_actions(active_pool, effects)?;
+        if let Some(candidate) = maybe_scoreboard_candidate {
+            effects.push(ProductionSessionEffect::RecordScoreboard { candidate });
+        }
         self.bridge.note_result_received();
         self.drive_bridge(now_ms, effects)
     }

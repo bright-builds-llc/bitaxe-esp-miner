@@ -167,9 +167,8 @@ pub fn record_statistics_sample(timestamp_ms: u64, frequency_seconds: u16) {
 }
 
 /// Returns projection-backed `/api/system/scoreboard` data.
-pub fn projected_scoreboard(timestamp_ms: u64) -> Vec<ScoreboardEntryWire> {
-    let views = collect_projected_api_views_with_sample_policy(timestamp_ms, 0.0, false);
-    scoreboard_response(&views.scoreboard_entries)
+pub fn projected_scoreboard(_timestamp_ms: u64) -> Vec<ScoreboardEntryWire> {
+    scoreboard_response(&crate::scoreboard_adapter::entries())
 }
 
 /// Returns projection-backed `/api/ws/live` payload JSON.

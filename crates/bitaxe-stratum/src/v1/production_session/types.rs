@@ -11,7 +11,9 @@ use super::campaign::{
 };
 use super::job_transition::JobTransitionEvidence;
 use crate::v1::live_runtime::LiveRuntimeConfig;
-use crate::v1::production_work::{PoolSessionGeneration, ProductionNonceObservation};
+use crate::v1::production_work::{
+    PoolSessionGeneration, ProductionNonceObservation, ScoreboardCandidate,
+};
 use crate::v1::recovery_policy::{
     ProductionPool, ProductionPoolAvailability, ProductionReadiness, ProductionSessionBlocker,
     ProductionSessionPhase, ProductionSessionWakeup,
@@ -297,6 +299,9 @@ pub enum ProductionSessionEffect {
     SafeStopHardware {
         lease_id: MiningCampaignLeaseId,
     },
+    RecordScoreboard {
+        candidate: ScoreboardCandidate,
+    },
     Publish(Box<ProductionSessionSnapshot>),
 }
 
@@ -370,6 +375,10 @@ impl fmt::Debug for ProductionSessionEffect {
                 Self::SafeStopHardware { lease_id } => formatter
                     .debug_struct("ProductionSessionEffect::SafeStopHardware")
                     .field("lease_id", lease_id)
+                    .finish(),
+                Self::RecordScoreboard { .. } => formatter
+                    .debug_struct("ProductionSessionEffect::RecordScoreboard")
+                    .field("candidate", &"redacted")
                     .finish(),
                 Self::Publish(snapshot) => formatter
                     .debug_tuple("ProductionSessionEffect::Publish")

@@ -18,9 +18,9 @@ const TWO_POW_128: f64 = 340_282_366_920_938_463_463_374_607_431_768_211_456.0;
 const TWO_POW_192: f64 =
     6_277_101_735_386_680_763_835_789_423_207_666_416_102_355_444_464_034_512_896.0;
 
-pub(super) fn nonce_meets_pool_target(
+pub(super) fn nonce_difficulty_meets_pool_target(
     work: &MiningWork,
-    result: Bm1366NonceResult,
+    nonce_difficulty: f64,
 ) -> Result<bool, StratumV1Error> {
     let Some(pool_difficulty) = work.maybe_pool_difficulty else {
         return Err(StratumV1Error::InvalidField {
@@ -35,10 +35,17 @@ pub(super) fn nonce_meets_pool_target(
         });
     }
 
-    Ok(nonce_difficulty(work, result) >= pool_difficulty.difficulty)
+    if !nonce_difficulty.is_finite() || nonce_difficulty <= 0.0 {
+        return Err(StratumV1Error::InvalidField {
+            field: "nonce_difficulty",
+            reason: "must be finite and positive",
+        });
+    }
+
+    Ok(nonce_difficulty >= pool_difficulty.difficulty)
 }
 
-fn nonce_difficulty(work: &MiningWork, result: Bm1366NonceResult) -> f64 {
+pub(super) fn nonce_difficulty(work: &MiningWork, result: Bm1366NonceResult) -> f64 {
     let header = reconstructed_header(work, result);
     let hash = double_sha256(&header);
     TRUE_DIFFICULTY_ONE / little_endian_256_to_f64(hash)

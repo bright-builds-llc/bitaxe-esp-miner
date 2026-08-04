@@ -82,6 +82,7 @@ impl DeterministicProductionSessionAdapter {
                     }
                     ProductionSessionEffect::ApplyVersionMask { .. }
                     | ProductionSessionEffect::PollAsic { .. }
+                    | ProductionSessionEffect::RecordScoreboard { .. }
                     | ProductionSessionEffect::BlockSubmissions
                     | ProductionSessionEffect::InvalidateWorkAndSubmissions
                     | ProductionSessionEffect::StopAsicInteraction
@@ -285,3 +286,4 @@ fn dispatched_observation(
 mod job_transition;
 mod lifecycle;
 mod recovery;
+mod scoreboard;

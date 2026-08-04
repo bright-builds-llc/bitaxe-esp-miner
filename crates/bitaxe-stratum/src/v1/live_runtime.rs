@@ -21,7 +21,7 @@ use crate::v1::messages::{
 use crate::v1::mining::MiningWorkBuilder;
 use crate::v1::production_work::{
     CorrelationOutcome, NonSubmitReason, PoolSessionGeneration, ProductionNonceObservation,
-    ProductionWorkRegistry, SubmitIntent,
+    ProductionWorkRegistry, ScoreboardCandidate, SubmitIntent,
 };
 use crate::v1::state::{MiningActivityStatus, MiningRuntimeState, PoolLifecycleStatus};
 use crate::v1::submit_response::{RedactedSubmitRejectReason, SubmitClassification};
@@ -113,6 +113,11 @@ pub(crate) enum BridgeObservationOutcome {
     SubmitQueued,
     Ignored { reason: NonSubmitReason },
     Blocked { reason: ProductionAsicBlocker },
+}
+
+pub(crate) struct BridgeObservationReceipt {
+    pub outcome: BridgeObservationOutcome,
+    pub maybe_scoreboard_candidate: Option<ScoreboardCandidate>,
 }
 
 #[derive(Clone, PartialEq)]
@@ -415,16 +420,28 @@ impl LiveStratumRuntime {
     }
 
     /// Feed a firmware-stamped nonce observation through production correlation.
+    #[cfg(test)]
     pub fn apply_bridge_observation(
         &mut self,
         observation: ProductionNonceObservation,
     ) -> Result<BridgeObservationOutcome, StratumV1Error> {
-        match self.production_registry.correlate_nonce_result(observation) {
+        self.apply_bridge_observation_with_receipt(observation)
+            .map(|receipt| receipt.outcome)
+    }
+
+    pub(crate) fn apply_bridge_observation_with_receipt(
+        &mut self,
+        observation: ProductionNonceObservation,
+    ) -> Result<BridgeObservationReceipt, StratumV1Error> {
+        let receipt = self
+            .production_registry
+            .correlate_nonce_result_with_receipt(observation);
+        let outcome = match receipt.outcome {
             CorrelationOutcome::SubmitIntent(intent) => {
                 let request_id = self.next_request_id();
                 self.queue_submit_share(intent, request_id)?;
                 self.state.record_qualified_candidate();
-                Ok(BridgeObservationOutcome::SubmitQueued)
+                BridgeObservationOutcome::SubmitQueued
             }
             CorrelationOutcome::Ignored { reason } => {
                 match reason {
@@ -433,13 +450,17 @@ impl LiveStratumRuntime {
                         self.state.record_duplicate_candidate();
                     }
                 }
-                Ok(BridgeObservationOutcome::Ignored { reason })
+                BridgeObservationOutcome::Ignored { reason }
             }
             CorrelationOutcome::Blocked { reason } => {
                 self.block_work_submission(reason.as_str());
-                Ok(BridgeObservationOutcome::Blocked { reason })
+                BridgeObservationOutcome::Blocked { reason }
             }
-        }
+        };
+        Ok(BridgeObservationReceipt {
+            outcome,
+            maybe_scoreboard_candidate: receipt.maybe_scoreboard_candidate,
+        })
     }
 
     fn queue_submit_share(

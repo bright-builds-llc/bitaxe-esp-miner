@@ -605,11 +605,11 @@ behavior remain below verified.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
-- [ ] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
+- [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
       persistence codec with focused regression coverage.
-- [ ] Carry one redacted candidate from current-generation nonce correlation
+- [x] Carry one redacted candidate from current-generation nonce correlation
       through a typed production-session effect without changing submit policy.
-- [ ] Add transactional indexed-NVS ownership, boot load, read-only API
+- [x] Add transactional indexed-NVS ownership, boot load, read-only API
       projection, production ownership tests, and every mandatory gate.
 
 Plan: `docs/parity/work-plans/20260804T220000Z-STAT-003/PLAN.md`
@@ -619,11 +619,15 @@ only. No hardware attempt, credentials, external service, mining campaign, pool
 connection, frequency/voltage/fan/power effect, OTA, recovery, direct UART, or
 pins.
 
-Verification: Pending.
+Verification: Ten focused API tests, three production-session tests, five
+firmware ownership tests, the complete Cargo suite, real firmware build, Bright
+Builds checks, all 33 Bazel tests, parity validation/progress, redaction,
+reference cleanliness, and diff checks passed on the implementation tree.
 
-Completion review: Pending. Live nonce difficulty, device persistence, API and
-browser behavior, mining, and accepted/rejected share outcomes remain below
-verified.
+Completion review: Software implementation is complete and awaiting exact
+commit binding plus the typed `implemented` transition. Live nonce difficulty,
+device persistence, API and browser behavior, mining, and accepted/rejected
+share outcomes remain below verified.
 
 ## Future
 
