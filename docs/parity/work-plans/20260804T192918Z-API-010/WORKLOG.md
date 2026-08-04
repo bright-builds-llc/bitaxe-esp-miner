@@ -67,3 +67,25 @@
   promoted.
 - Blocker or next safe action: Commit and push the exact software fix. A live
   retry is outside this task and requires a new active hardware contract.
+
+## 2026-08-04T19:53:46Z | open-plan lineage diagnosis
+
+- Source commit: `67974ccc1cd2d16455f01e9ca71da4c608c00f06`.
+- Actions: Reproduced the deterministic selector failure after the completed
+  terminal-baseline fix and inspected its open-plan scan against the two
+  immutable `API-010` plans.
+- Verification: Both plans remain open because `API-010` correctly remains at
+  their `implemented` initial status and neither software-only plan may create
+  a hardware `RESULT.md`. The newer plan directly names the older plan as the
+  lineage it resumed, but the selector currently treats every result-less plan
+  as unrelated and fails whenever more than one survives status filtering.
+- Evidence: Repository metadata and a real `next-item --format json` process
+  only. No private trace, hardware, credential, origin, hostname, port, USB
+  identity, or network identifier was accessed or published.
+- Outcome: The root cause is an absent immutable-plan lineage reconciliation
+  rule. The closed design accepts only a same-row chronological chain where
+  each newer plan directly references the immediately preceding plan path;
+  unlinked duplicates and cross-row plans remain ambiguous and fail closed.
+- Blocker or next safe action: Commit and push this task checkpoint, then add
+  the pure reconciliation helper and focused filesystem regressions without
+  modifying either `PLAN.md`.
