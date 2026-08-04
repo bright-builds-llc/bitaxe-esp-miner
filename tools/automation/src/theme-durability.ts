@@ -10,6 +10,12 @@ import {
   type ThemeDurabilityEvidence,
 } from "./contracts.generated.js";
 import { isDeviceSessionProjectionFailure, readClosedDeviceSession, type JsonObject } from "./device-session-projection.js";
+import {
+  factoryImageDigest,
+  flashChildFailureFacts,
+  flashEffectEnvironment,
+  inspectFlashEffect,
+} from "./flash-child-diagnostics.js";
 import { fetchJsonFromSameOrigin, sendSameOriginRequest } from "./http.js";
 import type { ProcessOutcome, ProcessPort } from "./process.js";
 import { assertWithinWorkspace } from "./workspace.js";
@@ -233,9 +239,20 @@ export async function captureThemeDurability(
   const referenceCommit = requiredString(manifest, "reference_commit", "package manifest");
   const appElfSha256 = requiredString(manifest, "app_elf_sha256", "package manifest");
   const manifestDigest = sha256(manifestDocument);
+  let factoryDigest: string;
+  try {
+    factoryDigest = factoryImageDigest(manifest);
+  } catch {
+    throw failure("evidence_invalid", "package manifest factory image is invalid");
+  }
   const initialRoot = path.join(privateRoot, "initial");
   await mkdir(initialRoot, { mode: 0o700 });
-  const initial = await processPort.run(flashMonitorCommand(flashProgram, {
+  const effectPath = path.join(initialRoot, "flash-effect.private.json");
+  const expectedEffectIdentity = {
+    packageIdentityDigest: manifestDigest,
+    factoryImageDigest: factoryDigest,
+  };
+  const initialBaseSpec = flashMonitorCommand(flashProgram, {
     board: 205,
     port: options.port,
     manifest: manifestPath,
@@ -243,9 +260,27 @@ export async function captureThemeDurability(
     captureTimeoutSeconds: options.captureTimeoutSeconds,
     evidenceMode: "dual",
     evidenceDir: initialRoot,
-  }));
-  if (initial.timedOut) throw failure("timeout", "exact-package flash-monitor timed out");
-  if (initial.exitCode !== 0) throw failure("process_failed", "exact-package flash-monitor failed");
+  });
+  const initialSpec = internalCommandSpec(
+    initialBaseSpec.program,
+    [...initialBaseSpec.args],
+    initialBaseSpec.result,
+    flashEffectEnvironment(effectPath, expectedEffectIdentity),
+  );
+  let initial: ProcessOutcome;
+  try {
+    initial = await processPort.run(initialSpec);
+  } catch {
+    const effect = await inspectFlashEffect(effectPath, expectedEffectIdentity);
+    throw failure("process_failed", "exact-package flash-monitor launch failed", flashChildFailureFacts(undefined, effect));
+  }
+  const initialEffect = await inspectFlashEffect(effectPath, expectedEffectIdentity);
+  const initialFacts = flashChildFailureFacts(initial, initialEffect);
+  if (initial.timedOut) throw failure("timeout", "exact-package flash-monitor timed out", initialFacts);
+  if (initial.exitCode !== 0) throw failure("process_failed", "exact-package flash-monitor failed", initialFacts);
+  if (initialEffect.flash_effect_result_status !== "valid" || initialEffect.flash_effect_status !== "completed") {
+    throw failure("evidence_invalid", "exact-package flash effect result is invalid", initialFacts);
+  }
   const tracePath = path.join(initialRoot, "flash-monitor.classifier-input.log");
   const baselineValue = await baseline(processPort, classifierProgram, tracePath);
   const session = requiredString(baselineValue, "session", "baseline classification");

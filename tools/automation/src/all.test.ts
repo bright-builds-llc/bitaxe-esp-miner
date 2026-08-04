@@ -1,6 +1,7 @@
 import "./contracts.test.js";
 import "./ci-contract.test.js";
 import "./detector.test.js";
+import "./flash-child-diagnostics.test.js";
 import "./http.test.js";
 import "./invocation.test.js";
 import "./operator-snapshot-evidence.test.js";
@@ -10,6 +11,7 @@ import "./redaction.test.js";
 import "./runtime-health-evidence.test.js";
 import "./settings-durability.test.js";
 import "./theme-durability.test.js";
+import "./typed-failure.test.js";
 import "./static-provenance.test.js";
 import "./static-ui.test.js";
 import "./workspace.test.js";

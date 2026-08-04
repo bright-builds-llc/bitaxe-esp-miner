@@ -83,3 +83,27 @@
 - Blocker or next safe action: Commit and push the targeted software-only task,
   then enable and validate the existing private effect contract, add closed
   child-marker classification, and include the safe theme failure facts.
+
+## 2026-08-04T20:36:32Z | typed initial-child diagnostics implemented
+
+- Source commit: `9c539eea0890bb53bdd16f97efc59d63823e44e4`.
+- Actions: Enabled the flash tool's existing private effect-result environment,
+  added strict factory/package identity and mode-`0600` artifact parsing,
+  classified only allowlisted dual-evidence markers, merged command-specific
+  variables into the safe process environment, and centralized typed failure
+  projection so theme errors reach the public automation envelope.
+- Verification: Focused automation and flash targets pass. Unit coverage proves
+  exact manifest/effect parsing, valid/missing/malformed artifacts, pre-effect
+  invocation failure, bounded exit/timeout facts, allowlisted marker output,
+  environment filtering, and theme error projection. Real child-process tests
+  prove a nonzero child produces only closed facts, keeps its effect artifact
+  mode `0600`, withholds final evidence, and excludes injected path, port,
+  token, stdout, and stderr values.
+- Evidence: Software tests and source diff only. No detector, USB, flash,
+  monitor, HTTP, restart, recovery, credential, or other device action ran.
+- Outcome: Future initial-child failure now distinguishes completed, confirmed
+  partial, no-device-effect, missing, or invalid effect evidence plus one closed
+  child marker without weakening earliest-failure precedence.
+- Blocker or next safe action: Run the complete repository verification
+  sequence, review privacy and simplification, then commit and push the
+  implementation checkpoint. `API-010` remains `implemented`.

@@ -938,13 +938,13 @@ other-board, or release parity.
 
 ### task-parity-api010-flash-monitor-child-diagnostics | 2026-08-04 | Preserve typed initial-child failure evidence
 
-- [ ] Enable the existing private `phase36-effect-result-v1` contract on the
+- [x] Enable the existing private `phase36-effect-result-v1` contract on the
       initial exact-package flash-monitor child and strictly parse its closed
       device-effect state.
-- [ ] Classify only allowlisted dual-evidence terminal markers from child
+- [x] Classify only allowlisted dual-evidence terminal markers from child
       stderr, preserve the numeric exit/timeout facts, and expose no raw child
       output or operational identifiers.
-- [ ] Include `ThemeDurabilityError.publicValue` in the public automation
+- [x] Include `ThemeDurabilityError.publicValue` in the public automation
       failure envelope and prove the behavior through real child processes.
 - [ ] Run focused tests and the complete repository verification sequence,
       review the diff for sensitive values, and push the implementation

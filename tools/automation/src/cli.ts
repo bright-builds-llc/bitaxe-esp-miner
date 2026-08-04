@@ -29,6 +29,7 @@ import { verifySemanticEvidenceRedaction } from "./redaction.js";
 import { captureRuntimeHealthEvidence, RuntimeHealthEvidenceError } from "./runtime-health-evidence.js";
 import { captureSettingsDurability, SettingsDurabilityError } from "./settings-durability.js";
 import { captureThemeDurability, ThemeDurabilityError } from "./theme-durability.js";
+import { maybeTypedFailurePublicValue } from "./typed-failure.js";
 import { captureVersionEvidence } from "./version-evidence.js";
 import { executeCommandSpec } from "./workflow.js";
 import { assertWithinWorkspace } from "./workspace.js";
@@ -347,7 +348,7 @@ async function main(): Promise<number> {
       invocation.command,
       status,
       category,
-      settingsFailure || snapshotFailure || runtimeHealthFailure ? error.publicValue : undefined,
+      maybeTypedFailurePublicValue(error),
     ))}\n`);
     return exitCode;
   }

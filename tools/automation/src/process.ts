@@ -34,6 +34,8 @@ export function allowedEnvironment(source: NodeJS.ProcessEnv | Readonly<Record<s
     "CARGO_HOME", "CARGO_NET_GIT_FETCH_WITH_CLI", "CARGO_TARGET_DIR", "CARGO_TERM_COLOR",
     "RUSTUP_HOME", "RUSTUP_TOOLCHAIN", "RUST_BACKTRACE",
     "BITAXE_BUILD_PROVENANCE_STAMP", "BITAXE_BUILD_TIMESTAMP_UTC_FILE",
+    "PHASE36_EFFECT_RESULT_PATH", "PHASE36_EFFECT_OPERATION",
+    "PHASE36_EFFECT_PACKAGE_IDENTITY_DIGEST", "PHASE36_EFFECT_FACTORY_IMAGE_DIGEST",
   ]);
   const prefixes = ["IDF_", "ESP_"];
   for (const [key, maybeValue] of Object.entries(source)) {
@@ -48,7 +50,7 @@ export function createLocalProcessPort(options: { readonly cwd: string; readonly
   const run: ProcessPort["run"] = (spec) => {
     const child = spawn(spec.program, spec.args, {
       cwd: options.cwd,
-      env: allowedEnvironment(spec.environment ?? process.env),
+      env: allowedEnvironment({ ...process.env, ...(spec.environment ?? {}) }),
       stdio: ["ignore", "pipe", "pipe"],
     });
     const stdout: Buffer[] = [];

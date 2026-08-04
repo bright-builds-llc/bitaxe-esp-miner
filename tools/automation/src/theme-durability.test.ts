@@ -72,6 +72,7 @@ async function fixture(name: string): Promise<Fixture> {
     source_commit: "a".repeat(40),
     reference_commit: "b".repeat(40),
     app_elf_sha256: "c".repeat(64),
+    artifacts: [{ kind: "factory_merged_image", sha256: "d".repeat(64) }],
   }));
   await writeFile(credentials, "{}\n");
   return { root, manifest, credentials, projection: path.join(root, "docs", "projection.json") };
@@ -131,6 +132,19 @@ function fakePort(
     if (command === "flash-monitor") {
       const evidenceRoot = spec.args[spec.args.indexOf("--evidence-dir") + 1];
       assert.notEqual(evidenceRoot, undefined);
+      const effectPath = spec.environment?.["PHASE36_EFFECT_RESULT_PATH"];
+      const packageDigest = spec.environment?.["PHASE36_EFFECT_PACKAGE_IDENTITY_DIGEST"];
+      const factoryDigest = spec.environment?.["PHASE36_EFFECT_FACTORY_IMAGE_DIGEST"];
+      assert.notEqual(effectPath, undefined);
+      await writeFile(String(effectPath), `${JSON.stringify({
+        schema_version: "phase36-effect-result-v1",
+        operation: "exact_package_flash",
+        status: "completed",
+        failure: null,
+        package_identity_digest: packageDigest,
+        factory_image_digest: factoryDigest,
+      })}\n`, { mode: 0o600 });
+      await chmod(String(effectPath), 0o600);
       await writeFile(path.join(String(evidenceRoot), "flash-monitor.classifier-input.log"), trace);
       return ok();
     }
@@ -298,6 +312,86 @@ test("failed restoration uses exact-package recovery without replacing the prima
   }
 });
 
+test("initial child failure preserves effect and closed terminal facts without sensitive output", async () => {
+  // Arrange
+  const value = await fixture("initial-child-failure");
+  const child = path.join(value.root, "failed-child.mjs");
+  await writeFile(child, `#!${nodeProgram}
+import { chmod, writeFile } from "node:fs/promises";
+const output = process.env.PHASE36_EFFECT_RESULT_PATH;
+await writeFile(output, JSON.stringify({
+  schema_version: "phase36-effect-result-v1",
+  operation: "exact_package_flash",
+  status: "failed_no_device_effect",
+  failure: "flash_failed",
+  package_identity_digest: process.env.PHASE36_EFFECT_PACKAGE_IDENTITY_DIGEST,
+  factory_image_digest: process.env.PHASE36_EFFECT_FACTORY_IMAGE_DIGEST,
+}));
+await chmod(output, 0o600);
+process.stderr.write("private /dev/test-sensitive-port dual_evidence=failed reason=flash_workflow_failed token=secret");
+process.exitCode = 17;
+`);
+  await chmod(child, 0o700);
+  const processPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 });
+
+  // Act
+  const error = await themeError(captureThemeDurability(
+    value.root,
+    options(value),
+    processPort,
+    child,
+    child,
+    child,
+  ));
+
+  // Assert
+  assert.equal(error.category, "process_failed");
+  assert.equal(error.publicValue["stage"], "initial_flash_monitor");
+  assert.equal(error.publicValue["flash_monitor_exit_code"], 17);
+  assert.equal(error.publicValue["flash_monitor_terminal_marker"], "flash_workflow_failed");
+  assert.equal(error.publicValue["flash_effect_result_status"], "valid");
+  assert.equal(error.publicValue["flash_effect_status"], "failed_no_device_effect");
+  assert.doesNotMatch(JSON.stringify(error.publicValue), /private|secret|test-sensitive-port|\/dev/u);
+  const effectPath = path.join(value.root, "scratch", "attempt", "initial", "flash-effect.private.json");
+  assert.equal((await stat(effectPath)).mode & 0o777, 0o600);
+  await assert.rejects(readFile(value.projection, "utf8"), { code: "ENOENT" });
+});
+
+test("initial child launch missing and malformed effect results preserve the primary process failure", async () => {
+  for (const testCase of [
+    { name: "launch", effectStatus: "missing", launch: true },
+    { name: "missing-effect", effectStatus: "missing", launch: false },
+    { name: "malformed-effect", effectStatus: "invalid", launch: false },
+  ] as const) {
+    // Arrange
+    const value = await fixture(testCase.name);
+    const processPort = createFakeProcessPort(async (spec) => {
+      assert.equal(spec.args[0], "flash-monitor");
+      if (testCase.launch) throw new Error("private launch error /dev/test-sensitive-port");
+      if (testCase.effectStatus === "invalid") {
+        const effectPath = spec.environment?.["PHASE36_EFFECT_RESULT_PATH"];
+        assert.notEqual(effectPath, undefined);
+        await writeFile(String(effectPath), "{}\n", { mode: 0o600 });
+        await chmod(String(effectPath), 0o600);
+      }
+      return { exitCode: 19, stdout: "private", stderr: "private token", timedOut: false };
+    });
+
+    // Act
+    const error = await themeError(capture(value, processPort));
+
+    // Assert
+    assert.equal(error.category, "process_failed");
+    assert.equal(error.publicValue["flash_effect_result_status"], testCase.effectStatus);
+    assert.equal(
+      error.publicValue["flash_monitor_terminal_marker"],
+      testCase.launch ? "launch_failed" : "unclassified",
+    );
+    assert.doesNotMatch(JSON.stringify(error.publicValue), /private|token|test-sensitive-port|\/dev/u);
+    await assert.rejects(readFile(value.projection, "utf8"), { code: "ENOENT" });
+  }
+});
+
 test("real child processes produce only the requested projection artifacts", async () => {
   // Arrange
   const value = await fixture("real-child");
@@ -310,6 +404,14 @@ import { spawnSync } from "node:child_process";
 const args = process.argv.slice(2);
 if (args[0] === "flash-monitor") {
   const root = args[args.indexOf("--evidence-dir") + 1];
+  await writeFile(process.env.PHASE36_EFFECT_RESULT_PATH, JSON.stringify({
+    schema_version: "phase36-effect-result-v1",
+    operation: "exact_package_flash",
+    status: "completed",
+    failure: null,
+    package_identity_digest: process.env.PHASE36_EFFECT_PACKAGE_IDENTITY_DIGEST,
+    factory_image_digest: process.env.PHASE36_EFFECT_FACTORY_IMAGE_DIGEST,
+  }), { mode: 0o600 });
   await mkdir(root, { recursive: true });
   await writeFile(path.join(root, "flash-monitor.classifier-input.log"), ${JSON.stringify(productionTrace)});
 } else if (args[0] === "verify-settings-durability") {
