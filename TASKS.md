@@ -1015,6 +1015,93 @@ port, USB, network, credential, and trace values remain unreported. This task
 claims no installed AxeOS browser, networking, mining, ASIC, hardware-control,
 OTA, recovery, other-board, or release parity.
 
+### task-parity-api010-live-theme-durability-attempt-005 | 2026-08-04 | Continue after normal-power remediation
+
+- [ ] Preserve the pushed implementation and attempt-004 record, then commit
+      and push the linked immutable attempt-005 plan before any hardware action.
+- [ ] After the user reports one full normal barrel/USB power cycle, freeze the
+      exact planning-commit package and run one fresh protected detector.
+- [ ] Run the single bounded capture only if board-info admission objectively
+      proves the detector boundary changed; otherwise record the terminal
+      detector outcome and stop.
+- [ ] Promote only `API-010` on complete typed evidence; otherwise preserve the
+      earliest category, withhold evidence, keep `implemented`, and stop.
+
+Plan: `docs/parity/work-plans/20260804T205704Z-API-010/PLAN.md`. This immutable
+plan directly continues
+`docs/parity/work-plans/20260804T204310Z-API-010/PLAN.md` after attempt-004
+stopped at detector admission.
+
+Progress basis: protected classification narrows the attempt-004 signature to
+`terminal_category=bootloader_connect_failed`,
+`espflash_detail=connection_failed`, `enumeration_changed=false`,
+`same_physical_device=true`, and `cleanup_complete=true`. The durable USB
+policy maps exactly those facts to a full normal barrel/DC and USB power cycle.
+The cycle is an authorized non-invasive remediation through normal connectors,
+but only a successful fresh detector is objective proof that the boundary
+changed.
+
+Manual occurrence checkpoint: the user must disconnect both normal barrel/DC
+power and USB for at least ten seconds, then reconnect normal barrel power
+followed by USB. Do not infer or automate this occurrence, and do not run the
+detector until the user reports it completed. This is not a repeated authority
+request; standing task authorization already covers the task-gated commands.
+
+Authorized commands after this plan/task checkpoint is clean, verified,
+committed, and pushed and after the manual occurrence is reported:
+
+1. `just package`
+2. `test ! -e scratch/api010-theme-durability/wrapper-005 && (umask 077; mkdir -m 700 scratch/api010-theme-durability/wrapper-005 && just detect-ultra205 > scratch/api010-theme-durability/wrapper-005/detector.stdout 2>&1)`
+3. Only after command 2 succeeds:
+   `test ! -e scratch/api010-theme-durability/attempt-005 && test ! -e docs/parity/evidence/api010-theme-durability/theme-durability-projection.json && (umask 077; just verify-theme-durability --private-root scratch/api010-theme-durability/attempt-005 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/api010-theme-durability/wrapper-005/detector.stdout --projection docs/parity/evidence/api010-theme-durability/theme-durability-projection.json --capture-timeout-seconds 360 > scratch/api010-theme-durability/wrapper-005/verify.stdout 2> scratch/api010-theme-durability/wrapper-005/verify.stderr)`
+
+Hardware and effect boundary: the manual step may use only the device's normal
+barrel/DC and USB connectors. Detector admission must find exactly one likely
+ESP USB serial port and successful ESP32-S3 board info. The capture may use the
+admitted port for one exact-package flash-monitor transaction, one generated
+non-secret theme mutation, one normal software restart, exact readbacks and
+restoration, and at most one built-in exact-package recovery flash if normal
+restoration cannot be confirmed. It may not change Wi-Fi or pool configuration,
+mine, enable ASIC work, change voltage/frequency/fan/thermal/power controls,
+exercise display input, perform OTA/erase/fault-injection/raw-partition writes,
+discover network targets, terminate foreign processes, use direct UART or pins,
+or perform any other electrical action.
+
+Evidence and privacy: the supervisor exclusively creates the absent
+`scratch/api010-theme-durability/attempt-005` child as mode `0700` with only
+mode-`0600` private artifacts. The caller-owned
+`scratch/api010-theme-durability/wrapper-005` sibling is mode `0700` with
+mode-`0600` streams. Credential contents remain `NeverPersistRaw`. The public
+projection or failure envelope may contain only closed schema fields, public
+provenance, categories, booleans, bounded counts/durations, the closed
+device-session projection, and declared child discriminators—never origins,
+theme/hostname values, ports, USB/network/process identifiers, credentials,
+raw child/HTTP/serial material, or private paths.
+
+Recovery, retry, and stop: preserve the earliest typed failure. Normal exact
+theme restoration/readback precedes the workflow's one exact-package recovery
+fallback; recovery remains secondary and public only as safe booleans.
+`attempt-005` authorizes exactly one detector and, only after its success, one
+capture. Recurrence of the full attempt-004 signature after the manual cycle
+selects `stop_repeated_boundary`; another detector failure selects
+`stop_hardware_blocker`. Any launch failure, timeout, non-ready session,
+persistence mismatch, restoration uncertainty, cleanup/privacy failure, or
+safety invariant violation ends without retry.
+
+Accepted outcomes: `complete` only when exact package identity, one admitted
+physical board 205, one restart request, same-device recovery, exact build,
+changed boot session, ordinal `N+1`, software reset, immediate and post-restart
+theme equality, exact restoration, disabled mining/hardware control, cleanup,
+and redaction all pass. Otherwise record the closed category and safe recovery
+booleans, withhold `RESULT.md` and evidence, keep `API-010` at `implemented`,
+and stop.
+
+Verification: Pending.
+
+Completion review: Pending. This task claims no installed AxeOS browser,
+network discovery, mining, ASIC, hardware-control, OTA, recovery, other-board,
+or release parity beyond the exact admitted transaction.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
