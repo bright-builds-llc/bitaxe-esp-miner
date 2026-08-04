@@ -93,6 +93,12 @@ pub(crate) struct OpenPlan {
     pub(crate) plan_path: String,
 }
 
+#[derive(Debug)]
+struct OpenPlanDocument {
+    open_plan: OpenPlan,
+    document: String,
+}
+
 #[derive(Debug, Serialize)]
 struct NextItemReport {
     maybe_open_plan: Option<OpenPlan>,
@@ -241,15 +247,42 @@ fn find_open_plan(workspace: &Utf8Path, rows: &[ChecklistRow]) -> Result<Option<
         let relative = path
             .strip_prefix(workspace)
             .context("open parity plan is outside the workspace")?;
-        open_plans.push(OpenPlan {
-            row_id,
-            plan_path: format!("{relative}/PLAN.md"),
+        open_plans.push(OpenPlanDocument {
+            open_plan: OpenPlan {
+                row_id,
+                plan_path: format!("{relative}/PLAN.md"),
+            },
+            document,
         });
     }
-    if open_plans.len() > 1 {
-        bail!("multiple open parity plans exist; close or reconcile them before selecting work");
+    reconcile_open_plans(open_plans)
+}
+
+fn reconcile_open_plans(mut open_plans: Vec<OpenPlanDocument>) -> Result<Option<OpenPlan>> {
+    open_plans.sort_by(|left, right| left.open_plan.plan_path.cmp(&right.open_plan.plan_path));
+    let Some(first) = open_plans.first() else {
+        return Ok(None);
+    };
+    if open_plans
+        .iter()
+        .any(|candidate| candidate.open_plan.row_id != first.open_plan.row_id)
+    {
+        bail!(
+            "multiple open parity plans span rows; close or reconcile them before selecting work"
+        );
     }
-    Ok(open_plans.pop())
+    for pair in open_plans.windows(2) {
+        let older = &pair[0].open_plan;
+        let newer = &pair[1];
+        let lineage_reference = format!("`{}`", older.plan_path);
+        if !newer.document.contains(&lineage_reference) {
+            bail!(
+                "multiple open parity plans for {} lack an explicit continuation lineage",
+                older.row_id
+            );
+        }
+    }
+    Ok(open_plans.pop().map(|candidate| candidate.open_plan))
 }
 
 fn parse_plan_metadata(document: &str) -> Result<(String, String)> {
@@ -454,6 +487,107 @@ mod tests {
 
         // Assert
         assert_eq!(maybe_open_plan, None);
+        fs::remove_dir_all(workspace.as_std_path()).expect("cleanup");
+    }
+
+    #[test]
+    fn next_item_resumes_newest_explicitly_linked_same_row_plan() {
+        // Arrange
+        let workspace = Utf8PathBuf::from_path_buf(std::env::temp_dir().join(format!(
+            "bitaxe-parity-linked-open-plans-{}",
+            std::process::id()
+        )))
+        .expect("temporary path must be UTF-8");
+        let _ = fs::remove_dir_all(workspace.as_std_path());
+        let older_root = workspace.join("docs/parity/work-plans/20260101T000000Z-API-010");
+        let newer_root = workspace.join("docs/parity/work-plans/20260102T000000Z-API-010");
+        fs::create_dir_all(older_root.as_std_path()).expect("older plan root");
+        fs::create_dir_all(newer_root.as_std_path()).expect("newer plan root");
+        fs::write(
+            older_root.join("PLAN.md").as_std_path(),
+            "# Plan\n\n- Parity row: `API-010`\n- Initial status: `implemented`\n",
+        )
+        .expect("older plan");
+        fs::write(
+            newer_root.join("PLAN.md").as_std_path(),
+            "# Plan\n\n- Parity row: `API-010`\n- Initial status: `implemented`\n\nContinues `docs/parity/work-plans/20260101T000000Z-API-010/PLAN.md`.\n",
+        )
+        .expect("newer plan");
+        let rows = vec![row("API-010", "implemented")];
+
+        // Act
+        let open_plan = find_open_plan(&workspace, &rows)
+            .expect("linked plans should reconcile")
+            .expect("newest plan should remain open");
+
+        // Assert
+        assert_eq!(open_plan.row_id, "API-010");
+        assert_eq!(
+            open_plan.plan_path,
+            "docs/parity/work-plans/20260102T000000Z-API-010/PLAN.md"
+        );
+        fs::remove_dir_all(workspace.as_std_path()).expect("cleanup");
+    }
+
+    #[test]
+    fn next_item_rejects_unlinked_same_row_open_plans() {
+        // Arrange
+        let workspace = Utf8PathBuf::from_path_buf(std::env::temp_dir().join(format!(
+            "bitaxe-parity-unlinked-open-plans-{}",
+            std::process::id()
+        )))
+        .expect("temporary path must be UTF-8");
+        let _ = fs::remove_dir_all(workspace.as_std_path());
+        for run in ["20260101T000000Z-API-010", "20260102T000000Z-API-010"] {
+            let plan_root = workspace.join("docs/parity/work-plans").join(run);
+            fs::create_dir_all(plan_root.as_std_path()).expect("plan root");
+            fs::write(
+                plan_root.join("PLAN.md").as_std_path(),
+                "# Plan\n\n- Parity row: `API-010`\n- Initial status: `implemented`\n",
+            )
+            .expect("plan");
+        }
+        let rows = vec![row("API-010", "implemented")];
+
+        // Act
+        let error = find_open_plan(&workspace, &rows).expect_err("unlinked plans must fail closed");
+
+        // Assert
+        assert!(error
+            .to_string()
+            .contains("lack an explicit continuation lineage"));
+        fs::remove_dir_all(workspace.as_std_path()).expect("cleanup");
+    }
+
+    #[test]
+    fn next_item_rejects_open_plans_spanning_rows() {
+        // Arrange
+        let workspace = Utf8PathBuf::from_path_buf(std::env::temp_dir().join(format!(
+            "bitaxe-parity-cross-row-open-plans-{}",
+            std::process::id()
+        )))
+        .expect("temporary path must be UTF-8");
+        let _ = fs::remove_dir_all(workspace.as_std_path());
+        for (run, row_id) in [
+            ("20260101T000000Z-API-010", "API-010"),
+            ("20260102T000000Z-CFG-001", "CFG-001"),
+        ] {
+            let plan_root = workspace.join("docs/parity/work-plans").join(run);
+            fs::create_dir_all(plan_root.as_std_path()).expect("plan root");
+            fs::write(
+                plan_root.join("PLAN.md").as_std_path(),
+                format!("# Plan\n\n- Parity row: `{row_id}`\n- Initial status: `implemented`\n"),
+            )
+            .expect("plan");
+        }
+        let rows = vec![row("API-010", "implemented"), row("CFG-001", "implemented")];
+
+        // Act
+        let error =
+            find_open_plan(&workspace, &rows).expect_err("cross-row plans must fail closed");
+
+        // Assert
+        assert!(error.to_string().contains("span rows"));
         fs::remove_dir_all(workspace.as_std_path()).expect("cleanup");
     }
 

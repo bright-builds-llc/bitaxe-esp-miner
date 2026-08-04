@@ -4945,3 +4945,35 @@ interleaved, nonsequential, stale-only, and incomplete evidence fails closed.
 The original whole-trace classifier is unchanged, `API-010` remains
 `implemented`, no evidence was promoted, and any live retry requires a new
 task-gated hardware contract.
+
+### task-parity-api010-open-plan-lineage | 2026-08-04 | Reconcile immutable API-010 plan lineage
+
+- [x] Preserve both immutable API-010 plans and make the deterministic selector
+      resume only the newest plan in an explicitly linked same-row chain.
+- [x] Keep unlinked same-row duplicates and every cross-row ambiguity
+      fail-closed with focused regressions.
+- [x] Run focused and mandatory gates, archive this software-only task, and
+      rerun the selector without creating parity evidence or changing status.
+
+Plan: `docs/parity/work-plans/20260804T192918Z-API-010/PLAN.md`. The follow-up
+plan directly names
+`docs/parity/work-plans/20260804T185605Z-API-010/PLAN.md`, which is the immutable
+lineage edge this task makes machine-checkable.
+
+Authorization: local selector, synthetic filesystem tests, tracker, and
+worklog changes only. No hardware, credentials, network requests, settings,
+theme mutation, restart, mining, controls, OTA, recovery, direct UART, or pins.
+
+Verification: Complete. Ten focused Cargo selector tests, the Bazel parity
+target, the mandatory Rust sequence, Bright Builds with zero findings, all 34
+Bazel tests, parity with no validation errors, progress, semantic redaction,
+pinned-reference cleanliness, immutable-plan comparison, sensitive-output
+review, and diff checks passed. The real selector resumes the newer linked
+`API-010` plan and emits no candidate list.
+
+Completion review: Completed the selector root-cause fix without changing
+either immutable plan. Surviving same-row plans now form a chronological chain
+only when every newer document directly references the immediately older
+backticked path; unlinked or cross-row ambiguity still fails closed. `API-010`
+remains `implemented`, no `RESULT.md` or parity evidence was created, no status
+was promoted, and no live retry or hardware interaction was authorized.

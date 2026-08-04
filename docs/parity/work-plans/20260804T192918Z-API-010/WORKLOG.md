@@ -89,3 +89,48 @@
 - Blocker or next safe action: Commit and push this task checkpoint, then add
   the pure reconciliation helper and focused filesystem regressions without
   modifying either `PLAN.md`.
+
+## 2026-08-04 | open-plan lineage implementation checkpoint
+
+- Source commit: implementation based on task checkpoint `61aeb829`.
+- Actions: Added a pure open-plan reconciliation step after existing status
+  admission. It sorts surviving plans by their repository path, requires one
+  row ID, verifies that every newer plan directly names the immediately older
+  backticked `PLAN.md` path, and returns only the newest linked continuation.
+- Verification: Ten focused Cargo selector tests and the Bazel parity test
+  target pass. New filesystem regressions cover a linked same-row continuation,
+  unlinked same-row duplicates, and cross-row ambiguity. The real
+  `next-item --format json` process now resumes the newer immutable `API-010`
+  plan with an empty candidate list.
+- Evidence: Synthetic repository files and public plan metadata only. No
+  parity evidence, private trace, hardware, credential, origin, hostname,
+  port, USB identity, or network identifier was accessed or published.
+- Outcome: Explicit continuation lineage is admitted without weakening the
+  existing status-regression or unrelated-plan guards. Neither immutable plan
+  changed, and `API-010` remains `implemented`.
+- Blocker or next safe action: Run the complete mandatory verification,
+  privacy, reference, immutable-plan, sensitive-output, and diff checks before
+  conservative software-only closure.
+
+## 2026-08-04 | open-plan lineage verification and closure
+
+- Source commit: implementation based on task checkpoint `61aeb829`.
+- Actions: Ran the complete ordered Rust, managed-standards, Bazel, parity,
+  privacy, reference, immutable-plan, sensitive-output, and diff gates; reviewed
+  the final reconciliation core and filesystem regressions; and archived only
+  the completed selector-lineage task.
+- Verification: Format, strict Clippy, all-target/all-feature Cargo build and
+  tests, Bright Builds with zero findings, all 34 Bazel tests including the
+  ESP32-S3 firmware build, parity with no validation errors, progress at 39 of
+  94 active rows verified, semantic redaction, pinned-reference cleanliness,
+  immutable-plan comparison, sensitive-output review, and diff checks pass.
+  The real selector resumes
+  `docs/parity/work-plans/20260804T192918Z-API-010/PLAN.md`.
+- Evidence: Synthetic repository verification only. No `RESULT.md`, parity
+  evidence, private trace, hardware, credential, origin, hostname, port, USB
+  identity, or network identifier was created, accessed, or published.
+- Outcome: The selector blocker is closed while both immutable plans and the
+  `API-010` `implemented` status remain unchanged. Unlinked and cross-row
+  duplicates retain closed terminal errors.
+- Blocker or next safe action: Commit and push the exact implementation. A live
+  retry remains outside this task and requires a new active hardware contract.

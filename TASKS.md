@@ -845,29 +845,6 @@ recorded under `task-parity-api010-baseline-epoch-admission` in
 `TASKS.archive.md`. A new task-gated hardware contract is still required before
 any live retry.
 
-### task-parity-api010-open-plan-lineage | 2026-08-04 | Reconcile immutable API-010 plan lineage
-
-- [ ] Preserve both immutable API-010 plans and make the deterministic selector
-      resume only the newest plan in an explicitly linked same-row chain.
-- [ ] Keep unlinked same-row duplicates and every cross-row ambiguity
-      fail-closed with focused regressions.
-- [ ] Run focused and mandatory gates, archive this software-only task, and
-      rerun the selector without creating parity evidence or changing status.
-
-Plan: `docs/parity/work-plans/20260804T192918Z-API-010/PLAN.md`. The follow-up
-plan directly names
-`docs/parity/work-plans/20260804T185605Z-API-010/PLAN.md`, which is the immutable
-lineage edge this task will make machine-checkable.
-
-Authorization: local selector, synthetic filesystem tests, tracker, and
-worklog changes only. No hardware, credentials, network requests, settings,
-theme mutation, restart, mining, controls, OTA, recovery, direct UART, or pins.
-
-Verification: Pending.
-
-Completion review: Pending. `API-010` remains `implemented`; this task cannot
-create `RESULT.md`, promote evidence, or authorize a live retry.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
