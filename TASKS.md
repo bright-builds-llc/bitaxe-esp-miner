@@ -631,6 +631,28 @@ Completion review: Software implementation is complete at
 browser behavior, mining, and accepted/rejected share outcomes remain below
 verified, so this task remains active rather than archived.
 
+### task-parity-ui001-display-behavior | 2026-08-04 | Complete Ultra 205 display driver behavior
+
+- [ ] Add the pure exact-panel, rotation, inversion, timeout, wake/priority,
+      and edge-triggered power contract with boundary regressions.
+- [ ] Load confirmed display settings with upstream defaults and fail closed on
+      malformed or unsupported stored values.
+- [ ] Retain one configured firmware display owner across runtime frames and
+      prove configuration/render/power ordering plus sensor-failure isolation.
+
+Plan: `docs/parity/work-plans/20260804T230000Z-UI-001/PLAN.md`
+
+Authorization: local software, synthetic display/settings fixtures, and build
+work only. No hardware attempt, credentials, external service, mining, pool
+connection, frequency/voltage/fan/power effect, OTA, recovery, direct UART,
+pins, or physical button interaction.
+
+Verification: Pending.
+
+Completion review: Pending. UI-002 carousel content, UI-003 physical input,
+live panel orientation/inversion/timeout, and operator-visible behavior remain
+below verified.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
