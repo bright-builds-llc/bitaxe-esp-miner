@@ -936,6 +936,74 @@ fresh progress-backed ordinal. This task does not claim installed AxeOS browser
 behavior or any networking, mining, ASIC, hardware-control, OTA, recovery,
 other-board, or release parity.
 
+### task-parity-api010-live-theme-durability-attempt-004 | 2026-08-04 | Run typed post-fix theme durability
+
+- [ ] Preserve the pushed baseline, selector, and initial-child diagnostic
+      fixes, freeze the exact planning-commit package, and privately admit
+      exactly one Ultra 205.
+- [ ] Run exactly one bounded `attempt-004` theme GET/POST, reboot durability,
+      persistence, restoration, cleanup, and redaction transaction.
+- [ ] Promote only `API-010` on complete typed evidence; otherwise record the
+      earliest closed terminal signature, withhold evidence, and stop.
+
+Plan: `docs/parity/work-plans/20260804T204310Z-API-010/PLAN.md`. This immutable
+plan directly continues
+`docs/parity/work-plans/20260804T200849Z-API-010/PLAN.md` after verified source
+commit `8c93b1b73a0e62ba4fecb1ae46604d30ac29916a` added the missing real-process
+diagnostic boundary.
+
+Authorized commands after the plan/task checkpoint is clean, verified,
+committed, and pushed:
+
+1. `just package`
+2. `test ! -e scratch/api010-theme-durability/wrapper-004 && (umask 077; mkdir -m 700 scratch/api010-theme-durability/wrapper-004 && just detect-ultra205 > scratch/api010-theme-durability/wrapper-004/detector.stdout 2>&1)`
+3. `test ! -e scratch/api010-theme-durability/attempt-004 && test ! -e docs/parity/evidence/api010-theme-durability/theme-durability-projection.json && (umask 077; just verify-theme-durability --private-root scratch/api010-theme-durability/attempt-004 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/api010-theme-durability/wrapper-004/detector.stdout --projection docs/parity/evidence/api010-theme-durability/theme-durability-projection.json --capture-timeout-seconds 360 > scratch/api010-theme-durability/wrapper-004/verify.stdout 2> scratch/api010-theme-durability/wrapper-004/verify.stderr)`
+
+Hardware and effect boundary: detector admission must find exactly one likely
+ESP USB serial port and successful ESP32-S3 board info. The capture may use the
+admitted port for one exact-package flash-monitor transaction, one generated
+non-secret theme mutation, one normal software restart, exact readbacks and
+restoration, and at most one built-in exact-package recovery flash if normal
+restoration cannot be confirmed. It may not change Wi-Fi or pool configuration,
+mine, enable ASIC work, change voltage/frequency/fan/thermal/power controls,
+exercise display input, perform OTA or raw partition writes, discover network
+targets, terminate foreign processes, use direct UART or pins, or perform any
+other electrical action.
+
+Evidence and privacy: the supervisor exclusively creates the absent
+`scratch/api010-theme-durability/attempt-004` child as mode `0700` with only
+mode-`0600` private artifacts. The caller-owned
+`scratch/api010-theme-durability/wrapper-004` sibling is mode `0700` with
+mode-`0600` streams. Credential contents remain `NeverPersistRaw`. The public
+projection or failure envelope may contain only closed schema fields, public
+provenance, categories, booleans, bounded counts/durations, the closed
+device-session projection, and the declared initial-child discriminator—never
+origins, theme/hostname values, ports, USB/network identifiers, credentials,
+raw child/HTTP/serial/process material, or private paths.
+
+Recovery, retry, and stop: preserve the earliest typed failure. Normal exact
+theme restoration/readback precedes the workflow's one exact-package recovery
+fallback; recovery remains secondary and public only as safe booleans.
+`attempt-004` is the sole authorized capture. If an initial-child failure omits
+or malforms the now-required closed discriminator, select
+`stop_repeated_boundary`. Any detector failure, launch failure, timeout,
+non-ready session, persistence mismatch, restoration uncertainty, cleanup or
+privacy failure, or safety invariant violation ends without retry.
+
+Accepted outcomes: `complete` only when exact package identity, one admitted
+physical board 205, one restart request, same-device recovery, exact build,
+changed boot session, ordinal `N+1`, software reset, immediate and post-restart
+theme equality, exact restoration, disabled mining/hardware control, cleanup,
+and redaction all pass. Otherwise record the closed automation category and
+declared signature/recovery booleans, withhold `RESULT.md` and evidence, keep
+`API-010` at `implemented`, and stop.
+
+Verification: Pending.
+
+Completion review: Pending. This task claims no installed AxeOS browser,
+networking, mining, ASIC, hardware-control, OTA, recovery, other-board, or
+release parity beyond the exact admitted transaction.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
