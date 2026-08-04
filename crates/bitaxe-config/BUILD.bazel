@@ -12,6 +12,8 @@ rust_library(
         "src/catalog.rs",
         "src/confirmed_snapshot.rs",
         "src/defaults.rs",
+        "src/defaults/matrix.rs",
+        "src/defaults/matrix/tests.rs",
         "src/golden_tests.rs",
         "src/lib.rs",
         "src/nvs.rs",

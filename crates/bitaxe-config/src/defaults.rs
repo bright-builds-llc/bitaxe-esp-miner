@@ -1,5 +1,9 @@
 // Reference: reference/esp-miner/config-205.cvs
 
+mod matrix;
+
+pub use matrix::{board_profile_defaults, BoardProfileDefaults, BoardProfileSeedKind};
+
 /// Upstream pool defaults for an Ultra 205 configuration seed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PoolDefaults {

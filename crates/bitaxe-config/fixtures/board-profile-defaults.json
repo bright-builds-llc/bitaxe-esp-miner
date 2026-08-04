@@ -1,0 +1,156 @@
+{
+  "metadata": {
+    "schema_version": "bitaxe-board-profile-defaults-v1",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "source_pattern": "reference/esp-miner/config-*.cvs"
+  },
+  "profiles": [
+    {
+      "seed_id": "102", "source_path": "reference/esp-miner/config-102.cvs", "seed_kind": "numbered",
+      "board_version": "102", "device_model": "max", "asic_model": "BM1397",
+      "asic_frequency_mhz": 425, "asic_voltage_mv": 1400, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "201", "source_path": "reference/esp-miner/config-201.cvs", "seed_kind": "numbered",
+      "board_version": "201", "device_model": "ultra", "asic_model": "BM1366",
+      "asic_frequency_mhz": 485, "asic_voltage_mv": 1200, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "202", "source_path": "reference/esp-miner/config-202.cvs", "seed_kind": "numbered",
+      "board_version": "202", "device_model": "ultra", "asic_model": "BM1366",
+      "asic_frequency_mhz": 485, "asic_voltage_mv": 1200, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "203", "source_path": "reference/esp-miner/config-203.cvs", "seed_kind": "numbered",
+      "board_version": "203", "device_model": "ultra", "asic_model": "BM1366",
+      "asic_frequency_mhz": 485, "asic_voltage_mv": 1200, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "204", "source_path": "reference/esp-miner/config-204.cvs", "seed_kind": "numbered",
+      "board_version": "204", "device_model": "ultra", "asic_model": "BM1366",
+      "asic_frequency_mhz": 485, "asic_voltage_mv": 1200, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "205", "source_path": "reference/esp-miner/config-205.cvs", "seed_kind": "numbered",
+      "board_version": "205", "device_model": "ultra", "asic_model": "BM1366",
+      "asic_frequency_mhz": 485, "asic_voltage_mv": 1200, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "207", "source_path": "reference/esp-miner/config-207.cvs", "seed_kind": "numbered",
+      "board_version": "207", "device_model": "ultra", "asic_model": "BM1366",
+      "asic_frequency_mhz": 485, "asic_voltage_mv": 1200, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "302", "source_path": "reference/esp-miner/config-302.cvs", "seed_kind": "numbered",
+      "board_version": "302", "device_model": "hex", "asic_model": "BM1366",
+      "asic_frequency_mhz": 485, "asic_voltage_mv": 1200, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "303", "source_path": "reference/esp-miner/config-303.cvs", "seed_kind": "numbered",
+      "board_version": "303", "device_model": "hex", "asic_model": "BM1366",
+      "asic_frequency_mhz": 485, "asic_voltage_mv": 1200, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "400", "source_path": "reference/esp-miner/config-400.cvs", "seed_kind": "numbered",
+      "board_version": "400", "device_model": "supra", "asic_model": "BM1368",
+      "asic_frequency_mhz": 490, "asic_voltage_mv": 1166, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "401", "source_path": "reference/esp-miner/config-401.cvs", "seed_kind": "numbered",
+      "board_version": "401", "device_model": "supra", "asic_model": "BM1368",
+      "asic_frequency_mhz": 490, "asic_voltage_mv": 1166, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "402", "source_path": "reference/esp-miner/config-402.cvs", "seed_kind": "numbered",
+      "board_version": "402", "device_model": "supra", "asic_model": "BM1368",
+      "asic_frequency_mhz": 490, "asic_voltage_mv": 1166, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "403", "source_path": "reference/esp-miner/config-403.cvs", "seed_kind": "numbered",
+      "board_version": "403", "device_model": "supra", "asic_model": "BM1368",
+      "asic_frequency_mhz": 490, "asic_voltage_mv": 1166, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "601", "source_path": "reference/esp-miner/config-601.cvs", "seed_kind": "numbered",
+      "board_version": "601", "device_model": "gamma", "asic_model": "BM1370",
+      "asic_frequency_mhz": 525, "asic_voltage_mv": 1150, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "602", "source_path": "reference/esp-miner/config-602.cvs", "seed_kind": "numbered",
+      "board_version": "602", "device_model": "gamma", "asic_model": "BM1370",
+      "asic_frequency_mhz": 525, "asic_voltage_mv": 1150, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "603", "source_path": "reference/esp-miner/config-603.cvs", "seed_kind": "numbered",
+      "board_version": "603", "device_model": "gamma", "asic_model": "BM1370",
+      "asic_frequency_mhz": 525, "asic_voltage_mv": 1150, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "650", "source_path": "reference/esp-miner/config-650.cvs", "seed_kind": "numbered",
+      "board_version": "650", "device_model": "gammaduo", "asic_model": "BM1370",
+      "asic_frequency_mhz": 400, "asic_voltage_mv": 1150, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "701", "source_path": "reference/esp-miner/config-701.cvs", "seed_kind": "numbered",
+      "board_version": "701", "device_model": "suprahex", "asic_model": "BM1368",
+      "asic_frequency_mhz": 490, "asic_voltage_mv": 1166, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "702", "source_path": "reference/esp-miner/config-702.cvs", "seed_kind": "numbered",
+      "board_version": "702", "device_model": "suprahex", "asic_model": "BM1368",
+      "asic_frequency_mhz": 490, "asic_voltage_mv": 1166, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "801", "source_path": "reference/esp-miner/config-801.cvs", "seed_kind": "numbered",
+      "board_version": "801", "device_model": "gammaturbo", "asic_model": "BM1370",
+      "asic_frequency_mhz": 525, "asic_voltage_mv": 1150, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 3333
+    },
+    {
+      "seed_id": "custom", "source_path": "reference/esp-miner/config-custom.cvs", "seed_kind": "custom_override",
+      "board_version": "207", "device_model": "ultra", "asic_model": "BM1366",
+      "asic_frequency_mhz": 485, "asic_voltage_mv": 1200, "rotation": 0,
+      "auto_fan_speed": true, "manual_fan_speed": 100, "self_test": true,
+      "overheat_mode": false, "primary_pool_port": 21496
+    }
+  ]
+}

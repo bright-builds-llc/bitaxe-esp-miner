@@ -12,3 +12,19 @@
 - Evidence: Immutable plan and active task record.
 - Outcome: Bounded pure matrix plan ready for its planning-commit gate.
 - Blocker or next safe action: Commit the plan before implementation.
+
+## 2026-08-04T13:44:00Z | typed matrix and focused verification
+
+- Source commit: `7fe24e10`.
+- Actions: Added a typed 21-entry defaults matrix for all numbered seeds and
+  the explicit custom override, carried exact source-path provenance, and bound
+  the public API to a pinned-reference golden fixture and catalog cross-checks.
+- Verification: `cargo fmt --all`, focused strict Clippy, 51 `bitaxe-config`
+  Cargo tests, the Bazel `bitaxe-config` target, and diff checks passed.
+- Evidence: Exact matrix order and field equality, 20 selectable numbered
+  seeds, one non-selectable custom seed, the custom pool-port exception, and
+  catalog family, ASIC, frequency, voltage, and evidence-scope equality.
+- Outcome: Pure implementation is complete; no runtime selection or hardware
+  behavior changed.
+- Blocker or next safe action: Commit the implementation, run the full
+  mandatory gate, and transition only `CFG-006` to `implemented`.
