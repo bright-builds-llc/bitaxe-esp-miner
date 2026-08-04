@@ -4656,3 +4656,64 @@ and confirmed, no recovery flash ran, and the single attempt was consumed.
 Broader configuration, network longevity, mining, ASIC, safety-control, OTA,
 recovery, other-board, direct-UART, pin, and release claims remain separate and
 were not promoted.
+
+### task-parity-v12-hostname-typed-capture | 2026-08-03 | Capture fresh typed hostname durability evidence
+
+- [x] Extend `verify-settings-durability` with one semantic capture mode that
+      owns exact-package flash, hostname PATCH/readback, normal restart,
+      post-restart readback, and restoration of the original hostname.
+- [x] Add private-first artifact handling, a closed public projection, strict
+      detector-output admission, bounded recovery, and regression coverage.
+- [x] Run the bounded detector-gated Ultra 205 attempts and leave
+      `V12-HOSTNAME-205` implemented because persistence evidence did not pass.
+- [x] Run all mandatory gates and record the terminal blocker without a
+      checklist transition, progress synchronization, or task archival.
+
+Plan:
+`docs/parity/work-plans/20260803T232954Z-V12-HOSTNAME-205/PLAN.md`
+
+Hardware contract: standing repository-task authorization selects one bounded
+attempt after implementation and all software gates pass on a clean pushed
+commit. Exact commands are `just package`; one private mode-`0700` detector
+capture running `just detect-ultra205`; then `just verify-settings-durability
+--mode capture --private-root scratch/v12-hostname-typed/attempt-001
+--package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
+--wifi-credentials wifi-credentials.json --detector-output <private-detector>
+--projection docs/parity/evidence/v12-hostname-205/durability-projection.json
+--capture-timeout-seconds 360`. The typed workflow may flash the exact package,
+read the current hostname privately, PATCH one non-secret test hostname, issue
+one normal application restart, observe the next boot, prove persistence, PATCH
+the original hostname, and prove restoration. It may perform one recovery-only
+exact-package flash after a confirmed flash or hostname effect if restoration
+cannot otherwise complete. It must keep mining and hardware control disabled,
+must not read credential contents, and must never publish hostnames, origins,
+network identifiers, USB paths, or raw traces. Stop without retry on ambiguous
+detection, identity drift, unsafe state, PATCH/readback/restart mismatch,
+restoration failure, privacy failure, or repeated unchanged boundary. Direct
+UART, pins, mining, voltage/fan/power effects, OTA, erase, raw writes, discovery,
+and fault injection are prohibited.
+
+Verification: The typed capture and invocation regressions pass both success
+and post-restart mismatch/restoration paths. The ordered Rust gates, Bright
+Builds checks, all 28 Bazel tests, parity/progress, redaction, reference, and
+diff checks pass. Attempt 001 passed package build and private detector
+admission, completed exact-package flash, safe initial capture, hostname PATCH,
+and normal restart, then failed closed because the monitor was launched after
+USB restart and produced no post-restart artifact. The public projection was
+withheld. Recovery PATCH and private readback confirmed the original hostname
+was restored; no recovery flash ran. Attempt 002 used the regression-backed
+pre-acquired passive monitor from clean pushed source commit `ca3eeb1c`, passed
+fresh detector admission and the same exact-package flash, PATCH, immediate
+readback, and restart boundaries, then exhausted the post-restart capture
+without producing an artifact. It failed closed with `process_failed`; the
+public projection remained absent. A value-free private comparison proved the
+recovery readback matched the original hostname, and no recovery flash ran.
+The later `task-parity-v12-hostname-device-session-retry` fixed the confirmed
+host-orchestration defect and verified the row with typed attempt-003 evidence.
+
+Completion review: Superseded by
+`task-parity-v12-hostname-device-session-retry`, which is archived with the
+successful implementation and hardware result. The two failed attempts and
+their consumed authorization remain historical facts; they did not themselves
+prove hostname durability. The replacement task verified `V12-HOSTNAME-205`,
+so this record no longer represents an active terminal blocker.

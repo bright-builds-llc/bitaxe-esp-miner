@@ -333,66 +333,55 @@ remains active and unarchived as a terminal blocker under the tracker rules;
 its authorization is consumed and it cannot be selected for another hardware
 run.
 
-### task-parity-v12-hostname-typed-capture | 2026-08-03 | Capture fresh typed hostname durability evidence
+### task-parity-v12-operator-snapshot-typed-capture | 2026-08-04 | Capture substantive two-epoch operator snapshots
 
-- [x] Extend `verify-settings-durability` with one semantic capture mode that
-      owns exact-package flash, hostname PATCH/readback, normal restart,
-      post-restart readback, and restoration of the original hostname.
-- [x] Add private-first artifact handling, a closed public projection, strict
-      detector-output admission, bounded recovery, and regression coverage.
-- [x] Run the bounded detector-gated Ultra 205 attempts and leave
-      `V12-HOSTNAME-205` implemented because persistence evidence did not pass.
-- [x] Run all mandatory gates and record the terminal blocker without a
-      checklist transition, progress synchronization, or task archival.
+- [ ] Add a typed, private-first operator-snapshot capture that joins one HTTP
+      snapshot, one later same-boot WebSocket snapshot, and the exact retained
+      log marker in each of two boot epochs.
+- [ ] Reuse the live device-session reboot transaction to prove one normal
+      restart on the same physical Ultra 205 with exact build identity and
+      boot ordinal `N+1`.
+- [ ] Add closed projection validation, redaction checks, behavior-focused
+      unit tests, and a real-child-process regression at the orchestration
+      boundary.
+- [ ] Run every mandatory software gate on a clean pushed implementation, then
+      execute exactly one detector-gated hardware capture.
+- [ ] Transition only `V12-OPERATOR-SNAPSHOT-205` if both substantive epoch
+      joins, restart identity, cleanup, safe state, and redaction pass.
 
 Plan:
-`docs/parity/work-plans/20260803T232954Z-V12-HOSTNAME-205/PLAN.md`
+`docs/parity/work-plans/20260804T122408Z-V12-OPERATOR-SNAPSHOT-205/PLAN.md`
 
-Hardware contract: standing repository-task authorization selects one bounded
-attempt after implementation and all software gates pass on a clean pushed
-commit. Exact commands are `just package`; one private mode-`0700` detector
-capture running `just detect-ultra205`; then `just verify-settings-durability
---mode capture --private-root scratch/v12-hostname-typed/attempt-001
---package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
---wifi-credentials wifi-credentials.json --detector-output <private-detector>
---projection docs/parity/evidence/v12-hostname-205/durability-projection.json
---capture-timeout-seconds 360`. The typed workflow may flash the exact package,
-read the current hostname privately, PATCH one non-secret test hostname, issue
-one normal application restart, observe the next boot, prove persistence, PATCH
-the original hostname, and prove restoration. It may perform one recovery-only
-exact-package flash after a confirmed flash or hostname effect if restoration
-cannot otherwise complete. It must keep mining and hardware control disabled,
-must not read credential contents, and must never publish hostnames, origins,
-network identifiers, USB paths, or raw traces. Stop without retry on ambiguous
-detection, identity drift, unsafe state, PATCH/readback/restart mismatch,
-restoration failure, privacy failure, or repeated unchanged boundary. Direct
-UART, pins, mining, voltage/fan/power effects, OTA, erase, raw writes, discovery,
-and fault injection are prohibited.
+Hardware contract: after the implementation and all software gates pass on a
+clean pushed commit, standing task authorization permits `just package`; one
+private mode-`0700` detector capture running `just detect-ultra205`; and one
+`just capture-operator-snapshot-evidence --private-root
+scratch/v12-operator-snapshot/attempt-001 --package-manifest
+bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials
+wifi-credentials.json --detector-output <private-detector> --projection
+docs/parity/evidence/v12-operator-snapshot-205/snapshot-projection.json
+--capture-timeout-seconds 360`. The workflow may flash the exact package,
+observe private serial/API/WebSocket/retained-log documents, issue exactly one
+normal application restart, reacquire only the admitted physical USB device,
+and perform one recovery-only exact-package flash if the initial flash or
+restart effect occurred but safe exact-build recovery cannot otherwise be
+confirmed. It must leave settings unchanged, keep mining and hardware control
+disabled, and publish no origins, network or USB identifiers, hostnames,
+credentials, raw documents, or traces.
 
-Verification: The typed capture and invocation regressions pass both success
-and post-restart mismatch/restoration paths. The ordered Rust gates, Bright
-Builds checks, all 28 Bazel tests, parity/progress, redaction, reference, and
-diff checks pass. Attempt 001 passed package build and private detector
-admission, completed exact-package flash, safe initial capture, hostname PATCH,
-and normal restart, then failed closed because the monitor was launched after
-USB restart and produced no post-restart artifact. The public projection was
-withheld. Recovery PATCH and private readback confirmed the original hostname
-was restored; no recovery flash ran. Attempt 002 used the regression-backed
-pre-acquired passive monitor from clean pushed source commit `ca3eeb1c`, passed
-fresh detector admission and the same exact-package flash, PATCH, immediate
-readback, and restart boundaries, then exhausted the post-restart capture
-without producing an artifact. It failed closed with `process_failed`; the
-public projection remained absent. A value-free private comparison proved the
-recovery readback matched the original hostname, and no recovery flash ran.
+Stop without retry on ambiguous detection, physical-identity drift, missing or
+contradictory epoch joins, unsafe state, restart mismatch, build mismatch,
+cleanup failure, privacy failure, or recovery failure. Direct UART, pins,
+mining, voltage/fan/power control, OTA, erase, arbitrary writes, discovery,
+fault injection, and any second restart are prohibited. Exactly one fresh
+attempt is authorized; a later ordinal requires verified new information under
+the repository hardware-attempt policy. Accepted terminal outcomes are
+`complete`, `stop_repeated_boundary`, `stop_hardware_blocker`,
+`stop_authority_boundary`, and `stop_impossible_contract`.
 
-Completion review: `stop_hardware_blocker`. The implementation and recovery
-contract are complete, but neither permitted hardware attempt produced the
-post-restart observation required to prove hostname durability. The second
-attempt tested the targeted pre-acquisition correction and reached the same
-missing-artifact boundary after the bounded monitor window. The final retry is
-consumed, the row remains `implemented`, progress is unchanged, and this task
-remains active and unarchived as a terminal blocker. No further hostname
-mutation or hardware retry is authorized by this task.
+Verification: Pending.
+
+Completion review: Pending.
 
 ## Future
 
