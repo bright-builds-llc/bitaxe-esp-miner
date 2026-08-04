@@ -127,6 +127,28 @@
       "counts_as_phase05_success": true
     },
     {
+      "surface": "theme_get",
+      "source": "theme.service.ts constructor",
+      "method": "GET",
+      "path": "/api/theme",
+      "evidence_type": "static-route",
+      "category": "api-route",
+      "phase_owner": "phase05",
+      "phase05_behavior": "administrable",
+      "counts_as_phase05_success": true
+    },
+    {
+      "surface": "theme_post",
+      "source": "theme.service.ts saveThemeSettings",
+      "method": "POST",
+      "path": "/api/theme",
+      "evidence_type": "static-route",
+      "category": "api-route",
+      "phase_owner": "phase05",
+      "phase05_behavior": "administrable",
+      "counts_as_phase05_success": true
+    },
+    {
       "surface": "raw_log_websocket",
       "source": "web-socket.service.ts",
       "method": "GET",

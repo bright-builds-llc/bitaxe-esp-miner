@@ -45,7 +45,7 @@ pub(super) fn rows() -> Vec<SettingSchema> {
         SettingSchema {
             key: key("themescheme"),
             stored_type: StoredType::Str,
-            default_value: None,
+            default_value: Some(SettingDefault::Str(DEFAULT_THEME_COLOR_SCHEME)),
             rest_name: None,
             min: None,
             max: None,
@@ -55,7 +55,7 @@ pub(super) fn rows() -> Vec<SettingSchema> {
         SettingSchema {
             key: key("themecolors"),
             stored_type: StoredType::Str,
-            default_value: None,
+            default_value: Some(SettingDefault::Str(DEFAULT_THEME_ACCENT_COLORS_JSON)),
             rest_name: None,
             min: None,
             max: None,

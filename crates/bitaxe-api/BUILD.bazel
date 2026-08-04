@@ -7,6 +7,12 @@ filegroup(
 )
 
 filegroup(
+    name = "theme_api_fixtures",
+    srcs = ["fixtures/api/theme-cases.json"],
+    visibility = ["//tools/parity:__pkg__"],
+)
+
+filegroup(
     name = "phase34_identity_sources",
     srcs = [
         "src/build_identity.rs",
@@ -61,6 +67,8 @@ rust_library(
         "src/static_plan.rs",
         "src/system.rs",
         "src/telemetry.rs",
+        "src/theme.rs",
+        "src/theme/tests.rs",
         "src/update_plan.rs",
         "src/v12_settings.rs",
         "src/websocket_state.rs",

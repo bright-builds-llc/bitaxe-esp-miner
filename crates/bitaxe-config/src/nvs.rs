@@ -16,7 +16,10 @@ mod tests;
 
 pub use loading::load_setting_value;
 pub use migration::{compatibility_writes_for_active, migration_decisions, migration_rules};
-pub use schema::{all_settings_schema, project_settings_schema};
+pub use schema::{
+    all_settings_schema, project_settings_schema, DEFAULT_THEME_ACCENT_COLORS_JSON,
+    DEFAULT_THEME_COLOR_SCHEME,
+};
 pub use types::{
     LoadedValue, MigrationDecision, MigrationRule, NvsErase, NvsKeyName, NvsSchemaError, NvsWrite,
     RestFieldName, SettingDefault, SettingSchema, StoredType, StoredValue, StoredValueKind,

@@ -41,6 +41,8 @@ const PHASE05_ROUTES: &[AxeosRoute] = &[
     axeos_route!("/api/system/blockFound/dismiss", Post, RouteKind::Http),
     axeos_route!("/api/system/OTA", Post, RouteKind::SafeUnsupportedUpdate),
     axeos_route!("/api/system/OTAWWW", Post, RouteKind::SafeUnsupportedUpdate),
+    axeos_route!("/api/theme", Get, RouteKind::Http),
+    axeos_route!("/api/theme", Post, RouteKind::Http),
     axeos_route!(
         "/api/ws",
         Get,
@@ -67,6 +69,8 @@ const PHASE07_ROUTES: &[AxeosRoute] = &[
     axeos_route!("/api/system/blockFound/dismiss", Post, RouteKind::Http),
     axeos_route!("/api/system/OTA", Post, RouteKind::FirmwareUpdate),
     axeos_route!("/api/system/OTAWWW", Post, RouteKind::AxeOsStaticUpdateGap),
+    axeos_route!("/api/theme", Get, RouteKind::Http),
+    axeos_route!("/api/theme", Post, RouteKind::Http),
     axeos_route!(
         "/api/ws",
         Get,

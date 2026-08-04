@@ -325,6 +325,7 @@ js_run_binary(
         "src/http_api/handlers.rs",
         "src/http_api/response.rs",
         "src/http_api/settings.rs",
+        "src/http_api/theme.rs",
         "src/http_api/updates.rs",
         "src/http_api/websocket.rs",
     ] + glob(["static/**"]),

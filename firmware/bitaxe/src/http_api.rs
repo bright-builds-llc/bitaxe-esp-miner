@@ -10,14 +10,15 @@ use bitaxe_api::{
     asic_settings_from_snapshot, block_found_dismiss_plan, decide_v12_settings_body,
     execute_settings_persistence_plan, identify_plan, log_download_headers, normalize_peer_ipv4,
     origin_gate_from_header, pause_mining_plan, phase07_route_report, plan_http_access,
-    plan_settings_patch_body_size, plan_update_request, plan_websocket_upgrade, restart_plan,
-    resume_mining_plan, unknown_api_route_response, unsupported_update_response, CommandEffect,
-    CommandPlan, HttpAccessDecision, IdentifyModeEffect, OperatorSnapshotPublishError, OriginGate,
-    PeerIpv4Normalization, PublicHttpResponse, RouteAccessInput, SettingsPatchBodyDecision,
-    SettingsPatchFailureReason, SettingsPatchPublicError, SettingsPersistenceEffect,
-    SettingsPersistenceFailure, SettingsPersistencePlan, SettingsPublicResponse,
-    UpdateRequestDecision, UpdateRequestInput, UpdateRouteKind, V12SettingsChange,
-    V12SettingsDecision, V12SettingsExclusionReason, WebSocketRouteKind, WebSocketUpgradeDecision,
+    plan_settings_patch_body_size, plan_theme_post, plan_update_request, plan_websocket_upgrade,
+    restart_plan, resume_mining_plan, theme_settings_from_snapshot, unknown_api_route_response,
+    unsupported_update_response, CommandEffect, CommandPlan, HttpAccessDecision,
+    IdentifyModeEffect, OperatorSnapshotPublishError, OriginGate, PeerIpv4Normalization,
+    PublicHttpResponse, RouteAccessInput, SettingsPatchBodyDecision, SettingsPatchFailureReason,
+    SettingsPatchPublicError, SettingsPersistenceEffect, SettingsPersistenceFailure,
+    SettingsPersistencePlan, SettingsPublicResponse, ThemePostResponse, UpdateRequestDecision,
+    UpdateRequestInput, UpdateRouteKind, V12SettingsChange, V12SettingsDecision,
+    V12SettingsExclusionReason, WebSocketRouteKind, WebSocketUpgradeDecision,
     LIVE_TELEMETRY_CADENCE_MS,
 };
 use esp_idf_svc::handle::RawHandle;
@@ -43,6 +44,7 @@ mod deferred_effects;
 mod handlers;
 mod response;
 mod settings;
+mod theme;
 mod updates;
 mod websocket;
 
@@ -51,6 +53,7 @@ use deferred_effects::*;
 use handlers::*;
 use response::*;
 use settings::*;
+use theme::*;
 use updates::*;
 use websocket::*;
 
@@ -132,6 +135,8 @@ fn register_http_handlers(
     )?;
     server.fn_handler("/api/system/OTA", Method::Post, handle_firmware_ota_update)?;
     server.fn_handler("/api/system/OTAWWW", Method::Post, handle_otawww_update_gap)?;
+    server.fn_handler("/api/theme", Method::Get, handle_theme_get)?;
+    server.fn_handler("/api/theme", Method::Post, handle_theme_post)?;
     register_websocket_handlers(server)?;
     server.fn_handler("/api/*", Method::Get, handle_unknown_api_route)?;
     server.fn_handler("/api/*", Method::Post, handle_unknown_api_route)?;

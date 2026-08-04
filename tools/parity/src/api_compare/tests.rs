@@ -506,6 +506,11 @@ impl JsonFixtureLoader for MemoryFixtureLoader {
                 "identify_off": {},
                 "block_found_dismiss": {}
             }),
+            "crates/bitaxe-api/fixtures/api/theme-cases.json" => json!({
+                "metadata": {},
+                "default_get": {},
+                "post_success": {"status": "ok"}
+            }),
             _ => return Err(anyhow!("missing test fixture {path}")),
         };
 

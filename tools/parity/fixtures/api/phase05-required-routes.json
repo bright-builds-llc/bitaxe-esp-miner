@@ -18,6 +18,8 @@
     {"method": "POST", "path": "/api/system/blockFound/dismiss"},
     {"method": "POST", "path": "/api/system/OTA"},
     {"method": "POST", "path": "/api/system/OTAWWW"},
+    {"method": "GET", "path": "/api/theme"},
+    {"method": "POST", "path": "/api/theme"},
     {"method": "GET", "path": "/api/ws"},
     {"method": "GET", "path": "/api/ws/live"}
   ],
@@ -181,6 +183,14 @@
       "json_pointer": "",
       "expected_kind": "object",
       "required_properties": ["pause", "resume", "restart", "identify_on", "identify_off", "block_found_dismiss"]
+    },
+    {
+      "name": "theme_route_contract",
+      "evidence_type": "captured-response",
+      "fixture": "crates/bitaxe-api/fixtures/api/theme-cases.json",
+      "json_pointer": "",
+      "expected_kind": "object",
+      "required_properties": ["metadata", "default_get", "post_success"]
     }
   ],
   "firmware_smoke": {

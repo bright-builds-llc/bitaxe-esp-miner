@@ -163,6 +163,26 @@ fn route_shell_lists_all_phase05_http_and_websocket_routes() {
 }
 
 #[test]
+fn theme_get_and_post_are_owned_http_routes_in_both_manifests() {
+    // Arrange
+    let expected = [
+        ("/api/theme", RouteMethod::Get),
+        ("/api/theme", RouteMethod::Post),
+    ];
+
+    // Act and assert
+    for routes in [super::phase05_routes(), super::phase07_routes()] {
+        for (path, method) in expected {
+            let route = routes
+                .iter()
+                .find(|route| route.path == path && route.method == method)
+                .expect("theme route must be present");
+            assert_eq!(route.kind, RouteKind::Http);
+        }
+    }
+}
+
+#[test]
 fn phase05_update_routes_keep_safe_unsupported_owner_for_api_compare() {
     // Arrange
     let routes = phase05_routes();

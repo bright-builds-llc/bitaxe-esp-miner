@@ -27,6 +27,7 @@ pub mod static_plan;
 pub mod statistics;
 pub mod system;
 pub mod telemetry;
+pub mod theme;
 pub mod update_plan;
 pub mod v12_settings;
 pub mod websocket_state;
@@ -108,6 +109,10 @@ pub use system::system_info_from_snapshot;
 pub use telemetry::{
     live_telemetry_update_envelope, maybe_live_telemetry_diff, LiveTelemetryPlanner,
     LIVE_TELEMETRY_CADENCE_MS,
+};
+pub use theme::{
+    plan_theme_post, theme_settings_from_snapshot, ThemePostFailure, ThemePostPlan,
+    ThemePostResponse, ThemeSettings, MAX_THEME_POST_BODY_BYTES,
 };
 pub use update_plan::{
     plan_update_request, FirmwareOtaDecision, OtaWwwGapDecision, UpdateRequestDecision,

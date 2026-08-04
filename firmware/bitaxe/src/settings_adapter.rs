@@ -5,11 +5,12 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use bitaxe_api::{
     Hostname, SettingsAdapterFailure, SettingsPersistenceAdapter, SettingsPersistenceTransaction,
+    ThemePostPlan,
 };
 use bitaxe_config::nvs::StoredValueKind;
 use bitaxe_config::{
     all_settings_schema, confirm_hostname_snapshot, project_settings_schema,
-    ConfirmedHostnameSnapshot, ConfirmedSnapshotReadHealth, NvsSnapshot, StoredValue,
+    ConfirmedHostnameSnapshot, ConfirmedSnapshotReadHealth, NvsSnapshot, NvsWrite, StoredValue,
     NVS_NAMESPACE,
 };
 use esp_idf_svc::handle::RawHandle;
@@ -48,16 +49,7 @@ pub struct FirmwareSettingsTransaction {
 
 impl FirmwareSettingsTransaction {
     fn set_string(&mut self, key: &str, value: &str) -> Result<(), SettingsAdapterFailure> {
-        let c_key = c_string(key)?;
-        let c_value = c_string(value)?;
-        let erase_result = unsafe { sys::nvs_erase_key(self.nvs.handle(), c_key.as_ptr()) };
-        if erase_result != sys::ESP_OK && erase_result != sys::ESP_ERR_NVS_NOT_FOUND {
-            return Err(settings_failure_code("nvs_erase_key", erase_result));
-        }
-
-        let result =
-            unsafe { sys::nvs_set_str(self.nvs.handle(), c_key.as_ptr(), c_value.as_ptr()) };
-        esp_result("nvs_set_str", result)
+        set_nvs_string(&mut self.nvs, key, value)
     }
 }
 
@@ -160,6 +152,36 @@ pub fn persist_start_mining_on_boot(value: bool) -> Result<(), SettingsAdapterFa
         ));
     }
     Ok(())
+}
+
+/// Persists, independently reloads, reconciles, and publishes a theme update.
+pub fn persist_theme_update(plan: &ThemePostPlan) -> Result<(), SettingsAdapterFailure> {
+    let _transaction_guard = SETTINGS_TRANSACTION_LOCK
+        .lock()
+        .map_err(|_| SettingsAdapterFailure::failed("settings transaction lock poisoned"))?;
+    let partition = EspDefaultNvsPartition::take().map_err(settings_failure)?;
+    let mut nvs = EspNvs::new(partition.clone(), NVS_NAMESPACE, true).map_err(settings_failure)?;
+    for write in plan.writes() {
+        let NvsWrite::String { key, value } = write else {
+            return Err(SettingsAdapterFailure::failed(
+                "theme plan contained a non-string write",
+            ));
+        };
+        set_nvs_string(&mut nvs, key.as_str(), &value)?;
+    }
+    let result = unsafe { sys::nvs_commit(nvs.handle()) };
+    esp_result("nvs_commit", result)?;
+
+    let reloaded = EspNvs::new(partition, NVS_NAMESPACE, false).map_err(settings_failure)?;
+    let candidate = read_current_settings_snapshot_strict(&reloaded)?;
+    if !plan.reconciles(&candidate) {
+        return Err(SettingsAdapterFailure::failed(
+            "theme settings confirmation mismatch",
+        ));
+    }
+    current_snapshot_cell()
+        .publish(candidate)
+        .map_err(|_| SettingsAdapterFailure::failed("settings snapshot lock poisoned"))
 }
 
 /// Reads only the non-secret protocol selectors needed by the protocol gate.
@@ -374,6 +396,21 @@ fn read_u64_value_strict(
 
 fn c_string(value: &str) -> Result<CString, SettingsAdapterFailure> {
     CString::new(value).map_err(settings_failure)
+}
+
+fn set_nvs_string(
+    nvs: &mut EspNvs<NvsDefault>,
+    key: &str,
+    value: &str,
+) -> Result<(), SettingsAdapterFailure> {
+    let c_key = c_string(key)?;
+    let c_value = c_string(value)?;
+    let erase_result = unsafe { sys::nvs_erase_key(nvs.handle(), c_key.as_ptr()) };
+    if erase_result != sys::ESP_OK && erase_result != sys::ESP_ERR_NVS_NOT_FOUND {
+        return Err(settings_failure_code("nvs_erase_key", erase_result));
+    }
+    let result = unsafe { sys::nvs_set_str(nvs.handle(), c_key.as_ptr(), c_value.as_ptr()) };
+    esp_result("nvs_set_str", result)
 }
 
 fn esp_result(operation: &str, result: sys::esp_err_t) -> Result<(), SettingsAdapterFailure> {
