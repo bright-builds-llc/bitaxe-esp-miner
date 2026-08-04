@@ -11,6 +11,29 @@ pub(super) fn handle_system_info<'request, 'connection>(
     })
 }
 
+pub(super) fn handle_wifi_scan<'request, 'connection>(
+    request: ApiRequest<'request, 'connection>,
+) -> anyhow::Result<()> {
+    handle_with_access_gate(request, |request| {
+        let response = match wifi_adapter::scan_visible_networks() {
+            Ok(response) => response,
+            Err(failure) => {
+                log::warn!("wifi_scan_status=failed category={}", failure.category());
+                return send_public_response(
+                    request,
+                    PublicHttpResponse {
+                        status: 500,
+                        body: "WiFi scan failed",
+                        content_type: Some("text/plain"),
+                    },
+                );
+            }
+        };
+
+        send_json(request, &response)
+    })
+}
+
 pub(super) fn handle_logs_download<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {

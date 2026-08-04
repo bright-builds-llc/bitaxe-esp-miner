@@ -17,3 +17,44 @@
   credentials, external network requests, or safety-control effects.
 - Blocker or next safe action: Commit the immutable plan/task checkpoint, then
   implement the pure contracts before changing the firmware shell.
+
+## 2026-08-04T17:15:00Z | bounded implementation complete
+
+- Source commit: implementation tree based on `31d78438`.
+- Actions: Added bounded scan response/auth-mode and IPv6 projection contracts;
+  retained the sole ESP-IDF Wi-Fi driver behind a non-waiting exclusive owner;
+  added AP-only temporary mixed-mode scanning with unconditional restoration;
+  registered the access-gated scan endpoint; and subscribed only to station
+  IPv6 events before requesting a link-local address.
+- Verification: Five focused pure contract tests, route-manifest tests, and six
+  Wi-Fi source-ownership tests pass. The real `xtensa-esp32s3-espidf` firmware
+  target builds after the implementation and simplification split.
+- Evidence: Pure wire/IPv6 tests, firmware source ownership, exact public 500
+  body, successful ESP32-S3 ELF build, and category-only diagnostic guards.
+- Outcome: The software behavior is complete and no hardware, credentials,
+  observed networks, external requests, mining, controls, OTA, UART, or pins
+  were used.
+- Blocker or next safe action: Run the ordered mandatory Rust sequence and all
+  repository-wide parity/privacy/reference gates, then commit only if clean.
+
+## 2026-08-04T17:30:00Z | mandatory implementation gate passed
+
+- Source commit: implementation tree based on `31d78438`.
+- Actions: Added the missing API-compare route, schema, checked-in synthetic
+  response, and isolated in-memory fixture after the first full test exposed
+  that comparator seam. Split scan ownership into a child module during the
+  simplification pass, reducing the Wi-Fi owner below the managed file limit.
+- Verification: The ordered Rust sequence passed after the final source edit.
+  API compare passed with 107 schema, 53 captured-response, and 38 static-route
+  checks and no validation errors. Bright Builds reported zero findings; all
+  30 Bazel tests, parity/progress, redaction, reference cleanliness, and diff
+  checks passed. The large parity report needed one isolated rerun after a
+  transient macOS `os error 35`; the isolated validator completed with no
+  validation errors.
+- Evidence: Focused unit/comparator/ownership suites, real ESP32-S3 ELF build,
+  synthetic-only scan fixture, category-only diagnostics, and repository-wide
+  gates.
+- Outcome: The implementation is ready for an exact source commit and an
+  `implemented` transition only. No live radio or IPv6 evidence was inferred.
+- Blocker or next safe action: Commit the implementation, bind `RESULT.md` to
+  that exact commit, apply the typed `NET-003` transition, and publish metadata.

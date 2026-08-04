@@ -45,6 +45,7 @@ rust_library(
         "src/logs/stream.rs",
         "src/logs/tests.rs",
         "src/mining.rs",
+        "src/network.rs",
         "src/observation.rs",
         "src/observation/tests.rs",
         "src/operator_snapshot.rs",

@@ -447,6 +447,7 @@ fn apply_wifi_snapshot(snapshot: &mut ApiSnapshot, wifi: crate::wifi_adapter::Wi
     snapshot.platform.wifi_status = wifi.wifi_status;
     snapshot.platform.ssid = wifi.ssid;
     snapshot.platform.ipv4 = wifi.ipv4;
+    snapshot.platform.ipv6 = wifi.ipv6;
     snapshot.platform.mac_addr = wifi.mac_addr;
     snapshot.platform.ap_enabled = wifi.ap_enabled;
     if let Some(rssi) = wifi.maybe_rssi_dbm {

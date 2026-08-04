@@ -1,5 +1,8 @@
 const WIFI_ADAPTER_SOURCE: &str = include_str!("wifi_adapter.rs");
 const CAPTIVE_DNS_SOURCE: &str = include_str!("wifi_adapter/captive_dns.rs");
+const WIFI_SCAN_SOURCE: &str = include_str!("wifi_adapter/scan.rs");
+const HTTP_API_SOURCE: &str = include_str!("http_api.rs");
+const HTTP_HANDLERS_SOURCE: &str = include_str!("http_api/handlers.rs");
 const STARTUP_SOURCE: &str = include_str!("startup.rs");
 
 #[test]
@@ -63,4 +66,34 @@ fn captive_dns_logs_only_closed_categories() {
     assert!(!CAPTIVE_DNS_SOURCE.contains("request={"));
     assert!(!CAPTIVE_DNS_SOURCE.contains("response={"));
     assert!(CAPTIVE_DNS_SOURCE.contains("captive_dns=request_rejected category={error}"));
+}
+
+#[test]
+fn scan_route_uses_one_exclusive_wifi_owner_and_restores_ap_mode() {
+    // Arrange / Act / Assert
+    assert_eq!(WIFI_ADAPTER_SOURCE.matches("static WIFI_OWNER:").count(), 1);
+    assert!(WIFI_SCAN_SOURCE.contains("owner.try_lock()"));
+    assert!(WIFI_SCAN_SOURCE.contains("scan_n::<MAX_WIFI_SCAN_NETWORKS>()"));
+    assert!(WIFI_SCAN_SOURCE.contains("Configuration::AccessPoint(ap_configuration)"));
+    assert_eq!(
+        HTTP_API_SOURCE
+            .matches("\"/api/system/wifi/scan\"")
+            .count(),
+        1
+    );
+    assert!(HTTP_HANDLERS_SOURCE.contains("wifi_adapter::scan_visible_networks()"));
+    assert!(HTTP_HANDLERS_SOURCE.contains("body: \"WiFi scan failed\""));
+}
+
+#[test]
+fn ipv6_reporting_is_station_bound_and_logs_categories_only() {
+    // Arrange / Act / Assert
+    assert!(WIFI_ADAPTER_SOURCE.contains("subscribe::<IpEvent"));
+    assert!(WIFI_ADAPTER_SOURCE.contains("IpEvent::DhcpIp6Assigned"));
+    assert!(WIFI_ADAPTER_SOURCE.contains("assignment.netif_handle() as usize"));
+    assert!(WIFI_ADAPTER_SOURCE.contains("esp_netif_create_ip6_linklocal(station_netif)"));
+    assert!(WIFI_ADAPTER_SOURCE.contains("wifi_ipv6_status=published"));
+    assert!(!WIFI_ADAPTER_SOURCE.contains("wifi_ipv6_address="));
+    assert!(!WIFI_ADAPTER_SOURCE.contains("wifi_scan_ssid="));
+    assert!(!WIFI_SCAN_SOURCE.contains("log::"));
 }

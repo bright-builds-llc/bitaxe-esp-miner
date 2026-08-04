@@ -36,7 +36,9 @@ use crate::runtime_snapshot::{
     identify_mode, projected_scoreboard, projected_statistics,
     publish_projected_live_telemetry_payload, publish_projected_system_info,
 };
-use crate::{log_buffer, network_stack, settings_adapter, static_files, websocket_api};
+use crate::{
+    log_buffer, network_stack, settings_adapter, static_files, websocket_api, wifi_adapter,
+};
 
 mod access;
 mod deferred_effect_queue;
@@ -119,6 +121,7 @@ fn register_http_handlers(
 ) -> anyhow::Result<()> {
     static_files::register_recovery(server, filesystem_status)?;
     server.fn_handler("/api/system/info", Method::Get, handle_system_info)?;
+    server.fn_handler("/api/system/wifi/scan", Method::Get, handle_wifi_scan)?;
     server.fn_handler("/api/system", Method::Patch, handle_settings_patch)?;
     server.fn_handler("/api/system/logs", Method::Get, handle_logs_download)?;
     server.fn_handler("/api/system/asic", Method::Get, handle_asic_settings)?;

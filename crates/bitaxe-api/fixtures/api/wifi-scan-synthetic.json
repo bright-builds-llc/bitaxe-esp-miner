@@ -1,0 +1,14 @@
+{
+  "networks": [
+    {
+      "ssid": "synthetic-open",
+      "rssi": -31,
+      "authmode": 0
+    },
+    {
+      "ssid": "synthetic-secure",
+      "rssi": -52,
+      "authmode": 6
+    }
+  ]
+}

@@ -2,10 +2,12 @@
 
 use std::sync::{Mutex, OnceLock};
 
-use bitaxe_api::configuration_ap_ssid;
+use bitaxe_api::{configuration_ap_ssid, project_ipv6_address};
 use bitaxe_config::{reload_snapshot, LoadedValue, WifiPassword, WifiSsid};
-use esp_idf_svc::eventloop::EspSystemEventLoop;
+use esp_idf_svc::eventloop::{EspSystemEventLoop, EspSystemSubscription};
 use esp_idf_svc::hal::modem::Modem;
+use esp_idf_svc::handle::RawHandle;
+use esp_idf_svc::netif::IpEvent;
 use esp_idf_svc::wifi::{
     AccessPointConfiguration, AuthMethod, BlockingWifi, ClientConfiguration, Configuration,
     EspWifi, WifiDeviceId,
@@ -14,10 +16,21 @@ use esp_idf_svc::wifi::{
 use crate::{boot_evidence, log_buffer, network_stack, settings_adapter};
 
 mod captive_dns;
+mod scan;
+
+pub use scan::{scan_visible_networks, WifiScanFailure};
 
 static WIFI_RUNTIME_SNAPSHOT: OnceLock<Mutex<WifiRuntimeSnapshot>> = OnceLock::new();
+static WIFI_OWNER: OnceLock<Mutex<WifiOwner>> = OnceLock::new();
 const CONFIGURATION_AP_CHANNEL: u8 = 1;
 const CONFIGURATION_AP_MAX_CONNECTIONS: u16 = 10;
+
+type FirmwareWifi = BlockingWifi<EspWifi<'static>>;
+
+struct WifiOwner {
+    wifi: FirmwareWifi,
+    _ipv6_subscription: Option<EspSystemSubscription<'static>>,
+}
 
 /// API-visible Wi-Fi state collected by the firmware adapter.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,6 +38,7 @@ pub struct WifiRuntimeSnapshot {
     pub wifi_status: String,
     pub ssid: String,
     pub ipv4: String,
+    pub ipv6: String,
     pub mac_addr: String,
     pub ap_enabled: bool,
     pub maybe_rssi_dbm: Option<i16>,
@@ -36,6 +50,7 @@ impl Default for WifiRuntimeSnapshot {
             wifi_status: "disconnected".to_owned(),
             ssid: String::new(),
             ipv4: "0.0.0.0".to_owned(),
+            ipv6: String::new(),
             mac_addr: "00:00:00:00:00:00".to_owned(),
             ap_enabled: false,
             maybe_rssi_dbm: None,
@@ -79,7 +94,7 @@ pub fn start_wifi(modem: Modem<'static>) -> anyhow::Result<()> {
 
     let sysloop = EspSystemEventLoop::take()?;
     let esp_wifi = EspWifi::new(modem, sysloop.clone(), None)?;
-    let mut wifi = BlockingWifi::wrap(esp_wifi, sysloop)?;
+    let mut wifi = BlockingWifi::wrap(esp_wifi, sysloop.clone())?;
     let ap_mac = wifi.wifi().get_mac(WifiDeviceId::Ap)?;
     let ap_configuration = configuration_ap(ap_mac)?;
 
@@ -119,8 +134,8 @@ pub fn start_wifi(modem: Modem<'static>) -> anyhow::Result<()> {
 
             wifi.set_configuration(&Configuration::Client(client_configuration))?;
             publish_connected_wifi(&wifi, credentials.ssid.as_str())?;
-            Box::leak(Box::new(wifi));
-            Ok(())
+            let ipv6_subscription = start_ipv6_reporting(&sysloop, &wifi);
+            install_wifi_owner(wifi, ipv6_subscription)
         }
     }
 }
@@ -184,7 +199,7 @@ fn start_provisioning(
 }
 
 fn retain_provisioning(
-    wifi: BlockingWifi<EspWifi<'static>>,
+    wifi: FirmwareWifi,
     ap_mac: [u8; 6],
     station_ssid: String,
     reason: ProvisioningReason,
@@ -195,6 +210,7 @@ fn retain_provisioning(
         wifi_status: reason.wifi_status().to_owned(),
         ssid: station_ssid,
         ipv4: ap_ipv4.to_string(),
+        ipv6: String::new(),
         mac_addr: format_mac_addr(ap_mac),
         ap_enabled: true,
         maybe_rssi_dbm: None,
@@ -203,8 +219,7 @@ fn retain_provisioning(
         "wifi_status={} ap_enabled=true captive_dns=started",
         reason.wifi_status()
     ));
-    Box::leak(Box::new(wifi));
-    Ok(())
+    install_wifi_owner(wifi, None)
 }
 
 fn publish_connected_wifi(
@@ -230,6 +245,7 @@ fn publish_connected_wifi(
         wifi_status: "connected".to_owned(),
         ssid: station_ssid.to_owned(),
         ipv4: ipv4.clone(),
+        ipv6: String::new(),
         mac_addr,
         ap_enabled: false,
         maybe_rssi_dbm,
@@ -239,6 +255,68 @@ fn publish_connected_wifi(
     ));
     boot_evidence::publish_connected_origin(format!("http://{ipv4}"));
     Ok(())
+}
+
+fn install_wifi_owner(
+    wifi: FirmwareWifi,
+    ipv6_subscription: Option<EspSystemSubscription<'static>>,
+) -> anyhow::Result<()> {
+    WIFI_OWNER
+        .set(Mutex::new(WifiOwner {
+            wifi,
+            _ipv6_subscription: ipv6_subscription,
+        }))
+        .map_err(|_| anyhow::anyhow!("Wi-Fi owner was already installed"))
+}
+
+fn start_ipv6_reporting(
+    sysloop: &EspSystemEventLoop,
+    wifi: &FirmwareWifi,
+) -> Option<EspSystemSubscription<'static>> {
+    let station_netif = wifi.wifi().sta_netif().handle();
+    let station_netif_address = station_netif as usize;
+    let subscription = match sysloop.subscribe::<IpEvent, _>(move |event| {
+        let IpEvent::DhcpIp6Assigned(assignment) = event else {
+            return;
+        };
+        if assignment.netif_handle() as usize != station_netif_address {
+            return;
+        }
+
+        let interface_index =
+            unsafe { esp_idf_svc::sys::esp_netif_get_netif_impl_index(assignment.netif_handle()) };
+        let maybe_interface_index = u32::try_from(interface_index).ok();
+        publish_ipv6_observation(project_ipv6_address(
+            assignment.addr(),
+            maybe_interface_index,
+        ));
+    }) {
+        Ok(subscription) => subscription,
+        Err(error) => {
+            log::warn!("wifi_ipv6_status=subscription_failed esp_err={error}");
+            return None;
+        }
+    };
+
+    let result = unsafe { esp_idf_svc::sys::esp_netif_create_ip6_linklocal(station_netif) };
+    if result == esp_idf_svc::sys::ESP_OK {
+        log::info!("wifi_ipv6_status=link_local_requested");
+    } else {
+        log::warn!("wifi_ipv6_status=link_local_request_failed esp_err={result}");
+    }
+
+    Some(subscription)
+}
+
+fn publish_ipv6_observation(ipv6: String) {
+    let snapshot = wifi_snapshot_cell();
+    let Ok(mut snapshot) = snapshot.lock() else {
+        log::warn!("wifi_ipv6_status=publication_failed reason=mutex_poisoned");
+        return;
+    };
+
+    snapshot.ipv6 = ipv6;
+    log::info!("wifi_ipv6_status=published");
 }
 
 fn wifi_credential_state() -> WifiCredentialState {

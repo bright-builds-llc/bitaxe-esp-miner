@@ -129,6 +129,7 @@ fn route_shell_lists_all_phase05_http_and_websocket_routes() {
     // Arrange
     let expected = [
         ("/api/system/info", RouteMethod::Get),
+        ("/api/system/wifi/scan", RouteMethod::Get),
         ("/api/system", RouteMethod::Patch),
         ("/api/system/logs", RouteMethod::Get),
         ("/api/system/asic", RouteMethod::Get),

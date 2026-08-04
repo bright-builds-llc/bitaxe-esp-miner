@@ -298,9 +298,12 @@ rust_test(
 rust_test(
     name = "wifi_source_ownership_tests",
     srcs = [
+        "src/http_api.rs",
+        "src/http_api/handlers.rs",
         "src/startup.rs",
         "src/wifi_adapter.rs",
         "src/wifi_adapter/captive_dns.rs",
+        "src/wifi_adapter/scan.rs",
         "src/wifi_source_ownership_test.rs",
     ],
     crate_name = "wifi_source_ownership_tests",

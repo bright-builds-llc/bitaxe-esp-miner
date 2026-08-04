@@ -467,9 +467,9 @@ verified and require separate detector-gated evidence.
 
 ### task-parity-net003-scan-ipv6 | 2026-08-04 | Implement Wi-Fi scan and IPv6 reporting
 
-- [ ] Add the bounded 20-network scan response and explicit numeric auth-mode
+- [x] Add the bounded 20-network scan response and explicit numeric auth-mode
       plus link-local/global IPv6 projection contracts.
-- [ ] Retain one ESP-IDF Wi-Fi owner for exclusive scans, restore AP-only mode,
+- [x] Retain one ESP-IDF Wi-Fi owner for exclusive scans, restore AP-only mode,
       register the access-gated endpoint, and publish station-only IPv6 events.
 - [ ] Add focused/ownership regressions, build the real firmware, run every
       mandatory gate, and transition only `NET-003` to `implemented`.
@@ -480,9 +480,15 @@ Authorization: local software and build work only. No hardware attempt,
 credentials, external network request, mining, ASIC traffic, voltage/fan/power
 effect, OTA, recovery, direct UART, or pins.
 
-Verification: Pending.
+Verification: Five focused scan/IPv6 tests, 23 API-comparator tests, six Wi-Fi
+ownership tests, the synthetic route fixture, and the real ESP32-S3 build pass.
+The ordered Rust sequence, Bright Builds, all 30 Bazel targets, API compare,
+parity/progress, redaction, reference cleanliness, and diff checks also pass.
 
-Completion review: Pending.
+Completion review: Implementation and verification are complete; exact commit
+binding, typed checklist transition, and final metadata publication remain.
+Live scan results, connection preservation, IPv6 assignment, and API behavior
+remain below verified and require separate detector-gated evidence.
 
 ## Future
 

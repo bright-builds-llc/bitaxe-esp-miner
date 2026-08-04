@@ -12,6 +12,7 @@ pub mod commands;
 pub mod deferred_effect;
 pub mod logs;
 pub mod mining;
+pub mod network;
 pub mod observation;
 pub mod operator_snapshot;
 pub mod operator_snapshot_publication;
@@ -52,6 +53,10 @@ pub use logs::{
     DOWNLOAD_CONTENT_DISPOSITION, DOWNLOAD_CONTENT_TYPE, LOG_CHUNK_BYTES, LOG_RETENTION_BYTES,
 };
 pub use mining::{mining_state_from_runtime, MiningStateWire, SharesRejectedReasonWire};
+pub use network::{
+    project_ipv6_address, WifiNetworkWire, WifiScanAuthMode, WifiScanResponse,
+    WifiScanResponseError, MAX_WIFI_SCAN_NETWORKS,
+};
 pub use observation::{
     project_observation, ObservationReasonWire, ObservationStampWire, ObservationStateWire,
     ObservationStore, ObservationTruthWire, TelemetryObservations,

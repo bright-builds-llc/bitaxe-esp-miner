@@ -6,6 +6,7 @@
   },
   "rust_route_manifest_routes": [
     {"method": "GET", "path": "/api/system/info"},
+    {"method": "GET", "path": "/api/system/wifi/scan"},
     {"method": "PATCH", "path": "/api/system"},
     {"method": "GET", "path": "/api/system/logs"},
     {"method": "GET", "path": "/api/system/asic"},
@@ -24,6 +25,12 @@
     {"method": "GET", "path": "/api/ws/live"}
   ],
   "schema_routes": [
+    {
+      "method": "GET",
+      "path": "/api/system/wifi/scan",
+      "schema": "SystemWifiScan",
+      "required_properties": ["networks"]
+    },
     {
       "method": "GET",
       "path": "/api/system/info",
@@ -104,6 +111,14 @@
     }
   ],
   "captured_response_checks": [
+    {
+      "name": "wifi_scan_synthetic",
+      "evidence_type": "captured-response",
+      "fixture": "crates/bitaxe-api/fixtures/api/wifi-scan-synthetic.json",
+      "json_pointer": "",
+      "expected_kind": "object",
+      "required_properties": ["networks"]
+    },
     {
       "name": "system_info_safe_ultra205",
       "evidence_type": "captured-response",

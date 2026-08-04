@@ -46,6 +46,9 @@ components:
         blockFound:
         showNewBlock:
         message:
+    SystemWifiScan:
+      properties:
+        networks:
     Settings:
       properties:
         frequency:
@@ -55,6 +58,8 @@ components:
         autofanspeed:
         statsFrequency:
 paths:
+  /api/system/wifi/scan:
+    get:
   /api/system/info:
     get:
   /api/system/logs:
@@ -446,6 +451,12 @@ struct MemoryFixtureLoader;
 impl JsonFixtureLoader for MemoryFixtureLoader {
     fn load_json_fixture(&self, path: &str) -> Result<Value> {
         let value = match path {
+            "crates/bitaxe-api/fixtures/api/wifi-scan-synthetic.json" => json!({
+                "networks": [
+                    {"ssid": "synthetic-open", "rssi": -31, "authmode": 0},
+                    {"ssid": "synthetic-secure", "rssi": -52, "authmode": 6}
+                ]
+            }),
             "crates/bitaxe-api/fixtures/api/system-info-ultra205-safe.json" => json!({
                 "ASICModel": "BM1366",
                 "hashRate_1m": 0,
