@@ -1241,7 +1241,7 @@ the exact admitted transaction.
       children and prove the real child environment boundary.
 - [x] Preserve raw logs exclusively below the mode-0700 device-session root;
       public errors may contain only the closed category and signature.
-- [ ] Run focused and complete software gates, commit, and push the diagnostic
+- [x] Run focused and complete software gates, commit, and push the diagnostic
       implementation before hardware.
 - [ ] Run one protected diagnostic detector and, only if it succeeds, one
       attempt-009 theme-durability capture against the exact fixed package.
