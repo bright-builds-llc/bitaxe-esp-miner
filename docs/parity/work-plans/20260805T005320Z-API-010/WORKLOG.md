@@ -82,3 +82,34 @@
 - Outcome: The software gate in the immutable hardware contract is complete.
 - Blocker or next safe action: Commit and push this post-push task checkpoint,
   confirm clean synchronization, then run the one authorized detector.
+
+## 2026-08-05T02:15:00Z | terminal detector result
+
+- Package source commit: `ff50e590f3d6a00c93b23b774c85739428134152`.
+- Reference commit: `c1915b0a63bfabebdb95a515cedfee05146c1d50`.
+- Actions: Rebuilt the exact clean package and ran the sole protected
+  wrapper-009 detector. The detector failed, so the conditional capture was
+  not launched.
+- Protected reduction: Terminal category `bootloader_connect_failed`, closed
+  signature `generic_connection_failure`, seven reset failures, seven
+  underlying generic connection outcomes, zero specific connection variants,
+  and zero boot-mode or download-mode observations. Both retry-admission and
+  final-cleanup summaries saw the same accessible holder-free device with
+  three stable samples and unchanged enumeration. The private root contained
+  six mode-0600 files and no surviving journal.
+- Upstream comparison: Pinned espflash 4.5.0 and managed esptool 4.12.0 use the
+  same USB-JTAG/Serial DTR/RTS reset sequence. Espressif documents that this
+  interface should enter download mode automatically and identifies manual
+  boot-mode entry as the recovery when automatic reset cannot do so.
+- Privacy/effects: Wrapper mode 0700 and stdout mode 0600 passed. No raw trace,
+  port, device identity, network value, credential, or command was promoted.
+  No flash, erase, factory reset, theme mutation, restart request, mining, or
+  hardware-control effect occurred. No capture root or public projection was
+  created.
+- Outcome: `API-010` remains `implemented`; evidence and `RESULT.md` are
+  withheld. NVS/factory reset is ruled out because the failure precedes every
+  flash or application-setting boundary.
+- Terminal blocker: Automatic USB control did not establish a ROM download
+  session. Further recovery requires an external normal-connector state change
+  or manual boot-mode hardware intervention under a new authorization and
+  immutable attempt contract. No retry is eligible in this plan.

@@ -1243,9 +1243,9 @@ the exact admitted transaction.
       public errors may contain only the closed category and signature.
 - [x] Run focused and complete software gates, commit, and push the diagnostic
       implementation before hardware.
-- [ ] Run one protected diagnostic detector and, only if it succeeds, one
+- [x] Run one protected diagnostic detector and, only if it succeeds, one
       attempt-009 theme-durability capture against the exact fixed package.
-- [ ] Promote only `API-010` on complete typed evidence; otherwise withhold
+- [x] Promote only `API-010` on complete typed evidence; otherwise withhold
       evidence, preserve the earliest diagnostic signature, and stop.
 
 Plan: `docs/parity/work-plans/20260805T005320Z-API-010/PLAN.md`. This immutable
@@ -1269,8 +1269,20 @@ file-length finding by splitting process tests from runtime code. A repeated
 macOS `os error 35` at parity triggered host-capacity diagnosis; the host was
 healthy and the re-planned fresh-process parity and remaining checks passed.
 
-Completion review: Pending. This task claims no parity beyond the exact
-diagnostic and conditional durability transaction.
+Hardware result: The sole detector failed as `bootloader_connect_failed` with
+`connection_signature=generic_connection_failure`. Its seven protected reset
+attempts contained no boot-mode/download-mode observation and no specific
+serial/reset error. The exact package remained unflashed, attempt-009 capture
+was not created, final evidence was withheld, cleanup completed, and
+`API-010` remains `implemented`.
+
+Completion review: Terminal blocker. Automatic USB-JTAG/Serial control toggles
+complete but do not place the connected ESP32-S3 into an observable ROM
+download session. Pinned espflash and managed esptool use the same reset
+sequence, while factory reset cannot repair or bypass this pre-flash boundary.
+Further recovery requires an external normal-connector state change or manual
+boot-mode hardware intervention under a new authorization/attempt contract.
+This task claims no parity beyond the exact diagnostic transaction.
 
 ## Future
 
