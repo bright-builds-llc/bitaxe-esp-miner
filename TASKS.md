@@ -1231,6 +1231,44 @@ This task claims no network discovery, mining, ASIC, hardware-control,
 display-input, OTA, partition, recovery, other-board, or release parity beyond
 the exact admitted transaction.
 
+### task-parity-api010-bootloader-diagnostic-attempt-009 | 2026-08-04 | Diagnose USB bootloader synchronization
+
+- [x] Commit and push the linked immutable diagnostic plan before source
+      changes.
+- [ ] Turn a protected espflash debug transcript fixture red at the real USB
+      classification seam, then add a closed bootloader failure signature.
+- [ ] Enable private diagnostic logging only for detector-owned board-info
+      children and prove the real child environment boundary.
+- [ ] Preserve raw logs exclusively below the mode-0700 device-session root;
+      public errors may contain only the closed category and signature.
+- [ ] Run focused and complete software gates, commit, and push the diagnostic
+      implementation before hardware.
+- [ ] Run one protected diagnostic detector and, only if it succeeds, one
+      attempt-009 theme-durability capture against the exact fixed package.
+- [ ] Promote only `API-010` on complete typed evidence; otherwise withhold
+      evidence, preserve the earliest diagnostic signature, and stop.
+
+Plan: `docs/parity/work-plans/20260805T005320Z-API-010/PLAN.md`. This immutable
+plan directly continues attempt-008 at `db0bef8f` without editing its plan or
+repeating its uninstrumented detector boundary.
+
+Authorization: Standing task authorization covers the exact repo-owned
+board-info detector and conditional capture defined in the linked plan. The
+detector may use the existing USB reset/hard-reset sequence but performs no
+flash write. The conditional capture retains its one exact-package flash,
+generated non-secret theme mutation, one software restart, exact restoration,
+and bounded recovery contract. Factory reset, erase, OTA, raw writes, mining,
+hardware controls, direct UART, pins, pads, headers, probes, jumpers, and
+injected signals remain prohibited.
+
+Verification: The pre-plan gate passed Cargo format, clippy, build, and tests;
+Bright Builds; Bazel tests; parity and progress; redaction; pinned-reference;
+selector; immutable-output; and diff checks. One macOS `os error 35` occurred
+during the first parity report and the contract's single read-only rerun passed.
+
+Completion review: Pending. This task claims no parity beyond the exact
+diagnostic and conditional durability transaction.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
