@@ -32,3 +32,44 @@
   before source changes.
 - Blocker or next safe action: Commit and push this checkpoint, then make the
   focused bootloader diagnostic classifier test red.
+
+## 2026-08-05T01:20:00Z | diagnostic red and green
+
+- Actions: Added production-shaped pinned-espflash debug transcript tests,
+  observed the required missing-type/API compile failure, implemented the
+  closed connection signature classifier, and applied the child-local
+  `espflash::connection=debug` filter only to detector-owned `board-info`.
+- Verification: The tight test now passes four focused tests covering process
+  timeout/interruption, all pinned connection variants, unavailable debug,
+  safe public detail, operation/command gating, and a real child-process
+  environment boundary with mode-0600 output. Complete device-session tests,
+  package clippy, focused device-session/flash Bazel tests, format, and diff
+  checks pass.
+- Simplification review: Reused the existing private child streams and process
+  supervisor. Closed connection signatures now precede the legacy transfer
+  text heuristic, preventing a reset-stage serial error containing `write`
+  from being misclassified as a post-transfer flash failure.
+- Outcome: Raw debug stays private; public failure detail contains only a
+  closed connection signature plus static recovery guidance.
+- Blocker or next safe action: Run the complete repository gate, then commit
+  and push the diagnostic implementation before the bounded hardware probe.
+
+## 2026-08-05T01:55:00Z | complete implementation gate
+
+- Actions: Ran the complete implementation gate. Bright Builds first rejected
+  `usb/process.rs` at 641 lines against its 628-line ceiling, so the existing
+  real-process tests moved mechanically into `usb/process/tests.rs` and Bazel
+  source ownership was updated. A second macOS `os error 35` at parity then
+  triggered re-planning and read-only host-capacity diagnosis.
+- Verification: The focused classifier, complete device-session, dependent
+  flash, package clippy, and exact file-length checks passed after the split.
+  The restarted complete gate passed Cargo format, all-target/all-feature
+  clippy, build, tests and doc tests; Bright Builds; all 35 Bazel tests;
+  canonical package; parity and progress; semantic redaction; pinned-reference
+  cleanliness; selector; immutable-output; and diff checks. Host diagnosis
+  observed 751 processes against an 8,000 per-user limit, zero throttled
+  memory pages, and one zombie; a fresh-process parity run passed.
+- Outcome: The diagnostic implementation is software-complete and eligible to
+  commit and push. No USB or other hardware command has run under this plan.
+- Blocker or next safe action: Review the exact diff, commit and push, confirm
+  clean synchronization, then run the one authorized protected detector.

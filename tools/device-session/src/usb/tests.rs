@@ -89,7 +89,10 @@ fn bootloader_failure_without_changed_enumeration_recommends_connector_power_cyc
     };
 
     // Act
-    let detail = ineligible_retry_detail(context);
+    let detail = ineligible_retry_detail(
+        context,
+        Some(EspflashConnectionSignature::DiagnosticUnavailable),
+    );
 
     // Assert
     assert!(detail.contains("disconnect USB and normal device power"));
@@ -203,6 +206,127 @@ fn every_supervised_termination_has_one_success_and_failure_classification() {
         assert_eq!(observed_success, succeeded, "{termination:?}");
         assert_eq!(observed_category, category, "{termination:?}");
     }
+}
+
+#[test]
+fn bootloader_diagnostic_classifies_production_shaped_debug_transcripts() {
+    // Arrange
+    let cases = [
+        (
+            SupervisedTermination::TimedOut,
+            b"private-timeout-token".as_slice(),
+            EspflashConnectionSignature::ProcessTimeout,
+        ),
+        (
+            SupervisedTermination::Interrupted {
+                signal: libc::SIGTERM,
+            },
+            b"private-interrupt-token".as_slice(),
+            EspflashConnectionSignature::ProcessInterrupted,
+        ),
+        (
+            SupervisedTermination::ExitedFailure,
+            b"[DEBUG] Failed to reset, error Connection(\n    DeviceNotFound,\n), retrying",
+            EspflashConnectionSignature::DeviceNotFound,
+        ),
+        (
+            SupervisedTermination::ExitedFailure,
+            b"[DEBUG] Failed to reset, error Connection(Serial(Error { kind: Io(Other), description: private write device path failed })), retrying",
+            EspflashConnectionSignature::SerialResetIo,
+        ),
+        (
+            SupervisedTermination::ExitedFailure,
+            b"[DEBUG] Failed to reset, error Connection(WrongBootMode(\"0x8\")), retrying",
+            EspflashConnectionSignature::WrongBootMode,
+        ),
+        (
+            SupervisedTermination::ExitedFailure,
+            b"[DEBUG] Failed to reset, error Connection(NoSyncReply), retrying",
+            EspflashConnectionSignature::NoSyncReply,
+        ),
+        (
+            SupervisedTermination::ExitedFailure,
+            b"[DEBUG] Failed to reset, error Connection(FramingError), retrying",
+            EspflashConnectionSignature::SlipFraming,
+        ),
+        (
+            SupervisedTermination::ExitedFailure,
+            b"[DEBUG] Failed to reset, error Connection(ReadMismatch(1024, 0)), retrying",
+            EspflashConnectionSignature::ReadMismatch,
+        ),
+        (
+            SupervisedTermination::ExitedFailure,
+            b"[DEBUG] Failed to reset, error Connection(Timeout(Sync)), retrying",
+            EspflashConnectionSignature::CommandTimeout,
+        ),
+        (
+            SupervisedTermination::ExitedFailure,
+            b"[DEBUG] Failed to reset, error Connection(ConnectionFailed), retrying",
+            EspflashConnectionSignature::GenericConnectionFailure,
+        ),
+        (
+            SupervisedTermination::ExitedFailure,
+            b"error: failed to connect to the device private-final-token",
+            EspflashConnectionSignature::DiagnosticUnavailable,
+        ),
+    ];
+
+    for (termination, stderr, expected) in cases {
+        let output = SupervisedOutput {
+            termination,
+            stdout: Vec::new(),
+            stderr: stderr.to_vec(),
+        };
+
+        // Act
+        let signature = classify_bootloader_diagnostic(&output);
+        let category = classify_espflash_failure(&output);
+
+        // Assert
+        assert_eq!(signature, expected);
+        assert_eq!(category, UsbTerminalCategory::BootloaderConnectFailed);
+    }
+}
+
+#[test]
+fn bootloader_diagnostic_public_detail_excludes_private_transcript() {
+    // Arrange
+    let context = RetryContext {
+        category: UsbTerminalCategory::BootloaderConnectFailed,
+        cleanup_complete: true,
+        enumeration_changed: false,
+        same_physical_device: true,
+        immutable_operation: true,
+        repeated_boundary: false,
+        attempts: 1,
+    };
+
+    // Act
+    let detail = ineligible_retry_detail(context, Some(EspflashConnectionSignature::SerialResetIo));
+
+    // Assert
+    assert!(detail.contains("connection_signature=serial_reset_io"));
+    assert!(!detail.contains("private-device-path"));
+}
+
+#[test]
+fn bootloader_diagnostic_logging_is_limited_to_detector_board_info() {
+    // Arrange
+    let board_info = vec!["board-info".to_owned()];
+    let write_bin = vec!["write-bin".to_owned()];
+    let version = vec!["--version".to_owned()];
+
+    // Act
+    let detect_board_info = espflash_diagnostic_filter(UsbOperation::Detect, &board_info);
+    let flash_board_info = espflash_diagnostic_filter(UsbOperation::Flash, &board_info);
+    let detect_write = espflash_diagnostic_filter(UsbOperation::Detect, &write_bin);
+    let detect_version = espflash_diagnostic_filter(UsbOperation::Detect, &version);
+
+    // Assert
+    assert_eq!(detect_board_info, Some("espflash::connection=debug"));
+    assert_eq!(flash_board_info, None);
+    assert_eq!(detect_write, None);
+    assert_eq!(detect_version, None);
 }
 
 #[test]

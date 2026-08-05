@@ -29,8 +29,9 @@ pub use lifecycle::*;
 pub use policy::{retry_is_eligible, RetryContext};
 
 use policy::{
-    classify_espflash_failure, ineligible_retry_detail, successful_command_recovery_policy,
-    validate_recovery_snapshot,
+    classify_bootloader_diagnostic, classify_espflash_failure, espflash_diagnostic_filter,
+    ineligible_retry_detail, successful_command_recovery_policy, validate_recovery_snapshot,
+    EspflashConnectionSignature,
 };
 
 pub struct UsbSession {
@@ -140,6 +141,7 @@ impl UsbSession {
                 timeout,
                 trace_root: &self.trace_root,
                 trace_label: &trace_label,
+                maybe_rust_log: espflash_diagnostic_filter(self.operation, args),
             };
             let process_result =
                 run_owned_process(request, &mut self.lease).inspect_err(|error| {
@@ -158,14 +160,23 @@ impl UsbSession {
             }
 
             let category = classify_espflash_failure(&process_result);
+            let maybe_signature = (category == UsbTerminalCategory::BootloaderConnectFailed)
+                .then(|| classify_bootloader_diagnostic(&process_result));
             if attempt == 2 {
-                self.fail_once(first_boundary.unwrap_or(category));
+                let (first_category, first_signature) =
+                    first_boundary.unwrap_or((category, maybe_signature));
+                self.fail_once(first_category);
                 return Err(session_error(
                     UsbTerminalCategory::RepeatedBoundary,
-                    "the same supervised espflash boundary failed after one retry",
+                    format!(
+                        "connection_signature={}; the same supervised espflash boundary failed after one retry",
+                        first_signature
+                            .unwrap_or(EspflashConnectionSignature::DiagnosticUnavailable)
+                            .as_str()
+                    ),
                 ));
             }
-            first_boundary = Some(category);
+            first_boundary = Some((category, maybe_signature));
             let maybe_snapshot = self.reacquire(RecoveryPhase::RetryAdmission).ok();
             let context = RetryContext {
                 category,
@@ -180,7 +191,10 @@ impl UsbSession {
             };
             if !retry_is_eligible(context) {
                 self.fail_once(category);
-                return Err(session_error(category, ineligible_retry_detail(context)));
+                return Err(session_error(
+                    category,
+                    ineligible_retry_detail(context, maybe_signature),
+                ));
             }
             self.state = UsbLifecycleState::Reenumerating;
             self.lease.record_state(self.state, self.earliest_failure)?;
@@ -205,6 +219,7 @@ impl UsbSession {
             timeout,
             trace_root: &self.trace_root,
             trace_label: &trace_label,
+            maybe_rust_log: espflash_diagnostic_filter(self.operation, args),
         };
         let output = run_owned_process(request, &mut self.lease).inspect_err(|error| {
             self.fail_once(error.category);

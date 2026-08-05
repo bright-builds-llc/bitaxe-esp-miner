@@ -1235,11 +1235,11 @@ the exact admitted transaction.
 
 - [x] Commit and push the linked immutable diagnostic plan before source
       changes.
-- [ ] Turn a protected espflash debug transcript fixture red at the real USB
+- [x] Turn a protected espflash debug transcript fixture red at the real USB
       classification seam, then add a closed bootloader failure signature.
-- [ ] Enable private diagnostic logging only for detector-owned board-info
+- [x] Enable private diagnostic logging only for detector-owned board-info
       children and prove the real child environment boundary.
-- [ ] Preserve raw logs exclusively below the mode-0700 device-session root;
+- [x] Preserve raw logs exclusively below the mode-0700 device-session root;
       public errors may contain only the closed category and signature.
 - [ ] Run focused and complete software gates, commit, and push the diagnostic
       implementation before hardware.
@@ -1261,10 +1261,13 @@ and bounded recovery contract. Factory reset, erase, OTA, raw writes, mining,
 hardware controls, direct UART, pins, pads, headers, probes, jumpers, and
 injected signals remain prohibited.
 
-Verification: The pre-plan gate passed Cargo format, clippy, build, and tests;
-Bright Builds; Bazel tests; parity and progress; redaction; pinned-reference;
-selector; immutable-output; and diff checks. One macOS `os error 35` occurred
-during the first parity report and the contract's single read-only rerun passed.
+Verification: The pre-plan and implementation gates passed Cargo format,
+clippy, build, and tests; Bright Builds; all Bazel tests; canonical package;
+parity and progress; redaction; pinned-reference; selector; immutable-output;
+and diff checks. The implementation gate first caught and resolved a
+file-length finding by splitting process tests from runtime code. A repeated
+macOS `os error 35` at parity triggered host-capacity diagnosis; the host was
+healthy and the re-planned fresh-process parity and remaining checks passed.
 
 Completion review: Pending. This task claims no parity beyond the exact
 diagnostic and conditional durability transaction.

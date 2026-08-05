@@ -28,6 +28,7 @@ rust_library(
         "src/usb/lifecycle.rs",
         "src/usb/policy.rs",
         "src/usb/process.rs",
+        "src/usb/process/tests.rs",
         "src/usb/recovery.rs",
         "src/usb/tests.rs",
     ],
