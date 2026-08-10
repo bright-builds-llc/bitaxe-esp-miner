@@ -1292,37 +1292,6 @@ access is currently unavailable. The next safe action is a fresh task-gated
 plan and attempt after physical access returns; this exhausted task remains
 active and unarchived.
 
-### task-parity-cfg005-full-settings-persistence | 2026-08-10 | Complete runtime settings persistence
-
-- [ ] Persist every validated upstream REST setting through one serialized,
-      commit-confirm-publish transaction.
-- [ ] Preserve atomic validation, unknown-field compatibility, secret-free
-      diagnostics, and all downstream safety and effect gates.
-- [ ] Add exhaustive reference-derived and adapter-boundary regressions, then
-      build the real firmware and run every mandatory gate.
-- [ ] Promote only `CFG-005` when the complete software contract is proven;
-      otherwise record the exact blocker without claiming verification.
-
-Plan: `docs/parity/work-plans/20260810T032554Z-CFG-005/PLAN.md`
-
-Selection: `CFG-001` is skipped because its remaining voltage/frequency
-behavior requires hardware evidence. `CFG-005` is the next deterministic
-candidate and the first software-actionable row: validation already covers the
-full upstream schema, while the production route currently persists only
-hostname and the project-owned boot preference.
-
-Authorization: local source, public pinned reference, fixtures, builds, and
-tests only. No hardware, credentials, external network, USB, serial, mining,
-ASIC traffic, voltage/frequency/fan/thermal/power effects, OTA, recovery,
-direct UART, or pins.
-
-Verification: Pending. Pre-change checklist, progress, and README SHA-256 values
-are `82df5dd6e5070ccbb44148e6357fabc696e7a2042727510d9245694d504e103b`,
-`dfbad75bcedf8f90d6560525cf9084321f7f05822bd7a30a35af922898a49c89`,
-and `f3e802afa864e0549b57357e71b8c880f26a585a63ee7de49f0cbda68556102b`.
-
-Completion review: Pending.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

@@ -5137,3 +5137,45 @@ rewrite, or hardware access. The blocked API-010 attempt task remains active
 and unarchived; physical hardware access and a fresh task-gated plan remain
 required before another attempt. Implementation source commit:
 `181573862e109dd63cbda3a36886f6d040b62f34`.
+
+### task-parity-cfg005-full-settings-persistence | 2026-08-10 | Complete runtime settings persistence
+
+- [x] Persist every validated upstream REST setting through one serialized,
+      commit-confirm-publish transaction.
+- [x] Preserve atomic validation, unknown-field compatibility, secret-free
+      diagnostics, and all downstream safety and effect gates.
+- [x] Add exhaustive reference-derived and adapter-boundary regressions, then
+      build the real firmware and run every mandatory gate.
+- [x] Promote only `CFG-005` when the complete software contract is proven;
+      otherwise record the exact blocker without claiming verification.
+
+Plan: `docs/parity/work-plans/20260810T032554Z-CFG-005/PLAN.md`
+
+Selection: `CFG-001` was skipped because its remaining voltage/frequency
+behavior requires hardware evidence. `CFG-005` was the next deterministic
+candidate and the first software-actionable row: validation covered the full
+upstream schema, while the production route persisted only hostname and the
+project-owned boot preference.
+
+Authorization: local source, public pinned reference, fixtures, builds, and
+tests only. No hardware, credentials, external network, USB, serial, mining,
+ASIC traffic, voltage/frequency/fan/thermal/power effects, OTA, recovery,
+direct UART, or pins.
+
+Verification: [CFG-005 result](docs/parity/work-plans/20260810T032554Z-CFG-005/RESULT.md)
+binds implementation commit `5faf33c119653b58abe857425e5a46fad06a0a08`
+and the pinned reference. Formatting, strict Clippy, all-target build,
+all-feature tests, Bright Builds, focused Cargo/Bazel API tests, the real
+ESP32-S3 firmware build, redaction, reference, immutable-plan, and diff checks
+passed before promotion. The checklist transitioned from `implemented` to
+`verified` with `unit,golden,workflow` evidence, and progress synchronized to
+40 of 94 active rows (42.6%).
+
+Completion review: Every validated upstream REST field now reaches exact typed
+NVS write, single commit, independent private reconciliation, and non-secret
+snapshot publication through the production adapter. Invalid known inputs fail
+before storage and unknown-only inputs remain inert. The exhaustive fixture
+covers 42 REST fields and 44 writes, including both legacy mirrors. No hardware
+was accessed. Live NVS media durability, hostname application, credential
+consumption, network reconnection, mining, ASIC work, and all hardware-control
+effects remain separate non-claims and retain their existing gates.

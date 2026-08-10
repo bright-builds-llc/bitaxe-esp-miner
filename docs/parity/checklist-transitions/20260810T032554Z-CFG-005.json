@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260810T032554Z-CFG-005",
+  "predecessor_sha256": "82df5dd6e5070ccbb44148e6357fabc696e7a2042727510d9245694d504e103b",
+  "result_sha256": "4a64aeefcd5795bb357ba01e756d1f68bde340d358578226a8b4ebd7164769ae",
+  "row_id": "CFG-005",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260810T032554Z-CFG-005/PLAN.md",
+  "plan_sha256": "edb4a077309e55e1257b04d300ab776ad8ace87007b5926f56c9b52b79265626",
+  "result_path": "docs/parity/work-plans/20260810T032554Z-CFG-005/RESULT.md",
+  "result_document_sha256": "a1748b68a36e3c2680f580bf6f7a9af6c825a7661058b80fc99e4811a824f356",
+  "before_rust_owned_target": "`crates/bitaxe-config/src/settings.rs`, `crates/bitaxe-config/src/persistence.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-config/src/settings.rs`, `crates/bitaxe-api/src/settings/persistence.rs`, `firmware/bitaxe/src/http_api/settings.rs`, `firmware/bitaxe/src/settings_adapter.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit",
+  "after_evidence": "unit,golden,workflow",
+  "before_notes": "Pure settings update/reload tests cover accepted writes, rejected invalid updates, and legacy mirrors; [Phase 2 evidence](evidence/phase-02-ultra-205-config-nvs-model.md) does not verify the API PATCH route or firmware NVS adapter.",
+  "after_notes": "Reference-derived exhaustive fixtures and transaction tests cover every validated REST field, invalid atomic rejection, unknown-field no-op behavior, exact typed NVS writes and legacy mirrors, serialized commit/reload/reconcile/publication, and secret-free diagnostics. Production route and adapter ownership plus the real firmware build are bound by [CFG-005 result](work-plans/20260810T032554Z-CFG-005/RESULT.md); live hardware effects remain separate non-claims."
+}
