@@ -5099,3 +5099,41 @@ and regression-backed narrow screen projection are required before another
 hardware attempt. This task claims no network discovery, mining, ASIC,
 hardware-control, display-input, OTA, partition, recovery, other-board, or
 release parity beyond the exact admitted transaction.
+
+### task-parity-nonverified-plan-closure | 2026-08-10 | Add truthful terminal parity-plan closure
+
+- [x] Add a validated `CLOSURE.md` lifecycle artifact for terminal parity plans
+      that remain below `verified`.
+- [x] Teach deterministic plan selection to close only valid non-verified
+      dispositions while keeping their rows in the unfinished candidate queue.
+- [x] Close the exhausted API-010 plan without changing checklist status,
+      progress history, or README parity status.
+- [x] Run focused and mandatory verification, record completion, archive this
+      maintenance task, and prepare the audited commits for synchronized push.
+
+Plan: Resume
+`docs/parity/work-plans/20260805T005320Z-API-010/PLAN.md` solely to repair its
+terminal unchanged-status lifecycle. The immutable plan remains unedited.
+
+Authorization: local repository maintenance and tests only. No hardware,
+detector, credentials, network discovery, flash, settings mutation, mining,
+hardware control, OTA, recovery, direct UART, or pins.
+
+Verification: Focused Cargo and Bazel parity tests pass, including direct
+coverage of result-based closure, checklist-status advance, valid unchanged
+non-verified closure, candidate retention, and every specified malformed or
+ambiguous closure case. The full formatting, strict Clippy, all-target build,
+all-feature tests, Bright Builds, `just test`, parity report and progress,
+redaction, reference, and diff-check gate passes. The real Bazel-built selector
+reports `maybe_open_plan: null`, retains `API-010` in the ordered unfinished
+candidate queue, and the checklist, progress ledger, and README hashes remain
+byte-for-byte equal to their pre-change baselines.
+
+Completion review: Added a fail-closed, plan-digest-bound `CLOSURE.md` contract
+for terminal `blocked`, `cancelled`, or `superseded` plans that remain below
+`verified`. Closed the exhausted API-010 plan as `implemented` and `blocked`
+without a verification claim, parity transition, progress event, README
+rewrite, or hardware access. The blocked API-010 attempt task remains active
+and unarchived; physical hardware access and a fresh task-gated plan remain
+required before another attempt. Implementation source commit:
+`181573862e109dd63cbda3a36886f6d040b62f34`.

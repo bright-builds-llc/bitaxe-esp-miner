@@ -116,14 +116,17 @@
 
 ## 2026-08-10T03:30:00Z | truthful non-verified plan closure
 
-- Source commit: Planning checkpoint `8c07eb4d`; implementation commit pending.
+- Source commit: `181573862e109dd63cbda3a36886f6d040b62f34` after planning
+  checkpoint `8c07eb4d`.
 - Actions: Added a strict `CLOSURE.md` contract, bound this closure to the
   immutable plan digest, and taught deterministic selection to reconcile a
   terminal closure as the newest member of an explicitly linked plan lineage.
-- Verification: Focused Cargo and Bazel parity tests pass. The real selector
-  returns `maybe_open_plan: null`, includes `API-010` in its unfinished
-  candidates, rejects malformed or ambiguous closure artifacts, and does not
-  let an older closure hide a newer linked open plan.
+- Verification: Focused Cargo and Bazel parity tests pass. The full formatting,
+  strict Clippy, all-target build, all-feature tests, Bright Builds, `just
+  test`, parity report and progress, redaction, reference, and diff-check gate
+  passes. The real selector returns `maybe_open_plan: null`, includes `API-010`
+  in its unfinished candidates, rejects malformed or ambiguous closure
+  artifacts, and does not let an older closure hide a newer linked open plan.
 - Evidence: `CLOSURE.md` records final status `implemented`, outcome `blocked`,
   `Verification claimed: no`, the exact plan digest, the active task, the
   terminal blocker, next safe action, and non-claims.
