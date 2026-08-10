@@ -1,24 +1,24 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use bitaxe_config::{
-    confirm_hostname_snapshot, ConfirmedHostnameSnapshot, NvsSnapshot, NvsWrite, StoredValue,
-};
+use bitaxe_config::{confirm_hostname_snapshot, NvsSnapshot, NvsWrite, StoredValue};
 use serde::Deserialize;
 use serde_json::{json, Value};
 
 use super::{
     execute_settings_persistence_plan, plan_settings_patch_body, plan_settings_patch_value,
-    SettingsAdapterFailure, SettingsPatchFailureReason, SettingsPatchPublicError,
+    ReloadedSettings, SettingsAdapterFailure, SettingsPatchFailureReason, SettingsPatchPublicError,
     SettingsPersistenceAdapter, SettingsPersistenceEffect, SettingsPersistenceFailure,
     SettingsPersistenceFailureDisposition, SettingsPersistencePlan, SettingsPersistenceStep,
     SettingsPersistenceTransaction, SettingsPublicResponse,
 };
-use crate::{decide_v12_settings_value, Hostname, V12SettingsChange, V12SettingsDecision};
+
+mod persistence_more_tests;
 
 #[derive(Debug, Deserialize)]
 struct Fixture {
     valid: PatchCase,
+    exhaustive_valid: PatchCase,
     unknown_only: PatchCase,
     invalid_known: InvalidPatchCase,
     invalid_json_public_error: String,
@@ -68,6 +68,20 @@ fn expected_writes(writes: Vec<ExpectedWrite>) -> Vec<NvsWrite> {
                     .as_u64()
                     .expect("expected u16 write value must be numeric") as u16,
             ),
+            "i32" => NvsWrite::i32(
+                leaked_static_key(write.key),
+                write
+                    .value
+                    .as_i64()
+                    .expect("expected i32 write value must be numeric") as i32,
+            ),
+            "u64" => NvsWrite::u64(
+                leaked_static_key(write.key),
+                write
+                    .value
+                    .as_u64()
+                    .expect("expected u64 write value must be numeric"),
+            ),
             other => panic!("unsupported expected write kind: {other}"),
         })
         .collect()
@@ -88,6 +102,24 @@ fn settings_patch_valid_known_fields_emit_expected_writes_and_legacy_mirrors() {
 
     // Assert
     assert_eq!(plan.writes(), expected);
+}
+
+#[test]
+fn settings_patch_exhaustive_reference_fixture_emits_every_typed_write() {
+    // Arrange
+    let case = fixture().exhaustive_valid;
+    let expected = expected_writes(case.expected_writes);
+
+    // Act
+    let accepted = plan_settings_patch_value(&case.body).expect("full PATCH should be accepted");
+    let plan = SettingsPersistencePlan::from_accepted(&accepted);
+    let diagnostics = format!("{plan:?}");
+
+    // Assert
+    assert_eq!(plan.writes(), expected);
+    assert!(!diagnostics.contains("fixture-wifi-password"));
+    assert!(!diagnostics.contains("fixture-pool-password"));
+    assert!(!diagnostics.contains("fixture-fallback-password"));
 }
 
 #[test]
@@ -258,7 +290,7 @@ struct RecordingTransaction {
     shared: Rc<RefCell<SharedAdapterState>>,
     maybe_failure: Option<AdapterFailurePoint>,
     maybe_reloaded_hostname: Option<String>,
-    pending_hostname: Option<String>,
+    pending_writes: Vec<NvsWrite>,
     probe_contender_during_reload: bool,
 }
 
@@ -272,13 +304,13 @@ impl Drop for RecordingTransaction {
 }
 
 impl SettingsPersistenceTransaction for RecordingTransaction {
-    fn write_hostname(&mut self, hostname: &Hostname) -> Result<(), SettingsAdapterFailure> {
-        self.record_step(SettingsPersistenceStep::write_hostname());
+    fn write(&mut self, write: &NvsWrite) -> Result<(), SettingsAdapterFailure> {
+        self.record_step(SettingsPersistenceStep::write(write_key(write)));
         if self.maybe_failure == Some(AdapterFailurePoint::Write) {
             return Err(SettingsAdapterFailure::failed("fake write failure"));
         }
 
-        self.pending_hostname = Some(hostname.as_str().to_owned());
+        self.pending_writes.push(write.clone());
         Ok(())
     }
 
@@ -288,14 +320,22 @@ impl SettingsPersistenceTransaction for RecordingTransaction {
             return Err(SettingsAdapterFailure::failed("fake commit failure"));
         }
 
-        let Some(hostname) = self.pending_hostname.clone() else {
+        if self.pending_writes.is_empty() {
             return Err(SettingsAdapterFailure::failed("fake missing write"));
-        };
-        self.shared.borrow_mut().persisted_hostname = hostname;
+        }
+        if let Some(hostname) = self.pending_writes.iter().find_map(|write| match write {
+            NvsWrite::String { key, value } if key.as_str() == "hostname" => Some(value.clone()),
+            _ => None,
+        }) {
+            self.shared.borrow_mut().persisted_hostname = hostname;
+        }
         Ok(())
     }
 
-    fn reload(&mut self) -> Result<ConfirmedHostnameSnapshot, SettingsAdapterFailure> {
+    fn reload(
+        &mut self,
+        expected: &[NvsWrite],
+    ) -> Result<ReloadedSettings, SettingsAdapterFailure> {
         self.record_step(SettingsPersistenceStep::Reload);
         if self.probe_contender_during_reload {
             self.shared
@@ -311,22 +351,30 @@ impl SettingsPersistenceTransaction for RecordingTransaction {
             .maybe_reloaded_hostname
             .clone()
             .unwrap_or_else(|| self.shared.borrow().persisted_hostname.clone());
-        confirm_hostname_snapshot(NvsSnapshot::from_values([StoredValue::string(
-            "hostname", hostname,
-        )]))
-        .map_err(|_| SettingsAdapterFailure::failed("fake invalid reload"))
+        let snapshot = NvsSnapshot::from_values([StoredValue::string("hostname", hostname)]);
+        let confirmed = confirm_hostname_snapshot(snapshot.clone())
+            .map_err(|_| SettingsAdapterFailure::failed("fake invalid reload"))?;
+        let writes_match = expected == self.pending_writes
+            && expected.iter().all(|write| match write {
+                NvsWrite::String { key, value } if key.as_str() == "hostname" => {
+                    confirmed.hostname().as_str() == value
+                }
+                _ => self.pending_writes.contains(write),
+            });
+        Ok(ReloadedSettings::new(snapshot, writes_match))
     }
 
-    fn publish(
-        &mut self,
-        candidate: ConfirmedHostnameSnapshot,
-    ) -> Result<(), SettingsAdapterFailure> {
+    fn publish(&mut self, candidate: NvsSnapshot) -> Result<(), SettingsAdapterFailure> {
         self.record_step(SettingsPersistenceStep::Publish);
         if self.maybe_failure == Some(AdapterFailurePoint::Publish) {
             return Err(SettingsAdapterFailure::failed("fake publication failure"));
         }
 
-        let hostname = candidate.hostname().as_str().to_owned();
+        let hostname = confirm_hostname_snapshot(candidate)
+            .map_err(|_| SettingsAdapterFailure::failed("fake invalid publication"))?
+            .hostname()
+            .as_str()
+            .to_owned();
         let mut shared = self.shared.borrow_mut();
         shared.published_hostname.clone_from(&hostname);
         shared.publication_history.push((self.owner, hostname));
@@ -345,7 +393,10 @@ impl RecordingTransaction {
 impl SettingsPersistenceAdapter for RecordingAdapter {
     type Transaction<'adapter> = RecordingTransaction;
 
-    fn validate_accepted(&mut self, _hostname: &Hostname) -> Result<(), SettingsAdapterFailure> {
+    fn validate_accepted(
+        &mut self,
+        _plan: &SettingsPersistencePlan,
+    ) -> Result<(), SettingsAdapterFailure> {
         self.shared
             .borrow_mut()
             .events
@@ -375,23 +426,25 @@ impl SettingsPersistenceAdapter for RecordingAdapter {
             shared: Rc::clone(&self.shared),
             maybe_failure: self.maybe_failure,
             maybe_reloaded_hostname: self.maybe_reloaded_hostname.clone(),
-            pending_hostname: None,
+            pending_writes: Vec::new(),
             probe_contender_during_reload: self.probe_contender_during_reload,
         })
     }
 }
 
-fn hostname(value: &str) -> Hostname {
-    let decision = decide_v12_settings_value(&json!({"hostname": value}))
+fn persistence_plan(value: &str) -> SettingsPersistencePlan {
+    let accepted = plan_settings_patch_value(&json!({"hostname": value}))
         .expect("test hostname must validate");
-    let V12SettingsDecision::Authorized(V12SettingsChange::Hostname(hostname)) = decision else {
-        panic!("test hostname must be authorized");
-    };
-    hostname
+    SettingsPersistencePlan::from_accepted(&accepted)
 }
 
-fn persistence_plan(value: &str) -> SettingsPersistencePlan {
-    SettingsPersistencePlan::for_hostname(hostname(value))
+fn write_key(write: &NvsWrite) -> &str {
+    match write {
+        NvsWrite::String { key, .. }
+        | NvsWrite::U16 { key, .. }
+        | NvsWrite::I32 { key, .. }
+        | NvsWrite::U64 { key, .. } => key.as_str(),
+    }
 }
 
 #[test]
@@ -410,7 +463,7 @@ fn settings_persistence_success_orders_confirmation_before_public_success_and_ef
         success.steps(),
         [
             SettingsPersistenceStep::Validate,
-            SettingsPersistenceStep::write_hostname(),
+            SettingsPersistenceStep::write("hostname"),
             SettingsPersistenceStep::Commit,
             SettingsPersistenceStep::Reload,
             SettingsPersistenceStep::Reconcile,
@@ -551,7 +604,7 @@ fn settings_persistence_same_value_uses_the_full_confirmation_chain() {
         success.steps(),
         [
             SettingsPersistenceStep::Validate,
-            SettingsPersistenceStep::write_hostname(),
+            SettingsPersistenceStep::write("hostname"),
             SettingsPersistenceStep::Commit,
             SettingsPersistenceStep::Reload,
             SettingsPersistenceStep::Reconcile,
@@ -560,48 +613,4 @@ fn settings_persistence_same_value_uses_the_full_confirmation_chain() {
         ]
     );
     assert_eq!(shared.borrow().publication_history.len(), 1);
-}
-
-#[test]
-fn settings_persistence_serializes_two_writers_through_publication() {
-    // Arrange
-    let shared = Rc::new(RefCell::new(SharedAdapterState::new("bitaxe")));
-    let first_plan = persistence_plan("writer-one");
-    let second_plan = persistence_plan("writer-two");
-    let mut first = RecordingAdapter::new("writer-1", Rc::clone(&shared)).probing_contention();
-    let mut second = RecordingAdapter::new("writer-2", Rc::clone(&shared));
-
-    // Act
-    execute_settings_persistence_plan(&first_plan, &mut first).expect("first writer must confirm");
-    execute_settings_persistence_plan(&second_plan, &mut second)
-        .expect("second writer must confirm after first releases ownership");
-
-    // Assert
-    let shared = shared.borrow();
-    let first_publish = shared
-        .events
-        .iter()
-        .position(|event| {
-            *event == AdapterEvent::Step("writer-1", SettingsPersistenceStep::Publish)
-        })
-        .expect("first publication event must exist");
-    let first_end = shared
-        .events
-        .iter()
-        .position(|event| *event == AdapterEvent::End("writer-1"))
-        .expect("first transaction end must exist");
-    let second_begin = shared
-        .events
-        .iter()
-        .position(|event| *event == AdapterEvent::Begin("writer-2"))
-        .expect("second transaction begin must exist");
-    assert!(shared.events.contains(&AdapterEvent::Blocked("writer-2")));
-    assert!(first_publish < first_end && first_end < second_begin);
-    assert_eq!(
-        shared.publication_history,
-        [
-            ("writer-1", "writer-one".to_owned()),
-            ("writer-2", "writer-two".to_owned()),
-        ]
-    );
 }

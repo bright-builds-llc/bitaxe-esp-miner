@@ -65,6 +65,7 @@ rust_library(
         "src/settings/patch.rs",
         "src/settings/persistence.rs",
         "src/settings/tests.rs",
+        "src/settings/tests/persistence_more_tests.rs",
         "src/snapshot.rs",
         "src/snapshot/tests.rs",
         "src/statistics.rs",

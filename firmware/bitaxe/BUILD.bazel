@@ -373,6 +373,18 @@ rust_test(
 )
 
 rust_test(
+    name = "settings_source_ownership_tests",
+    srcs = [
+        "src/http_api/settings.rs",
+        "src/settings_adapter.rs",
+        "src/settings_source_ownership_test.rs",
+    ],
+    crate_name = "settings_source_ownership_tests",
+    crate_root = "src/settings_source_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "scoreboard_source_ownership_tests",
     srcs = [
         "src/production_mining_session.rs",

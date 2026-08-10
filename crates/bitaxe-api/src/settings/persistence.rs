@@ -1,8 +1,9 @@
-use bitaxe_config::{ConfirmedHostnameSnapshot, NvsWrite};
+use std::fmt;
+
+use bitaxe_config::{NvsSnapshot, NvsWrite};
 use thiserror::Error;
 
-use super::patch::SettingsPatchPublicError;
-use crate::v12_settings::Hostname;
+use super::patch::{AcceptedSettingsPatch, SettingsPatchPublicError};
 
 /// Public settings route response shape.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -13,35 +14,65 @@ pub enum SettingsPublicResponse {
     Error(SettingsPatchPublicError),
 }
 
-/// Closed hostname persistence plan for a firmware adapter.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// Closed validated settings persistence plan for a firmware adapter.
+#[derive(Clone, PartialEq, Eq)]
 pub struct SettingsPersistencePlan {
-    hostname: Hostname,
+    writes: Vec<NvsWrite>,
+    maybe_hostname: Option<String>,
 }
 
 impl SettingsPersistencePlan {
-    /// Builds the only v1.2 persistence plan from validated hostname authority.
+    /// Builds a persistence plan from the effect-free validated PATCH result.
     #[must_use]
-    pub const fn for_hostname(hostname: Hostname) -> Self {
-        Self { hostname }
-    }
-
-    /// Returns the validated hostname that must be confirmed before success.
-    #[must_use]
-    pub const fn hostname(&self) -> &Hostname {
-        &self.hostname
-    }
-
-    /// Returns the one inert NVS write used by the adapter transaction.
-    #[must_use]
-    pub fn write(&self) -> NvsWrite {
-        NvsWrite::string("hostname", self.hostname.as_str())
-    }
-
-    fn confirmed_effect(&self) -> SettingsPersistenceEffect {
-        SettingsPersistenceEffect::BestEffortApplyHostname {
-            hostname: self.hostname.as_str().to_owned(),
+    pub fn from_accepted(accepted: &AcceptedSettingsPatch) -> Self {
+        Self {
+            writes: accepted.writes().to_vec(),
+            maybe_hostname: accepted.maybe_hostname().map(str::to_owned),
         }
+    }
+
+    /// Returns the complete validated write set.
+    #[must_use]
+    pub fn writes(&self) -> &[NvsWrite] {
+        &self.writes
+    }
+
+    /// Returns whether this plan contains no known settings writes.
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.writes.is_empty()
+    }
+
+    fn confirmed_effects(&self) -> Vec<SettingsPersistenceEffect> {
+        self.maybe_hostname
+            .as_ref()
+            .map(
+                |hostname| SettingsPersistenceEffect::BestEffortApplyHostname {
+                    hostname: hostname.clone(),
+                },
+            )
+            .into_iter()
+            .collect()
+    }
+}
+
+impl fmt::Debug for SettingsPersistencePlan {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let keys: Vec<&str> = self
+            .writes
+            .iter()
+            .map(|write| match write {
+                NvsWrite::String { key, .. }
+                | NvsWrite::U16 { key, .. }
+                | NvsWrite::I32 { key, .. }
+                | NvsWrite::U64 { key, .. } => key.as_str(),
+            })
+            .collect();
+        formatter
+            .debug_struct("SettingsPersistencePlan")
+            .field("keys", &keys)
+            .field("hostname_present", &self.maybe_hostname.is_some())
+            .finish()
     }
 }
 
@@ -63,40 +94,61 @@ pub enum SettingsPersistenceStep {
     Commit,
     /// Settings were reloaded from storage after commit.
     Reload,
-    /// The independently reloaded typed hostname matched the request exactly.
+    /// Every independently reloaded typed value matched the write set exactly.
     Reconcile,
-    /// The complete independently reloaded snapshot became public truth.
+    /// The independently reloaded non-secret snapshot became public truth.
     Publish,
     /// The route may return an upstream-compatible empty success body.
     PublicSuccess,
 }
 
 impl SettingsPersistenceStep {
-    /// Creates the only authorized hostname write step.
+    /// Creates an authorized typed write step without retaining its value.
     #[must_use]
-    pub fn write_hostname() -> Self {
-        Self::Write {
-            key: "hostname".to_owned(),
+    pub fn write(key: impl Into<String>) -> Self {
+        Self::Write { key: key.into() }
+    }
+}
+
+/// Private reconciliation result carrying only the public non-secret snapshot.
+pub struct ReloadedSettings {
+    public_snapshot: NvsSnapshot,
+    writes_match: bool,
+}
+
+impl ReloadedSettings {
+    /// Creates a reload result after the adapter privately compares expected values.
+    #[must_use]
+    pub const fn new(public_snapshot: NvsSnapshot, writes_match: bool) -> Self {
+        Self {
+            public_snapshot,
+            writes_match,
         }
+    }
+
+    const fn writes_match(&self) -> bool {
+        self.writes_match
+    }
+
+    fn into_public_snapshot(self) -> NvsSnapshot {
+        self.public_snapshot
     }
 }
 
 /// Adapter transaction whose lifetime serializes mutation through publication.
 pub trait SettingsPersistenceTransaction {
-    /// Writes the validated hostname, including same-value requests.
-    fn write_hostname(&mut self, hostname: &Hostname) -> Result<(), SettingsAdapterFailure>;
+    /// Writes one validated typed value, including same-value requests.
+    fn write(&mut self, write: &NvsWrite) -> Result<(), SettingsAdapterFailure>;
 
-    /// Commits the hostname write.
+    /// Commits the complete write set once.
     fn commit(&mut self) -> Result<(), SettingsAdapterFailure>;
 
-    /// Independently reloads strict typed hostname evidence and a complete snapshot.
-    fn reload(&mut self) -> Result<ConfirmedHostnameSnapshot, SettingsAdapterFailure>;
+    /// Privately reloads and compares all writes, plus the non-secret public snapshot.
+    fn reload(&mut self, expected: &[NvsWrite])
+        -> Result<ReloadedSettings, SettingsAdapterFailure>;
 
     /// Atomically publishes the already reconciled independently reloaded snapshot.
-    fn publish(
-        &mut self,
-        candidate: ConfirmedHostnameSnapshot,
-    ) -> Result<(), SettingsAdapterFailure>;
+    fn publish(&mut self, candidate: NvsSnapshot) -> Result<(), SettingsAdapterFailure>;
 }
 
 /// Thin firmware coordinator used by the pure settings executor.
@@ -106,8 +158,11 @@ pub trait SettingsPersistenceAdapter {
     where
         Self: 'adapter;
 
-    /// Acknowledges the already validated closed hostname capability.
-    fn validate_accepted(&mut self, hostname: &Hostname) -> Result<(), SettingsAdapterFailure>;
+    /// Acknowledges the already validated closed write capability.
+    fn validate_accepted(
+        &mut self,
+        plan: &SettingsPersistencePlan,
+    ) -> Result<(), SettingsAdapterFailure>;
 
     /// Acquires exclusive mutation-through-publication ownership.
     fn begin_transaction(&mut self) -> Result<Self::Transaction<'_>, SettingsAdapterFailure>;
@@ -240,7 +295,7 @@ impl SettingsPersistenceFailureReport {
     }
 }
 
-/// Executes one serialized hostname transaction and returns success only after publication.
+/// Executes one serialized settings transaction and returns success only after publication.
 pub fn execute_settings_persistence_plan(
     plan: &SettingsPersistencePlan,
     adapter: &mut impl SettingsPersistenceAdapter,
@@ -248,7 +303,7 @@ pub fn execute_settings_persistence_plan(
     let mut steps = Vec::new();
 
     steps.push(SettingsPersistenceStep::Validate);
-    adapter.validate_accepted(plan.hostname()).map_err(|_| {
+    adapter.validate_accepted(plan).map_err(|_| {
         persistence_failure(
             SettingsPersistenceFailure::Validation,
             &steps,
@@ -264,16 +319,17 @@ pub fn execute_settings_persistence_plan(
         )
     })?;
 
-    steps.push(SettingsPersistenceStep::write_hostname());
-    transaction.write_hostname(plan.hostname()).map_err(|_| {
-        persistence_failure(
-            SettingsPersistenceFailure::Write {
-                key: "hostname".to_owned(),
-            },
-            &steps,
-            SettingsPersistenceFailureDisposition::CommitNotConfirmed,
-        )
-    })?;
+    for write in plan.writes() {
+        let key = write_key(write).to_owned();
+        steps.push(SettingsPersistenceStep::write(key.clone()));
+        transaction.write(write).map_err(|_| {
+            persistence_failure(
+                SettingsPersistenceFailure::Write { key },
+                &steps,
+                SettingsPersistenceFailureDisposition::CommitNotConfirmed,
+            )
+        })?;
+    }
 
     steps.push(SettingsPersistenceStep::Commit);
     transaction.commit().map_err(|_| {
@@ -285,7 +341,7 @@ pub fn execute_settings_persistence_plan(
     })?;
 
     steps.push(SettingsPersistenceStep::Reload);
-    let candidate = transaction.reload().map_err(|_| {
+    let candidate = transaction.reload(plan.writes()).map_err(|_| {
         persistence_failure(
             SettingsPersistenceFailure::Reload,
             &steps,
@@ -294,7 +350,7 @@ pub fn execute_settings_persistence_plan(
     })?;
 
     steps.push(SettingsPersistenceStep::Reconcile);
-    if candidate.hostname().as_str() != plan.hostname().as_str() {
+    if !candidate.writes_match() {
         return Err(persistence_failure(
             SettingsPersistenceFailure::Reconcile,
             &steps,
@@ -303,13 +359,15 @@ pub fn execute_settings_persistence_plan(
     }
 
     steps.push(SettingsPersistenceStep::Publish);
-    transaction.publish(candidate).map_err(|_| {
-        persistence_failure(
-            SettingsPersistenceFailure::Publication,
-            &steps,
-            SettingsPersistenceFailureDisposition::PostCommitUncertain,
-        )
-    })?;
+    transaction
+        .publish(candidate.into_public_snapshot())
+        .map_err(|_| {
+            persistence_failure(
+                SettingsPersistenceFailure::Publication,
+                &steps,
+                SettingsPersistenceFailureDisposition::PostCommitUncertain,
+            )
+        })?;
 
     drop(transaction);
 
@@ -317,9 +375,18 @@ pub fn execute_settings_persistence_plan(
 
     Ok(SettingsPersistenceSuccess {
         steps,
-        effects: vec![plan.confirmed_effect()],
+        effects: plan.confirmed_effects(),
         public_response: SettingsPublicResponse::EmptySuccess,
     })
+}
+
+fn write_key(write: &NvsWrite) -> &str {
+    match write {
+        NvsWrite::String { key, .. }
+        | NvsWrite::U16 { key, .. }
+        | NvsWrite::I32 { key, .. }
+        | NvsWrite::U64 { key, .. } => key.as_str(),
+    }
 }
 
 fn persistence_failure(

@@ -1,8 +1,8 @@
-//! Effect-free v1.2 settings authority.
+//! Effect-free v1.2 settings effect classification.
 //!
-//! Compatibility parsing remains broad. This module grants authority only to
-//! an exact, validated hostname field set and never plans storage or runtime
-//! effects.
+//! The general settings planner owns validated persistence. This module grants
+//! additional runtime authority only to exact hostname and boot-preference
+//! inputs; broader valid fields remain persistence-only.
 
 use std::collections::BTreeSet;
 use std::fmt;
@@ -88,7 +88,7 @@ pub enum V12SettingsChange {
     StartMiningOnBoot(bool),
 }
 
-/// Category-only reason that a compatibility input has no v1.2 authority.
+/// Category-only reason that a valid input has no additional live-effect authority.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum V12SettingsExclusionReason {
     /// A known compatibility field outside the v1.2 allowlist.
@@ -112,8 +112,8 @@ pub enum V12SettingsExclusionReason {
 pub enum V12SettingsDecision {
     /// The input is the one closed v1.2 write capability.
     Authorized(V12SettingsChange),
-    /// The input remains compatibility-only and cannot create effects.
-    CompatibilityOnly {
+    /// The input may be persisted by the general planner but cannot create live effects.
+    PersistenceOnly {
         /// Stable category suitable for retained diagnostics.
         reason: V12SettingsExclusionReason,
         /// Number of top-level fields, without retaining their values.
@@ -151,28 +151,22 @@ pub fn decide_v12_settings_value(
     };
 
     if object.is_empty() {
-        return Ok(compatibility_only(
-            V12SettingsExclusionReason::EmptyPatch,
-            0,
-        ));
+        return Ok(persistence_only(V12SettingsExclusionReason::EmptyPatch, 0));
     }
 
     if object.len() > 1 {
-        return Ok(compatibility_only(
+        return Ok(persistence_only(
             V12SettingsExclusionReason::MixedFieldSet,
             object.len(),
         ));
     }
 
     let Some((field, raw_value)) = object.iter().next() else {
-        return Ok(compatibility_only(
-            V12SettingsExclusionReason::EmptyPatch,
-            0,
-        ));
+        return Ok(persistence_only(V12SettingsExclusionReason::EmptyPatch, 0));
     };
 
     if field != "hostname" {
-        return Ok(compatibility_only(exclusion_for_field(field), 1));
+        return Ok(persistence_only(exclusion_for_field(field), 1));
     }
 
     let Some(raw_hostname) = raw_value.as_str() else {
@@ -186,11 +180,8 @@ pub fn decide_v12_settings_value(
     ))
 }
 
-fn compatibility_only(
-    reason: V12SettingsExclusionReason,
-    field_count: usize,
-) -> V12SettingsDecision {
-    V12SettingsDecision::CompatibilityOnly {
+fn persistence_only(reason: V12SettingsExclusionReason, field_count: usize) -> V12SettingsDecision {
+    V12SettingsDecision::PersistenceOnly {
         reason,
         field_count,
     }
@@ -310,7 +301,7 @@ mod tests {
             // Assert
             assert_eq!(
                 decision,
-                V12SettingsDecision::CompatibilityOnly {
+                V12SettingsDecision::PersistenceOnly {
                     reason: expected,
                     field_count,
                 }
@@ -331,7 +322,7 @@ mod tests {
         // Assert
         assert_eq!(
             decision,
-            V12SettingsDecision::CompatibilityOnly {
+            V12SettingsDecision::PersistenceOnly {
                 reason: V12SettingsExclusionReason::MixedFieldSet,
                 field_count: 2,
             }
@@ -360,12 +351,12 @@ mod tests {
 
             // Act
             let decision = decide_v12_settings_value(&serde_json::Value::Object(object))
-                .expect("mixed compatibility input must classify");
+                .expect("mixed persistence input must classify");
 
             // Assert
             assert_eq!(
                 decision,
-                V12SettingsDecision::CompatibilityOnly {
+                V12SettingsDecision::PersistenceOnly {
                     reason: V12SettingsExclusionReason::MixedFieldSet,
                     field_count: 2,
                 }
@@ -374,23 +365,23 @@ mod tests {
     }
 
     #[test]
-    fn settings_v12_compatibility_matrix_closes_effect_authority() {
+    fn settings_v12_persistence_only_matrix_closes_effect_authority() {
         // Arrange
-        let compatibility_only = [
+        let persistence_only = [
             json!({}),
             json!({"futureField": true}),
             json!({"rotation": 0}),
             json!({"hostname": "axe-205", "rotation": 0}),
         ];
 
-        for input in compatibility_only {
+        for input in persistence_only {
             // Act
             let decision = decide_v12_settings_value(&input).expect("valid input must classify");
 
             // Assert
             assert!(matches!(
                 decision,
-                V12SettingsDecision::CompatibilityOnly { .. }
+                V12SettingsDecision::PersistenceOnly { .. }
             ));
         }
     }

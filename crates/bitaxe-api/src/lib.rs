@@ -102,7 +102,7 @@ pub use scoreboard::{
 };
 pub use settings::{
     execute_settings_persistence_plan, plan_settings_patch_body, plan_settings_patch_value,
-    AcceptedSettingsPatch, SettingsAdapterFailure, SettingsPatchFailure,
+    AcceptedSettingsPatch, ReloadedSettings, SettingsAdapterFailure, SettingsPatchFailure,
     SettingsPatchFailureReason, SettingsPatchPublicError, SettingsPersistenceAdapter,
     SettingsPersistenceEffect, SettingsPersistenceFailure, SettingsPersistenceFailureDisposition,
     SettingsPersistenceFailureReport, SettingsPersistencePlan, SettingsPersistenceStep,

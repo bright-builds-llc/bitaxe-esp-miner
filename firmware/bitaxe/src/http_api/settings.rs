@@ -29,8 +29,8 @@ pub(super) fn handle_settings_patch<'request, 'connection>(
                 return send_text_error(request, 400, error.public_error().body());
             }
         };
-        let hostname = match decision {
-            V12SettingsDecision::Authorized(V12SettingsChange::Hostname(hostname)) => hostname,
+        let maybe_exclusion = match decision {
+            V12SettingsDecision::Authorized(V12SettingsChange::Hostname(_)) => None,
             V12SettingsDecision::Authorized(V12SettingsChange::StartMiningOnBoot(preference)) => {
                 settings_patch_retained(
                     "axeos_settings_patch=authorized category=start_mining_on_boot",
@@ -54,21 +54,36 @@ pub(super) fn handle_settings_patch<'request, 'connection>(
                 );
                 return Ok(());
             }
-            V12SettingsDecision::CompatibilityOnly {
+            V12SettingsDecision::PersistenceOnly {
                 reason,
                 field_count,
             } => {
                 settings_patch_retained(&format!(
-                    "axeos_settings_patch=compatibility_only reason={} fields={field_count}",
+                    "axeos_settings_patch=validated reason={} fields={field_count}",
                     settings_exclusion_label(reason)
                 ));
-                send_settings_response(request, SettingsPublicResponse::EmptySuccess)?;
-                settings_patch_retained(
-                    "axeos_settings_patch=response_scheduled status=200 empty_body=true",
-                );
-                return Ok(());
+                Some(reason)
             }
         };
+
+        let accepted = match plan_settings_patch_body(&body) {
+            Ok(accepted) => accepted,
+            Err(error) => {
+                settings_patch_warn_retained(&format!(
+                    "axeos_settings_patch=rejected reason={}",
+                    settings_patch_failure_label(error.reason())
+                ));
+                return send_text_error(request, 400, error.public_error().body());
+            }
+        };
+        let plan = SettingsPersistencePlan::from_accepted(&accepted);
+        if plan.is_empty() {
+            send_settings_response(request, SettingsPublicResponse::EmptySuccess)?;
+            settings_patch_retained(
+                "axeos_settings_patch=response_scheduled status=200 empty_body=true writes=0",
+            );
+            return Ok(());
+        }
 
         let mut adapter = match settings_adapter::FirmwareSettingsAdapter::open() {
             Ok(adapter) => adapter,
@@ -83,8 +98,11 @@ pub(super) fn handle_settings_patch<'request, 'connection>(
                 );
             }
         };
-        let plan = SettingsPersistencePlan::for_hostname(hostname);
-        settings_patch_retained("axeos_settings_patch=authorized category=hostname");
+        settings_patch_retained(&format!(
+            "axeos_settings_patch=authorized category={} writes={}",
+            maybe_exclusion.map_or("hostname", settings_exclusion_label),
+            plan.writes().len()
+        ));
         let success = match execute_settings_persistence_plan(&plan, &mut adapter) {
             Ok(success) => success,
             Err(error) => {
@@ -96,10 +114,7 @@ pub(super) fn handle_settings_patch<'request, 'connection>(
                 return send_text_error(request, 400, error.public_error().body());
             }
         };
-        settings_patch_retained("axeos_settings_patch=persistence_confirmed category=hostname");
-        let _ = crate::production_mining_session::notify(
-            bitaxe_stratum::v1::production_session::ProductionSessionWakeup::SettingsChanged,
-        );
+        settings_patch_retained("axeos_settings_patch=persistence_confirmed");
         let maybe_effect_lease =
             success.maybe_acquire_best_effort_effect_lease(prepare_settings_effects);
         if maybe_effect_lease.is_none() {

@@ -4,14 +4,13 @@ use std::ffi::CString;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use bitaxe_api::{
-    Hostname, SettingsAdapterFailure, SettingsPersistenceAdapter, SettingsPersistenceTransaction,
-    ThemePostPlan,
+    ReloadedSettings, SettingsAdapterFailure, SettingsPersistenceAdapter, SettingsPersistencePlan,
+    SettingsPersistenceTransaction, ThemePostPlan,
 };
 use bitaxe_config::nvs::StoredValueKind;
 use bitaxe_config::{
-    all_settings_schema, confirm_hostname_snapshot, project_settings_schema,
-    ConfirmedHostnameSnapshot, ConfirmedSnapshotReadHealth, NvsSnapshot, NvsWrite, StoredValue,
-    NVS_NAMESPACE,
+    all_settings_schema, project_settings_schema, ConfirmedSnapshotReadHealth, NvsSnapshot,
+    NvsWrite, StoredValue, NVS_NAMESPACE,
 };
 use esp_idf_svc::handle::RawHandle;
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDataType, NvsDefault};
@@ -40,22 +39,16 @@ impl FirmwareSettingsAdapter {
     }
 }
 
-/// Exclusive hostname transaction held from writable open through publication.
+/// Exclusive settings transaction held from writable open through publication.
 pub struct FirmwareSettingsTransaction {
     _transaction_guard: MutexGuard<'static, ()>,
     partition: EspDefaultNvsPartition,
     nvs: EspNvs<NvsDefault>,
 }
 
-impl FirmwareSettingsTransaction {
-    fn set_string(&mut self, key: &str, value: &str) -> Result<(), SettingsAdapterFailure> {
-        set_nvs_string(&mut self.nvs, key, value)
-    }
-}
-
 impl SettingsPersistenceTransaction for FirmwareSettingsTransaction {
-    fn write_hostname(&mut self, hostname: &Hostname) -> Result<(), SettingsAdapterFailure> {
-        self.set_string("hostname", hostname.as_str())
+    fn write(&mut self, write: &NvsWrite) -> Result<(), SettingsAdapterFailure> {
+        write_nvs(&mut self.nvs, write)
     }
 
     fn commit(&mut self) -> Result<(), SettingsAdapterFailure> {
@@ -63,19 +56,23 @@ impl SettingsPersistenceTransaction for FirmwareSettingsTransaction {
         esp_result("nvs_commit", result)
     }
 
-    fn reload(&mut self) -> Result<ConfirmedHostnameSnapshot, SettingsAdapterFailure> {
+    fn reload(
+        &mut self,
+        expected: &[NvsWrite],
+    ) -> Result<ReloadedSettings, SettingsAdapterFailure> {
         let reloaded =
             EspNvs::new(self.partition.clone(), NVS_NAMESPACE, false).map_err(settings_failure)?;
-        let candidate = read_current_settings_snapshot_strict(&reloaded)?;
-        confirm_hostname_snapshot(candidate).map_err(settings_failure)
+        let mut writes_match = true;
+        for write in expected {
+            writes_match &= nvs_write_matches(&reloaded, write)?;
+        }
+        let public_snapshot = read_current_settings_snapshot_strict(&reloaded)?;
+        Ok(ReloadedSettings::new(public_snapshot, writes_match))
     }
 
-    fn publish(
-        &mut self,
-        candidate: ConfirmedHostnameSnapshot,
-    ) -> Result<(), SettingsAdapterFailure> {
+    fn publish(&mut self, candidate: NvsSnapshot) -> Result<(), SettingsAdapterFailure> {
         current_snapshot_cell()
-            .publish(candidate.into_snapshot())
+            .publish(candidate)
             .map_err(|_| SettingsAdapterFailure::failed("settings snapshot lock poisoned"))
     }
 }
@@ -86,7 +83,10 @@ impl SettingsPersistenceAdapter for FirmwareSettingsAdapter {
     where
         Self: 'adapter;
 
-    fn validate_accepted(&mut self, _hostname: &Hostname) -> Result<(), SettingsAdapterFailure> {
+    fn validate_accepted(
+        &mut self,
+        _plan: &SettingsPersistencePlan,
+    ) -> Result<(), SettingsAdapterFailure> {
         Ok(())
     }
 
@@ -421,6 +421,35 @@ fn set_nvs_string(
     }
     let result = unsafe { sys::nvs_set_str(nvs.handle(), c_key.as_ptr(), c_value.as_ptr()) };
     esp_result("nvs_set_str", result)
+}
+
+fn write_nvs(nvs: &mut EspNvs<NvsDefault>, write: &NvsWrite) -> Result<(), SettingsAdapterFailure> {
+    match write {
+        NvsWrite::String { key, value } => set_nvs_string(nvs, key.as_str(), value),
+        NvsWrite::U16 { key, value } => nvs.set_u16(key.as_str(), *value).map_err(settings_failure),
+        NvsWrite::I32 { key, value } => nvs.set_i32(key.as_str(), *value).map_err(settings_failure),
+        NvsWrite::U64 { key, value } => nvs.set_u64(key.as_str(), *value).map_err(settings_failure),
+    }
+}
+
+fn nvs_write_matches(
+    nvs: &EspNvs<NvsDefault>,
+    write: &NvsWrite,
+) -> Result<bool, SettingsAdapterFailure> {
+    match write {
+        NvsWrite::String { key, value } => {
+            read_string_value_strict(nvs, key.as_str()).map(|stored| stored == *value)
+        }
+        NvsWrite::U16 { key, value } => {
+            read_u16_value_strict(nvs, key.as_str()).map(|stored| stored == *value)
+        }
+        NvsWrite::I32 { key, value } => {
+            read_i32_value_strict(nvs, key.as_str()).map(|stored| stored == *value)
+        }
+        NvsWrite::U64 { key, value } => {
+            read_u64_value_strict(nvs, key.as_str()).map(|stored| stored == *value)
+        }
+    }
 }
 
 fn esp_result(operation: &str, result: sys::esp_err_t) -> Result<(), SettingsAdapterFailure> {
