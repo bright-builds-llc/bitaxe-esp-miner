@@ -52,7 +52,12 @@ Advance one parity row per invocation. Treat `verified` as complete,
 3. For verified completion, create `RESULT.md` from
    [assets/RESULT.md](assets/RESULT.md). Record exact commands, evidence,
    conclusion, non-claims, and residual risks.
-4. Run relevant tests and the mandatory Rust checks. Commit implementation and
+4. When a plan reaches a terminal non-verified outcome without changing the
+   row's checklist fields, create `CLOSURE.md` from
+   [assets/CLOSURE.md](assets/CLOSURE.md). Bind it to the immutable `PLAN.md`,
+   declare `Verification claimed: no`, and record the blocker, next safe
+   action, and non-claims. Never use a closure to represent verified evidence.
+5. Run relevant tests and the mandatory Rust checks. Commit implementation and
    evidence without changing the checklist yet. Save this full commit as
    `SOURCE_COMMIT`.
 
@@ -71,10 +76,14 @@ Advance one parity row per invocation. Treat `verified` as complete,
 
    When the checklist digest is unchanged, do not append progress history or
    rewrite the README.
-3. When verified, add the completion review, append the full task record to
+3. A valid `CLOSURE.md` closes only the plan lifecycle. Its parity row remains
+   unfinished and may appear in later candidate lists. Leave blocked tasks
+   active with the blocker and next safe action; do not synchronize progress
+   when the checklist digest is unchanged.
+4. When verified, add the completion review, append the full task record to
    `TASKS.archive.md`, and remove it from `TASKS.md`. Otherwise leave it
    active with the blocker and next safe action.
-4. Run, in order:
+5. Run, in order:
    - `cargo fmt --all`
    - `cargo clippy --all-targets --all-features -- -D warnings`
    - `cargo build --all-targets --all-features`
@@ -83,7 +92,7 @@ Advance one parity row per invocation. Treat `verified` as complete,
    - `just test`
    - `just parity`
    - `just parity-progress`
-5. Review `git diff`, commit finalization when it exists, fetch `origin`, rebase only when
+6. Review `git diff`, commit finalization when it exists, fetch `origin`, rebase only when
    conflict-free and necessary, and push the current branch to its upstream.
    Never force-push.
 

@@ -1284,13 +1284,21 @@ Further recovery requires an external normal-connector state change or manual
 boot-mode hardware intervention under a new authorization/attempt contract.
 This task claims no parity beyond the exact diagnostic transaction.
 
+Plan closure:
+`docs/parity/work-plans/20260805T005320Z-API-010/CLOSURE.md` records the
+terminal non-verified disposition. `API-010` remains `implemented`, no parity
+transition or progress synchronization is warranted, and physical Bitaxe
+access is currently unavailable. The next safe action is a fresh task-gated
+plan and attempt after physical access returns; this exhausted task remains
+active and unarchived.
+
 ### task-parity-nonverified-plan-closure | 2026-08-10 | Add truthful terminal parity-plan closure
 
-- [ ] Add a validated `CLOSURE.md` lifecycle artifact for terminal parity plans
+- [x] Add a validated `CLOSURE.md` lifecycle artifact for terminal parity plans
       that remain below `verified`.
-- [ ] Teach deterministic plan selection to close only valid non-verified
+- [x] Teach deterministic plan selection to close only valid non-verified
       dispositions while keeping their rows in the unfinished candidate queue.
-- [ ] Close the exhausted API-010 plan without changing checklist status,
+- [x] Close the exhausted API-010 plan without changing checklist status,
       progress history, or README parity status.
 - [ ] Run focused and mandatory verification, record completion, archive this
       maintenance task, and push the audited commits.
@@ -1303,8 +1311,11 @@ Authorization: local repository maintenance and tests only. No hardware,
 detector, credentials, network discovery, flash, settings mutation, mining,
 hardware control, OTA, recovery, direct UART, or pins.
 
-Verification: Pending. The checklist, progress ledger, and README baselines
-are recorded before implementation and must remain byte-for-byte unchanged.
+Verification: Focused Cargo and Bazel parity tests pass. The real Bazel-built
+selector reports `maybe_open_plan: null`, retains `API-010` in the unfinished
+candidate queue, and preserves the ordered candidate list. The checklist,
+progress ledger, and README baselines remain subject to the final byte-for-byte
+check.
 
 Completion review: Pending.
 

@@ -113,3 +113,23 @@
   session. Further recovery requires an external normal-connector state change
   or manual boot-mode hardware intervention under a new authorization and
   immutable attempt contract. No retry is eligible in this plan.
+
+## 2026-08-10T03:30:00Z | truthful non-verified plan closure
+
+- Source commit: Planning checkpoint `8c07eb4d`; implementation commit pending.
+- Actions: Added a strict `CLOSURE.md` contract, bound this closure to the
+  immutable plan digest, and taught deterministic selection to reconcile a
+  terminal closure as the newest member of an explicitly linked plan lineage.
+- Verification: Focused Cargo and Bazel parity tests pass. The real selector
+  returns `maybe_open_plan: null`, includes `API-010` in its unfinished
+  candidates, rejects malformed or ambiguous closure artifacts, and does not
+  let an older closure hide a newer linked open plan.
+- Evidence: `CLOSURE.md` records final status `implemented`, outcome `blocked`,
+  `Verification claimed: no`, the exact plan digest, the active task, the
+  terminal blocker, next safe action, and non-claims.
+- Outcome: The plan lifecycle is truthfully closed without a checklist
+  transition, progress synchronization, README rewrite, `RESULT.md`, or
+  hardware access.
+- Blocker or next safe action: Keep the exhausted API-010 task active while
+  hardware is unavailable. A future invocation may skip this hardware-only
+  row and select the next actionable software row.

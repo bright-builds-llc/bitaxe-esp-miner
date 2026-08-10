@@ -3,12 +3,11 @@ use std::fs;
 
 use crate::*;
 
+mod closure;
 mod history;
-
 pub(crate) use history::{run_sync_progress_command, validate_progress_artifacts};
 
 pub(crate) const WORK_PLANS_ROOT: &str = "docs/parity/work-plans";
-
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Progress {
@@ -97,8 +96,8 @@ pub(crate) struct OpenPlan {
 struct OpenPlanDocument {
     open_plan: OpenPlan,
     document: String,
+    terminal_closed: bool,
 }
-
 #[derive(Debug, Serialize)]
 struct NextItemReport {
     maybe_open_plan: Option<OpenPlan>,
@@ -229,7 +228,10 @@ fn find_open_plan(workspace: &Utf8Path, rows: &[ChecklistRow]) -> Result<Option<
     for entry in directories {
         let path = Utf8PathBuf::from_path_buf(entry.path())
             .map_err(|_| anyhow::anyhow!("work-plan path is not valid UTF-8"))?;
-        if !path.is_dir() || path.join("RESULT.md").exists() || !path.join("PLAN.md").is_file() {
+        if !path.is_dir() || !path.join("PLAN.md").is_file() {
+            continue;
+        }
+        if closure::result_closes_plan(&path)? {
             continue;
         }
         let document = fs::read_to_string(path.join("PLAN.md").as_std_path())
@@ -240,7 +242,9 @@ fn find_open_plan(workspace: &Utf8Path, rows: &[ChecklistRow]) -> Result<Option<
             bail!("open parity plan references missing row {row_id}");
         };
         let current_status = normalize(&row.status);
-        if current_status != initial_status {
+        let terminal_closed =
+            closure::closes_plan(&path, &document, &row_id, &initial_status, &current_status)?;
+        if !terminal_closed && current_status != initial_status {
             require_plan_status_advance(&initial_status, &current_status, &row_id)?;
             continue;
         }
@@ -253,6 +257,7 @@ fn find_open_plan(workspace: &Utf8Path, rows: &[ChecklistRow]) -> Result<Option<
                 plan_path: format!("{relative}/PLAN.md"),
             },
             document,
+            terminal_closed,
         });
     }
     reconcile_open_plans(open_plans)
@@ -282,7 +287,11 @@ fn reconcile_open_plans(mut open_plans: Vec<OpenPlanDocument>) -> Result<Option<
             );
         }
     }
-    Ok(open_plans.pop().map(|candidate| candidate.open_plan))
+    let latest = open_plans.pop().expect("non-empty plan lineage");
+    if latest.terminal_closed {
+        return Ok(None);
+    }
+    Ok(Some(latest.open_plan))
 }
 
 fn parse_plan_metadata(document: &str) -> Result<(String, String)> {
