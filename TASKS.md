@@ -1385,9 +1385,9 @@ non-verified outcome. `API-010` remains `implemented` and no evidence or
       clean exact package.
 - [x] Run one detector and one conditional passive capture.
 - [ ] Promote `API-002` only on complete accepted evidence.
-- [ ] Commit and push the immutable stack-fix retry plan.
-- [ ] Build and admit one clean exact package containing the stack fix.
-- [ ] Run one detector and one conditional passive `attempt-002` capture.
+- [x] Commit and push the immutable stack-fix retry plan.
+- [x] Build and admit one clean exact package containing the stack fix.
+- [x] Run one detector and one conditional passive `attempt-002` capture.
 - [ ] Promote only on complete independently validated evidence.
 
 Plans:

@@ -1,0 +1,39 @@
+{
+  "schema_version": "bitaxe-system-info-evidence-v1",
+  "board": 205,
+  "source_commit": "524b445ee45c986a1366cfe64d2cbcbe41178da8",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "package_manifest_sha256": "2a4a64269dd4c93e6899f36000f128dc559e628821bd7543db540cb1e360b395",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "capture-system-info-evidence",
+    "request_sha256": "8ad5866306962e013a46cc73028f0a1daa0f6b3f59658b46977ffe6fa5874a5b"
+  },
+  "detector_admitted": true,
+  "boot_observed": true,
+  "same_origin_observed": true,
+  "system_info": {
+    "boot_session_sha256": "7ea3681e792d14aa07f9c40676842136be82b5c3237c12b8520b6a4ca16dfd02",
+    "http_revision": 594,
+    "websocket_revision": 595,
+    "same_boot_session": true,
+    "websocket_revision_not_earlier": true,
+    "field_contract_schema": "bitaxe-system-info-field-contract-v1",
+    "field_contract_sha256": "91c5f211c5cab92d48e8cfd60ed65ee1d5bfbe19d201b0bdc1bd2414d9ff3988",
+    "required_field_count": 94,
+    "unconditional_field_count": 87,
+    "conditional_field_count": 7,
+    "http_unconditional_fields_complete": true,
+    "websocket_unconditional_fields_complete": true,
+    "http_field_types_match": true,
+    "websocket_field_types_match": true,
+    "inactive_block_fields_absent": true,
+    "confirmed_setting_fields_present": true,
+    "retained_http_tuple_matches": true,
+    "retained_websocket_tuple_matches": true
+  },
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "cleanup_complete": true,
+  "redaction_status": "passed"
+}

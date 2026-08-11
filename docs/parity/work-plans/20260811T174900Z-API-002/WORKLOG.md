@@ -33,3 +33,25 @@
 - Outcome: Fresh continuation plan gate complete.
 - Blocker or next safe action: Commit and push the immutable plan before
   package construction or hardware use.
+
+## 2026-08-11T18:05:38Z | attempt-002 completion checkpoint
+
+- Source commit: `524b445ee45c986a1366cfe64d2cbcbe41178da8`.
+- Actions: Re-ran the complete gate from the clean pushed plan commit, built and
+  admitted its exact schema-v3 package, then ran the plan's sole detector and
+  conditional passive system-info capture.
+- Verification: The v1 projection passes the repository-owned Rust validator
+  and binds board 205, exact source/reference/package identity, one coherent
+  boot session, HTTP revision 594, later WebSocket revision 595, both retained
+  tuples, 94 required fields, 87 unconditional fields, seven inactive
+  conditional fields, confirmed settings, disabled mining and hardware
+  control, cleanup, and redaction. Private aggregate review found zero stack-
+  overflow and panic markers, 36 boot attestations, and 143 heartbeats.
+- Evidence: Redacted projection SHA-256
+  `6ec58fdaeb7cbad3cf103832cd3e59fe470fcb05f6f6a4d41e218ffd6378991a`;
+  the attempt has six mode-0600 files, the wrapper has three mode-0600 files,
+  both roots are mode 0700, and no selected-port holder remains.
+- Outcome: Complete and eligible to promote only `API-002` to `verified`.
+- Blocker or next safe action: Commit the evidence/result without changing the
+  checklist, save that commit as `SOURCE_COMMIT`, then perform the audited
+  checklist transition and progress synchronization.
