@@ -93,7 +93,7 @@
   the fix and truthful non-verifying closure, then use a fresh plan before any
   further hardware attempt.
 
-## 2026-08-11T17:54:00Z | closure gate checkpoint
+## 2026-08-11T17:47:00Z | closure gate checkpoint
 
 - Source commit: `537e339454569fadb29df78b05619155b7424207` plus the pending
   closure fix.

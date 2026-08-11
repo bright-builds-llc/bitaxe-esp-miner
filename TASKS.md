@@ -1385,8 +1385,15 @@ non-verified outcome. `API-010` remains `implemented` and no evidence or
       clean exact package.
 - [x] Run one detector and one conditional passive capture.
 - [ ] Promote `API-002` only on complete accepted evidence.
+- [ ] Commit and push the immutable stack-fix retry plan.
+- [ ] Build and admit one clean exact package containing the stack fix.
+- [ ] Run one detector and one conditional passive `attempt-002` capture.
+- [ ] Promote only on complete independently validated evidence.
 
-Plan: `docs/parity/work-plans/20260811T164522Z-API-002/PLAN.md`.
+Plans:
+
+- Closed: `docs/parity/work-plans/20260811T164522Z-API-002/PLAN.md`.
+- Active: `docs/parity/work-plans/20260811T174900Z-API-002/PLAN.md`.
 
 Authorization and effects: standing task authorization covers the plan's one
 detector and one conditional capture. The capture may perform one exact-package
@@ -1422,6 +1429,34 @@ is closed at
 `docs/parity/work-plans/20260811T164522Z-API-002/CLOSURE.md`; `API-002` remains
 `implemented`, and a fresh immutable plan is required before another bounded
 attempt.
+
+Fresh retry authorization and effects: The targeted startup-stack fix at
+`84b90c9e677b4def1d0ab7508e2b8e64dd08c617` satisfies the new-information
+gate. Standing authorization covers exactly these commands after the active
+plan and clean package are pushed and admitted:
+
+1. `test ! -e scratch/api002-system-info/wrapper-002 && (umask 077; mkdir -m 700 -p scratch/api002-system-info/wrapper-002 && just detect-ultra205 > scratch/api002-system-info/wrapper-002/detector.stdout 2>&1)`
+2. Only after command 1 succeeds:
+   `test ! -e scratch/api002-system-info/attempt-002 && test ! -e docs/parity/evidence/api002-system-info/system-info-projection.json && (umask 077; just capture-system-info-evidence --private-root scratch/api002-system-info/attempt-002 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/api002-system-info/wrapper-002/detector.stdout --projection docs/parity/evidence/api002-system-info/system-info-projection.json --capture-timeout-seconds 360 > scratch/api002-system-info/wrapper-002/capture.stdout 2> scratch/api002-system-info/wrapper-002/capture.stderr)`
+
+The objective is stable exact-build boot and aggregate-only system-info capture.
+Raw serial, responses, settings, hostnames, origins, ports, USB/network/process
+identities, credentials, and traces remain private under the ignored mode-0700
+roots in mode-0600 files. One factory flash, its normal USB reset and
+re-enumeration, passive same-origin reads, and at most one exact-package
+recovery flash after an initial flash effect are allowed. Settings mutation,
+HTTP restart, pool-credential access, mining, hardware control, discovery,
+update, erase, raw write, fault injection, foreign-process termination, direct
+UART, and pin work are prohibited. Preserve the first typed failure, release
+owned resources, publish only after every schema/identity/coherence/safety/
+cleanup/redaction gate passes, and do not retry this plan. Accepted terminal
+categories are `hardware_blocked`, `evidence_invalid`, `timeout`, and
+`process_failed`; any failure withholds promotion and requires a new plan.
+
+Retry plan verification: The complete ordered software gate, parity lifecycle
+validation, redaction/reference checks, task uniqueness, sensitive-output, and
+diff checks passed. The immutable active plan SHA-256 is
+`8c64ece32a6044e7d2b38a1219a92f02d4adfd519c31722e8cbb8965e52e6cb9`.
 
 ## Future
 
