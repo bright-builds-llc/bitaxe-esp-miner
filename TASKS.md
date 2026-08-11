@@ -24,6 +24,78 @@ new work.
 
 ## Active
 
+### task-parity-rel001-live-ota-slot-transition | 2026-08-11 | Prove the Ultra 205 factory-to-OTA slot transition
+
+- [ ] Commit and push the linked immutable REL-001 plan before source changes.
+- [ ] Add the bounded typed OTA device-session transaction without changing
+      the existing reboot interfaces.
+- [ ] Add the private-first aggregate partition-layout capture, independent
+      validator, and behavior/privacy/process-boundary regressions.
+- [ ] Run the complete ordered software gate, commit, and push the clean
+      implementation before hardware use.
+- [ ] Build the exact package, run one detector and conditional capture, and
+      promote only `REL-001` on complete typed evidence; otherwise withhold
+      evidence and stop without retry.
+
+Plan: `docs/parity/work-plans/20260811T195144Z-REL-001/PLAN.md`.
+
+Hardware contract:
+
+1. `just package`
+2. `test ! -e scratch/rel001-ota-slot/wrapper-001 && (umask 077; mkdir -m 700 -p scratch/rel001-ota-slot/wrapper-001 && just detect-ultra205 > scratch/rel001-ota-slot/wrapper-001/detector.stdout 2>&1)`
+3. Only after command 2 succeeds:
+   `test ! -e scratch/rel001-ota-slot/attempt-001 && test ! -e docs/parity/evidence/rel001-ota-slot/partition-layout-projection.json && (umask 077; just capture-partition-layout-evidence --private-root scratch/rel001-ota-slot/attempt-001 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/rel001-ota-slot/wrapper-001/detector.stdout --projection docs/parity/evidence/rel001-ota-slot/partition-layout-projection.json --capture-timeout-seconds 360 > scratch/rel001-ota-slot/wrapper-001/capture.stdout 2> scratch/rel001-ota-slot/wrapper-001/capture.stderr)`
+
+Objective and preconditions: prove the clean exact Ultra 205 package's
+installed partition layout by starting from its factory app and completing one
+normal update into `ota_0`. The worktree/source commit and pinned reference
+must be clean and pushed, the package manifest must bind that exact source and
+contain the canonical partition-table plus OTA artifacts, the ignored
+`wifi-credentials.json` must exist without exposure, private/public targets
+must be absent, and exactly one board 205 must pass detector admission.
+
+Allowed effects: one exact factory-package flash; replacement NVS containing
+only owner-supplied Wi-Fi credentials and `mineonboot=false`; repo-owned USB
+reset/re-enumeration; bounded receive-only serial and same-origin HTTP
+observation; one upload of the package's exact OTA image to
+`/api/system/OTA`; and its single scheduled software restart.
+
+Prohibited effects: mining, pool access, ASIC initialization or work, voltage,
+frequency, fan, thermal, or power control; OTAWWW; rollback; erase-flash;
+interrupted update; recovery upload; arbitrary raw writes; network discovery;
+foreign-process termination; direct UART; pins, pads, headers, GPIO, probes,
+jumpers, soldering, or injected signals.
+
+Evidence and privacy: wrapper and attempt roots are ignored mode-0700 private
+directories with mode-0600 artifacts. OTA bytes, origins, hostnames, ports,
+USB and network identities, Wi-Fi values, credentials, HTTP bodies, commands,
+and raw serial/process traces stay private. Public evidence is aggregate-only:
+closed schemas/categories, provenance and artifact digests, bounded counts,
+exact partition-contract and transition booleans, safe-state, cleanup, modes,
+and redaction facts.
+
+Recovery, retry, and stop: detector failure stops before any write. Preserve
+the earliest typed failure through cleanup. After a completed upload, leave
+the same exact package in whichever valid factory/OTA slot ESP-IDF selected;
+do not add a second flash, rollback, erase, interruption, or recovery effect.
+Release every owned USB, socket, and child-process resource. This contract
+authorizes one detector and, conditionally, one capture only. Any failure
+withholds public evidence and consumes the attempt without unchanged retry.
+
+Acceptance: `complete` requires exact package/partition provenance, safe
+factory baseline, reader admission before one complete OTA upload, same
+physical device, service loss/recovery, exact recovered build, boot-session
+change, ordinal `N+1`, software reset, successful boot validation,
+`factory` to `ota_0`, mining/hardware control disabled, cleanup, protected
+modes, redaction, and independent evidence validation. Otherwise record the
+closed category, keep `REL-001` at `implemented`, and create no `RESULT.md`.
+
+Verification: Pending.
+
+Completion review: Pending. This task claims no rollback, large-erase,
+interrupted-update, OTAWWW/static-partition, other-board, mining,
+hardware-control, or release-readiness parity.
+
 ### task-ultra205-default-profile-soak | 2026-07-28 | Run the bounded upstream-default mining soak
 
 - [x] Start a fresh exact-package attempt at 485 MHz, 1200 mV, and 100% fan
