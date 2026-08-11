@@ -49,3 +49,50 @@
 - Blocker or next safe action: Commit the evidence/result without changing the
   checklist, save that commit as `SOURCE_COMMIT`, then perform the audited
   checklist transition and progress synchronization.
+
+## 2026-08-11T16:17:00Z | finalization checkpoint
+
+- Source commit: `d789664c4b9a819fa4d2ad028d7233421a158d69`.
+- Actions: Applied transition `20260811T155722Z-API-010` with an explicit
+  evidence-bound checklist note, synchronized progress, and archived the
+  completed task.
+- Verification: Only `API-010` changed from `implemented` to `verified`; its
+  evidence is now `unit,golden,api-compare,workflow,hardware-smoke`. Progress is
+  41 of 94 active rows, or 43.6%.
+- Evidence: Result and redacted projection remain bound to the immutable plan
+  and evidence commit.
+- Outcome: `API-010` verified.
+- Blocker or next safe action: Run the final ordered repository gate, review the
+  generated diff, commit finalization, fetch, and push.
+
+## 2026-08-11T16:22:00Z | selector regression checkpoint
+
+- Source commit: `d789664c4b9a819fa4d2ad028d7233421a158d69`.
+- Actions: The final gate reproduced a parity selector lifecycle bug after all
+  preceding checks passed. Added a focused follow-up task and changed
+  historical closure validation to bind its final status to the immutable
+  plan, while independently requiring any current checklist change to be a
+  valid forward transition.
+- Verification: The new focused historical-closure-after-verification test
+  passes. No hardware was rerun and no evidence or checklist claim changed.
+- Evidence: The existing API-010 transition, projection, and result remain
+  unchanged; this checkpoint records host-tool regression work only.
+- Outcome: Root cause fixed locally; complete repository verification pending.
+- Blocker or next safe action: Run the focused parity suite, then restart the
+  complete final gate from formatting through selector and diff checks.
+
+## 2026-08-11T16:31:00Z | final gate checkpoint
+
+- Source commit: `d789664c4b9a819fa4d2ad028d7233421a158d69`.
+- Actions: Completed the focused selector verification and the full ordered
+  repository gate, reviewed the transition and code diff, and archived both
+  completed task records.
+- Verification: All required Cargo, Bright Builds, Bazel, parity/progress,
+  redaction, reference, selector, immutable-plan, transition, task uniqueness,
+  privacy, and diff checks pass. The selector reports no open plan and no
+  `API-010` candidate.
+- Evidence: API-010 remains 41 of 94 active rows verified (43.6%) with the
+  existing evidence/result commit as the progress source.
+- Outcome: Finalization is ready to commit and push.
+- Blocker or next safe action: Commit the reviewed changes, fetch without
+  divergence, push `main`, and confirm a clean synchronized worktree.

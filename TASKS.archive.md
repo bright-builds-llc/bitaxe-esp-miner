@@ -5232,3 +5232,86 @@ and no parity promotion occurred. `API-010` remains `implemented` because theme
 mutation and restart durability were not exercised. The result claims no
 network longevity, mining, ASIC or hardware-control effect, OTA, erase, raw
 write, direct UART, pins, other-board behavior, or release readiness.
+
+### task-parity-api010-live-theme-durability-attempt-012 | 2026-08-11 | Verify theme durability after boot recovery
+
+- [x] Commit and push the linked immutable attempt-012 plan.
+- [x] Re-run focused theme, device-session, CLI, and redaction regressions; fix
+      only a reproduced current blocker.
+- [x] Run the complete software gate and admit one clean exact package.
+- [x] Run one new detector and, only after success, one bounded theme capture.
+- [x] Promote only `API-010` on complete v1 evidence; otherwise record the
+      earliest typed boundary and stop without retry.
+
+Plan: `docs/parity/work-plans/20260811T155722Z-API-010/PLAN.md`. It continues
+the closed API-010 lineage after the exact-package attempt-011 result proved
+successful flashing and stable trusted runtime for 360 seconds.
+
+Authorization and effects: standing task authorization covers only the plan's
+one detector and conditional `verify-theme-durability` transaction. Allowed
+effects are one exact-package flash with safe local Wi-Fi seed, one generated
+non-secret theme mutation, one normal software restart, exact theme
+restoration, and at most the workflow's recovery flash. Mining, pool access,
+hardware controls, Wi-Fi/hostname mutation, OTA, erase, raw writes, discovery,
+direct UART, and electrical manipulation remain prohibited.
+
+Evidence, privacy, recovery, and retry: use absent ignored mode-0700
+`wrapper-012` and `attempt-012` roots with mode-0600 files. Public output may
+contain only closed categories, safe booleans/counts, cryptographic identities,
+and the redacted projection. Preserve the earliest failure and completed flash
+effect through restoration/recovery, release all owned resources, and do not
+retry.
+
+Verification: The complete plan gate passed, including ordered Cargo checks,
+Bright Builds, all Bazel tests, parity/progress, redaction, reference,
+continuation-aware selector, and diff checks. Plan commit `f2520d1e` was pushed.
+Focused theme, device-session, CLI, and redaction regressions and the exact-head
+full gate passed. The sole detector and conditional capture passed, producing
+the redacted v1 projection with exact package identity, one restart, same-device
+recovery, ordinal `N+1`, persisted theme equality, confirmed restoration,
+disabled mining/hardware control, cleanup, private modes, and redaction.
+Evidence commit `d789664c` was preserved as `SOURCE_COMMIT`; transition
+`20260811T155722Z-API-010` changed only `API-010` to `verified` with
+`unit,golden,api-compare,workflow,hardware-smoke`, and progress synchronized to
+41 of 94 active rows (43.6%).
+
+Completion review: The exact pushed firmware proved GET/POST, immediate
+readback, one normal software restart, same-device exact-build recovery,
+post-restart persistence, and confirmed original-theme restoration. No recovery
+flash was required, no mining or hardware control occurred, and all private and
+public privacy checks passed. Installed AxeOS browser behavior, repeated or
+power-loss durability, mining, networking longevity, updates, other boards, and
+release readiness remain explicit non-claims.
+
+### task-parity-selector-historical-closure-forward-transition | 2026-08-11 | Preserve historical closures after promotion
+
+- [x] Reproduce the selector failure after `API-010` advances from the status
+      recorded by an older immutable non-verified closure.
+- [x] Bind closure status validation to the immutable plan status and validate
+      later checklist movement independently as a forward transition.
+- [x] Add a focused regression for a historical implemented closure followed
+      by checklist verification.
+- [x] Run focused parity tests and the complete final repository gate.
+- [x] Review, archive this follow-up task, commit, and push the API-010
+      finalization and selector fix.
+
+Trigger: The API-010 final selector gate failed after every earlier build,
+test, redaction, and reference check passed because a historical blocked
+closure still recorded `implemented` while the current checklist correctly
+recorded `verified`.
+
+Scope: Update only the parity selector's historical-closure validation and its
+tests. Do not edit immutable parity plans or closures, change any additional
+checklist row, rerun hardware, or expand API-010's verified claims.
+
+Verification: The focused 295-test Cargo parity suite, Bazel parity target,
+and selector regression passed. The complete ordered Cargo, Bright Builds,
+Bazel, parity/progress, redaction, and reference gate passed. Selector,
+immutable-plan hash, transition, progress, task uniqueness, privacy, and diff
+checks passed without another hardware run.
+
+Completion review: Historical non-verified closures now remain valid when a
+later continuation legitimately advances the row, while regressions and other
+non-forward checklist changes still fail closed through the independent status
+advance guard. The fix changes no evidence, plan, closure, or additional parity
+claim.

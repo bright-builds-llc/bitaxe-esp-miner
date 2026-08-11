@@ -242,9 +242,8 @@ fn find_open_plan(workspace: &Utf8Path, rows: &[ChecklistRow]) -> Result<Option<
             bail!("open parity plan references missing row {row_id}");
         };
         let current_status = normalize(&row.status);
-        let terminal_closed =
-            closure::closes_plan(&path, &document, &row_id, &initial_status, &current_status)?;
-        if !terminal_closed && current_status != initial_status {
+        let terminal_closed = closure::closes_plan(&path, &document, &row_id, &initial_status)?;
+        if current_status != initial_status {
             require_plan_status_advance(&initial_status, &current_status, &row_id)?;
             continue;
         }

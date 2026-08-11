@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260811T155722Z-API-010",
+  "predecessor_sha256": "4a64aeefcd5795bb357ba01e756d1f68bde340d358578226a8b4ebd7164769ae",
+  "result_sha256": "923328157f788e18c8608dfce8acf8b128a8f3e242cb7453d2d551a62c5354be",
+  "row_id": "API-010",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260811T155722Z-API-010/PLAN.md",
+  "plan_sha256": "00f99503aae8695761ddb1ca0ec96a2e8d8cd0d5827ca758ea9f4f08bbcdcb50",
+  "result_path": "docs/parity/work-plans/20260811T155722Z-API-010/RESULT.md",
+  "result_document_sha256": "bd532cd4c76ecc9420cbba56011a17540be67621c833017a929e672294ca7138",
+  "before_rust_owned_target": "`crates/bitaxe-api/src/theme.rs`, `firmware/bitaxe/src/http_api/theme.rs`, `firmware/bitaxe/src/settings_adapter.rs`, `crates/bitaxe-config/src/nvs/schema.rs`, `crates/bitaxe-api/src/route_shell.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/theme.rs`, `firmware/bitaxe/src/http_api/theme.rs`, `firmware/bitaxe/src/settings_adapter.rs`, `crates/bitaxe-config/src/nvs/schema.rs`, `crates/bitaxe-api/src/route_shell.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,golden,api-compare",
+  "after_evidence": "unit,golden,api-compare,workflow,hardware-smoke",
+  "before_notes": "Exact upstream defaults, typed GET/POST behavior, serialized confirmed NVS persistence, route ownership, and API comparison are implemented. Detector-gated live route/reboot durability and installed AxeOS browser behavior remain unverified.",
+  "after_notes": "Exact upstream defaults, typed GET/POST behavior, serialized confirmed NVS persistence, route ownership, and API comparison are implemented. The attempt-012 typed result at [RESULT.md](work-plans/20260811T155722Z-API-010/RESULT.md) and [v1 projection](evidence/api010-theme-durability/theme-durability-projection.json) bind exact package f2520d1e, one detector-admitted Ultra 205, immediate generated-theme readback, one normal software restart on the same physical device, exact-build recovery at ordinal N+1, persisted theme equality, confirmed original-theme restoration, disabled mining and hardware control, cleanup, and redaction. Installed AxeOS browser behavior, repeated or power-loss durability, mining, controls, networking, updates, other boards, and release readiness remain separate."
+}

@@ -21,7 +21,6 @@ pub(super) fn closes_plan(
     plan_document: &str,
     plan_row_id: &str,
     initial_status: &str,
-    current_status: &str,
 ) -> Result<bool> {
     let closure_path = plan_root.join(CLOSURE_FILE);
     if !closure_path.exists() {
@@ -40,10 +39,8 @@ pub(super) fn closes_plan(
     if closure_row != plan_row_id {
         bail!("parity plan closure row {closure_row} does not match plan row {plan_row_id}");
     }
-    if final_status != current_status || final_status != initial_status {
-        bail!(
-            "parity plan closure status {final_status} must match unchanged plan and checklist status"
-        );
+    if final_status != initial_status {
+        bail!("parity plan closure status {final_status} must match the immutable plan status");
     }
     if !matches!(
         final_status.as_str(),
@@ -194,6 +191,21 @@ mod tests {
     }
 
     #[test]
+    fn historical_nonverified_closure_remains_valid_after_row_verification() {
+        // Arrange
+        let (workspace, plan_root) = workspace("later-verification");
+        fs::write(plan_root.join(CLOSURE_FILE).as_std_path(), valid_closure()).expect("closure");
+
+        // Act
+        let maybe_open_plan = find_open_plan(&workspace, &[row("API-010", "verified")])
+            .expect("historical closure should remain valid after a forward transition");
+
+        // Assert
+        assert_eq!(maybe_open_plan, None);
+        fs::remove_dir_all(workspace.as_std_path()).expect("cleanup");
+    }
+
+    #[test]
     fn result_still_closes_plan_without_closure() {
         // Arrange
         let (workspace, plan_root) = workspace("result");
@@ -303,7 +315,7 @@ mod tests {
             "- Final status: `verified`",
         );
         fs::write(plan_root.join(CLOSURE_FILE).as_std_path(), closure).expect("closure");
-        let error = closes_plan(&plan_root, PLAN, "API-010", "verified", "verified")
+        let error = closes_plan(&plan_root, PLAN, "API-010", "verified")
             .expect_err("verified closure must fail");
         assert!(error.to_string().contains("non-verified"));
         fs::remove_dir_all(workspace.as_std_path()).expect("cleanup");
@@ -341,7 +353,7 @@ mod tests {
                 "- Final status: `implemented`",
                 "- Final status: `in-progress`",
             ),
-            "must match unchanged",
+            "must match the immutable plan status",
         );
     }
 
