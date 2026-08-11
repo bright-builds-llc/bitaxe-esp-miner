@@ -1529,9 +1529,9 @@ linked plan's `CLOSURE.md`.
 
 - [ ] Commit and push the immutable `REL-002` attempt-003 plan before
       implementation.
-- [ ] Cap initial monitor capture at 90 seconds and add six typed baseline HTTP
+- [x] Cap initial monitor capture at 90 seconds and add six typed baseline HTTP
       readiness attempts without changing device-session timeouts.
-- [ ] Run focused and mandatory software gates; commit and push the exact
+- [x] Run focused and mandatory software gates; commit and push the exact
       implementation before hardware use.
 - [ ] Run one protected detector and, only after admission, one protected
       attempt-003 capture on board 205.

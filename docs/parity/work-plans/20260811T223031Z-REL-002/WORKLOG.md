@@ -28,3 +28,34 @@
 - Outcome: The immutable plan/task commit is eligible to push.
 - Blocker or next safe action: Commit and push without amendment, then
   implement the monitor cap and typed baseline-readiness loop.
+
+## 2026-08-11T22:37:04Z | Baseline-readiness implementation checkpoint
+
+- Source commit: `1fa30e8d` plus the focused implementation diff.
+- Actions: Capped this workflow's initial flash/monitor at 90 seconds, retained
+  the caller timeout for device sessions, and added six one-second-spaced
+  baseline HTTP attempts with typed readiness exhaustion.
+- Verification: All 110 automation tests pass. Regressions prove temporary
+  failures recover on attempt three, exhausted readiness stops as
+  `hardware_blocked` with exact-package recovery, failed attempts write no
+  baseline artifact, one success writes exactly one, device-session timeouts
+  remain unchanged, and public output excludes operational values.
+- Evidence: Software/process fixtures only. No attempt-003 hardware use or
+  public projection exists.
+- Outcome: The attempt-002 orchestration defect is implemented and guarded.
+- Blocker or next safe action: Run the complete software gate, review, commit
+  and push, then build exact clean artifacts before the one detector.
+
+## 2026-08-11T22:38:59Z | Implementation software gate
+
+- Source commit: `1fa30e8d` plus the reviewed readiness implementation.
+- Actions: Ran the complete ordered gate and verified immutable plan bytes,
+  single-plan selector admission, fresh attempt-003 paths, clean reference,
+  privacy, no public output, and unchanged parity/progress files.
+- Verification: Cargo format, strict Clippy, all-target build, all-feature
+  tests, Bright Builds, all 37 Bazel tests, parity/progress, redaction,
+  reference, and diff checks pass. Progress remains 47.9%.
+- Evidence: Software evidence only; no attempt-003 device effect exists.
+- Outcome: The implementation is eligible for exact commit and push.
+- Blocker or next safe action: Commit and push, build normal/probe artifacts
+  from the clean commit, then spend the one detector and conditional attempt.

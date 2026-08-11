@@ -128,6 +128,7 @@ function fakePort(origin: string, terminal = "ready", recoveryFails = false): Pr
   return createFakeProcessPort(async (spec) => {
     const command = spec.args[0];
     if (command === "flash-monitor") {
+      assert.equal(spec.args[spec.args.indexOf("--capture-timeout-seconds") + 1], "90");
       await writeCompletedEffect(spec);
       const root = String(spec.args[spec.args.indexOf("--evidence-dir") + 1]);
       await writeFile(path.join(root, "flash-monitor.classifier-input.log"), [
@@ -139,6 +140,7 @@ function fakePort(origin: string, terminal = "ready", recoveryFails = false): Pr
       return ok();
     }
     if (command === "ota-live" || command === "reboot-live") {
+      assert.equal(spec.args[spec.args.indexOf("--timeout-seconds") + 1], "360");
       const sessionRoot = String(spec.args[spec.args.indexOf("--private-root") + 1]);
       const projection = String(spec.args[spec.args.indexOf("--projection-output") + 1]);
       const sessionTerminal = command === "ota-live" ? terminal : "ready";
@@ -160,7 +162,10 @@ function fakePort(origin: string, terminal = "ready", recoveryFails = false): Pr
   });
 }
 
-async function interruptedUploadServer(): Promise<{ origin: string; close: () => Promise<void> }> {
+async function interruptedUploadServer(): Promise<{
+  origin: string;
+  close: (expectedResetCount?: number) => Promise<void>;
+}> {
   let maybeUnexpectedError: Error | undefined;
   let resetCount = 0;
   const server = net.createServer((socket) => {
@@ -179,18 +184,22 @@ async function interruptedUploadServer(): Promise<{ origin: string; close: () =>
   const port = address.port;
   return {
     origin: `http://127.0.0.1:${String(port)}`,
-    close: async () => {
+    close: async (expectedResetCount = 1) => {
       await new Promise<void>((resolve, reject) => {
         server.close((error) => error === undefined ? resolve() : reject(error));
       });
       if (maybeUnexpectedError !== undefined) throw maybeUnexpectedError;
-      assert.equal(resetCount, 1);
+      assert.equal(resetCount, expectedResetCount);
     },
   };
 }
 
-function installDeviceApi() {
+function installDeviceApi(
+  baselineFailures = 0,
+  maybeOnBaselineAttempt?: () => void,
+) {
   let infoCall = 0;
+  let remainingBaselineFailures = baselineFailures;
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (input) => {
     const target = new URL(String(input));
@@ -198,6 +207,13 @@ function installDeviceApi() {
       return new Response("firmware_ota_update=protocol_error code=fixture\n", { status: 200 });
     }
     assert.equal(target.pathname, "/api/system/info");
+    if (infoCall === 0) {
+      maybeOnBaselineAttempt?.();
+      if (remainingBaselineFailures > 0) {
+        remainingBaselineFailures -= 1;
+        throw new Error("fixture baseline is temporarily unavailable");
+      }
+    }
     infoCall += 1;
     const values = [
       { app: normalApp, session: normalSession, ordinal: 7, partition: "factory" },
@@ -236,7 +252,10 @@ test("ready interrupted-update transaction publishes aggregate-only rollback evi
   // Arrange
   const value = await fixture("ready");
   const server = await interruptedUploadServer();
-  const restoreFetch = installDeviceApi();
+  let baselineAttempts = 0;
+  const restoreFetch = installDeviceApi(2, () => {
+    baselineAttempts += 1;
+  });
   try {
     // Act
     const evidence = await captureSdkconfigRollbackEvidence(
@@ -248,15 +267,57 @@ test("ready interrupted-update transaction publishes aggregate-only rollback evi
       "validator",
     );
     const projection = await readFile(value.projection, "utf8");
+    const baselineDocument = JSON.parse(await readFile(
+      path.join(value.root, "scratch", "attempt", "baseline-system-info.private.json"),
+      "utf8",
+    )) as Readonly<Record<string, unknown>>;
 
     // Assert
     assert.equal(evidence.rollback.interruption_protocol_abort_observed, true);
     assert.equal(evidence.rollback.probe_pending_validation_observed, true);
     assert.equal(evidence.rollback.final_normal_build_restored, true);
+    assert.equal(baselineAttempts, 3);
+    assert.equal(baselineDocument["runningPartition"], "factory");
     assert.doesNotMatch(projection, /private-hostname|private-sensitive-port|127\.0\.0\.1|\/dev\//u);
   } finally {
     restoreFetch();
     await server.close();
+  }
+});
+
+test("baseline HTTP readiness exhaustion is typed and triggers recovery", async () => {
+  // Arrange
+  const value = await fixture("baseline-exhausted");
+  const server = await interruptedUploadServer();
+  let baselineAttempts = 0;
+  const restoreFetch = installDeviceApi(Number.MAX_SAFE_INTEGER, () => {
+    baselineAttempts += 1;
+  });
+  try {
+    // Act
+    const error = await captureError(captureSdkconfigRollbackEvidence(
+      value.root,
+      options(value),
+      fakePort(server.origin),
+      "flash",
+      "device-session",
+      "validator",
+    ));
+
+    // Assert
+    assert.equal(error.category, "hardware_blocked");
+    assert.equal(error.publicValue["recovery_complete"], true);
+    assert.equal(error.publicValue["recovery_flash_used"], true);
+    assert.equal(error.publicValue["secondary_recovery_failure"], false);
+    assert.equal(baselineAttempts, 6);
+    await assert.rejects(
+      readFile(path.join(value.root, "scratch", "attempt", "baseline-system-info.private.json"), "utf8"),
+      { code: "ENOENT" },
+    );
+    await assert.rejects(readFile(value.projection, "utf8"), { code: "ENOENT" });
+  } finally {
+    restoreFetch();
+    await server.close(0);
   }
 });
 

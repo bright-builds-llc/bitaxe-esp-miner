@@ -61,6 +61,9 @@ const noRecovery: RecoveryFacts = {
 const digestPattern = /^[a-f0-9]{64}$/u;
 const commitPattern = /^[a-f0-9]{40}$/u;
 const interruptedPrefixBytes = 4_096;
+const initialFlashCaptureTimeoutSeconds = 90;
+const baselineHttpAttemptCount = 6;
+const baselineHttpRetryDelayMs = 1_000;
 
 export class SdkconfigRollbackEvidenceError extends Error {
   public constructor(
@@ -326,6 +329,25 @@ async function interruptedUploadConfirmed(
   return false;
 }
 
+async function readBaselineWhenReady(origin: URL, privateRoot: string): Promise<JsonObject> {
+  for (let attempt = 1; attempt <= baselineHttpAttemptCount; attempt += 1) {
+    try {
+      return object(await fetchJsonFromSameOrigin(
+        origin,
+        "/api/system/info",
+        path.join(privateRoot, "baseline-system-info.private.json"),
+      ), "baseline system info");
+    } catch (error) {
+      if (error instanceof SdkconfigRollbackEvidenceError) throw error;
+      if (attempt === baselineHttpAttemptCount) {
+        throw failure("hardware_blocked", "baseline HTTP readiness was not established");
+      }
+      await new Promise((resolve) => setTimeout(resolve, baselineHttpRetryDelayMs));
+    }
+  }
+  throw failure("hardware_blocked", "baseline HTTP readiness was not established");
+}
+
 export async function captureSdkconfigRollbackEvidence(
   workspaceRoot: string,
   options: SdkconfigRollbackEvidenceOptions,
@@ -372,7 +394,7 @@ export async function captureSdkconfigRollbackEvidence(
     port: options.port,
     manifest: manifestPath,
     wifiCredentials: credentialsPath,
-    captureTimeoutSeconds: options.captureTimeoutSeconds,
+    captureTimeoutSeconds: initialFlashCaptureTimeoutSeconds,
     evidenceMode: "dual",
     evidenceDir: privateRoot,
   });
@@ -411,11 +433,7 @@ export async function captureSdkconfigRollbackEvidence(
     } catch {
       throw failure("hardware_blocked", "runtime origin admission is invalid");
     }
-    const baseline = object(await fetchJsonFromSameOrigin(
-      origin,
-      "/api/system/info",
-      path.join(privateRoot, "baseline-system-info.private.json"),
-    ), "baseline system info");
+    const baseline = await readBaselineWhenReady(origin, privateRoot);
     validateRuntimeIdentity(baseline, source, reference, normalApp);
     if (
       requiredString(baseline, "bootSession", "baseline system info") !== monitorBootSession(monitor)
