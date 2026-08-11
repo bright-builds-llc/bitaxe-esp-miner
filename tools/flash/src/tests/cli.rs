@@ -78,6 +78,74 @@ fn parses_closed_mining_campaign_flags() {
 }
 
 #[test]
+fn parses_canonical_observation_campaign_flags() {
+    // Arrange
+    let args = [
+        "bitaxe-flash",
+        "mining-campaign",
+        "--stage",
+        "observation",
+        "--board",
+        "205",
+        "--port",
+        "/dev/cu.usbmodem101",
+        "--manifest",
+        "/tmp/package.json",
+        "--wifi-credentials",
+        "/tmp/wifi.json",
+        "--evidence-dir",
+        "/tmp/attempt-011",
+        "--duration-seconds",
+        "360",
+        "--redact-evidence",
+    ];
+
+    // Act
+    let cli = parse_cli(args).expect("observation campaign cli");
+
+    // Assert
+    let CliCommand::MiningCampaign(command) = cli.command else {
+        panic!("expected mining-campaign command");
+    };
+    assert_eq!(command.stage, MiningCampaignStage::Observation);
+    assert_eq!(command.board, BoardId::Ultra205);
+    assert_eq!(command.port.as_deref(), Some("/dev/cu.usbmodem101"));
+    assert_eq!(
+        command.manifest.as_deref(),
+        Some(Utf8Path::new("/tmp/package.json"))
+    );
+    assert!(command.profile.is_none());
+    assert!(command.pool_credentials.is_none());
+    assert_eq!(command.duration_seconds, 360);
+    assert!(command.redact_evidence);
+}
+
+#[test]
+fn mining_campaign_parser_rejects_assignment_style_stage_token() {
+    // Arrange
+    let args = [
+        "bitaxe-flash",
+        "mining-campaign",
+        "stage=observation",
+        "--wifi-credentials",
+        "/tmp/wifi.json",
+        "--evidence-dir",
+        "/tmp/attempt-011",
+        "--duration-seconds",
+        "360",
+        "--redact-evidence",
+    ];
+
+    // Act
+    let error = parse_cli(args).expect_err("assignment-style stage must be rejected");
+
+    // Assert
+    let rendered = format!("{error:#}");
+    assert!(rendered.contains("unexpected argument"));
+    assert!(rendered.contains("stage=observation"));
+}
+
+#[test]
 fn mining_campaign_parser_rejects_open_stage_or_profile_values() {
     // Arrange
     let args = [

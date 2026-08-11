@@ -11,3 +11,20 @@
 - Hardware status: untouched by the attempt-010 campaign invocation. The prior
   detector passed, but attempt 011 will perform its own detector.
 - Outcome: Plan verification and push pending.
+
+## 2026-08-11T15:31:00Z | software checkpoint
+
+- Immutable plan SHA-256:
+  `ed79db9ec36f9c7426db50926bc7dc5c55183267bae569425007376c591317c3`.
+- Plan commit `5d647eb7` was pushed before further implementation.
+- Added focused parser coverage for the exact canonical observation command,
+  including `profile=None`, `pool_credentials=None`, board 205, duration 360,
+  and redaction, plus rejection of assignment-style stage syntax.
+- Focused Cargo and Bazel flash tests passed. The complete ordered Cargo gate,
+  Bright Builds checks, all Bazel tests, package build, parity/progress,
+  redaction, reference, selector, and diff checks passed.
+- The first parity process after the all-Bazel suite encountered transient
+  macOS `os error 35`. Host process and VM pressure checks were healthy; after
+  a Bazel shutdown, the complete remaining sequence passed in a fresh server.
+- Hardware status: untouched. Regression commit and push, clean exact package,
+  detector, and conditional campaign remain pending.
