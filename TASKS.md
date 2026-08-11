@@ -1292,6 +1292,74 @@ access is currently unavailable. The next safe action is a fresh task-gated
 plan and attempt after physical access returns; this exhausted task remains
 active and unarchived.
 
+### task-ultra205-boot-recovery-attempt-010 | 2026-08-11 | Recover the blinking Ultra 205 with one safe observation flash
+
+- [ ] Commit and push the linked immutable recovery plan before hardware use.
+- [ ] Verify and freeze one clean current-head Ultra 205 package.
+- [ ] Run one protected detector after the user's fresh USB connection.
+- [ ] Only if detector admission succeeds, run one exact-package observation
+      campaign that persists `mineonboot=false` and performs no mining or
+      hardware-control actuation.
+- [ ] Preserve the earliest typed outcome, record whether the flash effect
+      completed separately from runtime proof, and stop without a retry.
+
+Plan: `docs/parity/work-plans/20260811T150224Z-API-010/PLAN.md`. This immutable
+plan follows the closed attempt-009 lineage after physical access returned and
+the user reported a fresh USB connection with the same blinking symptom. It
+does not reopen or edit any prior plan.
+
+Hardware contract:
+
+1. `just package`
+2. `test ! -e scratch/ultra205-boot-recovery/wrapper-010 && (umask 077; mkdir -m 700 -p scratch/ultra205-boot-recovery/wrapper-010 && just detect-ultra205 > scratch/ultra205-boot-recovery/wrapper-010/detector.stdout 2>&1)`
+3. Only after command 2 succeeds:
+   `just mining-campaign stage=observation board=205 port=<detector-port> manifest=bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json wifi-credentials=wifi-credentials.json evidence-dir=scratch/ultra205-boot-recovery/attempt-010 duration-seconds=360 redact-evidence=true`
+
+Objective and preconditions: admit exactly one Ultra 205, install the clean
+current package containing the screen-stack fix, and determine whether it
+reaches an exact-package, stable, non-mining runtime. The worktree and source
+commit must be clean and pushed, the package manifest must bind current source
+and the pinned reference, `wifi-credentials.json` must exist without exposing
+its contents, and both private roots must be absent before use.
+
+Allowed effects: repo-owned USB reset and re-enumeration; one factory-package
+flash; replacement of the NVS partition with only the owner-supplied Wi-Fi
+credentials, `mineonboot=false`, and the observation-stage marker; and bounded
+receive-only USB plus same-origin runtime observation. The NVS replacement may
+remove prior hostname, pool, and other settings. No pool credentials are read.
+
+Prohibited effects: mining, ASIC work or initialization, voltage, frequency,
+fan, thermal, or power control; pool traffic; OTA; erase-flash; ad hoc or raw
+writes; network discovery; foreign-process termination; parity promotion;
+direct UART; pins, pads, headers, GPIO, probes, jumpers, soldering, or injected
+signals.
+
+Evidence and privacy: the wrapper and attempt roots are ignored mode-0700
+directories containing mode-0600 artifacts. Credential contents, ports, USB
+identities, network values, origins, commands, and raw serial/process traces
+remain private. Public reporting is limited to clean provenance, closed
+categories, bounded counts, safe booleans, and whether detector, flash,
+runtime identity, safe state, cleanup, and redaction passed.
+
+Recovery, retry, and stop: detector failure stops before write. If the flash
+effect completes but runtime proof fails, record those outcomes separately and
+do not reflash. Preserve the earliest typed failure through cleanup. Release
+owned USB and process resources in every terminal path. This task authorizes
+exactly one detector and, conditionally, one observation campaign; any failure
+or recurrence stops without another attempt. Manual boot-mode intervention
+remains outside this task.
+
+Acceptance: `complete` requires detector admission, exact current-package
+flash completion, trusted same-package runtime identity, stable observation,
+`mineonboot=false`, no mining or hardware-control effects, USB cleanup, private
+artifact modes, and redaction. Otherwise record the closed terminal category,
+withhold parity evidence and `RESULT.md`, and keep `API-010` at `implemented`.
+
+Verification: Pending.
+
+Completion review: Pending. This recovery task may establish current-package
+boot health only; it cannot verify theme durability or promote `API-010`.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
