@@ -29,9 +29,9 @@ new work.
 - [x] Commit and push the fresh immutable REL-001 plan before source changes.
 - [x] Normalize only accepted ESP-IDF partition-size suffix case and prove the
       actual checked-in table plus negative drift cases through real runfiles.
-- [ ] Run the complete ordered gate, commit, and push the clean fix before
+- [x] Run the complete ordered gate, commit, and push the clean fix before
       hardware use.
-- [ ] Build the exact package and run exactly one fresh detector plus
+- [x] Build the exact package and run exactly one fresh detector plus
       conditional attempt-002 capture.
 - [ ] Promote only `REL-001` on complete typed evidence; otherwise withhold
       evidence, record a non-verifying closure, and stop without retry.

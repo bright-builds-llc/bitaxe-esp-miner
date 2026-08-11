@@ -91,3 +91,47 @@
   immutable implementation commit and push.
 - Blocker or next safe action: Commit and push the implementation, then build
   and admit its exact clean package before the one detector-gated attempt.
+
+## 2026-08-11T21:30:00Z | exact-package OTA evidence
+
+- Source commit: `9d88a6454ae9171c91516d3842581f8188633b6d`
+- Actions: Built the exact clean package, ran the sole detector, and ran the
+  sole conditional partition-layout capture. The detector admitted one Ultra
+  205; the capture performed one exact factory flash and one complete OTA
+  application upload without retry.
+- Verification: The aggregate projection reports a ready typed session, the
+  same physical device, stable enumeration, reader admission, one request,
+  service loss/recovery, preserved trusted origin, exact recovered build, a
+  changed boot session, ordinal `N+1`, software reset, successful boot
+  validation, and `factory` to `ota_0`. Mining and hardware control remained
+  disabled; cleanup, private modes, and redaction pass. Independent SHA-256
+  checks match the package manifest, partition table, and OTA image, and the
+  standalone Rust validator accepts the projection by absolute path.
+- Evidence: Aggregate-only public projection at
+  `docs/parity/evidence/rel001-ota-slot/partition-layout-projection.json` with
+  SHA-256
+  `a9c79eecfc8ad75859d676d7e4b6ea0a6047be6710a808f0bab98ab752ccb10a`;
+  all raw device, credential, network, origin, serial, HTTP, OTA, USB, and
+  process data remains in ignored protected roots.
+- Outcome: The one attempt passed and supports promoting only `REL-001` to
+  `verified`.
+- Blocker or next safe action: Run the evidence-source gate, commit and push
+  the result/projection, then transition only REL-001 and synchronize progress.
+
+## 2026-08-11T21:40:00Z | evidence-source gate
+
+- Source commit: `9d88a6454ae9171c91516d3842581f8188633b6d`
+- Actions: Created the row-specific result, ran the complete ordered gate over
+  the aggregate projection and result, and checked selector closure, immutable
+  plan bytes, task uniqueness, tracked-scratch absence, reference cleanliness,
+  semantic redaction, public schema validation, and the focused diff.
+- Verification: All required commands pass. Redaction now checks eight public
+  schemas including the new projection. The selector sees this plan as closed
+  by its result, the standalone validator accepts the evidence, and progress
+  remains 44 of 94 before transition.
+- Evidence: Only `RESULT.md` and the aggregate projection are new public
+  evidence; all private attempt material remains ignored and protected.
+- Outcome: The closed evidence source is eligible to commit and push before
+  the guarded REL-001 transition.
+- Blocker or next safe action: Commit/push this evidence source, then use that
+  exact commit for the single-row transition and progress synchronization.
