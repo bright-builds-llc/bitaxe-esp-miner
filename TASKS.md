@@ -1581,9 +1581,9 @@ closure's fresh predicate-fix plan and attempt-004 paths.
 
 ### task-parity-rel002-retained-marker-attempt-004 | 2026-08-11 | Admit the canonical retained OTA abort marker
 
-- [ ] Commit and push the immutable `REL-002` attempt-004 plan before
+- [x] Commit and push the immutable `REL-002` attempt-004 plan before
       implementation.
-- [ ] Replace the UART-only log predicate with the canonical API-visible
+- [x] Replace the UART-only log predicate with the canonical API-visible
       retained OTA status and add fail-closed production-shaped regressions.
 - [ ] Run focused and mandatory software gates; commit and push the exact
       implementation before hardware use.

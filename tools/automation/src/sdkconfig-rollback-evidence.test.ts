@@ -8,6 +8,7 @@ import test from "node:test";
 
 import {
   captureSdkconfigRollbackEvidence,
+  retainedFirmwareOtaProtocolAbortObserved,
   SdkconfigRollbackEvidenceError,
   type SdkconfigRollbackEvidenceOptions,
 } from "./sdkconfig-rollback-evidence.js";
@@ -124,9 +125,15 @@ async function writeCompletedEffect(spec: Parameters<ProcessPort["run"]>[0]): Pr
   await chmod(effectPath, 0o600);
 }
 
-function fakePort(origin: string, terminal = "ready", recoveryFails = false): ProcessPort {
+function fakePort(
+  origin: string,
+  terminal = "ready",
+  recoveryFails = false,
+  maybeOnCommand?: (command: string) => void,
+): ProcessPort {
   return createFakeProcessPort(async (spec) => {
     const command = spec.args[0];
+    maybeOnCommand?.(String(command));
     if (command === "flash-monitor") {
       assert.equal(spec.args[spec.args.indexOf("--capture-timeout-seconds") + 1], "90");
       await writeCompletedEffect(spec);
@@ -197,14 +204,16 @@ async function interruptedUploadServer(): Promise<{
 function installDeviceApi(
   baselineFailures = 0,
   maybeOnBaselineAttempt?: () => void,
+  retainedLogs = "firmware_ota_status=Protocol Error\n",
 ) {
   let infoCall = 0;
   let remainingBaselineFailures = baselineFailures;
+  const canonicalProtocolAbortAvailable = retainedFirmwareOtaProtocolAbortObserved(retainedLogs);
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (input) => {
     const target = new URL(String(input));
     if (target.pathname === "/api/system/logs") {
-      return new Response("firmware_ota_update=protocol_error code=fixture\n", { status: 200 });
+      return new Response(retainedLogs, { status: 200 });
     }
     assert.equal(target.pathname, "/api/system/info");
     if (infoCall === 0) {
@@ -221,7 +230,9 @@ function installDeviceApi(
       { app: probeApp, session: probeSession, ordinal: 8, partition: "ota_0" },
       { app: normalApp, session: finalSession, ordinal: 9, partition: "factory" },
     ];
-    const current = values[infoCall - 1];
+    const current = canonicalProtocolAbortAvailable
+      ? values[infoCall - 1]
+      : values[0];
     assert.notEqual(current, undefined);
     return new Response(JSON.stringify({
       sourceCommit,
@@ -237,6 +248,25 @@ function installDeviceApi(
     globalThis.fetch = originalFetch;
   };
 }
+
+test("retained OTA protocol abort requires the exact canonical complete line", () => {
+  // Arrange
+  const accepted = [
+    "firmware_ota_status=Protocol Error",
+    "before\r\nfirmware_ota_status=Protocol Error\r\nafter\r\n",
+  ];
+  const rejected = [
+    "",
+    "firmware_ota_update=protocol_error code=fixture\n",
+    "firmware_ota_status=Protocol Error extra\n",
+    "prefix firmware_ota_status=Protocol Error\n",
+    "firmware_ota_status=protocol error\n",
+  ];
+
+  // Act / Assert
+  for (const logs of accepted) assert.equal(retainedFirmwareOtaProtocolAbortObserved(logs), true);
+  for (const logs of rejected) assert.equal(retainedFirmwareOtaProtocolAbortObserved(logs), false);
+});
 
 async function captureError(promise: Promise<unknown>): Promise<SdkconfigRollbackEvidenceError> {
   try {
@@ -279,6 +309,37 @@ test("ready interrupted-update transaction publishes aggregate-only rollback evi
     assert.equal(baselineAttempts, 3);
     assert.equal(baselineDocument["runningPartition"], "factory");
     assert.doesNotMatch(projection, /private-hostname|private-sensitive-port|127\.0\.0\.1|\/dev\//u);
+  } finally {
+    restoreFetch();
+    await server.close();
+  }
+});
+
+test("UART-only protocol error cannot advance the retained-log transaction", async () => {
+  // Arrange
+  const value = await fixture("uart-only-protocol-error");
+  const server = await interruptedUploadServer();
+  const commands: string[] = [];
+  const restoreFetch = installDeviceApi(
+    0,
+    undefined,
+    "firmware_ota_update=protocol_error code=fixture\n",
+  );
+  try {
+    // Act
+    const error = await captureError(captureSdkconfigRollbackEvidence(
+      value.root,
+      options(value),
+      fakePort(server.origin, "ready", false, (command) => commands.push(command)),
+      "flash",
+      "device-session",
+      "validator",
+    ));
+
+    // Assert
+    assert.equal(error.category, "interruption_not_observed");
+    assert.deepEqual(commands, ["flash-monitor"]);
+    await assert.rejects(readFile(value.projection, "utf8"), { code: "ENOENT" });
   } finally {
     restoreFetch();
     await server.close();

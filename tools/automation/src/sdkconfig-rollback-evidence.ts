@@ -64,6 +64,7 @@ const interruptedPrefixBytes = 4_096;
 const initialFlashCaptureTimeoutSeconds = 90;
 const baselineHttpAttemptCount = 6;
 const baselineHttpRetryDelayMs = 1_000;
+const retainedFirmwareOtaProtocolErrorLine = "firmware_ota_status=Protocol Error";
 
 export class SdkconfigRollbackEvidenceError extends Error {
   public constructor(
@@ -324,9 +325,13 @@ async function interruptedUploadConfirmed(
       "/api/system/logs",
       path.join(privateRoot, `interruption-log-${String(attempt)}.private.txt`),
     );
-    if (/\bfirmware_ota_update=protocol_error\b/u.test(logs)) return true;
+    if (retainedFirmwareOtaProtocolAbortObserved(logs)) return true;
   }
   return false;
+}
+
+export function retainedFirmwareOtaProtocolAbortObserved(logs: string): boolean {
+  return logs.split(/\r?\n/u).some((line) => line === retainedFirmwareOtaProtocolErrorLine);
 }
 
 async function readBaselineWhenReady(origin: URL, privateRoot: string): Promise<JsonObject> {
