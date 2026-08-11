@@ -1384,7 +1384,7 @@ non-verified outcome. `API-010` remains `implemented` and no evidence or
       and redaction workflows with behavior-focused and real-process tests.
 - [x] Run focused and mandatory software gates; commit and push the exact
       implementation before hardware use.
-- [ ] Run one protected detector and, only after admission, one protected
+- [x] Run one protected detector and, only after admission, one protected
       attempt-001 capture on board 205.
 - [ ] Validate the closed public projection and promote only `REL-002` when
       every interruption, same-device, rollback, restoration, and cleanup fact
@@ -1442,9 +1442,21 @@ and hardware control remain disabled, cleanup/modes/redaction pass, and the
 typed projection validates. Otherwise withhold evidence, create a truthful
 closure, and leave `REL-002` at `implemented`.
 
-Verification: Pending.
+Verification: The complete focused and mandatory software gate passed and the
+implementation was pushed at `89fd198cf262f4755a5846206da0e122985f92c6`.
+The detector admitted one Ultra 205. Attempt-001 ended as
+`interruption_not_observed`: ten same-origin checks confirmed the unchanged
+exact normal factory build but found no retained protocol-abort marker. The
+probe and rollback sessions did not start, no recovery flash was needed, all
+private paths remained mode protected, cleanup completed, and the public
+projection was withheld.
 
-Completion review: Pending.
+Completion review: Non-verifying terminal closure. The host interruption helper
+returns after a write-side `socket.end` flush without forcing or awaiting full
+socket closure, while its synthetic child closes the peer side itself. A new
+attempt requires a force-close regression, a pushed fix, a fresh immutable
+task/plan, new paths, and a new detector. Attempt-001 is consumed; `REL-002`
+remains `implemented`.
 
 ## Future
 

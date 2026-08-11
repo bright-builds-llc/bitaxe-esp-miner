@@ -16,7 +16,7 @@
 - Blocker or next safe action: Implement and test the probe build, interrupted
   upload, two device-session transactions, recovery, and closed projection.
 
-## 2026-08-11T22:05:00Z | Implementation checkpoint
+## 2026-08-11T21:17:00Z | Implementation checkpoint
 
 - Source commit: `a6c47ce55da9404f376780cf028b6d20d4e38628`
 - Actions: Added a build-isolated pending-validation firmware probe, optional
@@ -35,7 +35,7 @@
 - Blocker or next safe action: Run the full ordered gates, review the diff,
   commit and push the exact implementation, then use the one detector gate.
 
-## 2026-08-11T22:28:00Z | Implementation software gate
+## 2026-08-11T21:28:00Z | Implementation software gate
 
 - Source commit: `a6c47ce55da9404f376780cf028b6d20d4e38628` plus the reviewed
   implementation diff.
@@ -52,3 +52,25 @@
 - Outcome: The implementation is eligible for its immutable commit and push.
 - Blocker or next safe action: Commit and push, rebuild the exact clean normal
   package and rollback probe, then run the one protected detector.
+
+## 2026-08-11T21:43:49Z | Attempt-001 terminal closure
+
+- Source commit: `89fd198cf262f4755a5846206da0e122985f92c6`
+- Actions: Built and admitted the exact clean normal package and isolated
+  rollback probe, ran the sole detector, and ran the sole conditional hardware
+  attempt. The initial exact-package flash completed and the transaction sent
+  its one bounded partial OTA request.
+- Verification: Ten same-origin checks retained the exact normal application,
+  unchanged boot session and ordinal, and `factory` partition, but none found
+  the required retained protocol-abort marker. The typed result is
+  `interruption_not_observed`; probe and rollback sessions did not start,
+  recovery was unnecessary, no owned process remains, all private directories
+  are mode `0700`, all private files are mode `0600`, and no public projection
+  exists.
+- Evidence: Private attempt diagnostics remain under the ignored protected
+  attempt root. `CLOSURE.md` records only closed aggregate diagnosis and
+  non-claims; no `RESULT.md` or public evidence was created.
+- Outcome: Attempt-001 is consumed and `REL-002` remains `implemented`.
+- Blocker or next safe action: A fresh continuation must first force and await
+  full local socket teardown after the admitted prefix and add a child-process
+  regression whose peer stays open. Do not retry attempt-001.
