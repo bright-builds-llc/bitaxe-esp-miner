@@ -1,0 +1,18 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260811T233846Z-REL-002",
+  "predecessor_sha256": "08d1675cd87d3a630bc367d93ecd2a3499e594a39ce07864faf80895fdbfb960",
+  "result_sha256": "04c1dcc8696c946f2ad3b7e9de19473c58ce518fbfea6e791c9268cda5b193c2",
+  "row_id": "REL-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260811T231354Z-REL-002/PLAN.md",
+  "plan_sha256": "15f1bb3eb16aaaf345655524ab3a707dccb9ed7b804a0c021e2f4634c8a69de6",
+  "result_path": "docs/parity/work-plans/20260811T231354Z-REL-002/RESULT.md",
+  "result_document_sha256": "6a90366fca82d1141884216be50667ab36e096354502bc3e1cd8e1191df0b082",
+  "before_rust_owned_target": "`firmware/bitaxe/sdkconfig.defaults`, `firmware/bitaxe/Cargo.toml`, `firmware/bitaxe/BUILD.bazel`, `tools/automation/src/build.ts`, `tools/automation/src/package.ts`",
+  "after_rust_owned_target": "firmware/bitaxe/sdkconfig.defaults, firmware/bitaxe/Cargo.toml, firmware/bitaxe/BUILD.bazel, tools/automation/src/build.ts, tools/automation/src/package.ts, tools/automation/src/sdkconfig-rollback-evidence.ts, tools/automation/src/sdkconfig-rollback-retained-log.ts, tools/device-session",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "workflow,api-compare",
+  "after_evidence": "workflow,hardware-smoke"
+}

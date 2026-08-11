@@ -1,0 +1,22 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260811T234100Z-REL-002-NOTES",
+  "predecessor_sha256": "04c1dcc8696c946f2ad3b7e9de19473c58ce518fbfea6e791c9268cda5b193c2",
+  "result_sha256": "26c3305b2c1d84599557e00249582413b33022b57a0b8487d31a18499f19263a",
+  "row_id": "REL-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260811T231354Z-REL-002/PLAN.md",
+  "plan_sha256": "15f1bb3eb16aaaf345655524ab3a707dccb9ed7b804a0c021e2f4634c8a69de6",
+  "result_path": "docs/parity/work-plans/20260811T231354Z-REL-002/RESULT.md",
+  "result_document_sha256": "6a90366fca82d1141884216be50667ab36e096354502bc3e1cd8e1191df0b082",
+  "migration_ledger_path": "docs/parity/automation-migration.json",
+  "migration_ledger_sha256": "c7981ec77d2ec2fdecdd98ebc5113f64d0a2c1a11b2009d0f10bbf2b1fa310ff",
+  "before_rust_owned_target": "firmware/bitaxe/sdkconfig.defaults, firmware/bitaxe/Cargo.toml, firmware/bitaxe/BUILD.bazel, tools/automation/src/build.ts, tools/automation/src/package.ts, tools/automation/src/sdkconfig-rollback-evidence.ts, tools/automation/src/sdkconfig-rollback-retained-log.ts, tools/device-session",
+  "after_rust_owned_target": "firmware/bitaxe/sdkconfig.defaults, firmware/bitaxe/Cargo.toml, firmware/bitaxe/BUILD.bazel, tools/automation/src/build.ts, tools/automation/src/package.ts, tools/automation/src/sdkconfig-rollback-evidence.ts, tools/automation/src/sdkconfig-rollback-retained-log.ts, tools/device-session",
+  "before_status": "verified",
+  "after_status": "verified",
+  "before_evidence": "workflow,hardware-smoke",
+  "after_evidence": "workflow,hardware-smoke",
+  "before_notes": "The typed build and package workflows use the pinned ESP-IDF tools for SDK defaults, SPIFFS, OTA, rollback-capable images, and package generation. Post-OTA rollback and interrupted-update behavior remain below verified pending new-schema hardware evidence.",
+  "after_notes": "The typed attempt-005 result at [RESULT.md](work-plans/20260811T231354Z-REL-002/RESULT.md) and [rollback projection](evidence/rel002-sdkconfig-rollback/sdkconfig-rollback-projection.json) bind exact clean package e6b260da, one detector-admitted Ultra 205, a canonical retained partial-upload abort without baseline change, same-device pending probe boot in ota_0 at N+1, retained probe and final safe semantics, native rollback to the exact factory build at the next ordinal, disabled mining and control, cleanup, restoration, protected modes, and redaction. OTAWWW, recovery-page upload, large erase, power-loss and eFuse anti-rollback, mining, controls, other boards, and release readiness remain separate."
+}

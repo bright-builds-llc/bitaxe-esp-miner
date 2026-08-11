@@ -71,3 +71,24 @@
 - Outcome: The exact implementation is eligible for commit and push.
 - Blocker or next safe action: Commit and push, build exact clean artifacts,
   then spend one detector and at most one conditional attempt-005.
+
+## 2026-08-11T23:38:46Z | Attempt-005 verified
+
+- Source commit: `e6b260da5717bf807eb85b9cfdbb20fe54b7b3a6`.
+- Actions: Built and admitted exact clean normal/probe artifacts, ran one
+  protected detector, and spent exactly one conditional attempt-005. The
+  bounded transaction completed without recovery flash.
+- Verification: The independent Rust validator accepts the closed projection.
+  Aggregate checks prove the retained partial-upload abort, unchanged factory
+  baseline, ready same-device probe boot in `ota_0` at `N+1`, exact retained
+  pending and safe-state lines, ready native rollback to the exact factory
+  build at the next ordinal, retained final safe state, disabled mining and
+  control, complete cleanup/restoration, correct private modes, and redaction.
+- Evidence: `docs/parity/evidence/rel002-sdkconfig-rollback/sdkconfig-rollback-projection.json`
+  with SHA-256
+  `2c4387346d91ae4f265c149ab32b66ffa032cfa641f82ae6772f9b8ce0533c0d`.
+- Outcome: The immutable plan's exact promotion criteria pass; `REL-002` is
+  eligible to transition from `implemented` to `verified`.
+- Blocker or next safe action: Create the audited result, transition only
+  `REL-002`, synchronize deterministic progress, archive the completed active
+  task, run the complete final gate, and push.
