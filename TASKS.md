@@ -1527,13 +1527,13 @@ linked plan's `CLOSURE.md`.
 
 ### task-parity-rel002-baseline-readiness-attempt-003 | 2026-08-11 | Bound initial monitor and baseline readiness
 
-- [ ] Commit and push the immutable `REL-002` attempt-003 plan before
+- [x] Commit and push the immutable `REL-002` attempt-003 plan before
       implementation.
 - [x] Cap initial monitor capture at 90 seconds and add six typed baseline HTTP
       readiness attempts without changing device-session timeouts.
 - [x] Run focused and mandatory software gates; commit and push the exact
       implementation before hardware use.
-- [ ] Run one protected detector and, only after admission, one protected
+- [x] Run one protected detector and, only after admission, one protected
       attempt-003 capture on board 205.
 - [ ] Validate the closed public projection and promote only `REL-002` when all
       interruption, same-device, rollback, restoration, cleanup, and privacy
@@ -1571,6 +1571,13 @@ abort, same-device pending probe boot in `ota_0` at `N+1`, native rollback to
 the exact factory build at the next ordinal, disabled mining/control, cleanup,
 modes, redaction, and valid projection. Otherwise withhold evidence, close
 truthfully, and keep `REL-002` implemented.
+
+Completion review: Attempt-003 is consumed. The bounded baseline and strict
+reset-aborted upload both succeeded, and all ten retained snapshots prove the
+canonical API-visible protocol-error status with the normal factory runtime
+unchanged. The host searched for a UART-only spelling, closed before probe or
+rollback, and emitted no public evidence. Continue only through the linked
+closure's fresh predicate-fix plan and attempt-004 paths.
 
 ## Future
 

@@ -59,3 +59,24 @@
 - Outcome: The implementation is eligible for exact commit and push.
 - Blocker or next safe action: Commit and push, build normal/probe artifacts
   from the clean commit, then spend the one detector and conditional attempt.
+
+## 2026-08-11T23:01:47Z | Attempt-003 terminal closure
+
+- Source commit: `ef6c04fb57028c6f65641bdc36e9b48a9b38eae8`.
+- Actions: Built and admitted the exact normal and isolated probe artifacts,
+  ran the sole detector, and ran the sole conditional attempt-003. The bounded
+  baseline became ready, and the reset-aborted partial OTA request completed.
+- Verification: The typed primary category is `interruption_not_observed`.
+  Ten checks retained one unchanged normal factory build, boot session,
+  ordinal, and partition. All ten retained logs contain the canonical
+  `firmware_ota_status=Protocol Error` marker, but the host searched for the
+  UART-only `firmware_ota_update=protocol_error` spelling. No probe, rollback,
+  or recovery flash ran; private modes and cleanup pass; public evidence is
+  absent.
+- Evidence: Private diagnostics remain in ignored wrapper-003/attempt-003.
+  `CLOSURE.md` records only aggregate facts and non-claims.
+- Outcome: Attempt-003 is consumed after proving the interrupted-upload abort
+  but before the probe and rollback stages. `REL-002` remains `implemented`.
+- Blocker or next safe action: Correct the retained-log predicate with a
+  production-shaped regression, run the full gate, and use only fresh
+  wrapper/attempt-004 paths.
