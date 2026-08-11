@@ -143,6 +143,7 @@ js_test(
         "//:automation_ci_contract_inputs",
         "//scripts:repository_guard_sources",
         "//firmware/bitaxe:static_provenance_assets",
+        "//firmware/bitaxe:ultra205_partition_table",
         "//crates/bitaxe-api:system_info_field_contract_js",
         "//tools/parity:report",
     ],

@@ -26,8 +26,8 @@ new work.
 
 ### task-parity-rel001-partition-size-normalization-attempt-002 | 2026-08-11 | Retry canonical partition transition evidence
 
-- [ ] Commit and push the fresh immutable REL-001 plan before source changes.
-- [ ] Normalize only accepted ESP-IDF partition-size suffix case and prove the
+- [x] Commit and push the fresh immutable REL-001 plan before source changes.
+- [x] Normalize only accepted ESP-IDF partition-size suffix case and prove the
       actual checked-in table plus negative drift cases through real runfiles.
 - [ ] Run the complete ordered gate, commit, and push the clean fix before
       hardware use.

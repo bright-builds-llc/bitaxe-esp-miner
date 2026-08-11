@@ -16,6 +16,7 @@ import {
   inspectFlashEffect,
 } from "./flash-child-diagnostics.js";
 import { fetchJsonFromSameOrigin, uniqueRuntimeOrigin } from "./http.js";
+import { canonicalPartitionRows, requiredPartitionCount } from "./partition-table.js";
 import type { ProcessOutcome, ProcessPort } from "./process.js";
 import { verifySemanticEvidenceRedaction } from "./redaction.js";
 import { hasPassiveSafeState } from "./version-evidence.js";
@@ -40,17 +41,6 @@ type Artifact = {
   readonly path: string;
   readonly sha256: string;
 };
-
-const expectedPartitions = [
-  "nvs,data,nvs,0x9000,0x6000",
-  "phy_init,data,phy,0xf000,0x1000",
-  "factory,app,factory,0x10000,4M",
-  "www,data,spiffs,0x410000,3M",
-  "ota_0,app,ota_0,0x710000,4M",
-  "ota_1,app,ota_1,0xb10000,4M",
-  "otadata,data,ota,0xf10000,8K",
-  "coredump,data,coredump,,64K",
-] as const;
 
 export class PartitionLayoutEvidenceError extends Error {
   public constructor(
@@ -139,15 +129,6 @@ function resolveArtifact(manifestPath: string, artifactPath: string): string {
   return path.isAbsolute(artifactPath)
     ? artifactPath
     : path.join(path.dirname(manifestPath), artifactPath);
-}
-
-function canonicalPartitionRows(document: string): boolean {
-  const rows = document
-    .split(/\r?\n/u)
-    .map((line) => line.replace(/\s+/gu, ""))
-    .filter((line) => line !== "" && !line.startsWith("#"));
-  return rows.length === expectedPartitions.length
-    && rows.every((row, index) => row === expectedPartitions[index]);
 }
 
 async function createPrivateRoot(root: string): Promise<void> {
@@ -410,7 +391,7 @@ export async function capturePartitionLayoutEvidence(
       partition_layout: {
         partition_table_sha256: partitionArtifact.sha256,
         ota_image_sha256: otaArtifact.sha256,
-        required_partition_count: expectedPartitions.length,
+        required_partition_count: requiredPartitionCount(),
         canonical_layout_matches: true,
         factory_baseline_observed: true,
         ota_0_recovered: true,

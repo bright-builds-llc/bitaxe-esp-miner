@@ -33,6 +33,12 @@ js_library(
     visibility = ["//tools/automation:__pkg__"],
 )
 
+js_library(
+    name = "ultra205_partition_table",
+    srcs = ["partitions-ultra205.csv"],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
 filegroup(
     name = "build_provenance_inputs",
     srcs = [

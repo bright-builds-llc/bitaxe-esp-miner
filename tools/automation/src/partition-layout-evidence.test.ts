@@ -10,6 +10,7 @@ import {
   PartitionLayoutEvidenceError,
   type PartitionLayoutEvidenceOptions,
 } from "./partition-layout-evidence.js";
+import { canonicalPartitionRows } from "./partition-table.js";
 import { createFakeProcessPort, type ProcessOutcome, type ProcessPort } from "./process.js";
 
 const sourceCommit = "a".repeat(40);
@@ -32,6 +33,81 @@ const partitionTable = [
 const otaImage = Buffer.from("exact-ota-image", "utf8");
 const sha256 = (value: string | Buffer): string => createHash("sha256").update(value).digest("hex");
 const ok = (): ProcessOutcome => ({ exitCode: 0, stdout: "", stderr: "", timedOut: false });
+
+async function checkedInPartitionTable(): Promise<string> {
+  const relative = path.join("firmware", "bitaxe", "partitions-ultra205.csv");
+  const maybeRunfiles = process.env["RUNFILES_DIR"];
+  const candidates = [
+    ...(maybeRunfiles === undefined ? [] : [path.join(maybeRunfiles, "_main", relative)]),
+    path.join(process.cwd(), relative),
+  ];
+  for (const candidate of candidates) {
+    try {
+      return await readFile(candidate, "utf8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+  throw new Error("checked-in Ultra 205 partition table is missing");
+}
+
+test("canonical partition comparison accepts the checked-in table through runfiles", async () => {
+  // Arrange
+  const document = await checkedInPartitionTable();
+
+  // Act
+  const accepted = canonicalPartitionRows(document);
+
+  // Assert
+  assert.equal(accepted, true);
+});
+
+test("canonical partition comparison rejects numeric size drift", async () => {
+  // Arrange
+  const document = (await checkedInPartitionTable()).replace("0xf10000, 8k", "0xf10000, 9k");
+
+  // Act
+  const accepted = canonicalPartitionRows(document);
+
+  // Assert
+  assert.equal(accepted, false);
+});
+
+test("canonical partition comparison rejects non-size field drift", async () => {
+  // Arrange
+  const document = (await checkedInPartitionTable()).replace("otadata, data, ota", "otadata, data, nvs");
+
+  // Act
+  const accepted = canonicalPartitionRows(document);
+
+  // Assert
+  assert.equal(accepted, false);
+});
+
+test("canonical partition comparison rejects row reordering", async () => {
+  // Arrange
+  const document = (await checkedInPartitionTable()).replace(
+    "ota_0, app, ota_0, 0x710000, 4M\nota_1, app, ota_1, 0xb10000, 4M",
+    "ota_1, app, ota_1, 0xb10000, 4M\nota_0, app, ota_0, 0x710000, 4M",
+  );
+
+  // Act
+  const accepted = canonicalPartitionRows(document);
+
+  // Assert
+  assert.equal(accepted, false);
+});
+
+test("canonical partition comparison rejects unknown size units", async () => {
+  // Arrange
+  const document = (await checkedInPartitionTable()).replace("0xf10000, 8k", "0xf10000, 8KB");
+
+  // Act
+  const accepted = canonicalPartitionRows(document);
+
+  // Assert
+  assert.equal(accepted, false);
+});
 
 type Fixture = {
   readonly root: string;
