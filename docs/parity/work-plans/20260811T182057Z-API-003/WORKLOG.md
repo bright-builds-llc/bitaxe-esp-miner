@@ -29,3 +29,20 @@
 - Outcome: Plan gate complete and ready to commit.
 - Blocker or next safe action: Commit and push the immutable plan before any
   implementation or hardware work.
+
+## 2026-08-11T18:26:26Z | contract-blocker checkpoint
+
+- Source commit: `84188626`.
+- Actions: Audited the production route schema before implementing effects and
+  removed the uncommitted partial evidence-contract scaffold after the audit
+  invalidated its planned request shape.
+- Verification: `theme` is absent from the exhaustive system-settings schema
+  and is served by `/api/theme`; `/api/system` ignores unknown fields. The
+  immutable plan's hostname-plus-theme request therefore cannot prove a
+  two-field atomic system PATCH.
+- Evidence: Source and plan-contract evidence only. No detector, hardware,
+  credential, mutation, projection, or checklist effect occurred.
+- Outcome: Plan closed non-verified as a contract blocker; `API-003` remains
+  `implemented`.
+- Blocker or next safe action: Push the truthful closure, then create a fresh
+  linked plan using two real benign `/api/system` fields.

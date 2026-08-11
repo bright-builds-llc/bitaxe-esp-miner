@@ -1377,7 +1377,7 @@ non-verified outcome. `API-010` remains `implemented` and no evidence or
 
 ### task-parity-api003-live-multifield-patch | 2026-08-11 | Verify production multi-field settings PATCH
 
-- [ ] Commit and push the immutable API-003 plan and task contract.
+- [x] Commit and push the immutable API-003 plan and task contract.
 - [ ] Add the typed aggregate-only capture and validator with focused
       regressions and real-child-process coverage.
 - [ ] Run the complete software gate, commit and push implementation, and admit
@@ -1387,6 +1387,13 @@ non-verified outcome. `API-010` remains `implemented` and no evidence or
       otherwise record the typed boundary and stop without retry.
 
 Plan: `docs/parity/work-plans/20260811T182057Z-API-003/PLAN.md`.
+
+Plan closure: The immutable plan is closed non-verified at
+`docs/parity/work-plans/20260811T182057Z-API-003/CLOSURE.md`. Its combined
+hostname-plus-theme system PATCH is impossible because theme belongs to the
+separate `/api/theme` route and is not an accepted `/api/system` field. No
+hardware attempt was spent and `API-003` remains `implemented`. The next safe
+action is a fresh linked plan using two actual benign system-settings fields.
 
 Authorization and effects: standing task authorization covers only the plan's
 one detector and conditional capture after the repo-owned command, complete
