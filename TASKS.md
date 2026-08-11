@@ -1375,6 +1375,42 @@ Plan closure:
 non-verified outcome. `API-010` remains `implemented` and no evidence or
 `RESULT.md` was created.
 
+### task-parity-api010-live-theme-durability-attempt-012 | 2026-08-11 | Verify theme durability after boot recovery
+
+- [x] Commit and push the linked immutable attempt-012 plan.
+- [ ] Re-run focused theme, device-session, CLI, and redaction regressions; fix
+      only a reproduced current blocker.
+- [ ] Run the complete software gate and admit one clean exact package.
+- [ ] Run one new detector and, only after success, one bounded theme capture.
+- [ ] Promote only `API-010` on complete v1 evidence; otherwise record the
+      earliest typed boundary and stop without retry.
+
+Plan: `docs/parity/work-plans/20260811T155722Z-API-010/PLAN.md`. It continues
+the closed API-010 lineage after the exact-package attempt-011 result proved
+successful flashing and stable trusted runtime for 360 seconds.
+
+Authorization and effects: standing task authorization covers only the plan's
+one detector and conditional `verify-theme-durability` transaction. Allowed
+effects are one exact-package flash with safe local Wi-Fi seed, one generated
+non-secret theme mutation, one normal software restart, exact theme
+restoration, and at most the workflow's recovery flash. Mining, pool access,
+hardware controls, Wi-Fi/hostname mutation, OTA, erase, raw writes, discovery,
+direct UART, and electrical manipulation remain prohibited.
+
+Evidence, privacy, recovery, and retry: use absent ignored mode-0700
+`wrapper-012` and `attempt-012` roots with mode-0600 files. Public output may
+contain only closed categories, safe booleans/counts, cryptographic identities,
+and the redacted projection. Preserve the earliest failure and completed flash
+effect through restoration/recovery, release all owned resources, and do not
+retry.
+
+Verification: The complete plan gate passed, including ordered Cargo checks,
+Bright Builds, all Bazel tests, parity/progress, redaction, reference,
+continuation-aware selector, and diff checks. The immutable plan commit and
+push are pending.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
