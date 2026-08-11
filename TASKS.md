@@ -1458,6 +1458,73 @@ attempt requires a force-close regression, a pushed fix, a fresh immutable
 task/plan, new paths, and a new detector. Attempt-001 is consumed; `REL-002`
 remains `implemented`.
 
+### task-parity-rel002-force-close-attempt-002 | 2026-08-11 | Prove interrupted OTA abort and native rollback after forced teardown
+
+- [ ] Commit and push the immutable `REL-002` attempt-002 plan before
+      implementation.
+- [ ] Force and observe bounded full socket teardown after the strict OTA
+      prefix, with a non-cooperative real-child regression.
+- [ ] Run focused and mandatory software gates; commit and push the exact
+      implementation before hardware use.
+- [ ] Run one protected detector and, only after admission, one protected
+      attempt-002 capture on board 205.
+- [ ] Validate the closed public projection and promote only `REL-002` when
+      every interruption, same-device, rollback, restoration, cleanup, and
+      privacy fact passes.
+
+Plan: `docs/parity/work-plans/20260811T214737Z-REL-002/PLAN.md`.
+
+Objective and preconditions: close only the `REL-002` rollback-enabled SDK
+behavior on one connected Ultra 205. The worktree and pinned reference must be
+clean, source must be pushed, normal and isolated rollback-probe packages must
+bind the same source/reference, `wifi-credentials.json` remains an opaque
+ignored input, and every new private/output path must be absent before use.
+
+Authorized hardware command: after the linked plan's software gates and clean
+implementation push, build its exact normal package and probe, run its one
+protected `just detect-ultra205`, then conditionally run its exact protected
+`just capture-sdkconfig-rollback-evidence ...` attempt-002 command once.
+
+Allowed effects: repo-owned USB reset/re-enumeration; one exact normal factory
+flash; replacement NVS containing only owner-supplied Wi-Fi credentials and
+`mineonboot=false`; bounded receive-only USB and same-origin HTTP; one bounded
+truncated application OTA write followed by forced host connection teardown;
+one complete rollback-probe application OTA; its scheduled software restart;
+and one normal probe restart that permits native ESP-IDF bootloader rollback.
+If normal restoration cannot be confirmed, one exact normal factory recovery
+flash is allowed only for recovery and cannot produce success evidence.
+
+Prohibited effects: OTAWWW or SPIFFS update, erase-flash, arbitrary raw writes,
+bootloader or partition-table corruption, power interruption, mining, ASIC
+work or initialization, pool access, voltage, frequency, fan, thermal or power
+control, network discovery, foreign-process termination, direct UART, pins,
+pads, headers, GPIO, probes, jumpers, soldering, or injected signals.
+
+Evidence and privacy: wrapper-002 and attempt-002 are ignored mode-`0700`
+directories containing only mode-`0600` files. Credentials, origins,
+hostnames, ports, USB/network/process identities, HTTP bodies, firmware bytes,
+commands, and raw serial/child traces remain private. Only the closed redacted
+v1 projection may be committed, containing provenance/digests, bounded counts,
+safe booleans, typed terminal category, cleanup, modes, and redaction.
+
+Recovery, retry, and stop: detector failure stops before writes. Preserve the
+earliest typed failure through cleanup and optional exact-package recovery;
+recovery remains secondary. Release every owned resource. Attempt-002 is the
+only authorized fresh ordinal and is consumed by any conditional capture
+start. Stop without retry on success or on `package_invalid`, `process_failed`,
+`timeout`, `hardware_blocked`, `evidence_invalid`,
+`interruption_not_observed`, `probe_boot_failed`, `rollback_not_observed`, or
+`recovery_failed`.
+
+Acceptance: complete only when the exact normal baseline remains unchanged
+after one partial upload and the device retains the protocol abort, the same
+physical device boots the admitted pending-validation probe in `ota_0` at
+`N+1`, one normal restart causes native rollback to the exact normal factory
+build at the next ordinal, mining and hardware control remain disabled,
+cleanup/modes/redaction pass, and the typed projection validates. Otherwise
+withhold evidence, create a truthful closure, and leave `REL-002` at
+`implemented`.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
