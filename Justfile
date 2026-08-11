@@ -79,3 +79,6 @@ capture-runtime-health-evidence *args:
 
 capture-system-info-evidence *args:
     bazel run //tools/automation:capture_system_info_evidence -- {{ args }}
+
+capture-settings-patch-evidence *args:
+    bazel run //tools/automation:capture_settings_patch_evidence -- {{ args }}

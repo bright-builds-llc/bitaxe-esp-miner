@@ -12,6 +12,7 @@ import "./redaction.test.js";
 import "./runtime-health-evidence.test.js";
 import "./system-info-evidence.test.js";
 import "./settings-durability.test.js";
+import "./settings-patch-evidence.test.js";
 import "./theme-durability.test.js";
 import "./typed-failure.test.js";
 import "./static-provenance.test.js";

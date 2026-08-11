@@ -1378,7 +1378,7 @@ non-verified outcome. `API-010` remains `implemented` and no evidence or
 ### task-parity-api003-live-multifield-patch | 2026-08-11 | Verify production multi-field settings PATCH
 
 - [x] Commit and push the immutable API-003 plan and task contract.
-- [ ] Add the typed aggregate-only capture and validator with focused
+- [x] Add the typed aggregate-only capture and validator with focused
       regressions and real-child-process coverage.
 - [ ] Run the complete software gate, commit and push implementation, and admit
       one exact clean package.

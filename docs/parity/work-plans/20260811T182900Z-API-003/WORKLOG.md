@@ -29,3 +29,40 @@
 - Outcome: Corrected plan gate complete.
 - Blocker or next safe action: Commit and push the immutable plan before any
   implementation or hardware work.
+
+## 2026-08-11T18:40:25Z | implementation checkpoint
+
+- Source commit: `6eb3ca95`.
+- Actions: Added the Rust-owned v1 evidence schema and validator, synchronized
+  TypeScript command contract, aggregate-only hostname/rotation capture,
+  CLI/Just/Bazel wiring, semantic redaction admission, typed failure mapping,
+  and focused tests.
+- Verification: Contract tests, TypeScript build, automation suite, invocation
+  surface, success/restoration, no-clobber, all four terminal categories,
+  recovery PATCH, exact-package fallback, primary-failure precedence, public
+  privacy, private modes, and a real child-process boundary pass.
+- Evidence: Implementation and synthetic/private test artifacts only; no
+  detector, credential access, hardware effect, or public projection.
+- Outcome: Corrected software workflow is implemented and focused tests pass.
+- Blocker or next safe action: Run the complete mandatory gate, review and push
+  the implementation commit, then build and admit its exact package before the
+  sole hardware attempt.
+
+## 2026-08-11T18:44:33Z | software gate checkpoint
+
+- Source commit: `6eb3ca95` plus the reviewed implementation diff.
+- Actions: Ran the complete ordered repository gate, redaction and reference
+  checks, selector and immutable-plan admission, generated-contract comparison,
+  task uniqueness, tracked-scratch, and diff checks.
+- Verification: Cargo format, strict Clippy, all-target build, all-feature
+  tests, Bright Builds, all Bazel tests, parity/progress, redaction, reference,
+  focused contract/orchestration tests, and the real child-process boundary
+  pass. The selector resumes only this corrected `API-003` plan and the plan
+  hash remains unchanged.
+- Evidence: Software and synthetic/private test evidence only; no detector,
+  credential access, hardware effect, or public projection.
+- Outcome: The corrected implementation is ready for its immutable commit and
+  push.
+- Blocker or next safe action: Commit and push the reviewed implementation,
+  then build and admit the package whose source commit is exactly that pushed
+  implementation before the single hardware attempt.

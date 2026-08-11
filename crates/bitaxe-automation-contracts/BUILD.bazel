@@ -8,6 +8,7 @@ rust_library(
         "src/lib.rs",
         "src/operator_snapshot_evidence.rs",
         "src/runtime_health_evidence.rs",
+        "src/settings_patch_evidence.rs",
         "src/system_info_evidence.rs",
     ],
     compile_data = ["typescript-contracts.ts"],
@@ -65,6 +66,17 @@ rust_binary(
     name = "validate_system_info_evidence",
     srcs = ["src/bin/validate_system_info_evidence.rs"],
     crate_name = "validate_system_info_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_settings_patch_evidence",
+    srcs = ["src/bin/validate_settings_patch_evidence.rs"],
+    crate_name = "validate_settings_patch_evidence",
     edition = "2021",
     deps = [
         ":bitaxe_automation_contracts",

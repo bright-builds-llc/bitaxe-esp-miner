@@ -27,6 +27,7 @@ import { captureOperatorSnapshotEvidence, OperatorSnapshotEvidenceError } from "
 import { createLocalProcessPort, type ProcessPort } from "./process.js";
 import { verifySemanticEvidenceRedaction } from "./redaction.js";
 import { captureRuntimeHealthEvidence, RuntimeHealthEvidenceError } from "./runtime-health-evidence.js";
+import { captureSettingsPatchEvidence, SettingsPatchEvidenceError } from "./settings-patch-evidence.js";
 import { captureSystemInfoEvidence, SystemInfoEvidenceError } from "./system-info-evidence.js";
 import { captureSettingsDurability, SettingsDurabilityError } from "./settings-durability.js";
 import { captureThemeDurability, ThemeDurabilityError } from "./theme-durability.js";
@@ -216,6 +217,7 @@ async function dispatchProcess(
     case "capture-operator-snapshot-evidence":
     case "capture-runtime-health-evidence":
     case "capture-system-info-evidence":
+    case "capture-settings-patch-evidence":
     case "verify-theme-durability":
       throw new Error("specialized workflow reached generic dispatch");
   }
@@ -306,6 +308,16 @@ async function main(): Promise<number> {
         projection: optionValue(invocation, "--projection"),
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root), toolProgram(root, "crates/bitaxe-automation-contracts/validate_system_info_evidence"));
+    } else if (invocation.command === "capture-settings-patch-evidence") {
+      const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
+      publicValue = await captureSettingsPatchEvidence(root, {
+        privateRoot: optionValue(invocation, "--private-root"),
+        packageManifest: optionValue(invocation, "--package-manifest"),
+        wifiCredentials: optionValue(invocation, "--wifi-credentials"),
+        port,
+        projection: optionValue(invocation, "--projection"),
+        captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
+      }, processPort, flashProgram(root), toolProgram(root, "crates/bitaxe-automation-contracts/validate_settings_patch_evidence"));
     } else if (invocation.command === "verify-settings-durability" && optionValue(invocation, "--mode") === "capture") {
       const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
       publicValue = await captureSettingsDurability(root, {
@@ -343,11 +355,12 @@ async function main(): Promise<number> {
     const snapshotFailure = error instanceof OperatorSnapshotEvidenceError;
     const runtimeHealthFailure = error instanceof RuntimeHealthEvidenceError;
     const systemInfoFailure = error instanceof SystemInfoEvidenceError;
+    const settingsPatchFailure = error instanceof SettingsPatchEvidenceError;
     const category: AutomationCategory = policyBlocked
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure
+        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || settingsPatchFailure
           ? error.category
           : "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";

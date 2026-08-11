@@ -1,6 +1,7 @@
 import { OperatorSnapshotEvidenceError } from "./operator-snapshot-evidence.js";
 import { RuntimeHealthEvidenceError } from "./runtime-health-evidence.js";
 import { SettingsDurabilityError } from "./settings-durability.js";
+import { SettingsPatchEvidenceError } from "./settings-patch-evidence.js";
 import { SystemInfoEvidenceError } from "./system-info-evidence.js";
 import { ThemeDurabilityError } from "./theme-durability.js";
 
@@ -9,7 +10,8 @@ export function maybeTypedFailurePublicValue(error: unknown): Readonly<Record<st
     || error instanceof ThemeDurabilityError
     || error instanceof OperatorSnapshotEvidenceError
     || error instanceof RuntimeHealthEvidenceError
-    || error instanceof SystemInfoEvidenceError) {
+    || error instanceof SystemInfoEvidenceError
+    || error instanceof SettingsPatchEvidenceError) {
     return error.publicValue;
   }
   return undefined;

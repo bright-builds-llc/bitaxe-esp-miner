@@ -117,6 +117,27 @@ test("theme durability requires the complete detector-gated capture surface", ()
   assert.throws(() => parseInvocation(["verify-theme-durability", "--private-root", "scratch/theme"]));
 });
 
+test("settings PATCH evidence requires the complete detector-gated surface", () => {
+  // Arrange
+  const complete = [
+    "capture-settings-patch-evidence",
+    "--private-root", "scratch/settings-patch",
+    "--package-manifest", "package.json",
+    "--wifi-credentials", "wifi.json",
+    "--detector-output", "scratch/detector.stdout",
+    "--projection", "docs/evidence/settings-patch.json",
+    "--capture-timeout-seconds", "240",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "capture-settings-patch-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});
+
 test("operator snapshot capture requires the detector-gated closed surface", () => {
   // Arrange
   const complete = [

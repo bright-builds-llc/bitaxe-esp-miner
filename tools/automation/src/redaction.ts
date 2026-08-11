@@ -10,6 +10,7 @@ const semanticSchemas = new Set([
   "bitaxe-settings-durability-evidence-v2",
   "bitaxe-theme-durability-evidence-v1",
   "bitaxe-system-info-evidence-v1",
+  "bitaxe-settings-patch-evidence-v1",
 ]);
 
 const safeSemanticKeys = new Set(["same_origin_api_observed", "same_origin_observed", "trusted_origin_preserved"]);
