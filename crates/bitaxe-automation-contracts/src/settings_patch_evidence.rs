@@ -5,9 +5,9 @@ use crate::{AutomationCommand, WorkflowIdentity, SETTINGS_PATCH_EVIDENCE_SCHEMA}
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
 pub struct SettingsPatchObservationEvidence {
-    pub hostname_original_sha256: String,
+    pub hostname_baseline_sha256: String,
     pub hostname_candidate_sha256: String,
-    pub rotation_original_sha256: String,
+    pub rotation_baseline_sha256: String,
     pub rotation_candidate_sha256: String,
     pub mutation_request_field_count: u64,
     pub mutation_request_atomic: bool,
@@ -48,9 +48,9 @@ impl SettingsPatchEvidence {
         for digest in [
             self.package_manifest_sha256.as_str(),
             self.workflow.request_sha256.as_str(),
-            self.settings_patch.hostname_original_sha256.as_str(),
+            self.settings_patch.hostname_baseline_sha256.as_str(),
             self.settings_patch.hostname_candidate_sha256.as_str(),
-            self.settings_patch.rotation_original_sha256.as_str(),
+            self.settings_patch.rotation_baseline_sha256.as_str(),
             self.settings_patch.rotation_candidate_sha256.as_str(),
         ] {
             if digest.len() != 64
@@ -106,9 +106,9 @@ mod tests {
             boot_observed: true,
             same_origin_observed: true,
             settings_patch: SettingsPatchObservationEvidence {
-                hostname_original_sha256: "e".repeat(64),
+                hostname_baseline_sha256: "e".repeat(64),
                 hostname_candidate_sha256: "f".repeat(64),
-                rotation_original_sha256: "1".repeat(64),
+                rotation_baseline_sha256: "1".repeat(64),
                 rotation_candidate_sha256: "2".repeat(64),
                 mutation_request_field_count: 2,
                 mutation_request_atomic: true,

@@ -1380,9 +1380,9 @@ non-verified outcome. `API-010` remains `implemented` and no evidence or
 - [x] Commit and push the immutable API-003 plan and task contract.
 - [x] Add the typed aggregate-only capture and validator with focused
       regressions and real-child-process coverage.
-- [ ] Run the complete software gate, commit and push implementation, and admit
+- [x] Run the complete software gate, commit and push implementation, and admit
       one exact clean package.
-- [ ] Run exactly one detector and one conditional bounded capture.
+- [x] Run exactly one detector and one conditional bounded capture.
 - [ ] Promote only `API-003` on complete independently validated evidence;
       otherwise record the typed boundary and stop without retry.
 

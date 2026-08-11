@@ -290,9 +290,9 @@ export async function captureSettingsPatchEvidence(
       boot_observed: true,
       same_origin_observed: true,
       settings_patch: {
-        hostname_original_sha256: sha256(original.hostname),
+        hostname_baseline_sha256: sha256(original.hostname),
         hostname_candidate_sha256: sha256(candidate.hostname),
-        rotation_original_sha256: sha256(String(original.rotation)),
+        rotation_baseline_sha256: sha256(String(original.rotation)),
         rotation_candidate_sha256: sha256(String(candidate.rotation)),
         mutation_request_field_count: 2,
         mutation_request_atomic: true,

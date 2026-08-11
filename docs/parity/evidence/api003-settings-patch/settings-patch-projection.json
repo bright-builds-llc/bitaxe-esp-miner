@@ -1,0 +1,31 @@
+{
+  "schema_version": "bitaxe-settings-patch-evidence-v1",
+  "board": 205,
+  "source_commit": "3dea210228722634360daeda1327f2676e78db3a",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "package_manifest_sha256": "777b0729d0a6b172fb50e6c3fcac328ce1b4b94313d68a5b17625496d531c737",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "capture-settings-patch-evidence",
+    "request_sha256": "fa2ed7969c0689ccc31f354a0a76ea3c2ccbd366e2648357145d4c9ea1698552"
+  },
+  "detector_admitted": true,
+  "boot_observed": true,
+  "same_origin_observed": true,
+  "settings_patch": {
+    "hostname_baseline_sha256": "dca159c3801e5419c5b0767105141823f6ea2afcb6e72fd87e8a9672ec5e1346",
+    "hostname_candidate_sha256": "2521fc8fd08dcc04054923d3094e148f47d7c2c76ade5d8430281b5779565d11",
+    "rotation_baseline_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+    "rotation_candidate_sha256": "69f59c273b6e669ac32a6dd5e1b2cb63333d8b004f9696447aee2d422ce63763",
+    "mutation_request_field_count": 2,
+    "mutation_request_atomic": true,
+    "immediate_combined_readback": true,
+    "restoration_request_field_count": 2,
+    "restoration_request_atomic": true,
+    "restoration_complete": true
+  },
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "cleanup_complete": true,
+  "redaction_status": "passed"
+}

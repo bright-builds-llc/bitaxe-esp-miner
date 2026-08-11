@@ -25,3 +25,27 @@ test("semantic evidence scanner accepts digests and rejects operational fields",
   await assert.rejects(verifySemanticEvidenceRedaction(root));
   await rm(root, { recursive: true });
 });
+
+test("settings PATCH baseline digest keys do not collide with the origin denylist", async () => {
+  // Arrange
+  const root = await mkdtemp(path.join(tmpdir(), "bitaxe-redaction-settings-patch-"));
+  await writeFile(path.join(root, "evidence.json"), JSON.stringify({
+    schema_version: "bitaxe-settings-patch-evidence-v1",
+    settings_patch: {
+      hostname_baseline_sha256: "0".repeat(64),
+      hostname_candidate_sha256: "1".repeat(64),
+      rotation_baseline_sha256: "2".repeat(64),
+      rotation_candidate_sha256: "3".repeat(64),
+    },
+  }));
+
+  try {
+    // Act
+    const result = await verifySemanticEvidenceRedaction(root);
+
+    // Assert
+    assert.equal(result.checked, 1);
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});

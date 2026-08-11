@@ -66,3 +66,30 @@
 - Blocker or next safe action: Commit and push the reviewed implementation,
   then build and admit the package whose source commit is exactly that pushed
   implementation before the single hardware attempt.
+
+## 2026-08-11T18:56:09Z | exact-package hardware evidence
+
+- Source commit: `3dea210228722634360daeda1327f2676e78db3a`.
+- Actions: Re-ran the complete clean-head gate, built and admitted the exact
+  schema-v3 package, ran the sole detector, and ran the sole conditional
+  settings PATCH capture. The detector admitted one Ultra 205. The capture
+  performed one exact-package flash, one atomic hostname/rotation mutation and
+  combined readback, then one atomic restoration and combined readback.
+- Verification: The Rust validator accepts the projection; exact package,
+  workflow, board, safety, two-field atomicity, immediate readback, restoration,
+  private-mode, cleanup, and no-holder assertions pass. The initial semantic
+  redaction scan rejected two digest field names because `original` contains
+  the denylisted substring `origin`; no raw value was present. Renaming those
+  public contract fields to `baseline` and adding a production-shaped
+  regression makes the focused automation, contract, validator, and redaction
+  checks pass without another hardware attempt.
+- Evidence: Public aggregate-only projection at
+  `docs/parity/evidence/api003-settings-patch/settings-patch-projection.json`;
+  all detector, credential, port, hostname, rotation, origin, network, serial,
+  HTTP, and process material remains in ignored mode-protected roots.
+- Outcome: The single attempt passed and closed evidence supports promoting
+  only `API-003` to `verified`.
+- Blocker or next safe action: Run the full final evidence gate, commit the
+  evidence and redaction-contract correction as the source commit, then
+  transition only `API-003`, synchronize progress, archive the completed task,
+  and push after the final gate.
