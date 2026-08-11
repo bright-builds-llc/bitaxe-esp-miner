@@ -1466,7 +1466,7 @@ remains `implemented`.
       local close, and prove it with a non-cooperative real child.
 - [x] Run focused and mandatory software gates; commit and push the exact
       implementation before hardware use.
-- [ ] Run one protected detector and, only after admission, one protected
+- [x] Run one protected detector and, only after admission, one protected
       attempt-002 capture on board 205.
 - [ ] Validate the closed public projection and promote only `REL-002` when
       every abort, same-device, rollback, restoration, cleanup, and privacy
@@ -1515,6 +1515,15 @@ at `N+1`, one normal restart rolls back to the exact normal factory build at
 the next ordinal, mining/hardware control remain disabled, cleanup, modes, and
 redaction pass, and the typed projection validates. Otherwise withhold public
 evidence, create a truthful closure, and keep `REL-002` implemented.
+
+Completion review: Attempt-002 closed as `evidence_invalid` before the
+interrupted-upload stage. The initial exact-package flash/monitor retained
+trusted runtime attestation but consumed the full capture window, and the
+baseline HTTP artifact was never created. Exact-package recovery completed,
+private modes and cleanup pass, and no public projection exists. Attempt-002
+is consumed; continue only with bounded initial monitor admission, typed HTTP
+readiness, a full clean gate, and fresh wrapper/attempt-003 paths. See the
+linked plan's `CLOSURE.md`.
 
 ## Future
 

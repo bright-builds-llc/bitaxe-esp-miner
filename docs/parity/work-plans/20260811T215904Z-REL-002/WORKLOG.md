@@ -63,3 +63,24 @@
 - Outcome: The implementation is eligible for its exact commit and push.
 - Blocker or next safe action: Commit and push, rebuild normal and probe images
   from that clean source, verify provenance/isolation, then run one detector.
+
+## 2026-08-11T22:26:06Z | Attempt-002 terminal closure
+
+- Source commit: `9482dc49f9a5bfa2c09a22432703905b89ee79fe`.
+- Actions: Built and admitted the exact normal and isolated probe artifacts,
+  ran the sole detector, and ran the sole conditional attempt-002. The initial
+  factory flash completed and the transaction later used its allowed exact-
+  package recovery flash.
+- Verification: The typed primary category is `evidence_invalid`. Initial
+  monitor evidence retained one stable boot session, one runtime origin, and
+  trusted passive runtime attestation but timed out after trusted output; the
+  baseline HTTP artifact was not created. Recovery completed without secondary
+  failure, private modes pass, no owned process remains, and public evidence is
+  absent.
+- Evidence: Private diagnostics remain in ignored wrapper-002/attempt-002.
+  `CLOSURE.md` records only aggregate facts and non-claims.
+- Outcome: Attempt-002 is consumed before the interrupted upload, probe, or
+  rollback stages. `REL-002` remains `implemented`.
+- Blocker or next safe action: Decouple initial monitor admission from the
+  long device-session timeout, add bounded typed baseline HTTP readiness, push
+  a fresh implementation, and use new wrapper/attempt-003 paths only.
