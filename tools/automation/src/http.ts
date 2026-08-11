@@ -36,6 +36,20 @@ export async function fetchTextFromSameOrigin(
   route: string,
   privateOutput: string,
 ): Promise<string> {
+  return (await fetchTextResponseFromSameOrigin(origin, route, privateOutput)).body;
+}
+
+export type SameOriginTextResponse = {
+  readonly body: string;
+  readonly contentType: string | null;
+  readonly contentDisposition: string | null;
+};
+
+export async function fetchTextResponseFromSameOrigin(
+  origin: URL,
+  route: string,
+  privateOutput: string,
+): Promise<SameOriginTextResponse> {
   const target = sameOriginTarget(origin, route);
   const response = await fetch(target, {
     method: "GET",
@@ -48,7 +62,11 @@ export async function fetchTextFromSameOrigin(
   if (Buffer.byteLength(body, "utf8") > 1024 * 1024) throw new Error("same-origin text response is too large");
   await writeFile(privateOutput, body, { encoding: "utf8", mode: 0o600, flag: "wx" });
   await chmod(privateOutput, 0o600);
-  return body;
+  return {
+    body,
+    contentType: response.headers.get("content-type"),
+    contentDisposition: response.headers.get("content-disposition"),
+  };
 }
 
 export async function sendSameOriginRequest(

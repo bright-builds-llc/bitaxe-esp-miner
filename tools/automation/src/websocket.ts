@@ -1,4 +1,4 @@
-import { writeFile } from "node:fs/promises";
+import { chmod, writeFile } from "node:fs/promises";
 
 const MAX_FRAME_BYTES = 256 * 1024;
 
@@ -16,6 +16,13 @@ export type WebSocketClient = {
 };
 
 export type WebSocketFactory = (target: string) => WebSocketClient;
+
+export class WebSocketProtocolError extends Error {
+  public constructor(message: string) {
+    super(message);
+    this.name = "WebSocketProtocolError";
+  }
+}
 
 function defaultWebSocketFactory(target: string): WebSocketClient {
   return new globalThis.WebSocket(target) as unknown as WebSocketClient;
@@ -50,7 +57,7 @@ function textFrame(data: unknown): string {
   if (typeof data === "string") return data;
   if (Buffer.isBuffer(data)) return data.toString("utf8");
   if (data instanceof ArrayBuffer) return Buffer.from(data).toString("utf8");
-  throw new Error("WebSocket frame must be text");
+  throw new WebSocketProtocolError("WebSocket frame must be text");
 }
 
 export async function captureJsonWebSocketFrame(
@@ -59,14 +66,42 @@ export async function captureJsonWebSocketFrame(
   privateOutput: string,
   maybeFactory: WebSocketFactory | undefined = undefined,
 ): Promise<unknown> {
+  const text = await receiveTextWebSocketFrame(origin, route, false, maybeFactory);
+  const parsed: unknown = JSON.parse(text);
+  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+    throw new Error("WebSocket frame must be a JSON object");
+  }
+  await writeFile(privateOutput, `${JSON.stringify(parsed)}\n`, { encoding: "utf8", mode: 0o600, flag: "wx" });
+  await chmod(privateOutput, 0o600);
+  return parsed;
+}
+
+export async function captureTextWebSocketFrame(
+  origin: URL,
+  route: string,
+  privateOutput: string,
+  maybeFactory: WebSocketFactory | undefined = undefined,
+): Promise<string> {
+  const text = await receiveTextWebSocketFrame(origin, route, true, maybeFactory);
+  await writeFile(privateOutput, text, { encoding: "utf8", mode: 0o600, flag: "wx" });
+  await chmod(privateOutput, 0o600);
+  return text;
+}
+
+async function receiveTextWebSocketFrame(
+  origin: URL,
+  route: string,
+  requirePlainText: boolean,
+  maybeFactory: WebSocketFactory | undefined,
+): Promise<string> {
   const target = websocketTarget(origin, route);
   const factory = maybeFactory ?? defaultWebSocketFactory;
-  const value = await new Promise<unknown>((resolve, reject) => {
+  return new Promise<string>((resolve, reject) => {
     const client = factory(target.href);
     let settled = false;
     const timeout = setTimeout(() => finish(new Error("same-origin WebSocket frame timed out")), 10_000);
 
-    function finish(result: unknown): void {
+    function finish(result: string | Error): void {
       if (settled) return;
       settled = true;
       clearTimeout(timeout);
@@ -86,15 +121,14 @@ export async function captureJsonWebSocketFrame(
 
     client.addEventListener("message", (event) => {
       try {
+        if (requirePlainText && typeof event.data !== "string") {
+          throw new WebSocketProtocolError("WebSocket frame must use the text protocol type");
+        }
         const text = textFrame(event.data);
         if (Buffer.byteLength(text) > MAX_FRAME_BYTES) {
-          throw new Error("WebSocket frame exceeds the private evidence limit");
+          throw new WebSocketProtocolError("WebSocket frame exceeds the private evidence limit");
         }
-        const parsed: unknown = JSON.parse(text);
-        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-          throw new Error("WebSocket frame must be a JSON object");
-        }
-        finish(parsed);
+        finish(text);
       } catch (error) {
         finish(error instanceof Error ? error : new Error("WebSocket frame is invalid"));
       }
@@ -102,6 +136,4 @@ export async function captureJsonWebSocketFrame(
     client.addEventListener("error", () => finish(new Error("same-origin WebSocket failed")), { once: true });
     client.addEventListener("close", () => finish(new Error("same-origin WebSocket closed before a frame")), { once: true });
   });
-  await writeFile(privateOutput, `${JSON.stringify(value)}\n`, { encoding: "utf8", mode: 0o600, flag: "wx" });
-  return value;
 }

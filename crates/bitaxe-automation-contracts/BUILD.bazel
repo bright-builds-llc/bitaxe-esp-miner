@@ -6,6 +6,7 @@ rust_library(
     name = "bitaxe_automation_contracts",
     srcs = [
         "src/lib.rs",
+        "src/log_buffer_evidence.rs",
         "src/operator_snapshot_evidence.rs",
         "src/runtime_health_evidence.rs",
         "src/settings_patch_evidence.rs",
@@ -77,6 +78,17 @@ rust_binary(
     name = "validate_settings_patch_evidence",
     srcs = ["src/bin/validate_settings_patch_evidence.rs"],
     crate_name = "validate_settings_patch_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_log_buffer_evidence",
+    srcs = ["src/bin/validate_log_buffer_evidence.rs"],
+    crate_name = "validate_log_buffer_evidence",
     edition = "2021",
     deps = [
         ":bitaxe_automation_contracts",

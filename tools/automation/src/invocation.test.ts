@@ -138,6 +138,27 @@ test("settings PATCH evidence requires the complete detector-gated surface", () 
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
 
+test("log buffer evidence requires the complete detector-gated surface", () => {
+  // Arrange
+  const complete = [
+    "capture-log-buffer-evidence",
+    "--private-root", "scratch/log-buffer",
+    "--package-manifest", "package.json",
+    "--wifi-credentials", "wifi.json",
+    "--detector-output", "scratch/detector.stdout",
+    "--projection", "docs/evidence/log-buffer.json",
+    "--capture-timeout-seconds", "240",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "capture-log-buffer-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});
+
 test("operator snapshot capture requires the detector-gated closed surface", () => {
   // Arrange
   const complete = [

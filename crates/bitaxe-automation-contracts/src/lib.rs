@@ -4,11 +4,13 @@ use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+mod log_buffer_evidence;
 mod operator_snapshot_evidence;
 mod runtime_health_evidence;
 mod settings_patch_evidence;
 mod system_info_evidence;
 
+pub use log_buffer_evidence::{LogBufferEvidence, LogBufferObservationEvidence};
 pub use operator_snapshot_evidence::{
     DeviceSessionEvidence, OperatorSnapshotEpochEvidence, OperatorSnapshotEvidence,
 };
@@ -26,6 +28,7 @@ pub const OPERATOR_SNAPSHOT_EVIDENCE_SCHEMA: &str = "bitaxe-operator-snapshot-ev
 pub const RUNTIME_HEALTH_EVIDENCE_SCHEMA: &str = "bitaxe-runtime-health-evidence-v1";
 pub const SYSTEM_INFO_EVIDENCE_SCHEMA: &str = "bitaxe-system-info-evidence-v1";
 pub const SETTINGS_PATCH_EVIDENCE_SCHEMA: &str = "bitaxe-settings-patch-evidence-v1";
+pub const LOG_BUFFER_EVIDENCE_SCHEMA: &str = "bitaxe-log-buffer-evidence-v1";
 pub const MIGRATION_SCHEMA: &str = "bitaxe-automation-migration-v1";
 
 #[must_use]
@@ -59,6 +62,7 @@ pub enum AutomationCommand {
     CaptureRuntimeHealthEvidence,
     CaptureSystemInfoEvidence,
     CaptureSettingsPatchEvidence,
+    CaptureLogBufferEvidence,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -197,6 +201,7 @@ pub struct ContractBundle {
     pub runtime_health_evidence_schema: Value,
     pub system_info_evidence_schema: Value,
     pub settings_patch_evidence_schema: Value,
+    pub log_buffer_evidence_schema: Value,
     pub commands: Vec<AutomationCommand>,
     pub evidence_schemas: Vec<&'static str>,
 }
@@ -223,6 +228,8 @@ pub fn contract_bundle() -> ContractBundle {
             .expect("system info evidence schema must serialize"),
         settings_patch_evidence_schema: serde_json::to_value(schema_for!(SettingsPatchEvidence))
             .expect("settings PATCH evidence schema must serialize"),
+        log_buffer_evidence_schema: serde_json::to_value(schema_for!(LogBufferEvidence))
+            .expect("log buffer evidence schema must serialize"),
         commands: vec![
             AutomationCommand::Doctor,
             AutomationCommand::BootstrapEsp,
@@ -247,6 +254,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::CaptureRuntimeHealthEvidence,
             AutomationCommand::CaptureSystemInfoEvidence,
             AutomationCommand::CaptureSettingsPatchEvidence,
+            AutomationCommand::CaptureLogBufferEvidence,
         ],
         evidence_schemas: vec![
             HARDWARE_ATTEMPT_SCHEMA,
@@ -257,6 +265,7 @@ pub fn contract_bundle() -> ContractBundle {
             RUNTIME_HEALTH_EVIDENCE_SCHEMA,
             SYSTEM_INFO_EVIDENCE_SCHEMA,
             SETTINGS_PATCH_EVIDENCE_SCHEMA,
+            LOG_BUFFER_EVIDENCE_SCHEMA,
             MIGRATION_SCHEMA,
         ],
     }

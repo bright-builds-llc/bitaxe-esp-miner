@@ -51,6 +51,7 @@ js_binary(
         "//crates/bitaxe-automation-contracts:validate_runtime_health_evidence",
         "//crates/bitaxe-automation-contracts:validate_system_info_evidence",
         "//crates/bitaxe-automation-contracts:validate_settings_patch_evidence",
+        "//crates/bitaxe-automation-contracts:validate_log_buffer_evidence",
         "//crates/bitaxe-api:system_info_field_contract_js",
         "//tools/flash:flash",
         "//tools/device-session:device-session",
@@ -72,6 +73,7 @@ js_binary(
             "//crates/bitaxe-automation-contracts:validate_runtime_health_evidence",
             "//crates/bitaxe-automation-contracts:validate_system_info_evidence",
             "//crates/bitaxe-automation-contracts:validate_settings_patch_evidence",
+            "//crates/bitaxe-automation-contracts:validate_log_buffer_evidence",
             "//crates/bitaxe-api:system_info_field_contract_js",
             "//tools/flash:flash",
             "//tools/device-session:device-session",
@@ -105,6 +107,7 @@ js_binary(
         "capture_runtime_health_evidence": "capture-runtime-health-evidence",
         "capture_system_info_evidence": "capture-system-info-evidence",
         "capture_settings_patch_evidence": "capture-settings-patch-evidence",
+        "capture_log_buffer_evidence": "capture-log-buffer-evidence",
     }.items()
 ]
 

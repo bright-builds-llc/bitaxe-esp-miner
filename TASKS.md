@@ -1379,10 +1379,10 @@ non-verified outcome. `API-010` remains `implemented` and no evidence or
 
 - [x] Select `LOG-001` as the first actionable row after recording concrete
       blockers for every earlier selector candidate.
-- [ ] Add a typed private-first exact-package retained-download and raw
+- [x] Add a typed private-first exact-package retained-download and raw
       WebSocket correlation capture with an independently validated redacted
       projection.
-- [ ] Add focused behavior, failure, privacy, mode, and real-process
+- [x] Add focused behavior, failure, privacy, mode, and real-process
       regressions; run every mandatory software gate and push before hardware.
 - [ ] Run exactly one detector-gated Ultra 205 capture, transition only
       `LOG-001` on complete evidence, and finalize progress and task history.
@@ -1427,10 +1427,12 @@ private modes, independent projection validation, and redaction. Only then may
 `LOG-001` become `verified`; otherwise withhold evidence and `RESULT.md`, keep
 the row `implemented`, create a truthful closure, and stop.
 
-Verification: The immutable-plan checkpoint passes the ordered Rust
-format/Clippy/build/test sequence, Bright Builds, all 36 Bazel tests,
-parity/progress, redaction, pinned-reference cleanliness, and diff checks.
-Implementation and hardware evidence remain pending.
+Verification: The immutable-plan checkpoint and implementation gate pass the
+ordered Rust format/Clippy/build/test sequence, Bright Builds, all 36 Bazel
+tests, parity/progress, redaction, pinned-reference cleanliness, and focused
+typed-contract, capture-orchestration, no-clobber, privacy, and real-child-
+process regressions. The hardware evidence and checklist transition remain
+pending.
 
 Completion review: Pending. Reset persistence, maximum-capacity live wrap,
 long-duration or multi-client streaming, mining, hardware controls, updates,
