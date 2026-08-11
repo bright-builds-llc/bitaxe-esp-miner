@@ -1579,6 +1579,53 @@ unchanged. The host searched for a UART-only spelling, closed before probe or
 rollback, and emitted no public evidence. Continue only through the linked
 closure's fresh predicate-fix plan and attempt-004 paths.
 
+### task-parity-rel002-retained-marker-attempt-004 | 2026-08-11 | Admit the canonical retained OTA abort marker
+
+- [ ] Commit and push the immutable `REL-002` attempt-004 plan before
+      implementation.
+- [ ] Replace the UART-only log predicate with the canonical API-visible
+      retained OTA status and add fail-closed production-shaped regressions.
+- [ ] Run focused and mandatory software gates; commit and push the exact
+      implementation before hardware use.
+- [ ] Run one protected detector and, only after admission, one protected
+      attempt-004 capture on board 205.
+- [ ] Validate the closed public projection and promote only `REL-002` when all
+      interruption, same-device, rollback, restoration, cleanup, and privacy
+      facts pass.
+
+Plan: `docs/parity/work-plans/20260811T225226Z-REL-002/PLAN.md`.
+
+Objective and preconditions: close only `REL-002` on one Ultra 205. Source,
+upstream, reference, normal/probe provenance, credential opacity, and fresh
+private/public paths must pass before the exact linked commands are eligible.
+
+Authorized effects: the linked plan's one normal factory flash, replacement
+NVS with owner Wi-Fi and `mineonboot=false`, bounded receive-only USB and HTTP,
+one reset-aborted partial OTA, one complete rollback probe, two planned
+software restarts, and conditional exact normal recovery flash. Run one fresh
+detector and at most one conditional attempt-004 only after a clean push.
+
+Prohibited effects: OTAWWW/SPIFFS update, erase, raw writes, bootloader/table
+corruption, power interruption, mining, ASIC/pool activity, voltage, frequency,
+fan, thermal/power control, discovery, foreign-process termination, direct
+UART, pins, pads, headers, GPIO, probes, jumpers, soldering, or signals.
+
+Evidence and privacy: wrapper-004/attempt-004 are ignored mode-`0700` roots
+with mode-`0600` files. Operational device, network, credential, command,
+image, and trace values remain private. Only the closed redacted v1 projection
+may be committed.
+
+Recovery, retry, and stop: detector failure stops before writes. Preserve the
+earliest typed category through cleanup and optional exact-package recovery.
+Any conditional capture start consumes attempt-004; release every resource and
+stop without retry on success or any admitted terminal category.
+
+Acceptance: require the exact safe normal baseline, canonical retained partial-
+upload abort, same-device pending probe boot in `ota_0` at `N+1`, native
+rollback to the exact factory build at the next ordinal, disabled mining and
+control, cleanup, modes, redaction, and valid projection. Otherwise withhold
+evidence, close truthfully, and keep `REL-002` implemented.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
