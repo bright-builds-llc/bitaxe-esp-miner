@@ -12,13 +12,92 @@ components:
     SystemInfo:
       properties:
         ASICModel:
-        hashRate_1m:
-        fanspeed:
+        apEnabled:
+        autofanspeed:
+        bestDiff:
+        bestSessionDiff:
+        boardVersion:
+        coreVoltage:
+        coreVoltageActual:
+        current:
+        display:
+        fallbackStratumExtranonceSubscribe:
+        fallbackStratumPort:
+        fallbackStratumSuggestedDifficulty:
+        fallbackStratumURL:
+        fallbackStratumUser:
+        fallbackStratumTLS:
+        fallbackStratumCert:
+        fallbackStratumDecodeCoinbase:
         fanrpm:
-        miningPaused:
-        sharesRejectedReasons:
+        fan2rpm:
+        fanspeed:
+        temptarget:
+        rotation:
+        cpuUsage:
+        freeHeap:
+        freeHeapInternal:
+        freeHeapSpiram:
+        minFreeHeap:
+        maxAllocHeap:
+        frequency:
+        actualFrequency:
+        hashRate:
+        hashRate_1m:
+        hashRate_10m:
+        hashRate_1h:
+        expectedHashrate:
+        errorPercentage:
+        hostname:
+        idfVersion:
+        invertscreen:
+        isPSRAMAvailable:
+        isUsingFallbackStratum:
+        macAddr:
+        manualFanSpeed:
+        maxPower:
+        minFanSpeed:
+        nominalVoltage:
+        overheat_mode:
+        overclockEnabled:
+        poolConnectionInfo:
         poolDifficulty:
+        power:
+        resetReason:
         responseTime:
+        runningPartition:
+        sharesAccepted:
+        sharesRejected:
+        sharesRejectedReasons:
+        smallCoreCount:
+        ssid:
+        ipv4:
+        ipv6:
+        stratumExtranonceSubscribe:
+        stratumPort:
+        stratumProtocol:
+        stratumV2AuthorityPubkey:
+        stratumSuggestedDifficulty:
+        stratumURL:
+        stratumUser:
+        stratumTLS:
+        stratumCert:
+        stratumDecodeCoinbase:
+        temp:
+        temp2:
+        uptimeSeconds:
+        version:
+        axeOSVersion:
+        voltage:
+        vrTemp:
+        wifiStatus:
+        wifiRSSI:
+        displayTimeout:
+        statsFrequency:
+        blockFound:
+        hashrateMonitor:
+        miningPaused:
+        statsLimit:
     SystemASIC:
       properties:
         ASICModel:
@@ -457,16 +536,32 @@ impl JsonFixtureLoader for MemoryFixtureLoader {
                     {"ssid": "synthetic-secure", "rssi": -52, "authmode": 6}
                 ]
             }),
-            "crates/bitaxe-api/fixtures/api/system-info-ultra205-safe.json" => json!({
-                "ASICModel": "BM1366",
-                "hashRate_1m": 0,
-                "fanspeed": 0,
-                "fanrpm": 0,
-                "miningPaused": true,
-                "sharesRejectedReasons": [],
-                "poolDifficulty": 0,
-                "responseTime": 0
-            }),
+            "crates/bitaxe-api/fixtures/api/system-info-ultra205-safe.json" => {
+                let manifest: Value =
+                    serde_json::from_str(ROUTE_MANIFEST).expect("route manifest should parse");
+                let checks = manifest["captured_response_checks"]
+                    .as_array()
+                    .expect("captured response checks should be an array");
+                let required = checks
+                    .iter()
+                    .find(|check| check["name"] == "system_info_safe_ultra205")
+                    .and_then(|check| check["required_properties"].as_array())
+                    .expect("system info required properties should exist");
+                Value::Object(
+                    required
+                        .iter()
+                        .map(|field| {
+                            (
+                                field
+                                    .as_str()
+                                    .expect("required property should be a string")
+                                    .to_owned(),
+                                Value::Null,
+                            )
+                        })
+                        .collect(),
+                )
+            }
             "crates/bitaxe-api/fixtures/api/asic-settings-ultra205.json" => json!({
                 "ASICModel": "BM1366",
                 "deviceModel": "Ultra",

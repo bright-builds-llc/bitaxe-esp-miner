@@ -158,3 +158,24 @@ test("runtime health capture requires the detector-gated closed surface", () => 
   assert.throws(() => parseInvocation(complete.slice(0, -2)));
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
+
+test("system info capture requires the detector-gated closed surface", () => {
+  // Arrange
+  const complete = [
+    "capture-system-info-evidence",
+    "--private-root", "scratch/system-info",
+    "--package-manifest", "bazel-bin/package.json",
+    "--wifi-credentials", "wifi-credentials.json",
+    "--detector-output", "scratch/detector.stdout",
+    "--projection", "docs/evidence/system-info.json",
+    "--capture-timeout-seconds", "360",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "capture-system-info-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});

@@ -124,6 +124,14 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--projection": value({ required: true }),
     "--capture-timeout-seconds": value({ required: true, positiveInteger: true }),
   },
+  "capture-system-info-evidence": {
+    "--private-root": value({ required: true }),
+    "--package-manifest": value({ required: true }),
+    "--wifi-credentials": value({ required: true }),
+    "--detector-output": value({ required: true }),
+    "--projection": value({ required: true }),
+    "--capture-timeout-seconds": value({ required: true, positiveInteger: true }),
+  },
 };
 
 const commands = new Set(Object.keys(rules) as AutomationCommand[]);

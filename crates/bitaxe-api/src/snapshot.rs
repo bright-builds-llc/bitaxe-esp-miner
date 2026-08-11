@@ -15,7 +15,8 @@ use bitaxe_stratum::v1::state::MiningRuntimeState;
 
 use crate::{
     BlockFoundNotificationState, ObservationReasonWire, ObservationStateWire, ObservationTruthWire,
-    OperatorSnapshotIdentity, PlatformIdentity, TelemetryObservations,
+    OperatorSnapshotIdentity, PlatformIdentity, SystemInfoBlockSnapshot,
+    SystemInfoSettingsSnapshot, TelemetryObservations,
 };
 
 /// Complete pure input snapshot for the initial AxeOS API contract slice.
@@ -29,9 +30,13 @@ pub struct ApiSnapshot {
     pub runtime_health: RuntimeHealthSnapshot,
     pub config: ConfigSnapshot,
     pub project_settings: ProjectSettingsSnapshot,
+    /// Confirmed settings represented by the upstream system-info response.
+    pub system_info_settings: SystemInfoSettingsSnapshot,
     pub catalog: BoardCatalogEntry,
     pub mining: MiningRuntimeState,
     pub block_found: BlockFoundNotificationState,
+    /// Conditional block template facts; absent until a positive block height exists.
+    pub maybe_block: Option<SystemInfoBlockSnapshot>,
     pub asic: AsicSnapshot,
     pub platform: PlatformSnapshot,
     pub safe_telemetry: SafeTelemetrySnapshot,
@@ -49,12 +54,14 @@ impl ApiSnapshot {
             runtime_health: RuntimeHealthSnapshot::fixture_unavailable(),
             config: ConfigSnapshot::ultra_205(),
             project_settings: ProjectSettingsSnapshot::default(),
+            system_info_settings: SystemInfoSettingsSnapshot::safe_ultra_205(),
             catalog: ultra_205_catalog_entry(),
             mining: MiningRuntimeState::default(),
             block_found: BlockFoundNotificationState {
                 block_found: 0,
                 show_new_block: false,
             },
+            maybe_block: None,
             asic: AsicSnapshot::chip_detect_only(),
             platform: PlatformSnapshot::safe_ultra_205(),
             safe_telemetry: SafeTelemetrySnapshot::unavailable("safety_telemetry_unavailable"),
@@ -85,6 +92,8 @@ pub struct ConfigSnapshot {
     pub asic_voltage_mv: u16,
     pub auto_fan_speed: bool,
     pub manual_fan_speed: u16,
+    pub max_power_watts: u16,
+    pub nominal_voltage_volts: u16,
 }
 
 impl ConfigSnapshot {
@@ -99,6 +108,8 @@ impl ConfigSnapshot {
             asic_voltage_mv: defaults.asic_voltage_mv(),
             auto_fan_speed: defaults.auto_fan_speed(),
             manual_fan_speed: defaults.manual_fan_speed(),
+            max_power_watts: 25,
+            nominal_voltage_volts: 5,
         }
     }
 }
@@ -122,7 +133,7 @@ impl AsicSnapshot {
 }
 
 /// Platform facts collected by firmware adapters.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PlatformSnapshot {
     pub boot_ordinal: u64,
     pub reset_reason_category: String,
@@ -153,6 +164,9 @@ pub struct PlatformSnapshot {
     pub min_free_heap: u64,
     pub max_alloc_heap: u64,
     pub uptime_seconds: u64,
+    pub cpu_usage_percent: f64,
+    pub maybe_power_fault: Option<String>,
+    pub maybe_hardware_fault: Option<String>,
 }
 
 impl PlatformSnapshot {
@@ -190,6 +204,9 @@ impl PlatformSnapshot {
             min_free_heap: 0,
             max_alloc_heap: 0,
             uptime_seconds: 0,
+            cpu_usage_percent: 0.0,
+            maybe_power_fault: None,
+            maybe_hardware_fault: None,
         }
     }
 }

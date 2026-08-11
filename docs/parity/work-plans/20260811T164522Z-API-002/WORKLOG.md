@@ -30,3 +30,25 @@
 - Outcome: Plan gate complete.
 - Blocker or next safe action: Commit and push the immutable plan before any
   implementation work.
+
+## 2026-08-11T17:09:14Z | implementation gate checkpoint
+
+- Source commit: `4418688e4046507e11c643790766cbb57bad3661`.
+- Actions: Added the versioned exhaustive 94-field system-info contract,
+  typed confirmed-setting and conditional-block inputs, firmware projection,
+  aggregate-only capture and validator contracts, CLI/Just/Bazel wiring, and
+  real-child plus failure-category regressions. Expanded API comparison from
+  eight properties to all 87 unconditional fields.
+- Verification: Focused API, parity, automation, and contract tests passed;
+  the exact 94/87/7 field boundaries are asserted; Cargo format, strict
+  Clippy, all-target build, all-feature tests, Bright Builds, all Bazel tests,
+  real ESP32-S3 firmware build, parity/progress, redaction, reference, and diff
+  checks passed. Debug projections redact pool, hostname, block script, signal,
+  and address canaries.
+- Evidence: Software and fixture evidence only; no hardware action or
+  credential content access occurred.
+- Outcome: Clean implementation is ready to commit and push without changing
+  the checklist.
+- Blocker or next safe action: Commit and push the implementation, build and
+  admit its exact package, then spend the plan's single detector and
+  conditional passive capture.

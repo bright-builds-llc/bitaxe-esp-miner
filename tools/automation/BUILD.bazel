@@ -49,6 +49,8 @@ js_binary(
         "//crates/bitaxe-automation-contracts:validate_version_evidence",
         "//crates/bitaxe-automation-contracts:validate_operator_snapshot_evidence",
         "//crates/bitaxe-automation-contracts:validate_runtime_health_evidence",
+        "//crates/bitaxe-automation-contracts:validate_system_info_evidence",
+        "//crates/bitaxe-api:system_info_field_contract_js",
         "//tools/flash:flash",
         "//tools/device-session:device-session",
         "//tools/parity:report",
@@ -67,6 +69,8 @@ js_binary(
             "//crates/bitaxe-automation-contracts:validate_version_evidence",
             "//crates/bitaxe-automation-contracts:validate_operator_snapshot_evidence",
             "//crates/bitaxe-automation-contracts:validate_runtime_health_evidence",
+            "//crates/bitaxe-automation-contracts:validate_system_info_evidence",
+            "//crates/bitaxe-api:system_info_field_contract_js",
             "//tools/flash:flash",
             "//tools/device-session:device-session",
             "//tools/parity:report",
@@ -97,6 +101,7 @@ js_binary(
         "capture_version_evidence": "capture-version-evidence",
         "capture_operator_snapshot_evidence": "capture-operator-snapshot-evidence",
         "capture_runtime_health_evidence": "capture-runtime-health-evidence",
+        "capture_system_info_evidence": "capture-system-info-evidence",
     }.items()
 ]
 
@@ -129,6 +134,7 @@ js_test(
         "//:automation_ci_contract_inputs",
         "//scripts:repository_guard_sources",
         "//firmware/bitaxe:static_provenance_assets",
+        "//crates/bitaxe-api:system_info_field_contract_js",
         "//tools/parity:report",
     ],
     entry_point = "test-dist/all.test.js",

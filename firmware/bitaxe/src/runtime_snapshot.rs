@@ -17,7 +17,7 @@ use bitaxe_api::{
     MiningOperatorIntentEffect, OperatorSnapshotIdentity, OperatorSnapshotLockHealth,
     OperatorSnapshotPublishError, PlatformFact, PlatformIdentity, PlatformSnapshot,
     ProjectedApiViews, SafeTelemetrySnapshot, ScoreboardEntryWire, StatisticsHistory,
-    StatisticsSample, StatisticsWire, SystemInfoWire,
+    StatisticsSample, StatisticsWire, SystemInfoSettingsSnapshot, SystemInfoWire,
 };
 use bitaxe_config::{reload_snapshot, LoadedValue};
 use bitaxe_stratum::v1::telemetry_projection::RuntimeProjectionSampleMarker;
@@ -48,6 +48,7 @@ struct SettingsProjection {
     maybe_auto_fan_speed: Option<bool>,
     maybe_manual_fan_speed: Option<u16>,
     start_mining_on_boot: bool,
+    system_info: SystemInfoSettingsSnapshot,
 }
 
 struct CompletedOperatorSnapshot<T> {
@@ -503,10 +504,14 @@ fn collect_settings_projection() -> SettingsProjection {
             Some(LoadedValue::Bool(value)) => *value,
             _ => true,
         },
+        system_info: SystemInfoSettingsSnapshot::from_nvs_snapshot(
+            &crate::settings_adapter::current_system_info_settings_snapshot(),
+        ),
     }
 }
 
 fn apply_settings_snapshot(snapshot: &mut ApiSnapshot, settings: SettingsProjection) {
+    snapshot.system_info_settings = settings.system_info;
     snapshot.project_settings.start_mining_on_boot = settings.start_mining_on_boot;
     if let Some(hostname) = settings.maybe_hostname {
         snapshot.platform.hostname = hostname;

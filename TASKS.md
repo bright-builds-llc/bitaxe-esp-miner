@@ -1378,9 +1378,9 @@ non-verified outcome. `API-010` remains `implemented` and no evidence or
 ### task-parity-api002-system-info-contract | 2026-08-11 | Complete and verify system-info parity
 
 - [x] Commit and push the immutable API-002 plan and task contract.
-- [ ] Implement the exhaustive pinned system-info field/type/conditional
+- [x] Implement the exhaustive pinned system-info field/type/conditional
       contract with secret-safe confirmed settings and runtime inputs.
-- [ ] Add a typed aggregate-only capture workflow and regression coverage.
+- [x] Add a typed aggregate-only capture workflow and regression coverage.
 - [ ] Run the complete software gate, push the implementation, and admit one
       clean exact package.
 - [ ] Run one detector and one conditional passive capture, promoting only

@@ -27,6 +27,7 @@ import { captureOperatorSnapshotEvidence, OperatorSnapshotEvidenceError } from "
 import { createLocalProcessPort, type ProcessPort } from "./process.js";
 import { verifySemanticEvidenceRedaction } from "./redaction.js";
 import { captureRuntimeHealthEvidence, RuntimeHealthEvidenceError } from "./runtime-health-evidence.js";
+import { captureSystemInfoEvidence, SystemInfoEvidenceError } from "./system-info-evidence.js";
 import { captureSettingsDurability, SettingsDurabilityError } from "./settings-durability.js";
 import { captureThemeDurability, ThemeDurabilityError } from "./theme-durability.js";
 import { maybeTypedFailurePublicValue } from "./typed-failure.js";
@@ -214,6 +215,7 @@ async function dispatchProcess(
     case "capture-version-evidence":
     case "capture-operator-snapshot-evidence":
     case "capture-runtime-health-evidence":
+    case "capture-system-info-evidence":
     case "verify-theme-durability":
       throw new Error("specialized workflow reached generic dispatch");
   }
@@ -294,6 +296,16 @@ async function main(): Promise<number> {
         projection: optionValue(invocation, "--projection"),
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root), toolProgram(root, "crates/bitaxe-automation-contracts/validate_runtime_health_evidence"));
+    } else if (invocation.command === "capture-system-info-evidence") {
+      const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
+      publicValue = await captureSystemInfoEvidence(root, {
+        privateRoot: optionValue(invocation, "--private-root"),
+        packageManifest: optionValue(invocation, "--package-manifest"),
+        wifiCredentials: optionValue(invocation, "--wifi-credentials"),
+        port,
+        projection: optionValue(invocation, "--projection"),
+        captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
+      }, processPort, flashProgram(root), toolProgram(root, "crates/bitaxe-automation-contracts/validate_system_info_evidence"));
     } else if (invocation.command === "verify-settings-durability" && optionValue(invocation, "--mode") === "capture") {
       const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
       publicValue = await captureSettingsDurability(root, {
@@ -330,11 +342,12 @@ async function main(): Promise<number> {
     const themeFailure = error instanceof ThemeDurabilityError;
     const snapshotFailure = error instanceof OperatorSnapshotEvidenceError;
     const runtimeHealthFailure = error instanceof RuntimeHealthEvidenceError;
+    const systemInfoFailure = error instanceof SystemInfoEvidenceError;
     const category: AutomationCategory = policyBlocked
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure
+        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure
           ? error.category
           : "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";

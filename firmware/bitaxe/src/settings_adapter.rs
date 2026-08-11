@@ -124,6 +124,34 @@ pub fn current_settings_snapshot() -> NvsSnapshot {
     read.into_snapshot()
 }
 
+/// Reads the response-only setting subset, including pool identity fields.
+///
+/// The returned snapshot is consumed by one system-info projection. Passwords,
+/// Wi-Fi secrets, themes, and unrelated retained values are never admitted.
+#[must_use]
+pub fn current_system_info_settings_snapshot() -> NvsSnapshot {
+    let Ok(_transaction_guard) = SETTINGS_TRANSACTION_LOCK.lock() else {
+        log::warn!("system_info_settings=unavailable reason=transaction_lock_poisoned");
+        return NvsSnapshot::new();
+    };
+    let partition = match EspDefaultNvsPartition::take() {
+        Ok(partition) => partition,
+        Err(error) => {
+            log::warn!("system_info_settings=unavailable reason=nvs_partition error={error}");
+            return NvsSnapshot::new();
+        }
+    };
+    let nvs = match EspNvs::new(partition, NVS_NAMESPACE, false) {
+        Ok(nvs) => nvs,
+        Err(error) => {
+            log::warn!("system_info_settings=unavailable reason=nvs_open error={error}");
+            return NvsSnapshot::new();
+        }
+    };
+
+    read_system_info_settings_snapshot_best_effort(&nvs)
+}
+
 /// Returns the project-owned next-boot mining preference, defaulting to true.
 #[must_use]
 pub fn start_mining_on_boot() -> bool {
@@ -265,6 +293,33 @@ fn read_current_settings_snapshot_best_effort(nvs: &EspNvs<NvsDefault>) -> NvsSn
     NvsSnapshot::from_values(values)
 }
 
+fn read_system_info_settings_snapshot_best_effort(nvs: &EspNvs<NvsDefault>) -> NvsSnapshot {
+    let values = general_settings_schema()
+        .into_iter()
+        .filter(|schema| is_system_info_setting_key(schema.key.as_str()))
+        .filter_map(|schema| {
+            let key = schema.key.as_str();
+            let maybe_stored_type = match nvs.find_key(key) {
+                Ok(maybe_stored_type) => maybe_stored_type,
+                Err(error) => {
+                    log::warn!(
+                        "system_info_settings=skip_key key={key} reason=find_key_failed error={error}"
+                    );
+                    return None;
+                }
+            };
+            let stored_type = maybe_stored_type?;
+            let value = maybe_read_stored_value_best_effort(nvs, key, stored_type)?;
+            Some(StoredValue {
+                key: schema.key,
+                value,
+            })
+        })
+        .collect::<Vec<_>>();
+
+    NvsSnapshot::from_values(values)
+}
+
 fn read_current_settings_snapshot_strict(
     nvs: &EspNvs<NvsDefault>,
 ) -> Result<NvsSnapshot, SettingsAdapterFailure> {
@@ -321,6 +376,44 @@ fn is_pool_configuration_key(key: &str) -> bool {
         || key.starts_with("sv2")
         || key.starts_with("fbsv2")
         || key == "usefbstartum"
+}
+
+fn is_system_info_setting_key(key: &str) -> bool {
+    matches!(
+        key,
+        "display"
+            | "rotation"
+            | "invertscreen"
+            | "displayTimeout"
+            | "manualfanspeed"
+            | "minfanspeed"
+            | "temptarget"
+            | "statsFrequency"
+            | "oc_enabled"
+            | "overheat_mode"
+            | "stratumurl"
+            | "stratumport"
+            | "stratumuser"
+            | "stratumdiff"
+            | "stratumxnsub"
+            | "stratumtls"
+            | "stratumcert"
+            | "stratumdecode"
+            | "stratumprot"
+            | "sv2authpubkey"
+            | "sv2chantype"
+            | "fbstratumurl"
+            | "fbstratumport"
+            | "fbstratumuser"
+            | "fbstratumdiff"
+            | "stratumfbxnsub"
+            | "fbstratumtls"
+            | "fbstratumcert"
+            | "fbstratumdecode"
+            | "fbstratumprot"
+            | "fbsv2authpubk"
+            | "fbsv2chantype"
+    )
 }
 
 fn general_settings_schema() -> Vec<bitaxe_config::SettingSchema> {

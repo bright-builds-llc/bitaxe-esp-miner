@@ -2,6 +2,7 @@ use bitaxe_safety::observation::{
     BootSessionId, FaultReason, MonotonicMillis, Observation, ObservationSequence, StaleReason,
     UnavailableReason,
 };
+use serde::Deserialize;
 use serde_json::{json, Value};
 
 use bitaxe_core::runtime_health::{
@@ -10,8 +11,40 @@ use bitaxe_core::runtime_health::{
 
 use super::{require_wire_keys, retained_runtime_health_record};
 use crate::{
-    ApiSnapshot, SafeTelemetrySnapshot, SystemAsicWire, SystemInfoWire, TelemetryObservations,
+    ApiSnapshot, SafeTelemetrySnapshot, SystemAsicWire, SystemInfoBlockSnapshot,
+    SystemInfoCoinbaseOutput, SystemInfoWire, TelemetryObservations,
 };
+
+const SYSTEM_INFO_FIELD_CONTRACT: &str =
+    include_str!("../../fixtures/api/system-info-contract-v1.json");
+
+#[derive(Deserialize)]
+struct FieldContract {
+    schema_version: String,
+    fields: std::collections::BTreeMap<String, FieldRule>,
+}
+
+#[derive(Debug, Deserialize)]
+struct FieldRule {
+    #[serde(rename = "type")]
+    value_type: String,
+    presence: String,
+}
+
+fn field_contract() -> FieldContract {
+    serde_json::from_str(SYSTEM_INFO_FIELD_CONTRACT).expect("field contract should parse")
+}
+
+fn json_type(value: &Value) -> &'static str {
+    match value {
+        Value::Null => "null",
+        Value::Bool(_) => "boolean",
+        Value::Number(_) => "number",
+        Value::String(_) => "string",
+        Value::Array(_) => "array",
+        Value::Object(_) => "object",
+    }
+}
 
 #[test]
 fn system_info_wire_serializes_upstream_field_names_and_encodings() {
@@ -79,6 +112,122 @@ fn system_info_wire_serializes_upstream_field_names_and_encodings() {
         ],
     )
     .is_ok());
+}
+
+#[test]
+fn safe_system_info_contains_every_unconditional_openapi_field() {
+    // Arrange
+    let contract = field_contract();
+    let value = serde_json::to_value(SystemInfoWire::from_snapshot(&ApiSnapshot::safe_ultra_205()))
+        .expect("system info should serialize");
+
+    // Act
+    let mismatched = contract
+        .fields
+        .iter()
+        .filter(|(_, rule)| rule.presence == "always")
+        .filter(|(field, rule)| {
+            value
+                .get(field.as_str())
+                .is_none_or(|candidate| json_type(candidate) != rule.value_type)
+        })
+        .collect::<Vec<_>>();
+
+    // Assert
+    assert_eq!(
+        contract.schema_version,
+        "bitaxe-system-info-field-contract-v1"
+    );
+    assert_eq!(contract.fields.len(), 94);
+    assert!(
+        mismatched.is_empty(),
+        "invalid unconditional fields: {mismatched:?}"
+    );
+    for (field, _rule) in contract
+        .fields
+        .iter()
+        .filter(|(_, rule)| rule.presence == "block_found")
+    {
+        assert!(value.get(field).is_none(), "inactive block emitted {field}");
+    }
+}
+
+#[test]
+fn positive_block_snapshot_contains_every_openapi_required_field() {
+    // Arrange
+    let contract = field_contract();
+    let mut snapshot = ApiSnapshot::safe_ultra_205();
+    snapshot.maybe_block = Some(SystemInfoBlockSnapshot {
+        height: 840_000,
+        script_sig: "script-canary".to_owned(),
+        network_difficulty: 83_000_000_000_000.0,
+        coinbase_value_total_satoshis: 312_500_000,
+        coinbase_value_user_satoshis: 300_000_000,
+        signals: vec!["signal-canary".to_owned()],
+        coinbase_outputs: vec![SystemInfoCoinbaseOutput {
+            value_satoshis: 300_000_000,
+            address: "address-canary".to_owned(),
+        }],
+    });
+
+    // Act
+    let value = serde_json::to_value(SystemInfoWire::from_snapshot(&snapshot))
+        .expect("system info should serialize");
+    let mismatched = contract
+        .fields
+        .iter()
+        .filter(|(field, rule)| {
+            value
+                .get(field.as_str())
+                .is_none_or(|candidate| json_type(candidate) != rule.value_type)
+        })
+        .collect::<Vec<_>>();
+
+    // Assert
+    assert!(
+        mismatched.is_empty(),
+        "invalid required fields: {mismatched:?}"
+    );
+    assert_eq!(value["coinbaseOutputs"][0]["value"], 300_000_000);
+    assert_eq!(value["coinbaseOutputs"][0]["address"], "address-canary");
+}
+
+#[test]
+fn system_info_debug_never_exposes_response_or_block_identity_values() {
+    // Arrange
+    let mut snapshot = ApiSnapshot::safe_ultra_205();
+    snapshot.system_info_settings.primary_pool.url = "pool-debug-canary".to_owned();
+    snapshot.system_info_settings.primary_pool.user = "worker-debug-canary".to_owned();
+    snapshot.platform.hostname = "hostname-debug-canary".to_owned();
+    snapshot.maybe_block = Some(SystemInfoBlockSnapshot {
+        height: 840_000,
+        script_sig: "script-debug-canary".to_owned(),
+        network_difficulty: 1.0,
+        coinbase_value_total_satoshis: 2,
+        coinbase_value_user_satoshis: 1,
+        signals: vec!["signal-debug-canary".to_owned()],
+        coinbase_outputs: vec![SystemInfoCoinbaseOutput {
+            value_satoshis: 1,
+            address: "address-debug-canary".to_owned(),
+        }],
+    });
+
+    // Act
+    let snapshot_debug = format!("{snapshot:?}");
+    let wire_debug = format!("{:?}", SystemInfoWire::from_snapshot(&snapshot));
+
+    // Assert
+    for canary in [
+        "pool-debug-canary",
+        "worker-debug-canary",
+        "script-debug-canary",
+        "signal-debug-canary",
+        "address-debug-canary",
+    ] {
+        assert!(!snapshot_debug.contains(canary));
+        assert!(!wire_debug.contains(canary));
+    }
+    assert!(!wire_debug.contains("hostname-debug-canary"));
 }
 
 #[test]

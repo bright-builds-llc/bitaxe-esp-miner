@@ -10,6 +10,7 @@ import "./process.test.js";
 import "./repository-guard.test.js";
 import "./redaction.test.js";
 import "./runtime-health-evidence.test.js";
+import "./system-info-evidence.test.js";
 import "./settings-durability.test.js";
 import "./theme-durability.test.js";
 import "./typed-failure.test.js";

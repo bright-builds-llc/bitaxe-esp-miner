@@ -5,6 +5,8 @@
 //! - `reference/esp-miner/main/http_server/openapi.yaml`
 //! - `reference/esp-miner/main/http_server/axe-os/api/system/asic_settings.c`
 
+use core::fmt;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
@@ -14,6 +16,7 @@ use bitaxe_core::runtime_health::RuntimeHealthSnapshot;
 use crate::mining::{mining_state_from_runtime, HashrateMonitorWire, SharesRejectedReasonWire};
 use crate::{
     ApiSnapshot, BootSessionId, ObservationTruthWire, OperatorSnapshotRevision, PlatformIdentity,
+    SYSTEM_INFO_STATISTICS_LIMIT,
 };
 
 /// Error type for host-side fixture compatibility helpers.
@@ -38,7 +41,7 @@ pub fn require_wire_keys(
 }
 
 /// Initial `/api/system/info` wire DTO slice.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Serialize, Deserialize, PartialEq)]
 pub struct SystemInfoWire {
     #[serde(rename = "bootSession")]
     pub boot_session: BootSessionId,
@@ -84,10 +87,50 @@ pub struct SystemInfoWire {
     pub ap_enabled: u8,
     #[serde(rename = "autofanspeed")]
     pub auto_fan_speed: u8,
+    pub display: String,
+    pub rotation: u16,
+    #[serde(rename = "invertscreen")]
+    pub invert_screen: u8,
+    #[serde(rename = "displayTimeout")]
+    pub display_timeout: i32,
+    #[serde(rename = "manualFanSpeed")]
+    pub manual_fan_speed: u16,
+    #[serde(rename = "minFanSpeed")]
+    pub min_fan_speed: u16,
+    #[serde(rename = "temptarget")]
+    pub temp_target: u16,
+    #[serde(rename = "statsFrequency")]
+    pub stats_frequency: u16,
+    #[serde(rename = "statsLimit")]
+    pub stats_limit: u16,
+    #[serde(rename = "overclockEnabled")]
+    pub overclock_enabled: u8,
+    #[serde(rename = "overheat_mode")]
+    pub overheat_mode: u8,
     #[serde(rename = "showNewBlock")]
     pub show_new_block: bool,
     #[serde(rename = "blockFound")]
     pub block_found: u64,
+    #[serde(rename = "blockHeight", skip_serializing_if = "Option::is_none")]
+    pub maybe_block_height: Option<u64>,
+    #[serde(rename = "scriptsig", skip_serializing_if = "Option::is_none")]
+    pub maybe_script_sig: Option<String>,
+    #[serde(rename = "networkDifficulty", skip_serializing_if = "Option::is_none")]
+    pub maybe_network_difficulty: Option<f64>,
+    #[serde(
+        rename = "coinbaseValueTotalSatoshis",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub maybe_coinbase_value_total_satoshis: Option<u64>,
+    #[serde(
+        rename = "coinbaseValueUserSatoshis",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub maybe_coinbase_value_user_satoshis: Option<u64>,
+    #[serde(rename = "blockSignals", skip_serializing_if = "Option::is_none")]
+    pub maybe_block_signals: Option<Vec<String>>,
+    #[serde(rename = "coinbaseOutputs", skip_serializing_if = "Option::is_none")]
+    pub maybe_coinbase_outputs: Option<Vec<CoinbaseOutputWire>>,
     #[serde(rename = "frequency")]
     pub frequency: f64,
     #[serde(rename = "actualFrequency")]
@@ -146,6 +189,50 @@ pub struct SystemInfoWire {
     pub error_percentage: f64,
     #[serde(rename = "isUsingFallbackStratum")]
     pub is_using_fallback_stratum: u8,
+    #[serde(rename = "stratumURL")]
+    pub stratum_url: String,
+    #[serde(rename = "stratumPort")]
+    pub stratum_port: u16,
+    #[serde(rename = "stratumUser")]
+    pub stratum_user: String,
+    #[serde(rename = "stratumSuggestedDifficulty")]
+    pub stratum_suggested_difficulty: u16,
+    #[serde(rename = "stratumExtranonceSubscribe")]
+    pub stratum_extranonce_subscribe: bool,
+    #[serde(rename = "stratumTLS")]
+    pub stratum_tls: u16,
+    #[serde(rename = "stratumCert")]
+    pub stratum_certificate: String,
+    #[serde(rename = "stratumDecodeCoinbase")]
+    pub stratum_decode_coinbase: bool,
+    #[serde(rename = "stratumProtocol")]
+    pub stratum_protocol: String,
+    #[serde(rename = "stratumV2AuthorityPubkey")]
+    pub stratum_v2_authority_public_key: String,
+    #[serde(rename = "stratumV2ChannelType")]
+    pub stratum_v2_channel_type: String,
+    #[serde(rename = "fallbackStratumURL")]
+    pub fallback_stratum_url: String,
+    #[serde(rename = "fallbackStratumPort")]
+    pub fallback_stratum_port: u16,
+    #[serde(rename = "fallbackStratumUser")]
+    pub fallback_stratum_user: String,
+    #[serde(rename = "fallbackStratumSuggestedDifficulty")]
+    pub fallback_stratum_suggested_difficulty: u16,
+    #[serde(rename = "fallbackStratumExtranonceSubscribe")]
+    pub fallback_stratum_extranonce_subscribe: bool,
+    #[serde(rename = "fallbackStratumTLS")]
+    pub fallback_stratum_tls: u16,
+    #[serde(rename = "fallbackStratumCert")]
+    pub fallback_stratum_certificate: String,
+    #[serde(rename = "fallbackStratumDecodeCoinbase")]
+    pub fallback_stratum_decode_coinbase: bool,
+    #[serde(rename = "fallbackStratumProtocol")]
+    pub fallback_stratum_protocol: String,
+    #[serde(rename = "fallbackStratumV2AuthorityPubkey")]
+    pub fallback_stratum_v2_authority_public_key: String,
+    #[serde(rename = "fallbackStratumV2ChannelType")]
+    pub fallback_stratum_v2_channel_type: String,
     #[serde(rename = "maxPower")]
     pub max_power: u16,
     #[serde(rename = "nominalVoltage")]
@@ -158,6 +245,12 @@ pub struct SystemInfoWire {
     pub wifi_rssi: i16,
     #[serde(rename = "wifiStatus")]
     pub wifi_status: String,
+    #[serde(rename = "cpuUsage")]
+    pub cpu_usage: f64,
+    #[serde(rename = "power_fault", skip_serializing_if = "Option::is_none")]
+    pub maybe_power_fault: Option<String>,
+    #[serde(rename = "hardware_fault", skip_serializing_if = "Option::is_none")]
+    pub maybe_hardware_fault: Option<String>,
     #[serde(rename = "version")]
     pub version: String,
     #[serde(rename = "semanticVersion")]
@@ -208,6 +301,12 @@ pub struct SystemInfoWire {
     pub max_alloc_heap: u64,
 }
 
+impl fmt::Debug for SystemInfoWire {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter.write_str("SystemInfoWire([redacted-response])")
+    }
+}
+
 impl SystemInfoWire {
     /// Maps typed runtime facts into the initial AxeOS system info DTO.
     #[must_use]
@@ -216,6 +315,10 @@ impl SystemInfoWire {
         let safe_telemetry = snapshot.safe_telemetry.operator_projection();
         let mining_state = mining_state_from_runtime(&snapshot.mining);
         let platform = &snapshot.platform;
+        let settings = &snapshot.system_info_settings;
+        let primary_pool = &settings.primary_pool;
+        let fallback_pool = &settings.fallback_pool;
+        let maybe_block = snapshot.maybe_block.as_ref();
 
         Self {
             boot_session: snapshot.operator_snapshot_identity.boot_session(),
@@ -240,8 +343,34 @@ impl SystemInfoWire {
             start_mining_on_boot: snapshot.project_settings.start_mining_on_boot,
             ap_enabled: numeric_bool(platform.ap_enabled),
             auto_fan_speed: numeric_bool(config.auto_fan_speed),
+            display: settings.display.clone(),
+            rotation: settings.rotation,
+            invert_screen: numeric_bool(settings.invert_screen),
+            display_timeout: settings.display_timeout,
+            manual_fan_speed: settings.manual_fan_speed,
+            min_fan_speed: settings.min_fan_speed,
+            temp_target: settings.temp_target,
+            stats_frequency: settings.stats_frequency,
+            stats_limit: SYSTEM_INFO_STATISTICS_LIMIT,
+            overclock_enabled: numeric_bool(settings.overclock_enabled),
+            overheat_mode: numeric_bool(settings.overheat_mode),
             show_new_block: snapshot.block_found.show_new_block,
             block_found: snapshot.block_found.block_found,
+            maybe_block_height: maybe_block.map(|block| block.height),
+            maybe_script_sig: maybe_block.map(|block| block.script_sig.clone()),
+            maybe_network_difficulty: maybe_block.map(|block| block.network_difficulty),
+            maybe_coinbase_value_total_satoshis: maybe_block
+                .map(|block| block.coinbase_value_total_satoshis),
+            maybe_coinbase_value_user_satoshis: maybe_block
+                .map(|block| block.coinbase_value_user_satoshis),
+            maybe_block_signals: maybe_block.map(|block| block.signals.clone()),
+            maybe_coinbase_outputs: maybe_block.map(|block| {
+                block
+                    .coinbase_outputs
+                    .iter()
+                    .map(CoinbaseOutputWire::from)
+                    .collect()
+            }),
             frequency: config.asic_frequency_mhz,
             actual_frequency: safe_telemetry.actual_frequency_mhz,
             core_voltage: config.asic_voltage_mv,
@@ -271,12 +400,37 @@ impl SystemInfoWire {
             process_time: mining_state.process_time,
             error_percentage: mining_state.error_percentage,
             is_using_fallback_stratum: mining_state.is_using_fallback_stratum,
-            max_power: snapshot.catalog.power_consumption_target(),
-            nominal_voltage: 0,
+            stratum_url: primary_pool.url.clone(),
+            stratum_port: primary_pool.port,
+            stratum_user: primary_pool.user.clone(),
+            stratum_suggested_difficulty: primary_pool.suggested_difficulty,
+            stratum_extranonce_subscribe: primary_pool.extranonce_subscribe,
+            stratum_tls: primary_pool.tls,
+            stratum_certificate: primary_pool.certificate.clone(),
+            stratum_decode_coinbase: primary_pool.decode_coinbase,
+            stratum_protocol: primary_pool.protocol.clone(),
+            stratum_v2_authority_public_key: primary_pool.v2_authority_public_key.clone(),
+            stratum_v2_channel_type: primary_pool.v2_channel_type.clone(),
+            fallback_stratum_url: fallback_pool.url.clone(),
+            fallback_stratum_port: fallback_pool.port,
+            fallback_stratum_user: fallback_pool.user.clone(),
+            fallback_stratum_suggested_difficulty: fallback_pool.suggested_difficulty,
+            fallback_stratum_extranonce_subscribe: fallback_pool.extranonce_subscribe,
+            fallback_stratum_tls: fallback_pool.tls,
+            fallback_stratum_certificate: fallback_pool.certificate.clone(),
+            fallback_stratum_decode_coinbase: fallback_pool.decode_coinbase,
+            fallback_stratum_protocol: fallback_pool.protocol.clone(),
+            fallback_stratum_v2_authority_public_key: fallback_pool.v2_authority_public_key.clone(),
+            fallback_stratum_v2_channel_type: fallback_pool.v2_channel_type.clone(),
+            max_power: config.max_power_watts,
+            nominal_voltage: config.nominal_voltage_volts,
             small_core_count: snapshot.catalog.asic().small_core_count(),
             is_psram_available: numeric_bool(platform.psram_available),
             wifi_rssi: safe_telemetry.wifi_rssi_dbm,
             wifi_status: platform.wifi_status.clone(),
+            cpu_usage: platform.cpu_usage_percent,
+            maybe_power_fault: platform.maybe_power_fault.clone(),
+            maybe_hardware_fault: platform.maybe_hardware_fault.clone(),
             version: platform.version.clone(),
             semantic_version: platform.semantic_version.clone(),
             source_commit: platform.source_commit.clone(),
@@ -301,6 +455,32 @@ impl SystemInfoWire {
             free_heap_spiram: platform.free_heap_spiram,
             min_free_heap: platform.min_free_heap,
             max_alloc_heap: platform.max_alloc_heap,
+        }
+    }
+}
+
+/// One conditional coinbase output in the upstream response shape.
+#[derive(Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct CoinbaseOutputWire {
+    pub value: u64,
+    pub address: String,
+}
+
+impl fmt::Debug for CoinbaseOutputWire {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("CoinbaseOutputWire")
+            .field("value", &self.value)
+            .field("address", &"[redacted]")
+            .finish()
+    }
+}
+
+impl From<&crate::SystemInfoCoinbaseOutput> for CoinbaseOutputWire {
+    fn from(output: &crate::SystemInfoCoinbaseOutput) -> Self {
+        Self {
+            value: output.value_satoshis,
+            address: output.address.clone(),
         }
     }
 }

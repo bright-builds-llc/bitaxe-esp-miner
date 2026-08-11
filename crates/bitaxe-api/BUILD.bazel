@@ -1,4 +1,11 @@
+load("@aspect_rules_js//js:defs.bzl", "js_library")
 load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+js_library(
+    name = "system_info_field_contract_js",
+    srcs = ["fixtures/api/system-info-contract-v1.json"],
+    visibility = ["//visibility:public"],
+)
 
 filegroup(
     name = "http_access_policy_sources",
@@ -72,6 +79,7 @@ rust_library(
         "src/statistics/history.rs",
         "src/static_plan.rs",
         "src/system.rs",
+        "src/system_info_contract.rs",
         "src/telemetry.rs",
         "src/theme.rs",
         "src/theme/tests.rs",

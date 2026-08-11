@@ -28,6 +28,7 @@ pub mod snapshot;
 pub mod static_plan;
 pub mod statistics;
 pub mod system;
+pub mod system_info_contract;
 pub mod telemetry;
 pub mod theme;
 pub mod update_plan;
@@ -123,6 +124,10 @@ pub use statistics::{
     StatisticsHistoryRecord, StatisticsSample, StatisticsWire, MAX_STATISTICS_SAMPLES,
 };
 pub use system::system_info_from_snapshot;
+pub use system_info_contract::{
+    SystemInfoBlockSnapshot, SystemInfoCoinbaseOutput, SystemInfoPoolSnapshot,
+    SystemInfoSettingsSnapshot, SYSTEM_INFO_STATISTICS_LIMIT,
+};
 pub use telemetry::{
     live_telemetry_update_envelope, maybe_live_telemetry_diff, LiveTelemetryPlanner,
     LIVE_TELEMETRY_CADENCE_MS,

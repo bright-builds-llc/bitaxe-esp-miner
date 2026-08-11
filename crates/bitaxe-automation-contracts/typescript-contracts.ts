@@ -22,7 +22,8 @@ export type AutomationCommand =
   | "capture-correlated-runtime-evidence"
   | "capture-version-evidence"
   | "capture-operator-snapshot-evidence"
-  | "capture-runtime-health-evidence";
+  | "capture-runtime-health-evidence"
+  | "capture-system-info-evidence";
 
 export type AutomationStatus = "succeeded" | "failed" | "blocked";
 
@@ -148,6 +149,23 @@ export type RuntimeHealthEvidence = {
   redaction_status: "passed";
 };
 
+export type SystemInfoEvidence = {
+  schema_version: "bitaxe-system-info-evidence-v1";
+  board: 205;
+  source_commit: string;
+  reference_commit: string;
+  package_manifest_sha256: string;
+  workflow: WorkflowIdentity;
+  detector_admitted: true;
+  boot_observed: true;
+  same_origin_observed: true;
+  system_info: Readonly<Record<string, unknown>>;
+  mining_state: "disabled";
+  hardware_control_state: "disabled";
+  cleanup_complete: true;
+  redaction_status: "passed";
+};
+
 const automationCommands = new Set<AutomationCommand>([
   "doctor", "bootstrap-esp", "build-firmware", "package-firmware", "verify-reference",
   "verify-redaction", "verify-production-session", "observe-serial", "verify-flash-durability",
@@ -156,6 +174,7 @@ const automationCommands = new Set<AutomationCommand>([
   "verify-settings-durability", "verify-theme-durability", "capture-correlated-runtime-evidence", "capture-version-evidence",
   "capture-operator-snapshot-evidence",
   "capture-runtime-health-evidence",
+  "capture-system-info-evidence",
 ]);
 const automationStatuses = new Set<AutomationStatus>(["succeeded", "failed", "blocked"]);
 const automationCategories = new Set<AutomationCategory>([
