@@ -1375,6 +1375,67 @@ Plan closure:
 non-verified outcome. `API-010` remains `implemented` and no evidence or
 `RESULT.md` was created.
 
+### task-parity-log001-live-retained-stream | 2026-08-11 | Verify retained log delivery and raw streaming
+
+- [x] Select `LOG-001` as the first actionable row after recording concrete
+      blockers for every earlier selector candidate.
+- [ ] Add a typed private-first exact-package retained-download and raw
+      WebSocket correlation capture with an independently validated redacted
+      projection.
+- [ ] Add focused behavior, failure, privacy, mode, and real-process
+      regressions; run every mandatory software gate and push before hardware.
+- [ ] Run exactly one detector-gated Ultra 205 capture, transition only
+      `LOG-001` on complete evidence, and finalize progress and task history.
+
+Plan: `docs/parity/work-plans/20260811T190828Z-LOG-001/PLAN.md`
+
+Authorization and hardware contract: after the plan and implementation are
+clean, verified, committed, and pushed, standing task authorization permits
+only `just package`, one protected `just detect-ultra205`, and, only after
+detector success, one `just capture-log-buffer-evidence` invocation using the
+exact paths and arguments in the immutable plan. The capture may perform one
+exact-package factory flash with owner-supplied Wi-Fi credentials and
+`mineonboot=false`, then bounded receive-only USB plus trusted same-origin
+HTTP and `/api/ws` observation. It may not read pool credentials, mutate
+settings, request a restart, mine, initialize or submit ASIC work, actuate
+voltage/frequency/fan/thermal/power controls, scan or discover networks, use
+OTA, erase or write raw partitions, inject faults, terminate foreign
+processes, use direct UART, or manipulate pins or other electrical interfaces.
+
+Evidence and privacy: the absent-before-use wrapper and attempt roots are
+ignored mode-`0700` directories with mode-`0600` files. Raw downloads, frames,
+origins, ports, USB/network identifiers, Wi-Fi values, credentials, and
+process/serial traces remain private. The public projection may contain only
+closed provenance, cryptographic digests, bounded counts, header/correlation
+booleans, safe-state and cleanup facts, and `redaction_status=passed`.
+
+Recovery, retry, and stop: detector failure stops before writes. Preserve the
+earliest typed failure and always close the owned WebSocket and release owned
+process/USB resources. There is no settings state to restore and no recovery
+flash is permitted. Exactly one detector and conditional capture are
+authorized. Any detector/readiness failure, child launch/exit/timeout,
+malformed or missing evidence, package/session mismatch, header/body/frame
+correlation failure, cleanup failure, privacy failure, or safety invariant
+violation ends without retry. Accepted terminal categories are `complete`,
+`hardware_blocked`, `evidence_invalid`, `timeout`, and `process_failed`.
+
+Acceptance: `complete` requires one admitted board 205, exact package and same-
+boot origin identity, passive safe state, exact upstream-compatible headers on
+both bounded downloads, one plain-text `/api/ws` marker, the baseline retained
+body as an exact prefix, exactly one newly retained matching marker, cleanup,
+private modes, independent projection validation, and redaction. Only then may
+`LOG-001` become `verified`; otherwise withhold evidence and `RESULT.md`, keep
+the row `implemented`, create a truthful closure, and stop.
+
+Verification: The immutable-plan checkpoint passes the ordered Rust
+format/Clippy/build/test sequence, Bright Builds, all 36 Bazel tests,
+parity/progress, redaction, pinned-reference cleanliness, and diff checks.
+Implementation and hardware evidence remain pending.
+
+Completion review: Pending. Reset persistence, maximum-capacity live wrap,
+long-duration or multi-client streaming, mining, hardware controls, updates,
+other boards, and release readiness remain explicit non-claims.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
