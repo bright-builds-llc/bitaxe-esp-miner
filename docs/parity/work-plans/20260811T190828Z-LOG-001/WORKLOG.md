@@ -72,3 +72,36 @@
 - Blocker or next safe action: Run the complete final evidence gate, commit and
   push the evidence source, then transition only `LOG-001` and synchronize
   deterministic progress.
+
+## 2026-08-11T19:40:14Z | verified transition checkpoint
+
+- Source commit: `0389eebc51b0a9d77596e10963bd8e386350e098`.
+- Actions: Committed and pushed the closed evidence source, transitioned only
+  `LOG-001` to `verified`, and synchronized deterministic progress from that
+  exact commit.
+- Verification: The first uncommitted transition rendering omitted required
+  Markdown code spans from the Rust-owned target cell, and `just parity`
+  rejected it. The generated checklist, receipt, progress, and README changes
+  were restored before re-running the same transition ID with valid code
+  spans. Transition `20260811T193954Z-LOG-001` is now recorded, the checklist
+  validates, and exactly one progress record reports 44 of 94 active rows
+  (46.8%).
+- Evidence: The committed result and aggregate projection are authoritative;
+  no private artifact was added and no hardware action was repeated.
+- Outcome: `LOG-001` is verified.
+- Blocker or next safe action: Archive only the completed LOG-001 task, run the
+  mandatory finalization gate and diff checks, commit, fetch, and push.
+
+## 2026-08-11T19:46:45Z | finalization gate
+
+- Source commit: `0389eebc51b0a9d77596e10963bd8e386350e098`.
+- Actions: Archived only the completed LOG-001 task and ran the complete
+  finalization gate after the corrected transition and progress sync.
+- Verification: Cargo format, strict Clippy, all-target build, all-feature
+  tests, Bright Builds, all 36 Bazel tests, parity/progress, semantic
+  redaction, and pinned-reference checks pass. Progress is 44 of 94 active
+  rows (46.8%).
+- Evidence: The committed result, projection, transition receipt, checklist,
+  and progress record form the closed public chain.
+- Outcome: LOG-001 finalization is ready to commit and push.
+- Blocker or next safe action: None for this parity row.

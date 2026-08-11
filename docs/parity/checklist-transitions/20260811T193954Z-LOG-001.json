@@ -1,0 +1,18 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260811T193954Z-LOG-001",
+  "predecessor_sha256": "72f49b181440049730174a6ee4bab451944550752058d46421a0e751a4489402",
+  "result_sha256": "5b255ee3f45c1d6de7bedbfef49333f554a1314375d9a9da8ded2c1330a05ce5",
+  "row_id": "LOG-001",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260811T190828Z-LOG-001/PLAN.md",
+  "plan_sha256": "3a789d7bce800d07fd1be65191d8ee485a6e86b0493b686d9e6fe6b8152dddc8",
+  "result_path": "docs/parity/work-plans/20260811T190828Z-LOG-001/RESULT.md",
+  "result_document_sha256": "12b01ada52c68a861316f8cf7b3a2d3efc432632dc2dfd7ef6dabd1cfadd2ee4",
+  "before_rust_owned_target": "`firmware/bitaxe`, `crates/bitaxe-api`",
+  "after_rust_owned_target": "`firmware/bitaxe`, `crates/bitaxe-api`, `crates/bitaxe-automation-contracts/src/log_buffer_evidence.rs`, `tools/automation/src/log-buffer-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,api-compare",
+  "after_evidence": "unit,api-compare,workflow,hardware-smoke"
+}
