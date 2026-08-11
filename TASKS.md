@@ -1375,6 +1375,43 @@ Plan closure:
 non-verified outcome. `API-010` remains `implemented` and no evidence or
 `RESULT.md` was created.
 
+### task-parity-api002-system-info-contract | 2026-08-11 | Complete and verify system-info parity
+
+- [x] Commit and push the immutable API-002 plan and task contract.
+- [ ] Implement the exhaustive pinned system-info field/type/conditional
+      contract with secret-safe confirmed settings and runtime inputs.
+- [ ] Add a typed aggregate-only capture workflow and regression coverage.
+- [ ] Run the complete software gate, push the implementation, and admit one
+      clean exact package.
+- [ ] Run one detector and one conditional passive capture, promoting only
+      `API-002` on complete accepted evidence.
+
+Plan: `docs/parity/work-plans/20260811T164522Z-API-002/PLAN.md`.
+
+Authorization and effects: standing task authorization covers the plan's one
+detector and one conditional capture. The capture may perform one exact-package
+flash-monitor with the ignored Wi-Fi credential input, passive same-origin
+HTTP/WebSocket/retained-log reads, normal USB reset/re-enumeration inherent to
+the flash, and at most one exact-package recovery flash after an initial flash
+effect. It may not read pool credentials or mutate settings, mine, control
+hardware, restart through HTTP, discover the network, update, erase, write raw
+data, inject faults, terminate foreign processes, or use direct UART or pins.
+
+Evidence, privacy, recovery, and retry: use absent ignored mode-0700
+`wrapper-001` and `attempt-001` roots with mode-0600 files. Raw response,
+configuration, hostname, origin, port, USB/network/process, credential, serial,
+and trace material stays private. Public evidence is aggregate field/type and
+identity data only. Preserve the earliest typed failure, recover only as the
+plan permits, release owned resources, and do not retry.
+
+Verification: The complete plan gate passed, including ordered Cargo checks,
+Bright Builds, all Bazel tests, parity/progress, redaction, reference,
+continuation-aware selector, sensitive-output, task uniqueness, and diff
+checks. The immutable plan SHA-256 is
+`942264a2dccbf729001c3c40024659424842c125735bb6817d7b6114dbb5cd20`.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
