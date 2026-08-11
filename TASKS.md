@@ -1585,9 +1585,9 @@ closure's fresh predicate-fix plan and attempt-004 paths.
       implementation.
 - [x] Replace the UART-only log predicate with the canonical API-visible
       retained OTA status and add fail-closed production-shaped regressions.
-- [ ] Run focused and mandatory software gates; commit and push the exact
+- [x] Run focused and mandatory software gates; commit and push the exact
       implementation before hardware use.
-- [ ] Run one protected detector and, only after admission, one protected
+- [x] Run one protected detector and, only after admission, one protected
       attempt-004 capture on board 205.
 - [ ] Validate the closed public projection and promote only `REL-002` when all
       interruption, same-device, rollback, restoration, cleanup, and privacy
@@ -1625,6 +1625,13 @@ upload abort, same-device pending probe boot in `ota_0` at `N+1`, native
 rollback to the exact factory build at the next ordinal, disabled mining and
 control, cleanup, modes, redaction, and valid projection. Otherwise withhold
 evidence, close truthfully, and keep `REL-002` implemented.
+
+Completion review: Attempt-004 is consumed. It admitted the canonical partial-
+upload abort and completed a `ready` same-device probe OTA into the exact
+`ota_0` build at `N+1`, but the late serial attachment missed two early boot
+lines. Both lines are intentionally API-retained. Exact-package recovery and
+private cleanup passed, no public evidence was emitted, and the linked closure
+defines the retained-log continuation using fresh attempt-005 paths.
 
 ## Future
 

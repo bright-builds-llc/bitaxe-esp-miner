@@ -66,3 +66,24 @@
 - Outcome: The implementation is eligible for its exact commit and push.
 - Blocker or next safe action: Commit and push, rebuild normal and probe images
   from the clean source, verify provenance and isolation, then run one detector.
+
+## 2026-08-11T23:10:52Z | Attempt-004 terminal closure
+
+- Source commit: `994ddf06c70d984d8acddda5de2408d43c6302b4`.
+- Actions: Built and admitted exact normal and isolated probe artifacts, ran
+  the sole detector, and ran the sole conditional attempt-004. The canonical
+  interrupted-upload marker advanced the workflow through the probe OTA.
+- Verification: The primary category is `probe_boot_failed`. The probe device
+  session itself closed `ready` with same-device, exact-build, restart,
+  changed-session, `N+1`, `ota_0`, and cleanup facts all passing; the following
+  HTTP identity check independently passed. Its late serial artifact contained
+  neither early probe-pending nor passive safe-state text. Exact-package
+  recovery completed without secondary failure, private modes pass, and no
+  public projection exists.
+- Evidence: Private diagnostics remain in ignored wrapper-004/attempt-004.
+  `CLOSURE.md` records only aggregate facts and non-claims.
+- Outcome: Attempt-004 is consumed after the probe boot but before the native
+  rollback restart. `REL-002` remains `implemented`.
+- Blocker or next safe action: Validate boot-semantic markers through their
+  authoritative retained HTTP log after reacquisition, retain serial delivery
+  correlation, and use only fresh wrapper/attempt-005 paths.
