@@ -35,3 +35,22 @@
   commit and push.
 - Blocker or next safe action: Commit and push these planning artifacts without
   amendment, then implement and test the forced socket teardown.
+
+## 2026-08-11T22:03:00Z | Post-FIN design disproved
+
+- Source commit: `a736e315` with an unchanged immutable plan.
+- Actions: Implemented the planned post-FIN reset experimentally, ran the real
+  half-open child regression, stopped its bounded hang, and isolated the Node
+  TCP event sequence in a minimal local trace. Removed every experimental code
+  and test change after the design was disproved.
+- Verification: Both the direct trace and the real test show that FIN followed
+  by a delayed reset leaves an `allowHalfOpen` server's writable half live.
+  A separate trace shows that writing the strict prefix without FIN and then
+  resetting delivers the bytes and produces peer reset/close.
+- Evidence: Local synthetic TCP behavior only. No detector, credentials,
+  hardware effect, private attempt path, or public projection was used.
+- Outcome: The frozen design is superseded before implementation or hardware.
+  `REL-002` remains `implemented` and attempt-002 remains unconsumed.
+- Blocker or next safe action: Close this plan, then create a fresh immutable
+  continuation using flush-without-FIN followed by immediate forced reset and
+  observed local close.

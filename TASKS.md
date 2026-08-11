@@ -1460,7 +1460,7 @@ remains `implemented`.
 
 ### task-parity-rel002-force-close-attempt-002 | 2026-08-11 | Prove interrupted OTA abort and native rollback after forced teardown
 
-- [ ] Commit and push the immutable `REL-002` attempt-002 plan before
+- [x] Commit and push the immutable `REL-002` attempt-002 plan before
       implementation.
 - [ ] Force and observe bounded full socket teardown after the strict OTA
       prefix, with a non-cooperative real-child regression.
@@ -1524,6 +1524,14 @@ build at the next ordinal, mining and hardware control remain disabled,
 cleanup/modes/redaction pass, and the typed projection validates. Otherwise
 withhold evidence, create a truthful closure, and leave `REL-002` at
 `implemented`.
+
+Completion review: Superseded before implementation or hardware. Node 24 and
+the real half-open child proved that FIN followed by a delayed reset closes the
+client locally but leaves the peer writable half live. Experimental edits were
+removed, no device or credential input was used, and attempt-002 remains
+unconsumed. Continue only through a fresh immutable plan that flushes without
+FIN, immediately resets, and awaits local close. See `CLOSURE.md` beside the
+linked plan.
 
 ## Future
 
