@@ -51,7 +51,7 @@
 - Blocker or next safe action: Commit and push this checkpoint, then implement
   the comparator regression without editing `PLAN.md`.
 
-## 2026-08-11T21:05:00Z | strict comparator implementation
+## 2026-08-11T20:31:00Z | strict comparator implementation
 
 - Source commit: `b260cd019a97fca1cae8508251888fc8c972dc17`
 - Actions: Extracted canonical partition comparison into a pure six-field CSV
@@ -74,7 +74,7 @@
 - Blocker or next safe action: Run every mandatory gate, review the diff,
   commit and push the implementation, then freeze the exact package.
 
-## 2026-08-11T21:15:00Z | implementation software gate
+## 2026-08-11T20:35:00Z | implementation software gate
 
 - Source commit: `b260cd019a97fca1cae8508251888fc8c972dc17`
 - Actions: Ran the complete ordered implementation gate and the plan's focused
@@ -92,7 +92,7 @@
 - Blocker or next safe action: Commit and push the implementation, then build
   and admit its exact clean package before the one detector-gated attempt.
 
-## 2026-08-11T21:30:00Z | exact-package OTA evidence
+## 2026-08-11T20:47:00Z | exact-package OTA evidence
 
 - Source commit: `9d88a6454ae9171c91516d3842581f8188633b6d`
 - Actions: Built the exact clean package, ran the sole detector, and ran the
@@ -118,7 +118,7 @@
 - Blocker or next safe action: Run the evidence-source gate, commit and push
   the result/projection, then transition only REL-001 and synchronize progress.
 
-## 2026-08-11T21:40:00Z | evidence-source gate
+## 2026-08-11T20:51:00Z | evidence-source gate
 
 - Source commit: `9d88a6454ae9171c91516d3842581f8188633b6d`
 - Actions: Created the row-specific result, ran the complete ordered gate over
@@ -135,3 +135,40 @@
   the guarded REL-001 transition.
 - Blocker or next safe action: Commit/push this evidence source, then use that
   exact commit for the single-row transition and progress synchronization.
+
+## 2026-08-11T20:53:00Z | verified transition checkpoint
+
+- Source commit: `7385114678a71f6d3e46f92439d4f2c3b6a7cfeb`
+- Actions: Committed and pushed the evidence source, transitioned only
+  `REL-001` to `verified`, and synchronized deterministic progress from that
+  exact commit.
+- Verification: Transition `20260811T205203Z-REL-001` is recorded and progress
+  now reports 45 of 94 active rows (47.9%). The first sync invocation used an
+  incorrectly expanded commit SHA and failed before writing; resolving the
+  exact commit through Git and rerunning produced the sole progress record.
+- Evidence: The committed result/projection, transition receipt, checklist,
+  progress history, and README rendering form the public chain. No hardware
+  action was repeated.
+- Outcome: `REL-001` is verified.
+- Blocker or next safe action: Resolve and archive this completed successor
+  task plus its directly superseded attempt-001 predecessor, then run the
+  complete finalization gate and push.
+
+## 2026-08-11T20:58:00Z | finalization gate
+
+- Source commit: `7385114678a71f6d3e46f92439d4f2c3b6a7cfeb`
+- Actions: Archived the completed successor task and its directly superseded
+  attempt-001 predecessor, then ran the complete ordered finalization gate and
+  the selector, transition, progress, task, privacy, immutable-plan, reference,
+  and diff checks.
+- Verification: Cargo formatting, strict Clippy, all-target build, all-feature
+  tests, Bright Builds, all 36 Bazel tests, parity validation/progress,
+  semantic redaction, and pinned-reference verification pass. REL-001 is
+  `verified`; progress is 45 of 94 active rows (47.9%); the selector has no open
+  plan; each archived task heading occurs exactly once; and no scratch file is
+  tracked.
+- Evidence: The committed result/projection and the pending transition receipt,
+  checklist, progress record, README rendering, task archive, and worklog form
+  the complete public chain.
+- Outcome: REL-001 finalization is ready to commit and push.
+- Blocker or next safe action: None for this parity row.

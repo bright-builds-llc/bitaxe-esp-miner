@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260811T205203Z-REL-001",
+  "predecessor_sha256": "5b255ee3f45c1d6de7bedbfef49333f554a1314375d9a9da8ded2c1330a05ce5",
+  "result_sha256": "08d1675cd87d3a630bc367d93ecd2a3499e594a39ce07864faf80895fdbfb960",
+  "row_id": "REL-001",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260811T202225Z-REL-001/PLAN.md",
+  "plan_sha256": "54644d9c7eb4c2554fa01533a5f150a271400dcaca5d9b9f0715fcf062ba3ce1",
+  "result_path": "docs/parity/work-plans/20260811T202225Z-REL-001/RESULT.md",
+  "result_document_sha256": "4d116a8eb5d63c6d3326fe1bf1d6cd9b4e15d377b329e9fe35776947502dd719",
+  "before_rust_owned_target": "`firmware/bitaxe/partitions-ultra205.csv`, `firmware/bitaxe/BUILD.bazel`, `tools/xtask/src/partition_contract.rs`, `tools/xtask/src/package_manifest.rs`",
+  "after_rust_owned_target": "`firmware/bitaxe/partitions-ultra205.csv`, `firmware/bitaxe/BUILD.bazel`, `tools/xtask/src/partition_contract.rs`, `tools/xtask/src/package_manifest.rs`, `tools/automation/src/partition-table.ts`, `tools/automation/src/partition-layout-evidence.ts`, `crates/bitaxe-automation-contracts`, `tools/device-session`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow,api-compare",
+  "after_evidence": "unit,workflow,api-compare,hardware-smoke",
+  "before_notes": "Ultra 205 partition layout and manifest v2 validation cover factory app, `www` SPIFFS, OTA slots, `otadata`, NVS, PHY, and coredump offsets. Phase 18 package and serial evidence in `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/summary.md` records `bitaxe-ultra205.elf`, `esp-miner.bin`, `www.bin`, `otadata-initial.bin`, `bitaxe-ultra205-factory.bin`, factory partition boot, and SPIFFS mount. Selected next partition, valid OTA partition switch, rollback, large erase, and interrupted-update partition behavior remain below verified.",
+  "after_notes": "The typed attempt-002 result at [RESULT.md](work-plans/20260811T202225Z-REL-001/RESULT.md) and [partition projection](evidence/rel001-ota-slot/partition-layout-projection.json) bind exact clean package 9d88a645, one detector-admitted Ultra 205, the canonical eight-row table, a safe factory baseline, one OTA upload, the same physical device, exact build recovery, boot ordinal N+1, successful boot validation, ota_0 execution, disabled mining and hardware control, cleanup, protected modes, and redaction. Rollback, interruption, OTAWWW, recovery, erase, mining, controls, other boards, and release readiness remain separate."
+}

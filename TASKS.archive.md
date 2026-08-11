@@ -5556,3 +5556,175 @@ synchronized to 44 of 94 active rows (46.8%). Reset persistence,
 maximum-capacity live wrap, long-duration or multi-client streaming, mining,
 hardware controls, updates, other boards, and release readiness remain
 explicit non-claims.
+
+### task-parity-rel001-partition-size-normalization-attempt-002 | 2026-08-11 | Retry canonical partition transition evidence
+
+- [x] Commit and push the fresh immutable REL-001 plan before source changes.
+- [x] Normalize only accepted ESP-IDF partition-size suffix case and prove the
+      actual checked-in table plus negative drift cases through real runfiles.
+- [x] Run the complete ordered gate, commit, and push the clean fix before
+      hardware use.
+- [x] Build the exact package and run exactly one fresh detector plus
+      conditional attempt-002 capture.
+- [x] Promote only `REL-001` on complete typed evidence; otherwise withhold
+      evidence, record a non-verifying closure, and stop without retry.
+
+Plan: `docs/parity/work-plans/20260811T202225Z-REL-001/PLAN.md`.
+
+Progress basis: attempt-001 passed exact package and detector admission but
+stopped before any device effect because the capture comparator required `8K`
+while the package-hashed checked-in table uses ESP-IDF-equivalent spelling
+`8k`. The linked prior closure supplies a closed discriminator and requires a
+fresh task, immutable plan, targeted regression, and attempt ordinal.
+
+Hardware contract:
+
+1. `just package`
+2. `test ! -e scratch/rel001-ota-slot/wrapper-002 && (umask 077; mkdir -m 700 -p scratch/rel001-ota-slot/wrapper-002 && just detect-ultra205 > scratch/rel001-ota-slot/wrapper-002/detector.stdout 2>&1)`
+3. Only after command 2 succeeds:
+   `test ! -e scratch/rel001-ota-slot/attempt-002 && test ! -e docs/parity/evidence/rel001-ota-slot/partition-layout-projection.json && (umask 077; just capture-partition-layout-evidence --private-root scratch/rel001-ota-slot/attempt-002 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/rel001-ota-slot/wrapper-002/detector.stdout --projection docs/parity/evidence/rel001-ota-slot/partition-layout-projection.json --capture-timeout-seconds 360 > scratch/rel001-ota-slot/wrapper-002/capture.stdout 2> scratch/rel001-ota-slot/wrapper-002/capture.stderr)`
+
+Objective and preconditions: prove the exact clean Ultra 205 package's
+factory-to-`ota_0` transition after correcting only the known partition-size
+comparison defect. Source and reference must be clean and pushed, all six
+package artifacts and the exact eight-row table must pass digest admission,
+the ignored Wi-Fi credential input must exist without inspection or exposure,
+private/public targets must be absent, and exactly one board 205 must pass the
+detector.
+
+Allowed effects: one exact factory-package flash; replacement NVS containing
+only owner-supplied Wi-Fi credentials and `mineonboot=false`; repo-owned USB
+reset/re-enumeration; bounded receive-only USB and same-origin HTTP; one upload
+of the exact package OTA image; and its single scheduled software restart.
+
+Prohibited effects: mining, pool access, ASIC initialization/work, voltage,
+frequency, fan, thermal, or power control; OTAWWW; rollback; erase-flash;
+interrupted update; recovery upload; arbitrary raw writes; network discovery;
+foreign-process termination; direct UART; and pins, pads, headers, GPIO,
+probes, jumpers, soldering, or injected signals.
+
+Evidence and privacy: wrapper/attempt roots are ignored mode-`0700`
+directories with mode-`0600` artifacts. Origins, hostnames, ports, USB/network
+identities, Wi-Fi values, credentials, OTA bytes, HTTP bodies, commands, and
+raw traces stay private. Public evidence is aggregate-only closed schemas,
+digests, counts, partition/transition booleans, disabled effect facts, cleanup,
+modes, and redaction status.
+
+Recovery, retry, and stop: detector failure stops before writes. Preserve the
+earliest typed failure through cleanup. After a completed upload, leave the
+same exact package in the valid slot ESP-IDF selected. Do not perform a second
+flash, rollback, erase, interruption, or recovery effect. Release all owned
+resources. This contract authorizes one detector and conditionally one capture
+only; any failure consumes attempt-002 and withholds evidence without retry.
+
+Acceptance: complete typed proof requires exact package/partition provenance,
+safe factory baseline, reader admission before one upload, same physical
+device, service loss/recovery, exact build, changed session, ordinal `N+1`,
+software reset, successful boot validation, `factory` to `ota_0`, disabled
+mining/hardware control, cleanup, protected modes, redaction, and independent
+validation. Otherwise keep `REL-001` at `implemented` and create no result.
+
+Verification: The actual-table and negative-drift regressions, complete ordered
+software/evidence gates, one exact clean package, one detector, one conditional
+capture, independent Rust validator, semantic redaction, protected modes,
+cleanup, transition receipt, and synchronized progress all pass.
+
+Completion review: Evidence source commit
+`7385114678a71f6d3e46f92439d4f2c3b6a7cfeb` is preserved. Transition
+`20260811T205203Z-REL-001` changed only `REL-001` to `verified`, and progress
+synchronized to 45 of 94 active rows (47.9%). The exact device safely moved
+from `factory` to `ota_0` with exact build recovery and boot ordinal `N+1`.
+Rollback, erase, interrupted-update, OTAWWW/static-partition, other-board,
+mining, hardware-control, and release-readiness parity remain non-claims.
+
+### task-parity-rel001-live-ota-slot-transition | 2026-08-11 | Prove the Ultra 205 factory-to-OTA slot transition
+
+- [x] Commit and push the linked immutable REL-001 plan before source changes.
+- [x] Add the bounded typed OTA device-session transaction without changing
+      the existing reboot interfaces.
+- [x] Add the private-first aggregate partition-layout capture, independent
+      validator, and behavior/privacy/process-boundary regressions.
+- [x] Run the complete ordered software gate, commit, and push the clean
+      implementation before hardware use.
+- [x] Build the exact package, run one detector and conditional capture, and
+      promote only `REL-001` on complete typed evidence; otherwise withhold
+      evidence and stop without retry.
+
+Plan: `docs/parity/work-plans/20260811T195144Z-REL-001/PLAN.md`.
+
+Hardware contract:
+
+1. `just package`
+2. `test ! -e scratch/rel001-ota-slot/wrapper-001 && (umask 077; mkdir -m 700 -p scratch/rel001-ota-slot/wrapper-001 && just detect-ultra205 > scratch/rel001-ota-slot/wrapper-001/detector.stdout 2>&1)`
+3. Only after command 2 succeeds:
+   `test ! -e scratch/rel001-ota-slot/attempt-001 && test ! -e docs/parity/evidence/rel001-ota-slot/partition-layout-projection.json && (umask 077; just capture-partition-layout-evidence --private-root scratch/rel001-ota-slot/attempt-001 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/rel001-ota-slot/wrapper-001/detector.stdout --projection docs/parity/evidence/rel001-ota-slot/partition-layout-projection.json --capture-timeout-seconds 360 > scratch/rel001-ota-slot/wrapper-001/capture.stdout 2> scratch/rel001-ota-slot/wrapper-001/capture.stderr)`
+
+Objective and preconditions: prove the clean exact Ultra 205 package's
+installed partition layout by starting from its factory app and completing one
+normal update into `ota_0`. The worktree/source commit and pinned reference
+must be clean and pushed, the package manifest must bind that exact source and
+contain the canonical partition-table plus OTA artifacts, the ignored
+`wifi-credentials.json` must exist without exposure, private/public targets
+must be absent, and exactly one board 205 must pass detector admission.
+
+Allowed effects: one exact factory-package flash; replacement NVS containing
+only owner-supplied Wi-Fi credentials and `mineonboot=false`; repo-owned USB
+reset/re-enumeration; bounded receive-only serial and same-origin HTTP
+observation; one upload of the package's exact OTA image to
+`/api/system/OTA`; and its single scheduled software restart.
+
+Prohibited effects: mining, pool access, ASIC initialization or work, voltage,
+frequency, fan, thermal, or power control; OTAWWW; rollback; erase-flash;
+interrupted update; recovery upload; arbitrary raw writes; network discovery;
+foreign-process termination; direct UART; pins, pads, headers, GPIO, probes,
+jumpers, soldering, or injected signals.
+
+Evidence and privacy: wrapper and attempt roots are ignored mode-0700 private
+directories with mode-0600 artifacts. OTA bytes, origins, hostnames, ports,
+USB and network identities, Wi-Fi values, credentials, HTTP bodies, commands,
+and raw serial/process traces stay private. Public evidence is aggregate-only:
+closed schemas/categories, provenance and artifact digests, bounded counts,
+exact partition-contract and transition booleans, safe-state, cleanup, modes,
+and redaction facts.
+
+Recovery, retry, and stop: detector failure stops before any write. Preserve
+the earliest typed failure through cleanup. After a completed upload, leave
+the same exact package in whichever valid factory/OTA slot ESP-IDF selected;
+do not add a second flash, rollback, erase, interruption, or recovery effect.
+Release every owned USB, socket, and child-process resource. This contract
+authorizes one detector and, conditionally, one capture only. Any failure
+withholds public evidence and consumes the attempt without unchanged retry.
+
+Acceptance: `complete` requires exact package/partition provenance, safe
+factory baseline, reader admission before one complete OTA upload, same
+physical device, service loss/recovery, exact recovered build, boot-session
+change, ordinal `N+1`, software reset, successful boot validation,
+`factory` to `ota_0`, mining/hardware control disabled, cleanup, protected
+modes, redaction, and independent evidence validation. Otherwise record the
+closed category, keep `REL-001` at `implemented`, and create no `RESULT.md`.
+
+Verification: Focused Cargo and Bazel OTA/device-session regressions pass. The
+complete ordered implementation gate passed: `cargo fmt --all`,
+`cargo clippy --all-targets --all-features -- -D warnings`,
+`cargo build --all-targets --all-features`, `cargo test --all-features`,
+`bun scripts/bright-builds-check.ts all`, `just test`, `just parity`, and
+`just parity-progress`. `just verify-redaction`, `just verify-reference`,
+`git diff --check`, immutable-plan, branch/upstream, and full-diff reviews also
+pass. Exact package `1e4c8a30d27e3f193d0b3f77faa157fb2b737309` passed
+provenance, cleanliness, six-artifact, and digest admission. The one detector
+passed. The one capture then stopped before any device effect as
+`evidence_invalid`: the strict partition comparator expected `8K` while the
+package-hashed checked-in table uses equivalent ESP-IDF spelling `8k`. No
+public projection exists and no retry is permitted under this plan.
+The complete ordered gate, redaction check, reference check, parity report, and
+progress report all passed again on the closure state.
+
+Completion review: This attempt is closed without verification at
+`docs/parity/work-plans/20260811T195144Z-REL-001/CLOSURE.md`. Its exact
+pre-effect comparator discriminator was resolved by successor task
+`task-parity-rel001-partition-size-normalization-attempt-002`, whose evidence
+source commit `7385114678a71f6d3e46f92439d4f2c3b6a7cfeb` and transition
+`20260811T205203Z-REL-001` verify REL-001 without retrying attempt-001. This
+predecessor is superseded and resolved; rollback, large erase,
+interrupted-update, OTAWWW/static-partition, other-board, mining,
+hardware-control, and release-readiness parity remain non-claims.
