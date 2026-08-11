@@ -55,3 +55,54 @@
 - Blocker or next safe action: Commit the evidence/result without changing the
   checklist, save that commit as `SOURCE_COMMIT`, then perform the audited
   checklist transition and progress synchronization.
+
+## 2026-08-11T18:12:00Z | finalization checkpoint
+
+- Source commit: `dada4fbac7bfa348ee5fb91943f205240007c2b4`.
+- Actions: Preserved the accepted evidence in its own commit, performed the
+  audited single-row transition, and synchronized progress from that evidence
+  commit.
+- Verification: Transition `20260811T174900Z-API-002` changed only `API-002`
+  from `implemented` to `verified`; progress now records 42 of 94 active rows
+  verified (44.7%). The transition remains bound to the immutable plan and
+  accepted result.
+- Evidence: The redacted v1 projection and transition receipt contain no raw
+  port, origin, hostname, USB or network identity, credentials, settings,
+  serial output, or trace material.
+- Outcome: `API-002` is verified and its active task is ready for archival.
+- Blocker or next safe action: Archive the completed native task record, run
+  the full final gate, commit, and push.
+
+## 2026-08-11T18:20:00Z | parity metadata correction checkpoint
+
+- Source commit: `dada4fbac7bfa348ee5fb91943f205240007c2b4`.
+- Actions: Reproduced the final parity-report failure, restored the uncommitted
+  generated transition, and regenerated it with the required historical Phase
+  26 summary, redaction, and exact-non-claims breadcrumbs preserved.
+- Verification: The failure was limited to checklist metadata. The replacement
+  audited transition still changes only `API-002`, remains bound to the same
+  immutable plan and accepted result, and progress remains 42 of 94 (44.7%).
+- Evidence: No hardware action, private artifact access, evidence mutation, or
+  parity-claim expansion occurred.
+- Outcome: Root metadata contract corrected; final gate restarted on the exact
+  finalization diff.
+- Blocker or next safe action: Complete the ordered gate, diff review, commit,
+  and push.
+
+## 2026-08-11T18:31:00Z | final gate checkpoint
+
+- Source commit: `dada4fbac7bfa348ee5fb91943f205240007c2b4`.
+- Actions: Completed the ordered Cargo, Bright Builds, Bazel, parity/progress,
+  redaction, reference, selector, immutable-plan, transition, task, privacy,
+  and diff verification on the finalization state.
+- Verification: All gates pass; parity reports `validation_errors: none`,
+  progress reports 42 of 94 (44.7%), the selector reports no open plan and no
+  `API-002` candidate, the active task was archived exactly once, and the plan
+  SHA-256 remains unchanged. A stale completed Bazel command lock was cleared
+  only after confirming the server had no active child action; the affected
+  Bazel test and parity commands then passed on a fresh server.
+- Evidence: Transition receipt, progress record, immutable result, and redacted
+  projection remain mutually bound without private values.
+- Outcome: Finalization is ready to commit and push.
+- Blocker or next safe action: Review the final diff, commit, verify remote
+  synchronization, and push.

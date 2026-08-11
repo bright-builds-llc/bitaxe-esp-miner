@@ -5315,3 +5315,98 @@ later continuation legitimately advances the row, while regressions and other
 non-forward checklist changes still fail closed through the independent status
 advance guard. The fix changes no evidence, plan, closure, or additional parity
 claim.
+
+### task-parity-api002-system-info-contract | 2026-08-11 | Complete and verify system-info parity
+
+- [x] Commit and push the immutable API-002 plan and task contract.
+- [x] Implement the exhaustive pinned system-info field/type/conditional
+      contract with secret-safe confirmed settings and runtime inputs.
+- [x] Add a typed aggregate-only capture workflow and regression coverage.
+- [x] Run the complete software gate, push the implementation, and admit one
+      clean exact package.
+- [x] Run one detector and one conditional passive capture.
+- [x] Promote `API-002` only on complete accepted evidence.
+- [x] Commit and push the immutable stack-fix retry plan.
+- [x] Build and admit one clean exact package containing the stack fix.
+- [x] Run one detector and one conditional passive `attempt-002` capture.
+- [x] Promote only on complete independently validated evidence.
+
+Plans:
+
+- Closed: `docs/parity/work-plans/20260811T164522Z-API-002/PLAN.md`.
+- Completed: `docs/parity/work-plans/20260811T174900Z-API-002/PLAN.md`.
+
+Authorization and effects: standing task authorization covers the plan's one
+detector and one conditional capture. The capture may perform one exact-package
+flash-monitor with the ignored Wi-Fi credential input, passive same-origin
+HTTP/WebSocket/retained-log reads, normal USB reset/re-enumeration inherent to
+the flash, and at most one exact-package recovery flash after an initial flash
+effect. It may not read pool credentials or mutate settings, mine, control
+hardware, restart through HTTP, discover the network, update, erase, write raw
+data, inject faults, terminate foreign processes, or use direct UART or pins.
+
+Evidence, privacy, recovery, and retry: use absent ignored mode-0700
+`wrapper-001` and `attempt-001` roots with mode-0600 files. Raw response,
+configuration, hostname, origin, port, USB/network/process, credential, serial,
+and trace material stays private. Public evidence is aggregate field/type and
+identity data only. Preserve the earliest typed failure, recover only as the
+plan permits, release owned resources, and do not retry.
+
+Verification: The complete plan gate passed, including ordered Cargo checks,
+Bright Builds, all Bazel tests, parity/progress, redaction, reference,
+continuation-aware selector, sensitive-output, task uniqueness, and diff
+checks. The immutable plan SHA-256 is
+`942264a2dccbf729001c3c40024659424842c125735bb6817d7b6114dbb5cd20`.
+
+Completion review: The exhaustive software contract and capture workflow were
+implemented, verified, committed, and pushed. The one authorized exact-package
+hardware attempt failed closed as `evidence_invalid` because the ESP-IDF `main`
+task repeatedly overflowed while startup readiness constructed the full
+operator API snapshot. Recovery and cleanup completed, no public projection
+was emitted, and no retry occurred. The root cause is fixed in software with a
+platform-only startup path, bounded snapshot footprint, source ownership guard,
+and real-firmware stack audit, but that fix has no hardware evidence. The plan
+is closed at
+`docs/parity/work-plans/20260811T164522Z-API-002/CLOSURE.md`; `API-002` remains
+`implemented`, and a fresh immutable plan is required before another bounded
+attempt.
+
+Fresh retry authorization and effects: The targeted startup-stack fix at
+`84b90c9e677b4def1d0ab7508e2b8e64dd08c617` satisfies the new-information
+gate. Standing authorization covers exactly these commands after the active
+plan and clean package are pushed and admitted:
+
+1. `test ! -e scratch/api002-system-info/wrapper-002 && (umask 077; mkdir -m 700 -p scratch/api002-system-info/wrapper-002 && just detect-ultra205 > scratch/api002-system-info/wrapper-002/detector.stdout 2>&1)`
+2. Only after command 1 succeeds:
+   `test ! -e scratch/api002-system-info/attempt-002 && test ! -e docs/parity/evidence/api002-system-info/system-info-projection.json && (umask 077; just capture-system-info-evidence --private-root scratch/api002-system-info/attempt-002 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/api002-system-info/wrapper-002/detector.stdout --projection docs/parity/evidence/api002-system-info/system-info-projection.json --capture-timeout-seconds 360 > scratch/api002-system-info/wrapper-002/capture.stdout 2> scratch/api002-system-info/wrapper-002/capture.stderr)`
+
+The objective is stable exact-build boot and aggregate-only system-info capture.
+Raw serial, responses, settings, hostnames, origins, ports, USB/network/process
+identities, credentials, and traces remain private under the ignored mode-0700
+roots in mode-0600 files. One factory flash, its normal USB reset and
+re-enumeration, passive same-origin reads, and at most one exact-package
+recovery flash after an initial flash effect are allowed. Settings mutation,
+HTTP restart, pool-credential access, mining, hardware control, discovery,
+update, erase, raw write, fault injection, foreign-process termination, direct
+UART, and pin work are prohibited. Preserve the first typed failure, release
+owned resources, publish only after every schema/identity/coherence/safety/
+cleanup/redaction gate passes, and do not retry this plan. Accepted terminal
+categories are `hardware_blocked`, `evidence_invalid`, `timeout`, and
+`process_failed`; any failure withholds promotion and requires a new plan.
+
+Retry plan verification: The complete ordered software gate, parity lifecycle
+validation, redaction/reference checks, task uniqueness, sensitive-output, and
+diff checks passed. The immutable active plan SHA-256 is
+`8c64ece32a6044e7d2b38a1219a92f02d4adfd519c31722e8cbb8965e52e6cb9`.
+
+Final completion review: The single fresh detector and conditional capture
+passed against exact package source `524b445e`. The independently validated v1
+projection proves stable same-build boot after the startup-stack fix, coherent
+same-session HTTP and WebSocket revisions and retained tuples, all 94 required
+system-info fields with correct types and conditional absence, confirmed
+settings, disabled mining and hardware control, cleanup, private artifact
+modes, and redaction. Evidence commit `dada4fba` was preserved as
+`SOURCE_COMMIT`; transition `20260811T174900Z-API-002` changed only `API-002`
+to `verified`, and progress synchronized to 42 of 94 active rows (44.7%). No
+live found-block event, mining, hardware controls, reconnect longevity,
+updates, other-board behavior, or release readiness is claimed.
