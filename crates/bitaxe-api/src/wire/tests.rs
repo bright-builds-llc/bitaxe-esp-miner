@@ -157,7 +157,7 @@ fn positive_block_snapshot_contains_every_openapi_required_field() {
     // Arrange
     let contract = field_contract();
     let mut snapshot = ApiSnapshot::safe_ultra_205();
-    snapshot.maybe_block = Some(SystemInfoBlockSnapshot {
+    snapshot.maybe_block = Some(Box::new(SystemInfoBlockSnapshot {
         height: 840_000,
         script_sig: "script-canary".to_owned(),
         network_difficulty: 83_000_000_000_000.0,
@@ -168,7 +168,7 @@ fn positive_block_snapshot_contains_every_openapi_required_field() {
             value_satoshis: 300_000_000,
             address: "address-canary".to_owned(),
         }],
-    });
+    }));
 
     // Act
     let value = serde_json::to_value(SystemInfoWire::from_snapshot(&snapshot))
@@ -199,7 +199,7 @@ fn system_info_debug_never_exposes_response_or_block_identity_values() {
     snapshot.system_info_settings.primary_pool.url = "pool-debug-canary".to_owned();
     snapshot.system_info_settings.primary_pool.user = "worker-debug-canary".to_owned();
     snapshot.platform.hostname = "hostname-debug-canary".to_owned();
-    snapshot.maybe_block = Some(SystemInfoBlockSnapshot {
+    snapshot.maybe_block = Some(Box::new(SystemInfoBlockSnapshot {
         height: 840_000,
         script_sig: "script-debug-canary".to_owned(),
         network_difficulty: 1.0,
@@ -210,7 +210,7 @@ fn system_info_debug_never_exposes_response_or_block_identity_values() {
             value_satoshis: 1,
             address: "address-debug-canary".to_owned(),
         }],
-    });
+    }));
 
     // Act
     let snapshot_debug = format!("{snapshot:?}");

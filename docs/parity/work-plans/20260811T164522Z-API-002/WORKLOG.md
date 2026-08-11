@@ -52,3 +52,61 @@
 - Blocker or next safe action: Commit and push the implementation, build and
   admit its exact package, then spend the plan's single detector and
   conditional passive capture.
+
+## 2026-08-11T17:24:00Z | hardware attempt checkpoint
+
+- Source commit: `537e339454569fadb29df78b05619155b7424207`.
+- Actions: Built and admitted the exact schema-v3 package, ran the plan's one
+  detector, and conditionally ran its one passive `attempt-001` capture.
+- Verification: Detection admitted exactly one Ultra 205. The capture returned
+  the typed primary category `evidence_invalid` at `system_info_capture`, wrote
+  no public projection, completed its one permitted exact-package recovery
+  flash, released owned resources, and left no owned port holder.
+- Evidence: Private roots retained the raw diagnostic material with the
+  required directory and file modes. Public output contained only typed safe
+  fields. Aggregate diagnostics found 49 exact `main` task stack-overflow
+  detections across the repeated boot epochs, with no allocation, bounds,
+  assertion, unwrap, or watchdog signature.
+- Outcome: Hardware capture failed closed and `API-002` remains `implemented`.
+- Blocker or next safe action: Do not retry this plan. Isolate and fix the main-
+  task stack path in software, close this plan without verification, and
+  require a fresh immutable plan for any later hardware attempt.
+
+## 2026-08-11T17:35:20Z | root-cause fix checkpoint
+
+- Source commit: `537e339454569fadb29df78b05619155b7424207` plus the pending
+  closure fix.
+- Actions: Replaced startup readiness's full operator API snapshot collection
+  with a direct platform-only snapshot. Boxed the largest optional/configured
+  `ApiSnapshot` members and added API footprint, startup ownership, and real-
+  disassembly stack-budget regressions.
+- Verification: The API snapshot is 1,896 inline bytes under its 1,920-byte
+  ceiling. Focused Rust and source-ownership tests pass. The real ESP32-S3
+  firmware build passes, and disassembly measures the platform-readiness frame
+  at 480 bytes under its enforced 1 KiB limit.
+- Evidence: Software tests and compiled firmware structure only; no second
+  detector, flash, monitor, credential access, device request, or hardware
+  observation occurred.
+- Outcome: Root cause fixed and guarded in software; hardware resolution is not
+  claimed.
+- Blocker or next safe action: Run the complete software gate, commit and push
+  the fix and truthful non-verifying closure, then use a fresh plan before any
+  further hardware attempt.
+
+## 2026-08-11T17:54:00Z | closure gate checkpoint
+
+- Source commit: `537e339454569fadb29df78b05619155b7424207` plus the pending
+  closure fix.
+- Actions: Created the immutable-plan-bound non-verifying closure and reviewed
+  the complete implementation, task, and worklog diff.
+- Verification: Cargo format, strict Clippy, all-target build, all-feature
+  tests, Bright Builds, all Bazel tests, the real ESP32-S3 firmware build,
+  parity/progress, redaction, reference, continuation-aware selector,
+  immutable-plan digest, task uniqueness, sensitive-output, and diff checks
+  passed. The selector reports no open plan and leaves `API-002` unfinished.
+- Evidence: Software and aggregate closure records only. No checklist field or
+  progress history changed, and no additional hardware action occurred.
+- Outcome: Plan closed truthfully without parity promotion.
+- Blocker or next safe action: Commit and push this software fix and closure.
+  Any hardware validation requires a new immutable plan and fresh exact
+  package.

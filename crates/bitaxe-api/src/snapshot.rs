@@ -31,12 +31,12 @@ pub struct ApiSnapshot {
     pub config: ConfigSnapshot,
     pub project_settings: ProjectSettingsSnapshot,
     /// Confirmed settings represented by the upstream system-info response.
-    pub system_info_settings: SystemInfoSettingsSnapshot,
+    pub system_info_settings: Box<SystemInfoSettingsSnapshot>,
     pub catalog: BoardCatalogEntry,
     pub mining: MiningRuntimeState,
     pub block_found: BlockFoundNotificationState,
     /// Conditional block template facts; absent until a positive block height exists.
-    pub maybe_block: Option<SystemInfoBlockSnapshot>,
+    pub maybe_block: Option<Box<SystemInfoBlockSnapshot>>,
     pub asic: AsicSnapshot,
     pub platform: PlatformSnapshot,
     pub safe_telemetry: SafeTelemetrySnapshot,
@@ -54,7 +54,7 @@ impl ApiSnapshot {
             runtime_health: RuntimeHealthSnapshot::fixture_unavailable(),
             config: ConfigSnapshot::ultra_205(),
             project_settings: ProjectSettingsSnapshot::default(),
-            system_info_settings: SystemInfoSettingsSnapshot::safe_ultra_205(),
+            system_info_settings: Box::new(SystemInfoSettingsSnapshot::safe_ultra_205()),
             catalog: ultra_205_catalog_entry(),
             mining: MiningRuntimeState::default(),
             block_found: BlockFoundNotificationState {

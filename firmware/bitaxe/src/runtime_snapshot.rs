@@ -48,7 +48,7 @@ struct SettingsProjection {
     maybe_auto_fan_speed: Option<bool>,
     maybe_manual_fan_speed: Option<u16>,
     start_mining_on_boot: bool,
-    system_info: SystemInfoSettingsSnapshot,
+    system_info: Box<SystemInfoSettingsSnapshot>,
 }
 
 struct CompletedOperatorSnapshot<T> {
@@ -92,6 +92,12 @@ pub fn collect_api_snapshot() -> ApiSnapshot {
         Ok(snapshot) => snapshot,
         Err(error) => panic!("operator snapshot publication failed: {error:?}"),
     }
+}
+
+/// Collects only the platform facts needed to attest boot readiness.
+pub fn collect_platform_readiness_snapshot() -> PlatformSnapshot {
+    let platform_identity = crate::platform_identity::collect();
+    collect_platform_snapshot(PlatformSnapshot::safe_ultra_205(), &platform_identity)
 }
 
 fn complete_operator_snapshot(
@@ -504,9 +510,9 @@ fn collect_settings_projection() -> SettingsProjection {
             Some(LoadedValue::Bool(value)) => *value,
             _ => true,
         },
-        system_info: SystemInfoSettingsSnapshot::from_nvs_snapshot(
+        system_info: Box::new(SystemInfoSettingsSnapshot::from_nvs_snapshot(
             &crate::settings_adapter::current_system_info_settings_snapshot(),
-        ),
+        )),
     }
 }
 

@@ -1,10 +1,13 @@
 const operatorSensorSymbol = "bitaxe_firmware::operator_sensor_runtime::run";
+const platformReadinessSymbol = "bitaxe_firmware::runtime_snapshot::collect_platform_readiness_snapshot";
 const screenCollectorSymbol = "bitaxe_firmware::runtime_snapshot::screen::collect_screen_snapshot";
 const maxIndividualFrameBytes = 3 * 1024;
 const maxCombinedFrameBytes = 4 * 1024;
+const maxPlatformReadinessFrameBytes = 1024;
 
 export type FirmwareStackBudget = {
   readonly operatorSensorFrameBytes: number;
+  readonly platformReadinessFrameBytes: number;
   readonly screenCollectorFrameBytes: number;
   readonly combinedFrameBytes: number;
 };
@@ -39,6 +42,7 @@ function entryFrameBytes(disassembly: string, symbol: string): number {
 
 export function verifyFirmwareStackBudget(disassembly: string): FirmwareStackBudget {
   const operatorSensorFrameBytes = entryFrameBytes(disassembly, operatorSensorSymbol);
+  const platformReadinessFrameBytes = entryFrameBytes(disassembly, platformReadinessSymbol);
   const screenCollectorFrameBytes = entryFrameBytes(disassembly, screenCollectorSymbol);
   if (operatorSensorFrameBytes > maxIndividualFrameBytes || screenCollectorFrameBytes > maxIndividualFrameBytes) {
     throw new Error("firmware stack audit found an oversized individual frame");
@@ -47,5 +51,13 @@ export function verifyFirmwareStackBudget(disassembly: string): FirmwareStackBud
   if (combinedFrameBytes > maxCombinedFrameBytes) {
     throw new Error("firmware stack audit found an oversized operator screen path");
   }
-  return { operatorSensorFrameBytes, screenCollectorFrameBytes, combinedFrameBytes };
+  if (platformReadinessFrameBytes > maxPlatformReadinessFrameBytes) {
+    throw new Error("firmware stack audit found an oversized platform readiness frame");
+  }
+  return {
+    operatorSensorFrameBytes,
+    platformReadinessFrameBytes,
+    screenCollectorFrameBytes,
+    combinedFrameBytes,
+  };
 }

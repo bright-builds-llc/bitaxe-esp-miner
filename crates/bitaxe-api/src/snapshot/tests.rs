@@ -10,6 +10,21 @@ use crate::{
 };
 
 #[test]
+fn api_snapshot_stack_footprint_stays_bounded() {
+    // Arrange
+    let maximum_bytes = 1_920;
+
+    // Act
+    let actual_bytes = core::mem::size_of::<ApiSnapshot>();
+
+    // Assert
+    assert!(
+        actual_bytes <= maximum_bytes,
+        "ApiSnapshot uses {actual_bytes} inline bytes"
+    );
+}
+
+#[test]
 fn api_snapshot_contains_typed_input_fields_without_platform_sdk_dependencies() {
     // Arrange
     let snapshot = ApiSnapshot::safe_ultra_205();

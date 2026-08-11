@@ -1381,10 +1381,10 @@ non-verified outcome. `API-010` remains `implemented` and no evidence or
 - [x] Implement the exhaustive pinned system-info field/type/conditional
       contract with secret-safe confirmed settings and runtime inputs.
 - [x] Add a typed aggregate-only capture workflow and regression coverage.
-- [ ] Run the complete software gate, push the implementation, and admit one
+- [x] Run the complete software gate, push the implementation, and admit one
       clean exact package.
-- [ ] Run one detector and one conditional passive capture, promoting only
-      `API-002` on complete accepted evidence.
+- [x] Run one detector and one conditional passive capture.
+- [ ] Promote `API-002` only on complete accepted evidence.
 
 Plan: `docs/parity/work-plans/20260811T164522Z-API-002/PLAN.md`.
 
@@ -1410,7 +1410,18 @@ continuation-aware selector, sensitive-output, task uniqueness, and diff
 checks. The immutable plan SHA-256 is
 `942264a2dccbf729001c3c40024659424842c125735bb6817d7b6114dbb5cd20`.
 
-Completion review: Pending.
+Completion review: The exhaustive software contract and capture workflow were
+implemented, verified, committed, and pushed. The one authorized exact-package
+hardware attempt failed closed as `evidence_invalid` because the ESP-IDF `main`
+task repeatedly overflowed while startup readiness constructed the full
+operator API snapshot. Recovery and cleanup completed, no public projection
+was emitted, and no retry occurred. The root cause is fixed in software with a
+platform-only startup path, bounded snapshot footprint, source ownership guard,
+and real-firmware stack audit, but that fix has no hardware evidence. The plan
+is closed at
+`docs/parity/work-plans/20260811T164522Z-API-002/CLOSURE.md`; `API-002` remains
+`implemented`, and a fresh immutable plan is required before another bounded
+attempt.
 
 ## Future
 

@@ -227,16 +227,13 @@ fn publish_platform_readiness(
     filesystem_status: filesystem::FilesystemStatus,
     route_shell_ready: bool,
 ) {
-    let platform_snapshot = runtime_snapshot::collect_api_snapshot();
-    crate::info_retained(&format!(
-        "reset_reason={}",
-        platform_snapshot.platform.reset_reason
-    ));
+    let platform_snapshot = runtime_snapshot::collect_platform_readiness_snapshot();
+    crate::info_retained(&format!("reset_reason={}", platform_snapshot.reset_reason));
     crate::info_retained(&format!(
         "partition={}",
-        platform_snapshot.platform.running_partition
+        platform_snapshot.running_partition
     ));
-    let psram_status = if platform_snapshot.platform.psram_available {
+    let psram_status = if platform_snapshot.psram_available {
         "available"
     } else {
         "unavailable"
@@ -244,7 +241,7 @@ fn publish_platform_readiness(
     crate::info_retained(&format!("psram_status={psram_status}"));
     crate::info_retained(&format!(
         "esp_idf_version={}",
-        platform_snapshot.platform.idf_version
+        platform_snapshot.idf_version
     ));
     crate::info_retained(&format!("rust_target={RUST_TARGET}"));
     let spiffs_ready = matches!(
@@ -256,7 +253,7 @@ fn publish_platform_readiness(
             crate::firmware_commit(),
             crate::reference_commit(),
             &crate::app_elf_sha256(),
-            &platform_snapshot.platform.idf_version,
+            &platform_snapshot.idf_version,
         );
         return;
     }

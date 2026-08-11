@@ -230,6 +230,8 @@ rust_test(
     srcs = [
         "src/boot_evidence.rs",
         "src/boot_evidence_source_ownership_test.rs",
+        "src/runtime_snapshot.rs",
+        "src/startup.rs",
     ],
     crate_name = "boot_evidence_source_ownership_tests",
     crate_root = "src/boot_evidence_source_ownership_test.rs",
