@@ -1375,6 +1375,48 @@ Plan closure:
 non-verified outcome. `API-010` remains `implemented` and no evidence or
 `RESULT.md` was created.
 
+### task-parity-api003-live-multifield-patch | 2026-08-11 | Verify production multi-field settings PATCH
+
+- [ ] Commit and push the immutable API-003 plan and task contract.
+- [ ] Add the typed aggregate-only capture and validator with focused
+      regressions and real-child-process coverage.
+- [ ] Run the complete software gate, commit and push implementation, and admit
+      one exact clean package.
+- [ ] Run exactly one detector and one conditional bounded capture.
+- [ ] Promote only `API-003` on complete independently validated evidence;
+      otherwise record the typed boundary and stop without retry.
+
+Plan: `docs/parity/work-plans/20260811T182057Z-API-003/PLAN.md`.
+
+Authorization and effects: standing task authorization covers only the plan's
+one detector and conditional capture after the repo-owned command, complete
+software gate, pushed implementation, and exact package admission exist. The
+capture may perform one exact-package factory flash with ignored local Wi-Fi
+input, one generated atomic hostname-plus-theme PATCH, immediate same-origin
+readback, one exact atomic restoration PATCH, confirmed restoration, normal USB
+reset/re-enumeration, cleanup, and at most one exact-package recovery flash
+after an initial flash effect. It may not read pool credentials, restart, mine,
+control hardware, scan or discover the network, update, erase, write raw flash,
+inject faults, terminate foreign processes, use direct UART, or manipulate
+pins.
+
+Evidence, privacy, recovery, and retry: use absent ignored mode-0700
+`wrapper-001` and `attempt-001` roots with mode-0600 files. Origins, hostnames,
+themes, settings, ports, USB/network/process identities, credentials, HTTP
+bodies, serial output, and traces stay private. Public evidence is limited to
+closed categories, hashes, counts, and safe booleans. Preserve the earliest
+typed failure through restoration/recovery, release owned resources, and do not
+retry. A failure withholds public evidence, `RESULT.md`, and promotion.
+
+Acceptance: require exact clean package identity, one admitted Ultra 205,
+trusted same-origin HTTP, exactly one combined benign mutation request with
+both generated values in one readback, exactly one combined restoration request
+with both originals in one readback, disabled mining and hardware control,
+cleanup, private modes, independent projection validation, redaction, and the
+complete mandatory gate. This does not claim settings durability, sensitive or
+safety-control live mutation, networking longevity, mining, other boards, or
+release readiness.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
