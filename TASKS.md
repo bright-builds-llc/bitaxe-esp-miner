@@ -97,9 +97,21 @@ complete ordered implementation gate passed: `cargo fmt --all`,
 `bun scripts/bright-builds-check.ts all`, `just test`, `just parity`, and
 `just parity-progress`. `just verify-redaction`, `just verify-reference`,
 `git diff --check`, immutable-plan, branch/upstream, and full-diff reviews also
-pass. Hardware evidence remains pending the clean pushed implementation.
+pass. Exact package `1e4c8a30d27e3f193d0b3f77faa157fb2b737309` passed
+provenance, cleanliness, six-artifact, and digest admission. The one detector
+passed. The one capture then stopped before any device effect as
+`evidence_invalid`: the strict partition comparator expected `8K` while the
+package-hashed checked-in table uses equivalent ESP-IDF spelling `8k`. No
+public projection exists and no retry is permitted under this plan.
+The complete ordered gate, redaction check, reference check, parity report, and
+progress report all passed again on the closure state.
 
-Completion review: Pending. This task claims no rollback, large-erase,
+Completion review: This plan is closed without verification at
+`docs/parity/work-plans/20260811T195144Z-REL-001/CLOSURE.md`; the task remains
+active and `REL-001` remains `implemented`. Next safe action is a fresh plan
+that normalizes ESP-IDF size suffix case, proves it against the checked-in
+table, passes the full gate, and authorizes a fresh attempt ordinal. This task
+claims no factory boot, OTA transition, rollback, large erase,
 interrupted-update, OTAWWW/static-partition, other-board, mining,
 hardware-control, or release-readiness parity.
 

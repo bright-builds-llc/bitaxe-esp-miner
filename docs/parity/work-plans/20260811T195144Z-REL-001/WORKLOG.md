@@ -53,3 +53,24 @@
   device effect.
 - Blocker or next safe action: Commit and push this implementation, build its
   exact package, then consume the one detector and conditional capture attempt.
+
+## 2026-08-11T20:20:00Z | attempt-001 pre-effect closure
+
+- Source commit: `1e4c8a30d27e3f193d0b3f77faa157fb2b737309`
+- Actions: Built and admitted the exact clean package, verified all six
+  artifact digests and the pinned reference, consumed the one detector, and
+  conditionally launched the one bounded capture.
+- Verification: Detector admission succeeded for exactly one Ultra 205. The
+  capture returned `evidence_invalid` before flash because the canonical
+  partition comparator required `8K` while the exact checked-in table contains
+  the ESP-IDF-equivalent token `8k`. The package digest matched, the private
+  attempt root contains no captured device artifact, and no public projection
+  was created. The complete ordered repository gate, redaction check, pinned
+  reference check, parity report, and unchanged progress report passed on the
+  closure state.
+- Evidence: Closed aggregate terminal category and pre-effect absence only; no
+  runtime or partition-transition evidence was accepted.
+- Outcome: Attempt consumed without device mutation or REL-001 promotion.
+- Blocker or next safe action: Close this immutable plan without verification.
+  A fresh plan must normalize size suffix case, add a checked-in-table
+  regression, pass the full gate, and allocate a fresh detector/attempt ordinal.
