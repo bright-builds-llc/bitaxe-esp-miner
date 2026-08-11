@@ -1633,6 +1633,67 @@ lines. Both lines are intentionally API-retained. Exact-package recovery and
 private cleanup passed, no public evidence was emitted, and the linked closure
 defines the retained-log continuation using fresh attempt-005 paths.
 
+### task-parity-cfg001-ultra205-defaults-attempt-001 | 2026-08-11 | Verify the Ultra 205 configured defaults
+
+- [ ] Seed exact typed Ultra 205 defaults with owner Wi-Fi and
+      `mineonboot=false` through the ordinary flash workflow.
+- [ ] Retain a closed firmware attestation of all 27 loaded default fields
+      without exposing any raw configured, credential, device, or network
+      value.
+- [ ] Capture one exact-package HTTP/WebSocket observation and validate every
+      API-visible default against the same pinned model.
+- [ ] Add typed contracts and behavior-focused unit, real-process, failure,
+      recovery, no-output, and privacy regressions.
+- [ ] Run the complete ordered software gate and push before hardware use.
+- [ ] Spend one fresh detector and at most one conditional attempt-001.
+- [ ] Promote only `CFG-001` after independent validation and final gates.
+
+Plan: `docs/parity/work-plans/20260811T234907Z-CFG-001/PLAN.md`.
+
+Permitted commands: the exact software and hardware commands in the linked
+immutable plan, culminating in `just capture-ultra205-defaults-evidence` with
+fresh wrapper-001/attempt-001 paths and the detector-admitted port.
+
+Objective: prove the exact package loads all 27 pinned Ultra 205 configured
+defaults while the deliberate `mineonboot=false` override keeps mining and
+hardware control disabled.
+
+Authorized effects: one exact normal package flash; replacement NVS containing
+typed Ultra 205 defaults, owner Wi-Fi, and `mineonboot=false`; bounded receive-
+only USB and same-origin HTTP/WebSocket observation; and at most one exact-
+package recovery flash after failure. No recovery effect can create success.
+
+Prohibited effects: mining, ASIC initialization/work or pool connections,
+frequency/voltage/fan/thermal/power control, self-test execution, OTA, erase,
+arbitrary raw writes, discovery, foreign-process termination, power
+interruption, direct UART, pins, pads, headers, GPIO, probes, jumpers,
+soldering, or injected signals.
+
+Evidence and privacy: wrapper-001 and attempt-001 are ignored mode-`0700`
+roots with mode-`0600` private files. Pool/credential/configured values,
+origins, hostnames, ports, USB/network/process identities, commands, HTTP
+bodies, and raw traces remain private. Only the closed redacted
+`bitaxe-ultra205-defaults-evidence-v1` projection may be committed.
+
+Recovery, retry, and stop: detector failure stops before writes. Preserve the
+earliest `process_failed`, `timeout`, `hardware_blocked`, or `evidence_invalid`
+category through cleanup and optional exact-package recovery. Any conditional
+capture start consumes attempt-001. Release resources and stop without retry
+on success or any admitted terminal category.
+
+Acceptance: exact source/reference/package identity; one board 205; all 27
+loaded defaults and every API-visible default match; retained attestation
+continuity; `mineonboot=false`; disabled mining/control; cleanup; modes;
+redaction; independent validation; and complete gates. Otherwise withhold
+public evidence, close truthfully, and keep `CFG-001` implemented.
+
+Verification: The complete plan-only software gate passed. A single transient
+host resource-spawn failure at `just parity` passed on one boundary retry after
+the preceding build quiesced; all tests, Bright Builds, parity, progress,
+redaction, and reference checks are green.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
