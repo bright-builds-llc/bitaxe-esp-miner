@@ -5179,3 +5179,56 @@ covers 42 REST fields and 44 writes, including both legacy mirrors. No hardware
 was accessed. Live NVS media durability, hostname application, credential
 consumption, network reconnection, mining, ASIC work, and all hardware-control
 effects remain separate non-claims and retain their existing gates.
+
+### task-ultra205-boot-recovery-attempt-011 | 2026-08-11 | Retry boot recovery with the canonical observation CLI
+
+- [x] Commit and push the linked immutable attempt-011 plan.
+- [x] Add and pass a focused regression for the exact observation campaign
+      flags, including absence of a mining profile and pool credentials.
+- [x] Run the complete required software gate, commit and push the regression,
+      then build and admit one clean exact package.
+- [x] Run one new detector and, only after success, one observation campaign
+      using canonical `--flag value` arguments.
+- [x] Record detector, flash, safe NVS, runtime, cleanup, and privacy outcomes
+      independently; stop without another retry or parity promotion.
+
+Plan: `docs/parity/work-plans/20260811T151310Z-API-010/PLAN.md`. It directly
+continues attempt-010 after its pre-process `cli_argument_rejected` outcome.
+
+Authorization and effects: standing task authorization covers only the exact
+software regression, package, detector, and observation command in the linked
+plan. The campaign retains the attempt-010 factory-package and safe NVS
+replacement effects: local Wi-Fi credentials, `mineonboot=false`, and the
+observation marker only. Prior hostname, pool, and other settings may be
+removed. Mining, pool access, hardware controls, OTA, erase-flash, raw writes,
+discovery, direct UART, and electrical manipulation remain prohibited.
+
+Evidence, recovery, retry, and acceptance: use new private mode-0700
+`wrapper-011` and `attempt-011` roots with mode-0600 artifacts. Preserve the
+earliest typed failure and treat completed flash separately from runtime proof.
+Release owned resources on every path. This task authorizes one detector and
+one conditional campaign only. Complete only on exact-package stable runtime,
+safe observation state, cleanup, and privacy; otherwise withhold evidence and
+stop with `API-010` still `implemented`.
+
+Verification: The immutable plan was pushed at `5d647eb7`. Focused Cargo and
+Bazel flash tests passed, and the complete Cargo, Bright Builds, Bazel, package,
+parity, redaction, reference, selector, and diff gate passed. Parity immediately
+after the all-Bazel suite hit macOS `os error 35` in two complete gate passes;
+resource checks were healthy, and the same remaining sequence passed in a fresh
+Bazel server each time. Regression commit `fc12e24f` was pushed, and its clean
+schema-v3 package admitted six
+digest-bound artifacts and the pinned reference. The sole detector admitted
+one Ultra 205. The canonical campaign completed the factory flash and safe NVS
+seed, then accepted 1,049 trusted runtime markers and five fresh observation
+checkpoints across 360 seconds. Its result was redacted and sealed; USB cleanup,
+holder release, private modes, and public-result privacy checks passed.
+
+Completion review: The current pushed package recovered the prior panic-reset
+boot loop through the normal USB flash path without a factory reset. Runtime
+identity was trusted, serial classification was clean, safety stayed fresh,
+`mineonboot` remained false, no mining profile or pool configuration was used,
+and no parity promotion occurred. `API-010` remains `implemented` because theme
+mutation and restart durability were not exercised. The result claims no
+network longevity, mining, ASIC or hardware-control effect, OTA, erase, raw
+write, direct UART, pins, other-board behavior, or release readiness.

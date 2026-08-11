@@ -1375,47 +1375,6 @@ Plan closure:
 non-verified outcome. `API-010` remains `implemented` and no evidence or
 `RESULT.md` was created.
 
-### task-ultra205-boot-recovery-attempt-011 | 2026-08-11 | Retry boot recovery with the canonical observation CLI
-
-- [x] Commit and push the linked immutable attempt-011 plan.
-- [x] Add and pass a focused regression for the exact observation campaign
-      flags, including absence of a mining profile and pool credentials.
-- [ ] Run the complete required software gate, commit and push the regression,
-      then build and admit one clean exact package.
-- [ ] Run one new detector and, only after success, one observation campaign
-      using canonical `--flag value` arguments.
-- [ ] Record detector, flash, safe NVS, runtime, cleanup, and privacy outcomes
-      independently; stop without another retry or parity promotion.
-
-Plan: `docs/parity/work-plans/20260811T151310Z-API-010/PLAN.md`. It directly
-continues attempt-010 after its pre-process `cli_argument_rejected` outcome.
-
-Authorization and effects: standing task authorization covers only the exact
-software regression, package, detector, and observation command in the linked
-plan. The campaign retains the attempt-010 factory-package and safe NVS
-replacement effects: local Wi-Fi credentials, `mineonboot=false`, and the
-observation marker only. Prior hostname, pool, and other settings may be
-removed. Mining, pool access, hardware controls, OTA, erase-flash, raw writes,
-discovery, direct UART, and electrical manipulation remain prohibited.
-
-Evidence, recovery, retry, and acceptance: use new private mode-0700
-`wrapper-011` and `attempt-011` roots with mode-0600 artifacts. Preserve the
-earliest typed failure and treat completed flash separately from runtime proof.
-Release owned resources on every path. This task authorizes one detector and
-one conditional campaign only. Complete only on exact-package stable runtime,
-safe observation state, cleanup, and privacy; otherwise withhold evidence and
-stop with `API-010` still `implemented`.
-
-Verification: The immutable plan was pushed at `5d647eb7`. Focused Cargo and
-Bazel flash tests passed, and the complete Cargo, Bright Builds, Bazel, package,
-parity, redaction, reference, selector, and diff gate passed. One initial
-post-Bazel parity process hit macOS `os error 35`; resource checks were healthy,
-and the same remaining sequence passed in a fresh Bazel server. The regression
-commit, clean exact-package rebuild, and hardware commands remain pending.
-
-Completion review: Pending. Boot recovery cannot verify theme durability or
-promote `API-010`.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

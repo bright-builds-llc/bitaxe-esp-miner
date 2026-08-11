@@ -12,7 +12,7 @@
   detector passed, but attempt 011 will perform its own detector.
 - Outcome: Plan verification and push pending.
 
-## 2026-08-11T15:31:00Z | software checkpoint
+## 2026-08-11T15:19:00Z | software checkpoint
 
 - Immutable plan SHA-256:
   `ed79db9ec36f9c7426db50926bc7dc5c55183267bae569425007376c591317c3`.
@@ -28,3 +28,27 @@
   a Bazel shutdown, the complete remaining sequence passed in a fresh server.
 - Hardware status: untouched. Regression commit and push, clean exact package,
   detector, and conditional campaign remain pending.
+
+## 2026-08-11T15:30:48Z | hardware completion checkpoint
+
+- Regression commit `fc12e24fdb5b9fda35964b9e774f5727b456aa16`
+  was pushed, and the rebuilt schema-v3 package admitted that exact clean
+  source, the pinned reference, and six digest-bound artifacts.
+- The sole attempt-011 detector admitted exactly one Ultra 205 and completed
+  board-info before the conditional campaign launched.
+- The canonical observation campaign completed successfully. Its ordered
+  success path proves the exact-package flash and safe NVS seed completed
+  before runtime capture.
+- The sealed redacted result was accepted as `observation_complete` after 360
+  seconds, with trusted package/runtime identity, clean serial classification,
+  1,049 accepted runtime markers, five fresh observation checkpoints,
+  `mineonboot=false`, no pool configuration read, and no parity promotion.
+- Safety remained fresh, USB cleanup was ready, no holder remained on the
+  admitted port, both private roots were mode 0700, and every artifact was mode
+  0600. Public-result scans found no port, origin, IP, or MAC identifier.
+- During the final repository gate, the same macOS `os error 35` recurred only
+  when parity followed the all-Bazel suite in the existing server. Host process
+  use remained far below its configured limit, and the complete remaining
+  sequence passed after a clean Bazel shutdown.
+- Outcome: the prior panic-reset boot loop is recovered on the current package.
+  Theme durability was not exercised, so `API-010` remains `implemented`.
