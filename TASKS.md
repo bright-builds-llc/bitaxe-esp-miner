@@ -1395,6 +1395,19 @@ separate `/api/theme` route and is not an accepted `/api/system` field. No
 hardware attempt was spent and `API-003` remains `implemented`. The next safe
 action is a fresh linked plan using two actual benign system-settings fields.
 
+Corrected active plan:
+`docs/parity/work-plans/20260811T182900Z-API-003/PLAN.md`. It continues the
+closed predecessor with a source-proved hostname-plus-rotation `/api/system`
+transaction. Standing authorization covers only its absent corrected wrapper
+and attempt roots, exactly one detector, and one conditional capture after the
+repo-owned command, complete gate, pushed implementation, and exact package
+admission exist. Allowed effects are one exact-package flash, one generated
+atomic hostname/rotation PATCH and combined readback, one exact restoration
+PATCH and combined readback, normal USB reset/cleanup, and at most one recovery
+flash. All prior privacy, prohibited-effect, earliest-failure, no-retry, and
+promotion conditions remain in force; `theme` is no longer part of the active
+contract.
+
 Authorization and effects: standing task authorization covers only the plan's
 one detector and conditional capture after the repo-owned command, complete
 software gate, pushed implementation, and exact package admission exist. The
