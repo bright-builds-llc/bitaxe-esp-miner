@@ -33,3 +33,42 @@
 - Blocker or next safe action: Review the complete diff, commit and push the
   implementation, then run the immutable plan's one detector and conditional
   one capture without retry.
+
+## 2026-08-11T19:36:30Z | exact-package hardware evidence
+
+- Source commit: `f1aca309239d38c1764992794cab2aa80832d037`.
+- Actions: Built the exact clean package, ran the sole detector, and ran the
+  sole conditional log-buffer capture. The detector admitted one Ultra 205;
+  the capture performed one exact-package flash, two retained-log downloads,
+  and one receive-only raw WebSocket connection.
+- Verification: Exact package and same-boot identity, passive safe state,
+  exact download headers, plain-text frame type and marker, baseline-prefix
+  preservation, a marker-count increase of exactly one, private modes,
+  cleanup, and the Rust validator all pass. The aggregate projection records
+  190647 baseline bytes, 192602 final bytes, a 31-byte frame, and marker counts
+  zero then one.
+- Evidence: Public aggregate-only projection at
+  `docs/parity/evidence/log001-retained-stream/log-buffer-projection.json`;
+  all detector, credential, port, origin, network, serial, HTTP, WebSocket,
+  retained-log, and process material remains in ignored protected roots.
+- Outcome: The single attempt passed and supports promoting only `LOG-001` to
+  `verified`.
+- Blocker or next safe action: Close the semantic-redaction admission check,
+  run the final evidence gate, and commit the evidence before transition.
+
+## 2026-08-11T19:37:04Z | semantic redaction admission correction
+
+- Source commit: `f1aca309239d38c1764992794cab2aa80832d037` plus the reviewed
+  evidence-admission correction.
+- Actions: Added the new log-buffer schema to the generic semantic-redaction
+  scanner, required the capture to scan its private candidate before future
+  publication, and added a regression rejecting operational device fields.
+- Verification: The focused automation suite passes, the independent Rust
+  validator accepts the absolute public projection path, and `just
+  verify-redaction` now checks seven schemas and accepts the captured
+  projection. No hardware action was repeated.
+- Evidence: The unchanged public projection and the scanner regression.
+- Outcome: All promotion evidence gates are closed.
+- Blocker or next safe action: Run the complete final evidence gate, commit and
+  push the evidence source, then transition only `LOG-001` and synchronize
+  deterministic progress.

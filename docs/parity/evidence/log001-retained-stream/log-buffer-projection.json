@@ -1,0 +1,36 @@
+{
+  "schema_version": "bitaxe-log-buffer-evidence-v1",
+  "board": 205,
+  "source_commit": "f1aca309239d38c1764992794cab2aa80832d037",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "package_manifest_sha256": "1cf9319514030d317bcda0974278a1d836c96c5854c54c6049e3dc8e306339b7",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "capture-log-buffer-evidence",
+    "request_sha256": "86e94cff9e31fab6ed30f0ba89d8446e203e124da5542701ced81e528974d080"
+  },
+  "detector_admitted": true,
+  "boot_observed": true,
+  "same_origin_observed": true,
+  "log_buffer": {
+    "boot_session_sha256": "59d91a856a81a468c5d07517f0945439ba85bc632d6bfc81e2c5940469c115ab",
+    "baseline_body_sha256": "853fa3d5d394a2641edc9862f589f57c31de67c937e025c7e5ed202349ff3e10",
+    "final_body_sha256": "a0842926826fcf659d2c68d2f4631d9c681dbd9da62f5a7f6a6ca56f90cd0744",
+    "raw_frame_sha256": "cf615290d61ac89980ecf8fbb5733271470e15ec2b544fa4c16b51b6f1db6589",
+    "baseline_bytes": 190647,
+    "final_bytes": 192602,
+    "raw_frame_bytes": 31,
+    "baseline_marker_count": 0,
+    "final_marker_count": 1,
+    "new_marker_count": 1,
+    "both_download_headers_match": true,
+    "baseline_is_exact_prefix": true,
+    "raw_frame_plain_text": true,
+    "raw_frame_marker_matches": true,
+    "retained_marker_matches_frame": true
+  },
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "cleanup_complete": true,
+  "redaction_status": "passed"
+}

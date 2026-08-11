@@ -1431,8 +1431,10 @@ Verification: The immutable-plan checkpoint and implementation gate pass the
 ordered Rust format/Clippy/build/test sequence, Bright Builds, all 36 Bazel
 tests, parity/progress, redaction, pinned-reference cleanliness, and focused
 typed-contract, capture-orchestration, no-clobber, privacy, and real-child-
-process regressions. The hardware evidence and checklist transition remain
-pending.
+process regressions. The exact clean package from `f1aca309` passed the sole
+detector and sole capture; the Rust validator, semantic-redaction scanner,
+exact header/prefix/plain-text/marker correlation, safe-state, cleanup, and
+private-mode checks all pass. The checklist transition remains pending.
 
 Completion review: Pending. Reset persistence, maximum-capacity live wrap,
 long-duration or multi-client streaming, mining, hardware controls, updates,

@@ -21,6 +21,7 @@ import {
   uniqueRuntimeOrigin,
 } from "./http.js";
 import type { ProcessOutcome, ProcessPort } from "./process.js";
+import { verifySemanticEvidenceRedaction } from "./redaction.js";
 import { hasPassiveSafeState } from "./version-evidence.js";
 import {
   captureTextWebSocketFrame,
@@ -370,6 +371,7 @@ export async function captureLogBufferEvidence(
     };
     const privateCandidate = path.join(privateRoot, "final-evidence.private.json");
     await privateJson(privateCandidate, evidence);
+    await verifySemanticEvidenceRedaction(privateRoot);
     const validation = await child(
       processPort,
       validatorProgram,

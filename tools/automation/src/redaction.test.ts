@@ -49,3 +49,26 @@ test("settings PATCH baseline digest keys do not collide with the origin denylis
     await rm(root, { recursive: true });
   }
 });
+
+test("log buffer evidence is admitted and operational device fields are rejected", async () => {
+  // Arrange
+  const root = await mkdtemp(path.join(tmpdir(), "bitaxe-redaction-log-buffer-"));
+  const evidence = path.join(root, "evidence.json");
+  await writeFile(evidence, JSON.stringify({
+    schema_version: "bitaxe-log-buffer-evidence-v1",
+    same_origin_observed: true,
+    log_buffer: { raw_frame_sha256: "0".repeat(64) },
+  }));
+
+  try {
+    // Act / Assert
+    assert.equal((await verifySemanticEvidenceRedaction(root)).checked, 1);
+    await writeFile(evidence, JSON.stringify({
+      schema_version: "bitaxe-log-buffer-evidence-v1",
+      usb_port: "/dev/private-device",
+    }));
+    await assert.rejects(verifySemanticEvidenceRedaction(root));
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
