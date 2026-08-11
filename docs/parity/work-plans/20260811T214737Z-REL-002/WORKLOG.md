@@ -36,7 +36,7 @@
 - Blocker or next safe action: Commit and push these planning artifacts without
   amendment, then implement and test the forced socket teardown.
 
-## 2026-08-11T22:03:00Z | Post-FIN design disproved
+## 2026-08-11T21:57:00Z | Post-FIN design disproved
 
 - Source commit: `a736e315` with an unchanged immutable plan.
 - Actions: Implemented the planned post-FIN reset experimentally, ran the real
