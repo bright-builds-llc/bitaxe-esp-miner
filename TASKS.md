@@ -1294,7 +1294,7 @@ active and unarchived.
 
 ### task-ultra205-boot-recovery-attempt-010 | 2026-08-11 | Recover the blinking Ultra 205 with one safe observation flash
 
-- [ ] Commit and push the linked immutable recovery plan before hardware use.
+- [x] Commit and push the linked immutable recovery plan before hardware use.
 - [ ] Verify and freeze one clean current-head Ultra 205 package.
 - [ ] Run one protected detector after the user's fresh USB connection.
 - [ ] Only if detector admission succeeds, run one exact-package observation

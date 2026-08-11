@@ -14,4 +14,13 @@
 - Safety choice: use the existing observation campaign so the post-flash NVS
   seed explicitly contains `mineonboot=false` and no pool credentials or live
   hardware lease.
-- Outcome: Planning checkpoint pending verification and push.
+- Verification: The ordered Cargo format, strict Clippy, all-target build, and
+  all-feature tests passed. Bright Builds reported zero findings; all 36 Bazel
+  tests, parity, progress, redaction, reference cleanliness, the exact plan
+  selector, and diff checks passed. The selector checks caught and corrected
+  the uncommitted parity-row key and predecessor-plan lineage metadata.
+- Outcome: Plan commit `5becba9f9fce805c05a13732c0c98116a8c2973e`
+  is pushed. Immutable plan SHA-256 is
+  `26af4ac6711842bf91c8d928461adc39c580dddaa5d2448757b0e8d743de36e7`.
+- Next safe action: Commit and push this checkpoint, rebuild the exact package
+  from that clean source identity, then run the sole protected detector.
