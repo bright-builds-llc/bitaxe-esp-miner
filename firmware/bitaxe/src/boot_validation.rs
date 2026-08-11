@@ -6,27 +6,43 @@
 
 use esp_idf_svc::sys;
 
+use crate::boot_validation_plan::{boot_validation_action, BootValidationAction};
 use crate::log_buffer;
 
 /// Validates a newly booted OTA image once startup diagnostics have completed.
-pub fn validate_boot(startup_diagnostics_passed: bool) -> anyhow::Result<()> {
+pub fn validate_boot(startup_diagnostics_passed: bool) -> anyhow::Result<bool> {
     let state = running_partition_state()?;
-    if !state.requires_validation() {
-        info_retained(&format!(
-            "ota_boot_validation=not_pending state={}",
-            state.as_str()
-        ));
-        return Ok(());
+    match boot_validation_action(
+        state.requires_validation(),
+        startup_diagnostics_passed,
+        rollback_probe_enabled(),
+    ) {
+        BootValidationAction::ReportNotPending => {
+            info_retained(&format!(
+                "ota_boot_validation=not_pending state={}",
+                state.as_str()
+            ));
+            Ok(true)
+        }
+        BootValidationAction::MarkValid => {
+            mark_running_slot_valid()?;
+            info_retained("ota_boot_validation=marked_valid");
+            Ok(true)
+        }
+        BootValidationAction::MarkInvalidAndRollback => {
+            info_retained("ota_boot_validation=marked_invalid_reboot");
+            mark_running_slot_invalid_and_reboot()?;
+            Ok(false)
+        }
+        BootValidationAction::HoldPendingRollbackProbe => {
+            info_retained("ota_boot_validation=rollback_probe_pending");
+            Ok(false)
+        }
     }
+}
 
-    if startup_diagnostics_passed {
-        mark_running_slot_valid()?;
-        info_retained("ota_boot_validation=marked_valid");
-        return Ok(());
-    }
-
-    info_retained("ota_boot_validation=marked_invalid_reboot");
-    mark_running_slot_invalid_and_reboot()
+const fn rollback_probe_enabled() -> bool {
+    env!("BITAXE_OTA_ROLLBACK_PROBE").as_bytes()[0] == b't'
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

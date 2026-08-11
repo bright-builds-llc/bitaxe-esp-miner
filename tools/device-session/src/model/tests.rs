@@ -20,6 +20,7 @@ fn baseline() -> BaselineApplication {
 fn postcondition() -> ExpectedPostcondition {
     ExpectedPostcondition {
         hostname_sha256: digest('b'),
+        app_elf_sha256: None,
         running_partition: None,
     }
 }
@@ -188,6 +189,27 @@ fn response_missing_can_still_finish_ready_from_authoritative_quorum() {
         state.projection().request_outcome,
         RequestOutcome::ResponseMissing
     );
+}
+
+#[test]
+fn expected_postcondition_can_bind_a_different_admitted_application() {
+    // Arrange
+    let mut expected = postcondition();
+    expected.app_elf_sha256 = Some(digest('c'));
+    expected.running_partition = Some("ota_0".to_owned());
+    let mut state = SessionState::new(baseline(), expected, "http://trusted-device".to_owned());
+    ready_through_request(&mut state);
+    qualify_stable_post_restart_device(&mut state);
+    let mut observed = boot_b();
+    observed.app_elf_sha256 = digest('c');
+    observed.running_partition = "ota_0".to_owned();
+    // Act
+    state.apply(SessionEvent::BootBObserved { boot_b: observed });
+    state.apply(SessionEvent::CleanupComplete);
+    // Assert
+    assert_eq!(state.terminal_category(), TerminalCategory::Ready);
+    assert!(state.projection().build_identity_matches);
+    assert!(state.projection().postcondition_matches);
 }
 
 #[test]

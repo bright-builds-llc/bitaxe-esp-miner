@@ -23,9 +23,14 @@ import {
   type ParsedInvocation,
 } from "./invocation.js";
 import { packageFirmware } from "./package.js";
+import { packageRollbackProbe } from "./rollback-probe.js";
 import { captureLogBufferEvidence, LogBufferEvidenceError } from "./log-buffer-evidence.js";
 import { captureOperatorSnapshotEvidence, OperatorSnapshotEvidenceError } from "./operator-snapshot-evidence.js";
 import { capturePartitionLayoutEvidence, PartitionLayoutEvidenceError } from "./partition-layout-evidence.js";
+import {
+  captureSdkconfigRollbackEvidence,
+  SdkconfigRollbackEvidenceError,
+} from "./sdkconfig-rollback-evidence.js";
 import { createLocalProcessPort, type ProcessPort } from "./process.js";
 import { verifySemanticEvidenceRedaction } from "./redaction.js";
 import { captureRuntimeHealthEvidence, RuntimeHealthEvidenceError } from "./runtime-health-evidence.js";
@@ -213,6 +218,7 @@ async function dispatchProcess(
       throw new PolicyError("the request is typed but no authorized effect adapter is active");
     case "build-firmware":
     case "package-firmware":
+    case "package-rollback-probe":
     case "verify-redaction":
     case "verify-http-api":
     case "capture-version-evidence":
@@ -222,6 +228,7 @@ async function dispatchProcess(
     case "capture-settings-patch-evidence":
     case "capture-log-buffer-evidence":
     case "capture-partition-layout-evidence":
+    case "capture-sdkconfig-rollback-evidence":
     case "verify-theme-durability":
       throw new Error("specialized workflow reached generic dispatch");
   }
@@ -252,6 +259,7 @@ async function main(): Promise<number> {
         buildProvenanceStamp: optionValue(invocation, "--build-provenance-stamp"),
         identitySdkconfigDefaults: optionValue(invocation, "--identity-sdkconfig-defaults"),
         buildTimestampUtc: optionValue(invocation, "--build-timestamp-utc"),
+        buildMode: optionValue(invocation, "--build-mode") as "normal" | "rollback-probe",
       }, processPort);
     } else if (invocation.command === "package-firmware") {
       await packageFirmware(root, {
@@ -264,6 +272,13 @@ async function main(): Promise<number> {
         outDir: optionValue(invocation, "--out-dir"),
         manifest: optionValue(invocation, "--manifest"),
       }, processPort, toolProgram(root, "tools/xtask/xtask"));
+    } else if (invocation.command === "package-rollback-probe") {
+      publicValue = await packageRollbackProbe(root, {
+        firmwareElf: optionValue(invocation, "--firmware-elf"),
+        buildProvenanceStamp: optionValue(invocation, "--build-provenance-stamp"),
+        outputImage: optionValue(invocation, "--output-image"),
+        metadata: optionValue(invocation, "--metadata"),
+      }, processPort);
     } else if (invocation.command === "verify-http-api") {
       const origin = new URL(optionValue(invocation, "--device-url"));
       const output = assertWithinWorkspace(root, optionValue(invocation, "--output"));
@@ -343,6 +358,19 @@ async function main(): Promise<number> {
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root), deviceSessionProgram(root),
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_partition_layout_evidence"));
+    } else if (invocation.command === "capture-sdkconfig-rollback-evidence") {
+      const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
+      publicValue = await captureSdkconfigRollbackEvidence(root, {
+        privateRoot: optionValue(invocation, "--private-root"),
+        packageManifest: optionValue(invocation, "--package-manifest"),
+        rollbackProbeImage: optionValue(invocation, "--rollback-probe-image"),
+        rollbackProbeMetadata: optionValue(invocation, "--rollback-probe-metadata"),
+        wifiCredentials: optionValue(invocation, "--wifi-credentials"),
+        port,
+        projection: optionValue(invocation, "--projection"),
+        captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
+      }, processPort, flashProgram(root), deviceSessionProgram(root),
+      toolProgram(root, "crates/bitaxe-automation-contracts/validate_sdkconfig_rollback_evidence"));
     } else if (invocation.command === "verify-settings-durability" && optionValue(invocation, "--mode") === "capture") {
       const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
       publicValue = await captureSettingsDurability(root, {
@@ -383,11 +411,12 @@ async function main(): Promise<number> {
     const settingsPatchFailure = error instanceof SettingsPatchEvidenceError;
     const logBufferFailure = error instanceof LogBufferEvidenceError;
     const partitionLayoutFailure = error instanceof PartitionLayoutEvidenceError;
+    const sdkconfigRollbackFailure = error instanceof SdkconfigRollbackEvidenceError;
     const category: AutomationCategory = policyBlocked
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure
+        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure
           ? error.category
           : "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";

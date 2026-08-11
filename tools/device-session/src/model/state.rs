@@ -315,9 +315,14 @@ impl SessionState {
         }
         self.http_observation_count = self.http_observation_count.saturating_add(1);
         self.application_recovered = true;
+        let expected_app_elf_sha256 = self
+            .expected_postcondition
+            .app_elf_sha256
+            .as_ref()
+            .unwrap_or(&self.baseline.app_elf_sha256);
         self.build_identity_matches = boot_b.source_commit == self.baseline.source_commit
             && boot_b.reference_commit == self.baseline.reference_commit
-            && boot_b.app_elf_sha256 == self.baseline.app_elf_sha256;
+            && &boot_b.app_elf_sha256 == expected_app_elf_sha256;
         self.boot_session_changed = boot_b.boot_session != self.baseline.boot_session;
         self.boot_ordinal_advanced_by_one = self
             .baseline

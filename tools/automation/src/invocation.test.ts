@@ -180,6 +180,29 @@ test("partition layout evidence requires the complete detector-gated surface", (
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
 
+test("SDK config rollback evidence requires the complete detector-gated surface", () => {
+  // Arrange
+  const complete = [
+    "capture-sdkconfig-rollback-evidence",
+    "--private-root", "scratch/sdkconfig-rollback",
+    "--package-manifest", "package.json",
+    "--rollback-probe-image", "probe.bin",
+    "--rollback-probe-metadata", "probe.json",
+    "--wifi-credentials", "wifi.json",
+    "--detector-output", "scratch/detector.stdout",
+    "--projection", "docs/evidence/sdkconfig-rollback.json",
+    "--capture-timeout-seconds", "600",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "capture-sdkconfig-rollback-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});
+
 test("operator snapshot capture requires the detector-gated closed surface", () => {
   // Arrange
   const complete = [

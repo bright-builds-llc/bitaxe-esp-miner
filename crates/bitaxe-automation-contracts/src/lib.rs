@@ -8,6 +8,7 @@ mod log_buffer_evidence;
 mod operator_snapshot_evidence;
 mod partition_layout_evidence;
 mod runtime_health_evidence;
+mod sdkconfig_rollback_evidence;
 mod settings_patch_evidence;
 mod system_info_evidence;
 
@@ -17,6 +18,9 @@ pub use operator_snapshot_evidence::{
 };
 pub use partition_layout_evidence::{PartitionLayoutEvidence, PartitionLayoutObservationEvidence};
 pub use runtime_health_evidence::{RuntimeHealthEvidence, RuntimeHealthObservationEvidence};
+pub use sdkconfig_rollback_evidence::{
+    SdkconfigRollbackEvidence, SdkconfigRollbackObservationEvidence,
+};
 pub use settings_patch_evidence::{SettingsPatchEvidence, SettingsPatchObservationEvidence};
 pub use system_info_evidence::{SystemInfoEvidence, SystemInfoObservationEvidence};
 
@@ -32,6 +36,7 @@ pub const SYSTEM_INFO_EVIDENCE_SCHEMA: &str = "bitaxe-system-info-evidence-v1";
 pub const SETTINGS_PATCH_EVIDENCE_SCHEMA: &str = "bitaxe-settings-patch-evidence-v1";
 pub const LOG_BUFFER_EVIDENCE_SCHEMA: &str = "bitaxe-log-buffer-evidence-v1";
 pub const PARTITION_LAYOUT_EVIDENCE_SCHEMA: &str = "bitaxe-partition-layout-evidence-v1";
+pub const SDKCONFIG_ROLLBACK_EVIDENCE_SCHEMA: &str = "bitaxe-sdkconfig-rollback-evidence-v1";
 pub const MIGRATION_SCHEMA: &str = "bitaxe-automation-migration-v1";
 
 #[must_use]
@@ -46,6 +51,7 @@ pub enum AutomationCommand {
     BootstrapEsp,
     BuildFirmware,
     PackageFirmware,
+    PackageRollbackProbe,
     VerifyReference,
     VerifyRedaction,
     VerifyProductionSession,
@@ -67,6 +73,7 @@ pub enum AutomationCommand {
     CaptureSettingsPatchEvidence,
     CaptureLogBufferEvidence,
     CapturePartitionLayoutEvidence,
+    CaptureSdkconfigRollbackEvidence,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -91,6 +98,11 @@ pub enum AutomationCategory {
     Timeout,
     EvidenceInvalid,
     HardwareBlocked,
+    PackageInvalid,
+    InterruptionNotObserved,
+    ProbeBootFailed,
+    RollbackNotObserved,
+    RecoveryFailed,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -207,6 +219,7 @@ pub struct ContractBundle {
     pub settings_patch_evidence_schema: Value,
     pub log_buffer_evidence_schema: Value,
     pub partition_layout_evidence_schema: Value,
+    pub sdkconfig_rollback_evidence_schema: Value,
     pub commands: Vec<AutomationCommand>,
     pub evidence_schemas: Vec<&'static str>,
 }
@@ -239,11 +252,16 @@ pub fn contract_bundle() -> ContractBundle {
             PartitionLayoutEvidence
         ))
         .expect("partition layout evidence schema must serialize"),
+        sdkconfig_rollback_evidence_schema: serde_json::to_value(schema_for!(
+            SdkconfigRollbackEvidence
+        ))
+        .expect("SDK config rollback evidence schema must serialize"),
         commands: vec![
             AutomationCommand::Doctor,
             AutomationCommand::BootstrapEsp,
             AutomationCommand::BuildFirmware,
             AutomationCommand::PackageFirmware,
+            AutomationCommand::PackageRollbackProbe,
             AutomationCommand::VerifyReference,
             AutomationCommand::VerifyRedaction,
             AutomationCommand::VerifyProductionSession,
@@ -265,6 +283,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::CaptureSettingsPatchEvidence,
             AutomationCommand::CaptureLogBufferEvidence,
             AutomationCommand::CapturePartitionLayoutEvidence,
+            AutomationCommand::CaptureSdkconfigRollbackEvidence,
         ],
         evidence_schemas: vec![
             HARDWARE_ATTEMPT_SCHEMA,
@@ -277,6 +296,7 @@ pub fn contract_bundle() -> ContractBundle {
             SETTINGS_PATCH_EVIDENCE_SCHEMA,
             LOG_BUFFER_EVIDENCE_SCHEMA,
             PARTITION_LAYOUT_EVIDENCE_SCHEMA,
+            SDKCONFIG_ROLLBACK_EVIDENCE_SCHEMA,
             MIGRATION_SCHEMA,
         ],
     }

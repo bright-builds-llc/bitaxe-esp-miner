@@ -10,6 +10,7 @@ fn main() {
     println!("cargo:rerun-if-env-changed=BITAXE_HARDWARE_EVIDENCE_ACK");
     println!("cargo:rerun-if-env-changed=BITAXE_WORK_RESULT_INVESTIGATION");
     println!("cargo:rerun-if-env-changed=BITAXE_CHIP_DETECT_INVESTIGATION");
+    println!("cargo:rerun-if-env-changed=BITAXE_OTA_ROLLBACK_PROBE");
     let provenance = required_build_provenance();
     let identity = provenance.build_identity();
     println!(
@@ -48,6 +49,18 @@ fn main() {
         "cargo:rustc-env=BITAXE_BUILD_TIMESTAMP_UTC={}",
         required_build_timestamp_utc()
     );
+    println!(
+        "cargo:rustc-env=BITAXE_OTA_ROLLBACK_PROBE={}",
+        rollback_probe_enabled()
+    );
+}
+
+fn rollback_probe_enabled() -> bool {
+    match env::var("BITAXE_OTA_ROLLBACK_PROBE").as_deref() {
+        Ok("1") => true,
+        Ok("0") | Err(_) => false,
+        Ok(_) => panic!("BITAXE_OTA_ROLLBACK_PROBE must be 0 or 1"),
+    }
 }
 
 fn assert_console_contract() {

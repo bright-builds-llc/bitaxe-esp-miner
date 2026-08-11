@@ -10,6 +10,7 @@ rust_library(
         "src/operator_snapshot_evidence.rs",
         "src/partition_layout_evidence.rs",
         "src/runtime_health_evidence.rs",
+        "src/sdkconfig_rollback_evidence.rs",
         "src/settings_patch_evidence.rs",
         "src/system_info_evidence.rs",
     ],
@@ -90,6 +91,17 @@ rust_binary(
     name = "validate_log_buffer_evidence",
     srcs = ["src/bin/validate_log_buffer_evidence.rs"],
     crate_name = "validate_log_buffer_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_sdkconfig_rollback_evidence",
+    srcs = ["src/bin/validate_sdkconfig_rollback_evidence.rs"],
+    crate_name = "validate_sdkconfig_rollback_evidence",
     edition = "2021",
     deps = [
         ":bitaxe_automation_contracts",

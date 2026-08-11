@@ -3,6 +3,7 @@ use esp_idf_svc::sys;
 mod asic_adapter;
 mod boot_evidence;
 mod boot_validation;
+mod boot_validation_plan;
 mod display_adapter;
 mod filesystem;
 mod http_api;

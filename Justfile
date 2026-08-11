@@ -88,3 +88,6 @@ capture-log-buffer-evidence *args:
 
 capture-partition-layout-evidence *args:
     bazel run //tools/automation:capture_partition_layout_evidence -- {{ args }}
+
+capture-sdkconfig-rollback-evidence *args:
+    bazel run //tools/automation:capture_sdkconfig_rollback_evidence -- {{ args }}

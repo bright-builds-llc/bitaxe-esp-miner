@@ -1377,12 +1377,12 @@ non-verified outcome. `API-010` remains `implemented` and no evidence or
 
 ### task-parity-rel002-rollback-interruption-attempt-001 | 2026-08-11 | Prove ESP-IDF interrupted-update abort and rollback
 
-- [ ] Commit and push the immutable `REL-002` plan before implementation.
-- [ ] Build an isolated pending-validation rollback probe without changing the
+- [x] Commit and push the immutable `REL-002` plan before implementation.
+- [x] Build an isolated pending-validation rollback probe without changing the
       normal release image behavior.
-- [ ] Add typed interrupted-upload, probe-boot, rollback, recovery, evidence,
+- [x] Add typed interrupted-upload, probe-boot, rollback, recovery, evidence,
       and redaction workflows with behavior-focused and real-process tests.
-- [ ] Run focused and mandatory software gates; commit and push the exact
+- [x] Run focused and mandatory software gates; commit and push the exact
       implementation before hardware use.
 - [ ] Run one protected detector and, only after admission, one protected
       attempt-001 capture on board 205.

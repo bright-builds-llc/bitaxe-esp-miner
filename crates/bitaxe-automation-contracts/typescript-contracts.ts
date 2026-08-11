@@ -5,6 +5,7 @@ export type AutomationCommand =
   | "bootstrap-esp"
   | "build-firmware"
   | "package-firmware"
+  | "package-rollback-probe"
   | "verify-reference"
   | "verify-redaction"
   | "verify-production-session"
@@ -26,7 +27,8 @@ export type AutomationCommand =
   | "capture-system-info-evidence"
   | "capture-settings-patch-evidence"
   | "capture-log-buffer-evidence"
-  | "capture-partition-layout-evidence";
+  | "capture-partition-layout-evidence"
+  | "capture-sdkconfig-rollback-evidence";
 
 export type AutomationStatus = "succeeded" | "failed" | "blocked";
 
@@ -41,7 +43,12 @@ export type AutomationCategory =
   | "process_failed"
   | "timeout"
   | "evidence_invalid"
-  | "hardware_blocked";
+  | "hardware_blocked"
+  | "package_invalid"
+  | "interruption_not_observed"
+  | "probe_boot_failed"
+  | "rollback_not_observed"
+  | "recovery_failed";
 
 export type AutomationResult = {
   schema_version: "bitaxe-automation-result-v1";
@@ -220,8 +227,47 @@ export type PartitionLayoutEvidence = {
   redaction_status: "passed";
 };
 
+export type SdkconfigRollbackObservationEvidence = {
+  sdkconfig_sha256: string;
+  rollback_enabled: true;
+  anti_rollback_disabled: true;
+  rollback_probe_isolated: true;
+  interrupted_upload_attempt_count: 1;
+  interrupted_upload_prefix_bytes: number;
+  interruption_protocol_abort_observed: true;
+  baseline_boot_session_unchanged: true;
+  baseline_boot_ordinal_unchanged: true;
+  baseline_build_unchanged: true;
+  probe_pending_validation_observed: true;
+  probe_running_partition_ota_0: true;
+  rollback_running_partition_factory: true;
+  final_normal_build_restored: true;
+};
+
+export type SdkconfigRollbackEvidence = {
+  schema_version: "bitaxe-sdkconfig-rollback-evidence-v1";
+  board: 205;
+  source_commit: string;
+  reference_commit: string;
+  package_manifest_sha256: string;
+  rollback_probe_image_sha256: string;
+  rollback_probe_metadata_sha256: string;
+  workflow: WorkflowIdentity;
+  detector_admitted: true;
+  rollback: SdkconfigRollbackObservationEvidence;
+  probe_boot_session: DeviceSessionEvidence;
+  rollback_session: DeviceSessionEvidence;
+  mining_state: "disabled";
+  hardware_control_state: "disabled";
+  cleanup_complete: true;
+  normal_package_restored: true;
+  recovery_flash_used: false;
+  private_modes_valid: true;
+  redaction_status: "passed";
+};
+
 const automationCommands = new Set<AutomationCommand>([
-  "doctor", "bootstrap-esp", "build-firmware", "package-firmware", "verify-reference",
+  "doctor", "bootstrap-esp", "build-firmware", "package-firmware", "package-rollback-probe", "verify-reference",
   "verify-redaction", "verify-production-session", "observe-serial", "verify-flash-durability",
   "verify-firmware-ota", "verify-web-assets-ota", "verify-recovery", "verify-http-api",
   "verify-hardware-surface", "verify-mining", "capture-operator-evidence",
@@ -232,12 +278,14 @@ const automationCommands = new Set<AutomationCommand>([
   "capture-settings-patch-evidence",
   "capture-log-buffer-evidence",
   "capture-partition-layout-evidence",
+  "capture-sdkconfig-rollback-evidence",
 ]);
 const automationStatuses = new Set<AutomationStatus>(["succeeded", "failed", "blocked"]);
 const automationCategories = new Set<AutomationCategory>([
   "complete", "invalid_invocation", "contract_mismatch", "workspace_invalid",
   "dependency_unavailable", "policy_blocked", "authorization_blocked", "process_failed",
-  "timeout", "evidence_invalid", "hardware_blocked",
+  "timeout", "evidence_invalid", "hardware_blocked", "package_invalid",
+  "interruption_not_observed", "probe_boot_failed", "rollback_not_observed", "recovery_failed",
 ]);
 
 export function parseAutomationResult(value: unknown): AutomationResult {

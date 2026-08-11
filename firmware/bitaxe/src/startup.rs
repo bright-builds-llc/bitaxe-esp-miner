@@ -176,7 +176,7 @@ fn start_runtime_services(
 ) -> anyhow::Result<bool> {
     let startup_diagnostics_passed = startup_diagnostics.is_ok();
     let boot_validation_ready = match boot_validation::validate_boot(startup_diagnostics_passed) {
-        Ok(()) => true,
+        Ok(ready) => ready,
         Err(error) => {
             log::warn!("ota_boot_validation=error error={error:#}");
             false

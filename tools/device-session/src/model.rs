@@ -119,6 +119,8 @@ pub struct BaselineApplication {
 pub struct ExpectedPostcondition {
     pub hostname_sha256: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub app_elf_sha256: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub running_partition: Option<String>,
 }
 
@@ -165,6 +167,11 @@ impl RebootIntent {
             && !self.baseline.boot_session.is_empty()
             && is_sha256(&self.baseline.app_elf_sha256)
             && is_sha256(&self.expected_postcondition.hostname_sha256)
+            && self
+                .expected_postcondition
+                .app_elf_sha256
+                .as_deref()
+                .is_none_or(is_sha256)
     }
 
     #[must_use]
@@ -196,6 +203,11 @@ impl OtaIntent {
             && self.baseline.running_partition.as_deref() == Some("factory")
             && is_sha256(&self.baseline.app_elf_sha256)
             && is_sha256(&self.expected_postcondition.hostname_sha256)
+            && self
+                .expected_postcondition
+                .app_elf_sha256
+                .as_deref()
+                .is_none_or(is_sha256)
             && self.expected_postcondition.running_partition.as_deref() == Some("ota_0")
             && is_sha256(&self.ota_image_sha256)
     }
@@ -237,6 +249,11 @@ impl SessionRequest {
             && !self.baseline.boot_session.is_empty()
             && is_sha256(&self.baseline.app_elf_sha256)
             && is_sha256(&self.expected_postcondition.hostname_sha256)
+            && self
+                .expected_postcondition
+                .app_elf_sha256
+                .as_deref()
+                .is_none_or(is_sha256)
             && self
                 .baseline
                 .running_partition

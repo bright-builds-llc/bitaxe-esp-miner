@@ -5,6 +5,7 @@ package(default_visibility = ["//visibility:private"])
 exports_files([
     "build-identity-pathspecs.txt",
     "build_identity.bzl",
+    "verify-rollback-probe-isolation.sh",
 ])
 
 # Terminal Phase 28.1.1 and dormant external-UART/late-attach artifacts are

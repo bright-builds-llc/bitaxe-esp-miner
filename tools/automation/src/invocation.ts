@@ -29,6 +29,13 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--build-provenance-stamp": value({ required: true }),
     "--identity-sdkconfig-defaults": value({ required: true }),
     "--build-timestamp-utc": value({ required: true }),
+    "--build-mode": value({ required: true, values: ["normal", "rollback-probe"] }),
+  },
+  "package-rollback-probe": {
+    "--firmware-elf": value({ required: true }),
+    "--build-provenance-stamp": value({ required: true }),
+    "--output-image": value({ required: true }),
+    "--metadata": value({ required: true }),
   },
   "package-firmware": {
     "--firmware-elf": value({ required: true }),
@@ -151,6 +158,16 @@ const rules: Record<AutomationCommand, CommandRule> = {
   "capture-partition-layout-evidence": {
     "--private-root": value({ required: true }),
     "--package-manifest": value({ required: true }),
+    "--wifi-credentials": value({ required: true }),
+    "--detector-output": value({ required: true }),
+    "--projection": value({ required: true }),
+    "--capture-timeout-seconds": value({ required: true, positiveInteger: true }),
+  },
+  "capture-sdkconfig-rollback-evidence": {
+    "--private-root": value({ required: true }),
+    "--package-manifest": value({ required: true }),
+    "--rollback-probe-image": value({ required: true }),
+    "--rollback-probe-metadata": value({ required: true }),
     "--wifi-credentials": value({ required: true }),
     "--detector-output": value({ required: true }),
     "--projection": value({ required: true }),

@@ -10,6 +10,7 @@ export type BuildFirmwareRequest = {
   readonly buildProvenanceStamp: string;
   readonly identitySdkconfigDefaults: string;
   readonly buildTimestampUtc: string;
+  readonly buildMode: "normal" | "rollback-probe";
 };
 
 const target = "xtensa-esp32s3-espidf";
@@ -21,7 +22,12 @@ export async function buildFirmware(
   processPort: ProcessPort,
 ): Promise<void> {
   const outputDir = path.resolve(workspaceRoot, request.outputDir);
-  const cargoTargetDir = path.join(workspaceRoot, ".bazel-firmware-target");
+  const rollbackProbe = request.buildMode === "rollback-probe";
+  const artifactPrefix = rollbackProbe ? "bitaxe-firmware-rollback-probe" : "bitaxe-firmware";
+  const cargoTargetDir = path.join(
+    workspaceRoot,
+    rollbackProbe ? ".bazel-firmware-rollback-probe-target" : ".bazel-firmware-target",
+  );
   const provenanceStamp = path.resolve(workspaceRoot, request.buildProvenanceStamp);
   const identityDefaults = path.resolve(workspaceRoot, request.identitySdkconfigDefaults);
   const buildTimestamp = path.resolve(workspaceRoot, request.buildTimestampUtc);
@@ -48,6 +54,7 @@ export async function buildFirmware(
     ESP_IDF_SYS_ROOT_CRATE: packageName,
     ESP_IDF_TOOLS_INSTALL_DIR: "workspace",
     ESP_IDF_VERSION: "tag:v5.5.4",
+    BITAXE_OTA_ROLLBACK_PROBE: rollbackProbe ? "1" : "0",
   };
   const cargo = await processPort.run(
     internalCommandSpec(
@@ -70,22 +77,22 @@ export async function buildFirmware(
     throw new Error("firmware stack disassembly failed");
   }
   verifyFirmwareStackBudget(disassembly.stdout);
-  await copyFile(sourceElf, path.join(outputDir, `${packageName}.elf`));
+  await copyFile(sourceElf, path.join(outputDir, `${artifactPrefix}.elf`));
   const buildLabel = await requiredStampField(provenanceStamp, "build_label");
   const generated = await findGeneratedIdfBuild(cargoTargetDir, buildLabel);
   await Promise.all([
-    copyFile(path.join(generated, "sdkconfig"), path.join(outputDir, `${packageName}.sdkconfig`)),
+    copyFile(path.join(generated, "sdkconfig"), path.join(outputDir, `${artifactPrefix}.sdkconfig`)),
     copyFile(
       path.join(generated, "build/bootloader/bootloader.bin"),
-      path.join(outputDir, `${packageName}-bootloader.bin`),
+      path.join(outputDir, `${artifactPrefix}-bootloader.bin`),
     ),
     copyFile(
       path.join(generated, "build/partition_table/partition-table.bin"),
-      path.join(outputDir, `${packageName}-partition-table.bin`),
+      path.join(outputDir, `${artifactPrefix}-partition-table.bin`),
     ),
     copyFile(
       path.join(generated, "build/ota_data_initial.bin"),
-      path.join(outputDir, `${packageName}-otadata-initial.bin`),
+      path.join(outputDir, `${artifactPrefix}-otadata-initial.bin`),
     ),
   ]);
 }

@@ -146,7 +146,7 @@ function resolveRequest(workspaceRoot: string, request: PackageFirmwareRequest):
   };
 }
 
-async function requiredStampField(file: string, key: string): Promise<string> {
+export async function requiredStampField(file: string, key: string): Promise<string> {
   const values = (await readFile(file, "utf8"))
     .split(/\r?\n/u)
     .filter((line) => line.startsWith(`${key}=`))
@@ -168,7 +168,7 @@ async function findManagedTool(workspaceRoot: string, candidates: readonly strin
   throw new Error("required managed ESP-IDF tool is unavailable");
 }
 
-async function findEsptool(workspaceRoot: string): Promise<string> {
+export async function findEsptool(workspaceRoot: string): Promise<string> {
   const pythonRoot = path.join(workspaceRoot, ".embuild/espressif/python_env");
   try {
     const environments = await readdir(pythonRoot);
@@ -190,7 +190,7 @@ async function findEsptool(workspaceRoot: string): Promise<string> {
   ]);
 }
 
-async function requireSuccess(promise: Promise<ProcessOutcome>, label: string): Promise<ProcessOutcome> {
+export async function requireSuccess(promise: Promise<ProcessOutcome>, label: string): Promise<ProcessOutcome> {
   const outcome = await promise;
   if (outcome.exitCode !== 0) throw new Error(`${label} failed`);
   return outcome;

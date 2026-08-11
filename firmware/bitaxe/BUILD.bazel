@@ -156,6 +156,13 @@ test_suite(
 )
 
 rust_test(
+    name = "boot_validation_plan_tests",
+    srcs = ["src/boot_validation_plan.rs"],
+    crate_name = "boot_validation_plan_tests",
+    edition = "2021",
+)
+
+rust_test(
     name = "operator_snapshot_publication_shell_tests",
     srcs = ["src/operator_snapshot_publication.rs"],
     crate_name = "operator_snapshot_publication_shell_tests",
@@ -489,6 +496,8 @@ js_run_binary(
         "$(location :build_identity_sdkconfig_defaults)",
         "--build-timestamp-utc",
         "$(location :build_timestamp_utc)",
+        "--build-mode",
+        "normal",
     ],
     execution_requirements = {
         "local": "1",
@@ -499,6 +508,114 @@ js_run_binary(
         "no-sandbox",
     ],
     tool = "//tools/automation:build_firmware",
+)
+
+js_run_binary(
+    name = "rollback_probe_build",
+    copy_srcs_to_bin = False,
+    patch_node_fs = False,
+    srcs = glob(
+        ["src/**/*.rs"],
+        exclude = [
+            "src/http_api.rs",
+            "src/http_api/*.rs",
+        ],
+    ) + [
+        ":build_identity_sdkconfig_defaults",
+        ":build_provenance_inputs",
+        ":build_provenance_stamp",
+        ":build_timestamp_utc",
+        "Cargo.toml",
+        "build.rs",
+        "partitions-ultra205.csv",
+        "sdkconfig.defaults",
+        "src/http_api.rs",
+        "src/http_api/access.rs",
+        "src/http_api/deferred_effect_queue.rs",
+        "src/http_api/deferred_effects.rs",
+        "src/http_api/handlers.rs",
+        "src/http_api/response.rs",
+        "src/http_api/settings.rs",
+        "src/http_api/theme.rs",
+        "src/http_api/updates.rs",
+        "src/http_api/websocket.rs",
+    ] + glob(["static/**"]),
+    outs = [
+        "bitaxe-firmware-rollback-probe-bootloader.bin",
+        "bitaxe-firmware-rollback-probe-otadata-initial.bin",
+        "bitaxe-firmware-rollback-probe-partition-table.bin",
+        "bitaxe-firmware-rollback-probe.elf",
+        "bitaxe-firmware-rollback-probe.sdkconfig",
+    ],
+    args = [
+        "build-firmware",
+        "--output-dir",
+        "$(RULEDIR)",
+        "--build-provenance-stamp",
+        "$(location :build_provenance_stamp)",
+        "--identity-sdkconfig-defaults",
+        "$(location :build_identity_sdkconfig_defaults)",
+        "--build-timestamp-utc",
+        "$(location :build_timestamp_utc)",
+        "--build-mode",
+        "rollback-probe",
+    ],
+    execution_requirements = {
+        "local": "1",
+        "no-sandbox": "1",
+    },
+    tags = [
+        "local",
+        "no-sandbox",
+    ],
+    tool = "//tools/automation:build_firmware",
+)
+
+js_run_binary(
+    name = "rollback_probe_image",
+    copy_srcs_to_bin = False,
+    patch_node_fs = False,
+    srcs = [
+        ":bitaxe-firmware-rollback-probe.elf",
+        ":build_provenance_stamp",
+        ":rollback-probe-isolation.stamp",
+    ],
+    outs = [
+        "esp-miner-rollback-probe.bin",
+        "rollback-probe.json",
+    ],
+    args = [
+        "package-rollback-probe",
+        "--firmware-elf",
+        "$(location :bitaxe-firmware-rollback-probe.elf)",
+        "--build-provenance-stamp",
+        "$(location :build_provenance_stamp)",
+        "--output-image",
+        "$(RULEDIR)/esp-miner-rollback-probe.bin",
+        "--metadata",
+        "$(RULEDIR)/rollback-probe.json",
+    ],
+    execution_requirements = {
+        "local": "1",
+        "no-sandbox": "1",
+    },
+    tags = [
+        "local",
+        "no-sandbox",
+    ],
+    tool = "//tools/automation:package_rollback_probe",
+    visibility = ["//visibility:public"],
+)
+
+genrule(
+    name = "rollback_probe_isolation_check",
+    srcs = [
+        ":bitaxe-firmware-rollback-probe.elf",
+        ":bitaxe-firmware.elf",
+    ],
+    outs = ["rollback-probe-isolation.stamp"],
+    cmd = "$(location //scripts:verify-rollback-probe-isolation.sh) $(location :bitaxe-firmware.elf) $(location :bitaxe-firmware-rollback-probe.elf) && touch $@",
+    tools = ["//scripts:verify-rollback-probe-isolation.sh"],
 )
 
 filegroup(

@@ -53,6 +53,7 @@ js_binary(
         "//crates/bitaxe-automation-contracts:validate_settings_patch_evidence",
         "//crates/bitaxe-automation-contracts:validate_log_buffer_evidence",
         "//crates/bitaxe-automation-contracts:validate_partition_layout_evidence",
+        "//crates/bitaxe-automation-contracts:validate_sdkconfig_rollback_evidence",
         "//crates/bitaxe-api:system_info_field_contract_js",
         "//tools/flash:flash",
         "//tools/device-session:device-session",
@@ -76,6 +77,7 @@ js_binary(
             "//crates/bitaxe-automation-contracts:validate_settings_patch_evidence",
             "//crates/bitaxe-automation-contracts:validate_log_buffer_evidence",
             "//crates/bitaxe-automation-contracts:validate_partition_layout_evidence",
+            "//crates/bitaxe-automation-contracts:validate_sdkconfig_rollback_evidence",
             "//crates/bitaxe-api:system_info_field_contract_js",
             "//tools/flash:flash",
             "//tools/device-session:device-session",
@@ -89,6 +91,7 @@ js_binary(
         "bootstrap_esp": "bootstrap-esp",
         "build_firmware": "build-firmware",
         "package_firmware": "package-firmware",
+        "package_rollback_probe": "package-rollback-probe",
         "verify_reference": "verify-reference",
         "verify_redaction": "verify-redaction",
         "verify_production_session": "verify-production-session",
@@ -111,6 +114,7 @@ js_binary(
         "capture_settings_patch_evidence": "capture-settings-patch-evidence",
         "capture_log_buffer_evidence": "capture-log-buffer-evidence",
         "capture_partition_layout_evidence": "capture-partition-layout-evidence",
+        "capture_sdkconfig_rollback_evidence": "capture-sdkconfig-rollback-evidence",
     }.items()
 ]
 

@@ -32,6 +32,7 @@ fn request() -> SessionRequest {
         },
         expected_postcondition: ExpectedPostcondition {
             hostname_sha256: digest('b'),
+            app_elf_sha256: None,
             running_partition: None,
         },
     }
@@ -309,6 +310,7 @@ fn built_ota_cli_rejects_a_mismatched_image_before_usb_or_artifacts() {
         },
         expected_postcondition: ExpectedPostcondition {
             hostname_sha256: digest('b'),
+            app_elf_sha256: None,
             running_partition: Some("ota_0".to_owned()),
         },
         ota_image_sha256: digest('d'),
