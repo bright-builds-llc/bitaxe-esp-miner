@@ -28,3 +28,24 @@
 - Outcome: Plan gate complete.
 - Blocker or next safe action: Commit and push the immutable plan before
   focused regression or hardware work.
+
+## 2026-08-11T16:14:13Z | attempt-012 completion checkpoint
+
+- Source commit: `f2520d1e7c12f49dc376d528ddf78b6f9c5391c5`.
+- Actions: Ran the focused theme, device-session, CLI, and redaction suite with
+  no production change required; completed the full software gate; built and
+  admitted the exact clean package; then ran one detector and one conditional
+  theme-durability capture.
+- Verification: Detector admission passed. The v1 projection binds one restart
+  request and response, the same physical device, trusted exact-build recovery,
+  changed boot session, ordinal `N+1`, software reset, immediate and
+  post-restart theme equality, confirmed original-theme restoration, disabled
+  mining and hardware control, and complete cleanup.
+- Evidence: Redacted projection SHA-256
+  `fbf93cd115e1c99cd1c727b2e4536c49f571b69172fc94228d4942181d005288`;
+  both private roots are mode 0700, all 16 private attempt files and wrapper
+  streams are mode 0600, no USB holder remains, and sensitive-value scans pass.
+- Outcome: Complete and eligible to promote only `API-010` to `verified`.
+- Blocker or next safe action: Commit the evidence/result without changing the
+  checklist, save that commit as `SOURCE_COMMIT`, then perform the audited
+  checklist transition and progress synchronization.

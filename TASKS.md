@@ -1378,10 +1378,10 @@ non-verified outcome. `API-010` remains `implemented` and no evidence or
 ### task-parity-api010-live-theme-durability-attempt-012 | 2026-08-11 | Verify theme durability after boot recovery
 
 - [x] Commit and push the linked immutable attempt-012 plan.
-- [ ] Re-run focused theme, device-session, CLI, and redaction regressions; fix
+- [x] Re-run focused theme, device-session, CLI, and redaction regressions; fix
       only a reproduced current blocker.
-- [ ] Run the complete software gate and admit one clean exact package.
-- [ ] Run one new detector and, only after success, one bounded theme capture.
+- [x] Run the complete software gate and admit one clean exact package.
+- [x] Run one new detector and, only after success, one bounded theme capture.
 - [ ] Promote only `API-010` on complete v1 evidence; otherwise record the
       earliest typed boundary and stop without retry.
 
@@ -1406,8 +1406,12 @@ retry.
 
 Verification: The complete plan gate passed, including ordered Cargo checks,
 Bright Builds, all Bazel tests, parity/progress, redaction, reference,
-continuation-aware selector, and diff checks. The immutable plan commit and
-push are pending.
+continuation-aware selector, and diff checks. Plan commit `f2520d1e` was pushed.
+Focused theme, device-session, CLI, and redaction regressions and the exact-head
+full gate passed. The sole detector and conditional capture passed, producing
+the redacted v1 projection with exact package identity, one restart, same-device
+recovery, ordinal `N+1`, persisted theme equality, confirmed restoration,
+disabled mining/hardware control, cleanup, private modes, and redaction.
 
 Completion review: Pending.
 
