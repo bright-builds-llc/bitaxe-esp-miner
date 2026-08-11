@@ -1635,13 +1635,13 @@ defines the retained-log continuation using fresh attempt-005 paths.
 
 ### task-parity-rel002-retained-boot-log-attempt-005 | 2026-08-11 | Admit retained probe and rollback boot semantics
 
-- [ ] Commit and push the immutable `REL-002` attempt-005 plan before
+- [x] Commit and push the immutable `REL-002` attempt-005 plan before
       implementation.
-- [ ] Replace late-serial semantic checks with exact retained probe/final boot
+- [x] Replace late-serial semantic checks with exact retained probe/final boot
       log admission while preserving typed serial-delivery correlation.
-- [ ] Add success, missing-marker, fetch-failure, recovery, precedence,
+- [x] Add success, missing-marker, fetch-failure, recovery, precedence,
       no-public-evidence, and privacy regressions.
-- [ ] Run focused and mandatory software gates; commit and push the exact
+- [x] Run focused and mandatory software gates; commit and push the exact
       implementation before hardware use.
 - [ ] Run one protected detector and, only after admission, one protected
       attempt-005 capture on board 205.

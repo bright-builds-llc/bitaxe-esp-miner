@@ -8,10 +8,10 @@ import test from "node:test";
 
 import {
   captureSdkconfigRollbackEvidence,
-  retainedFirmwareOtaProtocolAbortObserved,
   SdkconfigRollbackEvidenceError,
   type SdkconfigRollbackEvidenceOptions,
 } from "./sdkconfig-rollback-evidence.js";
+import { retainedFirmwareOtaProtocolAbortObserved } from "./sdkconfig-rollback-retained-log.js";
 import { createFakeProcessPort, type ProcessOutcome, type ProcessPort } from "./process.js";
 
 const sourceCommit = "a".repeat(40);
@@ -25,6 +25,11 @@ const finalSession = "3".repeat(32);
 const probeImage = Buffer.alloc(8_192, 0x5a);
 const sha256 = (value: string | Buffer): string => createHash("sha256").update(value).digest("hex");
 const ok = (): ProcessOutcome => ({ exitCode: 0, stdout: "", stderr: "", timedOut: false });
+const canonicalRetainedLogs = [
+  "firmware_ota_status=Protocol Error\n",
+  `ota_boot_validation=rollback_probe_pending\n${safeState}\n`,
+  `${safeState}\n`,
+] as const;
 
 type Fixture = {
   readonly root: string;
@@ -156,11 +161,11 @@ function fakePort(
         await writeFile(projection, `${JSON.stringify(value)}\n`, { mode: 0o600 });
         await chmod(projection, 0o600);
       }
-      await writeFile(path.join(sessionRoot, "serial.private.bin"), [
-        safeState,
-        ...(command === "ota-live" ? ["ota_boot_validation=rollback_probe_pending"] : []),
-        "",
-      ].join("\n"), { mode: 0o600 });
+      await writeFile(
+        path.join(sessionRoot, "serial.private.bin"),
+        "late_serial_delivery=correlated\n",
+        { mode: 0o600 },
+      );
       return command === "ota-live" && terminal !== "ready" ? { ...ok(), exitCode: 1 } : ok();
     }
     if (command === "flash") return recoveryFails ? { ...ok(), exitCode: 1 } : ok();
@@ -204,16 +209,26 @@ async function interruptedUploadServer(): Promise<{
 function installDeviceApi(
   baselineFailures = 0,
   maybeOnBaselineAttempt?: () => void,
-  retainedLogs = "firmware_ota_status=Protocol Error\n",
+  retainedLogResponses: string | readonly (string | Error)[] = canonicalRetainedLogs,
 ) {
   let infoCall = 0;
+  let logCall = 0;
   let remainingBaselineFailures = baselineFailures;
-  const canonicalProtocolAbortAvailable = retainedFirmwareOtaProtocolAbortObserved(retainedLogs);
+  const responses = typeof retainedLogResponses === "string"
+    ? [retainedLogResponses]
+    : retainedLogResponses;
+  const firstResponse = responses[0];
+  const canonicalProtocolAbortAvailable = typeof firstResponse === "string"
+    && retainedFirmwareOtaProtocolAbortObserved(firstResponse);
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (input) => {
     const target = new URL(String(input));
     if (target.pathname === "/api/system/logs") {
-      return new Response(retainedLogs, { status: 200 });
+      const response = responses[Math.min(logCall, responses.length - 1)];
+      logCall += 1;
+      if (response instanceof Error) throw response;
+      assert.notEqual(response, undefined);
+      return new Response(response, { status: 200 });
     }
     assert.equal(target.pathname, "/api/system/info");
     if (infoCall === 0) {
@@ -301,6 +316,11 @@ test("ready interrupted-update transaction publishes aggregate-only rollback evi
       path.join(value.root, "scratch", "attempt", "baseline-system-info.private.json"),
       "utf8",
     )) as Readonly<Record<string, unknown>>;
+    const privateRoot = path.join(value.root, "scratch", "attempt");
+    const probeLogs = await readFile(path.join(privateRoot, "probe-logs.private.txt"), "utf8");
+    const finalLogs = await readFile(path.join(privateRoot, "final-logs.private.txt"), "utf8");
+    const probeSerial = await readFile(path.join(privateRoot, "probe-session", "serial.private.bin"), "utf8");
+    const rollbackSerial = await readFile(path.join(privateRoot, "rollback-session", "serial.private.bin"), "utf8");
 
     // Assert
     assert.equal(evidence.rollback.interruption_protocol_abort_observed, true);
@@ -308,6 +328,11 @@ test("ready interrupted-update transaction publishes aggregate-only rollback evi
     assert.equal(evidence.rollback.final_normal_build_restored, true);
     assert.equal(baselineAttempts, 3);
     assert.equal(baselineDocument["runningPartition"], "factory");
+    assert.match(probeLogs, /^ota_boot_validation=rollback_probe_pending$/mu);
+    assert.match(probeLogs, /^safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled$/mu);
+    assert.match(finalLogs, /^safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled$/mu);
+    assert.doesNotMatch(probeSerial, /ota_boot_validation|safe_state:/u);
+    assert.doesNotMatch(rollbackSerial, /safe_state:/u);
     assert.doesNotMatch(projection, /private-hostname|private-sensitive-port|127\.0\.0\.1|\/dev\//u);
   } finally {
     restoreFetch();
@@ -339,6 +364,124 @@ test("UART-only protocol error cannot advance the retained-log transaction", asy
     // Assert
     assert.equal(error.category, "interruption_not_observed");
     assert.deepEqual(commands, ["flash-monitor"]);
+    await assert.rejects(readFile(value.projection, "utf8"), { code: "ENOENT" });
+  } finally {
+    restoreFetch();
+    await server.close();
+  }
+});
+
+for (const retainedFailure of [
+  {
+    name: "missing probe pending marker",
+    responses: [canonicalRetainedLogs[0], `${safeState}\n`],
+    category: "probe_boot_failed",
+  },
+  {
+    name: "missing probe safe-state marker",
+    responses: [canonicalRetainedLogs[0], "ota_boot_validation=rollback_probe_pending\n"],
+    category: "probe_boot_failed",
+  },
+  {
+    name: "missing final safe-state marker",
+    responses: [canonicalRetainedLogs[0], canonicalRetainedLogs[1], "final_boot=observed\n"],
+    category: "rollback_not_observed",
+  },
+] as const) {
+  test(`${retainedFailure.name} withholds final evidence and triggers recovery`, async () => {
+    // Arrange
+    const value = await fixture(retainedFailure.name.replaceAll(" ", "-"));
+    const server = await interruptedUploadServer();
+    const restoreFetch = installDeviceApi(0, undefined, retainedFailure.responses);
+    try {
+      // Act
+      const error = await captureError(captureSdkconfigRollbackEvidence(
+        value.root,
+        options(value),
+        fakePort(server.origin),
+        "flash",
+        "device-session",
+        "validator",
+      ));
+
+      // Assert
+      assert.equal(error.category, retainedFailure.category);
+      assert.equal(error.publicValue["recovery_complete"], true);
+      assert.equal(error.publicValue["recovery_flash_used"], true);
+      assert.equal(error.publicValue["secondary_recovery_failure"], false);
+      await assert.rejects(readFile(value.projection, "utf8"), { code: "ENOENT" });
+    } finally {
+      restoreFetch();
+      await server.close();
+    }
+  });
+}
+
+for (const retainedFetchFailure of [
+  {
+    name: "probe retained-log fetch failure",
+    responses: [canonicalRetainedLogs[0], new Error("probe logs unavailable")],
+    category: "probe_boot_failed",
+  },
+  {
+    name: "final retained-log fetch failure",
+    responses: [canonicalRetainedLogs[0], canonicalRetainedLogs[1], new Error("final logs unavailable")],
+    category: "rollback_not_observed",
+  },
+] as const) {
+  test(`${retainedFetchFailure.name} is typed and withholds final evidence`, async () => {
+    // Arrange
+    const value = await fixture(retainedFetchFailure.name.replaceAll(" ", "-"));
+    const server = await interruptedUploadServer();
+    const restoreFetch = installDeviceApi(0, undefined, retainedFetchFailure.responses);
+    try {
+      // Act
+      const error = await captureError(captureSdkconfigRollbackEvidence(
+        value.root,
+        options(value),
+        fakePort(server.origin),
+        "flash",
+        "device-session",
+        "validator",
+      ));
+
+      // Assert
+      assert.equal(error.category, retainedFetchFailure.category);
+      assert.equal(error.publicValue["recovery_complete"], true);
+      assert.equal(error.publicValue["recovery_flash_used"], true);
+      await assert.rejects(readFile(value.projection, "utf8"), { code: "ENOENT" });
+    } finally {
+      restoreFetch();
+      await server.close();
+    }
+  });
+}
+
+test("retained-log failure remains primary when exact-package recovery fails", async () => {
+  // Arrange
+  const value = await fixture("retained-primary-precedence");
+  const server = await interruptedUploadServer();
+  const restoreFetch = installDeviceApi(0, undefined, [
+    canonicalRetainedLogs[0],
+    canonicalRetainedLogs[1],
+    "final_boot=observed\n",
+  ]);
+  try {
+    // Act
+    const error = await captureError(captureSdkconfigRollbackEvidence(
+      value.root,
+      options(value),
+      fakePort(server.origin, "ready", true),
+      "flash",
+      "device-session",
+      "validator",
+    ));
+
+    // Assert
+    assert.equal(error.category, "rollback_not_observed");
+    assert.equal(error.publicValue["recovery_complete"], false);
+    assert.equal(error.publicValue["recovery_flash_used"], true);
+    assert.equal(error.publicValue["secondary_recovery_failure"], true);
     await assert.rejects(readFile(value.projection, "utf8"), { code: "ENOENT" });
   } finally {
     restoreFetch();

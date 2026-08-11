@@ -21,6 +21,9 @@ import { sendInterruptedFirmwareUpload } from "./interrupted-upload.js";
 import type { ProcessOutcome, ProcessPort } from "./process.js";
 import { verifySemanticEvidenceRedaction } from "./redaction.js";
 import { rollbackProbeSchema, type RollbackProbeMetadata } from "./rollback-probe.js";
+import {
+  passiveSafeStateLine, retainedBootLogStatus, retainedFirmwareOtaProtocolAbortObserved, rollbackProbePendingLine,
+} from "./sdkconfig-rollback-retained-log.js";
 import { hasPassiveSafeState } from "./version-evidence.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
@@ -64,7 +67,6 @@ const interruptedPrefixBytes = 4_096;
 const initialFlashCaptureTimeoutSeconds = 90;
 const baselineHttpAttemptCount = 6;
 const baselineHttpRetryDelayMs = 1_000;
-const retainedFirmwareOtaProtocolErrorLine = "firmware_ota_status=Protocol Error";
 
 export class SdkconfigRollbackEvidenceError extends Error {
   public constructor(
@@ -330,10 +332,6 @@ async function interruptedUploadConfirmed(
   return false;
 }
 
-export function retainedFirmwareOtaProtocolAbortObserved(logs: string): boolean {
-  return logs.split(/\r?\n/u).some((line) => line === retainedFirmwareOtaProtocolErrorLine);
-}
-
 async function readBaselineWhenReady(origin: URL, privateRoot: string): Promise<JsonObject> {
   for (let attempt = 1; attempt <= baselineHttpAttemptCount; attempt += 1) {
     try {
@@ -504,10 +502,11 @@ export async function captureSdkconfigRollbackEvidence(
     ) {
       throw failure("probe_boot_failed", "rollback probe boot identity is invalid");
     }
-    const probeSerial = await readFile(path.join(probeSessionRoot, "serial.private.bin"), "utf8");
-    if (!/\bota_boot_validation=rollback_probe_pending\b/u.test(probeSerial) || !hasPassiveSafeState(probeSerial)) {
-      throw failure("probe_boot_failed", "rollback probe pending marker or safe state is missing");
-    }
+    const probeLogStatus = await retainedBootLogStatus(origin,
+      path.join(privateRoot, "probe-logs.private.txt"),
+      [rollbackProbePendingLine, passiveSafeStateLine],
+    );
+    if (probeLogStatus !== "ready") throw failure("probe_boot_failed", `rollback probe retained log is ${probeLogStatus}`);
 
     const rollbackIntentPath = path.join(privateRoot, "rollback-reboot-intent.private.json");
     const rollbackSessionRoot = path.join(privateRoot, "rollback-session");
@@ -557,8 +556,11 @@ export async function captureSdkconfigRollbackEvidence(
     ) {
       throw failure("rollback_not_observed", "native rollback did not restore the normal factory build");
     }
-    const rollbackSerial = await readFile(path.join(rollbackSessionRoot, "serial.private.bin"), "utf8");
-    if (!hasPassiveSafeState(rollbackSerial)) throw failure("rollback_not_observed", "rollback boot safe state is missing");
+    const finalLogStatus = await retainedBootLogStatus(origin,
+      path.join(privateRoot, "final-logs.private.txt"),
+      [passiveSafeStateLine],
+    );
+    if (finalLogStatus !== "ready") throw failure("rollback_not_observed", `rollback boot retained log is ${finalLogStatus}`);
     normalRestored = true;
     if (!await privateModesValid(privateRoot)) throw failure("evidence_invalid", "private artifact modes are invalid");
     const evidence: SdkconfigRollbackEvidence = {
