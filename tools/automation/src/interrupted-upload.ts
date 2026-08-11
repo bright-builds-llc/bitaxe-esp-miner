@@ -1,5 +1,7 @@
 import net from "node:net";
 
+const RESET_DELIVERY_GRACE_MS = 100;
+
 export type InterruptedUploadObservation = {
   readonly declared_body_bytes: number;
   readonly transmitted_body_bytes: number;
@@ -46,18 +48,60 @@ export async function sendInterruptedFirmwareUpload(
   );
   await new Promise<void>((resolve, reject) => {
     const socket = net.createConnection({ host: origin.hostname, port });
-    const timeout = setTimeout(() => {
-      socket.destroy();
-      reject(new Error("interrupted upload timed out"));
-    }, timeoutMs);
-    socket.once("error", (error) => {
+    let settled = false;
+    let prefixFlushed = false;
+    let resetIssued = false;
+    let deliveryGrace: NodeJS.Timeout | undefined;
+    const cleanup = (): void => {
       clearTimeout(timeout);
+      if (deliveryGrace !== undefined) clearTimeout(deliveryGrace);
+    };
+    const closeOwnedSocket = (): void => {
+      if (socket.destroyed) return;
+      if (socket.connecting) {
+        socket.destroy();
+        return;
+      }
+      try {
+        socket.resetAndDestroy();
+      } catch {
+        socket.destroy();
+      }
+    };
+    const fail = (error: Error): void => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      closeOwnedSocket();
       reject(error);
+    };
+    const timeout = setTimeout(() => fail(new Error("interrupted upload timed out")), timeoutMs);
+    socket.once("error", (error) => {
+      if (!resetIssued) fail(error);
+    });
+    socket.once("close", () => {
+      if (settled) return;
+      if (!prefixFlushed || !resetIssued) {
+        fail(new Error("interrupted upload connection closed before forced reset"));
+        return;
+      }
+      settled = true;
+      cleanup();
+      resolve();
     });
     socket.once("connect", () => {
-      socket.end(Buffer.concat([headers, body]), () => {
-        clearTimeout(timeout);
-        resolve();
+      socket.write(Buffer.concat([headers, body]), () => {
+        if (settled) return;
+        prefixFlushed = true;
+        deliveryGrace = setTimeout(() => {
+          if (settled) return;
+          if (socket.destroyed) {
+            fail(new Error("interrupted upload connection closed before forced reset"));
+            return;
+          }
+          resetIssued = true;
+          socket.resetAndDestroy();
+        }, RESET_DELIVERY_GRACE_MS);
       });
     });
   });

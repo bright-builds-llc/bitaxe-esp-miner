@@ -1462,9 +1462,9 @@ remains `implemented`.
 
 - [ ] Commit and push the corrected immutable `REL-002` attempt-002 plan
       before implementation.
-- [ ] Flush the strict partial request without FIN, force one TCP reset, await
+- [x] Flush the strict partial request without FIN, force one TCP reset, await
       local close, and prove it with a non-cooperative real child.
-- [ ] Run focused and mandatory software gates; commit and push the exact
+- [x] Run focused and mandatory software gates; commit and push the exact
       implementation before hardware use.
 - [ ] Run one protected detector and, only after admission, one protected
       attempt-002 capture on board 205.

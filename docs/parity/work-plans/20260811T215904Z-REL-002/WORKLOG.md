@@ -31,3 +31,35 @@
 - Outcome: The corrected plan/task commit is eligible to push.
 - Blocker or next safe action: Commit and push these bytes without amendment,
   then implement the reset-before-FIN transport and focused regressions.
+
+## 2026-08-11T22:05:26Z | Reset-before-FIN implementation checkpoint
+
+- Source commit: `64015d94` plus the focused implementation diff.
+- Actions: Replaced write-side FIN completion with one exact write, a
+  100-millisecond fully open delivery grace, one forced TCP reset, and success
+  only after local close. Replaced the cooperative child with an
+  `allowHalfOpen` reset observer and made rollback fixtures assert one reset.
+- Verification: The real child receives the exact 4,096-byte prefix beneath
+  the declared image length while the helper remains pending, observes no EOF,
+  then observes reset/close. Validation, refused connection, and timeout
+  cleanup tests pass. The full automation target passes all 109 tests.
+- Evidence: Synthetic process and socket evidence only; no hardware effect or
+  public projection exists.
+- Outcome: The root transport defect is implemented with a direct regression.
+- Blocker or next safe action: Run the complete ordered software gate, review
+  the full diff, commit and push, then build exact clean hardware artifacts.
+
+## 2026-08-11T22:07:41Z | Implementation software gate
+
+- Source commit: `64015d94` plus the reviewed transport/test diff.
+- Actions: Ran the complete ordered implementation gate and verified the plan
+  remained byte-identical, the selector resumes only this plan, private paths
+  remain unused, and no parity/progress/public-evidence file changed.
+- Verification: Cargo format, strict Clippy, all-target build, all-feature
+  tests, Bright Builds, all 37 Bazel tests, parity/progress, redaction,
+  reference, task/plan, cleanliness, sensitive-output, and diff checks pass.
+- Evidence: Software regression evidence only. The hardware projection remains
+  absent and progress remains 45 of 94 active rows verified (47.9%).
+- Outcome: The implementation is eligible for its exact commit and push.
+- Blocker or next safe action: Commit and push, rebuild normal and probe images
+  from that clean source, verify provenance/isolation, then run one detector.

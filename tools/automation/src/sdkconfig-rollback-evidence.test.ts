@@ -161,7 +161,13 @@ function fakePort(origin: string, terminal = "ready", recoveryFails = false): Pr
 }
 
 async function interruptedUploadServer(): Promise<{ origin: string; close: () => Promise<void> }> {
+  let maybeUnexpectedError: Error | undefined;
+  let resetCount = 0;
   const server = net.createServer((socket) => {
+    socket.on("error", (error) => {
+      if ((error as NodeJS.ErrnoException).code === "ECONNRESET") resetCount += 1;
+      else maybeUnexpectedError = error;
+    });
     socket.resume();
   });
   await new Promise<void>((resolve, reject) => {
@@ -173,9 +179,13 @@ async function interruptedUploadServer(): Promise<{ origin: string; close: () =>
   const port = address.port;
   return {
     origin: `http://127.0.0.1:${String(port)}`,
-    close: async () => await new Promise<void>((resolve, reject) => {
-      server.close((error) => error === undefined ? resolve() : reject(error));
-    }),
+    close: async () => {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => error === undefined ? resolve() : reject(error));
+      });
+      if (maybeUnexpectedError !== undefined) throw maybeUnexpectedError;
+      assert.equal(resetCount, 1);
+    },
   };
 }
 
