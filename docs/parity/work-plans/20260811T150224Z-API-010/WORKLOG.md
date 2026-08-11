@@ -24,3 +24,25 @@
   `26af4ac6711842bf91c8d928461adc39c580dddaa5d2448757b0e8d743de36e7`.
 - Next safe action: Commit and push this checkpoint, rebuild the exact package
   from that clean source identity, then run the sole protected detector.
+
+## 2026-08-11T15:18:00Z | attempt-010 terminal result
+
+- Exact source: `d677069601e82804687502942252315ba57afe84`.
+- Package admission: schema v3, six required artifacts, matching source and
+  reference identities, and clean source truth passed.
+- Detector: Passed. The private wrapper and output modes passed, and exactly
+  one likely Ultra 205 port was present. This objectively changes the prior
+  ROM-synchronization boundary.
+- Conditional campaign: Stopped before the campaign binary because the
+  documented passthrough used `stage=observation`; the canonical CLI requires
+  `--stage observation`. Protected stderr contains only the argument-rejection
+  boundary and remained mode 0600.
+- Device effects: None from the campaign invocation. The attempt root was not
+  created; no USB session, package flash, NVS write, credential read, runtime
+  observation, mining, or hardware control occurred.
+- Outcome: `process_failed`, detail `cli_argument_rejected`. Attempt-010 is
+  consumed without retry. No parity evidence or `RESULT.md` exists, and
+  `API-010` remains `implemented`.
+- Next safe action: Add a focused exact-observation CLI regression, push one
+  corrected immutable attempt-011 plan, rebuild the exact package, and reuse
+  no attempt-010 path or command.

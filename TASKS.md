@@ -1295,12 +1295,12 @@ active and unarchived.
 ### task-ultra205-boot-recovery-attempt-010 | 2026-08-11 | Recover the blinking Ultra 205 with one safe observation flash
 
 - [x] Commit and push the linked immutable recovery plan before hardware use.
-- [ ] Verify and freeze one clean current-head Ultra 205 package.
-- [ ] Run one protected detector after the user's fresh USB connection.
-- [ ] Only if detector admission succeeds, run one exact-package observation
+- [x] Verify and freeze one clean current-head Ultra 205 package.
+- [x] Run one protected detector after the user's fresh USB connection.
+- [x] Only if detector admission succeeds, run one exact-package observation
       campaign that persists `mineonboot=false` and performs no mining or
       hardware-control actuation.
-- [ ] Preserve the earliest typed outcome, record whether the flash effect
+- [x] Preserve the earliest typed outcome, record whether the flash effect
       completed separately from runtime proof, and stop without a retry.
 
 Plan: `docs/parity/work-plans/20260811T150224Z-API-010/PLAN.md`. This immutable
@@ -1355,10 +1355,25 @@ flash completion, trusted same-package runtime identity, stable observation,
 artifact modes, and redaction. Otherwise record the closed terminal category,
 withhold parity evidence and `RESULT.md`, and keep `API-010` at `implemented`.
 
-Verification: Pending.
+Verification: The clean exact package bound source commit `d6770696`, the
+pinned reference, six required artifacts, and `source_dirty=false`. The sole
+detector passed with a private mode-0700 wrapper and mode-0600 output. The
+conditional command then stopped before the campaign binary, evidence-root
+creation, USB ownership, flash, NVS write, credential read, or runtime
+observation because the task supplied `stage=observation` while the canonical
+Clap interface requires `--stage observation`.
 
-Completion review: Pending. This recovery task may establish current-package
-boot health only; it cannot verify theme durability or promote `API-010`.
+Completion review: Closed as `process_failed` with
+`cli_argument_rejected`. No campaign hardware effect occurred, attempt-010 is
+consumed, and the detector's changed ROM-sync boundary remains established.
+The next eligible attempt requires a regression proving the exact observation
+flag shape and a new immutable command contract. This task cannot verify theme
+durability or promote `API-010`.
+
+Plan closure:
+`docs/parity/work-plans/20260811T150224Z-API-010/CLOSURE.md` records the
+non-verified outcome. `API-010` remains `implemented` and no evidence or
+`RESULT.md` was created.
 
 ## Future
 
