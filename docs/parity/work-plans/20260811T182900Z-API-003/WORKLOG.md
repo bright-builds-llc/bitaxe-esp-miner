@@ -93,3 +93,19 @@
   evidence and redaction-contract correction as the source commit, then
   transition only `API-003`, synchronize progress, archive the completed task,
   and push after the final gate.
+
+## 2026-08-11T18:59:14Z | verified transition checkpoint
+
+- Source commit: `a98aa507d13797afe1e183f5d58c909ebb91da7a`.
+- Actions: Committed the closed evidence and naming correction, transitioned
+  only `API-003` to `verified`, and synchronized deterministic progress from
+  the exact evidence source commit.
+- Verification: Transition `20260811T185834Z-API-003` recorded the verified
+  row, and progress is 43 of 94 active rows (45.7%). The initial sync command
+  rejected a mistyped full hash before writing progress; the immediate rerun
+  used `git rev-parse HEAD` and appended exactly one progress record.
+- Evidence: The committed result and projection remain the authoritative public
+  evidence. No private artifact was added and no hardware action was repeated.
+- Outcome: `API-003` is verified and the completed task is ready to archive.
+- Blocker or next safe action: Archive only the completed API-003 task, run the
+  mandatory final gate and diff checks, commit finalization, fetch, and push.

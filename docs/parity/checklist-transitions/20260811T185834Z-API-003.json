@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260811T185834Z-API-003",
+  "predecessor_sha256": "a06b9ce9d7e5b1410585186f7ad9e9a5a9625ec65b00720a9ab06e18011c8671",
+  "result_sha256": "72f49b181440049730174a6ee4bab451944550752058d46421a0e751a4489402",
+  "row_id": "API-003",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260811T182900Z-API-003/PLAN.md",
+  "plan_sha256": "4d2929003f930753f8c27056c3fc5989264c0a413d817947aa2ec38a3382f36b",
+  "result_path": "docs/parity/work-plans/20260811T182900Z-API-003/RESULT.md",
+  "result_document_sha256": "6f64c793b9d5723f26aea0cf00f63154f0e5000847e32e658814740f6faa6fe4",
+  "before_rust_owned_target": "`crates/bitaxe-api`, `crates/bitaxe-config`, `firmware/bitaxe`",
+  "after_rust_owned_target": "`crates/bitaxe-api`, `crates/bitaxe-config`, `firmware/bitaxe`, `crates/bitaxe-automation-contracts/src/settings_patch_evidence.rs`, `tools/automation/src/settings-patch-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,api-compare",
+  "after_evidence": "unit,api-compare,workflow,hardware-smoke",
+  "before_notes": "Pure PATCH validation/persistence planning, firmware NVS adapter, body-cap route-shell tests, and API compare coverage exist; live firmware PATCH smoke was not run in Phase 05 evidence.",
+  "after_notes": "Typed result and v1 projection prove one exact-package detector-admitted Ultra 205 atomic hostname/rotation PATCH, immediate combined readback, atomic restoration, disabled mining and hardware control, cleanup, and redaction; settings durability, secret or safety-control mutation, mining, updates, other boards, and release readiness remain separate."
+}
