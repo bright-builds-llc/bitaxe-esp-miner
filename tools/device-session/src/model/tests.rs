@@ -13,12 +13,14 @@ fn baseline() -> BaselineApplication {
         source_commit: "source".to_owned(),
         reference_commit: "reference".to_owned(),
         app_elf_sha256: digest('a'),
+        running_partition: None,
     }
 }
 
 fn postcondition() -> ExpectedPostcondition {
     ExpectedPostcondition {
         hostname_sha256: digest('b'),
+        running_partition: None,
     }
 }
 
@@ -29,6 +31,21 @@ fn reboot_intent() -> RebootIntent {
         trusted_origin: "http://trusted-device".to_owned(),
         baseline: baseline(),
         expected_postcondition: postcondition(),
+    }
+}
+
+fn ota_intent() -> OtaIntent {
+    let mut baseline = baseline();
+    baseline.running_partition = Some("factory".to_owned());
+    let mut expected_postcondition = postcondition();
+    expected_postcondition.running_partition = Some("ota_0".to_owned());
+    OtaIntent {
+        schema_version: OTA_INTENT_SCHEMA.to_owned(),
+        board_category: "205".to_owned(),
+        trusted_origin: "http://trusted-device".to_owned(),
+        baseline,
+        expected_postcondition,
+        ota_image_sha256: digest('d'),
     }
 }
 
@@ -74,6 +91,29 @@ fn reboot_intent_rejects_an_invalid_contract() {
     assert!(!valid);
 }
 
+#[test]
+fn ota_intent_requires_the_factory_to_ota_zero_contract() {
+    // Arrange
+    let valid = ota_intent();
+    let mut wrong_target = valid.clone();
+    wrong_target.expected_postcondition.running_partition = Some("ota_1".to_owned());
+
+    // Act
+    let request = valid.bind_device("/dev/cu.test".to_owned(), digest('c'));
+
+    // Assert
+    assert!(request.schema_is_valid());
+    assert_eq!(
+        request.baseline.running_partition.as_deref(),
+        Some("factory")
+    );
+    assert_eq!(
+        request.expected_postcondition.running_partition.as_deref(),
+        Some("ota_0")
+    );
+    assert!(!wrong_target.schema_is_valid());
+}
+
 fn boot_b() -> PrivateBootB {
     PrivateBootB {
         boot_session: "boot-b".to_owned(),
@@ -84,6 +124,7 @@ fn boot_b() -> PrivateBootB {
         reference_commit: "reference".to_owned(),
         app_elf_sha256: digest('a'),
         hostname_sha256: digest('b'),
+        running_partition: "factory".to_owned(),
     }
 }
 
@@ -453,6 +494,33 @@ fn terminal_precedence_classifies_every_post_request_boundary() {
         // Assert
         assert_eq!(state.terminal_category(), case.expected);
     }
+}
+
+#[test]
+fn ota_partition_mismatch_is_a_postcondition_failure() {
+    // Arrange
+    let intent = ota_intent();
+    let mut state = SessionState::new(
+        intent.baseline,
+        intent.expected_postcondition,
+        intent.trusted_origin,
+    );
+    ready_through_request(&mut state);
+    qualify_stable_post_restart_device(&mut state);
+    let mut observed_boot = boot_b();
+    observed_boot.running_partition = "ota_1".to_owned();
+
+    // Act
+    state.apply(SessionEvent::BootBObserved {
+        boot_b: observed_boot,
+    });
+    expire(&mut state);
+
+    // Assert
+    assert_eq!(
+        state.terminal_category(),
+        TerminalCategory::PostconditionMismatch
+    );
 }
 
 #[test]

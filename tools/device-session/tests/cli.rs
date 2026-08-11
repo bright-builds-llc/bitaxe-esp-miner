@@ -4,9 +4,9 @@ use std::os::unix::fs::{MetadataExt, PermissionsExt};
 use std::process::Command;
 
 use bitaxe_device_session::{
-    BaselineApplication, DevicePhase, ExpectedPostcondition, FixtureTranscript, PhysicalMatch,
-    PlatformCategory, PrivateBootB, SerialPhase, SessionEvent, SessionRequest, FIXTURE_SCHEMA,
-    REQUEST_SCHEMA,
+    BaselineApplication, DevicePhase, ExpectedPostcondition, FixtureTranscript, OtaIntent,
+    PhysicalMatch, PlatformCategory, PrivateBootB, SerialPhase, SessionEvent, SessionRequest,
+    FIXTURE_SCHEMA, OTA_INTENT_SCHEMA, REQUEST_SCHEMA,
 };
 use camino::Utf8Path;
 use serde::Serialize;
@@ -28,9 +28,11 @@ fn request() -> SessionRequest {
             source_commit: "source-commit".to_owned(),
             reference_commit: "reference-commit".to_owned(),
             app_elf_sha256: digest('a'),
+            running_partition: None,
         },
         expected_postcondition: ExpectedPostcondition {
             hostname_sha256: digest('b'),
+            running_partition: None,
         },
     }
 }
@@ -80,6 +82,7 @@ fn fixture() -> FixtureTranscript {
                 reference_commit: "reference-commit".to_owned(),
                 app_elf_sha256: digest('a'),
                 hostname_sha256: digest('b'),
+                running_partition: "factory".to_owned(),
             },
         },
         SessionEvent::CleanupComplete,
@@ -131,6 +134,7 @@ fn private_boot_b() -> PrivateBootB {
         reference_commit: "reference-commit".to_owned(),
         app_elf_sha256: digest('a'),
         hostname_sha256: digest('b'),
+        running_partition: "factory".to_owned(),
     }
 }
 
@@ -280,6 +284,74 @@ fn built_cli_applies_fixture_through_private_and_public_evidence_boundaries() {
             .expect("private result must remain readable"),
         private_result_text
     );
+}
+
+#[test]
+fn built_ota_cli_rejects_a_mismatched_image_before_usb_or_artifacts() {
+    // Arrange
+    let temporary = tempfile::tempdir().expect("temporary directory must be available");
+    let temporary = Utf8Path::from_path(temporary.path()).expect("temporary path must be UTF-8");
+    let intent_path = temporary.join("intent.json");
+    let image_path = temporary.join("ota.bin");
+    let private_root = temporary.join("private-root");
+    let projection_path = temporary.join("projection.json");
+    let intent = OtaIntent {
+        schema_version: OTA_INTENT_SCHEMA.to_owned(),
+        board_category: "205".to_owned(),
+        trusted_origin: "http://private-device".to_owned(),
+        baseline: BaselineApplication {
+            boot_session: "private-boot-a".to_owned(),
+            boot_ordinal: 41,
+            source_commit: "source-commit".to_owned(),
+            reference_commit: "reference-commit".to_owned(),
+            app_elf_sha256: digest('a'),
+            running_partition: Some("factory".to_owned()),
+        },
+        expected_postcondition: ExpectedPostcondition {
+            hostname_sha256: digest('b'),
+            running_partition: Some("ota_0".to_owned()),
+        },
+        ota_image_sha256: digest('d'),
+    };
+    write_private_json(&intent_path, &intent);
+    fs::write(image_path.as_std_path(), b"not-the-declared-image")
+        .expect("OTA fixture must be writable");
+    fs::create_dir(private_root.as_std_path()).expect("private root must be created");
+    #[cfg(unix)]
+    fs::set_permissions(
+        private_root.as_std_path(),
+        fs::Permissions::from_mode(0o700),
+    )
+    .expect("private root mode must be set");
+
+    // Act
+    let output = Command::new(env!("CARGO_BIN_EXE_device-session"))
+        .args([
+            "ota-live",
+            "--port",
+            "/dev/private-device",
+            "--private-root",
+            private_root.as_str(),
+            "--intent-input",
+            intent_path.as_str(),
+            "--ota-image",
+            image_path.as_str(),
+            "--projection-output",
+            projection_path.as_str(),
+        ])
+        .output()
+        .expect("device-session CLI must launch");
+
+    // Assert
+    assert!(!output.status.success());
+    assert!(!projection_path.exists());
+    assert_eq!(
+        fs::read_dir(private_root.as_std_path())
+            .expect("private root must remain readable")
+            .count(),
+        0
+    );
+    assert!(!String::from_utf8_lossy(&output.stderr).contains("private-device"));
 }
 
 struct RebootBoundaryCase {

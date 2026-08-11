@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 pub const PUBLIC_PROJECTION_SCHEMA: &str = "esp-device-session-v1";
 pub const PRIVATE_RESULT_SCHEMA: &str = "esp-device-session-private-result-v1";
 pub const REQUEST_SCHEMA: &str = "esp-device-session-reboot-request-v1";
 pub const REBOOT_INTENT_SCHEMA: &str = "esp-device-session-reboot-intent-v1";
+pub const OTA_INTENT_SCHEMA: &str = "esp-device-session-ota-intent-v1";
 const REQUIRED_STABLE_SAMPLES: u8 = 3;
 const MAX_DURATION_MILLIS: u64 = 600_000;
 const MAX_REPORTED_SERIAL_BYTES: u64 = 16 * 1024 * 1024;
@@ -108,12 +110,16 @@ pub struct BaselineApplication {
     pub source_commit: String,
     pub reference_commit: String,
     pub app_elf_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub running_partition: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct ExpectedPostcondition {
     pub hostname_sha256: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub running_partition: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -136,6 +142,17 @@ pub struct RebootIntent {
     pub trusted_origin: String,
     pub baseline: BaselineApplication,
     pub expected_postcondition: ExpectedPostcondition,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct OtaIntent {
+    pub schema_version: String,
+    pub board_category: String,
+    pub trusted_origin: String,
+    pub baseline: BaselineApplication,
+    pub expected_postcondition: ExpectedPostcondition,
+    pub ota_image_sha256: String,
 }
 
 impl RebootIntent {
@@ -168,6 +185,46 @@ impl RebootIntent {
     }
 }
 
+impl OtaIntent {
+    #[must_use]
+    pub fn schema_is_valid(&self) -> bool {
+        self.schema_version == OTA_INTENT_SCHEMA
+            && self.board_category == "205"
+            && (self.trusted_origin.starts_with("http://")
+                || self.trusted_origin.starts_with("https://"))
+            && !self.baseline.boot_session.is_empty()
+            && self.baseline.running_partition.as_deref() == Some("factory")
+            && is_sha256(&self.baseline.app_elf_sha256)
+            && is_sha256(&self.expected_postcondition.hostname_sha256)
+            && self.expected_postcondition.running_partition.as_deref() == Some("ota_0")
+            && is_sha256(&self.ota_image_sha256)
+    }
+
+    #[must_use]
+    pub fn bind_device(
+        self,
+        admitted_port: String,
+        physical_identity_digest: String,
+    ) -> SessionRequest {
+        SessionRequest {
+            schema_version: REQUEST_SCHEMA.to_owned(),
+            board_category: self.board_category,
+            admitted_port,
+            physical_identity_digest,
+            trusted_origin: self.trusted_origin,
+            baseline: self.baseline,
+            expected_postcondition: self.expected_postcondition,
+        }
+    }
+
+    #[must_use]
+    pub fn image_matches(&self, image: &[u8]) -> bool {
+        let mut digest = Sha256::new();
+        digest.update(image);
+        hex_lower(&digest.finalize()) == self.ota_image_sha256
+    }
+}
+
 impl SessionRequest {
     #[must_use]
     pub fn schema_is_valid(&self) -> bool {
@@ -180,6 +237,16 @@ impl SessionRequest {
             && !self.baseline.boot_session.is_empty()
             && is_sha256(&self.baseline.app_elf_sha256)
             && is_sha256(&self.expected_postcondition.hostname_sha256)
+            && self
+                .baseline
+                .running_partition
+                .as_deref()
+                .is_none_or(valid_partition_label)
+            && self
+                .expected_postcondition
+                .running_partition
+                .as_deref()
+                .is_none_or(valid_partition_label)
     }
 }
 
@@ -194,6 +261,7 @@ pub struct PrivateBootB {
     pub reference_commit: String,
     pub app_elf_sha256: String,
     pub hostname_sha256: String,
+    pub running_partition: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
@@ -325,6 +393,20 @@ mod state;
 
 fn is_sha256(value: &str) -> bool {
     value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+fn valid_partition_label(value: &str) -> bool {
+    matches!(value, "factory" | "ota_0" | "ota_1")
+}
+
+fn hex_lower(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut encoded = String::with_capacity(bytes.len().saturating_mul(2));
+    for byte in bytes {
+        encoded.push(char::from(HEX[usize::from(byte >> 4)]));
+        encoded.push(char::from(HEX[usize::from(byte & 0x0f)]));
+    }
+    encoded
 }
 
 #[cfg(test)]

@@ -25,6 +25,29 @@ pub fn run_live_session(
     artifacts: SessionArtifacts,
     timeout: Duration,
 ) -> Result<TerminalCategory> {
+    run_live_session_with_action(request, artifacts, timeout, LiveAction::Restart)
+}
+
+pub(super) fn run_live_ota_session(
+    request: SessionRequest,
+    ota_image: Vec<u8>,
+    artifacts: SessionArtifacts,
+    timeout: Duration,
+) -> Result<TerminalCategory> {
+    run_live_session_with_action(request, artifacts, timeout, LiveAction::Ota(ota_image))
+}
+
+enum LiveAction {
+    Restart,
+    Ota(Vec<u8>),
+}
+
+fn run_live_session_with_action(
+    request: SessionRequest,
+    artifacts: SessionArtifacts,
+    timeout: Duration,
+    action: LiveAction,
+) -> Result<TerminalCategory> {
     let mut session = LiveSession::new(request, artifacts, timeout)?;
     if !session.observe_platform()? {
         session.apply(SessionEvent::CleanupComplete)?;
@@ -40,7 +63,7 @@ pub fn run_live_session(
     if !session.confirm_baseline(&http)? {
         return session.finish_failed();
     }
-    if !session.request_restart_once(&http)? {
+    if !session.request_action_once(&http, action)? {
         return session.finish_failed();
     }
     let reader = session.observe_recovery(Some(reader), &http)?;
@@ -173,9 +196,14 @@ impl LiveSession {
         Ok(true)
     }
 
-    fn request_restart_once(&mut self, http: &StrictHttpClient) -> Result<bool> {
+    fn request_action_once(&mut self, http: &StrictHttpClient, action: LiveAction) -> Result<bool> {
         self.apply(SessionEvent::RestartRequestStarted)?;
-        let restart = http.post_restart_once(self.deadline)?;
+        let restart = match action {
+            LiveAction::Restart => http.post_restart_once(self.deadline)?,
+            LiveAction::Ota(image) => {
+                http.post_binary_once("/api/system/OTA", &image, self.deadline)?
+            }
+        };
         record_http(&mut self.state, &mut self.artifacts, "restart", &restart)?;
         let (bytes_written, write_complete) = request_evidence_fields(restart.request_progress());
         if bytes_written > 0 {

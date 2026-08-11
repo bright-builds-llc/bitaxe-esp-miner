@@ -3,8 +3,9 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use bitaxe_device_session::{
-    run_admitted_live_session, run_fixture_session, run_live_session, validate_private_input,
-    FixtureTranscript, RebootIntent, SessionArtifacts, SessionRequest, TerminalCategory,
+    run_admitted_live_session, run_admitted_ota_session, run_fixture_session, run_live_session,
+    validate_private_input, FixtureTranscript, OtaIntent, RebootIntent, SessionArtifacts,
+    SessionRequest, TerminalCategory,
 };
 use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand};
@@ -22,6 +23,8 @@ enum Command {
     Reboot(RebootArgs),
     #[command(name = "reboot-live")]
     RebootLive(RebootLiveArgs),
+    #[command(name = "ota-live")]
+    OtaLive(OtaLiveArgs),
 }
 
 #[derive(Debug, Args)]
@@ -60,6 +63,27 @@ struct RebootLiveArgs {
     timeout_seconds: u64,
 }
 
+#[derive(Debug, Args)]
+struct OtaLiveArgs {
+    #[arg(long)]
+    port: String,
+
+    #[arg(long = "private-root")]
+    private_root: Utf8PathBuf,
+
+    #[arg(long = "intent-input")]
+    intent_input: Utf8PathBuf,
+
+    #[arg(long = "ota-image")]
+    ota_image: Utf8PathBuf,
+
+    #[arg(long = "projection-output")]
+    projection_output: Utf8PathBuf,
+
+    #[arg(long = "timeout-seconds", default_value_t = 360)]
+    timeout_seconds: u64,
+}
+
 fn main() {
     match run() {
         Ok(TerminalCategory::Ready) => {}
@@ -82,6 +106,7 @@ fn run() -> Result<TerminalCategory> {
     match cli.command {
         Command::Reboot(args) => run_reboot(args),
         Command::RebootLive(args) => run_reboot_live(args),
+        Command::OtaLive(args) => run_ota_live(args),
     }
 }
 
@@ -127,6 +152,30 @@ fn run_reboot_live(args: RebootLiveArgs) -> Result<TerminalCategory> {
     run_admitted_live_session(
         intent,
         args.port,
+        artifacts,
+        Duration::from_secs(args.timeout_seconds),
+    )
+}
+
+fn run_ota_live(args: OtaLiveArgs) -> Result<TerminalCategory> {
+    validate_timeout(args.timeout_seconds)?;
+    validate_private_input(&args.intent_input)?;
+    let intent_bytes =
+        fs::read(args.intent_input.as_std_path()).context("failed to read private OTA intent")?;
+    let intent: OtaIntent = serde_json::from_slice(&intent_bytes)
+        .context("private OTA intent does not match the device-session schema")?;
+    let ota_image = fs::read(args.ota_image.as_std_path()).context("failed to read OTA image")?;
+    if ota_image.is_empty() || ota_image.len() > 4 * 1024 * 1024 {
+        anyhow::bail!("OTA image size is outside the admitted partition bound");
+    }
+    if !intent.image_matches(&ota_image) {
+        anyhow::bail!("OTA image identity is invalid");
+    }
+    let artifacts = SessionArtifacts::create(&args.private_root, &args.projection_output)?;
+    run_admitted_ota_session(
+        intent,
+        args.port,
+        ota_image,
         artifacts,
         Duration::from_secs(args.timeout_seconds),
     )

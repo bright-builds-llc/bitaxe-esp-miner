@@ -35,6 +35,28 @@ fn incomplete_write_is_never_complete() {
 }
 
 #[test]
+fn binary_request_appends_the_exact_body_after_bounded_headers() {
+    // Arrange
+    let body = [0x00, 0xff, 0x3a, 0x0a];
+
+    // Act
+    let request = request_bytes(
+        "POST",
+        "/api/system/OTA",
+        "device.invalid",
+        "application/octet-stream",
+        &body,
+    );
+    let header_end = maybe_header_end(&request).expect("request headers must terminate");
+
+    // Assert
+    assert!(request[..header_end]
+        .windows(b"Content-Length: 4".len())
+        .any(|window| window == b"Content-Length: 4"));
+    assert_eq!(&request[header_end..], body);
+}
+
+#[test]
 fn invalid_origins_fail_closed() {
     for origin in [
         "ftp://example.invalid",

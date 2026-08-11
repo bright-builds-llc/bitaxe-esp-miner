@@ -85,3 +85,6 @@ capture-settings-patch-evidence *args:
 
 capture-log-buffer-evidence *args:
     bazel run //tools/automation:capture_log_buffer_evidence -- {{ args }}
+
+capture-partition-layout-evidence *args:
+    bazel run //tools/automation:capture_partition_layout_evidence -- {{ args }}

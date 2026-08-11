@@ -325,8 +325,13 @@ impl SessionState {
             .checked_add(1)
             .is_some_and(|next| boot_b.boot_ordinal == next);
         self.software_reset_observed = boot_b.reset_reason_category == "software_cpu";
-        self.postcondition_matches =
-            boot_b.hostname_sha256 == self.expected_postcondition.hostname_sha256;
+        self.postcondition_matches = boot_b.hostname_sha256
+            == self.expected_postcondition.hostname_sha256
+            && self
+                .expected_postcondition
+                .running_partition
+                .as_ref()
+                .is_none_or(|expected| &boot_b.running_partition == expected);
         let trusted_origin_matches = boot_b.trusted_origin == self.trusted_origin;
         self.trusted_origin_matches = trusted_origin_matches;
         self.maybe_boot_b = Some(boot_b);

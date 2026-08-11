@@ -6,8 +6,8 @@ use sha2::{Digest, Sha256};
 
 use crate::macos::MacOsDeviceAdapter;
 use crate::{
-    current_platform, PlatformCategory, PrivateBootB, RebootIntent, SessionArtifacts, SessionEvent,
-    SessionRequest, SessionState, TerminalCategory,
+    current_platform, OtaIntent, PlatformCategory, PrivateBootB, RebootIntent, SessionArtifacts,
+    SessionEvent, SessionRequest, SessionState, TerminalCategory,
 };
 use bitaxe_http_transport::{ExchangeObservation, HttpResponse, RequestProgress};
 
@@ -36,6 +36,50 @@ pub fn run_admitted_live_session(
     };
     let request = intent.bind_device(admitted_port, snapshot.physical_identity_digest);
     run_live_session(request, artifacts, timeout)
+}
+
+pub fn run_admitted_ota_session(
+    intent: OtaIntent,
+    admitted_port: String,
+    ota_image: Vec<u8>,
+    artifacts: SessionArtifacts,
+    timeout: Duration,
+) -> Result<TerminalCategory> {
+    if !intent.schema_is_valid() {
+        anyhow::bail!("device-session OTA intent schema is invalid");
+    }
+    if !intent.image_matches(&ota_image) {
+        anyhow::bail!("device-session OTA image identity is invalid");
+    }
+    let platform = current_platform();
+    if platform != PlatformCategory::Macos {
+        return finish_unadmitted_ota_intent(intent, artifacts, platform);
+    }
+    let maybe_snapshot = MacOsDeviceAdapter::maybe_exact_snapshot(&admitted_port)?;
+    let Some(snapshot) = maybe_snapshot else {
+        return finish_unadmitted_ota_intent(intent, artifacts, platform);
+    };
+    let request = intent.bind_device(admitted_port, snapshot.physical_identity_digest);
+    session::run_live_ota_session(request, ota_image, artifacts, timeout)
+}
+
+fn finish_unadmitted_ota_intent(
+    intent: OtaIntent,
+    mut artifacts: SessionArtifacts,
+    platform: PlatformCategory,
+) -> Result<TerminalCategory> {
+    let mut state = SessionState::new(
+        intent.baseline,
+        intent.expected_postcondition,
+        intent.trusted_origin,
+    );
+    apply_event(
+        &mut state,
+        &mut artifacts,
+        SessionEvent::PlatformObserved { category: platform },
+    )?;
+    apply_event(&mut state, &mut artifacts, SessionEvent::AdmissionRejected)?;
+    finish_failed_session(state, artifacts, Instant::now())
 }
 
 fn finish_unadmitted_intent(
@@ -144,6 +188,11 @@ pub(super) fn baseline_matches(request: &SessionRequest, body: &[u8]) -> bool {
         && observed.reference_commit == request.baseline.reference_commit
         && observed.app_elf_sha256 == request.baseline.app_elf_sha256
         && observed.hostname_sha256 == request.expected_postcondition.hostname_sha256
+        && request
+            .baseline
+            .running_partition
+            .as_ref()
+            .is_none_or(|expected| &observed.running_partition == expected)
 }
 
 pub(super) fn maybe_parse_boot_b(trusted_origin: &str, body: &[u8]) -> Option<PrivateBootB> {
@@ -157,6 +206,7 @@ pub(super) fn maybe_parse_boot_b(trusted_origin: &str, body: &[u8]) -> Option<Pr
         reference_commit: maybe_required_string(&value, "referenceCommit")?,
         app_elf_sha256: maybe_required_string(&value, "appElfSha256")?,
         hostname_sha256: sha256(maybe_required_string(&value, "hostname")?.as_bytes()),
+        running_partition: maybe_required_string(&value, "runningPartition")?,
     })
 }
 
@@ -257,6 +307,7 @@ mod tests {
             "referenceCommit": "reference",
             "appElfSha256": "a".repeat(64),
             "hostname": "private-host",
+            "runningPartition": "factory",
             "ignoredSensitiveField": "not-copied"
         });
 

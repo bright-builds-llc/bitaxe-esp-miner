@@ -26,12 +26,12 @@ new work.
 
 ### task-parity-rel001-live-ota-slot-transition | 2026-08-11 | Prove the Ultra 205 factory-to-OTA slot transition
 
-- [ ] Commit and push the linked immutable REL-001 plan before source changes.
-- [ ] Add the bounded typed OTA device-session transaction without changing
+- [x] Commit and push the linked immutable REL-001 plan before source changes.
+- [x] Add the bounded typed OTA device-session transaction without changing
       the existing reboot interfaces.
-- [ ] Add the private-first aggregate partition-layout capture, independent
+- [x] Add the private-first aggregate partition-layout capture, independent
       validator, and behavior/privacy/process-boundary regressions.
-- [ ] Run the complete ordered software gate, commit, and push the clean
+- [x] Run the complete ordered software gate, commit, and push the clean
       implementation before hardware use.
 - [ ] Build the exact package, run one detector and conditional capture, and
       promote only `REL-001` on complete typed evidence; otherwise withhold
@@ -90,7 +90,14 @@ change, ordinal `N+1`, software reset, successful boot validation,
 modes, redaction, and independent evidence validation. Otherwise record the
 closed category, keep `REL-001` at `implemented`, and create no `RESULT.md`.
 
-Verification: Pending.
+Verification: Focused Cargo and Bazel OTA/device-session regressions pass. The
+complete ordered implementation gate passed: `cargo fmt --all`,
+`cargo clippy --all-targets --all-features -- -D warnings`,
+`cargo build --all-targets --all-features`, `cargo test --all-features`,
+`bun scripts/bright-builds-check.ts all`, `just test`, `just parity`, and
+`just parity-progress`. `just verify-redaction`, `just verify-reference`,
+`git diff --check`, immutable-plan, branch/upstream, and full-diff reviews also
+pass. Hardware evidence remains pending the clean pushed implementation.
 
 Completion review: Pending. This task claims no rollback, large-erase,
 interrupted-update, OTAWWW/static-partition, other-board, mining,

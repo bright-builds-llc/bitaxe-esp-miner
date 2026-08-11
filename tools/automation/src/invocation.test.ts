@@ -159,6 +159,27 @@ test("log buffer evidence requires the complete detector-gated surface", () => {
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
 
+test("partition layout evidence requires the complete detector-gated surface", () => {
+  // Arrange
+  const complete = [
+    "capture-partition-layout-evidence",
+    "--private-root", "scratch/partition-layout",
+    "--package-manifest", "package.json",
+    "--wifi-credentials", "wifi.json",
+    "--detector-output", "scratch/detector.stdout",
+    "--projection", "docs/evidence/partition-layout.json",
+    "--capture-timeout-seconds", "360",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "capture-partition-layout-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});
+
 test("operator snapshot capture requires the detector-gated closed surface", () => {
   // Arrange
   const complete = [

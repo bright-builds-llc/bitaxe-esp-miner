@@ -8,6 +8,7 @@ rust_library(
         "src/lib.rs",
         "src/log_buffer_evidence.rs",
         "src/operator_snapshot_evidence.rs",
+        "src/partition_layout_evidence.rs",
         "src/runtime_health_evidence.rs",
         "src/settings_patch_evidence.rs",
         "src/system_info_evidence.rs",
@@ -89,6 +90,17 @@ rust_binary(
     name = "validate_log_buffer_evidence",
     srcs = ["src/bin/validate_log_buffer_evidence.rs"],
     crate_name = "validate_log_buffer_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_partition_layout_evidence",
+    srcs = ["src/bin/validate_partition_layout_evidence.rs"],
+    crate_name = "validate_partition_layout_evidence",
     edition = "2021",
     deps = [
         ":bitaxe_automation_contracts",

@@ -25,6 +25,7 @@ import {
 import { packageFirmware } from "./package.js";
 import { captureLogBufferEvidence, LogBufferEvidenceError } from "./log-buffer-evidence.js";
 import { captureOperatorSnapshotEvidence, OperatorSnapshotEvidenceError } from "./operator-snapshot-evidence.js";
+import { capturePartitionLayoutEvidence, PartitionLayoutEvidenceError } from "./partition-layout-evidence.js";
 import { createLocalProcessPort, type ProcessPort } from "./process.js";
 import { verifySemanticEvidenceRedaction } from "./redaction.js";
 import { captureRuntimeHealthEvidence, RuntimeHealthEvidenceError } from "./runtime-health-evidence.js";
@@ -220,6 +221,7 @@ async function dispatchProcess(
     case "capture-system-info-evidence":
     case "capture-settings-patch-evidence":
     case "capture-log-buffer-evidence":
+    case "capture-partition-layout-evidence":
     case "verify-theme-durability":
       throw new Error("specialized workflow reached generic dispatch");
   }
@@ -330,6 +332,17 @@ async function main(): Promise<number> {
         projection: optionValue(invocation, "--projection"),
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root), toolProgram(root, "crates/bitaxe-automation-contracts/validate_log_buffer_evidence"));
+    } else if (invocation.command === "capture-partition-layout-evidence") {
+      const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
+      publicValue = await capturePartitionLayoutEvidence(root, {
+        privateRoot: optionValue(invocation, "--private-root"),
+        packageManifest: optionValue(invocation, "--package-manifest"),
+        wifiCredentials: optionValue(invocation, "--wifi-credentials"),
+        port,
+        projection: optionValue(invocation, "--projection"),
+        captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
+      }, processPort, flashProgram(root), deviceSessionProgram(root),
+      toolProgram(root, "crates/bitaxe-automation-contracts/validate_partition_layout_evidence"));
     } else if (invocation.command === "verify-settings-durability" && optionValue(invocation, "--mode") === "capture") {
       const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
       publicValue = await captureSettingsDurability(root, {
@@ -369,11 +382,12 @@ async function main(): Promise<number> {
     const systemInfoFailure = error instanceof SystemInfoEvidenceError;
     const settingsPatchFailure = error instanceof SettingsPatchEvidenceError;
     const logBufferFailure = error instanceof LogBufferEvidenceError;
+    const partitionLayoutFailure = error instanceof PartitionLayoutEvidenceError;
     const category: AutomationCategory = policyBlocked
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || settingsPatchFailure || logBufferFailure
+        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure
           ? error.category
           : "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";

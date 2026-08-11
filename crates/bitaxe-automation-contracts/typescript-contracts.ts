@@ -25,7 +25,8 @@ export type AutomationCommand =
   | "capture-runtime-health-evidence"
   | "capture-system-info-evidence"
   | "capture-settings-patch-evidence"
-  | "capture-log-buffer-evidence";
+  | "capture-log-buffer-evidence"
+  | "capture-partition-layout-evidence";
 
 export type AutomationStatus = "succeeded" | "failed" | "blocked";
 
@@ -202,6 +203,23 @@ export type LogBufferEvidence = {
   redaction_status: "passed";
 };
 
+export type PartitionLayoutEvidence = {
+  schema_version: "bitaxe-partition-layout-evidence-v1";
+  board: 205;
+  source_commit: string;
+  reference_commit: string;
+  package_manifest_sha256: string;
+  workflow: WorkflowIdentity;
+  detector_admitted: true;
+  partition_layout: Readonly<Record<string, unknown>>;
+  ota_session: Readonly<Record<string, unknown>>;
+  mining_state: "disabled";
+  hardware_control_state: "disabled";
+  cleanup_complete: true;
+  private_modes_valid: true;
+  redaction_status: "passed";
+};
+
 const automationCommands = new Set<AutomationCommand>([
   "doctor", "bootstrap-esp", "build-firmware", "package-firmware", "verify-reference",
   "verify-redaction", "verify-production-session", "observe-serial", "verify-flash-durability",
@@ -213,6 +231,7 @@ const automationCommands = new Set<AutomationCommand>([
   "capture-system-info-evidence",
   "capture-settings-patch-evidence",
   "capture-log-buffer-evidence",
+  "capture-partition-layout-evidence",
 ]);
 const automationStatuses = new Set<AutomationStatus>(["succeeded", "failed", "blocked"]);
 const automationCategories = new Set<AutomationCategory>([

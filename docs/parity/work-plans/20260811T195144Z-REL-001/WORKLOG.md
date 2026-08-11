@@ -12,3 +12,44 @@
 - Outcome: `REL-001` selected as the first actionable row.
 - Blocker or next safe action: Run the complete plan checkpoint gate, commit
   and push this immutable contract, then implement without editing `PLAN.md`.
+
+## 2026-08-11T20:17:00Z | typed OTA evidence implementation
+
+- Source commit: pending implementation commit.
+- Actions: Added a bounded exact binary-body HTTP exchange, private typed OTA
+  intent, `ota-live` same-device transaction with factory/`ota_0`
+  postconditions, aggregate-only REL-001 contract and validator, private-first
+  capture workflow, CLI/Just surfaces, and focused behavior, privacy, mode,
+  failure-category, and real-child-process regressions. Existing fixture
+  `reboot` and live `reboot-live` interfaces remain unchanged.
+- Verification: Focused Cargo and Bazel HTTP transport, device-session,
+  automation-contract, automation-orchestration, TypeScript, and real CLI
+  tests pass. Bright Builds reports no findings, generated TypeScript matches
+  the Rust-owned contract, and the new files remain within length limits.
+- Evidence: Software-only typed capture and regressions; no public live
+  evidence exists and no hardware interaction occurred.
+- Outcome: Implementation is ready for the complete ordered software gate.
+- Blocker or next safe action: Run every mandatory gate, review the full diff,
+  commit and push the clean implementation, then build its exact package.
+
+## 2026-08-11T20:18:00Z | complete implementation gate
+
+- Source commit: pending implementation commit.
+- Actions: Corrected the pre-effect artifact boundary so a mismatched OTA image
+  is rejected before USB access or session-artifact creation, then reviewed the
+  complete implementation for a single authoritative OTA transaction and no
+  duplicated restart/readiness path.
+- Verification: The focused real-CLI regression and device-session/automation
+  Bazel tests passed. The complete ordered gate passed: `cargo fmt --all`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, `cargo test --all-features`,
+  `bun scripts/bright-builds-check.ts all`, `just test`, `just parity`, and
+  `just parity-progress`. Redaction, pinned-reference, whitespace, immutable
+  plan, branch/upstream, and full-diff checks also passed.
+- Evidence: Software-only validation of exact image binding, reader-before-one
+  upload ordering, same-device recovery, typed terminal categories, aggregate
+  evidence validation, private modes, redaction, and real process boundaries.
+- Outcome: The clean implementation is ready to commit and push before any
+  device effect.
+- Blocker or next safe action: Commit and push this implementation, build its
+  exact package, then consume the one detector and conditional capture attempt.

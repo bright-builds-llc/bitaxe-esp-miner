@@ -105,6 +105,22 @@ impl StrictHttpClient {
         )
     }
 
+    pub fn post_binary_once(
+        &self,
+        path: &str,
+        body: &[u8],
+        deadline: Instant,
+    ) -> Result<ExchangeObservation> {
+        self.exchange_until_with_body(
+            "POST",
+            path,
+            body,
+            "application/octet-stream",
+            deadline,
+            DEFAULT_CONNECT_TIMEOUT,
+        )
+    }
+
     pub fn exchange_with_timeouts(
         &self,
         method: &str,
@@ -127,9 +143,29 @@ impl StrictHttpClient {
         deadline: Instant,
         connect_timeout: Duration,
     ) -> Result<ExchangeObservation> {
+        self.exchange_until_with_body(
+            method,
+            path,
+            &[],
+            "application/json",
+            deadline,
+            connect_timeout,
+        )
+    }
+
+    fn exchange_until_with_body(
+        &self,
+        method: &str,
+        path: &str,
+        body: &[u8],
+        content_type: &str,
+        deadline: Instant,
+        connect_timeout: Duration,
+    ) -> Result<ExchangeObservation> {
         if !matches!(method, "GET" | "POST")
             || !path.starts_with('/')
             || path.contains(char::is_whitespace)
+            || content_type.contains(['\r', '\n'])
         {
             bail!("strict HTTP request is invalid");
         }
@@ -171,7 +207,7 @@ impl StrictHttpClient {
                     ));
                 }
             };
-        let request = request_bytes(method, path, &self.origin.authority);
+        let request = request_bytes(method, path, &self.origin.authority, content_type, body);
         let completed_request = match send_request(&mut transport, &request) {
             RequestSendOutcome::Complete { bytes_written } => {
                 CompletedRequest::new(bytes_written, nonzero_elapsed_millis(started))
@@ -270,11 +306,20 @@ fn build_transport(
     })
 }
 
-fn request_bytes(method: &str, path: &str, authority: &str) -> Vec<u8> {
-    format!(
-        "{method} {path} HTTP/1.1\r\nHost: {authority}\r\nAccept: application/json\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+fn request_bytes(
+    method: &str,
+    path: &str,
+    authority: &str,
+    content_type: &str,
+    body: &[u8],
+) -> Vec<u8> {
+    let mut request = format!(
+        "{method} {path} HTTP/1.1\r\nHost: {authority}\r\nAccept: application/json\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+        body.len()
     )
-    .into_bytes()
+    .into_bytes();
+    request.extend_from_slice(body);
+    request
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

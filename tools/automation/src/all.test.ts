@@ -7,6 +7,7 @@ import "./http.test.js";
 import "./invocation.test.js";
 import "./log-buffer-evidence.test.js";
 import "./operator-snapshot-evidence.test.js";
+import "./partition-layout-evidence.test.js";
 import "./process.test.js";
 import "./repository-guard.test.js";
 import "./redaction.test.js";
