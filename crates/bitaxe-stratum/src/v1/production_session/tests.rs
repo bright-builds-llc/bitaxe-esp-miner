@@ -83,6 +83,7 @@ impl DeterministicProductionSessionAdapter {
                     ProductionSessionEffect::ApplyVersionMask { .. }
                     | ProductionSessionEffect::PollAsic { .. }
                     | ProductionSessionEffect::RecordScoreboard { .. }
+                    | ProductionSessionEffect::RecordBlockFound
                     | ProductionSessionEffect::BlockSubmissions
                     | ProductionSessionEffect::InvalidateWorkAndSubmissions
                     | ProductionSessionEffect::StopAsicInteraction
@@ -207,27 +208,40 @@ fn wake(readiness: ProductionReadiness, now_ms: u64) -> ProductionSessionEvent {
 }
 
 fn establish_active(adapter: &mut DeterministicProductionSessionAdapter) {
-    establish_active_with_readiness(adapter, ready());
+    establish_active_with_readiness_and_nbits(adapter, ready(), "1705ae3a");
 }
 
 fn establish_active_with_readiness(
     adapter: &mut DeterministicProductionSessionAdapter,
     readiness: ProductionReadiness,
 ) {
+    establish_active_with_readiness_and_nbits(adapter, readiness, "1705ae3a");
+}
+
+fn establish_active_with_nbits(
+    adapter: &mut DeterministicProductionSessionAdapter,
+    compact_nbits: &str,
+) {
+    establish_active_with_readiness_and_nbits(adapter, ready(), compact_nbits);
+}
+
+fn establish_active_with_readiness_and_nbits(
+    adapter: &mut DeterministicProductionSessionAdapter,
+    readiness: ProductionReadiness,
+    compact_nbits: &str,
+) {
     adapter.drive(wake(readiness, 0));
     adapter.connect(ProductionPool::Primary, 1);
     authorize_pool(adapter, ProductionPool::Primary, 2);
-    adapter.bytes(
-        ProductionPool::Primary,
-        concat!(
-            "{\"id\":null,\"method\":\"mining.set_difficulty\",\"params\":[1e-30]}\n",
-            "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"job\",",
-            "\"0000000000000000000000000000000000000000000000000000000000000000\",",
-            "\"ffffffff\",\"ffffffff\",[],\"20000004\",\"1705ae3a\",",
-            "\"647025b5\",true]}\n"
-        ),
-        3,
-    );
+    let notification = concat!(
+        "{\"id\":null,\"method\":\"mining.set_difficulty\",\"params\":[1e-30]}\n",
+        "{\"id\":null,\"method\":\"mining.notify\",\"params\":[\"job\",",
+        "\"0000000000000000000000000000000000000000000000000000000000000000\",",
+        "\"ffffffff\",\"ffffffff\",[],\"20000004\",\"1705ae3a\",",
+        "\"647025b5\",true]}\n"
+    )
+    .replace("1705ae3a", compact_nbits);
+    adapter.bytes(ProductionPool::Primary, notification, 3);
 }
 
 fn establish_automatic_fallback(adapter: &mut DeterministicProductionSessionAdapter) {
@@ -283,6 +297,7 @@ fn dispatched_observation(
     }
 }
 
+mod block_found;
 mod job_transition;
 mod lifecycle;
 mod recovery;

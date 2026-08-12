@@ -91,10 +91,21 @@ impl IdentifyModeState {
 /// Block-found notification state owned by the firmware shell.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BlockFoundNotificationState {
-    /// Last known block height reported by the system module.
+    /// Number of network-target nonces observed in this boot.
     pub block_found: u64,
     /// Whether the AxeOS notification should still be shown.
     pub show_new_block: bool,
+}
+
+impl BlockFoundNotificationState {
+    /// Records one network-target nonce and makes the notification visible.
+    #[must_use]
+    pub const fn record_found_block(self) -> Self {
+        Self {
+            block_found: self.block_found.saturating_add(1),
+            show_new_block: true,
+        }
+    }
 }
 
 /// Block-found dismiss effect with the next notification state.
@@ -386,6 +397,43 @@ mod tests {
                 },
             })
         );
+    }
+
+    #[test]
+    fn found_block_increments_count_and_reshows_after_dismissal() {
+        // Arrange
+        let dismissed = BlockFoundNotificationState {
+            block_found: 3,
+            show_new_block: false,
+        };
+
+        // Act
+        let observed = dismissed.record_found_block();
+
+        // Assert
+        assert_eq!(
+            observed,
+            BlockFoundNotificationState {
+                block_found: 4,
+                show_new_block: true,
+            }
+        );
+    }
+
+    #[test]
+    fn found_block_count_saturates_without_hiding_notification() {
+        // Arrange
+        let maximum = BlockFoundNotificationState {
+            block_found: u64::MAX,
+            show_new_block: false,
+        };
+
+        // Act
+        let observed = maximum.record_found_block();
+
+        // Assert
+        assert_eq!(observed.block_found, u64::MAX);
+        assert!(observed.show_new_block);
     }
 
     #[test]

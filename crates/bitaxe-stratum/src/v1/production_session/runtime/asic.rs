@@ -39,6 +39,9 @@ impl ProductionMiningSession {
         let maybe_scoreboard_candidate = maybe_receipt
             .as_ref()
             .and_then(|receipt| receipt.maybe_scoreboard_candidate.clone());
+        let found_block = maybe_receipt
+            .as_ref()
+            .is_some_and(|receipt| receipt.found_block);
         if let Some(receipt) = &maybe_receipt {
             self.asic_diagnostics.note_correlation(
                 observation.observed_generation,
@@ -51,6 +54,9 @@ impl ProductionMiningSession {
         }) {
             self.job_transition
                 .note_correlated_result(observation.observed_generation);
+        }
+        if found_block {
+            effects.push(ProductionSessionEffect::RecordBlockFound);
         }
         self.drain_runtime_actions(active_pool, effects)?;
         if let Some(candidate) = maybe_scoreboard_candidate {

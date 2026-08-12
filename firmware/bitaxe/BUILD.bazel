@@ -416,6 +416,18 @@ rust_test(
 )
 
 rust_test(
+    name = "block_found_source_ownership_tests",
+    srcs = [
+        "src/block_found_source_ownership_test.rs",
+        "src/production_mining_session.rs",
+        "src/runtime_snapshot.rs",
+    ],
+    crate_name = "block_found_source_ownership_tests",
+    crate_root = "src/block_found_source_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "wifi_source_ownership_tests",
     srcs = [
         "src/http_api.rs",

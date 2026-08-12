@@ -1,6 +1,7 @@
 use crate::error::StratumV1Error;
 use crate::v1::coinbase::hex_decode;
 use crate::v1::messages::{MiningNotify, MAX_EXTRANONCE_2_LEN};
+use crate::v1::share_validation::network_difficulty;
 
 const BIP110_SIGNAL_BIT: u32 = 4;
 const BIP110_SIGNAL_EXPIRY_BLOCK: u32 = 965_664;
@@ -269,20 +270,6 @@ fn scriptsig_text(
         })
         .collect();
     Ok(Some(tag))
-}
-
-fn network_difficulty(nbits: u32) -> Result<f64, StratumV1Error> {
-    let mantissa = nbits & 0x007f_ffff;
-    if mantissa == 0 {
-        return Err(invalid("nbits", "zero compact target mantissa"));
-    }
-    let exponent = ((nbits >> 24) & 0xff) as i32;
-    let target = f64::from(mantissa) * 256_f64.powi(exponent - 3);
-    let difficulty = (2_f64.powi(208) * 65_535_f64) / target;
-    if !difficulty.is_finite() {
-        return Err(invalid("nbits", "non-finite network difficulty"));
-    }
-    Ok(difficulty)
 }
 
 fn compact_size_as_usize(

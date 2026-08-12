@@ -13,7 +13,9 @@ use crate::error::StratumV1Error;
 use crate::v1::messages::PoolDifficulty;
 use crate::v1::mining::{MiningWork, ShareSubmission};
 use crate::v1::queue::{BoundedWorkQueue, STRATUM_WORK_QUEUE_CAPACITY};
-use crate::v1::share_validation::{nonce_difficulty, nonce_difficulty_meets_pool_target};
+use crate::v1::share_validation::{
+    nonce_difficulty, nonce_difficulty_meets_network_target, nonce_difficulty_meets_pool_target,
+};
 
 const SEEN_SHARE_CANDIDATE_CAPACITY: usize = 64;
 
@@ -198,6 +200,7 @@ pub(crate) enum CorrelationOutcome {
 pub(crate) struct CorrelationReceipt {
     pub outcome: CorrelationOutcome,
     pub maybe_scoreboard_candidate: Option<ScoreboardCandidate>,
+    pub found_block: bool,
 }
 
 impl CorrelationReceipt {
@@ -205,6 +208,7 @@ impl CorrelationReceipt {
         Self {
             outcome: CorrelationOutcome::Blocked { reason },
             maybe_scoreboard_candidate: None,
+            found_block: false,
         }
     }
 }
@@ -374,6 +378,10 @@ impl ProductionWorkRegistry {
             Ok(meets_pool_target) => meets_pool_target,
             Err(_) => return CorrelationReceipt::blocked(ProductionAsicBlocker::TargetMismatch),
         };
+        let found_block = match nonce_difficulty_meets_network_target(&record.work, difficulty) {
+            Ok(found_block) => found_block,
+            Err(_) => return CorrelationReceipt::blocked(ProductionAsicBlocker::TargetMismatch),
+        };
         let scoreboard_candidate = ScoreboardCandidate {
             difficulty,
             submission: submission.clone(),
@@ -389,6 +397,7 @@ impl ProductionWorkRegistry {
                     reason: NonSubmitReason::DuplicateCandidate,
                 },
                 maybe_scoreboard_candidate: Some(scoreboard_candidate),
+                found_block,
             };
         }
         if record.seen_candidates.len() == SEEN_SHARE_CANDIDATE_CAPACITY {
@@ -403,6 +412,7 @@ impl ProductionWorkRegistry {
                     reason: NonSubmitReason::BelowPoolTarget,
                 },
                 maybe_scoreboard_candidate: Some(scoreboard_candidate),
+                found_block,
             };
         }
 
@@ -413,6 +423,7 @@ impl ProductionWorkRegistry {
                 submission,
             }),
             maybe_scoreboard_candidate: Some(scoreboard_candidate),
+            found_block,
         }
     }
 

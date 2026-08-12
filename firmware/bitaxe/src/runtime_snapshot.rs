@@ -283,6 +283,13 @@ pub fn apply_block_found_dismiss_command(effect: BlockFoundDismissEffect) {
     });
 }
 
+/// Records one production-qualified network-target nonce.
+pub fn record_found_block() {
+    mutate_command_visible_state(|state| {
+        state.block_found = state.block_found.record_found_block();
+    });
+}
+
 fn command_visible_state() -> CommandVisibleState {
     let state = COMMAND_VISIBLE_STATE.get_or_init(|| Mutex::new(CommandVisibleState::default()));
     let Ok(state) = state.lock() else {

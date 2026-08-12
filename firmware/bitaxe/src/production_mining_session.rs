@@ -483,6 +483,10 @@ impl OrdinaryEspProductionSessionAdapter {
             ProductionSessionEffect::RecordScoreboard { candidate } => {
                 scoreboard::record(candidate)
             }
+            ProductionSessionEffect::RecordBlockFound => {
+                crate::runtime_snapshot::record_found_block();
+                None
+            }
         }
     }
 

@@ -302,6 +302,7 @@ pub enum ProductionSessionEffect {
     RecordScoreboard {
         candidate: ScoreboardCandidate,
     },
+    RecordBlockFound,
     Publish(Box<ProductionSessionSnapshot>),
 }
 
@@ -380,6 +381,9 @@ impl fmt::Debug for ProductionSessionEffect {
                     .debug_struct("ProductionSessionEffect::RecordScoreboard")
                     .field("candidate", &"redacted")
                     .finish(),
+                Self::RecordBlockFound => {
+                    formatter.write_str("ProductionSessionEffect::RecordBlockFound")
+                }
                 Self::Publish(snapshot) => formatter
                     .debug_tuple("ProductionSessionEffect::Publish")
                     .field(snapshot)

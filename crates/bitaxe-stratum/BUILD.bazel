@@ -39,6 +39,7 @@ rust_library(
         "src/v1/production_session/runtime/asic.rs",
         "src/v1/production_session/runtime/transport.rs",
         "src/v1/production_session/tests.rs",
+        "src/v1/production_session/tests/block_found.rs",
         "src/v1/production_session/tests/job_transition.rs",
         "src/v1/production_session/tests/lifecycle.rs",
         "src/v1/production_session/tests/recovery.rs",

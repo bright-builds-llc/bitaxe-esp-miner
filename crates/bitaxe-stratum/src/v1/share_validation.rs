@@ -45,6 +45,41 @@ pub(super) fn nonce_difficulty_meets_pool_target(
     Ok(nonce_difficulty >= pool_difficulty.difficulty)
 }
 
+pub(super) fn nonce_difficulty_meets_network_target(
+    work: &MiningWork,
+    nonce_difficulty: f64,
+) -> Result<bool, StratumV1Error> {
+    if !nonce_difficulty.is_finite() || nonce_difficulty <= 0.0 {
+        return Err(StratumV1Error::InvalidField {
+            field: "nonce_difficulty",
+            reason: "must be finite and positive",
+        });
+    }
+
+    let compact_nbits = u32::from_le_bytes(work.fields.nbits);
+    Ok(nonce_difficulty >= network_difficulty(compact_nbits)?)
+}
+
+pub(super) fn network_difficulty(compact_nbits: u32) -> Result<f64, StratumV1Error> {
+    let mantissa = compact_nbits & 0x007f_ffff;
+    if mantissa == 0 {
+        return Err(StratumV1Error::InvalidField {
+            field: "nbits",
+            reason: "zero compact target mantissa",
+        });
+    }
+    let exponent = ((compact_nbits >> 24) & 0xff) as i32;
+    let target = f64::from(mantissa) * 256_f64.powi(exponent - 3);
+    let difficulty = (2_f64.powi(208) * 65_535_f64) / target;
+    if !difficulty.is_finite() || difficulty <= 0.0 {
+        return Err(StratumV1Error::InvalidField {
+            field: "nbits",
+            reason: "non-finite network difficulty",
+        });
+    }
+    Ok(difficulty)
+}
+
 pub(super) fn nonce_difficulty(work: &MiningWork, result: Bm1366NonceResult) -> f64 {
     let header = reconstructed_header(work, result);
     let hash = double_sha256(&header);
@@ -126,6 +161,48 @@ mod tests {
 
         // Assert
         assert_eq!(difficulty as u64, 683);
+    }
+
+    #[test]
+    fn network_target_qualification_accepts_equality_and_rejects_below() {
+        // Arrange
+        let mut work = reference_work(
+            "0c859545a3498373a57452fac22eb7113df2a465000543520000000000000000",
+            "5bdc1968499c3393873edf8e07a1c3a50a97fc3a9d1a376bbf77087dd63778eb",
+            0x6470_25b5,
+        );
+        work.fields.nbits = 0x207f_ffff_u32.to_le_bytes();
+        let network = network_difficulty(0x207f_ffff).expect("regtest target should parse");
+
+        // Act
+        let equal = nonce_difficulty_meets_network_target(&work, network);
+        let below = nonce_difficulty_meets_network_target(&work, network / 2.0);
+        let above = nonce_difficulty_meets_network_target(&work, network * 2.0);
+
+        // Assert
+        assert_eq!(equal, Ok(true));
+        assert_eq!(below, Ok(false));
+        assert_eq!(above, Ok(true));
+    }
+
+    #[test]
+    fn network_target_qualification_rejects_invalid_compact_target() {
+        // Arrange
+        let mut work = reference_work(
+            "0c859545a3498373a57452fac22eb7113df2a465000543520000000000000000",
+            "5bdc1968499c3393873edf8e07a1c3a50a97fc3a9d1a376bbf77087dd63778eb",
+            0x6470_25b5,
+        );
+        work.fields.nbits = 0x1700_0000_u32.to_le_bytes();
+
+        // Act
+        let result = nonce_difficulty_meets_network_target(&work, 1.0);
+
+        // Assert
+        assert!(matches!(
+            result,
+            Err(StratumV1Error::InvalidField { field: "nbits", .. })
+        ));
     }
 
     fn reference_work(prev_hash: &str, merkle: &str, ntime: u32) -> MiningWork {

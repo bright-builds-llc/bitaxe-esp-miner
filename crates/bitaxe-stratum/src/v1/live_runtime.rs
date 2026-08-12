@@ -118,6 +118,7 @@ pub(crate) enum BridgeObservationOutcome {
 pub(crate) struct BridgeObservationReceipt {
     pub outcome: BridgeObservationOutcome,
     pub maybe_scoreboard_candidate: Option<ScoreboardCandidate>,
+    pub found_block: bool,
 }
 
 #[derive(Clone, PartialEq)]
@@ -460,6 +461,7 @@ impl LiveStratumRuntime {
         Ok(BridgeObservationReceipt {
             outcome,
             maybe_scoreboard_candidate: receipt.maybe_scoreboard_candidate,
+            found_block: receipt.found_block,
         })
     }
 
