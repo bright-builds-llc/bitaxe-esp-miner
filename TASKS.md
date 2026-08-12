@@ -1903,7 +1903,7 @@ Hardware evidence continuation plan:
       closed public evidence projection, and focused regressions.
 - [x] Run all focused and mandatory software gates; commit and push the exact
       implementation before touching hardware.
-- [ ] Run exactly one fresh detector-gated `attempt-001` against board 205 and
+- [x] Run exactly one fresh detector-gated `attempt-001` against board 205 and
       stop after its complete result without retry.
 - [ ] Promote API-009 only on the complete five-command device-user quorum;
       otherwise preserve `implemented` and record the first typed blocker.
@@ -1923,6 +1923,22 @@ rollback, power cycle, direct UART, pins, fault injection, or control override
 is permitted. Private evidence remains mode 0700/0600 beneath ignored scratch;
 public output contains no origin, hostname, port, USB/network identity,
 credential, worker, address, password, token, checkpoint secret, or raw trace.
+
+Verification: Source commit `2d6337e090e1ba747fdc1507830c732782eaf139`
+passes the complete ordered Cargo, Bright Builds, all 39 Bazel tests, parity,
+progress, redaction, reference, generated-contract, selector, task,
+immutable-plan, reference-cleanliness, sensitive-output, and diff gates.
+Detector-gated `attempt-001` stopped before device admission as `timeout`
+because the local fixture readiness document did not appear. No campaign root
+or public projection exists; no device effect occurred. Host-only exact-runtime
+diagnostics passed and localize the defect to the automation child-lifecycle
+handoff. See the linked `CLOSURE.md`.
+
+Completion review: API-009 remains `implemented`. The immutable attempt is
+consumed without a hardware retry. The next safe action is a new immutable
+continuation that races fixture child completion against readiness, preserves a
+protected launch diagnostic, tests the real local process port, and defines a
+fresh detector-gated ordinal.
 Recovery is pause/safe-stop first and exact-package restore only if required;
 the earliest failure remains primary. Accepted stop categories are
 `hardware_blocked`, `evidence_invalid`, `timeout`, and `process_failed`.

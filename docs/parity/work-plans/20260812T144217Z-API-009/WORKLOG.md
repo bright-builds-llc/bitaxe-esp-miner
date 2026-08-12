@@ -68,3 +68,26 @@
   single authorized detector-gated attempt.
 - Blocker or next safe action: Commit and push this source with a clean tree,
   then run `attempt-001` exactly once and stop on its terminal result.
+
+## 2026-08-12T15:41:00Z | Attempt-001 terminal closure
+
+- Source commit: `2d6337e090e1ba747fdc1507830c732782eaf139`.
+- Actions: Built the exact clean package, admitted exactly one connected Ultra
+  205 with the repository detector, and launched the single bounded command
+  campaign. The workflow stopped during local-fixture readiness before device
+  admission. Host-only diagnostics then exercised the exact fixture and
+  derived interface with the system and Bazel Node runtimes.
+- Verification: Terminal category is `timeout`. The private root is mode
+  `0700`; its only attempt file is the mode-`0600` cleanup stop sentinel. No
+  campaign root exists and the public projection is absent. Both host-only
+  fixture diagnostics reached ready without USB or device effects.
+- Evidence: No API-009 hardware evidence is claimed. No flash, NVS seed,
+  mining, ASIC traffic, HTTP command, identify effect, restart, or recovery
+  write occurred.
+- Outcome: The immutable attempt is consumed and API-009 remains
+  `implemented`. The failure is localized to the automation child-lifecycle
+  handoff, whose early outcome is currently discarded until cleanup.
+- Blocker or next safe action: Do not retry. Close this plan and require a new
+  immutable continuation that races child completion with readiness, preserves
+  protected diagnostics, adds a real local-process integration regression, and
+  defines a fresh ordinal.
