@@ -1683,6 +1683,71 @@ recovery succeeded, private modes passed, and `NET-001` remains implemented.
 See `docs/parity/work-plans/20260812T025425Z-NET-001/CLOSURE.md`. A new immutable
 plan and ordinal are required for another hardware proof.
 
+### task-parity-net001-reconnect-lifecycle-attempt-002 | 2026-08-12 | Complete the corrected live reconnect proof
+
+- [x] Select `NET-001`, inspect the attempt-001 closure and corrected timing
+      regression, and persist the linked immutable attempt-002 plan.
+- [x] Run focused and mandatory plan-only software gates; commit and push the
+      exact immutable plan before package or hardware use.
+- [ ] Make the real-child stdout regression launcher-independent, rerun the
+      complete gate, and commit and push the focused execution change.
+- [ ] Build the exact clean execution-commit package, run one protected detector,
+      and only after admission run one protected attempt-002 capture.
+- [ ] Promote only `NET-001` when the live lifecycle reaches final same-origin
+      HTTP/retained-log quorum and the closed public projection independently
+      validates with safety, cleanup, private-mode, and redaction facts.
+
+Plan: `docs/parity/work-plans/20260812T034058Z-NET-001/PLAN.md`.
+
+Objective and preconditions: close only `NET-001` using the corrected bounded
+connected-to-recovered timing predicate. Source, upstream, reference, package
+provenance, credential opacity, and fresh wrapper-002/attempt-002/public paths
+must pass before the linked effect commands are eligible.
+
+Authorized effects: one exact normal package flash; replacement NVS with exact
+Ultra 205 defaults, owner Wi-Fi, `mineonboot=false`, and one private
+`netreconprobe` marker; repo-owned USB reset/re-enumeration; bounded receive-
+only USB and same-origin HTTP; one clear-before-effect station disconnect; the
+normal configuration-AP fallback and station reconnect; and at most one
+ordinary exact-package recovery flash without the marker. A successful final
+state retains the exact package, owner Wi-Fi, exact defaults, and disabled
+mining.
+
+Prohibited effects: router or RF changes, discovery, credential mutation after
+boot, erase, ad hoc/raw writes, OTA, power interruption, mining, ASIC/pool
+activity, voltage, frequency, fan, thermal/power control, self-test, foreign-
+process termination, direct UART, pins, pads, headers, GPIO, probes, jumpers,
+soldering, or signals.
+
+Evidence and privacy: wrapper-002/attempt-002 are ignored mode-0700 roots with
+mode-0600 files. Credential, hostname, USB, device, network, origin, command,
+process, HTTP-body, and raw serial values remain private. Only the closed
+redacted `bitaxe-network-reconnect-evidence-v1` projection may be committed.
+
+Recovery, retry, and stop: the probe marker must be erased and committed before
+the intentional disconnect. Detector failure stops before writes. Preserve the
+earliest typed category through cleanup and optional ordinary exact-package
+recovery. Any conditional capture start consumes attempt-002; release every
+resource and stop without retry on success or any admitted terminal category.
+
+Acceptance: require exact package and board identity, one post-boot disconnect,
+immediate AP fallback, typed reason, a first retry no earlier than 5,000 ms,
+same-boot DHCP recovery, retry reset, client-only mode, 15,000 ms of stable
+service, final HTTP/retained-log quorum, `mineonboot=false`, disabled mining and
+control, cleanup, modes, redaction, and valid projection. Otherwise withhold
+evidence, close truthfully, and keep `NET-001` implemented.
+
+Verification: The canonical timing and real-child stdout regressions passed;
+an additional direct-Bun run diagnosed the launcher-dependent fixture now
+scheduled after the plan commit. The ordered Cargo format, strict Clippy, all-
+target build, all-feature test, Bright Builds, 37-target Bazel, parity,
+progress, redaction, reference, generated-contract, selector, task-uniqueness,
+fresh-path, reference-cleanliness, and diff gates passed. The selector returns
+only the linked attempt-002 plan and its immutable SHA-256 is
+`42a402866befc801bc635aeb367a381d4473aec72846798bafd8176fb83a95f9`.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
