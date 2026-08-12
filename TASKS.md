@@ -1856,7 +1856,11 @@ the terminal default-profile soak task.
 
 Verification: Focused Rust contract tests and `//tools/automation:automation_test`
 pass, including real-child validation, fail-closed drift cases, atomic mode
-publication, and sensitive-output denial. Full implementation gate pending.
+publication, and sensitive-output denial. The complete implementation gate
+passed, but the first immutable plan closed without verification after its one
+publication invocation duplicated the wrapper-injected command token and
+failed before projector entry. No projection or candidate exists. A fresh plan
+must add an exact wrapper-shape guard and use one new software-only attempt.
 
 Completion review: Pending.
 

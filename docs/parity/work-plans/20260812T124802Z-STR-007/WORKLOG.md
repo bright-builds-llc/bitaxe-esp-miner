@@ -126,3 +126,41 @@
 - Blocker or next safe action: Commit and push the implementation, confirm a
   clean synchronized head, then run the single software-only projection
   attempt from that exact commit.
+
+## 2026-08-12T13:17:33Z | Publication attempt failed before projector entry
+
+- Implementation commit: `3978d828b55de61aa97d276528510cd1d66b6e3e`
+- Actions: Confirmed a clean synchronized head, absent projection and
+  candidate, immutable plan digest, and clean reference; then invoked the
+  Bazel projector target once.
+- Verification: Bazel built the target, but argument parsing returned
+  `invalid_invocation` because the target already injects the command name and
+  the invocation supplied it again. Post-failure checks confirm that neither
+  the candidate nor public projection exists.
+- Evidence: The projector did not run. No source proof was consumed beyond the
+  preflight file checks, no protected evidence was opened, and no hardware or
+  network effect occurred.
+- Outcome: The row remains implemented and this plan is terminally closed
+  without verification under its no-retry rule.
+- Blocker or next safe action: Seal `CLOSURE.md`, commit and push the closure,
+  then begin a fresh selector invocation for `STR-007` with the corrected
+  Bazel wrapper argument shape and one new software-only attempt.
+
+## 2026-08-12T13:25:42Z | Failed ordinal closure gate sealed
+
+- Actions: Reviewed the immutable plan, closure record, active task, reference
+  tree, and absence of both candidate and public projection after the rejected
+  invocation. Re-ran the complete mandatory gate with concise per-step output
+  after the original combined log exceeded the retained tool window.
+- Verification: Format, clippy, all-target build, all-feature tests, Bright
+  Builds checks, all 37 Bazel test targets, parity, progress, redaction,
+  reference verification and cleanliness, projection absence, and diff checks
+  all pass.
+- Evidence: The failed ordinal produced no candidate or public projection and
+  performed no hardware, network, credential, mining, or protected-evidence
+  action.
+- Outcome: This immutable plan is sealed as blocked without verification; the
+  implementation remains committed and the row remains `implemented`.
+- Blocker or next safe action: Commit and push this closure, then start a fresh
+  `STR-007` selector invocation whose immutable plan adds a wrapper-shape
+  regression and permits exactly one corrected software-only projection.
