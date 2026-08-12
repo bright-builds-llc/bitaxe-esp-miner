@@ -74,3 +74,37 @@
 - Blocker or next safe action: Commit and push the implementation, require a
   clean synchronized worktree, then derive and independently validate the
   public projection from that exact commit.
+
+## 2026-08-12T12:17:20Z | Terminal non-verified closure
+
+- Source commit: `5d62a7ceb15b9e59934b7ae6d08ae1b1da49f324`
+- Actions: Confirmed the pushed commit was clean and synchronized, then ran the
+  plan's single software-only projection attempt against all four exact public
+  prerequisite projections.
+- Verification: The projector independently admitted the source projections
+  and failed closed as `evidence_invalid` during current-source semantics. A
+  count audit identified the over-broad guard: `AsicWorkerCommand::Dispatch {`
+  occurs twice legitimately while every other guarded fragment occurs once.
+  The public projection and mode-0600 candidate are both absent.
+- Evidence: No protected evidence or hardware was accessed. The failure result
+  exposed only the closed stage, `hardware_rerun_used: false`, and
+  `projection_published: false` facts.
+- Outcome: `STR-006` remains `implemented`; verification is not claimed and no
+  checklist transition or progress synchronization is permitted.
+- Blocker or next safe action: Close this immutable plan, commit and push the
+  truthful closure, then use a fresh plan to bind the two legitimate ASIC
+  dispatch spans and permit one new software-only projection attempt.
+
+## 2026-08-12T12:21:48Z | Closure gate
+
+- Source commit: `5d62a7ceb15b9e59934b7ae6d08ae1b1da49f324`
+- Actions: Ran the complete ordered finalization gate and the canonical
+  selector against the terminal non-verified closure.
+- Verification: All Cargo stages, Bright Builds, all 37 Bazel tests, parity,
+  and progress pass. The selector accepts the closure, reports no open plan,
+  and returns `STR-006` first for a fresh invocation. Progress remains 57 of 94
+  active rows verified (60.6%) because no checklist field changed.
+- Evidence: No hardware or protected evidence was accessed.
+- Outcome: The truthful closure is ready to commit and push.
+- Blocker or next safe action: Push the closure, then start the fresh selected
+  `STR-006` plan from the clean synchronized closure commit.

@@ -1857,7 +1857,15 @@ Verification: The Rust contract tests, 212-test automation suite, real-child
 seam, ordered Cargo gate, Bright Builds checks, all 37 Bazel tests, parity,
 progress, generated-contract verification, redaction, pinned-reference checks,
 task uniqueness, immutable plan digest, and diff checks pass. Projection and
-promotion remain pending from the clean pushed implementation commit.
+promotion remain pending. The clean pushed implementation's single permitted
+attempt failed closed as `evidence_invalid` because the ASIC-worker source
+guard incorrectly required a fragment with two legitimate occurrences to be
+unique; no evidence artifact was published.
+
+Blocker and next safe action: The immutable plan is terminal and forbids a
+retry. Keep this task active, commit its `CLOSURE.md`, then start a fresh
+software-only `STR-006` plan that binds both legitimate dispatch spans and adds
+a production-shaped regression before allowing one new projection attempt.
 
 Completion review: Pending.
 
