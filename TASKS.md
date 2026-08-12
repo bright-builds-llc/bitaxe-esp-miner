@@ -2140,6 +2140,30 @@ later closed `network_correlation_failed` with terminal
 withholding passed. No projection exists, API-009 remains `implemented`, and
 attempt-006 cannot be retried. See the linked closure for the next safe action.
 
+### task-parity-pwr001-asic-reset-evidence-audit | 2026-08-12 | Audit ASIC reset hardware evidence
+
+Plan: `docs/parity/work-plans/20260812T185214Z-PWR-001/PLAN.md`.
+
+- [ ] Add and validate a typed redacted PWR-001 projection derived from the
+      sealed accepted-share attempt and validated ASIC-002 projection.
+- [ ] Fix the selector's terminal-closed-lineage reconciliation order with a
+      regression that preserves genuine multi-row and unlinked-plan failures.
+- [ ] Prove active-low 100 ms/100 ms reset semantics, the completed reset-and-
+      detect boundary, exactly one downstream BM1366 response, accepted work,
+      fail-closed hold-low, safe stop, cleanup, and unchanged owning paths.
+- [ ] Run all mandatory gates and promote PWR-001 only on the complete closed
+      quorum without another hardware attempt.
+
+Hardware contract: No hardware interaction is permitted or required by this
+task. It may read the ignored protected attempt only through the existing
+projection boundary and may publish only closed, redacted facts. Detector,
+flash, reset, USB, serial, network, credentials, mining, GPIO, direct UART,
+pins, voltage, fan, power, and fault injection are prohibited.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
