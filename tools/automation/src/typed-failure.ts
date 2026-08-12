@@ -1,5 +1,6 @@
 import { OperatorSnapshotEvidenceError } from "./operator-snapshot-evidence.js";
 import { AsicInitializationEvidenceError } from "./asic-initialization-evidence.js";
+import { AsicWorkSendEvidenceError } from "./asic-work-send-evidence.js";
 import { NetworkReconnectEvidenceError } from "./network-reconnect-evidence.js";
 import { NetworkScanEvidenceError } from "./network-scan-evidence.js";
 import { ProvisioningNetworkEvidenceError } from "./provisioning-network-evidence.js";
@@ -14,6 +15,7 @@ import { Ultra205DefaultsEvidenceError } from "./ultra205-defaults-evidence.js";
 export function maybeTypedFailurePublicValue(error: unknown): Readonly<Record<string, unknown>> | undefined {
   if (error instanceof SettingsDurabilityError
     || error instanceof AsicInitializationEvidenceError
+    || error instanceof AsicWorkSendEvidenceError
     || error instanceof NetworkReconnectEvidenceError
     || error instanceof NetworkScanEvidenceError
     || error instanceof ProvisioningNetworkEvidenceError

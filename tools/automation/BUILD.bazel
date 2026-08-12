@@ -64,6 +64,7 @@ js_binary(
         "//crates/bitaxe-automation-contracts:validate_network_reconnect_evidence",
         "//crates/bitaxe-automation-contracts:validate_network_scan_evidence",
         "//crates/bitaxe-automation-contracts:validate_asic_initialization_evidence",
+        "//crates/bitaxe-automation-contracts:validate_asic_work_send_evidence",
         "//crates/bitaxe-automation-contracts:validate_provisioning_network_evidence",
         "//crates/bitaxe-api:system_info_field_contract_js",
         "//crates/bitaxe-config:ultra205_defaults_fixture_js",
@@ -95,6 +96,7 @@ js_binary(
             "//crates/bitaxe-automation-contracts:validate_network_reconnect_evidence",
             "//crates/bitaxe-automation-contracts:validate_network_scan_evidence",
             "//crates/bitaxe-automation-contracts:validate_asic_initialization_evidence",
+            "//crates/bitaxe-automation-contracts:validate_asic_work_send_evidence",
             "//crates/bitaxe-automation-contracts:validate_provisioning_network_evidence",
             "//crates/bitaxe-api:system_info_field_contract_js",
             "//crates/bitaxe-config:ultra205_defaults_fixture_js",
@@ -138,6 +140,7 @@ js_binary(
         "capture_network_reconnect_evidence": "capture-network-reconnect-evidence",
         "capture_network_scan_evidence": "capture-network-scan-evidence",
         "project_asic_initialization_evidence": "project-asic-initialization-evidence",
+        "project_asic_work_send_evidence": "project-asic-work-send-evidence",
         "capture_provisioning_network_evidence": "capture-provisioning-network-evidence",
     }.items()
 ]

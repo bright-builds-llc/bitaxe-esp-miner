@@ -305,6 +305,24 @@ test("ASIC initialization projection accepts only sealed source inputs", () => {
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
 
+test("ASIC work-send projection accepts only the committed source proof", () => {
+  // Arrange
+  const complete = [
+    "project-asic-work-send-evidence",
+    "--source-projection", "docs/parity/evidence/asic002-initialization/asic-initialization-projection.json",
+    "--attempt-source-commit", "a".repeat(40),
+    "--projection", "docs/evidence/asic-work-send.json",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "project-asic-work-send-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});
+
 test("Ultra 205 defaults capture requires the detector-gated closed surface", () => {
   // Arrange
   const complete = [

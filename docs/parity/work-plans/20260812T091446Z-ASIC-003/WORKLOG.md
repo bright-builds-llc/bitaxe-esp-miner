@@ -29,3 +29,24 @@
 - Outcome: The plan and task contract are eligible to commit and push.
 - Blocker or next safe action: Commit and push, then implement the typed
   derived projection without changing `PLAN.md` or interacting with hardware.
+
+## 2026-08-12T09:28:11Z | implementation gate passed
+
+- Source commit: plan commit
+  `fdd464daef59f5fcb64c364ed33703c8f85d4ecb`.
+- Actions: Added the Rust-owned ASIC work-send contract/validator, typed
+  derived projector, source-projection validation, exact work-module and
+  bounded source-span compatibility checks, semantic-redaction registration,
+  and CLI/Just/Bazel/generated-contract wiring.
+- Verification: Contract, incomplete source, span drift, dirty-path,
+  sensitive-output, typed-failure, invocation, and real-child validator
+  regressions pass. A real repository-source dry run also passed. Ordered
+  Cargo, Bright Builds, all 37 Bazel tests, the real ESP32-S3 image, generated
+  contracts, parity/progress, redaction, reference, immutable-plan, and diff
+  gates pass.
+- Evidence: Synthetic fixtures plus one ignored scratch dry-run projection;
+  no committed ASIC-003 evidence and no hardware effect occurred.
+- Outcome: The implementation is ready to commit and push.
+- Blocker or next safe action: Commit and push the projector, remove the
+  ignored dry-run artifact, then produce the public projection from the exact
+  clean implementation commit.

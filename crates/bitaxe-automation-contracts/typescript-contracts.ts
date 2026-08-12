@@ -33,6 +33,7 @@ export type AutomationCommand =
   | "capture-network-reconnect-evidence"
   | "capture-network-scan-evidence"
   | "project-asic-initialization-evidence"
+  | "project-asic-work-send-evidence"
   | "capture-provisioning-network-evidence";
 
 export type AutomationStatus = "succeeded" | "failed" | "blocked";
@@ -412,6 +413,52 @@ export type AsicInitializationEvidence = {
   runtime_identity: "trusted";
   runtime_attestation_status: "trusted";
   serial_outcome_detail: "clean";
+  campaign_terminal_category: "submit_response_observed";
+  submit_outcome: "accepted";
+  safety_status: "fresh";
+  mine_on_boot_disabled: true;
+  safe_stop_confirmed: true;
+  lease_cleanup_confirmed: true;
+  usb_cleanup_ready: true;
+  hardware_rerun_used: false;
+  redaction_status: "passed";
+};
+
+export type AsicWorkSendSourceEvidence = {
+  initialization_projection_sha256: string;
+  initialization_projection_current_commit: string;
+  initialization_projection_valid: true;
+};
+
+export type AsicWorkSendObservationEvidence = {
+  payload_length_bytes: 82;
+  frame_length_bytes: 88;
+  job_id_step: 8;
+  job_id_modulus: 128;
+  typed_write_frame_action: true;
+  production_ready_gate_required: true;
+  live_work_observed: true;
+  qualified_result_observed: true;
+  accepted_submit_observed: true;
+  production_uart_retained: true;
+  core_paths_unchanged: true;
+  compatible_core_path_count: 3;
+  dispatch_spans_unchanged: true;
+  uart_write_span_unchanged: true;
+};
+
+export type AsicWorkSendEvidence = {
+  schema_version: "bitaxe-asic-work-send-evidence-v1";
+  board: 205;
+  attempt_source_commit: string;
+  current_source_commit: string;
+  reference_commit: string;
+  workflow: WorkflowIdentity;
+  source: AsicWorkSendSourceEvidence;
+  work_send: AsicWorkSendObservationEvidence;
+  package_admitted: true;
+  runtime_identity: "trusted";
+  runtime_attestation_status: "trusted";
   campaign_terminal_category: "submit_response_observed";
   submit_outcome: "accepted";
   safety_status: "fresh";

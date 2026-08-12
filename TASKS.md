@@ -26,7 +26,7 @@ new work.
 
 ### task-parity-asic003-sealed-work-send-promotion | 2026-08-12 | Promote sealed BM1366 work-send proof
 
-- [ ] Add a typed, closed projector and validator that derive ASIC work-send
+- [x] Add a typed, closed projector and validator that derive ASIC work-send
       proof from the committed sealed initialization projection.
 - [ ] Prove exact work-module compatibility, bounded production dispatch/UART-
       write span compatibility, live qualified accepted work, safety, cleanup,

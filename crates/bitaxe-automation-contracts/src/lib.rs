@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 mod asic_initialization_evidence;
+mod asic_work_send_evidence;
 mod log_buffer_evidence;
 mod network_reconnect_evidence;
 mod network_scan_evidence;
@@ -20,6 +21,9 @@ mod ultra205_defaults_evidence;
 pub use asic_initialization_evidence::{
     AsicInitializationAttemptEvidence, AsicInitializationEvidence,
     AsicInitializationObservationEvidence,
+};
+pub use asic_work_send_evidence::{
+    AsicWorkSendEvidence, AsicWorkSendObservationEvidence, AsicWorkSendSourceEvidence,
 };
 pub use log_buffer_evidence::{LogBufferEvidence, LogBufferObservationEvidence};
 pub use network_reconnect_evidence::{
@@ -60,6 +64,7 @@ pub const SDKCONFIG_ROLLBACK_EVIDENCE_SCHEMA: &str = "bitaxe-sdkconfig-rollback-
 pub const NETWORK_RECONNECT_EVIDENCE_SCHEMA: &str = "bitaxe-network-reconnect-evidence-v1";
 pub const NETWORK_SCAN_EVIDENCE_SCHEMA: &str = "bitaxe-network-scan-evidence-v1";
 pub const ASIC_INITIALIZATION_EVIDENCE_SCHEMA: &str = "bitaxe-asic-initialization-evidence-v1";
+pub const ASIC_WORK_SEND_EVIDENCE_SCHEMA: &str = "bitaxe-asic-work-send-evidence-v1";
 pub const PROVISIONING_NETWORK_EVIDENCE_SCHEMA: &str = "bitaxe-provisioning-network-evidence-v1";
 pub const MIGRATION_SCHEMA: &str = "bitaxe-automation-migration-v1";
 
@@ -102,6 +107,7 @@ pub enum AutomationCommand {
     CaptureNetworkReconnectEvidence,
     CaptureNetworkScanEvidence,
     ProjectAsicInitializationEvidence,
+    ProjectAsicWorkSendEvidence,
     CaptureProvisioningNetworkEvidence,
 }
 
@@ -256,6 +262,7 @@ pub struct ContractBundle {
     pub network_reconnect_evidence_schema: Value,
     pub network_scan_evidence_schema: Value,
     pub asic_initialization_evidence_schema: Value,
+    pub asic_work_send_evidence_schema: Value,
     pub provisioning_network_evidence_schema: Value,
     pub commands: Vec<AutomationCommand>,
     pub evidence_schemas: Vec<&'static str>,
@@ -307,6 +314,8 @@ pub fn contract_bundle() -> ContractBundle {
             AsicInitializationEvidence
         ))
         .expect("ASIC initialization evidence schema must serialize"),
+        asic_work_send_evidence_schema: serde_json::to_value(schema_for!(AsicWorkSendEvidence))
+            .expect("ASIC work-send evidence schema must serialize"),
         provisioning_network_evidence_schema: serde_json::to_value(schema_for!(
             ProvisioningNetworkEvidence
         ))
@@ -343,6 +352,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::CaptureNetworkReconnectEvidence,
             AutomationCommand::CaptureNetworkScanEvidence,
             AutomationCommand::ProjectAsicInitializationEvidence,
+            AutomationCommand::ProjectAsicWorkSendEvidence,
             AutomationCommand::CaptureProvisioningNetworkEvidence,
         ],
         evidence_schemas: vec![
@@ -361,6 +371,7 @@ pub fn contract_bundle() -> ContractBundle {
             NETWORK_RECONNECT_EVIDENCE_SCHEMA,
             NETWORK_SCAN_EVIDENCE_SCHEMA,
             ASIC_INITIALIZATION_EVIDENCE_SCHEMA,
+            ASIC_WORK_SEND_EVIDENCE_SCHEMA,
             PROVISIONING_NETWORK_EVIDENCE_SCHEMA,
             MIGRATION_SCHEMA,
         ],
