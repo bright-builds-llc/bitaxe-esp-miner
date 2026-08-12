@@ -1738,6 +1738,31 @@ private modes and cleanup passed, and no public projection exists. The linked
 closure defines the typed-boundary continuation; this task remains active and
 unarchived because `NET-002` is not verified.
 
+### task-parity-net002-provisioning-network-attempt-003 | 2026-08-12 | Type the failed client boundary
+
+- [x] Select `NET-002` and bind the continuation to the attempt-002 closure.
+- [ ] Add the six-value redaction-safe client-boundary error contract.
+- [ ] Test every boundary, sensitive-output absence, recovery precedence, and
+      real-child behavior; run all mandatory software gates.
+- [ ] Commit and push, then run one detector and at most one conditional
+      attempt-003 with fresh protected paths.
+- [ ] Promote only after the complete immutable-plan success quorum passes.
+
+Plan: `docs/parity/work-plans/20260812T061233Z-NET-002/PLAN.md`.
+
+Authorization: the linked plan's bounded USB, local Wi-Fi client, DNS/HTTP, host
+cleanup, and exact-package recovery effects only. All operational and
+identifying values remain private; public failure output permits only one
+closed boundary token and safe recovery booleans. Capture start consumes the
+ordinal and never retries it.
+
+Verification: Plan-only gate passed: ordered Cargo, Bright Builds, 37 Bazel
+tests, parity/progress, redaction, reference, selector, task, fresh-path, and
+diff checks are green. Immutable plan SHA-256 is
+`a83af65b730179383356a0b349b116a815ef1ee545cc802a631f1e35f4216131`.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
