@@ -2140,6 +2140,35 @@ later closed `network_correlation_failed` with terminal
 withholding passed. No projection exists, API-009 remains `implemented`, and
 attempt-006 cannot be retried. See the linked closure for the next safe action.
 
+Operator-ready continuation plan:
+`docs/parity/work-plans/20260812T235141Z-API-009/PLAN.md`.
+
+- [x] Record before effects that the operator is present at the device,
+      watching the display, and asking to continue; do not treat this as either
+      future IDENTIFY observation or as retroactive attempt-006 evidence.
+- [ ] Revalidate and push the immutable plan/task checkpoint plus every
+      focused, mandatory, privacy, reference, and exact-package gate.
+- [ ] Run exactly one fresh detector-gated `attempt-007` with the proven live
+      prompt, and consume each typed request-once confirmation only after the
+      matching live signal and physical operator observation.
+- [ ] Promote API-009 only on the complete five-command device-user quorum;
+      otherwise preserve `implemented`, the earliest typed failure, safe stop,
+      cleanup, evidence withholding, and the accepted terminal outcome.
+
+Attempt-007 authorization: the operator's current-thread report that they see
+new information on the display and want to continue satisfies the attempt-006
+closure's required pre-effect presence/watching/readiness occurrence. Standing
+task authorization therefore permits one fresh attempt after the immutable
+plan/task and exact clean pushed software/package gates pass. It does not
+confirm either new IDENTIFY state. The exact permitted campaign command,
+request-once confirmation commands, protected wrapper/detector/attempt roots,
+allowed effects, prohibited effects, privacy classes, safety limits, recovery,
+cleanup, evidence quorum, retry bound, and stop outcomes are frozen in the
+linked plan. Campaign start consumes attempt-007; no inferred confirmation,
+expired-checkpoint reuse, unchanged retry, second campaign, external pool,
+owner credential, destructive/fault-injection action, power cycle, direct UART,
+or pin/pad/GPIO manipulation is authorized.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
