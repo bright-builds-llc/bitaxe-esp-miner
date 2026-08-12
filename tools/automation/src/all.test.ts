@@ -13,6 +13,7 @@ import "./network-reconnect-evidence.test.js";
 import "./network-scan-evidence.test.js";
 import "./asic-initialization-evidence.test.js";
 import "./asic-power-initialization-evidence.test.js";
+import "./core-voltage-control-evidence.test.js";
 import "./asic-result-parsing-evidence.test.js";
 import "./asic-serial-transport-evidence.test.js";
 import "./asic-frequency-transition-evidence.test.js";

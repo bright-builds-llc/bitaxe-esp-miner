@@ -11,6 +11,7 @@ mod asic_reset_evidence;
 mod asic_result_parsing_evidence;
 mod asic_serial_transport_evidence;
 mod asic_work_send_evidence;
+mod core_voltage_control_evidence;
 mod log_buffer_evidence;
 mod mining_criteria_evidence;
 mod network_reconnect_evidence;
@@ -50,6 +51,10 @@ pub use asic_serial_transport_evidence::{
 };
 pub use asic_work_send_evidence::{
     AsicWorkSendEvidence, AsicWorkSendObservationEvidence, AsicWorkSendSourceEvidence,
+};
+pub use core_voltage_control_evidence::{
+    CoreVoltageControlEvidence, CoreVoltageControlObservationEvidence,
+    CoreVoltageControlSourceEvidence,
 };
 pub use log_buffer_evidence::{LogBufferEvidence, LogBufferObservationEvidence};
 pub use mining_criteria_evidence::MiningCriteriaEvidence;
@@ -99,6 +104,7 @@ pub const NETWORK_SCAN_EVIDENCE_SCHEMA: &str = "bitaxe-network-scan-evidence-v1"
 pub const ASIC_INITIALIZATION_EVIDENCE_SCHEMA: &str = "bitaxe-asic-initialization-evidence-v1";
 pub const ASIC_POWER_INITIALIZATION_EVIDENCE_SCHEMA: &str =
     "bitaxe-asic-power-initialization-evidence-v1";
+pub const CORE_VOLTAGE_CONTROL_EVIDENCE_SCHEMA: &str = "bitaxe-core-voltage-control-evidence-v1";
 pub const ASIC_RESET_EVIDENCE_SCHEMA: &str = "bitaxe-asic-reset-evidence-v1";
 pub const ASIC_FREQUENCY_TRANSITION_EVIDENCE_SCHEMA: &str =
     "bitaxe-asic-frequency-transition-evidence-v1";
@@ -151,6 +157,7 @@ pub enum AutomationCommand {
     CaptureNetworkScanEvidence,
     ProjectAsicInitializationEvidence,
     ProjectAsicPowerInitializationEvidence,
+    ProjectCoreVoltageControlEvidence,
     ProjectAsicResetEvidence,
     ProjectAsicFrequencyTransitionEvidence,
     ProjectAsicWorkSendEvidence,
@@ -314,6 +321,7 @@ pub struct ContractBundle {
     pub network_scan_evidence_schema: Value,
     pub asic_initialization_evidence_schema: Value,
     pub asic_power_initialization_evidence_schema: Value,
+    pub core_voltage_control_evidence_schema: Value,
     pub asic_reset_evidence_schema: Value,
     pub asic_frequency_transition_evidence_schema: Value,
     pub asic_work_send_evidence_schema: Value,
@@ -377,6 +385,10 @@ pub fn contract_bundle() -> ContractBundle {
             AsicPowerInitializationEvidence
         ))
         .expect("ASIC power initialization evidence schema must serialize"),
+        core_voltage_control_evidence_schema: serde_json::to_value(schema_for!(
+            CoreVoltageControlEvidence
+        ))
+        .expect("core-voltage-control evidence schema must serialize"),
         asic_reset_evidence_schema: serde_json::to_value(schema_for!(AsicResetEvidence))
             .expect("ASIC reset evidence schema must serialize"),
         asic_frequency_transition_evidence_schema: serde_json::to_value(schema_for!(
@@ -439,6 +451,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::CaptureNetworkScanEvidence,
             AutomationCommand::ProjectAsicInitializationEvidence,
             AutomationCommand::ProjectAsicPowerInitializationEvidence,
+            AutomationCommand::ProjectCoreVoltageControlEvidence,
             AutomationCommand::ProjectAsicResetEvidence,
             AutomationCommand::ProjectAsicFrequencyTransitionEvidence,
             AutomationCommand::ProjectAsicWorkSendEvidence,
@@ -466,6 +479,7 @@ pub fn contract_bundle() -> ContractBundle {
             NETWORK_SCAN_EVIDENCE_SCHEMA,
             ASIC_INITIALIZATION_EVIDENCE_SCHEMA,
             ASIC_POWER_INITIALIZATION_EVIDENCE_SCHEMA,
+            CORE_VOLTAGE_CONTROL_EVIDENCE_SCHEMA,
             ASIC_RESET_EVIDENCE_SCHEMA,
             ASIC_FREQUENCY_TRANSITION_EVIDENCE_SCHEMA,
             ASIC_WORK_SEND_EVIDENCE_SCHEMA,

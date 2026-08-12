@@ -79,6 +79,19 @@ test("result validator accepts the closed ASIC power initialization command", ()
   assert.equal(result.command, "project-asic-power-initialization-evidence");
 });
 
+test("result validator accepts the closed core-voltage-control command", () => {
+  // Act
+  const result = parseAutomationResult({
+    schema_version: "bitaxe-automation-result-v1",
+    command: "project-core-voltage-control-evidence",
+    status: "succeeded",
+    category: "complete",
+  });
+
+  // Assert
+  assert.equal(result.command, "project-core-voltage-control-evidence");
+});
+
 test("result validator accepts the closed ASIC serial-transport command", () => {
   // Act
   const result = parseAutomationResult({

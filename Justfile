@@ -122,6 +122,9 @@ project-asic-initialization-evidence *args:
 project-asic-power-initialization-evidence *args:
     bazel run //tools/automation:project_asic_power_initialization_evidence -- {{ args }}
 
+project-core-voltage-control-evidence *args:
+    bazel run //tools/automation:project_core_voltage_control_evidence -- {{ args }}
+
 project-asic-reset-evidence *args:
     bazel run //tools/automation:project_asic_reset_evidence -- {{ args }}
 

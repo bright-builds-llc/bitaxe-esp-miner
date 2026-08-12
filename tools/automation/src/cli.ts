@@ -3,31 +3,20 @@ import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildFirmware } from "./build.js";
-import { captureApiCommandEffects, ApiCommandEffectsError } from "./api-command-effects.js";
+import { captureApiCommandEffects } from "./api-command-effects.js";
 import { emitOperatorCheckpointSignal } from "./api-command-effects-checkpoint.js";
 import { deviceSessionProgram, flashProgram, stringNumber, toolProgram } from "./cli-tools.js";
-import { AsicFrequencyTransitionEvidenceError, projectAsicFrequencyTransitionEvidence } from "./asic-frequency-transition-evidence.js";
-import { AsicInitializationEvidenceError, projectAsicInitializationEvidence } from "./asic-initialization-evidence.js";
-import { AsicPowerInitializationEvidenceError, projectAsicPowerInitializationEvidence } from "./asic-power-initialization-evidence.js";
-import { AsicResetEvidenceError, projectAsicResetEvidence } from "./asic-reset-evidence.js";
-import { AsicResultParsingEvidenceError, projectAsicResultParsingEvidence } from "./asic-result-parsing-evidence.js";
-import {
-  AsicSerialTransportEvidenceError,
-  projectAsicSerialTransportEvidence,
-} from "./asic-serial-transport-evidence.js";
-import {
-  AsicWorkSendEvidenceError,
-  projectAsicWorkSendEvidence,
-} from "./asic-work-send-evidence.js";
-import {
-  projectStratumSocketEvidence,
-  StratumSocketEvidenceError,
-} from "./stratum-socket-evidence.js";
-import {
-  projectProtocolCoordinatorEvidence,
-  ProtocolCoordinatorEvidenceError,
-} from "./protocol-coordinator-evidence.js";
-import { MiningCriteriaEvidenceError, projectMiningCriteriaEvidenceFromInvocation } from "./mining-criteria-evidence.js";
+import { projectAsicFrequencyTransitionEvidence } from "./asic-frequency-transition-evidence.js";
+import { projectAsicInitializationEvidence } from "./asic-initialization-evidence.js";
+import { projectAsicPowerInitializationEvidence } from "./asic-power-initialization-evidence.js";
+import { projectCoreVoltageControlEvidence } from "./core-voltage-control-evidence.js";
+import { projectAsicResetEvidence } from "./asic-reset-evidence.js";
+import { projectAsicResultParsingEvidence } from "./asic-result-parsing-evidence.js";
+import { projectAsicSerialTransportEvidence } from "./asic-serial-transport-evidence.js";
+import { projectAsicWorkSendEvidence } from "./asic-work-send-evidence.js";
+import { projectStratumSocketEvidence } from "./stratum-socket-evidence.js";
+import { projectProtocolCoordinatorEvidence } from "./protocol-coordinator-evidence.js";
+import { projectMiningCriteriaEvidenceFromInvocation } from "./mining-criteria-evidence.js";
 import {
   flashMonitorCommand,
   internalCommandSpec,
@@ -51,37 +40,22 @@ import {
 } from "./invocation.js";
 import { packageFirmware } from "./package.js";
 import { packageRollbackProbe } from "./rollback-probe.js";
-import { captureLogBufferEvidence, LogBufferEvidenceError } from "./log-buffer-evidence.js";
-import {
-  captureNetworkReconnectEvidence,
-  NetworkReconnectEvidenceError,
-} from "./network-reconnect-evidence.js";
-import {
-  captureNetworkScanEvidence,
-  NetworkScanEvidenceError,
-} from "./network-scan-evidence.js";
-import {
-  captureProvisioningNetworkEvidence,
-  ProvisioningNetworkEvidenceError,
-} from "./provisioning-network-evidence.js";
-import { captureOperatorSnapshotEvidence, OperatorSnapshotEvidenceError } from "./operator-snapshot-evidence.js";
-import { capturePartitionLayoutEvidence, PartitionLayoutEvidenceError } from "./partition-layout-evidence.js";
-import {
-  captureSdkconfigRollbackEvidence,
-  SdkconfigRollbackEvidenceError,
-} from "./sdkconfig-rollback-evidence.js";
+import { captureLogBufferEvidence } from "./log-buffer-evidence.js";
+import { captureNetworkReconnectEvidence } from "./network-reconnect-evidence.js";
+import { captureNetworkScanEvidence } from "./network-scan-evidence.js";
+import { captureProvisioningNetworkEvidence } from "./provisioning-network-evidence.js";
+import { captureOperatorSnapshotEvidence } from "./operator-snapshot-evidence.js";
+import { capturePartitionLayoutEvidence } from "./partition-layout-evidence.js";
+import { captureSdkconfigRollbackEvidence } from "./sdkconfig-rollback-evidence.js";
 import { createLocalProcessPort, type ProcessPort } from "./process.js";
 import { verifySemanticEvidenceRedaction } from "./redaction.js";
-import { captureRuntimeHealthEvidence, RuntimeHealthEvidenceError } from "./runtime-health-evidence.js";
-import { captureSettingsPatchEvidence, SettingsPatchEvidenceError } from "./settings-patch-evidence.js";
-import { captureSystemInfoEvidence, SystemInfoEvidenceError } from "./system-info-evidence.js";
-import { captureSettingsDurability, SettingsDurabilityError } from "./settings-durability.js";
-import { captureThemeDurability, ThemeDurabilityError } from "./theme-durability.js";
-import { maybeTypedFailurePublicValue } from "./typed-failure.js";
-import {
-  captureUltra205DefaultsEvidence,
-  Ultra205DefaultsEvidenceError,
-} from "./ultra205-defaults-evidence.js";
+import { captureRuntimeHealthEvidence } from "./runtime-health-evidence.js";
+import { captureSettingsPatchEvidence } from "./settings-patch-evidence.js";
+import { captureSystemInfoEvidence } from "./system-info-evidence.js";
+import { captureSettingsDurability } from "./settings-durability.js";
+import { captureThemeDurability } from "./theme-durability.js";
+import { maybeTypedFailureCategory, maybeTypedFailurePublicValue } from "./typed-failure.js";
+import { captureUltra205DefaultsEvidence } from "./ultra205-defaults-evidence.js";
 import { captureVersionEvidence } from "./version-evidence.js";
 import { executeCommandSpec } from "./workflow.js";
 import { assertWithinWorkspace } from "./workspace.js";
@@ -252,6 +226,7 @@ async function dispatchProcess(
     case "capture-network-scan-evidence":
     case "project-asic-initialization-evidence":
     case "project-asic-power-initialization-evidence":
+    case "project-core-voltage-control-evidence":
     case "project-asic-reset-evidence":
     case "project-asic-frequency-transition-evidence":
     case "project-stratum-socket-evidence":
@@ -439,6 +414,11 @@ async function main(): Promise<number> {
         sourceProjection: optionValue(invocation, "--source-projection"), attemptSourceCommit: optionValue(invocation, "--attempt-source-commit"), projection: optionValue(invocation, "--projection"),
       }, processPort, "git", toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_initialization_evidence"),
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_power_initialization_evidence"));
+    } else if (invocation.command === "project-core-voltage-control-evidence") {
+      publicValue = await projectCoreVoltageControlEvidence(root, {
+        sourceProjection: optionValue(invocation, "--source-projection"), attemptSourceCommit: optionValue(invocation, "--attempt-source-commit"), projection: optionValue(invocation, "--projection"),
+      }, processPort, "git", toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_power_initialization_evidence"),
+      toolProgram(root, "crates/bitaxe-automation-contracts/validate_core_voltage_control_evidence"));
     } else if (invocation.command === "project-asic-reset-evidence") {
       publicValue = await projectAsicResetEvidence(root, {
         sourceProjection: optionValue(invocation, "--source-projection"), attemptSourceCommit:
@@ -579,35 +559,12 @@ async function main(): Promise<number> {
   } catch (error) {
     const policyBlocked = error instanceof PolicyError;
     const invalid = error instanceof InvocationError;
-    const settingsFailure = error instanceof SettingsDurabilityError;
-    const apiCommandEffectsFailure = error instanceof ApiCommandEffectsError;
-    const themeFailure = error instanceof ThemeDurabilityError;
-    const snapshotFailure = error instanceof OperatorSnapshotEvidenceError;
-    const runtimeHealthFailure = error instanceof RuntimeHealthEvidenceError;
-    const systemInfoFailure = error instanceof SystemInfoEvidenceError;
-    const ultra205DefaultsFailure = error instanceof Ultra205DefaultsEvidenceError;
-    const settingsPatchFailure = error instanceof SettingsPatchEvidenceError;
-    const logBufferFailure = error instanceof LogBufferEvidenceError;
-    const partitionLayoutFailure = error instanceof PartitionLayoutEvidenceError;
-    const sdkconfigRollbackFailure = error instanceof SdkconfigRollbackEvidenceError;
-    const networkReconnectFailure = error instanceof NetworkReconnectEvidenceError;
-    const networkScanFailure = error instanceof NetworkScanEvidenceError;
-    const asicInitializationFailure = error instanceof AsicInitializationEvidenceError;
-    const asicFrequencyTransitionFailure = error instanceof AsicFrequencyTransitionEvidenceError;
-    const stratumSocketFailure = error instanceof StratumSocketEvidenceError;
-    const protocolCoordinatorFailure = error instanceof ProtocolCoordinatorEvidenceError;
-    const miningCriteriaFailure = error instanceof MiningCriteriaEvidenceError;
-    const asicWorkSendFailure = error instanceof AsicWorkSendEvidenceError;
-    const asicResultParsingFailure = error instanceof AsicResultParsingEvidenceError;
-    const asicSerialTransportFailure = error instanceof AsicSerialTransportEvidenceError;
-    const provisioningNetworkFailure = error instanceof ProvisioningNetworkEvidenceError;
+    const maybeTypedCategory = maybeTypedFailureCategory(error);
     const category: AutomationCategory = policyBlocked
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure || apiCommandEffectsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || networkScanFailure || asicInitializationFailure || error instanceof AsicPowerInitializationEvidenceError || error instanceof AsicResetEvidenceError || asicFrequencyTransitionFailure || stratumSocketFailure || protocolCoordinatorFailure || miningCriteriaFailure || asicWorkSendFailure || asicResultParsingFailure || asicSerialTransportFailure || provisioningNetworkFailure
-          ? error.category
-          : "process_failed";
+        : maybeTypedCategory ?? "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";
     const status = blocked ? "blocked" : "failed";
     const exitCode = blocked ? 3 : invalid ? 2 : 1;

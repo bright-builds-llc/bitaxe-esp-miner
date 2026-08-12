@@ -34,6 +34,7 @@ export type AutomationCommand =
   | "capture-network-scan-evidence"
   | "project-asic-initialization-evidence"
   | "project-asic-power-initialization-evidence"
+  | "project-core-voltage-control-evidence"
   | "project-asic-reset-evidence"
   | "project-asic-work-send-evidence"
   | "project-asic-result-parsing-evidence" | "project-asic-serial-transport-evidence"
@@ -410,6 +411,10 @@ export type AsicPowerInitializationSourceEvidence = { initialization_projection_
 export type AsicPowerInitializationObservationEvidence = { profile: "conservative"; frequency_mhz: 400; core_voltage_command_mv: 1100; fan_duty_command_percent: 100; preparation_step_count: 9; accepted_preparation_event_count: 18; fresh_safety_required_before_effects: true; fan_full_commanded_before_voltage: true; post_command_nonzero_fan_rpm_required: true; core_voltage_stabilization_ms: 500; asic_enable_active_low: true; reset_and_detect_completed: true; exactly_one_chip_detected_after_reset: true; mining_ready_initialization_completed: true; production_uart_retained: true; accepted_submit_observed: true; rollback_step_count: 8; rollback_attempts_all_steps: true; initial_preparation_failure_primary: true; safe_stop_asic_disable_commanded: true; unchanged_path_count: 6; semantic_path_count: 3; source_semantics_admitted: true; };
 export type AsicPowerInitializationEvidence = { schema_version: "bitaxe-asic-power-initialization-evidence-v1"; board: 205; attempt_source_commit: string; current_source_commit: string; reference_commit: string; workflow: WorkflowIdentity; source: AsicPowerInitializationSourceEvidence; power_initialization: AsicPowerInitializationObservationEvidence; package_admitted: true; runtime_identity: "trusted"; runtime_attestation_status: "trusted"; campaign_terminal_category: "submit_response_observed"; submit_outcome: "accepted"; safety_status: "fresh"; mine_on_boot_disabled: true; safe_stop_confirmed: true; lease_cleanup_confirmed: true; usb_cleanup_ready: true; hardware_rerun_used: false; redaction_status: "passed"; };
 
+export type CoreVoltageControlSourceEvidence = { power_initialization_projection_sha256: string; power_initialization_projection_current_commit: string; power_initialization_projection_valid: true; source_task_sha256: string; plan_sha256: string; };
+export type CoreVoltageControlObservationEvidence = { target_millivolts: 1100; i2c_address: 72; output_register: 248; register_code: 225; register_write_count: 1; typed_command_routed: true; stabilization_millis: 500; stabilization_before_asic_enable: true; zero_voltage_skips_ds4432u_write: true; active_low_disable: true; successful_initialized_work_observed: true; accepted_submit_observed: true; compatible_path_count: 5; reference_semantics_admitted: true; source_semantics_admitted: true; };
+export type CoreVoltageControlEvidence = { schema_version: "bitaxe-core-voltage-control-evidence-v1"; board: 205; attempt_source_commit: string; current_source_commit: string; reference_commit: string; workflow: WorkflowIdentity; source: CoreVoltageControlSourceEvidence; voltage_control: CoreVoltageControlObservationEvidence; package_admitted: true; runtime_identity: "trusted"; runtime_attestation_status: "trusted"; campaign_terminal_category: "submit_response_observed"; submit_outcome: "accepted"; safety_status: "fresh"; mine_on_boot_disabled: true; safe_stop_confirmed: true; lease_cleanup_confirmed: true; usb_cleanup_ready: true; hardware_rerun_used: false; redaction_status: "passed"; };
+
 export type AsicResetSourceEvidence = { initialization_projection_sha256: string; initialization_projection_current_commit: string; initialization_projection_valid: true; source_task_sha256: string; plan_sha256: string; };
 export type AsicResetObservationEvidence = { active_low: true; low_duration_ms: 100; high_duration_ms: 100; reset_and_detect_completed: true; exactly_one_chip_detected_after_reset: true; accepted_submit_observed: true; fail_closed_hold_low: true; safe_stop_hold_low: true; reset_paths_unchanged: true; compatible_path_count: 6; adapter_semantics_admitted: true; };
 export type AsicResetEvidence = { schema_version: "bitaxe-asic-reset-evidence-v1"; board: 205; attempt_source_commit: string; current_source_commit: string; reference_commit: string; workflow: WorkflowIdentity; source: AsicResetSourceEvidence; reset: AsicResetObservationEvidence; package_admitted: true; runtime_identity: "trusted"; runtime_attestation_status: "trusted"; campaign_terminal_category: "submit_response_observed"; submit_outcome: "accepted"; safety_status: "fresh"; mine_on_boot_disabled: true; safe_stop_confirmed: true; lease_cleanup_confirmed: true; usb_cleanup_ready: true; hardware_rerun_used: false; redaction_status: "passed"; };
@@ -509,6 +514,7 @@ const automationCommands = new Set<AutomationCommand>([
   "capture-network-scan-evidence",
   "project-asic-initialization-evidence",
   "project-asic-power-initialization-evidence",
+  "project-core-voltage-control-evidence",
   "project-asic-reset-evidence",
   "project-asic-work-send-evidence",
   "project-asic-result-parsing-evidence",

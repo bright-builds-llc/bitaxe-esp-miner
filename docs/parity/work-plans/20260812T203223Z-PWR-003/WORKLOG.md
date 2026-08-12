@@ -32,3 +32,52 @@
   work.
 - Blocker or next safe action: Commit and push, then implement the typed
   core-voltage-control projection without device interaction.
+
+## 2026-08-12T20:58:00Z | implementation and focused verification
+
+- Source commit: `06abd057` (immutable plan checkpoint)
+- Actions: Added the Rust-owned
+  `bitaxe-core-voltage-control-evidence-v1` contract, independent validator,
+  generated TypeScript binding, projector command, human command surface,
+  redaction registration, and behavior regressions. The projector validates
+  the exact PWR-002 projection, three byte-identical voltage-owning paths, two
+  semantically compatible paths, and both pinned upstream voltage files.
+- Verification: All 55 contract tests passed; the focused nine-test projector
+  suite passed including its real `/usr/bin/stat` child boundary; the complete
+  270-test automation suite passed after restarting the owned Bazel server.
+  The first full attempt exposed the known macOS host-policy stall: newly
+  launched binaries waited at `_dyld_start`, and every existing real-child test
+  timed out while in-process tests passed. A one-shot sample confirmed the
+  boundary; only owned check processes were terminated, the stale Bazel server
+  was shut down, and the clean server rerun passed without code or timeout
+  relaxation.
+- Evidence: Source and tests only. No public PWR-003 projection exists and no
+  hardware command ran.
+- Outcome: The typed implementation is ready for the complete pre-commit gate
+  sequence.
+- Blocker or next safe action: Run every mandatory gate, commit and push the
+  clean implementation, then invoke the projector once from that exact HEAD.
+
+## 2026-08-12T21:11:58Z | complete implementation gate
+
+- Source commit: `06abd057` (immutable plan checkpoint)
+- Actions: Simplified typed failure classification into the existing typed
+  failure module so the central CLI remains within its enforced file-length
+  budget. No final projection was created and no hardware command ran.
+- Verification: `cargo fmt --all`, strict Cargo Clippy, all-target Cargo
+  build, all-feature Cargo tests, Bright Builds with zero findings, all 41
+  Bazel test targets, parity report/progress, reference cleanliness,
+  redaction, generated-contract, source-projection, immutable-plan hash, and
+  diff checks passed. The existing `target/debug` tree intermittently blocked
+  macOS executable and directory admission; bounded samples isolated the
+  stalls outside test code, owned processes were cleaned up, and the complete
+  Cargo suite then passed from a fresh `/tmp` target directory without source,
+  assertion, or timeout changes.
+- Evidence: Source and tests only. The admitted PWR-002 source projection
+  independently validates with SHA-256
+  `0668c274d09b3e39d7d5edfea4b2e66c97248ff77de9192981f3af00e547ddfe`.
+- Outcome: The implementation is ready to commit and push before the one-shot
+  projection command.
+- Blocker or next safe action: Commit and push the implementation, require a
+  clean exact HEAD, then produce and independently validate the PWR-003
+  projection once.

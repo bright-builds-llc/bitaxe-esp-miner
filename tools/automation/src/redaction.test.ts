@@ -165,3 +165,25 @@ test("ASIC power initialization evidence is included in the operational-field sc
     await rm(root, { recursive: true });
   }
 });
+
+test("core-voltage-control evidence is included in the operational-field scan", async () => {
+  // Arrange
+  const root = await mkdtemp(path.join(tmpdir(), "bitaxe-redaction-core-voltage-"));
+  const evidence = path.join(root, "evidence.json");
+  await writeFile(evidence, JSON.stringify({
+    schema_version: "bitaxe-core-voltage-control-evidence-v1",
+    voltage_control: { target_millivolts: 1_100 },
+  }));
+
+  try {
+    // Act / Assert
+    assert.equal((await verifySemanticEvidenceRedaction(root)).checked, 1);
+    await writeFile(evidence, JSON.stringify({
+      schema_version: "bitaxe-core-voltage-control-evidence-v1",
+      usb_port: "/dev/private-device",
+    }));
+    await assert.rejects(verifySemanticEvidenceRedaction(root));
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});

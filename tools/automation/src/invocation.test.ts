@@ -323,6 +323,24 @@ test("ASIC power initialization projection accepts only the committed source pro
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
 
+test("core-voltage projection accepts only the committed power proof", () => {
+  // Arrange
+  const complete = [
+    "project-core-voltage-control-evidence",
+    "--source-projection", "docs/parity/evidence/pwr002-asic-power-initialization/power-initialization-projection.json",
+    "--attempt-source-commit", "a".repeat(40),
+    "--projection", "docs/evidence/core-voltage-control.json",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "project-core-voltage-control-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});
+
 test("ASIC work-send projection accepts only the committed source proof", () => {
   // Arrange
   const complete = [

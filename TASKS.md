@@ -2145,16 +2145,16 @@ attempt-006 cannot be retried. See the linked closure for the next safe action.
 - [x] Select PWR-003 as the first actionable parity row and freeze the
       immutable plan at
       `docs/parity/work-plans/20260812T203223Z-PWR-003/PLAN.md`.
-- [ ] Add a typed core-voltage-control evidence contract, independent
+- [x] Add a typed core-voltage-control evidence contract, independent
       validator, projector, generated binding, and command surface.
-- [ ] Add focused regressions for the accepted PWR-002 source quorum, exact
+- [x] Add focused regressions for the accepted PWR-002 source quorum, exact
       DS4432U address/register/code and write route, 500 ms stabilization,
       active-low safe shutdown, source drift, publication withholding,
       candidate cleanup, and sensitive-output absence.
 - [ ] Produce and independently validate one public redacted PWR-003
       projection from the sealed accepted PWR-002 evidence without rerunning
       hardware.
-- [ ] Run all required Cargo, Bright Builds, Bazel, parity, redaction,
+- [x] Run all required Cargo, Bright Builds, Bazel, parity, redaction,
       reference, generated-contract, diff, and source-compatibility gates.
 - [ ] Promote only PWR-003 if the closed projection passes, record RESULT.md,
       archive this task, and preserve every explicit non-claim.

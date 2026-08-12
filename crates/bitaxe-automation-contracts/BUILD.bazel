@@ -14,6 +14,7 @@ rust_library(
         "src/asic_result_parsing_evidence.rs",
         "src/asic_serial_transport_evidence.rs",
         "src/asic_work_send_evidence.rs",
+        "src/core_voltage_control_evidence.rs",
         "src/log_buffer_evidence.rs",
         "src/mining_criteria_evidence.rs",
         "src/network_reconnect_evidence.rs",
@@ -120,6 +121,17 @@ rust_binary(
     name = "validate_asic_power_initialization_evidence",
     srcs = ["src/bin/validate_asic_power_initialization_evidence.rs"],
     crate_name = "validate_asic_power_initialization_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_core_voltage_control_evidence",
+    srcs = ["src/bin/validate_core_voltage_control_evidence.rs"],
+    crate_name = "validate_core_voltage_control_evidence",
     edition = "2021",
     deps = [
         ":bitaxe_automation_contracts",
