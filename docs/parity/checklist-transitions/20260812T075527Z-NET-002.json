@@ -1,0 +1,18 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260812T075527Z-NET-002",
+  "predecessor_sha256": "2a5cc484d97c363ae3c9f3cb15fca5ba6e93eba086fe2686c649f280a07f2485",
+  "result_sha256": "4310b48a13ca371f4b6997655f7c357c24801066b4a04c10d4e059342ebd5700",
+  "row_id": "NET-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260812T073939Z-NET-002/PLAN.md",
+  "plan_sha256": "b886ba70f6e7e8058e17d7342d104eddbaf63759921ea1c8381e38b4af60afcc",
+  "result_path": "docs/parity/work-plans/20260812T073939Z-NET-002/RESULT.md",
+  "result_document_sha256": "9f6f78fd2dac9d056d037205e1f16a9dc7494ff325a946b97e37225a58406c92",
+  "before_rust_owned_target": "`crates/bitaxe-api/src/provisioning.rs`, `firmware/bitaxe/src/wifi_adapter.rs`, `firmware/bitaxe/src/wifi_adapter/captive_dns.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/provisioning.rs`, `firmware/bitaxe/src/wifi_adapter.rs`, `firmware/bitaxe/src/wifi_adapter/captive_dns.rs`, `tools/automation/src/provisioning-client.ts`, `tools/automation/src/provisioning-network-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,hardware-smoke"
+}

@@ -1857,38 +1857,6 @@ proved mining and controls disabled. No projection exists. The linked closure
 requires removal of that preference-value assumption in a fresh ordinal; this
 task remains active because `NET-002` is not verified.
 
-### task-parity-net002-provisioning-network-attempt-006 | 2026-08-12 | Separate persisted preference from runtime safety
-
-- [x] Select `NET-002` and bind the continuation to attempt-005's closed live
-      network quorum.
-- [x] Remove only the invalid `startMiningOnBoot === false` postcondition and
-      add paired preference/runtime-safety regressions.
-- [x] Run every mandatory software gate, commit, and push.
-- [x] Run one detector and at most one conditional attempt-006 with fresh
-      protected paths.
-- [x] Promote only after the complete immutable-plan success quorum passes.
-
-Plan: `docs/parity/work-plans/20260812T073939Z-NET-002/PLAN.md`.
-
-Authorization: the linked plan's bounded USB, exact CoreWLAN, local network,
-cleanup, and exact recovery effects only. Capture start consumes the ordinal.
-
-Verification: Plan-only ordered Cargo, Bright Builds, all 37 Bazel tests,
-parity/progress, redaction, reference, generated contracts, selector, task,
-immutable-plan, fresh-path, reference-cleanliness, and diff gates pass.
-Immutable plan SHA-256 is
-`b886ba70f6e7e8058e17d7342d104eddbaf63759921ea1c8381e38b4af60afcc`.
-Implementation verification passes focused automation, exact package build,
-ordered Cargo, Bright Builds, all 37 Bazel tests, parity/progress, redaction,
-reference, generated contracts, selector, immutable-plan, fresh-path, and diff
-checks.
-
-Completion review: Attempt-006 passed the complete immutable-plan quorum and
-published independently validated redacted evidence for exact-device CoreWLAN
-association, DHCP, wildcard DNS, captive redirect, system-info, disabled
-runtime mining/control, cleanup, and exact-package recovery. Promotion and task
-archival are pending the evidence commit and checklist transition.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
