@@ -48,3 +48,81 @@
   implementation.
 - Blocker or next safe action: Commit and push only the plan, worklog, and
   active task; then begin implementation from the clean synchronized head.
+
+## 2026-08-12T13:05:17Z | Closed projector implemented
+
+- Source baseline: `995aee24f4fe78ce6aa986ea1571cf604f8283f9`
+- Actions: Added the Rust-owned `bitaxe-mining-criteria-evidence-v1`
+  contract and independent validator, typed automation command, exact-digest
+  Phase 21 document admission, verified coordinator admission, current source
+  span and dirty-path guards, atomic candidate publication, and focused plus
+  real-child regressions.
+- Verification: Focused Rust contract tests pass. The complete
+  `//tools/automation:automation_test` target passes. Tests cover digest and
+  fact drift, malformed coordinator input, semantic and duplicate source
+  drift, dirty paths, validator failure, launch failure, final mode, and the
+  public sensitive-value denylist.
+- Evidence: No projection was published during implementation. No protected
+  evidence or hardware was accessed. The active terminal soak attempt remains
+  unopened and attempt-005 remains unauthorized.
+- Simplification: The new projector uses one shared admitted-file helper, one
+  exact-line validator, one source-fragment map, and the existing process and
+  workspace ports; no second campaign or evidence framework was introduced.
+- Outcome: The implementation is ready for the complete ordered gate.
+- Blocker or next safe action: Run every mandatory repository check, review
+  the diff and immutable plan digest, then commit and push the implementation
+  before the single projection attempt.
+
+## 2026-08-12T13:07:49Z | Implementation gate code-shape failure
+
+- Actions: Ran the ordered gate through the Bright Builds checks.
+- Verification: Format, clippy, build, and all-feature tests passed. The
+  file-length check then rejected four existing near-limit integration files
+  after the new wiring crossed the 628-line ceiling: the Rust contract bundle,
+  both mirrored TypeScript contract files, and the automation CLI.
+- Evidence: This is a deterministic code-shape failure. No projection,
+  protected evidence, or hardware was accessed.
+- Outcome: The implementation is not sealable in its current shape.
+- Blocker or next safe action: Reduce the new integration footprint by moving
+  CLI argument wiring behind the mining-criteria adapter and compacting only
+  mirrored generated-contract layout, then rerun the complete gate.
+
+## 2026-08-12T13:14:25Z | Full-suite unrelated timing failure
+
+- Actions: Extracted shared CLI tool-path helpers, moved mining-criteria
+  invocation wiring behind its adapter, restored every file to the managed
+  length ceiling, and reran the complete gate from format onward.
+- Verification: Format, clippy, build, all-feature tests, and Bright Builds
+  checks passed with zero findings. In `just test`, 36 of 37 targets passed;
+  `//tools/automation:automation_test` had 220 of 221 cases pass. The unrelated
+  existing interrupted-upload socket timeout test missed its two-second
+  polling condition under the concurrent repository build. Every new mining
+  criteria test passed in that same target.
+- Evidence: The failing case is outside the changed paths and had passed in
+  the earlier isolated automation target. No projection, protected evidence,
+  or hardware was accessed.
+- Outcome: Implementation assertions remain green, but the ordered gate is
+  not yet sealed.
+- Blocker or next safe action: Re-run the automation target once in isolation,
+  then re-run the failed `just test` suffix once. A repeat at the same test is
+  a re-plan trigger; success permits continuation through the remaining gate.
+
+## 2026-08-12T13:16:33Z | Implementation gate sealed
+
+- Actions: Ran the isolated automation target and the failed ordered-gate
+  suffix once after the unrelated timing failure.
+- Verification: The 221-case automation target passed, including every new
+  mining-criteria regression. `just test` then passed all 37 targets; parity
+  reported no validation errors; progress remained 58/94 (61.7%); mirrored
+  contracts, redaction, reference cleanliness, immutable plan digest, task
+  uniqueness, and diff checks passed. The preceding format, clippy, build,
+  all-feature test, and Bright Builds prefix had already passed after the final
+  code-shape edit.
+- Evidence: All changed files are within the planned contract, projector,
+  command wiring, tests, task, and worklog surfaces. No public projection,
+  protected evidence, or hardware was accessed.
+- Outcome: The implementation gate is closed and the implementation is ready
+  to commit and push.
+- Blocker or next safe action: Commit and push the implementation, confirm a
+  clean synchronized head, then run the single software-only projection
+  attempt from that exact commit.

@@ -10,6 +10,7 @@ mod asic_result_parsing_evidence;
 mod asic_serial_transport_evidence;
 mod asic_work_send_evidence;
 mod log_buffer_evidence;
+mod mining_criteria_evidence;
 mod network_reconnect_evidence;
 mod network_scan_evidence;
 mod operator_snapshot_evidence;
@@ -43,6 +44,7 @@ pub use asic_work_send_evidence::{
     AsicWorkSendEvidence, AsicWorkSendObservationEvidence, AsicWorkSendSourceEvidence,
 };
 pub use log_buffer_evidence::{LogBufferEvidence, LogBufferObservationEvidence};
+pub use mining_criteria_evidence::MiningCriteriaEvidence;
 pub use network_reconnect_evidence::{
     NetworkReconnectEvidence, NetworkReconnectObservationEvidence,
 };
@@ -95,6 +97,7 @@ pub const ASIC_SERIAL_TRANSPORT_EVIDENCE_SCHEMA: &str = "bitaxe-asic-serial-tran
 pub const ASIC_WORK_SEND_EVIDENCE_SCHEMA: &str = "bitaxe-asic-work-send-evidence-v1";
 pub const STRATUM_SOCKET_EVIDENCE_SCHEMA: &str = "bitaxe-stratum-socket-evidence-v1";
 pub const PROTOCOL_COORDINATOR_EVIDENCE_SCHEMA: &str = "bitaxe-protocol-coordinator-evidence-v1";
+pub const MINING_CRITERIA_EVIDENCE_SCHEMA: &str = "bitaxe-mining-criteria-evidence-v1";
 pub const PROVISIONING_NETWORK_EVIDENCE_SCHEMA: &str = "bitaxe-provisioning-network-evidence-v1";
 pub const MIGRATION_SCHEMA: &str = "bitaxe-automation-migration-v1";
 
@@ -143,6 +146,7 @@ pub enum AutomationCommand {
     ProjectAsicSerialTransportEvidence,
     ProjectStratumSocketEvidence,
     ProjectProtocolCoordinatorEvidence,
+    ProjectMiningCriteriaEvidence,
     CaptureProvisioningNetworkEvidence,
 }
 
@@ -303,6 +307,7 @@ pub struct ContractBundle {
     pub asic_serial_transport_evidence_schema: Value,
     pub stratum_socket_evidence_schema: Value,
     pub protocol_coordinator_evidence_schema: Value,
+    pub mining_criteria_evidence_schema: Value,
     pub provisioning_network_evidence_schema: Value,
     pub commands: Vec<AutomationCommand>,
     pub evidence_schemas: Vec<&'static str>,
@@ -374,6 +379,8 @@ pub fn contract_bundle() -> ContractBundle {
             ProtocolCoordinatorEvidence
         ))
         .expect("protocol coordinator evidence schema must serialize"),
+        mining_criteria_evidence_schema: serde_json::to_value(schema_for!(MiningCriteriaEvidence))
+            .expect("mining criteria evidence schema must serialize"),
         provisioning_network_evidence_schema: serde_json::to_value(schema_for!(
             ProvisioningNetworkEvidence
         ))
@@ -416,6 +423,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::ProjectAsicSerialTransportEvidence,
             AutomationCommand::ProjectStratumSocketEvidence,
             AutomationCommand::ProjectProtocolCoordinatorEvidence,
+            AutomationCommand::ProjectMiningCriteriaEvidence,
             AutomationCommand::CaptureProvisioningNetworkEvidence,
         ],
         evidence_schemas: vec![
@@ -440,6 +448,7 @@ pub fn contract_bundle() -> ContractBundle {
             ASIC_SERIAL_TRANSPORT_EVIDENCE_SCHEMA,
             STRATUM_SOCKET_EVIDENCE_SCHEMA,
             PROTOCOL_COORDINATOR_EVIDENCE_SCHEMA,
+            MINING_CRITERIA_EVIDENCE_SCHEMA,
             PROVISIONING_NETWORK_EVIDENCE_SCHEMA,
             MIGRATION_SCHEMA,
         ],

@@ -220,6 +220,13 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--attempt-source-commit": value({ required: true }),
     "--projection": value({ required: true }),
   },
+  "project-mining-criteria-evidence": {
+    "--summary": value({ required: true }),
+    "--smoke": value({ required: true }),
+    "--soak": value({ required: true }),
+    "--coordinator-projection": value({ required: true }),
+    "--projection": value({ required: true }),
+  },
   "project-asic-work-send-evidence": {
     "--source-projection": value({ required: true }),
     "--attempt-source-commit": value({ required: true }),

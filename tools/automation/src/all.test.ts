@@ -15,6 +15,7 @@ import "./asic-serial-transport-evidence.test.js";
 import "./asic-frequency-transition-evidence.test.js";
 import "./stratum-socket-evidence.test.js";
 import "./protocol-coordinator-evidence.test.js";
+import "./mining-criteria-evidence.test.js";
 import "./asic-work-send-evidence.test.js";
 import "./operator-snapshot-evidence.test.js";
 import "./partition-layout-evidence.test.js";

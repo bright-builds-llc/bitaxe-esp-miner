@@ -1834,7 +1834,7 @@ task remains active because `NET-002` is not verified.
 
 - [x] Select `STR-007` from a clean synchronized preflight and separate the
       criteria claim from the terminal attempt-004 continuity task.
-- [ ] Add and verify a closed public contract joining the committed Phase 21
+- [x] Add and verify a closed public contract joining the committed Phase 21
       smoke/soak proof, verified coordinator, and current fail-closed criteria.
 - [ ] Publish the redacted projection, promote only `STR-007`, synchronize
       progress, and archive this task when every gate passes.
@@ -1854,7 +1854,9 @@ gate, redaction, reference cleanliness, and atomic publication. Any failure
 leaves `STR-007` implemented and stops without hardware fallback or reopening
 the terminal default-profile soak task.
 
-Verification: Pending.
+Verification: Focused Rust contract tests and `//tools/automation:automation_test`
+pass, including real-child validation, fail-closed drift cases, atomic mode
+publication, and sensitive-output denial. Full implementation gate pending.
 
 Completion review: Pending.
 

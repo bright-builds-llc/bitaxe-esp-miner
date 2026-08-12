@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { buildFirmware } from "./build.js";
+import { deviceSessionProgram, flashProgram, stringNumber, toolProgram } from "./cli-tools.js";
 import {
   AsicFrequencyTransitionEvidenceError,
   projectAsicFrequencyTransitionEvidence,
@@ -32,6 +33,7 @@ import {
   projectProtocolCoordinatorEvidence,
   ProtocolCoordinatorEvidenceError,
 } from "./protocol-coordinator-evidence.js";
+import { MiningCriteriaEvidenceError, projectMiningCriteriaEvidenceFromInvocation } from "./mining-criteria-evidence.js";
 import {
   flashMonitorCommand,
   internalCommandSpec,
@@ -125,25 +127,6 @@ function automationResult(
 function safeErrorSummary(error: unknown): string | undefined {
   if (!(error instanceof Error)) return undefined;
   return /^[A-Za-z0-9 _.:()-]+$/u.test(error.message) ? error.message : undefined;
-}
-
-function toolProgram(root: string, relative: string): string {
-  const maybeRunfiles = process.env["RUNFILES_DIR"];
-  return maybeRunfiles === undefined
-    ? path.join(root, "bazel-bin", relative)
-    : path.join(maybeRunfiles, "_main", relative);
-}
-
-function flashProgram(root: string): string {
-  return toolProgram(root, "tools/flash/flash");
-}
-
-function deviceSessionProgram(root: string): string {
-  return toolProgram(root, "tools/device-session/device-session");
-}
-
-function stringNumber(value: string | undefined): number | undefined {
-  return value === undefined ? undefined : Number(value);
 }
 
 function monitorSpec(root: string, invocation: ParsedInvocation) {
@@ -283,6 +266,7 @@ async function dispatchProcess(
     case "project-asic-frequency-transition-evidence":
     case "project-stratum-socket-evidence":
     case "project-protocol-coordinator-evidence":
+    case "project-mining-criteria-evidence":
     case "project-asic-work-send-evidence":
     case "project-asic-result-parsing-evidence":
     case "project-asic-serial-transport-evidence":
@@ -495,6 +479,10 @@ async function main(): Promise<number> {
         evidence: toolProgram(root,
           "crates/bitaxe-automation-contracts/validate_protocol_coordinator_evidence"),
       });
+    } else if (invocation.command === "project-mining-criteria-evidence") {
+      publicValue = await projectMiningCriteriaEvidenceFromInvocation(
+        root, invocation, processPort, toolProgram,
+      );
     } else if (invocation.command === "project-asic-work-send-evidence") {
       publicValue = await projectAsicWorkSendEvidence(root, {
         sourceProjection: optionValue(invocation, "--source-projection"),
@@ -595,6 +583,7 @@ async function main(): Promise<number> {
     const asicFrequencyTransitionFailure = error instanceof AsicFrequencyTransitionEvidenceError;
     const stratumSocketFailure = error instanceof StratumSocketEvidenceError;
     const protocolCoordinatorFailure = error instanceof ProtocolCoordinatorEvidenceError;
+    const miningCriteriaFailure = error instanceof MiningCriteriaEvidenceError;
     const asicWorkSendFailure = error instanceof AsicWorkSendEvidenceError;
     const asicResultParsingFailure = error instanceof AsicResultParsingEvidenceError;
     const asicSerialTransportFailure = error instanceof AsicSerialTransportEvidenceError;
@@ -603,7 +592,7 @@ async function main(): Promise<number> {
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || networkScanFailure || asicInitializationFailure || asicFrequencyTransitionFailure || stratumSocketFailure || protocolCoordinatorFailure || asicWorkSendFailure || asicResultParsingFailure || asicSerialTransportFailure || provisioningNetworkFailure
+        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || networkScanFailure || asicInitializationFailure || asicFrequencyTransitionFailure || stratumSocketFailure || protocolCoordinatorFailure || miningCriteriaFailure || asicWorkSendFailure || asicResultParsingFailure || asicSerialTransportFailure || provisioningNetworkFailure
           ? error.category
           : "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";

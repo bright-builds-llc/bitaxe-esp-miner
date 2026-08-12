@@ -417,6 +417,26 @@ test("protocol coordinator projection requires the closed four-proof join", () =
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
 
+test("mining criteria projection requires every public proof input", () => {
+  // Arrange
+  const complete = [
+    "project-mining-criteria-evidence",
+    "--summary", "docs/evidence/summary.md",
+    "--smoke", "docs/evidence/smoke.md",
+    "--soak", "docs/evidence/soak.md",
+    "--coordinator-projection", "docs/evidence/coordinator.json",
+    "--projection", "docs/evidence/mining-criteria.json",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "project-mining-criteria-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});
+
 test("Ultra 205 defaults capture requires the detector-gated closed surface", () => {
   // Arrange
   const complete = [

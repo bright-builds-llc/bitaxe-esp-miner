@@ -1,5 +1,4 @@
 // Generated from bitaxe-automation-contracts. Do not hand-edit.
-
 export type AutomationCommand =
   | "doctor"
   | "bootstrap-esp"
@@ -38,10 +37,9 @@ export type AutomationCommand =
   | "project-asic-frequency-transition-evidence"
   | "project-stratum-socket-evidence"
   | "project-protocol-coordinator-evidence"
+  | "project-mining-criteria-evidence"
   | "capture-provisioning-network-evidence";
-
 export type AutomationStatus = "succeeded" | "failed" | "blocked";
-
 export type AutomationCategory =
   | "complete"
   | "invalid_invocation"
@@ -62,7 +60,6 @@ export type AutomationCategory =
   | "reconnect_not_observed"
   | "reconnect_timing_invalid"
   | "service_recovery_failed";
-
 export type AutomationResult = {
   schema_version: "bitaxe-automation-result-v1";
   command: AutomationCommand;
@@ -70,7 +67,6 @@ export type AutomationResult = {
   category: AutomationCategory;
   public?: unknown;
 };
-
 export type WorkflowIdentity = {
   schema_version: "bitaxe-workflow-identity-v1";
   command: AutomationCommand;
@@ -462,6 +458,9 @@ export type StratumSocketEvidence = { schema_version: "bitaxe-stratum-socket-evi
 export type ProtocolCoordinatorSourceEvidence = { initialization_projection_sha256: string; initialization_projection_current_commit: string; initialization_projection_valid: true; work_send_projection_sha256: string; work_send_projection_current_commit: string; work_send_projection_valid: true; result_parsing_projection_sha256: string; result_parsing_projection_current_commit: string; result_parsing_projection_valid: true; socket_projection_sha256: string; socket_projection_current_commit: string; socket_projection_valid: true; };
 export type ProtocolCoordinatorObservationEvidence = { owner_inbox_capacity: 16; readiness_reread_cadence_ms: 1000; readiness_gate_count: 6; single_owner_serialization: true; hardware_prepared_before_pool_access: true; authorized_before_asic_dispatch: true; qualified_result_before_submit: true; accepted_submit_observed: true; ordered_terminal_safe_stop: true; watchdog_feed_in_owner_loop: true; coordinator_modules_unchanged: true; lifecycle_spans_compatible: true; };
 export type ProtocolCoordinatorEvidence = { schema_version: "bitaxe-protocol-coordinator-evidence-v1"; board: 205; attempt_source_commit: string; current_source_commit: string; reference_commit: string; workflow: WorkflowIdentity; source: ProtocolCoordinatorSourceEvidence; coordinator: ProtocolCoordinatorObservationEvidence; package_admitted: true; runtime_identity: "trusted"; runtime_attestation_status: "trusted"; campaign_terminal_category: "submit_response_observed"; submit_outcome: "accepted"; safety_status: "fresh"; mine_on_boot_disabled: true; safe_stop_confirmed: true; lease_cleanup_confirmed: true; usb_cleanup_ready: true; hardware_rerun_used: false; redaction_status: "passed"; };
+export type MiningCriteriaSourceEvidence = { phase21_summary_sha256: string; phase21_summary_valid: true; phase21_smoke_sha256: string; phase21_smoke_valid: true; phase21_soak_sha256: string; phase21_soak_valid: true; protocol_coordinator_sha256: string; protocol_coordinator_valid: true; };
+export type MiningCriteriaObservationEvidence = { historical_smoke_controlled_no_share: true; historical_soak_duration_seconds: 300; historical_watchdog_passed: true; historical_telemetry_observed: true; historical_safe_stop_confirmed: true; current_duration_seconds: 600; upstream_default_profile_required: true; active_duration_accounting: true; full_duration_required: true; accepted_share_required: true; network_correlation_required: true; safe_stop_required: true; private_evidence_required: true; redaction_required: true; source_spans_compatible: true; terminal_attempt_reopened: false; };
+export type MiningCriteriaEvidence = { schema_version: "bitaxe-mining-criteria-evidence-v1"; board: 205; current_source_commit: string; reference_commit: string; workflow: WorkflowIdentity; source: MiningCriteriaSourceEvidence; criteria: MiningCriteriaObservationEvidence; hardware_rerun_used: false; redaction_status: "passed"; };
 
 export type ProvisioningNetworkObservationEvidence = {
   host_platform_macos: true;
@@ -525,6 +524,7 @@ const automationCommands = new Set<AutomationCommand>([
   "project-asic-frequency-transition-evidence",
   "project-stratum-socket-evidence",
   "project-protocol-coordinator-evidence",
+  "project-mining-criteria-evidence",
   "capture-provisioning-network-evidence",
 ]);
 const automationStatuses = new Set<AutomationStatus>(["succeeded", "failed", "blocked"]);

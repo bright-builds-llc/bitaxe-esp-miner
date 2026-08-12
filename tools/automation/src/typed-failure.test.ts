@@ -9,6 +9,7 @@ import { AsicSerialTransportEvidenceError } from "./asic-serial-transport-eviden
 import { AsicFrequencyTransitionEvidenceError } from "./asic-frequency-transition-evidence.js";
 import { StratumSocketEvidenceError } from "./stratum-socket-evidence.js";
 import { ProtocolCoordinatorEvidenceError } from "./protocol-coordinator-evidence.js";
+import { MiningCriteriaEvidenceError } from "./mining-criteria-evidence.js";
 import { NetworkScanEvidenceError } from "./network-scan-evidence.js";
 import { maybeTypedFailurePublicValue } from "./typed-failure.js";
 
@@ -162,5 +163,24 @@ test("protocol coordinator failures retain only closed projection facts", () => 
   assert.deepEqual(publicValue, {
     stage: "sealed_protocol_coordinator_projection",
     hardware_rerun_used: false,
+  });
+});
+
+test("mining criteria failures retain only closed projection facts", () => {
+  // Arrange
+  const error = new MiningCriteriaEvidenceError("evidence_invalid", "safe failure", {
+    stage: "sealed_mining_criteria_projection",
+    hardware_rerun_used: false,
+    terminal_attempt_reopened: false,
+  });
+
+  // Act
+  const publicValue = maybeTypedFailurePublicValue(error);
+
+  // Assert
+  assert.deepEqual(publicValue, {
+    stage: "sealed_mining_criteria_projection",
+    hardware_rerun_used: false,
+    terminal_attempt_reopened: false,
   });
 });

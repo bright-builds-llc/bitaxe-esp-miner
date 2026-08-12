@@ -118,6 +118,19 @@ test("result validator accepts the closed protocol coordinator command", () => {
   assert.equal(result.command, "project-protocol-coordinator-evidence");
 });
 
+test("result validator accepts the closed mining criteria command", () => {
+  // Act
+  const result = parseAutomationResult({
+    schema_version: "bitaxe-automation-result-v1",
+    command: "project-mining-criteria-evidence",
+    status: "succeeded",
+    category: "complete",
+  });
+
+  // Assert
+  assert.equal(result.command, "project-mining-criteria-evidence");
+});
+
 // @ts-expect-error monitor intentionally has no evidenceMode option.
 monitorCommand("/tmp/flash", { evidenceMode: "dual" });
 
