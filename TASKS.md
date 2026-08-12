@@ -1744,7 +1744,7 @@ unarchived because `NET-002` is not verified.
 - [x] Add the six-value redaction-safe client-boundary error contract.
 - [x] Test every boundary, sensitive-output absence, recovery precedence, and
       real-child behavior; run all mandatory software gates.
-- [ ] Commit and push, then run one detector and at most one conditional
+- [x] Commit and push, then run one detector and at most one conditional
       attempt-003 with fresh protected paths.
 - [ ] Promote only after the complete immutable-plan success quorum passes.
 
@@ -1765,7 +1765,13 @@ the ordered Cargo sequence, Bright Builds, all 37 Bazel tests,
 parity/progress, redaction, reference, selector, immutable-plan, task,
 fresh-path, reference-cleanliness, sensitive-output, and diff checks.
 
-Completion review: Pending.
+Completion review: Attempt-003 closed as `hardware_blocked` at the exact
+`configuration_candidate` boundary. No association or later client effect
+started. Host restoration and exact-package device recovery passed without a
+secondary failure; private modes and cleanup passed; no public projection
+exists. The linked closure requires a private exact-device candidate plus
+recurring AP readiness before another ordinal. This task remains active and
+unarchived because `NET-002` is not verified.
 
 ## Future
 

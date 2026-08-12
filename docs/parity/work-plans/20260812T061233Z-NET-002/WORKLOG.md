@@ -40,3 +40,25 @@
   push.
 - Blocker or next safe action: Commit and push, build the exact firmware image,
   run one detector, and consume attempt-003 at most once if admitted.
+
+## 2026-08-12T06:34:15Z | attempt-003 terminal closure
+
+- Source commit: `4c9c0f8c8879f332d6437463f95cf4f2500bf02a`.
+- Actions: Built the exact clean package, spent the sole detector, and ran the
+  sole conditional attempt-003. Accepted the typed candidate-discovery failure
+  without retry and completed host cleanup plus exact-package owner-Wi-Fi
+  recovery.
+- Verification: Category `hardware_blocked`; client boundary
+  `configuration_candidate`; host restoration true; device recovery true;
+  recovery flash used; secondary recovery failure false. Recurring safe runtime
+  was captured, but no association or later client effect began. Both roots are
+  mode 0700, all files are mode 0600, no serial holder remains, and the public
+  projection is absent.
+- Evidence: Closed aggregate facts and ignored private artifacts only. No raw
+  operational or identifying value is promoted.
+- Outcome: No promotion. The failure is now localized to discovery, while the
+  private capture cannot distinguish absent AP broadcast from macOS enumeration
+  ineligibility.
+- Blocker or next safe action: Close this exhausted plan and create a fresh
+  continuation that binds a private exact-device candidate to recurring AP
+  readiness before another detector or hardware ordinal.
