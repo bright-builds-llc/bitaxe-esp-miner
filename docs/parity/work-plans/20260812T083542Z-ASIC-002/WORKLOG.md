@@ -84,3 +84,24 @@
   without weakening the broader sensitive-key denylist.
 - Blocker or next safe action: Complete all repository gates, commit and push
   the fix, then regenerate the projection from that exact clean commit.
+
+## 2026-08-12T09:06:49Z | sealed projection accepted
+
+- Source commit: redaction-fix commit
+  `f9df1412abbc05a4852022f3fb6741f67ab43272`.
+- Actions: Ran the no-hardware projector for the third and final host
+  projection attempt against the unchanged sealed `attempt-007` inputs.
+- Verification: The result seal, private digests, protected modes, archived
+  task lineage, exact accepted terminal state, 18 accepted and zero invalid
+  preparation events, terminal production-UART retention, seven compatible
+  initialization paths, independent Rust validation, and public redaction all
+  passed. Projection SHA-256 is
+  `eee750561a7c1dcec1a5698b1e5827d3f1508d43655c3c4aa237097338dcf8d4`.
+- Evidence: Published
+  `docs/parity/evidence/asic002-initialization/asic-initialization-projection.json`;
+  protected values remain absent and the source artifacts remain unchanged.
+- Outcome: The complete `ASIC-002` promotion quorum is satisfied without a
+  new hardware attempt.
+- Blocker or next safe action: Commit and push the evidence/result without
+  changing the checklist, then apply the single-row transition and run the
+  final promotion gate.

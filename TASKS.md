@@ -28,7 +28,7 @@ new work.
 
 - [x] Add a typed, closed projector and validator for the sealed accepted-share
       campaign's full BM1366 initialization boundary.
-- [ ] Prove protected artifact seals/modes, all nine preparation completions,
+- [x] Prove protected artifact seals/modes, all nine preparation completions,
       retained production UART, trusted package/runtime identity, live work,
       safe stop, cleanup, and current-source compatibility without exposing
       protected values.

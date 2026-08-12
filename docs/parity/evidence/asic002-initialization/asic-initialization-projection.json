@@ -1,0 +1,48 @@
+{
+  "schema_version": "bitaxe-asic-initialization-evidence-v1",
+  "board": 205,
+  "attempt_source_commit": "3e0966a140edbff1a14d2a48ca63d140649762c0",
+  "current_source_commit": "f9df1412abbc05a4852022f3fb6741f67ab43272",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "source_task_sha256": "8bf86230b2acf237c39fc9d9da90c1bd8c4d6ab22ec0ba9d48344fc879ae13e7",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "project-asic-initialization-evidence",
+    "request_sha256": "654b5a8b2e726919402e6c601ad9c08241783ab5b26bed89811b28a1ed21ef88"
+  },
+  "attempt": {
+    "campaign_result_sha256": "ddb44d7577573acd4e1d2f1f61cb06fa7ed6935bb21ce78ac245ff41918df446",
+    "diagnostics_sha256": "9aaa13147761022093ec3255d58f32e351cb847f5de4e265f5d9aa0bfc68d2fd",
+    "observations_sha256": "b5db356a77c87d5d7c02aa8f41e2abfe5123c3b1b197a0679ced72790e58b626",
+    "result_seal_valid": true,
+    "private_digests_valid": true,
+    "protected_modes_valid": true
+  },
+  "initialization": {
+    "planned_step_count": 9,
+    "accepted_preparation_event_count": 18,
+    "invalid_preparation_event_count": 0,
+    "terminal_preparation_step": "retain_production_uart",
+    "terminal_preparation_outcome": "completed",
+    "all_preparation_steps_completed": true,
+    "exactly_one_chip_detected": true,
+    "mining_ready_initialization_completed": true,
+    "production_uart_retained": true,
+    "live_initialized_work_observed": true,
+    "initialization_paths_unchanged": true,
+    "compatible_path_count": 7
+  },
+  "package_admitted": true,
+  "runtime_identity": "trusted",
+  "runtime_attestation_status": "trusted",
+  "serial_outcome_detail": "clean",
+  "campaign_terminal_category": "submit_response_observed",
+  "submit_outcome": "accepted",
+  "safety_status": "fresh",
+  "mine_on_boot_disabled": true,
+  "safe_stop_confirmed": true,
+  "lease_cleanup_confirmed": true,
+  "usb_cleanup_ready": true,
+  "hardware_rerun_used": false,
+  "redaction_status": "passed"
+}
