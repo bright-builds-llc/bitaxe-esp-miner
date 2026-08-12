@@ -1690,7 +1690,7 @@ verified.
       recurring passive-safe runtime admission.
 - [x] Add production-shaped late-attach success and missing-safety failure
       regressions; run focused and mandatory software gates.
-- [ ] Commit and push the exact implementation, then run one protected detector
+- [x] Commit and push the exact implementation, then run one protected detector
       and at most one conditional attempt-002 on board 205.
 - [ ] Promote only `NET-002` after the complete client/API, safety, recovery,
       cleanup, privacy, and independent-evidence quorum passes.
@@ -1731,7 +1731,12 @@ tests, parity/progress, redaction, reference, generated contracts, selector,
 task uniqueness, fresh paths, and diff checks are green. Immutable plan SHA-256
 is `657f37b864e8dee5accb4d0bae683f39820a69483d49563dd93f2c951bccd44c`.
 
-Completion review: Pending.
+Completion review: Attempt-002 passed recurring passive-safe runtime admission
+but closed as `hardware_blocked` inside the undifferentiated client observation
+stage. Host and exact-package device recovery passed without secondary failure,
+private modes and cleanup passed, and no public projection exists. The linked
+closure defines the typed-boundary continuation; this task remains active and
+unarchived because `NET-002` is not verified.
 
 ## Future
 

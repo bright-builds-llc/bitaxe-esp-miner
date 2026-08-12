@@ -56,3 +56,22 @@
 - Outcome: The exact implementation is eligible for commit and push.
 - Blocker or next safe action: Commit and push, build the exact clean package,
   then spend the sole wrapper-002 detector and at most one attempt-002.
+
+## 2026-08-12T06:10:59Z | attempt-002 terminal closure
+
+- Source commit: `6a1c2a426a077417b22f7d30728bf335e56f8fce`.
+- Actions: Built the exact clean package, spent the sole detector, and ran the
+  sole conditional attempt-002. Accepted the typed client-observation failure
+  without retry and completed exact-package owner-Wi-Fi recovery.
+- Verification: Category `hardware_blocked`; generic stage
+  `provisioning_network_capture`; host restoration true; device recovery true;
+  recovery flash used; secondary recovery failure false. The attempt wrote no
+  system-info artifact, both roots are mode 0700, all files are mode 0600, no
+  serial holder remains, and the public projection is absent.
+- Evidence: Closed aggregate facts and ignored private artifacts only. No raw
+  operational or identifying value is promoted.
+- Outcome: No promotion. The corrected runtime admission passed, but the
+  current failure envelope cannot identify which client boundary failed.
+- Blocker or next safe action: Close this exhausted plan and create a fresh
+  continuation with a closed redaction-safe boundary taxonomy before another
+  detector or hardware ordinal.
