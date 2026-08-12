@@ -2100,6 +2100,31 @@ withholding passed. No public projection exists, API-009 remains
 `implemented`, and attempt-005 cannot be retried. See the linked closure for
 the exact non-claims and next safe action.
 
+Operator-checkpoint continuation plan:
+`docs/parity/work-plans/20260812T182405Z-API-009/PLAN.md`.
+
+- [ ] Supervise the two private typed IDENTIFY requirements concurrently with
+      the campaign child and emit only ordered, exactly-once closed stderr
+      signals while retaining one final stdout envelope.
+- [ ] Add fake and real-child filesystem regressions for acknowledgement,
+      settlement cancellation, malformed/missing inputs, failure precedence,
+      private modes, and sensitive-output absence.
+- [ ] Run every focused and mandatory software gate; commit and push the exact
+      implementation before package, detector, or hardware use.
+- [ ] Run at most one fresh detector-gated `attempt-006`, confirm each
+      checkpoint only after the matching user-observed physical state, and
+      promote only on the complete five-command quorum.
+
+Attempt-006 authorization: standing task authorization permits this single
+fresh attempt only after the immutable plan and exact clean pushed source prove
+the production-shaped live checkpoint handoff. The allowed effects, prohibited
+effects, evidence privacy, exact-package and board-205 detector gates,
+600-second local-fixture lease, request-once confirmations, safe stop, cleanup,
+canonical software restart, recovery, public withholding, and accepted stop
+categories are exactly those in the linked plan. Campaign start consumes the
+ordinal; no automatic, inferred, preemptive, or repeated confirmation and no
+second attempt is permitted.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
