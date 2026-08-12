@@ -342,7 +342,9 @@ run.
 - [x] Run focused and mandatory gates, then transition only `CFG-006` to
       `implemented` while withholding every non-205 hardware claim.
 
-Plan: `docs/parity/work-plans/20260804T133030Z-CFG-006/PLAN.md`
+Previous plan: `docs/parity/work-plans/20260804T133030Z-CFG-006/PLAN.md`
+
+Active plan: `docs/parity/work-plans/20260812T004157Z-CFG-006/PLAN.md`
 
 Authorization: pure software and public upstream seed data only. No hardware,
 credentials, network, settings, mining, controls, OTA, direct UART, or pins.
@@ -357,6 +359,18 @@ Completion review: The bounded pure matrix implementation is complete and
 active and unarchived because the parity row is not verified: live seeded
 defaults and runtime behavior for non-205 profiles require separately admitted
 hardware evidence. No runtime selection or hardware behavior changed.
+
+Targeted verification continuation:
+
+- [ ] Compare the public Rust defaults matrix directly to the complete pinned
+      reference CSV inventory with fail-closed parity-report validation.
+- [ ] Prove representative inventory, parsing, and value drift is rejected.
+- [ ] Run focused and mandatory gates, then promote only the declarative
+      `CFG-006` row if its direct reference, golden, and catalog evidence passes.
+
+Continuation authorization: pure software and the checked-out public pinned
+reference only. No hardware, credentials, network, settings, mining, controls,
+OTA, direct UART, or pins.
 
 ### task-parity-api010-theme-route | 2026-08-04 | Implement theme API persistence
 
