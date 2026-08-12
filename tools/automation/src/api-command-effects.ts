@@ -4,6 +4,11 @@ import path from "node:path";
 
 import { internalCommandSpec, type AutomationCategory } from "./contracts.generated.js";
 import { isDeviceSessionProjectionFailure, readClosedDeviceSession } from "./device-session-projection.js";
+import {
+  OperatorCheckpointError,
+  superviseOperatorCheckpoints,
+  type OperatorCheckpointSink,
+} from "./api-command-effects-checkpoint.js";
 import { isClosedReadinessTransition } from "./api-command-effects-readiness.js";
 import type { ProcessOutcome, ProcessPort } from "./process.js";
 import { assertWithinWorkspace } from "./workspace.js";
@@ -400,6 +405,7 @@ export async function captureApiCommandEffects(
   fixtureProgram: string,
   flashProgram: string,
   deviceSessionProgram: string,
+  checkpointSink: OperatorCheckpointSink,
 ): Promise<unknown> {
   if (options.durationSeconds !== 600) throw failure("evidence_invalid", "command effects duration must be 600 seconds");
   const privateRoot = assertWithinWorkspace(workspaceRoot, options.privateRoot);
@@ -463,7 +469,7 @@ export async function captureApiCommandEffects(
       poolPassword: randomBytes(24).toString("hex"),
     });
     const campaignRoot = path.join(privateRoot, "campaign");
-    maybeCampaignOutcome = await runChild(processPort, flashProgram, [
+    const supervised = await superviseOperatorCheckpoints(runChild(processPort, flashProgram, [
       "mining-campaign",
       "--stage", "command-effects",
       "--profile", "conservative",
@@ -475,7 +481,8 @@ export async function captureApiCommandEffects(
       "--evidence-dir", campaignRoot,
       "--duration-seconds", String(options.durationSeconds),
       "--redact-evidence",
-    ], 810_000, "command effects campaign");
+    ], 810_000, "command effects campaign"), campaignRoot, checkpointSink);
+    maybeCampaignOutcome = supervised.outcome;
     if (maybeCampaignOutcome.timedOut) throw failure("timeout", "command effects campaign timed out");
     if (maybeCampaignOutcome.exitCode !== 0) {
       throw failure(
@@ -483,6 +490,9 @@ export async function captureApiCommandEffects(
         "command effects campaign failed",
         await campaignRecoveryFacts(campaignRoot),
       );
+    }
+    if (supervised.maybeCheckpointError instanceof OperatorCheckpointError) {
+      throw failure("evidence_invalid", "operator checkpoint handoff is invalid");
     }
   } catch (error) {
     primaryFailed = true;

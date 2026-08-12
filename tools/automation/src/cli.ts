@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { buildFirmware } from "./build.js";
 import { captureApiCommandEffects, ApiCommandEffectsError } from "./api-command-effects.js";
+import { emitOperatorCheckpointSignal } from "./api-command-effects-checkpoint.js";
 import { deviceSessionProgram, flashProgram, stringNumber, toolProgram } from "./cli-tools.js";
 import {
   AsicFrequencyTransitionEvidenceError,
@@ -94,7 +95,6 @@ import { executeCommandSpec } from "./workflow.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
 class PolicyError extends Error {}
-
 function workspaceRoot(): string {
   const maybeWorkspace = process.env["BUILD_WORKSPACE_DIRECTORY"];
   const starts = [
@@ -546,7 +546,7 @@ async function main(): Promise<number> {
         port,
         projection: optionValue(invocation, "--projection"),
         durationSeconds: Number(optionValue(invocation, "--duration-seconds")),
-      }, processPort, toolProgram(root, "scripts/api_command_effects_stratum_pool_/api_command_effects_stratum_pool"), flashProgram(root), deviceSessionProgram(root));
+      }, processPort, toolProgram(root, "scripts/api_command_effects_stratum_pool_/api_command_effects_stratum_pool"), flashProgram(root), deviceSessionProgram(root), emitOperatorCheckpointSignal);
     } else if (invocation.command === "verify-settings-durability" && optionValue(invocation, "--mode") === "capture") {
       const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
       publicValue = await captureSettingsDurability(root, {

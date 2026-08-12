@@ -2103,13 +2103,13 @@ the exact non-claims and next safe action.
 Operator-checkpoint continuation plan:
 `docs/parity/work-plans/20260812T182405Z-API-009/PLAN.md`.
 
-- [ ] Supervise the two private typed IDENTIFY requirements concurrently with
+- [x] Supervise the two private typed IDENTIFY requirements concurrently with
       the campaign child and emit only ordered, exactly-once closed stderr
       signals while retaining one final stdout envelope.
-- [ ] Add fake and real-child filesystem regressions for acknowledgement,
+- [x] Add fake and real-child filesystem regressions for acknowledgement,
       settlement cancellation, malformed/missing inputs, failure precedence,
       private modes, and sensitive-output absence.
-- [ ] Run every focused and mandatory software gate; commit and push the exact
+- [x] Run every focused and mandatory software gate; commit and push the exact
       implementation before package, detector, or hardware use.
 - [ ] Run at most one fresh detector-gated `attempt-006`, confirm each
       checkpoint only after the matching user-observed physical state, and

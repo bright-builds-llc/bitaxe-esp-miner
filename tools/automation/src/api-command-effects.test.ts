@@ -10,8 +10,18 @@ import {
   captureApiCommandEffects,
   type ApiCommandEffectsOptions,
 } from "./api-command-effects.js";
+import {
+  formatOperatorCheckpointSignal,
+  type OperatorCheckpointSignal,
+} from "./api-command-effects-checkpoint.js";
 import { toolProgram } from "./cli-tools.js";
-import { createFakeProcessPort, createLocalProcessPort, type ProcessOutcome } from "./process.js";
+import {
+  createFakeProcessPort,
+  createLocalProcessPort,
+  type ProcessOutcome,
+} from "./process.js";
+
+const discardCheckpoint = () => undefined;
 
 const ok = (stdout = ""): ProcessOutcome => ({ exitCode: 0, stdout, stderr: "", timedOut: false });
 
@@ -116,6 +126,7 @@ function fakePort(
   flashDiagnosticsMode: "ready" | "malformed" | "missing" = "ready",
   protocolGate = "ready",
   readinessMode: "ready" | "malformed" | "missing" = "ready",
+  checkpointMode: "absent" | "malformed" | "ordered" | "wrong_mode" | "wrong_order" = "ordered",
 ) {
   return createFakeProcessPort(async (spec) => {
     if (spec.program === "/sbin/route") return ok("interface: en0\n");
@@ -164,6 +175,38 @@ function fakePort(
       ]);
       const campaign = path.join(attempt, "campaign");
       await mkdir(campaign, { mode: 0o700 });
+      if (checkpointMode === "ordered") {
+        await privateJson(path.join(campaign, "identify-rendered.required.json"), {
+          schema: "bitaxe-identify-checkpoint-v1",
+          observation: "rendered",
+          status: "required",
+        });
+        await privateJson(path.join(campaign, "identify-cleared.required.json"), {
+          schema: "bitaxe-identify-checkpoint-v1",
+          observation: "cleared",
+          status: "required",
+        });
+      } else if (checkpointMode === "malformed") {
+        await privateJson(path.join(campaign, "identify-rendered.required.json"), {
+          schema: "private-invalid-schema",
+          observation: "rendered",
+          status: "required",
+        });
+      } else if (checkpointMode === "wrong_order") {
+        await privateJson(path.join(campaign, "identify-cleared.required.json"), {
+          schema: "bitaxe-identify-checkpoint-v1",
+          observation: "cleared",
+          status: "required",
+        });
+      } else if (checkpointMode === "wrong_mode") {
+        const rendered = path.join(campaign, "identify-rendered.required.json");
+        await privateJson(rendered, {
+          schema: "bitaxe-identify-checkpoint-v1",
+          observation: "rendered",
+          status: "required",
+        });
+        await chmod(rendered, 0o644);
+      }
       const readyFlashDiagnostic = {
         schema_version: "esp-usb-command-diagnostic-v1",
         terminal_category: "ready",
@@ -227,6 +270,87 @@ function fakePort(
   });
 }
 
+test("ordered campaign checkpoints notify the operator sink exactly once", async () => {
+  // Arrange
+  const value = await fixture();
+  const signals: OperatorCheckpointSignal[] = [];
+
+  // Act
+  await captureApiCommandEffects(
+    value.root,
+    value.options,
+    fakePort(value.root, readySession, false, "ready", "ready", "ready", "ordered"),
+    path.join(value.root, "bin", "api-command-effects-stratum-pool"),
+    path.join(value.root, "bin", "flash"),
+    path.join(value.root, "bin", "device-session"),
+    (signal) => { signals.push(signal); },
+  );
+
+  // Assert
+  assert.deepEqual(signals, [
+    {
+      schema_version: "bitaxe-operator-checkpoint-v1",
+      command: "api-command-effects-campaign",
+      observation: "rendered",
+      status: "required",
+    },
+    {
+      schema_version: "bitaxe-operator-checkpoint-v1",
+      command: "api-command-effects-campaign",
+      observation: "cleared",
+      status: "required",
+    },
+  ]);
+  const formatted = signals.map(formatOperatorCheckpointSignal).join("");
+  assert.equal(formatted.split("\n").filter(Boolean).length, 2);
+  assert(!formatted.includes(value.root));
+  assert(!formatted.includes(value.options.port));
+});
+
+for (const checkpointMode of ["absent", "malformed", "wrong_mode", "wrong_order"] as const) {
+  test(`${checkpointMode} operator checkpoint handoff withholds evidence`, async () => {
+    // Arrange
+    const value = await fixture();
+
+    // Act
+    const error = await captureApiCommandEffects(
+      value.root,
+      value.options,
+      fakePort(value.root, readySession, false, "ready", "ready", "ready", checkpointMode),
+      path.join(value.root, "bin", "api-command-effects-stratum-pool"),
+      path.join(value.root, "bin", "flash"),
+      path.join(value.root, "bin", "device-session"),
+      discardCheckpoint,
+    ).then(() => undefined, (caught: unknown) => caught);
+
+    // Assert
+    assert(error instanceof ApiCommandEffectsError);
+    assert.equal(error.category, "evidence_invalid");
+    await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
+  });
+}
+
+test("campaign failure remains primary when its checkpoint is malformed", async () => {
+  // Arrange
+  const value = await fixture();
+
+  // Act
+  const error = await captureApiCommandEffects(
+    value.root,
+    value.options,
+    fakePort(value.root, readySession, true, "ready", "ready", "ready", "malformed"),
+    path.join(value.root, "bin", "api-command-effects-stratum-pool"),
+    path.join(value.root, "bin", "flash"),
+    path.join(value.root, "bin", "device-session"),
+    discardCheckpoint,
+  ).then(() => undefined, (caught: unknown) => caught);
+
+  // Assert
+  assert(error instanceof ApiCommandEffectsError);
+  assert.equal(error.category, "hardware_blocked");
+  assert.equal(error.publicValue["safe_stop_confirmed"], true);
+});
+
 test("a non-ready protocol gate withholds the final projection", async () => {
   // Arrange
   const value = await fixture();
@@ -239,6 +363,7 @@ test("a non-ready protocol gate withholds the final projection", async () => {
     path.join(value.root, "bin", "api-command-effects-stratum-pool"),
     path.join(value.root, "bin", "flash"),
     path.join(value.root, "bin", "device-session"),
+    discardCheckpoint,
   ).then(() => undefined, (caught: unknown) => caught);
 
   // Assert
@@ -259,6 +384,7 @@ test("a missing readiness transition withholds the final projection", async () =
     path.join(value.root, "bin", "api-command-effects-stratum-pool"),
     path.join(value.root, "bin", "flash"),
     path.join(value.root, "bin", "device-session"),
+    discardCheckpoint,
   ).then(() => undefined, (caught: unknown) => caught);
 
   // Assert
@@ -279,6 +405,7 @@ test("a non-closed readiness transition withholds the final projection", async (
     path.join(value.root, "bin", "api-command-effects-stratum-pool"),
     path.join(value.root, "bin", "flash"),
     path.join(value.root, "bin", "device-session"),
+    discardCheckpoint,
   ).then(() => undefined, (caught: unknown) => caught);
 
   // Assert
@@ -299,6 +426,7 @@ test("complete command and reboot quorums publish only redacted typed evidence",
     path.join(value.root, "bin", "api-command-effects-stratum-pool"),
     path.join(value.root, "bin", "flash"),
     path.join(value.root, "bin", "device-session"),
+    discardCheckpoint,
   );
 
   // Assert
@@ -323,6 +451,7 @@ test("campaign failure keeps its primary category and reports secondary recovery
     path.join(value.root, "bin", "api-command-effects-stratum-pool"),
     path.join(value.root, "bin", "flash"),
     path.join(value.root, "bin", "device-session"),
+    discardCheckpoint,
   ).then(() => undefined, (caught: unknown) => caught);
 
   // Assert
@@ -351,6 +480,7 @@ test("a non-ready reboot withholds the final projection", async () => {
     path.join(value.root, "bin", "api-command-effects-stratum-pool"),
     path.join(value.root, "bin", "flash"),
     path.join(value.root, "bin", "device-session"),
+    discardCheckpoint,
   ).then(() => undefined, (caught: unknown) => caught);
 
   // Assert
@@ -372,6 +502,7 @@ for (const flashDiagnosticsMode of ["malformed", "missing"] as const) {
       path.join(value.root, "bin", "api-command-effects-stratum-pool"),
       path.join(value.root, "bin", "flash"),
       path.join(value.root, "bin", "device-session"),
+      discardCheckpoint,
     ).then(() => undefined, (caught: unknown) => caught);
 
     // Assert
@@ -396,6 +527,7 @@ test("the deployed fixture executable crosses the sanitized real-process boundar
     toolProgram(value.root, "scripts/api_command_effects_stratum_pool_/api_command_effects_stratum_pool"),
     "/usr/bin/false",
     "/usr/bin/false",
+    discardCheckpoint,
   ).then(() => undefined, (caught: unknown) => caught);
 
   // Assert
@@ -429,6 +561,7 @@ test("an early real child exit is process_failed instead of a readiness timeout"
     "/usr/bin/false",
     "/usr/bin/false",
     "/usr/bin/false",
+    discardCheckpoint,
   ).then(() => undefined, (caught: unknown) => caught);
 
   // Assert
@@ -470,6 +603,7 @@ test("a running real child without readiness times out and receives cleanup", {
     silentFixture,
     "/usr/bin/false",
     "/usr/bin/false",
+    discardCheckpoint,
   ).then(() => undefined, (caught: unknown) => caught);
 
   // Assert
