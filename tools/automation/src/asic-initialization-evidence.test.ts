@@ -86,7 +86,7 @@ async function fixture(name: string, accepted = 18) {
     await writeFile(path.join(attemptRoot, file), document, { mode: 0o600 });
     await chmod(path.join(attemptRoot, file), 0o600);
   }
-  await writeFile(path.join(root, "TASKS.archive.md"), `### task-ultra205-accepted-pool-share | accepted\nClean commit \`${attemptCommit.slice(0, 8)}\` \`attempt-007\` admitted the exact package and one Ultra 205, completed every preparation boundary, confirmed safe stop, USB cleanup ready, and parity promotion is false.\n`);
+  await writeFile(path.join(root, "TASKS.archive.md"), `### task-ultra205-accepted-pool-share | accepted\nClean commit \`${attemptCommit.slice(0, 8)}\` \`attempt-007\` admitted the exact package and one Ultra\n205, completed every preparation boundary, confirmed safe stop, USB cleanup ready, and parity promotion is false.\n`);
   return {
     root,
     attemptRoot,

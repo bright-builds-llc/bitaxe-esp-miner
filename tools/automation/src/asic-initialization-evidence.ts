@@ -155,6 +155,7 @@ function validateArchivedTask(document: string, attemptSourceCommit: string): vo
   if (start === -1) throw failure("evidence_invalid", "accepted campaign task lineage is missing");
   const maybeEnd = document.indexOf("\n### ", start + heading.length);
   const block = document.slice(start, maybeEnd === -1 ? document.length : maybeEnd);
+  const normalizedBlock = block.replace(/\s+/gu, " ");
   for (const required of [
     `Clean commit \`${attemptSourceCommit.slice(0, 8)}\` \`attempt-007\``,
     "completed every preparation boundary",
@@ -163,7 +164,7 @@ function validateArchivedTask(document: string, attemptSourceCommit: string): vo
     "USB cleanup ready",
     "parity promotion is false",
   ]) {
-    if (!block.includes(required)) {
+    if (!normalizedBlock.includes(required)) {
       throw failure("evidence_invalid", "accepted campaign task lineage is incomplete");
     }
   }

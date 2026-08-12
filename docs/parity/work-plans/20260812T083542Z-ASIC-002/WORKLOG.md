@@ -48,3 +48,20 @@
 - Outcome: The implementation is ready to commit and push.
 - Blocker or next safe action: Commit and push the projector, then run it once
   against the sealed attempt from the exact clean implementation commit.
+
+## 2026-08-12T08:57:02Z | production lineage parsing fixed
+
+- Source commit: implementation commit
+  `26aabe65aad34928625ddb050aa806a0edee0142`.
+- Actions: The first clean projection invocation failed closed because the
+  archived task wraps `Ultra 205` across Markdown lines. Normalized whitespace
+  within the exact selected task block and made the fixture reproduce that
+  production shape.
+- Verification: The failed invocation created no projection. The focused
+  real-child suite, complete ordered Cargo gate, Bright Builds, all 37 Bazel
+  tests, parity/progress, immutable-plan, and diff checks pass after the fix.
+- Evidence: No public evidence was published and no hardware effect occurred.
+- Outcome: The source-lineage seam now accepts Markdown wrapping without
+  weakening the exact required phrases or task boundary.
+- Blocker or next safe action: Commit and push this regression fix, then rerun
+  the no-hardware projection from the new exact clean commit.
