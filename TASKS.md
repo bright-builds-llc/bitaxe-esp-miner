@@ -1830,43 +1830,6 @@ proved mining and controls disabled. No projection exists. The linked closure
 requires removal of that preference-value assumption in a fresh ordinal; this
 task remains active because `NET-002` is not verified.
 
-### task-parity-asic005-serial-transport-promotion | 2026-08-12 | Verify the accepted BM1366 serial transport
-
-- [x] Select `ASIC-005` from a clean synchronized preflight and bind the
-      immutable plan to the accepted hardware lineage.
-- [x] Add and verify a closed public contract that joins the validated live
-      work-send and result-parsing projections through the unchanged UART
-      transport.
-- [ ] Publish the redacted evidence, promote only `ASIC-005` when the complete
-      quorum passes, synchronize progress, and archive this task.
-
-Plan: `docs/parity/work-plans/20260812T102245Z-ASIC-005/PLAN.md`.
-
-Authorization: Software-only evidence derivation. No hardware, USB, network,
-credentials, protected artifacts, raw traces, or direct electrical interfaces
-are authorized or required by this plan.
-
-Verification: Plan-only gate passed after one bounded retry of a transient
-host-resource error: ordered Cargo, Bright Builds, all 37 Bazel tests,
-parity/progress, redaction, reference, reference-cleanliness, task-uniqueness,
-and diff checks are green. Immutable plan SHA-256 is
-`f08426c24227ea69502135a472811d99bbc7ad5f559159a1956f123a8baeb641`.
-Focused Rust contract tests and the canonical Bazel automation target pass,
-including TypeScript compilation, malformed/incomplete source rejection,
-module/span/dirty-path drift rejection, typed launch failure, sensitive-output
-guarding, and real-child validator/file behavior. Full implementation gates
-passed: ordered Cargo, Bright Builds, all 37 Bazel tests, parity/progress, the
-real ESP32-S3 package, generated contracts, redaction, reference, immutable-
-plan, reference-cleanliness, and diff checks are green.
-The committed projector accepted both exact prerequisite digests, unchanged
-UART and adapter modules, compatible bounded production TX/RX spans, current
-transport constants and failure semantics, and atomically published the mode-
-0644 independently validated projection at SHA-256
-`bad828db694ee59c4ef3d77b2e58ef89e0195ef382526b97912d0a71e882ad69`.
-Checklist transition and final gates are pending.
-
-Completion review: Pending.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

@@ -103,3 +103,41 @@
   hardware rerun.
 - Blocker or next safe action: Commit and push RESULT plus evidence, then use
   that exact source commit for the audited checklist transition.
+
+## 2026-08-12T10:39:56Z | Audited promotion and progress sync
+
+- Source commit: `496d6ea349f56b10623d401ccb6aee170c731f18`
+- Actions: Applied the one-row verified transition and synchronized progress.
+  Diff review caught an initially unformatted Rust-owned target cell before
+  commit; only the generated transition outputs were exactly restored, and the
+  same transition was regenerated with canonical backticked code spans.
+- Verification: Only `ASIC-005` changed from `implemented` to `verified` with
+  `unit,golden,workflow,hardware-smoke,hardware-regression`; README and progress
+  now report 55 of 94 active rows (58.5%). Transition receipt SHA-256 is
+  `89d841c19b0ee6eb944ffc2b472bd93d4ee9f2cbb59839074ee985e492964395`.
+- Evidence: The transition binds immutable plan SHA-256
+  `f08426c24227ea69502135a472811d99bbc7ad5f559159a1956f123a8baeb641`
+  and RESULT SHA-256
+  `b186a5c14d0be94caec2f64ed8951f9f8e42b980f4d17bf1268ff5739a738a28`.
+- Outcome: `ASIC-005` is conservatively promoted with canonical checklist
+  formatting and deterministic progress history.
+- Blocker or next safe action: Run the final mandatory gate, then archive the
+  completed task and push finalization.
+
+## 2026-08-12T10:45:26Z | Final repository gate passed
+
+- Source commit: `496d6ea349f56b10623d401ccb6aee170c731f18`
+- Actions: Ran the final ordered repository gate after the audited transition,
+  independently revalidated the public projection, and checked every immutable
+  digest, reference cleanliness, redaction, progress, and diff hygiene.
+- Verification: Ordered Cargo checks, Bright Builds, all 37 Bazel tests,
+  parity/progress, redaction, reference integrity, independent evidence
+  validation, all four immutable digests, reference cleanliness, and diff
+  checks pass. `just parity` encountered the recurring transient macOS resource
+  error during its first final rendering attempt; the single bounded retry
+  completed with no validation errors.
+- Evidence: No hardware, USB, network, credential, protected-artifact, or raw-
+  trace access occurred.
+- Outcome: ASIC-005 and its active task satisfy the complete archive gate.
+- Blocker or next safe action: Archive the exact completed task record, commit
+  and push the final transition, then begin a fresh parity invocation.

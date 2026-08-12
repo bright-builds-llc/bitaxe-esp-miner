@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260812T103956Z-ASIC-005",
+  "predecessor_sha256": "811fffce0db62d99d9d0d4a03403fec5de8ba358dbfe5395f800656a4abaa4c2",
+  "result_sha256": "a097b5d308ca9415b40622349583b49dc014293d6b5f2b37ebeb210c33035398",
+  "row_id": "ASIC-005",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260812T102245Z-ASIC-005/PLAN.md",
+  "plan_sha256": "f08426c24227ea69502135a472811d99bbc7ad5f559159a1956f123a8baeb641",
+  "result_path": "docs/parity/work-plans/20260812T102245Z-ASIC-005/RESULT.md",
+  "result_document_sha256": "b186a5c14d0be94caec2f64ed8951f9f8e42b980f4d17bf1268ff5739a738a28",
+  "before_rust_owned_target": "`firmware/bitaxe/src/asic_adapter/uart.rs`, `firmware/bitaxe/src/asic_adapter.rs`",
+  "after_rust_owned_target": "`firmware/bitaxe/src/asic_adapter/uart.rs`, `firmware/bitaxe/src/asic_adapter.rs`, `firmware/bitaxe/src/asic_adapter/production.rs`, `crates/bitaxe-automation-contracts/src/asic_serial_transport_evidence.rs`, `tools/automation/src/asic-serial-transport-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "workflow,hardware-smoke",
+  "after_evidence": "unit,golden,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Firmware compiles with typed UART1 TX17/RX18 adapter actions and default fail-closed gate in Phase 03 Plan 05. [Phase 15 evidence](evidence/phase-15-bm1366-mining-evidence-completion.md) verifies only diagnostic UART reachability and fail-closed serial behavior for chip-detect/work-result paths. Phase 21 final evidence in `evidence/phase-21-live-mining-and-soak-evidence/summary.md` adds redacted trusted wrapper diagnostic UART evidence only; accepted serial transport under mining load remains below verified.",
+  "after_notes": "Sealed exact-package Ultra 205 evidence joins accepted live work TX and qualified result RX through the unchanged bounded Rust UART transport before an accepted response; current exact-write, deadline, partial-read, idle-timeout, cleanup, independent-validation, and redaction contracts pass. See `docs/parity/work-plans/20260812T102245Z-ASIC-005/RESULT.md` and `docs/parity/evidence/asic005-serial-transport/asic-serial-transport-projection.json`. Arbitrary baud rates, direct external UART, frequency transitions, other ASICs or boards, soak stability, updates, recovery, and release readiness remain non-claims."
+}
