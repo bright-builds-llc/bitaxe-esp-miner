@@ -34,3 +34,32 @@
 - Blocker or next safe action: Commit and push the immutable plan and active
   task, then implement the typed evidence derivation without changing
   `PLAN.md`.
+
+## 2026-08-12T10:07:38Z | implementation gate passed
+
+- Source commit: `d80924d1b7a84280ef090cb8bef28d1f53dfa646`.
+- Actions: Added the Rust-owned closed result-parsing contract and independent
+  validator, synchronized TypeScript contract, host projector, CLI/Just/Bazel
+  wiring, typed failure/redaction registration, semantic source-compatibility
+  checks, and behavior-focused unit plus real-child tests.
+- Verification: Contract tests, 95 BM1366 tests, 21 production-work tests, the
+  host automation suite, and a production-shaped dry projection passed. The
+  complete ordered Cargo gate, managed-rules check, 37-test Bazel suite, real
+  Ultra 205 package, generated-contract check, parity checks, redaction, and
+  reference verification all passed.
+- Gate correction: The first production dry run exposed a non-common worker
+  span terminator and published nothing; the selector now binds the unique
+  unchanged nonce-emission fragment. The managed file-length gate then caught
+  the synchronized generated contracts above its exact 628-line ceiling; the
+  adjacent ASIC declarations were compacted without changing their contract,
+  and both generated files now match byte-for-byte at exactly 628 lines.
+- Evidence: The ignored dry projection independently validated and binds the
+  committed ASIC-003 projection digest
+  `447af65ae9e6cd5cc2199ef639ff8e0fa7f63d4c9708570bd66781c5a162e80c`.
+  No hardware, protected artifact, credential, serial, network, mining, or
+  device effect occurred.
+- Outcome: The implementation is clean and ready for its separate commit and
+  push. Public checklist evidence remains withheld until generated from that
+  clean pushed implementation commit.
+- Blocker or next safe action: Commit and push the implementation, then derive
+  and independently validate the public projection from the clean commit.

@@ -1,5 +1,6 @@
 import { OperatorSnapshotEvidenceError } from "./operator-snapshot-evidence.js";
 import { AsicInitializationEvidenceError } from "./asic-initialization-evidence.js";
+import { AsicResultParsingEvidenceError } from "./asic-result-parsing-evidence.js";
 import { AsicWorkSendEvidenceError } from "./asic-work-send-evidence.js";
 import { NetworkReconnectEvidenceError } from "./network-reconnect-evidence.js";
 import { NetworkScanEvidenceError } from "./network-scan-evidence.js";
@@ -16,6 +17,7 @@ export function maybeTypedFailurePublicValue(error: unknown): Readonly<Record<st
   if (error instanceof SettingsDurabilityError
     || error instanceof AsicInitializationEvidenceError
     || error instanceof AsicWorkSendEvidenceError
+    || error instanceof AsicResultParsingEvidenceError
     || error instanceof NetworkReconnectEvidenceError
     || error instanceof NetworkScanEvidenceError
     || error instanceof ProvisioningNetworkEvidenceError

@@ -4,6 +4,7 @@ import test from "node:test";
 import { ThemeDurabilityError } from "./theme-durability.js";
 import { AsicInitializationEvidenceError } from "./asic-initialization-evidence.js";
 import { AsicWorkSendEvidenceError } from "./asic-work-send-evidence.js";
+import { AsicResultParsingEvidenceError } from "./asic-result-parsing-evidence.js";
 import { NetworkScanEvidenceError } from "./network-scan-evidence.js";
 import { maybeTypedFailurePublicValue } from "./typed-failure.js";
 
@@ -71,6 +72,23 @@ test("ASIC work-send failures retain only closed projection facts", () => {
   // Assert
   assert.deepEqual(publicValue, {
     stage: "sealed_work_send_projection",
+    hardware_rerun_used: false,
+  });
+});
+
+test("ASIC result-parsing failures retain only closed projection facts", () => {
+  // Arrange
+  const error = new AsicResultParsingEvidenceError("evidence_invalid", "safe failure", {
+    stage: "sealed_result_parsing_projection",
+    hardware_rerun_used: false,
+  });
+
+  // Act
+  const publicValue = maybeTypedFailurePublicValue(error);
+
+  // Assert
+  assert.deepEqual(publicValue, {
+    stage: "sealed_result_parsing_projection",
     hardware_rerun_used: false,
   });
 });

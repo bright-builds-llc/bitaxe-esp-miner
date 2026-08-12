@@ -107,5 +107,8 @@ project-asic-initialization-evidence *args:
 project-asic-work-send-evidence *args:
     bazel run //tools/automation:project_asic_work_send_evidence -- {{ args }}
 
+project-asic-result-parsing-evidence *args:
+    bazel run //tools/automation:project_asic_result_parsing_evidence -- {{ args }}
+
 capture-provisioning-network-evidence *args:
     bazel run //tools/automation:capture_provisioning_network_evidence -- {{ args }}

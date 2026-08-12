@@ -34,6 +34,7 @@ export type AutomationCommand =
   | "capture-network-scan-evidence"
   | "project-asic-initialization-evidence"
   | "project-asic-work-send-evidence"
+  | "project-asic-result-parsing-evidence"
   | "capture-provisioning-network-evidence";
 
 export type AutomationStatus = "succeeded" | "failed" | "blocked";
@@ -424,49 +425,45 @@ export type AsicInitializationEvidence = {
   redaction_status: "passed";
 };
 
-export type AsicWorkSendSourceEvidence = {
-  initialization_projection_sha256: string;
-  initialization_projection_current_commit: string;
-  initialization_projection_valid: true;
-};
-
-export type AsicWorkSendObservationEvidence = {
-  payload_length_bytes: 82;
-  frame_length_bytes: 88;
-  job_id_step: 8;
-  job_id_modulus: 128;
-  typed_write_frame_action: true;
-  production_ready_gate_required: true;
-  live_work_observed: true;
-  qualified_result_observed: true;
-  accepted_submit_observed: true;
-  production_uart_retained: true;
-  core_paths_unchanged: true;
-  compatible_core_path_count: 3;
-  dispatch_spans_unchanged: true;
-  uart_write_span_unchanged: true;
-};
-
+export type AsicWorkSendSourceEvidence = { initialization_projection_sha256: string;
+  initialization_projection_current_commit: string; initialization_projection_valid: true; };
+export type AsicWorkSendObservationEvidence = { payload_length_bytes: 82;
+  frame_length_bytes: 88; job_id_step: 8; job_id_modulus: 128;
+  typed_write_frame_action: true; production_ready_gate_required: true;
+  live_work_observed: true; qualified_result_observed: true; accepted_submit_observed: true;
+  production_uart_retained: true; core_paths_unchanged: true; compatible_core_path_count: 3;
+  dispatch_spans_unchanged: true; uart_write_span_unchanged: true; };
 export type AsicWorkSendEvidence = {
-  schema_version: "bitaxe-asic-work-send-evidence-v1";
-  board: 205;
-  attempt_source_commit: string;
-  current_source_commit: string;
-  reference_commit: string;
-  workflow: WorkflowIdentity;
-  source: AsicWorkSendSourceEvidence;
-  work_send: AsicWorkSendObservationEvidence;
-  package_admitted: true;
-  runtime_identity: "trusted";
-  runtime_attestation_status: "trusted";
-  campaign_terminal_category: "submit_response_observed";
-  submit_outcome: "accepted";
-  safety_status: "fresh";
-  mine_on_boot_disabled: true;
-  safe_stop_confirmed: true;
-  lease_cleanup_confirmed: true;
-  usb_cleanup_ready: true;
-  hardware_rerun_used: false;
+  schema_version: "bitaxe-asic-work-send-evidence-v1"; board: 205;
+  attempt_source_commit: string; current_source_commit: string; reference_commit: string;
+  workflow: WorkflowIdentity; source: AsicWorkSendSourceEvidence;
+  work_send: AsicWorkSendObservationEvidence; package_admitted: true;
+  runtime_identity: "trusted"; runtime_attestation_status: "trusted";
+  campaign_terminal_category: "submit_response_observed"; submit_outcome: "accepted";
+  safety_status: "fresh"; mine_on_boot_disabled: true; safe_stop_confirmed: true;
+  lease_cleanup_confirmed: true; usb_cleanup_ready: true; hardware_rerun_used: false;
+  redaction_status: "passed";
+};
+export type AsicResultParsingSourceEvidence = { work_send_projection_sha256: string;
+  work_send_projection_current_commit: string; work_send_projection_valid: true; };
+export type AsicResultParsingObservationEvidence = { result_frame_length_bytes: 11;
+  strict_length_validation: true; preamble_validation: true;
+  crc_validation: true; job_lookup_validation: true; submit_nonce_little_endian: true;
+  core_validation: true; address_interval_validation: true; version_bits_recovered: true;
+  known_register_classification: true; typed_soft_discard_category_count: 8;
+  soft_discard_continuation: true; live_qualified_result_observed: true;
+  accepted_submit_observed: true; transcript_path_unchanged: true; parser_spans_unchanged: true;
+  adapter_nonce_span_unchanged: true; worker_nonce_span_unchanged: true;
+  correlation_semantics_compatible: true; };
+export type AsicResultParsingEvidence = {
+  schema_version: "bitaxe-asic-result-parsing-evidence-v1"; board: 205;
+  attempt_source_commit: string; current_source_commit: string; reference_commit: string;
+  workflow: WorkflowIdentity; source: AsicResultParsingSourceEvidence;
+  result_parsing: AsicResultParsingObservationEvidence; package_admitted: true;
+  runtime_identity: "trusted"; runtime_attestation_status: "trusted";
+  campaign_terminal_category: "submit_response_observed"; submit_outcome: "accepted";
+  safety_status: "fresh"; mine_on_boot_disabled: true; safe_stop_confirmed: true;
+  lease_cleanup_confirmed: true; usb_cleanup_ready: true; hardware_rerun_used: false;
   redaction_status: "passed";
 };
 
@@ -524,6 +521,10 @@ const automationCommands = new Set<AutomationCommand>([
   "capture-partition-layout-evidence",
   "capture-sdkconfig-rollback-evidence",
   "capture-network-reconnect-evidence",
+  "capture-network-scan-evidence",
+  "project-asic-initialization-evidence",
+  "project-asic-work-send-evidence",
+  "project-asic-result-parsing-evidence",
   "capture-provisioning-network-evidence",
 ]);
 const automationStatuses = new Set<AutomationStatus>(["succeeded", "failed", "blocked"]);

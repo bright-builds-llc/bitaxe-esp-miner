@@ -53,6 +53,19 @@ test("result validator rejects open string categories", () => {
   }));
 });
 
+test("result validator accepts the closed ASIC result-parsing command", () => {
+  // Act
+  const result = parseAutomationResult({
+    schema_version: "bitaxe-automation-result-v1",
+    command: "project-asic-result-parsing-evidence",
+    status: "succeeded",
+    category: "complete",
+  });
+
+  // Assert
+  assert.equal(result.command, "project-asic-result-parsing-evidence");
+});
+
 // @ts-expect-error monitor intentionally has no evidenceMode option.
 monitorCommand("/tmp/flash", { evidenceMode: "dual" });
 

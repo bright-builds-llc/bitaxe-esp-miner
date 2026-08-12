@@ -10,6 +10,7 @@ import "./log-buffer-evidence.test.js";
 import "./network-reconnect-evidence.test.js";
 import "./network-scan-evidence.test.js";
 import "./asic-initialization-evidence.test.js";
+import "./asic-result-parsing-evidence.test.js";
 import "./asic-work-send-evidence.test.js";
 import "./operator-snapshot-evidence.test.js";
 import "./partition-layout-evidence.test.js";
