@@ -1773,6 +1773,34 @@ exists. The linked closure requires a private exact-device candidate plus
 recurring AP readiness before another ordinal. This task remains active and
 unarchived because `NET-002` is not verified.
 
+### task-parity-net002-provisioning-network-attempt-004 | 2026-08-12 | Bind candidate identity and recurring AP readiness
+
+- [x] Select `NET-002` and bind the continuation to the attempt-003 closure.
+- [ ] Derive the private expected candidate from the detector-owned device
+      identity and add recurring redaction-safe AP/DHCP/DNS readiness.
+- [ ] Test late attachment, invisible enumeration, ambiguity, malformed device
+      identity, all closed boundaries, recovery, real children, and redaction;
+      run every mandatory software gate.
+- [ ] Commit and push, then run one detector and at most one conditional
+      attempt-004 with fresh protected paths.
+- [ ] Promote only after the complete immutable-plan success quorum passes.
+
+Plan: `docs/parity/work-plans/20260812T063811Z-NET-002/PLAN.md`.
+
+Authorization: the linked plan's bounded USB, local Wi-Fi client, DNS/HTTP,
+host cleanup, and exact-package recovery effects only. The exact candidate is
+private detector handoff material. Public runtime readiness and failure output
+use only closed categories and safe booleans. Capture start consumes the
+ordinal and never retries it.
+
+Verification: Plan-only gate passed: ordered Cargo, Bright Builds, all 37
+Bazel tests, parity progress, redaction, reference, selector, task uniqueness,
+immutable-plan digest, reference cleanliness, fresh paths, and diff checks are
+green. Immutable plan SHA-256 is
+`48796a1c9bdbbce5fbe3b8f07ae7c34ac6f2a6069396d081321b135e6e569877`.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
