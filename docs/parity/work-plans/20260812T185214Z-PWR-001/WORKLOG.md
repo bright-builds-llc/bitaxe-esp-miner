@@ -94,3 +94,42 @@
   checkpoint.
 - Blocker or next safe action: Commit and push the implementation, then run
   the public projector from that exact clean commit.
+
+## 2026-08-12 19:29 UTC | public projection and independent validation
+
+- Source commit: `9cd2ec3741c09e3a3636c8358c0203de183805bb`
+- Actions: Ran the repo-owned PWR-001 projector against the committed ASIC-002
+  projection and accepted-attempt source commit. No detector, device, network,
+  credential, protected campaign, or hardware surface was accessed.
+- Verification: The projector returned `succeeded/complete`; the independent
+  Rust validator accepted the final artifact; the file is mode `0644`, the
+  private candidate is absent, and the public projection SHA-256 is
+  `11bb816e6f6e2393b796b13c49ae7db5d181f719dc94898ca00e17ce384d469b`.
+- Evidence: `docs/parity/evidence/pwr001-asic-reset/asic-reset-projection.json`
+  and `RESULT.md` in this plan directory.
+- Outcome: The complete closed quorum supports promoting only `PWR-001` to
+  `verified` with `unit,workflow,hardware-smoke,hardware-regression` evidence.
+- Blocker or next safe action: Commit and push the evidence checkpoint, then
+  perform the audited checklist transition and synchronize progress.
+
+## 2026-08-12 19:30 UTC | repository redaction coverage
+
+- Source commit: `9cd2ec3741c09e3a3636c8358c0203de183805bb`
+- Actions: Added the new reset schema to the repository semantic-evidence
+  scanner. Its focused regression first exposed the broad `ip` key rule
+  matching the safe `exactly_one_chip_detected_after_reset` field; admitted
+  only that exact closed boolean and retained rejection for operational
+  fields.
+- Verification: The first focused run failed on that false positive. After
+  the exact-key correction, the full automation test passed and repository
+  redaction checked all 14 semantic artifacts. The ordered Cargo checks,
+  Bright Builds with zero findings, all 41 Bazel tests, isolated parity and
+  progress, reference cleanliness, and diff checks passed. The combined
+  parity tail again encountered transient macOS `os error 35` only after
+  rendering; the immediate isolated rerun reported no validation errors.
+- Evidence: The committed PWR-001 projection is now included in the global
+  semantic redaction scan rather than relying solely on projector tests.
+- Outcome: Evidence, result, and redaction coverage are ready for the pushed
+  source checkpoint required by the audited transition.
+- Blocker or next safe action: Commit and push this checkpoint, retain its
+  full hash as `SOURCE_COMMIT`, then transition only `PWR-001`.

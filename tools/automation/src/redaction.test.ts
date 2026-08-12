@@ -121,3 +121,25 @@ test("ASIC initialization admits the exact single-chip boolean only", async () =
     await rm(root, { recursive: true });
   }
 });
+
+test("ASIC reset evidence is included in the operational-field scan", async () => {
+  // Arrange
+  const root = await mkdtemp(path.join(tmpdir(), "bitaxe-redaction-asic-reset-"));
+  const evidence = path.join(root, "evidence.json");
+  await writeFile(evidence, JSON.stringify({
+    schema_version: "bitaxe-asic-reset-evidence-v1",
+    reset: { exactly_one_chip_detected_after_reset: true },
+  }));
+
+  try {
+    // Act / Assert
+    assert.equal((await verifySemanticEvidenceRedaction(root)).checked, 1);
+    await writeFile(evidence, JSON.stringify({
+      schema_version: "bitaxe-asic-reset-evidence-v1",
+      serial_port: "/dev/private-device",
+    }));
+    await assert.rejects(verifySemanticEvidenceRedaction(root));
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
