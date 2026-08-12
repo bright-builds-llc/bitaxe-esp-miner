@@ -65,3 +65,22 @@
   weakening the exact required phrases or task boundary.
 - Blocker or next safe action: Commit and push this regression fix, then rerun
   the no-hardware projection from the new exact clean commit.
+
+## 2026-08-12T09:02:20Z | public redaction false positive fixed
+
+- Source commit: lineage-fix commit
+  `0bac6e95f620772129f3c8793c5cfe24076c6063`.
+- Actions: The second clean projection invocation completed, but the
+  repository redaction verifier rejected the closed boolean key
+  `exactly_one_chip_detected` because its generic substring rule interpreted
+  the final two letters as an IP-address field. Added that exact key to the
+  semantic allowlist while preserving rejection of a raw `ip` field.
+- Verification: The rejected projection was removed before the fix and the
+  regression test proves both sides of the boundary.
+- Evidence: No public evidence remains from the rejected invocation and no
+  detector, USB, credential, serial, HTTP, network, mining, or device effect
+  occurred.
+- Outcome: The public schema can express the closed single-chip boolean
+  without weakening the broader sensitive-key denylist.
+- Blocker or next safe action: Complete all repository gates, commit and push
+  the fix, then regenerate the projection from that exact clean commit.

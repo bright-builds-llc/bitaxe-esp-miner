@@ -99,3 +99,25 @@ test("network scan evidence admits aggregates and rejects raw radio identity", a
     await rm(root, { recursive: true });
   }
 });
+
+test("ASIC initialization admits the exact single-chip boolean only", async () => {
+  // Arrange
+  const root = await mkdtemp(path.join(tmpdir(), "bitaxe-redaction-asic-init-"));
+  const evidence = path.join(root, "evidence.json");
+  await writeFile(evidence, JSON.stringify({
+    schema_version: "bitaxe-asic-initialization-evidence-v1",
+    initialization: { exactly_one_chip_detected: true },
+  }));
+
+  try {
+    // Act / Assert
+    assert.equal((await verifySemanticEvidenceRedaction(root)).checked, 1);
+    await writeFile(evidence, JSON.stringify({
+      schema_version: "bitaxe-asic-initialization-evidence-v1",
+      ip: "192.0.2.1",
+    }));
+    await assert.rejects(verifySemanticEvidenceRedaction(root));
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});

@@ -18,7 +18,12 @@ const semanticSchemas = new Set([
   "bitaxe-asic-initialization-evidence-v1",
 ]);
 
-const safeSemanticKeys = new Set(["same_origin_api_observed", "same_origin_observed", "trusted_origin_preserved"]);
+const safeSemanticKeys = new Set([
+  "exactly_one_chip_detected",
+  "same_origin_api_observed",
+  "same_origin_observed",
+  "trusted_origin_preserved",
+]);
 
 const prohibitedKeys = /(?:password|secret|token|api[_-]?key|ssid|device[_-]?url|origin|mac|ip(?:v[46])?|pool(?:url|port|user|worker)|owner(?:address)?|btc(?:address)?|usb[_-]?(?:port|path)|serial[_-]?port)/iu;
 const localPath = /(?:\/Users\/[^\s"']+|\/home\/[^\s"']+|[A-Za-z]:\\[^\s"']+)/u;
