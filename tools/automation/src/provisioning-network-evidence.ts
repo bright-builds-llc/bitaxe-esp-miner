@@ -24,13 +24,17 @@ export type ProvisioningNetworkEvidenceOptions = {
   readonly packageManifest: string;
   readonly wifiCredentials: string;
   readonly port: string;
+  readonly configurationCandidate: string;
   readonly projection: string;
   readonly captureTimeoutSeconds: number;
 };
 
 export type ProvisioningClientPort = {
   readonly admit: () => Promise<HostWifiAdmission>;
-  readonly observe: (admission: HostWifiAdmission) => Promise<ProvisioningClientObservation>;
+  readonly observe: (
+    admission: HostWifiAdmission,
+    configurationCandidate: string,
+  ) => Promise<ProvisioningClientObservation>;
   readonly cleanup: (admission: HostWifiAdmission) => Promise<boolean>;
 };
 
@@ -55,6 +59,8 @@ const noRecovery: RecoveryFacts = {
   recovery_flash_used: false,
   secondary_recovery_failure: false,
 };
+const provisioningReadyMarker =
+  "provisioning_network_ready schema_version=1 ap=ready dhcp=ready dns=ready redacted=true";
 
 export class ProvisioningNetworkEvidenceError extends Error {
   public constructor(
@@ -174,6 +180,13 @@ function exactSafeBuild(
     && [sourceCommit, referenceCommit, appElfSha256].every((identity) => document.includes(identity));
 }
 
+function hasRecurringProvisioningReadiness(document: string): boolean {
+  return document
+    .split(/\r?\n/u)
+    .filter((line) => line.trimEnd().endsWith(provisioningReadyMarker))
+    .length >= 2;
+}
+
 async function attemptRecovery(
   processPort: ProcessPort,
   flashProgram: string,
@@ -243,10 +256,13 @@ export async function captureProvisioningNetworkEvidence(
     if (!exactSafeBuild(initial, ...identities)) {
       throw failure("evidence_invalid", "trusted passive-safe runtime evidence is missing");
     }
+    if (!hasRecurringProvisioningReadiness(initial)) {
+      throw failure("evidence_invalid", "recurring provisioning-network readiness is missing");
+    }
 
     let observation: ProvisioningClientObservation;
     try {
-      observation = await client.observe(admission);
+      observation = await client.observe(admission, options.configurationCandidate);
     } catch (error) {
       if (error instanceof ProvisioningClientError) throw clientFailure(error.boundary);
       throw failure("hardware_blocked", "configuration-network client observation failed");

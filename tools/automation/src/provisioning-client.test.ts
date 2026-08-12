@@ -94,7 +94,7 @@ test("macOS client admits, joins, observes, and restores in strict order", async
 
   // Act
   const admission = await client.admit();
-  const observation = await client.observe(admission);
+  const observation = await client.observe(admission, "Bitaxe_A1B2");
   const restored = await client.cleanup(admission);
 
   // Assert
@@ -187,11 +187,57 @@ test("macOS client assigns a closed token to every observation boundary", async 
     const admission = await client.admit();
 
     // Act / Assert
-    await assert.rejects(client.observe(admission), (error: unknown) => {
+    await assert.rejects(client.observe(admission, "Bitaxe_A1B2"), (error: unknown) => {
       assert.ok(error instanceof ProvisioningClientError);
       assert.equal(error.boundary, boundary);
       assert.doesNotMatch(error.message, /DHCP|DNS|HTTP|Bitaxe|192\.168/u);
       return true;
     });
   }
+});
+
+test("macOS client joins the exact detector candidate when enumeration omits it", async () => {
+  // Arrange
+  let profileCalls = 0;
+  let associationCalls = 0;
+  const port = createFakeProcessPort(async (spec) => {
+    const command = [spec.program, ...spec.args].join(" ");
+    if (command === "networksetup -listallhardwareports") {
+      return ok("Hardware Port: Wi-Fi\nDevice: en0\n");
+    }
+    if (command === "networksetup -getairportpower en0") return ok("Wi-Fi Power (en0): On\n");
+    if (command === "networksetup -getairportnetwork en0") {
+      associationCalls += 1;
+      return associationCalls === 1
+        ? ok("You are not associated with an AirPort network.\n")
+        : ok("Current Wi-Fi Network: Bitaxe_A1B2\n");
+    }
+    if (command === "system_profiler SPAirPortDataType -json") {
+      profileCalls += 1;
+      return ok("{}");
+    }
+    if (command === "networksetup -setairportnetwork en0 Bitaxe_A1B2") return ok();
+    if (command === "ipconfig getifaddr en0") return ok("192.168.4.2\n");
+    if (command === "ipconfig getoption en0 router") return ok("192.168.4.1\n");
+    throw new Error(`unexpected command ${command}`);
+  });
+  const fetch = async (input: string | URL | globalThis.Request): Promise<Response> => {
+    return new URL(String(input)).pathname === "/api/system/info"
+      ? new Response("{}", { status: 200 })
+      : new Response("Redirect to the captive portal", { status: 302, headers: { location: "/" } });
+  };
+  const client = new MacOsProvisioningClient(
+    port,
+    "darwin",
+    async () => ({ answerMatchesGateway: true, ttlSeconds: 300 }),
+    fetch,
+  );
+  const admission = await client.admit();
+
+  // Act
+  const observation = await client.observe(admission, "Bitaxe_A1B2");
+
+  // Assert
+  assert.equal(observation.associationObserved, true);
+  assert.equal(profileCalls, 2);
 });

@@ -312,6 +312,11 @@ impl FlashEnvironment for FakeFlashEnvironment {
         Ok(())
     }
 
+    fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>> {
+        self.execute(command_spec)?;
+        Ok(b"Chip type: ESP32-S3\nMAC address: 02:00:00:00:A1:B1\n".to_vec())
+    }
+
     fn receive_only(
         &self,
         command_spec: &CommandSpec,

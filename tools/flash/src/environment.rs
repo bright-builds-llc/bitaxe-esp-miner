@@ -26,6 +26,7 @@ pub(crate) trait FlashEnvironment {
     ) -> Result<()>;
     fn begin_usb_session(&self, operation: UsbOperation, port: &str) -> Result<()>;
     fn execute(&self, command_spec: &CommandSpec) -> Result<()>;
+    fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>>;
     fn receive_only(&self, command_spec: &CommandSpec, timeout_seconds: u64) -> Result<Vec<u8>>;
     fn campaign_lease_id(&self) -> u64;
     fn receive_campaign_until(
@@ -341,6 +342,10 @@ impl FlashEnvironment for LocalFlashEnvironment {
     }
 
     fn execute(&self, command_spec: &CommandSpec) -> Result<()> {
+        self.execute_with_output(command_spec).map(|_| ())
+    }
+
+    fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>> {
         if command_spec.program != "espflash" {
             bail!("unsupported command program: {}", command_spec.program);
         }
@@ -350,14 +355,16 @@ impl FlashEnvironment for LocalFlashEnvironment {
             bail!("cleanup_failed: USB effect attempted without a repository session");
         };
         let args = command_with_port(command_spec, session.port())?;
-        session
+        let output = session
             .run_espflash(
                 self.espflash_bin.as_std_path(),
                 &args,
                 Duration::from_secs(360),
             )
             .map_err(|error| anyhow::anyhow!("{error}"))?;
-        Ok(())
+        let mut combined = output.stdout;
+        combined.extend_from_slice(&output.stderr);
+        Ok(combined)
     }
 
     fn receive_only(&self, command_spec: &CommandSpec, timeout_seconds: u64) -> Result<Vec<u8>> {

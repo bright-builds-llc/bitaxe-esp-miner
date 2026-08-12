@@ -159,8 +159,64 @@ pub(crate) fn run_detect(
             "hard-reset",
         ],
     );
-    environment.execute(&command_spec)?;
+    let output = environment.execute_with_output(&command_spec)?;
+    let candidate = configuration_candidate_from_board_info(&output)?;
+    emit_line("configuration_candidate", &candidate)?;
     Ok(())
+}
+
+fn configuration_candidate_from_board_info(output: &[u8]) -> Result<String> {
+    let document = std::str::from_utf8(output).context("board-info output was not valid UTF-8")?;
+    let identities = document
+        .lines()
+        .filter_map(|line| line.trim().strip_prefix("MAC address:").map(str::trim))
+        .collect::<Vec<_>>();
+    let [identity] = identities.as_slice() else {
+        bail!("board-info output did not contain exactly one base MAC identity");
+    };
+    let octets = identity
+        .split(':')
+        .map(|octet| u8::from_str_radix(octet, 16))
+        .collect::<Result<Vec<_>, _>>()
+        .context("board-info base MAC identity was malformed")?;
+    let [_, _, _, _, penultimate, final_octet] = octets.as_slice() else {
+        bail!("board-info base MAC identity was malformed");
+    };
+    let soft_ap_final = final_octet
+        .checked_add(1)
+        .context("board-info base MAC identity cannot derive SoftAP identity")?;
+    Ok(format!("Bitaxe_{penultimate:02X}{soft_ap_final:02X}"))
+}
+
+#[cfg(test)]
+mod configuration_candidate_tests {
+    use super::configuration_candidate_from_board_info;
+
+    #[test]
+    fn derives_soft_ap_candidate_from_the_single_base_mac() {
+        // Arrange
+        let output = b"Chip type: ESP32-S3\nMAC address: 02:00:00:00:A1:B1\n";
+
+        // Act
+        let candidate = configuration_candidate_from_board_info(output)
+            .expect("single base MAC should derive a candidate");
+
+        // Assert
+        assert_eq!(candidate, "Bitaxe_A1B2");
+    }
+
+    #[test]
+    fn rejects_missing_duplicate_malformed_and_overflow_identity() {
+        for output in [
+            "Chip type: ESP32-S3\n",
+            "MAC address: invalid\n",
+            "MAC address: 02:00:00:00:A1:FF\n",
+            "MAC address: 02:00:00:00:A1:B1\nMAC address: 02:00:00:00:C3:D3\n",
+        ] {
+            // Act / Assert
+            assert!(configuration_candidate_from_board_info(output.as_bytes()).is_err());
+        }
+    }
 }
 
 #[cfg(test)]

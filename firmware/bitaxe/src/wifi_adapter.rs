@@ -250,6 +250,8 @@ pub fn toggle_configuration_ap() -> Result<bool, ConfigurationApToggleError> {
             restore_wifi_mode(&mut owner, previous_mode);
             return Err(ConfigurationApToggleError::CaptiveDnsUnavailable);
         }
+    } else {
+        crate::boot_evidence::clear_provisioning_network_ready();
     }
 
     snapshot.ap_enabled = enabling_ap;
@@ -383,6 +385,7 @@ fn retain_provisioning(
 ) -> anyhow::Result<()> {
     let ap_ipv4 = wifi.wifi().ap_netif().get_ip_info()?.ip;
     captive_dns::start_once(ap_ipv4)?;
+    crate::boot_evidence::publish_provisioning_network_ready();
     publish_wifi_state(WifiRuntimeSnapshot {
         wifi_status: reason.wifi_status().to_owned(),
         ssid: station_ssid,
@@ -414,6 +417,7 @@ fn publish_connected_wifi(
     wifi: &BlockingWifi<EspWifi<'static>>,
     station_ssid: &str,
 ) -> anyhow::Result<()> {
+    crate::boot_evidence::clear_provisioning_network_ready();
     let ipv4 = wifi.wifi().sta_netif().get_ip_info()?.ip.to_string();
     let mac_addr = wifi
         .wifi()

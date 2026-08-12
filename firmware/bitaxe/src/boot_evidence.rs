@@ -13,7 +13,9 @@ use bitaxe_api::boot_identity::{
 use bitaxe_api::logs::{
     RuntimeHeartbeatModel, ACCEPTED_STATE_REPLAY_INTERVAL_MS, ACCEPTED_STATE_REPLAY_WINDOW_MS,
 };
-use bitaxe_api::{BootSessionId, RuntimeBootAttestation};
+use bitaxe_api::{
+    provisioning::PROVISIONING_NETWORK_READY_MARKER, BootSessionId, RuntimeBootAttestation,
+};
 use esp_idf_svc::sys;
 
 use crate::{asic_adapter, log_buffer, rtc_boot_ordinal, runtime_uptime};
@@ -24,6 +26,7 @@ static BOOT_ORDINAL: OnceLock<u64> = OnceLock::new();
 static RESET_REASON: OnceLock<ResetReasonCategory> = OnceLock::new();
 static CONNECTED_ORIGIN: OnceLock<Mutex<Option<ConnectedOriginReplay>>> = OnceLock::new();
 static RUNTIME_ATTESTATION: OnceLock<Mutex<Option<RuntimeAttestationReplay>>> = OnceLock::new();
+static PROVISIONING_NETWORK_READY: OnceLock<Mutex<Option<u64>>> = OnceLock::new();
 const OBSERVER_THREAD_STACK_BYTES: usize = 8 * 1024;
 const OBSERVER_THREAD_NAME: &str = "runtime-observer";
 
@@ -89,6 +92,7 @@ pub fn initialize_observer() {
     HEARTBEAT_MODEL.get_or_init(|| Mutex::new(RuntimeHeartbeatModel::new(nonce.0)));
     CONNECTED_ORIGIN.get_or_init(|| Mutex::new(None));
     RUNTIME_ATTESTATION.get_or_init(|| Mutex::new(None));
+    PROVISIONING_NETWORK_READY.get_or_init(|| Mutex::new(None));
 
     emit_boot_identity(nonce, ordinal, reset_reason, runtime_uptime::millis());
 
@@ -132,6 +136,29 @@ pub fn publish_runtime_boot_attestation(
     *maybe_replay = Some(replay);
     drop(maybe_replay);
     emit_runtime_attestation(&identity, now_ms);
+}
+
+/// Begins recurring closed-category proof after AP, DHCP, and DNS readiness.
+pub fn publish_provisioning_network_ready() {
+    let now_ms = runtime_uptime::millis();
+    let cell = PROVISIONING_NETWORK_READY.get_or_init(|| Mutex::new(None));
+    let Ok(mut maybe_deadline) = cell.lock() else {
+        log::warn!("provisioning_network_ready=unavailable reason=mutex_poisoned");
+        return;
+    };
+    *maybe_deadline = Some(now_ms.saturating_add(BOOT_EVIDENCE_INTERVAL_MS));
+    drop(maybe_deadline);
+    emit_provisioning_network_ready();
+}
+
+/// Stops readiness replay whenever the configuration network is no longer active.
+pub fn clear_provisioning_network_ready() {
+    let cell = PROVISIONING_NETWORK_READY.get_or_init(|| Mutex::new(None));
+    let Ok(mut maybe_deadline) = cell.lock() else {
+        log::warn!("provisioning_network_ready=unavailable reason=mutex_poisoned");
+        return;
+    };
+    *maybe_deadline = None;
 }
 
 /// Publishes the connected HTTP origin into the bounded boot-evidence replay.
@@ -206,6 +233,7 @@ fn observe_boot_lifetime() {
         }
         emit_due_runtime_origin(now_ms);
         emit_due_runtime_attestation(now_ms);
+        emit_due_provisioning_network_ready(now_ms);
 
         if maybe_replay_deadline_ms
             .is_some_and(|deadline_ms| now_ms >= deadline_ms && now_ms < replay_ends_at_ms)
@@ -231,6 +259,7 @@ fn observe_boot_lifetime() {
             .min(identity_deadline_ms)
             .min(next_origin_deadline())
             .min(next_attestation_deadline());
+        let next_wake_ms = next_wake_ms.min(next_provisioning_network_ready_deadline());
         let sleep_ms = next_wake_ms.saturating_sub(runtime_uptime::millis());
         if sleep_ms > 0 {
             thread::sleep(Duration::from_millis(sleep_ms));
@@ -238,6 +267,34 @@ fn observe_boot_lifetime() {
             thread::yield_now();
         }
     }
+}
+
+fn emit_provisioning_network_ready() {
+    log::info!("{PROVISIONING_NETWORK_READY_MARKER}");
+}
+
+fn emit_due_provisioning_network_ready(now_ms: u64) {
+    let cell = PROVISIONING_NETWORK_READY.get_or_init(|| Mutex::new(None));
+    let Ok(mut maybe_deadline) = cell.lock() else {
+        return;
+    };
+    let Some(deadline) = *maybe_deadline else {
+        return;
+    };
+    if now_ms < deadline {
+        return;
+    }
+    *maybe_deadline = Some(now_ms.saturating_add(BOOT_EVIDENCE_INTERVAL_MS));
+    drop(maybe_deadline);
+    emit_provisioning_network_ready();
+}
+
+fn next_provisioning_network_ready_deadline() -> u64 {
+    let cell = PROVISIONING_NETWORK_READY.get_or_init(|| Mutex::new(None));
+    let Ok(maybe_deadline) = cell.lock() else {
+        return u64::MAX;
+    };
+    maybe_deadline.unwrap_or(u64::MAX)
 }
 
 fn runtime_attestation(

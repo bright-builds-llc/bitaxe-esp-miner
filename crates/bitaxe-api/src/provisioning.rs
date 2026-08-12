@@ -14,6 +14,9 @@ pub const CAPTIVE_DNS_PORT: u16 = 53;
 pub const CAPTIVE_DNS_PACKET_BYTES: usize = 256;
 /// TTL used for wildcard configuration-network IPv4 answers.
 pub const CAPTIVE_DNS_TTL_SECONDS: u32 = 300;
+/// Recurring redaction-safe proof that all configuration-network owners are ready.
+pub const PROVISIONING_NETWORK_READY_MARKER: &str =
+    "provisioning_network_ready schema_version=1 ap=ready dhcp=ready dns=ready redacted=true";
 
 const DNS_HEADER_BYTES: usize = 12;
 const DNS_ANSWER_BYTES: usize = 16;
@@ -55,6 +58,15 @@ struct AnswerPlan {
 #[must_use]
 pub fn configuration_ap_ssid(ap_mac: [u8; 6]) -> String {
     format!("Bitaxe_{:02X}{:02X}", ap_mac[4], ap_mac[5])
+}
+
+/// Requires two complete recurring configuration-network readiness samples.
+#[must_use]
+pub fn has_recurring_provisioning_network_ready(log: &str) -> bool {
+    log.lines()
+        .filter(|line| line.trim_end().ends_with(PROVISIONING_NETWORK_READY_MARKER))
+        .count()
+        >= 2
 }
 
 /// Builds a bounded wildcard DNS response for configuration-network clients.
@@ -212,6 +224,20 @@ mod tests {
 
         // Assert
         assert_eq!(ssid, "Bitaxe_ABCD");
+    }
+
+    #[test]
+    fn recurring_readiness_requires_two_complete_redacted_samples() {
+        // Arrange
+        let one = format!("I ready: {PROVISIONING_NETWORK_READY_MARKER}\n");
+        let two = format!("{one}{one}");
+
+        // Act / Assert
+        assert!(!has_recurring_provisioning_network_ready(&one));
+        assert!(has_recurring_provisioning_network_ready(&two));
+        assert!(!has_recurring_provisioning_network_ready(
+            "provisioning_network_ready schema_version=1 ap=ready dhcp=ready dns=missing redacted=true",
+        ));
     }
 
     #[test]

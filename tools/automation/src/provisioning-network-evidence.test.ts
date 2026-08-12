@@ -20,6 +20,10 @@ const referenceCommit = "b".repeat(40);
 const appElfSha256 = "c".repeat(64);
 const ok = (stdout = ""): ProcessOutcome => ({ exitCode: 0, stdout, stderr: "", timedOut: false });
 
+function provisioningReadyLine(): string {
+  return "provisioning_network_ready schema_version=1 ap=ready dhcp=ready dns=ready redacted=true";
+}
+
 function apLog(): string {
   return [
     sourceCommit,
@@ -28,6 +32,8 @@ function apLog(): string {
     "runtime_boot_attestation schema_version=1 mining=disabled work_submission=disabled hardware_control=disabled redacted=true",
     "runtime_heartbeat session=00000000000000000000000000000001 sequence=7 uptime_ms=7000 cadence_ms=1000 listener_armed=false redacted=true",
     "runtime_health boot_session=00000000000000000000000000000001 operator_snapshot_revision=7 redacted=true",
+    provisioningReadyLine(),
+    provisioningReadyLine(),
   ].join("\n") + "\n";
 }
 
@@ -87,6 +93,7 @@ async function fixture(name: string) {
       packageManifest: manifest,
       wifiCredentials: credentials,
       port: "/dev/private-port",
+      configurationCandidate: "Bitaxe_A1B2",
       projection: path.join(root, "docs", "provisioning-network.json"),
       captureTimeoutSeconds: 120,
     },
@@ -150,9 +157,9 @@ test("late-attached runtime without trusted passive safety fails before client o
   });
   const guardedClient: ProvisioningClientPort = {
     admit: client.admit,
-    async observe(admission) {
+    async observe(admission, candidate) {
       observationCount += 1;
-      return client.observe(admission);
+      return client.observe(admission, candidate);
     },
     cleanup: client.cleanup,
   };
@@ -168,6 +175,44 @@ test("late-attached runtime without trusted passive safety fails before client o
   assert.equal(flashCount, 2);
   assert.equal(error.publicValue["device_recovery_complete"], true);
   await assert.rejects(readFile(value.projection, "utf8"), { code: "ENOENT" });
+});
+
+test("late-attached runtime without recurring provisioning readiness fails before association", async () => {
+  // Arrange
+  const value = await fixture("missing-provisioning-readiness");
+  let flashCount = 0;
+  let observationCount = 0;
+  const client = readyClient();
+  const guardedClient: ProvisioningClientPort = {
+    admit: client.admit,
+    async observe(admission, candidate) {
+      observationCount += 1;
+      return client.observe(admission, candidate);
+    },
+    cleanup: client.cleanup,
+  };
+  const port = createFakeProcessPort(async (spec) => {
+    if (spec.args[0] !== "flash-monitor") return ok();
+    flashCount += 1;
+    return ok(flashCount === 1
+      ? apLog().replaceAll(`${provisioningReadyLine()}\n`, "")
+      : recoveryLog());
+  });
+
+  // Act
+  const error = await captureError(captureProvisioningNetworkEvidence(
+    value.root,
+    value.options,
+    port,
+    "flash",
+    "validator",
+    guardedClient,
+  ));
+
+  // Assert
+  assert.equal(error.category, "evidence_invalid");
+  assert.equal(observationCount, 0);
+  assert.equal(error.publicValue["device_recovery_complete"], true);
 });
 
 test("host admission failure stops before any flash effect", async () => {

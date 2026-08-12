@@ -6,6 +6,34 @@ const UNIX_PORT = /^\/dev\/(?:cu\.usbmodem|cu\.usbserial|ttyUSB|ttyACM)[A-Za-z0-
 const WINDOWS_PORT = /^COM[0-9]+$/u;
 
 export async function portFromDetectorOutput(workspaceRoot: string, detectorOutput: string): Promise<string> {
+  return (await detectorHandoffFromOutput(workspaceRoot, detectorOutput)).port;
+}
+
+export type ProvisioningDetectorHandoff = {
+  readonly port: string;
+  readonly configurationCandidate: string;
+};
+
+export async function provisioningDetectorHandoffFromOutput(
+  workspaceRoot: string,
+  detectorOutput: string,
+): Promise<ProvisioningDetectorHandoff> {
+  const handoff = await detectorHandoffFromOutput(workspaceRoot, detectorOutput);
+  const candidates = handoff.document
+    .split(/\r?\n/u)
+    .flatMap((line) => line.startsWith("configuration_candidate: ")
+      ? [line.slice("configuration_candidate: ".length)]
+      : []);
+  if (candidates.length !== 1 || !/^Bitaxe_[0-9A-F]{4}$/u.test(candidates[0] ?? "")) {
+    throw new Error("detector output must contain exactly one private configuration candidate");
+  }
+  return { port: handoff.port, configurationCandidate: candidates[0] as string };
+}
+
+async function detectorHandoffFromOutput(
+  workspaceRoot: string,
+  detectorOutput: string,
+): Promise<{ readonly port: string; readonly document: string }> {
   const detectorPath = assertWithinWorkspace(workspaceRoot, detectorOutput);
   const metadata = await stat(detectorPath);
   if (!metadata.isFile()) throw new Error("detector output must be a regular file");
@@ -19,5 +47,5 @@ export async function portFromDetectorOutput(workspaceRoot: string, detectorOutp
   if (port === undefined || (!UNIX_PORT.test(port) && !WINDOWS_PORT.test(port))) {
     throw new Error("detector output admitted port is invalid");
   }
-  return port;
+  return { port, document };
 }

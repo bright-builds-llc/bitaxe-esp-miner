@@ -75,13 +75,20 @@ export class MacOsProvisioningClient {
     return { interfaceName };
   }
 
-  public async observe(admission: HostWifiAdmission): Promise<ProvisioningClientObservation> {
-    const candidates = await atBoundary(
-      "configuration_candidate",
-      () => this.waitForSingleCandidate(),
-    );
-    const candidate = candidates[0];
-    if (candidate === undefined) throw new ProvisioningClientError("configuration_candidate");
+  public async observe(
+    admission: HostWifiAdmission,
+    configurationCandidate: string,
+  ): Promise<ProvisioningClientObservation> {
+    const candidate = await atBoundary("configuration_candidate", async () => {
+      if (!candidatePattern.test(configurationCandidate)) {
+        throw new Error("configuration network identity is invalid");
+      }
+      const observed = await this.candidates();
+      if (observed.some((entry) => entry !== configurationCandidate)) {
+        throw new Error("configuration network is ambiguous");
+      }
+      return configurationCandidate;
+    });
     await atBoundary("association", async () => {
       await this.run("networksetup", ["-setairportnetwork", admission.interfaceName, candidate]);
       this.joined = true;
@@ -150,16 +157,6 @@ export class MacOsProvisioningClient {
     } catch {
       return false;
     }
-  }
-
-  private async waitForSingleCandidate(): Promise<readonly string[]> {
-    for (let attempt = 0; attempt < 6; attempt += 1) {
-      const candidates = await this.candidates();
-      if (candidates.length === 1) return candidates;
-      if (candidates.length > 1) throw new Error("configuration network is ambiguous");
-      await delay(1_000);
-    }
-    throw new Error("configuration network was not observed");
   }
 
   private async candidates(): Promise<readonly string[]> {

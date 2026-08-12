@@ -12,7 +12,10 @@ import {
   type AutomationCommand,
   type AutomationResult,
 } from "./contracts.generated.js";
-import { portFromDetectorOutput } from "./detector.js";
+import {
+  portFromDetectorOutput,
+  provisioningDetectorHandoffFromOutput,
+} from "./detector.js";
 import { fetchJsonFromSameOrigin } from "./http.js";
 import {
   hasFlag,
@@ -410,12 +413,16 @@ async function main(): Promise<number> {
       }, processPort, flashProgram(root),
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_network_reconnect_evidence"));
     } else if (invocation.command === "capture-provisioning-network-evidence") {
-      const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
+      const handoff = await provisioningDetectorHandoffFromOutput(
+        root,
+        optionValue(invocation, "--detector-output"),
+      );
       publicValue = await captureProvisioningNetworkEvidence(root, {
         privateRoot: optionValue(invocation, "--private-root"),
         packageManifest: optionValue(invocation, "--package-manifest"),
         wifiCredentials: optionValue(invocation, "--wifi-credentials"),
-        port,
+        port: handoff.port,
+        configurationCandidate: handoff.configurationCandidate,
         projection: optionValue(invocation, "--projection"),
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root),
