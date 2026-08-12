@@ -1830,31 +1830,6 @@ proved mining and controls disabled. No projection exists. The linked closure
 requires removal of that preference-value assumption in a fresh ordinal; this
 task remains active because `NET-002` is not verified.
 
-### task-parity-str001-socket-promotion | 2026-08-12 | Verify the accepted Stratum v1 socket path
-
-- [x] Select `STR-001` from a clean synchronized preflight and bind an
-      immutable plan to the accepted conservative Ultra 205 lineage.
-- [x] Add and verify a closed public contract that proves the accepted session
-      traversed the unchanged bounded production TCP adapter.
-- [ ] Publish the redacted projection, promote only `STR-001` when the full
-      quorum passes, synchronize progress, and archive this task.
-
-Plan: `docs/parity/work-plans/20260812T111705Z-STR-001/PLAN.md`.
-
-Authorization: Software-only derivation from committed public evidence and Git
-history. No protected campaign access, detector, package build, flash, reset,
-USB/network session, credentials, mining, pool contact, fan/voltage/power/ASIC
-actuation, recovery, direct UART, pins, or other hardware effect is permitted.
-
-Verification and stop rule: Require the exact independently validated ASIC-002
-projection digest, accepted/current/reference commit binding, unchanged TCP
-transport module, compatible unique owner/lifecycle semantics, focused
-regressions, independent Rust validation, every repository gate, redaction,
-reference cleanliness, and atomic publication. Any failure leaves `STR-001`
-implemented and stops this plan without a hardware fallback.
-
-Completion review: Pending.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

@@ -6437,3 +6437,47 @@ initialized work and an accepted response, followed by confirmed safe stop and
 cleanup. No protected evidence or new hardware effect occurred. The evidence
 and transition commits were pushed, the final repository gate passed, and the
 row is verified. This task is complete and archived.
+
+### task-parity-str001-socket-promotion | 2026-08-12 | Verify the accepted Stratum v1 socket path
+
+- [x] Select `STR-001` from a clean synchronized preflight and bind an
+      immutable plan to the accepted conservative Ultra 205 lineage.
+- [x] Add and verify a closed public contract that proves the accepted session
+      traversed the unchanged bounded production TCP adapter.
+- [x] Publish the redacted projection, promote only `STR-001` when the full
+      quorum passes, synchronize progress, and archive this task.
+
+Plan: `docs/parity/work-plans/20260812T111705Z-STR-001/PLAN.md`.
+
+Authorization: Software-only derivation from committed public evidence and Git
+history. No protected campaign access, detector, package build, flash, reset,
+USB/network session, credentials, mining, pool contact, fan/voltage/power/ASIC
+actuation, recovery, direct UART, pins, or other hardware effect is permitted.
+
+Verification and stop rule: Require the exact independently validated ASIC-002
+projection digest, accepted/current/reference commit binding, unchanged TCP
+transport module, compatible unique owner/lifecycle semantics, focused
+regressions, independent Rust validation, every repository gate, redaction,
+reference cleanliness, and atomic publication. Any failure leaves `STR-001`
+implemented and stops this plan without a hardware fallback.
+
+Verification: Focused Rust and TypeScript contracts, real-child integration,
+ordered Cargo, Bright Builds, all 37 Bazel tests, parity/progress, generated
+contracts, independent projection validation, redaction, reference, immutable
+digests, source compatibility, task uniqueness, and diff checks pass. Public
+projection SHA-256 is
+`dcb3eed396a268114b017d7ef4fbca9c427a390d7acf405fc52fbef6472122b8`.
+Transition `20260812T113857Z-STR-001` promoted only `STR-001`; progress now
+records 57 of 94 active rows (60.6%). The final ordered Cargo, Bright Builds,
+all 37 Bazel tests, parity/progress, generated contracts, independent evidence
+validation, redaction, reference, immutable-digest, task-uniqueness,
+reference-cleanliness, and diff gates pass. `just parity` required one bounded
+retry after the recurring transient macOS resource error and then reported no
+validation errors.
+
+Completion review: The source-bound proof establishes that the accepted
+conservative Ultra 205 traversed the unchanged production TCP adapter through
+an authorized Stratum v1 lifecycle to a real accepted submit response, then
+completed safe stop and cleanup. No protected evidence or new hardware effect
+occurred. The evidence and transition commits were pushed, the final repository
+gate passed, and the row is verified. This task is complete and archived.

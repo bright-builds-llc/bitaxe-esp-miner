@@ -88,3 +88,41 @@
   hardware rerun or protected-evidence access.
 - Blocker or next safe action: Commit and push RESULT plus evidence, then use
   that exact source commit for the audited one-row checklist transition.
+
+## 2026-08-12T11:38:57Z | Audited promotion and progress sync
+
+- Source commit: `ce06e08abb2ee353a2b89f079f3e9d489626d7ac`
+- Actions: Applied the one-row verified transition and synchronized progress
+  with the selected row and immutable plan path.
+- Verification: Only `STR-001` changed from `implemented` to `verified` with
+  `unit,workflow,hardware-smoke,hardware-regression`; README and progress now
+  report 57 of 94 active rows (60.6%). Transition receipt SHA-256 is
+  `6f420bead5eb1b5cfd50b90f7a9fd1cbaf9255a87245f510c0049235e4a1f1bf`.
+- Evidence: The receipt binds immutable plan SHA-256
+  `86391ada9b048929534cc5e2cd4bb290fcaf089517109a44f3adcfb3310678ea`
+  and RESULT SHA-256
+  `a33f93215c05d78aaaff07789f46aa37c8150577668927d498deb11c78e1d285`.
+- Outcome: `STR-001` is conservatively promoted with canonical checklist and
+  deterministic progress metadata.
+- Blocker or next safe action: Run the final mandatory gate, then archive the
+  completed task and push finalization.
+
+## 2026-08-12T11:47:17Z | Final repository gate and archival
+
+- Source commit: `ce06e08abb2ee353a2b89f079f3e9d489626d7ac`
+- Actions: Ran the complete post-transition repository gate, independently
+  validated the final projection, and moved the completed active task to the
+  append-only archive.
+- Verification: Ordered Cargo, Bright Builds, all 37 Bazel tests,
+  parity/progress, generated contracts, independent evidence validation,
+  redaction, pinned-reference integrity and cleanliness, immutable plan,
+  RESULT, evidence and transition-receipt digests, task uniqueness, and diff
+  checks pass. The first parity rendering hit the recurring transient macOS
+  `Resource temporarily unavailable (os error 35)`; its single bounded retry
+  passed with no validation errors. The ESP32-S3 rollback-probe packaging step
+  completed successfully after its expected slow local build.
+- Evidence: No protected evidence or hardware was accessed. The public
+  evidence, RESULT and transition receipt remain hash-bound to the plan.
+- Outcome: `STR-001` is verified and its completed task is archived.
+- Blocker or next safe action: Commit and push finalization, then begin one
+  fresh `advance-parity` invocation from the synchronized selector.
