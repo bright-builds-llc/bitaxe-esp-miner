@@ -83,3 +83,20 @@ test("process adapter terminates a timed out child", async () => {
   assert.equal(outcome.timedOut, true, outcome.stderr);
   assert.notEqual(outcome.exitCode, 0);
 });
+
+test("process adapter honors a bounded per-child timeout override", async () => {
+  // Arrange
+  const processPort = createLocalProcessPort({ cwd: process.cwd(), timeoutMs: 5_000 });
+  const spec = internalCommandSpec(
+    nodeProgram,
+    ["-e", "setInterval(() => undefined, 1_000)"],
+    (value) => value,
+  );
+
+  // Act
+  const outcome = await processPort.run(spec, 50);
+
+  // Assert
+  assert.equal(outcome.timedOut, true, outcome.stderr);
+  assert.notEqual(outcome.exitCode, 0);
+});

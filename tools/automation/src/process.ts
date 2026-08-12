@@ -10,7 +10,7 @@ export type ProcessOutcome = {
 };
 
 export type ProcessPort = {
-  readonly run: (spec: CommandSpec<unknown>) => Promise<ProcessOutcome>;
+  readonly run: (spec: CommandSpec<unknown>, maybeTimeoutMs?: number) => Promise<ProcessOutcome>;
   readonly loadEspEnvironment: () => Promise<Readonly<Record<string, string>>>;
 };
 
@@ -48,7 +48,7 @@ export function allowedEnvironment(source: NodeJS.ProcessEnv | Readonly<Record<s
 }
 
 export function createLocalProcessPort(options: { readonly cwd: string; readonly timeoutMs: number }): ProcessPort {
-  const run: ProcessPort["run"] = (spec) => {
+  const run: ProcessPort["run"] = (spec, maybeTimeoutMs) => {
     const child = spawn(spec.program, spec.args, {
       cwd: options.cwd,
       env: allowedEnvironment({ ...process.env, ...(spec.environment ?? {}) }),
@@ -64,7 +64,7 @@ export function createLocalProcessPort(options: { readonly cwd: string; readonly
       timedOut = true;
       child.kill("SIGTERM");
       killTimeout = setTimeout(() => child.kill("SIGKILL"), 5_000);
-    }, options.timeoutMs);
+    }, maybeTimeoutMs ?? options.timeoutMs);
     return new Promise<ProcessOutcome>((resolve, reject) => {
       child.once("error", (error) => {
         clearTimeout(timeout);

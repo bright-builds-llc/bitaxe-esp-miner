@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
+import { mkdtemp, readFile, stat, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import test from "node:test";
 
-import { createFakeProcessPort, type ProcessOutcome } from "./process.js";
+import { internalCommandSpec } from "./contracts.generated.js";
+import { createFakeProcessPort, createLocalProcessPort, type ProcessOutcome } from "./process.js";
 import {
   configurationCandidates,
   MacOsProvisioningClient,
@@ -12,6 +16,25 @@ import {
 } from "./provisioning-client.js";
 
 const ok = (stdout = ""): ProcessOutcome => ({ exitCode: 0, stdout, stderr: "", timedOut: false });
+
+async function testPrivateRoot(name: string): Promise<string> {
+  return mkdtemp(path.join(tmpdir(), `bitaxe-corewlan-${name}-`));
+}
+
+async function coreWlanResult(
+  args: readonly string[],
+  status = "ready",
+): Promise<ProcessOutcome> {
+  const resultIndex = args.indexOf("--result");
+  const resultPath = args[resultIndex + 1];
+  assert.equal(typeof resultPath, "string");
+  assert.equal(args.some((argument) => argument.includes("Bitaxe_")), false);
+  await writeFile(resultPath as string, JSON.stringify({
+    schema_version: "bitaxe-macos-provisioning-association-result-v1",
+    status,
+  }), { mode: 0o600 });
+  return ok();
+}
 
 test("host inventory parsers select only one canonical Wi-Fi interface and unique Bitaxe candidates", () => {
   // Arrange
@@ -50,11 +73,47 @@ test("DNS parser accepts one wildcard A answer with the pinned TTL", () => {
   });
 });
 
+test("CoreWLAN helper real child validates a protected fixture without network effects", async () => {
+  // Arrange
+  const privateRoot = await testPrivateRoot("real-child");
+  const intentPath = path.join(privateRoot, "intent.private.json");
+  const resultPath = path.join(privateRoot, "result.private.json");
+  await writeFile(intentPath, JSON.stringify({
+    schema_version: "bitaxe-macos-provisioning-association-intent-v1",
+    operation: "fixture",
+    interface_name: "fixture-interface",
+    configuration_candidate: "Bitaxe_A1B2",
+  }), { mode: 0o600 });
+  const helperRoot = process.env["TEST_SRCDIR"] === undefined
+    ? process.cwd()
+    : path.join(process.env["TEST_SRCDIR"] as string, "_main");
+  const helper = path.join(helperRoot, "tools/automation/src/macos-provisioning-associate.swift");
+  const spec = internalCommandSpec(
+    "/usr/bin/xcrun",
+    ["swift", helper, "--intent", intentPath, "--result", resultPath],
+    (value) => value,
+  );
+  const processPort = createLocalProcessPort({ cwd: process.cwd(), timeoutMs: 5_000 });
+
+  // Act
+  const outcome = await processPort.run(spec, 45_000);
+
+  // Assert
+  assert.equal(outcome.exitCode, 0, outcome.stderr);
+  assert.equal(outcome.stdout, "");
+  assert.equal(outcome.stderr, "");
+  assert.equal((await stat(resultPath)).mode & 0o777, 0o600);
+  assert.deepEqual(JSON.parse(await readFile(resultPath, "utf8")), {
+    schema_version: "bitaxe-macos-provisioning-association-result-v1",
+    status: "ready",
+  });
+  assert.equal(spec.args.some((argument) => argument.includes("Bitaxe_")), false);
+});
+
 test("macOS client admits, joins, observes, and restores in strict order", async () => {
   // Arrange
   const calls: string[] = [];
   let candidateScan = 0;
-  let associationChecks = 0;
   const processPort = createFakeProcessPort(async (spec) => {
     const command = [spec.program, ...spec.args].join(" ");
     calls.push(command);
@@ -63,16 +122,13 @@ test("macOS client admits, joins, observes, and restores in strict order", async
     }
     if (command === "networksetup -getairportpower en0") return ok("Wi-Fi Power (en0): On\n");
     if (command === "networksetup -getairportnetwork en0") {
-      associationChecks += 1;
-      return associationChecks === 2
-        ? ok("Current Wi-Fi Network: Bitaxe_A1B2\n")
-        : ok("You are not associated with an AirPort network.\n");
+      return ok("You are not associated with an AirPort network.\n");
     }
     if (command === "system_profiler SPAirPortDataType -json") {
       candidateScan += 1;
       return ok(JSON.stringify(candidateScan === 1 ? {} : { "Bitaxe_A1B2": {} }));
     }
-    if (command === "networksetup -setairportnetwork en0 Bitaxe_A1B2") return ok();
+    if (spec.program === "/usr/bin/xcrun") return coreWlanResult(spec.args);
     if (command === "ipconfig getifaddr en0") return ok("192.168.4.2\n");
     if (command === "ipconfig getoption en0 router") return ok("192.168.4.1\n");
     if (command === "networksetup -setairportpower en0 off") return ok();
@@ -93,16 +149,18 @@ test("macOS client admits, joins, observes, and restores in strict order", async
   );
 
   // Act
+  const privateRoot = await testPrivateRoot("ready");
   const admission = await client.admit();
-  const observation = await client.observe(admission, "Bitaxe_A1B2");
+  const observation = await client.observe(admission, "Bitaxe_A1B2", privateRoot);
   const restored = await client.cleanup(admission);
 
   // Assert
   assert.equal(observation.dhcpObserved, true);
   assert.equal(observation.captiveRedirectObserved, true);
   assert.equal(restored, true);
-  assert.ok(calls.indexOf("networksetup -setairportnetwork en0 Bitaxe_A1B2")
+  assert.ok(calls.findIndex((command) => command.startsWith("/usr/bin/xcrun swift "))
     < calls.indexOf("ipconfig getifaddr en0"));
+  assert.equal(calls.some((command) => command.includes("Bitaxe_A1B2")), false);
   assert.ok(calls.indexOf("networksetup -setairportpower en0 off")
     < calls.indexOf("networksetup -setairportpower en0 on"));
 });
@@ -139,7 +197,6 @@ test("macOS client assigns a closed token to every observation boundary", async 
   for (const boundary of boundaries) {
     // Arrange
     let profileCalls = 0;
-    let associationCalls = 0;
     let fetchCalls = 0;
     const port = createFakeProcessPort(async (spec) => {
       const command = [spec.program, ...spec.args].join(" ");
@@ -148,10 +205,7 @@ test("macOS client assigns a closed token to every observation boundary", async 
       }
       if (command === "networksetup -getairportpower en0") return ok("Wi-Fi Power (en0): On\n");
       if (command === "networksetup -getairportnetwork en0") {
-        associationCalls += 1;
-        return associationCalls === 1
-          ? ok("You are not associated with an AirPort network.\n")
-          : ok("Current Wi-Fi Network: Bitaxe_A1B2\n");
+        return ok("You are not associated with an AirPort network.\n");
       }
       if (command === "system_profiler SPAirPortDataType -json") {
         profileCalls += 1;
@@ -161,8 +215,8 @@ test("macOS client assigns a closed token to every observation boundary", async 
           : { "Bitaxe_A1B2": {} };
         return ok(JSON.stringify(candidates));
       }
-      if (command === "networksetup -setairportnetwork en0 Bitaxe_A1B2") {
-        return boundary === "association" ? { ...ok(), exitCode: 1 } : ok();
+      if (spec.program === "/usr/bin/xcrun") {
+        return coreWlanResult(spec.args, boundary === "association" ? "association_rejected" : "ready");
       }
       if (command.startsWith("ipconfig ")) {
         if (boundary === "dhcp") throw new Error("private DHCP detail");
@@ -184,10 +238,11 @@ test("macOS client assigns a closed token to every observation boundary", async 
         : new Response("{}", { status: 200 });
     };
     const client = new MacOsProvisioningClient(port, "darwin", dnsQuery, fetch);
+    const privateRoot = await testPrivateRoot(boundary);
     const admission = await client.admit();
 
     // Act / Assert
-    await assert.rejects(client.observe(admission, "Bitaxe_A1B2"), (error: unknown) => {
+    await assert.rejects(client.observe(admission, "Bitaxe_A1B2", privateRoot), (error: unknown) => {
       assert.ok(error instanceof ProvisioningClientError);
       assert.equal(error.boundary, boundary);
       assert.doesNotMatch(error.message, /DHCP|DNS|HTTP|Bitaxe|192\.168/u);
@@ -196,10 +251,69 @@ test("macOS client assigns a closed token to every observation boundary", async 
   }
 });
 
+test("CoreWLAN missing malformed timeout and every non-ready subtype stay at association", async () => {
+  const cases = [
+    "missing",
+    "malformed",
+    "timeout",
+    "input_invalid",
+    "interface_unavailable",
+    "directed_scan_failed",
+    "candidate_absent",
+    "candidate_ambiguous",
+    "association_rejected",
+    "association_not_running",
+  ] as const;
+  for (const testCase of cases) {
+    // Arrange
+    const privateRoot = await testPrivateRoot(`failure-${testCase}`);
+    let cleanupStarted = false;
+    const port = createFakeProcessPort(async (spec) => {
+      const command = [spec.program, ...spec.args].join(" ");
+      if (command === "networksetup -listallhardwareports") return ok("Hardware Port: Wi-Fi\nDevice: en0\n");
+      if (command === "networksetup -getairportpower en0") return ok("Wi-Fi Power (en0): On\n");
+      if (command === "networksetup -getairportnetwork en0") {
+        return ok("You are not associated with an AirPort network.\n");
+      }
+      if (command === "system_profiler SPAirPortDataType -json") return ok("{}");
+      if (command === "networksetup -setairportpower en0 off") {
+        cleanupStarted = true;
+        return ok();
+      }
+      if (command === "networksetup -setairportpower en0 on") return ok();
+      if (spec.program === "/usr/bin/xcrun") {
+        if (testCase === "timeout") return { ...ok(), exitCode: 1, timedOut: true };
+        if (testCase === "missing") return ok();
+        const resultPath = spec.args[spec.args.indexOf("--result") + 1];
+        assert.equal(typeof resultPath, "string");
+        await writeFile(
+          resultPath as string,
+          testCase === "malformed"
+            ? "{"
+            : JSON.stringify({ schema_version: "bitaxe-macos-provisioning-association-result-v1", status: testCase }),
+          { mode: 0o600 },
+        );
+        return ok();
+      }
+      throw new Error(`unexpected command ${command}`);
+    });
+    const client = new MacOsProvisioningClient(port, "darwin");
+    const admission = await client.admit();
+
+    // Act / Assert
+    await assert.rejects(client.observe(admission, "Bitaxe_A1B2", privateRoot), (error: unknown) => {
+      assert.ok(error instanceof ProvisioningClientError);
+      assert.equal(error.boundary, "association");
+      return true;
+    });
+    assert.equal(await client.cleanup(admission), true);
+    assert.equal(cleanupStarted, true);
+  }
+});
+
 test("macOS client joins the exact detector candidate when enumeration omits it", async () => {
   // Arrange
   let profileCalls = 0;
-  let associationCalls = 0;
   const port = createFakeProcessPort(async (spec) => {
     const command = [spec.program, ...spec.args].join(" ");
     if (command === "networksetup -listallhardwareports") {
@@ -207,16 +321,13 @@ test("macOS client joins the exact detector candidate when enumeration omits it"
     }
     if (command === "networksetup -getairportpower en0") return ok("Wi-Fi Power (en0): On\n");
     if (command === "networksetup -getairportnetwork en0") {
-      associationCalls += 1;
-      return associationCalls === 1
-        ? ok("You are not associated with an AirPort network.\n")
-        : ok("Current Wi-Fi Network: Bitaxe_A1B2\n");
+      return ok("You are not associated with an AirPort network.\n");
     }
     if (command === "system_profiler SPAirPortDataType -json") {
       profileCalls += 1;
       return ok("{}");
     }
-    if (command === "networksetup -setairportnetwork en0 Bitaxe_A1B2") return ok();
+    if (spec.program === "/usr/bin/xcrun") return coreWlanResult(spec.args);
     if (command === "ipconfig getifaddr en0") return ok("192.168.4.2\n");
     if (command === "ipconfig getoption en0 router") return ok("192.168.4.1\n");
     throw new Error(`unexpected command ${command}`);
@@ -232,10 +343,11 @@ test("macOS client joins the exact detector candidate when enumeration omits it"
     async () => ({ answerMatchesGateway: true, ttlSeconds: 300 }),
     fetch,
   );
+  const privateRoot = await testPrivateRoot("invisible");
   const admission = await client.admit();
 
   // Act
-  const observation = await client.observe(admission, "Bitaxe_A1B2");
+  const observation = await client.observe(admission, "Bitaxe_A1B2", privateRoot);
 
   // Assert
   assert.equal(observation.associationObserved, true);

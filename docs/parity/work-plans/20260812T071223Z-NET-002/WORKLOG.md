@@ -29,3 +29,25 @@
 - Outcome: The immutable plan is eligible for commit and push.
 - Blocker or next safe action: Commit and push, then implement the protected
   CoreWLAN association transaction without editing `PLAN.md`.
+
+## 2026-08-12T07:23:27Z | implementation gate complete
+
+- Source commit: plan commit `b02f56b1`.
+- Actions: Added the protected CoreWLAN helper, exact-SSID directed scan and
+  association, private intent/result/child records, cleanup arming before the
+  effect, and a 45-second per-child timeout. A real-child sandbox regression
+  caught and fixed workspace-root resolution before hardware use.
+- Verification: Swift typecheck and no-effect real-child fixture pass. All
+  automation tests, focused production build, exact firmware package build,
+  ordered Cargo format/Clippy/build/tests, Bright Builds, all 37 Bazel tests,
+  parity/progress, redaction, reference, generated contracts, selector,
+  immutable-plan, task, fresh-path, reference-cleanliness, sensitive-output,
+  and diff gates pass. Plan SHA-256 remains
+  `2d705f1a10befc1e235d383b9b33e5fe620e6522fcba4f6b0ba814d92bc99028`.
+- Evidence: Software fixtures and protected closed categories only. No
+  detector, host-network, credential, USB, DNS/HTTP, serial, or device effect
+  occurred.
+- Outcome: The exact attempt-005 implementation is eligible for commit and
+  push after final diff review.
+- Blocker or next safe action: Commit and push, rebuild the exact package, run
+  one detector, and consume attempt-005 at most once if admitted.

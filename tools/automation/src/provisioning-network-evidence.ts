@@ -34,6 +34,7 @@ export type ProvisioningClientPort = {
   readonly observe: (
     admission: HostWifiAdmission,
     configurationCandidate: string,
+    privateRoot: string,
   ) => Promise<ProvisioningClientObservation>;
   readonly cleanup: (admission: HostWifiAdmission) => Promise<boolean>;
 };
@@ -231,7 +232,13 @@ export async function captureProvisioningNetworkEvidence(
   const referenceCommit = string(manifest, "reference_commit", "package manifest");
   const appElfSha256 = string(manifest, "app_elf_sha256", "package manifest");
   const identities = [sourceCommit, referenceCommit, appElfSha256] as const;
-  const client = maybeClient ?? new MacOsProvisioningClient(processPort);
+  const client = maybeClient ?? new MacOsProvisioningClient(
+    processPort,
+    process.platform,
+    undefined,
+    undefined,
+    workspaceRoot,
+  );
   let admission: HostWifiAdmission;
   try {
     admission = await client.admit();
@@ -262,7 +269,7 @@ export async function captureProvisioningNetworkEvidence(
 
     let observation: ProvisioningClientObservation;
     try {
-      observation = await client.observe(admission, options.configurationCandidate);
+      observation = await client.observe(admission, options.configurationCandidate, privateRoot);
     } catch (error) {
       if (error instanceof ProvisioningClientError) throw clientFailure(error.boundary);
       throw failure("hardware_blocked", "configuration-network client observation failed");

@@ -1820,9 +1820,9 @@ unarchived because `NET-002` is not verified.
 - [x] Select `NET-002`, bind the continuation to attempt-004, and prove the
       installed CoreWLAN directed-scan and association API shape without an
       effect.
-- [ ] Add the protected exact-SSID CoreWLAN helper and private association
+- [x] Add the protected exact-SSID CoreWLAN helper and private association
       sub-boundaries without changing the closed public evidence contract.
-- [ ] Test real-child fixture execution, timeouts, malformed results, every
+- [x] Test real-child fixture execution, timeouts, malformed results, every
       association subtype, recovery precedence, modes, and redaction; run all
       mandatory software gates.
 - [ ] Commit and push, then run one detector and at most one conditional
@@ -1842,6 +1842,12 @@ reference, generated contracts, selector, task uniqueness, immutable-plan
 digest, reference cleanliness, fresh paths, and diff checks are green.
 Immutable plan SHA-256 is
 `2d705f1a10befc1e235d383b9b33e5fe620e6522fcba4f6b0ba814d92bc99028`.
+Implementation verification passes Swift typecheck and the no-effect
+real-child fixture; all automation tests; focused production and exact
+firmware-package builds; ordered Cargo; Bright Builds; all 37 Bazel tests;
+parity/progress; redaction; reference; generated contracts; selector;
+immutable-plan; task; fresh-path; reference-cleanliness; sensitive-output; and
+diff checks.
 
 Completion review: Pending.
 

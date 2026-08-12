@@ -157,9 +157,9 @@ test("late-attached runtime without trusted passive safety fails before client o
   });
   const guardedClient: ProvisioningClientPort = {
     admit: client.admit,
-    async observe(admission, candidate) {
+    async observe(admission, candidate, privateRoot) {
       observationCount += 1;
-      return client.observe(admission, candidate);
+      return client.observe(admission, candidate, privateRoot);
     },
     cleanup: client.cleanup,
   };
@@ -185,9 +185,9 @@ test("late-attached runtime without recurring provisioning readiness fails befor
   const client = readyClient();
   const guardedClient: ProvisioningClientPort = {
     admit: client.admit,
-    async observe(admission, candidate) {
+    async observe(admission, candidate, privateRoot) {
       observationCount += 1;
-      return client.observe(admission, candidate);
+      return client.observe(admission, candidate, privateRoot);
     },
     cleanup: client.cleanup,
   };

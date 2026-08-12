@@ -7,7 +7,12 @@ package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "automation_sources",
-    srcs = glob(["src/**/*.ts"]),
+    srcs = glob(["src/**/*.ts", "src/**/*.swift"]),
+)
+
+filegroup(
+    name = "macos_provisioning_association_helper",
+    srcs = ["src/macos-provisioning-associate.swift"],
 )
 
 npm_link_types_node()
@@ -46,6 +51,7 @@ js_binary(
     chdir = "../../../..",
     data = [
         ":automation_ts",
+        ":macos_provisioning_association_helper",
         "//crates/bitaxe-automation-contracts:validate_version_evidence",
         "//crates/bitaxe-automation-contracts:validate_operator_snapshot_evidence",
         "//crates/bitaxe-automation-contracts:validate_runtime_health_evidence",
@@ -74,6 +80,7 @@ js_binary(
         chdir = "../../../..",
         data = [
             ":automation_ts",
+            ":macos_provisioning_association_helper",
             "//crates/bitaxe-automation-contracts:validate_version_evidence",
             "//crates/bitaxe-automation-contracts:validate_operator_snapshot_evidence",
             "//crates/bitaxe-automation-contracts:validate_runtime_health_evidence",
@@ -155,6 +162,7 @@ js_test(
         ":automation_ts",
         ":automation_tests_ts",
         ":automation_sources",
+        ":macos_provisioning_association_helper",
         "//:automation_ci_contract_inputs",
         "//scripts:repository_guard_sources",
         "//firmware/bitaxe:static_provenance_assets",

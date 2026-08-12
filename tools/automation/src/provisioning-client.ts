@@ -1,5 +1,7 @@
 import dgram from "node:dgram";
+import { readFile, stat, writeFile } from "node:fs/promises";
 import { isIP } from "node:net";
+import path from "node:path";
 
 import { internalCommandSpec } from "./contracts.generated.js";
 import type { ProcessPort } from "./process.js";
@@ -8,6 +10,9 @@ const candidatePattern = /^Bitaxe_[0-9A-F]{4}$/u;
 const dnsTransactionId = 0x4e02;
 const dnsTtlSeconds = 300;
 const captiveBody = "Redirect to the captive portal";
+const associationTimeoutMs = 45_000;
+const associationIntentSchema = "bitaxe-macos-provisioning-association-intent-v1";
+const associationResultSchema = "bitaxe-macos-provisioning-association-result-v1";
 
 export type HostWifiAdmission = {
   readonly interfaceName: string;
@@ -55,6 +60,7 @@ export class MacOsProvisioningClient {
     private readonly platform: NodeJS.Platform = process.platform,
     private readonly dnsQuery: DnsQuery = queryWildcardDns,
     private readonly fetch: Fetch = globalThis.fetch,
+    private readonly workspaceRoot: string = process.cwd(),
   ) {}
 
   public async admit(): Promise<HostWifiAdmission> {
@@ -78,6 +84,7 @@ export class MacOsProvisioningClient {
   public async observe(
     admission: HostWifiAdmission,
     configurationCandidate: string,
+    privateRoot: string,
   ): Promise<ProvisioningClientObservation> {
     const candidate = await atBoundary("configuration_candidate", async () => {
       if (!candidatePattern.test(configurationCandidate)) {
@@ -90,11 +97,8 @@ export class MacOsProvisioningClient {
       return configurationCandidate;
     });
     await atBoundary("association", async () => {
-      await this.run("networksetup", ["-setairportnetwork", admission.interfaceName, candidate]);
       this.joined = true;
-      if (await this.associatedNetwork(admission.interfaceName) !== candidate) {
-        throw new Error("configuration network association failed");
-      }
+      await this.associateWithCoreWlan(admission.interfaceName, candidate, privateRoot);
     });
     const lease = await atBoundary("dhcp", () => this.waitForLease(admission.interfaceName));
     await atBoundary("wildcard_dns", async () => {
@@ -142,6 +146,42 @@ export class MacOsProvisioningClient {
       captiveRedirectBodyMatches: true,
       systemInfo,
     };
+  }
+
+  private async associateWithCoreWlan(
+    interfaceName: string,
+    candidate: string,
+    privateRoot: string,
+  ): Promise<void> {
+    const intentPath = path.join(privateRoot, "association-intent.private.json");
+    const resultPath = path.join(privateRoot, "association-result.private.json");
+    const childPath = path.join(privateRoot, "association-child.private.json");
+    await writeFile(intentPath, `${JSON.stringify({
+      schema_version: associationIntentSchema,
+      operation: "associate",
+      interface_name: interfaceName,
+      configuration_candidate: candidate,
+    })}\n`, { mode: 0o600, flag: "wx" });
+    const helper = path.join(this.workspaceRoot, "tools/automation/src/macos-provisioning-associate.swift");
+    const outcome = await this.processPort.run(internalCommandSpec(
+      "/usr/bin/xcrun",
+      ["swift", helper, "--intent", intentPath, "--result", resultPath],
+      (value) => value,
+    ), associationTimeoutMs);
+    await writeFile(childPath, `${JSON.stringify(outcome)}\n`, { mode: 0o600, flag: "wx" });
+    if (outcome.timedOut || outcome.exitCode !== 0) throw new Error("CoreWLAN child failed");
+    const metadata = await stat(resultPath);
+    if (!metadata.isFile() || (metadata.mode & 0o777) !== 0o600) {
+      throw new Error("CoreWLAN result mode is invalid");
+    }
+    const value: unknown = JSON.parse(await readFile(resultPath, "utf8"));
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
+      throw new Error("CoreWLAN result is invalid");
+    }
+    const document = value as Readonly<Record<string, unknown>>;
+    if (document["schema_version"] !== associationResultSchema || document["status"] !== "ready") {
+      throw new Error("CoreWLAN association was not ready");
+    }
   }
 
   public async cleanup(admission: HostWifiAdmission): Promise<boolean> {
