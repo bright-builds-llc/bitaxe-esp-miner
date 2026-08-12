@@ -10,7 +10,9 @@ import {
 } from "./contracts.generated.js";
 import {
   MacOsProvisioningClient,
+  ProvisioningClientError,
   type HostWifiAdmission,
+  type ProvisioningClientBoundary,
   type ProvisioningClientObservation,
 } from "./provisioning-client.js";
 import type { ProcessPort } from "./process.js";
@@ -77,6 +79,18 @@ function failure(category: FailureCategory, message: string): ProvisioningNetwor
     stage: "provisioning_network_capture",
     ...noRecovery,
   });
+}
+
+function clientFailure(boundary: ProvisioningClientBoundary): ProvisioningNetworkEvidenceError {
+  return new ProvisioningNetworkEvidenceError(
+    "hardware_blocked",
+    "configuration-network client observation failed",
+    {
+      stage: "provisioning_network_capture",
+      client_boundary: boundary,
+      ...noRecovery,
+    },
+  );
 }
 
 function sha256(value: string | Buffer): string {
@@ -233,7 +247,8 @@ export async function captureProvisioningNetworkEvidence(
     let observation: ProvisioningClientObservation;
     try {
       observation = await client.observe(admission);
-    } catch {
+    } catch (error) {
+      if (error instanceof ProvisioningClientError) throw clientFailure(error.boundary);
       throw failure("hardware_blocked", "configuration-network client observation failed");
     }
     await writePrivate(

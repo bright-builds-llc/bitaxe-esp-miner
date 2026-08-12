@@ -26,6 +26,21 @@ export type ProvisioningClientObservation = {
   readonly systemInfo: Readonly<Record<string, unknown>>;
 };
 
+export type ProvisioningClientBoundary =
+  | "configuration_candidate"
+  | "association"
+  | "dhcp"
+  | "wildcard_dns"
+  | "captive_redirect"
+  | "system_info";
+
+export class ProvisioningClientError extends Error {
+  public constructor(public readonly boundary: ProvisioningClientBoundary) {
+    super("configuration-network client boundary failed");
+    this.name = "ProvisioningClientError";
+  }
+}
+
 type DnsQuery = (clientIpv4: string, gatewayIpv4: string) => Promise<{
   readonly answerMatchesGateway: boolean;
   readonly ttlSeconds: number;
@@ -61,41 +76,53 @@ export class MacOsProvisioningClient {
   }
 
   public async observe(admission: HostWifiAdmission): Promise<ProvisioningClientObservation> {
-    const candidates = await this.waitForSingleCandidate();
+    const candidates = await atBoundary(
+      "configuration_candidate",
+      () => this.waitForSingleCandidate(),
+    );
     const candidate = candidates[0];
-    if (candidate === undefined) throw new Error("configuration network is unavailable");
-    await this.run("networksetup", ["-setairportnetwork", admission.interfaceName, candidate]);
-    this.joined = true;
-    if (await this.associatedNetwork(admission.interfaceName) !== candidate) {
-      throw new Error("configuration network association failed");
-    }
-    const lease = await this.waitForLease(admission.interfaceName);
-    const dns = await this.dnsQuery(lease.clientIpv4, lease.gatewayIpv4);
-    if (!dns.answerMatchesGateway || dns.ttlSeconds !== dnsTtlSeconds) {
-      throw new Error("configuration-network DNS response is invalid");
-    }
+    if (candidate === undefined) throw new ProvisioningClientError("configuration_candidate");
+    await atBoundary("association", async () => {
+      await this.run("networksetup", ["-setairportnetwork", admission.interfaceName, candidate]);
+      this.joined = true;
+      if (await this.associatedNetwork(admission.interfaceName) !== candidate) {
+        throw new Error("configuration network association failed");
+      }
+    });
+    const lease = await atBoundary("dhcp", () => this.waitForLease(admission.interfaceName));
+    await atBoundary("wildcard_dns", async () => {
+      const dns = await this.dnsQuery(lease.clientIpv4, lease.gatewayIpv4);
+      if (!dns.answerMatchesGateway || dns.ttlSeconds !== dnsTtlSeconds) {
+        throw new Error("configuration-network DNS response is invalid");
+      }
+    });
     const origin = `http://${lease.gatewayIpv4}`;
-    const redirect = await this.fetch(`${origin}/net002-captive-check`, {
-      redirect: "manual",
-      signal: AbortSignal.timeout(10_000),
+    await atBoundary("captive_redirect", async () => {
+      const redirect = await this.fetch(`${origin}/net002-captive-check`, {
+        redirect: "manual",
+        signal: AbortSignal.timeout(10_000),
+      });
+      const redirectBody = await redirect.text();
+      const redirectObserved = redirect.status === 302;
+      const redirectRoot = redirect.headers.get("location") === "/";
+      const redirectBodyMatches = redirectBody === captiveBody;
+      if (!redirectObserved || !redirectRoot || !redirectBodyMatches) {
+        throw new Error("captive redirect contract is invalid");
+      }
     });
-    const redirectBody = await redirect.text();
-    const redirectObserved = redirect.status === 302;
-    const redirectRoot = redirect.headers.get("location") === "/";
-    const redirectBodyMatches = redirectBody === captiveBody;
-    if (!redirectObserved || !redirectRoot || !redirectBodyMatches) {
-      throw new Error("captive redirect contract is invalid");
-    }
-    const response = await this.fetch(`${origin}/api/system/info`, {
-      redirect: "error",
-      signal: AbortSignal.timeout(10_000),
-      headers: { accept: "application/json" },
+    const systemInfo = await atBoundary("system_info", async () => {
+      const response = await this.fetch(`${origin}/api/system/info`, {
+        redirect: "error",
+        signal: AbortSignal.timeout(10_000),
+        headers: { accept: "application/json" },
+      });
+      if (!response.ok) throw new Error("configuration-network API is unavailable");
+      const value: unknown = await response.json();
+      if (typeof value !== "object" || value === null || Array.isArray(value)) {
+        throw new Error("configuration-network API response is invalid");
+      }
+      return value as Readonly<Record<string, unknown>>;
     });
-    if (!response.ok) throw new Error("configuration-network API is unavailable");
-    const value: unknown = await response.json();
-    if (typeof value !== "object" || value === null || Array.isArray(value)) {
-      throw new Error("configuration-network API response is invalid");
-    }
     return {
       candidateCount: 1,
       associationObserved: true,
@@ -106,7 +133,7 @@ export class MacOsProvisioningClient {
       captiveRedirectObserved: true,
       captiveRedirectRoot: true,
       captiveRedirectBodyMatches: true,
-      systemInfo: value as Readonly<Record<string, unknown>>,
+      systemInfo,
     };
   }
 
@@ -186,6 +213,17 @@ export class MacOsProvisioningClient {
     if (outcome.timedOut) throw new Error("host network command timed out");
     if (outcome.exitCode !== 0) throw new Error("host network command failed");
     return outcome.stdout;
+  }
+}
+
+async function atBoundary<T>(
+  boundary: ProvisioningClientBoundary,
+  operation: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await operation();
+  } catch {
+    throw new ProvisioningClientError(boundary);
   }
 }
 

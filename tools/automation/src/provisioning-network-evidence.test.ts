@@ -10,6 +10,10 @@ import {
   type ProvisioningClientPort,
 } from "./provisioning-network-evidence.js";
 import { createFakeProcessPort, createLocalProcessPort, type ProcessOutcome } from "./process.js";
+import {
+  ProvisioningClientError,
+  type ProvisioningClientBoundary,
+} from "./provisioning-client.js";
 
 const sourceCommit = "a".repeat(40);
 const referenceCommit = "b".repeat(40);
@@ -211,7 +215,57 @@ test("primary observation failure survives cleanup and recovery outcomes", async
     assert.equal(error.category, "hardware_blocked");
     assert.equal(error.publicValue["host_network_restored"], cleanup);
     assert.equal(error.publicValue["device_recovery_complete"], true);
+    assert.equal(error.publicValue["client_boundary"], undefined);
+    assert.doesNotMatch(JSON.stringify(error.publicValue), /private observation failure/u);
     assert.equal(flashCount, 2);
+    await assert.rejects(readFile(value.projection, "utf8"), { code: "ENOENT" });
+  }
+});
+
+test("closed client boundaries survive cleanup and withhold private observation details", async () => {
+  const boundaries: readonly ProvisioningClientBoundary[] = [
+    "configuration_candidate",
+    "association",
+    "dhcp",
+    "wildcard_dns",
+    "captive_redirect",
+    "system_info",
+  ];
+
+  for (const boundary of boundaries) {
+    // Arrange
+    const value = await fixture(`boundary-${boundary}`);
+    let flashCount = 0;
+    const port = createFakeProcessPort(async (spec) => {
+      if (spec.args[0] !== "flash-monitor") return ok();
+      flashCount += 1;
+      return ok(flashCount === 1 ? apLog() : recoveryLog());
+    });
+    const client = readyClient();
+    const boundaryClient: ProvisioningClientPort = {
+      admit: client.admit,
+      async observe() {
+        throw new ProvisioningClientError(boundary);
+      },
+      cleanup: client.cleanup,
+    };
+
+    // Act
+    const error = await captureError(captureProvisioningNetworkEvidence(
+      value.root,
+      value.options,
+      port,
+      "flash",
+      "validator",
+      boundaryClient,
+    ));
+
+    // Assert
+    assert.equal(error.category, "hardware_blocked");
+    assert.equal(error.publicValue["client_boundary"], boundary);
+    assert.equal(error.publicValue["host_network_restored"], true);
+    assert.equal(error.publicValue["device_recovery_complete"], true);
+    assert.doesNotMatch(JSON.stringify(error.publicValue), /Bitaxe|192\.168|private/u);
     await assert.rejects(readFile(value.projection, "utf8"), { code: "ENOENT" });
   }
 });

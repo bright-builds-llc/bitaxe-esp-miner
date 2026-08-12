@@ -6,6 +6,8 @@ import {
   configurationCandidates,
   MacOsProvisioningClient,
   parseDnsResponse,
+  ProvisioningClientError,
+  type ProvisioningClientBoundary,
   wifiInterfaces,
 } from "./provisioning-client.js";
 
@@ -121,5 +123,75 @@ test("host admission rejects association and ambiguous candidates before effects
 
     // Act / Assert
     await assert.rejects(client.admit());
+  }
+});
+
+test("macOS client assigns a closed token to every observation boundary", async () => {
+  const boundaries: readonly ProvisioningClientBoundary[] = [
+    "configuration_candidate",
+    "association",
+    "dhcp",
+    "wildcard_dns",
+    "captive_redirect",
+    "system_info",
+  ];
+
+  for (const boundary of boundaries) {
+    // Arrange
+    let profileCalls = 0;
+    let associationCalls = 0;
+    let fetchCalls = 0;
+    const port = createFakeProcessPort(async (spec) => {
+      const command = [spec.program, ...spec.args].join(" ");
+      if (command === "networksetup -listallhardwareports") {
+        return ok("Hardware Port: Wi-Fi\nDevice: en0\n");
+      }
+      if (command === "networksetup -getairportpower en0") return ok("Wi-Fi Power (en0): On\n");
+      if (command === "networksetup -getairportnetwork en0") {
+        associationCalls += 1;
+        return associationCalls === 1
+          ? ok("You are not associated with an AirPort network.\n")
+          : ok("Current Wi-Fi Network: Bitaxe_A1B2\n");
+      }
+      if (command === "system_profiler SPAirPortDataType -json") {
+        profileCalls += 1;
+        if (profileCalls === 1) return ok("{}");
+        const candidates = boundary === "configuration_candidate"
+          ? { "Bitaxe_A1B2": {}, "Bitaxe_C3D4": {} }
+          : { "Bitaxe_A1B2": {} };
+        return ok(JSON.stringify(candidates));
+      }
+      if (command === "networksetup -setairportnetwork en0 Bitaxe_A1B2") {
+        return boundary === "association" ? { ...ok(), exitCode: 1 } : ok();
+      }
+      if (command.startsWith("ipconfig ")) {
+        if (boundary === "dhcp") throw new Error("private DHCP detail");
+        return command === "ipconfig getifaddr en0" ? ok("192.168.4.2\n") : ok("192.168.4.1\n");
+      }
+      throw new Error(`unexpected command ${command}`);
+    });
+    const dnsQuery = async () => {
+      if (boundary === "wildcard_dns") throw new Error("private DNS detail");
+      return { answerMatchesGateway: true, ttlSeconds: 300 };
+    };
+    const fetch = async (): Promise<Response> => {
+      fetchCalls += 1;
+      if (boundary === "captive_redirect" || (boundary === "system_info" && fetchCalls === 2)) {
+        throw new Error("private HTTP detail");
+      }
+      return fetchCalls === 1
+        ? new Response("Redirect to the captive portal", { status: 302, headers: { location: "/" } })
+        : new Response("{}", { status: 200 });
+    };
+    const client = new MacOsProvisioningClient(port, "darwin", dnsQuery, fetch);
+    const admission = await client.admit();
+
+    // Act / Assert
+    await assert.rejects(client.observe(admission), (error: unknown) => {
+      assert.ok(error instanceof ProvisioningClientError);
+      assert.equal(error.boundary, boundary);
+      assert.doesNotMatch(error.message, /DHCP|DNS|HTTP|Bitaxe|192\.168/u);
+      return true;
+    });
   }
 });

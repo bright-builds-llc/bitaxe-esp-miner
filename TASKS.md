@@ -1741,8 +1741,8 @@ unarchived because `NET-002` is not verified.
 ### task-parity-net002-provisioning-network-attempt-003 | 2026-08-12 | Type the failed client boundary
 
 - [x] Select `NET-002` and bind the continuation to the attempt-002 closure.
-- [ ] Add the six-value redaction-safe client-boundary error contract.
-- [ ] Test every boundary, sensitive-output absence, recovery precedence, and
+- [x] Add the six-value redaction-safe client-boundary error contract.
+- [x] Test every boundary, sensitive-output absence, recovery precedence, and
       real-child behavior; run all mandatory software gates.
 - [ ] Commit and push, then run one detector and at most one conditional
       attempt-003 with fresh protected paths.
@@ -1760,6 +1760,10 @@ Verification: Plan-only gate passed: ordered Cargo, Bright Builds, 37 Bazel
 tests, parity/progress, redaction, reference, selector, task, fresh-path, and
 diff checks are green. Immutable plan SHA-256 is
 `a83af65b730179383356a0b349b116a815ef1ee545cc802a631f1e35f4216131`.
+Implementation gate also passes the focused production-boundary regression,
+the ordered Cargo sequence, Bright Builds, all 37 Bazel tests,
+parity/progress, redaction, reference, selector, immutable-plan, task,
+fresh-path, reference-cleanliness, sensitive-output, and diff checks.
 
 Completion review: Pending.
 
