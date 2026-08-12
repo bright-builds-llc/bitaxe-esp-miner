@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260812T093510Z-ASIC-003",
+  "predecessor_sha256": "b1df158346135e41d99eca35c8e139878580befc59b2a7a996f97bbbf8cb058a",
+  "result_sha256": "fddab7ef8fd27020d8b2e7e283616fcbd37f250b849f060aec92de2765e8cc76",
+  "row_id": "ASIC-003",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260812T091446Z-ASIC-003/PLAN.md",
+  "plan_sha256": "dd3a1d4ce5324100dc41d58a1fa16574946490d8476796acd325a39c80489eb2",
+  "result_path": "docs/parity/work-plans/20260812T091446Z-ASIC-003/RESULT.md",
+  "result_document_sha256": "2349084dc45b0896404f8cbba761dd879ce51fa7dd990add1c17cd8d4681bdc0",
+  "before_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/work.rs`, `crates/bitaxe-asic/src/bm1366/command.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/work.rs`, `crates/bitaxe-asic/src/bm1366/command.rs`, `crates/bitaxe-asic/src/bm1366/production.rs`, `firmware/bitaxe/src/asic_adapter/production.rs`, `firmware/bitaxe/src/production_mining_session/asic_worker.rs`, `crates/bitaxe-automation-contracts/src/asic_work_send_evidence.rs`, `tools/automation/src/asic-work-send-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,golden,hardware-smoke",
+  "after_evidence": "unit,golden,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Phase 03 Plan 02 covers diagnostic work payload and job-frame encoding. [Phase 15 evidence](evidence/phase-15-bm1366-mining-evidence-completion.md) verifies only one typed diagnostic BM1366 work dispatch for job `0x28` under a no-mining diagnostic gate. Phase 21 final evidence in `evidence/phase-21-live-mining-and-soak-evidence/summary.md` records diagnostic work dispatch only; production work submission, pool-derived work, and accepted shares remain below verified.",
+  "after_notes": "Sealed exact-package Ultra 205 evidence proves mining-ready BM1366 work dispatched through the retained production UART, followed by a qualified correlated result and accepted submit response; byte-level work modules and bounded dispatch/write spans remain compatible with current source. See docs/parity/work-plans/20260812T091446Z-ASIC-003/RESULT.md and docs/parity/evidence/asic003-work-send/asic-work-send-projection.json. Result parsing details, frequency transitions, arbitrary-load serial behavior, Stratum socket behavior, target policy, other ASICs or boards, soak stability, updates, recovery, and release readiness remain non-claims."
+}

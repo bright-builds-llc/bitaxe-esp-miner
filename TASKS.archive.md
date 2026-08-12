@@ -6279,3 +6279,37 @@ validation, and redaction. Evidence commit
 `5694c245622ceb15dd7f3924cac7327f5d99bf1c` was pushed, `ASIC-002`
 transitioned to verified under `20260812T090906Z-ASIC-002`, progress
 synchronized to 52 of 94 active rows, and this task is complete and archived.
+
+### task-parity-asic003-sealed-work-send-promotion | 2026-08-12 | Promote sealed BM1366 work-send proof
+
+- [x] Add a typed, closed projector and validator that derive ASIC work-send
+      proof from the committed sealed initialization projection.
+- [x] Prove exact work-module compatibility, bounded production dispatch/UART-
+      write span compatibility, live qualified accepted work, safety, cleanup,
+      and redaction without exposing work or operational values.
+- [x] Run every software and privacy gate, publish one redacted projection,
+      and promote only `ASIC-003` when the complete quorum passes.
+
+Plan: `docs/parity/work-plans/20260812T091446Z-ASIC-003/PLAN.md`.
+
+Authorization: read-only use of committed public evidence and Git history
+only. No protected campaign read, detector, flash, reset, USB session,
+credential read, serial/network request, mining, fan/voltage/power/ASIC
+actuation, recovery, direct UART, pins, or other hardware effect is permitted.
+Only closed redaction-safe categories, counts, digests, commits, and booleans
+may be published.
+
+Verification and stop rule: require a valid committed ASIC initialization
+projection, exact digest and commit binding, byte-identical BM1366 work/
+production/command modules, compatible bounded worker-dispatch and adapter-
+write spans, focused regressions, independent Rust validation, every
+repository gate, redaction, and reference cleanliness. Any failure leaves
+`ASIC-003` implemented and stops this plan without a hardware fallback.
+
+Completion review: The source-bound exact-package proof established fixed
+BM1366 work encoding, gated production dispatch and UART write, a qualified
+correlated result, accepted submit response, safety, cleanup, source
+compatibility, independent validation, and redaction. Evidence commit
+`12e6941cc7b61cbb5a0d3571587fa242cadfce57` was pushed, `ASIC-003`
+transitioned to verified under `20260812T093510Z-ASIC-003`, progress
+synchronized to 53 of 94 active rows, and this task is complete and archived.

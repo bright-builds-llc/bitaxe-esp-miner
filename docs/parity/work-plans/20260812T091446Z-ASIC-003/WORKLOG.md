@@ -70,3 +70,22 @@
 - Blocker or next safe action: Commit and push the evidence/result without
   changing the checklist, then apply the single-row transition and run the
   final promotion gate.
+
+## 2026-08-12T09:35:40Z | single-row promotion applied
+
+- Source commit: evidence commit
+  `12e6941cc7b61cbb5a0d3571587fa242cadfce57`.
+- Actions: Applied transition `20260812T093510Z-ASIC-003`, synchronized
+  progress, completed the matching task, and moved its native record to the
+  append-only archive.
+- Verification: Only `ASIC-003` changed from `implemented` to `verified` with
+  `unit,golden,workflow,hardware-smoke,hardware-regression`; the transition
+  binds the immutable plan and committed result. Progress is 53 of 94 active
+  rows, 56.4%.
+- Evidence: Checklist transition receipt, progress history, README projection,
+  archived task, result, and public work-send projection.
+- Outcome: `ASIC-003` is conservatively promoted and its active task is
+  complete.
+- Blocker or next safe action: Run the complete final repository gate, verify
+  transition/result digests and task uniqueness, commit and push, then start a
+  fresh selector invocation.
