@@ -50,3 +50,23 @@
 - Blocker or next safe action: Commit and push the projector, remove the
   ignored dry-run artifact, then produce the public projection from the exact
   clean implementation commit.
+
+## 2026-08-12T09:34:17Z | derived projection accepted
+
+- Source commit: implementation commit
+  `32017ba8bb9b99212cad3c2c9ecaed7edf603d19`.
+- Actions: Ran the no-hardware projector against the committed ASIC-002 source
+  projection and exact accepted hardware source commit.
+- Verification: Source validation/digest binding, commit ancestry, three exact
+  core paths, three unique bounded dispatch/write spans, clean relevant
+  worktree, independent Rust validation, and public redaction all passed.
+  Projection SHA-256 is
+  `447af65ae9e6cd5cc2199ef639ff8e0fa7f63d4c9708570bd66781c5a162e80c`.
+- Evidence: Published
+  `docs/parity/evidence/asic003-work-send/asic-work-send-projection.json`;
+  no protected or operational values were accessed or published.
+- Outcome: The complete `ASIC-003` promotion quorum is satisfied without a
+  new hardware attempt.
+- Blocker or next safe action: Commit and push the evidence/result without
+  changing the checklist, then apply the single-row transition and run the
+  final promotion gate.
