@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260812T101604Z-ASIC-004",
+  "predecessor_sha256": "fddab7ef8fd27020d8b2e7e283616fcbd37f250b849f060aec92de2765e8cc76",
+  "result_sha256": "811fffce0db62d99d9d0d4a03403fec5de8ba358dbfe5395f800656a4abaa4c2",
+  "row_id": "ASIC-004",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260812T093928Z-ASIC-004/PLAN.md",
+  "plan_sha256": "99252a9cc05fccfc9fd85a708cd375c441775163c6d5d7b864862f6d0f3f5056",
+  "result_path": "docs/parity/work-plans/20260812T093928Z-ASIC-004/RESULT.md",
+  "result_document_sha256": "b2ac6be5e0b029855764b2f692d382790ebf71b1c214548494f1fcedec7bcdf5",
+  "before_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/result.rs`, `crates/bitaxe-asic/src/bm1366/transcript.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/result.rs`, `crates/bitaxe-asic/src/bm1366/transcript.rs`, `firmware/bitaxe/src/asic_adapter/production.rs`, `firmware/bitaxe/src/production_mining_session/asic_worker.rs`, `crates/bitaxe-stratum/src/v1/production_work.rs`, `crates/bitaxe-automation-contracts/src/asic_result_parsing_evidence.rs`, `tools/automation/src/asic-result-parsing-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,golden,hardware-smoke",
+  "after_evidence": "unit,golden,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Phase 03 Plans 02-03 cover 11-byte result parsing, nonce/register observations, and fake UART fault transcripts. [Phase 15 evidence](evidence/phase-15-bm1366-mining-evidence-completion.md) verifies only bounded diagnostic result timeout and fail-closed handling after diagnostic dispatch. Phase 21 final evidence in `evidence/phase-21-live-mining-and-soak-evidence/summary.md` records a bounded diagnostic result timeout after dispatch; valid live nonce/result parsing and share/no-share outcomes remain below verified.",
+  "after_notes": "Sealed exact-package Ultra 205 evidence proves a live qualified BM1366 result passed strict 11-byte parsing and compatible production correlation before an accepted response; current typed soft discards fail closed, with independent validation and redaction. See docs/parity/work-plans/20260812T093928Z-ASIC-004/RESULT.md and docs/parity/evidence/asic004-result-parsing/asic-result-parsing-projection.json. Work encoding, arbitrary-load transport, frequency transitions, broader Stratum and target policy, other ASICs or boards, soak stability, updates, recovery, and release readiness remain non-claims."
+}

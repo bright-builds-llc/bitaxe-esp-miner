@@ -109,3 +109,44 @@
 - Blocker or next safe action: Commit and push the evidence/result without
   changing the checklist, then apply the single-row transition and run the
   final promotion gate.
+
+## 2026-08-12T10:16:45Z | single-row promotion applied
+
+- Source commit: evidence commit
+  `06067c6240558811073c6a3a71cea5dad2432250`.
+- Actions: Applied transition `20260812T101604Z-ASIC-004`, synchronized
+  progress, completed the matching task, and moved its native record to the
+  append-only archive.
+- Verification: Only `ASIC-004` changed from `implemented` to `verified` with
+  `unit,golden,workflow,hardware-smoke,hardware-regression`; the transition
+  binds the immutable plan and committed result. Progress is 54 of 94 active
+  rows, 57.4%.
+- Evidence: Checklist transition receipt, progress history, README projection,
+  archived task, result, and public result-parsing projection.
+- Outcome: `ASIC-004` is conservatively promoted and its active task is
+  complete.
+- Blocker or next safe action: Run the complete final repository gate, verify
+  transition/result digests and task uniqueness, commit and push, then start a
+  fresh selector invocation.
+
+## 2026-08-12T10:20:47Z | final promotion gate passed
+
+- Source commit: evidence commit
+  `06067c6240558811073c6a3a71cea5dad2432250`.
+- Actions: Completed the final ordered repository gate and audited the full
+  promotion diff. The first uncommitted transition projection was rejected by
+  `just parity` because its Rust-owned targets lacked canonical code-span
+  markup; that exact receipt, checklist row, README count, and progress record
+  were restored to their committed predecessor and regenerated under the same
+  transition ID with backticked targets.
+- Verification: Ordered Cargo, managed rules, all 37 Bazel tests, the real
+  firmware package, generated contracts, parity/progress, redaction,
+  reference, immutable plan, result/evidence/transition digests, single-row
+  diff, task uniqueness and archival, public-sensitive-value, selector, and
+  diff checks passed. Receipt SHA-256 is
+  `81ca8dae85a590c28cfffdc2471e94923fbeef72a28b957136a33067f075cbe6`.
+- Evidence: The canonical selector has no open plan and now lists `ASIC-005`
+  first. No hardware or protected/operational input was accessed.
+- Outcome: The ASIC-004 promotion is ready to commit and push.
+- Blocker or next safe action: Commit and push, confirm exact synchronization,
+  then begin a fresh skill invocation for `ASIC-005`.

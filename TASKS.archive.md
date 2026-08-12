@@ -6313,3 +6313,38 @@ compatibility, independent validation, and redaction. Evidence commit
 `12e6941cc7b61cbb5a0d3571587fa242cadfce57` was pushed, `ASIC-003`
 transitioned to verified under `20260812T093510Z-ASIC-003`, progress
 synchronized to 53 of 94 active rows, and this task is complete and archived.
+
+### task-parity-asic004-sealed-result-parsing-promotion | 2026-08-12 | Promote sealed BM1366 result-parsing proof
+
+- [x] Add a typed, closed projector and validator that derive ASIC result-
+      parsing proof from the committed sealed work-send projection.
+- [x] Prove strict live nonce parsing/correlation, unchanged transcript and
+      compatible accepted-result spans, typed soft discards, safety, cleanup,
+      and redaction without exposing result or operational values.
+- [x] Run every software and privacy gate, publish one redacted projection,
+      and promote only `ASIC-004` when the complete quorum passes.
+
+Plan: `docs/parity/work-plans/20260812T093928Z-ASIC-004/PLAN.md`.
+
+Authorization: read-only use of committed public evidence and Git history
+only. No protected campaign read, detector, flash, reset, USB session,
+credential read, serial/network request, mining, fan/voltage/power/ASIC
+actuation, recovery, direct UART, pins, or other hardware effect is permitted.
+Only closed redaction-safe categories, constants, digests, commits, and
+booleans may be published.
+
+Verification and stop rule: require a valid committed ASIC work-send
+projection, exact digest and commit binding, unchanged transcript module,
+compatible bounded parser/adapter/worker/correlation spans, focused
+regressions, independent Rust validation, every repository gate, redaction,
+and reference cleanliness. Any failure leaves `ASIC-004` implemented and
+stops this plan without a hardware fallback.
+
+Completion review: The source-bound exact-package proof established strict
+11-byte BM1366 frame admission, nonce decoding, compatible adapter/worker/
+correlation behavior, eight typed soft-discard categories, a live qualified
+result followed by an accepted response, safety, cleanup, independent
+validation, and redaction. Evidence commit
+`06067c6240558811073c6a3a71cea5dad2432250` was pushed, `ASIC-004`
+transitioned to verified under `20260812T101604Z-ASIC-004`, progress
+synchronized to 54 of 94 active rows, and this task is complete and archived.
