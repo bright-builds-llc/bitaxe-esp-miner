@@ -31,6 +31,7 @@ struct FakeFlashEnvironment {
     campaign_observations: RefCell<Vec<(MiningCampaignStage, u64)>>,
     cleanup_calls: Cell<usize>,
     cleanup_failure: bool,
+    last_usb_command_diagnostic: RefCell<Option<UsbCommandDiagnostic>>,
 }
 
 impl Default for FakeFlashEnvironment {
@@ -74,6 +75,7 @@ impl FakeFlashEnvironment {
             campaign_observations: RefCell::new(Vec::new()),
             cleanup_calls: Cell::new(0),
             cleanup_failure: false,
+            last_usb_command_diagnostic: RefCell::new(None),
         }
     }
 
@@ -274,6 +276,16 @@ impl FlashEnvironment for FakeFlashEnvironment {
         self.executed_commands
             .borrow_mut()
             .push(command_spec.clone());
+        let is_write = command_spec.args.first().map(String::as_str) == Some("write-bin");
+        let diagnostic = fake_usb_command_diagnostic(
+            UsbTerminalCategory::Ready,
+            if is_write && !self.execute_failure {
+                UsbDeviceEffectState::Completed
+            } else {
+                UsbDeviceEffectState::None
+            },
+        );
+        self.last_usb_command_diagnostic.replace(Some(diagnostic));
         if command_spec.args.first().map(String::as_str) == Some("write-bin")
             && command_spec.args.iter().any(|argument| argument == "0x0")
         {
@@ -315,6 +327,10 @@ impl FlashEnvironment for FakeFlashEnvironment {
     fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>> {
         self.execute(command_spec)?;
         Ok(b"Chip type: ESP32-S3\nMAC address: 02:00:00:00:A1:B1\n".to_vec())
+    }
+
+    fn last_usb_command_diagnostic(&self) -> Option<UsbCommandDiagnostic> {
+        self.last_usb_command_diagnostic.borrow().clone()
     }
 
     fn receive_only(
@@ -422,5 +438,26 @@ impl FlashEnvironment for FakeFlashEnvironment {
         }
         std::fs::write(path.as_std_path(), contents).expect("write fake evidence");
         Ok(())
+    }
+}
+
+fn fake_usb_command_diagnostic(
+    terminal_category: UsbTerminalCategory,
+    device_effect_state: UsbDeviceEffectState,
+) -> UsbCommandDiagnostic {
+    UsbCommandDiagnostic {
+        schema_version: "esp-usb-command-diagnostic-v1".to_owned(),
+        terminal_category,
+        device_effect_state,
+        termination: UsbCommandTermination::ExitedSuccess,
+        attempt_count: 1,
+        connection_signature: UsbConnectionSignature::NotApplicable,
+        stdout_bytes: 0,
+        stderr_bytes: 0,
+        stdout_sha256: sha256_bytes(&[]),
+        stderr_sha256: sha256_bytes(&[]),
+        transfer_started: device_effect_state != UsbDeviceEffectState::None,
+        transfer_completed: device_effect_state == UsbDeviceEffectState::Completed,
+        raw_output_included: false,
     }
 }

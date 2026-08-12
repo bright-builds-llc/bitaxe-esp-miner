@@ -103,7 +103,8 @@ pub enum SupervisedTermination {
 }
 
 /// Monotonic device-write evidence observed by the supervised USB session.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum UsbDeviceEffectState {
     /// No transfer boundary was observed.
     #[default]
@@ -112,6 +113,53 @@ pub enum UsbDeviceEffectState {
     ConfirmedPartial,
     /// The supervised flash command completed successfully.
     Completed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UsbCommandTermination {
+    NotStarted,
+    ExitedSuccess,
+    ExitedFailure,
+    TimedOut,
+    Interrupted,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UsbConnectionSignature {
+    NotApplicable,
+    ProcessTimeout,
+    ProcessInterrupted,
+    DeviceNotFound,
+    SerialResetIo,
+    WrongBootMode,
+    NoSyncReply,
+    SlipFraming,
+    ReadMismatch,
+    CommandTimeout,
+    FlashDefinitionDataTimeout,
+    GenericConnectionFailure,
+    DiagnosticUnavailable,
+}
+
+/// Closed, redaction-safe facts for one supervised espflash command.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UsbCommandDiagnostic {
+    pub schema_version: String,
+    pub terminal_category: UsbTerminalCategory,
+    pub device_effect_state: UsbDeviceEffectState,
+    pub termination: UsbCommandTermination,
+    pub attempt_count: u8,
+    pub connection_signature: UsbConnectionSignature,
+    pub stdout_bytes: usize,
+    pub stderr_bytes: usize,
+    pub stdout_sha256: String,
+    pub stderr_sha256: String,
+    pub transfer_started: bool,
+    pub transfer_completed: bool,
+    pub raw_output_included: bool,
 }
 
 impl SupervisedOutput {

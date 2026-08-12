@@ -20,7 +20,12 @@ use bitaxe_config::{
     RawSettingValue, SettingsPatch, SettingsUpdateDecision, StoredValue, StoredValueKind,
     NVS_NAMESPACE,
 };
-use bitaxe_device_session::{discover_usb_ports, UsbDeviceEffectState, UsbOperation, UsbSession};
+use bitaxe_device_session::{
+    discover_usb_ports, UsbCommandDiagnostic, UsbDeviceEffectState, UsbOperation, UsbSession,
+    UsbTerminalCategory,
+};
+#[cfg(test)]
+use bitaxe_device_session::{UsbCommandTermination, UsbConnectionSignature};
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use serde::{Deserialize, Serialize};

@@ -2,8 +2,12 @@ use crate::macos::UsbDeviceSnapshot;
 
 use super::recovery::RecoveryPhase;
 use super::{
-    session_error, SupervisedOutput, SupervisedTermination, UsbSessionError, UsbTerminalCategory,
+    session_error, SupervisedOutput, SupervisedTermination, UsbConnectionSignature,
+    UsbSessionError, UsbTerminalCategory,
 };
+
+#[cfg(test)]
+pub(super) type EspflashConnectionSignature = UsbConnectionSignature;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RetryContext {
@@ -16,24 +20,10 @@ pub struct RetryContext {
     pub attempts: u8,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum EspflashConnectionSignature {
-    ProcessTimeout,
-    ProcessInterrupted,
-    DeviceNotFound,
-    SerialResetIo,
-    WrongBootMode,
-    NoSyncReply,
-    SlipFraming,
-    ReadMismatch,
-    CommandTimeout,
-    GenericConnectionFailure,
-    DiagnosticUnavailable,
-}
-
-impl EspflashConnectionSignature {
+impl UsbConnectionSignature {
     pub(super) const fn as_str(self) -> &'static str {
         match self {
+            Self::NotApplicable => "not_applicable",
             Self::ProcessTimeout => "process_timeout",
             Self::ProcessInterrupted => "process_interrupted",
             Self::DeviceNotFound => "device_not_found",
@@ -43,6 +33,7 @@ impl EspflashConnectionSignature {
             Self::SlipFraming => "slip_framing",
             Self::ReadMismatch => "read_mismatch",
             Self::CommandTimeout => "command_timeout",
+            Self::FlashDefinitionDataTimeout => "flash_definition_data_timeout",
             Self::GenericConnectionFailure => "generic_connection_failure",
             Self::DiagnosticUnavailable => "diagnostic_unavailable",
         }
@@ -98,8 +89,7 @@ pub(super) fn classify_espflash_failure(output: &SupervisedOutput) -> UsbTermina
     ) {
         return UsbTerminalCategory::BootloaderConnectFailed;
     }
-    if classify_bootloader_diagnostic(output) != EspflashConnectionSignature::DiagnosticUnavailable
-    {
+    if classify_bootloader_diagnostic(output) != UsbConnectionSignature::DiagnosticUnavailable {
         return UsbTerminalCategory::BootloaderConnectFailed;
     }
     let stderr = String::from_utf8_lossy(&output.stderr).to_ascii_lowercase();
@@ -112,13 +102,11 @@ pub(super) fn classify_espflash_failure(output: &SupervisedOutput) -> UsbTermina
     }
 }
 
-pub(super) fn classify_bootloader_diagnostic(
-    output: &SupervisedOutput,
-) -> EspflashConnectionSignature {
+pub(super) fn classify_bootloader_diagnostic(output: &SupervisedOutput) -> UsbConnectionSignature {
     match output.termination {
-        SupervisedTermination::TimedOut => return EspflashConnectionSignature::ProcessTimeout,
+        SupervisedTermination::TimedOut => return UsbConnectionSignature::ProcessTimeout,
         SupervisedTermination::Interrupted { .. } => {
-            return EspflashConnectionSignature::ProcessInterrupted;
+            return UsbConnectionSignature::ProcessInterrupted;
         }
         SupervisedTermination::ExitedSuccess | SupervisedTermination::ExitedFailure => {}
     }
@@ -131,41 +119,36 @@ pub(super) fn classify_bootloader_diagnostic(
     let signatures = [
         (
             "connectiondevicenotfound",
-            EspflashConnectionSignature::DeviceNotFound,
+            UsbConnectionSignature::DeviceNotFound,
         ),
-        (
-            "connectionserial",
-            EspflashConnectionSignature::SerialResetIo,
-        ),
+        ("connectionserial", UsbConnectionSignature::SerialResetIo),
         (
             "connectionwrongbootmode",
-            EspflashConnectionSignature::WrongBootMode,
+            UsbConnectionSignature::WrongBootMode,
         ),
-        (
-            "connectionnosyncreply",
-            EspflashConnectionSignature::NoSyncReply,
-        ),
+        ("connectionnosyncreply", UsbConnectionSignature::NoSyncReply),
         (
             "connectionframingerror",
-            EspflashConnectionSignature::SlipFraming,
+            UsbConnectionSignature::SlipFraming,
         ),
         (
             "connectionreadmismatch",
-            EspflashConnectionSignature::ReadMismatch,
+            UsbConnectionSignature::ReadMismatch,
         ),
+        ("connectiontimeout", UsbConnectionSignature::CommandTimeout),
         (
-            "connectiontimeout",
-            EspflashConnectionSignature::CommandTimeout,
+            "timeoutwhilerunningflashdefldatacommand",
+            UsbConnectionSignature::FlashDefinitionDataTimeout,
         ),
         (
             "connectionconnectionfailed",
-            EspflashConnectionSignature::GenericConnectionFailure,
+            UsbConnectionSignature::GenericConnectionFailure,
         ),
     ];
     signatures
         .into_iter()
         .find_map(|(marker, signature)| normalized.contains(marker).then_some(signature))
-        .unwrap_or(EspflashConnectionSignature::DiagnosticUnavailable)
+        .unwrap_or(UsbConnectionSignature::DiagnosticUnavailable)
 }
 
 pub(super) fn espflash_diagnostic_filter(
@@ -179,7 +162,7 @@ pub(super) fn espflash_diagnostic_filter(
 
 pub(super) fn ineligible_retry_detail(
     context: RetryContext,
-    maybe_signature: Option<EspflashConnectionSignature>,
+    maybe_signature: Option<UsbConnectionSignature>,
 ) -> String {
     if context.category == UsbTerminalCategory::BootloaderConnectFailed
         && context.cleanup_complete
@@ -192,7 +175,7 @@ pub(super) fn ineligible_retry_detail(
                 seconds, reconnect normal power, then USB, and rerun detection; do not use pins, \
                 headers, or test points",
             maybe_signature
-                .unwrap_or(EspflashConnectionSignature::DiagnosticUnavailable)
+                .unwrap_or(UsbConnectionSignature::DiagnosticUnavailable)
                 .as_str()
         );
     }
@@ -200,7 +183,7 @@ pub(super) fn ineligible_retry_detail(
         return format!(
             "connection_signature={}; the supervised espflash command failed without an eligible state-changing retry",
             maybe_signature
-                .unwrap_or(EspflashConnectionSignature::DiagnosticUnavailable)
+                .unwrap_or(UsbConnectionSignature::DiagnosticUnavailable)
                 .as_str()
         );
     }

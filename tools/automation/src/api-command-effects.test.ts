@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { chmod, mkdtemp, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -96,7 +97,12 @@ async function fixture(): Promise<{ root: string; options: ApiCommandEffectsOpti
   };
 }
 
-function fakePort(root: string, maybeSession: unknown = readySession, campaignFails = false) {
+function fakePort(
+  root: string,
+  maybeSession: unknown = readySession,
+  campaignFails = false,
+  flashDiagnosticsMode: "ready" | "malformed" | "missing" = "ready",
+) {
   return createFakeProcessPort(async (spec) => {
     if (spec.program === "/sbin/route") return ok("interface: en0\n");
     if (spec.program === "/usr/sbin/ipconfig") return ok("192.0.2.44\n");
@@ -144,8 +150,34 @@ function fakePort(root: string, maybeSession: unknown = readySession, campaignFa
       ]);
       const campaign = path.join(attempt, "campaign");
       await mkdir(campaign, { mode: 0o700 });
+      const readyFlashDiagnostic = {
+        schema_version: "esp-usb-command-diagnostic-v1",
+        terminal_category: "ready",
+        device_effect_state: "completed",
+        termination: "exited_success",
+        attempt_count: 1,
+        connection_signature: "not_applicable",
+        stdout_bytes: 0,
+        stderr_bytes: 0,
+        stdout_sha256: "0".repeat(64),
+        stderr_sha256: "0".repeat(64),
+        transfer_started: true,
+        transfer_completed: true,
+        raw_output_included: false,
+      };
+      const flashDiagnosticsDocument = flashDiagnosticsMode === "malformed"
+        ? "{}\n"
+        : `${JSON.stringify({
+          schema: "mining-campaign-flash-diagnostics-v1",
+          factory: readyFlashDiagnostic,
+          nvs: readyFlashDiagnostic,
+          raw_output_included: false,
+        })}\n`;
+      if (flashDiagnosticsMode !== "missing") {
+        await writeFile(path.join(campaign, "campaign-flash.private.json"), flashDiagnosticsDocument, { mode: 0o600 });
+      }
       await privateJson(path.join(campaign, "campaign-result.json"), {
-        schema: "mining-campaign-result-v5",
+        schema: "mining-campaign-result-v6",
         stage: "command-effects",
         status: campaignFails ? "failed" : "accepted",
         terminal_category: campaignFails ? "command_request_failed" : "command_effects_complete",
@@ -153,6 +185,7 @@ function fakePort(root: string, maybeSession: unknown = readySession, campaignFa
         safe_stop: "confirmed",
         usb_cleanup: "ready",
         qualified_candidate_count: 1,
+        flash_diagnostics_sha256: createHash("sha256").update(flashDiagnosticsDocument).digest("hex"),
         redacted: true,
       });
       await privateJson(path.join(campaign, "campaign-network.private.json"), {
@@ -245,6 +278,28 @@ test("a non-ready reboot withholds the final projection", async () => {
   assert.equal(error.category, "hardware_blocked");
   await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
 });
+
+for (const flashDiagnosticsMode of ["malformed", "missing"] as const) {
+  test(`${flashDiagnosticsMode} flash diagnostics withhold the final projection`, async () => {
+    // Arrange
+    const value = await fixture();
+
+    // Act
+    const error = await captureApiCommandEffects(
+      value.root,
+      value.options,
+      fakePort(value.root, readySession, false, flashDiagnosticsMode),
+      path.join(value.root, "bin", "api-command-effects-stratum-pool"),
+      path.join(value.root, "bin", "flash"),
+      path.join(value.root, "bin", "device-session"),
+    ).then(() => undefined, (caught: unknown) => caught);
+
+    // Assert
+    assert(error instanceof ApiCommandEffectsError);
+    assert.equal(error.category, "evidence_invalid");
+    await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
+  });
+}
 
 test("the deployed fixture executable crosses the sanitized real-process boundary", {
   skip: process.platform !== "darwin",

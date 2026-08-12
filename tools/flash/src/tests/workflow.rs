@@ -75,6 +75,7 @@ fn flash_with_wifi_credentials_generates_and_executes_nvs_seed_after_flash() {
                 "espflash",
                 [
                     "write-bin",
+                    "--no-stub",
                     "--chip",
                     "esp32s3",
                     "--port",
@@ -93,6 +94,7 @@ fn flash_with_wifi_credentials_generates_and_executes_nvs_seed_after_flash() {
                 "espflash",
                 [
                     "write-bin",
+                    "--no-stub",
                     "--chip",
                     "esp32s3",
                     "--port",

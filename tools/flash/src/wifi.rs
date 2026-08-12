@@ -46,6 +46,7 @@ pub(crate) fn nvs_seed_command_for_image(port: &str, nvs_image: &Utf8Path) -> Co
         "espflash",
         [
             "write-bin",
+            "--no-stub",
             "--chip",
             "esp32s3",
             "--port",

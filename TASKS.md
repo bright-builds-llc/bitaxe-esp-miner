@@ -1990,12 +1990,12 @@ failed boundary; attempt-002 cannot be retried.
 Flash-boundary continuation plan:
 `docs/parity/work-plans/20260812T161941Z-API-009/PLAN.md`.
 
-- [ ] Preserve the durable USB supervisor's typed factory/NVS child diagnostic
+- [x] Preserve the durable USB supervisor's typed factory/NVS child diagnostic
       through the campaign and bind only closed, redaction-safe facts into the
       protected result.
-- [ ] Bypass the confirmed RAM-stub `FlashDeflData` timeout with the supported
+- [x] Bypass the confirmed RAM-stub `FlashDeflData` timeout with the supported
       `write-bin --no-stub` path for both factory and NVS writes.
-- [ ] Add real-child, command-shape, failure-precedence, private-mode, schema,
+- [x] Add real-child, command-shape, failure-precedence, private-mode, schema,
       and sensitive-output regressions; run and push every software gate before
       hardware.
 - [ ] Run at most one fresh detector-gated `attempt-003` and promote only on

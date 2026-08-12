@@ -36,3 +36,32 @@
 - Outcome: The immutable plan is eligible to commit and push.
 - Blocker or next safe action: Push the checkpoint, then implement and verify
   the typed diagnostic and material no-stub boundary change.
+
+## 2026-08-12T16:47:42Z | Source gate complete
+
+- Plan commit: `09e226b8`; implementation commit is pending this checkpoint.
+- Actions: Routed both admitted factory and NVS `write-bin` operations through
+  the supported `--no-stub` path, retained one closed command-local diagnostic
+  in the durable USB session, propagated typed failures through the campaign,
+  and bound the protected flash diagnostic digest into campaign result v6 and
+  the independent command-effects validator. Board-info remains a read-only
+  prerequisite and no longer advances the write-effect state.
+- Verification: Focused device-session, flash, and automation tests pass,
+  including real-child stdout/stderr count-and-digest capture, the production
+  `FlashDeflData` signature, command vectors, failure precedence, private file
+  mode, missing/malformed evidence, and raw-output exclusion. The complete
+  ordered `cargo fmt`, clippy, all-target build, all-feature tests, Bright
+  Builds, all 39 Bazel tests, parity, parity-progress, redaction, reference,
+  selector, unique-task, immutable-plan, reference-cleanliness, sensitive scan,
+  and diff gates pass. PLAN.md SHA-256 remains
+  `12ab02a452dfc0b4ecad41ead409998e2a98b137a2338ef6644285d9b75c800b`.
+- Evidence: No device action or parity evidence occurred. The new protected
+  artifact contains only enums, booleans, attempt count, byte counts, and
+  SHA-256 digests; raw child output, origins, hostnames, ports, USB/network
+  identities, and credentials are excluded.
+- Outcome: The material attempt-002 flash boundary is fixed in tested source,
+  and the earliest typed USB failure survives campaign cleanup and projection
+  withholding.
+- Blocker or next safe action: Commit and push the exact clean implementation,
+  build its package, then run the single detector-gated attempt-003 without a
+  retry.

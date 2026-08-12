@@ -87,6 +87,7 @@ pub(crate) fn flash_command_for_admitted_image(
             "espflash",
             [
                 "write-bin",
+                "--no-stub",
                 "--chip",
                 "esp32s3",
                 "--port",

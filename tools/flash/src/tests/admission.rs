@@ -26,6 +26,7 @@ fn dry_run_flash_resolves_admitted_factory_artifact() {
         outcome.command.args,
         vec![
             "write-bin",
+            "--no-stub",
             "--chip",
             "esp32s3",
             "--port",
@@ -144,6 +145,7 @@ fn manifest_v3_uses_factory_artifact_for_full_flash() {
         outcome.command.args,
         vec![
             "write-bin",
+            "--no-stub",
             "--chip",
             "esp32s3",
             "--port",

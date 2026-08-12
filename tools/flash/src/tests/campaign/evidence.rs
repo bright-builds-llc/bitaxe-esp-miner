@@ -14,6 +14,7 @@ fn campaign_evidence_never_projects_raw_serial_or_credentials() {
     // Assert
     for name in [
         "campaign-diagnostics.private.json",
+        "campaign-flash.private.json",
         "campaign-mining-diagnostics.private.json",
         "campaign-network.private.json",
         "campaign-observations.private.json",
@@ -53,6 +54,13 @@ fn campaign_evidence_never_projects_raw_serial_or_credentials() {
             .as_std_path(),
     )
     .expect("mining diagnostic bytes");
+    let flash_diagnostic_bytes = std::fs::read(
+        command
+            .evidence_dir
+            .join("campaign-flash.private.json")
+            .as_std_path(),
+    )
+    .expect("flash diagnostic bytes");
     let network_bytes = std::fs::read(
         command
             .evidence_dir
@@ -69,6 +77,18 @@ fn campaign_evidence_never_projects_raw_serial_or_credentials() {
         result["mining_diagnostics_sha256"],
         sha256_bytes(&mining_diagnostic_bytes)
     );
+    assert_eq!(
+        result["flash_diagnostics_sha256"],
+        sha256_bytes(&flash_diagnostic_bytes)
+    );
+    let flash: serde_json::Value =
+        serde_json::from_slice(&flash_diagnostic_bytes).expect("flash diagnostic JSON");
+    assert_eq!(flash["schema"], "mining-campaign-flash-diagnostics-v1");
+    assert_eq!(flash["factory"]["terminal_category"], "ready");
+    assert_eq!(flash["factory"]["device_effect_state"], "completed");
+    assert_eq!(flash["nvs"]["terminal_category"], "ready");
+    assert_eq!(flash["nvs"]["device_effect_state"], "completed");
+    assert_eq!(flash["raw_output_included"], false);
     assert_eq!(
         result["network_continuity_sha256"],
         sha256_bytes(&network_bytes)

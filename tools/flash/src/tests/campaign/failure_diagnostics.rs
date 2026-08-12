@@ -1,6 +1,54 @@
 use super::*;
 
 #[test]
+fn typed_usb_flash_failures_are_not_collapsed_to_generic_flash_failed() {
+    // Arrange
+    let cases = [
+        (
+            UsbTerminalCategory::BootloaderConnectFailed,
+            CampaignTerminalCategory::BootloaderConnectFailed,
+        ),
+        (
+            UsbTerminalCategory::FlashFailedBeforeTransfer,
+            CampaignTerminalCategory::FlashFailedBeforeTransfer,
+        ),
+        (
+            UsbTerminalCategory::FlashFailedAfterTransfer,
+            CampaignTerminalCategory::FlashFailedAfterTransfer,
+        ),
+        (
+            UsbTerminalCategory::RecoveryNotObserved,
+            CampaignTerminalCategory::RecoveryNotObserved,
+        ),
+    ];
+
+    for (usb_category, expected) in cases {
+        let diagnostic = UsbCommandDiagnostic {
+            schema_version: "esp-usb-command-diagnostic-v1".to_owned(),
+            terminal_category: usb_category,
+            device_effect_state: UsbDeviceEffectState::None,
+            termination: UsbCommandTermination::ExitedFailure,
+            attempt_count: 1,
+            connection_signature: UsbConnectionSignature::DiagnosticUnavailable,
+            stdout_bytes: 0,
+            stderr_bytes: 0,
+            stdout_sha256: sha256_bytes(&[]),
+            stderr_sha256: sha256_bytes(&[]),
+            transfer_started: false,
+            transfer_completed: false,
+            raw_output_included: false,
+        };
+
+        // Act
+        let failure =
+            campaign_flash_failure(Some(&diagnostic), CampaignTerminalCategory::FlashFailed);
+
+        // Assert
+        assert_eq!(failure.category, expected);
+    }
+}
+
+#[test]
 fn hardware_preparation_failure_precedes_missing_pool_configuration() {
     // Arrange
     let dir = tempdir().expect("tempdir");

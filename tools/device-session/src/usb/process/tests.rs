@@ -1,5 +1,5 @@
 use super::*;
-use crate::{UsbOperation, UsbTerminalCategory};
+use crate::{UsbCommandDiagnostic, UsbDeviceEffectState, UsbOperation, UsbTerminalCategory};
 use std::os::unix::fs::PermissionsExt;
 use tempfile::tempdir;
 
@@ -38,6 +38,52 @@ fn supervised_process_captures_output_in_private_files() {
         .mode()
         & 0o777;
     assert_eq!(mode, 0o600);
+    lease.mark_complete();
+}
+
+#[test]
+fn real_child_diagnostic_exposes_only_counts_and_digests() {
+    // Arrange
+    let directory = tempdir().expect("temporary directory");
+    let trace_root = directory.path().join("trace");
+    fs::create_dir(&trace_root).expect("trace root");
+    fs::set_permissions(&trace_root, fs::Permissions::from_mode(0o700))
+        .expect("private trace root");
+    let mut lease =
+        DeviceLease::acquire("process-diagnostic-test", UsbOperation::Flash, &trace_root)
+            .expect("device lease");
+    let args = vec![
+        "-c".to_owned(),
+        "printf private-stdout-token; printf private-stderr-token >&2".to_owned(),
+    ];
+
+    // Act
+    let output = run_owned_process(
+        OwnedProcessRequest {
+            program: Path::new("/bin/sh"),
+            args: &args,
+            timeout: Duration::from_secs(2),
+            trace_root: &trace_root,
+            trace_label: "child-0001",
+            maybe_rust_log: None,
+        },
+        &mut lease,
+    )
+    .expect("supervised process");
+    let diagnostic = UsbCommandDiagnostic::from_output(
+        &output,
+        UsbTerminalCategory::Ready,
+        UsbDeviceEffectState::None,
+        1,
+    );
+    let encoded = serde_json::to_string(&diagnostic).expect("diagnostic JSON");
+
+    // Assert
+    assert_eq!(diagnostic.stdout_bytes, b"private-stdout-token".len());
+    assert_eq!(diagnostic.stderr_bytes, b"private-stderr-token".len());
+    assert!(!encoded.contains("private-stdout-token"));
+    assert!(!encoded.contains("private-stderr-token"));
+    assert!(!diagnostic.raw_output_included);
     lease.mark_complete();
 }
 

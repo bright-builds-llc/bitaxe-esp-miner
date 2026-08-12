@@ -40,6 +40,9 @@ pub(crate) trait FlashEnvironment {
     fn device_effect_state(&self) -> UsbDeviceEffectState {
         UsbDeviceEffectState::None
     }
+    fn last_usb_command_diagnostic(&self) -> Option<UsbCommandDiagnostic> {
+        None
+    }
     fn phase35_stage_readiness_gate(&self, _stage: &str, _port: &str) -> Result<()> {
         Ok(())
     }
@@ -366,6 +369,13 @@ impl FlashEnvironment for LocalFlashEnvironment {
         let mut combined = output.stdout;
         combined.extend_from_slice(&output.stderr);
         Ok(combined)
+    }
+
+    fn last_usb_command_diagnostic(&self) -> Option<UsbCommandDiagnostic> {
+        self.usb_session
+            .borrow()
+            .as_ref()
+            .and_then(UsbSession::last_command_diagnostic)
     }
 
     fn receive_only(&self, command_spec: &CommandSpec, timeout_seconds: u64) -> Result<Vec<u8>> {

@@ -25,6 +25,7 @@ pub use model::{
 pub use platform::current_platform;
 pub use usb::{
     discover_usb_ports, reduce_lifecycle, retry_is_eligible, MonitorOutput, ReflashReady,
-    RetryContext, SupervisedOutput, SupervisedTermination, UsbDeviceEffectState, UsbLifecycleEvent,
+    RetryContext, SupervisedOutput, SupervisedTermination, UsbCommandDiagnostic,
+    UsbCommandTermination, UsbConnectionSignature, UsbDeviceEffectState, UsbLifecycleEvent,
     UsbLifecycleState, UsbOperation, UsbSession, UsbSessionError, UsbTerminalCategory,
 };

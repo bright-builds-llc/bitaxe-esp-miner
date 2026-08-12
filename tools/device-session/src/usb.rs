@@ -13,6 +13,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 
 use crate::macos::{MacOsDeviceAdapter, ReceiveOnlyReader, UsbDeviceSnapshot};
 use lease::DeviceLease;
@@ -28,10 +29,11 @@ mod policy;
 pub use lifecycle::*;
 pub use policy::{retry_is_eligible, RetryContext};
 
+#[cfg(test)]
+use policy::EspflashConnectionSignature;
 use policy::{
     classify_bootloader_diagnostic, classify_espflash_failure, espflash_diagnostic_filter,
     ineligible_retry_detail, successful_command_recovery_policy, validate_recovery_snapshot,
-    EspflashConnectionSignature,
 };
 
 pub struct UsbSession {
@@ -43,6 +45,7 @@ pub struct UsbSession {
     current_enumeration_token: String,
     current_port: String,
     device_effect_state: UsbDeviceEffectState,
+    last_command_diagnostic: Option<UsbCommandDiagnostic>,
     earliest_failure: Option<UsbTerminalCategory>,
     trace_root: PathBuf,
     child_sequence: u32,
@@ -95,6 +98,7 @@ impl UsbSession {
             current_enumeration_token: snapshot.enumeration_token,
             current_port: snapshot.port,
             device_effect_state: UsbDeviceEffectState::None,
+            last_command_diagnostic: None,
             earliest_failure: None,
             trace_root,
             child_sequence: 0,
@@ -123,6 +127,11 @@ impl UsbSession {
         self.device_effect_state
     }
 
+    #[must_use]
+    pub fn last_command_diagnostic(&self) -> Option<UsbCommandDiagnostic> {
+        self.last_command_diagnostic.clone()
+    }
+
     pub fn run_espflash(
         &mut self,
         program: &Path,
@@ -130,6 +139,7 @@ impl UsbSession {
         timeout: Duration,
     ) -> Result<SupervisedOutput, UsbSessionError> {
         let mut first_boundary = None;
+        let mut command_effect_state = UsbDeviceEffectState::None;
         for attempt in 1..=2 {
             self.transition(UsbLifecycleEvent::BeginFlash)?;
             let enumeration_before = self.current_enumeration_token.clone();
@@ -143,19 +153,41 @@ impl UsbSession {
                 trace_label: &trace_label,
                 maybe_rust_log: espflash_diagnostic_filter(self.operation, args),
             };
-            let process_result =
-                run_owned_process(request, &mut self.lease).inspect_err(|error| {
+            let process_result = match run_owned_process(request, &mut self.lease) {
+                Ok(output) => output,
+                Err(error) => {
                     self.fail_once(error.category);
-                })?;
+                    self.last_command_diagnostic = Some(UsbCommandDiagnostic::without_output(
+                        error.category,
+                        command_effect_state,
+                        attempt,
+                    ));
+                    return Err(error);
+                }
+            };
+            command_effect_state =
+                advance_device_effect_state(command_effect_state, args, &process_result);
             self.device_effect_state =
-                advance_device_effect_state(self.device_effect_state, &process_result);
+                advance_device_effect_state(self.device_effect_state, args, &process_result);
             if process_result.succeeded() {
                 self.transition(UsbLifecycleEvent::FlashComplete)?;
                 let phase = successful_command_recovery_policy(args);
                 if let Err(error) = self.reacquire(phase) {
                     self.fail_once(error.category);
+                    self.last_command_diagnostic = Some(UsbCommandDiagnostic::from_output(
+                        &process_result,
+                        error.category,
+                        command_effect_state,
+                        attempt,
+                    ));
                     return Err(error);
                 }
+                self.last_command_diagnostic = Some(UsbCommandDiagnostic::from_output(
+                    &process_result,
+                    UsbTerminalCategory::Ready,
+                    command_effect_state,
+                    attempt,
+                ));
                 return Ok(process_result);
             }
 
@@ -166,16 +198,28 @@ impl UsbSession {
                 let (first_category, first_signature) =
                     first_boundary.unwrap_or((category, maybe_signature));
                 self.fail_once(first_category);
+                self.last_command_diagnostic = Some(UsbCommandDiagnostic::from_output(
+                    &process_result,
+                    first_category,
+                    command_effect_state,
+                    attempt,
+                ));
                 return Err(session_error(
                     UsbTerminalCategory::RepeatedBoundary,
                     format!(
                         "connection_signature={}; the same supervised espflash boundary failed after one retry",
                         first_signature
-                            .unwrap_or(EspflashConnectionSignature::DiagnosticUnavailable)
+                            .unwrap_or(UsbConnectionSignature::DiagnosticUnavailable)
                             .as_str()
                     ),
                 ));
             }
+            self.last_command_diagnostic = Some(UsbCommandDiagnostic::from_output(
+                &process_result,
+                category,
+                command_effect_state,
+                attempt,
+            ));
             first_boundary = Some((category, maybe_signature));
             let maybe_snapshot = self.reacquire(RecoveryPhase::RetryAdmission).ok();
             let context = RetryContext {
@@ -221,14 +265,35 @@ impl UsbSession {
             trace_label: &trace_label,
             maybe_rust_log: espflash_diagnostic_filter(self.operation, args),
         };
-        let output = run_owned_process(request, &mut self.lease).inspect_err(|error| {
-            self.fail_once(error.category);
-        })?;
+        let output = match run_owned_process(request, &mut self.lease) {
+            Ok(output) => output,
+            Err(error) => {
+                self.fail_once(error.category);
+                self.last_command_diagnostic = Some(UsbCommandDiagnostic::without_output(
+                    error.category,
+                    UsbDeviceEffectState::None,
+                    1,
+                ));
+                return Err(error);
+            }
+        };
         if output.succeeded() {
+            self.last_command_diagnostic = Some(UsbCommandDiagnostic::from_output(
+                &output,
+                UsbTerminalCategory::Ready,
+                UsbDeviceEffectState::None,
+                1,
+            ));
             return Ok(output);
         }
         let category = UsbTerminalCategory::FlashFailedBeforeTransfer;
         self.fail_once(category);
+        self.last_command_diagnostic = Some(UsbCommandDiagnostic::from_output(
+            &output,
+            category,
+            UsbDeviceEffectState::None,
+            1,
+        ));
         Err(session_error(
             category,
             "the supervised espflash prerequisite probe failed",
@@ -448,15 +513,89 @@ impl UsbSession {
 
 fn advance_device_effect_state(
     current: UsbDeviceEffectState,
+    args: &[String],
     output: &SupervisedOutput,
 ) -> UsbDeviceEffectState {
-    if current == UsbDeviceEffectState::Completed || output.succeeded() {
+    let is_write = args.first().map(String::as_str) == Some("write-bin");
+    if current == UsbDeviceEffectState::Completed || (is_write && output.succeeded()) {
         return UsbDeviceEffectState::Completed;
     }
-    if classify_espflash_failure(output) == UsbTerminalCategory::FlashFailedAfterTransfer {
+    if is_write
+        && classify_espflash_failure(output) == UsbTerminalCategory::FlashFailedAfterTransfer
+    {
         return UsbDeviceEffectState::ConfirmedPartial;
     }
     current
+}
+
+impl UsbCommandDiagnostic {
+    const SCHEMA: &'static str = "esp-usb-command-diagnostic-v1";
+
+    pub(crate) fn from_output(
+        output: &SupervisedOutput,
+        terminal_category: UsbTerminalCategory,
+        device_effect_state: UsbDeviceEffectState,
+        attempt_count: u8,
+    ) -> Self {
+        let connection_signature =
+            if terminal_category == UsbTerminalCategory::BootloaderConnectFailed {
+                classify_bootloader_diagnostic(output)
+            } else {
+                UsbConnectionSignature::NotApplicable
+            };
+        Self {
+            schema_version: Self::SCHEMA.to_owned(),
+            terminal_category,
+            device_effect_state,
+            termination: match output.termination {
+                SupervisedTermination::ExitedSuccess => UsbCommandTermination::ExitedSuccess,
+                SupervisedTermination::ExitedFailure => UsbCommandTermination::ExitedFailure,
+                SupervisedTermination::TimedOut => UsbCommandTermination::TimedOut,
+                SupervisedTermination::Interrupted { .. } => UsbCommandTermination::Interrupted,
+            },
+            attempt_count,
+            connection_signature,
+            stdout_bytes: output.stdout.len(),
+            stderr_bytes: output.stderr.len(),
+            stdout_sha256: sha256(&output.stdout),
+            stderr_sha256: sha256(&output.stderr),
+            transfer_started: device_effect_state != UsbDeviceEffectState::None,
+            transfer_completed: device_effect_state == UsbDeviceEffectState::Completed,
+            raw_output_included: false,
+        }
+    }
+
+    fn without_output(
+        terminal_category: UsbTerminalCategory,
+        device_effect_state: UsbDeviceEffectState,
+        attempt_count: u8,
+    ) -> Self {
+        Self {
+            schema_version: Self::SCHEMA.to_owned(),
+            terminal_category,
+            device_effect_state,
+            termination: UsbCommandTermination::NotStarted,
+            attempt_count,
+            connection_signature: UsbConnectionSignature::DiagnosticUnavailable,
+            stdout_bytes: 0,
+            stderr_bytes: 0,
+            stdout_sha256: sha256(&[]),
+            stderr_sha256: sha256(&[]),
+            transfer_started: device_effect_state != UsbDeviceEffectState::None,
+            transfer_completed: device_effect_state == UsbDeviceEffectState::Completed,
+            raw_output_included: false,
+        }
+    }
+}
+
+fn sha256(bytes: &[u8]) -> String {
+    let digest = Sha256::digest(bytes);
+    let mut encoded = String::with_capacity(digest.len() * 2);
+    for byte in digest {
+        use std::fmt::Write as _;
+        write!(encoded, "{byte:02x}").expect("writing to String cannot fail");
+    }
+    encoded
 }
 
 fn session_error(category: UsbTerminalCategory, detail: impl std::fmt::Display) -> UsbSessionError {

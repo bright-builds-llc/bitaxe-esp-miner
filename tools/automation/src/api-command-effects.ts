@@ -98,12 +98,32 @@ async function writePrivateJson(output: string, value: unknown): Promise<void> {
   await chmod(output, 0o600);
 }
 
-async function readPrivateJson(input: string, context: string): Promise<JsonObject> {
+async function readPrivateDocument(
+  input: string,
+  context: string,
+): Promise<{ readonly document: string; readonly value: JsonObject }> {
   const metadata = await stat(input);
   if (!metadata.isFile() || (metadata.mode & 0o777) !== 0o600) {
     throw failure("evidence_invalid", `${context} is not a private regular file`);
   }
-  return object(JSON.parse(await readFile(input, "utf8")), context);
+  const document = await readFile(input, "utf8");
+  return { document, value: object(JSON.parse(document), context) };
+}
+
+async function readRequiredPrivateDocument(
+  input: string,
+  context: string,
+): Promise<{ readonly document: string; readonly value: JsonObject }> {
+  try {
+    return await readPrivateDocument(input, context);
+  } catch (error) {
+    if (error instanceof ApiCommandEffectsError) throw error;
+    throw failure("evidence_invalid", `${context} is unavailable or malformed`);
+  }
+}
+
+async function readPrivateJson(input: string, context: string): Promise<JsonObject> {
+  return (await readPrivateDocument(input, context)).value;
 }
 
 async function campaignRecoveryFacts(campaignRoot: string): Promise<RecoveryFacts> {
@@ -260,10 +280,62 @@ function validatedCommandEffects(network: JsonObject): JsonObject {
   return effects;
 }
 
-function validateCampaign(result: JsonObject, network: JsonObject): JsonObject {
+function validReadyFlashDiagnostic(value: unknown): boolean {
+  const diagnostic = object(value, "flash command diagnostic");
+  const stdoutBytes = diagnostic["stdout_bytes"];
+  const stderrBytes = diagnostic["stderr_bytes"];
+  const stdoutSha256 = diagnostic["stdout_sha256"];
+  const stderrSha256 = diagnostic["stderr_sha256"];
+  return diagnostic["schema_version"] === "esp-usb-command-diagnostic-v1"
+    && diagnostic["terminal_category"] === "ready"
+    && diagnostic["device_effect_state"] === "completed"
+    && diagnostic["termination"] === "exited_success"
+    && diagnostic["attempt_count"] === 1
+    && diagnostic["connection_signature"] === "not_applicable"
+    && typeof stdoutBytes === "number"
+    && Number.isSafeInteger(stdoutBytes)
+    && stdoutBytes >= 0
+    && typeof stderrBytes === "number"
+    && Number.isSafeInteger(stderrBytes)
+    && stderrBytes >= 0
+    && typeof stdoutSha256 === "string"
+    && /^[0-9a-f]{64}$/u.test(stdoutSha256)
+    && typeof stderrSha256 === "string"
+    && /^[0-9a-f]{64}$/u.test(stderrSha256)
+    && diagnostic["transfer_started"] === true
+    && diagnostic["transfer_completed"] === true
+    && diagnostic["raw_output_included"] === false;
+}
+
+function validateFlashDiagnostics(
+  result: JsonObject,
+  flashDiagnostics: JsonObject,
+  flashDiagnosticsDocument: string,
+): void {
+  const flashDiagnosticsSha256 = result["flash_diagnostics_sha256"];
+  if (
+    typeof flashDiagnosticsSha256 !== "string"
+    || !/^[0-9a-f]{64}$/u.test(flashDiagnosticsSha256)
+    || flashDiagnosticsSha256 !== sha256(flashDiagnosticsDocument)
+    || flashDiagnostics["schema"] !== "mining-campaign-flash-diagnostics-v1"
+    || !validReadyFlashDiagnostic(flashDiagnostics["factory"])
+    || !validReadyFlashDiagnostic(flashDiagnostics["nvs"])
+    || flashDiagnostics["raw_output_included"] !== false
+  ) {
+    throw failure("evidence_invalid", "campaign flash diagnostics are incomplete");
+  }
+}
+
+function validateCampaign(
+  result: JsonObject,
+  network: JsonObject,
+  flashDiagnostics: JsonObject,
+  flashDiagnosticsDocument: string,
+): JsonObject {
+  validateFlashDiagnostics(result, flashDiagnostics, flashDiagnosticsDocument);
   const qualifiedCandidateCount = result["qualified_candidate_count"];
   if (
-    result["schema"] !== "mining-campaign-result-v5"
+    result["schema"] !== "mining-campaign-result-v6"
     || result["stage"] !== "command-effects"
     || result["status"] !== "accepted"
     || result["terminal_category"] !== "command_effects_complete"
@@ -438,7 +510,9 @@ export async function captureApiCommandEffects(
   const campaignRoot = path.join(privateRoot, "campaign");
   const campaignResult = await readPrivateJson(path.join(campaignRoot, "campaign-result.json"), "campaign result");
   const network = await readPrivateJson(path.join(campaignRoot, "campaign-network.private.json"), "campaign network evidence");
-  const effects = validateCampaign(campaignResult, network);
+  const flashDiagnosticsPath = path.join(campaignRoot, "campaign-flash.private.json");
+  const flashDiagnostics = await readRequiredPrivateDocument(flashDiagnosticsPath, "campaign flash diagnostics");
+  const effects = validateCampaign(campaignResult, network, flashDiagnostics.value, flashDiagnostics.document);
   const fixture = validateFixture(await readPrivateJson(fixtureReport, "fixture report"));
 
   const intentPath = path.join(campaignRoot, "command-effects-reboot-intent.private.json");

@@ -15,7 +15,8 @@ const CAMPAIGN_MARKER_PREFIX: &str = "mining_campaign_status=";
 const CAMPAIGN_MARKER_SCHEMA: &str = "mining-campaign-status-v9";
 const CAMPAIGN_PREPARATION_PREFIX: &str = "mining_campaign_preparation=";
 const CAMPAIGN_PREPARATION_SCHEMA: &str = "mining-campaign-preparation-v1";
-const CAMPAIGN_RESULT_SCHEMA: &str = "mining-campaign-result-v5";
+const CAMPAIGN_RESULT_SCHEMA: &str = "mining-campaign-result-v6";
+const CAMPAIGN_FLASH_DIAGNOSTICS_SCHEMA: &str = "mining-campaign-flash-diagnostics-v1";
 const CAMPAIGN_OBSERVATIONS_SCHEMA: &str = "mining-campaign-observations-v4";
 const CAMPAIGN_MINING_DIAGNOSTICS_SCHEMA: &str = "mining-campaign-asic-diagnostics-v1";
 const OBSERVATION_DURATION_SECONDS: u64 = 360;
@@ -41,6 +42,15 @@ pub(crate) enum CampaignTerminalCategory {
     CredentialAdmissionFailed,
     FlashFailed,
     NvsSeedFailed,
+    ConcurrentRepoSession,
+    ForeignHolder,
+    TransportAbsent,
+    IdentityDrift,
+    BootloaderConnectFailed,
+    FlashFailedBeforeTransfer,
+    FlashFailedAfterTransfer,
+    RecoveryNotObserved,
+    RepeatedBoundary,
     ObservationFailed,
     MarkerMissing,
     MarkerInvalid,
@@ -93,6 +103,15 @@ impl CampaignTerminalCategory {
             Self::CredentialAdmissionFailed => "credential_admission_failed",
             Self::FlashFailed => "flash_failed",
             Self::NvsSeedFailed => "nvs_seed_failed",
+            Self::ConcurrentRepoSession => "concurrent_repo_session",
+            Self::ForeignHolder => "foreign_holder",
+            Self::TransportAbsent => "transport_absent",
+            Self::IdentityDrift => "identity_drift",
+            Self::BootloaderConnectFailed => "bootloader_connect_failed",
+            Self::FlashFailedBeforeTransfer => "flash_failed_before_transfer",
+            Self::FlashFailedAfterTransfer => "flash_failed_after_transfer",
+            Self::RecoveryNotObserved => "recovery_not_observed",
+            Self::RepeatedBoundary => "repeated_boundary",
             Self::ObservationFailed => "observation_failed",
             Self::MarkerMissing => "marker_missing",
             Self::MarkerInvalid => "marker_invalid",
@@ -170,6 +189,8 @@ struct CampaignAttempt {
     serial_diagnostics: CampaignSerialDiagnostics,
     serial_outcome_detail: CampaignSerialOutcomeDetail,
     network_evidence: network::CampaignNetworkEvidence,
+    factory_flash_diagnostic: Option<UsbCommandDiagnostic>,
+    nvs_flash_diagnostic: Option<UsbCommandDiagnostic>,
 }
 
 impl Default for CampaignAttempt {
@@ -183,6 +204,8 @@ impl Default for CampaignAttempt {
             serial_diagnostics: CampaignSerialDiagnostics::not_observed(),
             serial_outcome_detail: CampaignSerialOutcomeDetail::Clean,
             network_evidence: network::CampaignNetworkEvidence::not_required(),
+            factory_flash_diagnostic: None,
+            nvs_flash_diagnostic: None,
         }
     }
 }
@@ -283,12 +306,22 @@ fn execute_campaign(
 
     let nvs_seed = prepare_campaign_nvs_seed(command, admission, &port, environment)
         .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::CredentialAdmissionFailed))?;
-    environment
-        .execute(&prepared.execution_command)
-        .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::FlashFailed))?;
-    environment
-        .execute(&nvs_seed.command)
-        .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::NvsSeedFailed))?;
+    let factory_result = environment.execute(&prepared.execution_command);
+    attempt.factory_flash_diagnostic = environment.last_usb_command_diagnostic();
+    if factory_result.is_err() {
+        return Err(campaign_flash_failure(
+            attempt.factory_flash_diagnostic.as_ref(),
+            CampaignTerminalCategory::FlashFailed,
+        ));
+    }
+    let nvs_result = environment.execute(&nvs_seed.command);
+    attempt.nvs_flash_diagnostic = environment.last_usb_command_diagnostic();
+    if nvs_result.is_err() {
+        return Err(campaign_flash_failure(
+            attempt.nvs_flash_diagnostic.as_ref(),
+            CampaignTerminalCategory::NvsSeedFailed,
+        ));
+    }
 
     let expected_runtime =
         prepared.outcome.runtime_identity.clone().ok_or_else(|| {
@@ -323,6 +356,38 @@ fn execute_campaign(
         ));
     }
     Ok(terminal)
+}
+
+pub(crate) fn campaign_flash_failure(
+    maybe_diagnostic: Option<&UsbCommandDiagnostic>,
+    fallback: CampaignTerminalCategory,
+) -> CampaignFailure {
+    let category =
+        maybe_diagnostic.map_or(fallback, |diagnostic| match diagnostic.terminal_category {
+            UsbTerminalCategory::Ready => fallback,
+            UsbTerminalCategory::ConcurrentRepoSession => {
+                CampaignTerminalCategory::ConcurrentRepoSession
+            }
+            UsbTerminalCategory::ForeignHolder => CampaignTerminalCategory::ForeignHolder,
+            UsbTerminalCategory::TransportAbsent => CampaignTerminalCategory::TransportAbsent,
+            UsbTerminalCategory::IdentityDrift => CampaignTerminalCategory::IdentityDrift,
+            UsbTerminalCategory::BootloaderConnectFailed => {
+                CampaignTerminalCategory::BootloaderConnectFailed
+            }
+            UsbTerminalCategory::FlashFailedBeforeTransfer => {
+                CampaignTerminalCategory::FlashFailedBeforeTransfer
+            }
+            UsbTerminalCategory::FlashFailedAfterTransfer => {
+                CampaignTerminalCategory::FlashFailedAfterTransfer
+            }
+            UsbTerminalCategory::MonitorFailed => fallback,
+            UsbTerminalCategory::CleanupFailed => CampaignTerminalCategory::UsbCleanupFailed,
+            UsbTerminalCategory::RecoveryNotObserved => {
+                CampaignTerminalCategory::RecoveryNotObserved
+            }
+            UsbTerminalCategory::RepeatedBoundary => CampaignTerminalCategory::RepeatedBoundary,
+        });
+    CampaignFailure::new(category)
 }
 
 fn campaign_capture_timeout_seconds(admission: CampaignAdmission) -> u64 {

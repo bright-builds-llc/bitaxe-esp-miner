@@ -284,7 +284,7 @@ fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evide
         assert!(!csv.contains(forbidden), "unexpected key {forbidden}");
     }
     let result = read_campaign_result(&command);
-    assert_eq!(result["schema"], "mining-campaign-result-v5");
+    assert_eq!(result["schema"], "mining-campaign-result-v6");
     assert_eq!(result["status"], "accepted");
     assert_eq!(result["terminal_category"], "observation_complete");
     assert_eq!(result["runtime_identity"], "trusted");
@@ -582,6 +582,7 @@ fn assert_private_campaign_artifacts(root: &Utf8Path) {
         );
         for name in [
             "campaign-diagnostics.private.json",
+            "campaign-flash.private.json",
             "campaign-mining-diagnostics.private.json",
             "campaign-network.private.json",
             "campaign-observations.private.json",

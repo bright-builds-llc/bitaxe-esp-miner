@@ -261,6 +261,11 @@ fn bootloader_diagnostic_classifies_production_shaped_debug_transcripts() {
         ),
         (
             SupervisedTermination::ExitedFailure,
+            b"Error while connecting to device\nTimeout while running FlashDeflData command",
+            EspflashConnectionSignature::FlashDefinitionDataTimeout,
+        ),
+        (
+            SupervisedTermination::ExitedFailure,
             b"[DEBUG] Failed to reset, error Connection(ConnectionFailed), retrying",
             EspflashConnectionSignature::GenericConnectionFailure,
         ),
@@ -339,10 +344,64 @@ fn successful_flash_records_completed_device_effect() {
     };
 
     // Act
-    let state = advance_device_effect_state(UsbDeviceEffectState::None, &output);
+    let state = advance_device_effect_state(
+        UsbDeviceEffectState::None,
+        &["write-bin".to_owned()],
+        &output,
+    );
 
     // Assert
     assert_eq!(state, UsbDeviceEffectState::Completed);
+}
+
+#[test]
+fn successful_board_info_does_not_claim_a_device_write() {
+    // Arrange
+    let output = SupervisedOutput {
+        termination: SupervisedTermination::ExitedSuccess,
+        stdout: b"Chip type: ESP32-S3".to_vec(),
+        stderr: Vec::new(),
+    };
+
+    // Act
+    let state = advance_device_effect_state(
+        UsbDeviceEffectState::None,
+        &["board-info".to_owned()],
+        &output,
+    );
+
+    // Assert
+    assert_eq!(state, UsbDeviceEffectState::None);
+}
+
+#[test]
+fn flash_definition_timeout_diagnostic_is_closed_and_pre_transfer() {
+    // Arrange
+    let output = SupervisedOutput {
+        termination: SupervisedTermination::ExitedFailure,
+        stdout: b"private-port-token".to_vec(),
+        stderr: b"Timeout while running FlashDeflData command private-network-token".to_vec(),
+    };
+
+    // Act
+    let diagnostic = UsbCommandDiagnostic::from_output(
+        &output,
+        UsbTerminalCategory::BootloaderConnectFailed,
+        UsbDeviceEffectState::None,
+        1,
+    );
+    let encoded = serde_json::to_string(&diagnostic).expect("diagnostic JSON");
+
+    // Assert
+    assert_eq!(
+        diagnostic.connection_signature,
+        UsbConnectionSignature::FlashDefinitionDataTimeout
+    );
+    assert!(!diagnostic.transfer_started);
+    assert!(!diagnostic.transfer_completed);
+    assert!(!diagnostic.raw_output_included);
+    assert!(!encoded.contains("private-port-token"));
+    assert!(!encoded.contains("private-network-token"));
 }
 
 #[test]
@@ -355,7 +414,11 @@ fn write_failure_records_confirmed_partial_device_effect() {
     };
 
     // Act
-    let state = advance_device_effect_state(UsbDeviceEffectState::None, &output);
+    let state = advance_device_effect_state(
+        UsbDeviceEffectState::None,
+        &["write-bin".to_owned()],
+        &output,
+    );
 
     // Assert
     assert_eq!(state, UsbDeviceEffectState::ConfirmedPartial);
