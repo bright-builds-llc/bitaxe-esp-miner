@@ -2146,12 +2146,12 @@ attempt-006 cannot be retried. See the linked closure for the next safe action.
       fresh two-prompt operator-readiness gate.
 - [x] Freeze the immutable software-only plan at
       `docs/parity/work-plans/20260812T220119Z-PWR-005/PLAN.md`.
-- [ ] Independently validate the accepted PWR-003 projection, exact digest,
+- [x] Independently validate the accepted PWR-003 projection, exact digest,
       result lineage, source/reference identities, current DS4432U ownership,
       final mode, and redaction.
-- [ ] Add a PWR-005-specific RESULT.md using only the overlapping closed facts;
+- [x] Add a PWR-005-specific RESULT.md using only the overlapping closed facts;
       do not duplicate the evidence contract or rerun hardware.
-- [ ] Run every focused and mandatory software, privacy, reference, integrity,
+- [x] Run every focused and mandatory software, privacy, reference, integrity,
       and diff gate before the evidence checkpoint and final transition.
 - [ ] Promote only PWR-005 on the complete closed quorum, archive this task,
       synchronize progress, and preserve every explicit non-claim.

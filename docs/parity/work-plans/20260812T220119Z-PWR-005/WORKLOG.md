@@ -44,3 +44,50 @@
   independently valid.
 - Blocker or next safe action: Commit and push this checkpoint, then write the
   row-specific result from the validated closed evidence.
+
+## 2026-08-12T22:13:00Z | Closed-evidence reconciliation
+
+- Source commit: `fef9945ce91793fd5815f349e2202834b9ffeef6`
+- Actions: Independently validated the existing PWR-003 projection; joined its
+  exact digest to the PWR-003 result and typed transition receipt; proved the
+  admitted implementation is an ancestor of current `main`; and confirmed no
+  DS4432U, I2C-owner, voltage-orchestration, projector, validator, or reference
+  path drift. Added only the PWR-005 row-specific RESULT.md.
+- Verification: Projection SHA-256
+  `11dd1abbf6fda86d203fdcff49b420ab5139e1d29c35f4d17000c61c3112ae68`;
+  PWR-003 result SHA-256
+  `9f9e260411e983ba7b23748df4210b21a532b39f8772c1feaf6d453af9a54c36`;
+  Rust validator passed; three focused contract tests passed; canonical
+  automation suite passed; source/reference ancestry and compatibility passed;
+  final mode is `0644`; reference and redaction gates passed.
+- Evidence: Existing closed projection and PWR-003 result, plus
+  `docs/parity/work-plans/20260812T220119Z-PWR-005/RESULT.md`. No new evidence
+  schema or hardware artifact was created.
+- Outcome: The complete closed PWR-005 quorum supports `verified`. A
+  simplification review confirmed that reusing the already validated projection
+  is clearer and stronger than duplicating its schema or projector.
+- Blocker or next safe action: Run the complete evidence-checkpoint gates,
+  commit and push RESULT.md without checklist mutation, save that commit as
+  `SOURCE_COMMIT`, then transition only PWR-005 and synchronize progress.
+
+## 2026-08-12T22:19:00Z | Evidence checkpoint verified
+
+- Source commit: `fef9945ce91793fd5815f349e2202834b9ffeef6`
+- Actions: Preserved the immutable plan and existing projection byte-for-byte;
+  finalized only the row-specific RESULT.md and task/worklog checkpoint without
+  changing the parity checklist.
+- Verification: The ordered Cargo format, strict Clippy, all-target build, and
+  all-feature tests passed; Bright Builds reported zero findings; all 40 Bazel
+  tests passed; parity reported no validation errors; progress remained 62 of
+  94 active rows verified (66.0%); the independent evidence validator,
+  repository redaction across 16 artifacts, pinned-reference cleanliness,
+  exact projection/result/plan digests, mode `0644`, unique task binding, and
+  diff checks passed.
+- Evidence: PWR-005 RESULT.md SHA-256
+  `0e4bdf85a5b0c3ed691defa18c9b9211e8a065c4b7a3eb6140a444b137b27924`;
+  reused projection SHA-256
+  `11dd1abbf6fda86d203fdcff49b420ab5139e1d29c35f4d17000c61c3112ae68`.
+- Outcome: The evidence checkpoint is ready to commit and push as
+  `SOURCE_COMMIT` before any checklist mutation.
+- Blocker or next safe action: Commit and push this checkpoint, then perform
+  one typed PWR-005 transition and immediately synchronize progress.
