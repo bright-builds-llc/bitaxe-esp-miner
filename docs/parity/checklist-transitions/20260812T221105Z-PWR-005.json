@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260812T221105Z-PWR-005",
+  "predecessor_sha256": "604d0d2f8332bed5262f58c84f92e5ba2c50a76b0e3b403eb6b7b34237c52ca7",
+  "result_sha256": "3c65e00821baee5d0d5309f3ee4e3585278a3591d61a84c86287e7b4fa11b6c1",
+  "row_id": "PWR-005",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260812T220119Z-PWR-005/PLAN.md",
+  "plan_sha256": "0c376bb8940a1f445cee0cfe49930f9e6147a9ad9c50814c277717e52ac51bf7",
+  "result_path": "docs/parity/work-plans/20260812T220119Z-PWR-005/RESULT.md",
+  "result_document_sha256": "0e4bdf85a5b0c3ed691defa18c9b9211e8a065c4b7a3eb6140a444b137b27924",
+  "before_rust_owned_target": "`crates/bitaxe-safety/src/power.rs`, `firmware/bitaxe/src/safety_adapter/ina260.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`",
+  "after_rust_owned_target": "`firmware/bitaxe/src/safety_adapter/ds4432u.rs`, `firmware/bitaxe/src/safety_adapter/i2c_bus.rs`, `firmware/bitaxe/src/safety_adapter.rs`, `firmware/bitaxe/src/mining_actuation.rs`, `firmware/bitaxe/src/mining_actuation_adapter.rs`, `crates/bitaxe-automation-contracts/src/core_voltage_control_evidence.rs`, `tools/automation/src/core-voltage-control-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,hardware-regression",
+  "before_notes": "DS4432U address/register constants and observe-only voltage effect handling exist, but firmware does not write DS4432U hardware without evidence. [Phase 14 voltage-control evidence](evidence/phase-14-safety-hardware-evidence-completion/voltage-control.md) records no active voltage command, DS4432U write, raw I2C operation, or bounded voltage procedure; active DS4432U register writes remain below verified and require `hardware-regression`. Phase 20 final evidence in `evidence/phase-20-active-safety-hardware-telemetry-evidence/summary.md` and `evidence/phase-20-active-safety-hardware-telemetry-evidence/active-power-voltage.md` keeps DS4432U actuation, setpoint effects, and unsafe-voltage recovery below verified.",
+  "after_notes": "The accepted Ultra 205 campaign and closed source-bound projection prove DS4432U address 0x48, output-zero register 0xf8, conservative code 0xe1, exactly one typed write, successful initialized work, an accepted submit, safe stop, cleanup, no hardware rerun, independent validation, and redaction; see [PWR-005 result](work-plans/20260812T220119Z-PWR-005/RESULT.md) and [closed projection](evidence/pwr003-core-voltage-control/core-voltage-control-projection.json). Analog voltage measurement, setpoint accuracy, rail timing or waveform, DS4432U reads and output one, arbitrary targets, injected faults, INA260 correlation, other profiles, boards, and ASIC families remain non-claims."
+}

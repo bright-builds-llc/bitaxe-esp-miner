@@ -91,3 +91,46 @@
   `SOURCE_COMMIT` before any checklist mutation.
 - Blocker or next safe action: Commit and push this checkpoint, then perform
   one typed PWR-005 transition and immediately synchronize progress.
+
+## 2026-08-12T22:11:39Z | Verified transition and task closure
+
+- Source commit: `cd7e394b553a6514794f4bada904d15d7e01e6dd`
+- Actions: Transitioned only PWR-005 to `verified`; replaced its stale
+  observe-only ownership cell with the proven DS4432U route; added
+  `hardware-regression` evidence; immediately synchronized progress; and
+  archived the completed task.
+- Verification: The first uncommitted transition omitted `--notes` and retained
+  the obsolete no-write note. Its receipt and only its derived checklist,
+  progress, and README edits were removed before publication. Recreated typed
+  transition `20260812T221105Z-PWR-005` binds the immutable plan, RESULT.md,
+  and accurate closed-facts note. Progress appended from the exact pushed
+  evidence checkpoint and reports 63 of 94 active rows verified (67.0%).
+- Evidence: Existing projection SHA-256
+  `11dd1abbf6fda86d203fdcff49b420ab5139e1d29c35f4d17000c61c3112ae68`,
+  PWR-005 RESULT.md, transition receipt, synchronized checklist/progress/README,
+  and archived task record.
+- Outcome: PWR-005 is verified; this invocation changed no other parity row and
+  performed no hardware action.
+- Blocker or next safe action: Run the final mandatory ordered gates, review
+  the complete finalization diff, commit, fetch, and push without force.
+
+## 2026-08-12T22:17:04Z | Final gate complete
+
+- Source commit: `cd7e394b553a6514794f4bada904d15d7e01e6dd`
+- Actions: Finalized the accurate typed transition, deterministic progress,
+  README status, archived task, and complete audit trail without modifying the
+  immutable plan or reused evidence.
+- Verification: The final ordered Cargo format, strict Clippy, all-target
+  build, and all-feature test gates passed; Bright Builds reported zero
+  findings; all 40 Bazel tests passed; parity reported no validation errors;
+  progress is 63 of 94 active rows verified (67.0%); redaction across 16
+  artifacts, independent evidence validation, pinned-reference cleanliness,
+  selector closure, exact digests, task archive uniqueness, candidate absence,
+  and diff checks passed.
+- Evidence: Transition `20260812T221105Z-PWR-005`, PWR-005 RESULT.md, and the
+  reused projection SHA-256
+  `11dd1abbf6fda86d203fdcff49b420ab5139e1d29c35f4d17000c61c3112ae68`.
+- Outcome: PWR-005 is fully finalized and ready to push. No device interaction
+  occurred.
+- Blocker or next safe action: Commit the audited finalization, fetch origin,
+  verify conflict-free synchronization, and push without force.

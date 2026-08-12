@@ -2140,48 +2140,6 @@ later closed `network_correlation_failed` with terminal
 withholding passed. No projection exists, API-009 remains `implemented`, and
 attempt-006 cannot be retried. See the linked closure for the next safe action.
 
-### task-parity-pwr005-ds4432u-evidence-reconciliation | 2026-08-12 | Reconcile DS4432U support evidence
-
-- [x] Select PWR-005 as the first actionable row after API-009's unavailable
-      fresh two-prompt operator-readiness gate.
-- [x] Freeze the immutable software-only plan at
-      `docs/parity/work-plans/20260812T220119Z-PWR-005/PLAN.md`.
-- [x] Independently validate the accepted PWR-003 projection, exact digest,
-      result lineage, source/reference identities, current DS4432U ownership,
-      final mode, and redaction.
-- [x] Add a PWR-005-specific RESULT.md using only the overlapping closed facts;
-      do not duplicate the evidence contract or rerun hardware.
-- [x] Run every focused and mandatory software, privacy, reference, integrity,
-      and diff gate before the evidence checkpoint and final transition.
-- [ ] Promote only PWR-005 on the complete closed quorum, archive this task,
-      synchronize progress, and preserve every explicit non-claim.
-
-This is a software-only evidence reconciliation. It permits reading committed
-source, reference, task, plan, result, and accepted evidence; running repository
-validation and verification commands; writing the row-specific result; and
-transitioning only PWR-005 if every gate passes. It permits no detector,
-package, flash, reset, USB/serial, network, credential, mining, voltage, fan,
-power, GPIO, I2C, direct UART, pin, fault-injection, or other hardware effect.
-
-Acceptance requires the exact existing PWR-003 projection with SHA-256
-`11dd1abbf6fda86d203fdcff49b420ab5139e1d29c35f4d17000c61c3112ae68`,
-its Rust validator, board 205 and exact source/reference identities, trusted
-package/runtime, the source-compatible typed DS4432U address `0x48`, output
-register `0xf8`, code `0xe1`, exactly one write, successful initialized work,
-an accepted submit, safe stop, cleanup, no hardware rerun, and passed
-redaction. A failed boundary leaves PWR-005 `implemented`, changes no checklist
-field, and records the earliest blocker without a hardware retry.
-
-Verification: Immutable plan SHA-256
-`0c376bb8940a1f445cee0cfe49930f9e6147a9ad9c50814c277717e52ac51bf7`;
-the ordered Cargo, Bright Builds, Bazel, parity, progress, focused contract,
-automation, redaction, reference, task-binding, digest, mode, and diff gates
-passed before the plan commit. One guessed nonexistent per-file Bazel target
-was replaced by the repository-owned `//tools/automation:automation_test`,
-which passed.
-
-Completion review: Pending.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

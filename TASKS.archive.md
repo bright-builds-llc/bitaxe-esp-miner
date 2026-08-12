@@ -6788,3 +6788,56 @@ hardware run. Direct analog measurement, setpoint accuracy, rail timing or
 waveform, arbitrary targets, INA260 correlation, injected faults, other
 profiles, boards, and ASIC families remain non-claims. The row is verified and
 this task is complete and archived.
+
+### task-parity-pwr005-ds4432u-evidence-reconciliation | 2026-08-12 | Reconcile DS4432U support evidence
+
+- [x] Select PWR-005 as the first actionable row after API-009's unavailable
+      fresh two-prompt operator-readiness gate.
+- [x] Freeze the immutable software-only plan at
+      `docs/parity/work-plans/20260812T220119Z-PWR-005/PLAN.md`.
+- [x] Independently validate the accepted PWR-003 projection, exact digest,
+      result lineage, source/reference identities, current DS4432U ownership,
+      final mode, and redaction.
+- [x] Add a PWR-005-specific RESULT.md using only the overlapping closed facts;
+      do not duplicate the evidence contract or rerun hardware.
+- [x] Run every focused and mandatory software, privacy, reference, integrity,
+      and diff gate before the evidence checkpoint and final transition.
+- [x] Promote only PWR-005 on the complete closed quorum, archive this task,
+      synchronize progress, and preserve every explicit non-claim.
+
+This is a software-only evidence reconciliation. It permits reading committed
+source, reference, task, plan, result, and accepted evidence; running repository
+validation and verification commands; writing the row-specific result; and
+transitioning only PWR-005 if every gate passes. It permits no detector,
+package, flash, reset, USB/serial, network, credential, mining, voltage, fan,
+power, GPIO, I2C, direct UART, pin, fault-injection, or other hardware effect.
+
+Acceptance requires the exact existing PWR-003 projection with SHA-256
+`11dd1abbf6fda86d203fdcff49b420ab5139e1d29c35f4d17000c61c3112ae68`,
+its Rust validator, board 205 and exact source/reference identities, trusted
+package/runtime, the source-compatible typed DS4432U address `0x48`, output
+register `0xf8`, code `0xe1`, exactly one write, successful initialized work,
+an accepted submit, safe stop, cleanup, no hardware rerun, and passed
+redaction. A failed boundary leaves PWR-005 `implemented`, changes no checklist
+field, and records the earliest blocker without a hardware retry.
+
+Verification: Immutable plan SHA-256
+`0c376bb8940a1f445cee0cfe49930f9e6147a9ad9c50814c277717e52ac51bf7`.
+Transition `20260812T221105Z-PWR-005` changed only PWR-005 to `verified`,
+replaced its stale observe-only ownership cell, and added
+`hardware-regression` evidence. Immediate progress synchronization from exact
+pushed source commit `cd7e394b553a6514794f4bada904d15d7e01e6dd`
+records 63 of 94 active rows verified (67.0%). The ordered Cargo, Bright
+Builds, all-40-target Bazel, parity, progress, focused contract, automation,
+redaction, reference, task-binding, digest, mode, and diff gates passed. One
+guessed nonexistent per-file Bazel target was replaced by the repository-owned
+`//tools/automation:automation_test`, which passed.
+
+Completion review: PWR-005 is verified from the immutable PWR-003 projection
+and row-specific RESULT.md. The accepted Ultra 205 campaign proves the exact
+DS4432U address, output-zero register, conservative code, typed single-write
+route, successful downstream work, safe stop, cleanup, no hardware rerun, and
+redaction. No duplicate projector or hardware action was used. Analog accuracy,
+rail timing or waveform, DS4432U reads/output one, arbitrary targets, fault
+injection, INA260 correlation, other profiles, boards, and ASIC families remain
+non-claims. The task is complete and archived.
