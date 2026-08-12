@@ -1,0 +1,52 @@
+{
+  "schema_version": "bitaxe-protocol-coordinator-evidence-v1",
+  "board": 205,
+  "attempt_source_commit": "3e0966a140edbff1a14d2a48ca63d140649762c0",
+  "current_source_commit": "d6059a4330de070cca92b09346ac24a91ecd1300",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "project-protocol-coordinator-evidence",
+    "request_sha256": "985e5e2cc67eaf2ab73cba7069caeeb15b651a68e54eeb6b5ad878f4b0e66f30"
+  },
+  "source": {
+    "initialization_projection_sha256": "eee750561a7c1dcec1a5698b1e5827d3f1508d43655c3c4aa237097338dcf8d4",
+    "initialization_projection_current_commit": "f9df1412abbc05a4852022f3fb6741f67ab43272",
+    "initialization_projection_valid": true,
+    "work_send_projection_sha256": "447af65ae9e6cd5cc2199ef639ff8e0fa7f63d4c9708570bd66781c5a162e80c",
+    "work_send_projection_current_commit": "32017ba8bb9b99212cad3c2c9ecaed7edf603d19",
+    "work_send_projection_valid": true,
+    "result_parsing_projection_sha256": "e99c054c4d660155d5c2b1ee38d3f17aed5ae7101e7e4a5fd1c6451d1b48b7c7",
+    "result_parsing_projection_current_commit": "2861bfb1d425d3c5d13b3a820c082eb24e1f1a77",
+    "result_parsing_projection_valid": true,
+    "socket_projection_sha256": "dcb3eed396a268114b017d7ef4fbca9c427a390d7acf405fc52fbef6472122b8",
+    "socket_projection_current_commit": "d0a91d3662046a1350e89f872c59e21a4bce73c2",
+    "socket_projection_valid": true
+  },
+  "coordinator": {
+    "owner_inbox_capacity": 16,
+    "readiness_reread_cadence_ms": 1000,
+    "readiness_gate_count": 6,
+    "single_owner_serialization": true,
+    "hardware_prepared_before_pool_access": true,
+    "authorized_before_asic_dispatch": true,
+    "qualified_result_before_submit": true,
+    "accepted_submit_observed": true,
+    "ordered_terminal_safe_stop": true,
+    "watchdog_feed_in_owner_loop": true,
+    "coordinator_modules_unchanged": true,
+    "lifecycle_spans_compatible": true
+  },
+  "package_admitted": true,
+  "runtime_identity": "trusted",
+  "runtime_attestation_status": "trusted",
+  "campaign_terminal_category": "submit_response_observed",
+  "submit_outcome": "accepted",
+  "safety_status": "fresh",
+  "mine_on_boot_disabled": true,
+  "safe_stop_confirmed": true,
+  "lease_cleanup_confirmed": true,
+  "usb_cleanup_ready": true,
+  "hardware_rerun_used": false,
+  "redaction_status": "passed"
+}

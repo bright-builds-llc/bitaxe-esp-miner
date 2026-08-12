@@ -63,3 +63,24 @@
 - Outcome: The corrected implementation satisfies every pre-publication gate.
 - Blocker or next safe action: Commit and push the fix, confirm exact clean
   synchronization, then run the plan's one software-only projection attempt.
+
+## 2026-08-12T12:37:28Z | Accepted projection
+
+- Source commit: `d6059a4330de070cca92b09346ac24a91ecd1300`
+- Actions: Confirmed exact clean synchronization, ran the plan's single
+  software-only projection attempt, then independently validated the published
+  projection with the Rust validator and checked its mode and denylist.
+- Verification: The projector completed with category `complete`; the direct
+  absolute-path validator passed. The final file is mode 0644, its candidate is
+  absent, its SHA-256 is
+  `f008171f26b7a8ae6b08859e3cfef4f0c5bf88937c049dd66b6f868c9bbfd6f7`,
+  and the explicit sensitive-value scan found no matches. An initial
+  supplemental relative-path validator invocation found no file because Bazel
+  runs from its runfiles directory; the corrected absolute-path invocation
+  passed and did not regenerate or modify the projection.
+- Evidence: The public projection contains only the closed contract. No
+  protected evidence or hardware was accessed.
+- Outcome: The evidence quorum supports promoting only `STR-006` to verified.
+- Blocker or next safe action: Commit and push the evidence and result, then
+  transition the checklist row and synchronize progress from this exact source
+  commit.
