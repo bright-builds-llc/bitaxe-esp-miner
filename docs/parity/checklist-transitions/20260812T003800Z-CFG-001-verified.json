@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260812T003800Z-CFG-001-verified",
+  "predecessor_sha256": "03b3c35b7c823e3e68a4e5f928dd753e8452f1f23e225cba100d023c66348791",
+  "result_sha256": "314e621463eb78ce68030007234a93ccdbfa8b59bcc0a23e93153a87d4caadfc",
+  "row_id": "CFG-001",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260811T234907Z-CFG-001/PLAN.md",
+  "plan_sha256": "5420cdb7d911e1f98492060a2d30223244aaecf740283df38c6174a12353694c",
+  "result_path": "docs/parity/work-plans/20260811T234907Z-CFG-001/RESULT.md",
+  "result_document_sha256": "b55ef2df0d2750193357577a401585a5854d56a6193f4decbeddaba344be1f5d",
+  "before_rust_owned_target": "`crates/bitaxe-config/src/defaults.rs`, `crates/bitaxe-config/fixtures/ultra-205-defaults.csv`",
+  "after_rust_owned_target": "`crates/bitaxe-config/src/defaults.rs`, `crates/bitaxe-config/src/defaults/attestation.rs`, `tools/flash/src/wifi.rs`, `firmware/bitaxe/src/settings_adapter.rs`, `firmware/bitaxe/src/startup.rs`, `tools/automation/src/ultra205-defaults-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,golden",
+  "after_evidence": "unit,golden,workflow,hardware-smoke",
+  "before_notes": "`Ultra205Defaults` and fixture-backed tests cover pure Ultra 205 hostname, pool, ASIC, fan, self-test, device, board, frequency, and voltage defaults; see [Phase 2 evidence](evidence/phase-02-ultra-205-config-nvs-model.md). Hardware use of frequency/voltage remains unverified until safety-critical evidence exists.",
+  "after_notes": "Exact-package Ultra 205 attempt-001 proves all 27 configured defaults in the firmware attestation and all 23 API-visible defaults in same-boot HTTP and equal-or-later WebSocket views, with retained-marker continuity, mineonboot disabled, mining and hardware control disabled, cleanup, private modes, independent validation, and redaction; see docs/parity/work-plans/20260811T234907Z-CFG-001/RESULT.md and docs/parity/evidence/cfg001-ultra205-defaults/ultra205-defaults-projection.json. Actuation, mining, pool connectivity, controls, self-test, OTA, recovery, and non-205 behavior remain separate."
+}

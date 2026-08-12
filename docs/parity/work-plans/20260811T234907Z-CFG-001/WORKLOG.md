@@ -113,3 +113,21 @@
 - Blocker or next safe action: Commit and push the result/evidence without
   changing the checklist, then transition only `CFG-001`, synchronize progress,
   archive the completed task, and run final gates.
+
+## 2026-08-12T00:38:00Z | Promotion checkpoint
+
+- Source commit: `bcf0a3910e5e65a81c90e12bec9c790839f2e6ae`.
+- Actions: Transitioned only `CFG-001` to `verified` through canonical receipt
+  `20260812T003800Z-CFG-001-verified`, synchronized deterministic progress, and
+  moved the completed native task record from `TASKS.md` to the append-only
+  archive.
+- Verification: Checklist digest is
+  `314e621463eb78ce68030007234a93ccdbfa8b59bcc0a23e93153a87d4caadfc`;
+  progress appended from the exact evidence commit and now reports `47/94`
+  verified, `50.0%` completion. The Rust-owned target cell uses the required
+  Markdown code-span format.
+- Evidence: The committed RESULT, closed projection, transition receipt, and
+  deterministic progress entry. No additional device effect occurred.
+- Outcome: The selected parity row and its task lifecycle are complete.
+- Blocker or next safe action: Run the complete final gate, review the exact
+  finalization diff, commit, fetch/rebase only if necessary, and push.
