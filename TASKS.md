@@ -1830,6 +1830,30 @@ proved mining and controls disabled. No projection exists. The linked closure
 requires removal of that preference-value assumption in a fresh ordinal; this
 task remains active because `NET-002` is not verified.
 
+### task-parity-asic005-serial-transport-promotion | 2026-08-12 | Verify the accepted BM1366 serial transport
+
+- [x] Select `ASIC-005` from a clean synchronized preflight and bind the
+      immutable plan to the accepted hardware lineage.
+- [ ] Add and verify a closed public contract that joins the validated live
+      work-send and result-parsing projections through the unchanged UART
+      transport.
+- [ ] Publish the redacted evidence, promote only `ASIC-005` when the complete
+      quorum passes, synchronize progress, and archive this task.
+
+Plan: `docs/parity/work-plans/20260812T102245Z-ASIC-005/PLAN.md`.
+
+Authorization: Software-only evidence derivation. No hardware, USB, network,
+credentials, protected artifacts, raw traces, or direct electrical interfaces
+are authorized or required by this plan.
+
+Verification: Plan-only gate passed after one bounded retry of a transient
+host-resource error: ordered Cargo, Bright Builds, all 37 Bazel tests,
+parity/progress, redaction, reference, reference-cleanliness, task-uniqueness,
+and diff checks are green. Immutable plan SHA-256 is
+`f08426c24227ea69502135a472811d99bbc7ad5f559159a1956f123a8baeb641`.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
