@@ -133,3 +133,59 @@
   source checkpoint required by the audited transition.
 - Blocker or next safe action: Commit and push this checkpoint, retain its
   full hash as `SOURCE_COMMIT`, then transition only `PWR-001`.
+
+## 2026-08-12 19:33 UTC | verified transition and progress synchronization
+
+- Source commit: `312b512d437725b3de80e01d52f8aa9f6aef6724`
+- Actions: Transitioned only `PWR-001` with transition ID
+  `20260812T192855Z-PWR-001`, synchronized deterministic progress from the
+  pushed evidence checkpoint, replaced stale pre-promotion checklist notes,
+  and prepared the completed task for archival.
+- Verification: The typed transition accepted the immutable plan and result,
+  produced checklist digest
+  `5614b1820d2b8ad228a1829f70b32a2a1c5698ea49752d579633a6bbbde8732b`,
+  and appended progress at 60/94 verified (63.8%).
+- Evidence: `docs/parity/checklist-transitions/20260812T192855Z-PWR-001.json`,
+  updated checklist/progress/README, the typed result, and the closed public
+  projection.
+- Outcome: `PWR-001` is verified; the active task is complete and may be
+  archived.
+- Blocker or next safe action: Run the final ordered repository gates, review
+  the finalization diff, commit, fetch, and push without force.
+
+## 2026-08-12 19:36 UTC | transition metadata correction
+
+- Source commit: `312b512d437725b3de80e01d52f8aa9f6aef6724`
+- Actions: The final parity gate rejected the uncommitted first transition
+  because the Rust-owned target lacked required Markdown code spans; a manual
+  follow-up notes edit also correctly failed the transition-ledger digest.
+  Restored the committed predecessor, removed the uncommitted receipt and
+  progress record, and replayed one atomic transition with code-spanned targets
+  and the complete source-bound notes.
+- Verification: Final transition `20260812T193339Z-PWR-001` validates against
+  its predecessor and result with checklist SHA-256
+  `7f848fcb8c33f8c6a7110b8d2789457fa889a62e7625b0e7dedd69bd761d157c`;
+  synchronized progress remains 60/94 verified (63.8%). The rejected first
+  transition never entered Git history.
+- Evidence: `docs/parity/checklist-transitions/20260812T193339Z-PWR-001.json`
+  and the ledger-authored checklist/progress/README updates.
+- Outcome: Checklist metadata, notes, transition ledger, and progress are now
+  one atomic valid finalization.
+- Blocker or next safe action: Rerun the final ordered gates, then commit,
+  fetch, and push the validated finalization.
+
+## 2026-08-12 19:39 UTC | final verified gates
+
+- Source commit: `312b512d437725b3de80e01d52f8aa9f6aef6724`
+- Actions: Ran the complete finalization sequence against the corrected atomic
+  transition, synchronized progress, archived task, and final checklist notes.
+- Verification: `cargo fmt --all`, strict all-target/all-feature Clippy,
+  all-target/all-feature Cargo build, all-feature Cargo tests, Bright Builds
+  with zero findings, all 41 Bazel tests, `just parity` with no validation
+  errors, and `just parity-progress` at 60/94 verified (63.8%) all passed.
+- Evidence: Final transition `20260812T193339Z-PWR-001`, closed projection,
+  typed result, deterministic progress record, README summary, and archived
+  task.
+- Outcome: PWR-001 finalization is complete and ready to commit and push.
+- Blocker or next safe action: Run final reference/redaction/diff/selector
+  checks, commit the finalization, fetch, and push without force.

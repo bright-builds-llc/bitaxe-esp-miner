@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260812T193339Z-PWR-001",
+  "predecessor_sha256": "e9d3e25c09a6ac8f3a3577c372c2716c3105d6adb30fec591d35fe01e189b322",
+  "result_sha256": "7f848fcb8c33f8c6a7110b8d2789457fa889a62e7625b0e7dedd69bd761d157c",
+  "row_id": "PWR-001",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260812T185214Z-PWR-001/PLAN.md",
+  "plan_sha256": "3b3fb9ca3ae38156b006863a8b3ffded8ebfea43995fa3e3ef9cbec8e3911a79",
+  "result_path": "docs/parity/work-plans/20260812T185214Z-PWR-001/RESULT.md",
+  "result_document_sha256": "553e0321741828287cb4eec63d7b93ff047a41c24c31808b06f369bad8804175",
+  "before_rust_owned_target": "`crates/bitaxe-safety/src/effects.rs`, `crates/bitaxe-asic/src/bm1366/init_plan.rs`, `firmware/bitaxe/src/asic_adapter/reset.rs`, `firmware/bitaxe/src/safety_adapter.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/command.rs`, `crates/bitaxe-asic/src/bm1366/init_plan.rs`, `firmware/bitaxe/src/asic_adapter.rs`, `firmware/bitaxe/src/asic_adapter/reset.rs`, `firmware/bitaxe/src/mining_actuation.rs`, `firmware/bitaxe/src/mining_actuation_adapter.rs`, `crates/bitaxe-automation-contracts/src/asic_reset_evidence.rs`, `tools/automation/src/asic-reset-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Fail-closed plans include `HoldResetLow`, ASIC init remains gated by safety evidence, and firmware logs unavailable reset effects when peripherals are absent. [Phase 14 evidence](evidence/phase-14-safety-hardware-evidence-completion.md) keeps active reset and ASIC sequencing below verified; `hardware-regression` is required before promotion. Phase 20 final evidence in `evidence/phase-20-active-safety-hardware-telemetry-evidence/summary.md` and `evidence/phase-20-active-safety-hardware-telemetry-evidence/failure-paths.md` records this row as blocked/deferred for fault-stimulus proof; no ASIC reset or fault path was exercised.",
+  "after_notes": "The sealed exact-package Ultra 205 campaign and source-bound reset projection prove the active-low 100 ms low / 100 ms high production reset transaction, completed reset-and-detect boundary, exactly one BM1366 response, accepted work, fail-closed and safe-stop hold-low behavior, cleanup, unchanged owning paths, independent validation, and redaction without another hardware effect; see [the typed result](work-plans/20260812T185214Z-PWR-001/RESULT.md) and [closed projection](evidence/pwr001-asic-reset/asic-reset-projection.json). Electrical waveform measurement, ESP-IDF scheduler accuracy, arbitrary fault injection, other boards, and other hardware-control behavior remain separate non-claims."
+}

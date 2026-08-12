@@ -6572,3 +6572,42 @@ criteria. It does not reopen or satisfy the terminal attempt-004 continuity
 task. No protected evidence or new hardware effect occurred. The evidence was
 independently validated and the row is verified. This task is complete and
 archived.
+
+### task-parity-pwr001-asic-reset-evidence-audit | 2026-08-12 | Audit ASIC reset hardware evidence
+
+Plan: `docs/parity/work-plans/20260812T185214Z-PWR-001/PLAN.md`.
+
+- [x] Add and validate a typed redacted PWR-001 projection derived from the
+      sealed accepted-share attempt and validated ASIC-002 projection.
+- [x] Fix the selector's terminal-closed-lineage reconciliation order with a
+      regression that preserves genuine multi-row and unlinked-plan failures.
+- [x] Prove active-low 100 ms/100 ms reset semantics, the completed reset-and-
+      detect boundary, exactly one downstream BM1366 response, accepted work,
+      fail-closed hold-low, safe stop, cleanup, and unchanged owning paths.
+- [x] Run all mandatory gates and promote PWR-001 only on the complete closed
+      quorum without another hardware attempt.
+
+Hardware contract: No hardware interaction is permitted or required by this
+task. It may read the ignored protected attempt only through the existing
+projection boundary and may publish only closed, redacted facts. Detector,
+flash, reset, USB, serial, network, credentials, mining, GPIO, direct UART,
+pins, voltage, fan, power, and fault injection are prohibited.
+
+Verification: The focused Rust contract, selector, TypeScript projector,
+failure-withholding, real-child, and repository redaction regressions pass.
+The ordered Cargo checks, Bright Builds, all 41 Bazel tests, parity/progress,
+independent source and final validators, redaction across 14 semantic
+artifacts, pinned-reference cleanliness, generated contracts, immutable
+digests, exact source compatibility, private-candidate absence, public mode,
+task binding, and diff checks pass. Projection SHA-256 is
+`11bb816e6f6e2393b796b13c49ae7db5d181f719dc94898ca00e17ce384d469b`.
+Transition `20260812T193339Z-PWR-001` promoted only `PWR-001`; progress records
+60 of 94 active rows verified (63.8%).
+
+Completion review: The source-bound proof establishes that the exact admitted
+Ultra 205 executed the unchanged production active-low 100 ms/100 ms reset,
+received one BM1366 response, advanced to accepted work, and completed
+fail-closed safe stop and cleanup. It does not claim electrical waveform or
+scheduler measurement. No protected evidence or new hardware effect occurred.
+The evidence checkpoint was pushed and the row is verified. This task is
+complete and archived.
