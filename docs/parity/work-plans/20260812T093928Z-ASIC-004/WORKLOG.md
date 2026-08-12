@@ -87,3 +87,25 @@
   and push before regenerating public evidence.
 - Blocker or next safe action: Push the correction and produce a fresh public
   projection whose source commit is the new clean pushed commit.
+
+## 2026-08-12T10:14:57Z | derived projection accepted
+
+- Source commit: corrected implementation commit
+  `2861bfb1d425d3c5d13b3a820c082eb24e1f1a77`.
+- Actions: Ran the no-hardware projector against the committed ASIC-003
+  work-send projection and exact accepted hardware source commit.
+- Verification: Source validation and digest binding, ancestry, unchanged
+  result transport module, exact parser/adapter/worker spans, compatible
+  correlation semantics, clean relevant worktree, independent Rust
+  validation, 0644 publication mode, public-sensitive-value scan, and semantic
+  redaction all passed. Projection SHA-256 is
+  `e99c054c4d660155d5c2b1ee38d3f17aed5ae7101e7e4a5fd1c6451d1b48b7c7`.
+- Evidence: Published
+  `docs/parity/evidence/asic004-result-parsing/asic-result-parsing-projection.json`;
+  semantic redaction checked 13 public artifacts. No protected or operational
+  values were accessed or published.
+- Outcome: The complete `ASIC-004` promotion quorum is satisfied without a
+  new hardware attempt.
+- Blocker or next safe action: Commit and push the evidence/result without
+  changing the checklist, then apply the single-row transition and run the
+  final promotion gate.

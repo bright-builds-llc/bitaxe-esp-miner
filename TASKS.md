@@ -26,9 +26,9 @@ new work.
 
 ### task-parity-asic004-sealed-result-parsing-promotion | 2026-08-12 | Promote sealed BM1366 result-parsing proof
 
-- [ ] Add a typed, closed projector and validator that derive ASIC result-
+- [x] Add a typed, closed projector and validator that derive ASIC result-
       parsing proof from the committed sealed work-send projection.
-- [ ] Prove strict live nonce parsing/correlation, unchanged transcript and
+- [x] Prove strict live nonce parsing/correlation, unchanged transcript and
       compatible accepted-result spans, typed soft discards, safety, cleanup,
       and redaction without exposing result or operational values.
 - [ ] Run every software and privacy gate, publish one redacted projection,

@@ -1,0 +1,50 @@
+{
+  "schema_version": "bitaxe-asic-result-parsing-evidence-v1",
+  "board": 205,
+  "attempt_source_commit": "3e0966a140edbff1a14d2a48ca63d140649762c0",
+  "current_source_commit": "2861bfb1d425d3c5d13b3a820c082eb24e1f1a77",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "project-asic-result-parsing-evidence",
+    "request_sha256": "9c9d50b2b6e33081b76eebcb97b34449e15fb5bface9fe0c3c7dab44d06ca2f3"
+  },
+  "source": {
+    "work_send_projection_sha256": "447af65ae9e6cd5cc2199ef639ff8e0fa7f63d4c9708570bd66781c5a162e80c",
+    "work_send_projection_current_commit": "32017ba8bb9b99212cad3c2c9ecaed7edf603d19",
+    "work_send_projection_valid": true
+  },
+  "result_parsing": {
+    "result_frame_length_bytes": 11,
+    "strict_length_validation": true,
+    "preamble_validation": true,
+    "crc_validation": true,
+    "job_lookup_validation": true,
+    "submit_nonce_little_endian": true,
+    "core_validation": true,
+    "address_interval_validation": true,
+    "version_bits_recovered": true,
+    "known_register_classification": true,
+    "typed_soft_discard_category_count": 8,
+    "soft_discard_continuation": true,
+    "live_qualified_result_observed": true,
+    "accepted_submit_observed": true,
+    "result_transport_module_unchanged": true,
+    "parser_spans_unchanged": true,
+    "adapter_nonce_span_unchanged": true,
+    "worker_nonce_span_unchanged": true,
+    "correlation_semantics_compatible": true
+  },
+  "package_admitted": true,
+  "runtime_identity": "trusted",
+  "runtime_attestation_status": "trusted",
+  "campaign_terminal_category": "submit_response_observed",
+  "submit_outcome": "accepted",
+  "safety_status": "fresh",
+  "mine_on_boot_disabled": true,
+  "safe_stop_confirmed": true,
+  "lease_cleanup_confirmed": true,
+  "usb_cleanup_ready": true,
+  "hardware_rerun_used": false,
+  "redaction_status": "passed"
+}
