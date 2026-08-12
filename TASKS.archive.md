@@ -6730,3 +6730,61 @@ fresh task and immutable plan were created. The prior plan remains truthfully
 closed and immutable; its failed ordinal is not reused. No parity claim,
 projection, hardware action, or checklist transition is attributed to this
 superseded task.
+
+### task-parity-pwr003-core-voltage-control-evidence-retry | 2026-08-12 | Retry the sealed PWR-003 projection
+
+- [x] Select PWR-003 as the next actionable row after the temporarily
+      unavailable two-prompt physical-observation gate for API-009.
+- [x] Freeze the fresh immutable software-only retry plan at
+      `docs/parity/work-plans/20260812T212218Z-PWR-003/PLAN.md`.
+- [x] Replace the ambiguous stabilization substring with a source-shaped
+      unique matcher and bind the projector to this plan/task lineage.
+- [x] Add a regression over the real production file that proves the complete
+      DS4432U address/register/code and write route matcher set, including the
+      intended 500 ms stabilization use site.
+- [x] Run and push every focused and mandatory software, privacy, reference,
+      integrity, source-compatibility, and diff gate before projection.
+- [x] Run exactly one fresh sealed projection from the accepted PWR-002 source,
+      independently validate it, and promote only on the complete quorum.
+- [x] Record RESULT.md, archive this task, preserve all non-claims, and push
+      the synchronized verified transition if and only if evidence passes.
+
+This is a software-only evidence audit. It permits the exact source/test edits,
+repository verification, and one atomic redacted projection described by the
+linked plan. It permits no detector, package, flash, reset, USB/serial,
+network, credential, mining, voltage, fan, power, GPIO, I2C, direct UART, pin,
+fault-injection, or other hardware effect. A failure must preserve the earliest
+typed category, remove any candidate, withhold the final projection, keep
+PWR-003 `implemented`, and stop without another projection attempt.
+
+Prior lineage: The superseded task and
+`docs/parity/work-plans/20260812T203223Z-PWR-003/CLOSURE.md` establish that the
+previous sole attempt failed before candidate creation only because the
+configured stabilization substring occurred twice. The accepted PWR-002
+projection remains the sole hardware evidence source; no hardware rerun is
+authorized or needed.
+
+Evidence checkpoint: Clean pushed implementation commit `a2fefad3` produced
+the sole fresh projection successfully. Independent validation, mode `0644`,
+candidate cleanup, source/plan digests, source compatibility, and sensitive
+value absence pass. Projection SHA-256 is
+`11dd1abbf6fda86d203fdcff49b420ab5139e1d29c35f4d17000c61c3112ae68`.
+`docs/parity/work-plans/20260812T212218Z-PWR-003/RESULT.md` records the exact
+evidence, conclusion, and non-claims.
+
+Verification: Transition `20260812T215256Z-PWR-003` changed only PWR-003 to
+`verified`, refreshed its evidence and ownership cells, and bound the immutable
+plan and RESULT.md. Immediate progress synchronization from evidence commit
+`a94ef6409a0c17c405951170659b3d9d87d08894` records 62 of 94 active rows
+verified (66.0%). The complete ordered Cargo, Bright Builds, 41-test Bazel,
+parity, progress, redaction, independent-validator, reference, digest, mode,
+candidate, task-lineage, and diff gates pass.
+
+Completion review: The closed projection proves the accepted Ultra 205 power
+campaign used the unchanged production DS4432U address/register/code and
+single-write route, waited 500 ms before active-low ASIC enable, reached
+accepted downstream work, and completed safe stop and cleanup without a new
+hardware run. Direct analog measurement, setpoint accuracy, rail timing or
+waveform, arbitrary targets, INA260 correlation, injected faults, other
+profiles, boards, and ASIC families remain non-claims. The row is verified and
+this task is complete and archived.

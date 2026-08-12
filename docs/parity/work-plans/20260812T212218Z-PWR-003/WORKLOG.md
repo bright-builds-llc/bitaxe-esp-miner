@@ -16,7 +16,7 @@
 - Blocker or next safe action: Run every plan checkpoint gate, commit and push
   the immutable plan/task, then edit only the PWR-003 matcher and regressions.
 
-## 2026-08-12T21:31:00Z | Immutable-plan verification
+## 2026-08-12T21:29:41Z | Immutable-plan verification
 
 - Source commit: `2264f71393949436f1f15306b71f890a6478dc0a`
 - Actions: Froze the plan with SHA-256
@@ -40,7 +40,7 @@
   only the source-shaped matcher, task/plan binding, and production-file
   regression.
 
-## 2026-08-12T21:38:00Z | Matcher correction and regression
+## 2026-08-12T21:34:00Z | Matcher correction and regression
 
 - Source commit: `27049ae9727936f55e898aa02786e9509b3ae2df`
 - Actions: Replaced the two-occurrence stabilization token with the exact
@@ -64,7 +64,7 @@
 - Blocker or next safe action: Run every mandatory implementation gate,
   commit and push the exact clean source, then invoke the projector once.
 
-## 2026-08-12T21:48:00Z | Complete implementation gate
+## 2026-08-12T21:38:48Z | Complete implementation gate
 
 - Source commit: `27049ae9727936f55e898aa02786e9509b3ae2df`
 - Actions: Completed the matcher, immutable lineage binding, Bazel runfile,
@@ -86,7 +86,7 @@
 - Blocker or next safe action: Commit and push, require a clean synchronized
   exact HEAD, then invoke the sealed PWR-003 projector once.
 
-## 2026-08-12T21:52:00Z | Single projection succeeded
+## 2026-08-12T21:40:00Z | Single projection succeeded
 
 - Source commit: `a2fefad3b5863b0162747d98cdd1033878745a7a`
 - Actions: From clean synchronized pushed source, invoked the one permitted
@@ -105,7 +105,7 @@
   gates, commit and push the projection/result without changing the checklist,
   then transition only PWR-003 and synchronize progress.
 
-## 2026-08-12T21:55:00Z | Redaction false-positive remediation
+## 2026-08-12T21:41:00Z | Redaction false-positive remediation
 
 - Source commit: `a2fefad3b5863b0162747d98cdd1033878745a7a`
 - Actions: The first repository-wide scan of the newly published projection
@@ -124,7 +124,7 @@
 - Blocker or next safe action: Rerun focused redaction tests and the complete
   evidence checkpoint gates against the existing sole projection.
 
-## 2026-08-12T22:03:00Z | Evidence checkpoint verified
+## 2026-08-12T21:46:18Z | Evidence checkpoint verified
 
 - Source commit: `a2fefad3b5863b0162747d98cdd1033878745a7a`
 - Actions: Retained the sole projection byte-for-byte, completed the narrowly
@@ -145,3 +145,41 @@
 - Blocker or next safe action: Commit and push this evidence checkpoint, then
   use the typed transition command for PWR-003 and immediately synchronize
   progress.
+
+## 2026-08-12T21:53:42Z | Verified transition and task closure
+
+- Source commit: `a94ef6409a0c17c405951170659b3d9d87d08894`
+- Actions: Transitioned only PWR-003 to `verified`, replaced its stale
+  observe-only ownership/evidence cells with the proven production route,
+  immediately synchronized progress, and archived the completed retry task.
+- Verification: The first uncommitted transition encoded the correct paths as
+  plain text; final parity validation rejected the missing code spans. Because
+  verified rows are immutable, its receipt and only its derived checklist,
+  progress, and README changes were removed before publication. Corrected
+  transition `20260812T215256Z-PWR-003` bound the immutable plan and RESULT.md;
+  progress appended from the exact pushed evidence checkpoint and reports 62
+  of 94 active rows verified (66.0%).
+- Evidence: The transition receipt, synchronized checklist/progress/README,
+  RESULT.md, and projection remain bound to their exact digests.
+- Outcome: PWR-003 is verified; this invocation changed no other parity row.
+- Blocker or next safe action: Run the final mandatory ordered gates, review
+  the complete finalization diff, commit, fetch, and push without force.
+
+## 2026-08-12T21:56:49Z | Final gate complete
+
+- Source commit: `a94ef6409a0c17c405951170659b3d9d87d08894`
+- Actions: Completed the corrected typed transition, synchronized progress,
+  archived the task, and reviewed the full finalization diff.
+- Verification: The final ordered Cargo format, Clippy, all-target build, and
+  all-feature test gates passed; Bright Builds reported zero findings; all 41
+  Bazel tests passed; parity reported no validation errors; parity progress is
+  62 of 94 active rows verified (66.0%); redaction, independent final evidence
+  validation, pinned-reference cleanliness, selector closure, immutable/evidence
+  digests, mode, candidate absence, task archive uniqueness, and diff checks
+  passed.
+- Evidence: Transition `20260812T215256Z-PWR-003`, RESULT.md, and projection
+  SHA-256
+  `11dd1abbf6fda86d203fdcff49b420ab5139e1d29c35f4d17000c61c3112ae68`.
+- Outcome: PWR-003 is fully finalized and ready to push.
+- Blocker or next safe action: Commit the audited finalization, fetch origin,
+  verify conflict-free synchronization, and push without force.

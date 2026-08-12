@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260812T215256Z-PWR-003",
+  "predecessor_sha256": "a3e1d897ecfa73a5ef24a4ad24729b8887cdb14a62fab4a42e6b3ecf9a01b30f",
+  "result_sha256": "604d0d2f8332bed5262f58c84f92e5ba2c50a76b0e3b403eb6b7b34237c52ca7",
+  "row_id": "PWR-003",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260812T212218Z-PWR-003/PLAN.md",
+  "plan_sha256": "dbd5d3a620726f270fd2827d4c8f53f0301834cea4999107964c22c711cb277e",
+  "result_path": "docs/parity/work-plans/20260812T212218Z-PWR-003/RESULT.md",
+  "result_document_sha256": "9f9e260411e983ba7b23748df4210b21a532b39f8772c1feaf6d453af9a54c36",
+  "before_rust_owned_target": "`crates/bitaxe-safety/src/power.rs`, `firmware/bitaxe/src/safety_adapter/ina260.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`",
+  "after_rust_owned_target": "`firmware/bitaxe/src/safety_adapter/ds4432u.rs`, `firmware/bitaxe/src/safety_adapter/i2c_bus.rs`, `firmware/bitaxe/src/mining_actuation.rs`, `firmware/bitaxe/src/mining_actuation_adapter.rs`, `tools/automation/src/core-voltage-control-evidence.ts`, `crates/bitaxe-automation-contracts/src/core_voltage_control_evidence.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Pure voltage planning validates Ultra 205 setpoints and suppresses DS4432U writes without hardware evidence; firmware adapter remains observe-only. [Phase 14 voltage-control evidence](evidence/phase-14-safety-hardware-evidence-completion/voltage-control.md) records `voltage_control_status: pending - no production-safe bounded voltage route exists`; active DS4432U/VCORE writes remain below verified and require `hardware-regression`. Phase 20 final evidence in `evidence/phase-20-active-safety-hardware-telemetry-evidence/summary.md` and `evidence/phase-20-active-safety-hardware-telemetry-evidence/active-power-voltage.md` repeats the unsupported voltage-control boundary with no active write route.",
+  "after_notes": "The closed source-bound projection joins the accepted Ultra 205 PWR-002 hardware campaign to the exact DS4432U address/register/code and single-write route, 500 ms stabilization before active-low ASIC enable, accepted downstream work, safe stop, cleanup, no hardware rerun, independent validation, and redaction; see [RESULT.md](work-plans/20260812T212218Z-PWR-003/RESULT.md) and [core-voltage-control-projection.json](evidence/pwr003-core-voltage-control/core-voltage-control-projection.json). Direct analog voltage measurement, setpoint accuracy, rail timing or waveform, arbitrary targets, INA260 correlation, injected faults, other profiles, boards, and ASIC families remain non-claims."
+}
