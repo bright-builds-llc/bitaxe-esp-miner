@@ -19,8 +19,19 @@ pub(crate) enum CliCommand {
     FinalizeEvidence(FinalizeEvidenceCommand),
     #[command(name = "mining-campaign")]
     MiningCampaign(MiningCampaignCommand),
+    #[command(name = "confirm-identify")]
+    ConfirmIdentify(ConfirmIdentifyCommand),
     #[command(name = "phase35-probe")]
     Phase35Probe(Phase35ProbeCommand),
+}
+
+#[derive(Debug, Parser, Clone)]
+pub(crate) struct ConfirmIdentifyCommand {
+    #[arg(long = "evidence-dir", value_parser = parse_utf8_path)]
+    pub(crate) evidence_dir: Utf8PathBuf,
+
+    #[arg(long, value_enum)]
+    pub(crate) observation: network::IdentifyObservation,
 }
 
 #[derive(Debug, Parser, Clone)]
@@ -188,6 +199,7 @@ pub(crate) enum MiningCampaignStage {
     LiveShare,
     Soak,
     JobTransition,
+    CommandEffects,
 }
 
 impl MiningCampaignStage {
@@ -197,6 +209,7 @@ impl MiningCampaignStage {
             Self::LiveShare => "live-share",
             Self::Soak => "soak",
             Self::JobTransition => "job-transition",
+            Self::CommandEffects => "command-effects",
         }
     }
 }

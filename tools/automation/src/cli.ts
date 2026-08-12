@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { buildFirmware } from "./build.js";
+import { captureApiCommandEffects, ApiCommandEffectsError } from "./api-command-effects.js";
 import { deviceSessionProgram, flashProgram, stringNumber, toolProgram } from "./cli-tools.js";
 import {
   AsicFrequencyTransitionEvidenceError,
@@ -271,6 +272,7 @@ async function dispatchProcess(
     case "project-asic-result-parsing-evidence":
     case "project-asic-serial-transport-evidence":
     case "capture-provisioning-network-evidence":
+    case "api-command-effects-campaign":
     case "verify-theme-durability":
       throw new Error("specialized workflow reached generic dispatch");
   }
@@ -535,6 +537,16 @@ async function main(): Promise<number> {
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root),
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_provisioning_network_evidence"));
+    } else if (invocation.command === "api-command-effects-campaign") {
+      const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
+      publicValue = await captureApiCommandEffects(root, {
+        privateRoot: optionValue(invocation, "--private-root"),
+        packageManifest: optionValue(invocation, "--package-manifest"),
+        wifiCredentials: optionValue(invocation, "--wifi-credentials"),
+        port,
+        projection: optionValue(invocation, "--projection"),
+        durationSeconds: Number(optionValue(invocation, "--duration-seconds")),
+      }, processPort, flashProgram(root), deviceSessionProgram(root));
     } else if (invocation.command === "verify-settings-durability" && optionValue(invocation, "--mode") === "capture") {
       const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
       publicValue = await captureSettingsDurability(root, {
@@ -568,6 +580,7 @@ async function main(): Promise<number> {
     const policyBlocked = error instanceof PolicyError;
     const invalid = error instanceof InvocationError;
     const settingsFailure = error instanceof SettingsDurabilityError;
+    const apiCommandEffectsFailure = error instanceof ApiCommandEffectsError;
     const themeFailure = error instanceof ThemeDurabilityError;
     const snapshotFailure = error instanceof OperatorSnapshotEvidenceError;
     const runtimeHealthFailure = error instanceof RuntimeHealthEvidenceError;
@@ -592,7 +605,7 @@ async function main(): Promise<number> {
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || networkScanFailure || asicInitializationFailure || asicFrequencyTransitionFailure || stratumSocketFailure || protocolCoordinatorFailure || miningCriteriaFailure || asicWorkSendFailure || asicResultParsingFailure || asicSerialTransportFailure || provisioningNetworkFailure
+        : settingsFailure || apiCommandEffectsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || networkScanFailure || asicInitializationFailure || asicFrequencyTransitionFailure || stratumSocketFailure || protocolCoordinatorFailure || miningCriteriaFailure || asicWorkSendFailure || asicResultParsingFailure || asicSerialTransportFailure || provisioningNetworkFailure
           ? error.category
           : "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";

@@ -18,6 +18,7 @@ const MAX_POOL_STRING_BYTES: usize = 4_000;
 const LIVE_SHARE_DURATION_MS: u64 = 600_000;
 const DEFAULT_SOAK_DURATION_MS: u64 = 600_000;
 const JOB_TRANSITION_DURATION_MS: u64 = 1_800_000;
+const COMMAND_EFFECTS_DURATION_MS: u64 = 600_000;
 const CAMPAIGN_KEYS: [&str; 4] = ["campstage", "campprofile", "camplease", "campdurms"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,6 +27,7 @@ pub(crate) enum MiningCampaignStage {
     LiveShare,
     Soak,
     JobTransition,
+    CommandEffects,
 }
 
 impl MiningCampaignStage {
@@ -36,6 +38,7 @@ impl MiningCampaignStage {
             Self::LiveShare => "live-share",
             Self::Soak => "soak",
             Self::JobTransition => "job-transition",
+            Self::CommandEffects => "command-effects",
         }
     }
 }
@@ -115,6 +118,9 @@ pub(crate) fn load_production_campaign_admission(
         MiningCampaignStage::JobTransition => {
             MiningCampaignStopCondition::ActiveDuration { duration }
         }
+        MiningCampaignStage::CommandEffects => {
+            MiningCampaignStopCondition::ResumableWallClockDuration { duration }
+        }
         MiningCampaignStage::Observation => unreachable!(),
     };
     drop(nvs);
@@ -151,6 +157,10 @@ const fn campaign_contract_valid(
         MiningCampaignStage::JobTransition => {
             matches!(profile, MiningHardwareProfilePreset::Conservative)
                 && duration_ms == JOB_TRANSITION_DURATION_MS
+        }
+        MiningCampaignStage::CommandEffects => {
+            matches!(profile, MiningHardwareProfilePreset::Conservative)
+                && duration_ms == COMMAND_EFFECTS_DURATION_MS
         }
     }
 }
@@ -231,6 +241,7 @@ fn parse_campaign_stage(stage: &str) -> Option<MiningCampaignStage> {
         "live-share" => Some(MiningCampaignStage::LiveShare),
         "soak" => Some(MiningCampaignStage::Soak),
         "job-transition" => Some(MiningCampaignStage::JobTransition),
+        "command-effects" => Some(MiningCampaignStage::CommandEffects),
         _ => None,
     }
 }

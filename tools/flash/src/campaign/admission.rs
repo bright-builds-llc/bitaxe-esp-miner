@@ -39,6 +39,7 @@ pub(super) fn admit_campaign(
         MiningCampaignStage::Observation => OBSERVATION_DURATION_SECONDS,
         MiningCampaignStage::LiveShare | MiningCampaignStage::Soak => MINING_DURATION_SECONDS,
         MiningCampaignStage::JobTransition => JOB_TRANSITION_DURATION_SECONDS,
+        MiningCampaignStage::CommandEffects => COMMAND_EFFECTS_DURATION_SECONDS,
     };
     if command.duration_seconds != expected_duration {
         return Err(CampaignFailure::new(
@@ -58,6 +59,10 @@ pub(super) fn admit_campaign(
                 && command.pool_credentials.is_some()
         }
         MiningCampaignStage::JobTransition => {
+            command.profile == Some(MiningCampaignProfile::Conservative)
+                && command.pool_credentials.is_some()
+        }
+        MiningCampaignStage::CommandEffects => {
             command.profile == Some(MiningCampaignProfile::Conservative)
                 && command.pool_credentials.is_some()
         }

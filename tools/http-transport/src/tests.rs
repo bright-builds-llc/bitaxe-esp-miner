@@ -1,6 +1,68 @@
 use super::*;
 
 #[test]
+fn fixed_command_helpers_issue_each_post_route_once() {
+    use std::net::TcpListener;
+
+    // Arrange
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+    let address = listener.local_addr().expect("test server address");
+    let server = std::thread::spawn(move || {
+        let mut request_lines = Vec::new();
+        for _ in 0..4 {
+            let (mut socket, _) = listener.accept().expect("accept command request");
+            let mut bytes = Vec::new();
+            let mut chunk = [0_u8; 512];
+            loop {
+                let count = socket.read(&mut chunk).expect("read command request");
+                if count == 0 {
+                    break;
+                }
+                bytes.extend_from_slice(&chunk[..count]);
+                if maybe_header_end(&bytes).is_some() {
+                    break;
+                }
+            }
+            request_lines.push(
+                String::from_utf8(bytes)
+                    .expect("request is UTF-8")
+                    .lines()
+                    .next()
+                    .expect("request line")
+                    .to_owned(),
+            );
+            socket
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
+                .expect("write response");
+        }
+        request_lines
+    });
+    let client = StrictHttpClient::new(&format!("http://{address}")).expect("client");
+
+    // Act
+    let deadline = || Instant::now() + Duration::from_secs(2);
+    client.post_pause_once(deadline()).expect("pause request");
+    client.post_resume_once(deadline()).expect("resume request");
+    client
+        .post_identify_once(deadline())
+        .expect("identify request");
+    client
+        .post_block_found_dismiss_once(deadline())
+        .expect("dismiss request");
+
+    // Assert
+    assert_eq!(
+        server.join().expect("server thread"),
+        [
+            "POST /api/system/pause HTTP/1.1",
+            "POST /api/system/resume HTTP/1.1",
+            "POST /api/system/identify HTTP/1.1",
+            "POST /api/system/blockFound/dismiss HTTP/1.1",
+        ]
+    );
+}
+
+#[test]
 fn incomplete_write_is_never_complete() {
     struct FailingWriter {
         remaining: usize,

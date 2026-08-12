@@ -312,6 +312,7 @@ rust_test(
     srcs = [
         "src/production_campaign_status_host_test.rs",
         "src/production_mining_session/campaign_status.rs",
+        "src/production_mining_session/campaign_status/tests/operator_intent.rs",
     ],
     crate_name = "production_campaign_status_tests",
     crate_root = "src/production_campaign_status_host_test.rs",

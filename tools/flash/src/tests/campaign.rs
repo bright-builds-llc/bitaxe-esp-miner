@@ -1,5 +1,6 @@
 use super::*;
 
+mod command_effects;
 mod evidence;
 mod failure_diagnostics;
 mod job_transition;
@@ -29,7 +30,9 @@ fn campaign_command(
         evidence_dir: root.join("attempt-001"),
         duration_seconds: match stage {
             MiningCampaignStage::Observation => 360,
-            MiningCampaignStage::LiveShare | MiningCampaignStage::Soak => 600,
+            MiningCampaignStage::LiveShare
+            | MiningCampaignStage::Soak
+            | MiningCampaignStage::CommandEffects => 600,
             MiningCampaignStage::JobTransition => 1_800,
         },
         redact_evidence: true,

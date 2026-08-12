@@ -1,4 +1,5 @@
 import "./contracts.test.js";
+import "./api-command-effects.test.js";
 import "./ci-contract.test.js";
 import "./detector.test.js";
 import "./flash-child-diagnostics.test.js";

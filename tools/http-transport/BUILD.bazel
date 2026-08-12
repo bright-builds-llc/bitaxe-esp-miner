@@ -4,6 +4,7 @@ rust_library(
     name = "http_transport",
     srcs = [
         "src/lib.rs",
+        "src/commands.rs",
         "src/observation.rs",
         "src/tests.rs",
         "src/websocket.rs",

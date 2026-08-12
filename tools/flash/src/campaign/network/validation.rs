@@ -59,6 +59,17 @@ fn validate_identity(
     Ok(())
 }
 
+pub(super) fn validate_identity_and_safety(
+    sample: &SystemInfoWire,
+    target: &TrustedNetworkTarget,
+) -> Result<(), SampleValidationFailure> {
+    validate_identity(sample, target)?;
+    if !safety_valid(sample) {
+        return Err(SampleValidationFailure::Safety);
+    }
+    Ok(())
+}
+
 fn safety_valid(sample: &SystemInfoWire) -> bool {
     [
         sample.power_status.state,

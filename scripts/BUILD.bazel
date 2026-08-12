@@ -1,4 +1,4 @@
-load("@aspect_rules_js//js:defs.bzl", "js_library")
+load("@aspect_rules_js//js:defs.bzl", "js_library", "js_test")
 
 package(default_visibility = ["//visibility:private"])
 
@@ -32,4 +32,17 @@ js_library(
     name = "repository_guard_sources",
     srcs = glob(["*.sh", "*.mjs", "*.js", "*.py"], allow_empty = True),
     visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
+    name = "api_command_effects_stratum_pool",
+    srcs = ["api-command-effects-stratum-pool.mjs"],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_test(
+    name = "api_command_effects_stratum_pool_test",
+    chdir = "..",
+    data = [":api_command_effects_stratum_pool"],
+    entry_point = "api-command-effects-stratum-pool-test.mjs",
 )

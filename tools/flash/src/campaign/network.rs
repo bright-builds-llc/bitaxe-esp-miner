@@ -1,8 +1,12 @@
+mod command_effects;
+mod command_evidence;
 mod model;
 mod observer;
 mod serial;
 mod validation;
 
+#[cfg(test)]
+mod test_evidence;
 #[cfg(test)]
 mod tests;
 
@@ -10,8 +14,11 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
 use bitaxe_api::ExpectedRuntimeAttestationIdentity;
+use camino::Utf8PathBuf;
 
 use super::*;
+use command_effects::observe_command_effects;
+pub(crate) use command_effects::{confirm_identify_observation, IdentifyObservation};
 pub(crate) use model::CampaignNetworkEvidence;
 use model::SharedSerialState;
 use observer::observe_network;
@@ -21,24 +28,30 @@ pub(crate) struct CampaignNetworkCoordinator {
     tracker: NetworkSerialTracker,
     shared: Arc<Mutex<SharedSerialState>>,
     maybe_worker: Option<JoinHandle<CampaignNetworkEvidence>>,
-    enabled: bool,
+    stage: MiningCampaignStage,
+    evidence_root: Utf8PathBuf,
 }
 
 impl CampaignNetworkCoordinator {
     pub(crate) fn new(
         admission: CampaignAdmission,
         expected: ExpectedRuntimeAttestationIdentity,
+        evidence_root: Utf8PathBuf,
     ) -> Self {
         Self {
             tracker: NetworkSerialTracker::new(expected),
             shared: Arc::new(Mutex::new(SharedSerialState::default())),
             maybe_worker: None,
-            enabled: admission.stage == MiningCampaignStage::Soak,
+            stage: admission.stage,
+            evidence_root,
         }
     }
 
     pub(crate) fn observe_serial_chunk(&mut self, bytes: &[u8]) {
-        if !self.enabled {
+        if !matches!(
+            self.stage,
+            MiningCampaignStage::Soak | MiningCampaignStage::CommandEffects
+        ) {
             return;
         }
         self.tracker.observe(bytes, &self.shared);
@@ -49,11 +62,22 @@ impl CampaignNetworkCoordinator {
             return;
         };
         let shared = Arc::clone(&self.shared);
-        self.maybe_worker = Some(std::thread::spawn(move || observe_network(target, shared)));
+        let stage = self.stage;
+        let evidence_root = self.evidence_root.clone();
+        self.maybe_worker = Some(std::thread::spawn(move || match stage {
+            MiningCampaignStage::Soak => observe_network(target, shared),
+            MiningCampaignStage::CommandEffects => {
+                observe_command_effects(target, shared, &evidence_root)
+            }
+            _ => CampaignNetworkEvidence::not_required(),
+        }));
     }
 
     pub(crate) fn finish(mut self) -> CampaignNetworkEvidence {
-        if !self.enabled {
+        if !matches!(
+            self.stage,
+            MiningCampaignStage::Soak | MiningCampaignStage::CommandEffects
+        ) {
             return CampaignNetworkEvidence::not_required();
         }
         self.tracker.finish(&self.shared);

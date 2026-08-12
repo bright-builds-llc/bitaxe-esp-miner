@@ -392,6 +392,7 @@ impl CampaignMarkerAggregate {
             MiningCampaignStage::JobTransition => {
                 assess_job_transition_terminal(terminal, admission.duration_seconds)
             }
+            MiningCampaignStage::CommandEffects => assess_command_effects_terminal(terminal),
         }
     }
 }
@@ -454,7 +455,8 @@ pub(super) fn campaign_marker_failure(
         }
         MiningCampaignStage::LiveShare
         | MiningCampaignStage::Soak
-        | MiningCampaignStage::JobTransition => {
+        | MiningCampaignStage::JobTransition
+        | MiningCampaignStage::CommandEffects => {
             let terminal_consumed = marker.campaign_state == CampaignStateMarker::Consumed
                 && marker.actuation == ActuationMarker::SafeStopped
                 && marker.safe_stop == SafeStopMarker::Confirmed;
@@ -475,6 +477,7 @@ pub(super) fn campaign_marker_failure(
                     MiningCampaignStage::JobTransition => {
                         assess_job_transition_terminal(marker, admission.duration_seconds)
                     }
+                    MiningCampaignStage::CommandEffects => assess_command_effects_terminal(marker),
                     MiningCampaignStage::Observation => unreachable!("mining stage"),
                 };
                 if let Err(failure) = terminal_result {
@@ -484,6 +487,13 @@ pub(super) fn campaign_marker_failure(
         }
     }
     None
+}
+
+fn assess_command_effects_terminal(
+    marker: &CampaignStatusMarker,
+) -> std::result::Result<CampaignTerminalCategory, CampaignFailure> {
+    assess_mining_terminal(marker)?;
+    Ok(CampaignTerminalCategory::CommandEffectsComplete)
 }
 
 fn assess_job_transition_terminal(

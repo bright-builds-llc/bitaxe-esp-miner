@@ -130,6 +130,14 @@ impl MiningCampaignDuration {
 pub enum MiningCampaignStopCondition {
     FirstSubmitResponse { timeout: MiningCampaignDuration },
     ActiveDuration { duration: MiningCampaignDuration },
+    ResumableWallClockDuration { duration: MiningCampaignDuration },
+}
+
+impl MiningCampaignStopCondition {
+    #[must_use]
+    pub const fn allows_operator_resume(self) -> bool {
+        matches!(self, Self::ResumableWallClockDuration { .. })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

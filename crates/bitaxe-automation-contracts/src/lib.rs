@@ -100,7 +100,6 @@ pub const PROTOCOL_COORDINATOR_EVIDENCE_SCHEMA: &str = "bitaxe-protocol-coordina
 pub const MINING_CRITERIA_EVIDENCE_SCHEMA: &str = "bitaxe-mining-criteria-evidence-v1";
 pub const PROVISIONING_NETWORK_EVIDENCE_SCHEMA: &str = "bitaxe-provisioning-network-evidence-v1";
 pub const MIGRATION_SCHEMA: &str = "bitaxe-automation-migration-v1";
-
 #[must_use]
 pub fn typescript_contracts() -> &'static str {
     include_str!("../typescript-contracts.ts")
@@ -127,6 +126,7 @@ pub enum AutomationCommand {
     VerifyMining,
     CaptureOperatorEvidence,
     VerifySettingsDurability,
+    ApiCommandEffectsCampaign,
     CaptureCorrelatedRuntimeEvidence,
     CaptureVersionEvidence,
     CaptureOperatorSnapshotEvidence,
@@ -404,6 +404,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::VerifyMining,
             AutomationCommand::CaptureOperatorEvidence,
             AutomationCommand::VerifySettingsDurability,
+            AutomationCommand::ApiCommandEffectsCampaign,
             AutomationCommand::CaptureCorrelatedRuntimeEvidence,
             AutomationCommand::CaptureVersionEvidence,
             AutomationCommand::CaptureOperatorSnapshotEvidence,

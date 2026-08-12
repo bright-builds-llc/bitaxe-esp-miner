@@ -94,6 +94,14 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--projection": value(),
     "--capture-timeout-seconds": value({ positiveInteger: true }),
   },
+  "api-command-effects-campaign": {
+    "--private-root": value({ required: true }),
+    "--package-manifest": value({ required: true }),
+    "--wifi-credentials": value({ required: true }),
+    "--detector-output": value({ required: true }),
+    "--projection": value({ required: true }),
+    "--duration-seconds": value({ required: true, values: ["600"] }),
+  },
   "verify-theme-durability": {
     "--private-root": value({ required: true }),
     "--package-manifest": value({ required: true }),

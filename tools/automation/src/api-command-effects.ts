@@ -1,0 +1,411 @@
+import { createHash, randomBytes } from "node:crypto";
+import { access, chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import path from "node:path";
+
+import { internalCommandSpec, type AutomationCategory } from "./contracts.generated.js";
+import { isDeviceSessionProjectionFailure, readClosedDeviceSession } from "./device-session-projection.js";
+import type { ProcessOutcome, ProcessPort } from "./process.js";
+import { assertWithinWorkspace } from "./workspace.js";
+
+type JsonObject = Readonly<Record<string, unknown>>;
+type FailureCategory = Extract<AutomationCategory, "hardware_blocked" | "evidence_invalid" | "timeout" | "process_failed">;
+type RecoveryFacts = {
+  readonly safeStopConfirmed: boolean;
+  readonly cleanupComplete: boolean;
+  readonly recoveryAttempted: boolean;
+  readonly secondaryRecoveryFailure: boolean;
+};
+
+export type ApiCommandEffectsOptions = {
+  readonly privateRoot: string;
+  readonly packageManifest: string;
+  readonly wifiCredentials: string;
+  readonly port: string;
+  readonly projection: string;
+  readonly durationSeconds: number;
+};
+
+export class ApiCommandEffectsError extends Error {
+  public constructor(
+    public readonly category: FailureCategory,
+    message: string,
+    public readonly publicValue: Readonly<Record<string, unknown>>,
+  ) {
+    super(message);
+    this.name = "ApiCommandEffectsError";
+  }
+}
+
+function failure(
+  category: FailureCategory,
+  message: string,
+  recovery: RecoveryFacts = {
+    safeStopConfirmed: false,
+    cleanupComplete: false,
+    recoveryAttempted: false,
+    secondaryRecoveryFailure: false,
+  },
+): ApiCommandEffectsError {
+  return new ApiCommandEffectsError(category, message, {
+    stage: "command_effects",
+    safe_stop_confirmed: recovery.safeStopConfirmed,
+    cleanup_complete: recovery.cleanupComplete,
+    recovery_attempted: recovery.recoveryAttempted,
+    secondary_recovery_failure: recovery.secondaryRecoveryFailure,
+  });
+}
+
+function sha256(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function object(value: unknown, context: string): JsonObject {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    throw failure("evidence_invalid", `${context} must be an object`);
+  }
+  return value as JsonObject;
+}
+
+function stringField(value: JsonObject, field: string, context: string): string {
+  const candidate = value[field];
+  if (typeof candidate !== "string" || candidate === "") {
+    throw failure("evidence_invalid", `${context} ${field} is invalid`);
+  }
+  return candidate;
+}
+
+async function requireAbsentPrivateRoot(root: string): Promise<void> {
+  try {
+    await stat(root);
+    throw failure("evidence_invalid", "private attempt root must be absent before launch");
+  } catch (error) {
+    if (error instanceof ApiCommandEffectsError) throw error;
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  await mkdir(root, { mode: 0o700, recursive: true });
+  await chmod(root, 0o700);
+}
+
+async function writePrivateJson(output: string, value: unknown): Promise<void> {
+  await writeFile(output, `${JSON.stringify(value, null, 2)}\n`, {
+    encoding: "utf8",
+    flag: "wx",
+    mode: 0o600,
+  });
+  await chmod(output, 0o600);
+}
+
+async function readPrivateJson(input: string, context: string): Promise<JsonObject> {
+  const metadata = await stat(input);
+  if (!metadata.isFile() || (metadata.mode & 0o777) !== 0o600) {
+    throw failure("evidence_invalid", `${context} is not a private regular file`);
+  }
+  return object(JSON.parse(await readFile(input, "utf8")), context);
+}
+
+async function campaignRecoveryFacts(campaignRoot: string): Promise<RecoveryFacts> {
+  try {
+    const result = await readPrivateJson(path.join(campaignRoot, "campaign-result.json"), "campaign result");
+    const network = await readPrivateJson(path.join(campaignRoot, "campaign-network.private.json"), "campaign network evidence");
+    const safeStopConfirmed = result["safe_stop"] === "confirmed";
+    const recoveryAttempted = network["recovery_pause_request_count"] === 1;
+    return {
+      safeStopConfirmed,
+      cleanupComplete: result["usb_cleanup"] === "ready",
+      recoveryAttempted,
+      secondaryRecoveryFailure: recoveryAttempted && !safeStopConfirmed,
+    };
+  } catch {
+    return {
+      safeStopConfirmed: false,
+      cleanupComplete: false,
+      recoveryAttempted: false,
+      secondaryRecoveryFailure: false,
+    };
+  }
+}
+
+async function runChild(
+  processPort: ProcessPort,
+  program: string,
+  args: readonly string[],
+  timeoutMillis: number,
+  context: string,
+): Promise<ProcessOutcome> {
+  try {
+    return await processPort.run(
+      internalCommandSpec(program, [...args], (value) => value),
+      timeoutMillis,
+    );
+  } catch {
+    throw failure("process_failed", `${context} launch failed`);
+  }
+}
+
+async function localFixtureHost(processPort: ProcessPort): Promise<string> {
+  const route = await runChild(processPort, "/sbin/route", ["-n", "get", "default"], 5_000, "route discovery");
+  if (route.timedOut || route.exitCode !== 0) throw failure("hardware_blocked", "local fixture route unavailable");
+  const matches = [...route.stdout.matchAll(/^\s*interface:\s*([A-Za-z0-9._-]+)\s*$/gmu)];
+  const maybeInterface = matches.length === 1 ? matches[0]?.[1] : undefined;
+  if (maybeInterface === undefined) throw failure("hardware_blocked", "local fixture interface is ambiguous");
+  const address = await runChild(
+    processPort,
+    "/usr/sbin/ipconfig",
+    ["getifaddr", maybeInterface],
+    5_000,
+    "address discovery",
+  );
+  const host = address.stdout.trim();
+  if (address.timedOut || address.exitCode !== 0 || !/^\d{1,3}(?:\.\d{1,3}){3}$/u.test(host)) {
+    throw failure("hardware_blocked", "local fixture address unavailable");
+  }
+  return host;
+}
+
+async function waitForPrivateJson(input: string, timeoutMillis: number): Promise<JsonObject> {
+  const deadline = Date.now() + timeoutMillis;
+  while (Date.now() < deadline) {
+    try {
+      return await readPrivateJson(input, "fixture readiness");
+    } catch (error) {
+      if (error instanceof ApiCommandEffectsError && error.message.includes("private regular file")) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        continue;
+      }
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw failure("timeout", "local fixture readiness timed out");
+}
+
+function validatedCommandEffects(network: JsonObject): JsonObject {
+  if (network["status"] !== "accepted") throw failure("hardware_blocked", "command effects network result was not accepted");
+  const effects = object(network["command_effects"], "command effects evidence");
+  const requiredTrue = [
+    "genuine_block_notification_observed", "positive_block_count_observed",
+    "pause_confirmed", "resume_confirmed", "identify_rendered_confirmed",
+    "identify_cleared_confirmed", "dismiss_confirmed", "block_count_preserved",
+    "active_before_pause", "active_after_resume", "same_boot_and_package",
+    "safety_valid", "terminal_http_valid", "terminal_pool_persisted",
+  ];
+  if (
+    effects["schema"] !== "mining-campaign-command-effects-v1"
+    || requiredTrue.some((field) => effects[field] !== true)
+    || effects["pause_request_count"] !== 1
+    || effects["resume_request_count"] !== 1
+    || effects["identify_request_count"] !== 2
+    || effects["dismiss_request_count"] !== 1
+  ) {
+    throw failure("evidence_invalid", "command effects evidence quorum is incomplete");
+  }
+  return effects;
+}
+
+function validateCampaign(result: JsonObject, network: JsonObject): JsonObject {
+  const qualifiedCandidateCount = result["qualified_candidate_count"];
+  if (
+    result["schema"] !== "mining-campaign-result-v5"
+    || result["stage"] !== "command-effects"
+    || result["status"] !== "accepted"
+    || result["terminal_category"] !== "command_effects_complete"
+    || result["runtime_identity"] !== "trusted"
+    || result["safe_stop"] !== "confirmed"
+    || result["usb_cleanup"] !== "ready"
+    || typeof qualifiedCandidateCount !== "number"
+    || !Number.isSafeInteger(qualifiedCandidateCount)
+    || qualifiedCandidateCount < 1
+    || result["redacted"] !== true
+  ) {
+    throw failure("hardware_blocked", "command effects campaign result was not accepted");
+  }
+  return validatedCommandEffects(network);
+}
+
+function validateFixture(report: JsonObject): JsonObject {
+  const counts = object(report["method_counts"], "fixture method counts");
+  const requiredCounts = [
+    counts["mining.configure"], counts["mining.subscribe"], counts["mining.authorize"],
+    counts["mining.submit"], report["notify_sent_count"], report["accepted_submit_count"],
+  ];
+  if (
+    report["fixture"] !== "api-command-effects-v1"
+    || report["configure_observed"] !== true
+    || report["subscribe_observed"] !== true
+    || report["authorize_observed"] !== true
+    || report["submit_observed"] !== true
+    || report["raw_messages_committed"] !== false
+    || report["credential_contents_read"] !== false
+    || report["compact_network_target"] !== "207fffff"
+    || requiredCounts.some((count) => typeof count !== "number" || !Number.isSafeInteger(count) || count < 1)
+    || typeof report["source_work_fingerprint"] !== "string"
+    || !/^[0-9a-f]{64}$/u.test(report["source_work_fingerprint"])
+  ) {
+    throw failure("evidence_invalid", "local fixture report is invalid");
+  }
+  return {
+    fixture: "api-command-effects-v1",
+    configure_count: counts["mining.configure"],
+    subscribe_count: counts["mining.subscribe"],
+    authorize_count: counts["mining.authorize"],
+    submit_count: counts["mining.submit"],
+    notify_sent_count: report["notify_sent_count"],
+    accepted_submit_count: report["accepted_submit_count"],
+    source_work_sha256: report["source_work_fingerprint"],
+    compact_network_target: "207fffff",
+    raw_messages_committed: false,
+    credentials_exposed: false,
+  };
+}
+
+export async function captureApiCommandEffects(
+  workspaceRoot: string,
+  options: ApiCommandEffectsOptions,
+  processPort: ProcessPort,
+  flashProgram: string,
+  deviceSessionProgram: string,
+): Promise<unknown> {
+  if (options.durationSeconds !== 600) throw failure("evidence_invalid", "command effects duration must be 600 seconds");
+  const privateRoot = assertWithinWorkspace(workspaceRoot, options.privateRoot);
+  const manifestPath = assertWithinWorkspace(workspaceRoot, options.packageManifest);
+  const credentialsPath = assertWithinWorkspace(workspaceRoot, options.wifiCredentials);
+  const projectionPath = assertWithinWorkspace(workspaceRoot, options.projection);
+  await access(manifestPath);
+  await access(credentialsPath);
+  await requireAbsentPrivateRoot(privateRoot);
+
+  const manifestDocument = await readFile(manifestPath, "utf8");
+  const manifest = object(JSON.parse(manifestDocument), "package manifest");
+  const sourceCommit = stringField(manifest, "source_commit", "package manifest");
+  const referenceCommit = stringField(manifest, "reference_commit", "package manifest");
+  stringField(manifest, "app_elf_sha256", "package manifest");
+  const manifestDigest = sha256(manifestDocument);
+  const fixtureHost = await localFixtureHost(processPort);
+  const fixtureReady = path.join(privateRoot, "fixture-ready.private.json");
+  const fixtureReport = path.join(privateRoot, "fixture-report.private.json");
+  const fixtureStop = path.join(privateRoot, "fixture.stop.private");
+  const poolCredentials = path.join(privateRoot, "pool-credentials.private.json");
+  const fixtureProgram = path.join(workspaceRoot, "scripts", "api-command-effects-stratum-pool.mjs");
+  const fixturePromise = processPort.run(internalCommandSpec(process.execPath, [
+    fixtureProgram,
+    "--host", fixtureHost,
+    "--port", "0",
+    "--fixture", "api-command-effects-v1",
+    "--session-label", "command-effects",
+    "--ready-json", fixtureReady,
+    "--report-json", fixtureReport,
+    "--duration-seconds", "900",
+    "--stop-file", fixtureStop,
+  ], (value) => value), 920_000).catch(() => undefined);
+
+  let campaignOutcome: ProcessOutcome;
+  try {
+    const ready = await waitForPrivateJson(fixtureReady, 10_000);
+    if (ready["status"] !== "ready" || ready["fixture"] !== "api-command-effects-v1") {
+      throw failure("evidence_invalid", "local fixture readiness is invalid");
+    }
+    const fixturePort = ready["bound_port"];
+    if (typeof fixturePort !== "number" || !Number.isSafeInteger(fixturePort) || fixturePort < 1 || fixturePort > 65535) {
+      throw failure("evidence_invalid", "local fixture port is invalid");
+    }
+    await writePrivateJson(poolCredentials, {
+      poolURL: fixtureHost,
+      poolPort: fixturePort,
+      poolUser: "api009.fixture",
+      poolPassword: randomBytes(24).toString("hex"),
+    });
+    const campaignRoot = path.join(privateRoot, "campaign");
+    campaignOutcome = await runChild(processPort, flashProgram, [
+      "mining-campaign",
+      "--stage", "command-effects",
+      "--profile", "conservative",
+      "--board", "205",
+      "--port", options.port,
+      "--manifest", manifestPath,
+      "--wifi-credentials", credentialsPath,
+      "--pool-credentials", poolCredentials,
+      "--evidence-dir", campaignRoot,
+      "--duration-seconds", String(options.durationSeconds),
+      "--redact-evidence",
+    ], 810_000, "command effects campaign");
+  } finally {
+    await writeFile(fixtureStop, "stop\n", { encoding: "utf8", flag: "wx", mode: 0o600 }).catch(() => undefined);
+    await fixturePromise;
+  }
+
+  const fixtureOutcome = await fixturePromise;
+  if (fixtureOutcome === undefined || fixtureOutcome.timedOut || fixtureOutcome.exitCode !== 0) {
+    throw failure("process_failed", "local fixture process failed");
+  }
+  const campaignRoot = path.join(privateRoot, "campaign");
+  if (campaignOutcome.timedOut) throw failure("timeout", "command effects campaign timed out");
+  if (campaignOutcome.exitCode !== 0) {
+    throw failure(
+      "hardware_blocked",
+      "command effects campaign failed",
+      await campaignRecoveryFacts(campaignRoot),
+    );
+  }
+  const campaignResult = await readPrivateJson(path.join(campaignRoot, "campaign-result.json"), "campaign result");
+  const network = await readPrivateJson(path.join(campaignRoot, "campaign-network.private.json"), "campaign network evidence");
+  const effects = validateCampaign(campaignResult, network);
+  const fixture = validateFixture(await readPrivateJson(fixtureReport, "fixture report"));
+
+  const intentPath = path.join(campaignRoot, "command-effects-reboot-intent.private.json");
+  await readPrivateJson(intentPath, "device-session intent");
+  const sessionRoot = path.join(privateRoot, "device-session");
+  const sessionProjectionPath = path.join(privateRoot, "device-session-projection.private.json");
+  await mkdir(sessionRoot, { mode: 0o700 });
+  await chmod(sessionRoot, 0o700);
+  const sessionOutcome = await runChild(processPort, deviceSessionProgram, [
+    "reboot-live",
+    "--port", options.port,
+    "--intent-input", intentPath,
+    "--private-root", sessionRoot,
+    "--projection-output", sessionProjectionPath,
+    "--timeout-seconds", "360",
+  ], 390_000, "device-session");
+  if (sessionOutcome.timedOut) throw failure("timeout", "device-session timed out");
+  let restartSession: JsonObject;
+  try {
+    restartSession = await readClosedDeviceSession(sessionProjectionPath);
+  } catch (error) {
+    if (isDeviceSessionProjectionFailure(error)) {
+      throw failure(error.category, error.message);
+    }
+    throw failure("evidence_invalid", "device-session projection is invalid");
+  }
+  if (sessionOutcome.exitCode !== 0) throw failure("hardware_blocked", "device-session child failed");
+
+  const evidence = {
+    schema_version: "bitaxe-api-command-effects-evidence-v1",
+    board: 205,
+    source_commit: sourceCommit,
+    reference_commit: referenceCommit,
+    package_manifest_sha256: manifestDigest,
+    workflow: {
+      schema_version: "bitaxe-workflow-identity-v1",
+      command: "api-command-effects-campaign",
+      request_sha256: sha256(JSON.stringify({ manifest: manifestDigest, duration_seconds: options.durationSeconds })),
+    },
+    command_effects: effects,
+    stratum_fixture: fixture,
+    restart_session: restartSession,
+    safe_stop_confirmed: true,
+    cleanup_complete: true,
+    recovery_attempted: false,
+    secondary_recovery_failure: false,
+    mining_state: "disabled",
+    hardware_control_state: "disabled",
+    redaction_status: "passed",
+  } as const;
+  await mkdir(path.dirname(projectionPath), { recursive: true });
+  await writeFile(projectionPath, `${JSON.stringify(evidence, null, 2)}\n`, {
+    encoding: "utf8",
+    flag: "wx",
+  });
+  return evidence;
+}

@@ -33,6 +33,7 @@ pub(crate) trait FlashEnvironment {
         &self,
         admission: CampaignAdmission,
         expected_runtime: ExpectedRuntimeAttestationIdentity,
+        evidence_root: &Utf8Path,
         timeout_seconds: u64,
     ) -> Result<campaign::network::CampaignObservationCapture>;
     fn finish_usb_session(&self) -> Result<()>;
@@ -395,6 +396,7 @@ impl FlashEnvironment for LocalFlashEnvironment {
         &self,
         admission: CampaignAdmission,
         expected_runtime: ExpectedRuntimeAttestationIdentity,
+        evidence_root: &Utf8Path,
         timeout_seconds: u64,
     ) -> Result<campaign::network::CampaignObservationCapture> {
         let mut session_slot = self.usb_session.borrow_mut();
@@ -402,8 +404,11 @@ impl FlashEnvironment for LocalFlashEnvironment {
             bail!("cleanup_failed: campaign observation attempted without a repository session");
         };
         let mut analyzer = CampaignSerialAnalyzer::new(admission);
-        let mut network =
-            campaign::network::CampaignNetworkCoordinator::new(admission, expected_runtime);
+        let mut network = campaign::network::CampaignNetworkCoordinator::new(
+            admission,
+            expected_runtime,
+            evidence_root.to_owned(),
+        );
         session
             .observe_receive_only_ephemeral_chunks_until(
                 Duration::from_secs(timeout_seconds),

@@ -21,6 +21,7 @@ const CAMPAIGN_MINING_DIAGNOSTICS_SCHEMA: &str = "mining-campaign-asic-diagnosti
 const OBSERVATION_DURATION_SECONDS: u64 = 360;
 const MINING_DURATION_SECONDS: u64 = 600;
 const JOB_TRANSITION_DURATION_SECONDS: u64 = 1_800;
+const COMMAND_EFFECTS_DURATION_SECONDS: u64 = 600;
 const MINING_TERMINAL_GRACE_SECONDS: u64 = 180;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -31,6 +32,9 @@ pub(crate) enum CampaignTerminalCategory {
     SoakDurationComplete,
     JobTransitionComplete,
     JobTransitionNotObserved,
+    CommandEffectsComplete,
+    CommandRequestFailed,
+    OperatorCheckpointInvalid,
     AdmissionFailed,
     PackageAdmissionFailed,
     DeviceAdmissionFailed,
@@ -80,6 +84,9 @@ impl CampaignTerminalCategory {
             Self::SoakDurationComplete => "soak_duration_complete",
             Self::JobTransitionComplete => "job_transition_complete",
             Self::JobTransitionNotObserved => "job_transition_not_observed",
+            Self::CommandEffectsComplete => "command_effects_complete",
+            Self::CommandRequestFailed => "command_request_failed",
+            Self::OperatorCheckpointInvalid => "operator_checkpoint_invalid",
             Self::AdmissionFailed => "admission_failed",
             Self::PackageAdmissionFailed => "package_admission_failed",
             Self::DeviceAdmissionFailed => "device_admission_failed",
@@ -203,7 +210,13 @@ pub(crate) fn run_mining_campaign(
         }
     };
 
-    let operation_result = execute_campaign(command, admission, &mut attempt, environment);
+    let operation_result = execute_campaign(
+        command,
+        admission,
+        &evidence_root,
+        &mut attempt,
+        environment,
+    );
     let cleanup_result = environment.finish_usb_session();
     if cleanup_result.is_ok() {
         attempt.usb_cleanup_complete = true;
@@ -218,9 +231,28 @@ pub(crate) fn run_mining_campaign(
     finish_campaign_attempt(command, Some(admission), &paths, &attempt, result)
 }
 
+pub(crate) fn run_confirm_identify(
+    command: &ConfirmIdentifyCommand,
+    environment: &impl FlashEnvironment,
+) -> Result<()> {
+    let evidence_root = environment.workspace_path(&command.evidence_dir);
+    environment.approve_private_evidence_root(&evidence_root)?;
+    let metadata = fs::symlink_metadata(evidence_root.as_std_path())?;
+    if metadata.file_type().is_symlink() || !metadata.is_dir() {
+        bail!("identify_checkpoint=blocked reason=attempt_root_invalid");
+    }
+    #[cfg(unix)]
+    if metadata.permissions().mode() & 0o777 != 0o700 {
+        bail!("identify_checkpoint=blocked reason=attempt_root_not_private");
+    }
+    network::confirm_identify_observation(&evidence_root, command.observation)?;
+    emit_line("identify_checkpoint", command.observation.as_str())
+}
+
 fn execute_campaign(
     command: &MiningCampaignCommand,
     admission: CampaignAdmission,
+    evidence_root: &Utf8Path,
     attempt: &mut CampaignAttempt,
     environment: &impl FlashEnvironment,
 ) -> std::result::Result<CampaignTerminalCategory, CampaignFailure> {
@@ -266,6 +298,7 @@ fn execute_campaign(
         .receive_campaign_until(
             admission,
             expected_runtime.clone(),
+            evidence_root,
             campaign_capture_timeout_seconds(admission),
         )
         .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::ObservationFailed))?;
@@ -297,7 +330,8 @@ fn campaign_capture_timeout_seconds(admission: CampaignAdmission) -> u64 {
         MiningCampaignStage::Observation => admission.duration_seconds,
         MiningCampaignStage::LiveShare
         | MiningCampaignStage::Soak
-        | MiningCampaignStage::JobTransition => admission
+        | MiningCampaignStage::JobTransition
+        | MiningCampaignStage::CommandEffects => admission
             .duration_seconds
             .saturating_add(MINING_TERMINAL_GRACE_SECONDS),
     }

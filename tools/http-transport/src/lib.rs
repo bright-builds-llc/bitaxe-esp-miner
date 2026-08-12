@@ -10,6 +10,7 @@ use anyhow::{bail, Result};
 use rustls::pki_types::ServerName;
 use rustls::{ClientConfig, ClientConnection, RootCertStore, StreamOwned};
 
+mod commands;
 mod observation;
 mod websocket;
 
@@ -91,15 +92,6 @@ impl StrictHttpClient {
         self.exchange_until(
             "POST",
             "/api/system/restart",
-            deadline,
-            DEFAULT_CONNECT_TIMEOUT,
-        )
-    }
-
-    pub fn post_pause_once(&self, deadline: Instant) -> Result<ExchangeObservation> {
-        self.exchange_until(
-            "POST",
-            "/api/system/pause",
             deadline,
             DEFAULT_CONNECT_TIMEOUT,
         )

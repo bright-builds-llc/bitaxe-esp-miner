@@ -41,7 +41,9 @@ pub struct ProductionMiningSession {
     pub(super) maybe_lease: Option<MiningCampaignLease>,
     pub(super) maybe_consumed_lease_id: Option<MiningCampaignLeaseId>,
     pub(super) maybe_prepared_at_ms: Option<u64>,
+    pub(super) maybe_lease_started_at_ms: Option<u64>,
     pub(super) maybe_active_since_ms: Option<u64>,
+    pub(super) resumable_pause_pending: bool,
     pub(super) job_transition: JobTransitionTracker,
     pub(super) asic_diagnostics: AsicBridgeDiagnosticsTracker,
     pub(super) terminal_publication_pending: bool,
@@ -81,7 +83,9 @@ impl ProductionMiningSession {
             maybe_lease: None,
             maybe_consumed_lease_id: None,
             maybe_prepared_at_ms: None,
+            maybe_lease_started_at_ms: None,
             maybe_active_since_ms: None,
+            resumable_pause_pending: false,
             job_transition: JobTransitionTracker::default(),
             asic_diagnostics: AsicBridgeDiagnosticsTracker::default(),
             terminal_publication_pending: false,
@@ -389,9 +393,13 @@ impl ProductionMiningSession {
                 effects,
             );
         }
-        if readiness.maybe_blocker().is_some() {
+        if let Some(blocker) = readiness.maybe_blocker() {
             let actions = self.recovery.on_wakeup(wakeup, readiness, now_ms);
             self.apply_recovery_actions(actions, effects)?;
+            self.resumable_pause_pending = blocker == ProductionSessionBlocker::OperatorPaused
+                && self
+                    .maybe_lease
+                    .is_some_and(|lease| lease.stop_condition().allows_operator_resume());
             self.begin_hardware_safe_stop_if_needed(effects)?;
             return Ok(());
         }
@@ -422,6 +430,7 @@ impl ProductionMiningSession {
         match self.hardware_state {
             MiningHardwareState::Unprepared | MiningHardwareState::Stopped => {
                 self.maybe_lease = Some(lease);
+                self.maybe_lease_started_at_ms.get_or_insert(now_ms);
                 self.hardware_state = MiningHardwareState::Preparing;
                 self.campaign_state = MiningCampaignState::Preparing;
                 self.maybe_prepared_at_ms = None;
@@ -539,10 +548,19 @@ impl ProductionMiningSession {
             return;
         }
         self.hardware_state = MiningHardwareState::Stopped;
+        if self.resumable_pause_pending {
+            self.resumable_pause_pending = false;
+            self.campaign_state = MiningCampaignState::Armed;
+            self.maybe_prepared_at_ms = None;
+            self.maybe_active_since_ms = None;
+            self.terminal_publication_pending = false;
+            return;
+        }
         self.campaign_state = MiningCampaignState::Consumed;
         self.maybe_consumed_lease_id = Some(lease_id);
         self.maybe_lease = None;
         self.maybe_prepared_at_ms = None;
+        self.maybe_lease_started_at_ms = None;
         self.maybe_active_since_ms = None;
         self.terminal_publication_pending = false;
     }
@@ -568,6 +586,9 @@ impl ProductionMiningSession {
                 .is_some_and(|started| now_ms.saturating_sub(started) >= timeout.milliseconds()),
             MiningCampaignStopCondition::ActiveDuration { duration } => self
                 .maybe_active_since_ms
+                .is_some_and(|started| now_ms.saturating_sub(started) >= duration.milliseconds()),
+            MiningCampaignStopCondition::ResumableWallClockDuration { duration } => self
+                .maybe_lease_started_at_ms
                 .is_some_and(|started| now_ms.saturating_sub(started) >= duration.milliseconds()),
         }
     }

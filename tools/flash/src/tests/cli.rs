@@ -78,6 +78,32 @@ fn parses_closed_mining_campaign_flags() {
 }
 
 #[test]
+fn parses_private_identify_confirmation() {
+    // Arrange
+    let args = [
+        "bitaxe-flash",
+        "confirm-identify",
+        "--evidence-dir",
+        "hardware-runs/api009/attempt-001/campaign",
+        "--observation",
+        "rendered",
+    ];
+
+    // Act
+    let cli = parse_cli(args).expect("confirmation cli");
+
+    // Assert
+    let CliCommand::ConfirmIdentify(command) = cli.command else {
+        panic!("expected confirm-identify command");
+    };
+    assert_eq!(command.observation, network::IdentifyObservation::Rendered);
+    assert_eq!(
+        command.evidence_dir,
+        Utf8PathBuf::from("hardware-runs/api009/attempt-001/campaign")
+    );
+}
+
+#[test]
 fn parses_canonical_observation_campaign_flags() {
     // Arrange
     let args = [

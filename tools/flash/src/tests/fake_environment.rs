@@ -339,6 +339,7 @@ impl FlashEnvironment for FakeFlashEnvironment {
         &self,
         admission: CampaignAdmission,
         _expected_runtime: ExpectedRuntimeAttestationIdentity,
+        _evidence_root: &Utf8Path,
         timeout_seconds: u64,
     ) -> Result<crate::network::CampaignObservationCapture> {
         self.campaign_observations
@@ -353,10 +354,14 @@ impl FlashEnvironment for FakeFlashEnvironment {
             .unwrap_or_else(|| self.log_contents.as_bytes().to_vec());
         Ok(crate::network::CampaignObservationCapture {
             serial: analyze_campaign_serial_bytes(&bytes, admission),
-            network: if admission.stage == MiningCampaignStage::Soak {
-                crate::network::CampaignNetworkEvidence::fixture_complete()
-            } else {
-                crate::network::CampaignNetworkEvidence::not_required()
+            network: match admission.stage {
+                MiningCampaignStage::Soak => {
+                    crate::network::CampaignNetworkEvidence::fixture_complete()
+                }
+                MiningCampaignStage::CommandEffects => {
+                    crate::network::CampaignNetworkEvidence::fixture_command_effects()
+                }
+                _ => crate::network::CampaignNetworkEvidence::not_required(),
             },
         })
     }

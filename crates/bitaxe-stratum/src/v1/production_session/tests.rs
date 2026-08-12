@@ -174,6 +174,17 @@ fn first_submit_lease(id: u64, timeout_ms: u64) -> MiningCampaignLease {
     )
 }
 
+fn resumable_lease(id: u64, duration_ms: u64) -> MiningCampaignLease {
+    MiningCampaignLease::new(
+        MiningCampaignLeaseId::new(id).expect("test lease id should be valid"),
+        profile(),
+        MiningCampaignStopCondition::ResumableWallClockDuration {
+            duration: MiningCampaignDuration::new(duration_ms)
+                .expect("test duration should be valid"),
+        },
+    )
+}
+
 fn pools(prefer_fallback: bool) -> ProductionPoolSet {
     ProductionPoolSet {
         primary: Some(pool("primary.invalid")),

@@ -1898,10 +1898,10 @@ hardware controls, OTA, recovery, direct UART, pins, or physical effect.
 Hardware evidence continuation plan:
 `docs/parity/work-plans/20260812T144217Z-API-009/PLAN.md`.
 
-- [ ] Add the typed `command-effects` campaign stage, easy-target local Stratum
+- [x] Add the typed `command-effects` campaign stage, easy-target local Stratum
       fixture, one-time physical identify checkpoint, canonical restart join,
       closed public evidence projection, and focused regressions.
-- [ ] Run all focused and mandatory software gates; commit and push the exact
+- [x] Run all focused and mandatory software gates; commit and push the exact
       implementation before touching hardware.
 - [ ] Run exactly one fresh detector-gated `attempt-001` against board 205 and
       stop after its complete result without retry.

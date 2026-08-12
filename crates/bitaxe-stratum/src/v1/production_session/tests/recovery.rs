@@ -459,6 +459,56 @@ fn pause_settings_change_and_shutdown_reread_authoritative_state() {
 }
 
 #[test]
+fn resumable_lease_safe_stops_on_pause_and_reprepares_only_before_deadline() {
+    // Arrange
+    let lease = resumable_lease(7, 1_000);
+    let running = ProductionReadiness {
+        maybe_campaign_lease: Some(lease),
+        ..ready()
+    };
+    let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));
+    establish_active_with_readiness(&mut adapter, running);
+    adapter.effects.clear();
+    let paused = ProductionReadiness {
+        operator_intent: MiningOperatorIntent::Paused,
+        ..running
+    };
+
+    // Act
+    adapter.drive(ProductionSessionEvent::Wake {
+        wakeup: Some(ProductionSessionWakeup::OperatorIntentChanged),
+        readiness: paused,
+        now_ms: 100,
+    });
+    let paused_snapshot = adapter.session.snapshot();
+    adapter.effects.clear();
+    adapter.drive(ProductionSessionEvent::Wake {
+        wakeup: Some(ProductionSessionWakeup::OperatorIntentChanged),
+        readiness: running,
+        now_ms: 200,
+    });
+    let resumed_effects = adapter.effects.clone();
+    adapter.effects.clear();
+    adapter.drive(wake(running, 1_001));
+
+    // Assert
+    assert_eq!(paused_snapshot.campaign_state, MiningCampaignState::Armed);
+    assert_eq!(paused_snapshot.hardware_state, MiningHardwareState::Stopped);
+    assert_eq!(
+        paused_snapshot.mining.mining_activity,
+        MiningActivityStatus::Paused
+    );
+    assert!(resumed_effects.iter().any(|effect| matches!(
+        effect,
+        ProductionSessionEffect::PrepareHardware { lease_id, .. } if *lease_id == lease.id()
+    )));
+    assert_eq!(
+        adapter.session.snapshot().campaign_state,
+        MiningCampaignState::Consumed
+    );
+}
+
+#[test]
 fn safe_stop_effect_order_and_final_snapshot_are_idempotent() {
     // Arrange
     let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools(false)));

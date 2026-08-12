@@ -501,3 +501,26 @@ test("provisioning network capture requires the detector-gated closed surface", 
   assert.throws(() => parseInvocation(complete.slice(0, -2)));
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
+
+test("API command effects requires the closed 600-second attempt shape", () => {
+  // Arrange
+  const complete = [
+    "api-command-effects-campaign",
+    "--private-root", "scratch/api009/attempt-001",
+    "--package-manifest", "bazel-bin/package.json",
+    "--wifi-credentials", "wifi-credentials.json",
+    "--detector-output", "scratch/api009/detector.stdout",
+    "--projection", "docs/evidence/api-command-effects.json",
+    "--duration-seconds", "600",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "api-command-effects-campaign");
+  assert.equal(invocation.values.get("--duration-seconds"), "600");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete.slice(0, -1), "599"]));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});

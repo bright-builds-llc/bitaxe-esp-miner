@@ -4,6 +4,9 @@ mod settings_adapter {
         Observation,
         LiveShare,
         Soak,
+        #[allow(dead_code)]
+        JobTransition,
+        CommandEffects,
     }
 
     impl MiningCampaignStage {
@@ -12,6 +15,8 @@ mod settings_adapter {
                 Self::Observation => "observation",
                 Self::LiveShare => "live-share",
                 Self::Soak => "soak",
+                Self::JobTransition => "job-transition",
+                Self::CommandEffects => "command-effects",
             }
         }
     }

@@ -37,6 +37,13 @@ flash-monitor *args:
 mining-campaign *args:
     bazel run //tools/flash:flash -- mining-campaign {{ args }}
 
+confirm-api-command-identify *args:
+    bazel run //tools/flash:flash -- confirm-identify {{ args }}
+
+api-command-effects-campaign *args:
+    bazel build //firmware/bitaxe:firmware_image
+    bazel run //tools/automation:bitaxe_automation -- api-command-effects-campaign {{ args }}
+
 verify-flash-durability *args:
     bazel run //tools/automation:verify_flash_durability -- {{ args }}
 

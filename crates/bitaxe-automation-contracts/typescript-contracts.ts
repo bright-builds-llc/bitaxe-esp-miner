@@ -18,6 +18,7 @@ export type AutomationCommand =
   | "verify-mining"
   | "capture-operator-evidence"
   | "verify-settings-durability"
+  | "api-command-effects-campaign"
   | "verify-theme-durability"
   | "capture-correlated-runtime-evidence"
   | "capture-version-evidence"
@@ -506,7 +507,7 @@ const automationCommands = new Set<AutomationCommand>([
   "verify-redaction", "verify-production-session", "observe-serial", "verify-flash-durability",
   "verify-firmware-ota", "verify-web-assets-ota", "verify-recovery", "verify-http-api",
   "verify-hardware-surface", "verify-mining", "capture-operator-evidence",
-  "verify-settings-durability", "verify-theme-durability", "capture-correlated-runtime-evidence", "capture-version-evidence",
+  "verify-settings-durability", "api-command-effects-campaign", "verify-theme-durability", "capture-correlated-runtime-evidence", "capture-version-evidence",
   "capture-operator-snapshot-evidence",
   "capture-runtime-health-evidence",
   "capture-system-info-evidence",
@@ -614,7 +615,6 @@ export function internalCommandSpec<Result>(
   const spec = environment === undefined ? { program, args, result } : { program, args, result, environment };
   return spec as unknown as CommandSpec<Result>;
 }
-
 export function flashCommand(program: string, options: FlashOptions): CommandSpec<unknown> {
   return internalCommandSpec(program, ["flash", ...commonOptions(options), ...flag("image", options.image), ...flag("manifest", options.manifest), ...flag("wifi-credentials", options.wifiCredentials)], (value) => value);
 }

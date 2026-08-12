@@ -122,6 +122,7 @@ pub(super) struct CampaignStatusTracker {
     logged_stale_completion_count: u64,
     poll_rearm_logged: bool,
     nonce_correlation_logged: bool,
+    active_seen: bool,
 }
 
 impl CampaignStatusTracker {
@@ -149,6 +150,7 @@ impl CampaignStatusTracker {
             logged_stale_completion_count: 0,
             poll_rearm_logged: false,
             nonce_correlation_logged: false,
+            active_seen: false,
         }
     }
 
@@ -164,15 +166,17 @@ impl CampaignStatusTracker {
         self.lease_authorizing
     }
 
-    pub(super) const fn operator_intent(
+    pub(super) fn operator_intent(
         &self,
-        _persisted_intent: MiningOperatorIntent,
+        persisted_intent: MiningOperatorIntent,
     ) -> MiningOperatorIntent {
-        if self.lease_authorizing {
-            MiningOperatorIntent::Run
-        } else {
-            MiningOperatorIntent::Paused
+        if !self.lease_authorizing {
+            return MiningOperatorIntent::Paused;
         }
+        if self.stage == MiningCampaignStage::CommandEffects && self.active_seen {
+            return persisted_intent;
+        }
+        MiningOperatorIntent::Run
     }
 
     pub(super) fn note_pool_configuration_read(&mut self, available: bool) {
@@ -207,6 +211,7 @@ impl CampaignStatusTracker {
     pub(super) fn note_snapshot(&mut self, snapshot: &ProductionSessionSnapshot, now_ms: u64) {
         self.maybe_log_asic_evidence(snapshot.asic_bridge);
         if snapshot.campaign_state == MiningCampaignState::Active {
+            self.active_seen = true;
             let active_since = *self.maybe_active_since_ms.get_or_insert(now_ms);
             self.retained_active_ms = now_ms.saturating_sub(active_since);
         } else if let Some(active_since) = self.maybe_active_since_ms.take() {
@@ -394,6 +399,8 @@ mod tests {
 
     use super::*;
 
+    include!("campaign_status/tests/operator_intent.rs");
+
     fn snapshot(campaign_state: MiningCampaignState) -> ProductionSessionSnapshot {
         ProductionSessionSnapshot {
             phase: ProductionSessionPhase::WaitingForReadiness,
@@ -579,29 +586,5 @@ mod tests {
         assert_eq!(value["active_ms"], 1_000);
         assert!(!tracker.authorizes_actuation());
         assert!(tracker.maybe_lease().is_none());
-    }
-
-    #[test]
-    fn lease_scoped_run_override_returns_to_paused_after_consumption() {
-        // Arrange
-        let profile = MiningHardwareProfilePreset::Conservative;
-        let lease = MiningCampaignLease::new(
-            MiningCampaignLeaseId::new(9).expect("lease id"),
-            profile.profile(),
-            MiningCampaignStopCondition::ActiveDuration {
-                duration: MiningCampaignDuration::new(1_000).expect("duration"),
-            },
-        );
-        let mut tracker =
-            CampaignStatusTracker::new(MiningCampaignStage::Soak, Some(lease), Some(profile));
-
-        // Act
-        let during_lease = tracker.operator_intent(MiningOperatorIntent::Paused);
-        tracker.note_snapshot(&snapshot(MiningCampaignState::Consumed), 1_000);
-        let after_consumption = tracker.operator_intent(MiningOperatorIntent::Run);
-
-        // Assert
-        assert_eq!(during_lease, MiningOperatorIntent::Run);
-        assert_eq!(after_consumption, MiningOperatorIntent::Paused);
     }
 }

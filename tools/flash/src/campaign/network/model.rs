@@ -6,6 +6,7 @@ use bitaxe_http_transport::WebSocketReadFailureKind;
 use serde::Serialize;
 
 use super::super::*;
+use super::command_evidence::CommandEffectsEvidence;
 use super::validation::{
     active_mining_state_valid, advances, regresses, update_gap, validate_active_prerequisites,
     validate_sample, watchdog_valid, window_index, SampleValidationFailure,
@@ -151,6 +152,7 @@ pub(crate) struct CampaignNetworkEvidence {
     pub(in crate::campaign) terminal_http_valid: bool,
     pub(in crate::campaign) terminal_websocket_valid: bool,
     pub(in crate::campaign) terminal_pool_persisted: bool,
+    pub(in crate::campaign) command_effects: Option<CommandEffectsEvidence>,
     #[serde(skip)]
     pub(in crate::campaign) maybe_failure: Option<CampaignTerminalCategory>,
 }
@@ -209,43 +211,35 @@ impl CampaignNetworkEvidence {
             terminal_http_valid: false,
             terminal_websocket_valid: false,
             terminal_pool_persisted: false,
+            command_effects: None,
             maybe_failure,
         }
     }
 
-    #[cfg(test)]
-    pub(crate) fn fixture_complete() -> Self {
+    pub(super) fn from_command_effects(
+        evidence: CommandEffectsEvidence,
+        recovery_pause_request_count: u64,
+        maybe_failure: Option<CampaignTerminalCategory>,
+    ) -> Self {
+        let complete = evidence.complete();
+        let maybe_failure = maybe_failure
+            .or_else(|| (!complete).then_some(CampaignTerminalCategory::NetworkCorrelationFailed));
+        let status = if maybe_failure.is_none() && complete {
+            "accepted"
+        } else {
+            "failed"
+        };
         Self {
-            schema: "mining-campaign-network-continuity-v3",
-            status: "accepted",
-            required_window_count: REQUIRED_WINDOWS,
-            covered_window_count: REQUIRED_WINDOWS,
-            http_success_count: 40,
-            websocket_frame_count: 40,
-            websocket_reconnect_count: 0,
-            websocket_connect_failure_count: 0,
-            websocket_peer_close_count: 0,
-            websocket_io_failure_count: 0,
-            websocket_protocol_failure_count: 0,
-            websocket_capacity_failure_count: 0,
-            websocket_other_failure_count: 0,
-            recovery_pause_request_count: 0,
-            http_startup_transition_count: 0,
-            websocket_startup_transition_count: 0,
-            http_initial_active_observed: true,
-            websocket_initial_active_observed: true,
-            maximum_http_gap_ms: 5_000,
-            maximum_websocket_gap_ms: 500,
-            maximum_active_marker_gap_ms: 1_000,
-            same_boot_and_package: true,
-            active_state_valid: true,
-            safety_valid: true,
-            watchdog_valid: true,
-            work_renewal_valid: true,
-            terminal_http_valid: true,
-            terminal_websocket_valid: true,
-            terminal_pool_persisted: true,
-            maybe_failure: None,
+            status,
+            recovery_pause_request_count,
+            same_boot_and_package: evidence.same_boot_and_package,
+            active_state_valid: evidence.active_before_pause && evidence.active_after_resume,
+            safety_valid: evidence.safety_valid,
+            terminal_http_valid: evidence.terminal_http_valid,
+            terminal_pool_persisted: evidence.terminal_pool_persisted,
+            command_effects: Some(evidence),
+            maybe_failure,
+            ..Self::empty(status, maybe_failure)
         }
     }
 }
@@ -504,6 +498,7 @@ impl NetworkAccumulator {
             terminal_http_valid: self.terminal_http_valid,
             terminal_websocket_valid: self.terminal_websocket_valid,
             terminal_pool_persisted: serial.terminal_pool_persisted,
+            command_effects: None,
             maybe_failure: self.maybe_failure,
         }
     }
