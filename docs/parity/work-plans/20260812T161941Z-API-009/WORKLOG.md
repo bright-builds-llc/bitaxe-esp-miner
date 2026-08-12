@@ -65,3 +65,29 @@
 - Blocker or next safe action: Commit and push the exact clean implementation,
   build its package, then run the single detector-gated attempt-003 without a
   retry.
+
+## 2026-08-12T16:56:19Z | Attempt-003 terminal closure
+
+- Source commit: `f8c279d25f0c4a3704bf1837a0eabef58df26410`.
+- Actions: Built and admitted the exact pushed package, detected exactly one
+  board-205 ESP32-S3 device, and ran the sole authorized attempt-003. No second
+  attempt was started.
+- Verification: Factory and NVS `write-bin --no-stub` commands both exited
+  successfully on attempt one with completed device effects, closed output
+  counts/digests, and no raw output. The runtime identity was trusted, 21
+  campaign markers and two runtime attestations were accepted, safe stop was
+  confirmed, USB cleanup was ready, and every private directory/file retained
+  mode `0700`/`0600`. The campaign stopped with zero covered network windows,
+  zero HTTP/WebSocket activity, and terminal reason
+  `stratum_v1_unsupported`. The public projection is absent.
+- Evidence: No API-009 parity evidence is claimed. No command-effect request,
+  physical IDENTIFY checkpoint, notification dismissal, or canonical restart
+  occurred. Detector, network, USB, credential, and raw trace values remain
+  protected and are not copied into repository artifacts.
+- Outcome: The attempt-002 flash blocker is resolved. API-009 remains
+  `implemented` because a later production protocol-gate blocker prevented the
+  five-command quorum.
+- Blocker or next safe action: Close this immutable plan without promotion.
+  Before another ordinal, type the protocol-gate decision, reproduce it against
+  the exact campaign-generated NVS image, and implement only the confirmed
+  material fix under a fresh immutable continuation.

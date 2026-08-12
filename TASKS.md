@@ -1998,7 +1998,7 @@ Flash-boundary continuation plan:
 - [x] Add real-child, command-shape, failure-precedence, private-mode, schema,
       and sensitive-output regressions; run and push every software gate before
       hardware.
-- [ ] Run at most one fresh detector-gated `attempt-003` and promote only on
+- [x] Run at most one fresh detector-gated `attempt-003` and promote only on
       the complete five-command device-user quorum.
 
 Attempt-003 authorization: standing task authorization permits this single
@@ -2009,6 +2009,19 @@ detector gate, 600-second local-fixture lease, one-time physical identify
 checkpoints, safe stop, cleanup, canonical software restart, recovery, public
 withholding, and accepted stop categories are exactly those recorded in the
 linked plan. No second retry is permitted.
+
+Attempt-003 completion review: Exact pushed source and package
+`f8c279d25f0c4a3704bf1837a0eabef58df26410` passed every software and detector
+gate. Both factory and NVS ROM-loader writes completed on their first attempt,
+proving the no-stub remediation; trusted runtime identity, safe stop, USB
+cleanup, private modes, and closed flash diagnostics also passed. The sole
+attempt then stopped as `hardware_blocked` / `network_correlation_failed`
+because the production runtime reported `stratum_v1_unsupported` before any
+active network window or command-effect request. No IDENTIFY checkpoint or
+restart occurred, the public projection was withheld, and API-009 remains
+`implemented`. The linked closure requires a fresh immutable continuation that
+types the production protocol-gate decision and reproduces it from the exact
+campaign NVS image before any material fix or new ordinal.
 
 ## Future
 
