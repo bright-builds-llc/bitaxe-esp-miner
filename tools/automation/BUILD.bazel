@@ -199,6 +199,7 @@ js_test(
         "//firmware/bitaxe:ultra205_partition_table",
         "//crates/bitaxe-api:system_info_field_contract_js",
         "//crates/bitaxe-config:ultra205_defaults_fixture_js",
+        "//scripts:api_command_effects_stratum_pool",
         "//tools/parity:report",
     ],
     entry_point = "test-dist/all.test.js",

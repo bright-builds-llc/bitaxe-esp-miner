@@ -10,6 +10,7 @@ test("process environment uses an exact secret-safe allowlist", () => {
   // Arrange
   const source = {
     PATH: "/usr/bin",
+    BAZEL_BINDIR: ".",
     CARGO_TARGET_DIR: "/workspace/.target",
     CARGO_UNSTABLE_AMBIENT: "must-not-pass",
     SERVICE_TOKEN: "must-not-pass",
@@ -22,6 +23,7 @@ test("process environment uses an exact secret-safe allowlist", () => {
   // Assert
   assert.deepEqual(environment, {
     PATH: "/usr/bin",
+    BAZEL_BINDIR: ".",
     CARGO_TARGET_DIR: "/workspace/.target",
     PHASE36_EFFECT_RESULT_PATH: "/private/effect.json",
   });

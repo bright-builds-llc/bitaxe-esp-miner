@@ -31,3 +31,40 @@
 - Outcome: The plan-only checkpoint is ready to commit and push.
 - Blocker or next safe action: Push this immutable plan, then implement and
   prove the exact deployed-launcher boundary before any hardware effect.
+
+## 2026-08-12T16:18:00Z | Host-process fix focused verification
+
+- Source commit: `0d0ab4026271b758ed10c9e8dbebf52f370e59d3`.
+- Actions: Replaced the implicit inner Node-wrapper launch with the fixture's
+  own repo-owned Bazel executable, supplied only the wrapper's constant safe
+  bind-directory marker, raced child settlement against readiness, and added a
+  mode-protected digest-only child outcome record.
+- Verification: The fixture script target and the complete automation test
+  target pass. Real `createLocalProcessPort` regressions prove deployed wrapper
+  readiness/report/cleanup, immediate nonzero exit as `process_failed`, and a
+  still-running no-readiness child as `timeout` with cleanup. Fake transaction
+  tests preserve campaign and reboot primary categories.
+- Evidence: Public projections remain withheld on every fixture, campaign, or
+  reboot failure. The process diagnostic contains only a closed category,
+  timing/exit/byte-count facts, output digests, and a false raw-output flag.
+- Outcome: The exact attempt-001 boundary is fixed without broadening the
+  sanitized child environment or inventing an artifact.
+- Blocker or next safe action: Run the full mandatory software and privacy
+  gates, review the diff, then commit and push the exact source before hardware.
+
+## 2026-08-12T16:29:00Z | Source gate complete
+
+- Source commit: `0d0ab4026271b758ed10c9e8dbebf52f370e59d3` plus
+  the pending implementation diff.
+- Actions: Completed the mandatory ordered gate, simplification review,
+  sensitive-output review, and immutable/source/reference integrity checks.
+- Verification: Cargo format, clippy with warnings denied, all-target build,
+  and all-feature tests pass; Bright Builds reports no findings; all 39 Bazel
+  tests pass; parity, progress, redaction, reference, generated contracts,
+  selector, unique task, immutable digest, reference cleanliness, fresh paths,
+  and diff checks pass. API-009 remains the open selected row.
+- Evidence: No device action or parity evidence has occurred in this source
+  checkpoint. Attempt-002 and its public projection paths are absent.
+- Outcome: The fixed source is eligible to commit and push before hardware.
+- Blocker or next safe action: Commit and push this exact source, build its
+  exact package, then run only the single detector-gated attempt-002.

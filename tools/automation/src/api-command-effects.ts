@@ -15,6 +15,9 @@ type RecoveryFacts = {
   readonly recoveryAttempted: boolean;
   readonly secondaryRecoveryFailure: boolean;
 };
+type FixtureSettlement =
+  | { readonly kind: "launch_failed" }
+  | { readonly kind: "outcome"; readonly outcome: ProcessOutcome };
 
 export type ApiCommandEffectsOptions = {
   readonly privateRoot: string;
@@ -182,6 +185,58 @@ async function waitForPrivateJson(input: string, timeoutMillis: number): Promise
   throw failure("timeout", "local fixture readiness timed out");
 }
 
+function launchFixture(
+  processPort: ProcessPort,
+  fixtureProgram: string,
+  args: readonly string[],
+): Promise<FixtureSettlement> {
+  try {
+    return processPort.run(
+      internalCommandSpec(fixtureProgram, [...args], (value) => value, { BAZEL_BINDIR: "." }),
+      920_000,
+    ).then(
+      (outcome) => ({ kind: "outcome", outcome }),
+      () => ({ kind: "launch_failed" }),
+    );
+  } catch {
+    return Promise.resolve({ kind: "launch_failed" });
+  }
+}
+
+function fixtureFailure(settlement: FixtureSettlement): ApiCommandEffectsError {
+  if (settlement.kind === "outcome" && settlement.outcome.timedOut) {
+    return failure("timeout", "local fixture process timed out");
+  }
+  return failure("process_failed", "local fixture process failed before readiness");
+}
+
+async function writeFixtureDiagnostic(
+  output: string,
+  settlement: FixtureSettlement,
+  durationMillis: number,
+): Promise<void> {
+  const maybeOutcome = settlement.kind === "outcome" ? settlement.outcome : undefined;
+  const terminalCategory = settlement.kind === "launch_failed"
+    ? "launch_failed"
+    : maybeOutcome?.timedOut === true
+      ? "timeout"
+      : maybeOutcome?.exitCode === 0
+        ? "complete"
+        : "nonzero_exit";
+  await writePrivateJson(output, {
+    schema_version: "api-command-effects-fixture-process-v1",
+    terminal_category: terminalCategory,
+    exit_code: maybeOutcome?.exitCode ?? null,
+    timed_out: maybeOutcome?.timedOut ?? false,
+    duration_millis: durationMillis,
+    stdout_byte_count: Buffer.byteLength(maybeOutcome?.stdout ?? "", "utf8"),
+    stderr_byte_count: Buffer.byteLength(maybeOutcome?.stderr ?? "", "utf8"),
+    stdout_sha256: sha256(maybeOutcome?.stdout ?? ""),
+    stderr_sha256: sha256(maybeOutcome?.stderr ?? ""),
+    raw_output_persisted: false,
+  });
+}
+
 function validatedCommandEffects(network: JsonObject): JsonObject {
   if (network["status"] !== "accepted") throw failure("hardware_blocked", "command effects network result was not accepted");
   const effects = object(network["command_effects"], "command effects evidence");
@@ -265,6 +320,7 @@ export async function captureApiCommandEffects(
   workspaceRoot: string,
   options: ApiCommandEffectsOptions,
   processPort: ProcessPort,
+  fixtureProgram: string,
   flashProgram: string,
   deviceSessionProgram: string,
 ): Promise<unknown> {
@@ -287,10 +343,10 @@ export async function captureApiCommandEffects(
   const fixtureReady = path.join(privateRoot, "fixture-ready.private.json");
   const fixtureReport = path.join(privateRoot, "fixture-report.private.json");
   const fixtureStop = path.join(privateRoot, "fixture.stop.private");
+  const fixtureDiagnostic = path.join(privateRoot, "fixture-process.private.json");
   const poolCredentials = path.join(privateRoot, "pool-credentials.private.json");
-  const fixtureProgram = path.join(workspaceRoot, "scripts", "api-command-effects-stratum-pool.mjs");
-  const fixturePromise = processPort.run(internalCommandSpec(process.execPath, [
-    fixtureProgram,
+  const fixtureStartedAt = Date.now();
+  const fixturePromise = launchFixture(processPort, fixtureProgram, [
     "--host", fixtureHost,
     "--port", "0",
     "--fixture", "api-command-effects-v1",
@@ -299,11 +355,23 @@ export async function captureApiCommandEffects(
     "--report-json", fixtureReport,
     "--duration-seconds", "900",
     "--stop-file", fixtureStop,
-  ], (value) => value), 920_000).catch(() => undefined);
+  ]);
 
-  let campaignOutcome: ProcessOutcome;
+  let maybeCampaignOutcome: ProcessOutcome | undefined;
+  let maybeFixtureSettlement: FixtureSettlement | undefined;
+  let maybePrimaryError: unknown;
+  let primaryFailed = false;
+  let diagnosticWriteFailed = false;
   try {
-    const ready = await waitForPrivateJson(fixtureReady, 10_000);
+    const first = await Promise.race([
+      waitForPrivateJson(fixtureReady, 10_000).then((ready) => ({ kind: "ready", ready }) as const),
+      fixturePromise,
+    ]);
+    if (first.kind !== "ready") {
+      maybeFixtureSettlement = first;
+      throw fixtureFailure(first);
+    }
+    const ready = first.ready;
     if (ready["status"] !== "ready" || ready["fixture"] !== "api-command-effects-v1") {
       throw failure("evidence_invalid", "local fixture readiness is invalid");
     }
@@ -318,7 +386,7 @@ export async function captureApiCommandEffects(
       poolPassword: randomBytes(24).toString("hex"),
     });
     const campaignRoot = path.join(privateRoot, "campaign");
-    campaignOutcome = await runChild(processPort, flashProgram, [
+    maybeCampaignOutcome = await runChild(processPort, flashProgram, [
       "mining-campaign",
       "--stage", "command-effects",
       "--profile", "conservative",
@@ -331,24 +399,43 @@ export async function captureApiCommandEffects(
       "--duration-seconds", String(options.durationSeconds),
       "--redact-evidence",
     ], 810_000, "command effects campaign");
+    if (maybeCampaignOutcome.timedOut) throw failure("timeout", "command effects campaign timed out");
+    if (maybeCampaignOutcome.exitCode !== 0) {
+      throw failure(
+        "hardware_blocked",
+        "command effects campaign failed",
+        await campaignRecoveryFacts(campaignRoot),
+      );
+    }
+  } catch (error) {
+    primaryFailed = true;
+    maybePrimaryError = error;
   } finally {
     await writeFile(fixtureStop, "stop\n", { encoding: "utf8", flag: "wx", mode: 0o600 }).catch(() => undefined);
-    await fixturePromise;
+    maybeFixtureSettlement ??= await fixturePromise;
+    try {
+      await writeFixtureDiagnostic(
+        fixtureDiagnostic,
+        maybeFixtureSettlement,
+        Date.now() - fixtureStartedAt,
+      );
+    } catch {
+      diagnosticWriteFailed = true;
+    }
   }
 
-  const fixtureOutcome = await fixturePromise;
-  if (fixtureOutcome === undefined || fixtureOutcome.timedOut || fixtureOutcome.exitCode !== 0) {
+  if (primaryFailed) throw maybePrimaryError;
+  if (maybeFixtureSettlement === undefined) throw failure("process_failed", "local fixture process did not complete");
+  if (maybeFixtureSettlement.kind !== "outcome") throw fixtureFailure(maybeFixtureSettlement);
+  const fixtureOutcome = maybeFixtureSettlement.outcome;
+  if (fixtureOutcome.timedOut) throw failure("timeout", "local fixture process timed out");
+  if (fixtureOutcome.exitCode !== 0) {
     throw failure("process_failed", "local fixture process failed");
   }
+  if (diagnosticWriteFailed) throw failure("evidence_invalid", "local fixture process diagnostic is unavailable");
+  const campaignOutcome = maybeCampaignOutcome;
+  if (campaignOutcome === undefined) throw failure("process_failed", "command effects campaign did not complete");
   const campaignRoot = path.join(privateRoot, "campaign");
-  if (campaignOutcome.timedOut) throw failure("timeout", "command effects campaign timed out");
-  if (campaignOutcome.exitCode !== 0) {
-    throw failure(
-      "hardware_blocked",
-      "command effects campaign failed",
-      await campaignRecoveryFacts(campaignRoot),
-    );
-  }
   const campaignResult = await readPrivateJson(path.join(campaignRoot, "campaign-result.json"), "campaign result");
   const network = await readPrivateJson(path.join(campaignRoot, "campaign-network.private.json"), "campaign network evidence");
   const effects = validateCampaign(campaignResult, network);

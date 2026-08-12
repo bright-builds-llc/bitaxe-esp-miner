@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmod, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -9,7 +9,8 @@ import {
   captureApiCommandEffects,
   type ApiCommandEffectsOptions,
 } from "./api-command-effects.js";
-import { createFakeProcessPort, type ProcessOutcome } from "./process.js";
+import { toolProgram } from "./cli-tools.js";
+import { createFakeProcessPort, createLocalProcessPort, type ProcessOutcome } from "./process.js";
 
 const ok = (stdout = ""): ProcessOutcome => ({ exitCode: 0, stdout, stderr: "", timedOut: false });
 
@@ -100,12 +101,21 @@ function fakePort(root: string, maybeSession: unknown = readySession, campaignFa
     if (spec.program === "/sbin/route") return ok("interface: en0\n");
     if (spec.program === "/usr/sbin/ipconfig") return ok("192.0.2.44\n");
     const attempt = path.join(root, "scratch", "attempt-001");
-    if (spec.program === process.execPath) {
+    if (spec.program.endsWith("api-command-effects-stratum-pool")) {
       await privateJson(path.join(attempt, "fixture-ready.private.json"), {
         status: "ready",
         fixture: "api-command-effects-v1",
         bound_port: 43210,
       });
+      while (true) {
+        try {
+          await readFile(path.join(attempt, "fixture.stop.private"), "utf8");
+          break;
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+          await new Promise((resolve) => setTimeout(resolve, 1));
+        }
+      }
       await privateJson(path.join(attempt, "fixture-report.private.json"), {
         status: "stopped",
         fixture: "api-command-effects-v1",
@@ -173,6 +183,7 @@ test("complete command and reboot quorums publish only redacted typed evidence",
     value.root,
     value.options,
     fakePort(value.root),
+    path.join(value.root, "bin", "api-command-effects-stratum-pool"),
     path.join(value.root, "bin", "flash"),
     path.join(value.root, "bin", "device-session"),
   );
@@ -196,6 +207,7 @@ test("campaign failure keeps its primary category and reports secondary recovery
     value.root,
     value.options,
     fakePort(value.root, readySession, true),
+    path.join(value.root, "bin", "api-command-effects-stratum-pool"),
     path.join(value.root, "bin", "flash"),
     path.join(value.root, "bin", "device-session"),
   ).then(() => undefined, (caught: unknown) => caught);
@@ -223,6 +235,7 @@ test("a non-ready reboot withholds the final projection", async () => {
     value.root,
     value.options,
     fakePort(value.root, session),
+    path.join(value.root, "bin", "api-command-effects-stratum-pool"),
     path.join(value.root, "bin", "flash"),
     path.join(value.root, "bin", "device-session"),
   ).then(() => undefined, (caught: unknown) => caught);
@@ -230,5 +243,109 @@ test("a non-ready reboot withholds the final projection", async () => {
   // Assert
   assert(error instanceof ApiCommandEffectsError);
   assert.equal(error.category, "hardware_blocked");
+  await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
+});
+
+test("the deployed fixture executable crosses the sanitized real-process boundary", {
+  skip: process.platform !== "darwin",
+}, async () => {
+  // Arrange
+  const value = await fixture();
+  const processPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 20_000 });
+
+  // Act
+  const error = await captureApiCommandEffects(
+    value.root,
+    value.options,
+    processPort,
+    toolProgram(value.root, "scripts/api_command_effects_stratum_pool_/api_command_effects_stratum_pool"),
+    "/usr/bin/false",
+    "/usr/bin/false",
+  ).then(() => undefined, (caught: unknown) => caught);
+
+  // Assert
+  assert(error instanceof ApiCommandEffectsError);
+  assert.equal(error.category, "hardware_blocked");
+  const attempt = path.join(value.root, "scratch", "attempt-001");
+  assert.equal((await stat(path.join(attempt, "fixture-ready.private.json"))).mode & 0o777, 0o600);
+  assert.equal((await stat(path.join(attempt, "fixture-report.private.json"))).mode & 0o777, 0o600);
+  const diagnosticPath = path.join(attempt, "fixture-process.private.json");
+  assert.equal((await stat(diagnosticPath)).mode & 0o777, 0o600);
+  const diagnostic = JSON.parse(await readFile(diagnosticPath, "utf8")) as Record<string, unknown>;
+  assert.equal(diagnostic["terminal_category"], "complete");
+  assert.equal(diagnostic["raw_output_persisted"], false);
+  assert(!JSON.stringify(diagnostic).includes("192.0.2"));
+  await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
+});
+
+test("an early real child exit is process_failed instead of a readiness timeout", {
+  skip: process.platform !== "darwin",
+}, async () => {
+  // Arrange
+  const value = await fixture();
+  const processPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 20_000 });
+  const startedAt = Date.now();
+
+  // Act
+  const error = await captureApiCommandEffects(
+    value.root,
+    value.options,
+    processPort,
+    "/usr/bin/false",
+    "/usr/bin/false",
+    "/usr/bin/false",
+  ).then(() => undefined, (caught: unknown) => caught);
+
+  // Assert
+  assert(error instanceof ApiCommandEffectsError);
+  assert.equal(error.category, "process_failed");
+  assert(Date.now() - startedAt < 5_000);
+  const diagnosticPath = path.join(value.root, "scratch", "attempt-001", "fixture-process.private.json");
+  assert.equal((await stat(diagnosticPath)).mode & 0o777, 0o600);
+  const diagnostic = JSON.parse(await readFile(diagnosticPath, "utf8")) as Record<string, unknown>;
+  assert.equal(diagnostic["terminal_category"], "nonzero_exit");
+  assert(!JSON.stringify(diagnostic).includes("/usr/bin/false"));
+  await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
+});
+
+test("a running real child without readiness times out and receives cleanup", {
+  skip: process.platform !== "darwin",
+}, async () => {
+  // Arrange
+  const value = await fixture();
+  const silentFixture = path.join(value.root, "silent-fixture.sh");
+  await writeFile(silentFixture, [
+    "#!/bin/sh",
+    "stop_file=''",
+    "while [ \"$#\" -gt 0 ]; do",
+    "  if [ \"$1\" = '--stop-file' ]; then stop_file=\"$2\"; fi",
+    "  shift 2",
+    "done",
+    "while [ ! -f \"$stop_file\" ]; do sleep 0.05; done",
+    "",
+  ].join("\n"), { mode: 0o700 });
+  await chmod(silentFixture, 0o700);
+  const processPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 20_000 });
+
+  // Act
+  const error = await captureApiCommandEffects(
+    value.root,
+    value.options,
+    processPort,
+    silentFixture,
+    "/usr/bin/false",
+    "/usr/bin/false",
+  ).then(() => undefined, (caught: unknown) => caught);
+
+  // Assert
+  assert(error instanceof ApiCommandEffectsError);
+  assert.equal(error.category, "timeout");
+  const attempt = path.join(value.root, "scratch", "attempt-001");
+  assert.equal((await stat(path.join(attempt, "fixture.stop.private"))).mode & 0o777, 0o600);
+  const diagnostic = JSON.parse(
+    await readFile(path.join(attempt, "fixture-process.private.json"), "utf8"),
+  ) as Record<string, unknown>;
+  assert.equal(diagnostic["terminal_category"], "complete");
+  assert.equal(diagnostic["raw_output_persisted"], false);
   await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
 });

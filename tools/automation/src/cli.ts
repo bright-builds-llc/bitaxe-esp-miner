@@ -546,7 +546,7 @@ async function main(): Promise<number> {
         port,
         projection: optionValue(invocation, "--projection"),
         durationSeconds: Number(optionValue(invocation, "--duration-seconds")),
-      }, processPort, flashProgram(root), deviceSessionProgram(root));
+      }, processPort, toolProgram(root, "scripts/api_command_effects_stratum_pool_/api_command_effects_stratum_pool"), flashProgram(root), deviceSessionProgram(root));
     } else if (invocation.command === "verify-settings-durability" && optionValue(invocation, "--mode") === "capture") {
       const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
       publicValue = await captureSettingsDurability(root, {

@@ -1943,11 +1943,11 @@ fresh detector-gated ordinal.
 Host-process continuation plan:
 `docs/parity/work-plans/20260812T154751Z-API-009/PLAN.md`.
 
-- [ ] Replace the implicit `process.execPath` fixture launch with a repo-owned
+- [x] Replace the implicit `process.execPath` fixture launch with a repo-owned
       Bazel/runfiles executable and race early child completion with readiness.
-- [ ] Persist only protected closed child outcome facts and add the real
+- [x] Persist only protected closed child outcome facts and add the real
       deployed-layout `createLocalProcessPort` regression.
-- [ ] Run every focused and mandatory software gate; commit and push the exact
+- [x] Run every focused and mandatory software gate; commit and push the exact
       fixed source before touching hardware.
 - [ ] Run exactly one fresh detector-gated `attempt-002` and stop after its
       complete terminal result without retry.
