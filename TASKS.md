@@ -2035,7 +2035,7 @@ Protocol-gate continuation plan:
 - [x] Add exclusive-owner, generated-campaign-NVS, startup-race, recovery,
       schema, and sensitive-output regressions; run and push every software
       gate before hardware.
-- [ ] Run at most one fresh detector-gated `attempt-004` and promote only on
+- [x] Run at most one fresh detector-gated `attempt-004` and promote only on
       the complete five-command device-user quorum.
 
 Attempt-004 authorization: standing task authorization permits this single
@@ -2047,6 +2047,19 @@ IDENTIFY checkpoints, safe stop, cleanup, canonical software restart,
 recovery, public withholding, and accepted stop categories are exactly those
 in the linked plan. Instrumentation alone is not retry eligibility, and no
 second attempt is permitted.
+
+Attempt-004 completion review: Exact pushed source and package
+`2c603f34b391a0c14c8539724fb28444961798d7` passed every software, package,
+privacy, and detector gate. Both no-stub writes completed on attempt one; the
+runtime identity was trusted and the typed protocol gate was `ready`, resolving
+attempt-003's blocker. The sole attempt observed a genuine positive block,
+eight qualified candidates, and a confirmed pause, then stopped as
+`hardware_blocked` / `network_correlation_failed` after the resume request
+reported `safety_prerequisites_stale`. Resume, IDENTIFY, dismiss, and restart
+did not complete, safe stop and cleanup passed, private modes remained valid,
+and the public projection was withheld. API-009 remains `implemented`. The
+linked closure requires a fresh immutable continuation to diagnose and test the
+pause/resume safety-readiness transition before any new ordinal.
 
 ## Future
 
