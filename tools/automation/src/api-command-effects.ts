@@ -4,6 +4,7 @@ import path from "node:path";
 
 import { internalCommandSpec, type AutomationCategory } from "./contracts.generated.js";
 import { isDeviceSessionProjectionFailure, readClosedDeviceSession } from "./device-session-projection.js";
+import { isClosedReadinessTransition } from "./api-command-effects-readiness.js";
 import type { ProcessOutcome, ProcessPort } from "./process.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
@@ -333,9 +334,12 @@ function validateCampaign(
   flashDiagnosticsDocument: string,
 ): JsonObject {
   validateFlashDiagnostics(result, flashDiagnostics, flashDiagnosticsDocument);
+  if (!isClosedReadinessTransition(result["readiness_transition"])) {
+    throw failure("evidence_invalid", "readiness transition is incomplete");
+  }
   const qualifiedCandidateCount = result["qualified_candidate_count"];
   if (
-    result["schema"] !== "mining-campaign-result-v7"
+    result["schema"] !== "mining-campaign-result-v8"
     || result["stage"] !== "command-effects"
     || result["status"] !== "accepted"
     || result["terminal_category"] !== "command_effects_complete"

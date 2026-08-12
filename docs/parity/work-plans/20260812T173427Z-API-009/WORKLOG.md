@@ -37,3 +37,54 @@
 - Outcome: The immutable continuation is eligible to commit and push.
 - Blocker or next safe action: Push the checkpoint, then reproduce the exact
   stale-resume/fresh-notification sequence before implementing a fix.
+
+## 2026-08-12T17:59:42Z | Readiness transition fixed
+
+- Source commit: pending verified implementation commit on top of
+  `aeb7e7d2`.
+- Actions: Reproduced the production ownership failure with a red source-seam
+  regression: `ObservationsChanged` used `try_send`, but a full queue returned
+  `Coalesced` without retaining a category-specific wake. Added a one-bit
+  release/acquire pending wake owned beside the notification port, consumed it
+  in the production owner, and synthesized only the lost category wake. Added
+  a value-free transition witness covering wakeup, prior/current blocker,
+  pre-event session/campaign/hardware phase, fresh/stale decision, observation
+  epoch advancement, and pending-wake recovery. Versioned marker/result schemas
+  to v11/v8 and bound their closed vocabularies through the host parser.
+- Verification: The ownership regression failed before the latch and passes
+  after it. Focused atomic coalescing, stale-resume/fresh-notification recovery,
+  retained transition, marker/result parsing, malformed evidence, redaction,
+  real child-process, and exact ESP32-S3 firmware build targets pass. The stale
+  resume wake remains fail-closed and issues no hardware preparation; the next
+  fresh observation wake reprepares the same lease exactly once.
+- Evidence: No hardware action or parity promotion occurred. The trace emits no
+  values, timestamps, sequences, origins, hostnames, ports, USB/network
+  identity, credentials, endpoints, paths, or raw output.
+- Outcome: The confirmed missed-transition defect is fixed without changing
+  the 1,000-ms freshness bound or synthesizing fresh sensor truth.
+- Blocker or next safe action: Run the full ordered mandatory gate, review the
+  complete diff and privacy surface, then commit and push the exact source
+  before any package or detector action.
+
+## 2026-08-12T18:10:33Z | Source gate complete
+
+- Source commit: pending implementation commit on top of `aeb7e7d2`.
+- Actions: Completed a simplification pass by isolating the pending wake,
+  owner loop, readiness projection, closed host validator, and large-stream
+  regression into focused modules. Updated every affected Bazel source graph
+  and its ownership guards.
+- Verification: Ordered `cargo fmt --all`, strict all-target/all-feature
+  Clippy, Cargo build and tests, Bright Builds, all 41 Bazel tests, parity,
+  progress, redaction, reference, exact firmware build, selector, unique task,
+  immutable plan digest, reference cleanliness, diff, file-length, and
+  sensitive-output checks pass. Selector returns only the open API-009 plan;
+  progress remains 59 verified of 94 active rows and PLAN.md retains SHA-256
+  `2165879f579b01718082943f4df606cd7cbbf0f29205ee333ca16f81143a101b`.
+- Evidence: This remains software evidence only. No origin, hostname, port,
+  USB/network identity, credential, endpoint, timestamp, sequence, sensor
+  value, raw trace, or private path is emitted by the new closed transition.
+- Outcome: The material recovery fix and every pre-hardware source gate are
+  complete.
+- Blocker or next safe action: Commit and push the exact source, verify remote
+  synchronization and cleanliness, then build the exact package. Only a fresh
+  successful detector may make the sole attempt-005 eligible.

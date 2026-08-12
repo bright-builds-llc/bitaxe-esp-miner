@@ -1,7 +1,7 @@
 use super::markers::{
     AsicBridgeMarker, CampaignAsicEventTrace, CampaignFailureMarker, JobTransitionMarker,
-    ObservationFreshnessMarker, ObservationRequirementsMarker, PoolConfigMarker, SafeStopMarker,
-    SafetyMarker, SubmitOutcomeMarker,
+    ObservationFreshnessMarker, ObservationRequirementsMarker, PoolConfigMarker,
+    ReadinessTransitionMarker, SafeStopMarker, SafetyMarker, SubmitOutcomeMarker,
 };
 use super::*;
 
@@ -40,6 +40,7 @@ struct CampaignResultEvidence<'a> {
     maximum_active_marker_gap_ms: u64,
     terminal_reason: &'static str,
     protocol_gate: &'static str,
+    readiness_transition: Option<&'a ReadinessTransitionMarker>,
     active_ms: u64,
     safety: &'static str,
     fresh_observation_count: u8,
@@ -238,6 +239,7 @@ pub(super) fn finish_campaign_attempt(
                 .map_or("not_observed", |marker| marker.terminal_reason.label()),
             protocol_gate: maybe_terminal
                 .map_or("not_observed", |marker| marker.protocol_gate.label()),
+            readiness_transition: maybe_terminal.map(|marker| &marker.readiness_transition),
             active_ms: maybe_terminal.map_or(0, |marker| marker.active_ms),
             safety: maybe_terminal.map_or("not_observed", |marker| match marker.safety {
                 SafetyMarker::Fresh => "fresh",

@@ -12,6 +12,12 @@ const EMC2101_SOURCE: &str = include_str!("safety_adapter/emc2101.rs");
 const DS4432U_SOURCE: &str = include_str!("safety_adapter/ds4432u.rs");
 const MINING_ACTUATION_ADAPTER_SOURCE: &str = include_str!("mining_actuation_adapter.rs");
 const PRODUCTION_SESSION_SOURCE: &str = include_str!("production_mining_session.rs");
+const PRODUCTION_OWNER_LOOP_SOURCE: &str =
+    include_str!("production_mining_session/owner_loop.rs");
+const PRODUCTION_NOTIFICATIONS_SOURCE: &str =
+    include_str!("production_mining_session/notifications.rs");
+const PENDING_OBSERVATION_SOURCE: &str =
+    include_str!("production_mining_session/pending_observation.rs");
 const PRODUCTION_TRANSPORT_SOURCE: &str =
     include_str!("production_mining_session/transport.rs");
 const PRODUCTION_ASIC_WORKER_SOURCE: &str =
@@ -56,9 +62,9 @@ fn runtime_owners_use_bounded_shared_cadence_and_queue_contracts() {
     assert!(SAFETY_WATCHDOG_SOURCE.contains(
         "PeriodicDeadline::new(current_monotonic_millis(), SAFETY_SUPERVISOR_CADENCE_MS)"
     ));
-    assert!(PRODUCTION_SESSION_SOURCE
+    assert!(PRODUCTION_OWNER_LOOP_SOURCE
         .contains("PeriodicDeadline::new(0, PRODUCTION_REREAD_CADENCE_MS)"));
-    assert!(PRODUCTION_SESSION_SOURCE.contains("readiness_schedule.is_due(now_ms)"));
+    assert!(PRODUCTION_OWNER_LOOP_SOURCE.contains("readiness_schedule.is_due(now_ms)"));
     assert!(PRODUCTION_SESSION_SOURCE.contains("mpsc::sync_channel(NOTIFICATION_CAPACITY)"));
     assert!(PRODUCTION_ASIC_WORKER_SOURCE.contains("mpsc::sync_channel(COMMAND_CAPACITY)"));
     assert!(PRODUCTION_ASIC_WORKER_SOURCE.contains(
@@ -245,6 +251,16 @@ fn observation_publication_releases_storage_before_owner_wakeup() {
     // Assert
     assert!(replace < release);
     assert!(release < wakeup);
+}
+
+#[test]
+fn a_full_owner_queue_cannot_discard_the_fresh_observation_wakeup() {
+    // Arrange / Act / Assert
+    assert!(PRODUCTION_NOTIFICATIONS_SOURCE.contains("OBSERVATIONS_CHANGED_PENDING"));
+    assert!(PRODUCTION_NOTIFICATIONS_SOURCE.contains("OBSERVATIONS_CHANGED_PENDING.mark()"));
+    assert!(PENDING_OBSERVATION_SOURCE.contains("swap(false, Ordering::AcqRel)"));
+    assert!(PRODUCTION_OWNER_LOOP_SOURCE.contains("take_pending_observations_changed()"));
+    assert!(PRODUCTION_OWNER_LOOP_SOURCE.contains("ProductionSessionWakeup::ObservationsChanged"));
 }
 
 #[test]

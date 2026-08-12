@@ -1,4 +1,5 @@
 const OWNER_SOURCE: &str = include_str!("production_mining_session.rs");
+const OWNER_LOOP_SOURCE: &str = include_str!("production_mining_session/owner_loop.rs");
 const WORKER_SOURCE: &str = include_str!("production_mining_session/asic_worker.rs");
 const HASHRATE_SOURCE: &str = include_str!("production_mining_session/hashrate.rs");
 const ASIC_SOURCE: &str = include_str!("asic_adapter/production.rs");
@@ -10,7 +11,7 @@ fn sole_production_owner_schedules_active_only_hashrate_reads() {
     let service = "service_hashrate_monitor(&session.snapshot(), now_ms)";
 
     // Act
-    let service_count = OWNER_SOURCE.matches(service).count();
+    let service_count = OWNER_LOOP_SOURCE.matches(service).count();
 
     // Assert
     assert_eq!(service_count, 1);
@@ -18,6 +19,7 @@ fn sole_production_owner_schedules_active_only_hashrate_reads() {
     assert!(HASHRATE_SOURCE.contains("WorkSubmissionGate::Ready"));
     assert!(OWNER_SOURCE.contains("AsicWorkerCommand::ReadHashrateRegisters"));
     assert!(!OWNER_SOURCE.contains("std::thread::Builder::new().name(\"hashrate"));
+    assert!(!OWNER_LOOP_SOURCE.contains("std::thread::Builder::new().name(\"hashrate"));
 }
 
 #[test]

@@ -311,5 +311,6 @@ fn dispatched_observation(
 mod block_found;
 mod job_transition;
 mod lifecycle;
+mod readiness_recovery;
 mod recovery;
 mod scoreboard;

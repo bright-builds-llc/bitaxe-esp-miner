@@ -9,6 +9,14 @@ use serde::Serialize;
 
 use crate::settings_adapter::MiningCampaignStage;
 
+#[cfg(test)]
+use super::readiness_trace::ObservationEpochRelation;
+use super::readiness_trace::ReadinessTransitionEvidence;
+
+#[path = "campaign_status/projection.rs"]
+mod projection;
+use projection::*;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum PoolConfigurationStatus {
     NotRead,
@@ -255,6 +263,7 @@ impl CampaignStatusTracker {
         mineonboot: bool,
         pool_config_persisted: bool,
         protocol_gate: &'static str,
+        readiness_transition: ReadinessTransitionEvidence,
     ) -> String {
         let active_ms = self
             .maybe_active_since_ms
@@ -262,7 +271,7 @@ impl CampaignStatusTracker {
                 self.retained_active_ms.max(now_ms.saturating_sub(started))
             });
         let projection = CampaignStatusProjection {
-            schema: "mining-campaign-status-v10",
+            schema: "mining-campaign-status-v11",
             stage: self.stage.label(),
             lease_id: self.retained_maybe_lease.map(|lease| lease.id().raw()),
             campaign_state: campaign_state_label(snapshot.campaign_state),
@@ -288,6 +297,7 @@ impl CampaignStatusTracker {
                 .maybe_blocker
                 .map_or("none", |blocker| blocker.label()),
             protocol_gate,
+            readiness_transition: CampaignReadinessTransitionProjection::from(readiness_transition),
             safety: if safety_fresh { "fresh" } else { "stale" },
             fresh_observation_count: observation_freshness.fresh_count(),
             observation_freshness,
@@ -315,69 +325,6 @@ impl CampaignStatusTracker {
     }
 }
 
-#[derive(Serialize)]
-struct CampaignStatusProjection {
-    schema: &'static str,
-    stage: &'static str,
-    lease_id: Option<u64>,
-    campaign_state: &'static str,
-    profile: &'static str,
-    active_ms: u64,
-    submit_outcome: &'static str,
-    qualified_candidate_count: u64,
-    below_pool_target_count: u64,
-    duplicate_candidate_count: u64,
-    accepted_share_count: u64,
-    rejected_share_count: u64,
-    job_transition: CampaignJobTransitionProjection,
-    asic_bridge: AsicBridgeEvidence,
-    terminal_reason: &'static str,
-    protocol_gate: &'static str,
-    safety: &'static str,
-    fresh_observation_count: u8,
-    observation_freshness: CampaignObservationFreshness,
-    observation_requirements: CampaignObservationRequirements,
-    pool_config: &'static str,
-    pool_config_persisted: bool,
-    actuation: &'static str,
-    mineonboot: bool,
-    safe_stop: &'static str,
-    failure: CampaignFailureDiagnostic,
-}
-
-#[derive(Serialize)]
-struct CampaignJobTransitionProjection {
-    pool_notify_count: u64,
-    clean_jobs_notify_count: u64,
-    previous_block_change_count: u64,
-    new_block_generation_count: u64,
-    replacement_dispatch_count: u64,
-    post_transition_correlated_result_count: u64,
-    completed_transition_count: u64,
-    stale_generation_result_discard_count: u64,
-    stale_generation_submit_count: u64,
-    reconnect_count: u64,
-    latest_state: &'static str,
-}
-
-impl From<JobTransitionEvidence> for CampaignJobTransitionProjection {
-    fn from(evidence: JobTransitionEvidence) -> Self {
-        Self {
-            pool_notify_count: evidence.pool_notify_count,
-            clean_jobs_notify_count: evidence.clean_jobs_notify_count,
-            previous_block_change_count: evidence.previous_block_change_count,
-            new_block_generation_count: evidence.new_block_generation_count,
-            replacement_dispatch_count: evidence.replacement_dispatch_count,
-            post_transition_correlated_result_count: evidence.replacement_result_count,
-            completed_transition_count: evidence.completed_transition_count,
-            stale_generation_result_discard_count: evidence.stale_generation_result_discard_count,
-            stale_generation_submit_count: evidence.stale_generation_submit_count,
-            reconnect_count: evidence.reconnect_count,
-            latest_state: evidence.latest_state.label(),
-        }
-    }
-}
-
 const fn campaign_state_label(state: MiningCampaignState) -> &'static str {
     match state {
         MiningCampaignState::Unavailable => "unavailable",
@@ -394,7 +341,7 @@ mod tests {
     use bitaxe_stratum::v1::production_session::{
         MiningCampaignDuration, MiningCampaignLeaseId, MiningCampaignStopCondition,
         MiningHardwareProfilePreset, MiningHardwareState, ProductionSessionBlocker,
-        ProductionSessionPhase, ProductionSessionSnapshot,
+        ProductionSessionPhase, ProductionSessionSnapshot, ProductionSessionWakeup,
     };
     use bitaxe_stratum::v1::production_work::PoolSessionGeneration;
     use bitaxe_stratum::v1::state::{MiningRuntimeState, ShareCounters};
@@ -418,6 +365,20 @@ mod tests {
         }
     }
 
+    fn readiness_transition() -> ReadinessTransitionEvidence {
+        ReadinessTransitionEvidence {
+            wakeup: Some(ProductionSessionWakeup::ObservationsChanged),
+            previous_blocker: Some(ProductionSessionBlocker::SafetyPrerequisitesStale),
+            current_blocker: None,
+            session_phase: ProductionSessionPhase::WaitingForReadiness,
+            campaign_state: MiningCampaignState::Armed,
+            hardware_state: MiningHardwareState::Stopped,
+            safety_sample_fresh: true,
+            observation_epoch_relation: ObservationEpochRelation::Advanced,
+            pending_observation_recovered: true,
+        }
+    }
+
     #[test]
     fn observation_marker_is_non_authorizing_and_terminal_safe() {
         // Arrange
@@ -432,12 +393,27 @@ mod tests {
             false,
             false,
             "ready",
+            readiness_transition(),
         );
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 
         // Assert
-        assert_eq!(value["schema"], "mining-campaign-status-v10");
+        assert_eq!(value["schema"], "mining-campaign-status-v11");
         assert_eq!(value["protocol_gate"], "ready");
+        assert_eq!(
+            value["readiness_transition"],
+            serde_json::json!({
+                "wakeup": "observations_changed",
+                "previous_blocker": "safety_prerequisites_stale",
+                "current_blocker": "none",
+                "session_phase": "waiting_for_readiness",
+                "campaign_state": "armed",
+                "hardware_state": "stopped",
+                "safety_sample": "fresh",
+                "observation_epoch": "advanced",
+                "pending_observation_recovered": true,
+            })
+        );
         assert_eq!(value["stage"], "observation");
         assert!(value["lease_id"].is_null());
         assert_eq!(value["campaign_state"], "unavailable");
@@ -520,6 +496,7 @@ mod tests {
             false,
             true,
             "primary_selector_invalid",
+            readiness_transition(),
         );
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 
@@ -574,6 +551,7 @@ mod tests {
             false,
             true,
             "ready",
+            readiness_transition(),
         );
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 

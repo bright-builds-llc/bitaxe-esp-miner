@@ -22,5 +22,9 @@ mod settings_adapter {
     }
 }
 
+#[path = "production_mining_session/readiness_trace.rs"]
+#[allow(dead_code)]
+mod readiness_trace;
+
 #[path = "production_mining_session/campaign_status.rs"]
 mod campaign_status;

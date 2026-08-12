@@ -2064,11 +2064,11 @@ pause/resume safety-readiness transition before any new ordinal.
 Safety-readiness continuation plan:
 `docs/parity/work-plans/20260812T173427Z-API-009/PLAN.md`.
 
-- [ ] Bind one closed sampled-observation epoch and readiness transition to the
+- [x] Bind one closed sampled-observation epoch and readiness transition to the
       production session and versioned campaign evidence.
-- [ ] Reproduce stale-resume followed by fresh producer notification at the
+- [x] Reproduce stale-resume followed by fresh producer notification at the
       production shell seam and fix only the confirmed missed transition.
-- [ ] Add ordering, coalescing, recovery, schema, and sensitive-output tests;
+- [x] Add ordering, coalescing, recovery, schema, and sensitive-output tests;
       run and push every software gate before hardware.
 - [ ] Run at most one fresh detector-gated `attempt-005` only after a red/green
       material fix, and promote only on the complete five-command quorum.

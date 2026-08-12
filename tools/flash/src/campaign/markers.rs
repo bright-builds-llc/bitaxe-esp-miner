@@ -1,10 +1,10 @@
 use super::*;
-
 mod soak;
 use soak::assess_soak_terminal;
-
 mod protocol;
 use protocol::ProtocolGateMarker;
+mod readiness;
+pub(super) use readiness::ReadinessTransitionMarker;
 
 mod asic;
 pub(super) use asic::*;
@@ -305,6 +305,7 @@ pub(super) struct CampaignStatusMarker {
     pub(super) asic_bridge: AsicBridgeMarker,
     pub(super) terminal_reason: CampaignTerminalReasonMarker,
     pub(super) protocol_gate: ProtocolGateMarker,
+    pub(super) readiness_transition: ReadinessTransitionMarker,
     pub(super) safety: SafetyMarker,
     pub(super) fresh_observation_count: u8,
     pub(super) observation_freshness: ObservationFreshnessMarker,

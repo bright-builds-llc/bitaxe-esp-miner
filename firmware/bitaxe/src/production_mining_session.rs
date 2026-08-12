@@ -4,6 +4,9 @@ mod asic_worker;
 mod campaign_status;
 mod hashrate;
 mod notifications;
+mod owner_loop;
+mod pending_observation;
+mod readiness_trace;
 mod scoreboard;
 mod transport;
 pub(crate) mod watchdog;
@@ -25,6 +28,8 @@ use std::time::{Duration, Instant};
 use self::asic_worker::{AsicWorker, AsicWorkerCommand, AsicWorkerEvent};
 use self::campaign_status::{CampaignObservationFreshness, CampaignStatusTracker};
 use self::hashrate::ProductionHashrateMonitor;
+use self::owner_loop::run_owner;
+use self::readiness_trace::ReadinessTransitionTracker;
 use self::transport::{PoolTransportCommand, PoolTransportEvent, PoolTransportWorkers};
 
 pub use notifications::notify;
@@ -55,93 +60,6 @@ pub fn start() -> anyhow::Result<()> {
         .map_err(Into::into)
 }
 
-fn run_owner(
-    receiver: Receiver<OwnerInboxMessage>,
-    mut adapter: OrdinaryEspProductionSessionAdapter,
-) {
-    let started_at = Instant::now();
-    let mut session = ProductionMiningSession::new();
-    let mut task_watchdog =
-        watchdog::ProductionTaskWatchdog::subscribe(crate::runtime_uptime::millis());
-    let mut readiness_schedule = PeriodicDeadline::new(0, PRODUCTION_REREAD_CADENCE_MS)
-        .expect("production reread cadence is nonzero");
-
-    loop {
-        let before_wait_ms = elapsed_millis(started_at);
-        let wait = Duration::from_millis(
-            readiness_schedule
-                .next_deadline_ms()
-                .saturating_sub(before_wait_ms),
-        );
-        let maybe_message = match receiver.recv_timeout(wait) {
-            Ok(message) => Some(message),
-            Err(mpsc::RecvTimeoutError::Timeout) => None,
-            Err(mpsc::RecvTimeoutError::Disconnected) => Some(OwnerInboxMessage::Wake(
-                ProductionSessionWakeup::ShutdownRequested,
-            )),
-        };
-        let shutdown_requested = matches!(
-            maybe_message,
-            Some(OwnerInboxMessage::Wake(
-                ProductionSessionWakeup::ShutdownRequested
-            ))
-        );
-        let now_ms = elapsed_millis(started_at);
-        let message_reads_readiness = matches!(maybe_message, Some(OwnerInboxMessage::Wake(_)));
-        if let Some(message) = maybe_message {
-            let event = adapter.event_from_inbox(message, now_ms);
-            drive_session(&mut session, &mut adapter, event, now_ms);
-        }
-        if readiness_schedule.is_due(now_ms) {
-            if !message_reads_readiness {
-                let event = adapter.wake_event(None, now_ms);
-                drive_session(&mut session, &mut adapter, event, now_ms);
-            }
-            if readiness_schedule.advance_past(now_ms).is_err() {
-                log::error!(
-                    "production_mining_session=fail_closed reason=readiness_deadline_overflow"
-                );
-                let event =
-                    adapter.wake_event(Some(ProductionSessionWakeup::ShutdownRequested), now_ms);
-                drive_session(&mut session, &mut adapter, event, now_ms);
-                adapter.publish_campaign_status(&session.snapshot(), now_ms);
-                return;
-            }
-        }
-        adapter.publish_campaign_status(&session.snapshot(), now_ms);
-        adapter.service_hashrate_monitor(&session.snapshot(), now_ms);
-        task_watchdog.feed(crate::runtime_uptime::millis());
-        if shutdown_requested {
-            return;
-        }
-    }
-}
-
-fn drive_session(
-    session: &mut ProductionMiningSession,
-    adapter: &mut OrdinaryEspProductionSessionAdapter,
-    initial_event: ProductionSessionEvent,
-    now_ms: u64,
-) {
-    let mut events = VecDeque::from([initial_event]);
-    while let Some(event) = events.pop_front() {
-        let effects = match session.handle(event) {
-            Ok(effects) => effects,
-            Err(error) => {
-                log::error!(
-                    "production_mining_session=fail_closed reason=engine_error error={error}"
-                );
-                return;
-            }
-        };
-        for effect in effects {
-            if let Some(feedback) = adapter.maybe_execute(effect, now_ms) {
-                events.push_back(feedback);
-            }
-        }
-    }
-}
-
 struct OrdinaryEspProductionSessionAdapter {
     mining_actuation: crate::mining_actuation_adapter::Ultra205MiningActuationAdapter,
     transports: PoolTransportWorkers,
@@ -150,6 +68,7 @@ struct OrdinaryEspProductionSessionAdapter {
     maybe_campaign_status: Option<CampaignStatusTracker>,
     maybe_terminal_pool_persisted: Option<bool>,
     protocol_gate: crate::settings_adapter::ProductionProtocolGateDecision,
+    readiness_trace: ReadinessTransitionTracker,
 }
 
 impl OrdinaryEspProductionSessionAdapter {
@@ -193,6 +112,7 @@ impl OrdinaryEspProductionSessionAdapter {
             maybe_terminal_pool_persisted: None,
             protocol_gate:
                 crate::settings_adapter::ProductionProtocolGateDecision::PartitionOwnerUnavailable,
+            readiness_trace: ReadinessTransitionTracker::default(),
         })
     }
 
@@ -200,10 +120,16 @@ impl OrdinaryEspProductionSessionAdapter {
         &mut self,
         wakeup: Option<ProductionSessionWakeup>,
         now_ms: u64,
+        snapshot: &ProductionSessionSnapshot,
+        pending_observation_recovered: bool,
     ) -> ProductionSessionEvent {
         ProductionSessionEvent::Wake {
             wakeup,
-            readiness: self.read_authoritative_readiness(),
+            readiness: self.read_authoritative_readiness(
+                wakeup,
+                snapshot,
+                pending_observation_recovered,
+            ),
             now_ms,
         }
     }
@@ -212,9 +138,12 @@ impl OrdinaryEspProductionSessionAdapter {
         &mut self,
         message: OwnerInboxMessage,
         now_ms: u64,
+        snapshot: &ProductionSessionSnapshot,
     ) -> ProductionSessionEvent {
         match message {
-            OwnerInboxMessage::Wake(wakeup) => self.wake_event(Some(wakeup), now_ms),
+            OwnerInboxMessage::Wake(wakeup) => {
+                self.wake_event(Some(wakeup), now_ms, snapshot, false)
+            }
             OwnerInboxMessage::Transport(event) => match event {
                 PoolTransportEvent::Connected {
                     pool,
@@ -298,7 +227,12 @@ impl OrdinaryEspProductionSessionAdapter {
         }
     }
 
-    fn read_authoritative_readiness(&mut self) -> ProductionReadiness {
+    fn read_authoritative_readiness(
+        &mut self,
+        wakeup: Option<ProductionSessionWakeup>,
+        snapshot: &ProductionSessionSnapshot,
+        pending_observation_recovered: bool,
+    ) -> ProductionReadiness {
         let mining = crate::runtime_snapshot::mining_runtime_state();
         let wifi = crate::wifi_adapter::current_wifi_snapshot();
         let observations = crate::safety_adapter::observation_snapshot();
@@ -320,14 +254,22 @@ impl OrdinaryEspProductionSessionAdapter {
             && crate::safety_adapter::safety_actuation_available()
             && crate::asic_adapter::production::production_handle_available();
         self.protocol_gate = crate::settings_adapter::configured_protocol_gate();
-        ProductionReadiness {
+        let readiness = ProductionReadiness {
             operator_intent,
             network_ready: wifi.wifi_status == "connected",
             stratum_v1_supported: self.protocol_gate.is_ready(),
             safety_prerequisites_fresh,
             maybe_campaign_lease,
             actuation_qualified,
-        }
+        };
+        self.readiness_trace.observe(
+            wakeup,
+            readiness,
+            &observations,
+            snapshot,
+            pending_observation_recovered,
+        );
+        readiness
     }
 
     fn maybe_execute(
@@ -565,6 +507,10 @@ impl OrdinaryEspProductionSessionAdapter {
         let Some(status) = self.maybe_campaign_status.as_ref() else {
             return;
         };
+        let Some(readiness_transition) = self.readiness_trace.evidence() else {
+            log::error!("mining_campaign_status=withheld category=readiness_transition_missing");
+            return;
+        };
         let observations = crate::safety_adapter::observation_snapshot();
         let safety_now = now();
         let safety_fresh = observations.is_ultra_205_mining_safe_at(safety_now);
@@ -584,6 +530,7 @@ impl OrdinaryEspProductionSessionAdapter {
             crate::settings_adapter::start_mining_on_boot(),
             pool_config_persisted,
             self.protocol_gate.label(),
+            readiness_transition,
         );
         crate::info_retained(&format!("mining_campaign_status={marker}"));
     }

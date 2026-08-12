@@ -67,6 +67,18 @@ const completeEffects = {
   terminal_pool_persisted: true,
 } as const;
 
+const readyReadinessTransition = {
+  wakeup: "observations_changed",
+  previous_blocker: "safety_prerequisites_stale",
+  current_blocker: "none",
+  session_phase: "waiting_for_readiness",
+  campaign_state: "armed",
+  hardware_state: "stopped",
+  safety_sample: "fresh",
+  observation_epoch: "advanced",
+  pending_observation_recovered: true,
+} as const;
+
 async function privateJson(output: string, value: unknown): Promise<void> {
   await writeFile(output, `${JSON.stringify(value)}\n`, { mode: 0o600 });
   await chmod(output, 0o600);
@@ -103,6 +115,7 @@ function fakePort(
   campaignFails = false,
   flashDiagnosticsMode: "ready" | "malformed" | "missing" = "ready",
   protocolGate = "ready",
+  readinessMode: "ready" | "malformed" | "missing" = "ready",
 ) {
   return createFakeProcessPort(async (spec) => {
     if (spec.program === "/sbin/route") return ok("interface: en0\n");
@@ -178,12 +191,17 @@ function fakePort(
         await writeFile(path.join(campaign, "campaign-flash.private.json"), flashDiagnosticsDocument, { mode: 0o600 });
       }
       await privateJson(path.join(campaign, "campaign-result.json"), {
-        schema: "mining-campaign-result-v7",
+        schema: "mining-campaign-result-v8",
         stage: "command-effects",
         status: campaignFails ? "failed" : "accepted",
         terminal_category: campaignFails ? "command_request_failed" : "command_effects_complete",
         runtime_identity: "trusted",
         protocol_gate: protocolGate,
+        ...(readinessMode === "missing" ? {} : {
+          readiness_transition: readinessMode === "malformed"
+            ? { ...readyReadinessTransition, observation_epoch: "private-invalid-value" }
+            : readyReadinessTransition,
+        }),
         safe_stop: "confirmed",
         usb_cleanup: "ready",
         qualified_candidate_count: 1,
@@ -226,6 +244,46 @@ test("a non-ready protocol gate withholds the final projection", async () => {
   // Assert
   assert(error instanceof ApiCommandEffectsError);
   assert.equal(error.category, "hardware_blocked");
+  await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
+});
+
+test("a missing readiness transition withholds the final projection", async () => {
+  // Arrange
+  const value = await fixture();
+
+  // Act
+  const error = await captureApiCommandEffects(
+    value.root,
+    value.options,
+    fakePort(value.root, readySession, false, "ready", "ready", "missing"),
+    path.join(value.root, "bin", "api-command-effects-stratum-pool"),
+    path.join(value.root, "bin", "flash"),
+    path.join(value.root, "bin", "device-session"),
+  ).then(() => undefined, (caught: unknown) => caught);
+
+  // Assert
+  assert(error instanceof ApiCommandEffectsError);
+  assert.equal(error.category, "evidence_invalid");
+  await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
+});
+
+test("a non-closed readiness transition withholds the final projection", async () => {
+  // Arrange
+  const value = await fixture();
+
+  // Act
+  const error = await captureApiCommandEffects(
+    value.root,
+    value.options,
+    fakePort(value.root, readySession, false, "ready", "ready", "malformed"),
+    path.join(value.root, "bin", "api-command-effects-stratum-pool"),
+    path.join(value.root, "bin", "flash"),
+    path.join(value.root, "bin", "device-session"),
+  ).then(() => undefined, (caught: unknown) => caught);
+
+  // Assert
+  assert(error instanceof ApiCommandEffectsError);
+  assert.equal(error.category, "evidence_invalid");
   await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
 });
 

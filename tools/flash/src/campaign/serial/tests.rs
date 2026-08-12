@@ -4,6 +4,8 @@ use super::*;
 mod asic_diagnostics;
 #[path = "tests/attestation.rs"]
 mod attestation;
+#[path = "tests/chunk_stream.rs"]
+mod chunk_stream;
 
 fn observation_admission() -> CampaignAdmission {
     CampaignAdmission {
@@ -88,6 +90,17 @@ fn live_share_preparing_marker() -> Vec<u8> {
         },
         "terminal_reason": "network_unavailable",
         "protocol_gate": "ready",
+        "readiness_transition": {
+            "wakeup": "observations_changed",
+            "previous_blocker": "safety_prerequisites_stale",
+            "current_blocker": "network_unavailable",
+            "session_phase": "waiting_for_readiness",
+            "campaign_state": "preparing",
+            "hardware_state": "preparing",
+            "safety_sample": "fresh",
+            "observation_epoch": "advanced",
+            "pending_observation_recovered": true,
+        },
         "safety": "fresh",
         "fresh_observation_count": 5,
         "observation_freshness": {
@@ -187,6 +200,17 @@ fn observation_marker(schema: &str) -> Vec<u8> {
         },
         "terminal_reason": "none",
         "protocol_gate": "ready",
+        "readiness_transition": {
+            "wakeup": "observations_changed",
+            "previous_blocker": "safety_prerequisites_stale",
+            "current_blocker": "none",
+            "session_phase": "waiting_for_readiness",
+            "campaign_state": "unavailable",
+            "hardware_state": "unprepared",
+            "safety_sample": "fresh",
+            "observation_epoch": "advanced",
+            "pending_observation_recovered": true,
+        },
         "safety": "fresh",
         "fresh_observation_count": 5,
         "observation_freshness": {
@@ -599,28 +623,4 @@ fn malformed_preparation_progress_fails_closed_without_replacing_marker_detail()
     assert_eq!(capture.outcome_detail, CampaignSerialOutcomeDetail::Clean);
     assert_eq!(capture.diagnostics.preparation_invalid_json_count, 1);
     assert_eq!(capture.diagnostics.accepted_marker_count, 1);
-}
-
-#[test]
-fn chunk_stream_larger_than_sixteen_mib_reaches_terminal_marker_with_bounded_artifacts() {
-    // Arrange
-    let mut analyzer = CampaignSerialAnalyzer::new(observation_admission());
-    let chunk = vec![b'x'; 64 * 1_024];
-
-    // Act
-    for _ in 0..257 {
-        assert!(!analyzer.observe_chunk(&chunk));
-        assert!(!analyzer.observe_chunk(b"\n"));
-    }
-    analyzer.observe_chunk(&observation_marker(CAMPAIGN_MARKER_SCHEMA));
-    let capture = analyzer.finish();
-    let aggregate_bytes = serde_json::to_vec(&capture.aggregate).expect("aggregate JSON");
-    let diagnostic_bytes = serde_json::to_vec(&capture.diagnostics).expect("diagnostic JSON");
-
-    // Assert
-    assert!(capture.diagnostics.total_bytes > 16 * 1_024 * 1_024);
-    assert_eq!(capture.aggregate.marker_count, 1);
-    assert!(capture.aggregate.terminal.is_some());
-    assert!(aggregate_bytes.len() < 64 * 1_024);
-    assert!(diagnostic_bytes.len() < 64 * 1_024);
 }

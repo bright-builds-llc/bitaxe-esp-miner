@@ -308,16 +308,31 @@ rust_test(
 )
 
 rust_test(
+    name = "pending_observation_tests",
+    srcs = [
+        "src/pending_observation_host_test.rs",
+        "src/production_mining_session/pending_observation.rs",
+    ],
+    crate_name = "pending_observation_tests",
+    crate_root = "src/pending_observation_host_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "production_campaign_status_tests",
     srcs = [
         "src/production_campaign_status_host_test.rs",
         "src/production_mining_session/campaign_status.rs",
+        "src/production_mining_session/campaign_status/projection.rs",
         "src/production_mining_session/campaign_status/tests/operator_intent.rs",
+        "src/production_mining_session/readiness_trace.rs",
     ],
     crate_name = "production_campaign_status_tests",
     crate_root = "src/production_campaign_status_host_test.rs",
     edition = "2021",
     deps = [
+        "//crates/bitaxe-api:bitaxe_api",
+        "//crates/bitaxe-safety:bitaxe_safety",
         "//crates/bitaxe-stratum:bitaxe_stratum",
         "@crates//:log",
         "@crates//:serde",
@@ -332,6 +347,9 @@ rust_test(
         "src/operator_sensor_runtime.rs",
         "src/production_mining_session.rs",
         "src/production_mining_session/asic_worker.rs",
+        "src/production_mining_session/notifications.rs",
+        "src/production_mining_session/owner_loop.rs",
+        "src/production_mining_session/pending_observation.rs",
         "src/production_mining_session/transport.rs",
         "src/safety_adapter.rs",
         "src/safety_adapter/adc.rs",
@@ -360,6 +378,7 @@ rust_test(
         "src/production_mining_session.rs",
         "src/production_mining_session/asic_worker.rs",
         "src/production_mining_session/hashrate.rs",
+        "src/production_mining_session/owner_loop.rs",
         "src/runtime_snapshot.rs",
     ],
     crate_name = "hashrate_source_ownership_tests",
