@@ -66,6 +66,19 @@ test("result validator accepts the closed ASIC result-parsing command", () => {
   assert.equal(result.command, "project-asic-result-parsing-evidence");
 });
 
+test("result validator accepts the closed ASIC serial-transport command", () => {
+  // Act
+  const result = parseAutomationResult({
+    schema_version: "bitaxe-automation-result-v1",
+    command: "project-asic-serial-transport-evidence",
+    status: "succeeded",
+    category: "complete",
+  });
+
+  // Assert
+  assert.equal(result.command, "project-asic-serial-transport-evidence");
+});
+
 // @ts-expect-error monitor intentionally has no evidenceMode option.
 monitorCommand("/tmp/flash", { evidenceMode: "dual" });
 

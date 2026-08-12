@@ -45,3 +45,39 @@
   commit and push.
 - Blocker or next safe action: Implement the contract only after the plan
   commit is pushed.
+
+## 2026-08-12T10:42:00Z | Closed transport contract implemented
+
+- Source commit: `fb8bf6a73b5f61158297ae93c3ab38c2298f7165`
+- Actions: Added the Rust-owned serial-transport evidence schema and validator,
+  the host projector, closed CLI surface, synchronized TypeScript contract,
+  atomic publication, typed failure mapping, and behavior-focused tests.
+- Verification: Focused Rust contract tests, canonical Bazel TypeScript build,
+  all automation tests including real child validators, strict Clippy, file-
+  length compliance, synchronized generated contracts, and diff checks pass.
+  A direct `bunx tsc` probe was discarded because it cannot see the Bazel-
+  provided Node type definitions; the canonical Bazel target compiled the
+  same TypeScript successfully.
+- Evidence: No public projection has been emitted and no hardware or protected
+  evidence was accessed.
+- Outcome: The implementation is ready for the full pre-commit gate.
+- Blocker or next safe action: Run the complete ordered gates and supporting
+  firmware/package, redaction, reference, and cleanliness checks.
+
+## 2026-08-12T10:50:00Z | Implementation gate complete
+
+- Source commit: `fb8bf6a73b5f61158297ae93c3ab38c2298f7165`
+- Actions: Ran the complete ordered repository gate, then built the real
+  ESP32-S3 firmware package and checked generated contracts, redaction,
+  reference integrity, immutable-plan digest, and the final diff.
+- Verification: Ordered Cargo checks, Bright Builds, all 37 Bazel tests,
+  parity/progress, `just package`, contract verification, redaction, reference,
+  reference cleanliness, synchronized generated contracts, immutable-plan
+  digest, and diff checks pass. `just parity` required one bounded retry after
+  the same transient macOS resource error; the retry reported no validation
+  errors.
+- Evidence: Firmware artifacts were built only; no detector, flash, monitor,
+  USB, network, credentials, protected evidence, or hardware effect occurred.
+- Outcome: The implementation is ready to commit and push.
+- Blocker or next safe action: Commit the implementation, then run the
+  projector from that clean pushed source commit.

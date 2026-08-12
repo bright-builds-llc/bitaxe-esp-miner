@@ -341,6 +341,25 @@ test("ASIC result-parsing projection accepts only the committed work-send proof"
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
 
+test("ASIC serial-transport projection accepts only both committed source proofs", () => {
+  // Arrange
+  const complete = [
+    "project-asic-serial-transport-evidence",
+    "--work-send-projection", "docs/parity/evidence/asic003-work-send/asic-work-send-projection.json",
+    "--result-parsing-projection", "docs/parity/evidence/asic004-result-parsing/asic-result-parsing-projection.json",
+    "--attempt-source-commit", "a".repeat(40),
+    "--projection", "docs/evidence/asic-serial-transport.json",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "project-asic-serial-transport-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});
+
 test("Ultra 205 defaults capture requires the detector-gated closed surface", () => {
   // Arrange
   const complete = [

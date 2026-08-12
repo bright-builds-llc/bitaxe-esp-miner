@@ -8,6 +8,7 @@ rust_library(
         "src/lib.rs",
         "src/asic_initialization_evidence.rs",
         "src/asic_result_parsing_evidence.rs",
+        "src/asic_serial_transport_evidence.rs",
         "src/asic_work_send_evidence.rs",
         "src/log_buffer_evidence.rs",
         "src/network_reconnect_evidence.rs",
@@ -27,6 +28,17 @@ rust_library(
     deps = [
         "@crates//:schemars",
         "@crates//:serde",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_asic_serial_transport_evidence",
+    srcs = ["src/bin/validate_asic_serial_transport_evidence.rs"],
+    crate_name = "validate_asic_serial_transport_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
         "@crates//:serde_json",
     ],
 )

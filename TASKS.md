@@ -1834,7 +1834,7 @@ task remains active because `NET-002` is not verified.
 
 - [x] Select `ASIC-005` from a clean synchronized preflight and bind the
       immutable plan to the accepted hardware lineage.
-- [ ] Add and verify a closed public contract that joins the validated live
+- [x] Add and verify a closed public contract that joins the validated live
       work-send and result-parsing projections through the unchanged UART
       transport.
 - [ ] Publish the redacted evidence, promote only `ASIC-005` when the complete
@@ -1851,6 +1851,13 @@ host-resource error: ordered Cargo, Bright Builds, all 37 Bazel tests,
 parity/progress, redaction, reference, reference-cleanliness, task-uniqueness,
 and diff checks are green. Immutable plan SHA-256 is
 `f08426c24227ea69502135a472811d99bbc7ad5f559159a1956f123a8baeb641`.
+Focused Rust contract tests and the canonical Bazel automation target pass,
+including TypeScript compilation, malformed/incomplete source rejection,
+module/span/dirty-path drift rejection, typed launch failure, sensitive-output
+guarding, and real-child validator/file behavior. Full implementation gates
+passed: ordered Cargo, Bright Builds, all 37 Bazel tests, parity/progress, the
+real ESP32-S3 package, generated contracts, redaction, reference, immutable-
+plan, reference-cleanliness, and diff checks are green.
 
 Completion review: Pending.
 

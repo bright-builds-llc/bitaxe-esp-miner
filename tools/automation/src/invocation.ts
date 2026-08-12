@@ -212,6 +212,12 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--attempt-source-commit": value({ required: true }),
     "--projection": value({ required: true }),
   },
+  "project-asic-serial-transport-evidence": {
+    "--work-send-projection": value({ required: true }),
+    "--result-parsing-projection": value({ required: true }),
+    "--attempt-source-commit": value({ required: true }),
+    "--projection": value({ required: true }),
+  },
   "capture-provisioning-network-evidence": {
     "--private-root": value({ required: true }),
     "--package-manifest": value({ required: true }),

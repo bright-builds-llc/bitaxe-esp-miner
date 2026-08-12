@@ -34,7 +34,7 @@ export type AutomationCommand =
   | "capture-network-scan-evidence"
   | "project-asic-initialization-evidence"
   | "project-asic-work-send-evidence"
-  | "project-asic-result-parsing-evidence"
+  | "project-asic-result-parsing-evidence" | "project-asic-serial-transport-evidence"
   | "capture-provisioning-network-evidence";
 
 export type AutomationStatus = "succeeded" | "failed" | "blocked";
@@ -444,28 +444,12 @@ export type AsicWorkSendEvidence = {
   lease_cleanup_confirmed: true; usb_cleanup_ready: true; hardware_rerun_used: false;
   redaction_status: "passed";
 };
-export type AsicResultParsingSourceEvidence = { work_send_projection_sha256: string;
-  work_send_projection_current_commit: string; work_send_projection_valid: true; };
-export type AsicResultParsingObservationEvidence = { result_frame_length_bytes: 11;
-  strict_length_validation: true; preamble_validation: true;
-  crc_validation: true; job_lookup_validation: true; submit_nonce_little_endian: true;
-  core_validation: true; address_interval_validation: true; version_bits_recovered: true;
-  known_register_classification: true; typed_soft_discard_category_count: 8;
-  soft_discard_continuation: true; live_qualified_result_observed: true;
-  accepted_submit_observed: true; result_transport_module_unchanged: true; parser_spans_unchanged: true;
-  adapter_nonce_span_unchanged: true; worker_nonce_span_unchanged: true;
-  correlation_semantics_compatible: true; };
-export type AsicResultParsingEvidence = {
-  schema_version: "bitaxe-asic-result-parsing-evidence-v1"; board: 205;
-  attempt_source_commit: string; current_source_commit: string; reference_commit: string;
-  workflow: WorkflowIdentity; source: AsicResultParsingSourceEvidence;
-  result_parsing: AsicResultParsingObservationEvidence; package_admitted: true;
-  runtime_identity: "trusted"; runtime_attestation_status: "trusted";
-  campaign_terminal_category: "submit_response_observed"; submit_outcome: "accepted";
-  safety_status: "fresh"; mine_on_boot_disabled: true; safe_stop_confirmed: true;
-  lease_cleanup_confirmed: true; usb_cleanup_ready: true; hardware_rerun_used: false;
-  redaction_status: "passed";
-};
+export type AsicResultParsingSourceEvidence = { work_send_projection_sha256: string; work_send_projection_current_commit: string; work_send_projection_valid: true; };
+export type AsicResultParsingObservationEvidence = { result_frame_length_bytes: 11; strict_length_validation: true; preamble_validation: true; crc_validation: true; job_lookup_validation: true; submit_nonce_little_endian: true; core_validation: true; address_interval_validation: true; version_bits_recovered: true; known_register_classification: true; typed_soft_discard_category_count: 8; soft_discard_continuation: true; live_qualified_result_observed: true; accepted_submit_observed: true; result_transport_module_unchanged: true; parser_spans_unchanged: true; adapter_nonce_span_unchanged: true; worker_nonce_span_unchanged: true; correlation_semantics_compatible: true; };
+export type AsicResultParsingEvidence = { schema_version: "bitaxe-asic-result-parsing-evidence-v1"; board: 205; attempt_source_commit: string; current_source_commit: string; reference_commit: string; workflow: WorkflowIdentity; source: AsicResultParsingSourceEvidence; result_parsing: AsicResultParsingObservationEvidence; package_admitted: true; runtime_identity: "trusted"; runtime_attestation_status: "trusted"; campaign_terminal_category: "submit_response_observed"; submit_outcome: "accepted"; safety_status: "fresh"; mine_on_boot_disabled: true; safe_stop_confirmed: true; lease_cleanup_confirmed: true; usb_cleanup_ready: true; hardware_rerun_used: false; redaction_status: "passed"; };
+export type AsicSerialTransportSourceEvidence = { work_send_projection_sha256: string; work_send_projection_current_commit: string; work_send_projection_valid: true; result_parsing_projection_sha256: string; result_parsing_projection_current_commit: string; result_parsing_projection_valid: true; };
+export type AsicSerialTransportObservationEvidence = { initial_baud: 115200; tx_pin: 17; rx_pin: 18; data_bits: 8; stop_bits: 1; parity_none: true; flow_control_none: true; tx_wait_timeout_ms: 1000; rx_buffer_bytes: 2048; read_chunk_max_bytes: 64; exact_write_required: true; absolute_read_deadline: true; partial_reads_accumulated: true; empty_timeout_is_idle: true; partial_timeout_clears_rx: true; live_work_tx_observed: true; live_result_rx_observed: true; accepted_submit_observed: true; uart_module_unchanged: true; adapter_module_unchanged: true; production_tx_span_compatible: true; production_rx_span_compatible: true; };
+export type AsicSerialTransportEvidence = { schema_version: "bitaxe-asic-serial-transport-evidence-v1"; board: 205; attempt_source_commit: string; current_source_commit: string; reference_commit: string; workflow: WorkflowIdentity; source: AsicSerialTransportSourceEvidence; serial_transport: AsicSerialTransportObservationEvidence; package_admitted: true; runtime_identity: "trusted"; runtime_attestation_status: "trusted"; campaign_terminal_category: "submit_response_observed"; submit_outcome: "accepted"; safety_status: "fresh"; mine_on_boot_disabled: true; safe_stop_confirmed: true; lease_cleanup_confirmed: true; usb_cleanup_ready: true; hardware_rerun_used: false; redaction_status: "passed"; };
 
 export type ProvisioningNetworkObservationEvidence = {
   host_platform_macos: true;
@@ -525,6 +509,7 @@ const automationCommands = new Set<AutomationCommand>([
   "project-asic-initialization-evidence",
   "project-asic-work-send-evidence",
   "project-asic-result-parsing-evidence",
+  "project-asic-serial-transport-evidence",
   "capture-provisioning-network-evidence",
 ]);
 const automationStatuses = new Set<AutomationStatus>(["succeeded", "failed", "blocked"]);
