@@ -1,0 +1,48 @@
+{
+  "schema_version": "bitaxe-core-voltage-control-evidence-v1",
+  "board": 205,
+  "attempt_source_commit": "3e0966a140edbff1a14d2a48ca63d140649762c0",
+  "current_source_commit": "a2fefad3b5863b0162747d98cdd1033878745a7a",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "project-core-voltage-control-evidence",
+    "request_sha256": "8ebd952bd1769665c1e5909f750b4ac3290a42ea26bf69a71844fc4fad7d953f"
+  },
+  "source": {
+    "power_initialization_projection_sha256": "0668c274d09b3e39d7d5edfea4b2e66c97248ff77de9192981f3af00e547ddfe",
+    "power_initialization_projection_current_commit": "3ed71e721bec145c56839ca886795426eebc9cd5",
+    "power_initialization_projection_valid": true,
+    "source_task_sha256": "94d60cee27ebcc0df0fa3163db573854668ea539c33b05a85e848c2e4a117899",
+    "plan_sha256": "dbd5d3a620726f270fd2827d4c8f53f0301834cea4999107964c22c711cb277e"
+  },
+  "voltage_control": {
+    "target_millivolts": 1100,
+    "i2c_address": 72,
+    "output_register": 248,
+    "register_code": 225,
+    "register_write_count": 1,
+    "typed_command_routed": true,
+    "stabilization_millis": 500,
+    "stabilization_before_asic_enable": true,
+    "zero_voltage_skips_ds4432u_write": true,
+    "active_low_disable": true,
+    "successful_initialized_work_observed": true,
+    "accepted_submit_observed": true,
+    "compatible_path_count": 5,
+    "reference_semantics_admitted": true,
+    "source_semantics_admitted": true
+  },
+  "package_admitted": true,
+  "runtime_identity": "trusted",
+  "runtime_attestation_status": "trusted",
+  "campaign_terminal_category": "submit_response_observed",
+  "submit_outcome": "accepted",
+  "safety_status": "fresh",
+  "mine_on_boot_disabled": true,
+  "safe_stop_confirmed": true,
+  "lease_cleanup_confirmed": true,
+  "usb_cleanup_ready": true,
+  "hardware_rerun_used": false,
+  "redaction_status": "passed"
+}

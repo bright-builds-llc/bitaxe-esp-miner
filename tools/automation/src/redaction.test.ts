@@ -172,7 +172,7 @@ test("core-voltage-control evidence is included in the operational-field scan", 
   const evidence = path.join(root, "evidence.json");
   await writeFile(evidence, JSON.stringify({
     schema_version: "bitaxe-core-voltage-control-evidence-v1",
-    voltage_control: { target_millivolts: 1_100 },
+    voltage_control: { target_millivolts: 1_100, compatible_path_count: 5 },
   }));
 
   try {
@@ -180,7 +180,7 @@ test("core-voltage-control evidence is included in the operational-field scan", 
     assert.equal((await verifySemanticEvidenceRedaction(root)).checked, 1);
     await writeFile(evidence, JSON.stringify({
       schema_version: "bitaxe-core-voltage-control-evidence-v1",
-      usb_port: "/dev/private-device",
+      ip_address: "redacted",
     }));
     await assert.rejects(verifySemanticEvidenceRedaction(root));
   } finally {

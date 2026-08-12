@@ -2153,7 +2153,7 @@ attempt-006 cannot be retried. See the linked closure for the next safe action.
       intended 500 ms stabilization use site.
 - [x] Run and push every focused and mandatory software, privacy, reference,
       integrity, source-compatibility, and diff gate before projection.
-- [ ] Run exactly one fresh sealed projection from the accepted PWR-002 source,
+- [x] Run exactly one fresh sealed projection from the accepted PWR-002 source,
       independently validate it, and promote only on the complete quorum.
 - [ ] Record RESULT.md, archive this task, preserve all non-claims, and push
       the synchronized verified transition if and only if evidence passes.
@@ -2172,6 +2172,14 @@ previous sole attempt failed before candidate creation only because the
 configured stabilization substring occurred twice. The accepted PWR-002
 projection remains the sole hardware evidence source; no hardware rerun is
 authorized or needed.
+
+Evidence checkpoint: Clean pushed implementation commit `a2fefad3` produced
+the sole fresh projection successfully. Independent validation, mode `0644`,
+candidate cleanup, source/plan digests, source compatibility, and sensitive
+value absence pass. Projection SHA-256 is
+`11dd1abbf6fda86d203fdcff49b420ab5139e1d29c35f4d17000c61c3112ae68`.
+`docs/parity/work-plans/20260812T212218Z-PWR-003/RESULT.md` records the exact
+evidence, conclusion, and non-claims. The checklist has not yet transitioned.
 
 ## Future
 

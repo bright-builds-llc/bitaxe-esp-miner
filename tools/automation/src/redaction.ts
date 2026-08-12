@@ -31,7 +31,22 @@ const safeSemanticKeys = new Set([
   "trusted_origin_preserved",
 ]);
 
-const prohibitedKeys = /(?:password|secret|token|api[_-]?key|ssid|device[_-]?url|origin|mac|ip(?:v[46])?|pool(?:url|port|user|worker)|owner(?:address)?|btc(?:address)?|usb[_-]?(?:port|path)|serial[_-]?port)/iu;
+const prohibitedKeys = new RegExp([
+  "password",
+  "secret",
+  "token",
+  "api[_-]?key",
+  "ssid",
+  "device[_-]?url",
+  "origin",
+  "mac",
+  "(?:^|[_-])ip(?:v[46])?(?:$|[_-])",
+  "pool(?:url|port|user|worker)",
+  "owner(?:address)?",
+  "btc(?:address)?",
+  "usb[_-]?(?:port|path)",
+  "serial[_-]?port",
+].join("|"), "iu");
 const localPath = /(?:\/Users\/[^\s"']+|\/home\/[^\s"']+|[A-Za-z]:\\[^\s"']+)/u;
 const networkAddress = /(?:\b(?:\d{1,3}\.){3}\d{1,3}\b|\b[0-9a-f]{2}(?::[0-9a-f]{2}){5}\b|https?:\/\/)/iu;
 

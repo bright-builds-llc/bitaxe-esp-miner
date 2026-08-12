@@ -85,3 +85,63 @@
   one permitted projection attempt.
 - Blocker or next safe action: Commit and push, require a clean synchronized
   exact HEAD, then invoke the sealed PWR-003 projector once.
+
+## 2026-08-12T21:52:00Z | Single projection succeeded
+
+- Source commit: `a2fefad3b5863b0162747d98cdd1033878745a7a`
+- Actions: From clean synchronized pushed source, invoked the one permitted
+  PWR-003 projector against the sealed accepted PWR-002 evidence; no hardware
+  command was used.
+- Verification: The projector returned `complete`; the independent final
+  validator passed; the public file is mode `0644`; the candidate is absent;
+  and sensitive-value scanning found no forbidden match.
+- Evidence:
+  `docs/parity/evidence/pwr003-core-voltage-control/core-voltage-control-projection.json`
+  with SHA-256
+  `11dd1abbf6fda86d203fdcff49b420ab5139e1d29c35f4d17000c61c3112ae68`.
+- Outcome: The complete closed PWR-003 quorum supports `verified`; RESULT.md
+  records the conclusion and explicit non-claims.
+- Blocker or next safe action: Run evidence checkpoint integrity/redaction
+  gates, commit and push the projection/result without changing the checklist,
+  then transition only PWR-003 and synchronize progress.
+
+## 2026-08-12T21:55:00Z | Redaction false-positive remediation
+
+- Source commit: `a2fefad3b5863b0162747d98cdd1033878745a7a`
+- Actions: The first repository-wide scan of the newly published projection
+  rejected one safe aggregate key because the prohibited `ip` pattern matched
+  those two letters inside `compatible_path_count`. Tightened only the IP-key
+  alternative to semantic `_`/`-`/string boundaries and extended the
+  core-voltage redaction regression to admit the aggregate while still
+  rejecting an explicit IP-address key.
+- Verification: Diagnosis used schema/key names only and exposed no value.
+  The projection was not edited and the projector was not rerun.
+- Evidence: Existing projection SHA-256 remains
+  `11dd1abbf6fda86d203fdcff49b420ab5139e1d29c35f4d17000c61c3112ae68`.
+- Outcome: This is a host redaction-policy false positive, not an evidence or
+  device failure. The correction preserves the prohibited operational-field
+  policy while removing the substring collision.
+- Blocker or next safe action: Rerun focused redaction tests and the complete
+  evidence checkpoint gates against the existing sole projection.
+
+## 2026-08-12T22:03:00Z | Evidence checkpoint verified
+
+- Source commit: `a2fefad3b5863b0162747d98cdd1033878745a7a`
+- Actions: Retained the sole projection byte-for-byte, completed the narrowly
+  bounded redaction-key correction, and prepared RESULT.md without changing
+  the parity checklist.
+- Verification: Focused automation/redaction tests, `cargo fmt --all`, strict
+  Cargo Clippy, all-target Cargo build, all-feature Cargo tests, Bright Builds
+  with zero findings, all 41 Bazel tests, parity report/progress, repository
+  redaction across 16 artifacts, independent final validation, pinned-reference
+  cleanliness, exact evidence digest, mode `0644`, candidate absence,
+  sensitive-value absence, and diff checks passed.
+- Evidence: Projection SHA-256 remains
+  `11dd1abbf6fda86d203fdcff49b420ab5139e1d29c35f4d17000c61c3112ae68`;
+  RESULT.md binds it to implementation commit `a2fefad3` and reference commit
+  `c1915b0a`.
+- Outcome: Evidence and its validation policy are ready to commit and push as
+  `SOURCE_COMMIT` before checklist mutation.
+- Blocker or next safe action: Commit and push this evidence checkpoint, then
+  use the typed transition command for PWR-003 and immediately synchronize
+  progress.
