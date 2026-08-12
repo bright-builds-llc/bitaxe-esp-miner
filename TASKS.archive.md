@@ -6611,3 +6611,66 @@ fail-closed safe stop and cleanup. It does not claim electrical waveform or
 scheduler measurement. No protected evidence or new hardware effect occurred.
 The evidence checkpoint was pushed and the row is verified. This task is
 complete and archived.
+
+### task-parity-pwr002-asic-power-initialization-audit | 2026-08-12 | Verify ASIC power initialization
+
+- [x] Select `PWR-002` as the first actionable parity row after the temporarily
+      unavailable physical-observation-gated `API-009` candidate.
+- [x] Audit the pinned reference, production preparation and rollback
+      transactions, accepted Ultra 205 campaign, ASIC-002 projection, and
+      source-compatibility boundary.
+- [x] Commit and push the immutable plan at
+      `docs/parity/work-plans/20260812T193941Z-PWR-002/PLAN.md` before source
+      implementation.
+- [x] Add the Rust-owned `bitaxe-asic-power-initialization-evidence-v1`
+      contract, independent validator, generated binding, closed projector,
+      command surface, and behavior regressions.
+- [x] Publish and independently validate one aggregate-only PWR-002 projection
+      from the accepted ASIC-002 evidence without another hardware run.
+- [x] Run the ordered repository gates, transition only `PWR-002` when the
+      complete quorum passes, synchronize progress, record the result, archive
+      this task, and push every audited commit.
+
+Evidence and privacy: The only public output may contain schemas, commits,
+SHA-256 digests, closed categories, fixed safe constants, bounded counts, and
+booleans. It must not expose hostnames, origins, ports, USB identities, network
+identifiers, credentials, raw traces, or ignored/private paths. The projector
+must validate the existing source projection and its exact digest, source and
+reference identities, immutable plan/task lineage, package/runtime trust,
+complete nine-step initialization, downstream accepted work, safe stop,
+cleanup, no hardware rerun, and source compatibility before atomic publication.
+
+Safety and authorization: This is a software-only audit of an already accepted
+hardware campaign. It authorizes no detector, flash, USB/serial session,
+network request, credential access, mining rerun, GPIO/pin action, power,
+voltage, fan, reset, direct UART, fault injection, or other device effect. It
+does not claim analog voltage accuracy, electrical timing or waveforms,
+automatic fan behavior, arbitrary profile behavior, or physically injected
+fault recovery.
+
+Promotion: Keep `PWR-002` at `implemented` unless the typed projection and all
+repository gates prove the exact admitted firmware completed the closed
+fresh-safety, fan/RPM, 1100 mV, 500 ms stabilization, active-low ASIC-enable,
+reset/detect, mining-ready, retained-UART transaction, successful downstream
+work, safe stop, and cleanup. On any incomplete or ambiguous boundary, withhold
+the final projection, record the blocker, and stop without hardware.
+
+Verification: The focused Rust contract, TypeScript projector,
+failure-withholding, production-shaped ambiguity, real-child, and repository
+redaction regressions pass. The ordered Cargo checks, Bright Builds, all 41
+Bazel tests, parity/progress, independent source and final validators,
+redaction across 15 semantic artifacts, pinned-reference cleanliness,
+generated contracts, immutable digests, source compatibility, private-candidate
+absence, public mode, task binding, and diff checks pass. Projection SHA-256 is
+`0668c274d09b3e39d7d5edfea4b2e66c97248ff77de9192981f3af00e547ddfe`.
+Transition `20260812T202359Z-PWR-002` promoted only `PWR-002`; progress records
+61 of 94 active rows verified (64.9%).
+
+Completion review: The source-bound proof establishes that the exact admitted
+Ultra 205 completed the conservative 400 MHz, 1100 mV, and 100% fan power
+transaction, all nine preparation steps, exactly-one-chip initialization,
+accepted work, rollback semantics, safe stop, and cleanup. It does not claim
+analog accuracy, electrical waveforms, arbitrary profiles, automatic fan
+behavior, injected fault recovery, or thermal/soak closure. No protected
+evidence or new hardware effect occurred. The evidence checkpoint was pushed,
+the row is verified, and this task is complete and archived.

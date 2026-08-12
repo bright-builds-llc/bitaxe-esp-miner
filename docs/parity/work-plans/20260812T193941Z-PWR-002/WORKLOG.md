@@ -163,3 +163,41 @@
   audited checklist transition.
 - Blocker or next safe action: Commit and push, retain the full evidence commit
   hash, then transition only `PWR-002` and synchronize progress.
+
+## 2026-08-12 20:24 UTC | audited promotion and task closure
+
+- Source commit: `d5434e4e9c12f8b2e5d82feb527ceddb69a5b8a1`
+- Actions: Applied typed transition `20260812T202359Z-PWR-002`, synchronized
+  progress from the pushed evidence commit, recorded the completion review,
+  and moved the finalized native task record into `TASKS.archive.md`.
+- Verification: Only `PWR-002` changed to `verified` with
+  `unit,workflow,hardware-smoke,hardware-regression`; the receipt reports
+  checklist SHA-256
+  `a3e1d897ecfa73a5ef24a4ad24729b8887cdb14a62fab4a42e6b3ecf9a01b30f`.
+  Progress advanced from 60/94 (63.8%) to 61/94 (64.9%).
+- Evidence: RESULT.md and the aggregate projection remain the row's bounded
+  public evidence. The transition receipt and progress entry bind their pushed
+  source checkpoint.
+- Outcome: PWR-002 is verified and the active task is complete and archived.
+- Blocker or next safe action: Run final repository gates and selector checks,
+  then commit and push the audited transition/closure checkpoint.
+
+## 2026-08-12 20:29 UTC | final closure gates
+
+- Source commit: `d5434e4e9c12f8b2e5d82feb527ceddb69a5b8a1`
+- Actions: Completed the final ordered repository gates, checked the typed
+  receipt/progress output, verified active/archive task uniqueness, and ran the
+  clean selector after closure.
+- Verification: Format, strict Clippy, all-target build, all-feature Cargo
+  tests, Bright Builds with zero findings, all 41 Bazel tests, parity with no
+  validation errors, progress at 61/94 (64.9%), redaction across 15 artifacts,
+  pinned reference, generated contracts, immutable plan, candidate absence,
+  active/archive task placement, and diff checks passed. The selector reports
+  no open plan and ranks `API-009` first, followed by `PWR-003`.
+- Evidence: The transition receipt, checklist revision, progress record,
+  RESULT.md, and aggregate projection form the complete audited closure set.
+- Outcome: This one-row `$advance-parity` invocation is complete and ready for
+  its final push.
+- Blocker or next safe action: Commit and push the closure checkpoint. A future
+  invocation must independently re-evaluate `API-009`'s immediate physical
+  observation gate before selecting the next actionable row.

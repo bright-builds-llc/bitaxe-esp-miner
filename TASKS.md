@@ -2140,54 +2140,6 @@ later closed `network_correlation_failed` with terminal
 withholding passed. No projection exists, API-009 remains `implemented`, and
 attempt-006 cannot be retried. See the linked closure for the next safe action.
 
-### task-parity-pwr002-asic-power-initialization-audit | 2026-08-12 | Verify ASIC power initialization
-
-- [x] Select `PWR-002` as the first actionable parity row after the temporarily
-      unavailable physical-observation-gated `API-009` candidate.
-- [x] Audit the pinned reference, production preparation and rollback
-      transactions, accepted Ultra 205 campaign, ASIC-002 projection, and
-      source-compatibility boundary.
-- [x] Commit and push the immutable plan at
-      `docs/parity/work-plans/20260812T193941Z-PWR-002/PLAN.md` before source
-      implementation.
-- [x] Add the Rust-owned `bitaxe-asic-power-initialization-evidence-v1`
-      contract, independent validator, generated binding, closed projector,
-      command surface, and behavior regressions.
-- [x] Publish and independently validate one aggregate-only PWR-002 projection
-      from the accepted ASIC-002 evidence without another hardware run.
-- [ ] Run the ordered repository gates, transition only `PWR-002` when the
-      complete quorum passes, synchronize progress, record the result, archive
-      this task, and push every audited commit.
-
-Evidence and privacy: The only public output may contain schemas, commits,
-SHA-256 digests, closed categories, fixed safe constants, bounded counts, and
-booleans. It must not expose hostnames, origins, ports, USB identities, network
-identifiers, credentials, raw traces, or ignored/private paths. The projector
-must validate the existing source projection and its exact digest, source and
-reference identities, immutable plan/task lineage, package/runtime trust,
-complete nine-step initialization, downstream accepted work, safe stop,
-cleanup, no hardware rerun, and source compatibility before atomic publication.
-
-Safety and authorization: This is a software-only audit of an already accepted
-hardware campaign. It authorizes no detector, flash, USB/serial session,
-network request, credential access, mining rerun, GPIO/pin action, power,
-voltage, fan, reset, direct UART, fault injection, or other device effect. It
-does not claim analog voltage accuracy, electrical timing or waveforms,
-automatic fan behavior, arbitrary profile behavior, or physically injected
-fault recovery.
-
-Promotion: Keep `PWR-002` at `implemented` unless the typed projection and all
-repository gates prove the exact admitted firmware completed the closed
-fresh-safety, fan/RPM, 1100 mV, 500 ms stabilization, active-low ASIC-enable,
-reset/detect, mining-ready, retained-UART transaction, successful downstream
-work, safe stop, and cleanup. On any incomplete or ambiguous boundary, withhold
-the final projection, record the blocker, and stop without hardware.
-
-Verification: Pending the immutable checkpoint, focused contract/projector
-tests, ordered Cargo checks, managed Bright Builds checks, all Bazel tests,
-parity/progress, redaction, pinned-reference, generated-contract, task/plan,
-diff, and independent-validator checks.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
