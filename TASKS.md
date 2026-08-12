@@ -1839,7 +1839,9 @@ task remains active because `NET-002` is not verified.
 - [ ] Publish the redacted projection, promote only `STR-007`, synchronize
       progress, and archive this task when every gate passes.
 
-Plan: `docs/parity/work-plans/20260812T124802Z-STR-007/PLAN.md`.
+Active plan: `docs/parity/work-plans/20260812T132655Z-STR-007/PLAN.md`.
+The first ordinal is terminally closed at
+`docs/parity/work-plans/20260812T124802Z-STR-007/CLOSURE.md`.
 
 Authorization: Software-only derivation from committed public evidence and Git
 history. No protected campaign access, attempt-005, detector, package build,
@@ -1861,6 +1863,8 @@ passed, but the first immutable plan closed without verification after its one
 publication invocation duplicated the wrapper-injected command token and
 failed before projector entry. No projection or candidate exists. A fresh plan
 must add an exact wrapper-shape guard and use one new software-only attempt.
+The fresh immutable plan permits that regression and one corrected flags-only
+projection invocation; no evidence has yet been published.
 
 Completion review: Pending.
 
