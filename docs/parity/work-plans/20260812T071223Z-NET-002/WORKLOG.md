@@ -1,0 +1,31 @@
+# Parity work log
+
+## 2026-08-12T07:12:23Z | selection, diagnosis, and immutable plan
+
+- Source commit: `62f633674ca9e1ef66d356231f3b1feaa9e3db17`.
+- Actions: Selected the first canonical candidate, linked attempt-004's typed
+  closure, and inspected the installed Apple CoreWLAN SDK without invoking a
+  scan or association. Designed a protected directed exact-SSID transaction
+  with private sub-boundaries and the existing closed public boundary.
+- Evidence: Repository source, the closed attempt-004 result, installed Apple
+  SDK headers, and a no-effect Swift typecheck. No detector, USB, host-network,
+  credential, DNS/HTTP, serial, or device effect occurred.
+- Outcome: Plan drafted; software gates pending.
+- Blocker or next safe action: Run the complete plan-only gate, commit and push
+  the immutable plan, then implement without editing `PLAN.md`.
+
+## 2026-08-12T07:15:15Z | plan-only gate complete
+
+- Source commit: `62f633674ca9e1ef66d356231f3b1feaa9e3db17`.
+- Verification: No-effect Swift CoreWLAN typecheck, ordered Cargo format,
+  strict Clippy, all-target build, all-feature tests, Bright Builds, all 37
+  Bazel tests, parity/progress, redaction, reference, generated contracts,
+  selector, task uniqueness, immutable-plan digest, reference cleanliness,
+  fresh paths, and diff checks pass.
+- Evidence: Plan SHA-256 is
+  `2d705f1a10befc1e235d383b9b33e5fe620e6522fcba4f6b0ba814d92bc99028`.
+  No detector, credential, NVS, USB, host-network, DNS/HTTP, or device effect
+  occurred.
+- Outcome: The immutable plan is eligible for commit and push.
+- Blocker or next safe action: Commit and push, then implement the protected
+  CoreWLAN association transaction without editing `PLAN.md`.

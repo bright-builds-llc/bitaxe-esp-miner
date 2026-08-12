@@ -1815,6 +1815,36 @@ requires a private association sub-boundary and a supported exact-SSID macOS
 association transaction before a fresh ordinal. This task remains active and
 unarchived because `NET-002` is not verified.
 
+### task-parity-net002-provisioning-network-attempt-005 | 2026-08-12 | Replace inventory-bound association with CoreWLAN
+
+- [x] Select `NET-002`, bind the continuation to attempt-004, and prove the
+      installed CoreWLAN directed-scan and association API shape without an
+      effect.
+- [ ] Add the protected exact-SSID CoreWLAN helper and private association
+      sub-boundaries without changing the closed public evidence contract.
+- [ ] Test real-child fixture execution, timeouts, malformed results, every
+      association subtype, recovery precedence, modes, and redaction; run all
+      mandatory software gates.
+- [ ] Commit and push, then run one detector and at most one conditional
+      attempt-005 with fresh protected paths.
+- [ ] Promote only after the complete immutable-plan success quorum passes.
+
+Plan: `docs/parity/work-plans/20260812T071223Z-NET-002/PLAN.md`.
+
+Authorization: the linked plan's bounded USB, one exact directed CoreWLAN scan
+and association, local DHCP/DNS/HTTP, host cleanup, and exact-package recovery
+effects only. Candidate and raw CoreWLAN outcomes remain private. Capture start
+consumes the ordinal and never retries it.
+
+Verification: Plan-only gate passed: no-effect Swift CoreWLAN typecheck,
+ordered Cargo, Bright Builds, all 37 Bazel tests, parity/progress, redaction,
+reference, generated contracts, selector, task uniqueness, immutable-plan
+digest, reference cleanliness, fresh paths, and diff checks are green.
+Immutable plan SHA-256 is
+`2d705f1a10befc1e235d383b9b33e5fe620e6522fcba4f6b0ba814d92bc99028`.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
