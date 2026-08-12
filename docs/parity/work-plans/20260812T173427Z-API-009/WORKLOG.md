@@ -88,3 +88,33 @@
 - Blocker or next safe action: Commit and push the exact source, verify remote
   synchronization and cleanliness, then build the exact package. Only a fresh
   successful detector may make the sole attempt-005 eligible.
+
+## 2026-08-12T18:20:35Z | Attempt-005 closed
+
+- Source commit: `afc4839967f820d144167cbb5c981ca66b2b5942`.
+- Actions: Built the exact package, admitted exactly one board-205 ESP32-S3
+  through the fresh protected detector, and ran the sole bounded attempt-005.
+  No retry was run.
+- Verification: The sealed result is valid; private directories are mode
+  `0700`, files are mode `0600`, and the public projection is absent. Both
+  no-stub writes completed on attempt one. Runtime identity, attestation,
+  protocol gate, same-boot/package binding, safe stop, and USB cleanup passed.
+  The campaign observed a genuine positive block, three qualified and accepted
+  shares, confirmed pause, confirmed resume, and active mining after resume.
+  It then emitted the required physical IDENTIFY-rendered checkpoint, but the
+  render and clear observations were not confirmed before the bounded run
+  closed. The terminal transition later sampled stale safety at a deadline.
+- Evidence: The protected v8 result preserved
+  `network_correlation_failed` / `safety_prerequisites_stale`; the redacted
+  public wrapper reported `hardware_blocked`. No origin, hostname, port,
+  physical USB or network identity, credential, endpoint, checkpoint secret,
+  raw trace, or private path is published.
+- Outcome: The durable observation-wake fix is hardware-proven: unlike
+  attempt-004, resume completed and the same session returned active. The
+  complete five-command quorum still did not pass, so no projection was
+  emitted and API-009 remains `implemented`.
+- Blocker or next safe action: Close this immutable invocation without retry or
+  promotion. A future continuation must make the physical IDENTIFY checkpoint
+  reliably observable and acknowledged within its bounded contract while
+  retaining request-once behavior, privacy, safety, and earliest-failure
+  precedence.

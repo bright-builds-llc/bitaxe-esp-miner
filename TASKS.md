@@ -2070,7 +2070,7 @@ Safety-readiness continuation plan:
       production shell seam and fix only the confirmed missed transition.
 - [x] Add ordering, coalescing, recovery, schema, and sensitive-output tests;
       run and push every software gate before hardware.
-- [ ] Run at most one fresh detector-gated `attempt-005` only after a red/green
+- [x] Run at most one fresh detector-gated `attempt-005` only after a red/green
       material fix, and promote only on the complete five-command quorum.
 
 Attempt-005 authorization: standing task authorization permits this single
@@ -2083,6 +2083,22 @@ cleanup, canonical software restart, recovery, public withholding, and
 accepted stop categories are exactly those in the linked plan. Closed
 instrumentation alone is not retry eligibility, and no second attempt is
 permitted.
+
+Attempt-005 completion review: Exact pushed source and package
+`afc4839967f820d144167cbb5c981ca66b2b5942` passed every software, package,
+privacy, and detector gate. Both no-stub writes completed on attempt one,
+runtime identity and protocol admission were trusted, and the sole campaign
+observed a genuine positive block plus confirmed pause and resume under the
+same boot and package. This resolves attempt-004's lost fresh-observation wake:
+the session returned active after resume. The campaign then required the
+one-time physical IDENTIFY-rendered observation, but rendering and clearing
+were not confirmed before the bounded run closed. Its protected result
+preserved `network_correlation_failed` with terminal
+`safety_prerequisites_stale`; the public wrapper reported
+`hardware_blocked`. Safe stop, USB cleanup, private modes, and evidence
+withholding passed. No public projection exists, API-009 remains
+`implemented`, and attempt-005 cannot be retried. See the linked closure for
+the exact non-claims and next safe action.
 
 ## Future
 
