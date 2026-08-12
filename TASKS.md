@@ -2111,7 +2111,7 @@ Operator-checkpoint continuation plan:
       private modes, and sensitive-output absence.
 - [x] Run every focused and mandatory software gate; commit and push the exact
       implementation before package, detector, or hardware use.
-- [ ] Run at most one fresh detector-gated `attempt-006`, confirm each
+- [x] Run at most one fresh detector-gated `attempt-006`, confirm each
       checkpoint only after the matching user-observed physical state, and
       promote only on the complete five-command quorum.
 
@@ -2124,6 +2124,21 @@ canonical software restart, recovery, public withholding, and accepted stop
 categories are exactly those in the linked plan. Campaign start consumes the
 ordinal; no automatic, inferred, preemptive, or repeated confirmation and no
 second attempt is permitted.
+
+Attempt-006 completion review: Exact pushed source and package
+`17835217b5ec1d9e7d33363cbf346a0d4762d332` passed every software, package,
+privacy, and detector gate. The sole campaign observed a genuine positive
+block, three qualified and accepted shares, confirmed pause and resume, and
+active mining under the same boot and package. The new live checkpoint
+supervisor then emitted the rendered request immediately, proving the host
+handoff fix on hardware. No matching physical-observation reply arrived within
+the 30-second IDENTIFY interval, so no confirmation command was issued and no
+second IDENTIFY toggle, dismissal, or restart occurred. The protected campaign
+later closed `network_correlation_failed` with terminal
+`safety_prerequisites_stale`; the public wrapper reported
+`hardware_blocked`. Safe stop, USB cleanup, private modes, and evidence
+withholding passed. No projection exists, API-009 remains `implemented`, and
+attempt-006 cannot be retried. See the linked closure for the next safe action.
 
 ## Future
 

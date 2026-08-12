@@ -72,3 +72,33 @@
 - Blocker or next safe action: Commit and push the exact source, verify remote
   synchronization and cleanliness, then build the exact package. Only a fresh
   successful board-205 detector may make attempt-006 eligible.
+
+## 2026-08-12T18:48:08Z | Attempt-006 closed
+
+- Source commit: `17835217b5ec1d9e7d33363cbf346a0d4762d332`.
+- Actions: Built the exact clean package, admitted exactly one board-205
+  ESP32-S3 through the fresh protected detector, and ran the sole bounded
+  attempt-006 with the new live checkpoint stream attached. No retry and no
+  early or inferred confirmation was run.
+- Verification: The sealed protected result and private modes pass. Package,
+  runtime identity, attestation, protocol gate, same-boot/package binding,
+  safe stop, and USB cleanup are trusted. The campaign observed a genuine
+  positive block, three qualified and accepted shares, confirmed pause,
+  confirmed resume, and active mining after resume. The parent emitted the
+  closed rendered checkpoint while the child was live. It remained
+  unconfirmed, no cleared checkpoint was created, and exactly one IDENTIFY
+  request occurred. The terminal transition later sampled stale safety at a
+  deadline.
+- Evidence: The protected v8 result preserved
+  `network_correlation_failed` / `safety_prerequisites_stale`; the redacted
+  wrapper reported `hardware_blocked`. No origin, hostname, port, USB/network
+  identity, credential, endpoint, private path, checkpoint secret, raw trace,
+  or inferred physical observation is published. The public projection is
+  absent.
+- Outcome: The live host handoff is hardware-proven, but the required physical
+  rendered observation was not acknowledged during its exact 30-second
+  interval. API-009 remains `implemented` without partial promotion.
+- Blocker or next safe action: Close without retry. Any fresh continuation must
+  require an explicit pre-effect operator-ready occurrence before detector or
+  campaign start, then use the proven live prompt and typed request-once
+  confirmations. Do not reuse attempt-006 or confirm its expired checkpoint.
