@@ -33,7 +33,7 @@ Generic software-restart evidence does not close the other effects. Because
 the row is conjunctive, partial restart, identify, or mining commands cannot
 support promotion and would add hardware effects without resolving the blocker.
 
-## Terminal unblock conditions
+## Next safe action
 
 Resume API-009 only after all of the following exist:
 
