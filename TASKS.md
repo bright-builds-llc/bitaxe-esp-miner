@@ -1858,6 +1858,12 @@ guarding, and real-child validator/file behavior. Full implementation gates
 passed: ordered Cargo, Bright Builds, all 37 Bazel tests, parity/progress, the
 real ESP32-S3 package, generated contracts, redaction, reference, immutable-
 plan, reference-cleanliness, and diff checks are green.
+The committed projector accepted both exact prerequisite digests, unchanged
+UART and adapter modules, compatible bounded production TX/RX spans, current
+transport constants and failure semantics, and atomically published the mode-
+0644 independently validated projection at SHA-256
+`bad828db694ee59c4ef3d77b2e58ef89e0195ef382526b97912d0a71e882ad69`.
+Checklist transition and final gates are pending.
 
 Completion review: Pending.
 

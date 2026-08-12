@@ -81,3 +81,25 @@
 - Outcome: The implementation is ready to commit and push.
 - Blocker or next safe action: Commit the implementation, then run the
   projector from that clean pushed source commit.
+
+## 2026-08-12T10:55:00Z | Public projection accepted
+
+- Source commit: `bec4af3d6f105f4e58cfdd6f51e995eaa60eb9d9`
+- Actions: Ran the committed projector against both exact prerequisite
+  artifacts and accepted hardware source commit, then independently validated
+  the atomically published projection.
+- Verification: Both source digests matched, their Rust validators passed,
+  source ancestry and clean tracked paths passed, UART and adapter modules were
+  unchanged, bounded production spans were compatible, the independent final
+  validator passed, mode was 0644, redaction passed, and the explicit public-
+  sensitive-value scan was empty. A first manual validator call used a path
+  relative to Bazel's runfiles directory and could not locate the file; the
+  corrected absolute-path call passed.
+- Evidence:
+  `docs/parity/evidence/asic005-serial-transport/asic-serial-transport-projection.json`
+  at SHA-256
+  `bad828db694ee59c4ef3d77b2e58ef89e0195ef382526b97912d0a71e882ad69`.
+- Outcome: The complete ASIC-005 promotion quorum is satisfied without a
+  hardware rerun.
+- Blocker or next safe action: Commit and push RESULT plus evidence, then use
+  that exact source commit for the audited checklist transition.
