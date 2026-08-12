@@ -1939,6 +1939,38 @@ consumed without a hardware retry. The next safe action is a new immutable
 continuation that races fixture child completion against readiness, preserves a
 protected launch diagnostic, tests the real local process port, and defines a
 fresh detector-gated ordinal.
+
+Host-process continuation plan:
+`docs/parity/work-plans/20260812T154751Z-API-009/PLAN.md`.
+
+- [ ] Replace the implicit `process.execPath` fixture launch with a repo-owned
+      Bazel/runfiles executable and race early child completion with readiness.
+- [ ] Persist only protected closed child outcome facts and add the real
+      deployed-layout `createLocalProcessPort` regression.
+- [ ] Run every focused and mandatory software gate; commit and push the exact
+      fixed source before touching hardware.
+- [ ] Run exactly one fresh detector-gated `attempt-002` and stop after its
+      complete terminal result without retry.
+- [ ] Promote API-009 only on the complete five-command device-user quorum;
+      otherwise preserve `implemented` and the first typed blocker.
+
+Attempt-002 authorization: standing task authorization permits the single
+fresh retry only after the real deployed-launcher regression proves the exact
+attempt-001 boundary fixed and the immutable plan, task, software, privacy,
+recovery, and evidence gates pass. Allowed effects and prohibited effects are
+identical to attempt-001. The command must use a fresh mode-`0700` private root,
+mode-`0600` artifacts, exact clean package, detector-admitted board 205,
+conservative 600-second local-fixture mining lease, one-time physical identify
+checkpoints, request-once commands, safe stop, cleanup, and canonical software
+restart. No external pool, owner credentials, diagnostic setter, erase, OTA,
+rollback, power cycle, direct UART, pins, fault injection, control override, or
+second retry is permitted. Public evidence excludes all origins, hostnames,
+ports, USB/network identity, credentials, workers, addresses, passwords,
+tokens, checkpoint secrets, paths, and raw traces.
+Plan verification: Ordered Cargo, Bright Builds, all 39 Bazel tests, parity,
+progress, redaction, reference, generated contracts, selector, unique task,
+immutable plan, reference cleanliness, and diff checks pass. Immutable PLAN.md
+SHA-256 is `b9d055764d046233159226a12e9e44444f52a66d44ce2c83375ce692fd04e52b`.
 Recovery is pause/safe-stop first and exact-package restore only if required;
 the earliest failure remains primary. Accepted stop categories are
 `hardware_blocked`, `evidence_invalid`, `timeout`, and `process_failed`.
