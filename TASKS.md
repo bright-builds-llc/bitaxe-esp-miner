@@ -1864,9 +1864,9 @@ task remains active because `NET-002` is not verified.
 - [x] Remove only the invalid `startMiningOnBoot === false` postcondition and
       add paired preference/runtime-safety regressions.
 - [x] Run every mandatory software gate, commit, and push.
-- [ ] Run one detector and at most one conditional attempt-006 with fresh
+- [x] Run one detector and at most one conditional attempt-006 with fresh
       protected paths.
-- [ ] Promote only after the complete immutable-plan success quorum passes.
+- [x] Promote only after the complete immutable-plan success quorum passes.
 
 Plan: `docs/parity/work-plans/20260812T073939Z-NET-002/PLAN.md`.
 
@@ -1883,7 +1883,11 @@ ordered Cargo, Bright Builds, all 37 Bazel tests, parity/progress, redaction,
 reference, generated contracts, selector, immutable-plan, fresh-path, and diff
 checks.
 
-Completion review: Pending.
+Completion review: Attempt-006 passed the complete immutable-plan quorum and
+published independently validated redacted evidence for exact-device CoreWLAN
+association, DHCP, wildcard DNS, captive redirect, system-info, disabled
+runtime mining/control, cleanup, and exact-package recovery. Promotion and task
+archival are pending the evidence commit and checklist transition.
 
 ## Future
 

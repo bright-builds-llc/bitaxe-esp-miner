@@ -1,0 +1,40 @@
+{
+  "schema_version": "bitaxe-provisioning-network-evidence-v1",
+  "board": 205,
+  "source_commit": "ec2204425fd44ec2ae67faee3300a829ee3b5046",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "package_manifest_sha256": "03a5b8743b17ff42f72528daeab5b71ed611059ab9e54962296aa015d890468d",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "capture-provisioning-network-evidence",
+    "request_sha256": "a38de2c9c3a26e23f552f53d808668ff3ae031bce83c80abca7136b36604c322"
+  },
+  "detector_admitted": true,
+  "boot_observed": true,
+  "provisioning": {
+    "host_platform_macos": true,
+    "single_wifi_interface": true,
+    "initial_wifi_powered_on": true,
+    "initial_wifi_unassociated": true,
+    "baseline_candidate_count": 0,
+    "configuration_candidate_count": 1,
+    "association_observed": true,
+    "dhcp_observed": true,
+    "dns_query_count": 1,
+    "wildcard_dns_answer_matches_gateway": true,
+    "dns_ttl_seconds": 300,
+    "captive_redirect_observed": true,
+    "captive_redirect_root": true,
+    "captive_redirect_body_matches": true,
+    "api_postcondition_matches": true,
+    "exact_build_identity_matches": true
+  },
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "host_network_restored": true,
+  "device_recovery_complete": true,
+  "cleanup_complete": true,
+  "recovery_flash_used": true,
+  "private_modes_valid": true,
+  "redaction_status": "passed"
+}

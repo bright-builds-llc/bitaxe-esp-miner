@@ -41,3 +41,21 @@
 - Outcome: Implementation is eligible for commit and push.
 - Blocker or next safe action: Commit and push, rebuild the exact package, then
   run the single attempt-006 transaction.
+
+## 2026-08-12T07:55:27Z | hardware attempt-006 passed
+
+- Source commit: `ec2204425fd44ec2ae67faee3300a829ee3b5046`.
+- Actions: Built the exact package, ran one detector, and consumed the sole
+  attempt-006 capture with CoreWLAN, local network checks, cleanup, and recovery.
+- Verification: The typed result is `complete`. Detector/boot admission,
+  exact-package passive safety, recurring AP/DHCP/DNS readiness, CoreWLAN
+  association, DHCP, wildcard DNS, captive redirect, system-info, exact build,
+  disabled runtime mining/control, host cleanup, exact-package recovery,
+  private modes, redaction, and independent validation all pass. Projection
+  SHA-256 is
+  `c5add47149fbafe7ccdd3047c7c0d39f384f0d622c479e2ea72088e6a3d6b3c4`.
+- Evidence: Closed public projection plus ignored protected artifacts only.
+- Outcome: Every immutable-plan promotion criterion passed; `NET-002` is
+  eligible for verified transition.
+- Blocker or next safe action: Commit implementation/evidence, transition the
+  checklist, sync progress, archive the completed task, and run the final gate.
