@@ -1839,7 +1839,7 @@ task remains active because `NET-002` is not verified.
 - [ ] Publish the redacted projection, promote only `STR-007`, synchronize
       progress, and archive this task when every gate passes.
 
-Most recent plan: `docs/parity/work-plans/20260812T132655Z-STR-007/PLAN.md`.
+Active plan: `docs/parity/work-plans/20260812T133713Z-STR-007/PLAN.md`.
 The first ordinal is terminally closed at
 `docs/parity/work-plans/20260812T124802Z-STR-007/CLOSURE.md`.
 
@@ -1870,6 +1870,8 @@ working directory; the second ordinal is closed without verification at
 `docs/parity/work-plans/20260812T132655Z-STR-007/CLOSURE.md`, and the
 unvalidated projection was removed. A fresh plan must guard an absolute-path
 validator transaction before one new software-only attempt.
+The new plan adds that repository-owned absolute-path boundary and permits one
+projector plus guarded independent-validator transaction after all gates pass.
 
 Completion review: Pending.
 
