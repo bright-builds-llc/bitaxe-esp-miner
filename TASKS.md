@@ -1830,6 +1830,31 @@ proved mining and controls disabled. No projection exists. The linked closure
 requires removal of that preference-value assumption in a fresh ordinal; this
 task remains active because `NET-002` is not verified.
 
+### task-parity-asic007-frequency-transition-promotion | 2026-08-12 | Verify the accepted BM1366 frequency ramp
+
+- [x] Select `ASIC-007` from a clean synchronized preflight and bind an
+      immutable plan to the accepted conservative Ultra 205 lineage.
+- [ ] Add and verify a closed public contract that proves the bounded
+      50-to-400-MHz ramp completed before accepted live work.
+- [ ] Publish the redacted projection, promote only `ASIC-007` when the full
+      quorum passes, synchronize progress, and archive this task.
+
+Plan: `docs/parity/work-plans/20260812T104903Z-ASIC-007/PLAN.md`.
+
+Authorization: Software-only derivation from committed public evidence and Git
+history. No protected campaign access, detector, package build, flash, reset,
+USB/network session, credentials, mining, fan/voltage/power/ASIC actuation,
+recovery, direct UART, pins, or other hardware effect is permitted.
+
+Verification and stop rule: Require the exact independently validated ASIC-002
+projection digest, accepted/current/reference commit binding, unchanged ramp
+and actuation modules, compatible unique executor spans, focused regressions,
+independent Rust validation, every repository gate, redaction, reference
+cleanliness, and atomic publication. Any failure leaves `ASIC-007` implemented
+and stops this plan without a hardware fallback.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
