@@ -2146,12 +2146,12 @@ attempt-006 cannot be retried. See the linked closure for the next safe action.
       unavailable two-prompt physical-observation gate for API-009.
 - [x] Freeze the fresh immutable software-only retry plan at
       `docs/parity/work-plans/20260812T212218Z-PWR-003/PLAN.md`.
-- [ ] Replace the ambiguous stabilization substring with a source-shaped
+- [x] Replace the ambiguous stabilization substring with a source-shaped
       unique matcher and bind the projector to this plan/task lineage.
-- [ ] Add a regression over the real production file that proves the complete
+- [x] Add a regression over the real production file that proves the complete
       DS4432U address/register/code and write route matcher set, including the
       intended 500 ms stabilization use site.
-- [ ] Run and push every focused and mandatory software, privacy, reference,
+- [x] Run and push every focused and mandatory software, privacy, reference,
       integrity, source-compatibility, and diff gate before projection.
 - [ ] Run exactly one fresh sealed projection from the accepted PWR-002 source,
       independently validate it, and promote only on the complete quorum.

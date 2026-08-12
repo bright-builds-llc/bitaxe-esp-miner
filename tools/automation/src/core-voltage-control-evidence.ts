@@ -23,10 +23,10 @@ const expectedSourceProjection =
   "docs/parity/evidence/pwr002-asic-power-initialization/power-initialization-projection.json";
 const expectedSourceProjectionSha256 =
   "0668c274d09b3e39d7d5edfea4b2e66c97248ff77de9192981f3af00e547ddfe";
-const expectedPlan = "docs/parity/work-plans/20260812T203223Z-PWR-003/PLAN.md";
+const expectedPlan = "docs/parity/work-plans/20260812T212218Z-PWR-003/PLAN.md";
 const expectedPlanSha256 =
-  "7aff33c814262fc32ceeb082778093a055609711655ffd87d568aba37c7e2c5b";
-const activeTask = "task-parity-pwr003-core-voltage-control-audit";
+  "dbd5d3a620726f270fd2827d4c8f53f0301834cea4999107964c22c711cb277e";
+const activeTask = "task-parity-pwr003-core-voltage-control-evidence-retry";
 
 const unchangedPaths = [
   "firmware/bitaxe/src/safety_adapter/ds4432u.rs",
@@ -60,7 +60,7 @@ const sourceFragments = new Map<string, readonly string[]>([
   ]],
   [unchangedPaths[2], [
     "SafetyActuationCommand::SetCoreVoltage(Self::core_voltage(voltage)?)",
-    "CORE_VOLTAGE_STABILIZATION_MS,",
+    "thread::sleep(Duration::from_millis(u64::from(\n                    CORE_VOLTAGE_STABILIZATION_MS,\n                )));",
     "crate::asic_adapter::production::set_asic_power_enabled(true)",
     "SafeShutdownStep::DisableCoreVoltage | SafeShutdownStep::DisableAsic =>",
     "crate::asic_adapter::production::set_asic_power_enabled(false)",

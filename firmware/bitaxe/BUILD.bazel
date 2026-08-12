@@ -34,6 +34,12 @@ js_library(
 )
 
 js_library(
+    name = "core_voltage_control_production_source",
+    srcs = ["src/mining_actuation_adapter.rs"],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "ultra205_partition_table",
     srcs = ["partitions-ultra205.csv"],
     visibility = ["//tools/automation:__pkg__"],

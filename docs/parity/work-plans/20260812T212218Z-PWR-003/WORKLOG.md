@@ -39,3 +39,49 @@
 - Blocker or next safe action: Commit and push this checkpoint, then implement
   only the source-shaped matcher, task/plan binding, and production-file
   regression.
+
+## 2026-08-12T21:38:00Z | Matcher correction and regression
+
+- Source commit: `27049ae9727936f55e898aa02786e9509b3ae2df`
+- Actions: Replaced the two-occurrence stabilization token with the exact
+  multiline sleep expression at the intended use site; rebound the projector
+  and fixtures to this plan/task; and added a projector regression that reads
+  the real production adapter through Bazel runfiles and substitutes it at the
+  production `git show` admission seam.
+- Verification: The regression proves the old token still occurs exactly
+  twice while the complete production file now passes the configured fragment
+  set and reports 500 ms stabilization before ASIC enable. The first Bazel
+  analysis correctly rejected a cross-package raw `filegroup`; replacing it
+  with the required package-local `js_library` preserved the test unchanged,
+  after which the full automation suite and the focused Rust core-voltage
+  contract tests passed.
+- Evidence: Source and tests only; no PWR-003 projection or candidate exists
+  and no hardware command ran.
+- Outcome: Root cause is fixed at the semantic matcher boundary with a
+  production-file regression. A simplification review found no narrower
+  robust shape: the source must be an explicit runfile to prevent fixtures
+  from masking production drift.
+- Blocker or next safe action: Run every mandatory implementation gate,
+  commit and push the exact clean source, then invoke the projector once.
+
+## 2026-08-12T21:48:00Z | Complete implementation gate
+
+- Source commit: `27049ae9727936f55e898aa02786e9509b3ae2df`
+- Actions: Completed the matcher, immutable lineage binding, Bazel runfile,
+  and production-source regression without changing firmware behavior or the
+  evidence schema.
+- Verification: `cargo fmt --all`, strict Cargo Clippy, all-target Cargo
+  build, all-feature Cargo tests, Bright Builds with zero findings, all 41
+  Bazel tests, parity report/progress, focused automation and Rust contract
+  tests, generated contracts, independent PWR-002 source validation, exact
+  source and plan digests, unchanged production ownership paths, pinned
+  reference cleanliness, redaction across 15 artifacts, unique task binding,
+  absent final/candidate paths, and diff checks passed. The first standalone
+  source-validator call used a Bazel-run relative path and failed to locate the
+  file; its absolute-path rerun passed without repository changes.
+- Evidence: Source and tests only. No new projection exists and no hardware
+  command ran.
+- Outcome: The exact implementation is ready to commit and push before the
+  one permitted projection attempt.
+- Blocker or next safe action: Commit and push, require a clean synchronized
+  exact HEAD, then invoke the sealed PWR-003 projector once.

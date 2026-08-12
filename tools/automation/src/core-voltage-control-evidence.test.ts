@@ -22,6 +22,23 @@ const currentCommit = "c".repeat(40);
 const referenceCommit = "d".repeat(40);
 const ok = (stdout = ""): ProcessOutcome => ({ exitCode: 0, stdout, stderr: "", timedOut: false });
 
+async function repositorySource(relative: string): Promise<string> {
+  const maybeRunfiles = process.env["RUNFILES_DIR"];
+  const candidates = [
+    ...(maybeRunfiles === undefined ? [] : [path.join(maybeRunfiles, "_main", relative)]),
+    path.join(process.cwd(), relative),
+    path.resolve(process.cwd(), "..", "..", relative),
+  ];
+  for (const candidate of candidates) {
+    try {
+      return await readFile(candidate, "utf8");
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+    }
+  }
+  throw new Error("production source file is missing");
+}
+
 const sources = new Map<string, string>([
   ["ds4432u.rs", `
 Self::Conservative1100Millivolts => 1_100,
@@ -40,7 +57,9 @@ SafeShutdownStep::DisableAsic,
 `],
   ["mining_actuation_adapter.rs", `
 SafetyActuationCommand::SetCoreVoltage(Self::core_voltage(voltage)?)
-CORE_VOLTAGE_STABILIZATION_MS,
+thread::sleep(Duration::from_millis(u64::from(
+                    CORE_VOLTAGE_STABILIZATION_MS,
+                )));
 crate::asic_adapter::production::set_asic_power_enabled(true)
 SafeShutdownStep::DisableCoreVoltage | SafeShutdownStep::DisableAsic =>
 crate::asic_adapter::production::set_asic_power_enabled(false)
@@ -126,18 +145,18 @@ async function fixture(name: string, complete = true) {
   await mkdir(path.dirname(sourceProjection), { recursive: true });
   const sourceDocument = `${JSON.stringify(sourceEvidence(complete), null, 2)}\n`;
   await writeFile(sourceProjection, sourceDocument);
-  const plan = path.join(root, "docs/parity/work-plans/20260812T203223Z-PWR-003/PLAN.md");
+  const plan = path.join(root, "docs/parity/work-plans/20260812T212218Z-PWR-003/PLAN.md");
   await mkdir(path.dirname(plan), { recursive: true });
   const planDocument = `# Plan
 
 - Parity row: \`PWR-003\`
-- Active task: \`task-parity-pwr003-core-voltage-control-audit\`
+- Active task: \`task-parity-pwr003-core-voltage-control-evidence-retry\`
 `;
   await writeFile(plan, planDocument);
   await writeFile(path.join(root, "TASKS.md"), `
-### task-parity-pwr003-core-voltage-control-audit | 2026-08-12 | Audit
+### task-parity-pwr003-core-voltage-control-evidence-retry | 2026-08-12 | Audit
 
-Plan: \`docs/parity/work-plans/20260812T203223Z-PWR-003/PLAN.md\`
+Plan: \`docs/parity/work-plans/20260812T212218Z-PWR-003/PLAN.md\`
 
 - Prove the DS4432U address/register/code and write route.
 
@@ -169,6 +188,7 @@ function fakePort(options: {
   readonly dirty?: boolean;
   readonly validatorFailure?: boolean;
   readonly launchFailure?: boolean;
+  readonly productionAdapterSource?: string;
 } = {}): ProcessPort {
   return createFakeProcessPort(async (spec) => {
     if (options.launchFailure) throw new Error("launch failed");
@@ -183,6 +203,10 @@ function fakePort(options: {
     }
     const target = spec.args[0] === "-C" ? spec.args[3] ?? "" : spec.args[1] ?? "";
     if (spec.args[0] === "show" || (spec.args[0] === "-C" && spec.args[2] === "show")) {
+      if (options.productionAdapterSource !== undefined
+        && target.endsWith("mining_actuation_adapter.rs")) {
+        return ok(options.productionAdapterSource);
+      }
       const source = sourceForTarget(target);
       if (source !== undefined) {
         return ok(options.semanticDrift && target.endsWith("ds4432u.rs")
@@ -229,6 +253,24 @@ test("accepted voltage transaction emits only closed row evidence", async () => 
   assert.equal((await stat(value.projection)).mode & 0o777, 0o644);
   assert.doesNotMatch(await readFile(value.projection, "utf8"),
     /hostname|origin|usbmodem|ssid|password|private\/|scratch\//iu);
+});
+
+test("production adapter admits the source-shaped stabilization use", async () => {
+  // Arrange
+  const value = await fixture("production-adapter");
+  const productionAdapterSource = await repositorySource(
+    "firmware/bitaxe/src/mining_actuation_adapter.rs",
+  );
+  const ambiguousTokenCount = productionAdapterSource
+    .split("CORE_VOLTAGE_STABILIZATION_MS,").length - 1;
+
+  // Act
+  const evidence = await projectFixture(value, fakePort({ productionAdapterSource }));
+
+  // Assert
+  assert.equal(ambiguousTokenCount, 2);
+  assert.equal(evidence.voltage_control.stabilization_millis, 500);
+  assert.equal(evidence.voltage_control.stabilization_before_asic_enable, true);
 });
 
 for (const [name, complete, options, category] of [
