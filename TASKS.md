@@ -1616,7 +1616,7 @@ defines the retained-log continuation using fresh attempt-005 paths.
       independent validator, recovery behavior, and production-shaped tests.
 - [x] Run focused and mandatory software gates; commit and push the exact
       implementation before hardware use.
-- [ ] Run one protected detector and, only after admission, one protected
+- [x] Run one protected detector and, only after admission, one protected
       attempt-001 capture on board 205.
 - [ ] Promote only `NET-002` when exact-package AP visibility, association,
       DHCP, wildcard DNS, captive redirect, settings access, safe recovery,
@@ -1674,7 +1674,13 @@ runs and the complete warm rerun passed. A later monolithic launch reached the
 macOS process limit after the successful Bazel build; the same remaining gates
 passed after Bazel quiesced. No device or host-network effect occurred.
 
-Completion review: Pending.
+Completion review: Attempt-001 closed as `evidence_invalid` before host
+association because the late-attached serial capture contained recurring exact-
+build runtime records but missed the one-shot safe/AP startup lines. Host and
+device recovery completed without a secondary failure, private modes passed,
+and no public projection exists. The linked closure defines the fresh
+continuation; this task remains active and unarchived because `NET-002` is not
+verified.
 
 ## Future
 
