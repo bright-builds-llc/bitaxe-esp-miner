@@ -51,3 +51,40 @@
   occurred.
 - Blocker or next safe action: Commit and push this execution checkpoint, then
   build its exact clean package before wrapper-002 detector admission.
+
+## 2026-08-12T03:55:25Z | attempt-002 verified
+
+- Source commit: `e56afbe44ab465eb3fc6b55acce761eb1d29a939`
+- Actions: Built the exact package, spent the sole wrapper-002 detector, ran
+  the sole conditional attempt-002, and independently validated its public
+  projection.
+- Verification: Detector admission, exact package provenance, one disconnect,
+  fallback, first retry after 5,022 ms, DHCP recovery, retry reset, client-only
+  return, 15,000-ms stability, final HTTP/build quorum, disabled effects,
+  cleanup, private modes, redaction, and the Rust projection validator passed.
+- Evidence: `docs/parity/evidence/net001-reconnect/network-reconnect-projection.json`.
+  Wrapper/attempt roots are mode 0700, files are mode 0600, no holder remains,
+  and no recovery flash was used.
+- Outcome: Accepted `NET-001` hardware evidence; promotion to `verified` is
+  eligible.
+- Blocker or next safe action: Transition only `NET-001`, synchronize progress,
+  run final gates, archive the completed attempt-002 task, and push.
+
+## 2026-08-12T04:01:09Z | transition and final gates
+
+- Actions: Transitioned only `NET-001` to `verified`, synchronized progress,
+  archived both completed NET-001 task records, and ran the final verification
+  sequence.
+- Correction: The first parity gate caught plain paths in the generated
+  Rust-owned-target cell. Because the transition tool correctly rejects a
+  second `verified` transition, repaired that exact checklist cell and its
+  transition receipt, then re-synchronized progress without changing the
+  accepted claim or evidence.
+- Verification: `cargo fmt --all`, strict Clippy, all-target build, all-feature
+  tests, Bright Builds checks, `just test`, `just parity`, progress validation,
+  redaction validation, reference cleanliness, automation contract validation,
+  task/archive uniqueness, and diff checks passed. The next selector returns
+  `NET-002` with no open plan.
+- Outcome: `NET-001` is verified with closed exact-package hardware evidence.
+- Blocker or next safe action: Commit and push the verified NET-001 result, then
+  advance to `NET-002` under a fresh immutable plan.

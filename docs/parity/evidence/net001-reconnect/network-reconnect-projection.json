@@ -1,0 +1,35 @@
+{
+  "schema_version": "bitaxe-network-reconnect-evidence-v1",
+  "board": 205,
+  "source_commit": "e56afbe44ab465eb3fc6b55acce761eb1d29a939",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "package_manifest_sha256": "21dcb5e61dcee0ef6cdd916d83c2ad59472d1163df1367fd855961088d6bd6fd",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "capture-network-reconnect-evidence",
+    "request_sha256": "46889ba88b9fb7440a857db1444d49a4cd8379a45a33da174f703137b0613afe"
+  },
+  "detector_admitted": true,
+  "boot_observed": true,
+  "same_boot_session": true,
+  "reconnect": {
+    "disconnect_event_count": 1,
+    "fallback_enabled": true,
+    "first_retry_ordinal": 1,
+    "configured_retry_delay_ms": 5000,
+    "observed_retry_delay_ms": 5022,
+    "dhcp_recovery_observed": true,
+    "retry_ordinal_reset": true,
+    "client_only_restored": true,
+    "stability_window_ms": 15000,
+    "stability_observed": true,
+    "api_postcondition_matches": true,
+    "exact_build_identity_matches": true
+  },
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "cleanup_complete": true,
+  "recovery_flash_used": false,
+  "private_modes_valid": true,
+  "redaction_status": "passed"
+}
