@@ -6841,3 +6841,62 @@ redaction. No duplicate projector or hardware action was used. Analog accuracy,
 rail timing or waveform, DS4432U reads/output one, arbitrary targets, fault
 injection, INA260 correlation, other profiles, boards, and ASIC families remain
 non-claims. The task is complete and archived.
+
+### task-parity-pwr006-ina260-live-projection | 2026-08-12 | Project accepted live INA260 evidence
+
+- [x] Audit the current PWR-006 implementation, pinned INA260 reference, stale
+      checklist note, accepted API-002 hardware capture, and source compatibility.
+- [x] Add a Rust-owned `bitaxe-ina260-evidence-v1` contract and a narrow
+      software-only projector over the existing protected API-002 snapshots.
+- [x] Prove fresh complete INA260 current, bus-voltage, and power observations
+      agree across the same HTTP and WebSocket acquisition without publishing
+      any raw value, stamp, boot session, origin, port, or network identifier.
+- [x] Independently validate and publish one redacted public PWR-006 projection,
+      run every mandatory gate, and promote only PWR-006 if the complete quorum
+      passes.
+
+Dependencies: Completed API-002 live system-info capture at exact source commit
+`524b445ee45c986a1366cfe64d2cbcbe41178da8`; immutable PWR-006 plan
+`docs/parity/work-plans/20260812T222308Z-PWR-006/PLAN.md`; ignored protected
+attempt root `scratch/api002-system-info/attempt-002`; pinned reference commit
+`c1915b0a63bfabebdb95a515cedfee05146c1d50`.
+
+Evidence and safety contract: This is a software-only projection. It may read
+the existing mode-0700 API-002 attempt root and its mode-0600 JSON artifacts,
+validate closed schema, digest, identity, freshness, safe-range, correlation,
+cleanup, and redaction predicates, and publish only schemas, commits, digests,
+fixed INA260 address/register constants, counts, categories, and booleans. Raw
+power, voltage, current, acquisition stamps, boot sessions, hostnames, origins,
+ports, USB/network identifiers, credentials, retained logs, and traces remain
+private and must never appear in public output. No detector, package build,
+flash, reset, USB/serial access, network request, credential read, mining,
+voltage, fan, power, I2C/GPIO, direct UART, pin, fault-injection, or recovery
+effect is allowed. No hardware retry exists because no hardware effect occurs.
+
+Evidence checkpoint: Clean pushed implementation commit `bff0e547` produced
+the sole projection successfully, and pushed result checkpoint
+`6642f21ca49182f7b787aa3f7eaea4a2377edc66` binds it to the immutable plan.
+Independent validation, mode `0644`, candidate cleanup, source/plan digests,
+source compatibility, and sensitive-value absence pass. Projection SHA-256 is
+`c9624b3c77e4021137a375de2a70c2bf7425bc947af6ba59c4e42fbceb25634d`.
+
+Verification: Transition `20260812T232805Z-PWR-006` changed only PWR-006 to
+`verified`, refreshed its ownership, evidence, and stale note, and bound the
+immutable plan and RESULT.md. Immediate progress synchronization from exact
+pushed source commit `6642f21ca49182f7b787aa3f7eaea4a2377edc66` records 64
+of 94 active rows verified (68.1%). The ordered Cargo, Bright Builds, all-41-
+target Bazel, parity, progress, redaction, source/final validator, reference,
+generated-contract, digest, mode, candidate, task-binding, compatibility, and
+diff gates pass. The macOS policy hold and byte-identical generated-artifact
+workaround affected only local ignored test executables and no repository or
+device state.
+
+Completion review: PWR-006 is verified from the accepted API-002 Ultra 205
+capture and typed row-specific projection. The closed evidence proves the
+production read-only INA260 address/register set and complete fresh correlated
+HTTP/WebSocket current, bus-voltage, and power sample, exact package and boot
+identity, nine compatible current source paths, disabled mining/control,
+cleanup, no hardware rerun, and redaction. Calibration beyond the admitted
+conversion, long-duration drift, write/control effects, fan, voltage, ASIC,
+mining, other boards, and release readiness remain non-claims. The task is
+complete and archived.

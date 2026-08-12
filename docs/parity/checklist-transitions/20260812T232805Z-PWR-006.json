@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260812T232805Z-PWR-006",
+  "predecessor_sha256": "3c65e00821baee5d0d5309f3ee4e3585278a3591d61a84c86287e7b4fa11b6c1",
+  "result_sha256": "b5be93c7bc73c457ade54e8e1401f6b72d18e492c659d12e5c7c23c84cab59c9",
+  "row_id": "PWR-006",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260812T222308Z-PWR-006/PLAN.md",
+  "plan_sha256": "e58742236746a59fb68afd92a5fe92b181a71e967e43d323789b9f22a58db818",
+  "result_path": "docs/parity/work-plans/20260812T222308Z-PWR-006/RESULT.md",
+  "result_document_sha256": "b945c9690f47c9d67a924fb6e6b3999655fd9b6205812cb9eff1e9a62c29e1eb",
+  "before_rust_owned_target": "`crates/bitaxe-safety/src/power.rs`, `firmware/bitaxe/src/safety_adapter/ina260.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`, `crates/bitaxe-api`",
+  "after_rust_owned_target": "`crates/bitaxe-safety/src/power.rs`, `crates/bitaxe-safety/src/sensor_acquisition.rs`, `firmware/bitaxe/src/safety_adapter/ina260.rs`, `firmware/bitaxe/src/safety_adapter/i2c_bus.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`, `crates/bitaxe-api`, `crates/bitaxe-automation-contracts/src/ina260_evidence.rs`, `tools/automation/src/ina260-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,api-compare,hardware-regression",
+  "before_notes": "INA260 telemetry classification and firmware constants exist; default firmware telemetry is explicit unavailable until live sensor reads are evidenced. [Phase 14 power telemetry evidence](evidence/phase-14-safety-hardware-evidence-completion/power-telemetry.md) records a passed read-only allow-manifest gate, but no fresh INA260 current, bus-voltage, power, freshness, or read-status artifact; live hardware telemetry remains below verified. Phase 20 final evidence in `evidence/phase-20-active-safety-hardware-telemetry-evidence/summary.md`, `evidence/phase-20-active-safety-hardware-telemetry-evidence/active-power-voltage.md`, and `evidence/phase-20-active-safety-hardware-telemetry-evidence/live-api-websocket-telemetry.md` adds hardware-smoke wrapper and blocked live-target evidence only; fresh sensor values and API/WebSocket correlation remain below verified.",
+  "after_notes": "The typed PWR-006 result and bitaxe-ina260-evidence-v1 projection bind the accepted API-002 Ultra 205 capture to the production read-only INA260 address/register set, complete fresh same-acquisition HTTP/WebSocket current, bus-voltage, and power observations, exact package and boot identity, nine byte-compatible current source paths, disabled mining/control, cleanup, no hardware rerun, and redaction; see docs/parity/work-plans/20260812T222308Z-PWR-006/RESULT.md and docs/parity/evidence/pwr006-ina260/ina260-projection.json. Calibration beyond the admitted conversion, long-duration drift, controls, mining, other boards, and release readiness remain non-claims."
+}

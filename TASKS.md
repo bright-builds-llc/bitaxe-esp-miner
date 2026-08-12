@@ -24,47 +24,6 @@ new work.
 
 ## Active
 
-### task-parity-pwr006-ina260-live-projection | 2026-08-12 | Project accepted live INA260 evidence
-
-- [x] Audit the current PWR-006 implementation, pinned INA260 reference, stale
-      checklist note, accepted API-002 hardware capture, and source compatibility.
-- [x] Add a Rust-owned `bitaxe-ina260-evidence-v1` contract and a narrow
-      software-only projector over the existing protected API-002 snapshots.
-- [x] Prove fresh complete INA260 current, bus-voltage, and power observations
-      agree across the same HTTP and WebSocket acquisition without publishing
-      any raw value, stamp, boot session, origin, port, or network identifier.
-- [ ] Independently validate and publish one redacted public PWR-006 projection,
-      run every mandatory gate, and promote only PWR-006 if the complete quorum
-      passes.
-
-Dependencies: Completed API-002 live system-info capture at exact source commit
-`524b445ee45c986a1366cfe64d2cbcbe41178da8`; immutable PWR-006 plan
-`docs/parity/work-plans/20260812T222308Z-PWR-006/PLAN.md`; ignored protected
-attempt root `scratch/api002-system-info/attempt-002`; pinned reference commit
-`c1915b0a63bfabebdb95a515cedfee05146c1d50`.
-
-Evidence and safety contract: This is a software-only projection. It may read
-the existing mode-0700 API-002 attempt root and its mode-0600 JSON artifacts,
-validate closed schema, digest, identity, freshness, safe-range, correlation,
-cleanup, and redaction predicates, and publish only schemas, commits, digests,
-fixed INA260 address/register constants, counts, categories, and booleans. Raw
-power, voltage, current, acquisition stamps, boot sessions, hostnames, origins,
-ports, USB/network identifiers, credentials, retained logs, and traces remain
-private and must never appear in public output. No detector, package build,
-flash, reset, USB/serial access, network request, credential read, mining,
-voltage, fan, power, I2C/GPIO, direct UART, pin, fault-injection, or recovery
-effect is allowed. No hardware retry exists because no hardware effect occurs.
-
-Verification: Rust contract and validator tests; TypeScript projector,
-invocation, real-child, withholding, path-drift, private-mode, mutation, and
-sensitive-output regressions; independent validation of the API-002 source and
-PWR-006 final projections; exact digests and file modes; source/reference
-ancestry and byte compatibility; generated contracts; redaction; reference
-cleanliness; immutable-plan and unique-task binding; `cargo fmt --all`; strict
-Clippy; all-target build; all-feature tests; Bright Builds checks; `just test`;
-`just parity`; `just parity-progress`; candidate absence; diff checks; and full
-diff review.
-
 ### task-ultra205-default-profile-soak | 2026-07-28 | Run the bounded upstream-default mining soak
 
 - [x] Start a fresh exact-package attempt at 485 MHz, 1200 mV, and 100% fan

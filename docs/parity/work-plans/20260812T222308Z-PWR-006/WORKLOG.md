@@ -135,3 +135,70 @@
 - Blocker or next safe action: Commit and push RESULT.md and this worklog,
   capture the exact pushed commit, then transition only PWR-006 and synchronize
   progress immediately.
+
+## 2026-08-12T23:29:30Z | Verified transition and task closure
+
+- Source commit: `6642f21ca49182f7b787aa3f7eaea4a2377edc66`
+- Actions: Transitioned only PWR-006 from `implemented` to `verified`; replaced
+  its stale unavailable/no-correlation note with the closed typed evidence;
+  added `api-compare,hardware-regression`; immediately synchronized progress;
+  and archived the completed task with its full native record.
+- Verification: Typed transition `20260812T232805Z-PWR-006` binds the immutable
+  plan and RESULT.md. The receipt projected checklist SHA-256
+  `b5be93c7bc73c457ade54e8e1401f6b72d18e492c659d12e5c7c23c84cab59c9`.
+  Progress appended from the exact clean pushed result checkpoint and reports
+  64 of 94 active rows verified (68.1%). No other parity row changed.
+- Evidence: Mode-0644 projection SHA-256
+  `c9624b3c77e4021137a375de2a70c2bf7425bc947af6ba59c4e42fbceb25634d`,
+  RESULT.md, transition receipt, synchronized checklist/progress/README, and
+  archived task record.
+- Outcome: PWR-006 is verified and its active task is complete. This plan used
+  no device interaction or hardware rerun.
+- Blocker or next safe action: Run the final ordered gates, verify selector
+  closure and task/archive uniqueness, review the complete finalization diff,
+  commit, fetch, and push without force.
+
+## 2026-08-12T23:42:00Z | Transition metadata correction
+
+- Source commit: `6642f21ca49182f7b787aa3f7eaea4a2377edc66`
+- Actions: The first final `just parity` rejected the uncommitted PWR-006
+  ownership cell because the typed transition argument omitted Markdown code
+  spans. Since verified rows are terminal, removed only the uncommitted receipt
+  and its derived checklist, progress, and README outputs; confirmed those four
+  surfaces exactly matched the pushed predecessor; and recreated the same sole
+  transition ID with each ownership path in a code span. Immediately
+  resynchronized progress.
+- Verification: The corrected typed transition projects checklist SHA-256
+  `b5be93c7bc73c457ade54e8e1401f6b72d18e492c659d12e5c7c23c84cab59c9`;
+  progress reports 64 of 94 active rows verified (68.1%). No defective receipt
+  or duplicate progress record remains, and no other row changed.
+- Evidence: Corrected transition `20260812T232805Z-PWR-006`, exact predecessor,
+  unchanged plan/result bindings, and synchronized derived files.
+- Outcome: The transition metadata now satisfies the code-span ownership
+  contract without changing the evidence conclusion.
+- Blocker or next safe action: Restart and pass the complete final gate sequence
+  on the corrected transition, then commit and push.
+
+## 2026-08-12T23:47:52Z | Final verification and closure audit
+
+- Source commit: `6642f21ca49182f7b787aa3f7eaea4a2377edc66`
+- Actions: Completed the final ordered verification sequence on the corrected
+  transition, independently revalidated the public projection, audited the
+  transition/progress/task closure, and reran the deterministic selector.
+- Verification: `cargo fmt --all`; strict all-target/all-feature Clippy;
+  all-target/all-feature build; all-feature tests; Bright Builds with zero
+  findings; all 41 Bazel test targets; parity with no validation errors; and
+  progress at 64 of 94 active rows verified (68.1%) all passed in order.
+  Redaction accepted 17 public artifact roots; the pinned reference, final
+  evidence validator, generated TypeScript contract, plan/projection digests,
+  mode 0644, candidate absence, single receipt, single progress record, unique
+  archived task, and diff checks passed. The selector reports no open plan and
+  excludes PWR-006; API-009 is now the first unfinished candidate.
+- Evidence: Corrected transition `20260812T232805Z-PWR-006`, synchronized
+  checklist/progress/README, archived task, RESULT.md, and the unchanged public
+  projection at SHA-256
+  `c9624b3c77e4021137a375de2a70c2bf7425bc947af6ba59c4e42fbceb25634d`.
+- Outcome: PWR-006 is fully verified and ready for the finalization commit and
+  non-force push. No hardware or device interaction occurred.
+- Blocker or next safe action: None for this row. Commit and push the reviewed
+  finalization; a later advance-parity invocation may select API-009.
