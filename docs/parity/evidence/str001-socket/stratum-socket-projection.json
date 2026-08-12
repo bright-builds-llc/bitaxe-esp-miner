@@ -1,0 +1,44 @@
+{
+  "schema_version": "bitaxe-stratum-socket-evidence-v1",
+  "board": 205,
+  "attempt_source_commit": "3e0966a140edbff1a14d2a48ca63d140649762c0",
+  "current_source_commit": "d0a91d3662046a1350e89f872c59e21a4bce73c2",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "project-stratum-socket-evidence",
+    "request_sha256": "b64cdd0b4b9aeb0dfd5d85c4a97019fb2a1fce6b621d2fa31e948e935c4d2c6d"
+  },
+  "source": {
+    "initialization_projection_sha256": "eee750561a7c1dcec1a5698b1e5827d3f1508d43655c3c4aa237097338dcf8d4",
+    "initialization_projection_current_commit": "f9df1412abbc05a4852022f3fb6741f67ab43272",
+    "initialization_projection_valid": true
+  },
+  "socket": {
+    "command_capacity": 8,
+    "connect_timeout_ms": 5000,
+    "read_timeout_ms": 50,
+    "write_timeout_ms": 2000,
+    "read_buffer_bytes": 2048,
+    "tcp_nodelay_enabled": true,
+    "typed_connect_write_close_commands": true,
+    "typed_connected_bytes_failed_closed_events": true,
+    "transport_epoch_isolation": true,
+    "authorized_session_required_before_submit": true,
+    "accepted_submit_observed": true,
+    "transport_module_unchanged": true,
+    "owner_and_lifecycle_spans_compatible": true
+  },
+  "package_admitted": true,
+  "runtime_identity": "trusted",
+  "runtime_attestation_status": "trusted",
+  "campaign_terminal_category": "submit_response_observed",
+  "submit_outcome": "accepted",
+  "safety_status": "fresh",
+  "mine_on_boot_disabled": true,
+  "safe_stop_confirmed": true,
+  "lease_cleanup_confirmed": true,
+  "usb_cleanup_ready": true,
+  "hardware_rerun_used": false,
+  "redaction_status": "passed"
+}

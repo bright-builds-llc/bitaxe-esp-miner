@@ -70,3 +70,21 @@
 - Outcome: The implementation is ready to commit and push.
 - Blocker or next safe action: Commit the implementation, then run the
   projector from that exact clean pushed source commit.
+
+## 2026-08-12T11:37:44Z | Public projection accepted
+
+- Source commit: `d0a91d3662046a1350e89f872c59e21a4bce73c2`
+- Actions: Ran the committed projector against the exact ASIC-002 source
+  projection and accepted hardware commit, then independently validated the
+  atomically published result.
+- Verification: Prerequisite digest and validator, source identity and
+  ancestry, unchanged complete TCP transport module, compatible unique owner
+  and lifecycle spans, clean relevant paths, independent final validation,
+  final mode 0644, semantic redaction, and sensitive-value scan pass.
+- Evidence:
+  `docs/parity/evidence/str001-socket/stratum-socket-projection.json` at SHA-256
+  `dcb3eed396a268114b017d7ef4fbca9c427a390d7acf405fc52fbef6472122b8`.
+- Outcome: The complete `STR-001` promotion quorum is satisfied without a
+  hardware rerun or protected-evidence access.
+- Blocker or next safe action: Commit and push RESULT plus evidence, then use
+  that exact source commit for the audited one-row checklist transition.
