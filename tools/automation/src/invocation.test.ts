@@ -287,6 +287,24 @@ test("network scan capture requires the detector-gated closed surface", () => {
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
 
+test("ASIC initialization projection accepts only sealed source inputs", () => {
+  // Arrange
+  const complete = [
+    "project-asic-initialization-evidence",
+    "--attempt-root", "scratch/accepted/attempt-007",
+    "--attempt-source-commit", "a".repeat(40),
+    "--projection", "docs/evidence/asic-init.json",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "project-asic-initialization-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});
+
 test("Ultra 205 defaults capture requires the detector-gated closed surface", () => {
   // Arrange
   const complete = [

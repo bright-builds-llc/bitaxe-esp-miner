@@ -26,7 +26,7 @@ new work.
 
 ### task-parity-asic002-sealed-initialization-promotion | 2026-08-12 | Promote sealed BM1366 initialization proof
 
-- [ ] Add a typed, closed projector and validator for the sealed accepted-share
+- [x] Add a typed, closed projector and validator for the sealed accepted-share
       campaign's full BM1366 initialization boundary.
 - [ ] Prove protected artifact seals/modes, all nine preparation completions,
       retained production UART, trusted package/runtime identity, live work,

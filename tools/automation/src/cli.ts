@@ -5,6 +5,10 @@ import { fileURLToPath } from "node:url";
 
 import { buildFirmware } from "./build.js";
 import {
+  AsicInitializationEvidenceError,
+  projectAsicInitializationEvidence,
+} from "./asic-initialization-evidence.js";
+import {
   flashMonitorCommand,
   internalCommandSpec,
   monitorCommand,
@@ -251,6 +255,7 @@ async function dispatchProcess(
     case "capture-sdkconfig-rollback-evidence":
     case "capture-network-reconnect-evidence":
     case "capture-network-scan-evidence":
+    case "project-asic-initialization-evidence":
     case "capture-provisioning-network-evidence":
     case "verify-theme-durability":
       throw new Error("specialized workflow reached generic dispatch");
@@ -417,6 +422,13 @@ async function main(): Promise<number> {
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root),
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_network_reconnect_evidence"));
+    } else if (invocation.command === "project-asic-initialization-evidence") {
+      publicValue = await projectAsicInitializationEvidence(root, {
+        attemptRoot: optionValue(invocation, "--attempt-root"),
+        attemptSourceCommit: optionValue(invocation, "--attempt-source-commit"),
+        projection: optionValue(invocation, "--projection"),
+      }, processPort, "git",
+      toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_initialization_evidence"));
     } else if (invocation.command === "capture-network-scan-evidence") {
       const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
       publicValue = await captureNetworkScanEvidence(root, {
@@ -487,12 +499,13 @@ async function main(): Promise<number> {
     const sdkconfigRollbackFailure = error instanceof SdkconfigRollbackEvidenceError;
     const networkReconnectFailure = error instanceof NetworkReconnectEvidenceError;
     const networkScanFailure = error instanceof NetworkScanEvidenceError;
+    const asicInitializationFailure = error instanceof AsicInitializationEvidenceError;
     const provisioningNetworkFailure = error instanceof ProvisioningNetworkEvidenceError;
     const category: AutomationCategory = policyBlocked
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || networkScanFailure || provisioningNetworkFailure
+        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || networkScanFailure || asicInitializationFailure || provisioningNetworkFailure
           ? error.category
           : "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";

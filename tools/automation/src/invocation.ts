@@ -197,6 +197,11 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--projection": value({ required: true }),
     "--capture-timeout-seconds": value({ required: true, positiveInteger: true }),
   },
+  "project-asic-initialization-evidence": {
+    "--attempt-root": value({ required: true }),
+    "--attempt-source-commit": value({ required: true }),
+    "--projection": value({ required: true }),
+  },
   "capture-provisioning-network-evidence": {
     "--private-root": value({ required: true }),
     "--package-manifest": value({ required: true }),

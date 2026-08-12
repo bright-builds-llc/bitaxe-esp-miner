@@ -32,6 +32,7 @@ export type AutomationCommand =
   | "capture-sdkconfig-rollback-evidence"
   | "capture-network-reconnect-evidence"
   | "capture-network-scan-evidence"
+  | "project-asic-initialization-evidence"
   | "capture-provisioning-network-evidence";
 
 export type AutomationStatus = "succeeded" | "failed" | "blocked";
@@ -370,6 +371,55 @@ export type NetworkScanEvidence = {
   cleanup_complete: true;
   recovery_flash_used: false;
   private_modes_valid: true;
+  redaction_status: "passed";
+};
+
+export type AsicInitializationAttemptEvidence = {
+  campaign_result_sha256: string;
+  diagnostics_sha256: string;
+  observations_sha256: string;
+  result_seal_valid: true;
+  private_digests_valid: true;
+  protected_modes_valid: true;
+};
+
+export type AsicInitializationObservationEvidence = {
+  planned_step_count: 9;
+  accepted_preparation_event_count: 18;
+  invalid_preparation_event_count: 0;
+  terminal_preparation_step: "retain_production_uart";
+  terminal_preparation_outcome: "completed";
+  all_preparation_steps_completed: true;
+  exactly_one_chip_detected: true;
+  mining_ready_initialization_completed: true;
+  production_uart_retained: true;
+  live_initialized_work_observed: true;
+  initialization_paths_unchanged: true;
+  compatible_path_count: 7;
+};
+
+export type AsicInitializationEvidence = {
+  schema_version: "bitaxe-asic-initialization-evidence-v1";
+  board: 205;
+  attempt_source_commit: string;
+  current_source_commit: string;
+  reference_commit: string;
+  source_task_sha256: string;
+  workflow: WorkflowIdentity;
+  attempt: AsicInitializationAttemptEvidence;
+  initialization: AsicInitializationObservationEvidence;
+  package_admitted: true;
+  runtime_identity: "trusted";
+  runtime_attestation_status: "trusted";
+  serial_outcome_detail: "clean";
+  campaign_terminal_category: "submit_response_observed";
+  submit_outcome: "accepted";
+  safety_status: "fresh";
+  mine_on_boot_disabled: true;
+  safe_stop_confirmed: true;
+  lease_cleanup_confirmed: true;
+  usb_cleanup_ready: true;
+  hardware_rerun_used: false;
   redaction_status: "passed";
 };
 

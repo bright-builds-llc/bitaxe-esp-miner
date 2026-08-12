@@ -6,6 +6,7 @@ rust_library(
     name = "bitaxe_automation_contracts",
     srcs = [
         "src/lib.rs",
+        "src/asic_initialization_evidence.rs",
         "src/log_buffer_evidence.rs",
         "src/network_reconnect_evidence.rs",
         "src/network_scan_evidence.rs",
@@ -24,6 +25,17 @@ rust_library(
     deps = [
         "@crates//:schemars",
         "@crates//:serde",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_asic_initialization_evidence",
+    srcs = ["src/bin/validate_asic_initialization_evidence.rs"],
+    crate_name = "validate_asic_initialization_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
         "@crates//:serde_json",
     ],
 )

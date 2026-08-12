@@ -28,3 +28,23 @@
 - Outcome: The plan and task contract are eligible to commit and push.
 - Blocker or next safe action: Commit and push, then implement the typed
   projection without changing `PLAN.md` or interacting with hardware.
+
+## 2026-08-12T08:52:13Z | implementation gate passed
+
+- Source commit: plan commit
+  `70becfaab3c3fa5f56f672d3db7e0e6244c8f1bf`.
+- Actions: Added the Rust-owned ASIC-initialization contract/validator, typed
+  projection command, seal/digest/mode admission, archived-task binding,
+  initialization-source compatibility check, semantic-redaction registration,
+  and `just`/Bazel/generated-contract wiring.
+- Verification: Contract, malformed/incomplete evidence, source drift,
+  sensitive-output, typed-failure, invocation, real-child/file, campaign,
+  mining-actuation, and flash regressions pass. Ordered Cargo, Bright Builds,
+  all 37 Bazel tests, real ESP32-S3 image, parity/progress, redaction,
+  reference, generated contracts, immutable-plan, reference-cleanliness, and
+  diff gates also pass.
+- Evidence: Synthetic fixtures only in this checkpoint. The protected source
+  attempt was not projected yet and no hardware effect occurred.
+- Outcome: The implementation is ready to commit and push.
+- Blocker or next safe action: Commit and push the projector, then run it once
+  against the sealed attempt from the exact clean implementation commit.

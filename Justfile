@@ -101,5 +101,8 @@ capture-network-reconnect-evidence *args:
 capture-network-scan-evidence *args:
     bazel run //tools/automation:capture_network_scan_evidence -- {{ args }}
 
+project-asic-initialization-evidence *args:
+    bazel run //tools/automation:project_asic_initialization_evidence -- {{ args }}
+
 capture-provisioning-network-evidence *args:
     bazel run //tools/automation:capture_provisioning_network_evidence -- {{ args }}
