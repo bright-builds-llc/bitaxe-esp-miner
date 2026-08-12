@@ -52,3 +52,24 @@
 - Blocker or next safe action: Commit and push the guarded boundary, confirm a
   clean synchronized head, then run the single projector plus independent
   validator transaction allowed by this plan.
+
+## 2026-08-12T13:53:13Z | Projection and independent validation passed
+
+- Implementation commit: `381ddb5af93a84a48c4e410a32463e8b621e44bc`
+- Actions: Confirmed exact clean synchronization, immutable plan and four
+  public-input digests, absent output and candidate, and clean reference. Ran
+  the plan's one flags-only projector invocation followed in the same
+  fail-fast transaction by the guarded independent validator.
+- Verification: Both processes exited successfully. The final projection is
+  mode 0644 with SHA-256
+  `c1ccb65e6a49d04049aabb2be1295949163526a197e20e3de51fc65d38c2a80f`;
+  its candidate is absent. Redaction and reference checks pass, the explicit
+  sensitive-value scan found no matches, and the diff is clean.
+- Evidence: The public projection contains only hashes, booleans, durations,
+  commits, and closed categorical values. It records no hardware rerun and no
+  terminal-attempt reopening. No protected evidence, credentials, network, or
+  hardware was accessed.
+- Outcome: The evidence quorum supports promoting only `STR-007` to verified.
+- Blocker or next safe action: Commit and push the projection and RESULT, then
+  use the typed checklist transition to promote only this row and synchronize
+  progress.

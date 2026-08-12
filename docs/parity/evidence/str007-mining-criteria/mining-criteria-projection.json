@@ -1,0 +1,41 @@
+{
+  "schema_version": "bitaxe-mining-criteria-evidence-v1",
+  "board": 205,
+  "current_source_commit": "381ddb5af93a84a48c4e410a32463e8b621e44bc",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "project-mining-criteria-evidence",
+    "request_sha256": "b47f78109d1df31676cd10ee9ac45863d4117a23945097f83b296238f50fd6b0"
+  },
+  "source": {
+    "phase21_summary_sha256": "b411ed3d8a1ce427231ec2818ed74fb590e6b29e4539a0e131bfdc7bc7acec0c",
+    "phase21_summary_valid": true,
+    "phase21_smoke_sha256": "faec052c13b55cc7a53a1206c25c2094d93945d4b17d69c17c8a976e860655ff",
+    "phase21_smoke_valid": true,
+    "phase21_soak_sha256": "fc8904a9d9e2132789d70a9886c8aef05be96134e1ccd4d29bc793c9efa66003",
+    "phase21_soak_valid": true,
+    "protocol_coordinator_sha256": "f008171f26b7a8ae6b08859e3cfef4f0c5bf88937c049dd66b6f868c9bbfd6f7",
+    "protocol_coordinator_valid": true
+  },
+  "criteria": {
+    "historical_smoke_controlled_no_share": true,
+    "historical_soak_duration_seconds": 300,
+    "historical_watchdog_passed": true,
+    "historical_telemetry_observed": true,
+    "historical_safe_stop_confirmed": true,
+    "current_duration_seconds": 600,
+    "upstream_default_profile_required": true,
+    "active_duration_accounting": true,
+    "full_duration_required": true,
+    "accepted_share_required": true,
+    "network_correlation_required": true,
+    "safe_stop_required": true,
+    "private_evidence_required": true,
+    "redaction_required": true,
+    "source_spans_compatible": true,
+    "terminal_attempt_reopened": false
+  },
+  "hardware_rerun_used": false,
+  "redaction_status": "passed"
+}
