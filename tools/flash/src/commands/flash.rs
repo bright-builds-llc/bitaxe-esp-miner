@@ -4,11 +4,19 @@ pub(crate) fn run_flash(
     command: &FlashCommand,
     environment: &impl FlashEnvironment,
 ) -> Result<FlashOutcome> {
+    run_flash_with_wifi_mode(command, WifiNvsSeedMode::Ordinary, environment)
+}
+
+fn run_flash_with_wifi_mode(
+    command: &FlashCommand,
+    wifi_mode: WifiNvsSeedMode,
+    environment: &impl FlashEnvironment,
+) -> Result<FlashOutcome> {
     let PreparedFlash {
         outcome,
         execution_command,
         _execution_snapshot,
-    } = prepare_flash(command, environment)?;
+    } = prepare_flash_with_wifi_mode(command, wifi_mode, environment)?;
     emit_flash_outcome(
         &outcome,
         command.common.evidence_mode != Some(EvidenceMode::Dual),
@@ -80,12 +88,18 @@ pub(crate) fn run_flash_monitor(
         manifest: command.manifest.clone(),
         wifi_credentials: command.wifi_credentials.clone(),
     };
-    let flash_outcome = run_flash(&flash_command, environment).map_err(|error| {
-        if command.common.evidence_mode == Some(EvidenceMode::Dual) {
-            return anyhow::anyhow!("dual_evidence=failed reason=flash_workflow_failed");
-        }
-        error
-    })?;
+    let wifi_mode = if command.network_reconnect_probe {
+        WifiNvsSeedMode::NetworkReconnectProbe
+    } else {
+        WifiNvsSeedMode::Ordinary
+    };
+    let flash_outcome =
+        run_flash_with_wifi_mode(&flash_command, wifi_mode, environment).map_err(|error| {
+            if command.common.evidence_mode == Some(EvidenceMode::Dual) {
+                return anyhow::anyhow!("dual_evidence=failed reason=flash_workflow_failed");
+            }
+            error
+        })?;
 
     let Some(evidence_dir) = resolved_dir else {
         return run_receive_only_flash_monitor(command, environment);

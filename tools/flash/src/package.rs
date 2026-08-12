@@ -19,6 +19,14 @@ pub(crate) fn prepare_flash(
     command: &FlashCommand,
     environment: &impl FlashEnvironment,
 ) -> Result<PreparedFlash> {
+    prepare_flash_with_wifi_mode(command, WifiNvsSeedMode::Ordinary, environment)
+}
+
+pub(crate) fn prepare_flash_with_wifi_mode(
+    command: &FlashCommand,
+    wifi_mode: WifiNvsSeedMode,
+    environment: &impl FlashEnvironment,
+) -> Result<PreparedFlash> {
     ensure_ultra_205(command.common.board)?;
     let admitted_image = resolve_flash_image(command, environment)?;
     let maybe_execution_snapshot = if command.common.dry_run {
@@ -51,7 +59,7 @@ pub(crate) fn prepare_flash(
         execution_command.clone()
     };
     let nvs_seed = match &command.wifi_credentials {
-        Some(path) => Some(prepare_wifi_nvs_seed(&port, path, environment)?),
+        Some(path) => Some(prepare_wifi_nvs_seed(&port, path, wifi_mode, environment)?),
         None => None,
     };
 

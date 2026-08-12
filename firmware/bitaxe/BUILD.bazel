@@ -423,6 +423,7 @@ rust_test(
         "src/startup.rs",
         "src/wifi_adapter.rs",
         "src/wifi_adapter/captive_dns.rs",
+        "src/wifi_adapter/reconnect.rs",
         "src/wifi_adapter/scan.rs",
         "src/wifi_source_ownership_test.rs",
     ],

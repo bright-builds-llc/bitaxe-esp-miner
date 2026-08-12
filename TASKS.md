@@ -1612,13 +1612,13 @@ defines the retained-log continuation using fresh attempt-005 paths.
 
 - [x] Select `NET-001`, inspect the exact reference/implementation gap, and
       persist the linked immutable plan before implementation.
-- [ ] Add a pure reconnect state machine and thin ESP-IDF event worker matching
+- [x] Add a pure reconnect state machine and thin ESP-IDF event worker matching
       fallback, reason, 5,000-ms retry, AP-client, DHCP-reset, and repeated-
       cycle behavior.
-- [ ] Add the clear-before-effect one-shot NVS probe, exact flash integration,
+- [x] Add the clear-before-effect one-shot NVS probe, exact flash integration,
       typed host capture, closed public projection, and production-shaped
       regression coverage.
-- [ ] Run focused and mandatory software gates; commit and push the exact
+- [x] Run focused and mandatory software gates; commit and push the exact
       implementation before hardware use.
 - [ ] Run one protected detector and, only after admission, one protected
       attempt-001 capture on board 205.

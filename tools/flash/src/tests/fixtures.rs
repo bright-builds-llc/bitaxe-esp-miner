@@ -54,6 +54,7 @@ fn flash_monitor_fixture(dir: &TempDir, evidence_dir: Utf8PathBuf) -> FlashMonit
         image: None,
         manifest: Some(manifest),
         wifi_credentials: None,
+        network_reconnect_probe: false,
         capture_timeout_seconds: DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS,
     }
 }

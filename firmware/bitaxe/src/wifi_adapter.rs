@@ -2,13 +2,11 @@
 
 use std::sync::{Mutex, OnceLock};
 
-use bitaxe_api::{configuration_ap_ssid, project_ipv6_address};
+use bitaxe_api::configuration_ap_ssid;
 use bitaxe_config::{reload_snapshot, LoadedValue, WifiPassword, WifiSsid};
 use bitaxe_core::input::{configuration_ap_toggle_mode, ConfigurationApMode};
 use esp_idf_svc::eventloop::{EspSystemEventLoop, EspSystemSubscription};
 use esp_idf_svc::hal::modem::Modem;
-use esp_idf_svc::handle::RawHandle;
-use esp_idf_svc::netif::IpEvent;
 use esp_idf_svc::wifi::{
     AccessPointConfiguration, AuthMethod, BlockingWifi, ClientConfiguration, Configuration,
     EspWifi, WifiDeviceId,
@@ -17,6 +15,7 @@ use esp_idf_svc::wifi::{
 use crate::{boot_evidence, log_buffer, network_stack, settings_adapter};
 
 mod captive_dns;
+mod reconnect;
 mod scan;
 
 pub use scan::{scan_visible_networks, WifiScanFailure};
@@ -33,7 +32,8 @@ struct WifiOwner {
     ap_configuration: AccessPointConfiguration,
     maybe_client_configuration: Option<ClientConfiguration>,
     ap_ssid: String,
-    _ipv6_subscription: Option<EspSystemSubscription<'static>>,
+    _wifi_subscription: Option<EspSystemSubscription<'static>>,
+    _ip_subscription: Option<EspSystemSubscription<'static>>,
 }
 
 /// Closed configuration-AP toggle failures without private network values.
@@ -170,18 +170,29 @@ pub fn start_wifi(modem: Modem<'static>) -> anyhow::Result<()> {
                     ap_mac,
                     credentials.ssid.as_str().to_owned(),
                     ProvisioningReason::StationAdmissionFailed,
+                    Some(&sysloop),
                 );
             }
 
             wifi.set_configuration(&Configuration::Client(client_configuration.clone()))?;
             publish_connected_wifi(&wifi, credentials.ssid.as_str())?;
-            let ipv6_subscription = start_ipv6_reporting(&sysloop, &wifi);
-            install_wifi_owner(
-                wifi,
-                ap_configuration,
-                Some(client_configuration),
-                ap_mac,
-                ipv6_subscription,
+            install_wifi_owner(wifi, ap_configuration, Some(client_configuration), ap_mac)?;
+            reconnect::start(&sysloop, None)
+        }
+    }
+}
+
+/// Starts the private one-shot live reconnect probe only after HTTP readiness.
+pub(crate) fn maybe_start_network_reconnect_probe(route_shell_ready: bool) {
+    if !route_shell_ready {
+        return;
+    }
+    match settings_adapter::consume_network_reconnect_probe() {
+        Ok(true) => reconnect::start_probe(),
+        Ok(false) => {}
+        Err(error) => {
+            log::warn!(
+                "wifi_reconnect_probe=not_started category=marker_consume_failed error={error}"
             )
         }
     }
@@ -350,7 +361,15 @@ fn start_provisioning(
     wifi.set_configuration(&Configuration::AccessPoint(ap_configuration.clone()))?;
     wifi.start()?;
     wifi.wait_netif_up()?;
-    retain_provisioning(wifi, ap_configuration, None, ap_mac, station_ssid, reason)
+    retain_provisioning(
+        wifi,
+        ap_configuration,
+        None,
+        ap_mac,
+        station_ssid,
+        reason,
+        None,
+    )
 }
 
 fn retain_provisioning(
@@ -360,6 +379,7 @@ fn retain_provisioning(
     ap_mac: [u8; 6],
     station_ssid: String,
     reason: ProvisioningReason,
+    maybe_sysloop: Option<&EspSystemEventLoop>,
 ) -> anyhow::Result<()> {
     let ap_ipv4 = wifi.wifi().ap_netif().get_ip_info()?.ip;
     captive_dns::start_once(ap_ipv4)?;
@@ -377,13 +397,17 @@ fn retain_provisioning(
         "wifi_status={} ap_enabled=true captive_dns=started",
         reason.wifi_status()
     ));
-    install_wifi_owner(
-        wifi,
-        ap_configuration,
-        maybe_client_configuration,
-        ap_mac,
-        None,
-    )
+    let reconnect_available = maybe_client_configuration.is_some();
+    install_wifi_owner(wifi, ap_configuration, maybe_client_configuration, ap_mac)?;
+    if reconnect_available {
+        let sysloop = maybe_sysloop
+            .ok_or_else(|| anyhow::anyhow!("Wi-Fi reconnect event loop was unavailable"))?;
+        reconnect::start(
+            sysloop,
+            Some(bitaxe_core::wifi_reconnect::WifiDisconnectReason::Other),
+        )?;
+    }
+    Ok(())
 }
 
 fn publish_connected_wifi(
@@ -427,7 +451,6 @@ fn install_wifi_owner(
     ap_configuration: AccessPointConfiguration,
     maybe_client_configuration: Option<ClientConfiguration>,
     ap_mac: [u8; 6],
-    ipv6_subscription: Option<EspSystemSubscription<'static>>,
 ) -> anyhow::Result<()> {
     WIFI_OWNER
         .set(Mutex::new(WifiOwner {
@@ -435,48 +458,10 @@ fn install_wifi_owner(
             ap_configuration,
             maybe_client_configuration,
             ap_ssid: configuration_ap_ssid(ap_mac).as_str().to_owned(),
-            _ipv6_subscription: ipv6_subscription,
+            _wifi_subscription: None,
+            _ip_subscription: None,
         }))
         .map_err(|_| anyhow::anyhow!("Wi-Fi owner was already installed"))
-}
-
-fn start_ipv6_reporting(
-    sysloop: &EspSystemEventLoop,
-    wifi: &FirmwareWifi,
-) -> Option<EspSystemSubscription<'static>> {
-    let station_netif = wifi.wifi().sta_netif().handle();
-    let station_netif_address = station_netif as usize;
-    let subscription = match sysloop.subscribe::<IpEvent, _>(move |event| {
-        let IpEvent::DhcpIp6Assigned(assignment) = event else {
-            return;
-        };
-        if assignment.netif_handle() as usize != station_netif_address {
-            return;
-        }
-
-        let interface_index =
-            unsafe { esp_idf_svc::sys::esp_netif_get_netif_impl_index(assignment.netif_handle()) };
-        let maybe_interface_index = u32::try_from(interface_index).ok();
-        publish_ipv6_observation(project_ipv6_address(
-            assignment.addr(),
-            maybe_interface_index,
-        ));
-    }) {
-        Ok(subscription) => subscription,
-        Err(error) => {
-            log::warn!("wifi_ipv6_status=subscription_failed esp_err={error}");
-            return None;
-        }
-    };
-
-    let result = unsafe { esp_idf_svc::sys::esp_netif_create_ip6_linklocal(station_netif) };
-    if result == esp_idf_svc::sys::ESP_OK {
-        log::info!("wifi_ipv6_status=link_local_requested");
-    } else {
-        log::warn!("wifi_ipv6_status=link_local_request_failed esp_err={result}");
-    }
-
-    Some(subscription)
 }
 
 fn publish_ipv6_observation(ipv6: String) {

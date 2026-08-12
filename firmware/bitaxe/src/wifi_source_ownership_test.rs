@@ -1,6 +1,7 @@
 const WIFI_ADAPTER_SOURCE: &str = include_str!("wifi_adapter.rs");
 const CAPTIVE_DNS_SOURCE: &str = include_str!("wifi_adapter/captive_dns.rs");
 const WIFI_SCAN_SOURCE: &str = include_str!("wifi_adapter/scan.rs");
+const WIFI_RECONNECT_SOURCE: &str = include_str!("wifi_adapter/reconnect.rs");
 const HTTP_API_SOURCE: &str = include_str!("http_api.rs");
 const HTTP_HANDLERS_SOURCE: &str = include_str!("http_api/handlers.rs");
 const STARTUP_SOURCE: &str = include_str!("startup.rs");
@@ -119,12 +120,33 @@ fn scan_route_uses_one_exclusive_wifi_owner_and_restores_ap_mode() {
 #[test]
 fn ipv6_reporting_is_station_bound_and_logs_categories_only() {
     // Arrange / Act / Assert
-    assert!(WIFI_ADAPTER_SOURCE.contains("subscribe::<IpEvent"));
-    assert!(WIFI_ADAPTER_SOURCE.contains("IpEvent::DhcpIp6Assigned"));
-    assert!(WIFI_ADAPTER_SOURCE.contains("assignment.netif_handle() as usize"));
-    assert!(WIFI_ADAPTER_SOURCE.contains("esp_netif_create_ip6_linklocal(station_netif)"));
+    assert!(WIFI_RECONNECT_SOURCE.contains("subscribe::<IpEvent"));
+    assert!(WIFI_RECONNECT_SOURCE.contains("IpEvent::DhcpIp6Assigned"));
+    assert!(WIFI_RECONNECT_SOURCE.contains("assignment.netif_handle() as usize"));
+    assert!(WIFI_RECONNECT_SOURCE.contains("esp_netif_create_ip6_linklocal("));
     assert!(WIFI_ADAPTER_SOURCE.contains("wifi_ipv6_status=published"));
     assert!(!WIFI_ADAPTER_SOURCE.contains("wifi_ipv6_address="));
     assert!(!WIFI_ADAPTER_SOURCE.contains("wifi_scan_ssid="));
     assert!(!WIFI_SCAN_SOURCE.contains("log::"));
+}
+
+#[test]
+fn reconnect_callbacks_only_enqueue_typed_events_before_the_worker_retries() {
+    // Arrange
+    let subscription_start = WIFI_RECONNECT_SOURCE
+        .find("subscribe::<WifiEvent")
+        .expect("Wi-Fi event subscription");
+    let callback_end = WIFI_RECONNECT_SOURCE[subscription_start..]
+        .find("let ip_sender")
+        .map(|offset| subscription_start + offset)
+        .expect("Wi-Fi callback boundary");
+    let callbacks = &WIFI_RECONNECT_SOURCE[subscription_start..callback_end];
+
+    // Act / Assert
+    assert!(callbacks.contains("wifi_sender.send(event)"));
+    assert!(!callbacks.contains("thread::sleep"));
+    assert!(!callbacks.contains("wifi_mut().connect"));
+    assert!(WIFI_RECONNECT_SOURCE.contains("WifiReconnectEvent::RetryDeadline"));
+    assert!(WIFI_RECONNECT_SOURCE.contains("owner.wifi.wifi_mut().connect()"));
+    assert!(WIFI_RECONNECT_SOURCE.contains("NETWORK_RECONNECT_PROBE_ARMED.swap(false"));
 }

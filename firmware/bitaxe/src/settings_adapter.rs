@@ -19,6 +19,7 @@ use esp_idf_svc::sys;
 static CURRENT_SETTINGS_SNAPSHOT: OnceLock<crate::settings_snapshot_store::ConfirmedSnapshotStore> =
     OnceLock::new();
 static SETTINGS_TRANSACTION_LOCK: Mutex<()> = Mutex::new(());
+const NETWORK_RECONNECT_PROBE_KEY: &str = "netreconprobe";
 
 mod production;
 
@@ -111,6 +112,40 @@ pub fn initialize_current_settings_snapshot() -> Result<(), SettingsAdapterFailu
     let nvs = EspNvs::new(partition, NVS_NAMESPACE, false).map_err(settings_failure)?;
     refresh_current_settings_snapshot_best_effort(&nvs);
     Ok(())
+}
+
+/// Atomically consumes the private one-shot network reconnect probe marker.
+pub(crate) fn consume_network_reconnect_probe() -> Result<bool, SettingsAdapterFailure> {
+    let _transaction_guard = SETTINGS_TRANSACTION_LOCK
+        .lock()
+        .map_err(|_| SettingsAdapterFailure::failed("settings transaction lock poisoned"))?;
+    let partition = EspDefaultNvsPartition::take().map_err(settings_failure)?;
+    let mut nvs = EspNvs::new(partition.clone(), NVS_NAMESPACE, true).map_err(settings_failure)?;
+    let marker = nvs
+        .get_u16(NETWORK_RECONNECT_PROBE_KEY)
+        .map_err(settings_failure)?;
+    if marker != Some(1) {
+        return Ok(false);
+    }
+
+    let c_key = c_string(NETWORK_RECONNECT_PROBE_KEY)?;
+    let erase_result = unsafe { sys::nvs_erase_key(nvs.handle(), c_key.as_ptr()) };
+    esp_result("nvs_erase_key", erase_result)?;
+    let commit_result = unsafe { sys::nvs_commit(nvs.handle()) };
+    esp_result("nvs_commit", commit_result)?;
+    drop(nvs);
+
+    let confirmed = EspNvs::new(partition, NVS_NAMESPACE, false).map_err(settings_failure)?;
+    if confirmed
+        .get_u16(NETWORK_RECONNECT_PROBE_KEY)
+        .map_err(settings_failure)?
+        .is_some()
+    {
+        return Err(SettingsAdapterFailure::failed(
+            "network reconnect probe erasure was not confirmed",
+        ));
+    }
+    Ok(true)
 }
 
 /// Returns the last atomically published settings snapshot.

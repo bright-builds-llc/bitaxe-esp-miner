@@ -29,7 +29,8 @@ export type AutomationCommand =
   | "capture-settings-patch-evidence"
   | "capture-log-buffer-evidence"
   | "capture-partition-layout-evidence"
-  | "capture-sdkconfig-rollback-evidence";
+  | "capture-sdkconfig-rollback-evidence"
+  | "capture-network-reconnect-evidence";
 
 export type AutomationStatus = "succeeded" | "failed" | "blocked";
 
@@ -49,7 +50,10 @@ export type AutomationCategory =
   | "interruption_not_observed"
   | "probe_boot_failed"
   | "rollback_not_observed"
-  | "recovery_failed";
+  | "recovery_failed"
+  | "reconnect_not_observed"
+  | "reconnect_timing_invalid"
+  | "service_recovery_failed";
 
 export type AutomationResult = {
   schema_version: "bitaxe-automation-result-v1";
@@ -298,6 +302,40 @@ export type SdkconfigRollbackEvidence = {
   redaction_status: "passed";
 };
 
+export type NetworkReconnectObservationEvidence = {
+  disconnect_event_count: 1;
+  fallback_enabled: true;
+  first_retry_ordinal: 1;
+  configured_retry_delay_ms: 5000;
+  observed_retry_delay_ms: number;
+  dhcp_recovery_observed: true;
+  retry_ordinal_reset: true;
+  client_only_restored: true;
+  stability_window_ms: 15000;
+  stability_observed: true;
+  api_postcondition_matches: true;
+  exact_build_identity_matches: true;
+};
+
+export type NetworkReconnectEvidence = {
+  schema_version: "bitaxe-network-reconnect-evidence-v1";
+  board: 205;
+  source_commit: string;
+  reference_commit: string;
+  package_manifest_sha256: string;
+  workflow: WorkflowIdentity;
+  detector_admitted: true;
+  boot_observed: true;
+  same_boot_session: true;
+  reconnect: NetworkReconnectObservationEvidence;
+  mining_state: "disabled";
+  hardware_control_state: "disabled";
+  cleanup_complete: true;
+  recovery_flash_used: false;
+  private_modes_valid: true;
+  redaction_status: "passed";
+};
+
 const automationCommands = new Set<AutomationCommand>([
   "doctor", "bootstrap-esp", "build-firmware", "package-firmware", "package-rollback-probe", "verify-reference",
   "verify-redaction", "verify-production-session", "observe-serial", "verify-flash-durability",
@@ -312,6 +350,7 @@ const automationCommands = new Set<AutomationCommand>([
   "capture-log-buffer-evidence",
   "capture-partition-layout-evidence",
   "capture-sdkconfig-rollback-evidence",
+  "capture-network-reconnect-evidence",
 ]);
 const automationStatuses = new Set<AutomationStatus>(["succeeded", "failed", "blocked"]);
 const automationCategories = new Set<AutomationCategory>([
@@ -319,6 +358,7 @@ const automationCategories = new Set<AutomationCategory>([
   "dependency_unavailable", "policy_blocked", "authorization_blocked", "process_failed",
   "timeout", "evidence_invalid", "hardware_blocked", "package_invalid",
   "interruption_not_observed", "probe_boot_failed", "rollback_not_observed", "recovery_failed",
+  "reconnect_not_observed", "reconnect_timing_invalid", "service_recovery_failed",
 ]);
 
 export function parseAutomationResult(value: unknown): AutomationResult {
@@ -368,6 +408,7 @@ export type MonitorOptions = CommonFlashOptions & {
 export type FlashMonitorOptions = CommonFlashOptions & PackageSelection & {
   wifiCredentials?: string;
   captureTimeoutSeconds?: number;
+  networkReconnectProbe?: boolean;
 } & (
     | { evidenceMode?: undefined }
     | { evidenceMode: "dual"; evidenceDir: string; redactEvidence?: false }
@@ -408,5 +449,5 @@ export function monitorCommand(program: string, options: MonitorOptions): Comman
 }
 
 export function flashMonitorCommand(program: string, options: FlashMonitorOptions): CommandSpec<unknown> {
-  return internalCommandSpec(program, ["flash-monitor", ...commonOptions(options), ...flag("image", options.image), ...flag("manifest", options.manifest), ...flag("wifi-credentials", options.wifiCredentials), ...flag("capture-timeout-seconds", options.captureTimeoutSeconds), ...flag("evidence-mode", options.evidenceMode)], (value) => value);
+  return internalCommandSpec(program, ["flash-monitor", ...commonOptions(options), ...flag("image", options.image), ...flag("manifest", options.manifest), ...flag("wifi-credentials", options.wifiCredentials), ...flag("network-reconnect-probe", options.networkReconnectProbe), ...flag("capture-timeout-seconds", options.captureTimeoutSeconds), ...flag("evidence-mode", options.evidenceMode)], (value) => value);
 }

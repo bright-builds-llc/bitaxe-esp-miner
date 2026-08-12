@@ -276,6 +276,30 @@ fn flash_monitor_parses_only_canonical_flags() {
 }
 
 #[test]
+fn reconnect_probe_requires_wifi_credentials() {
+    // Arrange
+    let missing_credentials = ["bitaxe-flash", "flash-monitor", "--network-reconnect-probe"];
+    let admitted = [
+        "bitaxe-flash",
+        "flash-monitor",
+        "--network-reconnect-probe",
+        "--wifi-credentials",
+        "/tmp/wifi.json",
+    ];
+
+    // Act
+    let error = parse_cli(missing_credentials).expect_err("credentials must be required");
+    let cli = parse_cli(admitted).expect("probe cli");
+
+    // Assert
+    assert!(format!("{error:#}").contains("--wifi-credentials"));
+    let CliCommand::FlashMonitor(command) = cli.command else {
+        panic!("expected flash-monitor command");
+    };
+    assert!(command.network_reconnect_probe);
+}
+
+#[test]
 fn finalize_evidence_parses_software_only_inputs() {
     // Arrange
     let digest = "a".repeat(64);

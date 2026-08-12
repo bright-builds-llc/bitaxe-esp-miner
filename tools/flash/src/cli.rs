@@ -91,6 +91,9 @@ pub(crate) struct FlashMonitorCommand {
     #[arg(long = "wifi-credentials", value_parser = parse_utf8_path)]
     pub(crate) wifi_credentials: Option<Utf8PathBuf>,
 
+    #[arg(long = "network-reconnect-probe", requires = "wifi_credentials")]
+    pub(crate) network_reconnect_probe: bool,
+
     #[arg(long = "capture-timeout-seconds", default_value_t = DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS)]
     pub(crate) capture_timeout_seconds: u64,
 }

@@ -29,6 +29,7 @@ rust_library(
         "src/screen.rs",
         "src/screen/frame.rs",
         "src/screen/tests.rs",
+        "src/wifi_reconnect.rs",
     ],
     compile_data = glob(["fixtures/**"]),
     crate_name = "bitaxe_core",

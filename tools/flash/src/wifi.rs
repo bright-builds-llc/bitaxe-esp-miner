@@ -7,9 +7,16 @@ pub(crate) struct NvsSeedOutcome {
     pub(crate) _temp_dir: tempfile::TempDir,
 }
 
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) enum WifiNvsSeedMode {
+    Ordinary,
+    NetworkReconnectProbe,
+}
+
 pub(crate) fn prepare_wifi_nvs_seed(
     port: &str,
     credentials_path: &Utf8Path,
+    mode: WifiNvsSeedMode,
     environment: &impl FlashEnvironment,
 ) -> Result<NvsSeedOutcome> {
     let credentials_path = environment.workspace_path(credentials_path);
@@ -24,7 +31,7 @@ pub(crate) fn prepare_wifi_nvs_seed(
         })?;
     let csv_path = temp_dir_path.join("wifi-nvs.csv");
     let image_path = temp_dir_path.join("wifi-nvs.bin");
-    environment.write_file(&csv_path, &wifi_nvs_csv(&credentials))?;
+    environment.write_file(&csv_path, &wifi_nvs_csv_for_mode(&credentials, mode))?;
     environment.generate_nvs_partition(&csv_path, &image_path, NVS_PARTITION_SIZE)?;
 
     Ok(NvsSeedOutcome {
@@ -144,7 +151,15 @@ pub(crate) fn validation_error_summary(error: &ConfigValidationError) -> String 
     }
 }
 
+#[cfg(test)]
 pub(crate) fn wifi_nvs_csv(credentials: &WifiCredentials) -> String {
+    wifi_nvs_csv_for_mode(credentials, WifiNvsSeedMode::Ordinary)
+}
+
+pub(crate) fn wifi_nvs_csv_for_mode(
+    credentials: &WifiCredentials,
+    mode: WifiNvsSeedMode,
+) -> String {
     let mut rows = vec![
         "key,type,encoding,value".to_owned(),
         format!("{NVS_NAMESPACE},namespace,,"),
@@ -159,6 +174,9 @@ pub(crate) fn wifi_nvs_csv(credentials: &WifiCredentials) -> String {
         private_nvs_csv_row(&StoredValue::string("wifipass", &credentials.wifi_pass)),
         private_nvs_csv_row(&StoredValue::u16("mineonboot", 0)),
     ]);
+    if mode == WifiNvsSeedMode::NetworkReconnectProbe {
+        rows.push(private_nvs_csv_row(&StoredValue::u16("netreconprobe", 1)));
+    }
     rows.join("\n") + "\n"
 }
 

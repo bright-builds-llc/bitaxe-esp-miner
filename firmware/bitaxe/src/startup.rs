@@ -14,6 +14,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
     let (startup_diagnostics, maybe_modem) = initialize_hardware(startup_debug_text);
     let boot_validation_ready = start_runtime_services(startup_diagnostics, maybe_modem)?;
     let (filesystem_status, route_shell_ready) = start_storage_and_http();
+    wifi_adapter::maybe_start_network_reconnect_probe(route_shell_ready);
     publish_platform_readiness(boot_validation_ready, filesystem_status, route_shell_ready);
     Ok(())
 }

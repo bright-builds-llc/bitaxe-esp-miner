@@ -141,6 +141,23 @@ fn wifi_credentials_nvs_csv_uses_main_namespace_and_upstream_keys() {
 }
 
 #[test]
+fn network_reconnect_probe_marker_is_opt_in() {
+    // Arrange
+    let credentials = WifiCredentials {
+        ssid: "test-network".to_owned(),
+        wifi_pass: "test-password".to_owned(),
+    };
+
+    // Act
+    let ordinary = wifi_nvs_csv_for_mode(&credentials, WifiNvsSeedMode::Ordinary);
+    let probe = wifi_nvs_csv_for_mode(&credentials, WifiNvsSeedMode::NetworkReconnectProbe);
+
+    // Assert
+    assert!(!ordinary.contains("netreconprobe"));
+    assert!(probe.contains("netreconprobe,data,u16,1"));
+}
+
+#[test]
 fn wifi_credentials_reject_invalid_lengths_without_secret_value() {
     // Arrange
     let file = WifiCredentialsFile {
