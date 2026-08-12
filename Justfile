@@ -52,6 +52,14 @@ parity-progress *args:
 verify-redaction *args:
     bazel run //tools/automation:verify_redaction -- {{ args }}
 
+validate-mining-criteria-evidence projection:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    projection={{ quote(projection) }}
+    test -f "$projection"
+    projection_path="$(/bin/realpath "$projection")"
+    bazel run //crates/bitaxe-automation-contracts:validate_mining_criteria_evidence -- "$projection_path"
+
 verify-production-session:
     bazel run //tools/automation:verify_production_session
 

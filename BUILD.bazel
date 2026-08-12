@@ -75,6 +75,7 @@ js_library(
     srcs = [
         ".bazelrc",
         ".github/workflows/evidence-redaction.yml",
+        "Justfile",
     ],
     visibility = ["//tools/automation:__pkg__"],
 )

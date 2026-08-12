@@ -29,3 +29,26 @@
 - Outcome: The immutable plan is ready to commit and push before implementation.
 - Blocker or next safe action: Commit and push the plan/task records, then add
   the absolute-path validator command and focused child-boundary regression.
+
+## 2026-08-12T13:50:54Z | Absolute validator boundary sealed
+
+- Actions: Added `just validate-mining-criteria-evidence`, which requires an
+  existing input and canonicalizes it with `/bin/realpath` before invoking the
+  existing Rust validator through Bazel. Added a real-child regression with a
+  fake Bazel boundary that requires exactly one existing absolute file path,
+  and exposed the Justfile to the sandboxed automation test runfiles.
+- Verification: Focused test iterations caught stdout capture assumptions,
+  macOS `/var` canonicalization, typed command construction, host-tool lookup,
+  and missing Justfile runfiles data; each was fixed at the boundary. The final
+  focused test and 222-case automation target pass. Format, clippy, all-target
+  build, all-feature tests, Bright Builds checks, all 37 Bazel test targets,
+  parity, progress, redaction, reference, plan digest, projection absence,
+  reference cleanliness, and diff checks pass.
+- Evidence: No projection, candidate, protected input, credentials, network,
+  or hardware was accessed.
+- Simplification: The solution adds one seven-line human command surface and
+  one boundary test while reusing the existing Rust validator unchanged.
+- Outcome: The validator boundary is ready to commit and push.
+- Blocker or next safe action: Commit and push the guarded boundary, confirm a
+  clean synchronized head, then run the single projector plus independent
+  validator transaction allowed by this plan.
