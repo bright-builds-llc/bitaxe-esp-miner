@@ -102,3 +102,24 @@
   checkpoint.
 - Blocker or next safe action: Commit and push the implementation, then run
   the public projector from that exact clean commit.
+
+## 2026-08-12 20:19 UTC | production-shaped source-admission correction
+
+- Source commit: `ff021dcb` (first pushed implementation checkpoint)
+- Actions: Invoked the sealed projector from the clean pushed checkpoint. It
+  failed closed because the short stabilization fragment also appeared in the
+  module import, so uniqueness could not be established. Replaced that guard
+  with the complete 500-ms wait arm and made the regression fixture retain the
+  production-shaped duplicate import token.
+- Verification: The failed invocation returned `evidence_invalid`, reported
+  `hardware_rerun_used: false` and `projection_published: false`, and left both
+  public and candidate paths absent. All 18 focused tests passed. The complete
+  ordered Cargo sequence, Bright Builds with zero findings, all 41 Bazel tests,
+  parity, progress, redaction, pinned-reference, generated-contract,
+  immutable-plan, unique-task, and diff checks then passed again.
+- Evidence: Failure-category and absence proof only. No final projection was
+  published and no hardware interaction occurred.
+- Outcome: The real source shape is now represented by the regression, while
+  the semantic admission remains stricter than the original short token.
+- Blocker or next safe action: Commit and push the correction, then rerun the
+  sealed public projector from the new exact clean commit.

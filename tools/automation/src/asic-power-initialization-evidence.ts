@@ -79,7 +79,12 @@ const semanticFragments = new Map<string, readonly string[]>([
     "PreparationStep::SetFanDutyTo100Percent => self.set_fan_full(),",
     "PreparationStep::RequireFreshNonzeroFanRpm => self.wait_for_post_command_fan_proof(),",
     "SafetyActuationCommand::SetCoreVoltage(Self::core_voltage(voltage)?)",
-    "CORE_VOLTAGE_STABILIZATION_MS,",
+    `PreparationStep::WaitForCoreVoltageStabilization500Ms => {
+                thread::sleep(Duration::from_millis(u64::from(
+                    CORE_VOLTAGE_STABILIZATION_MS,
+                )));
+                Ok(())
+            }`,
     "crate::asic_adapter::production::set_asic_power_enabled(true)",
     "PreparationStep::ResetAndDetectExactlyOneChip => {",
     "PreparationStep::InitializeMiningReadyWithFrequencyRamp(frequency) => {",
