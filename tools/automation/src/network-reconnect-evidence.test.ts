@@ -27,8 +27,8 @@ function monitorLog(attemptUptime = 8_000): string {
     "wifi_reconnect=disconnected reason=other retry_ordinal=1 fallback=true retry_delay_ms=5000 uptime_ms=3000",
     `wifi_reconnect=attempt_started retry_ordinal=1 uptime_ms=${String(attemptUptime)}`,
     "wifi_reconnect=connected completed_retry_ordinal=1 retry_ordinal=0 fallback=false uptime_ms=9000",
-    "wifi_reconnect_probe=recovered completed_retry_ordinal=1 uptime_ms=9000",
-    "wifi_reconnect_probe=stable completed_retry_ordinal=1 stability_ms=15000 uptime_ms=24000",
+    "wifi_reconnect_probe=recovered completed_retry_ordinal=1 uptime_ms=9028",
+    "wifi_reconnect_probe=stable completed_retry_ordinal=1 stability_ms=15000 uptime_ms=24054",
   ].join("\n") + "\n";
 }
 

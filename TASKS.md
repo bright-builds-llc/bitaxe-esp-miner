@@ -1620,11 +1620,11 @@ defines the retained-log continuation using fresh attempt-005 paths.
       regression coverage.
 - [x] Run focused and mandatory software gates; commit and push the exact
       implementation before hardware use.
-- [ ] Run one protected detector and, only after admission, one protected
+- [x] Run one protected detector and, only after admission, one protected
       attempt-001 capture on board 205.
-- [ ] Promote only `NET-001` when the live same-boot reconnect, stable recovery,
-      disabled effects, cleanup, private modes, redaction, and every software
-      gate pass.
+- [x] Evaluate promotion against the complete acceptance contract; withhold
+      public evidence and keep `NET-001` implemented because the host timing
+      validator rejected the sequential recovered marker before HTTP quorum.
 
 Plan: `docs/parity/work-plans/20260812T025425Z-NET-001/PLAN.md`.
 
@@ -1673,7 +1673,15 @@ task-uniqueness, reference-cleanliness, and diff checks. The selector now
 returns this exact `NET-001` plan as the sole open plan. No hardware, package,
 credential, NVS, or network effect occurred.
 
-Completion review: Pending.
+Completion review: Attempt-001 consumed its sole detector and hardware budget.
+The device emitted exactly one disconnect, a first retry after 5,033 ms, DHCP
+recovery, client-only return, and 15,026 ms of stability. The host validator
+incorrectly required connected and recovered log calls to share one exact
+millisecond; their valid 28-ms separation produced `reconnect_timing_invalid`
+before final HTTP quorum. Public evidence was withheld, ordinary exact-package
+recovery succeeded, private modes passed, and `NET-001` remains implemented.
+See `docs/parity/work-plans/20260812T025425Z-NET-001/CLOSURE.md`. A new immutable
+plan and ordinal are required for another hardware proof.
 
 ## Future
 

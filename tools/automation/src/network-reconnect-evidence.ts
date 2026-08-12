@@ -249,7 +249,8 @@ export async function captureNetworkReconnectEvidence(
     if (!(armedMs < disconnectedMs
       && disconnectedMs < attemptedMs
       && attemptedMs <= connectedMs
-      && connectedMs === recoveredMs
+      && connectedMs <= recoveredMs
+      && recoveredMs - connectedMs <= 1_000
       && observedRetryDelayMs >= 5_000
       && observedRetryDelayMs <= 15_000
       && stableMs - recoveredMs >= 15_000)) {

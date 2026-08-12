@@ -70,3 +70,42 @@
   generation, detector admission, or the single hardware capture.
 - Blocker or next safe action: Commit and push, build the exact clean package,
   then execute detector wrapper-001 and conditional attempt-001 exactly once.
+
+## 2026-08-11T22:31:52Z | attempt-001 terminal closure
+
+- Source commit: `daa27a3337c834285580362ab6dcfe0e5d6c428f`
+- Actions: Built the exact clean package, spent wrapper-001 detector admission,
+  and ran the sole conditional attempt-001. Accepted its non-success category
+  without retry and corrected the discovered host timing overconstraint.
+- Verification: Detector admitted one board 205. Private marker counts were
+  exactly one each for armed, disconnected, attempted, connected, recovered,
+  and stable. Derived delays were 2,063, 5,033, 4,466, 28, and 15,026 ms at
+  their respective lifecycle boundaries. Private roots were mode 0700, files
+  mode 0600, and the public projection was absent.
+- Evidence: Typed terminal category `reconnect_timing_invalid`; ordinary exact-
+  package recovery completed; recovery flash used; no secondary recovery
+  failure. Raw operational material remains ignored and private.
+- Outcome: No promotion. `NET-001` remains implemented because final HTTP
+  quorum and public-evidence validation did not run after the false timing
+  rejection.
+- Blocker or next safe action: Close this exhausted plan and retain its task as
+  active non-verified work. A new immutable plan and ordinal may retry only
+  after the corrected validator and complete software gate are clean and
+  pushed.
+
+## 2026-08-12T03:40:28Z | closure gate complete
+
+- Source commit: `daa27a3337c834285580362ab6dcfe0e5d6c428f`
+- Actions: Replaced the non-verifying result draft with the required typed
+  closure and retained the exhausted task as active non-verified work.
+- Verification: The corrected timing regression passed the ordered Cargo
+  format, strict Clippy, all-target build, all-feature test, Bright Builds,
+  37-target Bazel, parity, progress, redaction, reference, generated-contract,
+  immutable-plan, task-uniqueness, reference-cleanliness, selector, and diff
+  gates.
+- Evidence: The selector recognizes the closure, reports no open plan, and
+  keeps `NET-001` as the first actionable implemented row.
+- Outcome: Attempt-001 is truthfully closed without a checklist transition or
+  progress synchronization.
+- Blocker or next safe action: Commit and push this checkpoint, then create a
+  fresh immutable `NET-001` continuation with attempt-002 paths.
