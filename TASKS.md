@@ -2183,6 +2183,12 @@ is a new bounded software retry contract that replaces the ambiguous substring
 with a source-shaped unique fragment and adds the production-file regression
 that this attempt exposed.
 
+Plan closure:
+`docs/parity/work-plans/20260812T203223Z-PWR-003/CLOSURE.md` records the
+non-verifying terminal outcome. PWR-003 remains `implemented`, no checklist
+transition or progress synchronization is warranted, and this task remains
+active for a fresh bounded software-only retry plan.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

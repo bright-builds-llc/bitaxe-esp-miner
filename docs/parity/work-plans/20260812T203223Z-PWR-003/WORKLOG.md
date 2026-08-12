@@ -106,3 +106,19 @@
   A future bounded software retry must replace the ambiguous substring with a
   source-shaped unique fragment and add a production-file regression before
   any new projection attempt.
+
+## 2026-08-12T21:16:59Z | terminal plan closure
+
+- Source commit: `0da637ec91908ad0f3fdc7ff42c8561916dc279b`
+- Actions: Resumed the selector-reported open plan and created its required
+  non-verifying `CLOSURE.md` without changing the immutable plan or checklist.
+- Verification: Closure metadata binds PWR-003, its implemented status, active
+  task, and exact immutable-plan SHA-256. The final evidence and candidate
+  paths remain absent.
+- Evidence: Closure documentation only; verification is explicitly not
+  claimed.
+- Outcome: The plan lifecycle is closed while PWR-003 and its active task
+  remain unfinished.
+- Blocker or next safe action: A later `$advance-parity` invocation may select
+  a fresh bounded software-only retry plan with the exact matcher regression;
+  no hardware rerun is warranted.
