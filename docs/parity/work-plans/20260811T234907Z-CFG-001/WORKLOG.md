@@ -91,3 +91,25 @@
 - Outcome: The implementation is eligible for its exact commit and push.
 - Blocker or next safe action: Commit and push without changing the checklist,
   then build that exact commit and run the one detector-gated attempt-001.
+
+## 2026-08-12T00:29:42Z | Attempt-001 passed
+
+- Source commit: `78bbc156f3a8c7d0b1cacd21396933d80fdc9612`.
+- Actions: Rebuilt the normal package from the clean pushed implementation,
+  admitted exactly one Ultra 205 through the fresh detector, and spent the
+  single bounded capture attempt. No retry or recovery flash ran.
+- Verification: The capture completed successfully. The independent Rust
+  validator accepted the closed projection, which binds the exact package and
+  reports firmware defaults `27/27`, API-visible defaults `23/23` in both HTTP
+  and WebSocket views, retained attestation continuity, disabled mining and
+  hardware control, cleanup, valid private modes, and passed redaction.
+- Evidence: `docs/parity/evidence/cfg001-ultra205-defaults/ultra205-defaults-projection.json`
+  with SHA-256
+  `415ac8830d2360b0ceff5fe1cf68f69fcf95d9a44da749b4c641b7c82e38f8b2`.
+  Raw detector, serial, HTTP, WebSocket, configured, credential, device, and
+  network values remain only in ignored private mode-`0700`/`0600` artifacts.
+- Outcome: Every immutable-plan promotion criterion passed; `CFG-001` is
+  eligible for `verified`.
+- Blocker or next safe action: Commit and push the result/evidence without
+  changing the checklist, then transition only `CFG-001`, synchronize progress,
+  archive the completed task, and run final gates.

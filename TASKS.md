@@ -1644,8 +1644,8 @@ defines the retained-log continuation using fresh attempt-005 paths.
       every API-visible default against the same pinned model.
 - [x] Add typed contracts and behavior-focused unit, real-process, failure,
       recovery, no-output, and privacy regressions.
-- [ ] Run the complete ordered software gate and push before hardware use.
-- [ ] Spend one fresh detector and at most one conditional attempt-001.
+- [x] Run the complete ordered software gate and push before hardware use.
+- [x] Spend one fresh detector and at most one conditional attempt-001.
 - [ ] Promote only `CFG-001` after independent validation and final gates.
 
 Plan: `docs/parity/work-plans/20260811T234907Z-CFG-001/PLAN.md`.

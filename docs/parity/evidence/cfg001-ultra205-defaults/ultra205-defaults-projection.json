@@ -1,0 +1,70 @@
+{
+  "schema_version": "bitaxe-ultra205-defaults-evidence-v1",
+  "board": 205,
+  "source_commit": "78bbc156f3a8c7d0b1cacd21396933d80fdc9612",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "package_manifest_sha256": "3ec7f92615503071b004ed795e9a89e5b467bd105d7db676c92f782b5bfe4796",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "capture-ultra205-defaults-evidence",
+    "request_sha256": "4512e3ce23e1c7b075380cc91677224ab4f9c1b71aab4bbafb163c9da23f3af3"
+  },
+  "detector_admitted": true,
+  "boot_observed": true,
+  "system_info": {
+    "schema_version": "bitaxe-system-info-evidence-v1",
+    "board": 205,
+    "source_commit": "78bbc156f3a8c7d0b1cacd21396933d80fdc9612",
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "package_manifest_sha256": "3ec7f92615503071b004ed795e9a89e5b467bd105d7db676c92f782b5bfe4796",
+    "workflow": {
+      "schema_version": "bitaxe-workflow-identity-v1",
+      "command": "capture-system-info-evidence",
+      "request_sha256": "308e48189aedf0ba71588a9ba1756e9e1eaae74e4c0bda006692c9786e724792"
+    },
+    "detector_admitted": true,
+    "boot_observed": true,
+    "same_origin_observed": true,
+    "system_info": {
+      "boot_session_sha256": "ca834e0cf9983678e2c02091bf9c1a543649a05ddc5aa032acf049319efae515",
+      "http_revision": 975,
+      "websocket_revision": 976,
+      "same_boot_session": true,
+      "websocket_revision_not_earlier": true,
+      "field_contract_schema": "bitaxe-system-info-field-contract-v1",
+      "field_contract_sha256": "91c5f211c5cab92d48e8cfd60ed65ee1d5bfbe19d201b0bdc1bd2414d9ff3988",
+      "required_field_count": 94,
+      "unconditional_field_count": 87,
+      "conditional_field_count": 7,
+      "http_unconditional_fields_complete": true,
+      "websocket_unconditional_fields_complete": true,
+      "http_field_types_match": true,
+      "websocket_field_types_match": true,
+      "inactive_block_fields_absent": true,
+      "confirmed_setting_fields_present": true,
+      "retained_http_tuple_matches": true,
+      "retained_websocket_tuple_matches": true
+    },
+    "mining_state": "disabled",
+    "hardware_control_state": "disabled",
+    "cleanup_complete": true,
+    "redaction_status": "passed"
+  },
+  "defaults": {
+    "configured_default_field_count": 27,
+    "firmware_matching_field_count": 27,
+    "firmware_all_defaults_match": true,
+    "api_visible_default_field_count": 23,
+    "http_defaults_match": true,
+    "websocket_defaults_match": true,
+    "retained_attestation_matches": true,
+    "mining_on_boot_disabled": true,
+    "exact_seed_fixture_sha256": "66b5dd32337a3b9e93b6e046696084cb81d14d9aa9bab8157769ff58f8946a8c",
+    "system_info_evidence_sha256": "dc61200fa44fa11a71e165e0e419cad4bd7fe33e74d3baeb49a432f200d3c6f3"
+  },
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "cleanup_complete": true,
+  "private_modes_valid": true,
+  "redaction_status": "passed"
+}
