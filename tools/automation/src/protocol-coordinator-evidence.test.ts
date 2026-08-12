@@ -200,7 +200,18 @@ function coordinatorSource(sourcePath: string): string {
       "task_watchdog.feed(crate::runtime_uptime::millis());",
     ].join("\n");
   }
-  return "AsicWorkerCommand::Dispatch {\n";
+  return [
+    "AsicWorkerCommand::Dispatch {",
+    "                            generation,",
+    "                            valid_jobs,",
+    "                            command,",
+    "                        } => match executor.maybe_execute(command, &valid_jobs) {",
+    "ProductionSessionEffect::DispatchAsic {",
+    "                generation,",
+    "                valid_jobs,",
+    "                command,",
+    "            } => Ok(AsicWorkerCommand::Dispatch {",
+  ].join("\n");
 }
 
 function fakePort(options: {
@@ -209,6 +220,7 @@ function fakePort(options: {
   readonly dirty?: boolean;
   readonly validatorFailure?: boolean;
   readonly launchFailure?: boolean;
+  readonly asicWorkerShape?: "missing" | "duplicate" | "reordered" | "unbound";
 } = {}): ProcessPort {
   return createFakeProcessPort(async (spec) => {
     if (options.launchFailure) throw new Error("launch failed");
@@ -226,6 +238,17 @@ function fakePort(options: {
       const sourcePath = coordinatorPaths.find((candidate) => target.endsWith(candidate));
       if (sourcePath !== undefined) {
         let document = coordinatorSource(sourcePath);
+        if (sourcePath.endsWith("asic_worker.rs")) {
+          const [consumer, mapper] = document.split("ProductionSessionEffect::DispatchAsic {");
+          if (options.asicWorkerShape === "missing") document = consumer ?? "";
+          if (options.asicWorkerShape === "duplicate") document = `${document}\n${consumer ?? ""}`;
+          if (options.asicWorkerShape === "reordered") {
+            document = `ProductionSessionEffect::DispatchAsic {${mapper ?? ""}\n${consumer ?? ""}`;
+          }
+          if (options.asicWorkerShape === "unbound") {
+            document = document.replace("executor.maybe_execute(command, &valid_jobs)", "executor.maybe_execute(other, &valid_jobs)");
+          }
+        }
         if (options.semanticDrift && sourcePath.endsWith("runtime_orchestration.rs")) {
           document = document.replace("PRODUCTION_REREAD_CADENCE_MS: u64 = 1_000", "changed");
         }
@@ -293,6 +316,23 @@ test("module, semantic, and dirty-path drift withhold public evidence", async ()
     // Act
     const error = await captureError(projectProtocolCoordinatorEvidence(
       value.root, value.options, port, "git", validators, value.admittedDigests,
+    ));
+
+    // Assert
+    assert.equal(error.category, "evidence_invalid");
+    await assert.rejects(readFile(value.projection, "utf8"), { code: "ENOENT" });
+  }
+});
+
+test("ASIC worker dispatch spans must be complete, unique, ordered, and bound", async () => {
+  for (const asicWorkerShape of ["missing", "duplicate", "reordered", "unbound"] as const) {
+    // Arrange
+    const value = await fixture(asicWorkerShape);
+
+    // Act
+    const error = await captureError(projectProtocolCoordinatorEvidence(
+      value.root, value.options, fakePort({ asicWorkerShape }), "git", validators,
+      value.admittedDigests,
     ));
 
     // Assert

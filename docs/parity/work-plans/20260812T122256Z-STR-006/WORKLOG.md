@@ -29,3 +29,37 @@
 - Outcome: The fresh bounded plan is ready to commit and push.
 - Blocker or next safe action: Push the immutable plan before editing the
   projector or its regressions.
+
+## 2026-08-12T12:30:29Z | Two-span guard implementation
+
+- Source commit: `fc9c807359581b35c9af8dd7e03c6c116bdba10e`
+- Actions: Replaced the broad worker dispatch token with the exact ordered
+  executor-consumption and effect-to-command mapping spans, and reshaped the
+  synthetic source fixture to match both legitimate production occurrences.
+- Verification: The focused automation Bazel suite passes. New regressions
+  reject missing, duplicate, reordered, and unbound spans; the production-shaped
+  accepted fixture passes. The projector is 499 lines, the file-length check
+  has no findings, and `git diff --check` passes.
+- Evidence: No protected evidence or hardware was accessed. No projection was
+  attempted or published.
+- Outcome: The false uniqueness assumption is removed without weakening the
+  source, lineage, validation, atomic-publication, or redaction gates.
+- Blocker or next safe action: Run the complete implementation gate, then
+  commit and push before the plan's one software-only projection attempt.
+
+## 2026-08-12T12:35:59Z | Implementation gate
+
+- Source commit: `fc9c807359581b35c9af8dd7e03c6c116bdba10e`
+- Actions: Ran the complete ordered repository gate plus generated-contract,
+  redaction, reference, reference-cleanliness, immutable-plan,
+  task-uniqueness, and diff checks.
+- Verification: All Cargo stages, Bright Builds, the expanded automation suite,
+  all 37 Bazel tests, parity, and progress pass. Generated contracts verify,
+  redaction checks 13 changed files, the pinned reference is clean, and the
+  plan digest remains
+  `d35415c87cc640f29749fcac4fa53132b7391e9e3e929b5ad2f2d0d1cb45f9da`.
+- Evidence: No protected evidence or hardware was accessed. No projection was
+  attempted or published.
+- Outcome: The corrected implementation satisfies every pre-publication gate.
+- Blocker or next safe action: Commit and push the fix, confirm exact clean
+  synchronization, then run the plan's one software-only projection attempt.

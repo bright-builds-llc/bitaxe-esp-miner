@@ -39,7 +39,6 @@ export type ProtocolCoordinatorAdmittedDigests = {
 };
 
 type FailureCategory = Extract<AutomationCategory, "evidence_invalid" | "process_failed">;
-
 const sourceSpecifications = {
   initialization: {
     path: "docs/parity/evidence/asic002-initialization/asic-initialization-projection.json",
@@ -66,6 +65,10 @@ const orchestrationPath = "crates/bitaxe-stratum/src/v1/production_session/orche
 const asicRuntimePath = "crates/bitaxe-stratum/src/v1/production_session/runtime/asic.rs";
 const ownerPath = "firmware/bitaxe/src/production_mining_session.rs";
 const asicWorkerPath = "firmware/bitaxe/src/production_mining_session/asic_worker.rs";
+const asicWorkerSpans = [
+  "AsicWorkerCommand::Dispatch {\n                            generation,\n                            valid_jobs,\n                            command,\n                        } => match executor.maybe_execute(command, &valid_jobs) {",
+  "ProductionSessionEffect::DispatchAsic {\n                generation,\n                valid_jobs,\n                command,\n            } => Ok(AsicWorkerCommand::Dispatch {",
+] as const;
 const coordinatorPaths = [
   cadencePath,
   recoveryPath,
@@ -107,9 +110,7 @@ const sourceFragments = new Map<string, readonly string[]>([
     "while let Some(event) = events.pop_front() {",
     "task_watchdog.feed(crate::runtime_uptime::millis());",
   ]],
-  [asicWorkerPath, ["AsicWorkerCommand::Dispatch {"]],
 ]);
-
 export class ProtocolCoordinatorEvidenceError extends Error {
   public constructor(
     public readonly category: FailureCategory,
@@ -120,7 +121,6 @@ export class ProtocolCoordinatorEvidenceError extends Error {
     this.name = "ProtocolCoordinatorEvidenceError";
   }
 }
-
 function failure(category: FailureCategory, message: string): ProtocolCoordinatorEvidenceError {
   return new ProtocolCoordinatorEvidenceError(category, message, {
     stage: "sealed_protocol_coordinator_projection",
@@ -128,7 +128,6 @@ function failure(category: FailureCategory, message: string): ProtocolCoordinato
     projection_published: false,
   });
 }
-
 function sha256(value: string | Buffer): string {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -300,6 +299,9 @@ async function validateSourceCompatibility(
     }
     requireUniqueFragments(document, fragments);
   }
+  const asicWorker = byPath.get(asicWorkerPath) ?? "";
+  requireUniqueFragments(asicWorker, asicWorkerSpans);
+  requireOrderedFragments(asicWorker, asicWorkerSpans);
   const runtime = byPath.get(runtimePath) ?? "";
   requireOrderedFragments(runtime, [
     "RecoveryAction::BlockSubmissions,",
