@@ -24,6 +24,32 @@ new work.
 
 ## Active
 
+### task-parity-asic003-sealed-work-send-promotion | 2026-08-12 | Promote sealed BM1366 work-send proof
+
+- [ ] Add a typed, closed projector and validator that derive ASIC work-send
+      proof from the committed sealed initialization projection.
+- [ ] Prove exact work-module compatibility, bounded production dispatch/UART-
+      write span compatibility, live qualified accepted work, safety, cleanup,
+      and redaction without exposing work or operational values.
+- [ ] Run every software and privacy gate, publish one redacted projection,
+      and promote only `ASIC-003` when the complete quorum passes.
+
+Plan: `docs/parity/work-plans/20260812T091446Z-ASIC-003/PLAN.md`.
+
+Authorization: read-only use of committed public evidence and Git history
+only. No protected campaign read, detector, flash, reset, USB session,
+credential read, serial/network request, mining, fan/voltage/power/ASIC
+actuation, recovery, direct UART, pins, or other hardware effect is permitted.
+Only closed redaction-safe categories, counts, digests, commits, and booleans
+may be published.
+
+Verification and stop rule: require a valid committed ASIC initialization
+projection, exact digest and commit binding, byte-identical BM1366 work/
+production/command modules, compatible bounded worker-dispatch and adapter-
+write spans, focused regressions, independent Rust validation, every
+repository gate, redaction, and reference cleanliness. Any failure leaves
+`ASIC-003` implemented and stops this plan without a hardware fallback.
+
 ### task-ultra205-default-profile-soak | 2026-07-28 | Run the bounded upstream-default mining soak
 
 - [x] Start a fresh exact-package attempt at 485 MHz, 1200 mV, and 100% fan
