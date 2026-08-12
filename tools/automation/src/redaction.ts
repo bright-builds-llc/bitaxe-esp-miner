@@ -10,6 +10,7 @@ const semanticSchemas = new Set([
   "bitaxe-settings-durability-evidence-v2",
   "bitaxe-theme-durability-evidence-v1",
   "bitaxe-system-info-evidence-v1",
+  "bitaxe-ultra205-defaults-evidence-v1",
   "bitaxe-settings-patch-evidence-v1",
   "bitaxe-log-buffer-evidence-v1",
   "bitaxe-partition-layout-evidence-v1",

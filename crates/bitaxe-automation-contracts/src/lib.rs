@@ -11,6 +11,7 @@ mod runtime_health_evidence;
 mod sdkconfig_rollback_evidence;
 mod settings_patch_evidence;
 mod system_info_evidence;
+mod ultra205_defaults_evidence;
 
 pub use log_buffer_evidence::{LogBufferEvidence, LogBufferObservationEvidence};
 pub use operator_snapshot_evidence::{
@@ -23,6 +24,9 @@ pub use sdkconfig_rollback_evidence::{
 };
 pub use settings_patch_evidence::{SettingsPatchEvidence, SettingsPatchObservationEvidence};
 pub use system_info_evidence::{SystemInfoEvidence, SystemInfoObservationEvidence};
+pub use ultra205_defaults_evidence::{
+    Ultra205DefaultsEvidence, Ultra205DefaultsObservationEvidence,
+};
 
 pub const CONTRACT_BUNDLE_SCHEMA: &str = "bitaxe-command-contract-v1";
 pub const RESULT_SCHEMA: &str = "bitaxe-automation-result-v1";
@@ -33,6 +37,7 @@ pub const VERSION_EVIDENCE_SCHEMA: &str = "bitaxe-version-evidence-v1";
 pub const OPERATOR_SNAPSHOT_EVIDENCE_SCHEMA: &str = "bitaxe-operator-snapshot-evidence-v1";
 pub const RUNTIME_HEALTH_EVIDENCE_SCHEMA: &str = "bitaxe-runtime-health-evidence-v1";
 pub const SYSTEM_INFO_EVIDENCE_SCHEMA: &str = "bitaxe-system-info-evidence-v1";
+pub const ULTRA205_DEFAULTS_EVIDENCE_SCHEMA: &str = "bitaxe-ultra205-defaults-evidence-v1";
 pub const SETTINGS_PATCH_EVIDENCE_SCHEMA: &str = "bitaxe-settings-patch-evidence-v1";
 pub const LOG_BUFFER_EVIDENCE_SCHEMA: &str = "bitaxe-log-buffer-evidence-v1";
 pub const PARTITION_LAYOUT_EVIDENCE_SCHEMA: &str = "bitaxe-partition-layout-evidence-v1";
@@ -70,6 +75,7 @@ pub enum AutomationCommand {
     CaptureOperatorSnapshotEvidence,
     CaptureRuntimeHealthEvidence,
     CaptureSystemInfoEvidence,
+    CaptureUltra205DefaultsEvidence,
     CaptureSettingsPatchEvidence,
     CaptureLogBufferEvidence,
     CapturePartitionLayoutEvidence,
@@ -216,6 +222,7 @@ pub struct ContractBundle {
     pub operator_snapshot_evidence_schema: Value,
     pub runtime_health_evidence_schema: Value,
     pub system_info_evidence_schema: Value,
+    pub ultra205_defaults_evidence_schema: Value,
     pub settings_patch_evidence_schema: Value,
     pub log_buffer_evidence_schema: Value,
     pub partition_layout_evidence_schema: Value,
@@ -244,6 +251,10 @@ pub fn contract_bundle() -> ContractBundle {
             .expect("runtime health evidence schema must serialize"),
         system_info_evidence_schema: serde_json::to_value(schema_for!(SystemInfoEvidence))
             .expect("system info evidence schema must serialize"),
+        ultra205_defaults_evidence_schema: serde_json::to_value(schema_for!(
+            Ultra205DefaultsEvidence
+        ))
+        .expect("Ultra 205 defaults evidence schema must serialize"),
         settings_patch_evidence_schema: serde_json::to_value(schema_for!(SettingsPatchEvidence))
             .expect("settings PATCH evidence schema must serialize"),
         log_buffer_evidence_schema: serde_json::to_value(schema_for!(LogBufferEvidence))
@@ -280,6 +291,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::CaptureOperatorSnapshotEvidence,
             AutomationCommand::CaptureRuntimeHealthEvidence,
             AutomationCommand::CaptureSystemInfoEvidence,
+            AutomationCommand::CaptureUltra205DefaultsEvidence,
             AutomationCommand::CaptureSettingsPatchEvidence,
             AutomationCommand::CaptureLogBufferEvidence,
             AutomationCommand::CapturePartitionLayoutEvidence,
@@ -293,6 +305,7 @@ pub fn contract_bundle() -> ContractBundle {
             OPERATOR_SNAPSHOT_EVIDENCE_SCHEMA,
             RUNTIME_HEALTH_EVIDENCE_SCHEMA,
             SYSTEM_INFO_EVIDENCE_SCHEMA,
+            ULTRA205_DEFAULTS_EVIDENCE_SCHEMA,
             SETTINGS_PATCH_EVIDENCE_SCHEMA,
             LOG_BUFFER_EVIDENCE_SCHEMA,
             PARTITION_LAYOUT_EVIDENCE_SCHEMA,

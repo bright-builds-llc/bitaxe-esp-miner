@@ -5,6 +5,7 @@ import { SettingsPatchEvidenceError } from "./settings-patch-evidence.js";
 import { SdkconfigRollbackEvidenceError } from "./sdkconfig-rollback-evidence.js";
 import { SystemInfoEvidenceError } from "./system-info-evidence.js";
 import { ThemeDurabilityError } from "./theme-durability.js";
+import { Ultra205DefaultsEvidenceError } from "./ultra205-defaults-evidence.js";
 
 export function maybeTypedFailurePublicValue(error: unknown): Readonly<Record<string, unknown>> | undefined {
   if (error instanceof SettingsDurabilityError
@@ -12,6 +13,7 @@ export function maybeTypedFailurePublicValue(error: unknown): Readonly<Record<st
     || error instanceof OperatorSnapshotEvidenceError
     || error instanceof RuntimeHealthEvidenceError
     || error instanceof SystemInfoEvidenceError
+    || error instanceof Ultra205DefaultsEvidenceError
     || error instanceof SettingsPatchEvidenceError
     || error instanceof SdkconfigRollbackEvidenceError) {
     return error.publicValue;

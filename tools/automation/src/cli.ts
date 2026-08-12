@@ -39,6 +39,10 @@ import { captureSystemInfoEvidence, SystemInfoEvidenceError } from "./system-inf
 import { captureSettingsDurability, SettingsDurabilityError } from "./settings-durability.js";
 import { captureThemeDurability, ThemeDurabilityError } from "./theme-durability.js";
 import { maybeTypedFailurePublicValue } from "./typed-failure.js";
+import {
+  captureUltra205DefaultsEvidence,
+  Ultra205DefaultsEvidenceError,
+} from "./ultra205-defaults-evidence.js";
 import { captureVersionEvidence } from "./version-evidence.js";
 import { executeCommandSpec } from "./workflow.js";
 import { assertWithinWorkspace } from "./workspace.js";
@@ -225,6 +229,7 @@ async function dispatchProcess(
     case "capture-operator-snapshot-evidence":
     case "capture-runtime-health-evidence":
     case "capture-system-info-evidence":
+    case "capture-ultra205-defaults-evidence":
     case "capture-settings-patch-evidence":
     case "capture-log-buffer-evidence":
     case "capture-partition-layout-evidence":
@@ -327,6 +332,18 @@ async function main(): Promise<number> {
         projection: optionValue(invocation, "--projection"),
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root), toolProgram(root, "crates/bitaxe-automation-contracts/validate_system_info_evidence"));
+    } else if (invocation.command === "capture-ultra205-defaults-evidence") {
+      const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
+      publicValue = await captureUltra205DefaultsEvidence(root, {
+        privateRoot: optionValue(invocation, "--private-root"),
+        packageManifest: optionValue(invocation, "--package-manifest"),
+        wifiCredentials: optionValue(invocation, "--wifi-credentials"),
+        port,
+        projection: optionValue(invocation, "--projection"),
+        captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
+      }, processPort, flashProgram(root),
+      toolProgram(root, "crates/bitaxe-automation-contracts/validate_system_info_evidence"),
+      toolProgram(root, "crates/bitaxe-automation-contracts/validate_ultra205_defaults_evidence"));
     } else if (invocation.command === "capture-settings-patch-evidence") {
       const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
       publicValue = await captureSettingsPatchEvidence(root, {
@@ -408,6 +425,7 @@ async function main(): Promise<number> {
     const snapshotFailure = error instanceof OperatorSnapshotEvidenceError;
     const runtimeHealthFailure = error instanceof RuntimeHealthEvidenceError;
     const systemInfoFailure = error instanceof SystemInfoEvidenceError;
+    const ultra205DefaultsFailure = error instanceof Ultra205DefaultsEvidenceError;
     const settingsPatchFailure = error instanceof SettingsPatchEvidenceError;
     const logBufferFailure = error instanceof LogBufferEvidenceError;
     const partitionLayoutFailure = error instanceof PartitionLayoutEvidenceError;
@@ -416,7 +434,7 @@ async function main(): Promise<number> {
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure
+        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure
           ? error.category
           : "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";

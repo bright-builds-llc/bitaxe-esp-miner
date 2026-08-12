@@ -1,4 +1,16 @@
 load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+load("@aspect_rules_js//js:defs.bzl", "js_library")
+
+exports_files(
+    ["fixtures/ultra-205-defaults.csv"],
+    visibility = ["//visibility:public"],
+)
+
+js_library(
+    name = "ultra205_defaults_fixture_js",
+    srcs = ["fixtures/ultra-205-defaults.csv"],
+    visibility = ["//tools/automation:__pkg__"],
+)
 
 filegroup(
     name = "architecture_model_sources",
@@ -12,6 +24,7 @@ rust_library(
         "src/catalog.rs",
         "src/confirmed_snapshot.rs",
         "src/defaults.rs",
+        "src/defaults/attestation.rs",
         "src/defaults/matrix.rs",
         "src/defaults/matrix/tests.rs",
         "src/display.rs",

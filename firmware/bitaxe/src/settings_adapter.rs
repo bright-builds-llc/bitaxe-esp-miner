@@ -10,7 +10,7 @@ use bitaxe_api::{
 use bitaxe_config::nvs::StoredValueKind;
 use bitaxe_config::{
     all_settings_schema, project_settings_schema, ConfirmedSnapshotReadHealth, NvsSnapshot,
-    NvsWrite, StoredValue, NVS_NAMESPACE,
+    NvsWrite, StoredValue, Ultra205DefaultsAttestation, NVS_NAMESPACE,
 };
 use esp_idf_svc::handle::RawHandle;
 use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDataType, NvsDefault};
@@ -150,6 +150,18 @@ pub fn current_system_info_settings_snapshot() -> NvsSnapshot {
     };
 
     read_system_info_settings_snapshot_best_effort(&nvs)
+}
+
+/// Strictly reads and compares the loaded live settings with the Ultra 205 seed.
+pub fn current_ultra205_defaults_attestation(
+) -> Result<Ultra205DefaultsAttestation, SettingsAdapterFailure> {
+    let _transaction_guard = SETTINGS_TRANSACTION_LOCK
+        .lock()
+        .map_err(|_| SettingsAdapterFailure::failed("settings transaction lock poisoned"))?;
+    let partition = EspDefaultNvsPartition::take().map_err(settings_failure)?;
+    let nvs = EspNvs::new(partition, NVS_NAMESPACE, false).map_err(settings_failure)?;
+    let snapshot = read_all_settings_snapshot_strict(&nvs)?;
+    Ok(Ultra205DefaultsAttestation::from_snapshot(&snapshot))
 }
 
 /// Returns the project-owned next-boot mining preference, defaulting to true.
@@ -341,6 +353,25 @@ fn read_current_settings_snapshot_strict(
         });
     }
 
+    Ok(NvsSnapshot::from_values(values))
+}
+
+fn read_all_settings_snapshot_strict(
+    nvs: &EspNvs<NvsDefault>,
+) -> Result<NvsSnapshot, SettingsAdapterFailure> {
+    let mut values = Vec::new();
+    for schema in general_settings_schema() {
+        let key = schema.key.as_str();
+        let maybe_stored_type = nvs.find_key(key).map_err(settings_failure)?;
+        let Some(stored_type) = maybe_stored_type else {
+            continue;
+        };
+        let value = read_stored_value_strict(nvs, key, stored_type)?;
+        values.push(StoredValue {
+            key: schema.key,
+            value,
+        });
+    }
     Ok(NvsSnapshot::from_values(values))
 }
 

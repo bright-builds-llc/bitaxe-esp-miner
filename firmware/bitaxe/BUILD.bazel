@@ -393,6 +393,7 @@ rust_test(
         "src/http_api/settings.rs",
         "src/settings_adapter.rs",
         "src/settings_source_ownership_test.rs",
+        "src/startup.rs",
     ],
     crate_name = "settings_source_ownership_tests",
     crate_root = "src/settings_source_ownership_test.rs",

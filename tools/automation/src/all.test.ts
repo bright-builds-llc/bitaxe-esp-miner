@@ -15,6 +15,7 @@ import "./repository-guard.test.js";
 import "./redaction.test.js";
 import "./runtime-health-evidence.test.js";
 import "./system-info-evidence.test.js";
+import "./ultra205-defaults-evidence.test.js";
 import "./settings-durability.test.js";
 import "./settings-patch-evidence.test.js";
 import "./theme-durability.test.js";

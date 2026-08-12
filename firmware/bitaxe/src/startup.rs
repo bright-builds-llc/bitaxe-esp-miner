@@ -40,6 +40,14 @@ fn initialize_boot_identity_and_settings() -> StartupDebugText {
     if let Err(error) = settings_adapter::initialize_current_settings_snapshot() {
         log::warn!("axeos_settings_snapshot=startup_refresh_failed error={error}");
     }
+    match settings_adapter::current_ultra205_defaults_attestation() {
+        Ok(attestation) => crate::info_retained(
+            &attestation.retained_marker(!settings_adapter::start_mining_on_boot()),
+        ),
+        Err(error) => {
+            log::warn!("ultra205_config_defaults=unavailable reason=settings_read error={error}")
+        }
+    }
     if let Err(error) = scoreboard_adapter::initialize() {
         log::warn!("scoreboard=unavailable category={}", error.category());
     }

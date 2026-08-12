@@ -20,8 +20,9 @@ pub use confirmed_snapshot::{
     ConfirmedSnapshotPublicationFailure, ConfirmedSnapshotRead, ConfirmedSnapshotReadHealth,
 };
 pub use defaults::{
-    board_profile_defaults, ultra_205_defaults, BoardProfileDefaults, BoardProfileSeedKind,
-    Ultra205Defaults,
+    board_profile_defaults, ultra_205_default_seed_values, ultra_205_defaults,
+    BoardProfileDefaults, BoardProfileSeedKind, Ultra205Defaults, Ultra205DefaultsAttestation,
+    ULTRA_205_DEFAULT_FIELD_COUNT,
 };
 pub use display::{load_ultra205_display_configuration, DisplaySettingsError};
 pub use nvs::{

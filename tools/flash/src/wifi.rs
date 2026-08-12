@@ -145,20 +145,38 @@ pub(crate) fn validation_error_summary(error: &ConfigValidationError) -> String 
 }
 
 pub(crate) fn wifi_nvs_csv(credentials: &WifiCredentials) -> String {
-    [
+    let mut rows = vec![
         "key,type,encoding,value".to_owned(),
         format!("{NVS_NAMESPACE},namespace,,"),
-        format!(
-            "wifissid,data,string,{}",
-            csv_cell(credentials.ssid.as_str())
-        ),
-        format!(
-            "wifipass,data,string,{}",
-            csv_cell(credentials.wifi_pass.as_str())
-        ),
-    ]
-    .join("\n")
-        + "\n"
+    ];
+    rows.extend(
+        ultra_205_default_seed_values()
+            .iter()
+            .map(private_nvs_csv_row),
+    );
+    rows.extend([
+        private_nvs_csv_row(&StoredValue::string("wifissid", &credentials.ssid)),
+        private_nvs_csv_row(&StoredValue::string("wifipass", &credentials.wifi_pass)),
+        private_nvs_csv_row(&StoredValue::u16("mineonboot", 0)),
+    ]);
+    rows.join("\n") + "\n"
+}
+
+fn private_nvs_csv_row(value: &StoredValue) -> String {
+    match &value.value {
+        StoredValueKind::String(contents) => {
+            format!("{},data,string,{}", value.key.as_str(), csv_cell(contents))
+        }
+        StoredValueKind::U16(contents) => {
+            format!("{},data,u16,{contents}", value.key.as_str())
+        }
+        StoredValueKind::I32(contents) => {
+            format!("{},data,i32,{contents}", value.key.as_str())
+        }
+        StoredValueKind::U64(contents) => {
+            format!("{},data,u64,{contents}", value.key.as_str())
+        }
+    }
 }
 
 pub(crate) fn csv_cell(value: &str) -> String {

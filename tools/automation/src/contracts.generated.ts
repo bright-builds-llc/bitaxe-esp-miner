@@ -25,6 +25,7 @@ export type AutomationCommand =
   | "capture-operator-snapshot-evidence"
   | "capture-runtime-health-evidence"
   | "capture-system-info-evidence"
+  | "capture-ultra205-defaults-evidence"
   | "capture-settings-patch-evidence"
   | "capture-log-buffer-evidence"
   | "capture-partition-layout-evidence"
@@ -176,6 +177,37 @@ export type SystemInfoEvidence = {
   redaction_status: "passed";
 };
 
+export type Ultra205DefaultsObservationEvidence = {
+  configured_default_field_count: number;
+  firmware_matching_field_count: number;
+  firmware_all_defaults_match: boolean;
+  api_visible_default_field_count: number;
+  http_defaults_match: boolean;
+  websocket_defaults_match: boolean;
+  retained_attestation_matches: boolean;
+  mining_on_boot_disabled: boolean;
+  exact_seed_fixture_sha256: string;
+  system_info_evidence_sha256: string;
+};
+
+export type Ultra205DefaultsEvidence = {
+  schema_version: "bitaxe-ultra205-defaults-evidence-v1";
+  board: 205;
+  source_commit: string;
+  reference_commit: string;
+  package_manifest_sha256: string;
+  workflow: WorkflowIdentity;
+  detector_admitted: true;
+  boot_observed: true;
+  system_info: SystemInfoEvidence;
+  defaults: Ultra205DefaultsObservationEvidence;
+  mining_state: "disabled";
+  hardware_control_state: "disabled";
+  cleanup_complete: true;
+  private_modes_valid: true;
+  redaction_status: "passed";
+};
+
 export type SettingsPatchEvidence = {
   schema_version: "bitaxe-settings-patch-evidence-v1";
   board: 205;
@@ -275,6 +307,7 @@ const automationCommands = new Set<AutomationCommand>([
   "capture-operator-snapshot-evidence",
   "capture-runtime-health-evidence",
   "capture-system-info-evidence",
+  "capture-ultra205-defaults-evidence",
   "capture-settings-patch-evidence",
   "capture-log-buffer-evidence",
   "capture-partition-layout-evidence",

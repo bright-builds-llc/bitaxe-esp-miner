@@ -16,8 +16,9 @@ use bitaxe_api::{
     RuntimeAttestationAccumulator, RuntimeAttestationStatus,
 };
 use bitaxe_config::{
-    apply_settings_patch, ConfigValidationError, NvsWrite, RawSettingValue, SettingsPatch,
-    SettingsUpdateDecision, NVS_NAMESPACE,
+    apply_settings_patch, ultra_205_default_seed_values, ConfigValidationError, NvsWrite,
+    RawSettingValue, SettingsPatch, SettingsUpdateDecision, StoredValue, StoredValueKind,
+    NVS_NAMESPACE,
 };
 use bitaxe_device_session::{discover_usb_ports, UsbDeviceEffectState, UsbOperation, UsbSession};
 use camino::{Utf8Path, Utf8PathBuf};

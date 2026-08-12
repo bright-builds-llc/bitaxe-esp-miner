@@ -133,6 +133,11 @@ fn wifi_credentials_nvs_csv_uses_main_namespace_and_upstream_keys() {
     assert!(csv.contains("main,namespace,,"));
     assert!(csv.contains("wifissid,data,string,\"Lab,Net\""));
     assert!(csv.contains("wifipass,data,string,\"quoted\"\"secret\""));
+    assert!(csv.contains("hostname,data,string,bitaxe"));
+    assert!(csv.contains("asicfrequency,data,u16,485"));
+    assert!(csv.contains("asicvoltage,data,u16,1200"));
+    assert!(csv.contains("boardversion,data,string,205"));
+    assert!(csv.contains("mineonboot,data,u16,0"));
 }
 
 #[test]

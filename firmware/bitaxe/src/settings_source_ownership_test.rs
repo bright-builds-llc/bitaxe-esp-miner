@@ -1,5 +1,6 @@
 const SETTINGS_HANDLER_SOURCE: &str = include_str!("http_api/settings.rs");
 const SETTINGS_ADAPTER_SOURCE: &str = include_str!("settings_adapter.rs");
+const STARTUP_SOURCE: &str = include_str!("startup.rs");
 
 #[test]
 fn validated_patch_owns_persistence_and_unknown_only_requests_remain_inert() {
@@ -52,4 +53,23 @@ fn public_snapshot_excludes_pool_and_credential_keys() {
     assert!(strict_reload.contains("filter(|schema| !is_pool_configuration_key"));
     assert!(SETTINGS_ADAPTER_SOURCE.contains("key.starts_with(\"stratum\")"));
     assert!(SETTINGS_ADAPTER_SOURCE.contains("key.starts_with(\"fbstratum\")"));
+}
+
+#[test]
+fn defaults_attestation_strictly_reads_private_settings_then_retains_only_closed_facts() {
+    // Arrange
+    let attestation_path = SETTINGS_ADAPTER_SOURCE
+        .split("pub fn current_ultra205_defaults_attestation(")
+        .nth(1)
+        .and_then(|source| source.split("/// Returns the project-owned").next())
+        .expect("settings adapter must contain the defaults attestation boundary");
+
+    // Act / Assert
+    assert!(attestation_path.contains("EspNvs::new(partition, NVS_NAMESPACE, false)"));
+    assert!(attestation_path.contains("read_all_settings_snapshot_strict(&nvs)"));
+    assert!(attestation_path.contains("Ultra205DefaultsAttestation::from_snapshot"));
+    assert!(STARTUP_SOURCE.contains("current_ultra205_defaults_attestation()"));
+    assert!(STARTUP_SOURCE.contains("retained_marker(!settings_adapter::start_mining_on_boot())"));
+    assert!(!SETTINGS_ADAPTER_SOURCE.contains("public-pool.io"));
+    assert!(!STARTUP_SOURCE.contains("public-pool.io"));
 }

@@ -1635,14 +1635,14 @@ defines the retained-log continuation using fresh attempt-005 paths.
 
 ### task-parity-cfg001-ultra205-defaults-attempt-001 | 2026-08-11 | Verify the Ultra 205 configured defaults
 
-- [ ] Seed exact typed Ultra 205 defaults with owner Wi-Fi and
+- [x] Seed exact typed Ultra 205 defaults with owner Wi-Fi and
       `mineonboot=false` through the ordinary flash workflow.
-- [ ] Retain a closed firmware attestation of all 27 loaded default fields
+- [x] Retain a closed firmware attestation of all 27 loaded default fields
       without exposing any raw configured, credential, device, or network
       value.
-- [ ] Capture one exact-package HTTP/WebSocket observation and validate every
-      API-visible default against the same pinned model.
-- [ ] Add typed contracts and behavior-focused unit, real-process, failure,
+- [x] Implement one exact-package HTTP/WebSocket observation and validation of
+      every API-visible default against the same pinned model.
+- [x] Add typed contracts and behavior-focused unit, real-process, failure,
       recovery, no-output, and privacy regressions.
 - [ ] Run the complete ordered software gate and push before hardware use.
 - [ ] Spend one fresh detector and at most one conditional attempt-001.
