@@ -50,3 +50,37 @@
 - Blocker or next safe action: Commit and push the one-test regression, confirm
   a clean synchronized head, then consume the plan's single corrected
   software-only projection attempt.
+
+## 2026-08-12T13:34:32Z | Projection succeeded; validator path failed closed
+
+- Implementation commit: `ad4632b0d6a91cca5b4d8a53a6bc683d1e079bdf`
+- Actions: Confirmed the clean synchronized head, exact plan and four public
+  input digests, absent projection and candidate, and clean reference. Ran the
+  single corrected Bazel projector invocation with flags only after `--`.
+- Verification: Projection succeeded with the closed v1 contract and digest
+  `7a977b60d6c158d894431dd669cf348db16ab3a0a42e1b7d5578b6ca644d36be`.
+  The next independent `bazel run` validator command returned `No such file or
+  directory` because its runfiles working directory could not resolve the
+  repository-relative projection path. The validator did not open the file.
+- Evidence: The unvalidated projection was removed; no candidate or public
+  projection remains. No protected evidence, credentials, network, or
+  hardware was accessed.
+- Outcome: This plan is terminally closed without verification under its
+  no-retry rule. `STR-007` remains `implemented`.
+- Blocker or next safe action: Seal and push this closure, then start a fresh
+  selector invocation with an absolute-path validator regression and one new
+  software-only projection/validation transaction.
+
+## 2026-08-12T13:36:56Z | Second ordinal closure gate sealed
+
+- Actions: Reviewed the closure, confirmed removal of the unvalidated output,
+  and ran the complete ordered closure gate.
+- Verification: Format, clippy, all-target build, all-feature tests, Bright
+  Builds checks, all 37 Bazel test targets, parity, progress, redaction,
+  reference verification, immutable plan digest, projection absence,
+  reference cleanliness, and diff checks all pass.
+- Evidence: Neither projection nor candidate remains; nothing from this
+  ordinal is publishable evidence. No hardware or protected input was used.
+- Outcome: The second immutable plan is sealed as blocked without verification.
+- Blocker or next safe action: Commit and push this closure, then begin a fresh
+  `STR-007` plan with the validator path boundary explicitly guarded.
