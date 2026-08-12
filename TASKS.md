@@ -2023,6 +2023,31 @@ restart occurred, the public projection was withheld, and API-009 remains
 types the production protocol-gate decision and reproduces it from the exact
 campaign NVS image before any material fix or new ordinal.
 
+Protocol-gate continuation plan:
+`docs/parity/work-plans/20260812T170039Z-API-009/PLAN.md`.
+
+- [ ] Replace repeated exclusive default-NVS partition acquisition with one
+      boot-lifetime owner whose clones are shared by settings, production
+      campaign, protocol-gate, and scoreboard adapters.
+- [ ] Carry a closed protocol-gate decision through the production snapshot and
+      campaign marker without selector values, pool data, network data, or raw
+      logs.
+- [ ] Add exclusive-owner, generated-campaign-NVS, startup-race, recovery,
+      schema, and sensitive-output regressions; run and push every software
+      gate before hardware.
+- [ ] Run at most one fresh detector-gated `attempt-004` and promote only on
+      the complete five-command device-user quorum.
+
+Attempt-004 authorization: standing task authorization permits this single
+fresh attempt only after the immutable plan and exact clean pushed source prove
+the material boot-lifetime NVS ownership fix and typed protocol decision. The
+allowed effects, prohibited effects, evidence privacy, exact-package and
+board-205 detector gates, 600-second local-fixture lease, one-time physical
+IDENTIFY checkpoints, safe stop, cleanup, canonical software restart,
+recovery, public withholding, and accepted stop categories are exactly those
+in the linked plan. Instrumentation alone is not retry eligibility, and no
+second attempt is permitted.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
