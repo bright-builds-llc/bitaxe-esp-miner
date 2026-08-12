@@ -67,6 +67,14 @@ validate-mining-criteria-evidence projection:
     projection_path="$(/bin/realpath "$projection")"
     bazel run //crates/bitaxe-automation-contracts:validate_mining_criteria_evidence -- "$projection_path"
 
+validate-ina260-evidence projection:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    projection={{ quote(projection) }}
+    test -f "$projection"
+    projection_path="$(/bin/realpath "$projection")"
+    bazel run //crates/bitaxe-automation-contracts:validate_ina260_evidence -- "$projection_path"
+
 verify-production-session:
     bazel run //tools/automation:verify_production_session
 
@@ -124,6 +132,9 @@ project-asic-power-initialization-evidence *args:
 
 project-core-voltage-control-evidence *args:
     bazel run //tools/automation:project_core_voltage_control_evidence -- {{ args }}
+
+project-ina260-evidence *args:
+    bazel run //tools/automation:project_ina260_evidence -- {{ args }}
 
 project-asic-reset-evidence *args:
     bazel run //tools/automation:project_asic_reset_evidence -- {{ args }}

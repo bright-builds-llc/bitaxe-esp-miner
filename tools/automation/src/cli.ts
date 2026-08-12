@@ -10,6 +10,7 @@ import { projectAsicFrequencyTransitionEvidence } from "./asic-frequency-transit
 import { projectAsicInitializationEvidence } from "./asic-initialization-evidence.js";
 import { projectAsicPowerInitializationEvidence } from "./asic-power-initialization-evidence.js";
 import { projectCoreVoltageControlEvidence } from "./core-voltage-control-evidence.js";
+import { projectIna260Evidence } from "./ina260-evidence.js";
 import { projectAsicResetEvidence } from "./asic-reset-evidence.js";
 import { projectAsicResultParsingEvidence } from "./asic-result-parsing-evidence.js";
 import { projectAsicSerialTransportEvidence } from "./asic-serial-transport-evidence.js";
@@ -227,6 +228,7 @@ async function dispatchProcess(
     case "project-asic-initialization-evidence":
     case "project-asic-power-initialization-evidence":
     case "project-core-voltage-control-evidence":
+    case "project-ina260-evidence":
     case "project-asic-reset-evidence":
     case "project-asic-frequency-transition-evidence":
     case "project-stratum-socket-evidence":
@@ -419,6 +421,15 @@ async function main(): Promise<number> {
         sourceProjection: optionValue(invocation, "--source-projection"), attemptSourceCommit: optionValue(invocation, "--attempt-source-commit"), projection: optionValue(invocation, "--projection"),
       }, processPort, "git", toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_power_initialization_evidence"),
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_core_voltage_control_evidence"));
+    } else if (invocation.command === "project-ina260-evidence") {
+      publicValue = await projectIna260Evidence(root, {
+        attemptRoot: optionValue(invocation, "--attempt-root"),
+        sourceProjection: optionValue(invocation, "--source-projection"),
+        attemptSourceCommit: optionValue(invocation, "--attempt-source-commit"),
+        projection: optionValue(invocation, "--projection"),
+      }, processPort, "git",
+      toolProgram(root, "crates/bitaxe-automation-contracts/validate_system_info_evidence"),
+      toolProgram(root, "crates/bitaxe-automation-contracts/validate_ina260_evidence"));
     } else if (invocation.command === "project-asic-reset-evidence") {
       publicValue = await projectAsicResetEvidence(root, {
         sourceProjection: optionValue(invocation, "--source-projection"), attemptSourceCommit:

@@ -220,6 +220,12 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--attempt-source-commit": value({ required: true }),
     "--projection": value({ required: true }),
   },
+  "project-ina260-evidence": {
+    "--attempt-root": value({ required: true }),
+    "--source-projection": value({ required: true }),
+    "--attempt-source-commit": value({ required: true }),
+    "--projection": value({ required: true }),
+  },
   "project-asic-reset-evidence": {
     "--source-projection": value({ required: true }),
     "--attempt-source-commit": value({ required: true }),

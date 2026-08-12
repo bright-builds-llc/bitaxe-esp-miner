@@ -92,6 +92,19 @@ test("result validator accepts the closed core-voltage-control command", () => {
   assert.equal(result.command, "project-core-voltage-control-evidence");
 });
 
+test("result validator accepts the closed INA260 projection command", () => {
+  // Act
+  const result = parseAutomationResult({
+    schema_version: "bitaxe-automation-result-v1",
+    command: "project-ina260-evidence",
+    status: "succeeded",
+    category: "complete",
+  });
+
+  // Assert
+  assert.equal(result.command, "project-ina260-evidence");
+});
+
 test("result validator accepts the closed ASIC serial-transport command", () => {
   // Act
   const result = parseAutomationResult({

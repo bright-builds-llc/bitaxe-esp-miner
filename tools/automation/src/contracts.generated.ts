@@ -34,7 +34,7 @@ export type AutomationCommand =
   | "capture-network-scan-evidence"
   | "project-asic-initialization-evidence"
   | "project-asic-power-initialization-evidence"
-  | "project-core-voltage-control-evidence"
+  | "project-core-voltage-control-evidence" | "project-ina260-evidence"
   | "project-asic-reset-evidence"
   | "project-asic-work-send-evidence"
   | "project-asic-result-parsing-evidence" | "project-asic-serial-transport-evidence"
@@ -414,6 +414,9 @@ export type AsicPowerInitializationEvidence = { schema_version: "bitaxe-asic-pow
 export type CoreVoltageControlSourceEvidence = { power_initialization_projection_sha256: string; power_initialization_projection_current_commit: string; power_initialization_projection_valid: true; source_task_sha256: string; plan_sha256: string; };
 export type CoreVoltageControlObservationEvidence = { target_millivolts: 1100; i2c_address: 72; output_register: 248; register_code: 225; register_write_count: 1; typed_command_routed: true; stabilization_millis: 500; stabilization_before_asic_enable: true; zero_voltage_skips_ds4432u_write: true; active_low_disable: true; successful_initialized_work_observed: true; accepted_submit_observed: true; compatible_path_count: 5; reference_semantics_admitted: true; source_semantics_admitted: true; };
 export type CoreVoltageControlEvidence = { schema_version: "bitaxe-core-voltage-control-evidence-v1"; board: 205; attempt_source_commit: string; current_source_commit: string; reference_commit: string; workflow: WorkflowIdentity; source: CoreVoltageControlSourceEvidence; voltage_control: CoreVoltageControlObservationEvidence; package_admitted: true; runtime_identity: "trusted"; runtime_attestation_status: "trusted"; campaign_terminal_category: "submit_response_observed"; submit_outcome: "accepted"; safety_status: "fresh"; mine_on_boot_disabled: true; safe_stop_confirmed: true; lease_cleanup_confirmed: true; usb_cleanup_ready: true; hardware_rerun_used: false; redaction_status: "passed"; };
+export type Ina260SourceEvidence = { system_info_projection_sha256: string; api_snapshot_sha256: string; websocket_snapshot_sha256: string; final_evidence_sha256: string; system_info_projection_valid: true; protected_modes_valid: true; plan_sha256: string; };
+export type Ina260ObservationEvidence = { i2c_address: 64; current_register: 1; bus_voltage_register: 2; power_register: 3; complete_register_set: true; read_only_acquisition: true; http_complete_fresh_sample: true; websocket_complete_fresh_sample: true; finite_safe_ranges: true; same_values: true; same_states: true; same_acquisition_stamps: true; same_boot_session: true; exact_package_identity: true; source_paths_compatible: true; compatible_path_count: 9; };
+export type Ina260Evidence = { schema_version: "bitaxe-ina260-evidence-v1"; board: 205; attempt_source_commit: string; current_source_commit: string; reference_commit: string; package_manifest_sha256: string; workflow: WorkflowIdentity; source: Ina260SourceEvidence; telemetry: Ina260ObservationEvidence; detector_admitted: true; boot_observed: true; mining_state: "disabled"; hardware_control_state: "disabled"; cleanup_complete: true; hardware_rerun_used: false; redaction_status: "passed"; };
 
 export type AsicResetSourceEvidence = { initialization_projection_sha256: string; initialization_projection_current_commit: string; initialization_projection_valid: true; source_task_sha256: string; plan_sha256: string; };
 export type AsicResetObservationEvidence = { active_low: true; low_duration_ms: 100; high_duration_ms: 100; reset_and_detect_completed: true; exactly_one_chip_detected_after_reset: true; accepted_submit_observed: true; fail_closed_hold_low: true; safe_stop_hold_low: true; reset_paths_unchanged: true; compatible_path_count: 6; adapter_semantics_admitted: true; };
@@ -514,7 +517,7 @@ const automationCommands = new Set<AutomationCommand>([
   "capture-network-scan-evidence",
   "project-asic-initialization-evidence",
   "project-asic-power-initialization-evidence",
-  "project-core-voltage-control-evidence",
+  "project-core-voltage-control-evidence", "project-ina260-evidence",
   "project-asic-reset-evidence",
   "project-asic-work-send-evidence",
   "project-asic-result-parsing-evidence",

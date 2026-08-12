@@ -187,3 +187,25 @@ test("core-voltage-control evidence is included in the operational-field scan", 
     await rm(root, { recursive: true });
   }
 });
+
+test("INA260 evidence is included in the operational-field scan", async () => {
+  // Arrange
+  const root = await mkdtemp(path.join(tmpdir(), "bitaxe-redaction-ina260-"));
+  const evidence = path.join(root, "evidence.json");
+  await writeFile(evidence, JSON.stringify({
+    schema_version: "bitaxe-ina260-evidence-v1",
+    telemetry: { i2c_address: 64, same_values: true },
+  }));
+
+  try {
+    // Act / Assert
+    assert.equal((await verifySemanticEvidenceRedaction(root)).checked, 1);
+    await writeFile(evidence, JSON.stringify({
+      schema_version: "bitaxe-ina260-evidence-v1",
+      serial_port: "/dev/private-device",
+    }));
+    await assert.rejects(verifySemanticEvidenceRedaction(root));
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});

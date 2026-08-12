@@ -1,0 +1,47 @@
+{
+  "schema_version": "bitaxe-ina260-evidence-v1",
+  "board": 205,
+  "attempt_source_commit": "524b445ee45c986a1366cfe64d2cbcbe41178da8",
+  "current_source_commit": "d0bf24b1245606e01a35ee6810d5806d612b11f1",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "package_manifest_sha256": "2a4a64269dd4c93e6899f36000f128dc559e628821bd7543db540cb1e360b395",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "project-ina260-evidence",
+    "request_sha256": "3468794381be12a3b8093c4b4aaa83e5c3397df5632a6c7b867096ce34fb64b1"
+  },
+  "source": {
+    "system_info_projection_sha256": "6ec58fdaeb7cbad3cf103832cd3e59fe470fcb05f6f6a4d41e218ffd6378991a",
+    "api_snapshot_sha256": "9f0b2809d5e1fea364dadd8029319862b973cf802490f8be7c004dc20f82c2de",
+    "websocket_snapshot_sha256": "f2590f16dda7095f20e77f163ee84f7cea85468000e8ecc0b0cddf18cdc1a859",
+    "final_evidence_sha256": "6ec58fdaeb7cbad3cf103832cd3e59fe470fcb05f6f6a4d41e218ffd6378991a",
+    "system_info_projection_valid": true,
+    "protected_modes_valid": true,
+    "plan_sha256": "e58742236746a59fb68afd92a5fe92b181a71e967e43d323789b9f22a58db818"
+  },
+  "telemetry": {
+    "i2c_address": 64,
+    "current_register": 1,
+    "bus_voltage_register": 2,
+    "power_register": 3,
+    "complete_register_set": true,
+    "read_only_acquisition": true,
+    "http_complete_fresh_sample": true,
+    "websocket_complete_fresh_sample": true,
+    "finite_safe_ranges": true,
+    "same_values": true,
+    "same_states": true,
+    "same_acquisition_stamps": true,
+    "same_boot_session": true,
+    "exact_package_identity": true,
+    "source_paths_compatible": true,
+    "compatible_path_count": 9
+  },
+  "detector_admitted": true,
+  "boot_observed": true,
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "cleanup_complete": true,
+  "hardware_rerun_used": false,
+  "redaction_status": "passed"
+}

@@ -45,6 +45,25 @@ test("parser accepts a complete version evidence request", () => {
   assert.equal(invocation.command, "capture-version-evidence");
 });
 
+test("INA260 projection requires its complete software-only source surface", () => {
+  // Arrange
+  const complete = [
+    "project-ina260-evidence",
+    "--attempt-root", "scratch/api002-system-info/attempt-002",
+    "--source-projection", "docs/evidence/system-info.json",
+    "--attempt-source-commit", "a".repeat(40),
+    "--projection", "docs/evidence/ina260.json",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "project-ina260-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});
+
 test("version evidence requires exactly one detector handoff", () => {
   // Arrange
   const common = [

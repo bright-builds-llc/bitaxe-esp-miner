@@ -5,6 +5,7 @@ import { ThemeDurabilityError } from "./theme-durability.js";
 import { AsicInitializationEvidenceError } from "./asic-initialization-evidence.js";
 import { AsicPowerInitializationEvidenceError } from "./asic-power-initialization-evidence.js";
 import { CoreVoltageControlEvidenceError } from "./core-voltage-control-evidence.js";
+import { Ina260EvidenceError } from "./ina260-evidence.js";
 import { AsicWorkSendEvidenceError } from "./asic-work-send-evidence.js";
 import { AsicResultParsingEvidenceError } from "./asic-result-parsing-evidence.js";
 import { AsicSerialTransportEvidenceError } from "./asic-serial-transport-evidence.js";
@@ -96,6 +97,23 @@ test("core-voltage-control failures retain only closed projection facts", () => 
   // Assert
   assert.deepEqual(publicValue, {
     stage: "sealed_core_voltage_control_projection",
+    hardware_rerun_used: false,
+  });
+});
+
+test("INA260 failures retain only closed projection facts", () => {
+  // Arrange
+  const error = new Ina260EvidenceError("evidence_invalid", "safe failure", {
+    stage: "sealed_ina260_projection",
+    hardware_rerun_used: false,
+  });
+
+  // Act
+  const publicValue = maybeTypedFailurePublicValue(error);
+
+  // Assert
+  assert.deepEqual(publicValue, {
+    stage: "sealed_ina260_projection",
     hardware_rerun_used: false,
   });
 });

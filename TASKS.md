@@ -28,9 +28,9 @@ new work.
 
 - [x] Audit the current PWR-006 implementation, pinned INA260 reference, stale
       checklist note, accepted API-002 hardware capture, and source compatibility.
-- [ ] Add a Rust-owned `bitaxe-ina260-evidence-v1` contract and a narrow
+- [x] Add a Rust-owned `bitaxe-ina260-evidence-v1` contract and a narrow
       software-only projector over the existing protected API-002 snapshots.
-- [ ] Prove fresh complete INA260 current, bus-voltage, and power observations
+- [x] Prove fresh complete INA260 current, bus-voltage, and power observations
       agree across the same HTTP and WebSocket acquisition without publishing
       any raw value, stamp, boot session, origin, port, or network identifier.
 - [ ] Independently validate and publish one redacted public PWR-006 projection,
