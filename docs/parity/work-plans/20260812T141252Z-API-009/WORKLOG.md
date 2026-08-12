@@ -59,3 +59,21 @@
 - Next action: Run the complete mandatory gate, commit and push this workflow
   repair without changing the checklist, then retry the audited API-009 target
   transition and synchronize progress.
+
+## Attempt 4 | 2026-08-12T14:35:05Z
+
+- Starting status: `implemented`
+- Actions: Retried the equal-status transition after the tool repair. The first
+  generated projection omitted required Markdown code spans in the ownership
+  cell; it was removed before commit. Regenerated the receipt with the exact
+  code-span-formatted target and bound progress to implementation source commit
+  `4ab1968982ec614012860230831e3abbdd9a965e`.
+- Verification: Transition receipt `20260812T143505Z-API-009` validated and
+  progress synchronized with API-009 still `implemented`, evidence unchanged
+  at `unit,workflow`, and overall completion unchanged at 62.8%.
+- Outcome: The checklist now names the complete production ownership seam
+  without a false promotion or invalid formatting. The plan is closed below
+  verified by `CLOSURE.md`.
+- Next action: Run final parity, progress, privacy, reference, selector,
+  immutable-plan, transition-chain, and diff checks; commit and push the
+  generated finalization artifacts.

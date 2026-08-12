@@ -1,0 +1,18 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260812T143505Z-API-009",
+  "predecessor_sha256": "5bc7a9201b72357257ca0a2d11770bca32243ddf266332d9fbc254a7ba96254e",
+  "result_sha256": "e9d3e25c09a6ac8f3a3577c372c2716c3105d6adb30fec591d35fe01e189b322",
+  "row_id": "API-009",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260812T141252Z-API-009/PLAN.md",
+  "plan_sha256": "6d3ac21bb5d55d05d592595f2b8db60e86761ed21fe22c709c13acc2aad50b36",
+  "result_path": null,
+  "result_document_sha256": null,
+  "before_rust_owned_target": "`crates/bitaxe-api/src/commands.rs`, `firmware/bitaxe/src/http_api/handlers.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/commands.rs`, `crates/bitaxe-stratum/src/v1/production_work.rs`, `crates/bitaxe-stratum/src/v1/production_session`, `firmware/bitaxe/src/http_api/handlers.rs`, `firmware/bitaxe/src/production_mining_session.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`",
+  "before_status": "implemented",
+  "after_status": "implemented",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow"
+}
