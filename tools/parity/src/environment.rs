@@ -114,6 +114,10 @@ impl ReportEnvironment for LocalEnvironment {
         )
     }
 
+    fn validate_board_defaults_matrix(&self) -> Vec<ValidationError> {
+        board_defaults::validate_pinned_reference(&self.workspace_dir)
+    }
+
     fn validate_progress_artifacts(
         &self,
         checklist: &str,

@@ -40,6 +40,7 @@ const PHASE35_DESTINATION_ROOT: &str =
 const PHASE35_CHECKLIST_PATH: &str = "docs/parity/checklist.md";
 
 mod api_compare;
+mod board_defaults;
 mod checklist_revision;
 mod checklist_targets;
 mod claim_ladder;

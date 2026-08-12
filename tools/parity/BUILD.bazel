@@ -27,6 +27,8 @@ rust_binary(
         "src/api_compare/openapi/tests.rs",
         "src/api_compare/static_routes.rs",
         "src/api_compare/tests.rs",
+        "src/board_defaults.rs",
+        "src/board_defaults/tests.rs",
         "src/checklist_revision.rs",
         "src/checklist_revision/comprehensive.rs",
         "src/checklist_revision/transitions.rs",
@@ -136,6 +138,7 @@ rust_binary(
     edition = "2021",
     deps = [
         "//crates/bitaxe-api:bitaxe_api",
+        "//crates/bitaxe-config:bitaxe_config",
         "//tools/device-session:device_session_lib",
         "//tools/http-transport:http_transport",
         "@crates//:anyhow",

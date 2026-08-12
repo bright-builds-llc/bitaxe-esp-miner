@@ -254,6 +254,7 @@ dependencies = [
  "anyhow",
  "bitaxe-api",
  "bitaxe-automation-contracts",
+ "bitaxe-config",
  "bitaxe-device-session",
  "bitaxe-http-transport",
  "camino",

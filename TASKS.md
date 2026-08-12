@@ -362,9 +362,9 @@ hardware evidence. No runtime selection or hardware behavior changed.
 
 Targeted verification continuation:
 
-- [ ] Compare the public Rust defaults matrix directly to the complete pinned
+- [x] Compare the public Rust defaults matrix directly to the complete pinned
       reference CSV inventory with fail-closed parity-report validation.
-- [ ] Prove representative inventory, parsing, and value drift is rejected.
+- [x] Prove representative inventory, parsing, and value drift is rejected.
 - [ ] Run focused and mandatory gates, then promote only the declarative
       `CFG-006` row if its direct reference, golden, and catalog evidence passes.
 

@@ -191,6 +191,9 @@ pub(crate) trait ReportEnvironment {
     ) -> Vec<ValidationError> {
         Vec::new()
     }
+    fn validate_board_defaults_matrix(&self) -> Vec<ValidationError> {
+        Vec::new()
+    }
     fn validate_progress_artifacts(
         &self,
         _checklist: &str,
@@ -222,6 +225,9 @@ pub(crate) fn run_report(
     report
         .validation_errors
         .extend(environment.validate_reference_inventory(&report.rows, &report.reference_commit));
+    report
+        .validation_errors
+        .extend(environment.validate_board_defaults_matrix());
     report
         .validation_errors
         .extend(environment.validate_progress_artifacts(&checklist, &report.rows));
