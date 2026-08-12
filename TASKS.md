@@ -1608,6 +1608,74 @@ lines. Both lines are intentionally API-retained. Exact-package recovery and
 private cleanup passed, no public evidence was emitted, and the linked closure
 defines the retained-log continuation using fresh attempt-005 paths.
 
+### task-parity-net002-provisioning-network-attempt-001 | 2026-08-12 | Verify the live configuration network
+
+- [x] Select `NET-002`, inspect its exact reference/implementation/evidence gap,
+      and persist the linked immutable plan before implementation.
+- [ ] Add the typed macOS provisioning-client capture, closed projection,
+      independent validator, recovery behavior, and production-shaped tests.
+- [ ] Run focused and mandatory software gates; commit and push the exact
+      implementation before hardware use.
+- [ ] Run one protected detector and, only after admission, one protected
+      attempt-001 capture on board 205.
+- [ ] Promote only `NET-002` when exact-package AP visibility, association,
+      DHCP, wildcard DNS, captive redirect, settings access, safe recovery,
+      cleanup, private modes, and redaction all pass.
+
+Plan: `docs/parity/work-plans/20260812T040437Z-NET-002/PLAN.md`.
+
+Objective and preconditions: close only `NET-002` on one Ultra 205. Source,
+upstream, reference, package provenance, owner-credential opacity, fresh paths,
+one powered-on/unassociated macOS Wi-Fi interface, and zero matching baseline
+candidates must pass before the linked effect commands are eligible.
+
+Authorized effects: one exact normal package flash without Wi-Fi credentials;
+replacement NVS with exact Ultra 205 defaults and `mineonboot=false`; bounded
+receive-only USB; local candidate enumeration; association to the unique open
+configuration AP; one DHCP lease; one synthetic wildcard DNS query; one captive
+redirect request; one same-origin system-info read; host Wi-Fi off/on cleanup;
+and one ordinary exact-package recovery flash with the owner Wi-Fi file. The
+final state retains the exact package, owner Wi-Fi, exact defaults, and disabled
+mining.
+
+Prohibited effects: router/RF configuration changes, non-Bitaxe association,
+host credential access/mutation, provisioning credential submission, software
+restart, station handoff, external discovery, internet evidence requests,
+erase, ad hoc/raw writes, OTA, power interruption, mining, ASIC/pool activity,
+voltage, frequency, fan, thermal/power control, self-test, foreign-process
+termination, direct UART, pins, pads, headers, GPIO, probes, jumpers, soldering,
+or signals.
+
+Evidence and privacy: wrapper-001/attempt-001 are ignored mode-0700 roots with
+mode-0600 files. Credential, SSID, interface, USB, device, network, route,
+origin, command, process, DNS, HTTP, and raw serial values remain private. Only
+the closed redacted `bitaxe-provisioning-network-evidence-v1` projection may be
+committed.
+
+Recovery, retry, and stop: host admission failure stops before writes. Detector
+failure stops before writes. Preserve the earliest typed category through host
+cleanup and optional ordinary exact-package recovery. Any conditional capture
+start consumes attempt-001; release every resource and stop without retry on
+success or any admitted terminal category.
+
+Acceptance: require exact package and board identity, safe AP-only boot, unique
+SSID, association, DHCP, wildcard IN/A response to the AP gateway with TTL 300,
+the captive redirect contract, same-origin exact-build/settings quorum,
+disabled mining/control, host restoration, exact recovery, cleanup, modes,
+redaction, and a valid projection. Otherwise withhold evidence, close
+truthfully, and keep `NET-002` implemented.
+
+Verification: Immutable-plan gate passed: format, strict Clippy, all-target
+build, all-feature tests, Bright Builds, all 37 Bazel tests, parity, progress,
+redaction, reference, generated contracts, selector, plan hash, task
+uniqueness, reference cleanliness, and diff checks are green. One cold full-
+suite run exposed a known timing-sensitive loopback test race; five focused
+runs and the complete warm rerun passed. A later monolithic launch reached the
+macOS process limit after the successful Bazel build; the same remaining gates
+passed after Bazel quiesced. No device or host-network effect occurred.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
