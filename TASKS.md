@@ -1864,6 +1864,23 @@ because partial command effects could not close the conjunctive row. Resume
 only after the production block-found producer and bounded genuine active-state,
 physical identify, and active-mining command evidence contracts exist.
 
+Software continuation plan:
+`docs/parity/work-plans/20260812T141252Z-API-009/PLAN.md`.
+
+- [ ] Derive block qualification from one valid current-generation nonce and
+      its admitted compact network target in the pure production core.
+- [ ] Emit one redacted effect and mutate block count/visibility only through
+      the retained firmware runtime-snapshot owner.
+- [ ] Add focused state, correlation, ordering, redaction, and ownership
+      regressions; run every mandatory gate and push the source.
+- [ ] Keep API-009 `implemented`, update only its production ownership target,
+      and record the still-missing physical command-effect evidence.
+
+Continuation authorization: software, fixtures, builds, and repository
+verification only. No hardware, USB, flash, credentials, network/pool session,
+mining, ASIC traffic, HTTP command, identify or block-state injection,
+hardware controls, OTA, recovery, direct UART, pins, or physical effect.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
