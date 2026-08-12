@@ -46,3 +46,42 @@
 - Outcome: The immutable plan and active task satisfy the plan-only gate.
 - Blocker or next safe action: Commit and push the plan before implementing
   the closed evidence contract.
+
+## 2026-08-12T11:00:54Z | Closed frequency-transition contract implemented
+
+- Source commit: `e3594632b11832a3e86487b3de1464a205634f60`
+- Actions: Added the Rust-owned frequency-transition evidence schema and
+  validator, the source-bound host projector, closed CLI surface, synchronized
+  TypeScript contract, atomic publication, typed failure mapping, and focused
+  behavior tests.
+- Verification: Rust contract tests, strict focused Clippy, canonical Bazel
+  TypeScript compilation, all automation tests, real-child validation, file-
+  length checks, synchronized generated contracts, and diff checks pass. Tests
+  reject incomplete or digest-drifted source evidence, module/executor/dirty-
+  path drift, validator rejection, and child launch failure.
+- Evidence: No public projection exists yet. No protected evidence, detector,
+  package, USB/network session, credentials, or hardware effect was accessed.
+- Outcome: The implementation is ready for the full pre-commit gate.
+- Blocker or next safe action: Run the complete ordered repository gate and
+  source-compatibility checks before committing the implementation.
+
+## 2026-08-12T11:04:16Z | Implementation gate complete
+
+- Source commit: `e3594632b11832a3e86487b3de1464a205634f60`
+- Actions: Ran the complete ordered repository gate and the supporting closed-
+  projector, generated-contract, source-digest, redaction, reference, and diff
+  checks.
+- Verification: Ordered Cargo checks, Bright Builds, all 37 Bazel tests,
+  parity/progress, the projector binary, canonical `contracts_verified` target,
+  redaction, reference integrity, source projection digest, immutable-plan
+  digest, synchronized contracts, and diff checks pass. The first `just parity`
+  rendering hit the recurring transient macOS resource error; its one bounded
+  retry passed with no validation errors. The retry tail initially invoked the
+  lower-level TypeScript verifier without its required stamp argument; replacing
+  that incomplete diagnostic command with the canonical build target passed.
+- Evidence: No projector was run and no public evidence was emitted. No
+  protected input, package operation, USB/network session, credentials, or
+  hardware effect occurred.
+- Outcome: The implementation is ready to commit and push.
+- Blocker or next safe action: Commit the implementation, then run the
+  projector from that exact clean pushed source commit.

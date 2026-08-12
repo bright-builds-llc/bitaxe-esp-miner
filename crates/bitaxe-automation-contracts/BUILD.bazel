@@ -7,6 +7,7 @@ rust_library(
     srcs = [
         "src/lib.rs",
         "src/asic_initialization_evidence.rs",
+        "src/asic_frequency_transition_evidence.rs",
         "src/asic_result_parsing_evidence.rs",
         "src/asic_serial_transport_evidence.rs",
         "src/asic_work_send_evidence.rs",
@@ -28,6 +29,17 @@ rust_library(
     deps = [
         "@crates//:schemars",
         "@crates//:serde",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_asic_frequency_transition_evidence",
+    srcs = ["src/bin/validate_asic_frequency_transition_evidence.rs"],
+    crate_name = "validate_asic_frequency_transition_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
         "@crates//:serde_json",
     ],
 )

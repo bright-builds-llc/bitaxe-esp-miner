@@ -6,6 +6,7 @@ import { AsicInitializationEvidenceError } from "./asic-initialization-evidence.
 import { AsicWorkSendEvidenceError } from "./asic-work-send-evidence.js";
 import { AsicResultParsingEvidenceError } from "./asic-result-parsing-evidence.js";
 import { AsicSerialTransportEvidenceError } from "./asic-serial-transport-evidence.js";
+import { AsicFrequencyTransitionEvidenceError } from "./asic-frequency-transition-evidence.js";
 import { NetworkScanEvidenceError } from "./network-scan-evidence.js";
 import { maybeTypedFailurePublicValue } from "./typed-failure.js";
 
@@ -107,6 +108,23 @@ test("ASIC serial-transport failures retain only closed projection facts", () =>
   // Assert
   assert.deepEqual(publicValue, {
     stage: "sealed_serial_transport_projection",
+    hardware_rerun_used: false,
+  });
+});
+
+test("ASIC frequency-transition failures retain only closed projection facts", () => {
+  // Arrange
+  const error = new AsicFrequencyTransitionEvidenceError("evidence_invalid", "safe failure", {
+    stage: "sealed_frequency_transition_projection",
+    hardware_rerun_used: false,
+  });
+
+  // Act
+  const publicValue = maybeTypedFailurePublicValue(error);
+
+  // Assert
+  assert.deepEqual(publicValue, {
+    stage: "sealed_frequency_transition_projection",
     hardware_rerun_used: false,
   });
 });

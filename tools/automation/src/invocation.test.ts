@@ -360,6 +360,24 @@ test("ASIC serial-transport projection accepts only both committed source proofs
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
 
+test("ASIC frequency-transition projection accepts only the initialization proof", () => {
+  // Arrange
+  const complete = [
+    "project-asic-frequency-transition-evidence",
+    "--source-projection", "docs/parity/evidence/asic002-initialization/asic-initialization-projection.json",
+    "--attempt-source-commit", "a".repeat(40),
+    "--projection", "docs/evidence/asic-frequency-transition.json",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "project-asic-frequency-transition-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});
+
 test("Ultra 205 defaults capture requires the detector-gated closed surface", () => {
   // Arrange
   const complete = [

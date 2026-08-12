@@ -5,6 +5,10 @@ import { fileURLToPath } from "node:url";
 
 import { buildFirmware } from "./build.js";
 import {
+  AsicFrequencyTransitionEvidenceError,
+  projectAsicFrequencyTransitionEvidence,
+} from "./asic-frequency-transition-evidence.js";
+import {
   AsicInitializationEvidenceError,
   projectAsicInitializationEvidence,
 } from "./asic-initialization-evidence.js";
@@ -268,6 +272,7 @@ async function dispatchProcess(
     case "capture-network-reconnect-evidence":
     case "capture-network-scan-evidence":
     case "project-asic-initialization-evidence":
+    case "project-asic-frequency-transition-evidence":
     case "project-asic-work-send-evidence":
     case "project-asic-result-parsing-evidence":
     case "project-asic-serial-transport-evidence":
@@ -444,6 +449,14 @@ async function main(): Promise<number> {
         projection: optionValue(invocation, "--projection"),
       }, processPort, "git",
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_initialization_evidence"));
+    } else if (invocation.command === "project-asic-frequency-transition-evidence") {
+      publicValue = await projectAsicFrequencyTransitionEvidence(root, {
+        sourceProjection: optionValue(invocation, "--source-projection"),
+        attemptSourceCommit: optionValue(invocation, "--attempt-source-commit"),
+        projection: optionValue(invocation, "--projection"),
+      }, processPort, "git",
+      toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_initialization_evidence"),
+      toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_frequency_transition_evidence"));
     } else if (invocation.command === "project-asic-work-send-evidence") {
       publicValue = await projectAsicWorkSendEvidence(root, {
         sourceProjection: optionValue(invocation, "--source-projection"),
@@ -541,6 +554,7 @@ async function main(): Promise<number> {
     const networkReconnectFailure = error instanceof NetworkReconnectEvidenceError;
     const networkScanFailure = error instanceof NetworkScanEvidenceError;
     const asicInitializationFailure = error instanceof AsicInitializationEvidenceError;
+    const asicFrequencyTransitionFailure = error instanceof AsicFrequencyTransitionEvidenceError;
     const asicWorkSendFailure = error instanceof AsicWorkSendEvidenceError;
     const asicResultParsingFailure = error instanceof AsicResultParsingEvidenceError;
     const asicSerialTransportFailure = error instanceof AsicSerialTransportEvidenceError;
@@ -549,7 +563,7 @@ async function main(): Promise<number> {
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || networkScanFailure || asicInitializationFailure || asicWorkSendFailure || asicResultParsingFailure || asicSerialTransportFailure || provisioningNetworkFailure
+        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || networkScanFailure || asicInitializationFailure || asicFrequencyTransitionFailure || asicWorkSendFailure || asicResultParsingFailure || asicSerialTransportFailure || provisioningNetworkFailure
           ? error.category
           : "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";

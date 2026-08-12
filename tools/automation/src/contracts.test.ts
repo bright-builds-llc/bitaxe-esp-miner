@@ -79,6 +79,19 @@ test("result validator accepts the closed ASIC serial-transport command", () => 
   assert.equal(result.command, "project-asic-serial-transport-evidence");
 });
 
+test("result validator accepts the closed ASIC frequency-transition command", () => {
+  // Act
+  const result = parseAutomationResult({
+    schema_version: "bitaxe-automation-result-v1",
+    command: "project-asic-frequency-transition-evidence",
+    status: "succeeded",
+    category: "complete",
+  });
+
+  // Assert
+  assert.equal(result.command, "project-asic-frequency-transition-evidence");
+});
+
 // @ts-expect-error monitor intentionally has no evidenceMode option.
 monitorCommand("/tmp/flash", { evidenceMode: "dual" });
 

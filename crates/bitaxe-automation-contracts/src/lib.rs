@@ -4,6 +4,7 @@ use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+mod asic_frequency_transition_evidence;
 mod asic_initialization_evidence;
 mod asic_result_parsing_evidence;
 mod asic_serial_transport_evidence;
@@ -20,6 +21,10 @@ mod settings_patch_evidence;
 mod system_info_evidence;
 mod ultra205_defaults_evidence;
 
+pub use asic_frequency_transition_evidence::{
+    AsicFrequencyTransitionEvidence, AsicFrequencyTransitionObservationEvidence,
+    AsicFrequencyTransitionSourceEvidence,
+};
 pub use asic_initialization_evidence::{
     AsicInitializationAttemptEvidence, AsicInitializationEvidence,
     AsicInitializationObservationEvidence,
@@ -74,6 +79,8 @@ pub const SDKCONFIG_ROLLBACK_EVIDENCE_SCHEMA: &str = "bitaxe-sdkconfig-rollback-
 pub const NETWORK_RECONNECT_EVIDENCE_SCHEMA: &str = "bitaxe-network-reconnect-evidence-v1";
 pub const NETWORK_SCAN_EVIDENCE_SCHEMA: &str = "bitaxe-network-scan-evidence-v1";
 pub const ASIC_INITIALIZATION_EVIDENCE_SCHEMA: &str = "bitaxe-asic-initialization-evidence-v1";
+pub const ASIC_FREQUENCY_TRANSITION_EVIDENCE_SCHEMA: &str =
+    "bitaxe-asic-frequency-transition-evidence-v1";
 pub const ASIC_RESULT_PARSING_EVIDENCE_SCHEMA: &str = "bitaxe-asic-result-parsing-evidence-v1";
 pub const ASIC_SERIAL_TRANSPORT_EVIDENCE_SCHEMA: &str = "bitaxe-asic-serial-transport-evidence-v1";
 pub const ASIC_WORK_SEND_EVIDENCE_SCHEMA: &str = "bitaxe-asic-work-send-evidence-v1";
@@ -119,6 +126,7 @@ pub enum AutomationCommand {
     CaptureNetworkReconnectEvidence,
     CaptureNetworkScanEvidence,
     ProjectAsicInitializationEvidence,
+    ProjectAsicFrequencyTransitionEvidence,
     ProjectAsicWorkSendEvidence,
     ProjectAsicResultParsingEvidence,
     ProjectAsicSerialTransportEvidence,
@@ -276,6 +284,7 @@ pub struct ContractBundle {
     pub network_reconnect_evidence_schema: Value,
     pub network_scan_evidence_schema: Value,
     pub asic_initialization_evidence_schema: Value,
+    pub asic_frequency_transition_evidence_schema: Value,
     pub asic_work_send_evidence_schema: Value,
     pub asic_result_parsing_evidence_schema: Value,
     pub asic_serial_transport_evidence_schema: Value,
@@ -330,6 +339,10 @@ pub fn contract_bundle() -> ContractBundle {
             AsicInitializationEvidence
         ))
         .expect("ASIC initialization evidence schema must serialize"),
+        asic_frequency_transition_evidence_schema: serde_json::to_value(schema_for!(
+            AsicFrequencyTransitionEvidence
+        ))
+        .expect("ASIC frequency-transition evidence schema must serialize"),
         asic_work_send_evidence_schema: serde_json::to_value(schema_for!(AsicWorkSendEvidence))
             .expect("ASIC work-send evidence schema must serialize"),
         asic_result_parsing_evidence_schema: serde_json::to_value(schema_for!(
@@ -376,6 +389,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::CaptureNetworkReconnectEvidence,
             AutomationCommand::CaptureNetworkScanEvidence,
             AutomationCommand::ProjectAsicInitializationEvidence,
+            AutomationCommand::ProjectAsicFrequencyTransitionEvidence,
             AutomationCommand::ProjectAsicWorkSendEvidence,
             AutomationCommand::ProjectAsicResultParsingEvidence,
             AutomationCommand::ProjectAsicSerialTransportEvidence,
@@ -397,6 +411,7 @@ pub fn contract_bundle() -> ContractBundle {
             NETWORK_RECONNECT_EVIDENCE_SCHEMA,
             NETWORK_SCAN_EVIDENCE_SCHEMA,
             ASIC_INITIALIZATION_EVIDENCE_SCHEMA,
+            ASIC_FREQUENCY_TRANSITION_EVIDENCE_SCHEMA,
             ASIC_WORK_SEND_EVIDENCE_SCHEMA,
             ASIC_RESULT_PARSING_EVIDENCE_SCHEMA,
             ASIC_SERIAL_TRANSPORT_EVIDENCE_SCHEMA,

@@ -1834,7 +1834,7 @@ task remains active because `NET-002` is not verified.
 
 - [x] Select `ASIC-007` from a clean synchronized preflight and bind an
       immutable plan to the accepted conservative Ultra 205 lineage.
-- [ ] Add and verify a closed public contract that proves the bounded
+- [x] Add and verify a closed public contract that proves the bounded
       50-to-400-MHz ramp completed before accepted live work.
 - [ ] Publish the redacted projection, promote only `ASIC-007` when the full
       quorum passes, synchronize progress, and archive this task.
