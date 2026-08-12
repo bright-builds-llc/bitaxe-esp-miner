@@ -6167,3 +6167,78 @@ committed, `NET-002` transitioned to verified, and progress synchronized to 50
 of 94 active rows. Credential submission, station handoff, repeated
 provisioning, other boards, mining, controls, updates, and release readiness
 remain non-claims.
+
+### task-parity-net003-scan-ipv6 | 2026-08-04 | Implement Wi-Fi scan and IPv6 reporting
+
+- [x] Add the bounded 20-network scan response and explicit numeric auth-mode
+      plus link-local/global IPv6 projection contracts.
+- [x] Retain one ESP-IDF Wi-Fi owner for exclusive scans, restore AP-only mode,
+      register the access-gated endpoint, and publish station-only IPv6 events.
+- [x] Add focused/ownership regressions, build the real firmware, run every
+      mandatory gate, and transition only `NET-003` to `implemented`.
+
+Plan: `docs/parity/work-plans/20260804T170000Z-NET-003/PLAN.md`
+
+Authorization: local software and build work only. No hardware attempt,
+credentials, external network request, mining, ASIC traffic, voltage/fan/power
+effect, OTA, recovery, direct UART, or pins.
+
+Verification: Five focused scan/IPv6 tests, 23 API-comparator tests, six Wi-Fi
+ownership tests, the synthetic route fixture, and the real ESP32-S3 build pass.
+The ordered Rust sequence, Bright Builds, all 30 Bazel targets, API compare,
+parity/progress, redaction, reference cleanliness, and diff checks also pass.
+
+Completion review: The bounded scan and station IPv6 implementation is
+complete. Exact-package attempt-001 later proved 20 bounded scan records,
+same-session connected client-only service, and stable unique-local v6
+reporting. `NET-003` transitioned to verified under
+`20260812T083128Z-NET-003`; this implementation task is complete and archived.
+
+### task-parity-net003-live-scan-address-attempt-001 | 2026-08-12 | Verify live Wi-Fi scan and station v6 reporting
+
+- [x] Add a closed typed capture and validator that admit one exact-package
+      same-session scan plus before/after connected station-address state.
+- [x] Prove aggregate scan shape, numeric auth/signal bounds, exact identity,
+      connection preservation, stable v6 reporting, private modes, and public
+      redaction without exposing observed network or device identifiers.
+- [x] Run every software gate, push the exact package, spend one detector and
+      at most one attempt-001, then promote only on the complete live quorum.
+
+Plan: `docs/parity/work-plans/20260812T080258Z-NET-003/PLAN.md`.
+
+Hardware contract: the only permitted live command is the exact detector and
+conditional `just capture-network-scan-evidence` sequence in the linked plan.
+Its objective is one exact-package board-205 boot followed by private system-
+info, exactly one same-origin Wi-Fi scan, and private post-scan system-info.
+The ignored wrapper and attempt roots are `ProtectedOperational`, mode `0700`
+with mode-`0600` files; only closed aggregates and safe provenance may enter
+the public projection. The allowed effects are the normal exact-package flash,
+repo-owned USB reset/re-enumeration, passive serial receive, same-origin HTTP
+reads, and one bounded scan. No credential mutation, host network discovery,
+association change, repeated scan, erase, raw write, OTA, restart, mining,
+ASIC work, hardware control, direct UART, or pins is authorized.
+
+Recovery and stop rules: preserve the earliest typed failure and perform at
+most one ordinary exact-package recovery flash after a started flash effect;
+recovery cannot create success. Detector failure, missing input, launch
+failure, timeout, non-ready hardware, malformed evidence, scan failure, absent
+or invalid station address, lost service, cleanup failure, or any privacy
+violation stops the attempt, withholds evidence, consumes ordinal 001, and
+forbids an unchanged retry. Accepted terminal categories are `process_failed`,
+`timeout`, `hardware_blocked`, `evidence_invalid`, and
+`service_recovery_failed`.
+
+Verification: Plan-only and implementation gates passed ordered Cargo, Bright
+Builds, all 37 Bazel tests, the real ESP32-S3 image, parity/progress, redaction,
+reference, generated contracts, selector, task, immutable-plan, fresh-path,
+reference-cleanliness, and diff checks. Immutable plan SHA-256 is
+`071a2b0a2d0a6b2ab84fcc854d8cefe765a194c47b5bf588b10014c9810bada2`.
+Attempt-001 additionally passed independent Rust validation, private-mode and
+no-holder checks, and semantic redaction.
+
+Completion review: Attempt-001 passed with one exact-package boot, 20 bounded
+exact-shape scan records, same-session connected client-only service, stable
+unique-local v6 reporting, monotonic uptime, disabled mining/control, cleanup,
+no recovery, private modes, independent validation, and redaction. The
+evidence was committed, `NET-003` transitioned to verified, progress
+synchronized to 51 of 94 active rows, and this task is complete and archived.

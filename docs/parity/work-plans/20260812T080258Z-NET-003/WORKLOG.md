@@ -55,3 +55,57 @@
 - Blocker or next safe action: Commit the result and evidence without changing
   the checklist, then transition only `NET-003`, sync progress, archive both
   completed NET-003 tasks, and run the final gates.
+
+## 2026-08-12T08:25:49Z | verified transition synchronized
+
+- Source commit: evidence commit
+  `091cf2566bab5244060c8b2c36c7675a0916bb92`.
+- Actions: Transitioned only `NET-003` to `verified`, corrected the receipt's
+  initially future-dated identifier to the command's actual UTC timestamp,
+  synchronized progress, and archived both completed NET-003 tasks.
+- Verification: The transition accepted the immutable plan/result pair and
+  exact code-span target cell. The first sync used an incorrectly expanded
+  short commit and failed before mutation; the exact Git-resolved commit then
+  synchronized successfully to 51 of 94 active rows (54.3%).
+- Evidence: Checklist transition receipt, progress history, README status,
+  committed result, and redacted closed projection.
+- Outcome: `NET-003` is verified and its task lineage is closed.
+- Blocker or next safe action: Run the complete final gate, commit and push
+  finalization, then select the next canonical parity row.
+
+## 2026-08-12T08:31:29Z | final promotion gate passed
+
+- Source commit: evidence commit
+  `091cf2566bab5244060c8b2c36c7675a0916bb92` plus the pending single-row
+  transition.
+- Actions: Re-ran the complete ordered Rust, Bright Builds, Bazel, parity,
+  progress, privacy, reference, generated-contract, evidence-validation,
+  immutable-plan, transition-integrity, task-archive, and diff gates.
+- Verification: All checks passed. The checklist digest exactly matches the
+  transition receipt, the plan digest remains unchanged, both completed task
+  records occur exactly once in the archive and not in the active tracker,
+  and the redacted hardware projection independently validates.
+- Evidence: The committed result and public projection remain the only
+  promoted live artifacts; raw identifiers remain in ignored protected
+  storage.
+- Outcome: The `NET-003` finalization is ready to commit and push.
+- Blocker or next safe action: Commit and push the promotion, then start a
+  fresh skill invocation for the next canonical row.
+
+## 2026-08-12T08:32:39Z | transition note bound and revalidated
+
+- Source commit: evidence commit
+  `091cf2566bab5244060c8b2c36c7675a0916bb92`.
+- Actions: Final diff review found the old implemented-state note still said
+  live evidence was pending. Recreated the single-row transition as
+  `20260812T083128Z-NET-003` with the proved live scope and explicit non-claims
+  bound into the typed receipt, then resynchronized progress.
+- Verification: Bright Builds, parity/progress, redaction, reference,
+  checklist-to-receipt digest equality, immutable-plan digest, task-archive
+  uniqueness, and diff checks all passed after the correction.
+- Evidence: No new device interaction occurred; the correction only makes the
+  public row accurately describe the already committed closed evidence.
+- Outcome: The promoted row, receipt, progress record, and archived task
+  lineage are mutually consistent and ready to commit.
+- Blocker or next safe action: Commit and push finalization, then select the
+  next canonical parity row.

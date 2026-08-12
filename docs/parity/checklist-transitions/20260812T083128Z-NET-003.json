@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260812T083128Z-NET-003",
+  "predecessor_sha256": "4310b48a13ca371f4b6997655f7c357c24801066b4a04c10d4e059342ebd5700",
+  "result_sha256": "9c9d1b5d59d704588bc488bbe91ae3e13995ceef81a3e9e271f748f5f5cb1799",
+  "row_id": "NET-003",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260812T080258Z-NET-003/PLAN.md",
+  "plan_sha256": "071a2b0a2d0a6b2ab84fcc854d8cefe765a194c47b5bf588b10014c9810bada2",
+  "result_path": "docs/parity/work-plans/20260812T080258Z-NET-003/RESULT.md",
+  "result_document_sha256": "a2a40941aec8eacd32ba03ce4533ef8b7b819ba21e682e370e17380ec995078e",
+  "before_rust_owned_target": "`crates/bitaxe-api/src/network.rs`, `crates/bitaxe-api/src/route_shell.rs`, `firmware/bitaxe/src/http_api.rs`, `firmware/bitaxe/src/wifi_adapter.rs`, `firmware/bitaxe/src/wifi_adapter/scan.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/network.rs`, `crates/bitaxe-api/src/route_shell.rs`, `firmware/bitaxe/src/http_api.rs`, `firmware/bitaxe/src/wifi_adapter.rs`, `firmware/bitaxe/src/wifi_adapter/scan.rs`, `crates/bitaxe-automation-contracts/src/network_scan_evidence.rs`, `tools/automation/src/network-scan-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow,api-compare",
+  "after_evidence": "unit,workflow,api-compare,hardware-smoke",
+  "before_notes": "Bounded exclusive scan and station IPv6 reporting are implemented with synthetic API comparison; live scan, connection-preservation, and IPv6 evidence remain pending. Result: docs/parity/work-plans/20260804T170000Z-NET-003/RESULT.md.",
+  "after_notes": "Exact-package Ultra 205 attempt-001 proves 20 bounded exact-shape scan records, same-session connected client-only service, stable unique-local v6 reporting, monotonic uptime, disabled mining and hardware control, cleanup, private modes, independent validation, and redaction; see docs/parity/work-plans/20260812T080258Z-NET-003/RESULT.md and docs/parity/evidence/net003-scan/network-scan-projection.json. Repeated scans, other address classes, association changes, other boards, mining, hardware control, updates, recovery, and release readiness remain non-claims."
+}
