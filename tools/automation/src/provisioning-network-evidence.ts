@@ -226,9 +226,8 @@ export async function captureProvisioningNetworkEvidence(
       undefined,
     );
     await writePrivate(path.join(privateRoot, "ap-flash-monitor.private.log"), initial);
-    if (!exactSafeBuild(initial, ...identities)
-      || !initial.includes("wifi_status=credentials_missing ap_enabled=true captive_dns=started")) {
-      throw failure("evidence_invalid", "safe configuration-network boot evidence is missing");
+    if (!exactSafeBuild(initial, ...identities)) {
+      throw failure("evidence_invalid", "trusted passive-safe runtime evidence is missing");
     }
 
     let observation: ProvisioningClientObservation;

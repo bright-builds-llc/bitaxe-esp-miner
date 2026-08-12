@@ -1686,9 +1686,9 @@ verified.
 
 - [x] Select the first canonical row and bind the fresh continuation to the
       explicit attempt-001 closure and exact aggregate diagnosis.
-- [ ] Replace only the one-shot AP startup-line prerequisite with trusted
+- [x] Replace only the one-shot AP startup-line prerequisite with trusted
       recurring passive-safe runtime admission.
-- [ ] Add production-shaped late-attach success and missing-safety failure
+- [x] Add production-shaped late-attach success and missing-safety failure
       regressions; run focused and mandatory software gates.
 - [ ] Commit and push the exact implementation, then run one protected detector
       and at most one conditional attempt-002 on board 205.

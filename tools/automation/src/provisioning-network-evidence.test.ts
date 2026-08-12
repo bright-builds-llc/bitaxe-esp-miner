@@ -18,11 +18,12 @@ const ok = (stdout = ""): ProcessOutcome => ({ exitCode: 0, stdout, stderr: "", 
 
 function apLog(): string {
   return [
-    "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled",
     sourceCommit,
     referenceCommit,
     appElfSha256,
-    "wifi_status=credentials_missing ap_enabled=true captive_dns=started",
+    "runtime_boot_attestation schema_version=1 mining=disabled work_submission=disabled hardware_control=disabled redacted=true",
+    "runtime_heartbeat session=00000000000000000000000000000001 sequence=7 uptime_ms=7000 cadence_ms=1000 listener_armed=false redacted=true",
+    "runtime_health boot_session=00000000000000000000000000000001 operator_snapshot_revision=7 redacted=true",
   ].join("\n") + "\n";
 }
 
@@ -98,7 +99,7 @@ async function captureError(promise: Promise<unknown>): Promise<ProvisioningNetw
   }
 }
 
-test("ready client emits aggregate-only provisioning evidence after exact recovery", async () => {
+test("late-attached safe runtime emits aggregate-only evidence after the client quorum", async () => {
   // Arrange
   const value = await fixture("ready");
   let flashCount = 0;
@@ -128,6 +129,41 @@ test("ready client emits aggregate-only provisioning evidence after exact recove
   );
   assert.equal((await stat(path.join(value.root, "scratch", "attempt"))).mode & 0o777, 0o700);
   assert.equal((await stat(path.join(value.root, "scratch", "attempt", "system-info.private.json"))).mode & 0o777, 0o600);
+});
+
+test("late-attached runtime without trusted passive safety fails before client observation", async () => {
+  // Arrange
+  const value = await fixture("missing-safety");
+  let flashCount = 0;
+  let observationCount = 0;
+  const client = readyClient();
+  const port = createFakeProcessPort(async (spec) => {
+    if (spec.args[0] !== "flash-monitor") return ok();
+    flashCount += 1;
+    return ok(flashCount === 1
+      ? [sourceCommit, referenceCommit, appElfSha256, "runtime_heartbeat redacted=true"].join("\n")
+      : recoveryLog());
+  });
+  const guardedClient: ProvisioningClientPort = {
+    admit: client.admit,
+    async observe(admission) {
+      observationCount += 1;
+      return client.observe(admission);
+    },
+    cleanup: client.cleanup,
+  };
+
+  // Act
+  const error = await captureError(captureProvisioningNetworkEvidence(
+    value.root, value.options, port, "flash", "validator", guardedClient,
+  ));
+
+  // Assert
+  assert.equal(error.category, "evidence_invalid");
+  assert.equal(observationCount, 0);
+  assert.equal(flashCount, 2);
+  assert.equal(error.publicValue["device_recovery_complete"], true);
+  await assert.rejects(readFile(value.projection, "utf8"), { code: "ENOENT" });
 });
 
 test("host admission failure stops before any flash effect", async () => {
