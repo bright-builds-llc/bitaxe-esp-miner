@@ -2140,6 +2140,39 @@ later closed `network_correlation_failed` with terminal
 withholding passed. No projection exists, API-009 remains `implemented`, and
 attempt-006 cannot be retried. See the linked closure for the next safe action.
 
+### task-parity-pwr003-core-voltage-control-audit | 2026-08-12 | Audit Ultra 205 core-voltage control
+
+- [x] Select PWR-003 as the first actionable parity row and freeze the
+      immutable plan at
+      `docs/parity/work-plans/20260812T203223Z-PWR-003/PLAN.md`.
+- [ ] Add a typed core-voltage-control evidence contract, independent
+      validator, projector, generated binding, and command surface.
+- [ ] Add focused regressions for the accepted PWR-002 source quorum, exact
+      DS4432U address/register/code and write route, 500 ms stabilization,
+      active-low safe shutdown, source drift, publication withholding,
+      candidate cleanup, and sensitive-output absence.
+- [ ] Produce and independently validate one public redacted PWR-003
+      projection from the sealed accepted PWR-002 evidence without rerunning
+      hardware.
+- [ ] Run all required Cargo, Bright Builds, Bazel, parity, redaction,
+      reference, generated-contract, diff, and source-compatibility gates.
+- [ ] Promote only PWR-003 if the closed projection passes, record RESULT.md,
+      archive this task, and preserve every explicit non-claim.
+
+This is a software-only evidence audit. It permits reading committed evidence,
+source, task, plan, and pinned reference state; running repository build, test,
+validation, and projection commands; and publishing one redacted typed
+projection. It does not permit a detector run, package build, flash, reset, USB
+session, serial monitor, network request, credentials, mining rerun, voltage,
+fan, power, GPIO, I2C, direct UART, pin, fault-injection, or other hardware
+effect. Failed validation must preserve `PWR-003` at `implemented`, withhold
+the final projection, clean any candidate, and record the earliest typed
+failure. Acceptance requires the exact source projection and digest, trusted
+package/runtime identity, issued 1100 mV command, source-bound DS4432U
+constants and single-write route, complete stabilization, successful
+downstream work, active-low safe stop, cleanup, no hardware rerun, and passed
+redaction.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
