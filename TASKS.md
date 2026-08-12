@@ -1830,6 +1830,31 @@ proved mining and controls disabled. No projection exists. The linked closure
 requires removal of that preference-value assumption in a fresh ordinal; this
 task remains active because `NET-002` is not verified.
 
+### task-parity-api009-command-effect-evidence-audit | 2026-08-12 | Audit the complete operator-command effect quorum
+
+- [x] Select `API-009` from a clean synchronized selector without skipping a
+      row.
+- [ ] Audit committed public evidence for all five command-correlated effects.
+- [ ] Promote only on a complete genuine quorum; otherwise seal the exact
+      terminal evidence blocker without partial hardware execution.
+
+Plan: `docs/parity/work-plans/20260812T135813Z-API-009/PLAN.md`.
+
+Authorization: Read-only committed public evidence and source plus mandatory
+software verification only. No protected evidence, credentials, detector,
+package, flash, reset, USB/network or HTTP session, mining, identify command,
+block-state injection, controls, recovery, direct UART, pins, or physical
+effect is permitted.
+
+Verification and stop rule: Require all five genuine command effects for
+promotion. Missing trusted physical identify rendering or an actually active
+production block-found dismissal is a terminal evidence blocker. Do not use
+synthetic state, partial hardware effects, weakened claims, or row skipping.
+
+Verification: Plan-only gate pending.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
