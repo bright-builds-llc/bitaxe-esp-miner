@@ -1830,6 +1830,34 @@ proved mining and controls disabled. No projection exists. The linked closure
 requires removal of that preference-value assumption in a fresh ordinal; this
 task remains active because `NET-002` is not verified.
 
+### task-parity-str007-mining-criteria-promotion | 2026-08-12 | Verify bounded mining smoke and soak criteria
+
+- [x] Select `STR-007` from a clean synchronized preflight and separate the
+      criteria claim from the terminal attempt-004 continuity task.
+- [ ] Add and verify a closed public contract joining the committed Phase 21
+      smoke/soak proof, verified coordinator, and current fail-closed criteria.
+- [ ] Publish the redacted projection, promote only `STR-007`, synchronize
+      progress, and archive this task when every gate passes.
+
+Plan: `docs/parity/work-plans/20260812T124802Z-STR-007/PLAN.md`.
+
+Authorization: Software-only derivation from committed public evidence and Git
+history. No protected campaign access, attempt-005, detector, package build,
+flash, reset, USB/network session, credentials, mining, pool contact,
+fan/voltage/power/ASIC actuation, recovery, direct UART, pins, or other hardware
+effect is permitted.
+
+Verification and stop rule: Require exact admitted public digests and closed
+facts, independent validators, current source identity and cleanliness, unique
+current criteria spans, focused and real-child regressions, every repository
+gate, redaction, reference cleanliness, and atomic publication. Any failure
+leaves `STR-007` implemented and stops without hardware fallback or reopening
+the terminal default-profile soak task.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
