@@ -6527,3 +6527,48 @@ accepted submit response, ordered safe stop, watchdog feeding, and cleanup. No
 protected evidence or new hardware effect occurred. The evidence and
 transition commits were pushed and the row is verified. This task is complete
 and archived.
+
+### task-parity-str007-mining-criteria-promotion | 2026-08-12 | Verify bounded mining smoke and soak criteria
+
+- [x] Select `STR-007` from a clean synchronized preflight and separate the
+      criteria claim from the terminal attempt-004 continuity task.
+- [x] Add and verify a closed public contract joining the committed Phase 21
+      smoke/soak proof, verified coordinator, and current fail-closed criteria.
+- [x] Publish the redacted projection, promote only `STR-007`, synchronize
+      progress, and archive this task when every gate passes.
+
+Active plan: `docs/parity/work-plans/20260812T133713Z-STR-007/PLAN.md`.
+
+Closed predecessors:
+`docs/parity/work-plans/20260812T124802Z-STR-007/CLOSURE.md` and
+`docs/parity/work-plans/20260812T132655Z-STR-007/CLOSURE.md`.
+
+Authorization: Software-only derivation from committed public evidence and Git
+history. No protected campaign access, attempt-005, detector, package build,
+flash, reset, USB/network session, credentials, mining, pool contact,
+fan/voltage/power/ASIC actuation, recovery, direct UART, pins, or other hardware
+effect is permitted.
+
+Verification and stop rule: Require exact admitted public digests and closed
+facts, independent validators, current source identity and cleanliness, unique
+current criteria spans, focused and real-child regressions, every repository
+gate, redaction, reference cleanliness, and atomic publication. Any failure
+leaves `STR-007` implemented and stops without hardware fallback or reopening
+the terminal default-profile soak task.
+
+Verification: Focused contract, projector, wrapper-shape, absolute validator-
+boundary, and real-child tests pass. Ordered Cargo, Bright Builds, all 37 Bazel
+targets, parity/progress, independent validation, redaction, reference,
+immutable digests, mode, candidate absence, source and task cleanliness, and
+diff checks pass. Public projection SHA-256 is
+`c1ccb65e6a49d04049aabb2be1295949163526a197e20e3de51fc65d38c2a80f`.
+Transition `20260812T135247Z-STR-007` promoted only `STR-007`; progress now
+records 59 of 94 active rows verified (62.8%).
+
+Completion review: The sealed proof joins the committed Phase 21 controlled
+no-share smoke and approved 300-second bounded soak, verified coordinator
+compatibility, and current exact 600-second upstream-default fail-closed
+criteria. It does not reopen or satisfy the terminal attempt-004 continuity
+task. No protected evidence or new hardware effect occurred. The evidence was
+independently validated and the row is verified. This task is complete and
+archived.

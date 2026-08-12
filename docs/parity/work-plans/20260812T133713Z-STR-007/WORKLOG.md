@@ -73,3 +73,40 @@
 - Blocker or next safe action: Commit and push the projection and RESULT, then
   use the typed checklist transition to promote only this row and synchronize
   progress.
+
+## 2026-08-12T13:53:58Z | Audited promotion and archival
+
+- Source commit: `381ddb5af93a84a48c4e410a32463e8b621e44bc`
+- Actions: Applied typed transition `20260812T135247Z-STR-007` to only
+  `STR-007`, synchronized progress, and prepared the completed task for
+  append-only archival.
+- Verification: The transition changes the row from `implemented` to
+  `verified` with unchanged `workflow,hardware-smoke,soak` evidence. Parity
+  reports no validation errors and progress is 59/94 (62.8%). Transition
+  receipt SHA-256 is
+  `5d5dc558d4ef413d5fe3d6460be5ea7315d11433bcaeae45cdacb3b9f7dc4ff9`;
+  RESULT SHA-256 is
+  `dcd0a04cb675189abe1cf3e3ab57e3eed517727efa71901763082c91ab9cea27`.
+- Evidence: The receipt binds the immutable plan and RESULT; no other row or
+  evidence class was broadened.
+- Outcome: `STR-007` is conservatively verified and its completed task is
+  ready to leave the active tracker.
+- Blocker or next safe action: Run the complete final gate over the transition,
+  progress, task archive, RESULT, and projection, then commit and push.
+
+## 2026-08-12T13:56:49Z | Final repository gate
+
+- Actions: Ran the complete post-transition gate over the verified checklist,
+  synchronized progress chain, transition receipt, archived task, RESULT, and
+  independently validated projection.
+- Verification: Ordered format, clippy, all-target build, all-feature tests,
+  Bright Builds checks, all 37 Bazel test targets, parity/progress, redaction,
+  reference, guarded Rust validation, exact plan/RESULT/projection/receipt
+  digests, final mode, candidate absence, task uniqueness, reference
+  cleanliness, and diff checks pass. Progress is 59/94 (62.8%).
+- Evidence: No protected evidence, credentials, network, or hardware was used.
+  All public artifacts remain bound to the immutable plan and clean source.
+- Outcome: `STR-007` is verified, its task is archived, and finalization is
+  ready to commit and push.
+- Blocker or next safe action: Push finalization, then begin a fresh
+  `advance-parity` invocation from the synchronized selector.

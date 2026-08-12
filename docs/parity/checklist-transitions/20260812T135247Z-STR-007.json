@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260812T135247Z-STR-007",
+  "predecessor_sha256": "b32fa94f8b6ff11414555669e745f064a9bda98f2ff7ca2709d15caa7da00784",
+  "result_sha256": "5bc7a9201b72357257ca0a2d11770bca32243ddf266332d9fbc254a7ba96254e",
+  "row_id": "STR-007",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260812T133713Z-STR-007/PLAN.md",
+  "plan_sha256": "58424e52830a91acc8586d2a82b3089cb740f29d3b7e64767cc12101fa304922",
+  "result_path": "docs/parity/work-plans/20260812T133713Z-STR-007/RESULT.md",
+  "result_document_sha256": "dcd0a04cb675189abe1cf3e3ab57e3eed517727efa71901763082c91ab9cea27",
+  "before_rust_owned_target": "`docs/parity/evidence/phase-04-stratum-v1-mining-loop.md`, `docs/parity/evidence/phase-12-asic-and-mining-hardware-evidence.md`, `docs/parity/production-session-software-verification.md`, `tools/automation/src/cli.ts`, `tools/flash/src/campaign.rs`",
+  "after_rust_owned_target": "`tools/flash/src/campaign`, `crates/bitaxe-stratum/src/v1/production_session`, `crates/bitaxe-automation-contracts/src/mining_criteria_evidence.rs`, `tools/automation/src/mining-criteria-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "workflow,hardware-smoke,soak",
+  "after_evidence": "workflow,hardware-smoke,soak",
+  "before_notes": "Smoke and soak criteria are recorded without pool credentials or secret-bearing logs. The typed production-session verification runs the Rust behavior suites directly. Accepted/rejected share behavior and unbounded production mining remain below verified.",
+  "after_notes": "Sealed evidence binds the committed Phase 21 controlled no-share smoke and approved 300-second bounded soak, verified STR-006 coordinator compatibility, and current exact 600-second upstream-default fail-closed criteria; see `docs/parity/work-plans/20260812T133713Z-STR-007/RESULT.md` and `docs/parity/evidence/str007-mining-criteria/mining-criteria-projection.json`. The terminal attempt-004 continuity task, a current accepted or rejected share soak, arbitrary pools, automatic controls, profitability, unbounded mining, TLS, Stratum v2, other boards, updates, recovery, and release readiness remain non-claims."
+}
