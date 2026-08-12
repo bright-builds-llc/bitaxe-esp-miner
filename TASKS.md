@@ -1834,8 +1834,8 @@ task remains active because `NET-002` is not verified.
 
 - [x] Select `API-009` from a clean synchronized selector without skipping a
       row.
-- [ ] Audit committed public evidence for all five command-correlated effects.
-- [ ] Promote only on a complete genuine quorum; otherwise seal the exact
+- [x] Audit committed public evidence for all five command-correlated effects.
+- [x] Promote only on a complete genuine quorum; otherwise seal the exact
       terminal evidence blocker without partial hardware execution.
 
 Plan: `docs/parity/work-plans/20260812T135813Z-API-009/PLAN.md`.
@@ -1851,9 +1851,18 @@ promotion. Missing trusted physical identify rendering or an actually active
 production block-found dismissal is a terminal evidence blocker. Do not use
 synthetic state, partial hardware effects, weakened claims, or row skipping.
 
-Verification: Plan-only gate pending.
+Verification: The plan-only gate passed. The public evidence audit found route
+registration but no command-correlated physical identify, active block-found
+dismissal, or active-mining pause/resume hardware proof. Current production
+state has no writer that raises the block notification; it initializes false
+and the dismiss path only preserves the count while writing false. Upstream
+requires a nonce at network difficulty, which is not a bounded precondition.
+See `docs/parity/work-plans/20260812T135813Z-API-009/CLOSURE.md`.
 
-Completion review: Pending.
+Completion review: API-009 remains implemented. No device action was run
+because partial command effects could not close the conjunctive row. Resume
+only after the production block-found producer and bounded genuine active-state,
+physical identify, and active-mining command evidence contracts exist.
 
 ## Future
 
