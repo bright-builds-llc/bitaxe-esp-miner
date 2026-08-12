@@ -1895,6 +1895,38 @@ verification only. No hardware, USB, flash, credentials, network/pool session,
 mining, ASIC traffic, HTTP command, identify or block-state injection,
 hardware controls, OTA, recovery, direct UART, pins, or physical effect.
 
+Hardware evidence continuation plan:
+`docs/parity/work-plans/20260812T144217Z-API-009/PLAN.md`.
+
+- [ ] Add the typed `command-effects` campaign stage, easy-target local Stratum
+      fixture, one-time physical identify checkpoint, canonical restart join,
+      closed public evidence projection, and focused regressions.
+- [ ] Run all focused and mandatory software gates; commit and push the exact
+      implementation before touching hardware.
+- [ ] Run exactly one fresh detector-gated `attempt-001` against board 205 and
+      stop after its complete result without retry.
+- [ ] Promote API-009 only on the complete five-command device-user quorum;
+      otherwise preserve `implemented` and record the first typed blocker.
+
+Hardware continuation authorization: standing task authorization permits the
+single bounded attempt only after the immutable plan/task checkpoint and clean
+pushed implementation pass. The repo-owned command must flash the exact
+package, seed only private generated local-pool credentials plus the opaque
+Wi-Fi input, mine under the conservative profile for at most 600 seconds,
+issue pause/resume/identify/dismiss once in the admitted order, obtain one-time
+operator observations for IDENTIFY rendering and clearing, safe-stop, and make
+exactly one canonical software-restart request. Allowed physical effects are
+USB flash/reset, conservative BM1366 initialization/mining against the local
+fixture, display identify on/off, HTTP command effects, and software restart.
+No external pool, owner pool credentials, diagnostic setter, erase, OTA,
+rollback, power cycle, direct UART, pins, fault injection, or control override
+is permitted. Private evidence remains mode 0700/0600 beneath ignored scratch;
+public output contains no origin, hostname, port, USB/network identity,
+credential, worker, address, password, token, checkpoint secret, or raw trace.
+Recovery is pause/safe-stop first and exact-package restore only if required;
+the earliest failure remains primary. Accepted stop categories are
+`hardware_blocked`, `evidence_invalid`, `timeout`, and `process_failed`.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
