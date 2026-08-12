@@ -1,5 +1,6 @@
 import { OperatorSnapshotEvidenceError } from "./operator-snapshot-evidence.js";
 import { NetworkReconnectEvidenceError } from "./network-reconnect-evidence.js";
+import { NetworkScanEvidenceError } from "./network-scan-evidence.js";
 import { ProvisioningNetworkEvidenceError } from "./provisioning-network-evidence.js";
 import { RuntimeHealthEvidenceError } from "./runtime-health-evidence.js";
 import { SettingsDurabilityError } from "./settings-durability.js";
@@ -12,6 +13,7 @@ import { Ultra205DefaultsEvidenceError } from "./ultra205-defaults-evidence.js";
 export function maybeTypedFailurePublicValue(error: unknown): Readonly<Record<string, unknown>> | undefined {
   if (error instanceof SettingsDurabilityError
     || error instanceof NetworkReconnectEvidenceError
+    || error instanceof NetworkScanEvidenceError
     || error instanceof ProvisioningNetworkEvidenceError
     || error instanceof ThemeDurabilityError
     || error instanceof OperatorSnapshotEvidenceError

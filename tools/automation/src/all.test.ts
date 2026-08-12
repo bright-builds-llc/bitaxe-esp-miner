@@ -8,6 +8,7 @@ import "./interrupted-upload.test.js";
 import "./invocation.test.js";
 import "./log-buffer-evidence.test.js";
 import "./network-reconnect-evidence.test.js";
+import "./network-scan-evidence.test.js";
 import "./operator-snapshot-evidence.test.js";
 import "./partition-layout-evidence.test.js";
 import "./provisioning-client.test.js";

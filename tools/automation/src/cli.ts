@@ -33,6 +33,10 @@ import {
   NetworkReconnectEvidenceError,
 } from "./network-reconnect-evidence.js";
 import {
+  captureNetworkScanEvidence,
+  NetworkScanEvidenceError,
+} from "./network-scan-evidence.js";
+import {
   captureProvisioningNetworkEvidence,
   ProvisioningNetworkEvidenceError,
 } from "./provisioning-network-evidence.js";
@@ -246,6 +250,7 @@ async function dispatchProcess(
     case "capture-partition-layout-evidence":
     case "capture-sdkconfig-rollback-evidence":
     case "capture-network-reconnect-evidence":
+    case "capture-network-scan-evidence":
     case "capture-provisioning-network-evidence":
     case "verify-theme-durability":
       throw new Error("specialized workflow reached generic dispatch");
@@ -412,6 +417,17 @@ async function main(): Promise<number> {
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root),
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_network_reconnect_evidence"));
+    } else if (invocation.command === "capture-network-scan-evidence") {
+      const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
+      publicValue = await captureNetworkScanEvidence(root, {
+        privateRoot: optionValue(invocation, "--private-root"),
+        packageManifest: optionValue(invocation, "--package-manifest"),
+        wifiCredentials: optionValue(invocation, "--wifi-credentials"),
+        port,
+        projection: optionValue(invocation, "--projection"),
+        captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
+      }, processPort, flashProgram(root),
+      toolProgram(root, "crates/bitaxe-automation-contracts/validate_network_scan_evidence"));
     } else if (invocation.command === "capture-provisioning-network-evidence") {
       const handoff = await provisioningDetectorHandoffFromOutput(
         root,
@@ -470,12 +486,13 @@ async function main(): Promise<number> {
     const partitionLayoutFailure = error instanceof PartitionLayoutEvidenceError;
     const sdkconfigRollbackFailure = error instanceof SdkconfigRollbackEvidenceError;
     const networkReconnectFailure = error instanceof NetworkReconnectEvidenceError;
+    const networkScanFailure = error instanceof NetworkScanEvidenceError;
     const provisioningNetworkFailure = error instanceof ProvisioningNetworkEvidenceError;
     const category: AutomationCategory = policyBlocked
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || provisioningNetworkFailure
+        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || networkScanFailure || provisioningNetworkFailure
           ? error.category
           : "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";

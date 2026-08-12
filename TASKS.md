@@ -1859,9 +1859,9 @@ task remains active because `NET-002` is not verified.
 
 ### task-parity-net003-live-scan-address-attempt-001 | 2026-08-12 | Verify live Wi-Fi scan and station v6 reporting
 
-- [ ] Add a closed typed capture and validator that admit one exact-package
+- [x] Add a closed typed capture and validator that admit one exact-package
       same-session scan plus before/after connected station-address state.
-- [ ] Prove aggregate scan shape, numeric auth/signal bounds, exact identity,
+- [x] Prove aggregate scan shape, numeric auth/signal bounds, exact identity,
       connection preservation, stable v6 reporting, private modes, and public
       redaction without exposing observed network or device identifiers.
 - [ ] Run every software gate, push the exact package, spend one detector and
@@ -1898,6 +1898,11 @@ uniqueness; reference-cleanliness; fresh-path; and diff checks pass. The first
 parity invocation encountered a transient host `os error 35` after rendering;
 the unchanged rerun passed with no validation errors. Immutable plan SHA-256:
 `071a2b0a2d0a6b2ab84fcc854d8cefe765a194c47b5bf588b10014c9810bada2`.
+Implementation gate also passes the new contract and automation regressions,
+real-child production artifact seam, all 37 Bazel tests, real ESP32-S3 image,
+and every ordered repository gate. The verbose parity report twice hit a
+transient host `os error 35`; its unchanged protected-file run completed with
+`validation_errors: none`.
 
 Completion review: Pending. `NET-003` remains `implemented`; the earlier
 software task remains active until this live scan, connection-preservation,

@@ -72,3 +72,30 @@ test("log buffer evidence is admitted and operational device fields are rejected
     await rm(root, { recursive: true });
   }
 });
+
+test("network scan evidence admits aggregates and rejects raw radio identity", async () => {
+  // Arrange
+  const root = await mkdtemp(path.join(tmpdir(), "bitaxe-redaction-network-scan-"));
+  const evidence = path.join(root, "evidence.json");
+  await writeFile(evidence, JSON.stringify({
+    schema_version: "bitaxe-network-scan-evidence-v1",
+    same_origin_observed: true,
+    scan: {
+      record_count: 2,
+      address_family: "v6",
+      address_kind: "link_local",
+    },
+  }));
+
+  try {
+    // Act / Assert
+    assert.equal((await verifySemanticEvidenceRedaction(root)).checked, 1);
+    await writeFile(evidence, JSON.stringify({
+      schema_version: "bitaxe-network-scan-evidence-v1",
+      ssid: "private-nearby-network",
+    }));
+    await assert.rejects(verifySemanticEvidenceRedaction(root));
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});

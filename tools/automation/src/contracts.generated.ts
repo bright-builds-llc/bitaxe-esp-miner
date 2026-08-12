@@ -31,6 +31,7 @@ export type AutomationCommand =
   | "capture-partition-layout-evidence"
   | "capture-sdkconfig-rollback-evidence"
   | "capture-network-reconnect-evidence"
+  | "capture-network-scan-evidence"
   | "capture-provisioning-network-evidence";
 
 export type AutomationStatus = "succeeded" | "failed" | "blocked";
@@ -329,6 +330,41 @@ export type NetworkReconnectEvidence = {
   boot_observed: true;
   same_boot_session: true;
   reconnect: NetworkReconnectObservationEvidence;
+  mining_state: "disabled";
+  hardware_control_state: "disabled";
+  cleanup_complete: true;
+  recovery_flash_used: false;
+  private_modes_valid: true;
+  redaction_status: "passed";
+};
+
+export type NetworkScanObservationEvidence = {
+  record_count: number;
+  scan_duration_ms: number;
+  records_shape_valid: true;
+  signal_values_valid: true;
+  auth_modes_valid: true;
+  exact_build_identity_matches: true;
+  same_boot_session: true;
+  before_after_connected: true;
+  client_only_preserved: true;
+  uptime_monotonic: true;
+  address_family: "v6";
+  address_kind: "link_local" | "unique_local" | "global";
+  address_stable: true;
+};
+
+export type NetworkScanEvidence = {
+  schema_version: "bitaxe-network-scan-evidence-v1";
+  board: 205;
+  source_commit: string;
+  reference_commit: string;
+  package_manifest_sha256: string;
+  workflow: WorkflowIdentity;
+  detector_admitted: true;
+  boot_observed: true;
+  same_origin_observed: true;
+  scan: NetworkScanObservationEvidence;
   mining_state: "disabled";
   hardware_control_state: "disabled";
   cleanup_complete: true;

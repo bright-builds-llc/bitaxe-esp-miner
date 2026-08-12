@@ -266,6 +266,27 @@ test("system info capture requires the detector-gated closed surface", () => {
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
 
+test("network scan capture requires the detector-gated closed surface", () => {
+  // Arrange
+  const complete = [
+    "capture-network-scan-evidence",
+    "--private-root", "scratch/network-scan",
+    "--package-manifest", "bazel-bin/package.json",
+    "--wifi-credentials", "wifi-credentials.json",
+    "--detector-output", "scratch/detector.stdout",
+    "--projection", "docs/evidence/network-scan.json",
+    "--capture-timeout-seconds", "240",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "capture-network-scan-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});
+
 test("Ultra 205 defaults capture requires the detector-gated closed surface", () => {
   // Arrange
   const complete = [

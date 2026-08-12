@@ -8,6 +8,7 @@ rust_library(
         "src/lib.rs",
         "src/log_buffer_evidence.rs",
         "src/network_reconnect_evidence.rs",
+        "src/network_scan_evidence.rs",
         "src/operator_snapshot_evidence.rs",
         "src/partition_layout_evidence.rs",
         "src/provisioning_network_evidence.rs",
@@ -42,6 +43,17 @@ rust_binary(
     name = "validate_network_reconnect_evidence",
     srcs = ["src/bin/validate_network_reconnect_evidence.rs"],
     crate_name = "validate_network_reconnect_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_network_scan_evidence",
+    srcs = ["src/bin/validate_network_scan_evidence.rs"],
+    crate_name = "validate_network_scan_evidence",
     edition = "2021",
     deps = [
         ":bitaxe_automation_contracts",
