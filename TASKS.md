@@ -333,45 +333,6 @@ remains active and unarchived as a terminal blocker under the tracker rules;
 its authorization is consumed and it cannot be selected for another hardware
 run.
 
-### task-parity-cfg006-defaults-matrix | 2026-08-04 | Complete board defaults matrix
-
-- [x] Add typed exact defaults for all 20 numbered upstream board seeds and the
-      explicit custom seed.
-- [x] Bind every discriminator to a provenance-bearing golden fixture and the
-      existing board catalog.
-- [x] Run focused and mandatory gates, then transition only `CFG-006` to
-      `implemented` while withholding every non-205 hardware claim.
-
-Previous plan: `docs/parity/work-plans/20260804T133030Z-CFG-006/PLAN.md`
-
-Active plan: `docs/parity/work-plans/20260812T004157Z-CFG-006/PLAN.md`
-
-Authorization: pure software and public upstream seed data only. No hardware,
-credentials, network, settings, mining, controls, OTA, direct UART, or pins.
-
-Verification: Focused strict Clippy, all 51 `bitaxe-config` tests through Cargo
-and Bazel, the mandatory Rust sequence, Bright Builds, all 28 Bazel test
-targets, parity/progress, redaction, reference cleanliness, and diff checks
-passed on implementation commit `1583feb3`.
-
-Completion review: The bounded pure matrix implementation is complete and
-`CFG-006` is now `implemented` with `unit,golden` evidence. The task remains
-active and unarchived because the parity row is not verified: live seeded
-defaults and runtime behavior for non-205 profiles require separately admitted
-hardware evidence. No runtime selection or hardware behavior changed.
-
-Targeted verification continuation:
-
-- [x] Compare the public Rust defaults matrix directly to the complete pinned
-      reference CSV inventory with fail-closed parity-report validation.
-- [x] Prove representative inventory, parsing, and value drift is rejected.
-- [ ] Run focused and mandatory gates, then promote only the declarative
-      `CFG-006` row if its direct reference, golden, and catalog evidence passes.
-
-Continuation authorization: pure software and the checked-out public pinned
-reference only. No hardware, credentials, network, settings, mining, controls,
-OTA, direct UART, or pins.
-
 ### task-parity-api010-theme-route | 2026-08-04 | Implement theme API persistence
 
 - [x] Model upstream theme defaults, GET projection, and POST planning with

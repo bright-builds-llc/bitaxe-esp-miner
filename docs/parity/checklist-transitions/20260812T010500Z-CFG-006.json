@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260812T010500Z-CFG-006",
+  "predecessor_sha256": "314e621463eb78ce68030007234a93ccdbfa8b59bcc0a23e93153a87d4caadfc",
+  "result_sha256": "4ebd8efb5bb27f5485c563aea3211adbd275c64086beaad21039e4eb40df2758",
+  "row_id": "CFG-006",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260812T004157Z-CFG-006/PLAN.md",
+  "plan_sha256": "85dc051b7c523b0453d23d23b7a1d6b24f995bedc84f803729d1eb8ab8ebd6ba",
+  "result_path": "docs/parity/work-plans/20260812T004157Z-CFG-006/RESULT.md",
+  "result_document_sha256": "28c2e28fbe348aaee264907671b77cdb1d5d6a2665d75f141a482435ef03d471",
+  "before_rust_owned_target": "`crates/bitaxe-config/src/defaults.rs`, `crates/bitaxe-config/src/defaults/matrix.rs`, `crates/bitaxe-config/fixtures/board-profile-defaults.json`, `crates/bitaxe-config/src/catalog.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-config/src/defaults.rs`, `crates/bitaxe-config/src/defaults/matrix.rs`, `crates/bitaxe-config/fixtures/board-profile-defaults.json`, `crates/bitaxe-config/src/catalog.rs`, `tools/parity/src/board_defaults.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,golden",
+  "after_evidence": "unit,golden,workflow",
+  "before_notes": "Typed golden evidence covers all 20 numbered board seeds plus the explicit non-selectable custom override and cross-checks catalog family, ASIC, frequency, voltage, and verification scope. Only Ultra 205 retains active hardware evidence; non-205 live device behavior remains unverified.",
+  "after_notes": "Direct parity-report validation compares the public Rust matrix to all 20 numbered pinned CSV seeds plus the custom seed with closed inventory, schema, type, encoding, and value checks; existing golden and catalog cross-checks remain independent. See docs/parity/work-plans/20260812T004157Z-CFG-006/RESULT.md. Non-205 runtime and hardware behavior remain separate non-claims."
+}

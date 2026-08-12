@@ -5930,3 +5930,55 @@ defaults, all 23 API-visible defaults in HTTP and WebSocket, retained-marker
 continuity, `mineonboot=false`, disabled mining/control, cleanup, modes, and
 redaction. `CFG-001` transitioned to `verified`; actuation, mining, controls,
 self-test, OTA, recovery, and non-205 behavior remain separate.
+
+### task-parity-cfg006-defaults-matrix | 2026-08-04 | Complete board defaults matrix
+
+- [x] Add typed exact defaults for all 20 numbered upstream board seeds and the
+      explicit custom seed.
+- [x] Bind every discriminator to a provenance-bearing golden fixture and the
+      existing board catalog.
+- [x] Run focused and mandatory gates, then transition only `CFG-006` to
+      `implemented` while withholding every non-205 hardware claim.
+
+Previous plan: `docs/parity/work-plans/20260804T133030Z-CFG-006/PLAN.md`
+
+Active plan: `docs/parity/work-plans/20260812T004157Z-CFG-006/PLAN.md`
+
+Authorization: pure software and public upstream seed data only. No hardware,
+credentials, network, settings, mining, controls, OTA, direct UART, or pins.
+
+Verification: Focused strict Clippy, all 51 `bitaxe-config` tests through Cargo
+and Bazel, the mandatory Rust sequence, Bright Builds, all 28 Bazel test
+targets, parity/progress, redaction, reference cleanliness, and diff checks
+passed on implementation commit `1583feb3`.
+
+Implementation review: The bounded pure matrix implementation is complete and
+`CFG-006` reached `implemented` with `unit,golden` evidence. The first result
+withheld verification because live seeded defaults and runtime behavior for
+non-205 profiles were conservatively treated as part of the row. No runtime
+selection or hardware behavior changed.
+
+Targeted verification continuation:
+
+- [x] Compare the public Rust defaults matrix directly to the complete pinned
+      reference CSV inventory with fail-closed parity-report validation.
+- [x] Prove representative inventory, parsing, and value drift is rejected.
+- [x] Run focused and mandatory gates, then promote only the declarative
+      `CFG-006` row if its direct reference, golden, and catalog evidence passes.
+
+Continuation authorization: pure software and the checked-out public pinned
+reference only. No hardware, credentials, network, settings, mining, controls,
+OTA, direct UART, or pins.
+
+Continuation verification: Nine focused regressions, the full ordered Rust
+sequence, Bright Builds, all 37 Bazel test targets, direct parity comparison,
+progress, redaction, reference cleanliness, and diff checks passed on exact
+source commit `428041800ae232955a7468c384527cde83263503`.
+
+Completion review: `CFG-006` transitioned to `verified` with
+`unit,golden,workflow` evidence. Direct parity-report validation now binds the
+public Rust matrix to exactly all 20 numbered pinned CSV seeds plus the custom
+seed, while existing golden and catalog checks remain independent. See
+`docs/parity/work-plans/20260812T004157Z-CFG-006/RESULT.md`. Live non-205 boot,
+NVS seeding, runtime selection, and hardware behavior remain separate
+non-claims; no hardware or private input was accessed.
