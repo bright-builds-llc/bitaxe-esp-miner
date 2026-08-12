@@ -92,6 +92,19 @@ test("result validator accepts the closed ASIC frequency-transition command", ()
   assert.equal(result.command, "project-asic-frequency-transition-evidence");
 });
 
+test("result validator accepts the closed Stratum socket command", () => {
+  // Act
+  const result = parseAutomationResult({
+    schema_version: "bitaxe-automation-result-v1",
+    command: "project-stratum-socket-evidence",
+    status: "succeeded",
+    category: "complete",
+  });
+
+  // Assert
+  assert.equal(result.command, "project-stratum-socket-evidence");
+});
+
 // @ts-expect-error monitor intentionally has no evidenceMode option.
 monitorCommand("/tmp/flash", { evidenceMode: "dual" });
 

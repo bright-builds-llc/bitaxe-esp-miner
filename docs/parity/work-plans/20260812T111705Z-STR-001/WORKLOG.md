@@ -34,3 +34,39 @@
 - Outcome: The immutable plan and active task satisfy the plan-only gate.
 - Blocker or next safe action: Commit and push the plan before implementing the
   closed socket evidence contract.
+
+## 2026-08-12T11:29:20Z | Closed socket contract implemented
+
+- Source commit: `620f2358bfcee44a159146f964e9cbb46e7d46fd`
+- Actions: Added the Rust-owned socket evidence schema and validator, the thin
+  source-bound host projector, closed CLI surface, synchronized TypeScript
+  contract, atomic publication, typed failure mapping, and focused regressions.
+- Verification: Rust contract tests, canonical TypeScript compilation,
+  generated-contract verification, all automation tests, real-child
+  validation, file-length checks, and diff checks pass. Tests reject malformed
+  or incomplete source evidence, module/semantic/dirty-path drift, validator
+  rejection, launch failure, and sensitive public output.
+- Evidence: No public projection exists yet. No protected input, detector,
+  package operation, USB/network session, credentials, pool contact, or
+  hardware effect occurred.
+- Outcome: The implementation is ready for the complete pre-commit gate.
+- Blocker or next safe action: Run the mandatory ordered repository gate and
+  source-compatibility checks before committing the implementation.
+
+## 2026-08-12T11:36:57Z | Implementation gate complete
+
+- Source commit: `620f2358bfcee44a159146f964e9cbb46e7d46fd`
+- Actions: Ran the complete ordered repository gate and supporting generated-
+  contract, redaction, reference, immutable-plan, task, and diff checks.
+- Verification: Ordered Cargo, Bright Builds, all 37 Bazel tests, parity and
+  progress, canonical generated contracts, redaction, pinned-reference
+  integrity and cleanliness, immutable-plan digest, task uniqueness, and diff
+  checks pass. The real ESP32-S3 and rollback-probe package targets rebuilt
+  successfully. The first parity rendering hit the recurring transient macOS
+  resource error; its one bounded retry passed with no validation errors.
+- Evidence: No projector was run and no public evidence was emitted. No
+  protected input, network/USB session, credentials, pool contact, or hardware
+  effect occurred.
+- Outcome: The implementation is ready to commit and push.
+- Blocker or next safe action: Commit the implementation, then run the
+  projector from that exact clean pushed source commit.

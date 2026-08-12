@@ -4,6 +4,7 @@ import { AsicInitializationEvidenceError } from "./asic-initialization-evidence.
 import { AsicResultParsingEvidenceError } from "./asic-result-parsing-evidence.js";
 import { AsicSerialTransportEvidenceError } from "./asic-serial-transport-evidence.js";
 import { AsicWorkSendEvidenceError } from "./asic-work-send-evidence.js";
+import { StratumSocketEvidenceError } from "./stratum-socket-evidence.js";
 import { NetworkReconnectEvidenceError } from "./network-reconnect-evidence.js";
 import { NetworkScanEvidenceError } from "./network-scan-evidence.js";
 import { ProvisioningNetworkEvidenceError } from "./provisioning-network-evidence.js";
@@ -19,6 +20,7 @@ export function maybeTypedFailurePublicValue(error: unknown): Readonly<Record<st
   if (error instanceof SettingsDurabilityError
     || error instanceof AsicInitializationEvidenceError
     || error instanceof AsicFrequencyTransitionEvidenceError
+    || error instanceof StratumSocketEvidenceError
     || error instanceof AsicWorkSendEvidenceError
     || error instanceof AsicResultParsingEvidenceError
     || error instanceof AsicSerialTransportEvidenceError

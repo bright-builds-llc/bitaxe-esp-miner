@@ -36,6 +36,7 @@ export type AutomationCommand =
   | "project-asic-work-send-evidence"
   | "project-asic-result-parsing-evidence" | "project-asic-serial-transport-evidence"
   | "project-asic-frequency-transition-evidence"
+  | "project-stratum-socket-evidence"
   | "capture-provisioning-network-evidence";
 
 export type AutomationStatus = "succeeded" | "failed" | "blocked";
@@ -454,6 +455,9 @@ export type AsicSerialTransportEvidence = { schema_version: "bitaxe-asic-serial-
 export type AsicFrequencyTransitionSourceEvidence = { initialization_projection_sha256: string; initialization_projection_current_commit: string; initialization_projection_valid: true; };
 export type AsicFrequencyTransitionObservationEvidence = { profile: "conservative"; start_frequency_mhz: 50; target_frequency_mhz: 400; step_quarter_mhz: 25; set_frequency_command_count: 56; inter_step_delay_count: 56; inter_step_delay_ms: 100; increasing: true; production_ramp_option_enabled: true; all_frequency_actions_completed: true; live_initialized_work_observed: true; accepted_submit_observed: true; ramp_modules_unchanged: true; executor_span_compatible: true; };
 export type AsicFrequencyTransitionEvidence = { schema_version: "bitaxe-asic-frequency-transition-evidence-v1"; board: 205; attempt_source_commit: string; current_source_commit: string; reference_commit: string; workflow: WorkflowIdentity; source: AsicFrequencyTransitionSourceEvidence; frequency_transition: AsicFrequencyTransitionObservationEvidence; package_admitted: true; runtime_identity: "trusted"; runtime_attestation_status: "trusted"; campaign_terminal_category: "submit_response_observed"; submit_outcome: "accepted"; safety_status: "fresh"; mine_on_boot_disabled: true; safe_stop_confirmed: true; lease_cleanup_confirmed: true; usb_cleanup_ready: true; hardware_rerun_used: false; redaction_status: "passed"; };
+export type StratumSocketSourceEvidence = { initialization_projection_sha256: string; initialization_projection_current_commit: string; initialization_projection_valid: true; };
+export type StratumSocketObservationEvidence = { command_capacity: 8; connect_timeout_ms: 5000; read_timeout_ms: 50; write_timeout_ms: 2000; read_buffer_bytes: 2048; tcp_nodelay_enabled: true; typed_connect_write_close_commands: true; typed_connected_bytes_failed_closed_events: true; transport_epoch_isolation: true; authorized_session_required_before_submit: true; accepted_submit_observed: true; transport_module_unchanged: true; owner_and_lifecycle_spans_compatible: true; };
+export type StratumSocketEvidence = { schema_version: "bitaxe-stratum-socket-evidence-v1"; board: 205; attempt_source_commit: string; current_source_commit: string; reference_commit: string; workflow: WorkflowIdentity; source: StratumSocketSourceEvidence; socket: StratumSocketObservationEvidence; package_admitted: true; runtime_identity: "trusted"; runtime_attestation_status: "trusted"; campaign_terminal_category: "submit_response_observed"; submit_outcome: "accepted"; safety_status: "fresh"; mine_on_boot_disabled: true; safe_stop_confirmed: true; lease_cleanup_confirmed: true; usb_cleanup_ready: true; hardware_rerun_used: false; redaction_status: "passed"; };
 
 export type ProvisioningNetworkObservationEvidence = {
   host_platform_macos: true;
@@ -515,6 +519,7 @@ const automationCommands = new Set<AutomationCommand>([
   "project-asic-result-parsing-evidence",
   "project-asic-serial-transport-evidence",
   "project-asic-frequency-transition-evidence",
+  "project-stratum-socket-evidence",
   "capture-provisioning-network-evidence",
 ]);
 const automationStatuses = new Set<AutomationStatus>(["succeeded", "failed", "blocked"]);
