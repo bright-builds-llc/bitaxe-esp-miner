@@ -1864,7 +1864,7 @@ task remains active because `NET-002` is not verified.
 - [x] Prove aggregate scan shape, numeric auth/signal bounds, exact identity,
       connection preservation, stable v6 reporting, private modes, and public
       redaction without exposing observed network or device identifiers.
-- [ ] Run every software gate, push the exact package, spend one detector and
+- [x] Run every software gate, push the exact package, spend one detector and
       at most one attempt-001, then promote only on the complete live quorum.
 
 Plan: `docs/parity/work-plans/20260812T080258Z-NET-003/PLAN.md`.
@@ -1904,9 +1904,12 @@ and every ordered repository gate. The verbose parity report twice hit a
 transient host `os error 35`; its unchanged protected-file run completed with
 `validation_errors: none`.
 
-Completion review: Pending. `NET-003` remains `implemented`; the earlier
-software task remains active until this live scan, connection-preservation,
-and station-address evidence passes.
+Completion review: Attempt-001 passed with one exact-package boot, 20 bounded
+exact-shape scan records, same-session connected client-only service, stable
+unique-local v6 reporting, monotonic uptime, disabled mining/control, cleanup,
+no recovery, private modes, independent validation, and redaction. The closed
+projection is ready for an evidence commit and conservative `NET-003`
+transition; archive this task only after that transition succeeds.
 
 ## Future
 

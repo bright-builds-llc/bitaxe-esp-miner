@@ -1,0 +1,36 @@
+{
+  "schema_version": "bitaxe-network-scan-evidence-v1",
+  "board": 205,
+  "source_commit": "619752535d90a4aa8570b7c96f8339712a329ba8",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "package_manifest_sha256": "41fbd948ac23622d8851e6834b8e00230a3893240f5cad73f6d18734800af4ca",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "capture-network-scan-evidence",
+    "request_sha256": "a9640d7a9d35e5b1962530d74450a065c24a0aa8b033defd8feba1b3f26fe6fa"
+  },
+  "detector_admitted": true,
+  "boot_observed": true,
+  "same_origin_observed": true,
+  "scan": {
+    "record_count": 20,
+    "scan_duration_ms": 3152,
+    "records_shape_valid": true,
+    "signal_values_valid": true,
+    "auth_modes_valid": true,
+    "exact_build_identity_matches": true,
+    "same_boot_session": true,
+    "before_after_connected": true,
+    "client_only_preserved": true,
+    "uptime_monotonic": true,
+    "address_family": "v6",
+    "address_kind": "unique_local",
+    "address_stable": true
+  },
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "cleanup_complete": true,
+  "recovery_flash_used": false,
+  "private_modes_valid": true,
+  "redaction_status": "passed"
+}
