@@ -2150,7 +2150,7 @@ attempt-006 cannot be retried. See the linked closure for the next safe action.
 - [x] Commit and push the immutable plan at
       `docs/parity/work-plans/20260812T193941Z-PWR-002/PLAN.md` before source
       implementation.
-- [ ] Add the Rust-owned `bitaxe-asic-power-initialization-evidence-v1`
+- [x] Add the Rust-owned `bitaxe-asic-power-initialization-evidence-v1`
       contract, independent validator, generated binding, closed projector,
       command surface, and behavior regressions.
 - [ ] Publish and independently validate one aggregate-only PWR-002 projection

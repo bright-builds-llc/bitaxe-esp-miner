@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { ThemeDurabilityError } from "./theme-durability.js";
 import { AsicInitializationEvidenceError } from "./asic-initialization-evidence.js";
+import { AsicPowerInitializationEvidenceError } from "./asic-power-initialization-evidence.js";
 import { AsicWorkSendEvidenceError } from "./asic-work-send-evidence.js";
 import { AsicResultParsingEvidenceError } from "./asic-result-parsing-evidence.js";
 import { AsicSerialTransportEvidenceError } from "./asic-serial-transport-evidence.js";
@@ -60,6 +61,23 @@ test("ASIC initialization failures retain only closed projection facts", () => {
   // Assert
   assert.deepEqual(publicValue, {
     stage: "sealed_initialization_projection",
+    hardware_rerun_used: false,
+  });
+});
+
+test("ASIC power initialization failures retain only closed projection facts", () => {
+  // Arrange
+  const error = new AsicPowerInitializationEvidenceError("evidence_invalid", "safe failure", {
+    stage: "sealed_asic_power_initialization_projection",
+    hardware_rerun_used: false,
+  });
+
+  // Act
+  const publicValue = maybeTypedFailurePublicValue(error);
+
+  // Assert
+  assert.deepEqual(publicValue, {
+    stage: "sealed_asic_power_initialization_projection",
     hardware_rerun_used: false,
   });
 });

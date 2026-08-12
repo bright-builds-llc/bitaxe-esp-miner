@@ -143,3 +143,25 @@ test("ASIC reset evidence is included in the operational-field scan", async () =
     await rm(root, { recursive: true });
   }
 });
+
+test("ASIC power initialization evidence is included in the operational-field scan", async () => {
+  // Arrange
+  const root = await mkdtemp(path.join(tmpdir(), "bitaxe-redaction-asic-power-"));
+  const evidence = path.join(root, "evidence.json");
+  await writeFile(evidence, JSON.stringify({
+    schema_version: "bitaxe-asic-power-initialization-evidence-v1",
+    power_initialization: { exactly_one_chip_detected_after_reset: true },
+  }));
+
+  try {
+    // Act / Assert
+    assert.equal((await verifySemanticEvidenceRedaction(root)).checked, 1);
+    await writeFile(evidence, JSON.stringify({
+      schema_version: "bitaxe-asic-power-initialization-evidence-v1",
+      usb_port: "/dev/private-device",
+    }));
+    await assert.rejects(verifySemanticEvidenceRedaction(root));
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});

@@ -6,7 +6,9 @@ rust_library(
     name = "bitaxe_automation_contracts",
     srcs = [
         "src/lib.rs",
+        "src/lib_tests.rs",
         "src/asic_initialization_evidence.rs",
+        "src/asic_power_initialization_evidence.rs",
         "src/asic_reset_evidence.rs",
         "src/asic_frequency_transition_evidence.rs",
         "src/asic_result_parsing_evidence.rs",
@@ -107,6 +109,17 @@ rust_binary(
     name = "validate_asic_work_send_evidence",
     srcs = ["src/bin/validate_asic_work_send_evidence.rs"],
     crate_name = "validate_asic_work_send_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_asic_power_initialization_evidence",
+    srcs = ["src/bin/validate_asic_power_initialization_evidence.rs"],
+    crate_name = "validate_asic_power_initialization_evidence",
     edition = "2021",
     deps = [
         ":bitaxe_automation_contracts",

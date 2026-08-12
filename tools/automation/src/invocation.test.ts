@@ -305,6 +305,24 @@ test("ASIC initialization projection accepts only sealed source inputs", () => {
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
 
+test("ASIC power initialization projection accepts only the committed source proof", () => {
+  // Arrange
+  const complete = [
+    "project-asic-power-initialization-evidence",
+    "--source-projection", "docs/parity/evidence/asic002-initialization/asic-initialization-projection.json",
+    "--attempt-source-commit", "a".repeat(40),
+    "--projection", "docs/evidence/asic-power-initialization.json",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "project-asic-power-initialization-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});
+
 test("ASIC work-send projection accepts only the committed source proof", () => {
   // Arrange
   const complete = [

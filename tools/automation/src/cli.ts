@@ -8,6 +8,7 @@ import { emitOperatorCheckpointSignal } from "./api-command-effects-checkpoint.j
 import { deviceSessionProgram, flashProgram, stringNumber, toolProgram } from "./cli-tools.js";
 import { AsicFrequencyTransitionEvidenceError, projectAsicFrequencyTransitionEvidence } from "./asic-frequency-transition-evidence.js";
 import { AsicInitializationEvidenceError, projectAsicInitializationEvidence } from "./asic-initialization-evidence.js";
+import { AsicPowerInitializationEvidenceError, projectAsicPowerInitializationEvidence } from "./asic-power-initialization-evidence.js";
 import { AsicResetEvidenceError, projectAsicResetEvidence } from "./asic-reset-evidence.js";
 import { AsicResultParsingEvidenceError, projectAsicResultParsingEvidence } from "./asic-result-parsing-evidence.js";
 import {
@@ -84,7 +85,6 @@ import {
 import { captureVersionEvidence } from "./version-evidence.js";
 import { executeCommandSpec } from "./workflow.js";
 import { assertWithinWorkspace } from "./workspace.js";
-
 class PolicyError extends Error {}
 function workspaceRoot(): string {
   const maybeWorkspace = process.env["BUILD_WORKSPACE_DIRECTORY"];
@@ -105,7 +105,6 @@ function workspaceRoot(): string {
   }
   throw new Error("cannot locate the canonical workspace root");
 }
-
 function automationResult(
   command: AutomationCommand,
   status: "succeeded" | "failed" | "blocked",
@@ -115,12 +114,10 @@ function automationResult(
   const base = { schema_version: "bitaxe-automation-result-v1" as const, command, status, category };
   return publicValue === undefined ? base : { ...base, public: publicValue };
 }
-
 function safeErrorSummary(error: unknown): string | undefined {
   if (!(error instanceof Error)) return undefined;
   return /^[A-Za-z0-9 _.:()-]+$/u.test(error.message) ? error.message : undefined;
 }
-
 function monitorSpec(root: string, invocation: ParsedInvocation) {
   const maybePort = maybeOptionValue(invocation, "--port");
   const maybeEvidenceDir = maybeOptionValue(invocation, "--evidence-dir");
@@ -134,7 +131,6 @@ function monitorSpec(root: string, invocation: ParsedInvocation) {
     redactEvidence: hasFlag(invocation, "--redact-evidence"),
   });
 }
-
 function flashDurabilitySpec(root: string, invocation: ParsedInvocation) {
   const maybePort = maybeOptionValue(invocation, "--port");
   const maybeImage = maybeOptionValue(invocation, "--image");
@@ -255,6 +251,7 @@ async function dispatchProcess(
     case "capture-network-reconnect-evidence":
     case "capture-network-scan-evidence":
     case "project-asic-initialization-evidence":
+    case "project-asic-power-initialization-evidence":
     case "project-asic-reset-evidence":
     case "project-asic-frequency-transition-evidence":
     case "project-stratum-socket-evidence":
@@ -437,6 +434,11 @@ async function main(): Promise<number> {
         projection: optionValue(invocation, "--projection"),
       }, processPort, "git", toolProgram(root,
         "crates/bitaxe-automation-contracts/validate_asic_initialization_evidence"));
+    } else if (invocation.command === "project-asic-power-initialization-evidence") {
+      publicValue = await projectAsicPowerInitializationEvidence(root, {
+        sourceProjection: optionValue(invocation, "--source-projection"), attemptSourceCommit: optionValue(invocation, "--attempt-source-commit"), projection: optionValue(invocation, "--projection"),
+      }, processPort, "git", toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_initialization_evidence"),
+      toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_power_initialization_evidence"));
     } else if (invocation.command === "project-asic-reset-evidence") {
       publicValue = await projectAsicResetEvidence(root, {
         sourceProjection: optionValue(invocation, "--source-projection"), attemptSourceCommit:
@@ -603,7 +605,7 @@ async function main(): Promise<number> {
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure || apiCommandEffectsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || networkScanFailure || asicInitializationFailure || error instanceof AsicResetEvidenceError || asicFrequencyTransitionFailure || stratumSocketFailure || protocolCoordinatorFailure || miningCriteriaFailure || asicWorkSendFailure || asicResultParsingFailure || asicSerialTransportFailure || provisioningNetworkFailure
+        : settingsFailure || apiCommandEffectsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || networkScanFailure || asicInitializationFailure || error instanceof AsicPowerInitializationEvidenceError || error instanceof AsicResetEvidenceError || asicFrequencyTransitionFailure || stratumSocketFailure || protocolCoordinatorFailure || miningCriteriaFailure || asicWorkSendFailure || asicResultParsingFailure || asicSerialTransportFailure || provisioningNetworkFailure
           ? error.category
           : "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";

@@ -16,6 +16,7 @@ const semanticSchemas = new Set([
   "bitaxe-partition-layout-evidence-v1",
   "bitaxe-network-scan-evidence-v1",
   "bitaxe-asic-initialization-evidence-v1",
+  "bitaxe-asic-power-initialization-evidence-v1",
   "bitaxe-asic-reset-evidence-v1",
   "bitaxe-asic-work-send-evidence-v1",
   "bitaxe-asic-result-parsing-evidence-v1",
