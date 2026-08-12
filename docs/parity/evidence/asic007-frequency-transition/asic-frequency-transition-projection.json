@@ -1,0 +1,45 @@
+{
+  "schema_version": "bitaxe-asic-frequency-transition-evidence-v1",
+  "board": 205,
+  "attempt_source_commit": "3e0966a140edbff1a14d2a48ca63d140649762c0",
+  "current_source_commit": "be2bbca0f16d4fc48510e7ff8fc2089773e6a55d",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "project-asic-frequency-transition-evidence",
+    "request_sha256": "689238b9d5eec92026b911fb4f93d81dbe7750c563773b124da9b8ef4d707083"
+  },
+  "source": {
+    "initialization_projection_sha256": "eee750561a7c1dcec1a5698b1e5827d3f1508d43655c3c4aa237097338dcf8d4",
+    "initialization_projection_current_commit": "f9df1412abbc05a4852022f3fb6741f67ab43272",
+    "initialization_projection_valid": true
+  },
+  "frequency_transition": {
+    "profile": "conservative",
+    "start_frequency_mhz": 50,
+    "target_frequency_mhz": 400,
+    "step_quarter_mhz": 25,
+    "set_frequency_command_count": 56,
+    "inter_step_delay_count": 56,
+    "inter_step_delay_ms": 100,
+    "increasing": true,
+    "production_ramp_option_enabled": true,
+    "all_frequency_actions_completed": true,
+    "live_initialized_work_observed": true,
+    "accepted_submit_observed": true,
+    "ramp_modules_unchanged": true,
+    "executor_span_compatible": true
+  },
+  "package_admitted": true,
+  "runtime_identity": "trusted",
+  "runtime_attestation_status": "trusted",
+  "campaign_terminal_category": "submit_response_observed",
+  "submit_outcome": "accepted",
+  "safety_status": "fresh",
+  "mine_on_boot_disabled": true,
+  "safe_stop_confirmed": true,
+  "lease_cleanup_confirmed": true,
+  "usb_cleanup_ready": true,
+  "hardware_rerun_used": false,
+  "redaction_status": "passed"
+}

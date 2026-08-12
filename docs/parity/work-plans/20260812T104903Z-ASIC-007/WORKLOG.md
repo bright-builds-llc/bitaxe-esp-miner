@@ -85,3 +85,23 @@
 - Outcome: The implementation is ready to commit and push.
 - Blocker or next safe action: Commit the implementation, then run the
   projector from that exact clean pushed source commit.
+
+## 2026-08-12T11:07:00Z | Public projection accepted
+
+- Source commit: `be2bbca0f16d4fc48510e7ff8fc2089773e6a55d`
+- Actions: Ran the committed projector against the exact ASIC-002 source
+  projection and accepted hardware commit, then independently validated the
+  atomically published result.
+- Verification: The prerequisite digest and validator passed; source identity,
+  ancestry, full-module compatibility, unique executor spans, and clean
+  relevant paths passed. The independent final validator passed, mode was
+  0644, semantic redaction passed, and the explicit public-sensitive-value scan
+  was empty.
+- Evidence:
+  `docs/parity/evidence/asic007-frequency-transition/asic-frequency-transition-projection.json`
+  at SHA-256
+  `34ac6bc0df593bd75b6026eedcecda5f4b34e00cde0f3541a156794f2c7512ae`.
+- Outcome: The complete ASIC-007 promotion quorum is satisfied without a
+  hardware rerun or protected-evidence access.
+- Blocker or next safe action: Commit and push RESULT plus evidence, then use
+  that exact source commit for the audited one-row checklist transition.
