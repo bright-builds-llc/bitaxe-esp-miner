@@ -21,11 +21,23 @@ static CURRENT_SETTINGS_SNAPSHOT: OnceLock<crate::settings_snapshot_store::Confi
 static SETTINGS_TRANSACTION_LOCK: Mutex<()> = Mutex::new(());
 const NETWORK_RECONNECT_PROBE_KEY: &str = "netreconprobe";
 
+mod nvs_owner;
 mod production;
+mod protocol_gate;
+mod protocol_gate_adapter;
 
 pub(crate) use production::{
     load_production_campaign_admission, read_production_pool_set, MiningCampaignStage,
 };
+pub(crate) use protocol_gate::ProductionProtocolGateDecision;
+
+pub(crate) fn initialize_default_nvs_partition() -> Result<(), SettingsAdapterFailure> {
+    nvs_owner::initialize()
+}
+
+pub(crate) fn default_nvs_partition() -> Result<EspDefaultNvsPartition, SettingsAdapterFailure> {
+    nvs_owner::shared()
+}
 
 /// Firmware coordinator that opens writable NVS only after exact authority.
 pub struct FirmwareSettingsAdapter {
@@ -35,7 +47,7 @@ pub struct FirmwareSettingsAdapter {
 impl FirmwareSettingsAdapter {
     /// Takes the default NVS partition without opening the settings namespace for writes.
     pub fn open() -> Result<Self, SettingsAdapterFailure> {
-        let partition = EspDefaultNvsPartition::take().map_err(settings_failure)?;
+        let partition = default_nvs_partition()?;
         Ok(Self { partition })
     }
 }
@@ -108,7 +120,7 @@ impl SettingsPersistenceAdapter for FirmwareSettingsAdapter {
 
 /// Best-effort startup load for the API-visible settings snapshot.
 pub fn initialize_current_settings_snapshot() -> Result<(), SettingsAdapterFailure> {
-    let partition = EspDefaultNvsPartition::take().map_err(settings_failure)?;
+    let partition = default_nvs_partition()?;
     let nvs = EspNvs::new(partition, NVS_NAMESPACE, false).map_err(settings_failure)?;
     refresh_current_settings_snapshot_best_effort(&nvs);
     Ok(())
@@ -119,7 +131,7 @@ pub(crate) fn consume_network_reconnect_probe() -> Result<bool, SettingsAdapterF
     let _transaction_guard = SETTINGS_TRANSACTION_LOCK
         .lock()
         .map_err(|_| SettingsAdapterFailure::failed("settings transaction lock poisoned"))?;
-    let partition = EspDefaultNvsPartition::take().map_err(settings_failure)?;
+    let partition = default_nvs_partition()?;
     let mut nvs = EspNvs::new(partition.clone(), NVS_NAMESPACE, true).map_err(settings_failure)?;
     let marker = nvs
         .get_u16(NETWORK_RECONNECT_PROBE_KEY)
@@ -169,7 +181,7 @@ pub fn current_system_info_settings_snapshot() -> NvsSnapshot {
         log::warn!("system_info_settings=unavailable reason=transaction_lock_poisoned");
         return NvsSnapshot::new();
     };
-    let partition = match EspDefaultNvsPartition::take() {
+    let partition = match default_nvs_partition() {
         Ok(partition) => partition,
         Err(error) => {
             log::warn!("system_info_settings=unavailable reason=nvs_partition error={error}");
@@ -193,7 +205,7 @@ pub fn current_ultra205_defaults_attestation(
     let _transaction_guard = SETTINGS_TRANSACTION_LOCK
         .lock()
         .map_err(|_| SettingsAdapterFailure::failed("settings transaction lock poisoned"))?;
-    let partition = EspDefaultNvsPartition::take().map_err(settings_failure)?;
+    let partition = default_nvs_partition()?;
     let nvs = EspNvs::new(partition, NVS_NAMESPACE, false).map_err(settings_failure)?;
     let snapshot = read_all_settings_snapshot_strict(&nvs)?;
     Ok(Ultra205DefaultsAttestation::from_snapshot(&snapshot))
@@ -224,7 +236,7 @@ pub fn persist_start_mining_on_boot(value: bool) -> Result<(), SettingsAdapterFa
     let _transaction_guard = SETTINGS_TRANSACTION_LOCK
         .lock()
         .map_err(|_| SettingsAdapterFailure::failed("settings transaction lock poisoned"))?;
-    let partition = EspDefaultNvsPartition::take().map_err(settings_failure)?;
+    let partition = default_nvs_partition()?;
     let nvs = EspNvs::new(partition, NVS_NAMESPACE, true).map_err(settings_failure)?;
     nvs.set_u16("mineonboot", u16::from(value))
         .map_err(settings_failure)?;
@@ -244,7 +256,7 @@ pub fn persist_theme_update(plan: &ThemePostPlan) -> Result<(), SettingsAdapterF
     let _transaction_guard = SETTINGS_TRANSACTION_LOCK
         .lock()
         .map_err(|_| SettingsAdapterFailure::failed("settings transaction lock poisoned"))?;
-    let partition = EspDefaultNvsPartition::take().map_err(settings_failure)?;
+    let partition = default_nvs_partition()?;
     let mut nvs = EspNvs::new(partition.clone(), NVS_NAMESPACE, true).map_err(settings_failure)?;
     for write in plan.writes() {
         let NvsWrite::String { key, value } = write else {
@@ -274,25 +286,8 @@ pub fn persist_theme_update(plan: &ThemePostPlan) -> Result<(), SettingsAdapterF
 /// Missing selectors use the project default of Stratum V1. Pool endpoints,
 /// users, passwords, certificates, and ports are not opened by this gate.
 #[must_use]
-pub fn configured_protocol_is_v1() -> bool {
-    let partition = match EspDefaultNvsPartition::take() {
-        Ok(partition) => partition,
-        Err(error) => {
-            log::warn!("production_protocol_gate=blocked reason=nvs_partition error={error}");
-            return false;
-        }
-    };
-    let nvs = match EspNvs::new(partition, NVS_NAMESPACE, false) {
-        Ok(nvs) => nvs,
-        Err(error) => {
-            log::warn!("production_protocol_gate=blocked reason=nvs_open error={error}");
-            return false;
-        }
-    };
-
-    ["stratumprot", "fbstratumprot"]
-        .into_iter()
-        .all(|key| maybe_read_protocol(&nvs, key).is_some_and(|protocol| protocol == "SV1"))
+pub fn configured_protocol_gate() -> ProductionProtocolGateDecision {
+    protocol_gate_adapter::read()
 }
 
 fn current_snapshot_cell() -> &'static crate::settings_snapshot_store::ConfirmedSnapshotStore {
@@ -408,32 +403,6 @@ fn read_all_settings_snapshot_strict(
         });
     }
     Ok(NvsSnapshot::from_values(values))
-}
-
-fn maybe_read_protocol(nvs: &EspNvs<NvsDefault>, key: &str) -> Option<String> {
-    let maybe_len = match nvs.str_len(key) {
-        Ok(maybe_len) => maybe_len,
-        Err(error) => {
-            log::warn!(
-                "production_protocol_gate=blocked reason=protocol_length key={key} error={error}"
-            );
-            return None;
-        }
-    };
-    let Some(len) = maybe_len else {
-        return Some("SV1".to_owned());
-    };
-    let mut buffer = vec![0; len];
-    match nvs.get_str(key, &mut buffer) {
-        Ok(Some(protocol)) => Some(protocol.to_owned()),
-        Ok(None) => Some("SV1".to_owned()),
-        Err(error) => {
-            log::warn!(
-                "production_protocol_gate=blocked reason=protocol_read key={key} error={error}"
-            );
-            None
-        }
-    }
 }
 
 fn is_pool_configuration_key(key: &str) -> bool {

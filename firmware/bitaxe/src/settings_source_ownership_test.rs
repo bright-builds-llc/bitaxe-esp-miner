@@ -1,5 +1,10 @@
 const SETTINGS_HANDLER_SOURCE: &str = include_str!("http_api/settings.rs");
 const SETTINGS_ADAPTER_SOURCE: &str = include_str!("settings_adapter.rs");
+const NVS_OWNER_SOURCE: &str = include_str!("settings_adapter/nvs_owner.rs");
+const PROTOCOL_GATE_ADAPTER_SOURCE: &str =
+    include_str!("settings_adapter/protocol_gate_adapter.rs");
+const PRODUCTION_SETTINGS_SOURCE: &str = include_str!("settings_adapter/production.rs");
+const SCOREBOARD_ADAPTER_SOURCE: &str = include_str!("scoreboard_adapter.rs");
 const STARTUP_SOURCE: &str = include_str!("startup.rs");
 
 #[test]
@@ -46,7 +51,7 @@ fn public_snapshot_excludes_pool_and_credential_keys() {
     let strict_reload = SETTINGS_ADAPTER_SOURCE
         .split("fn read_current_settings_snapshot_strict(")
         .nth(1)
-        .and_then(|source| source.split("fn maybe_read_protocol(").next())
+        .and_then(|source| source.split("fn is_pool_configuration_key(").next())
         .expect("settings adapter must contain strict public snapshot reload");
 
     // Act / Assert
@@ -72,4 +77,31 @@ fn defaults_attestation_strictly_reads_private_settings_then_retains_only_closed
     assert!(STARTUP_SOURCE.contains("retained_marker(!settings_adapter::start_mining_on_boot())"));
     assert!(!SETTINGS_ADAPTER_SOURCE.contains("public-pool.io"));
     assert!(!STARTUP_SOURCE.contains("public-pool.io"));
+}
+
+#[test]
+fn one_boot_lifetime_owner_is_the_only_default_partition_acquirer() {
+    // Arrange
+    let sources = [
+        SETTINGS_ADAPTER_SOURCE,
+        PRODUCTION_SETTINGS_SOURCE,
+        SCOREBOARD_ADAPTER_SOURCE,
+        NVS_OWNER_SOURCE,
+    ];
+
+    // Act
+    let take_count = sources
+        .iter()
+        .map(|source| source.matches("EspDefaultNvsPartition::take()").count())
+        .sum::<usize>();
+
+    // Assert
+    assert_eq!(take_count, 1);
+    assert!(NVS_OWNER_SOURCE.contains("static DEFAULT_NVS_PARTITION: OnceLock"));
+    assert!(SETTINGS_ADAPTER_SOURCE.contains("default_nvs_partition()?"));
+    assert!(PRODUCTION_SETTINGS_SOURCE.contains("super::default_nvs_partition()"));
+    assert!(SCOREBOARD_ADAPTER_SOURCE.contains("settings_adapter::default_nvs_partition()"));
+    assert!(STARTUP_SOURCE.contains("settings_adapter::initialize_default_nvs_partition()?"));
+    assert!(PROTOCOL_GATE_ADAPTER_SOURCE.contains("SETTINGS_TRANSACTION_LOCK.lock()"));
+    assert!(PROTOCOL_GATE_ADAPTER_SOURCE.contains("default_nvs_partition()"));
 }

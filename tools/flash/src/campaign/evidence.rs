@@ -39,6 +39,7 @@ struct CampaignResultEvidence<'a> {
     asic_bridge: Option<&'a AsicBridgeMarker>,
     maximum_active_marker_gap_ms: u64,
     terminal_reason: &'static str,
+    protocol_gate: &'static str,
     active_ms: u64,
     safety: &'static str,
     fresh_observation_count: u8,
@@ -235,6 +236,8 @@ pub(super) fn finish_campaign_attempt(
             maximum_active_marker_gap_ms: attempt.marker_aggregate.maximum_active_marker_gap_ms,
             terminal_reason: maybe_terminal
                 .map_or("not_observed", |marker| marker.terminal_reason.label()),
+            protocol_gate: maybe_terminal
+                .map_or("not_observed", |marker| marker.protocol_gate.label()),
             active_ms: maybe_terminal.map_or(0, |marker| marker.active_ms),
             safety: maybe_terminal.map_or("not_observed", |marker| match marker.safety {
                 SafetyMarker::Fresh => "fresh",

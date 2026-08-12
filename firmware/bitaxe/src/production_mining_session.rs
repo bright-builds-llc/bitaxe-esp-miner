@@ -149,6 +149,7 @@ struct OrdinaryEspProductionSessionAdapter {
     hashrate: ProductionHashrateMonitor,
     maybe_campaign_status: Option<CampaignStatusTracker>,
     maybe_terminal_pool_persisted: Option<bool>,
+    protocol_gate: crate::settings_adapter::ProductionProtocolGateDecision,
 }
 
 impl OrdinaryEspProductionSessionAdapter {
@@ -190,6 +191,8 @@ impl OrdinaryEspProductionSessionAdapter {
             hashrate: ProductionHashrateMonitor::new(),
             maybe_campaign_status,
             maybe_terminal_pool_persisted: None,
+            protocol_gate:
+                crate::settings_adapter::ProductionProtocolGateDecision::PartitionOwnerUnavailable,
         })
     }
 
@@ -316,10 +319,11 @@ impl OrdinaryEspProductionSessionAdapter {
             .is_some_and(CampaignStatusTracker::authorizes_actuation)
             && crate::safety_adapter::safety_actuation_available()
             && crate::asic_adapter::production::production_handle_available();
+        self.protocol_gate = crate::settings_adapter::configured_protocol_gate();
         ProductionReadiness {
             operator_intent,
             network_ready: wifi.wifi_status == "connected",
-            stratum_v1_supported: crate::settings_adapter::configured_protocol_is_v1(),
+            stratum_v1_supported: self.protocol_gate.is_ready(),
             safety_prerequisites_fresh,
             maybe_campaign_lease,
             actuation_qualified,
@@ -579,6 +583,7 @@ impl OrdinaryEspProductionSessionAdapter {
             observation_freshness,
             crate::settings_adapter::start_mining_on_boot(),
             pool_config_persisted,
+            self.protocol_gate.label(),
         );
         crate::info_retained(&format!("mining_campaign_status={marker}"));
     }

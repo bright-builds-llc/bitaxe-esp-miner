@@ -87,6 +87,7 @@ fn live_share_preparing_marker() -> Vec<u8> {
             "latest_event": null,
         },
         "terminal_reason": "network_unavailable",
+        "protocol_gate": "ready",
         "safety": "fresh",
         "fresh_observation_count": 5,
         "observation_freshness": {
@@ -185,6 +186,7 @@ fn observation_marker(schema: &str) -> Vec<u8> {
             "latest_event": null,
         },
         "terminal_reason": "none",
+        "protocol_gate": "ready",
         "safety": "fresh",
         "fresh_observation_count": 5,
         "observation_freshness": {

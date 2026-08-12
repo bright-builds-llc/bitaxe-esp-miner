@@ -254,6 +254,7 @@ impl CampaignStatusTracker {
         observation_freshness: CampaignObservationFreshness,
         mineonboot: bool,
         pool_config_persisted: bool,
+        protocol_gate: &'static str,
     ) -> String {
         let active_ms = self
             .maybe_active_since_ms
@@ -261,7 +262,7 @@ impl CampaignStatusTracker {
                 self.retained_active_ms.max(now_ms.saturating_sub(started))
             });
         let projection = CampaignStatusProjection {
-            schema: "mining-campaign-status-v9",
+            schema: "mining-campaign-status-v10",
             stage: self.stage.label(),
             lease_id: self.retained_maybe_lease.map(|lease| lease.id().raw()),
             campaign_state: campaign_state_label(snapshot.campaign_state),
@@ -286,6 +287,7 @@ impl CampaignStatusTracker {
             terminal_reason: snapshot
                 .maybe_blocker
                 .map_or("none", |blocker| blocker.label()),
+            protocol_gate,
             safety: if safety_fresh { "fresh" } else { "stale" },
             fresh_observation_count: observation_freshness.fresh_count(),
             observation_freshness,
@@ -330,6 +332,7 @@ struct CampaignStatusProjection {
     job_transition: CampaignJobTransitionProjection,
     asic_bridge: AsicBridgeEvidence,
     terminal_reason: &'static str,
+    protocol_gate: &'static str,
     safety: &'static str,
     fresh_observation_count: u8,
     observation_freshness: CampaignObservationFreshness,
@@ -428,11 +431,13 @@ mod tests {
             CampaignObservationFreshness::all_ultra205_supported_fresh(),
             false,
             false,
+            "ready",
         );
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 
         // Assert
-        assert_eq!(value["schema"], "mining-campaign-status-v9");
+        assert_eq!(value["schema"], "mining-campaign-status-v10");
+        assert_eq!(value["protocol_gate"], "ready");
         assert_eq!(value["stage"], "observation");
         assert!(value["lease_id"].is_null());
         assert_eq!(value["campaign_state"], "unavailable");
@@ -514,6 +519,7 @@ mod tests {
             CampaignObservationFreshness::all_ultra205_supported_fresh(),
             false,
             true,
+            "primary_selector_invalid",
         );
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 
@@ -567,6 +573,7 @@ mod tests {
             CampaignObservationFreshness::all_ultra205_supported_fresh(),
             false,
             true,
+            "ready",
         );
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 

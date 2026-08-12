@@ -392,12 +392,24 @@ rust_test(
     name = "settings_source_ownership_tests",
     srcs = [
         "src/http_api/settings.rs",
+        "src/scoreboard_adapter.rs",
         "src/settings_adapter.rs",
+        "src/settings_adapter/nvs_owner.rs",
+        "src/settings_adapter/production.rs",
+        "src/settings_adapter/protocol_gate_adapter.rs",
         "src/settings_source_ownership_test.rs",
         "src/startup.rs",
     ],
     crate_name = "settings_source_ownership_tests",
     crate_root = "src/settings_source_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
+    name = "settings_protocol_gate_tests",
+    srcs = ["src/settings_adapter/protocol_gate.rs"],
+    crate_name = "settings_protocol_gate_tests",
+    crate_root = "src/settings_adapter/protocol_gate.rs",
     edition = "2021",
 )
 

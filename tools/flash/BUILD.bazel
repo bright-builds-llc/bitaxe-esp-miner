@@ -45,6 +45,7 @@ rust_binary(
         "src/campaign/admission.rs",
         "src/campaign/evidence.rs",
         "src/campaign/markers.rs",
+        "src/campaign/markers/protocol.rs",
         "src/campaign/markers/soak.rs",
         "src/campaign/markers/asic.rs",
         "src/campaign/network.rs",

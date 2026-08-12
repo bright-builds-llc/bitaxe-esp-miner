@@ -335,11 +335,12 @@ function validateCampaign(
   validateFlashDiagnostics(result, flashDiagnostics, flashDiagnosticsDocument);
   const qualifiedCandidateCount = result["qualified_candidate_count"];
   if (
-    result["schema"] !== "mining-campaign-result-v6"
+    result["schema"] !== "mining-campaign-result-v7"
     || result["stage"] !== "command-effects"
     || result["status"] !== "accepted"
     || result["terminal_category"] !== "command_effects_complete"
     || result["runtime_identity"] !== "trusted"
+    || result["protocol_gate"] !== "ready"
     || result["safe_stop"] !== "confirmed"
     || result["usb_cleanup"] !== "ready"
     || typeof qualifiedCandidateCount !== "number"

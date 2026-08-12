@@ -36,6 +36,7 @@ fn live_share_accepts_repeated_markers_and_cleared_terminal_lease() {
     assert_eq!(result["terminal_category"], "submit_response_observed");
     assert_eq!(result["submit_outcome"], "accepted");
     assert_eq!(result["terminal_reason"], "campaign_lease_consumed");
+    assert_eq!(result["protocol_gate"], "ready");
     for (field, expected) in [
         ("qualified_candidate_count", 1),
         ("below_pool_target_count", 0),
@@ -63,6 +64,7 @@ fn live_share_accepts_repeated_markers_and_cleared_terminal_lease() {
     ] {
         assert!(csv.contains(expected), "missing row {expected}");
     }
+    assert!(!csv.contains("fbstratumprot"));
 }
 
 #[test]

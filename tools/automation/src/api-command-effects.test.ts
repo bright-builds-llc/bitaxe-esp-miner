@@ -102,6 +102,7 @@ function fakePort(
   maybeSession: unknown = readySession,
   campaignFails = false,
   flashDiagnosticsMode: "ready" | "malformed" | "missing" = "ready",
+  protocolGate = "ready",
 ) {
   return createFakeProcessPort(async (spec) => {
     if (spec.program === "/sbin/route") return ok("interface: en0\n");
@@ -177,11 +178,12 @@ function fakePort(
         await writeFile(path.join(campaign, "campaign-flash.private.json"), flashDiagnosticsDocument, { mode: 0o600 });
       }
       await privateJson(path.join(campaign, "campaign-result.json"), {
-        schema: "mining-campaign-result-v6",
+        schema: "mining-campaign-result-v7",
         stage: "command-effects",
         status: campaignFails ? "failed" : "accepted",
         terminal_category: campaignFails ? "command_request_failed" : "command_effects_complete",
         runtime_identity: "trusted",
+        protocol_gate: protocolGate,
         safe_stop: "confirmed",
         usb_cleanup: "ready",
         qualified_candidate_count: 1,
@@ -206,6 +208,26 @@ function fakePort(
     throw new Error(`unexpected child ${spec.program}`);
   });
 }
+
+test("a non-ready protocol gate withholds the final projection", async () => {
+  // Arrange
+  const value = await fixture();
+
+  // Act
+  const error = await captureApiCommandEffects(
+    value.root,
+    value.options,
+    fakePort(value.root, readySession, false, "ready", "transaction_unavailable"),
+    path.join(value.root, "bin", "api-command-effects-stratum-pool"),
+    path.join(value.root, "bin", "flash"),
+    path.join(value.root, "bin", "device-session"),
+  ).then(() => undefined, (caught: unknown) => caught);
+
+  // Assert
+  assert(error instanceof ApiCommandEffectsError);
+  assert.equal(error.category, "hardware_blocked");
+  await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
+});
 
 test("complete command and reboot quorums publish only redacted typed evidence", async () => {
   // Arrange

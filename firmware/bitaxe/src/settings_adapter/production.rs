@@ -9,7 +9,7 @@ use bitaxe_stratum::v1::production_session::{
     ProductionPoolConfiguration, ProductionPoolEndpoint, ProductionPoolSet,
 };
 use esp_idf_svc::handle::RawHandle;
-use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDefault};
+use esp_idf_svc::nvs::{EspNvs, NvsDefault};
 use esp_idf_svc::sys;
 
 use super::SETTINGS_TRANSACTION_LOCK;
@@ -76,7 +76,7 @@ pub(crate) fn load_production_campaign_admission(
     let _transaction_guard = SETTINGS_TRANSACTION_LOCK
         .lock()
         .map_err(|_| ProductionSettingsReadError::new("transaction_lock"))?;
-    let partition = EspDefaultNvsPartition::take()
+    let partition = super::default_nvs_partition()
         .map_err(|_| ProductionSettingsReadError::new("nvs_partition"))?;
     let nvs = EspNvs::new(partition.clone(), NVS_NAMESPACE, false)
         .map_err(|_| ProductionSettingsReadError::new("nvs_open"))?;
@@ -171,7 +171,7 @@ pub(crate) fn read_production_pool_set(
     let _transaction_guard = SETTINGS_TRANSACTION_LOCK
         .lock()
         .map_err(|_| ProductionSettingsReadError::new("transaction_lock"))?;
-    let partition = EspDefaultNvsPartition::take()
+    let partition = super::default_nvs_partition()
         .map_err(|_| ProductionSettingsReadError::new("nvs_partition"))?;
     let nvs = EspNvs::new(partition, NVS_NAMESPACE, false)
         .map_err(|_| ProductionSettingsReadError::new("nvs_open"))?;

@@ -36,3 +36,26 @@
 - Outcome: The immutable continuation is eligible to commit and push.
 - Blocker or next safe action: Push the checkpoint, then implement the
   boot-lifetime owner and typed gate before considering hardware.
+
+## 2026-08-12T17:42:00Z | Source gate complete
+
+- Source commit: pending this implementation checkpoint; immutable plan commit
+  `2dfdb5eb99d5da73037d8bbcf434cdcaf913f05d` is already pushed.
+- Actions: Replaced every independent default-NVS acquisition with one
+  boot-lifetime owner initialized during ordered startup, routed settings,
+  production, protocol-gate, and scoreboard access through shared clones, and
+  carried a value-free closed protocol-gate decision through marker v10 and
+  result v7. The public command-effects validator now requires `ready`.
+- Verification: Focused owner, protocol, marker, flash, automation, and real
+  firmware targets pass. The complete ordered Cargo format, clippy, all-target
+  build, all-feature test, Bright Builds, all 40 Bazel tests, parity, progress,
+  redaction, reference, schema, generated-NVS, ownership, sensitive-output,
+  immutable-plan, and diff gates pass. Parity remains 59 verified of 94 active
+  rows, with API-009 unchanged at implemented.
+- Evidence: This is source-only verification. No device effect, protected
+  attempt, public projection, or parity promotion occurred.
+- Outcome: The material NVS-owner race is fixed and the exact source is ready
+  to commit and push before attempt-004 admission.
+- Blocker or next safe action: Commit and push the clean implementation, build
+  its exact package, run a fresh detector, then consume at most the single
+  bounded attempt-004 defined by the immutable plan.

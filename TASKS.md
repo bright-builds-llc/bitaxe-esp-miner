@@ -2026,13 +2026,13 @@ campaign NVS image before any material fix or new ordinal.
 Protocol-gate continuation plan:
 `docs/parity/work-plans/20260812T170039Z-API-009/PLAN.md`.
 
-- [ ] Replace repeated exclusive default-NVS partition acquisition with one
+- [x] Replace repeated exclusive default-NVS partition acquisition with one
       boot-lifetime owner whose clones are shared by settings, production
       campaign, protocol-gate, and scoreboard adapters.
-- [ ] Carry a closed protocol-gate decision through the production snapshot and
+- [x] Carry a closed protocol-gate decision through the production snapshot and
       campaign marker without selector values, pool data, network data, or raw
       logs.
-- [ ] Add exclusive-owner, generated-campaign-NVS, startup-race, recovery,
+- [x] Add exclusive-owner, generated-campaign-NVS, startup-race, recovery,
       schema, and sensitive-output regressions; run and push every software
       gate before hardware.
 - [ ] Run at most one fresh detector-gated `attempt-004` and promote only on

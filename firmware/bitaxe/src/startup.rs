@@ -10,7 +10,7 @@ use crate::{
 };
 
 pub(crate) fn run() -> anyhow::Result<()> {
-    let startup_debug_text = initialize_boot_identity_and_settings();
+    let startup_debug_text = initialize_boot_identity_and_settings()?;
     let (startup_diagnostics, maybe_modem) = initialize_hardware(startup_debug_text);
     let boot_validation_ready = start_runtime_services(startup_diagnostics, maybe_modem)?;
     let (filesystem_status, route_shell_ready) = start_storage_and_http();
@@ -19,7 +19,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn initialize_boot_identity_and_settings() -> StartupDebugText {
+fn initialize_boot_identity_and_settings() -> anyhow::Result<StartupDebugText> {
     sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
     boot_evidence::initialize_observer();
@@ -38,6 +38,7 @@ fn initialize_boot_identity_and_settings() -> StartupDebugText {
     boot_evidence::record_booted();
     crate::info_retained(&safe_state_log_line);
     crate::retain_build_identity();
+    settings_adapter::initialize_default_nvs_partition()?;
     if let Err(error) = settings_adapter::initialize_current_settings_snapshot() {
         log::warn!("axeos_settings_snapshot=startup_refresh_failed error={error}");
     }
@@ -53,12 +54,12 @@ fn initialize_boot_identity_and_settings() -> StartupDebugText {
         log::warn!("scoreboard=unavailable category={}", error.category());
     }
     runtime_snapshot::apply_boot_mining_preference(settings_adapter::start_mining_on_boot());
-    StartupDebugText::new(
+    Ok(StartupDebugText::new(
         BoardTarget::Ultra205,
         AsicTarget::Bm1366,
         Some(crate::build_label()),
         crate::build_timestamp_utc(),
-    )
+    ))
 }
 
 fn initialize_hardware(

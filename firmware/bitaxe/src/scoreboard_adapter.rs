@@ -10,7 +10,7 @@ use bitaxe_api::{
 use bitaxe_config::NVS_NAMESPACE;
 use bitaxe_stratum::v1::production_work::ScoreboardCandidate;
 use esp_idf_svc::handle::RawHandle;
-use esp_idf_svc::nvs::{EspDefaultNvsPartition, EspNvs, NvsDefault};
+use esp_idf_svc::nvs::{EspNvs, NvsDefault};
 use esp_idf_svc::sys;
 
 static SCOREBOARD: OnceLock<Mutex<ScoreboardOwner>> = OnceLock::new();
@@ -97,7 +97,7 @@ fn persist_and_confirm(
     candidate: &Scoreboard,
     changed_from: usize,
 ) -> Result<(), ScoreboardAdapterError> {
-    let partition = EspDefaultNvsPartition::take()
+    let partition = crate::settings_adapter::default_nvs_partition()
         .map_err(|_| ScoreboardAdapterError::new("partition_unavailable"))?;
     let mut nvs = EspNvs::new(partition, NVS_NAMESPACE, true)
         .map_err(|_| ScoreboardAdapterError::new("namespace_open_failed"))?;
@@ -125,7 +125,7 @@ fn persist_and_confirm(
 }
 
 fn load_scoreboard() -> Result<Scoreboard, ScoreboardAdapterError> {
-    let partition = EspDefaultNvsPartition::take()
+    let partition = crate::settings_adapter::default_nvs_partition()
         .map_err(|_| ScoreboardAdapterError::new("partition_unavailable"))?;
     let nvs = EspNvs::new(partition, NVS_NAMESPACE, false)
         .map_err(|_| ScoreboardAdapterError::new("namespace_open_failed"))?;

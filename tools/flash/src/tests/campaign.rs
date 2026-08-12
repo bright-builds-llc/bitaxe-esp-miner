@@ -90,7 +90,7 @@ fn campaign_marker_with_failure(
     format!(
         "mining_campaign_status={}",
         serde_json::json!({
-            "schema": "mining-campaign-status-v9",
+            "schema": "mining-campaign-status-v10",
             "stage": fixture.stage,
             "lease_id": fixture.lease_id,
             "campaign_state": fixture.state,
@@ -152,6 +152,7 @@ fn campaign_marker_with_failure(
                 "latest_event": null,
             },
             "terminal_reason": fixture.terminal_reason,
+            "protocol_gate": "ready",
             "safety": fixture.safety,
             "fresh_observation_count": if safety_fresh { 5 } else { 4 },
             "observation_freshness": {
@@ -284,7 +285,7 @@ fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evide
         assert!(!csv.contains(forbidden), "unexpected key {forbidden}");
     }
     let result = read_campaign_result(&command);
-    assert_eq!(result["schema"], "mining-campaign-result-v6");
+    assert_eq!(result["schema"], "mining-campaign-result-v7");
     assert_eq!(result["status"], "accepted");
     assert_eq!(result["terminal_category"], "observation_complete");
     assert_eq!(result["runtime_identity"], "trusted");
