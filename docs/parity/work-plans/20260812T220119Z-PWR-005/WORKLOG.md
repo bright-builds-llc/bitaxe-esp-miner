@@ -45,7 +45,7 @@
 - Blocker or next safe action: Commit and push this checkpoint, then write the
   row-specific result from the validated closed evidence.
 
-## 2026-08-12T22:13:00Z | Closed-evidence reconciliation
+## 2026-08-12T22:09:00Z | Closed-evidence reconciliation
 
 - Source commit: `fef9945ce91793fd5815f349e2202834b9ffeef6`
 - Actions: Independently validated the existing PWR-003 projection; joined its
@@ -70,7 +70,7 @@
   commit and push RESULT.md without checklist mutation, save that commit as
   `SOURCE_COMMIT`, then transition only PWR-005 and synchronize progress.
 
-## 2026-08-12T22:19:00Z | Evidence checkpoint verified
+## 2026-08-12T22:10:00Z | Evidence checkpoint verified
 
 - Source commit: `fef9945ce91793fd5815f349e2202834b9ffeef6`
 - Actions: Preserved the immutable plan and existing projection byte-for-byte;
