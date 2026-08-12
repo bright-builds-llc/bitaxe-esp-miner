@@ -2061,6 +2061,29 @@ and the public projection was withheld. API-009 remains `implemented`. The
 linked closure requires a fresh immutable continuation to diagnose and test the
 pause/resume safety-readiness transition before any new ordinal.
 
+Safety-readiness continuation plan:
+`docs/parity/work-plans/20260812T173427Z-API-009/PLAN.md`.
+
+- [ ] Bind one closed sampled-observation epoch and readiness transition to the
+      production session and versioned campaign evidence.
+- [ ] Reproduce stale-resume followed by fresh producer notification at the
+      production shell seam and fix only the confirmed missed transition.
+- [ ] Add ordering, coalescing, recovery, schema, and sensitive-output tests;
+      run and push every software gate before hardware.
+- [ ] Run at most one fresh detector-gated `attempt-005` only after a red/green
+      material fix, and promote only on the complete five-command quorum.
+
+Attempt-005 authorization: standing task authorization permits this single
+fresh attempt only after the immutable plan and exact clean pushed source prove
+the production-shaped stale-then-fresh transition regression fails before and
+passes after the material fix. The allowed effects, prohibited effects,
+evidence privacy, exact-package and board-205 detector gates, 600-second
+local-fixture lease, one-time physical IDENTIFY checkpoints, safe stop,
+cleanup, canonical software restart, recovery, public withholding, and
+accepted stop categories are exactly those in the linked plan. Closed
+instrumentation alone is not retry eligibility, and no second attempt is
+permitted.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
