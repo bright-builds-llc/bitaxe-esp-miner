@@ -24,6 +24,34 @@ new work.
 
 ## Active
 
+### task-parity-asic002-sealed-initialization-promotion | 2026-08-12 | Promote sealed BM1366 initialization proof
+
+- [ ] Add a typed, closed projector and validator for the sealed accepted-share
+      campaign's full BM1366 initialization boundary.
+- [ ] Prove protected artifact seals/modes, all nine preparation completions,
+      retained production UART, trusted package/runtime identity, live work,
+      safe stop, cleanup, and current-source compatibility without exposing
+      protected values.
+- [ ] Run every software and privacy gate, publish one redacted projection,
+      and promote only `ASIC-002` when the complete quorum passes.
+
+Plan: `docs/parity/work-plans/20260812T083542Z-ASIC-002/PLAN.md`.
+
+Authorization: projection-only read access to the ignored protected
+`scratch/ultra205-accepted-pool-share/attempt-007` artifacts. No detector,
+flash, reset, USB session, credential read, serial/network request, mining,
+fan/voltage/power/ASIC actuation, recovery, direct UART, pins, or other
+hardware effect is permitted. Preserve raw artifacts unchanged; only closed
+redaction-safe categories, counts, digests, commits, and booleans may be
+published.
+
+Verification and stop rule: require valid seals, mode 0700 root and mode 0600
+files, exact accepted campaign state, 18 accepted and zero invalid preparation
+events ending at completed production-UART retention, byte-identical current
+initialization paths, focused regressions, independent Rust validation, every
+repository gate, redaction, and reference cleanliness. Any failure leaves
+`ASIC-002` implemented and stops this plan without a hardware fallback.
+
 ### task-ultra205-default-profile-soak | 2026-07-28 | Run the bounded upstream-default mining soak
 
 - [x] Start a fresh exact-package attempt at 485 MHz, 1200 mV, and 100% fan
