@@ -1836,10 +1836,15 @@ task remains active because `NET-002` is not verified.
       immutable plan to the accepted conservative Ultra 205 lineage.
 - [x] Add and verify a closed public contract joining the accepted socket,
       hardware-preparation, work-send, result, and safe-stop lifecycle.
+- [ ] Replace the false single-occurrence ASIC-worker guard with the exact two
+      legitimate dispatch spans and a production-shaped regression.
 - [ ] Publish the redacted projection, promote only `STR-006` when the full
       quorum passes, synchronize progress, and archive this task.
 
-Plan: `docs/parity/work-plans/20260812T114949Z-STR-006/PLAN.md`.
+Active plan: `docs/parity/work-plans/20260812T122256Z-STR-006/PLAN.md`.
+
+Closed predecessor:
+`docs/parity/work-plans/20260812T114949Z-STR-006/CLOSURE.md`.
 
 Authorization: Software-only derivation from committed public evidence and Git
 history. No protected campaign access, detector, package build, flash, reset,
@@ -1863,9 +1868,9 @@ guard incorrectly required a fragment with two legitimate occurrences to be
 unique; no evidence artifact was published.
 
 Blocker and next safe action: The immutable plan is terminal and forbids a
-retry. Keep this task active, commit its `CLOSURE.md`, then start a fresh
-software-only `STR-006` plan that binds both legitimate dispatch spans and adds
-a production-shaped regression before allowing one new projection attempt.
+retry. Its closure is committed. The fresh active software-only plan binds both
+legitimate dispatch spans and adds a production-shaped regression before one
+new projection attempt.
 
 Completion review: Pending.
 
