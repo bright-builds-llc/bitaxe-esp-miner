@@ -6242,3 +6242,40 @@ unique-local v6 reporting, monotonic uptime, disabled mining/control, cleanup,
 no recovery, private modes, independent validation, and redaction. The
 evidence was committed, `NET-003` transitioned to verified, progress
 synchronized to 51 of 94 active rows, and this task is complete and archived.
+
+### task-parity-asic002-sealed-initialization-promotion | 2026-08-12 | Promote sealed BM1366 initialization proof
+
+- [x] Add a typed, closed projector and validator for the sealed accepted-share
+      campaign's full BM1366 initialization boundary.
+- [x] Prove protected artifact seals/modes, all nine preparation completions,
+      retained production UART, trusted package/runtime identity, live work,
+      safe stop, cleanup, and current-source compatibility without exposing
+      protected values.
+- [x] Run every software and privacy gate, publish one redacted projection,
+      and promote only `ASIC-002` when the complete quorum passes.
+
+Plan: `docs/parity/work-plans/20260812T083542Z-ASIC-002/PLAN.md`.
+
+Authorization: projection-only read access to the ignored protected
+`scratch/ultra205-accepted-pool-share/attempt-007` artifacts. No detector,
+flash, reset, USB session, credential read, serial/network request, mining,
+fan/voltage/power/ASIC actuation, recovery, direct UART, pins, or other
+hardware effect is permitted. Preserve raw artifacts unchanged; only closed
+redaction-safe categories, counts, digests, commits, and booleans may be
+published.
+
+Verification and stop rule: require valid seals, mode 0700 root and mode 0600
+files, exact accepted campaign state, 18 accepted and zero invalid preparation
+events ending at completed production-UART retention, byte-identical current
+initialization paths, focused regressions, independent Rust validation, every
+repository gate, redaction, and reference cleanliness. Any failure leaves
+`ASIC-002` implemented and stops this plan without a hardware fallback.
+
+Completion review: The sealed exact-package attempt proved all nine ordered
+BM1366 initialization steps, exactly one chip, mining-ready completion,
+retained production UART, live accepted work, trusted identity and safety,
+safe stop, cleanup, protected modes, source compatibility, independent
+validation, and redaction. Evidence commit
+`5694c245622ceb15dd7f3924cac7327f5d99bf1c` was pushed, `ASIC-002`
+transitioned to verified under `20260812T090906Z-ASIC-002`, progress
+synchronized to 52 of 94 active rows, and this task is complete and archived.

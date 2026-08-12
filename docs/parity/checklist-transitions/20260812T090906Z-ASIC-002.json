@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260812T090906Z-ASIC-002",
+  "predecessor_sha256": "9c9d1b5d59d704588bc488bbe91ae3e13995ceef81a3e9e271f748f5f5cb1799",
+  "result_sha256": "b1df158346135e41d99eca35c8e139878580befc59b2a7a996f97bbbf8cb058a",
+  "row_id": "ASIC-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260812T083542Z-ASIC-002/PLAN.md",
+  "plan_sha256": "8759c7255261117d8000f513f9fd1a1f4b376eea2df1d30af4ec8bb3168194e9",
+  "result_path": "docs/parity/work-plans/20260812T083542Z-ASIC-002/RESULT.md",
+  "result_document_sha256": "df8c3b8b83e06684ae37f1368280cb1125133e024213e9907168517263d42054",
+  "before_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/init_plan.rs`, `crates/bitaxe-safety`, `firmware/bitaxe/src/asic_adapter.rs`, `firmware/bitaxe/src/asic_adapter/reset.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/init_plan.rs`, `crates/bitaxe-safety`, `firmware/bitaxe/src/asic_adapter.rs`, `firmware/bitaxe/src/asic_adapter/reset.rs`, `crates/bitaxe-automation-contracts/src/asic_initialization_evidence.rs`, `tools/automation/src/asic-initialization-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow,hardware-smoke",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Pure staged init and default fail-closed firmware gate are implemented; Phase 6 wires power, thermal, and safety evidence tokens into full-init gating. [Phase 15 evidence](evidence/phase-15-bm1366-mining-evidence-completion.md) verifies only the exact package-backed chip-detect/no-mining fail-closed subclaim with partial UART read and reset held low. Phase 21 final evidence in `evidence/phase-21-live-mining-and-soak-evidence/summary.md` records trusted diagnostic chip-detect plus work-result commands, but both remain fail-closed and full BM1366 initialization, active power/thermal prerequisites, frequency transition, voltage, fan, and production mining behavior remain below verified.",
+  "after_notes": "Sealed exact-package Ultra 205 attempt-007 proves all nine initialization steps, exactly one BM1366, mining-ready completion, retained production UART, live accepted work, trusted identity and safety, safe stop, cleanup, unchanged initialization paths, independent validation, and redaction; see docs/parity/work-plans/20260812T083542Z-ASIC-002/RESULT.md and docs/parity/evidence/asic002-initialization/asic-initialization-projection.json. Frequency transitions, voltage, fan, thermal behavior, work/result details, other ASICs or boards, updates, recovery, soak stability, and release readiness remain non-claims."
+}
