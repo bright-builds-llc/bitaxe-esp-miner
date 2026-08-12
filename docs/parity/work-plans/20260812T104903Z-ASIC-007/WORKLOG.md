@@ -105,3 +105,42 @@
   hardware rerun or protected-evidence access.
 - Blocker or next safe action: Commit and push RESULT plus evidence, then use
   that exact source commit for the audited one-row checklist transition.
+
+## 2026-08-12T11:07:32Z | Audited promotion and progress sync
+
+- Source commit: `c54017ac3e69ab8262e24b8c043bf651bcdee3ae`
+- Actions: Applied the one-row verified transition and synchronized progress.
+  The initial chained sync omitted its required source commit; the corrected
+  invocation then exposed omitted optional row/plan metadata. Diff review
+  exactly restored only that generated progress line and regenerated it with
+  `ASIC-007` and the immutable plan path.
+- Verification: Only `ASIC-007` changed from `implemented` to `verified` with
+  `unit,golden,workflow,hardware-smoke,hardware-regression`; README and progress
+  now report 56 of 94 active rows (59.6%). Transition receipt SHA-256 is
+  `c76be3414cbee0aa4a9187a4c5696236a1e90f4b08ea0a190331b476b1e213ea`.
+- Evidence: The receipt binds immutable plan SHA-256
+  `04387915ae63a82b65c15ae3b4c14f76711aa01d57568bc6ea0901fa43a48f4a`
+  and RESULT SHA-256
+  `67b02189f5794ff864ad20f85b2b31638f6e9a821b092666b166e48ecc146dc2`.
+- Outcome: `ASIC-007` is conservatively promoted with canonical checklist and
+  deterministic progress metadata.
+- Blocker or next safe action: Run the final mandatory gate, then archive the
+  completed task and push finalization.
+
+## 2026-08-12T11:14:23Z | Final repository gate and archival
+
+- Source commit: `c54017ac3e69ab8262e24b8c043bf651bcdee3ae`
+- Actions: Completed the final repository gate tail, revalidated the public
+  projection, and moved the completed active task into the immutable archive.
+- Verification: Ordered Cargo, Bright Builds, all 37 Bazel tests, parity and
+  progress, generated contracts, independent evidence validation, semantic
+  redaction, pinned-reference integrity and cleanliness, immutable digests,
+  task uniqueness, and diff checks pass. The Bazel validator initially received
+  a workspace-relative evidence path from its execution root; the corrected
+  absolute-path invocation passed without changing code or evidence.
+- Evidence: Plan, RESULT, projection, and transition receipt retain their exact
+  recorded SHA-256 digests. No protected evidence or hardware was accessed.
+- Outcome: `ASIC-007` is verified at 56 of 94 active rows (59.6%), and its task
+  is complete and archived.
+- Blocker or next safe action: Commit and push finalization, then begin a fresh
+  selector invocation for the next parity row.

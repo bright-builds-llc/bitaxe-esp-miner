@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260812T110614Z-ASIC-007",
+  "predecessor_sha256": "a097b5d308ca9415b40622349583b49dc014293d6b5f2b37ebeb210c33035398",
+  "result_sha256": "a39ad4e7a3f374ae18691ebfc45e648d04095af3ddb74dcaa09aae5794b5c01d",
+  "row_id": "ASIC-007",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260812T104903Z-ASIC-007/PLAN.md",
+  "plan_sha256": "04387915ae63a82b65c15ae3b4c14f76711aa01d57568bc6ea0901fa43a48f4a",
+  "result_path": "docs/parity/work-plans/20260812T104903Z-ASIC-007/RESULT.md",
+  "result_document_sha256": "67b02189f5794ff864ad20f85b2b31638f6e9a821b092666b166e48ecc146dc2",
+  "before_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/frequency_voltage.rs`, `firmware/bitaxe/src/asic_adapter.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/frequency_voltage.rs`, `crates/bitaxe-asic/src/bm1366/mining_ready.rs`, `firmware/bitaxe/src/mining_actuation.rs`, `firmware/bitaxe/src/mining_actuation_adapter.rs`, `firmware/bitaxe/src/asic_adapter/production.rs`, `crates/bitaxe-automation-contracts/src/asic_frequency_transition_evidence.rs`, `tools/automation/src/asic-frequency-transition-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit",
+  "after_evidence": "unit,golden,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Phase 03 Plan 04 range-checks pure BM1366 frequency decisions and marks hardware effect status missing evidence. [Phase 15 evidence](evidence/phase-15-bm1366-mining-evidence-completion.md) records no bounded frequency transition hardware-regression artifact. Phase 21 final evidence in `evidence/phase-21-live-mining-and-soak-evidence/summary.md` explicitly keeps ASIC-007 below verified because no bounded frequency-transition hardware-regression artifact exists in the Phase 21 evidence tree; live frequency behavior remains hardware evidence pending.",
+  "after_notes": "Sealed exact-package Ultra 205 evidence proves the bounded conservative 50-to-400-MHz BM1366 frequency ramp completed through 56 typed writes and 56 inter-step delays before live initialized work and an accepted response; current planning, actuation, UART, and executor paths remain compatible, with confirmed safe stop, cleanup, independent validation, and redaction. See `docs/parity/work-plans/20260812T104903Z-ASIC-007/RESULT.md` and `docs/parity/evidence/asic007-frequency-transition/asic-frequency-transition-projection.json`. Arbitrary targets, dynamic retuning, default-profile or overclock behavior, voltage/fan/power/thermal parity, other ASICs or boards, soak stability, updates, recovery, and release readiness remain non-claims."
+}

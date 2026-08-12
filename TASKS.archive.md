@@ -6395,3 +6395,45 @@ transport semantics, with independent validation, atomic publication, cleanup,
 and redaction. No hardware rerun or protected evidence access occurred. The
 evidence and transition commits were pushed, the final repository gate passed,
 and the row is verified. This task is complete and archived.
+
+### task-parity-asic007-frequency-transition-promotion | 2026-08-12 | Verify the accepted BM1366 frequency ramp
+
+- [x] Select `ASIC-007` from a clean synchronized preflight and bind an
+      immutable plan to the accepted conservative Ultra 205 lineage.
+- [x] Add and verify a closed public contract that proves the bounded
+      50-to-400-MHz ramp completed before accepted live work.
+- [x] Publish the redacted projection, promote only `ASIC-007` when the full
+      quorum passes, synchronize progress, and archive this task.
+
+Plan: `docs/parity/work-plans/20260812T104903Z-ASIC-007/PLAN.md`.
+
+Authorization: Software-only derivation from committed public evidence and Git
+history. No protected campaign access, detector, package build, flash, reset,
+USB/network session, credentials, mining, fan/voltage/power/ASIC actuation,
+recovery, direct UART, pins, or other hardware effect is permitted.
+
+Verification and stop rule: Require the exact independently validated ASIC-002
+projection digest, accepted/current/reference commit binding, unchanged ramp
+and actuation modules, compatible unique executor spans, focused regressions,
+independent Rust validation, every repository gate, redaction, reference
+cleanliness, and atomic publication. Any failure leaves `ASIC-007` implemented
+and stops this plan without a hardware fallback.
+
+Verification: Focused contract and automation tests, real-child integration,
+ordered Cargo, Bright Builds, all 37 Bazel tests, parity/progress, generated
+contracts, independent projection validation, redaction, reference, immutable
+digests, source compatibility, task uniqueness, and diff checks pass. Public
+projection SHA-256 is
+`34ac6bc0df593bd75b6026eedcecda5f4b34e00cde0f3541a156794f2c7512ae`.
+Transition `20260812T110614Z-ASIC-007` promoted only `ASIC-007`; progress now
+records 56 of 94 active rows (59.6%). The final ordered Cargo, Bright Builds,
+all 37 Bazel tests, parity/progress, generated contracts, independent evidence
+validation, redaction, reference, immutable-digest, task-uniqueness,
+reference-cleanliness, and diff gates pass.
+
+Completion review: The source-bound proof establishes that the accepted
+conservative Ultra 205 completed all 56 ramp writes and delays before live
+initialized work and an accepted response, followed by confirmed safe stop and
+cleanup. No protected evidence or new hardware effect occurred. The evidence
+and transition commits were pushed, the final repository gate passed, and the
+row is verified. This task is complete and archived.
