@@ -1949,9 +1949,9 @@ Host-process continuation plan:
       deployed-layout `createLocalProcessPort` regression.
 - [x] Run every focused and mandatory software gate; commit and push the exact
       fixed source before touching hardware.
-- [ ] Run exactly one fresh detector-gated `attempt-002` and stop after its
+- [x] Run exactly one fresh detector-gated `attempt-002` and stop after its
       complete terminal result without retry.
-- [ ] Promote API-009 only on the complete five-command device-user quorum;
+- [x] Promote API-009 only on the complete five-command device-user quorum;
       otherwise preserve `implemented` and the first typed blocker.
 
 Attempt-002 authorization: standing task authorization permits the single
@@ -1974,6 +1974,18 @@ SHA-256 is `b9d055764d046233159226a12e9e44444f52a66d44ce2c83375ce692fd04e52b`.
 Recovery is pause/safe-stop first and exact-package restore only if required;
 the earliest failure remains primary. Accepted stop categories are
 `hardware_blocked`, `evidence_invalid`, `timeout`, and `process_failed`.
+
+Attempt-002 completion review: Exact pushed source and package
+`2feff204fb7c4d2a2d3196e69a1dd8acf91bbfdb` passed every software and
+detector gate. The independent fixture process reached readiness and exited
+cleanly, resolving attempt-001's host blocker. The single hardware attempt then
+stopped before serial observation as `hardware_blocked` / `flash_failed` with
+the package admitted, runtime identity unobserved, zero captured serial bytes,
+no network phase or IDENTIFY checkpoint, safe stop unobserved, USB cleanup
+ready, private modes valid, and the public projection withheld. API-009 remains
+`implemented`. See the linked `CLOSURE.md`. Resume only through a fresh
+immutable plan after a protected flash-child diagnostic distinguishes the
+failed boundary; attempt-002 cannot be retried.
 
 ## Future
 

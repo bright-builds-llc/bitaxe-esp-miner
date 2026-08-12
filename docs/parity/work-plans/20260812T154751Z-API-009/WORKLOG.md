@@ -68,3 +68,24 @@
 - Outcome: The fixed source is eligible to commit and push before hardware.
 - Blocker or next safe action: Commit and push this exact source, build its
   exact package, then run only the single detector-gated attempt-002.
+
+## 2026-08-12T16:38:00Z | Attempt-002 terminal closure
+
+- Source commit: `2feff204fb7c4d2a2d3196e69a1dd8acf91bbfdb`.
+- Actions: Built and validated the exact pushed package, admitted one board-205
+  device with the repository detector, and ran the sole authorized attempt-002.
+  No second attempt was started.
+- Verification: The fixture published readiness through its repo-owned Bazel
+  executable and exited cleanly. The campaign ended before serial observation
+  as public `hardware_blocked` / private `flash_failed`: package admitted,
+  runtime identity not observed, zero serial bytes, network not required, no
+  IDENTIFY checkpoint, safe stop not observed, and USB cleanup ready. All
+  private directories/files are mode `0700`/`0600`; no public projection exists.
+- Evidence: No API-009 parity evidence is claimed. The user's display
+  observation is not correlated to a trusted campaign runtime and is not used
+  for promotion.
+- Outcome: API-009 remains `implemented`; attempt-002 is consumed and the plan
+  closes truthfully without a checklist transition or progress sync.
+- Blocker or next safe action: Add a protected closed flash-child diagnostic,
+  reproduce the exact boundary without device effects, and require a new
+  immutable continuation before any fresh ordinal.
