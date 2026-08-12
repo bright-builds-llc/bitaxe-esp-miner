@@ -1608,6 +1608,73 @@ lines. Both lines are intentionally API-retained. Exact-package recovery and
 private cleanup passed, no public evidence was emitted, and the linked closure
 defines the retained-log continuation using fresh attempt-005 paths.
 
+### task-parity-net001-reconnect-lifecycle-attempt-001 | 2026-08-12 | Verify the post-boot Wi-Fi reconnect lifecycle
+
+- [x] Select `NET-001`, inspect the exact reference/implementation gap, and
+      persist the linked immutable plan before implementation.
+- [ ] Add a pure reconnect state machine and thin ESP-IDF event worker matching
+      fallback, reason, 5,000-ms retry, AP-client, DHCP-reset, and repeated-
+      cycle behavior.
+- [ ] Add the clear-before-effect one-shot NVS probe, exact flash integration,
+      typed host capture, closed public projection, and production-shaped
+      regression coverage.
+- [ ] Run focused and mandatory software gates; commit and push the exact
+      implementation before hardware use.
+- [ ] Run one protected detector and, only after admission, one protected
+      attempt-001 capture on board 205.
+- [ ] Promote only `NET-001` when the live same-boot reconnect, stable recovery,
+      disabled effects, cleanup, private modes, redaction, and every software
+      gate pass.
+
+Plan: `docs/parity/work-plans/20260812T025425Z-NET-001/PLAN.md`.
+
+Objective and preconditions: close only `NET-001` on one Ultra 205. Source,
+upstream, reference, package provenance, credential opacity, and fresh
+private/public paths must pass before the exact linked commands are eligible.
+
+Authorized effects: one exact normal package flash; replacement NVS with the
+exact Ultra 205 defaults, owner Wi-Fi, `mineonboot=false`, and one private
+`netreconprobe` marker; repo-owned USB reset/re-enumeration; bounded receive-
+only USB and same-origin HTTP; one clear-before-effect station disconnect; the
+normal configuration-AP fallback and station reconnect; and at most one
+ordinary exact-package recovery flash without the marker. The successful final
+state retains the exact package, owner Wi-Fi, exact defaults, and disabled
+mining.
+
+Prohibited effects: router or RF changes, discovery, credential mutation after
+boot, erase, ad hoc/raw writes, OTA, power interruption, mining, ASIC/pool
+activity, voltage, frequency, fan, thermal/power control, self-test, foreign-
+process termination, direct UART, pins, pads, headers, GPIO, probes, jumpers,
+soldering, or signals.
+
+Evidence and privacy: wrapper-001/attempt-001 are ignored mode-`0700` roots
+with mode-`0600` files. Credential, hostname, USB, device, network, origin,
+command, process, HTTP-body, and raw serial values remain private. Only the
+closed redacted `bitaxe-network-reconnect-evidence-v1` projection may be
+committed.
+
+Recovery, retry, and stop: the probe marker must be erased and committed before
+the intentional disconnect. Detector failure stops before writes. Preserve the
+earliest typed category through cleanup and optional ordinary exact-package
+recovery. Any conditional capture start consumes attempt-001; release every
+resource and stop without retry on success or any admitted terminal category.
+
+Acceptance: require the exact package and board identity, one post-boot
+disconnect, immediate AP fallback, typed reason, a first retry no earlier than
+5,000 ms, same-boot DHCP recovery, retry reset, client-only mode, 15,000 ms of
+stable service, final HTTP/retained-log quorum, `mineonboot=false`, disabled
+mining/control, cleanup, modes, redaction, and valid projection. Otherwise
+withhold evidence, close truthfully, and keep `NET-001` implemented.
+
+Verification: Immutable-plan gate passed in order: `cargo fmt --all`, strict
+Clippy, the all-target/all-feature Cargo build and tests, Bright Builds, all 37
+Bazel test targets, parity, progress, redaction, pinned-reference, selector,
+task-uniqueness, reference-cleanliness, and diff checks. The selector now
+returns this exact `NET-001` plan as the sole open plan. No hardware, package,
+credential, NVS, or network effect occurred.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
