@@ -2140,54 +2140,38 @@ later closed `network_correlation_failed` with terminal
 withholding passed. No projection exists, API-009 remains `implemented`, and
 attempt-006 cannot be retried. See the linked closure for the next safe action.
 
-### task-parity-pwr003-core-voltage-control-audit | 2026-08-12 | Audit Ultra 205 core-voltage control
+### task-parity-pwr003-core-voltage-control-evidence-retry | 2026-08-12 | Retry the sealed PWR-003 projection
 
-- [x] Select PWR-003 as the first actionable parity row and freeze the
-      immutable plan at
-      `docs/parity/work-plans/20260812T203223Z-PWR-003/PLAN.md`.
-- [x] Add a typed core-voltage-control evidence contract, independent
-      validator, projector, generated binding, and command surface.
-- [x] Add focused regressions for the accepted PWR-002 source quorum, exact
-      DS4432U address/register/code and write route, 500 ms stabilization,
-      active-low safe shutdown, source drift, publication withholding,
-      candidate cleanup, and sensitive-output absence.
-- [ ] Produce and independently validate one public redacted PWR-003
-      projection from the sealed accepted PWR-002 evidence without rerunning
-      hardware.
-- [x] Run all required Cargo, Bright Builds, Bazel, parity, redaction,
-      reference, generated-contract, diff, and source-compatibility gates.
-- [ ] Promote only PWR-003 if the closed projection passes, record RESULT.md,
-      archive this task, and preserve every explicit non-claim.
+- [x] Select PWR-003 as the next actionable row after the temporarily
+      unavailable two-prompt physical-observation gate for API-009.
+- [x] Freeze the fresh immutable software-only retry plan at
+      `docs/parity/work-plans/20260812T212218Z-PWR-003/PLAN.md`.
+- [ ] Replace the ambiguous stabilization substring with a source-shaped
+      unique matcher and bind the projector to this plan/task lineage.
+- [ ] Add a regression over the real production file that proves the complete
+      DS4432U address/register/code and write route matcher set, including the
+      intended 500 ms stabilization use site.
+- [ ] Run and push every focused and mandatory software, privacy, reference,
+      integrity, source-compatibility, and diff gate before projection.
+- [ ] Run exactly one fresh sealed projection from the accepted PWR-002 source,
+      independently validate it, and promote only on the complete quorum.
+- [ ] Record RESULT.md, archive this task, preserve all non-claims, and push
+      the synchronized verified transition if and only if evidence passes.
 
-This is a software-only evidence audit. It permits reading committed evidence,
-source, task, plan, and pinned reference state; running repository build, test,
-validation, and projection commands; and publishing one redacted typed
-projection. It does not permit a detector run, package build, flash, reset, USB
-session, serial monitor, network request, credentials, mining rerun, voltage,
-fan, power, GPIO, I2C, direct UART, pin, fault-injection, or other hardware
-effect. Failed validation must preserve `PWR-003` at `implemented`, withhold
-the final projection, clean any candidate, and record the earliest typed
-failure. Acceptance requires the exact source projection and digest, trusted
-package/runtime identity, issued 1100 mV command, source-bound DS4432U
-constants and single-write route, complete stabilization, successful
-downstream work, active-low safe stop, cleanup, no hardware rerun, and passed
-redaction.
+This is a software-only evidence audit. It permits the exact source/test edits,
+repository verification, and one atomic redacted projection described by the
+linked plan. It permits no detector, package, flash, reset, USB/serial,
+network, credential, mining, voltage, fan, power, GPIO, I2C, direct UART, pin,
+fault-injection, or other hardware effect. A failure must preserve the earliest
+typed category, remove any candidate, withhold the final projection, keep
+PWR-003 `implemented`, and stop without another projection attempt.
 
-Blocked checkpoint: The one allowed projection attempt from clean pushed
-implementation commit `10a72b06` failed closed as `evidence_invalid` before
-candidate creation because the semantic fragment `CORE_VOLTAGE_STABILIZATION_MS,`
-occurs twice in `mining_actuation_adapter.rs` (import and use). The projector
-incorrectly required that substring to be unique. No projection was published,
-no hardware command ran, and PWR-003 remains `implemented`. The next safe action
-is a new bounded software retry contract that replaces the ambiguous substring
-with a source-shaped unique fragment and adds the production-file regression
-that this attempt exposed.
-
-Plan closure:
-`docs/parity/work-plans/20260812T203223Z-PWR-003/CLOSURE.md` records the
-non-verifying terminal outcome. PWR-003 remains `implemented`, no checklist
-transition or progress synchronization is warranted, and this task remains
-active for a fresh bounded software-only retry plan.
+Prior lineage: The superseded task and
+`docs/parity/work-plans/20260812T203223Z-PWR-003/CLOSURE.md` establish that the
+previous sole attempt failed before candidate creation only because the
+configured stabilization substring occurred twice. The accepted PWR-002
+projection remains the sole hardware evidence source; no hardware rerun is
+authorized or needed.
 
 ## Future
 

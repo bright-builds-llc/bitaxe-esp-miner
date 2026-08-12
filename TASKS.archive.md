@@ -6674,3 +6674,59 @@ analog accuracy, electrical waveforms, arbitrary profiles, automatic fan
 behavior, injected fault recovery, or thermal/soak closure. No protected
 evidence or new hardware effect occurred. The evidence checkpoint was pushed,
 the row is verified, and this task is complete and archived.
+
+### task-parity-pwr003-core-voltage-control-audit | 2026-08-12 | Audit Ultra 205 core-voltage control
+
+- [x] Select PWR-003 as the first actionable parity row and freeze the
+      immutable plan at
+      `docs/parity/work-plans/20260812T203223Z-PWR-003/PLAN.md`.
+- [x] Add a typed core-voltage-control evidence contract, independent
+      validator, projector, generated binding, and command surface.
+- [x] Add focused regressions for the accepted PWR-002 source quorum, exact
+      DS4432U address/register/code and write route, 500 ms stabilization,
+      active-low safe shutdown, source drift, publication withholding,
+      candidate cleanup, and sensitive-output absence.
+- [ ] Produce and independently validate one public redacted PWR-003
+      projection from the sealed accepted PWR-002 evidence without rerunning
+      hardware.
+- [x] Run all required Cargo, Bright Builds, Bazel, parity, redaction,
+      reference, generated-contract, diff, and source-compatibility gates.
+- [ ] Promote only PWR-003 if the closed projection passes, record RESULT.md,
+      archive this task, and preserve every explicit non-claim.
+
+This is a software-only evidence audit. It permits reading committed evidence,
+source, task, plan, and pinned reference state; running repository build, test,
+validation, and projection commands; and publishing one redacted typed
+projection. It does not permit a detector run, package build, flash, reset, USB
+session, serial monitor, network request, credentials, mining rerun, voltage,
+fan, power, GPIO, I2C, direct UART, pin, fault-injection, or other hardware
+effect. Failed validation must preserve `PWR-003` at `implemented`, withhold
+the final projection, clean any candidate, and record the earliest typed
+failure. Acceptance requires the exact source projection and digest, trusted
+package/runtime identity, issued 1100 mV command, source-bound DS4432U
+constants and single-write route, complete stabilization, successful
+downstream work, active-low safe stop, cleanup, no hardware rerun, and passed
+redaction.
+
+Blocked checkpoint: The one allowed projection attempt from clean pushed
+implementation commit `10a72b06` failed closed as `evidence_invalid` before
+candidate creation because the semantic fragment `CORE_VOLTAGE_STABILIZATION_MS,`
+occurs twice in `mining_actuation_adapter.rs` (import and use). The projector
+incorrectly required that substring to be unique. No projection was published,
+no hardware command ran, and PWR-003 remains `implemented`. The next safe action
+is a new bounded software retry contract that replaces the ambiguous substring
+with a source-shaped unique fragment and adds the production-file regression
+that this attempt exposed.
+
+Plan closure:
+`docs/parity/work-plans/20260812T203223Z-PWR-003/CLOSURE.md` records the
+non-verifying terminal outcome. PWR-003 remains `implemented`, no checklist
+transition or progress synchronization is warranted, and this task remained
+active until a fresh bounded software-only retry plan existed.
+
+Completion review: Superseded by
+`task-parity-pwr003-core-voltage-control-evidence-retry` after the required
+fresh task and immutable plan were created. The prior plan remains truthfully
+closed and immutable; its failed ordinal is not reused. No parity claim,
+projection, hardware action, or checklist transition is attributed to this
+superseded task.
