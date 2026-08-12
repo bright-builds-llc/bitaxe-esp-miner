@@ -264,35 +264,36 @@ fn find_open_plan(workspace: &Utf8Path, rows: &[ChecklistRow]) -> Result<Option<
 
 fn reconcile_open_plans(mut open_plans: Vec<OpenPlanDocument>) -> Result<Option<OpenPlan>> {
     open_plans.sort_by(|left, right| left.open_plan.plan_path.cmp(&right.open_plan.plan_path));
-    let Some(first) = open_plans.first() else {
-        return Ok(None);
-    };
-    if open_plans
-        .iter()
-        .any(|candidate| candidate.open_plan.row_id != first.open_plan.row_id)
-    {
+    let mut lineages = BTreeMap::<String, Vec<OpenPlanDocument>>::new();
+    for candidate in open_plans {
+        let row_id = candidate.open_plan.row_id.clone();
+        lineages.entry(row_id).or_default().push(candidate);
+    }
+    let mut active_plans = Vec::new();
+    for mut lineage in lineages.into_values() {
+        for pair in lineage.windows(2) {
+            let older = &pair[0].open_plan;
+            let newer = &pair[1];
+            let lineage_reference = format!("`{}`", older.plan_path);
+            if !newer.document.contains(&lineage_reference) {
+                bail!(
+                    "multiple open parity plans for {} lack an explicit continuation lineage",
+                    older.row_id
+                );
+            }
+        }
+        let latest = lineage.pop().expect("non-empty plan lineage");
+        if !latest.terminal_closed {
+            active_plans.push(latest.open_plan);
+        }
+    }
+    if active_plans.len() > 1 {
         bail!(
             "multiple open parity plans span rows; close or reconcile them before selecting work"
         );
     }
-    for pair in open_plans.windows(2) {
-        let older = &pair[0].open_plan;
-        let newer = &pair[1];
-        let lineage_reference = format!("`{}`", older.plan_path);
-        if !newer.document.contains(&lineage_reference) {
-            bail!(
-                "multiple open parity plans for {} lack an explicit continuation lineage",
-                older.row_id
-            );
-        }
-    }
-    let latest = open_plans.pop().expect("non-empty plan lineage");
-    if latest.terminal_closed {
-        return Ok(None);
-    }
-    Ok(Some(latest.open_plan))
+    Ok(active_plans.pop())
 }
-
 fn parse_plan_metadata(document: &str) -> Result<(String, String)> {
     let row_id = parse_plan_metadata_value(document, "- Parity row: `", "parity-row")?;
     let initial_status = normalize(&parse_plan_metadata_value(

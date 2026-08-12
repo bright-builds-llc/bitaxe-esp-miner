@@ -51,3 +51,46 @@
 - Outcome: Plan/task checkpoint is ready to commit and push before source work.
 - Blocker or next safe action: Commit and push, then fix the reproduced
   selector reconciliation defect and implement the typed projection.
+
+## 2026-08-12 19:19 UTC | implementation and focused verification
+
+- Source commit: `9a453443` (immutable plan checkpoint)
+- Actions: Added the typed `bitaxe-asic-reset-evidence-v1` Rust contract,
+  independent validator, generated TypeScript binding, closed projector,
+  command surface, and behavior regressions. Changed selector reconciliation
+  to retire the latest terminal-closed lineage for each row before detecting
+  genuinely simultaneous active rows. Tightened semantic admission to bind
+  the literal 100 ms low/high action, both GPIO delays, the fail-closed
+  hold-low decision, safe shutdown, and the production reset-and-detect path.
+- Verification: The focused automation aggregate passed, including the real
+  child-validator boundary and all evidence-withholding cases; the exact
+  selector regression passed; all three Rust reset-contract tests passed;
+  generated bindings matched the Rust-owned contract; Bright Builds reported
+  zero findings; diff whitespace checks passed.
+- Evidence: Source and tests only. No public projection has been produced and
+  no hardware interaction occurred.
+- Outcome: The implementation is ready for the full mandatory gate sequence
+  and a clean pushed source checkpoint.
+- Blocker or next safe action: Run all mandatory gates, review the complete
+  diff, then commit and push before invoking the projector.
+
+## 2026-08-12 19:24 UTC | clean implementation gates
+
+- Source commit: `9a453443` (immutable plan checkpoint)
+- Actions: Completed the required pre-commit sequence and an explicit
+  simplification/diff review. The projector reuses the validated ASIC-002
+  boundary and existing process abstraction; it adds no device or duplicate
+  hardware-session machinery.
+- Verification: `cargo fmt --all`, strict all-target/all-feature Clippy,
+  all-target/all-feature Cargo build, all-feature Cargo tests, Bright Builds
+  with zero findings, and all 41 Bazel tests passed. The initial combined
+  parity tail encountered transient macOS `os error 35` after rendering the
+  report; isolated `just parity` and `just parity-progress` then passed with
+  no validation errors at 59/94 verified. Redaction, pinned-reference,
+  generated-contract, and diff checks also passed.
+- Evidence: Pre-publication verification only; no final PWR-001 projection
+  exists and no hardware interaction occurred.
+- Outcome: The complete implementation is ready for its clean pushed source
+  checkpoint.
+- Blocker or next safe action: Commit and push the implementation, then run
+  the public projector from that exact clean commit.

@@ -33,6 +33,7 @@ export type AutomationCommand =
   | "capture-network-reconnect-evidence"
   | "capture-network-scan-evidence"
   | "project-asic-initialization-evidence"
+  | "project-asic-reset-evidence"
   | "project-asic-work-send-evidence"
   | "project-asic-result-parsing-evidence" | "project-asic-serial-transport-evidence"
   | "project-asic-frequency-transition-evidence"
@@ -376,14 +377,9 @@ export type NetworkScanEvidence = {
   redaction_status: "passed";
 };
 
-export type AsicInitializationAttemptEvidence = {
-  campaign_result_sha256: string;
-  diagnostics_sha256: string;
-  observations_sha256: string;
-  result_seal_valid: true;
-  private_digests_valid: true;
-  protected_modes_valid: true;
-};
+export type AsicInitializationAttemptEvidence = { campaign_result_sha256: string;
+  diagnostics_sha256: string; observations_sha256: string; result_seal_valid: true;
+  private_digests_valid: true; protected_modes_valid: true; };
 
 export type AsicInitializationObservationEvidence = {
   planned_step_count: 9;
@@ -424,6 +420,10 @@ export type AsicInitializationEvidence = {
   hardware_rerun_used: false;
   redaction_status: "passed";
 };
+
+export type AsicResetSourceEvidence = { initialization_projection_sha256: string; initialization_projection_current_commit: string; initialization_projection_valid: true; source_task_sha256: string; plan_sha256: string; };
+export type AsicResetObservationEvidence = { active_low: true; low_duration_ms: 100; high_duration_ms: 100; reset_and_detect_completed: true; exactly_one_chip_detected_after_reset: true; accepted_submit_observed: true; fail_closed_hold_low: true; safe_stop_hold_low: true; reset_paths_unchanged: true; compatible_path_count: 6; adapter_semantics_admitted: true; };
+export type AsicResetEvidence = { schema_version: "bitaxe-asic-reset-evidence-v1"; board: 205; attempt_source_commit: string; current_source_commit: string; reference_commit: string; workflow: WorkflowIdentity; source: AsicResetSourceEvidence; reset: AsicResetObservationEvidence; package_admitted: true; runtime_identity: "trusted"; runtime_attestation_status: "trusted"; campaign_terminal_category: "submit_response_observed"; submit_outcome: "accepted"; safety_status: "fresh"; mine_on_boot_disabled: true; safe_stop_confirmed: true; lease_cleanup_confirmed: true; usb_cleanup_ready: true; hardware_rerun_used: false; redaction_status: "passed"; };
 
 export type AsicWorkSendSourceEvidence = { initialization_projection_sha256: string;
   initialization_projection_current_commit: string; initialization_projection_valid: true; };

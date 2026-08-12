@@ -1,6 +1,7 @@
 import { OperatorSnapshotEvidenceError } from "./operator-snapshot-evidence.js";
 import { AsicFrequencyTransitionEvidenceError } from "./asic-frequency-transition-evidence.js";
 import { AsicInitializationEvidenceError } from "./asic-initialization-evidence.js";
+import { AsicResetEvidenceError } from "./asic-reset-evidence.js";
 import { AsicResultParsingEvidenceError } from "./asic-result-parsing-evidence.js";
 import { AsicSerialTransportEvidenceError } from "./asic-serial-transport-evidence.js";
 import { AsicWorkSendEvidenceError } from "./asic-work-send-evidence.js";
@@ -21,6 +22,7 @@ import { Ultra205DefaultsEvidenceError } from "./ultra205-defaults-evidence.js";
 export function maybeTypedFailurePublicValue(error: unknown): Readonly<Record<string, unknown>> | undefined {
   if (error instanceof SettingsDurabilityError
     || error instanceof AsicInitializationEvidenceError
+    || error instanceof AsicResetEvidenceError
     || error instanceof AsicFrequencyTransitionEvidenceError
     || error instanceof StratumSocketEvidenceError
     || error instanceof ProtocolCoordinatorEvidenceError

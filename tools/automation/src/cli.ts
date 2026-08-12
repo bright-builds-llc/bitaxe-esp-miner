@@ -2,23 +2,14 @@ import { constants, existsSync, realpathSync } from "node:fs";
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-
 import { buildFirmware } from "./build.js";
 import { captureApiCommandEffects, ApiCommandEffectsError } from "./api-command-effects.js";
 import { emitOperatorCheckpointSignal } from "./api-command-effects-checkpoint.js";
 import { deviceSessionProgram, flashProgram, stringNumber, toolProgram } from "./cli-tools.js";
-import {
-  AsicFrequencyTransitionEvidenceError,
-  projectAsicFrequencyTransitionEvidence,
-} from "./asic-frequency-transition-evidence.js";
-import {
-  AsicInitializationEvidenceError,
-  projectAsicInitializationEvidence,
-} from "./asic-initialization-evidence.js";
-import {
-  AsicResultParsingEvidenceError,
-  projectAsicResultParsingEvidence,
-} from "./asic-result-parsing-evidence.js";
+import { AsicFrequencyTransitionEvidenceError, projectAsicFrequencyTransitionEvidence } from "./asic-frequency-transition-evidence.js";
+import { AsicInitializationEvidenceError, projectAsicInitializationEvidence } from "./asic-initialization-evidence.js";
+import { AsicResetEvidenceError, projectAsicResetEvidence } from "./asic-reset-evidence.js";
+import { AsicResultParsingEvidenceError, projectAsicResultParsingEvidence } from "./asic-result-parsing-evidence.js";
 import {
   AsicSerialTransportEvidenceError,
   projectAsicSerialTransportEvidence,
@@ -264,6 +255,7 @@ async function dispatchProcess(
     case "capture-network-reconnect-evidence":
     case "capture-network-scan-evidence":
     case "project-asic-initialization-evidence":
+    case "project-asic-reset-evidence":
     case "project-asic-frequency-transition-evidence":
     case "project-stratum-socket-evidence":
     case "project-protocol-coordinator-evidence":
@@ -443,16 +435,22 @@ async function main(): Promise<number> {
         attemptRoot: optionValue(invocation, "--attempt-root"),
         attemptSourceCommit: optionValue(invocation, "--attempt-source-commit"),
         projection: optionValue(invocation, "--projection"),
-      }, processPort, "git",
-      toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_initialization_evidence"));
+      }, processPort, "git", toolProgram(root,
+        "crates/bitaxe-automation-contracts/validate_asic_initialization_evidence"));
+    } else if (invocation.command === "project-asic-reset-evidence") {
+      publicValue = await projectAsicResetEvidence(root, {
+        sourceProjection: optionValue(invocation, "--source-projection"), attemptSourceCommit:
+          optionValue(invocation, "--attempt-source-commit"), projection: optionValue(invocation, "--projection"),
+      }, processPort, "git", toolProgram(root,
+        "crates/bitaxe-automation-contracts/validate_asic_initialization_evidence"), toolProgram(root,
+        "crates/bitaxe-automation-contracts/validate_asic_reset_evidence"));
     } else if (invocation.command === "project-asic-frequency-transition-evidence") {
       publicValue = await projectAsicFrequencyTransitionEvidence(root, {
-        sourceProjection: optionValue(invocation, "--source-projection"),
-        attemptSourceCommit: optionValue(invocation, "--attempt-source-commit"),
-        projection: optionValue(invocation, "--projection"),
-      }, processPort, "git",
-      toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_initialization_evidence"),
-      toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_frequency_transition_evidence"));
+        sourceProjection: optionValue(invocation, "--source-projection"), attemptSourceCommit:
+          optionValue(invocation, "--attempt-source-commit"), projection: optionValue(invocation, "--projection"),
+      }, processPort, "git", toolProgram(root,
+        "crates/bitaxe-automation-contracts/validate_asic_initialization_evidence"), toolProgram(root,
+        "crates/bitaxe-automation-contracts/validate_asic_frequency_transition_evidence"));
     } else if (invocation.command === "project-stratum-socket-evidence") {
       publicValue = await projectStratumSocketEvidence(root, {
         sourceProjection: optionValue(invocation, "--source-projection"),
@@ -605,7 +603,7 @@ async function main(): Promise<number> {
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure || apiCommandEffectsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || networkScanFailure || asicInitializationFailure || asicFrequencyTransitionFailure || stratumSocketFailure || protocolCoordinatorFailure || miningCriteriaFailure || asicWorkSendFailure || asicResultParsingFailure || asicSerialTransportFailure || provisioningNetworkFailure
+        : settingsFailure || apiCommandEffectsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || networkScanFailure || asicInitializationFailure || error instanceof AsicResetEvidenceError || asicFrequencyTransitionFailure || stratumSocketFailure || protocolCoordinatorFailure || miningCriteriaFailure || asicWorkSendFailure || asicResultParsingFailure || asicSerialTransportFailure || provisioningNetworkFailure
           ? error.category
           : "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";

@@ -254,6 +254,54 @@ mod tests {
     }
 
     #[test]
+    fn terminal_lineage_is_retired_before_a_different_row_is_resumed() {
+        // Arrange
+        let workspace = Utf8PathBuf::from_path_buf(std::env::temp_dir().join(format!(
+            "bitaxe-parity-closed-lineage-new-row-{}",
+            std::process::id()
+        )))
+        .expect("temporary path must be UTF-8");
+        let _ = fs::remove_dir_all(workspace.as_std_path());
+        let older_root = workspace.join("docs/parity/work-plans/20260101T000000Z-API-010");
+        let closed_root = workspace.join("docs/parity/work-plans/20260102T000000Z-API-010");
+        let active_root = workspace.join("docs/parity/work-plans/20260103T000000Z-PWR-001");
+        fs::create_dir_all(older_root.as_std_path()).expect("older root");
+        fs::create_dir_all(closed_root.as_std_path()).expect("closed root");
+        fs::create_dir_all(active_root.as_std_path()).expect("active root");
+        fs::write(older_root.join("PLAN.md").as_std_path(), PLAN).expect("older plan");
+        let closed_plan = format!(
+            "{PLAN}\nContinues `docs/parity/work-plans/20260101T000000Z-API-010/PLAN.md`.\n"
+        );
+        fs::write(closed_root.join("PLAN.md").as_std_path(), &closed_plan).expect("closed plan");
+        fs::write(
+            closed_root.join(CLOSURE_FILE).as_std_path(),
+            closure_for(&closed_plan),
+        )
+        .expect("closure");
+        fs::write(
+            active_root.join("PLAN.md").as_std_path(),
+            "# Plan\n\n- Parity row: `PWR-001`\n- Initial status: `implemented`\n",
+        )
+        .expect("active plan");
+
+        // Act
+        let open_plan = find_open_plan(
+            &workspace,
+            &[row("API-010", "implemented"), row("PWR-001", "implemented")],
+        )
+        .expect("closed lineage must not conflict with a new row")
+        .expect("PWR-001 should remain open");
+
+        // Assert
+        assert_eq!(open_plan.row_id, "PWR-001");
+        assert_eq!(
+            open_plan.plan_path,
+            "docs/parity/work-plans/20260103T000000Z-PWR-001/PLAN.md"
+        );
+        fs::remove_dir_all(workspace.as_std_path()).expect("cleanup");
+    }
+
+    #[test]
     fn older_closure_does_not_hide_newer_linked_open_plan() {
         // Arrange
         let workspace = Utf8PathBuf::from_path_buf(std::env::temp_dir().join(format!(

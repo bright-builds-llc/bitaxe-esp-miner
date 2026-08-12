@@ -119,6 +119,9 @@ capture-network-scan-evidence *args:
 project-asic-initialization-evidence *args:
     bazel run //tools/automation:project_asic_initialization_evidence -- {{ args }}
 
+project-asic-reset-evidence *args:
+    bazel run //tools/automation:project_asic_reset_evidence -- {{ args }}
+
 project-asic-work-send-evidence *args:
     bazel run //tools/automation:project_asic_work_send_evidence -- {{ args }}
 
