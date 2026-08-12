@@ -1689,7 +1689,7 @@ plan and ordinal are required for another hardware proof.
       regression, and persist the linked immutable attempt-002 plan.
 - [x] Run focused and mandatory plan-only software gates; commit and push the
       exact immutable plan before package or hardware use.
-- [ ] Make the real-child stdout regression launcher-independent, rerun the
+- [x] Make the real-child stdout regression launcher-independent, rerun the
       complete gate, and commit and push the focused execution change.
 - [ ] Build the exact clean execution-commit package, run one protected detector,
       and only after admission run one protected attempt-002 capture.

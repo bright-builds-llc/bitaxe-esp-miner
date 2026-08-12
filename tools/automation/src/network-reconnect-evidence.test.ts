@@ -14,7 +14,6 @@ const sourceCommit = "a".repeat(40);
 const referenceCommit = "b".repeat(40);
 const appElfSha256 = "c".repeat(64);
 const session = "1".repeat(32);
-const nodeProgram = process.env["JS_BINARY__NODE_BINARY"] ?? process.execPath;
 
 const ok = (stdout = ""): ProcessOutcome => ({ exitCode: 0, stdout, stderr: "", timedOut: false });
 
@@ -151,7 +150,7 @@ test("real child stdout is consumed without an invented monitor artifact", async
   const value = await fixture("real-child");
   const restore = installHttp();
   const child = path.join(value.root, "child.mjs");
-  await writeFile(child, `#!${nodeProgram}\nconst args=process.argv.slice(2); if(args[0]==="flash-monitor") process.stdout.write(${JSON.stringify(monitorLog())});\n`);
+  await writeFile(child, `#!/bin/sh\nif [ "$1" = "flash-monitor" ]; then\ncat <<'BITAXE_MONITOR_LOG'\n${monitorLog()}BITAXE_MONITOR_LOG\nfi\n`);
   await chmod(child, 0o700);
   try {
     const evidence = await captureNetworkReconnectEvidence(
