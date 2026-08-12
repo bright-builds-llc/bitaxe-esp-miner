@@ -1857,6 +1857,52 @@ proved mining and controls disabled. No projection exists. The linked closure
 requires removal of that preference-value assumption in a fresh ordinal; this
 task remains active because `NET-002` is not verified.
 
+### task-parity-net003-live-scan-address-attempt-001 | 2026-08-12 | Verify live Wi-Fi scan and station v6 reporting
+
+- [ ] Add a closed typed capture and validator that admit one exact-package
+      same-session scan plus before/after connected station-address state.
+- [ ] Prove aggregate scan shape, numeric auth/signal bounds, exact identity,
+      connection preservation, stable v6 reporting, private modes, and public
+      redaction without exposing observed network or device identifiers.
+- [ ] Run every software gate, push the exact package, spend one detector and
+      at most one attempt-001, then promote only on the complete live quorum.
+
+Plan: `docs/parity/work-plans/20260812T080258Z-NET-003/PLAN.md`.
+
+Hardware contract: the only permitted live command is the exact detector and
+conditional `just capture-network-scan-evidence` sequence in the linked plan.
+Its objective is one exact-package board-205 boot followed by private system-
+info, exactly one same-origin Wi-Fi scan, and private post-scan system-info.
+The ignored wrapper and attempt roots are `ProtectedOperational`, mode `0700`
+with mode-`0600` files; only closed aggregates and safe provenance may enter
+the public projection. The allowed effects are the normal exact-package flash,
+repo-owned USB reset/re-enumeration, passive serial receive, same-origin HTTP
+reads, and one bounded scan. No credential mutation, host network discovery,
+association change, repeated scan, erase, raw write, OTA, restart, mining,
+ASIC work, hardware control, direct UART, or pins is authorized.
+
+Recovery and stop rules: preserve the earliest typed failure and perform at
+most one ordinary exact-package recovery flash after a started flash effect;
+recovery cannot create success. Detector failure, missing input, launch
+failure, timeout, non-ready hardware, malformed evidence, scan failure, absent
+or invalid station address, lost service, cleanup failure, or any privacy
+violation stops the attempt, withholds evidence, consumes ordinal 001, and
+forbids an unchanged retry. Accepted terminal categories are `process_failed`,
+`timeout`, `hardware_blocked`, `evidence_invalid`, and
+`service_recovery_failed`.
+
+Verification: Plan-only gate passed. Ordered Cargo formatting, strict Clippy,
+all-target build, and all-feature tests; Bright Builds; all 37 Bazel tests;
+parity/progress; redaction; reference; generated-contract; selector; task-
+uniqueness; reference-cleanliness; fresh-path; and diff checks pass. The first
+parity invocation encountered a transient host `os error 35` after rendering;
+the unchanged rerun passed with no validation errors. Immutable plan SHA-256:
+`071a2b0a2d0a6b2ab84fcc854d8cefe765a194c47b5bf588b10014c9810bada2`.
+
+Completion review: Pending. `NET-003` remains `implemented`; the earlier
+software task remains active until this live scan, connection-preservation,
+and station-address evidence passes.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
