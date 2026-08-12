@@ -1987,6 +1987,29 @@ ready, private modes valid, and the public projection withheld. API-009 remains
 immutable plan after a protected flash-child diagnostic distinguishes the
 failed boundary; attempt-002 cannot be retried.
 
+Flash-boundary continuation plan:
+`docs/parity/work-plans/20260812T161941Z-API-009/PLAN.md`.
+
+- [ ] Preserve the durable USB supervisor's typed factory/NVS child diagnostic
+      through the campaign and bind only closed, redaction-safe facts into the
+      protected result.
+- [ ] Bypass the confirmed RAM-stub `FlashDeflData` timeout with the supported
+      `write-bin --no-stub` path for both factory and NVS writes.
+- [ ] Add real-child, command-shape, failure-precedence, private-mode, schema,
+      and sensitive-output regressions; run and push every software gate before
+      hardware.
+- [ ] Run at most one fresh detector-gated `attempt-003` and promote only on
+      the complete five-command device-user quorum.
+
+Attempt-003 authorization: standing task authorization permits this single
+fresh attempt only after the immutable plan and exact clean pushed source prove
+the material no-stub remediation and typed diagnostic path. Allowed effects,
+prohibited effects, evidence privacy, exact-package admission, board-205
+detector gate, 600-second local-fixture lease, one-time physical identify
+checkpoints, safe stop, cleanup, canonical software restart, recovery, public
+withholding, and accepted stop categories are exactly those recorded in the
+linked plan. No second retry is permitted.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

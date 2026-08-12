@@ -52,7 +52,7 @@
 - Blocker or next safe action: Run the full mandatory software and privacy
   gates, review the diff, then commit and push the exact source before hardware.
 
-## 2026-08-12T16:29:00Z | Source gate complete
+## 2026-08-12T16:08:21Z | Source gate complete
 
 - Source commit: `0d0ab4026271b758ed10c9e8dbebf52f370e59d3` plus
   the pending implementation diff.
@@ -69,7 +69,7 @@
 - Blocker or next safe action: Commit and push this exact source, build its
   exact package, then run only the single detector-gated attempt-002.
 
-## 2026-08-12T16:38:00Z | Attempt-002 terminal closure
+## 2026-08-12T16:12:16Z | Attempt-002 terminal closure
 
 - Source commit: `2feff204fb7c4d2a2d3196e69a1dd8acf91bbfdb`.
 - Actions: Built and validated the exact pushed package, admitted one board-205
