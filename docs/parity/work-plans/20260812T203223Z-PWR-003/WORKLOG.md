@@ -81,3 +81,28 @@
 - Blocker or next safe action: Commit and push the implementation, require a
   clean exact HEAD, then produce and independently validate the PWR-003
   projection once.
+
+## 2026-08-12T21:13:24Z | one-shot projection failed closed
+
+- Source commit: `10a72b06b914f9ee376b2542e2cf66dc7bdfe2b7`
+- Actions: From clean pushed `main`, invoked the sole permitted software-only
+  PWR-003 projector against attempt source
+  `3e0966a140edbff1a14d2a48ca63d140649762c0` and the independently validated
+  PWR-002 projection.
+- Verification: The command returned typed category `evidence_invalid` with
+  `projection_published=false` and `hardware_rerun_used=false`. The final path
+  and candidate are absent. A bounded source count isolated the cause:
+  `CORE_VOLTAGE_STABILIZATION_MS,` occurs twice in
+  `mining_actuation_adapter.rs`, once in its import and once at the use site,
+  while the projector incorrectly requires every admitted fragment to be
+  unique. All other configured fragments counted exactly once.
+- Evidence: No PWR-003 evidence was published. The safe public failure facts
+  are stage `sealed_core_voltage_control_projection`, no hardware rerun, and
+  no projection publication.
+- Outcome: PWR-003 remains `implemented`. No detector, package, device,
+  network, credential, mining, voltage, power, GPIO, I2C, UART, or pin action
+  occurred.
+- Blocker or next safe action: Stop this row as required by the immutable plan.
+  A future bounded software retry must replace the ambiguous substring with a
+  source-shaped unique fragment and add a production-file regression before
+  any new projection attempt.

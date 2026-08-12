@@ -2173,6 +2173,16 @@ constants and single-write route, complete stabilization, successful
 downstream work, active-low safe stop, cleanup, no hardware rerun, and passed
 redaction.
 
+Blocked checkpoint: The one allowed projection attempt from clean pushed
+implementation commit `10a72b06` failed closed as `evidence_invalid` before
+candidate creation because the semantic fragment `CORE_VOLTAGE_STABILIZATION_MS,`
+occurs twice in `mining_actuation_adapter.rs` (import and use). The projector
+incorrectly required that substring to be unique. No projection was published,
+no hardware command ran, and PWR-003 remains `implemented`. The next safe action
+is a new bounded software retry contract that replaces the ambiguous substring
+with a source-shaped unique fragment and adds the production-file regression
+that this attempt exposed.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
