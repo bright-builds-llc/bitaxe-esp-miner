@@ -1682,6 +1682,57 @@ and no public projection exists. The linked closure defines the fresh
 continuation; this task remains active and unarchived because `NET-002` is not
 verified.
 
+### task-parity-net002-provisioning-network-attempt-002 | 2026-08-12 | Admit late-attached AP runtime evidence
+
+- [x] Select the first canonical row and bind the fresh continuation to the
+      explicit attempt-001 closure and exact aggregate diagnosis.
+- [ ] Replace only the one-shot AP startup-line prerequisite with trusted
+      recurring passive-safe runtime admission.
+- [ ] Add production-shaped late-attach success and missing-safety failure
+      regressions; run focused and mandatory software gates.
+- [ ] Commit and push the exact implementation, then run one protected detector
+      and at most one conditional attempt-002 on board 205.
+- [ ] Promote only `NET-002` after the complete client/API, safety, recovery,
+      cleanup, privacy, and independent-evidence quorum passes.
+
+Plan: `docs/parity/work-plans/20260812T051446Z-NET-002/PLAN.md`.
+
+Objective and preconditions: close only `NET-002` from a clean pushed exact
+package after one powered-on/unassociated macOS Wi-Fi interface, zero baseline
+configuration candidates, opaque owner-Wi-Fi availability, fresh paths, and
+one detector-admitted Ultra 205 pass.
+
+Authorized effects: one exact package flash without credentials; default safe
+NVS; bounded USB receive; unique local configuration-AP association; DHCP; one
+wildcard DNS query; captive and same-origin system-info reads; host Wi-Fi
+cleanup; and one ordinary exact-package owner-Wi-Fi recovery flash. Prohibited
+effects remain router/RF mutation, provisioning submission, external discovery,
+erase/raw writes, OTA, power interruption, mining, ASIC/pool work, controls,
+self-test, direct UART, and pins.
+
+Evidence and privacy: use only fresh ignored mode-0700 wrapper-002 and
+attempt-002 roots with mode-0600 files. Keep SSIDs, interfaces, ports, USB and
+network identities, addresses, routes, origins, credentials, DNS/HTTP bytes,
+commands, processes, and serial content private. Only a valid closed aggregate
+projection may be committed.
+
+Recovery, retry, and stop: admission or detector failure stops before the
+effect. Preserve the earliest typed category through host cleanup and at most
+one ordinary exact-package recovery. Any capture start consumes attempt-002;
+release resources and stop without retry on success or any terminal category.
+
+Acceptance: require every immutable-plan exact-package, recurring-runtime,
+AP/client/DHCP/DNS/HTTP, safety, host/device recovery, cleanup, mode,
+redaction, and validator criterion. Otherwise withhold evidence, close
+truthfully, and keep `NET-002` implemented.
+
+Verification: Plan-only gate passed: ordered Cargo, Bright Builds, all 37 Bazel
+tests, parity/progress, redaction, reference, generated contracts, selector,
+task uniqueness, fresh paths, and diff checks are green. Immutable plan SHA-256
+is `657f37b864e8dee5accb4d0bae683f39820a69483d49563dd93f2c951bccd44c`.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
