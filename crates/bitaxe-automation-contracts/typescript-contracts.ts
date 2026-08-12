@@ -30,7 +30,8 @@ export type AutomationCommand =
   | "capture-log-buffer-evidence"
   | "capture-partition-layout-evidence"
   | "capture-sdkconfig-rollback-evidence"
-  | "capture-network-reconnect-evidence";
+  | "capture-network-reconnect-evidence"
+  | "capture-provisioning-network-evidence";
 
 export type AutomationStatus = "succeeded" | "failed" | "blocked";
 
@@ -336,6 +337,45 @@ export type NetworkReconnectEvidence = {
   redaction_status: "passed";
 };
 
+export type ProvisioningNetworkObservationEvidence = {
+  host_platform_macos: true;
+  single_wifi_interface: true;
+  initial_wifi_powered_on: true;
+  initial_wifi_unassociated: true;
+  baseline_candidate_count: 0;
+  configuration_candidate_count: 1;
+  association_observed: true;
+  dhcp_observed: true;
+  dns_query_count: 1;
+  wildcard_dns_answer_matches_gateway: true;
+  dns_ttl_seconds: 300;
+  captive_redirect_observed: true;
+  captive_redirect_root: true;
+  captive_redirect_body_matches: true;
+  api_postcondition_matches: true;
+  exact_build_identity_matches: true;
+};
+
+export type ProvisioningNetworkEvidence = {
+  schema_version: "bitaxe-provisioning-network-evidence-v1";
+  board: 205;
+  source_commit: string;
+  reference_commit: string;
+  package_manifest_sha256: string;
+  workflow: WorkflowIdentity;
+  detector_admitted: true;
+  boot_observed: true;
+  provisioning: ProvisioningNetworkObservationEvidence;
+  mining_state: "disabled";
+  hardware_control_state: "disabled";
+  host_network_restored: true;
+  device_recovery_complete: true;
+  cleanup_complete: true;
+  recovery_flash_used: true;
+  private_modes_valid: true;
+  redaction_status: "passed";
+};
+
 const automationCommands = new Set<AutomationCommand>([
   "doctor", "bootstrap-esp", "build-firmware", "package-firmware", "package-rollback-probe", "verify-reference",
   "verify-redaction", "verify-production-session", "observe-serial", "verify-flash-durability",
@@ -351,6 +391,7 @@ const automationCommands = new Set<AutomationCommand>([
   "capture-partition-layout-evidence",
   "capture-sdkconfig-rollback-evidence",
   "capture-network-reconnect-evidence",
+  "capture-provisioning-network-evidence",
 ]);
 const automationStatuses = new Set<AutomationStatus>(["succeeded", "failed", "blocked"]);
 const automationCategories = new Set<AutomationCategory>([

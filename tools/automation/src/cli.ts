@@ -29,6 +29,10 @@ import {
   captureNetworkReconnectEvidence,
   NetworkReconnectEvidenceError,
 } from "./network-reconnect-evidence.js";
+import {
+  captureProvisioningNetworkEvidence,
+  ProvisioningNetworkEvidenceError,
+} from "./provisioning-network-evidence.js";
 import { captureOperatorSnapshotEvidence, OperatorSnapshotEvidenceError } from "./operator-snapshot-evidence.js";
 import { capturePartitionLayoutEvidence, PartitionLayoutEvidenceError } from "./partition-layout-evidence.js";
 import {
@@ -239,6 +243,7 @@ async function dispatchProcess(
     case "capture-partition-layout-evidence":
     case "capture-sdkconfig-rollback-evidence":
     case "capture-network-reconnect-evidence":
+    case "capture-provisioning-network-evidence":
     case "verify-theme-durability":
       throw new Error("specialized workflow reached generic dispatch");
   }
@@ -404,6 +409,17 @@ async function main(): Promise<number> {
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root),
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_network_reconnect_evidence"));
+    } else if (invocation.command === "capture-provisioning-network-evidence") {
+      const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
+      publicValue = await captureProvisioningNetworkEvidence(root, {
+        privateRoot: optionValue(invocation, "--private-root"),
+        packageManifest: optionValue(invocation, "--package-manifest"),
+        wifiCredentials: optionValue(invocation, "--wifi-credentials"),
+        port,
+        projection: optionValue(invocation, "--projection"),
+        captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
+      }, processPort, flashProgram(root),
+      toolProgram(root, "crates/bitaxe-automation-contracts/validate_provisioning_network_evidence"));
     } else if (invocation.command === "verify-settings-durability" && optionValue(invocation, "--mode") === "capture") {
       const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
       publicValue = await captureSettingsDurability(root, {
@@ -447,11 +463,12 @@ async function main(): Promise<number> {
     const partitionLayoutFailure = error instanceof PartitionLayoutEvidenceError;
     const sdkconfigRollbackFailure = error instanceof SdkconfigRollbackEvidenceError;
     const networkReconnectFailure = error instanceof NetworkReconnectEvidenceError;
+    const provisioningNetworkFailure = error instanceof ProvisioningNetworkEvidenceError;
     const category: AutomationCategory = policyBlocked
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure
+        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || provisioningNetworkFailure
           ? error.category
           : "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";

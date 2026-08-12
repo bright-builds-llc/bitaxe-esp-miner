@@ -1612,9 +1612,9 @@ defines the retained-log continuation using fresh attempt-005 paths.
 
 - [x] Select `NET-002`, inspect its exact reference/implementation/evidence gap,
       and persist the linked immutable plan before implementation.
-- [ ] Add the typed macOS provisioning-client capture, closed projection,
+- [x] Add the typed macOS provisioning-client capture, closed projection,
       independent validator, recovery behavior, and production-shaped tests.
-- [ ] Run focused and mandatory software gates; commit and push the exact
+- [x] Run focused and mandatory software gates; commit and push the exact
       implementation before hardware use.
 - [ ] Run one protected detector and, only after admission, one protected
       attempt-001 capture on board 205.

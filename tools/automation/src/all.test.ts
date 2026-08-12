@@ -10,6 +10,8 @@ import "./log-buffer-evidence.test.js";
 import "./network-reconnect-evidence.test.js";
 import "./operator-snapshot-evidence.test.js";
 import "./partition-layout-evidence.test.js";
+import "./provisioning-client.test.js";
+import "./provisioning-network-evidence.test.js";
 import "./sdkconfig-rollback-evidence.test.js";
 import "./process.test.js";
 import "./repository-guard.test.js";

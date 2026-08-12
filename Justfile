@@ -97,3 +97,6 @@ capture-sdkconfig-rollback-evidence *args:
 
 capture-network-reconnect-evidence *args:
     bazel run //tools/automation:capture_network_reconnect_evidence -- {{ args }}
+
+capture-provisioning-network-evidence *args:
+    bazel run //tools/automation:capture_provisioning_network_evidence -- {{ args }}

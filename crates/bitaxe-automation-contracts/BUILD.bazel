@@ -10,6 +10,7 @@ rust_library(
         "src/network_reconnect_evidence.rs",
         "src/operator_snapshot_evidence.rs",
         "src/partition_layout_evidence.rs",
+        "src/provisioning_network_evidence.rs",
         "src/runtime_health_evidence.rs",
         "src/sdkconfig_rollback_evidence.rs",
         "src/settings_patch_evidence.rs",
@@ -22,6 +23,17 @@ rust_library(
     deps = [
         "@crates//:schemars",
         "@crates//:serde",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_provisioning_network_evidence",
+    srcs = ["src/bin/validate_provisioning_network_evidence.rs"],
+    crate_name = "validate_provisioning_network_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
         "@crates//:serde_json",
     ],
 )

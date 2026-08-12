@@ -8,6 +8,7 @@ mod log_buffer_evidence;
 mod network_reconnect_evidence;
 mod operator_snapshot_evidence;
 mod partition_layout_evidence;
+mod provisioning_network_evidence;
 mod runtime_health_evidence;
 mod sdkconfig_rollback_evidence;
 mod settings_patch_evidence;
@@ -22,6 +23,9 @@ pub use operator_snapshot_evidence::{
     DeviceSessionEvidence, OperatorSnapshotEpochEvidence, OperatorSnapshotEvidence,
 };
 pub use partition_layout_evidence::{PartitionLayoutEvidence, PartitionLayoutObservationEvidence};
+pub use provisioning_network_evidence::{
+    ProvisioningNetworkEvidence, ProvisioningNetworkObservationEvidence,
+};
 pub use runtime_health_evidence::{RuntimeHealthEvidence, RuntimeHealthObservationEvidence};
 pub use sdkconfig_rollback_evidence::{
     SdkconfigRollbackEvidence, SdkconfigRollbackObservationEvidence,
@@ -47,6 +51,7 @@ pub const LOG_BUFFER_EVIDENCE_SCHEMA: &str = "bitaxe-log-buffer-evidence-v1";
 pub const PARTITION_LAYOUT_EVIDENCE_SCHEMA: &str = "bitaxe-partition-layout-evidence-v1";
 pub const SDKCONFIG_ROLLBACK_EVIDENCE_SCHEMA: &str = "bitaxe-sdkconfig-rollback-evidence-v1";
 pub const NETWORK_RECONNECT_EVIDENCE_SCHEMA: &str = "bitaxe-network-reconnect-evidence-v1";
+pub const PROVISIONING_NETWORK_EVIDENCE_SCHEMA: &str = "bitaxe-provisioning-network-evidence-v1";
 pub const MIGRATION_SCHEMA: &str = "bitaxe-automation-migration-v1";
 
 #[must_use]
@@ -86,6 +91,7 @@ pub enum AutomationCommand {
     CapturePartitionLayoutEvidence,
     CaptureSdkconfigRollbackEvidence,
     CaptureNetworkReconnectEvidence,
+    CaptureProvisioningNetworkEvidence,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -237,6 +243,7 @@ pub struct ContractBundle {
     pub partition_layout_evidence_schema: Value,
     pub sdkconfig_rollback_evidence_schema: Value,
     pub network_reconnect_evidence_schema: Value,
+    pub provisioning_network_evidence_schema: Value,
     pub commands: Vec<AutomationCommand>,
     pub evidence_schemas: Vec<&'static str>,
 }
@@ -281,6 +288,10 @@ pub fn contract_bundle() -> ContractBundle {
             NetworkReconnectEvidence
         ))
         .expect("network reconnect evidence schema must serialize"),
+        provisioning_network_evidence_schema: serde_json::to_value(schema_for!(
+            ProvisioningNetworkEvidence
+        ))
+        .expect("provisioning network evidence schema must serialize"),
         commands: vec![
             AutomationCommand::Doctor,
             AutomationCommand::BootstrapEsp,
@@ -311,6 +322,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::CapturePartitionLayoutEvidence,
             AutomationCommand::CaptureSdkconfigRollbackEvidence,
             AutomationCommand::CaptureNetworkReconnectEvidence,
+            AutomationCommand::CaptureProvisioningNetworkEvidence,
         ],
         evidence_schemas: vec![
             HARDWARE_ATTEMPT_SCHEMA,
@@ -326,6 +338,7 @@ pub fn contract_bundle() -> ContractBundle {
             PARTITION_LAYOUT_EVIDENCE_SCHEMA,
             SDKCONFIG_ROLLBACK_EVIDENCE_SCHEMA,
             NETWORK_RECONNECT_EVIDENCE_SCHEMA,
+            PROVISIONING_NETWORK_EVIDENCE_SCHEMA,
             MIGRATION_SCHEMA,
         ],
     }

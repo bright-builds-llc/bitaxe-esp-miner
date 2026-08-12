@@ -56,6 +56,7 @@ js_binary(
         "//crates/bitaxe-automation-contracts:validate_partition_layout_evidence",
         "//crates/bitaxe-automation-contracts:validate_sdkconfig_rollback_evidence",
         "//crates/bitaxe-automation-contracts:validate_network_reconnect_evidence",
+        "//crates/bitaxe-automation-contracts:validate_provisioning_network_evidence",
         "//crates/bitaxe-api:system_info_field_contract_js",
         "//crates/bitaxe-config:ultra205_defaults_fixture_js",
         "//tools/flash:flash",
@@ -83,6 +84,7 @@ js_binary(
             "//crates/bitaxe-automation-contracts:validate_partition_layout_evidence",
             "//crates/bitaxe-automation-contracts:validate_sdkconfig_rollback_evidence",
             "//crates/bitaxe-automation-contracts:validate_network_reconnect_evidence",
+            "//crates/bitaxe-automation-contracts:validate_provisioning_network_evidence",
             "//crates/bitaxe-api:system_info_field_contract_js",
             "//crates/bitaxe-config:ultra205_defaults_fixture_js",
             "//tools/flash:flash",
@@ -123,6 +125,7 @@ js_binary(
         "capture_partition_layout_evidence": "capture-partition-layout-evidence",
         "capture_sdkconfig_rollback_evidence": "capture-sdkconfig-rollback-evidence",
         "capture_network_reconnect_evidence": "capture-network-reconnect-evidence",
+        "capture_provisioning_network_evidence": "capture-provisioning-network-evidence",
     }.items()
 ]
 

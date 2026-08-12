@@ -307,3 +307,24 @@ test("network reconnect capture requires the detector-gated closed surface", () 
   assert.throws(() => parseInvocation(complete.slice(0, -2)));
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
+
+test("provisioning network capture requires the detector-gated closed surface", () => {
+  // Arrange
+  const complete = [
+    "capture-provisioning-network-evidence",
+    "--private-root", "scratch/net002/attempt-001",
+    "--package-manifest", "bazel-bin/package.json",
+    "--wifi-credentials", "wifi-credentials.json",
+    "--detector-output", "scratch/net002/detector.stdout",
+    "--projection", "docs/evidence/provisioning-network.json",
+    "--capture-timeout-seconds", "120",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "capture-provisioning-network-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});
