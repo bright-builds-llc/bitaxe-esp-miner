@@ -47,7 +47,11 @@ function recoveryLog(): string {
   ].join("\n") + "\n";
 }
 
-function readyClient(configuration: { observeFails?: boolean; cleanup?: boolean } = {}): ProvisioningClientPort {
+function readyClient(configuration: {
+  observeFails?: boolean;
+  cleanup?: boolean;
+  startMiningOnBoot?: boolean;
+} = {}): ProvisioningClientPort {
   return {
     async admit() { return { interfaceName: "private-interface" }; },
     async observe() {
@@ -65,7 +69,7 @@ function readyClient(configuration: { observeFails?: boolean; cleanup?: boolean 
         systemInfo: {
           wifiStatus: "credentials_missing",
           apEnabled: 1,
-          startMiningOnBoot: false,
+          startMiningOnBoot: configuration.startMiningOnBoot ?? false,
           sourceCommit,
           referenceCommit,
           appElfSha256,
@@ -140,6 +144,34 @@ test("late-attached safe runtime emits aggregate-only evidence after the client 
   );
   assert.equal((await stat(path.join(value.root, "scratch", "attempt"))).mode & 0o777, 0o700);
   assert.equal((await stat(path.join(value.root, "scratch", "attempt", "system-info.private.json"))).mode & 0o777, 0o600);
+});
+
+test("persisted mining preference true cannot override disabled runtime safety", async () => {
+  // Arrange
+  const value = await fixture("preference-true-runtime-safe");
+  let flashCount = 0;
+  const port = createFakeProcessPort(async (spec) => {
+    if (spec.args[0] === "flash-monitor") {
+      flashCount += 1;
+      return ok(flashCount === 1 ? apLog() : recoveryLog());
+    }
+    return ok();
+  });
+
+  // Act
+  const evidence = await captureProvisioningNetworkEvidence(
+    value.root,
+    value.options,
+    port,
+    "flash",
+    "validator",
+    readyClient({ startMiningOnBoot: true }),
+  );
+
+  // Assert
+  assert.equal(evidence.mining_state, "disabled");
+  assert.equal(evidence.hardware_control_state, "disabled");
+  assert.equal(evidence.provisioning.api_postcondition_matches, true);
 });
 
 test("late-attached runtime without trusted passive safety fails before client observation", async () => {

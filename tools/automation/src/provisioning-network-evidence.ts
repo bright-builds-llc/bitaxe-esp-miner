@@ -280,8 +280,7 @@ export async function captureProvisioningNetworkEvidence(
     );
     const systemInfo = observation.systemInfo;
     const apiPostconditionMatches = systemInfo["wifiStatus"] === "credentials_missing"
-      && systemInfo["apEnabled"] === 1
-      && systemInfo["startMiningOnBoot"] === false;
+      && systemInfo["apEnabled"] === 1;
     const exactBuildIdentityMatches = systemInfo["sourceCommit"] === sourceCommit
       && systemInfo["referenceCommit"] === referenceCommit
       && systemInfo["appElfSha256"] === appElfSha256;
