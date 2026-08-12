@@ -123,3 +123,43 @@
   the semantic admission remains stricter than the original short token.
 - Blocker or next safe action: Commit and push the correction, then rerun the
   sealed public projector from the new exact clean commit.
+
+## 2026-08-12 20:23 UTC | public projection and independent validation
+
+- Source commit: `3ed71e721bec145c56839ca886795426eebc9cd5`
+- Actions: Reran the sealed projector from the exact clean pushed correction,
+  produced the aggregate-only public projection, and validated the final file
+  with the independent Rust binary using its absolute workspace path.
+- Verification: The projector and validator passed. The projection is mode
+  `0644`, its SHA-256 is
+  `0668c274d09b3e39d7d5edfea4b2e66c97248ff77de9192981f3af00e547ddfe`,
+  the private candidate is absent, and repository redaction passed across all
+  15 registered semantic artifacts. A first manual validator call used a
+  relative path from the Bazel runfiles directory and therefore returned file
+  not found; the absolute-path invocation then passed without changing bytes.
+- Evidence: The projection binds the exact source and reference commits,
+  source and plan digests, conservative profile, nine preparation steps,
+  eighteen accepted events, rollback, downstream acceptance, safe stop,
+  cleanup, source compatibility, and `hardware_rerun_used: false`.
+- Outcome: The PWR-002 promotion quorum is complete and RESULT.md records the
+  evidence, verification, conclusion, and bounded non-claims.
+- Blocker or next safe action: Commit and push this evidence checkpoint, retain
+  its full hash for the audited transition, then transition only `PWR-002` and
+  synchronize progress.
+
+## 2026-08-12 20:23 UTC | clean evidence gates
+
+- Source commit: `3ed71e721bec145c56839ca886795426eebc9cd5`
+- Actions: Reviewed the complete evidence/result diff and reran the ordered
+  repository sequence with the final public artifact present.
+- Verification: Format, strict Clippy, all-target build, all-feature Cargo
+  tests, Bright Builds with zero findings, all 41 Bazel tests, parity,
+  progress, redaction across 15 artifacts, pinned-reference, generated-contract,
+  immutable-plan, unique-task, candidate-absence, sensitive-output, and diff
+  checks all passed.
+- Evidence: The aggregate projection and RESULT.md are the only new public
+  evidence artifacts in this checkpoint.
+- Outcome: The evidence checkpoint is ready to commit and push before the
+  audited checklist transition.
+- Blocker or next safe action: Commit and push, retain the full evidence commit
+  hash, then transition only `PWR-002` and synchronize progress.

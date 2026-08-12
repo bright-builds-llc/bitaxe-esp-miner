@@ -2153,7 +2153,7 @@ attempt-006 cannot be retried. See the linked closure for the next safe action.
 - [x] Add the Rust-owned `bitaxe-asic-power-initialization-evidence-v1`
       contract, independent validator, generated binding, closed projector,
       command surface, and behavior regressions.
-- [ ] Publish and independently validate one aggregate-only PWR-002 projection
+- [x] Publish and independently validate one aggregate-only PWR-002 projection
       from the accepted ASIC-002 evidence without another hardware run.
 - [ ] Run the ordered repository gates, transition only `PWR-002` when the
       complete quorum passes, synchronize progress, record the result, archive
