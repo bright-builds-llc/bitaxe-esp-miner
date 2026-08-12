@@ -51,3 +51,21 @@
   push after final diff review.
 - Blocker or next safe action: Commit and push, rebuild the exact package, run
   one detector, and consume attempt-005 at most once if admitted.
+
+## 2026-08-12T07:37:14Z | hardware attempt-005 closed
+
+- Source commit: `2af62ad54600dd6c7bffcf3481cc8cd94b98ab3d`.
+- Actions: Built the exact package, ran one detector, and consumed the sole
+  attempt-005 transaction with directed CoreWLAN association and recovery.
+- Verification: CoreWLAN returned ready without a private error. DHCP, DNS,
+  captive redirect, system-info, AP state, exact build identity, host cleanup,
+  and device recovery passed. The typed terminal category is
+  `service_recovery_failed` because `startMiningOnBoot` was true rather than the
+  checker-required false; authoritative passive runtime safety remained
+  disabled. Projection absence and private modes pass.
+- Evidence: Only closed categorical facts and safe booleans are public. Raw
+  local identities, Wi-Fi, network, HTTP, command, process, and serial values
+  remain private.
+- Outcome: Attempt-005 is consumed; `NET-002` remains `implemented`.
+- Blocker or next safe action: Remove the invalid preference-value postcondition
+  in a fresh continuation while retaining runtime safety as authoritative.

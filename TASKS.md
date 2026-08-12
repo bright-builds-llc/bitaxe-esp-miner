@@ -1825,7 +1825,7 @@ unarchived because `NET-002` is not verified.
 - [x] Test real-child fixture execution, timeouts, malformed results, every
       association subtype, recovery precedence, modes, and redaction; run all
       mandatory software gates.
-- [ ] Commit and push, then run one detector and at most one conditional
+- [x] Commit and push, then run one detector and at most one conditional
       attempt-005 with fresh protected paths.
 - [ ] Promote only after the complete immutable-plan success quorum passes.
 
@@ -1849,7 +1849,13 @@ parity/progress; redaction; reference; generated contracts; selector;
 immutable-plan; task; fresh-path; reference-cleanliness; sensitive-output; and
 diff checks.
 
-Completion review: Pending.
+Completion review: Attempt-005 proved directed CoreWLAN association, DHCP,
+wildcard DNS, captive redirect, same-origin system-info, cleanup, and recovery.
+It closed as `service_recovery_failed` only because the checker incorrectly
+treated `startMiningOnBoot === false` as runtime safety. The runtime attestation
+proved mining and controls disabled. No projection exists. The linked closure
+requires removal of that preference-value assumption in a fresh ordinal; this
+task remains active because `NET-002` is not verified.
 
 ## Future
 
