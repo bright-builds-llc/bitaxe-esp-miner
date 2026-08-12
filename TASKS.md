@@ -1830,51 +1830,6 @@ proved mining and controls disabled. No projection exists. The linked closure
 requires removal of that preference-value assumption in a fresh ordinal; this
 task remains active because `NET-002` is not verified.
 
-### task-parity-str006-protocol-coordinator-promotion | 2026-08-12 | Verify the accepted production protocol coordinator
-
-- [x] Select `STR-006` from a clean synchronized preflight and bind an
-      immutable plan to the accepted conservative Ultra 205 lineage.
-- [x] Add and verify a closed public contract joining the accepted socket,
-      hardware-preparation, work-send, result, and safe-stop lifecycle.
-- [x] Replace the false single-occurrence ASIC-worker guard with the exact two
-      legitimate dispatch spans and a production-shaped regression.
-- [ ] Publish the redacted projection, promote only `STR-006` when the full
-      quorum passes, synchronize progress, and archive this task.
-
-Active plan: `docs/parity/work-plans/20260812T122256Z-STR-006/PLAN.md`.
-
-Closed predecessor:
-`docs/parity/work-plans/20260812T114949Z-STR-006/CLOSURE.md`.
-
-Authorization: Software-only derivation from committed public evidence and Git
-history. No protected campaign access, detector, package build, flash, reset,
-USB/network session, credentials, mining, pool contact, fan/voltage/power/ASIC
-actuation, recovery, direct UART, pins, or other hardware effect is permitted.
-
-Verification and stop rule: Require all four exact independently validated
-source projection digests, shared accepted/current/reference lineage,
-unchanged coordinator/recovery/owner modules, compatible unique lifecycle
-semantics, focused regressions, independent Rust validation, every repository
-gate, redaction, reference cleanliness, and atomic publication. Any failure
-leaves `STR-006` implemented and stops this plan without a hardware fallback.
-
-Verification: The Rust contract tests, 212-test automation suite, real-child
-seam, ordered Cargo gate, Bright Builds checks, all 37 Bazel tests, parity,
-progress, generated-contract verification, redaction, pinned-reference checks,
-task uniqueness, immutable plan digest, and diff checks pass. Projection and
-promotion remain pending. The clean pushed implementation's single permitted
-attempt failed closed as `evidence_invalid` because the ASIC-worker source
-guard incorrectly required a fragment with two legitimate occurrences to be
-unique; no evidence artifact was published. The fresh plan's exact two-span
-fix and production-shaped missing/duplicate/reordered/unbound regressions now
-pass the same complete gate; one new clean-pushed projection remains pending.
-
-Next safe action: Commit and push the verified two-span fix, require a clean
-synchronized worktree, then run the fresh plan's single software-only
-projection attempt.
-
-Completion review: Pending.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

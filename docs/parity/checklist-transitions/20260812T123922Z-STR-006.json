@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260812T123922Z-STR-006",
+  "predecessor_sha256": "f940ac0f21e4edd09b849acf8ea21f1425c11cd9c86443283c0cd295c3f0170f",
+  "result_sha256": "b32fa94f8b6ff11414555669e745f064a9bda98f2ff7ca2709d15caa7da00784",
+  "row_id": "STR-006",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260812T122256Z-STR-006/PLAN.md",
+  "plan_sha256": "d35415c87cc640f29749fcac4fa53132b7391e9e3e929b5ad2f2d0d1cb45f9da",
+  "result_path": "docs/parity/work-plans/20260812T122256Z-STR-006/RESULT.md",
+  "result_document_sha256": "b3c3664c723a0b50ff717aafc5775fabe982c80b988781286b55d8e9e39bb6fb",
+  "before_rust_owned_target": "`crates/bitaxe-stratum/src/v1/production_session.rs`, `crates/bitaxe-safety`, `firmware/bitaxe/src/production_mining_session.rs`, `firmware/bitaxe/src/asic_adapter/status.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-stratum/src/v1/production_session`, `crates/bitaxe-core/src/runtime_orchestration.rs`, `firmware/bitaxe/src/production_mining_session.rs`, `firmware/bitaxe/src/production_mining_session/asic_worker.rs`, `crates/bitaxe-automation-contracts/src/protocol_coordinator_evidence.rs`, `tools/automation/src/protocol-coordinator-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow,hardware-smoke",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "First-loop coordination is fail-closed unless ASIC initialization, Phase 6 safety evidence, and hardware-evidence acknowledgment are all present. [Phase 15 evidence](evidence/phase-15-bm1366-mining-evidence-completion.md) verifies fail-closed coordinator status and controlled no-share classification. Phase 21 final evidence in `evidence/phase-21-live-mining-and-soak-evidence/summary.md` records the controlled runtime harness consuming pool settings, subscribe/authorize/notify flow, typed BM1366 work dispatch, bounded no-share outcome, runtime snapshot update, watchdog checkpoints, safe-stop, board `205`, port `/dev/cu.usbmodem1101`, firmware commit `b5502a630637`, reference commit `c1915b0a63bfabebdb95a515cedfee05146c1d50`, redaction passed, and conclusion recorded. Accepted/rejected shares and full production mining remain below verified.",
+  "after_notes": "Sealed accepted Ultra 205 evidence proves the unchanged single-owner production coordinator traversed all six readiness gates, hardware preparation, authorized Stratum operation, initialized ASIC dispatch, qualified result correlation, a real accepted submit response, ordered fail-closed safe stop, watchdog feeding, and cleanup; see `docs/parity/work-plans/20260812T122256Z-STR-006/RESULT.md` and `docs/parity/evidence/str006-protocol-coordinator/protocol-coordinator-projection.json`. Fallback/reconnect hardware behavior, sustained-load watchdog timing, arbitrary pools, automatic controls, rejected-submit hardware behavior, profitability, unbounded mining, TLS, Stratum v2, other boards, updates, recovery, and release readiness remain non-claims."
+}

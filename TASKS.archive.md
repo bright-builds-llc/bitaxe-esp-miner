@@ -6481,3 +6481,49 @@ an authorized Stratum v1 lifecycle to a real accepted submit response, then
 completed safe stop and cleanup. No protected evidence or new hardware effect
 occurred. The evidence and transition commits were pushed, the final repository
 gate passed, and the row is verified. This task is complete and archived.
+
+### task-parity-str006-protocol-coordinator-promotion | 2026-08-12 | Verify the accepted production protocol coordinator
+
+- [x] Select `STR-006` from a clean synchronized preflight and bind an
+      immutable plan to the accepted conservative Ultra 205 lineage.
+- [x] Add and verify a closed public contract joining the accepted socket,
+      hardware-preparation, work-send, result, and safe-stop lifecycle.
+- [x] Replace the false single-occurrence ASIC-worker guard with the exact two
+      legitimate dispatch spans and a production-shaped regression.
+- [x] Publish the redacted projection, promote only `STR-006` when the full
+      quorum passes, synchronize progress, and archive this task.
+
+Active plan: `docs/parity/work-plans/20260812T122256Z-STR-006/PLAN.md`.
+
+Closed predecessor:
+`docs/parity/work-plans/20260812T114949Z-STR-006/CLOSURE.md`.
+
+Authorization: Software-only derivation from committed public evidence and Git
+history. No protected campaign access, detector, package build, flash, reset,
+USB/network session, credentials, mining, pool contact, fan/voltage/power/ASIC
+actuation, recovery, direct UART, pins, or other hardware effect is permitted.
+
+Verification and stop rule: Require all four exact independently validated
+source projection digests, shared accepted/current/reference lineage,
+unchanged coordinator/recovery/owner modules, compatible unique lifecycle
+semantics, focused regressions, independent Rust validation, every repository
+gate, redaction, reference cleanliness, and atomic publication. Any failure
+leaves `STR-006` implemented and stops this plan without a hardware fallback.
+
+Verification: Focused contract and production-shaped projector tests,
+real-child integration, ordered Cargo, Bright Builds, all 37 Bazel tests,
+parity/progress, generated contracts, independent projection validation,
+redaction, reference, immutable digests, source compatibility, task uniqueness,
+and diff checks pass. Public projection SHA-256 is
+`f008171f26b7a8ae6b08859e3cfef4f0c5bf88937c049dd66b6f868c9bbfd6f7`.
+Transition `20260812T123922Z-STR-006` promoted only `STR-006`; progress now
+records 58 of 94 active rows verified (61.7%).
+
+Completion review: The source-bound proof establishes that the accepted
+conservative Ultra 205 traversed the unchanged single-owner coordinator from
+all six readiness gates through hardware preparation, authorized pool
+operation, initialized ASIC dispatch, qualified result correlation, a real
+accepted submit response, ordered safe stop, watchdog feeding, and cleanup. No
+protected evidence or new hardware effect occurred. The evidence and
+transition commits were pushed and the row is verified. This task is complete
+and archived.
