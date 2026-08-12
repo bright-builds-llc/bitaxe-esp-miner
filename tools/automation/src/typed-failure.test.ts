@@ -8,6 +8,7 @@ import { AsicResultParsingEvidenceError } from "./asic-result-parsing-evidence.j
 import { AsicSerialTransportEvidenceError } from "./asic-serial-transport-evidence.js";
 import { AsicFrequencyTransitionEvidenceError } from "./asic-frequency-transition-evidence.js";
 import { StratumSocketEvidenceError } from "./stratum-socket-evidence.js";
+import { ProtocolCoordinatorEvidenceError } from "./protocol-coordinator-evidence.js";
 import { NetworkScanEvidenceError } from "./network-scan-evidence.js";
 import { maybeTypedFailurePublicValue } from "./typed-failure.js";
 
@@ -143,6 +144,23 @@ test("Stratum socket failures retain only closed projection facts", () => {
   // Assert
   assert.deepEqual(publicValue, {
     stage: "sealed_stratum_socket_projection",
+    hardware_rerun_used: false,
+  });
+});
+
+test("protocol coordinator failures retain only closed projection facts", () => {
+  // Arrange
+  const error = new ProtocolCoordinatorEvidenceError("evidence_invalid", "safe failure", {
+    stage: "sealed_protocol_coordinator_projection",
+    hardware_rerun_used: false,
+  });
+
+  // Act
+  const publicValue = maybeTypedFailurePublicValue(error);
+
+  // Assert
+  assert.deepEqual(publicValue, {
+    stage: "sealed_protocol_coordinator_projection",
     hardware_rerun_used: false,
   });
 });

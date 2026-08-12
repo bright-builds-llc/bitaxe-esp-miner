@@ -14,6 +14,7 @@ mod network_reconnect_evidence;
 mod network_scan_evidence;
 mod operator_snapshot_evidence;
 mod partition_layout_evidence;
+mod protocol_coordinator_evidence;
 mod provisioning_network_evidence;
 mod runtime_health_evidence;
 mod sdkconfig_rollback_evidence;
@@ -50,6 +51,10 @@ pub use operator_snapshot_evidence::{
     DeviceSessionEvidence, OperatorSnapshotEpochEvidence, OperatorSnapshotEvidence,
 };
 pub use partition_layout_evidence::{PartitionLayoutEvidence, PartitionLayoutObservationEvidence};
+pub use protocol_coordinator_evidence::{
+    ProtocolCoordinatorEvidence, ProtocolCoordinatorObservationEvidence,
+    ProtocolCoordinatorSourceEvidence,
+};
 pub use provisioning_network_evidence::{
     ProvisioningNetworkEvidence, ProvisioningNetworkObservationEvidence,
 };
@@ -89,6 +94,7 @@ pub const ASIC_RESULT_PARSING_EVIDENCE_SCHEMA: &str = "bitaxe-asic-result-parsin
 pub const ASIC_SERIAL_TRANSPORT_EVIDENCE_SCHEMA: &str = "bitaxe-asic-serial-transport-evidence-v1";
 pub const ASIC_WORK_SEND_EVIDENCE_SCHEMA: &str = "bitaxe-asic-work-send-evidence-v1";
 pub const STRATUM_SOCKET_EVIDENCE_SCHEMA: &str = "bitaxe-stratum-socket-evidence-v1";
+pub const PROTOCOL_COORDINATOR_EVIDENCE_SCHEMA: &str = "bitaxe-protocol-coordinator-evidence-v1";
 pub const PROVISIONING_NETWORK_EVIDENCE_SCHEMA: &str = "bitaxe-provisioning-network-evidence-v1";
 pub const MIGRATION_SCHEMA: &str = "bitaxe-automation-migration-v1";
 
@@ -136,6 +142,7 @@ pub enum AutomationCommand {
     ProjectAsicResultParsingEvidence,
     ProjectAsicSerialTransportEvidence,
     ProjectStratumSocketEvidence,
+    ProjectProtocolCoordinatorEvidence,
     CaptureProvisioningNetworkEvidence,
 }
 
@@ -295,6 +302,7 @@ pub struct ContractBundle {
     pub asic_result_parsing_evidence_schema: Value,
     pub asic_serial_transport_evidence_schema: Value,
     pub stratum_socket_evidence_schema: Value,
+    pub protocol_coordinator_evidence_schema: Value,
     pub provisioning_network_evidence_schema: Value,
     pub commands: Vec<AutomationCommand>,
     pub evidence_schemas: Vec<&'static str>,
@@ -362,6 +370,10 @@ pub fn contract_bundle() -> ContractBundle {
         .expect("ASIC serial-transport evidence schema must serialize"),
         stratum_socket_evidence_schema: serde_json::to_value(schema_for!(StratumSocketEvidence))
             .expect("Stratum socket evidence schema must serialize"),
+        protocol_coordinator_evidence_schema: serde_json::to_value(schema_for!(
+            ProtocolCoordinatorEvidence
+        ))
+        .expect("protocol coordinator evidence schema must serialize"),
         provisioning_network_evidence_schema: serde_json::to_value(schema_for!(
             ProvisioningNetworkEvidence
         ))
@@ -403,6 +415,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::ProjectAsicResultParsingEvidence,
             AutomationCommand::ProjectAsicSerialTransportEvidence,
             AutomationCommand::ProjectStratumSocketEvidence,
+            AutomationCommand::ProjectProtocolCoordinatorEvidence,
             AutomationCommand::CaptureProvisioningNetworkEvidence,
         ],
         evidence_schemas: vec![
@@ -426,6 +439,7 @@ pub fn contract_bundle() -> ContractBundle {
             ASIC_RESULT_PARSING_EVIDENCE_SCHEMA,
             ASIC_SERIAL_TRANSPORT_EVIDENCE_SCHEMA,
             STRATUM_SOCKET_EVIDENCE_SCHEMA,
+            PROTOCOL_COORDINATOR_EVIDENCE_SCHEMA,
             PROVISIONING_NETWORK_EVIDENCE_SCHEMA,
             MIGRATION_SCHEMA,
         ],

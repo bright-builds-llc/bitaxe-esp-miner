@@ -105,6 +105,19 @@ test("result validator accepts the closed Stratum socket command", () => {
   assert.equal(result.command, "project-stratum-socket-evidence");
 });
 
+test("result validator accepts the closed protocol coordinator command", () => {
+  // Act
+  const result = parseAutomationResult({
+    schema_version: "bitaxe-automation-result-v1",
+    command: "project-protocol-coordinator-evidence",
+    status: "succeeded",
+    category: "complete",
+  });
+
+  // Assert
+  assert.equal(result.command, "project-protocol-coordinator-evidence");
+});
+
 // @ts-expect-error monitor intentionally has no evidenceMode option.
 monitorCommand("/tmp/flash", { evidenceMode: "dual" });
 

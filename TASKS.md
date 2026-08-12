@@ -1834,7 +1834,7 @@ task remains active because `NET-002` is not verified.
 
 - [x] Select `STR-006` from a clean synchronized preflight and bind an
       immutable plan to the accepted conservative Ultra 205 lineage.
-- [ ] Add and verify a closed public contract joining the accepted socket,
+- [x] Add and verify a closed public contract joining the accepted socket,
       hardware-preparation, work-send, result, and safe-stop lifecycle.
 - [ ] Publish the redacted projection, promote only `STR-006` when the full
       quorum passes, synchronize progress, and archive this task.
@@ -1853,7 +1853,11 @@ semantics, focused regressions, independent Rust validation, every repository
 gate, redaction, reference cleanliness, and atomic publication. Any failure
 leaves `STR-006` implemented and stops this plan without a hardware fallback.
 
-Verification: Pending.
+Verification: The Rust contract tests, 212-test automation suite, real-child
+seam, ordered Cargo gate, Bright Builds checks, all 37 Bazel tests, parity,
+progress, generated-contract verification, redaction, pinned-reference checks,
+task uniqueness, immutable plan digest, and diff checks pass. Projection and
+promotion remain pending from the clean pushed implementation commit.
 
 Completion review: Pending.
 

@@ -29,6 +29,10 @@ import {
   StratumSocketEvidenceError,
 } from "./stratum-socket-evidence.js";
 import {
+  projectProtocolCoordinatorEvidence,
+  ProtocolCoordinatorEvidenceError,
+} from "./protocol-coordinator-evidence.js";
+import {
   flashMonitorCommand,
   internalCommandSpec,
   monitorCommand,
@@ -278,6 +282,7 @@ async function dispatchProcess(
     case "project-asic-initialization-evidence":
     case "project-asic-frequency-transition-evidence":
     case "project-stratum-socket-evidence":
+    case "project-protocol-coordinator-evidence":
     case "project-asic-work-send-evidence":
     case "project-asic-result-parsing-evidence":
     case "project-asic-serial-transport-evidence":
@@ -470,6 +475,26 @@ async function main(): Promise<number> {
       }, processPort, "git",
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_initialization_evidence"),
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_stratum_socket_evidence"));
+    } else if (invocation.command === "project-protocol-coordinator-evidence") {
+      publicValue = await projectProtocolCoordinatorEvidence(root, {
+        initializationProjection: optionValue(invocation, "--initialization-projection"),
+        workSendProjection: optionValue(invocation, "--work-send-projection"),
+        resultParsingProjection: optionValue(invocation, "--result-parsing-projection"),
+        socketProjection: optionValue(invocation, "--socket-projection"),
+        attemptSourceCommit: optionValue(invocation, "--attempt-source-commit"),
+        projection: optionValue(invocation, "--projection"),
+      }, processPort, "git", {
+        initialization: toolProgram(root,
+          "crates/bitaxe-automation-contracts/validate_asic_initialization_evidence"),
+        workSend: toolProgram(root,
+          "crates/bitaxe-automation-contracts/validate_asic_work_send_evidence"),
+        resultParsing: toolProgram(root,
+          "crates/bitaxe-automation-contracts/validate_asic_result_parsing_evidence"),
+        socket: toolProgram(root,
+          "crates/bitaxe-automation-contracts/validate_stratum_socket_evidence"),
+        evidence: toolProgram(root,
+          "crates/bitaxe-automation-contracts/validate_protocol_coordinator_evidence"),
+      });
     } else if (invocation.command === "project-asic-work-send-evidence") {
       publicValue = await projectAsicWorkSendEvidence(root, {
         sourceProjection: optionValue(invocation, "--source-projection"),
@@ -569,6 +594,7 @@ async function main(): Promise<number> {
     const asicInitializationFailure = error instanceof AsicInitializationEvidenceError;
     const asicFrequencyTransitionFailure = error instanceof AsicFrequencyTransitionEvidenceError;
     const stratumSocketFailure = error instanceof StratumSocketEvidenceError;
+    const protocolCoordinatorFailure = error instanceof ProtocolCoordinatorEvidenceError;
     const asicWorkSendFailure = error instanceof AsicWorkSendEvidenceError;
     const asicResultParsingFailure = error instanceof AsicResultParsingEvidenceError;
     const asicSerialTransportFailure = error instanceof AsicSerialTransportEvidenceError;
@@ -577,7 +603,7 @@ async function main(): Promise<number> {
       ? "policy_blocked"
       : invalid
         ? "invalid_invocation"
-        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || networkScanFailure || asicInitializationFailure || asicFrequencyTransitionFailure || stratumSocketFailure || asicWorkSendFailure || asicResultParsingFailure || asicSerialTransportFailure || provisioningNetworkFailure
+        : settingsFailure || themeFailure || snapshotFailure || runtimeHealthFailure || systemInfoFailure || ultra205DefaultsFailure || settingsPatchFailure || logBufferFailure || partitionLayoutFailure || sdkconfigRollbackFailure || networkReconnectFailure || networkScanFailure || asicInitializationFailure || asicFrequencyTransitionFailure || stratumSocketFailure || protocolCoordinatorFailure || asicWorkSendFailure || asicResultParsingFailure || asicSerialTransportFailure || provisioningNetworkFailure
           ? error.category
           : "process_failed";
     const blocked = policyBlocked || category === "hardware_blocked";

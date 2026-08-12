@@ -212,6 +212,14 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--attempt-source-commit": value({ required: true }),
     "--projection": value({ required: true }),
   },
+  "project-protocol-coordinator-evidence": {
+    "--initialization-projection": value({ required: true }),
+    "--work-send-projection": value({ required: true }),
+    "--result-parsing-projection": value({ required: true }),
+    "--socket-projection": value({ required: true }),
+    "--attempt-source-commit": value({ required: true }),
+    "--projection": value({ required: true }),
+  },
   "project-asic-work-send-evidence": {
     "--source-projection": value({ required: true }),
     "--attempt-source-commit": value({ required: true }),

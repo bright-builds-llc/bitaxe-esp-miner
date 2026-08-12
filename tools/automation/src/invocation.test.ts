@@ -396,6 +396,27 @@ test("Stratum socket projection accepts only the initialization proof", () => {
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
 
+test("protocol coordinator projection requires the closed four-proof join", () => {
+  // Arrange
+  const complete = [
+    "project-protocol-coordinator-evidence",
+    "--initialization-projection", "docs/evidence/initialization.json",
+    "--work-send-projection", "docs/evidence/work-send.json",
+    "--result-parsing-projection", "docs/evidence/result-parsing.json",
+    "--socket-projection", "docs/evidence/socket.json",
+    "--attempt-source-commit", "a".repeat(40),
+    "--projection", "docs/evidence/protocol-coordinator.json",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "project-protocol-coordinator-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});
+
 test("Ultra 205 defaults capture requires the detector-gated closed surface", () => {
   // Arrange
   const complete = [

@@ -16,6 +16,7 @@ rust_library(
         "src/network_scan_evidence.rs",
         "src/operator_snapshot_evidence.rs",
         "src/partition_layout_evidence.rs",
+        "src/protocol_coordinator_evidence.rs",
         "src/provisioning_network_evidence.rs",
         "src/runtime_health_evidence.rs",
         "src/sdkconfig_rollback_evidence.rs",
@@ -30,6 +31,17 @@ rust_library(
     deps = [
         "@crates//:schemars",
         "@crates//:serde",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_protocol_coordinator_evidence",
+    srcs = ["src/bin/validate_protocol_coordinator_evidence.rs"],
+    crate_name = "validate_protocol_coordinator_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
         "@crates//:serde_json",
     ],
 )
