@@ -31,3 +31,22 @@
   wrapper regression is implemented.
 - Blocker or next safe action: Commit and push only the plan, worklog, and
   active-task update; then add and verify the exact wrapper-shape regression.
+
+## 2026-08-12T13:33:23Z | Wrapper guard implemented and sealed
+
+- Actions: Reframed the existing mining-criteria invocation test around the
+  real Bazel boundary: the wrapper-injected command followed by caller flags
+  is accepted, while a duplicated command token is rejected before entry.
+- Verification: The focused invocation suite passes 52 cases and the complete
+  221-case automation target passes. Format, clippy, all-target build,
+  all-feature tests, Bright Builds checks, all 37 Bazel test targets, parity,
+  progress, redaction, reference, plan digest, task uniqueness, projection
+  absence, reference cleanliness, and diff checks all pass.
+- Evidence: No candidate or projection was created. No protected evidence,
+  credentials, network, or hardware was accessed.
+- Simplification: The fix strengthens the existing parser behavior test; it
+  adds no production abstraction or duplicate wrapper implementation.
+- Outcome: The guarded implementation is ready to commit and push.
+- Blocker or next safe action: Commit and push the one-test regression, confirm
+  a clean synchronized head, then consume the plan's single corrected
+  software-only projection attempt.

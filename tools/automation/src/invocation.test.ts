@@ -417,24 +417,26 @@ test("protocol coordinator projection requires the closed four-proof join", () =
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
 
-test("mining criteria projection requires every public proof input", () => {
+test("mining criteria Bazel wrapper injects its command exactly once", () => {
   // Arrange
-  const complete = [
-    "project-mining-criteria-evidence",
+  const command = "project-mining-criteria-evidence";
+  const callerFlags = [
     "--summary", "docs/evidence/summary.md",
     "--smoke", "docs/evidence/smoke.md",
     "--soak", "docs/evidence/soak.md",
     "--coordinator-projection", "docs/evidence/coordinator.json",
     "--projection", "docs/evidence/mining-criteria.json",
   ];
+  const wrapperArgs = [command, ...callerFlags];
 
   // Act
-  const invocation = parseInvocation(complete);
+  const invocation = parseInvocation(wrapperArgs);
 
   // Assert
-  assert.equal(invocation.command, "project-mining-criteria-evidence");
-  assert.throws(() => parseInvocation(complete.slice(0, -2)));
-  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+  assert.equal(invocation.command, command);
+  assert.throws(() => parseInvocation([command, ...wrapperArgs]));
+  assert.throws(() => parseInvocation(wrapperArgs.slice(0, -2)));
+  assert.throws(() => parseInvocation([...wrapperArgs, "--port", "/dev/cu.private"]));
 });
 
 test("Ultra 205 defaults capture requires the detector-gated closed surface", () => {
