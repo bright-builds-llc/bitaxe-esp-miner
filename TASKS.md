@@ -1873,8 +1873,22 @@ Software continuation plan:
       the retained firmware runtime-snapshot owner.
 - [x] Add focused state, correlation, ordering, redaction, and ownership
       regressions; run every mandatory gate and push the source.
-- [ ] Keep API-009 `implemented`, update only its production ownership target,
+- [x] Keep API-009 `implemented`, update only its production ownership target,
       and record the still-missing physical command-effect evidence.
+
+Verification: Source commit `4ab1968982ec614012860230831e3abbdd9a965e`
+passes focused API, Stratum, and firmware ownership tests plus the complete
+ordered Cargo, Bright Builds, Bazel, parity, parity-progress, redaction, and
+reference gate. The immutable plan digest, unique task binding, selector,
+reference cleanliness, diff, and sensitive-output reviews also pass.
+
+Completion review: The missing production notification writer is resolved with
+one shared target calculation, one redaction-safe effect, and one retained
+state owner. API-009 remains `implemented`: accepted physical identify,
+active-mining pause/resume, restart, and genuine active-notification dismissal
+must still be proven together. See
+`docs/parity/work-plans/20260812T141252Z-API-009/CLOSURE.md` for the bounded next
+safe action and non-claims; this unresolved task remains active.
 
 Continuation authorization: software, fixtures, builds, and repository
 verification only. No hardware, USB, flash, credentials, network/pool session,

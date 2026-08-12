@@ -39,3 +39,23 @@
 - Next action: Commit and push the verified source, then update API-009's
   ownership target, synchronize parity progress, and close this bounded plan
   below verified with the remaining genuine physical-effect requirements.
+
+## Attempt 3 | 2026-08-12T14:47:00Z
+
+- Starting status: `implemented`
+- Actions: The audited transition command correctly requested no status or
+  evidence promotion and changed only the ownership target, but the transition
+  policy rejected every equal-status receipt before inspecting mutable cells.
+  Repaired the validator to allow nonterminal equal-status metadata revisions
+  while rejecting exact no-op receipts and preserving status-regression and
+  terminal-row protections.
+- Verification: Focused parity transition tests pass for equal-status target
+  revision, exact no-op rejection, regression rejection, terminal-row
+  rejection, and hash-bound chain validation.
+- Outcome: The repository transition contract now matches the advance-parity
+  workflow: implementation target or evidence metadata can change without a
+  false status promotion, while a receipt must still change at least one
+  mutable checklist cell.
+- Next action: Run the complete mandatory gate, commit and push this workflow
+  repair without changing the checklist, then retry the audited API-009 target
+  transition and synchronize progress.

@@ -192,6 +192,7 @@ pub(crate) fn transition_item(
         before_notes: notes_binding.as_ref().map(|(before, _)| before.clone()),
         after_notes: notes_binding.map(|(_, after)| after),
     };
+    require_changed_mutable_cell(&receipt)?;
     let projected = apply_receipt(&current, &receipt)?;
     receipt.result_sha256 = sha256_hex(projected.as_bytes());
 
@@ -272,6 +273,7 @@ fn validate_receipt(
         &receipt.row_id,
         migration_ledger.as_ref(),
     )?;
+    require_changed_mutable_cell(receipt)?;
     if receipt.after_status == "verified"
         && (receipt.result_path.is_none()
             || receipt
@@ -327,6 +329,22 @@ fn apply_receipt(predecessor: &str, receipt: &TransitionReceipt) -> Result<Strin
         projected.push('\n');
     }
     Ok(projected)
+}
+
+fn require_changed_mutable_cell(receipt: &TransitionReceipt) -> Result<(), String> {
+    let notes_unchanged = match (&receipt.before_notes, &receipt.after_notes) {
+        (None, None) => true,
+        (Some(before), Some(after)) => before == after,
+        _ => false,
+    };
+    if receipt.before_rust_owned_target == receipt.after_rust_owned_target
+        && receipt.before_status == receipt.after_status
+        && receipt.before_evidence == receipt.after_evidence
+        && notes_unchanged
+    {
+        return Err("parity transition must change at least one mutable checklist cell".to_owned());
+    }
+    Ok(())
 }
 
 fn validate_notes(notes: &str) -> Result<String, String> {
@@ -498,6 +516,48 @@ mod tests {
 
         // Assert
         assert!(error.contains("monotonically"));
+    }
+
+    #[test]
+    fn transition_accepts_same_status_for_a_metadata_revision() {
+        // Arrange
+        let status = "implemented";
+
+        // Act
+        let result = require_policy(status, status, "STR-001", None);
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn receipt_requires_at_least_one_mutable_cell_change() {
+        // Arrange
+        let mut receipt = receipt();
+        receipt.after_status = receipt.before_status.clone();
+        receipt.after_evidence = receipt.before_evidence.clone();
+
+        // Act
+        let error = require_changed_mutable_cell(&receipt)
+            .expect_err("an exact no-op transition must be rejected");
+
+        // Assert
+        assert!(error.contains("at least one mutable checklist cell"));
+    }
+
+    #[test]
+    fn receipt_accepts_same_status_when_the_target_changes() {
+        // Arrange
+        let mut receipt = receipt();
+        receipt.after_status = receipt.before_status.clone();
+        receipt.after_evidence = receipt.before_evidence.clone();
+        receipt.after_rust_owned_target = "crate/src/new_owner.rs".to_owned();
+
+        // Act
+        let result = require_changed_mutable_cell(&receipt);
+
+        // Assert
+        assert!(result.is_ok());
     }
 
     #[test]

@@ -149,7 +149,7 @@ fn require_monotonic(before: &str, after: &str) -> Result<(), String> {
     };
     let before_rank = rank(before).ok_or_else(|| format!("status {before} is not actionable"))?;
     let after_rank = rank(after).ok_or_else(|| format!("status {after} is not actionable"))?;
-    if after_rank <= before_rank {
+    if after_rank < before_rank {
         return Err("parity transitions must move monotonically toward verified".to_owned());
     }
     Ok(())
