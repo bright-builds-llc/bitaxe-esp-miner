@@ -1781,7 +1781,7 @@ unarchived because `NET-002` is not verified.
 - [x] Test late attachment, invisible enumeration, ambiguity, malformed device
       identity, all closed boundaries, recovery, real children, and redaction;
       run every mandatory software gate.
-- [ ] Commit and push, then run one detector and at most one conditional
+- [x] Commit and push, then run one detector and at most one conditional
       attempt-004 with fresh protected paths.
 - [ ] Promote only after the complete immutable-plan success quorum passes.
 
@@ -1806,7 +1806,14 @@ reference-cleanliness; sensitive-output; and diff checks. One post-test parity
 launch hit transient macOS resource exhaustion, then the isolated complete tail
 passed without code changes.
 
-Completion review: Pending.
+Completion review: Attempt-004 closed as `hardware_blocked` at the typed
+`association` boundary after exact-device candidate admission, exact-package
+passive safety, and eleven recurring AP/DHCP/DNS readiness samples passed.
+Host restoration and exact-package device recovery passed without a secondary
+failure; private modes and evidence withholding passed. The linked closure
+requires a private association sub-boundary and a supported exact-SSID macOS
+association transaction before a fresh ordinal. This task remains active and
+unarchived because `NET-002` is not verified.
 
 ## Future
 

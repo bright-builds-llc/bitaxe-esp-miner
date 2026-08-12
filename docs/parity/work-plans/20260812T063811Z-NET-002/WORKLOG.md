@@ -73,3 +73,25 @@
 - Outcome: The implementation is eligible for commit and push.
 - Blocker or next safe action: Commit and push, rebuild the exact package, then
   run the single detector-gated attempt-004 transaction.
+
+## 2026-08-12T07:07:53Z | hardware attempt-004 closed
+
+- Source commit: `fb9623d6c2f877a716324642311480bdd707a391`.
+- Actions: Built the exact package, ran one detector, and consumed the one
+  conditional attempt-004 transaction. The detector admitted one Ultra 205,
+  one private exact-device candidate, protected modes, and no holder. The
+  capture performed the authorized AP-only flash, bounded host association
+  attempt, host cleanup, and exact-package owner-Wi-Fi recovery flash.
+- Verification: Exact-package passive safety and eleven recurring AP/DHCP/DNS
+  readiness samples passed. The typed terminal result is `hardware_blocked` at
+  `association`. Host restoration and device recovery are true, the recovery
+  flash was used, secondary recovery failure is false, private modes are 0700
+  and 0600, and the public projection is absent.
+- Evidence: Only the closed terminal category and safe recovery booleans are
+  public. Detector identity, candidate, port, serial, Wi-Fi, credential,
+  network, DNS/HTTP, command, and process values remain ignored and private.
+- Outcome: Attempt-004 is consumed and closes without verification;
+  `NET-002` remains `implemented`.
+- Blocker or next safe action: Type the raw association sub-boundary privately
+  and qualify a supported exact-SSID macOS association transaction in a new
+  continuation. Do not retry this ordinal.
