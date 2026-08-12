@@ -1830,6 +1830,33 @@ proved mining and controls disabled. No projection exists. The linked closure
 requires removal of that preference-value assumption in a fresh ordinal; this
 task remains active because `NET-002` is not verified.
 
+### task-parity-str006-protocol-coordinator-promotion | 2026-08-12 | Verify the accepted production protocol coordinator
+
+- [x] Select `STR-006` from a clean synchronized preflight and bind an
+      immutable plan to the accepted conservative Ultra 205 lineage.
+- [ ] Add and verify a closed public contract joining the accepted socket,
+      hardware-preparation, work-send, result, and safe-stop lifecycle.
+- [ ] Publish the redacted projection, promote only `STR-006` when the full
+      quorum passes, synchronize progress, and archive this task.
+
+Plan: `docs/parity/work-plans/20260812T114949Z-STR-006/PLAN.md`.
+
+Authorization: Software-only derivation from committed public evidence and Git
+history. No protected campaign access, detector, package build, flash, reset,
+USB/network session, credentials, mining, pool contact, fan/voltage/power/ASIC
+actuation, recovery, direct UART, pins, or other hardware effect is permitted.
+
+Verification and stop rule: Require all four exact independently validated
+source projection digests, shared accepted/current/reference lineage,
+unchanged coordinator/recovery/owner modules, compatible unique lifecycle
+semantics, focused regressions, independent Rust validation, every repository
+gate, redaction, reference cleanliness, and atomic publication. Any failure
+leaves `STR-006` implemented and stops this plan without a hardware fallback.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
