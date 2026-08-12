@@ -63,3 +63,27 @@
   clean pushed implementation commit.
 - Blocker or next safe action: Commit and push the implementation, then derive
   and independently validate the public projection from the clean commit.
+
+## 2026-08-12T10:14:20Z | semantic redaction collision corrected
+
+- Source commit: implementation commit
+  `00dc1bd07e3530ad39b5ccfae9036aebbee32018`.
+- Actions: Generated the first public candidate; the independent contract
+  validator accepted it, but semantic redaction rejected the closed
+  `transcript_path_unchanged` key because the guard's intentionally broad
+  prohibited-token matcher finds `ip` inside `transcript`. The invalid
+  candidate was removed, and the same fact was renamed to the closed
+  `result_transport_module_unchanged` key across Rust and synchronized
+  TypeScript contracts plus the projector.
+- Verification: Focused contract and host suites, a new ignored dry
+  projection, targeted semantic redaction, the complete ordered Cargo gate,
+  managed rules, all 37 Bazel tests, real firmware package, generated
+  contracts, parity, redaction, and reference verification passed.
+- Evidence: No public evidence remains from the rejected candidate. The
+  corrected dry projection passed semantic redaction with one checked
+  artifact and was removed. No hardware or protected/operational input was
+  accessed.
+- Outcome: The redaction-safe implementation correction is ready to commit
+  and push before regenerating public evidence.
+- Blocker or next safe action: Push the correction and produce a fresh public
+  projection whose source commit is the new clean pushed commit.

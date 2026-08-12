@@ -415,7 +415,7 @@ export async function projectAsicResultParsingEvidence(
       soft_discard_continuation: true,
       live_qualified_result_observed: true,
       accepted_submit_observed: true,
-      transcript_path_unchanged: true,
+      result_transport_module_unchanged: true,
       parser_spans_unchanged: true,
       adapter_nonce_span_unchanged: true,
       worker_nonce_span_unchanged: true,

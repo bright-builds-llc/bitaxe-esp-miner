@@ -452,7 +452,7 @@ export type AsicResultParsingObservationEvidence = { result_frame_length_bytes: 
   core_validation: true; address_interval_validation: true; version_bits_recovered: true;
   known_register_classification: true; typed_soft_discard_category_count: 8;
   soft_discard_continuation: true; live_qualified_result_observed: true;
-  accepted_submit_observed: true; transcript_path_unchanged: true; parser_spans_unchanged: true;
+  accepted_submit_observed: true; result_transport_module_unchanged: true; parser_spans_unchanged: true;
   adapter_nonce_span_unchanged: true; worker_nonce_span_unchanged: true;
   correlation_semantics_compatible: true; };
 export type AsicResultParsingEvidence = {

@@ -26,7 +26,7 @@ pub struct AsicResultParsingObservationEvidence {
     pub soft_discard_continuation: bool,
     pub live_qualified_result_observed: bool,
     pub accepted_submit_observed: bool,
-    pub transcript_path_unchanged: bool,
+    pub result_transport_module_unchanged: bool,
     pub parser_spans_unchanged: bool,
     pub adapter_nonce_span_unchanged: bool,
     pub worker_nonce_span_unchanged: bool,
@@ -104,7 +104,7 @@ impl AsicResultParsingEvidence {
             || !result.soft_discard_continuation
             || !result.live_qualified_result_observed
             || !result.accepted_submit_observed
-            || !result.transcript_path_unchanged
+            || !result.result_transport_module_unchanged
             || !result.parser_spans_unchanged
             || !result.adapter_nonce_span_unchanged
             || !result.worker_nonce_span_unchanged
@@ -174,7 +174,7 @@ mod tests {
                 soft_discard_continuation: true,
                 live_qualified_result_observed: true,
                 accepted_submit_observed: true,
-                transcript_path_unchanged: true,
+                result_transport_module_unchanged: true,
                 parser_spans_unchanged: true,
                 adapter_nonce_span_unchanged: true,
                 worker_nonce_span_unchanged: true,
