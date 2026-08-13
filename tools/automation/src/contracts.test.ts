@@ -105,6 +105,19 @@ test("result validator accepts the closed INA260 projection command", () => {
   assert.equal(result.command, "project-ina260-evidence");
 });
 
+test("result validator accepts the closed EMC2101 thermal capture command", () => {
+  // Act
+  const result = parseAutomationResult({
+    schema_version: "bitaxe-automation-result-v1",
+    command: "capture-emc2101-thermal-evidence",
+    status: "succeeded",
+    category: "complete",
+  });
+
+  // Assert
+  assert.equal(result.command, "capture-emc2101-thermal-evidence");
+});
+
 test("result validator accepts the closed ASIC serial-transport command", () => {
   // Act
   const result = parseAutomationResult({

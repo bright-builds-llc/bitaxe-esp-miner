@@ -13,6 +13,7 @@ rust_library(
         "src/power.rs",
         "src/power/tests.rs",
         "src/sensor_acquisition.rs",
+        "src/sensor_acquisition/emc2101.rs",
         "src/sensor_acquisition/completeness_tests.rs",
         "src/self_test.rs",
         "src/status.rs",

@@ -2194,9 +2194,9 @@ terminal blocker, next safe software-only diagnostic condition, and non-claims.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
-- [ ] Correct the production Ultra 205 EMC2101 internal-temperature path to
+- [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
       apply the pinned board-205 `+5 C` offset through a pure validated reducer.
-- [ ] Add the independent `bitaxe-emc2101-thermal-evidence-v1` contract and
+- [x] Add the independent `bitaxe-emc2101-thermal-evidence-v1` contract and
       one repo-owned exact-package capture command with protected artifacts,
       typed failures, recovery, cleanup, and atomic evidence withholding.
 - [ ] Pass the focused, real-firmware, package, mandatory, privacy, reference,
@@ -2242,7 +2242,11 @@ WebSocket correlation, detector/boot/safety/cleanup/mode/redaction quorum, and
 independent typed validation. Otherwise withhold evidence, preserve
 `implemented`, record a truthful closure, and stop.
 
-Verification: Pending immutable-plan checkpoint.
+Verification: Immutable-plan gates passed before implementation. Focused pure
+thermal, firmware adapter, Rust evidence-contract, TypeScript orchestration,
+invocation, typed-failure, redaction, protected-file, atomic-withholding, and
+real-child boundaries pass. The full mandatory implementation sequence and
+exact firmware package remain pending.
 
 Completion review: Pending.
 

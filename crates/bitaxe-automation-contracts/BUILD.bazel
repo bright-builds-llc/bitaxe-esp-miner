@@ -15,6 +15,7 @@ rust_library(
         "src/asic_serial_transport_evidence.rs",
         "src/asic_work_send_evidence.rs",
         "src/core_voltage_control_evidence.rs",
+        "src/emc2101_thermal_evidence.rs",
         "src/ina260_evidence.rs",
         "src/log_buffer_evidence.rs",
         "src/mining_criteria_evidence.rs",
@@ -37,6 +38,17 @@ rust_library(
     deps = [
         "@crates//:schemars",
         "@crates//:serde",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_emc2101_thermal_evidence",
+    srcs = ["src/bin/validate_emc2101_thermal_evidence.rs"],
+    crate_name = "validate_emc2101_thermal_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
         "@crates//:serde_json",
     ],
 )

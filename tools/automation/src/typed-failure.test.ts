@@ -6,6 +6,7 @@ import { AsicInitializationEvidenceError } from "./asic-initialization-evidence.
 import { AsicPowerInitializationEvidenceError } from "./asic-power-initialization-evidence.js";
 import { CoreVoltageControlEvidenceError } from "./core-voltage-control-evidence.js";
 import { Ina260EvidenceError } from "./ina260-evidence.js";
+import { Emc2101ThermalEvidenceError } from "./emc2101-thermal-evidence.js";
 import { AsicWorkSendEvidenceError } from "./asic-work-send-evidence.js";
 import { AsicResultParsingEvidenceError } from "./asic-result-parsing-evidence.js";
 import { AsicSerialTransportEvidenceError } from "./asic-serial-transport-evidence.js";
@@ -115,6 +116,23 @@ test("INA260 failures retain only closed projection facts", () => {
   assert.deepEqual(publicValue, {
     stage: "sealed_ina260_projection",
     hardware_rerun_used: false,
+  });
+});
+
+test("EMC2101 thermal failures retain only closed capture facts", () => {
+  // Arrange
+  const error = new Emc2101ThermalEvidenceError("hardware_blocked", "safe failure", {
+    stage: "emc2101_thermal_capture",
+    projection_published: false,
+  });
+
+  // Act
+  const publicValue = maybeTypedFailurePublicValue(error);
+
+  // Assert
+  assert.deepEqual(publicValue, {
+    stage: "emc2101_thermal_capture",
+    projection_published: false,
   });
 });
 

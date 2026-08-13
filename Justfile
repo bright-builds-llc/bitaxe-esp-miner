@@ -75,6 +75,14 @@ validate-ina260-evidence projection:
     projection_path="$(/bin/realpath "$projection")"
     bazel run //crates/bitaxe-automation-contracts:validate_ina260_evidence -- "$projection_path"
 
+validate-emc2101-thermal-evidence projection:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    projection={{ quote(projection) }}
+    test -f "$projection"
+    projection_path="$(/bin/realpath "$projection")"
+    bazel run //crates/bitaxe-automation-contracts:validate_emc2101_thermal_evidence -- "$projection_path"
+
 verify-production-session:
     bazel run //tools/automation:verify_production_session
 
@@ -102,6 +110,9 @@ capture-runtime-health-evidence *args:
 
 capture-system-info-evidence *args:
     bazel run //tools/automation:capture_system_info_evidence -- {{ args }}
+
+capture-emc2101-thermal-evidence *args:
+    bazel run //tools/automation:capture_emc2101_thermal_evidence -- {{ args }}
 
 capture-ultra205-defaults-evidence *args:
     bazel run //tools/automation:capture_ultra205_defaults_evidence -- {{ args }}

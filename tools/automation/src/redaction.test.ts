@@ -209,3 +209,25 @@ test("INA260 evidence is included in the operational-field scan", async () => {
     await rm(root, { recursive: true });
   }
 });
+
+test("EMC2101 thermal evidence is included in the operational-field scan", async () => {
+  // Arrange
+  const root = await mkdtemp(path.join(tmpdir(), "bitaxe-redaction-emc2101-"));
+  const evidence = path.join(root, "evidence.json");
+  await writeFile(evidence, JSON.stringify({
+    schema_version: "bitaxe-emc2101-thermal-evidence-v1",
+    thermal: { i2c_address: 76, same_temperature: true },
+  }));
+
+  try {
+    // Act / Assert
+    assert.equal((await verifySemanticEvidenceRedaction(root)).checked, 1);
+    await writeFile(evidence, JSON.stringify({
+      schema_version: "bitaxe-emc2101-thermal-evidence-v1",
+      device_url: "redacted",
+    }));
+    await assert.rejects(verifySemanticEvidenceRedaction(root));
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});

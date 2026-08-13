@@ -48,3 +48,54 @@
 - Outcome: The plan/task checkpoint is ready for its required commit and push.
 - Blocker or next safe action: Commit and push this checkpoint without amend,
   then implement the typed thermal fix and evidence path.
+
+## 2026-08-13T01:02:00Z | Software implementation checkpoint
+
+- Source commit: `76020f491e51acb4ef35e26f2f0d8c62154a5e65`
+- Actions: Added the pure range-checked Ultra 205 EMC2101 `+5 C` reducer and
+  routed only the board-205 internal-register acquisition through it. Added
+  the closed v1 thermal evidence contract, independent Rust validator,
+  generated TypeScript binding, exact-path capture command, human command
+  surface, typed failure mapping, semantic redaction admission, protected
+  system-info composition, source/reference/plan/task/package binding, and
+  atomic candidate publication.
+- Verification: Focused Bazel Rust safety and contract tests pass. The complete
+  automation suite passes 291 tests, including finite/fresh/below-throttle
+  HTTP/WebSocket correlation, evidence withholding, timeout and launch
+  categories, protected modes, sensitive-output absence, and a real child
+  process owning the flash artifact, Git identity, and both validator file
+  boundaries. The generated-contract build passes.
+- Evidence: Software tests use synthetic identities and values. No connected
+  device, credential, hardware effect, raw thermal value, acquisition stamp,
+  boot session, origin, hostname, port, USB/network identifier, or private
+  trace was observed or published during this checkpoint.
+- Outcome: The root semantic gap and host evidence path are implemented. The
+  complete mandatory gates, exact clean firmware package, implementation
+  commit/push, and sole hardware attempt remain pending.
+- Blocker or next safe action: Run the mandatory verification sequence in its
+  immutable order, resolve any finding, review the full diff, then commit and
+  push before package admission and detector use.
+
+## 2026-08-13T01:28:00Z | Implementation verification
+
+- Source commit: `76020f491e51acb4ef35e26f2f0d8c62154a5e65`
+- Actions: Performed the explicit simplification pass after Bright Builds
+  identified three line-ceiling violations. Moved the pure EMC2101 codec and
+  offset policy into its own focused module and kept the generated contract
+  additions line-neutral without weakening the contract. Reviewed the final
+  source, firmware route, contract, orchestration, task, and build wiring diff.
+- Verification: Restarted the mandatory sequence after the refactor. Cargo
+  format, strict Clippy, all-target build, and all-feature tests passed;
+  Bright Builds reported zero findings; all 41 Bazel test targets passed;
+  parity reported no validation errors; progress remained 64/94 (68.1%);
+  redaction checked 17 committed public artifacts; and pinned-reference
+  cleanliness passed. The immutable plan digest, unique task, generated-
+  contract byte equality, absent projection/candidate, and diff checks passed.
+- Evidence: Software verification only. No hardware, credentials, serial,
+  network, or private runtime evidence was used.
+- Outcome: The complete software implementation is ready for its required
+  clean commit and push. Firmware packaging must occur from that exact pushed
+  commit before detector admission.
+- Blocker or next safe action: Commit and push the implementation, build and
+  admit the exact clean package, then execute the immutable two-command sole
+  hardware sequence.

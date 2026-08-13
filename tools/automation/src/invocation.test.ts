@@ -64,6 +64,27 @@ test("INA260 projection requires its complete software-only source surface", () 
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
 
+test("EMC2101 capture accepts only the closed detector handoff surface", () => {
+  // Arrange
+  const complete = [
+    "capture-emc2101-thermal-evidence",
+    "--private-root", "scratch/thr001-emc2101/attempt-001",
+    "--package-manifest", "bazel-bin/package.json",
+    "--wifi-credentials", "wifi-credentials.json",
+    "--detector-output", "scratch/thr001-emc2101/wrapper-001/detector.stdout",
+    "--projection", "docs/evidence/thermal.json",
+    "--capture-timeout-seconds", "360",
+  ];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "capture-emc2101-thermal-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});
+
 test("version evidence requires exactly one detector handoff", () => {
   // Arrange
   const common = [

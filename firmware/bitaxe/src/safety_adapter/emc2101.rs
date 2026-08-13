@@ -5,7 +5,8 @@
 #[cfg(test)]
 use bitaxe_safety::sensor_acquisition::decode_emc2101_external_temperature;
 use bitaxe_safety::sensor_acquisition::{
-    decode_emc2101_internal_temperature, decode_emc2101_tachometer, AcquisitionOutcome,
+    apply_ultra205_emc2101_temperature_offset, decode_emc2101_internal_temperature,
+    decode_emc2101_tachometer, AcquisitionOutcome,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -128,7 +129,17 @@ pub(crate) fn read_internal_temperature_acquisition(
 pub(crate) fn read_ultra205_asic_temperature_acquisition(
     bus: &mut impl Emc2101RegisterReader,
 ) -> AcquisitionOutcome<f64> {
-    read_internal_temperature_acquisition(bus)
+    match read_internal_temperature_acquisition(bus) {
+        AcquisitionOutcome::Success(temperature) => {
+            match apply_ultra205_emc2101_temperature_offset(temperature) {
+                Ok(adjusted) => AcquisitionOutcome::Success(adjusted),
+                Err(_) => AcquisitionOutcome::InvalidSample,
+            }
+        }
+        AcquisitionOutcome::Unavailable(reason) => AcquisitionOutcome::Unavailable(reason),
+        AcquisitionOutcome::ReadFailed => AcquisitionOutcome::ReadFailed,
+        AcquisitionOutcome::InvalidSample => AcquisitionOutcome::InvalidSample,
+    }
 }
 
 pub(crate) fn read_tachometer_acquisition(
@@ -212,7 +223,7 @@ mod tests {
         let outcome = read_ultra205_asic_temperature_acquisition(&mut reader);
 
         // Assert
-        assert_eq!(outcome, AcquisitionOutcome::Success(45.0));
+        assert_eq!(outcome, AcquisitionOutcome::Success(50.0));
         assert!(reader.reads.is_empty());
         assert_eq!(Emc2101ReadRegister::InternalTemperature.address(), 0x00);
     }

@@ -5,6 +5,7 @@ import { AsicInitializationEvidenceError } from "./asic-initialization-evidence.
 import { AsicPowerInitializationEvidenceError } from "./asic-power-initialization-evidence.js";
 import { CoreVoltageControlEvidenceError } from "./core-voltage-control-evidence.js";
 import { Ina260EvidenceError } from "./ina260-evidence.js";
+import { Emc2101ThermalEvidenceError } from "./emc2101-thermal-evidence.js";
 import { AsicResetEvidenceError } from "./asic-reset-evidence.js";
 import { AsicResultParsingEvidenceError } from "./asic-result-parsing-evidence.js";
 import { AsicSerialTransportEvidenceError } from "./asic-serial-transport-evidence.js";
@@ -38,6 +39,7 @@ function maybeTypedFailure(error: unknown): TypedFailure | undefined {
     || error instanceof AsicPowerInitializationEvidenceError
     || error instanceof CoreVoltageControlEvidenceError
     || error instanceof Ina260EvidenceError
+    || error instanceof Emc2101ThermalEvidenceError
     || error instanceof AsicResetEvidenceError
     || error instanceof AsicFrequencyTransitionEvidenceError
     || error instanceof StratumSocketEvidenceError
