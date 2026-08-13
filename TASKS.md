@@ -2242,6 +2242,64 @@ boundary because its immutable plan prohibited the fault stimulus required by
 the authoritative verifier. The next safe action is a distinct plan for
 bounded thermal hardware-regression evidence, not a retry of attempt-003.
 
+### task-parity-ui004-live-browser-attempt-001 | 2026-08-13 | Verify exact-package AxeOS browser workflows
+
+- [ ] Add a typed private-first evidence join and independent validator for the
+      exact current package, embedded static assets, one live real-browser
+      session, and existing theme/settings/log/update projections.
+- [ ] Prove all seven production routes, desktop/mobile responsive behavior,
+      mobile navigation, same-origin API/log traffic, blank write-only secrets,
+      disabled no-file firmware action, OTAWWW-unavailable behavior, clean
+      console/network state, safe device state, cleanup, and redaction.
+- [ ] Pass focused, real-firmware/package, mandatory, privacy, reference,
+      generated-contract, immutable-plan, task-uniqueness, and diff gates.
+- [ ] Commit and push the implementation, then spend exactly one detector and
+      at most one conditional exact-package hardware/browser attempt-001.
+- [ ] Promote only UI-004 when the independently validated closed projection
+      satisfies every plan criterion; otherwise withhold evidence and stop.
+
+Plan: `docs/parity/work-plans/20260813T045300Z-UI-004/PLAN.md`.
+
+Hardware contract: The only effectful repo-owned command is the exact
+`capture-operator-snapshot-evidence` invocation frozen in the immutable plan,
+after one successful `just detect-ultra205`. It may flash the current board-205
+package with owner-supplied Wi-Fi credentials and `mineonboot=false`, capture
+receive-only USB and same-origin state, perform one normal software restart,
+and use one exact-package recovery flash only if final package/safe-state
+restoration cannot otherwise be confirmed. The subsequent isolated browser
+session is read-only and may only navigate, resize, open/close mobile
+navigation, and observe normal API/log traffic.
+
+Evidence and privacy: Protected artifacts belong only beneath mode-`0700`,
+gitignored `scratch/ui004-live-workflows` and
+`output/playwright/ui004-attempt-001` roots with mode-`0600` files. The sole
+public output is
+`docs/parity/evidence/ui004-live-workflows/ui-workflow-projection.json` and may
+contain only closed facts and digests. Origins, hostnames, addresses, ports,
+USB/network/process identities, credentials, page values, HTTP/WebSocket
+bodies, commands, traces, screenshots, and private paths must not enter Git or
+terminal output.
+
+Retry, recovery, and stop limits: Starting the capture consumes attempt-001;
+do not retry it. Preserve the earliest typed failure through cleanup and
+optional exact-package recovery. Accepted terminal categories are
+`package_invalid`, `process_failed`, `timeout`, `hardware_blocked`,
+`browser_blocked`, `evidence_invalid`, and `recovery_failed`. Any non-success,
+unexpected device/browser mutation, unclean resource, mode failure, sensitive
+output, or failed gate withholds evidence and leaves UI-004 implemented.
+
+Prohibited effects: settings or theme submission, pause/resume/restart/identify
+from the browser, block dismissal, firmware upload, OTA/OTAWWW, recovery-page
+upload, mining, ASIC work, pool access, voltage/frequency/fan/thermal/power
+control, camera or panel claim, physical button, direct UART, pins, pads,
+headers, GPIO, probes, arbitrary writes, erase-flash, or other boards.
+
+Verification: Pending immutable plan commit and implementation. UI-004 remains
+`implemented`; the user's report of more visible panel information is helpful
+context but is not promoted as typed UI-001/UI-002 evidence.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
