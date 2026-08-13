@@ -83,3 +83,22 @@
   `float` precision, including the whole-percent rounding boundary.
 - Blocker or next safe action: Commit and push the precision correction, then
   compose the row result against the final implementation commit.
+
+## 2026-08-13T03:59:42Z | Evidence-source checkpoint
+
+- Implementation commit: `91158f51831e87bcd0fbab2a29b9f2219904b1da`.
+- Actions: Composed `RESULT.md` from the exact pure/golden/workflow proof and
+  the unchanged accepted PWR-002 actuator-chain boundary. Preserved every live
+  automatic-response and fault-stimulus non-claim.
+- Verification: Repeated the mandatory Cargo sequence, Bright Builds checks,
+  all 42 Bazel test targets, parity report/progress, focused targets, normal
+  and rollback-probe firmware builds, PWR-002 validation/digest/mode/lineage,
+  redaction, reference cleanliness, immutable-plan, unique-task, and diff
+  checks. All passed; parity still reports no validation errors at 65 verified
+  rows before transition.
+- Evidence: `RESULT.md` SHA-256 is
+  `6536cae83b6b5397caa3dc5bb96324719fb582adeeb8c8fca5bb303d36584f5d`.
+- Outcome: The complete source for a typed THR-003 transition is closed.
+- Blocker or next safe action: Commit and push the result checkpoint, retain
+  that exact commit as the evidence source, and mutate only THR-003 through the
+  typed transition command.

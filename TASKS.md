@@ -2279,7 +2279,7 @@ bounded thermal hardware-regression evidence, not a retry of attempt-003.
       production state-retention/ownership regressions.
 - [x] Independently revalidate the accepted PWR-002 fan-actuation projection
       without a new evidence schema or hardware run.
-- [ ] Run every focused and mandatory gate, write THR-003 RESULT.md, and commit
+- [x] Run every focused and mandatory gate, write THR-003 RESULT.md, and commit
       and push the complete evidence source before checklist mutation.
 - [ ] Promote only THR-003 on the closed quorum, synchronize progress, archive
       this task, and preserve every live closed-loop non-claim.
