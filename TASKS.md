@@ -2451,6 +2451,8 @@ secondary failure; evidence was withheld and API-009 remains `implemented`.
 
 Software-only stale-safety continuation:
 
+Plan: `docs/parity/work-plans/20260813T160905Z-API-009/PLAN.md`.
+
 - [ ] Explain why the command-effects pause join observed stale safety while
       the campaign result still reported fresh safety and a clean active marker
       stream.
