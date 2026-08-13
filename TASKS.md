@@ -2167,6 +2167,28 @@ observation. The hardware-attempt policy therefore selects
 stays active, and attempt-008 is prohibited. The linked CLOSURE.md records the
 terminal blocker, next safe software-only diagnostic condition, and non-claims.
 
+Safe-stop correlation continuation plan:
+`docs/parity/work-plans/20260813T061635Z-API-009/PLAN.md`.
+
+- [ ] Add a closed firmware-owned resumable-pause safe-stop state that becomes
+      confirmed only after logical pause, stopped hardware, and the same armed
+      lease coincide.
+- [ ] Require the command-effects host observer to join API-visible logical
+      pause with that same-session serial confirmation before its one resume.
+- [ ] Prove ordering, either-arrival order, bounded missing joins, request-once
+      behavior, reprepare clearing, malformed input, and sensitive-output
+      handling at production-shaped boundaries.
+- [ ] Run and push every focused and mandatory gate, keep API-009 implemented,
+      and close without hardware or checklist transition.
+
+Continuation authorization: software, deterministic fixtures, local child
+processes, builds, and repository verification only. Protected attempts,
+credentials, detector, package effects, device/USB/network/HTTP sessions,
+flash, reset, mining, ASIC initialization or traffic, hardware controls,
+command effects, OTA, recovery, direct UART, pins, and attempt-008 remain
+prohibited. This continuation supplies no hardware eligibility and cannot
+promote API-009.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
