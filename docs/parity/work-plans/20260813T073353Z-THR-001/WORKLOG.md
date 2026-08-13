@@ -69,3 +69,27 @@
 - Blocker or next safe action: Commit and push the implementation, rebuild the
   exact clean package, admit one Ultra 205 with the detector, and consume the
   single attempt-004 capture. Never start attempt-005.
+
+## 2026-08-13T08:42:36Z | attempt-004 terminal checkpoint
+
+- Source commit: `8a1ddbd6` (exact full identity retained in the package and
+  protected evidence).
+- Actions: Built the exact clean pushed package, created fresh protected
+  wrapper files, admitted exactly one Ultra 205, and consumed the single
+  attempt-004 capture. The transaction ran its ordinary exact-package
+  restoration. No retry, attempt-005, physical heat, control change, mining,
+  raw bus/pin action, erase, OTA, rollback, or power cycle occurred.
+- Verification: The protected stimulus log contains one `fault_observed`
+  marker followed by the closed abort reason `fault_projection_missing`; the
+  complete marker quorum is absent. The public candidate and projection are
+  absent. The independent restore projection validates stable boot, fresh safe
+  HTTP/WebSocket thermal truth, disabled mining and hardware control, cleanup,
+  protected modes, and redaction.
+- Outcome: Attempt-004 is consumed with internal primary category
+  `evidence_invalid`; THR-001 remains `implemented`. The shared CLI adapter
+  rendered `process_failed` because it omitted the new typed error class. That
+  software-only mapping defect is fixed with a regression after the attempt.
+- Blocker or next safe action: Close this immutable attempt without promotion.
+  A future continuation must reproduce and correct the production owner/reducer
+  fault-projection loss before defining a new bounded ordinal. Never retry
+  attempt-004.

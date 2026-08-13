@@ -7,6 +7,7 @@ import { AsicPowerInitializationEvidenceError } from "./asic-power-initializatio
 import { CoreVoltageControlEvidenceError } from "./core-voltage-control-evidence.js";
 import { Ina260EvidenceError } from "./ina260-evidence.js";
 import { Emc2101ThermalEvidenceError } from "./emc2101-thermal-evidence.js";
+import { Emc2101ThermalFaultEvidenceError } from "./emc2101-thermal-fault-evidence.js";
 import { AsicWorkSendEvidenceError } from "./asic-work-send-evidence.js";
 import { AsicResultParsingEvidenceError } from "./asic-result-parsing-evidence.js";
 import { AsicSerialTransportEvidenceError } from "./asic-serial-transport-evidence.js";
@@ -15,7 +16,7 @@ import { StratumSocketEvidenceError } from "./stratum-socket-evidence.js";
 import { ProtocolCoordinatorEvidenceError } from "./protocol-coordinator-evidence.js";
 import { MiningCriteriaEvidenceError } from "./mining-criteria-evidence.js";
 import { NetworkScanEvidenceError } from "./network-scan-evidence.js";
-import { maybeTypedFailurePublicValue } from "./typed-failure.js";
+import { maybeTypedFailureCategory, maybeTypedFailurePublicValue } from "./typed-failure.js";
 
 test("theme durability failures retain their closed public projection", () => {
   // Arrange
@@ -134,6 +135,21 @@ test("EMC2101 thermal failures retain only closed capture facts", () => {
     stage: "emc2101_thermal_capture",
     projection_published: false,
   });
+});
+
+test("EMC2101 thermal fault failures retain category and recovery facts", () => {
+  // Arrange
+  const error = new Emc2101ThermalFaultEvidenceError("evidence_invalid", "safe failure", {
+    stage: "emc2101_thermal_fault_capture",
+    projection_published: false,
+    recovery_complete: true,
+    recovery_flash_used: true,
+    secondary_recovery_failure: false,
+  });
+
+  // Act / Assert
+  assert.equal(maybeTypedFailureCategory(error), "evidence_invalid");
+  assert.deepEqual(maybeTypedFailurePublicValue(error), error.publicValue);
 });
 
 test("ASIC work-send failures retain only closed projection facts", () => {

@@ -2343,8 +2343,8 @@ Injected-fault hardware-regression plan:
 - [x] Pass all focused, real-firmware/package, mandatory, privacy, reference,
       generated-contract, process-boundary, task/plan, and diff gates; commit
       and push before effects.
-- [ ] Run exactly one detector-gated attempt-004; promote only THR-001 on the
-      complete hardware-regression quorum, otherwise stop without attempt-005.
+- [x] Run exactly one detector-gated attempt-004; its hardware-regression quorum
+      failed, promotion was withheld, and execution stopped without attempt-005.
 
 Attempt-004 authorization: standing task authorization covers the single
 fresh hardware regression only after the linked immutable plan and complete
@@ -2359,6 +2359,24 @@ No physical heating, fan/voltage/frequency/power change, mining, pool input,
 ASIC work, raw I2C/GPIO, public diagnostic setter, erase, OTA, rollback, power
 cycle, direct UART, pin/pad/header manipulation, injected electrical signal,
 attempt-005, or claim of physical overheat/open/short fault is authorized.
+
+Attempt-004 closure: The detector admitted one Ultra 205 and the exact clean
+package from implementation commit `8a1ddbd6`. The protected stimulus boot
+reached `fault_observed` and then aborted with the closed reason
+`fault_projection_missing`; the complete marker and recovery quorum did not
+pass, so no candidate or public thermal-fault projection was published.
+Ordinary exact-package restoration independently passed stable boot, fresh
+safe HTTP/WebSocket thermal truth, disabled mining and hardware control,
+cleanup, private modes, and redaction. The public failure adapter rendered the
+internal `evidence_invalid` primary as `process_failed`; the missing typed-error
+registration is fixed after the attempt with a regression, without changing
+the consumed result.
+
+Completion review: THR-001 remains `implemented`. Attempt-004 is exhausted and
+must never be retried; attempt-005 is not authorized by this plan. See
+`docs/parity/work-plans/20260813T073353Z-THR-001/CLOSURE.md`. A future
+continuation must reproduce the production owner/reducer projection loss in a
+software regression before defining any new bounded hardware ordinal.
 
 ### task-parity-ui004-live-browser-attempt-001 | 2026-08-13 | Verify exact-package AxeOS browser workflows
 
