@@ -2203,11 +2203,19 @@ terminal blocker, next safe software-only diagnostic condition, and non-claims.
       generated-contract, plan/task, and diff gates from the immutable plan.
 - [x] Run exactly one detector-gated read-only `attempt-001` and promote only
       THR-001 if its complete live thermal quorum passes.
-- [ ] Under a fresh THR-001 plan, replace the stale source-fragment admission
-      with the checked-in production semantic boundary, add a real-source
-      regression, and authorize at most one newly bounded attempt ordinal.
+- [ ] Replace the stale source-fragment admission with the checked-in
+      production semantic boundary and add a regression that reads the actual
+      source admitted by the evidence command.
+- [ ] Advance the closed evidence contract, validator, protected paths, and
+      generated binding to attempt ordinal 2 without weakening any runtime,
+      privacy, or evidence-withholding invariant.
+- [ ] Commit and push the fix, admit an exact clean package, and run at most one
+      detector-gated read-only `attempt-002`; promote only on the full quorum.
 
-Plan: `docs/parity/work-plans/20260813T001637Z-THR-001/PLAN.md`.
+Plan: `docs/parity/work-plans/20260813T011207Z-THR-001/PLAN.md`.
+
+Prior closed plan:
+`docs/parity/work-plans/20260813T001637Z-THR-001/CLOSURE.md`.
 
 Dependencies and authorization: Standing task authorization covers only the
 plan's exact two-command detector/capture sequence after its immutable plan and
@@ -2221,9 +2229,9 @@ voltage, frequency, fan, power, raw I2C/GPIO, OTA, erase, fault injection,
 physical manipulation, direct UART, pins, pads, headers, probes, jumpers,
 soldering, and injected signals are prohibited.
 
-Evidence and privacy: `scratch/thr001-emc2101/wrapper-001` is an ignored
+Evidence and privacy: `scratch/thr001-emc2101/wrapper-002` is an ignored
 mode-0700 caller-owned root with distinct mode-0600 detector/capture streams;
-`scratch/thr001-emc2101/attempt-001` is a fresh absent supervisor-owned child.
+`scratch/thr001-emc2101/attempt-002` is a fresh absent supervisor-owned child.
 The only public destination is
 `docs/parity/evidence/thr001-emc2101-thermal/thermal-projection.json` after
 independent validation. NeverPersistRaw values remain memory-only. Raw
@@ -2233,7 +2241,7 @@ PIDs, private paths, and traces remain protected and never enter terminal or
 Git output. Public evidence is limited to schemas, commits, opaque digests,
 fixed public reference constants, counts, categories, and booleans.
 
-Retry and promotion: Attempt-001 is consumed when the capture command starts;
+Retry and promotion: Attempt-002 is consumed when the capture command starts;
 no unchanged retry exists. Preserve the earliest typed failure and report
 recovery separately. Accepted outcomes are `complete`,
 `stop_hardware_blocker`, `stop_authority_boundary`, or
@@ -2252,11 +2260,9 @@ candidate were withheld. Protected boolean-only diagnosis proves every live
 thermal and identity member passed, while the host semantic-source check alone
 expected an intermediate statement removed by the final simplification.
 
-Completion review: The immutable attempt-001 plan is closed as
-`stop_impossible_contract` without verification or a checklist transition.
-THR-001 remains `implemented`. The unresolved task stays active for a fresh
-plan, a checked-in-source regression, and at most one newly bounded attempt;
-attempt-001 must never be retried or reused.
+Completion review: Attempt-001 is closed as `stop_impossible_contract` without
+verification or a checklist transition. THR-001 remains `implemented`. The
+fresh attempt-002 plan is active; attempt-001 must never be retried or reused.
 
 ## Future
 
