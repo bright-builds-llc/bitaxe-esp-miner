@@ -331,6 +331,16 @@ fn a_full_owner_queue_cannot_discard_the_fresh_observation_wakeup() {
 }
 
 #[test]
+fn production_safe_stop_binds_the_typed_pause_purpose_without_sensor_waiting() {
+    // Arrange / Act / Assert
+    assert!(PRODUCTION_SESSION_SOURCE.contains(
+        "ProductionSessionEffect::SafeStopHardware { lease_id, purpose }"
+    ));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("self.mining_actuation.safe_stop(purpose)"));
+    assert!(MINING_ACTUATION_ADAPTER_SOURCE.contains("execute_safe_stop(self, purpose)"));
+}
+
+#[test]
 fn unsupported_ultra205_vr_truth_is_projected_but_not_required_for_mining() {
     // Arrange / Act / Assert
     assert!(OPERATOR_SENSOR_RUNTIME_SOURCE.contains(

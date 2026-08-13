@@ -33,3 +33,30 @@
   `4e54992c4466ddf01ef079066d97f4183da7e59d27e502908afbeca044419096`.
 - Outcome: The software implementation may begin after this checkpoint is
   committed and pushed. No hardware effect or retry is authorized here.
+
+## 2026-08-13T11:08:00Z | implementation and closure checkpoint
+
+- Actions: Added the closed resumable-versus-terminal hardware-stop purpose,
+  split the pure prompt-pause and terminal actuation plans, bound the firmware
+  adapter to the typed selector, and added a production-session-to-actuation-
+  to-same-lease-confirmation regression plus focused ownership tests.
+- Verification: The prompt plan is exactly six immediate fail-closed steps,
+  retains 100-percent fan duty, and excludes the 120-second cooling wait and
+  30-percent fan settlement. Terminal and preparation-rollback behavior retain
+  the original eight-step plan. Earliest failures remain primary and all steps
+  in the selected plan are attempted.
+- Gates: Focused Stratum, actuation, campaign-status, sensor-ownership, and
+  flash pause-join tests passed. Cargo format, clippy with warnings denied,
+  all-target build, all-feature tests, Bright Builds checks, `just test`,
+  parity validation/progress, redaction, reference verification, and canonical
+  `just build` firmware compilation passed. The immutable plan's `just
+  firmware` spelling does not exist; the repo-defined `just build` equivalent
+  passed. One initial full Bazel run timed out in an unrelated real-process
+  automation case during machine-wide I/O delay; the isolated suite passed in
+  180.9 seconds with a 900-second diagnostic bound and unchanged `just test`
+  then passed all 42 targets.
+- Outcome: The attempt-009 software blocker is fixed. API-009 remains
+  `implemented`; no checklist field changed, no hardware was contacted, and no
+  public parity evidence was emitted.
+- Next safe action: Close this software-only plan. A later selector run may
+  create a fresh immutable attempt-010 hardware contract using this fix.

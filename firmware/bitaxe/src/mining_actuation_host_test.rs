@@ -3,9 +3,16 @@
 #[path = "mining_actuation.rs"]
 mod mining_actuation;
 
-use bitaxe_stratum::v1::production_session::MiningHardwareProfile;
+use bitaxe_stratum::v1::production_session::{
+    HardwareSafeStopPurpose, MiningCampaignDuration, MiningCampaignLease, MiningCampaignLeaseId,
+    MiningCampaignState, MiningCampaignStopCondition, MiningHardwareProfile, MiningHardwareState,
+    ProductionMiningSession, ProductionReadiness, ProductionSessionEffect, ProductionSessionEvent,
+    ProductionSessionWakeup,
+};
+use bitaxe_stratum::v1::state::MiningOperatorIntent;
 use mining_actuation::{
-    execute_preparation, execute_safe_shutdown, preparation_plan, safe_shutdown_plan,
+    execute_preparation, execute_resumable_pause_shutdown, execute_safe_shutdown,
+    execute_safe_stop, preparation_plan, resumable_pause_shutdown_plan, safe_shutdown_plan,
     MiningActuationBackend, PreparationStep, SafeShutdownStep,
 };
 
@@ -115,6 +122,27 @@ fn safe_shutdown_plan_has_the_golden_fail_closed_order() {
 
     // Assert
     assert_eq!(plan, expected);
+}
+
+#[test]
+fn resumable_pause_plan_stops_hardware_promptly_and_retains_full_fan_duty() {
+    // Arrange
+    let expected = [
+        SafeShutdownStep::StopDispatch,
+        SafeShutdownStep::ReduceFrequencyAndResetNonce,
+        SafeShutdownStep::HoldResetLow,
+        SafeShutdownStep::DisableCoreVoltage,
+        SafeShutdownStep::DisableAsic,
+        SafeShutdownStep::SetFanDutyTo100Percent,
+    ];
+
+    // Act
+    let plan = resumable_pause_shutdown_plan();
+
+    // Assert
+    assert_eq!(plan, expected);
+    assert!(!plan.contains(&SafeShutdownStep::WaitForFreshTemperatureAtOrBelow45C));
+    assert!(!plan.contains(&SafeShutdownStep::SetFanDutyTo30Percent));
 }
 
 #[test]
@@ -248,6 +276,141 @@ fn safe_shutdown_preserves_the_earliest_failure_while_attempting_the_full_plan()
             .map(RecordedStep::SafeShutdown)
             .to_vec()
     );
+}
+
+#[test]
+fn resumable_pause_preserves_the_earliest_failure_while_attempting_its_full_plan() {
+    // Arrange
+    let first_failure = SafeShutdownStep::HoldResetLow;
+    let later_failure = SafeShutdownStep::DisableAsic;
+    let mut backend = RecordingBackend {
+        safe_shutdown_failures: vec![first_failure, later_failure],
+        ..RecordingBackend::default()
+    };
+
+    // Act
+    let failure = execute_resumable_pause_shutdown(&mut backend)
+        .expect_err("the earliest resumable-pause failure should be retained");
+
+    // Assert
+    assert_eq!(failure.step(), first_failure);
+    assert_eq!(
+        backend.recorded,
+        resumable_pause_shutdown_plan()
+            .map(RecordedStep::SafeShutdown)
+            .to_vec()
+    );
+}
+
+#[test]
+fn typed_stop_purpose_selects_prompt_pause_and_complete_terminal_plans() {
+    // Arrange
+    let mut pause_backend = RecordingBackend::default();
+    let mut terminal_backend = RecordingBackend::default();
+
+    // Act
+    execute_safe_stop(
+        &mut pause_backend,
+        HardwareSafeStopPurpose::ResumablePause,
+    )
+    .expect("resumable pause should succeed");
+    execute_safe_stop(&mut terminal_backend, HardwareSafeStopPurpose::Terminal)
+        .expect("terminal stop should succeed");
+
+    // Assert
+    assert_eq!(
+        pause_backend.recorded,
+        resumable_pause_shutdown_plan()
+            .map(RecordedStep::SafeShutdown)
+            .to_vec()
+    );
+    assert_eq!(
+        terminal_backend.recorded,
+        safe_shutdown_plan()
+            .map(RecordedStep::SafeShutdown)
+            .to_vec()
+    );
+}
+
+#[test]
+fn production_resumable_pause_reaches_same_lease_confirmation_without_cooling_wait() {
+    // Arrange
+    let lease = MiningCampaignLease::new(
+        MiningCampaignLeaseId::new(9).expect("lease id should be valid"),
+        profile(),
+        MiningCampaignStopCondition::ResumableWallClockDuration {
+            duration: MiningCampaignDuration::new(1_000).expect("duration should be valid"),
+        },
+    );
+    let running = ProductionReadiness {
+        operator_intent: MiningOperatorIntent::Run,
+        network_ready: true,
+        stratum_v1_supported: true,
+        safety_prerequisites_fresh: true,
+        maybe_campaign_lease: Some(lease),
+        actuation_qualified: true,
+    };
+    let mut session = ProductionMiningSession::new();
+    let preparing = session
+        .handle(ProductionSessionEvent::Wake {
+            wakeup: None,
+            readiness: running,
+            now_ms: 0,
+        })
+        .expect("initial wake should be accepted");
+    assert!(preparing.iter().any(|effect| matches!(
+        effect,
+        ProductionSessionEffect::PrepareHardware { lease_id, .. } if *lease_id == lease.id()
+    )));
+    session
+        .handle(ProductionSessionEvent::HardwarePrepared {
+            lease_id: lease.id(),
+            now_ms: 1,
+        })
+        .expect("hardware preparation should be accepted");
+    let paused = ProductionReadiness {
+        operator_intent: MiningOperatorIntent::Paused,
+        ..running
+    };
+
+    // Act
+    let effects = session
+        .handle(ProductionSessionEvent::Wake {
+            wakeup: Some(ProductionSessionWakeup::OperatorIntentChanged),
+            readiness: paused,
+            now_ms: 2,
+        })
+        .expect("operator pause should be accepted");
+    let purpose = effects
+        .iter()
+        .find_map(|effect| match effect {
+            ProductionSessionEffect::SafeStopHardware { lease_id, purpose }
+                if *lease_id == lease.id() =>
+            {
+                Some(*purpose)
+            }
+            _ => None,
+        })
+        .expect("pause must select a same-lease hardware stop");
+    let mut backend = RecordingBackend::default();
+    execute_safe_stop(&mut backend, purpose).expect("prompt pause plan should succeed");
+    session
+        .handle(ProductionSessionEvent::HardwareSafeStopConfirmed {
+            lease_id: lease.id(),
+            now_ms: 3,
+        })
+        .expect("same-lease confirmation should be accepted");
+
+    // Assert
+    assert_eq!(purpose, HardwareSafeStopPurpose::ResumablePause);
+    assert_eq!(
+        backend.recorded,
+        resumable_pause_shutdown_plan()
+            .map(RecordedStep::SafeShutdown)
+            .to_vec()
+    );
+    assert_eq!(session.snapshot().hardware_state, MiningHardwareState::Stopped);
+    assert_eq!(session.snapshot().campaign_state, MiningCampaignState::Armed);
 }
 
 #[test]

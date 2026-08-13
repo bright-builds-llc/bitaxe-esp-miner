@@ -2304,14 +2304,14 @@ regression-backed fix before any future hardware contract.
 Resumable-pause shutdown separation plan:
 `docs/parity/work-plans/20260813T100428Z-API-009/PLAN.md`.
 
-- [ ] Add a closed resumable-versus-terminal hardware-stop purpose to the pure
+- [x] Add a closed resumable-versus-terminal hardware-stop purpose to the pure
       production session and its firmware adapter.
-- [ ] Keep the full terminal/fault/rollback cooling plan, but make operator
+- [x] Keep the full terminal/fault/rollback cooling plan, but make operator
       pause complete after the immediate safe effects with full fan duty.
-- [ ] Reproduce and guard the attempt-009 boundary across session selection,
+- [x] Reproduce and guard the attempt-009 boundary across session selection,
       actuation planning, sensor/wakeup ownership, campaign status, and the host
       pause join.
-- [ ] Pass every focused and mandatory software/privacy/reference gate, keep
+- [x] Pass every focused and mandatory software/privacy/reference gate, keep
       API-009 `implemented`, and close without hardware or checklist transition.
 
 Software-only authorization: this plan may change and test repository source,
@@ -2322,6 +2322,17 @@ network, USB, HTTP endpoint, ASIC, mining session, hardware controls, command
 effects, OTA, recovery, direct UART, pins/pads/GPIO, or attempt-010. A later
 hardware ordinal requires this exact fix and its production-boundary regression
 to pass, plus a fresh separately selected immutable hardware contract.
+
+Software-fix completion review: The production session now emits a typed
+`ResumablePause` or `Terminal` stop purpose. Resumable pause runs the six
+immediate fail-closed effects and retains full fan duty; terminal, fault, and
+preparation rollback retain the eight-step 45 C cooling proof and 30-percent
+settlement. A production-session-to-actuation-to-same-lease-confirmation test,
+focused session/actuation/ownership/campaign/host tests, the firmware build,
+and every mandatory software/privacy/reference gate pass. API-009 remains
+`implemented`; no hardware was contacted and no evidence was published. A
+fresh immutable hardware contract may consider attempt-010, but this completed
+software plan does not authorize it.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 

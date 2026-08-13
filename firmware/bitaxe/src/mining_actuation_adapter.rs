@@ -17,12 +17,13 @@ use bitaxe_asic::bm1366::{
 };
 use bitaxe_config::{AsicFrequencyMhz, CoreVoltageMv};
 use bitaxe_safety::observation::MonotonicMillis;
-use bitaxe_stratum::v1::production_session::{HardwarePreparationFailure, MiningHardwareProfile};
+use bitaxe_stratum::v1::production_session::{
+    HardwarePreparationFailure, HardwareSafeStopPurpose, MiningHardwareProfile,
+};
 
 use crate::mining_actuation::{
-    execute_preparation, execute_safe_shutdown, MiningActuationBackend,
-    PreparationExecutionFailure, PreparationStep, SafeShutdownFailure, SafeShutdownStep,
-    CORE_VOLTAGE_STABILIZATION_MS,
+    execute_preparation, execute_safe_stop, MiningActuationBackend, PreparationExecutionFailure,
+    PreparationStep, SafeShutdownFailure, SafeShutdownStep, CORE_VOLTAGE_STABILIZATION_MS,
 };
 use crate::safety_adapter::{
     FanDutyPercent, PendingSafetyActuation, SafetyActuationCommand, SafetyActuationPollOutcome,
@@ -127,8 +128,11 @@ impl Ultra205MiningActuationAdapter {
         execute_preparation(self, profile)
     }
 
-    pub fn safe_stop(&mut self) -> Result<(), SafeShutdownFailure<MiningActuationAdapterError>> {
-        execute_safe_shutdown(self)
+    pub fn safe_stop(
+        &mut self,
+        purpose: HardwareSafeStopPurpose,
+    ) -> Result<(), SafeShutdownFailure<MiningActuationAdapterError>> {
+        execute_safe_stop(self, purpose)
     }
 
     fn request_safety(command: SafetyActuationCommand) -> Result<(), MiningActuationAdapterError> {

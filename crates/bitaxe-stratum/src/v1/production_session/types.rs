@@ -298,6 +298,7 @@ pub enum ProductionSessionEffect {
     },
     SafeStopHardware {
         lease_id: MiningCampaignLeaseId,
+        purpose: HardwareSafeStopPurpose,
     },
     RecordScoreboard {
         candidate: ScoreboardCandidate,
@@ -373,9 +374,10 @@ impl fmt::Debug for ProductionSessionEffect {
                     .field("pool", pool)
                     .field("transport_epoch", transport_epoch)
                     .finish(),
-                Self::SafeStopHardware { lease_id } => formatter
+                Self::SafeStopHardware { lease_id, purpose } => formatter
                     .debug_struct("ProductionSessionEffect::SafeStopHardware")
                     .field("lease_id", lease_id)
+                    .field("purpose", purpose)
                     .finish(),
                 Self::RecordScoreboard { .. } => formatter
                     .debug_struct("ProductionSessionEffect::RecordScoreboard")
@@ -392,4 +394,13 @@ impl fmt::Debug for ProductionSessionEffect {
             },
         }
     }
+}
+
+/// Selects the bounded hardware plan for one production-session safe stop.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HardwareSafeStopPurpose {
+    /// Keeps the campaign lease resumable while promptly reaching stopped hardware.
+    ResumablePause,
+    /// Completes fault, shutdown, expiry, and other non-resumable cleanup.
+    Terminal,
 }

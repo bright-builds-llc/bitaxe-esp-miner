@@ -32,9 +32,9 @@ pub use campaign::{
 pub use job_transition::{JobTransitionEvidence, JobTransitionState};
 pub use runtime::ProductionMiningSession;
 pub use types::{
-    ProductionAsicFailure, ProductionPoolConfiguration, ProductionPoolEndpoint, ProductionPoolSet,
-    ProductionSessionEffect, ProductionSessionEvent, ProductionSessionSnapshot,
-    ProductionTransportEpoch, ProductionTransportFailure,
+    HardwareSafeStopPurpose, ProductionAsicFailure, ProductionPoolConfiguration,
+    ProductionPoolEndpoint, ProductionPoolSet, ProductionSessionEffect, ProductionSessionEvent,
+    ProductionSessionSnapshot, ProductionTransportEpoch, ProductionTransportFailure,
 };
 
 #[cfg(test)]

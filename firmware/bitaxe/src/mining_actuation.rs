@@ -5,7 +5,7 @@
 //! it has no ESP-IDF, GPIO, I2C, or UART dependencies.
 
 use bitaxe_config::{AsicFrequencyMhz, CoreVoltageMv};
-use bitaxe_stratum::v1::production_session::MiningHardwareProfile;
+use bitaxe_stratum::v1::production_session::{HardwareSafeStopPurpose, MiningHardwareProfile};
 
 /// Required stabilization interval after applying the core-voltage setpoint.
 pub const CORE_VOLTAGE_STABILIZATION_MS: u16 = 500;
@@ -199,6 +199,22 @@ pub const fn safe_shutdown_plan() -> [SafeShutdownStep; 8] {
     ]
 }
 
+/// Returns the prompt fail-closed plan for an operator-resumable pause.
+///
+/// Full fan duty is retained while paused. The terminal cooling proof and fan
+/// settlement remain exclusive to non-resumable cleanup.
+#[must_use]
+pub const fn resumable_pause_shutdown_plan() -> [SafeShutdownStep; 6] {
+    [
+        SafeShutdownStep::StopDispatch,
+        SafeShutdownStep::ReduceFrequencyAndResetNonce,
+        SafeShutdownStep::HoldResetLow,
+        SafeShutdownStep::DisableCoreVoltage,
+        SafeShutdownStep::DisableAsic,
+        SafeShutdownStep::SetFanDutyTo100Percent,
+    ]
+}
+
 /// Executes preparation and rolls every partial failure through safe shutdown.
 ///
 /// If rollback also fails, both failures are returned while the original
@@ -234,9 +250,43 @@ pub fn execute_safe_shutdown<B>(backend: &mut B) -> Result<(), SafeShutdownFailu
 where
     B: MiningActuationBackend,
 {
+    execute_safe_shutdown_steps(backend, safe_shutdown_plan())
+}
+
+/// Executes the prompt safe-shutdown plan for an operator-resumable pause.
+pub fn execute_resumable_pause_shutdown<B>(
+    backend: &mut B,
+) -> Result<(), SafeShutdownFailure<B::Error>>
+where
+    B: MiningActuationBackend,
+{
+    execute_safe_shutdown_steps(backend, resumable_pause_shutdown_plan())
+}
+
+/// Executes the closed plan selected by the production-session stop purpose.
+pub fn execute_safe_stop<B>(
+    backend: &mut B,
+    purpose: HardwareSafeStopPurpose,
+) -> Result<(), SafeShutdownFailure<B::Error>>
+where
+    B: MiningActuationBackend,
+{
+    match purpose {
+        HardwareSafeStopPurpose::ResumablePause => execute_resumable_pause_shutdown(backend),
+        HardwareSafeStopPurpose::Terminal => execute_safe_shutdown(backend),
+    }
+}
+
+fn execute_safe_shutdown_steps<B, const N: usize>(
+    backend: &mut B,
+    steps: [SafeShutdownStep; N],
+) -> Result<(), SafeShutdownFailure<B::Error>>
+where
+    B: MiningActuationBackend,
+{
     let mut maybe_earliest_failure = None;
 
-    for step in safe_shutdown_plan() {
+    for step in steps {
         let Err(source) = backend.execute_safe_shutdown_step(step) else {
             continue;
         };

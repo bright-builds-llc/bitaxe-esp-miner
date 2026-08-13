@@ -418,12 +418,12 @@ impl OrdinaryEspProductionSessionAdapter {
                     })
                 }
             },
-            ProductionSessionEffect::SafeStopHardware { lease_id } => {
+            ProductionSessionEffect::SafeStopHardware { lease_id, purpose } => {
                 FAN_CONTROLLER_ACTUATION_QUALIFIED.store(false, Ordering::Release);
                 if let Some(status) = self.maybe_campaign_status.as_mut() {
                     status.note_safe_stop_pending();
                 }
-                match self.mining_actuation.safe_stop() {
+                match self.mining_actuation.safe_stop(purpose) {
                     Ok(()) => {
                         Some(ProductionSessionEvent::HardwareSafeStopConfirmed { lease_id, now_ms })
                     }

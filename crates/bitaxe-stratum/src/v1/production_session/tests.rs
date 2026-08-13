@@ -88,7 +88,7 @@ impl DeterministicProductionSessionAdapter {
                     | ProductionSessionEffect::InvalidateWorkAndSubmissions
                     | ProductionSessionEffect::StopAsicInteraction
                     | ProductionSessionEffect::ClosePoolConnection { .. } => {}
-                    ProductionSessionEffect::SafeStopHardware { lease_id } => {
+                    ProductionSessionEffect::SafeStopHardware { lease_id, .. } => {
                         events.push_back(ProductionSessionEvent::HardwareSafeStopConfirmed {
                             lease_id: *lease_id,
                             now_ms: 0,

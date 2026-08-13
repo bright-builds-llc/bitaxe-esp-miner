@@ -343,10 +343,13 @@ fn current_generation_asic_failures_preserve_subtype_during_terminal_safe_stop()
             adapter.session.snapshot().maybe_blocker,
             Some(expected_blocker)
         );
-        assert!(adapter
-            .effects
-            .iter()
-            .any(|effect| matches!(effect, ProductionSessionEffect::SafeStopHardware { .. })));
+        assert!(adapter.effects.iter().any(|effect| matches!(
+            effect,
+            ProductionSessionEffect::SafeStopHardware {
+                purpose: HardwareSafeStopPurpose::Terminal,
+                ..
+            }
+        )));
     }
 }
 
@@ -481,6 +484,7 @@ fn resumable_lease_safe_stops_on_pause_and_reprepares_only_before_deadline() {
         now_ms: 100,
     });
     let paused_snapshot = adapter.session.snapshot();
+    let paused_effects = adapter.effects.clone();
     adapter.effects.clear();
     adapter.drive(ProductionSessionEvent::Wake {
         wakeup: Some(ProductionSessionWakeup::OperatorIntentChanged),
@@ -498,6 +502,13 @@ fn resumable_lease_safe_stops_on_pause_and_reprepares_only_before_deadline() {
         paused_snapshot.mining.mining_activity,
         MiningActivityStatus::Paused
     );
+    assert!(paused_effects.iter().any(|effect| matches!(
+        effect,
+        ProductionSessionEffect::SafeStopHardware {
+            lease_id,
+            purpose: HardwareSafeStopPurpose::ResumablePause,
+        } if *lease_id == lease.id()
+    )));
     assert!(resumed_effects.iter().any(|effect| matches!(
         effect,
         ProductionSessionEffect::PrepareHardware { lease_id, .. } if *lease_id == lease.id()

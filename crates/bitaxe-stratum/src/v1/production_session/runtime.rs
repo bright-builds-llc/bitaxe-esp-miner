@@ -17,8 +17,9 @@ use crate::v1::state::{MiningActivityStatus, PoolLifecycleStatus};
 use crate::StratumV1Error;
 
 use super::types::{
-    ProductionAsicFailure, ProductionPoolSet, ProductionSessionEffect, ProductionSessionEvent,
-    ProductionSessionSnapshot, ProductionTransportEpoch, ProductionTransportFailure,
+    HardwareSafeStopPurpose, ProductionAsicFailure, ProductionPoolSet, ProductionSessionEffect,
+    ProductionSessionEvent, ProductionSessionSnapshot, ProductionTransportEpoch,
+    ProductionTransportFailure,
 };
 
 pub(super) use transport::{
@@ -537,7 +538,12 @@ impl ProductionMiningSession {
         self.hardware_state = MiningHardwareState::SafeStopping;
         self.campaign_state = MiningCampaignState::SafeStopping;
         self.terminal_publication_pending = true;
-        effects.push(ProductionSessionEffect::SafeStopHardware { lease_id });
+        let purpose = if self.resumable_pause_pending {
+            HardwareSafeStopPurpose::ResumablePause
+        } else {
+            HardwareSafeStopPurpose::Terminal
+        };
+        effects.push(ProductionSessionEffect::SafeStopHardware { lease_id, purpose });
         Ok(())
     }
 
