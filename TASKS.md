@@ -2328,6 +2328,38 @@ boundary because its immutable plan prohibited the fault stimulus required by
 the authoritative verifier. The next safe action is a distinct plan for
 bounded thermal hardware-regression evidence, not a retry of attempt-003.
 
+Injected-fault hardware-regression plan:
+`docs/parity/work-plans/20260813T073353Z-THR-001/PLAN.md`.
+
+- [x] Confirm the authoritative gap can be exercised without physical heating,
+      fan/voltage/power changes, mining, raw I2C, or electrical manipulation.
+- [ ] Add a strict consume-before-use private intent and one-shot NVS stimulus
+      tuple bound to board 205, exact package/plan, and attempt ordinal 4.
+- [ ] Add the bounded production-owner stimulus state machine and prove real
+      EMC2101 reads, exactly five injected invalid outcomes, typed fault
+      projection, ordered markers, fresh recovery, aborts, and no replay.
+- [ ] Add the private-first capture/restoration transaction and independently
+      validated `bitaxe-emc2101-thermal-fault-evidence-v1` projection.
+- [ ] Pass all focused, real-firmware/package, mandatory, privacy, reference,
+      generated-contract, process-boundary, task/plan, and diff gates; commit
+      and push before effects.
+- [ ] Run exactly one detector-gated attempt-004; promote only THR-001 on the
+      complete hardware-regression quorum, otherwise stop without attempt-005.
+
+Attempt-004 authorization: standing task authorization covers the single
+fresh hardware regression only after the linked immutable plan and complete
+implementation are separately committed, pushed, clean, exact-package-bound,
+and detector-admitted. Allowed effects are the exact-package USB flash/reset,
+private Wi-Fi plus consume-before-use one-shot NVS stimulus, five one-second
+typed invalid-temperature overlays while real EMC2101 reads continue, ordinary
+exact-package restoration, read-only same-origin API/WebSocket/log capture, and
+cleanup. The linked plan freezes the expected fault, aborts, recovery,
+restoration, evidence/privacy policy, terminal categories, and stop outcomes.
+No physical heating, fan/voltage/frequency/power change, mining, pool input,
+ASIC work, raw I2C/GPIO, public diagnostic setter, erase, OTA, rollback, power
+cycle, direct UART, pin/pad/header manipulation, injected electrical signal,
+attempt-005, or claim of physical overheat/open/short fault is authorized.
+
 ### task-parity-ui004-live-browser-attempt-001 | 2026-08-13 | Verify exact-package AxeOS browser workflows
 
 - [x] Add a typed private-first evidence join and independent validator for the
