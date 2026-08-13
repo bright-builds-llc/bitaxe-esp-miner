@@ -2474,6 +2474,26 @@ The exact interleaving and ownership regressions plus all mandatory gates and a
 real ESP firmware build pass. API-009 remains `implemented`; no hardware or
 parity evidence was produced by the software-only continuation.
 
+Operator-intent-fixed attempt-012 plan:
+`docs/parity/work-plans/20260813T163921Z-API-009/PLAN.md`.
+
+- [ ] Commit and push the immutable single-attempt contract and pass every
+      focused, mandatory, privacy, reference, firmware, and exact-package gate.
+- [ ] Run exactly one fresh detector-gated attempt-012 and consume each
+      IDENTIFY checkpoint only after its matching live physical report.
+- [ ] Promote only on the complete command/restart/device-user quorum;
+      otherwise preserve `implemented`, earliest failure, evidence withholding,
+      safe stop, cleanup, recovery, and stop without attempt-013.
+
+Attempt-012 authorization: pushed commit `f9add8e2` fixes the exact
+attempt-011 lost-pause ownership race with a separate boot-lifetime requested
+intent owner and regression-backed production readiness routing. Standing task
+authorization permits this one campaign only after the linked immutable
+contract and all named gates pass at clean pushed HEAD. Campaign start consumes
+attempt-012. No inferred observation, prior protected-artifact reuse, external
+or owner pool, destructive or fault-injection action, direct UART,
+pin/pad/GPIO manipulation, attempt-013, or unchanged retry is authorized.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
