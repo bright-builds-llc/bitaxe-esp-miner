@@ -388,10 +388,10 @@ unverified. No hardware, credentials, mining, controls, OTA, UART, or pins ran.
 Evidence-reconciliation continuation plan:
 `docs/parity/work-plans/20260813T041410Z-IO-001/PLAN.md`.
 
-- [ ] Validate the post-retry INA260 and EMC2101 projections, sealed
+- [x] Validate the post-retry INA260 and EMC2101 projections, sealed
       post-retry campaign preparation, physical actuation projections, and
       existing SSD1306 smoke boundary as one exact-claim quorum.
-- [ ] Prove retry/bus/transfer source compatibility and preserve injected
+- [x] Prove retry/bus/transfer source compatibility and preserve injected
       electrical faults, live exhaustion, waveform timing, probing, arbitrary
       values, other devices, and other boards as explicit non-claims.
 - [ ] Run focused firmware/evidence checks and every mandatory repository gate;
