@@ -2192,6 +2192,60 @@ observation. The hardware-attempt policy therefore selects
 stays active, and attempt-008 is prohibited. The linked CLOSURE.md records the
 terminal blocker, next safe software-only diagnostic condition, and non-claims.
 
+### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
+
+- [ ] Correct the production Ultra 205 EMC2101 internal-temperature path to
+      apply the pinned board-205 `+5 C` offset through a pure validated reducer.
+- [ ] Add the independent `bitaxe-emc2101-thermal-evidence-v1` contract and
+      one repo-owned exact-package capture command with protected artifacts,
+      typed failures, recovery, cleanup, and atomic evidence withholding.
+- [ ] Pass the focused, real-firmware, package, mandatory, privacy, reference,
+      generated-contract, plan/task, and diff gates from the immutable plan.
+- [ ] Run exactly one detector-gated read-only `attempt-001` and promote only
+      THR-001 if its complete live thermal quorum passes.
+
+Plan: `docs/parity/work-plans/20260813T001637Z-THR-001/PLAN.md`.
+
+Dependencies and authorization: Standing task authorization covers only the
+plan's exact two-command detector/capture sequence after its immutable plan and
+complete software implementation are separately committed, pushed, clean, and
+package-admitted. The capture may factory-flash one exact package, perform its
+normal USB reset/re-enumeration, derive one same-session origin from protected
+serial evidence, issue read-only same-origin HTTP/WebSocket/log requests, and
+use at most one exact-package recovery flash after an initial flash effect.
+Settings mutation, restart requests, mining, pool credentials, ASIC work,
+voltage, frequency, fan, power, raw I2C/GPIO, OTA, erase, fault injection,
+physical manipulation, direct UART, pins, pads, headers, probes, jumpers,
+soldering, and injected signals are prohibited.
+
+Evidence and privacy: `scratch/thr001-emc2101/wrapper-001` is an ignored
+mode-0700 caller-owned root with distinct mode-0600 detector/capture streams;
+`scratch/thr001-emc2101/attempt-001` is a fresh absent supervisor-owned child.
+The only public destination is
+`docs/parity/evidence/thr001-emc2101-thermal/thermal-projection.json` after
+independent validation. NeverPersistRaw values remain memory-only. Raw
+temperatures, acquisition stamps, boot sessions, settings, hostnames, origins,
+ports, USB/network identifiers, HTTP bodies, credentials, logs, commands,
+PIDs, private paths, and traces remain protected and never enter terminal or
+Git output. Public evidence is limited to schemas, commits, opaque digests,
+fixed public reference constants, counts, categories, and booleans.
+
+Retry and promotion: Attempt-001 is consumed when the capture command starts;
+no unchanged retry exists. Preserve the earliest typed failure and report
+recovery separately. Accepted outcomes are `complete`,
+`stop_hardware_blocker`, `stop_authority_boundary`, or
+`stop_impossible_contract`; any post-fix recurrence uses the repository's
+authoritative signature rule. Promote only on exact clean package identity,
+EMC2101 address `0x4c`, register `0x00`, offset `+5 C`, current read-only source
+ownership, one fresh finite plausible below-throttle sample, exact HTTP/
+WebSocket correlation, detector/boot/safety/cleanup/mode/redaction quorum, and
+independent typed validation. Otherwise withhold evidence, preserve
+`implemented`, record a truthful closure, and stop.
+
+Verification: Pending immutable-plan checkpoint.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
