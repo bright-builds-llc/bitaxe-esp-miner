@@ -2,26 +2,26 @@
 
 use serde::Serialize;
 
-pub const PID_KP: f64 = 5.0;
-pub const PID_KI: f64 = 0.1;
-pub const PID_KD: f64 = 2.0;
+pub const PID_KP: f32 = 5.0;
+pub const PID_KI: f32 = 0.1;
+pub const PID_KD: f32 = 2.0;
 pub const PID_SAMPLE_TIME_MS: u32 = 100;
-pub const PID_EMA_ALPHA: f64 = 0.2;
+pub const PID_EMA_ALPHA: f32 = 0.2;
 
-const INITIAL_OUTPUT_MIN_PERCENT: f64 = 0.0;
-const INITIAL_OUTPUT_MAX_PERCENT: f64 = 255.0;
-const FAN_OUTPUT_MAX_PERCENT: f64 = 100.0;
+const INITIAL_OUTPUT_MIN_PERCENT: f32 = 0.0;
+const INITIAL_OUTPUT_MAX_PERCENT: f32 = 255.0;
+const FAN_OUTPUT_MAX_PERCENT: f32 = 100.0;
 
 /// Retained state shared by the input filter and PID controller.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct PidState {
     pub automatic: bool,
-    pub maybe_filtered_input_celsius: Option<f64>,
-    pub output_percent: f64,
-    pub output_sum_percent: f64,
-    pub last_input_celsius: f64,
-    pub output_min_percent: f64,
-    pub output_max_percent: f64,
+    pub maybe_filtered_input_celsius: Option<f32>,
+    pub output_percent: f32,
+    pub output_sum_percent: f32,
+    pub last_input_celsius: f32,
+    pub output_min_percent: f32,
+    pub output_max_percent: f32,
 }
 
 impl Default for PidState {
@@ -41,8 +41,8 @@ impl Default for PidState {
 /// One scheduled PID computation and its retained successor state.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct PidStep {
-    pub filtered_input_celsius: f64,
-    pub output_percent: f64,
+    pub filtered_input_celsius: f32,
+    pub output_percent: f32,
     pub next_state: PidState,
 }
 
@@ -66,7 +66,9 @@ impl PidController {
         min_fan_percent: u8,
     ) -> PidStep {
         let mut state = self.state;
-        update_output_limits(&mut state, f64::from(min_fan_percent));
+        update_output_limits(&mut state, f32::from(min_fan_percent));
+        let target_temp_celsius = target_temp_celsius as f32;
+        let raw_input_celsius = raw_input_celsius as f32;
 
         let filtered_input_celsius = state
             .maybe_filtered_input_celsius
@@ -83,7 +85,7 @@ impl PidController {
             state.automatic = true;
         }
 
-        let sample_time_seconds = f64::from(PID_SAMPLE_TIME_MS) / 1_000.0;
+        let sample_time_seconds = PID_SAMPLE_TIME_MS as f32 / 1_000.0;
         let proportional_gain = -PID_KP;
         let integral_gain = -(PID_KI * sample_time_seconds);
         let derivative_gain = -(PID_KD / sample_time_seconds);
@@ -116,7 +118,7 @@ impl PidController {
     }
 }
 
-fn update_output_limits(state: &mut PidState, min_fan_percent: f64) {
+fn update_output_limits(state: &mut PidState, min_fan_percent: f32) {
     if state.output_min_percent == min_fan_percent {
         return;
     }

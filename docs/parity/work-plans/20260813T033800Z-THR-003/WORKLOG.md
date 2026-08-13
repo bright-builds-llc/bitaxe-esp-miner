@@ -64,3 +64,22 @@
   are implemented without hardware or reference-tree changes.
 - Blocker or next safe action: Commit and push this implementation checkpoint,
   then compose the row-specific result and run the evidence checkpoint gates.
+
+## 2026-08-13T03:56:40Z | Upstream float-precision correction
+
+- Actions: The simplification/fidelity review found that the pinned C
+  controller retains all PID and filter values as `float`, while the initial
+  Rust replacement used the prior core's `f64` state. Changed the pure PID
+  constants, filter, retained state, and arithmetic to `f32`; kept the public
+  thermal observation input as `f64` and converts it only at the pinned PID
+  boundary. Recomputed the committed golden values at exact promoted `f32`
+  boundaries.
+- Verification: The exact golden assertion first exposed the expected C-float
+  delta at sequence step 2 (`65.30331420898438` versus the real-arithmetic
+  shorthand `65.3032`). After correcting the fixture, the exact sequential
+  test, focused Bazel targets, mandatory Cargo sequence, Bright Builds checks,
+  all 42 Bazel test targets, parity report, and progress report pass.
+- Outcome: The controller now matches both pinned transition ordering and C
+  `float` precision, including the whole-percent rounding boundary.
+- Blocker or next safe action: Commit and push the precision correction, then
+  compose the row result against the final implementation commit.

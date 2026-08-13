@@ -279,7 +279,7 @@ pub struct FanControlInputs {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct FanControlDecision {
     pub duty_percent: u8,
-    pub maybe_raw_pid_output_percent: Option<f64>,
+    pub maybe_raw_pid_output_percent: Option<f32>,
     pub status: SafetyStatus,
     pub plan: SafetyEffectPlan,
     pub next_pid_state: Option<PidState>,
@@ -318,7 +318,7 @@ impl FanControlDecision {
                 );
                 let duty_percent = step
                     .output_percent
-                    .clamp(0.0, f64::from(OVERHEAT_FAN_DUTY_PERCENT))
+                    .clamp(0.0, f32::from(OVERHEAT_FAN_DUTY_PERCENT))
                     .round() as u8;
                 return Ok(Self {
                     duty_percent,

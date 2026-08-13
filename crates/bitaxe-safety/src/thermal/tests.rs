@@ -134,34 +134,40 @@ fn safety_thermal_pid_matches_every_sequential_golden_vector() {
             let context = format!("{} step {index}", sequence.name);
 
             assert_close(
-                next_state
-                    .maybe_filtered_input_celsius
-                    .expect("automatic control should retain the filtered input"),
+                f64::from(
+                    next_state
+                        .maybe_filtered_input_celsius
+                        .expect("automatic control should retain the filtered input"),
+                ),
                 step.expected_filtered_input_celsius,
                 &context,
             );
-            assert_close(raw_output, step.expected_raw_output_percent, &context);
+            assert_close(
+                f64::from(raw_output),
+                step.expected_raw_output_percent,
+                &context,
+            );
             assert_eq!(
                 decision.duty_percent, step.expected_applied_duty_percent,
                 "{context}"
             );
             assert_close(
-                next_state.output_sum_percent,
+                f64::from(next_state.output_sum_percent),
                 step.expected_output_sum_percent,
                 &context,
             );
             assert_close(
-                next_state.output_min_percent,
+                f64::from(next_state.output_min_percent),
                 step.expected_output_min_percent,
                 &context,
             );
             assert_close(
-                next_state.output_max_percent,
+                f64::from(next_state.output_max_percent),
                 step.expected_output_max_percent,
                 &context,
             );
             assert_close(
-                next_state.last_input_celsius,
+                f64::from(next_state.last_input_celsius),
                 step.expected_filtered_input_celsius,
                 &context,
             );
