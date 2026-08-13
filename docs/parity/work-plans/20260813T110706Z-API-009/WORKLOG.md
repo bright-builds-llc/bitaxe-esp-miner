@@ -76,3 +76,20 @@
   remains `implemented`; attempt-011 remains prohibited.
 - Blocker or next safe action: A later selector run must diagnose and fix the
   production identify-to-display boundary before considering new hardware.
+
+## 2026-08-13T15:31:00Z | late-observation interpretation correction
+
+- Correction: The 11:42 terminal checkpoint incorrectly called the user's
+  normal statistics-screen description a live rendered-checkpoint observation.
+  The report arrived after multiple waiting turns, beyond the firmware's fixed
+  30-second IDENTIFY duration, and the public signal had explained neither the
+  expected frame nor that deadline.
+- Preserved facts: Attempt-010 remains consumed; its exact package identity,
+  genuine block, accepted shares, pause, resumable safe stop, resume,
+  active-after-resume, safe terminal stop, cleanup, seal, private modes,
+  redaction, and public withholding remain unchanged.
+- Corrected outcome: `stop_authority_boundary`. The late report is neither
+  positive nor negative IDENTIFY render evidence. API-009 remains
+  `implemented`, and attempt-011 remains unauthorized by this historical plan.
+- Next safe action: Complete the separately committed pre-armed v2 checkpoint
+  plan before any future hardware contract is considered.

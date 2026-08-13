@@ -28,3 +28,30 @@
   `git diff --check` all exited successfully.
 - Outcome: The software-only plan is ready for its immutable commit. No device,
   network, credential, package, detector, or hardware interface was accessed.
+
+## 2026-08-13T16:02:00Z | implementation and focused verification checkpoint
+
+- Actions: Added the private v2 `ready` / `rendered` / `cleared` transaction,
+  gated the first IDENTIFY request on consumed readiness, added the readiness
+  quorum to v2 command evidence, renamed the confirmation flag to
+  `--checkpoint`, and made every public v2 signal self-describing.
+- Regression evidence: The production-boundary Rust test proves readiness is
+  armed with zero IDENTIFY requests and no rendered checkpoint. Request-once,
+  malformed, missing, mode, order, projection, redaction, and real-child
+  supervisor tests pass through the canonical flash and automation targets.
+- Historical correction: Attempt-010 now closes as
+  `stop_authority_boundary`; its late report does not classify earlier display
+  rendering, and all sealed hardware and cleanup facts remain intact.
+- Outcome: The root mismatch is fixed without hardware access or a row-status
+  transition.
+
+## 2026-08-13T16:18:00Z | full verification checkpoint
+
+- Verification: `cargo fmt --all`, strict Clippy, all-target/all-feature build,
+  all-feature tests, Bright Builds checks, all 42 Bazel tests, parity report and
+  progress, redaction, pinned-reference cleanliness, real firmware build, plan
+  digest, and diff checks all pass.
+- Result: `software_fix_complete`; API-009 remains `implemented`, public parity
+  evidence remains withheld, and attempt-011 remains outside this plan.
+- Device effects: None. No credential, package, detector, USB, network/device,
+  mining, HTTP, restart, recovery, OTA, UART, or pin interface was accessed.

@@ -23,18 +23,20 @@ use pause_join::{PauseJoinDecision, PauseJoinState};
 const HTTP_DEADLINE: Duration = Duration::from_secs(3);
 const POLL_INTERVAL: Duration = Duration::from_secs(1);
 const TERMINAL_DEADLINE: Duration = Duration::from_secs(15);
-const CHECKPOINT_SCHEMA: &str = "bitaxe-identify-checkpoint-v1";
+const CHECKPOINT_SCHEMA: &str = "bitaxe-identify-checkpoint-v2";
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, ValueEnum)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum IdentifyObservation {
+pub(crate) enum IdentifyCheckpointKind {
+    Ready,
     Rendered,
     Cleared,
 }
 
-impl IdentifyObservation {
+impl IdentifyCheckpointKind {
     pub(crate) const fn as_str(self) -> &'static str {
         match self {
+            Self::Ready => "ready",
             Self::Rendered => "rendered",
             Self::Cleared => "cleared",
         }
@@ -45,7 +47,7 @@ impl IdentifyObservation {
 #[serde(deny_unknown_fields)]
 struct IdentifyCheckpoint {
     schema: String,
-    observation: IdentifyObservation,
+    checkpoint: IdentifyCheckpointKind,
     status: String,
 }
 
@@ -54,6 +56,7 @@ enum CommandPhase {
     Notification,
     Pause(PauseJoinState),
     Resume,
+    IdentifyReady,
     IdentifyRendered,
     IdentifyCleared,
     Dismiss,
@@ -229,23 +232,49 @@ fn advance_commands(
         CommandPhase::Resume if active_mining_state_valid(sample) => {
             evidence.resume_confirmed = true;
             evidence.active_after_resume = true;
-            evidence.identify_request_count = 1;
-            if post_succeeded(http.post_identify_once(Instant::now() + HTTP_DEADLINE))
-                && write_required_checkpoint(evidence_root, IdentifyObservation::Rendered).is_ok()
-            {
-                *phase = CommandPhase::IdentifyRendered;
-            } else {
-                *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid);
+            match arm_identify_transaction(evidence_root, evidence) {
+                Ok(next_phase) => *phase = next_phase,
+                Err(()) => {
+                    *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid)
+                }
+            }
+        }
+        CommandPhase::IdentifyReady => {
+            match consume_confirmation(evidence_root, IdentifyCheckpointKind::Ready) {
+                Ok(true) => {
+                    evidence.identify_operator_ready_confirmed = true;
+                    evidence.identify_request_count = 1;
+                    if !post_succeeded(http.post_identify_once(Instant::now() + HTTP_DEADLINE)) {
+                        *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
+                    } else if write_required_checkpoint(
+                        evidence_root,
+                        IdentifyCheckpointKind::Rendered,
+                    )
+                    .is_ok()
+                    {
+                        *phase = CommandPhase::IdentifyRendered;
+                    } else {
+                        *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid);
+                    }
+                }
+                Ok(false) => {}
+                Err(()) => {
+                    *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid)
+                }
             }
         }
         CommandPhase::IdentifyRendered => {
-            match consume_confirmation(evidence_root, IdentifyObservation::Rendered) {
+            match consume_confirmation(evidence_root, IdentifyCheckpointKind::Rendered) {
                 Ok(true) => {
                     evidence.identify_rendered_confirmed = true;
                     evidence.identify_request_count = 2;
-                    if post_succeeded(http.post_identify_once(Instant::now() + HTTP_DEADLINE))
-                        && write_required_checkpoint(evidence_root, IdentifyObservation::Cleared)
-                            .is_ok()
+                    if !post_succeeded(http.post_identify_once(Instant::now() + HTTP_DEADLINE)) {
+                        *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
+                    } else if write_required_checkpoint(
+                        evidence_root,
+                        IdentifyCheckpointKind::Cleared,
+                    )
+                    .is_ok()
                     {
                         *phase = CommandPhase::IdentifyCleared;
                     } else {
@@ -259,7 +288,7 @@ fn advance_commands(
             }
         }
         CommandPhase::IdentifyCleared => {
-            match consume_confirmation(evidence_root, IdentifyObservation::Cleared) {
+            match consume_confirmation(evidence_root, IdentifyCheckpointKind::Cleared) {
                 Ok(true) => {
                     evidence.identify_cleared_confirmed = true;
                     evidence.dismiss_request_count = 1;
@@ -344,31 +373,42 @@ fn post_succeeded(result: anyhow::Result<ExchangeObservation>) -> bool {
     }) == Some(200)
 }
 
+fn arm_identify_transaction(
+    root: &Utf8Path,
+    evidence: &CommandEffectsEvidence,
+) -> Result<CommandPhase, ()> {
+    if evidence.identify_request_count != 0 || evidence.identify_operator_ready_confirmed {
+        return Err(());
+    }
+    write_required_checkpoint(root, IdentifyCheckpointKind::Ready).map_err(|_| ())?;
+    Ok(CommandPhase::IdentifyReady)
+}
+
 fn checkpoint_path(
     root: &Utf8Path,
-    observation: IdentifyObservation,
+    checkpoint: IdentifyCheckpointKind,
     state: &str,
 ) -> camino::Utf8PathBuf {
-    root.join(format!("identify-{}.{}.json", observation.as_str(), state))
+    root.join(format!("identify-{}.{}.json", checkpoint.as_str(), state))
 }
 
 fn write_required_checkpoint(
     root: &Utf8Path,
-    observation: IdentifyObservation,
+    checkpoint: IdentifyCheckpointKind,
 ) -> anyhow::Result<()> {
-    let checkpoint = IdentifyCheckpoint {
+    let document = IdentifyCheckpoint {
         schema: CHECKPOINT_SCHEMA.to_owned(),
-        observation,
+        checkpoint,
         status: "required".to_owned(),
     };
-    let mut bytes = serde_json::to_vec_pretty(&checkpoint)?;
+    let mut bytes = serde_json::to_vec_pretty(&document)?;
     bytes.push(b'\n');
-    write_private_new_bytes(&checkpoint_path(root, observation, "required"), &bytes)
+    write_private_new_bytes(&checkpoint_path(root, checkpoint, "required"), &bytes)
 }
 
-fn consume_confirmation(root: &Utf8Path, observation: IdentifyObservation) -> Result<bool, ()> {
-    let confirmed = checkpoint_path(root, observation, "confirmed");
-    let consumed = checkpoint_path(root, observation, "consumed");
+fn consume_confirmation(root: &Utf8Path, checkpoint: IdentifyCheckpointKind) -> Result<bool, ()> {
+    let confirmed = checkpoint_path(root, checkpoint, "confirmed");
+    let consumed = checkpoint_path(root, checkpoint, "consumed");
     let metadata = match fs::symlink_metadata(confirmed.as_std_path()) {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
@@ -387,10 +427,10 @@ fn consume_confirmation(root: &Utf8Path, observation: IdentifyObservation) -> Re
         return Err(());
     }
     let bytes = fs::read(consumed.as_std_path()).map_err(|_| ())?;
-    let checkpoint: IdentifyCheckpoint = serde_json::from_slice(&bytes).map_err(|_| ())?;
-    if checkpoint.schema != CHECKPOINT_SCHEMA
-        || checkpoint.observation != observation
-        || checkpoint.status != "confirmed"
+    let document: IdentifyCheckpoint = serde_json::from_slice(&bytes).map_err(|_| ())?;
+    if document.schema != CHECKPOINT_SCHEMA
+        || document.checkpoint != checkpoint
+        || document.status != "confirmed"
     {
         return Err(());
     }
@@ -408,13 +448,13 @@ fn shared_snapshot(shared: &Arc<Mutex<SharedSerialState>>) -> SharedSerialState 
     )
 }
 
-pub(crate) fn confirm_identify_observation(
+pub(crate) fn confirm_identify_checkpoint(
     root: &Utf8Path,
-    observation: IdentifyObservation,
+    checkpoint: IdentifyCheckpointKind,
 ) -> anyhow::Result<()> {
-    let required = checkpoint_path(root, observation, "required");
-    let confirmed = checkpoint_path(root, observation, "confirmed");
-    let consumed = checkpoint_path(root, observation, "consumed");
+    let required = checkpoint_path(root, checkpoint, "required");
+    let confirmed = checkpoint_path(root, checkpoint, "confirmed");
+    let consumed = checkpoint_path(root, checkpoint, "consumed");
     let metadata = fs::symlink_metadata(required.as_std_path())?;
     if metadata.file_type().is_symlink() || !metadata.is_file() {
         anyhow::bail!("identify_checkpoint=blocked reason=required_checkpoint_invalid");
@@ -429,14 +469,14 @@ pub(crate) fn confirm_identify_observation(
     let required_checkpoint: IdentifyCheckpoint =
         serde_json::from_slice(&fs::read(required.as_std_path())?)?;
     if required_checkpoint.schema != CHECKPOINT_SCHEMA
-        || required_checkpoint.observation != observation
+        || required_checkpoint.checkpoint != checkpoint
         || required_checkpoint.status != "required"
     {
         anyhow::bail!("identify_checkpoint=blocked reason=required_checkpoint_malformed");
     }
     let confirmation = IdentifyCheckpoint {
         schema: CHECKPOINT_SCHEMA.to_owned(),
-        observation,
+        checkpoint,
         status: "confirmed".to_owned(),
     };
     let mut bytes = serde_json::to_vec_pretty(&confirmation)?;
@@ -452,8 +492,9 @@ mod tests {
     use camino::Utf8PathBuf;
 
     use super::{
-        confirm_identify_observation, consume_confirmation, take_recovery_pause_request,
-        write_required_checkpoint, IdentifyObservation,
+        arm_identify_transaction, confirm_identify_checkpoint, consume_confirmation,
+        take_recovery_pause_request, write_required_checkpoint, CommandEffectsEvidence,
+        CommandPhase, IdentifyCheckpointKind,
     };
     use crate::set_private_directory_mode;
 
@@ -465,19 +506,42 @@ mod tests {
             Utf8PathBuf::from_path_buf(temp.path().join("attempt")).expect("utf8 attempt path");
         fs::create_dir(&root).expect("create attempt");
         set_private_directory_mode(&root).expect("private attempt");
-        write_required_checkpoint(&root, IdentifyObservation::Rendered)
+        write_required_checkpoint(&root, IdentifyCheckpointKind::Rendered)
             .expect("required checkpoint");
 
         // Act
-        confirm_identify_observation(&root, IdentifyObservation::Rendered).expect("confirmation");
-        let accepted = consume_confirmation(&root, IdentifyObservation::Rendered)
+        confirm_identify_checkpoint(&root, IdentifyCheckpointKind::Rendered).expect("confirmation");
+        let accepted = consume_confirmation(&root, IdentifyCheckpointKind::Rendered)
             .expect("consume confirmation");
 
         // Assert
         assert!(accepted);
-        assert!(!consume_confirmation(&root, IdentifyObservation::Rendered)
-            .expect("second observation is absent"));
-        assert!(confirm_identify_observation(&root, IdentifyObservation::Rendered).is_err());
+        assert!(
+            !consume_confirmation(&root, IdentifyCheckpointKind::Rendered)
+                .expect("second checkpoint is absent")
+        );
+        assert!(confirm_identify_checkpoint(&root, IdentifyCheckpointKind::Rendered).is_err());
+    }
+
+    #[test]
+    fn identify_transaction_arms_readiness_without_issuing_a_request() {
+        // Arrange
+        let temp = tempfile::tempdir().expect("tempdir");
+        let root =
+            Utf8PathBuf::from_path_buf(temp.path().join("attempt")).expect("utf8 attempt path");
+        fs::create_dir(&root).expect("create attempt");
+        set_private_directory_mode(&root).expect("private attempt");
+        let evidence = CommandEffectsEvidence::new();
+
+        // Act
+        let phase = arm_identify_transaction(&root, &evidence).expect("arm transaction");
+
+        // Assert
+        assert_eq!(phase, CommandPhase::IdentifyReady);
+        assert_eq!(evidence.identify_request_count, 0);
+        assert!(!evidence.identify_operator_ready_confirmed);
+        assert!(root.join("identify-ready.required.json").is_file());
+        assert!(!root.join("identify-rendered.required.json").exists());
     }
 
     #[test]
@@ -488,17 +552,17 @@ mod tests {
             Utf8PathBuf::from_path_buf(temp.path().join("attempt")).expect("utf8 attempt path");
         fs::create_dir(&root).expect("create attempt");
         set_private_directory_mode(&root).expect("private attempt");
-        write_required_checkpoint(&root, IdentifyObservation::Cleared)
+        write_required_checkpoint(&root, IdentifyCheckpointKind::Cleared)
             .expect("required checkpoint");
         let confirmed = root.join("identify-cleared.confirmed.json");
         crate::write_private_new_bytes(
             &confirmed,
-            br#"{"schema":"wrong","observation":"cleared","status":"confirmed"}"#,
+            br#"{"schema":"wrong","checkpoint":"cleared","status":"confirmed"}"#,
         )
         .expect("malformed confirmation");
 
         // Act
-        let result = consume_confirmation(&root, IdentifyObservation::Cleared);
+        let result = consume_confirmation(&root, IdentifyCheckpointKind::Cleared);
 
         // Assert
         assert!(result.is_err());
@@ -514,7 +578,7 @@ mod tests {
         set_private_directory_mode(&root).expect("private attempt");
 
         // Act
-        let result = confirm_identify_observation(&root, IdentifyObservation::Rendered);
+        let result = confirm_identify_checkpoint(&root, IdentifyCheckpointKind::Rendered);
 
         // Assert
         assert!(result.is_err());

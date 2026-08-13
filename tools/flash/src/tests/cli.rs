@@ -85,8 +85,8 @@ fn parses_private_identify_confirmation() {
         "confirm-identify",
         "--evidence-dir",
         "hardware-runs/api009/attempt-001/campaign",
-        "--observation",
-        "rendered",
+        "--checkpoint",
+        "ready",
     ];
 
     // Act
@@ -96,7 +96,7 @@ fn parses_private_identify_confirmation() {
     let CliCommand::ConfirmIdentify(command) = cli.command else {
         panic!("expected confirm-identify command");
     };
-    assert_eq!(command.observation, network::IdentifyObservation::Rendered);
+    assert_eq!(command.checkpoint, network::IdentifyCheckpointKind::Ready);
     assert_eq!(
         command.evidence_dir,
         Utf8PathBuf::from("hardware-runs/api009/attempt-001/campaign")

@@ -3,15 +3,19 @@ import path from "node:path";
 
 import type { ProcessOutcome } from "./process.js";
 
-const CHECKPOINT_SCHEMA = "bitaxe-identify-checkpoint-v1";
+const CHECKPOINT_SCHEMA = "bitaxe-identify-checkpoint-v2";
 const POLL_INTERVAL_MILLIS = 50;
 
-export type OperatorCheckpointObservation = "rendered" | "cleared";
+export type OperatorCheckpointKind = "ready" | "rendered" | "cleared";
+type ConfirmationCondition = "ready_to_watch" | "identify_frame_visible" | "identify_frame_absent";
 
 export type OperatorCheckpointSignal = {
-  readonly schema_version: "bitaxe-operator-checkpoint-v1";
+  readonly schema_version: "bitaxe-operator-checkpoint-v2";
   readonly command: "api-command-effects-campaign";
-  readonly observation: OperatorCheckpointObservation;
+  readonly checkpoint: OperatorCheckpointKind;
+  readonly confirm_when: ConfirmationCondition;
+  readonly expected_frame: readonly ["", "BITAXE IDENTIFY", "Hello!", ""];
+  readonly identify_duration_seconds: 30;
   readonly status: "required";
 };
 
@@ -35,17 +39,29 @@ type CampaignSettlement =
   | { readonly kind: "outcome"; readonly outcome: ProcessOutcome }
   | { readonly kind: "error"; readonly error: unknown };
 
-const observations: readonly OperatorCheckpointObservation[] = ["rendered", "cleared"];
+const checkpoints: readonly OperatorCheckpointKind[] = ["ready", "rendered", "cleared"];
+const expectedFrame = ["", "BITAXE IDENTIFY", "Hello!", ""] as const;
 
-function checkpointPath(root: string, observation: OperatorCheckpointObservation): string {
-  return path.join(root, `identify-${observation}.required.json`);
+function checkpointPath(root: string, checkpoint: OperatorCheckpointKind): string {
+  return path.join(root, `identify-${checkpoint}.required.json`);
 }
 
-function signal(observation: OperatorCheckpointObservation): OperatorCheckpointSignal {
+function confirmationCondition(checkpoint: OperatorCheckpointKind): ConfirmationCondition {
+  switch (checkpoint) {
+    case "ready": return "ready_to_watch";
+    case "rendered": return "identify_frame_visible";
+    case "cleared": return "identify_frame_absent";
+  }
+}
+
+function signal(checkpoint: OperatorCheckpointKind): OperatorCheckpointSignal {
   return {
-    schema_version: "bitaxe-operator-checkpoint-v1",
+    schema_version: "bitaxe-operator-checkpoint-v2",
     command: "api-command-effects-campaign",
-    observation,
+    checkpoint,
+    confirm_when: confirmationCondition(checkpoint),
+    expected_frame: expectedFrame,
+    identify_duration_seconds: 30,
     status: "required",
   };
 }
@@ -60,10 +76,10 @@ function isObject(value: unknown): value is Readonly<Record<string, unknown>> {
 
 async function readCheckpoint(
   root: string,
-  observation: OperatorCheckpointObservation,
+  checkpoint: OperatorCheckpointKind,
   strict: boolean,
 ): Promise<OperatorCheckpointSignal | undefined> {
-  const input = checkpointPath(root, observation);
+  const input = checkpointPath(root, checkpoint);
   let metadata;
   try {
     metadata = await lstat(input);
@@ -85,15 +101,15 @@ async function readCheckpoint(
   }
   if (
     !isObject(value)
-    || Object.keys(value).sort().join(",") !== "observation,schema,status"
+    || Object.keys(value).sort().join(",") !== "checkpoint,schema,status"
     || value["schema"] !== CHECKPOINT_SCHEMA
-    || value["observation"] !== observation
+    || value["checkpoint"] !== checkpoint
     || value["status"] !== "required"
   ) {
     if (strict) throw new OperatorCheckpointError();
     return undefined;
   }
-  return signal(observation);
+  return signal(checkpoint);
 }
 
 async function delay(): Promise<void> {
@@ -103,20 +119,19 @@ async function delay(): Promise<void> {
 async function emitAvailable(
   campaignRoot: string,
   sink: OperatorCheckpointSink,
-  nextObservation: number,
+  nextCheckpoint: number,
   strict: boolean,
 ): Promise<number> {
-  let next = nextObservation;
-  while (next < observations.length) {
-    const observation = observations[next];
-    if (observation === undefined) throw new OperatorCheckpointError();
-    const maybeSignal = await readCheckpoint(campaignRoot, observation, strict);
+  let next = nextCheckpoint;
+  while (next < checkpoints.length) {
+    const checkpoint = checkpoints[next];
+    if (checkpoint === undefined) throw new OperatorCheckpointError();
+    const maybeSignal = await readCheckpoint(campaignRoot, checkpoint, strict);
     if (maybeSignal === undefined) {
-      if (
-        observation === "rendered"
-        && await readCheckpoint(campaignRoot, "cleared", strict) !== undefined
-      ) {
-        throw new OperatorCheckpointError();
+      for (const later of checkpoints.slice(next + 1)) {
+        if (await readCheckpoint(campaignRoot, later, strict) !== undefined) {
+          throw new OperatorCheckpointError();
+        }
       }
       break;
     }
@@ -138,12 +153,12 @@ export async function superviseOperatorCheckpoints(
   );
   void settlement.then((value) => { maybeSettlement = value; });
 
-  let nextObservation = 0;
+  let nextCheckpoint = 0;
   let maybeCheckpointError: OperatorCheckpointError | undefined;
   while (maybeSettlement === undefined) {
     if (maybeCheckpointError === undefined) {
       try {
-        nextObservation = await emitAvailable(campaignRoot, sink, nextObservation, false);
+        nextCheckpoint = await emitAvailable(campaignRoot, sink, nextCheckpoint, false);
       } catch {
         maybeCheckpointError = new OperatorCheckpointError();
       }
@@ -155,8 +170,8 @@ export async function superviseOperatorCheckpoints(
   if (resolved.kind === "error") throw resolved.error;
   if (maybeCheckpointError === undefined) {
     try {
-      nextObservation = await emitAvailable(campaignRoot, sink, nextObservation, true);
-      if (resolved.outcome.exitCode === 0 && nextObservation !== observations.length) {
+      nextCheckpoint = await emitAvailable(campaignRoot, sink, nextCheckpoint, true);
+      if (resolved.outcome.exitCode === 0 && nextCheckpoint !== checkpoints.length) {
         maybeCheckpointError = new OperatorCheckpointError();
       }
     } catch {

@@ -9,6 +9,7 @@ pub(in crate::campaign) struct CommandEffectsEvidence {
     pub(in crate::campaign) pause_confirmed: bool,
     pub(in crate::campaign) resume_request_count: u8,
     pub(in crate::campaign) resume_confirmed: bool,
+    pub(in crate::campaign) identify_operator_ready_confirmed: bool,
     pub(in crate::campaign) identify_request_count: u8,
     pub(in crate::campaign) identify_rendered_confirmed: bool,
     pub(in crate::campaign) identify_cleared_confirmed: bool,
@@ -26,7 +27,7 @@ pub(in crate::campaign) struct CommandEffectsEvidence {
 impl CommandEffectsEvidence {
     pub(super) fn new() -> Self {
         Self {
-            schema: "mining-campaign-command-effects-v1",
+            schema: "mining-campaign-command-effects-v2",
             same_boot_and_package: true,
             safety_valid: true,
             ..Self::default()
@@ -40,6 +41,7 @@ impl CommandEffectsEvidence {
             && self.pause_confirmed
             && self.resume_request_count == 1
             && self.resume_confirmed
+            && self.identify_operator_ready_confirmed
             && self.identify_request_count == 2
             && self.identify_rendered_confirmed
             && self.identify_cleared_confirmed

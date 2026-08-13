@@ -31,7 +31,7 @@ pub(crate) struct ConfirmIdentifyCommand {
     pub(crate) evidence_dir: Utf8PathBuf,
 
     #[arg(long, value_enum)]
-    pub(crate) observation: network::IdentifyObservation,
+    pub(crate) checkpoint: network::IdentifyCheckpointKind,
 }
 
 #[derive(Debug, Parser, Clone)]

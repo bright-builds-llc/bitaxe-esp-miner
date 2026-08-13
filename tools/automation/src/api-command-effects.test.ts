@@ -56,13 +56,14 @@ const readySession = {
 } as const;
 
 const completeEffects = {
-  schema: "mining-campaign-command-effects-v1",
+  schema: "mining-campaign-command-effects-v2",
   genuine_block_notification_observed: true,
   positive_block_count_observed: true,
   pause_request_count: 1,
   pause_confirmed: true,
   resume_request_count: 1,
   resume_confirmed: true,
+  identify_operator_ready_confirmed: true,
   identify_request_count: 2,
   identify_rendered_confirmed: true,
   identify_cleared_confirmed: true,
@@ -176,36 +177,41 @@ function fakePort(
       const campaign = path.join(attempt, "campaign");
       await mkdir(campaign, { mode: 0o700 });
       if (checkpointMode === "ordered") {
+        await privateJson(path.join(campaign, "identify-ready.required.json"), {
+          schema: "bitaxe-identify-checkpoint-v2",
+          checkpoint: "ready",
+          status: "required",
+        });
         await privateJson(path.join(campaign, "identify-rendered.required.json"), {
-          schema: "bitaxe-identify-checkpoint-v1",
-          observation: "rendered",
+          schema: "bitaxe-identify-checkpoint-v2",
+          checkpoint: "rendered",
           status: "required",
         });
         await privateJson(path.join(campaign, "identify-cleared.required.json"), {
-          schema: "bitaxe-identify-checkpoint-v1",
-          observation: "cleared",
+          schema: "bitaxe-identify-checkpoint-v2",
+          checkpoint: "cleared",
           status: "required",
         });
       } else if (checkpointMode === "malformed") {
-        await privateJson(path.join(campaign, "identify-rendered.required.json"), {
+        await privateJson(path.join(campaign, "identify-ready.required.json"), {
           schema: "private-invalid-schema",
-          observation: "rendered",
+          checkpoint: "ready",
           status: "required",
         });
       } else if (checkpointMode === "wrong_order") {
-        await privateJson(path.join(campaign, "identify-cleared.required.json"), {
-          schema: "bitaxe-identify-checkpoint-v1",
-          observation: "cleared",
+        await privateJson(path.join(campaign, "identify-rendered.required.json"), {
+          schema: "bitaxe-identify-checkpoint-v2",
+          checkpoint: "rendered",
           status: "required",
         });
       } else if (checkpointMode === "wrong_mode") {
-        const rendered = path.join(campaign, "identify-rendered.required.json");
-        await privateJson(rendered, {
-          schema: "bitaxe-identify-checkpoint-v1",
-          observation: "rendered",
+        const ready = path.join(campaign, "identify-ready.required.json");
+        await privateJson(ready, {
+          schema: "bitaxe-identify-checkpoint-v2",
+          checkpoint: "ready",
           status: "required",
         });
-        await chmod(rendered, 0o644);
+        await chmod(ready, 0o644);
       }
       const readyFlashDiagnostic = {
         schema_version: "esp-usb-command-diagnostic-v1",
@@ -287,22 +293,19 @@ test("ordered campaign checkpoints notify the operator sink exactly once", async
   );
 
   // Assert
-  assert.deepEqual(signals, [
-    {
-      schema_version: "bitaxe-operator-checkpoint-v1",
-      command: "api-command-effects-campaign",
-      observation: "rendered",
-      status: "required",
-    },
-    {
-      schema_version: "bitaxe-operator-checkpoint-v1",
-      command: "api-command-effects-campaign",
-      observation: "cleared",
-      status: "required",
-    },
+  assert.deepEqual(signals.map((signal) => signal.checkpoint), ["ready", "rendered", "cleared"]);
+  assert.deepEqual(signals.map((signal) => signal.confirm_when), [
+    "ready_to_watch", "identify_frame_visible", "identify_frame_absent",
   ]);
+  assert(signals.every((signal) => signal.schema_version === "bitaxe-operator-checkpoint-v2"));
+  assert(signals.every((signal) => signal.command === "api-command-effects-campaign"));
+  assert(signals.every((signal) => signal.identify_duration_seconds === 30));
+  assert(signals.every((signal) => signal.status === "required"));
+  assert(signals.every((signal) => signal.expected_frame.join("|") === "|BITAXE IDENTIFY|Hello!|"));
   const formatted = signals.map(formatOperatorCheckpointSignal).join("");
-  assert.equal(formatted.split("\n").filter(Boolean).length, 2);
+  assert.equal(formatted.split("\n").filter(Boolean).length, 3);
+  assert(formatted.includes("BITAXE IDENTIFY"));
+  assert(formatted.includes("identify_duration_seconds\":30"));
   assert(!formatted.includes(value.root));
   assert(!formatted.includes(value.options.port));
 });

@@ -268,8 +268,8 @@ pub(crate) fn run_confirm_identify(
     if metadata.permissions().mode() & 0o777 != 0o700 {
         bail!("identify_checkpoint=blocked reason=attempt_root_not_private");
     }
-    network::confirm_identify_observation(&evidence_root, command.observation)?;
-    emit_line("identify_checkpoint", command.observation.as_str())
+    network::confirm_identify_checkpoint(&evidence_root, command.checkpoint)?;
+    emit_line("identify_checkpoint", command.checkpoint.as_str())
 }
 
 fn execute_campaign(

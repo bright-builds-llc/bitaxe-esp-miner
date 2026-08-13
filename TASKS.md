@@ -2360,36 +2360,40 @@ observation, protected-artifact reuse, external or owner pool, destructive or
 fault-injection action, direct UART, pin/pad/GPIO manipulation, attempt-011, or
 unchanged retry is authorized.
 
-Attempt-010 verification: `stop_hardware_blocker`; no retry was run. Exact
-clean pushed source/package `8e89891f445f49493d3909fb2e1b4c30795c5dce`,
+Attempt-010 verification (corrected): `stop_authority_boundary`; no retry was
+run. Exact clean pushed source/package
+`8e89891f445f49493d3909fb2e1b4c30795c5dce`,
 focused and real-process tests, every software/privacy/reference gate, and the
 sole protected detector passed. The sealed v8 result proves trusted identity,
 a genuine block, five accepted shares, confirmed pause and resumable safe stop,
 confirmed resume, active-after-resume, private modes, matching seal, safe stop,
-USB cleanup, redaction, and public withholding. At the live rendered IDENTIFY
-checkpoint, the user physically observed the normal statistics/block-
-notification page rather than the required `BITAXE IDENTIFY` / `Hello!` frame,
-so no confirmation command ran. Cleared IDENTIFY, dismissal, restart, and the
-public projection were correctly withheld.
+USB cleanup, redaction, and public withholding. The campaign emitted a
+rendered IDENTIFY checkpoint without first establishing operator readiness or
+explaining the expected `BITAXE IDENTIFY` / `Hello!` frame and 30-second
+window. The user's later normal-screen description arrived after that window,
+so it is neither positive nor negative render evidence and no confirmation
+command ran. Cleared IDENTIFY, dismissal, restart, and the public projection
+were correctly withheld.
 
 Completion review: API-009 remains `implemented`; attempt-010 is consumed and
 attempt-011 is prohibited. The hardware result validates the resumable-pause
-fix and isolates a new command-to-physical-display render blocker. The linked
-`CLOSURE.md` requires production-shaped diagnosis and a regression-backed fix
-before any future hardware contract.
+fix but does not classify IDENTIFY rendering. The actionable blocker is the
+host checkpoint contract: it triggers a time-bounded effect before readiness
+and emits an under-specified signal. The linked `CLOSURE.md` preserves that
+corrected boundary.
 
 Operator-prearmed IDENTIFY plan:
 `docs/parity/work-plans/20260813T144901Z-API-009/PLAN.md`.
 
-- [ ] Correct attempt-010's late physical report from a display-failure claim
+- [x] Correct attempt-010's late physical report from a display-failure claim
       to an expired-observation authority boundary without changing its sealed
       aggregate, cleanup, withholding, or attempt-consumption facts.
-- [ ] Add a closed v2 `ready` / `rendered` / `cleared` checkpoint transaction
+- [x] Add a closed v2 `ready` / `rendered` / `cleared` checkpoint transaction
       whose public signals explain the exact frame and 30-second window.
-- [ ] Prove the campaign issues no IDENTIFY request before request-once operator
+- [x] Prove the campaign issues no IDENTIFY request before request-once operator
       readiness, preserves ordered confirmations and exactly two requests, and
       fails closed on malformed, reordered, or reused checkpoints.
-- [ ] Pass every focused and mandatory software/privacy/reference gate, keep
+- [x] Pass every focused and mandatory software/privacy/reference gate, keep
       API-009 `implemented`, and close without hardware or attempt-011.
 
 Software-only authorization: this plan may change and test repository source,
@@ -2399,6 +2403,18 @@ effects, device or network sessions, mining, HTTP command effects, physical
 display observations, restart/recovery, OTA, destructive or fault-injection
 actions, direct UART, pins/pads/GPIO, attempt-011, public parity evidence, or a
 checklist transition.
+
+Pre-armed checkpoint completion review: `software_fix_complete`. Private v2
+checkpoints now require request-once operator readiness before the first
+IDENTIFY request, retain ordered rendered/cleared confirmations, and add the
+readiness fact to the v2 command-evidence quorum. Public v2 signals name the
+exact four-line frame, 30-second duration, and closed confirmation condition.
+Focused campaign/CLI/checkpoint/orchestration and real-child regressions plus
+every mandatory software, privacy, reference, parity, and firmware-build gate
+pass. The attempt-010 record is corrected to `stop_authority_boundary` without
+changing its sealed hardware or cleanup facts. API-009 remains `implemented`;
+no hardware was accessed, no public evidence was produced, and attempt-011
+requires a separate future contract.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 

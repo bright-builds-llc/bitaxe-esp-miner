@@ -18,7 +18,7 @@ use camino::Utf8PathBuf;
 
 use super::*;
 use command_effects::observe_command_effects;
-pub(crate) use command_effects::{confirm_identify_observation, IdentifyObservation};
+pub(crate) use command_effects::{confirm_identify_checkpoint, IdentifyCheckpointKind};
 pub(crate) use model::CampaignNetworkEvidence;
 use model::SharedSerialState;
 use observer::observe_network;
