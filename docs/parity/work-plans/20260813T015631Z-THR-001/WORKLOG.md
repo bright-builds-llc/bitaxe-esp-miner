@@ -87,7 +87,33 @@
   Raw temperature, acquisition stamps, boot session, origins, ports, USB and
   network identities, credentials, HTTP bodies, logs, commands, PIDs, paths,
   and traces remain only in ignored protected roots.
-- Outcome: The full THR-001 promotion quorum passed without a recovery flash.
-- Blocker or next safe action: Create the verified result, commit the evidence
-  without changing the checklist, then transition only THR-001 and synchronize
-  deterministic progress from that evidence commit.
+- Outcome: The immutable plan's read-only hardware-smoke quorum passed without
+  a recovery flash; authoritative checklist promotion remained subject to the
+  final parity validator.
+- Blocker or next safe action: Commit the evidence without changing the
+  checklist, then request the row transition and run the mandatory final
+  verifier before treating promotion as accepted.
+
+## 2026-08-13T02:36:00Z | Promotion rejected by authoritative policy
+
+- Source commit: `5c5688fae761cbda27a1c73dd9cbd059b4b18480`
+- Actions: Requested a THR-001 `verified` transition using the plan-authorized
+  `hardware-smoke` evidence, then ran the mandatory final parity verifier. It
+  rejected the promoted row because active safety-control verification requires
+  `hardware-regression`; it also identified missing code-span formatting in the
+  requested target cell. The transition receipt and all derived progress/task
+  archival changes were still uncommitted, so they were removed and the
+  authoritative implemented state was preserved.
+- Verification: `just parity` produced the exact policy failure before any
+  finalization commit or push. A corrective automatic demotion was attempted
+  and safely refused by the monotonic transition policy, confirming that the
+  invalid uncommitted receipt had to be discarded rather than extended.
+- Evidence: The valid read-only projection remains committed. No raw or
+  protected device material was promoted, and no additional hardware effect
+  occurred after attempt-003.
+- Outcome: `stop_impossible_contract`. THR-001 remains `implemented`; this
+  immutable plan prohibited the fault stimulus required for hardware-regression
+  and therefore cannot satisfy the authoritative verification policy.
+- Blocker or next safe action: A fresh plan must define bounded safe thermal
+  fault/overheat stimulus, expected response, restoration, retry limits,
+  privacy, and hardware-regression evidence. Attempt-003 must not be retried.

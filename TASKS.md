@@ -2226,58 +2226,44 @@ Prior closed plans:
 `docs/parity/work-plans/20260813T011207Z-THR-001/CLOSURE.md` and
 `docs/parity/work-plans/20260813T001637Z-THR-001/CLOSURE.md`.
 
-Dependencies and authorization: Standing task authorization covers only the
+Dependencies and authorization: Standing task authorization covered only the
 plan's exact two-command detector/capture sequence after its immutable plan and
-complete software implementation are separately committed, pushed, clean, and
-package-admitted. The capture may factory-flash one exact package, perform its
-normal USB reset/re-enumeration, derive one same-session origin from protected
-serial evidence, issue read-only same-origin HTTP/WebSocket/log requests, and
-use at most one exact-package recovery flash after an initial flash effect.
-Settings mutation, restart requests, mining, pool credentials, ASIC work,
-voltage, frequency, fan, power, raw I2C/GPIO, OTA, erase, fault injection,
-physical manipulation, direct UART, pins, pads, headers, probes, jumpers,
-soldering, and injected signals are prohibited.
+complete software implementation were separately committed, pushed, clean,
+and package-admitted. Attempt-003 is consumed and must not be retried. No
+further hardware effect is authorized by this task without a new immutable
+plan defining a bounded hardware-regression stimulus and recovery contract.
 
-Evidence and privacy: `scratch/thr001-emc2101/wrapper-003` is an ignored
-mode-0700 caller-owned root with distinct mode-0600 detector/capture streams;
-`scratch/thr001-emc2101/attempt-003` is a fresh absent supervisor-owned child.
-The only public destination is
-`docs/parity/evidence/thr001-emc2101-thermal/thermal-projection.json` after
-independent validation. NeverPersistRaw values remain memory-only. Raw
-temperatures, acquisition stamps, boot sessions, settings, hostnames, origins,
-ports, USB/network identifiers, HTTP bodies, credentials, logs, commands,
-PIDs, private paths, and traces remain protected and never enter terminal or
-Git output. Public evidence is limited to schemas, commits, opaque digests,
-fixed public reference constants, counts, categories, and booleans.
+Evidence and privacy: `scratch/thr001-emc2101/wrapper-003` and
+`scratch/thr001-emc2101/attempt-003` remain ignored protected roots. The only
+public artifact is
+`docs/parity/evidence/thr001-emc2101-thermal/thermal-projection.json`.
+NeverPersistRaw values remain protected. Raw temperatures, acquisition stamps,
+boot sessions, settings, hostnames, origins, ports, USB/network identifiers,
+HTTP bodies, credentials, logs, commands, PIDs, private paths, and traces never
+enter terminal or Git output.
 
-Retry and promotion: Attempt-003 is consumed when the capture command starts;
-no unchanged retry exists. Preserve the earliest typed failure and report
-recovery separately. Accepted outcomes are `complete`,
-`stop_hardware_blocker`, `stop_authority_boundary`, or
-`stop_impossible_contract`; any post-fix recurrence uses the repository's
-authoritative signature rule. Promote only on exact clean package identity,
-EMC2101 address `0x4c`, register `0x00`, offset `+5 C`, current read-only source
-ownership, one fresh finite plausible below-throttle sample, exact HTTP/
-WebSocket correlation, detector/boot/safety/cleanup/mode/redaction quorum, and
-independent typed validation. Otherwise withhold evidence, preserve
-`implemented`, record a truthful closure, and stop.
+Retry and promotion: Attempt-003 completed successfully as `hardware-smoke`,
+but the authoritative final parity validator classifies THR-001 as an active
+safety-control row and requires `hardware-regression` for `verified`. The
+transition tool also forbids automatic demotion after a verified receipt, so
+the uncommitted invalid receipt and derived progress files were discarded and
+the authoritative checklist remained `implemented`. A future plan must define
+safe, bounded overheat/fault stimulus, expected response, recovery, cleanup,
+redaction, and a fresh attempt ordinal before promotion is eligible.
 
 Verification: Immutable-plan, focused, mandatory, privacy, reference,
 generated-contract, exact-package, detector, and protected-mode gates passed.
-Attempts 001 and 002 withheld evidence at distinct host-only validation defects.
 Attempt-003 completed and its public projection passed independent Rust
-validation with the exact source/reference/package, live thermal, boot, safety,
-cleanup, mode, and redaction quorum.
+validation with the exact source/reference/package, live read-only thermal,
+boot, safety, cleanup, mode, and redaction quorum. Final `just parity` correctly
+rejected `verified` because the evidence cell lacked `hardware-regression`.
 
-Completion review: Attempts 001 and 002 remain sealed as distinct
-`stop_impossible_contract` outcomes. The lossless Rust boundary removed the
-attempt-002 host defect, all mandatory software gates passed, and exact-package
-attempt-003 completed with independently validated closed evidence. The live
-quorum proves the current read-only EMC2101 path, board offset, fresh safe
-sample, exact HTTP/WebSocket correlation, disabled mining/control, cleanup,
-private modes, and redaction. THR-001 is ready for its sole transition to
-`verified`; broader thermal faults, overheat behavior, controls, and other
-boards remain non-claims.
+Completion review: The lossless host fix and read-only Ultra 205 evidence are
+complete and retained, but verification is not claimed. THR-001 remains
+`implemented`; this task remains active at a terminal `stop_impossible_contract`
+boundary because its immutable plan prohibited the fault stimulus required by
+the authoritative verifier. The next safe action is a distinct plan for
+bounded thermal hardware-regression evidence, not a retry of attempt-003.
 
 ## Future
 
