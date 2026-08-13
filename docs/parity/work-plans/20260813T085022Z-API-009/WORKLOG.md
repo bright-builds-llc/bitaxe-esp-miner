@@ -43,3 +43,48 @@
 - Blocker or next safe action: Commit and push this checkpoint, then prove the
   exact clean source, package identity, fresh private roots, detector, and sole
   attempt-009 in that order.
+
+## 2026-08-13T09:46:23Z | attempt-009 terminal checkpoint
+
+- Source commit: `6cfb8b7316e18d8fab94b0e40d454b0b9acd80a1`.
+- Actions: Revalidated the pushed pause/checkpoint tests and real firmware,
+  built the exact package, admitted one Ultra 205 through the sole protected
+  detector, and ran the sole attempt-009. No IDENTIFY requirement appeared, so
+  no physical-observation confirmation command was issued.
+- Verification: The sealed result proves trusted package/runtime/protocol
+  admission, a genuine block, five qualified accepted shares, one pause
+  request, confirmed safe stop, ready USB cleanup, private modes, no symlinks,
+  matching result/network digests, redaction, and public withholding. It
+  stopped before pause confirmation on a deadline readiness transition with
+  stale safety prerequisites, unchanged observation epoch, and no recovered
+  pending observation.
+- Evidence: Protected attempt-009 aggregate artifacts and their seal only. No
+  private origin, hostname, port, USB/network identity, credential, worker,
+  address, password, checkpoint secret, sensor value, path, or raw trace is
+  copied here.
+- Outcome: `stop_hardware_blocker`. API-009 remains `implemented`; the row's
+  complete five-command quorum is absent and the public projection remains
+  withheld.
+- Blocker or next safe action: Close this plan without checklist transition,
+  run final gates, commit and push. Any future attempt requires a new
+  production-shaped software diagnosis and regression-backed fix; attempt-010
+  is not authorized.
+
+## 2026-08-13T10:02:00Z | final verification checkpoint
+
+- Actions: Closed the immutable plan without a checklist transition and
+  reviewed the complete task, worklog, closure, protected-result, and public-
+  withholding diffs.
+- Verification: The ordered Rust gates, Bright Builds checks, `just test`,
+  `just parity`, `just parity-progress`, redaction, reference cleanliness,
+  selector closure, plan digest, unique task binding, protected modes, result
+  seal, private digests, projection absence, sensitive-output scan, and diff
+  checks passed. Parity remains 67 verified of 94 active rows (71.3%) with no
+  validation errors.
+- Evidence: `CLOSURE.md` and the protected sealed attempt-009 aggregate. No
+  checklist, progress-history, or public evidence file changed.
+- Outcome: `stop_hardware_blocker`; API-009 remains `implemented` and this
+  invocation is complete without another hardware attempt.
+- Blocker or next safe action: Commit and push this closure. A future selector
+  invocation must start from the production-shaped software diagnosis named in
+  `CLOSURE.md`.

@@ -2259,12 +2259,12 @@ Operator-present attempt-009 plan:
 - [x] Preserve the user's current pre-effect presence/watching/readiness report
       without treating it as either IDENTIFY observation or retroactive
       attempt-008 evidence.
-- [ ] Commit and push the immutable one-attempt contract and pass every
+- [x] Commit and push the immutable one-attempt contract and pass every
       focused, mandatory, privacy, reference, and exact-package gate.
-- [ ] Run exactly one fresh detector-gated `attempt-009`; relay each live
+- [x] Run exactly one fresh detector-gated `attempt-009`; relay each live
       request and consume its request-once confirmation only after the matching
       user-observed physical state.
-- [ ] Promote API-009 only on the complete five-command device-user quorum;
+- [x] Promote API-009 only on the complete five-command device-user quorum;
       otherwise preserve `implemented`, earliest failure, public withholding,
       safe stop, cleanup, and the truthful closed outcome.
 
@@ -2281,6 +2281,25 @@ categories, and stop outcomes. Campaign start consumes attempt-009. No inferred
 observation, expired-checkpoint reuse, external or owner pool, destructive or
 fault-injection action, direct UART, pin/pad/GPIO manipulation, attempt-010, or
 unchanged retry is authorized.
+
+Attempt-009 verification: `stop_hardware_blocker`; no retry was run. Exact
+clean pushed source and package `6cfb8b7316e18d8fab94b0e40d454b0b9acd80a1`,
+focused and real-process tests, all software/privacy/reference gates, and the
+sole protected detector passed. The sealed v8 result proved trusted identity,
+protocol readiness, a genuine positive block, five qualified accepted shares,
+one pause request, confirmed safe stop, ready USB cleanup, private modes,
+matching digests, redaction, and public withholding. It stopped before pause
+confirmation because the deadline readiness transition reported stale safety,
+an unchanged observation epoch, and no recovered pending observation. No
+resume, IDENTIFY request or confirmation, dismissal, restart, or public
+projection occurred.
+
+Completion review: API-009 remains `implemented`. Attempt-009 is consumed and
+attempt-010 is prohibited. The boundary is earlier than attempt-008's proven
+pause/safe-stop/resume path, so it is recorded as a distinct unresolved
+runtime-safety blocker rather than an authority failure or unchanged retry.
+The linked `CLOSURE.md` requires a production-shaped software diagnosis and
+regression-backed fix before any future hardware contract.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
