@@ -2209,8 +2209,11 @@ terminal blocker, next safe software-only diagnostic condition, and non-claims.
 - [x] Advance the closed evidence contract, validator, protected paths, and
       generated binding to attempt ordinal 2 without weakening any runtime,
       privacy, or evidence-withholding invariant.
-- [ ] Commit and push the fix, admit an exact clean package, and run at most one
+- [x] Commit and push the fix, admit an exact clean package, and run at most one
       detector-gated read-only `attempt-002`; promote only on the full quorum.
+- [ ] Under a fresh plan, validate and correlate wide acquisition-stamp integer
+      tokens losslessly across protected HTTP/WebSocket documents, then
+      authorize at most one detector-gated read-only `attempt-003`.
 
 Plan: `docs/parity/work-plans/20260813T011207Z-THR-001/PLAN.md`.
 
@@ -2260,9 +2263,10 @@ candidate were withheld. Protected boolean-only diagnosis proves every live
 thermal and identity member passed, while the host semantic-source check alone
 expected an intermediate statement removed by the final simplification.
 
-Completion review: Attempt-001 is closed as `stop_impossible_contract` without
+Completion review: Attempt-002 is closed as `stop_impossible_contract` without
 verification or a checklist transition. THR-001 remains `implemented`. The
-fresh attempt-002 plan is active; attempt-001 must never be retried or reused.
+unresolved task stays active for a fresh lossless wide-integer plan and at most
+one attempt-003; attempts 001 and 002 must never be retried or reused.
 
 ## Future
 

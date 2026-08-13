@@ -73,3 +73,29 @@
 - Blocker or next safe action: Review, commit, and push the implementation;
   build and admit an exact package from that pushed commit; then execute the
   immutable detector/capture attempt-002 sequence once.
+
+## 2026-08-13T01:52:40Z | Sole attempt-002 and wider-integer diagnosis
+
+- Source commit: `0fa223e795ca7c2fcd4f4507f999bb3c61b71bae`
+- Actions: Built and independently admitted the exact clean package, passed
+  detector admission, and executed the immutable attempt-002 capture exactly
+  once. The command ended `evidence_invalid`; no retry or second hardware
+  process was started. Diagnosed the protected result through fixed safe error
+  summaries and boolean-only invariant checks.
+- Verification: Projection and candidate are absent. The detector, exact
+  source/reference/package and app identity, stable safe boot, protected modes
+  and file set, source semantics, plan/task binding, source system-info
+  validator, and fresh finite below-throttle HTTP/WebSocket value, state,
+  package, and boot correlation all pass. The safe failure summary identifies
+  the sole rejected member: the HTTP acquisition-stamp boot-session integer is
+  valid JSON but wider than JavaScript's safe-integer range.
+- Evidence: Raw temperatures, stamp integers, boot sessions, origins,
+  hostnames, ports, USB/network identities, credentials, logs, commands, PIDs,
+  traces, and HTTP/WebSocket documents remain in the ignored mode-0700 root.
+  No private value entered terminal output or Git.
+- Outcome: `stop_impossible_contract`. THR-001 remains `implemented`; no
+  evidence or checklist transition is claimed. Attempt-002 is consumed.
+- Blocker or next safe action: Under a fresh immutable plan, implement lossless
+  acquisition-stamp integer-token validation and exact cross-document
+  correlation, verify it against wide/malformed/mismatched regressions, then
+  authorize at most one fresh attempt-003. Never retry or reuse attempt-002.
