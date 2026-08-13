@@ -2273,11 +2273,11 @@ bounded thermal hardware-regression evidence, not a retry of attempt-003.
       safe fault-stimulus command.
 - [x] Freeze the immutable software-only plan at
       `docs/parity/work-plans/20260813T033800Z-THR-003/PLAN.md`.
-- [ ] Replace the simplified PID reducer with exact pinned initialization,
+- [x] Replace the simplified PID reducer with exact pinned initialization,
       input EMA, reverse P-on-E, 100 ms gain scaling, limits, and anti-windup.
-- [ ] Expand the provenance-bound sequential golden vectors and focused
+- [x] Expand the provenance-bound sequential golden vectors and focused
       production state-retention/ownership regressions.
-- [ ] Independently revalidate the accepted PWR-002 fan-actuation projection
+- [x] Independently revalidate the accepted PWR-002 fan-actuation projection
       without a new evidence schema or hardware run.
 - [ ] Run every focused and mandatory gate, write THR-003 RESULT.md, and commit
       and push the complete evidence source before checklist mutation.
@@ -2302,7 +2302,11 @@ duties, fault/overheat behavior, other boards, and release readiness remain
 non-claims. A failed gate leaves THR-003 `implemented` and changes no checklist
 or progress field.
 
-Verification: Pending.
+Verification: The focused safety-core, production fan-planner, and sensor
+ownership targets pass. The full Cargo sequence, Bright Builds checks,
+`just test`, firmware and rollback-probe builds, parity validation/progress,
+reference cleanliness, redaction, and the accepted PWR-002 validator/digest/
+mode/source-compatibility checks pass at the implementation checkpoint.
 
 Completion review: Pending.
 

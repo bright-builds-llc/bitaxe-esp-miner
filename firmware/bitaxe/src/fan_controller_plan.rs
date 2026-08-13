@@ -366,11 +366,10 @@ mod tests {
         // Arrange
         let mut state = FanControllerState::default();
         let settings = settings(true, 42, false);
-        let observation = observation(74.0);
 
         // Act
         let first = state
-            .plan(settings, active(), observation, 0)
+            .plan(settings, active(), observation(70.0), 0)
             .expect("first auto plan succeeds");
         let FanControllerPlan::Apply {
             percent: first_percent,
@@ -381,14 +380,14 @@ mod tests {
         };
         state.record_applied(first_percent);
         let second = state
-            .plan(settings, active(), observation, 100)
+            .plan(settings, active(), observation(72.0), 100)
             .expect("second auto plan succeeds");
 
         // Assert
-        assert_eq!(first_percent, 25);
+        assert_eq!(first_percent, 75);
         assert!(matches!(
             second,
-            FanControllerPlan::Apply { percent: 30, .. }
+            FanControllerPlan::Apply { percent: 85, .. }
         ));
     }
 

@@ -1,6 +1,31 @@
+use serde::Deserialize;
 use serde_json::Value;
 
 use super::*;
+
+#[derive(Debug, Deserialize)]
+struct FanPidFixture {
+    pid_sequences: Vec<PidSequenceFixture>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PidSequenceFixture {
+    name: String,
+    steps: Vec<PidStepFixture>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PidStepFixture {
+    target_temp_celsius: f64,
+    raw_input_celsius: f64,
+    min_fan_percent: i64,
+    expected_filtered_input_celsius: f64,
+    expected_raw_output_percent: f64,
+    expected_applied_duty_percent: u8,
+    expected_output_sum_percent: f64,
+    expected_output_min_percent: f64,
+    expected_output_max_percent: f64,
+}
 
 #[test]
 fn safety_thermal_pid_constants_and_modes_match_expected_values() {
@@ -78,6 +103,72 @@ fn safety_thermal_auto_pid_clamps_to_minimum_fan_floor() {
     // Assert
     assert_eq!(decision.duty_percent, 25);
     assert!(decision.next_pid_state.is_some());
+}
+
+#[test]
+fn safety_thermal_pid_matches_every_sequential_golden_vector() {
+    // Arrange
+    let fixture: FanPidFixture =
+        serde_json::from_str(include_str!("../../fixtures/safety/fan-pid-cases.json"))
+            .expect("fan PID fixture should parse");
+
+    // Act / Assert
+    for sequence in fixture.pid_sequences {
+        let mut state = PidState::default();
+        for (index, step) in sequence.steps.into_iter().enumerate() {
+            let decision = FanControlDecision::from_inputs(FanControlInputs {
+                mode: FanControlMode::Auto {
+                    target_temp_celsius: step.target_temp_celsius,
+                    min_percent: step.min_fan_percent,
+                    pid_state: state,
+                },
+                observation: fresh_observation(step.raw_input_celsius),
+            })
+            .expect("golden PID input should be valid");
+            let next_state = decision
+                .next_pid_state
+                .expect("automatic control should retain PID state");
+            let raw_output = decision
+                .maybe_raw_pid_output_percent
+                .expect("automatic control should expose its raw PID output");
+            let context = format!("{} step {index}", sequence.name);
+
+            assert_close(
+                next_state
+                    .maybe_filtered_input_celsius
+                    .expect("automatic control should retain the filtered input"),
+                step.expected_filtered_input_celsius,
+                &context,
+            );
+            assert_close(raw_output, step.expected_raw_output_percent, &context);
+            assert_eq!(
+                decision.duty_percent, step.expected_applied_duty_percent,
+                "{context}"
+            );
+            assert_close(
+                next_state.output_sum_percent,
+                step.expected_output_sum_percent,
+                &context,
+            );
+            assert_close(
+                next_state.output_min_percent,
+                step.expected_output_min_percent,
+                &context,
+            );
+            assert_close(
+                next_state.output_max_percent,
+                step.expected_output_max_percent,
+                &context,
+            );
+            assert_close(
+                next_state.last_input_celsius,
+                step.expected_filtered_input_celsius,
+                &context,
+            );
+            assert!(next_state.automatic, "{context}");
+            state = next_state;
+        }
+    }
 }
 
 #[test]
@@ -263,4 +354,11 @@ fn reading(chip_temp_celsius: f64) -> ThermalReading {
         maybe_board_temp_celsius: Some(40.0),
         maybe_vr_temp_celsius: Some(42.0),
     }
+}
+
+fn assert_close(actual: f64, expected: f64, context: &str) {
+    assert!(
+        (actual - expected).abs() < 1e-9,
+        "{context}: expected {expected}, got {actual}"
+    );
 }

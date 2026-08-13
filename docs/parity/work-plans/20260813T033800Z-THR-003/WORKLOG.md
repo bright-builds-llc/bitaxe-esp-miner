@@ -36,3 +36,31 @@
   push checkpoint.
 - Blocker or next safe action: Commit and push only the immutable plan,
   worklog, and active task, then begin the pure PID implementation.
+
+## 2026-08-13T03:51:51Z | Exact PID implementation checkpoint
+
+- Source commit before implementation: `73a3054b87df3a7ef0b08f1f9d0ab7e9cac36137`.
+- Actions: Replaced the output-EMA approximation with a deep pure PID module
+  that preserves automatic initialization, temperature-input EMA, 100 ms
+  sample-scaled reverse P-on-error gains, dynamic output limits, both output
+  clamp/anti-windup adjustments, retained input/output state, and the pinned
+  initial zero-minimum `0..255` internal-limit edge. Kept the existing
+  whole-percent actuation adapter and production safety/ownership shell.
+- Regression guard: Expanded the provenance-bound fixture to five sequential
+  state traces covering 12 scheduled transitions and asserted filtered input,
+  raw output, applied duty, output sum, limits, automatic mode, and retained
+  input at each boundary. Updated the production planner test to prove its
+  retained state produces the pinned 75 then 85 percent sequence.
+- Verification: The focused safety-core golden test and all three required
+  Bazel targets pass. The mandatory Cargo format/Clippy/build/test sequence,
+  Bright Builds checks, `just test`, parity report/progress, normal and
+  rollback-probe firmware builds, redaction, and reference cleanliness pass.
+  The accepted PWR-002 projection validator passes; its SHA-256 remains
+  `0668c274d09b3e39d7d5edfea4b2e66c97248ff77de9192981f3af00e547ddfe`,
+  its mode remains `0644`, its result digest remains
+  `199509d8f95dab4287f4d3c3a7b09b381823250ff990c7ee7ad1a612ffbf6b9c`,
+  and its source commit is an ancestor of this implementation.
+- Outcome: Exact pure PID behavior and its unchanged production consumption
+  are implemented without hardware or reference-tree changes.
+- Blocker or next safe action: Commit and push this implementation checkpoint,
+  then compose the row-specific result and run the evidence checkpoint gates.

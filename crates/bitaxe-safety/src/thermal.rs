@@ -20,6 +20,10 @@ use crate::observation::{
 };
 use crate::status::SafetyStatus;
 
+mod pid;
+
+pub use pid::{PidController, PidState, PidStep};
+
 pub const MODULE_NAME: &str = "thermal";
 
 pub const REFERENCE_BREADCRUMBS: &[&str] = &[
@@ -29,11 +33,7 @@ pub const REFERENCE_BREADCRUMBS: &[&str] = &[
     "reference/esp-miner/main/tasks/power_management_task.c",
 ];
 
-pub const PID_KP: f64 = 5.0;
-pub const PID_KI: f64 = 0.1;
-pub const PID_KD: f64 = 2.0;
-pub const PID_SAMPLE_TIME_MS: u32 = 100;
-pub const PID_EMA_ALPHA: f64 = 0.2;
+pub use pid::{PID_EMA_ALPHA, PID_KD, PID_KI, PID_KP, PID_SAMPLE_TIME_MS};
 pub const STARTUP_FAN_DUTY_PERCENT: u8 = 70;
 pub const PAUSED_FAN_DUTY_PERCENT: u8 = 30;
 pub const OVERHEAT_FAN_DUTY_PERCENT: u8 = 100;
@@ -256,69 +256,6 @@ impl ThermalEvidenceToken {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize)]
-pub struct PidState {
-    pub integral: f64,
-    pub previous_error: f64,
-    pub ema_output: f64,
-}
-
-impl Default for PidState {
-    fn default() -> Self {
-        Self {
-            integral: 0.0,
-            previous_error: 0.0,
-            ema_output: 0.0,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
-pub struct PidController {
-    pub state: PidState,
-}
-
-impl PidController {
-    #[must_use]
-    pub const fn new(state: PidState) -> Self {
-        Self { state }
-    }
-
-    #[must_use]
-    pub fn duty_percent(
-        self,
-        target_temp_celsius: f64,
-        actual_temp_celsius: f64,
-        min_fan_percent: u8,
-    ) -> FanControlDecision {
-        let error = actual_temp_celsius - target_temp_celsius;
-        let integral = self.state.integral + error;
-        let derivative = error - self.state.previous_error;
-        let raw_output = PID_KP.mul_add(error, PID_KI * integral) + PID_KD * derivative;
-        let ema_output =
-            PID_EMA_ALPHA.mul_add(raw_output, (1.0 - PID_EMA_ALPHA) * self.state.ema_output);
-        let clamped = ema_output
-            .max(f64::from(min_fan_percent))
-            .min(f64::from(OVERHEAT_FAN_DUTY_PERCENT))
-            .round() as u8;
-
-        FanControlDecision {
-            duty_percent: clamped,
-            status: SafetyStatus::Normal,
-            plan: SafetyEffectPlan::with_effects(
-                SafetyStatus::Normal,
-                vec![SafetyEffect::SetFanDutyPercent { percent: clamped }],
-                SafetyCriticalEvidence::implemented_not_verified("unit"),
-            ),
-            next_pid_state: Some(PidState {
-                integral,
-                previous_error: error,
-                ema_output,
-            }),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub enum FanControlMode {
     Overheat,
     Startup,
@@ -342,6 +279,7 @@ pub struct FanControlInputs {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct FanControlDecision {
     pub duty_percent: u8,
+    pub maybe_raw_pid_output_percent: Option<f64>,
     pub status: SafetyStatus,
     pub plan: SafetyEffectPlan,
     pub next_pid_state: Option<PidState>,
@@ -353,6 +291,7 @@ impl FanControlDecision {
             let plan = inputs.observation.safety_plan();
             return Ok(Self {
                 duty_percent: 0,
+                maybe_raw_pid_output_percent: None,
                 status: plan.status,
                 plan,
                 next_pid_state: None,
@@ -372,16 +311,34 @@ impl FanControlDecision {
                 pid_state,
             } => {
                 let min_fan = MinFanDutyPercent::parse(min_percent)?.percent();
-                return Ok(PidController::new(pid_state).duty_percent(
+                let step = PidController::new(pid_state).step(
                     target_temp_celsius,
                     inputs.observation.chip_temp_celsius(),
                     min_fan,
-                ));
+                );
+                let duty_percent = step
+                    .output_percent
+                    .clamp(0.0, f64::from(OVERHEAT_FAN_DUTY_PERCENT))
+                    .round() as u8;
+                return Ok(Self {
+                    duty_percent,
+                    maybe_raw_pid_output_percent: Some(step.output_percent),
+                    status: SafetyStatus::Normal,
+                    plan: SafetyEffectPlan::with_effects(
+                        SafetyStatus::Normal,
+                        vec![SafetyEffect::SetFanDutyPercent {
+                            percent: duty_percent,
+                        }],
+                        SafetyCriticalEvidence::implemented_not_verified("unit"),
+                    ),
+                    next_pid_state: Some(step.next_state),
+                });
             }
         };
 
         Ok(Self {
             duty_percent,
+            maybe_raw_pid_output_percent: None,
             status: SafetyStatus::Normal,
             plan: SafetyEffectPlan::with_effects(
                 SafetyStatus::Normal,

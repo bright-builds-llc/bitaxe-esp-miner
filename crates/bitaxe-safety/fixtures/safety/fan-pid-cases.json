@@ -3,18 +3,178 @@
     "checklist_ids": ["THR-001", "THR-002", "THR-003", "SAFE-02", "SAFE-03", "SAFE-07"],
     "source_files": [
       "reference/esp-miner/main/thermal/PID.c",
+      "reference/esp-miner/main/thermal/PID.h",
       "reference/esp-miner/main/tasks/fan_controller_task.c"
     ],
-    "source_behavior": "Fan modes and PID output are modeled as pure duty-percent decisions before firmware PWM effects.",
+    "source_behavior": "Fan modes remain pure duty-percent decisions. PID sequences independently model the pinned 100 ms reverse P-on-error computation, input EMA, initialization, limit updates, and output anti-windup before the Rust whole-percent actuation adapter.",
     "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
     "license_posture": "reference-derived behavioral fixture data; not MIT source expression",
-    "derivation": "manual independent Rust fixture cases from pinned reference constants and Phase 6 fan policy"
+    "derivation": "manual independent vectors calculated from the pinned constants and transition ordering; verified by Rust state-by-state assertions"
   },
-  "cases": [
+  "fixed_cases": [
     { "name": "overheat", "expected_duty_percent": 100 },
     { "name": "startup", "expected_duty_percent": 70 },
     { "name": "paused-or-no-pool", "expected_duty_percent": 30 },
     { "name": "manual", "manual_percent": 42 },
     { "name": "auto-clamped-to-minimum", "minimum_percent": 25 }
+  ],
+  "pid_sequences": [
+    {
+      "name": "input_ema_and_sample_scaled_reverse_terms",
+      "steps": [
+        {
+          "target_temp_celsius": 60.0,
+          "raw_input_celsius": 70.0,
+          "min_fan_percent": 25,
+          "expected_filtered_input_celsius": 70.0,
+          "expected_raw_output_percent": 75.1,
+          "expected_applied_duty_percent": 75,
+          "expected_output_sum_percent": 25.1,
+          "expected_output_min_percent": 25.0,
+          "expected_output_max_percent": 100.0
+        },
+        {
+          "target_temp_celsius": 60.0,
+          "raw_input_celsius": 72.0,
+          "min_fan_percent": 25,
+          "expected_filtered_input_celsius": 70.4,
+          "expected_raw_output_percent": 85.204,
+          "expected_applied_duty_percent": 85,
+          "expected_output_sum_percent": 25.204,
+          "expected_output_min_percent": 25.0,
+          "expected_output_max_percent": 100.0
+        },
+        {
+          "target_temp_celsius": 60.0,
+          "raw_input_celsius": 68.0,
+          "min_fan_percent": 25,
+          "expected_filtered_input_celsius": 69.92,
+          "expected_raw_output_percent": 65.3032,
+          "expected_applied_duty_percent": 65,
+          "expected_output_sum_percent": 25.3032,
+          "expected_output_min_percent": 25.0,
+          "expected_output_max_percent": 100.0
+        }
+      ]
+    },
+    {
+      "name": "initial_zero_minimum_retains_255_internal_ceiling",
+      "steps": [
+        {
+          "target_temp_celsius": 60.0,
+          "raw_input_celsius": 100.0,
+          "min_fan_percent": 0,
+          "expected_filtered_input_celsius": 100.0,
+          "expected_raw_output_percent": 200.4,
+          "expected_applied_duty_percent": 100,
+          "expected_output_sum_percent": 0.4,
+          "expected_output_min_percent": 0.0,
+          "expected_output_max_percent": 255.0
+        },
+        {
+          "target_temp_celsius": 60.0,
+          "raw_input_celsius": 100.0,
+          "min_fan_percent": 0,
+          "expected_filtered_input_celsius": 100.0,
+          "expected_raw_output_percent": 200.8,
+          "expected_applied_duty_percent": 100,
+          "expected_output_sum_percent": 0.8,
+          "expected_output_min_percent": 0.0,
+          "expected_output_max_percent": 255.0
+        }
+      ]
+    },
+    {
+      "name": "upper_clamp_adjusts_output_sum",
+      "steps": [
+        {
+          "target_temp_celsius": 60.0,
+          "raw_input_celsius": 100.0,
+          "min_fan_percent": 25,
+          "expected_filtered_input_celsius": 100.0,
+          "expected_raw_output_percent": 100.0,
+          "expected_applied_duty_percent": 100,
+          "expected_output_sum_percent": -100.0,
+          "expected_output_min_percent": 25.0,
+          "expected_output_max_percent": 100.0
+        },
+        {
+          "target_temp_celsius": 60.0,
+          "raw_input_celsius": 100.0,
+          "min_fan_percent": 25,
+          "expected_filtered_input_celsius": 100.0,
+          "expected_raw_output_percent": 100.0,
+          "expected_applied_duty_percent": 100,
+          "expected_output_sum_percent": -100.0,
+          "expected_output_min_percent": 25.0,
+          "expected_output_max_percent": 100.0
+        }
+      ]
+    },
+    {
+      "name": "lower_clamp_adjusts_output_sum",
+      "steps": [
+        {
+          "target_temp_celsius": 66.0,
+          "raw_input_celsius": 40.0,
+          "min_fan_percent": 25,
+          "expected_filtered_input_celsius": 40.0,
+          "expected_raw_output_percent": 25.0,
+          "expected_applied_duty_percent": 25,
+          "expected_output_sum_percent": 155.0,
+          "expected_output_min_percent": 25.0,
+          "expected_output_max_percent": 100.0
+        },
+        {
+          "target_temp_celsius": 66.0,
+          "raw_input_celsius": 40.0,
+          "min_fan_percent": 25,
+          "expected_filtered_input_celsius": 40.0,
+          "expected_raw_output_percent": 25.0,
+          "expected_applied_duty_percent": 25,
+          "expected_output_sum_percent": 155.0,
+          "expected_output_min_percent": 25.0,
+          "expected_output_max_percent": 100.0
+        }
+      ]
+    },
+    {
+      "name": "dynamic_minimum_update_clamps_automatic_state",
+      "steps": [
+        {
+          "target_temp_celsius": 60.0,
+          "raw_input_celsius": 60.0,
+          "min_fan_percent": 0,
+          "expected_filtered_input_celsius": 60.0,
+          "expected_raw_output_percent": 0.0,
+          "expected_applied_duty_percent": 0,
+          "expected_output_sum_percent": 0.0,
+          "expected_output_min_percent": 0.0,
+          "expected_output_max_percent": 255.0
+        },
+        {
+          "target_temp_celsius": 60.0,
+          "raw_input_celsius": 60.0,
+          "min_fan_percent": 25,
+          "expected_filtered_input_celsius": 60.0,
+          "expected_raw_output_percent": 25.0,
+          "expected_applied_duty_percent": 25,
+          "expected_output_sum_percent": 25.0,
+          "expected_output_min_percent": 25.0,
+          "expected_output_max_percent": 100.0
+        },
+        {
+          "target_temp_celsius": 60.0,
+          "raw_input_celsius": 60.0,
+          "min_fan_percent": 0,
+          "expected_filtered_input_celsius": 60.0,
+          "expected_raw_output_percent": 25.0,
+          "expected_applied_duty_percent": 25,
+          "expected_output_sum_percent": 25.0,
+          "expected_output_min_percent": 0.0,
+          "expected_output_max_percent": 100.0
+        }
+      ]
+    }
   ]
 }

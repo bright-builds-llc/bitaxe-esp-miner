@@ -6,6 +6,7 @@ js_library(
     srcs = [
         "src/sensor_acquisition/emc2101.rs",
         "src/thermal.rs",
+        "src/thermal/pid.rs",
     ],
     visibility = ["//tools/automation:__pkg__"],
 )
@@ -28,6 +29,7 @@ rust_library(
         "src/self_test.rs",
         "src/status.rs",
         "src/thermal.rs",
+        "src/thermal/pid.rs",
         "src/thermal/tests.rs",
         "src/watchdog.rs",
     ],
