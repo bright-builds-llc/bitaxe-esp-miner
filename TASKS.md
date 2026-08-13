@@ -2146,12 +2146,12 @@ Operator-ready continuation plan:
 - [x] Record before effects that the operator is present at the device,
       watching the display, and asking to continue; do not treat this as either
       future IDENTIFY observation or as retroactive attempt-006 evidence.
-- [ ] Revalidate and push the immutable plan/task checkpoint plus every
+- [x] Revalidate and push the immutable plan/task checkpoint plus every
       focused, mandatory, privacy, reference, and exact-package gate.
-- [ ] Run exactly one fresh detector-gated `attempt-007` with the proven live
+- [x] Run exactly one fresh detector-gated `attempt-007` with the proven live
       prompt, and consume each typed request-once confirmation only after the
       matching live signal and physical operator observation.
-- [ ] Promote API-009 only on the complete five-command device-user quorum;
+- [x] Promote API-009 only on the complete five-command device-user quorum;
       otherwise preserve `implemented`, the earliest typed failure, safe stop,
       cleanup, evidence withholding, and the accepted terminal outcome.
 
@@ -2168,6 +2168,29 @@ linked plan. Campaign start consumes attempt-007; no inferred confirmation,
 expired-checkpoint reuse, unchanged retry, second campaign, external pool,
 owner credential, destructive/fault-injection action, power cycle, direct UART,
 or pin/pad/GPIO manipulation is authorized.
+
+Attempt-007 verification: `stop_repeated_boundary`; no retry was run. Exact
+clean pushed source `ae24565a9376948bb0eeff190938403a1897c7e5`, focused real
+boundary tests, all software/privacy/reference gates, and exact package
+admission passed before effects. The fresh protected detector admitted exactly
+one Ultra 205. The sole campaign used a fresh mode-0700 attempt root with 13
+mode-0600 files and retained separate private wrapper/detector streams. Its
+sealed v8 result proved trusted package/runtime identity, protocol readiness, a
+genuine positive block, two qualified accepted shares, one pause request,
+confirmed pause, one resume request, confirmed safe stop, ready USB cleanup,
+private modes, and redaction. It emitted neither IDENTIFY requirement, no
+confirmation command ran, and the public projection remained absent.
+
+Completion review: Attempt-007 recurred at the exact attempt-004 command-effect
+boundary after the targeted producer-wakeup/readiness fix had been verified and
+had crossed it successfully in attempts 005/006: `network_correlation_failed` /
+`safety_prerequisites_stale`, with active-before-pause true, pause confirmed,
+resume requested but not confirmed, active-after-resume false, a deadline wake,
+stale safety sample, unchanged observation epoch, and no recovered pending
+observation. The hardware-attempt policy therefore selects
+`stop_repeated_boundary`. API-009 remains `implemented`, this unresolved task
+stays active, and attempt-008 is prohibited. The linked CLOSURE.md records the
+terminal blocker, next safe software-only diagnostic condition, and non-claims.
 
 ## Future
 
