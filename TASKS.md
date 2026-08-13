@@ -2535,6 +2535,26 @@ focused tests, every mandatory gate, and the real ESP build pass. Primary
 closed private artifacts prove them. API-009 stays `implemented`; no hardware
 evidence or attempt-013 authorization was produced.
 
+Deadline-fixed attempt-013 plan:
+`docs/parity/work-plans/20260813T180631Z-API-009/PLAN.md`.
+
+- [ ] Commit and push the immutable single-attempt contract and pass every
+      focused, mandatory, privacy, reference, firmware, and exact-package gate.
+- [ ] Run exactly one fresh detector-gated attempt-013 and consume each
+      IDENTIFY checkpoint only after its matching live physical report.
+- [ ] Promote only on the complete command/restart/device-user quorum;
+      otherwise preserve `implemented`, earliest failure, evidence withholding,
+      safe stop, cleanup, recovery, and stop without attempt-014.
+
+Attempt-013 authorization: pushed commit `257e3be9` fixes the exact attempt-012
+parent/child deadline mismatch with a checked complete-transaction budget and
+timeout-recovery regressions. Standing task authorization permits this one
+campaign only after the linked immutable contract and all named gates pass at
+clean pushed HEAD. Campaign start consumes attempt-013. No inferred physical
+observation, prior protected-artifact reuse, external or owner pool,
+destructive/fault-injection action, direct UART, pin/pad/GPIO manipulation,
+attempt-014, or unchanged retry is authorized.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
