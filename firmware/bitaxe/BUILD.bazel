@@ -124,6 +124,7 @@ filegroup(
         "src/task_watchdog_observation.rs",
         "src/runtime_health_adapter.rs",
         "src/runtime_snapshot.rs",
+        "src/runtime_snapshot/operator_intent.rs",
         "src/runtime_snapshot/screen.rs",
         "src/runtime_snapshot/screen_projection.rs",
         "src/safety_adapter/watchdog.rs",
@@ -367,6 +368,30 @@ rust_test(
         "@crates//:log",
         "@crates//:serde",
         "@crates//:serde_json",
+    ],
+)
+
+rust_test(
+    name = "operator_intent_source_ownership_tests",
+    srcs = [
+        "src/operator_intent_source_ownership_test.rs",
+        "src/production_mining_session.rs",
+        "src/runtime_snapshot.rs",
+    ],
+    crate_name = "operator_intent_source_ownership_tests",
+    crate_root = "src/operator_intent_source_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
+    name = "operator_intent_tests",
+    srcs = ["src/runtime_snapshot/operator_intent.rs"],
+    crate_name = "operator_intent_tests",
+    crate_root = "src/runtime_snapshot/operator_intent.rs",
+    edition = "2021",
+    deps = [
+        "//crates/bitaxe-api:bitaxe_api",
+        "//crates/bitaxe-stratum:bitaxe_stratum",
     ],
 )
 

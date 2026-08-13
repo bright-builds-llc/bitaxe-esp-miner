@@ -239,7 +239,7 @@ impl OrdinaryEspProductionSessionAdapter {
         snapshot: &ProductionSessionSnapshot,
         pending_observation_recovered: bool,
     ) -> ProductionReadiness {
-        let mining = crate::runtime_snapshot::mining_runtime_state();
+        let requested_operator_intent = crate::runtime_snapshot::requested_mining_operator_intent();
         let wifi = crate::wifi_adapter::current_wifi_snapshot();
         let observations = crate::safety_adapter::observation_snapshot();
         let safety_prerequisites_fresh = observations.is_ultra_205_mining_safe_at(now());
@@ -250,8 +250,8 @@ impl OrdinaryEspProductionSessionAdapter {
         let operator_intent = self
             .maybe_campaign_status
             .as_ref()
-            .map_or(mining.operator_intent, |status| {
-                status.operator_intent(mining.operator_intent)
+            .map_or(requested_operator_intent, |status| {
+                status.operator_intent(requested_operator_intent)
             });
         let actuation_qualified = self
             .maybe_campaign_status

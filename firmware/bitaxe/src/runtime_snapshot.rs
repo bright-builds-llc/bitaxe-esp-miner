@@ -19,12 +19,17 @@ use bitaxe_api::{
     ProjectedApiViews, SafeTelemetrySnapshot, ScoreboardEntryWire, StatisticsHistory,
     StatisticsSample, StatisticsWire, SystemInfoSettingsSnapshot, SystemInfoWire,
 };
+mod operator_intent;
+
 use bitaxe_config::{reload_snapshot, LoadedValue};
 use bitaxe_stratum::v1::telemetry_projection::RuntimeProjectionSampleMarker;
 use bitaxe_stratum::v1::{
-    production_session::ProductionSessionSnapshot, production_work::PoolSessionGeneration,
-    state::MiningRuntimeState, telemetry_projection::RuntimeTelemetryProjection,
+    production_session::ProductionSessionSnapshot,
+    production_work::PoolSessionGeneration,
+    state::{MiningOperatorIntent, MiningRuntimeState},
+    telemetry_projection::RuntimeTelemetryProjection,
 };
+use operator_intent::RequestedOperatorIntent;
 static COMMAND_VISIBLE_STATE: OnceLock<Mutex<CommandVisibleState>> = OnceLock::new();
 static OPERATOR_SNAPSHOT_PUBLISHER: OnceLock<OperatorSnapshotPublisher> = OnceLock::new();
 static STATISTICS_HISTORY: OnceLock<Mutex<StatisticsHistory>> = OnceLock::new();
@@ -59,6 +64,7 @@ struct CompletedOperatorSnapshot<T> {
 
 #[derive(Debug, Clone, PartialEq)]
 struct CommandVisibleState {
+    requested_operator_intent: RequestedOperatorIntent,
     mining: MiningRuntimeState,
     runtime_projection: RuntimeTelemetryProjection,
     identify: IdentifyModeState,
@@ -69,6 +75,7 @@ struct CommandVisibleState {
 impl Default for CommandVisibleState {
     fn default() -> Self {
         Self {
+            requested_operator_intent: RequestedOperatorIntent::default(),
             mining: MiningRuntimeState::default(),
             runtime_projection: RuntimeTelemetryProjection::new(PoolSessionGeneration::initial()),
             identify: IdentifyModeState::inactive(),
@@ -126,17 +133,16 @@ fn complete_api_snapshot(candidate: OperatorSnapshotCandidate) -> ApiSnapshot {
 pub fn mining_runtime_state() -> MiningRuntimeState {
     command_visible_state().mining
 }
-
+pub(crate) fn requested_mining_operator_intent() -> MiningOperatorIntent {
+    command_visible_state().requested_operator_intent.current()
+}
 /// Applies the persisted boot preference to this boot's initial intent.
 pub fn apply_boot_mining_preference(start_mining_on_boot: bool) {
-    use bitaxe_stratum::v1::state::MiningOperatorIntent;
-
     mutate_command_visible_state(|state| {
-        state.mining.set_operator_intent(if start_mining_on_boot {
-            MiningOperatorIntent::Run
-        } else {
-            MiningOperatorIntent::Paused
-        });
+        let intent = state
+            .requested_operator_intent
+            .apply_boot_preference(start_mining_on_boot);
+        state.mining.set_operator_intent(intent);
     });
 }
 
@@ -243,6 +249,7 @@ pub fn block_found_notification_state() -> BlockFoundNotificationState {
 /// Applies current-boot operator intent without deriving mining state.
 pub fn apply_mining_operator_intent_command(effect: MiningOperatorIntentEffect) {
     mutate_command_visible_state(|state| {
+        state.requested_operator_intent.apply(effect);
         apply_mining_operator_intent_effect(&mut state.mining, effect);
     });
 }

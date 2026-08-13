@@ -33,3 +33,23 @@
   no hardware-capable input or interface was accessed.
 - Blocker or next safe action: Push this immutable checkpoint before editing
   the operator-intent ownership boundary.
+
+## 2026-08-13T16:37:57Z | ownership fix verified
+
+- Actions: Added a typed requested-operator-intent owner, routed boot and
+  pause/resume writes through it, routed production readiness reads through
+  it, and kept session publication limited to the derived mining projection.
+  Added exact interleaving and source-ownership regressions.
+- Verification: The red ownership regression failed before the fix. After the
+  fix, focused intent, production campaign-status, Stratum session, flash
+  campaign, and real automation-process tests pass. Cargo format, strict
+  Clippy, all-target build, all-feature tests, Bright Builds, all 44 Bazel
+  tests, parity, parity-progress, redaction, reference cleanliness, real ESP
+  firmware build, and diff checks pass.
+- Evidence: Public source/tests and redaction-safe exit status only. No
+  credential, protected evidence, detector, USB, device, network, HTTP, or
+  hardware interface was accessed.
+- Outcome: `software_fix_complete`. API-009 remains `implemented`; no parity
+  transition or hardware evidence is claimed.
+- Blocker or next safe action: Push the closure and fix. A future attempt-012
+  requires a fresh selector and separate immutable one-attempt contract.

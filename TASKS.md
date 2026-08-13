@@ -2453,12 +2453,12 @@ Software-only stale-safety continuation:
 
 Plan: `docs/parity/work-plans/20260813T160905Z-API-009/PLAN.md`.
 
-- [ ] Explain why the command-effects pause join observed stale safety while
+- [x] Explain why the command-effects pause join observed stale safety while
       the campaign result still reported fresh safety and a clean active marker
       stream.
-- [ ] Implement the smallest root-cause fix with focused transition,
+- [x] Implement the smallest root-cause fix with focused transition,
       pause-join, orchestration, and real-process regressions.
-- [ ] Run every mandatory software/privacy/reference gate and keep attempt-012
+- [x] Run every mandatory software/privacy/reference gate and keep attempt-012
       prohibited until a separate immutable hardware contract is justified.
 
 Authorization: read-only source, current attempt-011 typed metadata, and
@@ -2466,6 +2466,13 @@ software tests/builds only. Do not read raw traces or sensitive fields, publish
 protected artifacts, access credentials, USB, the device or its network,
 issue HTTP commands, flash, reset, mine, manipulate hardware controls, use
 direct UART or pins/pads/GPIO, or create/run attempt-012.
+
+Completion review: the pause request was lost because command intent shared the
+replaceable session-derived mining projection. Requested intent now has a
+separate typed boot-lifetime owner that session publication cannot overwrite.
+The exact interleaving and ownership regressions plus all mandatory gates and a
+real ESP firmware build pass. API-009 remains `implemented`; no hardware or
+parity evidence was produced by the software-only continuation.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
