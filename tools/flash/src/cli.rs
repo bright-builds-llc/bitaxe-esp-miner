@@ -105,6 +105,14 @@ pub(crate) struct FlashMonitorCommand {
     #[arg(long = "network-reconnect-probe", requires = "wifi_credentials")]
     pub(crate) network_reconnect_probe: bool,
 
+    #[arg(
+        long = "thermal-fault-stimulus-intent",
+        value_parser = parse_utf8_path,
+        requires = "wifi_credentials",
+        conflicts_with = "network_reconnect_probe"
+    )]
+    pub(crate) thermal_fault_stimulus_intent: Option<Utf8PathBuf>,
+
     #[arg(long = "capture-timeout-seconds", default_value_t = DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS)]
     pub(crate) capture_timeout_seconds: u64,
 }

@@ -160,6 +160,92 @@ fn network_reconnect_probe_marker_is_opt_in() {
 }
 
 #[test]
+fn thermal_fault_nvs_tuple_is_exact_and_ordinary_mode_has_no_stimulus() {
+    // Arrange
+    let credentials = WifiCredentials {
+        ssid: "test-network".to_owned(),
+        wifi_pass: "test-password".to_owned(),
+    };
+    let seed = ThermalFaultNvsSeed {
+        lease: 42,
+        sample_count: 5,
+    };
+
+    // Act
+    let ordinary = wifi_nvs_csv_for_mode(&credentials, WifiNvsSeedMode::Ordinary);
+    let stimulus = wifi_nvs_csv_for_mode(&credentials, WifiNvsSeedMode::ThermalFaultStimulus(seed));
+
+    // Assert
+    for key in ["thermfault", "thermlease", "thermcount"] {
+        assert!(!ordinary.contains(key));
+    }
+    assert!(stimulus.contains("thermfault,data,string,emc2101_invalid_sample"));
+    assert!(stimulus.contains("thermlease,data,u64,42"));
+    assert!(stimulus.contains("thermcount,data,u16,5"));
+    assert!(stimulus.contains("mineonboot,data,u16,0"));
+}
+
+#[cfg(unix)]
+#[test]
+fn thermal_fault_intent_binds_private_mode_plan_and_exact_package() {
+    use std::os::unix::fs::PermissionsExt;
+
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let root = dir_path(&dir);
+    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let attempt_root = root.join("scratch/thr001-emc2101-fault/attempt-004");
+    std::fs::create_dir_all(attempt_root.as_std_path()).expect("attempt root");
+    std::fs::set_permissions(
+        attempt_root.as_std_path(),
+        std::fs::Permissions::from_mode(0o700),
+    )
+    .expect("attempt root mode");
+    let plan = root.join(THERMAL_FAULT_PLAN_RELATIVE_PATH);
+    std::fs::create_dir_all(plan.parent().expect("plan parent").as_std_path())
+        .expect("plan parent");
+    let plan_document = "fixture thermal fault plan\n";
+    std::fs::write(plan.as_std_path(), plan_document).expect("plan");
+    let plan_sha256 = sha256_bytes(plan_document.as_bytes());
+    let intent = attempt_root.join("thermal-fault-intent.private.json");
+    std::fs::write(
+        intent.as_std_path(),
+        serde_json::json!({
+            "schema_version": "esp-thermal-fault-stimulus-intent-v1",
+            "board": 205,
+            "attempt_ordinal": 4,
+            "source_commit": SOURCE_COMMIT,
+            "reference_commit": REFERENCE_COMMIT,
+            "app_elf_sha256": APP_ELF_SHA256,
+            "plan_path": THERMAL_FAULT_PLAN_RELATIVE_PATH,
+            "plan_sha256": plan_sha256.clone(),
+            "stimulus_kind": "emc2101_invalid_sample",
+            "sample_count": 5,
+            "lease_hex": "000000000000002a"
+        })
+        .to_string(),
+    )
+    .expect("intent");
+    std::fs::set_permissions(intent.as_std_path(), std::fs::Permissions::from_mode(0o600))
+        .expect("intent mode");
+    let environment = FakeFlashEnvironment::default().with_workspace_dir(root);
+
+    // Act
+    let admitted = admit_thermal_fault_stimulus_intent_with_plan_sha256(
+        Utf8Path::new(THERMAL_FAULT_INTENT_RELATIVE_PATH),
+        Some(&manifest),
+        BoardId::Ultra205,
+        &environment,
+        &plan_sha256,
+    )
+    .expect("strict intent admission");
+
+    // Assert
+    assert_eq!(admitted.lease, 42);
+    assert_eq!(admitted.sample_count, 5);
+}
+
+#[test]
 fn wifi_credentials_reject_invalid_lengths_without_secret_value() {
     // Arrange
     let file = WifiCredentialsFile {

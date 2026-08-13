@@ -10,8 +10,10 @@ use crate::{
 };
 
 pub(crate) fn run() -> anyhow::Result<()> {
-    let startup_debug_text = initialize_boot_identity_and_settings()?;
-    let (startup_diagnostics, maybe_modem) = initialize_hardware(startup_debug_text);
+    let (startup_debug_text, maybe_thermal_fault_stimulus) =
+        initialize_boot_identity_and_settings()?;
+    let (startup_diagnostics, maybe_modem) =
+        initialize_hardware(startup_debug_text, maybe_thermal_fault_stimulus);
     let boot_validation_ready = start_runtime_services(startup_diagnostics, maybe_modem)?;
     let (filesystem_status, route_shell_ready) = start_storage_and_http();
     wifi_adapter::maybe_start_network_reconnect_probe(route_shell_ready);
@@ -19,7 +21,10 @@ pub(crate) fn run() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn initialize_boot_identity_and_settings() -> anyhow::Result<StartupDebugText> {
+fn initialize_boot_identity_and_settings() -> anyhow::Result<(
+    StartupDebugText,
+    Option<settings_adapter::ThermalFaultStimulusAdmission>,
+)> {
     sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
     boot_evidence::initialize_observer();
@@ -54,16 +59,30 @@ fn initialize_boot_identity_and_settings() -> anyhow::Result<StartupDebugText> {
         log::warn!("scoreboard=unavailable category={}", error.category());
     }
     runtime_snapshot::apply_boot_mining_preference(settings_adapter::start_mining_on_boot());
-    Ok(StartupDebugText::new(
-        BoardTarget::Ultra205,
-        AsicTarget::Bm1366,
-        Some(crate::build_label()),
-        crate::build_timestamp_utc(),
+    let maybe_thermal_fault_stimulus = match settings_adapter::load_thermal_fault_stimulus() {
+        Ok(maybe_admission) => maybe_admission,
+        Err(error) => {
+            log::warn!(
+                "thermal_fault_stimulus=unavailable reason={}",
+                error.category()
+            );
+            None
+        }
+    };
+    Ok((
+        StartupDebugText::new(
+            BoardTarget::Ultra205,
+            AsicTarget::Bm1366,
+            Some(crate::build_label()),
+            crate::build_timestamp_utc(),
+        ),
+        maybe_thermal_fault_stimulus,
     ))
 }
 
 fn initialize_hardware(
     startup_debug_text: StartupDebugText,
+    maybe_thermal_fault_stimulus: Option<settings_adapter::ThermalFaultStimulusAdmission>,
 ) -> (anyhow::Result<()>, Option<Modem<'static>>) {
     let peripherals = match Peripherals::take() {
         Ok(peripherals) => peripherals,
@@ -116,8 +135,12 @@ fn initialize_hardware(
                 None
             }
         };
-    let display_mode =
-        initialize_operator_runtime(maybe_i2c_bus, maybe_core_voltage_adc, startup_debug_text);
+    let display_mode = initialize_operator_runtime(
+        maybe_i2c_bus,
+        maybe_core_voltage_adc,
+        startup_debug_text,
+        maybe_thermal_fault_stimulus,
+    );
     display_adapter::publish_runtime_display_input_boundary(display_mode, input_available);
     (
         asic_adapter::run_boot_gate_with_peripherals(boot_peripherals),
@@ -129,6 +152,7 @@ fn initialize_operator_runtime(
     mut maybe_bus: Option<safety_adapter::BitaxeI2cBus<'static>>,
     maybe_core_voltage_adc: Option<safety_adapter::Ultra205CoreVoltageAdc>,
     startup_debug_text: StartupDebugText,
+    maybe_thermal_fault_stimulus: Option<settings_adapter::ThermalFaultStimulusAdmission>,
 ) -> display_adapter::RuntimeDisplayMode {
     let display_started_at_ms = runtime_uptime::millis();
     let startup_frame = startup_debug_text.frame_at(display_started_at_ms);
@@ -167,6 +191,7 @@ fn initialize_operator_runtime(
         maybe_runtime_owner,
         maybe_core_voltage_adc,
         maybe_runtime_display,
+        maybe_thermal_fault_stimulus,
     ) {
         log::warn!(
             "operator_sensor_runtime=unavailable reason=thread_spawn_failed error={error:#}"

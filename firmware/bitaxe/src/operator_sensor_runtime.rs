@@ -15,6 +15,8 @@ use bitaxe_safety::{
         reduce_sensor_sweep, AcquisitionOutcome, ProducerSensorState, ProducerSequences,
         SensorSweepOutcomes,
     },
+    thermal::ThermalReading,
+    thermal_fault_stimulus::{ThermalFaultStimulus, THERMAL_FAULT_STIMULUS_SAMPLE_COUNT},
 };
 use esp_idf_svc::sys;
 
@@ -34,6 +36,7 @@ pub fn start(
     maybe_owner: Option<RuntimeI2cOwner<'static>>,
     maybe_core_voltage_adc: Option<safety_adapter::Ultra205CoreVoltageAdc>,
     maybe_display: Option<RuntimeDisplayOwner>,
+    maybe_thermal_fault_admission: Option<crate::settings_adapter::ThermalFaultStimulusAdmission>,
 ) -> Result<()> {
     let (maybe_actuation_registration, maybe_actuation_inbox) = if maybe_owner.is_some() {
         let (registration, inbox) = safety_adapter::prepare_safety_actuation_owner();
@@ -50,6 +53,7 @@ pub fn start(
                 maybe_core_voltage_adc,
                 maybe_display,
                 maybe_actuation_inbox,
+                admitted_thermal_fault_stimulus(maybe_thermal_fault_admission),
             )
         })
         .context("spawn operator sensor producer")?;
@@ -68,6 +72,7 @@ fn run(
     mut maybe_core_voltage_adc: Option<safety_adapter::Ultra205CoreVoltageAdc>,
     maybe_display: Option<RuntimeDisplayOwner>,
     maybe_actuation_inbox: Option<SafetyActuationOwnerInbox>,
+    mut maybe_thermal_fault_stimulus: Option<ThermalFaultStimulus>,
 ) -> ! {
     let boot_session = new_boot_session_id();
     let mut state = ProducerSensorState::default();
@@ -96,7 +101,7 @@ fn run(
         let now_ms = crate::runtime_uptime::millis();
 
         if sensor_schedule.is_due(now_ms) {
-            let (power, asic_temperature_celsius, tachometer_rpm) =
+            let (power, actual_asic_temperature_celsius, tachometer_rpm) =
                 if let Some(owner) = maybe_owner.as_mut() {
                     (
                         safety_adapter::read_power_acquisition(owner),
@@ -110,6 +115,11 @@ fn run(
                         AcquisitionOutcome::Unavailable(UnavailableReason::ProducerUnavailable),
                     )
                 };
+            let asic_temperature_celsius = apply_thermal_fault_stimulus(
+                &mut maybe_thermal_fault_stimulus,
+                state.thermal().temperature_truth(),
+                actual_asic_temperature_celsius,
+            );
             let vr_temperature_celsius =
                 AcquisitionOutcome::Unavailable(UnavailableReason::UnsupportedOnBoard);
             let core_voltage_millivolts = maybe_core_voltage_adc.as_mut().map_or(
@@ -215,6 +225,51 @@ fn run(
                 }
             }
             _ => sleep_until(next_owner_deadline_ms),
+        }
+    }
+}
+
+fn admitted_thermal_fault_stimulus(
+    maybe_admission: Option<crate::settings_adapter::ThermalFaultStimulusAdmission>,
+) -> Option<ThermalFaultStimulus> {
+    let admission = maybe_admission?;
+    if admission.sample_count() != THERMAL_FAULT_STIMULUS_SAMPLE_COUNT
+        || !admission.has_nonzero_lease()
+    {
+        log::warn!("thermal_fault_stimulus=unavailable reason=admission_contract");
+        return None;
+    }
+    Some(ThermalFaultStimulus::default())
+}
+
+fn apply_thermal_fault_stimulus(
+    maybe_stimulus: &mut Option<ThermalFaultStimulus>,
+    prior: &bitaxe_safety::observation::Observation<ThermalReading>,
+    actual: AcquisitionOutcome<f64>,
+) -> AcquisitionOutcome<f64> {
+    let Some(stimulus) = maybe_stimulus.as_mut() else {
+        return actual;
+    };
+    match stimulus.step(prior, actual) {
+        Ok(step) => {
+            if let Some(marker) = step.maybe_marker {
+                crate::info_retained(&format!(
+                    "thermal_fault_stimulus state={} redacted=true",
+                    marker.label()
+                ));
+            }
+            if stimulus.is_complete() {
+                *maybe_stimulus = None;
+            }
+            step.outcome
+        }
+        Err(error) => {
+            log::warn!(
+                "thermal_fault_stimulus=aborted reason={} redacted=true",
+                error.label()
+            );
+            *maybe_stimulus = None;
+            actual
         }
     }
 }

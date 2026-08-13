@@ -9,6 +9,7 @@ pub mod self_test;
 pub mod sensor_acquisition;
 pub mod status;
 pub mod thermal;
+pub mod thermal_fault_stimulus;
 pub mod watchdog;
 
 #[must_use]

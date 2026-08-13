@@ -46,6 +46,7 @@ mod package;
 mod package_admission;
 mod redaction;
 mod support;
+mod thermal_fault_intent;
 mod wifi;
 
 #[cfg(test)]
@@ -63,6 +64,7 @@ pub(crate) use output::*;
 pub(crate) use package::*;
 pub(crate) use redaction::*;
 pub(crate) use support::*;
+pub(crate) use thermal_fault_intent::*;
 pub(crate) use wifi::*;
 
 const PACKAGE_BUILD_DISPLAY: &str = "bazel build //firmware/bitaxe:firmware_image";

@@ -45,6 +45,8 @@ js_library(
         "src/operator_sensor_runtime.rs",
         "src/safety_adapter/emc2101.rs",
         "src/safety_adapter/i2c_bus.rs",
+        "src/settings_adapter/thermal_fault_stimulus.rs",
+        "src/startup.rs",
     ],
     visibility = ["//tools/automation:__pkg__"],
 )
@@ -385,6 +387,7 @@ rust_test(
         "src/safety_adapter/adc.rs",
         "src/settings_adapter.rs",
         "src/settings_adapter/production.rs",
+        "src/settings_adapter/thermal_fault_stimulus.rs",
         "src/startup.rs",
         "src/safety_adapter/ds4432u.rs",
         "src/safety_adapter/emc2101.rs",

@@ -43,3 +43,29 @@
 - Blocker or next safe action: Commit and push only the plan, worklog, and
   targeted THR-001 task update; then implement and separately verify the
   transaction before any detector or hardware command.
+
+## 2026-08-13T08:25:35Z | implementation verification checkpoint
+
+- Actions: Added the strict private attempt-004 intent, internal physical
+  package/plan admission, consume-before-use NVS tuple, bounded five-sample
+  reducer, sole sensor-owner integration, private-first host restoration
+  transaction, v1 public evidence contract, independent validator, and real-
+  child regression coverage. No detector or hardware command ran.
+- Verification: Focused safety, automation-contract, flash, and complete
+  automation tests passed. The real ESP32-S3 firmware image built. The ordered
+  Cargo format, strict Clippy, all-target build, and all-feature test sequence
+  passed; the test command used an isolated generated target directory after
+  the default directory exposed a host `syspolicyd`/dynamic-loader stall before
+  Rust execution. Bright Builds, all 42 Bazel tests, parity validation,
+  parity progress, semantic redaction, reference cleanliness, and diff checks
+  passed. Parity remains 67 verified of 94 active rows with no validation
+  errors.
+- Evidence: Software tests prove one-shot erase-before-validation, exactly five
+  overlays only after successful real reads, typed fault observation, fresh
+  recovery, ordinary exact-package restoration, primary-failure precedence,
+  protected modes, sensitive-field exclusion, and no invented child artifact.
+- Outcome: The implementation is ready for its separate clean pushed commit.
+  THR-001 remains `implemented`; no hardware-regression claim exists yet.
+- Blocker or next safe action: Commit and push the implementation, rebuild the
+  exact clean package, admit one Ultra 205 with the detector, and consume the
+  single attempt-004 capture. Never start attempt-005.

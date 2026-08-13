@@ -11,6 +11,7 @@ import { projectAsicInitializationEvidence } from "./asic-initialization-evidenc
 import { projectAsicPowerInitializationEvidence } from "./asic-power-initialization-evidence.js";
 import { projectCoreVoltageControlEvidence } from "./core-voltage-control-evidence.js";
 import { captureEmc2101ThermalEvidence } from "./emc2101-thermal-evidence.js";
+import { captureEmc2101ThermalFaultFromInvocation } from "./emc2101-thermal-fault-command.js";
 import { projectIna260Evidence } from "./ina260-evidence.js";
 import { projectAsicResetEvidence } from "./asic-reset-evidence.js";
 import { projectAsicResultParsingEvidence } from "./asic-result-parsing-evidence.js";
@@ -221,6 +222,7 @@ async function dispatchProcess(
     case "capture-runtime-health-evidence":
     case "capture-system-info-evidence":
     case "capture-emc2101-thermal-evidence":
+    case "capture-emc2101-thermal-fault-evidence":
     case "capture-ultra205-defaults-evidence":
     case "capture-settings-patch-evidence":
     case "capture-log-buffer-evidence":
@@ -359,6 +361,8 @@ async function main(): Promise<number> {
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_system_info_evidence"),
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_emc2101_thermal_inputs"),
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_emc2101_thermal_evidence"));
+    } else if (invocation.command === "capture-emc2101-thermal-fault-evidence") {
+      publicValue = await captureEmc2101ThermalFaultFromInvocation(root, invocation, processPort);
     } else if (invocation.command === "capture-ultra205-defaults-evidence") {
       const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
       publicValue = await captureUltra205DefaultsEvidence(root, {

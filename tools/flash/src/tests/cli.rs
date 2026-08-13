@@ -326,6 +326,50 @@ fn reconnect_probe_requires_wifi_credentials() {
 }
 
 #[test]
+fn thermal_fault_intent_requires_wifi_and_conflicts_with_reconnect_probe() {
+    // Arrange
+    let missing_credentials = [
+        "bitaxe-flash",
+        "flash-monitor",
+        "--thermal-fault-stimulus-intent",
+        THERMAL_FAULT_INTENT_RELATIVE_PATH,
+    ];
+    let conflicting = [
+        "bitaxe-flash",
+        "flash-monitor",
+        "--thermal-fault-stimulus-intent",
+        THERMAL_FAULT_INTENT_RELATIVE_PATH,
+        "--network-reconnect-probe",
+        "--wifi-credentials",
+        "private-wifi.json",
+    ];
+    let admitted = [
+        "bitaxe-flash",
+        "flash-monitor",
+        "--thermal-fault-stimulus-intent",
+        THERMAL_FAULT_INTENT_RELATIVE_PATH,
+        "--wifi-credentials",
+        "private-wifi.json",
+    ];
+
+    // Act
+    let missing = parse_cli(missing_credentials).expect_err("credentials are mandatory");
+    let conflict = parse_cli(conflicting).expect_err("probe modes are exclusive");
+    let cli = parse_cli(admitted).expect("closed thermal fault cli");
+
+    // Assert
+    assert!(format!("{missing:#}").contains("--wifi-credentials"));
+    assert!(format!("{conflict:#}").contains("cannot be used with"));
+    let CliCommand::FlashMonitor(command) = cli.command else {
+        panic!("expected flash-monitor command");
+    };
+    assert_eq!(
+        command.thermal_fault_stimulus_intent.as_deref(),
+        Some(Utf8Path::new(THERMAL_FAULT_INTENT_RELATIVE_PATH))
+    );
+}
+
+#[test]
 fn finalize_evidence_parses_software_only_inputs() {
     // Arrange
     let digest = "a".repeat(64);

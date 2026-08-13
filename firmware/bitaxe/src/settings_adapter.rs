@@ -25,11 +25,13 @@ mod nvs_owner;
 mod production;
 mod protocol_gate;
 mod protocol_gate_adapter;
+mod thermal_fault_stimulus;
 
 pub(crate) use production::{
     load_production_campaign_admission, read_production_pool_set, MiningCampaignStage,
 };
 pub(crate) use protocol_gate::ProductionProtocolGateDecision;
+pub(crate) use thermal_fault_stimulus::ThermalFaultStimulusAdmission;
 
 pub(crate) fn initialize_default_nvs_partition() -> Result<(), SettingsAdapterFailure> {
     nvs_owner::initialize()
@@ -158,6 +160,14 @@ pub(crate) fn consume_network_reconnect_probe() -> Result<bool, SettingsAdapterF
         ));
     }
     Ok(true)
+}
+
+/// Loads and atomically consumes the private one-shot thermal fault stimulus.
+pub(crate) fn load_thermal_fault_stimulus() -> Result<
+    Option<ThermalFaultStimulusAdmission>,
+    thermal_fault_stimulus::ThermalFaultStimulusReadError,
+> {
+    thermal_fault_stimulus::load()
 }
 
 /// Returns the last atomically published settings snapshot.

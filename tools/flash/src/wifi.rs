@@ -8,9 +8,16 @@ pub(crate) struct NvsSeedOutcome {
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) struct ThermalFaultNvsSeed {
+    pub(crate) lease: u64,
+    pub(crate) sample_count: u16,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum WifiNvsSeedMode {
     Ordinary,
     NetworkReconnectProbe,
+    ThermalFaultStimulus(ThermalFaultNvsSeed),
 }
 
 pub(crate) fn prepare_wifi_nvs_seed(
@@ -175,8 +182,18 @@ pub(crate) fn wifi_nvs_csv_for_mode(
         private_nvs_csv_row(&StoredValue::string("wifipass", &credentials.wifi_pass)),
         private_nvs_csv_row(&StoredValue::u16("mineonboot", 0)),
     ]);
-    if mode == WifiNvsSeedMode::NetworkReconnectProbe {
-        rows.push(private_nvs_csv_row(&StoredValue::u16("netreconprobe", 1)));
+    match mode {
+        WifiNvsSeedMode::Ordinary => {}
+        WifiNvsSeedMode::NetworkReconnectProbe => {
+            rows.push(private_nvs_csv_row(&StoredValue::u16("netreconprobe", 1)));
+        }
+        WifiNvsSeedMode::ThermalFaultStimulus(seed) => {
+            rows.extend([
+                private_nvs_csv_row(&StoredValue::string("thermfault", "emc2101_invalid_sample")),
+                private_nvs_csv_row(&StoredValue::u64("thermlease", seed.lease)),
+                private_nvs_csv_row(&StoredValue::u16("thermcount", seed.sample_count)),
+            ]);
+        }
     }
     rows.join("\n") + "\n"
 }

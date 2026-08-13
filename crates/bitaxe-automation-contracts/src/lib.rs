@@ -13,6 +13,7 @@ mod asic_serial_transport_evidence;
 mod asic_work_send_evidence;
 mod core_voltage_control_evidence;
 mod emc2101_thermal_evidence;
+mod emc2101_thermal_fault_evidence;
 mod emc2101_thermal_input;
 mod ina260_evidence;
 mod log_buffer_evidence;
@@ -62,6 +63,10 @@ pub use core_voltage_control_evidence::{
 };
 pub use emc2101_thermal_evidence::{
     Emc2101ThermalEvidence, Emc2101ThermalObservationEvidence, Emc2101ThermalSourceEvidence,
+};
+pub use emc2101_thermal_fault_evidence::{
+    Emc2101ThermalFaultEvidence, Emc2101ThermalFaultRestorationEvidence,
+    Emc2101ThermalFaultSourceEvidence, Emc2101ThermalFaultStimulusEvidence,
 };
 pub use emc2101_thermal_input::{
     validate_emc2101_thermal_inputs, Emc2101ThermalSnapshotInput, Emc2101ThermalWebSocketInput,
@@ -121,6 +126,7 @@ pub const ASIC_POWER_INITIALIZATION_EVIDENCE_SCHEMA: &str =
 pub const CORE_VOLTAGE_CONTROL_EVIDENCE_SCHEMA: &str = "bitaxe-core-voltage-control-evidence-v1";
 pub const INA260_EVIDENCE_SCHEMA: &str = "bitaxe-ina260-evidence-v1";
 pub const EMC2101_THERMAL_EVIDENCE_SCHEMA: &str = "bitaxe-emc2101-thermal-evidence-v1";
+pub const EMC2101_THERMAL_FAULT_EVIDENCE_SCHEMA: &str = "bitaxe-emc2101-thermal-fault-evidence-v1";
 pub const ASIC_RESET_EVIDENCE_SCHEMA: &str = "bitaxe-asic-reset-evidence-v1";
 pub const ASIC_FREQUENCY_TRANSITION_EVIDENCE_SCHEMA: &str =
     "bitaxe-asic-frequency-transition-evidence-v1";
@@ -182,6 +188,7 @@ pub enum AutomationCommand {
     ProjectCoreVoltageControlEvidence,
     ProjectIna260Evidence,
     CaptureEmc2101ThermalEvidence,
+    CaptureEmc2101ThermalFaultEvidence,
     ProjectAsicResetEvidence,
     ProjectAsicFrequencyTransitionEvidence,
     ProjectAsicWorkSendEvidence,
@@ -350,6 +357,7 @@ pub struct ContractBundle {
     pub core_voltage_control_evidence_schema: Value,
     pub ina260_evidence_schema: Value,
     pub emc2101_thermal_evidence_schema: Value,
+    pub emc2101_thermal_fault_evidence_schema: Value,
     pub asic_reset_evidence_schema: Value,
     pub asic_frequency_transition_evidence_schema: Value,
     pub asic_work_send_evidence_schema: Value,
@@ -422,6 +430,10 @@ pub fn contract_bundle() -> ContractBundle {
             .expect("INA260 evidence schema must serialize"),
         emc2101_thermal_evidence_schema: serde_json::to_value(schema_for!(Emc2101ThermalEvidence))
             .expect("EMC2101 thermal evidence schema must serialize"),
+        emc2101_thermal_fault_evidence_schema: serde_json::to_value(schema_for!(
+            Emc2101ThermalFaultEvidence
+        ))
+        .expect("EMC2101 thermal fault evidence schema must serialize"),
         asic_reset_evidence_schema: serde_json::to_value(schema_for!(AsicResetEvidence))
             .expect("ASIC reset evidence schema must serialize"),
         asic_frequency_transition_evidence_schema: serde_json::to_value(schema_for!(
@@ -489,6 +501,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::ProjectCoreVoltageControlEvidence,
             AutomationCommand::ProjectIna260Evidence,
             AutomationCommand::CaptureEmc2101ThermalEvidence,
+            AutomationCommand::CaptureEmc2101ThermalFaultEvidence,
             AutomationCommand::ProjectAsicResetEvidence,
             AutomationCommand::ProjectAsicFrequencyTransitionEvidence,
             AutomationCommand::ProjectAsicWorkSendEvidence,
@@ -520,6 +533,7 @@ pub fn contract_bundle() -> ContractBundle {
             CORE_VOLTAGE_CONTROL_EVIDENCE_SCHEMA,
             INA260_EVIDENCE_SCHEMA,
             EMC2101_THERMAL_EVIDENCE_SCHEMA,
+            EMC2101_THERMAL_FAULT_EVIDENCE_SCHEMA,
             ASIC_RESET_EVIDENCE_SCHEMA,
             ASIC_FREQUENCY_TRANSITION_EVIDENCE_SCHEMA,
             ASIC_WORK_SEND_EVIDENCE_SCHEMA,

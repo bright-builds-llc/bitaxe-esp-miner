@@ -26,6 +26,8 @@ const PRODUCTION_ASIC_WORKER_SOURCE: &str =
     include_str!("production_mining_session/asic_worker.rs");
 const SETTINGS_ADAPTER_SOURCE: &str = include_str!("settings_adapter.rs");
 const SETTINGS_PRODUCTION_SOURCE: &str = include_str!("settings_adapter/production.rs");
+const THERMAL_FAULT_SETTINGS_SOURCE: &str =
+    include_str!("settings_adapter/thermal_fault_stimulus.rs");
 const STARTUP_SOURCE: &str = include_str!("startup.rs");
 
 #[test]
@@ -131,6 +133,36 @@ fn operator_sensor_runtime_is_the_single_normal_acquisition_caller() {
         );
         assert!(!PRODUCTION_SESSION_SOURCE.contains(required_call));
     }
+}
+
+#[test]
+fn thermal_fault_stimulus_is_consumed_once_before_the_sensor_owner_starts() {
+    // Arrange
+    let load = STARTUP_SOURCE
+        .find("settings_adapter::load_thermal_fault_stimulus()")
+        .expect("startup must consume the private stimulus tuple");
+    let start = STARTUP_SOURCE
+        .find("operator_sensor_runtime::start(")
+        .expect("startup must start the single sensor owner");
+
+    // Act / Assert
+    assert!(load < start);
+    assert_eq!(
+        OPERATOR_SENSOR_RUNTIME_SOURCE
+            .matches("stimulus.step(prior, actual)")
+            .count(),
+        1
+    );
+    let erase = THERMAL_FAULT_SETTINGS_SOURCE
+        .find("erase_tuple(&writable)?")
+        .expect("the tuple must be erased before admission");
+    let confirm = THERMAL_FAULT_SETTINGS_SOURCE
+        .find("confirm_erased(partition)?")
+        .expect("tuple absence must be confirmed before admission");
+    let validate = THERMAL_FAULT_SETTINGS_SOURCE
+        .find("let kind = kind?.ok_or_else")
+        .expect("the consumed tuple must be validated after erasure");
+    assert!(erase < confirm && confirm < validate);
 }
 
 #[test]

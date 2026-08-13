@@ -156,6 +156,14 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--projection": value({ required: true }),
     "--capture-timeout-seconds": value({ required: true, positiveInteger: true }),
   },
+  "capture-emc2101-thermal-fault-evidence": {
+    "--private-root": value({ required: true }),
+    "--package-manifest": value({ required: true }),
+    "--wifi-credentials": value({ required: true }),
+    "--detector-output": value({ required: true }),
+    "--projection": value({ required: true }),
+    "--capture-timeout-seconds": value({ required: true, positiveInteger: true }),
+  },
   "capture-ultra205-defaults-evidence": {
     "--private-root": value({ required: true }),
     "--package-manifest": value({ required: true }),

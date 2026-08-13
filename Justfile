@@ -114,6 +114,17 @@ capture-system-info-evidence *args:
 capture-emc2101-thermal-evidence *args:
     bazel run //tools/automation:capture_emc2101_thermal_evidence -- {{ args }}
 
+capture-emc2101-thermal-fault-evidence *args:
+    bazel run //tools/automation:capture_emc2101_thermal_fault_evidence -- {{ args }}
+
+validate-emc2101-thermal-fault-evidence projection:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    projection={{ quote(projection) }}
+    test -f "$projection"
+    projection_path="$(/bin/realpath "$projection")"
+    bazel run //crates/bitaxe-automation-contracts:validate_emc2101_thermal_fault_evidence -- "$projection_path"
+
 capture-ultra205-defaults-evidence *args:
     bazel run //tools/automation:capture_ultra205_defaults_evidence -- {{ args }}
 

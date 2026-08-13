@@ -2333,14 +2333,14 @@ Injected-fault hardware-regression plan:
 
 - [x] Confirm the authoritative gap can be exercised without physical heating,
       fan/voltage/power changes, mining, raw I2C, or electrical manipulation.
-- [ ] Add a strict consume-before-use private intent and one-shot NVS stimulus
+- [x] Add a strict consume-before-use private intent and one-shot NVS stimulus
       tuple bound to board 205, exact package/plan, and attempt ordinal 4.
-- [ ] Add the bounded production-owner stimulus state machine and prove real
+- [x] Add the bounded production-owner stimulus state machine and prove real
       EMC2101 reads, exactly five injected invalid outcomes, typed fault
       projection, ordered markers, fresh recovery, aborts, and no replay.
-- [ ] Add the private-first capture/restoration transaction and independently
+- [x] Add the private-first capture/restoration transaction and independently
       validated `bitaxe-emc2101-thermal-fault-evidence-v1` projection.
-- [ ] Pass all focused, real-firmware/package, mandatory, privacy, reference,
+- [x] Pass all focused, real-firmware/package, mandatory, privacy, reference,
       generated-contract, process-boundary, task/plan, and diff gates; commit
       and push before effects.
 - [ ] Run exactly one detector-gated attempt-004; promote only THR-001 on the
