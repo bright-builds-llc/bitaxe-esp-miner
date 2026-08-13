@@ -2419,12 +2419,12 @@ requires a separate future contract.
 Pre-armed IDENTIFY attempt-011 plan:
 `docs/parity/work-plans/20260813T154249Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable single-attempt contract and pass every
+- [x] Commit and push the immutable single-attempt contract and pass every
       focused, mandatory, privacy, reference, and exact-package gate.
-- [ ] Run exactly one fresh detector-gated attempt-011, consume readiness
+- [x] Run exactly one fresh detector-gated attempt-011, consume readiness
       before IDENTIFY, and consume rendered/cleared only after matching live
       physical reports.
-- [ ] Promote API-009 only on the complete command/restart/device-user quorum;
+- [x] Promote API-009 only on the complete command/restart/device-user quorum;
       otherwise preserve `implemented`, earliest failure, public withholding,
       safe stop, cleanup, recovery, and stop without attempt-012.
 
@@ -2441,6 +2441,29 @@ stop conditions. Campaign start consumes attempt-011. No inferred or expired
 observation, protected-artifact reuse, external or owner pool, destructive or
 fault-injection action, direct UART, pin/pad/GPIO manipulation, attempt-012,
 or unchanged retry is authorized.
+
+Attempt-011 closure: exact pushed package and runtime identity passed, a
+genuine block and four accepted shares preceded one pause request, and the
+sealed result stopped before pause confirmation as `network_correlation_failed`
+with readiness reason `safety_prerequisites_stale`. No readiness signal or
+IDENTIFY request occurred. Recovery confirmed safe stop and cleanup without a
+secondary failure; evidence was withheld and API-009 remains `implemented`.
+
+Software-only stale-safety continuation:
+
+- [ ] Explain why the command-effects pause join observed stale safety while
+      the campaign result still reported fresh safety and a clean active marker
+      stream.
+- [ ] Implement the smallest root-cause fix with focused transition,
+      pause-join, orchestration, and real-process regressions.
+- [ ] Run every mandatory software/privacy/reference gate and keep attempt-012
+      prohibited until a separate immutable hardware contract is justified.
+
+Authorization: read-only source, current attempt-011 typed metadata, and
+software tests/builds only. Do not read raw traces or sensitive fields, publish
+protected artifacts, access credentials, USB, the device or its network,
+issue HTTP commands, flash, reset, mine, manipulate hardware controls, use
+direct UART or pins/pads/GPIO, or create/run attempt-012.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
