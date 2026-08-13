@@ -22,7 +22,7 @@
   the immutable plan/task, then implement the narrow production controller
   runtime without changing the qualified raw fan actuation boundary.
 
-## 2026-08-13T03:08:00Z | Immutable-plan verification
+## 2026-08-13T02:57:00Z | Immutable-plan verification
 
 - Source commit: `b7a74b5642f2bcbcb709c99ec69d62390d407e9c`
 - Actions: Froze the THR-002 plan at SHA-256
@@ -45,7 +45,7 @@
 - Blocker or next safe action: Commit and push this checkpoint, then implement
   the typed production scheduler and focused regressions.
 
-## 2026-08-13T03:36:00Z | Production controller implementation verified
+## 2026-08-13T03:10:00Z | Production controller implementation verified
 
 - Source commit: `62f9680aa56ecc9c011ff78d43de90552f8240e9`
 - Actions: Added a pure fan-controller planner and a separate 100 ms production
@@ -80,7 +80,7 @@
 - Blocker or next safe action: Commit and push the clean implementation, then
   revalidate exact source/evidence lineage and write the THR-002 result.
 
-## 2026-08-13T03:47:00Z | Qualification-edge correction
+## 2026-08-13T03:16:00Z | Qualification-edge correction
 
 - Source commit: `d1bdbe0a2e45ffbdebbee53a2292a687286f625e`
 - Actions: The post-push safety review found that using mining activity as the
@@ -101,7 +101,7 @@
 - Blocker or next safe action: Re-run the complete implementation gates, commit
   and push this correction, then write the row-specific result.
 
-## 2026-08-13T04:02:00Z | Closed-evidence composition
+## 2026-08-13T03:19:00Z | Closed-evidence composition
 
 - Source commit: `ca81411093fb0a81e31cc556c07bd05a8d05343b`
 - Actions: Revalidated the accepted PWR-002 projection, result, exact identities,
@@ -128,7 +128,7 @@
   commit and push RESULT.md without checklist mutation, save that commit as
   `SOURCE_COMMIT`, then transition only THR-002 and synchronize progress.
 
-## 2026-08-13T04:12:00Z | Evidence checkpoint verified
+## 2026-08-13T03:21:00Z | Evidence checkpoint verified
 
 - Source commit: `ca81411093fb0a81e31cc556c07bd05a8d05343b`
 - Actions: Preserved the immutable plan and reused projection byte-for-byte;
@@ -149,3 +149,18 @@
   `SOURCE_COMMIT` before any checklist mutation.
 - Blocker or next safe action: Commit and push this checkpoint, then perform
   one typed THR-002 transition and immediately synchronize progress.
+
+## 2026-08-13T03:22:00Z | Worklog clock correction
+
+- Source commit: `9b03c11893da91e10eae506b268cfb7bd10e62a5`
+- Actions: Corrected five worklog heading times that were manually entered
+  ahead of the actual UTC clock. The corrected ordering is derived from the
+  authoritative commit times for plan `62f9680a`, implementation `d1bdbe0a`,
+  qualification correction `ca814110`, and result checkpoint `9b03c118`.
+- Verification: Plan, result, reused projection, source, task, and checklist
+  content are unchanged. Their SHA-256 values and all prior gate outcomes remain
+  unchanged; only the five inaccurate heading timestamps changed.
+- Evidence: Git commit metadata and this append-only correction record.
+- Outcome: The worklog chronology is accurate before transition publication.
+- Blocker or next safe action: Commit and push the correction, then transition
+  only THR-002 from that exact clean evidence source.
