@@ -71,13 +71,19 @@ fn fan_controller_uses_the_pure_plan_and_typed_owner_queue_only() {
     assert!(FAN_CONTROLLER_PLAN_SOURCE.contains("hardware_control_not_qualified"));
     assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("request_safety_actuation"));
     assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("SafetyActuationCommand::SetFanDuty"));
-    assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("MiningActivityStatus::Active"));
+    assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("fan_controller_actuation_qualified"));
     assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("current_settings_snapshot"));
     assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("observation_snapshot"));
     assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("record_apply_failure"));
     assert!(!FAN_CONTROLLER_RUNTIME_SOURCE.contains("RuntimeI2cOwner"));
     assert!(!FAN_CONTROLLER_RUNTIME_SOURCE.contains("write_emc2101"));
     assert!(!FAN_CONTROLLER_RUNTIME_SOURCE.contains("Emc2101WriteRegister"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("FAN_CONTROLLER_ACTUATION_QUALIFIED"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("MiningCampaignState::Active"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("production_handle_available"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains(
+        "FAN_CONTROLLER_ACTUATION_QUALIFIED.store(false, Ordering::Release)"
+    ));
 }
 
 #[test]

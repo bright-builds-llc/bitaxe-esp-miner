@@ -79,3 +79,24 @@
   evidence schema.
 - Blocker or next safe action: Commit and push the clean implementation, then
   revalidate exact source/evidence lineage and write the THR-002 result.
+
+## 2026-08-13T03:47:00Z | Qualification-edge correction
+
+- Source commit: `d1bdbe0a2e45ffbdebbee53a2292a687286f625e`
+- Actions: The post-push safety review found that using mining activity as the
+  scheduler gate made paused and no-pool modes unreachable. Replaced that gate
+  with a producer-owned atomic qualification published only while an admitted
+  campaign is authorizing, its state is `Active`, and the existing safety and
+  ASIC owners are available. The production owner clears qualification before
+  safe stop and on every non-active/no-campaign publication. No raw owner or
+  hardware contract changed.
+- Verification: Focused planner and source-ownership tests pass, including the
+  explicit active-campaign and pre-safe-stop clearing boundaries; the real
+  ESP32-S3 firmware build passes. The controller now admits paused and no-pool
+  priority decisions only inside the existing campaign envelope while default
+  boot and preparation remain non-authorizing.
+- Evidence: Software/source verification only; no device, detector, package,
+  serial, network, fan, voltage, mining, or recovery command ran.
+- Outcome: The safety gate and upstream mode reachability are both preserved.
+- Blocker or next safe action: Re-run the complete implementation gates, commit
+  and push this correction, then write the row-specific result.

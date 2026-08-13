@@ -43,7 +43,7 @@ impl FanControllerSettings {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct FanRuntimeStatus {
-    pub(crate) mining_active: bool,
+    pub(crate) hardware_control_qualified: bool,
     pub(crate) operator_paused: bool,
     pub(crate) pools_unavailable: bool,
 }
@@ -112,7 +112,7 @@ impl FanControllerState {
         observation: ThermalObservation,
         now_ms: u64,
     ) -> Result<FanControllerPlan, FanControllerPlanError> {
-        if !runtime.mining_active {
+        if !runtime.hardware_control_qualified {
             self.invalidate_applied_duty();
             return Ok(FanControllerPlan::Deferred {
                 reason: "hardware_control_not_qualified",
@@ -237,7 +237,7 @@ mod tests {
 
     fn active() -> FanRuntimeStatus {
         FanRuntimeStatus {
-            mining_active: true,
+            hardware_control_qualified: true,
             operator_paused: false,
             pools_unavailable: false,
         }
@@ -248,7 +248,7 @@ mod tests {
         // Arrange
         let mut state = FanControllerState::default();
         let runtime = FanRuntimeStatus {
-            mining_active: false,
+            hardware_control_qualified: false,
             ..active()
         };
 
@@ -408,7 +408,7 @@ mod tests {
             .plan(
                 settings,
                 FanRuntimeStatus {
-                    mining_active: false,
+                    hardware_control_qualified: false,
                     ..active()
                 },
                 observation,

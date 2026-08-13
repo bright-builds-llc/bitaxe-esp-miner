@@ -21,6 +21,7 @@ use bitaxe_stratum::v1::production_session::{
 };
 use bitaxe_stratum::v1::production_work::ProductionNonceObservation;
 use std::collections::VecDeque;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
@@ -37,6 +38,11 @@ pub use notifications::notify;
 const OWNER_STACK_BYTES: usize = 16 * 1024;
 const NOTIFICATION_CAPACITY: usize = 16;
 static NOTIFICATIONS: OnceLock<SyncSender<OwnerInboxMessage>> = OnceLock::new();
+static FAN_CONTROLLER_ACTUATION_QUALIFIED: AtomicBool = AtomicBool::new(false);
+
+pub(crate) fn fan_controller_actuation_qualified() -> bool {
+    FAN_CONTROLLER_ACTUATION_QUALIFIED.load(Ordering::Acquire)
+}
 
 enum OwnerInboxMessage {
     Wake(ProductionSessionWakeup),
@@ -281,6 +287,14 @@ impl OrdinaryEspProductionSessionAdapter {
             ProductionSessionEffect::Publish(snapshot) => {
                 if let Some(status) = self.maybe_campaign_status.as_mut() {
                     status.note_snapshot(&snapshot, now_ms);
+                    let qualified = status.authorizes_actuation()
+                        && snapshot.campaign_state
+                            == bitaxe_stratum::v1::production_session::MiningCampaignState::Active
+                        && crate::safety_adapter::safety_actuation_available()
+                        && crate::asic_adapter::production::production_handle_available();
+                    FAN_CONTROLLER_ACTUATION_QUALIFIED.store(qualified, Ordering::Release);
+                } else {
+                    FAN_CONTROLLER_ACTUATION_QUALIFIED.store(false, Ordering::Release);
                 }
                 crate::runtime_snapshot::publish_production_session_snapshot(*snapshot);
                 None
@@ -405,6 +419,7 @@ impl OrdinaryEspProductionSessionAdapter {
                 }
             },
             ProductionSessionEffect::SafeStopHardware { lease_id } => {
+                FAN_CONTROLLER_ACTUATION_QUALIFIED.store(false, Ordering::Release);
                 if let Some(status) = self.maybe_campaign_status.as_mut() {
                     status.note_safe_stop_pending();
                 }

@@ -6,7 +6,7 @@ use anyhow::{Context, Result};
 use bitaxe_config::{reload_snapshot, LoadedValue};
 use bitaxe_core::runtime_orchestration::PeriodicDeadline;
 use bitaxe_safety::thermal::{ThermalObservation, ThermalReading};
-use bitaxe_stratum::v1::state::{MiningActivityStatus, MiningOperatorIntent, PoolLifecycleStatus};
+use bitaxe_stratum::v1::state::{MiningOperatorIntent, PoolLifecycleStatus};
 
 use crate::{
     fan_controller_plan::{
@@ -153,11 +153,12 @@ fn loaded_u16(loaded: &bitaxe_config::PersistenceDecision, key: &str) -> Option<
 fn current_runtime_status() -> FanRuntimeStatus {
     let mining = crate::runtime_snapshot::mining_runtime_state();
     FanRuntimeStatus {
-        mining_active: mining.mining_activity == MiningActivityStatus::Active,
+        hardware_control_qualified:
+            crate::production_mining_session::fan_controller_actuation_qualified(),
         operator_paused: mining.operator_intent == MiningOperatorIntent::Paused,
-        pools_unavailable: matches!(
+        pools_unavailable: !matches!(
             mining.lifecycle,
-            PoolLifecycleStatus::RecoveryPaused | PoolLifecycleStatus::Error
+            PoolLifecycleStatus::Active | PoolLifecycleStatus::FallbackActive
         ),
     }
 }
