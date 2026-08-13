@@ -2273,7 +2273,7 @@ bounded thermal hardware-regression evidence, not a retry of attempt-003.
       and THR-001's need for a distinct bounded fault-stimulus contract.
 - [x] Freeze the immutable software-only plan at
       `docs/parity/work-plans/20260813T024957Z-THR-002/PLAN.md`.
-- [ ] Wire the pure fan decisions into a bounded upstream-cadence production
+- [x] Wire the pure fan decisions into a bounded upstream-cadence production
       runtime that owns no raw I2C and uses only the existing typed actuation
       queue, with focused orchestration and ownership regressions.
 - [ ] Independently validate the accepted PWR-002 projection, exact digest,

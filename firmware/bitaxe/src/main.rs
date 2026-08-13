@@ -5,6 +5,8 @@ mod boot_evidence;
 mod boot_validation;
 mod boot_validation_plan;
 mod display_adapter;
+mod fan_controller_plan;
+mod fan_controller_runtime;
 mod filesystem;
 mod http_api;
 mod input_adapter;

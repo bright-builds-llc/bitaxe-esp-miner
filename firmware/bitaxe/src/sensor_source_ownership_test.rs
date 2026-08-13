@@ -2,6 +2,8 @@
 mod safety_request_queue;
 
 const OPERATOR_SENSOR_RUNTIME_SOURCE: &str = include_str!("operator_sensor_runtime.rs");
+const FAN_CONTROLLER_PLAN_SOURCE: &str = include_str!("fan_controller_plan.rs");
+const FAN_CONTROLLER_RUNTIME_SOURCE: &str = include_str!("fan_controller_runtime.rs");
 const SAFETY_ADAPTER_SOURCE: &str = include_str!("safety_adapter.rs");
 const SAFETY_WATCHDOG_SOURCE: &str = include_str!("safety_adapter/watchdog.rs");
 const ADC_SOURCE: &str = include_str!("safety_adapter/adc.rs");
@@ -35,6 +37,9 @@ fn runtime_owner_startup_and_notification_order_is_explicit() {
     let production = STARTUP_SOURCE
         .find("production_mining_session::start()")
         .expect("startup must start the production owner");
+    let fan_controller = STARTUP_SOURCE
+        .find("fan_controller_runtime::start()")
+        .expect("startup must start the fan controller after the production owner");
     let network = STARTUP_SOURCE
         .find("wifi_adapter::start_wifi(modem)")
         .expect("startup must start the network owner");
@@ -44,11 +49,35 @@ fn runtime_owner_startup_and_notification_order_is_explicit() {
 
     // Act / Assert
     assert!(safety < production);
+    assert!(production < fan_controller);
     assert!(production < network);
     assert!(network < network_wakeup);
     assert_eq!(STARTUP_SOURCE.matches("operator_sensor_runtime::start(").count(), 1);
     assert_eq!(STARTUP_SOURCE.matches("production_mining_session::start()").count(), 1);
     assert_eq!(STARTUP_SOURCE.matches("start_safety_supervisor();").count(), 1);
+    assert_eq!(
+        STARTUP_SOURCE
+            .matches("fan_controller_runtime::start()")
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn fan_controller_uses_the_pure_plan_and_typed_owner_queue_only() {
+    // Arrange / Act / Assert
+    assert!(FAN_CONTROLLER_PLAN_SOURCE.contains("FanControlDecision::from_inputs"));
+    assert!(FAN_CONTROLLER_PLAN_SOURCE.contains("FAN_CONTROLLER_CADENCE_MS"));
+    assert!(FAN_CONTROLLER_PLAN_SOURCE.contains("hardware_control_not_qualified"));
+    assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("request_safety_actuation"));
+    assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("SafetyActuationCommand::SetFanDuty"));
+    assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("MiningActivityStatus::Active"));
+    assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("current_settings_snapshot"));
+    assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("observation_snapshot"));
+    assert!(FAN_CONTROLLER_RUNTIME_SOURCE.contains("record_apply_failure"));
+    assert!(!FAN_CONTROLLER_RUNTIME_SOURCE.contains("RuntimeI2cOwner"));
+    assert!(!FAN_CONTROLLER_RUNTIME_SOURCE.contains("write_emc2101"));
+    assert!(!FAN_CONTROLLER_RUNTIME_SOURCE.contains("Emc2101WriteRegister"));
 }
 
 #[test]

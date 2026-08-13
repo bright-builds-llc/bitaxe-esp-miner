@@ -44,3 +44,38 @@
   independently valid.
 - Blocker or next safe action: Commit and push this checkpoint, then implement
   the typed production scheduler and focused regressions.
+
+## 2026-08-13T03:36:00Z | Production controller implementation verified
+
+- Source commit: `62f9680aa56ecc9c011ff78d43de90552f8240e9`
+- Actions: Added a pure fan-controller planner and a separate 100 ms production
+  shell; wired startup after the production owner; loaded only typed confirmed
+  settings, mining state, and fresh producer thermal truth; retained PID state;
+  suppressed unchanged duties; bounded failed-write retries to 2000 ms; and
+  routed commands only through the existing typed safety queue. Control is
+  deferred unless mining is already active, preserving the default boot claim
+  that hardware control is disabled and avoiding races with the qualified
+  preparation transaction.
+- Verification: Nine focused planner tests cover qualification, stable cadence,
+  mode priority, validated manual and automatic duties, PID retention,
+  unchanged-duty suppression and reassertion, bounded retry, invalid settings,
+  and invalid thermal truth. Source-ownership tests prove startup order, typed
+  queue use, current settings/observation inputs, active-mining gate, and absence
+  of raw I2C/EMC2101 ownership. The real normal and rollback ESP32-S3 firmware
+  builds pass. The first real firmware compile exposed an incorrect host-only
+  type name (`LoadedSettings`); replacing it with the exported
+  `PersistenceDecision` fixed the production build without changing evidence
+  or hardware state.
+- Evidence: The ordered Cargo, Bright Builds, all-42-target Bazel, parity, and
+  progress gates pass. Focused controller, source-ownership, EMC2101, PWR-002
+  validator, redaction, and pinned-reference gates pass. The PWR-002 projection
+  remains SHA-256
+  `0668c274d09b3e39d7d5edfea4b2e66c97248ff77de9192981f3af00e547ddfe`
+  at mode `0644`; all nine qualified PWR-002 source paths remain unchanged from
+  the pushed plan commit. No hardware command was issued.
+- Outcome: The implementation checkpoint is ready to commit and push. A
+  simplification review retained the deep pure-plan/imperative-shell split and
+  reused the existing queue instead of adding a second actuator owner or
+  evidence schema.
+- Blocker or next safe action: Commit and push the clean implementation, then
+  revalidate exact source/evidence lineage and write the THR-002 result.

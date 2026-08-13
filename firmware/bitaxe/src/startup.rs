@@ -3,10 +3,10 @@ use esp_idf_svc::hal::{modem::Modem, peripherals::Peripherals};
 use esp_idf_svc::sys;
 
 use crate::{
-    asic_adapter, boot_evidence, boot_validation, display_adapter, filesystem, http_api,
-    input_adapter, operator_sensor_runtime, production_mining_session, runtime_snapshot,
-    runtime_uptime, safety_adapter, scoreboard_adapter, settings_adapter, statistics_runtime,
-    wifi_adapter, BOOT_LOG_LINE, RUST_TARGET, SAFE_STATE_LOG_LINE,
+    asic_adapter, boot_evidence, boot_validation, display_adapter, fan_controller_runtime,
+    filesystem, http_api, input_adapter, operator_sensor_runtime, production_mining_session,
+    runtime_snapshot, runtime_uptime, safety_adapter, scoreboard_adapter, settings_adapter,
+    statistics_runtime, wifi_adapter, BOOT_LOG_LINE, RUST_TARGET, SAFE_STATE_LOG_LINE,
 };
 
 pub(crate) fn run() -> anyhow::Result<()> {
@@ -198,6 +198,9 @@ fn start_runtime_services(
         log::warn!(
             "production_mining_session=unavailable reason=thread_spawn_failed error={error:#}"
         );
+    }
+    if let Err(error) = fan_controller_runtime::start() {
+        log::warn!("fan_controller=unavailable reason=thread_spawn_failed error={error:#}");
     }
     if let Err(error) = statistics_runtime::start() {
         log::warn!("statistics_runtime=unavailable reason=thread_spawn_failed error={error:#}");
