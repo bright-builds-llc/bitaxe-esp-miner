@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260813T040000Z-THR-003",
+  "predecessor_sha256": "741867f6d163458c703f8028b42ef0ebac129badf94ec0cb34d6a8ac5d1ce910",
+  "result_sha256": "13db25851fbb49ff44de45f931484675b1a904d3e50f85b80cdf737ee97df27c",
+  "row_id": "THR-003",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260813T033800Z-THR-003/PLAN.md",
+  "plan_sha256": "3acea362f65f63ccab564b1d4af98a22f4f026dffecf258a5a5d70ca119e0348",
+  "result_path": "docs/parity/work-plans/20260813T033800Z-THR-003/RESULT.md",
+  "result_document_sha256": "6536cae83b6b5397caa3dc5bb96324719fb582adeeb8c8fca5bb303d36584f5d",
+  "before_rust_owned_target": "`crates/bitaxe-safety/src/thermal.rs`, `crates/bitaxe-safety/fixtures/safety/fan-pid-cases.json`",
+  "after_rust_owned_target": "`crates/bitaxe-safety/src/thermal.rs`, `crates/bitaxe-safety/src/thermal/pid.rs`, `crates/bitaxe-safety/src/thermal/tests.rs`, `crates/bitaxe-safety/fixtures/safety/fan-pid-cases.json`, `firmware/bitaxe/src/fan_controller_plan.rs`, `firmware/bitaxe/src/fan_controller_runtime.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit",
+  "after_evidence": "unit,golden,workflow,hardware-regression",
+  "before_notes": "Pure PID constants, duty clamps, and fixture-backed fan decisions are covered by unit tests. [Phase 14 evidence](evidence/phase-14-safety-hardware-evidence-completion.md) keeps live fan hardware verification separate and below verified; no fan actuation was run. Phase 20 final evidence in `evidence/phase-20-active-safety-hardware-telemetry-evidence/summary.md` and `evidence/phase-20-active-safety-hardware-telemetry-evidence/active-thermal-fan.md` keeps PID as unit-only evidence and does not promote fan hardware effects.",
+  "after_notes": "The pure Rust core matches the pinned stateful 100 ms reverse P-on-error PID, including input EMA, C-float precision, initialization, dynamic limits, clamps, anti-windup, and retained state across exact sequential golden vectors. The production scheduler and typed actuation ownership remain unchanged. The independently validated redacted [PWR-002 projection](evidence/pwr002-asic-power-initialization/power-initialization-projection.json) supplies only the required physical actuator-chain hardware regression. See the [THR-003 result](work-plans/20260813T033800Z-THR-003/RESULT.md). Live automatic response, RPM accuracy, settling, tuning quality, arbitrary duties, fault or overheat behavior, other boards, and release readiness remain non-claims."
+}

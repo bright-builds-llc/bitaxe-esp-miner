@@ -6962,3 +6962,61 @@ and redaction without a new hardware run. Automatic live transitions among all
 modes, PID tuning quality, long-duration regulation, fan-fault injection,
 thermal stress, other boards, and release readiness remain non-claims. The task
 is complete and archived.
+
+### task-parity-thr003-pid-controller | 2026-08-13 | Match the pinned fan PID state machine
+
+- [x] Select THR-003 after API-009's repeated stop and THR-001's unavailable
+      safe fault-stimulus command.
+- [x] Freeze the immutable software-only plan at
+      `docs/parity/work-plans/20260813T033800Z-THR-003/PLAN.md`.
+- [x] Replace the simplified PID reducer with exact pinned initialization,
+      input EMA, reverse P-on-E, 100 ms gain scaling, limits, and anti-windup.
+- [x] Expand the provenance-bound sequential golden vectors and focused
+      production state-retention/ownership regressions.
+- [x] Independently revalidate the accepted PWR-002 fan-actuation projection
+      without a new evidence schema or hardware run.
+- [x] Run every focused and mandatory gate, write THR-003 RESULT.md, and commit
+      and push the complete evidence source before checklist mutation.
+- [x] Promote only THR-003 on the closed quorum, synchronize progress, archive
+      this task, and preserve every live closed-loop non-claim.
+
+This task is software-only and permits pure Rust PID implementation, fixtures,
+tests, firmware builds, evidence/result composition, typed checklist
+transition, and repository verification. It permits no detector, package
+capture, flash, reset, USB/serial, network, credentials, mining, voltage, fan,
+power, I2C/GPIO, fault injection, direct UART, pins, pads, or other hardware
+effect.
+
+Acceptance requires exact sequential agreement with pinned PID behavior,
+production 100 ms scheduling, unchanged typed actuator ownership and safety
+qualification, a valid row-specific result, and the byte-identical accepted
+PWR-002 projection at SHA-256
+`0668c274d09b3e39d7d5edfea4b2e66c97248ff77de9192981f3af00e547ddfe`
+and mode `0644` only as physical actuator-chain evidence. Live automatic
+closed-loop response, analog RPM accuracy, settling, tuning quality, arbitrary
+duties, fault/overheat behavior, other boards, and release readiness remain
+non-claims. A failed gate leaves THR-003 `implemented` and changes no checklist
+or progress field.
+
+Verification: Transition `20260813T040000Z-THR-003` changed only THR-003 from
+`implemented` with `unit` evidence to `verified` with
+`unit,golden,workflow,hardware-regression`, bound immutable plan SHA-256
+`3acea362f65f63ccab564b1d4af98a22f4f026dffecf258a5a5d70ca119e0348`,
+RESULT.md SHA-256
+`6536cae83b6b5397caa3dc5bb96324719fb582adeeb8c8fca5bb303d36584f5d`,
+source commit `6f8c043a0d188404f63e73fbf8e3a5427e876f71`, and reference commit
+`c1915b0a63bfabebdb95a515cedfee05146c1d50`. Immediate progress
+synchronization records 66 of 94 active rows verified (70.2%). The ordered
+Cargo, Bright Builds, all-42-target Bazel, focused, normal/rollback firmware,
+parity, progress, redaction, reference, evidence-validator, digest, mode,
+source-compatibility, task-binding, sensitive-output, and diff gates passed.
+
+Completion review: THR-003 is verified from exact state-by-state pure PID
+vectors, the production 100 ms scheduler and retained-state workflow, and the
+accepted PWR-002 Ultra 205 actuator-chain regression. The closed quorum proves
+input EMA, C-float reverse P-on-error computation, initialization, limits,
+clamps, anti-windup, state retention, typed ownership, physical 100% command
+and nonzero RPM response, cleanup, and redaction without a new hardware run.
+Live automatic response, RPM accuracy, settling, tuning quality, arbitrary
+duties, injected faults, overheat behavior, other boards, and release readiness
+remain non-claims. The task is complete and archived.

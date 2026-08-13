@@ -2267,49 +2267,6 @@ boundary because its immutable plan prohibited the fault stimulus required by
 the authoritative verifier. The next safe action is a distinct plan for
 bounded thermal hardware-regression evidence, not a retry of attempt-003.
 
-### task-parity-thr003-pid-controller | 2026-08-13 | Match the pinned fan PID state machine
-
-- [x] Select THR-003 after API-009's repeated stop and THR-001's unavailable
-      safe fault-stimulus command.
-- [x] Freeze the immutable software-only plan at
-      `docs/parity/work-plans/20260813T033800Z-THR-003/PLAN.md`.
-- [x] Replace the simplified PID reducer with exact pinned initialization,
-      input EMA, reverse P-on-E, 100 ms gain scaling, limits, and anti-windup.
-- [x] Expand the provenance-bound sequential golden vectors and focused
-      production state-retention/ownership regressions.
-- [x] Independently revalidate the accepted PWR-002 fan-actuation projection
-      without a new evidence schema or hardware run.
-- [x] Run every focused and mandatory gate, write THR-003 RESULT.md, and commit
-      and push the complete evidence source before checklist mutation.
-- [ ] Promote only THR-003 on the closed quorum, synchronize progress, archive
-      this task, and preserve every live closed-loop non-claim.
-
-This task is software-only and permits pure Rust PID implementation, fixtures,
-tests, firmware builds, evidence/result composition, typed checklist
-transition, and repository verification. It permits no detector, package
-capture, flash, reset, USB/serial, network, credentials, mining, voltage, fan,
-power, I2C/GPIO, fault injection, direct UART, pins, pads, or other hardware
-effect.
-
-Acceptance requires exact sequential agreement with pinned PID behavior,
-production 100 ms scheduling, unchanged typed actuator ownership and safety
-qualification, a valid row-specific result, and the byte-identical accepted
-PWR-002 projection at SHA-256
-`0668c274d09b3e39d7d5edfea4b2e66c97248ff77de9192981f3af00e547ddfe`
-and mode `0644` only as physical actuator-chain evidence. Live automatic
-closed-loop response, analog RPM accuracy, settling, tuning quality, arbitrary
-duties, fault/overheat behavior, other boards, and release readiness remain
-non-claims. A failed gate leaves THR-003 `implemented` and changes no checklist
-or progress field.
-
-Verification: The focused safety-core, production fan-planner, and sensor
-ownership targets pass. The full Cargo sequence, Bright Builds checks,
-`just test`, firmware and rollback-probe builds, parity validation/progress,
-reference cleanliness, redaction, and the accepted PWR-002 validator/digest/
-mode/source-compatibility checks pass at the implementation checkpoint.
-
-Completion review: Pending.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

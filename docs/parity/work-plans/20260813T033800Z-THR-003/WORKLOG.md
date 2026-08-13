@@ -102,3 +102,32 @@
 - Blocker or next safe action: Commit and push the result checkpoint, retain
   that exact commit as the evidence source, and mutate only THR-003 through the
   typed transition command.
+
+## 2026-08-13T04:01:43Z | Typed transition and closure
+
+- Evidence source commit: `6f8c043a0d188404f63e73fbf8e3a5427e876f71`.
+- Actions: Applied typed transition `20260813T040000Z-THR-003` to THR-003 only,
+  synchronized progress from the exact pushed source, confirmed the selector
+  closed this plan, and moved the completed native task record to the
+  append-only archive.
+- Verification: The transition bound the immutable plan and result digests,
+  exact reference commit, Rust-owned targets, composed evidence labels, and
+  explicit non-claims. Immediate parity validation reports no errors; progress
+  reports `verified=66 active=94 total=99 deferred=5 completion=70.2%`.
+- Outcome: THR-003 is verified and its active task is complete.
+- Blocker or next safe action: Run the final repository gate sequence over the
+  transition/archive diff, commit and push it, then stop this one-row
+  invocation. API-009 and THR-001 retain their recorded boundaries; IO-001 is
+  the next selector candidate requiring a new invocation.
+
+## 2026-08-13T04:04:35Z | Final gate result
+
+- Verification: The final transition/archive tree passed the ordered Cargo
+  sequence, Bright Builds checks, all 42 Bazel test targets, parity and progress
+  validation, redaction, reference cleanliness, independent PWR-002 validation,
+  exact plan/result/evidence digests, evidence mode, task uniqueness, archive
+  placement, sensitive-output, and diff checks.
+- Outcome: The repository is ready for the final commit and push with THR-003
+  verified at 66 of 94 active rows (70.2%).
+- Blocker or next safe action: None for this invocation; commit and push the
+  closed transition/archive checkpoint.
