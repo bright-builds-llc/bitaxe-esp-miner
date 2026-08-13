@@ -2,7 +2,7 @@
 
 - Parity row: `API-009`
 - Final status: `implemented`
-- Outcome: `stop_authority_boundary`
+- Outcome: `blocked`
 - Verification claimed: `no`
 - Plan SHA-256: `466b878f67b5664cec18071f5ce94fb47d70b9692bf54fd2baec64be6fe2e936`
 - Active task: `task-parity-api009-command-effect-evidence-audit`

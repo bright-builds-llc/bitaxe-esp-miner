@@ -2,10 +2,9 @@
 
 - Parity row: `API-009`
 - Final status: `implemented`
-- Outcome: `software_fix_complete`
-- Verification claimed: `yes`
-- Plan SHA-256:
-  `eae200d52f71f0c32ffc53054f076424f1c0b25b2c0fd6cd84f56057b5cc950d`
+- Outcome: `blocked`
+- Verification claimed: `no`
+- Plan SHA-256: `eae200d52f71f0c32ffc53054f076424f1c0b25b2c0fd6cd84f56057b5cc950d`
 - Active task: `task-parity-api009-command-effect-evidence-audit`
 
 ## Closure reason
