@@ -100,3 +100,52 @@
 - Outcome: The safety gate and upstream mode reachability are both preserved.
 - Blocker or next safe action: Re-run the complete implementation gates, commit
   and push this correction, then write the row-specific result.
+
+## 2026-08-13T04:02:00Z | Closed-evidence composition
+
+- Source commit: `ca81411093fb0a81e31cc556c07bd05a8d05343b`
+- Actions: Revalidated the accepted PWR-002 projection, result, exact identities,
+  ancestry, mode, and redaction; compared every qualified source path through
+  current `main`; and added only the THR-002 row-specific result. The later
+  EMC2101 temperature-offset change does not intersect the byte-identical fan
+  register/write span.
+- Verification: PWR-002 projection SHA-256
+  `0668c274d09b3e39d7d5edfea4b2e66c97248ff77de9192981f3af00e547ddfe`;
+  PWR-002 result SHA-256
+  `199509d8f95dab4287f4d3c3a7b09b381823250ff990c7ee7ad1a612ffbf6b9c`;
+  THR-002 plan SHA-256
+  `3adf53a19701e33ef195898560b7f8f17baef0f36033912bc86de54ace0d178d`;
+  independent Rust validation and mode `0644` pass; implementation and evidence
+  commits are ancestors of current `main`; reference remains pinned and clean.
+- Evidence: Existing closed PWR-002 projection/result, passing controller and
+  source-ownership workflow tests, and
+  `docs/parity/work-plans/20260813T024957Z-THR-002/RESULT.md`. No new schema or
+  hardware artifact was created.
+- Outcome: The complete composed THR-002 quorum supports `verified`. Reusing the
+  accepted physical projection is smaller and stronger than duplicating it or
+  rerunning a fan effect.
+- Blocker or next safe action: Run the complete evidence-checkpoint gates,
+  commit and push RESULT.md without checklist mutation, save that commit as
+  `SOURCE_COMMIT`, then transition only THR-002 and synchronize progress.
+
+## 2026-08-13T04:12:00Z | Evidence checkpoint verified
+
+- Source commit: `ca81411093fb0a81e31cc556c07bd05a8d05343b`
+- Actions: Preserved the immutable plan and reused projection byte-for-byte;
+  finalized only the row-specific RESULT.md and task/worklog checkpoint without
+  changing the parity checklist.
+- Verification: The ordered Cargo format, strict Clippy, all-target build, and
+  all-feature tests passed; Bright Builds reported zero findings; all 42 Bazel
+  tests passed; parity reported no validation errors; progress remained 64 of
+  94 active rows verified (68.1%); independent evidence validation, repository
+  redaction, pinned-reference cleanliness, normal and rollback firmware builds,
+  exact digests, mode `0644`, unique task binding, ancestry, fan-span source
+  compatibility, and diff checks passed.
+- Evidence: THR-002 RESULT.md SHA-256
+  `3505303892578beb884bce95521a6714c0818866c3244e56ca2e45b3c6f52186`;
+  reused projection SHA-256
+  `0668c274d09b3e39d7d5edfea4b2e66c97248ff77de9192981f3af00e547ddfe`.
+- Outcome: The evidence checkpoint is ready to commit and push as
+  `SOURCE_COMMIT` before any checklist mutation.
+- Blocker or next safe action: Commit and push this checkpoint, then perform
+  one typed THR-002 transition and immediately synchronize progress.

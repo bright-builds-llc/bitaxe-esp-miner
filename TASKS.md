@@ -2276,13 +2276,13 @@ bounded thermal hardware-regression evidence, not a retry of attempt-003.
 - [x] Wire the pure fan decisions into a bounded upstream-cadence production
       runtime that owns no raw I2C and uses only the existing typed actuation
       queue, with focused orchestration and ownership regressions.
-- [ ] Independently validate the accepted PWR-002 projection, exact digest,
+- [x] Independently validate the accepted PWR-002 projection, exact digest,
       immutable result lineage, source/reference identities, unchanged EMC2101
       ownership, final mode, and redaction.
-- [ ] Add a THR-002-specific `RESULT.md` using the composed workflow and
+- [x] Add a THR-002-specific `RESULT.md` using the composed workflow and
       physical fan-response facts; do not duplicate the evidence contract or
       rerun hardware.
-- [ ] Run every focused and mandatory software, privacy, reference, integrity,
+- [x] Run every focused and mandatory software, privacy, reference, integrity,
       and diff gate before the evidence checkpoint and final transition.
 - [ ] Promote only THR-002 on the complete closed quorum, archive this task,
       synchronize progress, and preserve every explicit non-claim.
