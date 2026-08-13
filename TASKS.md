@@ -2378,6 +2378,28 @@ fix and isolates a new command-to-physical-display render blocker. The linked
 `CLOSURE.md` requires production-shaped diagnosis and a regression-backed fix
 before any future hardware contract.
 
+Operator-prearmed IDENTIFY plan:
+`docs/parity/work-plans/20260813T144901Z-API-009/PLAN.md`.
+
+- [ ] Correct attempt-010's late physical report from a display-failure claim
+      to an expired-observation authority boundary without changing its sealed
+      aggregate, cleanup, withholding, or attempt-consumption facts.
+- [ ] Add a closed v2 `ready` / `rendered` / `cleared` checkpoint transaction
+      whose public signals explain the exact frame and 30-second window.
+- [ ] Prove the campaign issues no IDENTIFY request before request-once operator
+      readiness, preserves ordered confirmations and exactly two requests, and
+      fails closed on malformed, reordered, or reused checkpoints.
+- [ ] Pass every focused and mandatory software/privacy/reference gate, keep
+      API-009 `implemented`, and close without hardware or attempt-011.
+
+Software-only authorization: this plan may change and test repository source,
+run deterministic fixtures and local child processes, build firmware, and run
+repository verification. It may not access credentials, package/detector/USB
+effects, device or network sessions, mining, HTTP command effects, physical
+display observations, restart/recovery, OTA, destructive or fault-injection
+actions, direct UART, pins/pads/GPIO, attempt-011, public parity evidence, or a
+checklist transition.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to

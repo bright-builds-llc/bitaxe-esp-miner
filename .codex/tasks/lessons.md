@@ -157,3 +157,10 @@
 2. What went wrong: Repository workflows repeatedly required the user to authorize each fresh hardware-attempt ordinal even though the project already had standing authorization to execute its active tasks, creating artificial terminal blockers after every targeted fix.
 3. Preventive rule: Treat active repository tasks as standing-authorized for autonomous execution, including selecting fresh attempt ordinals after verified progress, when their exact command, safety, privacy, evidence, recovery, retry, and stop contracts are complete. Do not ask for per-attempt confirmation. Keep materially different direct-UART, pin-manipulation, and ad hoc destructive or fault-injection actions behind their specific safety gates.
 4. Trigger signal to catch it earlier: The next safe action is fully described by an active task and repo-owned command, but work is about to stop solely because the task text says a later ordinal needs fresh user authorization.
+
+## lesson-time-bounded-physical-checkpoints-must-be-prearmed-and-self-describing | 2026-08-13 14:49
+
+1. Date: 2026-08-13
+2. What went wrong: A 30-second physical IDENTIFY effect was triggered before the operator had confirmed they were watching, and the emitted checkpoint said only `rendered` without describing the expected frame. A later normal-screen report was then incorrectly treated as evidence that the frame never rendered even though the effect had already expired.
+3. Preventive rule: Before any time-bounded physical observation effect, consume a request-once operator-readiness checkpoint that explains the exact expected state and duration. Emit a second live observation checkpoint only after the effect request succeeds, and classify late observations as expired authority boundaries rather than positive or negative device evidence.
+4. Trigger signal to catch it earlier: A physical effect starts before operator readiness, a checkpoint omits the expected visible state or deadline, or a report made after the effect window is used to classify what was physically displayed during that window.
