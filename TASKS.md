@@ -2253,6 +2253,35 @@ authorized. The linked CLOSURE.md records the successful hardware validation
 of the pause/safe-stop fix, the expired physical-observation boundary, the next
 safe selector action, and all non-claims.
 
+Operator-present attempt-009 plan:
+`docs/parity/work-plans/20260813T085022Z-API-009/PLAN.md`.
+
+- [x] Preserve the user's current pre-effect presence/watching/readiness report
+      without treating it as either IDENTIFY observation or retroactive
+      attempt-008 evidence.
+- [ ] Commit and push the immutable one-attempt contract and pass every
+      focused, mandatory, privacy, reference, and exact-package gate.
+- [ ] Run exactly one fresh detector-gated `attempt-009`; relay each live
+      request and consume its request-once confirmation only after the matching
+      user-observed physical state.
+- [ ] Promote API-009 only on the complete five-command device-user quorum;
+      otherwise preserve `implemented`, earliest failure, public withholding,
+      safe stop, cleanup, and the truthful closed outcome.
+
+Attempt-009 authorization: this separately selected plan supersedes only the
+prior attempt-009 prohibition because the user's current report establishes
+the missing pre-effect operator presence, display observation, and readiness.
+It does not confirm either future IDENTIFY state. Standing task authorization
+permits the single campaign only after the linked immutable plan/task
+checkpoint and every software, package, privacy, recovery, and detector gate
+pass at clean pushed HEAD. The linked plan freezes the exact repo command,
+fresh private roots, allowed and prohibited effects, 600-second bound, live
+physical-observation checkpoints, evidence quorum, recovery, cleanup, terminal
+categories, and stop outcomes. Campaign start consumes attempt-009. No inferred
+observation, expired-checkpoint reuse, external or owner pool, destructive or
+fault-injection action, direct UART, pin/pad/GPIO manipulation, attempt-010, or
+unchanged retry is authorized.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
