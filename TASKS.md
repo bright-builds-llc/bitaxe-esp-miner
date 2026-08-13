@@ -2199,10 +2199,13 @@ terminal blocker, next safe software-only diagnostic condition, and non-claims.
 - [x] Add the independent `bitaxe-emc2101-thermal-evidence-v1` contract and
       one repo-owned exact-package capture command with protected artifacts,
       typed failures, recovery, cleanup, and atomic evidence withholding.
-- [ ] Pass the focused, real-firmware, package, mandatory, privacy, reference,
+- [x] Pass the focused, real-firmware, package, mandatory, privacy, reference,
       generated-contract, plan/task, and diff gates from the immutable plan.
-- [ ] Run exactly one detector-gated read-only `attempt-001` and promote only
+- [x] Run exactly one detector-gated read-only `attempt-001` and promote only
       THR-001 if its complete live thermal quorum passes.
+- [ ] Under a fresh THR-001 plan, replace the stale source-fragment admission
+      with the checked-in production semantic boundary, add a real-source
+      regression, and authorize at most one newly bounded attempt ordinal.
 
 Plan: `docs/parity/work-plans/20260813T001637Z-THR-001/PLAN.md`.
 
@@ -2242,13 +2245,18 @@ WebSocket correlation, detector/boot/safety/cleanup/mode/redaction quorum, and
 independent typed validation. Otherwise withhold evidence, preserve
 `implemented`, record a truthful closure, and stop.
 
-Verification: Immutable-plan gates passed before implementation. Focused pure
-thermal, firmware adapter, Rust evidence-contract, TypeScript orchestration,
-invocation, typed-failure, redaction, protected-file, atomic-withholding, and
-real-child boundaries pass. The full mandatory implementation sequence and
-exact firmware package remain pending.
+Verification: Immutable-plan, focused, mandatory, privacy, reference,
+generated-contract, exact-package, detector, and protected-mode gates passed.
+Attempt-001 was consumed once and ended `evidence_invalid`; the projection and
+candidate were withheld. Protected boolean-only diagnosis proves every live
+thermal and identity member passed, while the host semantic-source check alone
+expected an intermediate statement removed by the final simplification.
 
-Completion review: Pending.
+Completion review: The immutable attempt-001 plan is closed as
+`stop_impossible_contract` without verification or a checklist transition.
+THR-001 remains `implemented`. The unresolved task stays active for a fresh
+plan, a checked-in-source regression, and at most one newly bounded attempt;
+attempt-001 must never be retried or reused.
 
 ## Future
 

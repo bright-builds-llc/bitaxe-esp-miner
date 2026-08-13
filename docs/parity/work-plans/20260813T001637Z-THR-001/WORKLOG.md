@@ -99,3 +99,31 @@
 - Blocker or next safe action: Commit and push the implementation, build and
   admit the exact clean package, then execute the immutable two-command sole
   hardware sequence.
+
+## 2026-08-13T01:08:17Z | Sole hardware attempt and terminal diagnosis
+
+- Source commit: `6eeedcfb25bfda48a9187e0ea219c67bbea57b33`
+- Actions: Built and independently admitted the exact clean package, passed
+  the detector gate, and executed the immutable `attempt-001` capture command
+  once. The command terminated with typed category `evidence_invalid`; no
+  retry or second hardware effect was started. Diagnosed the failure using
+  boolean-only checks over the protected artifacts.
+- Verification: The detector, protected modes and file set, exact source,
+  reference, package and runtime identities, stable boot, disabled mining and
+  hardware control, source system-info validator, and fresh finite plausible
+  below-throttle HTTP/WebSocket thermal correlation all passed. The final
+  projection and candidate are absent. The only failed invariant is a stale
+  host source-fragment admission string: orchestration expects an intermediate
+  `let adjusted` statement that the clean pushed reducer no longer contains
+  after its final simplification.
+- Evidence: All device values, acquisition stamps, boot sessions, origins,
+  hostnames, ports, USB/network identities, credentials, logs, commands, PIDs,
+  and traces remain in the ignored mode-0700 protected root. No raw private
+  value was printed or copied into this public record.
+- Outcome: `stop_impossible_contract`. THR-001 remains `implemented`; no parity
+  evidence is claimed. Attempt-001 is consumed and the immutable plan is
+  closed truthfully in `CLOSURE.md`.
+- Blocker or next safe action: Under a fresh THR-001 plan, fix the semantic
+  admission fragment and add a checked-in-source regression, commit and push
+  the fix, then use one newly bounded attempt ordinal. Never retry or reuse
+  attempt-001.
