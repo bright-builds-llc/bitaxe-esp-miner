@@ -37,3 +37,42 @@
 - Blocker or next safe action: Commit and push the checkpoint, then run only
   its named exact-package, private-root, credential-presence, and detector
   gates before the sole campaign.
+
+## 2026-08-13T11:42:00Z | attempt-010 terminal checkpoint
+
+- Source commit: `8e89891f445f49493d3909fb2e1b4c30795c5dce`.
+- Actions: Re-ran the focused pushed-commit tests and firmware build, built the
+  exact package, admitted exactly one Ultra 205 through the sole protected
+  detector, and ran the sole attempt-010. Relayed the live rendered checkpoint
+  without issuing a confirmation.
+- Verification: The package matches the pushed source and pinned reference.
+  The protected v8 aggregate proves trusted identity, protocol readiness, a
+  genuine positive block, five accepted shares, confirmed pause, confirmed
+  resumable safe stop, confirmed resume, and active mining after resume. The
+  user's live physical report at the rendered checkpoint described the normal
+  statistics/block-notification page, not the required blank / `BITAXE
+  IDENTIFY` / `Hello!` / blank frame. No confirmation command ran.
+- Evidence: Protected attempt-010 aggregate artifacts and seal only. Every
+  private directory is mode `0700`, every private file is mode `0600`, no
+  symlink exists, and the result digest matches. No public projection exists.
+- Outcome: `stop_hardware_blocker`. The public wrapper classified
+  `hardware_blocked`; safe stop and USB cleanup are confirmed, recovery was not
+  required, and public evidence was withheld. API-009 remains `implemented`.
+- Blocker or next safe action: Close this attempt without retry. A future clean
+  selector may diagnose the production identify-state-to-display-render path,
+  but attempt-011 requires a regression-backed fix and a separate immutable
+  contract.
+
+## 2026-08-13T14:41:48Z | closure verification
+
+- Actions: Added the redaction-safe closure and updated only the active API-009
+  task block; left the checklist row unchanged and emitted no public evidence.
+- Verification: Cargo format, clippy with warnings denied, all-target build,
+  all-feature tests, Bright Builds checks, all 42 Bazel tests, parity
+  validation/progress, redaction, pinned-reference cleanliness, real firmware
+  build, immutable-plan digest, private modes, seal, no-symlink, projection-
+  absence, diff, and sensitive-output checks pass.
+- Outcome: The closed attempt-010 result is ready to commit and push. API-009
+  remains `implemented`; attempt-011 remains prohibited.
+- Blocker or next safe action: A later selector run must diagnose and fix the
+  production identify-to-display boundary before considering new hardware.

@@ -2337,12 +2337,12 @@ software plan does not authorize it.
 Resumable-pause attempt-010 plan:
 `docs/parity/work-plans/20260813T110706Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable one-attempt contract and pass every
+- [x] Commit and push the immutable one-attempt contract and pass every
       focused, mandatory, privacy, reference, and exact-package gate.
-- [ ] Run exactly one fresh detector-gated `attempt-010`; relay each live
+- [x] Run exactly one fresh detector-gated `attempt-010`; relay each live
       IDENTIFY request and consume its request-once confirmation only after the
       matching user-observed physical state.
-- [ ] Promote API-009 only on the complete five-command device-user quorum;
+- [x] Promote API-009 only on the complete five-command device-user quorum;
       otherwise preserve `implemented`, earliest failure, public withholding,
       safe stop, cleanup, recovery, and the truthful closed outcome.
 
@@ -2359,6 +2359,24 @@ categories, and stop outcomes. Campaign start consumes attempt-010. No inferred
 observation, protected-artifact reuse, external or owner pool, destructive or
 fault-injection action, direct UART, pin/pad/GPIO manipulation, attempt-011, or
 unchanged retry is authorized.
+
+Attempt-010 verification: `stop_hardware_blocker`; no retry was run. Exact
+clean pushed source/package `8e89891f445f49493d3909fb2e1b4c30795c5dce`,
+focused and real-process tests, every software/privacy/reference gate, and the
+sole protected detector passed. The sealed v8 result proves trusted identity,
+a genuine block, five accepted shares, confirmed pause and resumable safe stop,
+confirmed resume, active-after-resume, private modes, matching seal, safe stop,
+USB cleanup, redaction, and public withholding. At the live rendered IDENTIFY
+checkpoint, the user physically observed the normal statistics/block-
+notification page rather than the required `BITAXE IDENTIFY` / `Hello!` frame,
+so no confirmation command ran. Cleared IDENTIFY, dismissal, restart, and the
+public projection were correctly withheld.
+
+Completion review: API-009 remains `implemented`; attempt-010 is consumed and
+attempt-011 is prohibited. The hardware result validates the resumable-pause
+fix and isolates a new command-to-physical-display render blocker. The linked
+`CLOSURE.md` requires production-shaped diagnosis and a regression-backed fix
+before any future hardware contract.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
