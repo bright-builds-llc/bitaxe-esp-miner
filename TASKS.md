@@ -2217,7 +2217,7 @@ terminal blocker, next safe software-only diagnostic condition, and non-claims.
 - [x] Integrate the validator into the TypeScript shell, add wide/mismatched/
       malformed and real-child regressions, and advance the closed contract,
       generated binding, and protected paths to attempt ordinal 3.
-- [ ] Commit and push the fix, admit an exact clean package, and run at most one
+- [x] Commit and push the fix, admit an exact clean package, and run at most one
       detector-gated read-only `attempt-003`; promote only on the full quorum.
 
 Plan: `docs/parity/work-plans/20260813T015631Z-THR-001/PLAN.md`.
@@ -2264,15 +2264,20 @@ independent typed validation. Otherwise withhold evidence, preserve
 
 Verification: Immutable-plan, focused, mandatory, privacy, reference,
 generated-contract, exact-package, detector, and protected-mode gates passed.
-Attempt-001 was consumed once and ended `evidence_invalid`; the projection and
-candidate were withheld. Protected boolean-only diagnosis proves every live
-thermal and identity member passed, while the host semantic-source check alone
-expected an intermediate statement removed by the final simplification.
+Attempts 001 and 002 withheld evidence at distinct host-only validation defects.
+Attempt-003 completed and its public projection passed independent Rust
+validation with the exact source/reference/package, live thermal, boot, safety,
+cleanup, mode, and redaction quorum.
 
-Completion review: Attempts 001 and 002 are closed as distinct
-`stop_impossible_contract` outcomes without verification or checklist
-transition. THR-001 remains `implemented`. The fresh attempt-003 plan is
-active; attempts 001 and 002 must never be retried or reused.
+Completion review: Attempts 001 and 002 remain sealed as distinct
+`stop_impossible_contract` outcomes. The lossless Rust boundary removed the
+attempt-002 host defect, all mandatory software gates passed, and exact-package
+attempt-003 completed with independently validated closed evidence. The live
+quorum proves the current read-only EMC2101 path, board offset, fresh safe
+sample, exact HTTP/WebSocket correlation, disabled mining/control, cleanup,
+private modes, and redaction. THR-001 is ready for its sole transition to
+`verified`; broader thermal faults, overheat behavior, controls, and other
+boards remain non-claims.
 
 ## Future
 

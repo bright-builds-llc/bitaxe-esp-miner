@@ -1,0 +1,46 @@
+{
+  "schema_version": "bitaxe-emc2101-thermal-evidence-v1",
+  "board": 205,
+  "attempt_ordinal": 3,
+  "source_commit": "021c061b26494a665e35b1e3068ec5b6a2775261",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "package_manifest_sha256": "cf96f67db97f77b330cb0a64e77565f8dbc4ac9cc5f09472b108f978287fa714",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "capture-emc2101-thermal-evidence",
+    "request_sha256": "00860ab9a29aa4f1cb4370fa95f63f558b84a8b266de4472aabc455c6079fbed"
+  },
+  "source": {
+    "system_info_projection_sha256": "400e1686bc1f5bd69e22b6afbfab29199bb1d68774ea6a1ee51021856cd9f55f",
+    "api_snapshot_sha256": "c483b44899c5c3d8bd00647bec7fbc0d274ec5bb22945a45c4abd23bfa27c4d4",
+    "websocket_snapshot_sha256": "f8c1d2aad35c5c4a2b92915ca55b774c2f80567b614e19ca27a15eb2cd09e3d9",
+    "plan_sha256": "1f8ab858acc5ea543d617a1d4e275b617725a93f945011a4d27d7b7ae0b6c90a",
+    "system_info_projection_valid": true,
+    "protected_modes_valid": true,
+    "production_source_current": true,
+    "source_semantics_admitted": true,
+    "compatible_path_count": 7
+  },
+  "thermal": {
+    "i2c_address": 76,
+    "internal_temperature_register": 0,
+    "temperature_offset_celsius": 5,
+    "read_only_acquisition": true,
+    "http_fresh_sample": true,
+    "websocket_fresh_sample": true,
+    "finite_plausible_range": true,
+    "below_throttle_threshold": true,
+    "same_temperature": true,
+    "same_state": true,
+    "same_acquisition_stamp": true,
+    "same_boot_session": true,
+    "exact_package_identity": true
+  },
+  "detector_admitted": true,
+  "boot_observed": true,
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "cleanup_complete": true,
+  "recovery_used": false,
+  "redaction_status": "passed"
+}

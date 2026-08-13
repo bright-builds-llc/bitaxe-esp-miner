@@ -21,7 +21,7 @@
 - Blocker or next safe action: Freeze, verify, commit, and push this immutable
   plan/task checkpoint before implementation edits.
 
-## 2026-08-13T02:42:00Z | Lossless private-input boundary implemented
+## 2026-08-13T02:10:00Z | Lossless private-input boundary implemented
 
 - Source commit: `8e04f82d8893efbf5c3d37af7b0c30a843b44e70`
 - Actions: Added a private Rust thermal-input validator that deserializes every
@@ -44,7 +44,7 @@
 - Blocker or next safe action: Run the immutable plan's mandatory sequence,
   review the complete diff, then commit and push the software checkpoint.
 
-## 2026-08-13T02:50:00Z | Mandatory software gates passed
+## 2026-08-13T02:14:00Z | Mandatory software gates passed
 
 - Source commit: `8e04f82d8893efbf5c3d37af7b0c30a843b44e70`
 - Actions: Completed the required formatting, lint, build, unit/integration,
@@ -65,3 +65,29 @@
   and push; hardware remains ineligible until that synchronization completes.
 - Blocker or next safe action: Re-run the required pre-commit Rust sequence,
   commit and push the implementation, then build and admit the exact package.
+
+## 2026-08-13T02:29:00Z | Exact-package attempt-003 passed
+
+- Source commit: `021c061b26494a665e35b1e3068ec5b6a2775261`
+- Actions: Built and independently admitted the exact clean board-205 package,
+  ran the sole detector command, and then consumed the one authorized
+  attempt-003 through the repo-owned thermal evidence transaction.
+- Verification: The detector admitted exactly one Ultra 205. The capture
+  completed with category `complete`; the independent Rust final-evidence
+  validator accepted the closed projection. It binds attempt ordinal 3, the
+  exact source/reference/package, the current production read-only EMC2101
+  source at address `0x4c` register `0x00` with the board `+5 C` offset, one
+  finite plausible fresh below-throttle sample, exact lossless HTTP/WebSocket
+  value/state/stamp/boot/package correlation, stable boot, disabled mining and
+  hardware control, complete cleanup, private modes, and passed redaction.
+  Recovery was not used; all protected files are mode `0600` below mode `0700`
+  roots and no process holds the attempt root.
+- Evidence: The only public artifact is
+  `docs/parity/evidence/thr001-emc2101-thermal/thermal-projection.json`.
+  Raw temperature, acquisition stamps, boot session, origins, ports, USB and
+  network identities, credentials, HTTP bodies, logs, commands, PIDs, paths,
+  and traces remain only in ignored protected roots.
+- Outcome: The full THR-001 promotion quorum passed without a recovery flash.
+- Blocker or next safe action: Create the verified result, commit the evidence
+  without changing the checklist, then transition only THR-001 and synchronize
+  deterministic progress from that evidence commit.
