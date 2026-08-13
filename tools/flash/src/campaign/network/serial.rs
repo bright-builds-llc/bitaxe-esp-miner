@@ -3,7 +3,9 @@ use std::sync::{Arc, Mutex};
 
 use bitaxe_api::{ExpectedRuntimeAttestationIdentity, RuntimeBootAttestation};
 
-use super::super::markers::{CampaignStateMarker, CampaignStatusMarker};
+use super::super::markers::{
+    CampaignStateMarker, CampaignStatusMarker, ResumablePauseSafeStopMarker,
+};
 use super::super::*;
 use super::model::{SharedSerialState, TrustedNetworkTarget, REQUIRED_WINDOWS, WINDOW_MILLIS};
 
@@ -192,6 +194,15 @@ impl NetworkSerialTracker {
         };
         state.latest_active_ms = state.latest_active_ms.max(marker.active_ms);
         state.active = marker.campaign_state == CampaignStateMarker::Active;
+        let Ok(confirmed) =
+            resumable_pause_safe_stop_confirmation(marker.stage, marker.resumable_pause_safe_stop)
+        else {
+            state
+                .maybe_failure
+                .get_or_insert(CampaignTerminalCategory::MarkerInvalid);
+            return;
+        };
+        state.resumable_pause_safe_stop_confirmed = confirmed;
         if matches!(
             marker.campaign_state,
             CampaignStateMarker::Active | CampaignStateMarker::SafeStopping
@@ -214,6 +225,18 @@ impl NetworkSerialTracker {
             state.terminal_pool_persisted = marker.pool_config_persisted;
         }
     }
+}
+
+fn resumable_pause_safe_stop_confirmation(
+    stage: MiningCampaignStage,
+    status: ResumablePauseSafeStopMarker,
+) -> Result<bool, ()> {
+    if stage != MiningCampaignStage::CommandEffects
+        && status != ResumablePauseSafeStopMarker::NotRequired
+    {
+        return Err(());
+    }
+    Ok(status == ResumablePauseSafeStopMarker::Confirmed)
 }
 
 fn parse_origin(fields: &str) -> Option<OriginCandidate> {
@@ -257,5 +280,46 @@ fn unique_origin_count(origins: &[OriginCandidate]) -> usize {
 fn fail_shared(shared: &Arc<Mutex<SharedSerialState>>, category: CampaignTerminalCategory) {
     if let Ok(mut state) = shared.lock() {
         state.maybe_failure.get_or_insert(category);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::super::markers::ResumablePauseSafeStopMarker;
+    use super::super::super::MiningCampaignStage;
+    use super::resumable_pause_safe_stop_confirmation;
+
+    #[test]
+    fn command_effects_safe_stop_markers_set_and_clear_confirmation() {
+        // Arrange / Act
+        let pending = resumable_pause_safe_stop_confirmation(
+            MiningCampaignStage::CommandEffects,
+            ResumablePauseSafeStopMarker::Pending,
+        );
+        let confirmed = resumable_pause_safe_stop_confirmation(
+            MiningCampaignStage::CommandEffects,
+            ResumablePauseSafeStopMarker::Confirmed,
+        );
+        let cleared = resumable_pause_safe_stop_confirmation(
+            MiningCampaignStage::CommandEffects,
+            ResumablePauseSafeStopMarker::NotRequired,
+        );
+
+        // Assert
+        assert_eq!(pending, Ok(false));
+        assert_eq!(confirmed, Ok(true));
+        assert_eq!(cleared, Ok(false));
+    }
+
+    #[test]
+    fn non_command_effects_safe_stop_confirmation_is_rejected() {
+        // Arrange / Act
+        let result = resumable_pause_safe_stop_confirmation(
+            MiningCampaignStage::Observation,
+            ResumablePauseSafeStopMarker::Confirmed,
+        );
+
+        // Assert
+        assert_eq!(result, Err(()));
     }
 }

@@ -17,6 +17,9 @@ use super::model::{CampaignNetworkEvidence, SharedSerialState, TrustedNetworkTar
 use super::validation::{active_mining_state_valid, validate_identity_and_safety};
 use crate::write_private_new_bytes;
 
+mod pause_join;
+use pause_join::{PauseJoinDecision, PauseJoinState};
+
 const HTTP_DEADLINE: Duration = Duration::from_secs(3);
 const POLL_INTERVAL: Duration = Duration::from_secs(1);
 const TERMINAL_DEADLINE: Duration = Duration::from_secs(15);
@@ -49,7 +52,7 @@ struct IdentifyCheckpoint {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum CommandPhase {
     Notification,
-    Pause,
+    Pause(PauseJoinState),
     Resume,
     IdentifyRendered,
     IdentifyCleared,
@@ -88,6 +91,9 @@ pub(super) fn observe_command_effects(
         if serial.terminal_consumed && maybe_terminal_deadline.is_none() {
             maybe_terminal_deadline = Some(Instant::now() + TERMINAL_DEADLINE);
         }
+        if matches!(phase, CommandPhase::Pause(join) if join.expired(Instant::now())) {
+            maybe_failure.get_or_insert(CampaignTerminalCategory::NetworkCorrelationFailed);
+        }
 
         if maybe_failure.is_none() {
             match fetch_system_info(&http) {
@@ -102,6 +108,8 @@ pub(super) fn observe_command_effects(
                             &target,
                             evidence_root,
                             &sample,
+                            &serial,
+                            Instant::now(),
                             CommandProgress {
                                 phase: &mut phase,
                                 maybe_block_count: &mut maybe_block_count,
@@ -166,6 +174,8 @@ fn advance_commands(
     target: &TrustedNetworkTarget,
     evidence_root: &Utf8Path,
     sample: &SystemInfoWire,
+    serial: &SharedSerialState,
+    now: Instant,
     progress: CommandProgress<'_>,
 ) {
     let CommandProgress {
@@ -190,18 +200,30 @@ fn advance_commands(
             }
             evidence.pause_request_count = 1;
             if post_succeeded(http.post_pause_once(Instant::now() + HTTP_DEADLINE)) {
-                *phase = CommandPhase::Pause;
+                *phase = CommandPhase::Pause(PauseJoinState::new(now));
             } else {
                 *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
             }
         }
-        CommandPhase::Pause if sample.mining_paused && sample.mining_activity == "paused" => {
-            evidence.pause_confirmed = true;
-            evidence.resume_request_count = 1;
-            if post_succeeded(http.post_resume_once(Instant::now() + HTTP_DEADLINE)) {
-                *phase = CommandPhase::Resume;
-            } else {
-                *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
+        CommandPhase::Pause(join) => {
+            match join.observe(
+                sample.mining_paused && sample.mining_activity == "paused",
+                serial.resumable_pause_safe_stop_confirmed,
+                now,
+            ) {
+                PauseJoinDecision::Wait => {}
+                PauseJoinDecision::Resume => {
+                    evidence.pause_confirmed = true;
+                    evidence.resume_request_count = 1;
+                    if post_succeeded(http.post_resume_once(Instant::now() + HTTP_DEADLINE)) {
+                        *phase = CommandPhase::Resume;
+                    } else {
+                        *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
+                    }
+                }
+                PauseJoinDecision::TimedOut => {
+                    *maybe_failure = Some(CampaignTerminalCategory::NetworkCorrelationFailed);
+                }
             }
         }
         CommandPhase::Resume if active_mining_state_valid(sample) => {

@@ -5,6 +5,8 @@ mod protocol;
 use protocol::ProtocolGateMarker;
 mod readiness;
 pub(super) use readiness::ReadinessTransitionMarker;
+mod pause;
+pub(super) use pause::*;
 
 mod asic;
 pub(super) use asic::*;
@@ -106,14 +108,6 @@ pub(super) enum ActuationMarker {
     None,
     Qualified,
     SafeStopped,
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub(super) enum SafeStopMarker {
-    NotRequired,
-    Pending,
-    Confirmed,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -306,6 +300,7 @@ pub(super) struct CampaignStatusMarker {
     pub(super) terminal_reason: CampaignTerminalReasonMarker,
     pub(super) protocol_gate: ProtocolGateMarker,
     pub(super) readiness_transition: ReadinessTransitionMarker,
+    pub(super) resumable_pause_safe_stop: ResumablePauseSafeStopMarker,
     pub(super) safety: SafetyMarker,
     pub(super) fresh_observation_count: u8,
     pub(super) observation_freshness: ObservationFreshnessMarker,
@@ -436,6 +431,9 @@ pub(super) fn campaign_marker_failure(
     }
     if marker.mineonboot {
         return Some(CampaignTerminalCategory::MineOnBootEnabled);
+    }
+    if !marker.resumable_pause_safe_stop.is_valid_for(marker.stage) {
+        return Some(CampaignTerminalCategory::MarkerInvalid);
     }
     if marker.safety == SafetyMarker::Stale {
         return Some(CampaignTerminalCategory::SafetyStale);

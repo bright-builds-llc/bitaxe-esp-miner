@@ -352,6 +352,7 @@ rust_test(
         "src/production_mining_session/campaign_status.rs",
         "src/production_mining_session/campaign_status/projection.rs",
         "src/production_mining_session/campaign_status/tests/operator_intent.rs",
+        "src/production_mining_session/campaign_status/tests/resumable_pause.rs",
         "src/production_mining_session/readiness_trace.rs",
     ],
     crate_name = "production_campaign_status_tests",

@@ -19,6 +19,7 @@ pub(super) struct CampaignStatusProjection {
     pub(super) terminal_reason: &'static str,
     pub(super) protocol_gate: &'static str,
     pub(super) readiness_transition: CampaignReadinessTransitionProjection,
+    pub(super) resumable_pause_safe_stop: &'static str,
     pub(super) safety: &'static str,
     pub(super) fresh_observation_count: u8,
     pub(super) observation_freshness: CampaignObservationFreshness,

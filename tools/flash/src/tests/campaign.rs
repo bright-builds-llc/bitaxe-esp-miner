@@ -90,7 +90,7 @@ fn campaign_marker_with_failure(
     format!(
         "mining_campaign_status={}",
         serde_json::json!({
-            "schema": "mining-campaign-status-v11",
+            "schema": "mining-campaign-status-v12",
             "stage": fixture.stage,
             "lease_id": fixture.lease_id,
             "campaign_state": fixture.state,
@@ -164,7 +164,7 @@ fn campaign_marker_with_failure(
                 "observation_epoch": "advanced",
                 "pending_observation_recovered": true,
             },
-            "safety": fixture.safety,
+            "resumable_pause_safe_stop": "not_required", "safety": fixture.safety,
             "fresh_observation_count": if safety_fresh { 5 } else { 4 },
             "observation_freshness": {
                 "power_watts": true,

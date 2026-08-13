@@ -53,6 +53,7 @@ impl SerialWindowEvidence {
 pub(super) struct SharedSerialState {
     pub(super) latest_active_ms: u64,
     pub(super) active: bool,
+    pub(super) resumable_pause_safe_stop_confirmed: bool,
     pub(super) terminal_consumed: bool,
     pub(super) terminal_pool_persisted: bool,
     pub(super) serial_finished: bool,
@@ -66,6 +67,7 @@ impl Default for SharedSerialState {
         Self {
             latest_active_ms: 0,
             active: false,
+            resumable_pause_safe_stop_confirmed: false,
             terminal_consumed: false,
             terminal_pool_persisted: false,
             serial_finished: false,

@@ -2,7 +2,7 @@
 
 use bitaxe_stratum::v1::production_session::{
     AsicBridgeEvidence, JobTransitionEvidence, MiningCampaignLease, MiningCampaignState,
-    MiningHardwareProfilePreset, ProductionSessionSnapshot,
+    MiningHardwareProfilePreset, MiningHardwareState, ProductionSessionSnapshot,
 };
 use bitaxe_stratum::v1::state::MiningOperatorIntent;
 use serde::Serialize;
@@ -32,6 +32,13 @@ pub(super) enum CampaignActuationStatus {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum CampaignSafeStopStatus {
+    NotRequired,
+    Pending,
+    Confirmed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ResumablePauseSafeStopStatus {
     NotRequired,
     Pending,
     Confirmed,
@@ -271,7 +278,7 @@ impl CampaignStatusTracker {
                 self.retained_active_ms.max(now_ms.saturating_sub(started))
             });
         let projection = CampaignStatusProjection {
-            schema: "mining-campaign-status-v11",
+            schema: "mining-campaign-status-v12",
             stage: self.stage.label(),
             lease_id: self.retained_maybe_lease.map(|lease| lease.id().raw()),
             campaign_state: campaign_state_label(snapshot.campaign_state),
@@ -298,6 +305,11 @@ impl CampaignStatusTracker {
                 .map_or("none", |blocker| blocker.label()),
             protocol_gate,
             readiness_transition: CampaignReadinessTransitionProjection::from(readiness_transition),
+            resumable_pause_safe_stop: match self.resumable_pause_safe_stop(snapshot) {
+                ResumablePauseSafeStopStatus::NotRequired => "not_required",
+                ResumablePauseSafeStopStatus::Pending => "pending",
+                ResumablePauseSafeStopStatus::Confirmed => "confirmed",
+            },
             safety: if safety_fresh { "fresh" } else { "stale" },
             fresh_observation_count: observation_freshness.fresh_count(),
             observation_freshness,
@@ -322,6 +334,25 @@ impl CampaignStatusTracker {
         };
         serde_json::to_string(&projection)
             .expect("closed campaign status projection must always serialize")
+    }
+
+    fn resumable_pause_safe_stop(
+        &self,
+        snapshot: &ProductionSessionSnapshot,
+    ) -> ResumablePauseSafeStopStatus {
+        if self.stage != MiningCampaignStage::CommandEffects
+            || !self.active_seen
+            || !self.lease_authorizing
+            || snapshot.mining.operator_intent != MiningOperatorIntent::Paused
+        {
+            return ResumablePauseSafeStopStatus::NotRequired;
+        }
+        if snapshot.campaign_state == MiningCampaignState::Armed
+            && snapshot.hardware_state == MiningHardwareState::Stopped
+        {
+            return ResumablePauseSafeStopStatus::Confirmed;
+        }
+        ResumablePauseSafeStopStatus::Pending
     }
 }
 
@@ -350,6 +381,7 @@ mod tests {
     use super::*;
 
     include!("campaign_status/tests/operator_intent.rs");
+    include!("campaign_status/tests/resumable_pause.rs");
 
     fn snapshot(campaign_state: MiningCampaignState) -> ProductionSessionSnapshot {
         ProductionSessionSnapshot {
@@ -398,7 +430,8 @@ mod tests {
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 
         // Assert
-        assert_eq!(value["schema"], "mining-campaign-status-v11");
+        assert_eq!(value["schema"], "mining-campaign-status-v12");
+        assert_eq!(value["resumable_pause_safe_stop"], "not_required");
         assert_eq!(value["protocol_gate"], "ready");
         assert_eq!(
             value["readiness_transition"],

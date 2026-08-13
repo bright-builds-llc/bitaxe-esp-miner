@@ -1,12 +1,12 @@
 use super::*;
-
 #[path = "tests/asic_diagnostics.rs"]
 mod asic_diagnostics;
 #[path = "tests/attestation.rs"]
 mod attestation;
 #[path = "tests/chunk_stream.rs"]
 mod chunk_stream;
-
+#[path = "tests/pause_safe_stop.rs"]
+mod pause_safe_stop;
 fn observation_admission() -> CampaignAdmission {
     CampaignAdmission {
         stage: MiningCampaignStage::Observation,
@@ -101,6 +101,7 @@ fn live_share_preparing_marker() -> Vec<u8> {
             "observation_epoch": "advanced",
             "pending_observation_recovered": true,
         },
+        "resumable_pause_safe_stop": "not_required",
         "safety": "fresh",
         "fresh_observation_count": 5,
         "observation_freshness": {
@@ -211,6 +212,7 @@ fn observation_marker(schema: &str) -> Vec<u8> {
             "observation_epoch": "advanced",
             "pending_observation_recovered": true,
         },
+        "resumable_pause_safe_stop": "not_required",
         "safety": "fresh",
         "fresh_observation_count": 5,
         "observation_freshness": {

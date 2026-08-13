@@ -2170,15 +2170,15 @@ terminal blocker, next safe software-only diagnostic condition, and non-claims.
 Safe-stop correlation continuation plan:
 `docs/parity/work-plans/20260813T061635Z-API-009/PLAN.md`.
 
-- [ ] Add a closed firmware-owned resumable-pause safe-stop state that becomes
+- [x] Add a closed firmware-owned resumable-pause safe-stop state that becomes
       confirmed only after logical pause, stopped hardware, and the same armed
       lease coincide.
-- [ ] Require the command-effects host observer to join API-visible logical
+- [x] Require the command-effects host observer to join API-visible logical
       pause with that same-session serial confirmation before its one resume.
-- [ ] Prove ordering, either-arrival order, bounded missing joins, request-once
+- [x] Prove ordering, either-arrival order, bounded missing joins, request-once
       behavior, reprepare clearing, malformed input, and sensitive-output
       handling at production-shaped boundaries.
-- [ ] Run and push every focused and mandatory gate, keep API-009 implemented,
+- [x] Run and push every focused and mandatory gate, keep API-009 implemented,
       and close without hardware or checklist transition.
 
 Continuation authorization: software, deterministic fixtures, local child
@@ -2188,6 +2188,25 @@ flash, reset, mining, ASIC initialization or traffic, hardware controls,
 command effects, OTA, recovery, direct UART, pins, and attempt-008 remain
 prohibited. This continuation supplies no hardware eligibility and cannot
 promote API-009.
+
+Verification: Marker v12 now carries a closed firmware-owned
+`resumable_pause_safe_stop` state derived only from an active-seen
+command-effects campaign, retained authorizing lease, paused operator intent,
+armed campaign, and stopped hardware. The same-session serial coordinator
+sets and clears that fact, while the host requires its join with logical HTTP
+pause before one resume and fails closed at the exact 130-second boundary.
+Focused Cargo/Bazel tests and the firmware build pass, followed by the ordered
+Cargo, Bright Builds, all-42-target Bazel, parity, progress, redaction,
+reference, source-ownership, immutable-plan, task, sensitive-output, and diff
+gates.
+
+Completion review: The nondeterministic post-pause boundary is explained and
+fixed at its missing orchestration join without changing freshness policy or
+hardware safety. API-009 remains `implemented`; no protected evidence,
+credential, detector, package effect, device, network/HTTP session, mining,
+hardware command, or attempt-008 was used. The linked `CLOSURE.md` records why
+software completion is not parity verification and the condition for any
+future separately selected work.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
