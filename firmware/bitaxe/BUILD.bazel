@@ -40,6 +40,16 @@ js_library(
 )
 
 js_library(
+    name = "emc2101_thermal_sources",
+    srcs = [
+        "src/operator_sensor_runtime.rs",
+        "src/safety_adapter/emc2101.rs",
+        "src/safety_adapter/i2c_bus.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "ultra205_partition_table",
     srcs = ["partitions-ultra205.csv"],
     visibility = ["//tools/automation:__pkg__"],

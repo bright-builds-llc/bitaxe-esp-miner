@@ -2203,10 +2203,10 @@ terminal blocker, next safe software-only diagnostic condition, and non-claims.
       generated-contract, plan/task, and diff gates from the immutable plan.
 - [x] Run exactly one detector-gated read-only `attempt-001` and promote only
       THR-001 if its complete live thermal quorum passes.
-- [ ] Replace the stale source-fragment admission with the checked-in
+- [x] Replace the stale source-fragment admission with the checked-in
       production semantic boundary and add a regression that reads the actual
       source admitted by the evidence command.
-- [ ] Advance the closed evidence contract, validator, protected paths, and
+- [x] Advance the closed evidence contract, validator, protected paths, and
       generated binding to attempt ordinal 2 without weakening any runtime,
       privacy, or evidence-withholding invariant.
 - [ ] Commit and push the fix, admit an exact clean package, and run at most one

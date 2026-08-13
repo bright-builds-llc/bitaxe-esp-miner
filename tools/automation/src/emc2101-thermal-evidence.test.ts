@@ -8,6 +8,7 @@ import test from "node:test";
 import {
   captureEmc2101ThermalEvidence,
   Emc2101ThermalEvidenceError,
+  validateEmc2101SourceSemantics,
 } from "./emc2101-thermal-evidence.js";
 import {
   createFakeProcessPort,
@@ -26,7 +27,7 @@ const fixtureSources = new Map<string, string>([
   ["crates/bitaxe-safety/src/sensor_acquisition/emc2101.rs", [
     "pub const ULTRA205_EMC2101_TEMP_OFFSET_C: f64 = 5.0;",
     "pub fn apply_ultra205_emc2101_temperature_offset(",
-    "let adjusted = temperature_celsius + ULTRA205_EMC2101_TEMP_OFFSET_C;",
+    "validate_temperature(temperature_celsius + ULTRA205_EMC2101_TEMP_OFFSET_C)",
   ].join("\n")],
   ["crates/bitaxe-safety/src/thermal.rs", [
     "pub const ASIC_THROTTLE_TEMP_C: f64 = 75.0;",
@@ -160,14 +161,14 @@ async function fixture(name: string) {
     "- Active task: `task-parity-thr001-emc2101-live-thermal`",
     "",
   ].join("\n");
-  const planRelative = "docs/parity/work-plans/20260813T001637Z-THR-001/PLAN.md";
+  const planRelative = "docs/parity/work-plans/20260813T011207Z-THR-001/PLAN.md";
   await mkdir(path.dirname(path.join(root, planRelative)), { recursive: true });
   await writeFile(path.join(root, planRelative), planDocument);
   await writeFile(path.join(root, "TASKS.md"), [
     "### task-parity-thr001-emc2101-live-thermal | fixture",
-    "Plan: `docs/parity/work-plans/20260813T001637Z-THR-001/PLAN.md`.",
+    "Plan: `docs/parity/work-plans/20260813T011207Z-THR-001/PLAN.md`.",
     "Schema: `bitaxe-emc2101-thermal-evidence-v1`.",
-    "Attempt: `attempt-001`.",
+    "Attempt: `attempt-002`.",
     "",
   ].join("\n"));
   const contractRelative = "crates/bitaxe-api/fixtures/api/system-info-contract-v1.json";
@@ -184,7 +185,7 @@ async function fixture(name: string) {
     app_elf_sha256: appElfSha256,
   }));
   await writeFile(credentials, "{}\n", { mode: 0o600 });
-  const wrapper = path.join(root, "scratch/thr001-emc2101/wrapper-001");
+  const wrapper = path.join(root, "scratch/thr001-emc2101/wrapper-002");
   await mkdir(wrapper, { recursive: true, mode: 0o700 });
   await chmod(wrapper, 0o700);
   for (const name of ["detector.stdout", "detector.stderr", "capture.stdout", "capture.stderr"]) {
@@ -201,10 +202,10 @@ async function fixture(name: string) {
       "docs/parity/evidence/thr001-emc2101-thermal/thermal-projection.json",
     ),
     options: {
-      privateRoot: "scratch/thr001-emc2101/attempt-001",
+      privateRoot: "scratch/thr001-emc2101/attempt-002",
       packageManifest: manifest,
       wifiCredentials: credentials,
-      detectorOutput: "scratch/thr001-emc2101/wrapper-001/detector.stdout",
+      detectorOutput: "scratch/thr001-emc2101/wrapper-002/detector.stdout",
       port: "/dev/private-port",
       projection: "docs/parity/evidence/thr001-emc2101-thermal/thermal-projection.json",
       captureTimeoutSeconds: 360,
@@ -321,6 +322,58 @@ test("ready correlated thermal capture publishes aggregate-only v1 evidence", as
     assert.doesNotMatch(document, /private-device|private-port|bootSession|acquiredAtMs|"temp"/u);
   } finally {
     restore();
+    await rm(value.root, { recursive: true });
+  }
+});
+
+test("checked-in EMC2101 source semantics admit the simplified reducer", async () => {
+  // Arrange
+  const maybeRunfiles = process.env["RUNFILES_DIR"];
+  const workspaceRoot = maybeRunfiles === undefined
+    ? process.cwd()
+    : path.join(maybeRunfiles, "_main");
+  const reducer = await readFile(
+    path.join(workspaceRoot, "crates/bitaxe-safety/src/sensor_acquisition/emc2101.rs"),
+    "utf8",
+  );
+
+  // Act
+  const result = validateEmc2101SourceSemantics(workspaceRoot);
+
+  // Assert
+  await assert.doesNotReject(result);
+  assert.doesNotMatch(
+    reducer,
+    /let adjusted = temperature_celsius \+ ULTRA205_EMC2101_TEMP_OFFSET_C;/u,
+  );
+});
+
+test("source semantics reject the stale attempt-001 intermediate statement", async () => {
+  // Arrange
+  const value = await fixture("stale-source-fragment");
+  const reducer = path.join(
+    value.root,
+    "crates/bitaxe-safety/src/sensor_acquisition/emc2101.rs",
+  );
+  const current = await readFile(reducer, "utf8");
+  await writeFile(
+    reducer,
+    current.replace(
+      "validate_temperature(temperature_celsius + ULTRA205_EMC2101_TEMP_OFFSET_C)",
+      [
+        "let adjusted = temperature_celsius + ULTRA205_EMC2101_TEMP_OFFSET_C;",
+        "validate_temperature(adjusted)",
+      ].join("\n"),
+    ),
+  );
+
+  try {
+    // Act
+    const result = validateEmc2101SourceSemantics(value.root);
+
+    // Assert
+    await assert.rejects(result, Emc2101ThermalEvidenceError);
+  } finally {
     await rm(value.root, { recursive: true });
   }
 });

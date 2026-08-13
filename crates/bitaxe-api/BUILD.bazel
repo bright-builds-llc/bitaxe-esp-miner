@@ -13,6 +13,15 @@ filegroup(
     visibility = ["//firmware/bitaxe:__pkg__"],
 )
 
+js_library(
+    name = "emc2101_thermal_sources",
+    srcs = [
+        "src/observation.rs",
+        "src/wire.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
 filegroup(
     name = "theme_api_fixtures",
     srcs = ["fixtures/api/theme-cases.json"],

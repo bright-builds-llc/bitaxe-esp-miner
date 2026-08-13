@@ -19,3 +19,57 @@
   exact host admission fix, followed by at most one fresh attempt-002.
 - Blocker or next safe action: Freeze, verify, commit, and push this immutable
   plan/task checkpoint before editing implementation files.
+
+## 2026-08-13T01:24:00Z | Host admission fix checkpoint
+
+- Source commit: `f33b700207ff16d3d3bec91b557cd704bc81ae4e`
+- Actions: Replaced the stale intermediate-statement requirement with the
+  actual production reducer boundary, made token-order admission insensitive
+  to whitespace-only formatting, exposed the narrow source-semantics test
+  seam, and added the seven Rust/reference source owners as real Bazel test
+  runfiles. Advanced the closed Rust/TypeScript contract, protected paths,
+  task/plan binding, and produced projection to attempt ordinal 2.
+- Verification: The focused Rust contract and complete automation suites pass.
+  Coverage proves the current checked-in reducer is admitted, the exact stale
+  attempt-001 intermediate shape is rejected, ordinal 1 is rejected, ordinal 2
+  is accepted, generated contracts are synchronized, and the existing
+  real-child, typed-failure, protected-mode, redaction, correlation, and atomic
+  withholding boundaries remain green.
+- Evidence: Software-only tests and synthetic device inputs. No hardware,
+  credentials, serial, network, private attempt-001 artifact, raw thermal
+  value, acquisition stamp, boot session, origin, hostname, port, USB/network
+  identifier, log, command, PID, or trace was accessed or published.
+- Outcome: The discriminating host defect is fixed without changing firmware
+  runtime behavior or weakening the evidence quorum.
+- Blocker or next safe action: Run the full mandatory sequence, inspect the
+  complete diff, commit and push the software fix, then build and admit the
+  exact package before detector admission for attempt-002.
+
+## 2026-08-13T01:42:00Z | Implementation verification and cache isolation
+
+- Source commit: `f33b700207ff16d3d3bec91b557cd704bc81ae4e`
+- Actions: Completed the explicit simplification pass and the mandatory
+  verification sequence. Two initial all-feature Cargo runs stalled before
+  Rust startup in the same cached `bitaxe-core` test executable. Process
+  sampling showed `_dyld_start` with zero CPU; macOS `codesign`, another
+  generated executable read, and package-scoped `cargo clean` then blocked on
+  the same default target cache. Terminated only the owned processes and moved
+  verification to a fresh temporary `CARGO_TARGET_DIR`; all 85 focused core
+  tests and the full sequence then passed. Restarted Bazel under that same
+  environment so its workspace-status Cargo process used the healthy cache.
+- Verification: Cargo format, strict Clippy, all-target build, and all-feature
+  tests passed from the fresh target. Bright Builds reported zero findings;
+  all 41 Bazel tests passed; parity reported no validation errors; progress
+  remained 64/94 (68.1%); redaction checked 17 public artifacts; reference
+  cleanliness passed; and plan hash, unique task, generated-contract byte
+  equality, absent attempt/projection/candidate, mode boundary, and diff checks
+  passed.
+- Evidence: Software verification only. The unhealthy generated default Cargo
+  cache remains local and untracked; no repository source or hardware state
+  was changed to work around it. No credential, serial, network, attempt-001,
+  or raw private value entered output or Git.
+- Outcome: The host fix is fully verified and ready for its required clean
+  commit and push. The cache anomaly is isolated from repository correctness.
+- Blocker or next safe action: Review, commit, and push the implementation;
+  build and admit an exact package from that pushed commit; then execute the
+  immutable detector/capture attempt-002 sequence once.

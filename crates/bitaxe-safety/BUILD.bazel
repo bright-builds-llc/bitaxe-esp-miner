@@ -1,4 +1,14 @@
+load("@aspect_rules_js//js:defs.bzl", "js_library")
 load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+js_library(
+    name = "emc2101_thermal_sources",
+    srcs = [
+        "src/sensor_acquisition/emc2101.rs",
+        "src/thermal.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
 
 rust_library(
     name = "bitaxe_safety",

@@ -38,12 +38,12 @@ type ThermalSample = {
   readonly stamp: AcquisitionStamp;
 };
 
-const expectedPrivateRoot = "scratch/thr001-emc2101/attempt-001";
-const expectedWrapperRoot = "scratch/thr001-emc2101/wrapper-001";
+const expectedPrivateRoot = "scratch/thr001-emc2101/attempt-002";
+const expectedWrapperRoot = "scratch/thr001-emc2101/wrapper-002";
 const expectedProjection =
   "docs/parity/evidence/thr001-emc2101-thermal/thermal-projection.json";
-const expectedPlan = "docs/parity/work-plans/20260813T001637Z-THR-001/PLAN.md";
-const expectedPlanSha256 = "1bfc569edbfe9e307128fad2c0eb2a54c8d8925f6b412e30ed201ca6052b2860";
+const expectedPlan = "docs/parity/work-plans/20260813T011207Z-THR-001/PLAN.md";
+const expectedPlanSha256 = "02515b8d8d8c691a1a036026fa47c3f9d1caef0d504bcf4d3541aef9fb87e909";
 const expectedReferenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const activeTask = "task-parity-thr001-emc2101-live-thermal";
 const minimumPlausibleTemperatureCelsius = -40;
@@ -70,7 +70,7 @@ const sourceFragments = new Map<string, readonly string[]>([
   [sourcePaths[0], [
     "pub const ULTRA205_EMC2101_TEMP_OFFSET_C: f64 = 5.0;",
     "pub fn apply_ultra205_emc2101_temperature_offset(",
-    "let adjusted = temperature_celsius + ULTRA205_EMC2101_TEMP_OFFSET_C;",
+    "validate_temperature(temperature_celsius + ULTRA205_EMC2101_TEMP_OFFSET_C)",
   ]],
   [sourcePaths[1], [
     "pub const ASIC_THROTTLE_TEMP_C: f64 = 75.0;",
@@ -294,7 +294,7 @@ function validateTaskAndPlan(
   }
   const maybeEnd = taskDocument.indexOf("\n### ", start + heading.length);
   const block = taskDocument.slice(start, maybeEnd === -1 ? taskDocument.length : maybeEnd);
-  for (const required of [expectedPlan, "bitaxe-emc2101-thermal-evidence-v1", "attempt-001"]) {
+  for (const required of [expectedPlan, "bitaxe-emc2101-thermal-evidence-v1", "attempt-002"]) {
     if (!block.includes(required)) throw failure("evidence_invalid", "THR-001 task contract is incomplete");
   }
   if (sha256(planDocument) !== admittedPlanSha256
@@ -305,13 +305,16 @@ function validateTaskAndPlan(
 }
 
 function requireUniqueFragment(document: string, fragment: string): void {
-  const first = document.indexOf(fragment);
-  if (first === -1 || document.indexOf(fragment, first + fragment.length) !== -1) {
+  const normalizedDocument = document.replaceAll(/\s+/gu, "");
+  const normalizedFragment = fragment.replaceAll(/\s+/gu, "");
+  const first = normalizedDocument.indexOf(normalizedFragment);
+  if (first === -1
+    || normalizedDocument.indexOf(normalizedFragment, first + normalizedFragment.length) !== -1) {
     throw failure("evidence_invalid", "thermal source semantic fragment is not unique");
   }
 }
 
-async function validateSourceFragments(workspaceRoot: string): Promise<void> {
+export async function validateEmc2101SourceSemantics(workspaceRoot: string): Promise<void> {
   for (const [sourcePath, fragments] of [...sourceFragments, ...referenceFragments]) {
     const document = await readFile(path.join(workspaceRoot, sourcePath), "utf8");
     for (const fragment of fragments) requireUniqueFragment(document, fragment);
@@ -426,7 +429,7 @@ export async function captureEmc2101ThermalEvidence(
       || dirty !== "") {
       throw failure("evidence_invalid", "exact clean pushed source identity is invalid");
     }
-    await validateSourceFragments(workspaceRoot);
+    await validateEmc2101SourceSemantics(workspaceRoot);
     await childText(
       processPort,
       systemInfoValidatorProgram,
@@ -453,7 +456,7 @@ export async function captureEmc2101ThermalEvidence(
     const evidence: Emc2101ThermalEvidence = {
       schema_version: "bitaxe-emc2101-thermal-evidence-v1",
       board: 205,
-      attempt_ordinal: 1,
+      attempt_ordinal: 2,
       source_commit: currentSourceCommit,
       reference_commit: referenceCommit,
       package_manifest_sha256: source.package_manifest_sha256,
