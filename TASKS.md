@@ -2208,6 +2208,33 @@ hardware command, or attempt-008 was used. The linked `CLOSURE.md` records why
 software completion is not parity verification and the condition for any
 future separately selected work.
 
+Hardware retry-evaluation plan:
+`docs/parity/work-plans/20260813T070749Z-API-009/PLAN.md`.
+
+- [x] Establish that the pushed marker-v12 pause/safe-stop join explains and
+      materially changes the exact attempt-004/007 failure boundary, satisfying
+      the prior closure's explicit retry-progress condition.
+- [ ] Commit and push the immutable one-attempt contract and pass every
+      focused, mandatory, privacy, reference, and exact-package gate.
+- [ ] Run exactly one fresh detector-gated `attempt-008`, using only live
+      user-observed IDENTIFY confirmations, and stop without attempt-009.
+- [ ] Promote API-009 only on the complete five-command device-user quorum;
+      otherwise preserve `implemented`, earliest failure, public withholding,
+      cleanup, recovery, and the truthful closed stop outcome.
+
+Attempt-008 authorization: this separately selected plan explicitly
+supersedes only the prior attempt-008 prohibition because commit `21f19e7a`
+proves and fixes the missing same-session logical-pause/hardware-safe-stop join.
+Standing task authorization permits the single campaign only after the linked
+immutable plan/task checkpoint and every software, package, privacy, recovery,
+and detector gate pass at clean pushed HEAD. The linked plan freezes the exact
+repo command, fresh private roots, accepted effects, prohibited effects,
+600-second bound, physical-observation checkpoints, evidence quorum, recovery,
+cleanup, terminal categories, and stop outcomes. Campaign start consumes the
+ordinal. No inferred observation, prior protected-artifact reuse, external or
+owner pool, destructive/fault-injection action, direct UART, pin/pad/GPIO
+manipulation, attempt-009, or unchanged retry is authorized.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to

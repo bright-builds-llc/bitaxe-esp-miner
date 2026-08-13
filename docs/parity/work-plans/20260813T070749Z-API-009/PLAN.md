@@ -1,0 +1,138 @@
+# Parity work plan
+
+- Run ID: `20260813T070749Z-API-009`
+- Parity row: `API-009`
+- Initial status: `implemented`
+- Source commit: `21f19e7aeb104cb084ef8366cdbbd53e993cfb60`
+- Reference commit: `c1915b0a63bfabebdb95a515cedfee05146c1d50`
+- Active task: `task-parity-api009-command-effect-evidence-audit`
+- Continues plan: `docs/parity/work-plans/20260813T061635Z-API-009/PLAN.md`
+
+## Selection
+
+The clean synchronized selector ranks API-009 first, so no row is skipped.
+Attempt-007 selected `stop_repeated_boundary` and prohibited attempt-008 unless
+a separately selected software diagnosis explained the nondeterministic
+post-pause loss and produced genuinely new boundary evidence. The immediately
+preceding software-only plan satisfied that condition: commit `21f19e7a`
+proves that the host sent resume from API-visible logical pause before the
+firmware hardware owner had completed resumable safe-stop, then adds a closed
+same-session marker-v12 fact and requires the host to join both facts before
+its sole resume request. Production-shaped tests cover both arrival orders,
+the missing-join deadline, reprepare clearing, malformed input, and
+request-once behavior. This is a material change to the exact attempt-004/007
+failure boundary, not instrumentation, timing relaxation, or a fresh ordinal
+alone.
+
+This plan therefore explicitly supersedes only the prior attempt-008
+prohibition and authorizes exactly one new attempt-008 after every plan,
+software, package, privacy, detector, and recovery gate passes. It does not
+authorize attempt-009 or an unchanged retry. The user's current report that
+the display contains more information confirms presence but does not satisfy
+either future IDENTIFY observation; each observation must follow its matching
+live closed checkpoint.
+
+The active lesson set remains above its deterministic loading budget with the
+unchanged 2026-08-03 audit baseline and no new audit trigger. Complete safety,
+authorization, evidence, retry, redaction, physical-observation,
+earliest-failure, real-process, ESP-IDF, device-session, and host-stall blocks
+are loaded. Caption/VTT, small-table deduplication, legacy GSD separator, and
+manual-removal blocks remain disclosed unrelated omissions. Repo-local
+hardware/privacy guidance plus the architecture, code-shape, verification,
+testing, Rust, and TypeScript standards govern this continuation.
+
+## Scope and non-scope
+
+Run one fresh `attempt-008` through the existing repo-owned
+`just api-command-effects-campaign` transaction at the exact clean pushed plan
+commit. Bind the package to that commit, admit exactly one Ultra 205 through
+the protected detector, use fresh mode-`0700` attempt/wrapper/detector roots
+and mode-`0600` files, retain the caller on the closed checkpoint stream, and
+issue each typed request-once IDENTIFY confirmation only after the user reports
+the corresponding rendered or cleared physical display state.
+
+The allowed effects are the exact-package USB flash/reset, private Wi-Fi and
+generated local-fixture NVS seed, conservative BM1366 initialization and
+local-fixture mining for at most 600 seconds, one pause, one resume, two
+IDENTIFY toggles, one genuine notification dismissal, one canonical software
+restart, same-device recovery, safe stop, and cleanup. Recovery is
+pause/safe-stop first and exact-package restoration only when the closed
+workflow requires it. Preserve the earliest typed failure; cleanup and
+recovery are secondary.
+
+Do not use an external pool or owner pool input, infer or automate a display
+observation, reuse an expired checkpoint, weaken the five-command quorum, read
+prior protected attempts, or expose origins, hostnames, ports, USB/network
+identities, credentials, workers, addresses, passwords, tokens, checkpoint
+secrets, paths, sensor values, or raw traces. No diagnostic setter, erase,
+OTA, rollback, power cycle, direct UART, pin/pad/GPIO manipulation, probes,
+jumpers, soldering, injected signal, fault injection, voltage/frequency/fan
+override, or non-205 device is in scope.
+
+## Implementation
+
+- [ ] Persist and push this immutable plan/task checkpoint before any package,
+      detector, credential, USB, network, mining, HTTP, display, or restart
+      effect.
+- [ ] Revalidate the marker-v12 pause/safe-stop join at focused and real
+      process boundaries and pass every mandatory software, privacy,
+      reference, and exact-package gate at clean pushed HEAD.
+- [ ] Run exactly one fresh detector-gated attempt-008, relay each live closed
+      IDENTIFY requirement, and issue its request-once confirmation only after
+      the matching user-observed physical state.
+- [ ] Publish and promote API-009 only on the complete five-command quorum;
+      otherwise keep `implemented`, retain the earliest typed failure, withhold
+      public evidence, prove cleanup/recovery, and stop without attempt-009.
+
+## Verification and promotion
+
+Before the plan commit, run in order:
+
+1. `cargo fmt --all`
+2. `cargo clippy --all-targets --all-features -- -D warnings`
+3. `cargo build --all-targets --all-features`
+4. `cargo test --all-features`
+5. `bun scripts/bright-builds-check.ts all`
+6. `just test`
+7. `just parity`
+8. `just parity-progress`
+
+Also require the focused pause/safe-stop join and API-command-effects tests,
+the real firmware build, `just verify-redaction`, `just verify-reference`,
+generated/build source ownership, immutable-plan digest, unique task binding,
+selector closure, reference cleanliness, sensitive-output review, fresh-root
+and projection absence, `git diff --check`, and full diff review.
+
+After the plan commit is pushed and the worktree is clean and synchronized:
+
+1. Re-run the focused marker/network/checkpoint tests and real firmware build.
+2. Run `just package`; require the package manifest source commit to equal
+   exact clean pushed HEAD and its reference commit to equal the pinned
+   reference.
+3. Create only private wrapper/detector parents for
+   `scratch/api009-command-effects/wrapper-008` and
+   `scratch/api009-command-effects/detector-008`; require the campaign-owned
+   `scratch/api009-command-effects/attempt-008` and public projection to be
+   absent.
+4. Run `just detect-ultra205` once with separate private stdout/stderr files.
+   Continue only when exactly one board-205 ESP32-S3 is admitted and no holder
+   or cleanup blocker exists.
+5. Invoke exactly once:
+   `just api-command-effects-campaign --private-root scratch/api009-command-effects/attempt-008 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/api009-command-effects/detector-008/detector.stdout --projection docs/parity/evidence/api009-command-effects/command-effects-projection.json --duration-seconds 600`.
+6. After the live closed `rendered` signal and only after the user reports the
+   matching rendered physical state, invoke exactly once:
+   `just confirm-api-command-identify --evidence-dir scratch/api009-command-effects/attempt-008/campaign --observation rendered`.
+7. After the live closed `cleared` signal and only after the user reports the
+   matching cleared physical state, invoke exactly once:
+   `just confirm-api-command-identify --evidence-dir scratch/api009-command-effects/attempt-008/campaign --observation cleared`.
+
+Campaign start consumes attempt-008. Promote only if the independently
+validated closed projection proves genuine network-target block notification,
+active pause/resume with the new same-session safe-stop join, both matching
+physical IDENTIFY observations, dismissal with block-count preservation,
+exactly one canonical software restart, same physical device, exact build,
+changed boot session, ordinal `N+1`, safe stop, cleanup, recovery, private
+modes, and redaction. Otherwise withhold the projection, select the truthful
+typed terminal category and one closed outcome from `stop_repeated_boundary`,
+`stop_hardware_blocker`, `stop_authority_boundary`, or
+`stop_impossible_contract`, and do not create attempt-009.
