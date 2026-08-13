@@ -2214,11 +2214,11 @@ Hardware retry-evaluation plan:
 - [x] Establish that the pushed marker-v12 pause/safe-stop join explains and
       materially changes the exact attempt-004/007 failure boundary, satisfying
       the prior closure's explicit retry-progress condition.
-- [ ] Commit and push the immutable one-attempt contract and pass every
+- [x] Commit and push the immutable one-attempt contract and pass every
       focused, mandatory, privacy, reference, and exact-package gate.
-- [ ] Run exactly one fresh detector-gated `attempt-008`, using only live
+- [x] Run exactly one fresh detector-gated `attempt-008`, using only live
       user-observed IDENTIFY confirmations, and stop without attempt-009.
-- [ ] Promote API-009 only on the complete five-command device-user quorum;
+- [x] Promote API-009 only on the complete five-command device-user quorum;
       otherwise preserve `implemented`, earliest failure, public withholding,
       cleanup, recovery, and the truthful closed stop outcome.
 
@@ -2234,6 +2234,24 @@ cleanup, terminal categories, and stop outcomes. Campaign start consumes the
 ordinal. No inferred observation, prior protected-artifact reuse, external or
 owner pool, destructive/fault-injection action, direct UART, pin/pad/GPIO
 manipulation, attempt-009, or unchanged retry is authorized.
+
+Attempt-008 verification: exact clean pushed source and package
+`d84e5e5d62d4dfe002a8edd489871fe96258a8a9` passed every focused, software,
+privacy, reference, and detector gate. The sole campaign proved a genuine
+positive block, five qualified accepted shares, confirmed pause, the new
+same-session safe-stop join, confirmed resume, and active mining after resume
+under the same boot/package. This resolves the exact attempt-004/007 boundary.
+The supervisor then emitted the rendered IDENTIFY checkpoint, but no matching
+physical reply arrived in its live window, so no confirmation command ran.
+Safe stop, cleanup, the result seal, private modes, redaction, and public
+withholding pass; no cleared request, dismissal, restart, or projection exists.
+
+Completion review: API-009 remains `implemented` because the complete
+five-command device-user quorum is absent. The closed outcome is
+`stop_authority_boundary`, attempt-008 is consumed, and attempt-009 is not
+authorized. The linked CLOSURE.md records the successful hardware validation
+of the pause/safe-stop fix, the expired physical-observation boundary, the next
+safe selector action, and all non-claims.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
