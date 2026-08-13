@@ -360,53 +360,6 @@ evidence. The task remains active and unarchived because detector-gated live
 route/reboot durability and installed AxeOS browser behavior remain unverified.
 No hardware, credentials, mining, controls, OTA, direct UART, or pins were used.
 
-### task-parity-io001-i2c-retry-contract | 2026-08-04 | Match shared I2C transfer policy
-
-- [x] Add an exact host-testable 500 ms, three-attempt, 10 ms-delay transfer
-      policy matching the pinned reference.
-- [x] Route every display, sensor, and actuation transfer through the single
-      retry owner without widening address or effect capabilities.
-- [x] Extend bypass regressions, build the real firmware, run all mandatory
-      gates, and transition only `IO-001` to `implemented`.
-
-Plan: `docs/parity/work-plans/20260804T135918Z-IO-001/PLAN.md`
-
-Authorization: software-only I2C contract work. No hardware, credentials,
-network requests, mining, voltage/fan effects, OTA, direct UART, or pins.
-
-Verification: Four focused retry tests, source-ownership tests, and the real
-ESP-IDF firmware build passed. The mandatory ordered Rust sequence, Bright
-Builds checks, all 29 Bazel test targets, parity/progress, redaction, reference
-cleanliness, and diff checks passed on implementation commit `b15073c9`.
-
-Completion review: The exact bounded transfer policy is implemented and
-`IO-001` is `implemented` with `unit,workflow,hardware-smoke` evidence. The task
-remains active and unarchived because the hardware breadcrumb predates the
-retry change; live transient-fault, timeout, and shared-bus behavior remain
-unverified. No hardware, credentials, mining, controls, OTA, UART, or pins ran.
-
-Evidence-reconciliation continuation plan:
-`docs/parity/work-plans/20260813T041410Z-IO-001/PLAN.md`.
-
-- [x] Validate the post-retry INA260 and EMC2101 projections, sealed
-      post-retry campaign preparation, physical actuation projections, and
-      existing SSD1306 smoke boundary as one exact-claim quorum.
-- [x] Prove retry/bus/transfer source compatibility and preserve injected
-      electrical faults, live exhaustion, waveform timing, probing, arbitrary
-      values, other devices, and other boards as explicit non-claims.
-- [ ] Run focused firmware/evidence checks and every mandatory repository gate;
-      promote only IO-001 on a complete valid result.
-
-Continuation authorization: read-only committed public evidence, closed
-aggregate fields and digests from the existing protected API-009 attempt-007,
-local validators, source comparisons, tests, builds, documentation, and one
-typed IO-001 transition only. No detector, package capture, flash, reset,
-USB/serial/network session, credential use, mining, voltage/fan/power effect,
-HTTP command, OTA, recovery, direct UART, pins, pads, GPIO, raw I2C, fault
-injection, or other hardware action is permitted. Protected origins,
-hostnames, ports, identities, network values, credentials, workers, addresses,
-passwords, tokens, traces, and sensor values must not enter committed output.
-
 ### task-parity-io002-adc-observation | 2026-08-04 | Implement calibrated ADC observation
 
 - [x] Add a pure stamped core-voltage acquisition path with explicit unavailable,

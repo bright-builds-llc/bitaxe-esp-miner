@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260813T044300Z-IO-001",
+  "predecessor_sha256": "13db25851fbb49ff44de45f931484675b1a904d3e50f85b80cdf737ee97df27c",
+  "result_sha256": "64dd1666dd28457156be9ea3f8da7f80a3e4512d4816b4849adc1799660f86fb",
+  "row_id": "IO-001",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260813T041410Z-IO-001/PLAN.md",
+  "plan_sha256": "1796d9ccf478a595557762e9197e811afefc68a35c2e7c8a87c2743f626f9c12",
+  "result_path": "docs/parity/work-plans/20260813T041410Z-IO-001/RESULT.md",
+  "result_document_sha256": "bc931141cce6949c19728868e08ca38eed0d90eefc648a1621726d8d4d139630",
+  "before_rust_owned_target": "`firmware/bitaxe/src/safety_adapter/i2c_retry.rs`, `firmware/bitaxe/src/safety_adapter/i2c_bus.rs`, `firmware/bitaxe/src/i2c_retry_host_test.rs`, `firmware/bitaxe/src/sensor_source_ownership_test.rs`",
+  "after_rust_owned_target": "`firmware/bitaxe/src/safety_adapter/i2c_retry.rs`, `firmware/bitaxe/src/safety_adapter/i2c_bus.rs`, `firmware/bitaxe/src/i2c_retry_host_test.rs`, `firmware/bitaxe/src/sensor_source_ownership_test.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow,hardware-smoke",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "The shared I2C owner now uses the pinned 500 ms timeout, three-attempt, 10 ms-delay policy across display, sensor, and actuation transfers with exact host tests and a real firmware build. Existing hardware-smoke breadcrumbs predate the retry change; live transient-fault, timeout, shared-bus load, and DS4432U behavior remain unverified.",
+  "after_notes": "Exact 500 ms, three-attempt, 10 ms-delay shared I2C policy and single-owner transfer routing are proved by focused tests and firmware builds; post-retry typed INA260/EMC2101 reads, sealed completed fan/DS4432U preparation, and the board-205 SSD1306 smoke boundary close the physical quorum. Injected electrical faults, live exhaustion, waveform/timing measurement, probing/scanning, arbitrary addresses/registers/values, unsupported devices, and non-205 boards remain explicit non-claims; see docs/parity/work-plans/20260813T041410Z-IO-001/RESULT.md."
+}

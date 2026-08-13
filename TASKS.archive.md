@@ -7020,3 +7020,74 @@ and nonzero RPM response, cleanup, and redaction without a new hardware run.
 Live automatic response, RPM accuracy, settling, tuning quality, arbitrary
 duties, injected faults, overheat behavior, other boards, and release readiness
 remain non-claims. The task is complete and archived.
+
+### task-parity-io001-i2c-retry-contract | 2026-08-04 | Match shared I2C transfer policy
+
+- [x] Add an exact host-testable 500 ms, three-attempt, 10 ms-delay transfer
+      policy matching the pinned reference.
+- [x] Route every display, sensor, and actuation transfer through the single
+      retry owner without widening address or effect capabilities.
+- [x] Extend bypass regressions, build the real firmware, run all mandatory
+      gates, and transition only `IO-001` to `implemented`.
+
+Plan: `docs/parity/work-plans/20260804T135918Z-IO-001/PLAN.md`
+
+Authorization: software-only I2C contract work. No hardware, credentials,
+network requests, mining, voltage/fan effects, OTA, direct UART, or pins.
+
+Verification: Four focused retry tests, source-ownership tests, and the real
+ESP-IDF firmware build passed. The mandatory ordered Rust sequence, Bright
+Builds checks, all 29 Bazel test targets, parity/progress, redaction, reference
+cleanliness, and diff checks passed on implementation commit `b15073c9`.
+
+Completion review: The exact bounded transfer policy is implemented and
+`IO-001` is `implemented` with `unit,workflow,hardware-smoke` evidence. The task
+remains active and unarchived because the hardware breadcrumb predates the
+retry change; live transient-fault, timeout, and shared-bus behavior remain
+unverified. No hardware, credentials, mining, controls, OTA, UART, or pins ran.
+
+Evidence-reconciliation continuation plan:
+`docs/parity/work-plans/20260813T041410Z-IO-001/PLAN.md`.
+
+- [x] Validate the post-retry INA260 and EMC2101 projections, sealed
+      post-retry campaign preparation, physical actuation projections, and
+      existing SSD1306 smoke boundary as one exact-claim quorum.
+- [x] Prove retry/bus/transfer source compatibility and preserve injected
+      electrical faults, live exhaustion, waveform timing, probing, arbitrary
+      values, other devices, and other boards as explicit non-claims.
+- [x] Run focused firmware/evidence checks and every mandatory repository gate;
+      promote only IO-001 on a complete valid result.
+
+Continuation authorization: read-only committed public evidence, closed
+aggregate fields and digests from the existing protected API-009 attempt-007,
+local validators, source comparisons, tests, builds, documentation, and one
+typed IO-001 transition only. No detector, package capture, flash, reset,
+USB/serial/network session, credential use, mining, voltage/fan/power effect,
+HTTP command, OTA, recovery, direct UART, pins, pads, GPIO, raw I2C, fault
+injection, or other hardware action is permitted. Protected origins,
+hostnames, ports, identities, network values, credentials, workers, addresses,
+passwords, tokens, traces, and sensor values must not enter committed output.
+
+Final verification: Transition `20260813T044300Z-IO-001` changed only IO-001
+from `implemented` with `unit,workflow,hardware-smoke` evidence to `verified`
+with `unit,workflow,hardware-smoke,hardware-regression`, bound immutable plan
+SHA-256
+`1796d9ccf478a595557762e9197e811afefc68a35c2e7c8a87c2743f626f9c12`,
+RESULT.md SHA-256
+`bc931141cce6949c19728868e08ca38eed0d90eefc648a1621726d8d4d139630`,
+source commit `c59382df76bb65922034f22caddb2ee731a0dd77`, and reference commit
+`c1915b0a63bfabebdb95a515cedfee05146c1d50`. Immediate progress
+synchronization records 67 of 94 active rows verified (71.3%). The ordered
+Cargo, Bright Builds, all-42-target Bazel, focused, normal/rollback firmware,
+parity, progress, redaction, reference, contract/evidence-validator, digest,
+mode, source-compatibility, task-binding, sensitive-output, and diff gates
+passed.
+
+Final completion review: IO-001 is verified from exact retry and ownership
+tests, the retained SSD1306 hardware-smoke boundary, post-retry typed INA260
+and EMC2101 reads, the independently validated physical fan/DS4432U chain, and
+the sealed post-retry completed preparation transaction. Injected electrical
+faults, live terminal exhaustion, waveform/timing measurement, probing or
+scanning, arbitrary addresses/registers/values, unsupported devices, other
+boards, and release readiness remain non-claims. No new device effect occurred
+during reconciliation. The task is complete and archived.
