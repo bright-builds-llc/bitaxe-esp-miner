@@ -35,3 +35,47 @@
 - Outcome: The single-attempt contract is ready to commit and push.
 - Blocker or next safe action: Commit and push only this plan, work log, and
   task checkpoint; then verify clean synchronized HEAD before packaging.
+
+## 2026-08-13T17:12:00Z | attempt-012 terminal closure
+
+- Source commit: `76d6ff3153b1bc345784bc90d6b72f01f7f8014f`.
+- Package app ELF SHA-256:
+  `0bafae7a02bbdf9818980bd46008a12458266732c7c91b298fb05b197d12287c`.
+- Actions: Passed all post-push gates, independently admitted the exact clean
+  pushed package, ran the one private detector, and consumed the one authorized
+  attempt-012. The USB transaction reached both post-flash recovery boundaries
+  and monitor admission. No IDENTIFY checkpoint was emitted or confirmed.
+- Verification: The public wrapper closed with primary category `timeout`.
+  Its safe-stop, cleanup, and recovery booleans are false because the parent
+  killed the child before its closing result was written. The campaign root is
+  private but empty, the public projection is absent, all private modes remain
+  valid, no related child process remains, and the admitted port is holder-free.
+- Diagnosis: The host timeout is fixed at 810 seconds. The Rust child reserves
+  600 seconds for observation plus 180 seconds of terminal grace, while the
+  preceding bounded USB package admission, factory flash, NVS flash, and
+  monitor admission also consume the same parent budget. This run needed about
+  four minutes to reach monitor admission, making the parent deadline strictly
+  shorter than the complete child transaction.
+- Evidence: Redaction-safe wrapper fields, package identity facts, private
+  mode checks, holder/process checks, and safe USB recovery-phase categories
+  only. No raw trace or sensitive value was published.
+- Outcome: `blocked`. API-009 remains `implemented`; evidence is withheld and
+  attempt-013 is not authorized.
+- Blocker or next safe action: Close and push attempt-012, then create a
+  software-only plan to derive a parent deadline above the complete bounded
+  child envelope and preserve the primary timeout through recovery reporting.
+
+## 2026-08-13T17:26:00Z | closure verification
+
+- Actions: Stabilized the shared real-process evidence test helper after the
+  overloaded host made its five-second test-only deadline expire. Production
+  timeout behavior is unchanged.
+- Verification: The focused real-process group passed concurrently. The full
+  ordered format, strict Clippy, all-target build, all-feature tests, Bright
+  Builds, canonical Bazel tests, parity, parity-progress, redaction, reference,
+  real ESP firmware build, and diff checks all pass. Closure metadata and
+  evidence withholding remain intact.
+- Outcome: The attempt-012 blocked closure and test reliability adjustment are
+  ready to commit and push.
+- Blocker or next safe action: Push this closure. Continue only with a new
+  software-only timeout-contract plan; do not run attempt-013.

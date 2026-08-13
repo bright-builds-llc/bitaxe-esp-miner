@@ -2,6 +2,8 @@ use super::*;
 use std::process::Stdio;
 use tempfile::tempdir;
 
+const REAL_PROCESS_TEST_TIMEOUT_SECONDS: u64 = 30;
+
 fn capture_shell(script: &str, path: &Utf8Path) -> Result<CaptureProcessResult> {
     let file = open_private_output(path, true)?;
     let mut child = Command::new("/bin/sh")
@@ -20,7 +22,7 @@ fn capture_shell(script: &str, path: &Utf8Path) -> Result<CaptureProcessResult> 
         &mut child,
         receiver,
         file,
-        5,
+        REAL_PROCESS_TEST_TIMEOUT_SECONDS,
         EvidenceRedactionMode::DeveloperRaw,
         &CommandSpec::new("espflash", ["monitor"]),
     )

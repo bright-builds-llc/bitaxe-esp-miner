@@ -2477,11 +2477,11 @@ parity evidence was produced by the software-only continuation.
 Operator-intent-fixed attempt-012 plan:
 `docs/parity/work-plans/20260813T163921Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable single-attempt contract and pass every
+- [x] Commit and push the immutable single-attempt contract and pass every
       focused, mandatory, privacy, reference, firmware, and exact-package gate.
-- [ ] Run exactly one fresh detector-gated attempt-012 and consume each
+- [x] Run exactly one fresh detector-gated attempt-012 and consume each
       IDENTIFY checkpoint only after its matching live physical report.
-- [ ] Promote only on the complete command/restart/device-user quorum;
+- [x] Promote only on the complete command/restart/device-user quorum;
       otherwise preserve `implemented`, earliest failure, evidence withholding,
       safe stop, cleanup, recovery, and stop without attempt-013.
 
@@ -2493,6 +2493,18 @@ contract and all named gates pass at clean pushed HEAD. Campaign start consumes
 attempt-012. No inferred observation, prior protected-artifact reuse, external
 or owner pool, destructive or fault-injection action, direct UART,
 pin/pad/GPIO manipulation, attempt-013, or unchanged retry is authorized.
+
+Attempt-012 completion review: the immutable contract and every named
+software, privacy, reference, firmware, package, fresh-path, and detector gate
+passed. The sole campaign reached the two post-flash USB boundaries and monitor
+admission, but the 810-second parent deadline expired before the child's own
+600-second observation plus 180-second terminal-grace window could close. No
+IDENTIFY checkpoint was emitted or confirmed. The typed primary category is
+`timeout`; safe stop, final cleanup, and recovery are unconfirmed, the current
+port is holder-free, the public projection is absent, and API-009 remains
+`implemented`. Attempt-013 is not authorized. The next safe work is a
+software-only deadline-contract and timeout-recovery fix with a regression that
+binds the parent budget above the complete child transaction.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
