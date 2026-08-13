@@ -31,24 +31,14 @@ type FailureCategory = Extract<
   AutomationCategory,
   "hardware_blocked" | "evidence_invalid" | "timeout" | "process_failed"
 >;
-type AcquisitionStamp = readonly [number, number, number];
-type ThermalSample = {
-  readonly temperature: number;
-  readonly state: string;
-  readonly stamp: AcquisitionStamp;
-};
-
-const expectedPrivateRoot = "scratch/thr001-emc2101/attempt-002";
-const expectedWrapperRoot = "scratch/thr001-emc2101/wrapper-002";
+const expectedPrivateRoot = "scratch/thr001-emc2101/attempt-003";
+const expectedWrapperRoot = "scratch/thr001-emc2101/wrapper-003";
 const expectedProjection =
   "docs/parity/evidence/thr001-emc2101-thermal/thermal-projection.json";
-const expectedPlan = "docs/parity/work-plans/20260813T011207Z-THR-001/PLAN.md";
-const expectedPlanSha256 = "02515b8d8d8c691a1a036026fa47c3f9d1caef0d504bcf4d3541aef9fb87e909";
+const expectedPlan = "docs/parity/work-plans/20260813T015631Z-THR-001/PLAN.md";
+const expectedPlanSha256 = "1f8ab858acc5ea543d617a1d4e275b617725a93f945011a4d27d7b7ae0b6c90a";
 const expectedReferenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const activeTask = "task-parity-thr001-emc2101-live-thermal";
-const minimumPlausibleTemperatureCelsius = -40;
-const maximumPlausibleTemperatureCelsius = 150;
-const asicThrottleTemperatureCelsius = 75;
 const expectedAttemptFiles = [
   "api.private.json",
   "final-evidence.private.json",
@@ -153,22 +143,6 @@ function requiredString(value: JsonObject, field: string, context: string): stri
   return candidate;
 }
 
-function requiredNumber(value: JsonObject, field: string, context: string): number {
-  const candidate = value[field];
-  if (typeof candidate !== "number" || !Number.isFinite(candidate)) {
-    throw failure("evidence_invalid", `${context} numeric field is invalid`);
-  }
-  return candidate;
-}
-
-function requiredNonnegativeInteger(value: JsonObject, field: string, context: string): number {
-  const candidate = requiredNumber(value, field, context);
-  if (!Number.isSafeInteger(candidate) || candidate < 0) {
-    throw failure("evidence_invalid", `${context} integer field is invalid`);
-  }
-  return candidate;
-}
-
 async function requireAbsent(candidate: string, context: string): Promise<void> {
   try {
     await stat(candidate);
@@ -239,29 +213,6 @@ async function readJson(candidate: string, context: string): Promise<{
   }
 }
 
-function thermalSample(snapshot: JsonObject, context: string): ThermalSample {
-  const temperature = requiredNumber(snapshot, "temp", context);
-  if (temperature < minimumPlausibleTemperatureCelsius
-    || temperature > maximumPlausibleTemperatureCelsius
-    || temperature >= asicThrottleTemperatureCelsius) {
-    throw failure("hardware_blocked", `${context} thermal sample is outside the admitted envelope`);
-  }
-  const status = object(snapshot["chipTempStatus"], `${context} chip temperature status`);
-  if (status["state"] !== "fresh") {
-    throw failure("hardware_blocked", `${context} chip temperature is not fresh`);
-  }
-  const stamp = object(status["stamp"], `${context} chip temperature stamp`);
-  return {
-    temperature,
-    state: "fresh",
-    stamp: [
-      requiredNonnegativeInteger(stamp, "bootSession", `${context} chip temperature stamp`),
-      requiredNonnegativeInteger(stamp, "sequence", `${context} chip temperature stamp`),
-      requiredNonnegativeInteger(stamp, "acquiredAtMs", `${context} chip temperature stamp`),
-    ],
-  };
-}
-
 function validateSnapshotIdentity(
   api: JsonObject,
   websocket: JsonObject,
@@ -294,7 +245,7 @@ function validateTaskAndPlan(
   }
   const maybeEnd = taskDocument.indexOf("\n### ", start + heading.length);
   const block = taskDocument.slice(start, maybeEnd === -1 ? taskDocument.length : maybeEnd);
-  for (const required of [expectedPlan, "bitaxe-emc2101-thermal-evidence-v1", "attempt-002"]) {
+  for (const required of [expectedPlan, "bitaxe-emc2101-thermal-evidence-v1", "attempt-003"]) {
     if (!block.includes(required)) throw failure("evidence_invalid", "THR-001 task contract is incomplete");
   }
   if (sha256(planDocument) !== admittedPlanSha256
@@ -337,6 +288,7 @@ export async function captureEmc2101ThermalEvidence(
   flashProgram: string,
   gitProgram: string,
   systemInfoValidatorProgram: string,
+  thermalInputValidatorProgram: string,
   thermalValidatorProgram: string,
   maybeWebSocketFactory?: WebSocketFactory,
   admittedPlanSha256 = expectedPlanSha256,
@@ -436,15 +388,17 @@ export async function captureEmc2101ThermalEvidence(
       [sourceProjection],
       "system info evidence validator",
     );
+    await childText(
+      processPort,
+      thermalInputValidatorProgram,
+      [
+        path.join(privateRoot, "api.private.json"),
+        path.join(privateRoot, "websocket.private.json"),
+      ],
+      "thermal input validator",
+    );
 
     validateSnapshotIdentity(apiFile.value, websocket, source);
-    const httpSample = thermalSample(apiFile.value, "HTTP snapshot");
-    const websocketSample = thermalSample(websocket, "WebSocket snapshot");
-    if (httpSample.temperature !== websocketSample.temperature
-      || httpSample.state !== websocketSample.state
-      || JSON.stringify(httpSample.stamp) !== JSON.stringify(websocketSample.stamp)) {
-      throw failure("evidence_invalid", "HTTP and WebSocket thermal samples are not correlated");
-    }
 
     const manifestDocument = await readFile(
       assertWithinWorkspace(workspaceRoot, options.packageManifest),
@@ -456,7 +410,7 @@ export async function captureEmc2101ThermalEvidence(
     const evidence: Emc2101ThermalEvidence = {
       schema_version: "bitaxe-emc2101-thermal-evidence-v1",
       board: 205,
-      attempt_ordinal: 2,
+      attempt_ordinal: 3,
       source_commit: currentSourceCommit,
       reference_commit: referenceCommit,
       package_manifest_sha256: source.package_manifest_sha256,

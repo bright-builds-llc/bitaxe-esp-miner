@@ -2211,10 +2211,10 @@ terminal blocker, next safe software-only diagnostic condition, and non-claims.
       privacy, or evidence-withholding invariant.
 - [x] Commit and push the fix, admit an exact clean package, and run at most one
       detector-gated read-only `attempt-002`; promote only on the full quorum.
-- [ ] Add a private Rust validator that parses acquisition-stamp members as
+- [x] Add a private Rust validator that parses acquisition-stamp members as
       exact `u64` values and proves equal fresh safe HTTP/WebSocket thermal
       inputs without emitting raw values.
-- [ ] Integrate the validator into the TypeScript shell, add wide/mismatched/
+- [x] Integrate the validator into the TypeScript shell, add wide/mismatched/
       malformed and real-child regressions, and advance the closed contract,
       generated binding, and protected paths to attempt ordinal 3.
 - [ ] Commit and push the fix, admit an exact clean package, and run at most one

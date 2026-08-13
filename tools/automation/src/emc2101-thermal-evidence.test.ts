@@ -125,7 +125,7 @@ function snapshot(
     temp: temperature,
     chipTempStatus: {
       state: "fresh",
-      stamp: { bootSession: 9, sequence: 11, acquiredAtMs: 500 },
+      stamp: { bootSession: 9_007_199_254_740_992, sequence: 11, acquiredAtMs: 500 },
     },
   };
 }
@@ -161,14 +161,14 @@ async function fixture(name: string) {
     "- Active task: `task-parity-thr001-emc2101-live-thermal`",
     "",
   ].join("\n");
-  const planRelative = "docs/parity/work-plans/20260813T011207Z-THR-001/PLAN.md";
+  const planRelative = "docs/parity/work-plans/20260813T015631Z-THR-001/PLAN.md";
   await mkdir(path.dirname(path.join(root, planRelative)), { recursive: true });
   await writeFile(path.join(root, planRelative), planDocument);
   await writeFile(path.join(root, "TASKS.md"), [
     "### task-parity-thr001-emc2101-live-thermal | fixture",
-    "Plan: `docs/parity/work-plans/20260813T011207Z-THR-001/PLAN.md`.",
+    "Plan: `docs/parity/work-plans/20260813T015631Z-THR-001/PLAN.md`.",
     "Schema: `bitaxe-emc2101-thermal-evidence-v1`.",
-    "Attempt: `attempt-002`.",
+    "Attempt: `attempt-003`.",
     "",
   ].join("\n"));
   const contractRelative = "crates/bitaxe-api/fixtures/api/system-info-contract-v1.json";
@@ -185,7 +185,7 @@ async function fixture(name: string) {
     app_elf_sha256: appElfSha256,
   }));
   await writeFile(credentials, "{}\n", { mode: 0o600 });
-  const wrapper = path.join(root, "scratch/thr001-emc2101/wrapper-002");
+  const wrapper = path.join(root, "scratch/thr001-emc2101/wrapper-003");
   await mkdir(wrapper, { recursive: true, mode: 0o700 });
   await chmod(wrapper, 0o700);
   for (const name of ["detector.stdout", "detector.stderr", "capture.stdout", "capture.stderr"]) {
@@ -202,10 +202,10 @@ async function fixture(name: string) {
       "docs/parity/evidence/thr001-emc2101-thermal/thermal-projection.json",
     ),
     options: {
-      privateRoot: "scratch/thr001-emc2101/attempt-002",
+      privateRoot: "scratch/thr001-emc2101/attempt-003",
       packageManifest: manifest,
       wifiCredentials: credentials,
-      detectorOutput: "scratch/thr001-emc2101/wrapper-002/detector.stdout",
+      detectorOutput: "scratch/thr001-emc2101/wrapper-003/detector.stdout",
       port: "/dev/private-port",
       projection: "docs/parity/evidence/thr001-emc2101-thermal/thermal-projection.json",
       captureTimeoutSeconds: 360,
@@ -248,6 +248,8 @@ function websocketFactory(value: Record<string, unknown>): WebSocketFactory {
 
 function fakePort(configuration: {
   readonly flash?: ProcessOutcome;
+  readonly inputValidation?: ProcessOutcome;
+  readonly inputLaunchFailure?: boolean;
   readonly launchFailure?: boolean;
 } = {}): ProcessPort {
   return createFakeProcessPort(async (spec) => {
@@ -267,6 +269,13 @@ function fakePort(configuration: {
       return configuration.flash ?? ok();
     }
     if (spec.args[0] === "flash") return ok();
+    if (spec.program === "thermal-input-validator") {
+      if (configuration.inputLaunchFailure === true) throw new Error("input launch canary");
+      assert.equal(spec.args.length, 2);
+      const documents = await Promise.all(spec.args.map((candidate) => readFile(candidate, "utf8")));
+      assert.ok(documents.every((document) => document.includes('"chipTempStatus"')));
+      return configuration.inputValidation ?? ok();
+    }
     if (spec.program === "system-validator" || spec.program === "thermal-validator") return ok();
     if (spec.program === "git") {
       if (spec.args[0] === "status") return ok();
@@ -289,6 +298,7 @@ async function capture(
     "flash",
     "git",
     "system-validator",
+    "thermal-input-validator",
     "thermal-validator",
     websocketFactory(snapshot(value.contract, 8, 10, websocketTemperature)),
     value.admittedPlanSha256,
@@ -380,7 +390,7 @@ test("source semantics reject the stale attempt-001 intermediate statement", asy
 
 test("unsafe or uncorrelated thermal samples withhold final evidence", async () => {
   for (const testCase of [
-    { name: "threshold", http: 75, websocket: 75, category: "hardware_blocked" },
+    { name: "threshold", http: 75, websocket: 75, category: "evidence_invalid" },
     { name: "uncorrelated", http: 50, websocket: 51, category: "evidence_invalid" },
   ] as const) {
     // Arrange
@@ -389,7 +399,10 @@ test("unsafe or uncorrelated thermal samples withhold final evidence", async () 
 
     try {
       // Act
-      const error = await captureError(capture(value, fakePort(), testCase.websocket));
+      const inputValidation = { ...ok(), exitCode: 1 };
+      const error = await captureError(
+        capture(value, fakePort({ inputValidation }), testCase.websocket),
+      );
 
       // Assert
       assert.equal(error.category, testCase.category);
@@ -424,7 +437,57 @@ test("base timeout and launch failure preserve their typed categories", async ()
   }
 });
 
-test("real child processes own flash artifacts git identity and both validator boundaries", async () => {
+test("lossless input validator rejection withholds final evidence", async () => {
+  // Arrange
+  const value = await fixture("input-validator-rejection");
+  const restore = installHttp(value.contract);
+  const inputValidation = { ...ok(), exitCode: 1 };
+
+  try {
+    // Act
+    const error = await captureError(capture(value, fakePort({ inputValidation })));
+
+    // Assert
+    assert.equal(error.category, "evidence_invalid");
+    await assert.rejects(readFile(value.projection, "utf8"), { code: "ENOENT" });
+  } finally {
+    restore();
+    await rm(value.root, { recursive: true });
+  }
+});
+
+test("lossless input validator preserves timeout and launch categories", async () => {
+  for (const testCase of [
+    {
+      name: "input-timeout",
+      port: fakePort({ inputValidation: { ...ok(), timedOut: true } }),
+      category: "timeout",
+    },
+    {
+      name: "input-launch",
+      port: fakePort({ inputLaunchFailure: true }),
+      category: "process_failed",
+    },
+  ] as const) {
+    // Arrange
+    const value = await fixture(testCase.name);
+    const restore = installHttp(value.contract);
+
+    try {
+      // Act
+      const error = await captureError(capture(value, testCase.port));
+
+      // Assert
+      assert.equal(error.category, testCase.category);
+      await assert.rejects(readFile(value.projection, "utf8"), { code: "ENOENT" });
+    } finally {
+      restore();
+      await rm(value.root, { recursive: true });
+    }
+  }
+});
+
+test("real child processes own flash artifacts git identity and all validator boundaries", async () => {
   // Arrange
   const value = await fixture("real-child");
   const restore = installHttp(value.contract);
@@ -443,6 +506,9 @@ if (args[0] === "flash-monitor") {
   process.stdout.write(${JSON.stringify(`${referenceCommit}\n`)});
 } else if (args[0] === "rev-parse") {
   process.stdout.write(${JSON.stringify(`${sourceCommit}\n`)});
+} else if (args.length === 2) {
+  const documents = await Promise.all(args.map((candidate) => readFile(candidate, "utf8")));
+  if (!documents.every((document) => document.includes('"chipTempStatus"'))) process.exitCode = 1;
 } else {
   const value = JSON.parse(await readFile(args[0], "utf8"));
   if (!["bitaxe-system-info-evidence-v1", "bitaxe-emc2101-thermal-evidence-v1"].includes(value.schema_version)) process.exitCode = 1;
@@ -456,6 +522,7 @@ if (args[0] === "flash-monitor") {
       value.root,
       value.options,
       createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      child,
       child,
       child,
       child,

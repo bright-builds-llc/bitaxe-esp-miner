@@ -352,6 +352,7 @@ async function main(): Promise<number> {
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root), "git",
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_system_info_evidence"),
+      toolProgram(root, "crates/bitaxe-automation-contracts/validate_emc2101_thermal_inputs"),
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_emc2101_thermal_evidence"));
     } else if (invocation.command === "capture-ultra205-defaults-evidence") {
       const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));

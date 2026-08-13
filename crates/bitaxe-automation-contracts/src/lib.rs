@@ -13,6 +13,7 @@ mod asic_serial_transport_evidence;
 mod asic_work_send_evidence;
 mod core_voltage_control_evidence;
 mod emc2101_thermal_evidence;
+mod emc2101_thermal_input;
 mod ina260_evidence;
 mod log_buffer_evidence;
 mod mining_criteria_evidence;
@@ -60,6 +61,9 @@ pub use core_voltage_control_evidence::{
 };
 pub use emc2101_thermal_evidence::{
     Emc2101ThermalEvidence, Emc2101ThermalObservationEvidence, Emc2101ThermalSourceEvidence,
+};
+pub use emc2101_thermal_input::{
+    validate_emc2101_thermal_inputs, Emc2101ThermalSnapshotInput, Emc2101ThermalWebSocketInput,
 };
 pub use ina260_evidence::{Ina260Evidence, Ina260ObservationEvidence, Ina260SourceEvidence};
 pub use log_buffer_evidence::{LogBufferEvidence, LogBufferObservationEvidence};

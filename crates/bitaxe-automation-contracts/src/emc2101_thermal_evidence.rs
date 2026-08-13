@@ -57,7 +57,7 @@ impl Emc2101ThermalEvidence {
     pub fn validate(&self) -> Result<(), &'static str> {
         if self.schema_version != EMC2101_THERMAL_EVIDENCE_SCHEMA
             || self.board != 205
-            || self.attempt_ordinal != 2
+            || self.attempt_ordinal != 3
         {
             return Err("EMC2101 thermal evidence schema, board, or attempt is invalid");
         }
@@ -138,7 +138,7 @@ mod tests {
         Emc2101ThermalEvidence {
             schema_version: EMC2101_THERMAL_EVIDENCE_SCHEMA.to_owned(),
             board: 205,
-            attempt_ordinal: 2,
+            attempt_ordinal: 3,
             source_commit: "a".repeat(40),
             reference_commit: "b".repeat(40),
             package_manifest_sha256: "c".repeat(64),
@@ -199,7 +199,7 @@ mod tests {
     fn consumed_attempt_ordinal_is_rejected() {
         // Arrange
         let mut candidate = evidence();
-        candidate.attempt_ordinal = 1;
+        candidate.attempt_ordinal = 2;
 
         // Act
         let result = candidate.validate();
