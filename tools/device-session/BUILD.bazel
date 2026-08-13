@@ -1,4 +1,5 @@
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+load("@aspect_rules_js//js:defs.bzl", "js_library")
 
 filegroup(
     name = "phase36_runtime_identity_sources",
@@ -7,6 +8,16 @@ filegroup(
         "src/model/state.rs",
     ],
     visibility = ["//tools/parity:__pkg__"],
+)
+
+js_library(
+    name = "command_effects_budget_sources",
+    srcs = [
+        "src/usb.rs",
+        "src/usb/process.rs",
+        "src/usb/recovery.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
 )
 
 rust_library(

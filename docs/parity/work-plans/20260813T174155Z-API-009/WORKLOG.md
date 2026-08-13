@@ -28,3 +28,22 @@
 - Outcome: The software-only deadline plan is ready to commit and push.
 - Blocker or next safe action: Push this checkpoint before editing code; no
   hardware-capable action is authorized.
+
+## 2026-08-13T18:02:00Z | deadline contract verified
+
+- Actions: Replaced the fixed parent/fixture timeouts with one checked typed
+  transaction budget. Bound it to the Rust child source limits, routed both
+  process guards through it, and reused the private recovery-fact reader on
+  outer timeout without changing primary precedence.
+- Verification: Unit arithmetic and overflow checks, a scaled real-child
+  cleanup-before-parent regression, cross-language source-contract assertions,
+  and closed/missing/malformed timeout-recovery cases pass. Focused automation
+  and fixture targets pass. Formatting, strict Clippy, all-target build,
+  all-feature tests, Bright Builds, canonical Bazel tests, parity,
+  parity-progress, redaction, reference, real ESP build, and diff checks pass.
+- Evidence: Public source/tests and redaction-safe pass/fail facts only. No
+  credential, protected evidence, detector, USB, device, or network access.
+- Outcome: `software_fix_complete`. API-009 remains `implemented`; no parity
+  transition or hardware evidence is claimed.
+- Blocker or next safe action: Close and push this software plan. Any future
+  attempt-013 requires a separate clean selector and immutable contract.

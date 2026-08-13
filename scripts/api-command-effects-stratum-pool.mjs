@@ -50,7 +50,7 @@ function parseArgs(argv) {
   const port = Number(values.get("port"));
   const durationSeconds = Number(values.get("duration-seconds"));
   if (!Number.isInteger(port) || port < 0 || port > 65535) fail("port is invalid");
-  if (!Number.isInteger(durationSeconds) || durationSeconds < 1 || durationSeconds > 900) {
+  if (!Number.isInteger(durationSeconds) || durationSeconds < 1 || durationSeconds > 3_600) {
     fail("duration is invalid");
   }
   return {

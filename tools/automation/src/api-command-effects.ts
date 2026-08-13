@@ -3,6 +3,7 @@ import { access, chmod, mkdir, readFile, stat, writeFile } from "node:fs/promise
 import path from "node:path";
 
 import { internalCommandSpec, type AutomationCategory } from "./contracts.generated.js";
+import { COMMAND_EFFECTS_TRANSACTION_BUDGET } from "./api-command-effects-budget.js";
 import { isDeviceSessionProjectionFailure, readClosedDeviceSession } from "./device-session-projection.js";
 import {
   OperatorCheckpointError,
@@ -219,7 +220,7 @@ function launchFixture(
   try {
     return processPort.run(
       internalCommandSpec(fixtureProgram, [...args], (value) => value, { BAZEL_BINDIR: "." }),
-      920_000,
+      COMMAND_EFFECTS_TRANSACTION_BUDGET.fixtureTimeoutMillis,
     ).then(
       (outcome) => ({ kind: "outcome", outcome }),
       () => ({ kind: "launch_failed" }),
@@ -437,7 +438,7 @@ export async function captureApiCommandEffects(
     "--session-label", "command-effects",
     "--ready-json", fixtureReady,
     "--report-json", fixtureReport,
-    "--duration-seconds", "900",
+    "--duration-seconds", String(COMMAND_EFFECTS_TRANSACTION_BUDGET.fixtureDurationSeconds),
     "--stop-file", fixtureStop,
   ]);
 
@@ -482,9 +483,15 @@ export async function captureApiCommandEffects(
       "--evidence-dir", campaignRoot,
       "--duration-seconds", String(options.durationSeconds),
       "--redact-evidence",
-    ], 810_000, "command effects campaign"), campaignRoot, checkpointSink);
+    ], COMMAND_EFFECTS_TRANSACTION_BUDGET.parentTimeoutMillis, "command effects campaign"), campaignRoot, checkpointSink);
     maybeCampaignOutcome = supervised.outcome;
-    if (maybeCampaignOutcome.timedOut) throw failure("timeout", "command effects campaign timed out");
+    if (maybeCampaignOutcome.timedOut) {
+      throw failure(
+        "timeout",
+        "command effects campaign timed out",
+        await campaignRecoveryFacts(campaignRoot),
+      );
+    }
     if (maybeCampaignOutcome.exitCode !== 0) {
       throw failure(
         "hardware_blocked",

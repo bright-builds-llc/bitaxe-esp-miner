@@ -1,4 +1,5 @@
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_test")
+load("@aspect_rules_js//js:defs.bzl", "js_library")
 
 filegroup(
     name = "phase34_identity_admission_sources",
@@ -36,6 +37,15 @@ filegroup(
     name = "flash_supervisor_commands_source",
     srcs = ["src/commands/flash.rs"],
     visibility = ["//visibility:private"],
+)
+
+js_library(
+    name = "command_effects_budget_sources",
+    srcs = [
+        "src/campaign.rs",
+        "src/environment.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
 )
 
 rust_binary(

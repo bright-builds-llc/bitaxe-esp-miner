@@ -2509,19 +2509,31 @@ binds the parent budget above the complete child transaction.
 Deadline-contract software plan:
 `docs/parity/work-plans/20260813T174155Z-API-009/PLAN.md`.
 
-- [ ] Define one typed command-effects child transaction envelope that covers
+- [x] Define one typed command-effects child transaction envelope that covers
       bounded USB preparation, observation, terminal grace, and termination.
-- [ ] Derive the parent process timeout from that envelope and require it to
+- [x] Derive the parent process timeout from that envelope and require it to
       remain strictly larger than the child's maximum normal lifetime.
-- [ ] Preserve primary timeout precedence while collecting any closed campaign
+- [x] Preserve primary timeout precedence while collecting any closed campaign
       recovery facts, and add unit plus real-process regressions.
-- [ ] Run every focused, mandatory, privacy, reference, and real firmware gate;
+- [x] Run every focused, mandatory, privacy, reference, and real firmware gate;
       close with API-009 still `implemented` and no hardware authorization.
 
 Authorization: software-only source, tests, task, and public work-plan changes.
 Do not access credentials, the detector, protected attempt contents beyond the
 already recorded public closure facts, USB, device/network interfaces, HTTP,
 mining, display, restart, controls, direct UART, pins/pads/GPIO, or attempt-013.
+
+Deadline-contract completion review: the fixed 810-second parent and
+920-second fixture deadlines are removed. One checked budget now covers the
+version probe, three USB commands with their one allowed retry and recovery,
+the 600-second observation, 180-second terminal grace, final USB cleanup, and
+process termination. The parent is strictly larger than the 3,250-second child
+maximum and the fixture is larger still. Cross-language source contracts,
+scaled real-process cleanup, closed/missing/malformed timeout-recovery cases,
+focused tests, every mandatory gate, and the real ESP build pass. Primary
+`timeout` precedence is unchanged and recovery facts remain safe false unless
+closed private artifacts prove them. API-009 stays `implemented`; no hardware
+evidence or attempt-013 authorization was produced.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 

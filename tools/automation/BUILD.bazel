@@ -232,6 +232,8 @@ js_test(
         "//crates/bitaxe-config:ultra205_defaults_fixture_js",
         "//crates/bitaxe-automation-contracts:validate_ui_workflow_evidence",
         "//scripts:api_command_effects_stratum_pool",
+        "//tools/device-session:command_effects_budget_sources",
+        "//tools/flash:command_effects_budget_sources",
         "//tools/parity:report",
     ],
     entry_point = "test-dist/all.test.js",
