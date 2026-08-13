@@ -2219,6 +2219,8 @@ terminal blocker, next safe software-only diagnostic condition, and non-claims.
       generated binding, and protected paths to attempt ordinal 3.
 - [x] Commit and push the fix, admit an exact clean package, and run at most one
       detector-gated read-only `attempt-003`; promote only on the full quorum.
+- [x] Correct open-plan selection so valid terminal closures do not require
+      immutable continuation links, and prove the real THR-001 selector state.
 
 Plan: `docs/parity/work-plans/20260813T015631Z-THR-001/PLAN.md`.
 

@@ -117,3 +117,22 @@
 - Blocker or next safe action: A fresh plan must define bounded safe thermal
   fault/overheat stimulus, expected response, restoration, retry limits,
   privacy, and hardware-regression evidence. Attempt-003 must not be retried.
+
+## 2026-08-13T02:48:00Z | Terminal-closure selection repaired
+
+- Source commit: `087235d56acc0156b879044629a9e8d93f011601`
+- Actions: Corrected parity selection to retire lineages only when every plan
+  in that lineage has a valid terminal closure. Added a focused regression
+  with two valid same-row closures that intentionally have no immutable plan
+  links, while preserving the existing rejection for two unclosed unlinked
+  plans.
+- Verification: The focused Rust regression passes. The real
+  `next-item --format json` command now reports `maybe_open_plan: null` and a
+  normal candidate list containing THR-001 at `implemented`, proving all three
+  THR-001 closures are consumable without editing any immutable `PLAN.md`.
+- Evidence: Host selector behavior only. No device access, hardware effect,
+  protected artifact, credential, or private observation was involved.
+- Outcome: The plan closure is now recognized deterministically; the separate
+  hardware-regression blocker remains unchanged.
+- Blocker or next safe action: Run the mandatory sequence, commit and push the
+  selector repair, then stop this invocation at the recorded terminal blocker.

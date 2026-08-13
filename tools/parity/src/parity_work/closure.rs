@@ -254,6 +254,58 @@ mod tests {
     }
 
     #[test]
+    fn multiple_terminal_closed_plans_need_no_lineage_links() {
+        // Arrange
+        let workspace = Utf8PathBuf::from_path_buf(std::env::temp_dir().join(format!(
+            "bitaxe-parity-unlinked-closed-plans-{}",
+            std::process::id()
+        )))
+        .expect("temporary path must be UTF-8");
+        let _ = fs::remove_dir_all(workspace.as_std_path());
+        for run in ["20260101T000000Z-API-010", "20260102T000000Z-API-010"] {
+            let plan_root = workspace.join("docs/parity/work-plans").join(run);
+            fs::create_dir_all(plan_root.as_std_path()).expect("plan root");
+            fs::write(plan_root.join("PLAN.md").as_std_path(), PLAN).expect("plan");
+            fs::write(plan_root.join(CLOSURE_FILE).as_std_path(), valid_closure())
+                .expect("closure");
+        }
+
+        // Act
+        let maybe_open_plan =
+            find_open_plan(&workspace, &[row("API-010", "implemented")]).expect("open-plan scan");
+
+        // Assert
+        assert_eq!(maybe_open_plan, None);
+        fs::remove_dir_all(workspace.as_std_path()).expect("cleanup");
+    }
+
+    #[test]
+    fn multiple_unlinked_open_plans_still_fail_closed() {
+        // Arrange
+        let workspace = Utf8PathBuf::from_path_buf(std::env::temp_dir().join(format!(
+            "bitaxe-parity-unlinked-open-plans-{}",
+            std::process::id()
+        )))
+        .expect("temporary path must be UTF-8");
+        let _ = fs::remove_dir_all(workspace.as_std_path());
+        for run in ["20260101T000000Z-API-010", "20260102T000000Z-API-010"] {
+            let plan_root = workspace.join("docs/parity/work-plans").join(run);
+            fs::create_dir_all(plan_root.as_std_path()).expect("plan root");
+            fs::write(plan_root.join("PLAN.md").as_std_path(), PLAN).expect("plan");
+        }
+
+        // Act
+        let error = find_open_plan(&workspace, &[row("API-010", "implemented")])
+            .expect_err("unlinked plans must fail closed");
+
+        // Assert
+        assert!(error
+            .to_string()
+            .contains("lack an explicit continuation lineage"));
+        fs::remove_dir_all(workspace.as_std_path()).expect("cleanup");
+    }
+
+    #[test]
     fn terminal_lineage_is_retired_before_a_different_row_is_resumed() {
         // Arrange
         let workspace = Utf8PathBuf::from_path_buf(std::env::temp_dir().join(format!(
