@@ -2538,11 +2538,11 @@ evidence or attempt-013 authorization was produced.
 Deadline-fixed attempt-013 plan:
 `docs/parity/work-plans/20260813T180631Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable single-attempt contract and pass every
+- [x] Commit and push the immutable single-attempt contract and pass every
       focused, mandatory, privacy, reference, firmware, and exact-package gate.
-- [ ] Run exactly one fresh detector-gated attempt-013 and consume each
+- [x] Run exactly one fresh detector-gated attempt-013 and consume each
       IDENTIFY checkpoint only after its matching live physical report.
-- [ ] Promote only on the complete command/restart/device-user quorum;
+- [x] Promote only on the complete command/restart/device-user quorum;
       otherwise preserve `implemented`, earliest failure, evidence withholding,
       safe stop, cleanup, recovery, and stop without attempt-014.
 
@@ -2554,6 +2554,18 @@ clean pushed HEAD. Campaign start consumes attempt-013. No inferred physical
 observation, prior protected-artifact reuse, external or owner pool,
 destructive/fault-injection action, direct UART, pin/pad/GPIO manipulation,
 attempt-014, or unchanged retry is authorized.
+
+Attempt-013 completion review: every pre-effect gate passed at exact clean
+pushed source, the detector admitted exactly one holder-free board-205
+ESP32-S3, and the one authorized campaign consumed attempt-013. Factory and
+NVS flashing both closed `ready`; the runtime identity was trusted, safety was
+fresh, and USB cleanup closed `ready`. The command-effects observation then
+closed `terminal_state_unconfirmed` before any notification, pause, resume, or
+IDENTIFY request/checkpoint. The public wrapper preserved `hardware_blocked`,
+safe stop remains unconfirmed, no recovery was attempted, private modes pass,
+no process or port holder remains, and the public projection is absent.
+API-009 remains `implemented`; attempt-014 is not authorized. See
+`docs/parity/work-plans/20260813T180631Z-API-009/CLOSURE.md`.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
