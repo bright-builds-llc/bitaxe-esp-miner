@@ -257,10 +257,20 @@ test("operator snapshot capture requires the detector-gated closed surface", () 
 
   // Act
   const invocation = parseInvocation(complete);
+  const explicitPort = parseInvocation([
+    ...complete.slice(0, 7),
+    "--port", "/dev/cu.private",
+    ...complete.slice(9),
+  ]);
 
   // Assert
   assert.equal(invocation.command, "capture-operator-snapshot-evidence");
+  assert.equal(explicitPort.values.get("--port"), "/dev/cu.private");
   assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([
+    ...complete.slice(0, 7),
+    ...complete.slice(9),
+  ]));
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
 

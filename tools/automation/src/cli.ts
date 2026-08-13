@@ -58,6 +58,7 @@ import { captureSettingsDurability } from "./settings-durability.js";
 import { captureThemeDurability } from "./theme-durability.js";
 import { maybeTypedFailureCategory, maybeTypedFailurePublicValue } from "./typed-failure.js";
 import { captureUltra205DefaultsEvidence } from "./ultra205-defaults-evidence.js";
+import { projectUiWorkflowEvidenceFromInvocation } from "./ui-workflow-cli.js";
 import { captureVersionEvidence } from "./version-evidence.js";
 import { executeCommandSpec } from "./workflow.js";
 import { assertWithinWorkspace } from "./workspace.js";
@@ -240,6 +241,7 @@ async function dispatchProcess(
     case "project-asic-result-parsing-evidence":
     case "project-asic-serial-transport-evidence":
     case "capture-provisioning-network-evidence":
+    case "project-ui-workflow-evidence":
     case "api-command-effects-campaign":
     case "verify-theme-durability":
       throw new Error("specialized workflow reached generic dispatch");
@@ -309,7 +311,10 @@ async function main(): Promise<number> {
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root), toolProgram(root, "crates/bitaxe-automation-contracts/validate_version_evidence"));
     } else if (invocation.command === "capture-operator-snapshot-evidence") {
-      const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
+      const maybeDetectorOutput = maybeOptionValue(invocation, "--detector-output");
+      const port = maybeDetectorOutput === undefined
+        ? optionValue(invocation, "--port")
+        : await portFromDetectorOutput(root, maybeDetectorOutput);
       publicValue = await captureOperatorSnapshotEvidence(root, {
         privateRoot: optionValue(invocation, "--private-root"),
         packageManifest: optionValue(invocation, "--package-manifest"),
@@ -428,6 +433,8 @@ async function main(): Promise<number> {
         projection: optionValue(invocation, "--projection"),
       }, processPort, "git", toolProgram(root,
         "crates/bitaxe-automation-contracts/validate_asic_initialization_evidence"));
+    } else if (invocation.command === "project-ui-workflow-evidence") {
+      publicValue = await projectUiWorkflowEvidenceFromInvocation(root, invocation, processPort);
     } else if (invocation.command === "project-asic-power-initialization-evidence") {
       publicValue = await projectAsicPowerInitializationEvidence(root, {
         sourceProjection: optionValue(invocation, "--source-projection"), attemptSourceCommit: optionValue(invocation, "--attempt-source-commit"), projection: optionValue(invocation, "--projection"),

@@ -20,9 +20,12 @@ npm_link_undici_types()
 
 genrule(
     name = "contracts_verified",
-    srcs = ["src/contracts.generated.ts"],
+    srcs = [
+        "src/contracts.generated.ts",
+        "src/ui-workflow-contracts.generated.ts",
+    ],
     outs = ["contracts-verified.stamp"],
-    cmd = "$(location //crates/bitaxe-automation-contracts:verify_typescript) $(location src/contracts.generated.ts) $@",
+    cmd = "$(location //crates/bitaxe-automation-contracts:verify_typescript) $(location src/contracts.generated.ts) $(location src/ui-workflow-contracts.generated.ts) $@",
     tools = ["//crates/bitaxe-automation-contracts:verify_typescript"],
 )
 
@@ -78,6 +81,7 @@ js_binary(
         "//crates/bitaxe-automation-contracts:validate_asic_serial_transport_evidence",
         "//crates/bitaxe-automation-contracts:validate_asic_work_send_evidence",
         "//crates/bitaxe-automation-contracts:validate_provisioning_network_evidence",
+        "//crates/bitaxe-automation-contracts:validate_ui_workflow_evidence",
         "//crates/bitaxe-api:system_info_field_contract_js",
         "//crates/bitaxe-config:ultra205_defaults_fixture_js",
         "//scripts:api_command_effects_stratum_pool",
@@ -123,6 +127,7 @@ js_binary(
             "//crates/bitaxe-automation-contracts:validate_asic_serial_transport_evidence",
             "//crates/bitaxe-automation-contracts:validate_asic_work_send_evidence",
             "//crates/bitaxe-automation-contracts:validate_provisioning_network_evidence",
+            "//crates/bitaxe-automation-contracts:validate_ui_workflow_evidence",
             "//crates/bitaxe-api:system_info_field_contract_js",
             "//crates/bitaxe-config:ultra205_defaults_fixture_js",
             "//scripts:api_command_effects_stratum_pool",
@@ -180,6 +185,7 @@ js_binary(
         "project_asic_result_parsing_evidence": "project-asic-result-parsing-evidence",
         "project_asic_serial_transport_evidence": "project-asic-serial-transport-evidence",
         "capture_provisioning_network_evidence": "capture-provisioning-network-evidence",
+        "project_ui_workflow_evidence": "project-ui-workflow-evidence",
     }.items()
 ]
 
@@ -221,6 +227,7 @@ js_test(
         "//firmware/bitaxe:ultra205_partition_table",
         "//crates/bitaxe-api:system_info_field_contract_js",
         "//crates/bitaxe-config:ultra205_defaults_fixture_js",
+        "//crates/bitaxe-automation-contracts:validate_ui_workflow_evidence",
         "//scripts:api_command_effects_stratum_pool",
         "//tools/parity:report",
     ],

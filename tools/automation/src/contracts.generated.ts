@@ -42,7 +42,7 @@ export type AutomationCommand =
   | "project-stratum-socket-evidence"
   | "project-protocol-coordinator-evidence"
   | "project-mining-criteria-evidence"
-  | "capture-provisioning-network-evidence";
+  | "capture-provisioning-network-evidence" | "project-ui-workflow-evidence";
 export type AutomationStatus = "succeeded" | "failed" | "blocked";
 export type AutomationCategory =
   | "complete"
@@ -63,7 +63,7 @@ export type AutomationCategory =
   | "recovery_failed"
   | "reconnect_not_observed"
   | "reconnect_timing_invalid"
-  | "service_recovery_failed";
+  | "service_recovery_failed" | "browser_blocked";
 export type AutomationResult = {
   schema_version: "bitaxe-automation-result-v1";
   command: AutomationCommand;

@@ -26,6 +26,31 @@ test("semantic evidence scanner accepts digests and rejects operational fields",
   await rm(root, { recursive: true });
 });
 
+test("UI workflow evidence admits only closed origin and write-only-secret facts", async () => {
+  // Arrange
+  const root = await mkdtemp(path.join(tmpdir(), "bitaxe-redaction-ui-workflow-"));
+  const evidence = path.join(root, "evidence.json");
+  await writeFile(evidence, JSON.stringify({
+    schema_version: "bitaxe-ui-workflow-evidence-v1",
+    browser: {
+      same_origin_requests_observed: true,
+      write_only_secrets_blank: true,
+    },
+  }));
+
+  try {
+    // Act / Assert
+    assert.equal((await verifySemanticEvidenceRedaction(root)).checked, 1);
+    await writeFile(evidence, JSON.stringify({
+      schema_version: "bitaxe-ui-workflow-evidence-v1",
+      device_url: "redacted",
+    }));
+    await assert.rejects(verifySemanticEvidenceRedaction(root));
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
 test("settings PATCH baseline digest keys do not collide with the origin denylist", async () => {
   // Arrange
   const root = await mkdtemp(path.join(tmpdir(), "bitaxe-redaction-settings-patch-"));

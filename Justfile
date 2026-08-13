@@ -158,3 +158,14 @@ project-asic-result-parsing-evidence *args:
 
 capture-provisioning-network-evidence *args:
     bazel run //tools/automation:capture_provisioning_network_evidence -- {{ args }}
+
+project-ui-workflow-evidence *args:
+    bazel run //tools/automation:project_ui_workflow_evidence -- {{ args }}
+
+validate-ui-workflow-evidence projection:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    projection={{ quote(projection) }}
+    test -f "$projection"
+    projection_path="$(/bin/realpath "$projection")"
+    bazel run //crates/bitaxe-automation-contracts:validate_ui_workflow_evidence -- "$projection_path"

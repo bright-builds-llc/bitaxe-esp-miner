@@ -127,7 +127,8 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--private-root": value({ required: true }),
     "--package-manifest": value({ required: true }),
     "--wifi-credentials": value({ required: true }),
-    "--detector-output": value({ required: true }),
+    "--port": value(),
+    "--detector-output": value(),
     "--projection": value({ required: true }),
     "--capture-timeout-seconds": value({ required: true, positiveInteger: true }),
   },
@@ -288,6 +289,13 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--projection": value({ required: true }),
     "--capture-timeout-seconds": value({ required: true, positiveInteger: true }),
   },
+  "project-ui-workflow-evidence": {
+    "--private-root": value({ required: true }),
+    "--package-manifest": value({ required: true }),
+    "--operator-snapshot-projection": value({ required: true }),
+    "--browser-attestation": value({ required: true }),
+    "--projection": value({ required: true }),
+  },
 };
 
 const commands = new Set(Object.keys(rules) as AutomationCommand[]);
@@ -346,6 +354,14 @@ export function parseInvocation(argv: readonly string[]): ParsedInvocation {
     && values.has("--port") === values.has("--detector-output")
   ) {
     throw new InvocationError("capture-version-evidence requires exactly one of --port or --detector-output");
+  }
+  if (
+    command === "capture-operator-snapshot-evidence"
+    && values.has("--port") === values.has("--detector-output")
+  ) {
+    throw new InvocationError(
+      "capture-operator-snapshot-evidence requires exactly one of --port or --detector-output",
+    );
   }
   if (command === "verify-settings-durability") {
     const capture = values.get("--mode") === "capture";

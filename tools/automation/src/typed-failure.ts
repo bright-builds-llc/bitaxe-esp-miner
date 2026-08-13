@@ -25,6 +25,7 @@ import { SdkconfigRollbackEvidenceError } from "./sdkconfig-rollback-evidence.js
 import { SystemInfoEvidenceError } from "./system-info-evidence.js";
 import { ThemeDurabilityError } from "./theme-durability.js";
 import { Ultra205DefaultsEvidenceError } from "./ultra205-defaults-evidence.js";
+import { UiWorkflowEvidenceError } from "./ui-workflow-evidence.js";
 import type { AutomationCategory } from "./contracts.generated.js";
 
 type TypedFailure = Error & {
@@ -59,7 +60,8 @@ function maybeTypedFailure(error: unknown): TypedFailure | undefined {
     || error instanceof SettingsPatchEvidenceError
     || error instanceof SdkconfigRollbackEvidenceError
     || error instanceof LogBufferEvidenceError
-    || error instanceof PartitionLayoutEvidenceError) {
+    || error instanceof PartitionLayoutEvidenceError
+    || error instanceof UiWorkflowEvidenceError) {
     return error;
   }
   return undefined;

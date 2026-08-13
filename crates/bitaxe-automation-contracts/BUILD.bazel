@@ -32,13 +32,28 @@ rust_library(
         "src/stratum_socket_evidence.rs",
         "src/system_info_evidence.rs",
         "src/ultra205_defaults_evidence.rs",
+        "src/ui_workflow_evidence.rs",
     ],
-    compile_data = ["typescript-contracts.ts"],
+    compile_data = [
+        "typescript-contracts.ts",
+        "ui-workflow-typescript-contracts.ts",
+    ],
     crate_name = "bitaxe_automation_contracts",
     edition = "2021",
     deps = [
         "@crates//:schemars",
         "@crates//:serde",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_ui_workflow_evidence",
+    srcs = ["src/bin/validate_ui_workflow_evidence.rs"],
+    crate_name = "validate_ui_workflow_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
         "@crates//:serde_json",
     ],
 )

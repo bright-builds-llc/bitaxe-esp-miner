@@ -28,6 +28,7 @@ mod sdkconfig_rollback_evidence;
 mod settings_patch_evidence;
 mod stratum_socket_evidence;
 mod system_info_evidence;
+mod ui_workflow_evidence;
 mod ultra205_defaults_evidence;
 pub use asic_frequency_transition_evidence::{
     AsicFrequencyTransitionEvidence, AsicFrequencyTransitionObservationEvidence,
@@ -92,6 +93,9 @@ pub use stratum_socket_evidence::{
     StratumSocketEvidence, StratumSocketObservationEvidence, StratumSocketSourceEvidence,
 };
 pub use system_info_evidence::{SystemInfoEvidence, SystemInfoObservationEvidence};
+pub use ui_workflow_evidence::{
+    UiWorkflowBrowserEvidence, UiWorkflowEvidence, UiWorkflowSourceEvidence,
+};
 pub use ultra205_defaults_evidence::{
     Ultra205DefaultsEvidence, Ultra205DefaultsObservationEvidence,
 };
@@ -127,10 +131,16 @@ pub const STRATUM_SOCKET_EVIDENCE_SCHEMA: &str = "bitaxe-stratum-socket-evidence
 pub const PROTOCOL_COORDINATOR_EVIDENCE_SCHEMA: &str = "bitaxe-protocol-coordinator-evidence-v1";
 pub const MINING_CRITERIA_EVIDENCE_SCHEMA: &str = "bitaxe-mining-criteria-evidence-v1";
 pub const PROVISIONING_NETWORK_EVIDENCE_SCHEMA: &str = "bitaxe-provisioning-network-evidence-v1";
+pub const UI_WORKFLOW_EVIDENCE_SCHEMA: &str = "bitaxe-ui-workflow-evidence-v1";
 pub const MIGRATION_SCHEMA: &str = "bitaxe-automation-migration-v1";
 #[must_use]
 pub fn typescript_contracts() -> &'static str {
     include_str!("../typescript-contracts.ts")
+}
+
+#[must_use]
+pub fn ui_workflow_typescript_contracts() -> &'static str {
+    include_str!("../ui-workflow-typescript-contracts.ts")
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -181,6 +191,7 @@ pub enum AutomationCommand {
     ProjectProtocolCoordinatorEvidence,
     ProjectMiningCriteriaEvidence,
     CaptureProvisioningNetworkEvidence,
+    ProjectUiWorkflowEvidence,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -213,6 +224,7 @@ pub enum AutomationCategory {
     ReconnectNotObserved,
     ReconnectTimingInvalid,
     ServiceRecoveryFailed,
+    BrowserBlocked,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -347,6 +359,7 @@ pub struct ContractBundle {
     pub protocol_coordinator_evidence_schema: Value,
     pub mining_criteria_evidence_schema: Value,
     pub provisioning_network_evidence_schema: Value,
+    pub ui_workflow_evidence_schema: Value,
     pub commands: Vec<AutomationCommand>,
     pub evidence_schemas: Vec<&'static str>,
 }
@@ -437,6 +450,8 @@ pub fn contract_bundle() -> ContractBundle {
             ProvisioningNetworkEvidence
         ))
         .expect("provisioning network evidence schema must serialize"),
+        ui_workflow_evidence_schema: serde_json::to_value(schema_for!(UiWorkflowEvidence))
+            .expect("UI workflow evidence schema must serialize"),
         commands: vec![
             AutomationCommand::Doctor,
             AutomationCommand::BootstrapEsp,
@@ -483,6 +498,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::ProjectProtocolCoordinatorEvidence,
             AutomationCommand::ProjectMiningCriteriaEvidence,
             AutomationCommand::CaptureProvisioningNetworkEvidence,
+            AutomationCommand::ProjectUiWorkflowEvidence,
         ],
         evidence_schemas: vec![
             HARDWARE_ATTEMPT_SCHEMA,
@@ -513,6 +529,7 @@ pub fn contract_bundle() -> ContractBundle {
             PROTOCOL_COORDINATOR_EVIDENCE_SCHEMA,
             MINING_CRITERIA_EVIDENCE_SCHEMA,
             PROVISIONING_NETWORK_EVIDENCE_SCHEMA,
+            UI_WORKFLOW_EVIDENCE_SCHEMA,
             MIGRATION_SCHEMA,
         ],
     }

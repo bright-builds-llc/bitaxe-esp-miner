@@ -2244,14 +2244,14 @@ bounded thermal hardware-regression evidence, not a retry of attempt-003.
 
 ### task-parity-ui004-live-browser-attempt-001 | 2026-08-13 | Verify exact-package AxeOS browser workflows
 
-- [ ] Add a typed private-first evidence join and independent validator for the
+- [x] Add a typed private-first evidence join and independent validator for the
       exact current package, embedded static assets, one live real-browser
       session, and existing theme/settings/log/update projections.
 - [ ] Prove all seven production routes, desktop/mobile responsive behavior,
       mobile navigation, same-origin API/log traffic, blank write-only secrets,
       disabled no-file firmware action, OTAWWW-unavailable behavior, clean
       console/network state, safe device state, cleanup, and redaction.
-- [ ] Pass focused, real-firmware/package, mandatory, privacy, reference,
+- [x] Pass focused, real-firmware/package, mandatory, privacy, reference,
       generated-contract, immutable-plan, task-uniqueness, and diff gates.
 - [ ] Commit and push the implementation, then spend exactly one detector and
       at most one conditional exact-package hardware/browser attempt-001.

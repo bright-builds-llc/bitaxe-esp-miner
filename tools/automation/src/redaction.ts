@@ -23,6 +23,7 @@ const semanticSchemas = new Set([
   "bitaxe-asic-reset-evidence-v1",
   "bitaxe-asic-work-send-evidence-v1",
   "bitaxe-asic-result-parsing-evidence-v1",
+  "bitaxe-ui-workflow-evidence-v1",
 ]);
 
 const safeSemanticKeys = new Set([
@@ -30,7 +31,9 @@ const safeSemanticKeys = new Set([
   "exactly_one_chip_detected_after_reset",
   "same_origin_api_observed",
   "same_origin_observed",
+  "same_origin_requests_observed",
   "trusted_origin_preserved",
+  "write_only_secrets_blank",
 ]);
 
 const prohibitedKeys = new RegExp([
