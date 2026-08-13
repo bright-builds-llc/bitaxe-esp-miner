@@ -53,3 +53,40 @@
   and browser transaction.
 - Blocker or next safe action: Commit and push the clean implementation, rebuild
   its exact package, then run the frozen detector and attempt-001 commands.
+
+## 2026-08-13T08:39:00Z | detector and attempt-001
+
+- Source commit: `bf5b74f98cdb117ca5682b0118a61743db85856f`.
+- Actions: Built the exact pushed package, consumed the sole detector, and ran
+  the sole conditional operator-snapshot attempt. After its closed success,
+  used one isolated named Playwright session for the plan's read-only desktop
+  and mobile workflow quorum, then closed the browser.
+- Verification: Independent operator validation passed. Seven desktop and
+  seven mobile routes, responsive menu open/close, blank password inputs,
+  update and OTAWWW guards, retained logs, connected log WebSocket, same-origin
+  successful resources, zero console errors/warnings, and browser cleanup all
+  passed. Twenty protected browser artifacts are digest-bound.
+- Evidence: Private operator and browser attestations only; no public
+  projection existed before the projector transaction.
+- Outcome: Device and browser evidence capture succeeded with mining and
+  hardware control disabled and cleanup complete.
+- Blocker or next safe action: Run the plan's single projector and independent
+  validator without a hardware or browser retry.
+
+## 2026-08-13T08:44:00Z | terminal projector closure
+
+- Source commit: `bf5b74f98cdb117ca5682b0118a61743db85856f`.
+- Actions: Ran the sole repo-owned projector. It rejected the wrapper before
+  candidate creation because shell redirection created its own stdout/stderr
+  files as mode `0644` inside the protected tree. Restored those files to mode
+  `0600` during cleanup and did not retry the projector.
+- Verification: Closed category `evidence_invalid`; public projection absent;
+  candidate absent; every private directory/file mode `0700`/`0600`; browser
+  closed; device/USB cleanup already confirmed; immutable plan unchanged.
+- Evidence: `CLOSURE.md` records the terminal non-verified outcome. Protected
+  attempt-001 remains local and ignored.
+- Outcome: UI-004 remains `implemented`; verification is not claimed.
+- Blocker or next safe action: Start a fresh software-only continuation that
+  proves owner-only redirect creation and exact captured/projector source
+  binding before one new projection/validation transaction. Do not rerun the
+  hardware or browser attempt.

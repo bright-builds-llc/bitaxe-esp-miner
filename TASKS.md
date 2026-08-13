@@ -2253,7 +2253,7 @@ bounded thermal hardware-regression evidence, not a retry of attempt-003.
       console/network state, safe device state, cleanup, and redaction.
 - [x] Pass focused, real-firmware/package, mandatory, privacy, reference,
       generated-contract, immutable-plan, task-uniqueness, and diff gates.
-- [ ] Commit and push the implementation, then spend exactly one detector and
+- [x] Commit and push the implementation, then spend exactly one detector and
       at most one conditional exact-package hardware/browser attempt-001.
 - [ ] Promote only UI-004 when the independently validated closed projection
       satisfies every plan criterion; otherwise withhold evidence and stop.
@@ -2294,11 +2294,20 @@ upload, mining, ASIC work, pool access, voltage/frequency/fan/thermal/power
 control, camera or panel claim, physical button, direct UART, pins, pads,
 headers, GPIO, probes, arbitrary writes, erase-flash, or other boards.
 
-Verification: Pending immutable plan commit and implementation. UI-004 remains
-`implemented`; the user's report of more visible panel information is helpful
-context but is not promoted as typed UI-001/UI-002 evidence.
+Blocked outcome (2026-08-13): attempt-001 successfully completed the exact
+package operator snapshot and private read-only browser quorum, but the sole
+projector invocation correctly rejected two shell-redirected wrapper files
+created as mode `0644`. No public projection or candidate exists. All device,
+browser, USB, and private-mode cleanup passed. See the plan-bound `CLOSURE.md`.
 
-Completion review: Pending.
+Next safe action: Start a fresh software-only continuation with an owner-only
+projector redirection contract and exact captured-source/projector-source
+binding. Preserve the ignored attempt-001 artifacts and do not rerun its
+hardware or browser work.
+
+Completion review: UI-004 remains `implemented`; verification is not claimed.
+The user's report of more visible panel information remains helpful context,
+not typed UI-001/UI-002 evidence.
 
 ## Future
 
