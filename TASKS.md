@@ -2506,6 +2506,23 @@ port is holder-free, the public projection is absent, and API-009 remains
 software-only deadline-contract and timeout-recovery fix with a regression that
 binds the parent budget above the complete child transaction.
 
+Deadline-contract software plan:
+`docs/parity/work-plans/20260813T174155Z-API-009/PLAN.md`.
+
+- [ ] Define one typed command-effects child transaction envelope that covers
+      bounded USB preparation, observation, terminal grace, and termination.
+- [ ] Derive the parent process timeout from that envelope and require it to
+      remain strictly larger than the child's maximum normal lifetime.
+- [ ] Preserve primary timeout precedence while collecting any closed campaign
+      recovery facts, and add unit plus real-process regressions.
+- [ ] Run every focused, mandatory, privacy, reference, and real firmware gate;
+      close with API-009 still `implemented` and no hardware authorization.
+
+Authorization: software-only source, tests, task, and public work-plan changes.
+Do not access credentials, the detector, protected attempt contents beyond the
+already recorded public closure facts, USB, device/network interfaces, HTTP,
+mining, display, restart, controls, direct UART, pins/pads/GPIO, or attempt-013.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
