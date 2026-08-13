@@ -2416,6 +2416,32 @@ changing its sealed hardware or cleanup facts. API-009 remains `implemented`;
 no hardware was accessed, no public evidence was produced, and attempt-011
 requires a separate future contract.
 
+Pre-armed IDENTIFY attempt-011 plan:
+`docs/parity/work-plans/20260813T154249Z-API-009/PLAN.md`.
+
+- [ ] Commit and push the immutable single-attempt contract and pass every
+      focused, mandatory, privacy, reference, and exact-package gate.
+- [ ] Run exactly one fresh detector-gated attempt-011, consume readiness
+      before IDENTIFY, and consume rendered/cleared only after matching live
+      physical reports.
+- [ ] Promote API-009 only on the complete command/restart/device-user quorum;
+      otherwise preserve `implemented`, earliest failure, public withholding,
+      safe stop, cleanup, recovery, and stop without attempt-012.
+
+Attempt-011 authorization: this separately selected plan supersedes only the
+prior attempt-011 prohibition because pushed commit `9d632439` fixes the exact
+attempt-010 authority boundary with a pre-effect request-once readiness gate,
+self-describing 30-second public signal, and production/real-process
+regressions. Standing task authorization permits this single campaign only
+after the linked immutable plan/task checkpoint and every named software,
+package, privacy, recovery, and detector gate pass at clean pushed HEAD. The
+linked plan freezes the exact repo command, fresh private roots, effects,
+physical checkpoints, evidence quorum, recovery, cleanup, retry bound, and
+stop conditions. Campaign start consumes attempt-011. No inferred or expired
+observation, protected-artifact reuse, external or owner pool, destructive or
+fault-injection action, direct UART, pin/pad/GPIO manipulation, attempt-012,
+or unchanged retry is authorized.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
