@@ -2267,6 +2267,49 @@ boundary because its immutable plan prohibited the fault stimulus required by
 the authoritative verifier. The next safe action is a distinct plan for
 bounded thermal hardware-regression evidence, not a retry of attempt-003.
 
+### task-parity-thr002-fan-evidence-reconciliation | 2026-08-13 | Reconcile accepted fan-response evidence
+
+- [x] Select THR-002 as the first actionable row after API-009's repeated stop
+      and THR-001's need for a distinct bounded fault-stimulus contract.
+- [x] Freeze the immutable software-only plan at
+      `docs/parity/work-plans/20260813T024957Z-THR-002/PLAN.md`.
+- [ ] Wire the pure fan decisions into a bounded upstream-cadence production
+      runtime that owns no raw I2C and uses only the existing typed actuation
+      queue, with focused orchestration and ownership regressions.
+- [ ] Independently validate the accepted PWR-002 projection, exact digest,
+      immutable result lineage, source/reference identities, unchanged EMC2101
+      ownership, final mode, and redaction.
+- [ ] Add a THR-002-specific `RESULT.md` using the composed workflow and
+      physical fan-response facts; do not duplicate the evidence contract or
+      rerun hardware.
+- [ ] Run every focused and mandatory software, privacy, reference, integrity,
+      and diff gate before the evidence checkpoint and final transition.
+- [ ] Promote only THR-002 on the complete closed quorum, archive this task,
+      synchronize progress, and preserve every explicit non-claim.
+
+This is a software-only implementation and evidence reconciliation. It permits
+the high-level controller scheduler, startup wiring, focused tests, reading
+committed source, reference, task, plan, result, and accepted evidence, running
+repository validation and verification commands, writing the row-specific
+result, and transitioning only THR-002 if every gate passes. It permits no detector,
+package, flash, reset, USB/serial, network, credential, mining, voltage, fan,
+power, GPIO, I2C, direct UART, pin, fault-injection, or other hardware effect.
+
+Acceptance requires the exact existing PWR-002 projection with SHA-256
+`0668c274d09b3e39d7d5edfea4b2e66c97248ff77de9192981f3af00e547ddfe`,
+its Rust validator, board 205 and exact source/reference identities, trusted
+package/runtime, fresh safety, the typed production 100% fan command,
+fan-before-voltage ordering, a fresh nonzero post-command RPM, successful
+initialized work, an accepted submit, safe stop, cleanup, no hardware rerun,
+and passed redaction. Passing pure controller, duty-conversion, tachometer, and
+fan-fault tests must provide the `unit,workflow` portion. A failed boundary
+leaves THR-002 `implemented`, changes no checklist field, and records the
+earliest blocker without a hardware retry.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
