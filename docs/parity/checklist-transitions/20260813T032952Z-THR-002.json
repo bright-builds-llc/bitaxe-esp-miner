@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260813T032952Z-THR-002",
+  "predecessor_sha256": "b5be93c7bc73c457ade54e8e1401f6b72d18e492c659d12e5c7c23c84cab59c9",
+  "result_sha256": "741867f6d163458c703f8028b42ef0ebac129badf94ec0cb34d6a8ac5d1ce910",
+  "row_id": "THR-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260813T024957Z-THR-002/PLAN.md",
+  "plan_sha256": "3adf53a19701e33ef195898560b7f8f17baef0f36033912bc86de54ace0d178d",
+  "result_path": "docs/parity/work-plans/20260813T024957Z-THR-002/RESULT.md",
+  "result_document_sha256": "3505303892578beb884bce95521a6714c0818866c3244e56ca2e45b3c6f52186",
+  "before_rust_owned_target": "`crates/bitaxe-safety/src/thermal.rs`, `firmware/bitaxe/src/safety_adapter/thermal.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-safety/src/thermal.rs`, `firmware/bitaxe/src/fan_controller_plan.rs`, `firmware/bitaxe/src/fan_controller_runtime.rs`, `firmware/bitaxe/src/production_mining_session.rs`, `firmware/bitaxe/src/safety_adapter.rs`, `firmware/bitaxe/src/safety_adapter/emc2101.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,hardware-regression",
+  "before_notes": "Fan/PID decisions and fan fault classification exist, while firmware suppresses fan writes without hardware evidence. [Phase 14 thermal/fan evidence](evidence/phase-14-safety-hardware-evidence-completion/thermal-fan.md) records no fresh fan RPM artifact, no production-safe bounded fan-duty route, and no physical fan response; fan duty effects remain below verified and require `hardware-regression`. Phase 20 final evidence in `evidence/phase-20-active-safety-hardware-telemetry-evidence/summary.md`, `evidence/phase-20-active-safety-hardware-telemetry-evidence/active-thermal-fan.md`, and `evidence/phase-20-active-safety-hardware-telemetry-evidence/failure-paths.md` records no fresh RPM, fan duty, fan fault, or physical response proof.",
+  "after_notes": "The current production firmware schedules upstream-aligned fan modes and PID decisions at 100 ms behind the admitted active-campaign gate and existing typed single-owner I2C queue. The closed Ultra 205 PWR-002 hardware regression proves a typed 100% fan command before voltage and a fresh nonzero post-command RPM, followed by successful initialized work, accepted submit, safe stop, cleanup, no rerun, independent validation, and redaction. See [THR-002 result](work-plans/20260813T024957Z-THR-002/RESULT.md) and [closed projection](evidence/pwr002-asic-power-initialization/power-initialization-projection.json). Analog RPM accuracy, a complete dynamic curve, closed-loop settling, soak, arbitrary hardware duties, injected fan faults, physical-fault recovery, overheat behavior, other boards, and other controllers remain non-claims."
+}

@@ -164,3 +164,67 @@
 - Outcome: The worklog chronology is accurate before transition publication.
 - Blocker or next safe action: Commit and push the correction, then transition
   only THR-002 from that exact clean evidence source.
+
+## 2026-08-13T03:29:52Z | Typed transition and task closure
+
+- Source commit: `b76eca69be9b3b6a5590aa7678f1b8766dd62b5f`
+- Actions: Executed the repository-owned typed transition for only THR-002,
+  synchronized derived progress immediately, completed the task record, and
+  moved its full native block from the active tracker to the immutable archive.
+- Verification: Transition `20260813T032952Z-THR-002` reports the sole row
+  change from `implemented` to `verified`; its receipt binds the immutable plan,
+  RESULT.md, exact source/reference commits, and
+  `unit,workflow,hardware-regression`. Progress records 65 of 94 active rows
+  verified (69.1%).
+- Evidence: Typed receipt
+  `docs/parity/checklist-transitions/20260813T032952Z-THR-002.json`, derived
+  checklist/README/progress updates, and the archived completed task record.
+- Outcome: THR-002 is durably verified. No device or other hardware effect ran.
+- Blocker or next safe action: Run the complete final ordered gates, review the
+  exact diff, commit and push the finalization, then close this one-row plan.
+
+## 2026-08-13T03:31:00Z | Transition target encoding corrected
+
+- Source commit: `b76eca69be9b3b6a5590aa7678f1b8766dd62b5f`
+- Actions: The first final parity gate rejected the generated THR-002 target
+  cell because its transition argument omitted Markdown code-span delimiters.
+  Discarded that uncommitted receipt and its derived checklist/progress files,
+  restored the exact authoritative predecessor, and reran the typed transition
+  once with individually delimited repository paths.
+- Verification: The predecessor checklist passed before retry. Corrected typed
+  transition `20260813T032952Z-THR-002` produced checklist SHA-256
+  `741867f6d163458c703f8028b42ef0ebac129badf94ec0cb34d6a8ac5d1ce910`;
+  all six Rust-owned targets are valid code spans; immediate progress sync and
+  both parity commands pass at 65 of 94 active rows verified (69.1%).
+- Evidence: Only the corrected typed receipt and its derived checklist,
+  README, and progress record are retained. The invalid uncommitted receipt is
+  absent, and no device or other hardware action occurred.
+- Outcome: The final state is typed, validator-clean, and preserves the
+  monotonic implemented-to-verified transition.
+- Blocker or next safe action: Re-run the complete ordered final gates from the
+  corrected state, then commit and push the finalization.
+
+## 2026-08-13T03:33:24Z | Final gates complete
+
+- Source commit: `b76eca69be9b3b6a5590aa7678f1b8766dd62b5f`
+- Actions: Ran the complete ordered final verification sequence from the
+  corrected transition state, followed by focused controller/ownership/sensor
+  tests, both production firmware builds, the independent PWR-002 validator,
+  repository redaction, reference cleanliness, task uniqueness, exact digests,
+  public mode, transition-chain, and diff checks.
+- Verification: Cargo format, strict Clippy, all-target build, and all-feature
+  tests pass; Bright Builds reports zero findings; all 42 Bazel tests pass;
+  parity has no validation errors; progress is 65 of 94 active rows (69.1%);
+  focused tests and normal/rollback builds pass; 18 public evidence artifacts
+  pass redaction; the pinned reference is clean. A transient report-output
+  `EAGAIN` passed immediately when the same read-only report was captured
+  outside the repository; the standalone validator passed with its required
+  absolute input path.
+- Evidence: Corrected transition receipt, final progress record, immutable
+  plan/result digests, reused projection SHA-256
+  `0668c274d09b3e39d7d5edfea4b2e66c97248ff77de9192981f3af00e547ddfe`
+  at mode `0644`, and this final worklog checkpoint.
+- Outcome: THR-002 finalization is clean and ready to commit and push. No
+  hardware effect occurred in this invocation.
+- Blocker or next safe action: Commit and push this exact final state, verify a
+  clean synchronized branch and closed plan, then end this one-row invocation.

@@ -6900,3 +6900,65 @@ cleanup, no hardware rerun, and redaction. Calibration beyond the admitted
 conversion, long-duration drift, write/control effects, fan, voltage, ASIC,
 mining, other boards, and release readiness remain non-claims. The task is
 complete and archived.
+
+### task-parity-thr002-fan-evidence-reconciliation | 2026-08-13 | Reconcile accepted fan-response evidence
+
+- [x] Select THR-002 as the first actionable row after API-009's repeated stop
+      and THR-001's need for a distinct bounded fault-stimulus contract.
+- [x] Freeze the immutable software-only plan at
+      `docs/parity/work-plans/20260813T024957Z-THR-002/PLAN.md`.
+- [x] Wire the pure fan decisions into a bounded upstream-cadence production
+      runtime that owns no raw I2C and uses only the existing typed actuation
+      queue, with focused orchestration and ownership regressions.
+- [x] Independently validate the accepted PWR-002 projection, exact digest,
+      immutable result lineage, source/reference identities, unchanged EMC2101
+      ownership, final mode, and redaction.
+- [x] Add a THR-002-specific `RESULT.md` using the composed workflow and
+      physical fan-response facts; do not duplicate the evidence contract or
+      rerun hardware.
+- [x] Run every focused and mandatory software, privacy, reference, integrity,
+      and diff gate before the evidence checkpoint and final transition.
+- [x] Promote only THR-002 on the complete closed quorum, archive this task,
+      synchronize progress, and preserve every explicit non-claim.
+
+This is a software-only implementation and evidence reconciliation. It permits
+the high-level controller scheduler, startup wiring, focused tests, reading
+committed source, reference, task, plan, result, and accepted evidence, running
+repository validation and verification commands, writing the row-specific
+result, and transitioning only THR-002 if every gate passes. It permits no detector,
+package, flash, reset, USB/serial, network, credential, mining, voltage, fan,
+power, GPIO, I2C, direct UART, pin, fault-injection, or other hardware effect.
+
+Acceptance requires the exact existing PWR-002 projection with SHA-256
+`0668c274d09b3e39d7d5edfea4b2e66c97248ff77de9192981f3af00e547ddfe`,
+its Rust validator, board 205 and exact source/reference identities, trusted
+package/runtime, fresh safety, the typed production 100% fan command,
+fan-before-voltage ordering, a fresh nonzero post-command RPM, successful
+initialized work, an accepted submit, safe stop, cleanup, no hardware rerun,
+and passed redaction. Passing pure controller, duty-conversion, tachometer, and
+fan-fault tests must provide the `unit,workflow` portion. A failed boundary
+leaves THR-002 `implemented`, changes no checklist field, and records the
+earliest blocker without a hardware retry.
+
+Verification: Transition `20260813T032952Z-THR-002` changed only THR-002 from
+`implemented` with `unit,workflow` evidence to `verified` with
+`unit,workflow,hardware-regression`, bound immutable plan SHA-256
+`3adf53a19701e33ef195898560b7f8f17baef0f36033912bc86de54ace0d178d`,
+RESULT.md SHA-256
+`3505303892578beb884bce95521a6714c0818866c3244e56ca2e45b3c6f52186`,
+source commit `b76eca69be9b3b6a5590aa7678f1b8766dd62b5f`, and reference commit
+`c1915b0a63bfabebdb95a515cedfee05146c1d50`. Immediate progress
+synchronization records 65 of 94 active rows verified (69.1%). The ordered
+Cargo, Bright Builds, all-42-target Bazel, parity, progress, redaction,
+reference, evidence-validator, digest, mode, source-compatibility, task-binding,
+and diff gates passed.
+
+Completion review: THR-002 is verified from the production high-level
+controller workflow and the accepted PWR-002 Ultra 205 fan-response evidence.
+The closed quorum proves upstream priority decisions at a bounded 100 ms
+cadence, typed actuation ownership, the physical 100% command before voltage, a
+fresh nonzero post-command RPM, successful downstream work, safe stop, cleanup,
+and redaction without a new hardware run. Automatic live transitions among all
+modes, PID tuning quality, long-duration regulation, fan-fault injection,
+thermal stress, other boards, and release readiness remain non-claims. The task
+is complete and archived.
