@@ -2936,13 +2936,13 @@ attempt.
 Pause-held attempt-019 plan:
 `docs/parity/work-plans/20260814T152151Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable single-attempt contract and pass every
+- [x] Commit and push the immutable single-attempt contract and pass every
       focused, mandatory, privacy, reference, firmware, selector, and exact-
       package gate.
-- [ ] Run exactly one fresh detector-gated attempt-019, keep the device paused
+- [x] Run exactly one fresh detector-gated attempt-019, keep the device paused
       and safe-stopped through both physical IDENTIFY observations, and send
       each private checkpoint only after its matching live physical report.
-- [ ] Promote only on the complete command/restart/device-user quorum;
+- [x] Promote only on the complete command/restart/device-user quorum;
       otherwise preserve `implemented`, earliest failure, evidence withholding,
       safe stop, cleanup, recovery, and stop without attempt-020.
 
@@ -2956,6 +2956,41 @@ attempt-019. No inferred or expired physical observation, protected-artifact
 reuse, external or owner pool, factory reset, destructive/fault-injection
 action, direct UART, pin/pad/GPIO manipulation, attempt-020, or unchanged retry
 is authorized.
+
+Completion review: attempt-019 admitted the exact package and one Ultra 205;
+both flashes completed once as `ready`, runtime attestation was `trusted`, and
+the device reached one confirmed pause before the operator-ready checkpoint.
+After the live ready signal, the first IDENTIFY request succeeded and the
+rendered checkpoint opened two seconds later, but the display effect retained
+its upstream 30-second expiry while the assistant-mediated physical response
+path remained unbounded. The user truthfully reported that the frame was not
+visible, so no rendered or cleared signal was sent and no resume, dismiss, or
+restart occurred. The owned signal supervisor closed the now-impossible
+campaign; the typed result is `terminal_state_unconfirmed` / `operator_paused`,
+with pause confirmed but terminal safe stop only `pending`, no recovery pause
+request, USB cleanup `ready`, private modes valid, all attempt processes absent,
+and public evidence withheld. API-009 remains `implemented`; no attempt-020 is
+authorized. See
+`docs/parity/work-plans/20260814T152151Z-API-009/CLOSURE.md`.
+
+Post-attempt-019 checkpoint-expiry and decline investigation:
+
+- [ ] Build a deterministic red diagnostic proving a rendered checkpoint
+      cannot outlive the 30-second IDENTIFY effect without becoming invalid.
+- [ ] Add a typed negative/expired checkpoint path that triggers prompt pause-
+      preserving closure, recovery accounting, cleanup, and evidence
+      withholding without a raw process signal.
+- [ ] Make time-critical IDENTIFY activation originate from the local operator
+      signal command, pass focused and mandatory verification, and keep
+      attempt-020 out of scope.
+
+Software-only authorization: use attempt-019 categorical, boolean, count, and
+bounded-duration facts; inspect and modify repository source and tests; run
+deterministic fixtures and local child processes; and build firmware. Do not
+read credentials, protected values, origins, ports, USB/network identities, or
+raw traces; access USB, device/network interfaces, or HTTP; flash, reset,
+restart, mine, actuate controls, manipulate direct UART or pins/pads/GPIO;
+publish parity evidence; promote API-009; or create/run attempt-020.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
