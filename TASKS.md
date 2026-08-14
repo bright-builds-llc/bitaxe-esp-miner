@@ -2786,6 +2786,28 @@ gates pass. API-009 remains `implemented`; no hardware ran and attempt-017
 requires a separate clean immutable plan. See
 `docs/parity/work-plans/20260814T120645Z-API-009/CLOSURE.md`.
 
+Paused-signal-fixed attempt-017 plan:
+`docs/parity/work-plans/20260814T123336Z-API-009/PLAN.md`.
+
+- [ ] Commit and push the immutable single-attempt contract and pass every
+      focused, mandatory, privacy, reference, firmware, and exact-package gate.
+- [ ] Run exactly one fresh detector-gated attempt-017, keep the device paused
+      and safe-stopped while waiting, and send each private checkpoint only
+      after its matching live physical report.
+- [ ] Promote only on the complete command/restart/device-user quorum;
+      otherwise preserve `implemented`, earliest failure, evidence withholding,
+      safe stop, cleanup, recovery, and stop without attempt-018.
+
+Attempt-017 authorization: pushed source `fe0995fd` fixes attempt-016's active
+operator-wait boundary with a one-hour paused safe-stop window, private one-shot
+sender, resume-after-ready ordering, and IDENTIFY-after-active recovery backed
+by focused and real-process regressions. Standing task authorization permits
+this one campaign only after the linked immutable contract and all named gates
+pass at clean pushed HEAD. Campaign start consumes attempt-017. No inferred or
+expired physical observation, protected-artifact reuse, external or owner pool,
+destructive/fault-injection action, direct UART, pin/pad/GPIO manipulation,
+attempt-018, or unchanged retry is authorized.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
