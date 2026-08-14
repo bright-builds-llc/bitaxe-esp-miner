@@ -2726,9 +2726,9 @@ Receive-ingress-fixed attempt-016 plan:
 
 - [x] Commit and push the immutable single-attempt contract and pass every
       focused, mandatory, privacy, reference, firmware, and exact-package gate.
-- [ ] Run exactly one fresh detector-gated attempt-016 and consume each
+- [x] Run exactly one fresh detector-gated attempt-016 and consume each
       IDENTIFY checkpoint only after its matching live physical report.
-- [ ] Promote only on the complete command/restart/device-user quorum;
+- [x] Promote only on the complete command/restart/device-user quorum;
       otherwise preserve `implemented`, earliest failure, evidence withholding,
       safe stop, cleanup, recovery, and stop without attempt-017.
 
@@ -2741,6 +2741,17 @@ contract and all named gates pass at clean pushed HEAD. Campaign start consumes
 attempt-016. No inferred physical observation, protected-artifact reuse,
 external or owner pool, destructive/fault-injection action, direct UART,
 pin/pad/GPIO manipulation, attempt-017, or unchanged retry is authorized.
+
+Completion review: attempt-016 admitted the exact package and trusted runtime,
+observed 286 valid markers, reached the operator-ready checkpoint, and then
+failed closed when no timely physical-ready report arrived. Its typed terminal
+facts are `network_correlation_failed` / `safety_prerequisites_stale`; safe stop
+is confirmed, USB cleanup is ready, the campaign process is absent, and the
+public projection is withheld. A later ready confirmation was recorded only
+after campaign closure and was never consumed, so it supplies no physical
+IDENTIFY evidence. API-009 remains `implemented`; attempt-017 and an unchanged
+retry are not authorized. See
+`docs/parity/work-plans/20260814T044503Z-API-009/CLOSURE.md`.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
