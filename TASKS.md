@@ -3205,6 +3205,28 @@ pass; public evidence is withheld. API-009 remains `implemented`, attempt-022
 is consumed, and no attempt-023 is authorized. The next safe action is a fresh
 software-only post-expiry replay-choice plan; see the linked `CLOSURE.md`.
 
+Latency-tolerant interaction plan:
+`docs/parity/work-plans/20260814T232306Z-API-009/PLAN.md`.
+
+- [ ] Commit and push the immutable software-only plan without accessing
+      credentials, protected attempts, USB, device/network interfaces, or
+      hardware.
+- [ ] Make rendered/replayed reports unbounded and attempt-bound while keeping
+      every IDENTIFY effect exactly 30 seconds and every replay explicit.
+- [ ] Use conservative natural expiry before the cleared checkpoint instead of
+      a latency-sensitive second IDENTIFY toggle; update the closed request
+      count and evidence quorum.
+- [ ] Pass focused, real-process, mandatory, privacy, reference, firmware,
+      selector, digest, and diff gates; close with API-009 still `implemented`
+      and no attempt-023.
+
+Software-only authorization: modify source, tests, documentation, tracker,
+worklog, closure, and deterministic fixtures, and build firmware. Do not access
+credentials, protected attempt artifacts, detector, USB, device/network
+interfaces, HTTP, display, mining, hardware controls, direct UART, pins/pads,
+public parity evidence, checklist promotion, attempt-023, or any hardware
+attempt.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
