@@ -63,7 +63,7 @@
   Reproduce and fix the resume-time safety freshness mismatch in software
   before considering any later hardware attempt.
 
-## 2026-08-14T20:02:00Z | resume-freshness root-cause repair
+## 2026-08-14T19:34:09Z | resume-freshness root-cause repair
 
 - Source commit: `6aec858230141521ca3079847061554de3f0f917` plus the uncommitted
   software repair described here.

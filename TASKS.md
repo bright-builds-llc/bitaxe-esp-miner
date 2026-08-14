@@ -3105,6 +3105,29 @@ and diff gates pass. No protected input or hardware was accessed, no evidence
 was published, API-009 remains `implemented`, and attempt-021 remains out of
 scope.
 
+Resume-repaired attempt-021 plan:
+`docs/parity/work-plans/20260814T194002Z-API-009/PLAN.md`.
+
+- [ ] Commit and push the immutable single-attempt contract and pass every
+      focused resume-freshness, mandatory, privacy, reference, firmware,
+      selector, and exact-package gate.
+- [ ] Run exactly one fresh detector-gated attempt-021, keep the device paused
+      and safe-stopped through unbounded human waits, and start the exact
+      30-second IDENTIFY window only from the local ready signal.
+- [ ] Promote only on the complete command/restart/device-user quorum;
+      otherwise preserve `implemented`, earliest failure, evidence withholding,
+      safe stop, cleanup, recovery, and stop without attempt-022.
+
+Attempt-021 authorization: pushed source `5df560f0` fixes the exact
+attempt-020 resume-freshness terminal-policy defect while retaining terminal
+active-mining and observation-stage stale telemetry. Focused plus mandatory
+gates must pass before this plan is pushed. Standing task authorization permits
+this one campaign only after the linked immutable contract and all named gates
+pass at clean pushed HEAD. Campaign start consumes attempt-021. No inferred or
+expired physical observation, protected-artifact reuse, external or owner pool,
+factory reset, destructive/fault-injection action, direct UART, pin/pad/GPIO
+manipulation, attempt-022, or unchanged retry is authorized.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
