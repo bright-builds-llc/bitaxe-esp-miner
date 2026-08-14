@@ -111,7 +111,7 @@ fn main() -> Result<()> {
         CliCommand::FlashMonitor(command) => run_flash_monitor(&command, &environment),
         CliCommand::FinalizeEvidence(command) => run_finalize_evidence(&command, &environment),
         CliCommand::MiningCampaign(command) => run_mining_campaign(&command, &environment),
-        CliCommand::ConfirmIdentify(command) => run_confirm_identify(&command, &environment),
+        CliCommand::SignalIdentify(command) => run_signal_identify(&command, &environment),
         CliCommand::Phase35Probe(command) => run_phase35_probe(&command, &environment),
     };
     let device_effect_state = environment.device_effect_state();

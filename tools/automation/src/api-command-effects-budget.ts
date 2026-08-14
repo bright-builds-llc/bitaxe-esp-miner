@@ -6,6 +6,7 @@ export type CommandEffectsBudgetComponents = {
   readonly usbRetryRecoveryMillis: number;
   readonly usbRecoveryMillis: number;
   readonly activationMillis: number;
+  readonly operatorReadyMillis: number;
   readonly observationMillis: number;
   readonly terminalGraceMillis: number;
   readonly finalCleanupMillis: number;
@@ -30,6 +31,7 @@ const productionComponents: CommandEffectsBudgetComponents = {
   usbRetryRecoveryMillis: 30_000,
   usbRecoveryMillis: 150_000,
   activationMillis: commandEffectsPhaseMillis,
+  operatorReadyMillis: 3_600_000,
   observationMillis: commandEffectsPhaseMillis,
   terminalGraceMillis: 180_000,
   finalCleanupMillis: 60_000,
@@ -69,6 +71,10 @@ export function deriveCommandEffectsTransactionBudget(
   );
   const usbRecoveryMillis = checkedInteger(components.usbRecoveryMillis, "USB recovery budget");
   const activationMillis = checkedInteger(components.activationMillis, "activation budget");
+  const operatorReadyMillis = checkedInteger(
+    components.operatorReadyMillis,
+    "operator ready budget",
+  );
   const observationMillis = checkedInteger(components.observationMillis, "observation budget");
   const terminalGraceMillis = checkedInteger(components.terminalGraceMillis, "terminal grace budget");
   const finalCleanupMillis = checkedInteger(components.finalCleanupMillis, "final cleanup budget");
@@ -93,6 +99,7 @@ export function deriveCommandEffectsTransactionBudget(
     usbRetryRecoveriesMillis,
     usbRecoveryMillis,
     activationMillis,
+    operatorReadyMillis,
     observationMillis,
     terminalGraceMillis,
     finalCleanupMillis,
@@ -110,6 +117,7 @@ export function deriveCommandEffectsTransactionBudget(
     usbRetryRecoveryMillis,
     usbRecoveryMillis,
     activationMillis,
+    operatorReadyMillis,
     observationMillis,
     terminalGraceMillis,
     finalCleanupMillis,

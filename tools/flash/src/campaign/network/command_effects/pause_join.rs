@@ -5,7 +5,7 @@ const SAFE_STOP_DEADLINE: Duration = Duration::from_secs(130);
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(super) enum PauseJoinDecision {
     Wait,
-    Resume,
+    Ready,
     TimedOut,
 }
 
@@ -38,7 +38,7 @@ impl PauseJoinState {
             return PauseJoinDecision::TimedOut;
         }
         if self.logical_pause_confirmed && serial_safe_stop_confirmed {
-            return PauseJoinDecision::Resume;
+            return PauseJoinDecision::Ready;
         }
         PauseJoinDecision::Wait
     }
@@ -79,8 +79,8 @@ mod tests {
         // Assert
         assert_eq!(serial_wait, PauseJoinDecision::Wait);
         assert_eq!(logical_wait, PauseJoinDecision::Wait);
-        assert_eq!(serial_joined, PauseJoinDecision::Resume);
-        assert_eq!(logical_joined, PauseJoinDecision::Resume);
+        assert_eq!(serial_joined, PauseJoinDecision::Ready);
+        assert_eq!(logical_joined, PauseJoinDecision::Ready);
     }
 
     #[test]

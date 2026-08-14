@@ -38,7 +38,10 @@ mining-campaign *args:
     bazel run //tools/flash:flash -- mining-campaign {{ args }}
 
 confirm-api-command-identify *args:
-    bazel run //tools/flash:flash -- confirm-identify {{ args }}
+    bazel run //tools/flash:flash -- signal-identify {{ args }}
+
+signal-api-command-identify *args:
+    bazel run //tools/flash:flash -- signal-identify {{ args }}
 
 api-command-effects-campaign *args:
     bazel build //firmware/bitaxe:firmware_image

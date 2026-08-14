@@ -116,5 +116,6 @@ test("a real child publishes ordered checkpoints before it settles", {
   const publicSignal = signals.map(formatOperatorCheckpointSignal).join("");
   assert(!publicSignal.includes(root));
   assert(publicSignal.includes("BITAXE IDENTIFY"));
+  assert(publicSignal.includes("operator_ready_timeout_seconds\":3600"));
   assert(publicSignal.includes("identify_duration_seconds\":30"));
 });

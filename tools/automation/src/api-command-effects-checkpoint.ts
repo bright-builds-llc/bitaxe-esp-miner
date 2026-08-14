@@ -15,6 +15,7 @@ export type OperatorCheckpointSignal = {
   readonly checkpoint: OperatorCheckpointKind;
   readonly confirm_when: ConfirmationCondition;
   readonly expected_frame: readonly ["", "BITAXE IDENTIFY", "Hello!", ""];
+  readonly operator_ready_timeout_seconds: 3600;
   readonly identify_duration_seconds: 30;
   readonly status: "required";
 };
@@ -61,6 +62,7 @@ function signal(checkpoint: OperatorCheckpointKind): OperatorCheckpointSignal {
     checkpoint,
     confirm_when: confirmationCondition(checkpoint),
     expected_frame: expectedFrame,
+    operator_ready_timeout_seconds: 3600,
     identify_duration_seconds: 30,
     status: "required",
   };

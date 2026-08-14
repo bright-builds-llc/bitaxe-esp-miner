@@ -33,3 +33,28 @@
 - Blocker or next safe action: Push this immutable checkpoint, confirm clean
   synchronized HEAD and the same open plan, then implement the bounded paused
   readiness transaction and sender.
+
+## 2026-08-14T12:28:25Z | software implementation verified
+
+- Source commit: `d0beee70c4815d23672e2fe353492550f6ea52dd`.
+- Actions: Moved ready arming after the logical-pause/serial-safe-stop join,
+  moved resume behind one-shot ready consumption, and moved the first IDENTIFY
+  request after same-session active recovery. Added a one-hour operator-ready
+  budget to the Rust child and TypeScript parent/fixture envelopes plus the
+  explicit `signal-api-command-identify` command.
+- Verification: Focused flash tests pass with 268 cases; the automation target,
+  checkpoint real child, timeout/budget/source contracts, strict Clippy,
+  all-target build, all-feature tests, Bright Builds, canonical Bazel tests,
+  parity, parity-progress, redaction, reference cleanliness, and the real ESP
+  firmware build pass. File-length findings were resolved by moving the
+  command-effects tests into their natural submodule.
+- Evidence: Deterministic software tests and public source only. The sender
+  retains mode-checked private files, one-shot rename consumption, ordered
+  checkpoint schema, and path-free public output. No credential, protected
+  attempt content, USB, device, network, display, mining, or hardware interface
+  was accessed.
+- Outcome: The software contract is complete with API-009 still `implemented`.
+  No checklist field or public parity evidence changed.
+- Blocker or next safe action: Commit and push this implementation as the
+  source checkpoint, then create the truthful software closure and rerun final
+  repository gates. Attempt-017 remains unauthorized.

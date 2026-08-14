@@ -19,14 +19,14 @@ pub(crate) enum CliCommand {
     FinalizeEvidence(FinalizeEvidenceCommand),
     #[command(name = "mining-campaign")]
     MiningCampaign(MiningCampaignCommand),
-    #[command(name = "confirm-identify")]
-    ConfirmIdentify(ConfirmIdentifyCommand),
+    #[command(name = "signal-identify", alias = "confirm-identify")]
+    SignalIdentify(SignalIdentifyCommand),
     #[command(name = "phase35-probe")]
     Phase35Probe(Phase35ProbeCommand),
 }
 
 #[derive(Debug, Parser, Clone)]
-pub(crate) struct ConfirmIdentifyCommand {
+pub(crate) struct SignalIdentifyCommand {
     #[arg(long = "evidence-dir", value_parser = parse_utf8_path)]
     pub(crate) evidence_dir: Utf8PathBuf,
 

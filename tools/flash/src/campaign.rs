@@ -23,6 +23,7 @@ const OBSERVATION_DURATION_SECONDS: u64 = 360;
 const MINING_DURATION_SECONDS: u64 = 600;
 const JOB_TRANSITION_DURATION_SECONDS: u64 = 1_800;
 const COMMAND_EFFECTS_DURATION_SECONDS: u64 = 600;
+const COMMAND_EFFECTS_OPERATOR_READY_SECONDS: u64 = 3_600;
 const MINING_TERMINAL_GRACE_SECONDS: u64 = 180;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -256,8 +257,8 @@ pub(crate) fn run_mining_campaign(
     finish_campaign_attempt(command, Some(admission), &paths, &attempt, result)
 }
 
-pub(crate) fn run_confirm_identify(
-    command: &ConfirmIdentifyCommand,
+pub(crate) fn run_signal_identify(
+    command: &SignalIdentifyCommand,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
     let evidence_root = environment.workspace_path(&command.evidence_dir);
@@ -403,6 +404,7 @@ fn campaign_capture_timeout_seconds(admission: CampaignAdmission) -> u64 {
         MiningCampaignStage::CommandEffects => admission
             .duration_seconds
             .saturating_mul(2)
+            .saturating_add(COMMAND_EFFECTS_OPERATOR_READY_SECONDS)
             .saturating_add(MINING_TERMINAL_GRACE_SECONDS),
     }
 }

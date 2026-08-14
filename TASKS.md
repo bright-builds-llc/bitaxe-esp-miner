@@ -2756,10 +2756,10 @@ retry are not authorized. See
 Paused asynchronous IDENTIFY signal plan:
 `docs/parity/work-plans/20260814T120645Z-API-009/PLAN.md`.
 
-- [ ] Move the one-shot ready checkpoint after the pause/safe-stop join and
+- [x] Move the one-shot ready checkpoint after the pause/safe-stop join and
       before resume, so the device remains safe-stopped while awaiting an
       asynchronous user or agent signal.
-- [ ] Add a checked one-hour ready window plus an explicit repo-owned signal-
+- [x] Add a checked one-hour ready window plus an explicit repo-owned signal-
       sender command, preserving exact ordering, private modes, redaction, and
       no resume or IDENTIFY effect before the signal.
 - [ ] Pass focused, real-process, firmware, mandatory, privacy, reference,
