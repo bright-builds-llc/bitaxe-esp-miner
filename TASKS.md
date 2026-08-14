@@ -3172,6 +3172,28 @@ network, display, mining, hardware-control, direct UART, or pin interface was
 accessed. API-009 remains `implemented`; no attempt-022 or hardware evidence
 was created. See the linked `CLOSURE.md`.
 
+Replay-capable attempt-022 plan:
+`docs/parity/work-plans/20260814T224914Z-API-009/PLAN.md`.
+
+- [ ] Commit and push the immutable single-attempt contract, then pass every
+      focused replay, mandatory, privacy, reference, firmware, selector, and
+      exact-package gate at clean synchronized HEAD.
+- [ ] Run exactly one fresh detector-gated attempt-022, keep the Ultra 205
+      paused and safe-stopped through every unbounded operator wait, and use at
+      most one explicit IDENTIFY replay only if the first window is missed.
+- [ ] Promote API-009 only on the complete command/restart/device-user quorum;
+      otherwise preserve `implemented`, the earliest typed failure, evidence
+      withholding, safe stop, cleanup, and recovery, then stop without
+      attempt-023.
+
+Attempt-022 authorization: pushed source `420c2236` adds the typed, bounded
+single-replay protocol after attempt-021's missed observation. Standing task
+authorization permits this one exact-package campaign only after the linked
+immutable contract and all named gates pass. Campaign start consumes
+attempt-022. No inferred observation, protected-artifact reuse, external or
+owner pool, factory reset, erase, destructive/fault-injection action, direct
+UART, pin/pad/GPIO manipulation, attempt-023, or unchanged retry is authorized.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
