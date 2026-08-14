@@ -2659,6 +2659,28 @@ still force safe pause. Focused and mandatory gates pass. No hardware ran,
 API-009 remains `implemented`, and attempt-015 requires a separate clean
 selector plus immutable bounded plan.
 
+Startup-intent-fixed attempt-015 plan:
+`docs/parity/work-plans/20260814T035526Z-API-009/PLAN.md`.
+
+- [x] Commit and push the immutable single-attempt contract and pass every
+      focused, mandatory, privacy, reference, firmware, and exact-package gate.
+- [ ] Run exactly one fresh detector-gated attempt-015 and consume each
+      IDENTIFY checkpoint only after its matching live physical report.
+- [ ] Promote only on the complete command/restart/device-user quorum;
+      otherwise preserve `implemented`, earliest failure, evidence withholding,
+      safe stop, cleanup, recovery, and stop without attempt-016.
+
+Attempt-015 authorization: pushed commit `13f75265` reproduces and fixes the
+exact attempt-014 startup-intent race with a lease-scoped current-boot run
+bootstrap before production-owner readiness. Persisted mine-on-boot remains
+disabled, later explicit pause/resume stays authoritative, ordinary campaigns
+do not opt in, and consumed leases force pause. Standing task authorization
+permits this one campaign only after the linked immutable contract and all
+named gates pass at clean pushed HEAD. Campaign start consumes attempt-015. No
+inferred physical observation, protected-artifact reuse, external or owner
+pool, destructive/fault-injection action, direct UART, pin/pad/GPIO
+manipulation, attempt-016, or unchanged retry is authorized.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
