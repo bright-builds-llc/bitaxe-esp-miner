@@ -38,3 +38,48 @@
 - Blocker or next safe action: Push this checkpoint, confirm clean synchronized
   HEAD and the same open plan, then add the failing receive-session regression
   before production code.
+
+## 2026-08-14T04:30:32Z | red-green implementation checkpoint
+
+- Source commit: `daba5d8a7a504b20f41b8a5e11c2d9d923940ca2` plus the uncommitted
+  software changes described here.
+- Actions: Added four line-boundary/reopen regressions before implementation.
+  The focused target failed because the receive-line admission owner did not
+  exist. Added one allocation-free resettable owner and applied its admitted
+  suffix once at the USB session's ephemeral callback boundary.
+- Verification: The exact red compile failure changed to green. Focused tests
+  prove the initial line is discarded, a boundary split across chunks waits,
+  later chunks pass unchanged, reader reopen resets admission, and the real
+  receive-session seam resets after open and admits before callback. Existing
+  strict flash marker tests, automation, command-effects real-process, and
+  device-session targets pass together.
+- Evidence: Public source, test outcomes, and the exact compiler failure. No
+  credential, protected attempt artifact, detector, USB, device, network,
+  display, mining, or hardware interface was accessed.
+- Outcome: The attempt-015 first-line failure is fixed without accepting,
+  repairing, or special-casing malformed post-admission evidence. Ordinary
+  retained monitor capture remains on its unchanged byte path.
+- Blocker or next safe action: Run the complete final gate sequence, review the
+  diff and simplification, and close this software-only plan with API-009 still
+  `implemented` and attempt-016 unauthorized.
+
+## 2026-08-14T04:40:30Z | software closure checkpoint
+
+- Source commit: `daba5d8a7a504b20f41b8a5e11c2d9d923940ca2` plus the final
+  software changes described here.
+- Actions: Completed the simplification pass and retained one boolean admission
+  owner at the USB session boundary. The ordinary capture branch is unchanged;
+  no retry, allocation, content repair, length heuristic, or marker exception
+  was added.
+- Verification: The red regression, focused boundary/reopen and real-seam
+  tests, strict post-admission marker tests, device-session, flash, automation,
+  real-process, firmware, mandatory, privacy, reference, selector, digest, and
+  diff gates pass. The parent USB module remains at its 628-line limit.
+- Evidence: Public source, tests, immutable digest, and category-only gate
+  outcomes. No credential, protected attempt artifact, detector, USB, device,
+  network, display, mining, or hardware interface was accessed.
+- Outcome: Receive-only ephemeral analyzers now begin only after a proved line
+  boundary and share the same admitted bytes. API-009 remains `implemented`.
+- Blocker or next safe action: Commit and push this closure, restore a clean
+  synchronized selector, and require a separate immutable contract before any
+  later hardware ordinal. Attempt-016 remains unauthorized by this plan.

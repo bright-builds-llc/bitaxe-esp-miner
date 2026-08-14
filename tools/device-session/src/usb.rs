@@ -1,6 +1,7 @@
 //! Durable ownership and lifecycle supervision for repository USB operations.
 
 mod lease;
+mod line_admission;
 mod process;
 mod recovery;
 
@@ -311,8 +312,7 @@ impl UsbSession {
         result
     }
 
-    /// Feeds receive-only serial chunks directly to a bounded analyzer without
-    /// retaining or persisting the cumulative serial transcript.
+    /// Feeds newline-admitted chunks without retaining a cumulative transcript.
     pub fn observe_receive_only_ephemeral_chunks_until(
         &mut self,
         duration: Duration,
@@ -342,6 +342,7 @@ impl UsbSession {
         let mut bytes = Vec::new();
         let mut maybe_reader = None;
         let mut reenumerated = false;
+        let mut line_admission = line_admission::ReceiveLineAdmission::new();
 
         while Instant::now() < deadline {
             if let Some(signal) = process::maybe_pending_signal() {
@@ -362,6 +363,7 @@ impl UsbSession {
                     Some(ReceiveOnlyReader::open(&snapshot.port).map_err(|error| {
                         session_error(UsbTerminalCategory::MonitorFailed, error)
                     })?);
+                line_admission.reset();
             }
             let Some(reader) = maybe_reader.as_mut() else {
                 return Err(session_error(
@@ -372,7 +374,7 @@ impl UsbSession {
             match reader.read_available() {
                 Ok(chunk) => {
                     let should_stop = if feed_chunks {
-                        stop(&chunk)
+                        line_admission.admit(&chunk).is_some_and(&mut stop)
                     } else {
                         let remaining = MAX_MONITOR_BYTES.saturating_sub(bytes.len());
                         bytes.extend_from_slice(&chunk[..chunk.len().min(remaining)]);

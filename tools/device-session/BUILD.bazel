@@ -36,6 +36,7 @@ rust_library(
         "src/platform.rs",
         "src/usb.rs",
         "src/usb/lease.rs",
+        "src/usb/line_admission.rs",
         "src/usb/lifecycle.rs",
         "src/usb/policy.rs",
         "src/usb/process.rs",
