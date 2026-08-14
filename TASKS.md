@@ -2860,13 +2860,13 @@ of scope.
 Startup-order-fixed attempt-018 plan:
 `docs/parity/work-plans/20260814T143040Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable single-attempt contract and pass every
+- [x] Commit and push the immutable single-attempt contract and pass every
       focused, mandatory, privacy, reference, firmware, selector, and exact-
       package gate.
-- [ ] Run exactly one fresh detector-gated attempt-018, keep the device paused
+- [x] Run exactly one fresh detector-gated attempt-018, keep the device paused
       and safe-stopped while waiting, and send each private checkpoint only
       after its matching live physical report.
-- [ ] Promote only on the complete command/restart/device-user quorum;
+- [x] Promote only on the complete command/restart/device-user quorum;
       otherwise preserve `implemented`, earliest failure, evidence withholding,
       safe stop, cleanup, recovery, and stop without attempt-019.
 
@@ -2880,6 +2880,21 @@ attempt-018. No inferred or expired physical observation, protected-artifact
 reuse, external or owner pool, factory reset, destructive/fault-injection
 action, direct UART, pin/pad/GPIO manipulation, attempt-019, or unchanged retry
 is authorized.
+
+Completion review: attempt-018 admitted the exact package and one Ultra 205;
+both flashes completed once as `ready`, and runtime attestation is `trusted`,
+proving the startup-order repair resolved attempt-017's zero-attestation
+boundary. The campaign proved the genuine notification, positive block count,
+pause and safe stop, live ready signal, resume and active recovery, two
+IDENTIFY requests, and the live rendered observation. It then stopped as
+`network_target_unavailable` / `safety_prerequisites_stale` after 40,707 ms
+active: five required observations were fresh and `vr_temp_celsius` alone was
+unsatisfied. The cleared signal was sent after its live physical report but was
+not consumed before the terminal transition; dismiss and restart did not run.
+Safe stop, recovery without a secondary failure, USB cleanup, private modes,
+process cleanup, and evidence withholding are confirmed. API-009 remains
+`implemented`; no attempt-019 is authorized. See
+`docs/parity/work-plans/20260814T143040Z-API-009/CLOSURE.md`.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 

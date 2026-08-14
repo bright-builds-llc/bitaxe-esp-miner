@@ -35,3 +35,29 @@
 - Blocker or next safe action: Push this checkpoint, confirm clean synchronized
   HEAD and the same open plan, then perform exact-package admission before the
   sole detector run.
+
+## 2026-08-14T14:48:57Z | exact-package attempt and terminal closure
+
+- Source commit: `dc72ad075a374b54c29f158bd684f16a99d21770`.
+- Actions: Confirmed clean synchronized HEAD, built the exact Ultra 205
+  package, checked only that the ignored Wi-Fi input was non-empty, ran the
+  fresh detector once, and invoked the sole attempt-018 campaign once. Sent
+  ready, rendered, and cleared signals only after their matching live typed
+  checkpoints and physical reports.
+- Verification: One board-205 session was admitted. Factory and NVS transfers
+  each completed once as `ready`; runtime attestation became `trusted`; the
+  genuine notification, pause, safe stop, resume, active recovery, and rendered
+  observation passed. The typed terminal result is
+  `network_target_unavailable` / `safety_prerequisites_stale`: after 40,707 ms
+  active, five required observations were fresh and `vr_temp_celsius` alone was
+  unsatisfied. The cleared signal was not consumed before terminal closure.
+- Evidence: Only categorical fields, booleans, counts, and bounded durations
+  were inspected. Credential, port, USB/network identity, origin, hostname,
+  sensor values, and raw traces remain protected.
+- Outcome: Attempt-018 is consumed. Safe stop is confirmed, recovery was
+  attempted without a secondary failure, USB cleanup is ready, protected modes
+  pass, the campaign process is absent, and the public projection is withheld.
+  API-009 remains `implemented`.
+- Blocker or next safe action: Close this immutable plan without attempt-019.
+  Investigate the active IDENTIFY observation window and VR-temperature
+  freshness in software before considering any later hardware contract.
