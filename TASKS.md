@@ -2933,6 +2933,30 @@ hardware access, attempt-019, evidence publication, or status promotion
 occurred; API-009 remains `implemented` pending a separately planned hardware
 attempt.
 
+Pause-held attempt-019 plan:
+`docs/parity/work-plans/20260814T152151Z-API-009/PLAN.md`.
+
+- [ ] Commit and push the immutable single-attempt contract and pass every
+      focused, mandatory, privacy, reference, firmware, selector, and exact-
+      package gate.
+- [ ] Run exactly one fresh detector-gated attempt-019, keep the device paused
+      and safe-stopped through both physical IDENTIFY observations, and send
+      each private checkpoint only after its matching live physical report.
+- [ ] Promote only on the complete command/restart/device-user quorum;
+      otherwise preserve `implemented`, earliest failure, evidence withholding,
+      safe stop, cleanup, recovery, and stop without attempt-020.
+
+Attempt-019 authorization: pushed source `5fb8f4ce` deterministically proves
+and fixes attempt-018's active observation-window failure by retaining the
+single safe-stop pause through ready, rendered, and cleared, then resuming once
+before dismissal. Focused plus mandatory gates pass. Standing task
+authorization permits this one campaign only after the linked immutable
+contract and all named gates pass at clean pushed HEAD. Campaign start consumes
+attempt-019. No inferred or expired physical observation, protected-artifact
+reuse, external or owner pool, factory reset, destructive/fault-injection
+action, direct UART, pin/pad/GPIO manipulation, attempt-020, or unchanged retry
+is authorized.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
