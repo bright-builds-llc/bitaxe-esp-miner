@@ -40,3 +40,47 @@
 - Blocker or next safe action: Push this checkpoint, confirm clean synchronized
   HEAD and the same open plan, then perform exact-package admission before the
   sole detector run.
+
+## 2026-08-14T19:59:20Z | exact-package attempt and declined observation
+
+- Source commit: `edd05b1d8ae8dbbf3cc77340c400d547f11d09b2`.
+- Actions: Confirmed clean synchronized HEAD and the unique open plan, built
+  and validated the exact package, ran the fresh detector once, invoked the
+  sole attempt-021 campaign once, and consumed the ready checkpoint from a live
+  operator signal. When the operator reported not watching the display, used
+  the supported rendered-checkpoint `declined` outcome rather than replaying or
+  inferring the observation.
+- Verification: One board-205 session was admitted and the campaign reached
+  the unbounded ready checkpoint. The exact 30-second effect window started
+  once. Public closure reports `hardware_blocked`, terminal safe stop confirmed,
+  cleanup complete, recovery attempted, and no secondary recovery failure.
+  Private modes pass, attempt processes are absent, and public evidence is
+  withheld.
+- Evidence: Only the public checkpoint/result contract and categorical cleanup
+  facts were inspected. Credential, port, USB/network identity, origin,
+  hostname, sensor values, and raw traces remain protected.
+- Outcome: Attempt-021 is consumed. API-009 remains `implemented`; no rendered
+  or cleared observation, resume, dismissal, restart, public evidence, or
+  promotion claim is made.
+- Blocker or next safe action: Close this immutable plan without attempt-022.
+  Treat replayable operator-triggered IDENTIFY windows as a separate software
+  design and verification problem before any later hardware attempt.
+
+## 2026-08-14T20:03:17Z | terminal closure verification
+
+- Source commit: `edd05b1d8ae8dbbf3cc77340c400d547f11d09b2`.
+- Actions: Added the non-verifying closure and completion review without
+  changing the immutable plan or parity checklist.
+- Verification: Formatting, strict Clippy, all-target build, all-feature tests,
+  Bright Builds, all 44 Bazel test targets, parity, parity-progress, redaction,
+  reference cleanliness, real ESP firmware build, plan digest, selector
+  closure, private modes, process cleanup, projection withholding, sensitive-
+  pattern scan, and diff checks pass.
+- Evidence: Public result fields and category-only cleanup checks. No protected
+  attempt value, credential, device identity, endpoint, sensor value, or raw
+  trace was read or published.
+- Outcome: The attempt-021 plan lifecycle is truthfully closed with API-009
+  still `implemented` and no checklist transition or progress synchronization.
+- Blocker or next safe action: Commit and push this closure. Do not run
+  attempt-022 without a separate verified replay-protocol change and immutable
+  hardware contract.

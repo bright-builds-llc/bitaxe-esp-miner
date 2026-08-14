@@ -3108,13 +3108,13 @@ scope.
 Resume-repaired attempt-021 plan:
 `docs/parity/work-plans/20260814T194002Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable single-attempt contract and pass every
+- [x] Commit and push the immutable single-attempt contract and pass every
       focused resume-freshness, mandatory, privacy, reference, firmware,
       selector, and exact-package gate.
-- [ ] Run exactly one fresh detector-gated attempt-021, keep the device paused
+- [x] Run exactly one fresh detector-gated attempt-021, keep the device paused
       and safe-stopped through unbounded human waits, and start the exact
       30-second IDENTIFY window only from the local ready signal.
-- [ ] Promote only on the complete command/restart/device-user quorum;
+- [x] Promote only on the complete command/restart/device-user quorum;
       otherwise preserve `implemented`, earliest failure, evidence withholding,
       safe stop, cleanup, recovery, and stop without attempt-022.
 
@@ -3127,6 +3127,17 @@ pass at clean pushed HEAD. Campaign start consumes attempt-021. No inferred or
 expired physical observation, protected-artifact reuse, external or owner pool,
 factory reset, destructive/fault-injection action, direct UART, pin/pad/GPIO
 manipulation, attempt-022, or unchanged retry is authorized.
+
+Completion review: attempt-021 admitted exact package `edd05b1d` and one Ultra
+205, then reached the safe unbounded ready checkpoint. The ready signal started
+the one exact 30-second IDENTIFY window, but the operator reported not watching
+the display and could not confirm the rendered frame. The supported `declined`
+outcome was recorded without inference or replay. The campaign closed as
+`hardware_blocked` with terminal safe stop confirmed, cleanup complete,
+successful recovery, no secondary recovery failure, valid private modes,
+attempt processes absent, and public evidence withheld. API-009 remains
+`implemented`; attempt-021 is consumed and no attempt-022 is authorized. See
+the linked `CLOSURE.md`.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
