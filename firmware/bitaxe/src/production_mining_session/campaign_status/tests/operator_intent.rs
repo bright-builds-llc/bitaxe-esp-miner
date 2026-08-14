@@ -29,7 +29,9 @@ fn command_effects_stage_follows_operator_intent_after_first_active_snapshot() {
     let lease = MiningCampaignLease::new(
         MiningCampaignLeaseId::new(10).expect("lease id"),
         profile.profile(),
-        MiningCampaignStopCondition::ResumableWallClockDuration {
+        MiningCampaignStopCondition::ResumableActiveEpoch {
+            activation_timeout: MiningCampaignDuration::new(600_000)
+                .expect("activation timeout"),
             duration: MiningCampaignDuration::new(600_000).expect("duration"),
         },
     );

@@ -128,16 +128,69 @@ impl MiningCampaignDuration {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MiningCampaignStopCondition {
-    FirstSubmitResponse { timeout: MiningCampaignDuration },
-    ActiveDuration { duration: MiningCampaignDuration },
-    ResumableWallClockDuration { duration: MiningCampaignDuration },
+    FirstSubmitResponse {
+        timeout: MiningCampaignDuration,
+    },
+    ActiveDuration {
+        duration: MiningCampaignDuration,
+    },
+    ResumableActiveEpoch {
+        activation_timeout: MiningCampaignDuration,
+        duration: MiningCampaignDuration,
+    },
 }
 
 impl MiningCampaignStopCondition {
     #[must_use]
     pub const fn allows_operator_resume(self) -> bool {
-        matches!(self, Self::ResumableWallClockDuration { .. })
+        matches!(self, Self::ResumableActiveEpoch { .. })
     }
+
+    pub(super) fn maybe_expiration(
+        self,
+        now_ms: u64,
+        timing: MiningCampaignTiming,
+    ) -> Option<CampaignExpiration> {
+        match self {
+            Self::FirstSubmitResponse { timeout } => timing
+                .maybe_prepared_at_ms
+                .is_some_and(|started| now_ms.saturating_sub(started) >= timeout.milliseconds())
+                .then_some(CampaignExpiration::LeaseConsumed),
+            Self::ActiveDuration { duration } => timing
+                .maybe_active_since_ms
+                .is_some_and(|started| now_ms.saturating_sub(started) >= duration.milliseconds())
+                .then_some(CampaignExpiration::LeaseConsumed),
+            Self::ResumableActiveEpoch {
+                activation_timeout,
+                duration,
+            } => {
+                if let Some(started) = timing.maybe_resumable_epoch_started_at_ms {
+                    return (now_ms.saturating_sub(started) >= duration.milliseconds())
+                        .then_some(CampaignExpiration::LeaseConsumed);
+                }
+                timing
+                    .maybe_activation_started_at_ms
+                    .is_some_and(|started| {
+                        now_ms.saturating_sub(started) >= activation_timeout.milliseconds()
+                    })
+                    .then_some(CampaignExpiration::ActivationTimedOut)
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum CampaignExpiration {
+    ActivationTimedOut,
+    LeaseConsumed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct MiningCampaignTiming {
+    pub(super) maybe_prepared_at_ms: Option<u64>,
+    pub(super) maybe_activation_started_at_ms: Option<u64>,
+    pub(super) maybe_resumable_epoch_started_at_ms: Option<u64>,
+    pub(super) maybe_active_since_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -25,12 +25,13 @@ test("production parent budget exceeds every bounded child phase", () => {
   const budget = COMMAND_EFFECTS_TRANSACTION_BUDGET;
 
   // Act
-  const boundedObservation = budget.observationMillis + budget.terminalGraceMillis;
+  const boundedObservation =
+    budget.activationMillis + budget.observationMillis + budget.terminalGraceMillis;
 
   // Assert
-  assert.equal(boundedObservation, 780_000);
-  assert.equal(budget.childMaximumMillis, 3_250_000);
-  assert.equal(budget.parentTimeoutMillis, 3_255_000);
+  assert.equal(boundedObservation, 1_380_000);
+  assert.equal(budget.childMaximumMillis, 3_850_000);
+  assert.equal(budget.parentTimeoutMillis, 3_855_000);
   assert(budget.parentTimeoutMillis > budget.childMaximumMillis);
   assert(budget.parentTimeoutMillis > 810_000);
   assert(budget.fixtureTimeoutMillis > budget.parentTimeoutMillis);
@@ -45,6 +46,7 @@ test("budget derivation rejects unsafe arithmetic", () => {
     usbCommandMillis: 2,
     usbRetryRecoveryMillis: 1,
     usbRecoveryMillis: 1,
+    activationMillis: 1,
     observationMillis: 1,
     terminalGraceMillis: 1,
     finalCleanupMillis: 1,
@@ -73,13 +75,14 @@ test("budget components remain bound to child source limits", async () => {
 
   // Act / Assert
   assert.match(campaign, /MINING_TERMINAL_GRACE_SECONDS: u64 = 180/u);
+  assert.match(campaign, /\.saturating_mul\(2\)/u);
   assert.match(environment, /Duration::from_secs\(10\)/u);
   assert.equal(environment.match(/Duration::from_secs\(360\)/gu)?.length, 1);
   assert.match(usb, /for attempt in 1\.\.=2/u);
   assert.match(recovery, /STANDARD_RECOVERY_TIMEOUT: Duration = Duration::from_secs\(30\)/u);
   assert.match(recovery, /EXTENDED_RECOVERY_TIMEOUT: Duration = Duration::from_secs\(60\)/u);
   assert.match(processAdapter, /setTimeout\(\(\) => child\.kill\("SIGKILL"\), 5_000\)/u);
-  assert.match(fixture, /durationSeconds > 3_600/u);
+  assert.match(fixture, /durationSeconds > 4_200/u);
 });
 
 test("derived real-process guard permits child cleanup before exit", async () => {
@@ -93,11 +96,12 @@ test("derived real-process guard permits child cleanup before exit", async () =>
     usbCommandMillis: 10,
     usbRetryRecoveryMillis: 10,
     usbRecoveryMillis: 10,
+    activationMillis: 10,
     observationMillis: 10,
     terminalGraceMillis: 10,
     finalCleanupMillis: 10,
     processTerminationMillis: 100,
-    fixtureStopMarginMillis: 840,
+    fixtureStopMarginMillis: 830,
   });
   const processPort = createLocalProcessPort({ cwd: root, timeoutMs: 2_000 });
   const script = [

@@ -110,18 +110,8 @@ pub(crate) fn load_production_campaign_admission(
         .map_err(|_| ProductionSettingsReadError::new("campaign_lease"))?;
     let duration = MiningCampaignDuration::new(duration_ms)
         .map_err(|_| ProductionSettingsReadError::new("campaign_duration"))?;
-    let stop_condition = match stage {
-        MiningCampaignStage::LiveShare => {
-            MiningCampaignStopCondition::FirstSubmitResponse { timeout: duration }
-        }
-        MiningCampaignStage::Soak => MiningCampaignStopCondition::ActiveDuration { duration },
-        MiningCampaignStage::JobTransition => {
-            MiningCampaignStopCondition::ActiveDuration { duration }
-        }
-        MiningCampaignStage::CommandEffects => {
-            MiningCampaignStopCondition::ResumableWallClockDuration { duration }
-        }
-        MiningCampaignStage::Observation => unreachable!(),
+    let Some(stop_condition) = maybe_campaign_stop_condition(stage, duration) else {
+        return Err(ProductionSettingsReadError::new("campaign_stop_condition"));
     };
     drop(nvs);
 
@@ -137,6 +127,27 @@ pub(crate) fn load_production_campaign_admission(
             stop_condition,
         )),
     }))
+}
+
+const fn maybe_campaign_stop_condition(
+    stage: MiningCampaignStage,
+    duration: MiningCampaignDuration,
+) -> Option<MiningCampaignStopCondition> {
+    let condition = match stage {
+        MiningCampaignStage::LiveShare => {
+            MiningCampaignStopCondition::FirstSubmitResponse { timeout: duration }
+        }
+        MiningCampaignStage::Soak => MiningCampaignStopCondition::ActiveDuration { duration },
+        MiningCampaignStage::JobTransition => {
+            MiningCampaignStopCondition::ActiveDuration { duration }
+        }
+        MiningCampaignStage::CommandEffects => MiningCampaignStopCondition::ResumableActiveEpoch {
+            activation_timeout: duration,
+            duration,
+        },
+        MiningCampaignStage::Observation => return None,
+    };
+    Some(condition)
 }
 
 const fn campaign_contract_valid(
@@ -335,5 +346,25 @@ mod tests {
         assert!(exact);
         assert!(!short);
         assert!(!wrong_profile);
+    }
+
+    #[test]
+    fn command_effects_maps_one_duration_to_two_typed_phases() {
+        // Arrange
+        let duration = MiningCampaignDuration::new(COMMAND_EFFECTS_DURATION_MS)
+            .expect("command effects duration");
+
+        // Act
+        let maybe_condition =
+            maybe_campaign_stop_condition(MiningCampaignStage::CommandEffects, duration);
+
+        // Assert
+        assert_eq!(
+            maybe_condition,
+            Some(MiningCampaignStopCondition::ResumableActiveEpoch {
+                activation_timeout: duration,
+                duration,
+            })
+        );
     }
 }

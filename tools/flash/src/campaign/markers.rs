@@ -1,4 +1,6 @@
 use super::*;
+mod command_effects;
+use command_effects::assess_command_effects_terminal;
 mod soak;
 use soak::assess_soak_terminal;
 mod protocol;
@@ -50,6 +52,7 @@ pub(super) enum CampaignTerminalReasonMarker {
     SafetyPrerequisitesStale,
     CampaignLeaseUnavailable,
     CampaignLeaseConsumed,
+    CampaignActivationTimedOut,
     ProductionAsicUnavailable,
     ProductionAsicVersionMaskUnavailable,
     ProductionAsicDispatchUnavailable,
@@ -72,6 +75,7 @@ impl CampaignTerminalReasonMarker {
             Self::SafetyPrerequisitesStale => "safety_prerequisites_stale",
             Self::CampaignLeaseUnavailable => "campaign_lease_unavailable",
             Self::CampaignLeaseConsumed => "campaign_lease_consumed",
+            Self::CampaignActivationTimedOut => "campaign_activation_timed_out",
             Self::ProductionAsicUnavailable => "production_asic_unavailable",
             Self::ProductionAsicVersionMaskUnavailable => {
                 "production_asic_version_mask_unavailable"
@@ -490,13 +494,6 @@ pub(super) fn campaign_marker_failure(
         }
     }
     None
-}
-
-fn assess_command_effects_terminal(
-    marker: &CampaignStatusMarker,
-) -> std::result::Result<CampaignTerminalCategory, CampaignFailure> {
-    assess_mining_terminal(marker)?;
-    Ok(CampaignTerminalCategory::CommandEffectsComplete)
 }
 
 fn assess_job_transition_terminal(

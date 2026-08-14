@@ -63,6 +63,7 @@ pub(crate) enum CampaignTerminalCategory {
     ActuationDuringObservation,
     ObservationContractIncomplete,
     HardwarePreparationFailed,
+    CampaignActivationTimedOut,
     PoolConfigurationMissing,
     SubmitResponseMissing,
     SoakDurationShort,
@@ -124,6 +125,7 @@ impl CampaignTerminalCategory {
             Self::ActuationDuringObservation => "actuation_during_observation",
             Self::ObservationContractIncomplete => "observation_contract_incomplete",
             Self::HardwarePreparationFailed => "hardware_preparation_failed",
+            Self::CampaignActivationTimedOut => "campaign_activation_timed_out",
             Self::PoolConfigurationMissing => "pool_configuration_missing",
             Self::SubmitResponseMissing => "submit_response_missing",
             Self::SoakDurationShort => "soak_duration_short",
@@ -395,9 +397,12 @@ fn campaign_capture_timeout_seconds(admission: CampaignAdmission) -> u64 {
         MiningCampaignStage::Observation => admission.duration_seconds,
         MiningCampaignStage::LiveShare
         | MiningCampaignStage::Soak
-        | MiningCampaignStage::JobTransition
-        | MiningCampaignStage::CommandEffects => admission
+        | MiningCampaignStage::JobTransition => admission
             .duration_seconds
+            .saturating_add(MINING_TERMINAL_GRACE_SECONDS),
+        MiningCampaignStage::CommandEffects => admission
+            .duration_seconds
+            .saturating_mul(2)
             .saturating_add(MINING_TERMINAL_GRACE_SECONDS),
     }
 }

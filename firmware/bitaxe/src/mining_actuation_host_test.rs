@@ -338,7 +338,9 @@ fn production_resumable_pause_reaches_same_lease_confirmation_without_cooling_wa
     let lease = MiningCampaignLease::new(
         MiningCampaignLeaseId::new(9).expect("lease id should be valid"),
         profile(),
-        MiningCampaignStopCondition::ResumableWallClockDuration {
+        MiningCampaignStopCondition::ResumableActiveEpoch {
+            activation_timeout: MiningCampaignDuration::new(1_000)
+                .expect("activation timeout should be valid"),
             duration: MiningCampaignDuration::new(1_000).expect("duration should be valid"),
         },
     );

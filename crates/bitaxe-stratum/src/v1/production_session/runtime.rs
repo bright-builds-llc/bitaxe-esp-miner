@@ -1,10 +1,11 @@
 mod asic;
+mod campaign_state;
 mod transport;
 
 use super::asic_diagnostics::AsicBridgeDiagnosticsTracker;
 use super::campaign::{
-    MiningCampaignLease, MiningCampaignLeaseId, MiningCampaignState, MiningCampaignStopCondition,
-    MiningHardwareState,
+    CampaignExpiration, MiningCampaignLease, MiningCampaignLeaseId, MiningCampaignState,
+    MiningCampaignStopCondition, MiningCampaignTiming, MiningHardwareState,
 };
 use super::job_transition::JobTransitionTracker;
 use crate::v1::bridge_orchestration::BridgeOrchestrator;
@@ -42,7 +43,8 @@ pub struct ProductionMiningSession {
     pub(super) maybe_lease: Option<MiningCampaignLease>,
     pub(super) maybe_consumed_lease_id: Option<MiningCampaignLeaseId>,
     pub(super) maybe_prepared_at_ms: Option<u64>,
-    pub(super) maybe_lease_started_at_ms: Option<u64>,
+    pub(super) maybe_activation_started_at_ms: Option<u64>,
+    pub(super) maybe_resumable_epoch_started_at_ms: Option<u64>,
     pub(super) maybe_active_since_ms: Option<u64>,
     pub(super) resumable_pause_pending: bool,
     pub(super) job_transition: JobTransitionTracker,
@@ -84,7 +86,8 @@ impl ProductionMiningSession {
             maybe_lease: None,
             maybe_consumed_lease_id: None,
             maybe_prepared_at_ms: None,
-            maybe_lease_started_at_ms: None,
+            maybe_activation_started_at_ms: None,
+            maybe_resumable_epoch_started_at_ms: None,
             maybe_active_since_ms: None,
             resumable_pause_pending: false,
             job_transition: JobTransitionTracker::default(),
@@ -372,12 +375,25 @@ impl ProductionMiningSession {
         effects: &mut Vec<ProductionSessionEffect>,
     ) -> Result<(), StratumV1Error> {
         self.last_readiness = readiness;
-        if self.campaign_expired(now_ms) {
-            return self.begin_terminal_safe_stop(
-                Some(ProductionSessionBlocker::CampaignLeaseConsumed),
-                false,
-                effects,
-            );
+        let timing = MiningCampaignTiming {
+            maybe_prepared_at_ms: self.maybe_prepared_at_ms,
+            maybe_activation_started_at_ms: self.maybe_activation_started_at_ms,
+            maybe_resumable_epoch_started_at_ms: self.maybe_resumable_epoch_started_at_ms,
+            maybe_active_since_ms: self.maybe_active_since_ms,
+        };
+        if let Some(expiration) = self
+            .maybe_lease
+            .and_then(|lease| lease.stop_condition().maybe_expiration(now_ms, timing))
+        {
+            let blocker = match expiration {
+                CampaignExpiration::ActivationTimedOut => {
+                    ProductionSessionBlocker::CampaignActivationTimedOut
+                }
+                CampaignExpiration::LeaseConsumed => {
+                    ProductionSessionBlocker::CampaignLeaseConsumed
+                }
+            };
+            return self.begin_terminal_safe_stop(Some(blocker), false, effects);
         }
         if matches!(wakeup, Some(ProductionSessionWakeup::ShutdownRequested)) {
             return self.begin_terminal_safe_stop(None, true, effects);
@@ -431,7 +447,7 @@ impl ProductionMiningSession {
         match self.hardware_state {
             MiningHardwareState::Unprepared | MiningHardwareState::Stopped => {
                 self.maybe_lease = Some(lease);
-                self.maybe_lease_started_at_ms.get_or_insert(now_ms);
+                self.maybe_activation_started_at_ms.get_or_insert(now_ms);
                 self.hardware_state = MiningHardwareState::Preparing;
                 self.campaign_state = MiningCampaignState::Preparing;
                 self.maybe_prepared_at_ms = None;
@@ -545,58 +561,6 @@ impl ProductionMiningSession {
         };
         effects.push(ProductionSessionEffect::SafeStopHardware { lease_id, purpose });
         Ok(())
-    }
-
-    fn confirm_hardware_safe_stop(&mut self, lease_id: MiningCampaignLeaseId) {
-        if self.hardware_state != MiningHardwareState::SafeStopping
-            || self.maybe_lease.map(MiningCampaignLease::id) != Some(lease_id)
-        {
-            return;
-        }
-        self.hardware_state = MiningHardwareState::Stopped;
-        if self.resumable_pause_pending {
-            self.resumable_pause_pending = false;
-            self.campaign_state = MiningCampaignState::Armed;
-            self.maybe_prepared_at_ms = None;
-            self.maybe_active_since_ms = None;
-            self.terminal_publication_pending = false;
-            return;
-        }
-        self.campaign_state = MiningCampaignState::Consumed;
-        self.maybe_consumed_lease_id = Some(lease_id);
-        self.maybe_lease = None;
-        self.maybe_prepared_at_ms = None;
-        self.maybe_lease_started_at_ms = None;
-        self.maybe_active_since_ms = None;
-        self.terminal_publication_pending = false;
-    }
-
-    fn note_campaign_active(&mut self, now_ms: u64) {
-        if matches!(
-            self.recovery.projection().phase,
-            ProductionSessionPhase::RunningPrimary | ProductionSessionPhase::RunningFallback
-        ) && self.hardware_state == MiningHardwareState::Ready
-        {
-            self.campaign_state = MiningCampaignState::Active;
-            self.maybe_active_since_ms.get_or_insert(now_ms);
-        }
-    }
-
-    fn campaign_expired(&self, now_ms: u64) -> bool {
-        let Some(lease) = self.maybe_lease else {
-            return false;
-        };
-        match lease.stop_condition() {
-            MiningCampaignStopCondition::FirstSubmitResponse { timeout } => self
-                .maybe_prepared_at_ms
-                .is_some_and(|started| now_ms.saturating_sub(started) >= timeout.milliseconds()),
-            MiningCampaignStopCondition::ActiveDuration { duration } => self
-                .maybe_active_since_ms
-                .is_some_and(|started| now_ms.saturating_sub(started) >= duration.milliseconds()),
-            MiningCampaignStopCondition::ResumableWallClockDuration { duration } => self
-                .maybe_lease_started_at_ms
-                .is_some_and(|started| now_ms.saturating_sub(started) >= duration.milliseconds()),
-        }
     }
 
     pub(super) fn stop_after_first_submit_response(

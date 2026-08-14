@@ -464,7 +464,7 @@ fn pause_settings_change_and_shutdown_reread_authoritative_state() {
 #[test]
 fn resumable_lease_safe_stops_on_pause_and_reprepares_only_before_deadline() {
     // Arrange
-    let lease = resumable_lease(7, 1_000);
+    let lease = resumable_lease(7, 1_000, 1_000);
     let running = ProductionReadiness {
         maybe_campaign_lease: Some(lease),
         ..ready()
@@ -494,6 +494,8 @@ fn resumable_lease_safe_stops_on_pause_and_reprepares_only_before_deadline() {
     let resumed_effects = adapter.effects.clone();
     adapter.effects.clear();
     adapter.drive(wake(running, 1_001));
+    let before_expiry = adapter.session.snapshot();
+    adapter.drive(wake(running, 1_002));
 
     // Assert
     assert_eq!(paused_snapshot.campaign_state, MiningCampaignState::Armed);
@@ -513,6 +515,7 @@ fn resumable_lease_safe_stops_on_pause_and_reprepares_only_before_deadline() {
         effect,
         ProductionSessionEffect::PrepareHardware { lease_id, .. } if *lease_id == lease.id()
     )));
+    assert_ne!(before_expiry.campaign_state, MiningCampaignState::Consumed);
     assert_eq!(
         adapter.session.snapshot().campaign_state,
         MiningCampaignState::Consumed

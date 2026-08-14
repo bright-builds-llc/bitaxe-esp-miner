@@ -5,6 +5,7 @@ export type CommandEffectsBudgetComponents = {
   readonly usbCommandMillis: number;
   readonly usbRetryRecoveryMillis: number;
   readonly usbRecoveryMillis: number;
+  readonly activationMillis: number;
   readonly observationMillis: number;
   readonly terminalGraceMillis: number;
   readonly finalCleanupMillis: number;
@@ -19,6 +20,8 @@ export type CommandEffectsTransactionBudget = CommandEffectsBudgetComponents & {
   readonly fixtureTimeoutMillis: number;
 };
 
+const commandEffectsPhaseMillis = 600_000;
+
 const productionComponents: CommandEffectsBudgetComponents = {
   versionProbeMillis: 10_000,
   usbCommandCount: 3,
@@ -26,7 +29,8 @@ const productionComponents: CommandEffectsBudgetComponents = {
   usbCommandMillis: 360_000,
   usbRetryRecoveryMillis: 30_000,
   usbRecoveryMillis: 150_000,
-  observationMillis: 600_000,
+  activationMillis: commandEffectsPhaseMillis,
+  observationMillis: commandEffectsPhaseMillis,
   terminalGraceMillis: 180_000,
   finalCleanupMillis: 60_000,
   processTerminationMillis: 5_000,
@@ -64,6 +68,7 @@ export function deriveCommandEffectsTransactionBudget(
     "USB retry recovery budget",
   );
   const usbRecoveryMillis = checkedInteger(components.usbRecoveryMillis, "USB recovery budget");
+  const activationMillis = checkedInteger(components.activationMillis, "activation budget");
   const observationMillis = checkedInteger(components.observationMillis, "observation budget");
   const terminalGraceMillis = checkedInteger(components.terminalGraceMillis, "terminal grace budget");
   const finalCleanupMillis = checkedInteger(components.finalCleanupMillis, "final cleanup budget");
@@ -87,6 +92,7 @@ export function deriveCommandEffectsTransactionBudget(
     usbCommandsMillis,
     usbRetryRecoveriesMillis,
     usbRecoveryMillis,
+    activationMillis,
     observationMillis,
     terminalGraceMillis,
     finalCleanupMillis,
@@ -103,6 +109,7 @@ export function deriveCommandEffectsTransactionBudget(
     usbCommandMillis,
     usbRetryRecoveryMillis,
     usbRecoveryMillis,
+    activationMillis,
     observationMillis,
     terminalGraceMillis,
     finalCleanupMillis,

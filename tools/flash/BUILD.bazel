@@ -56,6 +56,7 @@ rust_binary(
         "src/campaign/admission.rs",
         "src/campaign/evidence.rs",
         "src/campaign/markers.rs",
+        "src/campaign/markers/command_effects.rs",
         "src/campaign/markers/pause.rs",
         "src/campaign/markers/readiness.rs",
         "src/campaign/markers/protocol.rs",

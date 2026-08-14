@@ -174,11 +174,13 @@ fn first_submit_lease(id: u64, timeout_ms: u64) -> MiningCampaignLease {
     )
 }
 
-fn resumable_lease(id: u64, duration_ms: u64) -> MiningCampaignLease {
+fn resumable_lease(id: u64, activation_timeout_ms: u64, duration_ms: u64) -> MiningCampaignLease {
     MiningCampaignLease::new(
         MiningCampaignLeaseId::new(id).expect("test lease id should be valid"),
         profile(),
-        MiningCampaignStopCondition::ResumableWallClockDuration {
+        MiningCampaignStopCondition::ResumableActiveEpoch {
+            activation_timeout: MiningCampaignDuration::new(activation_timeout_ms)
+                .expect("test activation timeout should be valid"),
             duration: MiningCampaignDuration::new(duration_ms)
                 .expect("test duration should be valid"),
         },
@@ -309,6 +311,7 @@ fn dispatched_observation(
 }
 
 mod block_found;
+mod campaign_timing;
 mod job_transition;
 mod lifecycle;
 mod readiness_recovery;

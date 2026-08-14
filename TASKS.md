@@ -2570,13 +2570,13 @@ API-009 remains `implemented`; attempt-014 is not authorized. See
 Resumable-epoch diagnosis and software-fix plan:
 `docs/parity/work-plans/20260814T014014Z-API-009/PLAN.md`.
 
-- [ ] Reproduce attempt-013's pre-active expiry at the public production-
+- [x] Reproduce attempt-013's pre-active expiry at the public production-
       session seam and preserve it as a focused red-to-green regression.
-- [ ] Split activation and resumable observation into separately bounded typed
+- [x] Split activation and resumable observation into separately bounded typed
       clocks, keeping one-shot identity and pause/resume safe-stop semantics.
-- [ ] Carry the larger child envelope through Rust capture and TypeScript
+- [x] Carry the larger child envelope through Rust capture and TypeScript
       supervision, with a distinct typed activation-timeout terminal category.
-- [ ] Pass every focused, mandatory, privacy, reference, firmware, selector,
+- [x] Pass every focused, mandatory, privacy, reference, firmware, selector,
       and diff gate; close and push without hardware or a parity transition.
 
 Authorization: software-only source, synthetic tests, task, and public work-
@@ -2584,6 +2584,20 @@ plan changes. Do not access credentials, detector or protected raw traces;
 USB, device or network interfaces; HTTP commands; flash, reset, restart,
 mining, display, hardware controls, direct UART, pins/pads/GPIO, evidence
 promotion, or attempt-014.
+
+Resumable-epoch completion review: the public Production Mining Session
+regression first failed with the campaign consumed before its first active
+state. Command effects now has a bounded activation phase followed by one
+continuous resumable active epoch; the activation deadline is disabled after
+activation, pause/resume does not reset the epoch, and exact activation timeout
+has its own closed blocker and host category. Rust capture and the checked
+TypeScript parent/fixture budget cover activation, observation, terminal grace,
+USB, cleanup, and process termination. The original ignored harness turned
+green and was removed. Focused boundary, pause/resume, mapping, marker,
+cross-language, and real-process tests pass together with every mandatory,
+privacy, reference, firmware, selector, sensitive-output, and diff gate.
+API-009 remains `implemented`; no hardware or attempt-014 ran. See the linked
+`CLOSURE.md` for the remaining hardware evidence condition and non-claims.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 

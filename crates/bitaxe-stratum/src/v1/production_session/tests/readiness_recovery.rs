@@ -3,7 +3,7 @@ use super::*;
 #[test]
 fn fresh_observation_wakeup_resumes_after_a_stale_resume_readiness_sample() {
     // Arrange
-    let lease = resumable_lease(8, 1_000);
+    let lease = resumable_lease(8, 1_000, 1_000);
     let running = ProductionReadiness {
         maybe_campaign_lease: Some(lease),
         ..ready()

@@ -32,6 +32,7 @@ pub enum ProductionSessionBlocker {
     SafetyPrerequisitesStale,
     CampaignLeaseUnavailable,
     CampaignLeaseConsumed,
+    CampaignActivationTimedOut,
     ProductionAsicUnavailable,
     ProductionAsicVersionMaskUnavailable,
     ProductionAsicDispatchUnavailable,
@@ -53,6 +54,7 @@ impl ProductionSessionBlocker {
             Self::SafetyPrerequisitesStale => "safety_prerequisites_stale",
             Self::CampaignLeaseUnavailable => "campaign_lease_unavailable",
             Self::CampaignLeaseConsumed => "campaign_lease_consumed",
+            Self::CampaignActivationTimedOut => "campaign_activation_timed_out",
             Self::ProductionAsicUnavailable => "production_asic_unavailable",
             Self::ProductionAsicVersionMaskUnavailable => {
                 "production_asic_version_mask_unavailable"
