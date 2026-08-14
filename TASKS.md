@@ -2567,6 +2567,24 @@ no process or port holder remains, and the public projection is absent.
 API-009 remains `implemented`; attempt-014 is not authorized. See
 `docs/parity/work-plans/20260813T180631Z-API-009/CLOSURE.md`.
 
+Resumable-epoch diagnosis and software-fix plan:
+`docs/parity/work-plans/20260814T014014Z-API-009/PLAN.md`.
+
+- [ ] Reproduce attempt-013's pre-active expiry at the public production-
+      session seam and preserve it as a focused red-to-green regression.
+- [ ] Split activation and resumable observation into separately bounded typed
+      clocks, keeping one-shot identity and pause/resume safe-stop semantics.
+- [ ] Carry the larger child envelope through Rust capture and TypeScript
+      supervision, with a distinct typed activation-timeout terminal category.
+- [ ] Pass every focused, mandatory, privacy, reference, firmware, selector,
+      and diff gate; close and push without hardware or a parity transition.
+
+Authorization: software-only source, synthetic tests, task, and public work-
+plan changes. Do not access credentials, detector or protected raw traces;
+USB, device or network interfaces; HTTP commands; flash, reset, restart,
+mining, display, hardware controls, direct UART, pins/pads/GPIO, evidence
+promotion, or attempt-014.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
