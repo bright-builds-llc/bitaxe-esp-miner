@@ -20,24 +20,20 @@ function runfileRoot(): string {
     : path.join(maybeRunfiles, "_main");
 }
 
-test("production parent budget exceeds every bounded child phase", () => {
+test("production budget excludes operator availability from bounded child phases", () => {
   // Arrange
   const budget = COMMAND_EFFECTS_TRANSACTION_BUDGET;
 
   // Act
-  const boundedObservation =
-    budget.activationMillis
-    + budget.operatorReadyMillis
+  const boundedObservation = budget.activationMillis
     + budget.observationMillis
     + budget.terminalGraceMillis;
 
   // Assert
-  assert.equal(boundedObservation, 4_980_000);
-  assert.equal(budget.childMaximumMillis, 7_450_000);
-  assert.equal(budget.parentTimeoutMillis, 7_455_000);
-  assert(budget.parentTimeoutMillis > budget.childMaximumMillis);
-  assert(budget.parentTimeoutMillis > 810_000);
-  assert(budget.fixtureTimeoutMillis > budget.parentTimeoutMillis);
+  assert.equal(boundedObservation, 1_380_000);
+  assert.equal(budget.boundedChildMaximumMillis, 3_850_000);
+  assert(!("operatorReadyMillis" in budget));
+  assert(!("parentTimeoutMillis" in budget));
 });
 
 test("budget derivation rejects unsafe arithmetic", () => {
@@ -50,7 +46,6 @@ test("budget derivation rejects unsafe arithmetic", () => {
     usbRetryRecoveryMillis: 1,
     usbRecoveryMillis: 1,
     activationMillis: 1,
-    operatorReadyMillis: 1,
     observationMillis: 1,
     terminalGraceMillis: 1,
     finalCleanupMillis: 1,
@@ -68,11 +63,12 @@ test("budget derivation rejects unsafe arithmetic", () => {
 test("budget components remain bound to child source limits", async () => {
   // Arrange
   const root = runfileRoot();
-  const [campaign, environment, usb, recovery, processAdapter, fixture, justfile] =
+  const [campaign, environment, usb, observation, recovery, processAdapter, fixture, justfile] =
     await Promise.all([
       readFile(path.join(root, "tools/flash/src/campaign.rs"), "utf8"),
       readFile(path.join(root, "tools/flash/src/environment.rs"), "utf8"),
       readFile(path.join(root, "tools/device-session/src/usb.rs"), "utf8"),
+      readFile(path.join(root, "tools/device-session/src/usb/observation.rs"), "utf8"),
       readFile(path.join(root, "tools/device-session/src/usb/recovery.rs"), "utf8"),
       readFile(path.join(root, "tools/automation/src/process.ts"), "utf8"),
       readFile(path.join(root, "scripts/api-command-effects-stratum-pool.mjs"), "utf8"),
@@ -81,16 +77,19 @@ test("budget components remain bound to child source limits", async () => {
 
   // Act / Assert
   assert.match(campaign, /MINING_TERMINAL_GRACE_SECONDS: u64 = 180/u);
-  assert.match(campaign, /COMMAND_EFFECTS_OPERATOR_READY_SECONDS: u64 = 3_600/u);
-  assert.match(campaign, /\.saturating_mul\(2\)/u);
-  assert.match(campaign, /\.saturating_add\(COMMAND_EFFECTS_OPERATOR_READY_SECONDS\)/u);
+  assert.match(campaign, /CampaignCaptureLimit::OperatorGated/u);
+  assert(!campaign.includes("COMMAND_EFFECTS_OPERATOR_READY_SECONDS"));
   assert.match(environment, /Duration::from_secs\(10\)/u);
   assert.equal(environment.match(/Duration::from_secs\(360\)/gu)?.length, 1);
   assert.match(usb, /for attempt in 1\.\.=2/u);
+  assert.match(observation, /observe_receive_only_ephemeral_chunks_operator_gated/u);
+  assert.match(observation, /maybe_duration: Option<Duration>/u);
   assert.match(recovery, /STANDARD_RECOVERY_TIMEOUT: Duration = Duration::from_secs\(30\)/u);
   assert.match(recovery, /EXTENDED_RECOVERY_TIMEOUT: Duration = Duration::from_secs\(60\)/u);
+  assert.match(processAdapter, /maybeLifetime === "operator-gated"/u);
   assert.match(processAdapter, /setTimeout\(\(\) => child\.kill\("SIGKILL"\), 5_000\)/u);
-  assert.match(fixture, /durationSeconds > 7_800/u);
+  assert.match(fixture, /values\.get\("lifetime"\) !== "operator-gated"/u);
+  assert(!fixture.includes("duration-seconds"));
   assert.match(justfile, /signal-api-command-identify \*args:/u);
   assert.match(justfile, /signal-identify \{\{ args \}\}/u);
 });
@@ -107,7 +106,6 @@ test("derived real-process guard permits child cleanup before exit", async () =>
     usbRetryRecoveryMillis: 10,
     usbRecoveryMillis: 10,
     activationMillis: 10,
-    operatorReadyMillis: 10,
     observationMillis: 10,
     terminalGraceMillis: 10,
     finalCleanupMillis: 10,
@@ -124,7 +122,9 @@ test("derived real-process guard permits child cleanup before exit", async () =>
   // Act
   const outcome = await processPort.run(
     internalCommandSpec(nodeProgram, ["-e", script], (value) => value),
-    budget.parentTimeoutMillis,
+    budget.boundedChildMaximumMillis
+      + budget.processTerminationMillis
+      + budget.fixtureStopMarginMillis,
   );
 
   // Assert

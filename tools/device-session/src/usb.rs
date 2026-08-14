@@ -2,6 +2,7 @@
 
 mod lease;
 mod line_admission;
+mod observation;
 mod process;
 mod recovery;
 
@@ -16,13 +17,12 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
-use crate::macos::{MacOsDeviceAdapter, ReceiveOnlyReader, UsbDeviceSnapshot};
+use crate::macos::{MacOsDeviceAdapter, UsbDeviceSnapshot};
 use lease::DeviceLease;
 use process::{run_owned_process, OwnedProcessRequest};
 use recovery::{RecoveryPhase, RecoverySample, RecoverySummary, RecoveryTracker};
 
 const SAMPLE_INTERVAL: Duration = Duration::from_millis(150);
-const MAX_MONITOR_BYTES: usize = 16 * 1024 * 1024;
 
 mod lifecycle;
 mod policy;
@@ -299,108 +299,6 @@ impl UsbSession {
             category,
             "the supervised espflash prerequisite probe failed",
         ))
-    }
-
-    pub fn observe_receive_only(
-        &mut self,
-        duration: Duration,
-    ) -> Result<MonitorOutput, UsbSessionError> {
-        let result = self.observe_receive_only_inner(duration, true, false, |_| false);
-        if let Err(error) = &result {
-            self.fail_once(error.category);
-        }
-        result
-    }
-
-    /// Feeds newline-admitted chunks without retaining a cumulative transcript.
-    pub fn observe_receive_only_ephemeral_chunks_until(
-        &mut self,
-        duration: Duration,
-        stop: impl FnMut(&[u8]) -> bool,
-    ) -> Result<MonitorOutput, UsbSessionError> {
-        let result = self.observe_receive_only_inner(duration, false, true, stop);
-        if let Err(error) = &result {
-            self.fail_once(error.category);
-        }
-        result
-    }
-
-    fn observe_receive_only_inner(
-        &mut self,
-        duration: Duration,
-        persist_trace: bool,
-        feed_chunks: bool,
-        mut stop: impl FnMut(&[u8]) -> bool,
-    ) -> Result<MonitorOutput, UsbSessionError> {
-        let _signal_supervisor = process::SignalSupervisor::acquire()?;
-        self.transition(UsbLifecycleEvent::BeginObservation)?;
-        self.child_sequence = self.child_sequence.saturating_add(1);
-        let trace_path = self
-            .trace_root
-            .join(format!("monitor-{:04}.serial", self.child_sequence));
-        let deadline = Instant::now() + duration;
-        let mut bytes = Vec::new();
-        let mut maybe_reader = None;
-        let mut reenumerated = false;
-        let mut line_admission = line_admission::ReceiveLineAdmission::new();
-
-        while Instant::now() < deadline {
-            if let Some(signal) = process::maybe_pending_signal() {
-                if persist_trace {
-                    write_private_trace(&trace_path, &bytes)?;
-                }
-                self.transition(UsbLifecycleEvent::ObservationComplete)?;
-                return Ok(MonitorOutput {
-                    bytes,
-                    interrupted_by: Some(signal),
-                    reenumerated,
-                });
-            }
-            if maybe_reader.is_none() {
-                let snapshot = self.reacquire(RecoveryPhase::MonitorAdmission)?;
-                reenumerated |= snapshot.enumeration_token != self.initial_enumeration_token;
-                maybe_reader =
-                    Some(ReceiveOnlyReader::open(&snapshot.port).map_err(|error| {
-                        session_error(UsbTerminalCategory::MonitorFailed, error)
-                    })?);
-                line_admission.reset();
-            }
-            let Some(reader) = maybe_reader.as_mut() else {
-                return Err(session_error(
-                    UsbTerminalCategory::MonitorFailed,
-                    "receive-only reader admission failed",
-                ));
-            };
-            match reader.read_available() {
-                Ok(chunk) => {
-                    let should_stop = if feed_chunks {
-                        line_admission.admit(&chunk).is_some_and(&mut stop)
-                    } else {
-                        let remaining = MAX_MONITOR_BYTES.saturating_sub(bytes.len());
-                        bytes.extend_from_slice(&chunk[..chunk.len().min(remaining)]);
-                        stop(&bytes)
-                    };
-                    if should_stop {
-                        break;
-                    }
-                }
-                Err(_) => {
-                    maybe_reader = None;
-                    reenumerated = true;
-                }
-            }
-            thread::sleep(Duration::from_millis(25));
-        }
-        drop(maybe_reader);
-        if persist_trace {
-            write_private_trace(&trace_path, &bytes)?;
-        }
-        self.transition(UsbLifecycleEvent::ObservationComplete)?;
-        Ok(MonitorOutput {
-            bytes,
-            interrupted_by: None,
-            reenumerated,
-        })
     }
 
     pub fn finish(mut self) -> Result<ReflashReady, UsbSessionError> {

@@ -23,8 +23,13 @@ const OBSERVATION_DURATION_SECONDS: u64 = 360;
 const MINING_DURATION_SECONDS: u64 = 600;
 const JOB_TRANSITION_DURATION_SECONDS: u64 = 1_800;
 const COMMAND_EFFECTS_DURATION_SECONDS: u64 = 600;
-const COMMAND_EFFECTS_OPERATOR_READY_SECONDS: u64 = 3_600;
 const MINING_TERMINAL_GRACE_SECONDS: u64 = 180;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum CampaignCaptureLimit {
+    Bounded(u64),
+    OperatorGated,
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -340,7 +345,7 @@ fn execute_campaign(
             admission,
             expected_runtime.clone(),
             evidence_root,
-            campaign_capture_timeout_seconds(admission),
+            campaign_capture_limit(admission),
         )
         .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::ObservationFailed))?;
     attempt.maybe_runtime_attestation_status =
@@ -398,19 +403,23 @@ pub(crate) fn campaign_flash_failure(
     CampaignFailure::new(category)
 }
 
-fn campaign_capture_timeout_seconds(admission: CampaignAdmission) -> u64 {
+fn campaign_capture_limit(admission: CampaignAdmission) -> CampaignCaptureLimit {
     match admission.stage {
-        MiningCampaignStage::Observation => admission.duration_seconds,
+        MiningCampaignStage::Observation => {
+            CampaignCaptureLimit::Bounded(admission.duration_seconds)
+        }
         MiningCampaignStage::LiveShare
         | MiningCampaignStage::Soak
-        | MiningCampaignStage::JobTransition => admission
-            .duration_seconds
-            .saturating_add(MINING_TERMINAL_GRACE_SECONDS),
-        MiningCampaignStage::CommandEffects => admission
-            .duration_seconds
-            .saturating_mul(2)
-            .saturating_add(COMMAND_EFFECTS_OPERATOR_READY_SECONDS)
-            .saturating_add(MINING_TERMINAL_GRACE_SECONDS),
+        | MiningCampaignStage::JobTransition => CampaignCaptureLimit::Bounded(
+            admission
+                .duration_seconds
+                .saturating_add(MINING_TERMINAL_GRACE_SECONDS),
+        ),
+        // This transaction contains safe, persisted checkpoints at which the
+        // owner may be absent for hours or overnight. Its automated phases
+        // enforce their own deadlines; the enclosing capture must not guess a
+        // human-response duration.
+        MiningCampaignStage::CommandEffects => CampaignCaptureLimit::OperatorGated,
     }
 }
 

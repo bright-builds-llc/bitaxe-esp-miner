@@ -519,15 +519,7 @@ fn ephemeral_ingress_requires_a_fresh_boundary_after_reopen() {
 #[test]
 fn ephemeral_receive_session_owns_boundary_reset_and_admission() {
     // Arrange
-    let source = include_str!("../usb.rs");
-    let start = source
-        .find("fn observe_receive_only_inner")
-        .expect("receive-only implementation");
-    let end = source[start..]
-        .find("pub fn finish")
-        .map(|offset| start + offset)
-        .expect("receive-only implementation end");
-    let implementation = &source[start..end];
+    let implementation = include_str!("observation.rs");
 
     // Act
     let reader_open = implementation

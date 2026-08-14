@@ -298,10 +298,15 @@ test("ordered campaign checkpoints notify the operator sink exactly once", async
   assert.deepEqual(signals.map((signal) => signal.confirm_when), [
     "ready_to_watch", "identify_frame_visible", "identify_frame_absent",
   ]);
-  assert(signals.every((signal) => signal.schema_version === "bitaxe-operator-checkpoint-v3"));
+  assert(signals.every((signal) => signal.schema_version === "bitaxe-operator-checkpoint-v4"));
   assert(signals.every((signal) => signal.command === "api-command-effects-campaign"));
   assert(signals.every((signal) => signal.identify_duration_seconds === 30));
-  assert.deepEqual(signals.map((signal) => signal.response_timeout_seconds), [3600, 30, 3600]);
+  assert.deepEqual(signals.map((signal) => signal.operator_wait_policy), [
+    "unbounded", "effect_evidence_window", "unbounded",
+  ]);
+  assert.deepEqual(signals.map((signal) => signal.effect_evidence_window_seconds), [
+    "not_applicable", 30, "not_applicable",
+  ]);
   assert(signals.every((signal) => signal.local_signal_required));
   assert.deepEqual(signals.map((signal) => signal.starts_identify_window), [true, false, false]);
   assert(signals.every((signal) => signal.decline_supported));
@@ -526,7 +531,6 @@ test("the deployed fixture executable crosses the sanitized real-process boundar
   // Arrange
   const value = await fixture();
   const processPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 20_000 });
-
   // Act
   const error = await captureApiCommandEffects(
     value.root,
@@ -537,7 +541,6 @@ test("the deployed fixture executable crosses the sanitized real-process boundar
     "/usr/bin/false",
     discardCheckpoint,
   ).then(() => undefined, (caught: unknown) => caught);
-
   // Assert
   assert(error instanceof ApiCommandEffectsError);
   assert.equal(error.category, "hardware_blocked");
@@ -560,7 +563,6 @@ test("an early real child exit is process_failed instead of a readiness timeout"
   const value = await fixture();
   const processPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 20_000 });
   const startedAt = Date.now();
-
   // Act
   const error = await captureApiCommandEffects(
     value.root,
@@ -571,7 +573,6 @@ test("an early real child exit is process_failed instead of a readiness timeout"
     "/usr/bin/false",
     discardCheckpoint,
   ).then(() => undefined, (caught: unknown) => caught);
-
   // Assert
   assert(error instanceof ApiCommandEffectsError);
   assert.equal(error.category, "process_failed");
@@ -602,7 +603,6 @@ test("a running real child without readiness times out and receives cleanup", {
   ].join("\n"), { mode: 0o700 });
   await chmod(silentFixture, 0o700);
   const processPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 20_000 });
-
   // Act
   const error = await captureApiCommandEffects(
     value.root,

@@ -102,3 +102,20 @@ test("process adapter honors a bounded per-child timeout override", async () => 
   assert.equal(outcome.timedOut, true, outcome.stderr);
   assert.notEqual(outcome.exitCode, 0);
 });
+
+test("operator-gated process lifetime does not inherit the adapter timeout", async () => {
+  // Arrange
+  const processPort = createLocalProcessPort({ cwd: process.cwd(), timeoutMs: 20 });
+  const spec = internalCommandSpec(
+    nodeProgram,
+    ["-e", "setTimeout(() => process.exit(0), 60)"],
+    (value) => value,
+  );
+
+  // Act
+  const outcome = await processPort.run(spec, "operator-gated");
+
+  // Assert
+  assert.equal(outcome.timedOut, false, outcome.stderr);
+  assert.equal(outcome.exitCode, 0, outcome.stderr);
+});

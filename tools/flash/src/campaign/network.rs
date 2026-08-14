@@ -12,6 +12,7 @@ mod tests;
 
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
+use std::time::{Duration, Instant};
 
 use bitaxe_api::ExpectedRuntimeAttestationIdentity;
 use camino::Utf8PathBuf;
@@ -32,6 +33,7 @@ pub(crate) struct CampaignNetworkCoordinator {
     maybe_worker: Option<JoinHandle<CampaignNetworkEvidence>>,
     stage: MiningCampaignStage,
     evidence_root: Utf8PathBuf,
+    maybe_target_deadline: Option<Instant>,
 }
 
 impl CampaignNetworkCoordinator {
@@ -46,6 +48,8 @@ impl CampaignNetworkCoordinator {
             maybe_worker: None,
             stage: admission.stage,
             evidence_root,
+            maybe_target_deadline: matches!(admission.stage, MiningCampaignStage::CommandEffects)
+                .then(|| Instant::now() + Duration::from_secs(admission.duration_seconds)),
         }
     }
 
@@ -76,9 +80,21 @@ impl CampaignNetworkCoordinator {
     }
 
     pub(crate) fn should_stop(&self) -> bool {
-        self.shared
-            .lock()
-            .map_or(true, |state| state.network_stop_requested)
+        self.shared.lock().map_or(true, |mut state| {
+            if self.maybe_worker.is_none()
+                && matches!(self.stage, MiningCampaignStage::CommandEffects)
+                && (state.maybe_failure.is_some()
+                    || self
+                        .maybe_target_deadline
+                        .is_some_and(|deadline| Instant::now() >= deadline))
+            {
+                state
+                    .maybe_failure
+                    .get_or_insert(CampaignTerminalCategory::NetworkTargetUnavailable);
+                state.network_stop_requested = true;
+            }
+            state.network_stop_requested
+        })
     }
 
     pub(crate) fn finish(mut self) -> CampaignNetworkEvidence {

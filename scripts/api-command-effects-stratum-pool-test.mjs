@@ -59,7 +59,7 @@ try {
     "--session-label", "command-effects",
     "--ready-json", ready,
     "--report-json", report,
-    "--duration-seconds", "30",
+    "--lifetime", "operator-gated",
     "--stop-file", stop,
   ], { cwd: repoRoot, encoding: "utf8" });
   let output = "";

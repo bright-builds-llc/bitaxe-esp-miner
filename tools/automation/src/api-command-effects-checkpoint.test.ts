@@ -113,14 +113,20 @@ test("a real child publishes ordered checkpoints before it settles", {
   assert.equal(supervised.maybeCheckpointError, undefined);
   assert.deepEqual(signals.map((checkpoint) => checkpoint.checkpoint), ["ready", "rendered", "cleared"]);
   assert.equal(signals.length, 3);
-  assert(signals.every((signal) => signal.schema_version === "bitaxe-operator-checkpoint-v3"));
-  assert.deepEqual(signals.map((signal) => signal.response_timeout_seconds), [3600, 30, 3600]);
+  assert(signals.every((signal) => signal.schema_version === "bitaxe-operator-checkpoint-v4"));
+  assert.deepEqual(signals.map((signal) => signal.operator_wait_policy), [
+    "unbounded", "effect_evidence_window", "unbounded",
+  ]);
+  assert.deepEqual(signals.map((signal) => signal.effect_evidence_window_seconds), [
+    "not_applicable", 30, "not_applicable",
+  ]);
   assert(signals.every((signal) => signal.local_signal_required));
   assert.deepEqual(signals.map((signal) => signal.starts_identify_window), [true, false, false]);
   assert(signals.every((signal) => signal.decline_supported));
   const publicSignal = signals.map(formatOperatorCheckpointSignal).join("");
   assert(!publicSignal.includes(root));
   assert(publicSignal.includes("BITAXE IDENTIFY"));
-  assert(publicSignal.includes("operator_ready_timeout_seconds\":3600"));
+  assert(publicSignal.includes("operator_wait_policy\":\"unbounded"));
+  assert(!publicSignal.includes("operator_ready_timeout_seconds"));
   assert(publicSignal.includes("identify_duration_seconds\":30"));
 });

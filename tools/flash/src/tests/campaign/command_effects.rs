@@ -38,7 +38,10 @@ fn command_effects_requires_the_typed_network_quorum_and_safe_stop() {
     assert_eq!(result["safe_stop"], "confirmed");
     assert_eq!(
         environment.campaign_observations(),
-        vec![(MiningCampaignStage::CommandEffects, 4_980)]
+        vec![(
+            MiningCampaignStage::CommandEffects,
+            CampaignCaptureLimit::OperatorGated
+        )]
     );
     let network: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(

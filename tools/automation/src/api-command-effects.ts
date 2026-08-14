@@ -3,7 +3,6 @@ import { access, chmod, mkdir, readFile, stat, writeFile } from "node:fs/promise
 import path from "node:path";
 
 import { internalCommandSpec, type AutomationCategory } from "./contracts.generated.js";
-import { COMMAND_EFFECTS_TRANSACTION_BUDGET } from "./api-command-effects-budget.js";
 import {
   campaignRecoveryFactsFromDocuments,
   type RecoveryFacts,
@@ -15,7 +14,7 @@ import {
   type OperatorCheckpointSink,
 } from "./api-command-effects-checkpoint.js";
 import { isClosedReadinessTransition } from "./api-command-effects-readiness.js";
-import type { ProcessOutcome, ProcessPort } from "./process.js";
+import type { ProcessLifetime, ProcessOutcome, ProcessPort } from "./process.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
 type JsonObject = Readonly<Record<string, unknown>>;
@@ -150,13 +149,13 @@ async function runChild(
   processPort: ProcessPort,
   program: string,
   args: readonly string[],
-  timeoutMillis: number,
+  lifetime: ProcessLifetime,
   context: string,
 ): Promise<ProcessOutcome> {
   try {
     return await processPort.run(
       internalCommandSpec(program, [...args], (value) => value),
-      timeoutMillis,
+      lifetime,
     );
   } catch {
     throw failure("process_failed", `${context} launch failed`);
@@ -211,7 +210,7 @@ function launchFixture(
   try {
     return processPort.run(
       internalCommandSpec(fixtureProgram, [...args], (value) => value, { BAZEL_BINDIR: "." }),
-      COMMAND_EFFECTS_TRANSACTION_BUDGET.fixtureTimeoutMillis,
+      "operator-gated",
     ).then(
       (outcome) => ({ kind: "outcome", outcome }),
       () => ({ kind: "launch_failed" }),
@@ -430,7 +429,7 @@ export async function captureApiCommandEffects(
     "--session-label", "command-effects",
     "--ready-json", fixtureReady,
     "--report-json", fixtureReport,
-    "--duration-seconds", String(COMMAND_EFFECTS_TRANSACTION_BUDGET.fixtureDurationSeconds),
+    "--lifetime", "operator-gated",
     "--stop-file", fixtureStop,
   ]);
 
@@ -475,7 +474,7 @@ export async function captureApiCommandEffects(
       "--evidence-dir", campaignRoot,
       "--duration-seconds", String(options.durationSeconds),
       "--redact-evidence",
-    ], COMMAND_EFFECTS_TRANSACTION_BUDGET.parentTimeoutMillis, "command effects campaign"), campaignRoot, checkpointSink);
+    ], "operator-gated", "command effects campaign"), campaignRoot, checkpointSink);
     maybeCampaignOutcome = supervised.outcome;
     if (maybeCampaignOutcome.timedOut) {
       throw failure(

@@ -28,7 +28,7 @@ struct FakeFlashEnvironment {
     private_root_admission_calls: Cell<usize>,
     phase35_stage_gates: RefCell<Vec<(String, String)>>,
     campaign_lease_id: u64,
-    campaign_observations: RefCell<Vec<(MiningCampaignStage, u64)>>,
+    campaign_observations: RefCell<Vec<(MiningCampaignStage, CampaignCaptureLimit)>>,
     cleanup_calls: Cell<usize>,
     cleanup_failure: bool,
     last_usb_command_diagnostic: RefCell<Option<UsbCommandDiagnostic>>,
@@ -164,7 +164,7 @@ impl FakeFlashEnvironment {
         self.phase35_stage_gates.borrow().clone()
     }
 
-    fn campaign_observations(&self) -> Vec<(MiningCampaignStage, u64)> {
+    fn campaign_observations(&self) -> Vec<(MiningCampaignStage, CampaignCaptureLimit)> {
         self.campaign_observations.borrow().clone()
     }
 
@@ -356,11 +356,11 @@ impl FlashEnvironment for FakeFlashEnvironment {
         admission: CampaignAdmission,
         _expected_runtime: ExpectedRuntimeAttestationIdentity,
         _evidence_root: &Utf8Path,
-        timeout_seconds: u64,
+        capture_limit: CampaignCaptureLimit,
     ) -> Result<crate::network::CampaignObservationCapture> {
         self.campaign_observations
             .borrow_mut()
-            .push((admission.stage, timeout_seconds));
+            .push((admission.stage, capture_limit));
         if self.execute_failure {
             bail!("sentinel campaign observation failure");
         }

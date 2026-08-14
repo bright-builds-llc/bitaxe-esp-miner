@@ -9,7 +9,6 @@ import {
   captureApiCommandEffects,
   type ApiCommandEffectsOptions,
 } from "./api-command-effects.js";
-import { COMMAND_EFFECTS_TRANSACTION_BUDGET } from "./api-command-effects-budget.js";
 import { createFakeProcessPort, type ProcessOutcome } from "./process.js";
 
 const ok = (): ProcessOutcome => ({ exitCode: 0, stdout: "", stderr: "", timedOut: false });
@@ -56,10 +55,10 @@ async function waitForStop(attempt: string): Promise<void> {
   }
 }
 
-function timedOutPort(
+function campaignLifetimePort(
   root: string,
   recoveryMode: "closed" | "missing" | "malformed",
-  observeTimeout: (maybeTimeoutMillis: number | undefined) => void,
+  observeLifetime: (value: unknown) => void,
 ) {
   return createFakeProcessPort(async (spec, maybeTimeoutMillis) => {
     if (spec.program === "/sbin/route") return { ...ok(), stdout: "interface: en0\n" };
@@ -76,7 +75,7 @@ function timedOutPort(
       return ok();
     }
     if (spec.program.endsWith("flash")) {
-      observeTimeout(maybeTimeoutMillis);
+      observeLifetime(maybeTimeoutMillis);
       if (recoveryMode !== "missing") {
         const campaign = path.join(attempt, "campaign");
         await mkdir(campaign, { mode: 0o700 });
@@ -91,23 +90,23 @@ function timedOutPort(
           recovery_pause_request_count: 1,
         });
       }
-      return { ...ok(), exitCode: 1, timedOut: true };
+      return { ...ok(), exitCode: 1 };
     }
     throw new Error(`unexpected child ${spec.program}`);
   });
 }
 
 for (const recoveryMode of ["closed", "missing", "malformed"] as const) {
-  test(`outer timeout preserves primary category with ${recoveryMode} recovery`, async () => {
+  test(`operator-gated lifetime preserves primary category with ${recoveryMode} recovery`, async () => {
     // Arrange
     const value = await fixture();
-    let maybeObservedTimeout: number | undefined;
+    let maybeObservedLifetime: unknown;
 
     // Act
     const error = await captureApiCommandEffects(
       value.root,
       value.options,
-      timedOutPort(value.root, recoveryMode, (value) => { maybeObservedTimeout = value; }),
+      campaignLifetimePort(value.root, recoveryMode, (value) => { maybeObservedLifetime = value; }),
       path.join(value.root, "bin", "api-command-effects-stratum-pool"),
       path.join(value.root, "bin", "flash"),
       path.join(value.root, "bin", "device-session"),
@@ -116,8 +115,8 @@ for (const recoveryMode of ["closed", "missing", "malformed"] as const) {
 
     // Assert
     assert(error instanceof ApiCommandEffectsError);
-    assert.equal(error.category, "timeout");
-    assert.equal(maybeObservedTimeout, COMMAND_EFFECTS_TRANSACTION_BUDGET.parentTimeoutMillis);
+    assert.equal(error.category, "hardware_blocked");
+    assert.equal(maybeObservedLifetime, "operator-gated");
     assert.deepEqual(error.publicValue, {
       stage: "command_effects",
       safe_stop_confirmed: recoveryMode === "closed",

@@ -9,8 +9,13 @@ export type ProcessOutcome = {
   readonly timedOut: boolean;
 };
 
+export type ProcessLifetime = number | "operator-gated";
+
 export type ProcessPort = {
-  readonly run: (spec: CommandSpec<unknown>, maybeTimeoutMs?: number) => Promise<ProcessOutcome>;
+  readonly run: (
+    spec: CommandSpec<unknown>,
+    maybeLifetime?: ProcessLifetime,
+  ) => Promise<ProcessOutcome>;
   readonly loadEspEnvironment: () => Promise<Readonly<Record<string, string>>>;
 };
 
@@ -49,7 +54,7 @@ export function allowedEnvironment(source: NodeJS.ProcessEnv | Readonly<Record<s
 }
 
 export function createLocalProcessPort(options: { readonly cwd: string; readonly timeoutMs: number }): ProcessPort {
-  const run: ProcessPort["run"] = (spec, maybeTimeoutMs) => {
+  const run: ProcessPort["run"] = (spec, maybeLifetime) => {
     const child = spawn(spec.program, spec.args, {
       cwd: options.cwd,
       env: allowedEnvironment({ ...process.env, ...(spec.environment ?? {}) }),
@@ -61,19 +66,24 @@ export function createLocalProcessPort(options: { readonly cwd: string; readonly
     child.stderr.on("data", (chunk: Buffer) => stderr.push(chunk));
     let timedOut = false;
     let killTimeout: NodeJS.Timeout | undefined;
-    const timeout = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGTERM");
-      killTimeout = setTimeout(() => child.kill("SIGKILL"), 5_000);
-    }, maybeTimeoutMs ?? options.timeoutMs);
+    const timeoutMillis = maybeLifetime === "operator-gated"
+      ? undefined
+      : (maybeLifetime ?? options.timeoutMs);
+    const maybeTimeout = timeoutMillis === undefined
+      ? undefined
+      : setTimeout(() => {
+        timedOut = true;
+        child.kill("SIGTERM");
+        killTimeout = setTimeout(() => child.kill("SIGKILL"), 5_000);
+      }, timeoutMillis);
     return new Promise<ProcessOutcome>((resolve, reject) => {
       child.once("error", (error) => {
-        clearTimeout(timeout);
+        if (maybeTimeout !== undefined) clearTimeout(maybeTimeout);
         if (killTimeout !== undefined) clearTimeout(killTimeout);
         reject(error);
       });
       child.once("close", (exitCode) => {
-        clearTimeout(timeout);
+        if (maybeTimeout !== undefined) clearTimeout(maybeTimeout);
         if (killTimeout !== undefined) clearTimeout(killTimeout);
         resolve({
           exitCode: exitCode ?? 1,

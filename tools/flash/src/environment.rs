@@ -34,7 +34,7 @@ pub(crate) trait FlashEnvironment {
         admission: CampaignAdmission,
         expected_runtime: ExpectedRuntimeAttestationIdentity,
         evidence_root: &Utf8Path,
-        timeout_seconds: u64,
+        capture_limit: CampaignCaptureLimit,
     ) -> Result<campaign::network::CampaignObservationCapture>;
     fn finish_usb_session(&self) -> Result<()>;
     fn device_effect_state(&self) -> UsbDeviceEffectState {
@@ -407,7 +407,7 @@ impl FlashEnvironment for LocalFlashEnvironment {
         admission: CampaignAdmission,
         expected_runtime: ExpectedRuntimeAttestationIdentity,
         evidence_root: &Utf8Path,
-        timeout_seconds: u64,
+        capture_limit: CampaignCaptureLimit,
     ) -> Result<campaign::network::CampaignObservationCapture> {
         let mut session_slot = self.usb_session.borrow_mut();
         let Some(session) = session_slot.as_mut() else {
@@ -419,16 +419,22 @@ impl FlashEnvironment for LocalFlashEnvironment {
             expected_runtime,
             evidence_root.to_owned(),
         );
-        session
-            .observe_receive_only_ephemeral_chunks_until(
-                Duration::from_secs(timeout_seconds),
-                |chunk| {
-                    analyzer.observe_chunk(chunk);
-                    network.observe_serial_chunk(chunk);
-                    analyzer.terminal_consumed() || network.should_stop()
-                },
-            )
-            .map_err(|error| anyhow::anyhow!("{error}"))?;
+        let mut observe = |chunk: &[u8]| {
+            analyzer.observe_chunk(chunk);
+            network.observe_serial_chunk(chunk);
+            analyzer.terminal_consumed() || network.should_stop()
+        };
+        match capture_limit {
+            CampaignCaptureLimit::Bounded(timeout_seconds) => session
+                .observe_receive_only_ephemeral_chunks_until(
+                    Duration::from_secs(timeout_seconds),
+                    &mut observe,
+                ),
+            CampaignCaptureLimit::OperatorGated => {
+                session.observe_receive_only_ephemeral_chunks_operator_gated(&mut observe)
+            }
+        }
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
         Ok(campaign::network::CampaignObservationCapture {
             serial: analyzer.finish(),
             network: network.finish(),

@@ -6,7 +6,6 @@ export type CommandEffectsBudgetComponents = {
   readonly usbRetryRecoveryMillis: number;
   readonly usbRecoveryMillis: number;
   readonly activationMillis: number;
-  readonly operatorReadyMillis: number;
   readonly observationMillis: number;
   readonly terminalGraceMillis: number;
   readonly finalCleanupMillis: number;
@@ -15,10 +14,7 @@ export type CommandEffectsBudgetComponents = {
 };
 
 export type CommandEffectsTransactionBudget = CommandEffectsBudgetComponents & {
-  readonly childMaximumMillis: number;
-  readonly parentTimeoutMillis: number;
-  readonly fixtureDurationSeconds: number;
-  readonly fixtureTimeoutMillis: number;
+  readonly boundedChildMaximumMillis: number;
 };
 
 const commandEffectsPhaseMillis = 600_000;
@@ -31,7 +27,6 @@ const productionComponents: CommandEffectsBudgetComponents = {
   usbRetryRecoveryMillis: 30_000,
   usbRecoveryMillis: 150_000,
   activationMillis: commandEffectsPhaseMillis,
-  operatorReadyMillis: 3_600_000,
   observationMillis: commandEffectsPhaseMillis,
   terminalGraceMillis: 180_000,
   finalCleanupMillis: 60_000,
@@ -71,10 +66,6 @@ export function deriveCommandEffectsTransactionBudget(
   );
   const usbRecoveryMillis = checkedInteger(components.usbRecoveryMillis, "USB recovery budget");
   const activationMillis = checkedInteger(components.activationMillis, "activation budget");
-  const operatorReadyMillis = checkedInteger(
-    components.operatorReadyMillis,
-    "operator ready budget",
-  );
   const observationMillis = checkedInteger(components.observationMillis, "observation budget");
   const terminalGraceMillis = checkedInteger(components.terminalGraceMillis, "terminal grace budget");
   const finalCleanupMillis = checkedInteger(components.finalCleanupMillis, "final cleanup budget");
@@ -93,22 +84,16 @@ export function deriveCommandEffectsTransactionBudget(
   if (!Number.isSafeInteger(usbRetryRecoveriesMillis)) {
     throw new Error("command effects budget overflow");
   }
-  const childMaximumMillis = checkedAdd([
+  const boundedChildMaximumMillis = checkedAdd([
     versionProbeMillis,
     usbCommandsMillis,
     usbRetryRecoveriesMillis,
     usbRecoveryMillis,
     activationMillis,
-    operatorReadyMillis,
     observationMillis,
     terminalGraceMillis,
     finalCleanupMillis,
   ]);
-  const parentTimeoutMillis = checkedAdd([childMaximumMillis, processTerminationMillis]);
-  const fixtureDurationMillis = checkedAdd([parentTimeoutMillis, fixtureStopMarginMillis]);
-  if (fixtureDurationMillis % 1_000 !== 0) {
-    throw new Error("fixture duration must resolve to whole seconds");
-  }
   return {
     versionProbeMillis,
     usbCommandCount,
@@ -117,16 +102,12 @@ export function deriveCommandEffectsTransactionBudget(
     usbRetryRecoveryMillis,
     usbRecoveryMillis,
     activationMillis,
-    operatorReadyMillis,
     observationMillis,
     terminalGraceMillis,
     finalCleanupMillis,
     processTerminationMillis,
     fixtureStopMarginMillis,
-    childMaximumMillis,
-    parentTimeoutMillis,
-    fixtureDurationSeconds: fixtureDurationMillis / 1_000,
-    fixtureTimeoutMillis: checkedAdd([fixtureDurationMillis, processTerminationMillis]),
+    boundedChildMaximumMillis,
   };
 }
 

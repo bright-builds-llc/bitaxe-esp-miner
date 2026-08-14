@@ -323,9 +323,36 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 - Do not recreate active planning directories, change archived verification to
   `passed`, or use planning-tool lookup behavior to reopen this lineage.
 
+### Asynchronous Human Checkpoints
+
+- Never place an elapsed wall-clock deadline on a safe wait for human
+  availability or a human response. Owners may step away for hours or
+  overnight; do not encode an estimated response time in a child-process,
+  fixture, campaign, task, or shell timeout.
+- Before waiting, either persist and pre-arm a self-describing checkpoint while
+  an explicitly operator-gated owner remains live, or release resources and
+  provide a typed resume path. A live operator-gated owner must support typed
+  decline/cancel and keep the device in the task's declared safe state.
+- Keep explicit deadlines for automated safety transitions, protocol
+  operations, recovery, cleanup, resource acquisition, and finite physical
+  effects. An unbounded human wait must not weaken those bounds or imply that a
+  process survives host sleep, restart, transport loss, or power loss.
+- For a finite physical observation effect, wait unboundedly for readiness,
+  start the effect only from the admitted local trigger, enforce the exact
+  effect/evidence window, and classify a late report as expired authority rather
+  than positive or negative device evidence. A subsequent safe human
+  checkpoint may again wait unboundedly.
+- User-facing checkpoint state must say whether the checkpoint is currently
+  armed, what safe state is being held, what local action starts any finite
+  effect, what should be observed, and which automated bounds still apply.
+
 ### Flash And Monitor Timeouts
 
 Ultra 205 factory reflash, NVS seed, boot, Wi-Fi join, pool-input-bridge, and post-flash runtime evidence routinely exceed short monitor defaults. Agents and repo-owned wrappers must budget accordingly:
+
+These minimums govern automated captures. They do not authorize a numeric
+deadline for a human checkpoint; use the operator-gated or typed-resume rule
+above when a workflow waits for a person.
 
 1. **Minimum capture timeout:** use at least **6 minutes (360 seconds)** for `just flash`, `just flash-monitor`, `just monitor`, and equivalent `bazel run //tools/flash` invocations when flashing or reflashing real hardware, unless the active task contract or a deterministic test fixture documents a shorter bound explicitly.
 2. **Explicit override required:** Always pass `--capture-timeout-seconds 360` (or higher) on general Ultra 205 bring-up/evidence commands. A task contract may authorize a shorter bounded passive smoke.

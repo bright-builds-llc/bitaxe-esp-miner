@@ -90,7 +90,10 @@ fn campaign_uses_exact_duration_and_accepts_complete_chain() {
     );
     assert_eq!(
         environment.campaign_observations(),
-        vec![(MiningCampaignStage::JobTransition, 1_980)]
+        vec![(
+            MiningCampaignStage::JobTransition,
+            CampaignCaptureLimit::Bounded(1_980)
+        )]
     );
     let csv = environment
         .written_files()

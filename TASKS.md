@@ -3009,6 +3009,34 @@ firmware build gates pass. No protected input, hardware, network, HTTP, USB,
 attempt-020, parity evidence, or status promotion was used; API-009 remains
 `implemented` pending a separately planned attempt.
 
+Asynchronous human-checkpoint lifetime repair:
+
+- [x] Prove at the real host-orchestration seam that an operator-gated campaign
+      cannot inherit a guessed one-hour or parent-process deadline.
+- [x] Keep ready and other safe human waits unbounded while retaining exact
+      bounds for automated safety, recovery, protocol, and finite physical-
+      effect evidence windows.
+- [x] Add a repo-local asynchronous checkpoint rule, update the existing
+      durable lesson, pass focused and mandatory verification, and perform no
+      hardware attempt or parity promotion.
+
+Software-only authorization: inspect and modify repository source, tests,
+tracker, lessons, and repo-local guidance; run deterministic fixtures and local
+child processes; and build firmware. Do not read protected inputs or access
+USB, device/network interfaces, HTTP, mining, hardware controls, direct UART,
+pins/pads/GPIO, parity evidence, or a new hardware-attempt ordinal.
+
+Completion review: operator-gated processes and the safe IDENTIFY ready and
+cleared checkpoints now have no elapsed-time deadline. Automated notification,
+recovery, cleanup, transport, and finite physical-effect observation remain
+explicitly bounded; the IDENTIFY rendered proof retains its exact 30-second
+window. Real-child-process, TypeScript, Rust, Bazel, Bright Builds, full test,
+parity, redaction, reference-cleanliness, build, formatting, lint, and diff
+checks passed. No protected input, hardware, network/device HTTP, USB attempt,
+parity evidence, or status promotion was used. Residual risk: an unbounded wait
+still depends on the host process and machine remaining available; persisted
+resume state across host shutdown is separate future work.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to

@@ -22,6 +22,8 @@ use pause_join::{PauseJoinDecision, PauseJoinState};
 
 const HTTP_DEADLINE: Duration = Duration::from_secs(3);
 const POLL_INTERVAL: Duration = Duration::from_secs(1);
+const AUTOMATED_PHASE_DEADLINE: Duration = Duration::from_secs(15);
+const NOTIFICATION_DEADLINE: Duration = Duration::from_secs(600);
 const TERMINAL_DEADLINE: Duration = Duration::from_secs(15);
 const CHECKPOINT_SCHEMA: &str = "bitaxe-identify-checkpoint-v3";
 
@@ -99,6 +101,7 @@ pub(super) fn observe_command_effects(
     evidence_root: &Utf8Path,
 ) -> CampaignNetworkEvidence {
     let Ok(http) = StrictHttpClient::new(&target.origin) else {
+        request_network_stop(&shared);
         return CampaignNetworkEvidence::from_unobserved(&shared);
     };
     let mut evidence = CommandEffectsEvidence::new();
@@ -107,8 +110,10 @@ pub(super) fn observe_command_effects(
     let mut maybe_block_count = None;
     let mut maybe_terminal_deadline = None;
     let mut recovery_pause_request_count = 0;
+    let mut phase_started_at = Instant::now();
 
     loop {
+        let now = Instant::now();
         let serial = shared_snapshot(&shared);
         if maybe_failure.is_none() {
             maybe_failure = serial.maybe_failure;
@@ -120,6 +125,9 @@ pub(super) fn observe_command_effects(
         if matches!(phase, CommandPhase::Pause(join) if join.expired(Instant::now())) {
             maybe_failure.get_or_insert(CampaignTerminalCategory::NetworkCorrelationFailed);
         }
+        if maybe_failure.is_none() && automated_phase_expired(phase, phase_started_at, now) {
+            maybe_failure = Some(CampaignTerminalCategory::NetworkCorrelationFailed);
+        }
 
         if maybe_failure.is_none() {
             match fetch_system_info(&http) {
@@ -129,6 +137,7 @@ pub(super) fn observe_command_effects(
                         evidence.safety_valid = false;
                         maybe_failure = Some(CampaignTerminalCategory::NetworkCorrelationFailed);
                     } else {
+                        let prior_phase = phase;
                         advance_commands(
                             &http,
                             &target,
@@ -143,6 +152,9 @@ pub(super) fn observe_command_effects(
                                 maybe_failure: &mut maybe_failure,
                             },
                         );
+                        if phase != prior_phase {
+                            phase_started_at = now;
+                        }
                         if serial.terminal_consumed
                             && phase == CommandPhase::Terminal
                             && sample.mining_paused
@@ -159,13 +171,8 @@ pub(super) fn observe_command_effects(
         }
         if take_recovery_pause_request(maybe_failure, &mut recovery_pause_request_count) {
             let _result = http.post_pause_once(Instant::now() + HTTP_DEADLINE);
-            if should_request_network_stop(
-                maybe_failure,
-                evidence.pause_confirmed,
-                recovery_pause_request_count,
-            ) {
-                request_network_stop(&shared);
-            }
+            request_network_stop(&shared);
+            break;
         }
 
         if serial.terminal_consumed && evidence.terminal_http_valid {
@@ -189,6 +196,20 @@ pub(super) fn observe_command_effects(
         recovery_pause_request_count,
         maybe_failure,
     )
+}
+
+fn automated_phase_expired(phase: CommandPhase, started_at: Instant, now: Instant) -> bool {
+    let maybe_limit = match phase {
+        CommandPhase::Notification => Some(NOTIFICATION_DEADLINE),
+        CommandPhase::Resume | CommandPhase::Dismiss | CommandPhase::Terminal => {
+            Some(AUTOMATED_PHASE_DEADLINE)
+        }
+        CommandPhase::Pause(_)
+        | CommandPhase::IdentifyReady
+        | CommandPhase::IdentifyRendered { .. }
+        | CommandPhase::IdentifyCleared => None,
+    };
+    maybe_limit.is_some_and(|limit| now.duration_since(started_at) >= limit)
 }
 
 fn take_recovery_pause_request(
@@ -524,24 +545,6 @@ fn consume_checkpoint_response(
         "declined" => Ok(CheckpointResponse::Declined),
         _ => Err(()),
     }
-}
-
-fn is_operator_checkpoint_terminal(category: CampaignTerminalCategory) -> bool {
-    matches!(
-        category,
-        CampaignTerminalCategory::OperatorCheckpointDeclined
-            | CampaignTerminalCategory::OperatorCheckpointExpired
-    )
-}
-
-fn should_request_network_stop(
-    maybe_failure: Option<CampaignTerminalCategory>,
-    pause_confirmed: bool,
-    recovery_pause_request_count: u64,
-) -> bool {
-    pause_confirmed
-        && recovery_pause_request_count == 1
-        && maybe_failure.is_some_and(is_operator_checkpoint_terminal)
 }
 
 fn rendered_checkpoint_expired(now: Instant, expires_at: Instant) -> bool {

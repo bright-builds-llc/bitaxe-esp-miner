@@ -113,6 +113,7 @@ rust_binary(
         "src/tests/campaign/evidence.rs",
         "src/tests/campaign/failure_diagnostics.rs",
         "src/tests/campaign/job_transition.rs",
+        "src/tests/campaign/live_share.rs",
         "src/tests/campaign/stop_predicate.rs",
         "src/tests/campaign/terminal_boundary.rs",
         "src/tests/cli.rs",

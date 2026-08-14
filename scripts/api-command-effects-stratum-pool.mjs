@@ -40,7 +40,7 @@ function parseArgs(argv) {
   }
   for (const required of [
     "host", "port", "fixture", "session-label", "ready-json", "report-json",
-    "duration-seconds", "stop-file",
+    "lifetime", "stop-file",
   ]) {
     if (!values.has(required)) fail(`missing --${required}`);
   }
@@ -48,18 +48,14 @@ function parseArgs(argv) {
     fail("closed fixture identity is invalid");
   }
   const port = Number(values.get("port"));
-  const durationSeconds = Number(values.get("duration-seconds"));
   if (!Number.isInteger(port) || port < 0 || port > 65535) fail("port is invalid");
-  if (!Number.isInteger(durationSeconds) || durationSeconds < 1 || durationSeconds > 7_800) {
-    fail("duration is invalid");
-  }
+  if (values.get("lifetime") !== "operator-gated") fail("lifetime is invalid");
   return {
     host: values.get("host"),
     port,
     readyJson: values.get("ready-json"),
     reportJson: values.get("report-json"),
     stopFile: values.get("stop-file"),
-    durationSeconds,
   };
 }
 
@@ -233,11 +229,6 @@ const stopWatcher = setInterval(() => {
   finish("stopped");
   process.exit(0);
 }, 100);
-
-setTimeout(() => {
-  finish("duration_elapsed");
-  process.exit(0);
-}, options.durationSeconds * 1_000);
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
   process.on(signal, () => {

@@ -10,14 +10,14 @@ export type OperatorCheckpointKind = "ready" | "rendered" | "cleared";
 type ConfirmationCondition = "ready_to_watch" | "identify_frame_visible" | "identify_frame_absent";
 
 export type OperatorCheckpointSignal = {
-  readonly schema_version: "bitaxe-operator-checkpoint-v3";
+  readonly schema_version: "bitaxe-operator-checkpoint-v4";
   readonly command: "api-command-effects-campaign";
   readonly checkpoint: OperatorCheckpointKind;
   readonly confirm_when: ConfirmationCondition;
   readonly expected_frame: readonly ["", "BITAXE IDENTIFY", "Hello!", ""];
-  readonly operator_ready_timeout_seconds: 3600;
   readonly identify_duration_seconds: 30;
-  readonly response_timeout_seconds: 30 | 3600;
+  readonly operator_wait_policy: "unbounded" | "effect_evidence_window";
+  readonly effect_evidence_window_seconds: 30 | "not_applicable";
   readonly local_signal_required: true;
   readonly starts_identify_window: boolean;
   readonly decline_supported: true;
@@ -60,15 +60,16 @@ function confirmationCondition(checkpoint: OperatorCheckpointKind): Confirmation
 }
 
 function signal(checkpoint: OperatorCheckpointKind): OperatorCheckpointSignal {
+  const effectBounded = checkpoint === "rendered";
   return {
-    schema_version: "bitaxe-operator-checkpoint-v3",
+    schema_version: "bitaxe-operator-checkpoint-v4",
     command: "api-command-effects-campaign",
     checkpoint,
     confirm_when: confirmationCondition(checkpoint),
     expected_frame: expectedFrame,
-    operator_ready_timeout_seconds: 3600,
     identify_duration_seconds: 30,
-    response_timeout_seconds: checkpoint === "rendered" ? 30 : 3600,
+    operator_wait_policy: effectBounded ? "effect_evidence_window" : "unbounded",
+    effect_evidence_window_seconds: effectBounded ? 30 : "not_applicable",
     // Consuming ready starts the device's 30-second parity effect. Requiring
     // the local command keeps transport or conversational latency outside it.
     local_signal_required: true,

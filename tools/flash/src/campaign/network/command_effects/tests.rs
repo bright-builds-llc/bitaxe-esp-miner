@@ -3,9 +3,9 @@ use std::fs;
 use camino::Utf8PathBuf;
 
 use super::{
-    arm_identify_transaction, arm_ready_after_pause, consume_checkpoint_response,
-    consume_cleared_signal, consume_ready_signal, rendered_checkpoint_expired,
-    respond_identify_checkpoint, should_request_network_stop, take_recovery_pause_request,
+    arm_identify_transaction, arm_ready_after_pause, automated_phase_expired,
+    consume_checkpoint_response, consume_cleared_signal, consume_ready_signal,
+    rendered_checkpoint_expired, respond_identify_checkpoint, take_recovery_pause_request,
     write_required_checkpoint, CheckpointResponse, CommandEffectsEvidence, CommandPhase,
     IdentifyCheckpointKind, IdentifyCheckpointOutcome,
 };
@@ -198,19 +198,38 @@ fn rendered_checkpoint_expires_at_the_exact_effect_deadline() {
 }
 
 #[test]
-fn checkpoint_terminal_stops_network_only_after_pause_recovery_is_claimed() {
+fn human_checkpoint_phases_have_no_elapsed_deadline() {
     // Arrange
-    let failure = Some(super::CampaignTerminalCategory::OperatorCheckpointExpired);
+    let started = std::time::Instant::now();
+    let overnight = started + std::time::Duration::from_secs(24 * 60 * 60);
 
     // Act
-    let before_pause = should_request_network_stop(failure, false, 1);
-    let before_recovery = should_request_network_stop(failure, true, 0);
-    let after_recovery = should_request_network_stop(failure, true, 1);
+    let ready_expired = automated_phase_expired(CommandPhase::IdentifyReady, started, overnight);
+    let cleared_expired =
+        automated_phase_expired(CommandPhase::IdentifyCleared, started, overnight);
 
     // Assert
-    assert!(!before_pause);
-    assert!(!before_recovery);
-    assert!(after_recovery);
+    assert!(!ready_expired);
+    assert!(!cleared_expired);
+}
+
+#[test]
+fn automated_notification_phase_keeps_its_exact_deadline() {
+    // Arrange
+    let started = std::time::Instant::now();
+    let exact = started + std::time::Duration::from_secs(600);
+
+    // Act
+    let before = automated_phase_expired(
+        CommandPhase::Notification,
+        started,
+        exact - std::time::Duration::from_nanos(1),
+    );
+    let at_deadline = automated_phase_expired(CommandPhase::Notification, started, exact);
+
+    // Assert
+    assert!(!before);
+    assert!(at_deadline);
 }
 
 #[test]
