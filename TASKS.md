@@ -2602,11 +2602,11 @@ API-009 remains `implemented`; no hardware or attempt-014 ran. See the linked
 Resumable-epoch-fixed attempt-014 plan:
 `docs/parity/work-plans/20260814T023531Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable single-attempt contract and pass every
+- [x] Commit and push the immutable single-attempt contract and pass every
       focused, mandatory, privacy, reference, firmware, and exact-package gate.
-- [ ] Run exactly one fresh detector-gated attempt-014 and consume each
+- [x] Run exactly one fresh detector-gated attempt-014 and consume each
       IDENTIFY checkpoint only after its matching live physical report.
-- [ ] Promote only on the complete command/restart/device-user quorum;
+- [x] Promote only on the complete command/restart/device-user quorum;
       otherwise preserve `implemented`, earliest failure, evidence withholding,
       safe stop, cleanup, recovery, and stop without attempt-015.
 
@@ -2620,6 +2620,20 @@ pushed HEAD. Campaign start consumes attempt-014. No inferred physical
 observation, prior protected-artifact reuse, external or owner pool,
 destructive/fault-injection action, direct UART, pin/pad/GPIO manipulation,
 attempt-015, or unchanged retry is authorized.
+
+Attempt-014 closure review: exact pushed source `5d8108c2`, package validation,
+one detector, and both exact-package flash writes passed. Runtime identity and
+the protocol gate were trusted, the local fixture closed cleanly, and USB
+cleanup was ready. The campaign nevertheless retained only two milliseconds of
+active state before the persisted paused intent reasserted, then expired as
+`safety_stale` without a genuine notification or any IDENTIFY checkpoint.
+Public evidence remains withheld, safe stop remains unconfirmed, API-009 stays
+`implemented`, and no attempt-015 is authorized. The production seam and its
+existing host test confirm that command-effects startup overrides pause only
+until the first active snapshot, after which the unchanged boot-time paused
+intent immediately stops hardware. The next safe action is a new software-only
+plan that gives the command-effects lease an initial run intent while keeping
+mine-on-boot disabled and preserving explicit pause/resume command ownership.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
