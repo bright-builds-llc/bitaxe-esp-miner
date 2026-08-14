@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { chmod, mkdtemp, mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -14,12 +14,7 @@ import {
   formatOperatorCheckpointSignal,
   type OperatorCheckpointSignal,
 } from "./api-command-effects-checkpoint.js";
-import { toolProgram } from "./cli-tools.js";
-import {
-  createFakeProcessPort,
-  createLocalProcessPort,
-  type ProcessOutcome,
-} from "./process.js";
+import { createFakeProcessPort, type ProcessOutcome } from "./process.js";
 
 const discardCheckpoint = () => undefined;
 const ok = (stdout = ""): ProcessOutcome => ({ exitCode: 0, stdout, stderr: "", timedOut: false });
@@ -55,7 +50,7 @@ const readySession = {
 } as const;
 
 const completeEffects = {
-  schema: "mining-campaign-command-effects-v3",
+  schema: "mining-campaign-command-effects-v4",
   genuine_block_notification_observed: true,
   positive_block_count_observed: true,
   pause_request_count: 1,
@@ -64,6 +59,7 @@ const completeEffects = {
   resume_confirmed: true,
   identify_operator_ready_confirmed: true,
   identify_request_count: 2,
+  identify_replay_request_count: 0,
   identify_rendered_confirmed: true,
   identify_cleared_confirmed: true,
   identify_terminal_outcome: "none",
@@ -76,6 +72,12 @@ const completeEffects = {
   safety_valid: true,
   terminal_http_valid: true,
   terminal_pool_persisted: true,
+} as const;
+
+const completeReplayedEffects = {
+  ...completeEffects,
+  identify_request_count: 3,
+  identify_replay_request_count: 1,
 } as const;
 
 const readyReadinessTransition = {
@@ -127,7 +129,8 @@ function fakePort(
   flashDiagnosticsMode: "ready" | "malformed" | "missing" = "ready",
   protocolGate = "ready",
   readinessMode: "ready" | "malformed" | "missing" = "ready",
-  checkpointMode: "absent" | "malformed" | "ordered" | "wrong_mode" | "wrong_order" = "ordered",
+  checkpointMode: "absent" | "malformed" | "ordered" | "replayed" | "wrong_mode" | "wrong_order" = "ordered",
+  commandEffects: Readonly<Record<string, unknown>> = completeEffects,
 ) {
   return createFakeProcessPort(async (spec) => {
     if (spec.program === "/sbin/route") return ok("interface: en0\n");
@@ -176,7 +179,7 @@ function fakePort(
       ]);
       const campaign = path.join(attempt, "campaign");
       await mkdir(campaign, { mode: 0o700 });
-      if (checkpointMode === "ordered") {
+      if (checkpointMode === "ordered" || checkpointMode === "replayed") {
         await privateJson(path.join(campaign, "identify-ready.required.json"), {
           schema: "bitaxe-identify-checkpoint-v3",
           checkpoint: "ready",
@@ -187,6 +190,13 @@ function fakePort(
           checkpoint: "rendered",
           status: "required",
         });
+        if (checkpointMode === "replayed") {
+          await privateJson(path.join(campaign, "identify-replayed.required.json"), {
+            schema: "bitaxe-identify-checkpoint-v3",
+            checkpoint: "replayed",
+            status: "required",
+          });
+        }
         await privateJson(path.join(campaign, "identify-cleared.required.json"), {
           schema: "bitaxe-identify-checkpoint-v3",
           checkpoint: "cleared",
@@ -261,7 +271,7 @@ function fakePort(
       await privateJson(path.join(campaign, "campaign-network.private.json"), {
         status: campaignFails ? "failed" : "accepted",
         recovery_pause_request_count: campaignFails ? 1 : 0,
-        command_effects: completeEffects,
+        command_effects: commandEffects,
       });
       await privateJson(path.join(campaign, "command-effects-reboot-intent.private.json"), {
         schema_version: "esp-device-session-reboot-intent-v1",
@@ -298,17 +308,27 @@ test("ordered campaign checkpoints notify the operator sink exactly once", async
   assert.deepEqual(signals.map((signal) => signal.confirm_when), [
     "ready_to_watch", "identify_frame_visible", "identify_frame_absent",
   ]);
-  assert(signals.every((signal) => signal.schema_version === "bitaxe-operator-checkpoint-v4"));
+  assert(signals.every((signal) => signal.schema_version === "bitaxe-operator-checkpoint-v5"));
   assert(signals.every((signal) => signal.command === "api-command-effects-campaign"));
   assert(signals.every((signal) => signal.identify_duration_seconds === 30));
   assert.deepEqual(signals.map((signal) => signal.operator_wait_policy), [
-    "unbounded", "effect_evidence_window", "unbounded",
+    "unbounded", "unbounded", "unbounded",
   ]);
   assert.deepEqual(signals.map((signal) => signal.effect_evidence_window_seconds), [
     "not_applicable", 30, "not_applicable",
   ]);
   assert(signals.every((signal) => signal.local_signal_required));
   assert.deepEqual(signals.map((signal) => signal.starts_identify_window), [true, false, false]);
+  assert.deepEqual(signals.map((signal) => signal.replay_supported), [false, true, false]);
+  assert(signals.every((signal) => signal.replay_limit === 1));
+  assert.deepEqual(
+    signals.map((signal) => signal.replay_starts_identify_window),
+    [false, true, false],
+  );
+  assert.deepEqual(
+    signals.map((signal) => signal.late_confirmation_policy),
+    ["not_applicable", "reject", "not_applicable"],
+  );
   assert(signals.every((signal) => signal.decline_supported));
   assert(signals.every((signal) => signal.status === "required"));
   assert(signals.every((signal) => signal.expected_frame.join("|") === "|BITAXE IDENTIFY|Hello!|"));
@@ -318,6 +338,87 @@ test("ordered campaign checkpoints notify the operator sink exactly once", async
   assert(formatted.includes("identify_duration_seconds\":30"));
   assert(!formatted.includes(value.root));
   assert(!formatted.includes(value.options.port));
+});
+
+test("one replayed checkpoint is bound to the replay evidence count", async () => {
+  // Arrange
+  const value = await fixture();
+  const signals: OperatorCheckpointSignal[] = [];
+
+  // Act
+  await captureApiCommandEffects(
+    value.root,
+    value.options,
+    fakePort(
+      value.root,
+      readySession,
+      false,
+      "ready",
+      "ready",
+      "ready",
+      "replayed",
+      completeReplayedEffects,
+    ),
+    path.join(value.root, "bin", "api-command-effects-stratum-pool"),
+    path.join(value.root, "bin", "flash"),
+    path.join(value.root, "bin", "device-session"),
+    (signal) => { signals.push(signal); },
+  );
+
+  // Assert
+  assert.deepEqual(
+    signals.map((signal) => signal.checkpoint),
+    ["ready", "rendered", "replayed", "cleared"],
+  );
+});
+
+test("replayed checkpoint without replay evidence is rejected", async () => {
+  // Arrange
+  const value = await fixture();
+
+  // Act
+  const error = await captureApiCommandEffects(
+    value.root,
+    value.options,
+    fakePort(value.root, readySession, false, "ready", "ready", "ready", "replayed"),
+    path.join(value.root, "bin", "api-command-effects-stratum-pool"),
+    path.join(value.root, "bin", "flash"),
+    path.join(value.root, "bin", "device-session"),
+    discardCheckpoint,
+  ).then(() => undefined, (caught: unknown) => caught);
+
+  // Assert
+  assert(error instanceof ApiCommandEffectsError);
+  assert.equal(error.category, "evidence_invalid");
+});
+
+test("replay evidence without replayed checkpoint is rejected", async () => {
+  // Arrange
+  const value = await fixture();
+
+  // Act
+  const error = await captureApiCommandEffects(
+    value.root,
+    value.options,
+    fakePort(
+      value.root,
+      readySession,
+      false,
+      "ready",
+      "ready",
+      "ready",
+      "ordered",
+      completeReplayedEffects,
+    ),
+    path.join(value.root, "bin", "api-command-effects-stratum-pool"),
+    path.join(value.root, "bin", "flash"),
+    path.join(value.root, "bin", "device-session"),
+    discardCheckpoint,
+  ).then(() => undefined, (caught: unknown) => caught);
+
+  // Assert
+  assert(error instanceof ApiCommandEffectsError);
+  assert.equal(error.category, "evidence_invalid");
 });
 
 for (const checkpointMode of ["absent", "malformed", "wrong_mode", "wrong_order"] as const) {
@@ -524,105 +625,3 @@ for (const flashDiagnosticsMode of ["malformed", "missing"] as const) {
     await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
   });
 }
-
-test("the deployed fixture executable crosses the sanitized real-process boundary", {
-  skip: process.platform !== "darwin",
-}, async () => {
-  // Arrange
-  const value = await fixture();
-  const processPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 20_000 });
-  // Act
-  const error = await captureApiCommandEffects(
-    value.root,
-    value.options,
-    processPort,
-    toolProgram(value.root, "scripts/api_command_effects_stratum_pool_/api_command_effects_stratum_pool"),
-    "/usr/bin/false",
-    "/usr/bin/false",
-    discardCheckpoint,
-  ).then(() => undefined, (caught: unknown) => caught);
-  // Assert
-  assert(error instanceof ApiCommandEffectsError);
-  assert.equal(error.category, "hardware_blocked");
-  const attempt = path.join(value.root, "scratch", "attempt-001");
-  assert.equal((await stat(path.join(attempt, "fixture-ready.private.json"))).mode & 0o777, 0o600);
-  assert.equal((await stat(path.join(attempt, "fixture-report.private.json"))).mode & 0o777, 0o600);
-  const diagnosticPath = path.join(attempt, "fixture-process.private.json");
-  assert.equal((await stat(diagnosticPath)).mode & 0o777, 0o600);
-  const diagnostic = JSON.parse(await readFile(diagnosticPath, "utf8")) as Record<string, unknown>;
-  assert.equal(diagnostic["terminal_category"], "complete");
-  assert.equal(diagnostic["raw_output_persisted"], false);
-  assert(!JSON.stringify(diagnostic).includes("192.0.2"));
-  await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
-});
-
-test("an early real child exit is process_failed instead of a readiness timeout", {
-  skip: process.platform !== "darwin",
-}, async () => {
-  // Arrange
-  const value = await fixture();
-  const processPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 20_000 });
-  const startedAt = Date.now();
-  // Act
-  const error = await captureApiCommandEffects(
-    value.root,
-    value.options,
-    processPort,
-    "/usr/bin/false",
-    "/usr/bin/false",
-    "/usr/bin/false",
-    discardCheckpoint,
-  ).then(() => undefined, (caught: unknown) => caught);
-  // Assert
-  assert(error instanceof ApiCommandEffectsError);
-  assert.equal(error.category, "process_failed");
-  assert(Date.now() - startedAt < 5_000);
-  const diagnosticPath = path.join(value.root, "scratch", "attempt-001", "fixture-process.private.json");
-  assert.equal((await stat(diagnosticPath)).mode & 0o777, 0o600);
-  const diagnostic = JSON.parse(await readFile(diagnosticPath, "utf8")) as Record<string, unknown>;
-  assert.equal(diagnostic["terminal_category"], "nonzero_exit");
-  assert(!JSON.stringify(diagnostic).includes("/usr/bin/false"));
-  await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
-});
-
-test("a running real child without readiness times out and receives cleanup", {
-  skip: process.platform !== "darwin",
-}, async () => {
-  // Arrange
-  const value = await fixture();
-  const silentFixture = path.join(value.root, "silent-fixture.sh");
-  await writeFile(silentFixture, [
-    "#!/bin/sh",
-    "stop_file=''",
-    "while [ \"$#\" -gt 0 ]; do",
-    "  if [ \"$1\" = '--stop-file' ]; then stop_file=\"$2\"; fi",
-    "  shift 2",
-    "done",
-    "while [ ! -f \"$stop_file\" ]; do sleep 0.05; done",
-    "",
-  ].join("\n"), { mode: 0o700 });
-  await chmod(silentFixture, 0o700);
-  const processPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 20_000 });
-  // Act
-  const error = await captureApiCommandEffects(
-    value.root,
-    value.options,
-    processPort,
-    silentFixture,
-    "/usr/bin/false",
-    "/usr/bin/false",
-    discardCheckpoint,
-  ).then(() => undefined, (caught: unknown) => caught);
-
-  // Assert
-  assert(error instanceof ApiCommandEffectsError);
-  assert.equal(error.category, "timeout");
-  const attempt = path.join(value.root, "scratch", "attempt-001");
-  assert.equal((await stat(path.join(attempt, "fixture.stop.private"))).mode & 0o777, 0o600);
-  const diagnostic = JSON.parse(
-    await readFile(path.join(attempt, "fixture-process.private.json"), "utf8"),
-  ) as Record<string, unknown>;
-  assert.equal(diagnostic["terminal_category"], "complete");
-  assert.equal(diagnostic["raw_output_persisted"], false);
-  await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
-});

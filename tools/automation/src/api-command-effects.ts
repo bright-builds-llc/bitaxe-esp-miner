@@ -11,6 +11,7 @@ import { isDeviceSessionProjectionFailure, readClosedDeviceSession } from "./dev
 import {
   OperatorCheckpointError,
   superviseOperatorCheckpoints,
+  type OperatorCheckpointKind,
   type OperatorCheckpointSink,
 } from "./api-command-effects-checkpoint.js";
 import { isClosedReadinessTransition } from "./api-command-effects-readiness.js";
@@ -266,17 +267,31 @@ function validatedCommandEffects(network: JsonObject): JsonObject {
     "safety_valid", "terminal_http_valid", "terminal_pool_persisted",
   ];
   if (
-    effects["schema"] !== "mining-campaign-command-effects-v3"
+    effects["schema"] !== "mining-campaign-command-effects-v4"
     || effects["identify_terminal_outcome"] !== "none"
     || requiredTrue.some((field) => effects[field] !== true)
     || effects["pause_request_count"] !== 1
     || effects["resume_request_count"] !== 1
-    || effects["identify_request_count"] !== 2
+    || (effects["identify_replay_request_count"] !== 0
+      && effects["identify_replay_request_count"] !== 1)
+    || effects["identify_request_count"] !== 2 + effects["identify_replay_request_count"]
     || effects["dismiss_request_count"] !== 1
   ) {
     throw failure("evidence_invalid", "command effects evidence quorum is incomplete");
   }
   return effects;
+}
+
+function validateCheckpointEvidence(
+  effects: JsonObject,
+  checkpointKinds: readonly OperatorCheckpointKind[],
+): void {
+  const expected = effects["identify_replay_request_count"] === 1
+    ? ["ready", "rendered", "replayed", "cleared"]
+    : ["ready", "rendered", "cleared"];
+  if (checkpointKinds.join(",") !== expected.join(",")) {
+    throw failure("evidence_invalid", "operator checkpoint evidence does not match replay count");
+  }
 }
 
 function validReadyFlashDiagnostic(value: unknown): boolean {
@@ -434,6 +449,7 @@ export async function captureApiCommandEffects(
   ]);
 
   let maybeCampaignOutcome: ProcessOutcome | undefined;
+  let checkpointKinds: readonly OperatorCheckpointKind[] = [];
   let maybeFixtureSettlement: FixtureSettlement | undefined;
   let maybePrimaryError: unknown;
   let primaryFailed = false;
@@ -476,6 +492,7 @@ export async function captureApiCommandEffects(
       "--redact-evidence",
     ], "operator-gated", "command effects campaign"), campaignRoot, checkpointSink);
     maybeCampaignOutcome = supervised.outcome;
+    checkpointKinds = supervised.checkpointKinds;
     if (maybeCampaignOutcome.timedOut) {
       throw failure(
         "timeout",
@@ -527,6 +544,7 @@ export async function captureApiCommandEffects(
   const flashDiagnosticsPath = path.join(campaignRoot, "campaign-flash.private.json");
   const flashDiagnostics = await readRequiredPrivateDocument(flashDiagnosticsPath, "campaign flash diagnostics");
   const effects = validateCampaign(campaignResult, network, flashDiagnostics.value, flashDiagnostics.document);
+  validateCheckpointEvidence(effects, checkpointKinds);
   const fixture = validateFixture(await readPrivateJson(fixtureReport, "fixture report"));
 
   const intentPath = path.join(campaignRoot, "command-effects-reboot-intent.private.json");

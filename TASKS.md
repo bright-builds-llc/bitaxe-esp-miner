@@ -3142,13 +3142,13 @@ the linked `CLOSURE.md`.
 Replayable IDENTIFY checkpoint software plan:
 `docs/parity/work-plans/20260814T200547Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable software-only plan before implementation.
-- [ ] Add a deterministic red regression for a missed IDENTIFY window followed
+- [x] Commit and push the immutable software-only plan before implementation.
+- [x] Add a deterministic red regression for a missed IDENTIFY window followed
       by one explicit replay, then implement the smallest safe typed protocol.
-- [ ] Prove one bounded replay, unbounded operator wait, exact per-effect
+- [x] Prove one bounded replay, unbounded operator wait, exact per-effect
       duration, no early/duplicate request, late-confirmation rejection,
       decline/cleanup, redaction, and existing behavior compatibility.
-- [ ] Pass focused, real-process, mandatory, privacy, reference, firmware, and
+- [x] Pass focused, real-process, mandatory, privacy, reference, firmware, and
       diff gates; keep API-009 `implemented` and close without hardware or
       attempt-022.
 
@@ -3158,6 +3158,19 @@ firmware. Do not access credentials, protected attempt artifacts, USB,
 device/network interfaces, HTTP, display, mining, hardware controls, direct
 UART, pins/pads/GPIO, parity evidence, checklist promotion, attempt-022, or any
 other hardware attempt.
+
+Replayable IDENTIFY plan completion review: the host transaction now accepts
+one explicit replay after a missed rendered window, queues it until the prior
+30-second effect is conservatively inactive, opens one new exact confirmation
+window, rejects late or duplicate confirmation/replay, and binds the distinct
+checkpoint sequence to closed replay/request counts. Operator waits remain
+unbounded, while each physical effect and the replay count remain bounded.
+Focused loopback HTTP, parser/state-machine, CLI, evidence mismatch, supervisor
+real-process, all mandatory, privacy, reference, firmware, selector, digest,
+and diff gates pass. No credential, protected attempt, detector, USB, device,
+network, display, mining, hardware-control, direct UART, or pin interface was
+accessed. API-009 remains `implemented`; no attempt-022 or hardware evidence
+was created. See the linked `CLOSURE.md`.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 

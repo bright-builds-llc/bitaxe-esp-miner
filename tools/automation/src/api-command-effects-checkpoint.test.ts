@@ -14,7 +14,10 @@ import { createLocalProcessPort } from "./process.js";
 
 const ok = { exitCode: 0, stdout: "", stderr: "", timedOut: false } as const;
 
-async function privateCheckpoint(root: string, checkpoint: "ready" | "rendered" | "cleared"): Promise<void> {
+async function privateCheckpoint(
+  root: string,
+  checkpoint: "ready" | "rendered" | "replayed" | "cleared",
+): Promise<void> {
   const output = path.join(root, `identify-${checkpoint}.required.json`);
   await writeFile(output, `${JSON.stringify({
     schema: "bitaxe-identify-checkpoint-v3",
@@ -48,6 +51,7 @@ test("a partially published document is not misclassified before completion", as
   // Assert
   assert.equal(result.maybeCheckpointError, undefined);
   assert.deepEqual(signals.map((checkpoint) => checkpoint.checkpoint), ["ready", "rendered", "cleared"]);
+  assert.deepEqual(result.checkpointKinds, ["ready", "rendered", "cleared"]);
 });
 
 test("campaign settlement stops polling for later checkpoint files", async () => {
@@ -66,6 +70,7 @@ test("campaign settlement stops polling for later checkpoint files", async () =>
   // Assert
   assert(result.maybeCheckpointError !== undefined);
   assert.deepEqual(signals.map((checkpoint) => checkpoint.checkpoint), ["ready"]);
+  assert.deepEqual(result.checkpointKinds, ["ready"]);
 });
 
 test("a real child publishes ordered checkpoints before it settles", {
@@ -86,6 +91,9 @@ test("a real child publishes ordered checkpoints before it settles", {
     "sleep 1",
     "printf '%s\\n' '{\"schema\":\"bitaxe-identify-checkpoint-v3\",\"checkpoint\":\"rendered\",\"status\":\"required\"}' > \"$evidence_root/identify-rendered.required.json\"",
     "chmod 600 \"$evidence_root/identify-rendered.required.json\"",
+    "sleep 1",
+    "printf '%s\\n' '{\"schema\":\"bitaxe-identify-checkpoint-v3\",\"checkpoint\":\"replayed\",\"status\":\"required\"}' > \"$evidence_root/identify-replayed.required.json\"",
+    "chmod 600 \"$evidence_root/identify-replayed.required.json\"",
     "sleep 1",
     "printf '%s\\n' '{\"schema\":\"bitaxe-identify-checkpoint-v3\",\"checkpoint\":\"cleared\",\"status\":\"required\"}' > \"$evidence_root/identify-cleared.required.json\"",
     "chmod 600 \"$evidence_root/identify-cleared.required.json\"",
@@ -111,17 +119,37 @@ test("a real child publishes ordered checkpoints before it settles", {
   // Assert
   assert.equal(supervised.outcome.exitCode, 1);
   assert.equal(supervised.maybeCheckpointError, undefined);
-  assert.deepEqual(signals.map((checkpoint) => checkpoint.checkpoint), ["ready", "rendered", "cleared"]);
-  assert.equal(signals.length, 3);
-  assert(signals.every((signal) => signal.schema_version === "bitaxe-operator-checkpoint-v4"));
+  assert.deepEqual(
+    signals.map((checkpoint) => checkpoint.checkpoint),
+    ["ready", "rendered", "replayed", "cleared"],
+  );
+  assert.equal(signals.length, 4);
+  assert.deepEqual(supervised.checkpointKinds, ["ready", "rendered", "replayed", "cleared"]);
+  assert(signals.every((signal) => signal.schema_version === "bitaxe-operator-checkpoint-v5"));
   assert.deepEqual(signals.map((signal) => signal.operator_wait_policy), [
-    "unbounded", "effect_evidence_window", "unbounded",
+    "unbounded", "unbounded", "unbounded", "unbounded",
   ]);
   assert.deepEqual(signals.map((signal) => signal.effect_evidence_window_seconds), [
-    "not_applicable", 30, "not_applicable",
+    "not_applicable", 30, 30, "not_applicable",
   ]);
   assert(signals.every((signal) => signal.local_signal_required));
-  assert.deepEqual(signals.map((signal) => signal.starts_identify_window), [true, false, false]);
+  assert.deepEqual(
+    signals.map((signal) => signal.starts_identify_window),
+    [true, false, false, false],
+  );
+  assert.deepEqual(
+    signals.map((signal) => signal.replay_supported),
+    [false, true, false, false],
+  );
+  assert(signals.every((signal) => signal.replay_limit === 1));
+  assert.deepEqual(
+    signals.map((signal) => signal.replay_starts_identify_window),
+    [false, true, false, false],
+  );
+  assert.deepEqual(
+    signals.map((signal) => signal.late_confirmation_policy),
+    ["not_applicable", "reject", "reject", "not_applicable"],
+  );
   assert(signals.every((signal) => signal.decline_supported));
   const publicSignal = signals.map(formatOperatorCheckpointSignal).join("");
   assert(!publicSignal.includes(root));

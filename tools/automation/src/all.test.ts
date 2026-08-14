@@ -1,6 +1,7 @@
 import "./contracts.test.js";
 import "./api-command-effects-budget.test.js";
 import "./api-command-effects-checkpoint.test.js";
+import "./api-command-effects-process.test.js";
 import "./api-command-effects-timeout.test.js";
 import "./api-command-effects.test.js";
 import "./ci-contract.test.js";

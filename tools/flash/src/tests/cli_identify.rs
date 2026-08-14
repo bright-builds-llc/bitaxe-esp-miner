@@ -56,3 +56,31 @@ fn parses_declined_identify_observation() {
         network::IdentifyCheckpointOutcome::Declined
     );
 }
+
+#[test]
+fn parses_one_explicit_identify_replay() {
+    // Arrange
+    let args = [
+        "bitaxe-flash",
+        "signal-identify",
+        "--evidence-dir",
+        "hardware-runs/api009/attempt-001/campaign",
+        "--checkpoint",
+        "rendered",
+        "--outcome",
+        "replay",
+    ];
+
+    // Act
+    let cli = parse_cli(args).expect("replay cli");
+
+    // Assert
+    let CliCommand::SignalIdentify(command) = cli.command else {
+        panic!("expected signal-identify command");
+    };
+    assert_eq!(
+        command.checkpoint,
+        network::IdentifyCheckpointKind::Rendered
+    );
+    assert_eq!(command.outcome, network::IdentifyCheckpointOutcome::Replay);
+}

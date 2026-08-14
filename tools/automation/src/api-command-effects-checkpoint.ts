@@ -6,20 +6,24 @@ import type { ProcessOutcome } from "./process.js";
 const CHECKPOINT_SCHEMA = "bitaxe-identify-checkpoint-v3";
 const POLL_INTERVAL_MILLIS = 50;
 
-export type OperatorCheckpointKind = "ready" | "rendered" | "cleared";
+export type OperatorCheckpointKind = "ready" | "rendered" | "replayed" | "cleared";
 type ConfirmationCondition = "ready_to_watch" | "identify_frame_visible" | "identify_frame_absent";
 
 export type OperatorCheckpointSignal = {
-  readonly schema_version: "bitaxe-operator-checkpoint-v4";
+  readonly schema_version: "bitaxe-operator-checkpoint-v5";
   readonly command: "api-command-effects-campaign";
   readonly checkpoint: OperatorCheckpointKind;
   readonly confirm_when: ConfirmationCondition;
   readonly expected_frame: readonly ["", "BITAXE IDENTIFY", "Hello!", ""];
   readonly identify_duration_seconds: 30;
-  readonly operator_wait_policy: "unbounded" | "effect_evidence_window";
+  readonly operator_wait_policy: "unbounded";
   readonly effect_evidence_window_seconds: 30 | "not_applicable";
   readonly local_signal_required: true;
   readonly starts_identify_window: boolean;
+  readonly replay_supported: boolean;
+  readonly replay_limit: 1;
+  readonly replay_starts_identify_window: boolean;
+  readonly late_confirmation_policy: "reject" | "not_applicable";
   readonly decline_supported: true;
   readonly status: "required";
 };
@@ -37,6 +41,7 @@ export class OperatorCheckpointError extends Error {
 
 type SupervisedCampaign = {
   readonly outcome: ProcessOutcome;
+  readonly checkpointKinds: readonly OperatorCheckpointKind[];
   readonly maybeCheckpointError?: OperatorCheckpointError;
 };
 
@@ -44,7 +49,14 @@ type CampaignSettlement =
   | { readonly kind: "outcome"; readonly outcome: ProcessOutcome }
   | { readonly kind: "error"; readonly error: unknown };
 
-const checkpoints: readonly OperatorCheckpointKind[] = ["ready", "rendered", "cleared"];
+type CheckpointCursor = "ready" | "rendered" | "replayed_or_cleared" | "cleared" | "complete";
+
+const laterCheckpoints: Readonly<Record<Exclude<CheckpointCursor, "complete">, readonly OperatorCheckpointKind[]>> = {
+  ready: ["rendered", "replayed", "cleared"],
+  rendered: ["replayed", "cleared"],
+  replayed_or_cleared: [],
+  cleared: [],
+};
 const expectedFrame = ["", "BITAXE IDENTIFY", "Hello!", ""] as const;
 
 function checkpointPath(root: string, checkpoint: OperatorCheckpointKind): string {
@@ -55,25 +67,30 @@ function confirmationCondition(checkpoint: OperatorCheckpointKind): Confirmation
   switch (checkpoint) {
     case "ready": return "ready_to_watch";
     case "rendered": return "identify_frame_visible";
+    case "replayed": return "identify_frame_visible";
     case "cleared": return "identify_frame_absent";
   }
 }
 
 function signal(checkpoint: OperatorCheckpointKind): OperatorCheckpointSignal {
-  const effectBounded = checkpoint === "rendered";
+  const effectBounded = checkpoint === "rendered" || checkpoint === "replayed";
   return {
-    schema_version: "bitaxe-operator-checkpoint-v4",
+    schema_version: "bitaxe-operator-checkpoint-v5",
     command: "api-command-effects-campaign",
     checkpoint,
     confirm_when: confirmationCondition(checkpoint),
     expected_frame: expectedFrame,
     identify_duration_seconds: 30,
-    operator_wait_policy: effectBounded ? "effect_evidence_window" : "unbounded",
+    operator_wait_policy: "unbounded",
     effect_evidence_window_seconds: effectBounded ? 30 : "not_applicable",
     // Consuming ready starts the device's 30-second parity effect. Requiring
     // the local command keeps transport or conversational latency outside it.
     local_signal_required: true,
     starts_identify_window: checkpoint === "ready",
+    replay_supported: checkpoint === "rendered",
+    replay_limit: 1,
+    replay_starts_identify_window: checkpoint === "rendered",
+    late_confirmation_policy: effectBounded ? "reject" : "not_applicable",
     decline_supported: true,
     status: "required",
   };
@@ -129,27 +146,53 @@ async function delay(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MILLIS));
 }
 
+async function assertLaterAbsent(
+  campaignRoot: string,
+  cursor: Exclude<CheckpointCursor, "complete">,
+  strict: boolean,
+): Promise<void> {
+  for (const later of laterCheckpoints[cursor]) {
+    if (await readCheckpoint(campaignRoot, later, strict) !== undefined) {
+      throw new OperatorCheckpointError();
+    }
+  }
+}
+
 async function emitAvailable(
   campaignRoot: string,
   sink: OperatorCheckpointSink,
-  nextCheckpoint: number,
+  cursor: CheckpointCursor,
   strict: boolean,
-): Promise<number> {
-  let next = nextCheckpoint;
-  while (next < checkpoints.length) {
-    const checkpoint = checkpoints[next];
-    if (checkpoint === undefined) throw new OperatorCheckpointError();
+): Promise<CheckpointCursor> {
+  let next = cursor;
+  while (next !== "complete") {
+    if (next === "replayed_or_cleared") {
+      const maybeReplayed = await readCheckpoint(campaignRoot, "replayed", strict);
+      const maybeCleared = await readCheckpoint(campaignRoot, "cleared", strict);
+      if (maybeReplayed !== undefined) {
+        await sink(maybeReplayed);
+        next = "cleared";
+        continue;
+      }
+      if (maybeCleared !== undefined) {
+        await sink(maybeCleared);
+        return "complete";
+      }
+      return next;
+    }
+
+    const checkpoint = next;
     const maybeSignal = await readCheckpoint(campaignRoot, checkpoint, strict);
     if (maybeSignal === undefined) {
-      for (const later of checkpoints.slice(next + 1)) {
-        if (await readCheckpoint(campaignRoot, later, strict) !== undefined) {
-          throw new OperatorCheckpointError();
-        }
-      }
-      break;
+      await assertLaterAbsent(campaignRoot, next, strict);
+      return next;
     }
     await sink(maybeSignal);
-    next += 1;
+    next = checkpoint === "ready"
+      ? "rendered"
+      : checkpoint === "rendered"
+        ? "replayed_or_cleared"
+        : "complete";
   }
   return next;
 }
@@ -159,6 +202,11 @@ export async function superviseOperatorCheckpoints(
   campaignRoot: string,
   sink: OperatorCheckpointSink,
 ): Promise<SupervisedCampaign> {
+  const checkpointKinds: OperatorCheckpointKind[] = [];
+  const recordingSink: OperatorCheckpointSink = async (checkpoint) => {
+    await sink(checkpoint);
+    checkpointKinds.push(checkpoint.checkpoint);
+  };
   let maybeSettlement: CampaignSettlement | undefined;
   const settlement: Promise<CampaignSettlement> = campaignPromise.then(
     (outcome): CampaignSettlement => ({ kind: "outcome", outcome }),
@@ -166,12 +214,17 @@ export async function superviseOperatorCheckpoints(
   );
   void settlement.then((value) => { maybeSettlement = value; });
 
-  let nextCheckpoint = 0;
+  let checkpointCursor: CheckpointCursor = "ready";
   let maybeCheckpointError: OperatorCheckpointError | undefined;
   while (maybeSettlement === undefined) {
     if (maybeCheckpointError === undefined) {
       try {
-        nextCheckpoint = await emitAvailable(campaignRoot, sink, nextCheckpoint, false);
+        checkpointCursor = await emitAvailable(
+          campaignRoot,
+          recordingSink,
+          checkpointCursor,
+          false,
+        );
       } catch {
         maybeCheckpointError = new OperatorCheckpointError();
       }
@@ -183,8 +236,13 @@ export async function superviseOperatorCheckpoints(
   if (resolved.kind === "error") throw resolved.error;
   if (maybeCheckpointError === undefined) {
     try {
-      nextCheckpoint = await emitAvailable(campaignRoot, sink, nextCheckpoint, true);
-      if (resolved.outcome.exitCode === 0 && nextCheckpoint !== checkpoints.length) {
+      checkpointCursor = await emitAvailable(
+        campaignRoot,
+        recordingSink,
+        checkpointCursor,
+        true,
+      );
+      if (resolved.outcome.exitCode === 0 && checkpointCursor !== "complete") {
         maybeCheckpointError = new OperatorCheckpointError();
       }
     } catch {
@@ -193,6 +251,7 @@ export async function superviseOperatorCheckpoints(
   }
   return {
     outcome: resolved.outcome,
+    checkpointKinds,
     ...(maybeCheckpointError === undefined ? {} : { maybeCheckpointError }),
   };
 }
