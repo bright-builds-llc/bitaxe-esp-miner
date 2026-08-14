@@ -107,6 +107,12 @@ impl OrdinaryEspProductionSessionAdapter {
                     None
                 }
             };
+        if maybe_campaign_status
+            .as_ref()
+            .is_some_and(CampaignStatusTracker::requires_requested_run_bootstrap)
+        {
+            crate::runtime_snapshot::apply_command_effects_run_bootstrap();
+        }
 
         Ok(Self {
             mining_actuation: crate::mining_actuation_adapter::Ultra205MiningActuationAdapter::new(

@@ -2638,16 +2638,26 @@ mine-on-boot disabled and preserving explicit pause/resume command ownership.
 Command-effects startup-intent fix plan:
 `docs/parity/work-plans/20260814T033105Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable software-only plan after all plan gates.
-- [ ] Add the real-seam red regression, implement the lease-scoped initial run
+- [x] Commit and push the immutable software-only plan after all plan gates.
+- [x] Add the real-seam red regression, implement the lease-scoped initial run
       request, and preserve explicit pause/resume plus terminal pause behavior.
-- [ ] Pass focused and mandatory gates, close the software plan with API-009
+- [x] Pass focused and mandatory gates, close the software plan with API-009
       still `implemented`, and leave attempt-015 unauthorized.
 
 This continuation authorizes no hardware effect. It isolates the current-boot
 requested-intent owner from persisted `mineonboot=0` without changing NVS,
 automating a command, or weakening safety. A later hardware ordinal requires a
 separate clean selector and immutable bounded plan after this fix is pushed.
+
+Startup-intent fix closure review: a real-seam regression first failed because
+the command-effects lease had no current-boot run bootstrap. The production
+owner now applies one typed bootstrap only for an authorizing command-effects
+lease, after tracker construction and before readiness is observed. Disabled
+mine-on-boot remains persisted and ordinary campaigns remain unchanged;
+explicit pause/resume commands still replace the request, and consumed leases
+still force safe pause. Focused and mandatory gates pass. No hardware ran,
+API-009 remains `implemented`, and attempt-015 requires a separate clean
+selector plus immutable bounded plan.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 

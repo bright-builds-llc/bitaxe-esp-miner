@@ -1,10 +1,9 @@
 //! Firmware collection boundary for pure AxeOS API response snapshots.
 
+mod operator_intent;
 mod screen;
 mod screen_projection;
-
 pub use screen::collect_screen_snapshot;
-
 use std::sync::{Mutex, OnceLock};
 
 use crate::log_buffer::RetainedPairStorageError;
@@ -19,8 +18,6 @@ use bitaxe_api::{
     ProjectedApiViews, SafeTelemetrySnapshot, ScoreboardEntryWire, StatisticsHistory,
     StatisticsSample, StatisticsWire, SystemInfoSettingsSnapshot, SystemInfoWire,
 };
-mod operator_intent;
-
 use bitaxe_config::{reload_snapshot, LoadedValue};
 use bitaxe_stratum::v1::telemetry_projection::RuntimeProjectionSampleMarker;
 use bitaxe_stratum::v1::{
@@ -136,6 +133,7 @@ pub fn mining_runtime_state() -> MiningRuntimeState {
 pub(crate) fn requested_mining_operator_intent() -> MiningOperatorIntent {
     command_visible_state().requested_operator_intent.current()
 }
+
 /// Applies the persisted boot preference to this boot's initial intent.
 pub fn apply_boot_mining_preference(start_mining_on_boot: bool) {
     mutate_command_visible_state(|state| {
@@ -251,6 +249,14 @@ pub fn apply_mining_operator_intent_command(effect: MiningOperatorIntentEffect) 
     mutate_command_visible_state(|state| {
         state.requested_operator_intent.apply(effect);
         apply_mining_operator_intent_effect(&mut state.mining, effect);
+    });
+}
+
+pub(crate) fn apply_command_effects_run_bootstrap() {
+    mutate_command_visible_state(|state| {
+        state
+            .requested_operator_intent
+            .apply_command_effects_run_bootstrap();
     });
 }
 
@@ -613,16 +619,4 @@ fn compatibility_string(fact: &PlatformFact<String>) -> String {
 
 fn compatibility_u64(fact: &PlatformFact<u64>) -> u64 {
     fact.maybe_value().copied().unwrap_or(0)
-}
-
-#[cfg(test)]
-pub(crate) fn reset_command_visible_state_for_test() {
-    mutate_command_visible_state(|state| {
-        *state = CommandVisibleState::default();
-    });
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
 }

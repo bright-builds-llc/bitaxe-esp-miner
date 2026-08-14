@@ -181,6 +181,10 @@ impl CampaignStatusTracker {
         self.lease_authorizing
     }
 
+    pub(super) const fn requires_requested_run_bootstrap(&self) -> bool {
+        self.lease_authorizing && matches!(self.stage, MiningCampaignStage::CommandEffects)
+    }
+
     pub(super) fn operator_intent(
         &self,
         persisted_intent: MiningOperatorIntent,

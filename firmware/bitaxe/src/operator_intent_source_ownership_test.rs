@@ -53,3 +53,25 @@ fn authoritative_readiness_reads_requested_intent_not_the_projection() {
     assert_eq!(requested_reads, 1);
     assert!(!readiness.contains("mining.operator_intent"));
 }
+
+#[test]
+fn command_effects_bootstrap_is_applied_before_owner_readiness() {
+    // Arrange
+    let adapter = function_source(
+        PRODUCTION_SOURCE,
+        "fn new(owner_sender: SyncSender<OwnerInboxMessage>)",
+        "fn wake_event",
+    );
+
+    // Act
+    let predicate = adapter
+        .find("requires_requested_run_bootstrap")
+        .expect("campaign tracker must own bootstrap eligibility");
+    let application = adapter
+        .find("apply_command_effects_run_bootstrap")
+        .expect("runtime intent owner must apply the bootstrap");
+
+    // Assert
+    assert!(predicate < application);
+    assert!(adapter[application..].contains("Ok(Self"));
+}

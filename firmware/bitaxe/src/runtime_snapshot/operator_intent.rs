@@ -32,6 +32,10 @@ impl RequestedOperatorIntent {
         intent
     }
 
+    pub(crate) fn apply_command_effects_run_bootstrap(&mut self) {
+        self.set(MiningOperatorIntent::Run);
+    }
+
     pub(crate) fn apply(&mut self, effect: MiningOperatorIntentEffect) {
         self.set(effect.next_intent);
     }
@@ -91,5 +95,29 @@ mod tests {
         // Assert
         assert_eq!(intent, MiningOperatorIntent::Run);
         assert_eq!(requested.current(), MiningOperatorIntent::Run);
+    }
+
+    #[test]
+    fn campaign_bootstrap_replaces_disabled_boot_preference_but_not_later_commands() {
+        // Arrange
+        let mut requested = RequestedOperatorIntent::default();
+        requested.apply_boot_preference(false);
+
+        // Act
+        requested.apply_command_effects_run_bootstrap();
+        let bootstrapped = requested.current();
+        requested.apply(MiningOperatorIntentEffect {
+            next_intent: MiningOperatorIntent::Paused,
+        });
+        let paused = requested.current();
+        requested.apply(MiningOperatorIntentEffect {
+            next_intent: MiningOperatorIntent::Run,
+        });
+        let resumed = requested.current();
+
+        // Assert
+        assert_eq!(bootstrapped, MiningOperatorIntent::Run);
+        assert_eq!(paused, MiningOperatorIntent::Paused);
+        assert_eq!(resumed, MiningOperatorIntent::Run);
     }
 }

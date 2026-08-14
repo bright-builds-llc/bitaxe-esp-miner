@@ -41,3 +41,50 @@
 - Blocker or next safe action: Push this checkpoint, confirm clean synchronized
   HEAD and the same open plan, then add the failing regression before the
   production fix.
+
+## 2026-08-14T03:40:50Z | red-green implementation checkpoint
+
+- Source commit: `bdbc2d5b866db612b2ac1b95b3f485c2cf69ca60` plus the uncommitted
+  changes described here.
+- Actions: Added the requested-intent, campaign-status, and production-owner
+  regressions before implementation. The focused target failed because no
+  command-effects lease bootstrap existed. Added one narrow requested-intent
+  bootstrap, a pure tracker eligibility predicate, and one adapter call after
+  admitted tracker construction and before owner readiness.
+- Verification: The exact red compile failure changed to green. Focused tests
+  prove the disabled boot preference is replaced only for admitted command
+  effects, the first active snapshot remains runnable, explicit pause and
+  resume overwrite the request, consumed leases force pause, ordinary
+  campaigns do not opt in, and the bootstrap cannot mutate projected mining,
+  settings, or NVS. Campaign-status, requested-intent, source-ownership,
+  Stratum, flash, automation, real-process fixture, and real ESP firmware
+  targets pass.
+- Evidence: Public source, test outcomes, and the exact compiler failure. No
+  credential, detector, protected attempt artifact, USB, device, network,
+  display, mining, or hardware interface was accessed.
+- Outcome: The attempt-014 startup-intent race is fixed at the current-boot
+  requested-intent owner without a second state machine or timing workaround.
+- Blocker or next safe action: Run the complete final gate sequence, review the
+  full diff, and close this software-only plan with API-009 still
+  `implemented` and attempt-015 unauthorized.
+
+## 2026-08-14T03:46:49Z | software closure checkpoint
+
+- Source commit: `bdbc2d5b866db612b2ac1b95b3f485c2cf69ca60` plus the final
+  software changes described here.
+- Actions: Kept the bootstrap at the requested-intent owner, removed an empty
+  test shell, and completed the explicit simplification pass. No timer, delay,
+  persistent write, second state machine, or compatibility path was added.
+- Verification: The red regression and focused campaign-status,
+  requested-intent, source-ownership, Stratum, flash, automation,
+  real-process, and firmware targets pass. The final closure gate sequence and
+  complete diff review are recorded in `CLOSURE.md`.
+- Evidence: Public source, tests, plan digest, and category-only gate outcomes.
+  No credential, detector, protected attempt artifact, USB, device, network,
+  display, mining, or hardware interface was accessed.
+- Outcome: The command-effects current-boot startup-intent defect is fixed in
+  software while persisted mine-on-boot and explicit operator command
+  ownership remain unchanged.
+- Blocker or next safe action: Commit and push this closure, restore a clean
+  synchronized selector, and require a separate immutable contract before any
+  later hardware ordinal. API-009 remains `implemented`.
