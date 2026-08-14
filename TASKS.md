@@ -2599,6 +2599,28 @@ privacy, reference, firmware, selector, sensitive-output, and diff gate.
 API-009 remains `implemented`; no hardware or attempt-014 ran. See the linked
 `CLOSURE.md` for the remaining hardware evidence condition and non-claims.
 
+Resumable-epoch-fixed attempt-014 plan:
+`docs/parity/work-plans/20260814T023531Z-API-009/PLAN.md`.
+
+- [ ] Commit and push the immutable single-attempt contract and pass every
+      focused, mandatory, privacy, reference, firmware, and exact-package gate.
+- [ ] Run exactly one fresh detector-gated attempt-014 and consume each
+      IDENTIFY checkpoint only after its matching live physical report.
+- [ ] Promote only on the complete command/restart/device-user quorum;
+      otherwise preserve `implemented`, earliest failure, evidence withholding,
+      safe stop, cleanup, recovery, and stop without attempt-015.
+
+Attempt-014 authorization: pushed commit `0ae08421` reproduces and fixes the
+exact attempt-013 pre-active lease-expiry boundary with separately bounded
+activation and resumable-active epochs, a typed activation-timeout terminal
+category, expanded child/parent/fixture bounds, exact-boundary regressions, and
+a real-process guard. Standing task authorization permits this one campaign
+only after the linked immutable contract and all named gates pass at clean
+pushed HEAD. Campaign start consumes attempt-014. No inferred physical
+observation, prior protected-artifact reuse, external or owner pool,
+destructive/fault-injection action, direct UART, pin/pad/GPIO manipulation,
+attempt-015, or unchanged retry is authorized.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
