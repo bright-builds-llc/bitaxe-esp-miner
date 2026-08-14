@@ -3139,6 +3139,26 @@ attempt processes absent, and public evidence withheld. API-009 remains
 `implemented`; attempt-021 is consumed and no attempt-022 is authorized. See
 the linked `CLOSURE.md`.
 
+Replayable IDENTIFY checkpoint software plan:
+`docs/parity/work-plans/20260814T200547Z-API-009/PLAN.md`.
+
+- [ ] Commit and push the immutable software-only plan before implementation.
+- [ ] Add a deterministic red regression for a missed IDENTIFY window followed
+      by one explicit replay, then implement the smallest safe typed protocol.
+- [ ] Prove one bounded replay, unbounded operator wait, exact per-effect
+      duration, no early/duplicate request, late-confirmation rejection,
+      decline/cleanup, redaction, and existing behavior compatibility.
+- [ ] Pass focused, real-process, mandatory, privacy, reference, firmware, and
+      diff gates; keep API-009 `implemented` and close without hardware or
+      attempt-022.
+
+Software-only authorization: inspect and modify repository source, tests,
+tracker, worklog, closure, and deterministic child-process fixtures, and build
+firmware. Do not access credentials, protected attempt artifacts, USB,
+device/network interfaces, HTTP, display, mining, hardware controls, direct
+UART, pins/pads/GPIO, parity evidence, checklist promotion, attempt-022, or any
+other hardware attempt.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
