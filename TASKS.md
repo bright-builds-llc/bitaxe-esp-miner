@@ -3237,6 +3237,30 @@ reference, firmware, selector, digest, and diff gate pass. API-009 remains
 `implemented`; this software-only plan created no hardware evidence and did not
 authorize attempt-023. See the linked `CLOSURE.md`.
 
+Latency-tolerant attempt-023 plan:
+`docs/parity/work-plans/20260814T234917Z-API-009/PLAN.md`.
+
+- [ ] Commit and push the immutable single-attempt contract, then pass every
+      focused, mandatory, privacy, reference, firmware, selector, and
+      exact-package gate at clean synchronized HEAD.
+- [ ] Run exactly one fresh detector-gated attempt-023, keep the Ultra 205
+      paused and safe-stopped through every unbounded operator wait, and accept
+      a delayed rendered/replayed report only as an attestation that the exact
+      frame was observed during its uniquely bound 30-second effect.
+- [ ] Promote API-009 only on the complete command/restart/device-user quorum;
+      otherwise preserve `implemented`, the earliest typed failure, evidence
+      withholding, safe stop, cleanup, and recovery, then stop without
+      attempt-024.
+
+Attempt-023 authorization: pushed source `168e599e` implements the unbounded,
+attempt-local observed-during-effect attestation and natural-expiry clear
+transaction after attempt-022's chat-latency failure. Standing task
+authorization permits this one exact-package campaign only after the linked
+immutable contract and all named gates pass. Campaign start consumes
+attempt-023. No inferred observation, protected-artifact reuse, external or
+owner pool, factory reset, erase, destructive/fault-injection action, direct
+UART, pin/pad/GPIO manipulation, attempt-024, or unchanged retry is authorized.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
