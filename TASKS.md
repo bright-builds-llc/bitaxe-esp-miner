@@ -2753,6 +2753,26 @@ IDENTIFY evidence. API-009 remains `implemented`; attempt-017 and an unchanged
 retry are not authorized. See
 `docs/parity/work-plans/20260814T044503Z-API-009/CLOSURE.md`.
 
+Paused asynchronous IDENTIFY signal plan:
+`docs/parity/work-plans/20260814T120645Z-API-009/PLAN.md`.
+
+- [ ] Move the one-shot ready checkpoint after the pause/safe-stop join and
+      before resume, so the device remains safe-stopped while awaiting an
+      asynchronous user or agent signal.
+- [ ] Add a checked one-hour ready window plus an explicit repo-owned signal-
+      sender command, preserving exact ordering, private modes, redaction, and
+      no resume or IDENTIFY effect before the signal.
+- [ ] Pass focused, real-process, firmware, mandatory, privacy, reference,
+      selector, and diff gates; close with API-009 `implemented` and no hardware
+      or attempt-017 authorization.
+
+Software-only authorization: this plan may modify and test repository source,
+run deterministic fixtures and local child processes, and build firmware. It
+may not access credentials, detector/protected attempt contents beyond recorded
+redacted closure facts, USB, device/network interfaces, HTTP commands, flash,
+reset, restart, mining, display, hardware controls, direct UART,
+pins/pads/GPIO, public parity evidence, attempt-017, or checklist status.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
