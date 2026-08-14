@@ -2694,6 +2694,22 @@ pre-open fragment. Public evidence remains withheld, API-009 stays
 software-only plan for shared serial line-boundary admission before both the
 campaign and network analyzers.
 
+Receive-ingress line-admission fix plan:
+`docs/parity/work-plans/20260814T042002Z-API-009/PLAN.md`.
+
+- [x] Commit and push the immutable software-only plan after all plan gates.
+- [ ] Add the real receive-session red regression and implement one resettable
+      newline-boundary admission before every ephemeral analyzer callback.
+- [ ] Prove campaign and network consumers share only admitted bytes across
+      initial open and reader reacquisition, then pass every focused and
+      mandatory gate with API-009 still `implemented`.
+
+This continuation authorizes source, tests, task, and public plan artifacts
+only. It must not access credentials, protected attempt contents beyond the
+already recorded category/count/length facts, the detector, USB, device or
+network interfaces, HTTP, display, mining, restart, hardware controls, direct
+UART, pins/pads/GPIO, evidence promotion, or attempt-016.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
