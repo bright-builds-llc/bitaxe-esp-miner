@@ -229,23 +229,26 @@ fn advance_commands(
         CommandPhase::Resume if active_mining_state_valid(sample) => {
             evidence.resume_confirmed = true;
             evidence.active_after_resume = true;
-            evidence.identify_request_count = 1;
-            if !post_succeeded(http.post_identify_once(Instant::now() + HTTP_DEADLINE)) {
+            evidence.dismiss_request_count = 1;
+            if !post_succeeded(http.post_block_found_dismiss_once(Instant::now() + HTTP_DEADLINE)) {
                 *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
-            } else if write_required_checkpoint(evidence_root, IdentifyCheckpointKind::Rendered)
-                .is_ok()
-            {
-                *phase = CommandPhase::IdentifyRendered;
             } else {
-                *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid);
+                *phase = CommandPhase::Dismiss;
             }
         }
         CommandPhase::IdentifyReady => match consume_ready_signal(evidence_root, evidence) {
             Ok(true) => {
-                if !post_succeeded(http.post_resume_once(Instant::now() + HTTP_DEADLINE)) {
+                // Human checkpoints have no bounded response latency. Keep the
+                // initial safe-stop pause held until both observations finish.
+                evidence.identify_request_count = 1;
+                if !post_succeeded(http.post_identify_once(Instant::now() + HTTP_DEADLINE)) {
                     *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
+                } else if write_required_checkpoint(evidence_root, IdentifyCheckpointKind::Rendered)
+                    .is_ok()
+                {
+                    *phase = CommandPhase::IdentifyRendered;
                 } else {
-                    *phase = CommandPhase::Resume;
+                    *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid);
                 }
             }
             Ok(false) => {}
@@ -275,25 +278,17 @@ fn advance_commands(
                 }
             }
         }
-        CommandPhase::IdentifyCleared => {
-            match consume_confirmation(evidence_root, IdentifyCheckpointKind::Cleared) {
-                Ok(true) => {
-                    evidence.identify_cleared_confirmed = true;
-                    evidence.dismiss_request_count = 1;
-                    if post_succeeded(
-                        http.post_block_found_dismiss_once(Instant::now() + HTTP_DEADLINE),
-                    ) {
-                        *phase = CommandPhase::Dismiss;
-                    } else {
-                        *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
-                    }
-                }
-                Ok(false) => {}
-                Err(()) => {
-                    *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid)
+        CommandPhase::IdentifyCleared => match consume_cleared_signal(evidence_root, evidence) {
+            Ok(true) => {
+                if !post_succeeded(http.post_resume_once(Instant::now() + HTTP_DEADLINE)) {
+                    *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
+                } else {
+                    *phase = CommandPhase::Resume;
                 }
             }
-        }
+            Ok(false) => {}
+            Err(()) => *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid),
+        },
         CommandPhase::Dismiss if !sample.show_new_block => {
             evidence.dismiss_confirmed = true;
             evidence.block_count_preserved =
@@ -397,6 +392,25 @@ fn consume_ready_signal(
         return Ok(false);
     }
     evidence.identify_operator_ready_confirmed = true;
+    Ok(true)
+}
+
+fn consume_cleared_signal(
+    root: &Utf8Path,
+    evidence: &mut CommandEffectsEvidence,
+) -> Result<bool, ()> {
+    if !evidence.pause_confirmed
+        || !evidence.identify_operator_ready_confirmed
+        || !evidence.identify_rendered_confirmed
+        || evidence.identify_request_count != 2
+        || evidence.resume_request_count != 0
+    {
+        return Err(());
+    }
+    if !consume_confirmation(root, IdentifyCheckpointKind::Cleared)? {
+        return Ok(false);
+    }
+    evidence.identify_cleared_confirmed = true;
     evidence.resume_request_count = 1;
     Ok(true)
 }

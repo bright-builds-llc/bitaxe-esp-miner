@@ -49,8 +49,10 @@
   genuine notification, pause, safe stop, resume, active recovery, and rendered
   observation passed. The typed terminal result is
   `network_target_unavailable` / `safety_prerequisites_stale`: after 40,707 ms
-  active, five required observations were fresh and `vr_temp_celsius` alone was
-  unsatisfied. The cleared signal was not consumed before terminal closure.
+  active, all five Ultra 205-required observations were fresh and
+  `vr_temp_celsius` was correctly not required, while the aggregate mining
+  safety sample itself was stale. The cleared signal was not consumed before
+  terminal closure.
 - Evidence: Only categorical fields, booleans, counts, and bounded durations
   were inspected. Credential, port, USB/network identity, origin, hostname,
   sensor values, and raw traces remain protected.
@@ -59,5 +61,29 @@
   pass, the campaign process is absent, and the public projection is withheld.
   API-009 remains `implemented`.
 - Blocker or next safe action: Close this immutable plan without attempt-019.
-  Investigate the active IDENTIFY observation window and VR-temperature
-  freshness in software before considering any later hardware contract.
+  Investigate why the command flow leaves mining active throughout the
+  physical IDENTIFY windows before considering any later hardware contract.
+
+## 2026-08-14T15:19:10Z | post-closure root-cause fix
+
+- Actions: Built a deterministic red diagnostic at the production command-
+  effect seam, reproduced it twice, minimized the transition sequence, and
+  changed checkpoint ordering without modifying the immutable plan.
+- Verification: The diagnostic proved that consuming ready released the
+  initial pause before the two unbounded physical observation windows. The
+  attempt-018 typed facts independently show all five required observations
+  were fresh and VR temperature was correctly not required, falsifying the
+  missing-sensor and parser hypotheses. The fixed sequence keeps the pause
+  through ready, rendered, and cleared, resumes exactly once afterward, then
+  confirms active recovery before dismissal. Focused flash and real-child
+  automation tests plus the complete Cargo, Bright Builds, Bazel, parity,
+  privacy, reference, firmware, and diff gates pass.
+- Evidence: Public source, deterministic tests, and attempt-018 categorical,
+  boolean, count, and bounded-duration facts only. No protected value, raw
+  trace, credential, detector, USB, device, network, or hardware interface was
+  accessed.
+- Outcome: The active-window stale-readiness root cause is fixed in software.
+  API-009 remains `implemented`; attempt-018 remains closed and unchanged.
+- Blocker or next safe action: Commit and push the verified software repair.
+  Any future hardware attempt requires a separate immutable contract and new
+  objectively verified progress; this work authorizes no attempt-019.

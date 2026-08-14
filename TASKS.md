@@ -2888,13 +2888,50 @@ boundary. The campaign proved the genuine notification, positive block count,
 pause and safe stop, live ready signal, resume and active recovery, two
 IDENTIFY requests, and the live rendered observation. It then stopped as
 `network_target_unavailable` / `safety_prerequisites_stale` after 40,707 ms
-active: five required observations were fresh and `vr_temp_celsius` alone was
-unsatisfied. The cleared signal was sent after its live physical report but was
-not consumed before the terminal transition; dismiss and restart did not run.
+active: all five Ultra 205-required observations were fresh, while
+`vr_temp_celsius` was correctly marked not required; the aggregate mining
+safety sample itself was stale. The cleared signal was sent after its live
+physical report but was not consumed before the terminal transition; dismiss
+and restart did not run.
 Safe stop, recovery without a secondary failure, USB cleanup, private modes,
 process cleanup, and evidence withholding are confirmed. API-009 remains
 `implemented`; no attempt-019 is authorized. See
 `docs/parity/work-plans/20260814T143040Z-API-009/CLOSURE.md`.
+
+Post-attempt-018 active-observation freshness investigation:
+
+- [x] Build and run a fast deterministic red-capable diagnostic for the exact
+      active IDENTIFY-window `safety_prerequisites_stale` transition.
+- [x] Minimize the failing sequence and test ranked sampling, scheduling,
+      campaign-ordering, and observation-admission hypotheses one at a time.
+- [x] Implement the smallest confirmed root-cause fix, remove temporary
+      instrumentation, and pass focused plus mandatory repository verification
+      before committing and pushing.
+
+Software-only authorization: use the already admitted attempt-018 categorical,
+boolean, count, and bounded-duration facts; inspect and modify repository source
+and tests; run deterministic fixtures and local child processes; and build
+firmware. Do not read credentials, protected sensor values, origins, ports,
+USB/network identities, or raw traces; access USB, device/network interfaces,
+or HTTP; flash, reset, restart, mine, actuate controls, manipulate direct UART
+or pins/pads/GPIO; publish parity evidence; promote API-009; or create/run
+attempt-019.
+
+Completion review: the red diagnostic failed twice because consuming the
+operator-ready signal also released the initial safe-stop pause, leaving mining
+active throughout both unbounded physical IDENTIFY observation windows. The
+attempt-018 projection independently falsified missing-sensor and parser
+hypotheses: all five Ultra 205-required observations were fresh and
+`vr_temp_celsius` was correctly not required. The smallest fix keeps the single
+pause held while ready, rendered, and cleared signals are consumed, sends both
+IDENTIFY requests while paused, resumes exactly once only after the cleared
+signal, confirms active recovery, and then dismisses the notification. The red
+diagnostic is green, focused flash and real-child automation tests pass, and
+the complete Cargo, Bright Builds, Bazel, parity, privacy, reference, firmware,
+and diff sequence passes. No temporary instrumentation, protected input,
+hardware access, attempt-019, evidence publication, or status promotion
+occurred; API-009 remains `implemented` pending a separately planned hardware
+attempt.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 

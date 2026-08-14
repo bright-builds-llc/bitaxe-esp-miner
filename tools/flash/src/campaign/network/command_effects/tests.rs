@@ -4,8 +4,9 @@ use camino::Utf8PathBuf;
 
 use super::{
     arm_identify_transaction, arm_ready_after_pause, confirm_identify_checkpoint,
-    consume_confirmation, consume_ready_signal, take_recovery_pause_request,
-    write_required_checkpoint, CommandEffectsEvidence, CommandPhase, IdentifyCheckpointKind,
+    consume_cleared_signal, consume_confirmation, consume_ready_signal,
+    take_recovery_pause_request, write_required_checkpoint, CommandEffectsEvidence, CommandPhase,
+    IdentifyCheckpointKind,
 };
 use crate::set_private_directory_mode;
 
@@ -74,7 +75,7 @@ fn safe_stopped_pause_arms_ready_without_resume_or_identify() {
 }
 
 #[test]
-fn ready_signal_is_the_only_transition_that_releases_resume() {
+fn ready_signal_is_consumed_without_releasing_pause() {
     // Arrange
     let (_temp, root) = private_root();
     let mut evidence = CommandEffectsEvidence::new();
@@ -90,9 +91,33 @@ fn ready_signal_is_the_only_transition_that_releases_resume() {
     assert!(!absent);
     assert!(present);
     assert!(evidence.identify_operator_ready_confirmed);
-    assert_eq!(evidence.resume_request_count, 1);
+    assert_eq!(evidence.resume_request_count, 0);
     assert_eq!(evidence.identify_request_count, 0);
     assert!(root.join("identify-ready.consumed.json").is_file());
+}
+
+#[test]
+fn cleared_signal_is_the_only_transition_that_releases_resume() {
+    // Arrange
+    let (_temp, root) = private_root();
+    let mut evidence = CommandEffectsEvidence::new();
+    evidence.pause_confirmed = true;
+    evidence.identify_operator_ready_confirmed = true;
+    evidence.identify_request_count = 2;
+    evidence.identify_rendered_confirmed = true;
+    write_required_checkpoint(&root, IdentifyCheckpointKind::Cleared).expect("required checkpoint");
+
+    // Act
+    let absent = consume_cleared_signal(&root, &mut evidence).expect("absent signal");
+    confirm_identify_checkpoint(&root, IdentifyCheckpointKind::Cleared).expect("cleared signal");
+    let present = consume_cleared_signal(&root, &mut evidence).expect("consume signal");
+
+    // Assert
+    assert!(!absent);
+    assert!(present);
+    assert!(evidence.identify_cleared_confirmed);
+    assert_eq!(evidence.resume_request_count, 1);
+    assert!(root.join("identify-cleared.consumed.json").is_file());
 }
 
 #[test]

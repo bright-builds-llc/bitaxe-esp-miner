@@ -22,12 +22,12 @@ the campaign reached a later safety deadline before consuming that signal.
 
 The earliest typed terminal result is `network_target_unavailable` /
 `safety_prerequisites_stale`. At the transition, the campaign was active for
-40,707 ms, the safety sample was stale, and five of six required observations
-were fresh; `vr_temp_celsius` was the sole unsatisfied observation. No dismiss
-request or canonical restart occurred. Safe stop is confirmed, recovery was
-attempted without a secondary failure, USB cleanup is ready, protected modes
-are valid, the campaign process is absent, and the public projection is
-withheld.
+40,707 ms and the aggregate mining safety sample was stale. All five
+Ultra 205-required observations were fresh; `vr_temp_celsius` was correctly
+marked not required. No dismiss request or canonical restart occurred. Safe
+stop is confirmed, recovery was attempted without a secondary failure, USB
+cleanup is ready, protected modes are valid, the campaign process is absent,
+and the public projection is withheld.
 
 ## Verification
 
@@ -40,12 +40,11 @@ withholding, and the typed hardware blocker.
 ## Next safe action
 
 Keep API-009 `implemented` and investigate the active IDENTIFY observation
-window in software. Determine why the required VR-temperature observation is
-not refreshed before the safety deadline, and whether the campaign must remain
-paused and safe-stopped during both physical observation windows. Require new
-objectively verified progress and a separate clean immutable plan before any
-future hardware attempt. This plan authorizes no attempt-019 or unchanged
-retry.
+window in software. Determine whether the campaign must remain paused and
+safe-stopped during both physical observation windows, then resume only after
+the user-timed checkpoints have closed. Require new objectively verified
+progress and a separate clean immutable plan before any future hardware
+attempt. This plan authorizes no attempt-019 or unchanged retry.
 
 ## Non-claims
 
@@ -54,3 +53,18 @@ dismissal passed, block-count preservation passed, the canonical restart
 occurred, restart survival passed, or API-009 is verified. It exposes no
 credential, origin, hostname, port, USB/network identity, worker, address,
 password, token, sensor value, or raw trace.
+
+## Post-closure software investigation
+
+A deterministic diagnostic reproduced that the operator-ready signal released
+the initial pause before either physical observation window. Because those
+human-timed windows are intentionally unbounded, the campaign could remain
+active long enough for the aggregate mining safety sample to become stale even
+though every board-205-required observation was fresh.
+
+The command-effect sequence now holds the same pause through ready, rendered,
+and cleared checkpoint consumption. It issues both IDENTIFY requests while
+paused, resumes exactly once after the cleared signal, confirms active
+recovery, and only then dismisses the notification. Focused and complete
+repository verification pass. This software result changes no attempt-018
+outcome or API-009 status and authorizes no attempt-019.
