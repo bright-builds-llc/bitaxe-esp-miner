@@ -1,6 +1,8 @@
 use super::*;
 mod command_effects;
-use command_effects::assess_command_effects_terminal;
+use command_effects::{
+    assess_command_effects_terminal, is_recoverable_command_effects_resume_readiness,
+};
 mod soak;
 use soak::assess_soak_terminal;
 mod protocol;
@@ -439,7 +441,9 @@ pub(super) fn campaign_marker_failure(
     if !marker.resumable_pause_safe_stop.is_valid_for(marker.stage) {
         return Some(CampaignTerminalCategory::MarkerInvalid);
     }
-    if marker.safety == SafetyMarker::Stale {
+    if marker.safety == SafetyMarker::Stale
+        && !is_recoverable_command_effects_resume_readiness(marker, admission)
+    {
         return Some(CampaignTerminalCategory::SafetyStale);
     }
     if marker.failure.phase == CampaignFailurePhaseMarker::HardwarePreparation {

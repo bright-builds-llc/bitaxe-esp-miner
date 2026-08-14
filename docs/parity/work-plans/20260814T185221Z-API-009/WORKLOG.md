@@ -38,3 +38,50 @@
 - Blocker or next safe action: Push this checkpoint, confirm clean synchronized
   HEAD and the same open plan, then perform exact-package admission before the
   sole detector run.
+
+## 2026-08-14T19:13:54Z | exact-package attempt and terminal closure
+
+- Source commit: `6aec858230141521ca3079847061554de3f0f917`.
+- Actions: Confirmed clean synchronized HEAD and the unique open plan, built
+  and validated the exact package, ran the fresh detector once, invoked the
+  sole attempt-020 campaign once, and consumed ready, rendered, and cleared
+  only after their matching live physical reports.
+- Verification: One board-205 session was admitted. Factory and NVS transfers
+  each completed once as `ready`; runtime attestation was `trusted`; the
+  genuine notification, positive block count, pause, paused safe stop, both
+  IDENTIFY requests, and both physical IDENTIFY observations passed. The one
+  resume request was issued but active recovery was not confirmed before the
+  earliest `safety_stale` terminal marker. USB cleanup is `ready`, result digest
+  and private modes pass, attempt processes are absent, and public evidence is
+  withheld.
+- Evidence: Only categorical fields, booleans, counts, and freshness flags were
+  inspected. Credential, port, USB/network identity, origin, hostname, sensor
+  values, and raw traces remain protected.
+- Outcome: Attempt-020 is consumed. API-009 remains `implemented`; no dismissal,
+  restart, terminal safe-stop, public evidence, or promotion claim is made.
+- Blocker or next safe action: Close this immutable plan without attempt-021.
+  Reproduce and fix the resume-time safety freshness mismatch in software
+  before considering any later hardware attempt.
+
+## 2026-08-14T20:02:00Z | resume-freshness root-cause repair
+
+- Source commit: `6aec858230141521ca3079847061554de3f0f917` plus the uncommitted
+  software repair described here.
+- Actions: Built a production-shaped red regression for a stopped, armed
+  command-effects resume; ranked acquisition, publication, recovery, and host
+  terminal-policy hypotheses; and narrowed the host exception to the exact
+  non-actuating resume-readiness state.
+- Verification: The regression failed deterministically as `safety_stale`
+  before the fix and passes after it. Active command-effects stale telemetry and
+  observation-stage stale telemetry remain terminal negative controls. Focused
+  command-effects, flash-tool, mandatory Cargo, Bright Builds, Bazel, parity,
+  privacy, reference, firmware, and diff gates pass.
+- Evidence: Repository source, deterministic fixtures, and the already closed
+  categorical attempt facts only. No credential, protected trace, USB, device,
+  network, HTTP, display, mining, or hardware interface was accessed.
+- Outcome: The host no longer converts a transient resume-readiness sample into
+  an irreversible campaign failure. Attempt-020's closure is unchanged and
+  API-009 remains `implemented`.
+- Blocker or next safe action: Commit and push this software repair. Any later
+  hardware attempt requires its own immutable contract; attempt-021 was not
+  created or run here.

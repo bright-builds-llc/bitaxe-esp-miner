@@ -16,6 +16,48 @@ fn command_effects_terminal() -> String {
     })
 }
 
+fn command_effects_resume_marker(safety: &str) -> String {
+    let marker = campaign_marker(CampaignMarkerFixture {
+        stage: "command-effects",
+        lease_id: serde_json::json!(42),
+        state: "armed",
+        profile: "conservative",
+        active_ms: 1_000,
+        submit_outcome: "none",
+        terminal_reason: if safety == "fresh" {
+            "none"
+        } else {
+            "safety_prerequisites_stale"
+        },
+        safety,
+        pool_config: "local_owner_supplied",
+        actuation: "qualified",
+        safe_stop: "pending",
+    });
+    let payload = marker
+        .strip_prefix("mining_campaign_status=")
+        .expect("campaign marker prefix");
+    let mut value: serde_json::Value = serde_json::from_str(payload).expect("campaign marker JSON");
+    value["readiness_transition"]["hardware_state"] = serde_json::json!("stopped");
+    format!("mining_campaign_status={value}")
+}
+
+fn command_effects_active_stale_marker() -> String {
+    campaign_marker(CampaignMarkerFixture {
+        stage: "command-effects",
+        lease_id: serde_json::json!(42),
+        state: "active",
+        profile: "conservative",
+        active_ms: 1_000,
+        submit_outcome: "none",
+        terminal_reason: "safety_prerequisites_stale",
+        safety: "stale",
+        pool_config: "local_owner_supplied",
+        actuation: "qualified",
+        safe_stop: "pending",
+    })
+}
+
 #[test]
 fn command_effects_requires_the_typed_network_quorum_and_safe_stop() {
     // Arrange
@@ -90,5 +132,57 @@ fn command_effects_preserves_typed_activation_timeout() {
     assert_eq!(
         read_campaign_result(&command)["terminal_category"],
         "campaign_activation_timed_out"
+    );
+}
+
+#[test]
+fn command_effects_resume_waits_for_fresh_observation_recovery() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = campaign_command(
+        &dir,
+        MiningCampaignStage::CommandEffects,
+        Some(MiningCampaignProfile::Conservative),
+    );
+    let environment = FakeFlashEnvironment::default().with_log_contents(&campaign_log(&[
+        command_effects_resume_marker("stale"),
+        command_effects_resume_marker("fresh"),
+        command_effects_terminal(),
+    ]));
+
+    // Act
+    let result = run_mining_campaign(&command, &environment);
+
+    // Assert
+    result.expect("fresh observation wakeup must recover a stale resume sample");
+    assert_eq!(
+        read_campaign_result(&command)["terminal_category"],
+        "command_effects_complete"
+    );
+}
+
+#[test]
+fn command_effects_active_stale_marker_remains_terminal() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = campaign_command(
+        &dir,
+        MiningCampaignStage::CommandEffects,
+        Some(MiningCampaignProfile::Conservative),
+    );
+    let environment = FakeFlashEnvironment::default().with_log_contents(&campaign_log(&[
+        command_effects_active_stale_marker(),
+        command_effects_terminal(),
+    ]));
+
+    // Act
+    let error = run_mining_campaign(&command, &environment)
+        .expect_err("active stale safety must remain terminal");
+
+    // Assert
+    assert!(format!("{error:#}").contains("category=safety_stale"));
+    assert_eq!(
+        read_campaign_result(&command)["terminal_category"],
+        "safety_stale"
     );
 }

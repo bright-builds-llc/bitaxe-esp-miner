@@ -3040,13 +3040,13 @@ resume state across host shutdown is separate future work.
 Operator-gated attempt-020 plan:
 `docs/parity/work-plans/20260814T185221Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable single-attempt contract and pass every
+- [x] Commit and push the immutable single-attempt contract and pass every
       focused lifetime, mandatory, privacy, reference, firmware, selector, and
       exact-package gate.
-- [ ] Run exactly one fresh detector-gated attempt-020, keep the device paused
+- [x] Run exactly one fresh detector-gated attempt-020, keep the device paused
       and safe-stopped through unbounded human waits, and start the exact
       30-second IDENTIFY window only from the local ready signal.
-- [ ] Promote only on the complete command/restart/device-user quorum;
+- [x] Promote only on the complete command/restart/device-user quorum;
       otherwise preserve `implemented`, earliest failure, evidence withholding,
       safe stop, cleanup, recovery, and stop without attempt-021.
 
@@ -3060,6 +3060,50 @@ attempt-020. No inferred or expired physical observation, protected-artifact
 reuse, external or owner pool, factory reset, destructive/fault-injection
 action, direct UART, pin/pad/GPIO manipulation, attempt-021, or unchanged retry
 is authorized.
+
+Completion review: attempt-020 admitted exact package `6aec8582` and one Ultra
+205; both flashes completed once as `ready`, runtime attestation was `trusted`,
+and the campaign proved notification, positive block count, pause, paused safe
+stop, both IDENTIFY requests, and live rendered plus cleared observations. The
+unbounded human waits behaved correctly. After cleared, the one resume request
+was issued but active recovery was not confirmed before the earliest
+`safety_stale` terminal marker; every required terminal observation freshness
+flag was false. Dismiss and restart did not run. Recovery pause was attempted
+but secondary recovery failed, terminal safe stop is unconfirmed, USB cleanup
+is `ready`, private modes and process cleanup pass, and public evidence is
+withheld. API-009 remains `implemented`; attempt-020 is consumed and no
+attempt-021 is authorized. See the linked `CLOSURE.md`.
+
+Post-attempt-020 resume-freshness investigation:
+
+- [x] Build and run a fast red regression for the production host seam where a
+      recoverable stale resume sample precedes a fresh observation wakeup.
+- [x] Rank and falsify paused acquisition, readiness publication, and host
+      terminal-policy hypotheses using the smallest deterministic sequence.
+- [x] Implement the smallest confirmed root-cause fix, preserve fail-closed
+      active-mining safety, and pass focused plus mandatory verification.
+
+Software-only authorization: use attempt-020 categorical, boolean, count, and
+freshness facts; inspect and modify repository source and tests; run
+deterministic fixtures and local child processes; and build firmware. Do not
+read credentials, protected sensor values, origins, ports, USB/network
+identities, or raw traces; access USB, device/network interfaces, or HTTP;
+flash, reset, restart, mine, actuate controls, manipulate direct UART or
+pins/pads/GPIO; publish parity evidence; promote API-009; or create/run
+attempt-021.
+
+Completion review: the production-shaped regression failed deterministically
+as `safety_stale` when a stopped, armed resume marker with stale readiness was
+followed by a fresh observation wakeup and a valid terminal marker. That
+falsified a permanently stopped acquisition or firmware recovery failure and
+confirmed that the host latched the transient marker too broadly. The host now
+allows recovery only for that exact non-actuating command-effects resume state;
+active stale telemetry and stale observation-stage telemetry remain terminal.
+Focused command-effects, negative-control, observation-stage, full flash-tool,
+mandatory Cargo, Bright Builds, Bazel, parity, privacy, reference, firmware,
+and diff gates pass. No protected input or hardware was accessed, no evidence
+was published, API-009 remains `implemented`, and attempt-021 remains out of
+scope.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
