@@ -48,3 +48,36 @@ fn platform_readiness_avoids_the_full_operator_snapshot_stack() {
         "collect_platform_snapshot(PlatformSnapshot::safe_ultra_205(), &platform_identity)",
     ));
 }
+
+#[test]
+fn platform_readiness_precedes_blocking_wifi_admission() {
+    // Arrange
+    let run_start = STARTUP_SOURCE
+        .find("pub(crate) fn run()")
+        .expect("startup entrypoint must exist");
+    let run_end = STARTUP_SOURCE[run_start..]
+        .find("fn initialize_boot_identity_and_settings(")
+        .map(|offset| run_start + offset)
+        .expect("startup entrypoint boundary must exist");
+    let run = &STARTUP_SOURCE[run_start..run_end];
+
+    // Act
+    let readiness = run
+        .find("publish_platform_readiness(")
+        .expect("platform readiness must be published");
+    let network = run
+        .find("start_network_services(")
+        .expect("network admission must be visible at the startup boundary");
+    let network_start = STARTUP_SOURCE
+        .find("fn start_network_services(")
+        .expect("network service boundary must exist");
+    let network_end = STARTUP_SOURCE[network_start..]
+        .find("fn start_storage_and_http(")
+        .map(|offset| network_start + offset)
+        .expect("network service boundary must end");
+    let network_service = &STARTUP_SOURCE[network_start..network_end];
+
+    // Assert
+    assert!(readiness < network);
+    assert!(network_service.contains("wifi_adapter::start_wifi(modem)"));
+}

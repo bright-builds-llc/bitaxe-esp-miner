@@ -14,10 +14,11 @@ pub(crate) fn run() -> anyhow::Result<()> {
         initialize_boot_identity_and_settings()?;
     let (startup_diagnostics, maybe_modem) =
         initialize_hardware(startup_debug_text, maybe_thermal_fault_stimulus);
-    let boot_validation_ready = start_runtime_services(startup_diagnostics, maybe_modem)?;
+    let boot_validation_ready = start_runtime_services(startup_diagnostics)?;
     let (filesystem_status, route_shell_ready) = start_storage_and_http();
-    wifi_adapter::maybe_start_network_reconnect_probe(route_shell_ready);
     publish_platform_readiness(boot_validation_ready, filesystem_status, route_shell_ready);
+    start_network_services(maybe_modem);
+    wifi_adapter::maybe_start_network_reconnect_probe(route_shell_ready);
     Ok(())
 }
 
@@ -205,10 +206,7 @@ fn initialize_operator_runtime(
     }
 }
 
-fn start_runtime_services(
-    startup_diagnostics: anyhow::Result<()>,
-    maybe_modem: Option<Modem<'static>>,
-) -> anyhow::Result<bool> {
+fn start_runtime_services(startup_diagnostics: anyhow::Result<()>) -> anyhow::Result<bool> {
     let startup_diagnostics_passed = startup_diagnostics.is_ok();
     let boot_validation_ready = match boot_validation::validate_boot(startup_diagnostics_passed) {
         Ok(ready) => ready,
@@ -230,22 +228,20 @@ fn start_runtime_services(
     if let Err(error) = statistics_runtime::start() {
         log::warn!("statistics_runtime=unavailable reason=thread_spawn_failed error={error:#}");
     }
-    let _network_ready = if let Some(modem) = maybe_modem {
-        match wifi_adapter::start_wifi(modem) {
-            Ok(()) => true,
-            Err(error) => {
-                log::warn!("wifi_status=unavailable error={error:#}");
-                false
-            }
+    Ok(boot_validation_ready)
+}
+
+fn start_network_services(maybe_modem: Option<Modem<'static>>) {
+    if let Some(modem) = maybe_modem {
+        if let Err(error) = wifi_adapter::start_wifi(modem) {
+            log::warn!("wifi_status=unavailable error={error:#}");
         }
     } else {
         log::warn!("wifi_status=unavailable reason=peripherals_unavailable");
-        false
-    };
+    }
     let _ = production_mining_session::notify(
         bitaxe_stratum::v1::production_session::ProductionSessionWakeup::NetworkChanged,
     );
-    Ok(boot_validation_ready)
 }
 
 fn start_storage_and_http() -> (filesystem::FilesystemStatus, bool) {

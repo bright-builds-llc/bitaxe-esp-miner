@@ -164,3 +164,10 @@
 2. What went wrong: A 30-second physical IDENTIFY effect was triggered before the operator had confirmed they were watching, and the emitted checkpoint said only `rendered` without describing the expected frame. A later normal-screen report was then incorrectly treated as evidence that the frame never rendered even though the effect had already expired.
 3. Preventive rule: Before any time-bounded physical observation effect, consume a request-once operator-readiness checkpoint that explains the exact expected state and duration. Emit a second live observation checkpoint only after the effect request succeeds, and classify late observations as expired authority boundaries rather than positive or negative device evidence.
 4. Trigger signal to catch it earlier: A physical effect starts before operator readiness, a checkpoint omits the expected visible state or deadline, or a report made after the effect window is used to classify what was physically displayed during that window.
+
+## lesson-never-invite-ready-before-live-checkpoint | 2026-08-14 08:53
+
+1. Date: 2026-08-14
+2. What went wrong: After a hardware campaign had already failed before creating its ready checkpoint, the user was told they could reply `ready` within the new one-hour window. The wording implied that the window was live even though it had never opened, so the user's timely reply appeared to be ignored.
+3. Preventive rule: Invite an operator readiness reply only after the current campaign's typed `required` checkpoint exists and the campaign is confirmed running. State explicitly when the window has not opened or has closed, and never describe a future or conditional window in language that sounds currently actionable.
+4. Trigger signal to catch it earlier: A message mentions replying `ready`, a signal-sender command, or a window duration without first proving and stating that the matching live `required` checkpoint exists and the owning campaign is still running.

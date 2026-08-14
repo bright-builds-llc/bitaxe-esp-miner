@@ -2821,6 +2821,42 @@ no physical IDENTIFY claim is made, API-009 remains `implemented`, and this
 contract authorizes no attempt-018. See
 `docs/parity/work-plans/20260814T123336Z-API-009/CLOSURE.md`.
 
+Post-attempt-017 runtime-admission investigation:
+
+- [x] Reproduce the pre-checkpoint failure with a temporary fast diagnostic at
+      the production startup/campaign boundary, without requiring a permanent
+      regression test.
+- [x] Trace and falsify the startup, Wi-Fi, platform-readiness, recurring
+      attestation, receive-only admission, and terminal-ordering hypotheses.
+- [x] Implement the smallest confirmed root-cause fix, remove temporary
+      instrumentation, and pass focused plus mandatory firmware/repository
+      verification before committing and pushing.
+
+Software-only authorization: inspect the protected attempt-017 artifacts only
+through the already admitted categorical/count/timing facts, modify repository
+source and tests, run local deterministic diagnostics, and build firmware. Do
+not read credentials or raw traces; access USB, device/network interfaces, or
+HTTP; flash, reset, restart, mine, actuate controls, manipulate direct UART or
+pins/pads/GPIO; publish parity evidence; promote API-009; or create/run
+attempt-018.
+
+Completion review: the focused production-order diagnostic failed twice before
+the fix because Wi-Fi admission was hidden inside `start_runtime_services` and
+therefore necessarily preceded `publish_platform_readiness`. ESP-IDF's blocking
+Wi-Fi adapter can wait indefinitely for driver-start events, while attempt-017
+captured zero runtime-attestation candidates during its 305-second lifetime.
+The fix splits network admission into `start_network_services`, starts storage
+and the HTTP route shell, and begins recurring exact-package attestation before
+entering Wi-Fi admission; the existing network-change notification still runs
+after Wi-Fi returns. HTTP independently initializes the ESP network stack, and
+the existing campaign tracker already admits two same-session attestations
+before a later matching runtime origin. The diagnostic turns green, focused
+boot-evidence/Wi-Fi/flash suites and the real firmware build pass, and the full
+Cargo, Bright Builds, Bazel, parity, privacy, reference, firmware, and diff
+sequence passes. No temporary debug markers remain, no hardware or protected
+input was accessed, API-009 remains `implemented`, and attempt-018 remains out
+of scope.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
