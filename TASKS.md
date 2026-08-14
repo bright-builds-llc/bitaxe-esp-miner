@@ -2721,6 +2721,27 @@ privacy, reference, selector, and diff gates pass. No hardware ran; API-009
 remains `implemented`, and attempt-016 requires a separate clean selector plus
 immutable bounded plan.
 
+Receive-ingress-fixed attempt-016 plan:
+`docs/parity/work-plans/20260814T044503Z-API-009/PLAN.md`.
+
+- [x] Commit and push the immutable single-attempt contract and pass every
+      focused, mandatory, privacy, reference, firmware, and exact-package gate.
+- [ ] Run exactly one fresh detector-gated attempt-016 and consume each
+      IDENTIFY checkpoint only after its matching live physical report.
+- [ ] Promote only on the complete command/restart/device-user quorum;
+      otherwise preserve `implemented`, earliest failure, evidence withholding,
+      safe stop, cleanup, recovery, and stop without attempt-017.
+
+Attempt-016 authorization: pushed commit `0fdff982` reproduces and fixes the
+exact attempt-015 first-line ingress failure with one newline-boundary admission
+reset on every ephemeral reader open/reopen. Downstream malformed evidence
+remains terminal, and ordinary retained monitor capture is unchanged. Standing
+task authorization permits this one campaign only after the linked immutable
+contract and all named gates pass at clean pushed HEAD. Campaign start consumes
+attempt-016. No inferred physical observation, protected-artifact reuse,
+external or owner pool, destructive/fault-injection action, direct UART,
+pin/pad/GPIO manipulation, attempt-017, or unchanged retry is authorized.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
