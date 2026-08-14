@@ -3175,13 +3175,13 @@ was created. See the linked `CLOSURE.md`.
 Replay-capable attempt-022 plan:
 `docs/parity/work-plans/20260814T224914Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable single-attempt contract, then pass every
+- [x] Commit and push the immutable single-attempt contract, then pass every
       focused replay, mandatory, privacy, reference, firmware, selector, and
       exact-package gate at clean synchronized HEAD.
-- [ ] Run exactly one fresh detector-gated attempt-022, keep the Ultra 205
+- [x] Run exactly one fresh detector-gated attempt-022, keep the Ultra 205
       paused and safe-stopped through every unbounded operator wait, and use at
       most one explicit IDENTIFY replay only if the first window is missed.
-- [ ] Promote API-009 only on the complete command/restart/device-user quorum;
+- [x] Promote API-009 only on the complete command/restart/device-user quorum;
       otherwise preserve `implemented`, the earliest typed failure, evidence
       withholding, safe stop, cleanup, and recovery, then stop without
       attempt-023.
@@ -3193,6 +3193,17 @@ immutable contract and all named gates pass. Campaign start consumes
 attempt-022. No inferred observation, protected-artifact reuse, external or
 owner pool, factory reset, erase, destructive/fault-injection action, direct
 UART, pin/pad/GPIO manipulation, attempt-023, or unchanged retry is authorized.
+
+Attempt-022 completion review: exact package `79756b9a` and one detector-admitted
+Ultra 205 passed through trusted identity, genuine notification, positive block
+count, pause, stopped hardware, and the live rendered observation. The rendered
+response reached the host 34 seconds after its checkpoint opened, beyond the
+exact 30-second evidence window, so the campaign correctly closed as
+`operator_checkpoint_expired` / `operator_paused`. One recovery pause confirms
+terminal safe stop; USB cleanup, recovery, private modes, and process cleanup
+pass; public evidence is withheld. API-009 remains `implemented`, attempt-022
+is consumed, and no attempt-023 is authorized. The next safe action is a fresh
+software-only post-expiry replay-choice plan; see the linked `CLOSURE.md`.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 

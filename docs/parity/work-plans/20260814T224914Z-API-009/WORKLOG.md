@@ -37,3 +37,49 @@
   attempt has been consumed.
 - Blocker or next safe action: Commit and push this immutable checkpoint, then
   build and validate the exact pushed package before the sole detector run.
+
+## 2026-08-14T23:06:31Z | exact-package attempt and terminal closure
+
+- Source commit: `79756b9a21a1de5ed2b8ad1fedbb84b1f2f4fb89`.
+- Actions: Built and validated the exact package, ran the fresh detector once,
+  and invoked the sole attempt-022 campaign once. Consumed ready and rendered
+  only after their matching live user inputs; no replayed or cleared signal was
+  sent because the campaign terminated at the rendered boundary.
+- Verification: One board-205 session, trusted runtime identity, genuine
+  notification, positive block count, pause, and stopped hardware passed. The
+  unbounded ready wait lasted 28 seconds. The rendered checkpoint opened one
+  second after ready consumption, but the confirmed response was consumed 34
+  seconds after it opened and was correctly rejected beyond the exact
+  30-second evidence window. The terminal result is
+  `operator_checkpoint_expired` / `operator_paused`; one recovery pause proves
+  terminal safe stop, USB cleanup is ready, recovery has no secondary failure,
+  private modes pass, attempt processes are absent, and projection withholding
+  passes.
+- Evidence: Only closed categorical fields, booleans, counts, modes, bounded
+  durations, and source identities were inspected. Credential, port,
+  USB/network identity, origin, hostname, sensor values, and raw traces remain
+  protected.
+- Outcome: Attempt-022 is consumed. API-009 remains `implemented`; the user's
+  live physical observation is retained as diagnostic truth but is not timely
+  host-bound evidence. No replay, clear, resume, dismissal, restart, public
+  evidence, or promotion is claimed.
+- Blocker or next safe action: Close this immutable plan without attempt-023.
+  A fresh software-only plan should add an unbounded post-expiry replay-choice
+  checkpoint before any later hardware plan.
+
+## 2026-08-14T23:10:32Z | terminal closure verified
+
+- Actions: Added the plan-bound non-verifying closure and updated only the
+  active API-009 task block. The immutable plan digest remains unchanged.
+- Verification: Cargo format, strict Clippy, all-target build, all-feature
+  tests, Bright Builds, `just test`, `just parity`, `just parity-progress`,
+  redaction, reference cleanliness, real firmware build, selector closure,
+  unique task, projection withholding, protected modes, process cleanup, plan
+  digest, and complete diff review pass. One transient host error 35 occurred
+  during the first final `just parity` invocation; its single retry passed with
+  no validation errors.
+- Outcome: The closure is ready to commit and push. API-009 remains first in
+  the unfinished selector with no open plan, and no additional hardware action
+  is authorized by this plan.
+- Blocker or next safe action: Publish this truthful closure. Any continuation
+  begins with a fresh software-only plan for the post-expiry replay choice.
