@@ -58,3 +58,18 @@
 - Blocker or next safe action: Commit and push this implementation as the
   source checkpoint, then create the truthful software closure and rerun final
   repository gates. Attempt-017 remains unauthorized.
+
+## 2026-08-14T12:29:28Z | source checkpoint pushed
+
+- Source commit: `fe0995fd5fb345c2f095d690ab8341263b9acc61`.
+- Actions: Committed and pushed the verified asynchronous signal-window
+  implementation without changing the parity checklist.
+- Verification: The source commit is synchronized with `origin/main`; the
+  immutable plan digest remains unchanged and the selector continues to resume
+  this API-009 plan.
+- Evidence: Public source and gate outcomes only. No protected or hardware
+  evidence was emitted.
+- Outcome: The software source checkpoint is durable and ready for truthful
+  lifecycle closure with API-009 still `implemented`.
+- Blocker or next safe action: Run the final mandatory sequence over the
+  closure-only diff, commit and push it, then return to the clean selector.

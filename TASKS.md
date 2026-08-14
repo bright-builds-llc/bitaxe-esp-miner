@@ -2762,7 +2762,7 @@ Paused asynchronous IDENTIFY signal plan:
 - [x] Add a checked one-hour ready window plus an explicit repo-owned signal-
       sender command, preserving exact ordering, private modes, redaction, and
       no resume or IDENTIFY effect before the signal.
-- [ ] Pass focused, real-process, firmware, mandatory, privacy, reference,
+- [x] Pass focused, real-process, firmware, mandatory, privacy, reference,
       selector, and diff gates; close with API-009 `implemented` and no hardware
       or attempt-017 authorization.
 
@@ -2772,6 +2772,19 @@ may not access credentials, detector/protected attempt contents beyond recorded
 redacted closure facts, USB, device/network interfaces, HTTP commands, flash,
 reset, restart, mining, display, hardware controls, direct UART,
 pins/pads/GPIO, public parity evidence, attempt-017, or checklist status.
+
+Completion review: pushed source `fe0995fd` keeps the command-effects device
+paused and safe-stopped after its logical/serial pause join, publishes the
+private ready checkpoint, and waits within a checked one-hour operator window.
+Only one valid private signal may issue resume; the first IDENTIFY request now
+waits for same-session active recovery. The repo-owned
+`signal-api-command-identify` command sends ready/rendered/cleared signals for
+the named private campaign root without exposing the path publicly. Focused
+state-machine, replay/malformed, CLI, cross-language budget, checkpoint real-
+child, automation, firmware, mandatory, privacy, reference, selector, and diff
+gates pass. API-009 remains `implemented`; no hardware ran and attempt-017
+requires a separate clean immutable plan. See
+`docs/parity/work-plans/20260814T120645Z-API-009/CLOSURE.md`.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
