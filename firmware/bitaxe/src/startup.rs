@@ -9,6 +9,12 @@ use crate::{
     statistics_runtime, wifi_adapter, BOOT_LOG_LINE, RUST_TARGET, SAFE_STATE_LOG_LINE,
 };
 
+/// Starts firmware services while preserving evidence-before-network ordering.
+///
+/// Platform readiness must remain before Wi-Fi admission because ESP-IDF's
+/// blocking Wi-Fi start can wait indefinitely for driver events. The HTTP route
+/// shell can safely start first because it performs separate, idempotent
+/// network-stack initialization.
 pub(crate) fn run() -> anyhow::Result<()> {
     let (startup_debug_text, maybe_thermal_fault_stimulus) =
         initialize_boot_identity_and_settings()?;
