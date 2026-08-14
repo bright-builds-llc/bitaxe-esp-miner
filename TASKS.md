@@ -2664,9 +2664,9 @@ Startup-intent-fixed attempt-015 plan:
 
 - [x] Commit and push the immutable single-attempt contract and pass every
       focused, mandatory, privacy, reference, firmware, and exact-package gate.
-- [ ] Run exactly one fresh detector-gated attempt-015 and consume each
+- [x] Run exactly one fresh detector-gated attempt-015 and consume each
       IDENTIFY checkpoint only after its matching live physical report.
-- [ ] Promote only on the complete command/restart/device-user quorum;
+- [x] Promote only on the complete command/restart/device-user quorum;
       otherwise preserve `implemented`, earliest failure, evidence withholding,
       safe stop, cleanup, recovery, and stop without attempt-016.
 
@@ -2680,6 +2680,19 @@ named gates pass at clean pushed HEAD. Campaign start consumes attempt-015. No
 inferred physical observation, protected-artifact reuse, external or owner
 pool, destructive/fault-injection action, direct UART, pin/pad/GPIO
 manipulation, attempt-016, or unchanged retry is authorized.
+
+Attempt-015 closure review: exact pushed source `843ac0c9`, package validation,
+one detector, and both exact-package flash writes passed. Runtime identity and
+the protocol gate were trusted, safe stop and USB cleanup were confirmed, and
+no holder or related process remained. The campaign emitted no consumed
+physical checkpoint and closed `marker_invalid`: its first serial candidate
+was a 1,490-byte malformed ingress line at the stream boundary, followed by
+144 accepted markers measuring 2,516–2,578 bytes. The live receive path feeds
+its first chunk directly to line analyzers without discarding the untrusted
+pre-open fragment. Public evidence remains withheld, API-009 stays
+`implemented`, and attempt-016 is not authorized. The next safe action is a
+software-only plan for shared serial line-boundary admission before both the
+campaign and network analyzers.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
