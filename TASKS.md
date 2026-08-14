@@ -2635,6 +2635,20 @@ intent immediately stops hardware. The next safe action is a new software-only
 plan that gives the command-effects lease an initial run intent while keeping
 mine-on-boot disabled and preserving explicit pause/resume command ownership.
 
+Command-effects startup-intent fix plan:
+`docs/parity/work-plans/20260814T033105Z-API-009/PLAN.md`.
+
+- [ ] Commit and push the immutable software-only plan after all plan gates.
+- [ ] Add the real-seam red regression, implement the lease-scoped initial run
+      request, and preserve explicit pause/resume plus terminal pause behavior.
+- [ ] Pass focused and mandatory gates, close the software plan with API-009
+      still `implemented`, and leave attempt-015 unauthorized.
+
+This continuation authorizes no hardware effect. It isolates the current-boot
+requested-intent owner from persisted `mineonboot=0` without changing NVS,
+automating a command, or weakening safety. A later hardware ordinal requires a
+separate clean selector and immutable bounded plan after this fix is pushed.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
