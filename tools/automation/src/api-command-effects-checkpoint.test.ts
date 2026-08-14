@@ -125,7 +125,7 @@ test("a real child publishes ordered checkpoints before it settles", {
   );
   assert.equal(signals.length, 4);
   assert.deepEqual(supervised.checkpointKinds, ["ready", "rendered", "replayed", "cleared"]);
-  assert(signals.every((signal) => signal.schema_version === "bitaxe-operator-checkpoint-v5"));
+  assert(signals.every((signal) => signal.schema_version === "bitaxe-operator-checkpoint-v6"));
   assert.deepEqual(signals.map((signal) => signal.operator_wait_policy), [
     "unbounded", "unbounded", "unbounded", "unbounded",
   ]);
@@ -148,7 +148,7 @@ test("a real child publishes ordered checkpoints before it settles", {
   );
   assert.deepEqual(
     signals.map((signal) => signal.late_confirmation_policy),
-    ["not_applicable", "reject", "reject", "not_applicable"],
+    ["not_applicable", "accept_bound_attestation", "accept_bound_attestation", "not_applicable"],
   );
   assert(signals.every((signal) => signal.decline_supported));
   const publicSignal = signals.map(formatOperatorCheckpointSignal).join("");

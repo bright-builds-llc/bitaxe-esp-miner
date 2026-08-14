@@ -267,14 +267,14 @@ function validatedCommandEffects(network: JsonObject): JsonObject {
     "safety_valid", "terminal_http_valid", "terminal_pool_persisted",
   ];
   if (
-    effects["schema"] !== "mining-campaign-command-effects-v4"
+    effects["schema"] !== "mining-campaign-command-effects-v5"
     || effects["identify_terminal_outcome"] !== "none"
     || requiredTrue.some((field) => effects[field] !== true)
     || effects["pause_request_count"] !== 1
     || effects["resume_request_count"] !== 1
     || (effects["identify_replay_request_count"] !== 0
       && effects["identify_replay_request_count"] !== 1)
-    || effects["identify_request_count"] !== 2 + effects["identify_replay_request_count"]
+    || effects["identify_request_count"] !== 1 + effects["identify_replay_request_count"]
     || effects["dismiss_request_count"] !== 1
   ) {
     throw failure("evidence_invalid", "command effects evidence quorum is incomplete");

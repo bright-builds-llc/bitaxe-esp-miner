@@ -37,3 +37,26 @@
 - Outcome: The immutable software-only plan is ready to commit and push.
 - Blocker or next safe action: Publish the plan checkpoint before changing any
   implementation source.
+
+## 2026-08-15T00:03:00Z | latency-tolerant transaction implemented
+
+- Source commit: `98080ba0f037743f57f997c5a1f13fee2c86c198`.
+- Actions: Replaced response-time expiry with an unbounded, attempt-bound
+  observed-during-effect attestation; removed the second IDENTIFY toggle used
+  for clearing; added conservative natural-expiry gating; updated the evidence
+  and public checkpoint schemas; and extracted the replay integration into a
+  focused test module.
+- Verification: Focused Rust command-effects and Bazel flash/automation
+  real-process suites pass. Cargo format, strict Clippy, all-target build,
+  all-feature tests, Bright Builds, all 44 Bazel test targets, parity,
+  parity-progress, redaction, reference cleanliness, real firmware build,
+  selector, unique task, immutable plan digest, stale-schema scan, and diff
+  checks pass.
+- Evidence: Public software, tests, task, plan, and categorical gate results
+  only. No credential, protected attempt artifact, detector, USB,
+  device/network, display, mining, hardware-control, UART, or pin interface was
+  accessed.
+- Outcome: The latency-tolerant software transaction is complete. API-009
+  remains `implemented`; no parity evidence or checklist promotion was made.
+- Blocker or next safe action: Commit and push this closure. A fresh immutable
+  exact-package plan is required before detector admission or attempt-023.

@@ -7,10 +7,13 @@ const CHECKPOINT_SCHEMA = "bitaxe-identify-checkpoint-v3";
 const POLL_INTERVAL_MILLIS = 50;
 
 export type OperatorCheckpointKind = "ready" | "rendered" | "replayed" | "cleared";
-type ConfirmationCondition = "ready_to_watch" | "identify_frame_visible" | "identify_frame_absent";
+type ConfirmationCondition =
+  | "ready_to_watch"
+  | "identify_frame_observed_during_effect"
+  | "identify_frame_absent";
 
 export type OperatorCheckpointSignal = {
-  readonly schema_version: "bitaxe-operator-checkpoint-v5";
+  readonly schema_version: "bitaxe-operator-checkpoint-v6";
   readonly command: "api-command-effects-campaign";
   readonly checkpoint: OperatorCheckpointKind;
   readonly confirm_when: ConfirmationCondition;
@@ -23,7 +26,7 @@ export type OperatorCheckpointSignal = {
   readonly replay_supported: boolean;
   readonly replay_limit: 1;
   readonly replay_starts_identify_window: boolean;
-  readonly late_confirmation_policy: "reject" | "not_applicable";
+  readonly late_confirmation_policy: "accept_bound_attestation" | "not_applicable";
   readonly decline_supported: true;
   readonly status: "required";
 };
@@ -66,8 +69,8 @@ function checkpointPath(root: string, checkpoint: OperatorCheckpointKind): strin
 function confirmationCondition(checkpoint: OperatorCheckpointKind): ConfirmationCondition {
   switch (checkpoint) {
     case "ready": return "ready_to_watch";
-    case "rendered": return "identify_frame_visible";
-    case "replayed": return "identify_frame_visible";
+    case "rendered": return "identify_frame_observed_during_effect";
+    case "replayed": return "identify_frame_observed_during_effect";
     case "cleared": return "identify_frame_absent";
   }
 }
@@ -75,7 +78,7 @@ function confirmationCondition(checkpoint: OperatorCheckpointKind): Confirmation
 function signal(checkpoint: OperatorCheckpointKind): OperatorCheckpointSignal {
   const effectBounded = checkpoint === "rendered" || checkpoint === "replayed";
   return {
-    schema_version: "bitaxe-operator-checkpoint-v5",
+    schema_version: "bitaxe-operator-checkpoint-v6",
     command: "api-command-effects-campaign",
     checkpoint,
     confirm_when: confirmationCondition(checkpoint),
@@ -90,7 +93,7 @@ function signal(checkpoint: OperatorCheckpointKind): OperatorCheckpointSignal {
     replay_supported: checkpoint === "rendered",
     replay_limit: 1,
     replay_starts_identify_window: checkpoint === "rendered",
-    late_confirmation_policy: effectBounded ? "reject" : "not_applicable",
+    late_confirmation_policy: effectBounded ? "accept_bound_attestation" : "not_applicable",
     decline_supported: true,
     status: "required",
   };

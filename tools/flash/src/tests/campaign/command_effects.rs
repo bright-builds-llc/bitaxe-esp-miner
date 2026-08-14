@@ -96,7 +96,7 @@ fn command_effects_requires_the_typed_network_quorum_and_safe_stop() {
     )
     .expect("network JSON");
     assert_eq!(network["command_effects"]["pause_request_count"], 1);
-    assert_eq!(network["command_effects"]["identify_request_count"], 2);
+    assert_eq!(network["command_effects"]["identify_request_count"], 1);
 }
 
 #[test]

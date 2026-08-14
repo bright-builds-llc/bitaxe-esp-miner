@@ -72,26 +72,25 @@ pub(super) enum RenderedCheckpointAction {
     Confirmed,
     Declined,
     ReplayAt(Instant),
-    Expired,
 }
 
 pub(super) fn rendered_checkpoint_action(
     now: Instant,
-    confirmation_expires_at: Instant,
-    replay_not_before: Instant,
+    effect_inactive_at: Instant,
     response: CheckpointResponse,
     replay_allowed: bool,
 ) -> Result<RenderedCheckpointAction, ()> {
     match response {
         CheckpointResponse::Pending => Ok(RenderedCheckpointAction::Wait),
-        CheckpointResponse::Confirmed if now < confirmation_expires_at => {
-            Ok(RenderedCheckpointAction::Confirmed)
-        }
-        CheckpointResponse::Confirmed => Ok(RenderedCheckpointAction::Expired),
+        // The response is a single-use, attempt-local attestation that the
+        // frame was observed during this checkpoint's bounded device effect.
+        // Transport and conversational latency must not impose a second human
+        // deadline after the physical observation already happened.
+        CheckpointResponse::Confirmed => Ok(RenderedCheckpointAction::Confirmed),
         CheckpointResponse::Declined => Ok(RenderedCheckpointAction::Declined),
         CheckpointResponse::Replay if replay_allowed => {
-            let starts_at = if now < replay_not_before {
-                replay_not_before
+            let starts_at = if now < effect_inactive_at {
+                effect_inactive_at
             } else {
                 now
             };

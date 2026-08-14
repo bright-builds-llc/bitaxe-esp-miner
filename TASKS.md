@@ -3208,15 +3208,15 @@ software-only post-expiry replay-choice plan; see the linked `CLOSURE.md`.
 Latency-tolerant interaction plan:
 `docs/parity/work-plans/20260814T232306Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable software-only plan without accessing
+- [x] Commit and push the immutable software-only plan without accessing
       credentials, protected attempts, USB, device/network interfaces, or
       hardware.
-- [ ] Make rendered/replayed reports unbounded and attempt-bound while keeping
+- [x] Make rendered/replayed reports unbounded and attempt-bound while keeping
       every IDENTIFY effect exactly 30 seconds and every replay explicit.
-- [ ] Use conservative natural expiry before the cleared checkpoint instead of
+- [x] Use conservative natural expiry before the cleared checkpoint instead of
       a latency-sensitive second IDENTIFY toggle; update the closed request
       count and evidence quorum.
-- [ ] Pass focused, real-process, mandatory, privacy, reference, firmware,
+- [x] Pass focused, real-process, mandatory, privacy, reference, firmware,
       selector, digest, and diff gates; close with API-009 still `implemented`
       and no attempt-023.
 
@@ -3226,6 +3226,16 @@ credentials, protected attempt artifacts, detector, USB, device/network
 interfaces, HTTP, display, mining, hardware controls, direct UART, pins/pads,
 public parity evidence, checklist promotion, attempt-023, or any hardware
 attempt.
+
+Latency-tolerant interaction completion review: rendered and replayed responses
+are now unbounded, attempt-local attestations that the exact frame was observed
+during the uniquely bound 30-second device effect. The campaign performs one
+IDENTIFY request per effect, waits for conservative natural expiry before the
+cleared checkpoint, and requires `1 + replay_count` requests in closed evidence.
+Focused Rust and real-child regressions plus every mandatory, privacy,
+reference, firmware, selector, digest, and diff gate pass. API-009 remains
+`implemented`; this software-only plan created no hardware evidence and did not
+authorize attempt-023. See the linked `CLOSURE.md`.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 

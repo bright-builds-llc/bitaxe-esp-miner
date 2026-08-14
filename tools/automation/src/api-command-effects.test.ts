@@ -50,7 +50,7 @@ const readySession = {
 } as const;
 
 const completeEffects = {
-  schema: "mining-campaign-command-effects-v4",
+  schema: "mining-campaign-command-effects-v5",
   genuine_block_notification_observed: true,
   positive_block_count_observed: true,
   pause_request_count: 1,
@@ -58,7 +58,7 @@ const completeEffects = {
   resume_request_count: 1,
   resume_confirmed: true,
   identify_operator_ready_confirmed: true,
-  identify_request_count: 2,
+  identify_request_count: 1,
   identify_replay_request_count: 0,
   identify_rendered_confirmed: true,
   identify_cleared_confirmed: true,
@@ -76,7 +76,7 @@ const completeEffects = {
 
 const completeReplayedEffects = {
   ...completeEffects,
-  identify_request_count: 3,
+  identify_request_count: 2,
   identify_replay_request_count: 1,
 } as const;
 
@@ -306,9 +306,9 @@ test("ordered campaign checkpoints notify the operator sink exactly once", async
   // Assert
   assert.deepEqual(signals.map((signal) => signal.checkpoint), ["ready", "rendered", "cleared"]);
   assert.deepEqual(signals.map((signal) => signal.confirm_when), [
-    "ready_to_watch", "identify_frame_visible", "identify_frame_absent",
+    "ready_to_watch", "identify_frame_observed_during_effect", "identify_frame_absent",
   ]);
-  assert(signals.every((signal) => signal.schema_version === "bitaxe-operator-checkpoint-v5"));
+  assert(signals.every((signal) => signal.schema_version === "bitaxe-operator-checkpoint-v6"));
   assert(signals.every((signal) => signal.command === "api-command-effects-campaign"));
   assert(signals.every((signal) => signal.identify_duration_seconds === 30));
   assert.deepEqual(signals.map((signal) => signal.operator_wait_policy), [
@@ -327,7 +327,7 @@ test("ordered campaign checkpoints notify the operator sink exactly once", async
   );
   assert.deepEqual(
     signals.map((signal) => signal.late_confirmation_policy),
-    ["not_applicable", "reject", "not_applicable"],
+    ["not_applicable", "accept_bound_attestation", "not_applicable"],
   );
   assert(signals.every((signal) => signal.decline_supported));
   assert(signals.every((signal) => signal.status === "required"));
