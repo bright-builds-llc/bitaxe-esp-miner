@@ -2789,12 +2789,12 @@ requires a separate clean immutable plan. See
 Paused-signal-fixed attempt-017 plan:
 `docs/parity/work-plans/20260814T123336Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable single-attempt contract and pass every
+- [x] Commit and push the immutable single-attempt contract and pass every
       focused, mandatory, privacy, reference, firmware, and exact-package gate.
-- [ ] Run exactly one fresh detector-gated attempt-017, keep the device paused
+- [x] Run exactly one fresh detector-gated attempt-017, keep the device paused
       and safe-stopped while waiting, and send each private checkpoint only
       after its matching live physical report.
-- [ ] Promote only on the complete command/restart/device-user quorum;
+- [x] Promote only on the complete command/restart/device-user quorum;
       otherwise preserve `implemented`, earliest failure, evidence withholding,
       safe stop, cleanup, recovery, and stop without attempt-018.
 
@@ -2807,6 +2807,19 @@ pass at clean pushed HEAD. Campaign start consumes attempt-017. No inferred or
 expired physical observation, protected-artifact reuse, external or owner pool,
 destructive/fault-injection action, direct UART, pin/pad/GPIO manipulation,
 attempt-018, or unchanged retry is authorized.
+
+Completion review: pushed plan commit `f0bdb192` passed every named software,
+privacy, reference, firmware, selector, and exact-package gate. The sole fresh
+detector admitted one ready Ultra 205, and attempt-017 completed both factory
+and NVS flashes before serial observation. It then failed closed before the
+ready checkpoint as `network_target_unavailable`: serial observation accepted
+the paused terminal marker but captured zero runtime-attestation candidates,
+so no trusted same-session runtime origin or network worker could be admitted.
+Safe stop is confirmed, USB cleanup is ready, recovery was not required, and
+the public projection is withheld. No ready/rendered/cleared signal was sent,
+no physical IDENTIFY claim is made, API-009 remains `implemented`, and this
+contract authorizes no attempt-018. See
+`docs/parity/work-plans/20260814T123336Z-API-009/CLOSURE.md`.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
