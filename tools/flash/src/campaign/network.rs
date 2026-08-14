@@ -18,7 +18,9 @@ use camino::Utf8PathBuf;
 
 use super::*;
 use command_effects::observe_command_effects;
-pub(crate) use command_effects::{confirm_identify_checkpoint, IdentifyCheckpointKind};
+pub(crate) use command_effects::{
+    respond_identify_checkpoint, IdentifyCheckpointKind, IdentifyCheckpointOutcome,
+};
 pub(crate) use model::CampaignNetworkEvidence;
 use model::SharedSerialState;
 use observer::observe_network;
@@ -71,6 +73,12 @@ impl CampaignNetworkCoordinator {
             }
             _ => CampaignNetworkEvidence::not_required(),
         }));
+    }
+
+    pub(crate) fn should_stop(&self) -> bool {
+        self.shared
+            .lock()
+            .map_or(true, |state| state.network_stop_requested)
     }
 
     pub(crate) fn finish(mut self) -> CampaignNetworkEvidence {

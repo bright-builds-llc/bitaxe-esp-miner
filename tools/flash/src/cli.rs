@@ -32,6 +32,9 @@ pub(crate) struct SignalIdentifyCommand {
 
     #[arg(long, value_enum)]
     pub(crate) checkpoint: network::IdentifyCheckpointKind,
+
+    #[arg(long, value_enum, default_value = "confirmed")]
+    pub(crate) outcome: network::IdentifyCheckpointOutcome,
 }
 
 #[derive(Debug, Parser, Clone)]

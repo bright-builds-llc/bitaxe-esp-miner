@@ -41,7 +41,7 @@ impl CampaignNetworkEvidence {
     pub(crate) fn fixture_command_effects() -> Self {
         Self::from_command_effects(
             CommandEffectsEvidence {
-                schema: "mining-campaign-command-effects-v2",
+                schema: "mining-campaign-command-effects-v3",
                 genuine_block_notification_observed: true,
                 positive_block_count_observed: true,
                 pause_request_count: 1,
@@ -52,6 +52,7 @@ impl CampaignNetworkEvidence {
                 identify_request_count: 2,
                 identify_rendered_confirmed: true,
                 identify_cleared_confirmed: true,
+                identify_terminal_outcome: "none",
                 dismiss_request_count: 1,
                 dismiss_confirmed: true,
                 block_count_preserved: true,

@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-use bitaxe_api::SystemInfoWire;
+use bitaxe_api::{SystemInfoWire, IDENTIFY_DURATION_MS};
 use bitaxe_http_transport::{ExchangeObservation, StrictHttpClient};
 use camino::Utf8Path;
 use clap::ValueEnum;
@@ -23,7 +23,7 @@ use pause_join::{PauseJoinDecision, PauseJoinState};
 const HTTP_DEADLINE: Duration = Duration::from_secs(3);
 const POLL_INTERVAL: Duration = Duration::from_secs(1);
 const TERMINAL_DEADLINE: Duration = Duration::from_secs(15);
-const CHECKPOINT_SCHEMA: &str = "bitaxe-identify-checkpoint-v2";
+const CHECKPOINT_SCHEMA: &str = "bitaxe-identify-checkpoint-v3";
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, ValueEnum)]
 #[serde(rename_all = "snake_case")]
@@ -31,6 +31,22 @@ pub(crate) enum IdentifyCheckpointKind {
     Ready,
     Rendered,
     Cleared,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize, ValueEnum)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum IdentifyCheckpointOutcome {
+    Confirmed,
+    Declined,
+}
+
+impl IdentifyCheckpointOutcome {
+    pub(crate) const fn as_str(self) -> &'static str {
+        match self {
+            Self::Confirmed => "confirmed",
+            Self::Declined => "declined",
+        }
+    }
 }
 
 impl IdentifyCheckpointKind {
@@ -57,10 +73,17 @@ enum CommandPhase {
     Pause(PauseJoinState),
     Resume,
     IdentifyReady,
-    IdentifyRendered,
+    IdentifyRendered { expires_at: Instant },
     IdentifyCleared,
     Dismiss,
     Terminal,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum CheckpointResponse {
+    Pending,
+    Confirmed,
+    Declined,
 }
 
 struct CommandProgress<'a> {
@@ -136,6 +159,13 @@ pub(super) fn observe_command_effects(
         }
         if take_recovery_pause_request(maybe_failure, &mut recovery_pause_request_count) {
             let _result = http.post_pause_once(Instant::now() + HTTP_DEADLINE);
+            if should_request_network_stop(
+                maybe_failure,
+                evidence.pause_confirmed,
+                recovery_pause_request_count,
+            ) {
+                request_network_stop(&shared);
+            }
         }
 
         if serial.terminal_consumed && evidence.terminal_http_valid {
@@ -237,26 +267,38 @@ fn advance_commands(
             }
         }
         CommandPhase::IdentifyReady => match consume_ready_signal(evidence_root, evidence) {
-            Ok(true) => {
-                // Human checkpoints have no bounded response latency. Keep the
-                // initial safe-stop pause held until both observations finish.
+            Ok(CheckpointResponse::Confirmed) => {
+                // Ready may wait indefinitely before activation. Once consumed,
+                // rendered inherits the device's exact 30-second effect deadline.
+                // Keep the initial safe-stop pause held through both observations.
                 evidence.identify_request_count = 1;
                 if !post_succeeded(http.post_identify_once(Instant::now() + HTTP_DEADLINE)) {
                     *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
                 } else if write_required_checkpoint(evidence_root, IdentifyCheckpointKind::Rendered)
                     .is_ok()
                 {
-                    *phase = CommandPhase::IdentifyRendered;
+                    *phase = CommandPhase::IdentifyRendered {
+                        expires_at: now + Duration::from_millis(IDENTIFY_DURATION_MS),
+                    };
                 } else {
                     *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid);
                 }
             }
-            Ok(false) => {}
+            Ok(CheckpointResponse::Declined) => {
+                evidence.identify_terminal_outcome = "declined";
+                *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointDeclined);
+            }
+            Ok(CheckpointResponse::Pending) => {}
             Err(()) => *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid),
         },
-        CommandPhase::IdentifyRendered => {
-            match consume_confirmation(evidence_root, IdentifyCheckpointKind::Rendered) {
-                Ok(true) => {
+        CommandPhase::IdentifyRendered { expires_at } => {
+            if rendered_checkpoint_expired(now, *expires_at) {
+                evidence.identify_terminal_outcome = "expired";
+                *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointExpired);
+                return;
+            }
+            match consume_checkpoint_response(evidence_root, IdentifyCheckpointKind::Rendered) {
+                Ok(CheckpointResponse::Confirmed) => {
                     evidence.identify_rendered_confirmed = true;
                     evidence.identify_request_count = 2;
                     if !post_succeeded(http.post_identify_once(Instant::now() + HTTP_DEADLINE)) {
@@ -272,21 +314,29 @@ fn advance_commands(
                         *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid);
                     }
                 }
-                Ok(false) => {}
+                Ok(CheckpointResponse::Declined) => {
+                    evidence.identify_terminal_outcome = "declined";
+                    *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointDeclined);
+                }
+                Ok(CheckpointResponse::Pending) => {}
                 Err(()) => {
                     *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid)
                 }
             }
         }
         CommandPhase::IdentifyCleared => match consume_cleared_signal(evidence_root, evidence) {
-            Ok(true) => {
+            Ok(CheckpointResponse::Confirmed) => {
                 if !post_succeeded(http.post_resume_once(Instant::now() + HTTP_DEADLINE)) {
                     *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
                 } else {
                     *phase = CommandPhase::Resume;
                 }
             }
-            Ok(false) => {}
+            Ok(CheckpointResponse::Declined) => {
+                evidence.identify_terminal_outcome = "declined";
+                *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointDeclined);
+            }
+            Ok(CheckpointResponse::Pending) => {}
             Err(()) => *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid),
         },
         CommandPhase::Dismiss if !sample.show_new_block => {
@@ -381,24 +431,25 @@ fn arm_ready_after_pause(
 fn consume_ready_signal(
     root: &Utf8Path,
     evidence: &mut CommandEffectsEvidence,
-) -> Result<bool, ()> {
+) -> Result<CheckpointResponse, ()> {
     if !evidence.pause_confirmed
         || evidence.resume_request_count != 0
         || evidence.identify_request_count != 0
     {
         return Err(());
     }
-    if !consume_confirmation(root, IdentifyCheckpointKind::Ready)? {
-        return Ok(false);
+    let response = consume_checkpoint_response(root, IdentifyCheckpointKind::Ready)?;
+    if response != CheckpointResponse::Confirmed {
+        return Ok(response);
     }
     evidence.identify_operator_ready_confirmed = true;
-    Ok(true)
+    Ok(CheckpointResponse::Confirmed)
 }
 
 fn consume_cleared_signal(
     root: &Utf8Path,
     evidence: &mut CommandEffectsEvidence,
-) -> Result<bool, ()> {
+) -> Result<CheckpointResponse, ()> {
     if !evidence.pause_confirmed
         || !evidence.identify_operator_ready_confirmed
         || !evidence.identify_rendered_confirmed
@@ -407,12 +458,13 @@ fn consume_cleared_signal(
     {
         return Err(());
     }
-    if !consume_confirmation(root, IdentifyCheckpointKind::Cleared)? {
-        return Ok(false);
+    let response = consume_checkpoint_response(root, IdentifyCheckpointKind::Cleared)?;
+    if response != CheckpointResponse::Confirmed {
+        return Ok(response);
     }
     evidence.identify_cleared_confirmed = true;
     evidence.resume_request_count = 1;
-    Ok(true)
+    Ok(CheckpointResponse::Confirmed)
 }
 
 fn checkpoint_path(
@@ -437,12 +489,17 @@ fn write_required_checkpoint(
     write_private_new_bytes(&checkpoint_path(root, checkpoint, "required"), &bytes)
 }
 
-fn consume_confirmation(root: &Utf8Path, checkpoint: IdentifyCheckpointKind) -> Result<bool, ()> {
-    let confirmed = checkpoint_path(root, checkpoint, "confirmed");
+fn consume_checkpoint_response(
+    root: &Utf8Path,
+    checkpoint: IdentifyCheckpointKind,
+) -> Result<CheckpointResponse, ()> {
+    let response = checkpoint_path(root, checkpoint, "response");
     let consumed = checkpoint_path(root, checkpoint, "consumed");
-    let metadata = match fs::symlink_metadata(confirmed.as_std_path()) {
+    let metadata = match fs::symlink_metadata(response.as_std_path()) {
         Ok(metadata) => metadata,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(CheckpointResponse::Pending)
+        }
         Err(_) => return Err(()),
     };
     if metadata.file_type().is_symlink() || !metadata.is_file() {
@@ -453,19 +510,48 @@ fn consume_confirmation(root: &Utf8Path, checkpoint: IdentifyCheckpointKind) -> 
         return Err(());
     }
     if fs::symlink_metadata(consumed.as_std_path()).is_ok()
-        || fs::rename(confirmed.as_std_path(), consumed.as_std_path()).is_err()
+        || fs::rename(response.as_std_path(), consumed.as_std_path()).is_err()
     {
         return Err(());
     }
     let bytes = fs::read(consumed.as_std_path()).map_err(|_| ())?;
     let document: IdentifyCheckpoint = serde_json::from_slice(&bytes).map_err(|_| ())?;
-    if document.schema != CHECKPOINT_SCHEMA
-        || document.checkpoint != checkpoint
-        || document.status != "confirmed"
-    {
+    if document.schema != CHECKPOINT_SCHEMA || document.checkpoint != checkpoint {
         return Err(());
     }
-    Ok(true)
+    match document.status.as_str() {
+        "confirmed" => Ok(CheckpointResponse::Confirmed),
+        "declined" => Ok(CheckpointResponse::Declined),
+        _ => Err(()),
+    }
+}
+
+fn is_operator_checkpoint_terminal(category: CampaignTerminalCategory) -> bool {
+    matches!(
+        category,
+        CampaignTerminalCategory::OperatorCheckpointDeclined
+            | CampaignTerminalCategory::OperatorCheckpointExpired
+    )
+}
+
+fn should_request_network_stop(
+    maybe_failure: Option<CampaignTerminalCategory>,
+    pause_confirmed: bool,
+    recovery_pause_request_count: u64,
+) -> bool {
+    pause_confirmed
+        && recovery_pause_request_count == 1
+        && maybe_failure.is_some_and(is_operator_checkpoint_terminal)
+}
+
+fn rendered_checkpoint_expired(now: Instant, expires_at: Instant) -> bool {
+    now >= expires_at
+}
+
+fn request_network_stop(shared: &Arc<Mutex<SharedSerialState>>) {
+    if let Ok(mut state) = shared.lock() {
+        state.network_stop_requested = true;
+    }
 }
 
 fn shared_snapshot(shared: &Arc<Mutex<SharedSerialState>>) -> SharedSerialState {
@@ -479,12 +565,13 @@ fn shared_snapshot(shared: &Arc<Mutex<SharedSerialState>>) -> SharedSerialState 
     )
 }
 
-pub(crate) fn confirm_identify_checkpoint(
+pub(crate) fn respond_identify_checkpoint(
     root: &Utf8Path,
     checkpoint: IdentifyCheckpointKind,
+    outcome: IdentifyCheckpointOutcome,
 ) -> anyhow::Result<()> {
     let required = checkpoint_path(root, checkpoint, "required");
-    let confirmed = checkpoint_path(root, checkpoint, "confirmed");
+    let response = checkpoint_path(root, checkpoint, "response");
     let consumed = checkpoint_path(root, checkpoint, "consumed");
     let metadata = fs::symlink_metadata(required.as_std_path())?;
     if metadata.file_type().is_symlink() || !metadata.is_file() {
@@ -494,7 +581,7 @@ pub(crate) fn confirm_identify_checkpoint(
     if metadata.permissions().mode() & 0o777 != 0o600 {
         anyhow::bail!("identify_checkpoint=blocked reason=required_checkpoint_not_private");
     }
-    if confirmed.exists() || consumed.exists() {
+    if response.exists() || consumed.exists() {
         anyhow::bail!("identify_checkpoint=blocked reason=checkpoint_already_used");
     }
     let required_checkpoint: IdentifyCheckpoint =
@@ -505,14 +592,14 @@ pub(crate) fn confirm_identify_checkpoint(
     {
         anyhow::bail!("identify_checkpoint=blocked reason=required_checkpoint_malformed");
     }
-    let confirmation = IdentifyCheckpoint {
+    let response_document = IdentifyCheckpoint {
         schema: CHECKPOINT_SCHEMA.to_owned(),
         checkpoint,
-        status: "confirmed".to_owned(),
+        status: outcome.as_str().to_owned(),
     };
-    let mut bytes = serde_json::to_vec_pretty(&confirmation)?;
+    let mut bytes = serde_json::to_vec_pretty(&response_document)?;
     bytes.push(b'\n');
-    write_private_new_bytes(&confirmed, &bytes)?;
+    write_private_new_bytes(&response, &bytes)?;
     Ok(())
 }
 

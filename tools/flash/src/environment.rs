@@ -425,7 +425,7 @@ impl FlashEnvironment for LocalFlashEnvironment {
                 |chunk| {
                     analyzer.observe_chunk(chunk);
                     network.observe_serial_chunk(chunk);
-                    analyzer.terminal_consumed()
+                    analyzer.terminal_consumed() || network.should_stop()
                 },
             )
             .map_err(|error| anyhow::anyhow!("{error}"))?;

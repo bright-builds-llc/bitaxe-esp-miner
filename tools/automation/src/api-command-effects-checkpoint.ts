@@ -3,20 +3,24 @@ import path from "node:path";
 
 import type { ProcessOutcome } from "./process.js";
 
-const CHECKPOINT_SCHEMA = "bitaxe-identify-checkpoint-v2";
+const CHECKPOINT_SCHEMA = "bitaxe-identify-checkpoint-v3";
 const POLL_INTERVAL_MILLIS = 50;
 
 export type OperatorCheckpointKind = "ready" | "rendered" | "cleared";
 type ConfirmationCondition = "ready_to_watch" | "identify_frame_visible" | "identify_frame_absent";
 
 export type OperatorCheckpointSignal = {
-  readonly schema_version: "bitaxe-operator-checkpoint-v2";
+  readonly schema_version: "bitaxe-operator-checkpoint-v3";
   readonly command: "api-command-effects-campaign";
   readonly checkpoint: OperatorCheckpointKind;
   readonly confirm_when: ConfirmationCondition;
   readonly expected_frame: readonly ["", "BITAXE IDENTIFY", "Hello!", ""];
   readonly operator_ready_timeout_seconds: 3600;
   readonly identify_duration_seconds: 30;
+  readonly response_timeout_seconds: 30 | 3600;
+  readonly local_signal_required: true;
+  readonly starts_identify_window: boolean;
+  readonly decline_supported: true;
   readonly status: "required";
 };
 
@@ -57,13 +61,19 @@ function confirmationCondition(checkpoint: OperatorCheckpointKind): Confirmation
 
 function signal(checkpoint: OperatorCheckpointKind): OperatorCheckpointSignal {
   return {
-    schema_version: "bitaxe-operator-checkpoint-v2",
+    schema_version: "bitaxe-operator-checkpoint-v3",
     command: "api-command-effects-campaign",
     checkpoint,
     confirm_when: confirmationCondition(checkpoint),
     expected_frame: expectedFrame,
     operator_ready_timeout_seconds: 3600,
     identify_duration_seconds: 30,
+    response_timeout_seconds: checkpoint === "rendered" ? 30 : 3600,
+    // Consuming ready starts the device's 30-second parity effect. Requiring
+    // the local command keeps transport or conversational latency outside it.
+    local_signal_required: true,
+    starts_identify_window: checkpoint === "ready",
+    decline_supported: true,
     status: "required",
   };
 }

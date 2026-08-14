@@ -15,6 +15,7 @@ mod admission_layout;
 mod campaign;
 mod capture;
 mod cli;
+mod cli_identify;
 #[path = "tests/evidence.rs"]
 mod evidence_cases;
 mod monitor;

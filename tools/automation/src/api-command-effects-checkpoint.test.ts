@@ -17,7 +17,7 @@ const ok = { exitCode: 0, stdout: "", stderr: "", timedOut: false } as const;
 async function privateCheckpoint(root: string, checkpoint: "ready" | "rendered" | "cleared"): Promise<void> {
   const output = path.join(root, `identify-${checkpoint}.required.json`);
   await writeFile(output, `${JSON.stringify({
-    schema: "bitaxe-identify-checkpoint-v2",
+    schema: "bitaxe-identify-checkpoint-v3",
     checkpoint,
     status: "required",
   })}\n`, { mode: 0o600 });
@@ -38,7 +38,7 @@ test("a partially published document is not misclassified before completion", as
 
   // Act
   await new Promise((resolve) => setTimeout(resolve, 100));
-  await appendFile(ready, `"schema":"bitaxe-identify-checkpoint-v2","checkpoint":"ready","status":"required"}\n`);
+  await appendFile(ready, `"schema":"bitaxe-identify-checkpoint-v3","checkpoint":"ready","status":"required"}\n`);
   await privateCheckpoint(root, "rendered");
   await privateCheckpoint(root, "cleared");
   await new Promise((resolve) => setTimeout(resolve, 100));
@@ -81,13 +81,13 @@ test("a real child publishes ordered checkpoints before it settles", {
     "set -eu",
     "evidence_root=$1",
     "umask 077",
-    "printf '%s\\n' '{\"schema\":\"bitaxe-identify-checkpoint-v2\",\"checkpoint\":\"ready\",\"status\":\"required\"}' > \"$evidence_root/identify-ready.required.json\"",
+    "printf '%s\\n' '{\"schema\":\"bitaxe-identify-checkpoint-v3\",\"checkpoint\":\"ready\",\"status\":\"required\"}' > \"$evidence_root/identify-ready.required.json\"",
     "chmod 600 \"$evidence_root/identify-ready.required.json\"",
     "sleep 1",
-    "printf '%s\\n' '{\"schema\":\"bitaxe-identify-checkpoint-v2\",\"checkpoint\":\"rendered\",\"status\":\"required\"}' > \"$evidence_root/identify-rendered.required.json\"",
+    "printf '%s\\n' '{\"schema\":\"bitaxe-identify-checkpoint-v3\",\"checkpoint\":\"rendered\",\"status\":\"required\"}' > \"$evidence_root/identify-rendered.required.json\"",
     "chmod 600 \"$evidence_root/identify-rendered.required.json\"",
     "sleep 1",
-    "printf '%s\\n' '{\"schema\":\"bitaxe-identify-checkpoint-v2\",\"checkpoint\":\"cleared\",\"status\":\"required\"}' > \"$evidence_root/identify-cleared.required.json\"",
+    "printf '%s\\n' '{\"schema\":\"bitaxe-identify-checkpoint-v3\",\"checkpoint\":\"cleared\",\"status\":\"required\"}' > \"$evidence_root/identify-cleared.required.json\"",
     "chmod 600 \"$evidence_root/identify-cleared.required.json\"",
     "sleep 1",
     ": > \"$evidence_root/child-settled.private\"",
@@ -113,6 +113,11 @@ test("a real child publishes ordered checkpoints before it settles", {
   assert.equal(supervised.maybeCheckpointError, undefined);
   assert.deepEqual(signals.map((checkpoint) => checkpoint.checkpoint), ["ready", "rendered", "cleared"]);
   assert.equal(signals.length, 3);
+  assert(signals.every((signal) => signal.schema_version === "bitaxe-operator-checkpoint-v3"));
+  assert.deepEqual(signals.map((signal) => signal.response_timeout_seconds), [3600, 30, 3600]);
+  assert(signals.every((signal) => signal.local_signal_required));
+  assert.deepEqual(signals.map((signal) => signal.starts_identify_window), [true, false, false]);
+  assert(signals.every((signal) => signal.decline_supported));
   const publicSignal = signals.map(formatOperatorCheckpointSignal).join("");
   assert(!publicSignal.includes(root));
   assert(publicSignal.includes("BITAXE IDENTIFY"));

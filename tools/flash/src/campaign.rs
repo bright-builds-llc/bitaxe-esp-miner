@@ -37,6 +37,8 @@ pub(crate) enum CampaignTerminalCategory {
     CommandEffectsComplete,
     CommandRequestFailed,
     OperatorCheckpointInvalid,
+    OperatorCheckpointDeclined,
+    OperatorCheckpointExpired,
     AdmissionFailed,
     PackageAdmissionFailed,
     DeviceAdmissionFailed,
@@ -99,6 +101,8 @@ impl CampaignTerminalCategory {
             Self::CommandEffectsComplete => "command_effects_complete",
             Self::CommandRequestFailed => "command_request_failed",
             Self::OperatorCheckpointInvalid => "operator_checkpoint_invalid",
+            Self::OperatorCheckpointDeclined => "operator_checkpoint_declined",
+            Self::OperatorCheckpointExpired => "operator_checkpoint_expired",
             Self::AdmissionFailed => "admission_failed",
             Self::PackageAdmissionFailed => "package_admission_failed",
             Self::DeviceAdmissionFailed => "device_admission_failed",
@@ -271,8 +275,9 @@ pub(crate) fn run_signal_identify(
     if metadata.permissions().mode() & 0o777 != 0o700 {
         bail!("identify_checkpoint=blocked reason=attempt_root_not_private");
     }
-    network::confirm_identify_checkpoint(&evidence_root, command.checkpoint)?;
-    emit_line("identify_checkpoint", command.checkpoint.as_str())
+    network::respond_identify_checkpoint(&evidence_root, command.checkpoint, command.outcome)?;
+    emit_line("identify_checkpoint", command.checkpoint.as_str())?;
+    emit_line("identify_outcome", command.outcome.as_str())
 }
 
 fn execute_campaign(

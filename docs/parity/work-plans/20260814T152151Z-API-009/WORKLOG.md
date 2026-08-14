@@ -63,3 +63,25 @@
 - Blocker or next safe action: Close this immutable plan without attempt-020.
   Add a prompt typed decline/expiry path and move time-critical activation to
   the local operator signal boundary before considering later hardware.
+
+## 2026-08-14T16:16:30Z | post-closure checkpoint transaction repair
+
+- Actions: Converted the attempt-019 negative observation into a red regression,
+  added typed `declined` responses and exact rendered-checkpoint expiry, bound
+  ready activation to the local signal contract, and made the owned serial
+  capture stop only after the recovery pause is claimed.
+- Verification: The red diagnostic failed twice before implementation and is
+  now green. Focused flash and automation Bazel suites, including the real-child
+  boundary, pass. Formatting, strict Clippy, all-target build, all-feature
+  tests, Bright Builds, canonical Bazel tests, parity, parity-progress,
+  redaction, reference cleanliness, and the ESP firmware build all pass.
+- Evidence: Software-only source, deterministic fixtures, and category-safe
+  attempt-019 facts. No credential, protected value, port, USB/network identity,
+  origin, raw trace, hardware interface, or device/network effect was accessed.
+- Outcome: A negative or expired visual observation now closes through a typed
+  pause-preserving transaction without an external raw process signal. API-009
+  remains `implemented`, and no attempt-020 was created or run.
+- Blocker or next safe action: Commit and push this verified software repair.
+  Any later hardware observation requires a separate immutable attempt plan and
+  the operator must run the local ready signal while already watching the
+  display.

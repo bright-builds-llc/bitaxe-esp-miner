@@ -4,6 +4,10 @@ import path from "node:path";
 
 import { internalCommandSpec, type AutomationCategory } from "./contracts.generated.js";
 import { COMMAND_EFFECTS_TRANSACTION_BUDGET } from "./api-command-effects-budget.js";
+import {
+  campaignRecoveryFactsFromDocuments,
+  type RecoveryFacts,
+} from "./api-command-effects-recovery.js";
 import { isDeviceSessionProjectionFailure, readClosedDeviceSession } from "./device-session-projection.js";
 import {
   OperatorCheckpointError,
@@ -16,12 +20,6 @@ import { assertWithinWorkspace } from "./workspace.js";
 
 type JsonObject = Readonly<Record<string, unknown>>;
 type FailureCategory = Extract<AutomationCategory, "hardware_blocked" | "evidence_invalid" | "timeout" | "process_failed">;
-type RecoveryFacts = {
-  readonly safeStopConfirmed: boolean;
-  readonly cleanupComplete: boolean;
-  readonly recoveryAttempted: boolean;
-  readonly secondaryRecoveryFailure: boolean;
-};
 type FixtureSettlement =
   | { readonly kind: "launch_failed" }
   | { readonly kind: "outcome"; readonly outcome: ProcessOutcome };
@@ -137,14 +135,7 @@ async function campaignRecoveryFacts(campaignRoot: string): Promise<RecoveryFact
   try {
     const result = await readPrivateJson(path.join(campaignRoot, "campaign-result.json"), "campaign result");
     const network = await readPrivateJson(path.join(campaignRoot, "campaign-network.private.json"), "campaign network evidence");
-    const safeStopConfirmed = result["safe_stop"] === "confirmed";
-    const recoveryAttempted = network["recovery_pause_request_count"] === 1;
-    return {
-      safeStopConfirmed,
-      cleanupComplete: result["usb_cleanup"] === "ready",
-      recoveryAttempted,
-      secondaryRecoveryFailure: recoveryAttempted && !safeStopConfirmed,
-    };
+    return campaignRecoveryFactsFromDocuments(result, network);
   } catch {
     return {
       safeStopConfirmed: false,
@@ -276,7 +267,8 @@ function validatedCommandEffects(network: JsonObject): JsonObject {
     "safety_valid", "terminal_http_valid", "terminal_pool_persisted",
   ];
   if (
-    effects["schema"] !== "mining-campaign-command-effects-v2"
+    effects["schema"] !== "mining-campaign-command-effects-v3"
+    || effects["identify_terminal_outcome"] !== "none"
     || requiredTrue.some((field) => effects[field] !== true)
     || effects["pause_request_count"] !== 1
     || effects["resume_request_count"] !== 1

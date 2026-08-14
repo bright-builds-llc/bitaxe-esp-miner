@@ -116,6 +116,7 @@ rust_binary(
         "src/tests/campaign/stop_predicate.rs",
         "src/tests/campaign/terminal_boundary.rs",
         "src/tests/cli.rs",
+        "src/tests/cli_identify.rs",
         "src/tests/evidence.rs",
         "src/tests/fake_environment.rs",
         "src/tests/fixtures.rs",

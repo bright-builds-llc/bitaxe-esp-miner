@@ -3,10 +3,11 @@ use std::fs;
 use camino::Utf8PathBuf;
 
 use super::{
-    arm_identify_transaction, arm_ready_after_pause, confirm_identify_checkpoint,
-    consume_cleared_signal, consume_confirmation, consume_ready_signal,
-    take_recovery_pause_request, write_required_checkpoint, CommandEffectsEvidence, CommandPhase,
-    IdentifyCheckpointKind,
+    arm_identify_transaction, arm_ready_after_pause, consume_checkpoint_response,
+    consume_cleared_signal, consume_ready_signal, rendered_checkpoint_expired,
+    respond_identify_checkpoint, should_request_network_stop, take_recovery_pause_request,
+    write_required_checkpoint, CheckpointResponse, CommandEffectsEvidence, CommandPhase,
+    IdentifyCheckpointKind, IdentifyCheckpointOutcome,
 };
 use crate::set_private_directory_mode;
 
@@ -26,17 +27,28 @@ fn confirmation_is_consumed_once() {
         .expect("required checkpoint");
 
     // Act
-    confirm_identify_checkpoint(&root, IdentifyCheckpointKind::Rendered).expect("confirmation");
-    let accepted = consume_confirmation(&root, IdentifyCheckpointKind::Rendered)
+    respond_identify_checkpoint(
+        &root,
+        IdentifyCheckpointKind::Rendered,
+        IdentifyCheckpointOutcome::Confirmed,
+    )
+    .expect("confirmation");
+    let accepted = consume_checkpoint_response(&root, IdentifyCheckpointKind::Rendered)
         .expect("consume confirmation");
 
     // Assert
-    assert!(accepted);
+    assert_eq!(accepted, CheckpointResponse::Confirmed);
     assert!(
-        !consume_confirmation(&root, IdentifyCheckpointKind::Rendered)
+        consume_checkpoint_response(&root, IdentifyCheckpointKind::Rendered)
             .expect("second checkpoint is absent")
+            == CheckpointResponse::Pending
     );
-    assert!(confirm_identify_checkpoint(&root, IdentifyCheckpointKind::Rendered).is_err());
+    assert!(respond_identify_checkpoint(
+        &root,
+        IdentifyCheckpointKind::Rendered,
+        IdentifyCheckpointOutcome::Confirmed,
+    )
+    .is_err());
 }
 
 #[test]
@@ -84,12 +96,17 @@ fn ready_signal_is_consumed_without_releasing_pause() {
 
     // Act
     let absent = consume_ready_signal(&root, &mut evidence).expect("absent signal");
-    confirm_identify_checkpoint(&root, IdentifyCheckpointKind::Ready).expect("ready signal");
+    respond_identify_checkpoint(
+        &root,
+        IdentifyCheckpointKind::Ready,
+        IdentifyCheckpointOutcome::Confirmed,
+    )
+    .expect("ready signal");
     let present = consume_ready_signal(&root, &mut evidence).expect("consume signal");
 
     // Assert
-    assert!(!absent);
-    assert!(present);
+    assert_eq!(absent, CheckpointResponse::Pending);
+    assert_eq!(present, CheckpointResponse::Confirmed);
     assert!(evidence.identify_operator_ready_confirmed);
     assert_eq!(evidence.resume_request_count, 0);
     assert_eq!(evidence.identify_request_count, 0);
@@ -109,12 +126,17 @@ fn cleared_signal_is_the_only_transition_that_releases_resume() {
 
     // Act
     let absent = consume_cleared_signal(&root, &mut evidence).expect("absent signal");
-    confirm_identify_checkpoint(&root, IdentifyCheckpointKind::Cleared).expect("cleared signal");
+    respond_identify_checkpoint(
+        &root,
+        IdentifyCheckpointKind::Cleared,
+        IdentifyCheckpointOutcome::Confirmed,
+    )
+    .expect("cleared signal");
     let present = consume_cleared_signal(&root, &mut evidence).expect("consume signal");
 
     // Assert
-    assert!(!absent);
-    assert!(present);
+    assert_eq!(absent, CheckpointResponse::Pending);
+    assert_eq!(present, CheckpointResponse::Confirmed);
     assert!(evidence.identify_cleared_confirmed);
     assert_eq!(evidence.resume_request_count, 1);
     assert!(root.join("identify-cleared.consumed.json").is_file());
@@ -125,18 +147,70 @@ fn malformed_confirmation_fails_closed() {
     // Arrange
     let (_temp, root) = private_root();
     write_required_checkpoint(&root, IdentifyCheckpointKind::Cleared).expect("required checkpoint");
-    let confirmed = root.join("identify-cleared.confirmed.json");
+    let response = root.join("identify-cleared.response.json");
     crate::write_private_new_bytes(
-        &confirmed,
+        &response,
         br#"{"schema":"wrong","checkpoint":"cleared","status":"confirmed"}"#,
     )
     .expect("malformed confirmation");
 
     // Act
-    let result = consume_confirmation(&root, IdentifyCheckpointKind::Cleared);
+    let result = consume_checkpoint_response(&root, IdentifyCheckpointKind::Cleared);
 
     // Assert
     assert!(result.is_err());
+}
+
+#[test]
+fn declined_rendered_checkpoint_is_a_typed_response() {
+    // Arrange
+    let (_temp, root) = private_root();
+    write_required_checkpoint(&root, IdentifyCheckpointKind::Rendered)
+        .expect("required checkpoint");
+    respond_identify_checkpoint(
+        &root,
+        IdentifyCheckpointKind::Rendered,
+        IdentifyCheckpointOutcome::Declined,
+    )
+    .expect("declined response");
+
+    // Act
+    let result = consume_checkpoint_response(&root, IdentifyCheckpointKind::Rendered);
+
+    // Assert
+    assert_eq!(result, Ok(CheckpointResponse::Declined));
+}
+
+#[test]
+fn rendered_checkpoint_expires_at_the_exact_effect_deadline() {
+    // Arrange
+    let started = std::time::Instant::now();
+    let expires_at = started + std::time::Duration::from_secs(30);
+
+    // Act
+    let before =
+        rendered_checkpoint_expired(expires_at - std::time::Duration::from_nanos(1), expires_at);
+    let exact = rendered_checkpoint_expired(expires_at, expires_at);
+
+    // Assert
+    assert!(!before);
+    assert!(exact);
+}
+
+#[test]
+fn checkpoint_terminal_stops_network_only_after_pause_recovery_is_claimed() {
+    // Arrange
+    let failure = Some(super::CampaignTerminalCategory::OperatorCheckpointExpired);
+
+    // Act
+    let before_pause = should_request_network_stop(failure, false, 1);
+    let before_recovery = should_request_network_stop(failure, true, 0);
+    let after_recovery = should_request_network_stop(failure, true, 1);
+
+    // Assert
+    assert!(!before_pause);
+    assert!(!before_recovery);
+    assert!(after_recovery);
 }
 
 #[test]
@@ -145,7 +219,11 @@ fn confirmation_without_a_required_checkpoint_is_rejected() {
     let (_temp, root) = private_root();
 
     // Act
-    let result = confirm_identify_checkpoint(&root, IdentifyCheckpointKind::Rendered);
+    let result = respond_identify_checkpoint(
+        &root,
+        IdentifyCheckpointKind::Rendered,
+        IdentifyCheckpointOutcome::Confirmed,
+    );
 
     // Assert
     assert!(result.is_err());

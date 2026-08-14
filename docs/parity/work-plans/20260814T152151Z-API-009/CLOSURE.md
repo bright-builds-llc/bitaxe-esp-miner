@@ -55,3 +55,21 @@ stop was proven, the canonical restart occurred, restart survival passed, or
 API-009 is verified. It exposes no credential, origin, hostname, port,
 USB/network identity, worker, address, password, token, sensor value, or raw
 trace.
+
+## Post-closure software repair
+
+The follow-up software-only task replaced the unbounded rendered observation
+with an exact 30-second deadline and added typed `declined` responses at every
+operator checkpoint. Ready is explicitly the local activation boundary, so a
+future observer starts the device effect only by running the local signal while
+already watching the display. A decline or expiry preserves the confirmed
+pause, claims the single recovery pause, and requests normal owned-capture
+shutdown; it does not require a raw process signal.
+
+Recovery publication now accepts a checkpoint-failure safe stop only when
+pause confirmation, zero resume requests, the `operator_paused` terminal
+reason, and exactly one recovery request join. Explicit safe-stop records from
+other terminal paths remain compatible. Deterministic, real-child, focused,
+mandatory, privacy, reference, parity, and firmware gates pass. This repair
+used no hardware and does not alter the failed attempt-019 outcome, authorize
+attempt-020, publish evidence, or promote API-009.

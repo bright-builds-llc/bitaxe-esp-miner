@@ -22,7 +22,6 @@ import {
 } from "./process.js";
 
 const discardCheckpoint = () => undefined;
-
 const ok = (stdout = ""): ProcessOutcome => ({ exitCode: 0, stdout, stderr: "", timedOut: false });
 
 const readySession = {
@@ -56,7 +55,7 @@ const readySession = {
 } as const;
 
 const completeEffects = {
-  schema: "mining-campaign-command-effects-v2",
+  schema: "mining-campaign-command-effects-v3",
   genuine_block_notification_observed: true,
   positive_block_count_observed: true,
   pause_request_count: 1,
@@ -67,6 +66,7 @@ const completeEffects = {
   identify_request_count: 2,
   identify_rendered_confirmed: true,
   identify_cleared_confirmed: true,
+  identify_terminal_outcome: "none",
   dismiss_request_count: 1,
   dismiss_confirmed: true,
   block_count_preserved: true,
@@ -178,17 +178,17 @@ function fakePort(
       await mkdir(campaign, { mode: 0o700 });
       if (checkpointMode === "ordered") {
         await privateJson(path.join(campaign, "identify-ready.required.json"), {
-          schema: "bitaxe-identify-checkpoint-v2",
+          schema: "bitaxe-identify-checkpoint-v3",
           checkpoint: "ready",
           status: "required",
         });
         await privateJson(path.join(campaign, "identify-rendered.required.json"), {
-          schema: "bitaxe-identify-checkpoint-v2",
+          schema: "bitaxe-identify-checkpoint-v3",
           checkpoint: "rendered",
           status: "required",
         });
         await privateJson(path.join(campaign, "identify-cleared.required.json"), {
-          schema: "bitaxe-identify-checkpoint-v2",
+          schema: "bitaxe-identify-checkpoint-v3",
           checkpoint: "cleared",
           status: "required",
         });
@@ -200,14 +200,14 @@ function fakePort(
         });
       } else if (checkpointMode === "wrong_order") {
         await privateJson(path.join(campaign, "identify-rendered.required.json"), {
-          schema: "bitaxe-identify-checkpoint-v2",
+          schema: "bitaxe-identify-checkpoint-v3",
           checkpoint: "rendered",
           status: "required",
         });
       } else if (checkpointMode === "wrong_mode") {
         const ready = path.join(campaign, "identify-ready.required.json");
         await privateJson(ready, {
-          schema: "bitaxe-identify-checkpoint-v2",
+          schema: "bitaxe-identify-checkpoint-v3",
           checkpoint: "ready",
           status: "required",
         });
@@ -244,6 +244,7 @@ function fakePort(
         stage: "command-effects",
         status: campaignFails ? "failed" : "accepted",
         terminal_category: campaignFails ? "command_request_failed" : "command_effects_complete",
+        terminal_reason: "none",
         runtime_identity: "trusted",
         protocol_gate: protocolGate,
         ...(readinessMode === "missing" ? {} : {
@@ -297,9 +298,13 @@ test("ordered campaign checkpoints notify the operator sink exactly once", async
   assert.deepEqual(signals.map((signal) => signal.confirm_when), [
     "ready_to_watch", "identify_frame_visible", "identify_frame_absent",
   ]);
-  assert(signals.every((signal) => signal.schema_version === "bitaxe-operator-checkpoint-v2"));
+  assert(signals.every((signal) => signal.schema_version === "bitaxe-operator-checkpoint-v3"));
   assert(signals.every((signal) => signal.command === "api-command-effects-campaign"));
   assert(signals.every((signal) => signal.identify_duration_seconds === 30));
+  assert.deepEqual(signals.map((signal) => signal.response_timeout_seconds), [3600, 30, 3600]);
+  assert(signals.every((signal) => signal.local_signal_required));
+  assert.deepEqual(signals.map((signal) => signal.starts_identify_window), [true, false, false]);
+  assert(signals.every((signal) => signal.decline_supported));
   assert(signals.every((signal) => signal.status === "required"));
   assert(signals.every((signal) => signal.expected_frame.join("|") === "|BITAXE IDENTIFY|Hello!|"));
   const formatted = signals.map(formatOperatorCheckpointSignal).join("");

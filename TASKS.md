@@ -2975,12 +2975,12 @@ authorized. See
 
 Post-attempt-019 checkpoint-expiry and decline investigation:
 
-- [ ] Build a deterministic red diagnostic proving a rendered checkpoint
+- [x] Build a deterministic red diagnostic proving a rendered checkpoint
       cannot outlive the 30-second IDENTIFY effect without becoming invalid.
-- [ ] Add a typed negative/expired checkpoint path that triggers prompt pause-
+- [x] Add a typed negative/expired checkpoint path that triggers prompt pause-
       preserving closure, recovery accounting, cleanup, and evidence
       withholding without a raw process signal.
-- [ ] Make time-critical IDENTIFY activation originate from the local operator
+- [x] Make time-critical IDENTIFY activation originate from the local operator
       signal command, pass focused and mandatory verification, and keep
       attempt-020 out of scope.
 
@@ -2991,6 +2991,23 @@ read credentials, protected values, origins, ports, USB/network identities, or
 raw traces; access USB, device/network interfaces, or HTTP; flash, reset,
 restart, mine, actuate controls, manipulate direct UART or pins/pads/GPIO;
 publish parity evidence; promote API-009; or create/run attempt-020.
+
+Completion review: the red regression failed at the production checkpoint seam
+because a truthful negative observation had no typed representation and the
+rendered checkpoint remained open after the device's exact 30-second effect
+expired. The signal command now accepts closed `confirmed` or `declined`
+outcomes, the rendered state expires at the exact effect deadline, and either
+negative terminal issues the one recovery pause before asking the owned serial
+capture to stop. The public v3 checkpoint signal marks the ready command as the
+local activation boundary, publishes the 30-second rendered response limit,
+and advertises typed decline support. Recovery evidence claims a paused safe
+stop only from the joined pause-confirmed, never-resumed, operator-paused, and
+single-recovery-request facts; older explicit safe-stop records remain valid.
+The red test is green, real-child and focused Bazel suites pass, and the full
+Cargo, Bright Builds, canonical Bazel, parity, redaction, reference, and
+firmware build gates pass. No protected input, hardware, network, HTTP, USB,
+attempt-020, parity evidence, or status promotion was used; API-009 remains
+`implemented` pending a separately planned attempt.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
