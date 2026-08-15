@@ -6,6 +6,7 @@
 - Terminal category: `evidence_invalid`
 - Verification claimed: `no`
 - Plan SHA-256: `8e8049fd6fbb19575f6abe593afcdd9ac2303eee0204b5f188d4b65aa7607d58`
+- Active task: `task-parity-thr001-emc2101-live-thermal`
 - Attempt: `005` consumed
 
 ## Closure reason
