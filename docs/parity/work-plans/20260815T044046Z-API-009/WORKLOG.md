@@ -230,3 +230,24 @@
   committed and pushed. No hardware ran at this checkpoint.
 - Blocker or next safe action: Publish the contract, then execute its package,
   detector, and one campaign command in order with explicit exit gating.
+
+## 2026-08-15T07:10:33Z | attempt-031 reached a genuine active-safety blocker
+
+- Exact package source: `7320cf86`.
+- Actions: Passed clean-source, repo-owned package, and one-device detector
+  gates, then consumed the sole no-human programmatic campaign.
+- Verification: Exact runtime/package identity, the local fixture, genuine
+  notification, accepted work, terminal safe stop, child cleanup, USB cleanup,
+  and evidence withholding passed. Recovery was not required.
+- Diagnosis: The earliest category is `safety_stale`. The closed readiness
+  transition records active campaign state, ready hardware, a stale safety
+  sample, and an unchanged observation epoch; every required observation was
+  stale at that boundary. The later terminal marker records fresh observations,
+  proving transient recovery after the firmware correctly consumed the active
+  campaign. This is not the stopped-state host false positive fixed after
+  attempt-029 and is not attributable to user timing or action.
+- Outcome: Attempt-031 is consumed, no public projection exists, API-009 remains
+  `implemented`, and no attempt-032 is authorized.
+- Terminal blocker: Further evidence requires a separate redaction-safe
+  sensor-producer/I2C latency diagnostic and a verified root-cause change.
+  Weakening active safety or rerunning the unchanged campaign is prohibited.

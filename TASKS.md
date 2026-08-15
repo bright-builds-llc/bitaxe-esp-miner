@@ -3972,17 +3972,17 @@ typed preflight correction is ready to publish.
 
 ### task-api009-programmatic-pilot-attempt-031 | 2026-08-15 | Run the fully gated programmatic command proof
 
-- [ ] Require clean synchronized pushed source containing commits `b2a8a066`
+- [x] Require clean synchronized pushed source containing commits `b2a8a066`
       and `35bc2280`, non-empty ignored Wi-Fi input without reading it, and
       fresh detector, attempt, and public-projection paths.
-- [ ] Run `just package` as the sole package admission/build surface and advance
+- [x] Run `just package` as the sole package admission/build surface and advance
       only after its zero exit and required manifest artifact are confirmed.
-- [ ] Create protected `scratch/api009-command-effects/detector-031`, run
+- [x] Create protected `scratch/api009-command-effects/detector-031`, run
       exactly one `just detect-ultra205`, and advance only after its zero exit,
       mode-`0600` output, and repo-owned one-device admission are confirmed.
-- [ ] Invoke exactly once:
+- [x] Invoke exactly once:
       `just api-command-effects-campaign --private-root scratch/api009-command-effects/attempt-031 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/api009-command-effects/detector-031/detector.stdout --projection docs/parity/evidence/api009-command-effects/command-effects-projection.json --duration-seconds 600`.
-- [ ] Validate and redact the sealed projection only on the complete command,
+- [x] Validate and redact the sealed projection only on the complete command,
       same-device restart, exact-package, recovery, safe-stop, and cleanup
       quorum; otherwise withhold it and record the earliest typed failure.
 
@@ -4010,6 +4010,26 @@ recovery or cleanup, or absent device stops with API-009 `implemented` and
 evidence withheld. OTA, erase, factory reset, power cycle, external UART/BAP,
 USB duplex, pins/pads/GPIO, arbitrary settings, external pool, stress, controls,
 fault injection, non-205 hardware, and human display claims remain prohibited.
+
+Attempt-031 closure review: clean synchronized source, repo-owned exact-package
+build, one protected detector admission, trusted runtime/package identity, the
+local fixture, genuine notification, accepted work, safe stop, process cleanup,
+and USB cleanup passed. The campaign stopped as `hardware_blocked` with earliest
+category `safety_stale`: while the device was actively mining and hardware-ready,
+all five required observations aged stale with an unchanged observation epoch.
+Later terminal observations were fresh, proving transient recovery, but the
+firmware correctly consumed the campaign rather than retroactively accepting an
+active-mining safety lapse. No recovery request was required and the public
+projection is withheld. Attempt-031 is consumed, no attempt-032 is authorized,
+API-009 remains `implemented`, and no user action contributed to the result.
+
+Terminal disposition: the programmatic platform has now distinguished and
+fixed the prior host false positives from a genuine device/runtime safety
+boundary. Weakening the one-second active-safety rule, ignoring the marker, or
+rerunning unchanged would violate the safety and evidence contracts. Further
+progress requires a separately scoped sensor-producer/I2C latency diagnostic
+that can identify which bounded acquisition delayed the complete observation
+sweep without exposing sensor values, followed by a verified root-cause change.
 
 ## Future
 
