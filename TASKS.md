@@ -3938,7 +3938,7 @@ sweep without exposing sensor values, followed by a verified root-cause change.
       `docs/parity/work-plans/20260815T222316Z-IO-002/PLAN.md`, protected
       `attempt-002` paths, and public schema ordinal 2 without changing the
       production ADC, safety, mining, or hardware-control behavior.
-- [ ] Run the complete focused and mandatory software/firmware/privacy gates,
+- [x] Run the complete focused and mandatory software/firmware/privacy gates,
       commit and push the exact implementation, and build its package before
       any device access.
 - [x] Run only the plan's exact detector command and, after successful one-
@@ -4074,7 +4074,7 @@ readiness remain explicit non-claims.
 - [ ] Run the complete focused and mandatory software/firmware/privacy gates,
       commit and push the exact implementation, and rebuild its clean package
       before device access.
-- [ ] Run only the plan's exact detector command and, after successful one-
+- [x] Run only the plan's exact detector command and, after successful one-
       device admission plus local Wi-Fi input availability, its exact one-shot
       `just capture-adc-observation-evidence ... --capture-timeout-seconds 360`
       attempt-004 command.

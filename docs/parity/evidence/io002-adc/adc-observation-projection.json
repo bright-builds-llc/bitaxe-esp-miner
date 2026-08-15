@@ -1,0 +1,51 @@
+{
+  "schema_version": "bitaxe-adc-observation-evidence-v1",
+  "board": 205,
+  "attempt_ordinal": 4,
+  "source_commit": "166d1e9f3c4065946e6e3bb60398671bcdceab62",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "package_manifest_sha256": "90bc08eb59e94ce3edc334c30eab557122a362000fc2f680bfe2533e908ca5cf",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "capture-adc-observation-evidence",
+    "request_sha256": "19dc390d6a3108ae868b7fdad7ce6ee1bf4adc030a8c2d4fad967f1f7f4e823f"
+  },
+  "source": {
+    "system_info_projection_sha256": "b515a69fd2bc87fbd29ce7ad391426d14f84423253f61404e22d99315b609006",
+    "api_snapshot_sha256": "356f203729ba92e9190aa46e97af7118931d00d4690fcb549bcb95bddf8cc3b9",
+    "websocket_snapshot_sha256": "d092801a262c120115fc48f69ae16902f91fb206bda88a8a11ff683d65b96440",
+    "plan_sha256": "e5ead48de42d7876cf37770ec751d90aa78ef389bf6419f3bb1a8da7e04663ed",
+    "system_info_projection_valid": true,
+    "protected_modes_valid": true,
+    "production_source_current": true,
+    "source_semantics_admitted": true,
+    "compatible_path_count": 7
+  },
+  "adc": {
+    "adc_unit": 1,
+    "adc_channel": 1,
+    "gpio": 2,
+    "attenuation_db": 12,
+    "default_resolution": true,
+    "curve_calibration": true,
+    "producer_cadence_ms": 500,
+    "read_only_acquisition": true,
+    "http_fresh_sample": true,
+    "websocket_fresh_sample": true,
+    "finite_nonnegative_millivolts": true,
+    "millivolt_wire_domain_valid": true,
+    "disabled_state_bound": true,
+    "sequence_not_regressed": true,
+    "acquisition_time_not_regressed": true,
+    "same_boot_session": true,
+    "exact_public_correlation": true,
+    "exact_package_identity": true
+  },
+  "detector_admitted": true,
+  "boot_observed": true,
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "cleanup_complete": true,
+  "recovery_used": false,
+  "redaction_status": "passed"
+}

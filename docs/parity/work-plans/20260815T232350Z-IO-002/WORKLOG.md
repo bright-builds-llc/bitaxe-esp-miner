@@ -62,3 +62,37 @@
 - Next safe action: Commit this exact implementation, fetch and push without
   rewriting the immutable plan commit, then rebuild and admit the clean pushed
   package.
+
+## 2026-08-15T23:48:39Z | attempt-004 verified evidence checkpoint
+
+- Source checkpoint: clean pushed implementation
+  `166d1e9f3c4065946e6e3bb60398671bcdceab62`; pinned reference
+  `c1915b0a63bfabebdb95a515cedfee05146c1d50`.
+- Admission: The exact package rebuilt from the synchronized commit, protected
+  attempt and projection paths were absent, local Wi-Fi input passed the
+  non-reading presence check, and the exact detector command admitted one
+  Ultra 205.
+- Hardware outcome: The sole attempt-004 capture completed successfully. It
+  observed exact-package boot, kept mining and hardware control disabled,
+  completed cleanup without a recovery flash, and atomically published only
+  the closed aggregate projection.
+- ADC quorum: Independent validation proves ADC unit 1, channel 1, GPIO 2,
+  12 dB attenuation, default resolution, curve calibration, 500 ms producer
+  cadence, read-only acquisition, fresh finite nonnegative integer-millivolt
+  HTTP and WebSocket samples, disabled-state binding, same boot session,
+  monotonic sequence and acquisition time, exact public correlation, exact
+  package identity, and current unique source semantics.
+- Privacy: The public projection has mode `0644`, contains only closed
+  ShareableFact and PublicProvenance fields, and raised the semantic redaction
+  verifier's accepted-document count from 18 to 19. Protected operational
+  artifacts remain under ignored mode-`0700` and mode-`0600` roots and were not
+  promoted.
+- Validation: `just validate-adc-observation-evidence
+  docs/parity/evidence/io002-adc/adc-observation-projection.json` and `just
+  verify-redaction` both passed after publication.
+- Outcome: Attempt-004 selects `complete` and supplies the exact hardware-smoke
+  quorum required to promote IO-002 from `implemented` to `verified`. No retry
+  ran and no further hardware ordinal is authorized by this plan.
+- Next safe action: Commit the projection, RESULT, worklog, and task checkpoint
+  without changing the checklist; save that commit as `SOURCE_COMMIT`, then
+  transition only IO-002 and synchronize progress against it.
