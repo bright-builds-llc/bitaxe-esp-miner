@@ -43,3 +43,25 @@
 - Next safe action: Commit the implementation, fetch and resolve any upstream
   movement without amending the immutable plan, push, rebuild/admit the exact
   pushed package, then run only the plan's detector and one-shot capture.
+
+## 2026-08-15T22:54:00Z | attempt-002 terminal checkpoint
+
+- Source commit: `d7efb2eab8eaf1ee883ec25297f914ef4c99ab87`.
+- Actions: Rebuilt the exact clean pushed package, admitted exactly one Ultra
+  205 through the immutable detector command, and ran the sole authorized
+  attempt-002 capture. No retry or second capture command ran.
+- Verification: The base system-info projection independently validates and
+  records board 205, safe boot, disabled mining and hardware control, complete
+  cleanup, and passed redaction. Protected wrapper/attempt directories are
+  mode `0700` and their files are mode `0600`.
+- Evidence: Terminal status `failed`, category `evidence_invalid`, stage
+  `adc_observation_capture`, and `projection_published=false`. A privacy-safe
+  exact-message match identifies `task_contract_incomplete`; the active task
+  omitted the literal ADC schema binding expected by the immutable validator.
+  Raw ADC values, device/network identity, origins, logs, and credentials remain
+  only in ignored protected evidence and are not recorded here.
+- Outcome: `blocked`; IO-002 remains `implemented`, verification is not
+  claimed, and the public ADC projection is absent. Attempt-002 is consumed.
+- Next safe action: A fresh task/plan must regression-test the real task block,
+  include the exact schema binding, and separately authorize attempt-003 before
+  any further device use.

@@ -3941,11 +3941,11 @@ sweep without exposing sensor values, followed by a verified root-cause change.
 - [x] Run the complete focused and mandatory software/firmware/privacy gates,
       commit and push the exact implementation, and build its package before
       any device access.
-- [ ] Run only the plan's exact detector command and, after successful one-
+- [x] Run only the plan's exact detector command and, after successful one-
       device admission plus local Wi-Fi input availability, its exact one-shot
       `just capture-adc-observation-evidence ... --capture-timeout-seconds 360`
       attempt-002 command.
-- [ ] Promote only IO-002 on the complete exact-package, passive disabled-state
+- [x] Promote only IO-002 on the complete exact-package, passive disabled-state
       ADC/API quorum; otherwise withhold the projection, preserve
       `implemented`, record the earliest typed blocker and accepted terminal
       stop outcome, and do not retry.
@@ -3974,11 +3974,27 @@ and cleanup. Detector failure/ambiguity, missing credentials, unsafe state,
 malformed or incomplete proof, failed cleanup/recovery, privacy failure, or a
 nonzero command stops with IO-002 `implemented` and evidence withheld.
 
-Verification: pending. Promotion proves only passive disabled-state ADC
-acquisition, cadence/coherence, and exact HTTP/WebSocket projection on board
-205. Energized-rail values or accuracy, external calibration, induced failure,
-load behavior, long-duration drift, other boards, and release readiness remain
-explicit non-claims.
+Verification: blocked before ADC validation at the typed task-contract boundary.
+Promotion would prove only passive disabled-state ADC acquisition, cadence/
+coherence, and exact HTTP/WebSocket projection on board 205. Energized-rail
+values or accuracy, external calibration, induced failure, load behavior, long-
+duration drift, other boards, and release readiness remain explicit non-claims.
+
+Attempt-002 closure review: exact clean pushed package `d7efb2ea` admitted one
+Ultra 205, observed safe boot with mining and hardware control disabled,
+completed cleanup, and passed the independent protected system-info and
+redaction contracts. ADC post-processing then stopped as `evidence_invalid`
+because this task block omitted the literal `bitaxe-adc-observation-evidence-v1`
+binding required by the immutable validator. The public ADC projection is
+withheld, no retry ran, attempt-002 is consumed, and IO-002 remains
+`implemented`. See
+`docs/parity/work-plans/20260815T222316Z-IO-002/CLOSURE.md`.
+
+Completion review: The corrected millivolt validator remains software-verified,
+but this attempt produced no ADC parity evidence because its task-document
+preflight was incomplete. A fresh task and immutable plan must test the real
+task block, include the exact schema identifier, and authorize attempt-003;
+this task authorizes neither a retry nor further hardware use.
 
 ## Future
 
