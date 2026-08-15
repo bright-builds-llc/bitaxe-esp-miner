@@ -48,3 +48,34 @@
 - Next safe action: Commit this exact implementation, fetch and push without
   rewriting the immutable plan commit, then rebuild and admit the clean pushed
   package.
+
+## 2026-08-15T23:17:11Z | attempt-003 accepted stop
+
+- Source checkpoint: clean pushed commit
+  `9f48a1dbc07d7df83b05452e10edee4ff8989d12`; pinned reference
+  `c1915b0a63bfabebdb95a515cedfee05146c1d50`.
+- Admission: The exact package rebuilt from the synchronized commit, protected
+  attempt and projection paths were absent, local Wi-Fi input passed the
+  non-reading presence check, and the exact detector command admitted one
+  Ultra 205.
+- Hardware outcome: The sole attempt-003 capture observed the exact-package
+  boot and same origin, kept mining and hardware control disabled, completed
+  cleanup, and passed redaction. Protected system-info evidence and the ADC
+  input validator both passed; the latter proves finite integer millivolt-domain
+  values plus fresh, monotonic, coherent HTTP/WebSocket observation state.
+- Earliest blocker: Final source-provenance admission returned typed category
+  `evidence_invalid` with safe summary `ADC source semantic fragment is not
+  unique`. The breadcrumb `.bitwidth = ADC_BITWIDTH_DEFAULT` appears three
+  times in pinned `reference/esp-miner/main/adc.c`, while the admission helper
+  requires every breadcrumb to occur exactly once.
+- Publication: The ADC candidate was removed and the public projection remains
+  absent. IO-002 stays `implemented`; attempt-003 is consumed and was not
+  retried.
+- Root-cause conclusion: The stop does not indicate volts-versus-millivolts
+  confusion. Both Rust and upstream use calibrated millivolts at this boundary;
+  the blocker is an over-broad upstream provenance fragment and a regression
+  input/cache gap that failed to expose its multiplicity before hardware.
+- Next safe action: Under a fresh task and immutable plan, replace the ambiguous
+  breadcrumb with exact initializer context and make the pinned reference file
+  an explicit regression input. Re-run software gates before separately
+  authorizing any fresh hardware ordinal.

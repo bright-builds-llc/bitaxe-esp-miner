@@ -4007,11 +4007,11 @@ this task authorizes neither a retry nor further hardware use.
 - [x] Run the complete focused and mandatory software/firmware/privacy gates,
       commit and push the exact implementation, and rebuild its clean package
       before device access.
-- [ ] Run only the plan's exact detector command and, after successful one-
+- [x] Run only the plan's exact detector command and, after successful one-
       device admission plus local Wi-Fi input availability, its exact one-shot
       `just capture-adc-observation-evidence ... --capture-timeout-seconds 360`
       attempt-003 command.
-- [ ] Promote only IO-002 on the complete exact-package passive disabled-state
+- [x] Promote only IO-002 on the complete exact-package passive disabled-state
       ADC/API quorum; otherwise withhold the projection, preserve
       `implemented`, record the earliest typed blocker and accepted stop
       outcome, and do not retry.
@@ -4041,11 +4041,26 @@ Detector failure/ambiguity, missing credentials, unsafe state, malformed or
 incomplete proof, failed cleanup/recovery, privacy failure, or nonzero command
 stops with IO-002 `implemented` and evidence withheld.
 
-Verification: pending. Promotion proves only passive disabled-state ADC
-acquisition, cadence/coherence, and exact HTTP/WebSocket projection on board
-205. Energized-rail values or accuracy, external calibration, induced failure,
-load behavior, long-duration drift, other boards, and release readiness remain
-explicit non-claims.
+Verification: software and pre-hardware gates passed on clean pushed source
+`9f48a1dbc07d7df83b05452e10edee4ff8989d12`. Detector-gated attempt-003
+admitted one Ultra 205, observed the exact package in disabled safe state,
+completed cleanup, and independently passed the protected system-info and ADC
+input validators. The ADC input validator confirmed finite integer millivolts,
+fresh and monotonic acquisition stamps, and coherent HTTP/WebSocket snapshots.
+Final promotion stopped at `evidence_invalid` because the source-provenance
+breadcrumb `.bitwidth = ADC_BITWIDTH_DEFAULT` occurs three times in pinned
+`reference/esp-miner/main/adc.c` although the guard requires uniqueness. No
+public ADC projection was published, no retry is authorized, and IO-002 remains
+`implemented`.
+
+Completion review: attempt-003 consumed its sole ordinal and correctly failed
+closed after device capture. The remaining correction is software-only: replace
+the ambiguous upstream bit-width breadcrumb with an exact contextual fragment
+and ensure the checked-in source-semantics regression cannot pass from stale or
+undeclared reference inputs. A fresh immutable plan must authorize any later
+hardware ordinal. Energized-rail values or accuracy, external calibration,
+induced failure, load behavior, long-duration drift, other boards, and release
+readiness remain explicit non-claims.
 
 ## Future
 
