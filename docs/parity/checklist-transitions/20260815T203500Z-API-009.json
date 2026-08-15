@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260815T203500Z-API-009",
+  "predecessor_sha256": "64dd1666dd28457156be9ea3f8da7f80a3e4512d4816b4849adc1799660f86fb",
+  "result_sha256": "c0973f1b83b606f81fc64c0b96c214abce71bdbc926c88ef3177a1588c578d6b",
+  "row_id": "API-009",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260815T044046Z-API-009/PLAN.md",
+  "plan_sha256": "a7175490d833b4ebffd399b9c9db16ac4097058e16b888a3d3467ad396b0e504",
+  "result_path": "docs/parity/work-plans/20260815T044046Z-API-009/RESULT.md",
+  "result_document_sha256": "f2d12b39c7939fabacad8b30daaf0d087d42d85494052adb2bdf8c6ee1bee239",
+  "before_rust_owned_target": "`crates/bitaxe-api/src/commands.rs`, `crates/bitaxe-stratum/src/v1/production_work.rs`, `crates/bitaxe-stratum/src/v1/production_session`, `firmware/bitaxe/src/http_api/handlers.rs`, `firmware/bitaxe/src/production_mining_session.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/commands.rs`, `crates/bitaxe-stratum/src/v1/production_work.rs`, `crates/bitaxe-stratum/src/v1/production_session`, `firmware/bitaxe/src/http_api/handlers.rs`, `firmware/bitaxe/src/production_mining_session.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Typed responses, effect ordering, and firmware handlers exist. Full device-user effect parity—especially restart, mining actuation, and display identify behavior—remains below verified without claim-specific hardware evidence.",
+  "after_notes": "The [typed result](work-plans/20260815T044046Z-API-009/RESULT.md), [attempt-046 programmatic projection](evidence/api009-command-effects/command-effects-projection-attempt-046.json), and [attempt-005 physical-display projection](evidence/api009-command-effects/display-uat-projection-attempt-005.json) bind one exact-package detector-admitted Ultra 205, exactly one pause, dismiss, IDENTIFY, resume, and restart request, claim-specific HTTP/runtime/render postconditions, reader-first same-device restart at ordinal N+1 with exact build identity, safe stop, cleanup, redaction, and independent confirmation that IDENTIFY visibly rendered and cleared. Native USB duplex, external serial wiring, other commands or boards, endurance, power-loss behavior, hardware controls, OTA, and release readiness remain separate non-claims."
+}

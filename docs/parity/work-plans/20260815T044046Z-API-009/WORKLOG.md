@@ -1110,3 +1110,36 @@
   receipt with zero IDENTIFY requests before any transport or hardware access.
 - Stop: Attempt-003 is consumed. Attempt-004 requires full gates plus a pushed
   correction and may reuse the accepted programmatic proof without reflashing.
+
+## 2026-08-15T20:05:00Z | display UAT attempt-004 replay requested
+
+- Admission: The fresh protected detector, bounded receive-only runtime-origin
+  capture, exact-package programmatic evidence, and machine UAT all passed.
+  Exactly one IDENTIFY request produced correlated render and natural-clear
+  receipts; USB and build admission also passed.
+- Observation: The user reported that the physical frame was missed. No pixel
+  observation was inferred from software, no confirmation file or public UAT
+  projection was written, and the accepted programmatic campaign remained
+  valid.
+- Disposition: Attempt-004 is consumed as an operator-missed replay, not a
+  user-caused or device failure. The standing unbounded human-wait contract
+  permits one fresh UAT ordinal after fresh detector admission.
+
+## 2026-08-15T20:20:00Z | display UAT attempt-005 accepted
+
+- Admission: A fresh protected detector admitted one board-205 device and a
+  bounded receive-only capture supplied the current runtime origin. The exact
+  attempt-046 programmatic projection and private display intent validated.
+- Machine proof: The single UAT invocation sent exactly one IDENTIFY request
+  and proved the correlated successful framebuffer render, later non-IDENTIFY
+  render, exact build identity, and USB admission.
+- Physical observation: The user durably confirmed that the IDENTIFY frame was
+  visibly rendered and later cleared. The two mode-0600 checkpoint responses
+  record only those confirmations; no software receipt was substituted for
+  the pixel observation.
+- Evidence: Finalization emitted
+  `docs/parity/evidence/api009-command-effects/display-uat-projection-attempt-005.json`.
+  Its aggregate booleans, single request count, board category, binding digest,
+  and passed redaction status contain no origin, port, USB identity, address,
+  hostname, credential, boot session, generation, value, frame text, response
+  body, or trace.

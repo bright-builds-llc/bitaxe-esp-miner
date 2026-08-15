@@ -8451,3 +8451,91 @@ delimited labels; the already successful protected capture was validated in
 place and detection was not rerun. The separate physical display UAT remains
 the only API-009 promotion prerequisite and is owned by
 `task-api009-physical-display-uat-001`.
+
+### task-api009-physical-display-uat-001 | 2026-08-15 | Confirm illuminated IDENTIFY pixels
+
+- [x] Commit and push the independently validated attempt-044 programmatic
+      projection and this UAT contract before sending another IDENTIFY request.
+- [x] Consume attempt-001 as a pre-effect admission failure: the private root
+      remained empty, no IDENTIFY request was sent, no observation was requested,
+      and public UAT evidence was withheld.
+- [x] Make delayed replay durable by keeping the currently connected origin
+      observable through private receive-only USB, admitting exactly one fresh
+      same-session runtime-origin observation, and returning a typed terminal
+      category before IDENTIFY when admission fails.
+- [x] Rebuild and rerun the no-human programmatic campaign against the changed
+      exact package before reusing its evidence for a physical UAT.
+- [x] Consume attempt-002 as a pre-effect host failure: the fresh private root
+      did not exist, the CLI failed before creating an admission receipt, no
+      IDENTIFY request was sent, and no visual observation was requested.
+- [x] Make `display-uat-live` create its own fresh mode-0700 root atomically and
+      add a real-child regression proving an absent root reaches typed
+      pre-effect admission with a mode-0600 receipt.
+- [x] Consume attempt-003 as a second pre-effect host failure: Bazel launched
+      the CLI outside the workspace while relative inputs remained unresolved,
+      so no root, receipt, IDENTIFY request, or observation occurred.
+- [x] Resolve display-live and finalize paths against Bazel's trusted workspace
+      directory and prove the exact relative-path launch shape reaches a typed
+      zero-request receipt from a different process working directory.
+- [x] Wait without a deadline for the user to say they are watching; then run
+      one fresh protected detector, one bounded receive-only origin capture, and
+      one bounded `api-command-display-uat` machine pass against the exact
+      programmatic evidence binding.
+- [x] Ask for one durable response covering both observations: the IDENTIFY
+      frame was visibly rendered and later cleared back to a non-IDENTIFY
+      frame. A missed observation may replay this UAT without rerunning or
+      invalidating the programmatic campaign.
+- [x] Write only the two mode-0600 confirmation files from the user's actual
+      observations, finalize the redacted UAT projection, run all promotion
+      gates, and promote API-009 only if both projections validate together.
+
+Exact command and effects: after fresh `just detect-ultra205` admission, run
+one bounded `just monitor --board 205 --port <detector-port>
+--capture-timeout-seconds 20` capture into a new mode-0600 private file, then
+`just api-command-display-uat --port <detector-port> --private-root
+scratch/api009-display-uat/attempt-005 --intent-input
+scratch/api009-command-effects/attempt-046/display-uat-intent.private.json
+--runtime-observation-input <private-monitor-file> --programmatic-evidence
+docs/parity/evidence/api009-command-effects/command-effects-projection-attempt-046.json`.
+The machine pass may perform read-only HTTP/USB inspection and exactly one
+bounded HTTP IDENTIFY request. It must prove the successful framebuffer receipt
+and natural non-IDENTIFY clear receipt from the same boot and package. No flash,
+restart, mining, settings mutation, voltage/frequency/fan/thermal/power control,
+OTA, erase, factory reset, UART/BAP, USB duplex, pins/GPIO, or other hardware
+effect is authorized.
+
+Readiness/replay/stop: human readiness and the later response wait are
+unbounded and never expire because of chat latency or absence. Each machine
+pass retains finite HTTP/render/clear and cleanup limits. If the user misses
+the frame, a fresh UAT ordinal/root may replay IDENTIFY after fresh detector
+admission without rerunning the programmatic campaign; malformed machine proof,
+identity/build drift, failed cleanup, or contradictory user observation stops
+promotion for diagnosis. Do not infer pixels from software receipts.
+
+Evidence/privacy: the detector and UAT roots are ignored mode 0700 with
+mode-0600 files. The final public UAT projection may contain only aggregate
+booleans, one request count, board category, the programmatic-evidence digest,
+and redaction status. Never publish identities, origins, ports, addresses,
+hostnames, credentials, boot sessions, generations, values, frame text,
+response bodies, or traces.
+
+Verification: The fresh-origin parser, unavailable/malformed command-status
+boundaries, v2 origin-free intent, private typed admission receipt, and real
+child-process CLI regression pass. Attempt-046 supplies the sealed exact-package
+programmatic command-effects proof. Attempt-005 supplies one machine render and
+clear receipt, exact-build and USB admission, one request, the user's durable
+render-and-clear confirmation, a sealed v1 UAT projection, and passed
+redaction. Ordered Cargo gates, the real ESP32-S3 firmware build, Bright Builds,
+all Bazel targets, parity/progress, pinned-reference cleanliness, and diff
+checks pass.
+
+Completion review: Complete. Attempts 001 through 003 exposed and corrected
+the delayed-origin, private-root ownership, and Bazel-relative-path contract
+defects before any IDENTIFY effect. Attempt-004 reached a valid machine proof
+but the user missed the display; no physical claim was inferred or published.
+Attempt-005 reused the still-valid exact-package programmatic campaign after a
+fresh detector admission, sent one IDENTIFY request, proved the correlated
+machine render and clear receipts, and recorded the user's independent
+confirmation that the physical frame rendered and cleared. API-009 is promoted
+only from the two jointly validated, redaction-safe projections. Residual
+non-claims are recorded in the immutable result.
