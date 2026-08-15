@@ -3349,14 +3349,14 @@ attempt-025 is authorized. See the linked `CLOSURE.md`.
 Reactivation-safety software plan:
 `docs/parity/work-plans/20260815T022250Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable software-only plan without accessing
+- [x] Commit and push the immutable software-only plan without accessing
       credentials, protected attempts, detector, USB, device/network, display,
       mining, or hardware-control interfaces.
-- [ ] Preserve a resumable lease and active-time budget when safety freshness
+- [x] Preserve a resumable lease and active-time budget when safety freshness
       lapses after hardware preparation but before active reactivation.
-- [ ] Keep initial-activation and already-active safety lapses terminal; add the
+- [x] Keep initial-activation and already-active safety lapses terminal; add the
       exact live-shaped transition and negative regressions.
-- [ ] Pass every focused, mandatory, privacy, reference, firmware, selector,
+- [x] Pass every focused, mandatory, privacy, reference, firmware, selector,
       digest, and diff gate. Close with API-009 still `implemented` and no
       attempt-025.
 
@@ -3366,6 +3366,20 @@ credentials, current or prior protected attempt artifacts, detector, USB,
 device/network, HTTP to a device, display, mining, hardware controls, direct
 UART, pins/pads/GPIO, public parity evidence, checklist promotion, attempt-025,
 or any hardware attempt.
+
+Completion review: The pure production session now recognizes only the
+post-pause, prior-active, currently-preactive stale-safety gap as resumable. It
+safe-stops prepared hardware, retains the same lease and accumulated active
+budget, and can later reprepare and reactivate from fresh observations. Initial
+activation and already-active safety staleness remain terminal. The exact
+attempt-024-shaped regression, negative controls, focused engine and firmware
+owner tests, ordered Rust gates, Bright Builds, all 44 Bazel tests, parity and
+progress, redaction, reference, firmware build, selector, plan digest, task,
+sensitive-output, and diff checks pass. One combined `just parity` invocation
+encountered a transient host `os error 35`; the exact isolated retry passed.
+API-009 remains `implemented`; no hardware interface was accessed, and
+attempt-025 remains unauthorized by this closed software-only plan. See the
+linked `CLOSURE.md`.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 

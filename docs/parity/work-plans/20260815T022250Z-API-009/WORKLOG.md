@@ -36,3 +36,29 @@
   implementation boundary. API-009 remains `implemented`.
 - Blocker or next safe action: Commit and push this checkpoint, revalidate the
   plan digest and selector, then implement the pure state-transition repair.
+
+## 2026-08-15T02:40:12Z | reactivation-safety repair complete
+
+- Actions: Added one private predicate that distinguishes a stale safety sample
+  during post-pause reactivation from initial activation and current active
+  mining. The resumable path now safe-stops prepared hardware while preserving
+  the lease and accumulated active budget, then accepts a later fresh
+  observation for reprepare, reconnect, and active recovery.
+- Failure signal: The production-shaped regression first failed because the
+  post-preparation stale transition emitted a terminal safe stop instead of
+  `ResumablePause`, matching the categorical attempt-024 boundary.
+- Verification: The repaired live-shaped test and both terminal negative
+  controls pass, along with campaign timing, recovery, focused engine,
+  firmware-owner, and production-session verification. The complete ordered
+  Cargo sequence, Bright Builds, all 44 Bazel tests, parity, progress,
+  redaction, reference cleanliness, and real firmware build pass. A combined
+  parity invocation encountered transient host `os error 35`; the exact
+  isolated `just parity` retry passed.
+- Evidence: Public source, tests, plan, task, and categorical attempt-024 facts
+  only. No credential, protected attempt artifact, detector, USB,
+  device/network, display, mining, hardware-control, UART, or pin interface was
+  accessed.
+- Outcome: The software-only plan is complete and API-009 remains
+  `implemented`; no live device-user evidence was created.
+- Blocker or next safe action: Close, commit, and push this plan. A fresh
+  immutable exact-package hardware contract is required before attempt-025.

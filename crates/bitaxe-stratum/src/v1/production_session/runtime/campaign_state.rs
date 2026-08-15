@@ -3,9 +3,29 @@ use crate::v1::production_session::campaign::{
     MiningCampaignLease, MiningCampaignLeaseId, MiningCampaignState, MiningCampaignStopCondition,
     MiningHardwareState,
 };
-use crate::v1::recovery_policy::ProductionSessionPhase;
+use crate::v1::recovery_policy::{ProductionSessionBlocker, ProductionSessionPhase};
 
 impl ProductionMiningSession {
+    pub(super) fn is_resumable_reactivation_safety_lapse(
+        &self,
+        blocker: ProductionSessionBlocker,
+    ) -> bool {
+        if blocker != ProductionSessionBlocker::SafetyPrerequisitesStale {
+            return false;
+        }
+        if !self
+            .maybe_lease
+            .is_some_and(|lease| lease.stop_condition().allows_operator_resume())
+        {
+            return false;
+        }
+
+        // Safety freshness can lapse after hardware preparation but before pool
+        // activation. A prior active epoch makes that gap resumable; a current
+        // active segment keeps an actual mining-time safety lapse terminal.
+        self.maybe_resumable_epoch_started_at_ms.is_some() && self.maybe_active_since_ms.is_none()
+    }
+
     pub(super) fn confirm_hardware_safe_stop(
         &mut self,
         lease_id: MiningCampaignLeaseId,

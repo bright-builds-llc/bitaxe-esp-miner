@@ -416,7 +416,8 @@ impl ProductionMiningSession {
             self.resumable_pause_pending = blocker == ProductionSessionBlocker::OperatorPaused
                 && self
                     .maybe_lease
-                    .is_some_and(|lease| lease.stop_condition().allows_operator_resume());
+                    .is_some_and(|lease| lease.stop_condition().allows_operator_resume())
+                || self.is_resumable_reactivation_safety_lapse(blocker);
             self.begin_hardware_safe_stop_if_needed(effects)?;
             return Ok(());
         }
