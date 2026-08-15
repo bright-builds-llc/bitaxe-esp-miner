@@ -506,3 +506,17 @@
   gates pass.
 - Disposition: The software fix is complete and may be published. A live
   attempt requires a separate exact-package attempt-036 contract.
+
+## 2026-08-15T10:05:00Z | attempt-036 priority-fix contract drafted
+
+- Objective: Run one no-human programmatic campaign against clean pushed
+  sensor-owner priority fix `7917de87`, either completing the full machine
+  quorum or producing one typed post-fix failure for diagnosis.
+- Admission/layout: Require exact HEAD/reference package identity, opaque
+  ignored input, one protected detector, a separate protected wrapper, and
+  absent command-owned attempt/public paths.
+- Effects/privacy: Existing bounded campaign, recovery, safe-stop, cleanup,
+  and redaction contracts remain unchanged. No human checkpoint or physical
+  display claim is included.
+- Stop: Campaign start consumes attempt-036. Any non-ready result withholds
+  evidence and stops without attempt-037 or an unchanged retry.
