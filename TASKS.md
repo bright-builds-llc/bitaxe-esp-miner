@@ -3913,16 +3913,16 @@ fix is ready to publish.
 
 ### task-api009-programmatic-pilot-attempt-030 | 2026-08-15 | Prove command effects with stopped-state safety admission
 
-- [ ] Require clean synchronized pushed source containing commit `b2a8a066`,
+- [x] Require clean synchronized pushed source containing commit `b2a8a066`,
       rebuild and validate its exact package, confirm non-empty ignored Wi-Fi
       input without reading it, and require fresh detector, attempt, and public
       projection paths.
-- [ ] Create protected `scratch/api009-command-effects/detector-030` and run
-      exactly one `just detect-ultra205`; admit only one holder-free ESP32-S3
-      board 205 and preserve raw detector output as mode `0600` private evidence.
-- [ ] Invoke exactly once:
+- [x] Confirm the detector step did not execute after preflight stopped before
+      creating `scratch/api009-command-effects/detector-030`; no board, port,
+      USB holder, or hardware effect was admitted under this attempt.
+- [x] Invoke exactly once:
       `just api-command-effects-campaign --private-root scratch/api009-command-effects/attempt-030 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/api009-command-effects/detector-030/detector.stdout --projection docs/parity/evidence/api009-command-effects/command-effects-projection.json --duration-seconds 600`.
-- [ ] Independently validate and redact the sealed projection only on the full
+- [x] Independently validate and redact the sealed projection only on the full
       claim-specific command, same-device restart, exact-package, recovery,
       safe-stop, and cleanup quorum; otherwise withhold it and record the
       earliest typed failure.
@@ -3951,6 +3951,24 @@ device stops with API-009 `implemented` and evidence withheld. OTA, erase,
 factory reset, power cycle, external UART/BAP, USB duplex, pins/pads/GPIO,
 arbitrary settings, external pool, stress, controls, fault injection, non-205
 hardware, and human display claims remain prohibited.
+
+Attempt-030 closure review: the exact package and private-input presence checks
+passed, but a manual preflight incorrectly required a nonexistent manifest
+`board` field and stopped before the detector command. Its nonzero exit was not
+surfaced, so the one campaign invocation then failed as `process_failed` while
+reading the absent detector artifact. No detector, USB, device, fixture, mining,
+or recovery effect occurred; no attempt root or public projection exists and no
+process remains. Attempt-030 is consumed by its campaign-start rule, no
+attempt-031 is authorized here, and API-009 remains `implemented`.
+
+Regression-backed follow-up: detector handoff absence and malformed content now
+produce a typed, privacy-safe `evidence_invalid` result with
+`detector_admitted=false` before workflow launch. Focused TypeScript and real
+Bazel automation tests pass. The durable orchestration lesson requires
+repo-owned package contracts and explicit exit-code checks before advancing;
+the ordered Cargo gates, Bright Builds, firmware build, all 44 Bazel tests,
+parity/progress, redaction, reference cleanliness, and diff checks pass. The
+typed preflight correction is ready to publish.
 
 ## Future
 

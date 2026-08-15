@@ -171,3 +171,10 @@
 2. What went wrong: After a hardware campaign had already failed before creating its ready checkpoint, the user was told they could reply `ready` within the new one-hour window. The wording implied that the window was live even though it had never opened, so the user's timely reply appeared to be ignored.
 3. Preventive rule: Invite an operator readiness reply only after the current campaign's typed `required` checkpoint exists and the campaign is confirmed running. State explicitly when the window has not opened or has closed, and never describe a future or conditional window in language that sounds currently actionable.
 4. Trigger signal to catch it earlier: A message mentions replying `ready`, a signal-sender command, or a window duration without first proving and stating that the matching live `required` checkpoint exists and the owning campaign is still running.
+
+## lesson-surface-preflight-exit-before-advancing | 2026-08-15 06:54
+
+1. Date: 2026-08-15 06:54 CDT
+2. What went wrong: A guessed manifest field made preflight exit nonzero, but empty output was mistaken for success and the next command launched without detector evidence.
+3. Preventive rule: Validate package fields through repo-owned contracts and inspect every command exit code before advancing.
+4. Trigger signal: A preflight produces no output or a required artifact is absent before an effect command.

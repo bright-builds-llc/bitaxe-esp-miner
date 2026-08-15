@@ -5,6 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 import {
+  DetectorHandoffError,
   portFromDetectorOutput,
   provisioningDetectorHandoffFromOutput,
 } from "./detector.js";
@@ -80,6 +81,23 @@ test("detector handoff rejects the obsolete equals-delimited line", async () => 
     // Act / Assert
     await assert.rejects(portFromDetectorOutput(workspace, "detector.stdout"), {
       message: "detector output must contain exactly one admitted port",
+    });
+  } finally {
+    await rm(workspace, { recursive: true });
+  }
+});
+
+test("missing detector handoff is typed evidence failure before workflow launch", async () => {
+  // Arrange
+  const workspace = await mkdtemp(path.join(tmpdir(), "bitaxe-detector-output-"));
+
+  try {
+    // Act / Assert
+    await assert.rejects(portFromDetectorOutput(workspace, "missing.stdout"), (error: unknown) => {
+      assert.ok(error instanceof DetectorHandoffError);
+      assert.equal(error.category, "evidence_invalid");
+      assert.deepEqual(error.publicValue, { detector_admitted: false });
+      return true;
     });
   } finally {
     await rm(workspace, { recursive: true });

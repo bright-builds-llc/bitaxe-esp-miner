@@ -17,6 +17,7 @@ import { ProtocolCoordinatorEvidenceError } from "./protocol-coordinator-evidenc
 import { MiningCriteriaEvidenceError } from "./mining-criteria-evidence.js";
 import { NetworkScanEvidenceError } from "./network-scan-evidence.js";
 import { maybeTypedFailureCategory, maybeTypedFailurePublicValue } from "./typed-failure.js";
+import { DetectorHandoffError } from "./detector.js";
 
 test("theme durability failures retain their closed public projection", () => {
   // Arrange
@@ -150,6 +151,15 @@ test("EMC2101 thermal fault failures retain category and recovery facts", () => 
   // Act / Assert
   assert.equal(maybeTypedFailureCategory(error), "evidence_invalid");
   assert.deepEqual(maybeTypedFailurePublicValue(error), error.publicValue);
+});
+
+test("detector handoff failures retain evidence category and safe public facts", () => {
+  // Arrange
+  const error = new DetectorHandoffError("detector output is unavailable or malformed");
+
+  // Act / Assert
+  assert.equal(maybeTypedFailureCategory(error), "evidence_invalid");
+  assert.deepEqual(maybeTypedFailurePublicValue(error), { detector_admitted: false });
 });
 
 test("ASIC work-send failures retain only closed projection facts", () => {

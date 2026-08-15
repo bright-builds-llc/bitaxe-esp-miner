@@ -188,3 +188,34 @@
   effect-eligible only after this contract is committed and pushed.
 - Blocker or next safe action: Publish the contract, rebuild its exact package,
   then perform its one detector-gated programmatic campaign.
+
+## 2026-08-15T06:57:36Z | attempt-030 stopped before detector admission
+
+- Exact package source: `3a5aa94c`.
+- Actions: Built the exact package and checked private-input presence. A manual
+  preflight then guessed a manifest `board` field that the v3 package does not
+  define. Because its nonzero exit was not surfaced, the campaign command was
+  invoked once with no detector artifact and returned `process_failed`.
+- Verification: No detector directory, attempt root, public projection, device
+  process, USB admission, fixture, mining, or recovery effect exists. This was
+  host orchestration error and not a user or device failure.
+- Regression: Detector handoff now owns a typed privacy-safe
+  `evidence_invalid` failure with `detector_admitted=false` for unavailable,
+  malformed, wrongly permissioned, or ambiguous output. Focused Bun and real
+  Bazel automation tests pass.
+- Outcome: Attempt-030 is consumed by its campaign-start rule, API-009 remains
+  `implemented`, and no attempt-031 is authorized by this contract.
+- Blocker or next safe action: Run full repository gates, publish the typed
+  preflight correction, then create a separate attempt contract using only
+  repo-owned package validation and explicit command exit checks.
+
+## 2026-08-15T07:01:00Z | typed detector preflight passed full verification
+
+- Verification: Focused Bun tests, the real Bazel automation suite, ordered
+  Cargo format/strict-lint/all-target build/all-feature tests, Bright Builds,
+  firmware build, all 44 Bazel tests, parity and progress, semantic redaction,
+  pinned-reference cleanliness, and diff checks pass.
+- Outcome: Missing or invalid detector evidence can no longer collapse into a
+  generic launch failure. The fix and its durable lesson are ready to publish.
+- Blocker or next safe action: Commit and push, then separately contract any
+  attempt-031 with repo-owned package validation and explicit exit gating.
