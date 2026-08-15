@@ -219,3 +219,14 @@
   generic launch failure. The fix and its durable lesson are ready to publish.
 - Blocker or next safe action: Commit and push, then separately contract any
   attempt-031 with repo-owned package validation and explicit exit gating.
+
+## 2026-08-15T07:04:00Z | typed preflight fix pushed and attempt-031 contracted
+
+- Pushed fix: `35bc2280`.
+- Actions: Published typed detector-evidence failures and added a separate
+  attempt-031 contract that delegates package admission to `just package` and
+  requires explicit zero exits plus artifact checks at every preflight step.
+- Outcome: Attempt-031 becomes effect-eligible only after this contract is
+  committed and pushed. No hardware ran at this checkpoint.
+- Blocker or next safe action: Publish the contract, then execute its package,
+  detector, and one campaign command in order with explicit exit gating.
