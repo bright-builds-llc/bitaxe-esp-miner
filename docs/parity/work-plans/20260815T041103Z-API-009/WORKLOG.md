@@ -39,3 +39,26 @@
   026 authorization boundary. API-009 remains `implemented`.
 - Blocker or next safe action: Commit and push this checkpoint, then require
   clean synchronized HEAD before package creation or detector admission.
+
+## 2026-08-15T04:25:23Z | exact-package attempt and terminal closure
+
+- Source commit: `5621ea0fe981efbc568279af9a35923c65e9bbed`.
+- Actions: Built and validated the exact package, ran the fresh detector once,
+  and invoked the sole attempt-026 campaign once. No operator checkpoint
+  opened, so no ready, rendered, replayed, or cleared response was issued.
+- Verification: The sealed result proves trusted package/runtime identity, a
+  ready protocol gate, genuine positive notification, one pause, confirmed
+  stopped hardware, one dismissal request, and notification clearing. Exact
+  count preservation failed before IDENTIFY readiness. The protected command
+  record proves recovery API pause, serial safe stop, and correlated recovery
+  completion. Public output proves cleanup complete with no secondary recovery
+  failure. Result and network seals, private modes, fixture stop, process
+  cleanup, USB-holder absence, and public-projection withholding pass.
+- Evidence: Approved categorical fields, booleans, counts, hashes, and modes
+  only. No origin, hostname, port, USB/network identity, credential, worker,
+  address, password, token, sensor value, or raw trace was exposed.
+- Outcome: API-009 remains `implemented`; public evidence is withheld,
+  attempt-026 is consumed, and this plan authorizes no retry.
+- Blocker or next safe action: Close this attempt, then reproduce the stale
+  count baseline in software and compare dismissal readback with the paused
+  pre-request count rather than the earlier active-notification count.
