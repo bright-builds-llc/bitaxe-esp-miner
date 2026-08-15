@@ -884,3 +884,17 @@
 - Disposition: The software correction is ready to publish. Attempt-043 remains
   consumed; a fresh hardware campaign requires a separately committed
   attempt-044 contract.
+
+## 2026-08-15T13:38:00Z | attempt-044 recovery-poll contract drafted
+
+- Objective: Run one no-human exact-package campaign against clean pushed fix
+  `5ba7c192`, proving bounded post-restart observations can recover and seal the
+  complete programmatic projection or producing one new typed boundary.
+- Admission/layout: Require exact current HEAD/reference package identity,
+  opaque ignored input, one protected detector, a separate protected wrapper,
+  and absent command-owned attempt/public paths.
+- Effects/privacy: Existing finite campaign, recovery, safe-stop, cleanup,
+  request-once restart, same-device, and redaction contracts are unchanged. No
+  physical-display claim is included.
+- Stop: Campaign start consumes attempt-044. Any non-ready result withholds
+  evidence and stops without attempt-045 or an unchanged retry.
