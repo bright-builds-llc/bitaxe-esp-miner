@@ -290,3 +290,20 @@
   firmware target also built successfully.
 - Next action: Run the mandatory repository gates, review the exact diff, then
   commit and push before defining any attempt-032 hardware contract.
+
+## 2026-08-15T07:54:56Z | sensor-sweep software boundary closed
+
+- Verification: Ordered Cargo format, clippy, all-target build, and all-feature
+  tests passed. The firmware build, all 45 Bazel test targets, Bright Builds,
+  parity and progress, redaction, reference cleanliness, source ownership,
+  sensitive-output, and diff checks passed.
+- Review findings fixed before closure: Explicit Serde wire names prevent
+  duration-bucket drift; display budget exhaustion defers instead of disabling
+  the panel; host display and ownership fixtures exercise the budget boundary;
+  optional diagnostic corruption cannot erase independently closed recovery
+  facts or replace the campaign's primary failure.
+- Boundary: Commit `c2fb0c93` is pushed to `origin/main`. The software-only task
+  is complete and archived. No detector, credentials, USB, network, device,
+  mining, control, reset, flash, OTA, or recovery effect occurred.
+- Next action: Define a separate exact attempt-032 contract bound to this clean
+  commit, then run at most one detector-gated programmatic campaign.

@@ -7091,3 +7091,53 @@ faults, live terminal exhaustion, waveform/timing measurement, probing or
 scanning, arbitrary addresses/registers/values, unsupported devices, other
 boards, and release readiness remain non-claims. No new device effect occurred
 during reconciliation. The task is complete and archived.
+
+### task-api009-sensor-sweep-latency | 2026-08-15 | Diagnose and fix active sensor freshness loss
+
+- [x] Add a deterministic production-shaped feedback loop that reproduces an
+      unchanged observation epoch and stale active-safety sample when one
+      shared-I2C acquisition consumes the current retry/timeout envelope.
+- [x] Add redaction-safe, boot-scoped producer timing facts that identify only
+      the delayed acquisition stage, bounded duration bucket, sweep outcome,
+      and revision; never publish sensor values or device/network identity.
+- [x] Rank and falsify the sensor-read, display-flush, actuation-queue, producer
+      scheduling, and consumer-sampling hypotheses against the same timing
+      model and the attempt-031 closed boundary.
+- [x] Fix the confirmed producer/runtime cause without weakening the 1,000 ms
+      active-safety freshness requirement, hiding acquisition failures, or
+      accepting a stale epoch; add focused regressions for success, timeout,
+      recovery, marker redaction, and failure precedence.
+- [x] Run the ordered Cargo, firmware, Bright Builds, Bazel, parity, redaction,
+      reference-cleanliness, source-ownership, sensitive-output, and diff gates;
+      simplify, review, commit, and push the exact implementation.
+
+Authorization and stop rule: this block permits source, fixtures, deterministic
+simulation, local child processes, builds, and repository verification only.
+It does not authorize protected attempt data, credentials, detector, package
+effects, USB/device/network/HTTP sessions, flash, reset, mining, ASIC traffic,
+hardware controls, OTA, recovery, external UART/BAP, pins, or attempt-032. A
+future hardware ordinal requires a separate exact clean-package task contract
+after this task proves a materially changed boundary. Stop if the deterministic
+seam cannot distinguish the delayed producer stage without sensitive values, or
+if the verified fix would require weakening the active-safety contract.
+
+Final verification: The pre-change production-shaped test reproduced a sensor
+transfer starting at 500 ms remaining blocked until 2,030 ms under the general
+three-attempt, 500-ms timeout contract. The bounded implementation passed the
+same test in three uncached runs. Focused retry, diagnostic, display, source-
+ownership, marker, evidence, and automation tests passed. Ordered Cargo format,
+clippy, all-target build, and all-feature tests passed, as did the firmware
+build, all 45 Bazel test targets, Bright Builds checks, parity validation and
+progress, redaction, reference cleanliness, sensitive-output scan, and diff
+checks. Commit `c2fb0c93` was pushed to `origin/main`.
+
+Final completion review: Runtime sensor, display, and actuation transfers now
+share the producer's absolute publication deadline with 100 ms headroom while
+startup retains the complete upstream retry envelope. Display budget exhaustion
+defers work without claiming a render or permanently disabling the panel. A
+closed campaign diagnostic identifies only stage, outcome, coarse duration
+bucket, and revision publicly; boot session remains private and no sensor,
+device, USB, network, or credential value is exposed. A live trigger remains
+unclassified until a separately contracted attempt observes the new boundary.
+No hardware effect occurred during this task. The task is complete and archived
+at 2026-08-15T07:54:56Z.

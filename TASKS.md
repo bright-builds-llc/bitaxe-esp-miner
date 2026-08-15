@@ -4031,35 +4031,6 @@ progress requires a separately scoped sensor-producer/I2C latency diagnostic
 that can identify which bounded acquisition delayed the complete observation
 sweep without exposing sensor values, followed by a verified root-cause change.
 
-### task-api009-sensor-sweep-latency | 2026-08-15 | Diagnose and fix active sensor freshness loss
-
-- [x] Add a deterministic production-shaped feedback loop that reproduces an
-      unchanged observation epoch and stale active-safety sample when one
-      shared-I2C acquisition consumes the current retry/timeout envelope.
-- [x] Add redaction-safe, boot-scoped producer timing facts that identify only
-      the delayed acquisition stage, bounded duration bucket, sweep outcome,
-      and revision; never publish sensor values or device/network identity.
-- [x] Rank and falsify the sensor-read, display-flush, actuation-queue, producer
-      scheduling, and consumer-sampling hypotheses against the same timing
-      model and the attempt-031 closed boundary.
-- [x] Fix the confirmed producer/runtime cause without weakening the 1,000 ms
-      active-safety freshness requirement, hiding acquisition failures, or
-      accepting a stale epoch; add focused regressions for success, timeout,
-      recovery, marker redaction, and failure precedence.
-- [ ] Run the ordered Cargo, firmware, Bright Builds, Bazel, parity, redaction,
-      reference-cleanliness, source-ownership, sensitive-output, and diff gates;
-      simplify, review, commit, and push the exact implementation.
-
-Authorization and stop rule: this block permits source, fixtures, deterministic
-simulation, local child processes, builds, and repository verification only.
-It does not authorize protected attempt data, credentials, detector, package
-effects, USB/device/network/HTTP sessions, flash, reset, mining, ASIC traffic,
-hardware controls, OTA, recovery, external UART/BAP, pins, or attempt-032. A
-future hardware ordinal requires a separate exact clean-package task contract
-after this task proves a materially changed boundary. Stop if the deterministic
-seam cannot distinguish the delayed producer stage without sensitive values, or
-if the verified fix would require weakening the active-safety contract.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
