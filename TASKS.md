@@ -3240,14 +3240,14 @@ authorize attempt-023. See the linked `CLOSURE.md`.
 Latency-tolerant attempt-023 plan:
 `docs/parity/work-plans/20260814T234917Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable single-attempt contract, then pass every
+- [x] Commit and push the immutable single-attempt contract, then pass every
       focused, mandatory, privacy, reference, firmware, selector, and
       exact-package gate at clean synchronized HEAD.
-- [ ] Run exactly one fresh detector-gated attempt-023, keep the Ultra 205
+- [x] Run exactly one fresh detector-gated attempt-023, keep the Ultra 205
       paused and safe-stopped through every unbounded operator wait, and accept
       a delayed rendered/replayed report only as an attestation that the exact
       frame was observed during its uniquely bound 30-second effect.
-- [ ] Promote API-009 only on the complete command/restart/device-user quorum;
+- [x] Promote API-009 only on the complete command/restart/device-user quorum;
       otherwise preserve `implemented`, the earliest typed failure, evidence
       withholding, safe stop, cleanup, and recovery, then stop without
       attempt-024.
@@ -3260,6 +3260,18 @@ immutable contract and all named gates pass. Campaign start consumes
 attempt-023. No inferred observation, protected-artifact reuse, external or
 owner pool, factory reset, erase, destructive/fault-injection action, direct
 UART, pin/pad/GPIO manipulation, attempt-024, or unchanged retry is authorized.
+
+Attempt-023 completion review: the exact pushed package and one admitted Ultra
+205 proved notification, positive block count, pause plus stopped hardware,
+one IDENTIFY request, the live exact rendered observation, natural expiry, and
+the live cleared observation. The subsequent resume request was issued, but
+active mining did not return before the fixed 15-second automated phase
+deadline, so the earliest typed result is `network_correlation_failed`; no
+dismissal or restart ran. USB cleanup is ready, private modes and result seal
+pass, processes are absent, recovery reported a secondary failure, safe stop
+was not confirmed, and public evidence is withheld. API-009 remains
+`implemented`; attempt-023 is consumed and no attempt-024 is authorized. See
+the linked `CLOSURE.md`.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
