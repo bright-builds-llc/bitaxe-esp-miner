@@ -43,7 +43,7 @@ use status_reads::{fetch_command_status, fetch_system_info};
 mod request;
 use request::{
     command_state_failure_cause, may_reuse_confirmed_safe_stop, post_may_have_applied,
-    take_recovery_pause_request, terminal_confirmation_timed_out,
+    serial_ended_before_terminal, take_recovery_pause_request, terminal_confirmation_timed_out,
 };
 mod identify;
 #[cfg(test)]
@@ -376,16 +376,14 @@ pub(super) fn observe_command_effects(
             );
             break;
         }
-        if serial.serial_finished {
-            if !serial.terminal_consumed {
-                record_command_failure(
-                    &mut maybe_failure,
-                    &mut maybe_failure_diagnostic,
-                    phase,
-                    CommandFailureCause::SerialEnded,
-                    CampaignTerminalCategory::TerminalStateUnconfirmed,
-                );
-            }
+        if serial_ended_before_terminal(&serial) {
+            record_command_failure(
+                &mut maybe_failure,
+                &mut maybe_failure_diagnostic,
+                phase,
+                CommandFailureCause::SerialEnded,
+                CampaignTerminalCategory::TerminalStateUnconfirmed,
+            );
             break;
         }
         std::thread::sleep(POLL_INTERVAL);

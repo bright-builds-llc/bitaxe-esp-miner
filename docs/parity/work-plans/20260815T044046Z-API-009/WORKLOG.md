@@ -705,3 +705,32 @@
   protected-artifact contracts are unchanged; no physical-display claim.
 - Stop: Campaign start consumes attempt-040. Any non-ready result withholds
   evidence and stops without attempt-041 or an unchanged retry.
+
+## 2026-08-15T11:02:38Z | attempt-040 exposed terminal capture handoff race
+
+- Result: One detector and one campaign ran. Every command effect and the
+  600-active-second lease completed once, then the public result stopped
+  `hardware_blocked / command_effects` with `terminal / serial_ended`.
+  Cleanup passed, no recovery request or secondary failure occurred, and
+  evidence remained withheld. No user action contributed.
+- Boundary: The receive-only owner returns immediately when its serial analyzer
+  accepts the consumed terminal marker. Its coordinator then marks serial input
+  finished while the concurrent network worker still awaits the post-terminal
+  HTTP sample, so the terminal join can fail at an ownership race.
+- Disposition: Attempt-040 is consumed. Reconcile the analyzer's authoritative
+  terminal facts into the network coordinator before input closure and retain
+  the exact 15-second HTTP confirmation deadline. No attempt-041 is authorized
+  until the fix passes full gates and is pushed.
+
+## 2026-08-15T11:08:00Z | terminal capture handoff fixed and verified
+
+- Fix: The completed serial capture now hands its closed consumed/persistence
+  fact to the network coordinator before setting `serial_finished`. The worker
+  continues only its existing post-terminal HTTP join after USB closes.
+- Fail-closed behavior: Missing terminal consumption still fails immediately;
+  contradictory terminal persistence is a network-correlation failure, and an
+  earlier failure remains primary. The HTTP deadline remains 15 seconds.
+- Verification: Ordering, input-closure, contradiction, precedence, and exact
+  deadline regressions pass with focused and full Rust suites, Bright Builds,
+  real firmware, full Bazel, parity/progress, redaction, reference, and diff
+  checks. No hardware effect occurred.

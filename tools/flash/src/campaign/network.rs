@@ -19,6 +19,7 @@ use bitaxe_api::ExpectedRuntimeAttestationIdentity;
 use camino::Utf8PathBuf;
 
 use super::*;
+use crate::campaign::markers::CampaignStateMarker;
 use command_effects::observe_command_effects;
 pub(crate) use command_effects::{
     respond_identify_checkpoint, IdentifyCheckpointKind, IdentifyCheckpointOutcome,
@@ -98,7 +99,7 @@ impl CampaignNetworkCoordinator {
         })
     }
 
-    pub(crate) fn finish(mut self) -> CampaignNetworkEvidence {
+    pub(crate) fn finish(mut self, serial: &CampaignSerialCapture) -> CampaignNetworkEvidence {
         if !matches!(
             self.stage,
             MiningCampaignStage::Soak | MiningCampaignStage::CommandEffects
@@ -107,7 +108,7 @@ impl CampaignNetworkCoordinator {
         }
         self.tracker.finish(&self.shared);
         if let Ok(mut shared) = self.shared.lock() {
-            shared.serial_finished = true;
+            close_serial_input(&mut shared, terminal_pool_persistence(serial));
             if self.maybe_worker.is_none() && shared.maybe_failure.is_none() {
                 shared.maybe_failure = Some(CampaignTerminalCategory::NetworkTargetUnavailable);
             }
@@ -119,6 +120,43 @@ impl CampaignNetworkCoordinator {
             .join()
             .unwrap_or_else(|_| CampaignNetworkEvidence::worker_failed(&self.shared))
     }
+}
+
+#[derive(Clone, Copy)]
+struct TerminalCaptureHandoff {
+    pool_config_persisted: bool,
+}
+
+fn close_serial_input(
+    shared: &mut SharedSerialState,
+    maybe_terminal: Option<TerminalCaptureHandoff>,
+) {
+    if let Some(terminal) = maybe_terminal {
+        if shared.terminal_consumed
+            && shared.terminal_pool_persisted != terminal.pool_config_persisted
+        {
+            shared
+                .maybe_failure
+                .get_or_insert(CampaignTerminalCategory::NetworkCorrelationFailed);
+        } else {
+            shared.terminal_consumed = true;
+            shared.terminal_pool_persisted = terminal.pool_config_persisted;
+        }
+    }
+    // The network worker must see the analyzer's terminal fact before it sees
+    // input closure, because HTTP confirmation intentionally follows USB.
+    shared.serial_finished = true;
+}
+
+fn terminal_pool_persistence(serial: &CampaignSerialCapture) -> Option<TerminalCaptureHandoff> {
+    if serial.maybe_failure.is_some() {
+        return None;
+    }
+    serial.aggregate.terminal.as_ref().and_then(|marker| {
+        (marker.campaign_state == CampaignStateMarker::Consumed).then_some(TerminalCaptureHandoff {
+            pool_config_persisted: marker.pool_config_persisted,
+        })
+    })
 }
 
 pub(crate) struct CampaignObservationCapture {

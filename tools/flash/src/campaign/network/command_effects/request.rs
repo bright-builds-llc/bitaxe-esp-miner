@@ -43,6 +43,10 @@ pub(super) fn terminal_confirmation_timed_out(
     maybe_deadline.is_some_and(|deadline| now >= deadline)
 }
 
+pub(super) const fn serial_ended_before_terminal(serial: &SharedSerialState) -> bool {
+    serial.serial_finished && !serial.terminal_consumed
+}
+
 pub(super) fn take_recovery_pause_request(
     maybe_failure: Option<CampaignTerminalCategory>,
     request_count: &mut u64,

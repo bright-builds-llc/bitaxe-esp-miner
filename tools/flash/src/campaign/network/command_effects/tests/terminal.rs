@@ -33,6 +33,29 @@ fn consumed_terminal_keeps_exact_http_confirmation_deadline() {
 }
 
 #[test]
+fn closed_serial_input_preserves_post_terminal_http_confirmation() {
+    // Arrange
+    let consumed = SharedSerialState {
+        serial_finished: true,
+        terminal_consumed: true,
+        ..SharedSerialState::default()
+    };
+    let missing = SharedSerialState {
+        serial_finished: true,
+        terminal_consumed: false,
+        ..SharedSerialState::default()
+    };
+
+    // Act
+    let consumed_failed = serial_ended_before_terminal(&consumed);
+    let missing_failed = serial_ended_before_terminal(&missing);
+
+    // Assert
+    assert!(!consumed_failed);
+    assert!(missing_failed);
+}
+
+#[test]
 fn command_failure_reuses_proved_paused_safe_stop_without_another_request() {
     // Arrange
     let mut evidence = CommandEffectsEvidence::new();

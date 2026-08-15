@@ -7870,3 +7870,96 @@ unproved or resumed-state recovery. The helper split keeps the orchestrator
 within its file-size limit and its Bazel source membership is explicit. No
 hardware effect occurred. The task is complete and archived; a new hardware
 ordinal requires its own committed exact-package contract.
+
+### task-api009-programmatic-pilot-attempt-040 | 2026-08-15 | Verify status-owned ambiguous delivery
+
+- [x] Require clean synchronized pushed `333674f3`, opaque non-empty ignored
+      Wi-Fi input, exact HEAD/reference package, and absent detector, wrapper,
+      command-owned attempt, and public-projection paths.
+- [x] Run `just package`, then exactly one protected `detector-040`; require
+      zero exit, one `port: ` record, `usb_session: ready`, private modes, and
+      one admitted board-205 device.
+- [x] Use separate protected `wrapper-040`, keep `attempt-040` absent, and run
+      exactly once the existing 600-active-second programmatic campaign under
+      the finite activation, capture, child, recovery, and cleanup bounds.
+- [x] Publish only a ready independently validated redacted projection;
+      otherwise withhold it and record the earliest category, typed command
+      phase/cause, sensor diagnostic, and recovery booleans.
+
+Effects: one exact-package flash/reset, private Wi-Fi/local-fixture seed,
+conservative initialization/mining for at most 600 active seconds, one each
+pause/dismiss/IDENTIFY/resume/software restart, HTTP/WebSocket/receive-only USB
+observation, same-device recovery, safe stop, child termination, and USB
+cleanup. No human checkpoint or physical-display claim is included.
+
+Privacy/retry/stop: all private roots/files remain ignored mode 0700/0600.
+Never publish identities, origins, ports, addresses, hostnames, credentials,
+boot session, values, or traces. Preserve the first failure through recovery.
+Campaign start consumes attempt-040; no attempt-041 or unchanged retry is
+authorized. Any admission ambiguity, non-ready result, malformed evidence, or
+failed safe stop/recovery/cleanup stops with evidence withheld and API-009
+`implemented`. OTA, erase, factory reset, power cycle, UART/BAP, USB duplex,
+pins/GPIO, arbitrary settings, external pool, stress, direct controls, fault
+injection, non-205 hardware, and human display claims remain prohibited.
+
+Final verification: Clean synchronized pushed contract `1511c434`, exact
+package/reference identity, one detector, separate wrapper, and one campaign
+passed admission. Every command effect completed once: notification, pause,
+dismiss, IDENTIFY render and natural clear, resume, and the 600-active-second
+lease. Same-package and safety validation passed. The campaign then stopped
+`hardware_blocked / command_effects` with first failure
+`terminal / serial_ended`; USB cleanup and private modes passed, no recovery
+request or secondary recovery failure occurred, and public evidence was
+withheld.
+
+Final completion review: The receive-only owner closed cleanly as soon as the
+serial analyzer accepted lease consumption, while the concurrent network
+worker had not yet published its post-terminal HTTP confirmation. The worker
+therefore saw serial end at the lifecycle boundary and failed before the
+terminal join. This is a host ownership race after all command effects, not a
+device command failure or user action. Attempt-040 is consumed, attempt-041 is
+not authorized, API-009 remains `implemented`, and the task is complete and
+archived.
+
+### task-api009-terminal-capture-handoff | 2026-08-15 | Join serial closure to terminal HTTP proof
+
+- [x] Reproduce receive-only capture ending immediately after its authoritative
+      serial analyzer accepts the consumed terminal marker while the network
+      worker still awaits its post-terminal HTTP sample.
+- [x] Hand the analyzer's closed terminal facts to the network coordinator
+      before marking serial input finished; reject contradictory terminal
+      views and preserve the first failure.
+- [x] Allow a worker with authoritative terminal consumption to finish the
+      existing 15-second HTTP confirmation after receive-only input closes;
+      missing consumption still fails immediately as `serial_ended`.
+- [x] Add deterministic ordering, contradiction, bounded-deadline, cleanup,
+      redaction, and primary-precedence regressions.
+- [x] Run focused and complete gates, simplify, review, archive, commit, and
+      push before any new hardware ordinal.
+
+Authorization: source, deterministic fixtures, local child processes, builds,
+and repository verification only. Protected attempt-040 may be used only for
+the closed facts recorded in its archive entry; never publish identities,
+origins, ports, addresses, credentials, boot session, raw traces, or values.
+No detector, credentials, package effect, USB/device/network session, flash,
+reset, mining, recovery, OTA, UART/BAP, pins, or attempt-041 is authorized.
+Stop if the handoff can manufacture terminal consumption, replace a parser
+failure, extend the 15-second confirmation bound, or weaken exact-package,
+safe-stop, cleanup, or request-once behavior.
+
+Final verification: Deterministic regressions prove the serial analyzer's
+accepted terminal fact is installed before input closure, a consumed terminal
+keeps the post-terminal HTTP join alive, missing consumption still maps to
+`serial_ended`, contradictory pool-persistence views fail closed, an earlier
+failure remains primary, and the 15-second deadline is unchanged. Focused and
+all-feature Rust tests, mandatory Cargo, Bright Builds, real firmware, all 45
+Bazel test targets, parity/progress, redaction, reference, and diff gates pass.
+
+Final completion review: The fix reconciles one closed terminal fact from the
+authoritative serial capture into the concurrent worker; it does not replay
+logs, extend the USB reader, retry commands, or add another protocol. The
+worker may use only its pre-existing bounded HTTP deadline after USB closes.
+The change is smaller and safer than retaining the serial reader solely for a
+network postcondition. No hardware effect occurred during this task. It is
+complete and archived; attempt-041 still requires a separately committed
+exact-package contract.

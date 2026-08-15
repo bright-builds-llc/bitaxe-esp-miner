@@ -432,10 +432,9 @@ impl FlashEnvironment for LocalFlashEnvironment {
                 ),
         }
         .map_err(|error| anyhow::anyhow!("{error}"))?;
-        Ok(campaign::network::CampaignObservationCapture {
-            serial: analyzer.finish(),
-            network: network.finish(),
-        })
+        let serial = analyzer.finish();
+        let network = network.finish(&serial);
+        Ok(campaign::network::CampaignObservationCapture { serial, network })
     }
 
     fn finish_usb_session(&self) -> Result<()> {
