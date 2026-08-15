@@ -83,7 +83,7 @@ js_library(
         "docs/parity/evidence/rel001-ota-slot/partition-layout-projection.json",
         "docs/parity/evidence/rel002-sdkconfig-rollback/sdkconfig-rollback-projection.json",
         "docs/parity/evidence/thr001-emc2101-thermal/thermal-projection.json",
-        "docs/parity/work-plans/20260813T073353Z-THR-001/PLAN.md",
+        "docs/parity/work-plans/20260815T182438Z-THR-001/PLAN.md",
         "docs/parity/work-plans/20260804T190000Z-UI-004/RESULT.md",
         "docs/parity/work-plans/20260813T045300Z-UI-004/PLAN.md",
     ],

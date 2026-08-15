@@ -3685,9 +3685,9 @@ safety freshness.
 Attempt-005 continuation:
 `docs/parity/work-plans/20260815T182438Z-THR-001/PLAN.md`.
 
-- [ ] Advance the consumed ordinal, private roots, projection path, immutable
+- [x] Advance the consumed ordinal, private roots, projection path, immutable
       plan binding, tests, and generated command contract to attempt 5.
-- [ ] Pass focused and mandatory software gates; commit and push the complete
+- [x] Pass focused and mandatory software gates; commit and push the complete
       binding change before packaging or device admission.
 - [ ] Build the exact clean package, admit one Ultra 205, and run the bounded
       fault/restoration campaign exactly once.
