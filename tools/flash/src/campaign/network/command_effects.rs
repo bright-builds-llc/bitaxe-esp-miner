@@ -5,7 +5,7 @@ use bitaxe_api::{
     CommandStatusWire, DisplayFrameKind, DisplayRenderOutcome, SystemInfoWire,
     COMMAND_STATUS_SCHEMA, IDENTIFY_DURATION_MS,
 };
-use bitaxe_http_transport::{ExchangeObservation, PlainWebSocket, StrictHttpClient, WebSocketRead};
+use bitaxe_http_transport::{ExchangeObservation, PlainWebSocket, StrictHttpClient};
 use camino::Utf8Path;
 
 use super::super::CampaignTerminalCategory;
@@ -32,6 +32,8 @@ mod paused_dismiss;
 use paused_dismiss::{arm_ready_after_paused_dismissal, begin_paused_dismissal};
 mod recovery_join;
 use recovery_join::{RecoveryJoinDecision, RecoveryPauseJoinState};
+mod witness_continuity;
+use witness_continuity::consume_optional_websocket_read;
 mod identify;
 #[cfg(test)]
 use identify::{
@@ -147,42 +149,31 @@ pub(super) fn observe_command_effects(
 
         if maybe_failure.is_none() {
             if maybe_log_websocket.is_none() {
-                match PlainWebSocket::connect(
+                // WebSocket and receive-only USB are independent witnesses.
+                // Connection availability is therefore bounded by the phase
+                // deadline, while malformed witness data still fails closed.
+                if let Ok(socket) = PlainWebSocket::connect(
                     &target.origin,
                     "/api/ws",
                     WEBSOCKET_CONNECT_TIMEOUT,
                     WEBSOCKET_IO_TIMEOUT,
                 ) {
-                    Ok(socket) => maybe_log_websocket = Some(socket),
-                    Err(_) if phase != CommandPhase::Notification => {
-                        maybe_failure = Some(CampaignTerminalCategory::NetworkCorrelationFailed)
-                    }
-                    Err(_) => {}
+                    maybe_log_websocket = Some(socket);
                 }
             }
             if let Some(websocket) = maybe_log_websocket.as_mut() {
-                match websocket.read() {
-                    Ok(WebSocketRead::Text(bytes)) => {
-                        if observe_websocket_transitions(
-                            &bytes,
-                            &target.boot_session,
-                            &mut websocket_pending,
-                            &mut websocket_transitions,
-                        )
-                        .is_err()
-                        {
-                            maybe_failure =
-                                Some(CampaignTerminalCategory::NetworkCorrelationFailed);
-                        }
-                    }
-                    Ok(WebSocketRead::Timeout) => {}
-                    Ok(WebSocketRead::Closed) | Err(_) => {
+                match consume_optional_websocket_read(
+                    websocket.read(),
+                    &target.boot_session,
+                    &mut websocket_pending,
+                    &mut websocket_transitions,
+                ) {
+                    Ok(true) => {}
+                    Ok(false) => {
                         maybe_log_websocket = None;
-                        websocket_pending.clear();
-                        if phase != CommandPhase::Notification {
-                            maybe_failure =
-                                Some(CampaignTerminalCategory::NetworkCorrelationFailed);
-                        }
+                    }
+                    Err(()) => {
+                        maybe_failure = Some(CampaignTerminalCategory::NetworkCorrelationFailed)
                     }
                 }
             }
@@ -442,9 +433,12 @@ fn write_reboot_intent(
 fn fetch_system_info(
     http: &StrictHttpClient,
 ) -> Result<Option<SystemInfoWire>, CampaignTerminalCategory> {
-    let observation = http
-        .get_system_info(Instant::now() + HTTP_DEADLINE)
-        .map_err(|_| CampaignTerminalCategory::NetworkCorrelationFailed)?;
+    // A lost read cannot prove or disprove a command effect. Keep waiting
+    // within the phase deadline; a successful malformed response remains an
+    // explicit correlation failure below.
+    let Ok(observation) = http.get_system_info(Instant::now() + HTTP_DEADLINE) else {
+        return Ok(None);
+    };
     let Some(response) = observation
         .maybe_http_response()
         .filter(|response| response.status() == 200)
@@ -459,9 +453,9 @@ fn fetch_system_info(
 fn fetch_command_status(
     http: &StrictHttpClient,
 ) -> Result<Option<CommandStatusWire>, CampaignTerminalCategory> {
-    let observation = http
-        .get_command_status(Instant::now() + HTTP_DEADLINE)
-        .map_err(|_| CampaignTerminalCategory::NetworkCorrelationFailed)?;
+    let Ok(observation) = http.get_command_status(Instant::now() + HTTP_DEADLINE) else {
+        return Ok(None);
+    };
     let Some(response) = observation
         .maybe_http_response()
         .filter(|response| response.status() == 200)
@@ -473,7 +467,7 @@ fn fetch_command_status(
         .map_err(|_| CampaignTerminalCategory::NetworkCorrelationFailed)
 }
 
-fn observe_websocket_transitions(
+pub(super) fn observe_websocket_transitions(
     bytes: &[u8],
     expected_session: &str,
     pending: &mut Vec<u8>,

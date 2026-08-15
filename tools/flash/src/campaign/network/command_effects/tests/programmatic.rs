@@ -1,4 +1,7 @@
 use super::*;
+use bitaxe_http_transport::WebSocketRead;
+
+use super::super::consume_optional_websocket_read;
 use std::time::Instant;
 
 use crate::campaign::CampaignTerminalCategory;
@@ -313,6 +316,73 @@ fn pause_join_uses_claim_specific_http_generation_and_safe_stop_without_log_quor
         maybe_failure,
         Some(CampaignTerminalCategory::CommandRequestFailed)
     );
+}
+
+#[test]
+fn paused_dismissal_survives_transient_websocket_loss() {
+    // Arrange
+    let (_temp, root) = private_root();
+    let target = trusted_target();
+    let mut sample = SystemInfoWire::from_snapshot(&ApiSnapshot::safe_ultra_205());
+    sample.mining_paused = true;
+    sample.mining_activity = "paused".to_owned();
+    sample.show_new_block = false;
+    sample.block_found = 7;
+    let mut tracker = CommandStatusTracker::default();
+    tracker.record_display_availability(true, 0);
+    tracker.record_command(CommandStatusEffect::Pause);
+    tracker.record_command(CommandStatusEffect::BlockFoundDismiss);
+    let mut phase = CommandPhase::ProgrammaticDismiss;
+    let mut generations = CommandGenerations {
+        pause: 1,
+        dismiss: 1,
+        ..CommandGenerations::default()
+    };
+    let mut evidence = CommandEffectsEvidence::new();
+    evidence.pause_request_count = 1;
+    evidence.pause_confirmed = true;
+    evidence.dismiss_request_count = 1;
+    let mut maybe_block_count = Some(7);
+    let mut maybe_failure = None;
+    let serial = SharedSerialState::default();
+    let mut websocket = CommandTransitionWitness::default();
+    let mut pending = b"partial".to_vec();
+
+    // Act
+    let retained = consume_optional_websocket_read(
+        Ok(WebSocketRead::Closed),
+        &target.boot_session,
+        &mut pending,
+        &mut websocket,
+    )
+    .expect("transient close");
+    let idle_http = StrictHttpClient::new("http://127.0.0.1:9").expect("idle HTTP client");
+    advance_programmatic_commands(
+        &idle_http,
+        &target,
+        &root,
+        &sample,
+        &command_status(&tracker, &sample, false),
+        &serial,
+        &websocket,
+        retained,
+        Instant::now(),
+        &mut generations,
+        CommandProgress {
+            phase: &mut phase,
+            maybe_block_count: &mut maybe_block_count,
+            evidence: &mut evidence,
+            maybe_failure: &mut maybe_failure,
+        },
+    );
+
+    // Assert
+    assert!(!retained);
+    assert!(pending.is_empty());
+    assert!(maybe_failure.is_none());
+    assert!(evidence.dismiss_confirmed);
+    assert!(evidence.block_count_preserved);
+    assert_eq!(phase, CommandPhase::ProgrammaticIdentifyStart);
 }
 
 #[test]

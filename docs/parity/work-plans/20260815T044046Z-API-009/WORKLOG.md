@@ -520,3 +520,36 @@
   display claim is included.
 - Stop: Campaign start consumes attempt-036. Any non-ready result withholds
   evidence and stops without attempt-037 or an unchanged retry.
+
+## 2026-08-15T10:20:00Z | attempt-036 clears sensor blocker and exposes witness loss
+
+- Result: Exact package, one detector, separate wrapper, and one campaign ran.
+  It stopped `hardware_blocked / command_effects`; safe stop, cleanup, and
+  recovery passed, no secondary failure remained, and evidence was withheld.
+- Sensor proof: Revision 1 closed as `display / ready / under_500_ms`, proving
+  the upstream-aligned owner priority removed the earlier publication miss.
+- Command boundary: Pause completed through HTTP generation plus receive-only
+  USB safe-stop. One dismiss request followed, but the host stopped before
+  confirming it. Identity and safety remained valid, and the failure occurred
+  before the automated phase deadline.
+- Root cause: The observer currently makes transient WebSocket close/read loss
+  and transient HTTP status-read loss immediately terminal after commands
+  begin, despite independent USB evidence and existing bounded phase deadlines.
+- Disposition: Attempt-036 is consumed. A software-only continuity task will
+  preserve request-once and fail-closed validation while allowing observation
+  transport recovery before any attempt-037.
+
+## 2026-08-15T10:40:00Z | independent witness continuity verified
+
+- Fix: WebSocket connect, peer-close, and I/O loss now reconnect without
+  invalidating independent receive-only USB facts. Transient HTTP status reads
+  wait within the existing phase deadline.
+- Fail-closed boundary: Command requests remain request-once. Malformed HTTP or
+  WebSocket data, identity/safety drift, protocol/capacity failure, stale or
+  duplicate generations, missing required witnesses, and deadline expiry
+  remain terminal.
+- Verification: Forty-eight focused command-effects tests plus mandatory Cargo,
+  Bright Builds, real firmware, full Bazel, parity, redaction, reference, and
+  diff gates pass. The source and tests were split into bounded modules.
+- Disposition: The software boundary is ready to publish. Any live attempt-037
+  requires a separate exact-package contract and one-result stop rule.

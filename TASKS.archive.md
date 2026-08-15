@@ -7507,3 +7507,95 @@ the current task is the smallest robust alignment with upstream and avoids a
 broader scheduler configuration change. No hardware effect occurred. The task
 is complete and archived at 2026-08-15T09:52:00Z; attempt-036 still requires a
 separate exact-package hardware contract.
+
+### task-api009-programmatic-pilot-attempt-036 | 2026-08-15 | Verify the prioritized sensor owner
+
+- [x] Require clean synchronized pushed `7917de87`, opaque non-empty ignored
+      Wi-Fi input, exact HEAD/reference package identity, and absent detector,
+      wrapper, command-owned attempt, and public-projection paths.
+- [x] Run `just package`; create protected `detector-036`; run exactly one
+      `just detect-ultra205`; require its zero exit, private modes, and one
+      admitted board-205 device.
+- [x] Create separate protected `wrapper-036`, keep `attempt-036` absent, and
+      invoke exactly once the existing 600-second `just
+      api-command-effects-campaign` with the exact package, opaque input,
+      detector output, attempt root, and public projection.
+- [x] Publish only a ready independently validated redacted projection;
+      otherwise withhold it and record the earliest typed category, causal
+      highest-severity stage/outcome/duration/revision, and recovery booleans.
+
+Effects: one exact-package flash/reset, private Wi-Fi/local-fixture seed,
+conservative initialization/mining for at most 600 active seconds, one each
+pause/dismiss/IDENTIFY/resume/software restart, HTTP/WebSocket/receive-only USB
+observation, same-device recovery, safe stop, child termination, and USB
+cleanup. Active freshness and automated/recovery bounds remain unchanged. No
+human checkpoint or physical-display claim is included.
+
+Privacy/retry/stop: detector, wrapper, and attempt roots are ignored mode-0700
+with mode-0600 files. Never publish origins, ports, hostnames, addresses,
+device/USB/network/process identity, credentials, fixture/frame/sensor values,
+boot session, or raw traces. Preserve the earliest primary failure; cleanup
+runs on every entered lifecycle. Campaign start consumes attempt-036; no
+attempt-037 or unchanged retry is authorized. Any preflight/identity/detector/
+build ambiguity, non-ready result, malformed evidence, failed safe stop/
+recovery/cleanup, or absent device stops with API-009 `implemented` and
+evidence withheld. OTA, erase, factory reset, power cycle, UART/BAP, USB duplex,
+pins/pads/GPIO, arbitrary settings, external pool, stress, direct controls,
+fault injection, non-205 hardware, and human display claims remain prohibited.
+
+Final verification: Clean pushed `cf663df4`, the exact package/reference, one
+protected detector, separate wrapper, and one campaign passed admission. The
+campaign stopped `hardware_blocked / command_effects`; safe stop, cleanup, and
+recovery passed without a secondary failure, all private files retained mode
+0600, and the public projection was withheld. The priority fix succeeded: the
+closed sensor diagnostic reported revision 1, `display / ready / under_500_ms`.
+
+Final completion review: The command campaign proved one pause request and its
+HTTP-generation/native-USB safe-stop quorum, then made one dismiss request and
+failed before its confirmation. Exact package identity and safety remained
+valid, and the active campaign ended well before the phase deadline. The host
+loop can immediately fail on transient WebSocket or HTTP observation loss even
+though those witnesses are independent and bounded phase deadlines remain.
+No user action contributed. Attempt-036 is consumed, attempt-037 is not
+authorized, API-009 remains `implemented`, and the task is complete and
+archived at 2026-08-15T10:20:00Z.
+
+### task-api009-transient-witness-continuity | 2026-08-15 | Tolerate bounded witness transport loss
+
+- [x] Make transient WebSocket connect/read/peer-close loss degrade to the
+      independent receive-only USB witness instead of immediately failing an
+      in-progress command effect.
+- [x] Make transient HTTP status reads wait for the existing phase deadline;
+      keep malformed successful responses, identity drift, request ambiguity,
+      missing required witnesses, and deadline expiry fail closed.
+- [x] Add deterministic regressions proving pause/dismiss progress survives
+      transient witness loss while stale/duplicate generations and missing
+      terminal proof still fail.
+- [x] Run focused and complete gates, simplify, review, archive, commit, and
+      push before any new hardware ordinal.
+
+Authorization: source, deterministic fixtures, local child processes, builds,
+and repository verification only. Protected attempt-036 may be used only to
+derive closed failure facts; never publish its identities, origins, ports,
+addresses, credentials, boot session, raw traces, or values. No detector,
+credentials, package effect, USB/device/network/HTTP session, flash, reset,
+mining, recovery, OTA, UART/BAP, pins, or attempt-037 is authorized. Stop if
+continuity would retry a command request, weaken identity/safety validation,
+accept malformed evidence, or remove the existing automated phase deadlines.
+
+Final verification: Closed/I/O WebSocket loss now clears only the incomplete
+frame and reconnects; protocol, capacity, malformed transition, and oversized
+evidence still fail closed. Unavailable HTTP reads wait within the existing
+phase deadline, while successful malformed bodies remain terminal. Command
+POSTs remain request-once. The 48 focused command-effects tests prove transient
+HTTP/WebSocket loss, pause-to-dismiss continuity, malformed inputs, duplicate
+generations, missing witnesses, recovery precedence, and deadlines. Mandatory
+Cargo, Bright Builds, real firmware build, full Bazel tests, parity with no
+validation errors, redaction, reference, and diff gates passed.
+
+Final completion review: The independent-witness policy now matches the design
+without adding retries, extending deadlines, or weakening identity, safety, or
+evidence validation. The continuity logic and tests were split into focused
+submodules to satisfy code-shape limits. No hardware effect occurred during
+this task. It is complete and archived at 2026-08-15T10:40:00Z; attempt-037
+still requires a separately committed exact-package contract.

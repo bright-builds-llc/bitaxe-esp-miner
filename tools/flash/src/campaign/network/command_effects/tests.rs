@@ -20,8 +20,10 @@ use super::{
 };
 use crate::campaign::network::command_witness::CommandTransitionWitness;
 use crate::campaign::network::model::{SharedSerialState, TrustedNetworkTarget};
+use crate::campaign::CampaignTerminalCategory;
 use crate::set_private_directory_mode;
 
+mod continuity;
 mod programmatic;
 mod replay;
 mod sample_validation;
