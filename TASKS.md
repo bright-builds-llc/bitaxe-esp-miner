@@ -3314,13 +3314,13 @@ action. See the linked `CLOSURE.md`.
 Resume-correlation attempt-024 plan:
 `docs/parity/work-plans/20260815T015842Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable single-attempt contract, then pass every
+- [x] Commit and push the immutable single-attempt contract, then pass every
       focused, mandatory, privacy, reference, firmware, selector, and
       exact-package gate at clean synchronized HEAD.
-- [ ] Run exactly one fresh detector-gated attempt-024, keep the Ultra 205
+- [x] Run exactly one fresh detector-gated attempt-024, keep the Ultra 205
       paused and safe-stopped through every unbounded operator wait, and use
       the split resume-intent/reactivation and correlated recovery protocol.
-- [ ] Promote API-009 only on the complete command/restart/device-user quorum;
+- [x] Promote API-009 only on the complete command/restart/device-user quorum;
       otherwise preserve `implemented`, the earliest typed failure, evidence
       withholding, safe stop, cleanup, and recovery, then stop without
       attempt-025.
@@ -3332,6 +3332,19 @@ gates pass. Campaign start consumes attempt-024. No inferred observation,
 protected-artifact reuse, external or owner pool, factory reset, erase,
 destructive/fault-injection action, direct UART, pin/pad/GPIO manipulation,
 attempt-025, or unchanged retry is authorized.
+
+Attempt-024 completion review: exact pushed package `a5e0a447` and one admitted
+Ultra 205 passed trusted identity, genuine notification, positive block count,
+pause plus stopped hardware, one IDENTIFY request, live rendered observation,
+natural expiry, live cleared observation, and one resume-intent confirmation.
+The next live transition exposed a distinct firmware boundary: while the
+resumable campaign was armed and hardware-ready during primary-pool
+reconnection, an unchanged stale safety observation was treated as terminal
+`safety_stale` instead of a resumable reactivation safe stop. Active recovery,
+dismissal, and restart did not run. Terminal hardware safe stop, USB cleanup,
+private modes, fixture cleanup, and result sealing pass; the public projection
+is withheld. API-009 remains `implemented`, attempt-024 is consumed, and no
+attempt-025 is authorized. See the linked `CLOSURE.md`.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 

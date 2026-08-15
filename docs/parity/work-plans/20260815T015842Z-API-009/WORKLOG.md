@@ -37,3 +37,28 @@
   attempt-024 authorization boundary. API-009 remains `implemented`.
 - Blocker or next safe action: Commit and push this checkpoint, then require
   clean synchronized HEAD before package creation or detector admission.
+
+## 2026-08-15T02:18:36Z | exact-package attempt and terminal closure
+
+- Source commit: `a5e0a447dd6eb60eb9bc444740bbea332c71a734`.
+- Actions: Built and validated the exact package, ran the fresh detector once,
+  invoked the sole attempt-024 campaign once, and consumed ready, rendered,
+  and cleared only after their matching live user inputs. No replay was used.
+- Verification: Trusted identity, genuine notification, positive block count,
+  pause, stopped hardware, one IDENTIFY request, rendered and cleared
+  observations, one resume request, and resume-intent confirmation passed. The
+  next marker closed as `safety_stale` while reactivation was armed,
+  hardware-ready, connecting the primary pool, and observing unchanged stale
+  safety prerequisites. Resume-active, dismissal, restart, and public
+  projection are absent. Terminal safe stop, USB cleanup, private modes,
+  fixture cleanup, result seal, and process cleanup pass.
+- Evidence: Closed categorical fields, booleans, counts, and bounded active
+  duration only. No origin, hostname, port, USB/network identity, credential,
+  worker, address, password, token, sensor value, or raw trace was exposed or
+  committed.
+- Outcome: API-009 remains `implemented`; attempt-024 is consumed and no retry
+  is authorized by this plan.
+- Blocker or next safe action: Close this plan, then create a fresh software-only
+  continuation that preserves the resumable lease when safety freshness lapses
+  during pre-active reactivation, while keeping active-mining safety lapses
+  terminal.
