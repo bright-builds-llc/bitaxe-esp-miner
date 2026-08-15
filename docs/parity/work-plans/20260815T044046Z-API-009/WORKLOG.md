@@ -1050,3 +1050,24 @@
   contracts. No additional hardware or control surface is authorized.
 - Stop: Campaign start consumes attempt-046. Any non-ready result withholds the
   new projection and stops without attempt-047 or an unchanged retry.
+
+## 2026-08-15T18:45:00Z | attempt-046 exact-package programmatic proof accepted
+
+- Admission: Clean synchronized pushed contract `522d5abd`, exact package,
+  opaque ignored Wi-Fi input, absent fresh roots, and one protected detector
+  admitting exactly one board-205 device passed. The post-validator initially
+  expected a JSON envelope while the current detector CLI emits colon-delimited
+  labels; the successful capture was validated in place without rerunning the
+  hardware command.
+- Result: The single campaign invocation succeeded and published the redacted
+  attempt-046 projection. One pause, dismiss, IDENTIFY, resume, and restart each
+  met their claim-specific postconditions; the restart proved reader-first
+  request-once behavior, same physical device, exact build, changed boot
+  session, ordinal N+1, service loss, software reset, recovery, and cleanup.
+- Safety/privacy: Safe stop, disabled mining and hardware control, no recovery
+  requirement, no secondary failure, protected mode-0700/mode-0600 artifacts,
+  no symlinks, and redaction independently pass. No private identity, origin,
+  port, credential, boot session, value, body, or trace was published.
+- Disposition: Attempt-046 is archived as accepted. Its exact private display
+  intent and public projection replace the pre-fix programmatic binding for the
+  outstanding independently replayable physical display UAT.
