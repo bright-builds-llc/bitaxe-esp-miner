@@ -832,3 +832,17 @@
 - Verification: Focused suites, ordered Cargo gates, Bright Builds, real
   firmware, all 45 Bazel tests, parity/progress, redaction, pinned reference,
   sensitive-output, and diff checks pass. No hardware effect occurred.
+
+## 2026-08-15T12:54:20Z | attempt-043 terminal-consumption contract drafted
+
+- Objective: Run one no-human exact-package campaign against clean pushed fix
+  `cf41ecaf`, proving the terminal lease remains consumed after the complete
+  command sequence or producing one new typed boundary for diagnosis.
+- Admission/layout: Require exact HEAD/reference package identity, opaque
+  ignored input, one protected detector, a separate protected wrapper, and
+  absent command-owned attempt/public paths.
+- Effects/privacy: Existing finite campaign, recovery, safe-stop, cleanup,
+  request-once, deadline, same-device, and redaction contracts are unchanged.
+  No physical-display claim is included.
+- Stop: Campaign start consumes attempt-043. Any non-ready result withholds
+  evidence and stops without attempt-044 or an unchanged retry.
