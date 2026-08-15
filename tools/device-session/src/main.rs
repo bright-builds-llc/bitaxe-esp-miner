@@ -1,5 +1,5 @@
-use std::fs;
 use std::time::Duration;
+use std::{env, fs};
 
 use anyhow::{Context, Result};
 use bitaxe_device_session::{
@@ -365,28 +365,47 @@ fn run_inspect_live(args: InspectLiveArgs) -> Result<TerminalCategory> {
 }
 
 fn run_display_uat(args: DisplayUatLiveArgs) -> Result<TerminalCategory> {
-    validate_private_input(&args.intent_input)?;
-    validate_private_input(&args.runtime_observation_input)?;
+    let intent_input = resolve_workspace_path(args.intent_input)?;
+    let runtime_observation_input = resolve_workspace_path(args.runtime_observation_input)?;
+    let programmatic_evidence = resolve_workspace_path(args.programmatic_evidence)?;
+    let private_root = resolve_workspace_path(args.private_root)?;
+    validate_private_input(&intent_input)?;
+    validate_private_input(&runtime_observation_input)?;
     let intent: DisplayUatIntent =
-        serde_json::from_slice(&fs::read(args.intent_input.as_std_path())?)
+        serde_json::from_slice(&fs::read(intent_input.as_std_path())?)
             .context("private display UAT intent does not match the device-session schema")?;
-    let evidence = fs::read(args.programmatic_evidence.as_std_path())
+    let evidence = fs::read(programmatic_evidence.as_std_path())
         .context("failed to read programmatic command evidence")?;
-    let runtime_observation = fs::read(args.runtime_observation_input.as_std_path())
+    let runtime_observation = fs::read(runtime_observation_input.as_std_path())
         .context("failed to read private runtime observation")?;
     // The live command owns its fresh attempt root so callers cannot race a
     // permissive or pre-populated directory into the evidence transaction.
-    create_empty_private_root(&args.private_root)?;
+    create_empty_private_root(&private_root)?;
     run_display_uat_live(
         intent,
         args.port,
         &runtime_observation,
         &evidence,
-        &args.private_root,
+        &private_root,
     )
 }
 
 fn run_display_uat_finalize(args: DisplayUatFinalizeArgs) -> Result<TerminalCategory> {
-    finalize_display_uat(&args.private_root, &args.projection_output)?;
+    let private_root = resolve_workspace_path(args.private_root)?;
+    let projection_output = resolve_workspace_path(args.projection_output)?;
+    finalize_display_uat(&private_root, &projection_output)?;
     Ok(TerminalCategory::Ready)
+}
+
+fn resolve_workspace_path(path: Utf8PathBuf) -> Result<Utf8PathBuf> {
+    if path.is_absolute() {
+        return Ok(path);
+    }
+    if let Ok(workspace) = env::var("BUILD_WORKSPACE_DIRECTORY") {
+        return Ok(Utf8PathBuf::from(workspace).join(path));
+    }
+    let current = env::current_dir().context("failed to resolve current working directory")?;
+    let current = Utf8PathBuf::from_path_buf(current)
+        .map_err(|_| anyhow::anyhow!("current working directory is not UTF-8"))?;
+    Ok(current.join(path))
 }

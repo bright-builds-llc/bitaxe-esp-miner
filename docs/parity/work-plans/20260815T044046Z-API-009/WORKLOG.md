@@ -1090,3 +1090,23 @@
 - Stop: Attempt-002 is consumed. A fresh attempt-003 requires the verified
   correction to be committed and pushed; it may reuse the accepted
   programmatic campaign without reflashing or rerunning mining.
+
+## 2026-08-15T19:20:00Z | display UAT attempt-003 stopped before effect
+
+- Result: The fresh detector and bounded runtime-origin capture passed, but the
+  machine command again returned `host_error` before creating its root or
+  receipt. No IDENTIFY request was sent and no visual observation was requested.
+- Root cause: The root-creation correction was present, but Bazel launched the
+  direct device-session CLI from a non-workspace directory. All committed UAT
+  arguments were repository-relative, while the CLI resolved them against its
+  process directory and failed while loading the first private input.
+- Correction: Display-live and display-finalize now resolve relative inputs and
+  outputs against `BUILD_WORKSPACE_DIRECTORY`, retaining absolute paths as-is
+  and using the current directory only outside Bazel. The real-child regression
+  launches from a different directory with relative arguments.
+- Reproduction: A production-shaped Bazel launch using the exact private inputs,
+  an intentionally mismatched public evidence digest, and a synthetic port now
+  creates the absent mode-0700 root and returns a typed `evidence_invalid`
+  receipt with zero IDENTIFY requests before any transport or hardware access.
+- Stop: Attempt-003 is consumed. Attempt-004 requires full gates plus a pushed
+  correction and may reuse the accepted programmatic proof without reflashing.

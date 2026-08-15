@@ -13,6 +13,7 @@ fn built_cli_creates_private_root_before_typing_missing_fresh_origin() {
     let observation_path = temporary.join("runtime-observation.log");
     let evidence_path = temporary.join("programmatic-evidence.json");
     let private_root = temporary.join("private-root");
+    let runner_directory = temporary.join("runner");
     let programmatic_evidence =
         br#"{"schema_version":"bitaxe-api-command-effects-evidence-v1","redaction_status":"passed"}"#;
     write_private_json(
@@ -39,6 +40,7 @@ fn built_cli_creates_private_root_before_typing_missing_fresh_origin() {
         fs::Permissions::from_mode(0o600),
     )
     .expect("runtime observation mode must be set");
+    fs::create_dir(runner_directory.as_std_path()).expect("runner directory must be created");
     assert!(!private_root.exists());
 
     // Act
@@ -48,14 +50,16 @@ fn built_cli_creates_private_root_before_typing_missing_fresh_origin() {
             "--port",
             "/dev/private-device",
             "--private-root",
-            private_root.as_str(),
+            "private-root",
             "--intent-input",
-            intent_path.as_str(),
+            "display-intent.json",
             "--runtime-observation-input",
-            observation_path.as_str(),
+            "runtime-observation.log",
             "--programmatic-evidence",
-            evidence_path.as_str(),
+            "programmatic-evidence.json",
         ])
+        .current_dir(runner_directory.as_std_path())
+        .env("BUILD_WORKSPACE_DIRECTORY", temporary.as_str())
         .output()
         .expect("device-session CLI must launch");
 

@@ -3995,6 +3995,12 @@ sweep without exposing sensor values, followed by a verified root-cause change.
 - [x] Make `display-uat-live` create its own fresh mode-0700 root atomically and
       add a real-child regression proving an absent root reaches typed
       pre-effect admission with a mode-0600 receipt.
+- [x] Consume attempt-003 as a second pre-effect host failure: Bazel launched
+      the CLI outside the workspace while relative inputs remained unresolved,
+      so no root, receipt, IDENTIFY request, or observation occurred.
+- [x] Resolve display-live and finalize paths against Bazel's trusted workspace
+      directory and prove the exact relative-path launch shape reaches a typed
+      zero-request receipt from a different process working directory.
 - [ ] Wait without a deadline for the user to say they are watching; then run
       one fresh protected detector, one bounded receive-only origin capture, and
       one bounded `api-command-display-uat` machine pass against the exact
@@ -4011,7 +4017,7 @@ Exact command and effects: after fresh `just detect-ultra205` admission, run
 one bounded `just monitor --board 205 --port <detector-port>
 --capture-timeout-seconds 20` capture into a new mode-0600 private file, then
 `just api-command-display-uat --port <detector-port> --private-root
-scratch/api009-display-uat/attempt-003 --intent-input
+scratch/api009-display-uat/attempt-004 --intent-input
 scratch/api009-command-effects/attempt-046/display-uat-intent.private.json
 --runtime-observation-input <private-monitor-file> --programmatic-evidence
 docs/parity/evidence/api009-command-effects/command-effects-projection-attempt-046.json`.
@@ -4050,8 +4056,11 @@ only policy-compliant origin refresh expired after six minutes. Attempt-046 now
 supplies the exact-package replacement programmatic proof after both durable
 replay and asynchronous pause-join corrections. Attempt-002 then exposed a
 fresh-root ownership mismatch before any IDENTIFY effect; the live CLI now owns
-atomic private-root creation and the real-child absent-root regression passes.
-Software still cannot prove that SSD1306 pixels were physically illuminated.
+atomic private-root creation. Attempt-003 exposed unresolved Bazel-relative
+paths before any effect; live and finalize now resolve them against the trusted
+workspace directory, and the production-shaped synthetic reproduction reaches
+a typed zero-request receipt. Software still cannot prove that SSD1306 pixels
+were physically illuminated.
 
 ## Future
 
