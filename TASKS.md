@@ -3714,12 +3714,18 @@ Marker-observation software continuation:
       deterministic real-child tests at the production evidence seam.
 - [x] Implement one strict shared payload parser and a bounded replayable or
       reader-armed ordered marker witness without weakening the quorum.
-- [ ] Pass focused and complete software gates, commit and push, and close with
+- [x] Pass focused and complete software gates, commit and push, and close with
       THR-001 still `implemented` and no attempt-006 authority.
 
 Authorization: this continuation is software-only. No package, detector, USB,
 serial, HTTP, device, NVS, sensor, control, reset, OTA, erase, or hardware
 effect is authorized.
+
+Closure: The production marker envelope and late-attachment replay defects are
+fixed and pushed at `6f637e87`; all required gates passed without hardware.
+THR-001 remains `implemented`, attempt-005 remains consumed, and this plan does
+not authorize attempt-006. See
+`docs/parity/work-plans/20260815T185700Z-THR-001/CLOSURE.md`.
 
 ### task-parity-ui004-live-browser-attempt-001 | 2026-08-13 | Verify exact-package AxeOS browser workflows
 
