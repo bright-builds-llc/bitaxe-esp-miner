@@ -3755,6 +3755,20 @@ protected modes, and withholding passed. THR-001 remains `implemented`;
 attempt-006 is consumed and attempt-007 is not authorized. See
 `docs/parity/work-plans/20260815T192115Z-THR-001/CLOSURE.md`.
 
+Replay-origin software continuation:
+`docs/parity/work-plans/20260815T195949Z-THR-001/PLAN.md`.
+
+- [ ] Reproduce the exact direct/replay producer-tag mismatch through the real-
+      child late-attachment seam.
+- [ ] Implement and prove a closed canonical replay-origin contract without
+      admitting arbitrary tags or weakening marker order.
+- [ ] Pass focused and complete software gates, commit and push, and close with
+      THR-001 still `implemented` and no attempt-007 authority.
+
+Authorization: this continuation is software-only. No package, detector, USB,
+serial, HTTP, device, NVS, sensor, control, reset, OTA, erase, or hardware
+effect is authorized.
+
 ### task-parity-ui004-live-browser-attempt-001 | 2026-08-13 | Verify exact-package AxeOS browser workflows
 
 - [x] Add a typed private-first evidence join and independent validator for the
