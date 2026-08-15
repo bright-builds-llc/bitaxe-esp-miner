@@ -138,7 +138,7 @@ fn command_effects_do_not_inherit_soak_window_requirements() {
     let effects = CommandEffectsEvidence::new();
 
     // Act
-    let evidence = CampaignNetworkEvidence::from_command_effects(effects, 0, None);
+    let evidence = CampaignNetworkEvidence::from_command_effects(effects, 0, None, None);
 
     // Assert
     assert_eq!(evidence.required_window_count, 0);

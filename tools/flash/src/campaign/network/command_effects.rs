@@ -2,8 +2,8 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use bitaxe_api::{
-    CommandStatusWire, DisplayFrameKind, DisplayRenderOutcome, SystemInfoWire,
-    COMMAND_STATUS_SCHEMA, IDENTIFY_DURATION_MS,
+    DisplayFrameKind, DisplayRenderOutcome, SystemInfoWire, COMMAND_STATUS_SCHEMA,
+    IDENTIFY_DURATION_MS,
 };
 use bitaxe_http_transport::{ExchangeObservation, PlainWebSocket, StrictHttpClient};
 use camino::Utf8Path;
@@ -11,8 +11,10 @@ use camino::Utf8Path;
 use super::super::CampaignTerminalCategory;
 use super::command_evidence::CommandEffectsEvidence;
 use super::command_witness::CommandTransitionWitness;
-use super::model::{CampaignNetworkEvidence, SharedSerialState, TrustedNetworkTarget};
-use super::serial::observe_command_transition_lines;
+use super::model::{
+    CampaignNetworkEvidence, CommandFailureCause, CommandFailureDiagnostic, SharedSerialState,
+    TrustedNetworkTarget,
+};
 use super::validation::{
     active_mining_state_valid, validate_identity, validate_identity_and_safety,
 };
@@ -20,6 +22,8 @@ use crate::write_private_new_bytes;
 
 mod pause_join;
 use pause_join::{PauseJoinDecision, PauseJoinState};
+mod failure_diagnostic;
+use failure_diagnostic::record_command_failure;
 mod programmatic;
 use programmatic::advance_programmatic_commands;
 #[cfg(test)]
@@ -34,6 +38,8 @@ mod recovery_join;
 use recovery_join::{RecoveryJoinDecision, RecoveryPauseJoinState};
 mod witness_continuity;
 use witness_continuity::consume_optional_websocket_read;
+mod status_reads;
+use status_reads::{fetch_command_status, fetch_system_info};
 mod identify;
 #[cfg(test)]
 use identify::{
@@ -119,6 +125,7 @@ pub(super) fn observe_command_effects(
     };
     let mut evidence = CommandEffectsEvidence::new();
     let mut maybe_failure = None;
+    let mut maybe_failure_diagnostic = None;
     let mut phase = CommandPhase::Notification;
     let mut maybe_block_count = None;
     let mut maybe_terminal_deadline = None;
@@ -133,18 +140,38 @@ pub(super) fn observe_command_effects(
     loop {
         let now = Instant::now();
         let serial = shared_snapshot(&shared);
-        if maybe_failure.is_none() {
-            maybe_failure = serial.maybe_failure;
+        if let Some(category) = serial.maybe_failure {
+            record_command_failure(
+                &mut maybe_failure,
+                &mut maybe_failure_diagnostic,
+                phase,
+                CommandFailureCause::SerialWitness,
+                category,
+            );
         }
         evidence.terminal_pool_persisted = serial.terminal_pool_persisted;
         if serial.terminal_consumed && maybe_terminal_deadline.is_none() {
             maybe_terminal_deadline = Some(Instant::now() + TERMINAL_DEADLINE);
         }
         if matches!(phase, CommandPhase::ProgrammaticPause(join) if join.expired(Instant::now())) {
-            maybe_failure.get_or_insert(CampaignTerminalCategory::NetworkCorrelationFailed);
+            record_command_failure(
+                &mut maybe_failure,
+                &mut maybe_failure_diagnostic,
+                phase,
+                CommandFailureCause::PhaseDeadline,
+                CampaignTerminalCategory::NetworkCorrelationFailed,
+            );
         }
         if maybe_failure.is_none() {
-            maybe_failure = automated_phase_failure(phase, phase_started_at, now);
+            if let Some(category) = automated_phase_failure(phase, phase_started_at, now) {
+                record_command_failure(
+                    &mut maybe_failure,
+                    &mut maybe_failure_diagnostic,
+                    phase,
+                    CommandFailureCause::PhaseDeadline,
+                    category,
+                );
+            }
         }
 
         if maybe_failure.is_none() {
@@ -173,19 +200,33 @@ pub(super) fn observe_command_effects(
                         maybe_log_websocket = None;
                     }
                     Err(()) => {
-                        maybe_failure = Some(CampaignTerminalCategory::NetworkCorrelationFailed)
+                        record_command_failure(
+                            &mut maybe_failure,
+                            &mut maybe_failure_diagnostic,
+                            phase,
+                            CommandFailureCause::WebsocketWitness,
+                            CampaignTerminalCategory::NetworkCorrelationFailed,
+                        );
                     }
                 }
             }
         }
 
         if maybe_failure.is_none() {
-            match (fetch_system_info(&http), fetch_command_status(&http)) {
+            let system_info = fetch_system_info(&http);
+            let command_status = fetch_command_status(&http);
+            match (system_info, command_status) {
                 (Ok(Some(sample)), Ok(Some(status))) => {
                     if validate_command_sample(phase, &sample, &target).is_err() {
                         evidence.same_boot_and_package = false;
                         evidence.safety_valid = false;
-                        maybe_failure = Some(CampaignTerminalCategory::NetworkCorrelationFailed);
+                        record_command_failure(
+                            &mut maybe_failure,
+                            &mut maybe_failure_diagnostic,
+                            phase,
+                            CommandFailureCause::HttpSampleValidation,
+                            CampaignTerminalCategory::NetworkCorrelationFailed,
+                        );
                     } else {
                         let prior_phase = phase;
                         advance_programmatic_commands(
@@ -206,6 +247,12 @@ pub(super) fn observe_command_effects(
                                 maybe_failure: &mut maybe_failure,
                             },
                         );
+                        if maybe_failure.is_some() && maybe_failure_diagnostic.is_none() {
+                            maybe_failure_diagnostic = Some(CommandFailureDiagnostic::new(
+                                prior_phase.diagnostic_phase(),
+                                CommandFailureCause::CommandStateMachine,
+                            ));
+                        }
                         if phase != prior_phase {
                             phase_started_at = now;
                         }
@@ -219,8 +266,21 @@ pub(super) fn observe_command_effects(
                         }
                     }
                 }
+                (Err(category), _) => record_command_failure(
+                    &mut maybe_failure,
+                    &mut maybe_failure_diagnostic,
+                    phase,
+                    CommandFailureCause::HttpSystemInfo,
+                    category,
+                ),
+                (_, Err(category)) => record_command_failure(
+                    &mut maybe_failure,
+                    &mut maybe_failure_diagnostic,
+                    phase,
+                    CommandFailureCause::HttpCommandStatus,
+                    category,
+                ),
                 (Ok(None), _) | (_, Ok(None)) => {}
-                (Err(category), _) | (_, Err(category)) => maybe_failure = Some(category),
             }
         }
         if take_recovery_pause_request(maybe_failure, &mut recovery_pause_request_count) {
@@ -290,12 +350,24 @@ pub(super) fn observe_command_effects(
             break;
         }
         if maybe_terminal_deadline.is_some_and(|deadline| Instant::now() >= deadline) {
-            maybe_failure.get_or_insert(CampaignTerminalCategory::TerminalStateUnconfirmed);
+            record_command_failure(
+                &mut maybe_failure,
+                &mut maybe_failure_diagnostic,
+                phase,
+                CommandFailureCause::TerminalDeadline,
+                CampaignTerminalCategory::TerminalStateUnconfirmed,
+            );
             break;
         }
         if serial.serial_finished {
             if !serial.terminal_consumed {
-                maybe_failure.get_or_insert(CampaignTerminalCategory::TerminalStateUnconfirmed);
+                record_command_failure(
+                    &mut maybe_failure,
+                    &mut maybe_failure_diagnostic,
+                    phase,
+                    CommandFailureCause::SerialEnded,
+                    CampaignTerminalCategory::TerminalStateUnconfirmed,
+                );
             }
             break;
         }
@@ -310,6 +382,7 @@ pub(super) fn observe_command_effects(
         evidence,
         recovery_pause_request_count,
         maybe_failure,
+        maybe_failure_diagnostic,
     )
 }
 
@@ -428,67 +501,6 @@ fn write_reboot_intent(
         &root.join("command-effects-reboot-intent.private.json"),
         &bytes,
     )
-}
-
-fn fetch_system_info(
-    http: &StrictHttpClient,
-) -> Result<Option<SystemInfoWire>, CampaignTerminalCategory> {
-    // A lost read cannot prove or disprove a command effect. Keep waiting
-    // within the phase deadline; a successful malformed response remains an
-    // explicit correlation failure below.
-    let Ok(observation) = http.get_system_info(Instant::now() + HTTP_DEADLINE) else {
-        return Ok(None);
-    };
-    let Some(response) = observation
-        .maybe_http_response()
-        .filter(|response| response.status() == 200)
-    else {
-        return Ok(None);
-    };
-    serde_json::from_slice(response.body())
-        .map(Some)
-        .map_err(|_| CampaignTerminalCategory::NetworkCorrelationFailed)
-}
-
-fn fetch_command_status(
-    http: &StrictHttpClient,
-) -> Result<Option<CommandStatusWire>, CampaignTerminalCategory> {
-    let Ok(observation) = http.get_command_status(Instant::now() + HTTP_DEADLINE) else {
-        return Ok(None);
-    };
-    let Some(response) = observation
-        .maybe_http_response()
-        .filter(|response| response.status() == 200)
-    else {
-        return Ok(None);
-    };
-    serde_json::from_slice(response.body())
-        .map(Some)
-        .map_err(|_| CampaignTerminalCategory::NetworkCorrelationFailed)
-}
-
-pub(super) fn observe_websocket_transitions(
-    bytes: &[u8],
-    expected_session: &str,
-    pending: &mut Vec<u8>,
-    witness: &mut CommandTransitionWitness,
-) -> Result<(), ()> {
-    const MAX_PENDING_BYTES: usize = 65_536;
-    pending.extend_from_slice(bytes);
-    while let Some(newline) = pending.iter().position(|byte| *byte == b'\n') {
-        let line = pending.drain(..=newline).collect::<Vec<_>>();
-        if line
-            .windows(b"command_status_transition ".len())
-            .any(|window| window == b"command_status_transition ")
-            && !observe_command_transition_lines(&line, expected_session, witness)
-        {
-            return Err(());
-        }
-    }
-    if pending.len() > MAX_PENDING_BYTES {
-        return Err(());
-    }
-    Ok(())
 }
 
 fn post_succeeded(result: anyhow::Result<ExchangeObservation>) -> bool {

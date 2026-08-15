@@ -567,3 +567,33 @@
   checkpoint or physical display claim is included.
 - Stop: Campaign start consumes attempt-037. Any non-ready result withholds
   evidence and stops without attempt-038 or an unchanged retry.
+
+## 2026-08-15T11:08:00Z | attempt-037 requires causal command diagnostic
+
+- Admission: The detector succeeded once; a local post-check expected obsolete
+  `port=` syntax instead of current `port: ` output and was corrected without a
+  second detector or any campaign-root collision.
+- Result: One campaign stopped `hardware_blocked / command_effects`; safe stop,
+  cleanup, and recovery passed, no secondary failure remained, and evidence
+  was withheld. Identity, safety, package, and the ready sensor diagnostic held.
+- Command boundary: One pause request was issued, but pause confirmation did
+  not complete before the early `network_correlation_failed` result.
+- Blocker: The coarse category cannot distinguish serial, phase deadline,
+  WebSocket, HTTP parsing, identity/safety, state-machine, terminal, or quorum
+  causes. Another live retry would not be actionable.
+- Disposition: Attempt-037 is consumed. A software-only first-failure diagnostic
+  is required before any attempt-038.
+
+## 2026-08-15T11:30:00Z | causal command diagnostic verified
+
+- Contract: Private campaign evidence and public failure output now carry only
+  `mining-command-failure-diagnostic-v1`, a closed command phase, and a closed
+  cause. No identity, origin, port, address, value, or trace is included.
+- Precedence: The first failure wins and recovery cannot replace it. Missing
+  final command proof closes explicitly as `terminal / quorum_incomplete`.
+- Coverage: Rust types enumerate every phase/cause; focused Rust and host tests
+  cover serialization, malformed input, transport boundaries, redaction, and
+  primary-failure precedence. Full Cargo, Bright Builds, firmware, Bazel,
+  parity, redaction, reference, and diff gates pass.
+- Disposition: The diagnostic boundary is ready to publish. A separately
+  committed attempt-038 contract may run exactly one live campaign.

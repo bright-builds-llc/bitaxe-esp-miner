@@ -34,6 +34,7 @@ impl CampaignNetworkEvidence {
             terminal_websocket_valid: true,
             terminal_pool_persisted: true,
             command_effects: None,
+            command_failure: None,
             maybe_failure: None,
         }
     }
@@ -76,6 +77,7 @@ impl CampaignNetworkEvidence {
                 terminal_pool_persisted: true,
             },
             0,
+            None,
             None,
         )
     }

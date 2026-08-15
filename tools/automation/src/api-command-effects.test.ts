@@ -5,16 +5,12 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import {
-  ApiCommandEffectsError,
-  captureApiCommandEffects,
-  type ApiCommandEffectsOptions,
-} from "./api-command-effects.js";
+import { ApiCommandEffectsError, captureApiCommandEffects, type ApiCommandEffectsOptions } from "./api-command-effects.js";
 import { createFakeProcessPort, type ProcessOutcome } from "./process.js";
 
 const discardCheckpoint = () => undefined;
 const ok = (stdout = ""): ProcessOutcome => ({ exitCode: 0, stdout, stderr: "", timedOut: false });
-
+const commandFailureDiagnostic = { schema: "mining-command-failure-diagnostic-v1", phase: "pause", cause: "command_state_machine" } as const;
 const readySession = {
   schema_version: "esp-device-session-v1",
   terminal_category: "ready",
@@ -270,6 +266,7 @@ function fakePort(
       await privateJson(path.join(campaign, "campaign-network.private.json"), {
         status: campaignFails ? "failed" : "accepted",
         recovery_pause_request_count: campaignFails ? 1 : 0,
+        ...(campaignFails ? { command_failure: commandFailureDiagnostic } : {}),
         command_effects: campaignFails
           ? {
             ...commandEffects,
@@ -462,6 +459,7 @@ test("campaign failure keeps its primary category and reports secondary recovery
     cleanup_complete: true,
     recovery_attempted: true,
     secondary_recovery_failure: false,
+    command_failure: commandFailureDiagnostic,
   });
   await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
 });

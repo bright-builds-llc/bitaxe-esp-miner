@@ -11,8 +11,7 @@ import type { ProcessLifetime, ProcessOutcome, ProcessPort } from "./process.js"
 import {
   campaignFailureFactsFromDocuments,
   parseOperatorSensorDiagnostic,
-  type CampaignFailureFacts,
-  type OperatorSensorDiagnostic,
+  type CampaignFailureFacts, type CommandFailureDiagnostic, type OperatorSensorDiagnostic,
 } from "./operator-sensor-diagnostic.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
@@ -50,7 +49,7 @@ function failure(
     recoveryAttempted: false,
     secondaryRecoveryFailure: false,
   },
-  maybeOperatorSensor?: OperatorSensorDiagnostic,
+  maybeOperatorSensor?: OperatorSensorDiagnostic, maybeCommandFailure?: CommandFailureDiagnostic,
 ): ApiCommandEffectsError {
   return new ApiCommandEffectsError(category, message, {
     stage: "command_effects",
@@ -59,6 +58,7 @@ function failure(
     recovery_attempted: recovery.recoveryAttempted,
     secondary_recovery_failure: recovery.secondaryRecoveryFailure,
     ...(maybeOperatorSensor === undefined ? {} : { operator_sensor: maybeOperatorSensor }),
+    ...(maybeCommandFailure === undefined ? {} : { command_failure: maybeCommandFailure }),
   });
 }
 
@@ -278,6 +278,7 @@ function validatedCommandEffects(network: JsonObject): JsonObject {
   ];
   if (
     effects["schema"] !== "mining-campaign-command-effects-v8"
+    || (network["command_failure"] !== undefined && network["command_failure"] !== null)
     || effects["identify_terminal_outcome"] !== "none"
     || effects["recovery_terminal_outcome"] !== "not_required"
     || effects["recovery_pause_api_confirmed"] !== false
@@ -293,7 +294,6 @@ function validatedCommandEffects(network: JsonObject): JsonObject {
   }
   return effects;
 }
-
 function validReadyFlashDiagnostic(value: unknown): boolean {
   const diagnostic = object(value, "flash command diagnostic");
   const stdoutBytes = diagnostic["stdout_bytes"];
@@ -497,7 +497,7 @@ export async function captureApiCommandEffects(
         "timeout",
         "command effects campaign timed out",
         facts.recovery,
-        facts.maybeOperatorSensor,
+        facts.maybeOperatorSensor, facts.maybeCommandFailure,
       );
     }
     if (maybeCampaignOutcome.exitCode !== 0) {
@@ -506,7 +506,7 @@ export async function captureApiCommandEffects(
         "hardware_blocked",
         "command effects campaign failed",
         facts.recovery,
-        facts.maybeOperatorSensor,
+        facts.maybeOperatorSensor, facts.maybeCommandFailure,
       );
     }
   } catch (error) {

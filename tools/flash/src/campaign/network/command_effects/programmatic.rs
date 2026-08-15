@@ -1,4 +1,5 @@
 use super::*;
+use bitaxe_api::CommandStatusWire;
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn advance_programmatic_commands(

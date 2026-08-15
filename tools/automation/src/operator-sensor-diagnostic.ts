@@ -13,6 +13,15 @@ export type OperatorSensorDiagnostic = Readonly<{
   duration_bucket: "under_100_ms" | "under_250_ms" | "under_500_ms" | "under_1000_ms" | "at_least_1000_ms";
 }>;
 
+export type CommandFailureDiagnostic = Readonly<{
+  schema: "mining-command-failure-diagnostic-v1";
+  phase: "notification" | "pause" | "dismiss" | "identify_start" | "identify_rendered"
+    | "identify_cleared" | "resume_intent" | "resume_active" | "terminal";
+  cause: "serial_witness" | "phase_deadline" | "websocket_witness" | "http_system_info"
+    | "http_command_status" | "http_sample_validation" | "command_state_machine"
+    | "terminal_deadline" | "serial_ended" | "quorum_incomplete";
+}>;
+
 const STAGES = new Set([
   "power", "asic_temperature", "tachometer", "core_voltage", "display", "actuation",
 ]);
@@ -21,6 +30,15 @@ const OUTCOMES = new Set([
 ]);
 const DURATION_BUCKETS = new Set([
   "under_100_ms", "under_250_ms", "under_500_ms", "under_1000_ms", "at_least_1000_ms",
+]);
+const COMMAND_PHASES = new Set([
+  "notification", "pause", "dismiss", "identify_start", "identify_rendered",
+  "identify_cleared", "resume_intent", "resume_active", "terminal",
+]);
+const COMMAND_FAILURE_CAUSES = new Set([
+  "serial_witness", "phase_deadline", "websocket_witness", "http_system_info",
+  "http_command_status", "http_sample_validation", "command_state_machine",
+  "terminal_deadline", "serial_ended", "quorum_incomplete",
 ]);
 
 function object(value: unknown): JsonObject {
@@ -77,9 +95,31 @@ export function parseOperatorSensorDiagnostic(value: unknown): OperatorSensorDia
   };
 }
 
+export function parseCommandFailureDiagnostic(value: unknown): CommandFailureDiagnostic | undefined {
+  if (value === null || value === undefined) return undefined;
+  const diagnostic = object(value);
+  const phase = diagnostic["phase"];
+  const cause = diagnostic["cause"];
+  if (
+    diagnostic["schema"] !== "mining-command-failure-diagnostic-v1"
+    || typeof phase !== "string"
+    || !COMMAND_PHASES.has(phase)
+    || typeof cause !== "string"
+    || !COMMAND_FAILURE_CAUSES.has(cause)
+  ) {
+    throw new Error("command failure diagnostic is invalid");
+  }
+  return {
+    schema: "mining-command-failure-diagnostic-v1",
+    phase: phase as CommandFailureDiagnostic["phase"],
+    cause: cause as CommandFailureDiagnostic["cause"],
+  };
+}
+
 export type CampaignFailureFacts = Readonly<{
   recovery: RecoveryFacts;
   maybeOperatorSensor?: OperatorSensorDiagnostic;
+  maybeCommandFailure?: CommandFailureDiagnostic;
 }>;
 
 export function campaignFailureFactsFromDocuments(
@@ -91,6 +131,12 @@ export function campaignFailureFactsFromDocuments(
     maybeOperatorSensor = parseOperatorSensorDiagnostic(result["operator_sensor"]);
   } catch {
     // A malformed optional diagnostic cannot erase independently closed recovery facts.
+  }
+  let maybeCommandFailure: CommandFailureDiagnostic | undefined;
+  try {
+    maybeCommandFailure = parseCommandFailureDiagnostic(network["command_failure"]);
+  } catch {
+    // A malformed optional diagnostic cannot erase independently closed facts.
   }
   let recovery: RecoveryFacts;
   try {
@@ -106,5 +152,6 @@ export function campaignFailureFactsFromDocuments(
   return {
     recovery,
     ...(maybeOperatorSensor === undefined ? {} : { maybeOperatorSensor }),
+    ...(maybeCommandFailure === undefined ? {} : { maybeCommandFailure }),
   };
 }

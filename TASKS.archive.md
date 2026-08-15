@@ -7599,3 +7599,94 @@ evidence validation. The continuity logic and tests were split into focused
 submodules to satisfy code-shape limits. No hardware effect occurred during
 this task. It is complete and archived at 2026-08-15T10:40:00Z; attempt-037
 still requires a separately committed exact-package contract.
+
+### task-api009-programmatic-pilot-attempt-037 | 2026-08-15 | Verify independent witness continuity
+
+- [x] Require clean synchronized pushed `223b7990`, opaque non-empty ignored
+      Wi-Fi input, exact HEAD/reference package identity, and absent detector,
+      wrapper, command-owned attempt, and public-projection paths.
+- [x] Run `just package`; create protected `detector-037`; run exactly one
+      `just detect-ultra205`; require its zero exit, private modes, and one
+      admitted board-205 device.
+- [x] Create separate protected `wrapper-037`, keep `attempt-037` absent, and
+      invoke exactly once the existing 600-second `just
+      api-command-effects-campaign` with the exact package, opaque input,
+      detector output, attempt root, and public projection.
+- [x] Publish only a ready independently validated redacted projection;
+      otherwise withhold it and record the earliest typed category, command
+      progress, closed sensor diagnostic, and recovery booleans.
+
+Effects: one exact-package flash/reset, private Wi-Fi/local-fixture seed,
+conservative initialization/mining for at most 600 active seconds, one each
+pause/dismiss/IDENTIFY/resume/software restart, HTTP/WebSocket/receive-only USB
+observation, same-device recovery, safe stop, child termination, and USB
+cleanup. Active freshness and automated/recovery bounds remain unchanged. No
+human checkpoint or physical-display claim is included.
+
+Privacy/retry/stop: detector, wrapper, and attempt roots are ignored mode-0700
+with mode-0600 files. Never publish origins, ports, hostnames, addresses,
+device/USB/network/process identity, credentials, fixture/frame/sensor values,
+boot session, or raw traces. Preserve the earliest primary failure; cleanup
+runs on every entered lifecycle. Campaign start consumes attempt-037; no
+attempt-038 or unchanged retry is authorized. Any preflight/identity/detector/
+build ambiguity, non-ready result, malformed evidence, failed safe stop/
+recovery/cleanup, or absent device stops with API-009 `implemented` and
+evidence withheld. OTA, erase, factory reset, power cycle, UART/BAP, USB duplex,
+pins/pads/GPIO, arbitrary settings, external pool, stress, direct controls,
+fault injection, non-205 hardware, and human display claims remain prohibited.
+
+Final verification: Clean pushed `f2bc0625`, exact package/reference identity,
+one detector, separate wrapper, and one campaign passed admission. The local
+post-detector check expected obsolete `port=` syntax after the current detector
+had already succeeded with `port: ` and `usb_session: ready`; it was corrected
+without rerunning detection. The campaign stopped `hardware_blocked /
+command_effects`; safe stop, cleanup, and recovery passed, no secondary failure
+remained, private modes held, and public evidence was withheld. The sensor
+diagnostic remained `display / ready / under_500_ms` at revision 1.
+
+Final completion review: Exact package identity and safety remained valid. The
+campaign made one pause request but stopped before pause confirmation after
+roughly eight active seconds. The current `network_correlation_failed` label
+cannot distinguish serial, deadline, WebSocket, HTTP, status identity, sample
+validation, or state-machine causes. No user action contributed. Attempt-037
+is consumed, attempt-038 is not authorized, API-009 remains `implemented`, and
+the task is complete and archived at 2026-08-15T11:08:00Z.
+
+### task-api009-command-failure-diagnostic | 2026-08-15 | Identify the exact command observer failure
+
+- [x] Add a redaction-safe first-failure diagnostic with closed command phase
+      and cause vocabularies to private campaign evidence and public failure
+      output.
+- [x] Preserve the first diagnostic through recovery and distinguish serial,
+      deadline, WebSocket, HTTP parsing, identity/safety, state-machine,
+      terminal, and incomplete-quorum failures.
+- [x] Add deterministic regressions for every cause, malformed diagnostics,
+      public redaction, and primary-failure precedence.
+- [x] Run focused and complete gates, simplify, review, archive, commit, and
+      push before any new hardware ordinal.
+
+Authorization: source, deterministic fixtures, local child processes, builds,
+and repository verification only. Protected attempt-037 may be used only for
+the closed facts already recorded; never publish its identities, origins,
+ports, addresses, credentials, boot session, raw traces, or values. No
+detector, credentials, package effect, USB/device/network/HTTP session, flash,
+reset, mining, recovery, OTA, UART/BAP, pins, or attempt-038 is authorized.
+Stop if the diagnostic needs raw data or could replace an earlier failure.
+
+Final verification: Campaign evidence now carries optional
+`mining-command-failure-diagnostic-v1` with Rust-enforced phase and cause enums.
+The observer records only the first cause, recovery cannot replace it, and an
+otherwise incomplete command quorum closes as `terminal / quorum_incomplete`.
+The host validates the same closed vocabularies and publishes only schema,
+phase, and cause. Fifty focused Rust tests and three focused host tests cover
+every enum label, transport/malformed boundaries, first-failure precedence,
+malformed optional diagnostics, recovery preservation, and absence of private
+values. Mandatory Cargo, Bright Builds, real firmware, full Bazel, parity with
+no validation errors, redaction, reference, and diff gates passed.
+
+Final completion review: Diagnostic ownership is split into focused failure,
+HTTP-read, WebSocket-witness, and model modules. No command behavior, request
+count, safety rule, identity check, deadline, or recovery behavior changed.
+No hardware effect occurred during this task. It is complete and archived at
+2026-08-15T11:30:00Z; attempt-038 still requires a separate exact-package
+contract.

@@ -13,6 +13,11 @@ use super::validation::{
     validate_sample, watchdog_valid, window_index, SampleValidationFailure,
 };
 
+mod command_failure;
+pub(in crate::campaign) use command_failure::{
+    CommandFailureCause, CommandFailureDiagnostic, CommandFailurePhase,
+};
+
 pub(super) const REQUIRED_WINDOWS: usize = 20;
 pub(super) const WINDOW_MILLIS: u64 = 30_000;
 pub(super) const MAX_ACTIVE_MARKER_GAP_MILLIS: u64 = 5_000;
@@ -162,6 +167,7 @@ pub(crate) struct CampaignNetworkEvidence {
     pub(in crate::campaign) terminal_websocket_valid: bool,
     pub(in crate::campaign) terminal_pool_persisted: bool,
     pub(in crate::campaign) command_effects: Option<CommandEffectsEvidence>,
+    pub(in crate::campaign) command_failure: Option<CommandFailureDiagnostic>,
     #[serde(skip)]
     pub(in crate::campaign) maybe_failure: Option<CampaignTerminalCategory>,
 }
@@ -221,6 +227,7 @@ impl CampaignNetworkEvidence {
             terminal_websocket_valid: false,
             terminal_pool_persisted: false,
             command_effects: None,
+            command_failure: None,
             maybe_failure,
         }
     }
@@ -229,6 +236,7 @@ impl CampaignNetworkEvidence {
         evidence: CommandEffectsEvidence,
         recovery_pause_request_count: u64,
         maybe_failure: Option<CampaignTerminalCategory>,
+        maybe_command_failure: Option<CommandFailureDiagnostic>,
     ) -> Self {
         // Command-effects has its own request/observation quorum. The shared
         // soak-window fields must stay explicitly non-applicable so a failed
@@ -252,6 +260,12 @@ impl CampaignNetworkEvidence {
             terminal_http_valid: evidence.terminal_http_valid,
             terminal_pool_persisted: evidence.terminal_pool_persisted,
             command_effects: Some(evidence),
+            command_failure: maybe_command_failure.or_else(|| {
+                (!complete).then_some(CommandFailureDiagnostic::new(
+                    CommandFailurePhase::Terminal,
+                    CommandFailureCause::QuorumIncomplete,
+                ))
+            }),
             maybe_failure,
             ..Self::empty(status, maybe_failure)
         }
@@ -513,6 +527,7 @@ impl NetworkAccumulator {
             terminal_websocket_valid: self.terminal_websocket_valid,
             terminal_pool_persisted: serial.terminal_pool_persisted,
             command_effects: None,
+            command_failure: None,
             maybe_failure: self.maybe_failure,
         }
     }
