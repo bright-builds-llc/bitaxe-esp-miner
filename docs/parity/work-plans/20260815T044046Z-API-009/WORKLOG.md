@@ -1034,3 +1034,19 @@
   isolated retry and did not correspond to a parity assertion failure.
 - Next gate: Publish the correction before creating a separate attempt-046
   contract. No hardware effect is authorized by the software-fix task.
+
+## 2026-08-15T18:20:00Z | attempt-046 exact-package refresh contract drafted
+
+- Published prerequisite: The asynchronous pause-join correction and complete
+  software verification were pushed as `dcb01c58` before this contract was
+  created.
+- Admission/layout: Require a clean pushed contract HEAD, exact HEAD/reference
+  package, opaque ignored Wi-Fi input, one protected detector, separate
+  protected wrapper, absent command-owned attempt root, and a new projection
+  path preserving attempts 044 and the withheld 045 path.
+- Effects/privacy: Retain the established single exact-package flash, bounded
+  conservative mining, pause/dismiss/IDENTIFY/resume/restart, same-device
+  recovery, safe-stop, cleanup, finite deadlines, and aggregate-only redaction
+  contracts. No additional hardware or control surface is authorized.
+- Stop: Campaign start consumes attempt-046. Any non-ready result withholds the
+  new projection and stops without attempt-047 or an unchanged retry.
