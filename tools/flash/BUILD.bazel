@@ -77,6 +77,7 @@ rust_binary(
         "src/campaign/network/command_effects/witness_continuity.rs",
         "src/campaign/network/command_effects/tests.rs",
         "src/campaign/network/command_effects/tests/continuity.rs",
+        "src/campaign/network/command_effects/tests/pause_join.rs",
         "src/campaign/network/command_effects/tests/programmatic.rs",
         "src/campaign/network/command_effects/tests/replay.rs",
         "src/campaign/network/command_effects/tests/sample_validation.rs",

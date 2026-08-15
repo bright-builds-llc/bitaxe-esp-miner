@@ -26,6 +26,7 @@ use crate::campaign::CampaignTerminalCategory;
 use crate::set_private_directory_mode;
 
 mod continuity;
+mod pause_join;
 mod programmatic;
 mod replay;
 mod sample_validation;

@@ -13,6 +13,7 @@ pub(super) enum PauseJoinDecision {
 pub(super) struct PauseJoinState {
     deadline: Instant,
     logical_pause_confirmed: bool,
+    serial_safe_stop_confirmed: bool,
 }
 
 impl PauseJoinState {
@@ -20,6 +21,7 @@ impl PauseJoinState {
         Self {
             deadline: now + SAFE_STOP_DEADLINE,
             logical_pause_confirmed: false,
+            serial_safe_stop_confirmed: false,
         }
     }
 
@@ -34,10 +36,13 @@ impl PauseJoinState {
         now: Instant,
     ) -> PauseJoinDecision {
         self.logical_pause_confirmed |= logical_pause_confirmed;
+        // The serial marker and HTTP status are independent observers and do
+        // not have to remain true during the same polling cycle.
+        self.serial_safe_stop_confirmed |= serial_safe_stop_confirmed;
         if self.expired(now) {
             return PauseJoinDecision::TimedOut;
         }
-        if self.logical_pause_confirmed && serial_safe_stop_confirmed {
+        if self.logical_pause_confirmed && self.serial_safe_stop_confirmed {
             return PauseJoinDecision::Ready;
         }
         PauseJoinDecision::Wait
@@ -72,7 +77,7 @@ mod tests {
 
         // Act
         let serial_wait = serial_first.observe(false, true, now);
-        let serial_joined = serial_first.observe(true, true, now);
+        let serial_joined = serial_first.observe(true, false, now);
         let logical_wait = logical_first.observe(true, false, now);
         let logical_joined = logical_first.observe(false, true, now);
 

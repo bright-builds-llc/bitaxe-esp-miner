@@ -996,3 +996,41 @@
   contracts. No additional hardware or control surface is authorized.
 - Stop: Campaign start consumes attempt-045. Any non-ready result withholds the
   new projection and stops without attempt-046 or an unchanged retry.
+
+## 2026-08-15T17:45:00Z | attempt-045 consumed safely at asynchronous pause join
+
+- Admission: Clean synchronized pushed contract, exact package, one protected
+  detector, one admitted board-205 device, private modes, and ignored opaque
+  Wi-Fi input all passed before the single campaign invocation.
+- Result: The campaign stopped with typed `hardware_blocked` in the pause phase
+  after one pause request. The new public projection was withheld. No restart
+  occurred, recovery confirmed pause and safe stop, and process/USB cleanup
+  succeeded without a secondary recovery failure.
+- Root cause: Serial campaign markers expose a current safe-stop fact that may
+  be replaced by later markers. `PauseJoinState` latched the independent HTTP
+  pause fact but required serial safe-stop to still be true in that same poll.
+  Its serial-first unit path repeated the serial fact and therefore missed the
+  disjoint-cycle failure observed on hardware.
+- Correction: Latch both boot-scoped witnesses within the bounded pause join
+  and add a production-seam regression where serial confirmation arrives first
+  and is false by the time the HTTP pause generation arrives. Attempt-045 is
+  archived and may not be retried; attempt-046 requires verified pushed code
+  plus a separate committed contract.
+
+## 2026-08-15T18:10:00Z | asynchronous pause join correction verified
+
+- Implementation: `PauseJoinState` now latches both independent boot-scoped
+  facts for its bounded lifetime. The serial observer remains current-state
+  truth for other consumers. Request-once behavior and exact-deadline
+  fail-closed semantics are unchanged.
+- Regression: The pure join test now uses genuinely disjoint serial-first
+  samples, and the production command-effects seam proves a one-shot serial
+  safe-stop followed by later HTTP pause generation issues exactly one dismiss
+  request without correlation failure.
+- Verification: Focused tests, ordered Cargo format/clippy/build/all-feature
+  tests, Bright Builds, firmware build, all 45 Bazel tests, parity/progress,
+  redaction, pinned-reference cleanliness, and diff review pass. A transient
+  host resource error during one parity report disappeared on an unchanged
+  isolated retry and did not correspond to a parity assertion failure.
+- Next gate: Publish the correction before creating a separate attempt-046
+  contract. No hardware effect is authorized by the software-fix task.
