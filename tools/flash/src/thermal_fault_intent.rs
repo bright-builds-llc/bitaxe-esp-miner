@@ -5,11 +5,11 @@ use std::os::unix::fs::PermissionsExt;
 use crate::*;
 
 pub(crate) const THERMAL_FAULT_INTENT_RELATIVE_PATH: &str =
-    "scratch/thr001-emc2101-fault/attempt-005/thermal-fault-intent.private.json";
+    "scratch/thr001-emc2101-fault/attempt-006/thermal-fault-intent.private.json";
 pub(crate) const THERMAL_FAULT_PLAN_RELATIVE_PATH: &str =
-    "docs/parity/work-plans/20260815T182438Z-THR-001/PLAN.md";
+    "docs/parity/work-plans/20260815T192115Z-THR-001/PLAN.md";
 pub(crate) const THERMAL_FAULT_PLAN_SHA256: &str =
-    "8e8049fd6fbb19575f6abe593afcdd9ac2303eee0204b5f188d4b65aa7607d58";
+    "ae1b6c9a57d5a19d8c61b3bf73ab906eed1e05849ff9b86d50d4d98c5eb27542";
 const THERMAL_FAULT_INTENT_SCHEMA: &str = "esp-thermal-fault-stimulus-intent-v1";
 const THERMAL_FAULT_STIMULUS_KIND: &str = "emc2101_invalid_sample";
 const THERMAL_FAULT_SAMPLE_COUNT: u16 = 5;
@@ -88,7 +88,7 @@ pub(crate) fn admit_thermal_fault_stimulus_intent_with_plan_sha256(
     validate_lower_hex("plan_sha256", &intent.plan_sha256, true)?;
     if intent.schema_version != THERMAL_FAULT_INTENT_SCHEMA
         || intent.board != 205
-        || intent.attempt_ordinal != 5
+        || intent.attempt_ordinal != 6
         || intent.source_commit != manifest.source_commit
         || intent.reference_commit != manifest.reference_commit
         || intent.app_elf_sha256 != manifest.app_elf_sha256

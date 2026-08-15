@@ -194,7 +194,7 @@ fn thermal_fault_intent_binds_private_mode_plan_and_exact_package() {
     let dir = tempdir().expect("tempdir");
     let root = dir_path(&dir);
     let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
-    let attempt_root = root.join("scratch/thr001-emc2101-fault/attempt-005");
+    let attempt_root = root.join("scratch/thr001-emc2101-fault/attempt-006");
     std::fs::create_dir_all(attempt_root.as_std_path()).expect("attempt root");
     std::fs::set_permissions(
         attempt_root.as_std_path(),
@@ -213,7 +213,7 @@ fn thermal_fault_intent_binds_private_mode_plan_and_exact_package() {
         serde_json::json!({
             "schema_version": "esp-thermal-fault-stimulus-intent-v1",
             "board": 205,
-            "attempt_ordinal": 5,
+            "attempt_ordinal": 6,
             "source_commit": SOURCE_COMMIT,
             "reference_commit": REFERENCE_COMMIT,
             "app_elf_sha256": APP_ELF_SHA256,

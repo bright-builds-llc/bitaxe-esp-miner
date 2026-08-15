@@ -35,16 +35,20 @@ test("a partially published document is not misclassified before completion", as
   let settle = (_outcome: typeof ok): void => undefined;
   const campaign = new Promise<typeof ok>((resolve) => { settle = resolve; });
   const signals: OperatorCheckpointSignal[] = [];
+  let observeReady = (): void => undefined;
+  const readyObserved = new Promise<void>((resolve) => { observeReady = resolve; });
   const supervised = superviseOperatorCheckpoints(campaign, root, (checkpoint) => {
     signals.push(checkpoint);
+    if (checkpoint.checkpoint === "ready") observeReady();
   });
 
   // Act
   await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.equal(signals.length, 0);
   await appendFile(ready, `"schema":"bitaxe-identify-checkpoint-v3","checkpoint":"ready","status":"required"}\n`);
+  await readyObserved;
   await privateCheckpoint(root, "rendered");
   await privateCheckpoint(root, "cleared");
-  await new Promise((resolve) => setTimeout(resolve, 100));
   settle(ok);
   const result = await supervised;
 

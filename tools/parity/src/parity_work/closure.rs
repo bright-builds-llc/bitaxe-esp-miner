@@ -254,6 +254,38 @@ mod tests {
     }
 
     #[test]
+    fn unlinked_terminal_closure_cannot_hide_an_older_open_plan() {
+        // Arrange
+        let workspace = Utf8PathBuf::from_path_buf(std::env::temp_dir().join(format!(
+            "bitaxe-parity-unlinked-terminal-{}",
+            std::process::id()
+        )))
+        .expect("temporary path must be UTF-8");
+        let _ = fs::remove_dir_all(workspace.as_std_path());
+        let older_root = workspace.join("docs/parity/work-plans/20260101T000000Z-API-010");
+        let closed_root = workspace.join("docs/parity/work-plans/20260102T000000Z-API-010");
+        fs::create_dir_all(older_root.as_std_path()).expect("older root");
+        fs::create_dir_all(closed_root.as_std_path()).expect("closed root");
+        fs::write(older_root.join("PLAN.md").as_std_path(), PLAN).expect("older plan");
+        fs::write(closed_root.join("PLAN.md").as_std_path(), PLAN).expect("closed plan");
+        fs::write(
+            closed_root.join(CLOSURE_FILE).as_std_path(),
+            valid_closure(),
+        )
+        .expect("closure");
+
+        // Act
+        let error = find_open_plan(&workspace, &[row("API-010", "implemented")])
+            .expect_err("unlinked closure must not hide an open plan");
+
+        // Assert
+        assert!(error
+            .to_string()
+            .contains("lack an explicit continuation lineage"));
+        fs::remove_dir_all(workspace.as_std_path()).expect("cleanup");
+    }
+
+    #[test]
     fn multiple_terminal_closed_plans_need_no_lineage_links() {
         // Arrange
         let workspace = Utf8PathBuf::from_path_buf(std::env::temp_dir().join(format!(
@@ -276,6 +308,48 @@ mod tests {
 
         // Assert
         assert_eq!(maybe_open_plan, None);
+        fs::remove_dir_all(workspace.as_std_path()).expect("cleanup");
+    }
+
+    #[test]
+    fn terminal_closure_resets_lineage_before_a_new_open_continuation() {
+        // Arrange
+        let workspace = Utf8PathBuf::from_path_buf(std::env::temp_dir().join(format!(
+            "bitaxe-parity-terminal-lineage-reset-{}",
+            std::process::id()
+        )))
+        .expect("temporary path must be UTF-8");
+        let _ = fs::remove_dir_all(workspace.as_std_path());
+        let root = workspace.join("docs/parity/work-plans");
+        let first_root = root.join("20260101T000000Z-API-010");
+        let closed_root = root.join("20260102T000000Z-API-010");
+        let active_root = root.join("20260103T000000Z-API-010");
+        for plan_root in [&first_root, &closed_root, &active_root] {
+            fs::create_dir_all(plan_root.as_std_path()).expect("plan root");
+        }
+        fs::write(first_root.join("PLAN.md").as_std_path(), PLAN).expect("first plan");
+        fs::write(first_root.join(CLOSURE_FILE).as_std_path(), valid_closure())
+            .expect("first closure");
+        fs::write(closed_root.join("PLAN.md").as_std_path(), PLAN).expect("closed plan");
+        fs::write(
+            closed_root.join(CLOSURE_FILE).as_std_path(),
+            valid_closure(),
+        )
+        .expect("closed closure");
+        let closed_plan_path = "docs/parity/work-plans/20260102T000000Z-API-010/PLAN.md";
+        let active_plan = format!("{PLAN}\nContinues `{closed_plan_path}`.\n");
+        fs::write(active_root.join("PLAN.md").as_std_path(), active_plan).expect("active plan");
+
+        // Act
+        let open_plan = find_open_plan(&workspace, &[row("API-010", "implemented")])
+            .expect("terminal closure should reset lineage")
+            .expect("new continuation should remain open");
+
+        // Assert
+        assert_eq!(
+            open_plan.plan_path,
+            "docs/parity/work-plans/20260103T000000Z-API-010/PLAN.md"
+        );
         fs::remove_dir_all(workspace.as_std_path()).expect("cleanup");
     }
 

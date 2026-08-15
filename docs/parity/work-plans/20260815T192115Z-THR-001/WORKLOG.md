@@ -33,3 +33,35 @@
   and diff checks passed without device access.
 - Outcome: The selector correction and attempt-006 binding work may begin only
   after this plan/task commit is pushed. Hardware remains ineligible.
+
+## 2026-08-15T19:43:00Z | selector and attempt binding implementation
+
+- Red/green selector: The production-shaped test first failed with the exact
+  unlinked-lineage category. Reconciliation now begins after the latest valid
+  terminal closure; the full closure suite passes and multiple later unclosed
+  plans still fail closed. The live selector resumes only this plan.
+- Attempt binding: Ordinal 6, fresh attempt/wrapper/projection paths, immutable
+  plan path/digest, private intent admission, host transaction, Rust evidence
+  validator, both generated TypeScript contracts, tests, and Bazel runfile were
+  advanced together. No attempt-005 production binding remains.
+- Focused verification: parity closure tests, evidence-contract tests, flash,
+  automation real-child cases, parity tests, generated-contract verification,
+  canonical marker/replay tests, withholding, and recovery precedence pass.
+- Effects: No package, detector, USB, network, or device action has run.
+
+## 2026-08-15T19:55:00Z | full-gate correction and completion
+
+- Simplification guard: A second red regression proved an unlinked terminal
+  closure could hide an older open plan under the first reducer draft. The
+  final invariant skips a link only when the older plan is already closed;
+  every unclosed predecessor still requires an explicit successor link. All 19
+  closure tests and the live selector pass.
+- Full-suite finding: One unrelated checkpoint test raced by publishing later
+  files before the supervisor had consumed the completed ready file. It now
+  waits on the emitted ready signal instead of a second fixed sleep while still
+  proving a partial JSON document emits nothing. The canonical automation and
+  complete Bazel suites pass.
+- Final gates: Ordered Cargo format/Clippy/build/test, Bright Builds, real
+  firmware, all 45 Bazel tests, parity/progress, redaction, reference
+  cleanliness, generated contracts, sensitive-output scan, and diff review
+  pass. No hardware ran; packaging remains ineligible until the push.

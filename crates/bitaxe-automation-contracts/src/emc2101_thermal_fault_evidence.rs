@@ -65,7 +65,7 @@ impl Emc2101ThermalFaultEvidence {
     pub fn validate(&self) -> Result<(), &'static str> {
         if self.schema_version != EMC2101_THERMAL_FAULT_EVIDENCE_SCHEMA
             || self.board != 205
-            || self.attempt_ordinal != 5
+            || self.attempt_ordinal != 6
         {
             return Err("EMC2101 thermal fault evidence identity is invalid");
         }
@@ -150,7 +150,7 @@ mod tests {
         Emc2101ThermalFaultEvidence {
             schema_version: EMC2101_THERMAL_FAULT_EVIDENCE_SCHEMA.to_owned(),
             board: 205,
-            attempt_ordinal: 5,
+            attempt_ordinal: 6,
             source_commit: "a".repeat(40),
             reference_commit: "b".repeat(40),
             app_elf_sha256: "c".repeat(64),

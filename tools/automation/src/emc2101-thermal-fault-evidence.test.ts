@@ -22,7 +22,7 @@ const referenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const appElfSha256 = "b".repeat(64);
 const session = "1".repeat(32);
 const nodeProgram = process.env["JS_BINARY__NODE_BINARY"] ?? process.execPath;
-const planRelative = "docs/parity/work-plans/20260815T182438Z-THR-001/PLAN.md";
+const planRelative = "docs/parity/work-plans/20260815T192115Z-THR-001/PLAN.md";
 const priorRelative = "docs/parity/evidence/thr001-emc2101-thermal/thermal-projection.json";
 
 type Contract = {
@@ -145,7 +145,7 @@ async function fixture(name: string) {
     "### task-parity-thr001-emc2101-live-thermal | fixture",
     `Plan: \`${planRelative}\`.`,
     "Schema: `bitaxe-emc2101-thermal-fault-evidence-v1`.",
-    "Attempt: `attempt-005`.",
+    "Attempt: `attempt-006`.",
     "",
   ].join("\n"));
   await mkdir(path.dirname(path.join(root, priorRelative)), { recursive: true });
@@ -159,7 +159,7 @@ async function fixture(name: string) {
     app_elf_sha256: appElfSha256,
   }));
   await writeFile(credentials, "{}\n", { mode: 0o600 });
-  const wrapper = path.join(root, "scratch/thr001-emc2101-fault/wrapper-005");
+  const wrapper = path.join(root, "scratch/thr001-emc2101-fault/wrapper-006");
   await mkdir(wrapper, { recursive: true, mode: 0o700 });
   await chmod(wrapper, 0o700);
   for (const output of ["detector.stdout", "detector.stderr", "capture.stdout", "capture.stderr"]) {
@@ -173,16 +173,16 @@ async function fixture(name: string) {
     credentials,
     projection: path.join(
       root,
-      "docs/parity/evidence/thr001-emc2101-thermal/thermal-fault-projection-attempt-005.json",
+      "docs/parity/evidence/thr001-emc2101-thermal/thermal-fault-projection-attempt-006.json",
     ),
     options: {
-      privateRoot: "scratch/thr001-emc2101-fault/attempt-005",
+      privateRoot: "scratch/thr001-emc2101-fault/attempt-006",
       packageManifest: manifest,
       wifiCredentials: credentials,
-      detectorOutput: "scratch/thr001-emc2101-fault/wrapper-005/detector.stdout",
+      detectorOutput: "scratch/thr001-emc2101-fault/wrapper-006/detector.stdout",
       port: "/dev/private-port",
       projection:
-        "docs/parity/evidence/thr001-emc2101-thermal/thermal-fault-projection-attempt-005.json",
+        "docs/parity/evidence/thr001-emc2101-thermal/thermal-fault-projection-attempt-006.json",
       captureTimeoutSeconds: 120,
     },
   };

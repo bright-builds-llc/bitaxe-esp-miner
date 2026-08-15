@@ -3730,11 +3730,11 @@ not authorize attempt-006. See
 Attempt-006 continuation:
 `docs/parity/work-plans/20260815T192115Z-THR-001/PLAN.md`.
 
-- [ ] Correct the selector's terminal-closure lineage reset with a production-
+- [x] Correct the selector's terminal-closure lineage reset with a production-
       shape regression while preserving strict checks for unclosed plans.
-- [ ] Advance the consumed ordinal, private roots, projection path, immutable
+- [x] Advance the consumed ordinal, private roots, projection path, immutable
       plan binding, tests, generated command contract, and runfile to attempt 6.
-- [ ] Pass focused and mandatory software gates; commit and push the complete
+- [x] Pass focused and mandatory software gates; commit and push the complete
       binding change before packaging, detection, or device access.
 - [ ] Build the exact clean package, admit one Ultra 205, and run the bounded
       fault/restoration campaign exactly once.

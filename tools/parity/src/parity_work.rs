@@ -275,6 +275,12 @@ fn reconcile_open_plans(mut open_plans: Vec<OpenPlanDocument>) -> Result<Option<
             continue;
         }
         for pair in lineage.windows(2) {
+            // An already-closed older plan starts a new lineage boundary. An
+            // unclosed older plan must still be linked explicitly so a later
+            // closure cannot silently hide unfinished work.
+            if pair[0].terminal_closed {
+                continue;
+            }
             let older = &pair[0].open_plan;
             let newer = &pair[1];
             let lineage_reference = format!("`{}`", older.plan_path);
