@@ -307,3 +307,22 @@
   mining, control, reset, flash, OTA, or recovery effect occurred.
 - Next action: Define a separate exact attempt-032 contract bound to this clean
   commit, then run at most one detector-gated programmatic campaign.
+
+## 2026-08-15T07:55:00Z | attempt-032 contract opened
+
+- Objective: Prove the materially changed bounded runtime-I2C behavior with
+  one no-human programmatic API-009 campaign.
+- Admission: Clean pushed source descended from `c2fb0c93`, a repo-built exact
+  package, non-empty ignored Wi-Fi input, and exactly one successful protected
+  detector run are required before the single campaign invocation.
+- Effects: One exact-package flash/reset, private Wi-Fi and local-fixture seed,
+  conservative mining for at most 600 active seconds, one each command effect,
+  same-device software restart, safe recovery, process termination, and holder
+  cleanup. All automated effect deadlines remain finite.
+- Privacy: Only a ready redacted projection may publish. A failed run may expose
+  closed recovery booleans and stage/outcome/duration/revision diagnostics, but
+  never boot session, sensor values, identities, origins, ports, credentials,
+  frame text, or raw traces.
+- Retry/stop: Campaign start consumes attempt-032. There is no same-contract
+  retry or attempt-033 authority. Any non-ready boundary withholds evidence and
+  stops for diagnosis. The physical-display UAT remains a separate later task.
