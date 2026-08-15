@@ -3273,6 +3273,30 @@ was not confirmed, and public evidence is withheld. API-009 remains
 `implemented`; attempt-023 is consumed and no attempt-024 is authorized. See
 the linked `CLOSURE.md`.
 
+Resume-correlation software plan:
+`docs/parity/work-plans/20260815T010813Z-API-009/PLAN.md`.
+
+- [ ] Commit and push the immutable software-only plan without accessing
+      credentials, protected attempts, detector, USB, device/network, display,
+      mining, or hardware-control interfaces.
+- [ ] Split resume intent, bounded reactivation, and active recovery into typed
+      host states; retain the 600-second active-mining budget while excluding
+      unbounded operator-paused time from that budget.
+- [ ] Replace immediate failure breakage with a bounded recovery-pause join
+      that preserves the primary failure and independently proves or rejects
+      terminal safe stop before network-worker shutdown.
+- [ ] Add focused engine, firmware-owner, host-state, evidence, recovery, CLI,
+      and real-process regressions and pass every mandatory, privacy,
+      reference, firmware, selector, digest, and diff gate. Close with API-009
+      still `implemented` and no attempt-024.
+
+Software-only authorization: modify source, tests, deterministic fixtures,
+documentation, tracker, worklog, and closure, and build firmware. Do not access
+credentials, current or prior protected attempt artifacts, detector, USB,
+device/network, HTTP to a device, display, mining, hardware controls, direct
+UART, pins/pads/GPIO, public parity evidence, checklist promotion, attempt-024,
+or any hardware attempt.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
