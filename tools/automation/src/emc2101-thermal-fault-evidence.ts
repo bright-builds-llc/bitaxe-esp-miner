@@ -192,7 +192,8 @@ function validateTaskAndPlan(task: string, plan: string): void {
 }
 
 function bitaxeInfoPayload(line: string): string | undefined {
-  return /^I \([0-9]+\) bitaxe_firmware: (.+)$/u.exec(line)?.[1];
+  return /^I \([0-9]+\) (?:bitaxe_firmware|bitaxe_firmware::boot_evidence): (.+)$/u
+    .exec(line)?.[1];
 }
 
 function validateMarkerSequence(monitor: string): void {

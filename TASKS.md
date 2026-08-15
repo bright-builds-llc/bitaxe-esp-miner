@@ -3758,11 +3758,11 @@ attempt-006 is consumed and attempt-007 is not authorized. See
 Replay-origin software continuation:
 `docs/parity/work-plans/20260815T195949Z-THR-001/PLAN.md`.
 
-- [ ] Reproduce the exact direct/replay producer-tag mismatch through the real-
+- [x] Reproduce the exact direct/replay producer-tag mismatch through the real-
       child late-attachment seam.
-- [ ] Implement and prove a closed canonical replay-origin contract without
+- [x] Implement and prove a closed canonical replay-origin contract without
       admitting arbitrary tags or weakening marker order.
-- [ ] Pass focused and complete software gates, commit and push, and close with
+- [x] Pass focused and complete software gates, commit and push, and close with
       THR-001 still `implemented` and no attempt-007 authority.
 
 Authorization: this continuation is software-only. No package, detector, USB,
