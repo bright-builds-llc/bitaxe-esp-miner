@@ -23,7 +23,14 @@ export function campaignRecoveryFactsFromDocuments(
     && maybeEffects["recovery_pause_serial_confirmed"] === true
     && maybeEffects["recovery_safe_stop_confirmed"] === true
     && maybeEffects["recovery_terminal_outcome"] === "confirmed";
-  const safeStopConfirmed = result["safe_stop"] === "confirmed" || joinedRecoverySafeStop;
+  const reusedConfirmedSafeStop = !recoveryAttempted
+    && maybeEffects?.["recovery_pause_api_confirmed"] === true
+    && maybeEffects["recovery_pause_serial_confirmed"] === true
+    && maybeEffects["recovery_safe_stop_confirmed"] === true
+    && maybeEffects["recovery_terminal_outcome"] === "already_confirmed";
+  const safeStopConfirmed = result["safe_stop"] === "confirmed"
+    || joinedRecoverySafeStop
+    || reusedConfirmedSafeStop;
   return {
     safeStopConfirmed,
     cleanupComplete: result["usb_cleanup"] === "ready",

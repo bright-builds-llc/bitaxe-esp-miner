@@ -45,7 +45,7 @@ pub(super) fn advance_programmatic_commands(
             }
             generations.pause = status.mining.pause_generation.saturating_add(1);
             evidence.pause_request_count = 1;
-            if post_succeeded(http.post_pause_once(Instant::now() + HTTP_DEADLINE)) {
+            if post_may_have_applied(http.post_pause_once(Instant::now() + HTTP_DEADLINE)) {
                 *phase = CommandPhase::ProgrammaticPause(PauseJoinState::new(now));
             } else {
                 *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
@@ -75,7 +75,7 @@ pub(super) fn advance_programmatic_commands(
                         .block_notification
                         .dismiss_generation
                         .saturating_add(1);
-                    if post_succeeded(
+                    if post_may_have_applied(
                         http.post_block_found_dismiss_once(Instant::now() + HTTP_DEADLINE),
                     ) {
                         *phase = CommandPhase::ProgrammaticDismiss;
@@ -106,7 +106,7 @@ pub(super) fn advance_programmatic_commands(
             evidence.identify_status_baseline_confirmed = true;
             generations.identify = status.identify.generation.saturating_add(1);
             evidence.identify_request_count = 1;
-            if post_succeeded(http.post_identify_once(Instant::now() + HTTP_DEADLINE)) {
+            if post_may_have_applied(http.post_identify_once(Instant::now() + HTTP_DEADLINE)) {
                 *phase = CommandPhase::ProgrammaticIdentifyRendered;
             } else {
                 *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
@@ -146,7 +146,7 @@ pub(super) fn advance_programmatic_commands(
             evidence.identify_clear_receipt_confirmed = true;
             generations.resume = status.mining.resume_generation.saturating_add(1);
             evidence.resume_request_count = 1;
-            if post_succeeded(http.post_resume_once(Instant::now() + HTTP_DEADLINE)) {
+            if post_may_have_applied(http.post_resume_once(Instant::now() + HTTP_DEADLINE)) {
                 *phase = CommandPhase::ProgrammaticResumeIntent;
             } else {
                 *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);

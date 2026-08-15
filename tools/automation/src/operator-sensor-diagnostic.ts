@@ -18,7 +18,7 @@ export type CommandFailureDiagnostic = Readonly<{
   phase: "notification" | "pause" | "dismiss" | "identify_start" | "identify_rendered"
     | "identify_cleared" | "resume_intent" | "resume_active" | "terminal";
   cause: "serial_witness" | "phase_deadline" | "websocket_witness" | "http_system_info"
-    | "http_command_status" | "http_sample_validation" | "command_state_machine"
+    | "http_command_status" | "http_sample_validation" | "command_request" | "command_state_machine"
     | "terminal_deadline" | "serial_ended" | "quorum_incomplete";
 }>;
 
@@ -37,7 +37,7 @@ const COMMAND_PHASES = new Set([
 ]);
 const COMMAND_FAILURE_CAUSES = new Set([
   "serial_witness", "phase_deadline", "websocket_witness", "http_system_info",
-  "http_command_status", "http_sample_validation", "command_state_machine",
+  "http_command_status", "http_sample_validation", "command_request", "command_state_machine",
   "terminal_deadline", "serial_ended", "quorum_incomplete",
 ]);
 

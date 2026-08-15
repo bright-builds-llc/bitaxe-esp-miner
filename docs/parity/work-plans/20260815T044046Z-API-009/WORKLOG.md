@@ -654,3 +654,41 @@
   protected-artifact contracts are unchanged; no physical display claim.
 - Stop: Campaign start consumes attempt-039. Any non-ready result withholds
   evidence and stops without attempt-040 or an unchanged retry.
+
+## 2026-08-15T13:05:00Z | attempt-039 exposed request and recovery ambiguity
+
+- Result: One detector and one campaign ran. The public result was
+  `hardware_blocked / command_effects`, with `pause / command_state_machine` as
+  the first failure. Cleanup and private modes passed; safe-stop publication
+  was false because the redundant recovery request failed. Evidence remained
+  withheld and no user action contributed.
+- Proven boundary: Notification and pause completed exactly once, including
+  the HTTP pause generation and receive-only USB safe-stop witness. The single
+  dismiss request was not confirmed. IDENTIFY, resume, and restart were never
+  requested. Same-package, safety, and the sensor diagnostic passed.
+- Root cause: Command POST handling keeps only an exact 200 response and drops
+  typed request-write progress, so a complete write with a missing response
+  cannot converge through the authoritative status generation. The public
+  cause is consequently generic. Recovery also ignores the already-proved
+  paused safe stop and issues an unnecessary second pause request.
+- Disposition: Attempt-039 is consumed. Preserve complete-write ambiguity
+  without retry, require generation/postcondition proof, add a command-request
+  diagnostic cause, and reuse only an already HTTP- and serial-confirmed safe
+  stop. No attempt-040 is authorized until the fix passes full gates and is
+  pushed.
+
+## 2026-08-15T10:28:46Z | request ambiguity and safe recovery fixed
+
+- Delivery: The engine now admits a request for postcondition waiting after an
+  exact 200 response or a typed fully written/flushed request with no parsed
+  response. Explicit non-200, incomplete write, and pre-delivery failure still
+  stop as request failures; no command is retried.
+- Recovery: A command failure reuses the existing safe stop only when HTTP
+  pause convergence, receive-only USB safe-stop, no resume request, and current
+  stopped state are all proved. Other states retain bounded recovery.
+- Diagnostic: The closed public cause vocabulary now includes
+  `command_request`, while primary-failure precedence and redaction remain
+  unchanged.
+- Verification: Real TCP delivery-loss regression, focused Rust and Bun tests,
+  mandatory Cargo, Bright Builds, real firmware, full Bazel, parity/progress,
+  redaction, reference, and diff checks pass. No hardware effect occurred.

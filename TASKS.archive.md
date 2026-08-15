@@ -7777,3 +7777,96 @@ firmware lease consumption, terminal safe stop, evidence sealing, and cleanup
 remain finite and fail-closed. No hardware effect occurred during this task.
 It is complete and archived at 2026-08-15T12:35:00Z; attempt-039 still requires
 a separately committed exact-package contract.
+
+### task-api009-programmatic-pilot-attempt-039 | 2026-08-15 | Verify lease-owned terminal completion
+
+- [x] Require clean synchronized pushed `57fafecf`, opaque non-empty ignored
+      Wi-Fi input, exact HEAD/reference package, and absent detector, wrapper,
+      command-owned attempt, and public-projection paths.
+- [x] Run `just package`, then exactly one protected `detector-039`; require
+      zero exit, one `port: ` record, `usb_session: ready`, private modes, and
+      one admitted board-205 device.
+- [x] Use separate protected `wrapper-039`, keep `attempt-039` absent, and run
+      exactly once the existing 600-active-second programmatic campaign under
+      the finite activation, capture, child, recovery, and cleanup bounds.
+- [x] Publish only a ready independently validated redacted projection;
+      otherwise withhold it and record the earliest category, typed command
+      phase/cause, sensor diagnostic, and recovery booleans.
+
+Effects: one exact-package flash/reset, private Wi-Fi/local-fixture seed,
+conservative initialization/mining for at most 600 active seconds, one each
+pause/dismiss/IDENTIFY/resume/software restart, HTTP/WebSocket/receive-only USB
+observation, same-device recovery, safe stop, child termination, and USB
+cleanup. No human checkpoint or physical-display claim is included.
+
+Privacy/retry/stop: all private roots/files remain ignored mode 0700/0600.
+Never publish identities, origins, ports, addresses, hostnames, credentials,
+boot session, values, or traces. Preserve the first failure through recovery.
+Campaign start consumes attempt-039; no attempt-040 or unchanged retry is
+authorized. Any admission ambiguity, non-ready result, malformed evidence, or
+failed safe stop/recovery/cleanup stops with evidence withheld and API-009
+`implemented`. OTA, erase, factory reset, power cycle, UART/BAP, USB duplex,
+pins/GPIO, arbitrary settings, external pool, stress, direct controls, fault
+injection, non-205 hardware, and human display claims remain prohibited.
+
+Final verification: Clean synchronized pushed contract `2d992bc1`, exact
+package/reference identity, one detector, separate wrapper, and one campaign
+passed admission. The campaign stopped `hardware_blocked / command_effects`
+with first failure `pause / command_state_machine`. Notification and pause
+completed exactly once, including the HTTP generation and serial safe-stop
+witness. One dismiss request was issued but not confirmed; no IDENTIFY, resume,
+or restart request followed. Same-package and safety validation passed. USB
+cleanup and private modes passed, the closed sensor diagnostic was
+`display / ready / under_250_ms`, and public evidence was withheld.
+
+Final completion review: The dismiss exchange did not produce an accepted
+HTTP result, and the host collapsed that request boundary into a generic state
+machine cause instead of preserving complete-write versus pre-delivery facts.
+Recovery then issued a redundant pause despite the already-proved paused safe
+stop; that request failed and produced the secondary recovery failure. No user
+action contributed. Attempt-039 is consumed, attempt-040 is not authorized,
+API-009 remains `implemented`, and the task is complete and archived at
+2026-08-15T13:05:00Z.
+
+### task-api009-command-delivery-and-safe-recovery | 2026-08-15 | Preserve request ambiguity and proved safe stop
+
+- [x] Reproduce a fully flushed command request whose response is unavailable;
+      require the state machine to wait for the authoritative generation and
+      postcondition without issuing a second request.
+- [x] Distinguish command-request failures from generic state-machine failures
+      in the closed public diagnostic without exposing transport details.
+- [x] Preserve an already HTTP- and serial-confirmed paused safe stop through a
+      later command failure without issuing a redundant recovery pause.
+- [x] Add deterministic delivery, explicit rejection, pre-delivery failure,
+      recovery, redaction, and primary-precedence tests.
+- [x] Run focused and complete gates, simplify, review, archive, commit, and
+      push before any new hardware ordinal.
+
+Authorization: source, deterministic local HTTP/child fixtures, builds, and
+repository verification only. Protected attempt-039 may be used only for the
+closed facts recorded in its archive entry; never publish identities, origins,
+ports, addresses, credentials, boot session, raw traces, or values. No
+detector, credentials, package effect, USB/device/network session, flash,
+reset, mining, recovery, OTA, UART/BAP, pins, or attempt-040 is authorized.
+Stop if delivery ambiguity could claim an effect without its generation and
+machine postcondition, retry a command, accept an explicit non-200 response,
+or weaken recovery from a state not already proved paused and hardware-safe.
+
+Final verification: The real TCP regression proves a fully flushed dismiss
+request with no response advances only after the authoritative generation and
+postcondition, with one request total. Explicit non-200 and pre-delivery
+failures remain rejected. The public diagnostic now distinguishes the closed
+`command_request` cause. A later request failure reuses a safe stop only when
+pause is already confirmed by HTTP and receive-only USB, no resume was
+requested, and the current serial state remains safely stopped. Focused Rust
+and Bun tests, mandatory Cargo, Bright Builds, the real ESP32-S3 firmware
+build, full Bazel, parity/progress, redaction, reference, and diff gates pass.
+
+Final completion review: The transport observation already contained the
+needed complete-write boundary, so the simplest fix preserves it and delegates
+effect truth to command status instead of adding retries or another protocol.
+The recovery change removes an unsafe redundant request without weakening
+unproved or resumed-state recovery. The helper split keeps the orchestrator
+within its file-size limit and its Bazel source membership is explicit. No
+hardware effect occurred. The task is complete and archived; a new hardware
+ordinal requires its own committed exact-package contract.

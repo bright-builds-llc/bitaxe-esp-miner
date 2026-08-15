@@ -23,6 +23,7 @@ pub(in crate::campaign) enum CommandFailureCause {
     HttpSystemInfo,
     HttpCommandStatus,
     HttpSampleValidation,
+    CommandRequest,
     CommandStateMachine,
     TerminalDeadline,
     SerialEnded,

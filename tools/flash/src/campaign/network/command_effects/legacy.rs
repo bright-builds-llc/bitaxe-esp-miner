@@ -31,7 +31,7 @@ pub(super) fn advance_commands(
                 return;
             }
             evidence.pause_request_count = 1;
-            if post_succeeded(http.post_pause_once(Instant::now() + HTTP_DEADLINE)) {
+            if post_may_have_applied(http.post_pause_once(Instant::now() + HTTP_DEADLINE)) {
                 *phase = CommandPhase::Pause(PauseJoinState::new(now));
             } else {
                 *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
@@ -73,7 +73,7 @@ pub(super) fn advance_commands(
                 // safe-stop pause held while the exact 30-second device effect
                 // runs and while the operator's bound report is in transit.
                 evidence.identify_request_count = 1;
-                if !post_succeeded(http.post_identify_once(Instant::now() + HTTP_DEADLINE)) {
+                if !post_may_have_applied(http.post_identify_once(Instant::now() + HTTP_DEADLINE)) {
                     *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
                 } else {
                     let effect_inactive_at =
@@ -123,7 +123,7 @@ pub(super) fn advance_commands(
             if evidence.identify_request_count != 1 || evidence.identify_replay_request_count != 1 {
                 *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid);
             } else {
-                if !post_succeeded(http.post_identify_once(Instant::now() + HTTP_DEADLINE)) {
+                if !post_may_have_applied(http.post_identify_once(Instant::now() + HTTP_DEADLINE)) {
                     *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
                     return;
                 }
@@ -168,7 +168,7 @@ pub(super) fn advance_commands(
         }
         CommandPhase::IdentifyCleared => match consume_cleared_signal(evidence_root, evidence) {
             Ok(CheckpointResponse::Confirmed) => {
-                if !post_succeeded(http.post_resume_once(Instant::now() + HTTP_DEADLINE)) {
+                if !post_may_have_applied(http.post_resume_once(Instant::now() + HTTP_DEADLINE)) {
                     *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
                 } else {
                     *phase = CommandPhase::ResumeIntent;

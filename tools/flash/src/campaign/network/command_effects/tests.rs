@@ -12,12 +12,13 @@ use camino::Utf8PathBuf;
 use super::{
     advance_commands, advance_programmatic_commands, arm_cleared_after_natural_expiry,
     arm_identify_transaction, arm_ready_after_paused_dismissal, automated_phase_failure,
-    consume_checkpoint_response, consume_cleared_signal, consume_ready_signal,
-    finish_identify_observation, rendered_checkpoint_action, respond_identify_checkpoint,
+    command_state_failure_cause, consume_checkpoint_response, consume_cleared_signal,
+    consume_ready_signal, finish_identify_observation, may_reuse_confirmed_safe_stop,
+    post_may_have_applied, rendered_checkpoint_action, respond_identify_checkpoint,
     take_recovery_pause_request, terminal_confirmation_timed_out, write_required_checkpoint,
     CheckpointResponse, CommandEffectsEvidence, CommandGenerations, CommandPhase, CommandProgress,
     IdentifyCheckpointKind, IdentifyCheckpointOutcome, PauseJoinState, RenderedCheckpointAction,
-    TERMINAL_DEADLINE,
+    HTTP_DEADLINE, TERMINAL_DEADLINE,
 };
 use crate::campaign::network::command_witness::CommandTransitionWitness;
 use crate::campaign::network::model::{SharedSerialState, TrustedNetworkTarget};

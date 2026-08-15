@@ -69,6 +69,7 @@ rust_binary(
         "src/campaign/network/command_effects/failure_diagnostic.rs",
         "src/campaign/network/command_effects/pause_join.rs",
         "src/campaign/network/command_effects/programmatic.rs",
+        "src/campaign/network/command_effects/request.rs",
         "src/campaign/network/command_effects/legacy.rs",
         "src/campaign/network/command_effects/paused_dismiss.rs",
         "src/campaign/network/command_effects/recovery_join.rs",

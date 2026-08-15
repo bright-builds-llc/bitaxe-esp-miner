@@ -24,6 +24,17 @@ test("command failure diagnostic accepts only the closed public labels", () => {
   assert.doesNotMatch(JSON.stringify(parsed), /sensitive-origin/u);
 });
 
+test("command request is a closed redaction-safe failure cause", () => {
+  // Arrange
+  const diagnostic = { ...validDiagnostic, cause: "command_request" } as const;
+
+  // Act
+  const parsed = parseCommandFailureDiagnostic(diagnostic);
+
+  // Assert
+  assert.deepEqual(parsed, diagnostic);
+});
+
 test("malformed command failure diagnostic cannot erase recovery facts", () => {
   // Arrange
   const result = { safe_stop: "confirmed", usb_cleanup: "ready" };

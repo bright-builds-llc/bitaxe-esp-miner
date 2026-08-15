@@ -33,6 +33,56 @@ fn consumed_terminal_keeps_exact_http_confirmation_deadline() {
 }
 
 #[test]
+fn command_failure_reuses_proved_paused_safe_stop_without_another_request() {
+    // Arrange
+    let mut evidence = CommandEffectsEvidence::new();
+    evidence.pause_confirmed = true;
+    let serial = SharedSerialState {
+        resumable_pause_safe_stop_confirmed: true,
+        ..SharedSerialState::default()
+    };
+
+    // Act
+    let reusable = may_reuse_confirmed_safe_stop(
+        Some(CampaignTerminalCategory::CommandRequestFailed),
+        &evidence,
+        &serial,
+    );
+
+    // Assert
+    assert!(reusable);
+}
+
+#[test]
+fn unproved_or_resumed_state_still_requires_recovery() {
+    // Arrange
+    let mut evidence = CommandEffectsEvidence::new();
+    evidence.pause_confirmed = true;
+    evidence.resume_request_count = 1;
+    let serial = SharedSerialState {
+        resumable_pause_safe_stop_confirmed: true,
+        ..SharedSerialState::default()
+    };
+
+    // Act
+    let after_resume = may_reuse_confirmed_safe_stop(
+        Some(CampaignTerminalCategory::CommandRequestFailed),
+        &evidence,
+        &serial,
+    );
+    evidence.resume_request_count = 0;
+    let without_serial_proof = may_reuse_confirmed_safe_stop(
+        Some(CampaignTerminalCategory::CommandRequestFailed),
+        &evidence,
+        &SharedSerialState::default(),
+    );
+
+    // Assert
+    assert!(!after_resume);
+    assert!(!without_serial_proof);
+}
+
+#[test]
 fn pause_convergence_increment_is_preserved_across_dismissal() {
     // Arrange
     let (_temp, root) = private_root();

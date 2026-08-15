@@ -6,6 +6,152 @@ use std::time::Instant;
 
 use crate::campaign::CampaignTerminalCategory;
 
+fn command_server_with_response(
+    maybe_response: Option<&'static [u8]>,
+) -> (StrictHttpClient, std::thread::JoinHandle<String>) {
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind command server");
+    let address = listener.local_addr().expect("command server address");
+    let server = std::thread::spawn(move || {
+        let (mut socket, _) = listener.accept().expect("accept command request");
+        let mut bytes = Vec::new();
+        let mut chunk = [0_u8; 512];
+        loop {
+            let count = socket.read(&mut chunk).expect("read command request");
+            if count == 0 {
+                break;
+            }
+            bytes.extend_from_slice(&chunk[..count]);
+            if bytes.windows(4).any(|window| window == b"\r\n\r\n") {
+                break;
+            }
+        }
+        if let Some(response) = maybe_response {
+            socket.write_all(response).expect("write command response");
+        }
+        String::from_utf8(bytes)
+            .expect("request is UTF-8")
+            .lines()
+            .next()
+            .expect("request line")
+            .to_owned()
+    });
+    let http = StrictHttpClient::new(&format!("http://{address}")).expect("HTTP client");
+    (http, server)
+}
+
+#[test]
+fn complete_dismiss_write_without_response_waits_for_authoritative_postcondition() {
+    // Arrange
+    let (_temp, root) = private_root();
+    let target = trusted_target();
+    let mut sample = SystemInfoWire::from_snapshot(&ApiSnapshot::safe_ultra_205());
+    sample.mining_paused = true;
+    sample.mining_activity = "paused".to_owned();
+    sample.show_new_block = true;
+    sample.block_found = 7;
+    let mut tracker = CommandStatusTracker::default();
+    tracker.record_command(CommandStatusEffect::Pause);
+    let mut phase = CommandPhase::ProgrammaticPause(PauseJoinState::new(Instant::now()));
+    let mut generations = CommandGenerations {
+        pause: 1,
+        ..CommandGenerations::default()
+    };
+    let mut evidence = CommandEffectsEvidence::new();
+    evidence.pause_request_count = 1;
+    let mut maybe_block_count = Some(7);
+    let mut maybe_failure = None;
+    let serial = SharedSerialState {
+        resumable_pause_safe_stop_confirmed: true,
+        ..SharedSerialState::default()
+    };
+    let websocket = CommandTransitionWitness::default();
+    let (http, server) = command_server_with_response(None);
+
+    // Act
+    advance_programmatic_commands(
+        &http,
+        &target,
+        &root,
+        &sample,
+        &command_status(&tracker, &sample, false),
+        &serial,
+        &websocket,
+        true,
+        Instant::now(),
+        &mut generations,
+        CommandProgress {
+            phase: &mut phase,
+            maybe_block_count: &mut maybe_block_count,
+            evidence: &mut evidence,
+            maybe_failure: &mut maybe_failure,
+        },
+    );
+    tracker.record_command(CommandStatusEffect::BlockFoundDismiss);
+    sample.show_new_block = false;
+    let idle_http = StrictHttpClient::new("http://127.0.0.1:9").expect("idle HTTP client");
+    advance_programmatic_commands(
+        &idle_http,
+        &target,
+        &root,
+        &sample,
+        &command_status(&tracker, &sample, false),
+        &serial,
+        &websocket,
+        true,
+        Instant::now(),
+        &mut generations,
+        CommandProgress {
+            phase: &mut phase,
+            maybe_block_count: &mut maybe_block_count,
+            evidence: &mut evidence,
+            maybe_failure: &mut maybe_failure,
+        },
+    );
+
+    // Assert
+    assert_eq!(phase, CommandPhase::ProgrammaticIdentifyStart);
+    assert_eq!(maybe_failure, None);
+    assert!(evidence.dismiss_confirmed);
+    assert_eq!(evidence.dismiss_request_count, 1);
+    assert_eq!(
+        server.join().expect("dismiss server"),
+        "POST /api/system/blockFound/dismiss HTTP/1.1"
+    );
+}
+
+#[test]
+fn explicit_command_rejection_does_not_await_a_postcondition() {
+    // Arrange
+    let (http, server) = command_server_with_response(Some(
+        b"HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\n\r\n",
+    ));
+
+    // Act
+    let admitted = post_may_have_applied(http.post_pause_once(Instant::now() + HTTP_DEADLINE));
+
+    // Assert
+    assert!(!admitted);
+    assert_eq!(
+        server.join().expect("rejecting server"),
+        "POST /api/system/pause HTTP/1.1"
+    );
+}
+
+#[test]
+fn pre_delivery_command_failure_does_not_await_a_postcondition() {
+    // Arrange
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("reserve port");
+    let address = listener.local_addr().expect("reserved address");
+    drop(listener);
+    let http = StrictHttpClient::new(&format!("http://{address}")).expect("HTTP client");
+
+    // Act
+    let admitted = post_may_have_applied(http.post_pause_once(Instant::now() + HTTP_DEADLINE));
+
+    // Assert
+    assert!(!admitted);
+}
+
 fn command_status(
     tracker: &CommandStatusTracker,
     sample: &SystemInfoWire,

@@ -4,8 +4,8 @@ use bitaxe_http_transport::StrictHttpClient;
 use camino::Utf8Path;
 
 use super::{
-    arm_identify_transaction, post_succeeded, CampaignTerminalCategory, CommandEffectsEvidence,
-    CommandPhase, HTTP_DEADLINE,
+    arm_identify_transaction, post_may_have_applied, CampaignTerminalCategory,
+    CommandEffectsEvidence, CommandPhase, HTTP_DEADLINE,
 };
 
 pub(super) fn begin_paused_dismissal(
@@ -30,7 +30,7 @@ pub(super) fn begin_paused_dismissal(
     // may settle while pause converges. Preservation therefore starts from the
     // last paused sample immediately before the one dismissal request.
     *maybe_block_count = Some(paused_block_count);
-    if !post_succeeded(http.post_block_found_dismiss_once(Instant::now() + HTTP_DEADLINE)) {
+    if !post_may_have_applied(http.post_block_found_dismiss_once(Instant::now() + HTTP_DEADLINE)) {
         return Err(CampaignTerminalCategory::CommandRequestFailed);
     }
     Ok(CommandPhase::PausedDismiss)

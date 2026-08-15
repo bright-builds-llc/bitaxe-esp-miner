@@ -126,6 +126,7 @@ fn command_failure_diagnostic_has_closed_redaction_safe_vocabularies() {
         CommandFailureCause::HttpSystemInfo,
         CommandFailureCause::HttpCommandStatus,
         CommandFailureCause::HttpSampleValidation,
+        CommandFailureCause::CommandRequest,
         CommandFailureCause::CommandStateMachine,
         CommandFailureCause::TerminalDeadline,
         CommandFailureCause::SerialEnded,
@@ -156,7 +157,7 @@ fn command_failure_diagnostic_has_closed_redaction_safe_vocabularies() {
 
     // Assert
     assert_eq!(phase_values.len(), 9);
-    assert_eq!(cause_values.len(), 10);
+    assert_eq!(cause_values.len(), 11);
     assert!(phase_values.iter().all(|value| !value.is_empty()));
     assert!(cause_values.iter().all(|value| !value.is_empty()));
 }
@@ -195,4 +196,19 @@ fn command_failure_diagnostic_preserves_the_first_failure_through_recovery() {
             CommandFailureCause::WebsocketWitness,
         ))
     );
+}
+
+#[test]
+fn command_request_category_maps_to_the_specific_diagnostic_cause() {
+    // Arrange
+    let request = CampaignTerminalCategory::CommandRequestFailed;
+    let state = CampaignTerminalCategory::NetworkCorrelationFailed;
+
+    // Act
+    let request_cause = command_state_failure_cause(request);
+    let state_cause = command_state_failure_cause(state);
+
+    // Assert
+    assert_eq!(request_cause, CommandFailureCause::CommandRequest);
+    assert_eq!(state_cause, CommandFailureCause::CommandStateMachine);
 }

@@ -5,7 +5,7 @@ use bitaxe_api::{
     DisplayFrameKind, DisplayRenderOutcome, SystemInfoWire, COMMAND_STATUS_SCHEMA,
     IDENTIFY_DURATION_MS,
 };
-use bitaxe_http_transport::{ExchangeObservation, PlainWebSocket, StrictHttpClient};
+use bitaxe_http_transport::{PlainWebSocket, StrictHttpClient};
 use camino::Utf8Path;
 
 use super::super::CampaignTerminalCategory;
@@ -40,6 +40,11 @@ mod witness_continuity;
 use witness_continuity::consume_optional_websocket_read;
 mod status_reads;
 use status_reads::{fetch_command_status, fetch_system_info};
+mod request;
+use request::{
+    command_state_failure_cause, may_reuse_confirmed_safe_stop, post_may_have_applied,
+    take_recovery_pause_request, terminal_confirmation_timed_out,
+};
 mod identify;
 #[cfg(test)]
 use identify::{
@@ -248,9 +253,13 @@ pub(super) fn observe_command_effects(
                             },
                         );
                         if maybe_failure.is_some() && maybe_failure_diagnostic.is_none() {
+                            let cause = maybe_failure.map_or(
+                                CommandFailureCause::CommandStateMachine,
+                                command_state_failure_cause,
+                            );
                             maybe_failure_diagnostic = Some(CommandFailureDiagnostic::new(
                                 prior_phase.diagnostic_phase(),
-                                CommandFailureCause::CommandStateMachine,
+                                cause,
                             ));
                         }
                         if phase != prior_phase {
@@ -283,13 +292,21 @@ pub(super) fn observe_command_effects(
                 (Ok(None), _) | (_, Ok(None)) => {}
             }
         }
+        if may_reuse_confirmed_safe_stop(maybe_failure, &evidence, &serial) {
+            evidence.recovery_pause_api_confirmed = true;
+            evidence.recovery_pause_serial_confirmed = true;
+            evidence.recovery_safe_stop_confirmed = true;
+            evidence.recovery_terminal_outcome = "already_confirmed";
+            request_network_stop(&shared);
+            break;
+        }
         if take_recovery_pause_request(maybe_failure, &mut recovery_pause_request_count) {
             // Sample before the blocking POST so a safe-stop marker emitted
             // while the request is in flight still counts as post-request.
             let pre_request_serial_observation_count =
                 serial.resumable_pause_safe_stop_observation_count;
             evidence.recovery_terminal_outcome = "pending";
-            if post_succeeded(http.post_pause_once(Instant::now() + HTTP_DEADLINE)) {
+            if post_may_have_applied(http.post_pause_once(Instant::now() + HTTP_DEADLINE)) {
                 maybe_recovery_join = Some(RecoveryPauseJoinState::new(
                     Instant::now(),
                     pre_request_serial_observation_count,
@@ -466,21 +483,6 @@ fn automated_phase_failure(
         .then_some(category)
 }
 
-fn terminal_confirmation_timed_out(maybe_deadline: Option<Instant>, now: Instant) -> bool {
-    maybe_deadline.is_some_and(|deadline| now >= deadline)
-}
-
-fn take_recovery_pause_request(
-    maybe_failure: Option<CampaignTerminalCategory>,
-    request_count: &mut u64,
-) -> bool {
-    if maybe_failure.is_none() || *request_count > 0 {
-        return false;
-    }
-    *request_count = 1;
-    true
-}
-
 fn write_reboot_intent(
     root: &Utf8Path,
     target: &TrustedNetworkTarget,
@@ -507,14 +509,6 @@ fn write_reboot_intent(
         &root.join("command-effects-reboot-intent.private.json"),
         &bytes,
     )
-}
-
-fn post_succeeded(result: anyhow::Result<ExchangeObservation>) -> bool {
-    result.ok().and_then(|observation| {
-        observation
-            .maybe_http_response()
-            .map(|response| response.status())
-    }) == Some(200)
 }
 
 #[cfg(test)]

@@ -51,3 +51,28 @@ test("recovery preserves only a fully joined post-failure safe stop", () => {
   assert.equal(timedOut.safeStopConfirmed, false);
   assert.equal(timedOut.secondaryRecoveryFailure, true);
 });
+
+test("already proved paused safe stop needs no redundant recovery request", () => {
+  // Arrange
+  const result = { safe_stop: "pending", usb_cleanup: "ready" };
+  const network = {
+    recovery_pause_request_count: 0,
+    command_effects: {
+      recovery_pause_api_confirmed: true,
+      recovery_pause_serial_confirmed: true,
+      recovery_safe_stop_confirmed: true,
+      recovery_terminal_outcome: "already_confirmed",
+    },
+  };
+
+  // Act
+  const facts = campaignRecoveryFactsFromDocuments(result, network);
+
+  // Assert
+  assert.deepEqual(facts, {
+    safeStopConfirmed: true,
+    cleanupComplete: true,
+    recoveryAttempted: false,
+    secondaryRecoveryFailure: false,
+  });
+});
