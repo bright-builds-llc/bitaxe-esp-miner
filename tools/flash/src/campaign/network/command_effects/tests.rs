@@ -153,6 +153,7 @@ fn pause_join_issues_one_dismiss_only_after_http_and_serial_stop() {
     let mut sample = SystemInfoWire::from_snapshot(&ApiSnapshot::safe_ultra_205());
     sample.mining_paused = true;
     sample.mining_activity = "paused".to_owned();
+    sample.block_found = 7;
     let started = std::time::Instant::now();
     let mut phase = CommandPhase::Pause(PauseJoinState::new(started));
     let mut evidence = CommandEffectsEvidence::new();

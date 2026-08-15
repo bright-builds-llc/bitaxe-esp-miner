@@ -307,7 +307,12 @@ fn advance_commands(
                 now,
             ) {
                 PauseJoinDecision::Wait => {}
-                PauseJoinDecision::Ready => match begin_paused_dismissal(http, evidence) {
+                PauseJoinDecision::Ready => match begin_paused_dismissal(
+                    http,
+                    evidence,
+                    maybe_block_count,
+                    sample.block_found,
+                ) {
                     Ok(next_phase) => *phase = next_phase,
                     Err(category) => *maybe_failure = Some(category),
                 },

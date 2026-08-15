@@ -11,6 +11,8 @@ use super::{
 pub(super) fn begin_paused_dismissal(
     http: &StrictHttpClient,
     evidence: &mut CommandEffectsEvidence,
+    maybe_block_count: &mut Option<u64>,
+    paused_block_count: u64,
 ) -> Result<CommandPhase, CampaignTerminalCategory> {
     if evidence.pause_request_count != 1
         || evidence.pause_confirmed
@@ -19,8 +21,15 @@ pub(super) fn begin_paused_dismissal(
     {
         return Err(CampaignTerminalCategory::OperatorCheckpointInvalid);
     }
+    if paused_block_count == 0 {
+        return Err(CampaignTerminalCategory::NetworkCorrelationFailed);
+    }
     evidence.pause_confirmed = true;
     evidence.dismiss_request_count = 1;
+    // The notification observation proves provenance, but an in-flight result
+    // may settle while pause converges. Preservation therefore starts from the
+    // last paused sample immediately before the one dismissal request.
+    *maybe_block_count = Some(paused_block_count);
     if !post_succeeded(http.post_block_found_dismiss_once(Instant::now() + HTTP_DEADLINE)) {
         return Err(CampaignTerminalCategory::CommandRequestFailed);
     }
