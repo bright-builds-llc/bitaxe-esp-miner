@@ -1,0 +1,51 @@
+{
+  "schema_version": "bitaxe-emc2101-thermal-fault-evidence-v1",
+  "board": 205,
+  "attempt_ordinal": 7,
+  "source_commit": "e00b3665a20d6ab4b79a2ef952c8f137106e65e8",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "app_elf_sha256": "a1c97ba7d30feb083afff805089d2d73b1432b073465af39cd4d06f4a42c8875",
+  "package_manifest_sha256": "5317beb314cd010aaaf61e5fad8495b9c8adb155d54f353b44f3358b1dadb37d",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "capture-emc2101-thermal-fault-evidence",
+    "request_sha256": "5c8ea10161589dfdc5407f942744050735378c728bde0e969e77cbdfa3524eb8"
+  },
+  "source": {
+    "plan_sha256": "f461fb0e926309b280f49821d3e1a6725c547623f729bf9ea9e9a2cb1f47eac1",
+    "prior_thermal_projection_sha256": "d599357460b8b26431e8e362a3ff4c4f68572856f5cf1960631aa84046a345b5",
+    "restore_projection_sha256": "0dcc499e9dcd2738aa865baa3a99e3f0c82fa219d8ff77ca38d1d477465a804d",
+    "intent_sha256": "f64c5e30ab2072ed6b30e9ad33b5143195f62c7ef8903358df57d05a3360982f",
+    "protected_modes_valid": true,
+    "production_source_current": true
+  },
+  "stimulus": {
+    "kind": "emc2101_invalid_sample",
+    "injected_sample_count": 5,
+    "real_healthy_baseline": true,
+    "real_reads_during_injection": true,
+    "typed_invalid_outcomes": true,
+    "thermal_reading_invalid_fault": true,
+    "baseline_marker_observed": true,
+    "fault_marker_observed": true,
+    "recovery_marker_observed": true,
+    "marker_order_exact": true,
+    "intent_consumed_before_use": true
+  },
+  "restoration": {
+    "ordinary_wifi_seed": true,
+    "exact_package_identity": true,
+    "http_fresh_sample": true,
+    "websocket_fresh_sample": true,
+    "below_throttle_threshold": true,
+    "fault_absent": true,
+    "stimulus_not_replayed": true
+  },
+  "detector_admitted": true,
+  "boot_observed": true,
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "cleanup_complete": true,
+  "recovery_used": true,
+  "redaction_status": "passed"
+}

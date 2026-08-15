@@ -3735,7 +3735,7 @@ Attempt-007 continuation:
       attempt 7.
 - [x] Pass focused and mandatory software gates; commit and push the complete
       binding change before packaging, detection, or device access.
-- [ ] Build the exact clean package, admit one Ultra 205, and run the bounded
+- [x] Build the exact clean package, admit one Ultra 205, and run the bounded
       fault/restoration campaign exactly once.
 - [ ] Promote only on the complete independently validated hardware-regression
       quorum; otherwise withhold evidence and stop without attempt 8.
