@@ -3420,15 +3420,15 @@ and no attempt-026 is authorized. See the linked `CLOSURE.md`.
 Post-reactivation dismissal software plan:
 `docs/parity/work-plans/20260815T034210Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable software-only plan without accessing
+- [x] Commit and push the immutable software-only plan without accessing
       credentials, detector, USB, device/network, display, mining, or hardware-
       control interfaces.
-- [ ] Reproduce the post-reactivation dismissal race at the command-effects
+- [x] Reproduce the post-reactivation dismissal race at the command-effects
       state-machine seam with a live-shaped red regression.
-- [ ] Move the one dismissal and count-preserving clear join into the proven
+- [x] Move the one dismissal and count-preserving clear join into the proven
       safe-stopped pause before IDENTIFY, then resume directly into terminal
       validation after active recovery.
-- [ ] Clarify and test that generic soak continuity windows are non-applicable
+- [x] Clarify and test that generic soak continuity windows are non-applicable
       to the command-effects quorum; run every mandatory gate and close without
       API-009 promotion or attempt-026.
 
@@ -3438,6 +3438,17 @@ not access credentials, protected raw traces, detector, USB, device/network,
 device HTTP, display, mining, hardware controls, direct UART, pins/pads/GPIO,
 public parity evidence, checklist promotion, attempt-026, or any physical
 effect.
+
+Software-plan completion review: pushed source `a90a0405` moves the single
+dismissal and its exact clear/count-preservation readback into the joined
+safe-stopped pause, before IDENTIFY. The live-shaped regression proves active
+reactivation now advances directly to terminal validation without a second
+dismissal, and the command-specific evidence constructor explicitly marks
+generic soak windows non-applicable. Ordered Cargo, Bright Builds, all 44
+Bazel tests, parity/progress, redaction, reference, firmware, immutable-plan,
+unique-task, selector, sensitive-output, and diff gates pass. API-009 remains
+`implemented`; the residual risk is live device timing, so a fresh immutable
+attempt-026 hardware plan is the next safe action.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 

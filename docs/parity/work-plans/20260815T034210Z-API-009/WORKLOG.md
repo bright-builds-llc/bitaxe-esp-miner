@@ -39,3 +39,31 @@
   only implementation boundary. API-009 remains `implemented`.
 - Blocker or next safe action: Commit and push this checkpoint, then add the
   live-shaped red regression before editing production state-machine behavior.
+
+## 2026-08-15T04:07:20Z | paused-dismissal repair complete
+
+- Source commit: `a90a0405e05d0aeef214be198fd665e13d70007d`.
+- Actions: Added the red state-machine regression, moved the sole dismissal
+  request and exact clear/count-preservation join into the joined safe-stopped
+  pause, gated IDENTIFY readiness on that result, and made active reactivation
+  advance directly to terminal validation. Split the new transaction and
+  terminal tests into focused modules and declared both in the Bazel graph.
+- Verification: The new reactivation regression failed against the prior
+  source because it remained in the dismissal phase, then passed after the
+  repair. Thirty-five command-effects tests, all 290 flash tests, strict
+  flash lint, focused flash and automation Bazel tests, the ordered Cargo
+  suite, Bright Builds, all 44 Bazel tests, parity/progress, redaction,
+  reference cleanliness, firmware build, immutable plan digest, unique task,
+  selector, sensitive-output, and diff checks pass. An initial Bazel run
+  exposed the two missing explicit source declarations and passed after they
+  were added. One combined parity invocation hit a transient host resource
+  error; an immediate isolated parity run passed with no validation errors.
+- Evidence: Public source and deterministic loopback tests only. The detector,
+  credentials, protected traces, USB, device/network, display, mining, and
+  hardware-control interfaces were not accessed.
+- Outcome: The software root-cause fix is pushed. API-009 remains
+  `implemented`, no checklist transition or progress synchronization applies,
+  and no hardware verification is claimed.
+- Blocker or next safe action: Close this software-only plan, then create a
+  fresh immutable attempt-026 exact-package hardware plan before any device
+  access.
