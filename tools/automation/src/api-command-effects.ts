@@ -257,13 +257,13 @@ function validatedCommandEffects(network: JsonObject): JsonObject {
     "genuine_block_notification_observed", "positive_block_count_observed",
     "pause_confirmed", "resume_intent_confirmed", "resume_confirmed",
     "identify_status_baseline_confirmed", "identify_render_receipt_confirmed",
-    "identify_clear_receipt_confirmed", "serial_transition_witnesses_confirmed",
-    "websocket_transition_witnesses_confirmed", "dismiss_confirmed", "block_count_preserved",
+    "identify_clear_receipt_confirmed", "retained_identify_transition_confirmed",
+    "dismiss_confirmed", "block_count_preserved",
     "active_before_pause", "active_after_resume", "same_boot_and_package",
     "safety_valid", "terminal_http_valid", "terminal_pool_persisted",
   ];
   if (
-    effects["schema"] !== "mining-campaign-command-effects-v7"
+    effects["schema"] !== "mining-campaign-command-effects-v8"
     || effects["identify_terminal_outcome"] !== "none"
     || effects["recovery_terminal_outcome"] !== "not_required"
     || effects["recovery_pause_api_confirmed"] !== false

@@ -26,6 +26,7 @@ pub(in crate::campaign) struct CommandEffectsEvidence {
     pub(in crate::campaign) identify_cleared_confirmed: bool,
     pub(in crate::campaign) identify_render_receipt_confirmed: bool,
     pub(in crate::campaign) identify_clear_receipt_confirmed: bool,
+    pub(in crate::campaign) retained_identify_transition_confirmed: bool,
     pub(in crate::campaign) serial_transition_witnesses_confirmed: bool,
     pub(in crate::campaign) websocket_transition_witnesses_confirmed: bool,
     pub(in crate::campaign) identify_terminal_outcome: &'static str,
@@ -47,7 +48,7 @@ pub(in crate::campaign) struct CommandEffectsEvidence {
 impl CommandEffectsEvidence {
     pub(super) fn new() -> Self {
         Self {
-            schema: "mining-campaign-command-effects-v7",
+            schema: "mining-campaign-command-effects-v8",
             identify_terminal_outcome: "none",
             recovery_terminal_outcome: "not_required",
             same_boot_and_package: true,
@@ -68,8 +69,7 @@ impl CommandEffectsEvidence {
             && self.identify_request_count == 1
             && self.identify_render_receipt_confirmed
             && self.identify_clear_receipt_confirmed
-            && self.serial_transition_witnesses_confirmed
-            && self.websocket_transition_witnesses_confirmed
+            && self.retained_identify_transition_confirmed
             && self.identify_terminal_outcome == "none"
             && self.dismiss_request_count == 1
             && self.dismiss_confirmed

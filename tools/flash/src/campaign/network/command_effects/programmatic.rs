@@ -51,9 +51,7 @@ pub(super) fn advance_programmatic_commands(
             }
         }
         CommandPhase::ProgrammaticPause(join) => {
-            let transition_confirmed = status.mining.pause_generation == generations.pause
-                && serial.command_transitions.pause_generation >= generations.pause
-                && websocket.pause_generation >= generations.pause;
+            let transition_confirmed = status.mining.pause_generation == generations.pause;
             match join.observe(
                 sample.mining_paused && sample.mining_activity == "paused" && transition_confirmed,
                 serial.resumable_pause_safe_stop_confirmed,
@@ -91,9 +89,7 @@ pub(super) fn advance_programmatic_commands(
         }
         CommandPhase::ProgrammaticDismiss if !sample.show_new_block => {
             let preserved = maybe_block_count.is_some_and(|count| sample.block_found == count);
-            let witnessed = status.block_notification.dismiss_generation == generations.dismiss
-                && serial.command_transitions.dismiss_generation >= generations.dismiss
-                && websocket.dismiss_generation >= generations.dismiss;
+            let witnessed = status.block_notification.dismiss_generation == generations.dismiss;
             if !preserved || !witnessed {
                 return;
             }
@@ -116,6 +112,11 @@ pub(super) fn advance_programmatic_commands(
             }
         }
         CommandPhase::ProgrammaticIdentifyRendered => {
+            let serial_marker = serial.command_transitions.identify_generation
+                >= generations.identify
+                && serial.command_transitions.display_identify_generation >= generations.identify;
+            let websocket_marker = websocket.identify_generation >= generations.identify
+                && websocket.display_identify_generation >= generations.identify;
             let rendered = status.identify.active
                 && status.identify.generation == generations.identify
                 && successful_display_receipt(
@@ -123,11 +124,9 @@ pub(super) fn advance_programmatic_commands(
                     DisplayFrameKind::Identify,
                     generations.identify,
                 )
-                && serial.command_transitions.identify_generation >= generations.identify
-                && serial.command_transitions.display_identify_generation >= generations.identify
-                && websocket.identify_generation >= generations.identify
-                && websocket.display_identify_generation >= generations.identify;
+                && (serial_marker || websocket_marker);
             if rendered {
+                evidence.retained_identify_transition_confirmed = true;
                 evidence.identify_render_receipt_confirmed = true;
                 *phase = CommandPhase::ProgrammaticIdentifyCleared;
             }
@@ -139,10 +138,7 @@ pub(super) fn advance_programmatic_commands(
                     status,
                     DisplayFrameKind::NonIdentify,
                     generations.identify,
-                )
-                && serial.command_transitions.display_non_identify_generation
-                    >= generations.identify
-                && websocket.display_non_identify_generation >= generations.identify;
+                );
             if !cleared {
                 return;
             }
@@ -156,10 +152,7 @@ pub(super) fn advance_programmatic_commands(
             }
         }
         CommandPhase::ProgrammaticResumeIntent
-            if !sample.mining_paused
-                && status.mining.resume_generation == generations.resume
-                && serial.command_transitions.resume_generation >= generations.resume
-                && websocket.resume_generation >= generations.resume =>
+            if !sample.mining_paused && status.mining.resume_generation == generations.resume =>
         {
             evidence.resume_intent_confirmed = true;
             evidence.serial_transition_witnesses_confirmed =

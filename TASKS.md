@@ -3787,15 +3787,15 @@ non-205 devices remain prohibited.
 
 ### task-api009-programmatic-pilot-attempt-028 | 2026-08-15 | Prove autonomous command effects on Ultra 205
 
-- [ ] At clean synchronized pushed HEAD, build and validate the exact package,
+- [x] At clean synchronized pushed HEAD, build and validate the exact package,
       require non-empty ignored `wifi-credentials.json` without reading it,
       and require fresh detector, attempt, and public-projection paths.
-- [ ] Create mode-`0700` `scratch/api009-command-effects/detector-028` with a
+- [x] Create mode-`0700` `scratch/api009-command-effects/detector-028` with a
       mode-`0600` `detector.stdout`, then run exactly one
       `just detect-ultra205` and admit only one holder-free ESP32-S3 board 205.
-- [ ] Run exactly once:
+- [x] Run exactly once:
       `just api-command-effects-campaign --private-root scratch/api009-command-effects/attempt-028 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/api009-command-effects/detector-028/detector.stdout --projection docs/parity/evidence/api009-command-effects/command-effects-projection.json --duration-seconds 600`.
-- [ ] Validate a sealed, redacted programmatic projection proving the pause,
+- [x] Validate a sealed, redacted programmatic projection proving the pause,
       dismissal, IDENTIFY render/clear receipts, resume, same-device restart,
       exact package, safe stop, recovery, and cleanup quorum; otherwise record
       the earliest typed failure and withhold evidence.
@@ -3831,6 +3831,27 @@ reset, power cycle, external UART/BAP, USB request/response protocol, direct
 pin/pad/GPIO work, arbitrary settings writes, external pool, stress profile,
 voltage/frequency/fan/thermal override, fault injection, non-205 device, or
 human display claim is authorized.
+
+Attempt-028 closure review: exact package/runtime identity, safety, the local
+fixture, genuine notification, accepted work/share activity, one pause request,
+HTTP `operator_paused`, stopped hardware, and the receive-only serial safe-stop
+marker all passed. The primary `network_correlation_failed` occurred because
+the new host flow incorrectly required both USB and WebSocket transition-marker
+generations before crediting the otherwise complete pause claim. Recovery's
+secondary pause request could not reach HTTP; cleanup still completed and the
+public projection was withheld. Attempt-028 is consumed, no attempt-029 is
+authorized by this block, and API-009 remains `implemented`.
+
+Regression-backed follow-up: a deterministic production-seam test now
+reproduces the exact HTTP-generation + paused-state + serial-safe-stop boundary
+without optional log-marker quorum. It failed twice before the fix and passes
+after restoring claim-specific proof: pause/resume use HTTP generation, system
+state, and runtime witness; dismiss uses generation plus notification state and
+count; IDENTIFY uses HTTP generation/flush receipts plus a retained marker from
+at least one independent log channel. USB and WebSocket marker completeness is
+still recorded but no longer forms a fragile generic gate. Focused flash and
+automation suites and every full repository gate pass; publication remains
+pending.
 
 ## Future
 

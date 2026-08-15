@@ -1,4 +1,7 @@
 use super::*;
+use std::time::Instant;
+
+use crate::campaign::CampaignTerminalCategory;
 
 fn command_status(
     tracker: &CommandStatusTracker,
@@ -38,7 +41,7 @@ fn programmatic_campaign_proves_all_command_effects_without_operator_input() {
     let mut maybe_block_count = None;
     let mut maybe_failure = None;
     let mut serial = SharedSerialState::default();
-    let mut websocket = CommandTransitionWitness::default();
+    let websocket = CommandTransitionWitness::default();
     let started = std::time::Instant::now();
 
     // Act: pause once, then prove the HTTP generation and native safe-stop witness.
@@ -70,7 +73,6 @@ fn programmatic_campaign_proves_all_command_effects_without_operator_input() {
     sample.mining_activity = "paused".to_owned();
     serial.resumable_pause_safe_stop_confirmed = true;
     serial.command_transitions.pause_generation = 1;
-    websocket.pause_generation = 1;
 
     let (dismiss_http, dismiss_server) = successful_command_server();
     advance_programmatic_commands(
@@ -98,7 +100,6 @@ fn programmatic_campaign_proves_all_command_effects_without_operator_input() {
     tracker.record_command(CommandStatusEffect::BlockFoundDismiss);
     sample.show_new_block = false;
     serial.command_transitions.dismiss_generation = 1;
-    websocket.dismiss_generation = 1;
     let idle_http = StrictHttpClient::new("http://127.0.0.1:9").expect("idle HTTP client");
     advance_programmatic_commands(
         &idle_http,
@@ -153,8 +154,6 @@ fn programmatic_campaign_proves_all_command_effects_without_operator_input() {
     );
     serial.command_transitions.identify_generation = 1;
     serial.command_transitions.display_identify_generation = 1;
-    websocket.identify_generation = 1;
-    websocket.display_identify_generation = 1;
     advance_programmatic_commands(
         &idle_http,
         &target,
@@ -179,7 +178,6 @@ fn programmatic_campaign_proves_all_command_effects_without_operator_input() {
         31_000,
     );
     serial.command_transitions.display_non_identify_generation = 1;
-    websocket.display_non_identify_generation = 1;
 
     let (resume_http, resume_server) = successful_command_server();
     advance_programmatic_commands(
@@ -208,7 +206,6 @@ fn programmatic_campaign_proves_all_command_effects_without_operator_input() {
     sample.mining_paused = false;
     sample.mining_activity = "starting".to_owned();
     serial.command_transitions.resume_generation = 1;
-    websocket.resume_generation = 1;
     advance_programmatic_commands(
         &idle_http,
         &target,
@@ -254,6 +251,68 @@ fn programmatic_campaign_proves_all_command_effects_without_operator_input() {
     assert_eq!(maybe_failure, None);
     assert!(evidence.complete());
     assert_eq!(evidence.identify_request_count, 1);
+    assert!(evidence.serial_transition_witnesses_confirmed);
+    assert!(!evidence.websocket_transition_witnesses_confirmed);
+}
+
+#[test]
+fn pause_join_uses_claim_specific_http_generation_and_safe_stop_without_log_quorum() {
+    // Arrange: reproduce attempt-028's exact proved boundary. The device has
+    // applied pause and emitted the serial safe-stop fact, while neither log
+    // channel has supplied the optional transition marker.
+    let (_temp, root) = private_root();
+    let target = trusted_target();
+    let mut sample = SystemInfoWire::from_snapshot(&ApiSnapshot::safe_ultra_205());
+    sample.mining_paused = true;
+    sample.mining_activity = "paused".to_owned();
+    sample.show_new_block = true;
+    sample.block_found = 7;
+    let mut tracker = CommandStatusTracker::default();
+    tracker.record_command(CommandStatusEffect::Pause);
+    let mut phase = CommandPhase::ProgrammaticPause(PauseJoinState::new(Instant::now()));
+    let mut generations = CommandGenerations {
+        pause: 1,
+        ..CommandGenerations::default()
+    };
+    let mut evidence = CommandEffectsEvidence::new();
+    evidence.pause_request_count = 1;
+    let mut maybe_block_count = Some(7);
+    let mut maybe_failure = None;
+    let serial = SharedSerialState {
+        resumable_pause_safe_stop_confirmed: true,
+        ..SharedSerialState::default()
+    };
+    let websocket = CommandTransitionWitness::default();
+    let idle_http = StrictHttpClient::new("http://127.0.0.1:9").expect("idle HTTP client");
+
+    // Act
+    advance_programmatic_commands(
+        &idle_http,
+        &target,
+        &root,
+        &sample,
+        &command_status(&tracker, &sample, false),
+        &serial,
+        &websocket,
+        true,
+        Instant::now(),
+        &mut generations,
+        CommandProgress {
+            phase: &mut phase,
+            maybe_block_count: &mut maybe_block_count,
+            evidence: &mut evidence,
+            maybe_failure: &mut maybe_failure,
+        },
+    );
+
+    // Assert: the claim-specific pause quorum is complete before the next
+    // request; an unavailable optional log marker must not erase that proof.
+    assert!(evidence.pause_confirmed);
+    assert_eq!(evidence.dismiss_request_count, 1);
+    assert_eq!(
+        maybe_failure,
+        Some(CampaignTerminalCategory::CommandRequestFailed)
+    );
 }
 
 #[test]

@@ -93,3 +93,32 @@
   effect-eligible only after this task checkpoint is committed and pushed.
 - Blocker or next safe action: Commit and push the attempt contract, rebuild
   the exact package from that clean synchronized HEAD, then run its detector.
+
+## 2026-08-15T06:22:20Z | attempt-028 blocked at over-constrained pause quorum
+
+- Exact package source: `1510e8cb76379bf6d7c4b43e4b5ac1543608a9bd`.
+- Actions: Built and validated the exact package, admitted one Ultra 205 with
+  protected detector modes, and consumed the sole programmatic attempt-028.
+- Verification: Trusted package/runtime identity, safety, local fixture,
+  genuine notification, accepted activity, one pause request, HTTP paused
+  state, stopped hardware, serial safe-stop, and USB cleanup passed. The public
+  projection is absent. Primary category is `network_correlation_failed`;
+  recovery was attempted and its HTTP request failed secondarily.
+- Diagnosis: The host required both USB and WebSocket transition generations
+  in addition to the authoritative HTTP generation and runtime safe-stop. That
+  recreated the generic quorum explicitly rejected by the platform design.
+- Fix proof: The exact production-seam regression
+  `pause_join_uses_claim_specific_http_generation_and_safe_stop_without_log_quorum`
+  failed deterministically twice before the fix and passes afterward. Full
+  flash and automation focused suites also pass. The command-effects schema is
+  now v8; pause/resume/dismiss use their claim-specific proof, while IDENTIFY
+  requires its HTTP render receipts and one retained-marker channel.
+- Outcome: Attempt-028 is consumed without promotion or retry. API-009 remains
+  `implemented`; no user action contributed to the failure.
+- Full verification: Ordered Cargo format, strict lint, all-target build and
+  all-feature tests; Bright Builds; firmware build; all 44 Bazel tests;
+  parity/progress; semantic redaction; pinned-reference cleanliness; and diff
+  checks pass.
+- Blocker or next safe action: Commit and push the fix, then decide whether the
+  material contract correction justifies a separately bounded attempt-029
+  task.
