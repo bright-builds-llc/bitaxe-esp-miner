@@ -4031,33 +4031,6 @@ progress requires a separately scoped sensor-producer/I2C latency diagnostic
 that can identify which bounded acquisition delayed the complete observation
 sweep without exposing sensor values, followed by a verified root-cause change.
 
-### task-api009-consumed-terminal-state | 2026-08-15 | Make lease consumption terminal
-
-- [ ] Reproduce a terminal lease-consumption event that arrives while a
-      resumable safe stop is pending or hardware is already stopped, and prove
-      the current snapshot can pair `campaign_lease_consumed` with `armed`.
-- [ ] Make every terminal transition cancel resumability and settle an
-      already-stopped admitted lease as `consumed` without issuing another
-      hardware stop or manufacturing a safe-stop receipt.
-- [ ] Add state-machine, marker, host-handoff, and primary-failure regressions
-      for the attempt-042 signature using only deterministic fixtures.
-- [ ] Run focused and complete repository gates, simplify and review the diff,
-      archive this task, commit, and push before authorizing attempt-043.
-
-Authorization: source, deterministic fixtures, local child processes, builds,
-and repository verification only. Protected attempt-042 may be used only for
-the closed privacy-safe facts in its archived task and worklog. Do not access
-credentials, USB, device/network state, identities, origins, ports, addresses,
-boot session, raw traces, or sensor values. No detector, flash/reset, mining,
-recovery, OTA, erase, factory reset, UART/BAP, USB duplex, pins/GPIO, direct
-controls, fault injection, or attempt-043 is authorized by this task.
-
-Stop if the change permits a consumed reason with a non-consumed state, treats
-a resumable pause as terminal without a terminal cause, claims successful
-hardware cleanup before its confirmation, retries an effect, weakens exact-
-package/privacy/request-once behavior, or cannot preserve the earliest typed
-failure. API-009 remains `implemented` and public evidence remains withheld.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

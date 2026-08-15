@@ -47,6 +47,7 @@ rust_library(
         "src/v1/production_session/tests/recovery.rs",
         "src/v1/production_session/tests/readiness_recovery.rs",
         "src/v1/production_session/tests/scoreboard.rs",
+        "src/v1/production_session/tests/terminal_expiry.rs",
         "src/v1/production_session/types.rs",
         "src/v1/recovery_policy.rs",
         "src/v1/share_validation.rs",

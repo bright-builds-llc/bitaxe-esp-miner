@@ -77,6 +77,33 @@ fn command_effects_consumed_marker() -> Vec<u8> {
     format!("{CAMPAIGN_MARKER_PREFIX}{marker}\n").into_bytes()
 }
 
+fn command_effects_armed_consumed_reason_marker() -> Vec<u8> {
+    let paused = command_effects_paused_stale_marker();
+    let document = std::str::from_utf8(&paused).expect("marker template");
+    let payload = document
+        .strip_prefix(CAMPAIGN_MARKER_PREFIX)
+        .expect("marker prefix")
+        .trim_end();
+    let mut marker: serde_json::Value = serde_json::from_str(payload).expect("marker json");
+    marker["active_ms"] = serde_json::json!(600_000);
+    marker["terminal_reason"] = serde_json::json!("campaign_lease_consumed");
+    marker["readiness_transition"]["current_blocker"] =
+        serde_json::json!("campaign_lease_consumed");
+    marker["resumable_pause_safe_stop"] = serde_json::json!("not_required");
+    marker["safety"] = serde_json::json!("fresh");
+    marker["fresh_observation_count"] = serde_json::json!(5);
+    for field in [
+        "power_watts",
+        "bus_voltage_volts",
+        "current_amps",
+        "chip_temp_celsius",
+        "fan_rpm",
+    ] {
+        marker["observation_freshness"][field] = serde_json::json!(true);
+    }
+    format!("{CAMPAIGN_MARKER_PREFIX}{marker}\n").into_bytes()
+}
+
 #[test]
 fn confirmed_stopped_command_pause_does_not_fail_on_transient_stale_sensors() {
     // Arrange
@@ -101,7 +128,7 @@ fn later_valid_consumed_marker_recovers_transient_serial_json_damage() {
     let damaged_stop = analyzer.observe_chunk(&damaged);
     let terminal_stop = analyzer.observe_chunk(&terminal);
     let capture = analyzer.finish();
-    let maybe_terminal = crate::campaign::network::terminal_pool_persistence(&capture);
+    let maybe_terminal = crate::campaign::network::terminal_capture_handoff(&capture);
 
     // Assert
     assert!(!damaged_stop);
@@ -129,7 +156,7 @@ fn accepted_terminal_handoff_does_not_hide_an_independent_schema_failure() {
 
     // Act
     let capture = analyze_campaign_serial_bytes(&stream, command_effects_admission());
-    let maybe_terminal = crate::campaign::network::terminal_pool_persistence(&capture);
+    let maybe_terminal = crate::campaign::network::terminal_capture_handoff(&capture);
 
     // Assert
     assert_eq!(
@@ -141,4 +168,23 @@ fn accepted_terminal_handoff_does_not_hide_an_independent_schema_failure() {
         CampaignSerialOutcomeDetail::MarkerSchemaInvalid
     );
     assert!(maybe_terminal.is_some());
+}
+
+#[test]
+fn consumed_reason_with_armed_state_hands_off_the_terminal_failure() {
+    // Arrange
+    let stream = command_effects_armed_consumed_reason_marker();
+
+    // Act
+    let capture = analyze_campaign_serial_bytes(&stream, command_effects_admission());
+    let terminal = crate::campaign::network::terminal_capture_handoff(&capture)
+        .expect("consumed terminal reason should be handed off");
+
+    // Assert
+    assert_eq!(capture.maybe_failure, None);
+    assert!(!terminal.terminal_consumed);
+    assert_eq!(
+        terminal.maybe_failure,
+        Some(CampaignTerminalCategory::TerminalStateUnconfirmed)
+    );
 }

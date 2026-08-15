@@ -19,7 +19,7 @@ use bitaxe_api::ExpectedRuntimeAttestationIdentity;
 use camino::Utf8PathBuf;
 
 use super::*;
-use crate::campaign::markers::CampaignStateMarker;
+use crate::campaign::markers::{CampaignStateMarker, CampaignTerminalReasonMarker};
 use command_effects::observe_command_effects;
 pub(crate) use command_effects::{
     respond_identify_checkpoint, IdentifyCheckpointKind, IdentifyCheckpointOutcome,
@@ -108,7 +108,7 @@ impl CampaignNetworkCoordinator {
         }
         self.tracker.finish(&self.shared);
         if let Ok(mut shared) = self.shared.lock() {
-            close_serial_input(&mut shared, terminal_pool_persistence(serial));
+            close_serial_input(&mut shared, terminal_capture_handoff(serial));
             if self.maybe_worker.is_none() && shared.maybe_failure.is_none() {
                 shared.maybe_failure = Some(CampaignTerminalCategory::NetworkTargetUnavailable);
             }
@@ -124,7 +124,9 @@ impl CampaignNetworkCoordinator {
 
 #[derive(Clone, Copy)]
 pub(super) struct TerminalCaptureHandoff {
-    pool_config_persisted: bool,
+    pub(super) terminal_consumed: bool,
+    pub(super) pool_config_persisted: bool,
+    pub(super) maybe_failure: Option<CampaignTerminalCategory>,
 }
 
 fn close_serial_input(
@@ -132,13 +134,17 @@ fn close_serial_input(
     maybe_terminal: Option<TerminalCaptureHandoff>,
 ) {
     if let Some(terminal) = maybe_terminal {
-        if shared.terminal_consumed
+        if let Some(category) = terminal.maybe_failure {
+            shared.maybe_failure.get_or_insert(category);
+        }
+        if terminal.terminal_consumed
+            && shared.terminal_consumed
             && shared.terminal_pool_persisted != terminal.pool_config_persisted
         {
             shared
                 .maybe_failure
                 .get_or_insert(CampaignTerminalCategory::NetworkCorrelationFailed);
-        } else {
+        } else if terminal.terminal_consumed {
             shared.terminal_consumed = true;
             shared.terminal_pool_persisted = terminal.pool_config_persisted;
         }
@@ -148,12 +154,19 @@ fn close_serial_input(
     shared.serial_finished = true;
 }
 
-pub(super) fn terminal_pool_persistence(
+pub(super) fn terminal_capture_handoff(
     serial: &CampaignSerialCapture,
 ) -> Option<TerminalCaptureHandoff> {
     serial.aggregate.terminal.as_ref().and_then(|marker| {
-        (marker.campaign_state == CampaignStateMarker::Consumed).then_some(TerminalCaptureHandoff {
+        let terminal_consumed = marker.campaign_state == CampaignStateMarker::Consumed;
+        let consumed_reason_without_state = marker.terminal_reason
+            == CampaignTerminalReasonMarker::CampaignLeaseConsumed
+            && !terminal_consumed;
+        (terminal_consumed || consumed_reason_without_state).then_some(TerminalCaptureHandoff {
+            terminal_consumed,
             pool_config_persisted: marker.pool_config_persisted,
+            maybe_failure: consumed_reason_without_state
+                .then_some(CampaignTerminalCategory::TerminalStateUnconfirmed),
         })
     })
 }

@@ -814,3 +814,21 @@
   terminal causes cancel resumability and an already-stopped lease becomes
   consumed without a duplicate effect. No attempt-043 is authorized until the
   correction passes complete gates and is pushed.
+
+## 2026-08-15T12:51:28Z | terminal lease consumption fixed and verified
+
+- Reproduction: Deterministic production-session tests captured both failure
+  shapes: expiry after a confirmed resumable stop left the lease `armed`, and
+  expiry while that stop was pending allowed its later confirmation to re-arm
+  the terminal lease.
+- Fix: Entering any terminal safe stop now clears resumability. An already-
+  stopped admitted lease is consumed immediately using its prior hardware-stop
+  confirmation; an in-flight stop consumes when its confirmation arrives. No
+  duplicate hardware-stop effect is emitted.
+- Diagnostic: The serial-to-network handoff recognizes the old contradictory
+  consumed-reason/non-consumed-state marker and preserves
+  `terminal_state_unconfirmed / serial_witness` before input closure, so the
+  secondary `serial_ended` symptom cannot replace the primary failure.
+- Verification: Focused suites, ordered Cargo gates, Bright Builds, real
+  firmware, all 45 Bazel tests, parity/progress, redaction, pinned reference,
+  sensitive-output, and diff checks pass. No hardware effect occurred.

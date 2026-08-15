@@ -498,6 +498,9 @@ impl ProductionMiningSession {
         shutdown_requested: bool,
         effects: &mut Vec<ProductionSessionEffect>,
     ) -> Result<(), StratumV1Error> {
+        // A terminal cause supersedes a pending resumable pause. Otherwise a
+        // late hardware confirmation can incorrectly re-arm a consumed lease.
+        self.resumable_pause_pending = false;
         let actions = if shutdown_requested {
             self.recovery.on_wakeup(
                 Some(ProductionSessionWakeup::ShutdownRequested),
@@ -510,6 +513,14 @@ impl ProductionMiningSession {
             Vec::new()
         };
         self.apply_recovery_actions(actions, effects)?;
+        if self.hardware_state == MiningHardwareState::Stopped {
+            if let Some(lease_id) = self.maybe_lease.map(MiningCampaignLease::id) {
+                // A prior resumable-stop confirmation already proves the
+                // hardware is stopped, so consume without issuing it again.
+                self.finish_terminal_safe_stop(lease_id);
+            }
+            return Ok(());
+        }
         self.begin_hardware_safe_stop_if_needed(effects)
     }
 

@@ -49,6 +49,11 @@ impl ProductionMiningSession {
             self.terminal_publication_pending = false;
             return;
         }
+        self.finish_terminal_safe_stop(lease_id);
+    }
+
+    pub(super) fn finish_terminal_safe_stop(&mut self, lease_id: MiningCampaignLeaseId) {
+        self.hardware_state = MiningHardwareState::Stopped;
         self.campaign_state = MiningCampaignState::Consumed;
         self.maybe_consumed_lease_id = Some(lease_id);
         self.maybe_lease = None;

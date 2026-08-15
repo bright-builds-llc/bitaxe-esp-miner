@@ -8065,3 +8065,40 @@ so the analyzer correctly rejected terminal confirmation as
 `terminal_state_unconfirmed`. This is a firmware state-transition defect, not
 serial corruption or user action. Follow-up software work is tracked by
 `task-api009-consumed-terminal-state`.
+
+### task-api009-consumed-terminal-state | 2026-08-15 | Make lease consumption terminal
+
+- [x] Reproduced terminal lease consumption both while a resumable safe stop
+      was pending and after its hardware confirmation had left the lease armed.
+- [x] Made every terminal transition cancel resumability and settle an
+      already-stopped admitted lease as `consumed` without issuing another
+      hardware stop or manufacturing a safe-stop receipt.
+- [x] Added state-machine, marker, host-handoff, and primary-failure
+      regressions for the attempt-042 signature using deterministic fixtures.
+- [x] Ran focused and complete repository gates, simplified and reviewed the
+      diff, and prepared the verified correction for commit and push before
+      any attempt-043 contract.
+
+Authorization: This task was software-only. It did not access credentials,
+USB, device/network state, identities, origins, ports, addresses, boot session,
+raw traces, or sensor values. It performed no detector, flash/reset, mining,
+recovery, OTA, erase, factory reset, UART/BAP, USB duplex, pins/GPIO, direct
+control, fault injection, or attempt-043 effect. API-009 remains `implemented`
+and public evidence remains withheld.
+
+Final verification: The original state machine deterministically reproduced
+both `campaign_lease_consumed / armed` races. The corrected lifecycle cancels
+resumability at the terminal boundary, consumes an already-confirmed stopped
+lease directly, and lets an in-flight hardware confirmation finish terminally.
+No duplicate `SafeStopHardware` effect is emitted. The host capture handoff now
+classifies the old contradictory marker as `terminal_state_unconfirmed` before
+serial closure, preserving it as a `serial_witness` diagnostic instead of the
+later `serial_ended` symptom.
+
+Completion review: Focused production-session and campaign tests, ordered
+Cargo format/strict-lint/build/test, Bright Builds, the real ESP32-S3 firmware
+build, all 45 Bazel tests, parity/progress, redaction, reference cleanliness,
+sensitive-output, and diff checks pass. The fix changes one terminal boundary
+and one diagnostic handoff; it does not retry effects, loosen marker semantics,
+extend deadlines, or weaken package, privacy, safety, cleanup, or request-once
+contracts. A fresh hardware ordinal requires its own committed contract.
