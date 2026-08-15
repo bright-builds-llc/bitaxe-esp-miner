@@ -64,7 +64,6 @@ pub struct ThermalFaultStimulusStep {
 enum Phase {
     AwaitingBaseline { remaining: u8 },
     Injecting { injected: u16 },
-    AwaitingFinalFault,
     AwaitingRecovery { remaining: u8 },
     Complete,
 }
@@ -109,7 +108,12 @@ impl ThermalFaultStimulus {
                 })
             }
             Phase::Injecting { injected } => {
-                if !is_expected_fault(prior) {
+                // The first post-overlay sweep proves that the production
+                // reducer published the expected fault. Later sweeps may
+                // legitimately age its retained last-good sample to stale, so
+                // the transaction latches this proof instead of weakening the
+                // producer's ordinary one-second stale policy.
+                if injected == 1 && !is_expected_fault(prior) {
                     return Err(ThermalFaultStimulusFailure::FaultProjectionMissing);
                 }
                 if !matches!(actual, AcquisitionOutcome::Success(_)) {
@@ -117,7 +121,9 @@ impl ThermalFaultStimulus {
                 }
                 let next = injected + 1;
                 self.phase = if next == THERMAL_FAULT_STIMULUS_SAMPLE_COUNT {
-                    Phase::AwaitingFinalFault
+                    Phase::AwaitingRecovery {
+                        remaining: RECOVERY_SWEEP_LIMIT,
+                    }
                 } else {
                     Phase::Injecting { injected: next }
                 };
@@ -125,21 +131,6 @@ impl ThermalFaultStimulus {
                     outcome: AcquisitionOutcome::InvalidSample,
                     maybe_marker: (injected == 1)
                         .then_some(ThermalFaultStimulusMarker::FaultObserved),
-                })
-            }
-            Phase::AwaitingFinalFault => {
-                if !is_expected_fault(prior) {
-                    return Err(ThermalFaultStimulusFailure::FaultProjectionMissing);
-                }
-                if !matches!(actual, AcquisitionOutcome::Success(_)) {
-                    return Err(ThermalFaultStimulusFailure::RecoveryUnavailable);
-                }
-                self.phase = Phase::AwaitingRecovery {
-                    remaining: RECOVERY_SWEEP_LIMIT,
-                };
-                Ok(ThermalFaultStimulusStep {
-                    outcome: actual,
-                    maybe_marker: None,
                 })
             }
             Phase::AwaitingRecovery { remaining } => {
@@ -180,7 +171,14 @@ fn is_expected_fault(observation: &Observation<ThermalReading>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::observation::{BootSessionId, MonotonicMillis, ObservationSequence};
+    use crate::{
+        observation::{BootSessionId, MonotonicMillis, ObservationSequence, UnavailableReason},
+        sensor_acquisition::{
+            reduce_sensor_sweep, ProducerSensorState, ProducerSequences, SensorSweepOutcomes,
+        },
+    };
+
+    const SENSOR_STALE_AFTER_MS: u64 = 1_000;
 
     fn fresh(sequence: u64) -> Observation<ThermalReading> {
         Observation::record_success(
@@ -219,6 +217,65 @@ mod tests {
             if let Some(marker) = step.maybe_marker {
                 markers.push(marker);
             }
+        }
+
+        // Assert
+        assert_eq!(injected, THERMAL_FAULT_STIMULUS_SAMPLE_COUNT);
+        assert_eq!(
+            markers,
+            [
+                ThermalFaultStimulusMarker::BaselineReady,
+                ThermalFaultStimulusMarker::FaultObserved,
+                ThermalFaultStimulusMarker::Recovered,
+            ]
+        );
+        assert!(stimulus.is_complete());
+    }
+
+    #[test]
+    fn production_order_fault_sequence_survives_stale_processing() {
+        // Arrange
+        let mut stimulus = ThermalFaultStimulus::default();
+        let mut state = ProducerSensorState::default();
+        let mut sequences = ProducerSequences::default();
+        let mut markers = Vec::new();
+        let mut injected = 0;
+
+        // Act
+        for sweep in 1..=8 {
+            let acquired_at = MonotonicMillis::new(sweep * SENSOR_STALE_AFTER_MS);
+            let step = stimulus
+                .step(
+                    state.thermal().temperature_truth(),
+                    AcquisitionOutcome::Success(50.0),
+                )
+                .expect("production owner must retain the injected fault projection");
+            if step.outcome == AcquisitionOutcome::InvalidSample {
+                injected += 1;
+            }
+            if let Some(marker) = step.maybe_marker {
+                markers.push(marker);
+            }
+            let (next_state, next_sequences) = reduce_sensor_sweep(
+                state,
+                sequences,
+                SensorSweepOutcomes {
+                    power: AcquisitionOutcome::Unavailable(UnavailableReason::ProducerUnavailable),
+                    asic_temperature_celsius: step.outcome,
+                    vr_temperature_celsius: AcquisitionOutcome::Unavailable(
+                        UnavailableReason::UnsupportedOnBoard,
+                    ),
+                    tachometer_rpm: AcquisitionOutcome::Unavailable(
+                        UnavailableReason::ProducerUnavailable,
+                    ),
+                },
+                BootSessionId::new(1),
+                acquired_at,
+                12.0,
+            )
+            .expect("bounded fixture sequences remain representable");
+            state = next_state.mark_stale_at(acquired_at, SENSOR_STALE_AFTER_MS);
+            sequences = next_sequences;
         }
 
         // Assert

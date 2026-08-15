@@ -3666,12 +3666,12 @@ software regression before defining any new bounded hardware ordinal.
 Software diagnosis continuation:
 `docs/parity/work-plans/20260815T181534Z-THR-001/PLAN.md`.
 
-- [ ] Reproduce attempt-004's exact `fault_projection_missing` category through
+- [x] Reproduce attempt-004's exact `fault_projection_missing` category through
       the real stimulus, reducer, stale-processing, and next-sweep order in one
       fast deterministic software loop.
-- [ ] Rank and falsify multiple causes, apply the smallest root-cause fix, and
+- [x] Rank and falsify multiple causes, apply the smallest root-cause fix, and
       preserve ordinary non-stimulus fault/fresh/stale semantics.
-- [ ] Pass focused, firmware, mandatory, privacy, reference, task/plan, and diff
+- [x] Pass focused, firmware, mandatory, privacy, reference, task/plan, and diff
       gates; commit and push with THR-001 still `implemented`.
 - [ ] Close the software-only plan and create a separate immutable attempt-005
       contract only after the correction is clean and pushed.
