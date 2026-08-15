@@ -3934,11 +3934,11 @@ sweep without exposing sensor values, followed by a verified root-cause change.
 
 ### task-parity-io002-adc-observation-attempt-002 | 2026-08-15 | Verify disabled-state ADC observation
 
-- [ ] Rebind the closed ADC evidence workflow to immutable plan
+- [x] Rebind the closed ADC evidence workflow to immutable plan
       `docs/parity/work-plans/20260815T222316Z-IO-002/PLAN.md`, protected
       `attempt-002` paths, and public schema ordinal 2 without changing the
       production ADC, safety, mining, or hardware-control behavior.
-- [ ] Run the complete focused and mandatory software/firmware/privacy gates,
+- [x] Run the complete focused and mandatory software/firmware/privacy gates,
       commit and push the exact implementation, and build its package before
       any device access.
 - [ ] Run only the plan's exact detector command and, after successful one-

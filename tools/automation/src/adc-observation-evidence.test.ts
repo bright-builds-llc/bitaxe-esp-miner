@@ -160,17 +160,17 @@ async function fixture(name: string) {
   }
   const planDocument = [
     "- Parity row: `IO-002`",
-    "- Active task: `task-parity-io002-adc-observation`",
+    "- Active task: `task-parity-io002-adc-observation-attempt-002`",
     "",
   ].join("\n");
-  const planRelative = "docs/parity/work-plans/20260815T210711Z-IO-002/PLAN.md";
+  const planRelative = "docs/parity/work-plans/20260815T222316Z-IO-002/PLAN.md";
   await mkdir(path.dirname(path.join(root, planRelative)), { recursive: true });
   await writeFile(path.join(root, planRelative), planDocument);
   await writeFile(path.join(root, "TASKS.md"), [
-    "### task-parity-io002-adc-observation | fixture",
-    "Plan: `docs/parity/work-plans/20260815T210711Z-IO-002/PLAN.md`.",
+    "### task-parity-io002-adc-observation-attempt-002 | fixture",
+    "Plan: `docs/parity/work-plans/20260815T222316Z-IO-002/PLAN.md`.",
     "Schema: `bitaxe-adc-observation-evidence-v1`.",
-    "Attempt: `attempt-001`.",
+    "Attempt: `attempt-002`.",
     "",
   ].join("\n"));
   const contractRelative = "crates/bitaxe-api/fixtures/api/system-info-contract-v1.json";
@@ -187,7 +187,7 @@ async function fixture(name: string) {
     app_elf_sha256: appElfSha256,
   }));
   await writeFile(credentials, "{}\n", { mode: 0o600 });
-  const wrapper = path.join(root, "scratch/io002-adc/wrapper-001");
+  const wrapper = path.join(root, "scratch/io002-adc/wrapper-002");
   await mkdir(wrapper, { recursive: true, mode: 0o700 });
   await chmod(wrapper, 0o700);
   for (const outputName of ["detector.stdout", "detector.stderr", "capture.stdout", "capture.stderr"]) {
@@ -201,10 +201,10 @@ async function fixture(name: string) {
     admittedPlanSha256: createHash("sha256").update(planDocument).digest("hex"),
     projection: path.join(root, "docs/parity/evidence/io002-adc/adc-observation-projection.json"),
     options: {
-      privateRoot: "scratch/io002-adc/attempt-001",
+      privateRoot: "scratch/io002-adc/attempt-002",
       packageManifest: manifest,
       wifiCredentials: credentials,
-      detectorOutput: "scratch/io002-adc/wrapper-001/detector.stdout",
+      detectorOutput: "scratch/io002-adc/wrapper-002/detector.stdout",
       port: "/dev/private-port",
       projection: "docs/parity/evidence/io002-adc/adc-observation-projection.json",
       captureTimeoutSeconds: 360,

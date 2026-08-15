@@ -31,14 +31,14 @@ type FailureCategory = Extract<
   AutomationCategory,
   "hardware_blocked" | "evidence_invalid" | "timeout" | "process_failed"
 >;
-const expectedPrivateRoot = "scratch/io002-adc/attempt-001";
-const expectedWrapperRoot = "scratch/io002-adc/wrapper-001";
+const expectedPrivateRoot = "scratch/io002-adc/attempt-002";
+const expectedWrapperRoot = "scratch/io002-adc/wrapper-002";
 const expectedProjection =
   "docs/parity/evidence/io002-adc/adc-observation-projection.json";
-const expectedPlan = "docs/parity/work-plans/20260815T210711Z-IO-002/PLAN.md";
-const expectedPlanSha256 = "bb0db9d7338e79d86bd4a97105e85805db599593f82da06360505836b4506fb6";
+const expectedPlan = "docs/parity/work-plans/20260815T222316Z-IO-002/PLAN.md";
+const expectedPlanSha256 = "bc9d9d7be66a1bcf85ee3c1e9692bbcb865eac279f94f8e3d27679991dac9f08";
 const expectedReferenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
-const activeTask = "task-parity-io002-adc-observation";
+const activeTask = "task-parity-io002-adc-observation-attempt-002";
 const expectedAttemptFiles = [
   "api.private.json",
   "final-evidence.private.json",
@@ -240,7 +240,7 @@ function validateTaskAndPlan(
   }
   const maybeEnd = taskDocument.indexOf("\n### ", start + heading.length);
   const block = taskDocument.slice(start, maybeEnd === -1 ? taskDocument.length : maybeEnd);
-  for (const required of [expectedPlan, "bitaxe-adc-observation-evidence-v1", "attempt-001"]) {
+  for (const required of [expectedPlan, "bitaxe-adc-observation-evidence-v1", "attempt-002"]) {
     if (!block.includes(required)) throw failure("evidence_invalid", "IO-002 task contract is incomplete");
   }
   if (sha256(planDocument) !== admittedPlanSha256
@@ -390,7 +390,7 @@ export async function captureAdcObservationEvidence(
     const evidence: AdcObservationEvidence = {
       schema_version: "bitaxe-adc-observation-evidence-v1",
       board: 205,
-      attempt_ordinal: 1,
+      attempt_ordinal: 2,
       source_commit: currentSourceCommit,
       reference_commit: referenceCommit,
       package_manifest_sha256: source.package_manifest_sha256,

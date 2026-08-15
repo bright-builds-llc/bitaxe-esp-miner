@@ -62,7 +62,7 @@ impl AdcObservationEvidence {
     pub fn validate(&self) -> Result<(), &'static str> {
         if self.schema_version != ADC_OBSERVATION_EVIDENCE_SCHEMA
             || self.board != 205
-            || self.attempt_ordinal != 1
+            || self.attempt_ordinal != 2
         {
             return Err("ADC observation evidence schema, board, or attempt is invalid");
         }
@@ -148,7 +148,7 @@ mod tests {
         AdcObservationEvidence {
             schema_version: ADC_OBSERVATION_EVIDENCE_SCHEMA.to_owned(),
             board: 205,
-            attempt_ordinal: 1,
+            attempt_ordinal: 2,
             source_commit: "a".repeat(40),
             reference_commit: "b".repeat(40),
             package_manifest_sha256: "c".repeat(64),

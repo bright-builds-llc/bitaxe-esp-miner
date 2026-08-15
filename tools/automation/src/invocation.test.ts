@@ -394,8 +394,8 @@ test("core-voltage projection accepts only the committed power proof", () => {
 test("ADC observation capture requires the complete protected contract", () => {
   // Arrange
   const complete = ["capture-adc-observation-evidence",
-    "--private-root", "scratch/io002-adc/attempt-001", "--package-manifest", "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
-    "--wifi-credentials", "wifi-credentials.json", "--detector-output", "scratch/io002-adc/wrapper-001/detector.stdout",
+    "--private-root", "scratch/io002-adc/attempt-002", "--package-manifest", "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
+    "--wifi-credentials", "wifi-credentials.json", "--detector-output", "scratch/io002-adc/wrapper-002/detector.stdout",
     "--projection", "docs/parity/evidence/io002-adc/adc-observation-projection.json", "--capture-timeout-seconds", "360"];
 
   // Act
