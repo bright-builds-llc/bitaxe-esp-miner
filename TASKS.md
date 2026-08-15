@@ -3311,6 +3311,28 @@ hardware interface was accessed and attempt-024 remains unauthorized by this
 closed plan. A fresh immutable exact-package hardware plan is the next safe
 action. See the linked `CLOSURE.md`.
 
+Resume-correlation attempt-024 plan:
+`docs/parity/work-plans/20260815T015842Z-API-009/PLAN.md`.
+
+- [ ] Commit and push the immutable single-attempt contract, then pass every
+      focused, mandatory, privacy, reference, firmware, selector, and
+      exact-package gate at clean synchronized HEAD.
+- [ ] Run exactly one fresh detector-gated attempt-024, keep the Ultra 205
+      paused and safe-stopped through every unbounded operator wait, and use
+      the split resume-intent/reactivation and correlated recovery protocol.
+- [ ] Promote API-009 only on the complete command/restart/device-user quorum;
+      otherwise preserve `implemented`, the earliest typed failure, evidence
+      withholding, safe stop, cleanup, and recovery, then stop without
+      attempt-025.
+
+Attempt-024 authorization: pushed source `89d05d35` repairs attempt-023's exact
+resume and recovery boundary. Standing task authorization permits this one
+exact-package campaign only after the linked immutable contract and all named
+gates pass. Campaign start consumes attempt-024. No inferred observation,
+protected-artifact reuse, external or owner pool, factory reset, erase,
+destructive/fault-injection action, direct UART, pin/pad/GPIO manipulation,
+attempt-025, or unchanged retry is authorized.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
