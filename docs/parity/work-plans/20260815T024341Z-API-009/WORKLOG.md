@@ -39,3 +39,27 @@
   attempt-025 authorization boundary. API-009 remains `implemented`.
 - Blocker or next safe action: Commit and push this checkpoint, then require
   clean synchronized HEAD before package creation or detector admission.
+
+## 2026-08-15T03:31:53Z | exact-package attempt and terminal closure
+
+- Source commit: `bcb46964a48f5e815c9e39bb3b06607bf2370a4b`.
+- Actions: Built and validated the exact package, ran the fresh detector once,
+  invoked the sole attempt-025 campaign once, and consumed ready, rendered,
+  and cleared only after their matching live user inputs. No replay was used.
+- Verification: Trusted identity, genuine notification, positive block count,
+  pause, stopped hardware, one IDENTIFY request, rendered and cleared
+  observations, one resume request, recovery from stale to five fresh safety
+  observations, active reactivation, and one accepted share passed. The sealed
+  result then closed as `network_correlation_failed`: none of twenty required
+  network windows were covered, so watchdog, work-renewal, terminal HTTP, and
+  terminal WebSocket checks were false. Terminal safe stop, USB cleanup,
+  private modes, fixture cleanup, result seal, and process cleanup pass.
+- Evidence: Closed categorical fields, booleans, counts, and bounded active
+  duration only. No origin, hostname, port, USB/network identity, credential,
+  worker, address, password, token, sensor value, or raw trace was exposed or
+  committed.
+- Outcome: API-009 remains `implemented`; public evidence is withheld,
+  attempt-025 is consumed, and no attempt-026 is authorized by this plan.
+- Blocker or next safe action: Close this plan, then use a fresh software-only
+  continuation to reproduce why the campaign network collector covered zero
+  required windows despite a healthy resumed marker stream.

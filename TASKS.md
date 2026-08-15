@@ -3384,13 +3384,13 @@ linked `CLOSURE.md`.
 Reactivation-safety attempt-025 plan:
 `docs/parity/work-plans/20260815T024341Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable single-attempt contract, then pass every
+- [x] Commit and push the immutable single-attempt contract, then pass every
       focused, mandatory, privacy, reference, firmware, selector, and
       exact-package gate at clean synchronized HEAD.
-- [ ] Run exactly one fresh detector-gated attempt-025, keep the Ultra 205
+- [x] Run exactly one fresh detector-gated attempt-025, keep the Ultra 205
       paused and safe-stopped through every unbounded operator wait, and use
       the repaired resumable pre-active safety cycle during reactivation.
-- [ ] Promote API-009 only on the complete command/restart/device-user quorum;
+- [x] Promote API-009 only on the complete command/restart/device-user quorum;
       otherwise preserve `implemented`, the earliest typed failure, evidence
       withholding, safe stop, cleanup, and recovery, then stop without
       attempt-026.
@@ -3401,6 +3401,19 @@ factory reset, OTA, rollback, power cycle, external pool, direct UART,
 pin/pad/GPIO manipulation, probe, jumper, soldering, injected signal, fault
 injection, arbitrary hardware override, non-205 device, or second campaign run
 is authorized.
+
+Attempt-025 completion review: exact pushed source and package `bcb46964`, one
+fresh detector, and the sole campaign passed trusted identity, notification,
+positive block count, pause with stopped hardware, the complete live IDENTIFY
+render/expiry transaction, resume intent, recovery from stale to five fresh
+safety observations, active reactivation, and an accepted share. This proves
+the attempt-024 firmware repair on hardware. The sealed result then closed as
+`network_correlation_failed`: zero of twenty required network windows were
+covered, so watchdog, work-renewal, terminal HTTP, and terminal WebSocket
+checks were false. Terminal safe stop, USB cleanup, protected modes, fixture
+cleanup, seal, and process cleanup pass. Public evidence is withheld, API-009
+remains `implemented`, attempt-025 is consumed, and no attempt-026 is
+authorized. See the linked `CLOSURE.md`.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
