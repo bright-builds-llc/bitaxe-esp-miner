@@ -7,9 +7,11 @@ use super::markers::{
 use super::*;
 mod framing;
 mod preparation;
+mod recovery;
 use super::markers::CampaignFailureStepMarker;
 use framing::{count_invalid_utf8_bytes, find_bytes};
 use preparation::{CampaignPreparationOutcome, CampaignPreparationProgress};
+use recovery::PendingFramingFailure;
 const DIAGNOSTICS_SCHEMA: &str = "mining-campaign-serial-diagnostics-v1";
 const TRACE_EDGE_CAPACITY: usize = 32;
 const MAX_RECORDED_LINE_LENGTH: usize = 4_096;
@@ -205,6 +207,7 @@ pub(crate) struct CampaignSerialAnalyzer {
     diagnostics: CampaignSerialDiagnostics,
     outcome_detail: CampaignSerialOutcomeDetail,
     maybe_failure: Option<CampaignTerminalCategory>,
+    maybe_pending_framing_failure: Option<PendingFramingFailure>,
     terminal_boundary_reached: bool,
     trace: BoundedEventTrace,
 }
@@ -227,6 +230,7 @@ impl CampaignSerialAnalyzer {
             },
             outcome_detail: CampaignSerialOutcomeDetail::Clean,
             maybe_failure: None,
+            maybe_pending_framing_failure: None,
             terminal_boundary_reached: false,
             trace: BoundedEventTrace::default(),
         }
@@ -288,6 +292,7 @@ impl CampaignSerialAnalyzer {
             self.process_line(&line, self.processed_bytes, true);
             self.processed_bytes = self.processed_bytes.saturating_add(line.len());
         }
+        self.refresh_unrecovered_framing_failure();
         self.refresh_contract_failure();
         self.refresh_incomplete_preparation_failure();
         if self.aggregate.marker_count == 0
@@ -472,7 +477,7 @@ impl CampaignSerialAnalyzer {
                 self.diagnostics.trailing_partial_count.saturating_add(1);
         }
         let Ok(json) = std::str::from_utf8(payload) else {
-            self.record_marker_failure(
+            self.record_recoverable_framing_failure(
                 CampaignSerialOutcomeDetail::MarkerPayloadInvalidUtf8,
                 CampaignSerialEventKind::MarkerPayloadInvalidUtf8,
                 byte_offset,
@@ -499,7 +504,7 @@ impl CampaignSerialAnalyzer {
             Err(_) => {
                 self.diagnostics.marker_invalid_json_count =
                     self.diagnostics.marker_invalid_json_count.saturating_add(1);
-                self.record_marker_failure(
+                self.record_recoverable_framing_failure(
                     CampaignSerialOutcomeDetail::MarkerJsonInvalid,
                     CampaignSerialEventKind::MarkerJsonInvalid,
                     byte_offset,
@@ -525,6 +530,10 @@ impl CampaignSerialAnalyzer {
             );
             return;
         }
+        // Native USB is an independent, lossy witness. A later fully framed
+        // marker proves byte-stream resynchronization; it cannot rehabilitate
+        // a well-framed schema or semantic contract failure.
+        self.maybe_pending_framing_failure = None;
         #[cfg(test)]
         self.markers.push(marker.clone());
         let maybe_failure = self.aggregate.observe(marker, self.admission);

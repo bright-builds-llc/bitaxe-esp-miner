@@ -123,7 +123,7 @@ impl CampaignNetworkCoordinator {
 }
 
 #[derive(Clone, Copy)]
-struct TerminalCaptureHandoff {
+pub(super) struct TerminalCaptureHandoff {
     pool_config_persisted: bool,
 }
 
@@ -148,10 +148,9 @@ fn close_serial_input(
     shared.serial_finished = true;
 }
 
-fn terminal_pool_persistence(serial: &CampaignSerialCapture) -> Option<TerminalCaptureHandoff> {
-    if serial.maybe_failure.is_some() {
-        return None;
-    }
+pub(super) fn terminal_pool_persistence(
+    serial: &CampaignSerialCapture,
+) -> Option<TerminalCaptureHandoff> {
     serial.aggregate.terminal.as_ref().and_then(|marker| {
         (marker.campaign_state == CampaignStateMarker::Consumed).then_some(TerminalCaptureHandoff {
             pool_config_persisted: marker.pool_config_persisted,

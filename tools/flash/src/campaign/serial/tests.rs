@@ -7,6 +7,8 @@ mod attestation;
 mod chunk_stream;
 #[path = "tests/command_effects_safety.rs"]
 mod command_effects_safety;
+#[path = "tests/framing_recovery.rs"]
+mod framing_recovery;
 #[path = "tests/operator_sensor.rs"]
 mod operator_sensor;
 #[path = "tests/pause_safe_stop.rs"]
@@ -336,22 +338,6 @@ fn invalid_utf8_inside_marker_payload_is_typed() {
         Some(CampaignTerminalCategory::MarkerInvalid)
     );
     assert_eq!(capture.diagnostics.marker_invalid_encoding_count, 1);
-}
-
-#[test]
-fn malformed_marker_json_is_typed() {
-    // Arrange
-    let bytes = format!("{CAMPAIGN_MARKER_PREFIX}{{]\n").into_bytes();
-
-    // Act
-    let capture = analyze_campaign_serial_bytes(&bytes, observation_admission());
-
-    // Assert
-    assert_eq!(
-        capture.outcome_detail,
-        CampaignSerialOutcomeDetail::MarkerJsonInvalid
-    );
-    assert_eq!(capture.diagnostics.marker_invalid_json_count, 1);
 }
 
 #[test]

@@ -7963,3 +7963,66 @@ The change is smaller and safer than retaining the serial reader solely for a
 network postcondition. No hardware effect occurred during this task. It is
 complete and archived; attempt-041 still requires a separately committed
 exact-package contract.
+
+### task-api009-programmatic-pilot-attempt-041 | 2026-08-15 | Verify terminal capture handoff
+
+- [x] Required clean synchronized pushed `60457bf1`, opaque non-empty ignored
+      Wi-Fi input, exact HEAD/reference package, and absent detector, wrapper,
+      command-owned attempt, and public-projection paths.
+- [x] Ran `just package`, then exactly one protected `detector-041`; observed
+      zero exit, one admitted board-205 device, and private artifact modes.
+- [x] Used separate protected `wrapper-041` and ran exactly once the existing
+      600-active-second programmatic campaign under its finite bounds.
+- [x] Withheld the public projection after the non-ready result and recorded
+      the closed terminal command diagnostic and safe cleanup facts.
+
+Effects: one exact-package flash/reset, private Wi-Fi/local-fixture seed,
+conservative initialization/mining for at most 600 active seconds, one each
+pause/dismiss/IDENTIFY/resume/software restart, HTTP/WebSocket/receive-only USB
+observation, same-device recovery, safe stop, child termination, and USB
+cleanup. No human checkpoint or physical-display claim was included.
+
+Privacy/retry/stop: all private roots/files remained ignored mode 0700/0600.
+No identities, origins, ports, addresses, hostnames, credentials, boot session,
+values, or traces were published. Attempt-041 is consumed; no attempt-042 or
+unchanged retry is authorized. API-009 remains `implemented`.
+
+Completion review: The campaign stopped `hardware_blocked` with the closed
+command diagnostic `terminal / serial_ended`; cleanup completed, recovery was
+not attempted, and evidence was withheld. Privacy-safe counters show the
+analyzer accepted the consumed terminal and thousands of valid markers after
+transient UTF-8/JSON framing damage, but the handoff discarded that terminal
+because the independent serial result was non-ready. This was a host evidence-
+orchestration defect, not a user action. Follow-up work is tracked by
+`task-api009-serial-resynchronization`.
+
+### task-api009-serial-resynchronization | 2026-08-15 | Preserve recovered marker streams
+
+- [x] Reproduced attempt-041's production-shaped boundary: a trusted serial
+      stream has recoverable UTF-8/JSON framing damage, later accepts a valid
+      consumed marker, and closes while terminal HTTP confirmation is pending.
+- [x] Treated only framing damage followed by a fully valid marker as recovered;
+      retained private corruption counters while keeping schema, semantic,
+      contract, and unrecovered final corruption failures terminal.
+- [x] Handed an accepted consumed marker to the network coordinator independently
+      of an unrelated serial failure so `serial_ended` cannot replace the true
+      primary failure; preserved contradiction and earliest-failure precedence.
+- [x] Ran focused regressions and the complete Cargo, Bright Builds, firmware,
+      Bazel, parity, redaction, reference-cleanliness, and diff-review gates.
+
+This task was software-only. It did not access USB, device/network state,
+credentials, or protected raw traces. Attempt-041 remains consumed and no
+attempt-042 or unchanged hardware retry was authorized by this task. The fix
+does not accept malformed schema or semantics, manufacture a terminal marker,
+extend a deadline, retry a command, or weaken exact-package, safe-stop, cleanup,
+privacy, or request-once behavior.
+
+Completion review: The serial analyzer now keeps UTF-8/JSON framing damage
+pending across receive chunks and clears it only after a fully valid marker
+proves resynchronization. Unrecovered corruption still closes as
+`marker_invalid`, while well-framed schema and semantic failures remain
+immediate. An independently accepted consumed terminal always reaches the
+network join, so a serial primary failure cannot be mislabeled `serial_ended`.
+Production-shaped split-chunk, unrecovered corruption, schema failure, and
+terminal handoff regressions pass. Full verification is clean; no hardware
+effect occurred.

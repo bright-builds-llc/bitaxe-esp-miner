@@ -747,3 +747,39 @@
   protected-artifact contracts are unchanged; no physical-display claim.
 - Stop: Campaign start consumes attempt-041. Any non-ready result withholds
   evidence and stops without attempt-042 or an unchanged retry.
+
+## 2026-08-15T11:42:00Z | attempt-041 exposed serial resynchronization mismatch
+
+- Result: The one detector-gated campaign stopped `hardware_blocked` with
+  `terminal / serial_ended`; cleanup passed, recovery was not attempted, and
+  the public projection remained absent. No user action contributed.
+- Proven boundary: All command-specific machine postconditions, the active
+  lease, and an accepted consumed terminal marker completed. Private counters
+  retained transient UTF-8/JSON framing damage alongside thousands of later
+  accepted markers.
+- Root cause: The analyzer permanently classifies recoverable mid-stream JSON
+  damage as `marker_invalid`, and terminal handoff then suppresses even the
+  independently accepted consumed marker whenever any serial failure exists.
+  The network worker consequently reports the secondary `serial_ended` symptom.
+- Disposition: Attempt-041 is consumed. Recover only framing damage followed by
+  a fully valid marker, keep schema/semantic and final corruption fail-closed,
+  and hand accepted terminal facts to the network join independently. No
+  attempt-042 is authorized until that software correction passes full gates.
+
+## 2026-08-15T12:01:26Z | serial resynchronization fix verified
+
+- Fix: UTF-8/JSON framing damage remains pending across native USB receive
+  chunks and becomes terminal only if capture ends before a fully valid marker
+  resynchronizes the parser. Private diagnostics retain every corruption count.
+- Fail-closed boundary: Schema and semantic failures remain immediate;
+  unrecovered framing damage remains `marker_invalid`; accepted terminal facts
+  are handed to the network join independently so they cannot replace or hide
+  an earlier serial failure.
+- Verification: Production-shaped split-chunk recovery, unrecovered JSON and
+  UTF-8 damage, schema rejection, and independent terminal-handoff regressions
+  pass. Ordered Cargo format/strict-lint/build/test, Bright Builds, real
+  firmware, all 45 Bazel tests, parity/progress, redaction, pinned-reference,
+  and diff checks pass.
+- Disposition: The software correction is complete and ready to publish. A
+  fresh hardware campaign still requires a separately committed exact-package
+  attempt contract; attempt-041 remains consumed.
