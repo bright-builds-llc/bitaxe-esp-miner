@@ -47,14 +47,14 @@ type RecoveryFacts = {
   readonly secondary_recovery_failure: boolean;
 };
 
-const expectedPrivateRoot = "scratch/thr001-emc2101-fault/attempt-006";
-const expectedWrapperRoot = "scratch/thr001-emc2101-fault/wrapper-006";
+const expectedPrivateRoot = "scratch/thr001-emc2101-fault/attempt-007";
+const expectedWrapperRoot = "scratch/thr001-emc2101-fault/wrapper-007";
 const expectedProjection =
-  "docs/parity/evidence/thr001-emc2101-thermal/thermal-fault-projection-attempt-006.json";
+  "docs/parity/evidence/thr001-emc2101-thermal/thermal-fault-projection-attempt-007.json";
 const expectedPriorProjection =
   "docs/parity/evidence/thr001-emc2101-thermal/thermal-projection.json";
-const expectedPlan = "docs/parity/work-plans/20260815T192115Z-THR-001/PLAN.md";
-const expectedPlanSha256 = "ae1b6c9a57d5a19d8c61b3bf73ab906eed1e05849ff9b86d50d4d98c5eb27542";
+const expectedPlan = "docs/parity/work-plans/20260815T201754Z-THR-001/PLAN.md";
+const expectedPlanSha256 = "f461fb0e926309b280f49821d3e1a6725c547623f729bf9ea9e9a2cb1f47eac1";
 const expectedReferenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const activeTask = "task-parity-thr001-emc2101-live-thermal";
 const stimulusKind = "emc2101_invalid_sample";
@@ -178,7 +178,7 @@ function validateTaskAndPlan(task: string, plan: string): void {
   for (const required of [
     expectedPlan,
     "bitaxe-emc2101-thermal-fault-evidence-v1",
-    "attempt-006",
+    "attempt-007",
   ]) {
     if (!block.includes(required)) {
       throw failure("evidence_invalid", "THR-001 task contract is incomplete");
@@ -345,7 +345,7 @@ export async function captureEmc2101ThermalFaultEvidence(
   const intent = {
     schema_version: "esp-thermal-fault-stimulus-intent-v1",
     board: 205,
-    attempt_ordinal: 6,
+    attempt_ordinal: 7,
     source_commit: sourceCommit,
     reference_commit: referenceCommit,
     app_elf_sha256: appElfSha256,
@@ -445,7 +445,7 @@ export async function captureEmc2101ThermalFaultEvidence(
   const evidence: Emc2101ThermalFaultEvidence = {
     schema_version: "bitaxe-emc2101-thermal-fault-evidence-v1",
     board: 205,
-    attempt_ordinal: 6,
+    attempt_ordinal: 7,
     source_commit: sourceCommit,
     reference_commit: referenceCommit,
     app_elf_sha256: appElfSha256,

@@ -25,3 +25,25 @@
   exact live-plan selection, and diff checks pass without hardware.
 - Outcome: The attempt-007 binding work may begin only after this plan commit is
   pushed. Packaging, detection, USB, and device access remain ineligible.
+
+## 2026-08-15T20:39:00Z | attempt-007 binding green
+
+- Action: Advanced ordinal 7, fresh attempt/wrapper/projection paths, immutable
+  plan path and digest, Rust evidence validation, private flash intent
+  admission, canonical TypeScript and generated contracts, production-shaped
+  fixtures, workflow tests, and the Bazel runfile as one change.
+- Verification: The contract, flash, and real-child automation targets pass.
+  An active-source scan finds no consumed attempt-006 path, digest, projection,
+  or ordinal binding.
+- Review: This is a mechanical authority rollover only. It changes no thermal
+  state machine, monitor parser, recovery path, public schema, safety effect, or
+  privacy policy.
+
+## 2026-08-15T20:49:00Z | complete binding verification
+
+- Verification: Ordered Cargo gates, Bright Builds, real firmware build, all
+  45 Bazel tests, parity/progress, redaction, pinned reference, exact live-plan
+  selection, generated-contract equality, stale-binding scan, and diff checks
+  pass.
+- Outcome: The attempt-007 binding is ready to commit and push. Packaging,
+  detection, USB, and device access remain ineligible until that push is clean.

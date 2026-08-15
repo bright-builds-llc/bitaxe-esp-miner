@@ -3730,10 +3730,10 @@ immutable plan is required before attempt-007.
 Attempt-007 continuation:
 `docs/parity/work-plans/20260815T201754Z-THR-001/PLAN.md`.
 
-- [ ] Advance the consumed ordinal, protected roots, projection path,
+- [x] Advance the consumed ordinal, protected roots, projection path,
       immutable plan binding, tests, generated command contract, and runfile to
       attempt 7.
-- [ ] Pass focused and mandatory software gates; commit and push the complete
+- [x] Pass focused and mandatory software gates; commit and push the complete
       binding change before packaging, detection, or device access.
 - [ ] Build the exact clean package, admit one Ultra 205, and run the bounded
       fault/restoration campaign exactly once.
