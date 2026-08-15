@@ -3408,12 +3408,14 @@ positive block count, pause with stopped hardware, the complete live IDENTIFY
 render/expiry transaction, resume intent, recovery from stale to five fresh
 safety observations, active reactivation, and an accepted share. This proves
 the attempt-024 firmware repair on hardware. The sealed result then closed as
-`network_correlation_failed`: zero of twenty required network windows were
-covered, so watchdog, work-renewal, terminal HTTP, and terminal WebSocket
-checks were false. Terminal safe stop, USB cleanup, protected modes, fixture
-cleanup, seal, and process cleanup pass. Public evidence is withheld, API-009
-remains `implemented`, attempt-025 is consumed, and no attempt-026 is
-authorized. See the linked `CLOSURE.md`.
+`network_correlation_failed`: the one post-reactivation dismissal request was
+issued, but notification clearing, block-count preservation, and the dependent
+terminal HTTP check were not confirmed before terminal safe stop. Generic
+continuity-window counters are non-applicable to this command-specific
+campaign and did not cause the failure. Terminal safe stop, USB cleanup,
+protected modes, fixture cleanup, seal, and process cleanup pass. Public
+evidence is withheld, API-009 remains `implemented`, attempt-025 is consumed,
+and no attempt-026 is authorized. See the linked `CLOSURE.md`.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 

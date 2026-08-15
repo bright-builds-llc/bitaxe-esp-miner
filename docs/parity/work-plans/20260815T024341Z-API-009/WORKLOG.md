@@ -63,3 +63,21 @@
 - Blocker or next safe action: Close this plan, then use a fresh software-only
   continuation to reproduce why the campaign network collector covered zero
   required windows despite a healthy resumed marker stream.
+
+## 2026-08-15T03:39:07Z | terminal-boundary correction
+
+- Actions: Validated the sealed command-effects member after source review
+  showed that generic continuity windows do not govern command-effects
+  completion.
+- Verification: The command-specific record proves one dismiss request but no
+  dismiss confirmation or block-count preservation. Its terminal HTTP check is
+  consequently false. All prior command effects through active reactivation
+  remain true. The generic zero-of-twenty counters are inherited non-applicable
+  fields and are not the attempt's causal blocker.
+- Outcome: The exact terminal boundary is the post-reactivation dismissal
+  join, still reported as `network_correlation_failed`; cleanup, withholding,
+  status, and non-promotion are unchanged.
+- Blocker or next safe action: Reproduce the dismissal race at the command
+  state-machine seam and move the single dismissal into a stable safe-stopped
+  interval without weakening the genuine-notification or count-preservation
+  quorum.

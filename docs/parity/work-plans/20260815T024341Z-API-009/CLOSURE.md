@@ -21,11 +21,13 @@ to five fresh safety observations, reactivated mining, and produced one
 accepted share. This proves the attempt-024 reactivation repair on hardware.
 
 The sealed result subsequently closed as `network_correlation_failed`. The
-network collector covered zero of twenty required windows, leaving watchdog,
-work-renewal, terminal HTTP, and terminal WebSocket validation false even
-though the serial marker stream remained clean. The complete conjunctive
-command/restart quorum therefore did not pass, and the public projection was
-correctly withheld.
+command-specific record proves that the host issued its one dismissal request
+after active reactivation, but it never observed the notification cleared or
+the block count preserved before terminal safe stop. The terminal HTTP check
+therefore remained false. Generic continuity-window counters are inherited
+non-applicable fields for command-effects campaigns and did not cause this
+failure. The complete conjunctive command/restart quorum did not pass, and the
+public projection was correctly withheld.
 
 Terminal hardware safe stop, USB cleanup, private modes, fixture cleanup,
 result sealing, and process cleanup passed. No recovery was needed after the
@@ -39,23 +41,26 @@ The exact package binds pushed source
 `mining-campaign-result-v8` record is valid and reports trusted runtime
 identity, a ready protocol gate, five fresh observations after the recoverable
 safety gap, an accepted submit, confirmed safe stop, ready USB cleanup, failed
-network correlation, redaction, and no parity promotion. Protected directories
-and files have the required `0700` and `0600` modes, no campaign process or USB
-tool holder remains, and the public projection is absent.
+post-reactivation dismissal confirmation, redaction, and no parity promotion.
+The independently sealed command-effects member reports exactly one dismissal
+request, no dismissal confirmation, no block-count-preservation proof, and no
+terminal HTTP confirmation. Protected directories and files have the required
+`0700` and `0600` modes, no campaign process or USB tool holder remains, and
+the public projection is absent.
 
 ## Next safe action
 
 Keep API-009 `implemented`. Create a fresh software-only plan that reproduces
-the zero-of-twenty network-window result at the production campaign seam,
-determines whether resumed active segments are registered with the network
-collector, and repairs the smallest ownership or timing boundary. Require a
-live-shaped regression before defining attempt-026.
+the post-reactivation dismissal race at the command state-machine seam. Move
+the single dismissal and its exact count-preserving readback into the stable
+safe-stopped interval after the genuine active notification has been observed,
+then resume only after the live IDENTIFY transaction. Require a live-shaped
+regression before defining attempt-026.
 
 ## Non-claims
 
-This closure does not claim complete network continuity, watchdog or work-
-renewal coverage, terminal HTTP or WebSocket truth, notification dismissal,
-canonical restart, same-device restart recovery, public parity evidence, or
-API-009 verification. It exposes no origin, hostname, port, USB/network
-identity, credential, worker, address, password, token, sensor value, or raw
-trace.
+This closure does not claim notification dismissal, block-count preservation,
+terminal HTTP truth, canonical restart, same-device restart recovery, public
+parity evidence, or API-009 verification. It exposes no origin, hostname,
+port, USB/network identity, credential, worker, address, password, token,
+sensor value, or raw trace.
