@@ -3689,14 +3689,23 @@ Attempt-005 continuation:
       plan binding, tests, and generated command contract to attempt 5.
 - [x] Pass focused and mandatory software gates; commit and push the complete
       binding change before packaging or device admission.
-- [ ] Build the exact clean package, admit one Ultra 205, and run the bounded
+- [x] Build the exact clean package, admit one Ultra 205, and run the bounded
       fault/restoration campaign exactly once.
-- [ ] Promote only on the complete independently validated hardware-regression
+- [x] Promote only on the complete independently validated hardware-regression
       quorum; otherwise withhold evidence and stop without attempt 6.
 
 Authorization: only the exact attempt-005 command, effects, privacy, recovery,
 cleanup, and stop contract in the linked immutable plan applies. No attempt-006
 or effect outside that plan is authorized.
+
+Attempt-005 closure: The sole campaign returned `evidence_invalid`. Device-side
+logs reached `fault_observed` and `recovered` with no abort, but the early
+baseline witness was absent and the host validator rejected canonical ESP-
+prefixed production markers because its fixture and parser assumed bare lines.
+Ordinary exact-package recovery, child cleanup, USB cleanup, and evidence
+withholding passed. THR-001 remains `implemented`; attempt-005 is consumed and
+attempt-006 is not authorized. See
+`docs/parity/work-plans/20260815T182438Z-THR-001/CLOSURE.md`.
 
 ### task-parity-ui004-live-browser-attempt-001 | 2026-08-13 | Verify exact-package AxeOS browser workflows
 

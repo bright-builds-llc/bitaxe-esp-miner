@@ -53,3 +53,23 @@
 - Outcome: The complete attempt-005 binding change is ready to commit and push.
   Packaging, detection, and the one authorized hardware invocation remain
   gated on the resulting clean synchronized HEAD.
+
+## 2026-08-15T19:25:00Z | attempt-005 consumed without promotion
+
+- Admission: Clean synchronized implementation `38968ff4`, exact source and
+  reference package, absent fresh roots/projection, protected wrapper streams,
+  and one detector-admitted board-205 device passed.
+- Result: The sole campaign returned `evidence_invalid` and withheld its public
+  projection. Protected allowlisted inspection found one `fault_observed`, one
+  `recovered`, no `baseline_ready`, and no closed stimulus abort reason.
+- Root cause boundary: Captured production marker payloads begin after the
+  canonical ESP logging prefix, but the host validator requires byte-zero bare
+  markers. The deterministic child fixture invented bare lines. The early
+  baseline marker was additionally absent from the post-flash monitor capture.
+- Recovery and cleanup: Ordinary exact-package recovery completed through a
+  recovery flash with no secondary failure. Child cleanup and USB holder
+  cleanup passed. Candidate and final projections remain absent.
+- Disposition: Attempt-005 is consumed. THR-001 remains `implemented`; no
+  attempt-006 is authorized. A future software-only plan must fix both the real
+  log-payload seam and the late-attachment baseline witness before another
+  ordinal can be considered.
