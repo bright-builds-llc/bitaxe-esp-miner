@@ -188,17 +188,61 @@ async function fixture(name: string) {
   };
 }
 
-async function writeFlashEvidence(args: readonly string[], malformedMarkers = false): Promise<void> {
+function espLogLine(payload: string, uptimeMs: number): string {
+  return `I (${String(uptimeMs)}) bitaxe_firmware: ${payload}`;
+}
+
+type MarkerEnvelope = "bare" | "malformed_timestamp" | "warning" | "wrong_tag";
+
+async function writeFlashEvidence(
+  args: readonly string[],
+  malformedMarkers = false,
+  lateAttachment = false,
+  maybeMarkerEnvelope?: MarkerEnvelope,
+  wrongMarkerOrder = false,
+): Promise<void> {
   const evidenceRoot = String(args[args.indexOf("--evidence-dir") + 1]);
   await mkdir(evidenceRoot, { recursive: true, mode: 0o700 });
   await chmod(evidenceRoot, 0o700);
   const stimulus = args.includes("--thermal-fault-stimulus-intent");
+  const markerLine = (payload: string, uptimeMs: number) => {
+    if (maybeMarkerEnvelope === "bare") return payload;
+    if (maybeMarkerEnvelope === "malformed_timestamp") {
+      return `I (invalid) bitaxe_firmware: ${payload}`;
+    }
+    if (maybeMarkerEnvelope === "warning") {
+      return `W (${String(uptimeMs)}) bitaxe_firmware: ${payload}`;
+    }
+    if (maybeMarkerEnvelope === "wrong_tag") {
+      return `I (${String(uptimeMs)}) other_firmware: ${payload}`;
+    }
+    return espLogLine(payload, uptimeMs);
+  };
   const log = stimulus
     ? [
-      "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled",
-      "thermal_fault_stimulus state=baseline_ready redacted=true",
-      "thermal_fault_stimulus state=fault_observed redacted=true",
-      ...(malformedMarkers ? [] : ["thermal_fault_stimulus state=recovered redacted=true"]),
+      espLogLine(
+        "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled",
+        1_000,
+      ),
+      ...(lateAttachment
+        ? [
+          markerLine("thermal_fault_stimulus state=fault_observed redacted=true", 2_000),
+          markerLine("thermal_fault_stimulus state=recovered redacted=true", 3_000),
+        ]
+        : []),
+      ...(wrongMarkerOrder
+        ? [
+          markerLine("thermal_fault_stimulus state=baseline_ready redacted=true", 10_000),
+          markerLine("thermal_fault_stimulus state=recovered redacted=true", 10_001),
+          markerLine("thermal_fault_stimulus state=fault_observed redacted=true", 10_002),
+        ]
+        : [
+          markerLine("thermal_fault_stimulus state=baseline_ready redacted=true", 10_000),
+          markerLine("thermal_fault_stimulus state=fault_observed redacted=true", 10_001),
+          ...(malformedMarkers
+            ? []
+            : [markerLine("thermal_fault_stimulus state=recovered redacted=true", 10_002)]),
+        ]),
       "",
     ].join("\n")
     : [
@@ -219,12 +263,21 @@ async function writeFlashEvidence(args: readonly string[], malformedMarkers = fa
 function fakePort(configuration: {
   readonly stimulusOutcome?: ProcessOutcome;
   readonly malformedMarkers?: boolean;
+  readonly lateAttachment?: boolean;
+  readonly maybeMarkerEnvelope?: MarkerEnvelope;
+  readonly wrongMarkerOrder?: boolean;
   readonly validatorOutcome?: ProcessOutcome;
 } = {}): ProcessPort {
   return createFakeProcessPort(async (spec) => {
     if (spec.args[0] === "flash-monitor") {
       const stimulus = spec.args.includes("--thermal-fault-stimulus-intent");
-      await writeFlashEvidence(spec.args, configuration.malformedMarkers);
+      await writeFlashEvidence(
+        spec.args,
+        configuration.malformedMarkers,
+        configuration.lateAttachment,
+        configuration.maybeMarkerEnvelope,
+        configuration.wrongMarkerOrder,
+      );
       return stimulus ? configuration.stimulusOutcome ?? ok() : ok();
     }
     if (spec.program === "validator") return configuration.validatorOutcome ?? ok();
@@ -303,6 +356,68 @@ test("malformed marker sequence withholds evidence after confirmed restoration",
   }
 });
 
+test("out-of-order marker sequence withholds evidence after confirmed restoration", async () => {
+  const value = await fixture("out-of-order");
+  const restore = installHttp(value.contract);
+  try {
+    await assert.rejects(
+      capture(value, fakePort({ wrongMarkerOrder: true })),
+      (error: unknown) => {
+        assert.ok(error instanceof Emc2101ThermalFaultEvidenceError);
+        assert.equal(error.category, "evidence_invalid");
+        assert.equal(error.publicValue["recovery_complete"], true);
+        return true;
+      },
+    );
+    await assert.rejects(readFile(value.projection), { code: "ENOENT" });
+  } finally {
+    restore();
+    await rm(value.root, { recursive: true, force: true });
+  }
+});
+
+test("noncanonical marker envelopes cannot satisfy the production witness", async (context) => {
+  for (const markerEnvelope of [
+    "bare",
+    "malformed_timestamp",
+    "warning",
+    "wrong_tag",
+  ] as const) {
+    await context.test(markerEnvelope, async () => {
+      const value = await fixture(`invalid-envelope-${markerEnvelope}`);
+      const restore = installHttp(value.contract);
+      try {
+        await assert.rejects(
+          capture(value, fakePort({ maybeMarkerEnvelope: markerEnvelope })),
+          (error: unknown) => {
+            assert.ok(error instanceof Emc2101ThermalFaultEvidenceError);
+            assert.equal(error.category, "evidence_invalid");
+            assert.equal(error.publicValue["recovery_complete"], true);
+            return true;
+          },
+        );
+        await assert.rejects(readFile(value.projection), { code: "ENOENT" });
+      } finally {
+        restore();
+        await rm(value.root, { recursive: true, force: true });
+      }
+    });
+  }
+});
+
+test("retained marker replay closes a late monitor attachment", async () => {
+  const value = await fixture("late-attachment");
+  const restore = installHttp(value.contract);
+  try {
+    const evidence = await capture(value, fakePort({ lateAttachment: true }));
+    assert.equal(evidence.stimulus.injected_sample_count, 5);
+    assert.equal(evidence.cleanup_complete, true);
+  } finally {
+    restore();
+    await rm(value.root, { recursive: true, force: true });
+  }
+});
+
 test("non-ready stimulus preserves hardware category when restoration succeeds", async () => {
   const value = await fixture("blocked");
   const restore = installHttp(value.contract);
@@ -322,6 +437,26 @@ test("non-ready stimulus preserves hardware category when restoration succeeds",
   }
 });
 
+test("stimulus timeout preserves its primary category through restoration", async () => {
+  const value = await fixture("timeout");
+  const restore = installHttp(value.contract);
+  try {
+    await assert.rejects(
+      capture(value, fakePort({ stimulusOutcome: { ...ok(), timedOut: true } })),
+      (error: unknown) => {
+        assert.ok(error instanceof Emc2101ThermalFaultEvidenceError);
+        assert.equal(error.category, "timeout");
+        assert.equal(error.publicValue["recovery_complete"], true);
+        return true;
+      },
+    );
+    await assert.rejects(readFile(value.projection), { code: "ENOENT" });
+  } finally {
+    restore();
+    await rm(value.root, { recursive: true, force: true });
+  }
+});
+
 test("real child process owns stimulus and restoration evidence files", async () => {
   const value = await fixture("real-child");
   const restore = installHttp(value.contract);
@@ -335,10 +470,10 @@ if (args.includes("flash-monitor")) {
   await mkdir(root, { recursive: true, mode: 0o700 }); await chmod(root, 0o700);
   const stimulus = args.includes("--thermal-fault-stimulus-intent");
   const lines = stimulus ? [
-    "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled",
-    "thermal_fault_stimulus state=baseline_ready redacted=true",
-    "thermal_fault_stimulus state=fault_observed redacted=true",
-    "thermal_fault_stimulus state=recovered redacted=true",
+    "I (1000) bitaxe_firmware: safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled",
+    "I (1001) bitaxe_firmware: thermal_fault_stimulus state=baseline_ready redacted=true",
+    "I (1002) bitaxe_firmware: thermal_fault_stimulus state=fault_observed redacted=true",
+    "I (1003) bitaxe_firmware: thermal_fault_stimulus state=recovered redacted=true",
   ] : [
     "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled",
     "runtime_origin session=${session} device_url=http://private-device.test redacted=true",

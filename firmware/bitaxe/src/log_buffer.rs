@@ -95,23 +95,27 @@ pub fn retained_log_buffer() -> RetainedLogBuffer {
     buffer.clone()
 }
 
-/// Returns complete allowlisted Plan 13 markers for diagnostic replay.
+/// Returns complete allowlisted markers for package-scoped diagnostic replay.
 #[must_use]
-pub fn accepted_state_replay_lines() -> Vec<String> {
+pub fn diagnostic_replay_lines() -> Vec<String> {
     let buffer = LOG_BUFFER.get_or_init(|| Mutex::new(firmware_log_buffer()));
     let Ok(buffer) = buffer.lock() else {
         log::warn!("retained_log_buffer=unavailable reason=mutex_poisoned");
         return Vec::new();
     };
 
-    plan13_replay_lines(&buffer)
+    allowlisted_diagnostic_replay_lines(&buffer)
 }
 
-fn plan13_replay_lines(buffer: &RetainedLogBuffer) -> Vec<String> {
-    ["plan13_boot_evidence", "accepted_state_snapshot"]
-        .into_iter()
-        .flat_map(|token| buffer.complete_lines_with_first_token(token))
-        .collect()
+fn allowlisted_diagnostic_replay_lines(buffer: &RetainedLogBuffer) -> Vec<String> {
+    [
+        "plan13_boot_evidence",
+        "accepted_state_snapshot",
+        "thermal_fault_stimulus",
+    ]
+    .into_iter()
+    .flat_map(|token| buffer.complete_lines_with_first_token(token))
+    .collect()
 }
 
 fn firmware_log_buffer() -> RetainedLogBuffer {
@@ -183,24 +187,26 @@ pub fn reset_retained_log_buffer_after_poison_for_test() {
 
 #[cfg(test)]
 mod tests {
-    use super::plan13_replay_lines;
+    use super::allowlisted_diagnostic_replay_lines;
     use bitaxe_api::RetainedLogBuffer;
 
     #[test]
-    fn plan13_replay_selects_only_allowlisted_complete_lines() {
+    fn diagnostic_replay_selects_only_allowlisted_complete_lines() {
         // Arrange
         let mut buffer = RetainedLogBuffer::with_capacity(1024);
         buffer.append("plan13_boot_evidence session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa state=booted redacted=true\n");
         buffer.append("secret=value\n");
         buffer.append("accepted_state_snapshot stage=post_enumerate redacted=true\n");
+        buffer.append("thermal_fault_stimulus state=baseline_ready redacted=true\n");
         buffer.append("plan13_boot_evidence partial=true");
 
         // Act
-        let lines = plan13_replay_lines(&buffer);
+        let lines = allowlisted_diagnostic_replay_lines(&buffer);
 
         // Assert
-        assert_eq!(lines.len(), 2);
+        assert_eq!(lines.len(), 3);
         assert!(lines[0].starts_with("plan13_boot_evidence "));
         assert!(lines[1].starts_with("accepted_state_snapshot "));
+        assert!(lines[2].starts_with("thermal_fault_stimulus "));
     }
 }

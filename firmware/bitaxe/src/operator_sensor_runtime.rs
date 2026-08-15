@@ -362,6 +362,9 @@ fn admitted_thermal_fault_stimulus(
         log::warn!("thermal_fault_stimulus=unavailable reason=admission_contract");
         return None;
     }
+    // The first samples can complete before a post-flash monitor attaches, so
+    // this package replays its already-retained, redaction-safe marker triplet.
+    crate::boot_evidence::request_diagnostic_replay();
     Some(ThermalFaultStimulus::default())
 }
 

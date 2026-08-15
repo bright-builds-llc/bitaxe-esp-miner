@@ -3710,9 +3710,9 @@ attempt-006 is not authorized. See
 Marker-observation software continuation:
 `docs/parity/work-plans/20260815T185700Z-THR-001/PLAN.md`.
 
-- [ ] Reproduce canonical ESP-prefix rejection and late baseline attachment in
+- [x] Reproduce canonical ESP-prefix rejection and late baseline attachment in
       deterministic real-child tests at the production evidence seam.
-- [ ] Implement one strict shared payload parser and a bounded replayable or
+- [x] Implement one strict shared payload parser and a bounded replayable or
       reader-armed ordered marker witness without weakening the quorum.
 - [ ] Pass focused and complete software gates, commit and push, and close with
       THR-001 still `implemented` and no attempt-006 authority.

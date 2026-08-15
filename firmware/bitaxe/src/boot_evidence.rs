@@ -1,7 +1,10 @@
 //! Session-scoped boot evidence and serial-only runtime heartbeat.
 
 use std::{
-    sync::{Mutex, OnceLock},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Mutex, OnceLock,
+    },
     thread,
     time::Duration,
 };
@@ -26,6 +29,7 @@ static RESET_REASON: OnceLock<ResetReasonCategory> = OnceLock::new();
 static CONNECTED_ORIGIN: OnceLock<Mutex<Option<ConnectedOriginReplay>>> = OnceLock::new();
 static RUNTIME_ATTESTATION: OnceLock<Mutex<Option<RuntimeAttestationReplay>>> = OnceLock::new();
 static PROVISIONING_NETWORK_READY: OnceLock<Mutex<Option<u64>>> = OnceLock::new();
+static DIAGNOSTIC_REPLAY_REQUESTED: AtomicBool = AtomicBool::new(false);
 const OBSERVER_THREAD_STACK_BYTES: usize = 8 * 1024;
 const OBSERVER_THREAD_NAME: &str = "runtime-observer";
 
@@ -108,6 +112,9 @@ pub fn initialize_observer() {
     CONNECTED_ORIGIN.get_or_init(|| Mutex::new(None));
     RUNTIME_ATTESTATION.get_or_init(|| Mutex::new(None));
     PROVISIONING_NETWORK_READY.get_or_init(|| Mutex::new(None));
+    if asic_adapter::accepted_state_snapshot_enabled() {
+        request_diagnostic_replay();
+    }
 
     emit_boot_identity(nonce, ordinal, reset_reason, runtime_uptime::millis());
 
@@ -118,6 +125,11 @@ pub fn initialize_observer() {
     if let Err(error) = result {
         log::warn!("runtime_observer=unavailable reason=thread_spawn_failed error={error}");
     }
+}
+
+/// Requests bounded replay of privacy-safe retained diagnostics for this boot.
+pub fn request_diagnostic_replay() {
+    DIAGNOSTIC_REPLAY_REQUESTED.store(true, Ordering::Release);
 }
 
 /// Begins replaying exact-package ready-state proof for late monitor attachment.
@@ -242,15 +254,21 @@ fn record(nonce: BootSessionNonce, state: BootEvidenceState) {
 }
 
 fn observe_boot_lifetime() {
-    let replay_enabled = asic_adapter::accepted_state_snapshot_enabled();
     let started_at_ms = runtime_uptime::millis();
-    let replay_ends_at_ms = started_at_ms.saturating_add(ACCEPTED_STATE_REPLAY_WINDOW_MS);
-    let mut maybe_replay_deadline_ms =
-        replay_enabled.then(|| started_at_ms.saturating_add(ACCEPTED_STATE_REPLAY_INTERVAL_MS));
+    let mut replay_ends_at_ms = started_at_ms;
+    let mut replay_started = false;
+    let mut maybe_replay_deadline_ms = None;
     let mut identity_deadline_ms = started_at_ms.saturating_add(BOOT_EVIDENCE_INTERVAL_MS);
 
     loop {
         let now_ms = runtime_uptime::millis();
+        if !replay_started && DIAGNOSTIC_REPLAY_REQUESTED.load(Ordering::Acquire) {
+            replay_started = true;
+            replay_ends_at_ms = now_ms.saturating_add(ACCEPTED_STATE_REPLAY_WINDOW_MS);
+            // Replaying immediately and then periodically closes the monitor-attachment
+            // race without extending the bounded diagnostic lifetime.
+            maybe_replay_deadline_ms = Some(now_ms);
+        }
         emit_due_heartbeat(now_ms);
         if now_ms >= identity_deadline_ms {
             emit_boot_identity(boot_session(), boot_ordinal(), reset_reason(), now_ms);
@@ -263,7 +281,7 @@ fn observe_boot_lifetime() {
         if maybe_replay_deadline_ms
             .is_some_and(|deadline_ms| now_ms >= deadline_ms && now_ms < replay_ends_at_ms)
         {
-            for line in log_buffer::accepted_state_replay_lines() {
+            for line in log_buffer::diagnostic_replay_lines() {
                 log::info!("{line}");
             }
             maybe_replay_deadline_ms = Some(

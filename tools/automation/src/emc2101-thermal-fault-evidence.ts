@@ -191,15 +191,22 @@ function validateTaskAndPlan(task: string, plan: string): void {
   }
 }
 
+function bitaxeInfoPayload(line: string): string | undefined {
+  return /^I \([0-9]+\) bitaxe_firmware: (.+)$/u.exec(line)?.[1];
+}
+
 function validateMarkerSequence(monitor: string): void {
   if (!hasPassiveSafeState(monitor)) {
     throw failure("evidence_invalid", "stimulus boot lacks passive safe-state evidence");
   }
   const observed = monitor
     .split(/\r?\n/u)
-    .filter((line) => line.startsWith("thermal_fault_stimulus state="));
-  if (observed.length !== markerLines.length
-    || observed.some((line, index) => line !== markerLines[index])) {
+    .map(bitaxeInfoPayload)
+    .filter((maybePayload): maybePayload is string =>
+      maybePayload?.startsWith("thermal_fault_stimulus state=") === true);
+  const hasCompleteWitness = observed.some((_, start) =>
+    markerLines.every((expected, offset) => observed[start + offset] === expected));
+  if (!hasCompleteWitness) {
     throw failure("evidence_invalid", "thermal fault marker sequence is incomplete");
   }
 }
