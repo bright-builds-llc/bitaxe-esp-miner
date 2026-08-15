@@ -66,6 +66,7 @@ pub enum SerialDelivery {
 pub enum TerminalCategory {
     Incomplete,
     Ready,
+    EvidenceInvalid,
     ObserverUnqualified,
     RestartRequestNotSent,
     RestartAttributionAmbiguous,
@@ -86,6 +87,7 @@ impl TerminalCategory {
         match self {
             Self::Incomplete => "incomplete",
             Self::Ready => "ready",
+            Self::EvidenceInvalid => "evidence_invalid",
             Self::ObserverUnqualified => "observer_unqualified",
             Self::RestartRequestNotSent => "restart_request_not_sent",
             Self::RestartAttributionAmbiguous => "restart_attribution_ambiguous",

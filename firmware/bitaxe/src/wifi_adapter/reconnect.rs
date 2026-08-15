@@ -272,6 +272,7 @@ fn launch_reconnect() -> anyhow::Result<()> {
 }
 
 fn publish_disconnected(reason: WifiDisconnectReason, retry_ordinal: u32) {
+    crate::boot_evidence::clear_connected_origin();
     if let Ok(mut snapshot) = wifi_snapshot_cell().lock() {
         snapshot.wifi_status = format!("disconnected_{}", reason.category());
         snapshot.maybe_rssi_dbm = None;

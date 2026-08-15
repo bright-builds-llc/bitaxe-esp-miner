@@ -8,7 +8,6 @@ use std::{
 
 use bitaxe_api::boot_identity::{
     boot_identity_marker, runtime_origin_marker, ResetReasonCategory, BOOT_EVIDENCE_INTERVAL_MS,
-    ORIGIN_REPLAY_WINDOW_MS,
 };
 use bitaxe_api::logs::{
     RuntimeHeartbeatModel, ACCEPTED_STATE_REPLAY_INTERVAL_MS, ACCEPTED_STATE_REPLAY_WINDOW_MS,
@@ -37,7 +36,23 @@ struct BootSessionNonce([u32; 4]);
 struct ConnectedOriginReplay {
     device_url: String,
     next_deadline_ms: u64,
-    ends_at_ms: u64,
+}
+
+impl ConnectedOriginReplay {
+    fn new(device_url: String, now_ms: u64) -> Self {
+        Self {
+            device_url,
+            next_deadline_ms: now_ms.saturating_add(BOOT_EVIDENCE_INTERVAL_MS),
+        }
+    }
+
+    fn maybe_take_due(&mut self, now_ms: u64) -> Option<String> {
+        if now_ms < self.next_deadline_ms {
+            return None;
+        }
+        self.next_deadline_ms = now_ms.saturating_add(BOOT_EVIDENCE_INTERVAL_MS);
+        Some(self.device_url.clone())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -161,14 +176,14 @@ pub fn clear_provisioning_network_ready() {
     *maybe_deadline = None;
 }
 
-/// Publishes the connected HTTP origin into the bounded boot-evidence replay.
+/// Publishes the currently connected HTTP origin for private late USB observers.
+///
+/// Unlike effect deadlines, this observation must remain available for the full
+/// connection lifetime: a human may begin an independently replayable display
+/// UAT hours after the programmatic campaign completed.
 pub fn publish_connected_origin(device_url: String) {
     let now_ms = runtime_uptime::millis();
-    let replay = ConnectedOriginReplay {
-        device_url: device_url.clone(),
-        next_deadline_ms: now_ms.saturating_add(BOOT_EVIDENCE_INTERVAL_MS),
-        ends_at_ms: now_ms.saturating_add(ORIGIN_REPLAY_WINDOW_MS),
-    };
+    let replay = ConnectedOriginReplay::new(device_url.clone(), now_ms);
     let cell = CONNECTED_ORIGIN.get_or_init(|| Mutex::new(None));
     let Ok(mut maybe_replay) = cell.lock() else {
         log::warn!("runtime_origin=unavailable reason=mutex_poisoned");
@@ -177,6 +192,16 @@ pub fn publish_connected_origin(device_url: String) {
     *maybe_replay = Some(replay);
     drop(maybe_replay);
     emit_runtime_origin(&device_url);
+}
+
+/// Stops publishing an origin as soon as station connectivity is lost.
+pub fn clear_connected_origin() {
+    let cell = CONNECTED_ORIGIN.get_or_init(|| Mutex::new(None));
+    let Ok(mut maybe_replay) = cell.lock() else {
+        log::warn!("runtime_origin=unavailable reason=mutex_poisoned");
+        return;
+    };
+    *maybe_replay = None;
 }
 
 /// Records boot proof in Plan 13 evidence mode.
@@ -386,13 +411,7 @@ fn emit_due_runtime_origin(now_ms: u64) {
     let Some(replay) = maybe_replay.as_mut() else {
         return;
     };
-    if now_ms >= replay.ends_at_ms {
-        *maybe_replay = None;
-        return;
-    }
-    if now_ms >= replay.next_deadline_ms {
-        let device_url = replay.device_url.clone();
-        replay.next_deadline_ms = now_ms.saturating_add(BOOT_EVIDENCE_INTERVAL_MS);
+    if let Some(device_url) = replay.maybe_take_due(now_ms) {
         drop(maybe_replay);
         emit_runtime_origin(&device_url);
     }
@@ -403,9 +422,9 @@ fn next_origin_deadline() -> u64 {
     let Ok(maybe_replay) = cell.lock() else {
         return u64::MAX;
     };
-    maybe_replay.as_ref().map_or(u64::MAX, |replay| {
-        replay.next_deadline_ms.min(replay.ends_at_ms)
-    })
+    maybe_replay
+        .as_ref()
+        .map_or(u64::MAX, |replay| replay.next_deadline_ms)
 }
 
 fn emit_due_heartbeat(now_ms: u64) {
@@ -441,7 +460,7 @@ fn evidence_marker(nonce: BootSessionNonce, state: BootEvidenceState) -> String 
 
 #[cfg(test)]
 mod tests {
-    use super::{evidence_marker, BootEvidenceState, BootSessionNonce};
+    use super::{evidence_marker, BootEvidenceState, BootSessionNonce, ConnectedOriginReplay};
 
     #[test]
     fn boot_evidence_marker_is_fixed_width_and_redacted() {
@@ -456,5 +475,18 @@ mod tests {
             marker,
             "plan13_boot_evidence session=0000000000000001ffffffff1234abcd state=booted redacted=true"
         );
+    }
+
+    #[test]
+    fn connected_origin_remains_due_after_an_unbounded_human_delay() {
+        // Arrange
+        let mut replay = ConnectedOriginReplay::new("http://private-device".to_owned(), 1_000);
+
+        // Act
+        let observed = replay.maybe_take_due(24 * 60 * 60 * 1_000);
+
+        // Assert
+        assert_eq!(observed.as_deref(), Some("http://private-device"));
+        assert!(replay.next_deadline_ms > 24 * 60 * 60 * 1_000);
     }
 }

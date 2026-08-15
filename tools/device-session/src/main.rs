@@ -163,6 +163,9 @@ struct DisplayUatLiveArgs {
     #[arg(long = "intent-input")]
     intent_input: Utf8PathBuf,
 
+    #[arg(long = "runtime-observation-input")]
+    runtime_observation_input: Utf8PathBuf,
+
     #[arg(long = "programmatic-evidence")]
     programmatic_evidence: Utf8PathBuf,
 }
@@ -362,12 +365,21 @@ fn run_inspect_live(args: InspectLiveArgs) -> Result<TerminalCategory> {
 
 fn run_display_uat(args: DisplayUatLiveArgs) -> Result<TerminalCategory> {
     validate_private_input(&args.intent_input)?;
+    validate_private_input(&args.runtime_observation_input)?;
     let intent: DisplayUatIntent =
         serde_json::from_slice(&fs::read(args.intent_input.as_std_path())?)
             .context("private display UAT intent does not match the device-session schema")?;
     let evidence = fs::read(args.programmatic_evidence.as_std_path())
         .context("failed to read programmatic command evidence")?;
-    run_display_uat_live(intent, args.port, &evidence, &args.private_root)
+    let runtime_observation = fs::read(args.runtime_observation_input.as_std_path())
+        .context("failed to read private runtime observation")?;
+    run_display_uat_live(
+        intent,
+        args.port,
+        &runtime_observation,
+        &evidence,
+        &args.private_root,
+    )
 }
 
 fn run_display_uat_finalize(args: DisplayUatFinalizeArgs) -> Result<TerminalCategory> {

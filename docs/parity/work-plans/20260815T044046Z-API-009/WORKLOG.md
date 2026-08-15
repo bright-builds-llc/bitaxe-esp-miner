@@ -934,3 +934,49 @@
 - Promotion: Finalize an aggregate-only redacted UAT projection and promote
   API-009 only when both projections, restoration, cleanup, parity, reference,
   redaction, and diff gates pass.
+
+## 2026-08-15T14:15:00Z | display UAT attempt-001 failed before effect admission
+
+- Result: After one fresh detector passed, the bounded UAT process stopped
+  before its initial command-status admission. The command-owned root remained
+  empty, so no USB inspection, IDENTIFY request, human checkpoint, or public
+  evidence occurred. The user's readiness action did not cause the failure.
+- Diagnosis: The original CLI exposed only `host_error`, so attempt-001 cannot
+  distinguish an unavailable response from malformed command status after the
+  fact. Independently, the UAT contract contained a deterministic mismatch: it
+  permits an indefinite human delay, retained the earlier campaign origin, and
+  replayed the current connected origin on receive-only USB for only six
+  minutes. After that lease expires, a delayed UAT cannot refresh its target
+  through any policy-compliant mechanism.
+- Fix contract: Keep the current connected origin privately observable on USB,
+  require one fresh same-session origin observation before HTTP/USB inspection,
+  and preserve a closed typed admission failure before any IDENTIFY. Because
+  this changes firmware, rerun the programmatic campaign against the new exact
+  package before a fresh isolated physical UAT.
+- Disposition: Attempt-001 is consumed without a display effect. No unchanged
+  retry is authorized; attempt-002 follows only after the correction passes all
+  gates, is committed and pushed, and new exact-package programmatic evidence
+  is sealed.
+
+## 2026-08-15T16:54:36Z | delayed display UAT admission fixed and verified
+
+- Firmware: The current connected origin now remains observable at the existing
+  ten-second private USB cadence for the connection lifetime and is cleared
+  immediately on station disconnect. A pure regression proves observation
+  remains due after a one-day human delay.
+- Host: Display UAT intent v2 contains no origin. The live command admits one
+  fresh private runtime-origin marker, binds its boot session to command status,
+  then performs the existing same-physical-device and exact-build inspection
+  before the single IDENTIFY request. Missing/conflicting markers, unavailable
+  HTTP, malformed status, boot drift, and later postcondition failures retain
+  closed terminal categories plus a private zero-or-one request receipt.
+- Regression: Focused parser, loopback transport, malformed-status, privacy,
+  and real-child CLI tests pass. The production-shaped API campaign emits the
+  origin-free intent and its existing no-human simulation remains green.
+- Verification: Ordered Cargo format/clippy/build/test gates, Bright Builds,
+  the real ESP32-S3 firmware build, all 45 Bazel test targets, parity/progress,
+  redaction, pinned-reference cleanliness, sensitive-output review, and diff
+  checks pass. No hardware effect occurred.
+- Disposition: The correction is ready to commit and push. A separately
+  committed attempt-045 contract is still required before rebuilding/flashing
+  and replacing the exact-package programmatic evidence.

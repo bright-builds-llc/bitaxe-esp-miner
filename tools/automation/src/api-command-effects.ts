@@ -611,9 +611,8 @@ export async function captureApiCommandEffects(
     throw failure("evidence_invalid", "display UAT package binding does not match the admitted package");
   }
   await writePrivateJson(path.join(privateRoot, "display-uat-intent.private.json"), {
-    schema_version: "bitaxe-display-uat-intent-v1",
+    schema_version: "bitaxe-display-uat-intent-v2",
     board_category: "205",
-    trusted_origin: stringField(rebootIntent, "trusted_origin", "device-session reboot intent"),
     source_commit: sourceCommit,
     reference_commit: referenceCommit,
     app_elf_sha256: appElfSha256,

@@ -10,12 +10,31 @@ use bitaxe_device_session::{
 };
 use camino::Utf8Path;
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 
+#[path = "cli/display_uat.rs"]
+mod display_uat;
 #[path = "cli/transaction.rs"]
 mod transaction;
 
 fn digest(character: char) -> String {
     std::iter::repeat_n(character, 64).collect()
+}
+
+fn sha256(bytes: &[u8]) -> String {
+    let mut digest = Sha256::new();
+    digest.update(bytes);
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    digest
+        .finalize()
+        .iter()
+        .flat_map(|byte| {
+            [
+                char::from(HEX[usize::from(byte >> 4)]),
+                char::from(HEX[usize::from(byte & 0x0f)]),
+            ]
+        })
+        .collect()
 }
 
 fn request() -> SessionRequest {

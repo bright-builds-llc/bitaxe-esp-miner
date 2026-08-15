@@ -17,7 +17,8 @@ mod usb;
 
 pub use display_uat::{
     finalize_display_uat, run_display_uat_live, DisplayUatIntent, DisplayUatProjection,
-    DISPLAY_UAT_INTENT_SCHEMA, DISPLAY_UAT_MACHINE_SCHEMA, DISPLAY_UAT_PROJECTION_SCHEMA,
+    DISPLAY_UAT_ADMISSION_SCHEMA, DISPLAY_UAT_INTENT_SCHEMA, DISPLAY_UAT_MACHINE_SCHEMA,
+    DISPLAY_UAT_PROJECTION_SCHEMA,
 };
 pub use evidence::{validate_private_input, InspectionArtifacts, SessionArtifacts};
 pub use fixture::{run_fixture_session, FixtureTranscript, FIXTURE_SCHEMA};

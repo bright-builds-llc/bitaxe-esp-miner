@@ -6,8 +6,6 @@ pub const BOOT_RECORD_MAGIC: u32 = 0x4258_5254;
 pub const BOOT_RECORD_SCHEMA_VERSION: u32 = 1;
 /// Cadence for replaying non-secret boot identity evidence.
 pub const BOOT_EVIDENCE_INTERVAL_MS: u64 = 10_000;
-/// Duration for replaying a connected device origin after publication.
-pub const ORIGIN_REPLAY_WINDOW_MS: u64 = 360_000;
 
 /// Reset-retained boot counter with integrity fields for fail-closed continuity.
 #[repr(C)]

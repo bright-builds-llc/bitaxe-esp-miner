@@ -3980,9 +3980,19 @@ sweep without exposing sensor values, followed by a verified root-cause change.
 
 - [x] Commit and push the independently validated attempt-044 programmatic
       projection and this UAT contract before sending another IDENTIFY request.
+- [x] Consume attempt-001 as a pre-effect admission failure: the private root
+      remained empty, no IDENTIFY request was sent, no observation was requested,
+      and public UAT evidence was withheld.
+- [x] Make delayed replay durable by keeping the currently connected origin
+      observable through private receive-only USB, admitting exactly one fresh
+      same-session runtime-origin observation, and returning a typed terminal
+      category before IDENTIFY when admission fails.
+- [ ] Rebuild and rerun the no-human programmatic campaign against the changed
+      exact package before reusing its evidence for a physical UAT.
 - [ ] Wait without a deadline for the user to say they are watching; then run
-      one fresh protected detector and one bounded `api-command-display-uat`
-      machine pass against the exact programmatic evidence binding.
+      one fresh protected detector, one bounded receive-only origin capture, and
+      one bounded `api-command-display-uat` machine pass against the exact
+      programmatic evidence binding.
 - [ ] Ask for one durable response covering both observations: the IDENTIFY
       frame was visibly rendered and later cleared back to a non-IDENTIFY
       frame. A missed observation may replay this UAT without rerunning or
@@ -3992,7 +4002,13 @@ sweep without exposing sensor values, followed by a verified root-cause change.
       gates, and promote API-009 only if both projections validate together.
 
 Exact command and effects: after fresh `just detect-ultra205` admission, run
-`just api-command-display-uat --port <detector-port> --private-root scratch/api009-display-uat/attempt-001 --intent-input scratch/api009-command-effects/attempt-044/display-uat-intent.private.json --programmatic-evidence docs/parity/evidence/api009-command-effects/command-effects-projection.json`.
+one bounded `just monitor --board 205 --port <detector-port>
+--capture-timeout-seconds 20` capture into a new mode-0600 private file, then
+`just api-command-display-uat --port <detector-port> --private-root
+scratch/api009-display-uat/attempt-002 --intent-input
+<current-programmatic-attempt>/display-uat-intent.private.json
+--runtime-observation-input <private-monitor-file> --programmatic-evidence
+docs/parity/evidence/api009-command-effects/command-effects-projection.json`.
 The machine pass may perform read-only HTTP/USB inspection and exactly one
 bounded HTTP IDENTIFY request. It must prove the successful framebuffer receipt
 and natural non-IDENTIFY clear receipt from the same boot and package. No flash,
@@ -4015,11 +4031,19 @@ and redaction status. Never publish identities, origins, ports, addresses,
 hostnames, credentials, boot sessions, generations, values, frame text,
 response bodies, or traces.
 
-Verification: Pending.
+Verification: The fresh-origin parser, unavailable/malformed command-status
+boundaries, v2 origin-free intent, private typed admission receipt, and real
+child-process CLI regression pass. Ordered Cargo gates, the real ESP32-S3
+firmware build, Bright Builds, all 45 Bazel targets, parity/progress, redaction,
+pinned-reference cleanliness, and diff checks pass. Hardware refresh and the
+physical observation remain pending.
 
-Completion review: Pending. The programmatic campaign is complete and remains
-valid independently; this task exists only because software cannot prove that
-the SSD1306 pixels were physically illuminated.
+Completion review: Pending. Attempt-001 proved the original delayed-UAT
+contract was internally inconsistent: human readiness was unbounded while its
+only policy-compliant origin refresh expired after six minutes. The prior
+programmatic result remains truthful for its exact package but must be replaced
+after the firmware correction; software still cannot prove that SSD1306 pixels
+were physically illuminated.
 
 ## Future
 

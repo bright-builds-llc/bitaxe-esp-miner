@@ -427,7 +427,8 @@ test("complete command and reboot quorums publish only redacted typed evidence",
   )) as Record<string, unknown>;
   assert.equal((evidence as Record<string, unknown>)["schema_version"], "bitaxe-api-command-effects-evidence-v1");
   assert.equal((evidence as Record<string, unknown>)["hardware_control_state"], "disabled");
-  assert.equal(displayUatIntent["schema_version"], "bitaxe-display-uat-intent-v1");
+  assert.equal(displayUatIntent["schema_version"], "bitaxe-display-uat-intent-v2");
+  assert.equal(displayUatIntent["trusted_origin"], undefined);
   assert.equal(displayUatIntent["programmatic_evidence_sha256"], createHash("sha256").update(published).digest("hex"));
   assert(!published.includes("192.0.2.44"));
   assert(!published.includes("/dev/private-sensitive-port"));

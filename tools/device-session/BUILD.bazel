@@ -26,6 +26,8 @@ rust_library(
     srcs = [
         "src/evidence.rs",
         "src/display_uat.rs",
+        "src/display_uat/origin.rs",
+        "src/display_uat/tests.rs",
         "src/fixture.rs",
         "src/inspection.rs",
         "src/lib.rs",
