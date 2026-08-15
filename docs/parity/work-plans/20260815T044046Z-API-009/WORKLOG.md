@@ -734,3 +734,16 @@
   deadline regressions pass with focused and full Rust suites, Bright Builds,
   real firmware, full Bazel, parity/progress, redaction, reference, and diff
   checks. No hardware effect occurred.
+
+## 2026-08-15T11:12:00Z | attempt-041 terminal-handoff contract drafted
+
+- Objective: One no-human exact-package campaign against pushed fix
+  `60457bf1`, proving serial capture closure preserves the bounded terminal
+  HTTP join before restart evidence is sealed.
+- Bounds: Firmware activation and active-duration leases, 1,380-second serial
+  capture, complete host child budget, phase deadlines, 15-second post-terminal
+  HTTP, recovery, process termination, and cleanup all remain finite.
+- Effects/privacy: Existing request-once, detector, same-device, redaction, and
+  protected-artifact contracts are unchanged; no physical-display claim.
+- Stop: Campaign start consumes attempt-041. Any non-ready result withholds
+  evidence and stops without attempt-042 or an unchanged retry.
