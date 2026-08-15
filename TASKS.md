@@ -388,6 +388,36 @@ live ADC calibration accuracy, millivolt values, cadence, failure behavior, and
 API correlation remain below verified and need a separately task-gated detector
 capture. No hardware, credentials, mining, controls, OTA, UART, or pins ran.
 
+Verification continuation plan:
+`docs/parity/work-plans/20260815T210711Z-IO-002/PLAN.md`
+
+- [ ] Add the closed `bitaxe-adc-observation-evidence-v1` contract,
+      independent validator, and repo-owned capture command without changing
+      production ADC, safety, mining, or control behavior.
+- [ ] After the implementation is committed, pushed, clean, and packaged, run
+      only detector-gated IO-002 `attempt-001` and publish evidence atomically
+      only after independent validation and redaction pass.
+- [ ] Promote only IO-002 on the complete exact-package ADC/API quorum;
+      otherwise preserve `implemented`, record the earliest typed blocker and
+      accepted stop outcome, and do not retry.
+
+Hardware contract: exact objective, scope, evidence/privacy rules, allowed and
+prohibited effects, recovery, retry, and promotion criteria are immutable in
+the continuation plan above. The only authorized device sequence is its exact
+`just detect-ultra205` command followed, on successful single-device admission
+and local Wi-Fi credential availability, by its exact one-shot
+`just capture-adc-observation-evidence ... --capture-timeout-seconds 360`
+command. Attempt-001 permits one exact-package factory flash/reset, protected
+read-only same-origin observation, bounded cleanup, and at most one exact-
+package recovery flash after a post-flash failure. It prohibits settings or
+restart requests, mining, pool input, ASIC work, voltage/frequency/fan/power
+control, raw ADC/GPIO/I2C, OTA, erase, fault injection, physical power actions,
+direct UART, and all pin/pad/header/probe/jumper/solder/signal manipulation.
+The attempt is consumed when the capture command starts; no unchanged retry or
+attempt-002 is authorized. Detector ambiguity/failure, missing credentials,
+unsafe state, cleanup or recovery failure, incomplete proof, or privacy failure
+stops the run and withholds promotion.
+
 ### task-parity-net002-provisioning-network | 2026-08-04 | Implement configuration AP and captive DNS
 
 - [x] Add a pure bounded wildcard IN/A captive-DNS response contract matching
