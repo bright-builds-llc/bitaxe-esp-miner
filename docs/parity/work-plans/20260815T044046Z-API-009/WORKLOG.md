@@ -783,3 +783,17 @@
 - Disposition: The software correction is complete and ready to publish. A
   fresh hardware campaign still requires a separately committed exact-package
   attempt contract; attempt-041 remains consumed.
+
+## 2026-08-15T12:08:00Z | attempt-042 serial-resynchronization contract drafted
+
+- Objective: Run one no-human programmatic campaign against clean pushed fix
+  `2a97230c`, either sealing the complete machine quorum or producing one typed
+  post-fix result for diagnosis.
+- Admission/layout: Require exact HEAD/reference package identity, opaque
+  ignored input, one protected detector, a separate protected wrapper, and
+  absent command-owned attempt/public paths.
+- Effects/privacy: Existing bounded campaign, recovery, safe-stop, cleanup,
+  request-once, deadline, same-device, and redaction contracts are unchanged.
+  No physical-display claim is included.
+- Stop: Campaign start consumes attempt-042. Any non-ready result withholds
+  evidence and stops without attempt-043 or an unchanged retry.
