@@ -3727,6 +3727,25 @@ THR-001 remains `implemented`, attempt-005 remains consumed, and this plan does
 not authorize attempt-006. See
 `docs/parity/work-plans/20260815T185700Z-THR-001/CLOSURE.md`.
 
+Attempt-006 continuation:
+`docs/parity/work-plans/20260815T192115Z-THR-001/PLAN.md`.
+
+- [ ] Correct the selector's terminal-closure lineage reset with a production-
+      shape regression while preserving strict checks for unclosed plans.
+- [ ] Advance the consumed ordinal, private roots, projection path, immutable
+      plan binding, tests, generated command contract, and runfile to attempt 6.
+- [ ] Pass focused and mandatory software gates; commit and push the complete
+      binding change before packaging, detection, or device access.
+- [ ] Build the exact clean package, admit one Ultra 205, and run the bounded
+      fault/restoration campaign exactly once.
+- [ ] Promote only on the complete independently validated hardware-regression
+      quorum; otherwise withhold evidence and stop without attempt 7.
+
+Authorization: only the exact attempt-006 command, effects, privacy, recovery,
+cleanup, and stop contract in the linked immutable plan applies after its
+separate pushed implementation and software gates. No attempt-007 or effect
+outside that plan is authorized.
+
 ### task-parity-ui004-live-browser-attempt-001 | 2026-08-13 | Verify exact-package AxeOS browser workflows
 
 - [x] Add a typed private-first evidence join and independent validator for the
