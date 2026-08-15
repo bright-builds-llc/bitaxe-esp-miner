@@ -1071,3 +1071,22 @@
 - Disposition: Attempt-046 is archived as accepted. Its exact private display
   intent and public projection replace the pre-fix programmatic binding for the
   outstanding independently replayable physical display UAT.
+
+## 2026-08-15T19:05:00Z | display UAT attempt-002 stopped before effect
+
+- Admission: The pushed attempt-046 programmatic evidence, private intent,
+  fresh detector, and bounded receive-only runtime-origin capture were ready.
+- Result: `display-uat-live` returned generic `host_error` before creating its
+  private root or admission receipt. No IDENTIFY request was sent, no display
+  observation was requested, and no public UAT projection was produced.
+- Root cause: The committed command contract requires an absent fresh attempt
+  root, but the CLI delegated directly to a library function that requires an
+  already existing empty mode-0700 root. The CLI owned neither creation nor a
+  typed path across that boundary.
+- Correction: `display-uat-live` now atomically creates the absent root at mode
+  0700 before entering typed admission. A real-child regression begins with an
+  absent root and proves a typed pre-effect failure creates the root, one
+  mode-0600 admission receipt, and zero identify requests.
+- Stop: Attempt-002 is consumed. A fresh attempt-003 requires the verified
+  correction to be committed and pushed; it may reuse the accepted
+  programmatic campaign without reflashing or rerunning mining.

@@ -3,10 +3,11 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use bitaxe_device_session::{
-    finalize_display_uat, run_admitted_inspection, run_admitted_transaction, run_display_uat_live,
-    run_fixture_session, run_live_session, validate_private_input, DeviceInspectionIntent,
-    DeviceTransactionIntent, DisplayUatIntent, FixtureTranscript, InspectionArtifacts, OtaIntent,
-    RebootIntent, SessionArtifacts, SessionRequest, TerminalCategory, TransactionGoal,
+    create_empty_private_root, finalize_display_uat, run_admitted_inspection,
+    run_admitted_transaction, run_display_uat_live, run_fixture_session, run_live_session,
+    validate_private_input, DeviceInspectionIntent, DeviceTransactionIntent, DisplayUatIntent,
+    FixtureTranscript, InspectionArtifacts, OtaIntent, RebootIntent, SessionArtifacts,
+    SessionRequest, TerminalCategory, TransactionGoal,
 };
 use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand};
@@ -373,6 +374,9 @@ fn run_display_uat(args: DisplayUatLiveArgs) -> Result<TerminalCategory> {
         .context("failed to read programmatic command evidence")?;
     let runtime_observation = fs::read(args.runtime_observation_input.as_std_path())
         .context("failed to read private runtime observation")?;
+    // The live command owns its fresh attempt root so callers cannot race a
+    // permissive or pre-populated directory into the evidence transaction.
+    create_empty_private_root(&args.private_root)?;
     run_display_uat_live(
         intent,
         args.port,

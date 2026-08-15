@@ -145,6 +145,19 @@ pub fn validate_private_input(input: &Utf8Path) -> Result<()> {
     Ok(())
 }
 
+pub fn create_empty_private_root(directory: &Utf8Path) -> Result<()> {
+    let mut builder = fs::DirBuilder::new();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    builder
+        .create(directory.as_std_path())
+        .with_context(|| format!("failed to create fresh private root {directory}"))?;
+    validate_empty_private_root(directory)
+}
+
 pub(crate) fn validate_empty_private_root(directory: &Utf8Path) -> Result<()> {
     let metadata = fs::symlink_metadata(directory.as_std_path())
         .with_context(|| format!("failed to inspect private root {directory}"))?;

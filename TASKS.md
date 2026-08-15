@@ -3989,6 +3989,12 @@ sweep without exposing sensor values, followed by a verified root-cause change.
       category before IDENTIFY when admission fails.
 - [x] Rebuild and rerun the no-human programmatic campaign against the changed
       exact package before reusing its evidence for a physical UAT.
+- [x] Consume attempt-002 as a pre-effect host failure: the fresh private root
+      did not exist, the CLI failed before creating an admission receipt, no
+      IDENTIFY request was sent, and no visual observation was requested.
+- [x] Make `display-uat-live` create its own fresh mode-0700 root atomically and
+      add a real-child regression proving an absent root reaches typed
+      pre-effect admission with a mode-0600 receipt.
 - [ ] Wait without a deadline for the user to say they are watching; then run
       one fresh protected detector, one bounded receive-only origin capture, and
       one bounded `api-command-display-uat` machine pass against the exact
@@ -4005,7 +4011,7 @@ Exact command and effects: after fresh `just detect-ultra205` admission, run
 one bounded `just monitor --board 205 --port <detector-port>
 --capture-timeout-seconds 20` capture into a new mode-0600 private file, then
 `just api-command-display-uat --port <detector-port> --private-root
-scratch/api009-display-uat/attempt-002 --intent-input
+scratch/api009-display-uat/attempt-003 --intent-input
 scratch/api009-command-effects/attempt-046/display-uat-intent.private.json
 --runtime-observation-input <private-monitor-file> --programmatic-evidence
 docs/parity/evidence/api009-command-effects/command-effects-projection-attempt-046.json`.
@@ -4042,8 +4048,10 @@ Completion review: Pending. Attempt-001 proved the original delayed-UAT
 contract was internally inconsistent: human readiness was unbounded while its
 only policy-compliant origin refresh expired after six minutes. Attempt-046 now
 supplies the exact-package replacement programmatic proof after both durable
-replay and asynchronous pause-join corrections. Software still cannot prove
-that SSD1306 pixels were physically illuminated.
+replay and asynchronous pause-join corrections. Attempt-002 then exposed a
+fresh-root ownership mismatch before any IDENTIFY effect; the live CLI now owns
+atomic private-root creation and the real-child absent-root regression passes.
+Software still cannot prove that SSD1306 pixels were physically illuminated.
 
 ## Future
 

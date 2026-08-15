@@ -5,7 +5,7 @@ use bitaxe_device_session::{
 use super::*;
 
 #[test]
-fn built_cli_types_missing_fresh_origin_before_any_effect() {
+fn built_cli_creates_private_root_before_typing_missing_fresh_origin() {
     // Arrange
     let temporary = tempfile::tempdir().expect("temporary directory must be available");
     let temporary = Utf8Path::from_path(temporary.path()).expect("temporary path must be UTF-8");
@@ -39,13 +39,7 @@ fn built_cli_types_missing_fresh_origin_before_any_effect() {
         fs::Permissions::from_mode(0o600),
     )
     .expect("runtime observation mode must be set");
-    fs::create_dir(private_root.as_std_path()).expect("private root must be created");
-    #[cfg(unix)]
-    fs::set_permissions(
-        private_root.as_std_path(),
-        fs::Permissions::from_mode(0o700),
-    )
-    .expect("private root mode must be set");
+    assert!(!private_root.exists());
 
     // Act
     let output = Command::new(env!("CARGO_BIN_EXE_device-session"))
@@ -80,11 +74,20 @@ fn built_cli_types_missing_fresh_origin_before_any_effect() {
     assert_eq!(admission["schema_version"], DISPLAY_UAT_ADMISSION_SCHEMA);
     assert_eq!(admission["terminal_category"], "evidence_invalid");
     assert_eq!(admission["identify_request_count"], 0);
+    assert!(private_root.is_dir());
     assert_eq!(
         fs::read_dir(private_root.as_std_path())
             .expect("private root must remain readable")
             .count(),
         1
+    );
+    #[cfg(unix)]
+    assert_eq!(
+        fs::metadata(private_root.as_std_path())
+            .expect("private root metadata")
+            .mode()
+            & 0o777,
+        0o700
     );
     #[cfg(unix)]
     assert_eq!(

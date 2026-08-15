@@ -20,7 +20,9 @@ pub use display_uat::{
     DISPLAY_UAT_ADMISSION_SCHEMA, DISPLAY_UAT_INTENT_SCHEMA, DISPLAY_UAT_MACHINE_SCHEMA,
     DISPLAY_UAT_PROJECTION_SCHEMA,
 };
-pub use evidence::{validate_private_input, InspectionArtifacts, SessionArtifacts};
+pub use evidence::{
+    create_empty_private_root, validate_private_input, InspectionArtifacts, SessionArtifacts,
+};
 pub use fixture::{run_fixture_session, FixtureTranscript, FIXTURE_SCHEMA};
 pub use inspection::{
     run_admitted_inspection, DeviceInspectionIntent, DeviceInspectionProjection,
