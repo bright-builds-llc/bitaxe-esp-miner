@@ -3736,15 +3736,24 @@ Attempt-006 continuation:
       plan binding, tests, generated command contract, and runfile to attempt 6.
 - [x] Pass focused and mandatory software gates; commit and push the complete
       binding change before packaging, detection, or device access.
-- [ ] Build the exact clean package, admit one Ultra 205, and run the bounded
+- [x] Build the exact clean package, admit one Ultra 205, and run the bounded
       fault/restoration campaign exactly once.
-- [ ] Promote only on the complete independently validated hardware-regression
+- [x] Promote only on the complete independently validated hardware-regression
       quorum; otherwise withhold evidence and stop without attempt 7.
 
 Authorization: only the exact attempt-006 command, effects, privacy, recovery,
 cleanup, and stop contract in the linked immutable plan applies after its
 separate pushed implementation and software gates. No attempt-007 or effect
 outside that plan is authorized.
+
+Attempt-006 closure: The exact package and one admitted Ultra 205 completed the
+sole campaign as `evidence_invalid`. Direct fault/recovery markers and eleven
+complete retained replay triplets prove the device state machine succeeded, but
+the strict host parser omitted the exact replay-producer tag
+`bitaxe_firmware::boot_evidence`. Ordinary recovery, USB/process cleanup,
+protected modes, and withholding passed. THR-001 remains `implemented`;
+attempt-006 is consumed and attempt-007 is not authorized. See
+`docs/parity/work-plans/20260815T192115Z-THR-001/CLOSURE.md`.
 
 ### task-parity-ui004-live-browser-attempt-001 | 2026-08-13 | Verify exact-package AxeOS browser workflows
 

@@ -65,3 +65,18 @@
   firmware, all 45 Bazel tests, parity/progress, redaction, reference
   cleanliness, generated contracts, sensitive-output scan, and diff review
   pass. No hardware ran; packaging remains ineligible until the push.
+
+## 2026-08-15T20:12:00Z | attempt-006 consumed and withheld
+
+- Admission: Clean pushed implementation `f7011949`, exact package identity,
+  fresh private/public paths, owner-supplied credential presence, and exactly
+  one detector-admitted Ultra 205 passed before the sole command.
+- Result: `evidence_invalid`; final projection withheld. Recovery completed via
+  ordinary exact-package flash with no secondary failure. USB/process cleanup
+  and protected wrapper modes passed.
+- Diagnosis: Device stimulus had no abort, direct fault/recovery occurred once,
+  and retained replay emitted eleven complete ordered triplets. Replayed lines
+  use exact tag `bitaxe_firmware::boot_evidence`; the host admits only the
+  direct `bitaxe_firmware` tag, so baseline could not enter the quorum.
+- Stop: Attempt-006 is consumed and was not retried. THR-001 remains
+  `implemented`; no attempt-007 is authorized by this plan.
