@@ -980,3 +980,19 @@
 - Disposition: The correction is ready to commit and push. A separately
   committed attempt-045 contract is still required before rebuilding/flashing
   and replacing the exact-package programmatic evidence.
+
+## 2026-08-15T17:02:00Z | attempt-045 exact-package refresh contract drafted
+
+- Objective: Refresh the no-human API-009 programmatic projection against the
+  durable delayed-UAT firmware fix pushed as `3e6d88f6`, without making or
+  depending on a physical-display claim.
+- Admission/layout: Require a clean pushed contract HEAD, exact HEAD/reference
+  package, opaque ignored Wi-Fi input, one protected detector, separate
+  protected wrapper, absent command-owned attempt root, and a new projection
+  path that preserves the truthful attempt-044 artifact.
+- Effects/privacy: Retain the established single exact-package flash, bounded
+  conservative mining, pause/dismiss/IDENTIFY/resume/restart, same-device
+  recovery, safe-stop, cleanup, finite deadlines, and aggregate-only redaction
+  contracts. No additional hardware or control surface is authorized.
+- Stop: Campaign start consumes attempt-045. Any non-ready result withholds the
+  new projection and stops without attempt-046 or an unchanged retry.

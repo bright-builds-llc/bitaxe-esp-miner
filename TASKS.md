@@ -4045,6 +4045,57 @@ programmatic result remains truthful for its exact package but must be replaced
 after the firmware correction; software still cannot prove that SSD1306 pixels
 were physically illuminated.
 
+### task-api009-programmatic-refresh-attempt-045 | 2026-08-15 | Refresh exact-package proof after durable UAT fix
+
+- [ ] Require a clean synchronized pushed contract HEAD containing correction
+      `3e6d88f6`, opaque non-empty ignored Wi-Fi input, the exact current
+      HEAD/reference package, and absent protected `detector-045`, `wrapper-045`,
+      command-owned `attempt-045`, and new public projection paths.
+- [ ] Run `just package`, then exactly one protected `just detect-ultra205`;
+      proceed only for zero exit, exactly one admitted board-205 device, and
+      mode-0700/mode-0600 private artifacts.
+- [ ] Run exactly once
+      `just api-command-effects-campaign --private-root
+      scratch/api009-command-effects/attempt-045 --package-manifest
+      bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
+      --wifi-credentials wifi-credentials.json --detector-output
+      scratch/api009-command-effects/detector-045/detector.stdout --projection
+      docs/parity/evidence/api009-command-effects/command-effects-projection-attempt-045.json
+      --duration-seconds 600` from a separate protected `wrapper-045`.
+- [ ] Independently validate a ready redacted projection, exact package and
+      workflow identity, every command/restart postcondition, safe stop,
+      process/USB cleanup, private modes, sensitive-output absence, and diff.
+- [ ] Archive this task after either one accepted projection or one typed
+      failure disposition; never retry attempt-045 or start attempt-046 without
+      a diagnosed and verified contract/software change.
+
+Objective and effects: refresh API-009's no-human programmatic evidence after
+the durable delayed-UAT firmware change. The sole run may perform one
+exact-package flash/reset, private Wi-Fi/local-fixture seed, bounded
+conservative mining, one each pause/dismiss/IDENTIFY/resume/software-restart,
+HTTP/WebSocket/receive-only USB observation, same-device recovery, safe stop,
+child termination, and USB cleanup. No human checkpoint or physical-display
+claim is included.
+
+Privacy/recovery/stop: detector, wrapper, and attempt roots are ignored mode
+0700 with mode-0600 files. The public projection may contain only the existing
+closed aggregate API-009 schema and must expose no private identities, origins,
+ports, addresses, hostnames, credentials, boot sessions, values, response
+bodies, or traces. Existing finite effect/recovery/cleanup bounds and earliest-
+failure precedence remain authoritative. Any detector failure, non-ready
+campaign result, recovery failure, malformed evidence, cleanup failure, or
+identity/build mismatch consumes attempt-045, withholds the new projection,
+records the typed disposition, and stops.
+
+Prohibited: external UART/BAP, native USB request/response, pins/pads/GPIO,
+erase/factory reset, OTA, arbitrary settings writes, fault injection, direct
+voltage/frequency/fan/thermal/power control, mining stress, physical power
+cycling, non-205 hardware, a second campaign invocation, or a visual claim.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
