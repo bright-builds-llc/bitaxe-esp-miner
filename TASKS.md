@@ -3727,6 +3727,24 @@ Completion review: The exact replay-origin contract is fixed and pushed at
 `docs/parity/work-plans/20260815T195949Z-THR-001/CLOSURE.md`. A distinct
 immutable plan is required before attempt-007.
 
+Attempt-007 continuation:
+`docs/parity/work-plans/20260815T201754Z-THR-001/PLAN.md`.
+
+- [ ] Advance the consumed ordinal, protected roots, projection path,
+      immutable plan binding, tests, generated command contract, and runfile to
+      attempt 7.
+- [ ] Pass focused and mandatory software gates; commit and push the complete
+      binding change before packaging, detection, or device access.
+- [ ] Build the exact clean package, admit one Ultra 205, and run the bounded
+      fault/restoration campaign exactly once.
+- [ ] Promote only on the complete independently validated hardware-regression
+      quorum; otherwise withhold evidence and stop without attempt 8.
+
+Authorization: only the exact attempt-007 command, effects, privacy, recovery,
+cleanup, and stop contract in the linked immutable plan applies after its
+separate pushed implementation and software gates. No attempt-008 or effect
+outside that plan is authorized.
+
 Closure: The production marker envelope and late-attachment replay defects are
 fixed and pushed at `6f637e87`; all required gates passed without hardware.
 THR-001 remains `implemented`, attempt-005 remains consumed, and this plan does
