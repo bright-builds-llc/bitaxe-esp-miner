@@ -797,3 +797,20 @@
   No physical-display claim is included.
 - Stop: Campaign start consumes attempt-042. Any non-ready result withholds
   evidence and stops without attempt-043 or an unchanged retry.
+
+## 2026-08-15T12:38:21Z | attempt-042 isolated terminal state contradiction
+
+- Result: One detector-gated exact-package campaign completed all command
+  effects once and stopped non-ready. Public evidence remained withheld,
+  recovery was not attempted, cleanup passed, and no user action contributed.
+- Serial boundary: The receive-only stream was clean apart from one trailing
+  fragment; thousands of markers were accepted with no UTF-8, JSON, or schema
+  failure. The prior framing defect is therefore no longer explanatory.
+- Primary diagnosis: The terminal marker carried reason
+  `campaign_lease_consumed` while campaign state remained `armed`. The analyzer
+  correctly classified this as `terminal_state_unconfirmed`; the network
+  worker's `terminal / serial_ended` result is a later secondary symptom.
+- Disposition: Attempt-042 is consumed. Reproduce and fix the state machine so
+  terminal causes cancel resumability and an already-stopped lease becomes
+  consumed without a duplicate effect. No attempt-043 is authorized until the
+  correction passes complete gates and is pushed.

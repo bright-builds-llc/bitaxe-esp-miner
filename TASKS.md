@@ -4031,36 +4031,32 @@ progress requires a separately scoped sensor-producer/I2C latency diagnostic
 that can identify which bounded acquisition delayed the complete observation
 sweep without exposing sensor values, followed by a verified root-cause change.
 
-### task-api009-programmatic-pilot-attempt-042 | 2026-08-15 | Verify recovered serial framing
+### task-api009-consumed-terminal-state | 2026-08-15 | Make lease consumption terminal
 
-- [ ] Require clean synchronized pushed `2a97230c`, opaque non-empty ignored
-      Wi-Fi input, exact HEAD/reference package, and absent detector, wrapper,
-      command-owned attempt, and public-projection paths.
-- [ ] Run `just package`, then exactly one protected `detector-042`; require
-      zero exit, one `port: ` record, `usb_session: ready`, private modes, and
-      one admitted board-205 device.
-- [ ] Use separate protected `wrapper-042`, keep `attempt-042` absent, and run
-      exactly once the existing 600-active-second programmatic campaign under
-      the finite activation, capture, child, recovery, and cleanup bounds.
-- [ ] Publish only a ready independently validated redacted projection;
-      otherwise withhold it and record the earliest category, typed command
-      phase/cause, sensor diagnostic, serial outcome, and recovery booleans.
+- [ ] Reproduce a terminal lease-consumption event that arrives while a
+      resumable safe stop is pending or hardware is already stopped, and prove
+      the current snapshot can pair `campaign_lease_consumed` with `armed`.
+- [ ] Make every terminal transition cancel resumability and settle an
+      already-stopped admitted lease as `consumed` without issuing another
+      hardware stop or manufacturing a safe-stop receipt.
+- [ ] Add state-machine, marker, host-handoff, and primary-failure regressions
+      for the attempt-042 signature using only deterministic fixtures.
+- [ ] Run focused and complete repository gates, simplify and review the diff,
+      archive this task, commit, and push before authorizing attempt-043.
 
-Effects: one exact-package flash/reset, private Wi-Fi/local-fixture seed,
-conservative initialization/mining for at most 600 active seconds, one each
-pause/dismiss/IDENTIFY/resume/software restart, HTTP/WebSocket/receive-only USB
-observation, same-device recovery, safe stop, child termination, and USB
-cleanup. No human checkpoint or physical-display claim is included.
+Authorization: source, deterministic fixtures, local child processes, builds,
+and repository verification only. Protected attempt-042 may be used only for
+the closed privacy-safe facts in its archived task and worklog. Do not access
+credentials, USB, device/network state, identities, origins, ports, addresses,
+boot session, raw traces, or sensor values. No detector, flash/reset, mining,
+recovery, OTA, erase, factory reset, UART/BAP, USB duplex, pins/GPIO, direct
+controls, fault injection, or attempt-043 is authorized by this task.
 
-Privacy/retry/stop: all private roots/files remain ignored mode 0700/0600.
-Never publish identities, origins, ports, addresses, hostnames, credentials,
-boot session, values, or traces. Preserve the first failure through recovery.
-Campaign start consumes attempt-042; no attempt-043 or unchanged retry is
-authorized. Any admission ambiguity, non-ready result, malformed evidence, or
-failed safe stop/recovery/cleanup stops with evidence withheld and API-009
-`implemented`. OTA, erase, factory reset, power cycle, UART/BAP, USB duplex,
-pins/GPIO, arbitrary settings, external pool, stress, direct controls, fault
-injection, non-205 hardware, and human display claims remain prohibited.
+Stop if the change permits a consumed reason with a non-consumed state, treats
+a resumable pause as terminal without a terminal cause, claims successful
+hardware cleanup before its confirmation, retries an effect, weakens exact-
+package/privacy/request-once behavior, or cannot preserve the earliest typed
+failure. API-009 remains `implemented` and public evidence remains withheld.
 
 ## Future
 

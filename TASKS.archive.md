@@ -8026,3 +8026,42 @@ network join, so a serial primary failure cannot be mislabeled `serial_ended`.
 Production-shaped split-chunk, unrecovered corruption, schema failure, and
 terminal handoff regressions pass. Full verification is clean; no hardware
 effect occurred.
+
+### task-api009-programmatic-pilot-attempt-042 | 2026-08-15 | Verify recovered serial framing
+
+- [x] Required clean synchronized pushed `2a97230c`, opaque non-empty ignored
+      Wi-Fi input, exact HEAD/reference package, and absent detector, wrapper,
+      command-owned attempt, and public-projection paths.
+- [x] Ran `just package`, then exactly one protected `detector-042`; observed
+      zero exit, one admitted board-205 device, and private artifact modes.
+- [x] Used separate protected `wrapper-042`, kept `attempt-042` absent, and ran
+      exactly once the existing 600-active-second programmatic campaign under
+      its finite bounds.
+- [x] Withheld the public projection after the non-ready result and recorded
+      the typed terminal-state, serial, recovery, and cleanup facts.
+
+Effects: one exact-package flash/reset, private Wi-Fi/local-fixture seed,
+conservative initialization/mining for at most 600 active seconds, one each
+pause/dismiss/IDENTIFY/resume/software restart, HTTP/WebSocket/receive-only USB
+observation, same-device recovery, safe stop, child termination, and USB
+cleanup. No human checkpoint or physical-display claim was included.
+
+Privacy/retry/stop: all private roots/files remained ignored mode 0700/0600.
+No identities, origins, ports, addresses, hostnames, credentials, boot session,
+values, or traces were published. Attempt-042 is consumed; no attempt-043 or
+unchanged retry is authorized. API-009 remains `implemented`.
+
+Completion review: Every requested command effect completed exactly once,
+including IDENTIFY render/clear receipts and both independent transition
+witnesses. The 600-active-second lease reached its terminal reason, serial
+capture was clean apart from one harmless trailing fragment, and USB/process
+cleanup passed. The public result stopped `hardware_blocked` with the secondary
+closed diagnostic `terminal / serial_ended`; recovery was not attempted and
+the projection remained absent.
+
+The authoritative terminal marker instead exposed the primary lifecycle
+contradiction: `campaign_lease_consumed` was paired with campaign state `armed`,
+so the analyzer correctly rejected terminal confirmation as
+`terminal_state_unconfirmed`. This is a firmware state-transition defect, not
+serial corruption or user action. Follow-up software work is tracked by
+`task-api009-consumed-terminal-state`.
