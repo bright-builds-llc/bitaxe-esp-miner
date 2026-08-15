@@ -46,3 +46,25 @@
 - Blocker or next safe action: Rerun the ordered final pre-commit gates over the
   completed diff, commit and push the exact source, build its package, and only
   then run the detector-gated attempt-001 command from the immutable plan.
+
+## 2026-08-15T21:50:26Z | attempt-001 terminal checkpoint
+
+- Source commit: `0bd2dfff2e662431fba3bb95d5654b1dbce3c80a`.
+- Actions: Pushed the clean implementation, built its exact package, admitted
+  exactly one Ultra 205 through the repo-owned detector, and ran the sole
+  authorized attempt-001 command. No retry or second hardware command ran.
+- Verification: The base exact-package system-info projection independently
+  validates. It records safe boot, disabled mining and hardware control,
+  complete cleanup, and passed redaction. Protected roots/files had the planned
+  `0700`/`0600` modes. The lossless ADC validator rejected both fresh samples
+  as outside its immutable 400–2,000 mV range.
+- Evidence: Terminal status `failed`, category `evidence_invalid`, stage
+  `adc_observation_capture`, and `projection_published=false`. The public ADC
+  projection is absent. Raw values, device identifiers, origins, and network
+  details remain only in ignored protected evidence and are not recorded here.
+- Outcome: `blocked`; IO-002 remains `implemented`, with verification claimed
+  `no`. `CLOSURE.md` records the terminal boundary and non-claims.
+- Blocker or next safe action: A fresh task and immutable plan must establish a
+  justified passive-safe-state ADC range from authoritative electrical evidence
+  or separately authorized safe stimulus before retry eligibility. This plan
+  authorizes no attempt-002 or unchanged retry.

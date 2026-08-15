@@ -391,13 +391,13 @@ capture. No hardware, credentials, mining, controls, OTA, UART, or pins ran.
 Verification continuation plan:
 `docs/parity/work-plans/20260815T210711Z-IO-002/PLAN.md`
 
-- [ ] Add the closed `bitaxe-adc-observation-evidence-v1` contract,
+- [x] Add the closed `bitaxe-adc-observation-evidence-v1` contract,
       independent validator, and repo-owned capture command without changing
       production ADC, safety, mining, or control behavior.
-- [ ] After the implementation is committed, pushed, clean, and packaged, run
+- [x] After the implementation is committed, pushed, clean, and packaged, run
       only detector-gated IO-002 `attempt-001` and publish evidence atomically
       only after independent validation and redaction pass.
-- [ ] Promote only IO-002 on the complete exact-package ADC/API quorum;
+- [x] Promote only IO-002 on the complete exact-package ADC/API quorum;
       otherwise preserve `implemented`, record the earliest typed blocker and
       accepted stop outcome, and do not retry.
 
@@ -417,6 +417,24 @@ The attempt is consumed when the capture command starts; no unchanged retry or
 attempt-002 is authorized. Detector ambiguity/failure, missing credentials,
 unsafe state, cleanup or recovery failure, incomplete proof, or privacy failure
 stops the run and withholds promotion.
+
+Attempt-001 verification: `blocked` at the closed `evidence_invalid` boundary.
+Exact clean pushed package `0bd2dfff` admitted one Ultra 205, observed the safe
+boot, kept mining and hardware control disabled, completed cleanup, and passed
+the independent system-info and redaction contracts. The lossless ADC input
+validator rejected both fresh live samples because they were outside the
+immutable 400–2,000 mV admission range. No public projection was published,
+no retry ran, and IO-002 remains `implemented`. See
+`docs/parity/work-plans/20260815T210711Z-IO-002/CLOSURE.md`.
+
+Completion review: The typed evidence workflow is implemented and verified in
+software, but live ADC verification remains unresolved. The plan did not prove
+that a passive safe-state core rail must exceed 400 mV, so weakening the range
+after observing the device would be circular. A fresh task and immutable plan
+must establish the expected disabled-rail reading from authoritative electrical
+evidence or separately authorized safe stimulus before any retry eligibility.
+Residual gaps remain live calibration accuracy, values, cadence under load,
+failure behavior, exact numeric API correlation, and energized-rail behavior.
 
 ### task-parity-net002-provisioning-network | 2026-08-04 | Implement configuration AP and captive DNS
 
