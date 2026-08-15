@@ -8227,3 +8227,63 @@ the overall deadline or request-once effect. No recovery request was needed and
 no secondary recovery failure occurred. The independently replayable physical
 display UAT remains the sole promotion prerequisite and is tracked by
 `task-api009-physical-display-uat-001`.
+
+### task-programmatic-device-verification-platform | 2026-08-15 | Centralize autonomous device transactions and proof
+
+- [x] Add a privacy-safe, access-gated `/api/system/command-status` extension
+      with boot-scoped command generations, state revisions, and display-render
+      receipts published only after a successful framebuffer flush.
+- [x] Deepen `bitaxe-device-session` behind one typed transaction interface
+      with production and deterministic adapters, read-only inspection,
+      request-once effects, same-device continuity, recovery, cleanup, typed
+      failures, and sealed public projections.
+- [x] Migrate API command effects, hostname durability, and partition-layout
+      OTA/restart orchestration to the common transaction implementation; all
+      new live workflows must use the same interface.
+- [x] Add pure, simulated, and real-child regressions for every public API-009
+      failure signature, transport loss, stale/duplicate generations, display
+      failure, restart ambiguity, projection integrity, privacy, cleanup, and
+      earliest-failure precedence.
+- [x] Pass focused and full repository gates, review the diff for unintended
+      effects, commit, and push before authorizing any fresh hardware attempt.
+- [x] Plan and run sequential detector-gated exact-package pilot attempts only
+      after a complete no-human simulated command-effects campaign passes.
+- [x] Preserve programmatic evidence independently from one replayable,
+      unbounded-readiness physical display UAT required for API-009 promotion.
+
+Software verification review (2026-08-15): the complete no-human simulated
+command-effects campaign and its typed failure regressions pass, as do the
+real-child transaction seam, all Cargo format/lint/build/test gates, all 44
+Bazel tests, firmware build, Bright Builds, parity/progress, redaction, pinned
+reference cleanliness, and diff checks. The shared interface reuses the
+authoritative reboot/OTA lifecycle; its compatibility commands contain no
+independent device lifecycle. The implementation is ready for commit and push.
+No fresh hardware attempt ran under this software task.
+
+Published software checkpoint: commit `c9faaaa0` is pushed to `origin/main`.
+The commit-and-push workflow confirmed the remote default branch, fetched the
+current remote, verified a fast-forward relationship, and pushed without a
+history rewrite.
+
+Software authorization and privacy: source, tests, deterministic loopback and
+real-child fixtures, documentation, task records, builds, local protected
+mode-`0700` roots, and mode-`0600` private artifacts were authorized. Public
+outputs contain only closed categories, booleans, counts, opaque boot sessions,
+monotonic revisions, and digests. They contain no origins, hostnames, settings
+values, addresses, ports, USB/network/process identities, credentials, frame
+text, sensor values, commands, or raw traces.
+
+Hardware gate: no fresh device attempt was authorized by this software task.
+Every pilot used its own complete task contract, clean pushed source and exact
+package, `just detect-ultra205`, fresh ordinal, finite automated effect/recovery
+bounds, evidence withholding, and accepted stop categories. HTTP remains the
+only command transport; WebSocket and receive-only native USB are observers.
+External UART/BAP, USB request/response, erase, factory reset, power-cycle,
+fault injection, arbitrary settings writes, mining stress, direct controls,
+pins, pads, GPIO, probes, jumpers, and non-205 devices remain prohibited.
+
+Completion review: The platform implementation and deterministic proof are
+complete, and attempt-044 supplied the sealed exact-package hardware projection
+for all programmatic API-009 effects. The separate display UAT intentionally
+remains active because only a human can confirm illuminated pixels; it can
+replay without rerunning or invalidating the completed programmatic campaign.
