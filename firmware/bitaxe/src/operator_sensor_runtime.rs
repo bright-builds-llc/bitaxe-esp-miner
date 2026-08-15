@@ -35,6 +35,7 @@ const SENSOR_PUBLISH_HEADROOM_MS: u64 = 100;
 const BOARD_POWER_TARGET_WATTS: f64 = 12.0;
 const PRODUCER_THREAD_NAME: &str = "operator-sensors";
 const PRODUCER_THREAD_STACK_BYTES: usize = 8 * 1024;
+const PRODUCER_THREAD_PRIORITY: u32 = 10;
 
 pub fn start(
     maybe_owner: Option<RuntimeI2cOwner<'static>>,
@@ -52,6 +53,8 @@ pub fn start(
         .name(PRODUCER_THREAD_NAME.to_owned())
         .stack_size(PRODUCER_THREAD_STACK_BYTES)
         .spawn(move || {
+            // A null task handle selects this newly spawned FreeRTOS task only.
+            unsafe { sys::vTaskPrioritySet(core::ptr::null_mut(), PRODUCER_THREAD_PRIORITY) };
             run(
                 maybe_owner,
                 maybe_core_voltage_adc,

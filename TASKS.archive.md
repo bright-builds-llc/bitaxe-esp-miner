@@ -7425,3 +7425,85 @@ severity; budget exhaustion remains above invalid, unavailable, recovered, and
 slow successful outcomes. Stable ties and every transition revision/marker are
 unchanged, and no runtime deadline or safety behavior was weakened. No hardware
 effect occurred. The task is complete and archived at 2026-08-15T09:12:00Z.
+
+### task-api009-programmatic-pilot-attempt-035 | 2026-08-15 | Identify the causal runtime driver stage
+
+- [x] Require clean synchronized pushed `86987839`, opaque non-empty ignored
+      Wi-Fi input, exact HEAD/reference package, and absent detector, wrapper,
+      attempt, and public-projection paths.
+- [x] Run `just package`; create private `detector-035`; run exactly one
+      `just detect-ultra205`; require exact artifacts, private modes, and one
+      admitted board-205 device.
+- [x] Create separate private `wrapper-035`, keep `attempt-035` absent, and
+      invoke exactly once the existing 600-second `just
+      api-command-effects-campaign` with the exact package, opaque input,
+      detector output, attempt root, and public projection.
+- [x] Publish only a ready independently validated redacted projection;
+      otherwise withhold it and record the earliest typed category, causal
+      highest-severity stage/outcome/duration/revision, and recovery booleans.
+
+Effects: one exact-package flash/reset, private Wi-Fi/local-fixture seed,
+conservative initialization/mining for at most 600 active seconds, one each
+pause/dismiss/IDENTIFY/resume/software restart, HTTP/WebSocket/receive-only USB
+observation, same-device recovery, safe stop, child termination, and USB
+cleanup. Active freshness and automated/recovery bounds remain unchanged. No
+human checkpoint or physical-display claim is included.
+
+Privacy/retry/stop: detector, wrapper, and attempt roots are ignored mode-0700
+with mode-0600 files. Never publish origins, ports, hostnames, addresses,
+device/USB/network/process identity, credentials, fixture/frame/sensor values,
+boot session, or raw traces. Preserve the earliest primary failure; cleanup
+runs on every entered lifecycle. Campaign start consumes attempt-035; no
+attempt-036 or unchanged retry is authorized. Any preflight/identity/detector/
+build ambiguity, non-ready result, malformed evidence, failed recovery/cleanup,
+or absent device stops with API-009 `implemented` and evidence withheld. OTA,
+erase, factory reset, power cycle, UART/BAP, USB duplex, pins/pads/GPIO,
+arbitrary settings, external pool, stress, direct controls, fault injection,
+non-205 hardware, and human display claims remain prohibited.
+
+Final verification: After a read-only zsh preflight initially stopped because
+the reserved lowercase `path` variable replaced executable lookup, the safe
+variable-name rerun passed without consuming the ordinal or touching hardware.
+Clean pushed `4251d71f`, exact package/reference, one protected detector, the
+separate wrapper, and one campaign passed admission. The campaign stopped
+`hardware_blocked`; safe stop/cleanup and recovery passed, no secondary failure
+or holder remained, and evidence was withheld. The closed diagnostic reported
+revision 11, `power / budget_exhausted / under_100_ms`.
+
+Final completion review: Power is the first sweep stage, so this proves the
+operator owner began a sweep after its previous-publication deadline. Source
+comparison shows Rust pthreads default to priority 5 while upstream creates the
+power-management sensor task at priority 10. No user action contributed.
+Attempt-035 is consumed, attempt-036 is not authorized, API-009 remains
+`implemented`, and the task is complete and archived at 2026-08-15T09:35:00Z.
+
+### task-api009-sensor-owner-priority | 2026-08-15 | Match upstream sensor scheduling priority
+
+- [x] Raise only the operator sensor/display/I2C owner from the ESP pthread
+      default priority 5 to upstream power-management priority 10 before its
+      first runtime action.
+- [x] Add source-ownership proof that the constant and current-task priority
+      application remain local to this owner and do not change global pthread,
+      mining worker, freshness, retry, or timeout configuration.
+- [x] Run focused and complete gates, simplify, review, archive, commit, and
+      push before any new hardware ordinal.
+
+Authorization: software/tests/builds only. No detector, credentials, USB,
+device/network/HTTP session, flash/reset/mining/recovery, OTA, UART/BAP, pins,
+or attempt-036. Stop if the priority cannot be applied locally, exceeds the
+upstream value, or changes the active-safety or I2C deadline contract.
+
+Final verification: The operator sensor/display/I2C thread now raises only its
+current FreeRTOS task to priority 10 before entering runtime work. The source
+ownership regression requires one local current-task call, the exact upstream
+priority, and no corresponding mining-worker call. The focused ownership test,
+real firmware build, mandatory Cargo sequence, Bright Builds checks, Bazel test
+surface, parity report with no validation errors, parity progress, redaction,
+reference cleanliness, and diff checks all passed.
+
+Final completion review: The fix changes neither global pthread defaults nor
+freshness, retries, deadlines, or mining scheduling. Applying the priority to
+the current task is the smallest robust alignment with upstream and avoids a
+broader scheduler configuration change. No hardware effect occurred. The task
+is complete and archived at 2026-08-15T09:52:00Z; attempt-036 still requires a
+separate exact-package hardware contract.

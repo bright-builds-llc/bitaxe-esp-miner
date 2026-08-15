@@ -477,3 +477,32 @@
   redaction rules are unchanged; no physical display claim is included.
 - Stop: Campaign start consumes attempt-035. Any non-ready result withholds
   evidence and stops without attempt-036 for root-cause diagnosis.
+
+## 2026-08-15T09:35:00Z | attempt-035 proves owner scheduling miss
+
+- Preflight: A first read-only shell stopped because zsh reserves lowercase
+  `path`; using `candidate_path` passed without detector or campaign effect.
+- Result: Exact package, one detector, separate wrapper, and one campaign ran.
+  It stopped `hardware_blocked` with safe stop, cleanup, and recovery confirmed,
+  no secondary failure or holder, and evidence withheld. The diagnostic is
+  revision 11, `power / budget_exhausted / under_100_ms`.
+- Root cause: Power is the first sweep stage, so the owner woke after its
+  publication deadline. The Rust pthread default is priority 5; upstream runs
+  its power-management sensor task at priority 10.
+- Disposition: Attempt-035 is consumed. A software-only task will align only
+  this owner with upstream priority before any attempt-036.
+
+## 2026-08-15T09:52:00Z | sensor owner priority aligned
+
+- Fix: The combined sensor/display/I2C owner raises only its newly spawned
+  current FreeRTOS task from the Rust pthread default to upstream priority 10
+  before its first runtime action.
+- Scope: Global pthread defaults, mining-worker priority, the one-second active
+  safety rule, sensor freshness, retry behavior, I2C deadlines, and campaign
+  timing remain unchanged.
+- Verification: Source ownership proves one local current-task priority call
+  and no mining-worker call. The focused test, real firmware build, mandatory
+  Cargo sequence, Bright Builds, Bazel, parity, redaction, reference, and diff
+  gates pass.
+- Disposition: The software fix is complete and may be published. A live
+  attempt requires a separate exact-package attempt-036 contract.

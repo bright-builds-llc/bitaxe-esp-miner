@@ -94,6 +94,14 @@ fn runtime_owners_use_bounded_shared_cadence_and_queue_contracts() {
     assert!(OPERATOR_SENSOR_RUNTIME_SOURCE.contains(
         "PeriodicDeadline::new(started_at_ms, SENSOR_SWEEP_CADENCE_MS)"
     ));
+    assert!(OPERATOR_SENSOR_RUNTIME_SOURCE.contains("PRODUCER_THREAD_PRIORITY: u32 = 10"));
+    assert_eq!(
+        OPERATOR_SENSOR_RUNTIME_SOURCE
+            .matches("vTaskPrioritySet(core::ptr::null_mut(), PRODUCER_THREAD_PRIORITY)")
+            .count(),
+        1
+    );
+    assert!(!PRODUCTION_ASIC_WORKER_SOURCE.contains("vTaskPrioritySet"));
     assert!(OPERATOR_SENSOR_RUNTIME_SOURCE.contains("advance.missed_slots()"));
     assert!(!OPERATOR_SENSOR_RUNTIME_SOURCE.contains("fn next_future_deadline"));
     assert!(SAFETY_WATCHDOG_SOURCE.contains(
