@@ -553,3 +553,17 @@
   diff gates pass. The source and tests were split into bounded modules.
 - Disposition: The software boundary is ready to publish. Any live attempt-037
   requires a separate exact-package contract and one-result stop rule.
+
+## 2026-08-15T10:48:00Z | attempt-037 continuity-fix contract drafted
+
+- Objective: Run one no-human programmatic campaign against clean pushed
+  independent-witness continuity fix `223b7990`, either completing the full
+  machine quorum or producing one typed post-fix failure for diagnosis.
+- Admission/layout: Require exact HEAD/reference package identity, opaque
+  ignored input, one protected detector, a separate protected wrapper, and
+  absent command-owned attempt/public paths.
+- Effects/privacy: Existing bounded campaign, recovery, safe-stop, cleanup,
+  request-once, deadline, and redaction contracts remain unchanged. No human
+  checkpoint or physical display claim is included.
+- Stop: Campaign start consumes attempt-037. Any non-ready result withholds
+  evidence and stops without attempt-038 or an unchanged retry.

@@ -4031,6 +4031,41 @@ progress requires a separately scoped sensor-producer/I2C latency diagnostic
 that can identify which bounded acquisition delayed the complete observation
 sweep without exposing sensor values, followed by a verified root-cause change.
 
+### task-api009-programmatic-pilot-attempt-037 | 2026-08-15 | Verify independent witness continuity
+
+- [ ] Require clean synchronized pushed `223b7990`, opaque non-empty ignored
+      Wi-Fi input, exact HEAD/reference package identity, and absent detector,
+      wrapper, command-owned attempt, and public-projection paths.
+- [ ] Run `just package`; create protected `detector-037`; run exactly one
+      `just detect-ultra205`; require its zero exit, private modes, and one
+      admitted board-205 device.
+- [ ] Create separate protected `wrapper-037`, keep `attempt-037` absent, and
+      invoke exactly once the existing 600-second `just
+      api-command-effects-campaign` with the exact package, opaque input,
+      detector output, attempt root, and public projection.
+- [ ] Publish only a ready independently validated redacted projection;
+      otherwise withhold it and record the earliest typed category, command
+      progress, closed sensor diagnostic, and recovery booleans.
+
+Effects: one exact-package flash/reset, private Wi-Fi/local-fixture seed,
+conservative initialization/mining for at most 600 active seconds, one each
+pause/dismiss/IDENTIFY/resume/software restart, HTTP/WebSocket/receive-only USB
+observation, same-device recovery, safe stop, child termination, and USB
+cleanup. Active freshness and automated/recovery bounds remain unchanged. No
+human checkpoint or physical-display claim is included.
+
+Privacy/retry/stop: detector, wrapper, and attempt roots are ignored mode-0700
+with mode-0600 files. Never publish origins, ports, hostnames, addresses,
+device/USB/network/process identity, credentials, fixture/frame/sensor values,
+boot session, or raw traces. Preserve the earliest primary failure; cleanup
+runs on every entered lifecycle. Campaign start consumes attempt-037; no
+attempt-038 or unchanged retry is authorized. Any preflight/identity/detector/
+build ambiguity, non-ready result, malformed evidence, failed safe stop/
+recovery/cleanup, or absent device stops with API-009 `implemented` and
+evidence withheld. OTA, erase, factory reset, power cycle, UART/BAP, USB duplex,
+pins/pads/GPIO, arbitrary settings, external pool, stress, direct controls,
+fault injection, non-205 hardware, and human display claims remain prohibited.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
