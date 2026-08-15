@@ -3417,6 +3417,28 @@ protected modes, fixture cleanup, seal, and process cleanup pass. Public
 evidence is withheld, API-009 remains `implemented`, attempt-025 is consumed,
 and no attempt-026 is authorized. See the linked `CLOSURE.md`.
 
+Post-reactivation dismissal software plan:
+`docs/parity/work-plans/20260815T034210Z-API-009/PLAN.md`.
+
+- [ ] Commit and push the immutable software-only plan without accessing
+      credentials, detector, USB, device/network, display, mining, or hardware-
+      control interfaces.
+- [ ] Reproduce the post-reactivation dismissal race at the command-effects
+      state-machine seam with a live-shaped red regression.
+- [ ] Move the one dismissal and count-preserving clear join into the proven
+      safe-stopped pause before IDENTIFY, then resume directly into terminal
+      validation after active recovery.
+- [ ] Clarify and test that generic soak continuity windows are non-applicable
+      to the command-effects quorum; run every mandatory gate and close without
+      API-009 promotion or attempt-026.
+
+Software-only authorization: modify source, tests, deterministic loopback
+fixtures, documentation, tracker, worklog, and closure, and build firmware. Do
+not access credentials, protected raw traces, detector, USB, device/network,
+device HTTP, display, mining, hardware controls, direct UART, pins/pads/GPIO,
+public parity evidence, checklist promotion, attempt-026, or any physical
+effect.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
