@@ -8539,3 +8539,266 @@ machine render and clear receipts, and recorded the user's independent
 confirmation that the physical frame rendered and cleared. API-009 is promoted
 only from the two jointly validated, redaction-safe projections. Residual
 non-claims are recorded in the immutable result.
+
+### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
+
+- [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
+      apply the pinned board-205 `+5 C` offset through a pure validated reducer.
+- [x] Add the independent `bitaxe-emc2101-thermal-evidence-v1` contract and
+      one repo-owned exact-package capture command with protected artifacts,
+      typed failures, recovery, cleanup, and atomic evidence withholding.
+- [x] Pass the focused, real-firmware, package, mandatory, privacy, reference,
+      generated-contract, plan/task, and diff gates from the immutable plan.
+- [x] Run exactly one detector-gated read-only `attempt-001` and promote only
+      THR-001 if its complete live thermal quorum passes.
+- [x] Replace the stale source-fragment admission with the checked-in
+      production semantic boundary and add a regression that reads the actual
+      source admitted by the evidence command.
+- [x] Advance the closed evidence contract, validator, protected paths, and
+      generated binding to attempt ordinal 2 without weakening any runtime,
+      privacy, or evidence-withholding invariant.
+- [x] Commit and push the fix, admit an exact clean package, and run at most one
+      detector-gated read-only `attempt-002`; promote only on the full quorum.
+- [x] Add a private Rust validator that parses acquisition-stamp members as
+      exact `u64` values and proves equal fresh safe HTTP/WebSocket thermal
+      inputs without emitting raw values.
+- [x] Integrate the validator into the TypeScript shell, add wide/mismatched/
+      malformed and real-child regressions, and advance the closed contract,
+      generated binding, and protected paths to attempt ordinal 3.
+- [x] Commit and push the fix, admit an exact clean package, and run at most one
+      detector-gated read-only `attempt-003`; promote only on the full quorum.
+- [x] Correct open-plan selection so valid terminal closures do not require
+      immutable continuation links, and prove the real THR-001 selector state.
+
+Plan: `docs/parity/work-plans/20260813T015631Z-THR-001/PLAN.md`.
+
+Prior closed plans:
+`docs/parity/work-plans/20260813T011207Z-THR-001/CLOSURE.md` and
+`docs/parity/work-plans/20260813T001637Z-THR-001/CLOSURE.md`.
+
+Dependencies and authorization: Standing task authorization covered only the
+plan's exact two-command detector/capture sequence after its immutable plan and
+complete software implementation were separately committed, pushed, clean,
+and package-admitted. Attempt-003 is consumed and must not be retried. No
+further hardware effect is authorized by this task without a new immutable
+plan defining a bounded hardware-regression stimulus and recovery contract.
+
+Evidence and privacy: `scratch/thr001-emc2101/wrapper-003` and
+`scratch/thr001-emc2101/attempt-003` remain ignored protected roots. The only
+public artifact is
+`docs/parity/evidence/thr001-emc2101-thermal/thermal-projection.json`.
+NeverPersistRaw values remain protected. Raw temperatures, acquisition stamps,
+boot sessions, settings, hostnames, origins, ports, USB/network identifiers,
+HTTP bodies, credentials, logs, commands, PIDs, private paths, and traces never
+enter terminal or Git output.
+
+Retry and promotion: Attempt-003 completed successfully as `hardware-smoke`,
+but the authoritative final parity validator classifies THR-001 as an active
+safety-control row and requires `hardware-regression` for `verified`. The
+transition tool also forbids automatic demotion after a verified receipt, so
+the uncommitted invalid receipt and derived progress files were discarded and
+the authoritative checklist remained `implemented`. A future plan must define
+safe, bounded overheat/fault stimulus, expected response, recovery, cleanup,
+redaction, and a fresh attempt ordinal before promotion is eligible.
+
+Verification: Immutable-plan, focused, mandatory, privacy, reference,
+generated-contract, exact-package, detector, and protected-mode gates passed.
+Attempt-003 completed and its public projection passed independent Rust
+validation with the exact source/reference/package, live read-only thermal,
+boot, safety, cleanup, mode, and redaction quorum. Final `just parity` correctly
+rejected `verified` because the evidence cell lacked `hardware-regression`.
+
+Completion review: The lossless host fix and read-only Ultra 205 evidence are
+complete and retained, but verification is not claimed. THR-001 remains
+`implemented`; this task remains active at a terminal `stop_impossible_contract`
+boundary because its immutable plan prohibited the fault stimulus required by
+the authoritative verifier. The next safe action is a distinct plan for
+bounded thermal hardware-regression evidence, not a retry of attempt-003.
+
+Injected-fault hardware-regression plan:
+`docs/parity/work-plans/20260813T073353Z-THR-001/PLAN.md`.
+
+- [x] Confirm the authoritative gap can be exercised without physical heating,
+      fan/voltage/power changes, mining, raw I2C, or electrical manipulation.
+- [x] Add a strict consume-before-use private intent and one-shot NVS stimulus
+      tuple bound to board 205, exact package/plan, and attempt ordinal 4.
+- [x] Add the bounded production-owner stimulus state machine and prove real
+      EMC2101 reads, exactly five injected invalid outcomes, typed fault
+      projection, ordered markers, fresh recovery, aborts, and no replay.
+- [x] Add the private-first capture/restoration transaction and independently
+      validated `bitaxe-emc2101-thermal-fault-evidence-v1` projection.
+- [x] Pass all focused, real-firmware/package, mandatory, privacy, reference,
+      generated-contract, process-boundary, task/plan, and diff gates; commit
+      and push before effects.
+- [x] Run exactly one detector-gated attempt-004; its hardware-regression quorum
+      failed, promotion was withheld, and execution stopped without attempt-005.
+
+Attempt-004 authorization: standing task authorization covers the single
+fresh hardware regression only after the linked immutable plan and complete
+implementation are separately committed, pushed, clean, exact-package-bound,
+and detector-admitted. Allowed effects are the exact-package USB flash/reset,
+private Wi-Fi plus consume-before-use one-shot NVS stimulus, five one-second
+typed invalid-temperature overlays while real EMC2101 reads continue, ordinary
+exact-package restoration, read-only same-origin API/WebSocket/log capture, and
+cleanup. The linked plan freezes the expected fault, aborts, recovery,
+restoration, evidence/privacy policy, terminal categories, and stop outcomes.
+No physical heating, fan/voltage/frequency/power change, mining, pool input,
+ASIC work, raw I2C/GPIO, public diagnostic setter, erase, OTA, rollback, power
+cycle, direct UART, pin/pad/header manipulation, injected electrical signal,
+attempt-005, or claim of physical overheat/open/short fault is authorized.
+
+Attempt-004 closure: The detector admitted one Ultra 205 and the exact clean
+package from implementation commit `8a1ddbd6`. The protected stimulus boot
+reached `fault_observed` and then aborted with the closed reason
+`fault_projection_missing`; the complete marker and recovery quorum did not
+pass, so no candidate or public thermal-fault projection was published.
+Ordinary exact-package restoration independently passed stable boot, fresh
+safe HTTP/WebSocket thermal truth, disabled mining and hardware control,
+cleanup, private modes, and redaction. The public failure adapter rendered the
+internal `evidence_invalid` primary as `process_failed`; the missing typed-error
+registration is fixed after the attempt with a regression, without changing
+the consumed result.
+
+Completion review: THR-001 remains `implemented`. Attempt-004 is exhausted and
+must never be retried; attempt-005 is not authorized by this plan. See
+`docs/parity/work-plans/20260813T073353Z-THR-001/CLOSURE.md`. A future
+continuation must reproduce the production owner/reducer projection loss in a
+software regression before defining any new bounded hardware ordinal.
+
+Software diagnosis continuation:
+`docs/parity/work-plans/20260815T181534Z-THR-001/PLAN.md`.
+
+- [x] Reproduce attempt-004's exact `fault_projection_missing` category through
+      the real stimulus, reducer, stale-processing, and next-sweep order in one
+      fast deterministic software loop.
+- [x] Rank and falsify multiple causes, apply the smallest root-cause fix, and
+      preserve ordinary non-stimulus fault/fresh/stale semantics.
+- [x] Pass focused, firmware, mandatory, privacy, reference, task/plan, and diff
+      gates; commit and push with THR-001 still `implemented`.
+- [x] Close the software-only plan and create a separate immutable attempt-005
+      contract only after the correction is clean and pushed.
+
+Authorization and stop: this continuation is software-only. It authorizes no
+detector, package, USB, serial, HTTP, device, NVS, sensor, display, mining,
+control, reset, OTA, erase, or attempt-005 effect. Stop if the production-order
+loop cannot reproduce the consumed category or a fix would weaken ordinary
+safety freshness.
+
+Attempt-005 continuation:
+`docs/parity/work-plans/20260815T182438Z-THR-001/PLAN.md`.
+
+- [x] Advance the consumed ordinal, private roots, projection path, immutable
+      plan binding, tests, and generated command contract to attempt 5.
+- [x] Pass focused and mandatory software gates; commit and push the complete
+      binding change before packaging or device admission.
+- [x] Build the exact clean package, admit one Ultra 205, and run the bounded
+      fault/restoration campaign exactly once.
+- [x] Promote only on the complete independently validated hardware-regression
+      quorum; otherwise withhold evidence and stop without attempt 6.
+
+Authorization: only the exact attempt-005 command, effects, privacy, recovery,
+cleanup, and stop contract in the linked immutable plan applies. No attempt-006
+or effect outside that plan is authorized.
+
+Attempt-005 closure: The sole campaign returned `evidence_invalid`. Device-side
+logs reached `fault_observed` and `recovered` with no abort, but the early
+baseline witness was absent and the host validator rejected canonical ESP-
+prefixed production markers because its fixture and parser assumed bare lines.
+Ordinary exact-package recovery, child cleanup, USB cleanup, and evidence
+withholding passed. THR-001 remains `implemented`; attempt-005 is consumed and
+attempt-006 is not authorized. See
+`docs/parity/work-plans/20260815T182438Z-THR-001/CLOSURE.md`.
+
+Marker-observation software continuation:
+`docs/parity/work-plans/20260815T185700Z-THR-001/PLAN.md`.
+
+- [x] Reproduce canonical ESP-prefix rejection and late baseline attachment in
+      deterministic real-child tests at the production evidence seam.
+- [x] Implement one strict shared payload parser and a bounded replayable or
+      reader-armed ordered marker witness without weakening the quorum.
+- [x] Pass focused and complete software gates, commit and push, and close with
+      THR-001 still `implemented` and no attempt-006 authority.
+
+Authorization: this continuation is software-only. No package, detector, USB,
+serial, HTTP, device, NVS, sensor, control, reset, OTA, erase, or hardware
+effect is authorized.
+
+Completion review: The exact replay-origin contract is fixed and pushed at
+`9fa31503`; focused and complete software gates pass. THR-001 remains
+`implemented`, and hardware verification is still required. See
+`docs/parity/work-plans/20260815T195949Z-THR-001/CLOSURE.md`. A distinct
+immutable plan is required before attempt-007.
+
+Attempt-007 continuation:
+`docs/parity/work-plans/20260815T201754Z-THR-001/PLAN.md`.
+
+- [x] Advance the consumed ordinal, protected roots, projection path,
+      immutable plan binding, tests, generated command contract, and runfile to
+      attempt 7.
+- [x] Pass focused and mandatory software gates; commit and push the complete
+      binding change before packaging, detection, or device access.
+- [x] Build the exact clean package, admit one Ultra 205, and run the bounded
+      fault/restoration campaign exactly once.
+- [x] Promote only on the complete independently validated hardware-regression
+      quorum; otherwise withhold evidence and stop without attempt 8.
+
+Authorization: only the exact attempt-007 command, effects, privacy, recovery,
+cleanup, and stop contract in the linked immutable plan applies after its
+separate pushed implementation and software gates. No attempt-008 or effect
+outside that plan is authorized.
+
+Closure: The production marker envelope and late-attachment replay defects are
+fixed and pushed at `6f637e87`; all required gates passed without hardware.
+THR-001 remains `implemented`, attempt-005 remains consumed, and this plan does
+not authorize attempt-006. See
+`docs/parity/work-plans/20260815T185700Z-THR-001/CLOSURE.md`.
+
+Attempt-006 continuation:
+`docs/parity/work-plans/20260815T192115Z-THR-001/PLAN.md`.
+
+- [x] Correct the selector's terminal-closure lineage reset with a production-
+      shape regression while preserving strict checks for unclosed plans.
+- [x] Advance the consumed ordinal, private roots, projection path, immutable
+      plan binding, tests, generated command contract, and runfile to attempt 6.
+- [x] Pass focused and mandatory software gates; commit and push the complete
+      binding change before packaging, detection, or device access.
+- [x] Build the exact clean package, admit one Ultra 205, and run the bounded
+      fault/restoration campaign exactly once.
+- [x] Promote only on the complete independently validated hardware-regression
+      quorum; otherwise withhold evidence and stop without attempt 7.
+
+Authorization: only the exact attempt-006 command, effects, privacy, recovery,
+cleanup, and stop contract in the linked immutable plan applies after its
+separate pushed implementation and software gates. No attempt-007 or effect
+outside that plan is authorized.
+
+Attempt-006 closure: The exact package and one admitted Ultra 205 completed the
+sole campaign as `evidence_invalid`. Direct fault/recovery markers and eleven
+complete retained replay triplets prove the device state machine succeeded, but
+the strict host parser omitted the exact replay-producer tag
+`bitaxe_firmware::boot_evidence`. Ordinary recovery, USB/process cleanup,
+protected modes, and withholding passed. THR-001 remains `implemented`;
+attempt-006 is consumed and attempt-007 is not authorized. See
+`docs/parity/work-plans/20260815T192115Z-THR-001/CLOSURE.md`.
+
+Replay-origin software continuation:
+`docs/parity/work-plans/20260815T195949Z-THR-001/PLAN.md`.
+
+- [x] Reproduce the exact direct/replay producer-tag mismatch through the real-
+      child late-attachment seam.
+- [x] Implement and prove a closed canonical replay-origin contract without
+      admitting arbitrary tags or weakening marker order.
+- [x] Pass focused and complete software gates, commit and push, and close with
+      THR-001 still `implemented` and no attempt-007 authority.
+
+Authorization: this continuation is software-only. No package, detector, USB,
+serial, HTTP, device, NVS, sensor, control, reset, OTA, erase, or hardware
+effect is authorized.
+
+Completion review: Complete. The exact pushed attempt-007 package passed the
+bounded typed EMC2101 invalid-sample hardware regression, independent evidence
+validation, fresh ordinary restoration, no-replay, safe disabled state,
+redaction, and holder cleanup. THR-001 is verified from the sealed projection
+and immutable result; attempt-007 is consumed. Residual non-claims include
+physical heating, electrical open/short behavior, calibration, loaded thermal
+control, mining, other boards, and release readiness.

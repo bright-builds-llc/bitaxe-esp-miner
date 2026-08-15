@@ -48,7 +48,7 @@
 - Outcome: The attempt-007 binding is ready to commit and push. Packaging,
   detection, USB, and device access remain ineligible until that push is clean.
 
-## 2026-08-15T21:12:00Z | attempt-007 hardware quorum passed
+## 2026-08-15T20:52:00Z | attempt-007 hardware quorum passed
 
 - Package: Exact clean package from pushed implementation `e00b3665` passed
   source, reference, application ELF, and package-manifest identity checks.
@@ -64,3 +64,14 @@
 - Outcome: Attempt-007 is consumed. The accepted projection and result support
   a conservative THR-001 transition from `implemented` to `verified` with
   `hardware-regression` evidence.
+
+## 2026-08-15T20:55:00Z | checklist transition and progress sync
+
+- Transition: `THR-001` moved from `implemented` to `verified` with
+  `unit,workflow,hardware-regression`; the audited transition receipt is
+  `20260815T205441Z`.
+- Progress: Deterministic synchronization from evidence source commit
+  `bdabccf5` advanced verified parity to 69 of 94 active rows (73.4%).
+- Note: The first read-only sync invocation used an invalid manually expanded
+  commit ID and changed no files. Resolving the exact Git object ID and rerunning
+  the same sync succeeded.
