@@ -465,3 +465,15 @@
   Builds, firmware, Bazel, parity, redaction, reference, and diff gates pass.
 - Disposition: The software boundary is ready to publish. Any next live ordinal
   requires a separate exact-package contract and must stop after one result.
+
+## 2026-08-15T09:18:00Z | attempt-035 causal-stage contract drafted
+
+- Objective: One no-human campaign against pushed causal-precedence fix
+  `86987839`, either completing the programmatic quorum or surfacing the actual
+  driver-failed stage that precedes downstream budget exhaustion.
+- Admission/layout: Exact clean package, one protected detector, separate
+  protected wrapper, and absent command-owned attempt/public paths.
+- Effects/privacy: Existing bounded campaign/recovery/cleanup effects and
+  redaction rules are unchanged; no physical display claim is included.
+- Stop: Campaign start consumes attempt-035. Any non-ready result withholds
+  evidence and stops without attempt-036 for root-cause diagnosis.
