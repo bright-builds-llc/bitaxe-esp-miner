@@ -3911,6 +3911,47 @@ Cargo gates, Bright Builds, firmware build, all 44 Bazel tests, parity and
 progress, redaction, pinned-reference cleanliness, and diff checks pass; the
 fix is ready to publish.
 
+### task-api009-programmatic-pilot-attempt-030 | 2026-08-15 | Prove command effects with stopped-state safety admission
+
+- [ ] Require clean synchronized pushed source containing commit `b2a8a066`,
+      rebuild and validate its exact package, confirm non-empty ignored Wi-Fi
+      input without reading it, and require fresh detector, attempt, and public
+      projection paths.
+- [ ] Create protected `scratch/api009-command-effects/detector-030` and run
+      exactly one `just detect-ultra205`; admit only one holder-free ESP32-S3
+      board 205 and preserve raw detector output as mode `0600` private evidence.
+- [ ] Invoke exactly once:
+      `just api-command-effects-campaign --private-root scratch/api009-command-effects/attempt-030 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/api009-command-effects/detector-030/detector.stdout --projection docs/parity/evidence/api009-command-effects/command-effects-projection.json --duration-seconds 600`.
+- [ ] Independently validate and redact the sealed projection only on the full
+      claim-specific command, same-device restart, exact-package, recovery,
+      safe-stop, and cleanup quorum; otherwise withhold it and record the
+      earliest typed failure.
+
+Objective and effects: test only the pushed stopped-state safety-admission fix
+that follows consumed attempt-029. The sole run may flash/reset the exact
+package, seed private Wi-Fi and the generated local fixture, initialize and
+mine the conservative profile for at most 600 active seconds, issue one each
+pause/dismiss/IDENTIFY/resume/software-restart request, observe HTTP plus
+WebSocket and receive-only USB, and perform same-device recovery, terminal safe
+stop, child termination, and USB cleanup. Active mining observations must retain
+strict fresh-safety validation; only exact stopped command states may use their
+safe-stop witness. Automated effects and recovery retain finite repo-owned
+bounds, and no human checkpoint is part of this attempt.
+
+Evidence/privacy/recovery: detector and attempt directories are ignored
+mode-`0700` roots with mode-`0600` files. Only the named aggregate projection
+may become public after ready validation and redaction. Origins, ports,
+hostnames, addresses, USB/network/process identity, credentials, fixture data,
+frame text, sensors, and raw traces remain private. The earliest primary failure
+must survive recovery; safe stop, child termination, and holder cleanup run on
+every exit. Campaign start consumes attempt-030; no attempt-031 or same-contract
+retry is authorized. Any detector/identity/build ambiguity, non-ready category,
+missing or malformed projection, failed safe stop/recovery/cleanup, or absent
+device stops with API-009 `implemented` and evidence withheld. OTA, erase,
+factory reset, power cycle, external UART/BAP, USB duplex, pins/pads/GPIO,
+arbitrary settings, external pool, stress, controls, fault injection, non-205
+hardware, and human display claims remain prohibited.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

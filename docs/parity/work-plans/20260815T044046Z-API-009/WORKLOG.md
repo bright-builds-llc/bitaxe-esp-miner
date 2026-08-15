@@ -175,3 +175,16 @@
   or protected evidence was accessed during the fix and verification cycle.
 - Blocker or next safe action: Commit and push this clean material correction;
   any attempt-030 still requires its own exact-package task contract.
+
+## 2026-08-15T06:52:00Z | stopped-state fix pushed and attempt-030 contracted
+
+- Pushed fix: `b2a8a066`.
+- Actions: Published the regression-backed stopped-state admission correction
+  and added a separate one-run attempt-030 task contract without changing the
+  immutable attempt-027 plan.
+- Verification: Full repository gates passed before publication; remote fetch,
+  fast-forward ancestry, and push completed without rewrite.
+- Outcome: Attempt-030 is materially different from attempt-029 and becomes
+  effect-eligible only after this contract is committed and pushed.
+- Blocker or next safe action: Publish the contract, rebuild its exact package,
+  then perform its one detector-gated programmatic campaign.
