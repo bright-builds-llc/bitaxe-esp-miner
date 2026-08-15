@@ -597,3 +597,14 @@
   parity, redaction, reference, and diff gates pass.
 - Disposition: The diagnostic boundary is ready to publish. A separately
   committed attempt-038 contract may run exactly one live campaign.
+
+## 2026-08-15T11:42:00Z | attempt-038 causal-result contract drafted
+
+- Objective: One no-human campaign against pushed diagnostic `6602383b`,
+  either sealing the full machine quorum or publishing one closed phase/cause.
+- Admission/layout: Exact package, current `port: ` detector contract, one
+  detector, separate wrapper, and absent command-owned attempt/public paths.
+- Effects/privacy: Existing bounded effects, request-once, recovery, cleanup,
+  deadlines, and redaction remain unchanged; no physical display claim.
+- Stop: Campaign start consumes attempt-038. Any non-ready result withholds
+  evidence and stops without attempt-039 or an unchanged retry.
