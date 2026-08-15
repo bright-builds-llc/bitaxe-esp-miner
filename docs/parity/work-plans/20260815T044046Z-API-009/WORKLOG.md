@@ -377,3 +377,19 @@
 - Disposition: The software-only diagnostic task is complete. Hardware remains
   untouched; a separately committed task contract is required before one new
   detector-gated attempt may use the corrected boundary.
+
+## 2026-08-15T08:22:00Z | attempt-033 diagnostic contract drafted
+
+- Objective: Run one no-human programmatic campaign against pushed diagnostic
+  fix `bee8c1c9` so any recurring active-safety lapse reports the earliest event
+  at the highest observed severity rather than a later successful display.
+- Admission: A clean synchronized source tree, exact repo package and reference
+  identity, opaque ignored Wi-Fi input, fresh protected paths, and exactly one
+  successful detector run are required.
+- Effects: The existing bounded campaign effects and cleanup are permitted;
+  active-safety freshness remains unchanged. No visual claim or user checkpoint
+  is included.
+- Privacy and stop: Only ready redacted evidence may publish. A failed run may
+  expose the closed diagnostic and safe recovery booleans, never private
+  identity or trace data. Campaign start consumes attempt-033, and no unchanged
+  retry or attempt-034 is authorized.
