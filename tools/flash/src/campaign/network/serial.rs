@@ -203,6 +203,11 @@ impl NetworkSerialTracker {
             return;
         };
         state.resumable_pause_safe_stop_confirmed = confirmed;
+        if confirmed {
+            state.resumable_pause_safe_stop_observation_count = state
+                .resumable_pause_safe_stop_observation_count
+                .saturating_add(1);
+        }
         if matches!(
             marker.campaign_state,
             CampaignStateMarker::Active | CampaignStateMarker::SafeStopping

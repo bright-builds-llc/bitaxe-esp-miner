@@ -55,3 +55,43 @@ fn command_effects_marker_closes_resumable_pause_only_after_hardware_stops() {
     );
     assert!(tracker.authorizes_actuation());
 }
+
+#[test]
+fn command_effects_marker_accumulates_only_active_segments() {
+    // Arrange
+    let profile = MiningHardwareProfilePreset::Conservative;
+    let lease = MiningCampaignLease::new(
+        MiningCampaignLeaseId::new(10).expect("lease id"),
+        profile.profile(),
+        MiningCampaignStopCondition::ResumableActiveEpoch {
+            activation_timeout: MiningCampaignDuration::new(600_000).expect("timeout"),
+            duration: MiningCampaignDuration::new(600_000).expect("duration"),
+        },
+    );
+    let mut tracker = CampaignStatusTracker::new(
+        MiningCampaignStage::CommandEffects,
+        Some(lease),
+        Some(profile),
+    );
+    let active = snapshot(MiningCampaignState::Active);
+    let stopped = snapshot(MiningCampaignState::Armed);
+
+    // Act
+    tracker.note_snapshot(&active, 100);
+    tracker.note_snapshot(&stopped, 200);
+    tracker.note_snapshot(&active, 1_000);
+    let marker = tracker.marker(
+        &active,
+        1_050,
+        true,
+        CampaignObservationFreshness::all_ultra205_supported_fresh(),
+        false,
+        true,
+        "ready",
+        readiness_transition(),
+    );
+    let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
+
+    // Assert
+    assert_eq!(value["active_ms"], 150);
+}

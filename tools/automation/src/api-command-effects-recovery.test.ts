@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { campaignRecoveryFactsFromDocuments } from "./api-command-effects-recovery.js";
 
-test("declined checkpoint preserves only a fully joined paused safe stop", () => {
+test("recovery preserves only a fully joined post-failure safe stop", () => {
   // Arrange
   const result = {
     terminal_reason: "operator_paused",
@@ -13,9 +13,10 @@ test("declined checkpoint preserves only a fully joined paused safe stop", () =>
   const network = {
     recovery_pause_request_count: 1,
     command_effects: {
-      pause_confirmed: true,
-      resume_request_count: 0,
-      identify_terminal_outcome: "declined",
+      recovery_pause_api_confirmed: true,
+      recovery_pause_serial_confirmed: true,
+      recovery_safe_stop_confirmed: true,
+      recovery_terminal_outcome: "confirmed",
     },
   };
 
@@ -25,9 +26,17 @@ test("declined checkpoint preserves only a fully joined paused safe stop", () =>
     ...network,
     recovery_pause_request_count: 0,
   });
-  const withoutTypedTerminal = campaignRecoveryFactsFromDocuments(result, {
+  const withoutSerialJoin = campaignRecoveryFactsFromDocuments(result, {
     ...network,
-    command_effects: { ...network.command_effects, identify_terminal_outcome: "none" },
+    command_effects: { ...network.command_effects, recovery_pause_serial_confirmed: false },
+  });
+  const timedOut = campaignRecoveryFactsFromDocuments(result, {
+    ...network,
+    command_effects: {
+      ...network.command_effects,
+      recovery_safe_stop_confirmed: false,
+      recovery_terminal_outcome: "timed_out",
+    },
   });
 
   // Assert
@@ -38,5 +47,7 @@ test("declined checkpoint preserves only a fully joined paused safe stop", () =>
     secondaryRecoveryFailure: false,
   });
   assert.equal(withoutRecovery.safeStopConfirmed, false);
-  assert.equal(withoutTypedTerminal.safeStopConfirmed, false);
+  assert.equal(withoutSerialJoin.safeStopConfirmed, false);
+  assert.equal(timedOut.safeStopConfirmed, false);
+  assert.equal(timedOut.secondaryRecoveryFailure, true);
 });

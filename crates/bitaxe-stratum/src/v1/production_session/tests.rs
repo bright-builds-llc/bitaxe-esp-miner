@@ -38,6 +38,22 @@ impl DeterministicProductionSessionAdapter {
     fn drive(&mut self, event: ProductionSessionEvent) {
         let mut events = VecDeque::from([event]);
         while let Some(event) = events.pop_front() {
+            let event_now_ms = match &event {
+                ProductionSessionEvent::Wake { now_ms, .. }
+                | ProductionSessionEvent::TransportConnected { now_ms, .. }
+                | ProductionSessionEvent::TransportFailed { now_ms, .. }
+                | ProductionSessionEvent::TransportBytes { now_ms, .. }
+                | ProductionSessionEvent::TransportClosed { now_ms, .. }
+                | ProductionSessionEvent::AsicResult { now_ms, .. }
+                | ProductionSessionEvent::AsicPollTimedOut { now_ms, .. }
+                | ProductionSessionEvent::AsicPollCompleted { now_ms, .. }
+                | ProductionSessionEvent::AsicInteractionFailed { now_ms, .. }
+                | ProductionSessionEvent::HardwarePrepared { now_ms, .. }
+                | ProductionSessionEvent::HardwarePreparationFailed { now_ms, .. }
+                | ProductionSessionEvent::HardwareSafeStopConfirmed { now_ms, .. }
+                | ProductionSessionEvent::EffectFailed { now_ms, .. } => *now_ms,
+                ProductionSessionEvent::PoolConfigurationLoaded(_) => 0,
+            };
             let effects = self
                 .session
                 .handle(event)
@@ -47,7 +63,7 @@ impl DeterministicProductionSessionAdapter {
                     ProductionSessionEffect::PrepareHardware { lease_id, .. } => {
                         events.push_back(ProductionSessionEvent::HardwarePrepared {
                             lease_id: *lease_id,
-                            now_ms: 0,
+                            now_ms: event_now_ms,
                         });
                     }
                     ProductionSessionEffect::ReadPoolConfiguration => {
@@ -91,7 +107,7 @@ impl DeterministicProductionSessionAdapter {
                     ProductionSessionEffect::SafeStopHardware { lease_id, .. } => {
                         events.push_back(ProductionSessionEvent::HardwareSafeStopConfirmed {
                             lease_id: *lease_id,
-                            now_ms: 0,
+                            now_ms: event_now_ms,
                         });
                     }
                 }

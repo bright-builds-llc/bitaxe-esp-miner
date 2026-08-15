@@ -3276,16 +3276,16 @@ the linked `CLOSURE.md`.
 Resume-correlation software plan:
 `docs/parity/work-plans/20260815T010813Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable software-only plan without accessing
+- [x] Commit and push the immutable software-only plan without accessing
       credentials, protected attempts, detector, USB, device/network, display,
       mining, or hardware-control interfaces.
-- [ ] Split resume intent, bounded reactivation, and active recovery into typed
+- [x] Split resume intent, bounded reactivation, and active recovery into typed
       host states; retain the 600-second active-mining budget while excluding
       unbounded operator-paused time from that budget.
-- [ ] Replace immediate failure breakage with a bounded recovery-pause join
+- [x] Replace immediate failure breakage with a bounded recovery-pause join
       that preserves the primary failure and independently proves or rejects
       terminal safe stop before network-worker shutdown.
-- [ ] Add focused engine, firmware-owner, host-state, evidence, recovery, CLI,
+- [x] Add focused engine, firmware-owner, host-state, evidence, recovery, CLI,
       and real-process regressions and pass every mandatory, privacy,
       reference, firmware, selector, digest, and diff gate. Close with API-009
       still `implemented` and no attempt-024.
@@ -3296,6 +3296,20 @@ credentials, current or prior protected attempt artifacts, detector, USB,
 device/network, HTTP to a device, display, mining, hardware controls, direct
 UART, pins/pads/GPIO, public parity evidence, checklist promotion, attempt-024,
 or any hardware attempt.
+
+Resume-correlation completion review: resumable campaigns now charge only
+active mining segments against the 600-second lease. The host distinguishes
+resume intent from bounded production reactivation and, on any later failure,
+preserves the primary category while joining one recovery pause across fresh
+API-paused and authoritative serial stopped-hardware observations. Closed
+command evidence v6 records those facts without runtime identifiers or traces.
+Focused engine, firmware-owner, host, recovery, CLI, automation, and real-child
+regressions pass with the complete ordered Cargo, Bright Builds, all 44 Bazel
+tests, parity, progress, redaction, reference, and firmware-build gates. The
+immutable plan digest and diff checks pass. API-009 remains `implemented`; no
+hardware interface was accessed and attempt-024 remains unauthorized by this
+closed plan. A fresh immutable exact-package hardware plan is the next safe
+action. See the linked `CLOSURE.md`.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 

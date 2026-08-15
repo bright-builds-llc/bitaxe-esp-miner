@@ -462,7 +462,7 @@ fn pause_settings_change_and_shutdown_reread_authoritative_state() {
 }
 
 #[test]
-fn resumable_lease_safe_stops_on_pause_and_reprepares_only_before_deadline() {
+fn resumable_lease_excludes_stopped_pause_time_from_the_active_budget() {
     // Arrange
     let lease = resumable_lease(7, 1_000, 1_000);
     let running = ProductionReadiness {
@@ -493,9 +493,11 @@ fn resumable_lease_safe_stops_on_pause_and_reprepares_only_before_deadline() {
     });
     let resumed_effects = adapter.effects.clone();
     adapter.effects.clear();
-    adapter.drive(wake(running, 1_001));
+    adapter.connect(ProductionPool::Primary, 201);
+    authorize_pool(&mut adapter, ProductionPool::Primary, 202);
+    adapter.drive(wake(running, 1_103));
     let before_expiry = adapter.session.snapshot();
-    adapter.drive(wake(running, 1_002));
+    adapter.drive(wake(running, 1_104));
 
     // Assert
     assert_eq!(paused_snapshot.campaign_state, MiningCampaignState::Armed);

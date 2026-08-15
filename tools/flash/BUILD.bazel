@@ -66,6 +66,7 @@ rust_binary(
         "src/campaign/network/command_effects.rs",
         "src/campaign/network/command_effects/identify.rs",
         "src/campaign/network/command_effects/pause_join.rs",
+        "src/campaign/network/command_effects/recovery_join.rs",
         "src/campaign/network/command_effects/tests.rs",
         "src/campaign/network/command_effects/tests/replay.rs",
         "src/campaign/network/command_evidence.rs",

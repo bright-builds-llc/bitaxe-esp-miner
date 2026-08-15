@@ -13,6 +13,8 @@ use crate::write_private_new_bytes;
 
 mod pause_join;
 use pause_join::{PauseJoinDecision, PauseJoinState};
+mod recovery_join;
+use recovery_join::{RecoveryJoinDecision, RecoveryPauseJoinState};
 mod identify;
 use identify::{
     consume_checkpoint_response, rendered_checkpoint_action, write_required_checkpoint,
@@ -25,13 +27,15 @@ pub(crate) use identify::{
 const HTTP_DEADLINE: Duration = Duration::from_secs(3);
 const POLL_INTERVAL: Duration = Duration::from_secs(1);
 const AUTOMATED_PHASE_DEADLINE: Duration = Duration::from_secs(15);
+const REACTIVATION_DEADLINE: Duration = Duration::from_secs(180);
 const NOTIFICATION_DEADLINE: Duration = Duration::from_secs(600);
 const TERMINAL_DEADLINE: Duration = Duration::from_secs(15);
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum CommandPhase {
     Notification,
     Pause(PauseJoinState),
-    Resume,
+    ResumeIntent,
+    ResumeActive,
     IdentifyReady,
     IdentifyRendered { effect_inactive_at: Instant },
     IdentifyReplayPending { starts_at: Instant },
@@ -64,6 +68,7 @@ pub(super) fn observe_command_effects(
     let mut maybe_block_count = None;
     let mut maybe_terminal_deadline = None;
     let mut recovery_pause_request_count = 0;
+    let mut maybe_recovery_join = None;
     let mut phase_started_at = Instant::now();
 
     loop {
@@ -79,8 +84,8 @@ pub(super) fn observe_command_effects(
         if matches!(phase, CommandPhase::Pause(join) if join.expired(Instant::now())) {
             maybe_failure.get_or_insert(CampaignTerminalCategory::NetworkCorrelationFailed);
         }
-        if maybe_failure.is_none() && automated_phase_expired(phase, phase_started_at, now) {
-            maybe_failure = Some(CampaignTerminalCategory::NetworkCorrelationFailed);
+        if maybe_failure.is_none() {
+            maybe_failure = automated_phase_failure(phase, phase_started_at, now);
         }
 
         if maybe_failure.is_none() {
@@ -124,9 +129,66 @@ pub(super) fn observe_command_effects(
             }
         }
         if take_recovery_pause_request(maybe_failure, &mut recovery_pause_request_count) {
-            let _result = http.post_pause_once(Instant::now() + HTTP_DEADLINE);
-            request_network_stop(&shared);
-            break;
+            // Sample before the blocking POST so a safe-stop marker emitted
+            // while the request is in flight still counts as post-request.
+            let pre_request_serial_observation_count =
+                serial.resumable_pause_safe_stop_observation_count;
+            evidence.recovery_terminal_outcome = "pending";
+            if post_succeeded(http.post_pause_once(Instant::now() + HTTP_DEADLINE)) {
+                maybe_recovery_join = Some(RecoveryPauseJoinState::new(
+                    Instant::now(),
+                    pre_request_serial_observation_count,
+                ));
+            } else {
+                evidence.recovery_terminal_outcome = "request_failed";
+                request_network_stop(&shared);
+                break;
+            }
+        }
+
+        if let Some(join) = maybe_recovery_join.as_mut() {
+            let api_pause_confirmed = match fetch_system_info(&http) {
+                Ok(Some(sample)) if validate_identity_and_safety(&sample, &target).is_ok() => {
+                    sample.mining_paused
+                        && sample.mining_activity == "paused"
+                        && !sample.start_mining_on_boot
+                }
+                Ok(Some(_)) => {
+                    evidence.same_boot_and_package = false;
+                    evidence.safety_valid = false;
+                    false
+                }
+                Ok(None) | Err(_) => false,
+            };
+            let decision = join.observe(
+                api_pause_confirmed,
+                serial.resumable_pause_safe_stop_observation_count,
+                Instant::now(),
+            );
+            evidence.recovery_pause_api_confirmed = join.api_pause_confirmed();
+            evidence.recovery_pause_serial_confirmed = join.serial_safe_stop_confirmed();
+            match decision {
+                RecoveryJoinDecision::Wait if serial.serial_finished => {
+                    evidence.recovery_terminal_outcome = "serial_finished";
+                    request_network_stop(&shared);
+                    break;
+                }
+                RecoveryJoinDecision::Wait => {
+                    std::thread::sleep(POLL_INTERVAL);
+                    continue;
+                }
+                RecoveryJoinDecision::Ready => {
+                    evidence.recovery_safe_stop_confirmed = true;
+                    evidence.recovery_terminal_outcome = "confirmed";
+                    request_network_stop(&shared);
+                    break;
+                }
+                RecoveryJoinDecision::TimedOut => {
+                    evidence.recovery_terminal_outcome = "timed_out";
+                    request_network_stop(&shared);
+                    break;
+                }
+            }
         }
 
         if serial.terminal_consumed && evidence.terminal_http_valid {
@@ -152,21 +214,41 @@ pub(super) fn observe_command_effects(
     )
 }
 
-fn automated_phase_expired(phase: CommandPhase, started_at: Instant, now: Instant) -> bool {
-    let maybe_limit = match phase {
-        CommandPhase::Notification => Some(NOTIFICATION_DEADLINE),
-        CommandPhase::Resume | CommandPhase::Dismiss | CommandPhase::Terminal => {
-            Some(AUTOMATED_PHASE_DEADLINE)
-        }
+fn automated_phase_failure(
+    phase: CommandPhase,
+    started_at: Instant,
+    now: Instant,
+) -> Option<CampaignTerminalCategory> {
+    let (maybe_limit, category) = match phase {
+        CommandPhase::Notification => (
+            Some(NOTIFICATION_DEADLINE),
+            CampaignTerminalCategory::NetworkCorrelationFailed,
+        ),
+        CommandPhase::ResumeIntent => (
+            Some(AUTOMATED_PHASE_DEADLINE),
+            CampaignTerminalCategory::ResumeIntentUnconfirmed,
+        ),
+        CommandPhase::ResumeActive => (
+            Some(REACTIVATION_DEADLINE),
+            CampaignTerminalCategory::ResumeReactivationTimedOut,
+        ),
+        CommandPhase::Dismiss | CommandPhase::Terminal => (
+            Some(AUTOMATED_PHASE_DEADLINE),
+            CampaignTerminalCategory::NetworkCorrelationFailed,
+        ),
         CommandPhase::Pause(_)
         | CommandPhase::IdentifyReady
         | CommandPhase::IdentifyRendered { .. }
         | CommandPhase::IdentifyReplayPending { .. }
         | CommandPhase::IdentifyReplayed { .. }
         | CommandPhase::IdentifyObserved { .. }
-        | CommandPhase::IdentifyCleared => None,
+        | CommandPhase::IdentifyCleared => {
+            (None, CampaignTerminalCategory::NetworkCorrelationFailed)
+        }
     };
-    maybe_limit.is_some_and(|limit| now.duration_since(started_at) >= limit)
+    maybe_limit
+        .is_some_and(|limit| now.duration_since(started_at) >= limit)
+        .then_some(category)
 }
 
 fn take_recovery_pause_request(
@@ -234,7 +316,11 @@ fn advance_commands(
                 }
             }
         }
-        CommandPhase::Resume if active_mining_state_valid(sample) => {
+        CommandPhase::ResumeIntent if !sample.mining_paused => {
+            evidence.resume_intent_confirmed = true;
+            *phase = CommandPhase::ResumeActive;
+        }
+        CommandPhase::ResumeActive if active_mining_state_valid(sample) => {
             evidence.resume_confirmed = true;
             evidence.active_after_resume = true;
             evidence.dismiss_request_count = 1;
@@ -348,7 +434,7 @@ fn advance_commands(
                 if !post_succeeded(http.post_resume_once(Instant::now() + HTTP_DEADLINE)) {
                     *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
                 } else {
-                    *phase = CommandPhase::Resume;
+                    *phase = CommandPhase::ResumeIntent;
                 }
             }
             Ok(CheckpointResponse::Declined) => {

@@ -45,6 +45,7 @@ pub struct ProductionMiningSession {
     pub(super) maybe_prepared_at_ms: Option<u64>,
     pub(super) maybe_activation_started_at_ms: Option<u64>,
     pub(super) maybe_resumable_epoch_started_at_ms: Option<u64>,
+    pub(super) resumable_active_ms: u64,
     pub(super) maybe_active_since_ms: Option<u64>,
     pub(super) resumable_pause_pending: bool,
     pub(super) job_transition: JobTransitionTracker,
@@ -88,6 +89,7 @@ impl ProductionMiningSession {
             maybe_prepared_at_ms: None,
             maybe_activation_started_at_ms: None,
             maybe_resumable_epoch_started_at_ms: None,
+            resumable_active_ms: 0,
             maybe_active_since_ms: None,
             resumable_pause_pending: false,
             job_transition: JobTransitionTracker::default(),
@@ -319,11 +321,8 @@ impl ProductionMiningSession {
                     )?;
                 }
             }
-            ProductionSessionEvent::HardwareSafeStopConfirmed {
-                lease_id,
-                now_ms: _,
-            } => {
-                self.confirm_hardware_safe_stop(lease_id);
+            ProductionSessionEvent::HardwareSafeStopConfirmed { lease_id, now_ms } => {
+                self.confirm_hardware_safe_stop(lease_id, now_ms);
             }
             ProductionSessionEvent::EffectFailed {
                 maybe_pool,
@@ -379,6 +378,7 @@ impl ProductionMiningSession {
             maybe_prepared_at_ms: self.maybe_prepared_at_ms,
             maybe_activation_started_at_ms: self.maybe_activation_started_at_ms,
             maybe_resumable_epoch_started_at_ms: self.maybe_resumable_epoch_started_at_ms,
+            resumable_active_ms: self.resumable_active_ms,
             maybe_active_since_ms: self.maybe_active_since_ms,
         };
         if let Some(expiration) = self

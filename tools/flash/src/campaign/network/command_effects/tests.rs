@@ -1,15 +1,18 @@
 use std::fs;
 
+use bitaxe_api::{ApiSnapshot, ExpectedRuntimeAttestationIdentity, SystemInfoWire};
+use bitaxe_http_transport::StrictHttpClient;
 use camino::Utf8PathBuf;
 
 use super::{
     advance_commands, arm_cleared_after_natural_expiry, arm_identify_transaction,
-    arm_ready_after_pause, automated_phase_expired, consume_checkpoint_response,
+    arm_ready_after_pause, automated_phase_failure, consume_checkpoint_response,
     consume_cleared_signal, consume_ready_signal, finish_identify_observation,
     rendered_checkpoint_action, respond_identify_checkpoint, take_recovery_pause_request,
     write_required_checkpoint, CheckpointResponse, CommandEffectsEvidence, CommandPhase,
     CommandProgress, IdentifyCheckpointKind, IdentifyCheckpointOutcome, RenderedCheckpointAction,
 };
+use crate::campaign::network::model::{SharedSerialState, TrustedNetworkTarget};
 use crate::set_private_directory_mode;
 
 mod replay;
@@ -20,6 +23,19 @@ fn private_root() -> (tempfile::TempDir, Utf8PathBuf) {
     fs::create_dir(&root).expect("create attempt");
     set_private_directory_mode(&root).expect("private attempt");
     (temp, root)
+}
+
+fn trusted_target() -> TrustedNetworkTarget {
+    TrustedNetworkTarget {
+        origin: "http://127.0.0.1:9".to_owned(),
+        boot_session: "0".repeat(32),
+        boot_ordinal: 1,
+        expected: ExpectedRuntimeAttestationIdentity {
+            firmware_commit: "0".repeat(40),
+            reference_commit: "0".repeat(40),
+            app_elf_sha256: "0".repeat(64),
+        },
+    }
 }
 
 #[test]
@@ -327,41 +343,41 @@ fn human_checkpoint_phases_have_no_elapsed_deadline() {
     let overnight = started + std::time::Duration::from_secs(24 * 60 * 60);
 
     // Act
-    let ready_expired = automated_phase_expired(CommandPhase::IdentifyReady, started, overnight);
-    let rendered_expired = automated_phase_expired(
+    let ready_failure = automated_phase_failure(CommandPhase::IdentifyReady, started, overnight);
+    let rendered_failure = automated_phase_failure(
         CommandPhase::IdentifyRendered {
             effect_inactive_at: started,
         },
         started,
         overnight,
     );
-    let replay_pending_expired = automated_phase_expired(
+    let replay_pending_failure = automated_phase_failure(
         CommandPhase::IdentifyReplayPending { starts_at: started },
         started,
         overnight,
     );
-    let replayed_expired = automated_phase_expired(
+    let replayed_failure = automated_phase_failure(
         CommandPhase::IdentifyReplayed {
             effect_inactive_at: started,
         },
         started,
         overnight,
     );
-    let observed_expired = automated_phase_expired(
+    let observed_failure = automated_phase_failure(
         CommandPhase::IdentifyObserved { clears_at: started },
         started,
         overnight,
     );
-    let cleared_expired =
-        automated_phase_expired(CommandPhase::IdentifyCleared, started, overnight);
+    let cleared_failure =
+        automated_phase_failure(CommandPhase::IdentifyCleared, started, overnight);
 
     // Assert
-    assert!(!ready_expired);
-    assert!(!rendered_expired);
-    assert!(!replay_pending_expired);
-    assert!(!replayed_expired);
-    assert!(!observed_expired);
-    assert!(!cleared_expired);
+    assert_eq!(ready_failure, None);
+    assert_eq!(rendered_failure, None);
+    assert_eq!(replay_pending_failure, None);
+    assert_eq!(replayed_failure, None);
+    assert_eq!(observed_failure, None);
+    assert_eq!(cleared_failure, None);
 }
 
 #[test]
@@ -371,16 +387,85 @@ fn automated_notification_phase_keeps_its_exact_deadline() {
     let exact = started + std::time::Duration::from_secs(600);
 
     // Act
-    let before = automated_phase_expired(
+    let before = automated_phase_failure(
         CommandPhase::Notification,
         started,
         exact - std::time::Duration::from_nanos(1),
     );
-    let at_deadline = automated_phase_expired(CommandPhase::Notification, started, exact);
+    let at_deadline = automated_phase_failure(CommandPhase::Notification, started, exact);
 
     // Assert
-    assert!(!before);
-    assert!(at_deadline);
+    assert_eq!(before, None);
+    assert_eq!(
+        at_deadline,
+        Some(super::CampaignTerminalCategory::NetworkCorrelationFailed)
+    );
+}
+
+#[test]
+fn resume_phases_keep_distinct_typed_deadlines() {
+    // Arrange
+    let started = std::time::Instant::now();
+
+    // Act
+    let intent = automated_phase_failure(
+        CommandPhase::ResumeIntent,
+        started,
+        started + std::time::Duration::from_secs(15),
+    );
+    let activation = automated_phase_failure(
+        CommandPhase::ResumeActive,
+        started,
+        started + std::time::Duration::from_secs(180),
+    );
+
+    // Assert
+    assert_eq!(
+        intent,
+        Some(super::CampaignTerminalCategory::ResumeIntentUnconfirmed)
+    );
+    assert_eq!(
+        activation,
+        Some(super::CampaignTerminalCategory::ResumeReactivationTimedOut)
+    );
+}
+
+#[test]
+fn resume_intent_is_confirmed_before_active_reactivation() {
+    // Arrange
+    let (_temp, root) = private_root();
+    let http = StrictHttpClient::new("http://127.0.0.1:9").expect("HTTP client");
+    let mut sample = SystemInfoWire::from_snapshot(&ApiSnapshot::safe_ultra_205());
+    sample.mining_paused = false;
+    sample.mining_activity = "paused".to_owned();
+    let mut phase = CommandPhase::ResumeIntent;
+    let mut evidence = CommandEffectsEvidence::new();
+    evidence.resume_request_count = 1;
+    let mut maybe_block_count = None;
+    let mut maybe_failure = None;
+
+    // Act
+    advance_commands(
+        &http,
+        &trusted_target(),
+        &root,
+        &sample,
+        &SharedSerialState::default(),
+        std::time::Instant::now(),
+        CommandProgress {
+            phase: &mut phase,
+            maybe_block_count: &mut maybe_block_count,
+            evidence: &mut evidence,
+            maybe_failure: &mut maybe_failure,
+        },
+    );
+
+    // Assert
+    assert_eq!(phase, CommandPhase::ResumeActive);
+    assert!(evidence.resume_intent_confirmed);
+    assert!(!evidence.resume_confirmed);
+    assert!(!evidence.active_after_resume);
+    assert_eq!(maybe_failure, None);
 }
 
 #[test]

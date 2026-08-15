@@ -231,12 +231,11 @@ impl CampaignStatusTracker {
         self.maybe_log_asic_evidence(snapshot.asic_bridge);
         if snapshot.campaign_state == MiningCampaignState::Active {
             self.active_seen = true;
-            let active_since = *self.maybe_active_since_ms.get_or_insert(now_ms);
-            self.retained_active_ms = now_ms.saturating_sub(active_since);
+            self.maybe_active_since_ms.get_or_insert(now_ms);
         } else if let Some(active_since) = self.maybe_active_since_ms.take() {
             self.retained_active_ms = self
                 .retained_active_ms
-                .max(now_ms.saturating_sub(active_since));
+                .saturating_add(now_ms.saturating_sub(active_since));
         }
 
         if snapshot.campaign_state == MiningCampaignState::Consumed {
@@ -279,7 +278,8 @@ impl CampaignStatusTracker {
         let active_ms = self
             .maybe_active_since_ms
             .map_or(self.retained_active_ms, |started| {
-                self.retained_active_ms.max(now_ms.saturating_sub(started))
+                self.retained_active_ms
+                    .saturating_add(now_ms.saturating_sub(started))
             });
         let projection = CampaignStatusProjection {
             schema: "mining-campaign-status-v12",

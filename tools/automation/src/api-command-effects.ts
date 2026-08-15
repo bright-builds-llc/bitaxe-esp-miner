@@ -260,15 +260,20 @@ function validatedCommandEffects(network: JsonObject): JsonObject {
   const effects = object(network["command_effects"], "command effects evidence");
   const requiredTrue = [
     "genuine_block_notification_observed", "positive_block_count_observed",
-    "pause_confirmed", "resume_confirmed", "identify_operator_ready_confirmed",
+    "pause_confirmed", "resume_intent_confirmed", "resume_confirmed",
+    "identify_operator_ready_confirmed",
     "identify_rendered_confirmed",
     "identify_cleared_confirmed", "dismiss_confirmed", "block_count_preserved",
     "active_before_pause", "active_after_resume", "same_boot_and_package",
     "safety_valid", "terminal_http_valid", "terminal_pool_persisted",
   ];
   if (
-    effects["schema"] !== "mining-campaign-command-effects-v5"
+    effects["schema"] !== "mining-campaign-command-effects-v6"
     || effects["identify_terminal_outcome"] !== "none"
+    || effects["recovery_terminal_outcome"] !== "not_required"
+    || effects["recovery_pause_api_confirmed"] !== false
+    || effects["recovery_pause_serial_confirmed"] !== false
+    || effects["recovery_safe_stop_confirmed"] !== false
     || requiredTrue.some((field) => effects[field] !== true)
     || effects["pause_request_count"] !== 1
     || effects["resume_request_count"] !== 1

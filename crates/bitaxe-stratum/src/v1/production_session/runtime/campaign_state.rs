@@ -6,7 +6,11 @@ use crate::v1::production_session::campaign::{
 use crate::v1::recovery_policy::ProductionSessionPhase;
 
 impl ProductionMiningSession {
-    pub(super) fn confirm_hardware_safe_stop(&mut self, lease_id: MiningCampaignLeaseId) {
+    pub(super) fn confirm_hardware_safe_stop(
+        &mut self,
+        lease_id: MiningCampaignLeaseId,
+        now_ms: u64,
+    ) {
         if self.hardware_state != MiningHardwareState::SafeStopping
             || self.maybe_lease.map(MiningCampaignLease::id) != Some(lease_id)
         {
@@ -14,10 +18,14 @@ impl ProductionMiningSession {
         }
         self.hardware_state = MiningHardwareState::Stopped;
         if self.resumable_pause_pending {
+            if let Some(active_since_ms) = self.maybe_active_since_ms.take() {
+                self.resumable_active_ms = self
+                    .resumable_active_ms
+                    .saturating_add(now_ms.saturating_sub(active_since_ms));
+            }
             self.resumable_pause_pending = false;
             self.campaign_state = MiningCampaignState::Armed;
             self.maybe_prepared_at_ms = None;
-            self.maybe_active_since_ms = None;
             self.terminal_publication_pending = false;
             return;
         }
@@ -27,6 +35,7 @@ impl ProductionMiningSession {
         self.maybe_prepared_at_ms = None;
         self.maybe_activation_started_at_ms = None;
         self.maybe_resumable_epoch_started_at_ms = None;
+        self.resumable_active_ms = 0;
         self.maybe_active_since_ms = None;
         self.terminal_publication_pending = false;
     }

@@ -164,8 +164,14 @@ impl MiningCampaignStopCondition {
                 activation_timeout,
                 duration,
             } => {
-                if let Some(started) = timing.maybe_resumable_epoch_started_at_ms {
-                    return (now_ms.saturating_sub(started) >= duration.milliseconds())
+                if timing.maybe_resumable_epoch_started_at_ms.is_some() {
+                    let current_segment_ms = timing
+                        .maybe_active_since_ms
+                        .map_or(0, |started| now_ms.saturating_sub(started));
+                    let active_ms = timing
+                        .resumable_active_ms
+                        .saturating_add(current_segment_ms);
+                    return (active_ms >= duration.milliseconds())
                         .then_some(CampaignExpiration::LeaseConsumed);
                 }
                 timing
@@ -190,6 +196,7 @@ pub(super) struct MiningCampaignTiming {
     pub(super) maybe_prepared_at_ms: Option<u64>,
     pub(super) maybe_activation_started_at_ms: Option<u64>,
     pub(super) maybe_resumable_epoch_started_at_ms: Option<u64>,
+    pub(super) resumable_active_ms: u64,
     pub(super) maybe_active_since_ms: Option<u64>,
 }
 

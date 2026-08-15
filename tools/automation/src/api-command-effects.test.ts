@@ -24,14 +24,10 @@ const readySession = {
   terminal_category: "ready",
   platform_category: "macos",
   board_category: "205",
-  same_physical_device: true,
-  stable_enumeration: true,
-  reenumerated: false,
-  reader_armed: true,
-  pre_restart_serial_delivery: true,
-  post_restart_serial_delivery: true,
-  serial_delivery: "correlated",
-  request_outcome: "response_received",
+  same_physical_device: true, stable_enumeration: true,
+  reenumerated: false, reader_armed: true,
+  pre_restart_serial_delivery: true, post_restart_serial_delivery: true,
+  serial_delivery: "correlated", request_outcome: "response_received",
   request_attempt_count: 1,
   service_loss_observed: true,
   trusted_origin_preserved: true,
@@ -50,12 +46,13 @@ const readySession = {
 } as const;
 
 const completeEffects = {
-  schema: "mining-campaign-command-effects-v5",
+  schema: "mining-campaign-command-effects-v6",
   genuine_block_notification_observed: true,
   positive_block_count_observed: true,
   pause_request_count: 1,
   pause_confirmed: true,
   resume_request_count: 1,
+  resume_intent_confirmed: true,
   resume_confirmed: true,
   identify_operator_ready_confirmed: true,
   identify_request_count: 1,
@@ -68,6 +65,9 @@ const completeEffects = {
   block_count_preserved: true,
   active_before_pause: true,
   active_after_resume: true,
+  recovery_pause_api_confirmed: false, recovery_pause_serial_confirmed: false,
+  recovery_safe_stop_confirmed: false,
+  recovery_terminal_outcome: "not_required",
   same_boot_and_package: true,
   safety_valid: true,
   terminal_http_valid: true,
@@ -75,20 +75,14 @@ const completeEffects = {
 } as const;
 
 const completeReplayedEffects = {
-  ...completeEffects,
-  identify_request_count: 2,
-  identify_replay_request_count: 1,
+  ...completeEffects, identify_request_count: 2, identify_replay_request_count: 1,
 } as const;
 
 const readyReadinessTransition = {
-  wakeup: "observations_changed",
-  previous_blocker: "safety_prerequisites_stale",
-  current_blocker: "none",
-  session_phase: "waiting_for_readiness",
-  campaign_state: "armed",
-  hardware_state: "stopped",
-  safety_sample: "fresh",
-  observation_epoch: "advanced",
+  wakeup: "observations_changed", previous_blocker: "safety_prerequisites_stale",
+  current_blocker: "none", session_phase: "waiting_for_readiness",
+  campaign_state: "armed", hardware_state: "stopped",
+  safety_sample: "fresh", observation_epoch: "advanced",
   pending_observation_recovered: true,
 } as const;
 
@@ -262,7 +256,7 @@ function fakePort(
             ? { ...readyReadinessTransition, observation_epoch: "private-invalid-value" }
             : readyReadinessTransition,
         }),
-        safe_stop: "confirmed",
+        safe_stop: campaignFails ? "pending" : "confirmed",
         usb_cleanup: "ready",
         qualified_candidate_count: 1,
         flash_diagnostics_sha256: createHash("sha256").update(flashDiagnosticsDocument).digest("hex"),
@@ -271,7 +265,14 @@ function fakePort(
       await privateJson(path.join(campaign, "campaign-network.private.json"), {
         status: campaignFails ? "failed" : "accepted",
         recovery_pause_request_count: campaignFails ? 1 : 0,
-        command_effects: commandEffects,
+        command_effects: campaignFails
+          ? {
+            ...commandEffects,
+            recovery_pause_api_confirmed: true, recovery_pause_serial_confirmed: true,
+            recovery_safe_stop_confirmed: true,
+            recovery_terminal_outcome: "confirmed",
+          }
+          : commandEffects,
       });
       await privateJson(path.join(campaign, "command-effects-reboot-intent.private.json"), {
         schema_version: "esp-device-session-reboot-intent-v1",

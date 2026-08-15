@@ -35,3 +35,28 @@
   implementation boundary. API-009 remains `implemented`.
 - Blocker or next safe action: Commit and push this checkpoint, revalidate the
   plan digest and selector, then implement the software repair.
+
+## 2026-08-15T01:50:32Z | implementation and closure gates passed
+
+- Plan SHA-256:
+  `fa18d647af689334a2a15a521bc6c5738fdd8e2bf8e9ed0220706b1420ad6228`.
+- Actions: Added active-segment lease accounting, separate resume-intent and
+  bounded reactivation states, one-shot correlated recovery pause, closed
+  evidence v6, and behavior-focused engine, firmware, host, automation, and
+  real-child regressions. Added the new Rust module to Bazel's explicit source
+  graph after the first complete run exposed that missing edge. Final review
+  moved the recovery serial baseline before the blocking pause request so a
+  safe-stop marker emitted while that request is in flight remains admissible.
+- Verification: Focused targets passed. The complete ordered Cargo format,
+  strict lint, all-target build, and all-feature test sequence; Bright Builds;
+  all 44 Bazel tests; parity and progress; redaction; reference cleanliness;
+  firmware build; plan digest; and diff checks passed.
+- Evidence: Public source, tests, task, plan, closure, and categorical prior
+  attempt facts only. No credential, protected attempt artifact, detector,
+  USB, device/network, display, mining, hardware-control, UART, or pin
+  interface was accessed.
+- Outcome: The software repair is complete and API-009 remains `implemented`.
+  This plan creates no hardware evidence and does not authorize attempt-024.
+- Blocker or next safe action: Close this plan, commit and push the verified
+  source, then create a fresh immutable exact-package hardware plan before any
+  detector or device access.
