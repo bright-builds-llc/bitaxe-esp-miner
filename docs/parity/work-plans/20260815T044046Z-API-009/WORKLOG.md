@@ -641,3 +641,16 @@
 - Verification: Focused tests, mandatory Cargo, Bright Builds, real firmware,
   full Bazel, parity with no validation errors, redaction, reference, and diff
   gates pass. No hardware effect occurred.
+
+## 2026-08-15T12:42:00Z | attempt-039 lease-terminal contract drafted
+
+- Objective: One no-human exact-package campaign against pushed fix
+  `57fafecf`, proving the same completed command quorum can remain open until
+  firmware consumes its admitted active-duration lease.
+- Bounds: Firmware activation and active-duration leases, 1,380-second serial
+  capture, complete host child budget, phase deadlines, post-consumption HTTP,
+  recovery, process termination, and cleanup all remain finite.
+- Effects/privacy: Existing request-once, detector, same-device, redaction, and
+  protected-artifact contracts are unchanged; no physical display claim.
+- Stop: Campaign start consumes attempt-039. Any non-ready result withholds
+  evidence and stops without attempt-040 or an unchanged retry.
