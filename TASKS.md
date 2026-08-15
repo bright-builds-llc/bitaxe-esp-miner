@@ -4062,6 +4062,59 @@ hardware ordinal. Energized-rail values or accuracy, external calibration,
 induced failure, load behavior, long-duration drift, other boards, and release
 readiness remain explicit non-claims.
 
+### task-parity-io002-adc-observation-attempt-004 | 2026-08-15 | Admit unique ADC provenance and verify observation
+
+- [ ] Bind `bitaxe-adc-observation-evidence-v1` to immutable plan
+      `docs/parity/work-plans/20260815T232350Z-IO-002/PLAN.md`, protected
+      `attempt-004` paths, and public schema ordinal 4.
+- [ ] Register the existing ADC evidence test module in the deployed Bazel test
+      entrypoint, reproduce the attempt-003 provenance failure there, and
+      replace the ambiguous bit-width token with exact unique initializer
+      context plus missing, duplicate, and drift regressions.
+- [ ] Run the complete focused and mandatory software/firmware/privacy gates,
+      commit and push the exact implementation, and rebuild its clean package
+      before device access.
+- [ ] Run only the plan's exact detector command and, after successful one-
+      device admission plus local Wi-Fi input availability, its exact one-shot
+      `just capture-adc-observation-evidence ... --capture-timeout-seconds 360`
+      attempt-004 command.
+- [ ] Promote only IO-002 on the complete exact-package passive disabled-state
+      ADC/API quorum; otherwise withhold the projection, preserve
+      `implemented`, record the earliest typed blocker and accepted stop
+      outcome, and do not retry.
+
+Plan: `docs/parity/work-plans/20260815T232350Z-IO-002/PLAN.md`
+
+Objective and effects: fix the newly discriminating attempt-003 provenance and
+test-registration boundaries, then verify the already accepted millivolt-domain
+contract with one passive safe-state Ultra 205 observation. The sole run may
+factory-flash/reset the exact clean package, seed private Wi-Fi, derive a same-
+origin device only from protected current-session serial evidence, perform
+read-only HTTP, WebSocket, and retained-log observations, and use at most one
+exact-package recovery flash after a post-flash failure. It must keep mining and
+hardware control disabled. Settings/restart requests, pool input, ASIC work,
+voltage, frequency, fan or power control, raw ADC/GPIO/I2C, OTA, erase, fault
+injection, physical power actions, direct UART, and every pin/pad/header/probe/
+jumper/solder/signal manipulation are prohibited.
+
+Evidence/privacy/recovery: wrapper and attempt directories are ignored
+mode-`0700` roots with mode-`0600` files. Raw ADC values, stamps, logs, commands,
+origins, ports, hostnames, USB/network/process identity, credentials, settings,
+and traces remain private. Only the named aggregate projection may become
+public after independent validation and redaction. Starting capture consumes
+attempt-004; no unchanged retry or attempt-005 is authorized. Every post-flash
+failure preserves the earliest category and runs bounded recovery and cleanup.
+Detector failure or ambiguity, missing credentials, unsafe state, malformed or
+incomplete proof, failed cleanup or recovery, privacy failure, nonzero command,
+or recurrence of the corrected provenance signature stops with IO-002
+`implemented` and evidence withheld.
+
+Verification: pending. Promotion proves only passive disabled-state ADC
+acquisition, cadence/coherence, and exact HTTP/WebSocket projection on board
+205. Energized-rail values or accuracy, external calibration, induced failure,
+load behavior, long-duration drift, other boards, and release readiness remain
+explicit non-claims.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
