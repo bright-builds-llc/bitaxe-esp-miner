@@ -117,9 +117,9 @@ fn runtime_owners_use_bounded_shared_cadence_and_queue_contracts() {
 fn operator_sensor_runtime_is_the_single_normal_acquisition_caller() {
     // Arrange
     let required_calls = [
-        "safety_adapter::read_power_acquisition(owner)",
-        "safety_adapter::read_asic_temperature_acquisition(owner)",
-        "safety_adapter::read_tachometer_acquisition(owner)",
+        "safety_adapter::read_power_acquisition(owner, budget)",
+        "safety_adapter::read_asic_temperature_acquisition(owner, budget)",
+        "safety_adapter::read_tachometer_acquisition(owner, budget)",
     ];
 
     // Act / Assert
@@ -194,7 +194,9 @@ fn raw_sensor_bus_capability_is_private_to_the_safety_facade() {
 
     // Act / Assert
     assert_eq!(
-        SAFETY_ADAPTER_SOURCE.matches("owner.sensors()").count(),
+        SAFETY_ADAPTER_SOURCE
+            .matches("owner.sensors(budget)")
+            .count(),
         expected_facade_reads
     );
     assert!(I2C_BUS_SOURCE.contains("pub(super) fn sensors"));
@@ -203,15 +205,22 @@ fn raw_sensor_bus_capability_is_private_to_the_safety_facade() {
 }
 
 #[test]
-fn every_shared_i2c_transfer_uses_the_single_retry_contract() {
+fn every_runtime_i2c_capability_shares_the_sensor_publication_deadline() {
     // Arrange
-    let expected_transfer_shapes = 6;
+    let expected_runtime_transfer_shapes = 3;
 
     // Act / Assert
+    assert_eq!(I2C_BUS_SOURCE.matches("retry_driver_transfer(||").count(), 1);
     assert_eq!(
-        I2C_BUS_SOURCE.matches("retry_driver_transfer(||").count(),
-        expected_transfer_shapes
+        I2C_BUS_SOURCE
+            .matches("retry_runtime_driver_transfer(")
+            .count(),
+        expected_runtime_transfer_shapes
     );
+    assert!(I2C_BUS_SOURCE.contains("retry_runtime_transfer"));
+    assert!(I2C_BUS_SOURCE.contains("pub(crate) fn display<'bus, 'budget>"));
+    assert!(I2C_BUS_SOURCE.contains("pub(super) fn sensors<'bus, 'budget>"));
+    assert!(I2C_BUS_SOURCE.contains("pub(super) fn actuators<'bus, 'budget>"));
     assert!(I2C_RETRY_SOURCE.contains("I2C_TRANSACTION_TIMEOUT_MS: u64 = 500"));
     assert!(I2C_RETRY_SOURCE.contains("I2C_RETRY_COUNT: usize = 3"));
     assert!(I2C_RETRY_SOURCE.contains("I2C_RETRY_DELAY_MS: u32 = 10"));
@@ -229,7 +238,9 @@ fn operator_runtime_is_the_only_shared_i2c_actuation_consumer() {
         1
     );
     assert_eq!(
-        SAFETY_ADAPTER_SOURCE.matches("owner.actuators()").count(),
+        SAFETY_ADAPTER_SOURCE
+            .matches("owner.actuators(budget)")
+            .count(),
         1
     );
     assert!(I2C_BUS_SOURCE.contains("pub(super) fn actuators"));

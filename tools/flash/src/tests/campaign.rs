@@ -91,7 +91,7 @@ fn campaign_marker_with_failure(
     format!(
         "mining_campaign_status={}",
         serde_json::json!({
-            "schema": "mining-campaign-status-v12",
+            "schema": "mining-campaign-status-v13",
             "stage": fixture.stage,
             "lease_id": fixture.lease_id,
             "campaign_state": fixture.state,
@@ -164,6 +164,14 @@ fn campaign_marker_with_failure(
                 "safety_sample": fixture.safety,
                 "observation_epoch": "advanced",
                 "pending_observation_recovered": true,
+            },
+            "operator_sensor": {
+                "available": false,
+                "boot_session": 0,
+                "revision": 0,
+                "stage": "none",
+                "outcome": "none",
+                "duration_bucket": "none",
             },
             "resumable_pause_safe_stop": "not_required", "safety": fixture.safety,
             "fresh_observation_count": if safety_fresh { 5 } else { 4 },
@@ -300,7 +308,7 @@ fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evide
         assert!(!csv.contains(forbidden), "unexpected key {forbidden}");
     }
     let result = read_campaign_result(&command);
-    assert_eq!(result["schema"], "mining-campaign-result-v8");
+    assert_eq!(result["schema"], "mining-campaign-result-v9");
     assert_eq!(
         result["readiness_transition"],
         serde_json::json!({

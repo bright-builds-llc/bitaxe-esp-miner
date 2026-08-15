@@ -7,6 +7,8 @@ mod attestation;
 mod chunk_stream;
 #[path = "tests/command_effects_safety.rs"]
 mod command_effects_safety;
+#[path = "tests/operator_sensor.rs"]
+mod operator_sensor;
 #[path = "tests/pause_safe_stop.rs"]
 mod pause_safe_stop;
 #[path = "tests/preparation.rs"]
@@ -19,7 +21,6 @@ fn observation_admission() -> CampaignAdmission {
         maybe_lease_id: None,
     }
 }
-
 fn live_share_admission() -> CampaignAdmission {
     CampaignAdmission {
         stage: MiningCampaignStage::LiveShare,
@@ -28,7 +29,6 @@ fn live_share_admission() -> CampaignAdmission {
         maybe_lease_id: Some(7),
     }
 }
-
 fn live_share_preparing_marker() -> Vec<u8> {
     let marker = serde_json::json!({
         "schema": CAMPAIGN_MARKER_SCHEMA,
@@ -105,6 +105,14 @@ fn live_share_preparing_marker() -> Vec<u8> {
             "observation_epoch": "advanced",
             "pending_observation_recovered": true,
         },
+        "operator_sensor": {
+            "available": false,
+            "boot_session": 0,
+            "revision": 0,
+            "stage": "none",
+            "outcome": "none",
+            "duration_bucket": "none",
+        },
         "resumable_pause_safe_stop": "not_required",
         "safety": "fresh",
         "fresh_observation_count": 5,
@@ -139,7 +147,6 @@ fn live_share_preparing_marker() -> Vec<u8> {
     });
     format!("{CAMPAIGN_MARKER_PREFIX}{marker}\n").into_bytes()
 }
-
 fn observation_marker(schema: &str) -> Vec<u8> {
     let marker = serde_json::json!({
         "schema": schema,
@@ -216,6 +223,14 @@ fn observation_marker(schema: &str) -> Vec<u8> {
             "observation_epoch": "advanced",
             "pending_observation_recovered": true,
         },
+        "operator_sensor": {
+            "available": false,
+            "boot_session": 0,
+            "revision": 0,
+            "stage": "none",
+            "outcome": "none",
+            "duration_bucket": "none",
+        },
         "resumable_pause_safe_stop": "not_required",
         "safety": "fresh",
         "fresh_observation_count": 5,
@@ -250,7 +265,6 @@ fn observation_marker(schema: &str) -> Vec<u8> {
     });
     format!("{CAMPAIGN_MARKER_PREFIX}{marker}\n").into_bytes()
 }
-
 fn preparation_progress_line(step: &str, outcome: &str) -> Vec<u8> {
     let progress = serde_json::json!({
         "schema": CAMPAIGN_PREPARATION_SCHEMA,
@@ -259,7 +273,6 @@ fn preparation_progress_line(step: &str, outcome: &str) -> Vec<u8> {
     });
     format!("{CAMPAIGN_PREPARATION_PREFIX}{progress}\n").into_bytes()
 }
-
 #[test]
 fn growing_snapshots_preserve_split_prefix_and_json() {
     // Arrange
@@ -283,7 +296,6 @@ fn growing_snapshots_preserve_split_prefix_and_json() {
     assert_eq!(capture.diagnostics.marker_candidate_count, 1);
     assert_eq!(capture.diagnostics.accepted_marker_count, 1);
 }
-
 #[test]
 fn production_chunks_preserve_split_prefix_and_json() {
     // Arrange

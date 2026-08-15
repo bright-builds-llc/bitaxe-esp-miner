@@ -43,6 +43,7 @@ js_library(
     name = "emc2101_thermal_sources",
     srcs = [
         "src/operator_sensor_runtime.rs",
+        "src/operator_sensor_diagnostics.rs",
         "src/safety_adapter/emc2101.rs",
         "src/safety_adapter/i2c_bus.rs",
         "src/settings_adapter/thermal_fault_stimulus.rs",
@@ -284,6 +285,14 @@ rust_test(
 )
 
 rust_test(
+    name = "operator_sensor_diagnostics_tests",
+    srcs = ["src/operator_sensor_diagnostics.rs"],
+    crate_name = "operator_sensor_diagnostics_tests",
+    crate_root = "src/operator_sensor_diagnostics.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "emc2101_acquisition_tests",
     srcs = ["src/safety_adapter/emc2101.rs"],
     crate_name = "emc2101_acquisition_tests",
@@ -353,6 +362,7 @@ rust_test(
 rust_test(
     name = "production_campaign_status_tests",
     srcs = [
+        "src/operator_sensor_diagnostics.rs",
         "src/production_campaign_status_host_test.rs",
         "src/production_mining_session/campaign_status.rs",
         "src/production_mining_session/campaign_status/projection.rs",

@@ -23,6 +23,7 @@ use bitaxe_safety::{
 use esp_idf_svc::sys;
 
 use crate::display_adapter::RuntimeDisplayOwner;
+use crate::operator_sensor_diagnostics::{OperatorSensorOutcome, OperatorSensorStage};
 use crate::safety_adapter::{
     self, RuntimeI2cOwner, SafetyActuationOwnerInbox, SafetyActuationOwnerWait,
 };
@@ -30,6 +31,7 @@ use crate::safety_adapter::{
 pub const SENSOR_SWEEP_CADENCE_MS: u64 = OPERATOR_OBSERVATION_CADENCE_MS;
 pub const DISPLAY_REFRESH_CADENCE_MS: u64 = SCREEN_UPDATE_MS;
 const SENSOR_STALE_AFTER_MS: u64 = 1_000;
+const SENSOR_PUBLISH_HEADROOM_MS: u64 = 100;
 const BOARD_POWER_TARGET_WATTS: f64 = 12.0;
 const PRODUCER_THREAD_NAME: &str = "operator-sensors";
 const PRODUCER_THREAD_STACK_BYTES: usize = 8 * 1024;
@@ -77,10 +79,16 @@ fn run(
     mut maybe_thermal_fault_stimulus: Option<ThermalFaultStimulus>,
 ) -> ! {
     let boot_session = new_boot_session_id();
+    if !crate::operator_sensor_diagnostics::initialize(boot_session.get()) {
+        log::warn!("operator_sensor_diagnostic=unavailable reason=owner_already_initialized");
+    }
     let mut state = ProducerSensorState::default();
     let mut core_voltage_state = CoreVoltageProducerState::default();
     let mut sequences = ProducerSequences::default();
     let started_at_ms = crate::runtime_uptime::millis();
+    let mut sensor_publish_deadline_ms = started_at_ms
+        .checked_add(SENSOR_STALE_AFTER_MS - SENSOR_PUBLISH_HEADROOM_MS)
+        .expect("initial sensor publication deadline is representable");
     let mut sensor_schedule = PeriodicDeadline::new(started_at_ms, SENSOR_SWEEP_CADENCE_MS)
         .expect("operator observation cadence is nonzero");
     let mut maybe_display = maybe_display.map(|owner| {
@@ -106,11 +114,22 @@ fn run(
         if sensor_schedule.is_due(now_ms) {
             let (power, actual_asic_temperature_celsius, tachometer_rpm) =
                 if let Some(owner) = maybe_owner.as_mut() {
-                    (
-                        safety_adapter::read_power_acquisition(owner),
-                        safety_adapter::read_asic_temperature_acquisition(owner),
-                        safety_adapter::read_tachometer_acquisition(owner),
-                    )
+                    let power = timed_i2c_acquisition(
+                        OperatorSensorStage::Power,
+                        sensor_publish_deadline_ms,
+                        |budget| safety_adapter::read_power_acquisition(owner, budget),
+                    );
+                    let actual_asic_temperature_celsius = timed_i2c_acquisition(
+                        OperatorSensorStage::AsicTemperature,
+                        sensor_publish_deadline_ms,
+                        |budget| safety_adapter::read_asic_temperature_acquisition(owner, budget),
+                    );
+                    let tachometer_rpm = timed_i2c_acquisition(
+                        OperatorSensorStage::Tachometer,
+                        sensor_publish_deadline_ms,
+                        |budget| safety_adapter::read_tachometer_acquisition(owner, budget),
+                    );
+                    (power, actual_asic_temperature_celsius, tachometer_rpm)
                 } else {
                     (
                         AcquisitionOutcome::Unavailable(UnavailableReason::ProducerUnavailable),
@@ -125,11 +144,24 @@ fn run(
             );
             let vr_temperature_celsius =
                 AcquisitionOutcome::Unavailable(UnavailableReason::UnsupportedOnBoard);
-            let core_voltage_millivolts = maybe_core_voltage_adc.as_mut().map_or(
-                AcquisitionOutcome::Unavailable(UnavailableReason::CoreVoltageUnavailable),
-                safety_adapter::read_core_voltage_acquisition,
-            );
+            let core_voltage_millivolts = if let Some(adc) = maybe_core_voltage_adc.as_mut() {
+                let started_at_ms = crate::runtime_uptime::millis();
+                let outcome = safety_adapter::read_core_voltage_acquisition(adc);
+                record_sensor_stage(
+                    OperatorSensorStage::CoreVoltage,
+                    started_at_ms,
+                    crate::runtime_uptime::millis(),
+                    acquisition_outcome(&outcome),
+                );
+                outcome
+            } else {
+                AcquisitionOutcome::Unavailable(UnavailableReason::CoreVoltageUnavailable)
+            };
             let acquired_at = MonotonicMillis::new(crate::runtime_uptime::millis());
+            sensor_publish_deadline_ms = acquired_at
+                .get()
+                .checked_add(SENSOR_STALE_AFTER_MS - SENSOR_PUBLISH_HEADROOM_MS)
+                .expect("sensor publication deadline is representable");
             let outcomes = SensorSweepOutcomes {
                 power,
                 asic_temperature_celsius,
@@ -187,7 +219,19 @@ fn run(
 
         if maybe_display_schedule.is_some_and(|schedule| schedule.is_due(now_ms)) {
             if let Some(owner) = maybe_owner.as_mut() {
-                service_display(owner, &mut maybe_display, now_ms);
+                let display_started_at_ms = crate::runtime_uptime::millis();
+                let display_outcome = service_display(
+                    owner,
+                    &mut maybe_display,
+                    now_ms,
+                    sensor_publish_deadline_ms,
+                );
+                record_sensor_stage(
+                    OperatorSensorStage::Display,
+                    display_started_at_ms,
+                    crate::runtime_uptime::millis(),
+                    budget_outcome(display_outcome),
+                );
             }
             if maybe_display.is_none() {
                 maybe_display_schedule = None;
@@ -223,6 +267,7 @@ fn run(
                     owner,
                     actuation_inbox,
                     wait,
+                    sensor_publish_deadline_ms,
                 ) == SafetyActuationOwnerWait::Disconnected
                 {
                     sleep_until(next_owner_deadline_ms);
@@ -231,6 +276,77 @@ fn run(
             _ => sleep_until(next_owner_deadline_ms),
         }
     }
+}
+
+fn timed_i2c_acquisition<T>(
+    stage: OperatorSensorStage,
+    sensor_publish_deadline_ms: u64,
+    acquire: impl FnOnce(&mut safety_adapter::RuntimeI2cBudget) -> AcquisitionOutcome<T>,
+) -> AcquisitionOutcome<T> {
+    let started_at_ms = crate::runtime_uptime::millis();
+    let mut budget = safety_adapter::RuntimeI2cBudget::new(sensor_publish_deadline_ms);
+    let outcome = acquire(&mut budget);
+    let diagnostic_outcome = match budget.outcome() {
+        safety_adapter::RuntimeI2cBudgetOutcome::BudgetExhausted => {
+            OperatorSensorOutcome::BudgetExhausted
+        }
+        safety_adapter::RuntimeI2cBudgetOutcome::DriverFailed => {
+            OperatorSensorOutcome::DriverFailed
+        }
+        safety_adapter::RuntimeI2cBudgetOutcome::Recovered
+            if matches!(outcome, AcquisitionOutcome::Success(_)) =>
+        {
+            OperatorSensorOutcome::Recovered
+        }
+        safety_adapter::RuntimeI2cBudgetOutcome::Ready
+        | safety_adapter::RuntimeI2cBudgetOutcome::Recovered => acquisition_outcome(&outcome),
+    };
+    record_sensor_stage(
+        stage,
+        started_at_ms,
+        crate::runtime_uptime::millis(),
+        diagnostic_outcome,
+    );
+    outcome
+}
+
+fn acquisition_outcome<T>(outcome: &AcquisitionOutcome<T>) -> OperatorSensorOutcome {
+    match outcome {
+        AcquisitionOutcome::Success(_) => OperatorSensorOutcome::Ready,
+        AcquisitionOutcome::ReadFailed => OperatorSensorOutcome::DriverFailed,
+        AcquisitionOutcome::InvalidSample => OperatorSensorOutcome::SampleInvalid,
+        AcquisitionOutcome::Unavailable(_) => OperatorSensorOutcome::Unavailable,
+    }
+}
+
+fn budget_outcome(outcome: safety_adapter::RuntimeI2cBudgetOutcome) -> OperatorSensorOutcome {
+    match outcome {
+        safety_adapter::RuntimeI2cBudgetOutcome::Ready => OperatorSensorOutcome::Ready,
+        safety_adapter::RuntimeI2cBudgetOutcome::Recovered => OperatorSensorOutcome::Recovered,
+        safety_adapter::RuntimeI2cBudgetOutcome::DriverFailed => {
+            OperatorSensorOutcome::DriverFailed
+        }
+        safety_adapter::RuntimeI2cBudgetOutcome::BudgetExhausted => {
+            OperatorSensorOutcome::BudgetExhausted
+        }
+    }
+}
+
+fn record_sensor_stage(
+    stage: OperatorSensorStage,
+    started_at_ms: u64,
+    completed_at_ms: u64,
+    outcome: OperatorSensorOutcome,
+) {
+    let Some(diagnostic) = crate::operator_sensor_diagnostics::record_stage(
+        stage,
+        started_at_ms,
+        completed_at_ms,
+        outcome,
+    ) else {
+        return;
+    };
+    crate::info_retained(&diagnostic.marker());
 }
 
 fn admitted_thermal_fault_stimulus(
@@ -288,9 +404,11 @@ fn service_display(
     owner: &mut RuntimeI2cOwner<'_>,
     maybe_display: &mut Option<RuntimeDisplay>,
     uptime_ms: u64,
-) {
+    sensor_publish_deadline_ms: u64,
+) -> safety_adapter::RuntimeI2cBudgetOutcome {
+    let mut i2c_budget = safety_adapter::RuntimeI2cBudget::new(sensor_publish_deadline_ms);
     let Some(display) = maybe_display.as_mut() else {
-        return;
+        return i2c_budget.outcome();
     };
     let snapshot = crate::runtime_snapshot::collect_screen_snapshot(uptime_ms);
     let pending_advances = crate::input_adapter::take_pending_screen_advances();
@@ -300,27 +418,33 @@ fn service_display(
             Err(error) => {
                 let error = anyhow::Error::new(error);
                 disable_runtime_display(maybe_display, "screen_flow_failed", &error);
-                return;
+                return i2c_budget.outcome();
             }
         };
     if pending_advances > 0 {
         if let Err(error) = display.owner.record_input_activity(uptime_ms) {
             disable_runtime_display(maybe_display, "input_activity_failed", &error);
-            return;
+            return i2c_budget.outcome();
         }
     }
-    if let Err(error) = display
-        .owner
-        .service_power(owner, uptime_ms, decision.priority_visible)
+    if let Err(error) =
+        display
+            .owner
+            .service_power(owner, &mut i2c_budget, uptime_ms, decision.priority_visible)
     {
-        disable_runtime_display(maybe_display, "power_command_failed", &error);
-        return;
+        if i2c_budget.outcome() != safety_adapter::RuntimeI2cBudgetOutcome::BudgetExhausted {
+            disable_runtime_display(maybe_display, "power_command_failed", &error);
+        }
+        return i2c_budget.outcome();
     }
     if display.maybe_last_frame.as_ref() == Some(&decision.frame) {
-        return;
+        return i2c_budget.outcome();
     }
 
-    if let Err(error) = display.owner.render_runtime_screen(owner, &decision.frame) {
+    if let Err(error) = display
+        .owner
+        .render_runtime_screen(owner, &mut i2c_budget, &decision.frame)
+    {
         crate::runtime_snapshot::record_display_render(
             if snapshot.identify_active {
                 DisplayFrameKind::Identify
@@ -330,8 +454,10 @@ fn service_display(
             DisplayRenderOutcome::Failed,
             uptime_ms,
         );
-        disable_runtime_display(maybe_display, "render_failed", &error);
-        return;
+        if i2c_budget.outcome() != safety_adapter::RuntimeI2cBudgetOutcome::BudgetExhausted {
+            disable_runtime_display(maybe_display, "render_failed", &error);
+        }
+        return i2c_budget.outcome();
     }
     // A frame decision is not display evidence. Publish the receipt only after
     // the SSD1306 owner confirms that the framebuffer flush completed.
@@ -345,6 +471,7 @@ fn service_display(
         uptime_ms,
     );
     display.maybe_last_frame = Some(decision.frame);
+    i2c_budget.outcome()
 }
 
 fn next_screen_decision(

@@ -11,7 +11,7 @@ use super::i2c_bus::{Ina260ReadRegister, ReadOnlySensorBus};
 
 /// Reads one complete INA260 triple through the closed read-only capability.
 pub fn read_acquisition(
-    bus: &mut ReadOnlySensorBus<'_, '_>,
+    bus: &mut ReadOnlySensorBus<'_, '_, '_>,
 ) -> AcquisitionOutcome<Ina260RawSample> {
     let mut current = [0_u8; 2];
     let mut bus_voltage = [0_u8; 2];

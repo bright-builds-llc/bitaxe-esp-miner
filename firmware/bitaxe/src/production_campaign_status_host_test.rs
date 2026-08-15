@@ -22,6 +22,9 @@ mod settings_adapter {
     }
 }
 
+#[path = "operator_sensor_diagnostics.rs"]
+mod operator_sensor_diagnostics;
+
 #[path = "production_mining_session/readiness_trace.rs"]
 #[allow(dead_code)]
 mod readiness_trace;

@@ -80,8 +80,11 @@ fn runtime_uses_absolute_cadence_and_edge_only_power_service() {
     // Act / Assert
     assert!(source.contains("PeriodicDeadline::new"));
     assert!(source.contains("schedule.advance_past"));
-    assert!(source.contains(".service_power(owner, uptime_ms, decision.priority_visible)"));
-    assert!(source.contains("display.owner.render_runtime_screen(owner, &decision.frame)"));
+    assert!(source.contains(
+        ".service_power(owner, &mut i2c_budget, uptime_ms, decision.priority_visible)"
+    ));
+    assert!(source.contains(".render_runtime_screen(owner, &mut i2c_budget, &decision.frame)"));
+    assert!(source.contains("RuntimeI2cBudget::new(sensor_publish_deadline_ms)"));
     assert!(source.contains("display.maybe_last_frame.as_ref() == Some(&decision.frame)"));
     assert!(source.contains("take_pending_screen_advances()"));
     assert!(source.contains("display.owner.record_input_activity(uptime_ms)"));
@@ -171,4 +174,7 @@ fn display_failure_disables_only_display_and_preserves_sensor_loop() {
     assert!(!source.contains("park_forever"));
     assert!(RUNTIME_SOURCE.contains("reduce_sensor_sweep("));
     assert!(RUNTIME_SOURCE.contains("replace_observations_from_producer"));
+    assert!(RUNTIME_SOURCE.contains(
+        "i2c_budget.outcome() != safety_adapter::RuntimeI2cBudgetOutcome::BudgetExhausted"
+    ));
 }

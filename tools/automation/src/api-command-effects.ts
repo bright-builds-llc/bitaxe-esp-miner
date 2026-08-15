@@ -3,14 +3,17 @@ import { access, chmod, mkdir, readFile, stat, writeFile } from "node:fs/promise
 import path from "node:path";
 
 import { internalCommandSpec, type AutomationCategory } from "./contracts.generated.js";
-import {
-  campaignRecoveryFactsFromDocuments,
-  type RecoveryFacts,
-} from "./api-command-effects-recovery.js";
+import type { RecoveryFacts } from "./api-command-effects-recovery.js";
 import { isDeviceSessionProjectionFailure, readClosedDeviceSession } from "./device-session-projection.js";
 import type { OperatorCheckpointSink } from "./api-command-effects-checkpoint.js";
 import { isClosedReadinessTransition } from "./api-command-effects-readiness.js";
 import type { ProcessLifetime, ProcessOutcome, ProcessPort } from "./process.js";
+import {
+  campaignFailureFactsFromDocuments,
+  parseOperatorSensorDiagnostic,
+  type CampaignFailureFacts,
+  type OperatorSensorDiagnostic,
+} from "./operator-sensor-diagnostic.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
 type JsonObject = Readonly<Record<string, unknown>>;
@@ -18,7 +21,6 @@ type FailureCategory = Extract<AutomationCategory, "hardware_blocked" | "evidenc
 type FixtureSettlement =
   | { readonly kind: "launch_failed" }
   | { readonly kind: "outcome"; readonly outcome: ProcessOutcome };
-
 export type ApiCommandEffectsOptions = {
   readonly privateRoot: string;
   readonly packageManifest: string;
@@ -48,6 +50,7 @@ function failure(
     recoveryAttempted: false,
     secondaryRecoveryFailure: false,
   },
+  maybeOperatorSensor?: OperatorSensorDiagnostic,
 ): ApiCommandEffectsError {
   return new ApiCommandEffectsError(category, message, {
     stage: "command_effects",
@@ -55,6 +58,7 @@ function failure(
     cleanup_complete: recovery.cleanupComplete,
     recovery_attempted: recovery.recoveryAttempted,
     secondary_recovery_failure: recovery.secondaryRecoveryFailure,
+    ...(maybeOperatorSensor === undefined ? {} : { operator_sensor: maybeOperatorSensor }),
   });
 }
 
@@ -126,17 +130,27 @@ async function readPrivateJson(input: string, context: string): Promise<JsonObje
   return (await readPrivateDocument(input, context)).value;
 }
 
-async function campaignRecoveryFacts(campaignRoot: string): Promise<RecoveryFacts> {
+function operatorSensorDiagnostic(value: unknown): OperatorSensorDiagnostic | undefined {
+  try {
+    return parseOperatorSensorDiagnostic(value);
+  } catch {
+    throw failure("evidence_invalid", "operator sensor diagnostic is invalid");
+  }
+}
+
+async function campaignFailureFacts(campaignRoot: string): Promise<CampaignFailureFacts> {
   try {
     const result = await readPrivateJson(path.join(campaignRoot, "campaign-result.json"), "campaign result");
     const network = await readPrivateJson(path.join(campaignRoot, "campaign-network.private.json"), "campaign network evidence");
-    return campaignRecoveryFactsFromDocuments(result, network);
+    return campaignFailureFactsFromDocuments(result, network);
   } catch {
     return {
-      safeStopConfirmed: false,
-      cleanupComplete: false,
-      recoveryAttempted: false,
-      secondaryRecoveryFailure: false,
+      recovery: {
+        safeStopConfirmed: false,
+        cleanupComplete: false,
+        recoveryAttempted: false,
+        secondaryRecoveryFailure: false,
+      },
     };
   }
 }
@@ -333,12 +347,13 @@ function validateCampaign(
   flashDiagnosticsDocument: string,
 ): JsonObject {
   validateFlashDiagnostics(result, flashDiagnostics, flashDiagnosticsDocument);
+  operatorSensorDiagnostic(result["operator_sensor"]);
   if (!isClosedReadinessTransition(result["readiness_transition"])) {
     throw failure("evidence_invalid", "readiness transition is incomplete");
   }
   const qualifiedCandidateCount = result["qualified_candidate_count"];
   if (
-    result["schema"] !== "mining-campaign-result-v8"
+    result["schema"] !== "mining-campaign-result-v9"
     || result["stage"] !== "command-effects"
     || result["status"] !== "accepted"
     || result["terminal_category"] !== "command_effects_complete"
@@ -477,17 +492,21 @@ export async function captureApiCommandEffects(
       "--redact-evidence",
     ], Math.max((options.durationSeconds + 300) * 1_000, 60_000), "command effects campaign");
     if (maybeCampaignOutcome.timedOut) {
+      const facts = await campaignFailureFacts(campaignRoot);
       throw failure(
         "timeout",
         "command effects campaign timed out",
-        await campaignRecoveryFacts(campaignRoot),
+        facts.recovery,
+        facts.maybeOperatorSensor,
       );
     }
     if (maybeCampaignOutcome.exitCode !== 0) {
+      const facts = await campaignFailureFacts(campaignRoot);
       throw failure(
         "hardware_blocked",
         "command effects campaign failed",
-        await campaignRecoveryFacts(campaignRoot),
+        facts.recovery,
+        facts.maybeOperatorSensor,
       );
     }
   } catch (error) {

@@ -251,3 +251,42 @@
 - Terminal blocker: Further evidence requires a separate redaction-safe
   sensor-producer/I2C latency diagnostic and a verified root-cause change.
   Weakening active safety or rerunning the unchanged campaign is prohibited.
+
+## 2026-08-15T07:31:00Z | sensor-sweep latency continuation opened
+
+- Trigger: Attempt-031 proved a transient active-mining freshness loss with an
+  unchanged observation epoch and later recovery.
+- Scope: A new active task owns a deterministic production-shaped reproduction,
+  redaction-safe stage timing, ranked hypothesis tests, and a root-cause fix.
+- Safety: The 1,000 ms active-safety freshness boundary remains immutable. This
+  continuation authorizes no hardware or protected-attempt access and cannot
+  authorize attempt-032.
+- Next action: Reproduce the exact freshness loss from the current shared-I2C
+  retry envelope before changing runtime behavior.
+
+## 2026-08-15T07:42:44Z | sensor-sweep root cause fixed in software
+
+- Failure proof: The production retry envelope reproduced deterministically:
+  a sensor read starting at 500 ms could remain in three 500 ms attempts plus
+  retry delays until 2,030 ms, beyond the immutable 1,000 ms freshness limit.
+  Three uncached runs failed identically before the change.
+- Ranked hypotheses: Shared sensor retry was sufficient and confirmed. Display
+  flush and safety actuation remained credible co-triggers because they use the
+  same owner; producer scheduling and consumer alignment could amplify but not
+  independently explain the reproduced bound. No hardware bus-fault trigger
+  can be classified until a materially changed live attempt emits the new
+  closed stage diagnostic.
+- Root fix: Startup retains the upstream retry contract. Every runtime sensor,
+  display, and actuation transfer now shares the sensor producer's absolute
+  publication deadline with 100 ms headroom. Lower-priority display work is
+  deferred, not permanently disabled, when that budget is exhausted.
+- Diagnostic: Firmware retains only boot session, monotonic revision, closed
+  stage/outcome labels, and a coarse duration bucket. The public automation
+  failure projection deliberately omits boot session and all values, origins,
+  ports, USB/network identifiers, and raw traces.
+- Focused proof: The original regression passed three uncached runs; retry,
+  diagnostic, source-ownership, campaign-marker, host parsing, failure
+  precedence, redaction, and API command-effects tests passed. The complete
+  firmware target also built successfully.
+- Next action: Run the mandatory repository gates, review the exact diff, then
+  commit and push before defining any attempt-032 hardware contract.

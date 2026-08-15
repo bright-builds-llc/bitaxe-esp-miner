@@ -23,7 +23,7 @@ use embedded_graphics::{
 use embedded_hal::i2c::I2c;
 use ssd1306::{command::AddrMode, prelude::*, I2CDisplayInterface, Ssd1306};
 
-use crate::safety_adapter::{BitaxeI2cBus, RuntimeI2cOwner};
+use crate::safety_adapter::{BitaxeI2cBus, RuntimeI2cBudget, RuntimeI2cOwner};
 
 pub const DISPLAY_I2C_ADDRESS: u8 = 0x3c;
 pub const DISPLAY_I2C_SDA_GPIO: i32 = 47;
@@ -89,10 +89,11 @@ impl RuntimeDisplayOwner {
     pub fn render_runtime_screen(
         &mut self,
         owner: &mut RuntimeI2cOwner<'_>,
+        budget: &mut RuntimeI2cBudget,
         frame: &ScreenFrame,
     ) -> Result<()> {
         render_lines(
-            owner.display(),
+            owner.display(budget),
             frame.private_lines(),
             self.configuration,
             false,
@@ -110,6 +111,7 @@ impl RuntimeDisplayOwner {
     pub fn service_power(
         &mut self,
         owner: &mut RuntimeI2cOwner<'_>,
+        budget: &mut RuntimeI2cBudget,
         now_ms: u64,
         priority_visible: bool,
     ) -> Result<()> {
@@ -121,7 +123,7 @@ impl RuntimeDisplayOwner {
             return Ok(());
         };
         set_display_power(
-            owner.display(),
+            owner.display(budget),
             self.configuration,
             command == DisplayPowerCommand::TurnOn,
         )

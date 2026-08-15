@@ -7,6 +7,7 @@ use bitaxe_stratum::v1::production_session::{
 use bitaxe_stratum::v1::state::MiningOperatorIntent;
 use serde::Serialize;
 
+use crate::operator_sensor_diagnostics::OperatorSensorDiagnostic;
 use crate::settings_adapter::MiningCampaignStage;
 
 #[cfg(test)]
@@ -282,7 +283,7 @@ impl CampaignStatusTracker {
                     .saturating_add(now_ms.saturating_sub(started))
             });
         let projection = CampaignStatusProjection {
-            schema: "mining-campaign-status-v12",
+            schema: "mining-campaign-status-v13",
             stage: self.stage.label(),
             lease_id: self.retained_maybe_lease.map(|lease| lease.id().raw()),
             campaign_state: campaign_state_label(snapshot.campaign_state),
@@ -309,6 +310,9 @@ impl CampaignStatusTracker {
                 .map_or("none", |blocker| blocker.label()),
             protocol_gate,
             readiness_transition: CampaignReadinessTransitionProjection::from(readiness_transition),
+            operator_sensor: OperatorSensorDiagnosticProjection::from(
+                crate::operator_sensor_diagnostics::maybe_latest_pressure(),
+            ),
             resumable_pause_safe_stop: match self.resumable_pause_safe_stop(snapshot) {
                 ResumablePauseSafeStopStatus::NotRequired => "not_required",
                 ResumablePauseSafeStopStatus::Pending => "pending",
@@ -434,7 +438,18 @@ mod tests {
         let value: Value = serde_json::from_str(&marker).expect("marker should be JSON");
 
         // Assert
-        assert_eq!(value["schema"], "mining-campaign-status-v12");
+        assert_eq!(value["schema"], "mining-campaign-status-v13");
+        assert_eq!(
+            value["operator_sensor"],
+            serde_json::json!({
+                "available": false,
+                "boot_session": 0,
+                "revision": 0,
+                "stage": "none",
+                "outcome": "none",
+                "duration_bucket": "none",
+            })
+        );
         assert_eq!(value["resumable_pause_safe_stop"], "not_required");
         assert_eq!(value["protocol_gate"], "ready");
         assert_eq!(

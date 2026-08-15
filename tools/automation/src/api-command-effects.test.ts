@@ -80,6 +80,15 @@ const readyReadinessTransition = {
   pending_observation_recovered: true,
 } as const;
 
+const unavailableOperatorSensor = {
+  available: false,
+  boot_session: 0,
+  revision: 0,
+  stage: "none",
+  outcome: "none",
+  duration_bucket: "none",
+} as const;
+
 async function privateJson(output: string, value: unknown): Promise<void> {
   await writeFile(output, `${JSON.stringify(value)}\n`, { mode: 0o600 });
   await chmod(output, 0o600);
@@ -119,6 +128,7 @@ function fakePort(
   readinessMode: "ready" | "malformed" | "missing" = "ready",
   checkpointMode: "absent" | "malformed" | "ordered" | "replayed" | "wrong_mode" | "wrong_order" = "ordered",
   commandEffects: Readonly<Record<string, unknown>> = completeEffects,
+  operatorSensor: Readonly<Record<string, unknown>> = unavailableOperatorSensor,
 ) {
   return createFakeProcessPort(async (spec) => {
     if (spec.program === "/sbin/route") return ok("interface: en0\n");
@@ -238,7 +248,7 @@ function fakePort(
         await writeFile(path.join(campaign, "campaign-flash.private.json"), flashDiagnosticsDocument, { mode: 0o600 });
       }
       await privateJson(path.join(campaign, "campaign-result.json"), {
-        schema: "mining-campaign-result-v8",
+        schema: "mining-campaign-result-v9",
         stage: "command-effects",
         status: campaignFails ? "failed" : "accepted",
         terminal_category: campaignFails ? "command_request_failed" : "command_effects_complete",
@@ -253,6 +263,7 @@ function fakePort(
         safe_stop: campaignFails ? "pending" : "confirmed",
         usb_cleanup: "ready",
         qualified_candidate_count: 1,
+        operator_sensor: operatorSensor,
         flash_diagnostics_sha256: createHash("sha256").update(flashDiagnosticsDocument).digest("hex"),
         redacted: true,
       });
@@ -452,6 +463,122 @@ test("campaign failure keeps its primary category and reports secondary recovery
     recovery_attempted: true,
     secondary_recovery_failure: false,
   });
+  await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
+});
+
+test("campaign failure exposes only a closed operator sensor diagnostic", async () => {
+  // Arrange
+  const value = await fixture();
+  const diagnostic = {
+    available: true,
+    boot_session: 17,
+    revision: 3,
+    stage: "display",
+    outcome: "budget_exhausted",
+    duration_bucket: "under_500_ms",
+  } as const;
+  // Act
+  const error = await captureApiCommandEffects(
+    value.root,
+    value.options,
+    fakePort(
+      value.root,
+      readySession,
+      true,
+      "ready",
+      "ready",
+      "ready",
+      "ordered",
+      completeEffects,
+      diagnostic,
+    ),
+    path.join(value.root, "bin", "api-command-effects-stratum-pool"),
+    path.join(value.root, "bin", "flash"),
+    path.join(value.root, "bin", "device-session"),
+    discardCheckpoint,
+  ).then(() => undefined, (caught: unknown) => caught);
+
+  // Assert
+  assert(error instanceof ApiCommandEffectsError);
+  assert.equal(error.category, "hardware_blocked");
+  assert.deepEqual(error.publicValue["operator_sensor"], {
+    available: true,
+    revision: 3,
+    stage: "display",
+    outcome: "budget_exhausted",
+    duration_bucket: "under_500_ms",
+  });
+  assert.doesNotMatch(JSON.stringify(error.publicValue), /boot_session|private-sensitive-port|192\.0\.2\.44/u);
+});
+
+test("malformed optional diagnostic cannot erase campaign recovery facts", async () => {
+  // Arrange
+  const value = await fixture();
+  const contradictoryDiagnostic = {
+    ...unavailableOperatorSensor,
+    revision: 1,
+  };
+  // Act
+  const error = await captureApiCommandEffects(
+    value.root,
+    value.options,
+    fakePort(
+      value.root,
+      readySession,
+      true,
+      "ready",
+      "ready",
+      "ready",
+      "ordered",
+      completeEffects,
+      contradictoryDiagnostic,
+    ),
+    path.join(value.root, "bin", "api-command-effects-stratum-pool"),
+    path.join(value.root, "bin", "flash"),
+    path.join(value.root, "bin", "device-session"),
+    discardCheckpoint,
+  ).then(() => undefined, (caught: unknown) => caught);
+
+  // Assert
+  assert(error instanceof ApiCommandEffectsError);
+  assert.equal(error.category, "hardware_blocked");
+  assert.equal(error.publicValue["safe_stop_confirmed"], true);
+  assert.equal(error.publicValue["cleanup_complete"], true);
+  assert.equal(error.publicValue["operator_sensor"], undefined);
+});
+
+test("accepted campaign rejects a contradictory operator sensor diagnostic", async () => {
+  // Arrange
+  const value = await fixture();
+  const contradictoryDiagnostic = {
+    ...unavailableOperatorSensor,
+    revision: 1,
+  };
+
+  // Act
+  const error = await captureApiCommandEffects(
+    value.root,
+    value.options,
+    fakePort(
+      value.root,
+      readySession,
+      false,
+      "ready",
+      "ready",
+      "ready",
+      "ordered",
+      completeEffects,
+      contradictoryDiagnostic,
+    ),
+    path.join(value.root, "bin", "api-command-effects-stratum-pool"),
+    path.join(value.root, "bin", "flash"),
+    path.join(value.root, "bin", "device-session"),
+    discardCheckpoint,
+  ).then(() => undefined, (caught: unknown) => caught);
+
+  // Assert
+  assert(error instanceof ApiCommandEffectsError);
+  assert.equal(error.category, "evidence_invalid");
   await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
 });
 

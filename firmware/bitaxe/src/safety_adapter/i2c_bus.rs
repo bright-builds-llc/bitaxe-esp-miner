@@ -18,7 +18,10 @@ use super::{
     emc2101::{
         Emc2101ReadRegister, Emc2101RegisterReader, Emc2101RegisterWriter, Emc2101WriteRegister,
     },
-    i2c_retry::{retry_transfer, I2C_TRANSACTION_TIMEOUT_MS},
+    i2c_retry::{
+        retry_runtime_transfer, retry_transfer, RuntimeI2cBudget, RuntimeI2cTransferError,
+        I2C_TRANSACTION_TIMEOUT_MS,
+    },
 };
 
 pub const I2C_SDA_GPIO: i32 = 47;
@@ -54,9 +57,10 @@ impl<'d> BitaxeI2cBus<'d> {
         Ok(Self { driver })
     }
 
-    pub(crate) fn startup_display(&mut self) -> DisplayBus<'_, 'd> {
+    pub(crate) fn startup_display(&mut self) -> DisplayBus<'_, '_, 'd> {
         DisplayBus {
             driver: &mut self.driver,
+            maybe_budget: None,
         }
     }
 
@@ -75,13 +79,27 @@ fn retry_driver_transfer<T, E>(transfer: impl FnMut() -> Result<T, E>) -> Result
     retry_transfer(transfer, FreeRtos::delay_ms)
 }
 
-pub(crate) struct DisplayBus<'bus, 'd> {
+fn retry_runtime_driver_transfer<T, E>(
+    budget: &mut RuntimeI2cBudget,
+    transfer: impl FnMut(u64) -> Result<T, E>,
+) -> Result<T, RuntimeI2cTransferError<E>> {
+    retry_runtime_transfer(
+        budget,
+        crate::runtime_uptime::millis,
+        transfer,
+        FreeRtos::delay_ms,
+    )
+}
+
+pub(crate) struct DisplayBus<'bus, 'budget, 'd> {
     driver: &'bus mut I2cDriver<'d>,
+    maybe_budget: Option<&'budget mut RuntimeI2cBudget>,
 }
 
 #[derive(Debug)]
 pub(crate) enum DisplayI2cError {
     Driver(I2cError),
+    BudgetExhausted,
     RestrictedAddress,
 }
 
@@ -89,7 +107,7 @@ impl EmbeddedHalI2cError for DisplayI2cError {
     fn kind(&self) -> ErrorKind {
         match self {
             Self::Driver(error) => error.kind(),
-            Self::RestrictedAddress => ErrorKind::Other,
+            Self::BudgetExhausted | Self::RestrictedAddress => ErrorKind::Other,
         }
     }
 }
@@ -107,46 +125,77 @@ pub(crate) struct RuntimeI2cOwner<'d> {
 }
 
 impl<'d> RuntimeI2cOwner<'d> {
-    pub(crate) fn display(&mut self) -> DisplayBus<'_, 'd> {
+    pub(crate) fn display<'bus, 'budget>(
+        &'bus mut self,
+        budget: &'budget mut RuntimeI2cBudget,
+    ) -> DisplayBus<'bus, 'budget, 'd> {
         DisplayBus {
             driver: &mut self.driver,
+            maybe_budget: Some(budget),
         }
     }
 
-    pub(super) fn sensors(&mut self) -> ReadOnlySensorBus<'_, 'd> {
+    pub(super) fn sensors<'bus, 'budget>(
+        &'bus mut self,
+        budget: &'budget mut RuntimeI2cBudget,
+    ) -> ReadOnlySensorBus<'bus, 'budget, 'd> {
         ReadOnlySensorBus {
             driver: &mut self.driver,
+            budget,
         }
     }
 
-    pub(super) fn actuators(&mut self) -> ActuationBus<'_, 'd> {
+    pub(super) fn actuators<'bus, 'budget>(
+        &'bus mut self,
+        budget: &'budget mut RuntimeI2cBudget,
+    ) -> ActuationBus<'bus, 'budget, 'd> {
         ActuationBus {
             driver: &mut self.driver,
+            budget,
         }
     }
 }
 
-impl ErrorType for DisplayBus<'_, '_> {
+impl ErrorType for DisplayBus<'_, '_, '_> {
     type Error = DisplayI2cError;
 }
 
-impl EmbeddedHalI2c for DisplayBus<'_, '_> {
+impl DisplayBus<'_, '_, '_> {
+    fn transfer<T, E>(
+        &mut self,
+        mut transfer: impl FnMut(&mut I2cDriver<'_>, esp_idf_sys::TickType_t) -> Result<T, E>,
+    ) -> Result<T, DisplayI2cError>
+    where
+        I2cError: From<E>,
+    {
+        let driver = &mut self.driver;
+        let result = if let Some(budget) = self.maybe_budget.as_deref_mut() {
+            retry_runtime_driver_transfer(budget, |timeout_ms| {
+                transfer(driver, TickType::new_millis(timeout_ms).ticks())
+            })
+            .map_err(|error| match error {
+                RuntimeI2cTransferError::Driver(error) => {
+                    DisplayI2cError::Driver(I2cError::from(error))
+                }
+                RuntimeI2cTransferError::BudgetExhausted => DisplayI2cError::BudgetExhausted,
+            })
+        } else {
+            retry_driver_transfer(|| transfer(driver, transaction_timeout_ticks()))
+                .map_err(|error| DisplayI2cError::Driver(I2cError::from(error)))
+        };
+        result
+    }
+}
+
+impl EmbeddedHalI2c for DisplayBus<'_, '_, '_> {
     fn read(&mut self, address: u8, output: &mut [u8]) -> Result<(), Self::Error> {
         restrict_display_address(address)?;
-        retry_driver_transfer(|| {
-            self.driver
-                .read(address, output, transaction_timeout_ticks())
-        })
-        .map_err(|error| DisplayI2cError::Driver(I2cError::from(error)))
+        self.transfer(|driver, timeout| driver.read(address, output, timeout))
     }
 
     fn write(&mut self, address: u8, input: &[u8]) -> Result<(), Self::Error> {
         restrict_display_address(address)?;
-        retry_driver_transfer(|| {
-            self.driver
-                .write(address, input, transaction_timeout_ticks())
-        })
-        .map_err(|error| DisplayI2cError::Driver(I2cError::from(error)))
+        self.transfer(|driver, timeout| driver.write(address, input, timeout))
     }
 
     fn write_read(
@@ -156,11 +205,7 @@ impl EmbeddedHalI2c for DisplayBus<'_, '_> {
         output: &mut [u8],
     ) -> Result<(), Self::Error> {
         restrict_display_address(address)?;
-        retry_driver_transfer(|| {
-            self.driver
-                .write_read(address, input, output, transaction_timeout_ticks())
-        })
-        .map_err(|error| DisplayI2cError::Driver(I2cError::from(error)))
+        self.transfer(|driver, timeout| driver.write_read(address, input, output, timeout))
     }
 
     fn transaction(
@@ -169,11 +214,7 @@ impl EmbeddedHalI2c for DisplayBus<'_, '_> {
         operations: &mut [Operation<'_>],
     ) -> Result<(), Self::Error> {
         restrict_display_address(address)?;
-        retry_driver_transfer(|| {
-            self.driver
-                .transaction(address, operations, transaction_timeout_ticks())
-        })
-        .map_err(|error| DisplayI2cError::Driver(I2cError::from(error)))
+        self.transfer(|driver, timeout| driver.transaction(address, operations, timeout))
     }
 }
 
@@ -194,11 +235,12 @@ impl Ina260ReadRegister {
     }
 }
 
-pub(crate) struct ReadOnlySensorBus<'bus, 'd> {
+pub(crate) struct ReadOnlySensorBus<'bus, 'budget, 'd> {
     driver: &'bus mut I2cDriver<'d>,
+    budget: &'budget mut RuntimeI2cBudget,
 }
 
-impl ReadOnlySensorBus<'_, '_> {
+impl ReadOnlySensorBus<'_, '_, '_> {
     pub(crate) fn read_ina260(
         &mut self,
         register: Ina260ReadRegister,
@@ -208,19 +250,23 @@ impl ReadOnlySensorBus<'_, '_> {
     }
 
     fn read_register(&mut self, device_addr: u8, register: u8, output: &mut [u8]) -> Result<()> {
-        retry_driver_transfer(|| {
+        retry_runtime_driver_transfer(self.budget, |timeout_ms| {
             self.driver.write_read(
                 device_addr,
                 &[register],
                 output,
-                transaction_timeout_ticks(),
+                TickType::new_millis(timeout_ms).ticks(),
             )
+        })
+        .map_err(|error| match error {
+            RuntimeI2cTransferError::Driver(error) => anyhow::Error::new(error),
+            RuntimeI2cTransferError::BudgetExhausted => anyhow::anyhow!("runtime budget exhausted"),
         })
         .with_context(|| format!("i2c read register 0x{register:02x} device 0x{device_addr:02x}"))
     }
 }
 
-impl Emc2101RegisterReader for ReadOnlySensorBus<'_, '_> {
+impl Emc2101RegisterReader for ReadOnlySensorBus<'_, '_, '_> {
     type Error = anyhow::Error;
 
     fn read_emc2101(
@@ -232,21 +278,29 @@ impl Emc2101RegisterReader for ReadOnlySensorBus<'_, '_> {
     }
 }
 
-pub(super) struct ActuationBus<'bus, 'd> {
+pub(super) struct ActuationBus<'bus, 'budget, 'd> {
     driver: &'bus mut I2cDriver<'d>,
+    budget: &'budget mut RuntimeI2cBudget,
 }
 
-impl ActuationBus<'_, '_> {
+impl ActuationBus<'_, '_, '_> {
     fn write_register(&mut self, device_addr: u8, register: u8, value: u8) -> Result<()> {
-        retry_driver_transfer(|| {
-            self.driver
-                .write(device_addr, &[register, value], transaction_timeout_ticks())
+        retry_runtime_driver_transfer(self.budget, |timeout_ms| {
+            self.driver.write(
+                device_addr,
+                &[register, value],
+                TickType::new_millis(timeout_ms).ticks(),
+            )
+        })
+        .map_err(|error| match error {
+            RuntimeI2cTransferError::Driver(error) => anyhow::Error::new(error),
+            RuntimeI2cTransferError::BudgetExhausted => anyhow::anyhow!("runtime budget exhausted"),
         })
         .with_context(|| format!("i2c write register 0x{register:02x} device 0x{device_addr:02x}"))
     }
 }
 
-impl Emc2101RegisterWriter for ActuationBus<'_, '_> {
+impl Emc2101RegisterWriter for ActuationBus<'_, '_, '_> {
     type Error = anyhow::Error;
 
     fn write_emc2101(
@@ -258,7 +312,7 @@ impl Emc2101RegisterWriter for ActuationBus<'_, '_> {
     }
 }
 
-impl Ds4432uRegisterWriter for ActuationBus<'_, '_> {
+impl Ds4432uRegisterWriter for ActuationBus<'_, '_, '_> {
     type Error = anyhow::Error;
 
     fn write_ds4432u(

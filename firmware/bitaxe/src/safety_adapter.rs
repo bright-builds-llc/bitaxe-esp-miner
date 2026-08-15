@@ -31,6 +31,7 @@ use bitaxe_safety::{power::Ina260RawSample, sensor_acquisition::AcquisitionOutco
 use request_queue::{enqueue, ActuationEnvelope, EnqueueOutcome};
 
 pub(crate) use adc::Ultra205CoreVoltageAdc;
+pub(crate) use i2c_retry::{RuntimeI2cBudget, RuntimeI2cBudgetOutcome};
 
 const ACTUATION_REQUEST_CAPACITY: usize = 4;
 const ACTUATION_REPLY_CAPACITY: usize = 1;
@@ -226,6 +227,7 @@ pub(crate) fn service_next_safety_actuation_request(
     owner: &mut RuntimeI2cOwner<'_>,
     inbox: &SafetyActuationOwnerInbox,
     timeout: Duration,
+    sensor_publish_deadline_ms: u64,
 ) -> SafetyActuationOwnerWait {
     let envelope = match inbox.request_receiver.recv_timeout(timeout) {
         Ok(envelope) => envelope,
@@ -237,7 +239,17 @@ pub(crate) fn service_next_safety_actuation_request(
     };
 
     let (command, reply_sender) = envelope.into_parts();
-    let reply = apply_safety_actuation(owner, command);
+    let started_at_ms = crate::runtime_uptime::millis();
+    let mut budget = RuntimeI2cBudget::new(sensor_publish_deadline_ms);
+    let reply = apply_safety_actuation(owner, &mut budget, command);
+    if let Some(diagnostic) = crate::operator_sensor_diagnostics::record_stage(
+        crate::operator_sensor_diagnostics::OperatorSensorStage::Actuation,
+        started_at_ms,
+        crate::runtime_uptime::millis(),
+        operator_sensor_outcome(budget.outcome()),
+    ) {
+        crate::info_retained(&diagnostic.marker());
+    }
     if reply == SafetyActuationReply::HardwareWriteFailed {
         log::warn!("safety_actuation=fault category=hardware_write_failed");
     }
@@ -247,11 +259,31 @@ pub(crate) fn service_next_safety_actuation_request(
     SafetyActuationOwnerWait::Serviced
 }
 
+fn operator_sensor_outcome(
+    outcome: RuntimeI2cBudgetOutcome,
+) -> crate::operator_sensor_diagnostics::OperatorSensorOutcome {
+    match outcome {
+        RuntimeI2cBudgetOutcome::Ready => {
+            crate::operator_sensor_diagnostics::OperatorSensorOutcome::Ready
+        }
+        RuntimeI2cBudgetOutcome::Recovered => {
+            crate::operator_sensor_diagnostics::OperatorSensorOutcome::Recovered
+        }
+        RuntimeI2cBudgetOutcome::DriverFailed => {
+            crate::operator_sensor_diagnostics::OperatorSensorOutcome::DriverFailed
+        }
+        RuntimeI2cBudgetOutcome::BudgetExhausted => {
+            crate::operator_sensor_diagnostics::OperatorSensorOutcome::BudgetExhausted
+        }
+    }
+}
+
 fn apply_safety_actuation(
     owner: &mut RuntimeI2cOwner<'_>,
+    budget: &mut RuntimeI2cBudget,
     command: SafetyActuationCommand,
 ) -> SafetyActuationReply {
-    let mut bus = owner.actuators();
+    let mut bus = owner.actuators(budget);
     let result = match command {
         SafetyActuationCommand::SetFanDuty(percent) => {
             emc2101::write_fan_duty_percent(&mut bus, percent.get())
@@ -268,20 +300,23 @@ fn apply_safety_actuation(
 
 pub(crate) fn read_power_acquisition(
     owner: &mut RuntimeI2cOwner<'_>,
+    budget: &mut RuntimeI2cBudget,
 ) -> AcquisitionOutcome<Ina260RawSample> {
-    ina260::read_acquisition(&mut owner.sensors())
+    ina260::read_acquisition(&mut owner.sensors(budget))
 }
 
 pub(crate) fn read_asic_temperature_acquisition(
     owner: &mut RuntimeI2cOwner<'_>,
+    budget: &mut RuntimeI2cBudget,
 ) -> AcquisitionOutcome<f64> {
-    emc2101::read_ultra205_asic_temperature_acquisition(&mut owner.sensors())
+    emc2101::read_ultra205_asic_temperature_acquisition(&mut owner.sensors(budget))
 }
 
 pub(crate) fn read_tachometer_acquisition(
     owner: &mut RuntimeI2cOwner<'_>,
+    budget: &mut RuntimeI2cBudget,
 ) -> AcquisitionOutcome<u16> {
-    emc2101::read_tachometer_acquisition(&mut owner.sensors())
+    emc2101::read_tachometer_acquisition(&mut owner.sensors(budget))
 }
 
 pub(crate) fn read_core_voltage_acquisition(

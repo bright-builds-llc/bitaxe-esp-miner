@@ -43,8 +43,10 @@ mod safety_adapter {
         _lifetime: PhantomData<&'d ()>,
     }
 
+    pub(crate) struct RuntimeI2cBudget;
+
     impl RuntimeI2cOwner<'_> {
-        pub(crate) fn display(&mut self) -> NoopI2c {
+        pub(crate) fn display(&mut self, _budget: &mut RuntimeI2cBudget) -> NoopI2c {
             NoopI2c
         }
     }

@@ -11,10 +11,10 @@ mod readiness;
 pub(super) use readiness::ReadinessTransitionMarker;
 mod pause;
 pub(super) use pause::*;
-
+mod operator_sensor;
+pub(super) use operator_sensor::*;
 mod asic;
 pub(super) use asic::*;
-
 const JOB_TRANSITION_MAXIMUM_MARKER_GAP_MS: u64 = 5_000;
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -27,7 +27,6 @@ pub(super) enum CampaignStateMarker {
     SafeStopping,
     Consumed,
 }
-
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub(super) enum CampaignProfileMarker {
@@ -35,7 +34,6 @@ pub(super) enum CampaignProfileMarker {
     Conservative,
     UpstreamDefault,
 }
-
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub(super) enum SubmitOutcomeMarker {
@@ -43,7 +41,6 @@ pub(super) enum SubmitOutcomeMarker {
     Accepted,
     Rejected,
 }
-
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub(super) enum CampaignTerminalReasonMarker {
@@ -306,6 +303,7 @@ pub(super) struct CampaignStatusMarker {
     pub(super) terminal_reason: CampaignTerminalReasonMarker,
     pub(super) protocol_gate: ProtocolGateMarker,
     pub(super) readiness_transition: ReadinessTransitionMarker,
+    pub(super) operator_sensor: OperatorSensorDiagnosticMarker,
     pub(super) resumable_pause_safe_stop: ResumablePauseSafeStopMarker,
     pub(super) safety: SafetyMarker,
     pub(super) fresh_observation_count: u8,
@@ -439,6 +437,9 @@ pub(super) fn campaign_marker_failure(
         return Some(CampaignTerminalCategory::MineOnBootEnabled);
     }
     if !marker.resumable_pause_safe_stop.is_valid_for(marker.stage) {
+        return Some(CampaignTerminalCategory::MarkerInvalid);
+    }
+    if !marker.operator_sensor.is_valid() {
         return Some(CampaignTerminalCategory::MarkerInvalid);
     }
     if marker.safety == SafetyMarker::Stale

@@ -19,6 +19,7 @@ pub(super) struct CampaignStatusProjection {
     pub(super) terminal_reason: &'static str,
     pub(super) protocol_gate: &'static str,
     pub(super) readiness_transition: CampaignReadinessTransitionProjection,
+    pub(super) operator_sensor: OperatorSensorDiagnosticProjection,
     pub(super) resumable_pause_safe_stop: &'static str,
     pub(super) safety: &'static str,
     pub(super) fresh_observation_count: u8,
@@ -30,6 +31,39 @@ pub(super) struct CampaignStatusProjection {
     pub(super) mineonboot: bool,
     pub(super) safe_stop: &'static str,
     pub(super) failure: CampaignFailureDiagnostic,
+}
+
+#[derive(Serialize)]
+pub(super) struct OperatorSensorDiagnosticProjection {
+    available: bool,
+    boot_session: u64,
+    revision: u64,
+    stage: &'static str,
+    outcome: &'static str,
+    duration_bucket: &'static str,
+}
+
+impl From<Option<OperatorSensorDiagnostic>> for OperatorSensorDiagnosticProjection {
+    fn from(maybe_diagnostic: Option<OperatorSensorDiagnostic>) -> Self {
+        let Some(diagnostic) = maybe_diagnostic else {
+            return Self {
+                available: false,
+                boot_session: 0,
+                revision: 0,
+                stage: "none",
+                outcome: "none",
+                duration_bucket: "none",
+            };
+        };
+        Self {
+            available: true,
+            boot_session: diagnostic.boot_session(),
+            revision: diagnostic.revision(),
+            stage: diagnostic.stage().label(),
+            outcome: diagnostic.outcome().label(),
+            duration_bucket: diagnostic.duration_bucket().label(),
+        }
+    }
 }
 
 #[derive(Serialize)]

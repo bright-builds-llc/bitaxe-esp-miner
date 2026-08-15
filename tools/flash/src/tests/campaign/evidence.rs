@@ -70,6 +70,17 @@ fn campaign_evidence_never_projects_raw_serial_or_credentials() {
     .expect("network continuity bytes");
     let result = read_campaign_result(&command);
     assert_eq!(
+        result["operator_sensor"],
+        serde_json::json!({
+            "available": false,
+            "boot_session": 0,
+            "revision": 0,
+            "stage": "none",
+            "outcome": "none",
+            "duration_bucket": "none",
+        })
+    );
+    assert_eq!(
         result["diagnostics_sha256"],
         sha256_bytes(&diagnostic_bytes)
     );
