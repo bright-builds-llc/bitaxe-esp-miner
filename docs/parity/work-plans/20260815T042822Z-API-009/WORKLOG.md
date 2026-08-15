@@ -32,3 +32,24 @@
   only implementation boundary. API-009 remains `implemented`.
 - Blocker or next safe action: Commit and push this checkpoint, then add the
   red regression before editing production state-machine behavior.
+
+## 2026-08-15T04:42:00Z | paused-count baseline repair complete
+
+- Source commit: `697688f0cda007ed43da380af06e32fa512a4fa2`.
+- Actions: Added the red live-shaped regression, captured the positive count
+  from the fully joined paused/safe-stopped sample immediately before the sole
+  dismissal request, and added a fail-closed zero-count boundary test.
+- Verification: The new pause-convergence regression failed against the prior
+  source because the state machine retained the earlier notification count,
+  then passed after the repair. Twenty-five command-effects tests, all 292
+  flash tests, ordered Cargo format/lint/build/test, Bright Builds, all 44
+  Bazel tests, parity/progress, redaction, reference cleanliness, firmware
+  build, immutable-plan digest, unique-task, selector, sensitive-output, and
+  diff checks pass.
+- Evidence: Public source and deterministic loopback tests only. No credential
+  contents, protected traces, detector, USB, device/network, display, mining,
+  hardware-control, UART, or pin interface was accessed.
+- Outcome: The software fix is pushed. API-009 remains `implemented`, no
+  checklist transition applies, and no live hardware claim is made.
+- Blocker or next safe action: Close this software-only plan, then create a
+  fresh immutable attempt-027 plan before any device access.

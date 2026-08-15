@@ -3485,10 +3485,10 @@ attempt-027 is authorized. See the linked `CLOSURE.md`.
 Paused-count baseline software plan:
 `docs/parity/work-plans/20260815T042822Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable software-only plan.
-- [ ] Reproduce the stale initial-notification count comparison with a red
+- [x] Commit and push the immutable software-only plan.
+- [x] Reproduce the stale initial-notification count comparison with a red
       state-machine regression.
-- [ ] Bind preservation to the positive paused count sampled immediately
+- [x] Bind preservation to the positive paused count sampled immediately
       before the sole dismissal request; run all mandatory gates and close
       without API-009 promotion or attempt-027.
 
@@ -3496,6 +3496,17 @@ Software-only authorization: source, tests, loopback fixtures, documentation,
 tracker, worklog, closure, and firmware build only. Credentials, protected
 traces, detector, USB, device/network, display, mining, controls, public
 evidence, checklist promotion, and attempt-027 are prohibited.
+
+Paused-count software-plan completion review: pushed source `697688f0` binds
+the preservation baseline to the positive count sampled after HTTP pause and
+serial safe stop have joined, immediately before the sole dismissal request.
+The live-shaped regression failed against the prior source when count advanced
+during pause convergence and passes after the fix; a separate test proves zero
+cannot reach dismissal. Focused tests, all 292 flash tests, ordered Cargo,
+Bright Builds, all 44 Bazel tests, parity/progress, redaction, reference,
+firmware, immutable-plan, unique-task, selector, sensitive-output, and diff
+gates pass. API-009 remains `implemented`; the residual risk is live timing,
+so a separately planned attempt-027 is the next safe action.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
