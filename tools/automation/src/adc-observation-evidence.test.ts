@@ -9,6 +9,7 @@ import {
   captureAdcObservationEvidence,
   AdcObservationEvidenceError,
   validateAdcObservationSourceSemantics,
+  validateAdcObservationTaskContract,
 } from "./adc-observation-evidence.js";
 import {
   createFakeProcessPort,
@@ -160,17 +161,17 @@ async function fixture(name: string) {
   }
   const planDocument = [
     "- Parity row: `IO-002`",
-    "- Active task: `task-parity-io002-adc-observation-attempt-002`",
+    "- Active task: `task-parity-io002-adc-observation-attempt-003`",
     "",
   ].join("\n");
-  const planRelative = "docs/parity/work-plans/20260815T222316Z-IO-002/PLAN.md";
+  const planRelative = "docs/parity/work-plans/20260815T225042Z-IO-002/PLAN.md";
   await mkdir(path.dirname(path.join(root, planRelative)), { recursive: true });
   await writeFile(path.join(root, planRelative), planDocument);
   await writeFile(path.join(root, "TASKS.md"), [
-    "### task-parity-io002-adc-observation-attempt-002 | fixture",
-    "Plan: `docs/parity/work-plans/20260815T222316Z-IO-002/PLAN.md`.",
+    "### task-parity-io002-adc-observation-attempt-003 | fixture",
+    "Plan: `docs/parity/work-plans/20260815T225042Z-IO-002/PLAN.md`.",
     "Schema: `bitaxe-adc-observation-evidence-v1`.",
-    "Attempt: `attempt-002`.",
+    "Attempt: `attempt-003`.",
     "",
   ].join("\n"));
   const contractRelative = "crates/bitaxe-api/fixtures/api/system-info-contract-v1.json";
@@ -187,7 +188,7 @@ async function fixture(name: string) {
     app_elf_sha256: appElfSha256,
   }));
   await writeFile(credentials, "{}\n", { mode: 0o600 });
-  const wrapper = path.join(root, "scratch/io002-adc/wrapper-002");
+  const wrapper = path.join(root, "scratch/io002-adc/wrapper-003");
   await mkdir(wrapper, { recursive: true, mode: 0o700 });
   await chmod(wrapper, 0o700);
   for (const outputName of ["detector.stdout", "detector.stderr", "capture.stdout", "capture.stderr"]) {
@@ -201,10 +202,10 @@ async function fixture(name: string) {
     admittedPlanSha256: createHash("sha256").update(planDocument).digest("hex"),
     projection: path.join(root, "docs/parity/evidence/io002-adc/adc-observation-projection.json"),
     options: {
-      privateRoot: "scratch/io002-adc/attempt-002",
+      privateRoot: "scratch/io002-adc/attempt-003",
       packageManifest: manifest,
       wifiCredentials: credentials,
-      detectorOutput: "scratch/io002-adc/wrapper-002/detector.stdout",
+      detectorOutput: "scratch/io002-adc/wrapper-003/detector.stdout",
       port: "/dev/private-port",
       projection: "docs/parity/evidence/io002-adc/adc-observation-projection.json",
       captureTimeoutSeconds: 360,
@@ -346,6 +347,45 @@ test("checked-in ADC source semantics match the immutable contract", async () =>
 
   // Assert
   await assert.doesNotReject(result);
+});
+
+test("checked-in ADC task and plan satisfy the immutable preflight", async () => {
+  // Arrange
+  const maybeRunfiles = process.env["RUNFILES_DIR"];
+  const workspaceRoot = maybeRunfiles === undefined ? process.cwd() : path.join(maybeRunfiles, "_main");
+
+  // Act
+  const result = validateAdcObservationTaskContract(workspaceRoot);
+
+  // Assert
+  await assert.doesNotReject(result);
+});
+
+test("missing ADC schema binding fails before a child process can run", async () => {
+  // Arrange
+  const value = await fixture("missing-task-schema");
+  const taskPath = path.join(value.root, "TASKS.md");
+  const taskDocument = await readFile(taskPath, "utf8");
+  await writeFile(taskPath, taskDocument.replace("bitaxe-adc-observation-evidence-v1", "missing-schema"));
+  const restore = installHttp(value.contract);
+  const delegate = fakePort();
+  let childRuns = 0;
+  const countingPort = createFakeProcessPort(async (spec, maybeLifetime) => {
+    childRuns += 1;
+    return delegate.run(spec, maybeLifetime);
+  });
+
+  try {
+    // Act
+    const promise = capture(value, countingPort);
+
+    // Assert
+    await assert.rejects(promise, /IO-002 task contract is incomplete/u);
+    assert.equal(childRuns, 0);
+  } finally {
+    restore();
+    await rm(value.root, { recursive: true });
+  }
 });
 
 test("real child processes own flash git and validator boundaries", async () => {

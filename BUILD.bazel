@@ -85,6 +85,7 @@ js_library(
         "docs/parity/evidence/thr001-emc2101-thermal/thermal-projection.json",
         "docs/parity/work-plans/20260815T201754Z-THR-001/PLAN.md",
         "docs/parity/work-plans/20260815T210711Z-IO-002/PLAN.md",
+        "docs/parity/work-plans/20260815T225042Z-IO-002/PLAN.md",
         "docs/parity/work-plans/20260804T190000Z-UI-004/RESULT.md",
         "docs/parity/work-plans/20260813T045300Z-UI-004/PLAN.md",
     ],

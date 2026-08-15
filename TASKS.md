@@ -3938,7 +3938,7 @@ sweep without exposing sensor values, followed by a verified root-cause change.
       `docs/parity/work-plans/20260815T222316Z-IO-002/PLAN.md`, protected
       `attempt-002` paths, and public schema ordinal 2 without changing the
       production ADC, safety, mining, or hardware-control behavior.
-- [x] Run the complete focused and mandatory software/firmware/privacy gates,
+- [ ] Run the complete focused and mandatory software/firmware/privacy gates,
       commit and push the exact implementation, and build its package before
       any device access.
 - [x] Run only the plan's exact detector command and, after successful one-
@@ -3998,13 +3998,13 @@ this task authorizes neither a retry nor further hardware use.
 
 ### task-parity-io002-adc-observation-attempt-003 | 2026-08-15 | Preflight and verify disabled-state ADC observation
 
-- [ ] Bind `bitaxe-adc-observation-evidence-v1` to immutable plan
+- [x] Bind `bitaxe-adc-observation-evidence-v1` to immutable plan
       `docs/parity/work-plans/20260815T225042Z-IO-002/PLAN.md`, protected
       `attempt-003` paths, and public schema ordinal 3.
-- [ ] Move the exact real task/plan contract check before sensitive inputs and
+- [x] Move the exact real task/plan contract check before sensitive inputs and
       hardware effects, declare the plan in Bazel runfiles, and regression-test
       both the checked-in artifacts and missing-schema fail-before-effect path.
-- [ ] Run the complete focused and mandatory software/firmware/privacy gates,
+- [x] Run the complete focused and mandatory software/firmware/privacy gates,
       commit and push the exact implementation, and rebuild its clean package
       before device access.
 - [ ] Run only the plan's exact detector command and, after successful one-

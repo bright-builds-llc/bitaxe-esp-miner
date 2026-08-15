@@ -31,14 +31,14 @@ type FailureCategory = Extract<
   AutomationCategory,
   "hardware_blocked" | "evidence_invalid" | "timeout" | "process_failed"
 >;
-const expectedPrivateRoot = "scratch/io002-adc/attempt-002";
-const expectedWrapperRoot = "scratch/io002-adc/wrapper-002";
+const expectedPrivateRoot = "scratch/io002-adc/attempt-003";
+const expectedWrapperRoot = "scratch/io002-adc/wrapper-003";
 const expectedProjection =
   "docs/parity/evidence/io002-adc/adc-observation-projection.json";
-const expectedPlan = "docs/parity/work-plans/20260815T222316Z-IO-002/PLAN.md";
-const expectedPlanSha256 = "bc9d9d7be66a1bcf85ee3c1e9692bbcb865eac279f94f8e3d27679991dac9f08";
+const expectedPlan = "docs/parity/work-plans/20260815T225042Z-IO-002/PLAN.md";
+const expectedPlanSha256 = "e656644026e008f79b71696172cb5665f1379e7d677b22ac3a6be5253c40d78f";
 const expectedReferenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
-const activeTask = "task-parity-io002-adc-observation-attempt-002";
+const activeTask = "task-parity-io002-adc-observation-attempt-003";
 const expectedAttemptFiles = [
   "api.private.json",
   "final-evidence.private.json",
@@ -240,7 +240,7 @@ function validateTaskAndPlan(
   }
   const maybeEnd = taskDocument.indexOf("\n### ", start + heading.length);
   const block = taskDocument.slice(start, maybeEnd === -1 ? taskDocument.length : maybeEnd);
-  for (const required of [expectedPlan, "bitaxe-adc-observation-evidence-v1", "attempt-002"]) {
+  for (const required of [expectedPlan, "bitaxe-adc-observation-evidence-v1", "attempt-003"]) {
     if (!block.includes(required)) throw failure("evidence_invalid", "IO-002 task contract is incomplete");
   }
   if (sha256(planDocument) !== admittedPlanSha256
@@ -248,6 +248,17 @@ function validateTaskAndPlan(
     || !planDocument.includes(`- Active task: \`${activeTask}\``)) {
     throw failure("evidence_invalid", "IO-002 immutable plan binding is invalid");
   }
+}
+
+export async function validateAdcObservationTaskContract(
+  workspaceRoot: string,
+  admittedPlanSha256 = expectedPlanSha256,
+): Promise<void> {
+  const [taskDocument, planDocument] = await Promise.all([
+    readFile(path.join(workspaceRoot, "TASKS.md"), "utf8"),
+    readFile(path.join(workspaceRoot, expectedPlan), "utf8"),
+  ]);
+  validateTaskAndPlan(taskDocument, planDocument, admittedPlanSha256);
 }
 
 function requireUniqueFragment(document: string, fragment: string): void {
@@ -302,6 +313,7 @@ export async function captureAdcObservationEvidence(
   await requireAbsent(sourceProjection, "protected system info projection");
   await requireAbsent(projection, "final ADC projection");
   await requireAbsent(candidate, "ADC projection candidate");
+  await validateAdcObservationTaskContract(workspaceRoot, admittedPlanSha256);
 
   let source: SystemInfoEvidence;
   try {
@@ -340,10 +352,6 @@ export async function captureAdcObservationEvidence(
     if (websocketFile.value["event"] !== "update") {
       throw failure("evidence_invalid", "private WebSocket event is invalid");
     }
-    const planDocument = await readFile(path.join(workspaceRoot, expectedPlan), "utf8");
-    const taskDocument = await readFile(path.join(workspaceRoot, "TASKS.md"), "utf8");
-    validateTaskAndPlan(taskDocument, planDocument, admittedPlanSha256);
-
     const currentSourceCommit = await childText(processPort, gitProgram, ["rev-parse", "HEAD"], "current source identity");
     const pushedSourceCommit = await childText(processPort, gitProgram, ["rev-parse", "origin/main"], "pushed source identity");
     const referenceCommit = await childText(
@@ -390,7 +398,7 @@ export async function captureAdcObservationEvidence(
     const evidence: AdcObservationEvidence = {
       schema_version: "bitaxe-adc-observation-evidence-v1",
       board: 205,
-      attempt_ordinal: 2,
+      attempt_ordinal: 3,
       source_commit: currentSourceCommit,
       reference_commit: referenceCommit,
       package_manifest_sha256: source.package_manifest_sha256,
