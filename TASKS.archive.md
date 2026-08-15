@@ -7338,3 +7338,90 @@ test keeps the production and test files within their governed line budgets
 and prevents this orchestration collision from being mistaken for a campaign
 or hardware failure. No hardware effect occurred. The task is complete and
 archived at 2026-08-15T08:45:00Z.
+
+### task-api009-programmatic-pilot-attempt-034 | 2026-08-15 | Observe the corrected sensor diagnostic
+
+- [x] Require clean synchronized pushed source containing `3ae3c85e`, opaque
+      non-empty ignored Wi-Fi input, absent attempt/public paths, and a fresh
+      protected sibling `wrapper-034` path distinct from `attempt-034`.
+- [x] Build and validate the exact HEAD/reference package through `just package`.
+- [x] Create protected `detector-034`, run exactly one `just detect-ultra205`,
+      and advance only after its zero exit, private modes, and one-device
+      admission are confirmed.
+- [x] Invoke exactly once the existing `just api-command-effects-campaign`
+      command with `attempt-034`, the exact package, opaque credentials,
+      detector output, public projection, and 600-second bound. Redirect only
+      into the separate mode-`0700` `wrapper-034`; keep `attempt-034` absent for
+      command-owned freshness admission.
+- [x] Publish only a ready independently validated redacted projection;
+      otherwise withhold it and record the earliest typed category, the closed
+      highest-severity sensor diagnostic, and safe recovery/cleanup booleans.
+
+Objective/effects: obtain one live reading of the materially changed diagnostic
+and wrapper contract. The sole campaign may exact-package flash/reset, seed
+private Wi-Fi and a generated local fixture, conservatively initialize/mine for
+at most 600 active seconds, issue one each pause/dismiss/IDENTIFY/resume/software
+restart request, observe HTTP/WebSocket/receive-only native USB, and perform
+same-device recovery, safe stop, child termination, and USB cleanup. The active
+1,000-ms freshness rule and all automated/recovery timeouts remain unchanged.
+No human checkpoint or physical-display claim is included.
+
+Privacy/recovery/stop: detector, wrapper, and attempt paths are ignored
+mode-`0700` roots with mode-`0600` files. Origins, ports, hostnames, addresses,
+USB/network/process identity, credentials, fixture/frame/sensor values, boot
+session, and raw traces remain private. The earliest primary failure survives
+recovery; cleanup runs on every entered lifecycle. Campaign start consumes
+attempt-034; no attempt-035 or unchanged retry is authorized. Preflight,
+identity/build/detector ambiguity, any non-ready category, malformed evidence,
+failed recovery/cleanup, or absent device stops with evidence withheld and
+API-009 `implemented`. OTA, erase, factory reset, power cycle, UART/BAP, USB
+duplex, pins/pads/GPIO, arbitrary settings, external pool, stress, direct
+controls, fault injection, non-205 hardware, and human display claims remain
+prohibited.
+
+Final verification: Clean synchronized source `dae58db9`, exact package and
+reference identity, opaque input, absent command-owned attempt path, separate
+protected wrapper, and one successful detector admission passed. The sole
+campaign terminated `hardware_blocked`; safe stop and cleanup were true,
+recovery was not required, no holder remained, and all private file modes
+passed. The public projection was withheld. The closed diagnostic reported
+revision 4, stage `asic_temperature`, outcome `budget_exhausted`, and duration
+bucket `under_100_ms`.
+
+Final completion review: The sibling-wrapper contract eliminated the attempt-
+root collision and exposed the next live runtime boundary. Source analysis
+shows a preceding driver failure can consume the shared deadline and then be
+replaced by the downstream ASIC-temperature exhaustion because driver failure
+was ranked below budget exhaustion. No user action contributed. Attempt-034 is
+consumed, attempt-035 is not authorized, API-009 remains `implemented`, and the
+task is complete and archived at 2026-08-15T09:00:00Z.
+
+### task-api009-diagnostic-causal-precedence | 2026-08-15 | Preserve the upstream driver failure
+
+- [x] Add a red regression proving an earlier driver failure is not replaced by
+      a downstream budget exhaustion caused by the shared absolute deadline.
+- [x] Rank a concrete driver failure above budget exhaustion while keeping both
+      above invalid/unavailable/slow-success outcomes and retaining stable ties.
+- [x] Run focused and complete software/privacy/reference gates, simplify,
+      review, archive, commit, and push before any new hardware ordinal.
+
+Authorization and stop rule: source, deterministic fixtures, builds, and local
+tests only. No protected attempt reads beyond the already public closed
+attempt-034 diagnostic, detector, credential, package effect, USB/device/
+network/HTTP session, flash, reset, mining, recovery, OTA, UART/BAP, pins, or
+attempt-035 is authorized. Stop if causal precedence would weaken the runtime
+deadline, suppress transition markers, or expose private values.
+
+Final verification: The new production-shaped diagnostic test failed before
+the change with the downstream ASIC-temperature budget exhaustion replacing an
+earlier power driver failure, then passed after the two severity values were
+reordered. Existing lower/higher/equal severity, marker, and redaction tests
+also pass. Ordered Cargo format, strict Clippy, all-target build, all-feature
+tests, Bright Builds, firmware build, all 45 Bazel targets, parity/progress,
+redaction, reference cleanliness, and diff checks pass.
+
+Final completion review: Concrete driver failure is now the highest diagnostic
+severity; budget exhaustion remains above invalid, unavailable, recovered, and
+slow successful outcomes. Stable ties and every transition revision/marker are
+unchanged, and no runtime deadline or safety behavior was weakened. No hardware
+effect occurred. The task is complete and archived at 2026-08-15T09:12:00Z.

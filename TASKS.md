@@ -4031,46 +4031,6 @@ progress requires a separately scoped sensor-producer/I2C latency diagnostic
 that can identify which bounded acquisition delayed the complete observation
 sweep without exposing sensor values, followed by a verified root-cause change.
 
-### task-api009-programmatic-pilot-attempt-034 | 2026-08-15 | Observe the corrected sensor diagnostic
-
-- [ ] Require clean synchronized pushed source containing `3ae3c85e`, opaque
-      non-empty ignored Wi-Fi input, absent attempt/public paths, and a fresh
-      protected sibling `wrapper-034` path distinct from `attempt-034`.
-- [ ] Build and validate the exact HEAD/reference package through `just package`.
-- [ ] Create protected `detector-034`, run exactly one `just detect-ultra205`,
-      and advance only after its zero exit, private modes, and one-device
-      admission are confirmed.
-- [ ] Invoke exactly once the existing `just api-command-effects-campaign`
-      command with `attempt-034`, the exact package, opaque credentials,
-      detector output, public projection, and 600-second bound. Redirect only
-      into the separate mode-`0700` `wrapper-034`; keep `attempt-034` absent for
-      command-owned freshness admission.
-- [ ] Publish only a ready independently validated redacted projection;
-      otherwise withhold it and record the earliest typed category, the closed
-      highest-severity sensor diagnostic, and safe recovery/cleanup booleans.
-
-Objective/effects: obtain one live reading of the materially changed diagnostic
-and wrapper contract. The sole campaign may exact-package flash/reset, seed
-private Wi-Fi and a generated local fixture, conservatively initialize/mine for
-at most 600 active seconds, issue one each pause/dismiss/IDENTIFY/resume/software
-restart request, observe HTTP/WebSocket/receive-only native USB, and perform
-same-device recovery, safe stop, child termination, and USB cleanup. The active
-1,000-ms freshness rule and all automated/recovery timeouts remain unchanged.
-No human checkpoint or physical-display claim is included.
-
-Privacy/recovery/stop: detector, wrapper, and attempt paths are ignored
-mode-`0700` roots with mode-`0600` files. Origins, ports, hostnames, addresses,
-USB/network/process identity, credentials, fixture/frame/sensor values, boot
-session, and raw traces remain private. The earliest primary failure survives
-recovery; cleanup runs on every entered lifecycle. Campaign start consumes
-attempt-034; no attempt-035 or unchanged retry is authorized. Preflight,
-identity/build/detector ambiguity, any non-ready category, malformed evidence,
-failed recovery/cleanup, or absent device stops with evidence withheld and
-API-009 `implemented`. OTA, erase, factory reset, power cycle, UART/BAP, USB
-duplex, pins/pads/GPIO, arbitrary settings, external pool, stress, direct
-controls, fault injection, non-205 hardware, and human display claims remain
-prohibited.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

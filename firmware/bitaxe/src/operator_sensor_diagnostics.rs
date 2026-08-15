@@ -60,8 +60,8 @@ impl OperatorSensorOutcome {
             Self::Recovered => 1,
             Self::Unavailable => 2,
             Self::SampleInvalid => 3,
-            Self::DriverFailed => 4,
-            Self::BudgetExhausted => 5,
+            Self::BudgetExhausted => 4,
+            Self::DriverFailed => 5,
         }
     }
 }
@@ -358,6 +358,33 @@ mod tests {
         // Assert
         assert_eq!(second.revision(), 2);
         assert_eq!(tracker.maybe_latest_pressure(), Some(first));
+    }
+
+    #[test]
+    fn downstream_budget_exhaustion_cannot_replace_a_driver_failure() {
+        // Arrange
+        let mut tracker = OperatorSensorDiagnosticTracker::new(14);
+        let driver_failure = tracker
+            .observe(
+                OperatorSensorStage::Power,
+                100,
+                490,
+                OperatorSensorOutcome::DriverFailed,
+            )
+            .expect("driver failure should be emitted");
+
+        // Act
+        tracker
+            .observe(
+                OperatorSensorStage::AsicTemperature,
+                500,
+                500,
+                OperatorSensorOutcome::BudgetExhausted,
+            )
+            .expect("downstream exhaustion should still be emitted");
+
+        // Assert
+        assert_eq!(tracker.maybe_latest_pressure(), Some(driver_failure));
     }
 
     #[test]

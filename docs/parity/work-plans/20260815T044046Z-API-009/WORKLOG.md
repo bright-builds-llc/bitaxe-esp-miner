@@ -436,3 +436,32 @@
   the attempt.
 - Stop: Campaign start consumes attempt-034. Any non-ready result withholds
   evidence and stops without attempt-035 for typed diagnosis.
+
+## 2026-08-15T09:00:00Z | attempt-034 exposes downstream budget consequence
+
+- Admission/execution: Clean pushed source `dae58db9`, exact package/reference,
+  opaque input, distinct protected detector/wrapper paths, absent command-owned
+  attempt root, one detector, and one campaign invocation all passed.
+- Result: The campaign stopped `hardware_blocked` with safe stop and cleanup
+  confirmed and no recovery required. The projection was withheld. The public
+  closed diagnostic is revision 4, `asic_temperature / budget_exhausted /
+  under_100_ms`; no holder remains and private modes pass.
+- Root-cause refinement: Power acquisition precedes ASIC temperature under the
+  same absolute deadline. A concrete driver failure currently ranks below a
+  later budget exhaustion, so the downstream consequence can replace the
+  causal failure. This is a diagnostic-ordering defect, not a user failure.
+- Disposition: Attempt-034 is consumed and no attempt-035 is authorized. A
+  software-only task owns causal driver-failure precedence before another live
+  observation.
+
+## 2026-08-15T09:12:00Z | causal diagnostic precedence verified
+
+- Red proof: A production-shaped sequence of power driver failure followed by
+  ASIC-temperature budget exhaustion initially retained the downstream event.
+- Fix: Driver failure now ranks above budget exhaustion. Both remain above
+  invalid/unavailable/recovered/slow-success facts; stable ties, revisions, and
+  retained markers remain unchanged.
+- Verification: Focused diagnostic tests and all mandatory Cargo, Bright
+  Builds, firmware, Bazel, parity, redaction, reference, and diff gates pass.
+- Disposition: The software boundary is ready to publish. Any next live ordinal
+  requires a separate exact-package contract and must stop after one result.
