@@ -31,14 +31,14 @@ type FailureCategory = Extract<
   AutomationCategory,
   "hardware_blocked" | "evidence_invalid" | "timeout" | "process_failed"
 >;
-const expectedPrivateRoot = "scratch/io002-adc/attempt-003";
-const expectedWrapperRoot = "scratch/io002-adc/wrapper-003";
+const expectedPrivateRoot = "scratch/io002-adc/attempt-004";
+const expectedWrapperRoot = "scratch/io002-adc/wrapper-004";
 const expectedProjection =
   "docs/parity/evidence/io002-adc/adc-observation-projection.json";
-const expectedPlan = "docs/parity/work-plans/20260815T225042Z-IO-002/PLAN.md";
-const expectedPlanSha256 = "e656644026e008f79b71696172cb5665f1379e7d677b22ac3a6be5253c40d78f";
+const expectedPlan = "docs/parity/work-plans/20260815T232350Z-IO-002/PLAN.md";
+const expectedPlanSha256 = "e5ead48de42d7876cf37770ec751d90aa78ef389bf6419f3bb1a8da7e04663ed";
 const expectedReferenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
-const activeTask = "task-parity-io002-adc-observation-attempt-003";
+const activeTask = "task-parity-io002-adc-observation-attempt-004";
 const expectedAttemptFiles = [
   "api.private.json",
   "final-evidence.private.json",
@@ -91,7 +91,7 @@ const referenceFragments = new Map<string, readonly string[]>([
     "#define ADC_ATTEN   ADC_ATTEN_DB_12",
     "#define ADC_CHANNEL ADC_CHANNEL_1",
     ".unit_id = ADC_UNIT_1",
-    ".bitwidth = ADC_BITWIDTH_DEFAULT",
+    "adc_oneshot_chan_cfg_t config = { .atten = ADC_ATTEN, .bitwidth = ADC_BITWIDTH_DEFAULT, };",
     "adc_cali_create_scheme_curve_fitting",
     "adc_cali_raw_to_voltage(adc1_cali_chan1_handle, adc_raw, &voltage)",
   ]],
@@ -240,7 +240,7 @@ function validateTaskAndPlan(
   }
   const maybeEnd = taskDocument.indexOf("\n### ", start + heading.length);
   const block = taskDocument.slice(start, maybeEnd === -1 ? taskDocument.length : maybeEnd);
-  for (const required of [expectedPlan, "bitaxe-adc-observation-evidence-v1", "attempt-003"]) {
+  for (const required of [expectedPlan, "bitaxe-adc-observation-evidence-v1", "attempt-004"]) {
     if (!block.includes(required)) throw failure("evidence_invalid", "IO-002 task contract is incomplete");
   }
   if (sha256(planDocument) !== admittedPlanSha256
@@ -398,7 +398,7 @@ export async function captureAdcObservationEvidence(
     const evidence: AdcObservationEvidence = {
       schema_version: "bitaxe-adc-observation-evidence-v1",
       board: 205,
-      attempt_ordinal: 3,
+      attempt_ordinal: 4,
       source_commit: currentSourceCommit,
       reference_commit: referenceCommit,
       package_manifest_sha256: source.package_manifest_sha256,

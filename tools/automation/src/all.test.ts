@@ -18,6 +18,7 @@ import "./network-scan-evidence.test.js";
 import "./asic-initialization-evidence.test.js";
 import "./asic-power-initialization-evidence.test.js";
 import "./core-voltage-control-evidence.test.js";
+import "./adc-observation-evidence.test.js";
 import "./ina260-evidence.test.js";
 import "./emc2101-thermal-evidence.test.js";
 import "./emc2101-thermal-fault-evidence.test.js";

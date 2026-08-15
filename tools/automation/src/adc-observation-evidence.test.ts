@@ -24,6 +24,12 @@ const referenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const appElfSha256 = "c".repeat(64);
 const session = "1".repeat(32);
 const nodeProgram = process.env["JS_BINARY__NODE_BINARY"] ?? process.execPath;
+const referenceChannelConfig = [
+  "adc_oneshot_chan_cfg_t config = {",
+  "  .atten = ADC_ATTEN,",
+  "  .bitwidth = ADC_BITWIDTH_DEFAULT,",
+  "};",
+].join("\n");
 const fixtureSources = new Map<string, string>([
   ["crates/bitaxe-core/src/runtime_orchestration.rs",
     "pub const OPERATOR_OBSERVATION_CADENCE_MS: u64 = 500;"],
@@ -58,7 +64,7 @@ const fixtureSources = new Map<string, string>([
     "#define ADC_ATTEN   ADC_ATTEN_DB_12",
     "#define ADC_CHANNEL ADC_CHANNEL_1",
     ".unit_id = ADC_UNIT_1",
-    ".bitwidth = ADC_BITWIDTH_DEFAULT",
+    referenceChannelConfig,
     "adc_cali_create_scheme_curve_fitting",
     "adc_cali_raw_to_voltage(adc1_cali_chan1_handle, adc_raw, &voltage)",
   ].join("\n")],
@@ -161,17 +167,17 @@ async function fixture(name: string) {
   }
   const planDocument = [
     "- Parity row: `IO-002`",
-    "- Active task: `task-parity-io002-adc-observation-attempt-003`",
+    "- Active task: `task-parity-io002-adc-observation-attempt-004`",
     "",
   ].join("\n");
-  const planRelative = "docs/parity/work-plans/20260815T225042Z-IO-002/PLAN.md";
+  const planRelative = "docs/parity/work-plans/20260815T232350Z-IO-002/PLAN.md";
   await mkdir(path.dirname(path.join(root, planRelative)), { recursive: true });
   await writeFile(path.join(root, planRelative), planDocument);
   await writeFile(path.join(root, "TASKS.md"), [
-    "### task-parity-io002-adc-observation-attempt-003 | fixture",
-    "Plan: `docs/parity/work-plans/20260815T225042Z-IO-002/PLAN.md`.",
+    "### task-parity-io002-adc-observation-attempt-004 | fixture",
+    "Plan: `docs/parity/work-plans/20260815T232350Z-IO-002/PLAN.md`.",
     "Schema: `bitaxe-adc-observation-evidence-v1`.",
-    "Attempt: `attempt-003`.",
+    "Attempt: `attempt-004`.",
     "",
   ].join("\n"));
   const contractRelative = "crates/bitaxe-api/fixtures/api/system-info-contract-v1.json";
@@ -188,7 +194,7 @@ async function fixture(name: string) {
     app_elf_sha256: appElfSha256,
   }));
   await writeFile(credentials, "{}\n", { mode: 0o600 });
-  const wrapper = path.join(root, "scratch/io002-adc/wrapper-003");
+  const wrapper = path.join(root, "scratch/io002-adc/wrapper-004");
   await mkdir(wrapper, { recursive: true, mode: 0o700 });
   await chmod(wrapper, 0o700);
   for (const outputName of ["detector.stdout", "detector.stderr", "capture.stdout", "capture.stderr"]) {
@@ -202,10 +208,10 @@ async function fixture(name: string) {
     admittedPlanSha256: createHash("sha256").update(planDocument).digest("hex"),
     projection: path.join(root, "docs/parity/evidence/io002-adc/adc-observation-projection.json"),
     options: {
-      privateRoot: "scratch/io002-adc/attempt-003",
+      privateRoot: "scratch/io002-adc/attempt-004",
       packageManifest: manifest,
       wifiCredentials: credentials,
-      detectorOutput: "scratch/io002-adc/wrapper-003/detector.stdout",
+      detectorOutput: "scratch/io002-adc/wrapper-004/detector.stdout",
       port: "/dev/private-port",
       projection: "docs/parity/evidence/io002-adc/adc-observation-projection.json",
       captureTimeoutSeconds: 360,
@@ -347,6 +353,63 @@ test("checked-in ADC source semantics match the immutable contract", async () =>
 
   // Assert
   await assert.doesNotReject(result);
+});
+
+test("ADC source semantics reject missing contextual reference initializer", async () => {
+  // Arrange
+  const value = await fixture("missing-reference-context");
+  const referencePath = path.join(value.root, "reference/esp-miner/main/adc.c");
+  const document = await readFile(referencePath, "utf8");
+  await writeFile(referencePath, document.replace(referenceChannelConfig, ""));
+
+  try {
+    // Act
+    const result = validateAdcObservationSourceSemantics(value.root);
+
+    // Assert
+    await assert.rejects(result, /ADC source semantic fragment is not unique/u);
+  } finally {
+    await rm(value.root, { recursive: true });
+  }
+});
+
+test("ADC source semantics reject duplicated contextual reference initializer", async () => {
+  // Arrange
+  const value = await fixture("duplicate-reference-context");
+  const referencePath = path.join(value.root, "reference/esp-miner/main/adc.c");
+  const document = await readFile(referencePath, "utf8");
+  await writeFile(referencePath, `${document}${referenceChannelConfig}\n`);
+
+  try {
+    // Act
+    const result = validateAdcObservationSourceSemantics(value.root);
+
+    // Assert
+    await assert.rejects(result, /ADC source semantic fragment is not unique/u);
+  } finally {
+    await rm(value.root, { recursive: true });
+  }
+});
+
+test("ADC source semantics reject drifted contextual reference initializer", async () => {
+  // Arrange
+  const value = await fixture("drifted-reference-context");
+  const referencePath = path.join(value.root, "reference/esp-miner/main/adc.c");
+  const document = await readFile(referencePath, "utf8");
+  await writeFile(referencePath, document.replace(
+    ".bitwidth = ADC_BITWIDTH_DEFAULT,",
+    ".bitwidth = ADC_BITWIDTH_12,",
+  ));
+
+  try {
+    // Act
+    const result = validateAdcObservationSourceSemantics(value.root);
+
+    // Assert
+    await assert.rejects(result, /ADC source semantic fragment is not unique/u);
+  } finally {
+    await rm(value.root, { recursive: true });
+  }
 });
 
 test("checked-in ADC task and plan satisfy the immutable preflight", async () => {

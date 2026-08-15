@@ -4064,10 +4064,10 @@ readiness remain explicit non-claims.
 
 ### task-parity-io002-adc-observation-attempt-004 | 2026-08-15 | Admit unique ADC provenance and verify observation
 
-- [ ] Bind `bitaxe-adc-observation-evidence-v1` to immutable plan
+- [x] Bind `bitaxe-adc-observation-evidence-v1` to immutable plan
       `docs/parity/work-plans/20260815T232350Z-IO-002/PLAN.md`, protected
       `attempt-004` paths, and public schema ordinal 4.
-- [ ] Register the existing ADC evidence test module in the deployed Bazel test
+- [x] Register the existing ADC evidence test module in the deployed Bazel test
       entrypoint, reproduce the attempt-003 provenance failure there, and
       replace the ambiguous bit-width token with exact unique initializer
       context plus missing, duplicate, and drift regressions.
