@@ -122,3 +122,17 @@
 - Blocker or next safe action: Commit and push the fix, then decide whether the
   material contract correction justifies a separately bounded attempt-029
   task.
+
+## 2026-08-15T06:31:00Z | claim-specific fix pushed and attempt-029 contracted
+
+- Pushed fix: `26cf68f7`.
+- Actions: Published the v8 claim-specific command proof and added one separate
+  attempt-029 task contract. The immutable attempt-027 plan remains unchanged.
+- Verification: Full repository gates passed before publication; remote fetch,
+  ancestry, and push completed without rewrite. Attempt-029 paths are fresh.
+- Evidence: Public source/task facts only; no new package, detector, or hardware
+  operation has run under attempt-029.
+- Outcome: The corrected boundary is materially different from attempt-028.
+  Attempt-029 becomes eligible only after this contract is committed and pushed.
+- Blocker or next safe action: Publish this contract, then rebuild and validate
+  the exact package before the one detector run.
