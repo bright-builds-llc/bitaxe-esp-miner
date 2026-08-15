@@ -13,7 +13,9 @@ use super::command_evidence::CommandEffectsEvidence;
 use super::command_witness::CommandTransitionWitness;
 use super::model::{CampaignNetworkEvidence, SharedSerialState, TrustedNetworkTarget};
 use super::serial::observe_command_transition_lines;
-use super::validation::{active_mining_state_valid, validate_identity_and_safety};
+use super::validation::{
+    active_mining_state_valid, validate_identity, validate_identity_and_safety,
+};
 use crate::write_private_new_bytes;
 
 mod pause_join;
@@ -189,7 +191,7 @@ pub(super) fn observe_command_effects(
         if maybe_failure.is_none() {
             match (fetch_system_info(&http), fetch_command_status(&http)) {
                 (Ok(Some(sample)), Ok(Some(status))) => {
-                    if validate_identity_and_safety(&sample, &target).is_err() {
+                    if validate_command_sample(phase, &sample, &target).is_err() {
                         evidence.same_boot_and_package = false;
                         evidence.safety_valid = false;
                         maybe_failure = Some(CampaignTerminalCategory::NetworkCorrelationFailed);
@@ -250,7 +252,7 @@ pub(super) fn observe_command_effects(
 
         if let Some(join) = maybe_recovery_join.as_mut() {
             let api_pause_confirmed = match fetch_system_info(&http) {
-                Ok(Some(sample)) if validate_identity_and_safety(&sample, &target).is_ok() => {
+                Ok(Some(sample)) if validate_identity(&sample, &target).is_ok() => {
                     sample.mining_paused
                         && sample.mining_activity == "paused"
                         && !sample.start_mining_on_boot
@@ -318,6 +320,19 @@ pub(super) fn observe_command_effects(
         recovery_pause_request_count,
         maybe_failure,
     )
+}
+
+fn validate_command_sample(
+    phase: CommandPhase,
+    sample: &SystemInfoWire,
+    target: &TrustedNetworkTarget,
+) -> Result<(), super::validation::SampleValidationFailure> {
+    let active_safety_required =
+        phase == CommandPhase::Notification || active_mining_state_valid(sample);
+    if active_safety_required {
+        return validate_identity_and_safety(sample, target);
+    }
+    validate_identity(sample, target)
 }
 
 fn automated_phase_failure(

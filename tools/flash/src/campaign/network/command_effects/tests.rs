@@ -24,6 +24,7 @@ use crate::set_private_directory_mode;
 
 mod programmatic;
 mod replay;
+mod sample_validation;
 mod terminal;
 
 fn private_root() -> (tempfile::TempDir, Utf8PathBuf) {

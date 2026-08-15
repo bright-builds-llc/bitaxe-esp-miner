@@ -3855,15 +3855,15 @@ pending.
 
 ### task-api009-programmatic-pilot-attempt-029 | 2026-08-15 | Re-run the corrected claim-specific command proof
 
-- [ ] Require clean synchronized pushed source containing commit `26cf68f7`,
+- [x] Require clean synchronized pushed source containing commit `26cf68f7`,
       rebuild/validate its exact package, confirm non-empty ignored Wi-Fi input
       without reading it, and require fresh detector/attempt/projection paths.
-- [ ] Create protected `scratch/api009-command-effects/detector-029` and run
+- [x] Create protected `scratch/api009-command-effects/detector-029` and run
       exactly one `just detect-ultra205`; admit only one holder-free ESP32-S3
       board 205 and preserve its raw output as mode `0600` private evidence.
-- [ ] Invoke exactly once:
+- [x] Invoke exactly once:
       `just api-command-effects-campaign --private-root scratch/api009-command-effects/attempt-029 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/api009-command-effects/detector-029/detector.stdout --projection docs/parity/evidence/api009-command-effects/command-effects-projection.json --duration-seconds 600`.
-- [ ] Independently validate and redact the sealed projection only on the full
+- [x] Independently validate and redact the sealed projection only on the full
       claim-specific command, same-device restart, package, recovery, safe-stop,
       and cleanup quorum; otherwise withhold it and record the earliest failure.
 
@@ -3889,6 +3889,27 @@ device stops with API-009 `implemented` and evidence withheld. OTA, erase,
 factory reset, power cycle, external UART/BAP, USB duplex, pins/pads/GPIO,
 arbitrary settings, external pool, stress, controls, fault injection, non-205
 hardware, and human display claims remain prohibited.
+
+Attempt-029 closure review: exact package/runtime identity, the local fixture,
+genuine notification, accepted activity, one pause request, HTTP
+`operator_paused`, stopped hardware, the serial safe-stop marker, recovery safe
+stop, and USB cleanup passed. The earliest primary category was
+`safety_stale`; a transient stale-sensor marker was incorrectly fatal after the
+pause had already stopped the device. The public projection is withheld,
+attempt-029 is consumed, no attempt-030 is authorized by this block, and
+API-009 remains `implemented`. No user action contributed to the failure.
+
+Regression-backed follow-up: the production-shaped stopped-pause marker failed
+deterministically before the fix and passes afterward. The HTTP seam now also
+has paired guards proving identity-only admission while stopped and continued
+fresh-safety enforcement while active. Both the marker and HTTP transaction
+paths therefore treat a confirmed stopped pause by its safe-stop witness while
+retaining strict safety admission for notification, active resume, and active
+terminal phases. Publication and any new hardware ordinal remain pending full
+repository verification. Focused Cargo/Bazel regressions, the ordered full
+Cargo gates, Bright Builds, firmware build, all 44 Bazel tests, parity and
+progress, redaction, pinned-reference cleanliness, and diff checks pass; the
+fix is ready to publish.
 
 ## Future
 

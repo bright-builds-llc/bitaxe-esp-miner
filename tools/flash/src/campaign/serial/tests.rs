@@ -5,8 +5,12 @@ mod asic_diagnostics;
 mod attestation;
 #[path = "tests/chunk_stream.rs"]
 mod chunk_stream;
+#[path = "tests/command_effects_safety.rs"]
+mod command_effects_safety;
 #[path = "tests/pause_safe_stop.rs"]
 mod pause_safe_stop;
+#[path = "tests/preparation.rs"]
+mod preparation;
 fn observation_admission() -> CampaignAdmission {
     CampaignAdmission {
         stage: MiningCampaignStage::Observation,
@@ -590,22 +594,6 @@ fn incomplete_live_preparation_overrides_stale_preparation_marker_state() {
         Some(CampaignTerminalCategory::HardwarePreparationFailed)
     );
     assert_eq!(capture.diagnostics.accepted_preparation_event_count, 1);
-}
-
-#[test]
-fn completed_live_preparation_does_not_synthesize_a_failure() {
-    // Arrange
-    let mut bytes = live_share_preparing_marker();
-    bytes.extend_from_slice(&preparation_progress_line(
-        "retain_production_uart",
-        "completed",
-    ));
-
-    // Act
-    let capture = analyze_campaign_serial_bytes(&bytes, live_share_admission());
-
-    // Assert
-    assert_eq!(capture.maybe_failure, None);
 }
 
 #[test]

@@ -43,7 +43,7 @@ pub(super) fn validate_sample(
     Ok(())
 }
 
-fn validate_identity(
+pub(super) fn validate_identity(
     sample: &SystemInfoWire,
     target: &TrustedNetworkTarget,
 ) -> Result<(), SampleValidationFailure> {

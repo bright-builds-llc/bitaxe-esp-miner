@@ -136,3 +136,42 @@
   Attempt-029 becomes eligible only after this contract is committed and pushed.
 - Blocker or next safe action: Publish this contract, then rebuild and validate
   the exact package before the one detector run.
+
+## 2026-08-15T06:38:12Z | attempt-029 blocked by stopped-state freshness coupling
+
+- Exact package source: `410bc830`.
+- Actions: Published the attempt contract, rebuilt and validated its exact
+  package, admitted one holder-free Ultra 205, and consumed the sole
+  programmatic attempt-029.
+- Verification: Trusted package/runtime identity, the local fixture, genuine
+  notification, accepted activity, one pause request, HTTP paused state,
+  stopped hardware, serial safe-stop, recovery HTTP and serial safe-stop, and
+  process/USB cleanup passed. Public evidence remains absent.
+- Diagnosis: The earliest category was `safety_stale`. Both the marker parser
+  and HTTP phase loop still treated transient sensor staleness as fatal after
+  the pause had stopped the device, even though the stopped-state safe-stop
+  witness was authoritative. This was orchestration logic, not a user action.
+- Regression: A production-shaped stopped-pause marker failed deterministically
+  before the fix and now passes. Paired HTTP tests admit identity with stale
+  sensors only for the stopped pause while proving active phases continue to
+  reject stale safety observations.
+- Outcome: Attempt-029 is consumed, API-009 remains `implemented`, and no
+  attempt-030 is authorized by this contract.
+- Blocker or next safe action: Run focused and full repository gates, commit and
+  push the material stopped-state fix, then create a separate exact-package
+  contract before any new detector or hardware attempt.
+
+## 2026-08-15T06:49:44Z | stopped-state fix passed full software verification
+
+- Actions: Kept active samples under strict fresh-safety validation, admitted
+  only exact stopped command states by identity plus their safe-stop witness,
+  and split the regressions into focused test modules with explicit Bazel
+  source ownership.
+- Verification: The focused regressions, ordered Cargo format/strict-lint/
+  all-target build/all-feature test sequence, Bright Builds, firmware build,
+  all 44 Bazel tests, parity and progress, semantic redaction, pinned-reference
+  cleanliness, and diff checks pass.
+- Outcome: The attempt-029 root cause is fixed and ready to publish. No hardware
+  or protected evidence was accessed during the fix and verification cycle.
+- Blocker or next safe action: Commit and push this clean material correction;
+  any attempt-030 still requires its own exact-package task contract.

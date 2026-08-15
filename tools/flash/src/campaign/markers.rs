@@ -1,7 +1,7 @@
 use super::*;
 mod command_effects;
 use command_effects::{
-    assess_command_effects_terminal, is_recoverable_command_effects_resume_readiness,
+    assess_command_effects_terminal, is_recoverable_command_effects_stopped_readiness,
 };
 mod soak;
 use soak::assess_soak_terminal;
@@ -442,7 +442,7 @@ pub(super) fn campaign_marker_failure(
         return Some(CampaignTerminalCategory::MarkerInvalid);
     }
     if marker.safety == SafetyMarker::Stale
-        && !is_recoverable_command_effects_resume_readiness(marker, admission)
+        && !is_recoverable_command_effects_stopped_readiness(marker, admission)
     {
         return Some(CampaignTerminalCategory::SafetyStale);
     }
