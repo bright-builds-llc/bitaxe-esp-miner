@@ -9,7 +9,9 @@ use crate::{
     current_platform, OtaIntent, PlatformCategory, PrivateBootB, RebootIntent, SessionArtifacts,
     SessionEvent, SessionRequest, SessionState, TerminalCategory,
 };
-use bitaxe_http_transport::{ExchangeObservation, HttpResponse, RequestProgress};
+use bitaxe_http_transport::{
+    ExchangeObservation, HttpResponse, RequestProgress, DEFAULT_TOTAL_TIMEOUT,
+};
 
 const HTTP_POLL_INTERVAL: Duration = Duration::from_secs(1);
 
@@ -251,6 +253,25 @@ pub(super) fn next_poll_deadline(mut previous: Instant, now: Instant) -> Instant
     }
 }
 
+/// Caps one recovery exchange independently of the transaction's safety
+/// deadline. A request accepted immediately before the ESP HTTP service stops
+/// can otherwise hold its socket open for the whole recovery window and starve
+/// every poll after the device has rebooted.
+pub(super) fn recovery_http_deadline(overall_deadline: Instant) -> Instant {
+    recovery_http_deadline_with_budget(overall_deadline, DEFAULT_TOTAL_TIMEOUT)
+}
+
+fn recovery_http_deadline_with_budget(
+    overall_deadline: Instant,
+    exchange_budget: Duration,
+) -> Instant {
+    let now = Instant::now();
+    now.checked_add(exchange_budget)
+        .map_or(overall_deadline, |exchange_deadline| {
+            exchange_deadline.min(overall_deadline)
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use std::io::{Read, Write};
@@ -342,6 +363,66 @@ mod tests {
     }
 
     #[test]
+    fn stalled_recovery_exchange_yields_to_a_later_successful_poll() {
+        // Arrange
+        let listener = TcpListener::bind("127.0.0.1:0").expect("loopback bind failed");
+        let address = listener.local_addr().expect("loopback address unavailable");
+        let server = thread::spawn(move || {
+            let (mut stalled, _) = listener.accept().expect("stalled request accept failed");
+            read_request_headers(&mut stalled);
+            let stalled_peer = thread::spawn(move || {
+                thread::sleep(Duration::from_millis(200));
+                drop(stalled);
+            });
+
+            let (mut recovered, _) = listener.accept().expect("recovery request accept failed");
+            read_request_headers(&mut recovered);
+            recovered
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}")
+                .expect("recovery response write failed");
+            stalled_peer.join().expect("stalled peer panicked");
+        });
+        let client =
+            StrictHttpClient::new(&format!("http://{address}")).expect("origin must be valid");
+        let overall_deadline = Instant::now() + Duration::from_secs(1);
+
+        // Act
+        let first = client
+            .get_system_info(recovery_http_deadline_with_budget(
+                overall_deadline,
+                Duration::from_millis(50),
+            ))
+            .expect("stalled exchange must remain an observation");
+        let second = client
+            .get_system_info(recovery_http_deadline_with_budget(
+                overall_deadline,
+                Duration::from_millis(500),
+            ))
+            .expect("later exchange must run");
+
+        // Assert
+        assert!(first.maybe_http_response().is_none());
+        assert_eq!(
+            second.maybe_http_response().map(HttpResponse::status),
+            Some(200)
+        );
+        server.join().expect("loopback server panicked");
+    }
+
+    #[test]
+    fn recovery_exchange_deadline_never_exceeds_overall_deadline() {
+        // Arrange
+        let overall_deadline = Instant::now() + Duration::from_millis(20);
+
+        // Act
+        let exchange_deadline =
+            recovery_http_deadline_with_budget(overall_deadline, Duration::from_secs(60));
+
+        // Assert
+        assert_eq!(exchange_deadline, overall_deadline);
+    }
+
+    #[test]
     fn request_evidence_distinguishes_partial_and_complete_writes() {
         // Arrange
         let partial = RequestProgress::Incomplete { bytes_written: 7 };
@@ -413,5 +494,19 @@ mod tests {
         // Assert
         assert_eq!(maybe_accepted.map(HttpResponse::status), Some(204));
         assert!(maybe_rejected.is_none());
+    }
+
+    fn read_request_headers(stream: &mut impl Read) {
+        let mut request = Vec::new();
+        let mut buffer = [0_u8; 256];
+        while !request.ends_with(b"\r\n\r\n") {
+            let count = stream
+                .read(&mut buffer)
+                .expect("loopback request read failed");
+            if count == 0 {
+                break;
+            }
+            request.extend_from_slice(&buffer[..count]);
+        }
     }
 }

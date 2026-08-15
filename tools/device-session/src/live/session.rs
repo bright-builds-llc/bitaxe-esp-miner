@@ -7,8 +7,8 @@ use bitaxe_http_transport::StrictHttpClient;
 
 use super::{
     apply_event, baseline_matches, elapsed_millis, finish_failed_session, is_success_status,
-    maybe_parse_boot_b, maybe_successful_http_response, next_poll_deadline, record_http, remaining,
-    request_evidence_fields,
+    maybe_parse_boot_b, maybe_successful_http_response, next_poll_deadline, record_http,
+    recovery_http_deadline, remaining, request_evidence_fields,
 };
 use crate::macos::{MacOsDeviceAdapter, ReceiveOnlyReader};
 use crate::{
@@ -241,7 +241,7 @@ impl LiveSession {
                 break;
             }
             if Instant::now() >= next_http_poll {
-                let polled = http.get_system_info(self.deadline)?;
+                let polled = http.get_system_info(recovery_http_deadline(self.deadline))?;
                 record_http(&mut self.state, &mut self.artifacts, "recovery", &polled)?;
                 match maybe_successful_http_response(&polled) {
                     Some(response) => {

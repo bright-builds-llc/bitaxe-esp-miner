@@ -8102,3 +8102,82 @@ sensitive-output, and diff checks pass. The fix changes one terminal boundary
 and one diagnostic handoff; it does not retry effects, loosen marker semantics,
 extend deadlines, or weaken package, privacy, safety, cleanup, or request-once
 contracts. A fresh hardware ordinal requires its own committed contract.
+
+### task-api009-programmatic-pilot-attempt-043 | 2026-08-15 | Verify terminal lease consumption
+
+- [x] Required clean synchronized pushed `cf41ecaf`, opaque non-empty ignored
+      Wi-Fi input, exact HEAD/reference package, and absent detector, wrapper,
+      command-owned attempt, and public-projection paths.
+- [x] Ran `just package`, then exactly one protected `detector-043`; observed
+      zero exit, one admitted board-205 device, and private artifact modes.
+- [x] Used separate protected `wrapper-043`, kept `attempt-043` absent, and ran
+      exactly once the existing 600-active-second programmatic campaign under
+      its finite bounds.
+- [x] Withheld the public projection after the non-ready result and recorded
+      the earliest typed campaign, restart-session, and cleanup facts.
+
+Effects: one exact-package flash/reset, private Wi-Fi/local-fixture seed,
+conservative initialization/mining for at most 600 active seconds, one each
+pause/dismiss/IDENTIFY/resume/software restart, HTTP/WebSocket/receive-only USB
+observation, same-device recovery, safe stop, child termination, and USB
+cleanup. No human checkpoint or physical-display claim was included.
+
+Privacy/retry/stop: all private roots/files remained ignored mode 0700/0600.
+No identities, origins, ports, addresses, hostnames, credentials, boot session,
+values, or traces were published. Attempt-043 is consumed; no attempt-044 or
+unchanged retry is authorized. API-009 remains `implemented`.
+
+Completion review: The command-effects campaign itself passed with terminal
+lease consumption, clean serial analysis, confirmed safe stop, and ready USB
+cleanup. The subsequent shared restart transaction sent exactly one request,
+received its successful response, observed service loss and post-restart bytes,
+and retained the same stable physical device with cleanup complete. It then
+stopped `service_recovery_timeout`: its first recovery GET connected before
+service shutdown completed, wrote the request, received no response, and used
+the complete remaining 360-second transaction deadline as that one socket read
+timeout. No later recovery poll could run. The aggregate wrapper therefore
+closed `hardware_blocked` with cleanup uncredited and withheld the projection.
+This is a host observation-budget defect, not a device command, safe-stop, or
+user-action failure. Follow-up software work is tracked by
+`task-device-session-recovery-poll-budget`.
+
+### task-device-session-recovery-poll-budget | 2026-08-15 | Bound each post-restart HTTP poll
+
+- [x] Reproduced the attempt-043 failure at the real HTTP/device-session seam:
+      an accepted recovery connection that never responds no longer consumes
+      the entire transaction deadline or prevents a later successful poll.
+- [x] Gave each recovery observation a finite per-exchange budget capped by
+      the overall transaction deadline, without changing request-once restart,
+      exact-package, same-device, or terminal-category behavior.
+- [x] Added a production-shaped stalled-first-request regression, retained the
+      real-child transaction/file integration test, and proved the overall
+      timeout remains authoritative.
+- [x] Ran focused and complete repository gates, simplified and reviewed the
+      diff, and prepared the software-only correction for commit and push
+      before any new hardware contract.
+
+Authorization: This task was software-only. It read protected attempt-043
+artifacts only to derive bounded categories and booleans and did not publish
+private response bodies, identities, origins, ports, addresses, hostnames,
+credentials, boot sessions, traces, or sensor values. It performed no detector,
+USB, flash/reset, mining, restart, OTA, erase, factory reset, UART/BAP,
+pins/GPIO, direct control, fault injection, attempt-044, or public evidence
+promotion.
+
+Verification: The new loopback regression accepts and fully reads a first HTTP
+request while deliberately withholding its response, proves that exchange
+times out independently, then accepts a second request and returns a successful
+response before the unchanged overall deadline. A separate boundary test proves
+the per-exchange deadline never extends the overall transaction deadline. All
+82 device-session unit tests and four CLI integrations pass, including the
+real-child transaction and protected-file projection test. Ordered Cargo
+format/strict-lint/build/test, Bright Builds, real firmware build, all 45 Bazel
+tests, parity/progress, redaction, and pinned-reference checks pass.
+
+Completion review: Post-restart GETs now use the shared HTTP transport's
+10-second total-exchange budget, capped by the remaining transaction window.
+Only recovery observation changed; baseline confirmation and the single restart
+request retain their existing lifecycle. The fix adds no retry of the restart
+effect, no origin discovery, no new protocol, and no relaxed evidence quorum.
+API-009 remains `implemented`; a fresh hardware ordinal still requires its own
+committed contract.

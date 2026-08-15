@@ -846,3 +846,41 @@
   No physical-display claim is included.
 - Stop: Campaign start consumes attempt-043. Any non-ready result withholds
   evidence and stops without attempt-044 or an unchanged retry.
+
+## 2026-08-15T13:20:00Z | attempt-043 isolated recovery-poll starvation
+
+- Result: The one detector-gated exact-package command-effects campaign passed
+  every machine command postcondition, consumed its terminal lease, confirmed
+  safe stop, and released USB. The later common restart transaction stopped
+  `service_recovery_timeout`; the public projection remained absent and no
+  user action contributed.
+- Restart evidence: Exactly one restart request was written and acknowledged.
+  Service loss, post-restart receive-only serial delivery, the same stable
+  physical USB device, and final device-session cleanup were all observed.
+- Root cause: The first recovery GET connected during service shutdown and
+  wrote its request but received no response. That exchange inherited the full
+  360-second transaction deadline as its socket read timeout, preventing every
+  later recovery poll even after the device returned.
+- Disposition: Attempt-043 is consumed. Bound each recovery exchange within
+  the overall deadline and prove that a stalled first request yields to a later
+  successful poll. No attempt-044 is authorized until the software correction
+  passes complete gates and is pushed.
+
+## 2026-08-15T13:32:00Z | recovery-poll starvation fixed and verified
+
+- Fix: Each post-restart system-info observation now uses the shared
+  10-second HTTP exchange budget capped by the remaining transaction deadline.
+  A connection accepted during shutdown can no longer monopolize the complete
+  recovery window.
+- Regression: A production-shaped loopback server accepts the first request
+  and withholds its response; that poll times out independently and a second
+  request succeeds. A separate boundary test proves the exchange cap never
+  extends the overall deadline. Existing real-child transaction/file evidence
+  integration remains green.
+- Verification: All device-session tests, ordered Cargo gates, Bright Builds,
+  real firmware, all 45 Bazel tests, parity/progress, redaction, pinned
+  reference, sensitive-output, and diff checks pass. No hardware effect
+  occurred.
+- Disposition: The software correction is ready to publish. Attempt-043 remains
+  consumed; a fresh hardware campaign requires a separately committed
+  attempt-044 contract.
