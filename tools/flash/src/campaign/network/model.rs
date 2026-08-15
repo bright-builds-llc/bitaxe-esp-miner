@@ -227,6 +227,9 @@ impl CampaignNetworkEvidence {
         recovery_pause_request_count: u64,
         maybe_failure: Option<CampaignTerminalCategory>,
     ) -> Self {
+        // Command-effects has its own request/observation quorum. The shared
+        // soak-window fields must stay explicitly non-applicable so a failed
+        // command join cannot be misdiagnosed as missing continuity windows.
         let complete = evidence.complete();
         let maybe_failure = maybe_failure
             .or_else(|| (!complete).then_some(CampaignTerminalCategory::NetworkCorrelationFailed));
@@ -237,6 +240,8 @@ impl CampaignNetworkEvidence {
         };
         Self {
             status,
+            required_window_count: 0,
+            covered_window_count: 0,
             recovery_pause_request_count,
             same_boot_and_package: evidence.same_boot_and_package,
             active_state_valid: evidence.active_before_pause && evidence.active_after_resume,

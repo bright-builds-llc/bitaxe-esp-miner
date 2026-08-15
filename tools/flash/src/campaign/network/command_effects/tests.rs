@@ -1,4 +1,6 @@
 use std::fs;
+use std::io::{Read, Write};
+use std::net::TcpListener;
 
 use bitaxe_api::{ApiSnapshot, ExpectedRuntimeAttestationIdentity, SystemInfoWire};
 use bitaxe_http_transport::StrictHttpClient;
@@ -6,16 +8,18 @@ use camino::Utf8PathBuf;
 
 use super::{
     advance_commands, arm_cleared_after_natural_expiry, arm_identify_transaction,
-    arm_ready_after_pause, automated_phase_failure, consume_checkpoint_response,
+    arm_ready_after_paused_dismissal, automated_phase_failure, consume_checkpoint_response,
     consume_cleared_signal, consume_ready_signal, finish_identify_observation,
     rendered_checkpoint_action, respond_identify_checkpoint, take_recovery_pause_request,
     write_required_checkpoint, CheckpointResponse, CommandEffectsEvidence, CommandPhase,
-    CommandProgress, IdentifyCheckpointKind, IdentifyCheckpointOutcome, RenderedCheckpointAction,
+    CommandProgress, IdentifyCheckpointKind, IdentifyCheckpointOutcome, PauseJoinState,
+    RenderedCheckpointAction,
 };
 use crate::campaign::network::model::{SharedSerialState, TrustedNetworkTarget};
 use crate::set_private_directory_mode;
 
 mod replay;
+mod terminal;
 
 fn private_root() -> (tempfile::TempDir, Utf8PathBuf) {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -36,6 +40,38 @@ fn trusted_target() -> TrustedNetworkTarget {
             app_elf_sha256: "0".repeat(64),
         },
     }
+}
+
+fn successful_command_server() -> (StrictHttpClient, std::thread::JoinHandle<String>) {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind command server");
+    let address = listener.local_addr().expect("command server address");
+    let server = std::thread::spawn(move || {
+        let (mut socket, _) = listener.accept().expect("accept command request");
+        let mut bytes = Vec::new();
+        let mut chunk = [0_u8; 512];
+        loop {
+            let count = socket.read(&mut chunk).expect("read command request");
+            if count == 0 {
+                break;
+            }
+            bytes.extend_from_slice(&chunk[..count]);
+            if bytes.windows(4).any(|window| window == b"\r\n\r\n") {
+                break;
+            }
+        }
+        let request_line = String::from_utf8(bytes)
+            .expect("request is UTF-8")
+            .lines()
+            .next()
+            .expect("request line")
+            .to_owned();
+        socket
+            .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
+            .expect("write command response");
+        request_line
+    });
+    let http = StrictHttpClient::new(&format!("http://{address}")).expect("HTTP client");
+    (http, server)
 }
 
 #[test]
@@ -88,14 +124,18 @@ fn identify_transaction_arms_readiness_without_issuing_a_request() {
 }
 
 #[test]
-fn safe_stopped_pause_arms_ready_without_resume_or_identify() {
+fn count_preserving_paused_dismissal_arms_ready_without_resume_or_identify() {
     // Arrange
     let (_temp, root) = private_root();
     let mut evidence = CommandEffectsEvidence::new();
     evidence.pause_request_count = 1;
+    evidence.pause_confirmed = true;
+    evidence.dismiss_request_count = 1;
+    evidence.dismiss_confirmed = true;
+    evidence.block_count_preserved = true;
 
     // Act
-    let phase = arm_ready_after_pause(&root, &mut evidence).expect("arm paused readiness");
+    let phase = arm_ready_after_paused_dismissal(&root, &evidence).expect("arm paused readiness");
 
     // Assert
     assert_eq!(phase, CommandPhase::IdentifyReady);
@@ -106,12 +146,119 @@ fn safe_stopped_pause_arms_ready_without_resume_or_identify() {
 }
 
 #[test]
+fn pause_join_issues_one_dismiss_only_after_http_and_serial_stop() {
+    // Arrange
+    let (_temp, root) = private_root();
+    let (http, server) = successful_command_server();
+    let mut sample = SystemInfoWire::from_snapshot(&ApiSnapshot::safe_ultra_205());
+    sample.mining_paused = true;
+    sample.mining_activity = "paused".to_owned();
+    let started = std::time::Instant::now();
+    let mut phase = CommandPhase::Pause(PauseJoinState::new(started));
+    let mut evidence = CommandEffectsEvidence::new();
+    evidence.pause_request_count = 1;
+    let mut maybe_block_count = Some(7);
+    let mut maybe_failure = None;
+    let mut serial = SharedSerialState::default();
+
+    // Act
+    advance_commands(
+        &http,
+        &trusted_target(),
+        &root,
+        &sample,
+        &serial,
+        started,
+        CommandProgress {
+            phase: &mut phase,
+            maybe_block_count: &mut maybe_block_count,
+            evidence: &mut evidence,
+            maybe_failure: &mut maybe_failure,
+        },
+    );
+    let phase_before_serial_stop = phase;
+    let requests_before_serial_stop = evidence.dismiss_request_count;
+    serial.resumable_pause_safe_stop_confirmed = true;
+    advance_commands(
+        &http,
+        &trusted_target(),
+        &root,
+        &sample,
+        &serial,
+        started + std::time::Duration::from_millis(1),
+        CommandProgress {
+            phase: &mut phase,
+            maybe_block_count: &mut maybe_block_count,
+            evidence: &mut evidence,
+            maybe_failure: &mut maybe_failure,
+        },
+    );
+
+    // Assert
+    assert!(matches!(phase_before_serial_stop, CommandPhase::Pause(_)));
+    assert_eq!(requests_before_serial_stop, 0);
+    assert_eq!(phase, CommandPhase::PausedDismiss);
+    assert!(evidence.pause_confirmed);
+    assert_eq!(evidence.dismiss_request_count, 1);
+    assert_eq!(evidence.resume_request_count, 0);
+    assert_eq!(maybe_failure, None);
+    assert_eq!(
+        server.join().expect("command server thread"),
+        "POST /api/system/blockFound/dismiss HTTP/1.1"
+    );
+}
+
+#[test]
+fn paused_dismissal_readback_precedes_identify_readiness() {
+    // Arrange
+    let (_temp, root) = private_root();
+    let http = StrictHttpClient::new("http://127.0.0.1:9").expect("HTTP client");
+    let mut sample = SystemInfoWire::from_snapshot(&ApiSnapshot::safe_ultra_205());
+    sample.block_found = 7;
+    sample.show_new_block = false;
+    let mut phase = CommandPhase::PausedDismiss;
+    let mut evidence = CommandEffectsEvidence::new();
+    evidence.pause_request_count = 1;
+    evidence.pause_confirmed = true;
+    evidence.dismiss_request_count = 1;
+    let mut maybe_block_count = Some(7);
+    let mut maybe_failure = None;
+
+    // Act
+    advance_commands(
+        &http,
+        &trusted_target(),
+        &root,
+        &sample,
+        &SharedSerialState::default(),
+        std::time::Instant::now(),
+        CommandProgress {
+            phase: &mut phase,
+            maybe_block_count: &mut maybe_block_count,
+            evidence: &mut evidence,
+            maybe_failure: &mut maybe_failure,
+        },
+    );
+
+    // Assert
+    assert_eq!(phase, CommandPhase::IdentifyReady);
+    assert!(evidence.dismiss_confirmed);
+    assert!(evidence.block_count_preserved);
+    assert!(root.join("identify-ready.required.json").is_file());
+    assert_eq!(maybe_failure, None);
+}
+
+#[test]
 fn ready_signal_is_consumed_without_releasing_pause() {
     // Arrange
     let (_temp, root) = private_root();
     let mut evidence = CommandEffectsEvidence::new();
     evidence.pause_request_count = 1;
-    arm_ready_after_pause(&root, &mut evidence).expect("arm paused readiness");
+    evidence.pause_confirmed = true;
+    evidence.dismiss_request_count = 1;
+    evidence.dismiss_confirmed = true;
+    evidence.block_count_preserved = true;
+    arm_ready_after_paused_dismissal(&root, &evidence).expect("arm paused readiness");
 
     // Act
     let absent = consume_ready_signal(&root, &mut evidence).expect("absent signal");
@@ -466,58 +613,4 @@ fn resume_intent_is_confirmed_before_active_reactivation() {
     assert!(!evidence.resume_confirmed);
     assert!(!evidence.active_after_resume);
     assert_eq!(maybe_failure, None);
-}
-
-#[test]
-fn confirmation_without_a_required_checkpoint_is_rejected() {
-    // Arrange
-    let (_temp, root) = private_root();
-
-    // Act
-    let result = respond_identify_checkpoint(
-        &root,
-        IdentifyCheckpointKind::Rendered,
-        IdentifyCheckpointOutcome::Confirmed,
-    );
-
-    // Assert
-    assert!(result.is_err());
-}
-
-#[test]
-fn replay_is_rejected_for_non_rendered_checkpoints() {
-    // Arrange
-    let (_temp, root) = private_root();
-    write_required_checkpoint(&root, IdentifyCheckpointKind::Ready).expect("required checkpoint");
-
-    // Act
-    let result = respond_identify_checkpoint(
-        &root,
-        IdentifyCheckpointKind::Ready,
-        IdentifyCheckpointOutcome::Replay,
-    );
-
-    // Assert
-    assert!(result.is_err());
-    assert!(!root.join("identify-ready.response.json").exists());
-}
-
-#[test]
-fn recovery_pause_is_claimed_once_without_replacing_the_primary_failure() {
-    // Arrange
-    let primary = Some(super::CampaignTerminalCategory::CommandRequestFailed);
-    let mut request_count = 0;
-
-    // Act
-    let first = take_recovery_pause_request(primary, &mut request_count);
-    let second = take_recovery_pause_request(primary, &mut request_count);
-
-    // Assert
-    assert!(first);
-    assert!(!second);
-    assert_eq!(request_count, 1);
-    assert_eq!(
-        primary,
-        Some(super::CampaignTerminalCategory::CommandRequestFailed)
-    );
 }

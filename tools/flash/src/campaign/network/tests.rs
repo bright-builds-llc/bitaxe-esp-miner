@@ -8,9 +8,10 @@ use bitaxe_api::{
 use bitaxe_http_transport::WebSocketReadFailureKind;
 
 use super::super::CampaignTerminalCategory;
+use super::command_evidence::CommandEffectsEvidence;
 use super::model::{
-    NetworkAccumulator, NetworkTransport, SharedSerialState, TrustedNetworkTarget,
-    REQUIRED_WINDOWS, WINDOW_MILLIS,
+    CampaignNetworkEvidence, NetworkAccumulator, NetworkTransport, SharedSerialState,
+    TrustedNetworkTarget, REQUIRED_WINDOWS, WINDOW_MILLIS,
 };
 use super::serial::NetworkSerialTracker;
 
@@ -129,6 +130,19 @@ fn twenty_complete_windows_and_terminal_state_are_accepted() {
     assert_eq!(evidence.maybe_failure, None);
     assert!(evidence.watchdog_valid);
     assert!(evidence.work_renewal_valid);
+}
+
+#[test]
+fn command_effects_do_not_inherit_soak_window_requirements() {
+    // Arrange
+    let effects = CommandEffectsEvidence::new();
+
+    // Act
+    let evidence = CampaignNetworkEvidence::from_command_effects(effects, 0, None);
+
+    // Assert
+    assert_eq!(evidence.required_window_count, 0);
+    assert_eq!(evidence.covered_window_count, 0);
 }
 
 #[test]

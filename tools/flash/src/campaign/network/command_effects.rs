@@ -13,6 +13,8 @@ use crate::write_private_new_bytes;
 
 mod pause_join;
 use pause_join::{PauseJoinDecision, PauseJoinState};
+mod paused_dismiss;
+use paused_dismiss::{arm_ready_after_paused_dismissal, begin_paused_dismissal};
 mod recovery_join;
 use recovery_join::{RecoveryJoinDecision, RecoveryPauseJoinState};
 mod identify;
@@ -42,7 +44,7 @@ enum CommandPhase {
     IdentifyReplayed { effect_inactive_at: Instant },
     IdentifyObserved { clears_at: Instant },
     IdentifyCleared,
-    Dismiss,
+    PausedDismiss,
     Terminal,
 }
 
@@ -232,7 +234,7 @@ fn automated_phase_failure(
             Some(REACTIVATION_DEADLINE),
             CampaignTerminalCategory::ResumeReactivationTimedOut,
         ),
-        CommandPhase::Dismiss | CommandPhase::Terminal => (
+        CommandPhase::PausedDismiss | CommandPhase::Terminal => (
             Some(AUTOMATED_PHASE_DEADLINE),
             CampaignTerminalCategory::NetworkCorrelationFailed,
         ),
@@ -305,11 +307,9 @@ fn advance_commands(
                 now,
             ) {
                 PauseJoinDecision::Wait => {}
-                PauseJoinDecision::Ready => match arm_ready_after_pause(evidence_root, evidence) {
+                PauseJoinDecision::Ready => match begin_paused_dismissal(http, evidence) {
                     Ok(next_phase) => *phase = next_phase,
-                    Err(()) => {
-                        *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid)
-                    }
+                    Err(category) => *maybe_failure = Some(category),
                 },
                 PauseJoinDecision::TimedOut => {
                     *maybe_failure = Some(CampaignTerminalCategory::NetworkCorrelationFailed);
@@ -323,12 +323,7 @@ fn advance_commands(
         CommandPhase::ResumeActive if active_mining_state_valid(sample) => {
             evidence.resume_confirmed = true;
             evidence.active_after_resume = true;
-            evidence.dismiss_request_count = 1;
-            if !post_succeeded(http.post_block_found_dismiss_once(Instant::now() + HTTP_DEADLINE)) {
-                *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
-            } else {
-                *phase = CommandPhase::Dismiss;
-            }
+            *phase = CommandPhase::Terminal;
         }
         CommandPhase::IdentifyReady => match consume_ready_signal(evidence_root, evidence) {
             Ok(CheckpointResponse::Confirmed) => {
@@ -447,12 +442,17 @@ fn advance_commands(
             Ok(CheckpointResponse::Pending) => {}
             Err(()) => *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid),
         },
-        CommandPhase::Dismiss if !sample.show_new_block => {
+        CommandPhase::PausedDismiss if !sample.show_new_block => {
             evidence.dismiss_confirmed = true;
             evidence.block_count_preserved =
                 maybe_block_count.is_some_and(|count| sample.block_found == count);
             if evidence.block_count_preserved {
-                *phase = CommandPhase::Terminal;
+                match arm_ready_after_paused_dismissal(evidence_root, evidence) {
+                    Ok(next_phase) => *phase = next_phase,
+                    Err(()) => {
+                        *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid)
+                    }
+                }
             } else {
                 *maybe_failure = Some(CampaignTerminalCategory::NetworkCorrelationFailed);
             }
@@ -553,17 +553,6 @@ fn arm_identify_transaction(
     }
     write_required_checkpoint(root, IdentifyCheckpointKind::Ready).map_err(|_| ())?;
     Ok(CommandPhase::IdentifyReady)
-}
-
-fn arm_ready_after_pause(
-    root: &Utf8Path,
-    evidence: &mut CommandEffectsEvidence,
-) -> Result<CommandPhase, ()> {
-    if evidence.pause_request_count != 1 || evidence.resume_request_count != 0 {
-        return Err(());
-    }
-    evidence.pause_confirmed = true;
-    arm_identify_transaction(root, evidence)
 }
 
 fn consume_ready_signal(
