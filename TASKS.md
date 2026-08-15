@@ -436,6 +436,39 @@ evidence or separately authorized safe stimulus before any retry eligibility.
 Residual gaps remain live calibration accuracy, values, cadence under load,
 failure behavior, exact numeric API correlation, and energized-rail behavior.
 
+Corrective software work (2026-08-15):
+
+- [x] Bind the lossless ADC input validator to the independently validated
+      disabled mining and hardware-control state instead of applying an
+      energized-rail range to every observation.
+- [x] Admit the calibrated adapter's actual `u16` millivolt wire domain,
+      including a fresh zero sample, while preserving freshness, boot-session,
+      sequence, acquisition-time, and equal-sequence coherence checks.
+- [x] Replace the misleading positive/plausible-range evidence claims with
+      nonnegative wire-domain and disabled-state-bound claims; add Rust and
+      real child-process regressions and run the mandatory software gates.
+
+Authorization: local software, contract, test, and task-record changes only.
+Do not run hardware, consume another attempt ordinal, alter the closed plan or
+closure, publish the protected failed attempt, or promote IO-002.
+
+Correction verification: The focused regression first reproduced the exact
+`ADC observation values are outside the admitted range` failure for fresh
+zero-millivolt samples. Eight focused Rust validator tests, the zero-value
+TypeScript orchestration fixture, the real child-process handoff, the original
+protected input replay, the ordered Rust checks, Bright Builds, the real
+ESP32-S3 firmware build, all 45 Bazel tests, parity/progress, redaction,
+reference cleanliness, and diff checks then passed.
+
+Correction review: ADC/API units remain millivolts. The validator now consumes
+the already-independent system-info evidence, requires its disabled mining and
+hardware-control state, and admits only finite integral values in the producer's
+`u16` millivolt domain. Its public aggregate claims no longer imply positive or
+energized-range voltage. No hardware ran, no evidence was published, the closed
+attempt and closure were not rewritten, and IO-002 remains `implemented`.
+Energized-rail target/tolerance proof and a new hardware attempt still require a
+fresh immutable plan.
+
 ### task-parity-net002-provisioning-network | 2026-08-04 | Implement configuration AP and captive DNS
 
 - [x] Add a pure bounded wildcard IN/A captive-DNS response contract matching

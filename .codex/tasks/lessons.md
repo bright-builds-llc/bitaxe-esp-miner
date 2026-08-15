@@ -178,3 +178,10 @@
 2. What went wrong: A guessed manifest field made preflight exit nonzero, but empty output was mistaken for success and the next command launched without detector evidence.
 3. Preventive rule: Validate package fields through repo-owned contracts and inspect every command exit code before advancing.
 4. Trigger signal: A preflight produces no output or a required artifact is absent before an effect command.
+
+## lesson-bind-telemetry-ranges-to-operating-state | 2026-08-15 17:18
+
+1. Date: 2026-08-15 17:18 CDT
+2. What went wrong: The ADC evidence validator rejected fresh `0 mV` readings using an unconditional 400–2,000 mV range even though the same evidence workflow deliberately kept the ASIC rail disabled and the typed acquisition path treats a successful zero as fresh truth.
+3. Preventive rule: Validate telemetry units against the producer's real wire domain, and bind narrower expected operating ranges to independently validated device state. Never apply an energized-state range to disabled-state evidence.
+4. Trigger signal: A telemetry validator has a fixed positive lower bound but does not consume power, enable, mode, or lifecycle state, or its accepted range contradicts a typed zero-value regression in the producer.

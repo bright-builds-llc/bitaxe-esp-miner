@@ -28,8 +28,9 @@ pub struct AdcObservationQuorum {
     pub read_only_acquisition: bool,
     pub http_fresh_sample: bool,
     pub websocket_fresh_sample: bool,
-    pub finite_positive_millivolts: bool,
-    pub plausible_millivolt_range: bool,
+    pub finite_nonnegative_millivolts: bool,
+    pub millivolt_wire_domain_valid: bool,
+    pub disabled_state_bound: bool,
     pub sequence_not_regressed: bool,
     pub acquisition_time_not_regressed: bool,
     pub same_boot_session: bool,
@@ -107,8 +108,9 @@ impl AdcObservationEvidence {
             || !adc.read_only_acquisition
             || !adc.http_fresh_sample
             || !adc.websocket_fresh_sample
-            || !adc.finite_positive_millivolts
-            || !adc.plausible_millivolt_range
+            || !adc.finite_nonnegative_millivolts
+            || !adc.millivolt_wire_domain_valid
+            || !adc.disabled_state_bound
             || !adc.sequence_not_regressed
             || !adc.acquisition_time_not_regressed
             || !adc.same_boot_session
@@ -177,8 +179,9 @@ mod tests {
                 read_only_acquisition: true,
                 http_fresh_sample: true,
                 websocket_fresh_sample: true,
-                finite_positive_millivolts: true,
-                plausible_millivolt_range: true,
+                finite_nonnegative_millivolts: true,
+                millivolt_wire_domain_valid: true,
+                disabled_state_bound: true,
                 sequence_not_regressed: true,
                 acquisition_time_not_regressed: true,
                 same_boot_session: true,

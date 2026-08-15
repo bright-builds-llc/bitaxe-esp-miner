@@ -258,7 +258,13 @@ function fakePort(inputValidation: ProcessOutcome = ok()): ProcessPort {
       return ok();
     }
     if (spec.args[0] === "flash") return ok();
-    if (spec.program === "adc-input-validator") return inputValidation;
+    if (spec.program === "adc-input-validator") {
+      if (spec.args.length !== 3
+        || path.basename(String(spec.args[2])) !== "system-info-projection.private.json") {
+        return { ...ok(), exitCode: 1 };
+      }
+      return inputValidation;
+    }
     if (spec.program === "system-validator" || spec.program === "adc-validator") return ok();
     if (spec.program === "git") {
       if (spec.args[0] === "status") return ok();
@@ -269,7 +275,11 @@ function fakePort(inputValidation: ProcessOutcome = ok()): ProcessPort {
   });
 }
 
-async function capture(value: Awaited<ReturnType<typeof fixture>>, port: ProcessPort) {
+async function capture(
+  value: Awaited<ReturnType<typeof fixture>>,
+  port: ProcessPort,
+  websocketMillivolts = 1_201,
+) {
   return captureAdcObservationEvidence(
     value.root,
     value.options,
@@ -279,23 +289,26 @@ async function capture(value: Awaited<ReturnType<typeof fixture>>, port: Process
     "system-validator",
     "adc-input-validator",
     "adc-validator",
-    websocketFactory(snapshot(value.contract, 8, 10, 12, 1_000, 1_201)),
+    websocketFactory(snapshot(value.contract, 8, 10, 12, 1_000, websocketMillivolts)),
     value.admittedPlanSha256,
   );
 }
 
-test("ready ADC capture publishes aggregate-only v1 evidence", async () => {
+test("ready zero-millivolt disabled-state ADC capture publishes aggregate-only v1 evidence", async () => {
   // Arrange
   const value = await fixture("ready");
-  const restore = installHttp(value.contract);
+  const restore = installHttp(value.contract, 0);
 
   try {
     // Act
-    const evidence = await capture(value, fakePort());
+    const evidence = await capture(value, fakePort(), 0);
     const document = await readFile(value.projection, "utf8");
 
     // Assert
     assert.equal(evidence.adc.producer_cadence_ms, 500);
+    assert.equal(evidence.adc.finite_nonnegative_millivolts, true);
+    assert.equal(evidence.adc.millivolt_wire_domain_valid, true);
+    assert.equal(evidence.adc.disabled_state_bound, true);
     assert.equal(evidence.adc.sequence_not_regressed, true);
     assert.equal((await stat(value.projection)).mode & 0o777, 0o644);
     assert.doesNotMatch(document, /private-device|private-port|bootSession|acquiredAtMs|coreVoltageActual/u);
@@ -354,9 +367,11 @@ if (args[0] === "flash-monitor") {
   process.stdout.write(${JSON.stringify(`${referenceCommit}\n`)});
 } else if (args[0] === "rev-parse") {
   process.stdout.write(${JSON.stringify(`${sourceCommit}\n`)});
-} else if (args.length === 2) {
+} else if (args.length === 3) {
   const documents = await Promise.all(args.map((candidate) => readFile(candidate, "utf8")));
-  if (!documents.every((document) => document.includes('"coreVoltageActualStatus"'))) process.exitCode = 1;
+  const source = JSON.parse(documents[2]);
+  if (!documents.slice(0, 2).every((document) => document.includes('"coreVoltageActualStatus"'))
+    || source.hardware_control_state !== "disabled") process.exitCode = 1;
 } else {
   const value = JSON.parse(await readFile(args[0], "utf8"));
   if (!["bitaxe-system-info-evidence-v1", "bitaxe-adc-observation-evidence-v1"].includes(value.schema_version)) process.exitCode = 1;

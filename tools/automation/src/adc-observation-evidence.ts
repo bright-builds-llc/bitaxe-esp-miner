@@ -371,7 +371,11 @@ export async function captureAdcObservationEvidence(
     await childText(
       processPort,
       adcInputValidatorProgram,
-      [path.join(privateRoot, "api.private.json"), path.join(privateRoot, "websocket.private.json")],
+      [
+        path.join(privateRoot, "api.private.json"),
+        path.join(privateRoot, "websocket.private.json"),
+        sourceProjection,
+      ],
       "ADC input validator",
     );
     validateSnapshotIdentity(apiFile.value, websocket, source);
@@ -423,8 +427,9 @@ export async function captureAdcObservationEvidence(
         read_only_acquisition: true,
         http_fresh_sample: true,
         websocket_fresh_sample: true,
-        finite_positive_millivolts: true,
-        plausible_millivolt_range: true,
+        finite_nonnegative_millivolts: true,
+        millivolt_wire_domain_valid: true,
+        disabled_state_bound: true,
         sequence_not_regressed: true,
         acquisition_time_not_regressed: true,
         same_boot_session: true,
