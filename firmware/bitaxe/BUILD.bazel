@@ -40,6 +40,15 @@ js_library(
 )
 
 js_library(
+    name = "adc_observation_sources",
+    srcs = [
+        "src/operator_sensor_runtime.rs",
+        "src/safety_adapter/adc.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "emc2101_thermal_sources",
     srcs = [
         "src/operator_sensor_runtime.rs",

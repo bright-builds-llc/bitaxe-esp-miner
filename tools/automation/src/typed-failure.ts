@@ -1,4 +1,5 @@
 import { OperatorSnapshotEvidenceError } from "./operator-snapshot-evidence.js";
+import { AdcObservationEvidenceError } from "./adc-observation-evidence.js";
 import { DetectorHandoffError } from "./detector.js";
 import { ApiCommandEffectsError } from "./api-command-effects.js";
 import { AsicFrequencyTransitionEvidenceError } from "./asic-frequency-transition-evidence.js";
@@ -37,6 +38,7 @@ type TypedFailure = Error & {
 
 function maybeTypedFailure(error: unknown): TypedFailure | undefined {
   if (error instanceof DetectorHandoffError
+    || error instanceof AdcObservationEvidenceError
     || error instanceof ApiCommandEffectsError
     || error instanceof SettingsDurabilityError
     || error instanceof AsicInitializationEvidenceError

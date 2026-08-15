@@ -122,6 +122,17 @@ capture-runtime-health-evidence *args:
 capture-system-info-evidence *args:
     bazel run //tools/automation:capture_system_info_evidence -- {{ args }}
 
+capture-adc-observation-evidence *args:
+    bazel run //tools/automation:capture_adc_observation_evidence -- {{ args }}
+
+validate-adc-observation-evidence projection:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    projection={{ quote(projection) }}
+    test -f "$projection"
+    projection_path="$(/bin/realpath "$projection")"
+    bazel run //crates/bitaxe-automation-contracts:validate_adc_observation_evidence -- "$projection_path"
+
 capture-emc2101-thermal-evidence *args:
     bazel run //tools/automation:capture_emc2101_thermal_evidence -- {{ args }}
 

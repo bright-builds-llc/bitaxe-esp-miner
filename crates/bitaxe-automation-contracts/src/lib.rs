@@ -4,6 +4,8 @@ use schemars::{schema_for, JsonSchema};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+mod adc_observation_evidence;
+mod adc_observation_input;
 mod asic_frequency_transition_evidence;
 mod asic_initialization_evidence;
 mod asic_power_initialization_evidence;
@@ -31,6 +33,12 @@ mod stratum_socket_evidence;
 mod system_info_evidence;
 mod ui_workflow_evidence;
 mod ultra205_defaults_evidence;
+pub use adc_observation_evidence::{
+    AdcObservationEvidence, AdcObservationQuorum, AdcObservationSourceEvidence,
+};
+pub use adc_observation_input::{
+    validate_adc_observation_inputs, AdcObservationSnapshotInput, AdcObservationWebSocketInput,
+};
 pub use asic_frequency_transition_evidence::{
     AsicFrequencyTransitionEvidence, AsicFrequencyTransitionObservationEvidence,
     AsicFrequencyTransitionSourceEvidence,
@@ -113,6 +121,7 @@ pub const VERSION_EVIDENCE_SCHEMA: &str = "bitaxe-version-evidence-v1";
 pub const OPERATOR_SNAPSHOT_EVIDENCE_SCHEMA: &str = "bitaxe-operator-snapshot-evidence-v1";
 pub const RUNTIME_HEALTH_EVIDENCE_SCHEMA: &str = "bitaxe-runtime-health-evidence-v1";
 pub const SYSTEM_INFO_EVIDENCE_SCHEMA: &str = "bitaxe-system-info-evidence-v1";
+pub const ADC_OBSERVATION_EVIDENCE_SCHEMA: &str = "bitaxe-adc-observation-evidence-v1";
 pub const ULTRA205_DEFAULTS_EVIDENCE_SCHEMA: &str = "bitaxe-ultra205-defaults-evidence-v1";
 pub const SETTINGS_PATCH_EVIDENCE_SCHEMA: &str = "bitaxe-settings-patch-evidence-v1";
 pub const LOG_BUFFER_EVIDENCE_SCHEMA: &str = "bitaxe-log-buffer-evidence-v1";
@@ -176,6 +185,7 @@ pub enum AutomationCommand {
     CaptureOperatorSnapshotEvidence,
     CaptureRuntimeHealthEvidence,
     CaptureSystemInfoEvidence,
+    CaptureAdcObservationEvidence,
     CaptureUltra205DefaultsEvidence,
     CaptureSettingsPatchEvidence,
     CaptureLogBufferEvidence,
@@ -345,6 +355,7 @@ pub struct ContractBundle {
     pub operator_snapshot_evidence_schema: Value,
     pub runtime_health_evidence_schema: Value,
     pub system_info_evidence_schema: Value,
+    pub adc_observation_evidence_schema: Value,
     pub ultra205_defaults_evidence_schema: Value,
     pub settings_patch_evidence_schema: Value,
     pub log_buffer_evidence_schema: Value,
@@ -392,6 +403,8 @@ pub fn contract_bundle() -> ContractBundle {
             .expect("runtime health evidence schema must serialize"),
         system_info_evidence_schema: serde_json::to_value(schema_for!(SystemInfoEvidence))
             .expect("system info evidence schema must serialize"),
+        adc_observation_evidence_schema: serde_json::to_value(schema_for!(AdcObservationEvidence))
+            .expect("ADC observation evidence schema must serialize"),
         ultra205_defaults_evidence_schema: serde_json::to_value(schema_for!(
             Ultra205DefaultsEvidence
         ))
@@ -489,6 +502,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::CaptureOperatorSnapshotEvidence,
             AutomationCommand::CaptureRuntimeHealthEvidence,
             AutomationCommand::CaptureSystemInfoEvidence,
+            AutomationCommand::CaptureAdcObservationEvidence,
             AutomationCommand::CaptureUltra205DefaultsEvidence,
             AutomationCommand::CaptureSettingsPatchEvidence,
             AutomationCommand::CaptureLogBufferEvidence,
@@ -521,6 +535,7 @@ pub fn contract_bundle() -> ContractBundle {
             OPERATOR_SNAPSHOT_EVIDENCE_SCHEMA,
             RUNTIME_HEALTH_EVIDENCE_SCHEMA,
             SYSTEM_INFO_EVIDENCE_SCHEMA,
+            ADC_OBSERVATION_EVIDENCE_SCHEMA,
             ULTRA205_DEFAULTS_EVIDENCE_SCHEMA,
             SETTINGS_PATCH_EVIDENCE_SCHEMA,
             LOG_BUFFER_EVIDENCE_SCHEMA,

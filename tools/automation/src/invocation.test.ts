@@ -391,6 +391,22 @@ test("core-voltage projection accepts only the committed power proof", () => {
   assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
 });
 
+test("ADC observation capture requires the complete protected contract", () => {
+  // Arrange
+  const complete = ["capture-adc-observation-evidence",
+    "--private-root", "scratch/io002-adc/attempt-001", "--package-manifest", "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
+    "--wifi-credentials", "wifi-credentials.json", "--detector-output", "scratch/io002-adc/wrapper-001/detector.stdout",
+    "--projection", "docs/parity/evidence/io002-adc/adc-observation-projection.json", "--capture-timeout-seconds", "360"];
+
+  // Act
+  const invocation = parseInvocation(complete);
+
+  // Assert
+  assert.equal(invocation.command, "capture-adc-observation-evidence");
+  assert.throws(() => parseInvocation(complete.slice(0, -2)));
+  assert.throws(() => parseInvocation([...complete, "--port", "/dev/cu.private"]));
+});
+
 test("ASIC work-send projection accepts only the committed source proof", () => {
   // Arrange
   const complete = [

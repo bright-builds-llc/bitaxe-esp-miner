@@ -25,6 +25,7 @@ export type AutomationCommand =
   | "capture-operator-snapshot-evidence"
   | "capture-runtime-health-evidence"
   | "capture-system-info-evidence"
+  | "capture-adc-observation-evidence"
   | "capture-ultra205-defaults-evidence"
   | "capture-settings-patch-evidence"
   | "capture-log-buffer-evidence"
@@ -76,7 +77,6 @@ export type WorkflowIdentity = {
   command: AutomationCommand;
   request_sha256: string;
 };
-
 export type VersionEvidence = {
   schema_version: "bitaxe-version-evidence-v1";
   board: 205;
@@ -171,7 +171,6 @@ export type RuntimeHealthEvidence = {
   cleanup_complete: true;
   redaction_status: "passed";
 };
-
 export type SystemInfoEvidence = {
   schema_version: "bitaxe-system-info-evidence-v1";
   board: 205;
@@ -188,7 +187,9 @@ export type SystemInfoEvidence = {
   cleanup_complete: true;
   redaction_status: "passed";
 };
-
+export type AdcObservationSourceEvidence = { system_info_projection_sha256: string; api_snapshot_sha256: string; websocket_snapshot_sha256: string; plan_sha256: string; system_info_projection_valid: true; protected_modes_valid: true; production_source_current: true; source_semantics_admitted: true; compatible_path_count: 7; };
+export type AdcObservationQuorum = { adc_unit: 1; adc_channel: 1; gpio: 2; attenuation_db: 12; default_resolution: true; curve_calibration: true; producer_cadence_ms: 500; read_only_acquisition: true; http_fresh_sample: true; websocket_fresh_sample: true; finite_positive_millivolts: true; plausible_millivolt_range: true; sequence_not_regressed: true; acquisition_time_not_regressed: true; same_boot_session: true; exact_public_correlation: true; exact_package_identity: true; };
+export type AdcObservationEvidence = { schema_version: "bitaxe-adc-observation-evidence-v1"; board: 205; attempt_ordinal: 1; source_commit: string; reference_commit: string; package_manifest_sha256: string; workflow: WorkflowIdentity; source: AdcObservationSourceEvidence; adc: AdcObservationQuorum; detector_admitted: true; boot_observed: true; mining_state: "disabled"; hardware_control_state: "disabled"; cleanup_complete: true; recovery_used: false; redaction_status: "passed"; };
 export type Ultra205DefaultsObservationEvidence = {
   configured_default_field_count: number;
   firmware_matching_field_count: number;
@@ -201,7 +202,6 @@ export type Ultra205DefaultsObservationEvidence = {
   exact_seed_fixture_sha256: string;
   system_info_evidence_sha256: string;
 };
-
 export type Ultra205DefaultsEvidence = {
   schema_version: "bitaxe-ultra205-defaults-evidence-v1";
   board: 205;
@@ -219,7 +219,6 @@ export type Ultra205DefaultsEvidence = {
   private_modes_valid: true;
   redaction_status: "passed";
 };
-
 export type SettingsPatchEvidence = {
   schema_version: "bitaxe-settings-patch-evidence-v1";
   board: 205;
@@ -508,6 +507,7 @@ const automationCommands = new Set<AutomationCommand>([
   "capture-operator-snapshot-evidence",
   "capture-runtime-health-evidence",
   "capture-system-info-evidence",
+  "capture-adc-observation-evidence",
   "capture-ultra205-defaults-evidence",
   "capture-settings-patch-evidence",
   "capture-log-buffer-evidence",

@@ -118,6 +118,19 @@ test("result validator accepts the closed EMC2101 thermal capture command", () =
   assert.equal(result.command, "capture-emc2101-thermal-evidence");
 });
 
+test("result validator accepts the closed ADC observation capture command", () => {
+  // Act
+  const result = parseAutomationResult({
+    schema_version: "bitaxe-automation-result-v1",
+    command: "capture-adc-observation-evidence",
+    status: "succeeded",
+    category: "complete",
+  });
+
+  // Assert
+  assert.equal(result.command, "capture-adc-observation-evidence");
+});
+
 test("result validator accepts the closed ASIC serial-transport command", () => {
   // Act
   const result = parseAutomationResult({

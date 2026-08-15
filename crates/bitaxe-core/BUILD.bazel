@@ -1,4 +1,11 @@
 load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+load("@aspect_rules_js//js:defs.bzl", "js_library")
+
+js_library(
+    name = "adc_observation_sources",
+    srcs = ["src/runtime_orchestration.rs"],
+    visibility = ["//tools/automation:__pkg__"],
+)
 
 filegroup(
     name = "phase34_identity_sources",

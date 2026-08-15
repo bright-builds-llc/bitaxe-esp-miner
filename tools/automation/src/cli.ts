@@ -1,8 +1,9 @@
 import { constants, existsSync, realpathSync } from "node:fs";
-import { access, readFile } from "node:fs/promises";
+import { access } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildFirmware } from "./build.js";
+import { captureAdcObservationEvidence } from "./adc-observation-evidence.js";
 import { captureApiCommandEffects } from "./api-command-effects.js";
 import { emitOperatorCheckpointSignal } from "./api-command-effects-checkpoint.js";
 import { deviceSessionProgram, flashProgram, stringNumber, toolProgram } from "./cli-tools.js";
@@ -55,6 +56,7 @@ import { verifySemanticEvidenceRedaction } from "./redaction.js";
 import { captureRuntimeHealthEvidence } from "./runtime-health-evidence.js";
 import { captureSettingsPatchEvidence } from "./settings-patch-evidence.js";
 import { captureSystemInfoEvidence } from "./system-info-evidence.js";
+import { typedRequestArguments } from "./typed-request.js";
 import { captureSettingsDurability } from "./settings-durability.js";
 import { captureThemeDurability } from "./theme-durability.js";
 import { maybeTypedFailureCategory, maybeTypedFailurePublicValue } from "./typed-failure.js";
@@ -138,22 +140,6 @@ function flashDurabilitySpec(root: string, invocation: ParsedInvocation) {
     manifest: maybeManifest,
   });
 }
-
-async function typedRequestArguments(root: string, invocation: ParsedInvocation): Promise<string[]> {
-  const request = assertWithinWorkspace(root, optionValue(invocation, "--request"));
-  const value: unknown = JSON.parse(await readFile(request, "utf8"));
-  if (typeof value !== "object" || value === null) throw new InvocationError("typed request must be a JSON object");
-  const candidate = value as Record<string, unknown>;
-  const workflow = candidate["workflow"];
-  if (typeof workflow !== "object" || workflow === null) throw new InvocationError("typed request workflow is missing");
-  const identity = workflow as Record<string, unknown>;
-  if (identity["schema_version"] !== "bitaxe-workflow-identity-v1") throw new InvocationError("typed request workflow schema is invalid");
-  if (typeof identity["command"] !== "string" || typeof identity["request_sha256"] !== "string") {
-    throw new InvocationError("typed request workflow identity is incomplete");
-  }
-  return ["--manifest", request, "--workflow", identity["command"], "--request-sha256", identity["request_sha256"]];
-}
-
 async function dispatchProcess(
   root: string,
   invocation: ParsedInvocation,
@@ -221,6 +207,7 @@ async function dispatchProcess(
     case "capture-operator-snapshot-evidence":
     case "capture-runtime-health-evidence":
     case "capture-system-info-evidence":
+    case "capture-adc-observation-evidence":
     case "capture-emc2101-thermal-evidence":
     case "capture-emc2101-thermal-fault-evidence":
     case "capture-ultra205-defaults-evidence":
@@ -252,7 +239,6 @@ async function dispatchProcess(
   await executeCommandSpec(spec, processPort);
   return undefined;
 }
-
 async function main(): Promise<number> {
   let invocation: ParsedInvocation;
   try {
@@ -346,6 +332,18 @@ async function main(): Promise<number> {
         projection: optionValue(invocation, "--projection"),
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root), toolProgram(root, "crates/bitaxe-automation-contracts/validate_system_info_evidence"));
+    } else if (invocation.command === "capture-adc-observation-evidence") {
+      const detectorOutput = optionValue(invocation, "--detector-output");
+      const port = await portFromDetectorOutput(root, detectorOutput);
+      const options = {
+        privateRoot: optionValue(invocation, "--private-root"), packageManifest: optionValue(invocation, "--package-manifest"),
+        wifiCredentials: optionValue(invocation, "--wifi-credentials"), detectorOutput, port,
+        projection: optionValue(invocation, "--projection"), captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
+      };
+      publicValue = await captureAdcObservationEvidence(root, options, processPort, flashProgram(root), "git",
+        toolProgram(root, "crates/bitaxe-automation-contracts/validate_system_info_evidence"),
+        toolProgram(root, "crates/bitaxe-automation-contracts/validate_adc_observation_inputs"),
+        toolProgram(root, "crates/bitaxe-automation-contracts/validate_adc_observation_evidence"));
     } else if (invocation.command === "capture-emc2101-thermal-evidence") {
       const detectorOutput = optionValue(invocation, "--detector-output");
       const port = await portFromDetectorOutput(root, detectorOutput);

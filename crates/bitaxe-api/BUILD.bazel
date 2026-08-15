@@ -22,6 +22,16 @@ js_library(
     visibility = ["//tools/automation:__pkg__"],
 )
 
+js_library(
+    name = "adc_observation_sources",
+    srcs = [
+        "src/observation.rs",
+        "src/snapshot.rs",
+        "src/wire.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
 filegroup(
     name = "theme_api_fixtures",
     srcs = ["fixtures/api/theme-cases.json"],

@@ -84,6 +84,7 @@ js_library(
         "docs/parity/evidence/rel002-sdkconfig-rollback/sdkconfig-rollback-projection.json",
         "docs/parity/evidence/thr001-emc2101-thermal/thermal-projection.json",
         "docs/parity/work-plans/20260815T201754Z-THR-001/PLAN.md",
+        "docs/parity/work-plans/20260815T210711Z-IO-002/PLAN.md",
         "docs/parity/work-plans/20260804T190000Z-UI-004/RESULT.md",
         "docs/parity/work-plans/20260813T045300Z-UI-004/PLAN.md",
     ],
@@ -96,5 +97,11 @@ js_library(
         "reference/esp-miner/main/device_config.h",
         "reference/esp-miner/main/thermal/EMC2101.c",
     ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
+    name = "adc_reference_sources",
+    srcs = ["reference/esp-miner/main/adc.c"],
     visibility = ["//tools/automation:__pkg__"],
 )
