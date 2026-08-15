@@ -422,3 +422,17 @@
   was split into a focused module to preserve file-length budgets.
 - Disposition: The software boundary is ready to publish. A fresh attempt must
   use separate `wrapper-034` and `attempt-034` paths under a new exact contract.
+
+## 2026-08-15T08:50:00Z | attempt-034 sibling-wrapper contract drafted
+
+- Admission: Require pushed `3ae3c85e`, exact HEAD/reference package, opaque
+  ignored input, fresh detector/public paths, absent `attempt-034`, and a
+  distinct protected `wrapper-034`.
+- Execution: Run one detector and one campaign. Shell redirection targets only
+  the sibling wrapper root so the automation command exclusively creates and
+  owns the attempt root.
+- Effects/privacy: Existing bounded effects, recovery, safe stop, cleanup, and
+  redaction rules are unchanged. No user checkpoint or visual claim is part of
+  the attempt.
+- Stop: Campaign start consumes attempt-034. Any non-ready result withholds
+  evidence and stops without attempt-035 for typed diagnosis.
