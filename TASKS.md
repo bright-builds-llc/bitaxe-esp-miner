@@ -3673,7 +3673,7 @@ Software diagnosis continuation:
       preserve ordinary non-stimulus fault/fresh/stale semantics.
 - [x] Pass focused, firmware, mandatory, privacy, reference, task/plan, and diff
       gates; commit and push with THR-001 still `implemented`.
-- [ ] Close the software-only plan and create a separate immutable attempt-005
+- [x] Close the software-only plan and create a separate immutable attempt-005
       contract only after the correction is clean and pushed.
 
 Authorization and stop: this continuation is software-only. It authorizes no
@@ -3681,6 +3681,22 @@ detector, package, USB, serial, HTTP, device, NVS, sensor, display, mining,
 control, reset, OTA, erase, or attempt-005 effect. Stop if the production-order
 loop cannot reproduce the consumed category or a fix would weaken ordinary
 safety freshness.
+
+Attempt-005 continuation:
+`docs/parity/work-plans/20260815T182438Z-THR-001/PLAN.md`.
+
+- [ ] Advance the consumed ordinal, private roots, projection path, immutable
+      plan binding, tests, and generated command contract to attempt 5.
+- [ ] Pass focused and mandatory software gates; commit and push the complete
+      binding change before packaging or device admission.
+- [ ] Build the exact clean package, admit one Ultra 205, and run the bounded
+      fault/restoration campaign exactly once.
+- [ ] Promote only on the complete independently validated hardware-regression
+      quorum; otherwise withhold evidence and stop without attempt 6.
+
+Authorization: only the exact attempt-005 command, effects, privacy, recovery,
+cleanup, and stop contract in the linked immutable plan applies. No attempt-006
+or effect outside that plan is authorized.
 
 ### task-parity-ui004-live-browser-attempt-001 | 2026-08-13 | Verify exact-package AxeOS browser workflows
 
