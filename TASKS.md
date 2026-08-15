@@ -3707,6 +3707,20 @@ withholding passed. THR-001 remains `implemented`; attempt-005 is consumed and
 attempt-006 is not authorized. See
 `docs/parity/work-plans/20260815T182438Z-THR-001/CLOSURE.md`.
 
+Marker-observation software continuation:
+`docs/parity/work-plans/20260815T185700Z-THR-001/PLAN.md`.
+
+- [ ] Reproduce canonical ESP-prefix rejection and late baseline attachment in
+      deterministic real-child tests at the production evidence seam.
+- [ ] Implement one strict shared payload parser and a bounded replayable or
+      reader-armed ordered marker witness without weakening the quorum.
+- [ ] Pass focused and complete software gates, commit and push, and close with
+      THR-001 still `implemented` and no attempt-006 authority.
+
+Authorization: this continuation is software-only. No package, detector, USB,
+serial, HTTP, device, NVS, sensor, control, reset, OTA, erase, or hardware
+effect is authorized.
+
 ### task-parity-ui004-live-browser-attempt-001 | 2026-08-13 | Verify exact-package AxeOS browser workflows
 
 - [x] Add a typed private-first evidence join and independent validator for the
