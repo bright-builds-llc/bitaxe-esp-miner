@@ -3663,6 +3663,25 @@ must never be retried; attempt-005 is not authorized by this plan. See
 continuation must reproduce the production owner/reducer projection loss in a
 software regression before defining any new bounded hardware ordinal.
 
+Software diagnosis continuation:
+`docs/parity/work-plans/20260815T181534Z-THR-001/PLAN.md`.
+
+- [ ] Reproduce attempt-004's exact `fault_projection_missing` category through
+      the real stimulus, reducer, stale-processing, and next-sweep order in one
+      fast deterministic software loop.
+- [ ] Rank and falsify multiple causes, apply the smallest root-cause fix, and
+      preserve ordinary non-stimulus fault/fresh/stale semantics.
+- [ ] Pass focused, firmware, mandatory, privacy, reference, task/plan, and diff
+      gates; commit and push with THR-001 still `implemented`.
+- [ ] Close the software-only plan and create a separate immutable attempt-005
+      contract only after the correction is clean and pushed.
+
+Authorization and stop: this continuation is software-only. It authorizes no
+detector, package, USB, serial, HTTP, device, NVS, sensor, display, mining,
+control, reset, OTA, erase, or attempt-005 effect. Stop if the production-order
+loop cannot reproduce the consumed category or a fix would weaken ordinary
+safety freshness.
+
 ### task-parity-ui004-live-browser-attempt-001 | 2026-08-13 | Verify exact-package AxeOS browser workflows
 
 - [x] Add a typed private-first evidence join and independent validator for the
