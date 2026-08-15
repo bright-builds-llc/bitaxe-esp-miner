@@ -76,3 +76,20 @@
   `implemented`; hardware and visual evidence remain intentionally pending.
 - Blocker or next safe action: Commit and push this clean implementation, then
   create a separate exact-package pilot contract before detector admission.
+
+## 2026-08-15T06:08:00Z | software checkpoint pushed and attempt-028 contracted
+
+- Pushed source: `c9faaaa0`.
+- Actions: Published the programmatic verification platform to `origin/main`
+  and added a separate one-run attempt-028 contract in `TASKS.md` without
+  changing the immutable attempt-027 plan.
+- Verification: Remote-default detection, fetch, fast-forward ancestry, push,
+  clean package-path prerequisites, fresh attempt/detector/projection paths,
+  and non-empty ignored Wi-Fi input checks pass. Credential contents were not
+  read.
+- Evidence: Public source/task facts only; no detector or hardware command has
+  run at this checkpoint.
+- Outcome: The software publication gate is complete. Attempt-028 becomes
+  effect-eligible only after this task checkpoint is committed and pushed.
+- Blocker or next safe action: Commit and push the attempt contract, rebuild
+  the exact package from that clean synchronized HEAD, then run its detector.

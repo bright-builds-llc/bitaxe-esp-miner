@@ -3746,7 +3746,7 @@ not typed UI-001/UI-002 evidence.
       failure signature, transport loss, stale/duplicate generations, display
       failure, restart ambiguity, projection integrity, privacy, cleanup, and
       earliest-failure precedence.
-- [ ] Pass focused and full repository gates, review the diff for unintended
+- [x] Pass focused and full repository gates, review the diff for unintended
       effects, commit, and push before authorizing any fresh hardware attempt.
 - [ ] Plan and run sequential detector-gated exact-package pilot attempts only
       after a complete no-human simulated command-effects campaign passes.
@@ -3761,6 +3761,11 @@ reference cleanliness, and diff checks. The shared interface reuses the
 authoritative reboot/OTA lifecycle; its compatibility commands contain no
 independent device lifecycle. The implementation is ready for commit and push.
 No fresh hardware attempt has run under this task.
+
+Published software checkpoint: commit `c9faaaa0` is pushed to `origin/main`.
+The commit-and-push workflow confirmed the remote default branch, fetched the
+current remote, verified a fast-forward relationship, and pushed without a
+history rewrite.
 
 Software authorization and privacy: source, tests, deterministic loopback and
 real-child fixtures, documentation, task records, builds, local protected
@@ -3779,6 +3784,53 @@ observers. External UART/BAP, USB request/response, erase, factory reset,
 power-cycle, fault injection, arbitrary settings writes, mining stress,
 voltage/frequency/fan/thermal control, pins, pads, GPIO, probes, jumpers, and
 non-205 devices remain prohibited.
+
+### task-api009-programmatic-pilot-attempt-028 | 2026-08-15 | Prove autonomous command effects on Ultra 205
+
+- [ ] At clean synchronized pushed HEAD, build and validate the exact package,
+      require non-empty ignored `wifi-credentials.json` without reading it,
+      and require fresh detector, attempt, and public-projection paths.
+- [ ] Create mode-`0700` `scratch/api009-command-effects/detector-028` with a
+      mode-`0600` `detector.stdout`, then run exactly one
+      `just detect-ultra205` and admit only one holder-free ESP32-S3 board 205.
+- [ ] Run exactly once:
+      `just api-command-effects-campaign --private-root scratch/api009-command-effects/attempt-028 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/api009-command-effects/detector-028/detector.stdout --projection docs/parity/evidence/api009-command-effects/command-effects-projection.json --duration-seconds 600`.
+- [ ] Validate a sealed, redacted programmatic projection proving the pause,
+      dismissal, IDENTIFY render/clear receipts, resume, same-device restart,
+      exact package, safe stop, recovery, and cleanup quorum; otherwise record
+      the earliest typed failure and withhold evidence.
+
+Objective and allowed effects: prove the no-human API-009 programmatic campaign
+on the connected Ultra 205. This single attempt may perform one exact-package
+USB flash/reset, use the private Wi-Fi seed and generated local-fixture NVS
+input, initialize and mine with the conservative profile for at most 600
+accumulated active seconds, issue exactly one pause, notification dismissal,
+IDENTIFY enable, resume, and software restart, observe HTTP/WebSocket and
+receive-only native USB, and perform terminal safe stop, same-device recovery,
+and process/USB cleanup.
+
+Evidence and privacy: the attempt and detector roots are ignored private
+mode-`0700` directories and their files are mode `0600`. The sole public output
+is the redacted projection named above, written only after a ready closed
+quorum. Origins, hostnames, settings values, addresses, ports, USB/network or
+process identities, credentials, fixture inputs, frame text, sensor values,
+and raw traces stay private and must not enter console summaries or committed
+evidence.
+
+Recovery, retry, and stops: the repo-owned campaign must safe-stop mining,
+restore the admitted package/session state, terminate child processes, release
+USB holders, and preserve the earliest primary failure before returning. The
+campaign has finite automated effect and recovery deadlines. Attempt-028 is
+consumed when the campaign command starts; no same-contract retry or attempt-029
+is authorized. `ready` permits independent validation and later planning of
+the physical-display UAT. Any typed non-ready category, malformed/missing
+projection, identity ambiguity, build mismatch, cleanup/recovery failure,
+unexpected holder, detector failure, or unavailable device stops this task
+with API-009 still `implemented` and evidence withheld. No OTA, erase, factory
+reset, power cycle, external UART/BAP, USB request/response protocol, direct
+pin/pad/GPIO work, arbitrary settings writes, external pool, stress profile,
+voltage/frequency/fan/thermal override, fault injection, non-205 device, or
+human display claim is authorized.
 
 ## Future
 
