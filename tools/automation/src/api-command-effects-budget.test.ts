@@ -77,7 +77,8 @@ test("budget components remain bound to child source limits", async () => {
 
   // Act / Assert
   assert.match(campaign, /MINING_TERMINAL_GRACE_SECONDS: u64 = 180/u);
-  assert.match(campaign, /CampaignCaptureLimit::OperatorGated/u);
+  assert.match(campaign, /MiningCampaignStage::CommandEffects => CampaignCaptureLimit::Bounded/u);
+  assert.match(campaign, /duration_seconds\s*\.saturating_mul\(2\)/u);
   assert(!campaign.includes("COMMAND_EFFECTS_OPERATOR_READY_SECONDS"));
   assert.match(environment, /Duration::from_secs\(10\)/u);
   assert.equal(environment.match(/Duration::from_secs\(360\)/gu)?.length, 1);

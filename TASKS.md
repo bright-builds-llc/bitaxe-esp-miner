@@ -4031,36 +4031,6 @@ progress requires a separately scoped sensor-producer/I2C latency diagnostic
 that can identify which bounded acquisition delayed the complete observation
 sweep without exposing sensor values, followed by a verified root-cause change.
 
-### task-api009-programmatic-pilot-attempt-038 | 2026-08-15 | Capture causal command result
-
-- [ ] Require clean synchronized pushed `6602383b`, opaque non-empty ignored
-      Wi-Fi input, exact HEAD/reference package, and absent detector, wrapper,
-      command-owned attempt, and public-projection paths.
-- [ ] Run `just package`, then exactly one protected `detector-038`; require
-      zero exit, one `port: ` record, `usb_session: ready`, private modes, and
-      one admitted board-205 device.
-- [ ] Use separate protected `wrapper-038`, keep `attempt-038` absent, and run
-      exactly once the existing 600-second programmatic campaign.
-- [ ] Publish only a ready independently validated redacted projection;
-      otherwise withhold it and record the earliest category, typed command
-      phase/cause, sensor diagnostic, and recovery booleans.
-
-Effects: one exact-package flash/reset, private Wi-Fi/local-fixture seed,
-conservative initialization/mining for at most 600 active seconds, one each
-pause/dismiss/IDENTIFY/resume/software restart, HTTP/WebSocket/receive-only USB
-observation, same-device recovery, safe stop, child termination, and USB
-cleanup. No human checkpoint or physical-display claim is included.
-
-Privacy/retry/stop: all private roots/files remain ignored mode 0700/0600.
-Never publish identities, origins, ports, addresses, hostnames, credentials,
-boot session, values, or traces. Preserve the first failure through recovery.
-Campaign start consumes attempt-038; no attempt-039 or unchanged retry is
-authorized. Any admission ambiguity, non-ready result, malformed evidence, or
-failed safe stop/recovery/cleanup stops with evidence withheld and API-009
-`implemented`. OTA, erase, factory reset, power cycle, UART/BAP, USB duplex,
-pins/GPIO, arbitrary settings, external pool, stress, direct controls, fault
-injection, non-205 hardware, and human display claims remain prohibited.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

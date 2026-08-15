@@ -2,6 +2,37 @@ use super::*;
 use crate::CampaignTerminalCategory;
 
 #[test]
+fn completed_commands_wait_for_firmware_lease_consumption() {
+    // Arrange
+    let started = std::time::Instant::now();
+    let after_the_full_lease = started + std::time::Duration::from_secs(601);
+
+    // Act
+    let failure = automated_phase_failure(CommandPhase::Terminal, started, after_the_full_lease);
+
+    // Assert
+    assert_eq!(failure, None);
+}
+
+#[test]
+fn consumed_terminal_keeps_exact_http_confirmation_deadline() {
+    // Arrange
+    let consumed_at = std::time::Instant::now();
+    let deadline = consumed_at + TERMINAL_DEADLINE;
+
+    // Act
+    let before = terminal_confirmation_timed_out(
+        Some(deadline),
+        deadline - std::time::Duration::from_nanos(1),
+    );
+    let at_deadline = terminal_confirmation_timed_out(Some(deadline), deadline);
+
+    // Assert
+    assert!(!before);
+    assert!(at_deadline);
+}
+
+#[test]
 fn pause_convergence_increment_is_preserved_across_dismissal() {
     // Arrange
     let (_temp, root) = private_root();

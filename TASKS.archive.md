@@ -7690,3 +7690,90 @@ count, safety rule, identity check, deadline, or recovery behavior changed.
 No hardware effect occurred during this task. It is complete and archived at
 2026-08-15T11:30:00Z; attempt-038 still requires a separate exact-package
 contract.
+
+### task-api009-programmatic-pilot-attempt-038 | 2026-08-15 | Capture causal command result
+
+- [x] Require clean synchronized pushed `6602383b`, opaque non-empty ignored
+      Wi-Fi input, exact HEAD/reference package, and absent detector, wrapper,
+      command-owned attempt, and public-projection paths.
+- [x] Run `just package`, then exactly one protected `detector-038`; require
+      zero exit, one `port: ` record, `usb_session: ready`, private modes, and
+      one admitted board-205 device.
+- [x] Use separate protected `wrapper-038`, keep `attempt-038` absent, and run
+      exactly once the existing 600-second programmatic campaign.
+- [x] Publish only a ready independently validated redacted projection;
+      otherwise withhold it and record the earliest category, typed command
+      phase/cause, sensor diagnostic, and recovery booleans.
+
+Effects: one exact-package flash/reset, private Wi-Fi/local-fixture seed,
+conservative initialization/mining for at most 600 active seconds, one each
+pause/dismiss/IDENTIFY/resume/software restart, HTTP/WebSocket/receive-only USB
+observation, same-device recovery, safe stop, child termination, and USB
+cleanup. No human checkpoint or physical-display claim is included.
+
+Privacy/retry/stop: all private roots/files remain ignored mode 0700/0600.
+Never publish identities, origins, ports, addresses, hostnames, credentials,
+boot session, values, or traces. Preserve the first failure through recovery.
+Campaign start consumes attempt-038; no attempt-039 or unchanged retry is
+authorized. Any admission ambiguity, non-ready result, malformed evidence, or
+failed safe stop/recovery/cleanup stops with evidence withheld and API-009
+`implemented`. OTA, erase, factory reset, power cycle, UART/BAP, USB duplex,
+pins/GPIO, arbitrary settings, external pool, stress, direct controls, fault
+injection, non-205 hardware, and human display claims remain prohibited.
+
+Final verification: Clean synchronized pushed contract `20f25a76`, exact
+package/reference identity, one detector, separate wrapper, and one campaign
+passed admission. The campaign stopped `hardware_blocked / command_effects`
+with first failure `terminal / phase_deadline`. Every command effect completed
+exactly once: notification, pause, dismiss, IDENTIFY render and natural clear,
+and resume. Same-package and safety validation, serial transition witnesses,
+safe-stop recovery, child cleanup, and USB cleanup passed. The closed sensor
+diagnostic was `display / ready / under_500_ms`; no secondary recovery failure
+remained, private modes held, and public evidence was withheld.
+
+Final completion review: The host entered `Terminal` after active resume, then
+applied its generic 15-second automated-phase deadline while firmware still
+owned an admitted 600-active-second resumable lease. The failure is therefore
+a contradictory host lifecycle deadline, not a command, sensor, device, or
+user failure. Attempt-038 is consumed, attempt-039 is not authorized, API-009
+remains `implemented`, and the task is complete and archived at
+2026-08-15T12:05:00Z.
+
+### task-api009-terminal-active-duration-contract | 2026-08-15 | Let the admitted lease own terminal timing
+
+- [x] Reproduce attempt-038's `terminal / phase_deadline` at the host phase
+      boundary without reading or copying private identities, values, or logs.
+- [x] Remove the contradictory 15-second terminal phase deadline while keeping
+      the firmware's 600-active-second lease, outer process deadline, serial
+      terminal validation, and post-consumption HTTP deadline finite.
+- [x] Add deterministic tests proving command completion can wait for lease
+      consumption and that post-consumption confirmation still times out.
+- [x] Run focused and complete gates, simplify, review, archive, commit, and
+      push before any new hardware ordinal.
+
+Authorization: source, deterministic fixtures, local child processes, builds,
+and repository verification only. Protected attempt-038 may be used only to
+derive the closed command-effect and typed failure facts recorded in its
+archive entry; never publish identities, origins, ports, addresses,
+credentials, boot session, raw traces, or values. No detector, credentials,
+package effect, USB/device/network/HTTP session, flash, reset, mining, recovery,
+OTA, UART/BAP, pins, or attempt-039 is authorized. Stop if the change weakens
+the admitted 600-active-second bound, terminal validation, cleanup, recovery,
+or post-consumption deadline.
+
+Final verification: The deterministic reproduction proves `Terminal` no
+longer inherits the generic 15-second command-phase deadline, while the exact
+15-second post-consumption HTTP confirmation boundary remains fail-closed. The
+serial capture now admits the firmware's 600-second activation budget plus 600
+active seconds and 180 seconds of terminal grace. The host child uses the
+existing complete 3,850-second transaction budget instead of a hard-coded
+900-second limit. Focused Rust and host tests, mandatory Cargo, Bright Builds,
+real firmware, full Bazel, parity, redaction, reference, and diff gates pass.
+
+Final completion review: The change removes obsolete human-gated campaign
+capture without changing the separately replayable unbounded physical-display
+UAT. Command/recovery deadlines, request-once behavior, safety validation,
+firmware lease consumption, terminal safe stop, evidence sealing, and cleanup
+remain finite and fail-closed. No hardware effect occurred during this task.
+It is complete and archived at 2026-08-15T12:35:00Z; attempt-039 still requires
+a separately committed exact-package contract.

@@ -28,7 +28,6 @@ const MINING_TERMINAL_GRACE_SECONDS: u64 = 180;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum CampaignCaptureLimit {
     Bounded(u64),
-    OperatorGated,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
@@ -419,11 +418,15 @@ fn campaign_capture_limit(admission: CampaignAdmission) -> CampaignCaptureLimit 
                 .duration_seconds
                 .saturating_add(MINING_TERMINAL_GRACE_SECONDS),
         ),
-        // This transaction contains safe, persisted checkpoints at which the
-        // owner may be absent for hours or overnight. Its automated phases
-        // enforce their own deadlines; the enclosing capture must not guess a
-        // human-response duration.
-        MiningCampaignStage::CommandEffects => CampaignCaptureLimit::OperatorGated,
+        // Activation and the resumable active epoch each have their own
+        // admitted duration. Keep the programmatic capture alive for both,
+        // then retain the ordinary terminal grace for safe stop and evidence.
+        MiningCampaignStage::CommandEffects => CampaignCaptureLimit::Bounded(
+            admission
+                .duration_seconds
+                .saturating_mul(2)
+                .saturating_add(MINING_TERMINAL_GRACE_SECONDS),
+        ),
     }
 }
 

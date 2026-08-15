@@ -1,9 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
 import { access, chmod, mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-
 import { internalCommandSpec, type AutomationCategory } from "./contracts.generated.js";
 import type { RecoveryFacts } from "./api-command-effects-recovery.js";
+import { COMMAND_EFFECTS_TRANSACTION_BUDGET } from "./api-command-effects-budget.js";
 import { isDeviceSessionProjectionFailure, readClosedDeviceSession } from "./device-session-projection.js";
 import type { OperatorCheckpointSink } from "./api-command-effects-checkpoint.js";
 import { isClosedReadinessTransition } from "./api-command-effects-readiness.js";
@@ -490,7 +490,7 @@ export async function captureApiCommandEffects(
       "--evidence-dir", campaignRoot,
       "--duration-seconds", String(options.durationSeconds),
       "--redact-evidence",
-    ], Math.max((options.durationSeconds + 300) * 1_000, 60_000), "command effects campaign");
+    ], COMMAND_EFFECTS_TRANSACTION_BUDGET.boundedChildMaximumMillis, "command effects campaign");
     if (maybeCampaignOutcome.timedOut) {
       const facts = await campaignFailureFacts(campaignRoot);
       throw failure(

@@ -430,9 +430,6 @@ impl FlashEnvironment for LocalFlashEnvironment {
                     Duration::from_secs(timeout_seconds),
                     &mut observe,
                 ),
-            CampaignCaptureLimit::OperatorGated => {
-                session.observe_receive_only_ephemeral_chunks_operator_gated(&mut observe)
-            }
         }
         .map_err(|error| anyhow::anyhow!("{error}"))?;
         Ok(campaign::network::CampaignObservationCapture {

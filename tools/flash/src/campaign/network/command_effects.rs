@@ -349,7 +349,7 @@ pub(super) fn observe_command_effects(
         if serial.terminal_consumed && evidence.terminal_http_valid {
             break;
         }
-        if maybe_terminal_deadline.is_some_and(|deadline| Instant::now() >= deadline) {
+        if terminal_confirmation_timed_out(maybe_terminal_deadline, Instant::now()) {
             record_command_failure(
                 &mut maybe_failure,
                 &mut maybe_failure_diagnostic,
@@ -419,10 +419,12 @@ fn automated_phase_failure(
             Some(REACTIVATION_DEADLINE),
             CampaignTerminalCategory::ResumeReactivationTimedOut,
         ),
-        CommandPhase::Terminal => (
-            Some(AUTOMATED_PHASE_DEADLINE),
-            CampaignTerminalCategory::NetworkCorrelationFailed,
-        ),
+        // Command completion does not consume the firmware lease. The serial
+        // owner must remain free to accumulate the rest of its admitted active
+        // duration before publishing the terminal marker. The outer child
+        // deadline bounds that wait, and TERMINAL_DEADLINE separately bounds
+        // HTTP confirmation after the marker is consumed.
+        CommandPhase::Terminal => return None,
         #[cfg(test)]
         CommandPhase::PausedDismiss => (
             Some(AUTOMATED_PHASE_DEADLINE),
@@ -462,6 +464,10 @@ fn automated_phase_failure(
     maybe_limit
         .is_some_and(|limit| now.duration_since(started_at) >= limit)
         .then_some(category)
+}
+
+fn terminal_confirmation_timed_out(maybe_deadline: Option<Instant>, now: Instant) -> bool {
+    maybe_deadline.is_some_and(|deadline| now >= deadline)
 }
 
 fn take_recovery_pause_request(

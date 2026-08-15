@@ -608,3 +608,36 @@
   deadlines, and redaction remain unchanged; no physical display claim.
 - Stop: Campaign start consumes attempt-038. Any non-ready result withholds
   evidence and stops without attempt-039 or an unchanged retry.
+
+## 2026-08-15T12:05:00Z | attempt-038 isolated terminal deadline mismatch
+
+- Result: One detector and one campaign ran. The public result was
+  `hardware_blocked / command_effects`, with `terminal / phase_deadline` as the
+  first failure. Safe stop, recovery, cleanup, private modes, and evidence
+  withholding all passed; no user action contributed.
+- Proven boundary: Every requested command and command-specific machine
+  postcondition completed exactly once before the failure. Same-package,
+  safety, serial-transition, and display-render receipts passed.
+- Root cause: Entering the host `Terminal` phase starts a generic 15-second
+  phase deadline, but firmware still needs to finish the remainder of its
+  admitted 600-active-second resumable lease before publishing `consumed`.
+- Disposition: Attempt-038 is consumed. Remove only the contradictory host
+  terminal-phase deadline while retaining the lease, outer process,
+  post-consumption HTTP, recovery, and cleanup bounds. No attempt-039 is
+  authorized until that software change passes complete gates and is pushed.
+
+## 2026-08-15T12:35:00Z | terminal timing aligned and verified
+
+- Fix: Completed commands now wait for the firmware's admitted resumable lease
+  to publish `consumed`; the generic 15-second command-phase deadline no longer
+  applies after entry to `Terminal`.
+- Bounds: Serial capture is finite at activation + active duration + terminal
+  grace (`600 + 600 + 180` seconds). The host uses the existing complete
+  3,850-second child budget. Post-consumption HTTP confirmation remains exactly
+  15 seconds, and recovery/cleanup bounds are unchanged.
+- Regression: Deterministic tests cover waiting past 600 elapsed seconds before
+  consumption, the exact post-consumption deadline, the Rust capture budget,
+  and the host child lifetime.
+- Verification: Focused tests, mandatory Cargo, Bright Builds, real firmware,
+  full Bazel, parity with no validation errors, redaction, reference, and diff
+  gates pass. No hardware effect occurred.

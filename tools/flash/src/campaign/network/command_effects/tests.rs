@@ -14,9 +14,10 @@ use super::{
     arm_identify_transaction, arm_ready_after_paused_dismissal, automated_phase_failure,
     consume_checkpoint_response, consume_cleared_signal, consume_ready_signal,
     finish_identify_observation, rendered_checkpoint_action, respond_identify_checkpoint,
-    take_recovery_pause_request, write_required_checkpoint, CheckpointResponse,
-    CommandEffectsEvidence, CommandGenerations, CommandPhase, CommandProgress,
+    take_recovery_pause_request, terminal_confirmation_timed_out, write_required_checkpoint,
+    CheckpointResponse, CommandEffectsEvidence, CommandGenerations, CommandPhase, CommandProgress,
     IdentifyCheckpointKind, IdentifyCheckpointOutcome, PauseJoinState, RenderedCheckpointAction,
+    TERMINAL_DEADLINE,
 };
 use crate::campaign::network::command_witness::CommandTransitionWitness;
 use crate::campaign::network::model::{SharedSerialState, TrustedNetworkTarget};

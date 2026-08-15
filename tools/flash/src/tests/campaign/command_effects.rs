@@ -82,7 +82,7 @@ fn command_effects_requires_the_typed_network_quorum_and_safe_stop() {
         environment.campaign_observations(),
         vec![(
             MiningCampaignStage::CommandEffects,
-            CampaignCaptureLimit::OperatorGated
+            CampaignCaptureLimit::Bounded(1_380)
         )]
     );
     let network: serde_json::Value = serde_json::from_str(

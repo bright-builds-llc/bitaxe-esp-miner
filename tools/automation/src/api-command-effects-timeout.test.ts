@@ -9,6 +9,7 @@ import {
   captureApiCommandEffects,
   type ApiCommandEffectsOptions,
 } from "./api-command-effects.js";
+import { COMMAND_EFFECTS_TRANSACTION_BUDGET } from "./api-command-effects-budget.js";
 import { createFakeProcessPort, type ProcessOutcome } from "./process.js";
 
 const ok = (): ProcessOutcome => ({ exitCode: 0, stdout: "", stderr: "", timedOut: false });
@@ -116,7 +117,10 @@ for (const recoveryMode of ["closed", "missing", "malformed"] as const) {
     // Assert
     assert(error instanceof ApiCommandEffectsError);
     assert.equal(error.category, "hardware_blocked");
-    assert.equal(maybeObservedLifetime, 900_000);
+    assert.equal(
+      maybeObservedLifetime,
+      COMMAND_EFFECTS_TRANSACTION_BUDGET.boundedChildMaximumMillis,
+    );
     assert.deepEqual(error.publicValue, {
       stage: "command_effects",
       safe_stop_confirmed: recoveryMode === "closed",
