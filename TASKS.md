@@ -3721,6 +3721,12 @@ Authorization: this continuation is software-only. No package, detector, USB,
 serial, HTTP, device, NVS, sensor, control, reset, OTA, erase, or hardware
 effect is authorized.
 
+Completion review: The exact replay-origin contract is fixed and pushed at
+`9fa31503`; focused and complete software gates pass. THR-001 remains
+`implemented`, and hardware verification is still required. See
+`docs/parity/work-plans/20260815T195949Z-THR-001/CLOSURE.md`. A distinct
+immutable plan is required before attempt-007.
+
 Closure: The production marker envelope and late-attachment replay defects are
 fixed and pushed at `6f637e87`; all required gates passed without hardware.
 THR-001 remains `implemented`, attempt-005 remains consumed, and this plan does
