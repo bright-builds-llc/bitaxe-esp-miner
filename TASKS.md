@@ -3482,6 +3482,21 @@ USB, fixture, process, private-mode, and seal cleanup pass. Public evidence is
 withheld, API-009 remains `implemented`, attempt-026 is consumed, and no
 attempt-027 is authorized. See the linked `CLOSURE.md`.
 
+Paused-count baseline software plan:
+`docs/parity/work-plans/20260815T042822Z-API-009/PLAN.md`.
+
+- [ ] Commit and push the immutable software-only plan.
+- [ ] Reproduce the stale initial-notification count comparison with a red
+      state-machine regression.
+- [ ] Bind preservation to the positive paused count sampled immediately
+      before the sole dismissal request; run all mandatory gates and close
+      without API-009 promotion or attempt-027.
+
+Software-only authorization: source, tests, loopback fixtures, documentation,
+tracker, worklog, closure, and firmware build only. Credentials, protected
+traces, detector, USB, device/network, display, mining, controls, public
+evidence, checklist promotion, and attempt-027 are prohibited.
+
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
 - [x] Correct the production Ultra 205 EMC2101 internal-temperature path to
