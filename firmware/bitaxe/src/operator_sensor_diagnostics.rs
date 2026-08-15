@@ -53,6 +53,17 @@ impl OperatorSensorOutcome {
     const fn is_pressure(self) -> bool {
         !matches!(self, Self::Ready)
     }
+
+    const fn severity(self) -> u8 {
+        match self {
+            Self::Ready => 0,
+            Self::Recovered => 1,
+            Self::Unavailable => 2,
+            Self::SampleInvalid => 3,
+            Self::DriverFailed => 4,
+            Self::BudgetExhausted => 5,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -163,7 +174,15 @@ impl OperatorSensorDiagnosticTracker {
             duration_bucket: OperatorSensorDurationBucket::from_duration_ms(duration_ms),
         };
         self.next_revision = self.next_revision.saturating_add(1);
-        self.maybe_latest_pressure = Some(diagnostic);
+        let replace_retained = self
+            .maybe_latest_pressure
+            .map(|current| diagnostic.outcome.severity() > current.outcome.severity())
+            .unwrap_or(true);
+        if replace_retained {
+            // Keep the first event at the highest severity so a later display
+            // flush cannot hide the stage that made the sweep unactionable.
+            self.maybe_latest_pressure = Some(diagnostic);
+        }
         Some(diagnostic)
     }
 
@@ -256,6 +275,89 @@ mod tests {
             diagnostic.duration_bucket(),
             OperatorSensorDurationBucket::Under100Ms
         );
+    }
+
+    #[test]
+    fn lower_severity_pressure_cannot_replace_an_actionable_failure() {
+        // Arrange
+        let mut tracker = OperatorSensorDiagnosticTracker::new(10);
+        let failure = tracker
+            .observe(
+                OperatorSensorStage::Power,
+                100,
+                500,
+                OperatorSensorOutcome::BudgetExhausted,
+            )
+            .expect("budget exhaustion should be emitted");
+
+        // Act
+        let later = tracker
+            .observe(
+                OperatorSensorStage::Display,
+                600,
+                750,
+                OperatorSensorOutcome::Ready,
+            )
+            .expect("slow display pressure should still be emitted");
+
+        // Assert
+        assert_eq!(later.revision(), 2);
+        assert_eq!(tracker.maybe_latest_pressure(), Some(failure));
+    }
+
+    #[test]
+    fn higher_severity_pressure_replaces_the_retained_event() {
+        // Arrange
+        let mut tracker = OperatorSensorDiagnosticTracker::new(12);
+        tracker
+            .observe(
+                OperatorSensorStage::Display,
+                100,
+                250,
+                OperatorSensorOutcome::Ready,
+            )
+            .expect("slow display pressure should be emitted");
+
+        // Act
+        let failure = tracker
+            .observe(
+                OperatorSensorStage::Tachometer,
+                300,
+                310,
+                OperatorSensorOutcome::DriverFailed,
+            )
+            .expect("driver failure should be emitted");
+
+        // Assert
+        assert_eq!(tracker.maybe_latest_pressure(), Some(failure));
+    }
+
+    #[test]
+    fn equal_severity_keeps_the_earliest_stage() {
+        // Arrange
+        let mut tracker = OperatorSensorDiagnosticTracker::new(13);
+        let first = tracker
+            .observe(
+                OperatorSensorStage::Power,
+                100,
+                500,
+                OperatorSensorOutcome::BudgetExhausted,
+            )
+            .expect("first exhaustion should be emitted");
+
+        // Act
+        let second = tracker
+            .observe(
+                OperatorSensorStage::AsicTemperature,
+                600,
+                700,
+                OperatorSensorOutcome::BudgetExhausted,
+            )
+            .expect("second exhaustion should still be emitted");
+
+        // Assert
+        assert_eq!(second.revision(), 2);
+        assert_eq!(tracker.maybe_latest_pressure(), Some(first));
     }
 
     #[test]

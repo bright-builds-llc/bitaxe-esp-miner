@@ -7141,3 +7141,106 @@ device, USB, network, or credential value is exposed. A live trigger remains
 unclassified until a separately contracted attempt observes the new boundary.
 No hardware effect occurred during this task. The task is complete and archived
 at 2026-08-15T07:54:56Z.
+
+### task-api009-programmatic-pilot-attempt-032 | 2026-08-15 | Prove command effects with bounded runtime I2C
+
+- [x] Require clean synchronized pushed source descended from fix commit
+      `c2fb0c93`, non-empty ignored Wi-Fi input without reading it, and fresh
+      detector, attempt, and public-projection paths.
+- [x] Run `just package` as the sole package admission/build surface and advance
+      only after its zero exit, exact HEAD source identity, reference identity,
+      and required manifest artifacts are confirmed.
+- [x] Create protected `scratch/api009-command-effects/detector-032`, run
+      exactly one `just detect-ultra205`, and advance only after its zero exit,
+      mode-`0600` output, and repo-owned one-device admission are confirmed.
+- [x] Invoke exactly once:
+      `just api-command-effects-campaign --private-root scratch/api009-command-effects/attempt-032 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/api009-command-effects/detector-032/detector.stdout --projection docs/parity/evidence/api009-command-effects/command-effects-projection.json --duration-seconds 600`.
+- [x] Validate and redact a sealed projection only on the complete command,
+      same-device restart, exact-package, recovery, safe-stop, and cleanup
+      quorum; otherwise withhold it and record the earliest typed failure plus
+      only the closed sensor stage, outcome, duration bucket, and revision when
+      the new diagnostic is available.
+
+Objective and effects: test only the pushed runtime-I2C deadline and diagnostic
+boundary that follows consumed attempt-031. The sole run may flash/reset the
+exact package, seed private Wi-Fi and the generated local fixture, initialize
+and mine the conservative profile for at most 600 active seconds, issue one each
+pause/dismiss/IDENTIFY/resume/software-restart request, observe HTTP plus
+WebSocket and receive-only native USB, and perform same-device recovery,
+terminal safe stop, child termination, and USB cleanup. Active mining retains
+the immutable 1,000-ms freshness rule. Automated effects and recovery retain
+finite repo-owned timeouts; no human checkpoint or display claim is part of this
+attempt.
+
+Evidence/privacy/recovery: detector and attempt directories are ignored
+mode-`0700` roots with mode-`0600` files. Only the named aggregate projection
+may become public after ready validation and redaction. Origins, ports,
+hostnames, addresses, USB/network/process identity, credentials, fixture data,
+frame text, sensor values, boot session, and raw traces remain private. Public
+failure output may contain only the closed stage/outcome/duration/revision
+diagnostic and safe recovery booleans. The earliest primary failure survives
+recovery; safe stop, child termination, and holder cleanup run on every exit.
+Campaign start consumes attempt-032; no attempt-033 or same-contract retry is
+authorized. Any nonzero preflight, missing artifact, detector/identity/build
+ambiguity, non-ready category, malformed projection, failed safe stop/recovery/
+cleanup, or absent device stops with API-009 `implemented` and final evidence
+withheld. OTA, erase, factory reset, power cycle, external UART/BAP, USB duplex,
+pins/pads/GPIO, arbitrary settings, external pool, stress, direct controls,
+fault injection, non-205 hardware, and human display claims remain prohibited.
+
+Final verification: Clean synchronized source `a92196e4`, exact package and
+reference identity, ignored private-input presence, fresh paths, the one
+protected detector admission, and the single campaign invocation all passed.
+The campaign terminated `hardware_blocked` with active-safety staleness, an
+unchanged observation epoch, and all required observation freshness flags
+false. Safe stop and process/USB cleanup were confirmed, recovery was not
+required, and the public evidence projection was correctly withheld.
+
+Final completion review: The bounded retry change did not eliminate the live
+freshness loss. The closed terminal diagnostic contained revision 8 and a
+slow-but-successful display event in the `under_250_ms` bucket. That later event
+had overwritten the earlier actionable failure. The automation wrapper also
+omitted the otherwise valid diagnostic because the private Rust `u64` boot
+session exceeded JavaScript's safe-integer range, even though boot identity is
+never public. These are software diagnostic defects and materially new
+information, not user-caused failures. Attempt-032 is consumed, attempt-033 is
+not authorized, API-009 remains `implemented`, and the task is complete and
+archived at 2026-08-15T08:06:26Z.
+
+### task-api009-diagnostic-precedence-u64 | 2026-08-15 | Preserve the actionable sensor failure
+
+- [x] Add a red regression proving a later lower-severity I2C pressure event
+      cannot replace an earlier budget-exhausted or driver-failed stage in the
+      boot-scoped campaign diagnostic.
+- [x] Retain and project the highest-severity event with stable deterministic
+      tie handling while still emitting each redaction-safe transition marker.
+- [x] Accept the Rust-validated private `u64` boot session at the TypeScript
+      handoff without requiring JavaScript-safe integer precision, and continue
+      omitting that value from every public result.
+- [x] Prove primary failure/recovery precedence, malformed evidence rejection,
+      diagnostic redaction, schema consistency, and complete simulated campaign
+      behavior; run all mandatory gates, simplify, review, commit, and push.
+
+Authorization and stop rule: source, deterministic fixtures, local child
+processes, builds, and repository verification only. This task authorizes no
+protected-attempt reads beyond the already extracted closed attempt-032 facts,
+credentials, detector, package effect, USB/device/network/HTTP session, flash,
+reset, mining, ASIC traffic, controls, recovery, OTA, UART/BAP, pins, or
+attempt-033. Stop if diagnostic ordering cannot preserve the actionable cause
+without exposing private identity or if a fix would weaken active safety.
+
+Final verification: Red production-seam regressions reproduced both defects.
+Focused firmware and host integration suites pass with lower-, higher-, and
+equal-severity retention, above-safe-integer private boot identity, malformed
+optional evidence rejection, recovery precedence, and public redaction checks.
+Ordered Cargo format, clippy, all-target build, and all-feature tests passed,
+as did Bright Builds, firmware build, all 45 Bazel test targets, parity and
+progress, redaction, reference cleanliness, sensitive-output scan, and diff
+checks.
+
+Final completion review: The retained diagnostic now preserves the earliest
+event at the highest observed severity while every event still advances the
+revision and emits its marker. The TypeScript handoff validates the private
+Rust `u64` as a positive finite integer without relying on unsafe arithmetic or
+publishing it. No active-safety rule was weakened and no hardware effect
+occurred. The task is complete and archived at 2026-08-15T08:18:00Z.

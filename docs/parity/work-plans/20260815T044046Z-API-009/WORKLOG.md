@@ -326,3 +326,54 @@
 - Retry/stop: Campaign start consumes attempt-032. There is no same-contract
   retry or attempt-033 authority. Any non-ready boundary withholds evidence and
   stops for diagnosis. The physical-display UAT remains a separate later task.
+
+## 2026-08-15T08:06:26Z | attempt-032 safely closed with actionable diagnostic defects
+
+- Admission: Clean synchronized source `a92196e4`, the exact package/reference
+  identity, private-input presence, fresh paths, and exactly one protected
+  detector run passed.
+- Result: The single programmatic campaign stopped `hardware_blocked` on active
+  safety staleness with an unchanged observation epoch and all five required
+  observations stale. Safe stop and cleanup were confirmed, no recovery request
+  was required, and the public projection was withheld.
+- Diagnostic defect 1: The terminal closed fact was revision 8,
+  `display / ready / under_250_ms`. A later lower-severity pressure event had
+  overwritten the earlier actionable failure, defeating stage diagnosis.
+- Diagnostic defect 2: The Rust-generated private boot session is a valid
+  `u64` but exceeded JavaScript's safe-integer range. The wrapper therefore
+  discarded the whole diagnostic even though it never publishes boot identity.
+- Disposition: No user action contributed. Attempt-032 is consumed and no
+  attempt-033 is authorized. A software-only task now owns severity-preserving
+  retention and the private `u64` handoff before any further hardware work.
+
+## 2026-08-15T08:10:00Z | diagnostic precedence fixed in software
+
+- Red proofs: A later `display / ready / under_250_ms` event replaced an earlier
+  budget exhaustion before the fix. A valid private boot session above
+  JavaScript's safe-integer limit also caused the public closed diagnostic to be
+  omitted. Both focused tests failed at the production seams before the change.
+- Retention: Every pressure event still receives a boot-scoped revision and
+  emits its marker. The retained campaign projection now keeps the earliest
+  event at the highest observed severity; only a strictly higher-severity event
+  replaces it. Deterministic tests cover lower, higher, and equal severity.
+- Handoff: TypeScript accepts a positive finite integer from the Rust-validated
+  private campaign result without requiring lossless JavaScript arithmetic.
+  Boot session remains excluded from public success and failure projections.
+- Focused proof: The firmware diagnostic target and the command-effects host
+  integration suite pass, including the above-safe-integer regression,
+  malformed optional evidence, recovery preservation, and redaction.
+- Next action: Run the full repository gates and publish the software boundary;
+  no hardware ordinal is authorized by this task.
+
+## 2026-08-15T08:18:00Z | diagnostic correction verified
+
+- Full proof: Ordered Cargo format, clippy, all-target build, and all-feature
+  tests passed. Bright Builds, firmware build, all 45 Bazel test targets,
+  parity validation and progress, redaction, reference cleanliness, sensitive-
+  output review, and diff checks also passed.
+- Simplification review: The firmware retains one ranked event rather than a
+  second failure channel, and the host accepts the already Rust-validated
+  private integer without converting or publishing it.
+- Disposition: The software-only diagnostic task is complete. Hardware remains
+  untouched; a separately committed task contract is required before one new
+  detector-gated attempt may use the corrected boundary.

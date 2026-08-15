@@ -471,7 +471,7 @@ test("campaign failure exposes only a closed operator sensor diagnostic", async 
   const value = await fixture();
   const diagnostic = {
     available: true,
-    boot_session: 17,
+    boot_session: Number.MAX_SAFE_INTEGER + 1,
     revision: 3,
     stage: "display",
     outcome: "budget_exhausted",

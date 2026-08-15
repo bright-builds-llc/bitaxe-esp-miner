@@ -53,7 +53,8 @@ export function parseOperatorSensorDiagnostic(value: unknown): OperatorSensorDia
   if (
     diagnostic["available"] !== true
     || typeof bootSession !== "number"
-    || !Number.isSafeInteger(bootSession)
+    || !Number.isFinite(bootSession)
+    || !Number.isInteger(bootSession)
     || bootSession < 1
     || typeof revision !== "number"
     || !Number.isSafeInteger(revision)
