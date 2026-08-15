@@ -898,3 +898,39 @@
   physical-display claim is included.
 - Stop: Campaign start consumes attempt-044. Any non-ready result withholds
   evidence and stops without attempt-045 or an unchanged retry.
+
+## 2026-08-15T13:50:47Z | attempt-044 programmatic quorum passed
+
+- Result: One detector-gated exact-package campaign completed successfully and
+  emitted the independently validated redacted v1 projection. No user action
+  or physical-display claim contributed.
+- Command proof: Pause, resume, IDENTIFY, and dismissal each executed exactly
+  once with their claim-specific machine postconditions. IDENTIFY obtained
+  successful render and later non-IDENTIFY clear receipts plus retained and
+  receive-only USB transition witnesses. Terminal safe stop, pool persistence,
+  disabled mining/control, and cleanup all passed.
+- Restart proof: One acknowledged software-restart request observed service
+  loss, correlated pre/post serial, the same stable physical device, trusted
+  origin, exact build recovery, a changed boot session, ordinal N+1, matching
+  reset reason/postcondition, and cleanup. The session closed `ready` after two
+  HTTP observations, proving the bounded-poll correction.
+- Disposition: Attempt-044 is consumed and no programmatic retry is authorized.
+  Preserve its sealed projection independently. API-009 remains `implemented`
+  only until the separate unbounded-readiness physical-display UAT confirms
+  the IDENTIFY frame and its clearing.
+
+## 2026-08-15T13:50:47Z | physical-display UAT contract drafted
+
+- Readiness: Wait indefinitely for the user to say they are watching; no chat
+  or observation deadline applies. Then use one fresh detector and one bounded
+  display-UAT machine pass bound to the sealed attempt-044 evidence.
+- Proof: Software must independently prove same package/boot, one IDENTIFY
+  request, successful framebuffer render, and later clear. The user supplies
+  one durable response confirming both visible observations; software receipts
+  never stand in for illuminated pixels.
+- Replay: A missed human observation may replay only the isolated display UAT
+  with a fresh private ordinal. It never reruns or invalidates the completed
+  mining/command/restart campaign.
+- Promotion: Finalize an aggregate-only redacted UAT projection and promote
+  API-009 only when both projections, restoration, cleanup, parity, reference,
+  redaction, and diff gates pass.

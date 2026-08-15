@@ -8181,3 +8181,49 @@ request retain their existing lifecycle. The fix adds no retry of the restart
 effect, no origin discovery, no new protocol, and no relaxed evidence quorum.
 API-009 remains `implemented`; a fresh hardware ordinal still requires its own
 committed contract.
+
+### task-api009-programmatic-pilot-attempt-044 | 2026-08-15 | Verify bounded restart recovery polling
+
+- [x] Required clean synchronized pushed `5ba7c192`, opaque non-empty ignored
+      Wi-Fi input, exact current HEAD/reference package, and absent detector,
+      wrapper, command-owned attempt, and public-projection paths.
+- [x] Ran `just package`, then exactly one protected `detector-044`; observed
+      zero exit, one admitted board-205 device, and private artifact modes.
+- [x] Used separate protected `wrapper-044`, kept `attempt-044` absent, and ran
+      exactly once the existing 600-active-second programmatic campaign under
+      its finite bounds.
+- [x] Independently validated and retained the ready redacted projection with
+      exact command, restart-session, safe-stop, and cleanup facts.
+
+Objective and effects: verified that the complete no-human API-009 command
+campaign remained accepted and the shared restart transaction recovered after
+service loss using bounded observations. The sole run performed one
+exact-package flash/reset, private Wi-Fi/local-fixture seed, bounded
+conservative mining, one each pause/dismiss/IDENTIFY/resume/software-restart,
+HTTP/WebSocket/receive-only USB observation, same-device recovery, safe stop,
+child termination, and USB cleanup. No human checkpoint or physical-display
+claim was included.
+
+Privacy/retry/stop: detector, wrapper, and attempt roots remained ignored mode
+0700 with mode-0600 files. The aggregate projection passed redaction and no
+private identities, origins, ports, addresses, hostnames, credentials, boot
+sessions, values, response bodies, or traces were published. Attempt-044 is
+consumed; no attempt-045 or unchanged programmatic retry is authorized.
+
+Verification: The sealed v1 projection binds exact source `16f6c8de`, the
+pinned reference, exact package/workflow digests, board 205, the deterministic
+local fixture, one pause/resume/IDENTIFY/dismiss request apiece, every
+claim-specific postcondition, IDENTIFY render/clear receipts, retained and
+receive-only serial transition witnesses, same-boot/package safety, terminal
+HTTP and pool persistence, mining disabled, hardware control disabled,
+confirmed safe stop, and cleanup. The restart projection is `ready` with one
+acknowledged request, service loss, correlated pre/post serial, the same stable
+physical device, trusted origin, exact recovered build, changed boot session,
+ordinal N+1, software reset, matching postcondition, and cleanup.
+
+Completion review: Attempt-044 closes the entire programmatic API-009 quorum
+and proves the per-exchange recovery budget fixed attempt-043 without weakening
+the overall deadline or request-once effect. No recovery request was needed and
+no secondary recovery failure occurred. The independently replayable physical
+display UAT remains the sole promotion prerequisite and is tracked by
+`task-api009-physical-display-uat-001`.

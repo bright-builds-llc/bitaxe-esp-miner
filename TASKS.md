@@ -3748,7 +3748,7 @@ not typed UI-001/UI-002 evidence.
       earliest-failure precedence.
 - [x] Pass focused and full repository gates, review the diff for unintended
       effects, commit, and push before authorizing any fresh hardware attempt.
-- [ ] Plan and run sequential detector-gated exact-package pilot attempts only
+- [x] Plan and run sequential detector-gated exact-package pilot attempts only
       after a complete no-human simulated command-effects campaign passes.
 - [x] Preserve programmatic evidence independently from one replayable,
       unbounded-readiness physical display UAT required for API-009 promotion.
@@ -4031,49 +4031,50 @@ progress requires a separately scoped sensor-producer/I2C latency diagnostic
 that can identify which bounded acquisition delayed the complete observation
 sweep without exposing sensor values, followed by a verified root-cause change.
 
-### task-api009-programmatic-pilot-attempt-044 | 2026-08-15 | Verify bounded restart recovery polling
+### task-api009-physical-display-uat-001 | 2026-08-15 | Confirm illuminated IDENTIFY pixels
 
-- [ ] Require clean synchronized pushed `5ba7c192`, opaque non-empty ignored
-      Wi-Fi input, exact current HEAD/reference package, and absent detector,
-      wrapper, command-owned attempt, and public-projection paths.
-- [ ] Run `just package`, then exactly one protected `detector-044`; require
-      zero exit, one `port: ` record, `usb_session: ready`, private modes, and
-      one admitted board-205 device.
-- [ ] Use separate protected `wrapper-044`, keep `attempt-044` absent, and run
-      exactly once the existing 600-active-second programmatic campaign under
-      its finite activation, capture, child, recovery, and cleanup bounds.
-- [ ] Publish only a ready independently validated redacted projection;
-      otherwise withhold it and record the earliest category, command
-      diagnostic, restart-session category, and recovery/cleanup booleans.
+- [ ] Commit and push the independently validated attempt-044 programmatic
+      projection and this UAT contract before sending another IDENTIFY request.
+- [ ] Wait without a deadline for the user to say they are watching; then run
+      one fresh protected detector and one bounded `api-command-display-uat`
+      machine pass against the exact programmatic evidence binding.
+- [ ] Ask for one durable response covering both observations: the IDENTIFY
+      frame was visibly rendered and later cleared back to a non-IDENTIFY
+      frame. A missed observation may replay this UAT without rerunning or
+      invalidating the programmatic campaign.
+- [ ] Write only the two mode-0600 confirmation files from the user's actual
+      observations, finalize the redacted UAT projection, run all promotion
+      gates, and promote API-009 only if both projections validate together.
 
-Objective and effects: verify that the complete no-human API-009 command
-campaign remains accepted and the shared restart transaction can recover after
-a shutdown-racing HTTP observation without starving later polls. The sole run
-may flash/reset the exact package, seed private Wi-Fi and the generated local
-fixture, initialize and mine the conservative profile for at most 600 active
-seconds, issue one each pause/dismiss/IDENTIFY/resume/software-restart request,
-observe HTTP plus WebSocket and receive-only USB, and perform same-device
-recovery, safe stop, child termination, and USB cleanup. No human checkpoint or
-physical-display claim is included.
+Exact command and effects: after fresh `just detect-ultra205` admission, run
+`just api-command-display-uat --port <detector-port> --private-root scratch/api009-display-uat/attempt-001 --intent-input scratch/api009-command-effects/attempt-044/display-uat-intent.private.json --programmatic-evidence docs/parity/evidence/api009-command-effects/command-effects-projection.json`.
+The machine pass may perform read-only HTTP/USB inspection and exactly one
+bounded HTTP IDENTIFY request. It must prove the successful framebuffer receipt
+and natural non-IDENTIFY clear receipt from the same boot and package. No flash,
+restart, mining, settings mutation, voltage/frequency/fan/thermal/power control,
+OTA, erase, factory reset, UART/BAP, USB duplex, pins/GPIO, or other hardware
+effect is authorized.
 
-Privacy/retry/stop: detector, wrapper, and attempt roots remain ignored mode
-0700 with mode-0600 files. Only the named aggregate projection may become
-public after ready validation and redaction. Never publish identities, origins,
-ports, addresses, hostnames, credentials, boot sessions, values, response
-bodies, or traces. Preserve the first failure through recovery. Campaign start
-consumes attempt-044; no attempt-045 or unchanged retry is authorized. Any
-admission ambiguity, non-ready result, malformed evidence, repeated terminal
-boundary, or failed safe stop/recovery/cleanup stops with evidence withheld and
-API-009 `implemented`. OTA, erase, factory reset, power cycle, UART/BAP, USB
-duplex, pins/GPIO, arbitrary settings, external pool, stress, direct controls,
-fault injection, non-205 hardware, and human display claims remain prohibited.
+Readiness/replay/stop: human readiness and the later response wait are
+unbounded and never expire because of chat latency or absence. Each machine
+pass retains finite HTTP/render/clear and cleanup limits. If the user misses
+the frame, a fresh UAT ordinal/root may replay IDENTIFY after fresh detector
+admission without rerunning the programmatic campaign; malformed machine proof,
+identity/build drift, failed cleanup, or contradictory user observation stops
+promotion for diagnosis. Do not infer pixels from software receipts.
+
+Evidence/privacy: the detector and UAT roots are ignored mode 0700 with
+mode-0600 files. The final public UAT projection may contain only aggregate
+booleans, one request count, board category, the programmatic-evidence digest,
+and redaction status. Never publish identities, origins, ports, addresses,
+hostnames, credentials, boot sessions, generations, values, frame text,
+response bodies, or traces.
 
 Verification: Pending.
 
-Completion review: Pending. This contract changes only the exact pushed source
-and fresh ordinal from attempt-043. It does not authorize a second run, a
-broader effect, weaker evidence, or API-009 promotion without the complete
-sealed programmatic projection.
+Completion review: Pending. The programmatic campaign is complete and remains
+valid independently; this task exists only because software cannot prove that
+the SSD1306 pixels were physically illuminated.
 
 ## Future
 
