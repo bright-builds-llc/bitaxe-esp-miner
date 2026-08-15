@@ -393,3 +393,32 @@
   expose the closed diagnostic and safe recovery booleans, never private
   identity or trace data. Campaign start consumes attempt-033, and no unchanged
   retry or attempt-034 is authorized.
+
+## 2026-08-15T08:30:00Z | attempt-033 rejected before effects
+
+- Admission: Clean pushed source `e22b17fd`, exact package/reference identity,
+  opaque ignored input, fresh paths, and the one protected detector run passed.
+- Result: The single campaign invocation returned `evidence_invalid`; no public
+  projection was created. Exact-signature inspection proved stdout/stderr shell
+  redirection had pre-created the private attempt root before automation
+  freshness admission.
+- Safety: The root contained no child campaign directory or artifact, and no
+  detector holder remained. Therefore no flash, reset, network, mining,
+  command, restart, or recovery effect launched. The false cleanup booleans
+  report a lifecycle that was never entered.
+- Disposition: No user action contributed. Attempt-033 is consumed and no
+  attempt-034 is authorized. A software-only task owns a production-seam
+  regression and explicit sibling-wrapper contract before another attempt.
+
+## 2026-08-15T08:45:00Z | sibling-wrapper contract verified
+
+- Regression: A production-seam test pre-creates the private attempt root with
+  a wrapper output file and proves typed rejection before any process launch.
+- Contract: The freshness guard now states that wrapper stdout/stderr must be
+  captured under a protected sibling root, never inside the absent attempt
+  root. Non-empty attempt roots remain fail-closed.
+- Verification: Focused tests and all mandatory Cargo, Bright Builds, firmware,
+  Bazel, parity, redaction, reference, and diff gates pass. The new regression
+  was split into a focused module to preserve file-length budgets.
+- Disposition: The software boundary is ready to publish. A fresh attempt must
+  use separate `wrapper-034` and `attempt-034` paths under a new exact contract.

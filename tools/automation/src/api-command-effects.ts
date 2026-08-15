@@ -82,6 +82,7 @@ function stringField(value: JsonObject, field: string, context: string): string 
 }
 
 async function requireAbsentPrivateRoot(root: string): Promise<void> {
+  // Shell redirection pre-creates files, so wrapper output belongs in a protected sibling root.
   try {
     await stat(root);
     throw failure("evidence_invalid", "private attempt root must be absent before launch");
@@ -92,7 +93,6 @@ async function requireAbsentPrivateRoot(root: string): Promise<void> {
   await mkdir(root, { mode: 0o700, recursive: true });
   await chmod(root, 0o700);
 }
-
 async function writePrivateJson(output: string, value: unknown): Promise<void> {
   await writeFile(output, `${JSON.stringify(value, null, 2)}\n`, {
     encoding: "utf8",

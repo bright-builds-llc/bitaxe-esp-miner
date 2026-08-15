@@ -7244,3 +7244,97 @@ revision and emits its marker. The TypeScript handoff validates the private
 Rust `u64` as a positive finite integer without relying on unsafe arithmetic or
 publishing it. No active-safety rule was weakened and no hardware effect
 occurred. The task is complete and archived at 2026-08-15T08:18:00Z.
+
+### task-api009-programmatic-pilot-attempt-033 | 2026-08-15 | Expose the actionable runtime sensor stage
+
+- [x] Require clean synchronized pushed source containing diagnostic fix
+      `bee8c1c9`, non-empty ignored Wi-Fi input without reading it, and fresh
+      detector, attempt, and public-projection paths.
+- [x] Run `just package` as the sole package admission/build surface and advance
+      only after its zero exit, exact HEAD/reference identity, and required
+      manifest artifacts are confirmed.
+- [x] Create protected `scratch/api009-command-effects/detector-033`, run
+      exactly one `just detect-ultra205`, and advance only after its zero exit,
+      mode-`0600` output, and repo-owned one-device admission are confirmed.
+- [x] Invoke exactly once:
+      `just api-command-effects-campaign --private-root scratch/api009-command-effects/attempt-033 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/api009-command-effects/detector-033/detector.stdout --projection docs/parity/evidence/api009-command-effects/command-effects-projection.json --duration-seconds 600`.
+- [x] Validate and redact a sealed projection only on the complete command,
+      same-device restart, exact-package, recovery, safe-stop, and cleanup
+      quorum. Otherwise withhold it and record only the earliest typed category,
+      closed highest-severity sensor stage/outcome/duration/revision, and safe
+      recovery booleans.
+
+Objective and effects: obtain one live observation of the materially corrected
+severity-preserving diagnostic boundary; this is not an unchanged promotion
+retry. The sole run may flash/reset the exact package, seed private Wi-Fi and
+the generated local fixture, initialize and mine the conservative profile for
+at most 600 active seconds, issue one each pause/dismiss/IDENTIFY/resume/software
+restart request, observe HTTP plus WebSocket and receive-only native USB, and
+perform same-device recovery, terminal safe stop, child termination, and USB
+cleanup. Active mining keeps the immutable 1,000-ms freshness rule. Automated
+effects and recovery retain finite repo-owned timeouts; no human checkpoint or
+display claim is part of this attempt.
+
+Evidence/privacy/recovery: detector and attempt directories are ignored
+mode-`0700` roots with mode-`0600` files. Only the named aggregate projection
+may become public after ready validation and redaction. Origins, ports,
+hostnames, addresses, USB/network/process identity, credentials, fixture data,
+frame text, sensor values, boot session, and raw traces remain private. Public
+failure output is limited to the closed diagnostic and safe recovery booleans.
+The earliest primary failure survives recovery; safe stop, child termination,
+and holder cleanup run on every exit. Campaign start consumes attempt-033; no
+attempt-034 or same-contract retry is authorized. Any nonzero preflight,
+missing artifact, detector/identity/build ambiguity, non-ready category,
+malformed projection, failed safe stop/recovery/cleanup, or absent device stops
+with API-009 `implemented` and evidence withheld. OTA, erase, factory reset,
+power cycle, external UART/BAP, USB duplex, pins/pads/GPIO, arbitrary settings,
+external pool, stress, direct controls, fault injection, non-205 hardware, and
+human display claims remain prohibited.
+
+Final verification: Clean synchronized source `e22b17fd`, exact package and
+reference identity, opaque ignored input, fresh paths, and one successful
+protected detector admission passed. The sole campaign invocation returned
+`evidence_invalid`; the public projection was withheld. Exact-signature
+matching proved the shell had pre-created the private attempt root, and the
+root contained no campaign child directory or artifact. No detector holder
+remained.
+
+Final completion review: Redirecting wrapper output into the attempt root
+created that root before the automation process could perform its freshness
+admission. The fail-closed guard rejected it before any campaign child or
+hardware effect launched, so false cleanup booleans describe an unentered
+lifecycle rather than unsafe residual state. No user action contributed.
+Attempt-033 is consumed, attempt-034 is not authorized, API-009 remains
+`implemented`, and the task is complete and archived at 2026-08-15T08:30:00Z.
+
+### task-api009-wrapper-root-preflight | 2026-08-15 | Prevent attempt-root capture collisions
+
+- [x] Add a production-seam regression proving a pre-created API-009 private
+      attempt root fails before any child process or hardware effect launches.
+- [x] Document at the freshness guard that shell stdout/stderr capture must use
+      a separate protected sibling root because redirection occurs before the
+      command can admit and create its attempt root.
+- [x] Verify the focused host suite, all mandatory repository gates, redaction,
+      reference cleanliness, and diff review; then archive, commit, and push.
+
+Authorization and stop rule: source, deterministic fixtures, local child
+fakes, builds, and repository verification only. No detector, credential,
+package effect, USB/device/network/HTTP session, flash, reset, mining, recovery,
+OTA, UART/BAP, pins, or attempt-034 is authorized. Stop if preventing this
+collision would require admitting non-empty or pre-populated evidence roots.
+
+Final verification: The focused production-seam test simulates shell-created
+wrapper output inside the private attempt root and proves typed
+`evidence_invalid` with zero child launches. The full host suite includes the
+new module. Ordered Cargo format, strict Clippy, all-target build, and
+all-feature tests passed; Bright Builds, firmware build, all 45 Bazel tests,
+parity validation/progress, redaction, reference cleanliness, and diff checks
+also passed. One transient parity-report output failure reran cleanly with
+`validation_errors: none`.
+
+Final completion review: The freshness guard remains strict; it now documents
+that wrapper capture belongs in a protected sibling directory. The dedicated
+test keeps the production and test files within their governed line budgets
+and prevents this orchestration collision from being mistaken for a campaign
+or hardware failure. No hardware effect occurred. The task is complete and
+archived at 2026-08-15T08:45:00Z.

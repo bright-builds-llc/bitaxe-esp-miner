@@ -4031,52 +4031,6 @@ progress requires a separately scoped sensor-producer/I2C latency diagnostic
 that can identify which bounded acquisition delayed the complete observation
 sweep without exposing sensor values, followed by a verified root-cause change.
 
-### task-api009-programmatic-pilot-attempt-033 | 2026-08-15 | Expose the actionable runtime sensor stage
-
-- [ ] Require clean synchronized pushed source containing diagnostic fix
-      `bee8c1c9`, non-empty ignored Wi-Fi input without reading it, and fresh
-      detector, attempt, and public-projection paths.
-- [ ] Run `just package` as the sole package admission/build surface and advance
-      only after its zero exit, exact HEAD/reference identity, and required
-      manifest artifacts are confirmed.
-- [ ] Create protected `scratch/api009-command-effects/detector-033`, run
-      exactly one `just detect-ultra205`, and advance only after its zero exit,
-      mode-`0600` output, and repo-owned one-device admission are confirmed.
-- [ ] Invoke exactly once:
-      `just api-command-effects-campaign --private-root scratch/api009-command-effects/attempt-033 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --detector-output scratch/api009-command-effects/detector-033/detector.stdout --projection docs/parity/evidence/api009-command-effects/command-effects-projection.json --duration-seconds 600`.
-- [ ] Validate and redact a sealed projection only on the complete command,
-      same-device restart, exact-package, recovery, safe-stop, and cleanup
-      quorum. Otherwise withhold it and record only the earliest typed category,
-      closed highest-severity sensor stage/outcome/duration/revision, and safe
-      recovery booleans.
-
-Objective and effects: obtain one live observation of the materially corrected
-severity-preserving diagnostic boundary; this is not an unchanged promotion
-retry. The sole run may flash/reset the exact package, seed private Wi-Fi and
-the generated local fixture, initialize and mine the conservative profile for
-at most 600 active seconds, issue one each pause/dismiss/IDENTIFY/resume/software
-restart request, observe HTTP plus WebSocket and receive-only native USB, and
-perform same-device recovery, terminal safe stop, child termination, and USB
-cleanup. Active mining keeps the immutable 1,000-ms freshness rule. Automated
-effects and recovery retain finite repo-owned timeouts; no human checkpoint or
-display claim is part of this attempt.
-
-Evidence/privacy/recovery: detector and attempt directories are ignored
-mode-`0700` roots with mode-`0600` files. Only the named aggregate projection
-may become public after ready validation and redaction. Origins, ports,
-hostnames, addresses, USB/network/process identity, credentials, fixture data,
-frame text, sensor values, boot session, and raw traces remain private. Public
-failure output is limited to the closed diagnostic and safe recovery booleans.
-The earliest primary failure survives recovery; safe stop, child termination,
-and holder cleanup run on every exit. Campaign start consumes attempt-033; no
-attempt-034 or same-contract retry is authorized. Any nonzero preflight,
-missing artifact, detector/identity/build ambiguity, non-ready category,
-malformed projection, failed safe stop/recovery/cleanup, or absent device stops
-with API-009 `implemented` and evidence withheld. OTA, erase, factory reset,
-power cycle, external UART/BAP, USB duplex, pins/pads/GPIO, arbitrary settings,
-external pool, stress, direct controls, fault injection, non-205 hardware, and
-human display claims remain prohibited.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
