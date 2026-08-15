@@ -1,5 +1,6 @@
 const PRODUCTION_SOURCE: &str = include_str!("production_mining_session.rs");
 const RUNTIME_SOURCE: &str = include_str!("runtime_snapshot.rs");
+const COMMAND_SURFACE_SOURCE: &str = include_str!("runtime_snapshot/command_surface.rs");
 
 fn function_source<'a>(source: &'a str, signature: &str, next_signature: &str) -> &'a str {
     let start = source.find(signature).expect("function must exist");
@@ -13,7 +14,7 @@ fn function_source<'a>(source: &'a str, signature: &str, next_signature: &str) -
 fn command_intent_has_a_distinct_boot_lifetime_owner() {
     // Arrange
     let command = function_source(
-        RUNTIME_SOURCE,
+        COMMAND_SURFACE_SOURCE,
         "pub fn apply_mining_operator_intent_command",
         "pub fn apply_identify_mode_command",
     );

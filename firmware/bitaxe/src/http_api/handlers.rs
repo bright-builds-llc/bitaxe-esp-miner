@@ -11,6 +11,17 @@ pub(super) fn handle_system_info<'request, 'connection>(
     })
 }
 
+pub(super) fn handle_command_status<'request, 'connection>(
+    request: ApiRequest<'request, 'connection>,
+) -> anyhow::Result<()> {
+    handle_with_access_gate(request, |request| {
+        send_json(
+            request,
+            &command_status_wire(crate::runtime_uptime::millis()),
+        )
+    })
+}
+
 pub(super) fn handle_wifi_scan<'request, 'connection>(
     request: ApiRequest<'request, 'connection>,
 ) -> anyhow::Result<()> {

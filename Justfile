@@ -47,6 +47,14 @@ api-command-effects-campaign *args:
     bazel build //firmware/bitaxe:firmware_image
     bazel run //tools/automation:bitaxe_automation -- api-command-effects-campaign {{ args }}
 
+# Runs only the bounded machine portion. The rendered/cleared confirmations are
+# durable private files and therefore have no chat-response deadline.
+api-command-display-uat *args:
+    bazel run //tools/device-session:device-session -- display-uat-live {{ args }}
+
+finalize-api-command-display-uat *args:
+    bazel run //tools/device-session:device-session -- display-uat-finalize {{ args }}
+
 verify-flash-durability *args:
     bazel run //tools/automation:verify_flash_durability -- {{ args }}
 

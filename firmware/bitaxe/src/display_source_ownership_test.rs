@@ -2,6 +2,7 @@ const STARTUP_SOURCE: &str = include_str!("startup.rs");
 const ADAPTER_SOURCE: &str = include_str!("display_adapter.rs");
 const RUNTIME_SOURCE: &str = include_str!("operator_sensor_runtime.rs");
 const SNAPSHOT_SOURCE: &str = include_str!("runtime_snapshot.rs");
+const COMMAND_SURFACE_SOURCE: &str = include_str!("runtime_snapshot/command_surface.rs");
 const SCREEN_SNAPSHOT_SOURCE: &str = include_str!("runtime_snapshot/screen.rs");
 const INPUT_SOURCE: &str = include_str!("input_adapter.rs");
 
@@ -96,8 +97,8 @@ fn gpio0_input_has_one_pullup_owner_and_closed_effect_logs() {
     assert_eq!(INPUT_SOURCE.matches(".spawn(move || run(driver))").count(), 1);
     assert!(INPUT_SOURCE.contains("ButtonSelfTestState::Inactive"));
     assert!(INPUT_SOURCE.contains("cancel_identify_if_active_at(now_ms)"));
-    assert!(SNAPSHOT_SOURCE.contains("mutate_command_visible_state_with_result("));
-    assert!(SNAPSHOT_SOURCE.contains("ButtonIdentifyCancellation::StateUnavailable"));
+    assert!(COMMAND_SURFACE_SOURCE.contains("mutate_command_visible_state_with_result("));
+    assert!(COMMAND_SURFACE_SOURCE.contains("ButtonIdentifyCancellation::StateUnavailable"));
     assert!(INPUT_SOURCE.contains("effect=self_test_reset status=unavailable"));
     assert!(!INPUT_SOURCE.contains("ssid="));
     assert!(!INPUT_SOURCE.contains("ipv4="));

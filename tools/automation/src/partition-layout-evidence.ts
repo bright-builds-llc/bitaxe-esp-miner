@@ -308,27 +308,33 @@ export async function capturePartitionLayoutEvidence(
     const sessionRoot = path.join(privateRoot, "device-session");
     const sessionProjectionPath = path.join(privateRoot, "device-session-projection.private.json");
     await privateJson(intentPath, {
-      schema_version: "esp-device-session-ota-intent-v1",
-      board_category: "205",
-      trusted_origin: origin.origin,
-      baseline: {
-        boot_session: requiredString(baseline, "bootSession", "baseline system info"),
-        boot_ordinal: requiredOrdinal(baseline, "bootOrdinal", "baseline system info"),
-        source_commit: requiredString(manifest, "source_commit", "package manifest"),
-        reference_commit: requiredString(manifest, "reference_commit", "package manifest"),
-        app_elf_sha256: requiredString(manifest, "app_elf_sha256", "package manifest"),
-        running_partition: "factory",
+      schema_version: "bitaxe-device-transaction-intent-v1",
+      goal: {
+        transaction_kind: "ota_transition",
+        ota: {
+          schema_version: "esp-device-session-ota-intent-v1",
+          board_category: "205",
+          trusted_origin: origin.origin,
+          baseline: {
+            boot_session: requiredString(baseline, "bootSession", "baseline system info"),
+            boot_ordinal: requiredOrdinal(baseline, "bootOrdinal", "baseline system info"),
+            source_commit: requiredString(manifest, "source_commit", "package manifest"),
+            reference_commit: requiredString(manifest, "reference_commit", "package manifest"),
+            app_elf_sha256: requiredString(manifest, "app_elf_sha256", "package manifest"),
+            running_partition: "factory",
+          },
+          expected_postcondition: {
+            hostname_sha256: sha256(hostname),
+            running_partition: "ota_0",
+          },
+          ota_image_sha256: otaArtifact.sha256,
+        },
       },
-      expected_postcondition: {
-        hostname_sha256: sha256(hostname),
-        running_partition: "ota_0",
-      },
-      ota_image_sha256: otaArtifact.sha256,
     });
     await mkdir(sessionRoot, { mode: 0o700 });
     await chmod(sessionRoot, 0o700);
     const sessionOutcome = await runChild(processPort, deviceSessionProgram, [
-      "ota-live", "--port", options.port,
+      "transact-live", "--port", options.port,
       "--private-root", sessionRoot,
       "--intent-input", intentPath,
       "--ota-image", otaImagePath,

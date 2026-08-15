@@ -1,5 +1,5 @@
 const PRODUCTION_SOURCE: &str = include_str!("production_mining_session.rs");
-const RUNTIME_SOURCE: &str = include_str!("runtime_snapshot.rs");
+const COMMAND_SURFACE_SOURCE: &str = include_str!("runtime_snapshot/command_surface.rs");
 
 #[test]
 fn production_block_effect_mutates_only_the_runtime_snapshot_owner() {
@@ -25,13 +25,13 @@ fn found_block_and_dismissal_share_one_command_visible_state() {
     let dismiss_function = "pub fn apply_block_found_dismiss_command";
 
     // Act
-    let found_at = RUNTIME_SOURCE
+    let found_at = COMMAND_SURFACE_SOURCE
         .find(found_function)
         .expect("found-block owner should exist");
-    let dismiss_at = RUNTIME_SOURCE
+    let dismiss_at = COMMAND_SURFACE_SOURCE
         .find(dismiss_function)
         .expect("dismiss owner should exist");
-    let source = &RUNTIME_SOURCE[dismiss_at.min(found_at)..];
+    let source = &COMMAND_SURFACE_SOURCE[dismiss_at.min(found_at)..];
 
     // Assert
     assert!(source.contains("mutate_command_visible_state"));

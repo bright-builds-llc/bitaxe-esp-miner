@@ -2,22 +2,27 @@ use std::fs;
 use std::io::{Read, Write};
 use std::net::TcpListener;
 
-use bitaxe_api::{ApiSnapshot, ExpectedRuntimeAttestationIdentity, SystemInfoWire};
+use bitaxe_api::{
+    ApiSnapshot, BootSessionId, CommandStatusEffect, CommandStatusFacts, CommandStatusTracker,
+    DisplayFrameKind, DisplayRenderOutcome, ExpectedRuntimeAttestationIdentity, SystemInfoWire,
+};
 use bitaxe_http_transport::StrictHttpClient;
 use camino::Utf8PathBuf;
 
 use super::{
-    advance_commands, arm_cleared_after_natural_expiry, arm_identify_transaction,
-    arm_ready_after_paused_dismissal, automated_phase_failure, consume_checkpoint_response,
-    consume_cleared_signal, consume_ready_signal, finish_identify_observation,
-    rendered_checkpoint_action, respond_identify_checkpoint, take_recovery_pause_request,
-    write_required_checkpoint, CheckpointResponse, CommandEffectsEvidence, CommandPhase,
-    CommandProgress, IdentifyCheckpointKind, IdentifyCheckpointOutcome, PauseJoinState,
-    RenderedCheckpointAction,
+    advance_commands, advance_programmatic_commands, arm_cleared_after_natural_expiry,
+    arm_identify_transaction, arm_ready_after_paused_dismissal, automated_phase_failure,
+    consume_checkpoint_response, consume_cleared_signal, consume_ready_signal,
+    finish_identify_observation, rendered_checkpoint_action, respond_identify_checkpoint,
+    take_recovery_pause_request, write_required_checkpoint, CheckpointResponse,
+    CommandEffectsEvidence, CommandGenerations, CommandPhase, CommandProgress,
+    IdentifyCheckpointKind, IdentifyCheckpointOutcome, PauseJoinState, RenderedCheckpointAction,
 };
+use crate::campaign::network::command_witness::CommandTransitionWitness;
 use crate::campaign::network::model::{SharedSerialState, TrustedNetworkTarget};
 use crate::set_private_directory_mode;
 
+mod programmatic;
 mod replay;
 mod terminal;
 

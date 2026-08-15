@@ -235,20 +235,26 @@ export async function captureSettingsDurability(
     await mkdir(sessionRoot, { mode: 0o700 });
     await chmod(sessionRoot, 0o700);
     await writePrivateJson(intentPath, {
-      schema_version: "esp-device-session-reboot-intent-v1",
-      board_category: "205",
-      trusted_origin: origin.origin,
-      baseline: {
-        boot_session: session,
-        boot_ordinal: ordinal,
-        source_commit: sourceCommit,
-        reference_commit: referenceCommit,
-        app_elf_sha256: appElfSha256,
+      schema_version: "bitaxe-device-transaction-intent-v1",
+      goal: {
+        transaction_kind: "settings_durability",
+        reboot: {
+          schema_version: "esp-device-session-reboot-intent-v1",
+          board_category: "205",
+          trusted_origin: origin.origin,
+          baseline: {
+            boot_session: session,
+            boot_ordinal: ordinal,
+            source_commit: sourceCommit,
+            reference_commit: referenceCommit,
+            app_elf_sha256: appElfSha256,
+          },
+          expected_postcondition: { hostname_sha256: sha256(testHostname) },
+        },
       },
-      expected_postcondition: { hostname_sha256: sha256(testHostname) },
     });
     const sessionOutcome = await runChild(processPort, deviceSessionProgram, [
-      "reboot-live",
+      "transact-live",
       "--port", options.port,
       "--intent-input", intentPath,
       "--private-root", sessionRoot,

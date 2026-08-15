@@ -7,11 +7,13 @@ use super::super::markers::{
     CampaignStateMarker, CampaignStatusMarker, ResumablePauseSafeStopMarker,
 };
 use super::super::*;
+use super::command_witness::CommandTransitionWitness;
 use super::model::{SharedSerialState, TrustedNetworkTarget, REQUIRED_WINDOWS, WINDOW_MILLIS};
 
 const MAX_PENDING_SERIAL_BYTES: usize = 65_536;
 const MAX_ATTESTATION_SAMPLES: usize = 8;
 const RUNTIME_ORIGIN_PREFIX: &str = "runtime_origin ";
+const COMMAND_STATUS_PREFIX: &str = "command_status_transition ";
 
 #[derive(Clone)]
 struct OriginCandidate {
@@ -160,6 +162,25 @@ impl NetworkSerialTracker {
             }
             self.observe_marker(&marker, shared);
         }
+        if let Some(index) = line.find(COMMAND_STATUS_PREFIX) {
+            let Some(first) = self.attestations.first() else {
+                return;
+            };
+            let fields = &line[index + COMMAND_STATUS_PREFIX.len()..];
+            let Ok(mut state) = shared.lock() else {
+                return;
+            };
+            if !observe_command_transition_lines(
+                fields.as_bytes(),
+                first.session(),
+                &mut state.command_transitions,
+            ) {
+                self.malformed = true;
+                state
+                    .maybe_failure
+                    .get_or_insert(CampaignTerminalCategory::NetworkCorrelationFailed);
+            }
+        }
     }
 
     fn attestation_is_consistent(&self, attestation: &RuntimeBootAttestation) -> bool {
@@ -232,6 +253,59 @@ impl NetworkSerialTracker {
     }
 }
 
+pub(super) fn observe_command_transition_lines(
+    bytes: &[u8],
+    expected_session: &str,
+    witness: &mut CommandTransitionWitness,
+) -> bool {
+    let Ok(text) = std::str::from_utf8(bytes) else {
+        return false;
+    };
+    let mut observed = false;
+    for line in text.lines().filter(|line| !line.trim().is_empty()) {
+        let fields = if let Some(index) = line.find(COMMAND_STATUS_PREFIX) {
+            &line[index + COMMAND_STATUS_PREFIX.len()..]
+        } else if line.starts_with("session=") {
+            line
+        } else {
+            continue;
+        };
+        let parts = fields.split_whitespace().collect::<Vec<_>>();
+        if parts.len() != 6 || parts[5] != "redacted=true" {
+            return false;
+        }
+        let Some(session) = parts[0].strip_prefix("session=") else {
+            return false;
+        };
+        let Some(revision) = parts[1]
+            .strip_prefix("revision=")
+            .and_then(|value| value.parse::<u64>().ok())
+        else {
+            return false;
+        };
+        let Some(command) = parts[2].strip_prefix("command=") else {
+            return false;
+        };
+        let Some(generation) = parts[3]
+            .strip_prefix("generation=")
+            .and_then(|value| value.parse::<u64>().ok())
+        else {
+            return false;
+        };
+        let Some(outcome) = parts[4].strip_prefix("outcome=") else {
+            return false;
+        };
+        if session != expected_session
+            || revision == 0
+            || !witness.observe(command, generation, outcome)
+        {
+            return false;
+        }
+        observed = true;
+    }
+    observed
+}
+
 fn resumable_pause_safe_stop_confirmation(
     stage: MiningCampaignStage,
     status: ResumablePauseSafeStopMarker,
@@ -292,7 +366,55 @@ fn fail_shared(shared: &Arc<Mutex<SharedSerialState>>, category: CampaignTermina
 mod tests {
     use super::super::super::markers::ResumablePauseSafeStopMarker;
     use super::super::super::MiningCampaignStage;
-    use super::resumable_pause_safe_stop_confirmation;
+    use super::{observe_command_transition_lines, resumable_pause_safe_stop_confirmation};
+    use crate::campaign::network::command_witness::CommandTransitionWitness;
+
+    const SESSION: &str = "0123456789abcdef0123456789abcdef";
+
+    #[test]
+    fn redacted_usb_and_websocket_markers_build_the_same_command_witness() {
+        // Arrange
+        let input = [
+            format!("I app: command_status_transition session={SESSION} revision=2 command=pause generation=1 outcome=applied redacted=true"),
+            format!("command_status_transition session={SESSION} revision=3 command=identify_enable generation=1 outcome=applied redacted=true"),
+            format!("session={SESSION} revision=4 command=display_identify generation=1 outcome=rendered redacted=true"),
+            format!("session={SESSION} revision=5 command=display_non_identify generation=1 outcome=rendered redacted=true"),
+        ].join("\n");
+        let mut witness = CommandTransitionWitness::default();
+
+        // Act
+        let accepted = observe_command_transition_lines(input.as_bytes(), SESSION, &mut witness);
+
+        // Assert
+        assert!(accepted);
+        assert_eq!(witness.pause_generation, 1);
+        assert_eq!(witness.identify_generation, 1);
+        assert_eq!(witness.display_identify_generation, 1);
+        assert_eq!(witness.display_non_identify_generation, 1);
+    }
+
+    #[test]
+    fn marker_from_another_boot_or_with_an_unknown_outcome_fails_closed() {
+        // Arrange
+        let wrong_boot = "session=ffffffffffffffffffffffffffffffff revision=2 command=pause generation=1 outcome=applied redacted=true";
+        let unknown_outcome = format!("session={SESSION} revision=2 command=restart generation=1 outcome=private_failure redacted=true");
+
+        // Act
+        let wrong_boot_accepted = observe_command_transition_lines(
+            wrong_boot.as_bytes(),
+            SESSION,
+            &mut CommandTransitionWitness::default(),
+        );
+        let unknown_outcome_accepted = observe_command_transition_lines(
+            unknown_outcome.as_bytes(),
+            SESSION,
+            &mut CommandTransitionWitness::default(),
+        );
+
+        // Assert
+        assert!(!wrong_boot_accepted);
+        assert!(!unknown_outcome_accepted);
+    }
 
     #[test]
     fn command_effects_safe_stop_markers_set_and_clear_confirmation() {

@@ -63,6 +63,34 @@ fn fixed_command_helpers_issue_each_post_route_once() {
 }
 
 #[test]
+fn command_status_helper_issues_the_read_only_extension_route() {
+    use std::net::TcpListener;
+
+    // Arrange
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+    let address = listener.local_addr().expect("test server address");
+    let server = std::thread::spawn(move || {
+        let (mut socket, _) = listener.accept().expect("accept status request");
+        let mut bytes = [0_u8; 512];
+        let count = socket.read(&mut bytes).expect("read status request");
+        socket
+            .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}")
+            .expect("write response");
+        String::from_utf8(bytes[..count].to_vec()).expect("request is UTF-8")
+    });
+    let client = StrictHttpClient::new(&format!("http://{address}")).expect("client");
+
+    // Act
+    client
+        .get_command_status(Instant::now() + Duration::from_secs(2))
+        .expect("status request");
+
+    // Assert
+    let request = server.join().expect("server thread");
+    assert!(request.starts_with("GET /api/system/command-status HTTP/1.1\r\n"));
+}
+
+#[test]
 fn incomplete_write_is_never_complete() {
     struct FailingWriter {
         remaining: usize,

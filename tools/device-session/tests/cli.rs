@@ -11,6 +11,9 @@ use bitaxe_device_session::{
 use camino::Utf8Path;
 use serde::Serialize;
 
+#[path = "cli/transaction.rs"]
+mod transaction;
+
 fn digest(character: char) -> String {
     std::iter::repeat_n(character, 64).collect()
 }

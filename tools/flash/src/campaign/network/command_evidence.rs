@@ -10,11 +10,24 @@ pub(in crate::campaign) struct CommandEffectsEvidence {
     pub(in crate::campaign) resume_request_count: u8,
     pub(in crate::campaign) resume_intent_confirmed: bool,
     pub(in crate::campaign) resume_confirmed: bool,
-    pub(in crate::campaign) identify_operator_ready_confirmed: bool,
+    pub(in crate::campaign) identify_status_baseline_confirmed: bool,
     pub(in crate::campaign) identify_request_count: u8,
+    #[cfg(test)]
+    #[serde(skip)]
+    pub(in crate::campaign) identify_operator_ready_confirmed: bool,
+    #[cfg(test)]
+    #[serde(skip)]
     pub(in crate::campaign) identify_replay_request_count: u8,
+    #[cfg(test)]
+    #[serde(skip)]
     pub(in crate::campaign) identify_rendered_confirmed: bool,
+    #[cfg(test)]
+    #[serde(skip)]
     pub(in crate::campaign) identify_cleared_confirmed: bool,
+    pub(in crate::campaign) identify_render_receipt_confirmed: bool,
+    pub(in crate::campaign) identify_clear_receipt_confirmed: bool,
+    pub(in crate::campaign) serial_transition_witnesses_confirmed: bool,
+    pub(in crate::campaign) websocket_transition_witnesses_confirmed: bool,
     pub(in crate::campaign) identify_terminal_outcome: &'static str,
     pub(in crate::campaign) dismiss_request_count: u8,
     pub(in crate::campaign) dismiss_confirmed: bool,
@@ -34,7 +47,7 @@ pub(in crate::campaign) struct CommandEffectsEvidence {
 impl CommandEffectsEvidence {
     pub(super) fn new() -> Self {
         Self {
-            schema: "mining-campaign-command-effects-v6",
+            schema: "mining-campaign-command-effects-v7",
             identify_terminal_outcome: "none",
             recovery_terminal_outcome: "not_required",
             same_boot_and_package: true,
@@ -51,11 +64,12 @@ impl CommandEffectsEvidence {
             && self.resume_request_count == 1
             && self.resume_intent_confirmed
             && self.resume_confirmed
-            && self.identify_operator_ready_confirmed
-            && self.identify_replay_request_count <= 1
-            && self.identify_request_count == 1 + self.identify_replay_request_count
-            && self.identify_rendered_confirmed
-            && self.identify_cleared_confirmed
+            && self.identify_status_baseline_confirmed
+            && self.identify_request_count == 1
+            && self.identify_render_receipt_confirmed
+            && self.identify_clear_receipt_confirmed
+            && self.serial_transition_witnesses_confirmed
+            && self.websocket_transition_witnesses_confirmed
             && self.identify_terminal_outcome == "none"
             && self.dismiss_request_count == 1
             && self.dismiss_confirmed

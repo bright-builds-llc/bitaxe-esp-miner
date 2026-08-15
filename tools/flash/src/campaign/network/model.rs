@@ -7,6 +7,7 @@ use serde::Serialize;
 
 use super::super::*;
 use super::command_evidence::CommandEffectsEvidence;
+use super::command_witness::CommandTransitionWitness;
 use super::validation::{
     active_mining_state_valid, advances, regresses, update_gap, validate_active_prerequisites,
     validate_sample, watchdog_valid, window_index, SampleValidationFailure,
@@ -62,6 +63,7 @@ pub(super) struct SharedSerialState {
     pub(super) maximum_active_marker_gap_ms: u64,
     pub(super) serial_windows: [SerialWindowEvidence; REQUIRED_WINDOWS],
     pub(super) maybe_failure: Option<CampaignTerminalCategory>,
+    pub(super) command_transitions: CommandTransitionWitness,
 }
 
 impl Default for SharedSerialState {
@@ -78,6 +80,7 @@ impl Default for SharedSerialState {
             maximum_active_marker_gap_ms: 0,
             serial_windows: array::from_fn(|_| SerialWindowEvidence::default()),
             maybe_failure: None,
+            command_transitions: CommandTransitionWitness::default(),
         }
     }
 }

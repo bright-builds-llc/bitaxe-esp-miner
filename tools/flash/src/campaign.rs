@@ -44,6 +44,7 @@ pub(crate) enum CampaignTerminalCategory {
     ResumeIntentUnconfirmed,
     ResumeReactivationTimedOut,
     OperatorCheckpointInvalid,
+    #[cfg(test)]
     OperatorCheckpointDeclined,
     AdmissionFailed,
     PackageAdmissionFailed,
@@ -109,6 +110,7 @@ impl CampaignTerminalCategory {
             Self::ResumeIntentUnconfirmed => "resume_intent_unconfirmed",
             Self::ResumeReactivationTimedOut => "resume_reactivation_timed_out",
             Self::OperatorCheckpointInvalid => "operator_checkpoint_invalid",
+            #[cfg(test)]
             Self::OperatorCheckpointDeclined => "operator_checkpoint_declined",
             Self::AdmissionFailed => "admission_failed",
             Self::PackageAdmissionFailed => "package_admission_failed",

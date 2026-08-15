@@ -1,23 +1,37 @@
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use bitaxe_api::{SystemInfoWire, IDENTIFY_DURATION_MS};
-use bitaxe_http_transport::{ExchangeObservation, StrictHttpClient};
+use bitaxe_api::{
+    CommandStatusWire, DisplayFrameKind, DisplayRenderOutcome, SystemInfoWire,
+    COMMAND_STATUS_SCHEMA, IDENTIFY_DURATION_MS,
+};
+use bitaxe_http_transport::{ExchangeObservation, PlainWebSocket, StrictHttpClient, WebSocketRead};
 use camino::Utf8Path;
 
 use super::super::CampaignTerminalCategory;
 use super::command_evidence::CommandEffectsEvidence;
+use super::command_witness::CommandTransitionWitness;
 use super::model::{CampaignNetworkEvidence, SharedSerialState, TrustedNetworkTarget};
+use super::serial::observe_command_transition_lines;
 use super::validation::{active_mining_state_valid, validate_identity_and_safety};
 use crate::write_private_new_bytes;
 
 mod pause_join;
 use pause_join::{PauseJoinDecision, PauseJoinState};
+mod programmatic;
+use programmatic::advance_programmatic_commands;
+#[cfg(test)]
+mod legacy;
+#[cfg(test)]
+use legacy::advance_commands;
+#[cfg(test)]
 mod paused_dismiss;
+#[cfg(test)]
 use paused_dismiss::{arm_ready_after_paused_dismissal, begin_paused_dismissal};
 mod recovery_join;
 use recovery_join::{RecoveryJoinDecision, RecoveryPauseJoinState};
 mod identify;
+#[cfg(test)]
 use identify::{
     consume_checkpoint_response, rendered_checkpoint_action, write_required_checkpoint,
     CheckpointResponse, RenderedCheckpointAction,
@@ -32,20 +46,55 @@ const AUTOMATED_PHASE_DEADLINE: Duration = Duration::from_secs(15);
 const REACTIVATION_DEADLINE: Duration = Duration::from_secs(180);
 const NOTIFICATION_DEADLINE: Duration = Duration::from_secs(600);
 const TERMINAL_DEADLINE: Duration = Duration::from_secs(15);
+const WEBSOCKET_CONNECT_TIMEOUT: Duration = Duration::from_secs(3);
+const WEBSOCKET_IO_TIMEOUT: Duration = Duration::from_millis(250);
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum CommandPhase {
     Notification,
+    #[cfg(test)]
     Pause(PauseJoinState),
+    #[cfg(test)]
     ResumeIntent,
+    #[cfg(test)]
     ResumeActive,
+    #[cfg(test)]
     IdentifyReady,
-    IdentifyRendered { effect_inactive_at: Instant },
-    IdentifyReplayPending { starts_at: Instant },
-    IdentifyReplayed { effect_inactive_at: Instant },
-    IdentifyObserved { clears_at: Instant },
+    #[cfg(test)]
+    IdentifyRendered {
+        effect_inactive_at: Instant,
+    },
+    #[cfg(test)]
+    IdentifyReplayPending {
+        starts_at: Instant,
+    },
+    #[cfg(test)]
+    IdentifyReplayed {
+        effect_inactive_at: Instant,
+    },
+    #[cfg(test)]
+    IdentifyObserved {
+        clears_at: Instant,
+    },
+    #[cfg(test)]
     IdentifyCleared,
+    #[cfg(test)]
     PausedDismiss,
+    ProgrammaticPause(PauseJoinState),
+    ProgrammaticDismiss,
+    ProgrammaticIdentifyStart,
+    ProgrammaticIdentifyRendered,
+    ProgrammaticIdentifyCleared,
+    ProgrammaticResumeIntent,
+    ProgrammaticResumeActive,
     Terminal,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct CommandGenerations {
+    pause: u64,
+    dismiss: u64,
+    identify: u64,
+    resume: u64,
 }
 
 struct CommandProgress<'a> {
@@ -72,6 +121,10 @@ pub(super) fn observe_command_effects(
     let mut recovery_pause_request_count = 0;
     let mut maybe_recovery_join = None;
     let mut phase_started_at = Instant::now();
+    let mut generations = CommandGenerations::default();
+    let mut maybe_log_websocket = None;
+    let mut websocket_transitions = CommandTransitionWitness::default();
+    let mut websocket_pending = Vec::new();
 
     loop {
         let now = Instant::now();
@@ -83,7 +136,7 @@ pub(super) fn observe_command_effects(
         if serial.terminal_consumed && maybe_terminal_deadline.is_none() {
             maybe_terminal_deadline = Some(Instant::now() + TERMINAL_DEADLINE);
         }
-        if matches!(phase, CommandPhase::Pause(join) if join.expired(Instant::now())) {
+        if matches!(phase, CommandPhase::ProgrammaticPause(join) if join.expired(Instant::now())) {
             maybe_failure.get_or_insert(CampaignTerminalCategory::NetworkCorrelationFailed);
         }
         if maybe_failure.is_none() {
@@ -91,21 +144,68 @@ pub(super) fn observe_command_effects(
         }
 
         if maybe_failure.is_none() {
-            match fetch_system_info(&http) {
-                Ok(Some(sample)) => {
+            if maybe_log_websocket.is_none() {
+                match PlainWebSocket::connect(
+                    &target.origin,
+                    "/api/ws",
+                    WEBSOCKET_CONNECT_TIMEOUT,
+                    WEBSOCKET_IO_TIMEOUT,
+                ) {
+                    Ok(socket) => maybe_log_websocket = Some(socket),
+                    Err(_) if phase != CommandPhase::Notification => {
+                        maybe_failure = Some(CampaignTerminalCategory::NetworkCorrelationFailed)
+                    }
+                    Err(_) => {}
+                }
+            }
+            if let Some(websocket) = maybe_log_websocket.as_mut() {
+                match websocket.read() {
+                    Ok(WebSocketRead::Text(bytes)) => {
+                        if observe_websocket_transitions(
+                            &bytes,
+                            &target.boot_session,
+                            &mut websocket_pending,
+                            &mut websocket_transitions,
+                        )
+                        .is_err()
+                        {
+                            maybe_failure =
+                                Some(CampaignTerminalCategory::NetworkCorrelationFailed);
+                        }
+                    }
+                    Ok(WebSocketRead::Timeout) => {}
+                    Ok(WebSocketRead::Closed) | Err(_) => {
+                        maybe_log_websocket = None;
+                        websocket_pending.clear();
+                        if phase != CommandPhase::Notification {
+                            maybe_failure =
+                                Some(CampaignTerminalCategory::NetworkCorrelationFailed);
+                        }
+                    }
+                }
+            }
+        }
+
+        if maybe_failure.is_none() {
+            match (fetch_system_info(&http), fetch_command_status(&http)) {
+                (Ok(Some(sample)), Ok(Some(status))) => {
                     if validate_identity_and_safety(&sample, &target).is_err() {
                         evidence.same_boot_and_package = false;
                         evidence.safety_valid = false;
                         maybe_failure = Some(CampaignTerminalCategory::NetworkCorrelationFailed);
                     } else {
                         let prior_phase = phase;
-                        advance_commands(
+                        advance_programmatic_commands(
                             &http,
                             &target,
                             evidence_root,
                             &sample,
+                            &status,
                             &serial,
+                            &websocket_transitions,
+                            maybe_log_websocket.is_some(),
                             Instant::now(),
+                            &mut generations,
                             CommandProgress {
                                 phase: &mut phase,
                                 maybe_block_count: &mut maybe_block_count,
@@ -126,8 +226,8 @@ pub(super) fn observe_command_effects(
                         }
                     }
                 }
-                Ok(None) => {}
-                Err(category) => maybe_failure = Some(category),
+                (Ok(None), _) | (_, Ok(None)) => {}
+                (Err(category), _) | (_, Err(category)) => maybe_failure = Some(category),
             }
         }
         if take_recovery_pause_request(maybe_failure, &mut recovery_pause_request_count) {
@@ -209,6 +309,10 @@ pub(super) fn observe_command_effects(
         std::thread::sleep(POLL_INTERVAL);
     }
 
+    if let Some(websocket) = maybe_log_websocket.as_mut() {
+        websocket.close();
+    }
+
     CampaignNetworkEvidence::from_command_effects(
         evidence,
         recovery_pause_request_count,
@@ -226,18 +330,26 @@ fn automated_phase_failure(
             Some(NOTIFICATION_DEADLINE),
             CampaignTerminalCategory::NetworkCorrelationFailed,
         ),
+        #[cfg(test)]
         CommandPhase::ResumeIntent => (
             Some(AUTOMATED_PHASE_DEADLINE),
             CampaignTerminalCategory::ResumeIntentUnconfirmed,
         ),
+        #[cfg(test)]
         CommandPhase::ResumeActive => (
             Some(REACTIVATION_DEADLINE),
             CampaignTerminalCategory::ResumeReactivationTimedOut,
         ),
-        CommandPhase::PausedDismiss | CommandPhase::Terminal => (
+        CommandPhase::Terminal => (
             Some(AUTOMATED_PHASE_DEADLINE),
             CampaignTerminalCategory::NetworkCorrelationFailed,
         ),
+        #[cfg(test)]
+        CommandPhase::PausedDismiss => (
+            Some(AUTOMATED_PHASE_DEADLINE),
+            CampaignTerminalCategory::NetworkCorrelationFailed,
+        ),
+        #[cfg(test)]
         CommandPhase::Pause(_)
         | CommandPhase::IdentifyReady
         | CommandPhase::IdentifyRendered { .. }
@@ -247,6 +359,26 @@ fn automated_phase_failure(
         | CommandPhase::IdentifyCleared => {
             (None, CampaignTerminalCategory::NetworkCorrelationFailed)
         }
+        CommandPhase::ProgrammaticPause(_) | CommandPhase::ProgrammaticDismiss => (
+            Some(AUTOMATED_PHASE_DEADLINE),
+            CampaignTerminalCategory::NetworkCorrelationFailed,
+        ),
+        CommandPhase::ProgrammaticIdentifyStart | CommandPhase::ProgrammaticIdentifyRendered => (
+            Some(AUTOMATED_PHASE_DEADLINE),
+            CampaignTerminalCategory::NetworkCorrelationFailed,
+        ),
+        CommandPhase::ProgrammaticIdentifyCleared => (
+            Some(Duration::from_millis(IDENTIFY_DURATION_MS) + AUTOMATED_PHASE_DEADLINE),
+            CampaignTerminalCategory::NetworkCorrelationFailed,
+        ),
+        CommandPhase::ProgrammaticResumeIntent => (
+            Some(AUTOMATED_PHASE_DEADLINE),
+            CampaignTerminalCategory::ResumeIntentUnconfirmed,
+        ),
+        CommandPhase::ProgrammaticResumeActive => (
+            Some(REACTIVATION_DEADLINE),
+            CampaignTerminalCategory::ResumeReactivationTimedOut,
+        ),
     };
     maybe_limit
         .is_some_and(|limit| now.duration_since(started_at) >= limit)
@@ -262,208 +394,6 @@ fn take_recovery_pause_request(
     }
     *request_count = 1;
     true
-}
-
-fn advance_commands(
-    http: &StrictHttpClient,
-    target: &TrustedNetworkTarget,
-    evidence_root: &Utf8Path,
-    sample: &SystemInfoWire,
-    serial: &SharedSerialState,
-    now: Instant,
-    progress: CommandProgress<'_>,
-) {
-    let CommandProgress {
-        phase,
-        maybe_block_count,
-        evidence,
-        maybe_failure,
-    } = progress;
-    match phase {
-        CommandPhase::Notification
-            if active_mining_state_valid(sample)
-                && sample.show_new_block
-                && sample.block_found > 0 =>
-        {
-            evidence.active_before_pause = true;
-            evidence.genuine_block_notification_observed = true;
-            evidence.positive_block_count_observed = true;
-            *maybe_block_count = Some(sample.block_found);
-            if write_reboot_intent(evidence_root, target, sample).is_err() {
-                *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid);
-                return;
-            }
-            evidence.pause_request_count = 1;
-            if post_succeeded(http.post_pause_once(Instant::now() + HTTP_DEADLINE)) {
-                *phase = CommandPhase::Pause(PauseJoinState::new(now));
-            } else {
-                *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
-            }
-        }
-        CommandPhase::Pause(join) => {
-            match join.observe(
-                sample.mining_paused && sample.mining_activity == "paused",
-                serial.resumable_pause_safe_stop_confirmed,
-                now,
-            ) {
-                PauseJoinDecision::Wait => {}
-                PauseJoinDecision::Ready => match begin_paused_dismissal(
-                    http,
-                    evidence,
-                    maybe_block_count,
-                    sample.block_found,
-                ) {
-                    Ok(next_phase) => *phase = next_phase,
-                    Err(category) => *maybe_failure = Some(category),
-                },
-                PauseJoinDecision::TimedOut => {
-                    *maybe_failure = Some(CampaignTerminalCategory::NetworkCorrelationFailed);
-                }
-            }
-        }
-        CommandPhase::ResumeIntent if !sample.mining_paused => {
-            evidence.resume_intent_confirmed = true;
-            *phase = CommandPhase::ResumeActive;
-        }
-        CommandPhase::ResumeActive if active_mining_state_valid(sample) => {
-            evidence.resume_confirmed = true;
-            evidence.active_after_resume = true;
-            *phase = CommandPhase::Terminal;
-        }
-        CommandPhase::IdentifyReady => match consume_ready_signal(evidence_root, evidence) {
-            Ok(CheckpointResponse::Confirmed) => {
-                // Ready may wait indefinitely before activation. Keep the
-                // safe-stop pause held while the exact 30-second device effect
-                // runs and while the operator's bound report is in transit.
-                evidence.identify_request_count = 1;
-                if !post_succeeded(http.post_identify_once(Instant::now() + HTTP_DEADLINE)) {
-                    *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
-                } else {
-                    let effect_inactive_at =
-                        Instant::now() + Duration::from_millis(IDENTIFY_DURATION_MS);
-                    if write_required_checkpoint(evidence_root, IdentifyCheckpointKind::Rendered)
-                        .is_ok()
-                    {
-                        *phase = CommandPhase::IdentifyRendered { effect_inactive_at };
-                    } else {
-                        *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid);
-                    }
-                }
-            }
-            Ok(CheckpointResponse::Declined) => {
-                evidence.identify_terminal_outcome = "declined";
-                *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointDeclined);
-            }
-            Ok(CheckpointResponse::Replay) => {
-                *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid)
-            }
-            Ok(CheckpointResponse::Pending) => {}
-            Err(()) => *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid),
-        },
-        CommandPhase::IdentifyRendered { effect_inactive_at } => {
-            match consume_checkpoint_response(evidence_root, IdentifyCheckpointKind::Rendered)
-                .and_then(|response| {
-                    rendered_checkpoint_action(now, *effect_inactive_at, response, true)
-                }) {
-                Ok(RenderedCheckpointAction::Wait) => {}
-                Ok(RenderedCheckpointAction::Confirmed) => {
-                    finish_identify_observation(*effect_inactive_at, phase, evidence, maybe_failure)
-                }
-                Ok(RenderedCheckpointAction::ReplayAt(starts_at)) => {
-                    evidence.identify_replay_request_count = 1;
-                    *phase = CommandPhase::IdentifyReplayPending { starts_at };
-                }
-                Ok(RenderedCheckpointAction::Declined) => {
-                    evidence.identify_terminal_outcome = "declined";
-                    *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointDeclined);
-                }
-                Err(()) => {
-                    *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid)
-                }
-            }
-        }
-        CommandPhase::IdentifyReplayPending { starts_at } if now >= *starts_at => {
-            if evidence.identify_request_count != 1 || evidence.identify_replay_request_count != 1 {
-                *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid);
-            } else {
-                if !post_succeeded(http.post_identify_once(Instant::now() + HTTP_DEADLINE)) {
-                    *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
-                    return;
-                }
-                evidence.identify_request_count = 2;
-                let effect_inactive_at =
-                    Instant::now() + Duration::from_millis(IDENTIFY_DURATION_MS);
-                if write_required_checkpoint(evidence_root, IdentifyCheckpointKind::Replayed)
-                    .is_err()
-                {
-                    *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid);
-                } else {
-                    *phase = CommandPhase::IdentifyReplayed { effect_inactive_at };
-                }
-            }
-        }
-        CommandPhase::IdentifyReplayed { effect_inactive_at } => {
-            match consume_checkpoint_response(evidence_root, IdentifyCheckpointKind::Replayed)
-                .and_then(|response| {
-                    rendered_checkpoint_action(now, *effect_inactive_at, response, false)
-                }) {
-                Ok(RenderedCheckpointAction::Wait) => {}
-                Ok(RenderedCheckpointAction::Confirmed) => {
-                    finish_identify_observation(*effect_inactive_at, phase, evidence, maybe_failure)
-                }
-                Ok(RenderedCheckpointAction::Declined) => {
-                    evidence.identify_terminal_outcome = "declined";
-                    *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointDeclined);
-                }
-                Ok(RenderedCheckpointAction::ReplayAt(_)) | Err(()) => {
-                    *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid)
-                }
-            }
-        }
-        CommandPhase::IdentifyObserved { clears_at } => {
-            match arm_cleared_after_natural_expiry(evidence_root, now, *clears_at) {
-                Ok(true) => *phase = CommandPhase::IdentifyCleared,
-                Ok(false) => {}
-                Err(()) => {
-                    *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid)
-                }
-            }
-        }
-        CommandPhase::IdentifyCleared => match consume_cleared_signal(evidence_root, evidence) {
-            Ok(CheckpointResponse::Confirmed) => {
-                if !post_succeeded(http.post_resume_once(Instant::now() + HTTP_DEADLINE)) {
-                    *maybe_failure = Some(CampaignTerminalCategory::CommandRequestFailed);
-                } else {
-                    *phase = CommandPhase::ResumeIntent;
-                }
-            }
-            Ok(CheckpointResponse::Declined) => {
-                evidence.identify_terminal_outcome = "declined";
-                *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointDeclined);
-            }
-            Ok(CheckpointResponse::Replay) => {
-                *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid)
-            }
-            Ok(CheckpointResponse::Pending) => {}
-            Err(()) => *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid),
-        },
-        CommandPhase::PausedDismiss if !sample.show_new_block => {
-            evidence.dismiss_confirmed = true;
-            evidence.block_count_preserved =
-                maybe_block_count.is_some_and(|count| sample.block_found == count);
-            if evidence.block_count_preserved {
-                match arm_ready_after_paused_dismissal(evidence_root, evidence) {
-                    Ok(next_phase) => *phase = next_phase,
-                    Err(()) => {
-                        *maybe_failure = Some(CampaignTerminalCategory::OperatorCheckpointInvalid)
-                    }
-                }
-            } else {
-                *maybe_failure = Some(CampaignTerminalCategory::NetworkCorrelationFailed);
-            }
-        }
-        _ => {}
-    }
 }
 
 fn write_reboot_intent(
@@ -511,6 +441,47 @@ fn fetch_system_info(
         .map_err(|_| CampaignTerminalCategory::NetworkCorrelationFailed)
 }
 
+fn fetch_command_status(
+    http: &StrictHttpClient,
+) -> Result<Option<CommandStatusWire>, CampaignTerminalCategory> {
+    let observation = http
+        .get_command_status(Instant::now() + HTTP_DEADLINE)
+        .map_err(|_| CampaignTerminalCategory::NetworkCorrelationFailed)?;
+    let Some(response) = observation
+        .maybe_http_response()
+        .filter(|response| response.status() == 200)
+    else {
+        return Ok(None);
+    };
+    serde_json::from_slice(response.body())
+        .map(Some)
+        .map_err(|_| CampaignTerminalCategory::NetworkCorrelationFailed)
+}
+
+fn observe_websocket_transitions(
+    bytes: &[u8],
+    expected_session: &str,
+    pending: &mut Vec<u8>,
+    witness: &mut CommandTransitionWitness,
+) -> Result<(), ()> {
+    const MAX_PENDING_BYTES: usize = 65_536;
+    pending.extend_from_slice(bytes);
+    while let Some(newline) = pending.iter().position(|byte| *byte == b'\n') {
+        let line = pending.drain(..=newline).collect::<Vec<_>>();
+        if line
+            .windows(b"command_status_transition ".len())
+            .any(|window| window == b"command_status_transition ")
+            && !observe_command_transition_lines(&line, expected_session, witness)
+        {
+            return Err(());
+        }
+    }
+    if pending.len() > MAX_PENDING_BYTES {
+        return Err(());
+    }
+    Ok(())
+}
+
 fn post_succeeded(result: anyhow::Result<ExchangeObservation>) -> bool {
     result.ok().and_then(|observation| {
         observation
@@ -519,6 +490,7 @@ fn post_succeeded(result: anyhow::Result<ExchangeObservation>) -> bool {
     }) == Some(200)
 }
 
+#[cfg(test)]
 fn finish_identify_observation(
     clears_at: Instant,
     phase: &mut CommandPhase,
@@ -537,6 +509,7 @@ fn finish_identify_observation(
     *phase = CommandPhase::IdentifyObserved { clears_at };
 }
 
+#[cfg(test)]
 fn arm_cleared_after_natural_expiry(
     root: &Utf8Path,
     now: Instant,
@@ -549,6 +522,7 @@ fn arm_cleared_after_natural_expiry(
     Ok(true)
 }
 
+#[cfg(test)]
 fn arm_identify_transaction(
     root: &Utf8Path,
     evidence: &CommandEffectsEvidence,
@@ -560,6 +534,7 @@ fn arm_identify_transaction(
     Ok(CommandPhase::IdentifyReady)
 }
 
+#[cfg(test)]
 fn consume_ready_signal(
     root: &Utf8Path,
     evidence: &mut CommandEffectsEvidence,
@@ -578,6 +553,7 @@ fn consume_ready_signal(
     Ok(CheckpointResponse::Confirmed)
 }
 
+#[cfg(test)]
 fn consume_cleared_signal(
     root: &Utf8Path,
     evidence: &mut CommandEffectsEvidence,

@@ -33,8 +33,9 @@ use crate::ota_update::{FirmwareOtaApplyResult, FirmwareOtaStatus};
 use crate::runtime_snapshot::{
     apply_block_found_dismiss_command, apply_identify_mode_command,
     apply_mining_operator_intent_command, block_found_notification_state, collect_api_snapshot,
-    identify_mode, projected_scoreboard, projected_statistics,
+    command_status_wire, identify_mode, projected_scoreboard, projected_statistics,
     publish_projected_live_telemetry_payload, publish_projected_system_info,
+    record_restart_command,
 };
 use crate::{
     log_buffer, network_stack, settings_adapter, static_files, websocket_api, wifi_adapter,
@@ -121,6 +122,11 @@ fn register_http_handlers(
 ) -> anyhow::Result<()> {
     static_files::register_recovery(server, filesystem_status)?;
     server.fn_handler("/api/system/info", Method::Get, handle_system_info)?;
+    server.fn_handler(
+        "/api/system/command-status",
+        Method::Get,
+        handle_command_status,
+    )?;
     server.fn_handler("/api/system/wifi/scan", Method::Get, handle_wifi_scan)?;
     server.fn_handler("/api/system", Method::Patch, handle_settings_patch)?;
     server.fn_handler("/api/system/logs", Method::Get, handle_logs_download)?;

@@ -184,6 +184,25 @@ fn theme_get_and_post_are_owned_http_routes_in_both_manifests() {
 }
 
 #[test]
+fn command_status_is_a_phase07_read_only_extension() {
+    // Arrange
+    let phase05 = super::phase05_routes();
+
+    // Act
+    let maybe_route = super::phase07_routes()
+        .iter()
+        .find(|route| route.path == "/api/system/command-status");
+
+    // Assert
+    assert!(phase05
+        .iter()
+        .all(|route| route.path != "/api/system/command-status"));
+    let route = maybe_route.expect("command status extension must be registered");
+    assert_eq!(route.method, RouteMethod::Get);
+    assert_eq!(route.kind, RouteKind::Http);
+}
+
+#[test]
 fn phase05_update_routes_keep_safe_unsupported_owner_for_api_compare() {
     // Arrange
     let routes = phase05_routes();

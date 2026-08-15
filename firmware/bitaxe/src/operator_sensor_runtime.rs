@@ -3,7 +3,9 @@
 use std::{thread, time::Duration};
 
 use anyhow::{Context, Result};
-use bitaxe_api::{project_observation, TelemetryObservations};
+use bitaxe_api::{
+    project_observation, DisplayFrameKind, DisplayRenderOutcome, TelemetryObservations,
+};
 use bitaxe_core::{
     runtime_orchestration::{PeriodicDeadline, OPERATOR_OBSERVATION_CADENCE_MS},
     screen::{ScreenFlow, ScreenFrame, SCREEN_UPDATE_MS},
@@ -89,6 +91,7 @@ fn run(
             maybe_last_frame: None,
         }
     });
+    crate::runtime_snapshot::record_display_availability(maybe_display.is_some(), started_at_ms);
     let mut maybe_display_schedule = maybe_display.as_ref().map(|_| {
         let first_deadline_ms = started_at_ms
             .checked_add(DISPLAY_REFRESH_CADENCE_MS)
@@ -200,6 +203,7 @@ fn run(
                         log::warn!(
                             "display_status=runtime_refresh_disabled reason=deadline_overflow"
                         );
+                        crate::runtime_snapshot::record_display_availability(false, now_ms);
                         maybe_display = None;
                         maybe_display_schedule = None;
                     }
@@ -317,9 +321,29 @@ fn service_display(
     }
 
     if let Err(error) = display.owner.render_runtime_screen(owner, &decision.frame) {
+        crate::runtime_snapshot::record_display_render(
+            if snapshot.identify_active {
+                DisplayFrameKind::Identify
+            } else {
+                DisplayFrameKind::NonIdentify
+            },
+            DisplayRenderOutcome::Failed,
+            uptime_ms,
+        );
         disable_runtime_display(maybe_display, "render_failed", &error);
         return;
     }
+    // A frame decision is not display evidence. Publish the receipt only after
+    // the SSD1306 owner confirms that the framebuffer flush completed.
+    crate::runtime_snapshot::record_display_render(
+        if snapshot.identify_active {
+            DisplayFrameKind::Identify
+        } else {
+            DisplayFrameKind::NonIdentify
+        },
+        DisplayRenderOutcome::Rendered,
+        uptime_ms,
+    );
     display.maybe_last_frame = Some(decision.frame);
 }
 
@@ -349,6 +373,7 @@ fn disable_runtime_display(
         crate::display_adapter::RuntimeDisplayMode::Unavailable,
         crate::input_adapter::is_available(),
     );
+    crate::runtime_snapshot::record_display_availability(false, crate::runtime_uptime::millis());
     *maybe_display = None;
 }
 

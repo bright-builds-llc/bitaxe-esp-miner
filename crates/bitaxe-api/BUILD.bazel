@@ -53,6 +53,7 @@ rust_library(
         "src/boot_identity.rs",
         "src/build_identity.rs",
         "src/commands.rs",
+        "src/command_status.rs",
         "src/deferred_effect.rs",
         "src/lib.rs",
         "src/logs.rs",

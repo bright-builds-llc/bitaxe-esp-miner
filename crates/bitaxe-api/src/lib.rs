@@ -8,6 +8,7 @@
 pub mod asic;
 pub mod boot_identity;
 pub mod build_identity;
+pub mod command_status;
 pub mod commands;
 pub mod deferred_effect;
 pub mod logs;
@@ -40,6 +41,12 @@ pub use asic::asic_settings_from_snapshot;
 pub use build_identity::{
     BuildChannel, BuildIdentity, BuildIdentityError, BuildProvenance, BUILD_LABEL_MAX_BYTES,
     BUILD_PROVENANCE_SCHEMA_VERSION, FULL_COMMIT_BYTES, SHORT_COMMIT_BYTES,
+};
+pub use command_status::{
+    BlockNotificationCommandStatusWire, CommandStatusEffect, CommandStatusFacts,
+    CommandStatusTracker, CommandStatusTransition, CommandStatusWire, DisplayCommandStatusWire,
+    DisplayFrameKind, DisplayRenderOutcome, DisplayRenderReceiptWire, IdentifyCommandStatusWire,
+    MiningCommandStatusWire, RestartCommandStatusWire, COMMAND_STATUS_SCHEMA,
 };
 pub use commands::{
     apply_block_found_dismiss_effect, apply_identify_mode_effect,

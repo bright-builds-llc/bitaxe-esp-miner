@@ -186,6 +186,7 @@ name = "bitaxe-device-session"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bitaxe-api",
  "bitaxe-http-transport",
  "camino",
  "clap",

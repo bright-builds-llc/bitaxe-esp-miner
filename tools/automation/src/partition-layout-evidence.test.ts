@@ -193,7 +193,7 @@ function fakePort(terminal = "ready"): ProcessPort {
       await writeFile(path.join(root, "flash-monitor.classifier-input.log"), monitor, { mode: 0o600 });
       return ok();
     }
-    if (spec.args[0] === "ota-live") {
+    if (spec.args[0] === "transact-live") {
       assert.ok(spec.args.indexOf("--ota-image") > spec.args.indexOf("--intent-input"));
       const sessionRoot = String(spec.args[spec.args.indexOf("--private-root") + 1]);
       const projection = String(spec.args[spec.args.indexOf("--projection-output") + 1]);

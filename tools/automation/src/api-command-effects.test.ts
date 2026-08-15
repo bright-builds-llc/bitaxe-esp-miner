@@ -10,10 +10,6 @@ import {
   captureApiCommandEffects,
   type ApiCommandEffectsOptions,
 } from "./api-command-effects.js";
-import {
-  formatOperatorCheckpointSignal,
-  type OperatorCheckpointSignal,
-} from "./api-command-effects-checkpoint.js";
 import { createFakeProcessPort, type ProcessOutcome } from "./process.js";
 
 const discardCheckpoint = () => undefined;
@@ -46,7 +42,7 @@ const readySession = {
 } as const;
 
 const completeEffects = {
-  schema: "mining-campaign-command-effects-v6",
+  schema: "mining-campaign-command-effects-v7",
   genuine_block_notification_observed: true,
   positive_block_count_observed: true,
   pause_request_count: 1,
@@ -54,11 +50,12 @@ const completeEffects = {
   resume_request_count: 1,
   resume_intent_confirmed: true,
   resume_confirmed: true,
-  identify_operator_ready_confirmed: true,
+  identify_status_baseline_confirmed: true,
   identify_request_count: 1,
-  identify_replay_request_count: 0,
-  identify_rendered_confirmed: true,
-  identify_cleared_confirmed: true,
+  identify_render_receipt_confirmed: true,
+  identify_clear_receipt_confirmed: true,
+  serial_transition_witnesses_confirmed: true,
+  websocket_transition_witnesses_confirmed: true,
   identify_terminal_outcome: "none",
   dismiss_request_count: 1,
   dismiss_confirmed: true,
@@ -72,10 +69,6 @@ const completeEffects = {
   safety_valid: true,
   terminal_http_valid: true,
   terminal_pool_persisted: true,
-} as const;
-
-const completeReplayedEffects = {
-  ...completeEffects, identify_request_count: 2, identify_replay_request_count: 1,
 } as const;
 
 const readyReadinessTransition = {
@@ -276,10 +269,20 @@ function fakePort(
       });
       await privateJson(path.join(campaign, "command-effects-reboot-intent.private.json"), {
         schema_version: "esp-device-session-reboot-intent-v1",
+        board_category: "205",
+        trusted_origin: "http://192.0.2.44",
+        baseline: {
+          boot_session: "a".repeat(32),
+          boot_ordinal: 7,
+          source_commit: "a".repeat(40),
+          reference_commit: "b".repeat(40),
+          app_elf_sha256: "c".repeat(64),
+        },
+        expected_postcondition: { hostname_sha256: "d".repeat(64) },
       });
       return { ...ok(), exitCode: campaignFails ? 1 : 0 };
     }
-    if (spec.args[0] === "reboot-live") {
+    if (spec.args[0] === "transact-live") {
       const output = String(spec.args[spec.args.indexOf("--projection-output") + 1]);
       await privateJson(output, maybeSession);
       return ok();
@@ -288,162 +291,25 @@ function fakePort(
   });
 }
 
-test("ordered campaign checkpoints notify the operator sink exactly once", async () => {
+test("the production campaign completes without operator checkpoints", async () => {
   // Arrange
   const value = await fixture();
-  const signals: OperatorCheckpointSignal[] = [];
+  let checkpointSignalCount = 0;
 
   // Act
   await captureApiCommandEffects(
     value.root,
     value.options,
-    fakePort(value.root, readySession, false, "ready", "ready", "ready", "ordered"),
+    fakePort(value.root, readySession, false, "ready", "ready", "ready", "absent"),
     path.join(value.root, "bin", "api-command-effects-stratum-pool"),
     path.join(value.root, "bin", "flash"),
     path.join(value.root, "bin", "device-session"),
-    (signal) => { signals.push(signal); },
+    () => { checkpointSignalCount += 1; },
   );
 
   // Assert
-  assert.deepEqual(signals.map((signal) => signal.checkpoint), ["ready", "rendered", "cleared"]);
-  assert.deepEqual(signals.map((signal) => signal.confirm_when), [
-    "ready_to_watch", "identify_frame_observed_during_effect", "identify_frame_absent",
-  ]);
-  assert(signals.every((signal) => signal.schema_version === "bitaxe-operator-checkpoint-v6"));
-  assert(signals.every((signal) => signal.command === "api-command-effects-campaign"));
-  assert(signals.every((signal) => signal.identify_duration_seconds === 30));
-  assert.deepEqual(signals.map((signal) => signal.operator_wait_policy), [
-    "unbounded", "unbounded", "unbounded",
-  ]);
-  assert.deepEqual(signals.map((signal) => signal.effect_evidence_window_seconds), [
-    "not_applicable", 30, "not_applicable",
-  ]);
-  assert(signals.every((signal) => signal.local_signal_required));
-  assert.deepEqual(signals.map((signal) => signal.starts_identify_window), [true, false, false]);
-  assert.deepEqual(signals.map((signal) => signal.replay_supported), [false, true, false]);
-  assert(signals.every((signal) => signal.replay_limit === 1));
-  assert.deepEqual(
-    signals.map((signal) => signal.replay_starts_identify_window),
-    [false, true, false],
-  );
-  assert.deepEqual(
-    signals.map((signal) => signal.late_confirmation_policy),
-    ["not_applicable", "accept_bound_attestation", "not_applicable"],
-  );
-  assert(signals.every((signal) => signal.decline_supported));
-  assert(signals.every((signal) => signal.status === "required"));
-  assert(signals.every((signal) => signal.expected_frame.join("|") === "|BITAXE IDENTIFY|Hello!|"));
-  const formatted = signals.map(formatOperatorCheckpointSignal).join("");
-  assert.equal(formatted.split("\n").filter(Boolean).length, 3);
-  assert(formatted.includes("BITAXE IDENTIFY"));
-  assert(formatted.includes("identify_duration_seconds\":30"));
-  assert(!formatted.includes(value.root));
-  assert(!formatted.includes(value.options.port));
+  assert.equal(checkpointSignalCount, 0);
 });
-
-test("one replayed checkpoint is bound to the replay evidence count", async () => {
-  // Arrange
-  const value = await fixture();
-  const signals: OperatorCheckpointSignal[] = [];
-
-  // Act
-  await captureApiCommandEffects(
-    value.root,
-    value.options,
-    fakePort(
-      value.root,
-      readySession,
-      false,
-      "ready",
-      "ready",
-      "ready",
-      "replayed",
-      completeReplayedEffects,
-    ),
-    path.join(value.root, "bin", "api-command-effects-stratum-pool"),
-    path.join(value.root, "bin", "flash"),
-    path.join(value.root, "bin", "device-session"),
-    (signal) => { signals.push(signal); },
-  );
-
-  // Assert
-  assert.deepEqual(
-    signals.map((signal) => signal.checkpoint),
-    ["ready", "rendered", "replayed", "cleared"],
-  );
-});
-
-test("replayed checkpoint without replay evidence is rejected", async () => {
-  // Arrange
-  const value = await fixture();
-
-  // Act
-  const error = await captureApiCommandEffects(
-    value.root,
-    value.options,
-    fakePort(value.root, readySession, false, "ready", "ready", "ready", "replayed"),
-    path.join(value.root, "bin", "api-command-effects-stratum-pool"),
-    path.join(value.root, "bin", "flash"),
-    path.join(value.root, "bin", "device-session"),
-    discardCheckpoint,
-  ).then(() => undefined, (caught: unknown) => caught);
-
-  // Assert
-  assert(error instanceof ApiCommandEffectsError);
-  assert.equal(error.category, "evidence_invalid");
-});
-
-test("replay evidence without replayed checkpoint is rejected", async () => {
-  // Arrange
-  const value = await fixture();
-
-  // Act
-  const error = await captureApiCommandEffects(
-    value.root,
-    value.options,
-    fakePort(
-      value.root,
-      readySession,
-      false,
-      "ready",
-      "ready",
-      "ready",
-      "ordered",
-      completeReplayedEffects,
-    ),
-    path.join(value.root, "bin", "api-command-effects-stratum-pool"),
-    path.join(value.root, "bin", "flash"),
-    path.join(value.root, "bin", "device-session"),
-    discardCheckpoint,
-  ).then(() => undefined, (caught: unknown) => caught);
-
-  // Assert
-  assert(error instanceof ApiCommandEffectsError);
-  assert.equal(error.category, "evidence_invalid");
-});
-
-for (const checkpointMode of ["absent", "malformed", "wrong_mode", "wrong_order"] as const) {
-  test(`${checkpointMode} operator checkpoint handoff withholds evidence`, async () => {
-    // Arrange
-    const value = await fixture();
-
-    // Act
-    const error = await captureApiCommandEffects(
-      value.root,
-      value.options,
-      fakePort(value.root, readySession, false, "ready", "ready", "ready", checkpointMode),
-      path.join(value.root, "bin", "api-command-effects-stratum-pool"),
-      path.join(value.root, "bin", "flash"),
-      path.join(value.root, "bin", "device-session"),
-      discardCheckpoint,
-    ).then(() => undefined, (caught: unknown) => caught);
-
-    // Assert
-    assert(error instanceof ApiCommandEffectsError);
-    assert.equal(error.category, "evidence_invalid");
-    await assert.rejects(readFile(value.options.projection, "utf8"), { code: "ENOENT" });
-  });
-}
 
 test("campaign failure remains primary when its checkpoint is malformed", async () => {
   // Arrange
@@ -546,8 +412,14 @@ test("complete command and reboot quorums publish only redacted typed evidence",
 
   // Assert
   const published = await readFile(value.options.projection, "utf8");
+  const displayUatIntent = JSON.parse(await readFile(
+    path.join(value.root, "scratch", "attempt-001", "display-uat-intent.private.json"),
+    "utf8",
+  )) as Record<string, unknown>;
   assert.equal((evidence as Record<string, unknown>)["schema_version"], "bitaxe-api-command-effects-evidence-v1");
   assert.equal((evidence as Record<string, unknown>)["hardware_control_state"], "disabled");
+  assert.equal(displayUatIntent["schema_version"], "bitaxe-display-uat-intent-v1");
+  assert.equal(displayUatIntent["programmatic_evidence_sha256"], createHash("sha256").update(published).digest("hex"));
   assert(!published.includes("192.0.2.44"));
   assert(!published.includes("/dev/private-sensitive-port"));
   assert(!published.includes("api009.fixture"));

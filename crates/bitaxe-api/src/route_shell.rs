@@ -58,6 +58,7 @@ const PHASE05_ROUTES: &[AxeosRoute] = &[
 
 const PHASE07_ROUTES: &[AxeosRoute] = &[
     axeos_route!("/api/system/info", Get, RouteKind::Http),
+    axeos_route!("/api/system/command-status", Get, RouteKind::Http),
     axeos_route!("/api/system/wifi/scan", Get, RouteKind::Http),
     axeos_route!("/api/system", Patch, RouteKind::Http),
     axeos_route!("/api/system/logs", Get, RouteKind::Http),

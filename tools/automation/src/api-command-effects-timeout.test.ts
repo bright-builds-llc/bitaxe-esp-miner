@@ -97,7 +97,7 @@ function campaignLifetimePort(
 }
 
 for (const recoveryMode of ["closed", "missing", "malformed"] as const) {
-  test(`operator-gated lifetime preserves primary category with ${recoveryMode} recovery`, async () => {
+  test(`bounded automated lifetime preserves primary category with ${recoveryMode} recovery`, async () => {
     // Arrange
     const value = await fixture();
     let maybeObservedLifetime: unknown;
@@ -116,7 +116,7 @@ for (const recoveryMode of ["closed", "missing", "malformed"] as const) {
     // Assert
     assert(error instanceof ApiCommandEffectsError);
     assert.equal(error.category, "hardware_blocked");
-    assert.equal(maybeObservedLifetime, "operator-gated");
+    assert.equal(maybeObservedLifetime, 900_000);
     assert.deepEqual(error.publicValue, {
       stage: "command_effects",
       safe_stop_confirmed: recoveryMode === "closed",

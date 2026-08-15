@@ -13,6 +13,7 @@ path = "src/main.rs"
 
 [dependencies]
 anyhow.workspace = true
+bitaxe-api = { path = "../../crates/bitaxe-api" }
 bitaxe-http-transport = { path = "../http-transport" }
 camino.workspace = true
 clap.workspace = true

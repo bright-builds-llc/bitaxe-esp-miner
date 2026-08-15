@@ -130,7 +130,7 @@ function fakePort(
         device_url: "http://127.0.0.1:8080",
       }));
     }
-    if (command === "reboot-live") {
+    if (command === "transact-live") {
       if (configuration.omitProjection !== true) {
         const output = spec.args[spec.args.indexOf("--projection-output") + 1];
         assert.notEqual(output, undefined);
@@ -183,7 +183,7 @@ test("ready device session restores the hostname and emits v2 closed evidence", 
     assert.deepEqual(publicValue["restart_session"], readyProjection);
     assert.equal(publicValue["restoration_complete"], true);
     assert.doesNotMatch(publicDocument, /private-original|bitaxe-parity-205|test-sensitive-port|127\.0\.0\.1/u);
-    assert.deepEqual(commands, ["flash-monitor", "verify-settings-durability", "reboot-live"]);
+    assert.deepEqual(commands, ["flash-monitor", "verify-settings-durability", "transact-live"]);
     const privateRoot = path.join(value.root, "scratch", "attempt");
     assert.equal((await stat(privateRoot)).mode & 0o777, 0o700);
     assert.equal((await stat(path.join(privateRoot, "device-session-intent.private.json"))).mode & 0o777, 0o600);
@@ -287,7 +287,7 @@ test("launch failure maps to process-failed without exposing the child error", a
   const throwingPort: ProcessPort = {
     ...processPort,
     run: async (spec) => {
-      if (spec.args[0] === "reboot-live") throw new Error("private launch detail /dev/test-sensitive-port");
+      if (spec.args[0] === "transact-live") throw new Error("private launch detail /dev/test-sensitive-port");
       return processPort.run(spec);
     },
   };
@@ -348,9 +348,9 @@ if (args[0] === "flash-monitor") {
   await writeFile(path.join(root, "flash-monitor.classifier-input.log"), ${JSON.stringify(trace)});
 } else if (args[0] === "verify-settings-durability") {
   process.stdout.write(JSON.stringify({ status: "passed", session: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", boot_ordinal: 4, device_url: "http://127.0.0.1:8080" }));
-} else if (args[0] === "reboot-live") {
+} else if (args[0] === "transact-live") {
   const output = args[args.indexOf("--projection-output") + 1];
-  await writeFile(output, JSON.stringify(${JSON.stringify(readyProjection)}));
+  await writeFile(output, JSON.stringify(${JSON.stringify(readyProjection)}), { mode: 0o600 });
 } else if (args[0] === "monitor") {
   process.exitCode = 97;
 } else {

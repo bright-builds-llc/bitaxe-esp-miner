@@ -8,12 +8,7 @@ import {
   type RecoveryFacts,
 } from "./api-command-effects-recovery.js";
 import { isDeviceSessionProjectionFailure, readClosedDeviceSession } from "./device-session-projection.js";
-import {
-  OperatorCheckpointError,
-  superviseOperatorCheckpoints,
-  type OperatorCheckpointKind,
-  type OperatorCheckpointSink,
-} from "./api-command-effects-checkpoint.js";
+import type { OperatorCheckpointSink } from "./api-command-effects-checkpoint.js";
 import { isClosedReadinessTransition } from "./api-command-effects-readiness.js";
 import type { ProcessLifetime, ProcessOutcome, ProcessPort } from "./process.js";
 import { assertWithinWorkspace } from "./workspace.js";
@@ -261,14 +256,14 @@ function validatedCommandEffects(network: JsonObject): JsonObject {
   const requiredTrue = [
     "genuine_block_notification_observed", "positive_block_count_observed",
     "pause_confirmed", "resume_intent_confirmed", "resume_confirmed",
-    "identify_operator_ready_confirmed",
-    "identify_rendered_confirmed",
-    "identify_cleared_confirmed", "dismiss_confirmed", "block_count_preserved",
+    "identify_status_baseline_confirmed", "identify_render_receipt_confirmed",
+    "identify_clear_receipt_confirmed", "serial_transition_witnesses_confirmed",
+    "websocket_transition_witnesses_confirmed", "dismiss_confirmed", "block_count_preserved",
     "active_before_pause", "active_after_resume", "same_boot_and_package",
     "safety_valid", "terminal_http_valid", "terminal_pool_persisted",
   ];
   if (
-    effects["schema"] !== "mining-campaign-command-effects-v6"
+    effects["schema"] !== "mining-campaign-command-effects-v7"
     || effects["identify_terminal_outcome"] !== "none"
     || effects["recovery_terminal_outcome"] !== "not_required"
     || effects["recovery_pause_api_confirmed"] !== false
@@ -277,26 +272,12 @@ function validatedCommandEffects(network: JsonObject): JsonObject {
     || requiredTrue.some((field) => effects[field] !== true)
     || effects["pause_request_count"] !== 1
     || effects["resume_request_count"] !== 1
-    || (effects["identify_replay_request_count"] !== 0
-      && effects["identify_replay_request_count"] !== 1)
-    || effects["identify_request_count"] !== 1 + effects["identify_replay_request_count"]
+    || effects["identify_request_count"] !== 1
     || effects["dismiss_request_count"] !== 1
   ) {
     throw failure("evidence_invalid", "command effects evidence quorum is incomplete");
   }
   return effects;
-}
-
-function validateCheckpointEvidence(
-  effects: JsonObject,
-  checkpointKinds: readonly OperatorCheckpointKind[],
-): void {
-  const expected = effects["identify_replay_request_count"] === 1
-    ? ["ready", "rendered", "replayed", "cleared"]
-    : ["ready", "rendered", "cleared"];
-  if (checkpointKinds.join(",") !== expected.join(",")) {
-    throw failure("evidence_invalid", "operator checkpoint evidence does not match replay count");
-  }
 }
 
 function validReadyFlashDiagnostic(value: unknown): boolean {
@@ -418,7 +399,7 @@ export async function captureApiCommandEffects(
   fixtureProgram: string,
   flashProgram: string,
   deviceSessionProgram: string,
-  checkpointSink: OperatorCheckpointSink,
+  _checkpointSink: OperatorCheckpointSink,
 ): Promise<unknown> {
   if (options.durationSeconds !== 600) throw failure("evidence_invalid", "command effects duration must be 600 seconds");
   const privateRoot = assertWithinWorkspace(workspaceRoot, options.privateRoot);
@@ -433,7 +414,7 @@ export async function captureApiCommandEffects(
   const manifest = object(JSON.parse(manifestDocument), "package manifest");
   const sourceCommit = stringField(manifest, "source_commit", "package manifest");
   const referenceCommit = stringField(manifest, "reference_commit", "package manifest");
-  stringField(manifest, "app_elf_sha256", "package manifest");
+  const appElfSha256 = stringField(manifest, "app_elf_sha256", "package manifest");
   const manifestDigest = sha256(manifestDocument);
   const fixtureHost = await localFixtureHost(processPort);
   const fixtureReady = path.join(privateRoot, "fixture-ready.private.json");
@@ -454,7 +435,6 @@ export async function captureApiCommandEffects(
   ]);
 
   let maybeCampaignOutcome: ProcessOutcome | undefined;
-  let checkpointKinds: readonly OperatorCheckpointKind[] = [];
   let maybeFixtureSettlement: FixtureSettlement | undefined;
   let maybePrimaryError: unknown;
   let primaryFailed = false;
@@ -483,7 +463,7 @@ export async function captureApiCommandEffects(
       poolPassword: randomBytes(24).toString("hex"),
     });
     const campaignRoot = path.join(privateRoot, "campaign");
-    const supervised = await superviseOperatorCheckpoints(runChild(processPort, flashProgram, [
+    maybeCampaignOutcome = await runChild(processPort, flashProgram, [
       "mining-campaign",
       "--stage", "command-effects",
       "--profile", "conservative",
@@ -495,9 +475,7 @@ export async function captureApiCommandEffects(
       "--evidence-dir", campaignRoot,
       "--duration-seconds", String(options.durationSeconds),
       "--redact-evidence",
-    ], "operator-gated", "command effects campaign"), campaignRoot, checkpointSink);
-    maybeCampaignOutcome = supervised.outcome;
-    checkpointKinds = supervised.checkpointKinds;
+    ], Math.max((options.durationSeconds + 300) * 1_000, 60_000), "command effects campaign");
     if (maybeCampaignOutcome.timedOut) {
       throw failure(
         "timeout",
@@ -511,9 +489,6 @@ export async function captureApiCommandEffects(
         "command effects campaign failed",
         await campaignRecoveryFacts(campaignRoot),
       );
-    }
-    if (supervised.maybeCheckpointError instanceof OperatorCheckpointError) {
-      throw failure("evidence_invalid", "operator checkpoint handoff is invalid");
     }
   } catch (error) {
     primaryFailed = true;
@@ -549,19 +524,26 @@ export async function captureApiCommandEffects(
   const flashDiagnosticsPath = path.join(campaignRoot, "campaign-flash.private.json");
   const flashDiagnostics = await readRequiredPrivateDocument(flashDiagnosticsPath, "campaign flash diagnostics");
   const effects = validateCampaign(campaignResult, network, flashDiagnostics.value, flashDiagnostics.document);
-  validateCheckpointEvidence(effects, checkpointKinds);
   const fixture = validateFixture(await readPrivateJson(fixtureReport, "fixture report"));
 
   const intentPath = path.join(campaignRoot, "command-effects-reboot-intent.private.json");
-  await readPrivateJson(intentPath, "device-session intent");
+  const rebootIntent = await readPrivateJson(intentPath, "device-session intent");
+  const transactionIntentPath = path.join(privateRoot, "device-transaction-intent.private.json");
+  await writePrivateJson(transactionIntentPath, {
+    schema_version: "bitaxe-device-transaction-intent-v1",
+    goal: {
+      transaction_kind: "command_effects",
+      reboot: rebootIntent,
+    },
+  });
   const sessionRoot = path.join(privateRoot, "device-session");
   const sessionProjectionPath = path.join(privateRoot, "device-session-projection.private.json");
   await mkdir(sessionRoot, { mode: 0o700 });
   await chmod(sessionRoot, 0o700);
   const sessionOutcome = await runChild(processPort, deviceSessionProgram, [
-    "reboot-live",
+    "transact-live",
     "--port", options.port,
-    "--intent-input", intentPath,
+    "--intent-input", transactionIntentPath,
     "--private-root", sessionRoot,
     "--projection-output", sessionProjectionPath,
     "--timeout-seconds", "360",
@@ -600,8 +582,26 @@ export async function captureApiCommandEffects(
     hardware_control_state: "disabled",
     redaction_status: "passed",
   } as const;
+  const evidenceDocument = `${JSON.stringify(evidence, null, 2)}\n`;
+  const rebootBaseline = object(rebootIntent["baseline"], "device-session reboot baseline");
+  if (
+    stringField(rebootBaseline, "source_commit", "device-session reboot baseline") !== sourceCommit
+    || stringField(rebootBaseline, "reference_commit", "device-session reboot baseline") !== referenceCommit
+    || stringField(rebootBaseline, "app_elf_sha256", "device-session reboot baseline") !== appElfSha256
+  ) {
+    throw failure("evidence_invalid", "display UAT package binding does not match the admitted package");
+  }
+  await writePrivateJson(path.join(privateRoot, "display-uat-intent.private.json"), {
+    schema_version: "bitaxe-display-uat-intent-v1",
+    board_category: "205",
+    trusted_origin: stringField(rebootIntent, "trusted_origin", "device-session reboot intent"),
+    source_commit: sourceCommit,
+    reference_commit: referenceCommit,
+    app_elf_sha256: appElfSha256,
+    programmatic_evidence_sha256: sha256(evidenceDocument),
+  });
   await mkdir(path.dirname(projectionPath), { recursive: true });
-  await writeFile(projectionPath, `${JSON.stringify(evidence, null, 2)}\n`, {
+  await writeFile(projectionPath, evidenceDocument, {
     encoding: "utf8",
     flag: "wx",
   });

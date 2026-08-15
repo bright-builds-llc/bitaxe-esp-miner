@@ -1,6 +1,15 @@
 //! Firmware collection boundary for pure AxeOS API response snapshots.
 
+mod command_surface;
 mod operator_intent;
+
+pub(crate) use command_surface::apply_command_effects_run_bootstrap;
+pub use command_surface::{
+    apply_block_found_dismiss_command, apply_identify_mode_command,
+    apply_mining_operator_intent_command, block_found_notification_state,
+    cancel_identify_if_active_at, command_status_wire, identify_mode, record_display_availability,
+    record_display_render, record_found_block, record_restart_command, ButtonIdentifyCancellation,
+};
 mod screen;
 mod screen_projection;
 pub use screen::collect_screen_snapshot;
@@ -12,18 +21,20 @@ use bitaxe_api::{
     apply_block_found_dismiss_effect, apply_identify_mode_effect,
     apply_mining_operator_intent_effect, project_api_views, project_system_info,
     scoreboard_response, statistics_response, ApiSnapshot, BlockFoundDismissEffect,
-    BlockFoundNotificationState, IdentifyMode, IdentifyModeEffect, IdentifyModeState,
-    MiningOperatorIntentEffect, OperatorSnapshotIdentity, OperatorSnapshotLockHealth,
-    OperatorSnapshotPublishError, PlatformFact, PlatformIdentity, PlatformSnapshot,
-    ProjectedApiViews, SafeTelemetrySnapshot, ScoreboardEntryWire, StatisticsHistory,
-    StatisticsSample, StatisticsWire, SystemInfoSettingsSnapshot, SystemInfoWire,
+    BlockFoundNotificationState, CommandStatusEffect, CommandStatusFacts, CommandStatusTracker,
+    CommandStatusTransition, CommandStatusWire, DisplayFrameKind, DisplayRenderOutcome,
+    IdentifyMode, IdentifyModeEffect, IdentifyModeState, MiningOperatorIntentEffect,
+    OperatorSnapshotIdentity, OperatorSnapshotLockHealth, OperatorSnapshotPublishError,
+    PlatformFact, PlatformIdentity, PlatformSnapshot, ProjectedApiViews, SafeTelemetrySnapshot,
+    ScoreboardEntryWire, StatisticsHistory, StatisticsSample, StatisticsWire,
+    SystemInfoSettingsSnapshot, SystemInfoWire,
 };
 use bitaxe_config::{reload_snapshot, LoadedValue};
 use bitaxe_stratum::v1::telemetry_projection::RuntimeProjectionSampleMarker;
 use bitaxe_stratum::v1::{
     production_session::ProductionSessionSnapshot,
     production_work::PoolSessionGeneration,
-    state::{MiningOperatorIntent, MiningRuntimeState},
+    state::{MiningActivityStatus, MiningOperatorIntent, MiningRuntimeState},
     telemetry_projection::RuntimeTelemetryProjection,
 };
 use operator_intent::RequestedOperatorIntent;
@@ -67,6 +78,7 @@ struct CommandVisibleState {
     identify: IdentifyModeState,
     block_found: BlockFoundNotificationState,
     work_received: u64,
+    command_status: CommandStatusTracker,
 }
 
 impl Default for CommandVisibleState {
@@ -81,6 +93,7 @@ impl Default for CommandVisibleState {
                 show_new_block: false,
             },
             work_received: 0,
+            command_status: CommandStatusTracker::default(),
         }
     }
 }
@@ -141,6 +154,7 @@ pub fn apply_boot_mining_preference(start_mining_on_boot: bool) {
             .requested_operator_intent
             .apply_boot_preference(start_mining_on_boot);
         state.mining.set_operator_intent(intent);
+        state.command_status.record_runtime_change();
     });
 }
 
@@ -212,6 +226,8 @@ pub fn publish_projected_live_telemetry_payload<T, E>(
 /// Publishes the sole owner's immutable mining-session snapshot.
 pub fn publish_production_session_snapshot(snapshot: ProductionSessionSnapshot) {
     mutate_command_visible_state(|state| {
+        let prior_intent = state.mining.operator_intent;
+        let prior_activity = state.mining.mining_activity;
         let hashrate = state.mining.hashrate_inputs.clone();
         state.work_received = snapshot.job_transition.pool_notify_count;
         state.mining = snapshot.mining;
@@ -219,6 +235,11 @@ pub fn publish_production_session_snapshot(snapshot: ProductionSessionSnapshot) 
         state
             .runtime_projection
             .replace_session_state(state.mining.clone());
+        if prior_intent != state.mining.operator_intent
+            || prior_activity != state.mining.mining_activity
+        {
+            state.command_status.record_runtime_change();
+        }
     });
 }
 
@@ -229,77 +250,6 @@ pub fn publish_hashrate_snapshot(snapshot: bitaxe_core::hashrate::HashrateSnapsh
         state
             .runtime_projection
             .replace_session_state(state.mining.clone());
-    });
-}
-
-/// Returns the current identify mode used to plan the next identify command.
-pub fn identify_mode() -> IdentifyMode {
-    command_visible_state()
-        .identify
-        .mode_at(crate::runtime_uptime::millis())
-}
-
-/// Returns the current block-found notification state.
-pub fn block_found_notification_state() -> BlockFoundNotificationState {
-    command_visible_state().block_found
-}
-
-/// Applies current-boot operator intent without deriving mining state.
-pub fn apply_mining_operator_intent_command(effect: MiningOperatorIntentEffect) {
-    mutate_command_visible_state(|state| {
-        state.requested_operator_intent.apply(effect);
-        apply_mining_operator_intent_effect(&mut state.mining, effect);
-    });
-}
-
-pub(crate) fn apply_command_effects_run_bootstrap() {
-    mutate_command_visible_state(|state| {
-        state
-            .requested_operator_intent
-            .apply_command_effects_run_bootstrap();
-    });
-}
-
-/// Applies an API-visible identify command effect.
-pub fn apply_identify_mode_command(effect: IdentifyModeEffect) {
-    let now_ms = crate::runtime_uptime::millis();
-    mutate_command_visible_state(|state| {
-        apply_identify_mode_effect(&mut state.identify, effect, now_ms);
-    });
-}
-
-/// Result of atomically testing and cancelling identify for a short click.
-pub enum ButtonIdentifyCancellation {
-    Cancelled,
-    Inactive,
-    StateUnavailable,
-}
-
-/// Atomically cancels identify only when it is active at this instant.
-pub fn cancel_identify_if_active_at(now_ms: u64) -> ButtonIdentifyCancellation {
-    mutate_command_visible_state_with_result(
-        ButtonIdentifyCancellation::StateUnavailable,
-        |state| {
-            if state.identify.mode_at(now_ms) != IdentifyMode::Active {
-                return ButtonIdentifyCancellation::Inactive;
-            }
-            apply_identify_mode_effect(&mut state.identify, IdentifyModeEffect::Disable, now_ms);
-            ButtonIdentifyCancellation::Cancelled
-        },
-    )
-}
-
-/// Applies an API-visible block-found dismiss command effect.
-pub fn apply_block_found_dismiss_command(effect: BlockFoundDismissEffect) {
-    mutate_command_visible_state(|state| {
-        state.block_found = apply_block_found_dismiss_effect(effect);
-    });
-}
-
-/// Records one production-qualified network-target nonce.
-pub fn record_found_block() {
-    mutate_command_visible_state(|state| {
-        state.block_found = state.block_found.record_found_block();
     });
 }
 

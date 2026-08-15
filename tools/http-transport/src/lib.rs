@@ -88,6 +88,15 @@ impl StrictHttpClient {
         self.exchange_until("GET", "/api/system/info", deadline, DEFAULT_CONNECT_TIMEOUT)
     }
 
+    pub fn get_command_status(&self, deadline: Instant) -> Result<ExchangeObservation> {
+        self.exchange_until(
+            "GET",
+            "/api/system/command-status",
+            deadline,
+            DEFAULT_CONNECT_TIMEOUT,
+        )
+    }
+
     pub fn post_restart_once(&self, deadline: Instant) -> Result<ExchangeObservation> {
         self.exchange_until(
             "POST",

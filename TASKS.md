@@ -3511,13 +3511,13 @@ so a separately planned attempt-027 is the next safe action.
 Paused-count hardware attempt-027 plan:
 `docs/parity/work-plans/20260815T044046Z-API-009/PLAN.md`.
 
-- [ ] Commit and push the immutable single-attempt contract, then pass every
+- [x] Commit and push the immutable single-attempt contract, then pass every
       focused, mandatory, privacy, reference, firmware, selector, and exact-
       package gate at clean synchronized HEAD.
-- [ ] Run exactly one fresh detector-gated attempt-027, keeping the Ultra 205
+- [x] Run exactly one fresh detector-gated attempt-027, keeping the Ultra 205
       paused and safe-stopped through every unbounded operator wait and
       requiring the immediate paused-count dismissal join before IDENTIFY.
-- [ ] Promote API-009 only on the complete command/restart/device-user quorum;
+- [x] Promote API-009 only on the complete command/restart/device-user quorum;
       otherwise preserve `implemented`, the earliest typed failure, evidence
       withholding, safe stop, cleanup, and recovery, then stop without
       attempt-028.
@@ -3528,6 +3528,15 @@ factory reset, OTA, rollback, power cycle, external pool, direct UART,
 pin/pad/GPIO manipulation, probe, jumper, soldering, injected signal, fault
 injection, arbitrary hardware override, non-205 device, or second campaign run
 is authorized.
+
+Attempt-027 closure review: the sole campaign reached its live IDENTIFY-ready
+checkpoint and remained paused and safe-stopped during the unbounded operator
+wait. The programmatic-platform redesign intentionally declined that checkpoint
+through the repo-owned typed signal. The response was consumed, the complete
+campaign process group and USB holder exited, and the public projection remains
+withheld. The physical UAT is deferred without attributing failure to an
+operator action. API-009 remains `implemented`; attempt-027 is consumed and no
+attempt-028 is authorized by this closed plan.
 
 ### task-parity-thr001-emc2101-live-thermal | 2026-08-13 | Correct and prove Ultra 205 thermal readings
 
@@ -3720,6 +3729,56 @@ hardware or browser work.
 Completion review: UI-004 remains `implemented`; verification is not claimed.
 The user's report of more visible panel information remains helpful context,
 not typed UI-001/UI-002 evidence.
+
+### task-programmatic-device-verification-platform | 2026-08-15 | Centralize autonomous device transactions and proof
+
+- [x] Add a privacy-safe, access-gated `/api/system/command-status` extension
+      with boot-scoped command generations, state revisions, and display-render
+      receipts published only after a successful framebuffer flush.
+- [x] Deepen `bitaxe-device-session` behind one typed transaction interface
+      with production and deterministic adapters, read-only inspection,
+      request-once effects, same-device continuity, recovery, cleanup, typed
+      failures, and sealed public projections.
+- [x] Migrate API command effects, hostname durability, and partition-layout
+      OTA/restart orchestration to the common transaction implementation; all
+      new live workflows must use the same interface.
+- [x] Add pure, simulated, and real-child regressions for every public API-009
+      failure signature, transport loss, stale/duplicate generations, display
+      failure, restart ambiguity, projection integrity, privacy, cleanup, and
+      earliest-failure precedence.
+- [ ] Pass focused and full repository gates, review the diff for unintended
+      effects, commit, and push before authorizing any fresh hardware attempt.
+- [ ] Plan and run sequential detector-gated exact-package pilot attempts only
+      after a complete no-human simulated command-effects campaign passes.
+- [x] Preserve programmatic evidence independently from one replayable,
+      unbounded-readiness physical display UAT required for API-009 promotion.
+
+Software verification review (2026-08-15): the complete no-human simulated
+command-effects campaign and its typed failure regressions pass, as do the
+real-child transaction seam, all Cargo format/lint/build/test gates, all 44
+Bazel tests, firmware build, Bright Builds, parity/progress, redaction, pinned
+reference cleanliness, and diff checks. The shared interface reuses the
+authoritative reboot/OTA lifecycle; its compatibility commands contain no
+independent device lifecycle. The implementation is ready for commit and push.
+No fresh hardware attempt has run under this task.
+
+Software authorization and privacy: source, tests, deterministic loopback and
+real-child fixtures, documentation, task records, builds, local protected
+mode-`0700` roots, and mode-`0600` private artifacts are authorized. Public
+outputs may contain only closed categories, booleans, counts, opaque boot
+sessions, monotonic revisions, and digests. They must not contain origins,
+hostnames, settings values, addresses, ports, USB/network/process identities,
+credentials, frame text, sensor values, commands, or raw traces.
+
+Hardware gate: no fresh device attempt is authorized by this software task.
+Each pilot requires its own complete task contract, clean pushed source and
+exact package, `just detect-ultra205`, one fresh ordinal, finite automated
+effect/recovery bounds, evidence withholding, and accepted stop categories.
+HTTP is the only command transport; WebSocket and receive-only native USB are
+observers. External UART/BAP, USB request/response, erase, factory reset,
+power-cycle, fault injection, arbitrary settings writes, mining stress,
+voltage/frequency/fan/thermal control, pins, pads, GPIO, probes, jumpers, and
+non-205 devices remain prohibited.
 
 ## Future
 

@@ -1,4 +1,5 @@
 use std::fs;
+#[cfg(test)]
 use std::time::Instant;
 
 #[cfg(unix)]
@@ -59,6 +60,7 @@ struct IdentifyCheckpoint {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg(test)]
 pub(super) enum CheckpointResponse {
     Pending,
     Confirmed,
@@ -67,6 +69,7 @@ pub(super) enum CheckpointResponse {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[cfg(test)]
 pub(super) enum RenderedCheckpointAction {
     Wait,
     Confirmed,
@@ -74,6 +77,7 @@ pub(super) enum RenderedCheckpointAction {
     ReplayAt(Instant),
 }
 
+#[cfg(test)]
 pub(super) fn rendered_checkpoint_action(
     now: Instant,
     effect_inactive_at: Instant,
@@ -108,6 +112,7 @@ fn checkpoint_path(
     root.join(format!("identify-{}.{}.json", checkpoint.as_str(), state))
 }
 
+#[cfg(test)]
 pub(super) fn write_required_checkpoint(
     root: &Utf8Path,
     checkpoint: IdentifyCheckpointKind,
@@ -122,6 +127,7 @@ pub(super) fn write_required_checkpoint(
     write_private_new_bytes(&checkpoint_path(root, checkpoint, "required"), &bytes)
 }
 
+#[cfg(test)]
 pub(super) fn consume_checkpoint_response(
     root: &Utf8Path,
     checkpoint: IdentifyCheckpointKind,

@@ -138,6 +138,7 @@ pub(super) fn apply_command_effect(
             let Some(deferred_effect) = maybe_deferred_effect else {
                 return Err(anyhow::anyhow!("restart effect ownership missing"));
             };
+            record_restart_command();
             deferred_effect.release_after_response().map_err(|_| {
                 anyhow::anyhow!("restart effect worker unavailable after ownership")
             })?;

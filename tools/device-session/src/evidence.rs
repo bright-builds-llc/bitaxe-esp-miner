@@ -23,6 +23,38 @@ pub struct SessionArtifacts {
     serial_bytes: u64,
 }
 
+pub struct InspectionArtifacts {
+    root: Utf8PathBuf,
+    projection_output: Utf8PathBuf,
+}
+
+impl InspectionArtifacts {
+    pub fn create(root: &Utf8Path, projection_output: &Utf8Path) -> Result<Self> {
+        validate_empty_private_root(root)?;
+        if fs::symlink_metadata(projection_output.as_std_path()).is_ok() {
+            bail!("device inspection projection output must not already exist");
+        }
+        Ok(Self {
+            root: root.to_owned(),
+            projection_output: projection_output.to_owned(),
+        })
+    }
+
+    pub fn record_http(&self, name: &str, bytes: &[u8]) -> Result<()> {
+        if bytes.len() > MAX_HTTP_BYTES as usize {
+            bail!("device inspection HTTP body exceeds the private bound");
+        }
+        let mut file = open_private_new(&self.root.join(name))?;
+        file.write_all(bytes)?;
+        file.flush()?;
+        Ok(())
+    }
+
+    pub fn finish(self, projection: &impl serde::Serialize) -> Result<()> {
+        write_json_new(&self.projection_output, projection)
+    }
+}
+
 impl SessionArtifacts {
     pub fn create(root: &Utf8Path, projection_output: &Utf8Path) -> Result<Self> {
         validate_empty_private_root(root)?;
@@ -113,7 +145,7 @@ pub fn validate_private_input(input: &Utf8Path) -> Result<()> {
     Ok(())
 }
 
-fn validate_empty_private_root(directory: &Utf8Path) -> Result<()> {
+pub(crate) fn validate_empty_private_root(directory: &Utf8Path) -> Result<()> {
     let metadata = fs::symlink_metadata(directory.as_std_path())
         .with_context(|| format!("failed to inspect private root {directory}"))?;
     if metadata.file_type().is_symlink() || !metadata.is_dir() {
@@ -145,7 +177,7 @@ fn open_private_new(path: &Utf8Path) -> Result<File> {
     Ok(file)
 }
 
-fn write_json_new(path: &Utf8Path, value: &impl serde::Serialize) -> Result<()> {
+pub(crate) fn write_json_new(path: &Utf8Path, value: &impl serde::Serialize) -> Result<()> {
     let mut file = open_private_new(path)?;
     serde_json::to_writer(&mut file, value)
         .with_context(|| format!("failed to serialize device-session artifact {path}"))?;

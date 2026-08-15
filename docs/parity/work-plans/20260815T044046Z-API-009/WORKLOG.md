@@ -37,3 +37,42 @@
   027 authorization boundary. API-009 remains `implemented`.
 - Blocker or next safe action: Commit and push this checkpoint, then require
   clean synchronized HEAD before package creation or detector admission.
+
+## 2026-08-15T05:28:00Z | attempt-027 intentionally declined and closed
+
+- Source commit: `4cc6b808050c98f763fb661a6f039ea31e745498`.
+- Actions: Consumed the live `identify-ready` checkpoint through the repo-owned
+  typed `declined` signal after the programmatic-verification redesign made the
+  coupled physical checkpoint obsolete. No protected attempt content was read.
+- Verification: The response was consumed, the campaign, fixture, and wrapper
+  process group exited, no process retained the admitted USB node, and the
+  public command-effects projection remained absent.
+- Evidence: Safe process, holder, mode, checkpoint-consumption, and projection-
+  withholding facts only. Protected traces, credentials, origins, device and
+  network identifiers, and private result contents remain unread and private.
+- Outcome: Attempt-027 is consumed and closed without operator attribution.
+  API-009 remains `implemented`; its physical display UAT is intentionally
+  deferred and no attempt-028 is authorized by this plan.
+- Blocker or next safe action: Build and software-verify the shared autonomous
+  device-transaction platform before planning any fresh hardware attempt.
+
+## 2026-08-15T06:04:08Z | programmatic verification platform software gates passed
+
+- Source baseline: `4cc6b808050c98f763fb661a6f039ea31e745498`.
+- Actions: Added the access-gated command-status extension, framebuffer-flush
+  receipts, retained command markers, read-only live inspection, one typed
+  transaction interface, compatibility adapters, autonomous API command-effect
+  proof, migrated durability and OTA callers, and the independently replayable
+  durable display UAT.
+- Verification: The complete simulated no-human command-effects campaign,
+  focused failure regressions, real-child transaction test, ordered Cargo
+  format/strict-lint/build/test gates, all 44 Bazel tests, firmware build,
+  Bright Builds, parity/progress, semantic redaction, pinned-reference
+  cleanliness, and diff checks pass.
+- Evidence: Public source and deterministic test results only. No fresh USB,
+  device, network, display, mining, hardware-control, protected attempt, or raw
+  trace was accessed.
+- Outcome: The software platform is ready to commit and push. API-009 remains
+  `implemented`; hardware and visual evidence remain intentionally pending.
+- Blocker or next safe action: Commit and push this clean implementation, then
+  create a separate exact-package pilot contract before detector admission.
