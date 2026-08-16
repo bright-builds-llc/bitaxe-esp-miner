@@ -1371,6 +1371,44 @@ setup, monitor, post-monitor evidence/effect delivery, and cleanup. Add a scaled
 real-child regression whose pre-monitor plus capture duration exceeds the old
 420-second policy. Never reuse attempts 001 or 002.
 
+Attempt-003 correction and verification plan:
+`docs/parity/work-plans/20260816T221106Z-STAT-002/PLAN.md`
+
+- [ ] Remove the partial 420-second override so the existing bounded 900-second
+      process adapter owns the entire flash/NVS/gates/monitor/result lifecycle.
+- [ ] Prove source ownership and a scaled real child with pre-monitor, capture,
+      and post-monitor phases that exceeds the old boundary and completes under
+      the whole-operation owner; preserve typed timeout failure behavior.
+- [ ] Rebind the closed task/plan/path/invocation surface to fresh attempt-003,
+      pass every software/package/privacy gate, and push the exact source.
+- [ ] Run only the plan's detector and conditional attempt-003; promote only on
+      the independently validated cadence/API/restoration quorum.
+
+Attempt-003 authorization: one exact clean pushed board-205 factory package,
+normal USB reset/re-enumeration, ignored Wi-Fi seed, one current-session same-
+origin API transaction, and a temporary `statsFrequency`-only mutation. The
+child owns its 360-second monitor timeout; the existing 900-second adapter bound
+owns the whole child lifecycle. Exact restoration is mandatory. Only after a
+mutation, one same-package recovery flash plus restoration PATCH/readback is
+allowed if the admitted origin is lost.
+
+Attempt-003 privacy/safety: use only fresh mode-0700 wrapper
+`scratch/stat002-statistics-history/wrapper-003`, distinct mode-0600 redirects,
+the absent supervisor-owned mode-0700 child
+`scratch/stat002-statistics-history/attempt-003`, and the closed aggregate-only
+projection. Credentials, settings values, raw statistics, origins, endpoints,
+hostnames, ports, USB/network/process identity, bodies, logs, commands, PIDs,
+and traces remain private. Legacy statistics voltage/current are millivolts/
+milliamps and are not accuracy evidence.
+
+Attempt-003 prohibitions/stops: no pool, mining, ASIC work, arbitrary hardware
+control, OTA, erase, fault injection, physical power action, browser, direct
+UART, or electrical pin/pad/header/GPIO/probe/jumper/solder/signal work. Starting
+capture consumes attempt-003; never reuse attempts 001/002, retry attempt-003,
+or start attempt-004. Stop on detector/identity failure, missing input, drift,
+pre-effect failure, incomplete quorum, failed restoration/recovery/cleanup/
+mode/privacy, nonzero exit, or successful projection.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
