@@ -1058,6 +1058,38 @@ UI-002 carousel content, UI-003 physical input, live panel
 orientation/inversion/timeout, and operator-visible behavior remain below
 verified, so this implemented task remains active rather than archived.
 
+Source-bound verification plan:
+`docs/parity/work-plans/20260816T064239Z-UI-001/PLAN.md`.
+
+- [ ] Validate the exact committed API-009 display-UAT and programmatic
+      projections without reading protected attempts or rerunning hardware.
+- [ ] Add a closed UI-001 evidence contract, independent validator, projector,
+      exhaustive boundary regressions, and complete Bazel/runfiles ownership.
+- [ ] Bind captured source `522d5abd`, current pushed display semantics, pinned
+      reference behavior, this active task, and the immutable plan into one
+      aggregate-only public projection.
+- [ ] Pass every focused, mandatory, privacy, package, reference, parity,
+      progress, selector, digest, permission, sensitive-value, and diff gate;
+      promote and archive only on the complete accepted quorum.
+
+Authorization: committed public evidence, repository source/Git history,
+deterministic tests, documentation, checklist tooling, and local builds only.
+Do not read credentials or protected attempt artifacts and do not access the
+detector, USB/serial, device/network/HTTP, physical display, operator
+checkpoint, mining, settings mutation, restart, OTA, recovery, hardware
+control, external UART/BAP, or any pin/pad/header/GPIO/probe/jumper/solder/
+signal interface. No new hardware attempt is authorized or required.
+
+Promotion requires the exact sealed board-205 UAT to prove one machine and
+operator-confirmed IDENTIFY render and natural clear, its exact programmatic
+projection to prove package/reference identity, safe stop, cleanup, and
+redaction, and current source checks to prove the display-owned paths remain
+compatible with that captured package. The resulting UI-001 projection must be
+independently validated, aggregate-only, and state `hardware_rerun_used: false`.
+Physical geometry, brightness, every rotation/inversion setting on hardware,
+timeout duration/current draw, physical input, UI-002 content, other boards,
+mining, soak, update/recovery, and release readiness remain non-claims.
+
 ### task-parity-ui002-screen-flow | 2026-08-04 | Implement bounded Ultra 205 screen flow
 
 - [x] Add the pure priority, overlay, intro, carousel, notification, and
