@@ -8,8 +8,16 @@ export type UiWorkflowSourceEvidence = {
   rollback_evidence_sha256: string;
   implementation_result_sha256: string;
   static_ui_contract_sha256: string;
+  prior_plan_sha256: string;
+  prior_closure_sha256: string;
+  current_plan_sha256: string;
+  compatibility_source_set_sha256: string;
+  compatibility_path_count: number;
   all_source_evidence_valid: boolean;
-  all_source_commits_ancestral: boolean;
+  joined_source_commits_ancestral: boolean;
+  attempt_source_ancestral: boolean;
+  compatibility_paths_unchanged: boolean;
+  compatibility_paths_clean: boolean;
 };
 
 export type UiWorkflowBrowserEvidence = {
@@ -33,7 +41,8 @@ export type UiWorkflowBrowserEvidence = {
 export type UiWorkflowEvidence = {
   schema_version: "bitaxe-ui-workflow-evidence-v1";
   board: 205;
-  source_commit: string;
+  attempt_source_commit: string;
+  projector_source_commit: string;
   reference_commit: string;
   package_manifest_sha256: string;
   app_elf_sha256: string;
@@ -51,5 +60,6 @@ export type UiWorkflowEvidence = {
   hardware_control_state: "disabled";
   device_cleanup_complete: boolean;
   private_modes_valid: boolean;
+  hardware_rerun_used: false;
   redaction_status: "passed";
 };

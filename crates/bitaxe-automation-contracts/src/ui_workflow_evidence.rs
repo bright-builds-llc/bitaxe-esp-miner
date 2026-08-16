@@ -14,8 +14,16 @@ pub struct UiWorkflowSourceEvidence {
     pub rollback_evidence_sha256: String,
     pub implementation_result_sha256: String,
     pub static_ui_contract_sha256: String,
+    pub prior_plan_sha256: String,
+    pub prior_closure_sha256: String,
+    pub current_plan_sha256: String,
+    pub compatibility_source_set_sha256: String,
+    pub compatibility_path_count: u16,
     pub all_source_evidence_valid: bool,
-    pub all_source_commits_ancestral: bool,
+    pub joined_source_commits_ancestral: bool,
+    pub attempt_source_ancestral: bool,
+    pub compatibility_paths_unchanged: bool,
+    pub compatibility_paths_clean: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -41,7 +49,8 @@ pub struct UiWorkflowBrowserEvidence {
 pub struct UiWorkflowEvidence {
     pub schema_version: String,
     pub board: u16,
-    pub source_commit: String,
+    pub attempt_source_commit: String,
+    pub projector_source_commit: String,
     pub reference_commit: String,
     pub package_manifest_sha256: String,
     pub app_elf_sha256: String,
@@ -55,6 +64,7 @@ pub struct UiWorkflowEvidence {
     pub hardware_control_state: String,
     pub device_cleanup_complete: bool,
     pub private_modes_valid: bool,
+    pub hardware_rerun_used: bool,
     pub redaction_status: String,
 }
 
@@ -68,7 +78,11 @@ impl UiWorkflowEvidence {
         {
             return Err("UI workflow identity is invalid");
         }
-        for commit in [self.source_commit.as_str(), self.reference_commit.as_str()] {
+        for commit in [
+            self.attempt_source_commit.as_str(),
+            self.projector_source_commit.as_str(),
+            self.reference_commit.as_str(),
+        ] {
             if !is_lower_hex(commit, 40) {
                 return Err("UI workflow source identity is invalid");
             }
@@ -87,12 +101,22 @@ impl UiWorkflowEvidence {
             self.sources.rollback_evidence_sha256.as_str(),
             self.sources.implementation_result_sha256.as_str(),
             self.sources.static_ui_contract_sha256.as_str(),
+            self.sources.prior_plan_sha256.as_str(),
+            self.sources.prior_closure_sha256.as_str(),
+            self.sources.current_plan_sha256.as_str(),
+            self.sources.compatibility_source_set_sha256.as_str(),
         ] {
             if !is_lower_hex(digest, 64) {
                 return Err("UI workflow evidence digest is invalid");
             }
         }
-        if !self.sources.all_source_evidence_valid || !self.sources.all_source_commits_ancestral {
+        if !self.sources.all_source_evidence_valid
+            || !self.sources.joined_source_commits_ancestral
+            || !self.sources.attempt_source_ancestral
+            || !self.sources.compatibility_paths_unchanged
+            || !self.sources.compatibility_paths_clean
+            || self.sources.compatibility_path_count != 10
+        {
             return Err("UI workflow source evidence is incomplete");
         }
         let browser = &self.browser;
@@ -120,6 +144,7 @@ impl UiWorkflowEvidence {
             || self.hardware_control_state != "disabled"
             || !self.device_cleanup_complete
             || !self.private_modes_valid
+            || self.hardware_rerun_used
             || self.redaction_status != "passed"
         {
             return Err("UI workflow safety or privacy evidence is invalid");
@@ -143,28 +168,37 @@ mod tests {
         UiWorkflowEvidence {
             schema_version: "bitaxe-ui-workflow-evidence-v1".to_owned(),
             board: 205,
-            source_commit: "a".repeat(40),
-            reference_commit: "b".repeat(40),
-            package_manifest_sha256: "c".repeat(64),
-            app_elf_sha256: "d".repeat(64),
-            www_spiffs_sha256: "e".repeat(64),
+            attempt_source_commit: "a".repeat(40),
+            projector_source_commit: "b".repeat(40),
+            reference_commit: "c".repeat(40),
+            package_manifest_sha256: "d".repeat(64),
+            app_elf_sha256: "e".repeat(64),
+            www_spiffs_sha256: "f".repeat(64),
             workflow: WorkflowIdentity {
                 schema_version: "bitaxe-workflow-identity-v1".to_owned(),
                 command: AutomationCommand::ProjectUiWorkflowEvidence,
-                request_sha256: "f".repeat(64),
+                request_sha256: "0".repeat(64),
             },
             sources: UiWorkflowSourceEvidence {
-                operator_snapshot_evidence_sha256: "0".repeat(64),
-                browser_attestation_sha256: "1".repeat(64),
-                theme_evidence_sha256: "2".repeat(64),
-                settings_evidence_sha256: "3".repeat(64),
-                log_evidence_sha256: "4".repeat(64),
-                partition_evidence_sha256: "5".repeat(64),
-                rollback_evidence_sha256: "6".repeat(64),
-                implementation_result_sha256: "7".repeat(64),
-                static_ui_contract_sha256: "8".repeat(64),
+                operator_snapshot_evidence_sha256: "1".repeat(64),
+                browser_attestation_sha256: "2".repeat(64),
+                theme_evidence_sha256: "3".repeat(64),
+                settings_evidence_sha256: "4".repeat(64),
+                log_evidence_sha256: "5".repeat(64),
+                partition_evidence_sha256: "6".repeat(64),
+                rollback_evidence_sha256: "7".repeat(64),
+                implementation_result_sha256: "8".repeat(64),
+                static_ui_contract_sha256: "9".repeat(64),
+                prior_plan_sha256: "a".repeat(64),
+                prior_closure_sha256: "b".repeat(64),
+                current_plan_sha256: "c".repeat(64),
+                compatibility_source_set_sha256: "d".repeat(64),
+                compatibility_path_count: 10,
                 all_source_evidence_valid: true,
-                all_source_commits_ancestral: true,
+                joined_source_commits_ancestral: true,
+                attempt_source_ancestral: true,
+                compatibility_paths_unchanged: true,
+                compatibility_paths_clean: true,
             },
             browser: UiWorkflowBrowserEvidence {
                 expected_route_count: 7,
@@ -189,6 +223,7 @@ mod tests {
             hardware_control_state: "disabled".to_owned(),
             device_cleanup_complete: true,
             private_modes_valid: true,
+            hardware_rerun_used: false,
             redaction_status: "passed".to_owned(),
         }
     }
@@ -216,5 +251,26 @@ mod tests {
 
         // Assert
         assert_eq!(result, Err("UI workflow browser evidence is incomplete"));
+    }
+
+    #[test]
+    fn source_drift_and_hardware_rerun_are_rejected() {
+        // Arrange
+        let mut source_drift = valid_evidence();
+        source_drift.sources.compatibility_paths_unchanged = false;
+        let mut hardware_rerun = valid_evidence();
+        hardware_rerun.hardware_rerun_used = true;
+
+        // Act
+        let results = [source_drift.validate(), hardware_rerun.validate()];
+
+        // Assert
+        assert_eq!(
+            results,
+            [
+                Err("UI workflow source evidence is incomplete"),
+                Err("UI workflow safety or privacy evidence is invalid"),
+            ]
+        );
     }
 }

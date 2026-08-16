@@ -22,7 +22,7 @@ import { assertWithinWorkspace } from "./workspace.js";
 
 export type UiWorkflowEvidenceOptions = {
   readonly privateRoot: string;
-  readonly packageManifest: string;
+  readonly attemptSourceCommit: string;
   readonly operatorSnapshotProjection: string;
   readonly browserAttestation: string;
   readonly projection: string;
@@ -39,10 +39,34 @@ export type UiWorkflowValidators = {
 
 type JsonObject = Readonly<Record<string, unknown>>;
 type FailureCategory = Extract<AutomationCategory, "evidence_invalid" | "process_failed">;
+type CapturedPackageIdentity = {
+  readonly sourceCommit: string;
+  readonly referenceCommit: string;
+  readonly packageManifestSha256: string;
+  readonly appElfSha256: string;
+  readonly wwwSpiffsSha256: string;
+};
 
-const expectedPlan = "docs/parity/work-plans/20260813T045300Z-UI-004/PLAN.md";
-const expectedPlanSha256 = "ce9b94f1a3336500bbbb6adc0ab51d5c4a26f5ea44eba72928dd07b6dca42dd7";
-const activeTask = "task-parity-ui004-live-browser-attempt-001";
+const expectedAttemptSourceCommit = "bf5b74f98cdb117ca5682b0118a61743db85856f";
+const priorPlan = "docs/parity/work-plans/20260813T045300Z-UI-004/PLAN.md";
+const priorPlanSha256 = "ce9b94f1a3336500bbbb6adc0ab51d5c4a26f5ea44eba72928dd07b6dca42dd7";
+const priorClosure = "docs/parity/work-plans/20260813T045300Z-UI-004/CLOSURE.md";
+const priorClosureSha256 = "fac39b921e588e76c8f37922eb38ccde01a66b8160d0b284a059c3eb27e36b27";
+const currentPlan = "docs/parity/work-plans/20260816T000806Z-UI-004/PLAN.md";
+const currentPlanSha256 = "07a8b8c487ab9dfcd312f3824a902c50a766b79caee8131e1c4fd3180222f305";
+const activeTask = "task-parity-ui004-projection-continuation";
+const compatibilityPaths = [
+  "firmware/bitaxe/static/www/index.html",
+  "firmware/bitaxe/static/www/assets/app.css",
+  "firmware/bitaxe/static/www/assets/ui-core.js",
+  "firmware/bitaxe/static/www/assets/api-client.js",
+  "firmware/bitaxe/static/www/assets/app.js",
+  "firmware/bitaxe/src/static_files.rs",
+  "firmware/bitaxe/src/filesystem.rs",
+  "crates/bitaxe-api/src/static_plan.rs",
+  "tools/automation/src/static-ui.test.ts",
+  "tools/automation/src/static-provenance.test.ts",
+] as const;
 const expectedRoutes = ["dashboard", "network", "pool", "settings", "logs", "update", "theme"] as const;
 const expectedBrowserArtifactKinds = [
   ...expectedRoutes.map((route) => `desktop-${route}`),
@@ -191,38 +215,15 @@ async function assertProtectedTree(root: string): Promise<void> {
   }
 }
 
-function parsePackage(document: string): {
-  readonly sourceCommit: string;
-  readonly referenceCommit: string;
-  readonly appElfSha256: string;
-  readonly wwwSpiffsSha256: string;
-} {
-  const value = parseJson(document, "package manifest");
-  if (value["schema_version"] !== 3) throw failure("evidence_invalid", "package manifest schema is invalid");
-  const metadata = object(value["image_metadata"], "package image metadata");
-  if (metadata["board"] !== "205") throw failure("evidence_invalid", "package board is invalid");
-  const artifacts = value["artifacts"];
-  if (!Array.isArray(artifacts)) throw failure("evidence_invalid", "package artifacts are invalid");
-  const www = artifacts.filter((artifact) => object(artifact, "package artifact")["kind"] === "www_spiffs_image");
-  if (www.length !== 1) throw failure("evidence_invalid", "package static artifact is invalid");
-  return {
-    sourceCommit: string(value, "source_commit", "package manifest"),
-    referenceCommit: string(value, "reference_commit", "package manifest"),
-    appElfSha256: string(value, "app_elf_sha256", "package manifest"),
-    wwwSpiffsSha256: string(object(www[0], "static artifact"), "sha256", "static artifact"),
-  };
-}
-
 function validateOperatorSnapshot(
   value: JsonObject,
-  packageIdentity: ReturnType<typeof parsePackage>,
-  packageManifestSha256: string,
+  packageIdentity: CapturedPackageIdentity,
 ): OperatorSnapshotEvidence {
   if (value["schema_version"] !== "bitaxe-operator-snapshot-evidence-v1"
     || value["board"] !== 205
     || value["source_commit"] !== packageIdentity.sourceCommit
     || value["reference_commit"] !== packageIdentity.referenceCommit
-    || value["package_manifest_sha256"] !== packageManifestSha256
+    || value["package_manifest_sha256"] !== packageIdentity.packageManifestSha256
     || value["mining_state"] !== "disabled"
     || value["hardware_control_state"] !== "disabled"
     || value["cleanup_complete"] !== true
@@ -239,9 +240,42 @@ function validateOperatorSnapshot(
   return value as OperatorSnapshotEvidence;
 }
 
+function capturedPackageIdentity(
+  operator: JsonObject,
+  browser: JsonObject,
+  attemptSourceCommit: string,
+): CapturedPackageIdentity {
+  if (attemptSourceCommit !== expectedAttemptSourceCommit
+    || string(operator, "source_commit", "operator snapshot") !== attemptSourceCommit
+    || string(browser, "source_commit", "browser attestation") !== attemptSourceCommit) {
+    throw failure("evidence_invalid", "captured source identity is invalid");
+  }
+  const operatorReference = string(operator, "reference_commit", "operator snapshot");
+  if (string(browser, "reference_commit", "browser attestation") !== operatorReference) {
+    throw failure("evidence_invalid", "captured reference identity is invalid");
+  }
+  const identity = {
+    sourceCommit: attemptSourceCommit,
+    referenceCommit: operatorReference,
+    packageManifestSha256: string(operator, "package_manifest_sha256", "operator snapshot"),
+    appElfSha256: string(browser, "app_elf_sha256", "browser attestation"),
+    wwwSpiffsSha256: string(browser, "www_spiffs_sha256", "browser attestation"),
+  };
+  for (const digest of [
+    identity.packageManifestSha256,
+    identity.appElfSha256,
+    identity.wwwSpiffsSha256,
+  ]) {
+    if (!/^[0-9a-f]{64}$/u.test(digest)) {
+      throw failure("evidence_invalid", "captured package digest is invalid");
+    }
+  }
+  return identity;
+}
+
 function validateBrowserAttestation(
   value: JsonObject,
-  packageIdentity: ReturnType<typeof parsePackage>,
+  packageIdentity: CapturedPackageIdentity,
 ): UiWorkflowEvidence["browser"] {
   if (value["schema_version"] !== "bitaxe-ui-browser-attestation-v1"
     || value["source_commit"] !== packageIdentity.sourceCommit
@@ -344,11 +378,18 @@ function validateTheme(value: JsonObject): void {
   }
 }
 
-function validatePlanAndTask(plan: string, task: string): void {
-  if (sha256(plan) !== expectedPlanSha256
-    || !plan.includes("- Parity row: `UI-004`")
-    || !plan.includes(`- Active task: \`${activeTask}\``)) {
-    throw failure("evidence_invalid", "immutable UI workflow plan is invalid");
+function validatePlanAndTask(
+  priorPlanDocument: string,
+  priorClosureDocument: string,
+  currentPlanDocument: string,
+  task: string,
+): void {
+  if (sha256(priorPlanDocument) !== priorPlanSha256
+    || sha256(priorClosureDocument) !== priorClosureSha256
+    || sha256(currentPlanDocument) !== currentPlanSha256
+    || !currentPlanDocument.includes("- Parity row: `UI-004`")
+    || !currentPlanDocument.includes(`- Active task: \`${activeTask}\``)) {
+    throw failure("evidence_invalid", "immutable UI workflow plan lineage is invalid");
   }
   const heading = `### ${activeTask} |`;
   const start = task.indexOf(heading);
@@ -357,12 +398,21 @@ function validatePlanAndTask(plan: string, task: string): void {
   }
   const maybeEnd = task.indexOf("\n### ", start + heading.length);
   const block = task.slice(start, maybeEnd === -1 ? task.length : maybeEnd);
-  if (!block.includes(`Plan: \`${expectedPlan}\``)
-    || !block.includes("Starting the capture consumes attempt-001")
-    || !block.includes("The subsequent isolated browser")
-    || !block.includes("session is read-only")) {
+  if (!block.includes(`Plan: \`${currentPlan}\``)
+    || !block.includes("bitaxe-ui-workflow-evidence-v1")
+    || !block.includes("umask 077")
+    || !block.includes("Starting the projector consumes the transaction")
+    || !block.includes("without another transaction")) {
     throw failure("evidence_invalid", "active UI workflow task is incomplete");
   }
+}
+
+async function compatibilitySourceSet(workspaceRoot: string): Promise<string> {
+  const entries = await Promise.all(compatibilityPaths.map(async (relativePath) => ({
+    path: relativePath,
+    sha256: sha256(await readFile(path.join(workspaceRoot, relativePath))),
+  })));
+  return sha256(JSON.stringify(entries));
 }
 
 export async function projectUiWorkflowEvidence(
@@ -373,7 +423,6 @@ export async function projectUiWorkflowEvidence(
   validators: UiWorkflowValidators,
 ): Promise<UiWorkflowEvidence> {
   const privateRoot = assertWithinWorkspace(workspaceRoot, options.privateRoot);
-  const packageManifest = assertWithinWorkspace(workspaceRoot, options.packageManifest);
   const operatorSnapshotProjection = assertWithinWorkspace(workspaceRoot, options.operatorSnapshotProjection);
   const browserAttestation = assertWithinWorkspace(workspaceRoot, options.browserAttestation);
   const projection = assertWithinWorkspace(workspaceRoot, options.projection);
@@ -384,24 +433,38 @@ export async function projectUiWorkflowEvidence(
   await assertProtectedTree(path.dirname(operatorSnapshotProjection));
   await assertProtectedTree(path.dirname(browserAttestation));
 
-  const [packageDocument, operatorDocument, browserDocument, plan, task] = await Promise.all([
-    readFile(packageManifest, "utf8"),
+  const [
+    operatorDocument,
+    browserDocument,
+    priorPlanDocument,
+    priorClosureDocument,
+    currentPlanDocument,
+    task,
+  ] = await Promise.all([
     readFile(operatorSnapshotProjection, "utf8"),
     readFile(browserAttestation, "utf8"),
-    readFile(path.join(workspaceRoot, expectedPlan), "utf8"),
+    readFile(path.join(workspaceRoot, priorPlan), "utf8"),
+    readFile(path.join(workspaceRoot, priorClosure), "utf8"),
+    readFile(path.join(workspaceRoot, currentPlan), "utf8"),
     readFile(path.join(workspaceRoot, "TASKS.md"), "utf8"),
   ]);
-  validatePlanAndTask(plan, task);
-  const packageIdentity = parsePackage(packageDocument);
-  const packageManifestSha256 = sha256(packageDocument);
-  const operatorValue = parseJson(operatorDocument, "operator snapshot evidence");
-  await child(processPort, validators.operatorSnapshot, [operatorSnapshotProjection], "operator snapshot validation");
-  validateOperatorSnapshot(operatorValue, packageIdentity, packageManifestSha256);
-  const browser = validateBrowserAttestation(
-    parseJson(browserDocument, "browser attestation"),
-    packageIdentity,
+  validatePlanAndTask(
+    priorPlanDocument,
+    priorClosureDocument,
+    currentPlanDocument,
+    task,
   );
-  await validateBrowserArtifacts(parseJson(browserDocument, "browser attestation"), path.dirname(browserAttestation));
+  const operatorValue = parseJson(operatorDocument, "operator snapshot evidence");
+  const browserValue = parseJson(browserDocument, "browser attestation");
+  const packageIdentity = capturedPackageIdentity(
+    operatorValue,
+    browserValue,
+    options.attemptSourceCommit,
+  );
+  await child(processPort, validators.operatorSnapshot, [operatorSnapshotProjection], "operator snapshot validation");
+  validateOperatorSnapshot(operatorValue, packageIdentity);
+  const browser = validateBrowserAttestation(browserValue, packageIdentity);
+  await validateBrowserArtifacts(browserValue, path.dirname(browserAttestation));
 
   const joinedDocuments = new Map<string, string>();
   for (const source of joinedSources) {
@@ -424,7 +487,7 @@ export async function projectUiWorkflowEvidence(
     }
     const sourceCommit = string(value, "source_commit", `${source.label} source evidence`);
     await child(processPort, gitProgram,
-      ["merge-base", "--is-ancestor", sourceCommit, packageIdentity.sourceCommit],
+      ["merge-base", "--is-ancestor", sourceCommit, options.attemptSourceCommit],
       `${source.label} source ancestry`);
   }
 
@@ -437,32 +500,52 @@ export async function projectUiWorkflowEvidence(
     }
   }
 
-  const [head, reference, dirty] = await Promise.all([
+  const [projectorSourceCommit, reference, dirty] = await Promise.all([
     child(processPort, gitProgram, ["rev-parse", "HEAD"], "current source identity"),
     child(processPort, gitProgram,
       ["-C", path.join(workspaceRoot, "reference/esp-miner"), "rev-parse", "HEAD"],
       "reference source identity"),
     child(processPort, gitProgram, ["status", "--porcelain"], "workspace cleanliness"),
   ]);
-  if (head !== packageIdentity.sourceCommit || reference !== packageIdentity.referenceCommit || dirty !== "") {
-    throw failure("evidence_invalid", "current package source is not clean and exact");
+  if (!/^[0-9a-f]{40}$/u.test(projectorSourceCommit)
+    || reference !== packageIdentity.referenceCommit
+    || dirty !== "") {
+    throw failure("evidence_invalid", "current projector source is not clean and exact");
   }
+  await child(processPort, gitProgram,
+    ["merge-base", "--is-ancestor", options.attemptSourceCommit, projectorSourceCommit],
+    "captured source ancestry");
+  await child(processPort, gitProgram,
+    ["diff", "--quiet", options.attemptSourceCommit, projectorSourceCommit, "--", ...compatibilityPaths],
+    "UI compatibility source paths");
+  const compatibilityDirty = await child(processPort, gitProgram,
+    ["status", "--porcelain", "--", ...compatibilityPaths],
+    "UI compatibility source cleanliness");
+  if (compatibilityDirty !== "") {
+    throw failure("evidence_invalid", "UI compatibility source paths are dirty");
+  }
+  const compatibilitySourceSetSha256 = await compatibilitySourceSet(workspaceRoot);
 
   const requestSha256 = sha256(JSON.stringify({
     command: "project-ui-workflow-evidence",
-    source_commit: head,
-    package_manifest_sha256: packageManifestSha256,
+    attempt_source_commit: options.attemptSourceCommit,
+    projector_source_commit: projectorSourceCommit,
+    package_manifest_sha256: packageIdentity.packageManifestSha256,
     operator_snapshot_evidence_sha256: sha256(operatorDocument),
     browser_attestation_sha256: sha256(browserDocument),
-    plan_sha256: expectedPlanSha256,
+    prior_plan_sha256: priorPlanSha256,
+    prior_closure_sha256: priorClosureSha256,
+    current_plan_sha256: currentPlanSha256,
+    compatibility_source_set_sha256: compatibilitySourceSetSha256,
     projection: path.relative(workspaceRoot, projection),
   }));
   const evidence: UiWorkflowEvidence = {
     schema_version: "bitaxe-ui-workflow-evidence-v1",
     board: 205,
-    source_commit: head,
+    attempt_source_commit: options.attemptSourceCommit,
+    projector_source_commit: projectorSourceCommit,
     reference_commit: reference,
-    package_manifest_sha256: packageManifestSha256,
+    package_manifest_sha256: packageIdentity.packageManifestSha256,
     app_elf_sha256: packageIdentity.appElfSha256,
     www_spiffs_sha256: packageIdentity.wwwSpiffsSha256,
     workflow: {
@@ -480,8 +563,16 @@ export async function projectUiWorkflowEvidence(
       rollback_evidence_sha256: sha256(joinedDocuments.get("rollback") ?? ""),
       implementation_result_sha256: implementationResultSha256,
       static_ui_contract_sha256: staticUiContractSha256,
+      prior_plan_sha256: priorPlanSha256,
+      prior_closure_sha256: priorClosureSha256,
+      current_plan_sha256: currentPlanSha256,
+      compatibility_source_set_sha256: compatibilitySourceSetSha256,
+      compatibility_path_count: compatibilityPaths.length,
       all_source_evidence_valid: true,
-      all_source_commits_ancestral: true,
+      joined_source_commits_ancestral: true,
+      attempt_source_ancestral: true,
+      compatibility_paths_unchanged: true,
+      compatibility_paths_clean: true,
     },
     browser,
     exact_package_observed: true,
@@ -490,6 +581,7 @@ export async function projectUiWorkflowEvidence(
     hardware_control_state: "disabled",
     device_cleanup_complete: true,
     private_modes_valid: true,
+    hardware_rerun_used: false,
     redaction_status: "passed",
   };
 

@@ -307,7 +307,7 @@ const rules: Record<AutomationCommand, CommandRule> = {
   },
   "project-ui-workflow-evidence": {
     "--private-root": value({ required: true }),
-    "--package-manifest": value({ required: true }),
+    "--attempt-source-commit": value({ required: true }),
     "--operator-snapshot-projection": value({ required: true }),
     "--browser-attestation": value({ required: true }),
     "--projection": value({ required: true }),

@@ -7,6 +7,12 @@ js_library(
     visibility = ["//visibility:public"],
 )
 
+js_library(
+    name = "ui_workflow_compatibility_sources",
+    srcs = ["src/static_plan.rs"],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
 filegroup(
     name = "http_access_policy_sources",
     srcs = ["src/route_shell.rs"],

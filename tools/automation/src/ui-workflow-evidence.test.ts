@@ -12,7 +12,8 @@ import {
   type UiWorkflowValidators,
 } from "./ui-workflow-evidence.js";
 
-const sourceCommit = "a".repeat(40);
+const sourceCommit = "bf5b74f98cdb117ca5682b0118a61743db85856f";
+const projectorSourceCommit = "d".repeat(40);
 const referenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const appElfSha256 = "b".repeat(64);
 const wwwSpiffsSha256 = "c".repeat(64);
@@ -31,8 +32,19 @@ const browserArtifactKinds = [
 const copiedFiles = [
   "TASKS.md",
   "docs/parity/work-plans/20260813T045300Z-UI-004/PLAN.md",
+  "docs/parity/work-plans/20260813T045300Z-UI-004/CLOSURE.md",
+  "docs/parity/work-plans/20260816T000806Z-UI-004/PLAN.md",
   "docs/parity/work-plans/20260804T190000Z-UI-004/RESULT.md",
   "tools/automation/src/static-ui.test.ts",
+  "tools/automation/src/static-provenance.test.ts",
+  "firmware/bitaxe/static/www/index.html",
+  "firmware/bitaxe/static/www/assets/app.css",
+  "firmware/bitaxe/static/www/assets/ui-core.js",
+  "firmware/bitaxe/static/www/assets/api-client.js",
+  "firmware/bitaxe/static/www/assets/app.js",
+  "firmware/bitaxe/src/static_files.rs",
+  "firmware/bitaxe/src/filesystem.rs",
+  "crates/bitaxe-api/src/static_plan.rs",
   "docs/parity/evidence/api010-theme-durability/theme-durability-projection.json",
   "docs/parity/evidence/api003-settings-patch/settings-patch-projection.json",
   "docs/parity/evidence/log001-retained-stream/log-buffer-projection.json",
@@ -126,10 +138,7 @@ async function fixture(name: string, mobileRouteCount = 7) {
   const root = await mkdtemp(path.join(os.tmpdir(), `bitaxe-ui-workflow-${name}-`));
   await writeFile(path.join(root, "MODULE.bazel"), "module(name = \"fixture\")\n");
   await Promise.all(copiedFiles.map(async (relative) => copyFixtureFile(root, relative)));
-  const packagePath = path.join(root, "bazel-bin/firmware/bitaxe/package.json");
-  await mkdir(path.dirname(packagePath), { recursive: true });
   const packageDocument = `${JSON.stringify(packageManifest(), null, 2)}\n`;
-  await writeFile(packagePath, packageDocument);
   const packageDigest = (await import("node:crypto")).createHash("sha256")
     .update(packageDocument).digest("hex");
   const operatorPath = path.join(root, "scratch/ui004-live-workflows/wrapper-001/operator.private.json");
@@ -150,8 +159,9 @@ async function fixture(name: string, mobileRouteCount = 7) {
   const child = path.join(root, "child.mjs");
   await writeFile(child, [
     "#!/bin/sh",
-    `if [ "$1" = "rev-parse" ] && [ "$2" = "HEAD" ]; then printf '%s\\n' '${sourceCommit}'`,
+    `if [ "$1" = "rev-parse" ] && [ "$2" = "HEAD" ]; then printf '%s\\n' '${projectorSourceCommit}'`,
     `elif [ "$1" = "-C" ]; then printf '%s\\n' '${referenceCommit}'`,
+    "else exit 0",
     "fi",
     "",
   ].join("\n"));
@@ -167,7 +177,6 @@ async function fixture(name: string, mobileRouteCount = 7) {
   };
   return {
     root,
-    packagePath,
     operatorPath,
     privateRoot,
     browserPath,
@@ -185,7 +194,7 @@ test("real child projection joins exact package browser and prior evidence", asy
   // Act
   const evidence = await projectUiWorkflowEvidence(value.root, {
     privateRoot: value.privateRoot,
-    packageManifest: value.packagePath,
+    attemptSourceCommit: sourceCommit,
     operatorSnapshotProjection: value.operatorPath,
     browserAttestation: value.browserPath,
     projection: value.projection,
@@ -193,6 +202,8 @@ test("real child projection joins exact package browser and prior evidence", asy
 
   // Assert
   assert.equal(evidence.schema_version, "bitaxe-ui-workflow-evidence-v1");
+  assert.equal(evidence.attempt_source_commit, sourceCommit);
+  assert.equal(evidence.projector_source_commit, projectorSourceCommit);
   assert.equal(evidence.browser.desktop_route_count, 7);
   assert.equal(evidence.browser.mobile_route_count, 7);
   assert.equal((await stat(value.projection)).mode & 0o777, 0o644);
@@ -207,7 +218,7 @@ test("incomplete mobile route quorum withholds public evidence", async () => {
   // Act
   const outcome = projectUiWorkflowEvidence(value.root, {
     privateRoot: value.privateRoot,
-    packageManifest: value.packagePath,
+    attemptSourceCommit: sourceCommit,
     operatorSnapshotProjection: value.operatorPath,
     browserAttestation: value.browserPath,
     projection: value.projection,
@@ -227,7 +238,183 @@ test("missing private browser artifact withholds public evidence", async () => {
   // Act
   const outcome = projectUiWorkflowEvidence(value.root, {
     privateRoot: value.privateRoot,
-    packageManifest: value.packagePath,
+    attemptSourceCommit: sourceCommit,
+    operatorSnapshotProjection: value.operatorPath,
+    browserAttestation: value.browserPath,
+    projection: value.projection,
+  }, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), value.child, value.validators);
+
+  // Assert
+  await assert.rejects(outcome, (error: unknown) =>
+    error instanceof UiWorkflowEvidenceError && error.category === "evidence_invalid");
+  await assert.rejects(stat(value.projection), { code: "ENOENT" });
+});
+
+test("process-default redirect mode is rejected before protected evidence is read", async () => {
+  // Arrange
+  const value = await fixture("redirect-mode");
+  const redirect = path.join(path.dirname(value.operatorPath), "projector.stdout");
+  await writeFile(redirect, "", { mode: 0o644 });
+  await chmod(redirect, 0o644);
+
+  // Act
+  const outcome = projectUiWorkflowEvidence(value.root, {
+    privateRoot: value.privateRoot,
+    attemptSourceCommit: sourceCommit,
+    operatorSnapshotProjection: value.operatorPath,
+    browserAttestation: value.browserPath,
+    projection: value.projection,
+  }, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), value.child, value.validators);
+
+  // Assert
+  await assert.rejects(outcome, (error: unknown) =>
+    error instanceof UiWorkflowEvidenceError
+      && error.category === "evidence_invalid"
+      && error.message === "private file mode is invalid");
+  await assert.rejects(stat(value.projection), { code: "ENOENT" });
+});
+
+test("immutable continuation plan drift withholds public evidence", async () => {
+  // Arrange
+  const value = await fixture("plan-drift");
+  const plan = path.join(value.root, "docs/parity/work-plans/20260816T000806Z-UI-004/PLAN.md");
+  await writeFile(plan, `${await readFile(plan, "utf8")}drift\n`);
+
+  // Act
+  const outcome = projectUiWorkflowEvidence(value.root, {
+    privateRoot: value.privateRoot,
+    attemptSourceCommit: sourceCommit,
+    operatorSnapshotProjection: value.operatorPath,
+    browserAttestation: value.browserPath,
+    projection: value.projection,
+  }, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), value.child, value.validators);
+
+  // Assert
+  await assert.rejects(outcome, (error: unknown) =>
+    error instanceof UiWorkflowEvidenceError && error.category === "evidence_invalid");
+  await assert.rejects(stat(value.projection), { code: "ENOENT" });
+});
+
+test("captured UI source drift withholds public evidence", async () => {
+  // Arrange
+  const value = await fixture("source-drift");
+  await writeFile(value.child, [
+    "#!/bin/sh",
+    `if [ "$1" = "rev-parse" ] && [ "$2" = "HEAD" ]; then printf '%s\\n' '${projectorSourceCommit}'`,
+    `elif [ "$1" = "-C" ]; then printf '%s\\n' '${referenceCommit}'`,
+    "elif [ \"$1\" = \"diff\" ]; then exit 1",
+    "else exit 0",
+    "fi",
+    "",
+  ].join("\n"));
+  await chmod(value.child, 0o700);
+
+  // Act
+  const outcome = projectUiWorkflowEvidence(value.root, {
+    privateRoot: value.privateRoot,
+    attemptSourceCommit: sourceCommit,
+    operatorSnapshotProjection: value.operatorPath,
+    browserAttestation: value.browserPath,
+    projection: value.projection,
+  }, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), value.child, value.validators);
+
+  // Assert
+  await assert.rejects(outcome, (error: unknown) =>
+    error instanceof UiWorkflowEvidenceError && error.category === "evidence_invalid");
+  await assert.rejects(stat(value.projection), { code: "ENOENT" });
+});
+
+test("captured source ancestry failure withholds public evidence", async () => {
+  // Arrange
+  const value = await fixture("source-ancestry");
+  await writeFile(value.child, [
+    "#!/bin/sh",
+    `if [ "$1" = "rev-parse" ] && [ "$2" = "HEAD" ]; then printf '%s\\n' '${projectorSourceCommit}'`,
+    `elif [ "$1" = "-C" ]; then printf '%s\\n' '${referenceCommit}'`,
+    `elif [ "$1" = "merge-base" ] && [ "$3" = "${sourceCommit}" ]; then exit 1`,
+    "else exit 0",
+    "fi",
+    "",
+  ].join("\n"));
+  await chmod(value.child, 0o700);
+
+  // Act
+  const outcome = projectUiWorkflowEvidence(value.root, {
+    privateRoot: value.privateRoot,
+    attemptSourceCommit: sourceCommit,
+    operatorSnapshotProjection: value.operatorPath,
+    browserAttestation: value.browserPath,
+    projection: value.projection,
+  }, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), value.child, value.validators);
+
+  // Assert
+  await assert.rejects(outcome, (error: unknown) =>
+    error instanceof UiWorkflowEvidenceError && error.category === "evidence_invalid");
+  await assert.rejects(stat(value.projection), { code: "ENOENT" });
+});
+
+test("dirty compatibility path withholds public evidence", async () => {
+  // Arrange
+  const value = await fixture("source-dirty");
+  await writeFile(value.child, [
+    "#!/bin/sh",
+    `if [ "$1" = "rev-parse" ] && [ "$2" = "HEAD" ]; then printf '%s\\n' '${projectorSourceCommit}'`,
+    `elif [ "$1" = "-C" ]; then printf '%s\\n' '${referenceCommit}'`,
+    "elif [ \"$1\" = \"status\" ] && [ \"$3\" = \"--\" ]; then printf '%s\\n' ' M firmware/bitaxe/static/www/index.html'",
+    "else exit 0",
+    "fi",
+    "",
+  ].join("\n"));
+  await chmod(value.child, 0o700);
+
+  // Act
+  const outcome = projectUiWorkflowEvidence(value.root, {
+    privateRoot: value.privateRoot,
+    attemptSourceCommit: sourceCommit,
+    operatorSnapshotProjection: value.operatorPath,
+    browserAttestation: value.browserPath,
+    projection: value.projection,
+  }, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), value.child, value.validators);
+
+  // Assert
+  await assert.rejects(outcome, (error: unknown) =>
+    error instanceof UiWorkflowEvidenceError && error.category === "evidence_invalid");
+  await assert.rejects(stat(value.projection), { code: "ENOENT" });
+});
+
+test("mismatched protected source identity withholds public evidence", async () => {
+  // Arrange
+  const value = await fixture("identity-mismatch");
+  const browser = JSON.parse(await readFile(value.browserPath, "utf8")) as Record<string, unknown>;
+  browser["source_commit"] = "e".repeat(40);
+  await writeFile(value.browserPath, `${JSON.stringify(browser, null, 2)}\n`, { mode: 0o600 });
+  await chmod(value.browserPath, 0o600);
+
+  // Act
+  const outcome = projectUiWorkflowEvidence(value.root, {
+    privateRoot: value.privateRoot,
+    attemptSourceCommit: sourceCommit,
+    operatorSnapshotProjection: value.operatorPath,
+    browserAttestation: value.browserPath,
+    projection: value.projection,
+  }, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), value.child, value.validators);
+
+  // Assert
+  await assert.rejects(outcome, (error: unknown) =>
+    error instanceof UiWorkflowEvidenceError && error.category === "evidence_invalid");
+  await assert.rejects(stat(value.projection), { code: "ENOENT" });
+});
+
+test("prior closure drift withholds public evidence", async () => {
+  // Arrange
+  const value = await fixture("closure-drift");
+  const closure = path.join(value.root, "docs/parity/work-plans/20260813T045300Z-UI-004/CLOSURE.md");
+  await writeFile(closure, `${await readFile(closure, "utf8")}drift\n`);
+
+  // Act
+  const outcome = projectUiWorkflowEvidence(value.root, {
+    privateRoot: value.privateRoot,
+    attemptSourceCommit: sourceCommit,
     operatorSnapshotProjection: value.operatorPath,
     browserAttestation: value.browserPath,
     projection: value.projection,

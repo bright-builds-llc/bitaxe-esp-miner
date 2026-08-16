@@ -8,7 +8,7 @@ test("UI workflow projection accepts only its closed private source surface", ()
   const complete = [
     "project-ui-workflow-evidence",
     "--private-root", "scratch/ui004-live-workflows/attempt-001",
-    "--package-manifest", "bazel-bin/package.json",
+    "--attempt-source-commit", "bf5b74f98cdb117ca5682b0118a61743db85856f",
     "--operator-snapshot-projection", "scratch/operator.private.json",
     "--browser-attestation", "output/playwright/ui004-attempt-001/browser.private.json",
     "--projection", "docs/evidence/ui-workflow.json",

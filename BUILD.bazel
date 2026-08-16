@@ -89,6 +89,8 @@ js_library(
         "docs/parity/work-plans/20260815T232350Z-IO-002/PLAN.md",
         "docs/parity/work-plans/20260804T190000Z-UI-004/RESULT.md",
         "docs/parity/work-plans/20260813T045300Z-UI-004/PLAN.md",
+        "docs/parity/work-plans/20260813T045300Z-UI-004/CLOSURE.md",
+        "docs/parity/work-plans/20260816T000806Z-UI-004/PLAN.md",
     ],
     visibility = ["//tools/automation:__pkg__"],
 )

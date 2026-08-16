@@ -34,6 +34,15 @@ js_library(
 )
 
 js_library(
+    name = "ui_workflow_compatibility_sources",
+    srcs = [
+        "src/filesystem.rs",
+        "src/static_files.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "core_voltage_control_production_source",
     srcs = ["src/mining_actuation_adapter.rs"],
     visibility = ["//tools/automation:__pkg__"],

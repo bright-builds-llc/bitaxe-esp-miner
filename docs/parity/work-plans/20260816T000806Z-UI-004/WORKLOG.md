@@ -19,3 +19,24 @@
 - Blocker or next safe action: Pass the plan-only gates, commit and push this
   checkpoint, then implement the closed source/mode binding without touching
   the preserved attempt.
+
+## 2026-08-16T00:32:53Z | implementation checkpoint
+
+- Actions: Narrowed the UI workflow v1 contract to record the captured attempt
+  source and clean projector source separately; bound the prior plan, prior
+  closure, continuation plan, and ten-path compatibility source set; removed
+  the stale current-package CLI input; and added owner-only redirect, lineage,
+  source-drift, identity, closure-drift, and hardware-rerun regressions.
+- Verification: The focused Rust contract tests and a forced uncached focused
+  Bazel suite pass. The mandatory format, Clippy, all-target build, all-feature
+  test, Bright Builds, full Bazel test, parity validation/progress, redaction,
+  reference, and firmware build gates pass. The plan lineage digests match and
+  all ten served-UI/static-serving paths are byte-identical to captured source
+  `bf5b74f98cdb117ca5682b0118a61743db85856f` and clean.
+- Evidence: Source and tests only. No protected contents were printed or
+  copied, no public projection exists, and no detector, device, network,
+  browser, credentials, firmware effect, or hardware interface was used.
+- Outcome: The implementation is ready for a clean synchronized checkpoint;
+  the one authorized protected projection transaction has not started.
+- Blocker or next safe action: Review the diff, commit and push the
+  implementation checkpoint, then execute the immutable plan's projector once.

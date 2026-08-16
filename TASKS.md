@@ -3688,13 +3688,13 @@ not typed UI-001/UI-002 evidence.
 
 ### task-parity-ui004-projection-continuation | 2026-08-16 | Publish the preserved UI workflow quorum
 
-- [ ] Commit and push immutable plan
+- [x] Commit and push immutable plan
       `docs/parity/work-plans/20260816T000806Z-UI-004/PLAN.md` before editing
       implementation source.
-- [ ] Add distinct attempt/projector source identities, exact unchanged
+- [x] Add distinct attempt/projector source identities, exact unchanged
       UI/static-serving path admission, owner-only redirect regression, and
       prior plan/closure plus protected-artifact bindings.
-- [ ] Pass focused, real-child, generated-contract, static UI, firmware,
+- [x] Pass focused, real-child, generated-contract, static UI, firmware,
       mandatory, privacy, reference, immutable-plan, task-uniqueness and diff
       gates; commit and push before projection.
 - [ ] Run exactly one software-only `bitaxe-ui-workflow-evidence-v1`
@@ -3733,7 +3733,13 @@ private paths must not enter Git or terminal summaries. Any source, digest,
 schema, mode, privacy, validator, cleanup or quorum failure withholds evidence,
 keeps UI-004 `implemented`, and closes this task without another transaction.
 
-Verification: Pending.
+Verification: `cargo fmt --all`, `cargo clippy --all-targets --all-features --
+-D warnings`, `cargo build --all-targets --all-features`, `cargo test
+--all-features`, the forced uncached focused Bazel projector suite, Bright
+Builds checks, `just test`, `just parity`, `just parity-progress`, `just
+verify-redaction`, `just verify-reference`, and `just build` pass. The current,
+prior-plan, and prior-closure SHA-256 bindings match; the captured commit is
+ancestral; and all ten compatibility paths are unchanged and clean.
 
 Completion review: Pending. Physical panel/input, mutation, upload, OTAWWW,
 mining, other-board and release claims remain excluded.

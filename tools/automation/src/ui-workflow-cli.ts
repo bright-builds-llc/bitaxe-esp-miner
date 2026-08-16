@@ -12,7 +12,7 @@ export async function projectUiWorkflowEvidenceFromInvocation(
 ): Promise<UiWorkflowEvidence> {
   return projectUiWorkflowEvidence(root, {
     privateRoot: optionValue(invocation, "--private-root"),
-    packageManifest: optionValue(invocation, "--package-manifest"),
+    attemptSourceCommit: optionValue(invocation, "--attempt-source-commit"),
     operatorSnapshotProjection: optionValue(invocation, "--operator-snapshot-projection"),
     browserAttestation: optionValue(invocation, "--browser-attestation"),
     projection: optionValue(invocation, "--projection"),
