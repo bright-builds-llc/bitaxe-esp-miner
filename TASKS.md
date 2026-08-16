@@ -944,12 +944,12 @@ software-only discriminator plan before any further hardware ordinal.
 Watchdog diagnostic-completeness plan:
 `docs/parity/work-plans/20260816T060214Z-STAT-001/PLAN.md`
 
-- [ ] Replace the lossy watchdog boolean diagnosis with one closed,
+- [x] Replace the lossy watchdog boolean diagnosis with one closed,
       value-free earliest-failure discriminator covering every sample
       predicate and HTTP/WebSocket checkpoint/feed advancement boundary.
-- [ ] Carry the discriminator through sealed network evidence, campaign-result
+- [x] Carry the discriminator through sealed network evidence, campaign-result
       v11, and the hashrate wrapper's seal- and category-gated failure envelope.
-- [ ] Add exhaustive focused regressions, run every mandatory gate, commit and
+- [x] Add exhaustive focused regressions, run every mandatory gate, commit and
       push, then close without a checklist transition or hardware access.
 
 Software-only authorization: local source, fixtures, tests, builds,

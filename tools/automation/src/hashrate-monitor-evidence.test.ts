@@ -62,14 +62,16 @@ const sourceDocuments = new Map<string, string>([
 ]);
 
 const okResult = {
-  schema: "mining-campaign-result-v10",
+  schema: "mining-campaign-result-v11",
   status: "accepted",
+  terminal_category: "submit_response_observed",
   stage: "live-share",
   profile: "conservative",
   duration_seconds: 600,
   runtime_identity: "trusted",
   safe_stop: "confirmed",
   usb_cleanup: "ready",
+  watchdog_failure: "none",
   runtime_attestation_parse_failure: "none",
   runtime_attestation_parse_failure_counts: {
     missing_marker: 0,
@@ -178,10 +180,31 @@ async function childProgram(
   options: Readonly<{
     malformedTransport?: boolean;
     sealedFailure?: boolean;
+    watchdogFailure?: string;
+    failureTerminalCategory?: string;
+    resultSchema?: string;
     tamperedSeal?: boolean;
   }> = {},
 ): Promise<string> {
   const child = path.join(value.root, "child.mjs");
+  const failureResult = {
+    ...okResult,
+    schema: options.resultSchema ?? okResult.schema,
+    status: "failed",
+    terminal_category: options.failureTerminalCategory
+      ?? (options.watchdogFailure === undefined
+        ? "runtime_identity_untrusted"
+        : "watchdog_unresponsive"),
+    watchdog_failure: options.watchdogFailure ?? "none",
+    runtime_attestation_parse_failure: options.watchdogFailure === undefined
+      ? "missing_marker"
+      : "none",
+    runtime_attestation_parse_failure_counts: {
+      ...okResult.runtime_attestation_parse_failure_counts,
+      missing_marker: options.watchdogFailure === undefined ? 1 : 0,
+    },
+    protected_runtime_text: "secret-device-origin private-worker",
+  };
   await writeFile(child, `#!${nodeProgram}
 import { createHash } from "node:crypto";
 import { chmod, mkdir, writeFile } from "node:fs/promises";
@@ -194,9 +217,9 @@ if (args[0] === "mining-campaign") {
   await mkdir(root, { recursive: true, mode: 0o700 });
   await chmod(root, 0o700);
   const transport = { active_sample_count: 3, positive_coherent_count: 3, distinct_positive_count: 2, warm_rolling_window_count: 2, terminal_zero_confirmed: true };
-  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v4", status: "accepted", required_window_count: 20, covered_window_count: 20, hashrate_monitor: { monitor_cadence_ms: 1000, asic_count: 1, domain_count: 4, http: transport, websocket: ${options.malformedTransport === true ? "{ ...transport, distinct_positive_count: 1 }" : "transport"} } }) + "\\n";
+  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v5", status: "accepted", watchdog_failure: "none", required_window_count: 20, covered_window_count: 20, hashrate_monitor: { monitor_cadence_ms: 1000, asic_count: 1, domain_count: 4, http: transport, websocket: ${options.malformedTransport === true ? "{ ...transport, distinct_positive_count: 1 }" : "transport"} } }) + "\\n";
   const result = JSON.stringify(${options.sealedFailure === true
-    ? `{ ...${JSON.stringify(okResult)}, status: "failed", runtime_attestation_parse_failure: "missing_marker", runtime_attestation_parse_failure_counts: { ...${JSON.stringify(okResult.runtime_attestation_parse_failure_counts)}, missing_marker: 1 }, protected_runtime_text: "secret-device-origin private-worker" }`
+    ? JSON.stringify(failureResult)
     : `{ ...${JSON.stringify(okResult)}, network_continuity_sha256: digest(network) }`}) + "\\n";
   const files = new Map([["campaign-diagnostics.private.json", "{}\\n"], ["campaign-flash.private.json", "{}\\n"], ["campaign-mining-diagnostics.private.json", "{}\\n"], ["campaign-network.private.json", network], ["campaign-observations.private.json", "{}\\n"], ["campaign-result.json", result], ["campaign-result.sha256", ${options.tamperedSeal === true ? '"0".repeat(64)' : "digest(result)"} + "\\n"]]);
   for (const [name, document] of files) { const candidate = path.join(root, name); await writeFile(candidate, document, { mode: 0o600 }); await chmod(candidate, 0o600); }
@@ -355,5 +378,103 @@ test("unsealed non-ready campaign withholds its parse diagnostic", async () => {
     });
   } finally {
     await rm(value.root, { recursive: true });
+  }
+});
+
+test("every sealed watchdog failure publishes only its closed earliest discriminator", async () => {
+  for (const watchdogFailure of [
+    "supervisor_unavailable",
+    "checkpoint_unhealthy",
+    "checkpoint_sequence_missing",
+    "watchdog_not_participating",
+    "watchdog_feed_reason_not_fresh",
+    "watchdog_feed_sequence_missing",
+    "watchdog_feed_age_missing",
+    "watchdog_feed_stale",
+    "http_checkpoint_not_advanced",
+    "http_feed_not_advanced",
+    "websocket_checkpoint_not_advanced",
+    "websocket_feed_not_advanced",
+  ] as const) {
+    // Arrange
+    const value = await fixture(`sealed-watchdog-${watchdogFailure}`);
+    const child = await childProgram(value, { sealedFailure: true, watchdogFailure });
+
+    try {
+      // Act
+      const error = await captureError(captureHashrateMonitorEvidence(
+        value.root,
+        value.options,
+        createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+        child,
+        child,
+        validatorProgram,
+        value.planSha256,
+      ));
+
+      // Assert
+      assert.equal(error.category, "hardware_blocked");
+      assert.deepEqual(error.publicValue, {
+        stage: "hashrate_monitor_capture",
+        projection_published: false,
+        runtime_attestation_parse_failure: "none",
+        watchdog_failure: watchdogFailure,
+      });
+      assert.doesNotMatch(
+        JSON.stringify(error.publicValue),
+        /secret|device-origin|private-worker/u,
+      );
+    } finally {
+      await rm(value.root, { recursive: true });
+    }
+  }
+});
+
+test("watchdog diagnostic requires the new sealed schema and matching terminal category", async () => {
+  for (const [name, options] of [
+    ["old-schema", {
+      sealedFailure: true,
+      watchdogFailure: "http_feed_not_advanced",
+      resultSchema: "mining-campaign-result-v10",
+    }],
+    ["wrong-category", {
+      sealedFailure: true,
+      watchdogFailure: "http_feed_not_advanced",
+      failureTerminalCategory: "network_correlation_failed",
+    }],
+    ["unknown-label", {
+      sealedFailure: true,
+      watchdogFailure: "private-sequence-42",
+    }],
+    ["missing-watchdog-cause", {
+      sealedFailure: true,
+      watchdogFailure: "none",
+    }],
+  ] as const) {
+    // Arrange
+    const value = await fixture(name);
+    const child = await childProgram(value, options);
+
+    try {
+      // Act
+      const error = await captureError(captureHashrateMonitorEvidence(
+        value.root,
+        value.options,
+        createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+        child,
+        child,
+        validatorProgram,
+        value.planSha256,
+      ));
+
+      // Assert
+      assert.equal(error.category, "hardware_blocked");
+      assert.deepEqual(error.publicValue, {
+        stage: "hashrate_monitor_capture",
+        projection_published: false,
+      });
+    } finally {
+      await rm(value.root, { recursive: true });
+    }
   }
 });

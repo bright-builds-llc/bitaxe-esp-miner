@@ -91,22 +91,6 @@ fn safety_valid(sample: &SystemInfoWire) -> bool {
         && sample.fan_rpm > 0
 }
 
-pub(super) fn watchdog_valid(sample: &SystemInfoWire) -> bool {
-    sample.runtime_health.supervisor_availability == "available"
-        && sample.runtime_health.checkpoint_health == "healthy"
-        && sample.runtime_health.maybe_checkpoint_sequence.is_some()
-        && sample.runtime_health.task_watchdog_participation == "participating"
-        && sample.runtime_health.maybe_task_watchdog_reason.as_deref() == Some("feed_fresh")
-        && sample
-            .runtime_health
-            .maybe_task_watchdog_feed_sequence
-            .is_some()
-        && sample
-            .runtime_health
-            .maybe_task_watchdog_feed_age_millis
-            .is_some_and(|age| age <= 2_000)
-}
-
 pub(super) fn window_index(active_ms: u64) -> usize {
     usize::try_from(active_ms / WINDOW_MILLIS)
         .unwrap_or(REQUIRED_WINDOWS - 1)

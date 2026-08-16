@@ -44,6 +44,12 @@ type RuntimeAttestationParseDiagnostic = Readonly<{
 type RuntimeAttestationParseEvidence = RuntimeAttestationParseDiagnostic & Readonly<{
   runtime_attestation_parse_failure_counts: RuntimeAttestationParseFailureCounts;
 }>;
+type WatchdogFailure = typeof watchdogFailures[number];
+type WatchdogFailureDiagnostic = Readonly<{
+  watchdog_failure: WatchdogFailure;
+}>;
+type CampaignFailureDiagnostic = RuntimeAttestationParseDiagnostic
+  & Partial<WatchdogFailureDiagnostic>;
 
 const expectedPrivateRoot = "scratch/stat001-hashrate-monitor/attempt-005";
 const expectedWrapperRoot = "scratch/stat001-hashrate-monitor/wrapper-005";
@@ -64,6 +70,21 @@ const runtimeAttestationParseFailures = [
   "missing_field",
   "invalid_field",
   "incomplete_readiness",
+] as const;
+const watchdogFailures = [
+  "none",
+  "supervisor_unavailable",
+  "checkpoint_unhealthy",
+  "checkpoint_sequence_missing",
+  "watchdog_not_participating",
+  "watchdog_feed_reason_not_fresh",
+  "watchdog_feed_sequence_missing",
+  "watchdog_feed_age_missing",
+  "watchdog_feed_stale",
+  "http_checkpoint_not_advanced",
+  "http_feed_not_advanced",
+  "websocket_checkpoint_not_advanced",
+  "websocket_feed_not_advanced",
 ] as const;
 const expectedAttemptFiles = [
   "campaign-diagnostics.private.json",
@@ -154,7 +175,7 @@ function failure(category: FailureCategory, message: string): HashrateMonitorEvi
 
 function hardwareBlocked(
   message: string,
-  maybeDiagnostic?: RuntimeAttestationParseDiagnostic,
+  maybeDiagnostic?: CampaignFailureDiagnostic,
 ): HashrateMonitorEvidenceError {
   return new HashrateMonitorEvidenceError("hardware_blocked", message, {
     stage: "hashrate_monitor_capture",
@@ -233,6 +254,14 @@ function runtimeAttestationParseDiagnostic(
   };
 }
 
+function watchdogFailure(value: JsonObject): WatchdogFailure {
+  const failureValue = requiredString(value, "watchdog_failure", "campaign result");
+  if (!watchdogFailures.includes(failureValue as WatchdogFailure)) {
+    throw failure("evidence_invalid", "campaign watchdog diagnostic is invalid");
+  }
+  return failureValue as WatchdogFailure;
+}
+
 async function requireAbsent(candidate: string, context: string): Promise<void> {
   try {
     await stat(candidate);
@@ -281,9 +310,9 @@ async function readJson(candidate: string, context: string): Promise<{
   }
 }
 
-async function sealedRuntimeAttestationParseDiagnostic(
+async function sealedCampaignFailureDiagnostic(
   privateRoot: string,
-): Promise<RuntimeAttestationParseDiagnostic | undefined> {
+): Promise<CampaignFailureDiagnostic | undefined> {
   try {
     const resultPath = path.join(privateRoot, "campaign-result.json");
     const sealPath = path.join(privateRoot, "campaign-result.sha256");
@@ -293,11 +322,21 @@ async function sealedRuntimeAttestationParseDiagnostic(
     const result = await readJson(resultPath, "campaign result");
     const seal = (await readFile(sealPath, "utf8")).trim();
     if (seal !== sha256(result.document)
-      || requiredString(result.value, "schema", "campaign result") !== "mining-campaign-result-v10"
+      || requiredString(result.value, "schema", "campaign result") !== "mining-campaign-result-v11"
       || requiredString(result.value, "status", "campaign result") !== "failed") {
       return undefined;
     }
     const diagnostic = runtimeAttestationParseDiagnostic(result.value);
+    const terminalCategory = requiredString(result.value, "terminal_category", "campaign result");
+    const watchdogDiagnostic = watchdogFailure(result.value);
+    if (terminalCategory === "watchdog_unresponsive") {
+      if (watchdogDiagnostic === "none") return undefined;
+      return {
+        runtime_attestation_parse_failure: diagnostic.runtime_attestation_parse_failure,
+        watchdog_failure: watchdogDiagnostic,
+      };
+    }
+    if (watchdogDiagnostic !== "none") return undefined;
     return {
       runtime_attestation_parse_failure: diagnostic.runtime_attestation_parse_failure,
     };
@@ -411,7 +450,7 @@ export async function captureHashrateMonitorEvidence(
   if (campaign.exitCode !== 0) {
     throw hardwareBlocked(
       "hashrate campaign did not complete",
-      await sealedRuntimeAttestationParseDiagnostic(privateRoot),
+      await sealedCampaignFailureDiagnostic(privateRoot),
     );
   }
 
@@ -429,7 +468,8 @@ export async function captureHashrateMonitorEvidence(
       throw failure("evidence_invalid", "campaign result seal is invalid");
     }
     const parseDiagnostic = runtimeAttestationParseDiagnostic(resultFile.value);
-    if (requiredString(resultFile.value, "schema", "campaign result") !== "mining-campaign-result-v10"
+    const resultWatchdogFailure = watchdogFailure(resultFile.value);
+    if (requiredString(resultFile.value, "schema", "campaign result") !== "mining-campaign-result-v11"
       || requiredString(resultFile.value, "status", "campaign result") !== "accepted"
       || requiredString(resultFile.value, "stage", "campaign result") !== "live-share"
       || requiredString(resultFile.value, "profile", "campaign result") !== "conservative"
@@ -441,9 +481,13 @@ export async function captureHashrateMonitorEvidence(
       || Object.values(parseDiagnostic.runtime_attestation_parse_failure_counts)
         .some((count) => count !== 0)
       || requiredString(networkFile.value, "schema", "campaign network evidence")
-        !== "mining-campaign-network-continuity-v4"
+        !== "mining-campaign-network-continuity-v5"
       || requiredString(networkFile.value, "status", "campaign network evidence") !== "accepted") {
       throw failure("evidence_invalid", "campaign acceptance boundary is incomplete");
+    }
+    if (resultWatchdogFailure !== "none"
+      || watchdogFailure(networkFile.value) !== resultWatchdogFailure) {
+      throw failure("evidence_invalid", "campaign watchdog acceptance boundary is invalid");
     }
     const hashrate = object(networkFile.value["hashrate_monitor"], "hashrate monitor evidence");
     const http = transportQuorum(hashrate["http"], "HTTP hashrate evidence");

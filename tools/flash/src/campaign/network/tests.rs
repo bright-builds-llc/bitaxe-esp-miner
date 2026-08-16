@@ -18,6 +18,7 @@ use super::NetworkObservationMode;
 mod terminal_handoff;
 
 mod startup;
+mod watchdog;
 
 const SOURCE: &str = "1111111111111111111111111111111111111111";
 const REFERENCE: &str = "2222222222222222222222222222222222222222";
@@ -73,6 +74,14 @@ fn target() -> TrustedNetworkTarget {
 }
 
 fn active_sample(revision: u64, sequence: u64) -> SystemInfoWire {
+    active_sample_with_watchdog_sequences(revision, sequence, sequence)
+}
+
+fn active_sample_with_watchdog_sequences(
+    revision: u64,
+    checkpoint_sequence: u64,
+    feed_sequence: u64,
+) -> SystemInfoWire {
     let mut sample = SystemInfoWire::from_snapshot(&ApiSnapshot::safe_ultra_205());
     sample.operator_snapshot_revision =
         OperatorSnapshotRevision::new(revision).expect("revision must be nonzero");
@@ -91,10 +100,10 @@ fn active_sample(revision: u64, sequence: u64) -> SystemInfoWire {
     sample.fan_rpm_status.state = ObservationStateWire::Fresh;
     sample.runtime_health.supervisor_availability = "available".to_owned();
     sample.runtime_health.checkpoint_health = "healthy".to_owned();
-    sample.runtime_health.maybe_checkpoint_sequence = Some(sequence);
+    sample.runtime_health.maybe_checkpoint_sequence = Some(checkpoint_sequence);
     sample.runtime_health.task_watchdog_participation = "participating".to_owned();
     sample.runtime_health.maybe_task_watchdog_reason = Some("feed_fresh".to_owned());
-    sample.runtime_health.maybe_task_watchdog_feed_sequence = Some(sequence);
+    sample.runtime_health.maybe_task_watchdog_feed_sequence = Some(feed_sequence);
     sample.runtime_health.maybe_task_watchdog_feed_age_millis = Some(100);
     sample
 }
@@ -158,6 +167,7 @@ fn twenty_complete_windows_and_terminal_state_are_accepted() {
     assert_eq!(evidence.covered_window_count, REQUIRED_WINDOWS);
     assert_eq!(evidence.maybe_failure, None);
     assert!(evidence.watchdog_valid);
+    assert_eq!(evidence.watchdog_failure, "none");
     assert!(evidence.work_renewal_valid);
 }
 
@@ -246,49 +256,6 @@ fn every_individually_missing_http_window_fails_closed() {
             "missing window {missing} must fail",
         );
     }
-}
-
-#[test]
-fn stale_watchdog_sample_is_rejected_before_window_credit() {
-    // Arrange
-    let mut accumulator = NetworkAccumulator::new(target());
-    let mut sample = active_sample(1, 1);
-    sample.runtime_health.maybe_task_watchdog_feed_age_millis = Some(2_001);
-
-    // Act
-    accumulator.record_active_sample(NetworkTransport::Http, 1_000, 1_000, &sample);
-
-    // Assert
-    assert_eq!(
-        accumulator.maybe_failure,
-        Some(CampaignTerminalCategory::WatchdogUnresponsive)
-    );
-}
-
-#[test]
-fn watchdog_and_checkpoint_sequences_must_advance_within_each_window() {
-    // Arrange
-    let mut accumulator = NetworkAccumulator::new(target());
-    for (revision, active_ms) in [(1, 1_000), (2, 2_000)] {
-        let sample = active_sample(revision, 7);
-        accumulator.record_active_sample(NetworkTransport::Http, active_ms, active_ms, &sample);
-        accumulator.record_active_sample(
-            NetworkTransport::WebSocket,
-            active_ms,
-            active_ms,
-            &sample,
-        );
-    }
-    let serial = complete_serial();
-
-    // Act
-    accumulator.close_elapsed_windows(WINDOW_MILLIS, &serial);
-
-    // Assert
-    assert_eq!(
-        accumulator.maybe_failure,
-        Some(CampaignTerminalCategory::WatchdogUnresponsive)
-    );
 }
 
 #[test]
@@ -560,7 +527,7 @@ fn network_evidence_serialization_contains_only_closed_aggregates() {
     ] {
         assert!(!encoded.contains(prohibited));
     }
-    assert!(encoded.contains("mining-campaign-network-continuity-v4"));
+    assert!(encoded.contains("mining-campaign-network-continuity-v5"));
     assert!(encoded.contains("http_startup_transition_count"));
     assert!(encoded.contains("websocket_startup_transition_count"));
     assert!(encoded.contains("http_initial_active_observed"));

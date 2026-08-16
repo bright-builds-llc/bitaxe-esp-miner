@@ -10,9 +10,11 @@ use super::command_evidence::CommandEffectsEvidence;
 use super::command_witness::CommandTransitionWitness;
 use super::hashrate::{CampaignHashrateEvidence, HashrateObservationPair};
 use super::validation::{
-    active_mining_state_valid, advances, regresses, update_gap, validate_active_prerequisites,
-    validate_sample, watchdog_valid, window_index, SampleValidationFailure,
+    active_mining_state_valid, regresses, update_gap, validate_active_prerequisites,
+    validate_sample, window_index, SampleValidationFailure,
 };
+use super::watchdog::{sample_failure, WatchdogFailure};
+use super::window::{ContinuityWindowEvidence, SerialWindowEvidence};
 
 mod command_failure;
 pub(in crate::campaign) use command_failure::{
@@ -29,29 +31,6 @@ pub(super) struct TrustedNetworkTarget {
     pub(super) boot_session: String,
     pub(super) boot_ordinal: u64,
     pub(super) expected: ExpectedRuntimeAttestationIdentity,
-}
-
-#[derive(Debug, Clone, Copy, Default)]
-pub(super) struct SerialWindowEvidence {
-    marker_count: u64,
-    first_poll_request_count: Option<u64>,
-    last_poll_request_count: Option<u64>,
-}
-impl SerialWindowEvidence {
-    pub(super) fn observe(&mut self, poll_request_count: u64) {
-        self.marker_count = self.marker_count.saturating_add(1);
-        self.first_poll_request_count
-            .get_or_insert(poll_request_count);
-        self.last_poll_request_count = Some(poll_request_count);
-    }
-
-    fn work_renewed(self) -> bool {
-        self.marker_count >= 2
-            && self
-                .first_poll_request_count
-                .zip(self.last_poll_request_count)
-                .is_some_and(|(first, last)| last > first)
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -89,51 +68,6 @@ impl Default for SharedSerialState {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
-pub(super) struct TransportWindowEvidence {
-    sample_count: u64,
-    first_watchdog_feed_sequence: Option<u64>,
-    last_watchdog_feed_sequence: Option<u64>,
-    first_checkpoint_sequence: Option<u64>,
-    last_checkpoint_sequence: Option<u64>,
-}
-
-impl TransportWindowEvidence {
-    fn observe(&mut self, sample: &SystemInfoWire) {
-        self.sample_count = self.sample_count.saturating_add(1);
-        if let Some(sequence) = sample.runtime_health.maybe_task_watchdog_feed_sequence {
-            self.first_watchdog_feed_sequence.get_or_insert(sequence);
-            self.last_watchdog_feed_sequence = Some(sequence);
-        }
-        if let Some(sequence) = sample.runtime_health.maybe_checkpoint_sequence {
-            self.first_checkpoint_sequence.get_or_insert(sequence);
-            self.last_checkpoint_sequence = Some(sequence);
-        }
-    }
-
-    fn complete(self) -> bool {
-        self.sample_count >= 2
-    }
-
-    fn watchdog_advanced(self) -> bool {
-        advances(
-            self.first_watchdog_feed_sequence,
-            self.last_watchdog_feed_sequence,
-        ) && advances(
-            self.first_checkpoint_sequence,
-            self.last_checkpoint_sequence,
-        )
-    }
-}
-
-#[derive(Debug, Clone, Copy, Default)]
-pub(super) struct ContinuityWindowEvidence {
-    http: TransportWindowEvidence,
-    websocket: TransportWindowEvidence,
-    serial: SerialWindowEvidence,
-    complete: bool,
-}
-
 #[derive(Debug, Clone, Serialize)]
 pub(crate) struct CampaignNetworkEvidence {
     pub(in crate::campaign) schema: &'static str,
@@ -161,6 +95,7 @@ pub(crate) struct CampaignNetworkEvidence {
     pub(in crate::campaign) active_state_valid: bool,
     pub(in crate::campaign) safety_valid: bool,
     pub(in crate::campaign) watchdog_valid: bool,
+    pub(in crate::campaign) watchdog_failure: &'static str,
     pub(in crate::campaign) work_renewal_valid: bool,
     pub(in crate::campaign) terminal_http_valid: bool,
     pub(in crate::campaign) terminal_websocket_valid: bool,
@@ -197,7 +132,7 @@ impl CampaignNetworkEvidence {
 
     fn empty(status: &'static str, maybe_failure: Option<CampaignTerminalCategory>) -> Self {
         Self {
-            schema: "mining-campaign-network-continuity-v4",
+            schema: "mining-campaign-network-continuity-v5",
             status,
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count: 0,
@@ -222,6 +157,7 @@ impl CampaignNetworkEvidence {
             active_state_valid: false,
             safety_valid: false,
             watchdog_valid: false,
+            watchdog_failure: WatchdogFailure::None.label(),
             work_renewal_valid: false,
             terminal_http_valid: false,
             terminal_websocket_valid: false,
@@ -301,6 +237,7 @@ pub(super) struct NetworkAccumulator {
     active_state_valid: bool,
     safety_valid: bool,
     watchdog_valid: bool,
+    pub(super) watchdog_failure: WatchdogFailure,
     http_startup_transition_count: u64,
     websocket_startup_transition_count: u64,
     http_initial_active_observed: bool,
@@ -338,6 +275,7 @@ impl NetworkAccumulator {
             active_state_valid: true,
             safety_valid: true,
             watchdog_valid: true,
+            watchdog_failure: WatchdogFailure::None,
             http_startup_transition_count: 0,
             websocket_startup_transition_count: 0,
             http_initial_active_observed: false,
@@ -362,9 +300,9 @@ impl NetworkAccumulator {
         if self.maybe_failure.is_some() {
             return;
         }
-        if !watchdog_valid(sample) {
-            self.watchdog_valid = false;
-            self.fail(CampaignTerminalCategory::WatchdogUnresponsive);
+        let watchdog_failure = sample_failure(sample);
+        if watchdog_failure != WatchdogFailure::None {
+            self.fail_watchdog(watchdog_failure);
             return;
         }
         if let Err(failure) = validate_active_prerequisites(sample, &self.target) {
@@ -429,9 +367,9 @@ impl NetworkAccumulator {
         transport: NetworkTransport,
         sample: &SystemInfoWire,
     ) {
-        if !watchdog_valid(sample) {
-            self.watchdog_valid = false;
-            self.fail(CampaignTerminalCategory::WatchdogUnresponsive);
+        let watchdog_failure = sample_failure(sample);
+        if watchdog_failure != WatchdogFailure::None {
+            self.fail_watchdog(watchdog_failure);
             return;
         }
         if let Err(failure) = validate_sample(sample, &self.target, true) {
@@ -454,8 +392,8 @@ impl NetworkAccumulator {
             self.windows[index].serial = serial.serial_windows[index];
             let http_complete = self.windows[index].http.complete();
             let websocket_complete = self.windows[index].websocket.complete();
-            let watchdog_complete = self.windows[index].http.watchdog_advanced()
-                && self.windows[index].websocket.watchdog_advanced();
+            let watchdog_failure = self.windows[index].watchdog_failure();
+            let watchdog_complete = watchdog_failure == WatchdogFailure::None;
             let work_complete = self.windows[index].serial.work_renewed();
             self.windows[index].complete =
                 http_complete && websocket_complete && watchdog_complete && work_complete;
@@ -468,8 +406,7 @@ impl NetworkAccumulator {
                 return;
             }
             if !watchdog_complete {
-                self.watchdog_valid = false;
-                self.fail(CampaignTerminalCategory::WatchdogUnresponsive);
+                self.fail_watchdog(watchdog_failure);
                 return;
             }
             if !work_complete {
@@ -499,7 +436,7 @@ impl NetworkAccumulator {
             && covered_window_count == REQUIRED_WINDOWS
             && serial.terminal_consumed;
         CampaignNetworkEvidence {
-            schema: "mining-campaign-network-continuity-v4",
+            schema: "mining-campaign-network-continuity-v5",
             status: if accepted { "accepted" } else { "failed" },
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count,
@@ -526,6 +463,7 @@ impl NetworkAccumulator {
                 && self.websocket_initial_active_observed,
             safety_valid: self.safety_valid,
             watchdog_valid: self.watchdog_valid,
+            watchdog_failure: self.watchdog_failure.label(),
             work_renewal_valid: self
                 .windows
                 .iter()
@@ -542,6 +480,18 @@ impl NetworkAccumulator {
 
     pub(super) fn fail(&mut self, category: CampaignTerminalCategory) {
         self.maybe_failure.get_or_insert(category);
+    }
+
+    fn fail_watchdog(&mut self, failure: WatchdogFailure) {
+        if self.maybe_failure.is_none() {
+            self.maybe_failure = Some(CampaignTerminalCategory::WatchdogUnresponsive);
+        }
+        if self.maybe_failure == Some(CampaignTerminalCategory::WatchdogUnresponsive) {
+            self.watchdog_valid = false;
+            if self.watchdog_failure == WatchdogFailure::None {
+                self.watchdog_failure = failure;
+            }
+        }
     }
 
     pub(super) fn note_websocket_connect_failure(&mut self) {

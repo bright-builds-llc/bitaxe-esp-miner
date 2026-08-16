@@ -6,6 +6,8 @@ mod model;
 mod observer;
 mod serial;
 mod validation;
+mod watchdog;
+mod window;
 
 #[cfg(test)]
 mod test_evidence;

@@ -29,3 +29,44 @@
 - Outcome: The plan/task checkpoint is eligible to commit and push.
 - Blocker or next safe action: Commit and push this immutable checkpoint, then
   implement the diagnostic without editing `PLAN.md`.
+
+## 2026-08-16T06:31:00Z | watchdog diagnostic implementation checkpoint
+
+- Source commit: pending exact implementation commit.
+- Actions: Replaced the lossy sample boolean with a closed earliest-failure
+  type, split checkpoint and feed advancement by HTTP/WebSocket transport,
+  propagated the closed label through network v5 and campaign-result v11, and
+  seal/category-gated the wrapper failure envelope. Extracted window evidence
+  and watchdog classification into focused modules during the simplification
+  pass.
+- Verification: All 165 focused campaign tests pass. The canonical automation
+  target accepts every closed label and rejects old schema, unknown label,
+  missing cause, category mismatch, and bad seal cases. Bright Builds reports
+  zero findings after the module/test split.
+- Evidence: Public source, deterministic fixtures, and software command results
+  only. No protected attempt, credential, detector, USB, device, network
+  runtime, or private endpoint was accessed.
+- Outcome: The implementation is ready for the complete ordered repository and
+  package gate.
+- Blocker or next safe action: Run every mandatory gate, review the full diff,
+  then commit and push the exact source before closing this software-only plan.
+
+## 2026-08-16T06:47:00Z | complete implementation gate passed
+
+- Source commit: pending exact implementation commit.
+- Actions: Added the new module and test files to Bazel's explicit Rust source
+  graph after the first full `just test` correctly rejected Cargo-only module
+  discovery. Restarted the mandatory sequence from formatting.
+- Verification: Ordered Cargo format, strict lint, all-target build, all-feature
+  tests, Bright Builds, all 45 Bazel tests, parity, progress, redaction,
+  pinned-reference cleanliness, and canonical firmware packaging pass. The
+  immutable plan digest remains
+  `734e670828393ae520b8c7b5c115201171bb839c748847415e8acc7e7c2811e4`.
+- Evidence: Public source, deterministic fixtures, and software command results
+  only. No protected attempt, credential, detector, USB, device, network
+  runtime, or private endpoint was accessed.
+- Outcome: The exact implementation is eligible to commit and push; STAT-001
+  remains `implemented` because this plan produces no hardware evidence.
+- Blocker or next safe action: Review the complete diff, commit and push the
+  source, then write the truthful non-verifying closure without changing the
+  checklist.
