@@ -15,14 +15,17 @@ use bitaxe_api::{
     classify_runtime_boot_attestations, BuildProvenance, ExpectedRuntimeAttestationIdentity,
     RuntimeAttestationAccumulator, RuntimeAttestationStatus,
 };
+use bitaxe_automation_contracts::{
+    InputUatEvidence, InputUatObservationEvidence, INPUT_UAT_EVIDENCE_SCHEMA,
+};
 use bitaxe_config::{
     apply_settings_patch, ultra_205_default_seed_values, ConfigValidationError, NvsWrite,
     RawSettingValue, SettingsPatch, SettingsUpdateDecision, StoredValue, StoredValueKind,
     NVS_NAMESPACE,
 };
 use bitaxe_device_session::{
-    discover_usb_ports, UsbCommandDiagnostic, UsbDeviceEffectState, UsbOperation, UsbSession,
-    UsbTerminalCategory,
+    discover_usb_ports, MonitorOutput, UsbCommandDiagnostic, UsbDeviceEffectState, UsbOperation,
+    UsbSession, UsbTerminalCategory,
 };
 #[cfg(test)]
 use bitaxe_device_session::{UsbCommandTermination, UsbConnectionSignature};
@@ -39,6 +42,7 @@ mod esp32s3_image;
 mod evidence;
 mod evidence_record;
 mod execution_snapshot;
+mod input_uat;
 mod model;
 mod monitor;
 mod output;
@@ -58,6 +62,7 @@ pub(crate) use commands::*;
 pub(crate) use environment::*;
 pub(crate) use evidence_record::*;
 pub(crate) use execution_snapshot::*;
+pub(crate) use input_uat::*;
 pub(crate) use model::*;
 pub(crate) use monitor::*;
 pub(crate) use output::*;
@@ -111,6 +116,7 @@ fn main() -> Result<()> {
         CliCommand::FlashMonitor(command) => run_flash_monitor(&command, &environment),
         CliCommand::FinalizeEvidence(command) => run_finalize_evidence(&command, &environment),
         CliCommand::MiningCampaign(command) => run_mining_campaign(&command, &environment),
+        CliCommand::InputUat(command) => run_input_uat(&command, &environment),
         CliCommand::SignalIdentify(command) => run_signal_identify(&command, &environment),
         CliCommand::Phase35Probe(command) => run_phase35_probe(&command, &environment),
     };

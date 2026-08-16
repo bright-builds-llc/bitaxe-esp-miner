@@ -226,7 +226,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bitaxe-api",
+ "bitaxe-automation-contracts",
  "bitaxe-config",
+ "bitaxe-core",
  "bitaxe-device-session",
  "bitaxe-http-transport",
  "camino",

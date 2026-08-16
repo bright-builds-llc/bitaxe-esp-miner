@@ -22,10 +22,11 @@ genrule(
     name = "contracts_verified",
     srcs = [
         "src/contracts.generated.ts",
+        "src/input-uat-contracts.generated.ts",
         "src/ui-workflow-contracts.generated.ts",
     ],
     outs = ["contracts-verified.stamp"],
-    cmd = "$(location //crates/bitaxe-automation-contracts:verify_typescript) $(location src/contracts.generated.ts) $(location src/ui-workflow-contracts.generated.ts) $@",
+    cmd = "$(location //crates/bitaxe-automation-contracts:verify_typescript) $(location src/contracts.generated.ts) $(location src/ui-workflow-contracts.generated.ts) $(location src/input-uat-contracts.generated.ts) $@",
     tools = ["//crates/bitaxe-automation-contracts:verify_typescript"],
 )
 

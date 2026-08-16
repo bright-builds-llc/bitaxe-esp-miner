@@ -1063,7 +1063,7 @@ below verified, so this implemented task remains active rather than archived.
 
 Verification continuation (2026-08-16):
 
-- [ ] Add a typed integrated exact-package input UAT with a fresh protected
+- [x] Add a typed integrated exact-package input UAT with a fresh protected
       private root, transcript-free serial reducer, durable live checkpoint,
       aggregate public projection, independent validator, and focused tests.
 - [ ] Commit and push the implementation, run the sole authorized

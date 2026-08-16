@@ -36,6 +36,7 @@ pub(crate) trait FlashEnvironment {
         evidence_root: &Utf8Path,
         capture_limit: CampaignCaptureLimit,
     ) -> Result<campaign::network::CampaignObservationCapture>;
+    fn receive_input_uat(&self, stop: &mut dyn FnMut(&[u8]) -> bool) -> Result<MonitorOutput>;
     fn finish_usb_session(&self) -> Result<()>;
     fn device_effect_state(&self) -> UsbDeviceEffectState {
         UsbDeviceEffectState::None
@@ -435,6 +436,17 @@ impl FlashEnvironment for LocalFlashEnvironment {
         let serial = analyzer.finish();
         let network = network.finish(&serial);
         Ok(campaign::network::CampaignObservationCapture { serial, network })
+    }
+
+    fn receive_input_uat(&self, stop: &mut dyn FnMut(&[u8]) -> bool) -> Result<MonitorOutput> {
+        let mut session_slot = self.usb_session.borrow_mut();
+        let Some(session) = session_slot.as_mut() else {
+            bail!("cleanup_failed: input UAT attempted without a repository session");
+        };
+        emit_line("usb_reader", "admitted")?;
+        session
+            .observe_receive_only_ephemeral_chunks_operator_gated(stop)
+            .map_err(|error| anyhow::anyhow!("{error}"))
     }
 
     fn finish_usb_session(&self) -> Result<()> {

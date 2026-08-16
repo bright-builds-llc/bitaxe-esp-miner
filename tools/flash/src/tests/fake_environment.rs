@@ -29,6 +29,8 @@ struct FakeFlashEnvironment {
     phase35_stage_gates: RefCell<Vec<(String, String)>>,
     campaign_lease_id: u64,
     campaign_observations: RefCell<Vec<(MiningCampaignStage, CampaignCaptureLimit)>>,
+    input_uat_chunks: Vec<Vec<u8>>,
+    input_uat_interrupted: bool,
     cleanup_calls: Cell<usize>,
     cleanup_failure: bool,
     last_usb_command_diagnostic: RefCell<Option<UsbCommandDiagnostic>>,
@@ -73,6 +75,8 @@ impl FakeFlashEnvironment {
             phase35_stage_gates: RefCell::new(Vec::new()),
             campaign_lease_id: 42,
             campaign_observations: RefCell::new(Vec::new()),
+            input_uat_chunks: Vec::new(),
+            input_uat_interrupted: false,
             cleanup_calls: Cell::new(0),
             cleanup_failure: false,
             last_usb_command_diagnostic: RefCell::new(None),
@@ -174,6 +178,16 @@ impl FakeFlashEnvironment {
 
     fn with_cleanup_failure(mut self) -> Self {
         self.cleanup_failure = true;
+        self
+    }
+
+    fn with_input_uat_chunks(mut self, chunks: Vec<Vec<u8>>) -> Self {
+        self.input_uat_chunks = chunks;
+        self
+    }
+
+    fn with_input_uat_interrupted(mut self) -> Self {
+        self.input_uat_interrupted = true;
         self
     }
 }
@@ -333,6 +347,15 @@ impl FlashEnvironment for FakeFlashEnvironment {
         self.last_usb_command_diagnostic.borrow().clone()
     }
 
+    fn device_effect_state(&self) -> UsbDeviceEffectState {
+        self.last_usb_command_diagnostic
+            .borrow()
+            .as_ref()
+            .map_or(UsbDeviceEffectState::None, |diagnostic| {
+                diagnostic.device_effect_state
+            })
+    }
+
     fn receive_only(
         &self,
         command_spec: &CommandSpec,
@@ -379,6 +402,25 @@ impl FlashEnvironment for FakeFlashEnvironment {
                 }
                 _ => crate::network::CampaignNetworkEvidence::not_required(),
             },
+        })
+    }
+
+    fn receive_input_uat(
+        &self,
+        stop: &mut dyn FnMut(&[u8]) -> bool,
+    ) -> Result<MonitorOutput> {
+        if self.execute_failure {
+            bail!("sentinel input UAT observation failure");
+        }
+        for chunk in &self.input_uat_chunks {
+            if stop(chunk) {
+                break;
+            }
+        }
+        Ok(MonitorOutput {
+            bytes: Vec::new(),
+            interrupted_by: self.input_uat_interrupted.then_some(2),
+            reenumerated: false,
         })
     }
 

@@ -19,10 +19,33 @@ pub(crate) enum CliCommand {
     FinalizeEvidence(FinalizeEvidenceCommand),
     #[command(name = "mining-campaign")]
     MiningCampaign(MiningCampaignCommand),
+    #[command(name = "input-uat")]
+    InputUat(InputUatCommand),
     #[command(name = "signal-identify", alias = "confirm-identify")]
     SignalIdentify(SignalIdentifyCommand),
     #[command(name = "phase35-probe")]
     Phase35Probe(Phase35ProbeCommand),
+}
+
+#[derive(Debug, Parser, Clone)]
+pub(crate) struct InputUatCommand {
+    #[arg(long, default_value = "205", value_parser = parse_board)]
+    pub(crate) board: BoardId,
+
+    #[arg(long)]
+    pub(crate) port: String,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) manifest: Utf8PathBuf,
+
+    #[arg(long = "private-root", value_parser = parse_utf8_path)]
+    pub(crate) private_root: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) plan: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) projection: Utf8PathBuf,
 }
 
 #[derive(Debug, Parser, Clone)]

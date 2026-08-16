@@ -20,6 +20,7 @@ mod emc2101_thermal_fault_evidence;
 mod emc2101_thermal_input;
 mod hashrate_monitor_evidence;
 mod ina260_evidence;
+mod input_uat_evidence;
 mod log_buffer_evidence;
 mod mining_criteria_evidence;
 mod network_reconnect_evidence;
@@ -90,6 +91,7 @@ pub use hashrate_monitor_evidence::{
     HashrateTransportQuorum, HASHRATE_MONITOR_EVIDENCE_SCHEMA,
 };
 pub use ina260_evidence::{Ina260Evidence, Ina260ObservationEvidence, Ina260SourceEvidence};
+pub use input_uat_evidence::{InputUatEvidence, InputUatObservationEvidence};
 pub use log_buffer_evidence::{LogBufferEvidence, LogBufferObservationEvidence};
 pub use mining_criteria_evidence::MiningCriteriaEvidence;
 pub use network_reconnect_evidence::{
@@ -149,6 +151,7 @@ pub const CORE_VOLTAGE_CONTROL_EVIDENCE_SCHEMA: &str = "bitaxe-core-voltage-cont
 pub const DISPLAY_BEHAVIOR_EVIDENCE_SCHEMA: &str = "bitaxe-display-behavior-evidence-v1";
 pub const SCREEN_FLOW_EVIDENCE_SCHEMA: &str = "bitaxe-screen-flow-evidence-v1";
 pub const INA260_EVIDENCE_SCHEMA: &str = "bitaxe-ina260-evidence-v2";
+pub const INPUT_UAT_EVIDENCE_SCHEMA: &str = "bitaxe-input-uat-evidence-v1";
 pub const EMC2101_THERMAL_EVIDENCE_SCHEMA: &str = "bitaxe-emc2101-thermal-evidence-v1";
 pub const EMC2101_THERMAL_FAULT_EVIDENCE_SCHEMA: &str = "bitaxe-emc2101-thermal-fault-evidence-v1";
 pub const ASIC_RESET_EVIDENCE_SCHEMA: &str = "bitaxe-asic-reset-evidence-v1";
@@ -171,6 +174,11 @@ pub fn typescript_contracts() -> &'static str {
 #[must_use]
 pub fn ui_workflow_typescript_contracts() -> &'static str {
     include_str!("../ui-workflow-typescript-contracts.ts")
+}
+
+#[must_use]
+pub fn input_uat_typescript_contracts() -> &'static str {
+    include_str!("../input-uat-typescript-contracts.ts")
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
@@ -388,6 +396,7 @@ pub struct ContractBundle {
     pub display_behavior_evidence_schema: Value,
     pub screen_flow_evidence_schema: Value,
     pub ina260_evidence_schema: Value,
+    pub input_uat_evidence_schema: Value,
     pub emc2101_thermal_evidence_schema: Value,
     pub emc2101_thermal_fault_evidence_schema: Value,
     pub asic_reset_evidence_schema: Value,
@@ -472,6 +481,8 @@ pub fn contract_bundle() -> ContractBundle {
             .expect("screen-flow evidence schema must serialize"),
         ina260_evidence_schema: serde_json::to_value(schema_for!(Ina260Evidence))
             .expect("INA260 evidence schema must serialize"),
+        input_uat_evidence_schema: serde_json::to_value(schema_for!(InputUatEvidence))
+            .expect("input UAT evidence schema must serialize"),
         emc2101_thermal_evidence_schema: serde_json::to_value(schema_for!(Emc2101ThermalEvidence))
             .expect("EMC2101 thermal evidence schema must serialize"),
         emc2101_thermal_fault_evidence_schema: serde_json::to_value(schema_for!(
@@ -584,6 +595,7 @@ pub fn contract_bundle() -> ContractBundle {
             DISPLAY_BEHAVIOR_EVIDENCE_SCHEMA,
             SCREEN_FLOW_EVIDENCE_SCHEMA,
             INA260_EVIDENCE_SCHEMA,
+            INPUT_UAT_EVIDENCE_SCHEMA,
             EMC2101_THERMAL_EVIDENCE_SCHEMA,
             EMC2101_THERMAL_FAULT_EVIDENCE_SCHEMA,
             ASIC_RESET_EVIDENCE_SCHEMA,

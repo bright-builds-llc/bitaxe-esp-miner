@@ -18,6 +18,7 @@ mod cli;
 mod cli_identify;
 #[path = "tests/evidence.rs"]
 mod evidence_cases;
+mod input_uat;
 mod monitor;
 mod phase35;
 mod redaction;

@@ -34,6 +34,44 @@ fn parses_canonical_flags_for_flash() {
 }
 
 #[test]
+fn parses_closed_input_uat_paths() {
+    // Arrange
+    let args = [
+        "bitaxe-flash",
+        "input-uat",
+        "--board",
+        "205",
+        "--port",
+        "/dev/cu.usbmodem101",
+        "--manifest",
+        "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
+        "--private-root",
+        INPUT_UAT_PRIVATE_ROOT,
+        "--plan",
+        INPUT_UAT_PLAN,
+        "--projection",
+        INPUT_UAT_PROJECTION,
+    ];
+
+    // Act
+    let cli = parse_cli(args).expect("input UAT cli");
+
+    // Assert
+    let CliCommand::InputUat(command) = cli.command else {
+        panic!("expected input-uat command");
+    };
+    assert_eq!(command.board, BoardId::Ultra205);
+    assert_eq!(command.port, "/dev/cu.usbmodem101");
+    assert_eq!(
+        command.manifest,
+        Utf8Path::new("bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json")
+    );
+    assert_eq!(command.private_root, Utf8Path::new(INPUT_UAT_PRIVATE_ROOT));
+    assert_eq!(command.plan, Utf8Path::new(INPUT_UAT_PLAN));
+    assert_eq!(command.projection, Utf8Path::new(INPUT_UAT_PROJECTION));
+}
+
+#[test]
 fn parses_closed_mining_campaign_flags() {
     // Arrange
     let args = [

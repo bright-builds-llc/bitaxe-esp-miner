@@ -37,6 +37,9 @@ flash-monitor *args:
 mining-campaign *args:
     bazel run //tools/flash:flash -- mining-campaign {{ args }}
 
+input-uat *args:
+    bazel run //tools/flash:flash -- input-uat {{ args }}
+
 confirm-api-command-identify *args:
     bazel run //tools/flash:flash -- signal-identify {{ args }}
 
@@ -85,6 +88,14 @@ validate-ina260-evidence projection:
     test -f "$projection"
     projection_path="$(/bin/realpath "$projection")"
     bazel run //crates/bitaxe-automation-contracts:validate_ina260_evidence -- "$projection_path"
+
+validate-input-uat-evidence projection:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    projection={{ quote(projection) }}
+    test -f "$projection"
+    projection_path="$(/bin/realpath "$projection")"
+    bazel run //crates/bitaxe-automation-contracts:validate_input_uat_evidence -- "$projection_path"
 
 validate-emc2101-thermal-evidence projection:
     #!/usr/bin/env bash

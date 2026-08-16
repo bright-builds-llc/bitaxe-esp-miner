@@ -23,6 +23,7 @@ rust_library(
         "src/emc2101_thermal_input.rs",
         "src/hashrate_monitor_evidence.rs",
         "src/ina260_evidence.rs",
+        "src/input_uat_evidence.rs",
         "src/log_buffer_evidence.rs",
         "src/mining_criteria_evidence.rs",
         "src/network_reconnect_evidence.rs",
@@ -42,6 +43,7 @@ rust_library(
     ],
     compile_data = [
         "typescript-contracts.ts",
+        "input-uat-typescript-contracts.ts",
         "ui-workflow-typescript-contracts.ts",
     ],
     crate_name = "bitaxe_automation_contracts",
@@ -134,6 +136,17 @@ rust_binary(
     name = "validate_ina260_evidence",
     srcs = ["src/bin/validate_ina260_evidence.rs"],
     crate_name = "validate_ina260_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_input_uat_evidence",
+    srcs = ["src/bin/validate_input_uat_evidence.rs"],
+    crate_name = "validate_input_uat_evidence",
     edition = "2021",
     deps = [
         ":bitaxe_automation_contracts",
