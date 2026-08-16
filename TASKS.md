@@ -1141,6 +1141,27 @@ authorized. The next safe action is a software-only diagnosis of watchdog
 checkpoint/feed scheduling and task lifecycle before any further hardware
 ordinal.
 
+Watchdog-timeout correction plan:
+`docs/parity/work-plans/20260816T192025Z-STAT-001/PLAN.md`
+
+- [ ] Replace the unrelated 2,000-ms projected feed-freshness threshold with
+      the exact compiled ESP-IDF task-watchdog timeout supplied by the firmware
+      boundary to the pure evaluator.
+- [ ] Prove 2,001 ms, the exact configured boundary, and the first stale
+      millisecond with focused pure and firmware-ownership regressions while
+      preserving every existing closed watchdog failure.
+- [ ] Run the complete software, firmware, package, privacy, provenance,
+      parity-invariance, immutable-plan, and diff gates; commit and push a
+      non-promotion closure without accessing hardware or attempt-007.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not access protected
+attempts, ignored credentials, detector/device/network runtime, private values,
+or a public projection. Do not flash, reset, monitor, mine, actuate, update,
+erase, inject faults, manipulate power, use direct UART, or touch electrical
+interfaces. This plan does not authorize attempt-008 and leaves STAT-001
+`implemented` with unchanged checklist and progress history.
+
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
 - [x] Add the exact bounded 720-sample history, timestamp admission, configured
