@@ -1224,6 +1224,27 @@ projection. Accepted terminal outcomes are `complete`,
 `stop_repeated_boundary`, `stop_hardware_blocker`, `stop_authority_boundary`,
 and `stop_impossible_contract`.
 
+Attempt-008 closure:
+`docs/parity/work-plans/20260816T200554Z-STAT-001/CLOSURE.md`
+
+Attempt-008 completion review: exact pushed source `72c75876`, the pinned
+reference, clean board-205 package, every software/privacy gate, and the sole
+detector passed. The one capture admitted the exact package and completed 14
+of 20 required windows before failing closed as `watchdog_unresponsive` with
+the same sealed discriminator `watchdog_feed_stale` seen in attempt-007, now
+with the compiled five-second timeout correction present. Runtime attestation
+had no parse failure. Confirmed safe stop, ready USB cleanup, both seals,
+protected modes, and projection withholding passed. The public projection is
+absent, parity promotion is false, and STAT-001 remains `implemented` with
+unchanged checklist and progress history. Attempt-008 is consumed and no retry
+or attempt-009 is authorized.
+
+Next safe action: a fresh immutable software-only STAT-001 diagnosis must
+trace the real watchdog feed owner, checkpoint cadence, task blocking, and
+scheduler lifecycle, reproduce the post-window feed-staleness transition, and
+apply a targeted source correction before any new hardware ordinal can be
+considered.
+
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
 - [x] Add the exact bounded 720-sample history, timestamp admission, configured
