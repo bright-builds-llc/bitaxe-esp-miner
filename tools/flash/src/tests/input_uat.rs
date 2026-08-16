@@ -18,7 +18,7 @@ fn write_input_uat_workspace(root: &Utf8Path) {
     write_fixture_file(
         root,
         INPUT_UAT_PLAN,
-        "# Parity work plan\n- Run ID: `20260816T093555Z-UI-003`\n- Parity row: `UI-003`\n`attempt-001` is the only authorized effectful attempt\n",
+        "# Parity work plan\n- Run ID: `20260816T102741Z-UI-003`\n- Parity row: `UI-003`\n`attempt-002` is the sole effectful attempt\n",
     );
     write_fixture_file(
         root,
@@ -99,6 +99,34 @@ fn operator_interruption_cleans_up_and_withholds_projection() {
 
     // Assert
     assert_eq!(error, "input_uat=stopped reason=operator_interrupted");
+    assert_eq!(environment.cleanup_calls(), 1);
+    assert!(!root.join(INPUT_UAT_PROJECTION).exists());
+}
+
+#[test]
+fn malformed_runtime_attestation_preserves_closed_detail_after_cleanup() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let root = dir_path(&dir);
+    write_input_uat_workspace(&root);
+    let malformed = format!(
+        "{}\n",
+        runtime_attestation_log().replace("board=205", "board=999")
+    );
+    let environment = FakeFlashEnvironment::default()
+        .with_workspace_dir(root.clone())
+        .with_input_uat_chunks(vec![malformed.into_bytes()]);
+
+    // Act
+    let error = run_input_uat(&input_uat_command(), &environment)
+        .expect_err("malformed runtime attestation must stop")
+        .to_string();
+
+    // Assert
+    assert_eq!(
+        error,
+        "input_uat=failed reason=runtime_attestation_malformed"
+    );
     assert_eq!(environment.cleanup_calls(), 1);
     assert!(!root.join(INPUT_UAT_PROJECTION).exists());
 }

@@ -110,6 +110,49 @@ fn stale_or_malformed_attestation_blocks_checkpoint() {
     assert_eq!(action, InputUatAction::Stop);
     assert_eq!(
         observer.maybe_failure,
-        Some(InputUatFailure::RuntimeAttestationInvalid)
+        Some(InputUatFailure::RuntimeAttestation(
+            RuntimeAttestationStatus::Malformed
+        ))
+    );
+}
+
+#[test]
+fn every_terminal_runtime_status_has_a_closed_specific_reason() {
+    // Arrange
+    let cases = [
+        (
+            RuntimeAttestationStatus::Malformed,
+            "runtime_attestation_malformed",
+        ),
+        (
+            RuntimeAttestationStatus::MixedSessionOrOrdinal,
+            "runtime_attestation_mixed_session_or_ordinal",
+        ),
+        (
+            RuntimeAttestationStatus::StaticFieldsMismatch,
+            "runtime_attestation_static_fields_mismatch",
+        ),
+        (
+            RuntimeAttestationStatus::NonMonotonicUptime,
+            "runtime_attestation_non_monotonic_uptime",
+        ),
+        (
+            RuntimeAttestationStatus::PackageIdentityMismatch,
+            "runtime_attestation_package_identity_mismatch",
+        ),
+        (
+            RuntimeAttestationStatus::IncompleteReadiness,
+            "runtime_attestation_incomplete_readiness",
+        ),
+    ];
+
+    // Act
+    let reasons =
+        cases.map(|(status, _)| runtime_failure(status).expect("terminal status").reason());
+
+    // Assert
+    assert_eq!(
+        reasons,
+        cases.map(|(_, expected_reason)| expected_reason.to_owned())
     );
 }

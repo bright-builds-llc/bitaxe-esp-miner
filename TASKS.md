@@ -1108,9 +1108,9 @@ attempt ordinal. See the continuation `CLOSURE.md`.
 Attempt-002 verification plan:
 `docs/parity/work-plans/20260816T102741Z-UI-003/PLAN.md`
 
-- [ ] Rebind the typed input UAT and protected root to fresh attempt-002 while
+- [x] Rebind the typed input UAT and protected root to fresh attempt-002 while
       preserving the public projection and fixed GPIO/timing semantics.
-- [ ] Preserve bounded incremental serial framing and add a closed,
+- [x] Preserve bounded incremental serial framing and add a closed,
       redaction-safe runtime-attestation failure discriminator with focused
       pure and integrated regressions.
 - [ ] Pass every focused and mandatory gate, commit and push the exact source,

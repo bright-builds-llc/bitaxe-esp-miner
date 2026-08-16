@@ -2,8 +2,8 @@
 
 use crate::*;
 
-pub(crate) const INPUT_UAT_PLAN: &str = "docs/parity/work-plans/20260816T093555Z-UI-003/PLAN.md";
-pub(crate) const INPUT_UAT_PRIVATE_ROOT: &str = "scratch/ui003-input/attempt-001";
+pub(crate) const INPUT_UAT_PLAN: &str = "docs/parity/work-plans/20260816T102741Z-UI-003/PLAN.md";
+pub(crate) const INPUT_UAT_PRIVATE_ROOT: &str = "scratch/ui003-input/attempt-002";
 pub(crate) const INPUT_UAT_PROJECTION: &str =
     "docs/parity/evidence/ui003-input/input-uat-projection.json";
 const CHECKPOINT_SCHEMA: &str = "bitaxe-input-uat-checkpoint-v1";
@@ -22,7 +22,7 @@ enum InputUatAction {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum InputUatFailure {
-    RuntimeAttestationInvalid,
+    RuntimeAttestation(RuntimeAttestationStatus),
     CheckpointWriteFailed,
     StartupTimedOut,
     UnexpectedShortRoute,
@@ -32,15 +32,33 @@ enum InputUatFailure {
 }
 
 impl InputUatFailure {
-    const fn label(self) -> &'static str {
+    fn reason(self) -> String {
         match self {
-            Self::RuntimeAttestationInvalid => "runtime_attestation_invalid",
-            Self::CheckpointWriteFailed => "checkpoint_write_failed",
-            Self::StartupTimedOut => "startup_timed_out",
-            Self::UnexpectedShortRoute => "unexpected_short_route",
-            Self::LongPressObserved => "long_press_observed",
-            Self::DuplicateShortClick => "duplicate_short_click",
-            Self::SerialFramingInvalid => "serial_framing_invalid",
+            Self::RuntimeAttestation(status) => {
+                format!("runtime_attestation_{}", status.label())
+            }
+            Self::CheckpointWriteFailed => "checkpoint_write_failed".to_owned(),
+            Self::StartupTimedOut => "startup_timed_out".to_owned(),
+            Self::UnexpectedShortRoute => "unexpected_short_route".to_owned(),
+            Self::LongPressObserved => "long_press_observed".to_owned(),
+            Self::DuplicateShortClick => "duplicate_short_click".to_owned(),
+            Self::SerialFramingInvalid => "serial_framing_invalid".to_owned(),
+        }
+    }
+}
+
+const fn runtime_failure(status: RuntimeAttestationStatus) -> Option<InputUatFailure> {
+    match status {
+        RuntimeAttestationStatus::Trusted
+        | RuntimeAttestationStatus::Missing
+        | RuntimeAttestationStatus::InsufficientSamples => None,
+        RuntimeAttestationStatus::Malformed
+        | RuntimeAttestationStatus::MixedSessionOrOrdinal
+        | RuntimeAttestationStatus::StaticFieldsMismatch
+        | RuntimeAttestationStatus::NonMonotonicUptime
+        | RuntimeAttestationStatus::PackageIdentityMismatch
+        | RuntimeAttestationStatus::IncompleteReadiness => {
+            Some(InputUatFailure::RuntimeAttestation(status))
         }
     }
 }
@@ -163,19 +181,8 @@ impl InputUatObserver {
     }
 
     fn refresh_runtime_failure(&mut self) {
-        match self.runtime_status() {
-            RuntimeAttestationStatus::Trusted
-            | RuntimeAttestationStatus::Missing
-            | RuntimeAttestationStatus::InsufficientSamples => {}
-            RuntimeAttestationStatus::Malformed
-            | RuntimeAttestationStatus::MixedSessionOrOrdinal
-            | RuntimeAttestationStatus::StaticFieldsMismatch
-            | RuntimeAttestationStatus::NonMonotonicUptime
-            | RuntimeAttestationStatus::PackageIdentityMismatch
-            | RuntimeAttestationStatus::IncompleteReadiness => {
-                self.maybe_failure
-                    .get_or_insert(InputUatFailure::RuntimeAttestationInvalid);
-            }
+        if let Some(failure) = runtime_failure(self.runtime_status()) {
+            self.maybe_failure.get_or_insert(failure);
         }
     }
 }
@@ -315,7 +322,7 @@ fn validate_input_observation(
     observer: &InputUatObserver,
 ) -> Result<()> {
     if let Some(failure) = observer.maybe_failure {
-        bail!("input_uat=failed reason={}", failure.label());
+        bail!("input_uat=failed reason={}", failure.reason());
     }
     let output = transport?;
     if output.interrupted_by.is_some() {
@@ -343,9 +350,9 @@ fn validate_input_uat_paths(command: &InputUatCommand) -> Result<()> {
 fn validate_plan(bytes: &[u8]) -> Result<()> {
     let plan = std::str::from_utf8(bytes).context("input_uat=blocked reason=plan_invalid")?;
     for marker in [
-        "- Run ID: `20260816T093555Z-UI-003`",
+        "- Run ID: `20260816T102741Z-UI-003`",
         "- Parity row: `UI-003`",
-        "`attempt-001` is the only authorized effectful attempt",
+        "`attempt-002` is the sole effectful attempt",
     ] {
         if plan.matches(marker).count() != 1 {
             bail!("input_uat=blocked reason=plan_contract_mismatch");
