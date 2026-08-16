@@ -1061,6 +1061,40 @@ categories. Physical button observation, exact LVGL event timing, self-test
 cancellation, live configuration-AP toggling, and all hardware behavior remain
 below verified, so this implemented task remains active rather than archived.
 
+Verification continuation (2026-08-16):
+
+- [ ] Add a typed integrated exact-package input UAT with a fresh protected
+      private root, transcript-free serial reducer, durable live checkpoint,
+      aggregate public projection, independent validator, and focused tests.
+- [ ] Commit and push the implementation, run the sole authorized
+      `attempt-001`, and admit exactly one post-checkpoint physical short click
+      routed to screen advance.
+- [ ] Run every mandatory gate, promote only UI-003 if the complete quorum
+      validates, then record the result and archive this task atomically.
+
+Continuation plan:
+`docs/parity/work-plans/20260816T093555Z-UI-003/PLAN.md`
+
+Continuation authorization: the original software-only authorization remains
+historical for the implementation phase. After the continuation implementation
+is clean, verified, committed, and pushed, standing authorization permits the
+three exact commands in the continuation plan: package, detector, and one
+integrated exact-package `input-uat` attempt at
+`scratch/ui003-input/attempt-001`. The sole human effect is one brief press and
+release of the provided BOOT button after a live ready checkpoint. Long press,
+configuration-AP toggle, self-test, credentials, network access, mining,
+voltage/frequency/fan/thermal/power/ASIC control, OTA, recovery, direct UART,
+pins, and physical electrical manipulation remain prohibited.
+
+Continuation evidence, recovery, retry, and stop: the public projection is
+aggregate-only and must exclude serial text, port/USB/network/process identity,
+credentials, private paths, and device-private values. `Ctrl-C` or refusal
+releases USB ownership and withholds positive evidence. `attempt-001` is the
+only authorized effectful run; any retry requires verified new information and
+a new immutable plan. Stop on detector, identity, package, flash, startup,
+input-owner, checkpoint, marker, cleanup, validator, redaction, or projection
+failure, or on successful verified projection.
+
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
 - [x] Add a typed private-first `/api/theme` capture that binds the exact
