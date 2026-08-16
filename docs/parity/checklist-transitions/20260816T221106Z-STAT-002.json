@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260816T221106Z-STAT-002",
+  "predecessor_sha256": "bae3471dfc78cd474c4f7baf783223d808d65b63a3e4d91ddee306cc51f9d131",
+  "result_sha256": "2372d9965ddace3bbefb3f8d907ed44f2badd27d1c197484e38e05b76ef7014f",
+  "row_id": "STAT-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260816T221106Z-STAT-002/PLAN.md",
+  "plan_sha256": "7eeeededa3d7a6f671fe00eb6e2b0cbd2fd86d5516fc865d041191182029c631",
+  "result_path": "docs/parity/work-plans/20260816T221106Z-STAT-002/RESULT.md",
+  "result_document_sha256": "1a6e396bcc3ed657a0b32ac64e1151730acc79f27fef87f62601e2da202f8c7b",
+  "before_rust_owned_target": "`crates/bitaxe-api/src/statistics.rs`, `crates/bitaxe-api/src/statistics/history.rs`, `firmware/bitaxe/src/statistics_runtime.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`, `firmware/bitaxe/src/settings_adapter.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/statistics.rs`, `crates/bitaxe-api/src/statistics/history.rs`, `firmware/bitaxe/src/statistics_runtime.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`, `firmware/bitaxe/src/settings_adapter.rs`, `tools/automation/src/statistics-history-evidence.ts`, `crates/bitaxe-automation-contracts/src/statistics_history_evidence.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow,api-compare",
+  "after_evidence": "unit,workflow,api-compare,hardware-smoke",
+  "before_notes": "The commit-bound result at docs/parity/work-plans/20260804T211000Z-STAT-002/RESULT.md proves the bounded 720-sample history, exact reference eviction, confirmed-setting lookup, one-second sole producer, typed runtime projection, and request-time read-only ownership. Live cadence, hardware telemetry accuracy, long-duration retention, device API, browser UI, mining, safety controls, and release claims remain separate.",
+  "after_notes": "The typed result at docs/parity/work-plans/20260816T221106Z-STAT-002/RESULT.md and closed projection at docs/parity/evidence/stat002-statistics-history/statistics-history-projection.json bind exact package 0fe0c9aa, one detector-admitted Ultra 205, passive safe state, one statsFrequency-only mutation, confirmed readback, four finite exact-width samples at three exact 1,000 ms intervals, no_request_time_fabrication, stable immediate repeat, later producer growth, exact restoration, cleanup, and redaction_status: passed. Historical Phase 26 evidence remains at docs/parity/evidence/phase-26-telemetry-and-parity-closure/summary.md with exact_non_claims. Telemetry accuracy, browser charts, mining, controls, updates, other boards, release readiness, and live full-horizon retention remain separate."
+}

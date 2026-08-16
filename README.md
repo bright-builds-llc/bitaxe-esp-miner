@@ -16,7 +16,7 @@
 
 ## Parity progress
 
-**Parity: 74 of 94 active checklist items verified (78.7%).**
+**Parity: 75 of 94 active checklist items verified (79.8%).**
 
 See the [parity checklist](docs/parity/checklist.md) and [progress history](docs/parity/progress.jsonl).
 

@@ -23,3 +23,24 @@
 - Blocker or next safe action: Commit and push the exact source, rebuild the
   exact clean package, then run the one conditional detector/attempt-003
   sequence.
+
+## 2026-08-16T23:10:00Z | attempt-003 verified
+
+- Source commit: `0fe0c9aa81e3b604b6262c22f74a5e657b28596b`.
+- Actions: Built the exact clean pushed package, admitted one Ultra 205, and ran
+  the sole detector-gated attempt-003. The operation completed beyond the old
+  420-second boundary under the 900-second owner without recovery.
+- Verification: The independent Rust validator accepted the aggregate-only
+  projection. Exact source/reference/plan/package identity, passive safe state,
+  one-field mutation, enabled readback, four finite exact-width samples, three
+  exact 1,000-millisecond intervals, repeat stability, producer growth, exact
+  restoration, cleanup, owner-only modes, and redaction pass.
+- Evidence: `docs/parity/evidence/stat002-statistics-history/statistics-history-projection.json`
+  and `RESULT.md`. Private device, network, credential, settings, raw statistics,
+  process, and trace data remain only in ignored owner-protected storage.
+- Outcome: Typed transition `20260816T221106Z-STAT-002` promotes `STAT-002` to
+  `verified`; progress synchronization reports 75 of 94 active rows verified
+  (79.8%). The completed task record was moved to `TASKS.archive.md`.
+- Residual risks: Telemetry accuracy, browser charts, live full-horizon
+  retention, mining, ASIC work, hardware control, updates, recovery behavior,
+  other boards, and release readiness remain separate.

@@ -1,0 +1,41 @@
+{
+  "schema_version": "bitaxe-statistics-history-evidence-v1",
+  "board": 205,
+  "source_commit": "0fe0c9aa81e3b604b6262c22f74a5e657b28596b",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "package_manifest_sha256": "012d4e0608e2e387df87f6ee256a7eb2dec96bd294ef80e23d5498b8f9188ab0",
+  "plan_sha256": "7eeeededa3d7a6f671fe00eb6e2b0cbd2fd86d5516fc865d041191182029c631",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "capture-statistics-history-evidence",
+    "request_sha256": "3b061354d611c59ea3044ac8b4e254ad952b43998fefad79b62be9a3e0ff66b5"
+  },
+  "detector_admitted": true,
+  "boot_observed": true,
+  "same_origin_observed": true,
+  "statistics_history": {
+    "original_setting_sha256": "5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9",
+    "enabled_setting_sha256": "6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b",
+    "mutation_request_field_count": 1,
+    "enabled_readback_confirmed": true,
+    "label_count": 19,
+    "row_width": 19,
+    "sample_count": 4,
+    "interval_count": 3,
+    "minimum_interval_ms": 1000,
+    "maximum_interval_ms": 1000,
+    "timestamps_strictly_increasing": true,
+    "finite_numeric_rows": true,
+    "immediate_repeat_unchanged": true,
+    "later_producer_growth": true,
+    "restoration_complete": true,
+    "zero_setting_clear_status": "observed"
+  },
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "recovery_flash_used": false,
+  "recovery_origin_readmitted": false,
+  "private_modes_valid": true,
+  "cleanup_complete": true,
+  "redaction_status": "passed"
+}
