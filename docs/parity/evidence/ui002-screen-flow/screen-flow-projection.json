@@ -1,0 +1,52 @@
+{
+  "schema_version": "bitaxe-screen-flow-evidence-v1",
+  "board": 205,
+  "attempt_source_commit": "522d5abda3af659a45691c2d4a7c03712573fb80",
+  "current_source_commit": "7c5ddac733242acb20e6cd09b977c3b55b9844bf",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "project-screen-flow-evidence",
+    "request_sha256": "fd752deb879395245f5124a300c3b2a1daa533af469ee0e43b623d63efbd1888"
+  },
+  "source": {
+    "display_uat_projection_sha256": "a863fc0034f105c85ae3007cd45a532035bfd6e061dbbf1a915282a5cfa3314f",
+    "command_effects_projection_sha256": "216420e0a9d93cbbacced7415be0a234ed13c0d895dcb20eb1ff295ff434a8a3",
+    "source_task_sha256": "aa6cfcd43579c2ef6e57bd1d2477aa9f4b6be7505863389d74016a2778e4897f",
+    "plan_sha256": "b1317b895b5c39208713c150089a68e276d0264be8bdd60c4da4f43f512ddecb",
+    "source_semantics_admitted": true,
+    "reference_semantics_admitted": true
+  },
+  "screen_flow": {
+    "identify_request_count": 1,
+    "machine_render_confirmed": true,
+    "machine_clear_confirmed": true,
+    "operator_render_confirmed": true,
+    "operator_clear_confirmed": true,
+    "priority_page_count": 6,
+    "intro_page_count": 2,
+    "carousel_page_count": 4,
+    "screen_update_ms": 500,
+    "intro_delay_ms": 3000,
+    "carousel_delay_ms": 10000,
+    "notification_mask_count": 8,
+    "paused_notification_admitted": true,
+    "identify_override_admitted": true,
+    "new_block_statistics_pin_admitted": true,
+    "bounded_private_frame_admitted": true,
+    "side_effect_free_projection_admitted": true,
+    "retained_screen_owner": true,
+    "change_only_rendering": true,
+    "priority_power_visibility_admitted": true,
+    "display_failure_isolated": true,
+    "compatible_path_count": 5
+  },
+  "build_identity_matches": true,
+  "usb_admission_confirmed": true,
+  "safe_stop_confirmed": true,
+  "cleanup_complete": true,
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "hardware_rerun_used": false,
+  "redaction_status": "passed"
+}

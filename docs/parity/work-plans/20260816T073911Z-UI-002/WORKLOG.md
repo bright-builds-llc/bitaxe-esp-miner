@@ -26,3 +26,12 @@
 - Evidence: UI-002 remains `implemented`; no public projection or candidate exists before the implementation commit.
 - Outcome: Implementation is ready for the required clean synchronized commit.
 - Blocker or next safe action: Commit and push this checkpoint, then run the exact projector once.
+
+## 2026-08-16T08:08:37Z | accepted projection
+
+- Source commit: `7c5ddac733242acb20e6cd09b977c3b55b9844bf`
+- Actions: Ran the exact authorized projector once from the clean synchronized implementation commit and independently validated the atomically published document.
+- Verification: The validator accepted; mode is `0644`; no candidate survives; the corrected sensitive-field denylist is empty. The first broad text search matched only safe schema labels (`bounded_private_frame_admitted`, `compatible_path_count`, and `usb_admission_confirmed`) and did not indicate leaked values.
+- Evidence: `docs/parity/evidence/ui002-screen-flow/screen-flow-projection.json`, SHA-256 `86a9887ebac787297ff76dacbaaf56715c88584647c425268b9e76d87aa5b5fe`.
+- Outcome: Complete accepted UI-002 quorum supports `verified` with `unit,workflow,hardware-smoke`.
+- Blocker or next safe action: Commit and push the projection/result checkpoint, then perform the single-row transition and immediate progress sync.
