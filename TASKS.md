@@ -1254,7 +1254,7 @@ Cooperative watchdog-progress correction plan:
 - [x] Prove a progressing multi-event cascade remains feedable and a single
       unfinished effect is not masked, with production-shaped ownership and
       configured-timeout regressions.
-- [ ] Run all focused, firmware-package, privacy, reference, parity-invariance,
+- [x] Run all focused, firmware-package, privacy, reference, parity-invariance,
       immutable-plan, and mandatory repository gates; commit and push a
       software-only closure without a checklist transition or hardware access.
 
@@ -1266,6 +1266,23 @@ actuate, update, erase, inject faults, manipulate power, use direct UART, or
 touch electrical interfaces. Attempt-008 remains consumed; this plan does not
 authorize attempt-009. STAT-001 remains `implemented` until a separately
 authorized exact-package hardware campaign proves the full quorum.
+
+Completion review: pushed source
+`f5f1be9b4614c155df96aaa78a2271c60065f84f` makes recurring task-watchdog
+feeds track completed production-owner event/effect progress without weakening
+the compiled timeout or masking an unfinished effect. Focused regressions, the
+exact firmware package, all mandatory repository gates, privacy, reference,
+parity invariance, plan immutability, and diff review pass. No hardware,
+detector, credentials, protected attempt evidence, or public projection was
+accessed; STAT-001 remains `implemented` with unchanged checklist and progress
+history. See
+`docs/parity/work-plans/20260816T225404Z-STAT-001/CLOSURE.md`.
+
+Residual risk and next safe action: software cannot prove live watchdog
+freshness or the twenty-window hashrate quorum. A fresh immutable plan must
+bind the pushed correction to an exact board-205 package and authorize a new
+attempt-009 contract before hardware use; attempts 007 and 008 remain
+consumed.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 

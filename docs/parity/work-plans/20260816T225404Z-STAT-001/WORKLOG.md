@@ -50,3 +50,19 @@
 - Blocker or next safe action: Commit and push this implementation as the
   source commit, then write a non-promotion closure. A fresh immutable plan is
   required before any attempt-009 hardware work.
+
+## 2026-08-16 | software closure
+
+- Implementation commit: `f5f1be9b4614c155df96aaa78a2271c60065f84f`.
+- Actions: Pushed the cooperative-progress correction, preserved the immutable
+  plan hash, and recorded a non-promotion closure.
+- Verification: The implementation commit contains the pure driver, focused
+  regressions, production/source ownership guards, task progress, and this
+  worklog's implementation checkpoint. Checklist fields and progress history
+  remain unchanged.
+- Outcome: Plan closed as blocked on fresh accepted hardware evidence;
+  verification is not claimed and STAT-001 remains `implemented`.
+- Blocker or next safe action: A new immutable plan may authorize exactly one
+  attempt-009 only after binding this pushed source to an exact board-205
+  package and restating the complete safety, privacy, recovery, retry, stop,
+  evidence, and promotion contract.
