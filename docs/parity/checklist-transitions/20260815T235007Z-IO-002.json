@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260815T235007Z-IO-002",
+  "predecessor_sha256": "18568a6782511401eb2386ba016e155ccb45e6ba36ccf88c3bae67d6df82e2c0",
+  "result_sha256": "c9e3c2f331155cd38fe6d966262841b223238daabef508d421700aa3ee58a58d",
+  "row_id": "IO-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260815T232350Z-IO-002/PLAN.md",
+  "plan_sha256": "e5ead48de42d7876cf37770ec751d90aa78ef389bf6419f3bb1a8da7e04663ed",
+  "result_path": "docs/parity/work-plans/20260815T232350Z-IO-002/RESULT.md",
+  "result_document_sha256": "9eaf6b3ab839ce8f2ea1a6d0c97c7de50b8d8e9a572ddba76db7034dd3828092",
+  "before_rust_owned_target": "`crates/bitaxe-safety/src/core_voltage_acquisition.rs`, `firmware/bitaxe/src/safety_adapter/adc.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`, `crates/bitaxe-api`",
+  "after_rust_owned_target": "`crates/bitaxe-safety/src/core_voltage_acquisition.rs`, `firmware/bitaxe/src/safety_adapter/adc.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`, `crates/bitaxe-api`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,hardware-smoke",
+  "before_notes": "Hardware adapter.",
+  "after_notes": "The typed attempt-004 result at [RESULT.md](work-plans/20260815T232350Z-IO-002/RESULT.md) and [ADC projection](evidence/io002-adc/adc-observation-projection.json) bind exact clean package 166d1e9f, one detector-admitted Ultra 205, unique production and pinned-reference source semantics, ADC unit 1/channel 1/GPIO 2, 12 dB attenuation, default resolution, curve calibration, 500 ms cadence, fresh finite nonnegative integer-millivolt HTTP/WebSocket observations, disabled mining and hardware control, cleanup, and redaction. Energized-rail accuracy, external calibration, induced failures, voltage actuation, load or soak behavior, other boards, and release readiness remain non-claims."
+}

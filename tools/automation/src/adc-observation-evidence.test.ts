@@ -412,16 +412,19 @@ test("ADC source semantics reject drifted contextual reference initializer", asy
   }
 });
 
-test("checked-in ADC task and plan satisfy the immutable preflight", async () => {
+test("ADC task and plan fixture satisfies the immutable preflight", async () => {
   // Arrange
-  const maybeRunfiles = process.env["RUNFILES_DIR"];
-  const workspaceRoot = maybeRunfiles === undefined ? process.cwd() : path.join(maybeRunfiles, "_main");
+  const value = await fixture("task-contract");
 
-  // Act
-  const result = validateAdcObservationTaskContract(workspaceRoot);
+  try {
+    // Act
+    const result = validateAdcObservationTaskContract(value.root, value.admittedPlanSha256);
 
-  // Assert
-  await assert.doesNotReject(result);
+    // Assert
+    await assert.doesNotReject(result);
+  } finally {
+    await rm(value.root, { recursive: true });
+  }
 });
 
 test("missing ADC schema binding fails before a child process can run", async () => {
