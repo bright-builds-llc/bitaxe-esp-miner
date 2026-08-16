@@ -180,6 +180,17 @@ project-asic-power-initialization-evidence *args:
 project-core-voltage-control-evidence *args:
     bazel run //tools/automation:project_core_voltage_control_evidence -- {{ args }}
 
+project-display-behavior-evidence *args:
+    bazel run //tools/automation:project_display_behavior_evidence -- {{ args }}
+
+validate-display-behavior-evidence projection:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    projection={{ quote(projection) }}
+    test -f "$projection"
+    projection_path="$(/bin/realpath "$projection")"
+    bazel run //crates/bitaxe-automation-contracts:validate_display_behavior_evidence -- "$projection_path"
+
 project-ina260-evidence *args:
     bazel run //tools/automation:project_ina260_evidence -- {{ args }}
 

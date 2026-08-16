@@ -12,6 +12,12 @@ js_library(
     visibility = ["//tools/automation:__pkg__"],
 )
 
+js_library(
+    name = "display_behavior_evidence_source",
+    srcs = ["src/display.rs"],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
 filegroup(
     name = "architecture_model_sources",
     srcs = ["src/confirmed_snapshot.rs"],

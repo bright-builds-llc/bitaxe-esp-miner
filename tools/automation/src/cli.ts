@@ -11,7 +11,6 @@ import { captureHashrateMonitorEvidenceFromInvocation } from "./hashrate-monitor
 import { projectAsicFrequencyTransitionEvidence } from "./asic-frequency-transition-evidence.js";
 import { projectAsicInitializationEvidence } from "./asic-initialization-evidence.js";
 import { projectAsicPowerInitializationEvidence } from "./asic-power-initialization-evidence.js";
-import { projectCoreVoltageControlEvidence } from "./core-voltage-control-evidence.js";
 import { captureEmc2101ThermalEvidence } from "./emc2101-thermal-evidence.js";
 import { captureEmc2101ThermalFaultFromInvocation } from "./emc2101-thermal-fault-command.js";
 import { projectIna260Evidence } from "./ina260-evidence.js";
@@ -55,6 +54,8 @@ import { captureSdkconfigRollbackEvidence } from "./sdkconfig-rollback-evidence.
 import { createLocalProcessPort, type ProcessPort } from "./process.js";
 import { verifySemanticEvidenceRedaction } from "./redaction.js";
 import { captureRuntimeHealthEvidence } from "./runtime-health-evidence.js";
+import { projectCoreVoltageControlEvidenceFromInvocation } from "./sealed-evidence-cli.js";
+import { projectDisplayBehaviorEvidenceFromInvocation } from "./sealed-evidence-cli.js";
 import { captureSettingsPatchEvidence } from "./settings-patch-evidence.js";
 import { captureSystemInfoEvidence } from "./system-info-evidence.js";
 import { typedRequestArguments } from "./typed-request.js";
@@ -222,6 +223,7 @@ async function dispatchProcess(
     case "project-asic-initialization-evidence":
     case "project-asic-power-initialization-evidence":
     case "project-core-voltage-control-evidence":
+    case "project-display-behavior-evidence":
     case "project-ina260-evidence":
     case "project-asic-reset-evidence":
     case "project-asic-frequency-transition-evidence":
@@ -447,10 +449,9 @@ async function main(): Promise<number> {
       }, processPort, "git", toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_initialization_evidence"),
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_power_initialization_evidence"));
     } else if (invocation.command === "project-core-voltage-control-evidence") {
-      publicValue = await projectCoreVoltageControlEvidence(root, {
-        sourceProjection: optionValue(invocation, "--source-projection"), attemptSourceCommit: optionValue(invocation, "--attempt-source-commit"), projection: optionValue(invocation, "--projection"),
-      }, processPort, "git", toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_power_initialization_evidence"),
-      toolProgram(root, "crates/bitaxe-automation-contracts/validate_core_voltage_control_evidence"));
+      publicValue = await projectCoreVoltageControlEvidenceFromInvocation(root, invocation, processPort);
+    } else if (invocation.command === "project-display-behavior-evidence") {
+      publicValue = await projectDisplayBehaviorEvidenceFromInvocation(root, invocation, processPort);
     } else if (invocation.command === "project-ina260-evidence") {
       publicValue = await projectIna260Evidence(root, {
         attemptRoot: optionValue(invocation, "--attempt-root"),

@@ -17,6 +17,7 @@ rust_library(
         "src/adc_observation_evidence.rs",
         "src/adc_observation_input.rs",
         "src/core_voltage_control_evidence.rs",
+        "src/display_behavior_evidence.rs",
         "src/emc2101_thermal_evidence.rs",
         "src/emc2101_thermal_fault_evidence.rs",
         "src/emc2101_thermal_input.rs",
@@ -231,6 +232,17 @@ rust_binary(
     name = "validate_core_voltage_control_evidence",
     srcs = ["src/bin/validate_core_voltage_control_evidence.rs"],
     crate_name = "validate_core_voltage_control_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_display_behavior_evidence",
+    srcs = ["src/bin/validate_display_behavior_evidence.rs"],
+    crate_name = "validate_display_behavior_evidence",
     edition = "2021",
     deps = [
         ":bitaxe_automation_contracts",

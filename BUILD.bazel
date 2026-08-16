@@ -122,3 +122,16 @@ js_library(
     ],
     visibility = ["//tools/automation:__pkg__"],
 )
+
+js_library(
+    name = "display_behavior_evidence_inputs",
+    srcs = [
+        "TASKS.md",
+        "docs/parity/evidence/api009-command-effects/command-effects-projection-attempt-046.json",
+        "docs/parity/evidence/api009-command-effects/display-uat-projection-attempt-005.json",
+        "docs/parity/work-plans/20260816T064239Z-UI-001/PLAN.md",
+        "reference/esp-miner/main/display.c",
+        "reference/esp-miner/main/screen.c",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
