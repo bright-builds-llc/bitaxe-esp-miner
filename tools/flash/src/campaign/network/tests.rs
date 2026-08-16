@@ -7,13 +7,14 @@ use bitaxe_api::{
 };
 use bitaxe_http_transport::WebSocketReadFailureKind;
 
-use super::super::CampaignTerminalCategory;
+use super::super::{CampaignTerminalCategory, MiningCampaignStage};
 use super::command_evidence::CommandEffectsEvidence;
 use super::model::{
     CampaignNetworkEvidence, NetworkAccumulator, NetworkTransport, SharedSerialState,
     TrustedNetworkTarget, REQUIRED_WINDOWS, WINDOW_MILLIS,
 };
 use super::serial::NetworkSerialTracker;
+use super::NetworkObservationMode;
 mod terminal_handoff;
 
 mod startup;
@@ -29,6 +30,33 @@ fn expected() -> ExpectedRuntimeAttestationIdentity {
         reference_commit: REFERENCE.to_owned(),
         app_elf_sha256: APP.to_owned(),
     }
+}
+
+#[test]
+fn campaign_stages_have_one_closed_network_observation_policy() {
+    // Arrange
+    let stages = [
+        MiningCampaignStage::Observation,
+        MiningCampaignStage::JobTransition,
+        MiningCampaignStage::LiveShare,
+        MiningCampaignStage::Soak,
+        MiningCampaignStage::CommandEffects,
+    ];
+
+    // Act
+    let modes = stages.map(NetworkObservationMode::for_stage);
+
+    // Assert
+    assert_eq!(
+        modes,
+        [
+            NetworkObservationMode::NotRequired,
+            NetworkObservationMode::NotRequired,
+            NetworkObservationMode::Continuity,
+            NetworkObservationMode::Continuity,
+            NetworkObservationMode::CommandEffects,
+        ]
+    );
 }
 
 fn target() -> TrustedNetworkTarget {

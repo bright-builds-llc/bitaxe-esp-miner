@@ -856,13 +856,13 @@ separately planned fresh hardware ordinal after that fix is pushed.
 LiveShare network-observer software plan:
 `docs/parity/work-plans/20260816T044527Z-STAT-001/PLAN.md`
 
-- [ ] Centralize campaign-stage network observation in one closed production
+- [x] Centralize campaign-stage network observation in one closed production
       policy so serial admission, worker selection, timeouts, and finish
       semantics cannot drift.
-- [ ] Route conservative `LiveShare` and `Soak` through the existing continuity
+- [x] Route conservative `LiveShare` and `Soak` through the existing continuity
       observer while preserving `CommandEffects` and both `not_required`
       stages exactly.
-- [ ] Add focused stage-mapping and campaign/network regressions, then pass all
+- [x] Add focused stage-mapping and campaign/network regressions, then pass all
       mandatory software, package, privacy, reference, and parity gates.
 - [ ] Commit and push the correction, close the software-only plan without a
       checklist transition, and leave any fresh hardware ordinal to a separate

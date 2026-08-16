@@ -30,11 +30,30 @@ use model::SharedSerialState;
 use observer::observe_network;
 use serial::NetworkSerialTracker;
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum NetworkObservationMode {
+    NotRequired,
+    Continuity,
+    CommandEffects,
+}
+
+impl NetworkObservationMode {
+    const fn for_stage(stage: MiningCampaignStage) -> Self {
+        match stage {
+            MiningCampaignStage::Observation | MiningCampaignStage::JobTransition => {
+                Self::NotRequired
+            }
+            MiningCampaignStage::LiveShare | MiningCampaignStage::Soak => Self::Continuity,
+            MiningCampaignStage::CommandEffects => Self::CommandEffects,
+        }
+    }
+}
+
 pub(crate) struct CampaignNetworkCoordinator {
     tracker: NetworkSerialTracker,
     shared: Arc<Mutex<SharedSerialState>>,
     maybe_worker: Option<JoinHandle<CampaignNetworkEvidence>>,
-    stage: MiningCampaignStage,
+    observation_mode: NetworkObservationMode,
     evidence_root: Utf8PathBuf,
     maybe_target_deadline: Option<Instant>,
 }
@@ -45,22 +64,23 @@ impl CampaignNetworkCoordinator {
         expected: ExpectedRuntimeAttestationIdentity,
         evidence_root: Utf8PathBuf,
     ) -> Self {
+        let observation_mode = NetworkObservationMode::for_stage(admission.stage);
         Self {
             tracker: NetworkSerialTracker::new(expected),
             shared: Arc::new(Mutex::new(SharedSerialState::default())),
             maybe_worker: None,
-            stage: admission.stage,
+            observation_mode,
             evidence_root,
-            maybe_target_deadline: matches!(admission.stage, MiningCampaignStage::CommandEffects)
-                .then(|| Instant::now() + Duration::from_secs(admission.duration_seconds)),
+            maybe_target_deadline: matches!(
+                observation_mode,
+                NetworkObservationMode::CommandEffects
+            )
+            .then(|| Instant::now() + Duration::from_secs(admission.duration_seconds)),
         }
     }
 
     pub(crate) fn observe_serial_chunk(&mut self, bytes: &[u8]) {
-        if !matches!(
-            self.stage,
-            MiningCampaignStage::Soak | MiningCampaignStage::CommandEffects
-        ) {
+        if self.observation_mode == NetworkObservationMode::NotRequired {
             return;
         }
         self.tracker.observe(bytes, &self.shared);
@@ -71,21 +91,21 @@ impl CampaignNetworkCoordinator {
             return;
         };
         let shared = Arc::clone(&self.shared);
-        let stage = self.stage;
+        let observation_mode = self.observation_mode;
         let evidence_root = self.evidence_root.clone();
-        self.maybe_worker = Some(std::thread::spawn(move || match stage {
-            MiningCampaignStage::Soak => observe_network(target, shared),
-            MiningCampaignStage::CommandEffects => {
+        self.maybe_worker = Some(std::thread::spawn(move || match observation_mode {
+            NetworkObservationMode::Continuity => observe_network(target, shared),
+            NetworkObservationMode::CommandEffects => {
                 observe_command_effects(target, shared, &evidence_root)
             }
-            _ => CampaignNetworkEvidence::not_required(),
+            NetworkObservationMode::NotRequired => CampaignNetworkEvidence::not_required(),
         }));
     }
 
     pub(crate) fn should_stop(&self) -> bool {
         self.shared.lock().map_or(true, |mut state| {
             if self.maybe_worker.is_none()
-                && matches!(self.stage, MiningCampaignStage::CommandEffects)
+                && self.observation_mode == NetworkObservationMode::CommandEffects
                 && (state.maybe_failure.is_some()
                     || self
                         .maybe_target_deadline
@@ -101,10 +121,7 @@ impl CampaignNetworkCoordinator {
     }
 
     pub(crate) fn finish(mut self, serial: &CampaignSerialCapture) -> CampaignNetworkEvidence {
-        if !matches!(
-            self.stage,
-            MiningCampaignStage::Soak | MiningCampaignStage::CommandEffects
-        ) {
+        if self.observation_mode == NetworkObservationMode::NotRequired {
             return CampaignNetworkEvidence::not_required();
         }
         self.tracker.finish(&self.shared);
