@@ -1034,10 +1034,10 @@ attempt-007 is authorized.
 Watchdog-classifier diagnosis plan:
 `docs/parity/work-plans/20260816T180839Z-STAT-001/PLAN.md`
 
-- [ ] Map every closed runtime-health watchdog reason before the generic
+- [x] Map every closed runtime-health watchdog reason before the generic
       participation-consistency guard, preserving earliest-failure precedence
       and value-free public labels.
-- [ ] Rotate the sealed network and campaign-result schemas and update every
+- [x] Rotate the sealed network and campaign-result schemas and update every
       producer, consumer, wrapper gate, fixture, and production-shaped
       regression for the complete vocabulary.
 - [ ] Pass every focused and mandatory software, firmware, package, privacy,

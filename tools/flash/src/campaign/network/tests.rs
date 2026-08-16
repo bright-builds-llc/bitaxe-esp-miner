@@ -565,7 +565,7 @@ fn network_evidence_serialization_contains_only_closed_aggregates() {
     ] {
         assert!(!encoded.contains(prohibited));
     }
-    assert!(encoded.contains("mining-campaign-network-continuity-v5"));
+    assert!(encoded.contains("mining-campaign-network-continuity-v6"));
     assert!(encoded.contains("http_startup_transition_count"));
     assert!(encoded.contains("websocket_startup_transition_count"));
     assert!(encoded.contains("http_initial_active_observed"));

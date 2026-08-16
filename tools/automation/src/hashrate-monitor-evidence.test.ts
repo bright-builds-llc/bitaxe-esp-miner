@@ -62,7 +62,7 @@ const sourceDocuments = new Map<string, string>([
 ]);
 
 const okResult = {
-  schema: "mining-campaign-result-v11",
+  schema: "mining-campaign-result-v12",
   status: "accepted",
   terminal_category: "submit_response_observed",
   stage: "live-share",
@@ -217,7 +217,7 @@ if (args[0] === "mining-campaign") {
   await mkdir(root, { recursive: true, mode: 0o700 });
   await chmod(root, 0o700);
   const transport = { active_sample_count: 3, positive_coherent_count: 3, distinct_positive_count: 2, warm_rolling_window_count: 2, terminal_zero_confirmed: true };
-  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v5", status: "accepted", watchdog_failure: "none", required_window_count: 20, covered_window_count: 20, hashrate_monitor: { monitor_cadence_ms: 1000, asic_count: 1, domain_count: 4, http: transport, websocket: ${options.malformedTransport === true ? "{ ...transport, distinct_positive_count: 1 }" : "transport"} } }) + "\\n";
+  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v6", status: "accepted", watchdog_failure: "none", required_window_count: 20, covered_window_count: 20, hashrate_monitor: { monitor_cadence_ms: 1000, asic_count: 1, domain_count: 4, http: transport, websocket: ${options.malformedTransport === true ? "{ ...transport, distinct_positive_count: 1 }" : "transport"} } }) + "\\n";
   const result = JSON.stringify(${options.sealedFailure === true
     ? JSON.stringify(failureResult)
     : `{ ...${JSON.stringify(okResult)}, network_continuity_sha256: digest(network) }`}) + "\\n";
@@ -386,8 +386,15 @@ test("every sealed watchdog failure publishes only its closed earliest discrimin
     "supervisor_unavailable",
     "checkpoint_unhealthy",
     "checkpoint_sequence_missing",
-    "watchdog_not_participating",
-    "watchdog_feed_reason_not_fresh",
+    "watchdog_reason_missing",
+    "watchdog_unproved",
+    "watchdog_invalid_observation",
+    "watchdog_subscription_failed",
+    "watchdog_feed_failed",
+    "watchdog_unsubscription_failed",
+    "watchdog_unsubscribed",
+    "watchdog_reason_unknown",
+    "watchdog_participation_inconsistent",
     "watchdog_feed_sequence_missing",
     "watchdog_feed_age_missing",
     "watchdog_feed_stale",

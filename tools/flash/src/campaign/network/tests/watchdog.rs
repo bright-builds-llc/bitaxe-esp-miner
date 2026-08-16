@@ -49,7 +49,68 @@ fn stale_watchdog_sample_is_rejected_before_window_credit() {
 }
 
 #[test]
-fn every_watchdog_sample_predicate_has_one_closed_value_free_failure() {
+fn evaluator_watchdog_reasons_keep_one_production_shaped_failure() {
+    // Arrange
+    let cases = [
+        (None, "unavailable", WatchdogFailure::WatchdogReasonMissing),
+        (
+            Some("unproved"),
+            "unavailable",
+            WatchdogFailure::WatchdogUnproved,
+        ),
+        (
+            Some("invalid_observation"),
+            "not_participating",
+            WatchdogFailure::WatchdogInvalidObservation,
+        ),
+        (
+            Some("subscription_failed"),
+            "not_participating",
+            WatchdogFailure::WatchdogSubscriptionFailed,
+        ),
+        (
+            Some("feed_failed"),
+            "not_participating",
+            WatchdogFailure::WatchdogFeedFailed,
+        ),
+        (
+            Some("unsubscription_failed"),
+            "not_participating",
+            WatchdogFailure::WatchdogUnsubscriptionFailed,
+        ),
+        (
+            Some("unsubscribed"),
+            "not_participating",
+            WatchdogFailure::WatchdogUnsubscribed,
+        ),
+        (
+            Some("feed_stale"),
+            "not_participating",
+            WatchdogFailure::WatchdogFeedStale,
+        ),
+        (
+            Some("future_reason"),
+            "not_participating",
+            WatchdogFailure::WatchdogReasonUnknown,
+        ),
+        (
+            Some("feed_fresh"),
+            "not_participating",
+            WatchdogFailure::WatchdogParticipationInconsistent,
+        ),
+    ];
+
+    // Act / Assert
+    for (maybe_reason, participation, expected) in cases {
+        let mut sample = active_sample(1, 1);
+        sample.runtime_health.maybe_task_watchdog_reason = maybe_reason.map(str::to_owned);
+        sample.runtime_health.task_watchdog_participation = participation.to_owned();
+        assert_eq!(sample_failure(&sample), expected);
+    }
+}
+
+#[test]
+fn every_remaining_watchdog_sample_predicate_has_one_closed_failure() {
     // Arrange
     let mut cases = Vec::new();
     let mut sample = active_sample(1, 1);
@@ -61,12 +122,6 @@ fn every_watchdog_sample_predicate_has_one_closed_value_free_failure() {
     let mut sample = active_sample(1, 1);
     sample.runtime_health.maybe_checkpoint_sequence = None;
     cases.push((WatchdogFailure::CheckpointSequenceMissing, sample));
-    let mut sample = active_sample(1, 1);
-    sample.runtime_health.task_watchdog_participation = "not_participating".to_owned();
-    cases.push((WatchdogFailure::WatchdogNotParticipating, sample));
-    let mut sample = active_sample(1, 1);
-    sample.runtime_health.maybe_task_watchdog_reason = Some("not_fed".to_owned());
-    cases.push((WatchdogFailure::WatchdogFeedReasonNotFresh, sample));
     let mut sample = active_sample(1, 1);
     sample.runtime_health.maybe_task_watchdog_feed_sequence = None;
     cases.push((WatchdogFailure::WatchdogFeedSequenceMissing, sample));
@@ -82,6 +137,22 @@ fn every_watchdog_sample_predicate_has_one_closed_value_free_failure() {
         assert_eq!(sample_failure(&sample), expected);
     }
     assert_eq!(sample_failure(&active_sample(1, 1)), WatchdogFailure::None);
+}
+
+#[test]
+fn reason_failure_precedes_participation_and_feed_detail_checks() {
+    // Arrange
+    let mut sample = active_sample(1, 1);
+    sample.runtime_health.task_watchdog_participation = "not_participating".to_owned();
+    sample.runtime_health.maybe_task_watchdog_reason = Some("feed_failed".to_owned());
+    sample.runtime_health.maybe_task_watchdog_feed_sequence = None;
+    sample.runtime_health.maybe_task_watchdog_feed_age_millis = None;
+
+    // Act
+    let failure = sample_failure(&sample);
+
+    // Assert
+    assert_eq!(failure, WatchdogFailure::WatchdogFeedFailed);
 }
 
 #[test]

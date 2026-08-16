@@ -132,7 +132,7 @@ impl CampaignNetworkEvidence {
 
     fn empty(status: &'static str, maybe_failure: Option<CampaignTerminalCategory>) -> Self {
         Self {
-            schema: "mining-campaign-network-continuity-v5",
+            schema: "mining-campaign-network-continuity-v6",
             status,
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count: 0,
@@ -436,7 +436,7 @@ impl NetworkAccumulator {
             && covered_window_count == REQUIRED_WINDOWS
             && serial.terminal_consumed;
         CampaignNetworkEvidence {
-            schema: "mining-campaign-network-continuity-v5",
+            schema: "mining-campaign-network-continuity-v6",
             status: if accepted { "accepted" } else { "failed" },
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count,

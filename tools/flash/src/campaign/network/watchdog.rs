@@ -7,8 +7,15 @@ pub(super) enum WatchdogFailure {
     SupervisorUnavailable,
     CheckpointUnhealthy,
     CheckpointSequenceMissing,
-    WatchdogNotParticipating,
-    WatchdogFeedReasonNotFresh,
+    WatchdogReasonMissing,
+    WatchdogUnproved,
+    WatchdogInvalidObservation,
+    WatchdogSubscriptionFailed,
+    WatchdogFeedFailed,
+    WatchdogUnsubscriptionFailed,
+    WatchdogUnsubscribed,
+    WatchdogReasonUnknown,
+    WatchdogParticipationInconsistent,
     WatchdogFeedSequenceMissing,
     WatchdogFeedAgeMissing,
     WatchdogFeedStale,
@@ -25,8 +32,15 @@ impl WatchdogFailure {
             Self::SupervisorUnavailable => "supervisor_unavailable",
             Self::CheckpointUnhealthy => "checkpoint_unhealthy",
             Self::CheckpointSequenceMissing => "checkpoint_sequence_missing",
-            Self::WatchdogNotParticipating => "watchdog_not_participating",
-            Self::WatchdogFeedReasonNotFresh => "watchdog_feed_reason_not_fresh",
+            Self::WatchdogReasonMissing => "watchdog_reason_missing",
+            Self::WatchdogUnproved => "watchdog_unproved",
+            Self::WatchdogInvalidObservation => "watchdog_invalid_observation",
+            Self::WatchdogSubscriptionFailed => "watchdog_subscription_failed",
+            Self::WatchdogFeedFailed => "watchdog_feed_failed",
+            Self::WatchdogUnsubscriptionFailed => "watchdog_unsubscription_failed",
+            Self::WatchdogUnsubscribed => "watchdog_unsubscribed",
+            Self::WatchdogReasonUnknown => "watchdog_reason_unknown",
+            Self::WatchdogParticipationInconsistent => "watchdog_participation_inconsistent",
             Self::WatchdogFeedSequenceMissing => "watchdog_feed_sequence_missing",
             Self::WatchdogFeedAgeMissing => "watchdog_feed_age_missing",
             Self::WatchdogFeedStale => "watchdog_feed_stale",
@@ -35,6 +49,21 @@ impl WatchdogFailure {
             Self::WebsocketCheckpointNotAdvanced => "websocket_checkpoint_not_advanced",
             Self::WebsocketFeedNotAdvanced => "websocket_feed_not_advanced",
         }
+    }
+}
+
+fn reason_failure(maybe_reason: Option<&str>) -> WatchdogFailure {
+    match maybe_reason {
+        None => WatchdogFailure::WatchdogReasonMissing,
+        Some("unproved") => WatchdogFailure::WatchdogUnproved,
+        Some("invalid_observation") => WatchdogFailure::WatchdogInvalidObservation,
+        Some("subscription_failed") => WatchdogFailure::WatchdogSubscriptionFailed,
+        Some("feed_failed") => WatchdogFailure::WatchdogFeedFailed,
+        Some("unsubscription_failed") => WatchdogFailure::WatchdogUnsubscriptionFailed,
+        Some("unsubscribed") => WatchdogFailure::WatchdogUnsubscribed,
+        Some("feed_stale") => WatchdogFailure::WatchdogFeedStale,
+        Some("feed_fresh") => WatchdogFailure::None,
+        Some(_) => WatchdogFailure::WatchdogReasonUnknown,
     }
 }
 
@@ -49,11 +78,12 @@ pub(super) fn sample_failure(sample: &SystemInfoWire) -> WatchdogFailure {
     if health.maybe_checkpoint_sequence.is_none() {
         return WatchdogFailure::CheckpointSequenceMissing;
     }
-    if health.task_watchdog_participation != "participating" {
-        return WatchdogFailure::WatchdogNotParticipating;
+    let watchdog_failure = reason_failure(health.maybe_task_watchdog_reason.as_deref());
+    if watchdog_failure != WatchdogFailure::None {
+        return watchdog_failure;
     }
-    if health.maybe_task_watchdog_reason.as_deref() != Some("feed_fresh") {
-        return WatchdogFailure::WatchdogFeedReasonNotFresh;
+    if health.task_watchdog_participation != "participating" {
+        return WatchdogFailure::WatchdogParticipationInconsistent;
     }
     if health.maybe_task_watchdog_feed_sequence.is_none() {
         return WatchdogFailure::WatchdogFeedSequenceMissing;
@@ -107,12 +137,34 @@ mod tests {
                 "checkpoint_sequence_missing",
             ),
             (
-                WatchdogFailure::WatchdogNotParticipating,
-                "watchdog_not_participating",
+                WatchdogFailure::WatchdogReasonMissing,
+                "watchdog_reason_missing",
+            ),
+            (WatchdogFailure::WatchdogUnproved, "watchdog_unproved"),
+            (
+                WatchdogFailure::WatchdogInvalidObservation,
+                "watchdog_invalid_observation",
             ),
             (
-                WatchdogFailure::WatchdogFeedReasonNotFresh,
-                "watchdog_feed_reason_not_fresh",
+                WatchdogFailure::WatchdogSubscriptionFailed,
+                "watchdog_subscription_failed",
+            ),
+            (WatchdogFailure::WatchdogFeedFailed, "watchdog_feed_failed"),
+            (
+                WatchdogFailure::WatchdogUnsubscriptionFailed,
+                "watchdog_unsubscription_failed",
+            ),
+            (
+                WatchdogFailure::WatchdogUnsubscribed,
+                "watchdog_unsubscribed",
+            ),
+            (
+                WatchdogFailure::WatchdogReasonUnknown,
+                "watchdog_reason_unknown",
+            ),
+            (
+                WatchdogFailure::WatchdogParticipationInconsistent,
+                "watchdog_participation_inconsistent",
             ),
             (
                 WatchdogFailure::WatchdogFeedSequenceMissing,

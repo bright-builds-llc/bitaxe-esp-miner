@@ -76,8 +76,15 @@ const watchdogFailures = [
   "supervisor_unavailable",
   "checkpoint_unhealthy",
   "checkpoint_sequence_missing",
-  "watchdog_not_participating",
-  "watchdog_feed_reason_not_fresh",
+  "watchdog_reason_missing",
+  "watchdog_unproved",
+  "watchdog_invalid_observation",
+  "watchdog_subscription_failed",
+  "watchdog_feed_failed",
+  "watchdog_unsubscription_failed",
+  "watchdog_unsubscribed",
+  "watchdog_reason_unknown",
+  "watchdog_participation_inconsistent",
   "watchdog_feed_sequence_missing",
   "watchdog_feed_age_missing",
   "watchdog_feed_stale",
@@ -322,7 +329,7 @@ async function sealedCampaignFailureDiagnostic(
     const result = await readJson(resultPath, "campaign result");
     const seal = (await readFile(sealPath, "utf8")).trim();
     if (seal !== sha256(result.document)
-      || requiredString(result.value, "schema", "campaign result") !== "mining-campaign-result-v11"
+      || requiredString(result.value, "schema", "campaign result") !== "mining-campaign-result-v12"
       || requiredString(result.value, "status", "campaign result") !== "failed") {
       return undefined;
     }
@@ -469,7 +476,7 @@ export async function captureHashrateMonitorEvidence(
     }
     const parseDiagnostic = runtimeAttestationParseDiagnostic(resultFile.value);
     const resultWatchdogFailure = watchdogFailure(resultFile.value);
-    if (requiredString(resultFile.value, "schema", "campaign result") !== "mining-campaign-result-v11"
+    if (requiredString(resultFile.value, "schema", "campaign result") !== "mining-campaign-result-v12"
       || requiredString(resultFile.value, "status", "campaign result") !== "accepted"
       || requiredString(resultFile.value, "stage", "campaign result") !== "live-share"
       || requiredString(resultFile.value, "profile", "campaign result") !== "conservative"
@@ -481,7 +488,7 @@ export async function captureHashrateMonitorEvidence(
       || Object.values(parseDiagnostic.runtime_attestation_parse_failure_counts)
         .some((count) => count !== 0)
       || requiredString(networkFile.value, "schema", "campaign network evidence")
-        !== "mining-campaign-network-continuity-v5"
+        !== "mining-campaign-network-continuity-v6"
       || requiredString(networkFile.value, "status", "campaign network evidence") !== "accepted") {
       throw failure("evidence_invalid", "campaign acceptance boundary is incomplete");
     }
