@@ -1256,6 +1256,9 @@ considered.
 
 Plan: `docs/parity/work-plans/20260804T211000Z-STAT-002/PLAN.md`
 
+Verification continuation:
+`docs/parity/work-plans/20260816T204646Z-STAT-002/PLAN.md`
+
 Authorization: local software, synthetic snapshots, and build work only. No
 hardware attempt, credentials, external service, mining campaign, pool
 connection, frequency/voltage/fan/power effect, OTA, recovery, direct UART, or
@@ -1272,6 +1275,23 @@ Completion review: Implementation commit
 `unit,workflow,api-compare` evidence. The task remains active because live
 cadence, telemetry accuracy, long-duration retention, device API, and browser
 behavior remain below verified.
+
+- [ ] Add and verify a typed private-first statistics-history hardware evidence
+      workflow with exact-package identity and protected publication.
+- [ ] Execute the single detector-gated mining-disabled attempt-001, restore the
+      exact original `statsFrequency`, and independently validate its projection.
+- [ ] Promote only on the complete live cadence/API quorum; otherwise record the
+      earliest blocker and next safe action without a second attempt.
+
+Continuation authorization: one exact-package board-205 factory flash, normal
+USB reset/re-enumeration, ignored Wi-Fi credential seeding, one current-session
+same-origin API transaction, and a temporary one-field `statsFrequency`
+mutation are authorized only under the continuation plan. Exact restoration is
+mandatory, with one bounded same-package recovery flash followed by restoration
+PATCH/readback if the original origin is lost. No mining, pool, ASIC work,
+frequency/voltage/fan/thermal/power control, OTA, erase, fault injection,
+browser, direct UART, pins, physical electrical action, retry or attempt-002 is
+authorized.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
