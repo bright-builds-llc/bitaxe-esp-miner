@@ -11,6 +11,11 @@ filegroup(
 )
 
 filegroup(
+    name = "statistics_history_flash_child_fixture",
+    srcs = ["src/statistics-history-flash-child-fixture.sh"],
+)
+
+filegroup(
     name = "macos_provisioning_association_helper",
     srcs = ["src/macos-provisioning-associate.swift"],
 )
@@ -258,6 +263,7 @@ js_test(
         ":automation_tests_ts",
         ":automation_sources",
         ":macos_provisioning_association_helper",
+        ":statistics_history_flash_child_fixture",
         "//:automation_ci_contract_inputs",
         "//:adc_reference_sources",
         "//:emc2101_reference_sources",

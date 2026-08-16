@@ -56,6 +56,24 @@ type ExpectedEffectIdentity = {
 
 export { StatisticsHistoryEvidenceError } from "./statistics-history-contract.js";
 
+export const flashMonitorCleanupGraceMilliseconds = 60_000;
+
+export function flashMonitorSupervisorLifetimeMilliseconds(
+  childTimeoutMilliseconds: number,
+  cleanupGraceMilliseconds = flashMonitorCleanupGraceMilliseconds,
+): number {
+  if (!Number.isSafeInteger(childTimeoutMilliseconds) || childTimeoutMilliseconds <= 0
+    || !Number.isSafeInteger(cleanupGraceMilliseconds) || cleanupGraceMilliseconds <= 0) {
+    throw failure("evidence_invalid", "flash-monitor supervisor lifetime is invalid");
+  }
+  const supervisorLifetimeMilliseconds = childTimeoutMilliseconds + cleanupGraceMilliseconds;
+  if (!Number.isSafeInteger(supervisorLifetimeMilliseconds)
+    || supervisorLifetimeMilliseconds <= childTimeoutMilliseconds) {
+    throw failure("evidence_invalid", "flash-monitor supervisor lifetime is not strictly later");
+  }
+  return supervisorLifetimeMilliseconds;
+}
+
 function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
@@ -181,7 +199,10 @@ async function completedFlashMonitor(
   );
   let outcome: ProcessOutcome;
   try {
-    outcome = await processPort.run(spec, options.captureTimeoutSeconds * 1_000);
+    outcome = await processPort.run(
+      spec,
+      flashMonitorSupervisorLifetimeMilliseconds(options.captureTimeoutSeconds * 1_000),
+    );
   } catch {
     const effect = await inspectFlashEffect(effectPath, expectedEffectIdentity);
     throw failure("process_failed", "exact-package flash-monitor launch failed",

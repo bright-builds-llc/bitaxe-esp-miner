@@ -21,12 +21,12 @@ type FailureCategory = Extract<
   "hardware_blocked" | "evidence_invalid" | "timeout" | "process_failed"
 >;
 
-export const expectedPrivateRoot = "scratch/stat002-statistics-history/attempt-001";
-export const expectedWrapperRoot = "scratch/stat002-statistics-history/wrapper-001";
+export const expectedPrivateRoot = "scratch/stat002-statistics-history/attempt-002";
+export const expectedWrapperRoot = "scratch/stat002-statistics-history/wrapper-002";
 export const expectedProjection =
   "docs/parity/evidence/stat002-statistics-history/statistics-history-projection.json";
 export const expectedPlanSha256 =
-  "02e8d6c4f2d9e5b14853c880f310a0fd5cd641594bb96653bea3c8c8e9add93a";
+  "f4e95d79dd91526596713ee5ac90a535214bc5ce709912d5f712313975a7b509";
 export const expectedReferenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 export const expectedLabels = [
   "hashrate", "hashrate_1m", "hashrate_10m", "hashrate_1h", "errorPercentage",
@@ -40,7 +40,7 @@ export const noRecovery: RecoveryFacts = {
   secondary_recovery_failure: false,
 };
 
-const expectedPlan = "docs/parity/work-plans/20260816T204646Z-STAT-002/PLAN.md";
+const expectedPlan = "docs/parity/work-plans/20260816T213710Z-STAT-002/PLAN.md";
 const activeTask = "task-parity-stat002-statistics-history";
 const sourceFragments = new Map<string, readonly string[]>([
   ["firmware/bitaxe/src/statistics_runtime.rs", [
@@ -187,7 +187,7 @@ export async function validateStatisticsHistoryTaskAndSources(
   const maybeEnd = taskDocument.indexOf("\n### ", start + heading.length);
   const block = taskDocument.slice(start, maybeEnd === -1 ? taskDocument.length : maybeEnd);
   if (start === -1 || taskDocument.indexOf(heading, start + heading.length) !== -1
-    || !block.includes(expectedPlan) || !block.includes("attempt-001")
+    || !block.includes(expectedPlan) || !block.includes("attempt-002")
     || sha256(planDocument) !== admittedPlanSha256
     || !planDocument.includes("- Parity row: `STAT-002`")
     || !planDocument.includes(`- Active task: \`${activeTask}\``)) {

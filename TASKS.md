@@ -1312,10 +1312,10 @@ boundary regression. Attempt-001 must not be retried.
 Attempt-002 correction and verification plan:
 `docs/parity/work-plans/20260816T213710Z-STAT-002/PLAN.md`
 
-- [ ] Give the 360-second flash-monitor child a strictly later bounded
+- [x] Give the 360-second flash-monitor child a strictly later bounded
       supervisor deadline with an explicit 60-second cleanup/result grace,
       covering both initial and recovery children.
-- [ ] Prove the corrected boundary with exact arithmetic, failure-preservation,
+- [x] Prove the corrected boundary with exact arithmetic, failure-preservation,
       and a real spawned child that completes its own timeout cleanup before
       the supervisor can terminate it.
 - [ ] Rebind every closed task/plan/path/invocation source to fresh attempt-002,

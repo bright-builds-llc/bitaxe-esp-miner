@@ -7,10 +7,10 @@ test("statistics history evidence requires the closed detector-gated surface", (
   // Arrange
   const complete = [
     "capture-statistics-history-evidence",
-    "--private-root", "scratch/stat002-statistics-history/attempt-001",
+    "--private-root", "scratch/stat002-statistics-history/attempt-002",
     "--package-manifest", "package.json",
     "--wifi-credentials", "wifi.json",
-    "--detector-output", "scratch/stat002-statistics-history/wrapper-001/detector.stdout",
+    "--detector-output", "scratch/stat002-statistics-history/wrapper-002/detector.stdout",
     "--projection", "docs/evidence/statistics-history.json",
     "--capture-timeout-seconds", "360",
   ];
