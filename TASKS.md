@@ -941,6 +941,26 @@ predicate from HTTP/WebSocket per-window sequence advancement. Attempt-005 is
 consumed, no retry or attempt-006 is authorized, and the next safe action is a
 software-only discriminator plan before any further hardware ordinal.
 
+Watchdog diagnostic-completeness plan:
+`docs/parity/work-plans/20260816T060214Z-STAT-001/PLAN.md`
+
+- [ ] Replace the lossy watchdog boolean diagnosis with one closed,
+      value-free earliest-failure discriminator covering every sample
+      predicate and HTTP/WebSocket checkpoint/feed advancement boundary.
+- [ ] Carry the discriminator through sealed network evidence, campaign-result
+      v11, and the hashrate wrapper's seal- and category-gated failure envelope.
+- [ ] Add exhaustive focused regressions, run every mandatory gate, commit and
+      push, then close without a checklist transition or hardware access.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not read attempt-005
+protected artifacts, credentials, detector output, USB/device/network runtime,
+or private endpoints. Do not detect, flash, monitor, mine, actuate, update,
+erase, inject faults, manipulate physical power, use external UART, touch any
+electrical pin/pad/header/GPIO/probe/jumper/solder/signal interface, create a
+projection, or start attempt-006. Completion preserves STAT-001 as
+`implemented`; a separate future immutable plan is required for hardware.
+
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
 - [x] Add the exact bounded 720-sample history, timestamp admission, configured
