@@ -21,6 +21,8 @@ import "./core-voltage-control-evidence.test.js";
 import "./adc-observation-evidence.test.js";
 import "./ina260-evidence.test.js";
 import "./emc2101-thermal-evidence.test.js";
+import "./hashrate-monitor-evidence.test.js";
+import "./hashrate-monitor-invocation.test.js";
 import "./emc2101-thermal-fault-evidence.test.js";
 import "./asic-result-parsing-evidence.test.js";
 import "./asic-serial-transport-evidence.test.js";

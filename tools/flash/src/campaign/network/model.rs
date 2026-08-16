@@ -8,6 +8,7 @@ use serde::Serialize;
 use super::super::*;
 use super::command_evidence::CommandEffectsEvidence;
 use super::command_witness::CommandTransitionWitness;
+use super::hashrate::{CampaignHashrateEvidence, HashrateObservationPair};
 use super::validation::{
     active_mining_state_valid, advances, regresses, update_gap, validate_active_prerequisites,
     validate_sample, watchdog_valid, window_index, SampleValidationFailure,
@@ -22,7 +23,6 @@ pub(super) const REQUIRED_WINDOWS: usize = 20;
 pub(super) const WINDOW_MILLIS: u64 = 30_000;
 pub(super) const MAX_ACTIVE_MARKER_GAP_MILLIS: u64 = 5_000;
 pub(super) const TERMINAL_NETWORK_DEADLINE_SECONDS: u64 = 10;
-
 #[derive(Clone)]
 pub(super) struct TrustedNetworkTarget {
     pub(super) origin: String,
@@ -37,7 +37,6 @@ pub(super) struct SerialWindowEvidence {
     first_poll_request_count: Option<u64>,
     last_poll_request_count: Option<u64>,
 }
-
 impl SerialWindowEvidence {
     pub(super) fn observe(&mut self, poll_request_count: u64) {
         self.marker_count = self.marker_count.saturating_add(1);
@@ -166,6 +165,7 @@ pub(crate) struct CampaignNetworkEvidence {
     pub(in crate::campaign) terminal_http_valid: bool,
     pub(in crate::campaign) terminal_websocket_valid: bool,
     pub(in crate::campaign) terminal_pool_persisted: bool,
+    pub(in crate::campaign) hashrate_monitor: CampaignHashrateEvidence,
     pub(in crate::campaign) command_effects: Option<CommandEffectsEvidence>,
     pub(in crate::campaign) command_failure: Option<CommandFailureDiagnostic>,
     #[serde(skip)]
@@ -197,7 +197,7 @@ impl CampaignNetworkEvidence {
 
     fn empty(status: &'static str, maybe_failure: Option<CampaignTerminalCategory>) -> Self {
         Self {
-            schema: "mining-campaign-network-continuity-v3",
+            schema: "mining-campaign-network-continuity-v4",
             status,
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count: 0,
@@ -226,6 +226,7 @@ impl CampaignNetworkEvidence {
             terminal_http_valid: false,
             terminal_websocket_valid: false,
             terminal_pool_persisted: false,
+            hashrate_monitor: CampaignHashrateEvidence::empty(),
             command_effects: None,
             command_failure: None,
             maybe_failure,
@@ -310,6 +311,7 @@ pub(super) struct NetworkAccumulator {
     last_websocket_revision: Option<u64>,
     last_http_shares: Option<(u64, u64)>,
     last_websocket_shares: Option<(u64, u64)>,
+    hashrate: HashrateObservationPair,
 }
 
 impl NetworkAccumulator {
@@ -346,6 +348,7 @@ impl NetworkAccumulator {
             last_websocket_revision: None,
             last_http_shares: None,
             last_websocket_shares: None,
+            hashrate: HashrateObservationPair::default(),
         }
     }
 
@@ -398,6 +401,7 @@ impl NetworkAccumulator {
                 self.last_http_shares = Some(shares);
                 self.http_success_count = self.http_success_count.saturating_add(1);
                 self.windows[index].http.observe(sample);
+                self.hashrate.http.observe_active(active_ms, sample);
             }
             NetworkTransport::WebSocket => {
                 if sequence_regresses(self.last_websocket_revision, revision)
@@ -415,6 +419,7 @@ impl NetworkAccumulator {
                 self.last_websocket_shares = Some(shares);
                 self.websocket_frame_count = self.websocket_frame_count.saturating_add(1);
                 self.windows[index].websocket.observe(sample);
+                self.hashrate.websocket.observe_active(active_ms, sample);
             }
         }
     }
@@ -433,6 +438,8 @@ impl NetworkAccumulator {
             self.record_validation_failure(failure, true);
             return;
         }
+        self.hashrate
+            .observe_terminal(matches!(transport, NetworkTransport::Http), sample);
         match transport {
             NetworkTransport::Http => self.terminal_http_valid = true,
             NetworkTransport::WebSocket => self.terminal_websocket_valid = true,
@@ -492,7 +499,7 @@ impl NetworkAccumulator {
             && covered_window_count == REQUIRED_WINDOWS
             && serial.terminal_consumed;
         CampaignNetworkEvidence {
-            schema: "mining-campaign-network-continuity-v3",
+            schema: "mining-campaign-network-continuity-v4",
             status: if accepted { "accepted" } else { "failed" },
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count,
@@ -526,6 +533,7 @@ impl NetworkAccumulator {
             terminal_http_valid: self.terminal_http_valid,
             terminal_websocket_valid: self.terminal_websocket_valid,
             terminal_pool_persisted: serial.terminal_pool_persisted,
+            hashrate_monitor: self.hashrate.evidence(),
             command_effects: None,
             command_failure: None,
             maybe_failure: self.maybe_failure,

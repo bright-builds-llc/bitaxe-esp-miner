@@ -196,6 +196,19 @@ test("result validator accepts the closed mining criteria command", () => {
   assert.equal(result.command, "project-mining-criteria-evidence");
 });
 
+test("result validator accepts the closed hashrate monitor capture command", () => {
+  // Act
+  const result = parseAutomationResult({
+    schema_version: "bitaxe-automation-result-v1",
+    command: "capture-hashrate-monitor-evidence",
+    status: "succeeded",
+    category: "complete",
+  });
+
+  // Assert
+  assert.equal(result.command, "capture-hashrate-monitor-evidence");
+});
+
 // @ts-expect-error monitor intentionally has no evidenceMode option.
 monitorCommand("/tmp/flash", { evidenceMode: "dual" });
 

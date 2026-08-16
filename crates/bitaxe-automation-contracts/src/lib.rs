@@ -17,6 +17,7 @@ mod core_voltage_control_evidence;
 mod emc2101_thermal_evidence;
 mod emc2101_thermal_fault_evidence;
 mod emc2101_thermal_input;
+mod hashrate_monitor_evidence;
 mod ina260_evidence;
 mod log_buffer_evidence;
 mod mining_criteria_evidence;
@@ -78,6 +79,10 @@ pub use emc2101_thermal_fault_evidence::{
 };
 pub use emc2101_thermal_input::{
     validate_emc2101_thermal_inputs, Emc2101ThermalSnapshotInput, Emc2101ThermalWebSocketInput,
+};
+pub use hashrate_monitor_evidence::{
+    HashrateMonitorEvidence, HashrateMonitorQuorum, HashrateMonitorSourceEvidence,
+    HashrateTransportQuorum, HASHRATE_MONITOR_EVIDENCE_SCHEMA,
 };
 pub use ina260_evidence::{Ina260Evidence, Ina260ObservationEvidence, Ina260SourceEvidence};
 pub use log_buffer_evidence::{LogBufferEvidence, LogBufferObservationEvidence};
@@ -186,6 +191,7 @@ pub enum AutomationCommand {
     CaptureRuntimeHealthEvidence,
     CaptureSystemInfoEvidence,
     CaptureAdcObservationEvidence,
+    CaptureHashrateMonitorEvidence,
     CaptureUltra205DefaultsEvidence,
     CaptureSettingsPatchEvidence,
     CaptureLogBufferEvidence,
@@ -356,6 +362,7 @@ pub struct ContractBundle {
     pub runtime_health_evidence_schema: Value,
     pub system_info_evidence_schema: Value,
     pub adc_observation_evidence_schema: Value,
+    pub hashrate_monitor_evidence_schema: Value,
     pub ultra205_defaults_evidence_schema: Value,
     pub settings_patch_evidence_schema: Value,
     pub log_buffer_evidence_schema: Value,
@@ -405,6 +412,10 @@ pub fn contract_bundle() -> ContractBundle {
             .expect("system info evidence schema must serialize"),
         adc_observation_evidence_schema: serde_json::to_value(schema_for!(AdcObservationEvidence))
             .expect("ADC observation evidence schema must serialize"),
+        hashrate_monitor_evidence_schema: serde_json::to_value(schema_for!(
+            HashrateMonitorEvidence
+        ))
+        .expect("hashrate monitor evidence schema must serialize"),
         ultra205_defaults_evidence_schema: serde_json::to_value(schema_for!(
             Ultra205DefaultsEvidence
         ))
@@ -503,6 +514,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::CaptureRuntimeHealthEvidence,
             AutomationCommand::CaptureSystemInfoEvidence,
             AutomationCommand::CaptureAdcObservationEvidence,
+            AutomationCommand::CaptureHashrateMonitorEvidence,
             AutomationCommand::CaptureUltra205DefaultsEvidence,
             AutomationCommand::CaptureSettingsPatchEvidence,
             AutomationCommand::CaptureLogBufferEvidence,
@@ -536,6 +548,7 @@ pub fn contract_bundle() -> ContractBundle {
             RUNTIME_HEALTH_EVIDENCE_SCHEMA,
             SYSTEM_INFO_EVIDENCE_SCHEMA,
             ADC_OBSERVATION_EVIDENCE_SCHEMA,
+            HASHRATE_MONITOR_EVIDENCE_SCHEMA,
             ULTRA205_DEFAULTS_EVIDENCE_SCHEMA,
             SETTINGS_PATCH_EVIDENCE_SCHEMA,
             LOG_BUFFER_EVIDENCE_SCHEMA,

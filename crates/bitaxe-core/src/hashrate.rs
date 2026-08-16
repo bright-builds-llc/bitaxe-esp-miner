@@ -3,7 +3,7 @@
 //! Reference breadcrumb:
 //! `reference/esp-miner/main/tasks/hashrate_monitor_task.c`.
 
-const HASHRATE_REGISTER_UNIT_HASHES: f64 = 16_777_216.0;
+const HASHRATE_REGISTER_UNIT_HASHES: f64 = 1_048_576.0;
 const HASH_COUNTER_UNIT_HASHES: f64 = 4_294_967_296.0;
 const MIN_COUNTER_INTERVAL_US: u64 = 1_000_000;
 const ONE_MINUTE_SAMPLES: usize = 60;

@@ -125,6 +125,9 @@ capture-system-info-evidence *args:
 capture-adc-observation-evidence *args:
     bazel run //tools/automation:capture_adc_observation_evidence -- {{ args }}
 
+capture-hashrate-monitor-evidence *args:
+    bazel run //tools/automation:capture_hashrate_monitor_evidence -- {{ args }}
+
 validate-adc-observation-evidence projection:
     #!/usr/bin/env bash
     set -euo pipefail

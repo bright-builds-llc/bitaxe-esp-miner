@@ -1,10 +1,11 @@
 use super::command_evidence::CommandEffectsEvidence;
+use super::hashrate::{CampaignHashrateEvidence, HashrateTransportEvidence};
 use super::model::{CampaignNetworkEvidence, REQUIRED_WINDOWS};
 
 impl CampaignNetworkEvidence {
     pub(crate) fn fixture_complete() -> Self {
         Self {
-            schema: "mining-campaign-network-continuity-v3",
+            schema: "mining-campaign-network-continuity-v4",
             status: "accepted",
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count: REQUIRED_WINDOWS,
@@ -33,6 +34,13 @@ impl CampaignNetworkEvidence {
             terminal_http_valid: true,
             terminal_websocket_valid: true,
             terminal_pool_persisted: true,
+            hashrate_monitor: CampaignHashrateEvidence {
+                monitor_cadence_ms: 1_000,
+                asic_count: 1,
+                domain_count: 4,
+                http: complete_hashrate_transport(),
+                websocket: complete_hashrate_transport(),
+            },
             command_effects: None,
             command_failure: None,
             maybe_failure: None,
@@ -80,5 +88,15 @@ impl CampaignNetworkEvidence {
             None,
             None,
         )
+    }
+}
+
+fn complete_hashrate_transport() -> HashrateTransportEvidence {
+    HashrateTransportEvidence {
+        active_sample_count: 40,
+        positive_coherent_count: 40,
+        distinct_positive_count: 2,
+        warm_rolling_window_count: 36,
+        terminal_zero_confirmed: true,
     }
 }

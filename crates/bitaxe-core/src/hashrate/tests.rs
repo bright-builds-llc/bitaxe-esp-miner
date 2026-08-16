@@ -20,8 +20,8 @@ fn instantaneous_register_scales_and_rejects_sentinel_values() {
         sentinel,
         Ok(HashrateObservationOutcome::IgnoredRegisterSentinel)
     );
-    assert_near(snapshot.current_ghs, 1.677_721_6);
-    assert_near(snapshot.asics[0].domain_ghs[0], 1.677_721_6);
+    assert_near(snapshot.current_ghs, 0.104_857_6);
+    assert_near(snapshot.asics[0].domain_ghs[0], 0.104_857_6);
 }
 
 #[test]
@@ -146,7 +146,7 @@ fn hierarchical_windows_blend_across_all_reference_boundaries() {
     let snapshot = monitor.sample(true);
 
     // Assert
-    assert!(snapshot.one_minute_ghs > 1.9);
+    assert!(snapshot.one_minute_ghs > 0.119);
     assert!(snapshot.ten_minute_ghs > snapshot.one_minute_ghs / 2.0);
     assert!(snapshot.one_hour_ghs > 0.0);
     assert!(snapshot.one_hour_ghs <= snapshot.ten_minute_ghs);

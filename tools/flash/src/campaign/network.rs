@@ -1,6 +1,7 @@
 mod command_effects;
 mod command_evidence;
 mod command_witness;
+mod hashrate;
 mod model;
 mod observer;
 mod serial;

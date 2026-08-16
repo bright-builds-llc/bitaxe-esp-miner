@@ -7,6 +7,7 @@ import { captureAdcObservationEvidence } from "./adc-observation-evidence.js";
 import { captureApiCommandEffects } from "./api-command-effects.js";
 import { emitOperatorCheckpointSignal } from "./api-command-effects-checkpoint.js";
 import { deviceSessionProgram, flashProgram, stringNumber, toolProgram } from "./cli-tools.js";
+import { captureHashrateMonitorEvidenceFromInvocation } from "./hashrate-monitor-command.js";
 import { projectAsicFrequencyTransitionEvidence } from "./asic-frequency-transition-evidence.js";
 import { projectAsicInitializationEvidence } from "./asic-initialization-evidence.js";
 import { projectAsicPowerInitializationEvidence } from "./asic-power-initialization-evidence.js";
@@ -208,6 +209,7 @@ async function dispatchProcess(
     case "capture-runtime-health-evidence":
     case "capture-system-info-evidence":
     case "capture-adc-observation-evidence":
+    case "capture-hashrate-monitor-evidence":
     case "capture-emc2101-thermal-evidence":
     case "capture-emc2101-thermal-fault-evidence":
     case "capture-ultra205-defaults-evidence":
@@ -344,6 +346,8 @@ async function main(): Promise<number> {
         toolProgram(root, "crates/bitaxe-automation-contracts/validate_system_info_evidence"),
         toolProgram(root, "crates/bitaxe-automation-contracts/validate_adc_observation_inputs"),
         toolProgram(root, "crates/bitaxe-automation-contracts/validate_adc_observation_evidence"));
+    } else if (invocation.command === "capture-hashrate-monitor-evidence") {
+      publicValue = await captureHashrateMonitorEvidenceFromInvocation(root, invocation, processPort);
     } else if (invocation.command === "capture-emc2101-thermal-evidence") {
       const detectorOutput = optionValue(invocation, "--detector-output");
       const port = await portFromDetectorOutput(root, detectorOutput);

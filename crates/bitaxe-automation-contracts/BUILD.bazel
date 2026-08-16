@@ -20,6 +20,7 @@ rust_library(
         "src/emc2101_thermal_evidence.rs",
         "src/emc2101_thermal_fault_evidence.rs",
         "src/emc2101_thermal_input.rs",
+        "src/hashrate_monitor_evidence.rs",
         "src/ina260_evidence.rs",
         "src/log_buffer_evidence.rs",
         "src/mining_criteria_evidence.rs",
@@ -46,6 +47,17 @@ rust_library(
     deps = [
         "@crates//:schemars",
         "@crates//:serde",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_hashrate_monitor_evidence",
+    srcs = ["src/bin/validate_hashrate_monitor_evidence.rs"],
+    crate_name = "validate_hashrate_monitor_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
         "@crates//:serde_json",
     ],
 )

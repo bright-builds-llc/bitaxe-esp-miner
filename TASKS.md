@@ -582,7 +582,7 @@ hardware/API/UI behavior remain below verified.
 Verification-promotion plan:
 `docs/parity/work-plans/20260816T005443Z-STAT-001/PLAN.md`
 
-- [ ] Add a private-first closed hashrate quorum to the existing conservative
+- [x] Add a private-first closed hashrate quorum to the existing conservative
       600-second campaign, with independent validation and no raw-value
       publication.
 - [ ] Run the plan's full pre-hardware suite, commit and push the implementation,

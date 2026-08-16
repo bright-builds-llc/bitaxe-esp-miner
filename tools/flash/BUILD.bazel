@@ -84,6 +84,7 @@ rust_binary(
         "src/campaign/network/command_effects/tests/terminal.rs",
         "src/campaign/network/command_evidence.rs",
         "src/campaign/network/command_witness.rs",
+        "src/campaign/network/hashrate.rs",
         "src/campaign/network/model.rs",
         "src/campaign/network/model/command_failure.rs",
         "src/campaign/network/observer.rs",
