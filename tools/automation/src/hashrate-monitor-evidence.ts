@@ -28,15 +28,43 @@ type FailureCategory = Extract<
   AutomationCategory,
   "hardware_blocked" | "evidence_invalid" | "timeout" | "process_failed"
 >;
+type RuntimeAttestationParseFailure = typeof runtimeAttestationParseFailures[number];
+type RuntimeAttestationParseFailureCounts = Readonly<{
+  missing_marker: number;
+  malformed_token: number;
+  duplicate_field: number;
+  unknown_field: number;
+  missing_field: number;
+  invalid_field: number;
+  incomplete_readiness: number;
+}>;
+type RuntimeAttestationParseDiagnostic = Readonly<{
+  runtime_attestation_parse_failure: RuntimeAttestationParseFailure;
+}>;
+type RuntimeAttestationParseEvidence = RuntimeAttestationParseDiagnostic & Readonly<{
+  runtime_attestation_parse_failure_counts: RuntimeAttestationParseFailureCounts;
+}>;
 
-const expectedPrivateRoot = "scratch/stat001-hashrate-monitor/attempt-003";
-const expectedWrapperRoot = "scratch/stat001-hashrate-monitor/wrapper-003";
+const expectedPrivateRoot = "scratch/stat001-hashrate-monitor/attempt-004";
+const expectedWrapperRoot = "scratch/stat001-hashrate-monitor/wrapper-004";
 const expectedProjection =
   "docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json";
-const expectedPlan = "docs/parity/work-plans/20260816T022946Z-STAT-001/PLAN.md";
-const expectedPlanSha256 = "876d0ba3dce066985d0e71f3b76732b4d603c6048b399dd085074b45bd7ba71f";
+const expectedPlan = "docs/parity/work-plans/20260816T033934Z-STAT-001/PLAN.md";
+const expectedPlanSha256 = "703f4b8ed726f6ec8fffe7d4a152982d1674ca60cef2b8f7e8c0acd1193602b5";
 const expectedReferenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const activeTask = "task-parity-stat001-hashrate-monitor";
+const runtimeAttestationParseFailures = [
+  "none",
+  "not_observed",
+  "invalid_utf8",
+  "missing_marker",
+  "malformed_token",
+  "duplicate_field",
+  "unknown_field",
+  "missing_field",
+  "invalid_field",
+  "incomplete_readiness",
+] as const;
 const expectedAttemptFiles = [
   "campaign-diagnostics.private.json",
   "campaign-flash.private.json",
@@ -103,6 +131,17 @@ function failure(category: FailureCategory, message: string): HashrateMonitorEvi
   });
 }
 
+function hardwareBlocked(
+  message: string,
+  maybeDiagnostic?: RuntimeAttestationParseDiagnostic,
+): HashrateMonitorEvidenceError {
+  return new HashrateMonitorEvidenceError("hardware_blocked", message, {
+    stage: "hashrate_monitor_capture",
+    projection_published: false,
+    ...(maybeDiagnostic ?? {}),
+  });
+}
+
 function sha256(value: string | Buffer): string {
   return createHash("sha256").update(value).digest("hex");
 }
@@ -136,6 +175,41 @@ function requiredBoolean(value: JsonObject, field: string, context: string): boo
     throw failure("evidence_invalid", `${context} boolean field is invalid`);
   }
   return candidate;
+}
+
+function runtimeAttestationParseDiagnostic(
+  value: JsonObject,
+): RuntimeAttestationParseEvidence {
+  const failureValue = requiredString(
+    value,
+    "runtime_attestation_parse_failure",
+    "campaign result",
+  );
+  if (!runtimeAttestationParseFailures.includes(
+    failureValue as RuntimeAttestationParseFailure,
+  )) {
+    throw failure("evidence_invalid", "campaign runtime attestation diagnostic is invalid");
+  }
+  const counts = object(
+    value["runtime_attestation_parse_failure_counts"],
+    "campaign runtime attestation parse failure counts",
+  );
+  return {
+    runtime_attestation_parse_failure: failureValue as RuntimeAttestationParseFailure,
+    runtime_attestation_parse_failure_counts: {
+      missing_marker: requiredInteger(counts, "missing_marker", "campaign parse failure counts"),
+      malformed_token: requiredInteger(counts, "malformed_token", "campaign parse failure counts"),
+      duplicate_field: requiredInteger(counts, "duplicate_field", "campaign parse failure counts"),
+      unknown_field: requiredInteger(counts, "unknown_field", "campaign parse failure counts"),
+      missing_field: requiredInteger(counts, "missing_field", "campaign parse failure counts"),
+      invalid_field: requiredInteger(counts, "invalid_field", "campaign parse failure counts"),
+      incomplete_readiness: requiredInteger(
+        counts,
+        "incomplete_readiness",
+        "campaign parse failure counts",
+      ),
+    },
+  };
 }
 
 async function requireAbsent(candidate: string, context: string): Promise<void> {
@@ -186,6 +260,31 @@ async function readJson(candidate: string, context: string): Promise<{
   }
 }
 
+async function sealedRuntimeAttestationParseDiagnostic(
+  privateRoot: string,
+): Promise<RuntimeAttestationParseDiagnostic | undefined> {
+  try {
+    const resultPath = path.join(privateRoot, "campaign-result.json");
+    const sealPath = path.join(privateRoot, "campaign-result.sha256");
+    await requireMode(privateRoot, 0o700, true);
+    await requireMode(resultPath, 0o600, false);
+    await requireMode(sealPath, 0o600, false);
+    const result = await readJson(resultPath, "campaign result");
+    const seal = (await readFile(sealPath, "utf8")).trim();
+    if (seal !== sha256(result.document)
+      || requiredString(result.value, "schema", "campaign result") !== "mining-campaign-result-v10"
+      || requiredString(result.value, "status", "campaign result") !== "failed") {
+      return undefined;
+    }
+    const diagnostic = runtimeAttestationParseDiagnostic(result.value);
+    return {
+      runtime_attestation_parse_failure: diagnostic.runtime_attestation_parse_failure,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
 export async function validateHashrateMonitorTaskAndSources(
   workspaceRoot: string,
   admittedPlanSha256: string,
@@ -199,7 +298,7 @@ export async function validateHashrateMonitorTaskAndSources(
   const maybeEnd = taskDocument.indexOf("\n### ", start + heading.length);
   const block = taskDocument.slice(start, maybeEnd === -1 ? taskDocument.length : maybeEnd);
   if (start === -1 || taskDocument.indexOf(heading, start + heading.length) !== -1
-    || !block.includes(expectedPlan) || !block.includes("attempt-003")
+    || !block.includes(expectedPlan) || !block.includes("attempt-004")
     || sha256(planDocument) !== admittedPlanSha256
     || !planDocument.includes("- Parity row: `STAT-001`")
     || !planDocument.includes(`- Active task: \`${activeTask}\``)) {
@@ -288,7 +387,12 @@ export async function captureHashrateMonitorEvidence(
     throw failure("process_failed", "hashrate campaign launch failed");
   }
   if (campaign.timedOut) throw failure("timeout", "hashrate campaign timed out");
-  if (campaign.exitCode !== 0) throw failure("hardware_blocked", "hashrate campaign did not complete");
+  if (campaign.exitCode !== 0) {
+    throw hardwareBlocked(
+      "hashrate campaign did not complete",
+      await sealedRuntimeAttestationParseDiagnostic(privateRoot),
+    );
+  }
 
   try {
     await verifyProtectedLayout(privateRoot, wrapperRoot);
@@ -303,7 +407,8 @@ export async function captureHashrateMonitorEvidence(
         !== sha256(networkFile.document)) {
       throw failure("evidence_invalid", "campaign result seal is invalid");
     }
-    if (requiredString(resultFile.value, "schema", "campaign result") !== "mining-campaign-result-v9"
+    const parseDiagnostic = runtimeAttestationParseDiagnostic(resultFile.value);
+    if (requiredString(resultFile.value, "schema", "campaign result") !== "mining-campaign-result-v10"
       || requiredString(resultFile.value, "status", "campaign result") !== "accepted"
       || requiredString(resultFile.value, "stage", "campaign result") !== "live-share"
       || requiredString(resultFile.value, "profile", "campaign result") !== "conservative"
@@ -311,6 +416,9 @@ export async function captureHashrateMonitorEvidence(
       || requiredString(resultFile.value, "runtime_identity", "campaign result") !== "trusted"
       || requiredString(resultFile.value, "safe_stop", "campaign result") !== "confirmed"
       || requiredString(resultFile.value, "usb_cleanup", "campaign result") !== "ready"
+      || parseDiagnostic.runtime_attestation_parse_failure !== "none"
+      || Object.values(parseDiagnostic.runtime_attestation_parse_failure_counts)
+        .some((count) => count !== 0)
       || requiredString(networkFile.value, "schema", "campaign network evidence")
         !== "mining-campaign-network-continuity-v4"
       || requiredString(networkFile.value, "status", "campaign network evidence") !== "accepted") {
@@ -346,7 +454,7 @@ export async function captureHashrateMonitorEvidence(
     const evidence: HashrateMonitorEvidence = {
       schema_version: "bitaxe-hashrate-monitor-evidence-v1",
       board: 205,
-      attempt_ordinal: 3,
+      attempt_ordinal: 4,
       source_commit: currentSourceCommit,
       reference_commit: referenceCommit,
       package_manifest_sha256: sha256(manifestFile.document),

@@ -49,7 +49,7 @@ const sourceDocuments = new Map<string, string>([
 ]);
 
 const okResult = {
-  schema: "mining-campaign-result-v9",
+  schema: "mining-campaign-result-v10",
   status: "accepted",
   stage: "live-share",
   profile: "conservative",
@@ -57,6 +57,16 @@ const okResult = {
   runtime_identity: "trusted",
   safe_stop: "confirmed",
   usb_cleanup: "ready",
+  runtime_attestation_parse_failure: "none",
+  runtime_attestation_parse_failure_counts: {
+    missing_marker: 0,
+    malformed_token: 0,
+    duplicate_field: 0,
+    unknown_field: 0,
+    missing_field: 0,
+    invalid_field: 0,
+    incomplete_readiness: 0,
+  },
 };
 
 type Fixture = {
@@ -98,14 +108,14 @@ async function fixture(name: string): Promise<Fixture> {
     "#define HASH_CNT_LSB 0x100000000uLL",
     "float hashCounterToGhs(uint64_t duration_us, uint32_t counter)",
   ].join("\n"));
-  const planRelative = "docs/parity/work-plans/20260816T022946Z-STAT-001/PLAN.md";
+  const planRelative = "docs/parity/work-plans/20260816T033934Z-STAT-001/PLAN.md";
   const plan = "- Parity row: `STAT-001`\n- Active task: `task-parity-stat001-hashrate-monitor`\n";
   await mkdir(path.dirname(path.join(root, planRelative)), { recursive: true });
   await writeFile(path.join(root, planRelative), plan);
   await writeFile(path.join(root, "TASKS.md"), [
     "### task-parity-stat001-hashrate-monitor | fixture",
     `Plan: \`${planRelative}\`.`,
-    "Attempt: `attempt-003`.",
+    "Attempt: `attempt-004`.",
   ].join("\n"));
   const inputs = path.join(root, "inputs");
   await mkdir(inputs);
@@ -113,7 +123,7 @@ async function fixture(name: string): Promise<Fixture> {
     source_commit: sourceCommit,
     reference_commit: referenceCommit,
   }));
-  const wrapper = path.join(root, "scratch/stat001-hashrate-monitor/wrapper-003");
+  const wrapper = path.join(root, "scratch/stat001-hashrate-monitor/wrapper-004");
   await mkdir(wrapper, { recursive: true, mode: 0o700 });
   await chmod(wrapper, 0o700);
   for (const output of ["detector.stdout", "detector.stderr", "capture.stdout", "capture.stderr"]) {
@@ -123,11 +133,11 @@ async function fixture(name: string): Promise<Fixture> {
     root,
     planSha256: sha256(plan),
     options: {
-      privateRoot: "scratch/stat001-hashrate-monitor/attempt-003",
+      privateRoot: "scratch/stat001-hashrate-monitor/attempt-004",
       packageManifest: "inputs/package.json",
       wifiCredentials: "inputs/wifi.json",
       poolCredentials: "inputs/pool.json",
-      detectorOutput: "scratch/stat001-hashrate-monitor/wrapper-003/detector.stdout",
+      detectorOutput: "scratch/stat001-hashrate-monitor/wrapper-004/detector.stdout",
       port: "/dev/private-port",
       projection: "docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json",
       durationSeconds: 600,
@@ -136,7 +146,14 @@ async function fixture(name: string): Promise<Fixture> {
   };
 }
 
-async function childProgram(value: Fixture, malformed = false): Promise<string> {
+async function childProgram(
+  value: Fixture,
+  options: Readonly<{
+    malformedTransport?: boolean;
+    sealedFailure?: boolean;
+    tamperedSeal?: boolean;
+  }> = {},
+): Promise<string> {
   const child = path.join(value.root, "child.mjs");
   await writeFile(child, `#!${nodeProgram}
 import { createHash } from "node:crypto";
@@ -150,10 +167,13 @@ if (args[0] === "mining-campaign") {
   await mkdir(root, { recursive: true, mode: 0o700 });
   await chmod(root, 0o700);
   const transport = { active_sample_count: 3, positive_coherent_count: 3, distinct_positive_count: 2, warm_rolling_window_count: 2, terminal_zero_confirmed: true };
-  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v4", status: "accepted", required_window_count: 20, covered_window_count: 20, hashrate_monitor: { monitor_cadence_ms: 1000, asic_count: 1, domain_count: 4, http: transport, websocket: ${malformed ? "{ ...transport, distinct_positive_count: 1 }" : "transport"} } }) + "\\n";
-  const result = JSON.stringify({ ...${JSON.stringify(okResult)}, network_continuity_sha256: digest(network) }) + "\\n";
-  const files = new Map([["campaign-diagnostics.private.json", "{}\\n"], ["campaign-flash.private.json", "{}\\n"], ["campaign-mining-diagnostics.private.json", "{}\\n"], ["campaign-network.private.json", network], ["campaign-observations.private.json", "{}\\n"], ["campaign-result.json", result], ["campaign-result.sha256", digest(result) + "\\n"]]);
+  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v4", status: "accepted", required_window_count: 20, covered_window_count: 20, hashrate_monitor: { monitor_cadence_ms: 1000, asic_count: 1, domain_count: 4, http: transport, websocket: ${options.malformedTransport === true ? "{ ...transport, distinct_positive_count: 1 }" : "transport"} } }) + "\\n";
+  const result = JSON.stringify(${options.sealedFailure === true
+    ? `{ ...${JSON.stringify(okResult)}, status: "failed", runtime_attestation_parse_failure: "missing_marker", runtime_attestation_parse_failure_counts: { ...${JSON.stringify(okResult.runtime_attestation_parse_failure_counts)}, missing_marker: 1 }, protected_runtime_text: "secret-device-origin private-worker" }`
+    : `{ ...${JSON.stringify(okResult)}, network_continuity_sha256: digest(network) }`}) + "\\n";
+  const files = new Map([["campaign-diagnostics.private.json", "{}\\n"], ["campaign-flash.private.json", "{}\\n"], ["campaign-mining-diagnostics.private.json", "{}\\n"], ["campaign-network.private.json", network], ["campaign-observations.private.json", "{}\\n"], ["campaign-result.json", result], ["campaign-result.sha256", ${options.tamperedSeal === true ? '"0".repeat(64)' : "digest(result)"} + "\\n"]]);
   for (const [name, document] of files) { const candidate = path.join(root, name); await writeFile(candidate, document, { mode: 0o600 }); await chmod(candidate, 0o600); }
+  ${options.sealedFailure === true ? 'process.stderr.write("secret-child-output private-worker\\n"); process.exitCode = 9;' : ""}
 } else if (args[0] === "-C") {
   process.stdout.write(${JSON.stringify(`${referenceCommit}\n`)});
 } else if (args[0] === "status") {
@@ -216,14 +236,14 @@ test("current immutable task and production/reference sources pass admission", a
   // Act / Assert
   await validateHashrateMonitorTaskAndSources(
     root,
-    "876d0ba3dce066985d0e71f3b76732b4d603c6048b399dd085074b45bd7ba71f",
+    "703f4b8ed726f6ec8fffe7d4a152982d1674ca60cef2b8f7e8c0acd1193602b5",
   );
 });
 
 test("incomplete transport evidence is rejected before publication", async () => {
   // Arrange
   const value = await fixture("incomplete");
-  const child = await childProgram(value, true);
+  const child = await childProgram(value, { malformedTransport: true });
 
   try {
     // Act
@@ -241,6 +261,70 @@ test("incomplete transport evidence is rejected before publication", async () =>
     assert.equal(error.category, "evidence_invalid");
     await assert.rejects(readFile(path.join(value.root, value.options.projection), "utf8"), {
       code: "ENOENT",
+    });
+  } finally {
+    await rm(value.root, { recursive: true });
+  }
+});
+
+test("sealed non-ready campaign publishes only the closed parse diagnostic", async () => {
+  // Arrange
+  const value = await fixture("sealed-failure");
+  const child = await childProgram(value, { sealedFailure: true });
+
+  try {
+    // Act
+    const error = await captureError(captureHashrateMonitorEvidence(
+      value.root,
+      value.options,
+      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      child,
+      child,
+      validatorProgram,
+      value.planSha256,
+    ));
+
+    // Assert
+    assert.equal(error.category, "hardware_blocked");
+    assert.deepEqual(error.publicValue, {
+      stage: "hashrate_monitor_capture",
+      projection_published: false,
+      runtime_attestation_parse_failure: "missing_marker",
+    });
+    assert.doesNotMatch(
+      JSON.stringify(error.publicValue),
+      /secret|device-origin|private-worker/u,
+    );
+    await assert.rejects(readFile(path.join(value.root, value.options.projection), "utf8"), {
+      code: "ENOENT",
+    });
+  } finally {
+    await rm(value.root, { recursive: true });
+  }
+});
+
+test("unsealed non-ready campaign withholds its parse diagnostic", async () => {
+  // Arrange
+  const value = await fixture("tampered-seal");
+  const child = await childProgram(value, { sealedFailure: true, tamperedSeal: true });
+
+  try {
+    // Act
+    const error = await captureError(captureHashrateMonitorEvidence(
+      value.root,
+      value.options,
+      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      child,
+      child,
+      validatorProgram,
+      value.planSha256,
+    ));
+
+    // Assert
+    assert.equal(error.category, "hardware_blocked");
+    assert.deepEqual(error.publicValue, {
+      stage: "hashrate_monitor_capture",
+      projection_published: false,
     });
   } finally {
     await rm(value.root, { recursive: true });

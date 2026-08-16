@@ -784,10 +784,10 @@ retry, and acceptance contract. This plan does not authorize attempt-004.
 Attempt-004 verification-promotion plan:
 `docs/parity/work-plans/20260816T033934Z-STAT-001/PLAN.md`
 
-- [ ] Rebind `bitaxe-hashrate-monitor-evidence-v1`, the independent validator,
+- [x] Rebind `bitaxe-hashrate-monitor-evidence-v1`, the independent validator,
       generated contract, task/plan admission, Bazel runfiles, and protected
       paths to fresh attempt-004 and sealed campaign-result v10.
-- [ ] Preserve the new closed runtime-attestation parse discriminator for a
+- [x] Preserve the new closed runtime-attestation parse discriminator for a
       non-ready campaign without exposing raw values, source text, or protected
       identifiers.
 - [ ] Pass every focused and mandatory software, firmware, privacy, reference,
