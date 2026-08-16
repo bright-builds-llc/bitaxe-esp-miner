@@ -35,3 +35,12 @@
 - Evidence: `docs/parity/evidence/ui002-screen-flow/screen-flow-projection.json`, SHA-256 `86a9887ebac787297ff76dacbaaf56715c88584647c425268b9e76d87aa5b5fe`.
 - Outcome: Complete accepted UI-002 quorum supports `verified` with `unit,workflow,hardware-smoke`.
 - Blocker or next safe action: Commit and push the projection/result checkpoint, then perform the single-row transition and immediate progress sync.
+
+## 2026-08-16T08:18:56Z | transition and final verification
+
+- Source commit: `3cb4a8b4525a4b5225e9f11aa9ef3016b77ff50a`
+- Actions: Replayed the UI-002 transition from its clean pushed evidence checkpoint with Markdown code spans around every Rust-owned target, synchronized progress immediately, and archived the completed active task exactly once. The first uncommitted transition draft was discarded because the final parity validator caught its unformatted target list; verified-row immutability correctly prevented an in-place metadata rewrite.
+- Verification: Transition `20260816T081647Z-UI-002` validates. The final ordered Rust sequence, Bright Builds, all 45 Bazel tests, parity/progress, redaction, reference cleanliness, package, independent evidence validator, immutable digests, mode/candidate checks, archive uniqueness, selector, and diff checks pass.
+- Evidence: UI-002 is `verified`; progress is 73 of 94 active rows (77.7%); the deterministic selector now ranks UI-003 first.
+- Outcome: UI-002 completion is accepted and archived with no hardware rerun.
+- Blocker or next safe action: Commit and push the transition/archive checkpoint; the next invocation may select UI-003.

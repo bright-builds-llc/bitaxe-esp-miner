@@ -9011,3 +9011,77 @@ hardware attempt. Physical geometry, brightness, every setting on hardware,
 input, UI-002 content, other boards, mining, update/recovery, and release
 readiness remain explicit non-claims. See
 `docs/parity/work-plans/20260816T064239Z-UI-001/RESULT.md`.
+
+### task-parity-ui002-screen-flow | 2026-08-04 | Implement bounded Ultra 205 screen flow
+
+- [x] Add the pure priority, overlay, intro, carousel, notification, and
+      four-line frame contract with exact timing and privacy regressions.
+- [x] Project existing firmware runtime facts without operator-publication,
+      statistics-drain, retained-log, mining-state, or credential side effects.
+- [x] Retain one screen owner beside the display owner, use the absolute 500 ms
+      cadence, redraw only changed frames, and preserve sensor isolation.
+
+Plan: `docs/parity/work-plans/20260805T001000Z-UI-002/PLAN.md`
+
+Authorization: local software, synthetic screen/runtime fixtures, and build
+work only. No hardware attempt, credentials, external service, mining, pool
+connection, frequency/voltage/fan/power effect, OTA, recovery, direct UART,
+pins, or physical button interaction.
+
+Verification: Twelve focused pure screen-flow tests, both firmware display
+adapter/source-ownership targets, and the real ESP-IDF firmware Bazel target
+pass. The ordered full Rust sequence, Bright Builds checks, all 34 Bazel test
+targets, parity validation/progress, redaction, reference cleanliness,
+immutable-plan, and diff checks also pass.
+
+Completion review: Implementation commit
+`9b2f37945b34a0e9fece56c8aa90703afda3ac63` and the commit-bound `RESULT.md`
+support the typed `implemented` transition with `unit,workflow` evidence. The
+task remains active because UI-002 is below `verified`; UI-003 physical input,
+live screen content, animation/bitmap parity, mining, and hardware-control
+behavior remain separate evidence gaps.
+
+Source-bound verification plan:
+`docs/parity/work-plans/20260816T073911Z-UI-002/PLAN.md`.
+
+- [x] Validate the exact committed API-009 display-UAT and command-effects
+      projections without reading protected attempts or rerunning hardware.
+- [x] Add a closed UI-002 evidence contract, independent validator, projector,
+      exhaustive boundary regressions, and complete Bazel/runfiles ownership.
+- [x] Bind captured source `522d5abd`, current pushed screen-flow semantics,
+      pinned reference behavior, this active task, and the immutable plan into
+      one aggregate-only public projection.
+- [x] Pass every focused, mandatory, privacy, package, reference, parity,
+      progress, selector, digest, permission, sensitive-value, and diff gate;
+      promote and archive only on the complete accepted quorum.
+
+Authorization: committed public evidence, repository source/Git history,
+deterministic tests, documentation, checklist tooling, and local builds only.
+Do not read credentials or protected attempt artifacts and do not access the
+detector, USB/serial, device/network/HTTP, physical display, browser, operator
+checkpoint, mining, settings mutation, restart, OTA, recovery, hardware
+control, external UART/BAP, or any pin/pad/header/GPIO/probe/jumper/solder/
+signal interface. No new hardware attempt or human checkpoint is authorized or
+required.
+
+Promotion requires the exact sealed board-205 UAT to prove one machine- and
+operator-confirmed IDENTIFY render and natural clear, its exact programmatic
+projection to prove package/reference identity, safe stop, cleanup, and
+redaction, and current source checks to prove the full screen-flow paths remain
+compatible with that captured package and pinned reference. The resulting
+UI-002 projection must be independently validated, aggregate-only, and state
+`hardware_rerun_used: false`. Physical proof of every page, dwell, notification,
+new-block state, input path, animation/bitmap/QR detail, pixel geometry,
+brightness, other boards, mining, soak, update/recovery, and release readiness
+remain non-claims.
+
+Completion review: Complete. The sealed projection joins the exact committed
+API-009 physical IDENTIFY UAT to clean current screen-flow source and pinned
+reference semantics. Independent validation, redaction, source and task
+binding, the mandatory Rust sequence, Bright Builds, all 45 Bazel tests,
+parity/progress, packaging, reference cleanliness, and diff checks passed.
+UI-002 is verified with `unit,workflow,hardware-smoke` evidence and no new
+hardware attempt. Physical observation of every page, dwell, notification,
+input path, graphical detail, other boards, mining, update/recovery, and
+release readiness remain explicit non-claims. See
+`docs/parity/work-plans/20260816T073911Z-UI-002/RESULT.md`.

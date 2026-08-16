@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260816T081647Z-UI-002",
+  "predecessor_sha256": "ef791d79f9e17d5698c98053b24d47767a3d01abbc5314d603bfdc1612ca1c70",
+  "result_sha256": "e8588b3963ff8a4f8b3729b348c9df168d1ee4bece06e345c8143be88fd86102",
+  "row_id": "UI-002",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260816T073911Z-UI-002/PLAN.md",
+  "plan_sha256": "b1317b895b5c39208713c150089a68e276d0264be8bdd60c4da4f43f512ddecb",
+  "result_path": "docs/parity/work-plans/20260816T073911Z-UI-002/RESULT.md",
+  "result_document_sha256": "2746982aaed8b6adb8de5d63fa14135d584d95e69088c24982b3d07c50ea7f94",
+  "before_rust_owned_target": "`crates/bitaxe-core/src/screen.rs`, `crates/bitaxe-core/src/screen/frame.rs`, `firmware/bitaxe/src/runtime_snapshot/screen.rs`, `firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-core/src/screen.rs`, `crates/bitaxe-core/src/screen/frame.rs`, `firmware/bitaxe/src/runtime_snapshot/screen.rs`, `firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`, `crates/bitaxe-automation-contracts/src/screen_flow_evidence.rs`, `tools/automation/src/screen-flow-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,hardware-smoke",
+  "before_notes": "Bounded priority, identify/new-block overlays, one-shot intro, carousel, notification deltas, private runtime projection, absolute 500 ms scheduling, change-only rendering, and display-failure isolation are implemented; see docs/parity/work-plans/20260805T001000Z-UI-002/RESULT.md. Live panel content, exact LVGL bitmap/animation behavior, UI-003 input, mining, hardware-control effects, and verified status remain separate.",
+  "after_notes": "Exact-package IDENTIFY UAT plus clean current-source and pinned-reference admission proves the bounded priority, intro, carousel, notification, timing, privacy, and retained-owner screen flow; see docs/parity/work-plans/20260816T073911Z-UI-002/RESULT.md. Physical observation of every page, dwell, notification, input path, and graphical detail remains a non-claim."
+}
