@@ -8873,3 +8873,71 @@ fails closed on inactive tasks. IO-002 is verified with
 `unit,workflow,hardware-smoke` evidence. Energized-rail accuracy, external
 calibration, induced failure, voltage actuation, load behavior, long-duration
 drift, other boards, and release readiness remain explicit non-claims.
+
+### task-parity-ui004-projection-continuation | 2026-08-16 | Publish the preserved UI workflow quorum
+
+- [x] Commit and push immutable plan
+      `docs/parity/work-plans/20260816T000806Z-UI-004/PLAN.md` before editing
+      implementation source.
+- [x] Add distinct attempt/projector source identities, exact unchanged
+      UI/static-serving path admission, owner-only redirect regression, and
+      prior plan/closure plus protected-artifact bindings.
+- [x] Pass focused, real-child, generated-contract, static UI, firmware,
+      mandatory, privacy, reference, immutable-plan, task-uniqueness and diff
+      gates; commit and push before projection.
+- [x] Run exactly one software-only `bitaxe-ui-workflow-evidence-v1`
+      projection/validation transaction over the preserved attempt-001, with
+      `umask 077` capture files and no detector, hardware or browser rerun.
+- [x] Promote only UI-004 on the complete independently validated closed
+      quorum; otherwise withhold evidence, preserve `implemented`, record the
+      earliest typed failure, and stop without retry.
+
+Plan: `docs/parity/work-plans/20260816T000806Z-UI-004/PLAN.md`
+
+Authorization: repository source, tests, contracts, generated bindings,
+documentation, and one protected software-only projector/validator transaction.
+The repo-owned projector may read the preserved ignored attempt-001 operator
+projection, browser attestation and digest-bound artifacts only to validate and
+aggregate their closed facts. Their contents must not be printed, summarized,
+copied into Git, or exposed. Captured source
+`bf5b74f98cdb117ca5682b0118a61743db85856f` must remain ancestral and the ten
+plan-listed UI/static-serving paths must be byte-unchanged and clean; current
+projector source is recorded separately.
+
+Exact transaction: only the plan's `umask 077; just
+project-ui-workflow-evidence ...` command and one owner-only redirected
+`just validate-ui-workflow-evidence ...` invocation after clean synchronized
+pushed implementation. Starting the projector consumes the transaction. No
+retry, detector, credentials, USB, device/network access, HTTP, browser,
+flash/reset/restart, hardware recovery, mining, settings/theme mutation, OTA,
+display/input claim, direct UART, pin/pad/header/GPIO interaction, or hardware
+control is authorized.
+
+Evidence/privacy/stops: private roots and files stay mode `0700`/`0600`; only
+`docs/parity/evidence/ui004-live-workflows/ui-workflow-projection.json` may be
+published after independent validation. Origins, addresses, ports, hostnames,
+identities, page values, bodies, frames, screenshots, traces, credentials and
+private paths must not enter Git or terminal summaries. Any source, digest,
+schema, mode, privacy, validator, cleanup or quorum failure withholds evidence,
+keeps UI-004 `implemented`, and closes this task without another transaction.
+
+Verification: `cargo fmt --all`, `cargo clippy --all-targets --all-features --
+-D warnings`, `cargo build --all-targets --all-features`, `cargo test
+--all-features`, the forced uncached focused Bazel projector suite, Bright
+Builds checks, `just test`, `just parity`, `just parity-progress`, `just
+verify-redaction`, `just verify-reference`, and `just build` pass. The current,
+prior-plan, and prior-closure SHA-256 bindings match; the captured commit is
+ancestral; and all ten compatibility paths are unchanged and clean.
+
+Completion review: Complete. The sole software-only projector and independent
+validator exited zero without a detector, device, network, browser, credential,
+or hardware rerun. The public projection binds captured source
+`bf5b74f98cdb117ca5682b0118a61743db85856f`, clean synchronized projector source
+`19d8f99fd5969c87d9a55b0fefa9558875e9f0fd`, exact package/reference identity,
+the prior plan/closure and current plan, unchanged served-UI sources, the closed
+desktop/mobile workflow quorum, disabled mining/control, cleanup, protected
+modes, independent validation, and passed redaction. UI-004 is verified with
+`unit,workflow,static-route,hardware-smoke` evidence. Physical panel/input,
+mutation during this continuation, upload, OTAWWW, mining, other-board and
+release claims remain excluded. See
+`docs/parity/work-plans/20260816T000806Z-UI-004/RESULT.md`.

@@ -40,3 +40,42 @@
   the one authorized protected projection transaction has not started.
 - Blocker or next safe action: Review the diff, commit and push the
   implementation checkpoint, then execute the immutable plan's projector once.
+
+## 2026-08-16T00:35:51Z | verified projection and transition
+
+- Source commit: `19d8f99fd5969c87d9a55b0fefa9558875e9f0fd`.
+- Actions: Ran the sole protected software-only projector and the one
+  independent validator under `umask 077`; validated the public closed facts;
+  created `RESULT.md`; transitioned only UI-004 to `verified`; and synchronized
+  parity progress.
+- Verification: Both evidence commands exited zero. The public projection is
+  mode `0644` with SHA-256
+  `28aca7f12400ebaf6e3da5896e21f240b77954a265e27f2096b5dfdc2e234441`;
+  all four ignored command captures are mode `0600`; the candidate is absent;
+  and the closed projection records no hardware rerun and passed redaction.
+- Evidence: `docs/parity/evidence/ui004-live-workflows/ui-workflow-projection.json`,
+  `RESULT.md`, transition receipt `20260816T000806Z-UI-004`, and the appended
+  progress record. Protected source/capture contents remain ignored and were
+  not printed, summarized, copied, or committed.
+- Outcome: UI-004 is verified; progress is 71 of 94 active rows (75.5%).
+- Blocker or next safe action: Archive this completed task, run the complete
+  post-transition gates, review the final diff, commit, and push.
+
+## 2026-08-16T00:47:20Z | final archival and verification
+
+- Actions: Archived the completed active task, corrected the UI projector test
+  fixture to preserve its immutable pre-publication task contract after
+  production task archival, and regenerated the typed transition with its
+  final notes and code-span Rust target cell.
+- Verification: The first post-archive `just test` exposed only the fixture's
+  dependency on the now-archived task. A forced uncached focused suite passed
+  after the correction. The complete format, Clippy, all-target build,
+  all-feature tests, Bright Builds, and 45-target Bazel suite then passed.
+  `just parity` reports no validation errors; progress is 71/94 (75.5%);
+  redaction checks 20 public evidence roots; reference verification and the
+  real firmware build pass.
+- Evidence: The final typed transition receipt, synchronized progress record,
+  archived task, public projection, result, and this append-only worklog.
+- Outcome: UI-004 is verified and the repository is ready for final diff
+  review, commit, and push.
+- Blocker or next safe action: None for this selected row.

@@ -30,7 +30,6 @@ const browserArtifactKinds = [
 ] as const;
 
 const copiedFiles = [
-  "TASKS.md",
   "docs/parity/work-plans/20260813T045300Z-UI-004/PLAN.md",
   "docs/parity/work-plans/20260813T045300Z-UI-004/CLOSURE.md",
   "docs/parity/work-plans/20260816T000806Z-UI-004/PLAN.md",
@@ -138,6 +137,15 @@ async function fixture(name: string, mobileRouteCount = 7) {
   const root = await mkdtemp(path.join(os.tmpdir(), `bitaxe-ui-workflow-${name}-`));
   await writeFile(path.join(root, "MODULE.bazel"), "module(name = \"fixture\")\n");
   await Promise.all(copiedFiles.map(async (relative) => copyFixtureFile(root, relative)));
+  await writeFile(path.join(root, "TASKS.md"), [
+    "### task-parity-ui004-projection-continuation | fixture",
+    "Plan: `docs/parity/work-plans/20260816T000806Z-UI-004/PLAN.md`",
+    "Schema: `bitaxe-ui-workflow-evidence-v1`.",
+    "Run under `umask 077`.",
+    "Starting the projector consumes the transaction.",
+    "A failed transaction stops without another transaction.",
+    "",
+  ].join("\n"));
   const packageDocument = `${JSON.stringify(packageManifest(), null, 2)}\n`;
   const packageDigest = (await import("node:crypto")).createHash("sha256")
     .update(packageDocument).digest("hex");

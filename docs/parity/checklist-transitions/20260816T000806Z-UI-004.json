@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260816T000806Z-UI-004",
+  "predecessor_sha256": "c9e3c2f331155cd38fe6d966262841b223238daabef508d421700aa3ee58a58d",
+  "result_sha256": "f695a7eab301071667beb52656d948bdd84740c4015bb7b2e53289a7372ea4a1",
+  "row_id": "UI-004",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260816T000806Z-UI-004/PLAN.md",
+  "plan_sha256": "07a8b8c487ab9dfcd312f3824a902c50a766b79caee8131e1c4fd3180222f305",
+  "result_path": "docs/parity/work-plans/20260816T000806Z-UI-004/RESULT.md",
+  "result_document_sha256": "610b6e1a38375b77f62e91cda7e4f6d62e0dd3772c81154b167da256145b9b62",
+  "before_rust_owned_target": "`firmware/bitaxe/static/www`, `crates/bitaxe-api/src/static_plan.rs`, `tools/automation/src/static-ui.test.ts`",
+  "after_rust_owned_target": "`firmware/bitaxe/static/www`, `crates/bitaxe-api/src/static_plan.rs`, `crates/bitaxe-automation-contracts/src/ui_workflow_evidence.rs`, `tools/automation/src/static-ui.test.ts`, `tools/automation/src/ui-workflow-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow,static-route",
+  "after_evidence": "unit,workflow,static-route,hardware-smoke",
+  "before_notes": "Independent responsive navigation, write-only configuration, retained/live logs, theme persistence, and confirmed firmware-only update workflows are implemented in production static assets with focused route, static-contract, and synthetic real-browser evidence. Result: docs/parity/work-plans/20260804T190000Z-UI-004/RESULT.md. Live embedded serving, real device mutation, firmware upload, OTAWWW, scoreboard/swarm population, and responsive operator UAT remain pending.",
+  "after_notes": "Exact-package Ultra 205 evidence proves the served production UI across all seven desktop and mobile routes, mobile navigation, blank write-only secrets, guarded firmware update behavior, same-origin requests, live logs, restart, disabled mining/control, cleanup, protected modes, independent validation, unchanged captured UI sources, and redaction. See docs/parity/work-plans/20260816T000806Z-UI-004/RESULT.md and docs/parity/evidence/ui004-live-workflows/ui-workflow-projection.json. Physical panel/input, mutation during the projection continuation, upload/OTAWWW success, mining, other boards, long-duration use, and release readiness remain non-claims."
+}
