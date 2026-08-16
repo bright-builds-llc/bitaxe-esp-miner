@@ -1145,6 +1145,15 @@ independent validator accepted the aggregate-only redacted projection. The
 hardware quorum is complete; only the audited evidence commit, UI-003
 transition, progress synchronization, task archive, and final gates remain.
 
+Metadata correction review: The complete physical evidence and pushed
+evidence commit remain valid, but the first uncommitted transition draft used
+only the plan's `hardware-smoke` label. The final parity validator correctly
+requires `hardware-regression` for active safety-control rows, including
+UI-003. All generated transition, progress, README, and archive state was
+reverted before commit. The bounded production input UAT qualifies as a
+runtime-display-input hardware regression; replay with both labels, then
+archive only after every validator passes. No hardware retry is required.
+
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
 - [x] Add a typed private-first `/api/theme` capture that binds the exact

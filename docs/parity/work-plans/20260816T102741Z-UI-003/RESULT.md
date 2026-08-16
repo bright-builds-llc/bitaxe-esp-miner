@@ -26,6 +26,14 @@ released BOOT once after that checkpoint. The observer reported
 `input_uat: verified`, released USB ownership, and published only
 `docs/parity/evidence/ui003-input/input-uat-projection.json`.
 
+This bounded exact-package runtime-display-input exercise is hardware
+regression evidence: it drives the production GPIO0 input owner through its
+physical short-click path and asserts the expected route plus the prohibited
+duplicate, unexpected-route, and long-press outcomes. The evidence therefore
+retains the plan's `hardware-smoke` classification and also satisfies the
+repository-required `hardware-regression` class for an active safety-control
+row.
+
 The committed mode-`0644` projection has SHA-256
 `5469f53e0fc20f4a1f6feb3788d3d126148c053568b0848b5969087c20ca334f`.
 It binds board 205, the exact source/reference/package/plan identities, GPIO0
@@ -54,6 +62,8 @@ reference semantics plus deterministic debounce/boundary tests prove the
 bounded active-low pull-up and 10/30/2,000 ms classification contract. This
 complete quorum supports promoting only `UI-003` from `implemented` to
 `verified` with `unit,workflow,hardware-smoke` evidence.
+The active-safety checklist policy additionally requires and is satisfied by
+the bounded `hardware-regression` evidence class described above.
 
 ## Non-claims and residual risks
 

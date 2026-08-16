@@ -70,3 +70,41 @@
 - Blocker or next safe action: Commit and push the projection, result, worklog,
   and task review as `SOURCE_COMMIT`; then transition only UI-003, synchronize
   progress, archive its task, and run the final ordered gates.
+
+## 2026-08-16T17:16:58Z | UI-003 promoted and task archived
+
+- Source commit: `d4cf8b1d1f6f0d67b3df3009a9985412cf046780`
+- Actions: Transitioned only UI-003 from `implemented` to `verified` with
+  `unit,workflow,hardware-smoke`, synchronized progress immediately, recorded
+  the transition artifact, and moved the completed native task record from the
+  active tracker to the append-only archive.
+- Verification: The transition reports checklist SHA-256
+  `1f5ba5dc28475e98a46a72560f9fd9a70df5fd2db3f0c64a86b4d191e4a215de`;
+  progress appended exactly once at 74 of 94 active rows verified (78.7%);
+  the stable task ID exists only in `TASKS.archive.md`.
+- Evidence: `RESULT.md`, the aggregate projection, transition record,
+  checklist row, progress history, README summary, and archived completion
+  review all bind the same plan, row, source, and conclusion.
+- Outcome: UI-003 is complete and conservatively verified; no additional
+  hardware action or checklist row is part of this invocation.
+- Blocker or next safe action: Run every final ordered repository gate, review
+  the complete diff, fetch, commit finalization, and push without force.
+
+## 2026-08-16T17:20:08Z | Incomplete transition label rejected and reverted
+
+- Source commit: `d4cf8b1d1f6f0d67b3df3009a9985412cf046780`
+- Actions: Ran the final ordered gate, stopped at the first parity failure,
+  classified the evidence-label mismatch, and reverted only the uncommitted
+  checklist, transition, progress, README, and task-archive draft.
+- Verification: `just parity` reported UI-003 is an active safety-control row
+  and requires `hardware-regression`; the checklist is again `implemented`,
+  progress is again 73 of 94, and the task exists only in `TASKS.md`.
+- Evidence: The physical projection is unchanged and validator-accepted. The
+  repository safety policy maps the bounded runtime-display-input path to the
+  `hardware-regression` class, while the immutable plan already requires the
+  same exact physical input exercise and retains `hardware-smoke`.
+- Outcome: The hardware result remains valid, but no verified transition or
+  completion is claimed from the rejected draft.
+- Blocker or next safe action: Correct `RESULT.md`, commit and push that
+  evidence interpretation as a new `SOURCE_COMMIT`, then replay UI-003 with
+  both `hardware-smoke` and `hardware-regression` before archiving.
