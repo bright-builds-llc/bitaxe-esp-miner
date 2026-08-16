@@ -691,12 +691,12 @@ a newly built exact package. See
 Attempt-003 verification-promotion plan:
 `docs/parity/work-plans/20260816T022946Z-STAT-001/PLAN.md`
 
-- [ ] Rebind `bitaxe-hashrate-monitor-evidence-v1`, the independent validator,
+- [x] Rebind `bitaxe-hashrate-monitor-evidence-v1`, the independent validator,
       generated contract, task/plan admission, Bazel runfiles, and protected
       paths to fresh attempt-003.
-- [ ] Prove the corrected `live-share` plus `conservative` child command and
+- [x] Prove the corrected `live-share` plus `conservative` child command and
       reject the former `soak` plus `conservative` pair at the real boundary.
-- [ ] Pass every focused and mandatory software, firmware, privacy, reference,
+- [x] Pass every focused and mandatory software, firmware, privacy, reference,
       package, and exact-source gate; commit and push before device access.
 - [ ] Run only the exact plan detector and one conditional attempt-003 command,
       then promote only on the complete independently validated quorum.

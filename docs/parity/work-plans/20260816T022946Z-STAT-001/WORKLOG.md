@@ -27,3 +27,20 @@
 - Outcome: The immutable attempt-003 plan is eligible for commit and push.
 - Blocker or next safe action: Commit and push this checkpoint before changing
   workflow code, generated contracts, or Bazel runfiles.
+
+## 2026-08-16T02:40:01Z | implementation checkpoint
+
+- Source commit: `c3f1f962c362b1198eded779c059b75d6baea714`
+- Actions: Rebound capture, validator, generated contract, protected paths,
+  task/plan admission, Bazel runfiles, and tests from consumed attempt-002 to
+  attempt-003. Preserved `live-share` plus `conservative` in the real child.
+- Verification: Focused Rust contracts and real-child automation passed, then
+  ordered Cargo, Bright Builds, real firmware package, all 45 Bazel tests,
+  parity/progress, redaction, reference, generated-contract, and diff gates
+  passed.
+- Evidence: Current task/plan/production/reference admission succeeds; the
+  consumed ordinal is rejected and the prior invalid stage/profile pair stays
+  guarded. No sensitive input or hardware interface was accessed.
+- Outcome: The minimal attempt-003 implementation is ready to commit and push.
+- Blocker or next safe action: Push the exact source, rebuild and validate its
+  clean package, then run only detector command 1.

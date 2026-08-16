@@ -29,12 +29,12 @@ type FailureCategory = Extract<
   "hardware_blocked" | "evidence_invalid" | "timeout" | "process_failed"
 >;
 
-const expectedPrivateRoot = "scratch/stat001-hashrate-monitor/attempt-002";
-const expectedWrapperRoot = "scratch/stat001-hashrate-monitor/wrapper-002";
+const expectedPrivateRoot = "scratch/stat001-hashrate-monitor/attempt-003";
+const expectedWrapperRoot = "scratch/stat001-hashrate-monitor/wrapper-003";
 const expectedProjection =
   "docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json";
-const expectedPlan = "docs/parity/work-plans/20260816T020135Z-STAT-001/PLAN.md";
-const expectedPlanSha256 = "a9077945201412d58f343b42eead664fdc04cde1e71191a8fabda55ffede044c";
+const expectedPlan = "docs/parity/work-plans/20260816T022946Z-STAT-001/PLAN.md";
+const expectedPlanSha256 = "876d0ba3dce066985d0e71f3b76732b4d603c6048b399dd085074b45bd7ba71f";
 const expectedReferenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const activeTask = "task-parity-stat001-hashrate-monitor";
 const expectedAttemptFiles = [
@@ -199,7 +199,7 @@ export async function validateHashrateMonitorTaskAndSources(
   const maybeEnd = taskDocument.indexOf("\n### ", start + heading.length);
   const block = taskDocument.slice(start, maybeEnd === -1 ? taskDocument.length : maybeEnd);
   if (start === -1 || taskDocument.indexOf(heading, start + heading.length) !== -1
-    || !block.includes(expectedPlan) || !block.includes("attempt-002")
+    || !block.includes(expectedPlan) || !block.includes("attempt-003")
     || sha256(planDocument) !== admittedPlanSha256
     || !planDocument.includes("- Parity row: `STAT-001`")
     || !planDocument.includes(`- Active task: \`${activeTask}\``)) {
@@ -346,7 +346,7 @@ export async function captureHashrateMonitorEvidence(
     const evidence: HashrateMonitorEvidence = {
       schema_version: "bitaxe-hashrate-monitor-evidence-v1",
       board: 205,
-      attempt_ordinal: 2,
+      attempt_ordinal: 3,
       source_commit: currentSourceCommit,
       reference_commit: referenceCommit,
       package_manifest_sha256: sha256(manifestFile.document),
