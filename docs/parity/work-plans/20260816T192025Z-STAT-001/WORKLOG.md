@@ -61,3 +61,17 @@
 - Blocker or next safe action: Commit and push this verified implementation,
   then write the non-promotion closure without changing the checklist or
   progress history.
+
+## 2026-08-16T20:15:00Z | Non-promotion closure
+
+- Source commit: `145eff426cf4400f862c8a4727e5cc6c8937372e`
+- Synchronization: The implementation commit is pushed and equals
+  `origin/main` before closure finalization.
+- Outcome: Created `CLOSURE.md` with `Verification claimed: no`. STAT-001
+  remains `implemented`; no checklist field, progress-history entry, README
+  status, public evidence, or task archive changed.
+- Blocker: Accepted live device evidence is still absent, so the corrected
+  software boundary cannot promote STAT-001.
+- Next safe action: A new selector invocation and immutable plan may consider
+  fresh attempt-008 under a complete independently gated contract. This plan
+  authorizes no hardware and attempt-007 remains consumed.

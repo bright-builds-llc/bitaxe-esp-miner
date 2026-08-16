@@ -1150,7 +1150,7 @@ Watchdog-timeout correction plan:
 - [x] Prove 2,001 ms, the exact configured boundary, and the first stale
       millisecond with focused pure and firmware-ownership regressions while
       preserving every existing closed watchdog failure.
-- [ ] Run the complete software, firmware, package, privacy, provenance,
+- [x] Run the complete software, firmware, package, privacy, provenance,
       parity-invariance, immutable-plan, and diff gates; commit and push a
       non-promotion closure without accessing hardware or attempt-007.
 
@@ -1161,6 +1161,22 @@ or a public projection. Do not flash, reset, monitor, mine, actuate, update,
 erase, inject faults, manipulate power, use direct UART, or touch electrical
 interfaces. This plan does not authorize attempt-008 and leaves STAT-001
 `implemented` with unchanged checklist and progress history.
+
+Watchdog-timeout correction completion review: pushed source `145eff42`
+replaces the false 2,000-ms task-watchdog freshness boundary with the compiled
+ESP-IDF five-second timeout supplied by the firmware adapter. Focused tests
+prove 2,001 ms and 5,000 ms fresh, 5,001 ms stale, and every existing closed
+failure unchanged. Exact firmware/package and all full software, privacy,
+reference, parity-invariance, immutable-plan, and diff gates passed. No
+protected attempt, credential, detector, device, network runtime, or hardware
+effect was accessed. STAT-001 remains `implemented`; the checklist and
+progress history are unchanged. See
+`docs/parity/work-plans/20260816T192025Z-STAT-001/CLOSURE.md`.
+
+Next safe action: a fresh immutable plan may consider one detector-gated
+attempt-008 only after binding exact pushed source `145eff42` and defining the
+complete hardware, privacy, recovery, cleanup, retry, stop, and promotion
+contract. Attempt-007 is consumed and must not be reused.
 
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
