@@ -18,7 +18,7 @@ fn observer() -> InputUatObserver {
 }
 
 fn runtime_attestation_log() -> String {
-    [10_000_u64, 20_000]
+    let lines = [10_000_u64, 20_000]
         .into_iter()
         .map(|uptime_ms| {
             format!(
@@ -26,7 +26,31 @@ fn runtime_attestation_log() -> String {
             )
         })
         .collect::<Vec<_>>()
-        .join("\n")
+        .join("\n");
+    format!("{lines}\n")
+}
+
+#[test]
+fn fragmented_runtime_attestation_reaches_checkpoint_without_parse_failure() {
+    // Arrange
+    let mut observer = observer();
+    let log = runtime_attestation_log();
+    let marker_split = log
+        .find("firmware_commit")
+        .expect("attestation field")
+        .saturating_add(7);
+    let newline_split = log.find('\n').expect("first newline").saturating_add(1);
+
+    // Act
+    let first = observer.observe_chunk(&log.as_bytes()[..marker_split]);
+    let second = observer.observe_chunk(&log.as_bytes()[marker_split..newline_split]);
+    let ready = observer.observe_chunk(&log.as_bytes()[newline_split..]);
+
+    // Assert
+    assert_eq!(first, InputUatAction::Continue);
+    assert_eq!(second, InputUatAction::Continue);
+    assert_eq!(ready, InputUatAction::PublishCheckpoint);
+    assert_eq!(observer.maybe_failure, None);
 }
 
 #[test]

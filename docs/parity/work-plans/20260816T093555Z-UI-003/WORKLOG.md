@@ -55,3 +55,33 @@
 - Blocker or next safe action: Commit and push this implementation, rebuild the
   exact package from that clean commit, detect the Ultra 205, then launch only
   the authorized physical short-click workflow.
+
+## 2026-08-16T10:21:18Z | Attempt-001 stopped before checkpoint
+
+- Actions: Built the clean `2fa4417c` package, admitted exactly one Ultra 205,
+  launched the sole authorized integrated workflow, and allowed its exact
+  package flash and receive-only observation to complete.
+- Verification: Detector admission passed. The workflow reported
+  `runtime_attestation_invalid`, released the USB session, withheld the public
+  projection, and never published the BOOT-button checkpoint.
+- Evidence: No physical input was requested or performed. Review of the
+  transcript-free reducer found that it parsed arbitrary USB chunks as complete
+  lines, so a marker split at a receive boundary became a malformed candidate.
+- Outcome: No parity promotion is claimed. The reducer now retains one bounded
+  partial line; fragmented-attestation unit and integrated tests, Clippy, and
+  the Bazel flash suite pass.
+- Blocker or next safe action: `attempt-001` is exhausted. Close this immutable
+  plan and require a fresh plan plus ordinal before another hardware effect.
+
+## 2026-08-16T10:23:57Z | Corrected checkpoint finalized
+
+- Actions: Validated the closure, reviewed the correction diff, and retained
+  UI-003 at `implemented` without changing its checklist fields.
+- Verification: The full ordered Rust checks, complete Bright Builds check,
+  all 45 Bazel test targets, parity validation/progress, redaction guard,
+  reference guard, immutable-plan check, projection-absence check, and diff
+  check pass after the framing correction.
+- Outcome: The corrected implementation and truthful non-verified closure are
+  ready to commit and push; no progress-history synchronization is applicable.
+- Blocker or next safe action: Resume UI-003 only through a fresh immutable
+  plan authorizing a new detector-gated attempt ordinal.

@@ -7,6 +7,7 @@ pub(crate) const INPUT_UAT_PRIVATE_ROOT: &str = "scratch/ui003-input/attempt-001
 pub(crate) const INPUT_UAT_PROJECTION: &str =
     "docs/parity/evidence/ui003-input/input-uat-projection.json";
 const CHECKPOINT_SCHEMA: &str = "bitaxe-input-uat-checkpoint-v1";
+const MAX_PENDING_LINE_BYTES: usize = 65_536;
 pub(crate) const INPUT_CORE_SOURCE: &str = "crates/bitaxe-core/src/input.rs";
 pub(crate) const INPUT_ADAPTER_SOURCE: &str = "firmware/bitaxe/src/input_adapter.rs";
 pub(crate) const REFERENCE_INPUT_SOURCE: &str = "reference/esp-miner/main/input.c";
@@ -27,6 +28,7 @@ enum InputUatFailure {
     UnexpectedShortRoute,
     LongPressObserved,
     DuplicateShortClick,
+    SerialFramingInvalid,
 }
 
 impl InputUatFailure {
@@ -38,6 +40,7 @@ impl InputUatFailure {
             Self::UnexpectedShortRoute => "unexpected_short_route",
             Self::LongPressObserved => "long_press_observed",
             Self::DuplicateShortClick => "duplicate_short_click",
+            Self::SerialFramingInvalid => "serial_framing_invalid",
         }
     }
 }
@@ -46,6 +49,7 @@ impl InputUatFailure {
 struct InputUatObserver {
     expected_runtime: ExpectedRuntimeAttestationIdentity,
     runtime_attestations: RuntimeAttestationAccumulator,
+    pending_line: Vec<u8>,
     source_semantics_admitted: bool,
     reference_semantics_admitted: bool,
     checkpoint_published: bool,
@@ -64,6 +68,7 @@ impl InputUatObserver {
         Self {
             expected_runtime,
             runtime_attestations: RuntimeAttestationAccumulator::default(),
+            pending_line: Vec::new(),
             source_semantics_admitted,
             reference_semantics_admitted,
             checkpoint_published: false,
@@ -79,28 +84,19 @@ impl InputUatObserver {
             return InputUatAction::Stop;
         }
         let checkpoint_was_published = self.checkpoint_published;
-        for bytes in chunk.split(|byte| *byte == b'\n') {
-            let Ok(line) = std::str::from_utf8(bytes) else {
-                continue;
-            };
-            if bitaxe_api::runtime_boot_attestation_marker_start(line.as_bytes()).is_some() {
-                self.runtime_attestations.observe_line(line);
+        self.pending_line.extend_from_slice(chunk);
+        while let Some(newline) = self.pending_line.iter().position(|byte| *byte == b'\n') {
+            let mut bytes = self.pending_line.drain(..=newline).collect::<Vec<_>>();
+            bytes.pop();
+            if bytes.last() == Some(&b'\r') {
+                bytes.pop();
             }
-            if !checkpoint_was_published {
-                continue;
-            }
-            if log_message_matches(line, "input_event=short_click effect=screen_advance") {
-                self.short_click_count = self.short_click_count.saturating_add(1);
-                self.screen_advance_observed = true;
-            } else if line.contains("input_event=short_click") {
-                self.maybe_failure
-                    .get_or_insert(InputUatFailure::UnexpectedShortRoute);
-            }
-            if line.contains("input_event=long_press") {
-                self.long_press_observed = true;
-                self.maybe_failure
-                    .get_or_insert(InputUatFailure::LongPressObserved);
-            }
+            self.observe_line(&bytes, checkpoint_was_published);
+        }
+        if self.pending_line.len() > MAX_PENDING_LINE_BYTES {
+            self.pending_line.clear();
+            self.maybe_failure
+                .get_or_insert(InputUatFailure::SerialFramingInvalid);
         }
         if self.short_click_count > 1 {
             self.maybe_failure
@@ -114,6 +110,30 @@ impl InputUatObserver {
             return InputUatAction::PublishCheckpoint;
         }
         InputUatAction::Continue
+    }
+
+    fn observe_line(&mut self, bytes: &[u8], checkpoint_was_published: bool) {
+        let Ok(line) = std::str::from_utf8(bytes) else {
+            return;
+        };
+        if bitaxe_api::runtime_boot_attestation_marker_start(line.as_bytes()).is_some() {
+            self.runtime_attestations.observe_line(line);
+        }
+        if !checkpoint_was_published {
+            return;
+        }
+        if log_message_matches(line, "input_event=short_click effect=screen_advance") {
+            self.short_click_count = self.short_click_count.saturating_add(1);
+            self.screen_advance_observed = true;
+        } else if line.contains("input_event=short_click") {
+            self.maybe_failure
+                .get_or_insert(InputUatFailure::UnexpectedShortRoute);
+        }
+        if line.contains("input_event=long_press") {
+            self.long_press_observed = true;
+            self.maybe_failure
+                .get_or_insert(InputUatFailure::LongPressObserved);
+        }
     }
 
     fn ready_for_checkpoint(&self) -> bool {

@@ -1095,6 +1095,16 @@ a new immutable plan. Stop on detector, identity, package, flash, startup,
 input-owner, checkpoint, marker, cleanup, validator, redaction, or projection
 failure, or on successful verified projection.
 
+Attempt-001 review (2026-08-16): The clean exact package was built and one
+detector-admitted Ultra 205 was flashed, but the live workflow stopped before
+the checkpoint with `runtime_attestation_invalid`; no BOOT press occurred and
+no public projection was written. The root cause was an unframed arbitrary USB
+chunk boundary splitting a runtime-attestation marker. The reducer now retains
+a bounded partial line and focused Cargo/Bazel tests prove split-marker
+recovery. The immutable continuation authorized only `attempt-001`, so UI-003
+remains implemented and this task remains active pending a fresh plan and
+attempt ordinal. See the continuation `CLOSURE.md`.
+
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
 - [x] Add a typed private-first `/api/theme` capture that binds the exact

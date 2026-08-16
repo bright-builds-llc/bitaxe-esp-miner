@@ -50,10 +50,16 @@ fn exact_package_short_click_writes_closed_projection_after_cleanup() {
     let dir = tempdir().expect("tempdir");
     let root = dir_path(&dir);
     write_input_uat_workspace(&root);
+    let attestation = format!("{}\n", runtime_attestation_log());
+    let split = attestation
+        .find("firmware_commit")
+        .expect("attestation field")
+        .saturating_add(7);
     let environment = FakeFlashEnvironment::default()
         .with_workspace_dir(root.clone())
         .with_input_uat_chunks(vec![
-            runtime_attestation_log().into_bytes(),
+            attestation.as_bytes()[..split].to_vec(),
+            attestation.as_bytes()[split..].to_vec(),
             b"I (123) input: input_event=short_click effect=screen_advance\n".to_vec(),
         ]);
 
@@ -80,9 +86,10 @@ fn operator_interruption_cleans_up_and_withholds_projection() {
     let dir = tempdir().expect("tempdir");
     let root = dir_path(&dir);
     write_input_uat_workspace(&root);
+    let attestation = format!("{}\n", runtime_attestation_log());
     let environment = FakeFlashEnvironment::default()
         .with_workspace_dir(root.clone())
-        .with_input_uat_chunks(vec![runtime_attestation_log().into_bytes()])
+        .with_input_uat_chunks(vec![attestation.into_bytes()])
         .with_input_uat_interrupted();
 
     // Act
