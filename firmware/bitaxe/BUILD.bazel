@@ -69,6 +69,16 @@ js_library(
 )
 
 js_library(
+    name = "screen_flow_evidence_sources",
+    srcs = [
+        "src/display_adapter.rs",
+        "src/operator_sensor_runtime.rs",
+        "src/runtime_snapshot/screen.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "adc_observation_sources",
     srcs = [
         "src/operator_sensor_runtime.rs",

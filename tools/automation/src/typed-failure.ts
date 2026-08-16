@@ -8,6 +8,7 @@ import { AsicInitializationEvidenceError } from "./asic-initialization-evidence.
 import { AsicPowerInitializationEvidenceError } from "./asic-power-initialization-evidence.js";
 import { CoreVoltageControlEvidenceError } from "./core-voltage-control-evidence.js";
 import { DisplayBehaviorEvidenceError } from "./display-behavior-evidence.js";
+import { ScreenFlowEvidenceError } from "./screen-flow-evidence.js";
 import { Ina260EvidenceError } from "./ina260-evidence.js";
 import { Emc2101ThermalEvidenceError } from "./emc2101-thermal-evidence.js";
 import { Emc2101ThermalFaultEvidenceError } from "./emc2101-thermal-fault-evidence.js";
@@ -48,6 +49,7 @@ function maybeTypedFailure(error: unknown): TypedFailure | undefined {
     || error instanceof AsicPowerInitializationEvidenceError
     || error instanceof CoreVoltageControlEvidenceError
     || error instanceof DisplayBehaviorEvidenceError
+    || error instanceof ScreenFlowEvidenceError
     || error instanceof Ina260EvidenceError
     || error instanceof Emc2101ThermalEvidenceError
     || error instanceof Emc2101ThermalFaultEvidenceError

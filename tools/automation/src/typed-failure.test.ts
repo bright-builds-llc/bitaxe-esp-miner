@@ -6,6 +6,7 @@ import { AsicInitializationEvidenceError } from "./asic-initialization-evidence.
 import { AsicPowerInitializationEvidenceError } from "./asic-power-initialization-evidence.js";
 import { CoreVoltageControlEvidenceError } from "./core-voltage-control-evidence.js";
 import { DisplayBehaviorEvidenceError } from "./display-behavior-evidence.js";
+import { ScreenFlowEvidenceError } from "./screen-flow-evidence.js";
 import { Ina260EvidenceError } from "./ina260-evidence.js";
 import { Emc2101ThermalEvidenceError } from "./emc2101-thermal-evidence.js";
 import { Emc2101ThermalFaultEvidenceError } from "./emc2101-thermal-fault-evidence.js";
@@ -118,6 +119,23 @@ test("display-behavior failures retain only closed projection facts", () => {
   // Assert
   assert.deepEqual(publicValue, {
     stage: "sealed_display_behavior_projection",
+    hardware_rerun_used: false,
+  });
+});
+
+test("screen-flow failures retain only closed projection facts", () => {
+  // Arrange
+  const error = new ScreenFlowEvidenceError("evidence_invalid", "safe failure", {
+    stage: "sealed_screen_flow_projection",
+    hardware_rerun_used: false,
+  });
+
+  // Act
+  const publicValue = maybeTypedFailurePublicValue(error);
+
+  // Assert
+  assert.deepEqual(publicValue, {
+    stage: "sealed_screen_flow_projection",
     hardware_rerun_used: false,
   });
 });

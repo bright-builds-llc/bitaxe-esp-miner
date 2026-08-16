@@ -135,3 +135,15 @@ js_library(
     ],
     visibility = ["//tools/automation:__pkg__"],
 )
+
+js_library(
+    name = "screen_flow_evidence_inputs",
+    srcs = [
+        "TASKS.md",
+        "docs/parity/evidence/api009-command-effects/command-effects-projection-attempt-046.json",
+        "docs/parity/evidence/api009-command-effects/display-uat-projection-attempt-005.json",
+        "docs/parity/work-plans/20260816T073911Z-UI-002/PLAN.md",
+        "reference/esp-miner/main/screen.c",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)

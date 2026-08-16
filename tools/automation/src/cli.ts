@@ -29,10 +29,7 @@ import {
   type AutomationCommand,
   type AutomationResult,
 } from "./contracts.generated.js";
-import {
-  portFromDetectorOutput,
-  provisioningDetectorHandoffFromOutput,
-} from "./detector.js";
+import { portFromDetectorOutput, provisioningDetectorHandoffFromOutput } from "./detector.js";
 import { fetchJsonFromSameOrigin } from "./http.js";
 import {
   hasFlag,
@@ -54,8 +51,7 @@ import { captureSdkconfigRollbackEvidence } from "./sdkconfig-rollback-evidence.
 import { createLocalProcessPort, type ProcessPort } from "./process.js";
 import { verifySemanticEvidenceRedaction } from "./redaction.js";
 import { captureRuntimeHealthEvidence } from "./runtime-health-evidence.js";
-import { projectCoreVoltageControlEvidenceFromInvocation } from "./sealed-evidence-cli.js";
-import { projectDisplayBehaviorEvidenceFromInvocation } from "./sealed-evidence-cli.js";
+import * as sealedEvidence from "./sealed-evidence-cli.js";
 import { captureSettingsPatchEvidence } from "./settings-patch-evidence.js";
 import { captureSystemInfoEvidence } from "./system-info-evidence.js";
 import { typedRequestArguments } from "./typed-request.js";
@@ -224,6 +220,7 @@ async function dispatchProcess(
     case "project-asic-power-initialization-evidence":
     case "project-core-voltage-control-evidence":
     case "project-display-behavior-evidence":
+    case "project-screen-flow-evidence":
     case "project-ina260-evidence":
     case "project-asic-reset-evidence":
     case "project-asic-frequency-transition-evidence":
@@ -449,9 +446,11 @@ async function main(): Promise<number> {
       }, processPort, "git", toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_initialization_evidence"),
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_asic_power_initialization_evidence"));
     } else if (invocation.command === "project-core-voltage-control-evidence") {
-      publicValue = await projectCoreVoltageControlEvidenceFromInvocation(root, invocation, processPort);
+      publicValue = await sealedEvidence.projectCoreVoltageControlEvidenceFromInvocation(root, invocation, processPort);
     } else if (invocation.command === "project-display-behavior-evidence") {
-      publicValue = await projectDisplayBehaviorEvidenceFromInvocation(root, invocation, processPort);
+      publicValue = await sealedEvidence.projectDisplayBehaviorEvidenceFromInvocation(root, invocation, processPort);
+    } else if (invocation.command === "project-screen-flow-evidence") {
+      publicValue = await sealedEvidence.projectScreenFlowEvidenceFromInvocation(root, invocation, processPort);
     } else if (invocation.command === "project-ina260-evidence") {
       publicValue = await projectIna260Evidence(root, {
         attemptRoot: optionValue(invocation, "--attempt-root"),

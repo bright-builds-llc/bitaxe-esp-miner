@@ -29,6 +29,7 @@ mod partition_layout_evidence;
 mod protocol_coordinator_evidence;
 mod provisioning_network_evidence;
 mod runtime_health_evidence;
+mod screen_flow_evidence;
 mod sdkconfig_rollback_evidence;
 mod settings_patch_evidence;
 mod stratum_socket_evidence;
@@ -107,6 +108,9 @@ pub use provisioning_network_evidence::{
     ProvisioningNetworkEvidence, ProvisioningNetworkObservationEvidence,
 };
 pub use runtime_health_evidence::{RuntimeHealthEvidence, RuntimeHealthObservationEvidence};
+pub use screen_flow_evidence::{
+    ScreenFlowEvidence, ScreenFlowObservationEvidence, ScreenFlowSourceEvidence,
+};
 pub use sdkconfig_rollback_evidence::{
     SdkconfigRollbackEvidence, SdkconfigRollbackObservationEvidence,
 };
@@ -143,6 +147,7 @@ pub const ASIC_POWER_INITIALIZATION_EVIDENCE_SCHEMA: &str =
     "bitaxe-asic-power-initialization-evidence-v1";
 pub const CORE_VOLTAGE_CONTROL_EVIDENCE_SCHEMA: &str = "bitaxe-core-voltage-control-evidence-v1";
 pub const DISPLAY_BEHAVIOR_EVIDENCE_SCHEMA: &str = "bitaxe-display-behavior-evidence-v1";
+pub const SCREEN_FLOW_EVIDENCE_SCHEMA: &str = "bitaxe-screen-flow-evidence-v1";
 pub const INA260_EVIDENCE_SCHEMA: &str = "bitaxe-ina260-evidence-v1";
 pub const EMC2101_THERMAL_EVIDENCE_SCHEMA: &str = "bitaxe-emc2101-thermal-evidence-v1";
 pub const EMC2101_THERMAL_FAULT_EVIDENCE_SCHEMA: &str = "bitaxe-emc2101-thermal-fault-evidence-v1";
@@ -208,6 +213,7 @@ pub enum AutomationCommand {
     ProjectAsicPowerInitializationEvidence,
     ProjectCoreVoltageControlEvidence,
     ProjectDisplayBehaviorEvidence,
+    ProjectScreenFlowEvidence,
     ProjectIna260Evidence,
     CaptureEmc2101ThermalEvidence,
     CaptureEmc2101ThermalFaultEvidence,
@@ -380,6 +386,7 @@ pub struct ContractBundle {
     pub asic_power_initialization_evidence_schema: Value,
     pub core_voltage_control_evidence_schema: Value,
     pub display_behavior_evidence_schema: Value,
+    pub screen_flow_evidence_schema: Value,
     pub ina260_evidence_schema: Value,
     pub emc2101_thermal_evidence_schema: Value,
     pub emc2101_thermal_fault_evidence_schema: Value,
@@ -461,6 +468,8 @@ pub fn contract_bundle() -> ContractBundle {
             DisplayBehaviorEvidence
         ))
         .expect("display-behavior evidence schema must serialize"),
+        screen_flow_evidence_schema: serde_json::to_value(schema_for!(ScreenFlowEvidence))
+            .expect("screen-flow evidence schema must serialize"),
         ina260_evidence_schema: serde_json::to_value(schema_for!(Ina260Evidence))
             .expect("INA260 evidence schema must serialize"),
         emc2101_thermal_evidence_schema: serde_json::to_value(schema_for!(Emc2101ThermalEvidence))
@@ -537,6 +546,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::ProjectAsicPowerInitializationEvidence,
             AutomationCommand::ProjectCoreVoltageControlEvidence,
             AutomationCommand::ProjectDisplayBehaviorEvidence,
+            AutomationCommand::ProjectScreenFlowEvidence,
             AutomationCommand::ProjectIna260Evidence,
             AutomationCommand::CaptureEmc2101ThermalEvidence,
             AutomationCommand::CaptureEmc2101ThermalFaultEvidence,
@@ -572,6 +582,7 @@ pub fn contract_bundle() -> ContractBundle {
             ASIC_POWER_INITIALIZATION_EVIDENCE_SCHEMA,
             CORE_VOLTAGE_CONTROL_EVIDENCE_SCHEMA,
             DISPLAY_BEHAVIOR_EVIDENCE_SCHEMA,
+            SCREEN_FLOW_EVIDENCE_SCHEMA,
             INA260_EVIDENCE_SCHEMA,
             EMC2101_THERMAL_EVIDENCE_SCHEMA,
             EMC2101_THERMAL_FAULT_EVIDENCE_SCHEMA,

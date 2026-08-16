@@ -1063,14 +1063,14 @@ behavior remain separate evidence gaps.
 Source-bound verification plan:
 `docs/parity/work-plans/20260816T073911Z-UI-002/PLAN.md`.
 
-- [ ] Validate the exact committed API-009 display-UAT and command-effects
+- [x] Validate the exact committed API-009 display-UAT and command-effects
       projections without reading protected attempts or rerunning hardware.
-- [ ] Add a closed UI-002 evidence contract, independent validator, projector,
+- [x] Add a closed UI-002 evidence contract, independent validator, projector,
       exhaustive boundary regressions, and complete Bazel/runfiles ownership.
-- [ ] Bind captured source `522d5abd`, current pushed screen-flow semantics,
+- [x] Bind captured source `522d5abd`, current pushed screen-flow semantics,
       pinned reference behavior, this active task, and the immutable plan into
       one aggregate-only public projection.
-- [ ] Pass every focused, mandatory, privacy, package, reference, parity,
+- [x] Pass every focused, mandatory, privacy, package, reference, parity,
       progress, selector, digest, permission, sensitive-value, and diff gate;
       promote and archive only on the complete accepted quorum.
 

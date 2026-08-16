@@ -191,6 +191,17 @@ validate-display-behavior-evidence projection:
     projection_path="$(/bin/realpath "$projection")"
     bazel run //crates/bitaxe-automation-contracts:validate_display_behavior_evidence -- "$projection_path"
 
+project-screen-flow-evidence *args:
+    bazel run //tools/automation:project_screen_flow_evidence -- {{ args }}
+
+validate-screen-flow-evidence projection:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    projection={{ quote(projection) }}
+    test -f "$projection"
+    projection_path="$(/bin/realpath "$projection")"
+    bazel run //crates/bitaxe-automation-contracts:validate_screen_flow_evidence -- "$projection_path"
+
 project-ina260-evidence *args:
     bazel run //tools/automation:project_ina260_evidence -- {{ args }}
 

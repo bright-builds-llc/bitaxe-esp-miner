@@ -32,6 +32,7 @@ rust_library(
         "src/protocol_coordinator_evidence.rs",
         "src/provisioning_network_evidence.rs",
         "src/runtime_health_evidence.rs",
+        "src/screen_flow_evidence.rs",
         "src/sdkconfig_rollback_evidence.rs",
         "src/settings_patch_evidence.rs",
         "src/stratum_socket_evidence.rs",
@@ -243,6 +244,17 @@ rust_binary(
     name = "validate_display_behavior_evidence",
     srcs = ["src/bin/validate_display_behavior_evidence.rs"],
     crate_name = "validate_display_behavior_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_screen_flow_evidence",
+    srcs = ["src/bin/validate_screen_flow_evidence.rs"],
+    crate_name = "validate_screen_flow_evidence",
     edition = "2021",
     deps = [
         ":bitaxe_automation_contracts",

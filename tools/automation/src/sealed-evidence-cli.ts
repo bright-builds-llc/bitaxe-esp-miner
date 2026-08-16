@@ -1,6 +1,7 @@
 import { toolProgram } from "./cli-tools.js";
 import { projectCoreVoltageControlEvidence } from "./core-voltage-control-evidence.js";
 import { projectDisplayBehaviorEvidence } from "./display-behavior-evidence.js";
+import { projectScreenFlowEvidence } from "./screen-flow-evidence.js";
 import { optionValue, type ParsedInvocation } from "./invocation.js";
 import type { ProcessPort } from "./process.js";
 
@@ -30,4 +31,18 @@ export function projectDisplayBehaviorEvidenceFromInvocation(
     projection: optionValue(invocation, "--projection"),
   }, processPort, "git", toolProgram(root,
     "crates/bitaxe-automation-contracts/validate_display_behavior_evidence"));
+}
+
+export function projectScreenFlowEvidenceFromInvocation(
+  root: string,
+  invocation: ParsedInvocation,
+  processPort: ProcessPort,
+) {
+  return projectScreenFlowEvidence(root, {
+    sourceDisplayUat: optionValue(invocation, "--source-display-uat"),
+    sourceCommandEffects: optionValue(invocation, "--source-command-effects"),
+    attemptSourceCommit: optionValue(invocation, "--attempt-source-commit"),
+    projection: optionValue(invocation, "--projection"),
+  }, processPort, "git", toolProgram(root,
+    "crates/bitaxe-automation-contracts/validate_screen_flow_evidence"));
 }

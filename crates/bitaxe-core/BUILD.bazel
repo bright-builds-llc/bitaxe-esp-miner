@@ -19,6 +19,15 @@ js_library(
     visibility = ["//tools/automation:__pkg__"],
 )
 
+js_library(
+    name = "screen_flow_evidence_sources",
+    srcs = [
+        "src/screen.rs",
+        "src/screen/frame.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
 filegroup(
     name = "phase34_identity_sources",
     srcs = [
