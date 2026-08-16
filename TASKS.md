@@ -698,7 +698,7 @@ Attempt-003 verification-promotion plan:
       reject the former `soak` plus `conservative` pair at the real boundary.
 - [x] Pass every focused and mandatory software, firmware, privacy, reference,
       package, and exact-source gate; commit and push before device access.
-- [ ] Run only the exact plan detector and one conditional attempt-003 command,
+- [x] Run only the exact plan detector and one conditional attempt-003 command,
       then promote only on the complete independently validated quorum.
 
 Attempt-003 authorization: pushed commit `0d058a66` materially fixes the exact
@@ -734,6 +734,19 @@ windows with work renewal; changing coherent positive HTTP/WebSocket current
 hashrate and positive rolling windows after warmup; bounded error; terminal
 zero current rate; safe stop, cleanup, protected modes, seal, independent
 validation, and redaction. Any missing fact withholds promotion.
+
+Attempt-003 completion review: exact clean pushed source/package `3b03502e`,
+all software/privacy/reference gates, and one detector passed. The sole
+campaign crossed attempt-002's corrected boundary: package admission,
+`live-share` plus `conservative`, protocol readiness, observation start, 1,361
+accepted markers, and 366,166 active milliseconds were sealed. It then stopped
+as `hardware_blocked` / `runtime_identity_untrusted`: all 41 UTF-8 runtime-
+attestation candidates reduced to `malformed`. Safe stop and USB cleanup pass,
+protected modes and the result seal pass, and the public projection is absent.
+STAT-001 remains `implemented`; attempt-003 is consumed and attempt-004 is not
+authorized. The linked `CLOSURE.md` requires a software-only closed parse-
+discriminator diagnosis and targeted regression-backed fix before any future
+hardware ordinal.
 
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
