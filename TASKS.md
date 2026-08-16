@@ -579,6 +579,41 @@ Completion review: Implementation commit
 evidence. The task remains active because live BM1366 counter accuracy and
 hardware/API/UI behavior remain below verified.
 
+Verification-promotion plan:
+`docs/parity/work-plans/20260816T005443Z-STAT-001/PLAN.md`
+
+- [ ] Add a private-first closed hashrate quorum to the existing conservative
+      600-second campaign, with independent validation and no raw-value
+      publication.
+- [ ] Run the plan's full pre-hardware suite, commit and push the implementation,
+      then execute only detector command 1 and the sole attempt-001 command 2.
+- [ ] Promote only STAT-001 on the complete exact-package HTTP/WebSocket,
+      BM1366 topology, rolling-window, terminal-zero, safe-stop, cleanup, mode,
+      seal, and redaction quorum; otherwise preserve `implemented`, withhold the
+      projection, record the earliest typed blocker, and do not retry.
+
+Attempt-001 authorization: one exact clean board-205 package may be factory-
+flashed and normally reset/re-enumerated; ignored local Wi-Fi and pool inputs
+may be seeded privately; and the repo-owned conservative 400 MHz / 1100 mV /
+100% fan profile may mine for exactly 600 active seconds while the current
+session's serial-derived origin is observed through HTTP and WebSocket. The
+campaign must pause, safe-stop, clean up USB ownership, and may use at most one
+exact-package recovery flash after a post-flash failure. No upstream-default or
+overclock profile, arbitrary control target, unbounded mining, OTA, erase,
+fault injection, physical power action, direct UART, or electrical pin/pad/
+header/probe/jumper/solder/signal manipulation is authorized.
+
+Evidence/privacy/retry: `scratch/stat001-hashrate-monitor/wrapper-001` and
+`attempt-001` are ignored mode-`0700` roots with mode-`0600` files. Credentials,
+pool/owner/worker fields, origins, ports, USB/network identity, exact hashrates,
+sensors, HTTP/WebSocket bodies, serial, commands, PIDs, and traces stay private.
+Only the plan-named closed projection may become public after independent
+validation. Starting command 2 consumes attempt-001. Every post-flash failure
+preserves the earliest typed category and performs bounded safe stop, recovery,
+and cleanup. Detector ambiguity/failure, missing inputs, unsafe state,
+malformed/incomplete proof, cleanup/recovery/privacy failure, or nonzero command
+stops without retry and leaves STAT-001 `implemented`.
+
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
 - [x] Add the exact bounded 720-sample history, timestamp admission, configured
