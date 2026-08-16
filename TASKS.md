@@ -897,9 +897,9 @@ Attempt-005 verification-promotion plan:
 - [x] Prove the exact five-stage network-observer correction, conservative
       400 MHz / 1,100 mV / 100% profile, volt-typed input safety, and every
       source, package, privacy, reference, and mandatory repository gate.
-- [ ] Commit and push the exact implementation and rebuild its package before
+- [x] Commit and push the exact implementation and rebuild its package before
       accessing the detector, credential presence, or hardware.
-- [ ] Run only the plan's exact detector and conditional attempt-005 capture,
+- [x] Run only the plan's exact detector and conditional attempt-005 capture,
       then promote STAT-001 only on the complete independently validated
       network/hashrate/safe-stop/cleanup quorum.
 
@@ -923,6 +923,23 @@ the earliest failure, safe-stop/recover/seal/clean up, and never retry unchanged
 or start attempt-006. No other profile, arbitrary control, unbounded mining,
 OTA, erase, raw write, fault injection, physical power action, external UART,
 or electrical pin/pad/header/GPIO/probe/jumper/solder/signal work is authorized.
+
+Attempt-005 closure:
+`docs/parity/work-plans/20260816T050533Z-STAT-001/CLOSURE.md`
+
+Attempt-005 completion review: exact pushed source `1090cf6e`, pinned reference,
+clean package identity, every software/privacy gate, and the sole detector
+passed. The one capture crossed attempt-004's corrected LiveShare observer
+boundary and produced 11 complete network windows over 310,615 active
+milliseconds with trusted identity, fresh safety, 61 HTTP successes, 298
+WebSocket frames without transport failures, changing coherent positive
+hashrates in both transports, terminal zero, confirmed safe stop, persistence,
+USB cleanup, seals, modes, and redaction. It then failed closed as
+`watchdog_unresponsive`; the projection was withheld and STAT-001 remains
+`implemented`. Current closed evidence cannot distinguish the watchdog sample
+predicate from HTTP/WebSocket per-window sequence advancement. Attempt-005 is
+consumed, no retry or attempt-006 is authorized, and the next safe action is a
+software-only discriminator plan before any further hardware ordinal.
 
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 

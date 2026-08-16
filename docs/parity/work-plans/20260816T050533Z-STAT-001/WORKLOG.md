@@ -17,3 +17,12 @@
 - Evidence: The immutable plan digest remains `c07d95b2ca7a7e064d4be8f5446cb551778cc535e8d02b5dd748f2bb5af71579`. No detector, credential, USB, device, network runtime, or protected attempt path was accessed.
 - Outcome: The attempt-005 evidence workflow is ready for an exact pushed source checkpoint. The unit boundary is explicit: core-voltage command `1_100` is millivolts; input bus voltage is finite volts within 4.5 through 5.5.
 - Blocker or next safe action: Commit and push this verified implementation, rebuild the exact clean package, and only then run the plan's sole detector command.
+
+## 2026-08-16T05:56:01Z | sole hardware attempt closed
+
+- Source commit: `1090cf6eeb867345049ddb91cdcb7d5d382e264b`
+- Actions: Rebuilt and validated the exact clean package; ran the frozen detector once; after successful one-device admission and closed credential/path checks, ran the sole attempt-005 capture once. No retry or additional hardware action ran.
+- Verification: The sealed campaign-result v10 and network v4 digests joined; wrapper and attempt modes passed; the public projection remained absent. Closed evidence recorded trusted identity, zero parse failures, fresh safety, 11/20 windows, 310,615 active milliseconds, 61 HTTP successes, 298 WebSocket frames, zero transport failure counts, changing coherent positive hashrates and terminal zero on both transports, confirmed safe stop, terminal joins, persistence, and ready USB cleanup.
+- Evidence: The wrapper returned `hardware_blocked` with `runtime_attestation_parse_failure: none`; the sealed terminal category was `watchdog_unresponsive`, with `watchdog_valid: false`. Raw protected artifacts, credentials, endpoints, identities, exact sensor values, and exact hashrates were not printed or promoted.
+- Outcome: `stop_hardware_blocker`. Verification is not claimed; STAT-001 remains `implemented` and its checklist fields are unchanged.
+- Blocker or next safe action: Add a software-only closed watchdog failure discriminator before considering another hardware ordinal. Attempt-005 is consumed and this plan authorizes no attempt-006.
