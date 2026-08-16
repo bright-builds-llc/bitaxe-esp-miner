@@ -1124,6 +1124,23 @@ projection. Accepted terminal outcomes are `complete`,
 `stop_repeated_boundary`, `stop_hardware_blocker`,
 `stop_authority_boundary`, and `stop_impossible_contract`.
 
+Attempt-007 closure:
+`docs/parity/work-plans/20260816T183130Z-STAT-001/CLOSURE.md`
+
+Attempt-007 completion review: exact pushed source `ec9bedd3`, pinned
+reference, clean board-205 package, every software/privacy gate, and the sole
+detector passed. The one capture admitted the package and trusted runtime,
+covered 15 of 20 required network windows, and retained valid terminal HTTP,
+WebSocket, and persisted-pool state. It then failed closed as
+`watchdog_unresponsive` with the reason-specific sealed discriminator
+`watchdog_feed_stale`. Fresh safety, confirmed safe stop, ready USB cleanup,
+the result/network seals, protected modes, and redaction passed. The public
+projection is absent, parity promotion is false, and STAT-001 remains
+`implemented`; attempt-007 is consumed and no retry or attempt-008 is
+authorized. The next safe action is a software-only diagnosis of watchdog
+checkpoint/feed scheduling and task lifecycle before any further hardware
+ordinal.
+
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
 - [x] Add the exact bounded 720-sample history, timestamp admission, configured

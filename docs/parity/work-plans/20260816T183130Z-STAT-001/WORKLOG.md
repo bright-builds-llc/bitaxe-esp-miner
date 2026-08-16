@@ -62,3 +62,46 @@
 - Blocker or next safe action: Commit and push this implementation, rebuild
   and validate the clean commit-bound package, then run only the two frozen
   hardware commands in order.
+
+## 2026-08-16T19:08:10Z | Attempt-007 terminal checkpoint
+
+- Implementation commit: `ec9bedd390142c63b180fe73291ae7035cf83c0f`
+  (pushed and synchronized before device admission).
+- Actions: Rebuilt and admitted the exact clean board-205 package, ran the
+  linked detector once, then consumed attempt-007 with the linked capture
+  command exactly once. No retry or attempt-008 was run.
+- Verification: The protected wrapper and attempt roots are mode `0700`; all
+  seven attempt artifacts are mode `0600`; the campaign-result and network
+  digests match; the result is redacted; and the public projection is absent.
+- Evidence: Package and runtime identity were trusted, runtime attestation had
+  no parse failure, production serial was clean, fresh safety and confirmed
+  safe stop passed, USB cleanup was ready, and terminal HTTP, WebSocket, and
+  persisted-pool state were valid. The campaign covered 15 of 20 required
+  windows before failing closed as `watchdog_unresponsive` with the sealed
+  value-free discriminator `watchdog_feed_stale`.
+- Outcome: `stop_hardware_blocker`. STAT-001 remains `implemented`, parity
+  promotion remains false, and the checklist and progress history are
+  unchanged.
+- Blocker or next safe action: Use a separate immutable software-only plan to
+  trace watchdog checkpoint/feed scheduling, feed ownership, and task
+  lifecycle and add a targeted regression-backed correction if the source
+  proves one. Attempt-007 is consumed; no unchanged retry or attempt-008 is
+  authorized.
+
+## 2026-08-16T19:14:29Z | Final closure audit
+
+- Verification: Ordered Cargo format, strict Clippy, all-target build, and
+  all-feature tests passed. Bright Builds, all 45 Bazel test targets, the
+  canonical firmware package, parity report, unchanged parity progress,
+  redaction, reference integrity, selector, immutable-plan hash, and diff
+  checks passed with the closure present.
+- Diagnostic note: The first parity-report process completed its report but
+  returned transient host error `os error 35`; process-state inspection showed
+  no repository failure, and one immediate read-only rerun completed with
+  `validation_errors: none`. No validation was waived.
+- Simplification review: Closure changes only append the consumed attempt's
+  bounded closed result and next safe action. No source, checklist field,
+  progress record, public evidence, dependency, or immutable plan changed.
+- Outcome: The one-row invocation is ready for its closure commit and push.
+  STAT-001 remains `implemented` at 74 verified rows and 78.7 percent reported
+  completion; the selector reports no open plan.
