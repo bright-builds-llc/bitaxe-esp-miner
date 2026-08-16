@@ -67,17 +67,23 @@ const sourceFragments = new Map<string, readonly string[]>([
   ]],
   ["firmware/bitaxe/src/production_mining_session/asic_worker.rs", [
     "request_hashrate_monitor_register_reads_tx()",
-    "AsicWorkerEvent::RegisterRead",
+    "emit(AsicWorkerEvent::RegisterRead {",
   ]],
   ["firmware/bitaxe/src/runtime_snapshot.rs", ["publish_hashrate_snapshot"]],
 ]);
-const referenceFragments = [
-  "#define HASHRATE_UNIT 0x100000uLL",
-  "#define POLL_RATE 1000",
-  "#define HASHRATE_1M_SIZE (60000 / POLL_RATE)",
-  "update_hash_counter",
-  "ASIC_read_registers(GLOBAL_STATE);",
-] as const;
+const referenceFragments = new Map<string, readonly string[]>([
+  ["reference/esp-miner/main/tasks/hashrate_monitor_task.c", [
+    "#define HASHRATE_UNIT 0x100000uLL",
+    "#define POLL_RATE 1000",
+    "#define HASHRATE_1M_SIZE (60000 / POLL_RATE)",
+    "void update_hash_counter(measurement_t * measurement, uint32_t value, uint64_t time_us)",
+    "ASIC_read_registers(GLOBAL_STATE);",
+  ]],
+  ["reference/esp-miner/components/stratum/utils.c", [
+    "#define HASH_CNT_LSB 0x100000000uLL",
+    "float hashCounterToGhs(uint64_t duration_us, uint32_t counter)",
+  ]],
+]);
 
 export class HashrateMonitorEvidenceError extends Error {
   public constructor(
@@ -180,14 +186,13 @@ async function readJson(candidate: string, context: string): Promise<{
   }
 }
 
-async function validateTaskPlanAndSources(
+export async function validateHashrateMonitorTaskAndSources(
   workspaceRoot: string,
   admittedPlanSha256: string,
 ): Promise<void> {
-  const [taskDocument, planDocument, referenceDocument] = await Promise.all([
+  const [taskDocument, planDocument] = await Promise.all([
     readFile(path.join(workspaceRoot, "TASKS.md"), "utf8"),
     readFile(path.join(workspaceRoot, expectedPlan), "utf8"),
-    readFile(path.join(workspaceRoot, "reference/esp-miner/main/tasks/hashrate_monitor_task.c"), "utf8"),
   ]);
   const heading = `### ${activeTask} |`;
   const start = taskDocument.indexOf(heading);
@@ -200,9 +205,12 @@ async function validateTaskPlanAndSources(
     || !planDocument.includes(`- Active task: \`${activeTask}\``)) {
     throw failure("evidence_invalid", "STAT-001 task or immutable plan binding is invalid");
   }
-  for (const fragment of referenceFragments) {
-    if (referenceDocument.split(fragment).length !== 2) {
-      throw failure("evidence_invalid", "pinned hashrate reference semantics are invalid");
+  for (const [relative, fragments] of referenceFragments) {
+    const document = await readFile(path.join(workspaceRoot, relative), "utf8");
+    for (const fragment of fragments) {
+      if (document.split(fragment).length !== 2) {
+        throw failure("evidence_invalid", "pinned hashrate reference semantics are invalid");
+      }
     }
   }
   for (const [relative, fragments] of sourceFragments) {
@@ -263,7 +271,7 @@ export async function captureHashrateMonitorEvidence(
   await requireAbsent(privateRoot, "protected campaign root");
   await requireAbsent(projection, "hashrate projection");
   await requireAbsent(candidate, "hashrate projection candidate");
-  await validateTaskPlanAndSources(workspaceRoot, admittedPlanSha256);
+  await validateHashrateMonitorTaskAndSources(workspaceRoot, admittedPlanSha256);
 
   let campaign;
   try {

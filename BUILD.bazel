@@ -109,3 +109,14 @@ js_library(
     srcs = ["reference/esp-miner/main/adc.c"],
     visibility = ["//tools/automation:__pkg__"],
 )
+
+js_library(
+    name = "hashrate_monitor_evidence_inputs",
+    srcs = [
+        "TASKS.md",
+        "docs/parity/work-plans/20260816T005443Z-STAT-001/PLAN.md",
+        "reference/esp-miner/components/stratum/utils.c",
+        "reference/esp-miner/main/tasks/hashrate_monitor_task.c",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)

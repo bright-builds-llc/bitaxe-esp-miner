@@ -585,7 +585,7 @@ Verification-promotion plan:
 - [x] Add a private-first closed hashrate quorum to the existing conservative
       600-second campaign, with independent validation and no raw-value
       publication.
-- [ ] Run the plan's full pre-hardware suite, commit and push the implementation,
+- [x] Run the plan's full pre-hardware suite, commit and push the implementation,
       then execute only detector command 1 and the sole attempt-001 command 2.
 - [ ] Promote only STAT-001 on the complete exact-package HTTP/WebSocket,
       BM1366 topology, rolling-window, terminal-zero, safe-stop, cleanup, mode,
@@ -613,6 +613,22 @@ preserves the earliest typed category and performs bounded safe stop, recovery,
 and cleanup. Detector ambiguity/failure, missing inputs, unsafe state,
 malformed/incomplete proof, cleanup/recovery/privacy failure, or nonzero command
 stops without retry and leaves STAT-001 `implemented`.
+
+Attempt-001 outcome: detector command 1 admitted exactly one Ultra 205. Capture
+command 2 then failed its immutable pre-effect source/reference admission with
+typed category `evidence_invalid`; the broad `update_hash_counter` fragment had
+eight legitimate upstream occurrences while the wrapper required one. No
+attempt root, flash, mining, or public projection was created. Attempt-001 is
+consumed, no retry was run, and STAT-001 remains `implemented`. The faulty
+fragment and a second ambiguous source fragment were narrowed and a current-
+repository admission regression was added after the failure. See
+`docs/parity/work-plans/20260816T005443Z-STAT-001/CLOSURE.md`.
+
+Next safe action: a future immutable STAT-001 plan may authorize fresh
+attempt-002 after the admission correction is committed, pushed, fully gated,
+and bound to a newly built exact package. It must repeat detector admission and
+may not reuse attempt-001 or infer hardware evidence from this pre-effect
+failure.
 
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 

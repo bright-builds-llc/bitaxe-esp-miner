@@ -7,6 +7,12 @@ js_library(
     visibility = ["//tools/automation:__pkg__"],
 )
 
+js_library(
+    name = "hashrate_monitor_source",
+    srcs = ["src/hashrate.rs"],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
 filegroup(
     name = "phase34_identity_sources",
     srcs = [

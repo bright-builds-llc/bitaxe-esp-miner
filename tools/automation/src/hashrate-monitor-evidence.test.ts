@@ -9,6 +9,7 @@ import { toolProgram } from "./cli-tools.js";
 import {
   captureHashrateMonitorEvidence,
   HashrateMonitorEvidenceError,
+  validateHashrateMonitorTaskAndSources,
   type HashrateMonitorEvidenceOptions,
 } from "./hashrate-monitor-evidence.js";
 import { createLocalProcessPort } from "./process.js";
@@ -42,7 +43,7 @@ const sourceDocuments = new Map<string, string>([
   ].join("\n")],
   ["firmware/bitaxe/src/production_mining_session/asic_worker.rs", [
     "request_hashrate_monitor_register_reads_tx()",
-    "AsicWorkerEvent::RegisterRead",
+    "emit(AsicWorkerEvent::RegisterRead {",
   ].join("\n")],
   ["firmware/bitaxe/src/runtime_snapshot.rs", "publish_hashrate_snapshot"],
 ]);
@@ -87,8 +88,15 @@ async function fixture(name: string): Promise<Fixture> {
     "#define HASHRATE_UNIT 0x100000uLL",
     "#define POLL_RATE 1000",
     "#define HASHRATE_1M_SIZE (60000 / POLL_RATE)",
-    "update_hash_counter",
+    "void update_hash_counter(measurement_t * measurement, uint32_t value, uint64_t time_us)",
+    ...Array.from({ length: 7 }, () => "update_hash_counter"),
     "ASIC_read_registers(GLOBAL_STATE);",
+  ].join("\n"));
+  const counterReference = path.join(root, "reference/esp-miner/components/stratum/utils.c");
+  await mkdir(path.dirname(counterReference), { recursive: true });
+  await writeFile(counterReference, [
+    "#define HASH_CNT_LSB 0x100000000uLL",
+    "float hashCounterToGhs(uint64_t duration_us, uint32_t counter)",
   ].join("\n"));
   const planRelative = "docs/parity/work-plans/20260816T005443Z-STAT-001/PLAN.md";
   const plan = "- Parity row: `STAT-001`\n- Active task: `task-parity-stat001-hashrate-monitor`\n";
@@ -196,6 +204,19 @@ test("real campaign and independent validator children publish only closed evide
   } finally {
     await rm(value.root, { recursive: true });
   }
+});
+
+test("current immutable task and production/reference sources pass admission", async () => {
+  // Arrange
+  const root = process.env["RUNFILES_DIR"] === undefined
+    ? workspace
+    : path.join(process.env["RUNFILES_DIR"], "_main");
+
+  // Act / Assert
+  await validateHashrateMonitorTaskAndSources(
+    root,
+    "32321e5916949d1e6e3b41454c8eb4d168b7cd1a42d3e006e78d231fc74bf07b",
+  );
 });
 
 test("incomplete transport evidence is rejected before publication", async () => {

@@ -18,6 +18,16 @@ exports_files([
 ])
 
 js_library(
+    name = "hashrate_monitor_sources",
+    srcs = [
+        "src/production_mining_session/asic_worker.rs",
+        "src/production_mining_session/hashrate.rs",
+        "src/runtime_snapshot.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "static_provenance_assets",
     srcs = [
         "static/recovery_page.html",

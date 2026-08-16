@@ -1,4 +1,11 @@
 load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+load("@aspect_rules_js//js:defs.bzl", "js_library")
+
+js_library(
+    name = "hashrate_monitor_source",
+    srcs = ["src/v1/state.rs"],
+    visibility = ["//tools/automation:__pkg__"],
+)
 
 rust_library(
     name = "bitaxe_stratum",

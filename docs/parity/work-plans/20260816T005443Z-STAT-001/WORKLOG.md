@@ -61,3 +61,30 @@
   still unused and no device effect has occurred.
 - Blocker or next safe action: Commit and push this exact implementation,
   rebuild and admit its exact package identity, then run detector command 1.
+
+## 2026-08-16T01:45:50Z | attempt-001 terminal
+
+- Source commit: `b9343ca707fc604a8a1b93ad1f77b25cb807a67d`
+- Actions: Pushed the implementation, rebuilt and admitted its exact package,
+  ran the sole detector command, then started the sole capture command. The
+  detector admitted exactly one Ultra 205. The capture wrapper stopped during
+  immutable source/reference admission before launching the campaign child.
+- Verification: Closed wrapper output reported `evidence_invalid`, stage
+  `hashrate_monitor_capture`, and `projection_published=false`. The allowlisted
+  safe summary identified invalid pinned-reference semantics. Filesystem-only
+  checks confirmed the attempt root and public projection were absent and all
+  wrapper streams retained their protected modes. No raw/private artifact or
+  credential content was inspected.
+- Evidence: `scratch/stat001-hashrate-monitor/wrapper-001` remains ignored and
+  protected. No public hardware evidence was produced. The exact admission bug
+  was reproduced: the broad `update_hash_counter` token occurs eight times in
+  the pinned reference. The fragment was narrowed to the unique function
+  definition; a second ambiguous worker fragment was also narrowed; and a test
+  now runs the complete admission against current task, plan, production, and
+  reference runfiles.
+- Outcome: Attempt-001 is consumed and closed without a flash or mining effect.
+  STAT-001 remains `implemented`; verification is not claimed and no retry was
+  run.
+- Blocker or next safe action: Commit and push the corrected preflight and this
+  closure. A fresh immutable plan may authorize attempt-002 with a new exact
+  package and detector run.
