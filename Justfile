@@ -167,6 +167,9 @@ capture-ultra205-defaults-evidence *args:
 capture-settings-patch-evidence *args:
     bazel run //tools/automation:capture_settings_patch_evidence -- {{ args }}
 
+capture-statistics-history-evidence *args:
+    bazel run //tools/automation:capture_statistics_history_evidence -- {{ args }}
+
 capture-log-buffer-evidence *args:
     bazel run //tools/automation:capture_log_buffer_evidence -- {{ args }}
 

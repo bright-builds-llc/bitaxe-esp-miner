@@ -1276,7 +1276,7 @@ Completion review: Implementation commit
 cadence, telemetry accuracy, long-duration retention, device API, and browser
 behavior remain below verified.
 
-- [ ] Add and verify a typed private-first statistics-history hardware evidence
+- [x] Add and verify a typed private-first statistics-history hardware evidence
       workflow with exact-package identity and protected publication.
 - [ ] Execute the single detector-gated mining-disabled attempt-001, restore the
       exact original `statsFrequency`, and independently validate its projection.

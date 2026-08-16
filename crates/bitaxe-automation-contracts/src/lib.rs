@@ -33,6 +33,7 @@ mod runtime_health_evidence;
 mod screen_flow_evidence;
 mod sdkconfig_rollback_evidence;
 mod settings_patch_evidence;
+mod statistics_history_evidence;
 mod stratum_socket_evidence;
 mod system_info_evidence;
 mod ui_workflow_evidence;
@@ -117,6 +118,7 @@ pub use sdkconfig_rollback_evidence::{
     SdkconfigRollbackEvidence, SdkconfigRollbackObservationEvidence,
 };
 pub use settings_patch_evidence::{SettingsPatchEvidence, SettingsPatchObservationEvidence};
+pub use statistics_history_evidence::*;
 pub use stratum_socket_evidence::{
     StratumSocketEvidence, StratumSocketObservationEvidence, StratumSocketSourceEvidence,
 };
@@ -139,6 +141,7 @@ pub const SYSTEM_INFO_EVIDENCE_SCHEMA: &str = "bitaxe-system-info-evidence-v1";
 pub const ADC_OBSERVATION_EVIDENCE_SCHEMA: &str = "bitaxe-adc-observation-evidence-v1";
 pub const ULTRA205_DEFAULTS_EVIDENCE_SCHEMA: &str = "bitaxe-ultra205-defaults-evidence-v1";
 pub const SETTINGS_PATCH_EVIDENCE_SCHEMA: &str = "bitaxe-settings-patch-evidence-v1";
+pub const STATISTICS_HISTORY_EVIDENCE_SCHEMA: &str = "bitaxe-statistics-history-evidence-v1";
 pub const LOG_BUFFER_EVIDENCE_SCHEMA: &str = "bitaxe-log-buffer-evidence-v1";
 pub const PARTITION_LAYOUT_EVIDENCE_SCHEMA: &str = "bitaxe-partition-layout-evidence-v1";
 pub const SDKCONFIG_ROLLBACK_EVIDENCE_SCHEMA: &str = "bitaxe-sdkconfig-rollback-evidence-v1";
@@ -212,6 +215,7 @@ pub enum AutomationCommand {
     CaptureHashrateMonitorEvidence,
     CaptureUltra205DefaultsEvidence,
     CaptureSettingsPatchEvidence,
+    CaptureStatisticsHistoryEvidence,
     CaptureLogBufferEvidence,
     CapturePartitionLayoutEvidence,
     CaptureSdkconfigRollbackEvidence,
@@ -385,6 +389,7 @@ pub struct ContractBundle {
     pub hashrate_monitor_evidence_schema: Value,
     pub ultra205_defaults_evidence_schema: Value,
     pub settings_patch_evidence_schema: Value,
+    pub statistics_history_evidence_schema: Value,
     pub log_buffer_evidence_schema: Value,
     pub partition_layout_evidence_schema: Value,
     pub sdkconfig_rollback_evidence_schema: Value,
@@ -445,6 +450,10 @@ pub fn contract_bundle() -> ContractBundle {
         .expect("Ultra 205 defaults evidence schema must serialize"),
         settings_patch_evidence_schema: serde_json::to_value(schema_for!(SettingsPatchEvidence))
             .expect("settings PATCH evidence schema must serialize"),
+        statistics_history_evidence_schema: serde_json::to_value(schema_for!(
+            StatisticsHistoryEvidence
+        ))
+        .expect("statistics history evidence schema must serialize"),
         log_buffer_evidence_schema: serde_json::to_value(schema_for!(LogBufferEvidence))
             .expect("log buffer evidence schema must serialize"),
         partition_layout_evidence_schema: serde_json::to_value(schema_for!(
@@ -548,6 +557,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::CaptureHashrateMonitorEvidence,
             AutomationCommand::CaptureUltra205DefaultsEvidence,
             AutomationCommand::CaptureSettingsPatchEvidence,
+            AutomationCommand::CaptureStatisticsHistoryEvidence,
             AutomationCommand::CaptureLogBufferEvidence,
             AutomationCommand::CapturePartitionLayoutEvidence,
             AutomationCommand::CaptureSdkconfigRollbackEvidence,
@@ -584,6 +594,7 @@ pub fn contract_bundle() -> ContractBundle {
             HASHRATE_MONITOR_EVIDENCE_SCHEMA,
             ULTRA205_DEFAULTS_EVIDENCE_SCHEMA,
             SETTINGS_PATCH_EVIDENCE_SCHEMA,
+            STATISTICS_HISTORY_EVIDENCE_SCHEMA,
             LOG_BUFFER_EVIDENCE_SCHEMA,
             PARTITION_LAYOUT_EVIDENCE_SCHEMA,
             SDKCONFIG_ROLLBACK_EVIDENCE_SCHEMA,

@@ -36,6 +36,7 @@ rust_library(
         "src/screen_flow_evidence.rs",
         "src/sdkconfig_rollback_evidence.rs",
         "src/settings_patch_evidence.rs",
+        "src/statistics_history_evidence.rs",
         "src/stratum_socket_evidence.rs",
         "src/system_info_evidence.rs",
         "src/ultra205_defaults_evidence.rs",
@@ -397,6 +398,17 @@ rust_binary(
     name = "validate_settings_patch_evidence",
     srcs = ["src/bin/validate_settings_patch_evidence.rs"],
     crate_name = "validate_settings_patch_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_statistics_history_evidence",
+    srcs = ["src/bin/validate_statistics_history_evidence.rs"],
+    crate_name = "validate_statistics_history_evidence",
     edition = "2021",
     deps = [
         ":bitaxe_automation_contracts",

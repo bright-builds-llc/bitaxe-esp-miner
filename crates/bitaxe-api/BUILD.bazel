@@ -18,6 +18,15 @@ js_library(
 )
 
 js_library(
+    name = "statistics_history_sources",
+    srcs = [
+        "src/statistics.rs",
+        "src/statistics/history.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "ui_workflow_compatibility_sources",
     srcs = ["src/static_plan.rs"],
     visibility = ["//tools/automation:__pkg__"],

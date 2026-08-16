@@ -29,6 +29,7 @@ export type AutomationCommand =
   | "capture-hashrate-monitor-evidence"
   | "capture-ultra205-defaults-evidence"
   | "capture-settings-patch-evidence"
+  | "capture-statistics-history-evidence"
   | "capture-log-buffer-evidence"
   | "capture-partition-layout-evidence"
   | "capture-sdkconfig-rollback-evidence"
@@ -224,22 +225,9 @@ export type Ultra205DefaultsEvidence = {
   private_modes_valid: true;
   redaction_status: "passed";
 };
-export type SettingsPatchEvidence = {
-  schema_version: "bitaxe-settings-patch-evidence-v1";
-  board: 205;
-  source_commit: string;
-  reference_commit: string;
-  package_manifest_sha256: string;
-  workflow: WorkflowIdentity;
-  detector_admitted: true;
-  boot_observed: true;
-  same_origin_observed: true;
-  settings_patch: Readonly<Record<string, unknown>>;
-  mining_state: "disabled";
-  hardware_control_state: "disabled";
-  cleanup_complete: true;
-  redaction_status: "passed";
-};
+export type SettingsPatchEvidence = { schema_version: "bitaxe-settings-patch-evidence-v1"; board: 205; source_commit: string; reference_commit: string; package_manifest_sha256: string; workflow: WorkflowIdentity; detector_admitted: true; boot_observed: true; same_origin_observed: true; settings_patch: Readonly<Record<string, unknown>>; mining_state: "disabled"; hardware_control_state: "disabled"; cleanup_complete: true; redaction_status: "passed"; };
+export type StatisticsHistoryObservationEvidence = { original_setting_sha256: string; enabled_setting_sha256: string; mutation_request_field_count: 1; enabled_readback_confirmed: true; label_count: 19; row_width: 19; sample_count: number; interval_count: number; minimum_interval_ms: number; maximum_interval_ms: number; timestamps_strictly_increasing: true; finite_numeric_rows: true; immediate_repeat_unchanged: true; later_producer_growth: true; restoration_complete: true; zero_setting_clear_status: "observed" | "not_applicable"; };
+export type StatisticsHistoryEvidence = { schema_version: "bitaxe-statistics-history-evidence-v1"; board: 205; source_commit: string; reference_commit: string; package_manifest_sha256: string; plan_sha256: string; workflow: WorkflowIdentity; detector_admitted: true; boot_observed: true; same_origin_observed: true; statistics_history: StatisticsHistoryObservationEvidence; mining_state: "disabled"; hardware_control_state: "disabled"; recovery_flash_used: boolean; recovery_origin_readmitted: boolean; private_modes_valid: true; cleanup_complete: true; redaction_status: "passed"; };
 
 export type LogBufferEvidence = {
   schema_version: "bitaxe-log-buffer-evidence-v1";
@@ -513,6 +501,7 @@ const automationCommands = new Set<AutomationCommand>([
   "capture-system-info-evidence", "capture-adc-observation-evidence",
   "capture-hashrate-monitor-evidence", "capture-ultra205-defaults-evidence",
   "capture-settings-patch-evidence",
+  "capture-statistics-history-evidence",
   "capture-log-buffer-evidence", "capture-partition-layout-evidence", "capture-sdkconfig-rollback-evidence",
   "capture-network-reconnect-evidence", "capture-network-scan-evidence",
   "project-asic-initialization-evidence",

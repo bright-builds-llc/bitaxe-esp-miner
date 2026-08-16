@@ -198,6 +198,14 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--projection": value({ required: true }),
     "--capture-timeout-seconds": value({ required: true, positiveInteger: true }),
   },
+  "capture-statistics-history-evidence": {
+    "--private-root": value({ required: true }),
+    "--package-manifest": value({ required: true }),
+    "--wifi-credentials": value({ required: true }),
+    "--detector-output": value({ required: true }),
+    "--projection": value({ required: true }),
+    "--capture-timeout-seconds": value({ required: true, positiveInteger: true }),
+  },
   "capture-log-buffer-evidence": {
     "--private-root": value({ required: true }),
     "--package-manifest": value({ required: true }),

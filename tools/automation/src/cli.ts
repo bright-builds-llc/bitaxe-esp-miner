@@ -1,5 +1,4 @@
-import { constants, existsSync, realpathSync } from "node:fs";
-import { access } from "node:fs/promises";
+import { constants, existsSync, promises, realpathSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildFirmware } from "./build.js";
@@ -52,7 +51,7 @@ import { createLocalProcessPort, type ProcessPort } from "./process.js";
 import { verifySemanticEvidenceRedaction } from "./redaction.js";
 import { captureRuntimeHealthEvidence } from "./runtime-health-evidence.js";
 import * as sealedEvidence from "./sealed-evidence-cli.js";
-import { captureSettingsPatchEvidence } from "./settings-patch-evidence.js";
+import { captureSettingsPatchEvidence, captureStatisticsHistoryEvidenceFromInvocation } from "./settings-evidence-cli.js";
 import { captureSystemInfoEvidence } from "./system-info-evidence.js";
 import { typedRequestArguments } from "./typed-request.js";
 import { captureSettingsDurability } from "./settings-durability.js";
@@ -211,6 +210,7 @@ async function dispatchProcess(
     case "capture-emc2101-thermal-fault-evidence":
     case "capture-ultra205-defaults-evidence":
     case "capture-settings-patch-evidence":
+    case "capture-statistics-history-evidence":
     case "capture-log-buffer-evidence":
     case "capture-partition-layout-evidence":
     case "capture-sdkconfig-rollback-evidence":
@@ -236,7 +236,7 @@ async function dispatchProcess(
     case "verify-theme-durability":
       throw new Error("specialized workflow reached generic dispatch");
   }
-  if (spec.program.includes(path.sep)) await access(spec.program, constants.X_OK);
+  if (spec.program.includes(path.sep)) await promises.access(spec.program, constants.X_OK);
   await executeCommandSpec(spec, processPort);
   return undefined;
 }
@@ -253,7 +253,7 @@ async function main(): Promise<number> {
 
   const root = workspaceRoot();
   try {
-    await access(path.join(root, "MODULE.bazel"), constants.R_OK);
+    await promises.access(path.join(root, "MODULE.bazel"), constants.R_OK);
     const processPort = createLocalProcessPort({ cwd: root, timeoutMs: 900_000 });
     let publicValue: unknown;
     if (invocation.command === "build-firmware") {
@@ -386,6 +386,8 @@ async function main(): Promise<number> {
         projection: optionValue(invocation, "--projection"),
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root), toolProgram(root, "crates/bitaxe-automation-contracts/validate_settings_patch_evidence"));
+    } else if (invocation.command === "capture-statistics-history-evidence") {
+      publicValue = await captureStatisticsHistoryEvidenceFromInvocation(root, invocation, processPort);
     } else if (invocation.command === "capture-log-buffer-evidence") {
       const port = await portFromDetectorOutput(root, optionValue(invocation, "--detector-output"));
       publicValue = await captureLogBufferEvidence(root, {

@@ -50,6 +50,8 @@ import "./ui-workflow-evidence.test.js";
 import "./ui-workflow-invocation.test.js";
 import "./settings-durability.test.js";
 import "./settings-patch-evidence.test.js";
+import "./statistics-history-evidence.test.js";
+import "./statistics-history-invocation.test.js";
 import "./theme-durability.test.js";
 import "./typed-failure.test.js";
 import "./static-provenance.test.js";

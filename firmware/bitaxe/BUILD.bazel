@@ -28,6 +28,15 @@ js_library(
 )
 
 js_library(
+    name = "statistics_history_sources",
+    srcs = [
+        "src/runtime_snapshot.rs",
+        "src/statistics_runtime.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "static_provenance_assets",
     srcs = [
         "static/recovery_page.html",

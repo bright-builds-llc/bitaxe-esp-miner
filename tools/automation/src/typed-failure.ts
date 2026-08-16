@@ -27,6 +27,7 @@ import { PartitionLayoutEvidenceError } from "./partition-layout-evidence.js";
 import { RuntimeHealthEvidenceError } from "./runtime-health-evidence.js";
 import { SettingsDurabilityError } from "./settings-durability.js";
 import { SettingsPatchEvidenceError } from "./settings-patch-evidence.js";
+import { StatisticsHistoryEvidenceError } from "./statistics-history-evidence.js";
 import { SdkconfigRollbackEvidenceError } from "./sdkconfig-rollback-evidence.js";
 import { SystemInfoEvidenceError } from "./system-info-evidence.js";
 import { ThemeDurabilityError } from "./theme-durability.js";
@@ -70,6 +71,7 @@ function maybeTypedFailure(error: unknown): TypedFailure | undefined {
     || error instanceof SystemInfoEvidenceError
     || error instanceof Ultra205DefaultsEvidenceError
     || error instanceof SettingsPatchEvidenceError
+    || error instanceof StatisticsHistoryEvidenceError
     || error instanceof SdkconfigRollbackEvidenceError
     || error instanceof LogBufferEvidenceError
     || error instanceof PartitionLayoutEvidenceError

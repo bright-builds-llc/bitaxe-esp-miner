@@ -124,6 +124,16 @@ js_library(
 )
 
 js_library(
+    name = "statistics_history_evidence_inputs",
+    srcs = [
+        "TASKS.md",
+        "docs/parity/work-plans/20260816T204646Z-STAT-002/PLAN.md",
+        "reference/esp-miner/main/tasks/statistics_task.c",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "display_behavior_evidence_inputs",
     srcs = [
         "TASKS.md",
