@@ -1067,13 +1067,13 @@ retry, stop, and promotion contract. Never reuse attempt-006.
 Attempt-007 verification-promotion plan:
 `docs/parity/work-plans/20260816T183130Z-STAT-001/PLAN.md`
 
-- [ ] Rebind the private-first workflow, independent validator, generated
+- [x] Rebind the private-first workflow, independent validator, generated
       contract, immutable plan/task admission, Bazel input, fixtures, and
       protected paths from consumed attempt-006 to fresh attempt-007.
-- [ ] Preserve campaign-result v12, network-continuity v6, every closed
+- [x] Preserve campaign-result v12, network-continuity v6, every closed
       reason-specific watchdog value, success `none`, earliest-failure, seal,
       mode, privacy, profile-unit, and volt-typed input-safety boundaries.
-- [ ] Pass every focused and mandatory gate, commit and push the exact source,
+- [x] Pass every focused and mandatory gate, commit and push the exact source,
       rebuild its package, then run only the linked detector and at most one
       conditional attempt-007 capture.
 - [ ] Promote only STAT-001 on the complete independently validated twenty-

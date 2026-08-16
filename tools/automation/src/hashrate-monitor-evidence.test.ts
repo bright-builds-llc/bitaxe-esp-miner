@@ -137,14 +137,14 @@ async function fixture(name: string): Promise<Fixture> {
     "uint16_t voltage = nvs_config_get_u16(NVS_CONFIG_ASIC_VOLTAGE);",
     "VCORE_set_voltage(GLOBAL_STATE, (double) voltage / 1000.0);",
   ].join("\n"));
-  const planRelative = "docs/parity/work-plans/20260816T173058Z-STAT-001/PLAN.md";
+  const planRelative = "docs/parity/work-plans/20260816T183130Z-STAT-001/PLAN.md";
   const plan = "- Parity row: `STAT-001`\n- Active task: `task-parity-stat001-hashrate-monitor`\n";
   await mkdir(path.dirname(path.join(root, planRelative)), { recursive: true });
   await writeFile(path.join(root, planRelative), plan);
   await writeFile(path.join(root, "TASKS.md"), [
     "### task-parity-stat001-hashrate-monitor | fixture",
     `Plan: \`${planRelative}\`.`,
-    "Attempt: `attempt-006`.",
+    "Attempt: `attempt-007`.",
   ].join("\n"));
   const inputs = path.join(root, "inputs");
   await mkdir(inputs);
@@ -152,7 +152,7 @@ async function fixture(name: string): Promise<Fixture> {
     source_commit: sourceCommit,
     reference_commit: referenceCommit,
   }));
-  const wrapper = path.join(root, "scratch/stat001-hashrate-monitor/wrapper-006");
+  const wrapper = path.join(root, "scratch/stat001-hashrate-monitor/wrapper-007");
   await mkdir(wrapper, { recursive: true, mode: 0o700 });
   await chmod(wrapper, 0o700);
   for (const output of ["detector.stdout", "detector.stderr", "capture.stdout", "capture.stderr"]) {
@@ -162,11 +162,11 @@ async function fixture(name: string): Promise<Fixture> {
     root,
     planSha256: sha256(plan),
     options: {
-      privateRoot: "scratch/stat001-hashrate-monitor/attempt-006",
+      privateRoot: "scratch/stat001-hashrate-monitor/attempt-007",
       packageManifest: "inputs/package.json",
       wifiCredentials: "inputs/wifi.json",
       poolCredentials: "inputs/pool.json",
-      detectorOutput: "scratch/stat001-hashrate-monitor/wrapper-006/detector.stdout",
+      detectorOutput: "scratch/stat001-hashrate-monitor/wrapper-007/detector.stdout",
       port: "/dev/private-port",
       projection: "docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json",
       durationSeconds: 600,
@@ -286,7 +286,7 @@ test("current immutable task and production/reference sources pass admission", a
   // Act / Assert
   await validateHashrateMonitorTaskAndSources(
     root,
-    "ca1957e47576f18441bceb538e51b13c7bcddbec0809044b9d24d22e5a9baeb8",
+    "c543d685dd575bacdf50bab0ced33360ed4278bbc47f73d2d4ceae909954a94d",
   );
 });
 
