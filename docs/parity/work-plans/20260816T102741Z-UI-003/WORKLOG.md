@@ -51,3 +51,22 @@
 - Blocker or next safe action: Commit and push this implementation, rebuild
   the package at that clean source boundary, then run the one authorized
   detector command.
+
+## 2026-08-16T17:13:52Z | Attempt-002 hardware quorum verified
+
+- Source commit: `67c45e6f81c46910485373677e2a139d32b10d2a`
+- Actions: Rebuilt the exact clean pushed package, ran the sole detector and
+  effectful input-UAT commands, waited for the durable live checkpoint, and
+  admitted one operator BOOT press-and-release lasting less than two seconds.
+- Verification: Detection admitted exactly one ESP32-S3 device; repeated
+  runtime and source/reference semantics passed; the observer reported
+  `input_uat: verified`; the independent validator accepted the mode-0644
+  aggregate projection with complete cleanup and passed redaction.
+- Evidence: The public projection proves board 205, exact package/plan/source/
+  reference identity, GPIO0 active-low pull-up, 10/30/2,000 ms timing, exactly
+  one post-checkpoint physical short click routed to screen advance, no long
+  press, disabled mining/control, no transcript, and cleanup.
+- Outcome: The complete UI-003 promotion quorum is satisfied without a retry.
+- Blocker or next safe action: Commit and push the projection, result, worklog,
+  and task review as `SOURCE_COMMIT`; then transition only UI-003, synchronize
+  progress, archive its task, and run the final ordered gates.

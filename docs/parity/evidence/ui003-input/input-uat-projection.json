@@ -1,0 +1,31 @@
+{
+  "schema_version": "bitaxe-input-uat-evidence-v1",
+  "board": 205,
+  "source_commit": "67c45e6f81c46910485373677e2a139d32b10d2a",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "app_elf_sha256": "ab88a37ccd9a59c3cf6e5b0bd8d2d3a7cf725839d3acd072aa64e03fb5864239",
+  "package_manifest_sha256": "adc232fa4e0ae923a2c7d6f9851ff39712ccaf2f81b3b4a576df6e0d7e5a43a7",
+  "plan_sha256": "53f4cc01fe7346ee2caac778a091b6e56cbe9d284e55d3e785b8db86b13344a2",
+  "input": {
+    "gpio": 0,
+    "active_low": true,
+    "pull_up_enabled": true,
+    "sampling_ms": 10,
+    "debounce_ms": 30,
+    "long_press_ms": 2000,
+    "checkpoint_published_before_input": true,
+    "physical_short_click_count": 1,
+    "screen_advance_observed": true,
+    "long_press_observed": false
+  },
+  "exact_package_flash_completed": true,
+  "runtime_attestation_trusted": true,
+  "source_semantics_admitted": true,
+  "reference_semantics_admitted": true,
+  "usb_admission_confirmed": true,
+  "cleanup_complete": true,
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "serial_transcript_retained": false,
+  "redaction_status": "passed"
+}

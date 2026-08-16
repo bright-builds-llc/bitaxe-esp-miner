@@ -1137,6 +1137,14 @@ credentials, network access, mining, controls, updates, recovery writes,
 external UART, physical power action, and electrical pin/pad/header/probe work
 remain prohibited. Any incomplete boundary leaves UI-003 `implemented`.
 
+Attempt-002 review (2026-08-16): The exact clean pushed package and sole
+detector/UAT attempt passed. After trusted repeated runtime attestation and the
+durable live checkpoint, one brief BOOT press produced exactly one production
+short-click screen advance with no long press. Cleanup completed and the
+independent validator accepted the aggregate-only redacted projection. The
+hardware quorum is complete; only the audited evidence commit, UI-003
+transition, progress synchronization, task archive, and final gates remain.
+
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
 - [x] Add a typed private-first `/api/theme` capture that binds the exact
