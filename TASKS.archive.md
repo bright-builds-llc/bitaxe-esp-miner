@@ -9085,3 +9085,41 @@ hardware attempt. Physical observation of every page, dwell, notification,
 input path, graphical detail, other boards, mining, update/recovery, and
 release readiness remain explicit non-claims. See
 `docs/parity/work-plans/20260816T073911Z-UI-002/RESULT.md`.
+
+### task-parity-pwr006-legacy-wire-units | 2026-08-16 | Correct legacy INA260 API units
+
+- [x] Convert SI-typed input voltage and current to upstream-compatible
+      millivolts and milliamps only at the legacy API and statistics boundaries.
+- [x] Rename ambiguous Rust wire members and preserve campaign safety checks in
+      their explicit physical domains.
+- [x] Bind the correction to the pinned INA260, system-info, statistics, and
+      AxeOS conversion paths with behavior-focused regressions.
+- [x] Re-evaluate the sealed PWR-006 evidence without inventing new hardware
+      observations, run all required gates, and restore only the evidence level
+      actually supported.
+
+Plan: `docs/parity/work-plans/20260816T082924Z-PWR-006/PLAN.md`
+
+Authorization: repository edits, tests, and read-only reuse of committed
+evidence only. No flash, USB/serial/network access, credentials, mining,
+voltage/frequency/fan/power actuation, OTA, erase, fault injection, direct UART,
+pins, or physical manipulation. A fresh hardware run requires a separate exact
+task contract.
+
+Verification: focused API, campaign-safety, PWR-006 contract, INA260 automation,
+reference, redaction, immutable-plan, generated-contract, and diff checks; the
+ordered Rust sequence; Bright Builds; `just test`; `just parity`; and
+`just parity-progress`.
+
+Completion review: Complete. The legacy API and statistics boundaries now
+serialize input voltage/current in upstream-compatible millivolts/milliamps
+while internal safety remains in volts/amps and power remains in watts. The v2
+projection binds the accepted read-only Ultra 205 capture to its historical
+source semantics, current corrected source, both immutable plans, and pinned
+reference/UI conversions without a device rerun or raw-value publication. The
+independent validator, redaction, ordered Rust sequence, Bright Builds, all 45
+Bazel tests, packaging, parity/progress, reference cleanliness, and diff checks
+passed. PWR-006 remains verified; external-meter accuracy, calibration, load
+behavior, hardware control, other boards, mining, and release readiness remain
+non-claims. See
+`docs/parity/work-plans/20260816T082924Z-PWR-006/RESULT.md`.
