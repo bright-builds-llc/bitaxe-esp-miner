@@ -781,6 +781,62 @@ fresh attempt-004 only after binding this pushed correction to a newly built
 exact package and restating the complete detector, evidence/privacy, recovery,
 retry, and acceptance contract. This plan does not authorize attempt-004.
 
+Attempt-004 verification-promotion plan:
+`docs/parity/work-plans/20260816T033934Z-STAT-001/PLAN.md`
+
+- [ ] Rebind `bitaxe-hashrate-monitor-evidence-v1`, the independent validator,
+      generated contract, task/plan admission, Bazel runfiles, and protected
+      paths to fresh attempt-004 and sealed campaign-result v10.
+- [ ] Preserve the new closed runtime-attestation parse discriminator for a
+      non-ready campaign without exposing raw values, source text, or protected
+      identifiers.
+- [ ] Pass every focused and mandatory software, firmware, privacy, reference,
+      package, and exact-source gate; commit and push before device access.
+- [ ] Run only the exact detector and conditional attempt-004 commands in the
+      linked plan, then promote only on the complete independently validated
+      hashrate quorum.
+
+Attempt-004 authorization: pushed commit `f26fff55` fixes attempt-003's exact
+false-marker boundary with a shared whitespace-delimited marker matcher,
+closed parser diagnostics, production-shaped tests, and campaign-result v10.
+After this immutable task/plan checkpoint and its rebound implementation are
+clean, fully gated, committed, and pushed, one exact board-205 package may be
+factory-flashed/reset; ignored local Wi-Fi and pool inputs may be seeded
+privately; and the repo-owned conservative 400 MHz / 1100 mV / 100% fan profile
+may mine for exactly 600 accumulated active seconds while protected current-
+session HTTP, reconstructed WebSocket, and serial observations are joined.
+
+Attempt-004 exact commands: after the clean pushed implementation and package
+gates, create absent mode-0700 `scratch/stat001-hashrate-monitor/wrapper-004`
+with private mode-0600 detector streams and run exactly one
+`just detect-ultra205`. Only after its zero exit, one-device board-205
+admission, cleanup/holder proof, nonempty opaque credential inputs, and absent
+attempt/projection paths, run exactly once:
+`just capture-hashrate-monitor-evidence --private-root scratch/stat001-hashrate-monitor/attempt-004 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --pool-credentials pool-credentials.json --detector-output scratch/stat001-hashrate-monitor/wrapper-004/detector.stdout --projection docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json --duration-seconds 600 --capture-timeout-seconds 1500`, with distinct private capture stdout/stderr under the wrapper root. The full
+shell guards and redirections are frozen in the linked plan.
+
+Attempt-004 evidence/privacy/recovery: the wrapper and supervisor-owned attempt
+roots are ignored mode-0700 directories with mode-0600 files. Credentials,
+pool/owner/worker fields, origins, ports, hostnames, USB/network/process
+identity, raw hashrates and sensors, bodies, logs, commands, PIDs, and traces
+remain private; only the plan-named closed projection may become public after
+independent validation. Starting capture consumes attempt-004. Preserve the
+earliest typed failure, perform the base campaign's bounded safe stop,
+recovery, seal, and cleanup, and never retry unchanged or start attempt-005.
+
+Attempt-004 safety, prohibited effects, and acceptance: require fresh bounded
+safety truth, 4.5-5.5 V input, at most 15 W, ASIC temperature below 75 C, and
+fresh nonzero fan RPM after the 100% command. No upstream-default/overclock or
+arbitrary control profile, automatic fan, unbounded mining, OTA, erase, raw
+write, fault injection, physical power action, external UART, or pin/pad/
+header/GPIO/probe/jumper/solder/signal work is permitted. Promotion requires
+the linked plan's exact package and detector identity, one ASIC/four domains,
+one-second cadence, twenty complete windows with work renewal, changing
+coherent positive HTTP/WebSocket hashrates and warm rolling windows, bounded
+error, terminal zero, safe stop, cleanup, private modes, seals, independent
+validation, and redaction. Any missing fact preserves `implemented`, withholds
+the projection, and selects one closed terminal outcome.
+
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
 - [x] Add the exact bounded 720-sample history, timestamp admission, configured
