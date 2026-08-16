@@ -37,6 +37,10 @@ const WATCHDOG_ADAPTER_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/safety_adapter/watchdog.rs");
 const PRODUCTION_TASK_WATCHDOG_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/production_mining_session/watchdog.rs");
+const PRODUCTION_OWNER_LOOP_SOURCE: &str =
+    include_str!("../../../firmware/bitaxe/src/production_mining_session/owner_loop.rs");
+const PRODUCTION_OWNER_PROGRESS_SOURCE: &str =
+    include_str!("../../../firmware/bitaxe/src/production_mining_session/owner_progress.rs");
 const PLATFORM_IDENTITY_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/platform_identity.rs");
 const CORE_SOURCE: &str = include_str!("../../../crates/bitaxe-core/src/lib.rs");
@@ -410,6 +414,23 @@ fn production_task_watchdog_participates_without_global_reconfiguration() {
             "production task watchdog contains prohibited global operation {prohibited}"
         );
     }
+}
+
+#[test]
+fn production_task_watchdog_tracks_completed_owner_progress() {
+    // Arrange
+    let execute = PRODUCTION_OWNER_PROGRESS_SOURCE
+        .find("let maybe_feedback = execute(effect);")
+        .expect("effect execution boundary");
+    let completed = PRODUCTION_OWNER_PROGRESS_SOURCE
+        .find("progress(OwnerProgressBoundary::EffectCompleted);")
+        .expect("completed effect boundary");
+
+    // Act / Assert
+    assert!(execute < completed);
+    assert!(PRODUCTION_OWNER_LOOP_SOURCE.contains("drive_feedback("));
+    assert!(PRODUCTION_OWNER_LOOP_SOURCE.contains("|_| task_watchdog.feed("));
+    assert!(!PRODUCTION_OWNER_PROGRESS_SOURCE.contains("esp_task_wdt_"));
 }
 
 #[test]

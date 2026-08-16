@@ -5,6 +5,7 @@ mod campaign_status;
 mod hashrate;
 mod notifications;
 mod owner_loop;
+mod owner_progress;
 mod pending_observation;
 mod readiness_trace;
 mod scoreboard;
@@ -20,7 +21,6 @@ use bitaxe_stratum::v1::production_session::{
     ProductionSessionSnapshot, ProductionSessionWakeup, ProductionTransportFailure,
 };
 use bitaxe_stratum::v1::production_work::ProductionNonceObservation;
-use std::collections::VecDeque;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
 use std::sync::OnceLock;

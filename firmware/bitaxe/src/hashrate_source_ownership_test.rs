@@ -1,5 +1,6 @@
 const OWNER_SOURCE: &str = include_str!("production_mining_session.rs");
 const OWNER_LOOP_SOURCE: &str = include_str!("production_mining_session/owner_loop.rs");
+const OWNER_PROGRESS_SOURCE: &str = include_str!("production_mining_session/owner_progress.rs");
 const WORKER_SOURCE: &str = include_str!("production_mining_session/asic_worker.rs");
 const HASHRATE_SOURCE: &str = include_str!("production_mining_session/hashrate.rs");
 const ASIC_SOURCE: &str = include_str!("asic_adapter/production.rs");
@@ -20,6 +21,27 @@ fn sole_production_owner_schedules_active_only_hashrate_reads() {
     assert!(OWNER_SOURCE.contains("AsicWorkerCommand::ReadHashrateRegisters"));
     assert!(!OWNER_SOURCE.contains("std::thread::Builder::new().name(\"hashrate"));
     assert!(!OWNER_LOOP_SOURCE.contains("std::thread::Builder::new().name(\"hashrate"));
+}
+
+#[test]
+fn owner_watchdog_feeds_only_after_completed_cooperative_progress() {
+    // Arrange
+    let execute = "let maybe_feedback = execute(effect);";
+    let completed = "progress(OwnerProgressBoundary::EffectCompleted);";
+
+    // Act
+    let execute_index = OWNER_PROGRESS_SOURCE
+        .find(execute)
+        .expect("effect execution must be explicit");
+    let completed_index = OWNER_PROGRESS_SOURCE
+        .find(completed)
+        .expect("completed effect progress must be explicit");
+
+    // Assert
+    assert!(execute_index < completed_index);
+    assert!(OWNER_LOOP_SOURCE.contains("drive_feedback("));
+    assert!(OWNER_LOOP_SOURCE.contains("|_| task_watchdog.feed("));
+    assert!(!WORKER_SOURCE.contains("ProductionTaskWatchdog"));
 }
 
 #[test]

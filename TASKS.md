@@ -1248,10 +1248,10 @@ considered.
 Cooperative watchdog-progress correction plan:
 `docs/parity/work-plans/20260816T225404Z-STAT-001/PLAN.md`
 
-- [ ] Make recurring ESP task-watchdog feeds reflect completed cooperative
+- [x] Make recurring ESP task-watchdog feeds reflect completed cooperative
       progress inside the production-owner dispatch/effect cascade while
       preserving the owner task as the sole subscription and feed authority.
-- [ ] Prove a progressing multi-event cascade remains feedable and a single
+- [x] Prove a progressing multi-event cascade remains feedable and a single
       unfinished effect is not masked, with production-shaped ownership and
       configured-timeout regressions.
 - [ ] Run all focused, firmware-package, privacy, reference, parity-invariance,

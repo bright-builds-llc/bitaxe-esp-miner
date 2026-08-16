@@ -1,3 +1,4 @@
+use super::owner_progress::drive_feedback;
 use super::*;
 
 pub(super) fn run_owner(
@@ -12,6 +13,7 @@ pub(super) fn run_owner(
         .expect("production reread cadence is nonzero");
 
     loop {
+        task_watchdog.feed(crate::runtime_uptime::millis());
         let before_wait_ms = elapsed_millis(started_at);
         let wait = Duration::from_millis(
             readiness_schedule
@@ -43,7 +45,13 @@ pub(super) fn run_owner(
         if let Some(message) = maybe_message {
             let snapshot = session.snapshot();
             let event = adapter.event_from_inbox(message, now_ms, &snapshot);
-            drive_session(&mut session, &mut adapter, event, now_ms);
+            drive_session(
+                &mut session,
+                &mut adapter,
+                &mut task_watchdog,
+                event,
+                now_ms,
+            );
         }
         if pending_observations_changed && !message_is_observation_wakeup && !shutdown_requested {
             let observation_now_ms = elapsed_millis(started_at);
@@ -54,13 +62,25 @@ pub(super) fn run_owner(
                 &snapshot,
                 true,
             );
-            drive_session(&mut session, &mut adapter, event, observation_now_ms);
+            drive_session(
+                &mut session,
+                &mut adapter,
+                &mut task_watchdog,
+                event,
+                observation_now_ms,
+            );
         }
         if readiness_schedule.is_due(now_ms) {
             if !message_reads_readiness {
                 let snapshot = session.snapshot();
                 let event = adapter.wake_event(None, now_ms, &snapshot, false);
-                drive_session(&mut session, &mut adapter, event, now_ms);
+                drive_session(
+                    &mut session,
+                    &mut adapter,
+                    &mut task_watchdog,
+                    event,
+                    now_ms,
+                );
             }
             if readiness_schedule.advance_past(now_ms).is_err() {
                 log::error!(
@@ -72,14 +92,20 @@ pub(super) fn run_owner(
                     &session.snapshot(),
                     false,
                 );
-                drive_session(&mut session, &mut adapter, event, now_ms);
+                drive_session(
+                    &mut session,
+                    &mut adapter,
+                    &mut task_watchdog,
+                    event,
+                    now_ms,
+                );
                 adapter.publish_campaign_status(&session.snapshot(), now_ms);
                 return;
             }
         }
         adapter.publish_campaign_status(&session.snapshot(), now_ms);
-        adapter.service_hashrate_monitor(&session.snapshot(), now_ms);
         task_watchdog.feed(crate::runtime_uptime::millis());
+        adapter.service_hashrate_monitor(&session.snapshot(), now_ms);
         if shutdown_requested {
             return;
         }
@@ -89,24 +115,17 @@ pub(super) fn run_owner(
 fn drive_session(
     session: &mut ProductionMiningSession,
     adapter: &mut OrdinaryEspProductionSessionAdapter,
+    task_watchdog: &mut watchdog::ProductionTaskWatchdog,
     initial_event: ProductionSessionEvent,
     now_ms: u64,
 ) {
-    let mut events = VecDeque::from([initial_event]);
-    while let Some(event) = events.pop_front() {
-        let effects = match session.handle(event) {
-            Ok(effects) => effects,
-            Err(error) => {
-                log::error!(
-                    "production_mining_session=fail_closed reason=engine_error error={error}"
-                );
-                return;
-            }
-        };
-        for effect in effects {
-            if let Some(feedback) = adapter.maybe_execute(effect, now_ms) {
-                events.push_back(feedback);
-            }
-        }
+    let result = drive_feedback(
+        initial_event,
+        |event| session.handle(event),
+        |effect| adapter.maybe_execute(effect, now_ms),
+        |_| task_watchdog.feed(crate::runtime_uptime::millis()),
+    );
+    if let Err(error) = result {
+        log::error!("production_mining_session=fail_closed reason=engine_error error={error}");
     }
 }
