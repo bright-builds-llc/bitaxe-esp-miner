@@ -748,6 +748,22 @@ authorized. The linked `CLOSURE.md` requires a software-only closed parse-
 discriminator diagnosis and targeted regression-backed fix before any future
 hardware ordinal.
 
+Runtime-attestation diagnosis plan:
+`docs/parity/work-plans/20260816T030231Z-STAT-001/PLAN.md`
+
+- [ ] Add bounded, closed parse-failure counts to the runtime-attestation
+      accumulator, production serial diagnostics, and sealed campaign result.
+- [ ] Reproduce the source-owned producer/parser mismatch at the real serial
+      boundary and apply the minimum regression-backed token-boundary fix.
+- [ ] Run every focused and mandatory gate, record a non-promotion closure, and
+      leave attempt-004 unauthorized until a separate immutable hardware plan.
+
+Software-only authorization: local code, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not access protected
+attempt-003 artifacts, credentials, detector/device/hardware, network runtime,
+or any electrical interface. Do not flash, mine, actuate, erase, update, inject
+faults, create a public projection, or start attempt-004.
+
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
 - [x] Add the exact bounded 720-sample history, timestamp admission, configured
