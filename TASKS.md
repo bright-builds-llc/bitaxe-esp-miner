@@ -1060,6 +1060,40 @@ task remains active because UI-002 is below `verified`; UI-003 physical input,
 live screen content, animation/bitmap parity, mining, and hardware-control
 behavior remain separate evidence gaps.
 
+Source-bound verification plan:
+`docs/parity/work-plans/20260816T073911Z-UI-002/PLAN.md`.
+
+- [ ] Validate the exact committed API-009 display-UAT and command-effects
+      projections without reading protected attempts or rerunning hardware.
+- [ ] Add a closed UI-002 evidence contract, independent validator, projector,
+      exhaustive boundary regressions, and complete Bazel/runfiles ownership.
+- [ ] Bind captured source `522d5abd`, current pushed screen-flow semantics,
+      pinned reference behavior, this active task, and the immutable plan into
+      one aggregate-only public projection.
+- [ ] Pass every focused, mandatory, privacy, package, reference, parity,
+      progress, selector, digest, permission, sensitive-value, and diff gate;
+      promote and archive only on the complete accepted quorum.
+
+Authorization: committed public evidence, repository source/Git history,
+deterministic tests, documentation, checklist tooling, and local builds only.
+Do not read credentials or protected attempt artifacts and do not access the
+detector, USB/serial, device/network/HTTP, physical display, browser, operator
+checkpoint, mining, settings mutation, restart, OTA, recovery, hardware
+control, external UART/BAP, or any pin/pad/header/GPIO/probe/jumper/solder/
+signal interface. No new hardware attempt or human checkpoint is authorized or
+required.
+
+Promotion requires the exact sealed board-205 UAT to prove one machine- and
+operator-confirmed IDENTIFY render and natural clear, its exact programmatic
+projection to prove package/reference identity, safe stop, cleanup, and
+redaction, and current source checks to prove the full screen-flow paths remain
+compatible with that captured package and pinned reference. The resulting
+UI-002 projection must be independently validated, aggregate-only, and state
+`hardware_rerun_used: false`. Physical proof of every page, dwell, notification,
+new-block state, input path, animation/bitmap/QR detail, pixel geometry,
+brightness, other boards, mining, soak, update/recovery, and release readiness
+remain non-claims.
+
 ### task-parity-ui003-boot-button | 2026-08-04 | Implement bounded Ultra 205 boot-button input
 
 - [x] Add a pure active-low debounce and exact 2,000 ms short/long press
