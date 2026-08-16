@@ -6,7 +6,8 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use bitaxe_core::runtime_health::{
-    CheckpointObservation, PassiveSelfTestState, RuntimeHealthSnapshot, TaskWatchdogObservation,
+    CheckpointObservation, PassiveSelfTestState, RuntimeHealthSnapshot, RuntimeHealthTiming,
+    TaskWatchdogObservation,
 };
 
 use super::{require_wire_keys, retained_runtime_health_record};
@@ -242,8 +243,7 @@ fn runtime_health_serializes_exact_passive_values() {
         Some(&latest),
         None,
         Some(TaskWatchdogObservation::fed(11, 1_050)),
-        1_100,
-        500,
+        RuntimeHealthTiming::new(1_100, 500, 5_000),
     );
 
     // Act
@@ -280,8 +280,7 @@ fn retained_runtime_health_record_is_correlated_and_redacted() {
         Some(&latest),
         None,
         Some(TaskWatchdogObservation::fed(11, 1_050)),
-        1_100,
-        500,
+        RuntimeHealthTiming::new(1_100, 500, 5_000),
     );
     let identity = ApiSnapshot::safe_ultra_205().operator_snapshot_identity;
 

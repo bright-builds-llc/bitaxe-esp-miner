@@ -211,7 +211,7 @@ fn maybe_record_supervisor_checkpoint(
 #[cfg(test)]
 mod tests {
     use bitaxe_core::runtime_health::{
-        CheckpointHealth, PassiveSelfTestState, RuntimeHealthSnapshot,
+        CheckpointHealth, PassiveSelfTestState, RuntimeHealthSnapshot, RuntimeHealthTiming,
     };
 
     use super::*;
@@ -252,8 +252,11 @@ mod tests {
             Some(latest),
             None,
             None,
-            latest.observed_at_millis() + u64::from(WATCHDOG_YIELD_INTERVAL_MS),
-            500,
+            RuntimeHealthTiming::new(
+                latest.observed_at_millis() + u64::from(WATCHDOG_YIELD_INTERVAL_MS),
+                500,
+                5_000,
+            ),
         );
         let frozen_health = RuntimeHealthSnapshot::evaluate(
             PassiveSelfTestState::Unavailable,
@@ -261,8 +264,7 @@ mod tests {
             Some(latest),
             None,
             None,
-            latest.observed_at_millis() + 5_001,
-            500,
+            RuntimeHealthTiming::new(latest.observed_at_millis() + 5_001, 500, 5_000),
         );
 
         // Assert

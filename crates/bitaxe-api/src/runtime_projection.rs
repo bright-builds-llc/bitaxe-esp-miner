@@ -55,7 +55,7 @@ pub fn project_api_views(
 #[cfg(test)]
 mod tests {
     use bitaxe_core::runtime_health::{
-        CheckpointObservation, PassiveSelfTestState, RuntimeHealthSnapshot,
+        CheckpointObservation, PassiveSelfTestState, RuntimeHealthSnapshot, RuntimeHealthTiming,
     };
     use bitaxe_stratum::v1::messages::PoolDifficulty;
     use bitaxe_stratum::v1::production_work::PoolSessionGeneration;
@@ -136,8 +136,7 @@ mod tests {
             Some(&checkpoint),
             None,
             None,
-            4_100,
-            500,
+            RuntimeHealthTiming::new(4_100, 500, 5_000),
         );
         let runtime_health = base.runtime_health.clone();
 

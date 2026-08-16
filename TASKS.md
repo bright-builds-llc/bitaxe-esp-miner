@@ -1144,10 +1144,10 @@ ordinal.
 Watchdog-timeout correction plan:
 `docs/parity/work-plans/20260816T192025Z-STAT-001/PLAN.md`
 
-- [ ] Replace the unrelated 2,000-ms projected feed-freshness threshold with
+- [x] Replace the unrelated 2,000-ms projected feed-freshness threshold with
       the exact compiled ESP-IDF task-watchdog timeout supplied by the firmware
       boundary to the pure evaluator.
-- [ ] Prove 2,001 ms, the exact configured boundary, and the first stale
+- [x] Prove 2,001 ms, the exact configured boundary, and the first stale
       millisecond with focused pure and firmware-ownership regressions while
       preserving every existing closed watchdog failure.
 - [ ] Run the complete software, firmware, package, privacy, provenance,

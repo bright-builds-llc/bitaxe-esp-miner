@@ -1,5 +1,18 @@
 use super::*;
 
+const TEST_TASK_WATCHDOG_TIMEOUT_MILLIS: u64 = 5_000;
+
+const fn timing(
+    current_monotonic_millis: u64,
+    publish_interval_millis: u64,
+) -> RuntimeHealthTiming {
+    RuntimeHealthTiming::new(
+        current_monotonic_millis,
+        publish_interval_millis,
+        TEST_TASK_WATCHDOG_TIMEOUT_MILLIS,
+    )
+}
+
 fn checkpoint(sequence: u64, observed_at_millis: u64) -> CheckpointObservation {
     CheckpointObservation::new("telemetry", sequence, observed_at_millis)
         .expect("test checkpoint should be valid")
@@ -118,8 +131,7 @@ fn missing_checkpoint_is_explicitly_unavailable() {
         None,
         None,
         None,
-        10_000,
-        500,
+        timing(10_000, 500),
     );
 
     // Assert
@@ -143,8 +155,7 @@ fn exact_age_boundaries_derive_healthy_stale_and_unhealthy() {
         Some(&latest),
         None,
         None,
-        2_500,
-        500,
+        timing(2_500, 500),
     );
     let stale_start = RuntimeHealthSnapshot::evaluate(
         PassiveSelfTestState::Idle,
@@ -152,8 +163,7 @@ fn exact_age_boundaries_derive_healthy_stale_and_unhealthy() {
         Some(&latest),
         None,
         None,
-        2_501,
-        500,
+        timing(2_501, 500),
     );
     let stale_end = RuntimeHealthSnapshot::evaluate(
         PassiveSelfTestState::Idle,
@@ -161,8 +171,7 @@ fn exact_age_boundaries_derive_healthy_stale_and_unhealthy() {
         Some(&latest),
         None,
         None,
-        6_000,
-        500,
+        timing(6_000, 500),
     );
     let unhealthy = RuntimeHealthSnapshot::evaluate(
         PassiveSelfTestState::Idle,
@@ -170,8 +179,7 @@ fn exact_age_boundaries_derive_healthy_stale_and_unhealthy() {
         Some(&latest),
         None,
         None,
-        6_001,
-        500,
+        timing(6_001, 500),
     );
 
     // Assert
@@ -194,8 +202,7 @@ fn fixed_sequence_ages_from_healthy_to_stale_to_unhealthy() {
             Some(&latest),
             None,
             None,
-            now,
-            500,
+            timing(now, 500),
         )
     });
 
@@ -225,8 +232,7 @@ fn recovery_requires_a_sequence_advance() {
         Some(&previous),
         None,
         None,
-        7_001,
-        500,
+        timing(7_001, 500),
     );
     let synthetic_recovery = RuntimeHealthSnapshot::evaluate(
         PassiveSelfTestState::Idle,
@@ -234,8 +240,7 @@ fn recovery_requires_a_sequence_advance() {
         Some(&unchanged_sequence),
         None,
         None,
-        8_001,
-        500,
+        timing(8_001, 500),
     );
     let real_recovery = RuntimeHealthSnapshot::evaluate(
         PassiveSelfTestState::Idle,
@@ -243,8 +248,7 @@ fn recovery_requires_a_sequence_advance() {
         Some(&advanced_sequence),
         None,
         None,
-        8_001,
-        500,
+        timing(8_001, 500),
     );
 
     // Assert
@@ -268,8 +272,7 @@ fn invalid_time_or_threshold_arithmetic_is_unavailable() {
         Some(&latest),
         None,
         None,
-        99,
-        500,
+        timing(99, 500),
     );
     let threshold_overflow = RuntimeHealthSnapshot::evaluate(
         PassiveSelfTestState::Unavailable,
@@ -277,8 +280,7 @@ fn invalid_time_or_threshold_arithmetic_is_unavailable() {
         Some(&latest),
         None,
         None,
-        100,
-        u64::MAX,
+        timing(100, u64::MAX),
     );
 
     // Assert
@@ -304,8 +306,7 @@ fn healthy_supervisor_does_not_imply_task_watchdog_participation() {
         Some(&latest),
         None,
         None,
-        10_100,
-        500,
+        timing(10_100, 500),
     );
 
     // Assert
@@ -322,7 +323,7 @@ fn healthy_supervisor_does_not_imply_task_watchdog_participation() {
 }
 
 #[test]
-fn watchdog_exact_freshness_boundary_is_participating() {
+fn watchdog_feed_after_old_two_second_boundary_remains_fresh() {
     // Arrange
     let latest = TaskWatchdogObservation::fed(7, 1_000);
 
@@ -333,17 +334,7 @@ fn watchdog_exact_freshness_boundary_is_participating() {
         None,
         None,
         Some(latest),
-        3_000,
-        500,
-    );
-    let stale = RuntimeHealthSnapshot::evaluate(
-        PassiveSelfTestState::Unavailable,
-        None,
-        None,
-        None,
-        Some(latest),
-        3_001,
-        500,
+        timing(3_001, 500),
     );
 
     // Assert
@@ -353,12 +344,55 @@ fn watchdog_exact_freshness_boundary_is_participating() {
     );
     assert_eq!(fresh.maybe_task_watchdog_reason(), Some("feed_fresh"));
     assert_eq!(fresh.maybe_task_watchdog_feed_sequence(), Some(7));
-    assert_eq!(fresh.maybe_task_watchdog_feed_age_millis(), Some(2_000));
+    assert_eq!(fresh.maybe_task_watchdog_feed_age_millis(), Some(2_001));
+}
+
+#[test]
+fn watchdog_feed_accepts_exact_configured_timeout() {
+    // Arrange
+    let latest = TaskWatchdogObservation::fed(7, 1_000);
+
+    // Act
+    let fresh = RuntimeHealthSnapshot::evaluate(
+        PassiveSelfTestState::Unavailable,
+        None,
+        None,
+        None,
+        Some(latest),
+        timing(6_000, 500),
+    );
+
+    // Assert
+    assert_eq!(
+        fresh.task_watchdog_participation(),
+        TaskWatchdogParticipation::Participating
+    );
+    assert_eq!(fresh.maybe_task_watchdog_reason(), Some("feed_fresh"));
+    assert_eq!(fresh.maybe_task_watchdog_feed_age_millis(), Some(5_000));
+}
+
+#[test]
+fn watchdog_feed_is_stale_after_configured_timeout() {
+    // Arrange
+    let latest = TaskWatchdogObservation::fed(7, 1_000);
+
+    // Act
+    let stale = RuntimeHealthSnapshot::evaluate(
+        PassiveSelfTestState::Unavailable,
+        None,
+        None,
+        None,
+        Some(latest),
+        timing(6_001, 500),
+    );
+
+    // Assert
     assert_eq!(
         stale.task_watchdog_participation(),
         TaskWatchdogParticipation::NotParticipating
     );
     assert_eq!(stale.maybe_task_watchdog_reason(), Some("feed_stale"));
+    assert_eq!(stale.maybe_task_watchdog_feed_age_millis(), Some(5_001));
 }
 
 #[test]
@@ -374,8 +408,7 @@ fn watchdog_sequence_regression_is_rejected() {
         None,
         Some(previous),
         Some(latest),
-        1_200,
-        500,
+        timing(1_200, 500),
     );
 
     // Assert
@@ -414,8 +447,7 @@ fn watchdog_failures_have_closed_nonparticipating_reasons() {
             None,
             None,
             Some(observation),
-            1_000,
-            500,
+            timing(1_000, 500),
         );
         assert_eq!(
             snapshot.task_watchdog_participation(),

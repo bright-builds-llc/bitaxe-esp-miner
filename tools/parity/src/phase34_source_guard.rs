@@ -273,6 +273,9 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
     // Act / Assert
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains("RuntimeHealthSnapshot::evaluate"));
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains("supervisor_checkpoint_history"));
+    assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains("CONFIG_ESP_TASK_WDT_TIMEOUT_S"));
+    assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains("checked_mul(MILLIS_PER_SECOND)"));
+    assert!(!RUNTIME_HEALTH_CORE_SOURCE.contains("TASK_WATCHDOG_FRESH_AFTER_MILLIS"));
     assert_eq!(
         candidate_collection
             .matches("runtime_health_adapter::collect")
@@ -329,7 +332,9 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
             "SelfTestLifecycle::apply",
             "SelfTestCommand::",
             "start_safety_supervisor",
-            "esp_task_wdt_",
+            "esp_task_wdt_add",
+            "esp_task_wdt_reset",
+            "esp_task_wdt_delete",
             "std::thread",
             "thread::sleep",
             "gpio",

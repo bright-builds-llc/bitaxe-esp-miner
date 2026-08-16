@@ -2,8 +2,6 @@
 
 /// Maximum serialized supervisor checkpoint category length.
 pub const CHECKPOINT_CATEGORY_MAX_ASCII_BYTES: usize = 32;
-/// Maximum accepted age of the monitored task's latest ESP TWDT feed.
-pub const TASK_WATCHDOG_FRESH_AFTER_MILLIS: u64 = 2_000;
 const STALE_INTERVAL_MULTIPLIER: u64 = 3;
 const UNHEALTHY_INTERVAL_MULTIPLIER: u64 = 10;
 
@@ -103,6 +101,30 @@ pub enum TaskWatchdogObservation {
         /// Firmware monotonic time at which the feed succeeded.
         observed_at_millis: u64,
     },
+}
+
+/// Monotonic observation time and the configured health-policy intervals.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RuntimeHealthTiming {
+    current_monotonic_millis: u64,
+    publish_interval_millis: u64,
+    task_watchdog_timeout_millis: u64,
+}
+
+impl RuntimeHealthTiming {
+    /// Constructs the timing policy supplied by the runtime boundary.
+    #[must_use]
+    pub const fn new(
+        current_monotonic_millis: u64,
+        publish_interval_millis: u64,
+        task_watchdog_timeout_millis: u64,
+    ) -> Self {
+        Self {
+            current_monotonic_millis,
+            publish_interval_millis,
+            task_watchdog_timeout_millis,
+        }
+    }
 }
 
 impl TaskWatchdogObservation {
@@ -270,19 +292,19 @@ impl RuntimeHealthSnapshot {
         maybe_latest_checkpoint: Option<&CheckpointObservation>,
         maybe_previous_task_watchdog: Option<TaskWatchdogObservation>,
         maybe_latest_task_watchdog: Option<TaskWatchdogObservation>,
-        current_monotonic_millis: u64,
-        publish_interval_millis: u64,
+        timing: RuntimeHealthTiming,
     ) -> Self {
         let supervisor = evaluate_supervisor(
             maybe_previous_checkpoint,
             maybe_latest_checkpoint,
-            current_monotonic_millis,
-            publish_interval_millis,
+            timing.current_monotonic_millis,
+            timing.publish_interval_millis,
         );
         let watchdog = evaluate_task_watchdog(
             maybe_previous_task_watchdog,
             maybe_latest_task_watchdog,
-            current_monotonic_millis,
+            timing.current_monotonic_millis,
+            timing.task_watchdog_timeout_millis,
         );
 
         Self {
@@ -308,8 +330,7 @@ impl RuntimeHealthSnapshot {
             None,
             None,
             None,
-            0,
-            0,
+            RuntimeHealthTiming::new(0, 0, 0),
         )
     }
 
@@ -442,6 +463,7 @@ fn evaluate_task_watchdog(
     maybe_previous: Option<TaskWatchdogObservation>,
     maybe_latest: Option<TaskWatchdogObservation>,
     now_millis: u64,
+    timeout_millis: u64,
 ) -> TaskWatchdogProjection {
     let Some(latest) = maybe_latest else {
         return watchdog_projection(TaskWatchdogParticipation::Unavailable, "unproved");
@@ -481,12 +503,12 @@ fn evaluate_task_watchdog(
                 );
             };
             TaskWatchdogProjection {
-                participation: if age_millis <= TASK_WATCHDOG_FRESH_AFTER_MILLIS {
+                participation: if age_millis <= timeout_millis {
                     TaskWatchdogParticipation::Participating
                 } else {
                     TaskWatchdogParticipation::NotParticipating
                 },
-                reason: if age_millis <= TASK_WATCHDOG_FRESH_AFTER_MILLIS {
+                reason: if age_millis <= timeout_millis {
                     "feed_fresh"
                 } else {
                     "feed_stale"
