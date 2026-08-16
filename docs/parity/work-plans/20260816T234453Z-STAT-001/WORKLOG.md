@@ -72,3 +72,18 @@
 - Outcome: Exact software implementation ready for source commit and push.
 - Blocker or next safe action: Push the implementation, then write a truthful
   non-promotion closure and complete the active task subsection.
+
+## 2026-08-17T00:13:00Z | non-promotion closure
+
+- Source commit: `812bcd45b284e44d7a1d5ec3bc35f2148b14b7ff`
+- Actions: Pushed the exact root-cause correction and recorded the conservative
+  software-only closure without changing checklist or progress inputs.
+- Verification: The source commit is on `origin/main`; the immutable plan hash
+  is unchanged; no hardware or protected runtime input was accessed.
+- Evidence: `CLOSURE.md` binds the red failure, corrected producer/consumer
+  ownership, preserved closed boundaries, complete gates, and explicit
+  non-claims.
+- Outcome: `software_correction_complete`; STAT-001 remains `implemented`.
+- Blocker or next safe action: Run the final ordered gates on the closed state,
+  commit and push the closure, then end this one-row invocation. Any attempt-010
+  requires a fresh complete immutable plan.
