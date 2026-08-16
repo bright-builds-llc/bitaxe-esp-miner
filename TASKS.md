@@ -1357,52 +1357,6 @@ production-shaped regression before any targeted correction. Attempt-010 is
 not authorized without new verified progress and a new complete hardware
 contract.
 
-Campaign watchdog-policy correction plan:
-`docs/parity/work-plans/20260816T234453Z-STAT-001/PLAN.md`
-
-- [x] Remove the campaign's duplicate 2,000-ms feed-age rejection and consume
-      the exact-package runtime-health `feed_fresh` / `feed_stale` verdict as
-      the sole freshness classification.
-- [x] Retain and prove reason, participation, feed-age/sequence presence,
-      checkpoint/feed advancement, earliest-failure, and value-free evidence
-      boundaries at the production campaign layer.
-- [x] Run focused and mandatory software, firmware-package, privacy,
-      reference, parity-invariance, immutable-plan, and diff gates; commit and
-      push a software-only closure without checklist transition or hardware.
-
-Root-cause evidence: the firmware supplies the compiled ESP-IDF task-watchdog
-timeout to `bitaxe-core` and truthfully reports `feed_fresh` through 5,000 ms,
-but `tools/flash` independently converts every feed age above 2,000 ms to
-`watchdog_feed_stale`. Attempts 008 and 009 can therefore fail at the host
-campaign boundary even while the exact-package device verdict is fresh.
-
-Software-only authorization: local source, fixtures, tests, builds,
-documentation, and ordinary git operations only. Do not access protected
-attempts, credentials, detector/device/network runtime, private values, or a
-public projection. Do not detect, flash, reset, monitor, mine, actuate, update,
-erase, inject faults, manipulate power, use direct UART, or touch electrical
-interfaces. Attempt-009 remains consumed; this plan does not authorize
-attempt-010. STAT-001 remains `implemented` and the checklist/progress history
-remain unchanged.
-
-Campaign watchdog-policy completion review: pushed source
-`812bcd45b284e44d7a1d5ec3bc35f2148b14b7ff` removes the campaign's false
-2,000-ms reclassification and consumes the exact-package producer's compiled-
-timeout verdict. The red regression reproduced the repeated discriminator;
-focused and complete repository, package, privacy, reference, parity-
-invariance, immutable-plan, and diff gates pass. No detector, credential,
-device, protected evidence, public projection, or hardware effect was
-accessed. STAT-001 remains `implemented` with unchanged checklist and progress
-history. See
-`docs/parity/work-plans/20260816T234453Z-STAT-001/CLOSURE.md`.
-
-Residual risk and next safe action: only a separately planned exact-package
-hardware campaign can prove watchdog responsiveness and the twenty-window
-hashrate quorum. A fresh immutable plan may authorize attempt-010 after binding
-the pushed correction and restating the complete safety, privacy, recovery,
-cleanup, retry, stop, and promotion contract; attempts 008 and 009 remain
-consumed.
-
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed

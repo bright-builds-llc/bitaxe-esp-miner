@@ -88,8 +88,11 @@ pub(super) fn sample_failure(sample: &SystemInfoWire) -> WatchdogFailure {
     if health.maybe_task_watchdog_feed_sequence.is_none() {
         return WatchdogFailure::WatchdogFeedSequenceMissing;
     }
-    if health.maybe_task_watchdog_feed_age_millis.is_none() {
+    let Some(feed_age_millis) = health.maybe_task_watchdog_feed_age_millis else {
         return WatchdogFailure::WatchdogFeedAgeMissing;
+    };
+    if feed_age_millis > 2_000 {
+        return WatchdogFailure::WatchdogFeedStale;
     }
     WatchdogFailure::None
 }
