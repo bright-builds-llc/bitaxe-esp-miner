@@ -108,3 +108,38 @@
 - Blocker or next safe action: Correct `RESULT.md`, commit and push that
   evidence interpretation as a new `SOURCE_COMMIT`, then replay UI-003 with
   both `hardware-smoke` and `hardware-regression` before archiving.
+
+## 2026-08-16T17:24:01Z | Corrected transition validated
+
+- Source commit: `dd5c29589329885a78f2c1bfb4a4233f0825d301`
+- Actions: Replayed only UI-003 with both the planned `hardware-smoke` and
+  required `hardware-regression` labels, synchronized progress immediately,
+  and ran parity plus progress validation before task archival.
+- Verification: Transition `20260816T172315Z-UI-003` reports checklist SHA-256
+  `bae3471dfc78cd474c4f7baf783223d808d65b63a3e4d91ddee306cc51f9d131`;
+  `just parity` reports `validation_errors: none`; progress is 74 of 94 active
+  rows verified (78.7%) with exactly one new record bound to this source.
+- Evidence: The corrected `RESULT.md`, unchanged projection, safety policy,
+  transition artifact, checklist row, progress record, and README agree on the
+  bounded runtime-display-input hardware regression and its non-claims.
+- Outcome: UI-003 is validly verified without another hardware attempt.
+- Blocker or next safe action: Archive the completed task exactly once, append
+  the final completion checkpoint, then run the complete ordered gate and
+  push the reviewed finalization commit.
+
+## 2026-08-16T17:24:35Z | Completion record archived
+
+- Source commit: `dd5c29589329885a78f2c1bfb4a4233f0825d301`
+- Actions: Marked the final attempt-002 item complete, added the completion
+  review, appended the full native task record to `TASKS.archive.md`, and
+  removed it from the active tracker in the same worktree change.
+- Verification: Stable ID `task-parity-ui003-boot-button` exists exactly once
+  in the archive and nowhere in `TASKS.md`; UI-003 remains the only checklist
+  row changed by this finalization.
+- Evidence: The archived task retains both attempt plans, attempt-001 closure,
+  attempt-002 authorization, the rejected metadata draft correction, final
+  evidence classes, residual non-claims, and result/projection pointers.
+- Outcome: The plan, row, evidence, progress, and task lifecycle are ready for
+  the final repository gate and push.
+- Blocker or next safe action: Run every mandatory and targeted check, review
+  the complete diff, fetch origin, commit finalization, and push without force.

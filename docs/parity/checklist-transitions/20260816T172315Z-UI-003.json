@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260816T172315Z-UI-003",
+  "predecessor_sha256": "e8588b3963ff8a4f8b3729b348c9df168d1ee4bece06e345c8143be88fd86102",
+  "result_sha256": "bae3471dfc78cd474c4f7baf783223d808d65b63a3e4d91ddee306cc51f9d131",
+  "row_id": "UI-003",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260816T102741Z-UI-003/PLAN.md",
+  "plan_sha256": "53f4cc01fe7346ee2caac778a091b6e56cbe9d284e55d3e785b8db86b13344a2",
+  "result_path": "docs/parity/work-plans/20260816T102741Z-UI-003/RESULT.md",
+  "result_document_sha256": "cd08008d413e819a665460abbd88d2c8fc6986baeccc09381bbb8e5a1ff68a88",
+  "before_rust_owned_target": "`crates/bitaxe-core/src/input.rs`, `crates/bitaxe-core/src/screen.rs`, `firmware/bitaxe/src/input_adapter.rs`, `firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`, `firmware/bitaxe/src/wifi_adapter.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-core/src/input.rs`, `crates/bitaxe-core/src/screen.rs`, `firmware/bitaxe/src/input_adapter.rs`, `firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`, `firmware/bitaxe/src/wifi_adapter.rs`, `tools/flash/src/input_uat.rs`, `crates/bitaxe-automation-contracts/src/input_uat_evidence.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Bounded active-low debounce, exact short/long routing, retained GPIO0 ownership, atomic identify cancellation, manual screen advance/display wake, and typed configuration-AP toggling are implemented; see docs/parity/work-plans/20260805T020000Z-UI-003/RESULT.md. Physical button behavior, exact LVGL timing, live AP transitions, self-test effects, mining, hardware control, and verified status remain separate.",
+  "after_notes": "Exact-package Ultra 205 attempt-002 is a bounded runtime-display-input hardware regression proving GPIO0 active-low pull-up ownership, 10/30/2,000 ms classification semantics, one post-checkpoint physical short click routed to screen advance, prohibited duplicate/unexpected/long-press outcomes, cleanup, disabled mining/control, no retained transcript, and redaction; see docs/parity/work-plans/20260816T102741Z-UI-003/RESULT.md and docs/parity/evidence/ui003-input/input-uat-projection.json. Physical long press, configuration-AP transition, self-test, other boards, mining, controls, OTA, recovery, direct UART, and electrical work remain separate."
+}

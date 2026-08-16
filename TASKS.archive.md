@@ -9123,3 +9123,138 @@ passed. PWR-006 remains verified; external-meter accuracy, calibration, load
 behavior, hardware control, other boards, mining, and release readiness remain
 non-claims. See
 `docs/parity/work-plans/20260816T082924Z-PWR-006/RESULT.md`.
+
+### task-parity-ui003-boot-button | 2026-08-04 | Implement bounded Ultra 205 boot-button input
+
+- [x] Add a pure active-low debounce and exact 2,000 ms short/long press
+      classifier with bounce, regression, and one-shot long-press coverage.
+- [x] Retain one GPIO0 input owner and route normal short clicks to identify
+      cancellation or screen advance, normal long presses to configuration-AP
+      toggle, and self-test long presses to an explicit unavailable boundary.
+- [x] Wake the display on admitted short input, preserve display/sensor/Wi-Fi
+      failure isolation, and expose only redaction-safe input status categories.
+
+Plan: `docs/parity/work-plans/20260805T020000Z-UI-003/PLAN.md`
+
+Authorization: local software, synthetic input/runtime fixtures, and build
+work only. No hardware attempt, physical button press, credentials, external
+service, mining, pool connection, frequency/voltage/fan/power effect, OTA,
+recovery, direct UART, pins, or physical electrical manipulation.
+
+Verification: Six focused pure input tests, fourteen screen-flow tests, both
+firmware display/Wi-Fi source-ownership targets, and the real ESP32-S3 firmware
+target pass. The mandatory ordered Rust sequence, Bright Builds checks, all 34
+Bazel test targets, parity validation/progress, redaction, reference
+cleanliness, immutable-plan, sensitive-log, and diff checks also pass.
+
+Completion review: The bounded active-low classifier, retained GPIO0 pull-up
+owner, atomic identify cancellation, manual screen advance/display wake, and
+typed configuration-AP toggle are software-implemented with closed failure
+categories. Physical button observation, exact LVGL event timing, self-test
+cancellation, live configuration-AP toggling, and all hardware behavior remain
+below verified, so this implemented task remains active rather than archived.
+
+Verification continuation (2026-08-16):
+
+- [x] Add a typed integrated exact-package input UAT with a fresh protected
+      private root, transcript-free serial reducer, durable live checkpoint,
+      aggregate public projection, independent validator, and focused tests.
+- [ ] Commit and push the implementation, run the sole authorized
+      `attempt-001`, and admit exactly one post-checkpoint physical short click
+      routed to screen advance.
+- [ ] Run every mandatory gate, promote only UI-003 if the complete quorum
+      validates, then record the result and archive this task atomically.
+
+Continuation plan:
+`docs/parity/work-plans/20260816T093555Z-UI-003/PLAN.md`
+
+Continuation authorization: the original software-only authorization remains
+historical for the implementation phase. After the continuation implementation
+is clean, verified, committed, and pushed, standing authorization permits the
+three exact commands in the continuation plan: package, detector, and one
+integrated exact-package `input-uat` attempt at
+`scratch/ui003-input/attempt-001`. The sole human effect is one brief press and
+release of the provided BOOT button after a live ready checkpoint. Long press,
+configuration-AP toggle, self-test, credentials, network access, mining,
+voltage/frequency/fan/thermal/power/ASIC control, OTA, recovery, direct UART,
+pins, and physical electrical manipulation remain prohibited.
+
+Continuation evidence, recovery, retry, and stop: the public projection is
+aggregate-only and must exclude serial text, port/USB/network/process identity,
+credentials, private paths, and device-private values. `Ctrl-C` or refusal
+releases USB ownership and withholds positive evidence. `attempt-001` is the
+only authorized effectful run; any retry requires verified new information and
+a new immutable plan. Stop on detector, identity, package, flash, startup,
+input-owner, checkpoint, marker, cleanup, validator, redaction, or projection
+failure, or on successful verified projection.
+
+Attempt-001 review (2026-08-16): The clean exact package was built and one
+detector-admitted Ultra 205 was flashed, but the live workflow stopped before
+the checkpoint with `runtime_attestation_invalid`; no BOOT press occurred and
+no public projection was written. The root cause was an unframed arbitrary USB
+chunk boundary splitting a runtime-attestation marker. The reducer now retains
+a bounded partial line and focused Cargo/Bazel tests prove split-marker
+recovery. The immutable continuation authorized only `attempt-001`, so UI-003
+remains implemented and this task remains active pending a fresh plan and
+attempt ordinal. See the continuation `CLOSURE.md`.
+
+Attempt-002 verification plan:
+`docs/parity/work-plans/20260816T102741Z-UI-003/PLAN.md`
+
+- [x] Rebind the typed input UAT and protected root to fresh attempt-002 while
+      preserving the public projection and fixed GPIO/timing semantics.
+- [x] Preserve bounded incremental serial framing and add a closed,
+      redaction-safe runtime-attestation failure discriminator with focused
+      pure and integrated regressions.
+- [x] Pass every focused and mandatory gate, commit and push the exact source,
+      build its package, run only attempt-002, and promote UI-003 only if one
+      post-checkpoint physical short click validates completely.
+
+Attempt-002 authorization: pushed commit `f713c086` is verified new information
+that fixes attempt-001's exact split-line boundary. After this immutable plan
+and its rebound implementation are clean, fully gated, committed, and pushed,
+the plan authorizes one package build, one detector, one exact-package factory
+flash and receive-only observation, and one human press-and-release of the
+provided BOOT button lasting less than two seconds after the live ready
+checkpoint. No human-response deadline applies.
+
+Attempt-002 evidence, recovery, retry, and non-scope: use only fresh ignored
+mode-0700 `scratch/ui003-input/attempt-002` with mode-0600 private files and the
+existing aggregate-only public projection path. Record exact source/reference,
+package, detector command and one-device board-info success, UAT command,
+cleanup, and closed outcome without committing port/USB/process/network/private
+identity or serial text. Interruption/refusal releases USB ownership and
+withholds evidence. Starting the UAT consumes attempt-002; no unchanged retry
+or later ordinal is authorized. Long press, configuration AP, self-test,
+credentials, network access, mining, controls, updates, recovery writes,
+external UART, physical power action, and electrical pin/pad/header/probe work
+remain prohibited. Any incomplete boundary leaves UI-003 `implemented`.
+
+Attempt-002 review (2026-08-16): The exact clean pushed package and sole
+detector/UAT attempt passed. After trusted repeated runtime attestation and the
+durable live checkpoint, one brief BOOT press produced exactly one production
+short-click screen advance with no long press. Cleanup completed and the
+independent validator accepted the aggregate-only redacted projection. The
+hardware quorum is complete; only the audited evidence commit, UI-003
+transition, progress synchronization, task archive, and final gates remain.
+
+Metadata correction review: The complete physical evidence and pushed
+evidence commit remain valid, but the first uncommitted transition draft used
+only the plan's `hardware-smoke` label. The final parity validator correctly
+requires `hardware-regression` for active safety-control rows, including
+UI-003. All generated transition, progress, README, and archive state was
+reverted before commit. The bounded production input UAT qualifies as a
+runtime-display-input hardware regression; replay with both labels, then
+archive only after every validator passes. No hardware retry is required.
+
+Completion review: Complete. The corrected transition retains the immutable
+plan's `hardware-smoke` label and adds the safety policy's required
+`hardware-regression` label for the same bounded exact-package input exercise.
+`just parity` now reports no validation errors, progress is synchronized at 74
+of 94 active rows verified (78.7%), and UI-003 alone is `verified`. The
+validator-accepted projection proves one post-checkpoint physical short click
+through the production GPIO0 owner to screen advance, with prohibited
+duplicate/unexpected/long-press outcomes, cleanup, disabled mining/control,
+no transcript, and redaction. Physical long press, configuration AP,
+self-test, other boards, mining, controls, OTA, recovery, UART/BAP, and
+electrical work remain non-claims. See attempt-002 `RESULT.md`.
