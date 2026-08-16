@@ -1318,10 +1318,10 @@ Attempt-002 correction and verification plan:
 - [x] Prove the corrected boundary with exact arithmetic, failure-preservation,
       and a real spawned child that completes its own timeout cleanup before
       the supervisor can terminate it.
-- [ ] Rebind every closed task/plan/path/invocation source to fresh attempt-002,
+- [x] Rebind every closed task/plan/path/invocation source to fresh attempt-002,
       pass all software/package/privacy gates, and push the exact source before
       device access.
-- [ ] Run only the plan's detector and single conditional attempt-002; promote
+- [x] Run only the plan's detector and single conditional attempt-002; promote
       only on the independently validated cadence/API/restoration quorum.
 
 Attempt-002 authorization: one exact clean pushed board-205 factory package,
@@ -1349,6 +1349,27 @@ reuse attempt-001, retry attempt-002, or start attempt-003. Stop on detector or
 identity failure, missing input, drift, pre-effect failure, incomplete quorum,
 failed restoration/recovery/cleanup/mode/privacy, nonzero command exit, or
 successful projection.
+
+Attempt-002 closure: exact pushed source
+`265be8c99881be035cc54801d6aab5f4d936065d`, pinned reference, package,
+software/privacy gates, and one-device detector passed. The corrected
+420-second supervisor outlived the 360-second monitor boundary. The protected
+child record proves completed exact-package flash and trusted full-duration
+runtime attestation, but factory flash/NVS/USB setup plus monitor capture used
+the whole supervisor lifetime before effect-result delivery. The public result
+failed closed as `timeout` at `initial_flash_monitor`; no origin/API request or
+`statsFrequency` mutation occurred, so restoration/recovery were unnecessary.
+Projection/candidate absence, owner-only modes, Git synchronization, and USB/
+tool cleanup pass. No checklist transition or progress sync is authorized.
+Closure: `docs/parity/work-plans/20260816T213710Z-STAT-002/CLOSURE.md`.
+
+Next safe action: a fresh immutable attempt-003 plan requires a verified whole-
+operation timeout correction. Prefer the existing bounded 900-second process-
+adapter lifetime as owner while the child retains its 360-second monitor
+timeout, or derive a complete bound that separately includes pre-monitor flash/
+setup, monitor, post-monitor evidence/effect delivery, and cleanup. Add a scaled
+real-child regression whose pre-monitor plus capture duration exceeds the old
+420-second policy. Never reuse attempts 001 or 002.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 

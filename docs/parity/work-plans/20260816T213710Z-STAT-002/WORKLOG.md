@@ -20,3 +20,26 @@
 - Blocker or next safe action: Commit and push the exact source, rebuild and
   inspect its source-bound package, then run the sole conditional detector/
   attempt-002 sequence.
+
+## 2026-08-16T22:06:18Z | hardware attempt-002
+
+- Source commit: `265be8c99881be035cc54801d6aab5f4d936065d`.
+- Actions: Rebuilt the exact clean pushed package, admitted exactly one Ultra
+  205 through the protected detector, and launched only the immutable plan's
+  attempt-002 statistics-history command.
+- Verification: The 420-second supervisor outlived the child's 360-second
+  monitor boundary, proving the source correction. The private closed record
+  separately proves completed exact-package flash, a full 360-second capture,
+  trusted runtime attestation, and trusted monitor evidence. The public envelope
+  failed closed as `timeout` at `initial_flash_monitor` because the whole child
+  also includes pre-monitor flash/setup and had not returned its effect result.
+  No origin/API request or settings mutation occurred. Projection/candidate
+  absence, owner-only modes, synchronized Git state, and USB/tool cleanup pass.
+- Evidence: Protected immutable attempt-002 only; no aggregate public projection
+  was eligible for publication.
+- Outcome: Terminal nonverification with a newly discriminating whole-operation
+  budget boundary. STAT-002 remains `implemented`.
+- Blocker or next safe action: Close without transition or progress sync. A
+  future attempt-003 requires a verified whole-operation timeout owner covering
+  pre-monitor flash/setup, the child-owned monitor budget, result delivery, and
+  cleanup, plus a scaled real-child regression. Never reuse attempts 001 or 002.
