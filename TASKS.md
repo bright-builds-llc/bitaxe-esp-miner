@@ -630,6 +630,51 @@ and bound to a newly built exact package. It must repeat detector admission and
 may not reuse attempt-001 or infer hardware evidence from this pre-effect
 failure.
 
+Attempt-002 verification-promotion plan:
+`docs/parity/work-plans/20260816T020135Z-STAT-001/PLAN.md`
+
+- [ ] Rebind the closed `bitaxe-hashrate-monitor-evidence-v1` workflow,
+      independent validator, generated contract, current task/plan admission,
+      and protected paths to fresh attempt-002 without changing production
+      hashrate behavior or the evidence quorum.
+- [ ] Run every focused and mandatory software, firmware, privacy, reference,
+      package, and exact-source gate; commit and push before device access.
+- [ ] Run only the exact plan detector and one conditional attempt-002 command,
+      then promote STAT-001 only if the complete independently validated
+      exact-package hashrate quorum passes.
+
+Attempt-002 authorization: after the immutable plan/task checkpoint and exact
+implementation are clean, fully gated, committed, and pushed, one exact
+board-205 package may be factory-flashed/reset; ignored local Wi-Fi and pool
+credentials may be seeded privately; and the repo-owned conservative 400 MHz /
+1100 mV / 100% fan profile may mine for exactly 600 accumulated active seconds
+while protected current-session HTTP, WebSocket, and serial observations are
+joined. The campaign must pause, safe-stop, clean up USB/process ownership, and
+may use at most one exact-package recovery flash after a post-flash failure.
+
+Attempt-002 evidence, privacy, recovery, and retry: only fresh ignored mode-
+`0700` `scratch/stat001-hashrate-monitor/wrapper-002` and `attempt-002` roots
+with mode-`0600` files are permitted. Credentials, pool/owner/worker fields,
+origins, ports, USB/network/process identities, exact hashrates, sensors,
+HTTP/WebSocket bodies, serial, commands, PIDs, and traces remain private. The
+sole public aggregate projection is written only after independent validation.
+Starting the capture consumes attempt-002; preserve the earliest typed failure,
+run bounded safe stop/recovery/cleanup after post-flash failures, and do not run
+an unchanged retry or attempt-003. Detector ambiguity/failure, missing inputs,
+unsafe state, malformed/incomplete proof, cleanup/recovery/privacy failure, or
+nonzero command stops with STAT-001 `implemented` and evidence withheld.
+
+Attempt-002 prohibited effects and acceptance: no upstream-default/overclock
+profile, arbitrary control target, unbounded mining, OTA, erase, fault
+injection, physical power action, direct UART, or pin/pad/header/probe/jumper/
+solder/signal manipulation is permitted. Promotion requires the immutable
+plan's exact clean source/reference/package and detector identity; one ASIC,
+four domains, one-second cadence and pinned register semantics; twenty active
+windows with work renewal; changing coherent positive HTTP/WebSocket current
+hashrate and positive rolling windows after warmup; bounded error; terminal
+zero current rate; safe stop, cleanup, protected modes, seal, independent
+validation, and redaction. Any missing fact withholds promotion.
+
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
 - [x] Add the exact bounded 720-sample history, timestamp admission, configured
