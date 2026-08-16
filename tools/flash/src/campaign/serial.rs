@@ -5,14 +5,20 @@ use super::markers::{
     ObservationRequirementsMarker,
 };
 use super::*;
+mod diagnostics;
 mod framing;
 mod preparation;
 mod recovery;
 use super::markers::CampaignFailureStepMarker;
+pub(super) use diagnostics::{
+    CampaignSerialDiagnostics, RuntimeAttestationParseFailureCountsEvidence,
+};
+use diagnostics::{CampaignSerialEvent, CampaignSerialEventKind};
 use framing::{count_invalid_utf8_bytes, find_bytes};
-use preparation::{CampaignPreparationOutcome, CampaignPreparationProgress};
+use preparation::CampaignPreparationOutcome;
+#[cfg(test)]
+use preparation::CampaignPreparationProgress;
 use recovery::PendingFramingFailure;
-const DIAGNOSTICS_SCHEMA: &str = "mining-campaign-serial-diagnostics-v1";
 const TRACE_EDGE_CAPACITY: usize = 32;
 const MAX_RECORDED_LINE_LENGTH: usize = 4_096;
 const MAX_PENDING_LINE_BYTES: usize = 65_536;
@@ -42,97 +48,6 @@ impl CampaignSerialOutcomeDetail {
 impl Default for CampaignSerialOutcomeDetail {
     fn default() -> Self {
         Self::Clean
-    }
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
-#[serde(rename_all = "snake_case")]
-enum CampaignSerialEventKind {
-    NonUtf8Line,
-    CampaignMarkerAccepted,
-    MarkerPayloadInvalidUtf8,
-    MarkerJsonInvalid,
-    MarkerSchemaInvalid,
-    MarkerTruncated,
-    RuntimeAttestationCandidate,
-    RuntimeAttestationInvalidUtf8,
-    PreparationEventAccepted,
-    PreparationPayloadInvalidUtf8,
-    PreparationJsonInvalid,
-    PreparationSchemaInvalid,
-    PostTerminalBytesIgnored,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-struct CampaignSerialEvent {
-    sequence: u64,
-    byte_offset: u64,
-    line_length: u32,
-    kind: CampaignSerialEventKind,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub(super) struct CampaignSerialDiagnostics {
-    schema: &'static str,
-    observation_started: bool,
-    total_bytes: u64,
-    line_count: u64,
-    complete_line_count: u64,
-    trailing_byte_count: u64,
-    non_utf8_line_count: u64,
-    ignored_invalid_byte_count: u64,
-    marker_candidate_count: u64,
-    accepted_marker_count: u64,
-    marker_invalid_encoding_count: u64,
-    marker_invalid_json_count: u64,
-    marker_invalid_schema_count: u64,
-    marker_truncated_count: u64,
-    runtime_attestation_candidate_count: u64,
-    runtime_attestation_invalid_encoding_count: u64,
-    preparation_candidate_count: u64,
-    accepted_preparation_event_count: u64,
-    preparation_invalid_encoding_count: u64,
-    preparation_invalid_json_count: u64,
-    preparation_invalid_schema_count: u64,
-    latest_preparation_event: Option<CampaignPreparationProgress>,
-    trailing_partial_count: u64,
-    post_terminal_ignored_byte_count: u64,
-    event_count: u64,
-    events_truncated: bool,
-    events: Vec<CampaignSerialEvent>,
-}
-
-impl CampaignSerialDiagnostics {
-    pub(super) fn not_observed() -> Self {
-        Self {
-            schema: DIAGNOSTICS_SCHEMA,
-            observation_started: false,
-            total_bytes: 0,
-            line_count: 0,
-            complete_line_count: 0,
-            trailing_byte_count: 0,
-            non_utf8_line_count: 0,
-            ignored_invalid_byte_count: 0,
-            marker_candidate_count: 0,
-            accepted_marker_count: 0,
-            marker_invalid_encoding_count: 0,
-            marker_invalid_json_count: 0,
-            marker_invalid_schema_count: 0,
-            marker_truncated_count: 0,
-            runtime_attestation_candidate_count: 0,
-            runtime_attestation_invalid_encoding_count: 0,
-            preparation_candidate_count: 0,
-            accepted_preparation_event_count: 0,
-            preparation_invalid_encoding_count: 0,
-            preparation_invalid_json_count: 0,
-            preparation_invalid_schema_count: 0,
-            latest_preparation_event: None,
-            trailing_partial_count: 0,
-            post_terminal_ignored_byte_count: 0,
-            event_count: 0,
-            events_truncated: false,
-            events: Vec::new(),
-        }
     }
 }
 
@@ -224,10 +139,7 @@ impl CampaignSerialAnalyzer {
             #[cfg(test)]
             markers: Vec::new(),
             runtime_attestations: RuntimeAttestationAccumulator::default(),
-            diagnostics: CampaignSerialDiagnostics {
-                observation_started: true,
-                ..CampaignSerialDiagnostics::not_observed()
-            },
+            diagnostics: CampaignSerialDiagnostics::observed(),
             outcome_detail: CampaignSerialOutcomeDetail::Clean,
             maybe_failure: None,
             maybe_pending_framing_failure: None,
@@ -388,8 +300,9 @@ impl CampaignSerialAnalyzer {
         self.diagnostics.line_count = self.diagnostics.line_count.saturating_add(1);
         let line = line.strip_suffix(b"\r").unwrap_or(line);
         let marker_index = find_bytes(line, CAMPAIGN_MARKER_PREFIX.as_bytes());
-        let attestation_index =
+        let raw_attestation_index =
             find_bytes(line, bitaxe_api::RUNTIME_BOOT_ATTESTATION_MARKER.as_bytes());
+        let attestation_index = bitaxe_api::runtime_boot_attestation_marker_start(line);
         let preparation_index = find_bytes(line, CAMPAIGN_PREPARATION_PREFIX.as_bytes());
         let candidate_index = [marker_index, attestation_index, preparation_index]
             .into_iter()
@@ -414,6 +327,16 @@ impl CampaignSerialAnalyzer {
                 &line[index..],
                 byte_offset.saturating_add(index),
                 line.len().saturating_sub(index),
+            );
+        } else if let Some(index) = raw_attestation_index {
+            self.diagnostics.runtime_attestation_lookalike_count = self
+                .diagnostics
+                .runtime_attestation_lookalike_count
+                .saturating_add(1);
+            self.trace.push(
+                u64::try_from(byte_offset.saturating_add(index)).unwrap_or(u64::MAX),
+                line.len().saturating_sub(index),
+                CampaignSerialEventKind::RuntimeAttestationLookalike,
             );
         }
         if let Some(index) = preparation_index {
@@ -448,6 +371,9 @@ impl CampaignSerialAnalyzer {
                 .diagnostics
                 .runtime_attestation_invalid_encoding_count
                 .saturating_add(1);
+            if self.diagnostics.runtime_attestation_parse_failure == "none" {
+                self.diagnostics.runtime_attestation_parse_failure = "invalid_utf8";
+            }
             self.trace.push(
                 u64::try_from(byte_offset).unwrap_or(u64::MAX),
                 line_length,
@@ -456,6 +382,12 @@ impl CampaignSerialAnalyzer {
             return;
         };
         self.runtime_attestations.observe_line(text);
+        self.diagnostics.runtime_attestation_parse_failure = self
+            .runtime_attestations
+            .maybe_first_parse_failure()
+            .map_or("none", bitaxe_api::RuntimeAttestationParseFailure::label);
+        self.diagnostics.runtime_attestation_parse_failure_counts =
+            self.runtime_attestations.parse_failure_counts().into();
         self.trace.push(
             u64::try_from(byte_offset).unwrap_or(u64::MAX),
             line_length,

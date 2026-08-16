@@ -23,6 +23,27 @@ const OTA_BOOT_VALIDATION_STATE: &str = "complete";
 const SPIFFS_MOUNT_STATE: &str = "available";
 const API_ROUTE_SHELL_STATE: &str = "started";
 
+/// Finds the stable marker only when it is a complete whitespace-delimited token.
+#[must_use]
+pub fn runtime_boot_attestation_marker_start(line: &[u8]) -> Option<usize> {
+    let marker = RUNTIME_BOOT_ATTESTATION_MARKER.as_bytes();
+    line.windows(marker.len())
+        .enumerate()
+        .find_map(|(index, candidate)| {
+            if candidate != marker {
+                return None;
+            }
+            let maybe_preceding = index.checked_sub(1).and_then(|offset| line.get(offset));
+            let maybe_following = line.get(index.saturating_add(marker.len()));
+            if maybe_preceding.is_none_or(u8::is_ascii_whitespace)
+                && maybe_following.is_none_or(u8::is_ascii_whitespace)
+            {
+                return Some(index);
+            }
+            None
+        })
+}
+
 /// Exact package identity admitted before a flash operation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExpectedRuntimeAttestationIdentity {
@@ -83,8 +104,7 @@ impl RuntimeBootAttestation {
 
     /// Parses one marker, tolerating a logger prefix before the stable marker.
     pub fn parse(line: &str) -> Result<Self, RuntimeBootAttestationError> {
-        let marker_start = line
-            .find(RUNTIME_BOOT_ATTESTATION_MARKER)
+        let marker_start = runtime_boot_attestation_marker_start(line.as_bytes())
             .ok_or(RuntimeBootAttestationError::MissingMarker)?;
         let marker = &line[marker_start..];
         let mut tokens = marker.split_whitespace();
@@ -247,7 +267,7 @@ pub fn classify_runtime_boot_attestations(
     let mut accumulator = RuntimeAttestationAccumulator::default();
     for line in log
         .lines()
-        .filter(|line| line.contains(RUNTIME_BOOT_ATTESTATION_MARKER))
+        .filter(|line| runtime_boot_attestation_marker_start(line.as_bytes()).is_some())
     {
         accumulator.observe_line(line);
     }
@@ -278,6 +298,86 @@ pub enum RuntimeBootAttestationError {
     /// A required ready-state category was absent or incomplete.
     #[error("runtime boot attestation readiness is incomplete")]
     IncompleteReadiness,
+}
+
+/// Closed, value-free reason why one stable marker candidate did not parse.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RuntimeAttestationParseFailure {
+    /// The stable marker token was absent.
+    MissingMarker,
+    /// One whitespace-delimited token was not a field assignment.
+    MalformedToken,
+    /// A field key appeared more than once.
+    DuplicateField,
+    /// An unsupported field key appeared.
+    UnknownField,
+    /// A required field was absent.
+    MissingField,
+    /// A field value was invalid.
+    InvalidField,
+    /// A required readiness field was incomplete.
+    IncompleteReadiness,
+}
+
+impl RuntimeAttestationParseFailure {
+    /// Returns the stable evidence label without exposing field names or values.
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::MissingMarker => "missing_marker",
+            Self::MalformedToken => "malformed_token",
+            Self::DuplicateField => "duplicate_field",
+            Self::UnknownField => "unknown_field",
+            Self::MissingField => "missing_field",
+            Self::InvalidField => "invalid_field",
+            Self::IncompleteReadiness => "incomplete_readiness",
+        }
+    }
+
+    const fn index(self) -> usize {
+        match self {
+            Self::MissingMarker => 0,
+            Self::MalformedToken => 1,
+            Self::DuplicateField => 2,
+            Self::UnknownField => 3,
+            Self::MissingField => 4,
+            Self::InvalidField => 5,
+            Self::IncompleteReadiness => 6,
+        }
+    }
+}
+
+impl From<RuntimeBootAttestationError> for RuntimeAttestationParseFailure {
+    fn from(error: RuntimeBootAttestationError) -> Self {
+        match error {
+            RuntimeBootAttestationError::MissingMarker => Self::MissingMarker,
+            RuntimeBootAttestationError::MalformedToken => Self::MalformedToken,
+            RuntimeBootAttestationError::DuplicateField => Self::DuplicateField,
+            RuntimeBootAttestationError::UnknownField => Self::UnknownField,
+            RuntimeBootAttestationError::MissingField => Self::MissingField,
+            RuntimeBootAttestationError::InvalidField(_) => Self::InvalidField,
+            RuntimeBootAttestationError::IncompleteReadiness => Self::IncompleteReadiness,
+        }
+    }
+}
+
+/// Saturating per-category parse-failure counts without retained source text.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct RuntimeAttestationParseFailureCounts {
+    counts: [u64; 7],
+}
+
+impl RuntimeAttestationParseFailureCounts {
+    fn record(&mut self, failure: RuntimeAttestationParseFailure) {
+        let count = &mut self.counts[failure.index()];
+        *count = count.saturating_add(1);
+    }
+
+    /// Returns one closed category's count.
+    #[must_use]
+    pub const fn count(self, failure: RuntimeAttestationParseFailure) -> u64 {
+        self.counts[failure.index()]
+    }
 }
 
 fn require<'a>(
@@ -384,204 +484,5 @@ fn is_known_field(key: &str) -> bool {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    const SESSION: &str = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    const SOURCE: &str = "0123456789abcdef0123456789abcdef01234567";
-    const REFERENCE: &str = "abcdef0123456789abcdef0123456789abcdef01";
-    const APP_ELF: &str = "ca16ef5bd57d7e4b2f2f016ffb9236c426e68f16072bc1c5a53ef0e515f1d063";
-
-    fn sample(uptime_ms: u64) -> RuntimeBootAttestation {
-        RuntimeBootAttestation::new(
-            SESSION,
-            7,
-            ResetReasonCategory::Other,
-            uptime_ms,
-            SOURCE,
-            REFERENCE,
-            APP_ELF,
-            "v5.5.4",
-        )
-        .expect("fixture is valid")
-    }
-
-    fn expected() -> ExpectedRuntimeAttestationIdentity {
-        ExpectedRuntimeAttestationIdentity {
-            firmware_commit: SOURCE.to_owned(),
-            reference_commit: REFERENCE.to_owned(),
-            app_elf_sha256: APP_ELF.to_owned(),
-        }
-    }
-
-    fn two_sample_log() -> String {
-        format!(
-            "I boot: {}\nI boot: {}\n",
-            sample(10_000).marker(),
-            sample(20_000).marker()
-        )
-    }
-
-    #[test]
-    fn marker_round_trips_through_logger_prefix() {
-        // Arrange
-        let original = sample(10_000);
-        let line = format!("I (10000) bitaxe: {}", original.marker());
-
-        // Act
-        let parsed = RuntimeBootAttestation::parse(&line).expect("marker parses");
-
-        // Assert
-        assert_eq!(parsed, original);
-    }
-
-    #[test]
-    fn two_exact_monotonic_samples_are_trusted() {
-        // Arrange
-        let log = two_sample_log();
-
-        // Act
-        let status = classify_runtime_boot_attestations(&log, &expected());
-
-        // Assert
-        assert_eq!(status, RuntimeAttestationStatus::Trusted);
-    }
-
-    #[test]
-    fn malformed_sample_is_rejected() {
-        // Arrange
-        let log = format!(
-            "{}\n{} broken\n",
-            sample(10_000).marker(),
-            sample(20_000).marker()
-        );
-
-        // Act
-        let status = classify_runtime_boot_attestations(&log, &expected());
-
-        // Assert
-        assert_eq!(status, RuntimeAttestationStatus::Malformed);
-    }
-
-    #[test]
-    fn stale_package_identity_is_rejected() {
-        // Arrange
-        let mut stale = expected();
-        stale.firmware_commit = "1111111111111111111111111111111111111111".to_owned();
-
-        // Act
-        let status = classify_runtime_boot_attestations(&two_sample_log(), &stale);
-
-        // Assert
-        assert_eq!(status, RuntimeAttestationStatus::PackageIdentityMismatch);
-    }
-
-    #[test]
-    fn wrong_digest_is_rejected() {
-        // Arrange
-        let mut wrong_digest = expected();
-        wrong_digest.app_elf_sha256 =
-            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_owned();
-
-        // Act
-        let status = classify_runtime_boot_attestations(&two_sample_log(), &wrong_digest);
-
-        // Assert
-        assert_eq!(status, RuntimeAttestationStatus::PackageIdentityMismatch);
-    }
-
-    #[test]
-    fn wrong_reference_commit_is_rejected() {
-        // Arrange
-        let mut wrong_reference = expected();
-        wrong_reference.reference_commit = "1111111111111111111111111111111111111111".to_owned();
-
-        // Act
-        let status = classify_runtime_boot_attestations(&two_sample_log(), &wrong_reference);
-
-        // Assert
-        assert_eq!(status, RuntimeAttestationStatus::PackageIdentityMismatch);
-    }
-
-    #[test]
-    fn mixed_session_is_rejected() {
-        // Arrange
-        let other = RuntimeBootAttestation::new(
-            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            7,
-            ResetReasonCategory::Other,
-            20_000,
-            SOURCE,
-            REFERENCE,
-            APP_ELF,
-            "v5.5.4",
-        )
-        .expect("fixture is valid");
-        let log = format!("{}\n{}\n", sample(10_000).marker(), other.marker());
-
-        // Act
-        let status = classify_runtime_boot_attestations(&log, &expected());
-
-        // Assert
-        assert_eq!(status, RuntimeAttestationStatus::MixedSessionOrOrdinal);
-    }
-
-    #[test]
-    fn mixed_boot_ordinal_is_rejected() {
-        // Arrange
-        let other = RuntimeBootAttestation::new(
-            SESSION,
-            8,
-            ResetReasonCategory::Other,
-            20_000,
-            SOURCE,
-            REFERENCE,
-            APP_ELF,
-            "v5.5.4",
-        )
-        .expect("fixture is valid");
-        let log = format!("{}\n{}\n", sample(10_000).marker(), other.marker());
-
-        // Act
-        let status = classify_runtime_boot_attestations(&log, &expected());
-
-        // Assert
-        assert_eq!(status, RuntimeAttestationStatus::MixedSessionOrOrdinal);
-    }
-
-    #[test]
-    fn non_monotonic_uptime_is_rejected() {
-        // Arrange
-        let log = format!("{}\n{}\n", sample(20_000).marker(), sample(10_000).marker());
-
-        // Act
-        let status = classify_runtime_boot_attestations(&log, &expected());
-
-        // Assert
-        assert_eq!(status, RuntimeAttestationStatus::NonMonotonicUptime);
-    }
-
-    #[test]
-    fn one_sample_is_rejected() {
-        // Arrange
-        let log = sample(10_000).marker();
-
-        // Act
-        let status = classify_runtime_boot_attestations(&log, &expected());
-
-        // Assert
-        assert_eq!(status, RuntimeAttestationStatus::InsufficientSamples);
-    }
-
-    #[test]
-    fn incomplete_readiness_is_rejected() {
-        // Arrange
-        let log = two_sample_log().replace("spiffs_mount=available", "spiffs_mount=unavailable");
-
-        // Act
-        let status = classify_runtime_boot_attestations(&log, &expected());
-
-        // Assert
-        assert_eq!(status, RuntimeAttestationStatus::IncompleteReadiness);
-    }
-}
+#[path = "runtime_boot_attestation/tests.rs"]
+mod tests;

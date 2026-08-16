@@ -26,6 +26,9 @@ struct CampaignResultEvidence<'a> {
     package_admitted: bool,
     runtime_identity: &'static str,
     runtime_attestation_status: &'static str,
+    runtime_attestation_parse_failure: &'static str,
+    runtime_attestation_parse_failure_counts:
+        &'a serial::RuntimeAttestationParseFailureCountsEvidence,
     serial_outcome_detail: &'static str,
     pool_config: &'static str,
     marker_count: u64,
@@ -214,6 +217,12 @@ pub(super) fn finish_campaign_attempt(
             runtime_attestation_status: attempt
                 .maybe_runtime_attestation_status
                 .map_or("not_observed", RuntimeAttestationStatus::label),
+            runtime_attestation_parse_failure: attempt
+                .serial_diagnostics
+                .runtime_attestation_parse_failure(),
+            runtime_attestation_parse_failure_counts: attempt
+                .serial_diagnostics
+                .runtime_attestation_parse_failure_counts(),
             serial_outcome_detail: attempt.serial_outcome_detail.as_str(),
             pool_config: maybe_terminal.map_or("not_observed", |marker| match marker.pool_config {
                 PoolConfigMarker::NotRead => "not_read",

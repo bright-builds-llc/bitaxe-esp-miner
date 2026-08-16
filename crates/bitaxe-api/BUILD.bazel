@@ -100,6 +100,7 @@ rust_library(
         "src/route_shell/tests.rs",
         "src/runtime_boot_attestation.rs",
         "src/runtime_boot_attestation/accumulator.rs",
+        "src/runtime_boot_attestation/tests.rs",
         "src/runtime_projection.rs",
         "src/scoreboard.rs",
         "src/scoreboard/owner.rs",

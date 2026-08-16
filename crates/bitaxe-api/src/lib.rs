@@ -98,9 +98,10 @@ pub use route_shell::{
     MAX_SETTINGS_PATCH_BODY_BYTES, UNAUTHORIZED_BODY, UNKNOWN_API_ROUTE_BODY,
 };
 pub use runtime_boot_attestation::{
-    classify_runtime_boot_attestations, ExpectedRuntimeAttestationIdentity,
-    RuntimeAttestationAccumulator, RuntimeAttestationStatus, RuntimeBootAttestation,
-    RuntimeBootAttestationError, RUNTIME_BOOT_ATTESTATION_MARKER,
+    classify_runtime_boot_attestations, runtime_boot_attestation_marker_start,
+    ExpectedRuntimeAttestationIdentity, RuntimeAttestationAccumulator,
+    RuntimeAttestationParseFailure, RuntimeAttestationParseFailureCounts, RuntimeAttestationStatus,
+    RuntimeBootAttestation, RuntimeBootAttestationError, RUNTIME_BOOT_ATTESTATION_MARKER,
     RUNTIME_BOOT_ATTESTATION_SCHEMA_VERSION,
 };
 pub use runtime_projection::{project_api_views, project_system_info, ProjectedApiViews};

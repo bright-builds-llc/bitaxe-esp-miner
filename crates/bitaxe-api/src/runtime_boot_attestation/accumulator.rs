@@ -1,6 +1,6 @@
 use super::{
-    ExpectedRuntimeAttestationIdentity, RuntimeAttestationStatus, RuntimeBootAttestation,
-    RuntimeBootAttestationError,
+    ExpectedRuntimeAttestationIdentity, RuntimeAttestationParseFailure,
+    RuntimeAttestationParseFailureCounts, RuntimeAttestationStatus, RuntimeBootAttestation,
 };
 
 /// Bounded, incremental classification state for a stream of attestation markers.
@@ -10,6 +10,8 @@ pub struct RuntimeAttestationAccumulator {
     maybe_first: Option<RuntimeBootAttestation>,
     maybe_previous_uptime_ms: Option<u64>,
     maybe_parse_failure: Option<RuntimeAttestationStatus>,
+    maybe_first_parse_failure: Option<RuntimeAttestationParseFailure>,
+    parse_failure_counts: RuntimeAttestationParseFailureCounts,
     mixed_session_or_ordinal: bool,
     static_fields_mismatch: bool,
     non_monotonic_uptime: bool,
@@ -20,14 +22,17 @@ impl RuntimeAttestationAccumulator {
     pub fn observe_line(&mut self, line: &str) {
         let sample = match RuntimeBootAttestation::parse(line) {
             Ok(sample) => sample,
-            Err(RuntimeBootAttestationError::IncompleteReadiness) => {
-                self.maybe_parse_failure
-                    .get_or_insert(RuntimeAttestationStatus::IncompleteReadiness);
-                return;
-            }
-            Err(_) => {
-                self.maybe_parse_failure
-                    .get_or_insert(RuntimeAttestationStatus::Malformed);
+            Err(error) => {
+                let failure = RuntimeAttestationParseFailure::from(error);
+                self.maybe_first_parse_failure.get_or_insert(failure);
+                self.parse_failure_counts.record(failure);
+                self.maybe_parse_failure.get_or_insert(
+                    if failure == RuntimeAttestationParseFailure::IncompleteReadiness {
+                        RuntimeAttestationStatus::IncompleteReadiness
+                    } else {
+                        RuntimeAttestationStatus::Malformed
+                    },
+                );
                 return;
             }
         };
@@ -43,6 +48,18 @@ impl RuntimeAttestationAccumulator {
             self.non_monotonic_uptime |= sample.uptime_ms <= previous_uptime_ms;
         }
         self.maybe_previous_uptime_ms = Some(sample.uptime_ms);
+    }
+
+    /// Returns the first closed parse-failure category in observation order.
+    #[must_use]
+    pub const fn maybe_first_parse_failure(&self) -> Option<RuntimeAttestationParseFailure> {
+        self.maybe_first_parse_failure
+    }
+
+    /// Returns saturating closed parse-failure counts without retained input.
+    #[must_use]
+    pub const fn parse_failure_counts(&self) -> RuntimeAttestationParseFailureCounts {
+        self.parse_failure_counts
     }
 
     /// Classifies every complete marker observed so far against one admitted package.

@@ -308,7 +308,7 @@ fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evide
         assert!(!csv.contains(forbidden), "unexpected key {forbidden}");
     }
     let result = read_campaign_result(&command);
-    assert_eq!(result["schema"], "mining-campaign-result-v9");
+    assert_eq!(result["schema"], "mining-campaign-result-v10");
     assert_eq!(
         result["readiness_transition"],
         serde_json::json!({
@@ -327,6 +327,19 @@ fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evide
     assert_eq!(result["terminal_category"], "observation_complete");
     assert_eq!(result["runtime_identity"], "trusted");
     assert_eq!(result["runtime_attestation_status"], "trusted");
+    assert_eq!(result["runtime_attestation_parse_failure"], "none");
+    assert_eq!(
+        result["runtime_attestation_parse_failure_counts"],
+        serde_json::json!({
+            "missing_marker": 0,
+            "malformed_token": 0,
+            "duplicate_field": 0,
+            "unknown_field": 0,
+            "missing_field": 0,
+            "invalid_field": 0,
+            "incomplete_readiness": 0,
+        })
+    );
     assert_eq!(result["serial_outcome_detail"], "clean");
     assert_eq!(
         result["observation_freshness"],
@@ -383,7 +396,7 @@ fn non_utf8_boot_noise_does_not_invalidate_valid_observation_markers() {
     let diagnostics = read_campaign_diagnostics(&command);
     assert_eq!(
         diagnostics["schema"],
-        "mining-campaign-serial-diagnostics-v1"
+        "mining-campaign-serial-diagnostics-v2"
     );
     assert_eq!(diagnostics["non_utf8_line_count"], 1);
     assert_eq!(diagnostics["accepted_marker_count"], 1);

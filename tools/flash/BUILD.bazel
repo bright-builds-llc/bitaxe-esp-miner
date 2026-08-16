@@ -95,6 +95,7 @@ rust_binary(
         "src/campaign/network/tests/terminal_handoff.rs",
         "src/campaign/network/validation.rs",
         "src/campaign/serial.rs",
+        "src/campaign/serial/diagnostics.rs",
         "src/campaign/serial/framing.rs",
         "src/campaign/serial/preparation.rs",
         "src/campaign/serial/recovery.rs",
