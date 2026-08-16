@@ -984,7 +984,7 @@ Attempt-006 verification-promotion plan:
 - [x] Preserve campaign-result v11 and prove every closed watchdog
       discriminator, success `none`, earliest-failure precedence, real-child
       envelope, profile-unit, volt-typed safety, seal, mode, and privacy gate.
-- [ ] Pass every focused and mandatory gate, commit and push the exact source,
+- [x] Pass every focused and mandatory gate, commit and push the exact source,
       rebuild its package, then run only the linked detector and conditional
       attempt-006 capture.
 - [ ] Promote only STAT-001 on the complete independently validated twenty-
@@ -1013,6 +1013,23 @@ unbounded mining, OTA, erase, raw write, fault injection, physical power
 action, external UART, or electrical pin/pad/header/GPIO/probe/jumper/solder/
 signal work is authorized. Any incomplete boundary leaves STAT-001
 `implemented`.
+
+Attempt-006 completion review: exact pushed source `5a1c6960`, pinned
+reference, clean board-205 package, software gates, privacy gates, detector,
+and protected-path admission passed. The sole capture failed closed as
+`watchdog_unresponsive` with the new sealed value-free discriminator
+`watchdog_not_participating`. Package/runtime identity were trusted, runtime
+attestation parsing and production serial were clean, terminal HTTP/WebSocket/
+pool state was valid, safe stop and USB cleanup passed, the result seal and
+protected modes passed, and no public projection was written. STAT-001 remains
+`implemented`; the checklist and progress history are unchanged. See
+`docs/parity/work-plans/20260816T173058Z-STAT-001/CLOSURE.md`.
+
+Next safe action: a separate immutable software-only plan must trace the live
+watchdog participant registry, campaign predicate, checkpoint/feed ownership,
+and task lifecycle, reproduce the proved `watchdog_not_participating` boundary,
+and make a targeted source fix. Attempt-006 is consumed; no unchanged retry or
+attempt-007 is authorized.
 
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 

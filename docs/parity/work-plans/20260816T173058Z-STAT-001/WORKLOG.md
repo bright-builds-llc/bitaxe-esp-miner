@@ -51,3 +51,21 @@
   source for the one authorized detector and conditional capture.
 - Blocker or next safe action: Commit and push this source, rebuild and verify
   the commit-bound package, then execute only the sealed attempt-006 commands.
+
+## 2026-08-16T18:01:51Z | Attempt-006 terminal closure
+
+- Exact package source: `5a1c69609408ed19aa098241709689fb66d5073a`
+- Actions: Rebuilt and admitted the clean commit-bound board-205 package, ran
+  the sole detector, and consumed the sole conditional attempt-006 capture.
+- Closed outcome: Campaign-result v11 failed as `watchdog_unresponsive` with
+  discriminator `watchdog_not_participating`; parity promotion is false and
+  no public projection exists.
+- Preserved boundaries: Package and runtime identity are trusted, attestation
+  parsing and production serial are clean, terminal HTTP/WebSocket/pool state
+  is valid, safe stop is confirmed, USB cleanup is ready, the result seal
+  matches, and protected modes pass.
+- Outcome: STAT-001 remains `implemented`; no checklist or progress-history
+  field changes.
+- Blocker or next safe action: Stop this invocation. A separate immutable
+  software-only plan must reproduce and fix the proved watchdog participation
+  boundary before any newly authorized hardware ordinal.
