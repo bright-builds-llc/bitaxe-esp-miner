@@ -276,7 +276,7 @@ export async function captureHashrateMonitorEvidence(
   let campaign;
   try {
     campaign = await processPort.run(internalCommandSpec(flashProgram, [
-      "mining-campaign", "--stage", "soak", "--profile", "conservative",
+      "mining-campaign", "--stage", "live-share", "--profile", "conservative",
       "--board", "205", "--port", options.port,
       "--manifest", options.packageManifest,
       "--wifi-credentials", options.wifiCredentials,
@@ -305,7 +305,7 @@ export async function captureHashrateMonitorEvidence(
     }
     if (requiredString(resultFile.value, "schema", "campaign result") !== "mining-campaign-result-v9"
       || requiredString(resultFile.value, "status", "campaign result") !== "accepted"
-      || requiredString(resultFile.value, "stage", "campaign result") !== "soak"
+      || requiredString(resultFile.value, "stage", "campaign result") !== "live-share"
       || requiredString(resultFile.value, "profile", "campaign result") !== "conservative"
       || requiredInteger(resultFile.value, "duration_seconds", "campaign result") !== 600
       || requiredString(resultFile.value, "runtime_identity", "campaign result") !== "trusted"

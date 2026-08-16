@@ -41,3 +41,43 @@
 - Outcome: The minimal attempt-002 implementation is ready to commit and push.
 - Blocker or next safe action: Commit and push this exact source, rebuild and
   admit its clean exact package, then run only detector command 1.
+
+## 2026-08-16T02:18:37Z | hardware closure and root-cause correction
+
+- Source commit: `cd2da98b6519e3b6cf201ca735af62fb6066942e`
+- Actions: Ran the plan's detector once and consumed only attempt-002. After
+  the capture stopped, inspected only closed allowlisted aggregate fields and
+  source control flow. Corrected the wrapper from the inadmissible `soak` plus
+  `conservative` pair to `live-share` plus `conservative`, and made the real
+  child reject any regression to the invalid pair.
+- Verification: Detector admission passed. The capture closed as
+  `hardware_blocked`; the sealed result was `admission_failed`, the projection
+  was absent, protected modes and the result seal passed, and the focused
+  automation/independent-validator targets passed after the correction.
+- Evidence: Protected attempt-002 remains ignored and private. This worklog,
+  the active-task completion review, and `CLOSURE.md` contain only closed
+  categories and source-backed conclusions.
+- Outcome: STAT-001 remains `implemented`; no verification or checklist
+  transition is claimed, and no retry occurred.
+- Blocker or next safe action: Commit, push, and fully gate the correction. A
+  future immutable plan may authorize fresh attempt-003 with a newly built
+  exact package; attempt-002 cannot be reused.
+
+## 2026-08-16T02:23:52Z | final verification
+
+- Source commit: `cd2da98b6519e3b6cf201ca735af62fb6066942e`
+- Actions: Reviewed the complete correction, closure, task update, and absence
+  of a public projection. Preserved the immutable plan digest and unique active
+  task binding.
+- Verification: Ordered Cargo format, strict Clippy, all-target build, and
+  all-feature tests passed. Bright Builds, the real firmware package, all 45
+  Bazel tests, parity validation/progress, redaction over 20 public roots,
+  pinned-reference cleanliness, generated-contract build, immutable-plan
+  digest, unique-task, absent-projection, and diff checks passed. One initial
+  generated-contract invocation used `bazel test` on its build-only target and
+  was rerun successfully with `bazel build`.
+- Evidence: `CLOSURE.md`, this append-only worklog, and the active task record.
+- Outcome: The root-cause correction is ready for commit and push while
+  STAT-001 correctly remains `implemented`.
+- Blocker or next safe action: End this plan after push. A fresh immutable plan
+  and attempt-003 are required for any further hardware verification.

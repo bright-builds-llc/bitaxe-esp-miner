@@ -639,7 +639,7 @@ Attempt-002 verification-promotion plan:
       hashrate behavior or the evidence quorum.
 - [x] Run every focused and mandatory software, firmware, privacy, reference,
       package, and exact-source gate; commit and push before device access.
-- [ ] Run only the exact plan detector and one conditional attempt-002 command,
+- [x] Run only the exact plan detector and one conditional attempt-002 command,
       then promote STAT-001 only if the complete independently validated
       exact-package hashrate quorum passes.
 
@@ -674,6 +674,19 @@ windows with work renewal; changing coherent positive HTTP/WebSocket current
 hashrate and positive rolling windows after warmup; bounded error; terminal
 zero current rate; safe stop, cleanup, protected modes, seal, independent
 validation, and redaction. Any missing fact withholds promotion.
+
+Attempt-002 completion review: the fresh detector admitted exactly one Ultra
+205, but the sole capture stopped with closed category `hardware_blocked` and
+a sealed `admission_failed` result before package admission or campaign USB
+execution. Source inspection found that the wrapper paired `soak` with
+`conservative`, although campaign admission permits the conservative
+600-second profile only for `live-share`. The wrapper and acceptance boundary
+now use `live-share`, and the real-child regression rejects the former invalid
+stage/profile pair. No public projection exists, attempt-002 was not retried,
+and STAT-001 remains `implemented`. A future immutable plan may authorize
+fresh attempt-003 only from the committed, pushed, fully gated correction and
+a newly built exact package. See
+`docs/parity/work-plans/20260816T020135Z-STAT-001/CLOSURE.md`.
 
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 

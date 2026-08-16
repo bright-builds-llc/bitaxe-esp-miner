@@ -51,7 +51,7 @@ const sourceDocuments = new Map<string, string>([
 const okResult = {
   schema: "mining-campaign-result-v9",
   status: "accepted",
-  stage: "soak",
+  stage: "live-share",
   profile: "conservative",
   duration_seconds: 600,
   runtime_identity: "trusted",
@@ -145,6 +145,7 @@ import path from "node:path";
 const args = process.argv.slice(2);
 const digest = (value) => createHash("sha256").update(value).digest("hex");
 if (args[0] === "mining-campaign") {
+  if (args[args.indexOf("--stage") + 1] !== "live-share" || args[args.indexOf("--profile") + 1] !== "conservative") process.exit(5);
   const root = args[args.indexOf("--evidence-dir") + 1];
   await mkdir(root, { recursive: true, mode: 0o700 });
   await chmod(root, 0o700);
@@ -177,7 +178,7 @@ async function captureError(promise: Promise<unknown>): Promise<HashrateMonitorE
   }
 }
 
-test("real campaign and independent validator children publish only closed evidence", async () => {
+test("admissible conservative campaign and independent validator publish only closed evidence", async () => {
   // Arrange
   const value = await fixture("real-child");
   const child = await childProgram(value);
