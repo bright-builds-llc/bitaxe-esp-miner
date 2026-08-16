@@ -978,10 +978,10 @@ change or retry; this plan does not authorize attempt-006.
 Attempt-006 verification-promotion plan:
 `docs/parity/work-plans/20260816T173058Z-STAT-001/PLAN.md`
 
-- [ ] Rebind the private-first hashrate workflow, independent validator,
+- [x] Rebind the private-first hashrate workflow, independent validator,
       generated contract, immutable task/plan admission, Bazel inputs, and
       protected paths from consumed attempt-005 to fresh attempt-006.
-- [ ] Preserve campaign-result v11 and prove every closed watchdog
+- [x] Preserve campaign-result v11 and prove every closed watchdog
       discriminator, success `none`, earliest-failure precedence, real-child
       envelope, profile-unit, volt-typed safety, seal, mode, and privacy gate.
 - [ ] Pass every focused and mandatory gate, commit and push the exact source,
