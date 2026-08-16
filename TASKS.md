@@ -1178,6 +1178,52 @@ attempt-008 only after binding exact pushed source `145eff42` and defining the
 complete hardware, privacy, recovery, cleanup, retry, stop, and promotion
 contract. Attempt-007 is consumed and must not be reused.
 
+Attempt-008 plan:
+`docs/parity/work-plans/20260816T200554Z-STAT-001/PLAN.md`
+
+Attempt-008 objective and commands: pushed correction `145eff42` fixes the
+exact attempt-007 `watchdog_feed_stale` boundary, while current pushed source
+`d6f4c6ab` adds only its truthful closure. After the immutable plan and narrow
+attempt rebind are fully gated, committed, pushed, and packaged, run exactly
+the linked plan's one `just detect-ultra205` command and, only on clean
+one-device board-205 admission plus absent fresh paths and nonempty ignored
+credentials, its one `just capture-hashrate-monitor-evidence` command for
+`scratch/stat001-hashrate-monitor/attempt-008`, conservative `live-share`, 600
+active seconds, and a 1,500-second capture timeout. The wrapper root is
+`scratch/stat001-hashrate-monitor/wrapper-008`; the public candidate remains
+`docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json`.
+
+Attempt-008 allowed effects and safety: one exact board-205 factory flash and
+normal USB reset/re-enumeration; private ignored Wi-Fi/pool seeding; one
+bounded 400 MHz, 1,100 millivolt core-voltage, 100-percent-fan conservative
+campaign; protected current-session serial/HTTP/WebSocket observation; pause,
+safe stop, cleanup, sealing; and at most one supervisor-owned exact-package
+recovery flash after a post-flash failure. Require fresh 4.5-5.5 V input, at
+most 15 W, ASIC temperature below 75 C, and fresh nonzero fan RPM. Input
+voltage is volts and remains distinct from the millivolt core setpoint.
+
+Attempt-008 evidence/privacy: use only a fresh ignored mode-0700 wrapper parent
+with distinct mode-0600 detector/capture siblings and a previously absent
+supervisor-owned mode-0700 attempt child containing only mode-0600 artifacts.
+Credentials, workers, endpoints, origins, ports, hostnames, USB/network/process
+identity, raw hashrates/sensors, bodies, logs, commands, PIDs, and traces remain
+private. Only the closed projection may publish after independent validation.
+Never read, print, summarize, commit, or expose credential contents or private
+operational values.
+
+Attempt-008 prohibited effects, recovery, retry, and stops: no other profile,
+arbitrary control, automatic fan, unbounded mining, OTA, erase, raw write,
+fault injection, physical power action, direct UART, or electrical
+pin/pad/header/GPIO/probe/jumper/solder/signal work. Preserve the earliest
+failure and watchdog reason through bounded safe stop, recovery, seal, and
+cleanup. Starting capture consumes attempt-008; never reuse attempt-007, retry
+attempt-008, or start attempt-009. Stop on detector ambiguity/failure, non-205
+identity, missing inputs, drift, unsafe state, incomplete quorum, failed
+recovery/cleanup/seal/mode/privacy, nonzero command exit, or successful
+projection. Accepted terminal outcomes are `complete`,
+`stop_repeated_boundary`, `stop_hardware_blocker`, `stop_authority_boundary`,
+and `stop_impossible_contract`.
+
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
 - [x] Add the exact bounded 720-sample history, timestamp admission, configured
