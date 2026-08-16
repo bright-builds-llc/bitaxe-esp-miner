@@ -50,3 +50,24 @@
   the bounded conclusion and non-claims.
 - Blocker or next safe action: Commit and push this evidence checkpoint as
   `SOURCE_COMMIT`, then transition only UI-001 and synchronize progress.
+
+## 2026-08-16T07:35:04Z | UI-001 finalized
+
+- Source commit: `9b4314f0d5aba2b5ab2428a95151fbc1df11f473`
+- Actions: Transitioned only UI-001 to `verified`, synchronized deterministic
+  progress, updated the README, and moved the completed task from `TASKS.md`
+  to `TASKS.archive.md` with its full native record and completion review.
+- Verification: The ordered Rust checks, Bright Builds, all 45 Bazel tests,
+  parity/progress, independent display-evidence validation, redaction,
+  reference cleanliness, firmware packaging, immutable-plan/evidence digests,
+  task uniqueness, file mode, candidate absence, selector, and diff checks
+  passed. The first final `just parity` invocation ended with transient local
+  `Resource temporarily unavailable (os error 35)` after the report had begun;
+  the exact command passed on the bounded retry with `validation_errors: none`.
+- Evidence: Transition receipt
+  `docs/parity/checklist-transitions/20260816T072602Z-UI-001.json`; progress now
+  records 72 of 94 active rows verified (76.6%).
+- Outcome: UI-001 is verified and its task is archived. The selector reports
+  no open plan and advances to UI-002.
+- Blocker or next safe action: None for UI-001. A future invocation may select
+  UI-002 under its own immutable plan.

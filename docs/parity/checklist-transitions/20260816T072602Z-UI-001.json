@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260816T072602Z-UI-001",
+  "predecessor_sha256": "f695a7eab301071667beb52656d948bdd84740c4015bb7b2e53289a7372ea4a1",
+  "result_sha256": "ef791d79f9e17d5698c98053b24d47767a3d01abbc5314d603bfdc1612ca1c70",
+  "row_id": "UI-001",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260816T064239Z-UI-001/PLAN.md",
+  "plan_sha256": "ae4602e841750d14e86e759b5c2815834567beafcdef63503e88eb49c138b966",
+  "result_path": "docs/parity/work-plans/20260816T064239Z-UI-001/RESULT.md",
+  "result_document_sha256": "56022c1f9064c0645e5a7f2890e4873ca8ff81d0a9e4809f55522e9e69aebcd2",
+  "before_rust_owned_target": "`crates/bitaxe-core/src/display.rs`, `crates/bitaxe-config/src/display.rs`, `firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`, `firmware/bitaxe/src/startup.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-core/src/display.rs`, `crates/bitaxe-config/src/display.rs`, `firmware/bitaxe/src/display_adapter.rs`, `firmware/bitaxe/src/operator_sensor_runtime.rs`, `firmware/bitaxe/src/startup.rs`, `crates/bitaxe-automation-contracts/src/display_behavior_evidence.rs`, `tools/automation/src/display-behavior-evidence.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,hardware-smoke",
+  "before_notes": "Exact Ultra 205 panel configuration, rotation, inversion, bounded timeout policy, one-time initialization, retained logical ownership, absolute refresh cadence, edge-only power commands, and display-failure isolation are implemented; see docs/parity/work-plans/20260804T230000Z-UI-001/RESULT.md. Live panel behavior, UI-002 carousel content, UI-003 input, mining, and hardware-control claims remain separate.",
+  "after_notes": "Sealed board-205 evidence joins one machine- and operator-confirmed IDENTIFY render and natural clear to unchanged current display-owned source and pinned reference semantics, with safe stop, cleanup, disabled mining/control, no hardware rerun, independent validation, and redaction; see [UI-001 result](work-plans/20260816T064239Z-UI-001/RESULT.md) and [display projection](evidence/ui001-display-behavior/display-behavior-projection.json). Physical geometry, brightness, every setting on hardware, input, UI-002 content, other boards, mining, update/recovery, and release readiness remain non-claims."
+}

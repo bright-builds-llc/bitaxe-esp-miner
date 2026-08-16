@@ -8941,3 +8941,73 @@ modes, independent validation, and passed redaction. UI-004 is verified with
 mutation during this continuation, upload, OTAWWW, mining, other-board and
 release claims remain excluded. See
 `docs/parity/work-plans/20260816T000806Z-UI-004/RESULT.md`.
+
+### task-parity-ui001-display-behavior | 2026-08-04 | Complete Ultra 205 display driver behavior
+
+- [x] Add the pure exact-panel, rotation, inversion, timeout, wake/priority,
+      and edge-triggered power contract with boundary regressions.
+- [x] Load confirmed display settings with upstream defaults and fail closed on
+      malformed or unsupported stored values.
+- [x] Retain one configured firmware display owner across runtime frames and
+      prove configuration/render/power ordering plus sensor-failure isolation.
+
+Plan: `docs/parity/work-plans/20260804T230000Z-UI-001/PLAN.md`
+
+Authorization: local software, synthetic display/settings fixtures, and build
+work only. No hardware attempt, credentials, external service, mining, pool
+connection, frequency/voltage/fan/power effect, OTA, recovery, direct UART,
+pins, or physical button interaction.
+
+Verification: Focused core/config tests, display adapter and ownership tests,
+the canonical firmware build, the mandatory Rust sequence, Bright Builds,
+`just test`, parity/progress, redaction, reference cleanliness, immutable-plan,
+and diff checks pass on the implementation tree.
+
+Completion review: The exact panel settings and runtime power behavior are
+software-implemented with closed configuration handling and one logical owner.
+UI-002 carousel content, UI-003 physical input, live panel
+orientation/inversion/timeout, and operator-visible behavior remain below
+verified, so this implemented task remains active rather than archived.
+
+Source-bound verification plan:
+`docs/parity/work-plans/20260816T064239Z-UI-001/PLAN.md`.
+
+- [x] Validate the exact committed API-009 display-UAT and programmatic
+      projections without reading protected attempts or rerunning hardware.
+- [x] Add a closed UI-001 evidence contract, independent validator, projector,
+      exhaustive boundary regressions, and complete Bazel/runfiles ownership.
+- [x] Bind captured source `522d5abd`, current pushed display semantics, pinned
+      reference behavior, this active task, and the immutable plan into one
+      aggregate-only public projection.
+- [x] Pass every focused, mandatory, privacy, package, reference, parity,
+      progress, selector, digest, permission, sensitive-value, and diff gate;
+      promote and archive only on the complete accepted quorum.
+
+Authorization: committed public evidence, repository source/Git history,
+deterministic tests, documentation, checklist tooling, and local builds only.
+Do not read credentials or protected attempt artifacts and do not access the
+detector, USB/serial, device/network/HTTP, physical display, operator
+checkpoint, mining, settings mutation, restart, OTA, recovery, hardware
+control, external UART/BAP, or any pin/pad/header/GPIO/probe/jumper/solder/
+signal interface. No new hardware attempt is authorized or required.
+
+Promotion requires the exact sealed board-205 UAT to prove one machine and
+operator-confirmed IDENTIFY render and natural clear, its exact programmatic
+projection to prove package/reference identity, safe stop, cleanup, and
+redaction, and current source checks to prove the display-owned paths remain
+compatible with that captured package. The resulting UI-001 projection must be
+independently validated, aggregate-only, and state `hardware_rerun_used: false`.
+Physical geometry, brightness, every rotation/inversion setting on hardware,
+timeout duration/current draw, physical input, UI-002 content, other boards,
+mining, soak, update/recovery, and release readiness remain non-claims.
+
+Completion review: Complete. The sealed projection joins the exact committed
+API-009 physical display UAT to the unchanged current display implementation
+and pinned reference semantics. Independent validation, redaction, source and
+task binding, the mandatory Rust sequence, Bright Builds, all 45 Bazel tests,
+parity/progress, packaging, reference cleanliness, and diff checks passed.
+UI-001 is verified with `unit,workflow,hardware-smoke` evidence and no new
+hardware attempt. Physical geometry, brightness, every setting on hardware,
+input, UI-002 content, other boards, mining, update/recovery, and release
+readiness remain explicit non-claims. See
+`docs/parity/work-plans/20260816T064239Z-UI-001/RESULT.md`.
