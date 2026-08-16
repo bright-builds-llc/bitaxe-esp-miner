@@ -975,6 +975,45 @@ new exact package and authorize one detector-gated attempt-006. Any repeated
 watchdog failure must surface one sealed discriminator before another source
 change or retry; this plan does not authorize attempt-006.
 
+Attempt-006 verification-promotion plan:
+`docs/parity/work-plans/20260816T173058Z-STAT-001/PLAN.md`
+
+- [ ] Rebind the private-first hashrate workflow, independent validator,
+      generated contract, immutable task/plan admission, Bazel inputs, and
+      protected paths from consumed attempt-005 to fresh attempt-006.
+- [ ] Preserve campaign-result v11 and prove every closed watchdog
+      discriminator, success `none`, earliest-failure precedence, real-child
+      envelope, profile-unit, volt-typed safety, seal, mode, and privacy gate.
+- [ ] Pass every focused and mandatory gate, commit and push the exact source,
+      rebuild its package, then run only the linked detector and conditional
+      attempt-006 capture.
+- [ ] Promote only STAT-001 on the complete independently validated twenty-
+      window network/hashrate/watchdog/terminal-zero/safe-stop/cleanup quorum;
+      otherwise withhold evidence, record the earliest closed blocker, and stop.
+
+Attempt-006 authorization: pushed commit `f9232963` materially fixes the exact
+attempt-005 ambiguity by carrying twelve closed watchdog failure labels through
+campaign-result v11 and the sealed wrapper envelope. After this immutable plan
+and its rebound implementation are clean, fully gated, committed, pushed, and
+packaged, exactly one detector and at most one conditional capture may
+factory-flash/reset one Ultra 205, seed ignored opaque credentials, and run the
+repo-owned conservative 400 MHz / 1,100 mV / 100% profile for 600 accumulated
+active seconds. Input safety remains independently 4.5-5.5 volts, at most 15 W,
+below 75 C, with fresh nonzero fan RPM.
+
+Attempt-006 evidence, recovery, retry, and non-scope: use only fresh ignored
+mode-0700 `scratch/stat001-hashrate-monitor/wrapper-006` and `attempt-006`
+roots with mode-0600 files. Credentials, workers, endpoints, origins, ports,
+USB/network/process identity, raw hashrates/sensors, bodies, logs, commands,
+PIDs, and traces remain private. Only the closed projection may publish after
+independent validation. Starting capture consumes attempt-006; preserve the
+earliest category/discriminator, safe-stop/recover/seal/clean up, and never
+retry unchanged or start attempt-007. No other profile, arbitrary control,
+unbounded mining, OTA, erase, raw write, fault injection, physical power
+action, external UART, or electrical pin/pad/header/GPIO/probe/jumper/solder/
+signal work is authorized. Any incomplete boundary leaves STAT-001
+`implemented`.
+
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
 - [x] Add the exact bounded 720-sample history, timestamp admission, configured
