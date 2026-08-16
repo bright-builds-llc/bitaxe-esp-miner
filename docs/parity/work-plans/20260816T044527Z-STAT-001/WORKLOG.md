@@ -17,3 +17,12 @@
 - Evidence: Production changes are limited to `tools/flash/src/campaign/network.rs` and `tools/flash/src/campaign/network/tests.rs`; no hardware, protected evidence, credentials, endpoints, projection, or checklist cells were accessed or changed.
 - Outcome: The deterministic software cause of attempt-004's `network_observation_status: not_required` result is corrected and regression-guarded. This is software evidence only and does not verify STAT-001.
 - Blocker or next safe action: Commit and push this source checkpoint, bind the resulting commit in a non-verifying closure, and leave fresh hardware evidence to a separately authorized immutable plan.
+
+## 2026-08-16T05:00:28Z | source pushed and plan closed
+
+- Source commit: `89e8c34c794e6cfca499e4f392699be39e20e7dd`
+- Actions: Pushed the verified correction to `origin/main`; created the required non-verifying closure; completed only this software plan's task items; left the parity checklist unchanged.
+- Verification: The pushed source commit contains the closed stage mapping and focused regression. The plan SHA-256 remains `6d9fb3f5718a356df5f163c12cf4ba3cce72d669500be4be88a87ce1137a0847`.
+- Evidence: `CLOSURE.md` binds the exact pushed source commit, unchanged plan digest, software-only outcome, non-claims, and fresh-plan condition.
+- Outcome: Software correction complete; STAT-001 remains `implemented` and verification is not claimed.
+- Blocker or next safe action: A fresh immutable plan must bind an exact new package and separately authorize a new detector-gated Ultra 205 ordinal. This plan authorizes no hardware use.

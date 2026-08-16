@@ -864,7 +864,7 @@ LiveShare network-observer software plan:
       stages exactly.
 - [x] Add focused stage-mapping and campaign/network regressions, then pass all
       mandatory software, package, privacy, reference, and parity gates.
-- [ ] Commit and push the correction, close the software-only plan without a
+- [x] Commit and push the correction, close the software-only plan without a
       checklist transition, and leave any fresh hardware ordinal to a separate
       immutable plan.
 
@@ -876,6 +876,17 @@ erase, inject faults, manipulate physical power, use external UART, touch pins,
 pads, headers, GPIO, probes, jumpers, solder, or signals, create a projection,
 or start attempt-005. Completion proves only the corrected host observation
 policy; STAT-001 remains `implemented` until separate hardware evidence passes.
+
+Completion review: Source commit
+`89e8c34c794e6cfca499e4f392699be39e20e7dd` centralizes the exact five-stage
+network-observation policy and routes conservative `LiveShare` through the
+continuity observer. Focused network tests passed 28/28, the broader campaign
+slice passed 27/27, the canonical package built, privacy/reference checks
+passed, and the full ordered repository gate sequence passed. No checklist cell
+changed. Residual risk is hardware-only: a separately authorized fresh plan
+must prove the corrected observer against one newly built exact package and a
+new detector-gated Ultra 205 campaign before STAT-001 can move beyond
+`implemented`.
 
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
