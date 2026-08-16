@@ -71,9 +71,7 @@ const referencePaths = [
 ] as const;
 const sourceFragments = new Map<string, readonly string[]>([
   [sourcePaths[0], [
-    "pub bus_voltage_volts: f64,",
-    "pub current_amps: f64,",
-    "pub power_watts: f64,",
+    "pub struct Ina260RawSample {",
   ]],
   [sourcePaths[1], [
     "let current_ma = f64::from(i16::from_be_bytes(current)) * INA260_CURRENT_MILLIAMPS_PER_BIT;",

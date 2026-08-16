@@ -24,9 +24,7 @@ const ok = (stdout = ""): ProcessOutcome => ({ exitCode: 0, stdout, stderr: "", 
 
 const sourceDocuments = new Map<string, string>([
   ["crates/bitaxe-safety/src/power.rs", [
-    "pub bus_voltage_volts: f64,",
-    "pub current_amps: f64,",
-    "pub power_watts: f64,",
+    "pub struct Ina260RawSample {",
   ].join("\n")],
   ["crates/bitaxe-safety/src/sensor_acquisition.rs", [
     "let current_ma = f64::from(i16::from_be_bytes(current)) * INA260_CURRENT_MILLIAMPS_PER_BIT;",
