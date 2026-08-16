@@ -1284,6 +1284,60 @@ bind the pushed correction to an exact board-205 package and authorize a new
 attempt-009 contract before hardware use; attempts 007 and 008 remain
 consumed.
 
+Attempt-009 verification-promotion plan:
+`docs/parity/work-plans/20260816T231527Z-STAT-001/PLAN.md`
+
+- [ ] Rebind the private-first workflow, Rust validator, generated contract,
+      immutable task/plan admission, Bazel runfiles, protected roots, and
+      real-child fixtures from consumed attempt-008 to fresh attempt-009.
+- [ ] Run every focused and mandatory software, firmware, privacy, reference,
+      package, and exact-source gate; commit and push before device access.
+- [ ] Run only the frozen detector and sole conditional attempt-009 command,
+      then promote STAT-001 only if the complete independent quorum passes.
+
+Attempt-009 progress basis and authorization: pushed correction
+`f5f1be9b4614c155df96aaa78a2271c60065f84f` makes production-owner watchdog
+feeds follow completed event/effect progress, the bounded inbox wait, and
+campaign publication without weakening the five-second timeout or feeding
+through an unfinished effect. After this plan/task checkpoint and rebound
+implementation are clean, fully gated, committed, and pushed, one exact board-
+205 package may be factory-flashed/reset; ignored local Wi-Fi and pool inputs
+may be seeded privately; and the repo-owned `live-share` conservative 400 MHz /
+1100 mV / 100% fan profile may mine for exactly 600 accumulated active seconds
+while protected current-session HTTP, WebSocket, and serial observations are
+joined. The campaign must pause, safe-stop, release USB/process ownership, and
+may use at most one supervisor-owned exact-package recovery flash after a
+post-flash failure.
+
+Attempt-009 units and safety: 1100 mV is the ASIC core setpoint, while INA260
+input bus voltage is independently measured in volts. Admission requires fresh
+4.5-5.5 V input, at most 15 W, ASIC temperature below 75 C, and fresh nonzero
+fan RPM after the 100% fan command. The two voltage domains must not be
+compared. Stop on stale/unsafe state, ambiguous/non-205 detector identity,
+source/reference/package drift, missing credentials, or cleanup/recovery
+failure.
+
+Attempt-009 evidence, privacy, recovery, and retry: only fresh ignored mode-
+`0700` `scratch/stat001-hashrate-monitor/wrapper-009` and `attempt-009` roots
+with mode-`0600` files are permitted. Credentials, pool/owner/worker fields,
+origins, ports, USB/network/process identities, exact hashrates, sensors,
+HTTP/WebSocket bodies, serial, commands, PIDs, and traces remain private. The
+sole public aggregate projection is written only after independent validation.
+Starting capture consumes attempt-009; preserve the earliest typed failure,
+run bounded safe stop/recovery/cleanup after post-flash failures, and do not
+retry unchanged or start attempt-010.
+
+Attempt-009 prohibited effects and acceptance: no upstream-default/overclock
+profile, arbitrary control target, automatic fan mode, unbounded mining, OTA,
+erase, raw writes, fault injection, physical power action, direct UART, or pin/
+pad/header/GPIO/probe/jumper/solder/signal manipulation is permitted. Promotion
+requires exact clean source/reference/package/plan and detector identity; one
+ASIC/four domains and one-second cadence; all twenty active windows with work
+renewal; changing coherent positive HTTP/WebSocket current and rolling rates;
+bounded error; watchdog failure `none`; terminal zero current rate; safe stop,
+cleanup, protected modes, seals, independent validation, and redaction. Any
+missing fact withholds promotion and leaves STAT-001 `implemented`.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
