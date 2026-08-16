@@ -48,3 +48,21 @@
 - Outcome: Exact attempt-009 implementation is ready for commit and push.
 - Blocker or next safe action: Push the exact source, rebuild and validate its
   package, then run only the frozen detector and conditional capture commands.
+
+## 2026-08-16T23:43:00Z | attempt-009 terminal closure
+
+- Source commit: `6fd586dab96a3eca15b7dd68d92de60c275bc5de`
+- Actions: Rebuilt the exact clean pushed package, admitted one Ultra 205 with
+  the frozen detector, and ran the sole protected attempt-009 capture. No retry
+  or attempt-010 was started.
+- Verification: The closed result reported `hardware_blocked`, terminal
+  `watchdog_unresponsive`, discriminator `watchdog_feed_stale`, trusted runtime
+  identity, no attestation parse failure, 14 of 20 windows, confirmed safe stop,
+  and ready USB cleanup. Campaign-result and network seals, exact file set,
+  mode-`0700` roots, mode-`0600` files, and projection absence passed.
+- Evidence: Protected attempt-009 artifacts remain ignored and private;
+  `CLOSURE.md` contains only the allowlisted closed outcome.
+- Outcome: `stop_repeated_boundary`; STAT-001 remains `implemented` and no
+  checklist field changes.
+- Blocker or next safe action: Diagnose the remaining feed-staleness boundary
+  in a separate software-only immutable plan before any new hardware ordinal.

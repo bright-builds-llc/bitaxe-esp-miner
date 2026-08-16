@@ -1292,7 +1292,7 @@ Attempt-009 verification-promotion plan:
       real-child fixtures from consumed attempt-008 to fresh attempt-009.
 - [x] Run every focused and mandatory software, firmware, privacy, reference,
       package, and exact-source gate; commit and push before device access.
-- [ ] Run only the frozen detector and sole conditional attempt-009 command,
+- [x] Run only the frozen detector and sole conditional attempt-009 command,
       then promote STAT-001 only if the complete independent quorum passes.
 
 Attempt-009 progress basis and authorization: pushed correction
@@ -1337,6 +1337,25 @@ renewal; changing coherent positive HTTP/WebSocket current and rolling rates;
 bounded error; watchdog failure `none`; terminal zero current rate; safe stop,
 cleanup, protected modes, seals, independent validation, and redaction. Any
 missing fact withholds promotion and leaves STAT-001 `implemented`.
+
+Attempt-009 completion review: exact clean pushed source/package
+`6fd586dab96a3eca15b7dd68d92de60c275bc5de`, every software/privacy/reference
+gate, and one fresh detector passed. The sole capture then repeated the sealed
+attempt-008 boundary: `hardware_blocked` / `watchdog_unresponsive` /
+`watchdog_feed_stale` after 14 of 20 required windows. Runtime identity was
+trusted, runtime-attestation parsing passed, safe stop was confirmed, USB
+cleanup was ready, protected modes and result/network seals passed, and no
+public projection exists. Attempt-009 is consumed, no retry ran, STAT-001
+remains `implemented`, and the checklist/progress history are unchanged. See
+`docs/parity/work-plans/20260816T231527Z-STAT-001/CLOSURE.md`.
+
+Residual risk and next safe action: the repeated boundary disproves the
+sufficiency of the completed-event/effect feed correction but does not isolate
+the remaining owner phase, subscription/reporting, clock-age, or scheduler
+cause. A new immutable software-only plan must add closed diagnostics and a
+production-shaped regression before any targeted correction. Attempt-010 is
+not authorized without new verified progress and a new complete hardware
+contract.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
