@@ -1031,6 +1031,25 @@ and task lifecycle, reproduce the proved `watchdog_not_participating` boundary,
 and make a targeted source fix. Attempt-006 is consumed; no unchanged retry or
 attempt-007 is authorized.
 
+Watchdog-classifier diagnosis plan:
+`docs/parity/work-plans/20260816T180839Z-STAT-001/PLAN.md`
+
+- [ ] Map every closed runtime-health watchdog reason before the generic
+      participation-consistency guard, preserving earliest-failure precedence
+      and value-free public labels.
+- [ ] Rotate the sealed network and campaign-result schemas and update every
+      producer, consumer, wrapper gate, fixture, and production-shaped
+      regression for the complete vocabulary.
+- [ ] Pass every focused and mandatory software, firmware, package, privacy,
+      provenance, parity, and diff gate; record a non-promotion closure and
+      leave STAT-001 and progress history unchanged.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not access attempt-006,
+ignored credentials, detector/device/network runtime, or private values. Do
+not flash, reset, mine, actuate, update, erase, inject faults, use direct UART
+or electrical interfaces, create a public projection, or start attempt-007.
+
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
 - [x] Add the exact bounded 720-sample history, timestamp admission, configured
