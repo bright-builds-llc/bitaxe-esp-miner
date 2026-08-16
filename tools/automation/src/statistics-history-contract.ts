@@ -21,12 +21,12 @@ type FailureCategory = Extract<
   "hardware_blocked" | "evidence_invalid" | "timeout" | "process_failed"
 >;
 
-export const expectedPrivateRoot = "scratch/stat002-statistics-history/attempt-002";
-export const expectedWrapperRoot = "scratch/stat002-statistics-history/wrapper-002";
+export const expectedPrivateRoot = "scratch/stat002-statistics-history/attempt-003";
+export const expectedWrapperRoot = "scratch/stat002-statistics-history/wrapper-003";
 export const expectedProjection =
   "docs/parity/evidence/stat002-statistics-history/statistics-history-projection.json";
 export const expectedPlanSha256 =
-  "f4e95d79dd91526596713ee5ac90a535214bc5ce709912d5f712313975a7b509";
+  "7eeeededa3d7a6f671fe00eb6e2b0cbd2fd86d5516fc865d041191182029c631";
 export const expectedReferenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 export const expectedLabels = [
   "hashrate", "hashrate_1m", "hashrate_10m", "hashrate_1h", "errorPercentage",
@@ -40,9 +40,15 @@ export const noRecovery: RecoveryFacts = {
   secondary_recovery_failure: false,
 };
 
-const expectedPlan = "docs/parity/work-plans/20260816T213710Z-STAT-002/PLAN.md";
+const expectedPlan = "docs/parity/work-plans/20260816T221106Z-STAT-002/PLAN.md";
 const activeTask = "task-parity-stat002-statistics-history";
 const sourceFragments = new Map<string, readonly string[]>([
+  ["tools/automation/src/cli.ts", [
+    "createLocalProcessPort({ cwd: root, timeoutMs: 900_000 })",
+  ]],
+  ["tools/automation/src/statistics-history-evidence.ts", [
+    "outcome = await processPort.run(spec);",
+  ]],
   ["firmware/bitaxe/src/statistics_runtime.rs", [
     "pub const STATISTICS_CADENCE_MS: u64 = 1_000;",
     "record_statistics_sample(now_ms, frequency_seconds)",
@@ -187,7 +193,7 @@ export async function validateStatisticsHistoryTaskAndSources(
   const maybeEnd = taskDocument.indexOf("\n### ", start + heading.length);
   const block = taskDocument.slice(start, maybeEnd === -1 ? taskDocument.length : maybeEnd);
   if (start === -1 || taskDocument.indexOf(heading, start + heading.length) !== -1
-    || !block.includes(expectedPlan) || !block.includes("attempt-002")
+    || !block.includes(expectedPlan) || !block.includes("attempt-003")
     || sha256(planDocument) !== admittedPlanSha256
     || !planDocument.includes("- Parity row: `STAT-002`")
     || !planDocument.includes(`- Active task: \`${activeTask}\``)) {

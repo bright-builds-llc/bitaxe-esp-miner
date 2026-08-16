@@ -23,9 +23,12 @@ test -n "${PHASE36_EFFECT_RESULT_PATH:-}"
 test -n "${PHASE36_EFFECT_PACKAGE_IDENTITY_DIGEST:-}"
 test -n "${PHASE36_EFFECT_FACTORY_IMAGE_DIGEST:-}"
 
-# Scale the production child-owned capture boundary to 50 ms, then model its
-# cleanup and result delivery in a real process before the supervisor settles.
-sleep 0.05
+# Scale the whole production operation to separate pre-monitor, capture, and
+# post-monitor phases. Their 440 ms total intentionally exceeds the old 420 ms
+# policy before the child writes evidence and returns its effect result.
+sleep 0.06
+sleep 0.36
+sleep 0.02
 mkdir -p "$evidence_dir"
 printf '%s\n' \
   'safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled' \

@@ -9,7 +9,6 @@ import { fileURLToPath } from "node:url";
 import { createFakeProcessPort, createLocalProcessPort, type ProcessPort } from "./process.js";
 import {
   captureStatisticsHistoryEvidence,
-  flashMonitorSupervisorLifetimeMilliseconds,
   StatisticsHistoryEvidenceError,
 } from "./statistics-history-evidence.js";
 
@@ -51,17 +50,27 @@ async function fixture(name: string): Promise<Fixture> {
     "- Active task: `task-parity-stat002-statistics-history`",
     "",
   ].join("\n");
-  await file(root, "docs/parity/work-plans/20260816T213710Z-STAT-002/PLAN.md", plan);
+  await file(root, "docs/parity/work-plans/20260816T221106Z-STAT-002/PLAN.md", plan);
   await file(root, "TASKS.md", [
     "### task-parity-stat002-statistics-history | fixture",
-    "docs/parity/work-plans/20260816T213710Z-STAT-002/PLAN.md",
-    "attempt-002",
+    "docs/parity/work-plans/20260816T221106Z-STAT-002/PLAN.md",
+    "attempt-003",
     "",
   ].join("\n"));
   await file(root, "firmware/bitaxe/src/statistics_runtime.rs", [
     "pub const STATISTICS_CADENCE_MS: u64 = 1_000;",
     "record_statistics_sample(now_ms, frequency_seconds)",
   ].join("\n"));
+  await file(
+    root,
+    "tools/automation/src/cli.ts",
+    "const processPort = createLocalProcessPort({ cwd: root, timeoutMs: 900_000 });\n",
+  );
+  await file(
+    root,
+    "tools/automation/src/statistics-history-evidence.ts",
+    "outcome = await processPort.run(spec);\n",
+  );
   await file(root, "firmware/bitaxe/src/runtime_snapshot.rs", [
     "pub fn record_statistics_sample(timestamp_ms: u64, frequency_seconds: u16)",
     "statistics_response(timestamp_ms, None, &statistics_samples())",
@@ -94,7 +103,7 @@ async function fixture(name: string): Promise<Fixture> {
   }));
   await file(root, "inputs/wifi.json", "{}\n");
   await chmod(credentials, 0o600);
-  const wrapper = path.join(root, "scratch/stat002-statistics-history/wrapper-002");
+  const wrapper = path.join(root, "scratch/stat002-statistics-history/wrapper-003");
   await mkdir(wrapper, { recursive: true, mode: 0o700 });
   await chmod(wrapper, 0o700);
   for (const name of ["detector.stdout", "detector.stderr", "capture.stdout", "capture.stderr"]) {
@@ -116,7 +125,7 @@ async function fixture(name: string): Promise<Fixture> {
 
 function options(value: Fixture) {
   return {
-    privateRoot: "scratch/stat002-statistics-history/attempt-002",
+    privateRoot: "scratch/stat002-statistics-history/attempt-003",
     packageManifest: value.manifest,
     wifiCredentials: value.credentials,
     detectorOutput: value.detectorOutput,
@@ -234,7 +243,7 @@ test("one-field cadence proof restores zero and emits aggregate-only evidence", 
     assert.equal(evidence.statistics_history.sample_count, 4);
     assert.deepEqual(api.patches, [1, 0]);
     assert.doesNotMatch(projection, /private-device|private-sensitive-port|0\.25/u);
-    const privateRoot = path.join(value.root, "scratch/stat002-statistics-history/attempt-002");
+    const privateRoot = path.join(value.root, "scratch/stat002-statistics-history/attempt-003");
     assert.equal((await stat(privateRoot)).mode & 0o777, 0o700);
     assert.equal((await stat(path.join(privateRoot, "final-evidence.private.json"))).mode & 0o777, 0o600);
   } finally {
@@ -265,24 +274,6 @@ test("malformed statistics preserve the primary failure after restoration", asyn
   } finally {
     api.restore();
   }
-});
-
-test("supervisor lifetime is strictly later than the production child boundary", () => {
-  // Arrange
-  const childTimeoutMilliseconds = 360_000;
-
-  // Act
-  const supervisorLifetimeMilliseconds = flashMonitorSupervisorLifetimeMilliseconds(
-    childTimeoutMilliseconds,
-  );
-
-  // Assert
-  assert.equal(supervisorLifetimeMilliseconds, 420_000);
-  assert.ok(supervisorLifetimeMilliseconds > childTimeoutMilliseconds);
-  assert.throws(
-    () => flashMonitorSupervisorLifetimeMilliseconds(childTimeoutMilliseconds, 0),
-    StatisticsHistoryEvidenceError,
-  );
 });
 
 test("supervisor timeout preserves the completed flash effect and primary category", async () => {
@@ -328,7 +319,7 @@ test("supervisor timeout preserves the completed flash effect and primary catego
   }
 });
 
-test("real flash-monitor child completes scaled timeout cleanup before its supervisor", async () => {
+test("real whole-operation child exceeds the old boundary and returns complete evidence", async () => {
   // Arrange
   const value = await fixture("real-child-timeout-cleanup");
   const api = installApi();
@@ -336,7 +327,7 @@ test("real flash-monitor child completes scaled timeout cleanup before its super
     "../src/statistics-history-flash-child-fixture.sh",
     import.meta.url,
   ));
-  const localPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 });
+  const localPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 2_000 });
   const fallbackPort = fakePort();
   let maybeObservedLifetime: number | "operator-gated" | undefined;
   const processPort = createFakeProcessPort((spec, maybeLifetime) => {
@@ -349,6 +340,7 @@ test("real flash-monitor child completes scaled timeout cleanup before its super
 
   try {
     // Act
+    const startedAt = Date.now();
     const evidence = await captureStatisticsHistoryEvidence(
       value.root,
       options(value),
@@ -359,9 +351,11 @@ test("real flash-monitor child completes scaled timeout cleanup before its super
       value.planSha256,
       noWait,
     );
+    const elapsedMilliseconds = Date.now() - startedAt;
 
     // Assert
-    assert.equal(maybeObservedLifetime, 420_000);
+    assert.equal(maybeObservedLifetime, undefined);
+    assert.ok(elapsedMilliseconds >= 420);
     assert.equal(evidence.statistics_history.restoration_complete, true);
     assert.deepEqual(api.patches, [1, 0]);
   } finally {

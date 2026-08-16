@@ -1374,12 +1374,12 @@ real-child regression whose pre-monitor plus capture duration exceeds the old
 Attempt-003 correction and verification plan:
 `docs/parity/work-plans/20260816T221106Z-STAT-002/PLAN.md`
 
-- [ ] Remove the partial 420-second override so the existing bounded 900-second
+- [x] Remove the partial 420-second override so the existing bounded 900-second
       process adapter owns the entire flash/NVS/gates/monitor/result lifecycle.
-- [ ] Prove source ownership and a scaled real child with pre-monitor, capture,
+- [x] Prove source ownership and a scaled real child with pre-monitor, capture,
       and post-monitor phases that exceeds the old boundary and completes under
       the whole-operation owner; preserve typed timeout failure behavior.
-- [ ] Rebind the closed task/plan/path/invocation surface to fresh attempt-003,
+- [x] Rebind the closed task/plan/path/invocation surface to fresh attempt-003,
       pass every software/package/privacy gate, and push the exact source.
 - [ ] Run only the plan's detector and conditional attempt-003; promote only on
       the independently validated cadence/API/restoration quorum.
