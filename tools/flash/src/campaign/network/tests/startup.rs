@@ -131,9 +131,11 @@ fn invalid_startup_prerequisites_remain_fail_fast() {
     let mut unsafe_sample = startup_sample(1, 1);
     unsafe_sample.power = 16.0;
     let mut stale_watchdog = startup_sample(1, 1);
+    stale_watchdog.runtime_health.maybe_task_watchdog_reason = Some("feed_stale".to_owned());
+    stale_watchdog.runtime_health.task_watchdog_participation = "not_participating".to_owned();
     stale_watchdog
         .runtime_health
-        .maybe_task_watchdog_feed_age_millis = Some(2_001);
+        .maybe_task_watchdog_feed_age_millis = Some(5_001);
     let cases = [
         (
             wrong_identity,

@@ -33,3 +33,42 @@
 - Outcome: The plan/task checkpoint is verified for commit and push.
 - Blocker or next safe action: Push the immutable checkpoint, then reproduce
   the obsolete host threshold in a focused red campaign test.
+
+## 2026-08-17T00:01:00Z | campaign policy correction
+
+- Source commit: pending exact implementation commit
+- Actions: Added a production campaign regression for a producer-classified
+  fresh 2,001-ms feed, observed it fail as `WatchdogFeedStale`, removed the
+  campaign's duplicate numeric freshness policy, and rebound stale fixtures to
+  the producer's typed `feed_stale` verdict at 5,001 ms.
+- Verification: The 107 campaign-network tests, 16 runtime-health tests, and
+  focused Bazel `tools/flash` plus `bitaxe-core` targets pass. Producer verdicts
+  at 2,001 and 5,000 ms are accepted; 5,001 ms remains stale; missing fields,
+  inconsistent participation, unknown reasons, stagnant per-transport
+  checkpoint/feed sequences, earliest-failure precedence, and value-free
+  serialization remain fail-closed. A source guard rejects any new numeric
+  feed-age comparison in the campaign evaluator.
+- Evidence: The implementation deletes three policy lines and changes no
+  firmware, API schema, campaign schema, hardware-control, mining, sensor, or
+  private-evidence behavior.
+- Outcome: Root cause corrected at the contradictory producer/consumer policy
+  boundary; ready for complete repository verification.
+- Blocker or next safe action: Run all plan-mandated gates, then commit and push
+  the exact software correction without a checklist transition.
+
+## 2026-08-17T00:08:00Z | implementation verification
+
+- Source commit: pending exact implementation commit
+- Actions: Ran the complete focused, privacy, reference, firmware-package,
+  mandatory repository, parity-invariance, plan-immutability, and diff gates.
+- Verification: Cargo format, clippy, build, and tests; Bright Builds; all 46
+  Bazel tests; redaction; reference cleanliness; exact firmware package;
+  parity; and progress passed. The first parity launch hit transient host
+  resource exhaustion after rendering its report; one bounded rerun passed
+  with `validation_errors: none`. Progress remains 75 verified of 94 active.
+- Evidence: The immutable plan SHA-256 remains
+  `3a82785aede895c12890cb3ee363ae97e06a05c369f53b0819c9c5b9b8664ff1`;
+  checklist and deterministic progress inputs are unchanged.
+- Outcome: Exact software implementation ready for source commit and push.
+- Blocker or next safe action: Push the implementation, then write a truthful
+  non-promotion closure and complete the active task subsection.

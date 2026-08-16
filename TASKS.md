@@ -1360,10 +1360,10 @@ contract.
 Campaign watchdog-policy correction plan:
 `docs/parity/work-plans/20260816T234453Z-STAT-001/PLAN.md`
 
-- [ ] Remove the campaign's duplicate 2,000-ms feed-age rejection and consume
+- [x] Remove the campaign's duplicate 2,000-ms feed-age rejection and consume
       the exact-package runtime-health `feed_fresh` / `feed_stale` verdict as
       the sole freshness classification.
-- [ ] Retain and prove reason, participation, feed-age/sequence presence,
+- [x] Retain and prove reason, participation, feed-age/sequence presence,
       checkpoint/feed advancement, earliest-failure, and value-free evidence
       boundaries at the production campaign layer.
 - [ ] Run focused and mandatory software, firmware-package, privacy,
