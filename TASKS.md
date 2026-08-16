@@ -853,6 +853,30 @@ under this plan. The next safe action is a fresh software plan that admits
 `LiveShare` to the existing network observer with regression coverage, then a
 separately planned fresh hardware ordinal after that fix is pushed.
 
+LiveShare network-observer software plan:
+`docs/parity/work-plans/20260816T044527Z-STAT-001/PLAN.md`
+
+- [ ] Centralize campaign-stage network observation in one closed production
+      policy so serial admission, worker selection, timeouts, and finish
+      semantics cannot drift.
+- [ ] Route conservative `LiveShare` and `Soak` through the existing continuity
+      observer while preserving `CommandEffects` and both `not_required`
+      stages exactly.
+- [ ] Add focused stage-mapping and campaign/network regressions, then pass all
+      mandatory software, package, privacy, reference, and parity gates.
+- [ ] Commit and push the correction, close the software-only plan without a
+      checklist transition, and leave any fresh hardware ordinal to a separate
+      immutable plan.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not read attempt-004
+protected artifacts, credentials, detector output, USB/device/network runtime,
+or private endpoints. Do not detect, flash, monitor, mine, actuate, update,
+erase, inject faults, manipulate physical power, use external UART, touch pins,
+pads, headers, GPIO, probes, jumpers, solder, or signals, create a projection,
+or start attempt-005. Completion proves only the corrected host observation
+policy; STAT-001 remains `implemented` until separate hardware evidence passes.
+
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
 - [x] Add the exact bounded 720-sample history, timestamp admission, configured
