@@ -1,0 +1,44 @@
+{
+  "schema_version": "bitaxe-display-behavior-evidence-v1",
+  "board": 205,
+  "attempt_source_commit": "522d5abda3af659a45691c2d4a7c03712573fb80",
+  "current_source_commit": "5cc823b699c33f361e97913f1aec60109e42a6a1",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "workflow": {
+    "schema_version": "bitaxe-workflow-identity-v1",
+    "command": "project-display-behavior-evidence",
+    "request_sha256": "7f2ae847e430d4fb66c15ef0ace5a006d36c12bc5a1bac1fa7a45d45faa04fc8"
+  },
+  "source": {
+    "display_uat_projection_sha256": "a863fc0034f105c85ae3007cd45a532035bfd6e061dbbf1a915282a5cfa3314f",
+    "command_effects_projection_sha256": "216420e0a9d93cbbacced7415be0a234ed13c0d895dcb20eb1ff295ff434a8a3",
+    "source_task_sha256": "6ae1e1c284ddbdf7fd28dc1444d86bbe22c2d2a8c4cf05951e22a57161eb4ad6",
+    "plan_sha256": "ae4602e841750d14e86e759b5c2815834567beafcdef63503e88eb49c138b966",
+    "source_semantics_admitted": true,
+    "reference_semantics_admitted": true
+  },
+  "display": {
+    "identify_request_count": 1,
+    "machine_render_confirmed": true,
+    "machine_clear_confirmed": true,
+    "operator_render_confirmed": true,
+    "operator_clear_confirmed": true,
+    "exact_panel_admitted": true,
+    "supported_rotation_count": 4,
+    "inversion_state_count": 2,
+    "timeout_mode_count": 3,
+    "retained_display_owner": true,
+    "configuration_before_first_render": true,
+    "edge_triggered_power_commands": true,
+    "display_failure_isolated": true,
+    "compatible_path_count": 5
+  },
+  "build_identity_matches": true,
+  "usb_admission_confirmed": true,
+  "safe_stop_confirmed": true,
+  "cleanup_complete": true,
+  "mining_state": "disabled",
+  "hardware_control_state": "disabled",
+  "hardware_rerun_used": false,
+  "redaction_status": "passed"
+}
