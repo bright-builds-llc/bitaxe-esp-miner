@@ -237,6 +237,7 @@ js_test(
         "//crates/bitaxe-api:hashrate_monitor_sources",
         "//crates/bitaxe-core:adc_observation_sources",
         "//crates/bitaxe-core:hashrate_monitor_source",
+        "//crates/bitaxe-safety:hashrate_safety_sources",
         "//crates/bitaxe-safety:adc_observation_sources",
         "//crates/bitaxe-safety:emc2101_thermal_sources",
         "//scripts:repository_guard_sources",

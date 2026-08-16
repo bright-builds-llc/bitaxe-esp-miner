@@ -11,6 +11,7 @@ js_library(
     name = "hashrate_monitor_sources",
     srcs = [
         "src/mining.rs",
+        "src/observation.rs",
         "src/wire.rs",
     ],
     visibility = ["//tools/automation:__pkg__"],

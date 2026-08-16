@@ -891,10 +891,10 @@ new detector-gated Ultra 205 campaign before STAT-001 can move beyond
 Attempt-005 verification-promotion plan:
 `docs/parity/work-plans/20260816T050533Z-STAT-001/PLAN.md`
 
-- [ ] Rebind the private-first hashrate workflow, independent validator,
+- [x] Rebind the private-first hashrate workflow, independent validator,
       generated contract, task/plan admission, Bazel inputs, and tests from
       consumed attempt-004 to fresh attempt-005.
-- [ ] Prove the exact five-stage network-observer correction, conservative
+- [x] Prove the exact five-stage network-observer correction, conservative
       400 MHz / 1,100 mV / 100% profile, volt-typed input safety, and every
       source, package, privacy, reference, and mandatory repository gate.
 - [ ] Commit and push the exact implementation and rebuild its package before

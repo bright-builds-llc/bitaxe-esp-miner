@@ -45,12 +45,12 @@ type RuntimeAttestationParseEvidence = RuntimeAttestationParseDiagnostic & Reado
   runtime_attestation_parse_failure_counts: RuntimeAttestationParseFailureCounts;
 }>;
 
-const expectedPrivateRoot = "scratch/stat001-hashrate-monitor/attempt-004";
-const expectedWrapperRoot = "scratch/stat001-hashrate-monitor/wrapper-004";
+const expectedPrivateRoot = "scratch/stat001-hashrate-monitor/attempt-005";
+const expectedWrapperRoot = "scratch/stat001-hashrate-monitor/wrapper-005";
 const expectedProjection =
   "docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json";
-const expectedPlan = "docs/parity/work-plans/20260816T033934Z-STAT-001/PLAN.md";
-const expectedPlanSha256 = "703f4b8ed726f6ec8fffe7d4a152982d1674ca60cef2b8f7e8c0acd1193602b5";
+const expectedPlan = "docs/parity/work-plans/20260816T050533Z-STAT-001/PLAN.md";
+const expectedPlanSha256 = "c07d95b2ca7a7e064d4be8f5446cb551778cc535e8d02b5dd748f2bb5af71579";
 const expectedReferenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const activeTask = "task-parity-stat001-hashrate-monitor";
 const runtimeAttestationParseFailures = [
@@ -81,9 +81,18 @@ const sourceFragments = new Map<string, readonly string[]>([
     "const MIN_COUNTER_INTERVAL_US: u64 = 1_000_000;",
   ]],
   ["crates/bitaxe-stratum/src/v1/state.rs", ["pub hashrate_inputs: HashrateInputs"]],
+  ["crates/bitaxe-stratum/src/v1/production_session/campaign.rs", [
+    "Self::Conservative => (400, 1_100, 100)",
+    "core_voltage_mv: i64,",
+  ]],
   ["crates/bitaxe-api/src/mining.rs", [
     "hash_rate: hashrate.current_ghs,",
     "hashrate_monitor: HashrateMonitorWire {",
+  ]],
+  ["crates/bitaxe-api/src/observation.rs", [
+    "pub bus_voltage_volts: Observation<f64>,",
+    "let min_input_voltage = INPUT_VOLTAGE_NOMINAL_VOLTS * (1.0 - INPUT_VOLTAGE_MARGIN_RATIO);",
+    "(min_input_voltage..=max_input_voltage).contains(&bus_voltage_volts)",
   ]],
   ["crates/bitaxe-api/src/wire.rs", [
     '#[serde(rename = "hashRate")]',
@@ -98,6 +107,10 @@ const sourceFragments = new Map<string, readonly string[]>([
     "emit(AsicWorkerEvent::RegisterRead {",
   ]],
   ["firmware/bitaxe/src/runtime_snapshot.rs", ["publish_hashrate_snapshot"]],
+  ["crates/bitaxe-safety/src/power.rs", [
+    "pub const INPUT_VOLTAGE_NOMINAL_VOLTS: f64 = 5.0;",
+    "pub const INPUT_VOLTAGE_MARGIN_RATIO: f64 = 0.10;",
+  ]],
 ]);
 const referenceFragments = new Map<string, readonly string[]>([
   ["reference/esp-miner/main/tasks/hashrate_monitor_task.c", [
@@ -110,6 +123,14 @@ const referenceFragments = new Map<string, readonly string[]>([
   ["reference/esp-miner/components/stratum/utils.c", [
     "#define HASH_CNT_LSB 0x100000000uLL",
     "float hashCounterToGhs(uint64_t duration_us, uint32_t counter)",
+  ]],
+  ["reference/esp-miner/main/device_config.h", [
+    ".default_voltage_mv = 1200,",
+    "FAMILY_ULTRA       = { .id = ULTRA,       .name = \"Ultra\",      .asic = ASIC_BM1366,   .asic_count = 1, .max_power =  25, .power_offset = 5,  .nominal_voltage = 5,",
+  ]],
+  ["reference/esp-miner/main/tasks/power_management_task.c", [
+    "uint16_t voltage = nvs_config_get_u16(NVS_CONFIG_ASIC_VOLTAGE);",
+    "VCORE_set_voltage(GLOBAL_STATE, (double) voltage / 1000.0);",
   ]],
 ]);
 
@@ -298,7 +319,7 @@ export async function validateHashrateMonitorTaskAndSources(
   const maybeEnd = taskDocument.indexOf("\n### ", start + heading.length);
   const block = taskDocument.slice(start, maybeEnd === -1 ? taskDocument.length : maybeEnd);
   if (start === -1 || taskDocument.indexOf(heading, start + heading.length) !== -1
-    || !block.includes(expectedPlan) || !block.includes("attempt-004")
+    || !block.includes(expectedPlan) || !block.includes("attempt-005")
     || sha256(planDocument) !== admittedPlanSha256
     || !planDocument.includes("- Parity row: `STAT-001`")
     || !planDocument.includes(`- Active task: \`${activeTask}\``)) {
@@ -454,7 +475,7 @@ export async function captureHashrateMonitorEvidence(
     const evidence: HashrateMonitorEvidence = {
       schema_version: "bitaxe-hashrate-monitor-evidence-v1",
       board: 205,
-      attempt_ordinal: 4,
+      attempt_ordinal: 5,
       source_commit: currentSourceCommit,
       reference_commit: referenceCommit,
       package_manifest_sha256: sha256(manifestFile.document),

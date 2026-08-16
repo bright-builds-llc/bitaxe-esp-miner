@@ -72,7 +72,7 @@ impl HashrateMonitorEvidence {
     pub fn validate(&self) -> Result<(), &'static str> {
         if self.schema_version != HASHRATE_MONITOR_EVIDENCE_SCHEMA
             || self.board != 205
-            || self.attempt_ordinal != 4
+            || self.attempt_ordinal != 5
             || self.workflow.command != AutomationCommand::CaptureHashrateMonitorEvidence
         {
             return Err("hashrate monitor identity is invalid");
@@ -95,7 +95,7 @@ impl HashrateMonitorEvidence {
         }
         if !self.source.source_semantics_current
             || !self.source.reference_semantics_current
-            || self.source.source_path_count != 7
+            || self.source.source_path_count != 10
         {
             return Err("hashrate monitor source evidence is incomplete");
         }
@@ -149,7 +149,7 @@ mod tests {
         HashrateMonitorEvidence {
             schema_version: HASHRATE_MONITOR_EVIDENCE_SCHEMA.to_owned(),
             board: 205,
-            attempt_ordinal: 4,
+            attempt_ordinal: 5,
             source_commit: "a".repeat(40),
             reference_commit: "b".repeat(40),
             package_manifest_sha256: "c".repeat(64),
@@ -164,7 +164,7 @@ mod tests {
                 campaign_network_sha256: "1".repeat(64),
                 source_semantics_current: true,
                 reference_semantics_current: true,
-                source_path_count: 7,
+                source_path_count: 10,
             },
             hashrate: HashrateMonitorQuorum {
                 monitor_cadence_ms: 1_000,
@@ -230,7 +230,7 @@ mod tests {
     fn consumed_attempt_ordinal_fails() {
         // Arrange
         let mut evidence = evidence();
-        evidence.attempt_ordinal = 3;
+        evidence.attempt_ordinal = 4;
 
         // Act
         let result = evidence.validate();

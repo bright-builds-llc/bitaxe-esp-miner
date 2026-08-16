@@ -18,6 +18,12 @@ js_library(
     visibility = ["//tools/automation:__pkg__"],
 )
 
+js_library(
+    name = "hashrate_safety_sources",
+    srcs = ["src/power.rs"],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
 rust_library(
     name = "bitaxe_safety",
     srcs = [
