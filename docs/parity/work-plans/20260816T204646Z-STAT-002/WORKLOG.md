@@ -38,3 +38,23 @@
 - Outcome: Implementation and command contract are ready to commit and push.
 - Blocker or next safe action: Commit and push, rebuild and inspect the exact
   package, then execute the single detector-gated attempt-001.
+
+## 2026-08-16T21:29:54Z | hardware attempt-001
+
+- Source commit: `01e48e12f7b063f923fdfc589c129448cb559064`.
+- Actions: Rebuilt the exact clean pushed package, admitted exactly one Ultra
+  205 through the protected detector, and launched the sole immutable
+  statistics-history capture command with a 360-second bound.
+- Verification: The typed public envelope reports `timeout` at
+  `initial_flash_monitor`; the flash effect result is valid and completed; no
+  projection was published; no settings mutation, restoration, or recovery
+  occurred. Owner-only wrapper/attempt modes, clean synchronized Git state,
+  absent projection/candidate, and post-attempt USB/tool-holder cleanup passed.
+- Evidence: Protected private attempt at the immutable plan path; public
+  aggregate evidence was correctly withheld.
+- Outcome: Terminal non-verification. The equal supervisor and child 360-second
+  boundaries prevented the monitor from returning before the supervisor fired.
+- Blocker or next safe action: Close this plan without transition or progress
+  sync. A future immutable attempt-002 requires a verified source correction
+  that gives the child monitor a bounded cleanup grace or sole timeout ownership
+  plus a real-child boundary regression.

@@ -1293,6 +1293,22 @@ frequency/voltage/fan/thermal/power control, OTA, erase, fault injection,
 browser, direct UART, pins, physical electrical action, retry or attempt-002 is
 authorized.
 
+Attempt-001 closure: exact clean source
+`01e48e12f7b063f923fdfc589c129448cb559064` passed every software/package gate
+and the detector admitted exactly one Ultra 205. The capture failed closed with
+typed `timeout` at `initial_flash_monitor`: the exact flash effect completed,
+but the supervisor and child capture shared the same 360-second boundary. No
+origin/API transaction or `statsFrequency` mutation occurred, so restoration
+and recovery were not required. The projection/candidate remain absent,
+protected modes and cleanup pass, and no checklist transition or progress sync
+is authorized. Closure:
+`docs/parity/work-plans/20260816T204646Z-STAT-002/CLOSURE.md`.
+
+Next safe action: create a fresh immutable attempt-002 plan only after a
+verified source correction gives the child flash-monitor sole timeout ownership
+or a strictly larger bounded supervisor cleanup grace, with a real-child
+boundary regression. Attempt-001 must not be retried.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
