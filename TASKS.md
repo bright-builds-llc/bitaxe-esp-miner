@@ -1245,6 +1245,28 @@ scheduler lifecycle, reproduce the post-window feed-staleness transition, and
 apply a targeted source correction before any new hardware ordinal can be
 considered.
 
+Cooperative watchdog-progress correction plan:
+`docs/parity/work-plans/20260816T225404Z-STAT-001/PLAN.md`
+
+- [ ] Make recurring ESP task-watchdog feeds reflect completed cooperative
+      progress inside the production-owner dispatch/effect cascade while
+      preserving the owner task as the sole subscription and feed authority.
+- [ ] Prove a progressing multi-event cascade remains feedable and a single
+      unfinished effect is not masked, with production-shaped ownership and
+      configured-timeout regressions.
+- [ ] Run all focused, firmware-package, privacy, reference, parity-invariance,
+      immutable-plan, and mandatory repository gates; commit and push a
+      software-only closure without a checklist transition or hardware access.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not access protected
+attempts, ignored credentials, detector/device/network runtime, private
+values, or a public projection. Do not detect, flash, reset, monitor, mine,
+actuate, update, erase, inject faults, manipulate power, use direct UART, or
+touch electrical interfaces. Attempt-008 remains consumed; this plan does not
+authorize attempt-009. STAT-001 remains `implemented` until a separately
+authorized exact-package hardware campaign proves the full quorum.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
