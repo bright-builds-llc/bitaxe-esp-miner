@@ -185,3 +185,10 @@
 2. What went wrong: The ADC evidence validator rejected fresh `0 mV` readings using an unconditional 400–2,000 mV range even though the same evidence workflow deliberately kept the ASIC rail disabled and the typed acquisition path treats a successful zero as fresh truth.
 3. Preventive rule: Validate telemetry units against the producer's real wire domain, and bind narrower expected operating ranges to independently validated device state. Never apply an energized-state range to disabled-state evidence.
 4. Trigger signal: A telemetry validator has a fixed positive lower bound but does not consume power, enable, mode, or lifecycle state, or its accepted range contradicts a typed zero-value regression in the producer.
+
+## lesson-trace-legacy-wire-units-through-the-ui | 2026-08-16 04:02
+
+1. Date: 2026-08-16
+2. What went wrong: SI-typed internal INA260 values in volts and amps were serialized directly into legacy API fields whose upstream contract transports millivolts and milliamps, so type-safe internals still produced reference-incompatible wire values.
+3. Preventive rule: Keep internal engineering units explicit, then verify every compatibility boundary from sensor conversion through API serialization, statistics history, and reference UI normalization before claiming parity.
+4. Trigger signal: The reference UI divides an API field by 1,000, the reference driver documents milli-units, or an internal `*_volts`/`*_amps` field is assigned directly to an unqualified legacy wire name such as `voltage` or `current`.
