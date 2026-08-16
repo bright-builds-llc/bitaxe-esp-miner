@@ -48,3 +48,27 @@
 - Blocker or next safe action: Run the complete mandatory implementation and
   package gates, review the diff for simplification and private-value safety,
   then commit and push the source correction before closure.
+
+## 2026-08-16T18:25:20Z | Implementation commit and non-promotion closure
+
+- Implementation commit: `91ab642b4b3ee2edf8f23190fad41ca2fc5d0620`
+  (pushed and synchronized with `origin/main`).
+- Verification: Ordered formatting, strict Clippy, all-target build,
+  all-feature tests, Bright Builds, focused watchdog tests, complete flash and
+  automation boundary tests, `just test`, `just package`, parity/progress,
+  redaction, reference, selector, immutable-plan, old-vocabulary, and diff
+  gates all passed.
+- Simplification review: One private reason-to-failure match owns the closed
+  mapping; the existing sample predicate retains supervisor/checkpoint and
+  feed-detail ordering. No new dependency, public value, firmware branch, or
+  hardware behavior was added.
+- Outcome: The authorized diagnostic correction is complete and recorded in
+  `CLOSURE.md`. STAT-001 stays `implemented`; no checklist transition,
+  progress-history append, projection, protected input, or hardware attempt
+  occurred.
+- Final audit: Ordered Cargo, Bright Builds, canonical tests, packaging,
+  parity/progress, redaction, reference, selector, diff, immutable-plan, and
+  no-uncommitted-source checks passed with the closure state present.
+- Blocker or next safe action: Commit and push closure, then end this one-row
+  skill invocation. A later selector run may consider a separately authorized
+  attempt-007 using the new v12/v6 boundary.

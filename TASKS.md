@@ -1040,7 +1040,7 @@ Watchdog-classifier diagnosis plan:
 - [x] Rotate the sealed network and campaign-result schemas and update every
       producer, consumer, wrapper gate, fixture, and production-shaped
       regression for the complete vocabulary.
-- [ ] Pass every focused and mandatory software, firmware, package, privacy,
+- [x] Pass every focused and mandatory software, firmware, package, privacy,
       provenance, parity, and diff gate; record a non-promotion closure and
       leave STAT-001 and progress history unchanged.
 
@@ -1049,6 +1049,20 @@ documentation, and ordinary git operations only. Do not access attempt-006,
 ignored credentials, detector/device/network runtime, or private values. Do
 not flash, reset, mine, actuate, update, erase, inject faults, use direct UART
 or electrical interfaces, create a public projection, or start attempt-007.
+
+Classifier-correction completion review: pushed implementation `91ab642b`
+preserves every evaluator-owned watchdog reason before the generic
+participation guard, rotates campaign-result/network-continuity to v12/v6, and
+passes focused, full repository, firmware-package, privacy, provenance,
+parity-invariance, immutable-plan, and diff gates. No hardware or protected
+attempt input was accessed. STAT-001 remains `implemented`; the checklist and
+progress history are unchanged. See
+`docs/parity/work-plans/20260816T180839Z-STAT-001/CLOSURE.md`.
+
+Next safe action: run the clean synchronized selector in a new invocation. A
+fresh immutable plan may authorize one attempt-007 only if it admits pushed
+v12/v6 source and defines the complete hardware, privacy, recovery, cleanup,
+retry, stop, and promotion contract. Never reuse attempt-006.
 
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
