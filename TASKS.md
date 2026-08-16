@@ -1309,6 +1309,47 @@ verified source correction gives the child flash-monitor sole timeout ownership
 or a strictly larger bounded supervisor cleanup grace, with a real-child
 boundary regression. Attempt-001 must not be retried.
 
+Attempt-002 correction and verification plan:
+`docs/parity/work-plans/20260816T213710Z-STAT-002/PLAN.md`
+
+- [ ] Give the 360-second flash-monitor child a strictly later bounded
+      supervisor deadline with an explicit 60-second cleanup/result grace,
+      covering both initial and recovery children.
+- [ ] Prove the corrected boundary with exact arithmetic, failure-preservation,
+      and a real spawned child that completes its own timeout cleanup before
+      the supervisor can terminate it.
+- [ ] Rebind every closed task/plan/path/invocation source to fresh attempt-002,
+      pass all software/package/privacy gates, and push the exact source before
+      device access.
+- [ ] Run only the plan's detector and single conditional attempt-002; promote
+      only on the independently validated cadence/API/restoration quorum.
+
+Attempt-002 authorization: one exact clean pushed board-205 factory package,
+normal USB reset/re-enumeration, ignored Wi-Fi seeding, one current-session
+same-origin API transaction, and one temporary `statsFrequency`-only mutation.
+The child capture remains 360 seconds and its supervisor has exactly 60 seconds
+of additional bounded cleanup/result grace. Exact original-setting restoration
+is mandatory; after mutation only, one same-package recovery flash plus
+restoration PATCH/readback is allowed if the admitted origin is lost.
+
+Attempt-002 privacy and safety: use only the fresh mode-0700 wrapper
+`scratch/stat002-statistics-history/wrapper-002`, distinct mode-0600 redirects,
+the previously absent supervisor-owned mode-0700 child
+`scratch/stat002-statistics-history/attempt-002`, and the closed aggregate-only
+projection. Credentials, settings values, raw statistics, origins, endpoints,
+hostnames, ports, USB/network/process identity, bodies, logs, commands, PIDs,
+and traces remain private. Statistics voltage/current remain millivolt/
+milliamp legacy wire fields and are not accuracy evidence.
+
+Attempt-002 prohibitions and stops: no pool, mining, ASIC work, arbitrary
+frequency/voltage/fan/thermal/power control, OTA, erase, fault injection,
+physical power action, browser, direct UART, or electrical pin/pad/header/GPIO/
+probe/jumper/solder/signal work. Starting capture consumes attempt-002; never
+reuse attempt-001, retry attempt-002, or start attempt-003. Stop on detector or
+identity failure, missing input, drift, pre-effect failure, incomplete quorum,
+failed restoration/recovery/cleanup/mode/privacy, nonzero command exit, or
+successful projection.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
