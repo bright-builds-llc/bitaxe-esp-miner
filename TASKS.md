@@ -790,9 +790,9 @@ Attempt-004 verification-promotion plan:
 - [x] Preserve the new closed runtime-attestation parse discriminator for a
       non-ready campaign without exposing raw values, source text, or protected
       identifiers.
-- [ ] Pass every focused and mandatory software, firmware, privacy, reference,
+- [x] Pass every focused and mandatory software, firmware, privacy, reference,
       package, and exact-source gate; commit and push before device access.
-- [ ] Run only the exact detector and conditional attempt-004 commands in the
+- [x] Run only the exact detector and conditional attempt-004 commands in the
       linked plan, then promote only on the complete independently validated
       hashrate quorum.
 
@@ -836,6 +836,22 @@ coherent positive HTTP/WebSocket hashrates and warm rolling windows, bounded
 error, terminal zero, safe stop, cleanup, private modes, seals, independent
 validation, and redaction. Any missing fact preserves `implemented`, withholds
 the projection, and selects one closed terminal outcome.
+
+Attempt-004 closure:
+`docs/parity/work-plans/20260816T033934Z-STAT-001/CLOSURE.md`
+
+Attempt-004 completion review: pushed source `1368e573` passed every software,
+privacy, package, exact-source, detector, and credential/path admission gate.
+The sealed campaign itself was accepted with trusted runtime identity, zero
+parse failures, confirmed safe stop, and ready USB cleanup. Promotion was
+correctly withheld because live-share produced network status `not_required`,
+zero covered windows, and no transport quorum. The root cause is production
+source: `CampaignNetworkCoordinator` runs `observe_network` only for `Soak`
+and `CommandEffects`, while this safety-bounded STAT-001 workflow must use
+conservative `LiveShare`. Attempt-004 is consumed; no attempt-005 is authorized
+under this plan. The next safe action is a fresh software plan that admits
+`LiveShare` to the existing network observer with regression coverage, then a
+separately planned fresh hardware ordinal after that fix is pushed.
 
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 

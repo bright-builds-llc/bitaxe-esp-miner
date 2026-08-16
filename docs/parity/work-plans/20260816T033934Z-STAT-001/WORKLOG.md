@@ -40,3 +40,27 @@
 - Outcome: The exact attempt-004 implementation is ready to commit and push.
 - Blocker or next safe action: Push this implementation, rebuild and validate
   its exact clean package, then run only detector command 1 from `PLAN.md`.
+
+## 2026-08-16T04:38:29Z | attempt-004 terminal outcome
+
+- Source commit: `1368e57300a53d5176f0bfc1de90a6957f31038b`
+- Actions: Rebuilt and validated the exact clean pushed package, ran the one
+  permitted detector, and then ran the one permitted attempt-004 campaign. No
+  retry, attempt-005, direct UART, pin manipulation, physical power action,
+  arbitrary control, OTA, erase, raw write, or fault injection was performed.
+- Verification: Private wrapper/attempt modes, seven-file layout, result and
+  network SHA-256 seals, exact package identity, source/reference sync, and
+  projection absence passed. The allowlisted result was accepted with trusted
+  runtime identity, parse failure `none` with all seven counts zero, confirmed
+  safe stop, ready cleanup, and redaction. The wrapper returned
+  `evidence_invalid` and published no projection.
+- Evidence: Sealed campaign-result v10 recorded network status `not_required`,
+  required windows 20, covered windows 0, and false watchdog, work-renewal,
+  terminal-HTTP, terminal-WebSocket, and parity-promotion gates. Source review
+  shows `CampaignNetworkCoordinator` starts and finishes network observation
+  only for `Soak` and `CommandEffects`; `LiveShare` returns `not_required`.
+- Outcome: `stop_impossible_contract`. STAT-001 remains `implemented`; no
+  verification or checklist transition is claimed.
+- Blocker or next safe action: Close this immutable plan. A fresh software plan
+  must admit conservative `LiveShare` to the existing network observer and
+  prove that boundary before any separately authorized fresh hardware ordinal.
