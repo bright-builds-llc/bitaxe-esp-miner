@@ -2,7 +2,8 @@
 
 ## 2026-08-16T03:24:00Z | software diagnosis and boundary correction
 
-- Source commit: implementation based on immutable plan commit `c050e433`
+- Source commit: `f26fff55c1513f342946f16999d8564cc761ba01`, based on
+  immutable plan commit `c050e433`
 - Actions: traced the firmware's source-owned
   `runtime_boot_attestation=unavailable` diagnostic through the production
   campaign serial analyzer; reproduced its false admission by the raw substring

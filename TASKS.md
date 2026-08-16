@@ -751,11 +751,11 @@ hardware ordinal.
 Runtime-attestation diagnosis plan:
 `docs/parity/work-plans/20260816T030231Z-STAT-001/PLAN.md`
 
-- [ ] Add bounded, closed parse-failure counts to the runtime-attestation
+- [x] Add bounded, closed parse-failure counts to the runtime-attestation
       accumulator, production serial diagnostics, and sealed campaign result.
-- [ ] Reproduce the source-owned producer/parser mismatch at the real serial
+- [x] Reproduce the source-owned producer/parser mismatch at the real serial
       boundary and apply the minimum regression-backed token-boundary fix.
-- [ ] Run every focused and mandatory gate, record a non-promotion closure, and
+- [x] Run every focused and mandatory gate, record a non-promotion closure, and
       leave attempt-004 unauthorized until a separate immutable hardware plan.
 
 Software-only authorization: local code, fixtures, tests, builds,
@@ -763,6 +763,23 @@ documentation, and ordinary git operations only. Do not access protected
 attempt-003 artifacts, credentials, detector/device/hardware, network runtime,
 or any electrical interface. Do not flash, mine, actuate, erase, update, inject
 faults, create a public projection, or start attempt-004.
+
+Runtime-attestation diagnosis completion review: pushed implementation commit
+`f26fff55c1513f342946f16999d8564cc761ba01` proves the source-owned
+`runtime_boot_attestation=unavailable` diagnostic was falsely admitted by a raw
+substring matcher. The shared parser and production serial analyzer now require
+the complete whitespace-delimited marker token, distinguish lookalikes, and
+emit only closed value-free parse-failure categories with saturating counts.
+Focused regressions, the complete ordered repository gates, redaction,
+reference verification, and the canonical firmware build pass. No protected
+attempt evidence or hardware was accessed, no checklist field changed, and
+STAT-001 remains `implemented`. See
+`docs/parity/work-plans/20260816T030231Z-STAT-001/CLOSURE.md`.
+
+Next safe action: a separately committed immutable STAT-001 plan may authorize
+fresh attempt-004 only after binding this pushed correction to a newly built
+exact package and restating the complete detector, evidence/privacy, recovery,
+retry, and acceptance contract. This plan does not authorize attempt-004.
 
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
