@@ -961,6 +961,20 @@ electrical pin/pad/header/GPIO/probe/jumper/solder/signal interface, create a
 projection, or start attempt-006. Completion preserves STAT-001 as
 `implemented`; a separate future immutable plan is required for hardware.
 
+Diagnostic completion review: pushed source `f9232963` replaces the ambiguous
+watchdog boolean with twelve closed value-free earliest-failure labels across
+sample predicates and HTTP/WebSocket checkpoint/feed advancement. Network v5,
+campaign-result v11, and the seal/category-gated wrapper carry the diagnostic.
+All focused and mandatory software, package, privacy, reference, parity, and
+diff gates pass. No hardware or protected input was accessed, no checklist
+field changed, and STAT-001 remains `implemented`. See
+`docs/parity/work-plans/20260816T060214Z-STAT-001/CLOSURE.md`.
+
+Next safe action: a separate immutable plan may bind pushed `f9232963` to a
+new exact package and authorize one detector-gated attempt-006. Any repeated
+watchdog failure must surface one sealed discriminator before another source
+change or retry; this plan does not authorize attempt-006.
+
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
 - [x] Add the exact bounded 720-sample history, timestamp admission, configured
