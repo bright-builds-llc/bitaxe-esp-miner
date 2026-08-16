@@ -19,3 +19,29 @@
   `6fdb431561daeae1b43e2856330c63df629917f5f3e9f596548731923530915a`.
 - Next safe action: Commit and push this immutable plan/task checkpoint before
   editing any implementation file.
+
+## 2026-08-16 attempt-008 workflow rebind
+
+- Plan commit: `0c9b1cb602630b9cee13cdc2b5b818bcb283e1b9`
+  (pushed and synchronized before implementation).
+- Action: Rebound only the protected wrapper/attempt roots, immutable plan and
+  SHA-256 admission, Rust validator ordinal, canonical and generated
+  TypeScript contracts, Bazel input, current-task guard, and fresh-process
+  fixtures from consumed attempt-007 to attempt-008.
+- Verification: Four focused Rust contract tests, generated-contract
+  verification, and the canonical Bazel-isolated fresh-process automation
+  suite pass. The unsupported direct Bun shortcut was discarded because it
+  recursively loaded generated copies and cannot host these `node:test`
+  runfile suites; it did not identify a repository defect.
+- Verification: The ordered Cargo format, strict Clippy, all-target build,
+  all-feature test, Bright Builds, all 45 Bazel tests, package,
+  parity/progress, redaction, reference, selector, diff, and immutable-plan
+  gates pass. The plan SHA-256 remains
+  `6fdb431561daeae1b43e2856330c63df629917f5f3e9f596548731923530915a`.
+- Simplification review: The complete implementation is an 18-line-for-18-line
+  ordinal and admission rebind. No campaign, watchdog, safety, privacy,
+  effect, recovery, or projection logic changed.
+- Outcome: The implementation is eligible to become the clean pushed package
+  source for the one authorized detector and conditional attempt-008 capture.
+- Next safe action: Commit and push the implementation, rebuild and validate
+  its exact clean package, then run only the two frozen hardware commands.
