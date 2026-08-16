@@ -1105,6 +1105,38 @@ recovery. The immutable continuation authorized only `attempt-001`, so UI-003
 remains implemented and this task remains active pending a fresh plan and
 attempt ordinal. See the continuation `CLOSURE.md`.
 
+Attempt-002 verification plan:
+`docs/parity/work-plans/20260816T102741Z-UI-003/PLAN.md`
+
+- [ ] Rebind the typed input UAT and protected root to fresh attempt-002 while
+      preserving the public projection and fixed GPIO/timing semantics.
+- [ ] Preserve bounded incremental serial framing and add a closed,
+      redaction-safe runtime-attestation failure discriminator with focused
+      pure and integrated regressions.
+- [ ] Pass every focused and mandatory gate, commit and push the exact source,
+      build its package, run only attempt-002, and promote UI-003 only if one
+      post-checkpoint physical short click validates completely.
+
+Attempt-002 authorization: pushed commit `f713c086` is verified new information
+that fixes attempt-001's exact split-line boundary. After this immutable plan
+and its rebound implementation are clean, fully gated, committed, and pushed,
+the plan authorizes one package build, one detector, one exact-package factory
+flash and receive-only observation, and one human press-and-release of the
+provided BOOT button lasting less than two seconds after the live ready
+checkpoint. No human-response deadline applies.
+
+Attempt-002 evidence, recovery, retry, and non-scope: use only fresh ignored
+mode-0700 `scratch/ui003-input/attempt-002` with mode-0600 private files and the
+existing aggregate-only public projection path. Record exact source/reference,
+package, detector command and one-device board-info success, UAT command,
+cleanup, and closed outcome without committing port/USB/process/network/private
+identity or serial text. Interruption/refusal releases USB ownership and
+withholds evidence. Starting the UAT consumes attempt-002; no unchanged retry
+or later ordinal is authorized. Long press, configuration AP, self-test,
+credentials, network access, mining, controls, updates, recovery writes,
+external UART, physical power action, and electrical pin/pad/header/probe work
+remain prohibited. Any incomplete boundary leaves UI-003 `implemented`.
+
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
 - [x] Add a typed private-first `/api/theme` capture that binds the exact
