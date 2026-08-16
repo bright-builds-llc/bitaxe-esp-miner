@@ -888,6 +888,42 @@ must prove the corrected observer against one newly built exact package and a
 new detector-gated Ultra 205 campaign before STAT-001 can move beyond
 `implemented`.
 
+Attempt-005 verification-promotion plan:
+`docs/parity/work-plans/20260816T050533Z-STAT-001/PLAN.md`
+
+- [ ] Rebind the private-first hashrate workflow, independent validator,
+      generated contract, task/plan admission, Bazel inputs, and tests from
+      consumed attempt-004 to fresh attempt-005.
+- [ ] Prove the exact five-stage network-observer correction, conservative
+      400 MHz / 1,100 mV / 100% profile, volt-typed input safety, and every
+      source, package, privacy, reference, and mandatory repository gate.
+- [ ] Commit and push the exact implementation and rebuild its package before
+      accessing the detector, credential presence, or hardware.
+- [ ] Run only the plan's exact detector and conditional attempt-005 capture,
+      then promote STAT-001 only on the complete independently validated
+      network/hashrate/safe-stop/cleanup quorum.
+
+Attempt-005 authorization: pushed source
+`89e8c34c794e6cfca499e4f392699be39e20e7dd` materially corrects attempt-004's
+exact `LiveShare` network-observer boundary. After this immutable plan and its
+attempt rebind are fully gated, committed, pushed, and packaged, exactly one
+detector and at most one conditional capture may factory-flash/reset one Ultra
+205, seed ignored opaque credentials, and run the repo-owned conservative
+profile for 600 accumulated active seconds. The ASIC command is 400 MHz,
+1,100 millivolts core voltage, and 100% fan; independent input safety remains
+4.5-5.5 volts, at most 15 W, below 75 C, with fresh nonzero fan RPM.
+
+Evidence/privacy/recovery/retry: use only fresh ignored mode-`0700`
+`scratch/stat001-hashrate-monitor/wrapper-005` and `attempt-005` roots with
+mode-`0600` files. Credentials, owner/worker fields, endpoints, origins, ports,
+USB/network/process identity, raw hashrates and sensors, bodies, logs, commands,
+PIDs, and traces remain private. Only the closed projection may be published
+after independent validation. Starting capture consumes attempt-005; preserve
+the earliest failure, safe-stop/recover/seal/clean up, and never retry unchanged
+or start attempt-006. No other profile, arbitrary control, unbounded mining,
+OTA, erase, raw write, fault injection, physical power action, external UART,
+or electrical pin/pad/header/GPIO/probe/jumper/solder/signal work is authorized.
+
 ### task-parity-stat002-statistics-history | 2026-08-04 | Implement production statistics history
 
 - [x] Add the exact bounded 720-sample history, timestamp admission, configured
