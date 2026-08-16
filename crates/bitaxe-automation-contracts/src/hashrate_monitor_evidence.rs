@@ -72,7 +72,7 @@ impl HashrateMonitorEvidence {
     pub fn validate(&self) -> Result<(), &'static str> {
         if self.schema_version != HASHRATE_MONITOR_EVIDENCE_SCHEMA
             || self.board != 205
-            || self.attempt_ordinal != 1
+            || self.attempt_ordinal != 2
             || self.workflow.command != AutomationCommand::CaptureHashrateMonitorEvidence
         {
             return Err("hashrate monitor identity is invalid");
@@ -149,7 +149,7 @@ mod tests {
         HashrateMonitorEvidence {
             schema_version: HASHRATE_MONITOR_EVIDENCE_SCHEMA.to_owned(),
             board: 205,
-            attempt_ordinal: 1,
+            attempt_ordinal: 2,
             source_commit: "a".repeat(40),
             reference_commit: "b".repeat(40),
             package_manifest_sha256: "c".repeat(64),
@@ -224,5 +224,18 @@ mod tests {
 
         // Assert
         assert_eq!(result, Err("hashrate monitor commit identity is invalid"));
+    }
+
+    #[test]
+    fn consumed_attempt_ordinal_fails() {
+        // Arrange
+        let mut evidence = evidence();
+        evidence.attempt_ordinal = 1;
+
+        // Act
+        let result = evidence.validate();
+
+        // Assert
+        assert_eq!(result, Err("hashrate monitor identity is invalid"));
     }
 }

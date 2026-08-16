@@ -633,11 +633,11 @@ failure.
 Attempt-002 verification-promotion plan:
 `docs/parity/work-plans/20260816T020135Z-STAT-001/PLAN.md`
 
-- [ ] Rebind the closed `bitaxe-hashrate-monitor-evidence-v1` workflow,
+- [x] Rebind the closed `bitaxe-hashrate-monitor-evidence-v1` workflow,
       independent validator, generated contract, current task/plan admission,
       and protected paths to fresh attempt-002 without changing production
       hashrate behavior or the evidence quorum.
-- [ ] Run every focused and mandatory software, firmware, privacy, reference,
+- [x] Run every focused and mandatory software, firmware, privacy, reference,
       package, and exact-source gate; commit and push before device access.
 - [ ] Run only the exact plan detector and one conditional attempt-002 command,
       then promote STAT-001 only if the complete independently validated
