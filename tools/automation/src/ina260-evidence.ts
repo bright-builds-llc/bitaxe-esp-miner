@@ -23,7 +23,8 @@ export type Ina260AdmittedDigests = {
   readonly apiSnapshot: string;
   readonly websocketSnapshot: string;
   readonly finalEvidence: string;
-  readonly plan: string;
+  readonly hardwarePlan: string;
+  readonly correctionPlan: string;
 };
 
 type FailureCategory = Extract<AutomationCategory, "evidence_invalid" | "process_failed">;
@@ -36,8 +37,9 @@ type TelemetrySample = {
 
 const expectedSourceProjection =
   "docs/parity/evidence/api002-system-info/system-info-projection.json";
-const expectedPlan = "docs/parity/work-plans/20260812T222308Z-PWR-006/PLAN.md";
-const activeTask = "task-parity-pwr006-ina260-live-projection";
+const expectedHardwarePlan = "docs/parity/work-plans/20260812T222308Z-PWR-006/PLAN.md";
+const expectedCorrectionPlan = "docs/parity/work-plans/20260816T082924Z-PWR-006/PLAN.md";
+const activeTask = "task-parity-pwr006-legacy-wire-units";
 const expectedAttemptFiles = [
   "api.private.json",
   "final-evidence.private.json",
@@ -54,10 +56,33 @@ const sourcePaths = [
   "firmware/bitaxe/src/operator_sensor_runtime.rs",
   "crates/bitaxe-api/src/observation.rs",
   "crates/bitaxe-api/src/snapshot.rs",
+  "crates/bitaxe-api/src/legacy_units.rs",
   "crates/bitaxe-api/src/wire.rs",
   "crates/bitaxe-api/src/statistics.rs",
+  "tools/flash/src/campaign/network/validation.rs",
+] as const;
+const referencePaths = [
+  "reference/esp-miner/main/power/INA260.h",
+  "reference/esp-miner/main/power/INA260.c",
+  "reference/esp-miner/main/power/power.c",
+  "reference/esp-miner/main/http_server/system_api_json.c",
+  "reference/esp-miner/main/tasks/statistics_task.c",
+  "reference/esp-miner/main/http_server/axe-os/src/app/components/home/home.component.ts",
 ] as const;
 const sourceFragments = new Map<string, readonly string[]>([
+  [sourcePaths[0], [
+    "pub bus_voltage_volts: f64,",
+    "pub current_amps: f64,",
+    "pub power_watts: f64,",
+  ]],
+  [sourcePaths[1], [
+    "let current_ma = f64::from(i16::from_be_bytes(current)) * INA260_CURRENT_MILLIAMPS_PER_BIT;",
+    "let bus_voltage_mv = f64::from(u16::from_be_bytes(bus_voltage)) * INA260_BUS_MILLIVOLTS_PER_BIT;",
+    "let power_mw = f64::from(u16::from_be_bytes(power)) * INA260_POWER_MILLIWATTS_PER_BIT;",
+    "bus_voltage_volts: bus_voltage_mv / 1000.0,",
+    "current_amps: current_ma / 1000.0,",
+    "power_watts: power_mw / 1000.0,",
+  ]],
   [sourcePaths[2], [
     "Reads one complete INA260 triple through the closed read-only capability.",
     "bus.read_ina260(Ina260ReadRegister::Current, &mut current)",
@@ -77,15 +102,75 @@ const sourceFragments = new Map<string, readonly string[]>([
     "bus_voltage_volts: project_observation(",
     "current_amps: project_observation(",
   ]],
+  [sourcePaths[5], [
+    "pub power_watts: Observation<f64>,",
+    "pub bus_voltage_volts: Observation<f64>,",
+    "pub current_amps: Observation<f64>,",
+  ]],
   [sourcePaths[6], [
     "power_status: (&observations.power_watts).into(),",
     "voltage_status: (&observations.bus_voltage_volts).into(),",
     "current_status: (&observations.current_amps).into(),",
   ]],
   [sourcePaths[7], [
+    "const MILLI_UNITS_PER_UNIT: f64 = 1_000.0;",
+    "pub(crate) const fn millivolts_from_volts(volts: f64) -> f64",
+    "pub(crate) const fn milliamps_from_amps(amps: f64) -> f64",
+  ]],
+  [sourcePaths[8], [
     "power: safe_telemetry.power_watts,",
+    "voltage_millivolts: millivolts_from_volts(safe_telemetry.voltage_volts),",
+    "current_milliamps: milliamps_from_amps(safe_telemetry.current_amps),",
+  ]],
+  [sourcePaths[9], [
+    "voltage_millivolts: millivolts_from_volts(safe_telemetry.voltage_volts),",
+    "current_milliamps: milliamps_from_amps(safe_telemetry.current_amps),",
+  ]],
+  [sourcePaths[10], [
+    "(4_500.0..=5_500.0).contains(&sample.voltage_millivolts)",
+    "sample.current_milliamps >= 0.0",
+  ]],
+]);
+const historicalSourceFragments = new Map<string, readonly string[]>([
+  [sourcePaths[8], [
     "voltage: safe_telemetry.voltage_volts,",
     "current: safe_telemetry.current_amps,",
+  ]],
+  [sourcePaths[9], [
+    "voltage: safe_telemetry.voltage_volts,",
+    "current: safe_telemetry.current_amps,",
+  ]],
+]);
+const referenceFragments = new Map<string, readonly string[]>([
+  [referencePaths[0], [
+    "INA260_REG_CURRENT 0x01     ///< Current measurement register (signed) in mA",
+    "INA260_REG_BUSVOLTAGE 0x02  ///< Bus voltage measurement register in mV",
+    "INA260_REG_POWER 0x03       ///< Power calculation register in mW",
+  ]],
+  [referencePaths[1], [
+    "last_current = (uint16_t)(data[1] | (data[0] << 8)) * 1.25;",
+    "last_voltage = (uint16_t)(data[1] | (data[0] << 8)) * 1.25;",
+    "last_power = (data[1] | (data[0] << 8)) * 10;",
+  ]],
+  [referencePaths[2], [
+    "pow_val = INA260_read_power() / 1000.0f;",
+    "return INA260_read_voltage();",
+  ]],
+  [referencePaths[3], [
+    "cJSON_AddFloatToObject(root, \"voltage\", g->POWER_MANAGEMENT_MODULE.voltage);",
+    "cJSON_AddFloatToObject(root, \"current\", g->POWER_MANAGEMENT_MODULE.current);",
+    "cJSON_AddFloatToObject(root, \"coreVoltageActual\", g->POWER_MANAGEMENT_MODULE.core_voltage);",
+  ]],
+  [referencePaths[4], [
+    "statsData.voltage = power_management->voltage;",
+    "statsData.current = power_management->current;",
+    "statsData.coreVoltageActual = power_management->core_voltage;",
+  ]],
+  [referencePaths[5], [
+    "processed.voltage = processed.voltage / 1000;",
+    "processed.current = processed.current / 1000;",
+    "processed.coreVoltageActual = processed.coreVoltageActual / 1000;",
+    "element[idxChartY1Data] = element[idxChartY1Data] / 1000;",
   ]],
 ]);
 const expectedDigests: Ina260AdmittedDigests = {
@@ -93,7 +178,8 @@ const expectedDigests: Ina260AdmittedDigests = {
   apiSnapshot: "9f0b2809d5e1fea364dadd8029319862b973cf802490f8be7c004dc20f82c2de",
   websocketSnapshot: "f2590f16dda7095f20e77f163ee84f7cea85468000e8ecc0b0cddf18cdc1a859",
   finalEvidence: "6ec58fdaeb7cbad3cf103832cd3e59fe470fcb05f6f6a4d41e218ffd6378991a",
-  plan: "e58742236746a59fb68afd92a5fe92b181a71e967e43d323789b9f22a58db818",
+  hardwarePlan: "e58742236746a59fb68afd92a5fe92b181a71e967e43d323789b9f22a58db818",
+  correctionPlan: "9cac99ee0fe28580b1c729a9d9681721e07b1ac55b22624fb8073ffe786849f6",
 };
 
 export class Ina260EvidenceError extends Error {
@@ -301,14 +387,43 @@ function requireUniqueFragment(document: string, fragment: string): void {
   }
 }
 
-async function validateSourceFragments(root: string): Promise<void> {
+async function validateCurrentSourceFragments(root: string): Promise<void> {
   for (const [sourcePath, fragments] of sourceFragments) {
     const document = await readFile(path.join(root, sourcePath), "utf8");
     for (const fragment of fragments) requireUniqueFragment(document, fragment);
   }
 }
 
-function validateTaskAndPlan(taskDocument: string, planDocument: string, planDigest: string): void {
+async function validateHistoricalSourceFragments(
+  processPort: ProcessPort,
+  gitProgram: string,
+  attemptSourceCommit: string,
+): Promise<void> {
+  for (const [sourcePath, fragments] of historicalSourceFragments) {
+    const document = await childText(
+      processPort,
+      gitProgram,
+      ["show", `${attemptSourceCommit}:${sourcePath}`],
+      "historical INA260 source",
+    );
+    for (const fragment of fragments) requireUniqueFragment(document, fragment);
+  }
+}
+
+async function validateReferenceFragments(root: string): Promise<void> {
+  for (const [sourcePath, fragments] of referenceFragments) {
+    const document = await readFile(path.join(root, sourcePath), "utf8");
+    for (const fragment of fragments) requireUniqueFragment(document, fragment);
+  }
+}
+
+function validateTaskAndPlans(
+  taskDocument: string,
+  hardwarePlanDocument: string,
+  correctionPlanDocument: string,
+  hardwarePlanDigest: string,
+  correctionPlanDigest: string,
+): void {
   const heading = `### ${activeTask} |`;
   const start = taskDocument.indexOf(heading);
   if (start === -1 || taskDocument.indexOf(heading, start + heading.length) !== -1) {
@@ -316,12 +431,14 @@ function validateTaskAndPlan(taskDocument: string, planDocument: string, planDig
   }
   const maybeEnd = taskDocument.indexOf("\n### ", start + heading.length);
   const block = taskDocument.slice(start, maybeEnd === -1 ? taskDocument.length : maybeEnd);
-  for (const required of [expectedPlan, "software-only projection", "bitaxe-ina260-evidence-v1"]) {
+  for (const required of [expectedCorrectionPlan, "millivolts and milliamps", "read-only reuse"]) {
     if (!block.includes(required)) throw failure("evidence_invalid", "PWR-006 task contract is incomplete");
   }
-  if (sha256(planDocument) !== planDigest
-    || !planDocument.includes("- Parity row: `PWR-006`")
-    || !planDocument.includes(`- Active task: \`${activeTask}\``)) {
+  if (sha256(hardwarePlanDocument) !== hardwarePlanDigest
+    || !hardwarePlanDocument.includes("- Parity row: `PWR-006`")
+    || sha256(correctionPlanDocument) !== correctionPlanDigest
+    || !correctionPlanDocument.includes("- Parity row: `PWR-006`")
+    || !correctionPlanDocument.includes(`- Active task: \`${activeTask}\``)) {
     throw failure("evidence_invalid", "PWR-006 immutable plan binding is invalid");
   }
 }
@@ -351,14 +468,16 @@ export async function projectIna260Evidence(
     const finalFile = await jsonFile(path.join(attemptRoot, "final-evidence.private.json"), "private final evidence");
     const apiFile = await jsonFile(path.join(attemptRoot, "api.private.json"), "private HTTP snapshot");
     const websocketFile = await jsonFile(path.join(attemptRoot, "websocket.private.json"), "private WebSocket snapshot");
-    const planDocument = await readFile(path.join(workspaceRoot, expectedPlan), "utf8");
+    const hardwarePlanDocument = await readFile(path.join(workspaceRoot, expectedHardwarePlan), "utf8");
+    const correctionPlanDocument = await readFile(path.join(workspaceRoot, expectedCorrectionPlan), "utf8");
     const taskDocument = await readFile(path.join(workspaceRoot, "TASKS.md"), "utf8");
     const observedDigests = {
       sourceProjection: sha256(sourceFile.document),
       apiSnapshot: sha256(apiFile.document),
       websocketSnapshot: sha256(websocketFile.document),
       finalEvidence: sha256(finalFile.document),
-      plan: sha256(planDocument),
+      hardwarePlan: sha256(hardwarePlanDocument),
+      correctionPlan: sha256(correctionPlanDocument),
     };
     for (const key of Object.keys(admitted) as Array<keyof Ina260AdmittedDigests>) {
       if (observedDigests[key] !== admitted[key]) {
@@ -368,7 +487,13 @@ export async function projectIna260Evidence(
     if (sourceFile.document !== finalFile.document) {
       throw failure("evidence_invalid", "public and private system info evidence differ");
     }
-    validateTaskAndPlan(taskDocument, planDocument, admitted.plan);
+    validateTaskAndPlans(
+      taskDocument,
+      hardwarePlanDocument,
+      correctionPlanDocument,
+      admitted.hardwarePlan,
+      admitted.correctionPlan,
+    );
     const source = parseSource(sourceFile.document);
     validateSource(source, options.attemptSourceCommit);
     await childText(processPort, sourceValidatorProgram, [sourceProjection], "system info validator");
@@ -385,13 +510,19 @@ export async function projectIna260Evidence(
     }
     await childText(processPort, gitProgram,
       ["merge-base", "--is-ancestor", options.attemptSourceCommit, currentSourceCommit], "source ancestry");
-    await childText(processPort, gitProgram,
-      ["diff", "--quiet", options.attemptSourceCommit, currentSourceCommit, "--", ...sourcePaths],
-      "INA260 source compatibility");
     const dirty = await childText(processPort, gitProgram, ["status", "--porcelain", "--", ...sourcePaths],
       "INA260 source cleanliness");
     if (dirty !== "") throw failure("evidence_invalid", "INA260 source paths are dirty");
-    await validateSourceFragments(workspaceRoot);
+    const referenceDirty = await childText(
+      processPort,
+      gitProgram,
+      ["-C", path.join(workspaceRoot, "reference/esp-miner"), "status", "--porcelain"],
+      "reference source cleanliness",
+    );
+    if (referenceDirty !== "") throw failure("evidence_invalid", "INA260 reference source is dirty");
+    await validateHistoricalSourceFragments(processPort, gitProgram, options.attemptSourceCommit);
+    await validateCurrentSourceFragments(workspaceRoot);
+    await validateReferenceFragments(workspaceRoot);
 
     const envelope = websocketFile.value;
     if (envelope["event"] !== "update") throw failure("evidence_invalid", "WebSocket event is invalid");
@@ -405,7 +536,7 @@ export async function projectIna260Evidence(
     }
 
     const evidence: Ina260Evidence = {
-      schema_version: "bitaxe-ina260-evidence-v1",
+      schema_version: "bitaxe-ina260-evidence-v2",
       board: 205,
       attempt_source_commit: options.attemptSourceCommit,
       current_source_commit: currentSourceCommit,
@@ -418,7 +549,8 @@ export async function projectIna260Evidence(
           source: observedDigests.sourceProjection,
           api: observedDigests.apiSnapshot,
           websocket: observedDigests.websocketSnapshot,
-          plan: observedDigests.plan,
+          hardware_plan: observedDigests.hardwarePlan,
+          correction_plan: observedDigests.correctionPlan,
           attempt_source_commit: options.attemptSourceCommit,
         })),
       },
@@ -429,7 +561,13 @@ export async function projectIna260Evidence(
         final_evidence_sha256: observedDigests.finalEvidence,
         system_info_projection_valid: true,
         protected_modes_valid: true,
-        plan_sha256: observedDigests.plan,
+        hardware_plan_sha256: observedDigests.hardwarePlan,
+        correction_plan_sha256: observedDigests.correctionPlan,
+        historical_source_semantics_admitted: true,
+        current_source_semantics_admitted: true,
+        reference_unit_semantics_admitted: true,
+        current_source_path_count: sourcePaths.length,
+        reference_path_count: referencePaths.length,
       },
       telemetry: {
         i2c_address: 0x40,
@@ -438,16 +576,26 @@ export async function projectIna260Evidence(
         power_register: 0x03,
         complete_register_set: true,
         read_only_acquisition: true,
-        http_complete_fresh_sample: true,
-        websocket_complete_fresh_sample: true,
-        finite_safe_ranges: true,
-        same_values: true,
+        historical_http_complete_fresh_sample: true,
+        historical_websocket_complete_fresh_sample: true,
+        historical_si_safe_ranges: true,
+        same_historical_values: true,
         same_states: true,
         same_acquisition_stamps: true,
         same_boot_session: true,
         exact_package_identity: true,
-        source_paths_compatible: true,
-        compatible_path_count: sourcePaths.length,
+        legacy_voltage_unit: "millivolts",
+        legacy_current_unit: "milliamps",
+        core_voltage_unit: "millivolts",
+        power_unit: "watts",
+        nominal_voltage_unit: "volts",
+        volts_to_millivolts_factor: 1_000,
+        amps_to_milliamps_factor: 1_000,
+        system_info_conversion_proved: true,
+        statistics_conversion_proved: true,
+        campaign_min_input_millivolts: 4_500,
+        campaign_max_input_millivolts: 5_500,
+        campaign_safety_range_preserved: true,
       },
       detector_admitted: true,
       boot_observed: true,

@@ -23,6 +23,19 @@ const referenceCommit = "c".repeat(40);
 const ok = (stdout = ""): ProcessOutcome => ({ exitCode: 0, stdout, stderr: "", timedOut: false });
 
 const sourceDocuments = new Map<string, string>([
+  ["crates/bitaxe-safety/src/power.rs", [
+    "pub bus_voltage_volts: f64,",
+    "pub current_amps: f64,",
+    "pub power_watts: f64,",
+  ].join("\n")],
+  ["crates/bitaxe-safety/src/sensor_acquisition.rs", [
+    "let current_ma = f64::from(i16::from_be_bytes(current)) * INA260_CURRENT_MILLIAMPS_PER_BIT;",
+    "let bus_voltage_mv = f64::from(u16::from_be_bytes(bus_voltage)) * INA260_BUS_MILLIVOLTS_PER_BIT;",
+    "let power_mw = f64::from(u16::from_be_bytes(power)) * INA260_POWER_MILLIWATTS_PER_BIT;",
+    "bus_voltage_volts: bus_voltage_mv / 1000.0,",
+    "current_amps: current_ma / 1000.0,",
+    "power_watts: power_mw / 1000.0,",
+  ].join("\n")],
   ["firmware/bitaxe/src/safety_adapter/ina260.rs", [
     "Reads one complete INA260 triple through the closed read-only capability.",
     "bus.read_ina260(Ina260ReadRegister::Current, &mut current)",
@@ -47,10 +60,72 @@ const sourceDocuments = new Map<string, string>([
     "voltage_status: (&observations.bus_voltage_volts).into(),",
     "current_status: (&observations.current_amps).into(),",
   ].join("\n")],
+  ["crates/bitaxe-api/src/observation.rs", [
+    "pub power_watts: Observation<f64>,",
+    "pub bus_voltage_volts: Observation<f64>,",
+    "pub current_amps: Observation<f64>,",
+  ].join("\n")],
+  ["crates/bitaxe-api/src/legacy_units.rs", [
+    "const MILLI_UNITS_PER_UNIT: f64 = 1_000.0;",
+    "pub(crate) const fn millivolts_from_volts(volts: f64) -> f64",
+    "pub(crate) const fn milliamps_from_amps(amps: f64) -> f64",
+  ].join("\n")],
   ["crates/bitaxe-api/src/wire.rs", [
     "power: safe_telemetry.power_watts,",
+    "voltage_millivolts: millivolts_from_volts(safe_telemetry.voltage_volts),",
+    "current_milliamps: milliamps_from_amps(safe_telemetry.current_amps),",
+  ].join("\n")],
+  ["crates/bitaxe-api/src/statistics.rs", [
+    "voltage_millivolts: millivolts_from_volts(safe_telemetry.voltage_volts),",
+    "current_milliamps: milliamps_from_amps(safe_telemetry.current_amps),",
+  ].join("\n")],
+  ["tools/flash/src/campaign/network/validation.rs", [
+    "(4_500.0..=5_500.0).contains(&sample.voltage_millivolts)",
+    "sample.current_milliamps >= 0.0",
+  ].join("\n")],
+]);
+
+const historicalDocuments = new Map<string, string>([
+  ["crates/bitaxe-api/src/wire.rs", [
     "voltage: safe_telemetry.voltage_volts,",
     "current: safe_telemetry.current_amps,",
+  ].join("\n")],
+  ["crates/bitaxe-api/src/statistics.rs", [
+    "voltage: safe_telemetry.voltage_volts,",
+    "current: safe_telemetry.current_amps,",
+  ].join("\n")],
+]);
+
+const referenceDocuments = new Map<string, string>([
+  ["reference/esp-miner/main/power/INA260.h", [
+    "INA260_REG_CURRENT 0x01     ///< Current measurement register (signed) in mA",
+    "INA260_REG_BUSVOLTAGE 0x02  ///< Bus voltage measurement register in mV",
+    "INA260_REG_POWER 0x03       ///< Power calculation register in mW",
+  ].join("\n")],
+  ["reference/esp-miner/main/power/INA260.c", [
+    "last_current = (uint16_t)(data[1] | (data[0] << 8)) * 1.25;",
+    "last_voltage = (uint16_t)(data[1] | (data[0] << 8)) * 1.25;",
+    "last_power = (data[1] | (data[0] << 8)) * 10;",
+  ].join("\n")],
+  ["reference/esp-miner/main/power/power.c", [
+    "pow_val = INA260_read_power() / 1000.0f;",
+    "return INA260_read_voltage();",
+  ].join("\n")],
+  ["reference/esp-miner/main/http_server/system_api_json.c", [
+    "cJSON_AddFloatToObject(root, \"voltage\", g->POWER_MANAGEMENT_MODULE.voltage);",
+    "cJSON_AddFloatToObject(root, \"current\", g->POWER_MANAGEMENT_MODULE.current);",
+    "cJSON_AddFloatToObject(root, \"coreVoltageActual\", g->POWER_MANAGEMENT_MODULE.core_voltage);",
+  ].join("\n")],
+  ["reference/esp-miner/main/tasks/statistics_task.c", [
+    "statsData.voltage = power_management->voltage;",
+    "statsData.current = power_management->current;",
+    "statsData.coreVoltageActual = power_management->core_voltage;",
+  ].join("\n")],
+  ["reference/esp-miner/main/http_server/axe-os/src/app/components/home/home.component.ts", [
+    "processed.voltage = processed.voltage / 1000;",
+    "processed.current = processed.current / 1000;",
+    "processed.coreVoltageActual = processed.coreVoltageActual / 1000;",
+    "element[idxChartY1Data] = element[idxChartY1Data] / 1000;",
   ].join("\n")],
 ]);
 
@@ -62,8 +137,10 @@ const compatiblePaths = [
   "firmware/bitaxe/src/operator_sensor_runtime.rs",
   "crates/bitaxe-api/src/observation.rs",
   "crates/bitaxe-api/src/snapshot.rs",
+  "crates/bitaxe-api/src/legacy_units.rs",
   "crates/bitaxe-api/src/wire.rs",
   "crates/bitaxe-api/src/statistics.rs",
+  "tools/flash/src/campaign/network/validation.rs",
 ] as const;
 
 function digest(value: string): string {
@@ -142,18 +219,31 @@ async function fixture(name: string, mutate?: (api: Record<string, unknown>, web
     await mkdir(path.dirname(candidate), { recursive: true });
     await writeFile(candidate, `${sourceDocuments.get(sourcePath) ?? "compatible"}\n`);
   }
-  const plan = path.join(root, "docs/parity/work-plans/20260812T222308Z-PWR-006/PLAN.md");
-  await mkdir(path.dirname(plan), { recursive: true });
-  const planDocument = [
+  for (const [sourcePath, document] of referenceDocuments) {
+    const candidate = path.join(root, sourcePath);
+    await mkdir(path.dirname(candidate), { recursive: true });
+    await writeFile(candidate, `${document}\n`);
+  }
+  const hardwarePlan = path.join(root, "docs/parity/work-plans/20260812T222308Z-PWR-006/PLAN.md");
+  await mkdir(path.dirname(hardwarePlan), { recursive: true });
+  const hardwarePlanDocument = [
     "# Plan",
     "- Parity row: `PWR-006`",
     "- Active task: `task-parity-pwr006-ina260-live-projection`",
   ].join("\n") + "\n";
-  await writeFile(plan, planDocument);
+  await writeFile(hardwarePlan, hardwarePlanDocument);
+  const correctionPlan = path.join(root, "docs/parity/work-plans/20260816T082924Z-PWR-006/PLAN.md");
+  await mkdir(path.dirname(correctionPlan), { recursive: true });
+  const correctionPlanDocument = [
+    "# Plan",
+    "- Parity row: `PWR-006`",
+    "- Active task: `task-parity-pwr006-legacy-wire-units`",
+  ].join("\n") + "\n";
+  await writeFile(correctionPlan, correctionPlanDocument);
   await writeFile(path.join(root, "TASKS.md"), [
-    "### task-parity-pwr006-ina260-live-projection | 2026-08-12 | Project",
-    "Plan docs/parity/work-plans/20260812T222308Z-PWR-006/PLAN.md",
-    "This software-only projection uses bitaxe-ina260-evidence-v1.",
+    "### task-parity-pwr006-legacy-wire-units | 2026-08-16 | Project",
+    "Plan docs/parity/work-plans/20260816T082924Z-PWR-006/PLAN.md",
+    "Correct millivolts and milliamps through read-only reuse of prior evidence.",
     "### next-task | later | Other",
   ].join("\n"));
 
@@ -193,7 +283,8 @@ async function fixture(name: string, mutate?: (api: Record<string, unknown>, web
     apiSnapshot: digest(apiDocument),
     websocketSnapshot: digest(websocketDocument),
     finalEvidence: digest(sourceDocument),
-    plan: digest(planDocument),
+    hardwarePlan: digest(hardwarePlanDocument),
+    correctionPlan: digest(correctionPlanDocument),
   };
   return {
     root,
@@ -215,9 +306,12 @@ function fakePort(options: {
       return { exitCode: 1, stdout: "", stderr: "rejected", timedOut: false };
     }
     if (spec.args[0] === "rev-parse") return ok(`${currentCommit}\n`);
-    if (spec.args[0] === "-C") return ok(`${referenceCommit}\n`);
-    if (spec.args[0] === "diff" && options.sourceDrift) {
-      return { exitCode: 1, stdout: "", stderr: "", timedOut: false };
+    if (spec.args[0] === "-C" && spec.args[2] === "rev-parse") return ok(`${referenceCommit}\n`);
+    if (spec.args[0] === "-C" && spec.args[2] === "status") return ok();
+    if (spec.args[0] === "show") {
+      if (options.sourceDrift) return ok("historical drift\n");
+      const sourcePath = spec.args[1]?.split(":", 2)[1];
+      return ok(`${historicalDocuments.get(sourcePath ?? "") ?? ""}\n`);
     }
     if (spec.args[0] === "status") return ok(options.dirty ? " M ina260.rs\n" : "");
     return ok();
@@ -251,8 +345,12 @@ test("complete correlated INA260 snapshots emit only closed evidence", async () 
   const evidence = await projectFixture(value, fakePort());
 
   // Assert
-  assert.equal(evidence.telemetry.http_complete_fresh_sample, true);
+  assert.equal(evidence.telemetry.historical_http_complete_fresh_sample, true);
   assert.equal(evidence.telemetry.same_acquisition_stamps, true);
+  assert.equal(evidence.telemetry.legacy_voltage_unit, "millivolts");
+  assert.equal(evidence.telemetry.legacy_current_unit, "milliamps");
+  assert.equal(evidence.telemetry.volts_to_millivolts_factor, 1_000);
+  assert.equal(evidence.telemetry.campaign_min_input_millivolts, 4_500);
   assert.equal(evidence.hardware_rerun_used, false);
   assert.equal((await stat(value.projection)).mode & 0o777, 0o644);
   assert.doesNotMatch(await readFile(value.projection, "utf8"),
@@ -311,5 +409,7 @@ test("real child validators must accept source and candidate files", async () =>
 
   // Assert
   assert.equal(evidence.source.system_info_projection_valid, true);
-  assert.equal(evidence.telemetry.source_paths_compatible, true);
+  assert.equal(evidence.source.historical_source_semantics_admitted, true);
+  assert.equal(evidence.source.current_source_semantics_admitted, true);
+  assert.equal(evidence.source.reference_unit_semantics_admitted, true);
 });

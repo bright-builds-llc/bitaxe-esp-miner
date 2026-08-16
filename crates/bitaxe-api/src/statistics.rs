@@ -8,6 +8,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
+use crate::legacy_units::{milliamps_from_amps, millivolts_from_volts};
 use crate::mining::mining_state_from_runtime;
 use crate::ApiSnapshot;
 
@@ -62,9 +63,9 @@ pub struct StatisticsSample {
     pub asic_temp2: f64,
     pub vr_temp: f64,
     pub asic_voltage: i16,
-    pub voltage: f64,
+    pub voltage_millivolts: f64,
     pub power: f64,
-    pub current: f64,
+    pub current_milliamps: f64,
     pub fan_speed: f64,
     pub fan_rpm: u16,
     pub fan2_rpm: u16,
@@ -86,9 +87,9 @@ impl Default for StatisticsSample {
             asic_temp2: 0.0,
             vr_temp: 0.0,
             asic_voltage: 0,
-            voltage: 0.0,
+            voltage_millivolts: 0.0,
             power: 0.0,
-            current: 0.0,
+            current_milliamps: 0.0,
             fan_speed: 0.0,
             fan_rpm: 0,
             fan2_rpm: 0,
@@ -116,9 +117,9 @@ impl StatisticsSample {
             asic_temp2: safe_telemetry.chip_temp2_celsius,
             vr_temp: safe_telemetry.vr_temp_celsius,
             asic_voltage: safe_telemetry.core_voltage_actual_mv.round() as i16,
-            voltage: safe_telemetry.voltage_volts,
+            voltage_millivolts: millivolts_from_volts(safe_telemetry.voltage_volts),
             power: safe_telemetry.power_watts,
-            current: safe_telemetry.current_amps,
+            current_milliamps: milliamps_from_amps(safe_telemetry.current_amps),
             fan_speed: f64::from(safe_telemetry.fan_speed_percent),
             fan_rpm: safe_telemetry.fan_rpm,
             fan2_rpm: safe_telemetry.fan2_rpm,
@@ -221,9 +222,9 @@ impl StatisticsColumn {
             Self::AsicTemp2 => json!(sample.asic_temp2),
             Self::VrTemp => json!(sample.vr_temp),
             Self::AsicVoltage => json!(sample.asic_voltage),
-            Self::Voltage => json!(sample.voltage),
+            Self::Voltage => json!(sample.voltage_millivolts),
             Self::Power => json!(sample.power),
-            Self::Current => json!(sample.current),
+            Self::Current => json!(sample.current_milliamps),
             Self::FanSpeed => json!(sample.fan_speed),
             Self::FanRpm => json!(sample.fan_rpm),
             Self::Fan2Rpm => json!(sample.fan2_rpm),
@@ -343,14 +344,39 @@ mod tests {
         assert_eq!(sample.asic_temp, 56.0);
         assert_eq!(sample.vr_temp, 45.0);
         assert_eq!(sample.asic_voltage, 1_198);
-        assert_eq!(sample.voltage, 5.1);
+        assert_eq!(sample.voltage_millivolts, 5_100.0);
         assert_eq!(sample.power, 11.5);
-        assert_eq!(sample.current, 2.25);
+        assert_eq!(sample.current_milliamps, 2_250.0);
         assert_eq!(sample.fan_speed, 0.0);
         assert_eq!(sample.fan_rpm, 3_200);
         assert_eq!(sample.wifi_rssi, -90);
         assert_eq!(sample.free_heap, 4_096);
         assert_eq!(sample.response_time, 7.5);
+    }
+
+    #[test]
+    fn statistics_wire_serializes_legacy_electrical_milli_units() {
+        // Arrange
+        let mut snapshot = ApiSnapshot::safe_ultra_205();
+        snapshot.safe_telemetry =
+            SafeTelemetrySnapshot::from_observations(&fresh_telemetry_observations());
+        let sample = StatisticsSample::from_snapshot(&snapshot, 123, 7.5);
+
+        // Act
+        let response =
+            statistics_response(456, Some("voltage,current,power,asicVoltage"), &[sample]);
+
+        // Assert
+        assert_eq!(
+            response.statistics,
+            vec![vec![
+                json!(5_100.0),
+                json!(2_250.0),
+                json!(11.5),
+                json!(1_198),
+                json!(123),
+            ]]
+        );
     }
 
     #[test]
@@ -365,8 +391,8 @@ mod tests {
         assert_eq!(snapshot.safe_telemetry.power_watts, 0.0);
         assert_eq!(sample.asic_temp, 0.0);
         assert_eq!(sample.power, 0.0);
-        assert_eq!(sample.voltage, 0.0);
-        assert_eq!(sample.current, 0.0);
+        assert_eq!(sample.voltage_millivolts, 0.0);
+        assert_eq!(sample.current_milliamps, 0.0);
         assert_eq!(sample.fan_rpm, 0);
     }
 

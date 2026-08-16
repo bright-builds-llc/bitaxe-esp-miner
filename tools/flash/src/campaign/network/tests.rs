@@ -89,8 +89,8 @@ fn active_sample_with_watchdog_sequences(
     sample.mining_activity = "active".to_owned();
     sample.start_mining_on_boot = false;
     sample.power = 10.0;
-    sample.voltage = 5.0;
-    sample.current = 2.0;
+    sample.voltage_millivolts = 5_000.0;
+    sample.current_milliamps = 2_000.0;
     sample.temp = 60.0;
     sample.fan_rpm = 3_000;
     sample.power_status.state = ObservationStateWire::Fresh;
@@ -113,6 +113,44 @@ fn terminal_sample(revision: u64, sequence: u64) -> SystemInfoWire {
     sample.mining_paused = true;
     sample.mining_activity = "paused".to_owned();
     sample
+}
+
+#[test]
+fn campaign_safety_accepts_exact_legacy_millivolt_boundaries() {
+    // Arrange
+    let target = target();
+    let mut low = active_sample(1, 1);
+    low.voltage_millivolts = 4_500.0;
+    let mut high = active_sample(2, 2);
+    high.voltage_millivolts = 5_500.0;
+
+    // Act
+    let results = [
+        super::validation::validate_active_prerequisites(&low, &target),
+        super::validation::validate_active_prerequisites(&high, &target),
+    ];
+
+    // Assert
+    assert!(results.iter().all(Result::is_ok));
+}
+
+#[test]
+fn campaign_safety_rejects_legacy_millivolts_outside_volt_domain() {
+    // Arrange
+    let target = target();
+    let mut low = active_sample(1, 1);
+    low.voltage_millivolts = 4_499.0;
+    let mut high = active_sample(2, 2);
+    high.voltage_millivolts = 5_501.0;
+
+    // Act
+    let results = [
+        super::validation::validate_active_prerequisites(&low, &target),
+        super::validation::validate_active_prerequisites(&high, &target),
+    ];
+
+    // Assert
+    assert!(results.iter().all(Result::is_err));
 }
 
 fn complete_serial() -> SharedSerialState {

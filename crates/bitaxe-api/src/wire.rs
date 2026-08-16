@@ -13,6 +13,7 @@ use thiserror::Error;
 
 use bitaxe_core::runtime_health::RuntimeHealthSnapshot;
 
+use crate::legacy_units::{milliamps_from_amps, millivolts_from_volts};
 use crate::mining::{mining_state_from_runtime, HashrateMonitorWire, SharesRejectedReasonWire};
 use crate::{
     ApiSnapshot, BootSessionId, ObservationTruthWire, OperatorSnapshotRevision, PlatformIdentity,
@@ -146,11 +147,11 @@ pub struct SystemInfoWire {
     #[serde(rename = "powerStatus")]
     pub power_status: ObservationTruthWire,
     #[serde(rename = "voltage")]
-    pub voltage: f64,
+    pub voltage_millivolts: f64,
     #[serde(rename = "voltageStatus")]
     pub voltage_status: ObservationTruthWire,
     #[serde(rename = "current")]
-    pub current: f64,
+    pub current_milliamps: f64,
     #[serde(rename = "currentStatus")]
     pub current_status: ObservationTruthWire,
     #[serde(rename = "temp")]
@@ -378,9 +379,9 @@ impl SystemInfoWire {
             core_voltage_actual_status: safe_telemetry.core_voltage_status,
             power: safe_telemetry.power_watts,
             power_status: safe_telemetry.power_status,
-            voltage: safe_telemetry.voltage_volts,
+            voltage_millivolts: millivolts_from_volts(safe_telemetry.voltage_volts),
             voltage_status: safe_telemetry.voltage_status,
-            current: safe_telemetry.current_amps,
+            current_milliamps: milliamps_from_amps(safe_telemetry.current_amps),
             current_status: safe_telemetry.current_status,
             temp: safe_telemetry.chip_temp_celsius,
             chip_temp_status: safe_telemetry.chip_temp_status,

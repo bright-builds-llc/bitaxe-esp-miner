@@ -383,13 +383,34 @@ fn safety_telemetry_projection_system_info_reads_safe_telemetry_values() {
 
     // Assert
     assert_eq!(wire.power, 11.5);
-    assert_eq!(wire.voltage, 5.1);
-    assert_eq!(wire.current, 2.25);
+    assert_eq!(wire.voltage_millivolts, 5_100.0);
+    assert_eq!(wire.current_milliamps, 2_250.0);
     assert_eq!(wire.fan_rpm, 3_200);
     assert_eq!(wire.temp, 56.0);
     assert_eq!(wire.vr_temp, 45.0);
     assert_eq!(wire.power_status.state, crate::ObservationStateWire::Fresh);
     assert!(wire.power_status.stamp.is_some());
+}
+
+#[test]
+fn system_info_serializes_legacy_electrical_milli_units() {
+    // Arrange
+    let mut snapshot = ApiSnapshot::safe_ultra_205();
+    snapshot.safe_telemetry =
+        SafeTelemetrySnapshot::from_observations(&fresh_telemetry_observations());
+
+    // Act
+    let value = serde_json::to_value(SystemInfoWire::from_snapshot(&snapshot))
+        .expect("system info should serialize");
+
+    // Assert
+    assert_eq!(snapshot.safe_telemetry.voltage_volts, 5.1);
+    assert_eq!(snapshot.safe_telemetry.current_amps, 2.25);
+    assert_eq!(value["voltage"], 5_100.0);
+    assert_eq!(value["current"], 2_250.0);
+    assert_eq!(value["coreVoltageActual"], 1_198.0);
+    assert_eq!(value["power"], 11.5);
+    assert_eq!(value["nominalVoltage"], 5);
 }
 
 #[test]

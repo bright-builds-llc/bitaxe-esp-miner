@@ -82,10 +82,10 @@ fn safety_valid(sample: &SystemInfoWire) -> bool {
     .all(|state| state == ObservationStateWire::Fresh)
         && sample.power.is_finite()
         && (0.0..=15.0).contains(&sample.power)
-        && sample.voltage.is_finite()
-        && (4.5..=5.5).contains(&sample.voltage)
-        && sample.current.is_finite()
-        && sample.current >= 0.0
+        && sample.voltage_millivolts.is_finite()
+        && (4_500.0..=5_500.0).contains(&sample.voltage_millivolts)
+        && sample.current_milliamps.is_finite()
+        && sample.current_milliamps >= 0.0
         && sample.temp.is_finite()
         && sample.temp < 75.0
         && sample.fan_rpm > 0

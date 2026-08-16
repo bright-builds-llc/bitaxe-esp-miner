@@ -11,7 +11,13 @@ pub struct Ina260SourceEvidence {
     pub final_evidence_sha256: String,
     pub system_info_projection_valid: bool,
     pub protected_modes_valid: bool,
-    pub plan_sha256: String,
+    pub hardware_plan_sha256: String,
+    pub correction_plan_sha256: String,
+    pub historical_source_semantics_admitted: bool,
+    pub current_source_semantics_admitted: bool,
+    pub reference_unit_semantics_admitted: bool,
+    pub current_source_path_count: u64,
+    pub reference_path_count: u64,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -22,16 +28,26 @@ pub struct Ina260ObservationEvidence {
     pub power_register: u8,
     pub complete_register_set: bool,
     pub read_only_acquisition: bool,
-    pub http_complete_fresh_sample: bool,
-    pub websocket_complete_fresh_sample: bool,
-    pub finite_safe_ranges: bool,
-    pub same_values: bool,
+    pub historical_http_complete_fresh_sample: bool,
+    pub historical_websocket_complete_fresh_sample: bool,
+    pub historical_si_safe_ranges: bool,
+    pub same_historical_values: bool,
     pub same_states: bool,
     pub same_acquisition_stamps: bool,
     pub same_boot_session: bool,
     pub exact_package_identity: bool,
-    pub source_paths_compatible: bool,
-    pub compatible_path_count: u64,
+    pub legacy_voltage_unit: String,
+    pub legacy_current_unit: String,
+    pub core_voltage_unit: String,
+    pub power_unit: String,
+    pub nominal_voltage_unit: String,
+    pub volts_to_millivolts_factor: u16,
+    pub amps_to_milliamps_factor: u16,
+    pub system_info_conversion_proved: bool,
+    pub statistics_conversion_proved: bool,
+    pub campaign_min_input_millivolts: u16,
+    pub campaign_max_input_millivolts: u16,
+    pub campaign_safety_range_preserved: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, JsonSchema, PartialEq, Serialize)]
@@ -80,13 +96,21 @@ impl Ina260Evidence {
             self.source.api_snapshot_sha256.as_str(),
             self.source.websocket_snapshot_sha256.as_str(),
             self.source.final_evidence_sha256.as_str(),
-            self.source.plan_sha256.as_str(),
+            self.source.hardware_plan_sha256.as_str(),
+            self.source.correction_plan_sha256.as_str(),
         ] {
             if !is_lower_hex(digest, 64) {
                 return Err("INA260 evidence digest is invalid");
             }
         }
-        if !self.source.system_info_projection_valid || !self.source.protected_modes_valid {
+        if !self.source.system_info_projection_valid
+            || !self.source.protected_modes_valid
+            || !self.source.historical_source_semantics_admitted
+            || !self.source.current_source_semantics_admitted
+            || !self.source.reference_unit_semantics_admitted
+            || self.source.current_source_path_count != 11
+            || self.source.reference_path_count != 6
+        {
             return Err("INA260 source evidence is incomplete");
         }
 
@@ -97,16 +121,26 @@ impl Ina260Evidence {
             || telemetry.power_register != 0x03
             || !telemetry.complete_register_set
             || !telemetry.read_only_acquisition
-            || !telemetry.http_complete_fresh_sample
-            || !telemetry.websocket_complete_fresh_sample
-            || !telemetry.finite_safe_ranges
-            || !telemetry.same_values
+            || !telemetry.historical_http_complete_fresh_sample
+            || !telemetry.historical_websocket_complete_fresh_sample
+            || !telemetry.historical_si_safe_ranges
+            || !telemetry.same_historical_values
             || !telemetry.same_states
             || !telemetry.same_acquisition_stamps
             || !telemetry.same_boot_session
             || !telemetry.exact_package_identity
-            || !telemetry.source_paths_compatible
-            || telemetry.compatible_path_count != 9
+            || telemetry.legacy_voltage_unit != "millivolts"
+            || telemetry.legacy_current_unit != "milliamps"
+            || telemetry.core_voltage_unit != "millivolts"
+            || telemetry.power_unit != "watts"
+            || telemetry.nominal_voltage_unit != "volts"
+            || telemetry.volts_to_millivolts_factor != 1_000
+            || telemetry.amps_to_milliamps_factor != 1_000
+            || !telemetry.system_info_conversion_proved
+            || !telemetry.statistics_conversion_proved
+            || telemetry.campaign_min_input_millivolts != 4_500
+            || telemetry.campaign_max_input_millivolts != 5_500
+            || !telemetry.campaign_safety_range_preserved
         {
             return Err("INA260 telemetry evidence is incomplete");
         }
@@ -155,7 +189,13 @@ mod tests {
                 final_evidence_sha256: "3".repeat(64),
                 system_info_projection_valid: true,
                 protected_modes_valid: true,
-                plan_sha256: "4".repeat(64),
+                hardware_plan_sha256: "4".repeat(64),
+                correction_plan_sha256: "5".repeat(64),
+                historical_source_semantics_admitted: true,
+                current_source_semantics_admitted: true,
+                reference_unit_semantics_admitted: true,
+                current_source_path_count: 11,
+                reference_path_count: 6,
             },
             telemetry: Ina260ObservationEvidence {
                 i2c_address: 0x40,
@@ -164,16 +204,26 @@ mod tests {
                 power_register: 0x03,
                 complete_register_set: true,
                 read_only_acquisition: true,
-                http_complete_fresh_sample: true,
-                websocket_complete_fresh_sample: true,
-                finite_safe_ranges: true,
-                same_values: true,
+                historical_http_complete_fresh_sample: true,
+                historical_websocket_complete_fresh_sample: true,
+                historical_si_safe_ranges: true,
+                same_historical_values: true,
                 same_states: true,
                 same_acquisition_stamps: true,
                 same_boot_session: true,
                 exact_package_identity: true,
-                source_paths_compatible: true,
-                compatible_path_count: 9,
+                legacy_voltage_unit: "millivolts".to_owned(),
+                legacy_current_unit: "milliamps".to_owned(),
+                core_voltage_unit: "millivolts".to_owned(),
+                power_unit: "watts".to_owned(),
+                nominal_voltage_unit: "volts".to_owned(),
+                volts_to_millivolts_factor: 1_000,
+                amps_to_milliamps_factor: 1_000,
+                system_info_conversion_proved: true,
+                statistics_conversion_proved: true,
+                campaign_min_input_millivolts: 4_500,
+                campaign_max_input_millivolts: 5_500,
+                campaign_safety_range_preserved: true,
             },
             detector_admitted: true,
             boot_observed: true,
@@ -201,7 +251,7 @@ mod tests {
     fn incomplete_freshness_or_correlation_is_rejected() {
         // Arrange
         let mut stale = evidence();
-        stale.telemetry.http_complete_fresh_sample = false;
+        stale.telemetry.historical_http_complete_fresh_sample = false;
         let mut uncorrelated = evidence();
         uncorrelated.telemetry.same_acquisition_stamps = false;
 

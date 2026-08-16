@@ -4424,11 +4424,11 @@ remain governed by their specific contracts.
 
 ### task-parity-pwr006-legacy-wire-units | 2026-08-16 | Correct legacy INA260 API units
 
-- [ ] Convert SI-typed input voltage and current to upstream-compatible
+- [x] Convert SI-typed input voltage and current to upstream-compatible
       millivolts and milliamps only at the legacy API and statistics boundaries.
-- [ ] Rename ambiguous Rust wire members and preserve campaign safety checks in
+- [x] Rename ambiguous Rust wire members and preserve campaign safety checks in
       their explicit physical domains.
-- [ ] Bind the correction to the pinned INA260, system-info, statistics, and
+- [x] Bind the correction to the pinned INA260, system-info, statistics, and
       AxeOS conversion paths with behavior-focused regressions.
 - [ ] Re-evaluate the sealed PWR-006 evidence without inventing new hardware
       observations, run all required gates, and restore only the evidence level

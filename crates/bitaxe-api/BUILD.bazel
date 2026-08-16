@@ -81,6 +81,7 @@ rust_library(
         "src/commands.rs",
         "src/command_status.rs",
         "src/deferred_effect.rs",
+        "src/legacy_units.rs",
         "src/lib.rs",
         "src/logs.rs",
         "src/logs/heartbeat.rs",
