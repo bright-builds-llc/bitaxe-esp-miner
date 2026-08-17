@@ -3,6 +3,10 @@ const OWNER_LOOP_SOURCE: &str = include_str!("production_mining_session/owner_lo
 const OWNER_PROGRESS_SOURCE: &str = include_str!("production_mining_session/owner_progress.rs");
 const WORKER_SOURCE: &str = include_str!("production_mining_session/asic_worker.rs");
 const HASHRATE_SOURCE: &str = include_str!("production_mining_session/hashrate.rs");
+const CAMPAIGN_STATUS_SOURCE: &str =
+    include_str!("production_mining_session/campaign_status/publication.rs");
+const TASK_WATCHDOG_OBSERVATION_SOURCE: &str = include_str!("task_watchdog_observation.rs");
+const RUNTIME_HEALTH_ADAPTER_SOURCE: &str = include_str!("runtime_health_adapter.rs");
 const ASIC_SOURCE: &str = include_str!("asic_adapter/production.rs");
 const SNAPSHOT_SOURCE: &str = include_str!("runtime_snapshot.rs");
 
@@ -42,6 +46,26 @@ fn owner_watchdog_feeds_only_after_completed_cooperative_progress() {
     assert!(OWNER_LOOP_SOURCE.contains("drive_feedback("));
     assert!(OWNER_LOOP_SOURCE.contains("|_| task_watchdog.feed("));
     assert!(!WORKER_SOURCE.contains("ProductionTaskWatchdog"));
+}
+
+#[test]
+fn owner_phase_and_campaign_publication_have_single_production_ownership() {
+    // Arrange
+    let publication = "if let Err(error) = adapter.publish_campaign_status";
+    let phase_store = "static OWNER_PHASE: AtomicU8";
+
+    // Act / Assert
+    assert_eq!(OWNER_LOOP_SOURCE.matches(publication).count(), 1);
+    assert!(OWNER_LOOP_SOURCE
+        .contains("record_owner_phase(TaskWatchdogOwnerPhase::PublishingCampaignStatus)"));
+    assert!(OWNER_LOOP_SOURCE
+        .contains("record_owner_phase(TaskWatchdogOwnerPhase::ServicingHashrate)"));
+    assert_eq!(TASK_WATCHDOG_OBSERVATION_SOURCE.matches(phase_store).count(), 1);
+    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("Ordering::Release"));
+    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("Ordering::Acquire"));
+    assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains(".with_task_watchdog_owner_phase("));
+    assert!(CAMPAIGN_STATUS_SOURCE
+        .contains("CAMPAIGN_STATUS_PUBLICATION_INTERVAL_MS: u64 = 1_000"));
 }
 
 #[test]

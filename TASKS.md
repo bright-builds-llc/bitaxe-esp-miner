@@ -1474,10 +1474,10 @@ authoritative boundary plus a new complete contract.
 Owner-phase diagnostic and publication-cadence correction plan:
 `docs/parity/work-plans/20260817T020911Z-STAT-001/PLAN.md`
 
-- [ ] Add a closed task-watchdog owner-phase discriminator from the firmware
+- [x] Add a closed task-watchdog owner-phase discriminator from the firmware
       owner through runtime health, HTTP/WebSocket, sealed campaign evidence,
       and value-free private-first failure reporting.
-- [ ] Bound synchronous campaign-status retained/serial publication to one
+- [x] Bound synchronous campaign-status retained/serial publication to one
       second while preserving per-event state tracking, first/terminal markers,
       safety, feedback, hashrate service, and maximum-gap requirements.
 - [ ] Prove 600-second high-event-rate cadence bounds, prompt terminal output,

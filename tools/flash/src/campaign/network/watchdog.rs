@@ -19,6 +19,7 @@ pub(super) enum WatchdogFailure {
     WatchdogFeedSequenceMissing,
     WatchdogFeedAgeMissing,
     WatchdogFeedStale,
+    WatchdogOwnerPhaseUnknown,
     HttpCheckpointNotAdvanced,
     HttpFeedNotAdvanced,
     WebsocketCheckpointNotAdvanced,
@@ -44,12 +45,68 @@ impl WatchdogFailure {
             Self::WatchdogFeedSequenceMissing => "watchdog_feed_sequence_missing",
             Self::WatchdogFeedAgeMissing => "watchdog_feed_age_missing",
             Self::WatchdogFeedStale => "watchdog_feed_stale",
+            Self::WatchdogOwnerPhaseUnknown => "watchdog_owner_phase_unknown",
             Self::HttpCheckpointNotAdvanced => "http_checkpoint_not_advanced",
             Self::HttpFeedNotAdvanced => "http_feed_not_advanced",
             Self::WebsocketCheckpointNotAdvanced => "websocket_checkpoint_not_advanced",
             Self::WebsocketFeedNotAdvanced => "websocket_feed_not_advanced",
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(super) enum WatchdogOwnerPhase {
+    #[default]
+    Unavailable,
+    Subscribing,
+    LoopStart,
+    WaitingInbox,
+    HandlingInbox,
+    HandlingObservation,
+    HandlingReadiness,
+    PublishingCampaignStatus,
+    ServicingHashrate,
+    Shutdown,
+}
+
+impl WatchdogOwnerPhase {
+    pub(super) const fn label(self) -> &'static str {
+        match self {
+            Self::Unavailable => "unavailable",
+            Self::Subscribing => "subscribing",
+            Self::LoopStart => "loop_start",
+            Self::WaitingInbox => "waiting_inbox",
+            Self::HandlingInbox => "handling_inbox",
+            Self::HandlingObservation => "handling_observation",
+            Self::HandlingReadiness => "handling_readiness",
+            Self::PublishingCampaignStatus => "publishing_campaign_status",
+            Self::ServicingHashrate => "servicing_hashrate",
+            Self::Shutdown => "shutdown",
+        }
+    }
+
+    fn parse(value: &str) -> Option<Self> {
+        match value {
+            "unavailable" => Some(Self::Unavailable),
+            "subscribing" => Some(Self::Subscribing),
+            "loop_start" => Some(Self::LoopStart),
+            "waiting_inbox" => Some(Self::WaitingInbox),
+            "handling_inbox" => Some(Self::HandlingInbox),
+            "handling_observation" => Some(Self::HandlingObservation),
+            "handling_readiness" => Some(Self::HandlingReadiness),
+            "publishing_campaign_status" => Some(Self::PublishingCampaignStatus),
+            "servicing_hashrate" => Some(Self::ServicingHashrate),
+            "shutdown" => Some(Self::Shutdown),
+            _ => None,
+        }
+    }
+}
+
+pub(super) fn sample_owner_phase(
+    sample: &SystemInfoWire,
+) -> Result<WatchdogOwnerPhase, WatchdogFailure> {
+    WatchdogOwnerPhase::parse(&sample.runtime_health.task_watchdog_owner_phase)
+        .ok_or(WatchdogFailure::WatchdogOwnerPhaseUnknown)
 }
 
 fn reason_failure(maybe_reason: Option<&str>) -> WatchdogFailure {
@@ -117,7 +174,7 @@ pub(super) fn window_failure(
 
 #[cfg(test)]
 mod tests {
-    use super::WatchdogFailure;
+    use super::{WatchdogFailure, WatchdogOwnerPhase};
 
     #[test]
     fn watchdog_failure_labels_are_closed_and_value_free() {
@@ -173,6 +230,10 @@ mod tests {
             ),
             (WatchdogFailure::WatchdogFeedStale, "watchdog_feed_stale"),
             (
+                WatchdogFailure::WatchdogOwnerPhaseUnknown,
+                "watchdog_owner_phase_unknown",
+            ),
+            (
                 WatchdogFailure::HttpCheckpointNotAdvanced,
                 "http_checkpoint_not_advanced",
             ),
@@ -198,5 +259,32 @@ mod tests {
                 .bytes()
                 .all(|byte| byte.is_ascii_lowercase() || byte == b'_'));
         }
+    }
+
+    #[test]
+    fn watchdog_owner_phase_labels_are_closed_and_value_free() {
+        // Arrange
+        let phases = [
+            WatchdogOwnerPhase::Unavailable,
+            WatchdogOwnerPhase::Subscribing,
+            WatchdogOwnerPhase::LoopStart,
+            WatchdogOwnerPhase::WaitingInbox,
+            WatchdogOwnerPhase::HandlingInbox,
+            WatchdogOwnerPhase::HandlingObservation,
+            WatchdogOwnerPhase::HandlingReadiness,
+            WatchdogOwnerPhase::PublishingCampaignStatus,
+            WatchdogOwnerPhase::ServicingHashrate,
+            WatchdogOwnerPhase::Shutdown,
+        ];
+
+        // Act / Assert
+        for phase in phases {
+            let label = phase.label();
+            assert_eq!(WatchdogOwnerPhase::parse(label), Some(phase));
+            assert!(label
+                .bytes()
+                .all(|byte| byte.is_ascii_lowercase() || byte == b'_'));
+        }
+        assert_eq!(WatchdogOwnerPhase::parse("private-phase-42"), None);
     }
 }

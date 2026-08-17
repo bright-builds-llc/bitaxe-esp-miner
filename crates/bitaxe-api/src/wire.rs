@@ -509,8 +509,9 @@ pub struct RuntimeHealthWire {
     pub maybe_task_watchdog_feed_sequence: Option<u64>,
     #[serde(rename = "taskWatchdogFeedAgeMillis")]
     pub maybe_task_watchdog_feed_age_millis: Option<u64>,
+    #[serde(rename = "taskWatchdogOwnerPhase", default = "unavailable_owner_phase")]
+    pub task_watchdog_owner_phase: String,
 }
-
 impl From<&RuntimeHealthSnapshot> for RuntimeHealthWire {
     fn from(snapshot: &RuntimeHealthSnapshot) -> Self {
         Self {
@@ -524,10 +525,13 @@ impl From<&RuntimeHealthSnapshot> for RuntimeHealthWire {
             maybe_task_watchdog_reason: snapshot.maybe_task_watchdog_reason().map(str::to_owned),
             maybe_task_watchdog_feed_sequence: snapshot.maybe_task_watchdog_feed_sequence(),
             maybe_task_watchdog_feed_age_millis: snapshot.maybe_task_watchdog_feed_age_millis(),
+            task_watchdog_owner_phase: snapshot.task_watchdog_owner_phase().as_str().to_owned(),
         }
     }
 }
-
+fn unavailable_owner_phase() -> String {
+    "unavailable".to_owned()
+}
 /// Renders the redacted retained runtime-health record for one coherent capture.
 #[must_use]
 pub fn retained_runtime_health_record(
@@ -548,19 +552,18 @@ pub fn retained_runtime_health_record(
         optional_u64(snapshot.maybe_task_watchdog_feed_age_millis());
 
     format!(
-        "runtime_health boot_session={boot_session} operator_snapshot_revision={} self_test={} supervisor={} checkpoint_category={checkpoint_category} checkpoint_sequence={checkpoint_sequence} checkpoint_age_millis={checkpoint_age_millis} checkpoint_health={} task_watchdog_participation={} task_watchdog_reason={task_watchdog_reason} task_watchdog_feed_sequence={task_watchdog_feed_sequence} task_watchdog_feed_age_millis={task_watchdog_feed_age_millis} redacted=true",
+        "runtime_health boot_session={boot_session} operator_snapshot_revision={} self_test={} supervisor={} checkpoint_category={checkpoint_category} checkpoint_sequence={checkpoint_sequence} checkpoint_age_millis={checkpoint_age_millis} checkpoint_health={} task_watchdog_participation={} task_watchdog_reason={task_watchdog_reason} task_watchdog_feed_sequence={task_watchdog_feed_sequence} task_watchdog_feed_age_millis={task_watchdog_feed_age_millis} task_watchdog_owner_phase={} redacted=true",
         operator_snapshot_revision.get(),
         snapshot.passive_self_test_state().as_str(),
         snapshot.supervisor_availability().as_str(),
         snapshot.checkpoint_health().as_str(),
         snapshot.task_watchdog_participation().as_str(),
+        snapshot.task_watchdog_owner_phase().as_str(),
     )
 }
-
 fn optional_u64(maybe_value: Option<u64>) -> String {
     maybe_value.map_or_else(|| "unavailable".to_owned(), |value| value.to_string())
 }
-
 /// Initial `/api/system/asic` wire DTO.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SystemAsicWire {

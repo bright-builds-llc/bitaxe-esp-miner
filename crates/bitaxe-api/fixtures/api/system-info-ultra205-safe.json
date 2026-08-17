@@ -59,7 +59,8 @@
     "taskWatchdogParticipation": "unavailable",
     "taskWatchdogReason": "unproved",
     "taskWatchdogFeedSequence": null,
-    "taskWatchdogFeedAgeMillis": null
+    "taskWatchdogFeedAgeMillis": null,
+    "taskWatchdogOwnerPhase": "unavailable"
   },
   "ASICModel": "BM1366",
   "boardVersion": "205",

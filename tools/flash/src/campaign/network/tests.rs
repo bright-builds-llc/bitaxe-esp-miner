@@ -105,6 +105,7 @@ fn active_sample_with_watchdog_sequences(
     sample.runtime_health.maybe_task_watchdog_reason = Some("feed_fresh".to_owned());
     sample.runtime_health.maybe_task_watchdog_feed_sequence = Some(feed_sequence);
     sample.runtime_health.maybe_task_watchdog_feed_age_millis = Some(100);
+    sample.runtime_health.task_watchdog_owner_phase = "waiting_inbox".to_owned();
     sample
 }
 
@@ -206,7 +207,25 @@ fn twenty_complete_windows_and_terminal_state_are_accepted() {
     assert_eq!(evidence.maybe_failure, None);
     assert!(evidence.watchdog_valid);
     assert_eq!(evidence.watchdog_failure, "none");
+    assert_eq!(evidence.watchdog_owner_phase, "waiting_inbox");
     assert!(evidence.work_renewal_valid);
+}
+
+#[test]
+fn unknown_watchdog_owner_phase_fails_closed_without_republishing_free_text() {
+    // Arrange
+    let mut accumulator = NetworkAccumulator::new(target());
+    accumulator.record_active_sample(NetworkTransport::Http, 500, 500, &active_sample(1, 1));
+    let mut sample = active_sample(2, 2);
+    sample.runtime_health.task_watchdog_owner_phase = "private-phase-42".to_owned();
+
+    // Act
+    accumulator.record_active_sample(NetworkTransport::Http, 1_000, 1_000, &sample);
+    let evidence = accumulator.finish(&complete_serial());
+
+    // Assert
+    assert_eq!(evidence.watchdog_failure, "watchdog_owner_phase_unknown");
+    assert_eq!(evidence.watchdog_owner_phase, "unavailable");
 }
 
 #[test]
@@ -565,7 +584,7 @@ fn network_evidence_serialization_contains_only_closed_aggregates() {
     ] {
         assert!(!encoded.contains(prohibited));
     }
-    assert!(encoded.contains("mining-campaign-network-continuity-v6"));
+    assert!(encoded.contains("mining-campaign-network-continuity-v7"));
     assert!(encoded.contains("http_startup_transition_count"));
     assert!(encoded.contains("websocket_startup_transition_count"));
     assert!(encoded.contains("http_initial_active_observed"));

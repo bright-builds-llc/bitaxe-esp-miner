@@ -1,18 +1,18 @@
 //! Redacted retained status projection for repo-owned mining campaigns.
 
+#[cfg(test)]
+use super::readiness_trace::ObservationEpochRelation;
+use super::readiness_trace::ReadinessTransitionEvidence;
+use crate::operator_sensor_diagnostics::OperatorSensorDiagnostic;
+use crate::settings_adapter::MiningCampaignStage;
 use bitaxe_stratum::v1::production_session::{
     AsicBridgeEvidence, JobTransitionEvidence, MiningCampaignLease, MiningCampaignState,
     MiningHardwareProfilePreset, MiningHardwareState, ProductionSessionSnapshot,
 };
 use bitaxe_stratum::v1::state::MiningOperatorIntent;
 use serde::Serialize;
-
-use crate::operator_sensor_diagnostics::OperatorSensorDiagnostic;
-use crate::settings_adapter::MiningCampaignStage;
-
-#[cfg(test)]
-use super::readiness_trace::ObservationEpochRelation;
-use super::readiness_trace::ReadinessTransitionEvidence;
+#[path = "campaign_status/publication.rs"]
+pub(super) mod publication;
 
 #[path = "campaign_status/projection.rs"]
 mod projection;

@@ -55,6 +55,18 @@ const sourceDocuments = new Map<string, string>([
     "emit(AsicWorkerEvent::RegisterRead {",
   ].join("\n")],
   ["firmware/bitaxe/src/runtime_snapshot.rs", "publish_hashrate_snapshot"],
+  ["firmware/bitaxe/src/production_mining_session/owner_loop.rs", [
+    "if let Err(error) = adapter.publish_campaign_status",
+    "record_owner_phase(TaskWatchdogOwnerPhase::ServicingHashrate)",
+  ].join("\n")],
+  ["firmware/bitaxe/src/production_mining_session/campaign_status/publication.rs", [
+    "CAMPAIGN_STATUS_PUBLICATION_INTERVAL_MS: u64 = 1_000",
+    "pub(crate) struct CampaignStatusPublicationSchedule {",
+  ].join("\n")],
+  ["firmware/bitaxe/src/task_watchdog_observation.rs", [
+    "static OWNER_PHASE: AtomicU8",
+    "record_owner_phase",
+  ].join("\n")],
   ["crates/bitaxe-safety/src/power.rs", [
     "pub const INPUT_VOLTAGE_NOMINAL_VOLTS: f64 = 5.0;",
     "pub const INPUT_VOLTAGE_MARGIN_RATIO: f64 = 0.10;",
@@ -62,7 +74,7 @@ const sourceDocuments = new Map<string, string>([
 ]);
 
 const okResult = {
-  schema: "mining-campaign-result-v12",
+  schema: "mining-campaign-result-v13",
   status: "accepted",
   terminal_category: "submit_response_observed",
   stage: "live-share",
@@ -72,6 +84,7 @@ const okResult = {
   safe_stop: "confirmed",
   usb_cleanup: "ready",
   watchdog_failure: "none",
+  watchdog_owner_phase: "waiting_inbox",
   runtime_attestation_parse_failure: "none",
   runtime_attestation_parse_failure_counts: {
     missing_marker: 0,
@@ -183,6 +196,7 @@ async function childProgram(
     watchdogFailure?: string;
     failureTerminalCategory?: string;
     resultSchema?: string;
+    watchdogOwnerPhase?: string;
     tamperedSeal?: boolean;
   }> = {},
 ): Promise<string> {
@@ -196,6 +210,7 @@ async function childProgram(
         ? "runtime_identity_untrusted"
         : "watchdog_unresponsive"),
     watchdog_failure: options.watchdogFailure ?? "none",
+    watchdog_owner_phase: options.watchdogOwnerPhase ?? "publishing_campaign_status",
     runtime_attestation_parse_failure: options.watchdogFailure === undefined
       ? "missing_marker"
       : "none",
@@ -217,7 +232,7 @@ if (args[0] === "mining-campaign") {
   await mkdir(root, { recursive: true, mode: 0o700 });
   await chmod(root, 0o700);
   const transport = { active_sample_count: 3, positive_coherent_count: 3, distinct_positive_count: 2, warm_rolling_window_count: 2, terminal_zero_confirmed: true };
-  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v6", status: "accepted", watchdog_failure: "none", required_window_count: 20, covered_window_count: 20, hashrate_monitor: { monitor_cadence_ms: 1000, asic_count: 1, domain_count: 4, http: transport, websocket: ${options.malformedTransport === true ? "{ ...transport, distinct_positive_count: 1 }" : "transport"} } }) + "\\n";
+  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v7", status: "accepted", watchdog_failure: "none", watchdog_owner_phase: "waiting_inbox", required_window_count: 20, covered_window_count: 20, hashrate_monitor: { monitor_cadence_ms: 1000, asic_count: 1, domain_count: 4, http: transport, websocket: ${options.malformedTransport === true ? "{ ...transport, distinct_positive_count: 1 }" : "transport"} } }) + "\\n";
   const result = JSON.stringify(${options.sealedFailure === true
     ? JSON.stringify(failureResult)
     : `{ ...${JSON.stringify(okResult)}, network_continuity_sha256: digest(network) }`}) + "\\n";
@@ -267,7 +282,7 @@ test("admissible conservative campaign and independent validator publish only cl
     // Assert
     assert.equal(evidence.attempt_ordinal, 10);
     assert.equal(evidence.hashrate.http.distinct_positive_count, 2);
-    assert.equal(evidence.source.source_path_count, 10);
+    assert.equal(evidence.source.source_path_count, 13);
     assert.equal((await stat(path.join(value.root, value.options.projection))).mode & 0o777, 0o644);
     assert.doesNotMatch(
       await readFile(path.join(value.root, value.options.projection), "utf8"),
@@ -386,10 +401,14 @@ test("sealed non-ready campaign publishes only the closed parse diagnostic", asy
   }
 });
 
-test("unsealed non-ready campaign withholds its parse diagnostic", async () => {
+test("unsealed watchdog campaign withholds its phase and failure diagnostic", async () => {
   // Arrange
   const value = await fixture("tampered-seal");
-  const child = await childProgram(value, { sealedFailure: true, tamperedSeal: true });
+  const child = await childProgram(value, {
+    sealedFailure: true,
+    tamperedSeal: true,
+    watchdogFailure: "watchdog_feed_stale",
+  });
 
   try {
     // Act
@@ -431,6 +450,7 @@ test("every sealed watchdog failure publishes only its closed earliest discrimin
     "watchdog_feed_sequence_missing",
     "watchdog_feed_age_missing",
     "watchdog_feed_stale",
+    "watchdog_owner_phase_unknown",
     "http_checkpoint_not_advanced",
     "http_feed_not_advanced",
     "websocket_checkpoint_not_advanced",
@@ -459,6 +479,7 @@ test("every sealed watchdog failure publishes only its closed earliest discrimin
         projection_published: false,
         runtime_attestation_parse_failure: "none",
         watchdog_failure: watchdogFailure,
+        watchdog_owner_phase: "publishing_campaign_status",
       });
       assert.doesNotMatch(
         JSON.stringify(error.publicValue),
@@ -475,7 +496,7 @@ test("watchdog diagnostic requires the new sealed schema and matching terminal c
     ["old-schema", {
       sealedFailure: true,
       watchdogFailure: "http_feed_not_advanced",
-      resultSchema: "mining-campaign-result-v10",
+      resultSchema: "mining-campaign-result-v12",
     }],
     ["wrong-category", {
       sealedFailure: true,
@@ -489,6 +510,11 @@ test("watchdog diagnostic requires the new sealed schema and matching terminal c
     ["missing-watchdog-cause", {
       sealedFailure: true,
       watchdogFailure: "none",
+    }],
+    ["unknown-owner-phase", {
+      sealedFailure: true,
+      watchdogFailure: "watchdog_feed_stale",
+      watchdogOwnerPhase: "private-phase-42",
     }],
   ] as const) {
     // Arrange

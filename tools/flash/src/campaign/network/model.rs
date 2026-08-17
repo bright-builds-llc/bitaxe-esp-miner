@@ -13,7 +13,7 @@ use super::validation::{
     active_mining_state_valid, regresses, update_gap, validate_active_prerequisites,
     validate_sample, window_index, SampleValidationFailure,
 };
-use super::watchdog::{sample_failure, WatchdogFailure};
+use super::watchdog::{sample_failure, sample_owner_phase, WatchdogFailure, WatchdogOwnerPhase};
 use super::window::{ContinuityWindowEvidence, SerialWindowEvidence};
 
 mod command_failure;
@@ -96,6 +96,7 @@ pub(crate) struct CampaignNetworkEvidence {
     pub(in crate::campaign) safety_valid: bool,
     pub(in crate::campaign) watchdog_valid: bool,
     pub(in crate::campaign) watchdog_failure: &'static str,
+    pub(in crate::campaign) watchdog_owner_phase: &'static str,
     pub(in crate::campaign) work_renewal_valid: bool,
     pub(in crate::campaign) terminal_http_valid: bool,
     pub(in crate::campaign) terminal_websocket_valid: bool,
@@ -132,7 +133,7 @@ impl CampaignNetworkEvidence {
 
     fn empty(status: &'static str, maybe_failure: Option<CampaignTerminalCategory>) -> Self {
         Self {
-            schema: "mining-campaign-network-continuity-v6",
+            schema: "mining-campaign-network-continuity-v7",
             status,
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count: 0,
@@ -158,6 +159,7 @@ impl CampaignNetworkEvidence {
             safety_valid: false,
             watchdog_valid: false,
             watchdog_failure: WatchdogFailure::None.label(),
+            watchdog_owner_phase: WatchdogOwnerPhase::Unavailable.label(),
             work_renewal_valid: false,
             terminal_http_valid: false,
             terminal_websocket_valid: false,
@@ -238,6 +240,7 @@ pub(super) struct NetworkAccumulator {
     safety_valid: bool,
     watchdog_valid: bool,
     pub(super) watchdog_failure: WatchdogFailure,
+    watchdog_owner_phase: WatchdogOwnerPhase,
     http_startup_transition_count: u64,
     websocket_startup_transition_count: u64,
     http_initial_active_observed: bool,
@@ -276,6 +279,7 @@ impl NetworkAccumulator {
             safety_valid: true,
             watchdog_valid: true,
             watchdog_failure: WatchdogFailure::None,
+            watchdog_owner_phase: WatchdogOwnerPhase::Unavailable,
             http_startup_transition_count: 0,
             websocket_startup_transition_count: 0,
             http_initial_active_observed: false,
@@ -300,6 +304,12 @@ impl NetworkAccumulator {
         if self.maybe_failure.is_some() {
             return;
         }
+        let Ok(owner_phase) = sample_owner_phase(sample) else {
+            self.watchdog_owner_phase = WatchdogOwnerPhase::Unavailable;
+            self.fail_watchdog(WatchdogFailure::WatchdogOwnerPhaseUnknown);
+            return;
+        };
+        self.watchdog_owner_phase = owner_phase;
         let watchdog_failure = sample_failure(sample);
         if watchdog_failure != WatchdogFailure::None {
             self.fail_watchdog(watchdog_failure);
@@ -367,6 +377,12 @@ impl NetworkAccumulator {
         transport: NetworkTransport,
         sample: &SystemInfoWire,
     ) {
+        let Ok(owner_phase) = sample_owner_phase(sample) else {
+            self.watchdog_owner_phase = WatchdogOwnerPhase::Unavailable;
+            self.fail_watchdog(WatchdogFailure::WatchdogOwnerPhaseUnknown);
+            return;
+        };
+        self.watchdog_owner_phase = owner_phase;
         let watchdog_failure = sample_failure(sample);
         if watchdog_failure != WatchdogFailure::None {
             self.fail_watchdog(watchdog_failure);
@@ -436,7 +452,7 @@ impl NetworkAccumulator {
             && covered_window_count == REQUIRED_WINDOWS
             && serial.terminal_consumed;
         CampaignNetworkEvidence {
-            schema: "mining-campaign-network-continuity-v6",
+            schema: "mining-campaign-network-continuity-v7",
             status: if accepted { "accepted" } else { "failed" },
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count,
@@ -464,6 +480,7 @@ impl NetworkAccumulator {
             safety_valid: self.safety_valid,
             watchdog_valid: self.watchdog_valid,
             watchdog_failure: self.watchdog_failure.label(),
+            watchdog_owner_phase: self.watchdog_owner_phase.label(),
             work_renewal_valid: self
                 .windows
                 .iter()

@@ -46,3 +46,35 @@
   implementation begins.
 - Blocker or next safe action: Commit and push the plan/task checkpoint, then
   implement only its software-only STAT-001 scope.
+
+## 2026-08-17T02:53:00Z | implementation verification
+
+- Source commit: `b4a75ef3d0b1211befbe0d6c8cdb0ac848948f11`
+- Actions: Added the closed lock-free owner-phase observation; projected it
+  through runtime health, API/WebSocket wire data, retained text, v7 network
+  evidence, v13 result evidence, and sealed watchdog diagnostics. Coalesced
+  campaign-status serialization/publication to one second while preserving
+  first and terminal output, then extracted the pure schedule into its own
+  bounded module during the simplification pass.
+- Verification: Focused core, API, firmware campaign-status/source-ownership,
+  flash network/watchdog, automation real-child, contract, and parity-guard
+  tests pass. The final ordered run passed `just verify-redaction`, `just
+  verify-reference`, `just package`, `cargo fmt --all`, `cargo clippy
+  --all-targets --all-features -- -D warnings`, `cargo build --all-targets
+  --all-features`, `cargo test --all-features`, `bun
+  scripts/bright-builds-check.ts all`, and `just test`. The first parity
+  rendering reached the known transient `os error 35`; the single bounded
+  `just parity && just parity-progress` retry passed with no validation errors
+  and unchanged `76/94` active-row progress (`80.9%`).
+- Evidence: The ten-minute 20-ms event-storm regression emits 601 markers from
+  30,001 events, with first marker at 0 ms, last at 600,000 ms, and every gap
+  at most 1,000 ms. Terminal publication bypasses cadence once; clock
+  regression and deadline overflow fail closed. Unknown owner phase resets to
+  `unavailable` even after a prior valid sample, and unsealed or invalid-phase
+  watchdog failures publish no discriminator.
+- Outcome: Software correction is verified at unit/workflow/package scope;
+  checklist and progress remain unchanged because no live twenty-window
+  hashrate evidence was authorized or collected.
+- Blocker or next safe action: Review the complete diff, commit and push the
+  implementation as `SOURCE_COMMIT`, then write and validate the required
+  non-verifying `CLOSURE.md`.

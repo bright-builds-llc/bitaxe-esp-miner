@@ -72,6 +72,58 @@ fn health_and_watchdog_vocabulary_has_exact_serialized_spellings() {
 }
 
 #[test]
+fn task_watchdog_owner_phases_have_exact_closed_spellings_and_encoding() {
+    // Arrange
+    let cases = [
+        (TaskWatchdogOwnerPhase::Unavailable, "unavailable"),
+        (TaskWatchdogOwnerPhase::Subscribing, "subscribing"),
+        (TaskWatchdogOwnerPhase::LoopStart, "loop_start"),
+        (TaskWatchdogOwnerPhase::WaitingInbox, "waiting_inbox"),
+        (TaskWatchdogOwnerPhase::HandlingInbox, "handling_inbox"),
+        (
+            TaskWatchdogOwnerPhase::HandlingObservation,
+            "handling_observation",
+        ),
+        (
+            TaskWatchdogOwnerPhase::HandlingReadiness,
+            "handling_readiness",
+        ),
+        (
+            TaskWatchdogOwnerPhase::PublishingCampaignStatus,
+            "publishing_campaign_status",
+        ),
+        (
+            TaskWatchdogOwnerPhase::ServicingHashrate,
+            "servicing_hashrate",
+        ),
+        (TaskWatchdogOwnerPhase::Shutdown, "shutdown"),
+    ];
+
+    // Act / Assert
+    for (phase, expected) in cases {
+        assert_eq!(phase.as_str(), expected);
+        assert_eq!(TaskWatchdogOwnerPhase::from_u8(phase as u8), phase);
+    }
+    assert_eq!(
+        TaskWatchdogOwnerPhase::from_u8(u8::MAX),
+        TaskWatchdogOwnerPhase::Unavailable
+    );
+}
+
+#[test]
+fn runtime_health_snapshot_accepts_independent_owner_phase() {
+    // Arrange / Act
+    let snapshot = RuntimeHealthSnapshot::fixture_unavailable()
+        .with_task_watchdog_owner_phase(TaskWatchdogOwnerPhase::WaitingInbox);
+
+    // Assert
+    assert_eq!(
+        snapshot.task_watchdog_owner_phase(),
+        TaskWatchdogOwnerPhase::WaitingInbox
+    );
+}
+
+#[test]
 fn checkpoint_category_rejects_empty_non_ascii_and_overlong_text() {
     // Arrange
     let overlong = "x".repeat(CHECKPOINT_CATEGORY_MAX_ASCII_BYTES + 1);

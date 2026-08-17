@@ -1,5 +1,6 @@
 use super::owner_progress::drive_feedback;
 use super::*;
+use bitaxe_core::runtime_health::TaskWatchdogOwnerPhase;
 
 pub(super) fn run_owner(
     receiver: Receiver<OwnerInboxMessage>,
@@ -7,12 +8,14 @@ pub(super) fn run_owner(
 ) {
     let started_at = Instant::now();
     let mut session = ProductionMiningSession::new();
+    record_owner_phase(TaskWatchdogOwnerPhase::Subscribing);
     let mut task_watchdog =
         watchdog::ProductionTaskWatchdog::subscribe(crate::runtime_uptime::millis());
     let mut readiness_schedule = PeriodicDeadline::new(0, PRODUCTION_REREAD_CADENCE_MS)
         .expect("production reread cadence is nonzero");
 
     loop {
+        record_owner_phase(TaskWatchdogOwnerPhase::LoopStart);
         task_watchdog.feed(crate::runtime_uptime::millis());
         let before_wait_ms = elapsed_millis(started_at);
         let wait = Duration::from_millis(
@@ -20,6 +23,7 @@ pub(super) fn run_owner(
                 .next_deadline_ms()
                 .saturating_sub(before_wait_ms),
         );
+        record_owner_phase(TaskWatchdogOwnerPhase::WaitingInbox);
         let maybe_message = match receiver.recv_timeout(wait) {
             Ok(message) => Some(message),
             Err(mpsc::RecvTimeoutError::Timeout) => None,
@@ -43,6 +47,7 @@ pub(super) fn run_owner(
         );
         let pending_observations_changed = notifications::take_pending_observations_changed();
         if let Some(message) = maybe_message {
+            record_owner_phase(TaskWatchdogOwnerPhase::HandlingInbox);
             let snapshot = session.snapshot();
             let event = adapter.event_from_inbox(message, now_ms, &snapshot);
             drive_session(
@@ -54,6 +59,7 @@ pub(super) fn run_owner(
             );
         }
         if pending_observations_changed && !message_is_observation_wakeup && !shutdown_requested {
+            record_owner_phase(TaskWatchdogOwnerPhase::HandlingObservation);
             let observation_now_ms = elapsed_millis(started_at);
             let snapshot = session.snapshot();
             let event = adapter.wake_event(
@@ -71,6 +77,7 @@ pub(super) fn run_owner(
             );
         }
         if readiness_schedule.is_due(now_ms) {
+            record_owner_phase(TaskWatchdogOwnerPhase::HandlingReadiness);
             if !message_reads_readiness {
                 let snapshot = session.snapshot();
                 let event = adapter.wake_event(None, now_ms, &snapshot, false);
@@ -99,17 +106,47 @@ pub(super) fn run_owner(
                     event,
                     now_ms,
                 );
-                adapter.publish_campaign_status(&session.snapshot(), now_ms);
+                record_owner_phase(TaskWatchdogOwnerPhase::PublishingCampaignStatus);
+                let _ = adapter.publish_campaign_status(&session.snapshot(), now_ms);
+                record_owner_phase(TaskWatchdogOwnerPhase::Shutdown);
                 return;
             }
         }
-        adapter.publish_campaign_status(&session.snapshot(), now_ms);
+        record_owner_phase(TaskWatchdogOwnerPhase::PublishingCampaignStatus);
+        if let Err(error) = adapter.publish_campaign_status(&session.snapshot(), now_ms) {
+            log::error!(
+                "production_mining_session=fail_closed reason=campaign_status_schedule_{}",
+                error.label()
+            );
+            record_owner_phase(TaskWatchdogOwnerPhase::HandlingInbox);
+            let event = adapter.wake_event(
+                Some(ProductionSessionWakeup::ShutdownRequested),
+                now_ms,
+                &session.snapshot(),
+                false,
+            );
+            drive_session(
+                &mut session,
+                &mut adapter,
+                &mut task_watchdog,
+                event,
+                now_ms,
+            );
+            record_owner_phase(TaskWatchdogOwnerPhase::Shutdown);
+            return;
+        }
         task_watchdog.feed(crate::runtime_uptime::millis());
+        record_owner_phase(TaskWatchdogOwnerPhase::ServicingHashrate);
         adapter.service_hashrate_monitor(&session.snapshot(), now_ms);
         if shutdown_requested {
+            record_owner_phase(TaskWatchdogOwnerPhase::Shutdown);
             return;
         }
     }
+}
+
+fn record_owner_phase(phase: TaskWatchdogOwnerPhase) {
+    crate::task_watchdog_observation::record_owner_phase(phase);
 }
 
 fn drive_session(

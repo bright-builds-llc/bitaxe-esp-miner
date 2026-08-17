@@ -29,4 +29,5 @@ pub(crate) fn collect(current_monotonic_millis: u64) -> RuntimeHealthSnapshot {
             task_watchdog_timeout_millis(),
         ),
     )
+    .with_task_watchdog_owner_phase(crate::task_watchdog_observation::owner_phase())
 }

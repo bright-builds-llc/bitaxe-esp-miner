@@ -45,8 +45,10 @@ type RuntimeAttestationParseEvidence = RuntimeAttestationParseDiagnostic & Reado
   runtime_attestation_parse_failure_counts: RuntimeAttestationParseFailureCounts;
 }>;
 type WatchdogFailure = typeof watchdogFailures[number];
+type WatchdogOwnerPhase = typeof watchdogOwnerPhases[number];
 type WatchdogFailureDiagnostic = Readonly<{
   watchdog_failure: WatchdogFailure;
+  watchdog_owner_phase: WatchdogOwnerPhase;
 }>;
 type CampaignFailureDiagnostic = RuntimeAttestationParseDiagnostic
   & Partial<WatchdogFailureDiagnostic>;
@@ -88,10 +90,23 @@ const watchdogFailures = [
   "watchdog_feed_sequence_missing",
   "watchdog_feed_age_missing",
   "watchdog_feed_stale",
+  "watchdog_owner_phase_unknown",
   "http_checkpoint_not_advanced",
   "http_feed_not_advanced",
   "websocket_checkpoint_not_advanced",
   "websocket_feed_not_advanced",
+] as const;
+const watchdogOwnerPhases = [
+  "unavailable",
+  "subscribing",
+  "loop_start",
+  "waiting_inbox",
+  "handling_inbox",
+  "handling_observation",
+  "handling_readiness",
+  "publishing_campaign_status",
+  "servicing_hashrate",
+  "shutdown",
 ] as const;
 const expectedAttemptFiles = [
   "campaign-diagnostics.private.json",
@@ -135,6 +150,18 @@ const sourceFragments = new Map<string, readonly string[]>([
     "emit(AsicWorkerEvent::RegisterRead {",
   ]],
   ["firmware/bitaxe/src/runtime_snapshot.rs", ["publish_hashrate_snapshot"]],
+  ["firmware/bitaxe/src/production_mining_session/owner_loop.rs", [
+    "if let Err(error) = adapter.publish_campaign_status",
+    "record_owner_phase(TaskWatchdogOwnerPhase::ServicingHashrate)",
+  ]],
+  ["firmware/bitaxe/src/production_mining_session/campaign_status/publication.rs", [
+    "CAMPAIGN_STATUS_PUBLICATION_INTERVAL_MS: u64 = 1_000",
+    "pub(crate) struct CampaignStatusPublicationSchedule {",
+  ]],
+  ["firmware/bitaxe/src/task_watchdog_observation.rs", [
+    "static OWNER_PHASE: AtomicU8",
+    "record_owner_phase",
+  ]],
   ["crates/bitaxe-safety/src/power.rs", [
     "pub const INPUT_VOLTAGE_NOMINAL_VOLTS: f64 = 5.0;",
     "pub const INPUT_VOLTAGE_MARGIN_RATIO: f64 = 0.10;",
@@ -269,6 +296,14 @@ function watchdogFailure(value: JsonObject): WatchdogFailure {
   return failureValue as WatchdogFailure;
 }
 
+function watchdogOwnerPhase(value: JsonObject): WatchdogOwnerPhase {
+  const phase = requiredString(value, "watchdog_owner_phase", "campaign result");
+  if (!watchdogOwnerPhases.includes(phase as WatchdogOwnerPhase)) {
+    throw failure("evidence_invalid", "campaign watchdog owner phase is invalid");
+  }
+  return phase as WatchdogOwnerPhase;
+}
+
 async function requireAbsent(candidate: string, context: string): Promise<void> {
   try {
     await stat(candidate);
@@ -329,7 +364,7 @@ async function sealedCampaignFailureDiagnostic(
     const result = await readJson(resultPath, "campaign result");
     const seal = (await readFile(sealPath, "utf8")).trim();
     if (seal !== sha256(result.document)
-      || requiredString(result.value, "schema", "campaign result") !== "mining-campaign-result-v12"
+      || requiredString(result.value, "schema", "campaign result") !== "mining-campaign-result-v13"
       || requiredString(result.value, "status", "campaign result") !== "failed") {
       return undefined;
     }
@@ -341,6 +376,7 @@ async function sealedCampaignFailureDiagnostic(
       return {
         runtime_attestation_parse_failure: diagnostic.runtime_attestation_parse_failure,
         watchdog_failure: watchdogDiagnostic,
+        watchdog_owner_phase: watchdogOwnerPhase(result.value),
       };
     }
     if (watchdogDiagnostic !== "none") return undefined;
@@ -476,7 +512,7 @@ export async function captureHashrateMonitorEvidence(
     }
     const parseDiagnostic = runtimeAttestationParseDiagnostic(resultFile.value);
     const resultWatchdogFailure = watchdogFailure(resultFile.value);
-    if (requiredString(resultFile.value, "schema", "campaign result") !== "mining-campaign-result-v12"
+    if (requiredString(resultFile.value, "schema", "campaign result") !== "mining-campaign-result-v13"
       || requiredString(resultFile.value, "status", "campaign result") !== "accepted"
       || requiredString(resultFile.value, "stage", "campaign result") !== "live-share"
       || requiredString(resultFile.value, "profile", "campaign result") !== "conservative"
@@ -488,11 +524,13 @@ export async function captureHashrateMonitorEvidence(
       || Object.values(parseDiagnostic.runtime_attestation_parse_failure_counts)
         .some((count) => count !== 0)
       || requiredString(networkFile.value, "schema", "campaign network evidence")
-        !== "mining-campaign-network-continuity-v6"
+        !== "mining-campaign-network-continuity-v7"
       || requiredString(networkFile.value, "status", "campaign network evidence") !== "accepted") {
       throw failure("evidence_invalid", "campaign acceptance boundary is incomplete");
     }
+    const resultWatchdogOwnerPhase = watchdogOwnerPhase(resultFile.value);
     if (resultWatchdogFailure !== "none"
+      || watchdogOwnerPhase(networkFile.value) !== resultWatchdogOwnerPhase
       || watchdogFailure(networkFile.value) !== resultWatchdogFailure) {
       throw failure("evidence_invalid", "campaign watchdog acceptance boundary is invalid");
     }

@@ -81,6 +81,58 @@ pub enum TaskWatchdogParticipation {
     Unavailable,
 }
 
+/// Closed phase vocabulary for the task-watchdog-owned production session loop.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum TaskWatchdogOwnerPhase {
+    Unavailable = 0,
+    Subscribing = 1,
+    LoopStart = 2,
+    WaitingInbox = 3,
+    HandlingInbox = 4,
+    HandlingObservation = 5,
+    HandlingReadiness = 6,
+    PublishingCampaignStatus = 7,
+    ServicingHashrate = 8,
+    Shutdown = 9,
+}
+
+impl TaskWatchdogOwnerPhase {
+    /// Returns the exact serialized spelling.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Unavailable => "unavailable",
+            Self::Subscribing => "subscribing",
+            Self::LoopStart => "loop_start",
+            Self::WaitingInbox => "waiting_inbox",
+            Self::HandlingInbox => "handling_inbox",
+            Self::HandlingObservation => "handling_observation",
+            Self::HandlingReadiness => "handling_readiness",
+            Self::PublishingCampaignStatus => "publishing_campaign_status",
+            Self::ServicingHashrate => "servicing_hashrate",
+            Self::Shutdown => "shutdown",
+        }
+    }
+
+    /// Decodes the lock-free firmware representation without accepting free text.
+    #[must_use]
+    pub const fn from_u8(value: u8) -> Self {
+        match value {
+            1 => Self::Subscribing,
+            2 => Self::LoopStart,
+            3 => Self::WaitingInbox,
+            4 => Self::HandlingInbox,
+            5 => Self::HandlingObservation,
+            6 => Self::HandlingReadiness,
+            7 => Self::PublishingCampaignStatus,
+            8 => Self::ServicingHashrate,
+            9 => Self::Shutdown,
+            _ => Self::Unavailable,
+        }
+    }
+}
+
 /// One closed, producer-owned observation of ESP task-watchdog participation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TaskWatchdogObservation {
@@ -280,6 +332,7 @@ pub struct RuntimeHealthSnapshot {
     maybe_task_watchdog_reason: Option<&'static str>,
     maybe_task_watchdog_feed_sequence: Option<u64>,
     maybe_task_watchdog_feed_age_millis: Option<u64>,
+    task_watchdog_owner_phase: TaskWatchdogOwnerPhase,
 }
 
 impl RuntimeHealthSnapshot {
@@ -318,7 +371,15 @@ impl RuntimeHealthSnapshot {
             maybe_task_watchdog_reason: Some(watchdog.reason),
             maybe_task_watchdog_feed_sequence: watchdog.maybe_sequence,
             maybe_task_watchdog_feed_age_millis: watchdog.maybe_age_millis,
+            task_watchdog_owner_phase: TaskWatchdogOwnerPhase::Unavailable,
         }
+    }
+
+    /// Attaches the independently observed owner-loop phase.
+    #[must_use]
+    pub const fn with_task_watchdog_owner_phase(mut self, phase: TaskWatchdogOwnerPhase) -> Self {
+        self.task_watchdog_owner_phase = phase;
+        self
     }
 
     /// Returns an observation-only fixture with no authenticated health facts.
@@ -382,6 +443,11 @@ impl RuntimeHealthSnapshot {
     #[must_use]
     pub const fn maybe_task_watchdog_feed_age_millis(&self) -> Option<u64> {
         self.maybe_task_watchdog_feed_age_millis
+    }
+
+    #[must_use]
+    pub const fn task_watchdog_owner_phase(&self) -> TaskWatchdogOwnerPhase {
+        self.task_watchdog_owner_phase
     }
 }
 

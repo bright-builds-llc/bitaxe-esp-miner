@@ -7,7 +7,7 @@ use serde_json::{json, Value};
 
 use bitaxe_core::runtime_health::{
     CheckpointObservation, PassiveSelfTestState, RuntimeHealthSnapshot, RuntimeHealthTiming,
-    TaskWatchdogObservation,
+    TaskWatchdogObservation, TaskWatchdogOwnerPhase,
 };
 
 use super::{require_wire_keys, retained_runtime_health_record};
@@ -244,7 +244,8 @@ fn runtime_health_serializes_exact_passive_values() {
         None,
         Some(TaskWatchdogObservation::fed(11, 1_050)),
         RuntimeHealthTiming::new(1_100, 500, 5_000),
-    );
+    )
+    .with_task_watchdog_owner_phase(TaskWatchdogOwnerPhase::WaitingInbox);
 
     // Act
     let value = serde_json::to_value(SystemInfoWire::from_snapshot(&snapshot))
@@ -267,6 +268,10 @@ fn runtime_health_serializes_exact_passive_values() {
     assert_eq!(value["runtimeHealth"]["taskWatchdogReason"], "feed_fresh");
     assert_eq!(value["runtimeHealth"]["taskWatchdogFeedSequence"], 11);
     assert_eq!(value["runtimeHealth"]["taskWatchdogFeedAgeMillis"], 50);
+    assert_eq!(
+        value["runtimeHealth"]["taskWatchdogOwnerPhase"],
+        "waiting_inbox"
+    );
 }
 
 #[test]
@@ -281,7 +286,8 @@ fn retained_runtime_health_record_is_correlated_and_redacted() {
         None,
         Some(TaskWatchdogObservation::fed(11, 1_050)),
         RuntimeHealthTiming::new(1_100, 500, 5_000),
-    );
+    )
+    .with_task_watchdog_owner_phase(TaskWatchdogOwnerPhase::WaitingInbox);
     let identity = ApiSnapshot::safe_ultra_205().operator_snapshot_identity;
 
     // Act
@@ -291,7 +297,7 @@ fn retained_runtime_health_record_is_correlated_and_redacted() {
     // Assert
     assert_eq!(
         record,
-        "runtime_health boot_session=00000000000000000000000000000000 operator_snapshot_revision=1 self_test=idle supervisor=available checkpoint_category=telemetry checkpoint_sequence=9 checkpoint_age_millis=100 checkpoint_health=healthy task_watchdog_participation=participating task_watchdog_reason=feed_fresh task_watchdog_feed_sequence=11 task_watchdog_feed_age_millis=50 redacted=true"
+        "runtime_health boot_session=00000000000000000000000000000000 operator_snapshot_revision=1 self_test=idle supervisor=available checkpoint_category=telemetry checkpoint_sequence=9 checkpoint_age_millis=100 checkpoint_health=healthy task_watchdog_participation=participating task_watchdog_reason=feed_fresh task_watchdog_feed_sequence=11 task_watchdog_feed_age_millis=50 task_watchdog_owner_phase=waiting_inbox redacted=true"
     );
     for prohibited in [
         "credential",

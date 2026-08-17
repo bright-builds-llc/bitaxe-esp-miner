@@ -308,6 +308,7 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
         "task_watchdog_reason={task_watchdog_reason}",
         "task_watchdog_feed_sequence={task_watchdog_feed_sequence}",
         "task_watchdog_feed_age_millis={task_watchdog_feed_age_millis}",
+        "task_watchdog_owner_phase={}",
         "redacted=true",
     ] {
         assert!(
@@ -327,6 +328,7 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
         "taskWatchdogReason",
         "taskWatchdogFeedSequence",
         "taskWatchdogFeedAgeMillis",
+        "taskWatchdogOwnerPhase",
     ] {
         assert!(API_WIRE_SOURCE.contains(field), "missing API field {field}");
     }
@@ -353,9 +355,7 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
             "fault",
         ] {
             assert!(
-                !source
-                    .to_ascii_lowercase()
-                    .contains(&forbidden.to_ascii_lowercase()),
+                !contains_prohibited_token(source, forbidden),
                 "passive runtime-health source contains prohibited token {forbidden}"
             );
         }
@@ -390,6 +390,17 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
             "supervisor checkpoint adapter contains prohibited effect {forbidden}"
         );
     }
+}
+
+fn contains_prohibited_token(source: &str, forbidden: &str) -> bool {
+    let source = source.to_ascii_lowercase();
+    let forbidden = forbidden.to_ascii_lowercase();
+    if forbidden.bytes().all(|byte| byte.is_ascii_alphanumeric()) {
+        return source
+            .split(|character: char| !character.is_ascii_alphanumeric())
+            .any(|token| token == forbidden);
+    }
+    source.contains(&forbidden)
 }
 
 #[test]

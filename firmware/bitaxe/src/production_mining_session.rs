@@ -27,6 +27,9 @@ use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
 use self::asic_worker::{AsicWorker, AsicWorkerCommand, AsicWorkerEvent};
+use self::campaign_status::publication::{
+    CampaignStatusPublicationError, CampaignStatusPublicationSchedule,
+};
 use self::campaign_status::{CampaignObservationFreshness, CampaignStatusTracker};
 use self::hashrate::ProductionHashrateMonitor;
 use self::owner_loop::run_owner;
@@ -72,6 +75,7 @@ struct OrdinaryEspProductionSessionAdapter {
     asic: AsicWorker,
     hashrate: ProductionHashrateMonitor,
     maybe_campaign_status: Option<CampaignStatusTracker>,
+    campaign_status_publication: CampaignStatusPublicationSchedule,
     maybe_terminal_pool_persisted: Option<bool>,
     protocol_gate: crate::settings_adapter::ProductionProtocolGateDecision,
     readiness_trace: ReadinessTransitionTracker,
@@ -121,6 +125,7 @@ impl OrdinaryEspProductionSessionAdapter {
             asic,
             hashrate: ProductionHashrateMonitor::new(),
             maybe_campaign_status,
+            campaign_status_publication: CampaignStatusPublicationSchedule::new(),
             maybe_terminal_pool_persisted: None,
             protocol_gate:
                 crate::settings_adapter::ProductionProtocolGateDecision::PartitionOwnerUnavailable,
@@ -511,9 +516,9 @@ impl OrdinaryEspProductionSessionAdapter {
         &mut self,
         snapshot: &bitaxe_stratum::v1::production_session::ProductionSessionSnapshot,
         now_ms: u64,
-    ) {
+    ) -> Result<(), CampaignStatusPublicationError> {
         if self.maybe_campaign_status.is_none() {
-            return;
+            return Ok(());
         }
         if snapshot.campaign_state
             == bitaxe_stratum::v1::production_session::MiningCampaignState::Consumed
@@ -526,12 +531,20 @@ impl OrdinaryEspProductionSessionAdapter {
         }
         let pool_config_persisted = self.maybe_terminal_pool_persisted.unwrap_or(false);
         let Some(status) = self.maybe_campaign_status.as_ref() else {
-            return;
+            return Ok(());
         };
         let Some(readiness_transition) = self.readiness_trace.evidence() else {
             log::error!("mining_campaign_status=withheld category=readiness_transition_missing");
-            return;
+            return Ok(());
         };
+        let terminal = snapshot.campaign_state
+            == bitaxe_stratum::v1::production_session::MiningCampaignState::Consumed;
+        if !self
+            .campaign_status_publication
+            .should_publish(now_ms, terminal)?
+        {
+            return Ok(());
+        }
         let observations = crate::safety_adapter::observation_snapshot();
         let safety_now = now();
         let safety_fresh = observations.is_ultra_205_mining_safe_at(safety_now);
@@ -554,6 +567,7 @@ impl OrdinaryEspProductionSessionAdapter {
             readiness_transition,
         );
         crate::info_retained(&format!("mining_campaign_status={marker}"));
+        Ok(())
     }
 
     fn service_hashrate_monitor(&mut self, snapshot: &ProductionSessionSnapshot, now_ms: u64) {
