@@ -1480,7 +1480,7 @@ Owner-phase diagnostic and publication-cadence correction plan:
 - [x] Bound synchronous campaign-status retained/serial publication to one
       second while preserving per-event state tracking, first/terminal markers,
       safety, feedback, hashrate service, and maximum-gap requirements.
-- [ ] Prove 600-second high-event-rate cadence bounds, prompt terminal output,
+- [x] Prove 600-second high-event-rate cadence bounds, prompt terminal output,
       v13/v7 schema/seal behavior, source/evaluator binding, redaction, and all
       mandatory gates; push a software-only closure without transition.
 
@@ -1492,6 +1492,13 @@ actuate, update, erase, inject faults, manipulate power, use direct UART, or
 touch electrical interfaces. Attempt-010 remains consumed and attempt-011 is
 not authorized. STAT-001 remains `implemented`; checklist/progress are
 unchanged.
+
+Completion review: pushed implementation `edef059b` adds the phase
+discriminator, cadence correction, v13/v7 sealed evidence, and all required
+regressions without hardware access or a parity transition. Focused and full
+mandatory gates pass. Residual risk is live-only: this correction has not yet
+completed a detector-gated twenty-window campaign. A future attempt-011 needs
+its own exact-source immutable contract; this closure does not authorize it.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
