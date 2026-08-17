@@ -1575,6 +1575,27 @@ subtraction. Do not start attempt-012. A fresh software-only immutable plan
 must add a controlled interleaving regression and make evaluation time no
 earlier than the copied observations while preserving every existing guard.
 
+Runtime-health snapshot-ordering correction plan:
+`docs/parity/work-plans/20260817T035514Z-STAT-001/PLAN.md`
+
+- [ ] Move runtime-health evaluation-time sampling after copied supervisor,
+      watchdog, and owner-phase observations; remove stale caller time input.
+- [ ] Prove the exact concurrent-feed interleaving, future-feed rejection,
+      post-copy zero-age freshness, production source ordering, and caller
+      ownership with behavior and source regressions.
+- [ ] Bind runtime-health core/adapter sources into the hashrate evaluator
+      inventory and run every focused/mandatory gate; push a software-only
+      closure without transition or hardware.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not access protected
+attempts, credentials, detector/device/network runtime, private values, or
+public projection candidates. Do not detect, flash, reset, monitor, mine,
+actuate, update, erase, inject faults, manipulate power, use direct UART, or
+touch electrical interfaces. Attempt-011 remains consumed and attempt-012 is
+not authorized. STAT-001 remains `implemented`; checklist/progress are
+unchanged.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
