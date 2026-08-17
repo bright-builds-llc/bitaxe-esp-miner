@@ -122,3 +122,23 @@
 - Blocker or next safe action: Commit this evidence as `SOURCE_COMMIT`, then
   transition only REL-003 to verified, synchronize progress, archive the task,
   run final gates, and push.
+
+## 2026-08-17T01:58:10Z | verified transition and archival
+
+- Source commit: `fa8f06a73ed708a6036e91e61fde7516a6918267`
+- Actions: Transitioned only REL-003 under
+  `20260817T015623Z-REL-003`, synchronized progress from the exact evidence
+  source commit, and moved the completed native task block to
+  `TASKS.archive.md`.
+- Verification: The transition validator accepted the plan/result hashes,
+  complete evidence vocabulary, and positive rollback, recovery, large erase,
+  failed update, interrupted-update, release-gate, provenance, and package-
+  workflow terms.
+- Evidence: REL-003 is `verified` with
+  `workflow,api-compare,hardware-smoke,hardware-regression,release-gate`;
+  progress appended at `verified=76 active=94 completion=80.9%`; the stable
+  task ID exists exactly once across active and archive trackers.
+- Outcome: REL-003 verified finalization is ready for the mandatory closed-tree
+  gate and push.
+- Blocker or next safe action: Run every final gate in order, review the diff,
+  commit and push finalization, then confirm a clean selector with no open plan.

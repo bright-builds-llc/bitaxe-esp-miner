@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260817T015623Z-REL-003",
+  "predecessor_sha256": "2372d9965ddace3bbefb3f8d907ed44f2badd27d1c197484e38e05b76ef7014f",
+  "result_sha256": "7b1549abe3dc09309654111990f23760b9f5bd52d0fc2ec4e8f9d0900eb5d43d",
+  "row_id": "REL-003",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260817T005227Z-REL-003/PLAN.md",
+  "plan_sha256": "042e6e11fa69c44c4cde59c680755ce757193de74cb5a7910d763af819b7a6df",
+  "result_path": "docs/parity/work-plans/20260817T005227Z-REL-003/RESULT.md",
+  "result_document_sha256": "19b4962f9eb0e21ea730ed3f18144c95a3fa1c755b46f57dfdf61bb463852c63",
+  "before_rust_owned_target": "`MODULE.bazel`, `firmware/bitaxe/BUILD.bazel`, `tools/xtask/src/package_manifest.rs`, `tools/flash/src/commands/flash.rs`, `tools/flash/src/package.rs`, `tools/parity`, `docs/release/ultra-205.md`",
+  "after_rust_owned_target": "`MODULE.bazel`, `firmware/bitaxe/BUILD.bazel`, `tools/xtask/src/package_manifest.rs`, `tools/flash/src/commands/flash.rs`, `tools/flash/src/package.rs`, `tools/parity`, `docs/release/ultra-205.md`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "workflow,api-compare,hardware-smoke",
+  "after_evidence": "workflow,api-compare,hardware-smoke,hardware-regression,release-gate",
+  "before_notes": "Phase 18 final evidence records release-gate, package workflow, detector, wrapper-owned factory flash-monitor, sanitized target lock, invalid image rejection, valid upload response, and redaction evidence for source commit `22d02f8e97928f1ec29360552179380b92582e6a`. Phase 19 final evidence in `docs/parity/evidence/phase-19-recovery-regression-and-otawww-evidence/summary.md` records package/release-gate, detector, flash-monitor, blocked target-lock, recovery-regression pending status, OTAWWW REL-03 gap, and redaction evidence for source commit `6842d7a6d3d4fc64d93900a9847c8a0b97edc16d`. `docs/parity/evidence/phase-18-firmware-ota-and-rollback-evidence/summary.md` and the Phase 19 summary preserve valid OTA, post-OTA boot-validation, selected partition, rollback, destructive rollback, failed-update recovery beyond invalid rejection, large erase, interrupted-update, whole-`www` OTAWWW, mining, safety telemetry, and soak as below verified or not claimed. REL-03 OTAWWW remains an explicit gap.",
+  "after_notes": "The [REL-003 result](work-plans/20260817T005227Z-REL-003/RESULT.md) and [large-erase projection](evidence/rel003-large-erase/release-recovery-projection.json) bind exact clean source 70493a51, release-gate provenance and package workflow, one detector-admitted Ultra 205, one completed large erase, exact factory recovery, owner Wi-Fi plus safe defaults, trusted runtime identity, SPIFFS readiness, disabled mining/control, cleanup, protected modes, independent validation, and redaction. The verified [REL-002 result](work-plans/20260811T231354Z-REL-002/RESULT.md) supplies reset-aborted failed update and interrupted-update evidence, native rollback, exact-build recovery, and restoration. OTAWWW, power-loss interruption, eFuse anti-rollback, repeated erase, signing, other boards, mining, controls, direct UART, and electrical work remain separate non-claims."
+}

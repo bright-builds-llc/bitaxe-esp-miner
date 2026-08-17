@@ -9439,3 +9439,71 @@ Residual risks: Physical telemetry accuracy, browser charts, live full-horizon
 retention, mining, ASIC work, hardware controls, updates, recovery behavior,
 other boards, and release readiness remain non-claims. Legacy statistics
 `voltage` and `current` wire fields remain millivolts and milliamps.
+
+### task-parity-rel003-large-erase-recovery | 2026-08-17 | Verify release-image large-erase recovery
+
+- [x] Add a plan-bound repo-owned large-erase command and typed private-first
+      release-recovery evidence workflow with exact package admission,
+      supervised USB ownership, safe restore, recovery precedence, independent
+      validation, and real-process regressions.
+- [x] Run every focused and mandatory software, firmware, package, release-
+      gate, privacy, reference, immutable-plan, and exact-source gate; commit
+      and push before device access.
+- [x] Run only the frozen detector and sole conditional attempt-001 capture;
+      jointly admit prior accepted release/rollback evidence and promote
+      REL-003 only if complete large-erase restoration proof passes.
+
+Plan: `docs/parity/work-plans/20260817T005227Z-REL-003/PLAN.md`.
+
+Authorization and exact effects: after the plan and implementation are clean,
+fully gated, committed, pushed, and repackaged from exact source, run only the
+plan's one protected detector and one conditional
+`just capture-release-recovery-evidence` attempt-001 command. The capture may
+erase the complete flash of the sole detector-admitted Ultra 205 exactly once,
+then restore the exact factory package plus an opaque owner Wi-Fi NVS seed with
+`mineonboot=false` and monitor the restored passive safe state. Large erase
+intentionally removes all onboard NVS, OTA state, applications, static assets,
+coredump data, pool settings, hostname, theme, and operator tuning. Factory
+content and Wi-Fi connectivity are restored; all other settings return to
+package defaults. Ignored local Wi-Fi/pool files remain untouched and
+recoverable, but pool values are not reseeded and mining stays disabled.
+
+Recovery, safety, retry, and prohibited effects: if the primary restore fails
+before flash transfer completes, one recovery-only exact factory flash with the
+same Wi-Fi seed is allowed. If transfer completes but runtime proof is absent,
+do not reflash unchanged. Preserve the earliest failure through cleanup and
+release every owned USB/process resource. Attempt-001 is consumed when capture
+starts; never reuse it or erase again under this task. No OTAWWW, interrupted
+power, eFuse action, arbitrary raw write, mining, pool connection, voltage/
+frequency/fan/thermal/power control, physical power action, direct UART, or
+pin/pad/header/GPIO/probe/jumper/solder/signal manipulation is authorized.
+
+Evidence and promotion: use only fresh ignored mode-`0700`
+`scratch/rel003-large-erase/wrapper-001` and `attempt-001` roots with mode-
+`0600` descendants. Wi-Fi contents, device/USB/network/process identities,
+origins, hostnames, settings, commands, logs, PIDs, traces, and raw firmware
+bytes remain private. The public projection may contain only public
+provenance, cryptographic identities, closed categories, bounded counts, and
+safe booleans. REL-003 promotion additionally requires the already accepted
+Phase 18/19 release evidence and verified REL-002 interrupted-update/rollback
+result. Any incomplete fact withholds promotion and leaves REL-003
+`implemented`.
+
+Completion review: implementation commit
+`70493a51249df2f82eb5b046be7dc95b137c7e97` fixed canonical package artifact
+paths and added the task-bound typed recovery workflow. The exact clean package
+passed the release gate. The sole detector and attempt-001 then completed one
+full erase, exact factory and owner-Wi-Fi/default-NVS restore, trusted exact-
+package runtime proof, SPIFFS readiness, `mineonboot=false`, passive safe
+state, cleanup, protected modes, independent validation, and redaction without
+a recovery reflash. The accepted Phase 18/19 and verified REL-002 artifacts
+supply the release-gate, provenance, package workflow, failed/interrupted
+update, rollback, and recovery terms; the new projection supplies the former
+large-erase gap. See
+`docs/parity/work-plans/20260817T005227Z-REL-003/RESULT.md`.
+
+Residual risks: onboard settings were intentionally reset to owner Wi-Fi plus
+package defaults; pool values remain local and were not reseeded. OTAWWW,
+power-loss interruption, eFuse anti-rollback, repeated erase, release signing,
+factory provisioning scale, other boards, mining, controls, direct UART, and
+electrical work remain separate non-claims.
