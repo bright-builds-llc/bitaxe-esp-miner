@@ -1705,10 +1705,10 @@ not authorize it. See
 Attempt-013 verification-promotion plan:
 `docs/parity/work-plans/20260817T054416Z-STAT-001/PLAN.md`
 
-- [ ] Rebind workflow/validator/generated contract/task-plan/Bazel/protected
+- [x] Rebind workflow/validator/generated contract/task-plan/Bazel/protected
       roots/fixtures from attempt-012 to attempt-013, preserving v14/v8,
       owner phase, wait state, priority 5, and 18-source identity.
-- [ ] Run focused/full software, firmware, privacy, reference, package, and
+- [x] Run focused/full software, firmware, privacy, reference, package, and
       exact-source gates; commit/push before device access.
 - [ ] Run only the frozen detector and sole conditional attempt-013 command;
       promote only if the complete independent quorum passes.

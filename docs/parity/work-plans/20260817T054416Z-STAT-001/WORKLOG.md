@@ -37,3 +37,18 @@
   progress remains 76/94 (80.9%).
 - Outcome: Plan checkpoint ready for commit/push before rebind.
 - Blocker or next safe action: Commit/push; rebind attempt-013 only.
+
+## 2026-08-17T05:58:16Z | attempt-013 software checkpoint
+
+- Source commit: `08b2328d31eda00a88051dc4ba6bd7d0ba27f285`
+- Actions: Rebound ordinal/roots/plan-task/validator/generated contracts/Bazel/
+  fixtures from consumed attempt-012 to fresh attempt-013. Firmware, v14/v8,
+  phase/wait state, priority 5, 18-source identity, projection path unchanged.
+- Verification: Focused Rust/generated/real-child/flash/prior-ordinal/source/
+  seal/privacy tests and full software/package gates pass. First parity render
+  hit transient `os error 35`; bounded retry passes, progress 76/94 (80.9%).
+- Evidence: PLAN SHA remains
+  `5744893e269547d247a89d4b15022630f99902f884fb4e0394be05b60225df2c`;
+  validator requires ordinal13 and rejects ordinal12.
+- Outcome: Exact software surface ready for commit/push and clean package.
+- Blocker or next safe action: Commit/push, rebuild package, run only PLAN commands.
