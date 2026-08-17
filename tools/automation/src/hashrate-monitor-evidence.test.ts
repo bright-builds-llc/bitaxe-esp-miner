@@ -68,7 +68,7 @@ const sourceDocuments = new Map<string, string>([
   ].join("\n")],
   ["firmware/bitaxe/src/runtime_snapshot.rs", "publish_hashrate_snapshot"],
   ["firmware/bitaxe/src/runtime_health_adapter.rs", [
-    "let task_watchdog = crate::task_watchdog_observation::observation_history();",
+    "let task_watchdog = crate::task_watchdog_observation::coherent_observation();",
     "let current_monotonic_millis = crate::runtime_uptime::millis();",
   ].join("\n")],
   ["firmware/bitaxe/src/production_mining_session/owner_loop.rs", [
@@ -80,9 +80,9 @@ const sourceDocuments = new Map<string, string>([
     "pub(crate) struct CampaignStatusPublicationSchedule {",
   ].join("\n")],
   ["firmware/bitaxe/src/task_watchdog_observation.rs", [
-    "static OWNER_PHASE: AtomicU8",
-    "static OWNER_WAIT_DEADLINE_MILLIS: AtomicU32",
-    "pub(crate) fn owner_observation()",
+    "const COHERENT_READ_ATTEMPTS: usize = 8;",
+    "publication_sequence: AtomicU32,",
+    "pub(crate) fn coherent_observation()",
   ].join("\n")],
   ["firmware/bitaxe/sdkconfig.defaults", "CONFIG_PTHREAD_TASK_PRIO_DEFAULT=5"],
   ["crates/bitaxe-safety/src/power.rs", [

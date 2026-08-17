@@ -31,6 +31,8 @@ const SNAPSHOT_RETENTION_SOURCE: &str =
 const LOG_BUFFER_SOURCE: &str = include_str!("../../../firmware/bitaxe/src/log_buffer.rs");
 const RUNTIME_HEALTH_ADAPTER_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/runtime_health_adapter.rs");
+const TASK_WATCHDOG_OBSERVATION_SOURCE: &str =
+    include_str!("../../../firmware/bitaxe/src/task_watchdog_observation.rs");
 const RUNTIME_HEALTH_CORE_SOURCE: &str =
     include_str!("../../../crates/bitaxe-core/src/runtime_health.rs");
 const RUNTIME_HEALTH_WAIT_SOURCE: &str =
@@ -288,17 +290,17 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains("CONFIG_ESP_TASK_WDT_TIMEOUT_S"));
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains("checked_mul(MILLIS_PER_SECOND)"));
     assert!(!RUNTIME_HEALTH_CORE_SOURCE.contains("TASK_WATCHDOG_FRESH_AFTER_MILLIS"));
-    let watchdog_history = RUNTIME_HEALTH_ADAPTER_SOURCE
-        .find("task_watchdog_observation::observation_history()")
-        .expect("watchdog history read");
-    let owner_observation = RUNTIME_HEALTH_ADAPTER_SOURCE
-        .find("task_watchdog_observation::owner_observation()")
-        .expect("owner observation read");
+    let watchdog_observation = RUNTIME_HEALTH_ADAPTER_SOURCE
+        .find("task_watchdog_observation::coherent_observation()")
+        .expect("coherent watchdog observation read");
     let evaluation_time = RUNTIME_HEALTH_ADAPTER_SOURCE
         .find("let current_monotonic_millis = crate::runtime_uptime::millis();")
         .expect("evaluation time read");
-    assert!(watchdog_history < evaluation_time);
-    assert!(owner_observation < evaluation_time);
+    assert!(watchdog_observation < evaluation_time);
+    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("COHERENT_READ_ATTEMPTS"));
+    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("publication_sequence: AtomicU32"));
+    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE
+        .contains("start_sequence == end_sequence && end_sequence & 1 == 0"));
     assert!(candidate_collection.contains("runtime_health_adapter::collect()"));
     assert!(!candidate_collection.contains("collect(crate::runtime_uptime::millis())"));
     assert_eq!(

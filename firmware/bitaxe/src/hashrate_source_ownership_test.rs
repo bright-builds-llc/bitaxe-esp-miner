@@ -53,7 +53,7 @@ fn owner_watchdog_feeds_only_after_completed_cooperative_progress() {
 fn owner_phase_and_campaign_publication_have_single_production_ownership() {
     // Arrange
     let publication = "if let Err(error) = adapter.publish_campaign_status";
-    let phase_store = "static OWNER_PHASE: AtomicU8";
+    let observation_store = "static STORE: TaskWatchdogObservationStore";
 
     // Act / Assert
     assert_eq!(OWNER_LOOP_SOURCE.matches(publication).count(), 1);
@@ -61,7 +61,14 @@ fn owner_phase_and_campaign_publication_have_single_production_ownership() {
         .contains("record_owner_phase(TaskWatchdogOwnerPhase::PublishingCampaignStatus)"));
     assert!(OWNER_LOOP_SOURCE
         .contains("record_owner_phase(TaskWatchdogOwnerPhase::ServicingHashrate)"));
-    assert_eq!(TASK_WATCHDOG_OBSERVATION_SOURCE.matches(phase_store).count(), 1);
+    assert_eq!(
+        TASK_WATCHDOG_OBSERVATION_SOURCE
+            .matches(observation_store)
+            .count(),
+        1
+    );
+    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("publication_sequence: AtomicU32"));
+    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("Ordering::AcqRel"));
     assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("Ordering::Release"));
     assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("Ordering::Acquire"));
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains(".with_task_watchdog_owner_phase("));
@@ -73,8 +80,7 @@ fn owner_phase_and_campaign_publication_have_single_production_ownership() {
 fn runtime_health_copies_producer_facts_before_sampling_evaluation_time() {
     // Arrange
     let checkpoint_read = "supervisor_checkpoint_history()";
-    let watchdog_read = "task_watchdog_observation::observation_history()";
-    let phase_read = "task_watchdog_observation::owner_observation()";
+    let watchdog_read = "task_watchdog_observation::coherent_observation()";
     let clock_read = "let current_monotonic_millis = crate::runtime_uptime::millis();";
 
     // Act
@@ -84,9 +90,6 @@ fn runtime_health_copies_producer_facts_before_sampling_evaluation_time() {
     let watchdog_index = RUNTIME_HEALTH_ADAPTER_SOURCE
         .find(watchdog_read)
         .expect("watchdog history read must exist");
-    let phase_index = RUNTIME_HEALTH_ADAPTER_SOURCE
-        .find(phase_read)
-        .expect("owner phase read must exist");
     let clock_index = RUNTIME_HEALTH_ADAPTER_SOURCE
         .find(clock_read)
         .expect("post-observation clock read must exist");
@@ -94,7 +97,9 @@ fn runtime_health_copies_producer_facts_before_sampling_evaluation_time() {
     // Assert
     assert!(checkpoint_index < clock_index);
     assert!(watchdog_index < clock_index);
-    assert!(phase_index < clock_index);
+    assert_eq!(RUNTIME_HEALTH_ADAPTER_SOURCE.matches(watchdog_read).count(), 1);
+    assert!(!RUNTIME_HEALTH_ADAPTER_SOURCE.contains("observation_history()"));
+    assert!(!RUNTIME_HEALTH_ADAPTER_SOURCE.contains("owner_observation()"));
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains("pub(crate) fn collect()"));
     assert!(!RUNTIME_HEALTH_ADAPTER_SOURCE.contains("collect(current_monotonic_millis"));
     assert!(SNAPSHOT_SOURCE.contains("runtime_health_adapter::collect()"));
@@ -104,7 +109,7 @@ fn runtime_health_copies_producer_facts_before_sampling_evaluation_time() {
 #[test]
 fn waiting_inbox_arms_deadline_before_phase_and_uses_priority_five() {
     // Arrange
-    let deadline_store = "OWNER_WAIT_DEADLINE_MILLIS.store";
+    let deadline_store = "self.owner_wait_deadline_millis";
     let waiting_phase_store = "TaskWatchdogOwnerPhase::WaitingInbox as u8";
 
     // Act
@@ -138,6 +143,38 @@ fn waiting_inbox_arms_deadline_before_phase_and_uses_priority_five() {
         bitaxe_core::runtime_orchestration::PRODUCTION_REREAD_CADENCE_MS,
         1_000
     );
+}
+
+#[test]
+fn watchdog_snapshot_brackets_every_fact_with_bounded_fail_closed_retries() {
+    // Arrange
+    let retry_limit = "const COHERENT_READ_ATTEMPTS: usize = 8;";
+    let sequence_start = "let start_sequence = self.publication_sequence.load(Ordering::Acquire);";
+    let sequence_end = "let end_sequence = self.publication_sequence.load(Ordering::Acquire);";
+
+    // Act
+    let sequence_start_index = TASK_WATCHDOG_OBSERVATION_SOURCE
+        .find(sequence_start)
+        .expect("coherent reader sequence start must exist");
+    let history_index = TASK_WATCHDOG_OBSERVATION_SOURCE
+        .find("let history = match self.history.lock()")
+        .expect("coherent reader history copy must exist");
+    let phase_index = TASK_WATCHDOG_OBSERVATION_SOURCE
+        .find("TaskWatchdogOwnerPhase::from_u8(self.owner_phase.load")
+        .expect("coherent reader owner phase copy must exist");
+    let sequence_end_index = TASK_WATCHDOG_OBSERVATION_SOURCE
+        .find(sequence_end)
+        .expect("coherent reader sequence end must exist");
+
+    // Assert
+    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains(retry_limit));
+    assert!(sequence_start_index < history_index);
+    assert!(history_index < phase_index);
+    assert!(phase_index < sequence_end_index);
+    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE
+        .contains("start_sequence == end_sequence && end_sequence & 1 == 0"));
+    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE
+        .contains("TaskWatchdogObservationSnapshot::default()"));
 }
 
 #[test]

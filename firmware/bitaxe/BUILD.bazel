@@ -516,6 +516,21 @@ rust_test(
 )
 
 rust_test(
+    name = "task_watchdog_observation_tests",
+    srcs = [
+        "src/task_watchdog_observation.rs",
+        "src/task_watchdog_observation_test.rs",
+    ],
+    crate_name = "task_watchdog_observation_tests",
+    crate_root = "src/task_watchdog_observation.rs",
+    edition = "2021",
+    deps = [
+        "//crates/bitaxe-core:bitaxe_core",
+        "@crates//:log",
+    ],
+)
+
+rust_test(
     name = "hashrate_source_ownership_tests",
     srcs = [
         "src/asic_adapter/production.rs",
