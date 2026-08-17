@@ -255,6 +255,22 @@ impl Ultra205MiningActuationAdapter {
         self.wait_for_cooling_proof_with_progress(&mut |_| {})
     }
 
+    fn reduce_frequency_and_reset_nonce(
+        &mut self,
+        progress: &mut dyn FnMut(),
+    ) -> Result<(), MiningActuationAdapterError> {
+        let profile = self
+            .maybe_asic_profile
+            .unwrap_or(Bm1366MiningProfile::Conservative);
+        let config = MiningReadyConfig::ultra_205_profile(1, profile);
+        let actions = safe_shutdown_command_actions(config)
+            .map_err(|_| MiningActuationAdapterError::AsicPlanInvalid)?;
+        crate::asic_adapter::production::execute_safe_shutdown_actions_with_progress(
+            &actions, progress,
+        )
+        .map_err(MiningActuationAdapterError::Asic)
+    }
+
     fn wait_for_cooling_proof_with_progress(
         &mut self,
         progress: &mut dyn FnMut(SafeShutdownStep),
@@ -423,14 +439,7 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
                     .map_err(MiningActuationAdapterError::Asic)
             }
             SafeShutdownStep::ReduceFrequencyAndResetNonce => {
-                let profile = self
-                    .maybe_asic_profile
-                    .unwrap_or(Bm1366MiningProfile::Conservative);
-                let config = MiningReadyConfig::ultra_205_profile(1, profile);
-                let actions = safe_shutdown_command_actions(config)
-                    .map_err(|_| MiningActuationAdapterError::AsicPlanInvalid)?;
-                crate::asic_adapter::production::execute_safe_shutdown_actions(&actions)
-                    .map_err(MiningActuationAdapterError::Asic)
+                self.reduce_frequency_and_reset_nonce(&mut || {})
             }
             SafeShutdownStep::HoldResetLow => {
                 crate::asic_adapter::production::execute_safe_shutdown_actions(&[
@@ -467,6 +476,10 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
         step: SafeShutdownStep,
         progress: &mut dyn FnMut(SafeShutdownStep),
     ) -> Result<(), Self::Error> {
+        if step == SafeShutdownStep::ReduceFrequencyAndResetNonce {
+            let mut action_progress = || progress(step);
+            return self.reduce_frequency_and_reset_nonce(&mut action_progress);
+        }
         if step == SafeShutdownStep::WaitForFreshTemperatureAtOrBelow45C {
             return self.wait_for_cooling_proof_with_progress(progress);
         }

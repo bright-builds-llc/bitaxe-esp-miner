@@ -246,11 +246,19 @@ pub fn execute_mining_ready_actions(
 pub fn execute_safe_shutdown_actions(
     actions: &[Bm1366AdapterAction],
 ) -> Result<(), ProductionAsicBlocker> {
+    execute_safe_shutdown_actions_with_progress(actions, &mut || {})
+}
+
+/// Executes the typed shutdown plan and reports progress before every action.
+pub fn execute_safe_shutdown_actions_with_progress(
+    actions: &[Bm1366AdapterAction],
+    progress: &mut dyn FnMut(),
+) -> Result<(), ProductionAsicBlocker> {
     let Ok(mut state) = production_state().lock() else {
         return Err(ProductionAsicBlocker::UartFailed);
     };
     state.production_ready = false;
-    execute_adapter_actions_on_state(actions, &mut state)
+    execute_adapter_actions_on_state_with_progress(actions, &mut state, progress)
 }
 
 /// Upstream hashrate-monitor REGISTER_MAP addresses (valid entries only).
@@ -564,6 +572,14 @@ fn execute_adapter_actions_on_state(
     actions: &[Bm1366AdapterAction],
     state: &mut ProductionAsicState,
 ) -> Result<(), ProductionAsicBlocker> {
+    execute_adapter_actions_on_state_with_progress(actions, state, &mut || {})
+}
+
+fn execute_adapter_actions_on_state_with_progress(
+    actions: &[Bm1366AdapterAction],
+    state: &mut ProductionAsicState,
+    progress: &mut dyn FnMut(),
+) -> Result<(), ProductionAsicBlocker> {
     let uart = state
         .maybe_uart
         .as_mut()
@@ -574,6 +590,7 @@ fn execute_adapter_actions_on_state(
         .ok_or(ProductionAsicBlocker::ResetFailed)?;
 
     for action in actions {
+        progress();
         match super::interpret_action(action, uart, reset)
             .map_err(|_| ProductionAsicBlocker::AsicInitFailed)?
         {

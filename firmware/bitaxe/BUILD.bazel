@@ -485,6 +485,7 @@ rust_test(
 rust_test(
     name = "sensor_source_ownership_tests",
     srcs = [
+        "src/asic_adapter/production.rs",
         "src/mining_actuation_adapter.rs",
         "src/fan_controller_plan.rs",
         "src/fan_controller_runtime.rs",

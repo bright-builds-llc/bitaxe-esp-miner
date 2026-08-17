@@ -13,6 +13,7 @@ const I2C_RETRY_SOURCE: &str = include_str!("safety_adapter/i2c_retry.rs");
 const EMC2101_SOURCE: &str = include_str!("safety_adapter/emc2101.rs");
 const DS4432U_SOURCE: &str = include_str!("safety_adapter/ds4432u.rs");
 const MINING_ACTUATION_ADAPTER_SOURCE: &str = include_str!("mining_actuation_adapter.rs");
+const PRODUCTION_ASIC_SOURCE: &str = include_str!("asic_adapter/production.rs");
 const PRODUCTION_SESSION_SOURCE: &str = include_str!("production_mining_session.rs");
 const PRODUCTION_OWNER_LOOP_SOURCE: &str =
     include_str!("production_mining_session/owner_loop.rs");
@@ -361,6 +362,23 @@ fn production_safe_stop_binds_the_typed_pause_purpose_without_sensor_waiting() {
         .contains("execute_safe_stop_with_progress(self, purpose, progress)"));
     assert!(MINING_ACTUATION_ADAPTER_SOURCE
         .contains("self.wait_for_cooling_proof_with_progress(progress)"));
+}
+
+#[test]
+fn long_frequency_shutdown_reports_progress_before_each_typed_asic_action() {
+    // Arrange
+    let progress = PRODUCTION_ASIC_SOURCE
+        .find("progress();")
+        .expect("ASIC action progress boundary");
+    let execute = PRODUCTION_ASIC_SOURCE
+        .find("match super::interpret_action(action, uart, reset)")
+        .expect("ASIC action execution");
+
+    // Act / Assert
+    assert!(progress < execute);
+    assert!(MINING_ACTUATION_ADAPTER_SOURCE
+        .contains("execute_safe_shutdown_actions_with_progress"));
+    assert!(MINING_ACTUATION_ADAPTER_SOURCE.contains("let mut action_progress = || progress(step)"));
 }
 
 #[test]

@@ -264,6 +264,27 @@ fn safe_shutdown_orders_50_mhz_nonce_reset_wait_and_reset_hold() {
 }
 
 #[test]
+fn safe_shutdown_ramp_exceeds_owner_watchdog_but_each_delay_stays_bounded() {
+    // Arrange
+    let config = MiningReadyConfig::ultra_205_profile(1, Bm1366MiningProfile::Conservative);
+    let actions = safe_shutdown_command_actions(config).expect("shutdown actions should build");
+
+    // Act
+    let delays: Vec<u32> = actions
+        .iter()
+        .filter_map(|action| match action {
+            Bm1366AdapterAction::DelayMs(delay_ms) => Some(*delay_ms),
+            _ => None,
+        })
+        .collect();
+    let total_delay_ms: u32 = delays.iter().sum();
+
+    // Assert
+    assert!(total_delay_ms > 5_000);
+    assert!(delays.iter().all(|delay_ms| *delay_ms <= 100));
+}
+
+#[test]
 fn ultra_205_address_interval_is_256() {
     assert_eq!(ultra_205_result_address_interval(), 256);
     assert_eq!(
