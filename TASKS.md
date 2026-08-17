@@ -1501,11 +1501,11 @@ verified, so this task remains active rather than archived.
 
 ### task-parity-rel003-large-erase-recovery | 2026-08-17 | Verify release-image large-erase recovery
 
-- [ ] Add a plan-bound repo-owned large-erase command and typed private-first
+- [x] Add a plan-bound repo-owned large-erase command and typed private-first
       release-recovery evidence workflow with exact package admission,
       supervised USB ownership, safe restore, recovery precedence, independent
       validation, and real-process regressions.
-- [ ] Run every focused and mandatory software, firmware, package, release-
+- [x] Run every focused and mandatory software, firmware, package, release-
       gate, privacy, reference, immutable-plan, and exact-source gate; commit
       and push before device access.
 - [ ] Run only the frozen detector and sole conditional attempt-001 capture;

@@ -25,6 +25,35 @@ pub(crate) enum CliCommand {
     SignalIdentify(SignalIdentifyCommand),
     #[command(name = "phase35-probe")]
     Phase35Probe(Phase35ProbeCommand),
+    #[command(name = "rel003-large-erase")]
+    ReleaseRecovery(ReleaseRecoveryCommand),
+}
+
+#[derive(Debug, Parser, Clone)]
+pub(crate) struct ReleaseRecoveryCommand {
+    #[arg(long, default_value = "205", value_parser = parse_board)]
+    pub(crate) board: BoardId,
+
+    #[arg(long = "private-root", value_parser = parse_utf8_path)]
+    pub(crate) private_root: Utf8PathBuf,
+
+    #[arg(long = "package-manifest", value_parser = parse_utf8_path)]
+    pub(crate) package_manifest: Utf8PathBuf,
+
+    #[arg(long = "wifi-credentials", value_parser = parse_utf8_path)]
+    pub(crate) wifi_credentials: Utf8PathBuf,
+
+    #[arg(long = "detector-output", value_parser = parse_utf8_path)]
+    pub(crate) detector_output: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) plan: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) projection: Utf8PathBuf,
+
+    #[arg(long = "capture-timeout-seconds", default_value_t = DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS)]
+    pub(crate) capture_timeout_seconds: u64,
 }
 
 #[derive(Debug, Parser, Clone)]

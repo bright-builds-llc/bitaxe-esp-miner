@@ -32,6 +32,7 @@ rust_library(
         "src/partition_layout_evidence.rs",
         "src/protocol_coordinator_evidence.rs",
         "src/provisioning_network_evidence.rs",
+        "src/release_recovery_evidence.rs",
         "src/runtime_health_evidence.rs",
         "src/screen_flow_evidence.rs",
         "src/sdkconfig_rollback_evidence.rs",
@@ -39,6 +40,7 @@ rust_library(
         "src/statistics_history_evidence.rs",
         "src/stratum_socket_evidence.rs",
         "src/system_info_evidence.rs",
+        "src/typescript.rs",
         "src/ultra205_defaults_evidence.rs",
         "src/ui_workflow_evidence.rs",
     ],
@@ -60,6 +62,17 @@ rust_binary(
     name = "validate_hashrate_monitor_evidence",
     srcs = ["src/bin/validate_hashrate_monitor_evidence.rs"],
     crate_name = "validate_hashrate_monitor_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_release_recovery_evidence",
+    srcs = ["src/bin/validate_release_recovery_evidence.rs"],
+    crate_name = "validate_release_recovery_evidence",
     edition = "2021",
     deps = [
         ":bitaxe_automation_contracts",

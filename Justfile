@@ -139,6 +139,24 @@ capture-adc-observation-evidence *args:
 capture-hashrate-monitor-evidence *args:
     bazel run //tools/automation:capture_hashrate_monitor_evidence -- {{ args }}
 
+capture-release-recovery-evidence *args:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bazel run //tools/flash:flash -- rel003-large-erase {{ args }}
+    projection_path="$(/bin/pwd)/docs/parity/evidence/rel003-large-erase/release-recovery-projection.json"
+    if ! bazel run //crates/bitaxe-automation-contracts:validate_release_recovery_evidence -- "$projection_path"; then
+        /bin/rm -f -- "$projection_path"
+        exit 1
+    fi
+
+validate-release-recovery-evidence projection:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    projection={{ quote(projection) }}
+    test -f "$projection"
+    projection_path="$(/bin/realpath "$projection")"
+    bazel run //crates/bitaxe-automation-contracts:validate_release_recovery_evidence -- "$projection_path"
+
 validate-adc-observation-evidence projection:
     #!/usr/bin/env bash
     set -euo pipefail

@@ -16,10 +16,12 @@ mod campaign;
 mod capture;
 mod cli;
 mod cli_identify;
+mod cli_release_recovery;
 #[path = "tests/evidence.rs"]
 mod evidence_cases;
 mod input_uat;
 mod monitor;
 mod phase35;
 mod redaction;
+mod release_recovery;
 mod workflow;

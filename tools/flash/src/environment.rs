@@ -56,6 +56,9 @@ pub(crate) trait FlashEnvironment {
         create_new: bool,
     ) -> Result<CaptureProcessResult>;
     fn firmware_commit(&self) -> String;
+    fn pushed_firmware_commit(&self) -> String {
+        self.firmware_commit()
+    }
     fn reference_commit(&self) -> String;
     fn write_evidence(&self, path: &Utf8Path, contents: &str) -> Result<()>;
 }
@@ -483,6 +486,11 @@ impl FlashEnvironment for LocalFlashEnvironment {
 
     fn firmware_commit(&self) -> String {
         maybe_git_output(&self.workspace_dir, ["rev-parse", "HEAD"])
+            .unwrap_or_else(|| UNAVAILABLE.to_owned())
+    }
+
+    fn pushed_firmware_commit(&self) -> String {
+        maybe_git_output(&self.workspace_dir, ["rev-parse", "origin/main"])
             .unwrap_or_else(|| UNAVAILABLE.to_owned())
     }
 

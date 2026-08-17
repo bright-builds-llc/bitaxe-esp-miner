@@ -29,6 +29,7 @@ mod operator_snapshot_evidence;
 mod partition_layout_evidence;
 mod protocol_coordinator_evidence;
 mod provisioning_network_evidence;
+mod release_recovery_evidence;
 mod runtime_health_evidence;
 mod screen_flow_evidence;
 mod sdkconfig_rollback_evidence;
@@ -36,6 +37,7 @@ mod settings_patch_evidence;
 mod statistics_history_evidence;
 mod stratum_socket_evidence;
 mod system_info_evidence;
+mod typescript;
 mod ui_workflow_evidence;
 mod ultra205_defaults_evidence;
 pub use adc_observation_evidence::{
@@ -110,6 +112,7 @@ pub use protocol_coordinator_evidence::{
 pub use provisioning_network_evidence::{
     ProvisioningNetworkEvidence, ProvisioningNetworkObservationEvidence,
 };
+pub use release_recovery_evidence::{ReleaseRecoveryEvidence, RELEASE_RECOVERY_EVIDENCE_SCHEMA};
 pub use runtime_health_evidence::{RuntimeHealthEvidence, RuntimeHealthObservationEvidence};
 pub use screen_flow_evidence::{
     ScreenFlowEvidence, ScreenFlowObservationEvidence, ScreenFlowSourceEvidence,
@@ -123,6 +126,9 @@ pub use stratum_socket_evidence::{
     StratumSocketEvidence, StratumSocketObservationEvidence, StratumSocketSourceEvidence,
 };
 pub use system_info_evidence::{SystemInfoEvidence, SystemInfoObservationEvidence};
+pub use typescript::{
+    input_uat_typescript_contracts, typescript_contracts, ui_workflow_typescript_contracts,
+};
 pub use ui_workflow_evidence::{
     UiWorkflowBrowserEvidence, UiWorkflowEvidence, UiWorkflowSourceEvidence,
 };
@@ -169,20 +175,6 @@ pub const MINING_CRITERIA_EVIDENCE_SCHEMA: &str = "bitaxe-mining-criteria-eviden
 pub const PROVISIONING_NETWORK_EVIDENCE_SCHEMA: &str = "bitaxe-provisioning-network-evidence-v1";
 pub const UI_WORKFLOW_EVIDENCE_SCHEMA: &str = "bitaxe-ui-workflow-evidence-v1";
 pub const MIGRATION_SCHEMA: &str = "bitaxe-automation-migration-v1";
-#[must_use]
-pub fn typescript_contracts() -> &'static str {
-    include_str!("../typescript-contracts.ts")
-}
-
-#[must_use]
-pub fn ui_workflow_typescript_contracts() -> &'static str {
-    include_str!("../ui-workflow-typescript-contracts.ts")
-}
-
-#[must_use]
-pub fn input_uat_typescript_contracts() -> &'static str {
-    include_str!("../input-uat-typescript-contracts.ts")
-}
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -413,6 +405,7 @@ pub struct ContractBundle {
     pub protocol_coordinator_evidence_schema: Value,
     pub mining_criteria_evidence_schema: Value,
     pub provisioning_network_evidence_schema: Value,
+    pub release_recovery_evidence_schema: Value,
     pub ui_workflow_evidence_schema: Value,
     pub commands: Vec<AutomationCommand>,
     pub evidence_schemas: Vec<&'static str>,
@@ -526,6 +519,10 @@ pub fn contract_bundle() -> ContractBundle {
             ProvisioningNetworkEvidence
         ))
         .expect("provisioning network evidence schema must serialize"),
+        release_recovery_evidence_schema: serde_json::to_value(schema_for!(
+            ReleaseRecoveryEvidence
+        ))
+        .expect("release recovery evidence schema must serialize"),
         ui_workflow_evidence_schema: serde_json::to_value(schema_for!(UiWorkflowEvidence))
             .expect("UI workflow evidence schema must serialize"),
         commands: vec![
@@ -618,6 +615,7 @@ pub fn contract_bundle() -> ContractBundle {
             PROTOCOL_COORDINATOR_EVIDENCE_SCHEMA,
             MINING_CRITERIA_EVIDENCE_SCHEMA,
             PROVISIONING_NETWORK_EVIDENCE_SCHEMA,
+            RELEASE_RECOVERY_EVIDENCE_SCHEMA,
             UI_WORKFLOW_EVIDENCE_SCHEMA,
             MIGRATION_SCHEMA,
         ],

@@ -153,6 +153,25 @@ fn successful_write_uses_the_extended_recovery_policy() {
 }
 
 #[test]
+fn successful_large_erase_is_a_completed_flash_effect() {
+    // Arrange
+    let args = vec!["erase-flash".to_owned()];
+    let output = SupervisedOutput {
+        termination: SupervisedTermination::ExitedSuccess,
+        stdout: Vec::new(),
+        stderr: Vec::new(),
+    };
+
+    // Act
+    let policy = successful_command_recovery_policy(&args);
+    let state = advance_device_effect_state(UsbDeviceEffectState::None, &args, &output);
+
+    // Assert
+    assert_eq!(policy, RecoveryPhase::PostFlash);
+    assert_eq!(state, UsbDeviceEffectState::Completed);
+}
+
+#[test]
 fn successful_probe_keeps_the_standard_recovery_policy() {
     // Arrange
     let args = vec!["board-info".to_owned()];

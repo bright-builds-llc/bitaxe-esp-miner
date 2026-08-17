@@ -14,6 +14,8 @@ use crate::{
     EXPECTED_REFERENCE_COMMIT, FACTORY_IMAGE_NAME, RUST_TARGET, UNAVAILABLE,
 };
 
+const CANONICAL_PARTITION_TABLE_PATH: &str = "firmware/bitaxe/partitions-ultra205.csv";
+
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) struct PackageManifestV3 {
     pub(crate) schema_version: u32,
@@ -442,9 +444,15 @@ fn artifact_entry(
     offset: &str,
     manifest_path: &Utf8Path,
 ) -> Result<ReleaseArtifact> {
+    let artifact_manifest_path =
+        if kind == ArtifactKind::PartitionTable && path.ends_with(CANONICAL_PARTITION_TABLE_PATH) {
+            CANONICAL_PARTITION_TABLE_PATH.to_owned()
+        } else {
+            manifest_relative_path(manifest_path, path)
+        };
     Ok(ReleaseArtifact {
         kind,
-        path: manifest_relative_path(manifest_path, path),
+        path: artifact_manifest_path,
         offset: offset.to_owned(),
         sha256: sha256_file(path)?,
     })

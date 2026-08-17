@@ -56,11 +56,18 @@ pub const fn retry_is_eligible(context: RetryContext) -> bool {
 }
 
 pub(super) fn successful_command_recovery_policy(args: &[String]) -> RecoveryPhase {
-    if args.first().map(String::as_str) == Some("write-bin") {
+    if is_flash_effect(args) {
         RecoveryPhase::PostFlash
     } else {
         RecoveryPhase::PostProbe
     }
+}
+
+pub(super) fn is_flash_effect(args: &[String]) -> bool {
+    matches!(
+        args.first().map(String::as_str),
+        Some("write-bin" | "erase-flash")
+    )
 }
 
 pub(super) fn validate_recovery_snapshot(

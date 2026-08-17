@@ -18,6 +18,7 @@ struct FakeFlashEnvironment {
     current_provenance: BuildProvenance,
     source_replacement: Option<(Utf8PathBuf, Vec<u8>)>,
     execute_failure: bool,
+    maybe_execute_failure_offset: Option<String>,
     snapshot_write_failure: bool,
     list_ports_calls: Cell<usize>,
     read_string_paths: RefCell<Vec<Utf8PathBuf>>,
@@ -64,6 +65,7 @@ impl FakeFlashEnvironment {
             .expect("default provenance"),
             source_replacement: None,
             execute_failure: false,
+            maybe_execute_failure_offset: None,
             snapshot_write_failure: false,
             list_ports_calls: Cell::new(0),
             read_string_paths: RefCell::new(Vec::new()),
@@ -127,6 +129,11 @@ impl FakeFlashEnvironment {
 
     fn with_execute_failure(mut self) -> Self {
         self.execute_failure = true;
+        self
+    }
+
+    fn with_execute_failure_offset(mut self, offset: &str) -> Self {
+        self.maybe_execute_failure_offset = Some(offset.to_owned());
         self
     }
 
@@ -290,10 +297,18 @@ impl FlashEnvironment for FakeFlashEnvironment {
         self.executed_commands
             .borrow_mut()
             .push(command_spec.clone());
-        let is_write = command_spec.args.first().map(String::as_str) == Some("write-bin");
+        let is_write = matches!(
+            command_spec.args.first().map(String::as_str),
+            Some("write-bin" | "erase-flash")
+        );
+        let offset_failure = self.maybe_execute_failure_offset.as_ref().is_some_and(|offset| {
+            command_spec.args.first().map(String::as_str) == Some("write-bin")
+                && command_spec.args.iter().any(|argument| argument == offset)
+        });
+        let should_fail = self.execute_failure || offset_failure;
         let diagnostic = fake_usb_command_diagnostic(
             UsbTerminalCategory::Ready,
-            if is_write && !self.execute_failure {
+            if is_write && !should_fail {
                 UsbDeviceEffectState::Completed
             } else {
                 UsbDeviceEffectState::None
@@ -332,7 +347,7 @@ impl FlashEnvironment for FakeFlashEnvironment {
                 unix_mode,
             });
         }
-        if self.execute_failure {
+        if should_fail {
             bail!("sentinel child failure");
         }
         Ok(())
@@ -467,11 +482,11 @@ impl FlashEnvironment for FakeFlashEnvironment {
     }
 
     fn firmware_commit(&self) -> String {
-        "0123456789abcdef0123456789abcdef01234567".to_owned()
+        SOURCE_COMMIT.to_owned()
     }
 
     fn reference_commit(&self) -> String {
-        "abcdef012345abcdef012345abcdef012345abcd".to_owned()
+        REFERENCE_COMMIT.to_owned()
     }
 
     fn write_evidence(&self, path: &Utf8Path, contents: &str) -> Result<()> {

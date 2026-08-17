@@ -20,6 +20,7 @@ exports_files([
     "docs/parity/evidence/phase-22-claim-ladder-and-safety-preconditions/claim-ladder.md",
     "docs/parity/checklist.md",
     "docs/parity/reference-surface-inventory.json",
+    "docs/parity/work-plans/20260817T005227Z-REL-003/PLAN.md",
     "docs/parity/checklist-revisions/2026-07-26-source-pointer-refresh.json",
     "docs/parity/checklist-revisions/2026-07-27-module-ownership-refactor.json",
     "docs/parity/checklist-revisions/2026-07-28-runtime-display-documentation.json",

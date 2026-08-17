@@ -34,7 +34,8 @@ pub use policy::{retry_is_eligible, RetryContext};
 use policy::EspflashConnectionSignature;
 use policy::{
     classify_bootloader_diagnostic, classify_espflash_failure, espflash_diagnostic_filter,
-    ineligible_retry_detail, successful_command_recovery_policy, validate_recovery_snapshot,
+    ineligible_retry_detail, is_flash_effect, successful_command_recovery_policy,
+    validate_recovery_snapshot,
 };
 
 pub struct UsbSession {
@@ -416,7 +417,7 @@ fn advance_device_effect_state(
     args: &[String],
     output: &SupervisedOutput,
 ) -> UsbDeviceEffectState {
-    let is_write = args.first().map(String::as_str) == Some("write-bin");
+    let is_write = is_flash_effect(args);
     if current == UsbDeviceEffectState::Completed || (is_write && output.succeeded()) {
         return UsbDeviceEffectState::Completed;
     }

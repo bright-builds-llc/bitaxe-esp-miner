@@ -155,6 +155,37 @@ fn package_manifest_v3_builds_identity_and_release_artifacts_from_real_outputs()
 }
 
 #[test]
+fn package_manifest_canonicalizes_workspace_partition_table_path() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let mut request = package_request_fixture(&dir, APP_ELF_SHA256);
+    let partition_table = dir_path(&dir)
+        .join("workspace")
+        .join("firmware/bitaxe/partitions-ultra205.csv");
+    std::fs::create_dir_all(
+        partition_table
+            .parent()
+            .expect("partition table should have a parent")
+            .as_std_path(),
+    )
+    .expect("create partition-table parent");
+    std::fs::write(partition_table.as_std_path(), b"partition-csv")
+        .expect("write partition-table fixture");
+    request.partition_table = partition_table;
+
+    // Act
+    let manifest = build_manifest(&request, &FakePackageEnvironment).expect("manifest");
+
+    // Assert
+    assert_artifact(
+        &manifest,
+        ArtifactKind::PartitionTable,
+        "firmware/bitaxe/partitions-ultra205.csv",
+        UNAVAILABLE,
+    );
+}
+
+#[test]
 fn build_manifest_rejects_firmware_elf_app_sha_mismatch_before_output() {
     // Arrange
     let dir = tempdir().expect("tempdir");
