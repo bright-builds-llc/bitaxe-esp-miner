@@ -1702,6 +1702,36 @@ attempt-013 requires its own exact-source immutable contract; this closure does
 not authorize it. See
 `docs/parity/work-plans/20260817T045834Z-STAT-001/CLOSURE.md`.
 
+Attempt-013 verification-promotion plan:
+`docs/parity/work-plans/20260817T054416Z-STAT-001/PLAN.md`
+
+- [ ] Rebind workflow/validator/generated contract/task-plan/Bazel/protected
+      roots/fixtures from attempt-012 to attempt-013, preserving v14/v8,
+      owner phase, wait state, priority 5, and 18-source identity.
+- [ ] Run focused/full software, firmware, privacy, reference, package, and
+      exact-source gates; commit/push before device access.
+- [ ] Run only the frozen detector and sole conditional attempt-013 command;
+      promote only if the complete independent quorum passes.
+
+Attempt-013 authorization: exact pushed diagnostic `9604d145` classifies
+waiting-inbox deadline state. After plan/rebind are clean, gated, committed,
+pushed, and packaged, one exact board-205 package may be factory-flashed/reset,
+privately seeded from ignored credentials, and run the conservative 400 MHz /
+1,100 mV / 100% fan profile for exactly 600 active seconds with protected
+serial/HTTP/WebSocket joins, pause, safe stop, cleanup, sealing, and at most one
+supervisor recovery flash. Exact commands and stop rules are frozen in PLAN.
+
+Safety/privacy/retry: input bus truth is fresh 4.5-5.5 V and <=15 W, ASIC temp
+<75 C, fan RPM fresh/nonzero; core mV and bus volts remain distinct. Only fresh
+ignored wrapper/attempt-013 0700 roots and 0600 files are allowed. Credentials,
+endpoints, identities, exact values, bodies, logs, commands, PIDs, traces stay
+private. Starting capture consumes ordinal; no unchanged retry or attempt-014.
+No overclock, arbitrary controls, unbounded mining, OTA, erase, raw writes,
+fault injection, power action, direct UART, or electrical manipulation.
+Promotion requires exact identity, 20 windows/work renewal, coherent changing
+rates, warm windows, bounded error, watchdog none, terminal zero, safe stop,
+cleanup, modes, seals, validation, and redaction; missing facts withhold it.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
