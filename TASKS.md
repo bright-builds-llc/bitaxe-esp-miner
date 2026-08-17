@@ -1500,6 +1500,63 @@ mandatory gates pass. Residual risk is live-only: this correction has not yet
 completed a detector-gated twenty-window campaign. A future attempt-011 needs
 its own exact-source immutable contract; this closure does not authorize it.
 
+Attempt-011 verification-promotion plan:
+`docs/parity/work-plans/20260817T030355Z-STAT-001/PLAN.md`
+
+- [ ] Rebind the private-first workflow, Rust validator, generated contract,
+      immutable task/plan admission, Bazel inputs, protected roots, v13/v7
+      schemas, owner phase, and real-child fixtures from consumed attempt-010
+      to fresh attempt-011.
+- [ ] Run every focused and mandatory software, firmware, privacy, reference,
+      package, and exact-source gate; commit and push before device access.
+- [ ] Run only the frozen detector and sole conditional attempt-011 command,
+      then promote STAT-001 only if the complete independent quorum passes.
+
+Attempt-011 progress basis and authorization: exact pushed correction
+`edef059bfc1d5dcc79f997c46fa022d8e1bd8ffc` bounds status publication and
+adds a closed owner-phase discriminator after attempts 008-010 repeated the
+same producer-stale boundary. After this plan/task checkpoint and the
+attempt-011 rebind are clean, fully gated, committed, pushed, and packaged,
+one exact board-205 package may be factory-flashed/reset; ignored local Wi-Fi
+and pool inputs may be seeded privately; and the repo-owned `live-share`
+conservative 400 MHz / 1,100 mV / 100% fan profile may mine for exactly 600
+accumulated active seconds while protected current-session HTTP, WebSocket,
+and serial observations are joined. The campaign must pause, safe-stop,
+release USB/process ownership, and may use at most one supervisor-owned exact-
+package recovery flash after a post-flash failure. The exact commands, privacy
+layout, evidence joins, recovery behavior, retry bound, and stop outcomes are
+frozen in the immutable plan above.
+
+Attempt-011 units and safety: 1,100 mV is the ASIC core setpoint, while INA260
+input bus voltage is independently measured in volts. Admission requires
+fresh 4.5-5.5 V input, at most 15 W, ASIC temperature below 75 C, and fresh
+nonzero fan RPM after the 100% fan command. Never compare the two voltage
+domains. Stop on stale/unsafe state, ambiguous/non-205 detector identity,
+source/reference/package drift, missing credentials, or cleanup/recovery
+failure.
+
+Attempt-011 evidence, privacy, recovery, and retry: only fresh ignored mode-
+`0700` `scratch/stat001-hashrate-monitor/wrapper-011` and `attempt-011` roots
+with mode-`0600` files are permitted. Credentials, pool/owner/worker fields,
+origins, ports, USB/network/process identities, exact hashrates, sensors,
+HTTP/WebSocket bodies, serial, commands, PIDs, and traces remain private. The
+sole public aggregate projection is written only after independent validation.
+Starting capture consumes attempt-011; preserve the earliest typed failure
+and closed owner phase, run bounded safe stop/recovery/cleanup after post-
+flash failures, and do not retry unchanged or start attempt-012.
+
+Attempt-011 prohibited effects and acceptance: no upstream-default/overclock
+profile, arbitrary control target, automatic fan mode, unbounded mining, OTA,
+erase, raw writes, fault injection, physical power action, direct UART, or
+pin/pad/header/GPIO/probe/jumper/solder/signal manipulation is permitted.
+Promotion requires exact clean source/reference/package/plan and detector
+identity; one ASIC/four domains and one-second cadence; all twenty active
+windows with work renewal; changing coherent positive HTTP/WebSocket current
+and rolling rates; bounded error; watchdog failure `none`; terminal zero
+current rate; safe stop, cleanup, protected modes, seals, independent
+validation, and redaction. Any missing fact withholds promotion and leaves
+STAT-001 `implemented`.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
