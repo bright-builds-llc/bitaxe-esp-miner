@@ -1943,6 +1943,26 @@ start attempt-016. A new software-only immutable plan must add a closed value-
 free inbox/feedback/effect subphase, reproduce the post-window stale-feed
 transition, and apply a targeted regression-backed correction before hardware.
 
+Owner-work subphase and entry-feed correction plan:
+`docs/parity/work-plans/20260817T090156Z-STAT-001/PLAN.md`
+
+- [ ] Add one closed, value-free owner subphase for inbox mapping, session
+      evaluation, and every production effect category, stored coherently with
+      phase/wait and projected through runtime-health surfaces.
+- [ ] Feed at session-evaluation and effect-execution entry while retaining
+      completion feeds, and regress the attempt-015-shaped inherited stale-age
+      boundary without masking a genuinely blocking operation.
+- [ ] Latch subphase with the earliest private campaign watchdog tuple, rotate
+      result/network evidence to v16/v10, and pass every focused/mandatory gate.
+
+Software-only authorization: local source, tests, deterministic fixtures,
+firmware/package builds, documentation, and Git operations only. Do not access
+protected attempts, credentials, detector/device/USB/network runtime, private
+values, or public projection candidates. Do not flash, reset, monitor, mine,
+actuate, update, erase, inject faults, manipulate power, use external UART/BAP,
+touch electrical interfaces, retry attempt-015, or create/run attempt-016.
+STAT-001/checklist/progress/README remain unchanged.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
