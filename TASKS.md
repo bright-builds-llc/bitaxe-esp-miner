@@ -1884,11 +1884,11 @@ its hidden cause.
 Attempt-015 verification-promotion plan:
 `docs/parity/work-plans/20260817T082220Z-STAT-001/PLAN.md`
 
-- [ ] Rebind the private-first workflow, validator, generated contract,
+- [x] Rebind the private-first workflow, validator, generated contract,
       immutable task/plan admission, Bazel inputs, fresh protected roots, and
       fixtures from attempt-014 to attempt-015 while preserving result v15,
       network v9, coherent read outcome, earliest tuple, and 18-source identity.
-- [ ] Run every focused and mandatory software, firmware, privacy, reference,
+- [x] Run every focused and mandatory software, firmware, privacy, reference,
       package, and exact-source gate; commit and push before device access.
 - [ ] Run only the frozen detector and sole conditional attempt-015 command;
       promote only if the complete independent quorum passes.

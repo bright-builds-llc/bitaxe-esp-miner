@@ -115,7 +115,7 @@ js_library(
     name = "hashrate_monitor_evidence_inputs",
     srcs = [
         "TASKS.md",
-        "docs/parity/work-plans/20260817T065250Z-STAT-001/PLAN.md",
+        "docs/parity/work-plans/20260817T082220Z-STAT-001/PLAN.md",
         "reference/esp-miner/components/stratum/utils.c",
         "reference/esp-miner/main/device_config.h",
         "reference/esp-miner/main/tasks/power_management_task.c",
