@@ -73,3 +73,17 @@
 - Blocker or next safe action: Commit and push the implementation, then create
   a `CLOSURE.md` recording that STAT-001 remains implemented and live quorum
   evidence is still required.
+
+## 2026-08-17T00:10:56Z | closure prepared
+
+- Source commit: `9e9d6545dbe4881f1cb81ca61da2c152dd791c9b`
+- Actions: Created a plan-hash-bound non-verifying closure and completed the
+  software correction checklist without changing the parity row.
+- Evidence: The implementation commit is pushed; the immutable PLAN SHA-256
+  remains `011496a29cd12b738b2cee81b525f87cbfda03ffd0aa75e24509f7281ad0ebee`;
+  all focused and complete software gates passed.
+- Outcome: `blocked`; final status remains `implemented`; verification claimed
+  is `no`; no checklist transition or progress synchronization is requested.
+- Blocker or next safe action: A separate exact-source attempt-010 hardware
+  plan must authorize and define the detector-gated live twenty-window
+  campaign. This software plan authorizes no device access or retry.

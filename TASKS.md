@@ -1365,7 +1365,7 @@ Campaign watchdog-policy correction plan:
 - [x] Remove only the duplicate numeric consumer policy while preserving typed
       reason, participation, presence, per-window advancement, precedence, and
       value-free evidence checks.
-- [ ] Run focused and mandatory software, firmware-package, privacy,
+- [x] Run focused and mandatory software, firmware-package, privacy,
       reference, parity-invariance, immutable-plan, and diff gates; commit and
       push a software-only closure without checklist transition or hardware.
 
@@ -1377,6 +1377,22 @@ erase, inject faults, manipulate power, use direct UART, or touch electrical
 interfaces. Attempt-009 remains consumed; this plan does not authorize
 attempt-010. STAT-001 remains `implemented` and the checklist/progress history
 remain unchanged.
+
+Campaign watchdog-policy correction completion review: source commit
+`9e9d6545dbe4881f1cb81ca61da2c152dd791c9b` removes the duplicate host
+2,000-ms freshness threshold. The real campaign regression failed before the
+fix and passes afterward; producer `feed_fresh` remains accepted through the
+compiled 5,000-ms timeout, producer `feed_stale` remains rejected after it,
+and every focused and mandatory software gate passes. No firmware schema,
+hardware behavior, checklist field, or progress-history entry changed. See
+`docs/parity/work-plans/20260816T235908Z-STAT-001/CLOSURE.md`.
+
+Residual risk and next safe action: the correction explains attempts 008 and
+009 but does not itself prove the live twenty-window quorum. Attempt-010
+requires a separate immutable hardware plan using this exact pushed source,
+with the complete detector, evidence, privacy, recovery, retry, cleanup, and
+stop contract. No hardware retry is authorized by this completed software
+plan, so STAT-001 remains `implemented`.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
