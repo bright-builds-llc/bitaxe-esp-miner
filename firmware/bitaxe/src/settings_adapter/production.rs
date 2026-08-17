@@ -134,10 +134,9 @@ const fn maybe_campaign_stop_condition(
     duration: MiningCampaignDuration,
 ) -> Option<MiningCampaignStopCondition> {
     let condition = match stage {
-        MiningCampaignStage::LiveShare => {
-            MiningCampaignStopCondition::FirstSubmitResponse { timeout: duration }
+        MiningCampaignStage::LiveShare | MiningCampaignStage::Soak => {
+            MiningCampaignStopCondition::ActiveDuration { duration }
         }
-        MiningCampaignStage::Soak => MiningCampaignStopCondition::ActiveDuration { duration },
         MiningCampaignStage::JobTransition => {
             MiningCampaignStopCondition::ActiveDuration { duration }
         }
@@ -365,6 +364,23 @@ mod tests {
                 activation_timeout: duration,
                 duration,
             })
+        );
+    }
+
+    #[test]
+    fn live_share_keeps_running_after_submit_until_the_evidence_window_completes() {
+        // Arrange
+        let duration =
+            MiningCampaignDuration::new(MINING_DURATION_MS).expect("live-share duration");
+
+        // Act
+        let maybe_condition =
+            maybe_campaign_stop_condition(MiningCampaignStage::LiveShare, duration);
+
+        // Assert
+        assert_eq!(
+            maybe_condition,
+            Some(MiningCampaignStopCondition::ActiveDuration { duration })
         );
     }
 }
