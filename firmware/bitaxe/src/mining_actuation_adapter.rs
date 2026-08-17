@@ -22,8 +22,9 @@ use bitaxe_stratum::v1::production_session::{
 };
 
 use crate::mining_actuation::{
-    execute_preparation, execute_safe_stop, MiningActuationBackend, PreparationExecutionFailure,
-    PreparationStep, SafeShutdownFailure, SafeShutdownStep, CORE_VOLTAGE_STABILIZATION_MS,
+    execute_preparation, execute_safe_stop_with_progress, MiningActuationBackend,
+    PreparationExecutionFailure, PreparationStep, SafeShutdownFailure, SafeShutdownStep,
+    CORE_VOLTAGE_STABILIZATION_MS,
 };
 use crate::safety_adapter::{
     FanDutyPercent, PendingSafetyActuation, SafetyActuationCommand, SafetyActuationPollOutcome,
@@ -131,8 +132,9 @@ impl Ultra205MiningActuationAdapter {
     pub fn safe_stop(
         &mut self,
         purpose: HardwareSafeStopPurpose,
+        progress: &mut dyn FnMut(),
     ) -> Result<(), SafeShutdownFailure<MiningActuationAdapterError>> {
-        execute_safe_stop(self, purpose)
+        execute_safe_stop_with_progress(self, purpose, progress)
     }
 
     fn request_safety(command: SafetyActuationCommand) -> Result<(), MiningActuationAdapterError> {
@@ -250,6 +252,13 @@ impl Ultra205MiningActuationAdapter {
     }
 
     fn wait_for_cooling_proof(&mut self) -> Result<(), MiningActuationAdapterError> {
+        self.wait_for_cooling_proof_with_progress(&mut || {})
+    }
+
+    fn wait_for_cooling_proof_with_progress(
+        &mut self,
+        progress: &mut dyn FnMut(),
+    ) -> Result<(), MiningActuationAdapterError> {
         if !self.cooling_fan_full_applied {
             return Err(MiningActuationAdapterError::CoolingProofRequired);
         }
@@ -275,6 +284,7 @@ impl Ultra205MiningActuationAdapter {
             if crate::runtime_uptime::millis() >= deadline_ms {
                 return Err(MiningActuationAdapterError::CoolingProofTimedOut);
             }
+            progress();
             thread::sleep(Duration::from_millis(COOLING_PROOF_POLL_MS));
         }
     }
@@ -450,6 +460,21 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
                 Self::request_safety(SafetyActuationCommand::SetFanDuty(FanDutyPercent::PAUSED))
             }
         }
+    }
+
+    fn execute_safe_shutdown_step_with_progress(
+        &mut self,
+        step: SafeShutdownStep,
+        progress: &mut dyn FnMut(),
+    ) -> Result<(), Self::Error> {
+        if step == SafeShutdownStep::WaitForFreshTemperatureAtOrBelow45C {
+            let result = self.wait_for_cooling_proof_with_progress(progress);
+            progress();
+            return result;
+        }
+        let result = self.execute_safe_shutdown_step(step);
+        progress();
+        result
     }
 }
 

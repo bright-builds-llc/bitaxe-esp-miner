@@ -33,7 +33,7 @@ fn owner_watchdog_feeds_at_entry_and_completion_boundaries() {
     // Arrange
     let event_started = "progress(OwnerProgressBoundary::EventStarted, None);";
     let effect_started = "progress(OwnerProgressBoundary::EffectStarted, Some(&effect));";
-    let execute = "let maybe_feedback = execute(effect);";
+    let execute = "let maybe_feedback = execute(effect, &mut heartbeat);";
     let completed = "progress(OwnerProgressBoundary::EffectCompleted, None);";
 
     // Act

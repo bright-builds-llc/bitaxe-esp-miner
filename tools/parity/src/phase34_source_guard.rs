@@ -474,7 +474,7 @@ fn production_task_watchdog_tracks_entry_and_completed_owner_progress() {
         .find("progress(OwnerProgressBoundary::EffectStarted, Some(&effect));")
         .expect("effect entry boundary");
     let execute = PRODUCTION_OWNER_PROGRESS_SOURCE
-        .find("let maybe_feedback = execute(effect);")
+        .find("let maybe_feedback = execute(effect, &mut heartbeat);")
         .expect("effect execution boundary");
     let completed = PRODUCTION_OWNER_PROGRESS_SOURCE
         .find("progress(OwnerProgressBoundary::EffectCompleted, None);")

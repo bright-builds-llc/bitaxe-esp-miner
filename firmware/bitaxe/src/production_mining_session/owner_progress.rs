@@ -7,13 +7,14 @@ pub(crate) enum OwnerProgressBoundary {
     EventStarted,
     EventHandled,
     EffectStarted,
+    EffectHeartbeat,
     EffectCompleted,
 }
 
 pub(crate) fn drive_feedback<Event, Effect, HandleError>(
     initial_event: Event,
     mut handle: impl FnMut(Event) -> Result<Vec<Effect>, HandleError>,
-    mut execute: impl FnMut(Effect) -> Option<Event>,
+    mut execute: impl FnMut(Effect, &mut dyn FnMut()) -> Option<Event>,
     mut progress: impl FnMut(OwnerProgressBoundary, Option<&Effect>),
 ) -> Result<(), HandleError> {
     let mut events = VecDeque::from([initial_event]);
@@ -23,7 +24,8 @@ pub(crate) fn drive_feedback<Event, Effect, HandleError>(
         progress(OwnerProgressBoundary::EventHandled, None);
         for effect in effects {
             progress(OwnerProgressBoundary::EffectStarted, Some(&effect));
-            let maybe_feedback = execute(effect);
+            let mut heartbeat = || progress(OwnerProgressBoundary::EffectHeartbeat, None);
+            let maybe_feedback = execute(effect, &mut heartbeat);
             progress(OwnerProgressBoundary::EffectCompleted, None);
             if let Some(feedback) = maybe_feedback {
                 events.push_back(feedback);
@@ -48,7 +50,7 @@ mod tests {
         drive_feedback(
             0_u8,
             |event| Ok::<Vec<u8>, &'static str>(if event == 0 { vec![10, 11] } else { vec![] }),
-            |effect| (effect == 10).then_some(1),
+            |effect, _| (effect == 10).then_some(1),
             |boundary, _| progress.push(boundary),
         )
         .expect("feedback cascade should complete");
@@ -79,7 +81,7 @@ mod tests {
         drive_feedback(
             (),
             |_| Ok::<Vec<()>, &'static str>(vec![()]),
-            |_| {
+            |_, _| {
                 effect_returned.set(true);
                 None
             },
@@ -108,14 +110,16 @@ mod tests {
                 assert!(event_entry_observed.get());
                 Ok::<Vec<()>, &'static str>(vec![()])
             },
-            |_| {
+            |_, _| {
                 assert!(effect_entry_observed.get());
                 None
             },
             |boundary, _| match boundary {
                 OwnerProgressBoundary::EventStarted => event_entry_observed.set(true),
                 OwnerProgressBoundary::EffectStarted => effect_entry_observed.set(true),
-                OwnerProgressBoundary::EventHandled | OwnerProgressBoundary::EffectCompleted => {}
+                OwnerProgressBoundary::EventHandled
+                | OwnerProgressBoundary::EffectHeartbeat
+                | OwnerProgressBoundary::EffectCompleted => {}
             },
         )
         .expect("entry boundaries should complete");
@@ -141,8 +145,9 @@ mod tests {
                 assert!(now_ms.get().saturating_sub(last_feed_ms.get()) < TIMEOUT_MS);
                 Ok::<Vec<()>, &'static str>(vec![()])
             },
-            |_| {
+            |_, heartbeat| {
                 assert_eq!(last_feed_ms.get(), now_ms.get());
+                heartbeat();
                 now_ms.set(now_ms.get().saturating_add(TIMEOUT_MS + 1));
                 blocking_effect_became_stale
                     .set(now_ms.get().saturating_sub(last_feed_ms.get()) > TIMEOUT_MS);
@@ -165,12 +170,44 @@ mod tests {
         let result = drive_feedback(
             (),
             |_| Err::<Vec<()>, _>("event_failed"),
-            |_| None,
+            |_, _| None,
             |boundary, _| progress.push(boundary),
         );
 
         // Assert
         assert_eq!(result, Err("event_failed"));
         assert_eq!(progress, [OwnerProgressBoundary::EventStarted]);
+    }
+
+    #[test]
+    fn effect_heartbeats_are_reported_before_completion() {
+        // Arrange
+        let mut progress = Vec::new();
+
+        // Act
+        drive_feedback(
+            (),
+            |_| Ok::<Vec<()>, &'static str>(vec![()]),
+            |_, heartbeat| {
+                heartbeat();
+                heartbeat();
+                None
+            },
+            |boundary, _| progress.push(boundary),
+        )
+        .expect("heartbeat effect should complete");
+
+        // Assert
+        assert_eq!(
+            progress,
+            [
+                OwnerProgressBoundary::EventStarted,
+                OwnerProgressBoundary::EventHandled,
+                OwnerProgressBoundary::EffectStarted,
+                OwnerProgressBoundary::EffectHeartbeat,
+                OwnerProgressBoundary::EffectHeartbeat,
+                OwnerProgressBoundary::EffectCompleted,
+            ]
+        );
     }
 }

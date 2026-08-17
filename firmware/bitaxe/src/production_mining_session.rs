@@ -293,6 +293,7 @@ impl OrdinaryEspProductionSessionAdapter {
         &mut self,
         effect: ProductionSessionEffect,
         now_ms: u64,
+        progress: &mut dyn FnMut(),
     ) -> Option<ProductionSessionEvent> {
         match effect {
             ProductionSessionEffect::Publish(snapshot) => {
@@ -434,7 +435,7 @@ impl OrdinaryEspProductionSessionAdapter {
                 if let Some(status) = self.maybe_campaign_status.as_mut() {
                     status.note_safe_stop_pending();
                 }
-                match self.mining_actuation.safe_stop(purpose) {
+                match self.mining_actuation.safe_stop(purpose, progress) {
                     Ok(()) => {
                         Some(ProductionSessionEvent::HardwareSafeStopConfirmed { lease_id, now_ms })
                     }

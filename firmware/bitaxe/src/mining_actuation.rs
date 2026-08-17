@@ -103,6 +103,17 @@ pub trait MiningActuationBackend {
 
     /// Establishes the state described by one idempotent safe-shutdown step.
     fn execute_safe_shutdown_step(&mut self, step: SafeShutdownStep) -> Result<(), Self::Error>;
+
+    /// Executes one step while allowing long-running adapters to report progress.
+    fn execute_safe_shutdown_step_with_progress(
+        &mut self,
+        step: SafeShutdownStep,
+        progress: &mut dyn FnMut(),
+    ) -> Result<(), Self::Error> {
+        let result = self.execute_safe_shutdown_step(step);
+        progress();
+        result
+    }
 }
 
 /// The first failed preparation step and its adapter detail.
@@ -271,9 +282,27 @@ pub fn execute_safe_stop<B>(
 where
     B: MiningActuationBackend,
 {
+    execute_safe_stop_with_progress(backend, purpose, &mut || {})
+}
+
+/// Executes the selected safe-stop plan with cooperative progress boundaries.
+pub fn execute_safe_stop_with_progress<B>(
+    backend: &mut B,
+    purpose: HardwareSafeStopPurpose,
+    progress: &mut dyn FnMut(),
+) -> Result<(), SafeShutdownFailure<B::Error>>
+where
+    B: MiningActuationBackend,
+{
     match purpose {
-        HardwareSafeStopPurpose::ResumablePause => execute_resumable_pause_shutdown(backend),
-        HardwareSafeStopPurpose::Terminal => execute_safe_shutdown(backend),
+        HardwareSafeStopPurpose::ResumablePause => execute_safe_shutdown_steps_with_progress(
+            backend,
+            resumable_pause_shutdown_plan(),
+            progress,
+        ),
+        HardwareSafeStopPurpose::Terminal => {
+            execute_safe_shutdown_steps_with_progress(backend, safe_shutdown_plan(), progress)
+        }
     }
 }
 
@@ -284,10 +313,21 @@ fn execute_safe_shutdown_steps<B, const N: usize>(
 where
     B: MiningActuationBackend,
 {
+    execute_safe_shutdown_steps_with_progress(backend, steps, &mut || {})
+}
+
+fn execute_safe_shutdown_steps_with_progress<B, const N: usize>(
+    backend: &mut B,
+    steps: [SafeShutdownStep; N],
+    progress: &mut dyn FnMut(),
+) -> Result<(), SafeShutdownFailure<B::Error>>
+where
+    B: MiningActuationBackend,
+{
     let mut maybe_earliest_failure = None;
 
     for step in steps {
-        let Err(source) = backend.execute_safe_shutdown_step(step) else {
+        let Err(source) = backend.execute_safe_shutdown_step_with_progress(step, progress) else {
             continue;
         };
 

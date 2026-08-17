@@ -169,7 +169,7 @@ fn drive_session(
     let result = drive_feedback(
         initial_event,
         |event| session.handle(event),
-        |effect| adapter.maybe_execute(effect, now_ms),
+        |effect, heartbeat| adapter.maybe_execute(effect, now_ms, heartbeat),
         |boundary, maybe_effect| {
             let maybe_subphase = match boundary {
                 OwnerProgressBoundary::EventStarted => {
@@ -179,9 +179,9 @@ fn drive_session(
                     let effect = maybe_effect.expect("effect-start boundary carries its effect");
                     Some(effect_subphase(effect))
                 }
-                OwnerProgressBoundary::EventHandled | OwnerProgressBoundary::EffectCompleted => {
-                    None
-                }
+                OwnerProgressBoundary::EventHandled
+                | OwnerProgressBoundary::EffectHeartbeat
+                | OwnerProgressBoundary::EffectCompleted => None,
             };
             let now_millis = crate::runtime_uptime::millis();
             if let Some(subphase) = maybe_subphase {

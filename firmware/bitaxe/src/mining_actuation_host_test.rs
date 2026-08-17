@@ -12,8 +12,9 @@ use bitaxe_stratum::v1::production_session::{
 use bitaxe_stratum::v1::state::MiningOperatorIntent;
 use mining_actuation::{
     execute_preparation, execute_resumable_pause_shutdown, execute_safe_shutdown,
-    execute_safe_stop, preparation_plan, resumable_pause_shutdown_plan, safe_shutdown_plan,
-    MiningActuationBackend, PreparationStep, SafeShutdownStep,
+    execute_safe_stop, execute_safe_stop_with_progress, preparation_plan,
+    resumable_pause_shutdown_plan, safe_shutdown_plan, MiningActuationBackend, PreparationStep,
+    SafeShutdownStep,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -327,6 +328,33 @@ fn typed_stop_purpose_selects_prompt_pause_and_complete_terminal_plans() {
     assert_eq!(
         terminal_backend.recorded,
         safe_shutdown_plan()
+            .map(RecordedStep::SafeShutdown)
+            .to_vec()
+    );
+}
+
+#[test]
+fn safe_stop_reports_progress_after_every_ordered_step() {
+    // Arrange
+    let mut backend = RecordingBackend::default();
+    let mut progress_count = 0_usize;
+
+    // Act
+    execute_safe_stop_with_progress(
+        &mut backend,
+        HardwareSafeStopPurpose::ResumablePause,
+        &mut || progress_count = progress_count.saturating_add(1),
+    )
+    .expect("resumable safe stop should succeed");
+
+    // Assert
+    assert_eq!(
+        progress_count,
+        resumable_pause_shutdown_plan().len()
+    );
+    assert_eq!(
+        backend.recorded,
+        resumable_pause_shutdown_plan()
             .map(RecordedStep::SafeShutdown)
             .to_vec()
     );
