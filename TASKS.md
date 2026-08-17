@@ -1596,6 +1596,17 @@ touch electrical interfaces. Attempt-011 remains consumed and attempt-012 is
 not authorized. STAT-001 remains `implemented`; checklist/progress are
 unchanged.
 
+Snapshot-ordering completion review: exact pushed implementation `0b5338f6`
+copies checkpoint/watchdog/phase observations before sampling evaluation time,
+removes caller-supplied stale time, proves the old invalid and corrected fresh
+interleavings, and expands the independently checked evaluator inventory to 15
+sources. Focused and full mandatory gates pass. No hardware, credentials,
+protected attempt, checklist, progress, or README change occurred. Residual
+risk is live-only: the fix has not completed a detector-gated twenty-window
+campaign. A future attempt-012 needs its own exact-source immutable contract;
+this closure does not authorize it. See
+`docs/parity/work-plans/20260817T035514Z-STAT-001/CLOSURE.md`.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed

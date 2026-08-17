@@ -77,3 +77,21 @@
 - Blocker or next safe action: Review the complete diff, commit and push the
   implementation as `SOURCE_COMMIT`, then write the required non-verifying
   closure without hardware or a checklist transition.
+
+## 2026-08-17T04:23:53Z | closure checkpoint
+
+- Source commit: `0b5338f6c1224dbdae6e664cd286e114ad611c6c`
+- Actions: Pushed the verified implementation and wrote the required
+  non-verifying closure without hardware, checklist, progress, README, or
+  public-projection changes.
+- Verification: `CLOSURE.md` binds immutable PLAN SHA-256
+  `0f9981aff313745a07bdce48edfe1fa7c81da0fe111f8175acc666e4abf3b857`;
+  final status is `implemented`, outcome is `blocked`, and verification
+  claimed is `no`. The implementation's complete ordered gate passed.
+- Evidence: Exact source `0b5338f6` owns the post-copy evaluation timestamp,
+  controlled interleaving regression, production ownership checks, 15-source
+  evaluator identity, and clean package.
+- Outcome: Software correction is complete and the plan is ready to close;
+  live twenty-window parity remains unproved.
+- Blocker or next safe action: Validate the closure lifecycle, commit and push
+  finalization, then stop without device access or attempt-012.
