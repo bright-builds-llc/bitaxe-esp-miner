@@ -103,3 +103,22 @@
   release gate remains a mandatory post-commit pre-hardware check.
 - Blocker or next safe action: Push this implementation, rebuild its clean
   package, require `release_gate: passed`, then run only the frozen detector.
+
+## 2026-08-17T01:49:29Z | attempt-001 complete
+
+- Source commit: `70493a51249df2f82eb5b046be7dc95b137c7e97`
+- Actions: Rebuilt the exact clean package, passed the manifest release gate,
+  ran the one frozen detector, verified protected modes/fresh paths/nonempty
+  opaque Wi-Fi input, and ran the sole large-erase recovery capture.
+- Verification: The effectful command and independent validator exited zero.
+  The public projection revalidates independently and has SHA-256
+  `6c712fd14e2dfc666a78602855efa825b9c104178efeee889e05b6f6b76f5b12`.
+- Evidence: One board 205 was admitted; full erase, exact factory and Wi-Fi/
+  default-NVS restore, `mineonboot=false`, trusted runtime identity, SPIFFS
+  readiness, passive safe state, cleanup, protected modes, and redaction pass.
+  No recovery reflash ran and no private operational value was published.
+- Outcome: `complete`; the new large-erase evidence plus accepted Phase 18/19
+  and verified REL-002 artifacts satisfy every REL-003 release verifier term.
+- Blocker or next safe action: Commit this evidence as `SOURCE_COMMIT`, then
+  transition only REL-003 to verified, synchronize progress, archive the task,
+  run final gates, and push.

@@ -1,0 +1,20 @@
+{
+  "schema_version": "bitaxe-release-recovery-evidence-v1",
+  "board": 205,
+  "attempt_ordinal": 1,
+  "source_commit": "70493a51249df2f82eb5b046be7dc95b137c7e97",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "package_manifest_sha256": "7ef754d31d03c2f3854598627ae99addfe948a50643f1f714e5e317ffd790f74",
+  "plan_sha256": "042e6e11fa69c44c4cde59c680755ce757193de74cb5a7910d763af819b7a6df",
+  "detector_admitted": true,
+  "large_erase_completed": true,
+  "factory_restore_completed": true,
+  "wifi_seed_restored": true,
+  "mineonboot_disabled": true,
+  "runtime_identity_trusted": true,
+  "spiffs_ready": true,
+  "passive_safe_state_confirmed": true,
+  "cleanup_complete": true,
+  "recovery_flash_used": false,
+  "redaction_status": "passed"
+}

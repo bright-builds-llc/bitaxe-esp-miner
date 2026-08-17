@@ -1508,7 +1508,7 @@ verified, so this task remains active rather than archived.
 - [x] Run every focused and mandatory software, firmware, package, release-
       gate, privacy, reference, immutable-plan, and exact-source gate; commit
       and push before device access.
-- [ ] Run only the frozen detector and sole conditional attempt-001 capture;
+- [x] Run only the frozen detector and sole conditional attempt-001 capture;
       jointly admit prior accepted release/rollback evidence and promote
       REL-003 only if complete large-erase restoration proof passes.
 
@@ -1547,6 +1547,25 @@ safe booleans. REL-003 promotion additionally requires the already accepted
 Phase 18/19 release evidence and verified REL-002 interrupted-update/rollback
 result. Any incomplete fact withholds promotion and leaves REL-003
 `implemented`.
+
+Completion review: implementation commit
+`70493a51249df2f82eb5b046be7dc95b137c7e97` fixed canonical package artifact
+paths and added the task-bound typed recovery workflow. The exact clean package
+passed the release gate. The sole detector and attempt-001 then completed one
+full erase, exact factory and owner-Wi-Fi/default-NVS restore, trusted exact-
+package runtime proof, SPIFFS readiness, `mineonboot=false`, passive safe
+state, cleanup, protected modes, independent validation, and redaction without
+a recovery reflash. The accepted Phase 18/19 and verified REL-002 artifacts
+supply the release-gate, provenance, package workflow, failed/interrupted
+update, rollback, and recovery terms; the new projection supplies the former
+large-erase gap. See
+`docs/parity/work-plans/20260817T005227Z-REL-003/RESULT.md`.
+
+Residual risks: onboard settings were intentionally reset to owner Wi-Fi plus
+package defaults; pool values remain local and were not reseeded. OTAWWW,
+power-loss interruption, eFuse anti-rollback, repeated erase, release signing,
+factory provisioning scale, other boards, mining, controls, direct UART, and
+electrical work remain separate non-claims.
 
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
