@@ -20,3 +20,16 @@
   no checklist transition or hardware evidence claimed.
 - Blocker or next safe action: Commit/push the exact source, then close this
   plan. Any future hardware ordinal requires its own immutable contract.
+
+## 2026-08-17T08:15:11Z | pushed software checkpoint
+
+- Source commit: `c3b0dcb997d503a4b6751dc35288bd53abcea8c5`
+- Actions: Published the exact read-outcome, earliest-tuple, v15/v9, fixture,
+  source-inventory, and structural file-split correction.
+- Verification: Every focused and mandatory check from the preceding entry
+  passed against this source; push to `origin/main` completed.
+- Evidence: Public hashrate schema and checklist digest remain unchanged;
+  private campaign schemas alone rotate to v15/v9.
+- Outcome: Source checkpoint complete without hardware or parity promotion.
+- Blocker or next safe action: Close this immutable plan and require a fresh
+  complete contract before any detector-gated attempt-015.

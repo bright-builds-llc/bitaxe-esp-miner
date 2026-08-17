@@ -1861,6 +1861,26 @@ actuate, update, erase, inject faults, manipulate power, use external UART/BAP,
 touch electrical interfaces, retry attempt-014, or create/run attempt-015.
 STAT-001/checklist/progress/README remain unchanged.
 
+Coherent-read diagnostic completion review: pushed source `c3b0dcb9` adds the
+closed `stable`, `uninitialized`, `retry_exhausted`, and `history_poisoned`
+outcomes from the firmware store through HTTP/WebSocket/retained health and
+private campaign result v15/network v9. Retry exhaustion and poison now map to
+distinct fail-closed reasons instead of generic `unproved`. The campaign latches
+read outcome, owner phase, and wait state with the earliest watchdog failure;
+the attempt-014-shaped regression proves later terminal samples cannot overwrite
+that tuple. Generated contracts, 18-source identity, real firmware/package,
+privacy/reference, file-length, and every mandatory gate pass. No hardware or
+public projection ran, and STAT-001/checklist/progress remain unchanged. See
+the linked `CLOSURE.md`.
+
+Residual risk/next action: attempt-014's actual coherent-read outcome remains
+unknowable because its v14/v8 evidence predates the discriminator and carried a
+mixed diagnostic tuple. A separate immutable hardware plan may consider one
+fresh attempt-015 only as a progress-backed diagnostic of the corrected v15/v9
+boundary, with the complete existing detector, unit, safety, privacy, recovery,
+cleanup, retry, stop, and promotion contract. Never reuse attempt-014 or infer
+its hidden cause.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
