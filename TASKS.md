@@ -1610,10 +1610,10 @@ this closure does not authorize it. See
 Attempt-012 verification-promotion plan:
 `docs/parity/work-plans/20260817T042626Z-STAT-001/PLAN.md`
 
-- [ ] Rebind the private-first workflow, validator, generated contract, task/
+- [x] Rebind the private-first workflow, validator, generated contract, task/
       plan admission, Bazel inputs, protected roots, v13/v7 schemas, owner
       phase, 15-source identity, and fixtures from attempt-011 to attempt-012.
-- [ ] Run every focused and mandatory software, firmware, privacy, reference,
+- [x] Run every focused and mandatory software, firmware, privacy, reference,
       package, and exact-source gate; commit and push before device access.
 - [ ] Run only the frozen detector and sole conditional attempt-012 command,
       then promote STAT-001 only if the complete independent quorum passes.
