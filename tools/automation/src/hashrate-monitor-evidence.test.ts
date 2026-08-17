@@ -275,7 +275,7 @@ if (args[0] === "mining-campaign") {
   await mkdir(root, { recursive: true, mode: 0o700 });
   await chmod(root, 0o700);
   const transport = { active_sample_count: 3, positive_coherent_count: 3, distinct_positive_count: 2, warm_rolling_window_count: 2, terminal_zero_confirmed: true };
-  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v10", status: "accepted", watchdog_failure: "none", watchdog_read_outcome: "stable", watchdog_owner_phase: "waiting_inbox", watchdog_owner_subphase: "unavailable", watchdog_wait_state: "within_deadline", required_window_count: 20, covered_window_count: 20, hashrate_monitor: { monitor_cadence_ms: 1000, asic_count: 1, domain_count: 4, http: transport, websocket: ${options.malformedTransport === true ? "{ ...transport, distinct_positive_count: 1 }" : "transport"} } }) + "\\n";
+  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v11", status: "accepted", correlation_failure: "none", watchdog_failure: "none", watchdog_read_outcome: "stable", watchdog_owner_phase: "waiting_inbox", watchdog_owner_subphase: "unavailable", watchdog_wait_state: "within_deadline", required_window_count: 20, covered_window_count: 20, hashrate_monitor: { monitor_cadence_ms: 1000, asic_count: 1, domain_count: 4, http: transport, websocket: ${options.malformedTransport === true ? "{ ...transport, distinct_positive_count: 1 }" : "transport"} } }) + "\\n";
   const result = JSON.stringify(${options.sealedFailure === true
     ? JSON.stringify(failureResult)
     : `{ ...${JSON.stringify(okResult)}, network_continuity_sha256: digest(network) }`}) + "\\n";

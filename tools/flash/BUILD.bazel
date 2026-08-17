@@ -87,6 +87,7 @@ rust_binary(
         "src/campaign/network/hashrate.rs",
         "src/campaign/network/model.rs",
         "src/campaign/network/model/command_failure.rs",
+        "src/campaign/network/model/evidence.rs",
         "src/campaign/network/observer.rs",
         "src/campaign/network/serial.rs",
         "src/campaign/network/tests.rs",

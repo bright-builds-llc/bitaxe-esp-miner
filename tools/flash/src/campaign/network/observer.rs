@@ -7,8 +7,8 @@ use serde_json::Value;
 
 use super::super::CampaignTerminalCategory;
 use super::model::{
-    CampaignNetworkEvidence, NetworkAccumulator, NetworkTransport, SharedSerialState,
-    TrustedNetworkTarget, TERMINAL_NETWORK_DEADLINE_SECONDS,
+    CampaignNetworkEvidence, NetworkAccumulator, NetworkCorrelationFailure, NetworkTransport,
+    SharedSerialState, TrustedNetworkTarget, TERMINAL_NETWORK_DEADLINE_SECONDS,
 };
 
 const HTTP_POLL_INTERVAL: Duration = Duration::from_secs(5);
@@ -121,7 +121,9 @@ pub(super) fn observe_network(
                             );
                         }
                     } else {
-                        accumulator.fail(CampaignTerminalCategory::NetworkCorrelationFailed);
+                        accumulator.fail_correlation(
+                            NetworkCorrelationFailure::WebsocketProjectionInvalid,
+                        );
                     }
                 }
                 Ok(WebSocketRead::Timeout) => {}
@@ -179,7 +181,7 @@ fn observe_http(
         return;
     };
     let Ok(sample) = serde_json::from_slice::<SystemInfoWire>(response.body()) else {
-        accumulator.fail(CampaignTerminalCategory::NetworkCorrelationFailed);
+        accumulator.fail_correlation(NetworkCorrelationFailure::HttpProjectionInvalid);
         return;
     };
     if serial.terminal_consumed {

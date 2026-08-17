@@ -3,7 +3,6 @@ use std::sync::{Arc, Mutex};
 
 use bitaxe_api::{ExpectedRuntimeAttestationIdentity, SystemInfoWire};
 use bitaxe_http_transport::WebSocketReadFailureKind;
-use serde::Serialize;
 
 use super::super::*;
 use super::command_evidence::CommandEffectsEvidence;
@@ -20,9 +19,11 @@ use super::watchdog::{
 use super::window::{ContinuityWindowEvidence, SerialWindowEvidence};
 
 mod command_failure;
+mod evidence;
 pub(in crate::campaign) use command_failure::{
     CommandFailureCause, CommandFailureDiagnostic, CommandFailurePhase,
 };
+pub(crate) use evidence::CampaignNetworkEvidence;
 
 pub(super) const REQUIRED_WINDOWS: usize = 20;
 pub(super) const WINDOW_MILLIS: u64 = 30_000;
@@ -71,159 +72,43 @@ impl Default for SharedSerialState {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub(crate) struct CampaignNetworkEvidence {
-    pub(in crate::campaign) schema: &'static str,
-    pub(in crate::campaign) status: &'static str,
-    pub(in crate::campaign) required_window_count: usize,
-    pub(in crate::campaign) covered_window_count: usize,
-    pub(in crate::campaign) http_success_count: u64,
-    pub(in crate::campaign) websocket_frame_count: u64,
-    pub(in crate::campaign) websocket_reconnect_count: u64,
-    pub(in crate::campaign) websocket_connect_failure_count: u64,
-    pub(in crate::campaign) websocket_peer_close_count: u64,
-    pub(in crate::campaign) websocket_io_failure_count: u64,
-    pub(in crate::campaign) websocket_protocol_failure_count: u64,
-    pub(in crate::campaign) websocket_capacity_failure_count: u64,
-    pub(in crate::campaign) websocket_other_failure_count: u64,
-    pub(in crate::campaign) recovery_pause_request_count: u64,
-    pub(in crate::campaign) http_startup_transition_count: u64,
-    pub(in crate::campaign) websocket_startup_transition_count: u64,
-    pub(in crate::campaign) http_initial_active_observed: bool,
-    pub(in crate::campaign) websocket_initial_active_observed: bool,
-    pub(in crate::campaign) maximum_http_gap_ms: u64,
-    pub(in crate::campaign) maximum_websocket_gap_ms: u64,
-    pub(in crate::campaign) maximum_active_marker_gap_ms: u64,
-    pub(in crate::campaign) same_boot_and_package: bool,
-    pub(in crate::campaign) active_state_valid: bool,
-    pub(in crate::campaign) safety_valid: bool,
-    pub(in crate::campaign) watchdog_valid: bool,
-    pub(in crate::campaign) watchdog_failure: &'static str,
-    pub(in crate::campaign) watchdog_read_outcome: &'static str,
-    pub(in crate::campaign) watchdog_owner_phase: &'static str,
-    pub(in crate::campaign) watchdog_owner_subphase: &'static str,
-    pub(in crate::campaign) watchdog_wait_state: &'static str,
-    pub(in crate::campaign) work_renewal_valid: bool,
-    pub(in crate::campaign) terminal_http_valid: bool,
-    pub(in crate::campaign) terminal_websocket_valid: bool,
-    pub(in crate::campaign) terminal_pool_persisted: bool,
-    pub(in crate::campaign) hashrate_monitor: CampaignHashrateEvidence,
-    pub(in crate::campaign) command_effects: Option<CommandEffectsEvidence>,
-    pub(in crate::campaign) command_failure: Option<CommandFailureDiagnostic>,
-    #[serde(skip)]
-    pub(in crate::campaign) maybe_failure: Option<CampaignTerminalCategory>,
-}
-
-impl CampaignNetworkEvidence {
-    pub(crate) fn not_required() -> Self {
-        Self::empty("not_required", None)
-    }
-
-    pub(super) fn from_unobserved(shared: &Arc<Mutex<SharedSerialState>>) -> Self {
-        let maybe_failure = shared
-            .lock()
-            .ok()
-            .and_then(|state| state.maybe_failure)
-            .or(Some(CampaignTerminalCategory::NetworkTargetUnavailable));
-        Self::empty("failed", maybe_failure)
-    }
-
-    pub(super) fn worker_failed(shared: &Arc<Mutex<SharedSerialState>>) -> Self {
-        let maybe_failure = shared
-            .lock()
-            .ok()
-            .and_then(|state| state.maybe_failure)
-            .or(Some(CampaignTerminalCategory::NetworkCorrelationFailed));
-        Self::empty("failed", maybe_failure)
-    }
-
-    fn empty(status: &'static str, maybe_failure: Option<CampaignTerminalCategory>) -> Self {
-        Self {
-            schema: "mining-campaign-network-continuity-v10",
-            status,
-            required_window_count: REQUIRED_WINDOWS,
-            covered_window_count: 0,
-            http_success_count: 0,
-            websocket_frame_count: 0,
-            websocket_reconnect_count: 0,
-            websocket_connect_failure_count: 0,
-            websocket_peer_close_count: 0,
-            websocket_io_failure_count: 0,
-            websocket_protocol_failure_count: 0,
-            websocket_capacity_failure_count: 0,
-            websocket_other_failure_count: 0,
-            recovery_pause_request_count: 0,
-            http_startup_transition_count: 0,
-            websocket_startup_transition_count: 0,
-            http_initial_active_observed: false,
-            websocket_initial_active_observed: false,
-            maximum_http_gap_ms: 0,
-            maximum_websocket_gap_ms: 0,
-            maximum_active_marker_gap_ms: 0,
-            same_boot_and_package: false,
-            active_state_valid: false,
-            safety_valid: false,
-            watchdog_valid: false,
-            watchdog_failure: WatchdogFailure::None.label(),
-            watchdog_read_outcome: WatchdogReadOutcome::Uninitialized.label(),
-            watchdog_owner_phase: WatchdogOwnerPhase::Unavailable.label(),
-            watchdog_owner_subphase: WatchdogOwnerSubphase::Unavailable.label(),
-            watchdog_wait_state: WatchdogWaitState::NotWaiting.label(),
-            work_renewal_valid: false,
-            terminal_http_valid: false,
-            terminal_websocket_valid: false,
-            terminal_pool_persisted: false,
-            hashrate_monitor: CampaignHashrateEvidence::empty(),
-            command_effects: None,
-            command_failure: None,
-            maybe_failure,
-        }
-    }
-
-    pub(super) fn from_command_effects(
-        evidence: CommandEffectsEvidence,
-        recovery_pause_request_count: u64,
-        maybe_failure: Option<CampaignTerminalCategory>,
-        maybe_command_failure: Option<CommandFailureDiagnostic>,
-    ) -> Self {
-        // Command-effects has its own request/observation quorum. The shared
-        // soak-window fields must stay explicitly non-applicable so a failed
-        // command join cannot be misdiagnosed as missing continuity windows.
-        let complete = evidence.complete();
-        let maybe_failure = maybe_failure
-            .or_else(|| (!complete).then_some(CampaignTerminalCategory::NetworkCorrelationFailed));
-        let status = if maybe_failure.is_none() && complete {
-            "accepted"
-        } else {
-            "failed"
-        };
-        Self {
-            status,
-            required_window_count: 0,
-            covered_window_count: 0,
-            recovery_pause_request_count,
-            same_boot_and_package: evidence.same_boot_and_package,
-            active_state_valid: evidence.active_before_pause && evidence.active_after_resume,
-            safety_valid: evidence.safety_valid,
-            terminal_http_valid: evidence.terminal_http_valid,
-            terminal_pool_persisted: evidence.terminal_pool_persisted,
-            command_effects: Some(evidence),
-            command_failure: maybe_command_failure.or_else(|| {
-                (!complete).then_some(CommandFailureDiagnostic::new(
-                    CommandFailurePhase::Terminal,
-                    CommandFailureCause::QuorumIncomplete,
-                ))
-            }),
-            maybe_failure,
-            ..Self::empty(status, maybe_failure)
-        }
-    }
-}
-
 #[derive(Clone, Copy)]
 pub(super) enum NetworkTransport {
     Http,
     WebSocket,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) enum NetworkCorrelationFailure {
+    None,
+    HttpProjectionInvalid,
+    WebsocketProjectionInvalid,
+    HttpRevisionRegressed,
+    WebsocketRevisionRegressed,
+    HttpShareCounterRegressed,
+    WebsocketShareCounterRegressed,
+    ActiveStateLost,
+    IdentityInvalid,
+    MiningStateInvalid,
+    SafetyInvalid,
+}
+
+impl NetworkCorrelationFailure {
+    const fn label(self) -> &'static str {
+        match self {
+            Self::None => "none",
+            Self::HttpProjectionInvalid => "http_projection_invalid",
+            Self::WebsocketProjectionInvalid => "websocket_projection_invalid",
+            Self::HttpRevisionRegressed => "http_revision_regressed",
+            Self::WebsocketRevisionRegressed => "websocket_revision_regressed",
+            Self::HttpShareCounterRegressed => "http_share_counter_regressed",
+            Self::WebsocketShareCounterRegressed => "websocket_share_counter_regressed",
+            Self::ActiveStateLost => "active_state_lost",
+            Self::IdentityInvalid => "identity_invalid",
+            Self::MiningStateInvalid => "mining_state_invalid",
+            Self::SafetyInvalid => "safety_invalid",
+        }
+    }
 }
 
 pub(super) struct NetworkAccumulator {
@@ -244,6 +129,7 @@ pub(super) struct NetworkAccumulator {
     pub(super) terminal_http_valid: bool,
     pub(super) terminal_websocket_valid: bool,
     pub(super) maybe_failure: Option<CampaignTerminalCategory>,
+    correlation_failure: NetworkCorrelationFailure,
     same_boot_and_package: bool,
     active_state_valid: bool,
     safety_valid: bool,
@@ -286,6 +172,7 @@ impl NetworkAccumulator {
             terminal_http_valid: false,
             terminal_websocket_valid: false,
             maybe_failure: None,
+            correlation_failure: NetworkCorrelationFailure::None,
             same_boot_and_package: true,
             active_state_valid: true,
             safety_valid: true,
@@ -329,7 +216,7 @@ impl NetworkAccumulator {
         if !active_mining_state_valid(sample) {
             if self.initial_active_observed(transport) {
                 self.active_state_valid = false;
-                self.fail(CampaignTerminalCategory::NetworkCorrelationFailed);
+                self.fail_correlation(NetworkCorrelationFailure::ActiveStateLost);
             } else {
                 self.record_startup_transition(transport);
             }
@@ -341,10 +228,12 @@ impl NetworkAccumulator {
         let shares = (sample.shares_accepted, sample.shares_rejected);
         match transport {
             NetworkTransport::Http => {
-                if sequence_regresses(self.last_http_revision, revision)
-                    || regresses(self.last_http_shares, shares)
-                {
-                    self.fail(CampaignTerminalCategory::NetworkCorrelationFailed);
+                if sequence_regresses(self.last_http_revision, revision) {
+                    self.fail_correlation(NetworkCorrelationFailure::HttpRevisionRegressed);
+                    return;
+                }
+                if regresses(self.last_http_shares, shares) {
+                    self.fail_correlation(NetworkCorrelationFailure::HttpShareCounterRegressed);
                     return;
                 }
                 update_gap(
@@ -359,10 +248,14 @@ impl NetworkAccumulator {
                 self.hashrate.http.observe_active(active_ms, sample);
             }
             NetworkTransport::WebSocket => {
-                if sequence_regresses(self.last_websocket_revision, revision)
-                    || regresses(self.last_websocket_shares, shares)
-                {
-                    self.fail(CampaignTerminalCategory::NetworkCorrelationFailed);
+                if sequence_regresses(self.last_websocket_revision, revision) {
+                    self.fail_correlation(NetworkCorrelationFailure::WebsocketRevisionRegressed);
+                    return;
+                }
+                if regresses(self.last_websocket_shares, shares) {
+                    self.fail_correlation(
+                        NetworkCorrelationFailure::WebsocketShareCounterRegressed,
+                    );
                     return;
                 }
                 update_gap(
@@ -457,8 +350,9 @@ impl NetworkAccumulator {
             && covered_window_count == REQUIRED_WINDOWS
             && serial.terminal_consumed;
         CampaignNetworkEvidence {
-            schema: "mining-campaign-network-continuity-v10",
+            schema: "mining-campaign-network-continuity-v11",
             status: if accepted { "accepted" } else { "failed" },
+            correlation_failure: self.correlation_failure.label(),
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count,
             http_success_count: self.http_success_count,
@@ -505,6 +399,13 @@ impl NetworkAccumulator {
 
     pub(super) fn fail(&mut self, category: CampaignTerminalCategory) {
         self.maybe_failure.get_or_insert(category);
+    }
+
+    pub(super) fn fail_correlation(&mut self, failure: NetworkCorrelationFailure) {
+        if self.maybe_failure.is_none() {
+            self.correlation_failure = failure;
+        }
+        self.fail(CampaignTerminalCategory::NetworkCorrelationFailed);
     }
 
     fn observe_watchdog(&mut self, sample: &SystemInfoWire) -> bool {
@@ -577,10 +478,19 @@ impl NetworkAccumulator {
 
     fn record_validation_failure(&mut self, failure: SampleValidationFailure, terminal: bool) {
         match failure {
-            SampleValidationFailure::Identity => self.same_boot_and_package = false,
-            SampleValidationFailure::MiningState if !terminal => self.active_state_valid = false,
+            SampleValidationFailure::Identity => {
+                self.same_boot_and_package = false;
+                self.correlation_failure = NetworkCorrelationFailure::IdentityInvalid;
+            }
+            SampleValidationFailure::MiningState if !terminal => {
+                self.active_state_valid = false;
+                self.correlation_failure = NetworkCorrelationFailure::MiningStateInvalid;
+            }
             SampleValidationFailure::MiningState => {}
-            SampleValidationFailure::Safety => self.safety_valid = false,
+            SampleValidationFailure::Safety => {
+                self.safety_valid = false;
+                self.correlation_failure = NetworkCorrelationFailure::SafetyInvalid;
+            }
         }
         self.fail(if terminal {
             CampaignTerminalCategory::TerminalStateUnconfirmed

@@ -514,7 +514,7 @@ export async function captureHashrateMonitorEvidence(
       || Object.values(parseDiagnostic.runtime_attestation_parse_failure_counts)
         .some((count) => count !== 0)
       || requiredString(networkFile.value, "schema", "campaign network evidence")
-        !== "mining-campaign-network-continuity-v10"
+        !== "mining-campaign-network-continuity-v11"
       || requiredString(networkFile.value, "status", "campaign network evidence") !== "accepted") {
       throw failure("evidence_invalid", "campaign acceptance boundary is incomplete");
     }
