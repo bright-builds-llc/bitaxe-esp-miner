@@ -2086,10 +2086,10 @@ receive its own regression-backed correction before another continuation.
 Attempt-017 verification-promotion plan:
 `docs/parity/work-plans/20260817T114224Z-STAT-001/PLAN.md`
 
-- [ ] Rebind workflow, validator, contract, task/plan, Bazel, roots, and
+- [x] Rebind workflow, validator, contract, task/plan, Bazel, roots, and
       fixtures from attempt-016 to 017, preserving v16/v10, fused writer,
       bounded reader, earliest tuple, and 18-source identity.
-- [ ] Pass focused/full gates, commit/push, and rebuild exact package before
+- [x] Pass focused/full gates, commit/push, and rebuild exact package before
       device access.
 - [ ] Run only the frozen detector and sole capture; promote only on the full
       independently validated quorum.
