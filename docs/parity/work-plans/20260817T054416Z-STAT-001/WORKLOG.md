@@ -52,3 +52,17 @@
   validator requires ordinal13 and rejects ordinal12.
 - Outcome: Exact software surface ready for commit/push and clean package.
 - Blocker or next safe action: Commit/push, rebuild package, run only PLAN commands.
+
+## 2026-08-17T06:11:26Z | attempt-013 terminal checkpoint
+
+- Source commit: `43cc417822ec64bdf862d1f48a081c1f33c52a9a`
+- Actions: Rebuilt/validated clean package, ran detector, checked only metadata,
+  consumed sole attempt-013 command; no retry/out-of-band probe.
+- Verification: Detector passed; v14/v8 seals/modes, identity, attestation,
+  same-package, active state, safety, terminal transports, pool persistence,
+  safe stop, cleanup, redaction pass; projection absent.
+- Evidence: `watchdog_feed_stale`, `waiting_inbox`, `within_deadline`, 12/20.
+  Source tracing isolates a mixed feed-history/phase-deadline snapshot race.
+- Outcome: `stop_hardware_blocker`; no transition permitted.
+- Blocker or next safe action: Close/push; require software coherent snapshot
+  protocol before attempt-014.
