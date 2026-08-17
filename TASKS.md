@@ -1503,11 +1503,11 @@ its own exact-source immutable contract; this closure does not authorize it.
 Attempt-011 verification-promotion plan:
 `docs/parity/work-plans/20260817T030355Z-STAT-001/PLAN.md`
 
-- [ ] Rebind the private-first workflow, Rust validator, generated contract,
+- [x] Rebind the private-first workflow, Rust validator, generated contract,
       immutable task/plan admission, Bazel inputs, protected roots, v13/v7
       schemas, owner phase, and real-child fixtures from consumed attempt-010
       to fresh attempt-011.
-- [ ] Run every focused and mandatory software, firmware, privacy, reference,
+- [x] Run every focused and mandatory software, firmware, privacy, reference,
       package, and exact-source gate; commit and push before device access.
 - [ ] Run only the frozen detector and sole conditional attempt-011 command,
       then promote STAT-001 only if the complete independent quorum passes.
