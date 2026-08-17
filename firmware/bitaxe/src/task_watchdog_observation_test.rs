@@ -2,7 +2,6 @@ use super::*;
 use bitaxe_core::runtime_health::{
     TaskWatchdogOwnerSubphase, TaskWatchdogReadOutcome, TaskWatchdogWaitState,
 };
-use std::cell::{Cell, RefCell};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::sync::Barrier;
 use std::time::Duration;
@@ -40,121 +39,7 @@ fn stable_publications_round_trip_as_one_snapshot() {
 }
 
 #[test]
-fn old_feed_and_new_wait_interleaving_retries_to_one_owner_instant() {
-    // Arrange
-    let store = TaskWatchdogObservationStore::new();
-    store.record(TaskWatchdogObservation::fed(1, 100));
-    store.record_owner_phase(TaskWatchdogOwnerPhase::LoopStart);
-    let injected = Cell::new(false);
-
-    // Act
-    let snapshot = store.coherent_observation_with(|| {
-        if injected.replace(true) {
-            return;
-        }
-        store.record(TaskWatchdogObservation::fed(2, 200));
-        store.record_owner_wait(Some(500));
-    });
-
-    // Assert
-    assert_eq!(
-        snapshot.maybe_latest,
-        Some(TaskWatchdogObservation::fed(2, 200))
-    );
-    assert_eq!(snapshot.read_outcome, TaskWatchdogReadOutcome::Stable);
-    assert_eq!(snapshot.owner_phase, TaskWatchdogOwnerPhase::WaitingInbox);
-    assert_eq!(
-        snapshot.owner_subphase,
-        TaskWatchdogOwnerSubphase::Unavailable
-    );
-    assert_eq!(
-        snapshot.owner_wait.state_at(300),
-        TaskWatchdogWaitState::WithinDeadline
-    );
-}
-
-#[test]
-fn repeated_publication_races_exhaust_to_closed_default() {
-    // Arrange
-    let store = TaskWatchdogObservationStore::new();
-    store.record(TaskWatchdogObservation::fed(1, 100));
-    let publication_count = Cell::new(0_u8);
-
-    // Act
-    let snapshot = store.coherent_observation_with(|| {
-        publication_count.set(publication_count.get().saturating_add(1));
-        store.record_owner_phase(TaskWatchdogOwnerPhase::LoopStart);
-    });
-
-    // Assert
-    assert_eq!(usize::from(publication_count.get()), COHERENT_READ_ATTEMPTS);
-    assert_eq!(snapshot.maybe_previous, None);
-    assert_eq!(snapshot.maybe_latest, None);
-    assert_eq!(
-        snapshot.read_outcome,
-        TaskWatchdogReadOutcome::RetryExhausted
-    );
-    assert_eq!(snapshot.owner_phase, TaskWatchdogOwnerPhase::Unavailable);
-    assert_eq!(
-        snapshot.owner_subphase,
-        TaskWatchdogOwnerSubphase::Unavailable
-    );
-    assert_eq!(
-        snapshot.owner_wait.state_at(0),
-        TaskWatchdogWaitState::NotWaiting
-    );
-}
-
-#[test]
-fn finite_odd_publication_recovers_after_one_scheduler_handoff() {
-    // Arrange
-    let store = TaskWatchdogObservationStore::new();
-    store.record(TaskWatchdogObservation::fed(1, 100));
-    let publication = RefCell::new(Some(store.begin_publication()));
-    let retry_count = Cell::new(0_u8);
-
-    // Act
-    let snapshot = store.coherent_observation_with_hooks(
-        || {},
-        || {
-            retry_count.set(retry_count.get().saturating_add(1));
-            drop(publication.borrow_mut().take());
-        },
-    );
-
-    // Assert
-    assert_eq!(retry_count.get(), 1);
-    assert_eq!(snapshot.read_outcome, TaskWatchdogReadOutcome::Stable);
-    assert_eq!(
-        snapshot.maybe_latest,
-        Some(TaskWatchdogObservation::fed(1, 100))
-    );
-}
-
-#[test]
-fn permanently_odd_publication_exhausts_the_exact_retry_budget() {
-    // Arrange
-    let store = TaskWatchdogObservationStore::new();
-    store.record(TaskWatchdogObservation::fed(1, 100));
-    let _publication = store.begin_publication();
-    let retry_count = Cell::new(0_u8);
-
-    // Act
-    let snapshot = store.coherent_observation_with_hooks(
-        || {},
-        || retry_count.set(retry_count.get().saturating_add(1)),
-    );
-
-    // Assert
-    assert_eq!(usize::from(retry_count.get()), COHERENT_READ_ATTEMPTS);
-    assert_eq!(
-        snapshot.read_outcome,
-        TaskWatchdogReadOutcome::RetryExhausted
-    );
-}
-
-#[test]
-fn finite_preempted_writer_outliving_immediate_yields_recovers() {
+fn preempted_writer_is_serialized_into_one_complete_snapshot() {
     // Arrange
     let store = TaskWatchdogObservationStore::new();
     store.record(TaskWatchdogObservation::fed(1, 100));
@@ -163,9 +48,15 @@ fn finite_preempted_writer_outliving_immediate_yields_recovers() {
     // Act
     let snapshot = std::thread::scope(|scope| {
         scope.spawn(|| {
-            let _publication = store.begin_publication();
+            let mut state = store.state.lock().expect("fresh state lock");
+            state.owner_phase = TaskWatchdogOwnerPhase::HandlingInbox;
             publication_started.wait();
-            std::thread::sleep(Duration::from_millis(4));
+            std::thread::sleep(Duration::from_millis(20));
+            TaskWatchdogObservationStore::record_history(
+                &mut state.history,
+                TaskWatchdogObservation::fed(2, 200),
+            );
+            state.owner_subphase = TaskWatchdogOwnerSubphase::EffectPollChip;
         });
         publication_started.wait();
         store.coherent_observation()
@@ -175,7 +66,12 @@ fn finite_preempted_writer_outliving_immediate_yields_recovers() {
     assert_eq!(snapshot.read_outcome, TaskWatchdogReadOutcome::Stable);
     assert_eq!(
         snapshot.maybe_latest,
-        Some(TaskWatchdogObservation::fed(1, 100))
+        Some(TaskWatchdogObservation::fed(2, 200))
+    );
+    assert_eq!(snapshot.owner_phase, TaskWatchdogOwnerPhase::HandlingInbox);
+    assert_eq!(
+        snapshot.owner_subphase,
+        TaskWatchdogOwnerSubphase::EffectPollChip
     );
 }
 
@@ -185,7 +81,7 @@ fn poisoned_history_fails_closed_without_mixed_atomic_facts() {
     let store = TaskWatchdogObservationStore::new();
     store.record_owner_wait(Some(500));
     let poisoned = catch_unwind(AssertUnwindSafe(|| {
-        let _history = store.history.lock().expect("fresh history lock");
+        let _state = store.state.lock().expect("fresh state lock");
         panic!("poison observation history for the fail-closed regression");
     }));
     assert!(poisoned.is_err());

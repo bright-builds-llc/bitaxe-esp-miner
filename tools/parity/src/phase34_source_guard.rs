@@ -297,10 +297,9 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
         .find("let current_monotonic_millis = crate::runtime_uptime::millis();")
         .expect("evaluation time read");
     assert!(watchdog_observation < evaluation_time);
-    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("COHERENT_READ_ATTEMPTS"));
-    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("publication_sequence: AtomicU32"));
-    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE
-        .contains("start_sequence == end_sequence && end_sequence & 1 == 0"));
+    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("state: Mutex<TaskWatchdogObservationState>"));
+    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("let state = match self.state.lock()"));
+    assert!(!TASK_WATCHDOG_OBSERVATION_SOURCE.contains("publication_sequence"));
     assert!(candidate_collection.contains("runtime_health_adapter::collect()"));
     assert!(!candidate_collection.contains("collect(crate::runtime_uptime::millis())"));
     assert_eq!(

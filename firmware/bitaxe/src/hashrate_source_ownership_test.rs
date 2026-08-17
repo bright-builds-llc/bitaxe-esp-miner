@@ -82,10 +82,9 @@ fn owner_phase_and_campaign_publication_have_single_production_ownership() {
             .count(),
         1
     );
-    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("publication_sequence: AtomicU32"));
-    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("Ordering::AcqRel"));
-    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("Ordering::Release"));
-    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("Ordering::Acquire"));
+    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE
+        .contains("state: Mutex<TaskWatchdogObservationState>"));
+    assert!(!TASK_WATCHDOG_OBSERVATION_SOURCE.contains("publication_sequence"));
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains(".with_task_watchdog_owner_phase("));
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains(".with_task_watchdog_owner_subphase("));
     assert!(CAMPAIGN_STATUS_SOURCE
@@ -125,8 +124,9 @@ fn runtime_health_copies_producer_facts_before_sampling_evaluation_time() {
 #[test]
 fn waiting_inbox_arms_deadline_before_phase_and_uses_priority_five() {
     // Arrange
-    let deadline_store = "self.owner_wait_deadline_millis";
-    let waiting_phase_store = "TaskWatchdogOwnerPhase::WaitingInbox as u8";
+    let deadline_store =
+        "state.owner_wait = TaskWatchdogWaitObservation::waiting_until(maybe_deadline_millis);";
+    let waiting_phase_store = "state.owner_phase = TaskWatchdogOwnerPhase::WaitingInbox;";
 
     // Act
     let deadline_store_index = TASK_WATCHDOG_OBSERVATION_SOURCE
@@ -162,40 +162,33 @@ fn waiting_inbox_arms_deadline_before_phase_and_uses_priority_five() {
 }
 
 #[test]
-fn watchdog_snapshot_brackets_every_fact_with_bounded_fail_closed_retries() {
+fn watchdog_snapshot_copies_every_fact_under_one_state_mutex() {
     // Arrange
-    let retry_limit = "const COHERENT_READ_ATTEMPTS: usize = 8;";
-    let sequence_start = "let start_sequence = self.publication_sequence.load(Ordering::Acquire);";
-    let sequence_end = "let end_sequence = self.publication_sequence.load(Ordering::Acquire);";
+    let state_lock = "let state = match self.state.lock()";
 
     // Act
-    let sequence_start_index = TASK_WATCHDOG_OBSERVATION_SOURCE
-        .find(sequence_start)
-        .expect("coherent reader sequence start must exist");
+    let state_lock_index = TASK_WATCHDOG_OBSERVATION_SOURCE
+        .find(state_lock)
+        .expect("coherent state lock must exist");
     let history_index = TASK_WATCHDOG_OBSERVATION_SOURCE
-        .find("let history = match self.history.lock()")
+        .find("maybe_previous: state.history.maybe_previous")
         .expect("coherent reader history copy must exist");
     let phase_index = TASK_WATCHDOG_OBSERVATION_SOURCE
-        .find("TaskWatchdogOwnerPhase::from_u8(self.owner_phase.load")
+        .find("owner_phase: state.owner_phase")
         .expect("coherent reader owner phase copy must exist");
     let subphase_index = TASK_WATCHDOG_OBSERVATION_SOURCE
-        .find("TaskWatchdogOwnerSubphase::from_u8(")
+        .find("owner_subphase: state.owner_subphase")
         .expect("coherent reader owner subphase copy must exist");
-    let sequence_end_index = TASK_WATCHDOG_OBSERVATION_SOURCE
-        .find(sequence_end)
-        .expect("coherent reader sequence end must exist");
+    let wait_index = TASK_WATCHDOG_OBSERVATION_SOURCE
+        .find("owner_wait: if state.owner_phase")
+        .expect("coherent reader wait copy must exist");
 
     // Assert
-    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains(retry_limit));
-    assert!(sequence_start_index < history_index);
+    assert!(state_lock_index < history_index);
     assert!(history_index < phase_index);
     assert!(phase_index < subphase_index);
-    assert!(subphase_index < sequence_end_index);
-    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE
-        .contains("start_sequence == end_sequence && end_sequence & 1 == 0"));
-    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains(
-        "TaskWatchdogObservationSnapshot::failed(TaskWatchdogReadOutcome::RetryExhausted)"
-    ));
+    assert!(subphase_index < wait_index);
+    assert!(!TASK_WATCHDOG_OBSERVATION_SOURCE.contains("RetryExhausted"));
     assert!(TASK_WATCHDOG_OBSERVATION_SOURCE
         .contains("TaskWatchdogReadOutcome::HistoryPoisoned"));
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE

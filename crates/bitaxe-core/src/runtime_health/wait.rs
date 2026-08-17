@@ -54,7 +54,7 @@ impl TaskWatchdogOwnerPhase {
         }
     }
 
-    /// Decodes the lock-free firmware representation without accepting free text.
+    /// Decodes the compact firmware representation without accepting free text.
     #[must_use]
     pub const fn from_u8(value: u8) -> Self {
         match value {
@@ -140,7 +140,7 @@ impl TaskWatchdogOwnerSubphase {
         }
     }
 
-    /// Decodes the lock-free firmware representation without accepting free text.
+    /// Decodes the compact firmware representation without accepting free text.
     #[must_use]
     pub const fn from_u8(value: u8) -> Self {
         match value {
@@ -196,7 +196,7 @@ impl TaskWatchdogWaitState {
     }
 }
 
-/// One lock-free producer observation used to derive the receive-wait state.
+/// One producer observation used to derive the receive-wait state.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TaskWatchdogWaitObservation {
     NotWaiting,

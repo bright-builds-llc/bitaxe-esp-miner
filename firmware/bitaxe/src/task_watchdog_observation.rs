@@ -2,22 +2,25 @@
 
 //! Shared observation store for producer-owned ESP task-watchdog facts.
 
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
 use std::sync::Mutex;
-use std::time::Duration;
 
 use bitaxe_core::runtime_health::{
     TaskWatchdogObservation, TaskWatchdogOwnerPhase, TaskWatchdogOwnerSubphase,
     TaskWatchdogReadOutcome, TaskWatchdogWaitObservation,
 };
 
-const COHERENT_READ_ATTEMPTS: usize = 8;
-const COHERENT_READ_RETRY_DELAY_MILLIS: u64 = 1;
-
 #[derive(Debug, Clone, Copy, Default)]
 struct TaskWatchdogObservationHistory {
     maybe_previous: Option<TaskWatchdogObservation>,
     maybe_latest: Option<TaskWatchdogObservation>,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct TaskWatchdogObservationState {
+    history: TaskWatchdogObservationHistory,
+    owner_phase: TaskWatchdogOwnerPhase,
+    owner_subphase: TaskWatchdogOwnerSubphase,
+    owner_wait: TaskWatchdogWaitObservation,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -44,36 +47,31 @@ impl Default for TaskWatchdogObservationSnapshot {
 }
 
 struct TaskWatchdogObservationStore {
-    history: Mutex<TaskWatchdogObservationHistory>,
-    publication_sequence: AtomicU32,
-    owner_phase: AtomicU8,
-    owner_subphase: AtomicU8,
-    owner_wait_deadline_millis: AtomicU32,
-    owner_wait_deadline_valid: AtomicBool,
+    state: Mutex<TaskWatchdogObservationState>,
 }
 
 impl TaskWatchdogObservationStore {
     const fn new() -> Self {
         Self {
-            history: Mutex::new(TaskWatchdogObservationHistory {
-                maybe_previous: None,
-                maybe_latest: None,
+            state: Mutex::new(TaskWatchdogObservationState {
+                history: TaskWatchdogObservationHistory {
+                    maybe_previous: None,
+                    maybe_latest: None,
+                },
+                owner_phase: TaskWatchdogOwnerPhase::Unavailable,
+                owner_subphase: TaskWatchdogOwnerSubphase::Unavailable,
+                owner_wait: TaskWatchdogWaitObservation::NotWaiting,
             }),
-            publication_sequence: AtomicU32::new(0),
-            owner_phase: AtomicU8::new(TaskWatchdogOwnerPhase::Unavailable as u8),
-            owner_subphase: AtomicU8::new(TaskWatchdogOwnerSubphase::Unavailable as u8),
-            owner_wait_deadline_millis: AtomicU32::new(0),
-            owner_wait_deadline_valid: AtomicBool::new(false),
         }
     }
 
     fn record_owner_phase(&self, phase: TaskWatchdogOwnerPhase) {
-        let _publication = self.begin_publication();
-        self.owner_phase.store(phase as u8, Ordering::Relaxed);
-        self.owner_subphase.store(
-            TaskWatchdogOwnerSubphase::Unavailable as u8,
-            Ordering::Relaxed,
-        );
+        let Ok(mut state) = self.state.lock() else {
+            log_state_poisoned();
+            return;
+        };
+        state.owner_phase = phase;
+        state.owner_subphase = TaskWatchdogOwnerSubphase::Unavailable;
     }
 
     fn record_owner_progress(
@@ -81,39 +79,38 @@ impl TaskWatchdogObservationStore {
         subphase: TaskWatchdogOwnerSubphase,
         maybe_observation: Option<TaskWatchdogObservation>,
     ) {
-        let _publication = self.begin_publication();
-        self.owner_subphase.store(subphase as u8, Ordering::Relaxed);
+        let Ok(mut state) = self.state.lock() else {
+            log_state_poisoned();
+            return;
+        };
+        state.owner_subphase = subphase;
         if let Some(observation) = maybe_observation {
-            self.record_history(observation);
+            Self::record_history(&mut state.history, observation);
         }
     }
 
     fn record_owner_wait(&self, maybe_deadline_millis: Option<u64>) {
-        let _publication = self.begin_publication();
-        self.owner_wait_deadline_millis
-            .store(maybe_deadline_millis.unwrap_or(0) as u32, Ordering::Relaxed);
-        self.owner_wait_deadline_valid
-            .store(maybe_deadline_millis.is_some(), Ordering::Relaxed);
-        self.owner_phase.store(
-            TaskWatchdogOwnerPhase::WaitingInbox as u8,
-            Ordering::Relaxed,
-        );
-        self.owner_subphase.store(
-            TaskWatchdogOwnerSubphase::Unavailable as u8,
-            Ordering::Relaxed,
-        );
+        let Ok(mut state) = self.state.lock() else {
+            log_state_poisoned();
+            return;
+        };
+        state.owner_wait = TaskWatchdogWaitObservation::waiting_until(maybe_deadline_millis);
+        state.owner_phase = TaskWatchdogOwnerPhase::WaitingInbox;
+        state.owner_subphase = TaskWatchdogOwnerSubphase::Unavailable;
     }
 
     fn record(&self, observation: TaskWatchdogObservation) {
-        let _publication = self.begin_publication();
-        self.record_history(observation);
-    }
-
-    fn record_history(&self, observation: TaskWatchdogObservation) {
-        let Ok(mut history) = self.history.lock() else {
-            log::error!("task_watchdog_observation=unavailable reason=mutex_poisoned");
+        let Ok(mut state) = self.state.lock() else {
+            log_state_poisoned();
             return;
         };
+        Self::record_history(&mut state.history, observation);
+    }
+
+    fn record_history(
+        history: &mut TaskWatchdogObservationHistory,
+        observation: TaskWatchdogObservation,
+    ) {
         if history.maybe_latest == Some(observation) {
             return;
         }
@@ -122,91 +119,35 @@ impl TaskWatchdogObservationStore {
     }
 
     fn coherent_observation(&self) -> TaskWatchdogObservationSnapshot {
-        self.coherent_observation_with(|| {})
-    }
-
-    fn coherent_observation_with(
-        &self,
-        after_history_copy: impl FnMut(),
-    ) -> TaskWatchdogObservationSnapshot {
-        self.coherent_observation_with_hooks(after_history_copy, wait_for_writer)
-    }
-
-    fn coherent_observation_with_hooks(
-        &self,
-        mut after_history_copy: impl FnMut(),
-        mut after_retry: impl FnMut(),
-    ) -> TaskWatchdogObservationSnapshot {
-        for _ in 0..COHERENT_READ_ATTEMPTS {
-            let start_sequence = self.publication_sequence.load(Ordering::Acquire);
-            if start_sequence & 1 != 0 {
-                after_retry();
-                continue;
+        let state = match self.state.lock() {
+            Ok(state) => *state,
+            Err(_) => {
+                return TaskWatchdogObservationSnapshot::failed(
+                    TaskWatchdogReadOutcome::HistoryPoisoned,
+                )
             }
-
-            let history = match self.history.lock() {
-                Ok(history) => *history,
-                Err(_) => {
-                    return TaskWatchdogObservationSnapshot::failed(
-                        TaskWatchdogReadOutcome::HistoryPoisoned,
-                    )
-                }
-            };
-            after_history_copy();
-            let owner_phase =
-                TaskWatchdogOwnerPhase::from_u8(self.owner_phase.load(Ordering::Relaxed));
-            let owner_subphase =
-                TaskWatchdogOwnerSubphase::from_u8(self.owner_subphase.load(Ordering::Relaxed));
-            let owner_wait = self.owner_wait(owner_phase);
-            let end_sequence = self.publication_sequence.load(Ordering::Acquire);
-
-            if start_sequence == end_sequence && end_sequence & 1 == 0 {
-                return TaskWatchdogObservationSnapshot {
-                    maybe_previous: history.maybe_previous,
-                    maybe_latest: history.maybe_latest,
-                    read_outcome: if history.maybe_latest.is_some() {
-                        TaskWatchdogReadOutcome::Stable
-                    } else {
-                        TaskWatchdogReadOutcome::Uninitialized
-                    },
-                    owner_phase,
-                    owner_subphase,
-                    owner_wait,
-                };
-            }
-            after_retry();
-        }
-
-        TaskWatchdogObservationSnapshot::failed(TaskWatchdogReadOutcome::RetryExhausted)
-    }
-
-    fn owner_wait(&self, owner_phase: TaskWatchdogOwnerPhase) -> TaskWatchdogWaitObservation {
-        if owner_phase != TaskWatchdogOwnerPhase::WaitingInbox {
-            return TaskWatchdogWaitObservation::NotWaiting;
-        }
-
-        let deadline_millis_low = self.owner_wait_deadline_millis.load(Ordering::Relaxed);
-        let deadline_valid = self.owner_wait_deadline_valid.load(Ordering::Relaxed);
-        TaskWatchdogWaitObservation::waiting_until(
-            deadline_valid.then_some(u64::from(deadline_millis_low)),
-        )
-    }
-
-    fn begin_publication(&self) -> TaskWatchdogPublication<'_> {
-        let previous_sequence = self.publication_sequence.fetch_add(1, Ordering::AcqRel);
-        debug_assert_eq!(
-            previous_sequence & 1,
-            0,
-            "task-watchdog observation store requires one writer"
-        );
-        TaskWatchdogPublication {
-            sequence: &self.publication_sequence,
+        };
+        TaskWatchdogObservationSnapshot {
+            maybe_previous: state.history.maybe_previous,
+            maybe_latest: state.history.maybe_latest,
+            read_outcome: if state.history.maybe_latest.is_some() {
+                TaskWatchdogReadOutcome::Stable
+            } else {
+                TaskWatchdogReadOutcome::Uninitialized
+            },
+            owner_phase: state.owner_phase,
+            owner_subphase: state.owner_subphase,
+            owner_wait: if state.owner_phase == TaskWatchdogOwnerPhase::WaitingInbox {
+                state.owner_wait
+            } else {
+                TaskWatchdogWaitObservation::NotWaiting
+            },
         }
     }
 }
 
-fn wait_for_writer() {
-    std::thread::sleep(Duration::from_millis(COHERENT_READ_RETRY_DELAY_MILLIS));
+fn log_state_poisoned() {
+    log::error!("task_watchdog_observation=unavailable reason=mutex_poisoned");
 }
 
 impl TaskWatchdogObservationSnapshot {
@@ -215,16 +156,6 @@ impl TaskWatchdogObservationSnapshot {
             read_outcome,
             ..Self::default()
         }
-    }
-}
-
-struct TaskWatchdogPublication<'a> {
-    sequence: &'a AtomicU32,
-}
-
-impl Drop for TaskWatchdogPublication<'_> {
-    fn drop(&mut self) {
-        self.sequence.fetch_add(1, Ordering::Release);
     }
 }
 

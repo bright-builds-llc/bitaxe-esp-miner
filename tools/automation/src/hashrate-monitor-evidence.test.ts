@@ -88,10 +88,9 @@ const sourceDocuments = new Map<string, string>([
     "pub(crate) struct CampaignStatusPublicationSchedule {",
   ].join("\n")],
   ["firmware/bitaxe/src/task_watchdog_observation.rs", [
-    "const COHERENT_READ_ATTEMPTS: usize = 8;",
+    "state: Mutex<TaskWatchdogObservationState>",
     "TaskWatchdogReadOutcome::HistoryPoisoned",
-    "TaskWatchdogReadOutcome::RetryExhausted",
-    "publication_sequence: AtomicU32,",
+    "let state = match self.state.lock()",
     "pub(crate) fn coherent_observation()",
   ].join("\n")],
   ["firmware/bitaxe/sdkconfig.defaults", "CONFIG_PTHREAD_TASK_PRIO_DEFAULT=5"],

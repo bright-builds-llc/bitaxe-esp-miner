@@ -64,10 +64,9 @@ export const sourceFragments = new Map<string, readonly string[]>([
     "pub(crate) struct CampaignStatusPublicationSchedule {",
   ]],
   ["firmware/bitaxe/src/task_watchdog_observation.rs", [
-    "const COHERENT_READ_ATTEMPTS: usize = 8;",
+    "state: Mutex<TaskWatchdogObservationState>",
     "TaskWatchdogReadOutcome::HistoryPoisoned",
-    "TaskWatchdogReadOutcome::RetryExhausted",
-    "publication_sequence: AtomicU32,",
+    "let state = match self.state.lock()",
     "pub(crate) fn coherent_observation()",
   ]],
   ["firmware/bitaxe/sdkconfig.defaults", [
