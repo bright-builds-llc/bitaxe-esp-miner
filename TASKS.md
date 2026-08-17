@@ -1963,6 +1963,25 @@ actuate, update, erase, inject faults, manipulate power, use external UART/BAP,
 touch electrical interfaces, retry attempt-015, or create/run attempt-016.
 STAT-001/checklist/progress/README remain unchanged.
 
+Owner-work correction completion review: pushed source `177fffe9` adds the
+closed value-free inbox/evaluation/effect subphase, copies it in the coherent
+watchdog snapshot, projects it through runtime-health and private evidence, and
+latches it with the earliest watchdog tuple. Entry feeds now reset inherited
+age before session evaluation and effect execution while the regression proves
+a genuinely blocking effect still becomes stale. Private campaign schemas are
+v16/v10; generated contracts, 18-source identity, real firmware/package,
+redaction/reference, file-length, and every mandatory gate pass. No hardware or
+public projection ran, and STAT-001/checklist/progress remain unchanged. See
+the linked `CLOSURE.md`.
+
+Residual risk/next action: attempt-015 predates the subphase and its exact
+blocking boundary remains unknowable. Do not retry it. A separate immutable
+hardware plan may consider one fresh attempt-016 only from the clean pushed
+correction, with the complete detector, conservative profile, safety, privacy,
+recovery, cleanup, retry, stop, and promotion contract. Any precise blocking
+subphase must receive a targeted diagnosis and regression-backed correction
+before another continuation.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
