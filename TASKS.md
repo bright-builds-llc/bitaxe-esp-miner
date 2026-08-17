@@ -1985,12 +1985,12 @@ before another continuation.
 Attempt-016 verification-promotion plan:
 `docs/parity/work-plans/20260817T095432Z-STAT-001/PLAN.md`
 
-- [ ] Rebind the private-first workflow, validator, generated contract,
+- [x] Rebind the private-first workflow, validator, generated contract,
       immutable task/plan admission, Bazel inputs, fresh protected roots, and
       fixtures from attempt-015 to attempt-016 while preserving result v16,
       network v10, coherent owner subphase, earliest tuple, and 18-source
       identity.
-- [ ] Run every focused and mandatory software, firmware, privacy, reference,
+- [x] Run every focused and mandatory software, firmware, privacy, reference,
       package, and exact-source gate; commit and push before device access.
 - [ ] Run only the frozen detector and sole conditional attempt-016 command;
       promote only if the complete independent quorum passes.
