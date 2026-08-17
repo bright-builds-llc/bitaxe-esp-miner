@@ -1787,7 +1787,7 @@ Attempt-014 verification-promotion plan:
       coherent watchdog snapshot, priority 5, and 18-source identity.
 - [x] Run every focused and mandatory software, firmware, privacy, reference,
       package, and exact-source gate; commit and push before device access.
-- [ ] Run only the frozen detector and sole conditional attempt-014 command;
+- [x] Run only the frozen detector and sole conditional attempt-014 command;
       promote only if the complete independent quorum passes.
 
 Attempt-014 progress basis: pushed `f5a8fd14` materially fixes attempt-013's
@@ -1819,6 +1819,28 @@ coherent changing positive rates, warm windows, bounded error, watchdog none,
 terminal zero, safe stop, cleanup, modes, seals, validation, and redaction;
 missing facts withhold it. Recurrence of attempt-013's exact signature selects
 `stop_repeated_boundary`.
+
+Attempt-014 completion review: exact clean pushed source/package `579f8315`,
+the pinned reference, focused/full gates, and the sole protected detector
+passed. The one capture did not repeat attempt-013's `watchdog_feed_stale`
+signature. It failed closed after 302,436 active ms and 3/20 credited windows
+as `hardware_blocked` / `watchdog_unresponsive` / `watchdog_unproved`, with
+owner phase `waiting_inbox` and wait state `within_deadline`. Runtime identity
+and attestation were trusted, safety and same-package state were valid, terminal
+HTTP/WebSocket/pool state passed, safe stop was confirmed, USB cleanup was
+ready, private modes and result/network digests passed, and no public projection
+was written. Attempt-014 is consumed, no retry ran, terminal outcome is
+`stop_hardware_blocker`, and STAT-001/checklist/progress remain unchanged. See
+`docs/parity/work-plans/20260817T065250Z-STAT-001/CLOSURE.md`.
+
+Residual risk/next action: `watchdog_unproved` means the projected coherent
+snapshot had no admitted latest watchdog observation, but current closed
+evidence cannot distinguish genuine pre-subscription state, eight-retry
+exhaustion, poisoned history, publication-lifecycle loss, or transport
+reconstruction. Do not start attempt-015. A new software-only immutable plan
+must add a closed value-free coherent-read outcome across firmware/runtime
+health and sealed evidence, reproduce the live-shaped transition, and apply a
+targeted regression-backed fix before any further hardware ordinal.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 

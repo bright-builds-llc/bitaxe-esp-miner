@@ -28,3 +28,21 @@
 - Blocker or next safe action: Pass gates, replace this pending checkpoint with
   the pushed source commit in a later append-only entry, rebuild package, then
   run only PLAN commands.
+
+## 2026-08-17T07:28:58Z | attempt-014 terminal checkpoint
+
+- Source commit: `579f831521ef44d2a08325397d52d4e455bb068e`
+- Actions: Rebuilt/validated the clean exact package, ran the sole detector,
+  verified only modes/presence/provenance metadata, and consumed the sole
+  attempt-014 capture. No retry or out-of-band device probe ran.
+- Verification: Detector, exact package/runtime identity, attestation parsing,
+  active safety, same-package state, terminal HTTP/WebSocket/pool state, safe
+  stop, USB cleanup, protected modes, redaction, and result/network digests
+  pass. The public projection is absent.
+- Evidence: Capture closed after 302,436 active ms and 3/20 windows as
+  `watchdog_unproved` / `waiting_inbox` / `within_deadline`; attempt-013's
+  `watchdog_feed_stale` did not recur. Work renewal remains incomplete.
+- Outcome: `stop_hardware_blocker`; STAT-001 remains `implemented` and no
+  checklist/progress transition is permitted.
+- Blocker or next safe action: Add a closed coherent-read outcome and exact
+  live-shaped software regression before any attempt-015 contract.
