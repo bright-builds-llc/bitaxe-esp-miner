@@ -192,3 +192,10 @@
 2. What went wrong: SI-typed internal INA260 values in volts and amps were serialized directly into legacy API fields whose upstream contract transports millivolts and milliamps, so type-safe internals still produced reference-incompatible wire values.
 3. Preventive rule: Keep internal engineering units explicit, then verify every compatibility boundary from sensor conversion through API serialization, statistics history, and reference UI normalization before claiming parity.
 4. Trigger signal: The reference UI divides an API field by 1,000, the reference driver documents milli-units, or an internal `*_volts`/`*_amps` field is assigned directly to an unqualified legacy wire name such as `voltage` or `current`.
+
+## lesson-distinguish-agent-runtime-from-host-runtime | 2026-08-17 12:05
+
+1. Date: 2026-08-17 12:05 CDT
+2. What went wrong: Repeated process-launch stalls and 300-second test timeouts inside the Codex execution environment were diagnosed as machine-wide macOS degradation requiring a reboot, but the user ran the exact uncached Bazel automation target in 68.1 seconds and the exact filtered Cargo command in 0.6 seconds from their normal shell.
+3. Preventive rule: Treat timeouts observed only inside the agent execution environment as agent-session or sandbox failures until the same exact uncached command is independently reproduced in the user's normal shell. Do not recommend a host reboot or declare a machine-wide blocker from agent-only timing evidence.
+4. Trigger signal: Agent tool calls show inconsistent multi-minute gaps between otherwise passing child processes, while an external user shell has not reproduced the delay or reports normal timings for the exact command.
