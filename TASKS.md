@@ -1690,6 +1690,18 @@ touch electrical interfaces. Attempt-012 remains consumed and attempt-013 is
 not authorized. STAT-001 remains `implemented`; checklist/progress are
 unchanged.
 
+Wait-deadline diagnostic completion review: exact pushed implementation
+`9604d145` atomically publishes a wrap-aware deadline before `waiting_inbox`,
+derives four closed wait states after copying observations, carries them
+through v14/v8 sealed evidence, pins upstream-aligned pthread priority 5, and
+expands evaluator identity to 18 sources. Focused, real Xtensa, and all
+mandatory gates pass. No hardware, credentials, protected attempt, checklist,
+progress, or README change occurred. Residual risk is live-only: the state has
+not yet classified the waiting-inbox stale-feed boundary on device. A future
+attempt-013 requires its own exact-source immutable contract; this closure does
+not authorize it. See
+`docs/parity/work-plans/20260817T045834Z-STAT-001/CLOSURE.md`.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
