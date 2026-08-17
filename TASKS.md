@@ -1615,7 +1615,7 @@ Attempt-012 verification-promotion plan:
       phase, 15-source identity, and fixtures from attempt-011 to attempt-012.
 - [x] Run every focused and mandatory software, firmware, privacy, reference,
       package, and exact-source gate; commit and push before device access.
-- [ ] Run only the frozen detector and sole conditional attempt-012 command,
+- [x] Run only the frozen detector and sole conditional attempt-012 command,
       then promote STAT-001 only if the complete independent quorum passes.
 
 Attempt-012 progress basis and authorization: exact pushed correction
@@ -1649,6 +1649,25 @@ one ASIC/four domains, one-second cadence, all twenty windows with work
 renewal, changing coherent positive HTTP/WebSocket rates and warm rolling
 windows, bounded error, watchdog `none`, terminal zero, safe stop, cleanup,
 modes, seals, validation, and redaction. Missing facts withhold promotion.
+
+Attempt-012 completion review: exact pushed source/package `ae094a1d`, pinned
+reference, focused/full gates, and one detector passed. The sole capture
+failed closed after 13/20 windows at the new sealed signature
+`watchdog_feed_stale` / owner phase `waiting_inbox`; attempt-011's invalid-
+observation race did not recur. Runtime identity, attestation, safety, terminal
+transports, pool persistence, safe stop, cleanup, modes, seals, and redaction
+passed, and no public projection was written. Attempt-012 is consumed, no
+retry ran, and terminal outcome is `stop_hardware_blocker`. STAT-001 remains
+`implemented`; checklist/progress are unchanged. See
+`docs/parity/work-plans/20260817T042626Z-STAT-001/CLOSURE.md`.
+
+Residual risk and next safe action: the owner feed became stale while phase
+was `waiting_inbox`, whose requested timeout should be bounded by the
+one-second readiness deadline. Current evidence cannot distinguish scheduler
+starvation, timed-wait overrun, or task-priority/runtime behavior. Do not start
+attempt-013. A fresh software-only plan must add coherent closed wait-entry,
+deadline, and overrun diagnostics plus production-shaped scheduling tests
+before any targeted fix or new hardware contract.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 

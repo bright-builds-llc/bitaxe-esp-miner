@@ -64,3 +64,22 @@
   clean-package rebuild before hardware eligibility.
 - Blocker or next safe action: Review, commit, and push; rebuild exact package;
   then execute only the two frozen plan commands.
+
+## 2026-08-17T04:52:24Z | attempt-012 terminal checkpoint
+
+- Source commit: `ae094a1d639fb7ae94905c6ba8977ca358db4f2e`
+- Actions: Rebuilt/validated the exact clean package, ran the sole detector,
+  checked only credential/path/mode metadata, then consumed the sole
+  conditional attempt-012 command. No retry or out-of-band probe ran.
+- Verification: Detector admission passed. Protected v13/v7 documents match
+  their seals and modes. Identity, attestation, same-package correlation,
+  active state, safety, terminal HTTP/WebSocket, pool persistence, safe stop,
+  cleanup, and redaction pass. Public projection is absent.
+- Evidence: Terminal envelope is `hardware_blocked`; primary sealed category
+  is `watchdog_unresponsive` with `watchdog_feed_stale`, owner phase
+  `waiting_inbox`, and 13/20 completed windows. Attempt-011's
+  `invalid_observation` did not recur.
+- Outcome: `stop_hardware_blocker`; STAT-001 remains `implemented` and no
+  checklist/progress transition is permitted.
+- Blocker or next safe action: Close this plan, push the truthful record, and
+  require software-only wait-overrun/scheduler diagnostics before attempt-013.
