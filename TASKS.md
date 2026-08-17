@@ -1607,6 +1607,49 @@ campaign. A future attempt-012 needs its own exact-source immutable contract;
 this closure does not authorize it. See
 `docs/parity/work-plans/20260817T035514Z-STAT-001/CLOSURE.md`.
 
+Attempt-012 verification-promotion plan:
+`docs/parity/work-plans/20260817T042626Z-STAT-001/PLAN.md`
+
+- [ ] Rebind the private-first workflow, validator, generated contract, task/
+      plan admission, Bazel inputs, protected roots, v13/v7 schemas, owner
+      phase, 15-source identity, and fixtures from attempt-011 to attempt-012.
+- [ ] Run every focused and mandatory software, firmware, privacy, reference,
+      package, and exact-source gate; commit and push before device access.
+- [ ] Run only the frozen detector and sole conditional attempt-012 command,
+      then promote STAT-001 only if the complete independent quorum passes.
+
+Attempt-012 progress basis and authorization: exact pushed correction
+`0b5338f6c1224dbdae6e664cd286e114ad611c6c` makes evaluation time postdate
+copied watchdog facts and proves the attempt-011 invalid-observation race.
+After this plan/task checkpoint and attempt rebind are clean, fully gated,
+committed, pushed, and packaged, one exact board-205 package may be factory-
+flashed/reset; ignored local Wi-Fi and pool inputs may be seeded privately;
+and the repo-owned conservative 400 MHz / 1,100 mV / 100% fan profile may mine
+for exactly 600 accumulated active seconds while protected current-session
+HTTP, WebSocket, and serial observations are joined. The campaign must pause,
+safe-stop, release ownership, and may use at most one supervisor-owned exact-
+package recovery flash after a post-flash failure. Exact commands, privacy,
+evidence, recovery, retry, and stop rules are frozen in the plan above.
+
+Attempt-012 safety/privacy: 1,100 mV is the ASIC core setpoint; INA260 bus
+input is independently measured in volts and must remain fresh 4.5-5.5 V with
+at most 15 W, ASIC temperature below 75 C, and fresh nonzero fan RPM. Only
+fresh ignored mode-`0700` wrapper/attempt-012 roots and mode-`0600` files are
+permitted. Credentials, owner/worker fields, endpoints, identities, exact
+hashrates/sensors, bodies, logs, commands, PIDs, and traces remain private.
+The public projection is written only after independent validation.
+
+Attempt-012 effects/retry/acceptance: starting capture consumes the ordinal;
+preserve earliest failure and owner phase, run bounded safe stop/recovery/
+cleanup, and do not retry unchanged or start attempt-013. No overclock,
+arbitrary controls, unbounded mining, OTA, erase, raw write, fault injection,
+physical power action, direct UART, or electrical manipulation is permitted.
+Promotion requires exact source/reference/package/plan and detector identity,
+one ASIC/four domains, one-second cadence, all twenty windows with work
+renewal, changing coherent positive HTTP/WebSocket rates and warm rolling
+windows, bounded error, watchdog `none`, terminal zero, safe stop, cleanup,
+modes, seals, validation, and redaction. Missing facts withhold promotion.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
