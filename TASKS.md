@@ -1746,6 +1746,24 @@ Do not start attempt-014. A fresh software plan must add a bounded coherent
 single-writer snapshot/seqlock and exact interleaving regression before any new
 hardware contract.
 
+Coherent watchdog-snapshot correction plan:
+`docs/parity/work-plans/20260817T062043Z-STAT-001/PLAN.md`
+
+- [ ] Replace the separate feed-history and owner phase/deadline reads with one
+      bounded coherent single-writer observation snapshot.
+- [ ] Regression-test the exact old-feed/new-wait interleaving, stable reads,
+      retry exhaustion, and production runtime-health ownership.
+- [ ] Run focused firmware/package/privacy/reference checks and every mandatory
+      repository gate; push a non-promotion closure with STAT-001 unchanged.
+
+Software-only authorization: local source, tests, deterministic fixtures,
+firmware/package builds, documentation, and Git operations only. Do not access
+protected attempts, credentials, detector/device/USB/network runtime, private
+values, or a public projection. Do not flash, reset, monitor, mine, actuate,
+update, erase, inject faults, manipulate power, use direct UART or electrical
+interfaces, retry attempt-013, or create/run attempt-014. This plan cannot
+change STAT-001, checklist, progress, or README fields.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
