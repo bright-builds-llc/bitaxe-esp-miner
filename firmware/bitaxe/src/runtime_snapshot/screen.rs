@@ -10,8 +10,7 @@ use super::screen_projection::collect as screen_command_projection;
 /// Collects private physical-screen facts without operator publication side effects.
 pub fn collect_screen_snapshot(now_ms: u64) -> ScreenSnapshot {
     let command = screen_command_projection(now_ms);
-    let self_test_running = crate::runtime_health_adapter::collect(now_ms)
-        .passive_self_test_state()
+    let self_test_running = crate::runtime_health_adapter::collect().passive_self_test_state()
         == PassiveSelfTestState::Running;
     let (telemetry_fresh, power_watts, temperature_celsius) = {
         let observations = crate::safety_adapter::observation_snapshot();

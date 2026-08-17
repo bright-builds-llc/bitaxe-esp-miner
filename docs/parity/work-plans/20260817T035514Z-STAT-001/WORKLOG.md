@@ -47,3 +47,33 @@
   any runtime-health implementation edit.
 - Blocker or next safe action: Commit and push the plan/task checkpoint, then
   implement only the frozen software ordering and source-inventory scope.
+
+## 2026-08-17T04:23:15Z | implementation verification
+
+- Source commit: `ac4e0157f3a1601fd8835c0cd2bd72cdc0dad97b`
+- Actions: Made runtime health own its clock sample after copying checkpoint,
+  watchdog, and owner-phase observations; removed caller-supplied evaluation
+  time from both production callers; added controlled interleaving and source-
+  ownership regressions; and expanded the hashrate evaluator inventory from 13
+  to 15 sources. Extracted the inventory into a dedicated module during the
+  simplification pass.
+- Verification: Focused core runtime-health, firmware display/hashrate
+  ownership, parity source-guard, contract, generated-contract, and automation
+  real-child tests pass. The final ordered run passed `just
+  verify-redaction`, `just verify-reference`, `just package`, `cargo fmt
+  --all`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo
+  build --all-targets --all-features`, `cargo test --all-features`, `bun
+  scripts/bright-builds-check.ts all`, and `just test`. The first parity
+  rendering reached the known transient `os error 35`; the single bounded
+  `just parity && just parity-progress` retry passed with no validation errors
+  and unchanged `76/94` progress (`80.9%`).
+- Evidence: The stale pre-copy timestamp plus a later copied feed produces
+  `invalid_observation`; evaluating the same feed at the post-copy timestamp
+  produces participating `feed_fresh` with age zero. Static production guards
+  prove every observation read precedes the clock and callers pass no time.
+- Outcome: The targeted software race correction is complete and package-
+  verified; STAT-001 remains below verified because no live twenty-window
+  evidence was authorized or collected.
+- Blocker or next safe action: Review the complete diff, commit and push the
+  implementation as `SOURCE_COMMIT`, then write the required non-verifying
+  closure without hardware or a checklist transition.

@@ -14,9 +14,11 @@ fn task_watchdog_timeout_millis() -> u64 {
 }
 
 /// Copies already-observed lifecycle and supervisor facts into the pure evaluator.
-pub(crate) fn collect(current_monotonic_millis: u64) -> RuntimeHealthSnapshot {
+pub(crate) fn collect() -> RuntimeHealthSnapshot {
     let checkpoints = crate::safety_adapter::supervisor_checkpoint_history();
     let task_watchdog = crate::task_watchdog_observation::observation_history();
+    let task_watchdog_owner_phase = crate::task_watchdog_observation::owner_phase();
+    let current_monotonic_millis = crate::runtime_uptime::millis();
     RuntimeHealthSnapshot::evaluate(
         PassiveSelfTestState::Unavailable,
         checkpoints.maybe_previous.as_ref(),
@@ -29,5 +31,5 @@ pub(crate) fn collect(current_monotonic_millis: u64) -> RuntimeHealthSnapshot {
             task_watchdog_timeout_millis(),
         ),
     )
-    .with_task_watchdog_owner_phase(crate::task_watchdog_observation::owner_phase())
+    .with_task_watchdog_owner_phase(task_watchdog_owner_phase)
 }

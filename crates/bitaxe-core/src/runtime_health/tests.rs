@@ -476,6 +476,48 @@ fn watchdog_sequence_regression_is_rejected() {
 }
 
 #[test]
+fn post_observation_time_sampling_closes_the_concurrent_feed_race() {
+    // Arrange
+    let copied_feed = TaskWatchdogObservation::fed(9, 1_001);
+
+    // Act
+    let stale_caller_time = RuntimeHealthSnapshot::evaluate(
+        PassiveSelfTestState::Unavailable,
+        None,
+        None,
+        None,
+        Some(copied_feed),
+        timing(1_000, 500),
+    );
+    let post_copy_time = RuntimeHealthSnapshot::evaluate(
+        PassiveSelfTestState::Unavailable,
+        None,
+        None,
+        None,
+        Some(copied_feed),
+        timing(1_001, 500),
+    );
+
+    // Assert
+    assert_eq!(
+        stale_caller_time.maybe_task_watchdog_reason(),
+        Some("invalid_observation")
+    );
+    assert_eq!(
+        post_copy_time.task_watchdog_participation(),
+        TaskWatchdogParticipation::Participating
+    );
+    assert_eq!(
+        post_copy_time.maybe_task_watchdog_reason(),
+        Some("feed_fresh")
+    );
+    assert_eq!(
+        post_copy_time.maybe_task_watchdog_feed_age_millis(),
+        Some(0)
+    );
+}
+
+#[test]
 fn watchdog_failures_have_closed_nonparticipating_reasons() {
     // Arrange
     let cases = [

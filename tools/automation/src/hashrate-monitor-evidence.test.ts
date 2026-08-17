@@ -28,6 +28,10 @@ const sourceDocuments = new Map<string, string>([
     "const HASH_COUNTER_UNIT_HASHES: f64 = 4_294_967_296.0;",
     "const MIN_COUNTER_INTERVAL_US: u64 = 1_000_000;",
   ].join("\n")],
+  ["crates/bitaxe-core/src/runtime_health.rs", [
+    "if maybe_previous.is_some_and(|previous| !latest.is_valid_after(previous)) {",
+    "let Some(age_millis) = now_millis.checked_sub(observed_at_millis) else {",
+  ].join("\n")],
   ["crates/bitaxe-stratum/src/v1/state.rs", "pub hashrate_inputs: HashrateInputs"],
   ["crates/bitaxe-stratum/src/v1/production_session/campaign.rs", [
     "Self::Conservative => (400, 1_100, 100)",
@@ -55,6 +59,10 @@ const sourceDocuments = new Map<string, string>([
     "emit(AsicWorkerEvent::RegisterRead {",
   ].join("\n")],
   ["firmware/bitaxe/src/runtime_snapshot.rs", "publish_hashrate_snapshot"],
+  ["firmware/bitaxe/src/runtime_health_adapter.rs", [
+    "let task_watchdog = crate::task_watchdog_observation::observation_history();",
+    "let current_monotonic_millis = crate::runtime_uptime::millis();",
+  ].join("\n")],
   ["firmware/bitaxe/src/production_mining_session/owner_loop.rs", [
     "if let Err(error) = adapter.publish_campaign_status",
     "record_owner_phase(TaskWatchdogOwnerPhase::ServicingHashrate)",
@@ -282,7 +290,7 @@ test("admissible conservative campaign and independent validator publish only cl
     // Assert
     assert.equal(evidence.attempt_ordinal, 11);
     assert.equal(evidence.hashrate.http.distinct_positive_count, 2);
-    assert.equal(evidence.source.source_path_count, 13);
+    assert.equal(evidence.source.source_path_count, 15);
     assert.equal((await stat(path.join(value.root, value.options.projection))).mode & 0o777, 0o644);
     assert.doesNotMatch(
       await readFile(path.join(value.root, value.options.projection), "utf8"),

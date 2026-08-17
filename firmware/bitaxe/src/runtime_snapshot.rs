@@ -365,7 +365,7 @@ fn collect_operator_snapshot_candidate(drain_sample_marker: bool) -> OperatorSna
     let platform_identity = crate::platform_identity::collect();
     let platform =
         collect_platform_snapshot(PlatformSnapshot::safe_ultra_205(), &platform_identity);
-    let runtime_health = crate::runtime_health_adapter::collect(crate::runtime_uptime::millis());
+    let runtime_health = crate::runtime_health_adapter::collect();
     let observations = crate::safety_adapter::observation_snapshot();
     let safe_telemetry = SafeTelemetrySnapshot::from_observations(&observations);
     let settings = collect_settings_projection();

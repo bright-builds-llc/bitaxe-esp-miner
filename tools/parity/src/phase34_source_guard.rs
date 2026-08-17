@@ -280,6 +280,19 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains("CONFIG_ESP_TASK_WDT_TIMEOUT_S"));
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains("checked_mul(MILLIS_PER_SECOND)"));
     assert!(!RUNTIME_HEALTH_CORE_SOURCE.contains("TASK_WATCHDOG_FRESH_AFTER_MILLIS"));
+    let watchdog_history = RUNTIME_HEALTH_ADAPTER_SOURCE
+        .find("task_watchdog_observation::observation_history()")
+        .expect("watchdog history read");
+    let owner_phase = RUNTIME_HEALTH_ADAPTER_SOURCE
+        .find("task_watchdog_observation::owner_phase()")
+        .expect("owner phase read");
+    let evaluation_time = RUNTIME_HEALTH_ADAPTER_SOURCE
+        .find("let current_monotonic_millis = crate::runtime_uptime::millis();")
+        .expect("evaluation time read");
+    assert!(watchdog_history < evaluation_time);
+    assert!(owner_phase < evaluation_time);
+    assert!(candidate_collection.contains("runtime_health_adapter::collect()"));
+    assert!(!candidate_collection.contains("collect(crate::runtime_uptime::millis())"));
     assert_eq!(
         candidate_collection
             .matches("runtime_health_adapter::collect")

@@ -9,7 +9,10 @@ js_library(
 
 js_library(
     name = "hashrate_monitor_source",
-    srcs = ["src/hashrate.rs"],
+    srcs = [
+        "src/hashrate.rs",
+        "src/runtime_health.rs",
+    ],
     visibility = ["//tools/automation:__pkg__"],
 )
 

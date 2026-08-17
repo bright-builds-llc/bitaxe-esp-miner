@@ -25,6 +25,7 @@ js_library(
         "src/production_mining_session/campaign_status/publication.rs",
         "src/production_mining_session/hashrate.rs",
         "src/production_mining_session/owner_loop.rs",
+        "src/runtime_health_adapter.rs",
         "src/runtime_snapshot.rs",
         "src/task_watchdog_observation.rs",
     ],

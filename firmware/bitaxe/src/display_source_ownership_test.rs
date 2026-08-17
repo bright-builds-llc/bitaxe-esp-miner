@@ -124,7 +124,7 @@ fn screen_projection_is_read_only_and_keeps_private_values_out_of_logs() {
     // Act / Assert
     assert!(source.contains("let command = screen_command_projection(now_ms)"));
     assert!(source.contains("SafeTelemetrySnapshot::from_observations"));
-    assert!(source.contains("runtime_health_adapter::collect(now_ms)"));
+    assert!(source.contains("runtime_health_adapter::collect()"));
     assert!(source.contains("wifi_adapter::current_wifi_snapshot()"));
     assert!(source.contains("ultra_205_catalog_entry()"));
     assert!(source.contains("screen_pool_host(command.fallback_active)"));

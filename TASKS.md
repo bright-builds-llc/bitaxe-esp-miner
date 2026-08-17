@@ -1578,12 +1578,12 @@ earlier than the copied observations while preserving every existing guard.
 Runtime-health snapshot-ordering correction plan:
 `docs/parity/work-plans/20260817T035514Z-STAT-001/PLAN.md`
 
-- [ ] Move runtime-health evaluation-time sampling after copied supervisor,
+- [x] Move runtime-health evaluation-time sampling after copied supervisor,
       watchdog, and owner-phase observations; remove stale caller time input.
-- [ ] Prove the exact concurrent-feed interleaving, future-feed rejection,
+- [x] Prove the exact concurrent-feed interleaving, future-feed rejection,
       post-copy zero-age freshness, production source ordering, and caller
       ownership with behavior and source regressions.
-- [ ] Bind runtime-health core/adapter sources into the hashrate evaluator
+- [x] Bind runtime-health core/adapter sources into the hashrate evaluator
       inventory and run every focused/mandatory gate; push a software-only
       closure without transition or hardware.
 

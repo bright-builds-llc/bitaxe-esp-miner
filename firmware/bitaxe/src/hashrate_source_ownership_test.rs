@@ -69,6 +69,38 @@ fn owner_phase_and_campaign_publication_have_single_production_ownership() {
 }
 
 #[test]
+fn runtime_health_copies_producer_facts_before_sampling_evaluation_time() {
+    // Arrange
+    let checkpoint_read = "supervisor_checkpoint_history()";
+    let watchdog_read = "task_watchdog_observation::observation_history()";
+    let phase_read = "task_watchdog_observation::owner_phase()";
+    let clock_read = "let current_monotonic_millis = crate::runtime_uptime::millis();";
+
+    // Act
+    let checkpoint_index = RUNTIME_HEALTH_ADAPTER_SOURCE
+        .find(checkpoint_read)
+        .expect("checkpoint history read must exist");
+    let watchdog_index = RUNTIME_HEALTH_ADAPTER_SOURCE
+        .find(watchdog_read)
+        .expect("watchdog history read must exist");
+    let phase_index = RUNTIME_HEALTH_ADAPTER_SOURCE
+        .find(phase_read)
+        .expect("owner phase read must exist");
+    let clock_index = RUNTIME_HEALTH_ADAPTER_SOURCE
+        .find(clock_read)
+        .expect("post-observation clock read must exist");
+
+    // Assert
+    assert!(checkpoint_index < clock_index);
+    assert!(watchdog_index < clock_index);
+    assert!(phase_index < clock_index);
+    assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains("pub(crate) fn collect()"));
+    assert!(!RUNTIME_HEALTH_ADAPTER_SOURCE.contains("collect(current_monotonic_millis"));
+    assert!(SNAPSHOT_SOURCE.contains("runtime_health_adapter::collect()"));
+    assert!(!SNAPSHOT_SOURCE.contains("runtime_health_adapter::collect(crate::runtime_uptime"));
+}
+
+#[test]
 fn parsed_register_value_reaches_monitor_before_poll_completion() {
     // Arrange
     let event = "AsicWorkerEvent::RegisterRead";
