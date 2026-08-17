@@ -1402,7 +1402,7 @@ Attempt-010 verification-promotion plan:
       real-child fixtures from consumed attempt-009 to fresh attempt-010.
 - [x] Run every focused and mandatory software, firmware, privacy, reference,
       package, and exact-source gate; commit and push before device access.
-- [ ] Run only the frozen detector and sole conditional attempt-010 command,
+- [x] Run only the frozen detector and sole conditional attempt-010 command,
       then promote STAT-001 only if the complete independent quorum passes.
 
 Attempt-010 progress basis and authorization: pushed correction
@@ -1448,6 +1448,28 @@ and rolling rates; bounded error; watchdog failure `none`; terminal zero
 current rate; safe stop, cleanup, protected modes, seals, independent
 validation, and redaction. Any missing fact withholds promotion and leaves
 STAT-001 `implemented`.
+
+Attempt-010 completion review: exact pushed source/package
+`495ad95d512546ed6c24d528204f779e88e3fdb2`, the pinned reference, every
+focused and mandatory software/privacy gate, and one fresh detector passed.
+The sole capture then repeated the sealed attempts-008/009 boundary after 14
+of 20 required windows: `hardware_blocked` / `watchdog_unresponsive` /
+producer-owned `watchdog_feed_stale`. Runtime identity was trusted,
+runtime-attestation parsing was clean, safety remained valid, terminal HTTP
+and WebSocket observations completed, safe stop was confirmed, USB cleanup
+was ready, protected modes and all seals passed, and no public projection was
+written. Attempt-010 is consumed, no retry ran, and progress policy selects
+`stop_repeated_boundary`. STAT-001 remains `implemented`; checklist and
+progress history are unchanged. See
+`docs/parity/work-plans/20260817T001716Z-STAT-001/CLOSURE.md`.
+
+Residual risk and next safe action: removing the duplicate host threshold
+proves this recurrence is the device producer's stale verdict, but the closed
+evidence does not distinguish producer timing, scheduler delay, checkpoint
+publication, or subscription state. Do not start attempt-011. A future
+software-only immutable plan may add new closed discriminators and a
+production-shaped regression; hardware requires an objectively changed
+authoritative boundary plus a new complete contract.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 

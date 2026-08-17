@@ -81,3 +81,26 @@
 - Outcome: Exact implementation is ready to commit and push before hardware.
 - Blocker or next safe action: Commit and push this tree, rebuild the clean
   exact-source package, then run only the plan-frozen detector command.
+
+## 2026-08-17T00:44:15Z | attempt-010 terminal outcome
+
+- Source commit: `495ad95d512546ed6c24d528204f779e88e3fdb2`
+- Actions: Rebuilt and validated the exact clean pushed package, ran the one
+  frozen detector, verified protected modes/fresh paths/nonempty ignored input
+  presence without reading inputs, and ran the sole conditional attempt-010
+  capture. No retry or second hardware command ran.
+- Verification: Detector admission passed. The closed capture result is
+  `hardware_blocked`; exact terminal category is `watchdog_unresponsive` with
+  producer-owned `watchdog_feed_stale`. Runtime identity and attestation
+  parsing are trusted/clean; safety, terminal HTTP/WebSocket observations,
+  safe stop, USB cleanup, protected modes, result/network/diagnostic/flash/
+  mining/observation seals, and redaction pass.
+- Evidence: The network closed at 14 of 20 required windows, work renewal and
+  watchdog validity are false, the projection is absent, and no private
+  credentials, identities, endpoints, sensors, rates, bodies, logs, commands,
+  PIDs, or traces were surfaced.
+- Outcome: `stop_repeated_boundary`; STAT-001 remains `implemented`,
+  verification is not claimed, and checklist/progress remain unchanged.
+- Blocker or next safe action: Do not start attempt-011. Any later work must be
+  software-only until a new closed discriminator and targeted regression-
+  backed fix objectively change the authoritative producer boundary.
