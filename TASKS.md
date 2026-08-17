@@ -2145,6 +2145,12 @@ Temporary user-authorized watchdog diagnostic loop | 2026-08-17:
   failed run, inspect only sealed allowlisted categories and apply a materially
   targeted source fix before another run. End the exception once the watchdog
   boundary is cleared or a non-software/human blocker is proven.
+- Exception ended after exact-package run-010 on pushed source `e70cefa7`
+  completed 600,216 active milliseconds with all 20 continuity windows,
+  accepted submit evidence, stable/valid watchdog state, trusted identity,
+  fresh safety, confirmed safe stop, terminal HTTP/WebSocket/pool joins, ready
+  USB cleanup, and redaction. The private diagnostic campaign remains ignored
+  local evidence and was not promoted into the public parity checklist.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
