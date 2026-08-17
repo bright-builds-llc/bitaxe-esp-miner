@@ -1749,11 +1749,11 @@ hardware contract.
 Coherent watchdog-snapshot correction plan:
 `docs/parity/work-plans/20260817T062043Z-STAT-001/PLAN.md`
 
-- [ ] Replace the separate feed-history and owner phase/deadline reads with one
+- [x] Replace the separate feed-history and owner phase/deadline reads with one
       bounded coherent single-writer observation snapshot.
-- [ ] Regression-test the exact old-feed/new-wait interleaving, stable reads,
+- [x] Regression-test the exact old-feed/new-wait interleaving, stable reads,
       retry exhaustion, and production runtime-health ownership.
-- [ ] Run focused firmware/package/privacy/reference checks and every mandatory
+- [x] Run focused firmware/package/privacy/reference checks and every mandatory
       repository gate; push a non-promotion closure with STAT-001 unchanged.
 
 Software-only authorization: local source, tests, deterministic fixtures,
@@ -1763,6 +1763,20 @@ values, or a public projection. Do not flash, reset, monitor, mine, actuate,
 update, erase, inject faults, manipulate power, use direct UART or electrical
 interfaces, retry attempt-013, or create/run attempt-014. This plan cannot
 change STAT-001, checklist, progress, or README fields.
+
+Coherent-snapshot completion review: pushed source `f5a8fd14` places feed
+history, owner phase, and wait deadline behind one sequence-bracketed firmware
+snapshot with eight bounded fail-closed retries. The exact old-feed/new-wait
+interleaving is rejected then retried to the new coherent instant; stable,
+retry-exhaustion, poison, ownership, evaluator, firmware/package, privacy,
+reference, and every mandatory gate pass. No hardware or public evidence ran,
+and STAT-001/checklist/progress remain unchanged. See the linked `CLOSURE.md`.
+
+Residual risk/next action: live completion remains hardware-only. A separate
+immutable plan may bind pushed `f5a8fd14` to a new exact package and authorize
+one detector-gated attempt-014 with the full existing conservative-profile,
+unit, safety, evidence, privacy, recovery, cleanup, retry, stop, and promotion
+contract. Attempt-013 remains consumed and must not be retried.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
