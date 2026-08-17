@@ -2091,7 +2091,7 @@ Attempt-017 verification-promotion plan:
       bounded reader, earliest tuple, and 18-source identity.
 - [x] Pass focused/full gates, commit/push, and rebuild exact package before
       device access.
-- [ ] Run only the frozen detector and sole capture; promote only on the full
+- [x] Run only the frozen detector and sole capture; promote only on the full
       independently validated quorum.
 
 Attempt-017 progress basis: pushed `c274be94` fixes attempt-016's exact retry-
@@ -2106,6 +2106,22 @@ bus V remain distinct. Only fresh ignored wrapper/attempt-017 0700 roots and
 0600 files; no private publication. No retry/018, overclock, arbitrary control,
 OTA, erase, fault injection, power action, direct UART/BAP, or electrical work.
 Exact attempt-016 tuple recurrence selects `stop_repeated_boundary`.
+
+Attempt-017 completion review: exact clean pushed source/package `b6d560b6`,
+pinned reference, focused/full gates, and sole detector passed. The capture
+failed closed after 314,248 active ms and 0/20 windows with exact repeated tuple
+`watchdog_snapshot_retry_exhausted/retry_exhausted/unavailable/unavailable/
+not_waiting`. Identity, attestation, safety, terminal HTTP/WebSocket/pool,
+safe stop, cleanup, modes, seals, and redaction passed; projection is absent.
+Attempt-017 is consumed, no retry ran, and the terminal outcome is
+`stop_repeated_boundary`. STAT-001/checklist/progress remain unchanged. See the
+linked `CLOSURE.md`.
+
+Terminal blocker: do not create attempt-018 or continue this hardware-attempt
+lineage. Pushed `c274be94` targeted the exact attempt-016 boundary and attempt-
+017 repeated it unchanged. Any future STAT-001 work must establish a materially
+different source-level diagnosis and authority contract; direct UART, pins,
+ad hoc electrical work, and ordinal-only retries remain prohibited.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 

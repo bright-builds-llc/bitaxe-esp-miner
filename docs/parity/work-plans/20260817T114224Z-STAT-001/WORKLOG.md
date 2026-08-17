@@ -15,7 +15,7 @@
 
 ## 2026-08-17T12:20:00Z | attempt-017 software rebind checkpoint
 
-- Source commit: pending implementation checkpoint
+- Source commit: `b6d560b6e2dea72525c54f12266fb0c555e164ed`
 - Actions: Rebound ordinal, roots, immutable plan/task admission, Rust
   validator, generated contract, Bazel input, and fixtures from consumed 016.
 - Verification: Focused contract, uncached automation, campaign/parity,
@@ -29,3 +29,20 @@
   access performed.
 - Blocker or next safe action: Commit/push exact source, rebuild package, then
   execute only detector and conditional capture.
+
+## 2026-08-17T12:42:00Z | attempt-017 terminal checkpoint
+
+- Source commit: `b6d560b6e2dea72525c54f12266fb0c555e164ed`
+- Actions: Rebuilt/validated exact package, ran the sole detector, checked only
+  modes/presence/provenance, and consumed the sole capture. No retry or
+  out-of-band device probe ran.
+- Verification: Identity, attestation, safety, terminal HTTP/WebSocket/pool,
+  safe stop, USB cleanup, modes, redaction, digests, and projection withholding
+  pass.
+- Evidence: Capture closed after 314,248 active ms and 0/20 windows at
+  `watchdog_snapshot_retry_exhausted/retry_exhausted/unavailable/unavailable/
+  not_waiting`, exactly matching attempt-016.
+- Outcome: `stop_repeated_boundary`; STAT-001 remains `implemented` and no
+  checklist/progress transition is permitted.
+- Blocker or next safe action: End this attempt lineage. No attempt-018 or
+  unchanged retry; only a materially different source diagnosis may proceed.
