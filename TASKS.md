@@ -1778,6 +1778,48 @@ one detector-gated attempt-014 with the full existing conservative-profile,
 unit, safety, evidence, privacy, recovery, cleanup, retry, stop, and promotion
 contract. Attempt-013 remains consumed and must not be retried.
 
+Attempt-014 verification-promotion plan:
+`docs/parity/work-plans/20260817T065250Z-STAT-001/PLAN.md`
+
+- [ ] Rebind the private-first workflow, validator, generated contract,
+      immutable task/plan admission, Bazel inputs, fresh protected roots, and
+      fixtures from attempt-013 to attempt-014 while preserving v14/v8,
+      coherent watchdog snapshot, priority 5, and 18-source identity.
+- [ ] Run every focused and mandatory software, firmware, privacy, reference,
+      package, and exact-source gate; commit and push before device access.
+- [ ] Run only the frozen detector and sole conditional attempt-014 command;
+      promote only if the complete independent quorum passes.
+
+Attempt-014 progress basis: pushed `f5a8fd14` materially fixes attempt-013's
+exact `watchdog_feed_stale` / `waiting_inbox` / `within_deadline` mixed-
+snapshot signature with a sequence-bracketed coherent firmware snapshot and
+exact interleaving regression. This is a verified-fix continuation, not an
+unchanged retry.
+
+Attempt-014 authorization: after plan/rebind are clean, fully gated, committed,
+pushed, and packaged, one exact board-205 package may be factory-flashed/reset,
+privately seeded from ignored Wi-Fi/pool inputs, and run only at conservative
+400 MHz / 1,100 mV ASIC core / 100% fan for exactly 600 active seconds with
+protected serial/HTTP/WebSocket joins, pause, safe stop, cleanup, sealing, and
+at most one supervisor-owned recovery flash. Exact commands are frozen in the
+linked plan. Input-bus safety is independently fresh 4.5-5.5 V, <=15 W, ASIC
+temperature <75 C, and fan RPM fresh/nonzero; core millivolts and bus volts
+remain distinct.
+
+Evidence/privacy/retry: use only fresh ignored wrapper-014 and attempt-014
+mode-0700 roots with mode-0600 files. Credentials, endpoints, identities,
+exact values, bodies, logs, commands, PIDs, and traces stay private; only the
+independently valid aggregate projection may publish. Starting capture consumes
+the ordinal; preserve earliest failure/phase/wait through safe stop, recovery,
+sealing, and cleanup. Never retry attempt-014, reuse attempt-013, or start
+attempt-015. No overclock, arbitrary controls, unbounded mining, OTA, erase,
+raw writes, fault injection, power action, direct UART, BAP, or electrical
+manipulation. Promotion requires exact identity, 20 windows/work renewal,
+coherent changing positive rates, warm windows, bounded error, watchdog none,
+terminal zero, safe stop, cleanup, modes, seals, validation, and redaction;
+missing facts withhold it. Recurrence of attempt-013's exact signature selects
+`stop_repeated_boundary`.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
