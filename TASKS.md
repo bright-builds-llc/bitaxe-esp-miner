@@ -1397,10 +1397,10 @@ plan, so STAT-001 remains `implemented`.
 Attempt-010 verification-promotion plan:
 `docs/parity/work-plans/20260817T001716Z-STAT-001/PLAN.md`
 
-- [ ] Rebind the private-first workflow, Rust validator, generated contract,
+- [x] Rebind the private-first workflow, Rust validator, generated contract,
       immutable task/plan admission, Bazel inputs, protected roots, and
       real-child fixtures from consumed attempt-009 to fresh attempt-010.
-- [ ] Run every focused and mandatory software, firmware, privacy, reference,
+- [x] Run every focused and mandatory software, firmware, privacy, reference,
       package, and exact-source gate; commit and push before device access.
 - [ ] Run only the frozen detector and sole conditional attempt-010 command,
       then promote STAT-001 only if the complete independent quorum passes.

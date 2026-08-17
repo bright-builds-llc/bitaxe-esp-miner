@@ -43,3 +43,41 @@
 - Outcome: Plan and task checkpoint are ready to commit and push.
 - Blocker or next safe action: Push this immutable checkpoint, then rebind only
   attempt-specific admission and contract surfaces before any device access.
+
+## 2026-08-17T00:26:07Z | attempt-010 rebind
+
+- Source commit: `b8f28f2634bffa3e9d69f42c203363b8b5492235`
+- Actions: Rebound only the protected roots, plan/hash admission, task token,
+  Bazel input, Rust ordinal validator, TypeScript contracts, emitted ordinal,
+  and real-child fixtures from consumed attempt-009 to attempt-010.
+- Verification: `cargo test -p bitaxe-automation-contracts
+  hashrate_monitor_evidence`, `cargo test -p bitaxe-flash campaign::network`,
+  `bazel build //tools/automation:contracts_verified`, and focused Bazel tests
+  for automation contracts, automation, and flash all pass.
+- Evidence: The real-child success path emits ordinal 10; ordinal 9 fails the
+  Rust validator; the consumed attempt-009 protected root is rejected before
+  capture; all nineteen failure watchdog labels plus success `none` remain
+  covered and value-free. PLAN SHA-256 remains
+  `85e7170d3edd297e5d8fc6d7f2a0ca9dbe04558dd14286b6d1037466abc6eab1`.
+- Outcome: Minimal attempt-specific implementation is complete without
+  campaign or firmware behavior changes.
+- Blocker or next safe action: Run every mandatory pre-hardware gate, commit
+  and push the exact implementation, then rebuild and validate its clean
+  package before detector access.
+
+## 2026-08-17T00:29:45Z | pre-hardware implementation verification
+
+- Source commit: pending exact implementation commit.
+- Actions: Ran every focused and mandatory software, firmware, privacy,
+  reference, package, contract, task/plan admission, and parity-invariance
+  gate on the attempt-010 implementation tree.
+- Verification: Ordered Cargo format/clippy/build/test, Bright Builds,
+  `just verify-redaction`, `just verify-reference`, `just package`, and all 46
+  Bazel tests pass. The initial parity renderer hit the known transient host
+  resource boundary; its one bounded retry passed.
+- Evidence: Parity reports `validation_errors: none`; progress remains
+  `verified=75 active=94 total=99 deferred=5 completion=79.8%`; PLAN SHA-256
+  remains `85e7170d3edd297e5d8fc6d7f2a0ca9dbe04558dd14286b6d1037466abc6eab1`.
+- Outcome: Exact implementation is ready to commit and push before hardware.
+- Blocker or next safe action: Commit and push this tree, rebuild the clean
+  exact-source package, then run only the plan-frozen detector command.
