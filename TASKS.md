@@ -1360,9 +1360,9 @@ contract.
 Campaign watchdog-policy correction plan:
 `docs/parity/work-plans/20260816T235908Z-STAT-001/PLAN.md`
 
-- [ ] Reproduce the false 2,000-ms campaign rejection against the firmware's
+- [x] Reproduce the false 2,000-ms campaign rejection against the firmware's
       configured-timeout `feed_fresh` verdict.
-- [ ] Remove only the duplicate numeric consumer policy while preserving typed
+- [x] Remove only the duplicate numeric consumer policy while preserving typed
       reason, participation, presence, per-window advancement, precedence, and
       value-free evidence checks.
 - [ ] Run focused and mandatory software, firmware-package, privacy,

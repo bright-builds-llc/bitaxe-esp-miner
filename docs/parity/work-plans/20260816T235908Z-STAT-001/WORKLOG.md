@@ -29,3 +29,47 @@
   without changing STAT-001 status or progress.
 - Blocker or next safe action: Push the plan checkpoint, reproduce the real
   campaign boundary failure, and apply only the planned consumer-policy fix.
+
+## 2026-08-17T00:05:39Z | implementation and focused verification
+
+- Plan commit: `f208c207faa6626c720a67ae236d6c89100cf459`
+- Failure signal: The production-campaign regression rejected a producer-
+  classified `feed_fresh` sample at 2,001 ms as `WatchdogUnresponsive`;
+  `cargo test -p bitaxe-flash
+  producer_classified_fresh_sample_after_legacy_boundary_is_accepted --
+  --nocapture` failed with left `Some(WatchdogUnresponsive)`, right `None`.
+- Correction: Removed only the campaign's `feed_age_millis > 2_000`
+  reclassification. Feed-age presence remains mandatory; producer reason,
+  participation, sequences, transport-window advancement, earliest-failure
+  precedence, and closed value-free evidence remain enforced.
+- Regression guard: Producer-classified `feed_fresh` is accepted at 2,001 and
+  5,000 ms, producer-classified `feed_stale` is rejected at 5,001 ms, and a
+  source guard rejects numeric campaign feed-age comparisons.
+- Focused verification: `cargo test -p bitaxe-flash campaign::network` passed
+  107 tests; `cargo test -p bitaxe-core runtime_health` passed 16 tests;
+  `bazel test //tools/flash:tests //crates/bitaxe-core:tests` passed both
+  targets.
+- Outcome: The root-cause software correction is complete with no firmware,
+  schema, hardware, checklist, or progress change.
+- Blocker or next safe action: Run the complete package, privacy, reference,
+  mandatory ordered, immutable-plan, and diff gates before committing and
+  pushing the implementation.
+
+## 2026-08-17T00:10:11Z | implementation verification
+
+- Verification: `just verify-redaction`, `just verify-reference`, and
+  `just package` passed. The ordered Cargo format, clippy-with-warnings-denied,
+  all-target build, and all-feature test gates passed. The Bright Builds check
+  passed with zero findings, and `just test` passed all 46 Bazel tests.
+- Parity: The initial renderer process exhausted a transient host resource
+  after the full report and successful tests. The single bounded
+  `just parity && just parity-progress` retry passed with
+  `validation_errors: none` and unchanged progress at `verified=75 active=94
+  total=99 deferred=5 completion=79.8%`.
+- Plan integrity: PLAN SHA-256 remains
+  `011496a29cd12b738b2cee81b525f87cbfda03ffd0aa75e24509f7281ad0ebee`.
+- Outcome: Implementation satisfies every software acceptance criterion and
+  is ready to commit as the source commit.
+- Blocker or next safe action: Commit and push the implementation, then create
+  a `CLOSURE.md` recording that STAT-001 remains implemented and live quorum
+  evidence is still required.

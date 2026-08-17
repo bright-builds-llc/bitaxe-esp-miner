@@ -1,6 +1,8 @@
 use super::super::watchdog::{sample_failure, WatchdogFailure};
 use super::*;
 
+const CAMPAIGN_WATCHDOG_SOURCE: &str = include_str!("../watchdog.rs");
+
 fn window_watchdog_failure(
     http_checkpoint: [u64; 2],
     http_feed: [u64; 2],
@@ -28,24 +30,53 @@ fn window_watchdog_failure(
 }
 
 #[test]
-fn stale_watchdog_sample_is_rejected_before_window_credit() {
+fn producer_classified_fresh_sample_after_legacy_boundary_is_accepted() {
     // Arrange
-    let mut accumulator = NetworkAccumulator::new(target());
-    let mut sample = active_sample(1, 1);
-    sample.runtime_health.maybe_task_watchdog_feed_age_millis = Some(2_001);
+    for feed_age_millis in [2_001, 5_000] {
+        let mut accumulator = NetworkAccumulator::new(target());
+        let mut sample = active_sample(1, 1);
+        sample.runtime_health.maybe_task_watchdog_feed_age_millis = Some(feed_age_millis);
 
-    // Act
-    accumulator.record_active_sample(NetworkTransport::Http, 1_000, 1_000, &sample);
+        // Act
+        accumulator.record_active_sample(NetworkTransport::Http, 1_000, 1_000, &sample);
+
+        // Assert
+        assert_eq!(accumulator.maybe_failure, None);
+        assert_eq!(accumulator.watchdog_failure, WatchdogFailure::None);
+    }
+}
+
+#[test]
+fn campaign_watchdog_has_no_numeric_feed_age_policy() {
+    // Arrange / Act
+    let feed_age_lines = CAMPAIGN_WATCHDOG_SOURCE
+        .lines()
+        .filter(|line| line.contains("feed_age_millis"))
+        .collect::<Vec<_>>();
 
     // Assert
-    assert_eq!(
-        accumulator.maybe_failure,
-        Some(CampaignTerminalCategory::WatchdogUnresponsive)
-    );
-    assert_eq!(
-        accumulator.watchdog_failure,
-        WatchdogFailure::WatchdogFeedStale
-    );
+    assert!(CAMPAIGN_WATCHDOG_SOURCE.contains("maybe_task_watchdog_feed_age_millis.is_none()"));
+    for line in feed_age_lines {
+        assert!(
+            !line.contains('<') && !line.contains('>'),
+            "numeric policy found: {line}"
+        );
+    }
+}
+
+#[test]
+fn producer_classified_stale_sample_is_rejected() {
+    // Arrange
+    let mut sample = active_sample(1, 1);
+    sample.runtime_health.maybe_task_watchdog_reason = Some("feed_stale".to_owned());
+    sample.runtime_health.task_watchdog_participation = "not_participating".to_owned();
+    sample.runtime_health.maybe_task_watchdog_feed_age_millis = Some(5_001);
+
+    // Act
+    let failure = sample_failure(&sample);
+
+    // Assert
+    assert_eq!(failure, WatchdogFailure::WatchdogFeedStale);
 }
 
 #[test]
@@ -128,9 +159,6 @@ fn every_remaining_watchdog_sample_predicate_has_one_closed_failure() {
     let mut sample = active_sample(1, 1);
     sample.runtime_health.maybe_task_watchdog_feed_age_millis = None;
     cases.push((WatchdogFailure::WatchdogFeedAgeMissing, sample));
-    let mut sample = active_sample(1, 1);
-    sample.runtime_health.maybe_task_watchdog_feed_age_millis = Some(2_001);
-    cases.push((WatchdogFailure::WatchdogFeedStale, sample));
 
     // Act / Assert
     for (expected, sample) in cases {
@@ -210,7 +238,9 @@ fn later_watchdog_observations_preserve_the_earliest_watchdog_failure() {
     // Arrange
     let mut accumulator = NetworkAccumulator::new(target());
     let mut stale = active_sample(1, 1);
-    stale.runtime_health.maybe_task_watchdog_feed_age_millis = Some(2_001);
+    stale.runtime_health.maybe_task_watchdog_reason = Some("feed_stale".to_owned());
+    stale.runtime_health.task_watchdog_participation = "not_participating".to_owned();
+    stale.runtime_health.maybe_task_watchdog_feed_age_millis = Some(5_001);
     accumulator.record_active_sample(NetworkTransport::Http, 1_000, 1_000, &stale);
     let mut unavailable = terminal_sample(2, 2);
     unavailable.runtime_health.supervisor_availability = "unavailable".to_owned();
@@ -275,7 +305,9 @@ fn failed_network_evidence_serializes_only_the_closed_watchdog_label() {
     // Arrange
     let mut accumulator = NetworkAccumulator::new(target());
     let mut sample = active_sample(1, 1);
-    sample.runtime_health.maybe_task_watchdog_feed_age_millis = Some(2_001);
+    sample.runtime_health.maybe_task_watchdog_reason = Some("feed_stale".to_owned());
+    sample.runtime_health.task_watchdog_participation = "not_participating".to_owned();
+    sample.runtime_health.maybe_task_watchdog_feed_age_millis = Some(5_001);
     accumulator.record_active_sample(NetworkTransport::Http, 1_000, 1_000, &sample);
 
     // Act
@@ -285,5 +317,5 @@ fn failed_network_evidence_serializes_only_the_closed_watchdog_label() {
     // Assert
     assert_eq!(evidence.watchdog_failure, "watchdog_feed_stale");
     assert!(encoded.contains("\"watchdog_failure\":\"watchdog_feed_stale\""));
-    assert!(!encoded.contains("2001"));
+    assert!(!encoded.contains("5001"));
 }
