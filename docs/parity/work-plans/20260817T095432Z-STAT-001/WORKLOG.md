@@ -32,3 +32,24 @@
   device access was performed.
 - Blocker or next safe action: Commit/push exact source, rebuild and validate
   its package, then execute only the frozen detector and conditional capture.
+
+## 2026-08-17T10:34:00Z | attempt-016 terminal checkpoint
+
+- Source commit: `223d10bcafd5aba7091877a202ebdc3f7f1fce77`
+- Actions: Rebuilt and validated the clean package, ran the sole detector,
+  checked only modes/presence/provenance metadata, and consumed the sole
+  attempt-016 capture. No retry or out-of-band device probe ran.
+- Verification: Exact package/runtime identity, attestation, active safety,
+  terminal HTTP/WebSocket/pool state, safe stop, USB cleanup, protected modes,
+  redaction, result/network digests, and projection withholding pass. The final
+  aggregate test's unrelated EMC2101 child-launch timeout passed on one bounded
+  isolated rerun of the exact automation target.
+- Evidence: Capture closed after 364,314 active ms and 4/20 windows at
+  `watchdog_snapshot_retry_exhausted/retry_exhausted/unavailable/unavailable/
+  not_waiting`; work renewal remains incomplete. The v16/v10 result and wrapper
+  expose the identical closed tuple.
+- Outcome: `stop_hardware_blocker`; STAT-001 remains `implemented` and no
+  checklist/progress transition is permitted.
+- Blocker or next safe action: Reproduce continuous publication contention and
+  apply a targeted coherent writer/reader correction before any attempt-017
+  contract.

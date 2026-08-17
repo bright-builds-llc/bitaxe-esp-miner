@@ -1992,7 +1992,7 @@ Attempt-016 verification-promotion plan:
       identity.
 - [x] Run every focused and mandatory software, firmware, privacy, reference,
       package, and exact-source gate; commit and push before device access.
-- [ ] Run only the frozen detector and sole conditional attempt-016 command;
+- [x] Run only the frozen detector and sole conditional attempt-016 command;
       promote only if the complete independent quorum passes.
 
 Attempt-016 progress basis: pushed `177fffe9` corrects attempt-015's ambiguous
@@ -2024,6 +2024,27 @@ or electrical manipulation. Promotion requires exact identity, stable read
 outcome, 20 windows/work renewal, coherent changing positive rates, warm
 windows, bounded error, watchdog none, terminal zero, safe stop, cleanup,
 modes, seals, validation, and redaction; missing facts withhold it.
+
+Attempt-016 completion review: exact clean pushed source/package `223d10bc`,
+the pinned reference, focused/full gates, and the sole protected detector
+passed. The one capture failed closed after 364,314 active ms and 4/20 windows
+as `hardware_blocked` / `watchdog_unresponsive` /
+`watchdog_snapshot_retry_exhausted`, with coherent read outcome
+`retry_exhausted`, owner phase/subphase `unavailable/unavailable`, and wait
+state `not_waiting`. Runtime identity, attestation, safety, terminal HTTP/
+WebSocket/pool state, safe stop, USB cleanup, protected modes, seals, and
+redaction passed; the public projection is absent. Attempt-016 is consumed, no
+retry ran, terminal outcome is `stop_hardware_blocker`, and STAT-001/checklist/
+progress remain unchanged. See the linked `CLOSURE.md`.
+
+Residual risk/next action: active owner work now makes adjacent subphase and
+feed publications, while the coherent reader has only eight immediate spin
+retries. The precise outcome is consistent with continuous publication
+contention and must be reproduced in software without inferring a private
+effect. Do not start attempt-017. A fresh software-only plan must add the exact
+contention regression and a bounded targeted writer/reader correction that
+still fails closed for a genuinely stuck publication before any new hardware
+contract.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
