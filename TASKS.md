@@ -2046,6 +2046,24 @@ contention regression and a bounded targeted writer/reader correction that
 still fails closed for a genuinely stuck publication before any new hardware
 contract.
 
+Coherent-publication contention correction plan:
+`docs/parity/work-plans/20260817T104623Z-STAT-001/PLAN.md`
+
+- [ ] Reproduce finite odd-sequence writer preemption and continuous sequence
+      contention against the exact eight-attempt coherent reader.
+- [ ] Fuse owner-entry subphase plus watchdog observation into one publication
+      and yield between bounded retries without weakening stuck-writer failure.
+- [ ] Preserve every v16/v10 diagnostic, 18-source identity, firmware/package,
+      privacy/reference, and mandatory gate; close without hardware/promotion.
+
+Software-only authorization: local source, deterministic tests, builds,
+documentation, and Git operations only. Do not access protected attempts,
+credentials, detector/device/USB/network runtime, private values, or public
+projection candidates. Do not flash, reset, monitor, mine, actuate, update,
+erase, inject faults, manipulate power, use external UART/BAP, touch electrical
+interfaces, retry attempt-016, or create/run attempt-017. STAT-001/checklist/
+progress/README remain unchanged.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
