@@ -58,6 +58,12 @@ fn health_and_watchdog_vocabulary_has_exact_serialized_spellings() {
         ),
         (TaskWatchdogParticipation::Unavailable, "unavailable"),
     ];
+    let read_outcomes = [
+        (TaskWatchdogReadOutcome::Stable, "stable"),
+        (TaskWatchdogReadOutcome::Uninitialized, "uninitialized"),
+        (TaskWatchdogReadOutcome::RetryExhausted, "retry_exhausted"),
+        (TaskWatchdogReadOutcome::HistoryPoisoned, "history_poisoned"),
+    ];
 
     // Act / Assert
     for (value, expected) in supervisor {
@@ -69,6 +75,37 @@ fn health_and_watchdog_vocabulary_has_exact_serialized_spellings() {
     for (value, expected) in participation {
         assert_eq!(value.as_str(), expected);
     }
+    for (value, expected) in read_outcomes {
+        assert_eq!(value.as_str(), expected);
+    }
+}
+
+#[test]
+fn watchdog_store_read_failures_replace_generic_unproved_reason() {
+    // Arrange
+    let unavailable = RuntimeHealthSnapshot::fixture_unavailable();
+
+    // Act
+    let retry_exhausted = unavailable
+        .clone()
+        .with_task_watchdog_read_outcome(TaskWatchdogReadOutcome::RetryExhausted);
+    let history_poisoned =
+        unavailable.with_task_watchdog_read_outcome(TaskWatchdogReadOutcome::HistoryPoisoned);
+
+    // Assert
+    assert_eq!(
+        retry_exhausted.maybe_task_watchdog_reason(),
+        Some("snapshot_retry_exhausted")
+    );
+    assert_eq!(
+        history_poisoned.maybe_task_watchdog_reason(),
+        Some("snapshot_history_poisoned")
+    );
+    assert_eq!(
+        retry_exhausted.task_watchdog_participation(),
+        TaskWatchdogParticipation::NotParticipating
+    );
+    assert_eq!(retry_exhausted.maybe_task_watchdog_feed_sequence(), None);
 }
 
 #[test]

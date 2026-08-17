@@ -173,8 +173,13 @@ fn watchdog_snapshot_brackets_every_fact_with_bounded_fail_closed_retries() {
     assert!(phase_index < sequence_end_index);
     assert!(TASK_WATCHDOG_OBSERVATION_SOURCE
         .contains("start_sequence == end_sequence && end_sequence & 1 == 0"));
+    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains(
+        "TaskWatchdogObservationSnapshot::failed(TaskWatchdogReadOutcome::RetryExhausted)"
+    ));
     assert!(TASK_WATCHDOG_OBSERVATION_SOURCE
-        .contains("TaskWatchdogObservationSnapshot::default()"));
+        .contains("TaskWatchdogReadOutcome::HistoryPoisoned"));
+    assert!(RUNTIME_HEALTH_ADAPTER_SOURCE
+        .contains(".with_task_watchdog_read_outcome(task_watchdog.read_outcome)"));
 }
 
 #[test]

@@ -148,6 +148,7 @@ function retainedRecord(session: string, revision: number, value: JsonObject): s
     `task_watchdog_reason=${String(value["taskWatchdogReason"])}`,
     `task_watchdog_feed_sequence=${String(value["taskWatchdogFeedSequence"])}`,
     `task_watchdog_feed_age_millis=${String(value["taskWatchdogFeedAgeMillis"])}`,
+    `task_watchdog_read_outcome=${String(value["taskWatchdogReadOutcome"])}`,
     `task_watchdog_owner_phase=${String(value["taskWatchdogOwnerPhase"])}`,
     `task_watchdog_wait_state=${String(value["taskWatchdogWaitState"])}`,
     "redacted=true",

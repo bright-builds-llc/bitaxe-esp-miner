@@ -5,10 +5,12 @@ export const sourceFragments = new Map<string, readonly string[]>([
     "const MIN_COUNTER_INTERVAL_US: u64 = 1_000_000;",
   ]],
   ["crates/bitaxe-core/src/runtime_health.rs", [
+    "Some(\"snapshot_retry_exhausted\")",
     "if maybe_previous.is_some_and(|previous| !latest.is_valid_after(previous)) {",
     "let Some(age_millis) = now_millis.checked_sub(observed_at_millis) else {",
   ]],
   ["crates/bitaxe-core/src/runtime_health/wait.rs", [
+    "pub enum TaskWatchdogReadOutcome {",
     "pub enum TaskWatchdogWaitState {",
     "pub const fn state_at(self, current_monotonic_millis: u64)",
   ]],
@@ -31,6 +33,8 @@ export const sourceFragments = new Map<string, readonly string[]>([
     '#[serde(rename = "hashrateMonitor")]',
   ]],
   ["crates/bitaxe-api/src/wire/runtime_health.rs", [
+    'rename = "taskWatchdogReadOutcome"',
+    "task_watchdog_read_outcome: snapshot",
     '#[serde(rename = "taskWatchdogWaitState", default = "invalid_wait_state")]',
     "task_watchdog_wait_state: snapshot.task_watchdog_wait_state().as_str().to_owned(),",
   ]],
@@ -57,6 +61,8 @@ export const sourceFragments = new Map<string, readonly string[]>([
   ]],
   ["firmware/bitaxe/src/task_watchdog_observation.rs", [
     "const COHERENT_READ_ATTEMPTS: usize = 8;",
+    "TaskWatchdogReadOutcome::HistoryPoisoned",
+    "TaskWatchdogReadOutcome::RetryExhausted",
     "publication_sequence: AtomicU32,",
     "pub(crate) fn coherent_observation()",
   ]],

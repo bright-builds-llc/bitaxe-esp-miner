@@ -1,5 +1,5 @@
 use super::*;
-use bitaxe_core::runtime_health::TaskWatchdogWaitState;
+use bitaxe_core::runtime_health::{TaskWatchdogReadOutcome, TaskWatchdogWaitState};
 use std::cell::Cell;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
@@ -23,6 +23,7 @@ fn stable_publications_round_trip_as_one_snapshot() {
         snapshot.maybe_latest,
         Some(TaskWatchdogObservation::fed(2, 200))
     );
+    assert_eq!(snapshot.read_outcome, TaskWatchdogReadOutcome::Stable);
     assert_eq!(snapshot.owner_phase, TaskWatchdogOwnerPhase::WaitingInbox);
     assert_eq!(
         snapshot.owner_wait.state_at(300),
@@ -52,6 +53,7 @@ fn old_feed_and_new_wait_interleaving_retries_to_one_owner_instant() {
         snapshot.maybe_latest,
         Some(TaskWatchdogObservation::fed(2, 200))
     );
+    assert_eq!(snapshot.read_outcome, TaskWatchdogReadOutcome::Stable);
     assert_eq!(snapshot.owner_phase, TaskWatchdogOwnerPhase::WaitingInbox);
     assert_eq!(
         snapshot.owner_wait.state_at(300),
@@ -76,6 +78,10 @@ fn repeated_publication_races_exhaust_to_closed_default() {
     assert_eq!(usize::from(publication_count.get()), COHERENT_READ_ATTEMPTS);
     assert_eq!(snapshot.maybe_previous, None);
     assert_eq!(snapshot.maybe_latest, None);
+    assert_eq!(
+        snapshot.read_outcome,
+        TaskWatchdogReadOutcome::RetryExhausted
+    );
     assert_eq!(snapshot.owner_phase, TaskWatchdogOwnerPhase::Unavailable);
     assert_eq!(
         snapshot.owner_wait.state_at(0),
@@ -100,9 +106,29 @@ fn poisoned_history_fails_closed_without_mixed_atomic_facts() {
     // Assert
     assert_eq!(snapshot.maybe_previous, None);
     assert_eq!(snapshot.maybe_latest, None);
+    assert_eq!(
+        snapshot.read_outcome,
+        TaskWatchdogReadOutcome::HistoryPoisoned
+    );
     assert_eq!(snapshot.owner_phase, TaskWatchdogOwnerPhase::Unavailable);
     assert_eq!(
         snapshot.owner_wait.state_at(0),
         TaskWatchdogWaitState::NotWaiting
     );
+}
+
+#[test]
+fn untouched_store_is_explicitly_uninitialized() {
+    // Arrange
+    let store = TaskWatchdogObservationStore::new();
+
+    // Act
+    let snapshot = store.coherent_observation();
+
+    // Assert
+    assert_eq!(
+        snapshot.read_outcome,
+        TaskWatchdogReadOutcome::Uninitialized
+    );
+    assert_eq!(snapshot.maybe_latest, None);
 }

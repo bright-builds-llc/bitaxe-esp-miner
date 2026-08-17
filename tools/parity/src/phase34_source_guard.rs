@@ -331,6 +331,7 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
         "task_watchdog_reason={task_watchdog_reason}",
         "task_watchdog_feed_sequence={task_watchdog_feed_sequence}",
         "task_watchdog_feed_age_millis={task_watchdog_feed_age_millis}",
+        "task_watchdog_read_outcome={}",
         "task_watchdog_owner_phase={}",
         "task_watchdog_wait_state={}",
         "redacted=true",
@@ -352,6 +353,7 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
         "taskWatchdogReason",
         "taskWatchdogFeedSequence",
         "taskWatchdogFeedAgeMillis",
+        "taskWatchdogReadOutcome",
         "taskWatchdogOwnerPhase",
         "taskWatchdogWaitState",
     ] {

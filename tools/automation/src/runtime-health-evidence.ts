@@ -119,6 +119,7 @@ function retainedRecord(session: string, revision: number, value: JsonObject): s
     `task_watchdog_reason=${string(value, "taskWatchdogReason", "runtime health")}`,
     `task_watchdog_feed_sequence=${String(integer(value, "taskWatchdogFeedSequence", "runtime health", 1))}`,
     `task_watchdog_feed_age_millis=${String(integer(value, "taskWatchdogFeedAgeMillis", "runtime health"))}`,
+    `task_watchdog_read_outcome=${string(value, "taskWatchdogReadOutcome", "runtime health")}`,
     `task_watchdog_owner_phase=${string(value, "taskWatchdogOwnerPhase", "runtime health")}`,
     `task_watchdog_wait_state=${string(value, "taskWatchdogWaitState", "runtime health")}`,
     "redacted=true",
@@ -138,6 +139,7 @@ function validateHealth(value: JsonObject): { readonly checkpointSequence: numbe
     || string(value, "checkpointHealth", "runtime health") !== "healthy"
     || string(value, "taskWatchdogParticipation", "runtime health") !== "participating"
     || string(value, "taskWatchdogReason", "runtime health") !== "feed_fresh"
+    || string(value, "taskWatchdogReadOutcome", "runtime health") !== "stable"
     || ![
       "subscribing", "loop_start", "waiting_inbox", "handling_inbox",
       "handling_observation", "handling_readiness", "publishing_campaign_status",

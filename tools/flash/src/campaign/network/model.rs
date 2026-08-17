@@ -14,8 +14,8 @@ use super::validation::{
     validate_sample, window_index, SampleValidationFailure,
 };
 use super::watchdog::{
-    sample_failure, sample_owner_phase, sample_wait_state, WatchdogFailure, WatchdogOwnerPhase,
-    WatchdogWaitState,
+    sample_diagnostic, WatchdogDiagnostic, WatchdogFailure, WatchdogOwnerPhase,
+    WatchdogReadOutcome, WatchdogWaitState,
 };
 use super::window::{ContinuityWindowEvidence, SerialWindowEvidence};
 
@@ -99,6 +99,7 @@ pub(crate) struct CampaignNetworkEvidence {
     pub(in crate::campaign) safety_valid: bool,
     pub(in crate::campaign) watchdog_valid: bool,
     pub(in crate::campaign) watchdog_failure: &'static str,
+    pub(in crate::campaign) watchdog_read_outcome: &'static str,
     pub(in crate::campaign) watchdog_owner_phase: &'static str,
     pub(in crate::campaign) watchdog_wait_state: &'static str,
     pub(in crate::campaign) work_renewal_valid: bool,
@@ -137,7 +138,7 @@ impl CampaignNetworkEvidence {
 
     fn empty(status: &'static str, maybe_failure: Option<CampaignTerminalCategory>) -> Self {
         Self {
-            schema: "mining-campaign-network-continuity-v8",
+            schema: "mining-campaign-network-continuity-v9",
             status,
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count: 0,
@@ -163,6 +164,7 @@ impl CampaignNetworkEvidence {
             safety_valid: false,
             watchdog_valid: false,
             watchdog_failure: WatchdogFailure::None.label(),
+            watchdog_read_outcome: WatchdogReadOutcome::Uninitialized.label(),
             watchdog_owner_phase: WatchdogOwnerPhase::Unavailable.label(),
             watchdog_wait_state: WatchdogWaitState::NotWaiting.label(),
             work_renewal_valid: false,
@@ -245,6 +247,7 @@ pub(super) struct NetworkAccumulator {
     safety_valid: bool,
     watchdog_valid: bool,
     pub(super) watchdog_failure: WatchdogFailure,
+    watchdog_read_outcome: WatchdogReadOutcome,
     watchdog_owner_phase: WatchdogOwnerPhase,
     watchdog_wait_state: WatchdogWaitState,
     http_startup_transition_count: u64,
@@ -285,6 +288,7 @@ impl NetworkAccumulator {
             safety_valid: true,
             watchdog_valid: true,
             watchdog_failure: WatchdogFailure::None,
+            watchdog_read_outcome: WatchdogReadOutcome::Uninitialized,
             watchdog_owner_phase: WatchdogOwnerPhase::Unavailable,
             watchdog_wait_state: WatchdogWaitState::NotWaiting,
             http_startup_transition_count: 0,
@@ -311,22 +315,7 @@ impl NetworkAccumulator {
         if self.maybe_failure.is_some() {
             return;
         }
-        let Ok(owner_phase) = sample_owner_phase(sample) else {
-            self.watchdog_owner_phase = WatchdogOwnerPhase::Unavailable;
-            self.watchdog_wait_state = WatchdogWaitState::InvalidObservation;
-            self.fail_watchdog(WatchdogFailure::WatchdogOwnerPhaseUnknown);
-            return;
-        };
-        self.watchdog_owner_phase = owner_phase;
-        let Ok(wait_state) = sample_wait_state(sample) else {
-            self.watchdog_wait_state = WatchdogWaitState::InvalidObservation;
-            self.fail_watchdog(WatchdogFailure::WatchdogWaitStateUnknown);
-            return;
-        };
-        self.watchdog_wait_state = wait_state;
-        let watchdog_failure = sample_failure(sample);
-        if watchdog_failure != WatchdogFailure::None {
-            self.fail_watchdog(watchdog_failure);
+        if !self.observe_watchdog(sample) {
             return;
         }
         if let Err(failure) = validate_active_prerequisites(sample, &self.target) {
@@ -391,22 +380,7 @@ impl NetworkAccumulator {
         transport: NetworkTransport,
         sample: &SystemInfoWire,
     ) {
-        let Ok(owner_phase) = sample_owner_phase(sample) else {
-            self.watchdog_owner_phase = WatchdogOwnerPhase::Unavailable;
-            self.watchdog_wait_state = WatchdogWaitState::InvalidObservation;
-            self.fail_watchdog(WatchdogFailure::WatchdogOwnerPhaseUnknown);
-            return;
-        };
-        self.watchdog_owner_phase = owner_phase;
-        let Ok(wait_state) = sample_wait_state(sample) else {
-            self.watchdog_wait_state = WatchdogWaitState::InvalidObservation;
-            self.fail_watchdog(WatchdogFailure::WatchdogWaitStateUnknown);
-            return;
-        };
-        self.watchdog_wait_state = wait_state;
-        let watchdog_failure = sample_failure(sample);
-        if watchdog_failure != WatchdogFailure::None {
-            self.fail_watchdog(watchdog_failure);
+        if !self.observe_watchdog(sample) {
             return;
         }
         if let Err(failure) = validate_sample(sample, &self.target, true) {
@@ -443,7 +417,12 @@ impl NetworkAccumulator {
                 return;
             }
             if !watchdog_complete {
-                self.fail_watchdog(watchdog_failure);
+                self.fail_watchdog(WatchdogDiagnostic {
+                    read_outcome: self.watchdog_read_outcome,
+                    owner_phase: self.watchdog_owner_phase,
+                    wait_state: self.watchdog_wait_state,
+                    failure: watchdog_failure,
+                });
                 return;
             }
             if !work_complete {
@@ -473,7 +452,7 @@ impl NetworkAccumulator {
             && covered_window_count == REQUIRED_WINDOWS
             && serial.terminal_consumed;
         CampaignNetworkEvidence {
-            schema: "mining-campaign-network-continuity-v8",
+            schema: "mining-campaign-network-continuity-v9",
             status: if accepted { "accepted" } else { "failed" },
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count,
@@ -501,6 +480,7 @@ impl NetworkAccumulator {
             safety_valid: self.safety_valid,
             watchdog_valid: self.watchdog_valid,
             watchdog_failure: self.watchdog_failure.label(),
+            watchdog_read_outcome: self.watchdog_read_outcome.label(),
             watchdog_owner_phase: self.watchdog_owner_phase.label(),
             watchdog_wait_state: self.watchdog_wait_state.label(),
             work_renewal_valid: self
@@ -521,14 +501,31 @@ impl NetworkAccumulator {
         self.maybe_failure.get_or_insert(category);
     }
 
-    fn fail_watchdog(&mut self, failure: WatchdogFailure) {
+    fn observe_watchdog(&mut self, sample: &SystemInfoWire) -> bool {
+        let diagnostic = sample_diagnostic(sample);
+        if diagnostic.failure != WatchdogFailure::None {
+            self.fail_watchdog(diagnostic);
+            return false;
+        }
+        if self.watchdog_failure == WatchdogFailure::None {
+            self.watchdog_read_outcome = diagnostic.read_outcome;
+            self.watchdog_owner_phase = diagnostic.owner_phase;
+            self.watchdog_wait_state = diagnostic.wait_state;
+        }
+        true
+    }
+
+    fn fail_watchdog(&mut self, diagnostic: WatchdogDiagnostic) {
         if self.maybe_failure.is_none() {
             self.maybe_failure = Some(CampaignTerminalCategory::WatchdogUnresponsive);
         }
         if self.maybe_failure == Some(CampaignTerminalCategory::WatchdogUnresponsive) {
             self.watchdog_valid = false;
             if self.watchdog_failure == WatchdogFailure::None {
-                self.watchdog_failure = failure;
+                self.watchdog_failure = diagnostic.failure;
+                self.watchdog_read_outcome = diagnostic.read_outcome;
+                self.watchdog_owner_phase = diagnostic.owner_phase;
+                self.watchdog_wait_state = diagnostic.wait_state;
             }
         }
     }

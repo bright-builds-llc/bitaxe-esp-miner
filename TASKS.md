@@ -1845,12 +1845,12 @@ targeted regression-backed fix before any further hardware ordinal.
 Coherent-read diagnostic and earliest-tuple correction plan:
 `docs/parity/work-plans/20260817T073552Z-STAT-001/PLAN.md`
 
-- [ ] Add stable/uninitialized/retry-exhausted/history-poisoned read outcomes
+- [x] Add stable/uninitialized/retry-exhausted/history-poisoned read outcomes
       from the firmware coherent store through runtime health and wire views.
-- [ ] Map read failures to exact fail-closed reasons and latch outcome, owner
+- [x] Map read failures to exact fail-closed reasons and latch outcome, owner
       phase, and wait state with the earliest watchdog failure so terminal
       samples cannot overwrite the diagnostic tuple.
-- [ ] Rotate private campaign result/network evidence to v15/v9, add the
+- [x] Rotate private campaign result/network evidence to v15/v9, add the
       attempt-014-shaped regression, and pass every focused/mandatory gate.
 
 Software-only authorization: local source, tests, deterministic fixtures,

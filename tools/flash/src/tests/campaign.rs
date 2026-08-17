@@ -308,7 +308,7 @@ fn observation_campaign_uses_exact_package_combined_paused_seed_and_sealed_evide
         assert!(!csv.contains(forbidden), "unexpected key {forbidden}");
     }
     let result = read_campaign_result(&command);
-    assert_eq!(result["schema"], "mining-campaign-result-v14");
+    assert_eq!(result["schema"], "mining-campaign-result-v15");
     assert_eq!(
         result["readiness_transition"],
         serde_json::json!({

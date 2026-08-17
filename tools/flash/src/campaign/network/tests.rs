@@ -105,6 +105,7 @@ fn active_sample_with_watchdog_sequences(
     sample.runtime_health.maybe_task_watchdog_reason = Some("feed_fresh".to_owned());
     sample.runtime_health.maybe_task_watchdog_feed_sequence = Some(feed_sequence);
     sample.runtime_health.maybe_task_watchdog_feed_age_millis = Some(100);
+    sample.runtime_health.task_watchdog_read_outcome = "stable".to_owned();
     sample.runtime_health.task_watchdog_owner_phase = "waiting_inbox".to_owned();
     sample.runtime_health.task_watchdog_wait_state = "within_deadline".to_owned();
     sample
@@ -603,7 +604,7 @@ fn network_evidence_serialization_contains_only_closed_aggregates() {
     ] {
         assert!(!encoded.contains(prohibited));
     }
-    assert!(encoded.contains("mining-campaign-network-continuity-v8"));
+    assert!(encoded.contains("mining-campaign-network-continuity-v9"));
     assert!(encoded.contains("http_startup_transition_count"));
     assert!(encoded.contains("websocket_startup_transition_count"));
     assert!(encoded.contains("http_initial_active_observed"));

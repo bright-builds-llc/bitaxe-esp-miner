@@ -6,7 +6,8 @@ use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
 use std::sync::Mutex;
 
 use bitaxe_core::runtime_health::{
-    TaskWatchdogObservation, TaskWatchdogOwnerPhase, TaskWatchdogWaitObservation,
+    TaskWatchdogObservation, TaskWatchdogOwnerPhase, TaskWatchdogReadOutcome,
+    TaskWatchdogWaitObservation,
 };
 
 const COHERENT_READ_ATTEMPTS: usize = 8;
@@ -21,6 +22,7 @@ struct TaskWatchdogObservationHistory {
 pub(crate) struct TaskWatchdogObservationSnapshot {
     pub(crate) maybe_previous: Option<TaskWatchdogObservation>,
     pub(crate) maybe_latest: Option<TaskWatchdogObservation>,
+    pub(crate) read_outcome: TaskWatchdogReadOutcome,
     pub(crate) owner_phase: TaskWatchdogOwnerPhase,
     pub(crate) owner_wait: TaskWatchdogWaitObservation,
 }
@@ -30,6 +32,7 @@ impl Default for TaskWatchdogObservationSnapshot {
         Self {
             maybe_previous: None,
             maybe_latest: None,
+            read_outcome: TaskWatchdogReadOutcome::Uninitialized,
             owner_phase: TaskWatchdogOwnerPhase::Unavailable,
             owner_wait: TaskWatchdogWaitObservation::NotWaiting,
         }
@@ -105,7 +108,11 @@ impl TaskWatchdogObservationStore {
 
             let history = match self.history.lock() {
                 Ok(history) => *history,
-                Err(_) => return TaskWatchdogObservationSnapshot::default(),
+                Err(_) => {
+                    return TaskWatchdogObservationSnapshot::failed(
+                        TaskWatchdogReadOutcome::HistoryPoisoned,
+                    )
+                }
             };
             after_history_copy();
             let owner_phase =
@@ -117,6 +124,11 @@ impl TaskWatchdogObservationStore {
                 return TaskWatchdogObservationSnapshot {
                     maybe_previous: history.maybe_previous,
                     maybe_latest: history.maybe_latest,
+                    read_outcome: if history.maybe_latest.is_some() {
+                        TaskWatchdogReadOutcome::Stable
+                    } else {
+                        TaskWatchdogReadOutcome::Uninitialized
+                    },
                     owner_phase,
                     owner_wait,
                 };
@@ -124,7 +136,7 @@ impl TaskWatchdogObservationStore {
             std::hint::spin_loop();
         }
 
-        TaskWatchdogObservationSnapshot::default()
+        TaskWatchdogObservationSnapshot::failed(TaskWatchdogReadOutcome::RetryExhausted)
     }
 
     fn owner_wait(&self, owner_phase: TaskWatchdogOwnerPhase) -> TaskWatchdogWaitObservation {
@@ -148,6 +160,15 @@ impl TaskWatchdogObservationStore {
         );
         TaskWatchdogPublication {
             sequence: &self.publication_sequence,
+        }
+    }
+}
+
+impl TaskWatchdogObservationSnapshot {
+    fn failed(read_outcome: TaskWatchdogReadOutcome) -> Self {
+        Self {
+            read_outcome,
+            ..Self::default()
         }
     }
 }

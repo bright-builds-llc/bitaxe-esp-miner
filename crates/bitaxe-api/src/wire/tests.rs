@@ -269,6 +269,7 @@ fn runtime_health_serializes_exact_passive_values() {
     assert_eq!(value["runtimeHealth"]["taskWatchdogReason"], "feed_fresh");
     assert_eq!(value["runtimeHealth"]["taskWatchdogFeedSequence"], 11);
     assert_eq!(value["runtimeHealth"]["taskWatchdogFeedAgeMillis"], 50);
+    assert_eq!(value["runtimeHealth"]["taskWatchdogReadOutcome"], "stable");
     assert_eq!(
         value["runtimeHealth"]["taskWatchdogOwnerPhase"],
         "waiting_inbox"
@@ -303,7 +304,7 @@ fn retained_runtime_health_record_is_correlated_and_redacted() {
     // Assert
     assert_eq!(
         record,
-        "runtime_health boot_session=00000000000000000000000000000000 operator_snapshot_revision=1 self_test=idle supervisor=available checkpoint_category=telemetry checkpoint_sequence=9 checkpoint_age_millis=100 checkpoint_health=healthy task_watchdog_participation=participating task_watchdog_reason=feed_fresh task_watchdog_feed_sequence=11 task_watchdog_feed_age_millis=50 task_watchdog_owner_phase=waiting_inbox task_watchdog_wait_state=deadline_overrun redacted=true"
+        "runtime_health boot_session=00000000000000000000000000000000 operator_snapshot_revision=1 self_test=idle supervisor=available checkpoint_category=telemetry checkpoint_sequence=9 checkpoint_age_millis=100 checkpoint_health=healthy task_watchdog_participation=participating task_watchdog_reason=feed_fresh task_watchdog_feed_sequence=11 task_watchdog_feed_age_millis=50 task_watchdog_read_outcome=stable task_watchdog_owner_phase=waiting_inbox task_watchdog_wait_state=deadline_overrun redacted=true"
     );
     for prohibited in [
         "credential",

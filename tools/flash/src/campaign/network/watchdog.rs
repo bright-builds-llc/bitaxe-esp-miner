@@ -9,6 +9,9 @@ pub(super) enum WatchdogFailure {
     CheckpointSequenceMissing,
     WatchdogReasonMissing,
     WatchdogUnproved,
+    WatchdogSnapshotRetryExhausted,
+    WatchdogSnapshotHistoryPoisoned,
+    WatchdogReadOutcomeUnknown,
     WatchdogInvalidObservation,
     WatchdogSubscriptionFailed,
     WatchdogFeedFailed,
@@ -36,6 +39,9 @@ impl WatchdogFailure {
             Self::CheckpointSequenceMissing => "checkpoint_sequence_missing",
             Self::WatchdogReasonMissing => "watchdog_reason_missing",
             Self::WatchdogUnproved => "watchdog_unproved",
+            Self::WatchdogSnapshotRetryExhausted => "watchdog_snapshot_retry_exhausted",
+            Self::WatchdogSnapshotHistoryPoisoned => "watchdog_snapshot_history_poisoned",
+            Self::WatchdogReadOutcomeUnknown => "watchdog_read_outcome_unknown",
             Self::WatchdogInvalidObservation => "watchdog_invalid_observation",
             Self::WatchdogSubscriptionFailed => "watchdog_subscription_failed",
             Self::WatchdogFeedFailed => "watchdog_feed_failed",
@@ -52,6 +58,36 @@ impl WatchdogFailure {
             Self::HttpFeedNotAdvanced => "http_feed_not_advanced",
             Self::WebsocketCheckpointNotAdvanced => "websocket_checkpoint_not_advanced",
             Self::WebsocketFeedNotAdvanced => "websocket_feed_not_advanced",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(super) enum WatchdogReadOutcome {
+    Stable,
+    #[default]
+    Uninitialized,
+    RetryExhausted,
+    HistoryPoisoned,
+}
+
+impl WatchdogReadOutcome {
+    pub(super) const fn label(self) -> &'static str {
+        match self {
+            Self::Stable => "stable",
+            Self::Uninitialized => "uninitialized",
+            Self::RetryExhausted => "retry_exhausted",
+            Self::HistoryPoisoned => "history_poisoned",
+        }
+    }
+
+    fn parse(value: &str) -> Option<Self> {
+        match value {
+            "stable" => Some(Self::Stable),
+            "uninitialized" => Some(Self::Uninitialized),
+            "retry_exhausted" => Some(Self::RetryExhausted),
+            "history_poisoned" => Some(Self::HistoryPoisoned),
+            _ => None,
         }
     }
 }
@@ -101,6 +137,14 @@ pub(super) enum WatchdogOwnerPhase {
     Shutdown,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(super) struct WatchdogDiagnostic {
+    pub(super) read_outcome: WatchdogReadOutcome,
+    pub(super) owner_phase: WatchdogOwnerPhase,
+    pub(super) wait_state: WatchdogWaitState,
+    pub(super) failure: WatchdogFailure,
+}
+
 impl WatchdogOwnerPhase {
     pub(super) const fn label(self) -> &'static str {
         match self {
@@ -134,24 +178,12 @@ impl WatchdogOwnerPhase {
     }
 }
 
-pub(super) fn sample_owner_phase(
-    sample: &SystemInfoWire,
-) -> Result<WatchdogOwnerPhase, WatchdogFailure> {
-    WatchdogOwnerPhase::parse(&sample.runtime_health.task_watchdog_owner_phase)
-        .ok_or(WatchdogFailure::WatchdogOwnerPhaseUnknown)
-}
-
-pub(super) fn sample_wait_state(
-    sample: &SystemInfoWire,
-) -> Result<WatchdogWaitState, WatchdogFailure> {
-    WatchdogWaitState::parse(&sample.runtime_health.task_watchdog_wait_state)
-        .ok_or(WatchdogFailure::WatchdogWaitStateUnknown)
-}
-
 fn reason_failure(maybe_reason: Option<&str>) -> WatchdogFailure {
     match maybe_reason {
         None => WatchdogFailure::WatchdogReasonMissing,
         Some("unproved") => WatchdogFailure::WatchdogUnproved,
+        Some("snapshot_retry_exhausted") => WatchdogFailure::WatchdogSnapshotRetryExhausted,
+        Some("snapshot_history_poisoned") => WatchdogFailure::WatchdogSnapshotHistoryPoisoned,
         Some("invalid_observation") => WatchdogFailure::WatchdogInvalidObservation,
         Some("subscription_failed") => WatchdogFailure::WatchdogSubscriptionFailed,
         Some("feed_failed") => WatchdogFailure::WatchdogFeedFailed,
@@ -163,7 +195,10 @@ fn reason_failure(maybe_reason: Option<&str>) -> WatchdogFailure {
     }
 }
 
-pub(super) fn sample_failure(sample: &SystemInfoWire) -> WatchdogFailure {
+fn sample_failure_for_outcome(
+    sample: &SystemInfoWire,
+    read_outcome: WatchdogReadOutcome,
+) -> WatchdogFailure {
     let health = &sample.runtime_health;
     if health.supervisor_availability != "available" {
         return WatchdogFailure::SupervisorUnavailable;
@@ -173,6 +208,15 @@ pub(super) fn sample_failure(sample: &SystemInfoWire) -> WatchdogFailure {
     }
     if health.maybe_checkpoint_sequence.is_none() {
         return WatchdogFailure::CheckpointSequenceMissing;
+    }
+    match read_outcome {
+        WatchdogReadOutcome::RetryExhausted => {
+            return WatchdogFailure::WatchdogSnapshotRetryExhausted
+        }
+        WatchdogReadOutcome::HistoryPoisoned => {
+            return WatchdogFailure::WatchdogSnapshotHistoryPoisoned
+        }
+        WatchdogReadOutcome::Stable | WatchdogReadOutcome::Uninitialized => {}
     }
     let watchdog_failure = reason_failure(health.maybe_task_watchdog_reason.as_deref());
     if watchdog_failure != WatchdogFailure::None {
@@ -188,6 +232,49 @@ pub(super) fn sample_failure(sample: &SystemInfoWire) -> WatchdogFailure {
         return WatchdogFailure::WatchdogFeedAgeMissing;
     }
     WatchdogFailure::None
+}
+
+pub(super) fn sample_diagnostic(sample: &SystemInfoWire) -> WatchdogDiagnostic {
+    let maybe_read_outcome =
+        WatchdogReadOutcome::parse(&sample.runtime_health.task_watchdog_read_outcome);
+    let maybe_owner_phase =
+        WatchdogOwnerPhase::parse(&sample.runtime_health.task_watchdog_owner_phase);
+    let maybe_wait_state =
+        WatchdogWaitState::parse(&sample.runtime_health.task_watchdog_wait_state);
+    let read_outcome = maybe_read_outcome.unwrap_or_default();
+    let owner_phase = if maybe_read_outcome.is_some() {
+        maybe_owner_phase.unwrap_or_default()
+    } else {
+        WatchdogOwnerPhase::Unavailable
+    };
+    let wait_state = if maybe_read_outcome.is_some() && maybe_owner_phase.is_some() {
+        maybe_wait_state.unwrap_or(WatchdogWaitState::InvalidObservation)
+    } else {
+        WatchdogWaitState::InvalidObservation
+    };
+    let failure = if maybe_read_outcome.is_none() {
+        WatchdogFailure::WatchdogReadOutcomeUnknown
+    } else if maybe_owner_phase.is_none() {
+        WatchdogFailure::WatchdogOwnerPhaseUnknown
+    } else if maybe_wait_state.is_none() {
+        WatchdogFailure::WatchdogWaitStateUnknown
+    } else {
+        sample_failure_for_outcome(sample, read_outcome)
+    };
+    WatchdogDiagnostic {
+        read_outcome,
+        owner_phase,
+        wait_state,
+        failure,
+    }
+}
+
+#[cfg(test)]
+pub(super) fn sample_failure(sample: &SystemInfoWire) -> WatchdogFailure {
+    let read_outcome =
+        WatchdogReadOutcome::parse(&sample.runtime_health.task_watchdog_read_outcome)
+            .unwrap_or_default();
+    sample_failure_for_outcome(sample, read_outcome)
 }
 
 pub(super) fn window_failure(
@@ -213,7 +300,7 @@ pub(super) fn window_failure(
 
 #[cfg(test)]
 mod tests {
-    use super::{WatchdogFailure, WatchdogOwnerPhase, WatchdogWaitState};
+    use super::{WatchdogFailure, WatchdogOwnerPhase, WatchdogReadOutcome, WatchdogWaitState};
 
     #[test]
     fn watchdog_failure_labels_are_closed_and_value_free() {
@@ -234,6 +321,18 @@ mod tests {
                 "watchdog_reason_missing",
             ),
             (WatchdogFailure::WatchdogUnproved, "watchdog_unproved"),
+            (
+                WatchdogFailure::WatchdogSnapshotRetryExhausted,
+                "watchdog_snapshot_retry_exhausted",
+            ),
+            (
+                WatchdogFailure::WatchdogSnapshotHistoryPoisoned,
+                "watchdog_snapshot_history_poisoned",
+            ),
+            (
+                WatchdogFailure::WatchdogReadOutcomeUnknown,
+                "watchdog_read_outcome_unknown",
+            ),
             (
                 WatchdogFailure::WatchdogInvalidObservation,
                 "watchdog_invalid_observation",
@@ -301,6 +400,22 @@ mod tests {
             assert!(label
                 .bytes()
                 .all(|byte| byte.is_ascii_lowercase() || byte == b'_'));
+        }
+    }
+
+    #[test]
+    fn watchdog_read_outcome_labels_are_closed_and_value_free() {
+        // Arrange
+        let cases = [
+            (WatchdogReadOutcome::Stable, "stable"),
+            (WatchdogReadOutcome::Uninitialized, "uninitialized"),
+            (WatchdogReadOutcome::RetryExhausted, "retry_exhausted"),
+            (WatchdogReadOutcome::HistoryPoisoned, "history_poisoned"),
+        ];
+
+        // Act / Assert
+        for (outcome, expected) in cases {
+            assert_eq!(outcome.label(), expected);
         }
     }
 

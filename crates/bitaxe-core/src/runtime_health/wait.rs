@@ -1,3 +1,77 @@
+/// Closed result of copying the firmware-owned watchdog observation store.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TaskWatchdogReadOutcome {
+    Stable,
+    Uninitialized,
+    RetryExhausted,
+    HistoryPoisoned,
+}
+
+impl TaskWatchdogReadOutcome {
+    /// Returns the exact serialized spelling.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Stable => "stable",
+            Self::Uninitialized => "uninitialized",
+            Self::RetryExhausted => "retry_exhausted",
+            Self::HistoryPoisoned => "history_poisoned",
+        }
+    }
+}
+
+/// Closed phase vocabulary for the task-watchdog-owned production session loop.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum TaskWatchdogOwnerPhase {
+    Unavailable = 0,
+    Subscribing = 1,
+    LoopStart = 2,
+    WaitingInbox = 3,
+    HandlingInbox = 4,
+    HandlingObservation = 5,
+    HandlingReadiness = 6,
+    PublishingCampaignStatus = 7,
+    ServicingHashrate = 8,
+    Shutdown = 9,
+}
+
+impl TaskWatchdogOwnerPhase {
+    /// Returns the exact serialized spelling.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Unavailable => "unavailable",
+            Self::Subscribing => "subscribing",
+            Self::LoopStart => "loop_start",
+            Self::WaitingInbox => "waiting_inbox",
+            Self::HandlingInbox => "handling_inbox",
+            Self::HandlingObservation => "handling_observation",
+            Self::HandlingReadiness => "handling_readiness",
+            Self::PublishingCampaignStatus => "publishing_campaign_status",
+            Self::ServicingHashrate => "servicing_hashrate",
+            Self::Shutdown => "shutdown",
+        }
+    }
+
+    /// Decodes the lock-free firmware representation without accepting free text.
+    #[must_use]
+    pub const fn from_u8(value: u8) -> Self {
+        match value {
+            1 => Self::Subscribing,
+            2 => Self::LoopStart,
+            3 => Self::WaitingInbox,
+            4 => Self::HandlingInbox,
+            5 => Self::HandlingObservation,
+            6 => Self::HandlingReadiness,
+            7 => Self::PublishingCampaignStatus,
+            8 => Self::ServicingHashrate,
+            9 => Self::Shutdown,
+            _ => Self::Unavailable,
+        }
+    }
+}
+
 /// Closed classification of the production owner's receive wait.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TaskWatchdogWaitState {

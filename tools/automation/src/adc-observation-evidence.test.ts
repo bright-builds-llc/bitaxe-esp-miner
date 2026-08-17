@@ -96,12 +96,13 @@ function runtimeHealth(sequence: number) {
     taskWatchdogFeedSequence: sequence + 2,
     taskWatchdogFeedAgeMillis: 50,
     taskWatchdogOwnerPhase: "waiting_inbox",
+    taskWatchdogReadOutcome: "stable",
     taskWatchdogWaitState: "within_deadline",
   };
 }
 
 function retained(revision: number, sequence: number): string {
-  return `runtime_health boot_session=${session} operator_snapshot_revision=${String(revision)} self_test=unavailable supervisor=available checkpoint_category=telemetry checkpoint_sequence=${String(sequence)} checkpoint_age_millis=100 checkpoint_health=healthy task_watchdog_participation=participating task_watchdog_reason=feed_fresh task_watchdog_feed_sequence=${String(sequence + 2)} task_watchdog_feed_age_millis=50 task_watchdog_owner_phase=waiting_inbox task_watchdog_wait_state=within_deadline redacted=true`;
+  return `runtime_health boot_session=${session} operator_snapshot_revision=${String(revision)} self_test=unavailable supervisor=available checkpoint_category=telemetry checkpoint_sequence=${String(sequence)} checkpoint_age_millis=100 checkpoint_health=healthy task_watchdog_participation=participating task_watchdog_reason=feed_fresh task_watchdog_feed_sequence=${String(sequence + 2)} task_watchdog_feed_age_millis=50 task_watchdog_read_outcome=stable task_watchdog_owner_phase=waiting_inbox task_watchdog_wait_state=within_deadline redacted=true`;
 }
 
 function sampleFor(type: string): unknown {

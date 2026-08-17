@@ -26,6 +26,11 @@ pub struct RuntimeHealthWire {
     pub maybe_task_watchdog_feed_sequence: Option<u64>,
     #[serde(rename = "taskWatchdogFeedAgeMillis")]
     pub maybe_task_watchdog_feed_age_millis: Option<u64>,
+    #[serde(
+        rename = "taskWatchdogReadOutcome",
+        default = "uninitialized_read_outcome"
+    )]
+    pub task_watchdog_read_outcome: String,
     #[serde(rename = "taskWatchdogOwnerPhase", default = "unavailable_owner_phase")]
     pub task_watchdog_owner_phase: String,
     #[serde(rename = "taskWatchdogWaitState", default = "invalid_wait_state")]
@@ -45,6 +50,7 @@ impl From<&RuntimeHealthSnapshot> for RuntimeHealthWire {
             maybe_task_watchdog_reason: snapshot.maybe_task_watchdog_reason().map(str::to_owned),
             maybe_task_watchdog_feed_sequence: snapshot.maybe_task_watchdog_feed_sequence(),
             maybe_task_watchdog_feed_age_millis: snapshot.maybe_task_watchdog_feed_age_millis(),
+            task_watchdog_read_outcome: snapshot.task_watchdog_read_outcome().as_str().to_owned(),
             task_watchdog_owner_phase: snapshot.task_watchdog_owner_phase().as_str().to_owned(),
             task_watchdog_wait_state: snapshot.task_watchdog_wait_state().as_str().to_owned(),
         }
@@ -53,6 +59,10 @@ impl From<&RuntimeHealthSnapshot> for RuntimeHealthWire {
 
 fn unavailable_owner_phase() -> String {
     "unavailable".to_owned()
+}
+
+fn uninitialized_read_outcome() -> String {
+    "uninitialized".to_owned()
 }
 
 fn invalid_wait_state() -> String {
@@ -79,12 +89,13 @@ pub fn retained_runtime_health_record(
         optional_u64(snapshot.maybe_task_watchdog_feed_age_millis());
 
     format!(
-        "runtime_health boot_session={boot_session} operator_snapshot_revision={} self_test={} supervisor={} checkpoint_category={checkpoint_category} checkpoint_sequence={checkpoint_sequence} checkpoint_age_millis={checkpoint_age_millis} checkpoint_health={} task_watchdog_participation={} task_watchdog_reason={task_watchdog_reason} task_watchdog_feed_sequence={task_watchdog_feed_sequence} task_watchdog_feed_age_millis={task_watchdog_feed_age_millis} task_watchdog_owner_phase={} task_watchdog_wait_state={} redacted=true",
+        "runtime_health boot_session={boot_session} operator_snapshot_revision={} self_test={} supervisor={} checkpoint_category={checkpoint_category} checkpoint_sequence={checkpoint_sequence} checkpoint_age_millis={checkpoint_age_millis} checkpoint_health={} task_watchdog_participation={} task_watchdog_reason={task_watchdog_reason} task_watchdog_feed_sequence={task_watchdog_feed_sequence} task_watchdog_feed_age_millis={task_watchdog_feed_age_millis} task_watchdog_read_outcome={} task_watchdog_owner_phase={} task_watchdog_wait_state={} redacted=true",
         operator_snapshot_revision.get(),
         snapshot.passive_self_test_state().as_str(),
         snapshot.supervisor_availability().as_str(),
         snapshot.checkpoint_health().as_str(),
         snapshot.task_watchdog_participation().as_str(),
+        snapshot.task_watchdog_read_outcome().as_str(),
         snapshot.task_watchdog_owner_phase().as_str(),
         snapshot.task_watchdog_wait_state().as_str(),
     )

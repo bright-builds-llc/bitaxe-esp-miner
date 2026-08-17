@@ -80,6 +80,34 @@ fn producer_classified_stale_sample_is_rejected() {
 }
 
 #[test]
+fn coherent_store_read_failures_have_distinct_watchdog_categories() {
+    // Arrange
+    let cases = [
+        (
+            "retry_exhausted",
+            "snapshot_retry_exhausted",
+            WatchdogFailure::WatchdogSnapshotRetryExhausted,
+        ),
+        (
+            "history_poisoned",
+            "snapshot_history_poisoned",
+            WatchdogFailure::WatchdogSnapshotHistoryPoisoned,
+        ),
+    ];
+
+    // Act / Assert
+    for (read_outcome, reason, expected) in cases {
+        let mut sample = active_sample(1, 1);
+        sample.runtime_health.task_watchdog_read_outcome = read_outcome.to_owned();
+        sample.runtime_health.maybe_task_watchdog_reason = Some(reason.to_owned());
+        sample.runtime_health.task_watchdog_participation = "not_participating".to_owned();
+        sample.runtime_health.maybe_task_watchdog_feed_sequence = None;
+        sample.runtime_health.maybe_task_watchdog_feed_age_millis = None;
+        assert_eq!(sample_failure(&sample), expected);
+    }
+}
+
+#[test]
 fn evaluator_watchdog_reasons_keep_one_production_shaped_failure() {
     // Arrange
     let cases = [
@@ -256,6 +284,32 @@ fn later_watchdog_observations_preserve_the_earliest_watchdog_failure() {
 }
 
 #[test]
+fn terminal_sample_cannot_mix_phase_and_wait_into_earliest_unproved_failure() {
+    // Arrange
+    let mut accumulator = NetworkAccumulator::new(target());
+    let mut unproved = active_sample(1, 1);
+    unproved.runtime_health.task_watchdog_read_outcome = "uninitialized".to_owned();
+    unproved.runtime_health.maybe_task_watchdog_reason = Some("unproved".to_owned());
+    unproved.runtime_health.task_watchdog_participation = "unavailable".to_owned();
+    unproved.runtime_health.maybe_task_watchdog_feed_sequence = None;
+    unproved.runtime_health.maybe_task_watchdog_feed_age_millis = None;
+    unproved.runtime_health.task_watchdog_owner_phase = "unavailable".to_owned();
+    unproved.runtime_health.task_watchdog_wait_state = "not_waiting".to_owned();
+    accumulator.record_active_sample(NetworkTransport::Http, 1_000, 1_000, &unproved);
+    let later_terminal = terminal_sample(2, 2);
+
+    // Act
+    accumulator.record_terminal_sample(NetworkTransport::Http, &later_terminal);
+    let evidence = accumulator.finish(&complete_serial());
+
+    // Assert
+    assert_eq!(evidence.watchdog_failure, "watchdog_unproved");
+    assert_eq!(evidence.watchdog_read_outcome, "uninitialized");
+    assert_eq!(evidence.watchdog_owner_phase, "unavailable");
+    assert_eq!(evidence.watchdog_wait_state, "not_waiting");
+}
+
+#[test]
 fn later_watchdog_observation_does_not_reclassify_an_earlier_non_watchdog_failure() {
     // Arrange
     let mut accumulator = NetworkAccumulator::new(target());
@@ -318,4 +372,22 @@ fn failed_network_evidence_serializes_only_the_closed_watchdog_label() {
     assert_eq!(evidence.watchdog_failure, "watchdog_feed_stale");
     assert!(encoded.contains("\"watchdog_failure\":\"watchdog_feed_stale\""));
     assert!(!encoded.contains("5001"));
+}
+
+#[test]
+fn unknown_watchdog_read_outcome_fails_closed_without_republishing_free_text() {
+    // Arrange
+    let mut accumulator = NetworkAccumulator::new(target());
+    let mut sample = active_sample(1, 1);
+    sample.runtime_health.task_watchdog_read_outcome = "private-read-42".to_owned();
+
+    // Act
+    accumulator.record_active_sample(NetworkTransport::Http, 1_000, 1_000, &sample);
+    let evidence = accumulator.finish(&complete_serial());
+
+    // Assert
+    assert_eq!(evidence.watchdog_failure, "watchdog_read_outcome_unknown");
+    assert_eq!(evidence.watchdog_read_outcome, "uninitialized");
+    assert_eq!(evidence.watchdog_owner_phase, "unavailable");
+    assert_eq!(evidence.watchdog_wait_state, "invalid_observation");
 }

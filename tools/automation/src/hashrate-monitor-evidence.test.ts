@@ -29,10 +29,12 @@ const sourceDocuments = new Map<string, string>([
     "const MIN_COUNTER_INTERVAL_US: u64 = 1_000_000;",
   ].join("\n")],
   ["crates/bitaxe-core/src/runtime_health.rs", [
+    "Some(\"snapshot_retry_exhausted\")",
     "if maybe_previous.is_some_and(|previous| !latest.is_valid_after(previous)) {",
     "let Some(age_millis) = now_millis.checked_sub(observed_at_millis) else {",
   ].join("\n")],
   ["crates/bitaxe-core/src/runtime_health/wait.rs", [
+    "pub enum TaskWatchdogReadOutcome {",
     "pub enum TaskWatchdogWaitState {",
     "pub const fn state_at(self, current_monotonic_millis: u64)",
   ].join("\n")],
@@ -55,6 +57,8 @@ const sourceDocuments = new Map<string, string>([
     '#[serde(rename = "hashrateMonitor")]',
   ].join("\n")],
   ["crates/bitaxe-api/src/wire/runtime_health.rs", [
+    'rename = "taskWatchdogReadOutcome"',
+    "task_watchdog_read_outcome: snapshot",
     '#[serde(rename = "taskWatchdogWaitState", default = "invalid_wait_state")]',
     "task_watchdog_wait_state: snapshot.task_watchdog_wait_state().as_str().to_owned(),",
   ].join("\n")],
@@ -81,6 +85,8 @@ const sourceDocuments = new Map<string, string>([
   ].join("\n")],
   ["firmware/bitaxe/src/task_watchdog_observation.rs", [
     "const COHERENT_READ_ATTEMPTS: usize = 8;",
+    "TaskWatchdogReadOutcome::HistoryPoisoned",
+    "TaskWatchdogReadOutcome::RetryExhausted",
     "publication_sequence: AtomicU32,",
     "pub(crate) fn coherent_observation()",
   ].join("\n")],
@@ -92,7 +98,7 @@ const sourceDocuments = new Map<string, string>([
 ]);
 
 const okResult = {
-  schema: "mining-campaign-result-v14",
+  schema: "mining-campaign-result-v15",
   status: "accepted",
   terminal_category: "submit_response_observed",
   stage: "live-share",
@@ -102,6 +108,7 @@ const okResult = {
   safe_stop: "confirmed",
   usb_cleanup: "ready",
   watchdog_failure: "none",
+  watchdog_read_outcome: "stable",
   watchdog_owner_phase: "waiting_inbox",
   watchdog_wait_state: "within_deadline",
   runtime_attestation_parse_failure: "none",
@@ -220,6 +227,7 @@ async function childProgram(
     malformedTransport?: boolean;
     sealedFailure?: boolean;
     watchdogFailure?: string;
+    watchdogReadOutcome?: string;
     failureTerminalCategory?: string;
     resultSchema?: string;
     watchdogOwnerPhase?: string;
@@ -237,6 +245,7 @@ async function childProgram(
         ? "runtime_identity_untrusted"
         : "watchdog_unresponsive"),
     watchdog_failure: options.watchdogFailure ?? "none",
+    watchdog_read_outcome: options.watchdogReadOutcome ?? "stable",
     watchdog_owner_phase: options.watchdogOwnerPhase ?? "publishing_campaign_status",
     watchdog_wait_state: options.watchdogWaitState ?? "not_waiting",
     runtime_attestation_parse_failure: options.watchdogFailure === undefined
@@ -260,7 +269,7 @@ if (args[0] === "mining-campaign") {
   await mkdir(root, { recursive: true, mode: 0o700 });
   await chmod(root, 0o700);
   const transport = { active_sample_count: 3, positive_coherent_count: 3, distinct_positive_count: 2, warm_rolling_window_count: 2, terminal_zero_confirmed: true };
-  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v8", status: "accepted", watchdog_failure: "none", watchdog_owner_phase: "waiting_inbox", watchdog_wait_state: "within_deadline", required_window_count: 20, covered_window_count: 20, hashrate_monitor: { monitor_cadence_ms: 1000, asic_count: 1, domain_count: 4, http: transport, websocket: ${options.malformedTransport === true ? "{ ...transport, distinct_positive_count: 1 }" : "transport"} } }) + "\\n";
+  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v9", status: "accepted", watchdog_failure: "none", watchdog_read_outcome: "stable", watchdog_owner_phase: "waiting_inbox", watchdog_wait_state: "within_deadline", required_window_count: 20, covered_window_count: 20, hashrate_monitor: { monitor_cadence_ms: 1000, asic_count: 1, domain_count: 4, http: transport, websocket: ${options.malformedTransport === true ? "{ ...transport, distinct_positive_count: 1 }" : "transport"} } }) + "\\n";
   const result = JSON.stringify(${options.sealedFailure === true
     ? JSON.stringify(failureResult)
     : `{ ...${JSON.stringify(okResult)}, network_continuity_sha256: digest(network) }`}) + "\\n";
@@ -468,6 +477,9 @@ test("every sealed watchdog failure publishes only its closed earliest discrimin
     "checkpoint_sequence_missing",
     "watchdog_reason_missing",
     "watchdog_unproved",
+    "watchdog_snapshot_retry_exhausted",
+    "watchdog_snapshot_history_poisoned",
+    "watchdog_read_outcome_unknown",
     "watchdog_invalid_observation",
     "watchdog_subscription_failed",
     "watchdog_feed_failed",
@@ -508,6 +520,7 @@ test("every sealed watchdog failure publishes only its closed earliest discrimin
         projection_published: false,
         runtime_attestation_parse_failure: "none",
         watchdog_failure: watchdogFailure,
+        watchdog_read_outcome: "stable",
         watchdog_owner_phase: "publishing_campaign_status",
         watchdog_wait_state: "not_waiting",
       });
@@ -526,7 +539,7 @@ test("watchdog diagnostic requires the new sealed schema and matching terminal c
     ["old-schema", {
       sealedFailure: true,
       watchdogFailure: "http_feed_not_advanced",
-      resultSchema: "mining-campaign-result-v13",
+      resultSchema: "mining-campaign-result-v14",
     }],
     ["wrong-category", {
       sealedFailure: true,
@@ -545,6 +558,11 @@ test("watchdog diagnostic requires the new sealed schema and matching terminal c
       sealedFailure: true,
       watchdogFailure: "watchdog_feed_stale",
       watchdogOwnerPhase: "private-phase-42",
+    }],
+    ["unknown-read-outcome", {
+      sealedFailure: true,
+      watchdogFailure: "watchdog_feed_stale",
+      watchdogReadOutcome: "private-read-42",
     }],
     ["unknown-wait-state", {
       sealedFailure: true,

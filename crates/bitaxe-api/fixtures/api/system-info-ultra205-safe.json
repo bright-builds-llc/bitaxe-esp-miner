@@ -60,6 +60,7 @@
     "taskWatchdogReason": "unproved",
     "taskWatchdogFeedSequence": null,
     "taskWatchdogFeedAgeMillis": null,
+    "taskWatchdogReadOutcome": "uninitialized",
     "taskWatchdogOwnerPhase": "unavailable",
     "taskWatchdogWaitState": "not_waiting"
   },

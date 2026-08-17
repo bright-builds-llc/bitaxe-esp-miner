@@ -70,6 +70,7 @@ fn campaign_evidence_never_projects_raw_serial_or_credentials() {
     .expect("network continuity bytes");
     let result = read_campaign_result(&command);
     assert_eq!(result["watchdog_failure"], "none");
+    assert_eq!(result["watchdog_read_outcome"], "uninitialized");
     assert_eq!(
         result["operator_sensor"],
         serde_json::json!({
@@ -107,8 +108,9 @@ fn campaign_evidence_never_projects_raw_serial_or_credentials() {
     );
     let network: serde_json::Value =
         serde_json::from_slice(&network_bytes).expect("network continuity JSON");
-    assert_eq!(network["schema"], "mining-campaign-network-continuity-v8");
+    assert_eq!(network["schema"], "mining-campaign-network-continuity-v9");
     assert_eq!(network["watchdog_failure"], "none");
+    assert_eq!(network["watchdog_read_outcome"], "uninitialized");
     assert_eq!(network["http_startup_transition_count"], 0);
     assert_eq!(network["websocket_startup_transition_count"], 0);
     assert_eq!(network["http_initial_active_observed"], false);
