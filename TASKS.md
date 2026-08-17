@@ -1471,6 +1471,28 @@ software-only immutable plan may add new closed discriminators and a
 production-shaped regression; hardware requires an objectively changed
 authoritative boundary plus a new complete contract.
 
+Owner-phase diagnostic and publication-cadence correction plan:
+`docs/parity/work-plans/20260817T020911Z-STAT-001/PLAN.md`
+
+- [ ] Add a closed task-watchdog owner-phase discriminator from the firmware
+      owner through runtime health, HTTP/WebSocket, sealed campaign evidence,
+      and value-free private-first failure reporting.
+- [ ] Bound synchronous campaign-status retained/serial publication to one
+      second while preserving per-event state tracking, first/terminal markers,
+      safety, feedback, hashrate service, and maximum-gap requirements.
+- [ ] Prove 600-second high-event-rate cadence bounds, prompt terminal output,
+      v13/v7 schema/seal behavior, source/evaluator binding, redaction, and all
+      mandatory gates; push a software-only closure without transition.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not access protected
+attempts, credentials, detector/device/network runtime, private values, or
+public projection candidates. Do not detect, flash, reset, monitor, mine,
+actuate, update, erase, inject faults, manipulate power, use direct UART, or
+touch electrical interfaces. Attempt-010 remains consumed and attempt-011 is
+not authorized. STAT-001 remains `implemented`; checklist/progress are
+unchanged.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
