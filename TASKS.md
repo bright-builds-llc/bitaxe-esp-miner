@@ -1357,6 +1357,27 @@ production-shaped regression before any targeted correction. Attempt-010 is
 not authorized without new verified progress and a new complete hardware
 contract.
 
+Campaign watchdog-policy correction plan:
+`docs/parity/work-plans/20260816T235908Z-STAT-001/PLAN.md`
+
+- [ ] Reproduce the false 2,000-ms campaign rejection against the firmware's
+      configured-timeout `feed_fresh` verdict.
+- [ ] Remove only the duplicate numeric consumer policy while preserving typed
+      reason, participation, presence, per-window advancement, precedence, and
+      value-free evidence checks.
+- [ ] Run focused and mandatory software, firmware-package, privacy,
+      reference, parity-invariance, immutable-plan, and diff gates; commit and
+      push a software-only closure without checklist transition or hardware.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not access protected
+attempts, credentials, detector/device/network runtime, private values, or a
+public projection. Do not detect, flash, reset, monitor, mine, actuate, update,
+erase, inject faults, manipulate power, use direct UART, or touch electrical
+interfaces. Attempt-009 remains consumed; this plan does not authorize
+attempt-010. STAT-001 remains `implemented` and the checklist/progress history
+remain unchanged.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
