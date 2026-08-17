@@ -2083,6 +2083,30 @@ conservative profile, unit, safety, privacy, recovery, cleanup, retry, stop,
 and promotion contract. Never reuse attempt-016; any new precise boundary must
 receive its own regression-backed correction before another continuation.
 
+Attempt-017 verification-promotion plan:
+`docs/parity/work-plans/20260817T114224Z-STAT-001/PLAN.md`
+
+- [ ] Rebind workflow, validator, contract, task/plan, Bazel, roots, and
+      fixtures from attempt-016 to 017, preserving v16/v10, fused writer,
+      bounded reader, earliest tuple, and 18-source identity.
+- [ ] Pass focused/full gates, commit/push, and rebuild exact package before
+      device access.
+- [ ] Run only the frozen detector and sole capture; promote only on the full
+      independently validated quorum.
+
+Attempt-017 progress basis: pushed `c274be94` fixes attempt-016's exact retry-
+exhausted tuple with fused entry publication and scheduler-aware bounded reads;
+finite contention recovers and stuck contention remains fail-closed.
+
+Authorization/privacy/retry: after clean pushed gates, one exact board-205
+package may run 400 MHz / 1,100 mV core / 100% fan for 600 active seconds with
+protected joins, safe stop, cleanup, sealing, and one bounded recovery flash.
+Fresh bus safety is 4.5-5.5 V, <=15 W, ASIC <75 C, fan RPM nonzero; core mV and
+bus V remain distinct. Only fresh ignored wrapper/attempt-017 0700 roots and
+0600 files; no private publication. No retry/018, overclock, arbitrary control,
+OTA, erase, fault injection, power action, direct UART/BAP, or electrical work.
+Exact attempt-016 tuple recurrence selects `stop_repeated_boundary`.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
