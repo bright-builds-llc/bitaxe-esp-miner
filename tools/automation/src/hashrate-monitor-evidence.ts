@@ -47,9 +47,11 @@ type RuntimeAttestationParseEvidence = RuntimeAttestationParseDiagnostic & Reado
 }>;
 type WatchdogFailure = typeof watchdogFailures[number];
 type WatchdogOwnerPhase = typeof watchdogOwnerPhases[number];
+type WatchdogWaitState = typeof watchdogWaitStates[number];
 type WatchdogFailureDiagnostic = Readonly<{
   watchdog_failure: WatchdogFailure;
   watchdog_owner_phase: WatchdogOwnerPhase;
+  watchdog_wait_state: WatchdogWaitState;
 }>;
 type CampaignFailureDiagnostic = RuntimeAttestationParseDiagnostic
   & Partial<WatchdogFailureDiagnostic>;
@@ -92,10 +94,17 @@ const watchdogFailures = [
   "watchdog_feed_age_missing",
   "watchdog_feed_stale",
   "watchdog_owner_phase_unknown",
+  "watchdog_wait_state_unknown",
   "http_checkpoint_not_advanced",
   "http_feed_not_advanced",
   "websocket_checkpoint_not_advanced",
   "websocket_feed_not_advanced",
+] as const;
+const watchdogWaitStates = [
+  "not_waiting",
+  "within_deadline",
+  "deadline_overrun",
+  "invalid_observation",
 ] as const;
 const watchdogOwnerPhases = [
   "unavailable",
@@ -233,6 +242,14 @@ function watchdogOwnerPhase(value: JsonObject): WatchdogOwnerPhase {
   return phase as WatchdogOwnerPhase;
 }
 
+function watchdogWaitState(value: JsonObject): WatchdogWaitState {
+  const state = requiredString(value, "watchdog_wait_state", "campaign result");
+  if (!watchdogWaitStates.includes(state as WatchdogWaitState)) {
+    throw failure("evidence_invalid", "campaign watchdog wait state is invalid");
+  }
+  return state as WatchdogWaitState;
+}
+
 async function requireAbsent(candidate: string, context: string): Promise<void> {
   try {
     await stat(candidate);
@@ -293,7 +310,7 @@ async function sealedCampaignFailureDiagnostic(
     const result = await readJson(resultPath, "campaign result");
     const seal = (await readFile(sealPath, "utf8")).trim();
     if (seal !== sha256(result.document)
-      || requiredString(result.value, "schema", "campaign result") !== "mining-campaign-result-v13"
+      || requiredString(result.value, "schema", "campaign result") !== "mining-campaign-result-v14"
       || requiredString(result.value, "status", "campaign result") !== "failed") {
       return undefined;
     }
@@ -306,6 +323,7 @@ async function sealedCampaignFailureDiagnostic(
         runtime_attestation_parse_failure: diagnostic.runtime_attestation_parse_failure,
         watchdog_failure: watchdogDiagnostic,
         watchdog_owner_phase: watchdogOwnerPhase(result.value),
+        watchdog_wait_state: watchdogWaitState(result.value),
       };
     }
     if (watchdogDiagnostic !== "none") return undefined;
@@ -441,7 +459,7 @@ export async function captureHashrateMonitorEvidence(
     }
     const parseDiagnostic = runtimeAttestationParseDiagnostic(resultFile.value);
     const resultWatchdogFailure = watchdogFailure(resultFile.value);
-    if (requiredString(resultFile.value, "schema", "campaign result") !== "mining-campaign-result-v13"
+    if (requiredString(resultFile.value, "schema", "campaign result") !== "mining-campaign-result-v14"
       || requiredString(resultFile.value, "status", "campaign result") !== "accepted"
       || requiredString(resultFile.value, "stage", "campaign result") !== "live-share"
       || requiredString(resultFile.value, "profile", "campaign result") !== "conservative"
@@ -453,13 +471,15 @@ export async function captureHashrateMonitorEvidence(
       || Object.values(parseDiagnostic.runtime_attestation_parse_failure_counts)
         .some((count) => count !== 0)
       || requiredString(networkFile.value, "schema", "campaign network evidence")
-        !== "mining-campaign-network-continuity-v7"
+        !== "mining-campaign-network-continuity-v8"
       || requiredString(networkFile.value, "status", "campaign network evidence") !== "accepted") {
       throw failure("evidence_invalid", "campaign acceptance boundary is incomplete");
     }
     const resultWatchdogOwnerPhase = watchdogOwnerPhase(resultFile.value);
+    const resultWatchdogWaitState = watchdogWaitState(resultFile.value);
     if (resultWatchdogFailure !== "none"
       || watchdogOwnerPhase(networkFile.value) !== resultWatchdogOwnerPhase
+      || watchdogWaitState(networkFile.value) !== resultWatchdogWaitState
       || watchdogFailure(networkFile.value) !== resultWatchdogFailure) {
       throw failure("evidence_invalid", "campaign watchdog acceptance boundary is invalid");
     }

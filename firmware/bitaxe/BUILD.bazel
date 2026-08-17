@@ -28,6 +28,7 @@ js_library(
         "src/runtime_health_adapter.rs",
         "src/runtime_snapshot.rs",
         "src/task_watchdog_observation.rs",
+        "sdkconfig.defaults",
     ],
     visibility = ["//tools/automation:__pkg__"],
 )
@@ -530,6 +531,7 @@ rust_test(
         "src/runtime_health_adapter.rs",
         "src/task_watchdog_observation.rs",
     ],
+    compile_data = ["sdkconfig.defaults"],
     crate_name = "hashrate_source_ownership_tests",
     crate_root = "src/hashrate_source_ownership_test.rs",
     edition = "2021",

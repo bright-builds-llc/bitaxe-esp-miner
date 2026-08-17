@@ -119,6 +119,7 @@ js_library(
         "reference/esp-miner/components/stratum/utils.c",
         "reference/esp-miner/main/device_config.h",
         "reference/esp-miner/main/tasks/power_management_task.c",
+        "reference/esp-miner/main/tasks/protocol_coordinator.c",
         "reference/esp-miner/main/tasks/hashrate_monitor_task.c",
     ],
     visibility = ["//tools/automation:__pkg__"],

@@ -12,6 +12,7 @@ js_library(
     srcs = [
         "src/hashrate.rs",
         "src/runtime_health.rs",
+        "src/runtime_health/wait.rs",
     ],
     visibility = ["//tools/automation:__pkg__"],
 )
@@ -36,6 +37,7 @@ filegroup(
     srcs = [
         "src/lib.rs",
         "src/runtime_health.rs",
+        "src/runtime_health/wait.rs",
         "src/runtime_health/tests.rs",
         "src/runtime_orchestration.rs",
     ],
@@ -55,6 +57,7 @@ rust_library(
         "src/input.rs",
         "src/lib.rs",
         "src/runtime_health.rs",
+        "src/runtime_health/wait.rs",
         "src/runtime_health/tests.rs",
         "src/runtime_orchestration.rs",
         "src/screen.rs",

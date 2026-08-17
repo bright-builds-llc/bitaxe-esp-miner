@@ -20,6 +20,7 @@ pub(super) enum WatchdogFailure {
     WatchdogFeedAgeMissing,
     WatchdogFeedStale,
     WatchdogOwnerPhaseUnknown,
+    WatchdogWaitStateUnknown,
     HttpCheckpointNotAdvanced,
     HttpFeedNotAdvanced,
     WebsocketCheckpointNotAdvanced,
@@ -46,10 +47,41 @@ impl WatchdogFailure {
             Self::WatchdogFeedAgeMissing => "watchdog_feed_age_missing",
             Self::WatchdogFeedStale => "watchdog_feed_stale",
             Self::WatchdogOwnerPhaseUnknown => "watchdog_owner_phase_unknown",
+            Self::WatchdogWaitStateUnknown => "watchdog_wait_state_unknown",
             Self::HttpCheckpointNotAdvanced => "http_checkpoint_not_advanced",
             Self::HttpFeedNotAdvanced => "http_feed_not_advanced",
             Self::WebsocketCheckpointNotAdvanced => "websocket_checkpoint_not_advanced",
             Self::WebsocketFeedNotAdvanced => "websocket_feed_not_advanced",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(super) enum WatchdogWaitState {
+    #[default]
+    NotWaiting,
+    WithinDeadline,
+    DeadlineOverrun,
+    InvalidObservation,
+}
+
+impl WatchdogWaitState {
+    pub(super) const fn label(self) -> &'static str {
+        match self {
+            Self::NotWaiting => "not_waiting",
+            Self::WithinDeadline => "within_deadline",
+            Self::DeadlineOverrun => "deadline_overrun",
+            Self::InvalidObservation => "invalid_observation",
+        }
+    }
+
+    fn parse(value: &str) -> Option<Self> {
+        match value {
+            "not_waiting" => Some(Self::NotWaiting),
+            "within_deadline" => Some(Self::WithinDeadline),
+            "deadline_overrun" => Some(Self::DeadlineOverrun),
+            "invalid_observation" => Some(Self::InvalidObservation),
+            _ => None,
         }
     }
 }
@@ -107,6 +139,13 @@ pub(super) fn sample_owner_phase(
 ) -> Result<WatchdogOwnerPhase, WatchdogFailure> {
     WatchdogOwnerPhase::parse(&sample.runtime_health.task_watchdog_owner_phase)
         .ok_or(WatchdogFailure::WatchdogOwnerPhaseUnknown)
+}
+
+pub(super) fn sample_wait_state(
+    sample: &SystemInfoWire,
+) -> Result<WatchdogWaitState, WatchdogFailure> {
+    WatchdogWaitState::parse(&sample.runtime_health.task_watchdog_wait_state)
+        .ok_or(WatchdogFailure::WatchdogWaitStateUnknown)
 }
 
 fn reason_failure(maybe_reason: Option<&str>) -> WatchdogFailure {
@@ -174,7 +213,7 @@ pub(super) fn window_failure(
 
 #[cfg(test)]
 mod tests {
-    use super::{WatchdogFailure, WatchdogOwnerPhase};
+    use super::{WatchdogFailure, WatchdogOwnerPhase, WatchdogWaitState};
 
     #[test]
     fn watchdog_failure_labels_are_closed_and_value_free() {
@@ -234,6 +273,10 @@ mod tests {
                 "watchdog_owner_phase_unknown",
             ),
             (
+                WatchdogFailure::WatchdogWaitStateUnknown,
+                "watchdog_wait_state_unknown",
+            ),
+            (
                 WatchdogFailure::HttpCheckpointNotAdvanced,
                 "http_checkpoint_not_advanced",
             ),
@@ -286,5 +329,26 @@ mod tests {
                 .all(|byte| byte.is_ascii_lowercase() || byte == b'_'));
         }
         assert_eq!(WatchdogOwnerPhase::parse("private-phase-42"), None);
+    }
+
+    #[test]
+    fn watchdog_wait_state_labels_are_closed_and_value_free() {
+        // Arrange
+        let states = [
+            WatchdogWaitState::NotWaiting,
+            WatchdogWaitState::WithinDeadline,
+            WatchdogWaitState::DeadlineOverrun,
+            WatchdogWaitState::InvalidObservation,
+        ];
+
+        // Act / Assert
+        for state in states {
+            let label = state.label();
+            assert_eq!(WatchdogWaitState::parse(label), Some(state));
+            assert!(label
+                .bytes()
+                .all(|byte| byte.is_ascii_lowercase() || byte == b'_'));
+        }
+        assert_eq!(WatchdogWaitState::parse("private-wait-42"), None);
     }
 }

@@ -23,7 +23,9 @@ pub(super) fn run_owner(
                 .next_deadline_ms()
                 .saturating_sub(before_wait_ms),
         );
-        record_owner_phase(TaskWatchdogOwnerPhase::WaitingInbox);
+        let wait_millis = u64::try_from(wait.as_millis()).unwrap_or(u64::MAX);
+        let maybe_wait_deadline_millis = crate::runtime_uptime::millis().checked_add(wait_millis);
+        record_owner_wait(maybe_wait_deadline_millis);
         let maybe_message = match receiver.recv_timeout(wait) {
             Ok(message) => Some(message),
             Err(mpsc::RecvTimeoutError::Timeout) => None,
@@ -147,6 +149,10 @@ pub(super) fn run_owner(
 
 fn record_owner_phase(phase: TaskWatchdogOwnerPhase) {
     crate::task_watchdog_observation::record_owner_phase(phase);
+}
+
+fn record_owner_wait(maybe_deadline_millis: Option<u64>) {
+    crate::task_watchdog_observation::record_owner_wait(maybe_deadline_millis);
 }
 
 fn drive_session(

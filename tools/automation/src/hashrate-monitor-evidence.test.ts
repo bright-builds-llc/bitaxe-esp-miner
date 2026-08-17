@@ -32,6 +32,10 @@ const sourceDocuments = new Map<string, string>([
     "if maybe_previous.is_some_and(|previous| !latest.is_valid_after(previous)) {",
     "let Some(age_millis) = now_millis.checked_sub(observed_at_millis) else {",
   ].join("\n")],
+  ["crates/bitaxe-core/src/runtime_health/wait.rs", [
+    "pub enum TaskWatchdogWaitState {",
+    "pub const fn state_at(self, current_monotonic_millis: u64)",
+  ].join("\n")],
   ["crates/bitaxe-stratum/src/v1/state.rs", "pub hashrate_inputs: HashrateInputs"],
   ["crates/bitaxe-stratum/src/v1/production_session/campaign.rs", [
     "Self::Conservative => (400, 1_100, 100)",
@@ -49,6 +53,10 @@ const sourceDocuments = new Map<string, string>([
   ["crates/bitaxe-api/src/wire.rs", [
     '#[serde(rename = "hashRate")]',
     '#[serde(rename = "hashrateMonitor")]',
+  ].join("\n")],
+  ["crates/bitaxe-api/src/wire/runtime_health.rs", [
+    '#[serde(rename = "taskWatchdogWaitState", default = "invalid_wait_state")]',
+    "task_watchdog_wait_state: snapshot.task_watchdog_wait_state().as_str().to_owned(),",
   ].join("\n")],
   ["firmware/bitaxe/src/production_mining_session/hashrate.rs", [
     "const HASHRATE_CADENCE_MS: u64 = 1_000;",
@@ -73,8 +81,10 @@ const sourceDocuments = new Map<string, string>([
   ].join("\n")],
   ["firmware/bitaxe/src/task_watchdog_observation.rs", [
     "static OWNER_PHASE: AtomicU8",
-    "record_owner_phase",
+    "static OWNER_WAIT_DEADLINE_MILLIS: AtomicU32",
+    "pub(crate) fn owner_observation()",
   ].join("\n")],
+  ["firmware/bitaxe/sdkconfig.defaults", "CONFIG_PTHREAD_TASK_PRIO_DEFAULT=5"],
   ["crates/bitaxe-safety/src/power.rs", [
     "pub const INPUT_VOLTAGE_NOMINAL_VOLTS: f64 = 5.0;",
     "pub const INPUT_VOLTAGE_MARGIN_RATIO: f64 = 0.10;",
@@ -82,7 +92,7 @@ const sourceDocuments = new Map<string, string>([
 ]);
 
 const okResult = {
-  schema: "mining-campaign-result-v13",
+  schema: "mining-campaign-result-v14",
   status: "accepted",
   terminal_category: "submit_response_observed",
   stage: "live-share",
@@ -93,6 +103,7 @@ const okResult = {
   usb_cleanup: "ready",
   watchdog_failure: "none",
   watchdog_owner_phase: "waiting_inbox",
+  watchdog_wait_state: "within_deadline",
   runtime_attestation_parse_failure: "none",
   runtime_attestation_parse_failure_counts: {
     missing_marker: 0,
@@ -158,6 +169,13 @@ async function fixture(name: string): Promise<Fixture> {
     "uint16_t voltage = nvs_config_get_u16(NVS_CONFIG_ASIC_VOLTAGE);",
     "VCORE_set_voltage(GLOBAL_STATE, (double) voltage / 1000.0);",
   ].join("\n"));
+  const coordinatorReference = path.join(
+    root,
+    "reference/esp-miner/main/tasks/protocol_coordinator.c",
+  );
+  await writeFile(coordinatorReference, [
+    'xTaskCreateWithCaps(stratum_v1_task, "stratum v1", 8192, (void *)gs, 5,',
+  ].join("\n"));
   const planRelative = "docs/parity/work-plans/20260817T042626Z-STAT-001/PLAN.md";
   const plan = "- Parity row: `STAT-001`\n- Active task: `task-parity-stat001-hashrate-monitor`\n";
   await mkdir(path.dirname(path.join(root, planRelative)), { recursive: true });
@@ -205,6 +223,7 @@ async function childProgram(
     failureTerminalCategory?: string;
     resultSchema?: string;
     watchdogOwnerPhase?: string;
+    watchdogWaitState?: string;
     tamperedSeal?: boolean;
   }> = {},
 ): Promise<string> {
@@ -219,6 +238,7 @@ async function childProgram(
         : "watchdog_unresponsive"),
     watchdog_failure: options.watchdogFailure ?? "none",
     watchdog_owner_phase: options.watchdogOwnerPhase ?? "publishing_campaign_status",
+    watchdog_wait_state: options.watchdogWaitState ?? "not_waiting",
     runtime_attestation_parse_failure: options.watchdogFailure === undefined
       ? "missing_marker"
       : "none",
@@ -240,7 +260,7 @@ if (args[0] === "mining-campaign") {
   await mkdir(root, { recursive: true, mode: 0o700 });
   await chmod(root, 0o700);
   const transport = { active_sample_count: 3, positive_coherent_count: 3, distinct_positive_count: 2, warm_rolling_window_count: 2, terminal_zero_confirmed: true };
-  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v7", status: "accepted", watchdog_failure: "none", watchdog_owner_phase: "waiting_inbox", required_window_count: 20, covered_window_count: 20, hashrate_monitor: { monitor_cadence_ms: 1000, asic_count: 1, domain_count: 4, http: transport, websocket: ${options.malformedTransport === true ? "{ ...transport, distinct_positive_count: 1 }" : "transport"} } }) + "\\n";
+  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v8", status: "accepted", watchdog_failure: "none", watchdog_owner_phase: "waiting_inbox", watchdog_wait_state: "within_deadline", required_window_count: 20, covered_window_count: 20, hashrate_monitor: { monitor_cadence_ms: 1000, asic_count: 1, domain_count: 4, http: transport, websocket: ${options.malformedTransport === true ? "{ ...transport, distinct_positive_count: 1 }" : "transport"} } }) + "\\n";
   const result = JSON.stringify(${options.sealedFailure === true
     ? JSON.stringify(failureResult)
     : `{ ...${JSON.stringify(okResult)}, network_continuity_sha256: digest(network) }`}) + "\\n";
@@ -290,7 +310,7 @@ test("admissible conservative campaign and independent validator publish only cl
     // Assert
     assert.equal(evidence.attempt_ordinal, 12);
     assert.equal(evidence.hashrate.http.distinct_positive_count, 2);
-    assert.equal(evidence.source.source_path_count, 15);
+    assert.equal(evidence.source.source_path_count, 18);
     assert.equal((await stat(path.join(value.root, value.options.projection))).mode & 0o777, 0o644);
     assert.doesNotMatch(
       await readFile(path.join(value.root, value.options.projection), "utf8"),
@@ -459,6 +479,7 @@ test("every sealed watchdog failure publishes only its closed earliest discrimin
     "watchdog_feed_age_missing",
     "watchdog_feed_stale",
     "watchdog_owner_phase_unknown",
+    "watchdog_wait_state_unknown",
     "http_checkpoint_not_advanced",
     "http_feed_not_advanced",
     "websocket_checkpoint_not_advanced",
@@ -488,6 +509,7 @@ test("every sealed watchdog failure publishes only its closed earliest discrimin
         runtime_attestation_parse_failure: "none",
         watchdog_failure: watchdogFailure,
         watchdog_owner_phase: "publishing_campaign_status",
+        watchdog_wait_state: "not_waiting",
       });
       assert.doesNotMatch(
         JSON.stringify(error.publicValue),
@@ -504,7 +526,7 @@ test("watchdog diagnostic requires the new sealed schema and matching terminal c
     ["old-schema", {
       sealedFailure: true,
       watchdogFailure: "http_feed_not_advanced",
-      resultSchema: "mining-campaign-result-v12",
+      resultSchema: "mining-campaign-result-v13",
     }],
     ["wrong-category", {
       sealedFailure: true,
@@ -523,6 +545,11 @@ test("watchdog diagnostic requires the new sealed schema and matching terminal c
       sealedFailure: true,
       watchdogFailure: "watchdog_feed_stale",
       watchdogOwnerPhase: "private-phase-42",
+    }],
+    ["unknown-wait-state", {
+      sealedFailure: true,
+      watchdogFailure: "watchdog_feed_stale",
+      watchdogWaitState: "private-wait-42",
     }],
   ] as const) {
     // Arrange

@@ -13,7 +13,10 @@ use super::validation::{
     active_mining_state_valid, regresses, update_gap, validate_active_prerequisites,
     validate_sample, window_index, SampleValidationFailure,
 };
-use super::watchdog::{sample_failure, sample_owner_phase, WatchdogFailure, WatchdogOwnerPhase};
+use super::watchdog::{
+    sample_failure, sample_owner_phase, sample_wait_state, WatchdogFailure, WatchdogOwnerPhase,
+    WatchdogWaitState,
+};
 use super::window::{ContinuityWindowEvidence, SerialWindowEvidence};
 
 mod command_failure;
@@ -97,6 +100,7 @@ pub(crate) struct CampaignNetworkEvidence {
     pub(in crate::campaign) watchdog_valid: bool,
     pub(in crate::campaign) watchdog_failure: &'static str,
     pub(in crate::campaign) watchdog_owner_phase: &'static str,
+    pub(in crate::campaign) watchdog_wait_state: &'static str,
     pub(in crate::campaign) work_renewal_valid: bool,
     pub(in crate::campaign) terminal_http_valid: bool,
     pub(in crate::campaign) terminal_websocket_valid: bool,
@@ -133,7 +137,7 @@ impl CampaignNetworkEvidence {
 
     fn empty(status: &'static str, maybe_failure: Option<CampaignTerminalCategory>) -> Self {
         Self {
-            schema: "mining-campaign-network-continuity-v7",
+            schema: "mining-campaign-network-continuity-v8",
             status,
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count: 0,
@@ -160,6 +164,7 @@ impl CampaignNetworkEvidence {
             watchdog_valid: false,
             watchdog_failure: WatchdogFailure::None.label(),
             watchdog_owner_phase: WatchdogOwnerPhase::Unavailable.label(),
+            watchdog_wait_state: WatchdogWaitState::NotWaiting.label(),
             work_renewal_valid: false,
             terminal_http_valid: false,
             terminal_websocket_valid: false,
@@ -241,6 +246,7 @@ pub(super) struct NetworkAccumulator {
     watchdog_valid: bool,
     pub(super) watchdog_failure: WatchdogFailure,
     watchdog_owner_phase: WatchdogOwnerPhase,
+    watchdog_wait_state: WatchdogWaitState,
     http_startup_transition_count: u64,
     websocket_startup_transition_count: u64,
     http_initial_active_observed: bool,
@@ -280,6 +286,7 @@ impl NetworkAccumulator {
             watchdog_valid: true,
             watchdog_failure: WatchdogFailure::None,
             watchdog_owner_phase: WatchdogOwnerPhase::Unavailable,
+            watchdog_wait_state: WatchdogWaitState::NotWaiting,
             http_startup_transition_count: 0,
             websocket_startup_transition_count: 0,
             http_initial_active_observed: false,
@@ -306,10 +313,17 @@ impl NetworkAccumulator {
         }
         let Ok(owner_phase) = sample_owner_phase(sample) else {
             self.watchdog_owner_phase = WatchdogOwnerPhase::Unavailable;
+            self.watchdog_wait_state = WatchdogWaitState::InvalidObservation;
             self.fail_watchdog(WatchdogFailure::WatchdogOwnerPhaseUnknown);
             return;
         };
         self.watchdog_owner_phase = owner_phase;
+        let Ok(wait_state) = sample_wait_state(sample) else {
+            self.watchdog_wait_state = WatchdogWaitState::InvalidObservation;
+            self.fail_watchdog(WatchdogFailure::WatchdogWaitStateUnknown);
+            return;
+        };
+        self.watchdog_wait_state = wait_state;
         let watchdog_failure = sample_failure(sample);
         if watchdog_failure != WatchdogFailure::None {
             self.fail_watchdog(watchdog_failure);
@@ -379,10 +393,17 @@ impl NetworkAccumulator {
     ) {
         let Ok(owner_phase) = sample_owner_phase(sample) else {
             self.watchdog_owner_phase = WatchdogOwnerPhase::Unavailable;
+            self.watchdog_wait_state = WatchdogWaitState::InvalidObservation;
             self.fail_watchdog(WatchdogFailure::WatchdogOwnerPhaseUnknown);
             return;
         };
         self.watchdog_owner_phase = owner_phase;
+        let Ok(wait_state) = sample_wait_state(sample) else {
+            self.watchdog_wait_state = WatchdogWaitState::InvalidObservation;
+            self.fail_watchdog(WatchdogFailure::WatchdogWaitStateUnknown);
+            return;
+        };
+        self.watchdog_wait_state = wait_state;
         let watchdog_failure = sample_failure(sample);
         if watchdog_failure != WatchdogFailure::None {
             self.fail_watchdog(watchdog_failure);
@@ -452,7 +473,7 @@ impl NetworkAccumulator {
             && covered_window_count == REQUIRED_WINDOWS
             && serial.terminal_consumed;
         CampaignNetworkEvidence {
-            schema: "mining-campaign-network-continuity-v7",
+            schema: "mining-campaign-network-continuity-v8",
             status: if accepted { "accepted" } else { "failed" },
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count,
@@ -481,6 +502,7 @@ impl NetworkAccumulator {
             watchdog_valid: self.watchdog_valid,
             watchdog_failure: self.watchdog_failure.label(),
             watchdog_owner_phase: self.watchdog_owner_phase.label(),
+            watchdog_wait_state: self.watchdog_wait_state.label(),
             work_renewal_valid: self
                 .windows
                 .iter()

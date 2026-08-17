@@ -13,6 +13,7 @@ js_library(
         "src/mining.rs",
         "src/observation.rs",
         "src/wire.rs",
+        "src/wire/runtime_health.rs",
     ],
     visibility = ["//tools/automation:__pkg__"],
 )
@@ -77,6 +78,7 @@ filegroup(
         "src/platform_identity.rs",
         "src/snapshot.rs",
         "src/wire.rs",
+        "src/wire/runtime_health.rs",
     ],
     visibility = ["//firmware/bitaxe:__pkg__"],
 )
@@ -134,6 +136,7 @@ rust_library(
         "src/v12_settings.rs",
         "src/websocket_state.rs",
         "src/wire.rs",
+        "src/wire/runtime_health.rs",
         "src/wire/tests.rs",
     ],
     compile_data = glob(["fixtures/**"], allow_empty = True),

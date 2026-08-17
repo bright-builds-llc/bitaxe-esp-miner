@@ -95,7 +95,7 @@ impl HashrateMonitorEvidence {
         }
         if !self.source.source_semantics_current
             || !self.source.reference_semantics_current
-            || self.source.source_path_count != 15
+            || self.source.source_path_count != 18
         {
             return Err("hashrate monitor source evidence is incomplete");
         }
@@ -164,7 +164,7 @@ mod tests {
                 campaign_network_sha256: "1".repeat(64),
                 source_semantics_current: true,
                 reference_semantics_current: true,
-                source_path_count: 15,
+                source_path_count: 18,
             },
             hashrate: HashrateMonitorQuorum {
                 monitor_cadence_ms: 1_000,

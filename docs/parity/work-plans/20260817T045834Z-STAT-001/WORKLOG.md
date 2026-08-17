@@ -42,3 +42,30 @@
 - Outcome: Plan checkpoint ready for commit/push before source edits.
 - Blocker or next safe action: Commit/push, then implement only the frozen
   wait-state, schema, priority, and source-binding scope.
+
+## 2026-08-17T05:39:32Z | implementation verification
+
+- Source commit: `3009f3e4008bf04032f3f600fb0bda0f796740ca`
+- Actions: Added lock-free coherent receive-deadline ownership, closed wait
+  states, post-copy derivation, runtime-health wire/retained projection, v14/v8
+  campaign evidence, seal-gated public diagnostics, priority-5 sdkconfig and
+  upstream binding, and an 18-source evaluator identity. Extracted wait and
+  runtime-health wire modules to preserve code-shape limits. Adapted the
+  deadline to wrap-aware `AtomicU32` plus validity after the real Xtensa build
+  proved `AtomicU64` unavailable.
+- Verification: Exact deadline, one-ms overrun, missing/overflow, non-waiting,
+  production scheduler-delay, u32-wrap, deadline-before-phase, phase/deadline-
+  before-clock, one-second budget, priority, API/retained, schema/seal,
+  unknown/missing, precedence, redaction, prior workflow, and real-child tests
+  pass. The real Xtensa release build, focused suites, and complete ordered
+  privacy/reference/package/format/lint/build/Cargo/Bright-Builds/Bazel gates
+  pass. First parity render hit known transient `os error 35`; bounded retry
+  passed with no validation errors and unchanged `76/94` progress (`80.9%`).
+- Evidence: Public failure diagnostics carry only the closed wait-state label;
+  no timestamps, deadlines, durations, or identities. Priority remains 5 and
+  the watchdog timeout is unchanged.
+- Outcome: Diagnostic implementation is software/package complete; STAT-001
+  remains below verified because no live twenty-window evidence was authorized
+  or collected.
+- Blocker or next safe action: Review, commit and push as `SOURCE_COMMIT`, then
+  write/validate the non-verifying closure without hardware or transition.

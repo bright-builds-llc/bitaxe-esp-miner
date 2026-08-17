@@ -17,7 +17,8 @@ fn task_watchdog_timeout_millis() -> u64 {
 pub(crate) fn collect() -> RuntimeHealthSnapshot {
     let checkpoints = crate::safety_adapter::supervisor_checkpoint_history();
     let task_watchdog = crate::task_watchdog_observation::observation_history();
-    let task_watchdog_owner_phase = crate::task_watchdog_observation::owner_phase();
+    let (task_watchdog_owner_phase, task_watchdog_wait) =
+        crate::task_watchdog_observation::owner_observation();
     let current_monotonic_millis = crate::runtime_uptime::millis();
     RuntimeHealthSnapshot::evaluate(
         PassiveSelfTestState::Unavailable,
@@ -32,4 +33,5 @@ pub(crate) fn collect() -> RuntimeHealthSnapshot {
         ),
     )
     .with_task_watchdog_owner_phase(task_watchdog_owner_phase)
+    .with_task_watchdog_wait_state(task_watchdog_wait.state_at(current_monotonic_millis))
 }

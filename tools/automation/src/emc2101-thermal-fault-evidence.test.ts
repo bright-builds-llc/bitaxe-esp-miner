@@ -68,6 +68,8 @@ function runtimeHealth(sequence: number) {
     taskWatchdogReason: "feed_fresh",
     taskWatchdogFeedSequence: sequence + 2,
     taskWatchdogFeedAgeMillis: 50,
+    taskWatchdogOwnerPhase: "waiting_inbox",
+    taskWatchdogWaitState: "within_deadline",
   };
 }
 
@@ -110,7 +112,8 @@ function retained(revision: number, sequence: number): string {
     "checkpoint_age_millis=100 checkpoint_health=healthy",
     "task_watchdog_participation=participating task_watchdog_reason=feed_fresh",
     `task_watchdog_feed_sequence=${String(sequence + 2)}`,
-    "task_watchdog_feed_age_millis=50 redacted=true",
+    "task_watchdog_feed_age_millis=50 task_watchdog_owner_phase=waiting_inbox",
+    "task_watchdog_wait_state=within_deadline redacted=true",
   ].join(" ");
 }
 

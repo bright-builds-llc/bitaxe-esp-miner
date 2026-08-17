@@ -33,6 +33,8 @@ const RUNTIME_HEALTH_ADAPTER_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/runtime_health_adapter.rs");
 const RUNTIME_HEALTH_CORE_SOURCE: &str =
     include_str!("../../../crates/bitaxe-core/src/runtime_health.rs");
+const RUNTIME_HEALTH_WAIT_SOURCE: &str =
+    include_str!("../../../crates/bitaxe-core/src/runtime_health/wait.rs");
 const WATCHDOG_ADAPTER_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/safety_adapter/watchdog.rs");
 const PRODUCTION_TASK_WATCHDOG_SOURCE: &str =
@@ -45,6 +47,8 @@ const PLATFORM_IDENTITY_SOURCE: &str =
     include_str!("../../../firmware/bitaxe/src/platform_identity.rs");
 const CORE_SOURCE: &str = include_str!("../../../crates/bitaxe-core/src/lib.rs");
 const API_WIRE_SOURCE: &str = include_str!("../../../crates/bitaxe-api/src/wire.rs");
+const RUNTIME_HEALTH_WIRE_SOURCE: &str =
+    include_str!("../../../crates/bitaxe-api/src/wire/runtime_health.rs");
 const BUILD_IDENTITY_SOURCE: &str =
     include_str!("../../../crates/bitaxe-api/src/build_identity.rs");
 const XTASK_SOURCE: &str = include_str!("../../xtask/src/main.rs");
@@ -272,7 +276,11 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
         "fn publish_operator_snapshot",
         "fn collect_operator_snapshot_candidate",
     );
-    let passive_sources = [RUNTIME_HEALTH_CORE_SOURCE, RUNTIME_HEALTH_ADAPTER_SOURCE];
+    let passive_sources = [
+        RUNTIME_HEALTH_CORE_SOURCE,
+        RUNTIME_HEALTH_WAIT_SOURCE,
+        RUNTIME_HEALTH_ADAPTER_SOURCE,
+    ];
 
     // Act / Assert
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains("RuntimeHealthSnapshot::evaluate"));
@@ -283,14 +291,14 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
     let watchdog_history = RUNTIME_HEALTH_ADAPTER_SOURCE
         .find("task_watchdog_observation::observation_history()")
         .expect("watchdog history read");
-    let owner_phase = RUNTIME_HEALTH_ADAPTER_SOURCE
-        .find("task_watchdog_observation::owner_phase()")
-        .expect("owner phase read");
+    let owner_observation = RUNTIME_HEALTH_ADAPTER_SOURCE
+        .find("task_watchdog_observation::owner_observation()")
+        .expect("owner observation read");
     let evaluation_time = RUNTIME_HEALTH_ADAPTER_SOURCE
         .find("let current_monotonic_millis = crate::runtime_uptime::millis();")
         .expect("evaluation time read");
     assert!(watchdog_history < evaluation_time);
-    assert!(owner_phase < evaluation_time);
+    assert!(owner_observation < evaluation_time);
     assert!(candidate_collection.contains("runtime_health_adapter::collect()"));
     assert!(!candidate_collection.contains("collect(crate::runtime_uptime::millis())"));
     assert_eq!(
@@ -322,10 +330,11 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
         "task_watchdog_feed_sequence={task_watchdog_feed_sequence}",
         "task_watchdog_feed_age_millis={task_watchdog_feed_age_millis}",
         "task_watchdog_owner_phase={}",
+        "task_watchdog_wait_state={}",
         "redacted=true",
     ] {
         assert!(
-            API_WIRE_SOURCE.contains(marker),
+            RUNTIME_HEALTH_WIRE_SOURCE.contains(marker),
             "missing retained health marker {marker}"
         );
     }
@@ -342,8 +351,14 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
         "taskWatchdogFeedSequence",
         "taskWatchdogFeedAgeMillis",
         "taskWatchdogOwnerPhase",
+        "taskWatchdogWaitState",
     ] {
-        assert!(API_WIRE_SOURCE.contains(field), "missing API field {field}");
+        let source = if field == "runtimeHealth" {
+            API_WIRE_SOURCE
+        } else {
+            RUNTIME_HEALTH_WIRE_SOURCE
+        };
+        assert!(source.contains(field), "missing API field {field}");
     }
 
     for source in passive_sources {

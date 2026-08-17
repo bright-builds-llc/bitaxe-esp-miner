@@ -1672,12 +1672,12 @@ before any targeted fix or new hardware contract.
 Waiting-inbox deadline diagnostic plan:
 `docs/parity/work-plans/20260817T045834Z-STAT-001/PLAN.md`
 
-- [ ] Add coherent atomic receive-deadline ownership and closed runtime-health
+- [x] Add coherent atomic receive-deadline ownership and closed runtime-health
       wait states for not-waiting, within-deadline, overrun, and invalid facts.
-- [ ] Carry the closed state through v14/v8 sealed campaign diagnostics with
+- [x] Carry the closed state through v14/v8 sealed campaign diagnostics with
       exact boundary, precedence, missing/unknown, redaction, and real-child
       regressions.
-- [ ] Pin and prove the ESP-IDF pthread priority-5 contract against upstream,
+- [x] Pin and prove the ESP-IDF pthread priority-5 contract against upstream,
       bind new evaluator sources, and run every focused/mandatory gate; push a
       software-only closure without transition or hardware.
 

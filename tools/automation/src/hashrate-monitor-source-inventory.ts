@@ -8,6 +8,10 @@ export const sourceFragments = new Map<string, readonly string[]>([
     "if maybe_previous.is_some_and(|previous| !latest.is_valid_after(previous)) {",
     "let Some(age_millis) = now_millis.checked_sub(observed_at_millis) else {",
   ]],
+  ["crates/bitaxe-core/src/runtime_health/wait.rs", [
+    "pub enum TaskWatchdogWaitState {",
+    "pub const fn state_at(self, current_monotonic_millis: u64)",
+  ]],
   ["crates/bitaxe-stratum/src/v1/state.rs", ["pub hashrate_inputs: HashrateInputs"]],
   ["crates/bitaxe-stratum/src/v1/production_session/campaign.rs", [
     "Self::Conservative => (400, 1_100, 100)",
@@ -25,6 +29,10 @@ export const sourceFragments = new Map<string, readonly string[]>([
   ["crates/bitaxe-api/src/wire.rs", [
     '#[serde(rename = "hashRate")]',
     '#[serde(rename = "hashrateMonitor")]',
+  ]],
+  ["crates/bitaxe-api/src/wire/runtime_health.rs", [
+    '#[serde(rename = "taskWatchdogWaitState", default = "invalid_wait_state")]',
+    "task_watchdog_wait_state: snapshot.task_watchdog_wait_state().as_str().to_owned(),",
   ]],
   ["firmware/bitaxe/src/production_mining_session/hashrate.rs", [
     "const HASHRATE_CADENCE_MS: u64 = 1_000;",
@@ -49,7 +57,11 @@ export const sourceFragments = new Map<string, readonly string[]>([
   ]],
   ["firmware/bitaxe/src/task_watchdog_observation.rs", [
     "static OWNER_PHASE: AtomicU8",
-    "record_owner_phase",
+    "static OWNER_WAIT_DEADLINE_MILLIS: AtomicU32",
+    "pub(crate) fn owner_observation()",
+  ]],
+  ["firmware/bitaxe/sdkconfig.defaults", [
+    "CONFIG_PTHREAD_TASK_PRIO_DEFAULT=5",
   ]],
   ["crates/bitaxe-safety/src/power.rs", [
     "pub const INPUT_VOLTAGE_NOMINAL_VOLTS: f64 = 5.0;",
@@ -76,5 +88,8 @@ export const referenceFragments = new Map<string, readonly string[]>([
   ["reference/esp-miner/main/tasks/power_management_task.c", [
     "uint16_t voltage = nvs_config_get_u16(NVS_CONFIG_ASIC_VOLTAGE);",
     "VCORE_set_voltage(GLOBAL_STATE, (double) voltage / 1000.0);",
+  ]],
+  ["reference/esp-miner/main/tasks/protocol_coordinator.c", [
+    'xTaskCreateWithCaps(stratum_v1_task, "stratum v1", 8192, (void *)gs, 5,',
   ]],
 ]);

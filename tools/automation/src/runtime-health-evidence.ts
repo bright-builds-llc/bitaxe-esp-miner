@@ -119,6 +119,8 @@ function retainedRecord(session: string, revision: number, value: JsonObject): s
     `task_watchdog_reason=${string(value, "taskWatchdogReason", "runtime health")}`,
     `task_watchdog_feed_sequence=${String(integer(value, "taskWatchdogFeedSequence", "runtime health", 1))}`,
     `task_watchdog_feed_age_millis=${String(integer(value, "taskWatchdogFeedAgeMillis", "runtime health"))}`,
+    `task_watchdog_owner_phase=${string(value, "taskWatchdogOwnerPhase", "runtime health")}`,
+    `task_watchdog_wait_state=${string(value, "taskWatchdogWaitState", "runtime health")}`,
     "redacted=true",
   ].join(" ");
 }
@@ -128,12 +130,20 @@ function validateHealth(value: JsonObject): { readonly checkpointSequence: numbe
   const checkpointAge = integer(value, "checkpointAgeMillis", "runtime health");
   const feedSequence = integer(value, "taskWatchdogFeedSequence", "runtime health", 1);
   const feedAge = integer(value, "taskWatchdogFeedAgeMillis", "runtime health");
+  const ownerPhase = string(value, "taskWatchdogOwnerPhase", "runtime health");
+  const waitState = string(value, "taskWatchdogWaitState", "runtime health");
   if (
     string(value, "selfTestState", "runtime health") !== "unavailable"
     || string(value, "supervisorAvailability", "runtime health") !== "available"
     || string(value, "checkpointHealth", "runtime health") !== "healthy"
     || string(value, "taskWatchdogParticipation", "runtime health") !== "participating"
     || string(value, "taskWatchdogReason", "runtime health") !== "feed_fresh"
+    || ![
+      "subscribing", "loop_start", "waiting_inbox", "handling_inbox",
+      "handling_observation", "handling_readiness", "publishing_campaign_status",
+      "servicing_hashrate", "shutdown",
+    ].includes(ownerPhase)
+    || !["not_waiting", "within_deadline", "deadline_overrun"].includes(waitState)
     || checkpointAge > 1_500
     || feedAge > 2_000
   ) {

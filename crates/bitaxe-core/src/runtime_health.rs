@@ -1,5 +1,9 @@
 //! Pure, observation-only runtime-health derivation.
 
+#[path = "runtime_health/wait.rs"]
+mod wait;
+pub use wait::{TaskWatchdogWaitObservation, TaskWatchdogWaitState};
+
 /// Maximum serialized supervisor checkpoint category length.
 pub const CHECKPOINT_CATEGORY_MAX_ASCII_BYTES: usize = 32;
 const STALE_INTERVAL_MULTIPLIER: u64 = 3;
@@ -333,6 +337,7 @@ pub struct RuntimeHealthSnapshot {
     maybe_task_watchdog_feed_sequence: Option<u64>,
     maybe_task_watchdog_feed_age_millis: Option<u64>,
     task_watchdog_owner_phase: TaskWatchdogOwnerPhase,
+    task_watchdog_wait_state: TaskWatchdogWaitState,
 }
 
 impl RuntimeHealthSnapshot {
@@ -372,6 +377,7 @@ impl RuntimeHealthSnapshot {
             maybe_task_watchdog_feed_sequence: watchdog.maybe_sequence,
             maybe_task_watchdog_feed_age_millis: watchdog.maybe_age_millis,
             task_watchdog_owner_phase: TaskWatchdogOwnerPhase::Unavailable,
+            task_watchdog_wait_state: TaskWatchdogWaitState::NotWaiting,
         }
     }
 
@@ -448,6 +454,18 @@ impl RuntimeHealthSnapshot {
     #[must_use]
     pub const fn task_watchdog_owner_phase(&self) -> TaskWatchdogOwnerPhase {
         self.task_watchdog_owner_phase
+    }
+
+    /// Attaches the state derived from the coherent owner wait observation.
+    #[must_use]
+    pub const fn with_task_watchdog_wait_state(mut self, state: TaskWatchdogWaitState) -> Self {
+        self.task_watchdog_wait_state = state;
+        self
+    }
+
+    #[must_use]
+    pub const fn task_watchdog_wait_state(&self) -> TaskWatchdogWaitState {
+        self.task_watchdog_wait_state
     }
 }
 

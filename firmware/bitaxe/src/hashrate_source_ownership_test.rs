@@ -9,6 +9,7 @@ const TASK_WATCHDOG_OBSERVATION_SOURCE: &str = include_str!("task_watchdog_obser
 const RUNTIME_HEALTH_ADAPTER_SOURCE: &str = include_str!("runtime_health_adapter.rs");
 const ASIC_SOURCE: &str = include_str!("asic_adapter/production.rs");
 const SNAPSHOT_SOURCE: &str = include_str!("runtime_snapshot.rs");
+const SDKCONFIG_DEFAULTS: &str = include_str!("../sdkconfig.defaults");
 
 #[test]
 fn sole_production_owner_schedules_active_only_hashrate_reads() {
@@ -73,7 +74,7 @@ fn runtime_health_copies_producer_facts_before_sampling_evaluation_time() {
     // Arrange
     let checkpoint_read = "supervisor_checkpoint_history()";
     let watchdog_read = "task_watchdog_observation::observation_history()";
-    let phase_read = "task_watchdog_observation::owner_phase()";
+    let phase_read = "task_watchdog_observation::owner_observation()";
     let clock_read = "let current_monotonic_millis = crate::runtime_uptime::millis();";
 
     // Act
@@ -98,6 +99,45 @@ fn runtime_health_copies_producer_facts_before_sampling_evaluation_time() {
     assert!(!RUNTIME_HEALTH_ADAPTER_SOURCE.contains("collect(current_monotonic_millis"));
     assert!(SNAPSHOT_SOURCE.contains("runtime_health_adapter::collect()"));
     assert!(!SNAPSHOT_SOURCE.contains("runtime_health_adapter::collect(crate::runtime_uptime"));
+}
+
+#[test]
+fn waiting_inbox_arms_deadline_before_phase_and_uses_priority_five() {
+    // Arrange
+    let deadline_store = "OWNER_WAIT_DEADLINE_MILLIS.store";
+    let waiting_phase_store = "TaskWatchdogOwnerPhase::WaitingInbox as u8";
+
+    // Act
+    let deadline_store_index = TASK_WATCHDOG_OBSERVATION_SOURCE
+        .find(deadline_store)
+        .expect("wait deadline store must exist");
+    let waiting_phase_index = TASK_WATCHDOG_OBSERVATION_SOURCE
+        .find(waiting_phase_store)
+        .expect("waiting phase publication must exist");
+    let deadline_compute_index = OWNER_LOOP_SOURCE
+        .find("let maybe_wait_deadline_millis")
+        .expect("wait deadline computation must exist");
+    let wait_publish_index = OWNER_LOOP_SOURCE
+        .find("record_owner_wait(maybe_wait_deadline_millis)")
+        .expect("wait observation publication must exist");
+    let receive_index = OWNER_LOOP_SOURCE
+        .find("receiver.recv_timeout(wait)")
+        .expect("bounded receive must exist");
+
+    // Assert
+    assert!(deadline_store_index < waiting_phase_index);
+    assert!(deadline_compute_index < wait_publish_index);
+    assert!(wait_publish_index < receive_index);
+    assert_eq!(
+        SDKCONFIG_DEFAULTS
+            .matches("CONFIG_PTHREAD_TASK_PRIO_DEFAULT=5")
+            .count(),
+        1
+    );
+    assert_eq!(
+        bitaxe_core::runtime_orchestration::PRODUCTION_REREAD_CADENCE_MS,
+        1_000
+    );
 }
 
 #[test]
