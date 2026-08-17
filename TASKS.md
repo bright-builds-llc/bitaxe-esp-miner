@@ -2049,11 +2049,11 @@ contract.
 Coherent-publication contention correction plan:
 `docs/parity/work-plans/20260817T104623Z-STAT-001/PLAN.md`
 
-- [ ] Reproduce finite odd-sequence writer preemption and continuous sequence
+- [x] Reproduce finite odd-sequence writer preemption and continuous sequence
       contention against the exact eight-attempt coherent reader.
-- [ ] Fuse owner-entry subphase plus watchdog observation into one publication
+- [x] Fuse owner-entry subphase plus watchdog observation into one publication
       and yield between bounded retries without weakening stuck-writer failure.
-- [ ] Preserve every v16/v10 diagnostic, 18-source identity, firmware/package,
+- [x] Preserve every v16/v10 diagnostic, 18-source identity, firmware/package,
       privacy/reference, and mandatory gate; close without hardware/promotion.
 
 Software-only authorization: local source, deterministic tests, builds,

@@ -50,7 +50,10 @@ pub(super) fn run_owner(
         let pending_observations_changed = notifications::take_pending_observations_changed();
         if let Some(message) = maybe_message {
             record_owner_phase(TaskWatchdogOwnerPhase::HandlingInbox);
-            record_owner_subphase(TaskWatchdogOwnerSubphase::InboxMapping);
+            task_watchdog.feed_owner_progress(
+                crate::runtime_uptime::millis(),
+                TaskWatchdogOwnerSubphase::InboxMapping,
+            );
             let snapshot = session.snapshot();
             let event = adapter.event_from_inbox(message, now_ms, &snapshot);
             drive_session(
@@ -156,10 +159,6 @@ fn record_owner_wait(maybe_deadline_millis: Option<u64>) {
     crate::task_watchdog_observation::record_owner_wait(maybe_deadline_millis);
 }
 
-fn record_owner_subphase(subphase: TaskWatchdogOwnerSubphase) {
-    crate::task_watchdog_observation::record_owner_subphase(subphase);
-}
-
 fn drive_session(
     session: &mut ProductionMiningSession,
     adapter: &mut OrdinaryEspProductionSessionAdapter,
@@ -172,17 +171,24 @@ fn drive_session(
         |event| session.handle(event),
         |effect| adapter.maybe_execute(effect, now_ms),
         |boundary, maybe_effect| {
-            match boundary {
+            let maybe_subphase = match boundary {
                 OwnerProgressBoundary::EventStarted => {
-                    record_owner_subphase(TaskWatchdogOwnerSubphase::SessionEvaluation);
+                    Some(TaskWatchdogOwnerSubphase::SessionEvaluation)
                 }
                 OwnerProgressBoundary::EffectStarted => {
                     let effect = maybe_effect.expect("effect-start boundary carries its effect");
-                    record_owner_subphase(effect_subphase(effect));
+                    Some(effect_subphase(effect))
                 }
-                OwnerProgressBoundary::EventHandled | OwnerProgressBoundary::EffectCompleted => {}
+                OwnerProgressBoundary::EventHandled | OwnerProgressBoundary::EffectCompleted => {
+                    None
+                }
+            };
+            let now_millis = crate::runtime_uptime::millis();
+            if let Some(subphase) = maybe_subphase {
+                task_watchdog.feed_owner_progress(now_millis, subphase);
+            } else {
+                task_watchdog.feed(now_millis);
             }
-            task_watchdog.feed(crate::runtime_uptime::millis());
         },
     );
     if let Err(error) = result {

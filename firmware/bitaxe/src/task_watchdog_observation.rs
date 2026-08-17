@@ -74,9 +74,16 @@ impl TaskWatchdogObservationStore {
         );
     }
 
-    fn record_owner_subphase(&self, subphase: TaskWatchdogOwnerSubphase) {
+    fn record_owner_progress(
+        &self,
+        subphase: TaskWatchdogOwnerSubphase,
+        maybe_observation: Option<TaskWatchdogObservation>,
+    ) {
         let _publication = self.begin_publication();
         self.owner_subphase.store(subphase as u8, Ordering::Relaxed);
+        if let Some(observation) = maybe_observation {
+            self.record_history(observation);
+        }
     }
 
     fn record_owner_wait(&self, maybe_deadline_millis: Option<u64>) {
@@ -97,6 +104,10 @@ impl TaskWatchdogObservationStore {
 
     fn record(&self, observation: TaskWatchdogObservation) {
         let _publication = self.begin_publication();
+        self.record_history(observation);
+    }
+
+    fn record_history(&self, observation: TaskWatchdogObservation) {
         let Ok(mut history) = self.history.lock() else {
             log::error!("task_watchdog_observation=unavailable reason=mutex_poisoned");
             return;
@@ -114,12 +125,20 @@ impl TaskWatchdogObservationStore {
 
     fn coherent_observation_with(
         &self,
+        after_history_copy: impl FnMut(),
+    ) -> TaskWatchdogObservationSnapshot {
+        self.coherent_observation_with_hooks(after_history_copy, std::thread::yield_now)
+    }
+
+    fn coherent_observation_with_hooks(
+        &self,
         mut after_history_copy: impl FnMut(),
+        mut after_retry: impl FnMut(),
     ) -> TaskWatchdogObservationSnapshot {
         for _ in 0..COHERENT_READ_ATTEMPTS {
             let start_sequence = self.publication_sequence.load(Ordering::Acquire);
             if start_sequence & 1 != 0 {
-                std::hint::spin_loop();
+                after_retry();
                 continue;
             }
 
@@ -153,7 +172,7 @@ impl TaskWatchdogObservationStore {
                     owner_wait,
                 };
             }
-            std::hint::spin_loop();
+            after_retry();
         }
 
         TaskWatchdogObservationSnapshot::failed(TaskWatchdogReadOutcome::RetryExhausted)
@@ -209,8 +228,11 @@ pub(crate) fn record_owner_phase(phase: TaskWatchdogOwnerPhase) {
     STORE.record_owner_phase(phase);
 }
 
-pub(crate) fn record_owner_subphase(subphase: TaskWatchdogOwnerSubphase) {
-    STORE.record_owner_subphase(subphase);
+pub(crate) fn record_owner_progress(
+    subphase: TaskWatchdogOwnerSubphase,
+    maybe_observation: Option<TaskWatchdogObservation>,
+) {
+    STORE.record_owner_progress(subphase, maybe_observation);
 }
 
 pub(crate) fn record_owner_wait(maybe_deadline_millis: Option<u64>) {

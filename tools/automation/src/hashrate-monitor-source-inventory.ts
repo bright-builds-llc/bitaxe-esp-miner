@@ -56,7 +56,7 @@ export const sourceFragments = new Map<string, readonly string[]>([
   ["firmware/bitaxe/src/production_mining_session/owner_loop.rs", [
     "if let Err(error) = adapter.publish_campaign_status",
     "OwnerProgressBoundary::EventStarted",
-    "record_owner_subphase(effect_subphase(effect));",
+    "task_watchdog.feed_owner_progress(now_millis, subphase);",
     "record_owner_phase(TaskWatchdogOwnerPhase::ServicingHashrate)",
   ]],
   ["firmware/bitaxe/src/production_mining_session/campaign_status/publication.rs", [

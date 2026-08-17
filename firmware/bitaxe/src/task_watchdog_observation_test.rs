@@ -2,7 +2,7 @@ use super::*;
 use bitaxe_core::runtime_health::{
     TaskWatchdogOwnerSubphase, TaskWatchdogReadOutcome, TaskWatchdogWaitState,
 };
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 #[test]
@@ -104,6 +104,54 @@ fn repeated_publication_races_exhaust_to_closed_default() {
 }
 
 #[test]
+fn finite_odd_publication_recovers_after_one_scheduler_handoff() {
+    // Arrange
+    let store = TaskWatchdogObservationStore::new();
+    store.record(TaskWatchdogObservation::fed(1, 100));
+    let publication = RefCell::new(Some(store.begin_publication()));
+    let retry_count = Cell::new(0_u8);
+
+    // Act
+    let snapshot = store.coherent_observation_with_hooks(
+        || {},
+        || {
+            retry_count.set(retry_count.get().saturating_add(1));
+            drop(publication.borrow_mut().take());
+        },
+    );
+
+    // Assert
+    assert_eq!(retry_count.get(), 1);
+    assert_eq!(snapshot.read_outcome, TaskWatchdogReadOutcome::Stable);
+    assert_eq!(
+        snapshot.maybe_latest,
+        Some(TaskWatchdogObservation::fed(1, 100))
+    );
+}
+
+#[test]
+fn permanently_odd_publication_exhausts_the_exact_retry_budget() {
+    // Arrange
+    let store = TaskWatchdogObservationStore::new();
+    store.record(TaskWatchdogObservation::fed(1, 100));
+    let _publication = store.begin_publication();
+    let retry_count = Cell::new(0_u8);
+
+    // Act
+    let snapshot = store.coherent_observation_with_hooks(
+        || {},
+        || retry_count.set(retry_count.get().saturating_add(1)),
+    );
+
+    // Assert
+    assert_eq!(usize::from(retry_count.get()), COHERENT_READ_ATTEMPTS);
+    assert_eq!(
+        snapshot.read_outcome,
+        TaskWatchdogReadOutcome::RetryExhausted
+    );
+}
+
+#[test]
 fn poisoned_history_fails_closed_without_mixed_atomic_facts() {
     // Arrange
     let store = TaskWatchdogObservationStore::new();
@@ -156,7 +204,10 @@ fn owner_phase_clears_subphase_and_subphase_updates_preserve_phase() {
     // Arrange
     let store = TaskWatchdogObservationStore::new();
     store.record_owner_phase(TaskWatchdogOwnerPhase::HandlingInbox);
-    store.record_owner_subphase(TaskWatchdogOwnerSubphase::EffectPollChip);
+    store.record_owner_progress(
+        TaskWatchdogOwnerSubphase::EffectPollChip,
+        Some(TaskWatchdogObservation::fed(1, 100)),
+    );
 
     // Act
     let effect = store.coherent_observation();
@@ -165,6 +216,10 @@ fn owner_phase_clears_subphase_and_subphase_updates_preserve_phase() {
 
     // Assert
     assert_eq!(effect.owner_phase, TaskWatchdogOwnerPhase::HandlingInbox);
+    assert_eq!(
+        effect.maybe_latest,
+        Some(TaskWatchdogObservation::fed(1, 100))
+    );
     assert_eq!(
         effect.owner_subphase,
         TaskWatchdogOwnerSubphase::EffectPollChip
@@ -176,5 +231,26 @@ fn owner_phase_clears_subphase_and_subphase_updates_preserve_phase() {
     assert_eq!(
         cleared.owner_subphase,
         TaskWatchdogOwnerSubphase::Unavailable
+    );
+}
+
+#[test]
+fn owner_progress_without_a_new_feed_preserves_history_and_updates_subphase() {
+    // Arrange
+    let store = TaskWatchdogObservationStore::new();
+    store.record(TaskWatchdogObservation::SubscriptionFailed);
+
+    // Act
+    store.record_owner_progress(TaskWatchdogOwnerSubphase::SessionEvaluation, None);
+    let snapshot = store.coherent_observation();
+
+    // Assert
+    assert_eq!(
+        snapshot.maybe_latest,
+        Some(TaskWatchdogObservation::SubscriptionFailed)
+    );
+    assert_eq!(
+        snapshot.owner_subphase,
+        TaskWatchdogOwnerSubphase::SessionEvaluation
     );
 }

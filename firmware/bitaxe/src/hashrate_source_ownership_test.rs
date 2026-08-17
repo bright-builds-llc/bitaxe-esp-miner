@@ -58,8 +58,9 @@ fn owner_watchdog_feeds_at_entry_and_completion_boundaries() {
     assert!(effect_started_index < execute_index);
     assert!(execute_index < completed_index);
     assert!(OWNER_LOOP_SOURCE.contains("drive_feedback("));
-    assert!(OWNER_LOOP_SOURCE.contains("task_watchdog.feed(crate::runtime_uptime::millis())"));
-    assert!(OWNER_LOOP_SOURCE.contains("record_owner_subphase(effect_subphase(effect));"));
+    assert!(OWNER_LOOP_SOURCE.contains("task_watchdog.feed(now_millis);"));
+    assert!(OWNER_LOOP_SOURCE.contains("task_watchdog.feed_owner_progress(now_millis, subphase);"));
+    assert!(!OWNER_LOOP_SOURCE.contains("record_owner_subphase("));
     assert!(!WORKER_SOURCE.contains("ProductionTaskWatchdog"));
 }
 

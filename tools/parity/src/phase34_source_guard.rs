@@ -485,11 +485,10 @@ fn production_task_watchdog_tracks_entry_and_completed_owner_progress() {
     assert!(effect_started < execute);
     assert!(execute < completed);
     assert!(PRODUCTION_OWNER_LOOP_SOURCE.contains("drive_feedback("));
+    assert!(PRODUCTION_OWNER_LOOP_SOURCE.contains("task_watchdog.feed(now_millis);"));
     assert!(PRODUCTION_OWNER_LOOP_SOURCE
-        .contains("task_watchdog.feed(crate::runtime_uptime::millis())"));
-    assert!(
-        PRODUCTION_OWNER_LOOP_SOURCE.contains("record_owner_subphase(effect_subphase(effect));")
-    );
+        .contains("task_watchdog.feed_owner_progress(now_millis, subphase);"));
+    assert!(!PRODUCTION_OWNER_LOOP_SOURCE.contains("record_owner_subphase("));
     assert!(!PRODUCTION_OWNER_PROGRESS_SOURCE.contains("esp_task_wdt_"));
 }
 

@@ -4,7 +4,8 @@ use bitaxe_core::runtime_health::TaskWatchdogObservation;
 use esp_idf_svc::sys;
 use std::ptr;
 
-use crate::task_watchdog_observation::record;
+use crate::task_watchdog_observation::{record, record_owner_progress};
+use bitaxe_core::runtime_health::TaskWatchdogOwnerSubphase;
 
 pub(super) struct ProductionTaskWatchdog {
     owns_subscription: bool,
@@ -33,21 +34,36 @@ impl ProductionTaskWatchdog {
     }
 
     pub(super) fn feed(&mut self, now_millis: u64) {
-        if !self.owns_subscription || self.failure_latched {
+        let Some(observation) = self.maybe_feed_observation(now_millis) else {
             return;
+        };
+        record(observation);
+    }
+
+    pub(super) fn feed_owner_progress(
+        &mut self,
+        now_millis: u64,
+        subphase: TaskWatchdogOwnerSubphase,
+    ) {
+        let maybe_observation = self.maybe_feed_observation(now_millis);
+        record_owner_progress(subphase, maybe_observation);
+    }
+
+    fn maybe_feed_observation(&mut self, now_millis: u64) -> Option<TaskWatchdogObservation> {
+        if !self.owns_subscription || self.failure_latched {
+            return None;
         }
         let result = unsafe { sys::esp_task_wdt_reset() };
         if result != sys::ESP_OK {
             self.failure_latched = true;
-            record(TaskWatchdogObservation::FeedFailed);
             log::error!(
                 "production_task_watchdog=not_participating reason=feed_failed error={result}"
             );
-            return;
+            return Some(TaskWatchdogObservation::FeedFailed);
         }
 
         self.feed_sequence = self.feed_sequence.saturating_add(1);
-        record(TaskWatchdogObservation::fed(self.feed_sequence, now_millis));
+        Some(TaskWatchdogObservation::fed(self.feed_sequence, now_millis))
     }
 }
 
