@@ -4,6 +4,7 @@
 
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
 use std::sync::Mutex;
+use std::time::Duration;
 
 use bitaxe_core::runtime_health::{
     TaskWatchdogObservation, TaskWatchdogOwnerPhase, TaskWatchdogOwnerSubphase,
@@ -11,6 +12,7 @@ use bitaxe_core::runtime_health::{
 };
 
 const COHERENT_READ_ATTEMPTS: usize = 8;
+const COHERENT_READ_RETRY_DELAY_MILLIS: u64 = 1;
 
 #[derive(Debug, Clone, Copy, Default)]
 struct TaskWatchdogObservationHistory {
@@ -127,7 +129,7 @@ impl TaskWatchdogObservationStore {
         &self,
         after_history_copy: impl FnMut(),
     ) -> TaskWatchdogObservationSnapshot {
-        self.coherent_observation_with_hooks(after_history_copy, std::thread::yield_now)
+        self.coherent_observation_with_hooks(after_history_copy, wait_for_writer)
     }
 
     fn coherent_observation_with_hooks(
@@ -201,6 +203,10 @@ impl TaskWatchdogObservationStore {
             sequence: &self.publication_sequence,
         }
     }
+}
+
+fn wait_for_writer() {
+    std::thread::sleep(Duration::from_millis(COHERENT_READ_RETRY_DELAY_MILLIS));
 }
 
 impl TaskWatchdogObservationSnapshot {

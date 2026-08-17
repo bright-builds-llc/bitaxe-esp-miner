@@ -4,6 +4,8 @@ use bitaxe_core::runtime_health::{
 };
 use std::cell::{Cell, RefCell};
 use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::sync::Barrier;
+use std::time::Duration;
 
 #[test]
 fn stable_publications_round_trip_as_one_snapshot() {
@@ -148,6 +150,32 @@ fn permanently_odd_publication_exhausts_the_exact_retry_budget() {
     assert_eq!(
         snapshot.read_outcome,
         TaskWatchdogReadOutcome::RetryExhausted
+    );
+}
+
+#[test]
+fn finite_preempted_writer_outliving_immediate_yields_recovers() {
+    // Arrange
+    let store = TaskWatchdogObservationStore::new();
+    store.record(TaskWatchdogObservation::fed(1, 100));
+    let publication_started = Barrier::new(2);
+
+    // Act
+    let snapshot = std::thread::scope(|scope| {
+        scope.spawn(|| {
+            let _publication = store.begin_publication();
+            publication_started.wait();
+            std::thread::sleep(Duration::from_millis(4));
+        });
+        publication_started.wait();
+        store.coherent_observation()
+    });
+
+    // Assert
+    assert_eq!(snapshot.read_outcome, TaskWatchdogReadOutcome::Stable);
+    assert_eq!(
+        snapshot.maybe_latest,
+        Some(TaskWatchdogObservation::fed(1, 100))
     );
 }
 

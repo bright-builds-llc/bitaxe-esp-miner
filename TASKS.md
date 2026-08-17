@@ -2123,6 +2123,29 @@ lineage. Pushed `c274be94` targeted the exact attempt-016 boundary and attempt-
 different source-level diagnosis and authority contract; direct UART, pins,
 ad hoc electrical work, and ordinal-only retries remain prohibited.
 
+Temporary user-authorized watchdog diagnostic loop | 2026-08-17:
+
+- Formal parity plan files and attempt records are temporarily waived for this
+  STAT-001 debugging loop. Each hardware run still requires a distinct clean
+  pushed code fix, exact rebuilt package, fresh detector, absent private child,
+  and repo-owned command; no unchanged reruns are allowed.
+- Private roots use `scratch/stat001-watchdog-debug/run-N` with mode 0700 and
+  mode-0600 files. Credentials, admitted port, endpoints, identities, sensor/
+  rate values, logs, bodies, commands, PIDs, and traces never print or commit.
+  No public projection is produced.
+- Each run uses only board 205, `live-share`, conservative 400 MHz / 1,100 mV
+  core / 100% fan, 600 active seconds, fresh bus 4.5-5.5 V, <=15 W, ASIC <75 C,
+  and nonzero fan RPM. The campaign owns flash, seed, observation, safe stop,
+  cleanup, sealing, and at most one exact-package recovery flash.
+- Allowed effects remain factory flash/reset, ignored Wi-Fi/pool seed, bounded
+  conservative mining, safe stop, cleanup, and recovery. No overclock,
+  arbitrary control, OTA, erase, fault injection, physical power action,
+  external UART/BAP, pins, pads, probes, jumpers, solder, or electrical work.
+- Stop immediately on identity/safety/cleanup/recovery/privacy failure. After a
+  failed run, inspect only sealed allowlisted categories and apply a materially
+  targeted source fix before another run. End the exception once the watchdog
+  boundary is cleared or a non-software/human blocker is proven.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
