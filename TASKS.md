@@ -2064,6 +2064,25 @@ erase, inject faults, manipulate power, use external UART/BAP, touch electrical
 interfaces, retry attempt-016, or create/run attempt-017. STAT-001/checklist/
 progress/README remain unchanged.
 
+Coherent-publication correction completion review: pushed source `c274be94`
+fuses owner-entry subphase plus optional watchdog observation into one seqlock
+publication and yields between the unchanged eight coherent-read attempts.
+Finite odd-writer preemption now recovers after one scheduler handoff; a
+permanently odd writer and continuous sequence changes still return exact
+`retry_exhausted`; poison, stable, uninitialized, phase/wait, unavailable-feed,
+v16/v10, earliest-tuple, and value-free behavior remain intact. Focused tests,
+18-source identity, generated contracts, real firmware/package, redaction/
+reference, file-length, and every mandatory gate pass. No hardware or public
+projection ran, and STAT-001/checklist/progress remain unchanged. See the
+linked `CLOSURE.md`.
+
+Residual risk/next action: the correction has not yet been observed under live
+mining load. A separate immutable hardware plan may consider one fresh
+attempt-017 only from clean pushed `c274be94`, with the complete detector,
+conservative profile, unit, safety, privacy, recovery, cleanup, retry, stop,
+and promotion contract. Never reuse attempt-016; any new precise boundary must
+receive its own regression-backed correction before another continuation.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed

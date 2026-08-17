@@ -16,7 +16,7 @@
 
 ## 2026-08-17T11:05:00Z | fused publication implementation checkpoint
 
-- Source commit: pending implementation checkpoint
+- Source commit: `c274be943032db291ad7666d583c34ab9c2ff014`
 - Actions: Fused owner-entry subphase plus optional feed into one seqlock
   publication; added a scheduler yield between the unchanged eight read
   attempts; preserved observation-only completion feeds and unavailable-feed
