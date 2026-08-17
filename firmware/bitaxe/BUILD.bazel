@@ -428,6 +428,7 @@ rust_test(
     name = "production_owner_progress_tests",
     srcs = ["src/production_mining_session/owner_progress.rs"],
     crate_name = "production_owner_progress_tests",
+    deps = ["//crates/bitaxe-core:bitaxe_core"],
     edition = "2021",
 )
 

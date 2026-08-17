@@ -94,6 +94,14 @@ pub enum TaskWatchdogOwnerSubphase {
     EffectRecordScoreboard = 15,
     EffectRecordBlockFound = 16,
     EffectPublish = 17,
+    SafeStopStopDispatch = 18,
+    SafeStopReduceFrequencyAndNonceState = 19,
+    SafeStopAssertControlLineLow = 20,
+    SafeStopDisableCoreRail = 21,
+    SafeStopDisableChip = 22,
+    SafeStopSetCoolingMaximum = 23,
+    SafeStopWaitForCoolingProof = 24,
+    SafeStopSetCoolingPaused = 25,
 }
 
 impl TaskWatchdogOwnerSubphase {
@@ -119,6 +127,16 @@ impl TaskWatchdogOwnerSubphase {
             Self::EffectRecordScoreboard => "effect_record_scoreboard",
             Self::EffectRecordBlockFound => "effect_record_block_found",
             Self::EffectPublish => "effect_publish",
+            Self::SafeStopStopDispatch => "safe_stop_stop_dispatch",
+            Self::SafeStopReduceFrequencyAndNonceState => {
+                "safe_stop_reduce_frequency_and_nonce_state"
+            }
+            Self::SafeStopAssertControlLineLow => "safe_stop_assert_control_line_low",
+            Self::SafeStopDisableCoreRail => "safe_stop_disable_core_rail",
+            Self::SafeStopDisableChip => "safe_stop_disable_chip",
+            Self::SafeStopSetCoolingMaximum => "safe_stop_set_cooling_maximum",
+            Self::SafeStopWaitForCoolingProof => "safe_stop_wait_for_cooling_proof",
+            Self::SafeStopSetCoolingPaused => "safe_stop_set_cooling_paused",
         }
     }
 
@@ -143,6 +161,14 @@ impl TaskWatchdogOwnerSubphase {
             15 => Self::EffectRecordScoreboard,
             16 => Self::EffectRecordBlockFound,
             17 => Self::EffectPublish,
+            18 => Self::SafeStopStopDispatch,
+            19 => Self::SafeStopReduceFrequencyAndNonceState,
+            20 => Self::SafeStopAssertControlLineLow,
+            21 => Self::SafeStopDisableCoreRail,
+            22 => Self::SafeStopDisableChip,
+            23 => Self::SafeStopSetCoolingMaximum,
+            24 => Self::SafeStopWaitForCoolingProof,
+            25 => Self::SafeStopSetCoolingPaused,
             _ => Self::Unavailable,
         }
     }
@@ -301,6 +327,38 @@ mod tests {
                 "effect_record_block_found",
             ),
             (TaskWatchdogOwnerSubphase::EffectPublish, "effect_publish"),
+            (
+                TaskWatchdogOwnerSubphase::SafeStopStopDispatch,
+                "safe_stop_stop_dispatch",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::SafeStopReduceFrequencyAndNonceState,
+                "safe_stop_reduce_frequency_and_nonce_state",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::SafeStopAssertControlLineLow,
+                "safe_stop_assert_control_line_low",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::SafeStopDisableCoreRail,
+                "safe_stop_disable_core_rail",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::SafeStopDisableChip,
+                "safe_stop_disable_chip",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::SafeStopSetCoolingMaximum,
+                "safe_stop_set_cooling_maximum",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::SafeStopWaitForCoolingProof,
+                "safe_stop_wait_for_cooling_proof",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::SafeStopSetCoolingPaused,
+                "safe_stop_set_cooling_paused",
+            ),
         ];
 
         // Act / Assert

@@ -96,6 +96,7 @@ rust_binary(
         "src/campaign/network/tests/watchdog.rs",
         "src/campaign/network/validation.rs",
         "src/campaign/network/watchdog.rs",
+        "src/campaign/network/watchdog/owner_subphase.rs",
         "src/campaign/network/window.rs",
         "src/campaign/serial.rs",
         "src/campaign/serial/diagnostics.rs",

@@ -108,11 +108,9 @@ pub trait MiningActuationBackend {
     fn execute_safe_shutdown_step_with_progress(
         &mut self,
         step: SafeShutdownStep,
-        progress: &mut dyn FnMut(),
+        _progress: &mut dyn FnMut(SafeShutdownStep),
     ) -> Result<(), Self::Error> {
-        let result = self.execute_safe_shutdown_step(step);
-        progress();
-        result
+        self.execute_safe_shutdown_step(step)
     }
 }
 
@@ -282,14 +280,14 @@ pub fn execute_safe_stop<B>(
 where
     B: MiningActuationBackend,
 {
-    execute_safe_stop_with_progress(backend, purpose, &mut || {})
+    execute_safe_stop_with_progress(backend, purpose, &mut |_| {})
 }
 
 /// Executes the selected safe-stop plan with cooperative progress boundaries.
 pub fn execute_safe_stop_with_progress<B>(
     backend: &mut B,
     purpose: HardwareSafeStopPurpose,
-    progress: &mut dyn FnMut(),
+    progress: &mut dyn FnMut(SafeShutdownStep),
 ) -> Result<(), SafeShutdownFailure<B::Error>>
 where
     B: MiningActuationBackend,
@@ -313,13 +311,13 @@ fn execute_safe_shutdown_steps<B, const N: usize>(
 where
     B: MiningActuationBackend,
 {
-    execute_safe_shutdown_steps_with_progress(backend, steps, &mut || {})
+    execute_safe_shutdown_steps_with_progress(backend, steps, &mut |_| {})
 }
 
 fn execute_safe_shutdown_steps_with_progress<B, const N: usize>(
     backend: &mut B,
     steps: [SafeShutdownStep; N],
-    progress: &mut dyn FnMut(),
+    progress: &mut dyn FnMut(SafeShutdownStep),
 ) -> Result<(), SafeShutdownFailure<B::Error>>
 where
     B: MiningActuationBackend,
@@ -327,6 +325,7 @@ where
     let mut maybe_earliest_failure = None;
 
     for step in steps {
+        progress(step);
         let Err(source) = backend.execute_safe_shutdown_step_with_progress(step, progress) else {
             continue;
         };

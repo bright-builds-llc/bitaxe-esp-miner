@@ -139,6 +139,9 @@ const watchdogOwnerSubphases = [
   "effect_poll_chip", "effect_block_submissions", "effect_invalidate_work_and_submissions",
   "effect_stop_chip_interaction", "effect_close_pool_connection", "effect_safe_stop_hardware",
   "effect_record_scoreboard", "effect_record_block_found", "effect_publish",
+  "safe_stop_stop_dispatch", "safe_stop_reduce_frequency_and_nonce_state",
+  "safe_stop_assert_control_line_low", "safe_stop_disable_core_rail", "safe_stop_disable_chip",
+  "safe_stop_set_cooling_maximum", "safe_stop_wait_for_cooling_proof", "safe_stop_set_cooling_paused",
 ] as const;
 const expectedAttemptFiles = [
   "campaign-diagnostics.private.json",

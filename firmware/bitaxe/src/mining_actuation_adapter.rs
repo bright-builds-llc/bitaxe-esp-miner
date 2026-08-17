@@ -132,7 +132,7 @@ impl Ultra205MiningActuationAdapter {
     pub fn safe_stop(
         &mut self,
         purpose: HardwareSafeStopPurpose,
-        progress: &mut dyn FnMut(),
+        progress: &mut dyn FnMut(SafeShutdownStep),
     ) -> Result<(), SafeShutdownFailure<MiningActuationAdapterError>> {
         execute_safe_stop_with_progress(self, purpose, progress)
     }
@@ -252,12 +252,12 @@ impl Ultra205MiningActuationAdapter {
     }
 
     fn wait_for_cooling_proof(&mut self) -> Result<(), MiningActuationAdapterError> {
-        self.wait_for_cooling_proof_with_progress(&mut || {})
+        self.wait_for_cooling_proof_with_progress(&mut |_| {})
     }
 
     fn wait_for_cooling_proof_with_progress(
         &mut self,
-        progress: &mut dyn FnMut(),
+        progress: &mut dyn FnMut(SafeShutdownStep),
     ) -> Result<(), MiningActuationAdapterError> {
         if !self.cooling_fan_full_applied {
             return Err(MiningActuationAdapterError::CoolingProofRequired);
@@ -284,7 +284,7 @@ impl Ultra205MiningActuationAdapter {
             if crate::runtime_uptime::millis() >= deadline_ms {
                 return Err(MiningActuationAdapterError::CoolingProofTimedOut);
             }
-            progress();
+            progress(SafeShutdownStep::WaitForFreshTemperatureAtOrBelow45C);
             thread::sleep(Duration::from_millis(COOLING_PROOF_POLL_MS));
         }
     }
@@ -465,16 +465,12 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
     fn execute_safe_shutdown_step_with_progress(
         &mut self,
         step: SafeShutdownStep,
-        progress: &mut dyn FnMut(),
+        progress: &mut dyn FnMut(SafeShutdownStep),
     ) -> Result<(), Self::Error> {
         if step == SafeShutdownStep::WaitForFreshTemperatureAtOrBelow45C {
-            let result = self.wait_for_cooling_proof_with_progress(progress);
-            progress();
-            return result;
+            return self.wait_for_cooling_proof_with_progress(progress);
         }
-        let result = self.execute_safe_shutdown_step(step);
-        progress();
-        result
+        self.execute_safe_shutdown_step(step)
     }
 }
 

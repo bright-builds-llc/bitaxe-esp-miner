@@ -1,5 +1,9 @@
 use bitaxe_api::SystemInfoWire;
 
+mod owner_subphase;
+
+pub(super) use owner_subphase::WatchdogOwnerSubphase;
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub(super) enum WatchdogFailure {
     #[default]
@@ -146,80 +150,6 @@ pub(super) struct WatchdogDiagnostic {
     pub(super) owner_subphase: WatchdogOwnerSubphase,
     pub(super) wait_state: WatchdogWaitState,
     pub(super) failure: WatchdogFailure,
-}
-
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
-pub(super) enum WatchdogOwnerSubphase {
-    #[default]
-    Unavailable,
-    InboxMapping,
-    SessionEvaluation,
-    EffectPrepareHardware,
-    EffectReadPoolConfiguration,
-    EffectConnectPool,
-    EffectWritePoolLine,
-    EffectApplyVersionMask,
-    EffectDispatchChip,
-    EffectPollChip,
-    EffectBlockSubmissions,
-    EffectInvalidateWorkAndSubmissions,
-    EffectStopChipInteraction,
-    EffectClosePoolConnection,
-    EffectSafeStopHardware,
-    EffectRecordScoreboard,
-    EffectRecordBlockFound,
-    EffectPublish,
-}
-
-impl WatchdogOwnerSubphase {
-    pub(super) const fn label(self) -> &'static str {
-        match self {
-            Self::Unavailable => "unavailable",
-            Self::InboxMapping => "inbox_mapping",
-            Self::SessionEvaluation => "session_evaluation",
-            Self::EffectPrepareHardware => "effect_prepare_hardware",
-            Self::EffectReadPoolConfiguration => "effect_read_pool_configuration",
-            Self::EffectConnectPool => "effect_connect_pool",
-            Self::EffectWritePoolLine => "effect_write_pool_line",
-            Self::EffectApplyVersionMask => "effect_apply_version_mask",
-            Self::EffectDispatchChip => "effect_dispatch_chip",
-            Self::EffectPollChip => "effect_poll_chip",
-            Self::EffectBlockSubmissions => "effect_block_submissions",
-            Self::EffectInvalidateWorkAndSubmissions => "effect_invalidate_work_and_submissions",
-            Self::EffectStopChipInteraction => "effect_stop_chip_interaction",
-            Self::EffectClosePoolConnection => "effect_close_pool_connection",
-            Self::EffectSafeStopHardware => "effect_safe_stop_hardware",
-            Self::EffectRecordScoreboard => "effect_record_scoreboard",
-            Self::EffectRecordBlockFound => "effect_record_block_found",
-            Self::EffectPublish => "effect_publish",
-        }
-    }
-
-    fn parse(value: &str) -> Option<Self> {
-        match value {
-            "unavailable" => Some(Self::Unavailable),
-            "inbox_mapping" => Some(Self::InboxMapping),
-            "session_evaluation" => Some(Self::SessionEvaluation),
-            "effect_prepare_hardware" => Some(Self::EffectPrepareHardware),
-            "effect_read_pool_configuration" => Some(Self::EffectReadPoolConfiguration),
-            "effect_connect_pool" => Some(Self::EffectConnectPool),
-            "effect_write_pool_line" => Some(Self::EffectWritePoolLine),
-            "effect_apply_version_mask" => Some(Self::EffectApplyVersionMask),
-            "effect_dispatch_chip" => Some(Self::EffectDispatchChip),
-            "effect_poll_chip" => Some(Self::EffectPollChip),
-            "effect_block_submissions" => Some(Self::EffectBlockSubmissions),
-            "effect_invalidate_work_and_submissions" => {
-                Some(Self::EffectInvalidateWorkAndSubmissions)
-            }
-            "effect_stop_chip_interaction" => Some(Self::EffectStopChipInteraction),
-            "effect_close_pool_connection" => Some(Self::EffectClosePoolConnection),
-            "effect_safe_stop_hardware" => Some(Self::EffectSafeStopHardware),
-            "effect_record_scoreboard" => Some(Self::EffectRecordScoreboard),
-            "effect_record_block_found" => Some(Self::EffectRecordBlockFound),
-            "effect_publish" => Some(Self::EffectPublish),
-            _ => None,
-        }
-    }
 }
 
 impl WatchdogOwnerPhase {
@@ -562,6 +492,14 @@ mod tests {
             WatchdogOwnerSubphase::EffectRecordScoreboard,
             WatchdogOwnerSubphase::EffectRecordBlockFound,
             WatchdogOwnerSubphase::EffectPublish,
+            WatchdogOwnerSubphase::SafeStopStopDispatch,
+            WatchdogOwnerSubphase::SafeStopReduceFrequencyAndNonceState,
+            WatchdogOwnerSubphase::SafeStopAssertControlLineLow,
+            WatchdogOwnerSubphase::SafeStopDisableCoreRail,
+            WatchdogOwnerSubphase::SafeStopDisableChip,
+            WatchdogOwnerSubphase::SafeStopSetCoolingMaximum,
+            WatchdogOwnerSubphase::SafeStopWaitForCoolingProof,
+            WatchdogOwnerSubphase::SafeStopSetCoolingPaused,
         ];
 
         // Act / Assert

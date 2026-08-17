@@ -179,9 +179,10 @@ fn drive_session(
                     let effect = maybe_effect.expect("effect-start boundary carries its effect");
                     Some(effect_subphase(effect))
                 }
-                OwnerProgressBoundary::EventHandled
-                | OwnerProgressBoundary::EffectHeartbeat
-                | OwnerProgressBoundary::EffectCompleted => None,
+                OwnerProgressBoundary::EffectHeartbeat(subphase) => Some(subphase),
+                OwnerProgressBoundary::EventHandled | OwnerProgressBoundary::EffectCompleted => {
+                    None
+                }
             };
             let now_millis = crate::runtime_uptime::millis();
             if let Some(subphase) = maybe_subphase {
@@ -237,5 +238,26 @@ fn effect_subphase(effect: &ProductionSessionEffect) -> TaskWatchdogOwnerSubphas
             TaskWatchdogOwnerSubphase::EffectRecordBlockFound
         }
         ProductionSessionEffect::Publish(_) => TaskWatchdogOwnerSubphase::EffectPublish,
+    }
+}
+
+pub(super) fn safe_stop_subphase(step: SafeShutdownStep) -> TaskWatchdogOwnerSubphase {
+    match step {
+        SafeShutdownStep::StopDispatch => TaskWatchdogOwnerSubphase::SafeStopStopDispatch,
+        SafeShutdownStep::ReduceFrequencyAndResetNonce => {
+            TaskWatchdogOwnerSubphase::SafeStopReduceFrequencyAndNonceState
+        }
+        SafeShutdownStep::HoldResetLow => TaskWatchdogOwnerSubphase::SafeStopAssertControlLineLow,
+        SafeShutdownStep::DisableCoreVoltage => TaskWatchdogOwnerSubphase::SafeStopDisableCoreRail,
+        SafeShutdownStep::DisableAsic => TaskWatchdogOwnerSubphase::SafeStopDisableChip,
+        SafeShutdownStep::SetFanDutyTo100Percent => {
+            TaskWatchdogOwnerSubphase::SafeStopSetCoolingMaximum
+        }
+        SafeShutdownStep::WaitForFreshTemperatureAtOrBelow45C => {
+            TaskWatchdogOwnerSubphase::SafeStopWaitForCoolingProof
+        }
+        SafeShutdownStep::SetFanDutyTo30Percent => {
+            TaskWatchdogOwnerSubphase::SafeStopSetCoolingPaused
+        }
     }
 }

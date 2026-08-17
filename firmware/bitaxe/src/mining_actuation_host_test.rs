@@ -334,7 +334,7 @@ fn typed_stop_purpose_selects_prompt_pause_and_complete_terminal_plans() {
 }
 
 #[test]
-fn safe_stop_reports_progress_after_every_ordered_step() {
+fn safe_stop_reports_progress_before_every_ordered_step() {
     // Arrange
     let mut backend = RecordingBackend::default();
     let mut progress_count = 0_usize;
@@ -343,7 +343,7 @@ fn safe_stop_reports_progress_after_every_ordered_step() {
     execute_safe_stop_with_progress(
         &mut backend,
         HardwareSafeStopPurpose::ResumablePause,
-        &mut || progress_count = progress_count.saturating_add(1),
+        &mut |_| progress_count = progress_count.saturating_add(1),
     )
     .expect("resumable safe stop should succeed");
 

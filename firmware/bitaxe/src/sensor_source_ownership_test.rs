@@ -355,7 +355,8 @@ fn production_safe_stop_binds_the_typed_pause_purpose_without_sensor_waiting() {
     assert!(PRODUCTION_SESSION_SOURCE.contains(
         "ProductionSessionEffect::SafeStopHardware { lease_id, purpose }"
     ));
-    assert!(PRODUCTION_SESSION_SOURCE.contains("self.mining_actuation.safe_stop(purpose, progress)"));
+    assert!(PRODUCTION_SESSION_SOURCE
+        .contains(".safe_stop(purpose, &mut safe_stop_progress)"));
     assert!(MINING_ACTUATION_ADAPTER_SOURCE
         .contains("execute_safe_stop_with_progress(self, purpose, progress)"));
     assert!(MINING_ACTUATION_ADAPTER_SOURCE

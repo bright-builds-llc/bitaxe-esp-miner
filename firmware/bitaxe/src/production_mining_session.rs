@@ -12,6 +12,7 @@ mod scoreboard;
 mod transport;
 pub(crate) mod watchdog;
 
+use bitaxe_core::runtime_health::TaskWatchdogOwnerSubphase;
 use bitaxe_core::runtime_orchestration::{PeriodicDeadline, PRODUCTION_REREAD_CADENCE_MS};
 use bitaxe_safety::observation::{MonotonicMillis, Observation};
 use bitaxe_safety::power::POWER_SAMPLE_STALE_AFTER_MS;
@@ -32,9 +33,10 @@ use self::campaign_status::publication::{
 };
 use self::campaign_status::{CampaignObservationFreshness, CampaignStatusTracker};
 use self::hashrate::ProductionHashrateMonitor;
-use self::owner_loop::run_owner;
+use self::owner_loop::{run_owner, safe_stop_subphase};
 use self::readiness_trace::ReadinessTransitionTracker;
 use self::transport::{PoolTransportCommand, PoolTransportEvent, PoolTransportWorkers};
+use crate::mining_actuation::SafeShutdownStep;
 
 pub use notifications::notify;
 
@@ -293,7 +295,7 @@ impl OrdinaryEspProductionSessionAdapter {
         &mut self,
         effect: ProductionSessionEffect,
         now_ms: u64,
-        progress: &mut dyn FnMut(),
+        progress: &mut dyn FnMut(TaskWatchdogOwnerSubphase),
     ) -> Option<ProductionSessionEvent> {
         match effect {
             ProductionSessionEffect::Publish(snapshot) => {
@@ -435,7 +437,11 @@ impl OrdinaryEspProductionSessionAdapter {
                 if let Some(status) = self.maybe_campaign_status.as_mut() {
                     status.note_safe_stop_pending();
                 }
-                match self.mining_actuation.safe_stop(purpose, progress) {
+                let mut safe_stop_progress = |step| progress(safe_stop_subphase(step));
+                match self
+                    .mining_actuation
+                    .safe_stop(purpose, &mut safe_stop_progress)
+                {
                     Ok(()) => {
                         Some(ProductionSessionEvent::HardwareSafeStopConfirmed { lease_id, now_ms })
                     }

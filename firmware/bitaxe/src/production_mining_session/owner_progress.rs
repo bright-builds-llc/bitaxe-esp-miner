@@ -2,19 +2,21 @@
 
 use std::collections::VecDeque;
 
+use bitaxe_core::runtime_health::TaskWatchdogOwnerSubphase;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum OwnerProgressBoundary {
     EventStarted,
     EventHandled,
     EffectStarted,
-    EffectHeartbeat,
+    EffectHeartbeat(TaskWatchdogOwnerSubphase),
     EffectCompleted,
 }
 
 pub(crate) fn drive_feedback<Event, Effect, HandleError>(
     initial_event: Event,
     mut handle: impl FnMut(Event) -> Result<Vec<Effect>, HandleError>,
-    mut execute: impl FnMut(Effect, &mut dyn FnMut()) -> Option<Event>,
+    mut execute: impl FnMut(Effect, &mut dyn FnMut(TaskWatchdogOwnerSubphase)) -> Option<Event>,
     mut progress: impl FnMut(OwnerProgressBoundary, Option<&Effect>),
 ) -> Result<(), HandleError> {
     let mut events = VecDeque::from([initial_event]);
@@ -24,7 +26,8 @@ pub(crate) fn drive_feedback<Event, Effect, HandleError>(
         progress(OwnerProgressBoundary::EventHandled, None);
         for effect in effects {
             progress(OwnerProgressBoundary::EffectStarted, Some(&effect));
-            let mut heartbeat = || progress(OwnerProgressBoundary::EffectHeartbeat, None);
+            let mut heartbeat =
+                |subphase| progress(OwnerProgressBoundary::EffectHeartbeat(subphase), None);
             let maybe_feedback = execute(effect, &mut heartbeat);
             progress(OwnerProgressBoundary::EffectCompleted, None);
             if let Some(feedback) = maybe_feedback {
@@ -118,7 +121,7 @@ mod tests {
                 OwnerProgressBoundary::EventStarted => event_entry_observed.set(true),
                 OwnerProgressBoundary::EffectStarted => effect_entry_observed.set(true),
                 OwnerProgressBoundary::EventHandled
-                | OwnerProgressBoundary::EffectHeartbeat
+                | OwnerProgressBoundary::EffectHeartbeat(_)
                 | OwnerProgressBoundary::EffectCompleted => {}
             },
         )
@@ -147,7 +150,7 @@ mod tests {
             },
             |_, heartbeat| {
                 assert_eq!(last_feed_ms.get(), now_ms.get());
-                heartbeat();
+                heartbeat(TaskWatchdogOwnerSubphase::Unavailable);
                 now_ms.set(now_ms.get().saturating_add(TIMEOUT_MS + 1));
                 blocking_effect_became_stale
                     .set(now_ms.get().saturating_sub(last_feed_ms.get()) > TIMEOUT_MS);
@@ -189,8 +192,8 @@ mod tests {
             (),
             |_| Ok::<Vec<()>, &'static str>(vec![()]),
             |_, heartbeat| {
-                heartbeat();
-                heartbeat();
+                heartbeat(TaskWatchdogOwnerSubphase::SafeStopStopDispatch);
+                heartbeat(TaskWatchdogOwnerSubphase::SafeStopAssertControlLineLow);
                 None
             },
             |boundary, _| progress.push(boundary),
@@ -204,8 +207,12 @@ mod tests {
                 OwnerProgressBoundary::EventStarted,
                 OwnerProgressBoundary::EventHandled,
                 OwnerProgressBoundary::EffectStarted,
-                OwnerProgressBoundary::EffectHeartbeat,
-                OwnerProgressBoundary::EffectHeartbeat,
+                OwnerProgressBoundary::EffectHeartbeat(
+                    TaskWatchdogOwnerSubphase::SafeStopStopDispatch,
+                ),
+                OwnerProgressBoundary::EffectHeartbeat(
+                    TaskWatchdogOwnerSubphase::SafeStopAssertControlLineLow,
+                ),
                 OwnerProgressBoundary::EffectCompleted,
             ]
         );
