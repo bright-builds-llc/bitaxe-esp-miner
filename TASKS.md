@@ -1982,6 +1982,49 @@ recovery, cleanup, retry, stop, and promotion contract. Any precise blocking
 subphase must receive a targeted diagnosis and regression-backed correction
 before another continuation.
 
+Attempt-016 verification-promotion plan:
+`docs/parity/work-plans/20260817T095432Z-STAT-001/PLAN.md`
+
+- [ ] Rebind the private-first workflow, validator, generated contract,
+      immutable task/plan admission, Bazel inputs, fresh protected roots, and
+      fixtures from attempt-015 to attempt-016 while preserving result v16,
+      network v10, coherent owner subphase, earliest tuple, and 18-source
+      identity.
+- [ ] Run every focused and mandatory software, firmware, privacy, reference,
+      package, and exact-source gate; commit and push before device access.
+- [ ] Run only the frozen detector and sole conditional attempt-016 command;
+      promote only if the complete independent quorum passes.
+
+Attempt-016 progress basis: pushed `177fffe9` corrects attempt-015's ambiguous
+`watchdog_feed_stale/stable/handling_inbox/not_waiting` boundary by adding one
+closed inbox/evaluation/effect subphase through coherent v16/v10 evidence and
+feeding at handler/effect entry without masking genuinely blocking work. This
+is a verified-fix continuation at a materially more discriminating boundary,
+not an unchanged retry.
+
+Attempt-016 authorization: after plan/rebind are clean, fully gated, committed,
+pushed, and packaged, one exact board-205 package may be factory-flashed/reset,
+privately seeded from ignored Wi-Fi/pool inputs, and run only at conservative
+400 MHz / 1,100 mV ASIC core / 100% fan for exactly 600 active seconds with
+protected serial/HTTP/WebSocket joins, pause, safe stop, cleanup, sealing, and
+at most one supervisor-owned recovery flash. Exact commands are frozen in the
+linked plan. Input-bus safety remains independently fresh 4.5-5.5 V, <=15 W,
+ASIC temperature <75 C, and fan RPM fresh/nonzero; core mV and bus V remain
+distinct.
+
+Evidence/privacy/retry: only fresh ignored wrapper-016 and attempt-016 mode-
+0700 roots with mode-0600 files are allowed. Credentials, endpoints,
+identities, exact values, bodies, logs, commands, PIDs, and traces stay private;
+only the independently valid projection may publish. Starting capture consumes
+the ordinal; preserve earliest failure/read-outcome/phase/subphase/wait through
+safe stop, recovery, sealing, and cleanup. Never retry attempt-016, reuse
+attempt-015, or start attempt-017. No overclock, arbitrary controls, unbounded
+mining, OTA, erase, raw write, fault injection, power action, direct UART/BAP,
+or electrical manipulation. Promotion requires exact identity, stable read
+outcome, 20 windows/work renewal, coherent changing positive rates, warm
+windows, bounded error, watchdog none, terminal zero, safe stop, cleanup,
+modes, seals, validation, and redaction; missing facts withhold it.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
