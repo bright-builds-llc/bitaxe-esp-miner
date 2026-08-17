@@ -27,6 +27,7 @@ pub(crate) use evidence::CampaignNetworkEvidence;
 
 pub(super) const REQUIRED_WINDOWS: usize = 20;
 pub(super) const WINDOW_MILLIS: u64 = 30_000;
+pub(super) const EVIDENCE_DURATION_MILLIS: u64 = REQUIRED_WINDOWS as u64 * WINDOW_MILLIS;
 pub(super) const MAX_ACTIVE_MARKER_GAP_MILLIS: u64 = 5_000;
 pub(super) const TERMINAL_NETWORK_DEADLINE_SECONDS: u64 = 10;
 #[derive(Clone)]
@@ -204,6 +205,10 @@ impl NetworkAccumulator {
         sample: &SystemInfoWire,
     ) {
         if self.maybe_failure.is_some() {
+            return;
+        }
+        if active_ms >= EVIDENCE_DURATION_MILLIS && !active_mining_state_valid(sample) {
+            self.record_terminal_sample(transport, sample);
             return;
         }
         if !self.observe_watchdog(sample) {

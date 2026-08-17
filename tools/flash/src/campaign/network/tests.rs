@@ -11,7 +11,7 @@ use super::super::{CampaignTerminalCategory, MiningCampaignStage};
 use super::command_evidence::CommandEffectsEvidence;
 use super::model::{
     CampaignNetworkEvidence, NetworkAccumulator, NetworkTransport, SharedSerialState,
-    TrustedNetworkTarget, REQUIRED_WINDOWS, WINDOW_MILLIS,
+    TrustedNetworkTarget, EVIDENCE_DURATION_MILLIS, REQUIRED_WINDOWS, WINDOW_MILLIS,
 };
 use super::serial::NetworkSerialTracker;
 use super::NetworkObservationMode;

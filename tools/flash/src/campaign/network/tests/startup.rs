@@ -1,5 +1,37 @@
 use super::*;
 
+#[test]
+fn stopped_transition_is_terminal_only_at_the_evidence_horizon() {
+    // Arrange
+    let mut early = NetworkAccumulator::new(target());
+    early.record_active_sample(NetworkTransport::Http, 1_000, 1_000, &active_sample(1, 1));
+    let mut exact = NetworkAccumulator::new(target());
+    exact.record_active_sample(NetworkTransport::Http, 1_000, 1_000, &active_sample(1, 1));
+    let stopped = terminal_sample(2, 2);
+
+    // Act
+    early.record_active_sample(
+        NetworkTransport::Http,
+        EVIDENCE_DURATION_MILLIS - 1,
+        EVIDENCE_DURATION_MILLIS - 1,
+        &stopped,
+    );
+    exact.record_active_sample(
+        NetworkTransport::Http,
+        EVIDENCE_DURATION_MILLIS,
+        EVIDENCE_DURATION_MILLIS,
+        &stopped,
+    );
+
+    // Assert
+    assert_eq!(
+        early.maybe_failure,
+        Some(CampaignTerminalCategory::NetworkCorrelationFailed)
+    );
+    assert!(exact.maybe_failure.is_none());
+    assert!(exact.terminal_http_valid);
+}
+
 fn startup_sample(revision: u64, sequence: u64) -> SystemInfoWire {
     let mut sample = active_sample(revision, sequence);
     sample.mining_activity = "safe_blocked".to_owned();
