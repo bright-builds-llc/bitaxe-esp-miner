@@ -7,7 +7,8 @@ use serde_json::{json, Value};
 
 use bitaxe_core::runtime_health::{
     CheckpointObservation, PassiveSelfTestState, RuntimeHealthSnapshot, RuntimeHealthTiming,
-    TaskWatchdogObservation, TaskWatchdogOwnerPhase, TaskWatchdogWaitState,
+    TaskWatchdogObservation, TaskWatchdogOwnerPhase, TaskWatchdogOwnerSubphase,
+    TaskWatchdogWaitState,
 };
 
 use super::{require_wire_keys, retained_runtime_health_record};
@@ -246,6 +247,7 @@ fn runtime_health_serializes_exact_passive_values() {
         RuntimeHealthTiming::new(1_100, 500, 5_000),
     )
     .with_task_watchdog_owner_phase(TaskWatchdogOwnerPhase::WaitingInbox)
+    .with_task_watchdog_owner_subphase(TaskWatchdogOwnerSubphase::SessionEvaluation)
     .with_task_watchdog_wait_state(TaskWatchdogWaitState::DeadlineOverrun);
 
     // Act
@@ -275,6 +277,10 @@ fn runtime_health_serializes_exact_passive_values() {
         "waiting_inbox"
     );
     assert_eq!(
+        value["runtimeHealth"]["taskWatchdogOwnerSubphase"],
+        "session_evaluation"
+    );
+    assert_eq!(
         value["runtimeHealth"]["taskWatchdogWaitState"],
         "deadline_overrun"
     );
@@ -294,6 +300,7 @@ fn retained_runtime_health_record_is_correlated_and_redacted() {
         RuntimeHealthTiming::new(1_100, 500, 5_000),
     )
     .with_task_watchdog_owner_phase(TaskWatchdogOwnerPhase::WaitingInbox)
+    .with_task_watchdog_owner_subphase(TaskWatchdogOwnerSubphase::SessionEvaluation)
     .with_task_watchdog_wait_state(TaskWatchdogWaitState::DeadlineOverrun);
     let identity = ApiSnapshot::safe_ultra_205().operator_snapshot_identity;
 
@@ -304,7 +311,7 @@ fn retained_runtime_health_record_is_correlated_and_redacted() {
     // Assert
     assert_eq!(
         record,
-        "runtime_health boot_session=00000000000000000000000000000000 operator_snapshot_revision=1 self_test=idle supervisor=available checkpoint_category=telemetry checkpoint_sequence=9 checkpoint_age_millis=100 checkpoint_health=healthy task_watchdog_participation=participating task_watchdog_reason=feed_fresh task_watchdog_feed_sequence=11 task_watchdog_feed_age_millis=50 task_watchdog_read_outcome=stable task_watchdog_owner_phase=waiting_inbox task_watchdog_wait_state=deadline_overrun redacted=true"
+        "runtime_health boot_session=00000000000000000000000000000000 operator_snapshot_revision=1 self_test=idle supervisor=available checkpoint_category=telemetry checkpoint_sequence=9 checkpoint_age_millis=100 checkpoint_health=healthy task_watchdog_participation=participating task_watchdog_reason=feed_fresh task_watchdog_feed_sequence=11 task_watchdog_feed_age_millis=50 task_watchdog_read_outcome=stable task_watchdog_owner_phase=waiting_inbox task_watchdog_owner_subphase=session_evaluation task_watchdog_wait_state=deadline_overrun redacted=true"
     );
     for prohibited in [
         "credential",

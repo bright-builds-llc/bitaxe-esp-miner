@@ -6,8 +6,8 @@ use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
 use std::sync::Mutex;
 
 use bitaxe_core::runtime_health::{
-    TaskWatchdogObservation, TaskWatchdogOwnerPhase, TaskWatchdogReadOutcome,
-    TaskWatchdogWaitObservation,
+    TaskWatchdogObservation, TaskWatchdogOwnerPhase, TaskWatchdogOwnerSubphase,
+    TaskWatchdogReadOutcome, TaskWatchdogWaitObservation,
 };
 
 const COHERENT_READ_ATTEMPTS: usize = 8;
@@ -24,6 +24,7 @@ pub(crate) struct TaskWatchdogObservationSnapshot {
     pub(crate) maybe_latest: Option<TaskWatchdogObservation>,
     pub(crate) read_outcome: TaskWatchdogReadOutcome,
     pub(crate) owner_phase: TaskWatchdogOwnerPhase,
+    pub(crate) owner_subphase: TaskWatchdogOwnerSubphase,
     pub(crate) owner_wait: TaskWatchdogWaitObservation,
 }
 
@@ -34,6 +35,7 @@ impl Default for TaskWatchdogObservationSnapshot {
             maybe_latest: None,
             read_outcome: TaskWatchdogReadOutcome::Uninitialized,
             owner_phase: TaskWatchdogOwnerPhase::Unavailable,
+            owner_subphase: TaskWatchdogOwnerSubphase::Unavailable,
             owner_wait: TaskWatchdogWaitObservation::NotWaiting,
         }
     }
@@ -43,6 +45,7 @@ struct TaskWatchdogObservationStore {
     history: Mutex<TaskWatchdogObservationHistory>,
     publication_sequence: AtomicU32,
     owner_phase: AtomicU8,
+    owner_subphase: AtomicU8,
     owner_wait_deadline_millis: AtomicU32,
     owner_wait_deadline_valid: AtomicBool,
 }
@@ -56,6 +59,7 @@ impl TaskWatchdogObservationStore {
             }),
             publication_sequence: AtomicU32::new(0),
             owner_phase: AtomicU8::new(TaskWatchdogOwnerPhase::Unavailable as u8),
+            owner_subphase: AtomicU8::new(TaskWatchdogOwnerSubphase::Unavailable as u8),
             owner_wait_deadline_millis: AtomicU32::new(0),
             owner_wait_deadline_valid: AtomicBool::new(false),
         }
@@ -64,6 +68,15 @@ impl TaskWatchdogObservationStore {
     fn record_owner_phase(&self, phase: TaskWatchdogOwnerPhase) {
         let _publication = self.begin_publication();
         self.owner_phase.store(phase as u8, Ordering::Relaxed);
+        self.owner_subphase.store(
+            TaskWatchdogOwnerSubphase::Unavailable as u8,
+            Ordering::Relaxed,
+        );
+    }
+
+    fn record_owner_subphase(&self, subphase: TaskWatchdogOwnerSubphase) {
+        let _publication = self.begin_publication();
+        self.owner_subphase.store(subphase as u8, Ordering::Relaxed);
     }
 
     fn record_owner_wait(&self, maybe_deadline_millis: Option<u64>) {
@@ -74,6 +87,10 @@ impl TaskWatchdogObservationStore {
             .store(maybe_deadline_millis.is_some(), Ordering::Relaxed);
         self.owner_phase.store(
             TaskWatchdogOwnerPhase::WaitingInbox as u8,
+            Ordering::Relaxed,
+        );
+        self.owner_subphase.store(
+            TaskWatchdogOwnerSubphase::Unavailable as u8,
             Ordering::Relaxed,
         );
     }
@@ -117,6 +134,8 @@ impl TaskWatchdogObservationStore {
             after_history_copy();
             let owner_phase =
                 TaskWatchdogOwnerPhase::from_u8(self.owner_phase.load(Ordering::Relaxed));
+            let owner_subphase =
+                TaskWatchdogOwnerSubphase::from_u8(self.owner_subphase.load(Ordering::Relaxed));
             let owner_wait = self.owner_wait(owner_phase);
             let end_sequence = self.publication_sequence.load(Ordering::Acquire);
 
@@ -130,6 +149,7 @@ impl TaskWatchdogObservationStore {
                         TaskWatchdogReadOutcome::Uninitialized
                     },
                     owner_phase,
+                    owner_subphase,
                     owner_wait,
                 };
             }
@@ -187,6 +207,10 @@ static STORE: TaskWatchdogObservationStore = TaskWatchdogObservationStore::new()
 
 pub(crate) fn record_owner_phase(phase: TaskWatchdogOwnerPhase) {
     STORE.record_owner_phase(phase);
+}
+
+pub(crate) fn record_owner_subphase(subphase: TaskWatchdogOwnerSubphase) {
+    STORE.record_owner_subphase(subphase);
 }
 
 pub(crate) fn record_owner_wait(maybe_deadline_millis: Option<u64>) {

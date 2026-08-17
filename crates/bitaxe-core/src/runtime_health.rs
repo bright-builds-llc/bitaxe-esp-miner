@@ -3,8 +3,8 @@
 #[path = "runtime_health/wait.rs"]
 mod wait;
 pub use wait::{
-    TaskWatchdogOwnerPhase, TaskWatchdogReadOutcome, TaskWatchdogWaitObservation,
-    TaskWatchdogWaitState,
+    TaskWatchdogOwnerPhase, TaskWatchdogOwnerSubphase, TaskWatchdogReadOutcome,
+    TaskWatchdogWaitObservation, TaskWatchdogWaitState,
 };
 
 /// Maximum serialized supervisor checkpoint category length.
@@ -289,6 +289,7 @@ pub struct RuntimeHealthSnapshot {
     maybe_task_watchdog_feed_age_millis: Option<u64>,
     task_watchdog_read_outcome: TaskWatchdogReadOutcome,
     task_watchdog_owner_phase: TaskWatchdogOwnerPhase,
+    task_watchdog_owner_subphase: TaskWatchdogOwnerSubphase,
     task_watchdog_wait_state: TaskWatchdogWaitState,
 }
 
@@ -335,6 +336,7 @@ impl RuntimeHealthSnapshot {
             maybe_task_watchdog_feed_age_millis: watchdog.maybe_age_millis,
             task_watchdog_read_outcome,
             task_watchdog_owner_phase: TaskWatchdogOwnerPhase::Unavailable,
+            task_watchdog_owner_subphase: TaskWatchdogOwnerSubphase::Unavailable,
             task_watchdog_wait_state: TaskWatchdogWaitState::NotWaiting,
         }
     }
@@ -343,6 +345,16 @@ impl RuntimeHealthSnapshot {
     #[must_use]
     pub const fn with_task_watchdog_owner_phase(mut self, phase: TaskWatchdogOwnerPhase) -> Self {
         self.task_watchdog_owner_phase = phase;
+        self
+    }
+
+    /// Attaches the independently observed closed owner-work boundary.
+    #[must_use]
+    pub const fn with_task_watchdog_owner_subphase(
+        mut self,
+        subphase: TaskWatchdogOwnerSubphase,
+    ) -> Self {
+        self.task_watchdog_owner_subphase = subphase;
         self
     }
 
@@ -443,6 +455,11 @@ impl RuntimeHealthSnapshot {
     #[must_use]
     pub const fn task_watchdog_owner_phase(&self) -> TaskWatchdogOwnerPhase {
         self.task_watchdog_owner_phase
+    }
+
+    #[must_use]
+    pub const fn task_watchdog_owner_subphase(&self) -> TaskWatchdogOwnerSubphase {
+        self.task_watchdog_owner_subphase
     }
 
     /// Attaches the state derived from the coherent owner wait observation.

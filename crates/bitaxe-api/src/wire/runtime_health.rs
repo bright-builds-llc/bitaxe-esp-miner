@@ -33,6 +33,11 @@ pub struct RuntimeHealthWire {
     pub task_watchdog_read_outcome: String,
     #[serde(rename = "taskWatchdogOwnerPhase", default = "unavailable_owner_phase")]
     pub task_watchdog_owner_phase: String,
+    #[serde(
+        rename = "taskWatchdogOwnerSubphase",
+        default = "unavailable_owner_subphase"
+    )]
+    pub task_watchdog_owner_subphase: String,
     #[serde(rename = "taskWatchdogWaitState", default = "invalid_wait_state")]
     pub task_watchdog_wait_state: String,
 }
@@ -52,12 +57,20 @@ impl From<&RuntimeHealthSnapshot> for RuntimeHealthWire {
             maybe_task_watchdog_feed_age_millis: snapshot.maybe_task_watchdog_feed_age_millis(),
             task_watchdog_read_outcome: snapshot.task_watchdog_read_outcome().as_str().to_owned(),
             task_watchdog_owner_phase: snapshot.task_watchdog_owner_phase().as_str().to_owned(),
+            task_watchdog_owner_subphase: snapshot
+                .task_watchdog_owner_subphase()
+                .as_str()
+                .to_owned(),
             task_watchdog_wait_state: snapshot.task_watchdog_wait_state().as_str().to_owned(),
         }
     }
 }
 
 fn unavailable_owner_phase() -> String {
+    "unavailable".to_owned()
+}
+
+fn unavailable_owner_subphase() -> String {
     "unavailable".to_owned()
 }
 
@@ -89,7 +102,7 @@ pub fn retained_runtime_health_record(
         optional_u64(snapshot.maybe_task_watchdog_feed_age_millis());
 
     format!(
-        "runtime_health boot_session={boot_session} operator_snapshot_revision={} self_test={} supervisor={} checkpoint_category={checkpoint_category} checkpoint_sequence={checkpoint_sequence} checkpoint_age_millis={checkpoint_age_millis} checkpoint_health={} task_watchdog_participation={} task_watchdog_reason={task_watchdog_reason} task_watchdog_feed_sequence={task_watchdog_feed_sequence} task_watchdog_feed_age_millis={task_watchdog_feed_age_millis} task_watchdog_read_outcome={} task_watchdog_owner_phase={} task_watchdog_wait_state={} redacted=true",
+        "runtime_health boot_session={boot_session} operator_snapshot_revision={} self_test={} supervisor={} checkpoint_category={checkpoint_category} checkpoint_sequence={checkpoint_sequence} checkpoint_age_millis={checkpoint_age_millis} checkpoint_health={} task_watchdog_participation={} task_watchdog_reason={task_watchdog_reason} task_watchdog_feed_sequence={task_watchdog_feed_sequence} task_watchdog_feed_age_millis={task_watchdog_feed_age_millis} task_watchdog_read_outcome={} task_watchdog_owner_phase={} task_watchdog_owner_subphase={} task_watchdog_wait_state={} redacted=true",
         operator_snapshot_revision.get(),
         snapshot.passive_self_test_state().as_str(),
         snapshot.supervisor_availability().as_str(),
@@ -97,6 +110,7 @@ pub fn retained_runtime_health_record(
         snapshot.task_watchdog_participation().as_str(),
         snapshot.task_watchdog_read_outcome().as_str(),
         snapshot.task_watchdog_owner_phase().as_str(),
+        snapshot.task_watchdog_owner_subphase().as_str(),
         snapshot.task_watchdog_wait_state().as_str(),
     )
 }

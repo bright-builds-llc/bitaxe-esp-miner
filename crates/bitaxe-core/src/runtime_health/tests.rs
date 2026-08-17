@@ -161,6 +161,19 @@ fn runtime_health_snapshot_accepts_independent_owner_phase() {
 }
 
 #[test]
+fn runtime_health_snapshot_accepts_independent_owner_subphase() {
+    // Arrange / Act
+    let snapshot = RuntimeHealthSnapshot::fixture_unavailable()
+        .with_task_watchdog_owner_subphase(TaskWatchdogOwnerSubphase::EffectPollChip);
+
+    // Assert
+    assert_eq!(
+        snapshot.task_watchdog_owner_subphase(),
+        TaskWatchdogOwnerSubphase::EffectPollChip
+    );
+}
+
+#[test]
 fn checkpoint_category_rejects_empty_non_ascii_and_overlong_text() {
     // Arrange
     let overlong = "x".repeat(CHECKPOINT_CATEGORY_MAX_ASCII_BYTES + 1);

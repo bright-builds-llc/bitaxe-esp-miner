@@ -48,11 +48,13 @@ type RuntimeAttestationParseEvidence = RuntimeAttestationParseDiagnostic & Reado
 type WatchdogFailure = typeof watchdogFailures[number];
 type WatchdogReadOutcome = typeof watchdogReadOutcomes[number];
 type WatchdogOwnerPhase = typeof watchdogOwnerPhases[number];
+type WatchdogOwnerSubphase = typeof watchdogOwnerSubphases[number];
 type WatchdogWaitState = typeof watchdogWaitStates[number];
 type WatchdogFailureDiagnostic = Readonly<{
   watchdog_failure: WatchdogFailure;
   watchdog_read_outcome: WatchdogReadOutcome;
   watchdog_owner_phase: WatchdogOwnerPhase;
+  watchdog_owner_subphase: WatchdogOwnerSubphase;
   watchdog_wait_state: WatchdogWaitState;
 }>;
 type CampaignFailureDiagnostic = RuntimeAttestationParseDiagnostic
@@ -99,6 +101,7 @@ const watchdogFailures = [
   "watchdog_feed_age_missing",
   "watchdog_feed_stale",
   "watchdog_owner_phase_unknown",
+  "watchdog_owner_subphase_unknown",
   "watchdog_wait_state_unknown",
   "http_checkpoint_not_advanced",
   "http_feed_not_advanced",
@@ -128,6 +131,14 @@ const watchdogOwnerPhases = [
   "publishing_campaign_status",
   "servicing_hashrate",
   "shutdown",
+] as const;
+const watchdogOwnerSubphases = [
+  "unavailable", "inbox_mapping", "session_evaluation",
+  "effect_prepare_hardware", "effect_read_pool_configuration", "effect_connect_pool",
+  "effect_write_pool_line", "effect_apply_version_mask", "effect_dispatch_chip",
+  "effect_poll_chip", "effect_block_submissions", "effect_invalidate_work_and_submissions",
+  "effect_stop_chip_interaction", "effect_close_pool_connection", "effect_safe_stop_hardware",
+  "effect_record_scoreboard", "effect_record_block_found", "effect_publish",
 ] as const;
 const expectedAttemptFiles = [
   "campaign-diagnostics.private.json",
@@ -253,6 +264,14 @@ function watchdogOwnerPhase(value: JsonObject): WatchdogOwnerPhase {
   return phase as WatchdogOwnerPhase;
 }
 
+function watchdogOwnerSubphase(value: JsonObject): WatchdogOwnerSubphase {
+  const subphase = requiredString(value, "watchdog_owner_subphase", "campaign result");
+  if (!watchdogOwnerSubphases.includes(subphase as WatchdogOwnerSubphase)) {
+    throw failure("evidence_invalid", "campaign watchdog owner subphase is invalid");
+  }
+  return subphase as WatchdogOwnerSubphase;
+}
+
 function watchdogReadOutcome(value: JsonObject): WatchdogReadOutcome {
   const outcome = requiredString(value, "watchdog_read_outcome", "campaign result");
   if (!watchdogReadOutcomes.includes(outcome as WatchdogReadOutcome)) {
@@ -329,7 +348,7 @@ async function sealedCampaignFailureDiagnostic(
     const result = await readJson(resultPath, "campaign result");
     const seal = (await readFile(sealPath, "utf8")).trim();
     if (seal !== sha256(result.document)
-      || requiredString(result.value, "schema", "campaign result") !== "mining-campaign-result-v15"
+      || requiredString(result.value, "schema", "campaign result") !== "mining-campaign-result-v16"
       || requiredString(result.value, "status", "campaign result") !== "failed") {
       return undefined;
     }
@@ -343,6 +362,7 @@ async function sealedCampaignFailureDiagnostic(
         watchdog_failure: watchdogDiagnostic,
         watchdog_read_outcome: watchdogReadOutcome(result.value),
         watchdog_owner_phase: watchdogOwnerPhase(result.value),
+        watchdog_owner_subphase: watchdogOwnerSubphase(result.value),
         watchdog_wait_state: watchdogWaitState(result.value),
       };
     }
@@ -479,7 +499,7 @@ export async function captureHashrateMonitorEvidence(
     }
     const parseDiagnostic = runtimeAttestationParseDiagnostic(resultFile.value);
     const resultWatchdogFailure = watchdogFailure(resultFile.value);
-    if (requiredString(resultFile.value, "schema", "campaign result") !== "mining-campaign-result-v15"
+    if (requiredString(resultFile.value, "schema", "campaign result") !== "mining-campaign-result-v16"
       || requiredString(resultFile.value, "status", "campaign result") !== "accepted"
       || requiredString(resultFile.value, "stage", "campaign result") !== "live-share"
       || requiredString(resultFile.value, "profile", "campaign result") !== "conservative"
@@ -491,16 +511,18 @@ export async function captureHashrateMonitorEvidence(
       || Object.values(parseDiagnostic.runtime_attestation_parse_failure_counts)
         .some((count) => count !== 0)
       || requiredString(networkFile.value, "schema", "campaign network evidence")
-        !== "mining-campaign-network-continuity-v9"
+        !== "mining-campaign-network-continuity-v10"
       || requiredString(networkFile.value, "status", "campaign network evidence") !== "accepted") {
       throw failure("evidence_invalid", "campaign acceptance boundary is incomplete");
     }
     const resultWatchdogOwnerPhase = watchdogOwnerPhase(resultFile.value);
+    const resultWatchdogOwnerSubphase = watchdogOwnerSubphase(resultFile.value);
     const resultWatchdogWaitState = watchdogWaitState(resultFile.value);
     const resultWatchdogReadOutcome = watchdogReadOutcome(resultFile.value);
     if (resultWatchdogFailure !== "none"
       || watchdogReadOutcome(networkFile.value) !== resultWatchdogReadOutcome
       || watchdogOwnerPhase(networkFile.value) !== resultWatchdogOwnerPhase
+      || watchdogOwnerSubphase(networkFile.value) !== resultWatchdogOwnerSubphase
       || watchdogWaitState(networkFile.value) !== resultWatchdogWaitState
       || watchdogFailure(networkFile.value) !== resultWatchdogFailure) {
       throw failure("evidence_invalid", "campaign watchdog acceptance boundary is invalid");

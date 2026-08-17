@@ -15,7 +15,7 @@ use super::validation::{
 };
 use super::watchdog::{
     sample_diagnostic, WatchdogDiagnostic, WatchdogFailure, WatchdogOwnerPhase,
-    WatchdogReadOutcome, WatchdogWaitState,
+    WatchdogOwnerSubphase, WatchdogReadOutcome, WatchdogWaitState,
 };
 use super::window::{ContinuityWindowEvidence, SerialWindowEvidence};
 
@@ -101,6 +101,7 @@ pub(crate) struct CampaignNetworkEvidence {
     pub(in crate::campaign) watchdog_failure: &'static str,
     pub(in crate::campaign) watchdog_read_outcome: &'static str,
     pub(in crate::campaign) watchdog_owner_phase: &'static str,
+    pub(in crate::campaign) watchdog_owner_subphase: &'static str,
     pub(in crate::campaign) watchdog_wait_state: &'static str,
     pub(in crate::campaign) work_renewal_valid: bool,
     pub(in crate::campaign) terminal_http_valid: bool,
@@ -138,7 +139,7 @@ impl CampaignNetworkEvidence {
 
     fn empty(status: &'static str, maybe_failure: Option<CampaignTerminalCategory>) -> Self {
         Self {
-            schema: "mining-campaign-network-continuity-v9",
+            schema: "mining-campaign-network-continuity-v10",
             status,
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count: 0,
@@ -166,6 +167,7 @@ impl CampaignNetworkEvidence {
             watchdog_failure: WatchdogFailure::None.label(),
             watchdog_read_outcome: WatchdogReadOutcome::Uninitialized.label(),
             watchdog_owner_phase: WatchdogOwnerPhase::Unavailable.label(),
+            watchdog_owner_subphase: WatchdogOwnerSubphase::Unavailable.label(),
             watchdog_wait_state: WatchdogWaitState::NotWaiting.label(),
             work_renewal_valid: false,
             terminal_http_valid: false,
@@ -249,6 +251,7 @@ pub(super) struct NetworkAccumulator {
     pub(super) watchdog_failure: WatchdogFailure,
     watchdog_read_outcome: WatchdogReadOutcome,
     watchdog_owner_phase: WatchdogOwnerPhase,
+    watchdog_owner_subphase: WatchdogOwnerSubphase,
     watchdog_wait_state: WatchdogWaitState,
     http_startup_transition_count: u64,
     websocket_startup_transition_count: u64,
@@ -290,6 +293,7 @@ impl NetworkAccumulator {
             watchdog_failure: WatchdogFailure::None,
             watchdog_read_outcome: WatchdogReadOutcome::Uninitialized,
             watchdog_owner_phase: WatchdogOwnerPhase::Unavailable,
+            watchdog_owner_subphase: WatchdogOwnerSubphase::Unavailable,
             watchdog_wait_state: WatchdogWaitState::NotWaiting,
             http_startup_transition_count: 0,
             websocket_startup_transition_count: 0,
@@ -420,6 +424,7 @@ impl NetworkAccumulator {
                 self.fail_watchdog(WatchdogDiagnostic {
                     read_outcome: self.watchdog_read_outcome,
                     owner_phase: self.watchdog_owner_phase,
+                    owner_subphase: self.watchdog_owner_subphase,
                     wait_state: self.watchdog_wait_state,
                     failure: watchdog_failure,
                 });
@@ -452,7 +457,7 @@ impl NetworkAccumulator {
             && covered_window_count == REQUIRED_WINDOWS
             && serial.terminal_consumed;
         CampaignNetworkEvidence {
-            schema: "mining-campaign-network-continuity-v9",
+            schema: "mining-campaign-network-continuity-v10",
             status: if accepted { "accepted" } else { "failed" },
             required_window_count: REQUIRED_WINDOWS,
             covered_window_count,
@@ -482,6 +487,7 @@ impl NetworkAccumulator {
             watchdog_failure: self.watchdog_failure.label(),
             watchdog_read_outcome: self.watchdog_read_outcome.label(),
             watchdog_owner_phase: self.watchdog_owner_phase.label(),
+            watchdog_owner_subphase: self.watchdog_owner_subphase.label(),
             watchdog_wait_state: self.watchdog_wait_state.label(),
             work_renewal_valid: self
                 .windows
@@ -510,6 +516,7 @@ impl NetworkAccumulator {
         if self.watchdog_failure == WatchdogFailure::None {
             self.watchdog_read_outcome = diagnostic.read_outcome;
             self.watchdog_owner_phase = diagnostic.owner_phase;
+            self.watchdog_owner_subphase = diagnostic.owner_subphase;
             self.watchdog_wait_state = diagnostic.wait_state;
         }
         true
@@ -525,6 +532,7 @@ impl NetworkAccumulator {
                 self.watchdog_failure = diagnostic.failure;
                 self.watchdog_read_outcome = diagnostic.read_outcome;
                 self.watchdog_owner_phase = diagnostic.owner_phase;
+                self.watchdog_owner_subphase = diagnostic.owner_subphase;
                 self.watchdog_wait_state = diagnostic.wait_state;
             }
         }

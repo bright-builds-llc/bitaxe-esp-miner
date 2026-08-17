@@ -32,5 +32,6 @@ pub(crate) fn collect() -> RuntimeHealthSnapshot {
     )
     .with_task_watchdog_read_outcome(task_watchdog.read_outcome)
     .with_task_watchdog_owner_phase(task_watchdog.owner_phase)
+    .with_task_watchdog_owner_subphase(task_watchdog.owner_subphase)
     .with_task_watchdog_wait_state(task_watchdog.owner_wait.state_at(current_monotonic_millis))
 }

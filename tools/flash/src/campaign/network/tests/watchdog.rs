@@ -3,6 +3,23 @@ use super::*;
 
 const CAMPAIGN_WATCHDOG_SOURCE: &str = include_str!("../watchdog.rs");
 
+#[test]
+fn unknown_owner_subphase_fails_closed_without_republishing_free_text() {
+    // Arrange
+    let mut accumulator = NetworkAccumulator::new(target());
+    let mut sample = active_sample(1, 1);
+    sample.runtime_health.task_watchdog_owner_subphase = "private-effect-42".to_owned();
+
+    // Act
+    accumulator.record_active_sample(NetworkTransport::Http, 1_000, 1_000, &sample);
+    let evidence = accumulator.finish(&complete_serial());
+
+    // Assert
+    assert_eq!(evidence.watchdog_failure, "watchdog_owner_subphase_unknown");
+    assert_eq!(evidence.watchdog_owner_subphase, "unavailable");
+    assert_eq!(evidence.watchdog_wait_state, "within_deadline");
+}
+
 fn window_watchdog_failure(
     http_checkpoint: [u64; 2],
     http_feed: [u64; 2],
@@ -294,6 +311,7 @@ fn terminal_sample_cannot_mix_phase_and_wait_into_earliest_unproved_failure() {
     unproved.runtime_health.maybe_task_watchdog_feed_sequence = None;
     unproved.runtime_health.maybe_task_watchdog_feed_age_millis = None;
     unproved.runtime_health.task_watchdog_owner_phase = "unavailable".to_owned();
+    unproved.runtime_health.task_watchdog_owner_subphase = "inbox_mapping".to_owned();
     unproved.runtime_health.task_watchdog_wait_state = "not_waiting".to_owned();
     accumulator.record_active_sample(NetworkTransport::Http, 1_000, 1_000, &unproved);
     let later_terminal = terminal_sample(2, 2);
@@ -306,6 +324,7 @@ fn terminal_sample_cannot_mix_phase_and_wait_into_earliest_unproved_failure() {
     assert_eq!(evidence.watchdog_failure, "watchdog_unproved");
     assert_eq!(evidence.watchdog_read_outcome, "uninitialized");
     assert_eq!(evidence.watchdog_owner_phase, "unavailable");
+    assert_eq!(evidence.watchdog_owner_subphase, "inbox_mapping");
     assert_eq!(evidence.watchdog_wait_state, "not_waiting");
 }
 
@@ -389,5 +408,6 @@ fn unknown_watchdog_read_outcome_fails_closed_without_republishing_free_text() {
     assert_eq!(evidence.watchdog_failure, "watchdog_read_outcome_unknown");
     assert_eq!(evidence.watchdog_read_outcome, "uninitialized");
     assert_eq!(evidence.watchdog_owner_phase, "unavailable");
+    assert_eq!(evidence.watchdog_owner_subphase, "unavailable");
     assert_eq!(evidence.watchdog_wait_state, "invalid_observation");
 }

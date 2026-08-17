@@ -121,6 +121,7 @@ function retainedRecord(session: string, revision: number, value: JsonObject): s
     `task_watchdog_feed_age_millis=${String(integer(value, "taskWatchdogFeedAgeMillis", "runtime health"))}`,
     `task_watchdog_read_outcome=${string(value, "taskWatchdogReadOutcome", "runtime health")}`,
     `task_watchdog_owner_phase=${string(value, "taskWatchdogOwnerPhase", "runtime health")}`,
+    `task_watchdog_owner_subphase=${string(value, "taskWatchdogOwnerSubphase", "runtime health")}`,
     `task_watchdog_wait_state=${string(value, "taskWatchdogWaitState", "runtime health")}`,
     "redacted=true",
   ].join(" ");
@@ -132,6 +133,7 @@ function validateHealth(value: JsonObject): { readonly checkpointSequence: numbe
   const feedSequence = integer(value, "taskWatchdogFeedSequence", "runtime health", 1);
   const feedAge = integer(value, "taskWatchdogFeedAgeMillis", "runtime health");
   const ownerPhase = string(value, "taskWatchdogOwnerPhase", "runtime health");
+  const ownerSubphase = string(value, "taskWatchdogOwnerSubphase", "runtime health");
   const waitState = string(value, "taskWatchdogWaitState", "runtime health");
   if (
     string(value, "selfTestState", "runtime health") !== "unavailable"
@@ -145,6 +147,15 @@ function validateHealth(value: JsonObject): { readonly checkpointSequence: numbe
       "handling_observation", "handling_readiness", "publishing_campaign_status",
       "servicing_hashrate", "shutdown",
     ].includes(ownerPhase)
+    || ![
+      "unavailable", "inbox_mapping", "session_evaluation",
+      "effect_prepare_hardware", "effect_read_pool_configuration",
+      "effect_connect_pool", "effect_write_pool_line", "effect_apply_version_mask",
+      "effect_dispatch_chip", "effect_poll_chip", "effect_block_submissions",
+      "effect_invalidate_work_and_submissions", "effect_stop_chip_interaction",
+      "effect_close_pool_connection", "effect_safe_stop_hardware",
+      "effect_record_scoreboard", "effect_record_block_found", "effect_publish",
+    ].includes(ownerSubphase)
     || !["not_waiting", "within_deadline", "deadline_overrun"].includes(waitState)
     || checkpointAge > 1_500
     || feedAge > 2_000

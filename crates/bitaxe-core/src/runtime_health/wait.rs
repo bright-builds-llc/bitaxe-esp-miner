@@ -72,6 +72,82 @@ impl TaskWatchdogOwnerPhase {
     }
 }
 
+/// Closed, value-free work boundary within a production-owner phase.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum TaskWatchdogOwnerSubphase {
+    Unavailable = 0,
+    InboxMapping = 1,
+    SessionEvaluation = 2,
+    EffectPrepareHardware = 3,
+    EffectReadPoolConfiguration = 4,
+    EffectConnectPool = 5,
+    EffectWritePoolLine = 6,
+    EffectApplyVersionMask = 7,
+    EffectDispatchChip = 8,
+    EffectPollChip = 9,
+    EffectBlockSubmissions = 10,
+    EffectInvalidateWorkAndSubmissions = 11,
+    EffectStopChipInteraction = 12,
+    EffectClosePoolConnection = 13,
+    EffectSafeStopHardware = 14,
+    EffectRecordScoreboard = 15,
+    EffectRecordBlockFound = 16,
+    EffectPublish = 17,
+}
+
+impl TaskWatchdogOwnerSubphase {
+    /// Returns the exact serialized spelling.
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Unavailable => "unavailable",
+            Self::InboxMapping => "inbox_mapping",
+            Self::SessionEvaluation => "session_evaluation",
+            Self::EffectPrepareHardware => "effect_prepare_hardware",
+            Self::EffectReadPoolConfiguration => "effect_read_pool_configuration",
+            Self::EffectConnectPool => "effect_connect_pool",
+            Self::EffectWritePoolLine => "effect_write_pool_line",
+            Self::EffectApplyVersionMask => "effect_apply_version_mask",
+            Self::EffectDispatchChip => "effect_dispatch_chip",
+            Self::EffectPollChip => "effect_poll_chip",
+            Self::EffectBlockSubmissions => "effect_block_submissions",
+            Self::EffectInvalidateWorkAndSubmissions => "effect_invalidate_work_and_submissions",
+            Self::EffectStopChipInteraction => "effect_stop_chip_interaction",
+            Self::EffectClosePoolConnection => "effect_close_pool_connection",
+            Self::EffectSafeStopHardware => "effect_safe_stop_hardware",
+            Self::EffectRecordScoreboard => "effect_record_scoreboard",
+            Self::EffectRecordBlockFound => "effect_record_block_found",
+            Self::EffectPublish => "effect_publish",
+        }
+    }
+
+    /// Decodes the lock-free firmware representation without accepting free text.
+    #[must_use]
+    pub const fn from_u8(value: u8) -> Self {
+        match value {
+            1 => Self::InboxMapping,
+            2 => Self::SessionEvaluation,
+            3 => Self::EffectPrepareHardware,
+            4 => Self::EffectReadPoolConfiguration,
+            5 => Self::EffectConnectPool,
+            6 => Self::EffectWritePoolLine,
+            7 => Self::EffectApplyVersionMask,
+            8 => Self::EffectDispatchChip,
+            9 => Self::EffectPollChip,
+            10 => Self::EffectBlockSubmissions,
+            11 => Self::EffectInvalidateWorkAndSubmissions,
+            12 => Self::EffectStopChipInteraction,
+            13 => Self::EffectClosePoolConnection,
+            14 => Self::EffectSafeStopHardware,
+            15 => Self::EffectRecordScoreboard,
+            16 => Self::EffectRecordBlockFound,
+            17 => Self::EffectPublish,
+            _ => Self::Unavailable,
+        }
+    }
+}
+
 /// Closed classification of the production owner's receive wait.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TaskWatchdogWaitState {
@@ -156,6 +232,86 @@ mod tests {
         for (state, expected) in cases {
             assert_eq!(state.as_str(), expected);
         }
+    }
+
+    #[test]
+    fn owner_subphases_have_exact_closed_spellings_and_encoding() {
+        // Arrange
+        let cases = [
+            (TaskWatchdogOwnerSubphase::Unavailable, "unavailable"),
+            (TaskWatchdogOwnerSubphase::InboxMapping, "inbox_mapping"),
+            (
+                TaskWatchdogOwnerSubphase::SessionEvaluation,
+                "session_evaluation",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::EffectPrepareHardware,
+                "effect_prepare_hardware",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::EffectReadPoolConfiguration,
+                "effect_read_pool_configuration",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::EffectConnectPool,
+                "effect_connect_pool",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::EffectWritePoolLine,
+                "effect_write_pool_line",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::EffectApplyVersionMask,
+                "effect_apply_version_mask",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::EffectDispatchChip,
+                "effect_dispatch_chip",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::EffectPollChip,
+                "effect_poll_chip",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::EffectBlockSubmissions,
+                "effect_block_submissions",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::EffectInvalidateWorkAndSubmissions,
+                "effect_invalidate_work_and_submissions",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::EffectStopChipInteraction,
+                "effect_stop_chip_interaction",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::EffectClosePoolConnection,
+                "effect_close_pool_connection",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::EffectSafeStopHardware,
+                "effect_safe_stop_hardware",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::EffectRecordScoreboard,
+                "effect_record_scoreboard",
+            ),
+            (
+                TaskWatchdogOwnerSubphase::EffectRecordBlockFound,
+                "effect_record_block_found",
+            ),
+            (TaskWatchdogOwnerSubphase::EffectPublish, "effect_publish"),
+        ];
+
+        // Act / Assert
+        for (subphase, expected) in cases {
+            assert_eq!(subphase.as_str(), expected);
+            assert_eq!(TaskWatchdogOwnerSubphase::from_u8(subphase as u8), subphase);
+        }
+        assert_eq!(
+            TaskWatchdogOwnerSubphase::from_u8(u8::MAX),
+            TaskWatchdogOwnerSubphase::Unavailable
+        );
     }
 
     #[test]

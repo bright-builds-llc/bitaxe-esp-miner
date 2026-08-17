@@ -4,7 +4,9 @@ use std::collections::VecDeque;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum OwnerProgressBoundary {
+    EventStarted,
     EventHandled,
+    EffectStarted,
     EffectCompleted,
 }
 
@@ -12,15 +14,17 @@ pub(crate) fn drive_feedback<Event, Effect, HandleError>(
     initial_event: Event,
     mut handle: impl FnMut(Event) -> Result<Vec<Effect>, HandleError>,
     mut execute: impl FnMut(Effect) -> Option<Event>,
-    mut progress: impl FnMut(OwnerProgressBoundary),
+    mut progress: impl FnMut(OwnerProgressBoundary, Option<&Effect>),
 ) -> Result<(), HandleError> {
     let mut events = VecDeque::from([initial_event]);
     while let Some(event) = events.pop_front() {
+        progress(OwnerProgressBoundary::EventStarted, None);
         let effects = handle(event)?;
-        progress(OwnerProgressBoundary::EventHandled);
+        progress(OwnerProgressBoundary::EventHandled, None);
         for effect in effects {
+            progress(OwnerProgressBoundary::EffectStarted, Some(&effect));
             let maybe_feedback = execute(effect);
-            progress(OwnerProgressBoundary::EffectCompleted);
+            progress(OwnerProgressBoundary::EffectCompleted, None);
             if let Some(feedback) = maybe_feedback {
                 events.push_back(feedback);
             }
@@ -45,7 +49,7 @@ mod tests {
             0_u8,
             |event| Ok::<Vec<u8>, &'static str>(if event == 0 { vec![10, 11] } else { vec![] }),
             |effect| (effect == 10).then_some(1),
-            |boundary| progress.push(boundary),
+            |boundary, _| progress.push(boundary),
         )
         .expect("feedback cascade should complete");
 
@@ -53,9 +57,13 @@ mod tests {
         assert_eq!(
             progress,
             [
+                OwnerProgressBoundary::EventStarted,
                 OwnerProgressBoundary::EventHandled,
+                OwnerProgressBoundary::EffectStarted,
                 OwnerProgressBoundary::EffectCompleted,
+                OwnerProgressBoundary::EffectStarted,
                 OwnerProgressBoundary::EffectCompleted,
+                OwnerProgressBoundary::EventStarted,
                 OwnerProgressBoundary::EventHandled,
             ]
         );
@@ -75,7 +83,7 @@ mod tests {
                 effect_returned.set(true);
                 None
             },
-            |boundary| {
+            |boundary, _| {
                 if boundary == OwnerProgressBoundary::EffectCompleted {
                     effect_progress_observed.set(effect_returned.get());
                 }
@@ -88,6 +96,67 @@ mod tests {
     }
 
     #[test]
+    fn entry_progress_precedes_handler_and_effect_execution() {
+        // Arrange
+        let event_entry_observed = Cell::new(false);
+        let effect_entry_observed = Cell::new(false);
+
+        // Act
+        drive_feedback(
+            (),
+            |_| {
+                assert!(event_entry_observed.get());
+                Ok::<Vec<()>, &'static str>(vec![()])
+            },
+            |_| {
+                assert!(effect_entry_observed.get());
+                None
+            },
+            |boundary, _| match boundary {
+                OwnerProgressBoundary::EventStarted => event_entry_observed.set(true),
+                OwnerProgressBoundary::EffectStarted => effect_entry_observed.set(true),
+                OwnerProgressBoundary::EventHandled | OwnerProgressBoundary::EffectCompleted => {}
+            },
+        )
+        .expect("entry boundaries should complete");
+
+        // Assert
+        assert!(event_entry_observed.get());
+        assert!(effect_entry_observed.get());
+    }
+
+    #[test]
+    fn entry_progress_resets_inherited_age_but_blocking_work_can_still_become_stale() {
+        // Arrange
+        const TIMEOUT_MS: u64 = 5_000;
+        let now_ms = Cell::new(4_999_u64);
+        let last_feed_ms = Cell::new(0_u64);
+        let blocking_effect_became_stale = Cell::new(false);
+
+        // Act
+        drive_feedback(
+            (),
+            |_| {
+                now_ms.set(now_ms.get().saturating_add(2));
+                assert!(now_ms.get().saturating_sub(last_feed_ms.get()) < TIMEOUT_MS);
+                Ok::<Vec<()>, &'static str>(vec![()])
+            },
+            |_| {
+                assert_eq!(last_feed_ms.get(), now_ms.get());
+                now_ms.set(now_ms.get().saturating_add(TIMEOUT_MS + 1));
+                blocking_effect_became_stale
+                    .set(now_ms.get().saturating_sub(last_feed_ms.get()) > TIMEOUT_MS);
+                None
+            },
+            |_, _| last_feed_ms.set(now_ms.get()),
+        )
+        .expect("production-shaped feedback should complete");
+
+        // Assert
+        assert!(blocking_effect_became_stale.get());
+    }
+
+    #[test]
     fn failed_event_reports_no_completed_progress() {
         // Arrange
         let mut progress = Vec::new();
@@ -97,11 +166,11 @@ mod tests {
             (),
             |_| Err::<Vec<()>, _>("event_failed"),
             |_| None,
-            |boundary| progress.push(boundary),
+            |boundary, _| progress.push(boundary),
         );
 
         // Assert
         assert_eq!(result, Err("event_failed"));
-        assert!(progress.is_empty());
+        assert_eq!(progress, [OwnerProgressBoundary::EventStarted]);
     }
 }

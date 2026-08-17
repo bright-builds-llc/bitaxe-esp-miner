@@ -1946,13 +1946,13 @@ transition, and apply a targeted regression-backed correction before hardware.
 Owner-work subphase and entry-feed correction plan:
 `docs/parity/work-plans/20260817T090156Z-STAT-001/PLAN.md`
 
-- [ ] Add one closed, value-free owner subphase for inbox mapping, session
+- [x] Add one closed, value-free owner subphase for inbox mapping, session
       evaluation, and every production effect category, stored coherently with
       phase/wait and projected through runtime-health surfaces.
-- [ ] Feed at session-evaluation and effect-execution entry while retaining
+- [x] Feed at session-evaluation and effect-execution entry while retaining
       completion feeds, and regress the attempt-015-shaped inherited stale-age
       boundary without masking a genuinely blocking operation.
-- [ ] Latch subphase with the earliest private campaign watchdog tuple, rotate
+- [x] Latch subphase with the earliest private campaign watchdog tuple, rotate
       result/network evidence to v16/v10, and pass every focused/mandatory gate.
 
 Software-only authorization: local source, tests, deterministic fixtures,

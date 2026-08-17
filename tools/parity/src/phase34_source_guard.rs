@@ -333,6 +333,7 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
         "task_watchdog_feed_age_millis={task_watchdog_feed_age_millis}",
         "task_watchdog_read_outcome={}",
         "task_watchdog_owner_phase={}",
+        "task_watchdog_owner_subphase={}",
         "task_watchdog_wait_state={}",
         "redacted=true",
     ] {
@@ -355,6 +356,7 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
         "taskWatchdogFeedAgeMillis",
         "taskWatchdogReadOutcome",
         "taskWatchdogOwnerPhase",
+        "taskWatchdogOwnerSubphase",
         "taskWatchdogWaitState",
     ] {
         let source = if field == "runtimeHealth" {
@@ -460,19 +462,34 @@ fn production_task_watchdog_participates_without_global_reconfiguration() {
 }
 
 #[test]
-fn production_task_watchdog_tracks_completed_owner_progress() {
+fn production_task_watchdog_tracks_entry_and_completed_owner_progress() {
     // Arrange
+    let event_started = PRODUCTION_OWNER_PROGRESS_SOURCE
+        .find("progress(OwnerProgressBoundary::EventStarted, None);")
+        .expect("event entry boundary");
+    let handle = PRODUCTION_OWNER_PROGRESS_SOURCE
+        .find("let effects = handle(event)?;")
+        .expect("event evaluation boundary");
+    let effect_started = PRODUCTION_OWNER_PROGRESS_SOURCE
+        .find("progress(OwnerProgressBoundary::EffectStarted, Some(&effect));")
+        .expect("effect entry boundary");
     let execute = PRODUCTION_OWNER_PROGRESS_SOURCE
         .find("let maybe_feedback = execute(effect);")
         .expect("effect execution boundary");
     let completed = PRODUCTION_OWNER_PROGRESS_SOURCE
-        .find("progress(OwnerProgressBoundary::EffectCompleted);")
+        .find("progress(OwnerProgressBoundary::EffectCompleted, None);")
         .expect("completed effect boundary");
 
     // Act / Assert
+    assert!(event_started < handle);
+    assert!(effect_started < execute);
     assert!(execute < completed);
     assert!(PRODUCTION_OWNER_LOOP_SOURCE.contains("drive_feedback("));
-    assert!(PRODUCTION_OWNER_LOOP_SOURCE.contains("|_| task_watchdog.feed("));
+    assert!(PRODUCTION_OWNER_LOOP_SOURCE
+        .contains("task_watchdog.feed(crate::runtime_uptime::millis())"));
+    assert!(
+        PRODUCTION_OWNER_LOOP_SOURCE.contains("record_owner_subphase(effect_subphase(effect));")
+    );
     assert!(!PRODUCTION_OWNER_PROGRESS_SOURCE.contains("esp_task_wdt_"));
 }
 

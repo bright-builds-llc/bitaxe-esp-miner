@@ -29,12 +29,23 @@ fn sole_production_owner_schedules_active_only_hashrate_reads() {
 }
 
 #[test]
-fn owner_watchdog_feeds_only_after_completed_cooperative_progress() {
+fn owner_watchdog_feeds_at_entry_and_completion_boundaries() {
     // Arrange
+    let event_started = "progress(OwnerProgressBoundary::EventStarted, None);";
+    let effect_started = "progress(OwnerProgressBoundary::EffectStarted, Some(&effect));";
     let execute = "let maybe_feedback = execute(effect);";
-    let completed = "progress(OwnerProgressBoundary::EffectCompleted);";
+    let completed = "progress(OwnerProgressBoundary::EffectCompleted, None);";
 
     // Act
+    let event_started_index = OWNER_PROGRESS_SOURCE
+        .find(event_started)
+        .expect("event entry progress must be explicit");
+    let handle_index = OWNER_PROGRESS_SOURCE
+        .find("let effects = handle(event)?;")
+        .expect("event evaluation must be explicit");
+    let effect_started_index = OWNER_PROGRESS_SOURCE
+        .find(effect_started)
+        .expect("effect entry progress must be explicit");
     let execute_index = OWNER_PROGRESS_SOURCE
         .find(execute)
         .expect("effect execution must be explicit");
@@ -43,9 +54,12 @@ fn owner_watchdog_feeds_only_after_completed_cooperative_progress() {
         .expect("completed effect progress must be explicit");
 
     // Assert
+    assert!(event_started_index < handle_index);
+    assert!(effect_started_index < execute_index);
     assert!(execute_index < completed_index);
     assert!(OWNER_LOOP_SOURCE.contains("drive_feedback("));
-    assert!(OWNER_LOOP_SOURCE.contains("|_| task_watchdog.feed("));
+    assert!(OWNER_LOOP_SOURCE.contains("task_watchdog.feed(crate::runtime_uptime::millis())"));
+    assert!(OWNER_LOOP_SOURCE.contains("record_owner_subphase(effect_subphase(effect));"));
     assert!(!WORKER_SOURCE.contains("ProductionTaskWatchdog"));
 }
 
@@ -72,6 +86,7 @@ fn owner_phase_and_campaign_publication_have_single_production_ownership() {
     assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("Ordering::Release"));
     assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("Ordering::Acquire"));
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains(".with_task_watchdog_owner_phase("));
+    assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains(".with_task_watchdog_owner_subphase("));
     assert!(CAMPAIGN_STATUS_SOURCE
         .contains("CAMPAIGN_STATUS_PUBLICATION_INTERVAL_MS: u64 = 1_000"));
 }
@@ -162,6 +177,9 @@ fn watchdog_snapshot_brackets_every_fact_with_bounded_fail_closed_retries() {
     let phase_index = TASK_WATCHDOG_OBSERVATION_SOURCE
         .find("TaskWatchdogOwnerPhase::from_u8(self.owner_phase.load")
         .expect("coherent reader owner phase copy must exist");
+    let subphase_index = TASK_WATCHDOG_OBSERVATION_SOURCE
+        .find("TaskWatchdogOwnerSubphase::from_u8(")
+        .expect("coherent reader owner subphase copy must exist");
     let sequence_end_index = TASK_WATCHDOG_OBSERVATION_SOURCE
         .find(sequence_end)
         .expect("coherent reader sequence end must exist");
@@ -170,7 +188,8 @@ fn watchdog_snapshot_brackets_every_fact_with_bounded_fail_closed_retries() {
     assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains(retry_limit));
     assert!(sequence_start_index < history_index);
     assert!(history_index < phase_index);
-    assert!(phase_index < sequence_end_index);
+    assert!(phase_index < subphase_index);
+    assert!(subphase_index < sequence_end_index);
     assert!(TASK_WATCHDOG_OBSERVATION_SOURCE
         .contains("start_sequence == end_sequence && end_sequence & 1 == 0"));
     assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains(

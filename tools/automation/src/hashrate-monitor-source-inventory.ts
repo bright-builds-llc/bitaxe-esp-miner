@@ -11,6 +11,7 @@ export const sourceFragments = new Map<string, readonly string[]>([
   ]],
   ["crates/bitaxe-core/src/runtime_health/wait.rs", [
     "pub enum TaskWatchdogReadOutcome {",
+    "pub enum TaskWatchdogOwnerSubphase {",
     "pub enum TaskWatchdogWaitState {",
     "pub const fn state_at(self, current_monotonic_millis: u64)",
   ]],
@@ -34,6 +35,7 @@ export const sourceFragments = new Map<string, readonly string[]>([
   ]],
   ["crates/bitaxe-api/src/wire/runtime_health.rs", [
     'rename = "taskWatchdogReadOutcome"',
+    'rename = "taskWatchdogOwnerSubphase"',
     "task_watchdog_read_outcome: snapshot",
     '#[serde(rename = "taskWatchdogWaitState", default = "invalid_wait_state")]',
     "task_watchdog_wait_state: snapshot.task_watchdog_wait_state().as_str().to_owned(),",
@@ -53,6 +55,8 @@ export const sourceFragments = new Map<string, readonly string[]>([
   ]],
   ["firmware/bitaxe/src/production_mining_session/owner_loop.rs", [
     "if let Err(error) = adapter.publish_campaign_status",
+    "OwnerProgressBoundary::EventStarted",
+    "record_owner_subphase(effect_subphase(effect));",
     "record_owner_phase(TaskWatchdogOwnerPhase::ServicingHashrate)",
   ]],
   ["firmware/bitaxe/src/production_mining_session/campaign_status/publication.rs", [

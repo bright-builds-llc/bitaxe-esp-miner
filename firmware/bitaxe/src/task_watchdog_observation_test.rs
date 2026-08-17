@@ -1,5 +1,7 @@
 use super::*;
-use bitaxe_core::runtime_health::{TaskWatchdogReadOutcome, TaskWatchdogWaitState};
+use bitaxe_core::runtime_health::{
+    TaskWatchdogOwnerSubphase, TaskWatchdogReadOutcome, TaskWatchdogWaitState,
+};
 use std::cell::Cell;
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
@@ -25,6 +27,10 @@ fn stable_publications_round_trip_as_one_snapshot() {
     );
     assert_eq!(snapshot.read_outcome, TaskWatchdogReadOutcome::Stable);
     assert_eq!(snapshot.owner_phase, TaskWatchdogOwnerPhase::WaitingInbox);
+    assert_eq!(
+        snapshot.owner_subphase,
+        TaskWatchdogOwnerSubphase::Unavailable
+    );
     assert_eq!(
         snapshot.owner_wait.state_at(300),
         TaskWatchdogWaitState::WithinDeadline
@@ -56,6 +62,10 @@ fn old_feed_and_new_wait_interleaving_retries_to_one_owner_instant() {
     assert_eq!(snapshot.read_outcome, TaskWatchdogReadOutcome::Stable);
     assert_eq!(snapshot.owner_phase, TaskWatchdogOwnerPhase::WaitingInbox);
     assert_eq!(
+        snapshot.owner_subphase,
+        TaskWatchdogOwnerSubphase::Unavailable
+    );
+    assert_eq!(
         snapshot.owner_wait.state_at(300),
         TaskWatchdogWaitState::WithinDeadline
     );
@@ -83,6 +93,10 @@ fn repeated_publication_races_exhaust_to_closed_default() {
         TaskWatchdogReadOutcome::RetryExhausted
     );
     assert_eq!(snapshot.owner_phase, TaskWatchdogOwnerPhase::Unavailable);
+    assert_eq!(
+        snapshot.owner_subphase,
+        TaskWatchdogOwnerSubphase::Unavailable
+    );
     assert_eq!(
         snapshot.owner_wait.state_at(0),
         TaskWatchdogWaitState::NotWaiting
@@ -112,6 +126,10 @@ fn poisoned_history_fails_closed_without_mixed_atomic_facts() {
     );
     assert_eq!(snapshot.owner_phase, TaskWatchdogOwnerPhase::Unavailable);
     assert_eq!(
+        snapshot.owner_subphase,
+        TaskWatchdogOwnerSubphase::Unavailable
+    );
+    assert_eq!(
         snapshot.owner_wait.state_at(0),
         TaskWatchdogWaitState::NotWaiting
     );
@@ -131,4 +149,32 @@ fn untouched_store_is_explicitly_uninitialized() {
         TaskWatchdogReadOutcome::Uninitialized
     );
     assert_eq!(snapshot.maybe_latest, None);
+}
+
+#[test]
+fn owner_phase_clears_subphase_and_subphase_updates_preserve_phase() {
+    // Arrange
+    let store = TaskWatchdogObservationStore::new();
+    store.record_owner_phase(TaskWatchdogOwnerPhase::HandlingInbox);
+    store.record_owner_subphase(TaskWatchdogOwnerSubphase::EffectPollChip);
+
+    // Act
+    let effect = store.coherent_observation();
+    store.record_owner_phase(TaskWatchdogOwnerPhase::PublishingCampaignStatus);
+    let cleared = store.coherent_observation();
+
+    // Assert
+    assert_eq!(effect.owner_phase, TaskWatchdogOwnerPhase::HandlingInbox);
+    assert_eq!(
+        effect.owner_subphase,
+        TaskWatchdogOwnerSubphase::EffectPollChip
+    );
+    assert_eq!(
+        cleared.owner_phase,
+        TaskWatchdogOwnerPhase::PublishingCampaignStatus
+    );
+    assert_eq!(
+        cleared.owner_subphase,
+        TaskWatchdogOwnerSubphase::Unavailable
+    );
 }

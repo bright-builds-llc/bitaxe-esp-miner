@@ -1,6 +1,6 @@
-use super::owner_progress::drive_feedback;
+use super::owner_progress::{drive_feedback, OwnerProgressBoundary};
 use super::*;
-use bitaxe_core::runtime_health::TaskWatchdogOwnerPhase;
+use bitaxe_core::runtime_health::{TaskWatchdogOwnerPhase, TaskWatchdogOwnerSubphase};
 
 pub(super) fn run_owner(
     receiver: Receiver<OwnerInboxMessage>,
@@ -50,6 +50,7 @@ pub(super) fn run_owner(
         let pending_observations_changed = notifications::take_pending_observations_changed();
         if let Some(message) = maybe_message {
             record_owner_phase(TaskWatchdogOwnerPhase::HandlingInbox);
+            record_owner_subphase(TaskWatchdogOwnerSubphase::InboxMapping);
             let snapshot = session.snapshot();
             let event = adapter.event_from_inbox(message, now_ms, &snapshot);
             drive_session(
@@ -155,6 +156,10 @@ fn record_owner_wait(maybe_deadline_millis: Option<u64>) {
     crate::task_watchdog_observation::record_owner_wait(maybe_deadline_millis);
 }
 
+fn record_owner_subphase(subphase: TaskWatchdogOwnerSubphase) {
+    crate::task_watchdog_observation::record_owner_subphase(subphase);
+}
+
 fn drive_session(
     session: &mut ProductionMiningSession,
     adapter: &mut OrdinaryEspProductionSessionAdapter,
@@ -166,9 +171,65 @@ fn drive_session(
         initial_event,
         |event| session.handle(event),
         |effect| adapter.maybe_execute(effect, now_ms),
-        |_| task_watchdog.feed(crate::runtime_uptime::millis()),
+        |boundary, maybe_effect| {
+            match boundary {
+                OwnerProgressBoundary::EventStarted => {
+                    record_owner_subphase(TaskWatchdogOwnerSubphase::SessionEvaluation);
+                }
+                OwnerProgressBoundary::EffectStarted => {
+                    let effect = maybe_effect.expect("effect-start boundary carries its effect");
+                    record_owner_subphase(effect_subphase(effect));
+                }
+                OwnerProgressBoundary::EventHandled | OwnerProgressBoundary::EffectCompleted => {}
+            }
+            task_watchdog.feed(crate::runtime_uptime::millis());
+        },
     );
     if let Err(error) = result {
         log::error!("production_mining_session=fail_closed reason=engine_error error={error}");
+    }
+}
+
+fn effect_subphase(effect: &ProductionSessionEffect) -> TaskWatchdogOwnerSubphase {
+    match effect {
+        ProductionSessionEffect::PrepareHardware { .. } => {
+            TaskWatchdogOwnerSubphase::EffectPrepareHardware
+        }
+        ProductionSessionEffect::ReadPoolConfiguration => {
+            TaskWatchdogOwnerSubphase::EffectReadPoolConfiguration
+        }
+        ProductionSessionEffect::ConnectPool { .. } => TaskWatchdogOwnerSubphase::EffectConnectPool,
+        ProductionSessionEffect::WritePoolLine { .. } => {
+            TaskWatchdogOwnerSubphase::EffectWritePoolLine
+        }
+        ProductionSessionEffect::ApplyVersionMask { .. } => {
+            TaskWatchdogOwnerSubphase::EffectApplyVersionMask
+        }
+        ProductionSessionEffect::DispatchAsic { .. } => {
+            TaskWatchdogOwnerSubphase::EffectDispatchChip
+        }
+        ProductionSessionEffect::PollAsic { .. } => TaskWatchdogOwnerSubphase::EffectPollChip,
+        ProductionSessionEffect::BlockSubmissions => {
+            TaskWatchdogOwnerSubphase::EffectBlockSubmissions
+        }
+        ProductionSessionEffect::InvalidateWorkAndSubmissions => {
+            TaskWatchdogOwnerSubphase::EffectInvalidateWorkAndSubmissions
+        }
+        ProductionSessionEffect::StopAsicInteraction => {
+            TaskWatchdogOwnerSubphase::EffectStopChipInteraction
+        }
+        ProductionSessionEffect::ClosePoolConnection { .. } => {
+            TaskWatchdogOwnerSubphase::EffectClosePoolConnection
+        }
+        ProductionSessionEffect::SafeStopHardware { .. } => {
+            TaskWatchdogOwnerSubphase::EffectSafeStopHardware
+        }
+        ProductionSessionEffect::RecordScoreboard { .. } => {
+            TaskWatchdogOwnerSubphase::EffectRecordScoreboard
+        }
+        ProductionSessionEffect::RecordBlockFound => {
+            TaskWatchdogOwnerSubphase::EffectRecordBlockFound
+        }
+        ProductionSessionEffect::Publish(_) => TaskWatchdogOwnerSubphase::EffectPublish,
     }
 }

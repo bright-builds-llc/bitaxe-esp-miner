@@ -23,6 +23,7 @@ pub(super) enum WatchdogFailure {
     WatchdogFeedAgeMissing,
     WatchdogFeedStale,
     WatchdogOwnerPhaseUnknown,
+    WatchdogOwnerSubphaseUnknown,
     WatchdogWaitStateUnknown,
     HttpCheckpointNotAdvanced,
     HttpFeedNotAdvanced,
@@ -53,6 +54,7 @@ impl WatchdogFailure {
             Self::WatchdogFeedAgeMissing => "watchdog_feed_age_missing",
             Self::WatchdogFeedStale => "watchdog_feed_stale",
             Self::WatchdogOwnerPhaseUnknown => "watchdog_owner_phase_unknown",
+            Self::WatchdogOwnerSubphaseUnknown => "watchdog_owner_subphase_unknown",
             Self::WatchdogWaitStateUnknown => "watchdog_wait_state_unknown",
             Self::HttpCheckpointNotAdvanced => "http_checkpoint_not_advanced",
             Self::HttpFeedNotAdvanced => "http_feed_not_advanced",
@@ -141,8 +143,83 @@ pub(super) enum WatchdogOwnerPhase {
 pub(super) struct WatchdogDiagnostic {
     pub(super) read_outcome: WatchdogReadOutcome,
     pub(super) owner_phase: WatchdogOwnerPhase,
+    pub(super) owner_subphase: WatchdogOwnerSubphase,
     pub(super) wait_state: WatchdogWaitState,
     pub(super) failure: WatchdogFailure,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub(super) enum WatchdogOwnerSubphase {
+    #[default]
+    Unavailable,
+    InboxMapping,
+    SessionEvaluation,
+    EffectPrepareHardware,
+    EffectReadPoolConfiguration,
+    EffectConnectPool,
+    EffectWritePoolLine,
+    EffectApplyVersionMask,
+    EffectDispatchChip,
+    EffectPollChip,
+    EffectBlockSubmissions,
+    EffectInvalidateWorkAndSubmissions,
+    EffectStopChipInteraction,
+    EffectClosePoolConnection,
+    EffectSafeStopHardware,
+    EffectRecordScoreboard,
+    EffectRecordBlockFound,
+    EffectPublish,
+}
+
+impl WatchdogOwnerSubphase {
+    pub(super) const fn label(self) -> &'static str {
+        match self {
+            Self::Unavailable => "unavailable",
+            Self::InboxMapping => "inbox_mapping",
+            Self::SessionEvaluation => "session_evaluation",
+            Self::EffectPrepareHardware => "effect_prepare_hardware",
+            Self::EffectReadPoolConfiguration => "effect_read_pool_configuration",
+            Self::EffectConnectPool => "effect_connect_pool",
+            Self::EffectWritePoolLine => "effect_write_pool_line",
+            Self::EffectApplyVersionMask => "effect_apply_version_mask",
+            Self::EffectDispatchChip => "effect_dispatch_chip",
+            Self::EffectPollChip => "effect_poll_chip",
+            Self::EffectBlockSubmissions => "effect_block_submissions",
+            Self::EffectInvalidateWorkAndSubmissions => "effect_invalidate_work_and_submissions",
+            Self::EffectStopChipInteraction => "effect_stop_chip_interaction",
+            Self::EffectClosePoolConnection => "effect_close_pool_connection",
+            Self::EffectSafeStopHardware => "effect_safe_stop_hardware",
+            Self::EffectRecordScoreboard => "effect_record_scoreboard",
+            Self::EffectRecordBlockFound => "effect_record_block_found",
+            Self::EffectPublish => "effect_publish",
+        }
+    }
+
+    fn parse(value: &str) -> Option<Self> {
+        match value {
+            "unavailable" => Some(Self::Unavailable),
+            "inbox_mapping" => Some(Self::InboxMapping),
+            "session_evaluation" => Some(Self::SessionEvaluation),
+            "effect_prepare_hardware" => Some(Self::EffectPrepareHardware),
+            "effect_read_pool_configuration" => Some(Self::EffectReadPoolConfiguration),
+            "effect_connect_pool" => Some(Self::EffectConnectPool),
+            "effect_write_pool_line" => Some(Self::EffectWritePoolLine),
+            "effect_apply_version_mask" => Some(Self::EffectApplyVersionMask),
+            "effect_dispatch_chip" => Some(Self::EffectDispatchChip),
+            "effect_poll_chip" => Some(Self::EffectPollChip),
+            "effect_block_submissions" => Some(Self::EffectBlockSubmissions),
+            "effect_invalidate_work_and_submissions" => {
+                Some(Self::EffectInvalidateWorkAndSubmissions)
+            }
+            "effect_stop_chip_interaction" => Some(Self::EffectStopChipInteraction),
+            "effect_close_pool_connection" => Some(Self::EffectClosePoolConnection),
+            "effect_safe_stop_hardware" => Some(Self::EffectSafeStopHardware),
+            "effect_record_scoreboard" => Some(Self::EffectRecordScoreboard),
+            "effect_record_block_found" => Some(Self::EffectRecordBlockFound),
+            "effect_publish" => Some(Self::EffectPublish),
+            _ => None,
+        }
+    }
 }
 
 impl WatchdogOwnerPhase {
@@ -239,6 +316,8 @@ pub(super) fn sample_diagnostic(sample: &SystemInfoWire) -> WatchdogDiagnostic {
         WatchdogReadOutcome::parse(&sample.runtime_health.task_watchdog_read_outcome);
     let maybe_owner_phase =
         WatchdogOwnerPhase::parse(&sample.runtime_health.task_watchdog_owner_phase);
+    let maybe_owner_subphase =
+        WatchdogOwnerSubphase::parse(&sample.runtime_health.task_watchdog_owner_subphase);
     let maybe_wait_state =
         WatchdogWaitState::parse(&sample.runtime_health.task_watchdog_wait_state);
     let read_outcome = maybe_read_outcome.unwrap_or_default();
@@ -252,10 +331,17 @@ pub(super) fn sample_diagnostic(sample: &SystemInfoWire) -> WatchdogDiagnostic {
     } else {
         WatchdogWaitState::InvalidObservation
     };
+    let owner_subphase = if maybe_read_outcome.is_some() && maybe_owner_phase.is_some() {
+        maybe_owner_subphase.unwrap_or_default()
+    } else {
+        WatchdogOwnerSubphase::Unavailable
+    };
     let failure = if maybe_read_outcome.is_none() {
         WatchdogFailure::WatchdogReadOutcomeUnknown
     } else if maybe_owner_phase.is_none() {
         WatchdogFailure::WatchdogOwnerPhaseUnknown
+    } else if maybe_owner_subphase.is_none() {
+        WatchdogFailure::WatchdogOwnerSubphaseUnknown
     } else if maybe_wait_state.is_none() {
         WatchdogFailure::WatchdogWaitStateUnknown
     } else {
@@ -264,6 +350,7 @@ pub(super) fn sample_diagnostic(sample: &SystemInfoWire) -> WatchdogDiagnostic {
     WatchdogDiagnostic {
         read_outcome,
         owner_phase,
+        owner_subphase,
         wait_state,
         failure,
     }
@@ -300,7 +387,10 @@ pub(super) fn window_failure(
 
 #[cfg(test)]
 mod tests {
-    use super::{WatchdogFailure, WatchdogOwnerPhase, WatchdogReadOutcome, WatchdogWaitState};
+    use super::{
+        WatchdogFailure, WatchdogOwnerPhase, WatchdogOwnerSubphase, WatchdogReadOutcome,
+        WatchdogWaitState,
+    };
 
     #[test]
     fn watchdog_failure_labels_are_closed_and_value_free() {
@@ -370,6 +460,10 @@ mod tests {
             (
                 WatchdogFailure::WatchdogOwnerPhaseUnknown,
                 "watchdog_owner_phase_unknown",
+            ),
+            (
+                WatchdogFailure::WatchdogOwnerSubphaseUnknown,
+                "watchdog_owner_subphase_unknown",
             ),
             (
                 WatchdogFailure::WatchdogWaitStateUnknown,
@@ -444,6 +538,38 @@ mod tests {
                 .all(|byte| byte.is_ascii_lowercase() || byte == b'_'));
         }
         assert_eq!(WatchdogOwnerPhase::parse("private-phase-42"), None);
+    }
+
+    #[test]
+    fn watchdog_owner_subphase_labels_are_closed_and_value_free() {
+        // Arrange
+        let cases = [
+            WatchdogOwnerSubphase::Unavailable,
+            WatchdogOwnerSubphase::InboxMapping,
+            WatchdogOwnerSubphase::SessionEvaluation,
+            WatchdogOwnerSubphase::EffectPrepareHardware,
+            WatchdogOwnerSubphase::EffectReadPoolConfiguration,
+            WatchdogOwnerSubphase::EffectConnectPool,
+            WatchdogOwnerSubphase::EffectWritePoolLine,
+            WatchdogOwnerSubphase::EffectApplyVersionMask,
+            WatchdogOwnerSubphase::EffectDispatchChip,
+            WatchdogOwnerSubphase::EffectPollChip,
+            WatchdogOwnerSubphase::EffectBlockSubmissions,
+            WatchdogOwnerSubphase::EffectInvalidateWorkAndSubmissions,
+            WatchdogOwnerSubphase::EffectStopChipInteraction,
+            WatchdogOwnerSubphase::EffectClosePoolConnection,
+            WatchdogOwnerSubphase::EffectSafeStopHardware,
+            WatchdogOwnerSubphase::EffectRecordScoreboard,
+            WatchdogOwnerSubphase::EffectRecordBlockFound,
+            WatchdogOwnerSubphase::EffectPublish,
+        ];
+
+        // Act / Assert
+        for subphase in cases {
+            let label = subphase.label();
+            assert_eq!(WatchdogOwnerSubphase::parse(label), Some(subphase));
+        }
+        assert_eq!(WatchdogOwnerSubphase::parse("private-effect-42"), None);
     }
 
     #[test]
