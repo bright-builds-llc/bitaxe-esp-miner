@@ -28,3 +28,21 @@
 - Outcome: Rebind ready for verification; no device access performed.
 - Blocker or next safe action: Pass gates, push exact source, rebuild package,
   then execute only the frozen detector and conditional capture.
+
+## 2026-08-17T08:51:56Z | attempt-015 terminal checkpoint
+
+- Source commit: `1892800bbaf4eba2dd1d5c076699b41ed09908a1`
+- Actions: Rebuilt/validated the clean package, ran the sole detector, checked
+  only modes/presence/provenance metadata, and consumed the sole attempt-015
+  capture. No retry or out-of-band device probe ran.
+- Verification: Exact package/runtime identity, attestation, active safety,
+  same-package state, terminal HTTP/WebSocket/pool state, safe stop, USB
+  cleanup, protected modes, redaction, result/network digests, and projection
+  withholding pass.
+- Evidence: Capture closed after 364,110 active ms and 12/20 windows at
+  `watchdog_feed_stale/stable/handling_inbox/not_waiting`; work renewal remains
+  incomplete. The v15/v9 result and wrapper expose the identical closed tuple.
+- Outcome: `stop_hardware_blocker`; STAT-001 remains `implemented` and no
+  checklist/progress transition is permitted.
+- Blocker or next safe action: Add a closed inbox/feedback/effect subphase and
+  real-boundary regression before any attempt-016 contract.

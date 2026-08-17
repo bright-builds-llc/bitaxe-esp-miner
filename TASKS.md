@@ -1890,7 +1890,7 @@ Attempt-015 verification-promotion plan:
       network v9, coherent read outcome, earliest tuple, and 18-source identity.
 - [x] Run every focused and mandatory software, firmware, privacy, reference,
       package, and exact-source gate; commit and push before device access.
-- [ ] Run only the frozen detector and sole conditional attempt-015 command;
+- [x] Run only the frozen detector and sole conditional attempt-015 command;
       promote only if the complete independent quorum passes.
 
 Attempt-015 progress basis: pushed `c3b0dcb9` fixes attempt-014's invalid mixed
@@ -1921,6 +1921,27 @@ electrical manipulation. Promotion requires exact identity, stable read
 outcome, 20 windows/work renewal, coherent changing positive rates, warm
 windows, bounded error, watchdog none, terminal zero, safe stop, cleanup,
 modes, seals, validation, and redaction; missing facts withhold it.
+
+Attempt-015 completion review: exact clean pushed source/package `1892800b`,
+the pinned reference, focused/full gates, and the sole protected detector
+passed. The single capture produced the first trustworthy v15/v9 tuple after
+364,110 active ms and 12/20 credited windows: `hardware_blocked` /
+`watchdog_unresponsive` / `watchdog_feed_stale` / read outcome `stable` /
+owner phase `handling_inbox` / wait state `not_waiting`. Runtime identity and
+attestation were trusted; safety, same-package state, terminal HTTP/WebSocket/
+pool state, safe stop, USB cleanup, private modes, seals, and redaction passed;
+the public projection is absent. Attempt-015 is consumed, no retry ran,
+terminal outcome is `stop_hardware_blocker`, and STAT-001/checklist/progress
+remain unchanged. See
+`docs/parity/work-plans/20260817T082220Z-STAT-001/CLOSURE.md`.
+
+Residual risk/next action: the stable read rules out store retry exhaustion,
+poison, and uninitialized state, while `handling_inbox/not_waiting` rules out the
+receive wait. Current evidence cannot distinguish inbox-to-event mapping,
+session evaluation, or one blocking effect before its completion feed. Do not
+start attempt-016. A new software-only immutable plan must add a closed value-
+free inbox/feedback/effect subphase, reproduce the post-window stale-feed
+transition, and apply a targeted regression-backed correction before hardware.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
