@@ -1669,6 +1669,27 @@ attempt-013. A fresh software-only plan must add coherent closed wait-entry,
 deadline, and overrun diagnostics plus production-shaped scheduling tests
 before any targeted fix or new hardware contract.
 
+Waiting-inbox deadline diagnostic plan:
+`docs/parity/work-plans/20260817T045834Z-STAT-001/PLAN.md`
+
+- [ ] Add coherent atomic receive-deadline ownership and closed runtime-health
+      wait states for not-waiting, within-deadline, overrun, and invalid facts.
+- [ ] Carry the closed state through v14/v8 sealed campaign diagnostics with
+      exact boundary, precedence, missing/unknown, redaction, and real-child
+      regressions.
+- [ ] Pin and prove the ESP-IDF pthread priority-5 contract against upstream,
+      bind new evaluator sources, and run every focused/mandatory gate; push a
+      software-only closure without transition or hardware.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not access protected
+attempts, credentials, detector/device/network runtime, private values, or
+public projection candidates. Do not detect, flash, reset, monitor, mine,
+actuate, update, erase, inject faults, manipulate power, use direct UART, or
+touch electrical interfaces. Attempt-012 remains consumed and attempt-013 is
+not authorized. STAT-001 remains `implemented`; checklist/progress are
+unchanged.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
