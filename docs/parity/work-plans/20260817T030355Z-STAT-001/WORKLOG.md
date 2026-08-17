@@ -73,3 +73,26 @@
   clean-package rebuild before the frozen detector command becomes eligible.
 - Blocker or next safe action: Review, commit, and push the rebind; rebuild and
   validate the exact clean package; then execute only the two plan commands.
+
+## 2026-08-17T03:49:01Z | attempt-011 terminal checkpoint
+
+- Source commit: `43acffd3972e85a9a2c5ef30d3063fd6a887e622`
+- Actions: Rebuilt and validated the exact clean package, ran the sole frozen
+  detector, verified only credential/path/mode metadata, then consumed the
+  sole conditional attempt-011 command. No retry or out-of-band device probe
+  ran.
+- Verification: Detector admission passed. The protected v13 result and v7
+  network documents match their SHA-256 seals; root/file modes pass. Runtime
+  identity, attestation parsing, same-boot/package correlation, active state,
+  safety, terminal HTTP/WebSocket, pool persistence, safe stop, USB cleanup,
+  and redaction pass. The public projection is absent.
+- Evidence: Closed terminal envelope is `hardware_blocked`; the primary sealed
+  category is `watchdog_unresponsive` with
+  `watchdog_invalid_observation`, owner phase `waiting_inbox`, and 5/20
+  completed windows. Source tracing isolates the pre-history evaluation-time
+  read as a concrete concurrent-feed race consistent with that category.
+- Outcome: `stop_hardware_blocker`; STAT-001 remains `implemented` and no
+  checklist/progress transition is permitted.
+- Blocker or next safe action: Close this plan, commit and push the truthful
+  record, and require a fresh software-only interleaving fix before any new
+  hardware contract.

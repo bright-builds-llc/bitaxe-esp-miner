@@ -1509,7 +1509,7 @@ Attempt-011 verification-promotion plan:
       to fresh attempt-011.
 - [x] Run every focused and mandatory software, firmware, privacy, reference,
       package, and exact-source gate; commit and push before device access.
-- [ ] Run only the frozen detector and sole conditional attempt-011 command,
+- [x] Run only the frozen detector and sole conditional attempt-011 command,
       then promote STAT-001 only if the complete independent quorum passes.
 
 Attempt-011 progress basis and authorization: exact pushed correction
@@ -1556,6 +1556,24 @@ and rolling rates; bounded error; watchdog failure `none`; terminal zero
 current rate; safe stop, cleanup, protected modes, seals, independent
 validation, and redaction. Any missing fact withholds promotion and leaves
 STAT-001 `implemented`.
+
+Attempt-011 completion review: exact pushed source/package `43acffd3`, pinned
+reference, focused/full gates, and one detector passed. The sole capture
+failed closed after 5/20 windows at the new sealed signature
+`watchdog_invalid_observation` / owner phase `waiting_inbox`; runtime identity,
+attestation parsing, safety, terminal transports, pool persistence, safe stop,
+cleanup, modes, seals, and redaction passed, and no public projection was
+written. Attempt-011 is consumed, no retry ran, and terminal outcome is
+`stop_hardware_blocker`. STAT-001 remains `implemented`; checklist/progress
+are unchanged. See
+`docs/parity/work-plans/20260817T030355Z-STAT-001/CLOSURE.md`.
+
+Residual risk and next safe action: source tracing shows runtime health reads
+evaluation time before copying concurrent watchdog observations, allowing a
+new feed timestamp to overtake that earlier time and fail checked age
+subtraction. Do not start attempt-012. A fresh software-only immutable plan
+must add a controlled interleaving regression and make evaluation time no
+earlier than the copied observations while preserving every existing guard.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
