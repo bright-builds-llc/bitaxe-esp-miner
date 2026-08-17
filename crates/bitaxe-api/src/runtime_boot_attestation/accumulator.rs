@@ -1,5 +1,5 @@
 use super::{
-    ExpectedRuntimeAttestationIdentity, RuntimeAttestationParseFailure,
+    ExpectedRuntimeAttestationIdentity, ResetReasonCategory, RuntimeAttestationParseFailure,
     RuntimeAttestationParseFailureCounts, RuntimeAttestationStatus, RuntimeBootAttestation,
 };
 
@@ -13,6 +13,7 @@ pub struct RuntimeAttestationAccumulator {
     maybe_first_parse_failure: Option<RuntimeAttestationParseFailure>,
     parse_failure_counts: RuntimeAttestationParseFailureCounts,
     mixed_session_or_ordinal: bool,
+    maybe_mixed_reset_reason: Option<ResetReasonCategory>,
     static_fields_mismatch: bool,
     non_monotonic_uptime: bool,
 }
@@ -39,7 +40,11 @@ impl RuntimeAttestationAccumulator {
 
         self.sample_count = self.sample_count.saturating_add(1);
         if let Some(first) = self.maybe_first.as_ref() {
-            self.mixed_session_or_ordinal |= !sample.same_session_and_ordinal(first);
+            if !sample.same_session_and_ordinal(first) {
+                self.mixed_session_or_ordinal = true;
+                self.maybe_mixed_reset_reason
+                    .get_or_insert(sample.reset_reason);
+            }
             self.static_fields_mismatch |= !sample.same_static_fields(first);
         } else {
             self.maybe_first = Some(sample.clone());
@@ -60,6 +65,15 @@ impl RuntimeAttestationAccumulator {
     #[must_use]
     pub const fn parse_failure_counts(&self) -> RuntimeAttestationParseFailureCounts {
         self.parse_failure_counts
+    }
+
+    /// Returns the reset category on the first mixed-session transition.
+    #[must_use]
+    pub const fn mixed_reset_reason_label(&self) -> &'static str {
+        match self.maybe_mixed_reset_reason {
+            Some(reason) => reason.label(),
+            None => "none",
+        }
     }
 
     /// Classifies every complete marker observed so far against one admitted package.

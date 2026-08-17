@@ -1,7 +1,7 @@
 use super::preparation::CampaignPreparationProgress;
 use super::*;
 
-const DIAGNOSTICS_SCHEMA: &str = "mining-campaign-serial-diagnostics-v2";
+const DIAGNOSTICS_SCHEMA: &str = "mining-campaign-serial-diagnostics-v3";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -79,6 +79,7 @@ pub(in crate::campaign) struct CampaignSerialDiagnostics {
     pub(super) runtime_attestation_lookalike_count: u64,
     pub(super) runtime_attestation_invalid_encoding_count: u64,
     pub(super) runtime_attestation_parse_failure: &'static str,
+    pub(super) runtime_attestation_mixed_reset_reason: &'static str,
     pub(super) runtime_attestation_parse_failure_counts:
         RuntimeAttestationParseFailureCountsEvidence,
     pub(super) preparation_candidate_count: u64,
@@ -115,6 +116,7 @@ impl CampaignSerialDiagnostics {
             runtime_attestation_lookalike_count: 0,
             runtime_attestation_invalid_encoding_count: 0,
             runtime_attestation_parse_failure: "not_observed",
+            runtime_attestation_mixed_reset_reason: "not_observed",
             runtime_attestation_parse_failure_counts:
                 RuntimeAttestationParseFailureCountsEvidence::default(),
             preparation_candidate_count: 0,
@@ -135,6 +137,7 @@ impl CampaignSerialDiagnostics {
         Self {
             observation_started: true,
             runtime_attestation_parse_failure: "none",
+            runtime_attestation_mixed_reset_reason: "none",
             ..Self::not_observed()
         }
     }

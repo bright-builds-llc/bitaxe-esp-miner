@@ -251,6 +251,30 @@ fn mixed_boot_ordinal_is_rejected() {
 }
 
 #[test]
+fn mixed_boot_transition_retains_only_the_closed_reset_category() {
+    // Arrange
+    let mut accumulator = RuntimeAttestationAccumulator::default();
+    let next_boot = RuntimeBootAttestation::new(
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        8,
+        ResetReasonCategory::Watchdog,
+        1_000,
+        SOURCE,
+        REFERENCE,
+        APP_ELF,
+        "v5.5.4",
+    )
+    .expect("fixture is valid");
+
+    // Act
+    accumulator.observe_line(&sample(10_000).marker());
+    accumulator.observe_line(&next_boot.marker());
+
+    // Assert
+    assert_eq!(accumulator.mixed_reset_reason_label(), "watchdog");
+}
+
+#[test]
 fn non_monotonic_uptime_is_rejected() {
     // Arrange
     let log = format!("{}\n{}\n", sample(20_000).marker(), sample(10_000).marker());

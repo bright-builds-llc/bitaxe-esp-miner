@@ -388,6 +388,8 @@ impl CampaignSerialAnalyzer {
             .map_or("none", bitaxe_api::RuntimeAttestationParseFailure::label);
         self.diagnostics.runtime_attestation_parse_failure_counts =
             self.runtime_attestations.parse_failure_counts().into();
+        self.diagnostics.runtime_attestation_mixed_reset_reason =
+            self.runtime_attestations.mixed_reset_reason_label();
         self.trace.push(
             u64::try_from(byte_offset).unwrap_or(u64::MAX),
             line_length,
