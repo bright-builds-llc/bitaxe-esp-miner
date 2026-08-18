@@ -2238,7 +2238,7 @@ from the new closed panic signature/task/count tuple.
 Attempt-019 verification-promotion plan:
 `docs/parity/work-plans/20260818T050654Z-STAT-001/PLAN.md`
 
-- [ ] Rebind plan/task/root/ordinal/fixture surfaces to fresh attempt-019 while
+- [x] Rebind plan/task/root/ordinal/fixture surfaces to fresh attempt-019 while
       preserving result v16, network v11, diagnostic v4, and 21-source identity.
 - [ ] Pass focused/full gates, commit and push the exact source/package, then
       run only the frozen detector and sole conditional capture.

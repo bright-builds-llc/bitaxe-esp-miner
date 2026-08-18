@@ -8,7 +8,27 @@ import {
   type HashrateMonitorEvidence,
   type HashrateTransportQuorum,
 } from "./contracts.generated.js";
+import {
+  activeTask,
+  expectedAttemptFiles,
+  expectedPlan,
+  expectedPlanSha256,
+  expectedPrivateRoot,
+  expectedProjection,
+  expectedReferenceCommit,
+  expectedWrapperRoot,
+  runtimeAttestationParseFailures,
+  watchdogFailures,
+  watchdogOwnerPhases,
+  watchdogOwnerSubphases,
+  watchdogReadOutcomes,
+  watchdogWaitStates,
+} from "./hashrate-monitor-evidence-contract.js";
 import { referenceFragments, sourceFragments } from "./hashrate-monitor-source-inventory.js";
+import {
+  parsePanicDiagnostic,
+  type PanicFailureDiagnostic,
+} from "./hashrate-monitor-panic-diagnostic.js";
 import type { ProcessPort } from "./process.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
@@ -58,100 +78,9 @@ type WatchdogFailureDiagnostic = Readonly<{
   watchdog_wait_state: WatchdogWaitState;
 }>;
 type CampaignFailureDiagnostic = RuntimeAttestationParseDiagnostic
-  & Partial<WatchdogFailureDiagnostic>;
+  & Partial<WatchdogFailureDiagnostic>
+  & Partial<PanicFailureDiagnostic>;
 
-const expectedPrivateRoot = "scratch/stat001-hashrate-monitor/attempt-018";
-const expectedWrapperRoot = "scratch/stat001-hashrate-monitor/wrapper-018";
-const expectedProjection =
-  "docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json";
-const expectedPlan = "docs/parity/work-plans/20260818T022212Z-STAT-001/PLAN.md";
-const expectedPlanSha256 = "cd641d862cd1246b7905ec2389c2fad17a61b45090cb85496f82ed32bf7989d3";
-const expectedReferenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
-const activeTask = "task-parity-stat001-hashrate-monitor";
-const runtimeAttestationParseFailures = [
-  "none",
-  "not_observed",
-  "invalid_utf8",
-  "missing_marker",
-  "malformed_token",
-  "duplicate_field",
-  "unknown_field",
-  "missing_field",
-  "invalid_field",
-  "incomplete_readiness",
-] as const;
-const watchdogFailures = [
-  "none",
-  "supervisor_unavailable",
-  "checkpoint_unhealthy",
-  "checkpoint_sequence_missing",
-  "watchdog_reason_missing",
-  "watchdog_unproved",
-  "watchdog_snapshot_retry_exhausted",
-  "watchdog_snapshot_history_poisoned",
-  "watchdog_read_outcome_unknown",
-  "watchdog_invalid_observation",
-  "watchdog_subscription_failed",
-  "watchdog_feed_failed",
-  "watchdog_unsubscription_failed",
-  "watchdog_unsubscribed",
-  "watchdog_reason_unknown",
-  "watchdog_participation_inconsistent",
-  "watchdog_feed_sequence_missing",
-  "watchdog_feed_age_missing",
-  "watchdog_feed_stale",
-  "watchdog_owner_phase_unknown",
-  "watchdog_owner_subphase_unknown",
-  "watchdog_wait_state_unknown",
-  "http_checkpoint_not_advanced",
-  "http_feed_not_advanced",
-  "websocket_checkpoint_not_advanced",
-  "websocket_feed_not_advanced",
-] as const;
-const watchdogReadOutcomes = [
-  "stable",
-  "uninitialized",
-  "retry_exhausted",
-  "history_poisoned",
-] as const;
-const watchdogWaitStates = [
-  "not_waiting",
-  "within_deadline",
-  "deadline_overrun",
-  "invalid_observation",
-] as const;
-const watchdogOwnerPhases = [
-  "unavailable",
-  "subscribing",
-  "loop_start",
-  "waiting_inbox",
-  "handling_inbox",
-  "handling_observation",
-  "handling_readiness",
-  "publishing_campaign_status",
-  "servicing_hashrate",
-  "shutdown",
-] as const;
-const watchdogOwnerSubphases = [
-  "unavailable", "inbox_mapping", "session_evaluation",
-  "effect_prepare_hardware", "effect_read_pool_configuration", "effect_connect_pool",
-  "effect_write_pool_line", "effect_apply_version_mask", "effect_dispatch_chip",
-  "effect_poll_chip", "effect_block_submissions", "effect_invalidate_work_and_submissions",
-  "effect_stop_chip_interaction", "effect_close_pool_connection", "effect_safe_stop_hardware",
-  "effect_record_scoreboard", "effect_record_block_found", "effect_publish",
-  "safe_stop_stop_dispatch", "safe_stop_reduce_frequency_and_nonce_state",
-  "safe_stop_assert_control_line_low", "safe_stop_disable_core_rail", "safe_stop_disable_chip",
-  "safe_stop_set_cooling_maximum", "safe_stop_wait_for_cooling_proof", "safe_stop_set_cooling_paused",
-] as const;
-const expectedAttemptFiles = [
-  "campaign-diagnostics.private.json",
-  "campaign-flash.private.json",
-  "campaign-mining-diagnostics.private.json",
-  "campaign-network.private.json",
-  "campaign-observations.private.json",
-  "campaign-result.json",
-  "campaign-result.sha256",
-] as const;
 export class HashrateMonitorEvidenceError extends Error {
   public constructor(
     public readonly category: FailureCategory,
@@ -344,18 +273,24 @@ async function sealedCampaignFailureDiagnostic(
 ): Promise<CampaignFailureDiagnostic | undefined> {
   try {
     const resultPath = path.join(privateRoot, "campaign-result.json");
+    const diagnosticsPath = path.join(privateRoot, "campaign-diagnostics.private.json");
     const sealPath = path.join(privateRoot, "campaign-result.sha256");
     await requireMode(privateRoot, 0o700, true);
     await requireMode(resultPath, 0o600, false);
+    await requireMode(diagnosticsPath, 0o600, false);
     await requireMode(sealPath, 0o600, false);
     const result = await readJson(resultPath, "campaign result");
+    const diagnostics = await readJson(diagnosticsPath, "campaign diagnostics");
     const seal = (await readFile(sealPath, "utf8")).trim();
     if (seal !== sha256(result.document)
       || requiredString(result.value, "schema", "campaign result") !== "mining-campaign-result-v16"
-      || requiredString(result.value, "status", "campaign result") !== "failed") {
+      || requiredString(result.value, "status", "campaign result") !== "failed"
+      || requiredString(result.value, "diagnostics_sha256", "campaign result")
+        !== sha256(diagnostics.document)) {
       return undefined;
     }
     const diagnostic = runtimeAttestationParseDiagnostic(result.value);
+    const maybePanicDiagnostic = parsePanicDiagnostic(diagnostics.value).maybeFailure;
     const terminalCategory = requiredString(result.value, "terminal_category", "campaign result");
     const watchdogDiagnostic = watchdogFailure(result.value);
     if (terminalCategory === "watchdog_unresponsive") {
@@ -367,11 +302,13 @@ async function sealedCampaignFailureDiagnostic(
         watchdog_owner_phase: watchdogOwnerPhase(result.value),
         watchdog_owner_subphase: watchdogOwnerSubphase(result.value),
         watchdog_wait_state: watchdogWaitState(result.value),
+        ...(maybePanicDiagnostic ?? {}),
       };
     }
     if (watchdogDiagnostic !== "none") return undefined;
     return {
       runtime_attestation_parse_failure: diagnostic.runtime_attestation_parse_failure,
+      ...(maybePanicDiagnostic ?? {}),
     };
   } catch {
     return undefined;
@@ -391,7 +328,7 @@ export async function validateHashrateMonitorTaskAndSources(
   const maybeEnd = taskDocument.indexOf("\n### ", start + heading.length);
   const block = taskDocument.slice(start, maybeEnd === -1 ? taskDocument.length : maybeEnd);
   if (start === -1 || taskDocument.indexOf(heading, start + heading.length) !== -1
-    || !block.includes(expectedPlan) || !block.includes("attempt-018")
+    || !block.includes(expectedPlan) || !block.includes("attempt-019")
     || sha256(planDocument) !== admittedPlanSha256
     || !planDocument.includes("- Parity row: `STAT-001`")
     || !planDocument.includes(`- Active task: \`${activeTask}\``)) {
@@ -490,6 +427,10 @@ export async function captureHashrateMonitorEvidence(
   try {
     await verifyProtectedLayout(privateRoot, wrapperRoot);
     const resultFile = await readJson(path.join(privateRoot, "campaign-result.json"), "campaign result");
+    const diagnosticsFile = await readJson(
+      path.join(privateRoot, "campaign-diagnostics.private.json"),
+      "campaign diagnostics",
+    );
     const networkFile = await readJson(
       path.join(privateRoot, "campaign-network.private.json"),
       "campaign network evidence",
@@ -497,8 +438,15 @@ export async function captureHashrateMonitorEvidence(
     const seal = (await readFile(path.join(privateRoot, "campaign-result.sha256"), "utf8")).trim();
     if (seal !== sha256(resultFile.document)
       || requiredString(resultFile.value, "network_continuity_sha256", "campaign result")
-        !== sha256(networkFile.document)) {
+        !== sha256(networkFile.document)
+      || requiredString(resultFile.value, "diagnostics_sha256", "campaign result")
+        !== sha256(diagnosticsFile.document)) {
       throw failure("evidence_invalid", "campaign result seal is invalid");
+    }
+    const panicDiagnostic = parsePanicDiagnostic(diagnosticsFile.value);
+    if (panicDiagnostic.mixedResetReason !== "none"
+      || panicDiagnostic.maybeFailure !== undefined) {
+      throw failure("evidence_invalid", "campaign accepted with panic diagnostic");
     }
     const parseDiagnostic = runtimeAttestationParseDiagnostic(resultFile.value);
     const resultWatchdogFailure = watchdogFailure(resultFile.value);
@@ -560,7 +508,7 @@ export async function captureHashrateMonitorEvidence(
     const evidence: HashrateMonitorEvidence = {
       schema_version: "bitaxe-hashrate-monitor-evidence-v1",
       board: 205,
-      attempt_ordinal: 18,
+      attempt_ordinal: 19,
       source_commit: currentSourceCommit,
       reference_commit: referenceCommit,
       package_manifest_sha256: sha256(manifestFile.document),
