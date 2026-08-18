@@ -2155,12 +2155,12 @@ Temporary user-authorized watchdog diagnostic loop | 2026-08-17:
 Attempt-018 audited verification-promotion plan:
 `docs/parity/work-plans/20260818T022212Z-STAT-001/PLAN.md`
 
-- [ ] Rebind the immutable hashrate evidence workflow, plan digest, protected
+- [x] Rebind the immutable hashrate evidence workflow, plan digest, protected
       roots, ordinal, fixtures, source identity, result v16, and network v11 to
       fresh attempt-018 without changing production behavior.
-- [ ] Pass every focused and mandatory software/firmware gate, commit and push
+- [x] Pass every focused and mandatory software/firmware gate, commit and push
       the rebind, and build the exact package before hardware access.
-- [ ] Run only the plan's frozen detector and sole conditional capture; promote
+- [x] Run only the plan's frozen detector and sole conditional capture; promote
       `STAT-001` only if the complete independent quorum passes.
 
 Attempt-018 authority: the materially different source path is established by
@@ -2182,6 +2182,22 @@ command, detector/identity/safety/privacy/cleanup/recovery failure, or missing
 quorum fact. No overclock, arbitrary controls, OTA, erase, fault injection,
 physical power action, external UART/BAP, or electrical manipulation is
 authorized.
+
+Attempt-018 completion review: exact clean pushed source/package `e14b98d5`,
+the pinned reference, immutable plan, focused/full gates, and sole detector
+passed. The one capture failed closed after 273,286 active ms and 9/20 windows
+as `hardware_blocked` / `network_correlation_failed`, with stable/valid
+watchdog, fresh safety, ready USB cleanup, mixed session/ordinal identity, and
+the first mixed reset category `panic`. Work renewal, terminal joins, and safe
+stop did not establish the complete same-session horizon. The independently
+validated projection is absent, attempt-018 is consumed, and no retry ran.
+`STAT-001`, checklist, progress history, and README remain unchanged. See the
+linked `WORKLOG.md` and `CLOSURE.md`.
+
+Next safe action: do not start attempt-019. A fresh software-only `STAT-001`
+plan must add a redaction-safe panic discriminator, reproduce or isolate the
+source-level cause, and apply a targeted regression-backed fix before any new
+hardware authority contract.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
