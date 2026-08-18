@@ -55,6 +55,22 @@ Next safe action: a fresh software-only plan may run the corrected exact
 projection command once, independently validate it, and promote only on the
 complete closed quorum. No hardware or external state is required.
 
+Projection retry plan:
+`docs/parity/work-plans/20260818T132739Z-SAFE-10/PLAN.md`
+
+- [ ] Rotate only the immutable plan binding; preserve schema, sources,
+      protected inputs, prerequisite semantics, privacy, and promotion quorum.
+- [ ] Pass focused/full gates, commit/push, and run the sole corrected software
+      projection command with absent candidate/projection admission.
+- [ ] Independently validate, commit evidence/RESULT, promote only SAFE-10,
+      sync progress, archive this task, final-gate, and push.
+
+Authorization: repository source/tests/builds, read-only protected attempt-003
+classification, one public closed projection, docs, Git commit, and push only.
+No detector execution, credentials, device/USB/network runtime, flash, monitor,
+mining, restart, recovery, new attempt, external UART/BAP, pins, or electrical
+work.
+
 ### task-ultra205-default-profile-soak | 2026-07-28 | Run the bounded upstream-default mining soak
 
 - [x] Start a fresh exact-package attempt at 485 MHz, 1200 mV, and 100% fan
