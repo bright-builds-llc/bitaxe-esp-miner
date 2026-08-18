@@ -2235,6 +2235,34 @@ profile, safety, privacy, recovery, cleanup, retry, stop, and promotion
 contract. Never retry by ordinal alone; any recurrence must select diagnosis
 from the new closed panic signature/task/count tuple.
 
+Attempt-019 verification-promotion plan:
+`docs/parity/work-plans/20260818T050654Z-STAT-001/PLAN.md`
+
+- [ ] Rebind plan/task/root/ordinal/fixture surfaces to fresh attempt-019 while
+      preserving result v16, network v11, diagnostic v4, and 21-source identity.
+- [ ] Pass focused/full gates, commit and push the exact source/package, then
+      run only the frozen detector and sole conditional capture.
+- [ ] Promote only on the complete independent quorum; otherwise preserve
+      `implemented`, the earliest closed panic/watchdog/correlation tuple,
+      evidence withholding, safe stop, cleanup, recovery, and no attempt-020.
+
+Attempt-019 progress basis: pushed `0abd10ad` adds the previously absent
+value-free discriminator for attempt-018's mixed-session `panic` boundary.
+Seven panic signatures, twelve task families, a recognized-line count, and an
+unknown fallback now flow through private diagnostic v4; all 21 reachable
+sources are identity-bound. This materially changes the observable failure
+boundary and is not an ordinal-only retry.
+
+Authorization/privacy/retry: after clean pushed gates, one exact board-205
+package may run 400 MHz / 1,100 mV ASIC core / 100% fan for 600 active seconds
+with protected joins, safe stop, cleanup, sealing, and one bounded recovery
+flash. Fresh input-bus safety remains 4.5-5.5 V, <=15 W, ASIC <75 C, and fan
+RPM nonzero; core mV and bus V are distinct. Only fresh ignored wrapper/attempt-
+019 mode-0700 roots and mode-0600 files may hold private values. No retry/020,
+overclock, arbitrary control, OTA, erase, fault injection, physical power
+action, direct UART/BAP, or electrical work is authorized. Exact commands and
+promotion/stop conditions are frozen in the linked plan.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
