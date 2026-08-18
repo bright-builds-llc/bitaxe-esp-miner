@@ -652,6 +652,29 @@ attempt-002. Preserve the detector, privacy, recovery, retry, stop, and full
 scoreboard API/SPA/restart promotion contract; do not treat this software
 correction as live parity evidence.
 
+Attempt-002 verification plan:
+`docs/parity/work-plans/20260818T090846Z-STAT-003/PLAN.md`
+
+- [ ] Rotate the private-first scoreboard evidence workflow from consumed
+      attempt-001 to fresh attempt-002 and bind the new immutable plan, task,
+      ordinal, paths, runfiles, contracts, fixtures, and validators.
+- [ ] Pass focused/full gates, commit and push the exact implementation, build
+      the bound package, and run only wrapper-002 detector admission.
+- [ ] Run at most one conditional attempt-002 and promote only on the complete
+      accepted mining/API/SPA/restart persistence quorum; otherwise preserve
+      the earliest closed failure and stop without attempt-003.
+
+Attempt-002 authorization: after clean pushed gates, one exact board-205
+package may repeat the conservative 400 MHz / 1,100 mV core / 100% fan campaign
+for 600 accumulated active seconds because the prior terminal race now has a
+targeted verified correction. Its NVS seed intentionally clears earlier
+scoreboard records and retains the owner-supplied Wi-Fi/pool inputs and the new
+safe-stopped scoreboard. One passive same-origin capture and one normal HTTP
+restart may prove UI/API and boot durability. The linked plan freezes private
+roots, exact commands, recovery, retry, stop, promotion, privacy, and prohibited
+effects; starting the capture consumes attempt-002 and no attempt-003 is
+authorized.
+
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
 - [x] Add a typed private-first `/api/theme` capture that binds the exact
