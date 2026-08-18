@@ -318,16 +318,21 @@ async function sealedCampaignFailureDiagnostic(
 export async function validateHashrateMonitorTaskAndSources(
   workspaceRoot: string,
   admittedPlanSha256: string,
+  taskRecord: "active" | "archived" = "active",
 ): Promise<void> {
-  const [taskDocument, planDocument] = await Promise.all([
+  const [activeTaskDocument, archivedTaskDocument, planDocument] = await Promise.all([
     readFile(path.join(workspaceRoot, "TASKS.md"), "utf8"),
+    readFile(path.join(workspaceRoot, "TASKS.archive.md"), "utf8"),
     readFile(path.join(workspaceRoot, expectedPlan), "utf8"),
   ]);
+  const taskDocument = taskRecord === "active" ? activeTaskDocument : archivedTaskDocument;
+  const otherTaskDocument = taskRecord === "active" ? archivedTaskDocument : activeTaskDocument;
   const heading = `### ${activeTask} |`;
   const start = taskDocument.indexOf(heading);
   const maybeEnd = taskDocument.indexOf("\n### ", start + heading.length);
   const block = taskDocument.slice(start, maybeEnd === -1 ? taskDocument.length : maybeEnd);
-  if (start === -1 || taskDocument.indexOf(heading, start + heading.length) !== -1
+  if (start === -1 || otherTaskDocument.includes(heading)
+    || taskDocument.indexOf(heading, start + heading.length) !== -1
     || !block.includes(expectedPlan) || !block.includes("attempt-019")
     || sha256(planDocument) !== admittedPlanSha256
     || !planDocument.includes("- Parity row: `STAT-001`")

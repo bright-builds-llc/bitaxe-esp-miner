@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260818T060031Z-STAT-001",
+  "predecessor_sha256": "7b1549abe3dc09309654111990f23760b9f5bd52d0fc2ec4e8f9d0900eb5d43d",
+  "result_sha256": "b86ad2f555ae5f5c9c765a5fed755b118052ed433d941ac3ca874b282c09ed4d",
+  "row_id": "STAT-001",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260818T050654Z-STAT-001/PLAN.md",
+  "plan_sha256": "b9bc554eb3e49c685bcbd7a852a754febf015228df4ae89efe6e6b951eb65e24",
+  "result_path": "docs/parity/work-plans/20260818T050654Z-STAT-001/RESULT.md",
+  "result_document_sha256": "459e28636f393618cae1508b6f0b120ac476768b9434aedef2105ba8fcd073e2",
+  "before_rust_owned_target": "`crates/bitaxe-core/src/hashrate.rs`, `crates/bitaxe-stratum/src/v1/state.rs`, `crates/bitaxe-api/src/mining.rs`, `crates/bitaxe-api/src/wire.rs`, `firmware/bitaxe/src/production_mining_session/hashrate.rs`, `firmware/bitaxe/src/production_mining_session/asic_worker.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-core/src/hashrate.rs`, `crates/bitaxe-stratum/src/v1/state.rs`, `crates/bitaxe-api/src/mining.rs`, `crates/bitaxe-api/src/wire.rs`, `firmware/bitaxe/src/production_mining_session/hashrate.rs`, `firmware/bitaxe/src/production_mining_session/asic_worker.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,api-compare,hardware-smoke,hardware-regression",
+  "before_notes": "Pure bounded BM1366 counter conversion, hierarchical rolling windows, typed runtime and API projection, and sole-owner active-session sampling are implemented with focused unit, ownership, firmware-build, and workflow evidence. Result: docs/parity/work-plans/20260804T200000Z-STAT-001/RESULT.md. Live register traffic, hashrate accuracy, mining, device API and UI behavior, and hardware effects remain pending.",
+  "after_notes": "Exact-package Ultra 205 attempt-019 proves one BM1366/four-domain 1,000 ms live hashrate sampling across 20/20 renewed windows, coherent changing positive HTTP/WebSocket current rates and warm rolling windows, terminal zero, submit evidence, stable watchdog, no panic or mixed session, safe stop, cleanup, protected modes, independent validation, and redaction. See docs/parity/work-plans/20260818T050654Z-STAT-001/RESULT.md and docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json. Profitability, laboratory-calibrated absolute accuracy, arbitrary profiles/pools, other boards/ASICs, unbounded mining, OTA, and release readiness remain separate."
+}

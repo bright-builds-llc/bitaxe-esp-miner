@@ -9507,3 +9507,1730 @@ package defaults; pool values remain local and were not reseeded. OTAWWW,
 power-loss interruption, eFuse anti-rollback, repeated erase, release signing,
 factory provisioning scale, other boards, mining, controls, direct UART, and
 electrical work remain separate non-claims.
+
+### task-parity-stat001-hashrate-monitor | 2026-08-04 | Implement the hashrate monitor
+
+- [x] Add exact bounded counter conversion, reset behavior, error percentage,
+      and hierarchical 1-minute, 10-minute, and 1-hour averages.
+- [x] Carry parsed register values through the sole production owner and admit
+      passive reads only while its ASIC session is already active.
+- [x] Publish all hashrate windows through the existing runtime/API projection,
+      add focused ownership regressions, and run every mandatory gate.
+
+Plan: `docs/parity/work-plans/20260804T200000Z-STAT-001/PLAN.md`
+
+Authorization: local software, synthetic register observations, and build work
+only. No hardware attempt, credentials, external service, mining campaign,
+pool connection, frequency/voltage/fan/power effect, OTA, recovery, direct UART,
+or pins.
+
+Verification: The full Rust sequence, Bright Builds checks, all 31 Bazel tests,
+the real firmware build, parity validation/progress, redaction, reference
+cleanliness, and diff checks passed on the implementation tree.
+
+Completion review: Implementation commit
+`e0c3b1e9043e033b24135b31a1293bf22afe8759` and typed transition
+`20260804T205500Z-STAT-001` establish `implemented` with `unit,workflow`
+evidence. The task remains active because live BM1366 counter accuracy and
+hardware/API/UI behavior remain below verified.
+
+Verification-promotion plan:
+`docs/parity/work-plans/20260816T005443Z-STAT-001/PLAN.md`
+
+- [x] Add a private-first closed hashrate quorum to the existing conservative
+      600-second campaign, with independent validation and no raw-value
+      publication.
+- [x] Run the plan's full pre-hardware suite, commit and push the implementation,
+      then execute only detector command 1 and the sole attempt-001 command 2.
+- [ ] Promote only STAT-001 on the complete exact-package HTTP/WebSocket,
+      BM1366 topology, rolling-window, terminal-zero, safe-stop, cleanup, mode,
+      seal, and redaction quorum; otherwise preserve `implemented`, withhold the
+      projection, record the earliest typed blocker, and do not retry.
+
+Attempt-001 authorization: one exact clean board-205 package may be factory-
+flashed and normally reset/re-enumerated; ignored local Wi-Fi and pool inputs
+may be seeded privately; and the repo-owned conservative 400 MHz / 1100 mV /
+100% fan profile may mine for exactly 600 active seconds while the current
+session's serial-derived origin is observed through HTTP and WebSocket. The
+campaign must pause, safe-stop, clean up USB ownership, and may use at most one
+exact-package recovery flash after a post-flash failure. No upstream-default or
+overclock profile, arbitrary control target, unbounded mining, OTA, erase,
+fault injection, physical power action, direct UART, or electrical pin/pad/
+header/probe/jumper/solder/signal manipulation is authorized.
+
+Evidence/privacy/retry: `scratch/stat001-hashrate-monitor/wrapper-001` and
+`attempt-001` are ignored mode-`0700` roots with mode-`0600` files. Credentials,
+pool/owner/worker fields, origins, ports, USB/network identity, exact hashrates,
+sensors, HTTP/WebSocket bodies, serial, commands, PIDs, and traces stay private.
+Only the plan-named closed projection may become public after independent
+validation. Starting command 2 consumes attempt-001. Every post-flash failure
+preserves the earliest typed category and performs bounded safe stop, recovery,
+and cleanup. Detector ambiguity/failure, missing inputs, unsafe state,
+malformed/incomplete proof, cleanup/recovery/privacy failure, or nonzero command
+stops without retry and leaves STAT-001 `implemented`.
+
+Attempt-001 outcome: detector command 1 admitted exactly one Ultra 205. Capture
+command 2 then failed its immutable pre-effect source/reference admission with
+typed category `evidence_invalid`; the broad `update_hash_counter` fragment had
+eight legitimate upstream occurrences while the wrapper required one. No
+attempt root, flash, mining, or public projection was created. Attempt-001 is
+consumed, no retry was run, and STAT-001 remains `implemented`. The faulty
+fragment and a second ambiguous source fragment were narrowed and a current-
+repository admission regression was added after the failure. See
+`docs/parity/work-plans/20260816T005443Z-STAT-001/CLOSURE.md`.
+
+Next safe action: a future immutable STAT-001 plan may authorize fresh
+attempt-002 after the admission correction is committed, pushed, fully gated,
+and bound to a newly built exact package. It must repeat detector admission and
+may not reuse attempt-001 or infer hardware evidence from this pre-effect
+failure.
+
+Attempt-002 verification-promotion plan:
+`docs/parity/work-plans/20260816T020135Z-STAT-001/PLAN.md`
+
+- [x] Rebind the closed `bitaxe-hashrate-monitor-evidence-v1` workflow,
+      independent validator, generated contract, current task/plan admission,
+      and protected paths to fresh attempt-002 without changing production
+      hashrate behavior or the evidence quorum.
+- [x] Run every focused and mandatory software, firmware, privacy, reference,
+      package, and exact-source gate; commit and push before device access.
+- [x] Run only the exact plan detector and one conditional attempt-002 command,
+      then promote STAT-001 only if the complete independently validated
+      exact-package hashrate quorum passes.
+
+Attempt-002 authorization: after the immutable plan/task checkpoint and exact
+implementation are clean, fully gated, committed, and pushed, one exact
+board-205 package may be factory-flashed/reset; ignored local Wi-Fi and pool
+credentials may be seeded privately; and the repo-owned conservative 400 MHz /
+1100 mV / 100% fan profile may mine for exactly 600 accumulated active seconds
+while protected current-session HTTP, WebSocket, and serial observations are
+joined. The campaign must pause, safe-stop, clean up USB/process ownership, and
+may use at most one exact-package recovery flash after a post-flash failure.
+
+Attempt-002 evidence, privacy, recovery, and retry: only fresh ignored mode-
+`0700` `scratch/stat001-hashrate-monitor/wrapper-002` and `attempt-002` roots
+with mode-`0600` files are permitted. Credentials, pool/owner/worker fields,
+origins, ports, USB/network/process identities, exact hashrates, sensors,
+HTTP/WebSocket bodies, serial, commands, PIDs, and traces remain private. The
+sole public aggregate projection is written only after independent validation.
+Starting the capture consumes attempt-002; preserve the earliest typed failure,
+run bounded safe stop/recovery/cleanup after post-flash failures, and do not run
+an unchanged retry or attempt-003. Detector ambiguity/failure, missing inputs,
+unsafe state, malformed/incomplete proof, cleanup/recovery/privacy failure, or
+nonzero command stops with STAT-001 `implemented` and evidence withheld.
+
+Attempt-002 prohibited effects and acceptance: no upstream-default/overclock
+profile, arbitrary control target, unbounded mining, OTA, erase, fault
+injection, physical power action, direct UART, or pin/pad/header/probe/jumper/
+solder/signal manipulation is permitted. Promotion requires the immutable
+plan's exact clean source/reference/package and detector identity; one ASIC,
+four domains, one-second cadence and pinned register semantics; twenty active
+windows with work renewal; changing coherent positive HTTP/WebSocket current
+hashrate and positive rolling windows after warmup; bounded error; terminal
+zero current rate; safe stop, cleanup, protected modes, seal, independent
+validation, and redaction. Any missing fact withholds promotion.
+
+Attempt-002 completion review: the fresh detector admitted exactly one Ultra
+205, but the sole capture stopped with closed category `hardware_blocked` and
+a sealed `admission_failed` result before package admission or campaign USB
+execution. Source inspection found that the wrapper paired `soak` with
+`conservative`, although campaign admission permits the conservative
+600-second profile only for `live-share`. The wrapper and acceptance boundary
+now use `live-share`, and the real-child regression rejects the former invalid
+stage/profile pair. No public projection exists, attempt-002 was not retried,
+and STAT-001 remains `implemented`. A future immutable plan may authorize
+fresh attempt-003 only from the committed, pushed, fully gated correction and
+a newly built exact package. See
+`docs/parity/work-plans/20260816T020135Z-STAT-001/CLOSURE.md`.
+
+Attempt-003 verification-promotion plan:
+`docs/parity/work-plans/20260816T022946Z-STAT-001/PLAN.md`
+
+- [x] Rebind `bitaxe-hashrate-monitor-evidence-v1`, the independent validator,
+      generated contract, task/plan admission, Bazel runfiles, and protected
+      paths to fresh attempt-003.
+- [x] Prove the corrected `live-share` plus `conservative` child command and
+      reject the former `soak` plus `conservative` pair at the real boundary.
+- [x] Pass every focused and mandatory software, firmware, privacy, reference,
+      package, and exact-source gate; commit and push before device access.
+- [x] Run only the exact plan detector and one conditional attempt-003 command,
+      then promote only on the complete independently validated quorum.
+
+Attempt-003 authorization: pushed commit `0d058a66` materially fixes the exact
+attempt-002 pre-package campaign-admission boundary and regression-guards the
+real child command. After this immutable task/plan checkpoint and the rebound
+implementation are clean, fully gated, committed, and pushed, one exact board-
+205 package may be factory-flashed/reset; ignored local Wi-Fi and pool inputs
+may be seeded privately; and the repo-owned `live-share` conservative 400 MHz /
+1100 mV / 100% fan profile may mine for exactly 600 accumulated active seconds
+while protected current-session HTTP, WebSocket, and serial observations are
+joined. The campaign must pause, safe-stop, clean up USB/process ownership, and
+may use at most one exact-package recovery flash after a post-flash failure.
+
+Attempt-003 evidence, privacy, recovery, and retry: use only fresh ignored
+mode-`0700` `scratch/stat001-hashrate-monitor/wrapper-003` and `attempt-003`
+roots with mode-`0600` files. Credentials, pool/owner/worker fields, origins,
+ports, USB/network/process identities, exact hashrates, sensors, HTTP/WebSocket
+bodies, serial, commands, PIDs, and traces remain private. The sole public
+aggregate projection is written only after independent validation. Starting
+the capture consumes attempt-003; preserve the earliest typed failure, run
+bounded safe stop/recovery/cleanup after post-flash failures, and do not run an
+unchanged retry or attempt-004. Detector ambiguity/failure, missing inputs,
+unsafe state, malformed/incomplete proof, cleanup/recovery/privacy failure, or
+nonzero command stops with STAT-001 `implemented` and evidence withheld.
+
+Attempt-003 prohibited effects and acceptance: no upstream-default/overclock
+profile, arbitrary control target, unbounded mining, OTA, erase, fault
+injection, physical power action, direct UART, or pin/pad/header/probe/jumper/
+solder/signal manipulation is permitted. Promotion requires the linked plan's
+exact clean source/reference/package and detector identity; one ASIC, four
+domains, one-second cadence and pinned register semantics; twenty active
+windows with work renewal; changing coherent positive HTTP/WebSocket current
+hashrate and positive rolling windows after warmup; bounded error; terminal
+zero current rate; safe stop, cleanup, protected modes, seal, independent
+validation, and redaction. Any missing fact withholds promotion.
+
+Attempt-003 completion review: exact clean pushed source/package `3b03502e`,
+all software/privacy/reference gates, and one detector passed. The sole
+campaign crossed attempt-002's corrected boundary: package admission,
+`live-share` plus `conservative`, protocol readiness, observation start, 1,361
+accepted markers, and 366,166 active milliseconds were sealed. It then stopped
+as `hardware_blocked` / `runtime_identity_untrusted`: all 41 UTF-8 runtime-
+attestation candidates reduced to `malformed`. Safe stop and USB cleanup pass,
+protected modes and the result seal pass, and the public projection is absent.
+STAT-001 remains `implemented`; attempt-003 is consumed and attempt-004 is not
+authorized. The linked `CLOSURE.md` requires a software-only closed parse-
+discriminator diagnosis and targeted regression-backed fix before any future
+hardware ordinal.
+
+Runtime-attestation diagnosis plan:
+`docs/parity/work-plans/20260816T030231Z-STAT-001/PLAN.md`
+
+- [x] Add bounded, closed parse-failure counts to the runtime-attestation
+      accumulator, production serial diagnostics, and sealed campaign result.
+- [x] Reproduce the source-owned producer/parser mismatch at the real serial
+      boundary and apply the minimum regression-backed token-boundary fix.
+- [x] Run every focused and mandatory gate, record a non-promotion closure, and
+      leave attempt-004 unauthorized until a separate immutable hardware plan.
+
+Software-only authorization: local code, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not access protected
+attempt-003 artifacts, credentials, detector/device/hardware, network runtime,
+or any electrical interface. Do not flash, mine, actuate, erase, update, inject
+faults, create a public projection, or start attempt-004.
+
+Runtime-attestation diagnosis completion review: pushed implementation commit
+`f26fff55c1513f342946f16999d8564cc761ba01` proves the source-owned
+`runtime_boot_attestation=unavailable` diagnostic was falsely admitted by a raw
+substring matcher. The shared parser and production serial analyzer now require
+the complete whitespace-delimited marker token, distinguish lookalikes, and
+emit only closed value-free parse-failure categories with saturating counts.
+Focused regressions, the complete ordered repository gates, redaction,
+reference verification, and the canonical firmware build pass. No protected
+attempt evidence or hardware was accessed, no checklist field changed, and
+STAT-001 remains `implemented`. See
+`docs/parity/work-plans/20260816T030231Z-STAT-001/CLOSURE.md`.
+
+Next safe action: a separately committed immutable STAT-001 plan may authorize
+fresh attempt-004 only after binding this pushed correction to a newly built
+exact package and restating the complete detector, evidence/privacy, recovery,
+retry, and acceptance contract. This plan does not authorize attempt-004.
+
+Attempt-004 verification-promotion plan:
+`docs/parity/work-plans/20260816T033934Z-STAT-001/PLAN.md`
+
+- [x] Rebind `bitaxe-hashrate-monitor-evidence-v1`, the independent validator,
+      generated contract, task/plan admission, Bazel runfiles, and protected
+      paths to fresh attempt-004 and sealed campaign-result v10.
+- [x] Preserve the new closed runtime-attestation parse discriminator for a
+      non-ready campaign without exposing raw values, source text, or protected
+      identifiers.
+- [x] Pass every focused and mandatory software, firmware, privacy, reference,
+      package, and exact-source gate; commit and push before device access.
+- [x] Run only the exact detector and conditional attempt-004 commands in the
+      linked plan, then promote only on the complete independently validated
+      hashrate quorum.
+
+Attempt-004 authorization: pushed commit `f26fff55` fixes attempt-003's exact
+false-marker boundary with a shared whitespace-delimited marker matcher,
+closed parser diagnostics, production-shaped tests, and campaign-result v10.
+After this immutable task/plan checkpoint and its rebound implementation are
+clean, fully gated, committed, and pushed, one exact board-205 package may be
+factory-flashed/reset; ignored local Wi-Fi and pool inputs may be seeded
+privately; and the repo-owned conservative 400 MHz / 1100 mV / 100% fan profile
+may mine for exactly 600 accumulated active seconds while protected current-
+session HTTP, reconstructed WebSocket, and serial observations are joined.
+
+Attempt-004 exact commands: after the clean pushed implementation and package
+gates, create absent mode-0700 `scratch/stat001-hashrate-monitor/wrapper-004`
+with private mode-0600 detector streams and run exactly one
+`just detect-ultra205`. Only after its zero exit, one-device board-205
+admission, cleanup/holder proof, nonempty opaque credential inputs, and absent
+attempt/projection paths, run exactly once:
+`just capture-hashrate-monitor-evidence --private-root scratch/stat001-hashrate-monitor/attempt-004 --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --pool-credentials pool-credentials.json --detector-output scratch/stat001-hashrate-monitor/wrapper-004/detector.stdout --projection docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json --duration-seconds 600 --capture-timeout-seconds 1500`, with distinct private capture stdout/stderr under the wrapper root. The full
+shell guards and redirections are frozen in the linked plan.
+
+Attempt-004 evidence/privacy/recovery: the wrapper and supervisor-owned attempt
+roots are ignored mode-0700 directories with mode-0600 files. Credentials,
+pool/owner/worker fields, origins, ports, hostnames, USB/network/process
+identity, raw hashrates and sensors, bodies, logs, commands, PIDs, and traces
+remain private; only the plan-named closed projection may become public after
+independent validation. Starting capture consumes attempt-004. Preserve the
+earliest typed failure, perform the base campaign's bounded safe stop,
+recovery, seal, and cleanup, and never retry unchanged or start attempt-005.
+
+Attempt-004 safety, prohibited effects, and acceptance: require fresh bounded
+safety truth, 4.5-5.5 V input, at most 15 W, ASIC temperature below 75 C, and
+fresh nonzero fan RPM after the 100% command. No upstream-default/overclock or
+arbitrary control profile, automatic fan, unbounded mining, OTA, erase, raw
+write, fault injection, physical power action, external UART, or pin/pad/
+header/GPIO/probe/jumper/solder/signal work is permitted. Promotion requires
+the linked plan's exact package and detector identity, one ASIC/four domains,
+one-second cadence, twenty complete windows with work renewal, changing
+coherent positive HTTP/WebSocket hashrates and warm rolling windows, bounded
+error, terminal zero, safe stop, cleanup, private modes, seals, independent
+validation, and redaction. Any missing fact preserves `implemented`, withholds
+the projection, and selects one closed terminal outcome.
+
+Attempt-004 closure:
+`docs/parity/work-plans/20260816T033934Z-STAT-001/CLOSURE.md`
+
+Attempt-004 completion review: pushed source `1368e573` passed every software,
+privacy, package, exact-source, detector, and credential/path admission gate.
+The sealed campaign itself was accepted with trusted runtime identity, zero
+parse failures, confirmed safe stop, and ready USB cleanup. Promotion was
+correctly withheld because live-share produced network status `not_required`,
+zero covered windows, and no transport quorum. The root cause is production
+source: `CampaignNetworkCoordinator` runs `observe_network` only for `Soak`
+and `CommandEffects`, while this safety-bounded STAT-001 workflow must use
+conservative `LiveShare`. Attempt-004 is consumed; no attempt-005 is authorized
+under this plan. The next safe action is a fresh software plan that admits
+`LiveShare` to the existing network observer with regression coverage, then a
+separately planned fresh hardware ordinal after that fix is pushed.
+
+LiveShare network-observer software plan:
+`docs/parity/work-plans/20260816T044527Z-STAT-001/PLAN.md`
+
+- [x] Centralize campaign-stage network observation in one closed production
+      policy so serial admission, worker selection, timeouts, and finish
+      semantics cannot drift.
+- [x] Route conservative `LiveShare` and `Soak` through the existing continuity
+      observer while preserving `CommandEffects` and both `not_required`
+      stages exactly.
+- [x] Add focused stage-mapping and campaign/network regressions, then pass all
+      mandatory software, package, privacy, reference, and parity gates.
+- [x] Commit and push the correction, close the software-only plan without a
+      checklist transition, and leave any fresh hardware ordinal to a separate
+      immutable plan.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not read attempt-004
+protected artifacts, credentials, detector output, USB/device/network runtime,
+or private endpoints. Do not detect, flash, monitor, mine, actuate, update,
+erase, inject faults, manipulate physical power, use external UART, touch pins,
+pads, headers, GPIO, probes, jumpers, solder, or signals, create a projection,
+or start attempt-005. Completion proves only the corrected host observation
+policy; STAT-001 remains `implemented` until separate hardware evidence passes.
+
+Completion review: Source commit
+`89e8c34c794e6cfca499e4f392699be39e20e7dd` centralizes the exact five-stage
+network-observation policy and routes conservative `LiveShare` through the
+continuity observer. Focused network tests passed 28/28, the broader campaign
+slice passed 27/27, the canonical package built, privacy/reference checks
+passed, and the full ordered repository gate sequence passed. No checklist cell
+changed. Residual risk is hardware-only: a separately authorized fresh plan
+must prove the corrected observer against one newly built exact package and a
+new detector-gated Ultra 205 campaign before STAT-001 can move beyond
+`implemented`.
+
+Attempt-005 verification-promotion plan:
+`docs/parity/work-plans/20260816T050533Z-STAT-001/PLAN.md`
+
+- [x] Rebind the private-first hashrate workflow, independent validator,
+      generated contract, task/plan admission, Bazel inputs, and tests from
+      consumed attempt-004 to fresh attempt-005.
+- [x] Prove the exact five-stage network-observer correction, conservative
+      400 MHz / 1,100 mV / 100% profile, volt-typed input safety, and every
+      source, package, privacy, reference, and mandatory repository gate.
+- [x] Commit and push the exact implementation and rebuild its package before
+      accessing the detector, credential presence, or hardware.
+- [x] Run only the plan's exact detector and conditional attempt-005 capture,
+      then promote STAT-001 only on the complete independently validated
+      network/hashrate/safe-stop/cleanup quorum.
+
+Attempt-005 authorization: pushed source
+`89e8c34c794e6cfca499e4f392699be39e20e7dd` materially corrects attempt-004's
+exact `LiveShare` network-observer boundary. After this immutable plan and its
+attempt rebind are fully gated, committed, pushed, and packaged, exactly one
+detector and at most one conditional capture may factory-flash/reset one Ultra
+205, seed ignored opaque credentials, and run the repo-owned conservative
+profile for 600 accumulated active seconds. The ASIC command is 400 MHz,
+1,100 millivolts core voltage, and 100% fan; independent input safety remains
+4.5-5.5 volts, at most 15 W, below 75 C, with fresh nonzero fan RPM.
+
+Evidence/privacy/recovery/retry: use only fresh ignored mode-`0700`
+`scratch/stat001-hashrate-monitor/wrapper-005` and `attempt-005` roots with
+mode-`0600` files. Credentials, owner/worker fields, endpoints, origins, ports,
+USB/network/process identity, raw hashrates and sensors, bodies, logs, commands,
+PIDs, and traces remain private. Only the closed projection may be published
+after independent validation. Starting capture consumes attempt-005; preserve
+the earliest failure, safe-stop/recover/seal/clean up, and never retry unchanged
+or start attempt-006. No other profile, arbitrary control, unbounded mining,
+OTA, erase, raw write, fault injection, physical power action, external UART,
+or electrical pin/pad/header/GPIO/probe/jumper/solder/signal work is authorized.
+
+Attempt-005 closure:
+`docs/parity/work-plans/20260816T050533Z-STAT-001/CLOSURE.md`
+
+Attempt-005 completion review: exact pushed source `1090cf6e`, pinned reference,
+clean package identity, every software/privacy gate, and the sole detector
+passed. The one capture crossed attempt-004's corrected LiveShare observer
+boundary and produced 11 complete network windows over 310,615 active
+milliseconds with trusted identity, fresh safety, 61 HTTP successes, 298
+WebSocket frames without transport failures, changing coherent positive
+hashrates in both transports, terminal zero, confirmed safe stop, persistence,
+USB cleanup, seals, modes, and redaction. It then failed closed as
+`watchdog_unresponsive`; the projection was withheld and STAT-001 remains
+`implemented`. Current closed evidence cannot distinguish the watchdog sample
+predicate from HTTP/WebSocket per-window sequence advancement. Attempt-005 is
+consumed, no retry or attempt-006 is authorized, and the next safe action is a
+software-only discriminator plan before any further hardware ordinal.
+
+Watchdog diagnostic-completeness plan:
+`docs/parity/work-plans/20260816T060214Z-STAT-001/PLAN.md`
+
+- [x] Replace the lossy watchdog boolean diagnosis with one closed,
+      value-free earliest-failure discriminator covering every sample
+      predicate and HTTP/WebSocket checkpoint/feed advancement boundary.
+- [x] Carry the discriminator through sealed network evidence, campaign-result
+      v11, and the hashrate wrapper's seal- and category-gated failure envelope.
+- [x] Add exhaustive focused regressions, run every mandatory gate, commit and
+      push, then close without a checklist transition or hardware access.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not read attempt-005
+protected artifacts, credentials, detector output, USB/device/network runtime,
+or private endpoints. Do not detect, flash, monitor, mine, actuate, update,
+erase, inject faults, manipulate physical power, use external UART, touch any
+electrical pin/pad/header/GPIO/probe/jumper/solder/signal interface, create a
+projection, or start attempt-006. Completion preserves STAT-001 as
+`implemented`; a separate future immutable plan is required for hardware.
+
+Diagnostic completion review: pushed source `f9232963` replaces the ambiguous
+watchdog boolean with twelve closed value-free earliest-failure labels across
+sample predicates and HTTP/WebSocket checkpoint/feed advancement. Network v5,
+campaign-result v11, and the seal/category-gated wrapper carry the diagnostic.
+All focused and mandatory software, package, privacy, reference, parity, and
+diff gates pass. No hardware or protected input was accessed, no checklist
+field changed, and STAT-001 remains `implemented`. See
+`docs/parity/work-plans/20260816T060214Z-STAT-001/CLOSURE.md`.
+
+Next safe action: a separate immutable plan may bind pushed `f9232963` to a
+new exact package and authorize one detector-gated attempt-006. Any repeated
+watchdog failure must surface one sealed discriminator before another source
+change or retry; this plan does not authorize attempt-006.
+
+Attempt-006 verification-promotion plan:
+`docs/parity/work-plans/20260816T173058Z-STAT-001/PLAN.md`
+
+- [x] Rebind the private-first hashrate workflow, independent validator,
+      generated contract, immutable task/plan admission, Bazel inputs, and
+      protected paths from consumed attempt-005 to fresh attempt-006.
+- [x] Preserve campaign-result v11 and prove every closed watchdog
+      discriminator, success `none`, earliest-failure precedence, real-child
+      envelope, profile-unit, volt-typed safety, seal, mode, and privacy gate.
+- [x] Pass every focused and mandatory gate, commit and push the exact source,
+      rebuild its package, then run only the linked detector and conditional
+      attempt-006 capture.
+- [ ] Promote only STAT-001 on the complete independently validated twenty-
+      window network/hashrate/watchdog/terminal-zero/safe-stop/cleanup quorum;
+      otherwise withhold evidence, record the earliest closed blocker, and stop.
+
+Attempt-006 authorization: pushed commit `f9232963` materially fixes the exact
+attempt-005 ambiguity by carrying twelve closed watchdog failure labels through
+campaign-result v11 and the sealed wrapper envelope. After this immutable plan
+and its rebound implementation are clean, fully gated, committed, pushed, and
+packaged, exactly one detector and at most one conditional capture may
+factory-flash/reset one Ultra 205, seed ignored opaque credentials, and run the
+repo-owned conservative 400 MHz / 1,100 mV / 100% profile for 600 accumulated
+active seconds. Input safety remains independently 4.5-5.5 volts, at most 15 W,
+below 75 C, with fresh nonzero fan RPM.
+
+Attempt-006 evidence, recovery, retry, and non-scope: use only fresh ignored
+mode-0700 `scratch/stat001-hashrate-monitor/wrapper-006` and `attempt-006`
+roots with mode-0600 files. Credentials, workers, endpoints, origins, ports,
+USB/network/process identity, raw hashrates/sensors, bodies, logs, commands,
+PIDs, and traces remain private. Only the closed projection may publish after
+independent validation. Starting capture consumes attempt-006; preserve the
+earliest category/discriminator, safe-stop/recover/seal/clean up, and never
+retry unchanged or start attempt-007. No other profile, arbitrary control,
+unbounded mining, OTA, erase, raw write, fault injection, physical power
+action, external UART, or electrical pin/pad/header/GPIO/probe/jumper/solder/
+signal work is authorized. Any incomplete boundary leaves STAT-001
+`implemented`.
+
+Attempt-006 completion review: exact pushed source `5a1c6960`, pinned
+reference, clean board-205 package, software gates, privacy gates, detector,
+and protected-path admission passed. The sole capture failed closed as
+`watchdog_unresponsive` with the new sealed value-free discriminator
+`watchdog_not_participating`. Package/runtime identity were trusted, runtime
+attestation parsing and production serial were clean, terminal HTTP/WebSocket/
+pool state was valid, safe stop and USB cleanup passed, the result seal and
+protected modes passed, and no public projection was written. STAT-001 remains
+`implemented`; the checklist and progress history are unchanged. See
+`docs/parity/work-plans/20260816T173058Z-STAT-001/CLOSURE.md`.
+
+Next safe action: a separate immutable software-only plan must trace the live
+watchdog participant registry, campaign predicate, checkpoint/feed ownership,
+and task lifecycle, reproduce the proved `watchdog_not_participating` boundary,
+and make a targeted source fix. Attempt-006 is consumed; no unchanged retry or
+attempt-007 is authorized.
+
+Watchdog-classifier diagnosis plan:
+`docs/parity/work-plans/20260816T180839Z-STAT-001/PLAN.md`
+
+- [x] Map every closed runtime-health watchdog reason before the generic
+      participation-consistency guard, preserving earliest-failure precedence
+      and value-free public labels.
+- [x] Rotate the sealed network and campaign-result schemas and update every
+      producer, consumer, wrapper gate, fixture, and production-shaped
+      regression for the complete vocabulary.
+- [x] Pass every focused and mandatory software, firmware, package, privacy,
+      provenance, parity, and diff gate; record a non-promotion closure and
+      leave STAT-001 and progress history unchanged.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not access attempt-006,
+ignored credentials, detector/device/network runtime, or private values. Do
+not flash, reset, mine, actuate, update, erase, inject faults, use direct UART
+or electrical interfaces, create a public projection, or start attempt-007.
+
+Classifier-correction completion review: pushed implementation `91ab642b`
+preserves every evaluator-owned watchdog reason before the generic
+participation guard, rotates campaign-result/network-continuity to v12/v6, and
+passes focused, full repository, firmware-package, privacy, provenance,
+parity-invariance, immutable-plan, and diff gates. No hardware or protected
+attempt input was accessed. STAT-001 remains `implemented`; the checklist and
+progress history are unchanged. See
+`docs/parity/work-plans/20260816T180839Z-STAT-001/CLOSURE.md`.
+
+Next safe action: run the clean synchronized selector in a new invocation. A
+fresh immutable plan may authorize one attempt-007 only if it admits pushed
+v12/v6 source and defines the complete hardware, privacy, recovery, cleanup,
+retry, stop, and promotion contract. Never reuse attempt-006.
+
+Attempt-007 verification-promotion plan:
+`docs/parity/work-plans/20260816T183130Z-STAT-001/PLAN.md`
+
+- [x] Rebind the private-first workflow, independent validator, generated
+      contract, immutable plan/task admission, Bazel input, fixtures, and
+      protected paths from consumed attempt-006 to fresh attempt-007.
+- [x] Preserve campaign-result v12, network-continuity v6, every closed
+      reason-specific watchdog value, success `none`, earliest-failure, seal,
+      mode, privacy, profile-unit, and volt-typed input-safety boundaries.
+- [x] Pass every focused and mandatory gate, commit and push the exact source,
+      rebuild its package, then run only the linked detector and at most one
+      conditional attempt-007 capture.
+- [ ] Promote only STAT-001 on the complete independently validated twenty-
+      window network/hashrate/watchdog/terminal-zero/safe-stop/cleanup quorum;
+      otherwise withhold projection, record the earliest closed blocker, and
+      stop without retry.
+
+Attempt-007 objective and commands: pushed commit `91ab642b` materially fixes
+attempt-006's exact collapsed watchdog discriminator at the production-shaped
+and real-child boundaries. After this immutable plan and attempt rebind are
+fully gated, committed, pushed, and packaged, run exactly the linked plan's
+one `just detect-ultra205` command and, only on clean one-device board-205
+admission plus absent fresh paths and nonempty ignored credentials, its one
+`just capture-hashrate-monitor-evidence` command for
+`scratch/stat001-hashrate-monitor/attempt-007`, conservative `live-share`, 600
+active seconds, and a 1,500-second capture timeout. The wrapper root is
+`scratch/stat001-hashrate-monitor/wrapper-007`; the public candidate remains
+`docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json`.
+
+Attempt-007 allowed effects and safety: one exact board-205 factory flash and
+normal USB reset/re-enumeration; private ignored Wi-Fi/pool seeding; one
+bounded 400 MHz, 1,100 millivolt core-voltage, 100-percent-fan conservative
+campaign; protected current-session serial/HTTP/WebSocket observation; pause,
+safe stop, cleanup, sealing; and at most one supervisor-owned exact-package
+recovery flash after a post-flash failure. Require fresh 4.5-5.5 V input, at
+most 15 W, ASIC temperature below 75 C, and fresh nonzero fan RPM. Input
+voltage is volts and remains distinct from the millivolt core setpoint.
+
+Attempt-007 evidence/privacy: use only a fresh ignored mode-0700 wrapper parent
+with distinct mode-0600 detector/capture siblings and a previously absent
+supervisor-owned mode-0700 attempt child containing only mode-0600 artifacts.
+Credentials, workers, endpoints, origins, ports, hostnames, USB/network/process
+identity, raw hashrates/sensors, bodies, logs, commands, PIDs, and traces remain
+private. Only the closed projection may publish after independent validation.
+Never read, print, summarize, commit, or expose credential contents or private
+operational values.
+
+Attempt-007 prohibited effects, recovery, retry, and stops: no other profile,
+arbitrary control, automatic fan, unbounded mining, OTA, erase, raw write,
+fault injection, physical power action, direct UART, or electrical
+pin/pad/header/GPIO/probe/jumper/solder/signal work. Preserve the earliest
+failure and watchdog reason through bounded safe stop, recovery, seal, and
+cleanup. Starting capture consumes attempt-007; never reuse attempt-006, retry
+attempt-007, or start attempt-008. Stop on detector ambiguity/failure, non-205
+identity, missing inputs, drift, unsafe state, incomplete quorum, failed
+recovery/cleanup/seal/mode/privacy, nonzero command exit, or successful
+projection. Accepted terminal outcomes are `complete`,
+`stop_repeated_boundary`, `stop_hardware_blocker`,
+`stop_authority_boundary`, and `stop_impossible_contract`.
+
+Attempt-007 closure:
+`docs/parity/work-plans/20260816T183130Z-STAT-001/CLOSURE.md`
+
+Attempt-007 completion review: exact pushed source `ec9bedd3`, pinned
+reference, clean board-205 package, every software/privacy gate, and the sole
+detector passed. The one capture admitted the package and trusted runtime,
+covered 15 of 20 required network windows, and retained valid terminal HTTP,
+WebSocket, and persisted-pool state. It then failed closed as
+`watchdog_unresponsive` with the reason-specific sealed discriminator
+`watchdog_feed_stale`. Fresh safety, confirmed safe stop, ready USB cleanup,
+the result/network seals, protected modes, and redaction passed. The public
+projection is absent, parity promotion is false, and STAT-001 remains
+`implemented`; attempt-007 is consumed and no retry or attempt-008 is
+authorized. The next safe action is a software-only diagnosis of watchdog
+checkpoint/feed scheduling and task lifecycle before any further hardware
+ordinal.
+
+Watchdog-timeout correction plan:
+`docs/parity/work-plans/20260816T192025Z-STAT-001/PLAN.md`
+
+- [x] Replace the unrelated 2,000-ms projected feed-freshness threshold with
+      the exact compiled ESP-IDF task-watchdog timeout supplied by the firmware
+      boundary to the pure evaluator.
+- [x] Prove 2,001 ms, the exact configured boundary, and the first stale
+      millisecond with focused pure and firmware-ownership regressions while
+      preserving every existing closed watchdog failure.
+- [x] Run the complete software, firmware, package, privacy, provenance,
+      parity-invariance, immutable-plan, and diff gates; commit and push a
+      non-promotion closure without accessing hardware or attempt-007.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not access protected
+attempts, ignored credentials, detector/device/network runtime, private values,
+or a public projection. Do not flash, reset, monitor, mine, actuate, update,
+erase, inject faults, manipulate power, use direct UART, or touch electrical
+interfaces. This plan does not authorize attempt-008 and leaves STAT-001
+`implemented` with unchanged checklist and progress history.
+
+Watchdog-timeout correction completion review: pushed source `145eff42`
+replaces the false 2,000-ms task-watchdog freshness boundary with the compiled
+ESP-IDF five-second timeout supplied by the firmware adapter. Focused tests
+prove 2,001 ms and 5,000 ms fresh, 5,001 ms stale, and every existing closed
+failure unchanged. Exact firmware/package and all full software, privacy,
+reference, parity-invariance, immutable-plan, and diff gates passed. No
+protected attempt, credential, detector, device, network runtime, or hardware
+effect was accessed. STAT-001 remains `implemented`; the checklist and
+progress history are unchanged. See
+`docs/parity/work-plans/20260816T192025Z-STAT-001/CLOSURE.md`.
+
+Next safe action: a fresh immutable plan may consider one detector-gated
+attempt-008 only after binding exact pushed source `145eff42` and defining the
+complete hardware, privacy, recovery, cleanup, retry, stop, and promotion
+contract. Attempt-007 is consumed and must not be reused.
+
+Attempt-008 plan:
+`docs/parity/work-plans/20260816T200554Z-STAT-001/PLAN.md`
+
+Attempt-008 objective and commands: pushed correction `145eff42` fixes the
+exact attempt-007 `watchdog_feed_stale` boundary, while current pushed source
+`d6f4c6ab` adds only its truthful closure. After the immutable plan and narrow
+attempt rebind are fully gated, committed, pushed, and packaged, run exactly
+the linked plan's one `just detect-ultra205` command and, only on clean
+one-device board-205 admission plus absent fresh paths and nonempty ignored
+credentials, its one `just capture-hashrate-monitor-evidence` command for
+`scratch/stat001-hashrate-monitor/attempt-008`, conservative `live-share`, 600
+active seconds, and a 1,500-second capture timeout. The wrapper root is
+`scratch/stat001-hashrate-monitor/wrapper-008`; the public candidate remains
+`docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json`.
+
+Attempt-008 allowed effects and safety: one exact board-205 factory flash and
+normal USB reset/re-enumeration; private ignored Wi-Fi/pool seeding; one
+bounded 400 MHz, 1,100 millivolt core-voltage, 100-percent-fan conservative
+campaign; protected current-session serial/HTTP/WebSocket observation; pause,
+safe stop, cleanup, sealing; and at most one supervisor-owned exact-package
+recovery flash after a post-flash failure. Require fresh 4.5-5.5 V input, at
+most 15 W, ASIC temperature below 75 C, and fresh nonzero fan RPM. Input
+voltage is volts and remains distinct from the millivolt core setpoint.
+
+Attempt-008 evidence/privacy: use only a fresh ignored mode-0700 wrapper parent
+with distinct mode-0600 detector/capture siblings and a previously absent
+supervisor-owned mode-0700 attempt child containing only mode-0600 artifacts.
+Credentials, workers, endpoints, origins, ports, hostnames, USB/network/process
+identity, raw hashrates/sensors, bodies, logs, commands, PIDs, and traces remain
+private. Only the closed projection may publish after independent validation.
+Never read, print, summarize, commit, or expose credential contents or private
+operational values.
+
+Attempt-008 prohibited effects, recovery, retry, and stops: no other profile,
+arbitrary control, automatic fan, unbounded mining, OTA, erase, raw write,
+fault injection, physical power action, direct UART, or electrical
+pin/pad/header/GPIO/probe/jumper/solder/signal work. Preserve the earliest
+failure and watchdog reason through bounded safe stop, recovery, seal, and
+cleanup. Starting capture consumes attempt-008; never reuse attempt-007, retry
+attempt-008, or start attempt-009. Stop on detector ambiguity/failure, non-205
+identity, missing inputs, drift, unsafe state, incomplete quorum, failed
+recovery/cleanup/seal/mode/privacy, nonzero command exit, or successful
+projection. Accepted terminal outcomes are `complete`,
+`stop_repeated_boundary`, `stop_hardware_blocker`, `stop_authority_boundary`,
+and `stop_impossible_contract`.
+
+Attempt-008 closure:
+`docs/parity/work-plans/20260816T200554Z-STAT-001/CLOSURE.md`
+
+Attempt-008 completion review: exact pushed source `72c75876`, the pinned
+reference, clean board-205 package, every software/privacy gate, and the sole
+detector passed. The one capture admitted the exact package and completed 14
+of 20 required windows before failing closed as `watchdog_unresponsive` with
+the same sealed discriminator `watchdog_feed_stale` seen in attempt-007, now
+with the compiled five-second timeout correction present. Runtime attestation
+had no parse failure. Confirmed safe stop, ready USB cleanup, both seals,
+protected modes, and projection withholding passed. The public projection is
+absent, parity promotion is false, and STAT-001 remains `implemented` with
+unchanged checklist and progress history. Attempt-008 is consumed and no retry
+or attempt-009 is authorized.
+
+Next safe action: a fresh immutable software-only STAT-001 diagnosis must
+trace the real watchdog feed owner, checkpoint cadence, task blocking, and
+scheduler lifecycle, reproduce the post-window feed-staleness transition, and
+apply a targeted source correction before any new hardware ordinal can be
+considered.
+
+Cooperative watchdog-progress correction plan:
+`docs/parity/work-plans/20260816T225404Z-STAT-001/PLAN.md`
+
+- [x] Make recurring ESP task-watchdog feeds reflect completed cooperative
+      progress inside the production-owner dispatch/effect cascade while
+      preserving the owner task as the sole subscription and feed authority.
+- [x] Prove a progressing multi-event cascade remains feedable and a single
+      unfinished effect is not masked, with production-shaped ownership and
+      configured-timeout regressions.
+- [x] Run all focused, firmware-package, privacy, reference, parity-invariance,
+      immutable-plan, and mandatory repository gates; commit and push a
+      software-only closure without a checklist transition or hardware access.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not access protected
+attempts, ignored credentials, detector/device/network runtime, private
+values, or a public projection. Do not detect, flash, reset, monitor, mine,
+actuate, update, erase, inject faults, manipulate power, use direct UART, or
+touch electrical interfaces. Attempt-008 remains consumed; this plan does not
+authorize attempt-009. STAT-001 remains `implemented` until a separately
+authorized exact-package hardware campaign proves the full quorum.
+
+Completion review: pushed source
+`f5f1be9b4614c155df96aaa78a2271c60065f84f` makes recurring task-watchdog
+feeds track completed production-owner event/effect progress without weakening
+the compiled timeout or masking an unfinished effect. Focused regressions, the
+exact firmware package, all mandatory repository gates, privacy, reference,
+parity invariance, plan immutability, and diff review pass. No hardware,
+detector, credentials, protected attempt evidence, or public projection was
+accessed; STAT-001 remains `implemented` with unchanged checklist and progress
+history. See
+`docs/parity/work-plans/20260816T225404Z-STAT-001/CLOSURE.md`.
+
+Residual risk and next safe action: software cannot prove live watchdog
+freshness or the twenty-window hashrate quorum. A fresh immutable plan must
+bind the pushed correction to an exact board-205 package and authorize a new
+attempt-009 contract before hardware use; attempts 007 and 008 remain
+consumed.
+
+Attempt-009 verification-promotion plan:
+`docs/parity/work-plans/20260816T231527Z-STAT-001/PLAN.md`
+
+- [x] Rebind the private-first workflow, Rust validator, generated contract,
+      immutable task/plan admission, Bazel runfiles, protected roots, and
+      real-child fixtures from consumed attempt-008 to fresh attempt-009.
+- [x] Run every focused and mandatory software, firmware, privacy, reference,
+      package, and exact-source gate; commit and push before device access.
+- [x] Run only the frozen detector and sole conditional attempt-009 command,
+      then promote STAT-001 only if the complete independent quorum passes.
+
+Attempt-009 progress basis and authorization: pushed correction
+`f5f1be9b4614c155df96aaa78a2271c60065f84f` makes production-owner watchdog
+feeds follow completed event/effect progress, the bounded inbox wait, and
+campaign publication without weakening the five-second timeout or feeding
+through an unfinished effect. After this plan/task checkpoint and rebound
+implementation are clean, fully gated, committed, and pushed, one exact board-
+205 package may be factory-flashed/reset; ignored local Wi-Fi and pool inputs
+may be seeded privately; and the repo-owned `live-share` conservative 400 MHz /
+1100 mV / 100% fan profile may mine for exactly 600 accumulated active seconds
+while protected current-session HTTP, WebSocket, and serial observations are
+joined. The campaign must pause, safe-stop, release USB/process ownership, and
+may use at most one supervisor-owned exact-package recovery flash after a
+post-flash failure.
+
+Attempt-009 units and safety: 1100 mV is the ASIC core setpoint, while INA260
+input bus voltage is independently measured in volts. Admission requires fresh
+4.5-5.5 V input, at most 15 W, ASIC temperature below 75 C, and fresh nonzero
+fan RPM after the 100% fan command. The two voltage domains must not be
+compared. Stop on stale/unsafe state, ambiguous/non-205 detector identity,
+source/reference/package drift, missing credentials, or cleanup/recovery
+failure.
+
+Attempt-009 evidence, privacy, recovery, and retry: only fresh ignored mode-
+`0700` `scratch/stat001-hashrate-monitor/wrapper-009` and `attempt-009` roots
+with mode-`0600` files are permitted. Credentials, pool/owner/worker fields,
+origins, ports, USB/network/process identities, exact hashrates, sensors,
+HTTP/WebSocket bodies, serial, commands, PIDs, and traces remain private. The
+sole public aggregate projection is written only after independent validation.
+Starting capture consumes attempt-009; preserve the earliest typed failure,
+run bounded safe stop/recovery/cleanup after post-flash failures, and do not
+retry unchanged or start attempt-010.
+
+Attempt-009 prohibited effects and acceptance: no upstream-default/overclock
+profile, arbitrary control target, automatic fan mode, unbounded mining, OTA,
+erase, raw writes, fault injection, physical power action, direct UART, or pin/
+pad/header/GPIO/probe/jumper/solder/signal manipulation is permitted. Promotion
+requires exact clean source/reference/package/plan and detector identity; one
+ASIC/four domains and one-second cadence; all twenty active windows with work
+renewal; changing coherent positive HTTP/WebSocket current and rolling rates;
+bounded error; watchdog failure `none`; terminal zero current rate; safe stop,
+cleanup, protected modes, seals, independent validation, and redaction. Any
+missing fact withholds promotion and leaves STAT-001 `implemented`.
+
+Attempt-009 completion review: exact clean pushed source/package
+`6fd586dab96a3eca15b7dd68d92de60c275bc5de`, every software/privacy/reference
+gate, and one fresh detector passed. The sole capture then repeated the sealed
+attempt-008 boundary: `hardware_blocked` / `watchdog_unresponsive` /
+`watchdog_feed_stale` after 14 of 20 required windows. Runtime identity was
+trusted, runtime-attestation parsing passed, safe stop was confirmed, USB
+cleanup was ready, protected modes and result/network seals passed, and no
+public projection exists. Attempt-009 is consumed, no retry ran, STAT-001
+remains `implemented`, and the checklist/progress history are unchanged. See
+`docs/parity/work-plans/20260816T231527Z-STAT-001/CLOSURE.md`.
+
+Residual risk and next safe action: the repeated boundary disproves the
+sufficiency of the completed-event/effect feed correction but does not isolate
+the remaining owner phase, subscription/reporting, clock-age, or scheduler
+cause. A new immutable software-only plan must add closed diagnostics and a
+production-shaped regression before any targeted correction. Attempt-010 is
+not authorized without new verified progress and a new complete hardware
+contract.
+
+Campaign watchdog-policy correction plan:
+`docs/parity/work-plans/20260816T235908Z-STAT-001/PLAN.md`
+
+- [x] Reproduce the false 2,000-ms campaign rejection against the firmware's
+      configured-timeout `feed_fresh` verdict.
+- [x] Remove only the duplicate numeric consumer policy while preserving typed
+      reason, participation, presence, per-window advancement, precedence, and
+      value-free evidence checks.
+- [x] Run focused and mandatory software, firmware-package, privacy,
+      reference, parity-invariance, immutable-plan, and diff gates; commit and
+      push a software-only closure without checklist transition or hardware.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not access protected
+attempts, credentials, detector/device/network runtime, private values, or a
+public projection. Do not detect, flash, reset, monitor, mine, actuate, update,
+erase, inject faults, manipulate power, use direct UART, or touch electrical
+interfaces. Attempt-009 remains consumed; this plan does not authorize
+attempt-010. STAT-001 remains `implemented` and the checklist/progress history
+remain unchanged.
+
+Campaign watchdog-policy correction completion review: source commit
+`9e9d6545dbe4881f1cb81ca61da2c152dd791c9b` removes the duplicate host
+2,000-ms freshness threshold. The real campaign regression failed before the
+fix and passes afterward; producer `feed_fresh` remains accepted through the
+compiled 5,000-ms timeout, producer `feed_stale` remains rejected after it,
+and every focused and mandatory software gate passes. No firmware schema,
+hardware behavior, checklist field, or progress-history entry changed. See
+`docs/parity/work-plans/20260816T235908Z-STAT-001/CLOSURE.md`.
+
+Residual risk and next safe action: the correction explains attempts 008 and
+009 but does not itself prove the live twenty-window quorum. Attempt-010
+requires a separate immutable hardware plan using this exact pushed source,
+with the complete detector, evidence, privacy, recovery, retry, cleanup, and
+stop contract. No hardware retry is authorized by this completed software
+plan, so STAT-001 remains `implemented`.
+
+Attempt-010 verification-promotion plan:
+`docs/parity/work-plans/20260817T001716Z-STAT-001/PLAN.md`
+
+- [x] Rebind the private-first workflow, Rust validator, generated contract,
+      immutable task/plan admission, Bazel inputs, protected roots, and
+      real-child fixtures from consumed attempt-009 to fresh attempt-010.
+- [x] Run every focused and mandatory software, firmware, privacy, reference,
+      package, and exact-source gate; commit and push before device access.
+- [x] Run only the frozen detector and sole conditional attempt-010 command,
+      then promote STAT-001 only if the complete independent quorum passes.
+
+Attempt-010 progress basis and authorization: pushed correction
+`9e9d6545dbe4881f1cb81ca61da2c152dd791c9b` removes the host campaign's
+contradictory 2,000-ms feed-age policy while retaining the exact-package
+producer's compiled 5,000-ms verdict and every structural watchdog check.
+After this plan/task checkpoint and attempt rebind are clean, fully gated,
+committed, pushed, and packaged, one exact board-205 package may be factory-
+flashed/reset; ignored local Wi-Fi and pool inputs may be seeded privately;
+and the repo-owned `live-share` conservative 400 MHz / 1,100 mV / 100% fan
+profile may mine for exactly 600 accumulated active seconds while protected
+current-session HTTP, WebSocket, and serial observations are joined. The
+campaign must pause, safe-stop, release USB/process ownership, and may use at
+most one supervisor-owned exact-package recovery flash after a post-flash
+failure.
+
+Attempt-010 units and safety: 1,100 mV is the ASIC core setpoint, while INA260
+input bus voltage is independently measured in volts. Admission requires fresh
+4.5-5.5 V input, at most 15 W, ASIC temperature below 75 C, and fresh nonzero
+fan RPM after the 100% fan command. The two voltage domains must not be
+compared. Stop on stale/unsafe state, ambiguous/non-205 detector identity,
+source/reference/package drift, missing credentials, or cleanup/recovery
+failure.
+
+Attempt-010 evidence, privacy, recovery, and retry: only fresh ignored mode-
+`0700` `scratch/stat001-hashrate-monitor/wrapper-010` and `attempt-010` roots
+with mode-`0600` files are permitted. Credentials, pool/owner/worker fields,
+origins, ports, USB/network/process identities, exact hashrates, sensors,
+HTTP/WebSocket bodies, serial, commands, PIDs, and traces remain private. The
+sole public aggregate projection is written only after independent validation.
+Starting capture consumes attempt-010; preserve the earliest typed failure,
+run bounded safe stop/recovery/cleanup after post-flash failures, and do not
+retry unchanged or start attempt-011.
+
+Attempt-010 prohibited effects and acceptance: no upstream-default/overclock
+profile, arbitrary control target, automatic fan mode, unbounded mining, OTA,
+erase, raw writes, fault injection, physical power action, direct UART, or
+pin/pad/header/GPIO/probe/jumper/solder/signal manipulation is permitted.
+Promotion requires exact clean source/reference/package/plan and detector
+identity; one ASIC/four domains and one-second cadence; all twenty active
+windows with work renewal; changing coherent positive HTTP/WebSocket current
+and rolling rates; bounded error; watchdog failure `none`; terminal zero
+current rate; safe stop, cleanup, protected modes, seals, independent
+validation, and redaction. Any missing fact withholds promotion and leaves
+STAT-001 `implemented`.
+
+Attempt-010 completion review: exact pushed source/package
+`495ad95d512546ed6c24d528204f779e88e3fdb2`, the pinned reference, every
+focused and mandatory software/privacy gate, and one fresh detector passed.
+The sole capture then repeated the sealed attempts-008/009 boundary after 14
+of 20 required windows: `hardware_blocked` / `watchdog_unresponsive` /
+producer-owned `watchdog_feed_stale`. Runtime identity was trusted,
+runtime-attestation parsing was clean, safety remained valid, terminal HTTP
+and WebSocket observations completed, safe stop was confirmed, USB cleanup
+was ready, protected modes and all seals passed, and no public projection was
+written. Attempt-010 is consumed, no retry ran, and progress policy selects
+`stop_repeated_boundary`. STAT-001 remains `implemented`; checklist and
+progress history are unchanged. See
+`docs/parity/work-plans/20260817T001716Z-STAT-001/CLOSURE.md`.
+
+Residual risk and next safe action: removing the duplicate host threshold
+proves this recurrence is the device producer's stale verdict, but the closed
+evidence does not distinguish producer timing, scheduler delay, checkpoint
+publication, or subscription state. Do not start attempt-011. A future
+software-only immutable plan may add new closed discriminators and a
+production-shaped regression; hardware requires an objectively changed
+authoritative boundary plus a new complete contract.
+
+Owner-phase diagnostic and publication-cadence correction plan:
+`docs/parity/work-plans/20260817T020911Z-STAT-001/PLAN.md`
+
+- [x] Add a closed task-watchdog owner-phase discriminator from the firmware
+      owner through runtime health, HTTP/WebSocket, sealed campaign evidence,
+      and value-free private-first failure reporting.
+- [x] Bound synchronous campaign-status retained/serial publication to one
+      second while preserving per-event state tracking, first/terminal markers,
+      safety, feedback, hashrate service, and maximum-gap requirements.
+- [x] Prove 600-second high-event-rate cadence bounds, prompt terminal output,
+      v13/v7 schema/seal behavior, source/evaluator binding, redaction, and all
+      mandatory gates; push a software-only closure without transition.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not access protected
+attempts, credentials, detector/device/network runtime, private values, or
+public projection candidates. Do not detect, flash, reset, monitor, mine,
+actuate, update, erase, inject faults, manipulate power, use direct UART, or
+touch electrical interfaces. Attempt-010 remains consumed and attempt-011 is
+not authorized. STAT-001 remains `implemented`; checklist/progress are
+unchanged.
+
+Completion review: pushed implementation `edef059b` adds the phase
+discriminator, cadence correction, v13/v7 sealed evidence, and all required
+regressions without hardware access or a parity transition. Focused and full
+mandatory gates pass. Residual risk is live-only: this correction has not yet
+completed a detector-gated twenty-window campaign. A future attempt-011 needs
+its own exact-source immutable contract; this closure does not authorize it.
+
+Attempt-011 verification-promotion plan:
+`docs/parity/work-plans/20260817T030355Z-STAT-001/PLAN.md`
+
+- [x] Rebind the private-first workflow, Rust validator, generated contract,
+      immutable task/plan admission, Bazel inputs, protected roots, v13/v7
+      schemas, owner phase, and real-child fixtures from consumed attempt-010
+      to fresh attempt-011.
+- [x] Run every focused and mandatory software, firmware, privacy, reference,
+      package, and exact-source gate; commit and push before device access.
+- [x] Run only the frozen detector and sole conditional attempt-011 command,
+      then promote STAT-001 only if the complete independent quorum passes.
+
+Attempt-011 progress basis and authorization: exact pushed correction
+`edef059bfc1d5dcc79f997c46fa022d8e1bd8ffc` bounds status publication and
+adds a closed owner-phase discriminator after attempts 008-010 repeated the
+same producer-stale boundary. After this plan/task checkpoint and the
+attempt-011 rebind are clean, fully gated, committed, pushed, and packaged,
+one exact board-205 package may be factory-flashed/reset; ignored local Wi-Fi
+and pool inputs may be seeded privately; and the repo-owned `live-share`
+conservative 400 MHz / 1,100 mV / 100% fan profile may mine for exactly 600
+accumulated active seconds while protected current-session HTTP, WebSocket,
+and serial observations are joined. The campaign must pause, safe-stop,
+release USB/process ownership, and may use at most one supervisor-owned exact-
+package recovery flash after a post-flash failure. The exact commands, privacy
+layout, evidence joins, recovery behavior, retry bound, and stop outcomes are
+frozen in the immutable plan above.
+
+Attempt-011 units and safety: 1,100 mV is the ASIC core setpoint, while INA260
+input bus voltage is independently measured in volts. Admission requires
+fresh 4.5-5.5 V input, at most 15 W, ASIC temperature below 75 C, and fresh
+nonzero fan RPM after the 100% fan command. Never compare the two voltage
+domains. Stop on stale/unsafe state, ambiguous/non-205 detector identity,
+source/reference/package drift, missing credentials, or cleanup/recovery
+failure.
+
+Attempt-011 evidence, privacy, recovery, and retry: only fresh ignored mode-
+`0700` `scratch/stat001-hashrate-monitor/wrapper-011` and `attempt-011` roots
+with mode-`0600` files are permitted. Credentials, pool/owner/worker fields,
+origins, ports, USB/network/process identities, exact hashrates, sensors,
+HTTP/WebSocket bodies, serial, commands, PIDs, and traces remain private. The
+sole public aggregate projection is written only after independent validation.
+Starting capture consumes attempt-011; preserve the earliest typed failure
+and closed owner phase, run bounded safe stop/recovery/cleanup after post-
+flash failures, and do not retry unchanged or start attempt-012.
+
+Attempt-011 prohibited effects and acceptance: no upstream-default/overclock
+profile, arbitrary control target, automatic fan mode, unbounded mining, OTA,
+erase, raw writes, fault injection, physical power action, direct UART, or
+pin/pad/header/GPIO/probe/jumper/solder/signal manipulation is permitted.
+Promotion requires exact clean source/reference/package/plan and detector
+identity; one ASIC/four domains and one-second cadence; all twenty active
+windows with work renewal; changing coherent positive HTTP/WebSocket current
+and rolling rates; bounded error; watchdog failure `none`; terminal zero
+current rate; safe stop, cleanup, protected modes, seals, independent
+validation, and redaction. Any missing fact withholds promotion and leaves
+STAT-001 `implemented`.
+
+Attempt-011 completion review: exact pushed source/package `43acffd3`, pinned
+reference, focused/full gates, and one detector passed. The sole capture
+failed closed after 5/20 windows at the new sealed signature
+`watchdog_invalid_observation` / owner phase `waiting_inbox`; runtime identity,
+attestation parsing, safety, terminal transports, pool persistence, safe stop,
+cleanup, modes, seals, and redaction passed, and no public projection was
+written. Attempt-011 is consumed, no retry ran, and terminal outcome is
+`stop_hardware_blocker`. STAT-001 remains `implemented`; checklist/progress
+are unchanged. See
+`docs/parity/work-plans/20260817T030355Z-STAT-001/CLOSURE.md`.
+
+Residual risk and next safe action: source tracing shows runtime health reads
+evaluation time before copying concurrent watchdog observations, allowing a
+new feed timestamp to overtake that earlier time and fail checked age
+subtraction. Do not start attempt-012. A fresh software-only immutable plan
+must add a controlled interleaving regression and make evaluation time no
+earlier than the copied observations while preserving every existing guard.
+
+Runtime-health snapshot-ordering correction plan:
+`docs/parity/work-plans/20260817T035514Z-STAT-001/PLAN.md`
+
+- [x] Move runtime-health evaluation-time sampling after copied supervisor,
+      watchdog, and owner-phase observations; remove stale caller time input.
+- [x] Prove the exact concurrent-feed interleaving, future-feed rejection,
+      post-copy zero-age freshness, production source ordering, and caller
+      ownership with behavior and source regressions.
+- [x] Bind runtime-health core/adapter sources into the hashrate evaluator
+      inventory and run every focused/mandatory gate; push a software-only
+      closure without transition or hardware.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not access protected
+attempts, credentials, detector/device/network runtime, private values, or
+public projection candidates. Do not detect, flash, reset, monitor, mine,
+actuate, update, erase, inject faults, manipulate power, use direct UART, or
+touch electrical interfaces. Attempt-011 remains consumed and attempt-012 is
+not authorized. STAT-001 remains `implemented`; checklist/progress are
+unchanged.
+
+Snapshot-ordering completion review: exact pushed implementation `0b5338f6`
+copies checkpoint/watchdog/phase observations before sampling evaluation time,
+removes caller-supplied stale time, proves the old invalid and corrected fresh
+interleavings, and expands the independently checked evaluator inventory to 15
+sources. Focused and full mandatory gates pass. No hardware, credentials,
+protected attempt, checklist, progress, or README change occurred. Residual
+risk is live-only: the fix has not completed a detector-gated twenty-window
+campaign. A future attempt-012 needs its own exact-source immutable contract;
+this closure does not authorize it. See
+`docs/parity/work-plans/20260817T035514Z-STAT-001/CLOSURE.md`.
+
+Attempt-012 verification-promotion plan:
+`docs/parity/work-plans/20260817T042626Z-STAT-001/PLAN.md`
+
+- [x] Rebind the private-first workflow, validator, generated contract, task/
+      plan admission, Bazel inputs, protected roots, v13/v7 schemas, owner
+      phase, 15-source identity, and fixtures from attempt-011 to attempt-012.
+- [x] Run every focused and mandatory software, firmware, privacy, reference,
+      package, and exact-source gate; commit and push before device access.
+- [x] Run only the frozen detector and sole conditional attempt-012 command,
+      then promote STAT-001 only if the complete independent quorum passes.
+
+Attempt-012 progress basis and authorization: exact pushed correction
+`0b5338f6c1224dbdae6e664cd286e114ad611c6c` makes evaluation time postdate
+copied watchdog facts and proves the attempt-011 invalid-observation race.
+After this plan/task checkpoint and attempt rebind are clean, fully gated,
+committed, pushed, and packaged, one exact board-205 package may be factory-
+flashed/reset; ignored local Wi-Fi and pool inputs may be seeded privately;
+and the repo-owned conservative 400 MHz / 1,100 mV / 100% fan profile may mine
+for exactly 600 accumulated active seconds while protected current-session
+HTTP, WebSocket, and serial observations are joined. The campaign must pause,
+safe-stop, release ownership, and may use at most one supervisor-owned exact-
+package recovery flash after a post-flash failure. Exact commands, privacy,
+evidence, recovery, retry, and stop rules are frozen in the plan above.
+
+Attempt-012 safety/privacy: 1,100 mV is the ASIC core setpoint; INA260 bus
+input is independently measured in volts and must remain fresh 4.5-5.5 V with
+at most 15 W, ASIC temperature below 75 C, and fresh nonzero fan RPM. Only
+fresh ignored mode-`0700` wrapper/attempt-012 roots and mode-`0600` files are
+permitted. Credentials, owner/worker fields, endpoints, identities, exact
+hashrates/sensors, bodies, logs, commands, PIDs, and traces remain private.
+The public projection is written only after independent validation.
+
+Attempt-012 effects/retry/acceptance: starting capture consumes the ordinal;
+preserve earliest failure and owner phase, run bounded safe stop/recovery/
+cleanup, and do not retry unchanged or start attempt-013. No overclock,
+arbitrary controls, unbounded mining, OTA, erase, raw write, fault injection,
+physical power action, direct UART, or electrical manipulation is permitted.
+Promotion requires exact source/reference/package/plan and detector identity,
+one ASIC/four domains, one-second cadence, all twenty windows with work
+renewal, changing coherent positive HTTP/WebSocket rates and warm rolling
+windows, bounded error, watchdog `none`, terminal zero, safe stop, cleanup,
+modes, seals, validation, and redaction. Missing facts withhold promotion.
+
+Attempt-012 completion review: exact pushed source/package `ae094a1d`, pinned
+reference, focused/full gates, and one detector passed. The sole capture
+failed closed after 13/20 windows at the new sealed signature
+`watchdog_feed_stale` / owner phase `waiting_inbox`; attempt-011's invalid-
+observation race did not recur. Runtime identity, attestation, safety, terminal
+transports, pool persistence, safe stop, cleanup, modes, seals, and redaction
+passed, and no public projection was written. Attempt-012 is consumed, no
+retry ran, and terminal outcome is `stop_hardware_blocker`. STAT-001 remains
+`implemented`; checklist/progress are unchanged. See
+`docs/parity/work-plans/20260817T042626Z-STAT-001/CLOSURE.md`.
+
+Residual risk and next safe action: the owner feed became stale while phase
+was `waiting_inbox`, whose requested timeout should be bounded by the
+one-second readiness deadline. Current evidence cannot distinguish scheduler
+starvation, timed-wait overrun, or task-priority/runtime behavior. Do not start
+attempt-013. A fresh software-only plan must add coherent closed wait-entry,
+deadline, and overrun diagnostics plus production-shaped scheduling tests
+before any targeted fix or new hardware contract.
+
+Waiting-inbox deadline diagnostic plan:
+`docs/parity/work-plans/20260817T045834Z-STAT-001/PLAN.md`
+
+- [x] Add coherent atomic receive-deadline ownership and closed runtime-health
+      wait states for not-waiting, within-deadline, overrun, and invalid facts.
+- [x] Carry the closed state through v14/v8 sealed campaign diagnostics with
+      exact boundary, precedence, missing/unknown, redaction, and real-child
+      regressions.
+- [x] Pin and prove the ESP-IDF pthread priority-5 contract against upstream,
+      bind new evaluator sources, and run every focused/mandatory gate; push a
+      software-only closure without transition or hardware.
+
+Software-only authorization: local source, fixtures, tests, builds,
+documentation, and ordinary git operations only. Do not access protected
+attempts, credentials, detector/device/network runtime, private values, or
+public projection candidates. Do not detect, flash, reset, monitor, mine,
+actuate, update, erase, inject faults, manipulate power, use direct UART, or
+touch electrical interfaces. Attempt-012 remains consumed and attempt-013 is
+not authorized. STAT-001 remains `implemented`; checklist/progress are
+unchanged.
+
+Wait-deadline diagnostic completion review: exact pushed implementation
+`9604d145` atomically publishes a wrap-aware deadline before `waiting_inbox`,
+derives four closed wait states after copying observations, carries them
+through v14/v8 sealed evidence, pins upstream-aligned pthread priority 5, and
+expands evaluator identity to 18 sources. Focused, real Xtensa, and all
+mandatory gates pass. No hardware, credentials, protected attempt, checklist,
+progress, or README change occurred. Residual risk is live-only: the state has
+not yet classified the waiting-inbox stale-feed boundary on device. A future
+attempt-013 requires its own exact-source immutable contract; this closure does
+not authorize it. See
+`docs/parity/work-plans/20260817T045834Z-STAT-001/CLOSURE.md`.
+
+Attempt-013 verification-promotion plan:
+`docs/parity/work-plans/20260817T054416Z-STAT-001/PLAN.md`
+
+- [x] Rebind workflow/validator/generated contract/task-plan/Bazel/protected
+      roots/fixtures from attempt-012 to attempt-013, preserving v14/v8,
+      owner phase, wait state, priority 5, and 18-source identity.
+- [x] Run focused/full software, firmware, privacy, reference, package, and
+      exact-source gates; commit/push before device access.
+- [x] Run only the frozen detector and sole conditional attempt-013 command;
+      promote only if the complete independent quorum passes.
+
+Attempt-013 authorization: exact pushed diagnostic `9604d145` classifies
+waiting-inbox deadline state. After plan/rebind are clean, gated, committed,
+pushed, and packaged, one exact board-205 package may be factory-flashed/reset,
+privately seeded from ignored credentials, and run the conservative 400 MHz /
+1,100 mV / 100% fan profile for exactly 600 active seconds with protected
+serial/HTTP/WebSocket joins, pause, safe stop, cleanup, sealing, and at most one
+supervisor recovery flash. Exact commands and stop rules are frozen in PLAN.
+
+Safety/privacy/retry: input bus truth is fresh 4.5-5.5 V and <=15 W, ASIC temp
+<75 C, fan RPM fresh/nonzero; core mV and bus volts remain distinct. Only fresh
+ignored wrapper/attempt-013 0700 roots and 0600 files are allowed. Credentials,
+endpoints, identities, exact values, bodies, logs, commands, PIDs, traces stay
+private. Starting capture consumes ordinal; no unchanged retry or attempt-014.
+No overclock, arbitrary controls, unbounded mining, OTA, erase, raw writes,
+fault injection, power action, direct UART, or electrical manipulation.
+Promotion requires exact identity, 20 windows/work renewal, coherent changing
+rates, warm windows, bounded error, watchdog none, terminal zero, safe stop,
+cleanup, modes, seals, validation, and redaction; missing facts withhold it.
+
+Attempt-013 completion review: exact pushed source/package `43cc4178`, pinned
+reference, all gates, and detector passed. Sole capture stopped after 12/20
+windows with sealed `watchdog_feed_stale`, phase `waiting_inbox`, wait state
+`within_deadline`; identity, safety, terminal state, cleanup, modes, seals, and
+redaction passed, projection absent. Attempt consumed, no retry, outcome
+`stop_hardware_blocker`; STAT-001/checklist/progress unchanged. See
+`docs/parity/work-plans/20260817T054416Z-STAT-001/CLOSURE.md`.
+
+Residual risk/next action: runtime health copies mutex feed history before
+separately atomic phase/deadline, allowing old-feed/new-wait mixed snapshots.
+Do not start attempt-014. A fresh software plan must add a bounded coherent
+single-writer snapshot/seqlock and exact interleaving regression before any new
+hardware contract.
+
+Coherent watchdog-snapshot correction plan:
+`docs/parity/work-plans/20260817T062043Z-STAT-001/PLAN.md`
+
+- [x] Replace the separate feed-history and owner phase/deadline reads with one
+      bounded coherent single-writer observation snapshot.
+- [x] Regression-test the exact old-feed/new-wait interleaving, stable reads,
+      retry exhaustion, and production runtime-health ownership.
+- [x] Run focused firmware/package/privacy/reference checks and every mandatory
+      repository gate; push a non-promotion closure with STAT-001 unchanged.
+
+Software-only authorization: local source, tests, deterministic fixtures,
+firmware/package builds, documentation, and Git operations only. Do not access
+protected attempts, credentials, detector/device/USB/network runtime, private
+values, or a public projection. Do not flash, reset, monitor, mine, actuate,
+update, erase, inject faults, manipulate power, use direct UART or electrical
+interfaces, retry attempt-013, or create/run attempt-014. This plan cannot
+change STAT-001, checklist, progress, or README fields.
+
+Coherent-snapshot completion review: pushed source `f5a8fd14` places feed
+history, owner phase, and wait deadline behind one sequence-bracketed firmware
+snapshot with eight bounded fail-closed retries. The exact old-feed/new-wait
+interleaving is rejected then retried to the new coherent instant; stable,
+retry-exhaustion, poison, ownership, evaluator, firmware/package, privacy,
+reference, and every mandatory gate pass. No hardware or public evidence ran,
+and STAT-001/checklist/progress remain unchanged. See the linked `CLOSURE.md`.
+
+Residual risk/next action: live completion remains hardware-only. A separate
+immutable plan may bind pushed `f5a8fd14` to a new exact package and authorize
+one detector-gated attempt-014 with the full existing conservative-profile,
+unit, safety, evidence, privacy, recovery, cleanup, retry, stop, and promotion
+contract. Attempt-013 remains consumed and must not be retried.
+
+Attempt-014 verification-promotion plan:
+`docs/parity/work-plans/20260817T065250Z-STAT-001/PLAN.md`
+
+- [x] Rebind the private-first workflow, validator, generated contract,
+      immutable task/plan admission, Bazel inputs, fresh protected roots, and
+      fixtures from attempt-013 to attempt-014 while preserving v14/v8,
+      coherent watchdog snapshot, priority 5, and 18-source identity.
+- [x] Run every focused and mandatory software, firmware, privacy, reference,
+      package, and exact-source gate; commit and push before device access.
+- [x] Run only the frozen detector and sole conditional attempt-014 command;
+      promote only if the complete independent quorum passes.
+
+Attempt-014 progress basis: pushed `f5a8fd14` materially fixes attempt-013's
+exact `watchdog_feed_stale` / `waiting_inbox` / `within_deadline` mixed-
+snapshot signature with a sequence-bracketed coherent firmware snapshot and
+exact interleaving regression. This is a verified-fix continuation, not an
+unchanged retry.
+
+Attempt-014 authorization: after plan/rebind are clean, fully gated, committed,
+pushed, and packaged, one exact board-205 package may be factory-flashed/reset,
+privately seeded from ignored Wi-Fi/pool inputs, and run only at conservative
+400 MHz / 1,100 mV ASIC core / 100% fan for exactly 600 active seconds with
+protected serial/HTTP/WebSocket joins, pause, safe stop, cleanup, sealing, and
+at most one supervisor-owned recovery flash. Exact commands are frozen in the
+linked plan. Input-bus safety is independently fresh 4.5-5.5 V, <=15 W, ASIC
+temperature <75 C, and fan RPM fresh/nonzero; core millivolts and bus volts
+remain distinct.
+
+Evidence/privacy/retry: use only fresh ignored wrapper-014 and attempt-014
+mode-0700 roots with mode-0600 files. Credentials, endpoints, identities,
+exact values, bodies, logs, commands, PIDs, and traces stay private; only the
+independently valid aggregate projection may publish. Starting capture consumes
+the ordinal; preserve earliest failure/phase/wait through safe stop, recovery,
+sealing, and cleanup. Never retry attempt-014, reuse attempt-013, or start
+attempt-015. No overclock, arbitrary controls, unbounded mining, OTA, erase,
+raw writes, fault injection, power action, direct UART, BAP, or electrical
+manipulation. Promotion requires exact identity, 20 windows/work renewal,
+coherent changing positive rates, warm windows, bounded error, watchdog none,
+terminal zero, safe stop, cleanup, modes, seals, validation, and redaction;
+missing facts withhold it. Recurrence of attempt-013's exact signature selects
+`stop_repeated_boundary`.
+
+Attempt-014 completion review: exact clean pushed source/package `579f8315`,
+the pinned reference, focused/full gates, and the sole protected detector
+passed. The one capture did not repeat attempt-013's `watchdog_feed_stale`
+signature. It failed closed after 302,436 active ms and 3/20 credited windows
+as `hardware_blocked` / `watchdog_unresponsive` / `watchdog_unproved`, with
+owner phase `waiting_inbox` and wait state `within_deadline`. Runtime identity
+and attestation were trusted, safety and same-package state were valid, terminal
+HTTP/WebSocket/pool state passed, safe stop was confirmed, USB cleanup was
+ready, private modes and result/network digests passed, and no public projection
+was written. Attempt-014 is consumed, no retry ran, terminal outcome is
+`stop_hardware_blocker`, and STAT-001/checklist/progress remain unchanged. See
+`docs/parity/work-plans/20260817T065250Z-STAT-001/CLOSURE.md`.
+
+Residual risk/next action: `watchdog_unproved` means the projected coherent
+snapshot had no admitted latest watchdog observation, but current closed
+evidence cannot distinguish genuine pre-subscription state, eight-retry
+exhaustion, poisoned history, publication-lifecycle loss, or transport
+reconstruction. Do not start attempt-015. A new software-only immutable plan
+must add a closed value-free coherent-read outcome across firmware/runtime
+health and sealed evidence, reproduce the live-shaped transition, and apply a
+targeted regression-backed fix before any further hardware ordinal.
+
+Coherent-read diagnostic and earliest-tuple correction plan:
+`docs/parity/work-plans/20260817T073552Z-STAT-001/PLAN.md`
+
+- [x] Add stable/uninitialized/retry-exhausted/history-poisoned read outcomes
+      from the firmware coherent store through runtime health and wire views.
+- [x] Map read failures to exact fail-closed reasons and latch outcome, owner
+      phase, and wait state with the earliest watchdog failure so terminal
+      samples cannot overwrite the diagnostic tuple.
+- [x] Rotate private campaign result/network evidence to v15/v9, add the
+      attempt-014-shaped regression, and pass every focused/mandatory gate.
+
+Software-only authorization: local source, tests, deterministic fixtures,
+firmware/package builds, documentation, and Git operations only. Do not access
+protected attempts, credentials, detector/device/USB/network runtime, private
+values, or public projection candidates. Do not flash, reset, monitor, mine,
+actuate, update, erase, inject faults, manipulate power, use external UART/BAP,
+touch electrical interfaces, retry attempt-014, or create/run attempt-015.
+STAT-001/checklist/progress/README remain unchanged.
+
+Coherent-read diagnostic completion review: pushed source `c3b0dcb9` adds the
+closed `stable`, `uninitialized`, `retry_exhausted`, and `history_poisoned`
+outcomes from the firmware store through HTTP/WebSocket/retained health and
+private campaign result v15/network v9. Retry exhaustion and poison now map to
+distinct fail-closed reasons instead of generic `unproved`. The campaign latches
+read outcome, owner phase, and wait state with the earliest watchdog failure;
+the attempt-014-shaped regression proves later terminal samples cannot overwrite
+that tuple. Generated contracts, 18-source identity, real firmware/package,
+privacy/reference, file-length, and every mandatory gate pass. No hardware or
+public projection ran, and STAT-001/checklist/progress remain unchanged. See
+the linked `CLOSURE.md`.
+
+Residual risk/next action: attempt-014's actual coherent-read outcome remains
+unknowable because its v14/v8 evidence predates the discriminator and carried a
+mixed diagnostic tuple. A separate immutable hardware plan may consider one
+fresh attempt-015 only as a progress-backed diagnostic of the corrected v15/v9
+boundary, with the complete existing detector, unit, safety, privacy, recovery,
+cleanup, retry, stop, and promotion contract. Never reuse attempt-014 or infer
+its hidden cause.
+
+Attempt-015 verification-promotion plan:
+`docs/parity/work-plans/20260817T082220Z-STAT-001/PLAN.md`
+
+- [x] Rebind the private-first workflow, validator, generated contract,
+      immutable task/plan admission, Bazel inputs, fresh protected roots, and
+      fixtures from attempt-014 to attempt-015 while preserving result v15,
+      network v9, coherent read outcome, earliest tuple, and 18-source identity.
+- [x] Run every focused and mandatory software, firmware, privacy, reference,
+      package, and exact-source gate; commit and push before device access.
+- [x] Run only the frozen detector and sole conditional attempt-015 command;
+      promote only if the complete independent quorum passes.
+
+Attempt-015 progress basis: pushed `c3b0dcb9` fixes attempt-014's invalid mixed
+diagnostic tuple and adds stable/uninitialized/retry-exhausted/history-poisoned
+outcomes with exact failure labels through v15/v9 sealed evidence. This is a
+verified-fix continuation at the real evidence boundary, not an unchanged
+retry; attempt-014's older tuple cannot establish recurrence.
+
+Attempt-015 authorization: after plan/rebind are clean, fully gated, committed,
+pushed, and packaged, one exact board-205 package may be factory-flashed/reset,
+privately seeded from ignored Wi-Fi/pool inputs, and run only at conservative
+400 MHz / 1,100 mV ASIC core / 100% fan for exactly 600 active seconds with
+protected serial/HTTP/WebSocket joins, pause, safe stop, cleanup, sealing, and
+at most one supervisor-owned recovery flash. Exact commands are frozen in the
+linked plan. Input-bus safety remains independently fresh 4.5-5.5 V, <=15 W,
+ASIC temperature <75 C, and fan RPM fresh/nonzero; core mV and bus V remain
+distinct.
+
+Evidence/privacy/retry: only fresh ignored wrapper-015 and attempt-015 mode-
+0700 roots with mode-0600 files are allowed. Credentials, endpoints,
+identities, exact values, bodies, logs, commands, PIDs, and traces stay private;
+only the independently valid projection may publish. Starting capture consumes
+the ordinal; preserve earliest failure/read-outcome/phase/wait through safe
+stop, recovery, sealing, and cleanup. Never retry attempt-015, reuse attempt-
+014, or start attempt-016. No overclock, arbitrary controls, unbounded mining,
+OTA, erase, raw write, fault injection, power action, direct UART/BAP, or
+electrical manipulation. Promotion requires exact identity, stable read
+outcome, 20 windows/work renewal, coherent changing positive rates, warm
+windows, bounded error, watchdog none, terminal zero, safe stop, cleanup,
+modes, seals, validation, and redaction; missing facts withhold it.
+
+Attempt-015 completion review: exact clean pushed source/package `1892800b`,
+the pinned reference, focused/full gates, and the sole protected detector
+passed. The single capture produced the first trustworthy v15/v9 tuple after
+364,110 active ms and 12/20 credited windows: `hardware_blocked` /
+`watchdog_unresponsive` / `watchdog_feed_stale` / read outcome `stable` /
+owner phase `handling_inbox` / wait state `not_waiting`. Runtime identity and
+attestation were trusted; safety, same-package state, terminal HTTP/WebSocket/
+pool state, safe stop, USB cleanup, private modes, seals, and redaction passed;
+the public projection is absent. Attempt-015 is consumed, no retry ran,
+terminal outcome is `stop_hardware_blocker`, and STAT-001/checklist/progress
+remain unchanged. See
+`docs/parity/work-plans/20260817T082220Z-STAT-001/CLOSURE.md`.
+
+Residual risk/next action: the stable read rules out store retry exhaustion,
+poison, and uninitialized state, while `handling_inbox/not_waiting` rules out the
+receive wait. Current evidence cannot distinguish inbox-to-event mapping,
+session evaluation, or one blocking effect before its completion feed. Do not
+start attempt-016. A new software-only immutable plan must add a closed value-
+free inbox/feedback/effect subphase, reproduce the post-window stale-feed
+transition, and apply a targeted regression-backed correction before hardware.
+
+Owner-work subphase and entry-feed correction plan:
+`docs/parity/work-plans/20260817T090156Z-STAT-001/PLAN.md`
+
+- [x] Add one closed, value-free owner subphase for inbox mapping, session
+      evaluation, and every production effect category, stored coherently with
+      phase/wait and projected through runtime-health surfaces.
+- [x] Feed at session-evaluation and effect-execution entry while retaining
+      completion feeds, and regress the attempt-015-shaped inherited stale-age
+      boundary without masking a genuinely blocking operation.
+- [x] Latch subphase with the earliest private campaign watchdog tuple, rotate
+      result/network evidence to v16/v10, and pass every focused/mandatory gate.
+
+Software-only authorization: local source, tests, deterministic fixtures,
+firmware/package builds, documentation, and Git operations only. Do not access
+protected attempts, credentials, detector/device/USB/network runtime, private
+values, or public projection candidates. Do not flash, reset, monitor, mine,
+actuate, update, erase, inject faults, manipulate power, use external UART/BAP,
+touch electrical interfaces, retry attempt-015, or create/run attempt-016.
+STAT-001/checklist/progress/README remain unchanged.
+
+Owner-work correction completion review: pushed source `177fffe9` adds the
+closed value-free inbox/evaluation/effect subphase, copies it in the coherent
+watchdog snapshot, projects it through runtime-health and private evidence, and
+latches it with the earliest watchdog tuple. Entry feeds now reset inherited
+age before session evaluation and effect execution while the regression proves
+a genuinely blocking effect still becomes stale. Private campaign schemas are
+v16/v10; generated contracts, 18-source identity, real firmware/package,
+redaction/reference, file-length, and every mandatory gate pass. No hardware or
+public projection ran, and STAT-001/checklist/progress remain unchanged. See
+the linked `CLOSURE.md`.
+
+Residual risk/next action: attempt-015 predates the subphase and its exact
+blocking boundary remains unknowable. Do not retry it. A separate immutable
+hardware plan may consider one fresh attempt-016 only from the clean pushed
+correction, with the complete detector, conservative profile, safety, privacy,
+recovery, cleanup, retry, stop, and promotion contract. Any precise blocking
+subphase must receive a targeted diagnosis and regression-backed correction
+before another continuation.
+
+Attempt-016 verification-promotion plan:
+`docs/parity/work-plans/20260817T095432Z-STAT-001/PLAN.md`
+
+- [x] Rebind the private-first workflow, validator, generated contract,
+      immutable task/plan admission, Bazel inputs, fresh protected roots, and
+      fixtures from attempt-015 to attempt-016 while preserving result v16,
+      network v10, coherent owner subphase, earliest tuple, and 18-source
+      identity.
+- [x] Run every focused and mandatory software, firmware, privacy, reference,
+      package, and exact-source gate; commit and push before device access.
+- [x] Run only the frozen detector and sole conditional attempt-016 command;
+      promote only if the complete independent quorum passes.
+
+Attempt-016 progress basis: pushed `177fffe9` corrects attempt-015's ambiguous
+`watchdog_feed_stale/stable/handling_inbox/not_waiting` boundary by adding one
+closed inbox/evaluation/effect subphase through coherent v16/v10 evidence and
+feeding at handler/effect entry without masking genuinely blocking work. This
+is a verified-fix continuation at a materially more discriminating boundary,
+not an unchanged retry.
+
+Attempt-016 authorization: after plan/rebind are clean, fully gated, committed,
+pushed, and packaged, one exact board-205 package may be factory-flashed/reset,
+privately seeded from ignored Wi-Fi/pool inputs, and run only at conservative
+400 MHz / 1,100 mV ASIC core / 100% fan for exactly 600 active seconds with
+protected serial/HTTP/WebSocket joins, pause, safe stop, cleanup, sealing, and
+at most one supervisor-owned recovery flash. Exact commands are frozen in the
+linked plan. Input-bus safety remains independently fresh 4.5-5.5 V, <=15 W,
+ASIC temperature <75 C, and fan RPM fresh/nonzero; core mV and bus V remain
+distinct.
+
+Evidence/privacy/retry: only fresh ignored wrapper-016 and attempt-016 mode-
+0700 roots with mode-0600 files are allowed. Credentials, endpoints,
+identities, exact values, bodies, logs, commands, PIDs, and traces stay private;
+only the independently valid projection may publish. Starting capture consumes
+the ordinal; preserve earliest failure/read-outcome/phase/subphase/wait through
+safe stop, recovery, sealing, and cleanup. Never retry attempt-016, reuse
+attempt-015, or start attempt-017. No overclock, arbitrary controls, unbounded
+mining, OTA, erase, raw write, fault injection, power action, direct UART/BAP,
+or electrical manipulation. Promotion requires exact identity, stable read
+outcome, 20 windows/work renewal, coherent changing positive rates, warm
+windows, bounded error, watchdog none, terminal zero, safe stop, cleanup,
+modes, seals, validation, and redaction; missing facts withhold it.
+
+Attempt-016 completion review: exact clean pushed source/package `223d10bc`,
+the pinned reference, focused/full gates, and the sole protected detector
+passed. The one capture failed closed after 364,314 active ms and 4/20 windows
+as `hardware_blocked` / `watchdog_unresponsive` /
+`watchdog_snapshot_retry_exhausted`, with coherent read outcome
+`retry_exhausted`, owner phase/subphase `unavailable/unavailable`, and wait
+state `not_waiting`. Runtime identity, attestation, safety, terminal HTTP/
+WebSocket/pool state, safe stop, USB cleanup, protected modes, seals, and
+redaction passed; the public projection is absent. Attempt-016 is consumed, no
+retry ran, terminal outcome is `stop_hardware_blocker`, and STAT-001/checklist/
+progress remain unchanged. See the linked `CLOSURE.md`.
+
+Residual risk/next action: active owner work now makes adjacent subphase and
+feed publications, while the coherent reader has only eight immediate spin
+retries. The precise outcome is consistent with continuous publication
+contention and must be reproduced in software without inferring a private
+effect. Do not start attempt-017. A fresh software-only plan must add the exact
+contention regression and a bounded targeted writer/reader correction that
+still fails closed for a genuinely stuck publication before any new hardware
+contract.
+
+Coherent-publication contention correction plan:
+`docs/parity/work-plans/20260817T104623Z-STAT-001/PLAN.md`
+
+- [x] Reproduce finite odd-sequence writer preemption and continuous sequence
+      contention against the exact eight-attempt coherent reader.
+- [x] Fuse owner-entry subphase plus watchdog observation into one publication
+      and yield between bounded retries without weakening stuck-writer failure.
+- [x] Preserve every v16/v10 diagnostic, 18-source identity, firmware/package,
+      privacy/reference, and mandatory gate; close without hardware/promotion.
+
+Software-only authorization: local source, deterministic tests, builds,
+documentation, and Git operations only. Do not access protected attempts,
+credentials, detector/device/USB/network runtime, private values, or public
+projection candidates. Do not flash, reset, monitor, mine, actuate, update,
+erase, inject faults, manipulate power, use external UART/BAP, touch electrical
+interfaces, retry attempt-016, or create/run attempt-017. STAT-001/checklist/
+progress/README remain unchanged.
+
+Coherent-publication correction completion review: pushed source `c274be94`
+fuses owner-entry subphase plus optional watchdog observation into one seqlock
+publication and yields between the unchanged eight coherent-read attempts.
+Finite odd-writer preemption now recovers after one scheduler handoff; a
+permanently odd writer and continuous sequence changes still return exact
+`retry_exhausted`; poison, stable, uninitialized, phase/wait, unavailable-feed,
+v16/v10, earliest-tuple, and value-free behavior remain intact. Focused tests,
+18-source identity, generated contracts, real firmware/package, redaction/
+reference, file-length, and every mandatory gate pass. No hardware or public
+projection ran, and STAT-001/checklist/progress remain unchanged. See the
+linked `CLOSURE.md`.
+
+Residual risk/next action: the correction has not yet been observed under live
+mining load. A separate immutable hardware plan may consider one fresh
+attempt-017 only from clean pushed `c274be94`, with the complete detector,
+conservative profile, unit, safety, privacy, recovery, cleanup, retry, stop,
+and promotion contract. Never reuse attempt-016; any new precise boundary must
+receive its own regression-backed correction before another continuation.
+
+Attempt-017 verification-promotion plan:
+`docs/parity/work-plans/20260817T114224Z-STAT-001/PLAN.md`
+
+- [x] Rebind workflow, validator, contract, task/plan, Bazel, roots, and
+      fixtures from attempt-016 to 017, preserving v16/v10, fused writer,
+      bounded reader, earliest tuple, and 18-source identity.
+- [x] Pass focused/full gates, commit/push, and rebuild exact package before
+      device access.
+- [x] Run only the frozen detector and sole capture; promote only on the full
+      independently validated quorum.
+
+Attempt-017 progress basis: pushed `c274be94` fixes attempt-016's exact retry-
+exhausted tuple with fused entry publication and scheduler-aware bounded reads;
+finite contention recovers and stuck contention remains fail-closed.
+
+Authorization/privacy/retry: after clean pushed gates, one exact board-205
+package may run 400 MHz / 1,100 mV core / 100% fan for 600 active seconds with
+protected joins, safe stop, cleanup, sealing, and one bounded recovery flash.
+Fresh bus safety is 4.5-5.5 V, <=15 W, ASIC <75 C, fan RPM nonzero; core mV and
+bus V remain distinct. Only fresh ignored wrapper/attempt-017 0700 roots and
+0600 files; no private publication. No retry/018, overclock, arbitrary control,
+OTA, erase, fault injection, power action, direct UART/BAP, or electrical work.
+Exact attempt-016 tuple recurrence selects `stop_repeated_boundary`.
+
+Attempt-017 completion review: exact clean pushed source/package `b6d560b6`,
+pinned reference, focused/full gates, and sole detector passed. The capture
+failed closed after 314,248 active ms and 0/20 windows with exact repeated tuple
+`watchdog_snapshot_retry_exhausted/retry_exhausted/unavailable/unavailable/
+not_waiting`. Identity, attestation, safety, terminal HTTP/WebSocket/pool,
+safe stop, cleanup, modes, seals, and redaction passed; projection is absent.
+Attempt-017 is consumed, no retry ran, and the terminal outcome is
+`stop_repeated_boundary`. STAT-001/checklist/progress remain unchanged. See the
+linked `CLOSURE.md`.
+
+Terminal blocker: do not create attempt-018 or continue this hardware-attempt
+lineage. Pushed `c274be94` targeted the exact attempt-016 boundary and attempt-
+017 repeated it unchanged. Any future STAT-001 work must establish a materially
+different source-level diagnosis and authority contract; direct UART, pins,
+ad hoc electrical work, and ordinal-only retries remain prohibited.
+
+Temporary user-authorized watchdog diagnostic loop | 2026-08-17:
+
+- Formal parity plan files and attempt records are temporarily waived for this
+  STAT-001 debugging loop. Each hardware run still requires a distinct clean
+  pushed code fix, exact rebuilt package, fresh detector, absent private child,
+  and repo-owned command; no unchanged reruns are allowed.
+- Private roots use `scratch/stat001-watchdog-debug/run-N` with mode 0700 and
+  mode-0600 files. Credentials, admitted port, endpoints, identities, sensor/
+  rate values, logs, bodies, commands, PIDs, and traces never print or commit.
+  No public projection is produced.
+- Each run uses only board 205, `live-share`, conservative 400 MHz / 1,100 mV
+  core / 100% fan, 600 active seconds, fresh bus 4.5-5.5 V, <=15 W, ASIC <75 C,
+  and nonzero fan RPM. The campaign owns flash, seed, observation, safe stop,
+  cleanup, sealing, and at most one exact-package recovery flash.
+- Allowed effects remain factory flash/reset, ignored Wi-Fi/pool seed, bounded
+  conservative mining, safe stop, cleanup, and recovery. No overclock,
+  arbitrary control, OTA, erase, fault injection, physical power action,
+  external UART/BAP, pins, pads, probes, jumpers, solder, or electrical work.
+- Stop immediately on identity/safety/cleanup/recovery/privacy failure. After a
+  failed run, inspect only sealed allowlisted categories and apply a materially
+  targeted source fix before another run. End the exception once the watchdog
+  boundary is cleared or a non-software/human blocker is proven.
+- Exception ended after exact-package run-010 on pushed source `e70cefa7`
+  completed 600,216 active milliseconds with all 20 continuity windows,
+  accepted submit evidence, stable/valid watchdog state, trusted identity,
+  fresh safety, confirmed safe stop, terminal HTTP/WebSocket/pool joins, ready
+  USB cleanup, and redaction. The private diagnostic campaign remains ignored
+  local evidence and was not promoted into the public parity checklist.
+
+Attempt-018 audited verification-promotion plan:
+`docs/parity/work-plans/20260818T022212Z-STAT-001/PLAN.md`
+
+- [x] Rebind the immutable hashrate evidence workflow, plan digest, protected
+      roots, ordinal, fixtures, source identity, result v16, and network v11 to
+      fresh attempt-018 without changing production behavior.
+- [x] Pass every focused and mandatory software/firmware gate, commit and push
+      the rebind, and build the exact package before hardware access.
+- [x] Run only the plan's frozen detector and sole conditional capture; promote
+      `STAT-001` only if the complete independent quorum passes.
+
+Attempt-018 authority: the materially different source path is established by
+the serialized watchdog snapshot, per-action shutdown feeds, full-duration
+live-share lease, closed correlation diagnostics, and exact terminal-horizon
+handling. After clean pushed gates, one exact board-205 package may run at the
+conservative 400 MHz / 1,100 mV ASIC core / 100% fan profile for exactly 600
+active seconds with ignored local Wi-Fi/pool inputs, protected joins, safe stop,
+cleanup, sealing, and at most one supervisor-owned exact-package recovery
+flash. Fresh input bus safety remains 4.5-5.5 V, <=15 W, ASIC <75 C, and fan
+RPM nonzero. Core millivolts and bus volts remain distinct.
+
+Attempt-018 privacy/retry/stop: only fresh ignored wrapper-018 and attempt-018
+mode-0700 roots with mode-0600 files are allowed. Credentials, endpoints,
+identities, exact values, bodies, serial, commands, PIDs, and traces stay
+private; only an independently valid projection may publish. Starting capture
+consumes the ordinal. Do not retry it or start attempt-019. Stop on any nonzero
+command, detector/identity/safety/privacy/cleanup/recovery failure, or missing
+quorum fact. No overclock, arbitrary controls, OTA, erase, fault injection,
+physical power action, external UART/BAP, or electrical manipulation is
+authorized.
+
+Attempt-018 completion review: exact clean pushed source/package `e14b98d5`,
+the pinned reference, immutable plan, focused/full gates, and sole detector
+passed. The one capture failed closed after 273,286 active ms and 9/20 windows
+as `hardware_blocked` / `network_correlation_failed`, with stable/valid
+watchdog, fresh safety, ready USB cleanup, mixed session/ordinal identity, and
+the first mixed reset category `panic`. Work renewal, terminal joins, and safe
+stop did not establish the complete same-session horizon. The independently
+validated projection is absent, attempt-018 is consumed, and no retry ran.
+`STAT-001`, checklist, progress history, and README remain unchanged. See the
+linked `WORKLOG.md` and `CLOSURE.md`.
+
+Next safe action: do not start attempt-019. A fresh software-only `STAT-001`
+plan must add a redaction-safe panic discriminator, reproduce or isolate the
+source-level cause, and apply a targeted regression-backed fix before any new
+hardware authority contract.
+
+Panic-diagnostic software plan:
+`docs/parity/work-plans/20260818T040753Z-STAT-001/PLAN.md`
+
+- [x] Add a complete value-free ESP-IDF/Rust panic-signature and closed task-
+      family classifier at the existing complete-line serial analyzer boundary.
+- [x] Rotate private diagnostics and bind every reachable reducer/vocabulary
+      source into the hashrate evaluator identity and Bazel runfiles.
+- [x] Add behavior/privacy/schema/drift/real-process regressions, run every
+      mandatory gate, and close without hardware or parity promotion.
+
+Authorization is software-only: source, fixtures, tests, builds, documentation,
+and Git. Do not inspect raw/private attempt data, access credentials or device
+runtime, flash, reset, monitor, mine, actuate, update, erase, inject faults,
+manipulate power, use external UART/BAP, touch electrical interfaces, reuse
+attempt-018, or create/run attempt-019. `STAT-001`, checklist, progress history,
+and README remain unchanged under this plan.
+
+Panic-diagnostic completion review: pushed source `0abd10ad` classifies seven
+closed panic signatures and twelve task families from complete serial lines,
+retains only first closed labels plus a saturating recognized-line count, and
+maps a panic reboot without an observed signature to `unknown`. Private
+diagnostics rotate to v4 and retain no raw line, task, address, backtrace, or
+payload. The hashrate evaluator identity now binds all 21 reachable sources via
+package-local runfiles and real-process fixtures. Focused tests, ordered Rust
+checks, 382 flash tests, firmware/package, Bright Builds, redaction/reference,
+full Bazel, parity, progress, and diff gates pass. No hardware, credentials,
+protected attempt data, or projection ran; `STAT-001`, checklist, progress, and
+README remain unchanged. See the linked `WORKLOG.md` and `CLOSURE.md`.
+
+Next safe action: a separate immutable hardware plan may consider one fresh
+attempt-019 only from clean pushed `0abd10ad`, with diagnostic v4 and the
+21-source identity fully rebound plus the complete detector, conservative
+profile, safety, privacy, recovery, cleanup, retry, stop, and promotion
+contract. Never retry by ordinal alone; any recurrence must select diagnosis
+from the new closed panic signature/task/count tuple.
+
+Attempt-019 verification-promotion plan:
+`docs/parity/work-plans/20260818T050654Z-STAT-001/PLAN.md`
+
+- [x] Rebind plan/task/root/ordinal/fixture surfaces to fresh attempt-019 while
+      preserving result v16, network v11, diagnostic v4, and 21-source identity.
+- [x] Pass focused/full gates, commit and push the exact source/package, then
+      run only the frozen detector and sole conditional capture.
+- [x] Promote only on the complete independent quorum; otherwise preserve
+      `implemented`, the earliest closed panic/watchdog/correlation tuple,
+      evidence withholding, safe stop, cleanup, recovery, and no attempt-020.
+
+Attempt-019 progress basis: pushed `0abd10ad` adds the previously absent
+value-free discriminator for attempt-018's mixed-session `panic` boundary.
+Seven panic signatures, twelve task families, a recognized-line count, and an
+unknown fallback now flow through private diagnostic v4; all 21 reachable
+sources are identity-bound. This materially changes the observable failure
+boundary and is not an ordinal-only retry.
+
+Authorization/privacy/retry: after clean pushed gates, one exact board-205
+package may run 400 MHz / 1,100 mV ASIC core / 100% fan for 600 active seconds
+with protected joins, safe stop, cleanup, sealing, and one bounded recovery
+flash. Fresh input-bus safety remains 4.5-5.5 V, <=15 W, ASIC <75 C, and fan
+RPM nonzero; core mV and bus V are distinct. Only fresh ignored wrapper/attempt-
+019 mode-0700 roots and mode-0600 files may hold private values. No retry/020,
+overclock, arbitrary control, OTA, erase, fault injection, physical power
+action, direct UART/BAP, or electrical work is authorized. Exact commands and
+promotion/stop conditions are frozen in the linked plan.
+
+Attempt-019 completion review: exact pushed implementation `7d78889a`, pinned
+reference, immutable plan, focused/full gates, and one detector passed. The
+sole capture completed 600 active seconds with 20/20 renewed windows, one
+BM1366/four-domain 1,000 ms sampling, coherent changing positive HTTP and
+WebSocket rates, warm windows, terminal zeros, submit evidence, stable
+watchdog, no panic or mixed session, trusted identity, fresh safety, terminal
+joins, confirmed safe stop, complete cleanup, protected modes, no rerun, and
+passed redaction. Independent projection validation passed; committed evidence
+`d58f0ade` and transition `20260818T060031Z-STAT-001` move only `STAT-001` to
+`verified`. Progress is 77/94 active rows, 81.9%. See the linked `RESULT.md`
+and `docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json`.
+
+Residual risks/non-claims: profitability, absolute laboratory-calibrated
+accuracy, arbitrary profiles or pools, other ASICs/boards, unbounded mining,
+overclocking, fault injection, OTA, release readiness, external UART/BAP, and
+electrical-interface behavior remain separate.

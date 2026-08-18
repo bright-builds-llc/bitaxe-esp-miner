@@ -210,6 +210,7 @@ export async function fixture(name: string): Promise<Fixture> {
     `Plan: \`${planRelative}\`.`,
     "Attempt: `attempt-019`.",
   ].join("\n"));
+  await writeFile(path.join(root, "TASKS.archive.md"), "# Archived tasks\n");
   const inputs = path.join(root, "inputs");
   await mkdir(inputs);
   await writeFile(path.join(inputs, "package.json"), JSON.stringify({

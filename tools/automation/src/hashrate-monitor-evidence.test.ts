@@ -220,7 +220,33 @@ test("current immutable task and production/reference sources pass admission", a
   await validateHashrateMonitorTaskAndSources(
     root,
     "b9bc554eb3e49c685bcbd7a852a754febf015228df4ae89efe6e6b951eb65e24",
+    "archived",
   );
+});
+
+test("archived task cannot satisfy the pre-effect active admission", async () => {
+  // Arrange
+  const value = await fixture("archived-task");
+  const taskPath = path.join(value.root, "TASKS.md");
+  const archivePath = path.join(value.root, "TASKS.archive.md");
+  const taskDocument = await readFile(taskPath, "utf8");
+  await writeFile(taskPath, "# Active tasks\n");
+  await writeFile(archivePath, taskDocument);
+
+  try {
+    // Act / Assert
+    await assert.rejects(validateHashrateMonitorTaskAndSources(
+      value.root,
+      value.planSha256,
+    ));
+    await validateHashrateMonitorTaskAndSources(
+      value.root,
+      value.planSha256,
+      "archived",
+    );
+  } finally {
+    await rm(value.root, { recursive: true });
+  }
 });
 
 test("incomplete transport evidence is rejected before publication", async () => {
