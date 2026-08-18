@@ -4187,6 +4187,18 @@ readiness remain explicit non-claims.
 
 Plan: `docs/parity/work-plans/20260818T135714Z-SAFE-11/PLAN.md`
 
+Plan closure review: pre-implementation source review found that the frozen
+promotion rule incorrectly required `OperatorPaused` to project
+`safe_blocked`. Production intentionally disables work submission while
+projecting that one operator-controlled state as `paused`; failure reasons use
+`safe_blocked`. No implementation or parity transition ran under this plan.
+See the linked `CLOSURE.md`.
+
+Next safe action: create a fresh immutable SAFE-11 plan with two exact classes:
+operator pause remains work-blocked/paused with no API failure reason, while
+every failure blocker remains work-blocked/safe-blocked with its exact
+redaction-safe API reason.
+
 Authorization: local source, tests, documentation, builds, and Git only. No
 protected input, detector, credentials, device/USB/network runtime, flash,
 monitor, mining, restart, recovery, hardware attempt, fault injection, external
