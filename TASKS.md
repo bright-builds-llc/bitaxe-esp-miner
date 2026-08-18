@@ -581,6 +581,27 @@ Completion review: Software implementation is complete at
 browser behavior, mining, and accepted/rejected share outcomes remain below
 verified, so this task remains active rather than archived.
 
+Verification-promotion plan:
+`docs/parity/work-plans/20260818T064430Z-STAT-003/PLAN.md`
+
+- [ ] Add the missing `/scoreboard` operator route and complete private-first
+      Rust/TypeScript evidence contract with source-identity and real-process
+      regressions.
+- [ ] Pass focused/full gates, commit and push the exact source/package, then
+      run only the frozen detector and sole conditional attempt-001 capture.
+- [ ] Promote only on the complete causal mining/API/UI/restart durability
+      quorum; otherwise preserve `implemented`, evidence withholding, safe
+      stop, cleanup, recovery policy, and no attempt-002.
+
+Attempt-001 authorization: after clean pushed gates, one exact board-205
+package may run the conservative 400 MHz / 1,100 mV core / 100% fan campaign
+for 600 active seconds. Its normal owner Wi-Fi/pool NVS seed intentionally
+replaces prior settings and scoreboard records before mining; the final state
+keeps the new scoreboard, owner inputs, package defaults, and safe stop. One
+passive receive-only capture and one normal HTTP restart may prove live API/UI
+and boot durability. Private roots, recovery, retry, stop, promotion, privacy,
+and prohibited effects are frozen in the linked plan.
+
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
 - [x] Add a typed private-first `/api/theme` capture that binds the exact
