@@ -4199,6 +4199,15 @@ operator pause remains work-blocked/paused with no API failure reason, while
 every failure blocker remains work-blocked/safe-blocked with its exact
 redaction-safe API reason.
 
+Corrected verification plan:
+`docs/parity/work-plans/20260818T140738Z-SAFE-11/PLAN.md`
+
+- [ ] Preserve operator pause as work-blocked/paused without an API failure
+      reason and prove all sixteen failure variants work-blocked/safe-blocked
+      with their exact API reason.
+- [ ] Bind the corrected current-source evidence to accepted SAFE-10 live
+      prerequisite proof, then promote only on the complete privacy-safe quorum.
+
 Authorization: local source, tests, documentation, builds, and Git only. No
 protected input, detector, credentials, device/USB/network runtime, flash,
 monitor, mining, restart, recovery, hardware attempt, fault injection, external
