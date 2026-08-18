@@ -799,12 +799,12 @@ same stopped-state boundary after this fix stops further retries.
 Attempt-004 verification plan:
 `docs/parity/work-plans/20260818T114249Z-STAT-003/PLAN.md`
 
-- [ ] Rotate the scoreboard workflow from consumed attempt-003 to fresh
+- [x] Rotate the scoreboard workflow from consumed attempt-003 to fresh
       attempt-004 and bind the immutable plan, task, ordinal, paths, runfiles,
       contracts, fixtures, and validators.
-- [ ] Pass focused/full gates, commit/push, build the bound package, and run
+- [x] Pass focused/full gates, commit/push, build the bound package, and run
       only wrapper-004 detector admission.
-- [ ] Run at most one conditional attempt-004 and promote only on the complete
+- [x] Run at most one conditional attempt-004 and promote only on the complete
       accepted campaign/API/SPA/restart persistence quorum; otherwise preserve
       the first closed failure and stop without attempt-005.
 
@@ -818,6 +818,22 @@ capture and one normal HTTP restart may prove UI/API and boot durability. The
 linked plan freezes roots, commands, recovery, retry, stop, promotion, privacy,
 and prohibited effects; starting capture consumes attempt-004 and no
 attempt-005 is authorized.
+
+Attempt-004 closure review: exact source/package `ca972836`, pinned reference,
+focused/full gates, one detector, and the sole capture passed admission. The
+sealed campaign stopped at 229,579 active ms with distinct closed
+`network_unavailable`, 8/20 windows, no qualified candidate, and no submit
+response. Identity, safety, watchdog, panic/mixed-reset/correlation diagnostics,
+final terminal settlement, terminal transport/pool, safe stop, cleanup, modes,
+and sealing remained valid. API/SPA/restart and projection were withheld; no
+retry ran and `STAT-003` remains `implemented`. See this plan's `WORKLOG.md` and
+`CLOSURE.md`.
+
+Next safe action: do not retry from unchanged external state. A future
+scoreboard plan requires an objective repo-owned signal that the protected
+owner pool/network path is available again, without exposing endpoint or
+credentials. The selector may skip `STAT-003` as environment-blocked and work
+the next actionable parity row meanwhile.
 
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
