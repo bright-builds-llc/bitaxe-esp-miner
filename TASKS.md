@@ -622,11 +622,11 @@ but a new hardware ordinal requires a separately gated post-fix plan.
 Terminal-settlement correction plan:
 `docs/parity/work-plans/20260818T082357Z-STAT-003/PLAN.md`
 
-- [ ] Add a closed terminal-settlement reducer and reproduce complete terminal
+- [x] Add a closed terminal-settlement reducer and reproduce complete terminal
       transports racing the coordinator's final analyzer handoff.
-- [ ] Request serial closure before finalization, accept/fail only after the
+- [x] Request serial closure before finalization, accept/fail only after the
       final handoff, and preserve every earlier failure and safety gate.
-- [ ] Rotate network evidence/consumers to v12, pass all gates, commit/push,
+- [x] Rotate network evidence/consumers to v12, pass all gates, commit/push,
       and close without hardware, attempt-002, or parity promotion.
 
 Refined diagnosis: the sealed attempt-001 observation contains final campaign
@@ -635,6 +635,22 @@ to the concurrent network worker snapshot, not the analyzer's final marker.
 The worker returned failed evidence before coordinator final handoff could
 settle that snapshot. This plan is software-only and does not access protected
 values or authorize another device effect.
+
+Terminal-settlement correction review: source
+`ca42d7de79ee250161904f1ae14f1bc2ff833324` adds one pure reducer, makes
+terminal transport quorum/deadline request capture closure, waits for the
+coordinator's final analyzer handoff before acceptance or failure, preserves
+earlier failures, and rotates network evidence plus hashrate/scoreboard
+consumers to v12 closed diagnostics. Focused tests, the ordered Cargo gates,
+Bright Builds, all 47 Bazel test targets, firmware build/package, redaction,
+reference, parity, and progress checks passed. No hardware or protected input
+was used; `STAT-003` remains `implemented`. See this plan's `WORKLOG.md` and
+`CLOSURE.md`.
+
+Next safe action: create a fresh exact-source/package hardware plan before any
+attempt-002. Preserve the detector, privacy, recovery, retry, stop, and full
+scoreboard API/SPA/restart promotion contract; do not treat this software
+correction as live parity evidence.
 
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 

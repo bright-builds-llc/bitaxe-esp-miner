@@ -2,9 +2,7 @@
 
 ## 2026-08-18T09:05:43Z | software terminal-settlement correction
 
-- Source commit: implementation working tree based on
-  `7caf7ce698384d4920dd0f13bef9770deaf2a35f`; the immutable closure records the
-  resulting implementation commit.
+- Source commit: `ca42d7de79ee250161904f1ae14f1bc2ff833324`.
 - Actions: reproduced the stale concurrent snapshot as a pure settlement
   sequence; added one reducer that requests serial closure before finalizing;
   made acceptance wait for the coordinator's authoritative analyzer handoff;
