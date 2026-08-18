@@ -24,6 +24,25 @@ new work.
 
 ## Active
 
+### task-parity-safe10-prerequisite-readiness | 2026-08-18 | Verify live production prerequisite readiness
+
+- [ ] Add a typed private-first SAFE-10 projector and independent validator
+      over preserved accepted attempt-003 evidence.
+- [ ] Bind exact detector/seal/digests, live required/fresh observations,
+      readiness transition, accepted work, 20/20 continuity, safety/watchdog,
+      safe stop/cleanup, and attempt-to-current source compatibility.
+- [ ] Pass all gates, run the sole software projection command, and promote only
+      on complete independently validated closed evidence.
+
+Plan: `docs/parity/work-plans/20260818T122819Z-SAFE-10/PLAN.md`
+
+Authorization: read-only classification of protected attempt-003, repository
+source/tests/builds, one closed public projection, docs, Git commit, and push.
+No detector execution, credentials, device/USB/network runtime, flash, monitor,
+mining, restart, recovery, new hardware attempt, external UART/BAP, pins, or
+electrical work. Protected artifacts remain immutable and raw/private values
+must never enter the projection, Git, logs, or summaries.
+
 ### task-ultra205-default-profile-soak | 2026-07-28 | Run the bounded upstream-default mining soak
 
 - [x] Start a fresh exact-package attempt at 485 MHz, 1200 mV, and 100% fan
