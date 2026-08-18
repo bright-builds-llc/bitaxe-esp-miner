@@ -4176,32 +4176,6 @@ hardware ordinal. Energized-rail values or accuracy, external calibration,
 induced failure, load behavior, long-duration drift, other boards, and release
 readiness remain explicit non-claims.
 
-### task-parity-cfg07-runtime-credentials | 2026-08-18 | Verify runtime-only credential handling
-
-- [ ] Add a typed public-only CFG-07 projector and independent validator over
-      committed accepted same-chain mining evidence.
-- [ ] Bind required/forwarded local Wi-Fi and pool inputs, accepted live mining,
-      safe stop, current source compatibility, and zero committed values without
-      opening credential files or protected attempt artifacts.
-- [ ] Update the Phase 30 artifact for CFG-07 only, run every gate, and promote
-      only on complete independently validated redacted evidence.
-
-Plan: `docs/parity/work-plans/20260818T150603Z-CFG-07/PLAN.md`
-
-Authorization: local source/tests/docs/builds, committed-public evidence reads,
-one public projection, and Git only. No credential-file or protected-attempt
-access, detector, device/USB/network runtime, flash, monitor, mining, restart,
-recovery, hardware attempt, fault injection, external UART/BAP, pins, or
-electrical work.
-
-Promotion requires exact public evidence for local-owner-supplied runtime
-inputs, accepted same-chain mining, safe stop, attempt/current source
-compatibility, no committed credential values or raw artifacts, Phase 30 CFG-07
-structured proof, independent validation, redaction, and all mandatory gates.
-STR-09, ASIC-11, credential contents, rotation/persistence, arbitrary profiles/
-pools, other boards/ASICs, unbounded mining, OTA/recovery, and release readiness
-remain non-claims.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

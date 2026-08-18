@@ -11360,3 +11360,48 @@ Completion review: transition `20260818T144926Z-SAFE-11` promotes only
 79/94 active rows (84.0%). Residual risks remain live fault injection,
 individual active-control effects, self-test, BAP/UART, other boards/ASICs,
 arbitrary profiles/pools, unbounded mining, OTA/recovery, and release readiness.
+
+### task-parity-cfg07-runtime-credentials | 2026-08-18 | Verify runtime-only credential handling
+
+- [x] Add a typed public-only CFG-07 projector and independent validator over
+      committed accepted same-chain mining evidence.
+- [x] Bind required/forwarded local Wi-Fi and pool inputs, accepted live mining,
+      safe stop, current source compatibility, and zero committed values without
+      opening credential files or protected attempt artifacts.
+- [x] Update the Phase 30 artifact for CFG-07 only, run every gate, and promote
+      only on complete independently validated redacted evidence.
+
+Plan: `docs/parity/work-plans/20260818T150603Z-CFG-07/PLAN.md`
+
+Authorization: local source/tests/docs/builds, committed-public evidence reads,
+one public projection, and Git only. No credential-file or protected-attempt
+access, detector, device/USB/network runtime, flash, monitor, mining, restart,
+recovery, hardware attempt, fault injection, external UART/BAP, pins, or
+electrical work.
+
+Promotion requires exact public evidence for local-owner-supplied runtime
+inputs, accepted same-chain mining, safe stop, attempt/current source
+compatibility, no committed credential values or raw artifacts, Phase 30 CFG-07
+structured proof, independent validation, redaction, and all mandatory gates.
+STR-09, ASIC-11, credential contents, rotation/persistence, arbitrary profiles/
+pools, other boards/ASICs, unbounded mining, OTA/recovery, and release readiness
+remain non-claims.
+
+Verification review: implementation `04ecfab5` adds the typed Rust contract,
+independent validator, public-only projector, 17-path evaluator/source identity,
+seven-path attempt/current semantic compatibility, CLI/Just/Bazel wiring, and
+real-validator regressions. The sole projection independently validates at mode
+0644 and proves required/forwarded local inputs, accepted same-chain mining,
+accepted submit, safe stop, cleanup, no committed credential values, no raw
+artifacts, and passed redaction. The canonical Phase 30 artifact now admits
+CFG-07 only; focused and mandatory software/firmware/package/privacy/reference
+gates all pass. See this plan's `RESULT.md`, `WORKLOG.md`, and
+`docs/parity/evidence/cfg07-runtime-credentials/summary.md`.
+
+Completion review: evidence commit `a5118afb` and transition
+`20260818T160014Z-CFG-07` promote only `CFG-07` to `verified` with
+`unit,workflow,hardware-smoke,hardware-regression`; synchronized progress is
+80/94 active rows (85.1%). Residual risks remain credential contents and
+rotation/persistence, STR-09, ASIC-11, arbitrary profiles/pools, active-control
+effects, self-test, BAP/UART, other boards/ASICs, unbounded mining,
+OTA/recovery, and release readiness.

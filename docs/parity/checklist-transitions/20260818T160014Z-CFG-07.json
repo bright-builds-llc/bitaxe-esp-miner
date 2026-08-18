@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260818T160014Z-CFG-07",
+  "predecessor_sha256": "3baa33ab62496197fe039e5c03de30d5af7fe6300e95958dc022c1c3fcf06546",
+  "result_sha256": "ac52112705f2240d7559ca4bcd200b4319ad039c86c36923b174a6f81802cd1d",
+  "row_id": "CFG-07",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260818T150603Z-CFG-07/PLAN.md",
+  "plan_sha256": "be92a7b345f200028e2dec08fe5476f09d98dbb27fefe3c851f66ddeef9c91f1",
+  "result_path": "docs/parity/work-plans/20260818T150603Z-CFG-07/RESULT.md",
+  "result_document_sha256": "e979903fbfd5ed1c0a0d8d2ed89d6fcfc473d6b8ac6ca4fdfead40f156a5c855",
+  "before_rust_owned_target": "`tools/automation/src/cli.ts`, `tools/automation/src/process.ts`, `docs/release/ultra-205.md`",
+  "after_rust_owned_target": "`tools/automation/src/cfg07-evidence.ts`, `tools/automation/src/cfg07-source-inventory.ts`, `crates/bitaxe-automation-contracts/src/cfg07_evidence.rs`, `tools/flash/src/campaign/admission.rs`, `docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "workflow",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Typed requests retain credential paths only as protected runtime inputs; machine-facing stdout is a single redacted result envelope. Fresh hardware proof of live credential use during mining is still required.",
+  "after_notes": "Verified at a5118afbc414498ca1d46e92e96da978ef636f04: detector-gated same-chain accepted live mining required and consumed local-owner-supplied Wi-Fi and pool inputs through current-compatible credential-flow source, while public evidence commits no values or raw artifacts and records complete safe stop; see [CFG-07 result](work-plans/20260818T150603Z-CFG-07/RESULT.md), [projection](evidence/cfg07-runtime-credentials/runtime-credentials-projection.json), [Phase 30 conclusion](evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md), and [Phase 28 summary](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). redaction_status: passed. exact_non_claims: credential contents, rotation/persistence, STR-09, ASIC-11, arbitrary profiles/pools, active controls, self-test, BAP/UART, other boards/ASICs, unbounded mining, OTA/recovery, and release readiness."
+}
