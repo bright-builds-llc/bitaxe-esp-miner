@@ -321,6 +321,13 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--coordinator-projection": value({ required: true }),
     "--projection": value({ required: true }),
   },
+  "project-safe10-evidence": {
+    "--attempt-root": value({ required: true }),
+    "--detector-output": value({ required: true }),
+    "--attempt-plan": value({ required: true }),
+    "--attempt-closure": value({ required: true }),
+    "--projection": value({ required: true }),
+  },
   "project-asic-work-send-evidence": {
     "--source-projection": value({ required: true }),
     "--attempt-source-commit": value({ required: true }),

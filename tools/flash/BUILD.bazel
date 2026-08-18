@@ -22,6 +22,16 @@ filegroup(
 )
 
 js_library(
+    name = "safe10_evidence_sources",
+    srcs = [
+        "src/campaign/evidence.rs",
+        "src/campaign/markers.rs",
+        "src/campaign/network/model.rs",
+    ],
+    visibility = ["//:__pkg__"],
+)
+
+js_library(
     name = "scoreboard_evidence_source",
     srcs = [
         "src/campaign/admission.rs",

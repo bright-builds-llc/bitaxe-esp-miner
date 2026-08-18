@@ -32,6 +32,7 @@ mod protocol_coordinator_evidence;
 mod provisioning_network_evidence;
 mod release_recovery_evidence;
 mod runtime_health_evidence;
+mod safe10_evidence;
 mod scoreboard_evidence;
 mod screen_flow_evidence;
 mod sdkconfig_rollback_evidence;
@@ -117,6 +118,7 @@ pub use provisioning_network_evidence::{
 };
 pub use release_recovery_evidence::{ReleaseRecoveryEvidence, RELEASE_RECOVERY_EVIDENCE_SCHEMA};
 pub use runtime_health_evidence::{RuntimeHealthEvidence, RuntimeHealthObservationEvidence};
+pub use safe10_evidence::{Safe10Evidence, Safe10PrerequisiteEvidence, Safe10SourceEvidence};
 pub use scoreboard_evidence::{
     ScoreboardEvidence, ScoreboardObservationEvidence, ScoreboardSourceEvidence,
     SCOREBOARD_EVIDENCE_SCHEMA,
@@ -151,6 +153,7 @@ pub const VERSION_EVIDENCE_SCHEMA: &str = "bitaxe-version-evidence-v1";
 pub const OPERATOR_SNAPSHOT_EVIDENCE_SCHEMA: &str = "bitaxe-operator-snapshot-evidence-v1";
 pub const RUNTIME_HEALTH_EVIDENCE_SCHEMA: &str = "bitaxe-runtime-health-evidence-v1";
 pub const SYSTEM_INFO_EVIDENCE_SCHEMA: &str = "bitaxe-system-info-evidence-v1";
+pub const SAFE10_EVIDENCE_SCHEMA: &str = "bitaxe-safe10-evidence-v1";
 pub const ADC_OBSERVATION_EVIDENCE_SCHEMA: &str = "bitaxe-adc-observation-evidence-v1";
 pub const ULTRA205_DEFAULTS_EVIDENCE_SCHEMA: &str = "bitaxe-ultra205-defaults-evidence-v1";
 pub const SETTINGS_PATCH_EVIDENCE_SCHEMA: &str = "bitaxe-settings-patch-evidence-v1";
@@ -237,6 +240,7 @@ pub enum AutomationCommand {
     ProjectStratumSocketEvidence,
     ProjectProtocolCoordinatorEvidence,
     ProjectMiningCriteriaEvidence,
+    ProjectSafe10Evidence,
     CaptureProvisioningNetworkEvidence,
     ProjectUiWorkflowEvidence,
 }

@@ -2,6 +2,12 @@ load("@aspect_rules_js//js:defs.bzl", "js_library")
 load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
 
 js_library(
+    name = "safe10_evidence_source",
+    srcs = ["src/observation.rs"],
+    visibility = ["//:__pkg__"],
+)
+
+js_library(
     name = "scoreboard_evidence_sources",
     srcs = [
         "src/scoreboard.rs",

@@ -17,6 +17,7 @@ pub struct ContractBundle {
     pub adc_observation_evidence_schema: Value,
     pub hashrate_monitor_evidence_schema: Value,
     pub scoreboard_evidence_schema: Value,
+    pub safe10_evidence_schema: Value,
     pub ultra205_defaults_evidence_schema: Value,
     pub settings_patch_evidence_schema: Value,
     pub statistics_history_evidence_schema: Value,
@@ -77,6 +78,8 @@ pub fn contract_bundle() -> ContractBundle {
         .expect("hashrate monitor evidence schema must serialize"),
         scoreboard_evidence_schema: serde_json::to_value(schema_for!(ScoreboardEvidence))
             .expect("scoreboard evidence schema must serialize"),
+        safe10_evidence_schema: serde_json::to_value(schema_for!(Safe10Evidence))
+            .expect("SAFE-10 evidence schema must serialize"),
         ultra205_defaults_evidence_schema: serde_json::to_value(schema_for!(
             Ultra205DefaultsEvidence
         ))
@@ -217,6 +220,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::ProjectStratumSocketEvidence,
             AutomationCommand::ProjectProtocolCoordinatorEvidence,
             AutomationCommand::ProjectMiningCriteriaEvidence,
+            AutomationCommand::ProjectSafe10Evidence,
             AutomationCommand::CaptureProvisioningNetworkEvidence,
             AutomationCommand::ProjectUiWorkflowEvidence,
         ],
@@ -231,6 +235,7 @@ pub fn contract_bundle() -> ContractBundle {
             ADC_OBSERVATION_EVIDENCE_SCHEMA,
             HASHRATE_MONITOR_EVIDENCE_SCHEMA,
             SCOREBOARD_EVIDENCE_SCHEMA,
+            SAFE10_EVIDENCE_SCHEMA,
             ULTRA205_DEFAULTS_EVIDENCE_SCHEMA,
             SETTINGS_PATCH_EVIDENCE_SCHEMA,
             STATISTICS_HISTORY_EVIDENCE_SCHEMA,

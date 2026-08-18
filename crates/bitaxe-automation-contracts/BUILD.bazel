@@ -12,6 +12,15 @@ js_library(
     visibility = ["//:__pkg__"],
 )
 
+js_library(
+    name = "safe10_validator_sources",
+    srcs = [
+        "src/bin/validate_safe10_evidence.rs",
+        "src/safe10_evidence.rs",
+    ],
+    visibility = ["//:__pkg__"],
+)
+
 rust_library(
     name = "bitaxe_automation_contracts",
     srcs = [
@@ -45,6 +54,7 @@ rust_library(
         "src/provisioning_network_evidence.rs",
         "src/release_recovery_evidence.rs",
         "src/runtime_health_evidence.rs",
+        "src/safe10_evidence.rs",
         "src/screen_flow_evidence.rs",
         "src/scoreboard_evidence.rs",
         "src/sdkconfig_rollback_evidence.rs",
@@ -66,6 +76,17 @@ rust_library(
     deps = [
         "@crates//:schemars",
         "@crates//:serde",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_safe10_evidence",
+    srcs = ["src/bin/validate_safe10_evidence.rs"],
+    crate_name = "validate_safe10_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
         "@crates//:serde_json",
     ],
 )

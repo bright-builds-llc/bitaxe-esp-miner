@@ -18,6 +18,15 @@ exports_files([
 ])
 
 js_library(
+    name = "safe10_evidence_sources",
+    srcs = [
+        "src/production_mining_session.rs",
+        "src/production_mining_session/readiness_trace.rs",
+    ],
+    visibility = ["//:__pkg__"],
+)
+
+js_library(
     name = "scoreboard_evidence_sources",
     srcs = [
         "src/http_api/handlers.rs",

@@ -133,6 +133,27 @@ js_library(
 )
 
 js_library(
+    name = "safe10_evidence_inputs",
+    srcs = [
+        "TASKS.md",
+        "docs/parity/work-plans/20260818T102038Z-STAT-003/CLOSURE.md",
+        "docs/parity/work-plans/20260818T102038Z-STAT-003/PLAN.md",
+        "docs/parity/work-plans/20260818T122819Z-SAFE-10/PLAN.md",
+        "reference/esp-miner/main/tasks/power_management_task.c",
+        "reference/esp-miner/main/tasks/protocol_coordinator.c",
+    ],
+    deps = [
+        "//crates/bitaxe-api:safe10_evidence_source",
+        "//crates/bitaxe-automation-contracts:safe10_validator_sources",
+        "//crates/bitaxe-safety:safe10_evidence_source",
+        "//crates/bitaxe-stratum:safe10_evidence_sources",
+        "//firmware/bitaxe:safe10_evidence_sources",
+        "//tools/flash:safe10_evidence_sources",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "hashrate_monitor_evidence_inputs",
     srcs = [
         "TASKS.md",
