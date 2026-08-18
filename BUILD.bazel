@@ -112,6 +112,26 @@ js_library(
 )
 
 js_library(
+    name = "scoreboard_evidence_inputs",
+    srcs = [
+        "TASKS.md",
+        "docs/parity/work-plans/20260818T064430Z-STAT-003/PLAN.md",
+        "reference/esp-miner/main/http_server/axe-os/src/app/components/scoreboard/scoreboard.component.ts",
+        "reference/esp-miner/main/http_server/axe-os/src/app/services/system.service.ts",
+        "reference/esp-miner/main/http_server/http_server.c",
+        "reference/esp-miner/main/tasks/asic_result_task.c",
+        "reference/esp-miner/main/tasks/scoreboard.c",
+    ],
+    deps = [
+        "//crates/bitaxe-api:scoreboard_evidence_sources",
+        "//crates/bitaxe-stratum:scoreboard_evidence_source",
+        "//firmware/bitaxe:scoreboard_evidence_sources",
+        "//tools/flash:scoreboard_evidence_source",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "hashrate_monitor_evidence_inputs",
     srcs = [
         "TASKS.md",

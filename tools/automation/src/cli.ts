@@ -5,8 +5,9 @@ import { buildFirmware } from "./build.js";
 import { captureAdcObservationEvidence } from "./adc-observation-evidence.js";
 import { captureApiCommandEffects } from "./api-command-effects.js";
 import { emitOperatorCheckpointSignal } from "./api-command-effects-checkpoint.js";
-import { deviceSessionProgram, flashProgram, stringNumber, toolProgram } from "./cli-tools.js";
+import { deviceSessionProgram, flashProgram, toolProgram } from "./cli-tools.js";
 import { captureHashrateMonitorEvidenceFromInvocation } from "./hashrate-monitor-command.js";
+import { captureScoreboardEvidenceFromInvocation } from "./scoreboard-command.js";
 import { projectAsicFrequencyTransitionEvidence } from "./asic-frequency-transition-evidence.js";
 import { projectAsicInitializationEvidence } from "./asic-initialization-evidence.js";
 import { projectAsicPowerInitializationEvidence } from "./asic-power-initialization-evidence.js";
@@ -21,13 +22,12 @@ import { projectStratumSocketEvidence } from "./stratum-socket-evidence.js";
 import { projectProtocolCoordinatorEvidence } from "./protocol-coordinator-evidence.js";
 import { projectMiningCriteriaEvidenceFromInvocation } from "./mining-criteria-evidence.js";
 import {
-  flashMonitorCommand,
   internalCommandSpec,
-  monitorCommand,
   type AutomationCategory,
   type AutomationCommand,
   type AutomationResult,
 } from "./contracts.generated.js";
+import { flashDurabilitySpec, monitorSpec } from "./flash-invocation.js";
 import { portFromDetectorOutput, provisioningDetectorHandoffFromOutput } from "./detector.js";
 import { fetchJsonFromSameOrigin } from "./http.js";
 import {
@@ -94,48 +94,6 @@ function automationResult(
 function safeErrorSummary(error: unknown): string | undefined {
   if (!(error instanceof Error)) return undefined;
   return /^[A-Za-z0-9 _.:()-]+$/u.test(error.message) ? error.message : undefined;
-}
-function monitorSpec(root: string, invocation: ParsedInvocation) {
-  const maybePort = maybeOptionValue(invocation, "--port");
-  const maybeEvidenceDir = maybeOptionValue(invocation, "--evidence-dir");
-  const maybeCaptureTimeout = stringNumber(maybeOptionValue(invocation, "--capture-timeout-seconds"));
-  return monitorCommand(flashProgram(root), {
-    board: 205,
-    ...(maybePort === undefined ? {} : { port: maybePort }),
-    ...(maybeEvidenceDir === undefined ? {} : { evidenceDir: maybeEvidenceDir }),
-    ...(maybeCaptureTimeout === undefined ? {} : { captureTimeoutSeconds: maybeCaptureTimeout }),
-    dryRun: hasFlag(invocation, "--dry-run"),
-    redactEvidence: hasFlag(invocation, "--redact-evidence"),
-  });
-}
-function flashDurabilitySpec(root: string, invocation: ParsedInvocation) {
-  const maybePort = maybeOptionValue(invocation, "--port");
-  const maybeImage = maybeOptionValue(invocation, "--image");
-  const maybeManifest = maybeOptionValue(invocation, "--manifest");
-  const maybeWifiCredentials = maybeOptionValue(invocation, "--wifi-credentials");
-  const maybeEvidenceDir = maybeOptionValue(invocation, "--evidence-dir");
-  const maybeCaptureTimeout = stringNumber(maybeOptionValue(invocation, "--capture-timeout-seconds"));
-  const common = {
-    board: 205,
-    ...(maybePort === undefined ? {} : { port: maybePort }),
-    ...(maybeWifiCredentials === undefined ? {} : { wifiCredentials: maybeWifiCredentials }),
-    ...(maybeEvidenceDir === undefined ? {} : { evidenceDir: maybeEvidenceDir }),
-    ...(maybeCaptureTimeout === undefined ? {} : { captureTimeoutSeconds: maybeCaptureTimeout }),
-    dryRun: hasFlag(invocation, "--dry-run"),
-    redactEvidence: hasFlag(invocation, "--redact-evidence"),
-  } as const;
-  if (maybeImage === undefined) {
-    return flashMonitorCommand(flashProgram(root), {
-      ...common,
-      ...(maybeManifest === undefined ? {} : { manifest: maybeManifest }),
-    });
-  }
-  if (maybeManifest === undefined) throw new InvocationError("--image requires --manifest");
-  return flashMonitorCommand(flashProgram(root), {
-    ...common,
-    image: maybeImage,
-    manifest: maybeManifest,
-  });
 }
 async function dispatchProcess(
   root: string,
@@ -206,6 +164,7 @@ async function dispatchProcess(
     case "capture-system-info-evidence":
     case "capture-adc-observation-evidence":
     case "capture-hashrate-monitor-evidence":
+    case "capture-scoreboard-evidence":
     case "capture-emc2101-thermal-evidence":
     case "capture-emc2101-thermal-fault-evidence":
     case "capture-ultra205-defaults-evidence":
@@ -347,6 +306,8 @@ async function main(): Promise<number> {
         toolProgram(root, "crates/bitaxe-automation-contracts/validate_adc_observation_evidence"));
     } else if (invocation.command === "capture-hashrate-monitor-evidence") {
       publicValue = await captureHashrateMonitorEvidenceFromInvocation(root, invocation, processPort);
+    } else if (invocation.command === "capture-scoreboard-evidence") {
+      publicValue = await captureScoreboardEvidenceFromInvocation(root, invocation, processPort);
     } else if (invocation.command === "capture-emc2101-thermal-evidence") {
       const detectorOutput = optionValue(invocation, "--detector-output");
       const port = await portFromDetectorOutput(root, detectorOutput);

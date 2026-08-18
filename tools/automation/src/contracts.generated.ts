@@ -27,6 +27,7 @@ export type AutomationCommand =
   | "capture-system-info-evidence"
   | "capture-adc-observation-evidence"
   | "capture-hashrate-monitor-evidence"
+  | "capture-scoreboard-evidence"
   | "capture-ultra205-defaults-evidence"
   | "capture-settings-patch-evidence"
   | "capture-statistics-history-evidence"
@@ -196,6 +197,9 @@ export type HashrateMonitorSourceEvidence = { plan_sha256: string; campaign_resu
 export type HashrateTransportQuorum = { active_sample_count: number; positive_coherent_count: number; distinct_positive_count: number; warm_rolling_window_count: number; terminal_zero_confirmed: boolean; };
 export type HashrateMonitorQuorum = { monitor_cadence_ms: number; asic_count: number; domain_count: number; required_window_count: number; covered_window_count: number; http: HashrateTransportQuorum; websocket: HashrateTransportQuorum; };
 export type HashrateMonitorEvidence = { schema_version: "bitaxe-hashrate-monitor-evidence-v1"; board: 205; attempt_ordinal: 19; source_commit: string; reference_commit: string; package_manifest_sha256: string; workflow: WorkflowIdentity; source: HashrateMonitorSourceEvidence; hashrate: HashrateMonitorQuorum; detector_admitted: boolean; runtime_identity: "trusted"; campaign_profile: "conservative"; campaign_duration_seconds: 600; network_status: "accepted"; mining_state: "active_then_paused"; safe_stop_confirmed: boolean; cleanup_complete: boolean; hardware_rerun_used: false; redaction_status: "passed"; };
+export type ScoreboardSourceEvidence = { plan_sha256: string; campaign_result_sha256: string; campaign_network_sha256: string; campaign_diagnostics_sha256: string; source_inventory_sha256: string; source_semantics_current: boolean; reference_semantics_current: boolean; source_path_count: number; };
+export type ScoreboardObservationEvidence = { fresh_nvs_seed_without_scoreboard_keys: boolean; live_qualified_nonce_observed: boolean; submit_outcome_observed: boolean; entry_count: number; exact_wire_shape: boolean; finite_positive_difficulty: boolean; bounded_text_fields: boolean; uppercase_fixed_width_hex: boolean; stable_descending_order: boolean; immediate_repeat_unchanged: boolean; live_spa_route_served: boolean; normal_restart_observed: boolean; boot_session_changed: boolean; boot_ordinal_incremented_once: boolean; software_cpu_reset_observed: boolean; exact_package_after_restart: boolean; boot_mining_disabled: boolean; post_restart_persistence: boolean; post_restart_repeat_unchanged: boolean; };
+export type ScoreboardEvidence = { schema_version: "bitaxe-scoreboard-evidence-v1"; board: 205; attempt_ordinal: 1; source_commit: string; reference_commit: string; package_manifest_sha256: string; workflow: WorkflowIdentity; source: ScoreboardSourceEvidence; scoreboard: ScoreboardObservationEvidence; detector_admitted: boolean; runtime_identity: "trusted"; campaign_profile: "conservative"; campaign_duration_seconds: 600; campaign_status: "accepted"; safe_stop_confirmed: boolean; cleanup_complete: boolean; hardware_rerun_used: false; private_modes_valid: boolean; redaction_status: "passed"; };
 export type ReleaseRecoveryEvidence = { schema_version: "bitaxe-release-recovery-evidence-v1"; board: 205; attempt_ordinal: 1; source_commit: string; reference_commit: string; package_manifest_sha256: string; plan_sha256: string; detector_admitted: true; large_erase_completed: true; factory_restore_completed: true; wifi_seed_restored: true; mineonboot_disabled: true; runtime_identity_trusted: true; spiffs_ready: true; passive_safe_state_confirmed: true; cleanup_complete: true; recovery_flash_used: false; redaction_status: "passed"; };
 export type Ultra205DefaultsObservationEvidence = {
   configured_default_field_count: number;
@@ -500,7 +504,7 @@ const automationCommands = new Set<AutomationCommand>([
   "verify-settings-durability", "api-command-effects-campaign", "verify-theme-durability", "capture-correlated-runtime-evidence", "capture-version-evidence",
   "capture-operator-snapshot-evidence", "capture-runtime-health-evidence",
   "capture-system-info-evidence", "capture-adc-observation-evidence",
-  "capture-hashrate-monitor-evidence", "capture-ultra205-defaults-evidence",
+  "capture-hashrate-monitor-evidence", "capture-scoreboard-evidence", "capture-ultra205-defaults-evidence",
   "capture-settings-patch-evidence",
   "capture-statistics-history-evidence",
   "capture-log-buffer-evidence", "capture-partition-layout-evidence", "capture-sdkconfig-rollback-evidence",

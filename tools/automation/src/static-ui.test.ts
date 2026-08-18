@@ -10,6 +10,11 @@ interface UiCore {
   patchSummary(kind: string, patch: Record<string, unknown>): string[];
   publicError(error: { category: string }): string;
   routeFor(pathname: string): string;
+  scoreboardRows(payload: unknown): ReadonlyArray<{
+    difficulty: number;
+    jobId: string;
+    nonce: string;
+  }>;
   themeFromPayload(payload: unknown): { scheme: string; accent: string };
   themePayload(values: Record<string, string>): Record<string, unknown>;
 }
@@ -118,13 +123,14 @@ test("production static UI exposes scoped workflows without browser persistence 
   const pages = [...index.matchAll(/data-page="([^"]+)"/gu)].map((match) => match[1]);
 
   // Assert
-  assert.deepEqual(pages, ["dashboard", "network", "pool", "settings", "logs", "update", "theme"]);
+  assert.deepEqual(pages, ["dashboard", "network", "pool", "settings", "scoreboard", "logs", "update", "theme"]);
   assert.match(index, /autocomplete="new-password"/u);
   assert.match(index, /Source on GitHub/u);
   assert.match(index, /https:\/\/openlinks\.us\//u);
   assert.match(index, /AxeOS image update unavailable/u);
   assert.match(combinedScripts, /\/api\/system\/info/u);
   assert.match(combinedScripts, /\/api\/system\/logs/u);
+  assert.match(combinedScripts, /\/api\/system\/scoreboard/u);
   assert.match(combinedScripts, /\/api\/system\/OTA/u);
   assert.doesNotMatch(combinedScripts, /OTAWWW/u);
   assert.doesNotMatch(combinedScripts, /localStorage|sessionStorage|innerHTML|eval\(/u);
@@ -133,4 +139,25 @@ test("production static UI exposes scoped workflows without browser persistence 
   assert.match(combinedScripts, /textContent/u);
   assert.match(css, /color-scheme: dark/u);
   assert.match(css, /@media \(max-width: 620px\)/u);
+});
+
+test("scoreboard UI admits only the bounded exact descending wire shape", async () => {
+  // Arrange
+  const assets = await staticAssets();
+  const core = evaluateCore(assets["assets/ui-core.js"] ?? "");
+  const entries = [
+    { difficulty: 42.5, job_id: "job-a", extranonce2: "0001", ntime: 1, nonce: "1234ABCD", version_bits: "20000000" },
+    { difficulty: 10.0, job_id: "job-b", extranonce2: "0002", ntime: 2, nonce: "00000001", version_bits: "00000000" },
+  ];
+
+  // Act
+  const admitted = core.scoreboardRows(entries);
+  const ascending = core.scoreboardRows([...entries].reverse());
+  const injected = core.scoreboardRows([{ ...entries[0], job_id: "<img onerror=alert(1)>" }]);
+
+  // Assert
+  assert.equal(admitted.length, 2);
+  assert.equal(admitted[0]?.nonce, "1234ABCD");
+  assert.equal(ascending.length, 0);
+  assert.equal(injected[0]?.jobId, "<img onerror=alert(1)>");
 });

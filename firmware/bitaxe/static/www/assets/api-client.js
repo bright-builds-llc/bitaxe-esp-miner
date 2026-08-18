@@ -61,6 +61,10 @@
     return json("/api/system/info");
   }
 
+  async function getScoreboard() {
+    return json("/api/system/scoreboard");
+  }
+
   async function patchSettings(patch) {
     return json("/api/system", jsonBody("PATCH", patch));
   }
@@ -127,6 +131,7 @@
     command,
     downloadLogs,
     getInfo,
+    getScoreboard,
     getTheme,
     openLogStream,
     patchSettings,

@@ -222,6 +222,19 @@ test("result validator accepts the closed hashrate monitor capture command", () 
   assert.equal(result.command, "capture-hashrate-monitor-evidence");
 });
 
+test("result validator accepts the closed scoreboard capture command", () => {
+  // Act
+  const result = parseAutomationResult({
+    schema_version: "bitaxe-automation-result-v1",
+    command: "capture-scoreboard-evidence",
+    status: "succeeded",
+    category: "complete",
+  });
+
+  // Assert
+  assert.equal(result.command, "capture-scoreboard-evidence");
+});
+
 // @ts-expect-error monitor intentionally has no evidenceMode option.
 monitorCommand("/tmp/flash", { evidenceMode: "dual" });
 

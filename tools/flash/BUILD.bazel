@@ -21,6 +21,12 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
+js_library(
+    name = "scoreboard_evidence_source",
+    srcs = ["src/campaign/admission.rs"],
+    visibility = ["//:__pkg__"],
+)
+
 filegroup(
     name = "flash_supervisor_environment_source",
     srcs = ["src/environment.rs"],

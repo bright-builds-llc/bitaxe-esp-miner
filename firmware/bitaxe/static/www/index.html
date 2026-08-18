@@ -29,6 +29,7 @@
           <a href="/network" data-route data-nav="network"><span aria-hidden="true">⌁</span>Network</a>
           <a href="/pool" data-route data-nav="pool"><span aria-hidden="true">⌁</span>Pool</a>
           <a href="/settings" data-route data-nav="settings"><span aria-hidden="true">⌁</span>Settings</a>
+          <a href="/scoreboard" data-route data-nav="scoreboard"><span aria-hidden="true">⌁</span>Scoreboard</a>
           <a href="/logs" data-route data-nav="logs"><span aria-hidden="true">⌁</span>Logs</a>
           <a href="/update" data-route data-nav="update"><span aria-hidden="true">⌁</span>Update</a>
           <a href="/design" data-route data-nav="theme"><span aria-hidden="true">⌁</span>Theme</a>
@@ -135,6 +136,24 @@
               <p>Frequency, core voltage, fan, and power controls are intentionally absent until their live safety evidence is complete.</p>
             </article>
           </div>
+        </section>
+
+        <section class="page" data-page="scoreboard" aria-labelledby="scoreboard-title" hidden>
+          <div class="page-heading">
+            <div><p class="eyebrow">Best valid nonces</p><h1 id="scoreboard-title">Scoreboard</h1></div>
+            <button class="button secondary" type="button" data-action="refresh-scoreboard">Refresh</button>
+          </div>
+          <article class="card scoreboard-card">
+            <div class="scoreboard-scroll">
+              <table id="scoreboard-table" hidden>
+                <caption class="sr-only">Top valid nonce scoreboard</caption>
+                <thead><tr><th>Rank</th><th>Difficulty</th><th>Job</th><th>Extranonce</th><th>Time</th><th>Nonce</th><th>Version bits</th></tr></thead>
+                <tbody id="scoreboard-rows"></tbody>
+              </table>
+            </div>
+            <p id="scoreboard-empty" class="muted">No valid nonce results recorded yet.</p>
+            <p class="form-status" data-status="scoreboard" role="status"></p>
+          </article>
         </section>
 
         <section class="page" data-page="logs" aria-labelledby="logs-title" hidden>

@@ -8,6 +8,7 @@
     "/network": "network",
     "/pool": "pool",
     "/settings": "settings",
+    "/scoreboard": "scoreboard",
     "/logs": "logs",
     "/update": "update",
     "/design": "theme",
@@ -139,6 +140,34 @@
       : "Unavailable";
   }
 
+  function scoreboardRows(payload) {
+    if (!Array.isArray(payload) || payload.length > 20) {
+      return Object.freeze([]);
+    }
+    const rows = [];
+    for (const entry of payload) {
+      const valid = entry && typeof entry === "object"
+        && Number.isFinite(entry.difficulty) && entry.difficulty > 0
+        && typeof entry.job_id === "string" && entry.job_id.length > 0 && entry.job_id.length <= 31
+        && typeof entry.extranonce2 === "string" && entry.extranonce2.length > 0 && entry.extranonce2.length <= 31
+        && Number.isSafeInteger(entry.ntime) && entry.ntime >= 0
+        && /^[0-9A-F]{8}$/u.test(entry.nonce)
+        && /^[0-9A-F]{8}$/u.test(entry.version_bits);
+      if (!valid || (rows.at(-1)?.difficulty ?? Number.POSITIVE_INFINITY) < entry.difficulty) {
+        return Object.freeze([]);
+      }
+      rows.push(Object.freeze({
+        difficulty: entry.difficulty,
+        jobId: entry.job_id,
+        extranonce2: entry.extranonce2,
+        ntime: entry.ntime,
+        nonce: entry.nonce,
+        versionBits: entry.version_bits,
+      }));
+    }
+    return Object.freeze(rows);
+  }
+
   function themeFromPayload(payload) {
     const scheme = payload?.colorScheme === "light" ? "light" : "dark";
     const candidate = payload?.accentColors?.primary ?? payload?.accentColor;
@@ -168,6 +197,7 @@
     patchSummary,
     publicError,
     routeFor,
+    scoreboardRows,
     themeFromPayload,
     themePayload,
   });

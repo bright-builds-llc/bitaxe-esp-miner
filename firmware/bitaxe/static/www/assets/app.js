@@ -59,6 +59,45 @@
     }
   }
 
+  function renderScoreboard(payload) {
+    const rows = core.scoreboardRows(payload);
+    const body = element("#scoreboard-rows");
+    const table = element("#scoreboard-table");
+    const empty = element("#scoreboard-empty");
+    body.replaceChildren();
+    rows.forEach((row, index) => {
+      const rendered = [
+        String(index + 1),
+        row.difficulty.toFixed(1),
+        row.jobId,
+        row.extranonce2,
+        String(row.ntime),
+        row.nonce,
+        row.versionBits,
+      ];
+      const tableRow = documentRef.createElement("tr");
+      for (const value of rendered) {
+        const cell = documentRef.createElement("td");
+        cell.textContent = value;
+        tableRow.append(cell);
+      }
+      body.append(tableRow);
+    });
+    table.hidden = rows.length === 0;
+    empty.hidden = rows.length !== 0;
+  }
+
+  async function refreshScoreboard() {
+    setStatus("scoreboard", "Loading…");
+    try {
+      renderScoreboard(await api.getScoreboard());
+      setStatus("scoreboard", "Scoreboard refreshed.", "success");
+    } catch (error) {
+      renderScoreboard([]);
+      setStatus("scoreboard", core.publicError(error), "error");
+    }
+  }
+
   function showPage(pathname, pushState) {
     const normalized = core.normalizePath(pathname);
     const page = core.routeFor(normalized);
@@ -80,6 +119,9 @@
     closeMobileMenu();
     if (page === "logs") {
       void startLogs();
+    } else if (page === "scoreboard") {
+      stopLogs();
+      void refreshScoreboard();
     } else {
       stopLogs();
     }
@@ -262,6 +304,7 @@
       setMobileMenu(open);
     });
     element('[data-action="refresh-info"]').addEventListener("click", () => void refreshInfo());
+    element('[data-action="refresh-scoreboard"]').addEventListener("click", () => void refreshScoreboard());
     for (const kind of ["network", "pool", "settings"]) {
       element(`#${kind}-form`).addEventListener("submit", (event) => {
         event.preventDefault();

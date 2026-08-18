@@ -18,6 +18,23 @@ exports_files([
 ])
 
 js_library(
+    name = "scoreboard_evidence_sources",
+    srcs = [
+        "src/http_api/handlers.rs",
+        "src/production_mining_session/scoreboard.rs",
+        "src/runtime_snapshot.rs",
+        "src/scoreboard_adapter.rs",
+        "src/startup.rs",
+        "static/www/index.html",
+        "static/www/assets/api-client.js",
+        "static/www/assets/app.css",
+        "static/www/assets/app.js",
+        "static/www/assets/ui-core.js",
+    ],
+    visibility = ["//:__pkg__"],
+)
+
+js_library(
     name = "hashrate_monitor_sources",
     srcs = [
         "src/production_mining_session/asic_worker.rs",

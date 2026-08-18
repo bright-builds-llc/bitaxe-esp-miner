@@ -31,6 +31,32 @@ export async function fetchJsonFromSameOrigin(
   return value;
 }
 
+export async function fetchJsonArrayFromSameOrigin(
+  origin: URL,
+  route: string,
+  privateOutput: string,
+): Promise<readonly unknown[]> {
+  const target = sameOriginTarget(origin, route);
+  const response = await fetch(target, {
+    method: "GET",
+    redirect: "error",
+    signal: AbortSignal.timeout(10_000),
+    headers: { accept: "application/json" },
+  });
+  if (!response.ok) throw new Error(`same-origin API returned HTTP ${String(response.status)}`);
+  const value: unknown = await response.json();
+  if (!Array.isArray(value) || value.length > 20) {
+    throw new Error("same-origin API response must be a bounded JSON array");
+  }
+  await writeFile(privateOutput, `${JSON.stringify(value)}\n`, {
+    encoding: "utf8",
+    mode: 0o600,
+    flag: "wx",
+  });
+  await chmod(privateOutput, 0o600);
+  return value;
+}
+
 export async function fetchTextFromSameOrigin(
   origin: URL,
   route: string,

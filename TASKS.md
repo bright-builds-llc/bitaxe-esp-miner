@@ -584,7 +584,7 @@ verified, so this task remains active rather than archived.
 Verification-promotion plan:
 `docs/parity/work-plans/20260818T064430Z-STAT-003/PLAN.md`
 
-- [ ] Add the missing `/scoreboard` operator route and complete private-first
+- [x] Add the missing `/scoreboard` operator route and complete private-first
       Rust/TypeScript evidence contract with source-identity and real-process
       regressions.
 - [ ] Pass focused/full gates, commit and push the exact source/package, then

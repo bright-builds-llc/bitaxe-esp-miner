@@ -103,6 +103,14 @@ input[type="file"] { padding: 10px; }
 .callout { border-left: 4px solid var(--success); box-shadow: none; }
 .callout.warning { border-left-color: var(--warning); }
 
+.scoreboard-card { padding: 0; overflow: hidden; }
+.scoreboard-scroll { overflow-x: auto; }
+.scoreboard-card table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.scoreboard-card th, .scoreboard-card td { border-bottom: 1px solid var(--border); padding: 12px 14px; text-align: left; white-space: nowrap; }
+.scoreboard-card th { color: var(--muted); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+.scoreboard-card td:nth-child(n + 3) { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.scoreboard-card > .muted, .scoreboard-card > .form-status { margin: 0; padding: 18px; }
+
 .logs-card { padding: 0; overflow: hidden; }
 .logs-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--border); padding: 18px; }
 .logs-toolbar label { flex: 1; max-width: 440px; }

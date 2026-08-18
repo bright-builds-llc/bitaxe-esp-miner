@@ -139,6 +139,9 @@ capture-adc-observation-evidence *args:
 capture-hashrate-monitor-evidence *args:
     bazel run //tools/automation:capture_hashrate_monitor_evidence -- {{ args }}
 
+capture-scoreboard-evidence *args:
+    bazel run //tools/automation:capture_scoreboard_evidence -- {{ args }}
+
 capture-release-recovery-evidence *args:
     #!/usr/bin/env bash
     set -euo pipefail
