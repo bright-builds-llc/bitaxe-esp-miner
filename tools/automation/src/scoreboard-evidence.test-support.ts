@@ -43,14 +43,14 @@ export async function scoreboardFixture(name: string): Promise<ScoreboardFixture
     await mkdir(path.dirname(candidate), { recursive: true });
     await writeFile(candidate, `${fragments.join("\n")}\n`);
   }
-  const planRelative = "docs/parity/work-plans/20260818T102038Z-STAT-003/PLAN.md";
+  const planRelative = "docs/parity/work-plans/20260818T114249Z-STAT-003/PLAN.md";
   const plan = "- Parity row: `STAT-003`\n- Active task: `task-parity-stat003-scoreboard`\n";
   await mkdir(path.dirname(path.join(root, planRelative)), { recursive: true });
   await writeFile(path.join(root, planRelative), plan);
   await writeFile(path.join(root, "TASKS.md"), [
     "### task-parity-stat003-scoreboard | fixture",
     `Plan: \`${planRelative}\`.`,
-    "Attempt: `attempt-003`.",
+    "Attempt: `attempt-004`.",
   ].join("\n"));
   const inputs = path.join(root, "inputs");
   await mkdir(inputs);
@@ -61,7 +61,7 @@ export async function scoreboardFixture(name: string): Promise<ScoreboardFixture
   }));
   await writeProtected(path.join(inputs, "wifi.json"), "{}\n");
   await writeProtected(path.join(inputs, "pool.json"), "{}\n");
-  const wrapper = path.join(root, "scratch/stat003-scoreboard/wrapper-003");
+  const wrapper = path.join(root, "scratch/stat003-scoreboard/wrapper-004");
   await mkdir(wrapper, { recursive: true, mode: 0o700 });
   await chmod(wrapper, 0o700);
   for (const output of ["detector.stdout", "detector.stderr", "capture.stdout", "capture.stderr"]) {
@@ -71,11 +71,11 @@ export async function scoreboardFixture(name: string): Promise<ScoreboardFixture
     root,
     planSha256: sha256(plan),
     options: {
-      privateRoot: "scratch/stat003-scoreboard/attempt-003",
+      privateRoot: "scratch/stat003-scoreboard/attempt-004",
       packageManifest: "inputs/package.json",
       wifiCredentials: "inputs/wifi.json",
       poolCredentials: "inputs/pool.json",
-      detectorOutput: "scratch/stat003-scoreboard/wrapper-003/detector.stdout",
+      detectorOutput: "scratch/stat003-scoreboard/wrapper-004/detector.stdout",
       port: "/dev/private-port",
       projection: "docs/parity/evidence/stat003-scoreboard/scoreboard-projection.json",
       durationSeconds: 600,
