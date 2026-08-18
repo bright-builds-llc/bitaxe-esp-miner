@@ -696,11 +696,11 @@ targeted correction is fully verified and pushed.
 Natural-closure correction plan:
 `docs/parity/work-plans/20260818T095707Z-STAT-003/PLAN.md`
 
-- [ ] Prove natural analyzer closure with final consumed state and complete
+- [x] Prove natural analyzer closure with final consumed state and complete
       terminal quorum is valid when `terminal_close_requested=false`.
-- [ ] Remove only the closure-initiator truth requirement, retain the field as
+- [x] Remove only the closure-initiator truth requirement, retain the field as
       mandatory closed diagnostics, and update both evidence consumers.
-- [ ] Pass focused/full gates, commit/push, and close without detector,
+- [x] Pass focused/full gates, commit/push, and close without detector,
       credentials, device access, attempt-003, or parity promotion.
 
 Authorization: software, deterministic child processes, firmware/package
@@ -708,6 +708,20 @@ builds, docs, and Git only. Attempt-002 remains immutable failed evidence. No
 detector, credentials, protected attempt roots, USB/device/network runtime,
 flash, monitor, mining, restart, public projection, attempt-003, recovery,
 external UART/BAP, pins, or electrical work is authorized by this plan.
+
+Natural-closure correction review: source `9da1d2c3` removes only the worker-
+request initiator from network acceptance truth while retaining its v12 boolean
+diagnostic. Rust and real-child regressions prove worker-requested true and
+analyzer-natural false acceptance, missing/non-boolean rejection, final-state
+requirements, and both hashrate/scoreboard consumers. Focused and mandatory
+gates, all 47 Bazel targets, firmware/package, redaction, reference, parity, and
+progress checks passed. No hardware or protected input was used; `STAT-003`
+remains `implemented`. See this plan's `WORKLOG.md` and `CLOSURE.md`.
+
+Next safe action: a fresh immutable hardware plan may rotate to attempt-003
+only after exact package/source binding and must reuse the complete detector,
+safety, privacy, recovery, cleanup, API/SPA/restart, and promotion contract. A
+recurrence of the same closed boundary after this fix stops further retries.
 
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
