@@ -19,8 +19,8 @@ import { assertWithinWorkspace } from "./workspace.js";
 type JsonObject = Readonly<Record<string, unknown>>;
 type FailureCategory = Extract<AutomationCategory, "evidence_invalid" | "process_failed" | "timeout">;
 
-const expectedPlan = "docs/parity/work-plans/20260818T122819Z-SAFE-10/PLAN.md";
-const expectedPlanSha256 = "ca4230f4668843be0d1a433b061e6dddaf9fb25b3d318094e30945ca71648690";
+const expectedPlan = "docs/parity/work-plans/20260818T132739Z-SAFE-10/PLAN.md";
+const expectedPlanSha256 = "e0a508b8160f2446d1ada4a673c90d920e15094128c6e92072709828378b3cd0";
 const expectedTask = "task-parity-safe10-prerequisite-readiness";
 const expectedAttemptRoot = "scratch/stat003-scoreboard/attempt-003";
 const expectedDetectorOutput = "scratch/stat003-scoreboard/wrapper-003/detector.stdout";

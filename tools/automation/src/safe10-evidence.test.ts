@@ -23,7 +23,7 @@ const workspace = process.env["BUILD_WORKSPACE_DIRECTORY"] ?? process.cwd();
 const attemptSourceCommit = "60a56d4935ced15eeb5ec6950b1ad4ea35fdf223";
 const currentSourceCommit = "b".repeat(40);
 const referenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
-const plan = "docs/parity/work-plans/20260818T122819Z-SAFE-10/PLAN.md";
+const plan = "docs/parity/work-plans/20260818T132739Z-SAFE-10/PLAN.md";
 const attemptPlan = "docs/parity/work-plans/20260818T102038Z-STAT-003/PLAN.md";
 const attemptClosure = "docs/parity/work-plans/20260818T102038Z-STAT-003/CLOSURE.md";
 

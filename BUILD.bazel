@@ -138,7 +138,7 @@ js_library(
         "TASKS.md",
         "docs/parity/work-plans/20260818T102038Z-STAT-003/CLOSURE.md",
         "docs/parity/work-plans/20260818T102038Z-STAT-003/PLAN.md",
-        "docs/parity/work-plans/20260818T122819Z-SAFE-10/PLAN.md",
+        "docs/parity/work-plans/20260818T132739Z-SAFE-10/PLAN.md",
         "reference/esp-miner/main/tasks/power_management_task.c",
         "reference/esp-miner/main/tasks/protocol_coordinator.c",
     ],
