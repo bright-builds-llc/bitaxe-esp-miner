@@ -22,6 +22,7 @@ import { projectStratumSocketEvidence } from "./stratum-socket-evidence.js";
 import { projectProtocolCoordinatorEvidence } from "./protocol-coordinator-evidence.js";
 import { projectMiningCriteriaEvidenceFromInvocation } from "./mining-criteria-evidence.js";
 import { projectSafe10Evidence } from "./safe10-evidence.js";
+import { projectCfg07Evidence } from "./cfg07-evidence.js";
 import {
   internalCommandSpec,
   type AutomationCategory,
@@ -188,6 +189,7 @@ async function dispatchProcess(
     case "project-protocol-coordinator-evidence":
     case "project-mining-criteria-evidence":
     case "project-safe10-evidence":
+    case "project-cfg07-evidence":
     case "project-asic-work-send-evidence":
     case "project-asic-result-parsing-evidence":
     case "project-asic-serial-transport-evidence":
@@ -481,6 +483,19 @@ async function main(): Promise<number> {
       }, processPort, "git", toolProgram(
         root,
         "crates/bitaxe-automation-contracts/validate_safe10_evidence",
+      ));
+    } else if (invocation.command === "project-cfg07-evidence") {
+      publicValue = await projectCfg07Evidence(root, {
+        safe10Projection: optionValue(invocation, "--safe10-projection"),
+        attemptPlan: optionValue(invocation, "--attempt-plan"),
+        attemptClosure: optionValue(invocation, "--attempt-closure"),
+        projection: optionValue(invocation, "--projection"),
+      }, processPort, "git", toolProgram(
+        root,
+        "crates/bitaxe-automation-contracts/validate_safe10_evidence",
+      ), toolProgram(
+        root,
+        "crates/bitaxe-automation-contracts/validate_cfg07_evidence",
       ));
     } else if (invocation.command === "project-asic-work-send-evidence") {
       publicValue = await projectAsicWorkSendEvidence(root, {

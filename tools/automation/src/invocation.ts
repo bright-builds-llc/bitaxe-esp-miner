@@ -328,6 +328,12 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--attempt-closure": value({ required: true }),
     "--projection": value({ required: true }),
   },
+  "project-cfg07-evidence": {
+    "--safe10-projection": value({ required: true }),
+    "--attempt-plan": value({ required: true }),
+    "--attempt-closure": value({ required: true }),
+    "--projection": value({ required: true }),
+  },
   "project-asic-work-send-evidence": {
     "--source-projection": value({ required: true }),
     "--attempt-source-commit": value({ required: true }),

@@ -7,7 +7,7 @@ package(default_visibility = ["//visibility:public"])
 
 filegroup(
     name = "automation_sources",
-    srcs = glob(["src/**/*.ts", "src/**/*.swift"]),
+    srcs = ["BUILD.bazel"] + glob(["src/**/*.ts", "src/**/*.swift"]),
 )
 
 filegroup(
@@ -70,6 +70,7 @@ js_binary(
         "//crates/bitaxe-automation-contracts:validate_hashrate_monitor_evidence",
         "//crates/bitaxe-automation-contracts:validate_scoreboard_evidence",
         "//crates/bitaxe-automation-contracts:validate_safe10_evidence",
+        "//crates/bitaxe-automation-contracts:validate_cfg07_evidence",
         "//crates/bitaxe-automation-contracts:validate_ultra205_defaults_evidence",
         "//crates/bitaxe-automation-contracts:validate_settings_patch_evidence",
         "//crates/bitaxe-automation-contracts:validate_statistics_history_evidence",
@@ -103,6 +104,7 @@ js_binary(
         "//:screen_flow_evidence_inputs",
         "//:statistics_history_evidence_inputs",
         "//:scoreboard_evidence_inputs",
+        "//:cfg07_evidence_inputs",
         "//crates/bitaxe-config:display_behavior_evidence_source",
         "//crates/bitaxe-core:display_behavior_evidence_source",
         "//crates/bitaxe-core:screen_flow_evidence_sources",
@@ -137,6 +139,7 @@ js_binary(
             "//crates/bitaxe-automation-contracts:validate_hashrate_monitor_evidence",
             "//crates/bitaxe-automation-contracts:validate_scoreboard_evidence",
             "//crates/bitaxe-automation-contracts:validate_safe10_evidence",
+            "//crates/bitaxe-automation-contracts:validate_cfg07_evidence",
             "//crates/bitaxe-automation-contracts:validate_ultra205_defaults_evidence",
             "//crates/bitaxe-automation-contracts:validate_settings_patch_evidence",
             "//crates/bitaxe-automation-contracts:validate_statistics_history_evidence",
@@ -170,6 +173,7 @@ js_binary(
             "//:screen_flow_evidence_inputs",
             "//:statistics_history_evidence_inputs",
             "//:scoreboard_evidence_inputs",
+            "//:cfg07_evidence_inputs",
             "//crates/bitaxe-config:display_behavior_evidence_source",
             "//crates/bitaxe-core:display_behavior_evidence_source",
             "//crates/bitaxe-core:screen_flow_evidence_sources",
@@ -236,6 +240,7 @@ js_binary(
         "project_protocol_coordinator_evidence": "project-protocol-coordinator-evidence",
         "project_mining_criteria_evidence": "project-mining-criteria-evidence",
         "project_safe10_evidence": "project-safe10-evidence",
+        "project_cfg07_evidence": "project-cfg07-evidence",
         "project_asic_work_send_evidence": "project-asic-work-send-evidence",
         "project_asic_result_parsing_evidence": "project-asic-result-parsing-evidence",
         "project_asic_serial_transport_evidence": "project-asic-serial-transport-evidence",
@@ -278,6 +283,7 @@ js_test(
         "//:hashrate_monitor_evidence_inputs",
         "//:scoreboard_evidence_inputs",
         "//:safe10_evidence_inputs",
+        "//:cfg07_evidence_inputs",
         "//:statistics_history_evidence_inputs",
         "//:display_behavior_evidence_inputs",
         "//:screen_flow_evidence_inputs",
@@ -310,6 +316,7 @@ js_test(
         "//crates/bitaxe-automation-contracts:validate_hashrate_monitor_evidence",
         "//crates/bitaxe-automation-contracts:validate_scoreboard_evidence",
         "//crates/bitaxe-automation-contracts:validate_safe10_evidence",
+        "//crates/bitaxe-automation-contracts:validate_cfg07_evidence",
         "//crates/bitaxe-automation-contracts:validate_statistics_history_evidence",
         "//crates/bitaxe-automation-contracts:validate_ui_workflow_evidence",
         "//scripts:api_command_effects_stratum_pool",

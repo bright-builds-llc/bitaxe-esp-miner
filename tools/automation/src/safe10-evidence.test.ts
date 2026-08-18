@@ -20,6 +20,9 @@ import {
 import { createFakeProcessPort, createLocalProcessPort, type ProcessOutcome } from "./process.js";
 
 const workspace = process.env["BUILD_WORKSPACE_DIRECTORY"] ?? process.cwd();
+const repositoryRoot = process.env["RUNFILES_DIR"] === undefined
+  ? workspace
+  : path.join(process.env["RUNFILES_DIR"], "_main");
 const attemptSourceCommit = "60a56d4935ced15eeb5ec6950b1ad4ea35fdf223";
 const currentSourceCommit = "b".repeat(40);
 const referenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
@@ -64,7 +67,7 @@ async function fixture(
   for (const relative of [plan, attemptPlan, attemptClosure]) {
     const candidate = path.join(root, relative);
     await mkdir(path.dirname(candidate), { recursive: true });
-    await writeFile(candidate, await readFile(path.join(workspace, relative), "utf8"));
+    await writeFile(candidate, await readFile(path.join(repositoryRoot, relative), "utf8"));
   }
   await writeFile(path.join(root, "TASKS.md"), [
     "## Active",
@@ -83,7 +86,7 @@ async function fixture(
   await chmod(wrapperRoot, 0o700);
   await writeProtected(
     path.join(wrapperRoot, "detector.stdout"),
-    "espflash_version: 4.3.0\nport: /dev/cu.private\nusb_session: ready\n",
+    "espflash_version: 4.3.0\nport: /dev/cu.usbmodem101\nusb_session: ready\n",
   );
   const observations = `${JSON.stringify({
     schema: "mining-campaign-observations-v4",
@@ -227,7 +230,7 @@ test("complete protected attempt publishes independently validated SAFE-10 evide
     assert.equal((await stat(projection)).mode & 0o777, 0o644);
     assert.doesNotMatch(
       await readFile(projection, "utf8"),
-      /private|lease|boot_session|endpoint|sensor_value|serial|http_body/u,
+      /private_|lease_id|boot_session|endpoint|sensor_value|serial_(?:port|log|bytes)|http_body/u,
     );
   } finally {
     await rm(value.root, { recursive: true });

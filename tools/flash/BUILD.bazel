@@ -32,6 +32,17 @@ js_library(
 )
 
 js_library(
+    name = "cfg07_evidence_sources",
+    srcs = [
+        "src/campaign.rs",
+        "src/campaign/admission.rs",
+        "src/cli.rs",
+        "src/wifi.rs",
+    ],
+    visibility = ["//:__pkg__"],
+)
+
+js_library(
     name = "scoreboard_evidence_source",
     srcs = [
         "src/campaign/admission.rs",

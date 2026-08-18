@@ -21,6 +21,16 @@ js_library(
     visibility = ["//:__pkg__"],
 )
 
+js_library(
+    name = "cfg07_validator_sources",
+    srcs = [
+        "BUILD.bazel",
+        "src/bin/validate_cfg07_evidence.rs",
+        "src/cfg07_evidence.rs",
+    ],
+    visibility = ["//:__pkg__"],
+)
+
 rust_library(
     name = "bitaxe_automation_contracts",
     srcs = [
@@ -34,6 +44,7 @@ rust_library(
         "src/asic_serial_transport_evidence.rs",
         "src/asic_work_send_evidence.rs",
         "src/bundle.rs",
+        "src/cfg07_evidence.rs",
         "src/adc_observation_evidence.rs",
         "src/adc_observation_input.rs",
         "src/core_voltage_control_evidence.rs",
@@ -84,6 +95,17 @@ rust_binary(
     name = "validate_safe10_evidence",
     srcs = ["src/bin/validate_safe10_evidence.rs"],
     crate_name = "validate_safe10_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_binary(
+    name = "validate_cfg07_evidence",
+    srcs = ["src/bin/validate_cfg07_evidence.rs"],
+    crate_name = "validate_cfg07_evidence",
     edition = "2021",
     deps = [
         ":bitaxe_automation_contracts",

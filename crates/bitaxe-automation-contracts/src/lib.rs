@@ -14,6 +14,7 @@ mod asic_result_parsing_evidence;
 mod asic_serial_transport_evidence;
 mod asic_work_send_evidence;
 mod bundle;
+mod cfg07_evidence;
 mod core_voltage_control_evidence;
 mod display_behavior_evidence;
 mod emc2101_thermal_evidence;
@@ -76,6 +77,7 @@ pub use asic_work_send_evidence::{
     AsicWorkSendEvidence, AsicWorkSendObservationEvidence, AsicWorkSendSourceEvidence,
 };
 pub use bundle::{contract_bundle, ContractBundle};
+pub use cfg07_evidence::{Cfg07CredentialEvidence, Cfg07Evidence, Cfg07SourceEvidence};
 pub use core_voltage_control_evidence::{
     CoreVoltageControlEvidence, CoreVoltageControlObservationEvidence,
     CoreVoltageControlSourceEvidence,
@@ -154,6 +156,7 @@ pub const OPERATOR_SNAPSHOT_EVIDENCE_SCHEMA: &str = "bitaxe-operator-snapshot-ev
 pub const RUNTIME_HEALTH_EVIDENCE_SCHEMA: &str = "bitaxe-runtime-health-evidence-v1";
 pub const SYSTEM_INFO_EVIDENCE_SCHEMA: &str = "bitaxe-system-info-evidence-v1";
 pub const SAFE10_EVIDENCE_SCHEMA: &str = "bitaxe-safe10-evidence-v1";
+pub const CFG07_EVIDENCE_SCHEMA: &str = "bitaxe-cfg07-evidence-v1";
 pub const ADC_OBSERVATION_EVIDENCE_SCHEMA: &str = "bitaxe-adc-observation-evidence-v1";
 pub const ULTRA205_DEFAULTS_EVIDENCE_SCHEMA: &str = "bitaxe-ultra205-defaults-evidence-v1";
 pub const SETTINGS_PATCH_EVIDENCE_SCHEMA: &str = "bitaxe-settings-patch-evidence-v1";
@@ -241,6 +244,7 @@ pub enum AutomationCommand {
     ProjectProtocolCoordinatorEvidence,
     ProjectMiningCriteriaEvidence,
     ProjectSafe10Evidence,
+    ProjectCfg07Evidence,
     CaptureProvisioningNetworkEvidence,
     ProjectUiWorkflowEvidence,
 }

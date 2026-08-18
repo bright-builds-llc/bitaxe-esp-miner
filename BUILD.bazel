@@ -154,6 +154,24 @@ js_library(
 )
 
 js_library(
+    name = "cfg07_evidence_inputs",
+    srcs = [
+        "TASKS.md",
+        "docs/parity/evidence/safe10-prerequisite-readiness/safe10-projection.json",
+        "docs/parity/work-plans/20260818T102038Z-STAT-003/CLOSURE.md",
+        "docs/parity/work-plans/20260818T102038Z-STAT-003/PLAN.md",
+        "docs/parity/work-plans/20260818T150603Z-CFG-07/PLAN.md",
+        "reference/esp-miner/config-205.cvs",
+        "reference/esp-miner/main/nvs_config.c",
+    ],
+    deps = [
+        "//crates/bitaxe-automation-contracts:cfg07_validator_sources",
+        "//tools/flash:cfg07_evidence_sources",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "hashrate_monitor_evidence_inputs",
     srcs = [
         "TASKS.md",

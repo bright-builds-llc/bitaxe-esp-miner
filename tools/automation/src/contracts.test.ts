@@ -235,6 +235,19 @@ test("result validator accepts the closed scoreboard capture command", () => {
   assert.equal(result.command, "capture-scoreboard-evidence");
 });
 
+test("result validator accepts the closed CFG-07 projection command", () => {
+  // Act
+  const result = parseAutomationResult({
+    schema_version: "bitaxe-automation-result-v1",
+    command: "project-cfg07-evidence",
+    status: "succeeded",
+    category: "complete",
+  });
+
+  // Assert
+  assert.equal(result.command, "project-cfg07-evidence");
+});
+
 // @ts-expect-error monitor intentionally has no evidenceMode option.
 monitorCommand("/tmp/flash", { evidenceMode: "dual" });
 

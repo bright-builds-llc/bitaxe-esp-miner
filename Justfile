@@ -258,6 +258,9 @@ project-ui-workflow-evidence *args:
 project-safe10-evidence *args:
     bazel run //tools/automation:project_safe10_evidence -- {{ args }}
 
+project-cfg07-evidence *args:
+    bazel run //tools/automation:project_cfg07_evidence -- {{ args }}
+
 validate-safe10-evidence projection:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -265,6 +268,14 @@ validate-safe10-evidence projection:
     test -f "$projection"
     projection_path="$(/bin/realpath "$projection")"
     bazel run //crates/bitaxe-automation-contracts:validate_safe10_evidence -- "$projection_path"
+
+validate-cfg07-evidence projection:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    projection={{ quote(projection) }}
+    test -f "$projection"
+    projection_path="$(/bin/realpath "$projection")"
+    bazel run //crates/bitaxe-automation-contracts:validate_cfg07_evidence -- "$projection_path"
 
 validate-ui-workflow-evidence projection:
     #!/usr/bin/env bash
