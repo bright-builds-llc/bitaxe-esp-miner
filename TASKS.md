@@ -655,12 +655,12 @@ correction as live parity evidence.
 Attempt-002 verification plan:
 `docs/parity/work-plans/20260818T090846Z-STAT-003/PLAN.md`
 
-- [ ] Rotate the private-first scoreboard evidence workflow from consumed
+- [x] Rotate the private-first scoreboard evidence workflow from consumed
       attempt-001 to fresh attempt-002 and bind the new immutable plan, task,
       ordinal, paths, runfiles, contracts, fixtures, and validators.
-- [ ] Pass focused/full gates, commit and push the exact implementation, build
+- [x] Pass focused/full gates, commit and push the exact implementation, build
       the bound package, and run only wrapper-002 detector admission.
-- [ ] Run at most one conditional attempt-002 and promote only on the complete
+- [x] Run at most one conditional attempt-002 and promote only on the complete
       accepted mining/API/SPA/restart persistence quorum; otherwise preserve
       the earliest closed failure and stop without attempt-003.
 
@@ -674,6 +674,24 @@ restart may prove UI/API and boot durability. The linked plan freezes private
 roots, exact commands, recovery, retry, stop, promotion, privacy, and prohibited
 effects; starting the capture consumes attempt-002 and no attempt-003 is
 authorized.
+
+Attempt-002 closure review: exact pushed/package-bound source `e9034ea1`, the
+pinned reference, all focused/full gates, 31-path evaluator identity, one
+detector, and the sole capture passed admission. The sealed campaign completed
+600,148 active ms, 20/20 renewed windows, 202 scoreboard candidates, accepted
+submit, trusted identity, fresh safety, stable watchdog, no panic/mixed reset,
+terminal HTTP/WebSocket/pool joins, final consumed serial state, confirmed safe
+stop, and ready cleanup. It failed public `evidence_invalid` because network v12
+reached `accepted_after_serial_close` after natural analyzer closure while the
+model incorrectly required `terminal_close_requested=true`. API/SPA/restart and
+public projection remained withheld; no retry ran and `STAT-003` remains
+`implemented`. See this plan's `WORKLOG.md` and `CLOSURE.md`.
+
+Next safe action: a software-only plan must make closure initiator diagnostic,
+not acceptance truth; false remains a valid closed boolean when final consumed,
+serial-finished, accepted settlement and every transport/safety gate pass. Only
+a later immutable exact-package plan may authorize attempt-003 after that
+targeted correction is fully verified and pushed.
 
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
