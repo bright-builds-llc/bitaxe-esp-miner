@@ -19,3 +19,22 @@
 - Blocker or next safe action: run every mandatory gate, commit and push the
   exact source, rebuild and validate the package, then execute only the frozen
   detector and sole conditional capture.
+
+## 2026-08-18T05:58:35Z | attempt-019 accepted
+
+- Source commit: `7d78889a82b5da9ef085290e29e37b5b7ddad310`
+- Actions: rebuilt and identity-checked the exact package; ran the sole frozen
+  detector and attempt-019 capture; independently validated the resulting
+  projection and sealed closed private quorum without printing protected data.
+- Verification: 20/20 windows, work renewal, coherent changing positive HTTP/
+  WebSocket rates, warm windows, terminal zeros, accepted-or-rejected submit,
+  no panic or mixed reset, stable watchdog, trusted identity, fresh safety,
+  terminal joins, safe stop, cleanup, modes, seals, and redaction all passed.
+- Evidence: committed-safe projection at
+  `docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json`;
+  protected attempt/wrapper roots remain ignored and private.
+- Outcome: accepted; the complete independent quorum supports promoting only
+  `STAT-001` to `verified`.
+- Blocker or next safe action: commit the evidence without changing the
+  checklist, transition `STAT-001`, synchronize progress from that evidence
+  commit, archive the completed task, run every final gate, and push.
