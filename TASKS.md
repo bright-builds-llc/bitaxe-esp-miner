@@ -693,6 +693,22 @@ serial-finished, accepted settlement and every transport/safety gate pass. Only
 a later immutable exact-package plan may authorize attempt-003 after that
 targeted correction is fully verified and pushed.
 
+Natural-closure correction plan:
+`docs/parity/work-plans/20260818T095707Z-STAT-003/PLAN.md`
+
+- [ ] Prove natural analyzer closure with final consumed state and complete
+      terminal quorum is valid when `terminal_close_requested=false`.
+- [ ] Remove only the closure-initiator truth requirement, retain the field as
+      mandatory closed diagnostics, and update both evidence consumers.
+- [ ] Pass focused/full gates, commit/push, and close without detector,
+      credentials, device access, attempt-003, or parity promotion.
+
+Authorization: software, deterministic child processes, firmware/package
+builds, docs, and Git only. Attempt-002 remains immutable failed evidence. No
+detector, credentials, protected attempt roots, USB/device/network runtime,
+flash, monitor, mining, restart, public projection, attempt-003, recovery,
+external UART/BAP, pins, or electrical work is authorized by this plan.
+
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
 - [x] Add a typed private-first `/api/theme` capture that binds the exact
