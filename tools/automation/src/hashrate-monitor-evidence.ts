@@ -60,12 +60,12 @@ type WatchdogFailureDiagnostic = Readonly<{
 type CampaignFailureDiagnostic = RuntimeAttestationParseDiagnostic
   & Partial<WatchdogFailureDiagnostic>;
 
-const expectedPrivateRoot = "scratch/stat001-hashrate-monitor/attempt-017";
-const expectedWrapperRoot = "scratch/stat001-hashrate-monitor/wrapper-017";
+const expectedPrivateRoot = "scratch/stat001-hashrate-monitor/attempt-018";
+const expectedWrapperRoot = "scratch/stat001-hashrate-monitor/wrapper-018";
 const expectedProjection =
   "docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json";
-const expectedPlan = "docs/parity/work-plans/20260817T114224Z-STAT-001/PLAN.md";
-const expectedPlanSha256 = "f73d39137b50a4e0f4c94b01df40bb75e9c350b07c837e808eee9cc89d9c2c83";
+const expectedPlan = "docs/parity/work-plans/20260818T022212Z-STAT-001/PLAN.md";
+const expectedPlanSha256 = "cd641d862cd1246b7905ec2389c2fad17a61b45090cb85496f82ed32bf7989d3";
 const expectedReferenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const activeTask = "task-parity-stat001-hashrate-monitor";
 const runtimeAttestationParseFailures = [
@@ -391,7 +391,7 @@ export async function validateHashrateMonitorTaskAndSources(
   const maybeEnd = taskDocument.indexOf("\n### ", start + heading.length);
   const block = taskDocument.slice(start, maybeEnd === -1 ? taskDocument.length : maybeEnd);
   if (start === -1 || taskDocument.indexOf(heading, start + heading.length) !== -1
-    || !block.includes(expectedPlan) || !block.includes("attempt-017")
+    || !block.includes(expectedPlan) || !block.includes("attempt-018")
     || sha256(planDocument) !== admittedPlanSha256
     || !planDocument.includes("- Parity row: `STAT-001`")
     || !planDocument.includes(`- Active task: \`${activeTask}\``)) {
@@ -560,7 +560,7 @@ export async function captureHashrateMonitorEvidence(
     const evidence: HashrateMonitorEvidence = {
       schema_version: "bitaxe-hashrate-monitor-evidence-v1",
       board: 205,
-      attempt_ordinal: 17,
+      attempt_ordinal: 18,
       source_commit: currentSourceCommit,
       reference_commit: referenceCommit,
       package_manifest_sha256: sha256(manifestFile.document),

@@ -187,14 +187,14 @@ async function fixture(name: string): Promise<Fixture> {
   await writeFile(coordinatorReference, [
     'xTaskCreateWithCaps(stratum_v1_task, "stratum v1", 8192, (void *)gs, 5,',
   ].join("\n"));
-  const planRelative = "docs/parity/work-plans/20260817T114224Z-STAT-001/PLAN.md";
+  const planRelative = "docs/parity/work-plans/20260818T022212Z-STAT-001/PLAN.md";
   const plan = "- Parity row: `STAT-001`\n- Active task: `task-parity-stat001-hashrate-monitor`\n";
   await mkdir(path.dirname(path.join(root, planRelative)), { recursive: true });
   await writeFile(path.join(root, planRelative), plan);
   await writeFile(path.join(root, "TASKS.md"), [
     "### task-parity-stat001-hashrate-monitor | fixture",
     `Plan: \`${planRelative}\`.`,
-    "Attempt: `attempt-017`.",
+    "Attempt: `attempt-018`.",
   ].join("\n"));
   const inputs = path.join(root, "inputs");
   await mkdir(inputs);
@@ -202,7 +202,7 @@ async function fixture(name: string): Promise<Fixture> {
     source_commit: sourceCommit,
     reference_commit: referenceCommit,
   }));
-  const wrapper = path.join(root, "scratch/stat001-hashrate-monitor/wrapper-017");
+  const wrapper = path.join(root, "scratch/stat001-hashrate-monitor/wrapper-018");
   await mkdir(wrapper, { recursive: true, mode: 0o700 });
   await chmod(wrapper, 0o700);
   for (const output of ["detector.stdout", "detector.stderr", "capture.stdout", "capture.stderr"]) {
@@ -212,11 +212,11 @@ async function fixture(name: string): Promise<Fixture> {
     root,
     planSha256: sha256(plan),
     options: {
-      privateRoot: "scratch/stat001-hashrate-monitor/attempt-017",
+      privateRoot: "scratch/stat001-hashrate-monitor/attempt-018",
       packageManifest: "inputs/package.json",
       wifiCredentials: "inputs/wifi.json",
       poolCredentials: "inputs/pool.json",
-      detectorOutput: "scratch/stat001-hashrate-monitor/wrapper-017/detector.stdout",
+      detectorOutput: "scratch/stat001-hashrate-monitor/wrapper-018/detector.stdout",
       port: "/dev/private-port",
       projection: "docs/parity/evidence/stat001-hashrate-monitor/hashrate-monitor-projection.json",
       durationSeconds: 600,
@@ -323,7 +323,7 @@ test("admissible conservative campaign and independent validator publish only cl
     );
 
     // Assert
-    assert.equal(evidence.attempt_ordinal, 17);
+    assert.equal(evidence.attempt_ordinal, 18);
     assert.equal(evidence.hashrate.http.distinct_positive_count, 2);
     assert.equal(evidence.source.source_path_count, 18);
     assert.equal((await stat(path.join(value.root, value.options.projection))).mode & 0o777, 0o644);
@@ -336,13 +336,13 @@ test("admissible conservative campaign and independent validator publish only cl
   }
 });
 
-test("consumed attempt-016 protected root is rejected before capture", async () => {
+test("consumed attempt-017 protected root is rejected before capture", async () => {
   // Arrange
   const value = await fixture("consumed-root");
   const child = await childProgram(value);
   const options = {
     ...value.options,
-    privateRoot: "scratch/stat001-hashrate-monitor/attempt-016",
+    privateRoot: "scratch/stat001-hashrate-monitor/attempt-017",
   };
 
   try {
@@ -360,7 +360,7 @@ test("consumed attempt-016 protected root is rejected before capture", async () 
     // Assert
     assert.equal(error.category, "evidence_invalid");
     await assert.rejects(
-      stat(path.join(value.root, "scratch/stat001-hashrate-monitor/attempt-016")),
+      stat(path.join(value.root, "scratch/stat001-hashrate-monitor/attempt-017")),
       { code: "ENOENT" },
     );
   } finally {
@@ -377,7 +377,7 @@ test("current immutable task and production/reference sources pass admission", a
   // Act / Assert
   await validateHashrateMonitorTaskAndSources(
     root,
-    "f73d39137b50a4e0f4c94b01df40bb75e9c350b07c837e808eee9cc89d9c2c83",
+    "cd641d862cd1246b7905ec2389c2fad17a61b45090cb85496f82ed32bf7989d3",
   );
 });
 
