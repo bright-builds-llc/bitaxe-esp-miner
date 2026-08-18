@@ -2152,6 +2152,37 @@ Temporary user-authorized watchdog diagnostic loop | 2026-08-17:
   USB cleanup, and redaction. The private diagnostic campaign remains ignored
   local evidence and was not promoted into the public parity checklist.
 
+Attempt-018 audited verification-promotion plan:
+`docs/parity/work-plans/20260818T022212Z-STAT-001/PLAN.md`
+
+- [ ] Rebind the immutable hashrate evidence workflow, plan digest, protected
+      roots, ordinal, fixtures, source identity, result v16, and network v11 to
+      fresh attempt-018 without changing production behavior.
+- [ ] Pass every focused and mandatory software/firmware gate, commit and push
+      the rebind, and build the exact package before hardware access.
+- [ ] Run only the plan's frozen detector and sole conditional capture; promote
+      `STAT-001` only if the complete independent quorum passes.
+
+Attempt-018 authority: the materially different source path is established by
+the serialized watchdog snapshot, per-action shutdown feeds, full-duration
+live-share lease, closed correlation diagnostics, and exact terminal-horizon
+handling. After clean pushed gates, one exact board-205 package may run at the
+conservative 400 MHz / 1,100 mV ASIC core / 100% fan profile for exactly 600
+active seconds with ignored local Wi-Fi/pool inputs, protected joins, safe stop,
+cleanup, sealing, and at most one supervisor-owned exact-package recovery
+flash. Fresh input bus safety remains 4.5-5.5 V, <=15 W, ASIC <75 C, and fan
+RPM nonzero. Core millivolts and bus volts remain distinct.
+
+Attempt-018 privacy/retry/stop: only fresh ignored wrapper-018 and attempt-018
+mode-0700 roots with mode-0600 files are allowed. Credentials, endpoints,
+identities, exact values, bodies, serial, commands, PIDs, and traces stay
+private; only an independently valid projection may publish. Starting capture
+consumes the ordinal. Do not retry it or start attempt-019. Stop on any nonzero
+command, detector/identity/safety/privacy/cleanup/recovery failure, or missing
+quorum fact. No overclock, arbitrary controls, OTA, erase, fault injection,
+physical power action, external UART/BAP, or electrical manipulation is
+authorized.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
