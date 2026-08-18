@@ -186,13 +186,13 @@ test("accepted transport evidence without final consumed handoff withholds proje
   }
 });
 
-test("consumed attempt-001 root is rejected before hardware orchestration", async () => {
+test("consumed attempt-002 root is rejected before hardware orchestration", async () => {
   // Arrange
   const fixture = await scoreboardFixture("consumed-attempt");
   const child = await scoreboardChild(fixture, "http://127.0.0.1:1");
   const options = {
     ...fixture.options,
-    privateRoot: "scratch/stat003-scoreboard/attempt-001",
+    privateRoot: "scratch/stat003-scoreboard/attempt-002",
   };
 
   try {

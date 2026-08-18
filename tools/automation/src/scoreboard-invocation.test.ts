@@ -7,11 +7,11 @@ test("scoreboard capture requires the exact detector-gated 600-second surface", 
   // Arrange
   const complete = [
     "capture-scoreboard-evidence",
-    "--private-root", "scratch/stat003-scoreboard/attempt-002",
+    "--private-root", "scratch/stat003-scoreboard/attempt-003",
     "--package-manifest", "bazel-bin/package.json",
     "--wifi-credentials", "wifi-credentials.json",
     "--pool-credentials", "pool-credentials.json",
-    "--detector-output", "scratch/stat003-scoreboard/wrapper-002/detector.stdout",
+    "--detector-output", "scratch/stat003-scoreboard/wrapper-003/detector.stdout",
     "--projection", "docs/evidence/scoreboard.json",
     "--duration-seconds", "600",
     "--capture-timeout-seconds", "1800",
