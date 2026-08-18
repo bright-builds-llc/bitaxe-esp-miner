@@ -766,6 +766,22 @@ restart, identity, persistence, safety, privacy, and source gate. Only a later
 immutable plan may authorize attempt-004 after that fix is fully verified and
 pushed; recurrence of the same signature stops further retries.
 
+Stopped-state verifier correction plan:
+`docs/parity/work-plans/20260818T112336Z-STAT-003/PLAN.md`
+
+- [ ] Define disabled boot mining once as false boot intent plus closed
+      non-active `paused` or `safe_blocked`, rejecting active/unknown/enabled.
+- [ ] Use the predicate in restart admission and final evidence, with pure and
+      full real-child paused-restart regression coverage.
+- [ ] Pass focused/full gates, commit/push, and close without detector,
+      credentials, device access, attempt-004, or parity promotion.
+
+Authorization: software, deterministic child processes, firmware/package
+builds, docs, and Git only. Attempt-003 remains immutable failed evidence. No
+detector, credentials, protected attempt roots, USB/device/network runtime,
+flash, monitor, mining, restart, public projection, attempt-004, recovery,
+external UART/BAP, pins, or electrical work is authorized by this plan.
+
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
 - [x] Add a typed private-first `/api/theme` capture that binds the exact
