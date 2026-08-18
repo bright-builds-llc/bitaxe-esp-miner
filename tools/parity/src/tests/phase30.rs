@@ -56,9 +56,12 @@ fn phase30_complete_promotion_artifact(requirement_id: &str) -> String {
 }
 
 #[test]
-fn phase30_verified_row_rejects_current_no_promotion_artifact() {
+fn phase30_current_artifact_accepts_cfg07_only() {
     // Arrange
-    let row = phase30_verified_row("STR-09", DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH);
+    let rows = [
+        phase30_verified_row("CFG-07", DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH),
+        phase30_verified_row("STR-09", DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH),
+    ];
     let artifact = parse_phase30_promotion_artifact(include_str!(
         "../../../../docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md"
     ))
@@ -66,21 +69,22 @@ fn phase30_verified_row_rejects_current_no_promotion_artifact() {
 
     // Act
     let errors = validate_rows_with_phase30_artifact(
-        &[row],
+        &rows,
         &Phase30PromotionArtifactState::Available(artifact),
     );
 
     // Assert
-    assert_validation_error_contains(&errors, "STR-09", "no_promotion_no_eligible_evidence");
+    assert!(!errors.iter().any(|error| error.id == "CFG-07"));
+    assert_validation_error_contains(&errors, "STR-09", "STR-09.live_submit_response_classified");
 }
 
 #[test]
-fn phase30_report_rejects_verified_row_against_committed_no_promotion_artifact() {
+fn phase30_report_accepts_cfg07_against_current_promotion_artifact() {
     // Arrange
     let checklist = r#"
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| STR-09 | Phase 30 exact promotion claim | `reference/esp-miner/main/system.c` | `tools/parity/src/main.rs` | verified | workflow,hardware-smoke,hardware-regression | phase-28-hardware-evidence-and-checklist-promotion/summary.md redaction-review.md exact_non_claims accepted share hardware proof asic bridge correlation docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md |
+| CFG-07 | Runtime-only credential labels | `reference/esp-miner/main/nvs_config.c` | `tools/automation/src/cfg07-evidence.ts` | verified | unit,workflow,hardware-smoke,hardware-regression | phase-28-hardware-evidence-and-checklist-promotion/summary.md redaction_status: passed exact_non_claims runtime credentials same-chain hardware proof docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md |
 "#;
     let environment = FakeEnvironment::with_documents(
         checklist,
@@ -98,11 +102,7 @@ fn phase30_report_rejects_verified_row_against_committed_no_promotion_artifact()
     let result = run_report(&request, &environment);
 
     // Assert
-    assert!(result.is_err());
-    assert!(result
-        .expect_err("current no-promotion artifact must reject verified row")
-        .to_string()
-        .contains("no_promotion_no_eligible_evidence"));
+    assert!(result.is_ok());
 }
 
 #[test]

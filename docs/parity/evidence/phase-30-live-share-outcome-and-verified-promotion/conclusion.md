@@ -1,37 +1,70 @@
 # Phase 30 Live Share Outcome and Verified Promotion Conclusion
 
-phase30_disposition: no_promotion_no_eligible_evidence
-new_evidence_input: none
+phase30_disposition: promoted
+new_evidence_input: explicit
 archived_lineage_verification: gaps_found
-eligible_share_outcome: none
-hardware_accessed: false
-credentials_accessed: false
+eligible_share_outcome: accepted
+hardware_accessed: true
+credentials_accessed: true
 raw_artifacts_committed: no
+current_source_gate: passed
+detector_gate: passed
+same_chain_gate: passed
+provenance_gate: passed
+redaction_status: passed
+CFG-07.runtime_credentials_input: local-owner-supplied
+CFG-07.live_mining_credentials_consumed: true
+CFG-07.committed_credential_values: none
+CFG-07.safe_stop_status: complete
 phase30_contract_test: passed
 phase30_parity_admission_tests: passed
 
 ## Conclusion
 
-Phase 30 completed successfully because it recorded and enforced the conservative no-promotion decision. Phase completion is not requirement verification and does not satisfy STR-09, CFG-07, or ASIC-11.
+New explicit evidence now supports promotion of `CFG-07` only. The accepted
+public projection at
+`docs/parity/evidence/cfg07-runtime-credentials/runtime-credentials-projection.json`
+joins detector-admitted scoreboard attempt-003 to the exact command and source
+chain that required and consumed local Wi-Fi and pool inputs during accepted
+live mining. The projection contains category labels, booleans, commits,
+digests, and counts only; it contains no credential paths or values.
+
+The new evidence supersedes the earlier administrative no-promotion conclusion
+for CFG-07. It does not alter the earlier disposition for STR-09 or ASIC-11.
 
 | Requirement | Result | Conclusion |
 | --- | --- | --- |
-| STR-09 | not_promoted_pending | No eligible detector-gated, same-chain live ASIC-derived submit response was classified as accepted or rejected. |
-| CFG-07 | not_promoted_pending | No eligible live mining chain proved runtime-only credential consumption while committed evidence retained category labels only. |
-| ASIC-11 | not_promoted_pending | No eligible live BM1366 result was correlated to active pool work before submit intent. |
+| STR-09 | retained_implemented | This artifact does not independently promote submit-response classification. |
+| CFG-07 | promoted | Same-chain runtime credential consumption, accepted live mining, safe stop, provenance, current source, and redaction pass. |
+| ASIC-11 | retained_implemented | This artifact does not independently promote result-to-work correlation. |
 
-All three checklist rows remain `implemented`, and all three requirements remain `Pending (gap closure)`. The archived Phase 28.1.1 verification remains `gaps_found`, and the Phase 28.1 administrative closure remains unresolved.
+## Evidence Basis
 
-The executable parity guard now requires an explicit Phase 30 promotion artifact, current-source detector-gated same-chain proof, redaction and raw-artifact gates, an accepted or rejected eligible share outcome, safe-stop completion, and exact row-specific evidence. No-promotion, gaps-found, blocked, workflow-only, fake-pool, deterministic-only, or another row's proof cannot promote these rows.
+- Immutable plan:
+  `docs/parity/work-plans/20260818T150603Z-CFG-07/PLAN.md`
+- Accepted predecessor:
+  `docs/parity/evidence/safe10-prerequisite-readiness/safe10-projection.json`
+- Accepted CFG-07 projection:
+  `docs/parity/evidence/cfg07-runtime-credentials/runtime-credentials-projection.json`
+- Attempt command contract:
+  `docs/parity/work-plans/20260818T102038Z-STAT-003/PLAN.md`
+- Attempt closure/source binding:
+  `docs/parity/work-plans/20260818T102038Z-STAT-003/CLOSURE.md`
+- Phase 28 safety consolidation:
+  `docs/parity/evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md`
 
 ## Exact Non-Claims
 
+- Credential contents are not exposed or independently revalidated.
+- Credential rotation or persistence beyond the accepted campaign is not
+  verified.
+- STR-09 and ASIC-11 are not promoted by this artifact.
+- Arbitrary profiles or pools are not verified.
 - No full active voltage/fan/thermal/fault/self-test safety is verified.
 - No OTAWWW/recovery destructive or fault-injection behavior is verified.
-- No non-205 boards are verified.
-- No other ASIC families are verified.
-- No Stratum v2 behavior is verified.
-- No runtime UI/display/input/BAP behavior is verified.
-- No unbounded stress mining is verified.
+- No non-205 boards or other ASIC families are verified.
+- No Stratum v2, runtime UI/display/input/BAP, external UART, pin manipulation,
+  unbounded stress mining, or release readiness is verified.
 
-No hardware, credentials, ignored local evidence, archived diagnostic entrypoints, direct UART, or pin manipulation were accessed during Phase 30.
+No hardware action or protected input access occurred while producing the
+CFG-07 projection; it consumes committed public evidence only.
