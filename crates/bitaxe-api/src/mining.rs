@@ -190,9 +190,148 @@ fn blocked_reason(state: &MiningRuntimeState) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use bitaxe_stratum::v1::state::MiningRuntimeState;
+    use std::collections::BTreeSet;
+
+    use bitaxe_stratum::v1::production_session::ProductionSessionBlocker;
+    use bitaxe_stratum::v1::state::{
+        MiningActivityStatus, MiningOperatorIntent, MiningRuntimeState,
+    };
 
     use crate::mining::mining_state_from_runtime;
+
+    const PRODUCTION_FAILURE_BLOCKERS: [(ProductionSessionBlocker, &str); 16] = [
+        (
+            ProductionSessionBlocker::NetworkUnavailable,
+            "network_unavailable",
+        ),
+        (
+            ProductionSessionBlocker::StratumV1Unsupported,
+            "stratum_v1_unsupported",
+        ),
+        (
+            ProductionSessionBlocker::SafetyPrerequisitesStale,
+            "safety_prerequisites_stale",
+        ),
+        (
+            ProductionSessionBlocker::CampaignLeaseUnavailable,
+            "campaign_lease_unavailable",
+        ),
+        (
+            ProductionSessionBlocker::CampaignLeaseConsumed,
+            "campaign_lease_consumed",
+        ),
+        (
+            ProductionSessionBlocker::CampaignActivationTimedOut,
+            "campaign_activation_timed_out",
+        ),
+        (
+            ProductionSessionBlocker::ProductionAsicUnavailable,
+            "production_asic_unavailable",
+        ),
+        (
+            ProductionSessionBlocker::ProductionAsicVersionMaskUnavailable,
+            "production_asic_version_mask_unavailable",
+        ),
+        (
+            ProductionSessionBlocker::ProductionAsicDispatchUnavailable,
+            "production_asic_dispatch_unavailable",
+        ),
+        (
+            ProductionSessionBlocker::ProductionAsicPollUnavailable,
+            "production_asic_poll_unavailable",
+        ),
+        (
+            ProductionSessionBlocker::ProductionAsicQueueFull,
+            "production_asic_queue_full",
+        ),
+        (
+            ProductionSessionBlocker::ProductionAsicWorkerUnavailable,
+            "production_asic_worker_unavailable",
+        ),
+        (
+            ProductionSessionBlocker::JobTransitionProtocolInconsistent,
+            "job_transition_protocol_inconsistent",
+        ),
+        (
+            ProductionSessionBlocker::ActuationUnqualified,
+            "actuation_unqualified",
+        ),
+        (
+            ProductionSessionBlocker::PoolConfigurationUnavailable,
+            "pool_configuration_unavailable",
+        ),
+        (ProductionSessionBlocker::PoolsExhausted, "pools_exhausted"),
+    ];
+
+    #[test]
+    fn production_blocker_labels_form_a_unique_redaction_safe_vocabulary() {
+        // Arrange
+        let cases = std::iter::once((ProductionSessionBlocker::OperatorPaused, "operator_paused"))
+            .chain(PRODUCTION_FAILURE_BLOCKERS);
+        let mut labels = BTreeSet::new();
+
+        // Act / Assert
+        for (blocker, expected_label) in cases {
+            let label = blocker.label();
+            assert_eq!(label, expected_label);
+            assert!(label
+                .bytes()
+                .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'_'));
+            assert!(labels.insert(label));
+        }
+        assert_eq!(labels.len(), 17);
+    }
+
+    #[test]
+    fn production_failure_blockers_project_exact_safe_api_reasons() {
+        for (blocker, expected_label) in PRODUCTION_FAILURE_BLOCKERS {
+            // Arrange
+            let mut state = MiningRuntimeState::default();
+            state.block_work_submission(blocker.label());
+
+            // Act
+            let response = mining_state_from_runtime(&state);
+
+            // Assert
+            assert_eq!(response.mining_activity, "safe_blocked");
+            assert_eq!(response.work_submission, "blocked");
+            assert_eq!(response.blocked_reason, expected_label);
+            assert!(!response.mining_paused);
+        }
+    }
+
+    #[test]
+    fn operator_pause_disables_work_without_publishing_a_failure_reason() {
+        // Arrange
+        let mut state = MiningRuntimeState::default();
+        state.block_work_submission(ProductionSessionBlocker::OperatorPaused.label());
+        state.set_operator_intent(MiningOperatorIntent::Paused);
+        state.set_mining_activity(MiningActivityStatus::Paused);
+
+        // Act
+        let response = mining_state_from_runtime(&state);
+
+        // Assert
+        assert_eq!(response.mining_activity, "paused");
+        assert_eq!(response.work_submission, "blocked");
+        assert_eq!(response.blocked_reason, "");
+        assert!(response.mining_paused);
+    }
+
+    #[test]
+    fn ready_work_does_not_publish_a_stale_failure_reason() {
+        // Arrange
+        let mut state = MiningRuntimeState::default();
+        state.block_work_submission(ProductionSessionBlocker::NetworkUnavailable.label());
+        state.allow_work_submission();
+
+        // Act
+        let response = mining_state_from_runtime(&state);
+
+        // Assert
+        assert_eq!(response.work_submission, "ready");
+        assert_eq!(response.blocked_reason, "");
+    }
 
     #[test]
     fn mining_state_keeps_hardware_evidence_block_visible_and_not_active() {
