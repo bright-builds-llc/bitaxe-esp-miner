@@ -18,6 +18,7 @@ import { StratumSocketEvidenceError } from "./stratum-socket-evidence.js";
 import { ProtocolCoordinatorEvidenceError } from "./protocol-coordinator-evidence.js";
 import { MiningCriteriaEvidenceError } from "./mining-criteria-evidence.js";
 import { NetworkScanEvidenceError } from "./network-scan-evidence.js";
+import { ScoreboardEvidenceError } from "./scoreboard-evidence.js";
 import { maybeTypedFailureCategory, maybeTypedFailurePublicValue } from "./typed-failure.js";
 import { DetectorHandoffError } from "./detector.js";
 
@@ -53,6 +54,19 @@ test("network scan failures retain the primary closed category facts", () => {
     stage: "network_scan_capture",
     recovery_complete: true,
   });
+});
+
+test("scoreboard failures retain their closed hardware category", () => {
+  // Arrange
+  const error = new ScoreboardEvidenceError("hardware_blocked", "safe failure", {
+    stage: "scoreboard_capture",
+    projection_published: false,
+    campaign_evidence_created: true,
+  });
+
+  // Act / Assert
+  assert.equal(maybeTypedFailureCategory(error), "hardware_blocked");
+  assert.deepEqual(maybeTypedFailurePublicValue(error), error.publicValue);
 });
 
 test("ASIC initialization failures retain only closed projection facts", () => {

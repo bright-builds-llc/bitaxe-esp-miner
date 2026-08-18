@@ -587,7 +587,7 @@ Verification-promotion plan:
 - [x] Add the missing `/scoreboard` operator route and complete private-first
       Rust/TypeScript evidence contract with source-identity and real-process
       regressions.
-- [ ] Pass focused/full gates, commit and push the exact source/package, then
+- [x] Pass focused/full gates, commit and push the exact source/package, then
       run only the frozen detector and sole conditional attempt-001 capture.
 - [ ] Promote only on the complete causal mining/API/UI/restart durability
       quorum; otherwise preserve `implemented`, evidence withholding, safe
@@ -601,6 +601,23 @@ keeps the new scoreboard, owner inputs, package defaults, and safe stop. One
 passive receive-only capture and one normal HTTP restart may prove live API/UI
 and boot durability. Private roots, recovery, retry, stop, promotion, privacy,
 and prohibited effects are frozen in the linked plan.
+
+Attempt-001 closure review: exact pushed source/package `a337babc`, pinned
+reference, focused/full gates, one detector, and the sole capture passed
+admission. The campaign completed 600,320 active ms, 20/20 renewed windows,
+204 scoreboard candidates, accepted submit, trusted identity, fresh safety,
+stable watchdog, no panic/mixed reset, terminal HTTP/WebSocket/pool joins,
+confirmed safe stop, ready cleanup, modes, seals, and redaction. It failed
+closed as `terminal_state_unconfirmed` because the latest marker reported
+`campaign_lease_consumed` without authoritative campaign state `consumed`.
+No scoreboard API/SPA/restart step or public projection ran; no retry is
+authorized, and `STAT-003` remains `implemented`. See the linked `CLOSURE.md`.
+
+Next safe action: a fresh software-only plan must reproduce and correct the
+lease-reason/non-consumed-state terminal publication/handoff boundary without
+accepting reason-only terminal state or weakening safe stop. The wrapper's
+missing typed `hardware_blocked` classification is corrected under this plan,
+but a new hardware ordinal requires a separately gated post-fix plan.
 
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
