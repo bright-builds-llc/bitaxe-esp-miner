@@ -769,11 +769,11 @@ pushed; recurrence of the same signature stops further retries.
 Stopped-state verifier correction plan:
 `docs/parity/work-plans/20260818T112336Z-STAT-003/PLAN.md`
 
-- [ ] Define disabled boot mining once as false boot intent plus closed
+- [x] Define disabled boot mining once as false boot intent plus closed
       non-active `paused` or `safe_blocked`, rejecting active/unknown/enabled.
-- [ ] Use the predicate in restart admission and final evidence, with pure and
+- [x] Use the predicate in restart admission and final evidence, with pure and
       full real-child paused-restart regression coverage.
-- [ ] Pass focused/full gates, commit/push, and close without detector,
+- [x] Pass focused/full gates, commit/push, and close without detector,
       credentials, device access, attempt-004, or parity promotion.
 
 Authorization: software, deterministic child processes, firmware/package
@@ -781,6 +781,20 @@ builds, docs, and Git only. Attempt-003 remains immutable failed evidence. No
 detector, credentials, protected attempt roots, USB/device/network runtime,
 flash, monitor, mining, restart, public projection, attempt-004, recovery,
 external UART/BAP, pins, or electrical work is authorized by this plan.
+
+Stopped-state correction review: source `251205a5` centralizes disabled boot
+mining as false boot intent plus `paused` or `safe_blocked`, rejects active/
+unknown/enabled shapes, and uses the predicate for both restart admission and
+evidence. Pure and full real-child paused-restart tests pass alongside existing
+safe-blocked success and restart-drift withholding. Focused/full gates, all 47
+Bazel targets, firmware/package, redaction, reference, parity, and progress
+checks passed. No hardware or protected input was used; `STAT-003` remains
+`implemented`. See this plan's `WORKLOG.md` and `CLOSURE.md`.
+
+Next safe action: a fresh immutable hardware plan may rotate to attempt-004 only
+after exact package/source binding and must retain every detector, safety,
+privacy, recovery, persistence, cleanup, and promotion gate. Recurrence of the
+same stopped-state boundary after this fix stops further retries.
 
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
