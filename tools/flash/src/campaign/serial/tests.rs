@@ -11,6 +11,8 @@ mod command_effects_safety;
 mod framing_recovery;
 #[path = "tests/operator_sensor.rs"]
 mod operator_sensor;
+#[path = "tests/panic.rs"]
+mod panic;
 #[path = "tests/pause_safe_stop.rs"]
 mod pause_safe_stop;
 #[path = "tests/preparation.rs"]

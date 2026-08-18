@@ -7,6 +7,7 @@ use super::markers::{
 use super::*;
 mod diagnostics;
 mod framing;
+mod panic;
 mod preparation;
 mod recovery;
 use super::markers::CampaignFailureStepMarker;
@@ -15,6 +16,7 @@ pub(super) use diagnostics::{
 };
 use diagnostics::{CampaignSerialEvent, CampaignSerialEventKind};
 use framing::{count_invalid_utf8_bytes, find_bytes};
+use panic::classify_panic_line;
 use preparation::CampaignPreparationOutcome;
 #[cfg(test)]
 use preparation::CampaignPreparationProgress;
@@ -299,6 +301,7 @@ impl CampaignSerialAnalyzer {
     fn process_line(&mut self, line: &[u8], byte_offset: usize, trailing: bool) {
         self.diagnostics.line_count = self.diagnostics.line_count.saturating_add(1);
         let line = line.strip_suffix(b"\r").unwrap_or(line);
+        self.process_panic_line(line, byte_offset);
         let marker_index = find_bytes(line, CAMPAIGN_MARKER_PREFIX.as_bytes());
         let raw_attestation_index =
             find_bytes(line, bitaxe_api::RUNTIME_BOOT_ATTESTATION_MARKER.as_bytes());
@@ -390,10 +393,32 @@ impl CampaignSerialAnalyzer {
             self.runtime_attestations.parse_failure_counts().into();
         self.diagnostics.runtime_attestation_mixed_reset_reason =
             self.runtime_attestations.mixed_reset_reason_label();
+        if self.diagnostics.runtime_attestation_mixed_reset_reason == "panic"
+            && self.diagnostics.panic_signature == "none"
+        {
+            self.diagnostics.panic_signature = "unknown";
+        }
         self.trace.push(
             u64::try_from(byte_offset).unwrap_or(u64::MAX),
             line_length,
             CampaignSerialEventKind::RuntimeAttestationCandidate,
+        );
+    }
+
+    fn process_panic_line(&mut self, line: &[u8], byte_offset: usize) {
+        let Some(diagnostic) = classify_panic_line(line) else {
+            return;
+        };
+        self.diagnostics.panic_signature_count =
+            self.diagnostics.panic_signature_count.saturating_add(1);
+        if self.diagnostics.panic_signature == "none" {
+            self.diagnostics.panic_signature = diagnostic.signature.label();
+            self.diagnostics.panic_task_family = diagnostic.task_family.label();
+        }
+        self.trace.push(
+            u64::try_from(byte_offset).unwrap_or(u64::MAX),
+            line.len(),
+            CampaignSerialEventKind::PanicSignatureObserved,
         );
     }
 

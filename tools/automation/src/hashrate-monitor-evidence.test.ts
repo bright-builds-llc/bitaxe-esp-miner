@@ -98,6 +98,21 @@ const sourceDocuments = new Map<string, string>([
     "pub const INPUT_VOLTAGE_NOMINAL_VOLTS: f64 = 5.0;",
     "pub const INPUT_VOLTAGE_MARGIN_RATIO: f64 = 0.10;",
   ].join("\n")],
+  ["tools/flash/src/campaign/serial.rs", [
+    "self.process_panic_line(line, byte_offset);",
+    "self.diagnostics.panic_signature = \"unknown\";",
+  ].join("\n")],
+  ["tools/flash/src/campaign/serial/diagnostics.rs", [
+    'const DIAGNOSTICS_SCHEMA: &str = "mining-campaign-serial-diagnostics-v4";',
+    "pub(super) panic_signature: &'static str,",
+    "pub(super) panic_task_family: &'static str,",
+    "pub(super) panic_signature_count: u64,",
+  ].join("\n")],
+  ["tools/flash/src/campaign/serial/panic.rs", [
+    "pub(super) enum PanicSignature {",
+    "pub(super) enum PanicTaskFamily {",
+    "pub(super) fn classify_panic_line(line: &[u8])",
+  ].join("\n")],
 ]);
 
 const okResult = {
@@ -325,7 +340,7 @@ test("admissible conservative campaign and independent validator publish only cl
     // Assert
     assert.equal(evidence.attempt_ordinal, 18);
     assert.equal(evidence.hashrate.http.distinct_positive_count, 2);
-    assert.equal(evidence.source.source_path_count, 18);
+    assert.equal(evidence.source.source_path_count, 21);
     assert.equal((await stat(path.join(value.root, value.options.projection))).mode & 0o777, 0o644);
     assert.doesNotMatch(
       await readFile(path.join(value.root, value.options.projection), "utf8"),

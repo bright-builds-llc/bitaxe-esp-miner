@@ -1,7 +1,7 @@
 use super::preparation::CampaignPreparationProgress;
 use super::*;
 
-const DIAGNOSTICS_SCHEMA: &str = "mining-campaign-serial-diagnostics-v3";
+const DIAGNOSTICS_SCHEMA: &str = "mining-campaign-serial-diagnostics-v4";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -15,6 +15,7 @@ pub(super) enum CampaignSerialEventKind {
     RuntimeAttestationCandidate,
     RuntimeAttestationInvalidUtf8,
     RuntimeAttestationLookalike,
+    PanicSignatureObserved,
     PreparationEventAccepted,
     PreparationPayloadInvalidUtf8,
     PreparationJsonInvalid,
@@ -82,6 +83,9 @@ pub(in crate::campaign) struct CampaignSerialDiagnostics {
     pub(super) runtime_attestation_mixed_reset_reason: &'static str,
     pub(super) runtime_attestation_parse_failure_counts:
         RuntimeAttestationParseFailureCountsEvidence,
+    pub(super) panic_signature: &'static str,
+    pub(super) panic_task_family: &'static str,
+    pub(super) panic_signature_count: u64,
     pub(super) preparation_candidate_count: u64,
     pub(super) accepted_preparation_event_count: u64,
     pub(super) preparation_invalid_encoding_count: u64,
@@ -119,6 +123,9 @@ impl CampaignSerialDiagnostics {
             runtime_attestation_mixed_reset_reason: "not_observed",
             runtime_attestation_parse_failure_counts:
                 RuntimeAttestationParseFailureCountsEvidence::default(),
+            panic_signature: "not_observed",
+            panic_task_family: "not_observed",
+            panic_signature_count: 0,
             preparation_candidate_count: 0,
             accepted_preparation_event_count: 0,
             preparation_invalid_encoding_count: 0,
@@ -138,6 +145,8 @@ impl CampaignSerialDiagnostics {
             observation_started: true,
             runtime_attestation_parse_failure: "none",
             runtime_attestation_mixed_reset_reason: "none",
+            panic_signature: "none",
+            panic_task_family: "none",
             ..Self::not_observed()
         }
     }

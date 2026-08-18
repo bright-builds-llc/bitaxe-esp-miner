@@ -76,6 +76,21 @@ export const sourceFragments = new Map<string, readonly string[]>([
     "pub const INPUT_VOLTAGE_NOMINAL_VOLTS: f64 = 5.0;",
     "pub const INPUT_VOLTAGE_MARGIN_RATIO: f64 = 0.10;",
   ]],
+  ["tools/flash/src/campaign/serial.rs", [
+    "self.process_panic_line(line, byte_offset);",
+    "self.diagnostics.panic_signature = \"unknown\";",
+  ]],
+  ["tools/flash/src/campaign/serial/diagnostics.rs", [
+    'const DIAGNOSTICS_SCHEMA: &str = "mining-campaign-serial-diagnostics-v4";',
+    "pub(super) panic_signature: &'static str,",
+    "pub(super) panic_task_family: &'static str,",
+    "pub(super) panic_signature_count: u64,",
+  ]],
+  ["tools/flash/src/campaign/serial/panic.rs", [
+    "pub(super) enum PanicSignature {",
+    "pub(super) enum PanicTaskFamily {",
+    "pub(super) fn classify_panic_line(line: &[u8])",
+  ]],
 ]);
 
 export const referenceFragments = new Map<string, readonly string[]>([

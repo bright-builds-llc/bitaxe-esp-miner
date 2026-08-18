@@ -396,7 +396,7 @@ fn non_utf8_boot_noise_does_not_invalidate_valid_observation_markers() {
     let diagnostics = read_campaign_diagnostics(&command);
     assert_eq!(
         diagnostics["schema"],
-        "mining-campaign-serial-diagnostics-v3"
+        "mining-campaign-serial-diagnostics-v4"
     );
     assert_eq!(diagnostics["non_utf8_line_count"], 1);
     assert_eq!(diagnostics["accepted_marker_count"], 1);

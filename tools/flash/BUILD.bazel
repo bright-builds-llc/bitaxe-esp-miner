@@ -40,6 +40,16 @@ filegroup(
 )
 
 js_library(
+    name = "hashrate_panic_diagnostic_sources",
+    srcs = [
+        "src/campaign/serial.rs",
+        "src/campaign/serial/diagnostics.rs",
+        "src/campaign/serial/panic.rs",
+    ],
+    visibility = ["//:__pkg__"],
+)
+
+js_library(
     name = "command_effects_budget_sources",
     srcs = [
         "src/campaign.rs",
@@ -102,6 +112,7 @@ rust_binary(
         "src/campaign/serial.rs",
         "src/campaign/serial/diagnostics.rs",
         "src/campaign/serial/framing.rs",
+        "src/campaign/serial/panic.rs",
         "src/campaign/serial/preparation.rs",
         "src/campaign/serial/recovery.rs",
         "src/campaign/serial/tests.rs",
@@ -111,6 +122,7 @@ rust_binary(
         "src/campaign/serial/tests/command_effects_safety.rs",
         "src/campaign/serial/tests/framing_recovery.rs",
         "src/campaign/serial/tests/operator_sensor.rs",
+        "src/campaign/serial/tests/panic.rs",
         "src/campaign/serial/tests/pause_safe_stop.rs",
         "src/campaign/serial/tests/preparation.rs",
         "src/commands.rs",
