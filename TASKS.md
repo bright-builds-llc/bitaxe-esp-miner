@@ -2202,11 +2202,11 @@ hardware authority contract.
 Panic-diagnostic software plan:
 `docs/parity/work-plans/20260818T040753Z-STAT-001/PLAN.md`
 
-- [ ] Add a complete value-free ESP-IDF/Rust panic-signature and closed task-
+- [x] Add a complete value-free ESP-IDF/Rust panic-signature and closed task-
       family classifier at the existing complete-line serial analyzer boundary.
-- [ ] Rotate private diagnostics and bind every reachable reducer/vocabulary
+- [x] Rotate private diagnostics and bind every reachable reducer/vocabulary
       source into the hashrate evaluator identity and Bazel runfiles.
-- [ ] Add behavior/privacy/schema/drift/real-process regressions, run every
+- [x] Add behavior/privacy/schema/drift/real-process regressions, run every
       mandatory gate, and close without hardware or parity promotion.
 
 Authorization is software-only: source, fixtures, tests, builds, documentation,
@@ -2215,6 +2215,25 @@ runtime, flash, reset, monitor, mine, actuate, update, erase, inject faults,
 manipulate power, use external UART/BAP, touch electrical interfaces, reuse
 attempt-018, or create/run attempt-019. `STAT-001`, checklist, progress history,
 and README remain unchanged under this plan.
+
+Panic-diagnostic completion review: pushed source `0abd10ad` classifies seven
+closed panic signatures and twelve task families from complete serial lines,
+retains only first closed labels plus a saturating recognized-line count, and
+maps a panic reboot without an observed signature to `unknown`. Private
+diagnostics rotate to v4 and retain no raw line, task, address, backtrace, or
+payload. The hashrate evaluator identity now binds all 21 reachable sources via
+package-local runfiles and real-process fixtures. Focused tests, ordered Rust
+checks, 382 flash tests, firmware/package, Bright Builds, redaction/reference,
+full Bazel, parity, progress, and diff gates pass. No hardware, credentials,
+protected attempt data, or projection ran; `STAT-001`, checklist, progress, and
+README remain unchanged. See the linked `WORKLOG.md` and `CLOSURE.md`.
+
+Next safe action: a separate immutable hardware plan may consider one fresh
+attempt-019 only from clean pushed `0abd10ad`, with diagnostic v4 and the
+21-source identity fully rebound plus the complete detector, conservative
+profile, safety, privacy, recovery, cleanup, retry, stop, and promotion
+contract. Never retry by ordinal alone; any recurrence must select diagnosis
+from the new closed panic signature/task/count tuple.
 
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
