@@ -8,6 +8,7 @@ import {
   ScoreboardEvidenceError,
 } from "./scoreboard-evidence.js";
 import {
+  bootMiningDisabled,
   expectedPlanSha256,
   requiredBoolean,
   scoreboardView,
@@ -89,6 +90,34 @@ test("changed scoreboard after restart withholds projection", async () => {
     await assert.rejects(readFile(path.join(fixture.root, fixture.options.projection), "utf8"), {
       code: "ENOENT",
     });
+  } finally {
+    await server.close();
+    await rm(fixture.root, { recursive: true });
+  }
+});
+
+test("paused post-restart state with disabled boot mining publishes", async () => {
+  // Arrange
+  const fixture = await scoreboardFixture("paused-restart");
+  const server = await startScoreboardServer({ postRestartMiningActivity: "paused" });
+  const child = await scoreboardChild(fixture, server.origin);
+  try {
+    // Act
+    const evidence = await captureScoreboardEvidence(
+      fixture.root,
+      fixture.options,
+      createLocalProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }),
+      child,
+      child,
+      child,
+      fixture.planSha256,
+      async () => {},
+    );
+
+    // Assert
+    assert.equal(evidence.scoreboard.boot_mining_disabled, true);
+    assert.equal(evidence.scoreboard.post_restart_persistence, true);
+    assert.equal((await stat(path.join(fixture.root, fixture.options.projection))).mode & 0o777, 0o644);
   } finally {
     await server.close();
     await rm(fixture.root, { recursive: true });
@@ -248,6 +277,26 @@ test("closed boolean diagnostics permit either value and reject invalid shapes",
     "terminal_close_requested",
     context,
   ));
+});
+
+test("boot mining disabled accepts only closed non-active states with false intent", () => {
+  // Arrange
+  const cases = [
+    { intent: false, activity: "paused", expected: true },
+    { intent: false, activity: "safe_blocked", expected: true },
+    { intent: false, activity: "active", expected: false },
+    { intent: false, activity: "unknown", expected: false },
+    { intent: true, activity: "paused", expected: false },
+    { intent: true, activity: "safe_blocked", expected: false },
+  ] as const;
+
+  for (const candidate of cases) {
+    // Act
+    const result = bootMiningDisabled(candidate.intent, candidate.activity);
+
+    // Assert
+    assert.equal(result, candidate.expected);
+  }
 });
 
 test("current immutable STAT-003 task and source inventory pass", async () => {

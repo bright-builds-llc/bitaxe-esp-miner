@@ -83,6 +83,14 @@ export function requiredBoolean(value: JsonObject, field: string, context: strin
   return candidate;
 }
 
+export function bootMiningDisabled(
+  startMiningOnBoot: boolean,
+  miningActivity: string,
+): boolean {
+  return !startMiningOnBoot
+    && (miningActivity === "paused" || miningActivity === "safe_blocked");
+}
+
 export function scoreboardView(value: readonly unknown[], context: string): ScoreboardView {
   if (value.length === 0 || value.length > 20) {
     throw failure("hardware_blocked", `${context} entry count is incomplete`);

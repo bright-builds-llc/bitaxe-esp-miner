@@ -15,6 +15,7 @@ import {
 } from "./http.js";
 import type { ProcessOutcome, ProcessPort } from "./process.js";
 import {
+  bootMiningDisabled,
   expectedPlanSha256,
   expectedPrivateRoot,
   expectedProjection,
@@ -296,8 +297,7 @@ async function awaitRestart(
       if (after.bootSession === before.bootSession) continue;
       if (after.bootOrdinal !== before.bootOrdinal + 1
         || after.resetReason !== "software_cpu"
-        || after.startMiningOnBoot
-        || after.miningActivity !== "safe_blocked") {
+        || !bootMiningDisabled(after.startMiningOnBoot, after.miningActivity)) {
         throw failure("hardware_blocked", "post-restart system state is invalid");
       }
       return after;
@@ -454,7 +454,10 @@ export async function captureScoreboardEvidence(
         boot_ordinal_incremented_once: afterRestart.bootOrdinal === beforeRestart.bootOrdinal + 1,
         software_cpu_reset_observed: afterRestart.resetReason === "software_cpu",
         exact_package_after_restart: true,
-        boot_mining_disabled: !afterRestart.startMiningOnBoot && afterRestart.miningActivity === "safe_blocked",
+        boot_mining_disabled: bootMiningDisabled(
+          afterRestart.startMiningOnBoot,
+          afterRestart.miningActivity,
+        ),
         post_restart_persistence: true,
         post_restart_repeat_unchanged: true,
       },

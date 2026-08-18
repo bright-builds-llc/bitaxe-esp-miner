@@ -130,7 +130,10 @@ if (args[0] === "mining-campaign") {
 }
 
 export async function startScoreboardServer(
-  options: Readonly<{ changeAfterRestart?: boolean }> = {},
+  options: Readonly<{
+    changeAfterRestart?: boolean;
+    postRestartMiningActivity?: string;
+  }> = {},
 ): Promise<ScoreboardServer> {
   let restarted = false;
   const entries = [
@@ -147,7 +150,9 @@ export async function startScoreboardServer(
         bootSession: restarted ? "ffeeddccbbaa99887766554433221100" : "00112233445566778899aabbccddeeff",
         bootOrdinal: restarted ? 8 : 7,
         resetReasonCategory: restarted ? "software_cpu" : "power_on",
-        miningActivity: "safe_blocked",
+        miningActivity: restarted
+          ? options.postRestartMiningActivity ?? "safe_blocked"
+          : "safe_blocked",
         startMiningOnBoot: false,
       }));
       return;
