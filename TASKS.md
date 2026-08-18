@@ -26,12 +26,12 @@ new work.
 
 ### task-parity-safe10-prerequisite-readiness | 2026-08-18 | Verify live production prerequisite readiness
 
-- [ ] Add a typed private-first SAFE-10 projector and independent validator
+- [x] Add a typed private-first SAFE-10 projector and independent validator
       over preserved accepted attempt-003 evidence.
-- [ ] Bind exact detector/seal/digests, live required/fresh observations,
+- [x] Bind exact detector/seal/digests, live required/fresh observations,
       readiness transition, accepted work, 20/20 continuity, safety/watchdog,
       safe stop/cleanup, and attempt-to-current source compatibility.
-- [ ] Pass all gates, run the sole software projection command, and promote only
+- [x] Pass all gates, run the sole software projection command, and promote only
       on complete independently validated closed evidence.
 
 Plan: `docs/parity/work-plans/20260818T122819Z-SAFE-10/PLAN.md`
@@ -42,6 +42,18 @@ No detector execution, credentials, device/USB/network runtime, flash, monitor,
 mining, restart, recovery, new hardware attempt, external UART/BAP, pins, or
 electrical work. Protected artifacts remain immutable and raw/private values
 must never enter the projection, Git, logs, or summaries.
+
+Closure review: implementation `cf772601` added the typed contract/projector and
+`1c0ad96d` added the missing validator runfiles dependency. All focused/full
+gates pass. The sole projection command failed before candidate creation as
+`process_failed` because the validator was initially absent from specialized
+binary runfiles; no projection was emitted and protected evidence was unchanged.
+The runfile is now verified executable, but this plan prohibited retry, so
+`SAFE-10` remains `implemented`. See `WORKLOG.md` and `CLOSURE.md`.
+
+Next safe action: a fresh software-only plan may run the corrected exact
+projection command once, independently validate it, and promote only on the
+complete closed quorum. No hardware or external state is required.
 
 ### task-ultra205-default-profile-soak | 2026-07-28 | Run the bounded upstream-default mining soak
 
