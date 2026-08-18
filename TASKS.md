@@ -619,6 +619,23 @@ accepting reason-only terminal state or weakening safe stop. The wrapper's
 missing typed `hardware_blocked` classification is corrected under this plan,
 but a new hardware ordinal requires a separately gated post-fix plan.
 
+Terminal-settlement correction plan:
+`docs/parity/work-plans/20260818T082357Z-STAT-003/PLAN.md`
+
+- [ ] Add a closed terminal-settlement reducer and reproduce complete terminal
+      transports racing the coordinator's final analyzer handoff.
+- [ ] Request serial closure before finalization, accept/fail only after the
+      final handoff, and preserve every earlier failure and safety gate.
+- [ ] Rotate network evidence/consumers to v12, pass all gates, commit/push,
+      and close without hardware, attempt-002, or parity promotion.
+
+Refined diagnosis: the sealed attempt-001 observation contains final campaign
+state `consumed`; the earlier closure's reason-without-state statement applied
+to the concurrent network worker snapshot, not the analyzer's final marker.
+The worker returned failed evidence before coordinator final handoff could
+settle that snapshot. This plan is software-only and does not access protected
+values or authorize another device effect.
+
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
 - [x] Add a typed private-first `/api/theme` capture that binds the exact
