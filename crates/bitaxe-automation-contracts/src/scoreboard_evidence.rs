@@ -91,7 +91,7 @@ impl ScoreboardEvidence {
     pub fn validate(&self) -> Result<(), &'static str> {
         if self.schema_version != SCOREBOARD_EVIDENCE_SCHEMA
             || self.board != 205
-            || self.attempt_ordinal != 1
+            || self.attempt_ordinal != 2
             || self.workflow.command != AutomationCommand::CaptureScoreboardEvidence
         {
             return Err("scoreboard identity is invalid");
@@ -116,7 +116,7 @@ impl ScoreboardEvidence {
         }
         if !self.source.source_semantics_current
             || !self.source.reference_semantics_current
-            || self.source.source_path_count != 29
+            || self.source.source_path_count != 31
         {
             return Err("scoreboard source evidence is incomplete");
         }
@@ -156,7 +156,7 @@ mod tests {
         ScoreboardEvidence {
             schema_version: SCOREBOARD_EVIDENCE_SCHEMA.to_owned(),
             board: 205,
-            attempt_ordinal: 1,
+            attempt_ordinal: 2,
             source_commit: "a".repeat(40),
             reference_commit: "b".repeat(40),
             package_manifest_sha256: "c".repeat(64),
@@ -173,7 +173,7 @@ mod tests {
                 source_inventory_sha256: "3".repeat(64),
                 source_semantics_current: true,
                 reference_semantics_current: true,
-                source_path_count: 29,
+                source_path_count: 31,
             },
             scoreboard: ScoreboardObservationEvidence {
                 fresh_nvs_seed_without_scoreboard_keys: true,
@@ -235,7 +235,7 @@ mod tests {
     fn wrong_attempt_ordinal_fails() {
         // Arrange
         let mut evidence = evidence();
-        evidence.attempt_ordinal = 2;
+        evidence.attempt_ordinal = 1;
 
         // Act
         let result = evidence.validate();

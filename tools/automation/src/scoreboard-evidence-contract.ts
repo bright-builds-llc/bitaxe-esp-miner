@@ -15,13 +15,13 @@ type FailureCategory = Extract<
   "hardware_blocked" | "evidence_invalid" | "timeout" | "process_failed"
 >;
 
-export const expectedPrivateRoot = "scratch/stat003-scoreboard/attempt-001";
-export const expectedWrapperRoot = "scratch/stat003-scoreboard/wrapper-001";
+export const expectedPrivateRoot = "scratch/stat003-scoreboard/attempt-002";
+export const expectedWrapperRoot = "scratch/stat003-scoreboard/wrapper-002";
 export const expectedProjection =
   "docs/parity/evidence/stat003-scoreboard/scoreboard-projection.json";
-export const expectedPlan = "docs/parity/work-plans/20260818T064430Z-STAT-003/PLAN.md";
+export const expectedPlan = "docs/parity/work-plans/20260818T090846Z-STAT-003/PLAN.md";
 export const expectedPlanSha256 =
-  "ca37ecdbdb7d789d1712af9f2c21dc6afa72d9a7b87c96c908e9c03179c34a65";
+  "43c88184aeb7a41e1fe169ae22aee94283df1a72934a7cc4d1a431834c7cb86a";
 export const expectedReferenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const activeTask = "task-parity-stat003-scoreboard";
 
@@ -133,7 +133,7 @@ export async function validateScoreboardTaskAndSources(
   const maybeEnd = taskDocument.indexOf("\n### ", start + heading.length);
   const block = taskDocument.slice(start, maybeEnd === -1 ? taskDocument.length : maybeEnd);
   if (start === -1 || taskDocument.indexOf(heading, start + heading.length) !== -1
-    || !block.includes(expectedPlan) || !block.includes("attempt-001")
+    || !block.includes(expectedPlan) || !block.includes("attempt-002")
     || sha256(planDocument) !== admittedPlanSha256
     || !planDocument.includes("- Parity row: `STAT-003`")
     || !planDocument.includes(`- Active task: \`${activeTask}\``)) {
@@ -141,7 +141,7 @@ export async function validateScoreboardTaskAndSources(
   }
   try {
     const inventory = await scoreboardSourceInventory(workspaceRoot);
-    if (inventory.pathCount !== 29) {
+    if (inventory.pathCount !== 31) {
       throw new Error("path count drifted");
     }
     return inventory;

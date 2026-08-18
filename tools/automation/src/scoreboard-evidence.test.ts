@@ -52,7 +52,7 @@ test("real child campaign API and restart publish only closed scoreboard evidenc
     // Assert
     assert.equal(evidence.scoreboard.entry_count, 2);
     assert.equal(evidence.scoreboard.post_restart_persistence, true);
-    assert.equal(evidence.source.source_path_count, 29);
+    assert.equal(evidence.source.source_path_count, 31);
     const projection = path.join(fixture.root, fixture.options.projection);
     assert.equal((await stat(projection)).mode & 0o777, 0o644);
     assert.doesNotMatch(
@@ -123,6 +123,38 @@ test("accepted transport evidence without final consumed handoff withholds proje
   }
 });
 
+test("consumed attempt-001 root is rejected before hardware orchestration", async () => {
+  // Arrange
+  const fixture = await scoreboardFixture("consumed-attempt");
+  const child = await scoreboardChild(fixture, "http://127.0.0.1:1");
+  const options = {
+    ...fixture.options,
+    privateRoot: "scratch/stat003-scoreboard/attempt-001",
+  };
+
+  try {
+    // Act
+    const error = await captureError(captureScoreboardEvidence(
+      fixture.root,
+      options,
+      createLocalProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }),
+      child,
+      child,
+      child,
+      fixture.planSha256,
+      async () => {},
+    ));
+
+    // Assert
+    assert.equal(error.category, "evidence_invalid");
+    await assert.rejects(readFile(path.join(fixture.root, fixture.options.projection), "utf8"), {
+      code: "ENOENT",
+    });
+  } finally {
+    await rm(fixture.root, { recursive: true });
+  }
+});
+
 test("scoreboard parser rejects ascending malformed and oversized input", () => {
   // Arrange
   const entry = {
@@ -150,7 +182,7 @@ test("current immutable STAT-003 task and source inventory pass", async () => {
   const inventory = await validateScoreboardTaskAndSources(root, expectedPlanSha256);
 
   // Assert
-  assert.equal(inventory.pathCount, 29);
+  assert.equal(inventory.pathCount, 31);
   assert.match(inventory.digest, /^[0-9a-f]{64}$/u);
 });
 

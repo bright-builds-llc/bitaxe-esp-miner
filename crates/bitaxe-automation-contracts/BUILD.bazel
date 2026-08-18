@@ -1,6 +1,16 @@
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+load("@aspect_rules_js//js:defs.bzl", "js_library")
 
 package(default_visibility = ["//visibility:public"])
+
+js_library(
+    name = "scoreboard_validator_sources",
+    srcs = [
+        "src/bin/validate_scoreboard_evidence.rs",
+        "src/scoreboard_evidence.rs",
+    ],
+    visibility = ["//:__pkg__"],
+)
 
 rust_library(
     name = "bitaxe_automation_contracts",

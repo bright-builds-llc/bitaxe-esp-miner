@@ -409,7 +409,7 @@ export async function captureScoreboardEvidence(
     const evidence: ScoreboardEvidence = {
       schema_version: "bitaxe-scoreboard-evidence-v1",
       board: 205,
-      attempt_ordinal: 1,
+      attempt_ordinal: 2,
       source_commit: currentSourceCommit,
       reference_commit: referenceCommit,
       package_manifest_sha256: sha256(manifestDocument),
