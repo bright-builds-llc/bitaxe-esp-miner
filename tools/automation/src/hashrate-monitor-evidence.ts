@@ -455,6 +455,7 @@ export async function captureHashrateMonitorEvidence(
     }
     const parseDiagnostic = runtimeAttestationParseDiagnostic(resultFile.value);
     const resultWatchdogFailure = watchdogFailure(resultFile.value);
+    requiredBoolean(networkFile.value, "terminal_close_requested", "campaign network evidence");
     if (requiredString(resultFile.value, "schema", "campaign result") !== "mining-campaign-result-v16"
       || requiredString(resultFile.value, "status", "campaign result") !== "accepted"
       || requiredString(resultFile.value, "stage", "campaign result") !== "live-share"
@@ -471,7 +472,6 @@ export async function captureHashrateMonitorEvidence(
       || requiredString(networkFile.value, "status", "campaign network evidence") !== "accepted"
       || requiredString(networkFile.value, "terminal_settlement", "campaign network evidence")
         !== "accepted_after_serial_close"
-      || !requiredBoolean(networkFile.value, "terminal_close_requested", "campaign network evidence")
       || !requiredBoolean(networkFile.value, "terminal_consumed_observed", "campaign network evidence")
       || !requiredBoolean(networkFile.value, "final_terminal_consumed", "campaign network evidence")
       || !requiredBoolean(networkFile.value, "serial_finished_observed", "campaign network evidence")) {

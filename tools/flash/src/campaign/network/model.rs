@@ -362,7 +362,6 @@ impl NetworkAccumulator {
             && covered_window_count == REQUIRED_WINDOWS
             && serial.terminal_consumed
             && serial.serial_finished
-            && self.terminal_close_requested
             && self.terminal_settlement
                 == TerminalSettlementDecision::AcceptAfterSerialClose.label();
         CampaignNetworkEvidence {

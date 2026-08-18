@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmod, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
@@ -10,104 +10,11 @@ import {
 } from "./hashrate-monitor-evidence.js";
 import {
   fixture,
-  nodeProgram,
-  okDiagnostics,
-  okResult,
-  referenceCommit,
-  sourceCommit,
+  hashrateChildProgram,
   validatorProgram,
   workspace,
-  type Fixture,
 } from "./hashrate-monitor-evidence.test-support.js";
 import { createLocalProcessPort } from "./process.js";
-
-async function childProgram(
-  value: Fixture,
-  options: Readonly<{
-    malformedTransport?: boolean;
-    finalTerminalConsumed?: boolean;
-    sealedFailure?: boolean;
-    watchdogFailure?: string;
-    watchdogReadOutcome?: string;
-    failureTerminalCategory?: string;
-    resultSchema?: string;
-    watchdogOwnerPhase?: string;
-    watchdogOwnerSubphase?: string;
-    watchdogWaitState?: string;
-    tamperedSeal?: boolean;
-    panicSignature?: string;
-    panicTaskFamily?: string;
-    panicSignatureCount?: number;
-    mixedResetReason?: string;
-    tamperedDiagnosticsDigest?: boolean;
-  }> = {},
-): Promise<string> {
-  const child = path.join(value.root, "child.mjs");
-  const diagnostics = {
-    ...okDiagnostics,
-    runtime_attestation_mixed_reset_reason: options.mixedResetReason ?? "none",
-    panic_signature: options.panicSignature ?? "none",
-    panic_task_family: options.panicTaskFamily ?? "none",
-    panic_signature_count: options.panicSignatureCount ?? 0,
-  };
-  const failureResult = {
-    ...okResult,
-    schema: options.resultSchema ?? okResult.schema,
-    status: "failed",
-    terminal_category: options.failureTerminalCategory
-      ?? (options.watchdogFailure === undefined
-        ? "runtime_identity_untrusted"
-        : "watchdog_unresponsive"),
-    watchdog_failure: options.watchdogFailure ?? "none",
-    watchdog_read_outcome: options.watchdogReadOutcome ?? "stable",
-    watchdog_owner_phase: options.watchdogOwnerPhase ?? "publishing_campaign_status",
-    watchdog_owner_subphase: options.watchdogOwnerSubphase ?? "unavailable",
-    watchdog_wait_state: options.watchdogWaitState ?? "not_waiting",
-    runtime_attestation_parse_failure: options.watchdogFailure === undefined
-      ? "missing_marker"
-      : "none",
-    runtime_attestation_parse_failure_counts: {
-      ...okResult.runtime_attestation_parse_failure_counts,
-      missing_marker: options.watchdogFailure === undefined ? 1 : 0,
-    },
-    protected_runtime_text: "secret-device-origin private-worker",
-  };
-  await writeFile(child, `#!${nodeProgram}
-import { createHash } from "node:crypto";
-import { chmod, mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
-const args = process.argv.slice(2);
-const digest = (value) => createHash("sha256").update(value).digest("hex");
-if (args[0] === "mining-campaign") {
-  if (args[args.indexOf("--stage") + 1] !== "live-share" || args[args.indexOf("--profile") + 1] !== "conservative") process.exit(5);
-  const root = args[args.indexOf("--evidence-dir") + 1];
-  await mkdir(root, { recursive: true, mode: 0o700 });
-  await chmod(root, 0o700);
-  const transport = { active_sample_count: 3, positive_coherent_count: 3, distinct_positive_count: 2, warm_rolling_window_count: 2, terminal_zero_confirmed: true };
-  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v12", status: "accepted", correlation_failure: "none", watchdog_failure: "none", watchdog_read_outcome: "stable", watchdog_owner_phase: "waiting_inbox", watchdog_owner_subphase: "unavailable", watchdog_wait_state: "within_deadline", required_window_count: 20, covered_window_count: 20, terminal_settlement: "accepted_after_serial_close", terminal_close_requested: true, terminal_consumed_observed: true, final_terminal_consumed: ${options.finalTerminalConsumed ?? true}, serial_finished_observed: true, hashrate_monitor: { monitor_cadence_ms: 1000, asic_count: 1, domain_count: 4, http: transport, websocket: ${options.malformedTransport === true ? "{ ...transport, distinct_positive_count: 1 }" : "transport"} } }) + "\\n";
-  const diagnostics = JSON.stringify(${JSON.stringify(diagnostics)}) + "\\n";
-  const resultData = ${JSON.stringify(options.sealedFailure === true ? failureResult : okResult)};
-  const result = JSON.stringify({
-    ...resultData,
-    diagnostics_sha256: ${options.tamperedDiagnosticsDigest === true ? '"0".repeat(64)' : "digest(diagnostics)"},
-    ...(${options.sealedFailure === true ? "true" : "false"} ? {} : { network_continuity_sha256: digest(network) }),
-  }) + "\\n";
-  const files = new Map([["campaign-diagnostics.private.json", diagnostics], ["campaign-flash.private.json", "{}\\n"], ["campaign-mining-diagnostics.private.json", "{}\\n"], ["campaign-network.private.json", network], ["campaign-observations.private.json", "{}\\n"], ["campaign-result.json", result], ["campaign-result.sha256", ${options.tamperedSeal === true ? '"0".repeat(64)' : "digest(result)"} + "\\n"]]);
-  for (const [name, document] of files) { const candidate = path.join(root, name); await writeFile(candidate, document, { mode: 0o600 }); await chmod(candidate, 0o600); }
-  ${options.sealedFailure === true ? 'process.stderr.write("secret-child-output private-worker\\n"); process.exitCode = 9;' : ""}
-} else if (args[0] === "-C") {
-  process.stdout.write(${JSON.stringify(`${referenceCommit}\n`)});
-} else if (args[0] === "status") {
-  process.stdout.write("");
-} else if (args[0] === "rev-parse") {
-  process.stdout.write(${JSON.stringify(`${sourceCommit}\n`)});
-} else {
-  process.exitCode = 2;
-}
-`);
-  await chmod(child, 0o700);
-  return child;
-}
 
 async function captureError(promise: Promise<unknown>): Promise<HashrateMonitorEvidenceError> {
   try {
@@ -122,7 +29,7 @@ async function captureError(promise: Promise<unknown>): Promise<HashrateMonitorE
 test("admissible conservative campaign and independent validator publish only closed evidence", async () => {
   // Arrange
   const value = await fixture("real-child");
-  const child = await childProgram(value);
+  const child = await hashrateChildProgram(value);
   try {
     // Act
     const evidence = await captureHashrateMonitorEvidence(
@@ -152,7 +59,7 @@ test("admissible conservative campaign and independent validator publish only cl
 test("accepted campaign with a mixed reset cannot publish", async () => {
   // Arrange
   const value = await fixture("accepted-mixed-reset");
-  const child = await childProgram(value, {
+  const child = await hashrateChildProgram(value, {
     mixedResetReason: "panic",
     panicSignature: "unknown",
   });
@@ -179,10 +86,67 @@ test("accepted campaign with a mixed reset cannot publish", async () => {
   }
 });
 
+test("natural analyzer closure publishes without a worker close request", async () => {
+  // Arrange
+  const value = await fixture("natural-serial-close");
+  const child = await hashrateChildProgram(value, { terminalCloseRequested: false });
+
+  try {
+    // Act
+    const evidence = await captureHashrateMonitorEvidence(
+      value.root,
+      value.options,
+      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      child,
+      child,
+      validatorProgram,
+      value.planSha256,
+    );
+
+    // Assert
+    assert.equal(evidence.network_status, "accepted");
+    assert.equal((await stat(path.join(value.root, value.options.projection))).mode & 0o777, 0o644);
+  } finally {
+    await rm(value.root, { recursive: true });
+  }
+});
+
+test("invalid closure-request diagnostic shapes cannot publish hashrate evidence", async () => {
+  for (const [name, options] of [
+    ["missing", { omitTerminalCloseRequested: true }],
+    ["non-boolean", { terminalCloseRequested: "false" }],
+  ] as const) {
+    // Arrange
+    const value = await fixture(`terminal-close-${name}`);
+    const child = await hashrateChildProgram(value, options);
+
+    try {
+      // Act
+      const error = await captureError(captureHashrateMonitorEvidence(
+        value.root,
+        value.options,
+        createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+        child,
+        child,
+        validatorProgram,
+        value.planSha256,
+      ));
+
+      // Assert
+      assert.equal(error.category, "evidence_invalid");
+      await assert.rejects(readFile(path.join(value.root, value.options.projection), "utf8"), {
+        code: "ENOENT",
+      });
+    } finally {
+      await rm(value.root, { recursive: true });
+    }
+  }
+});
+
 test("accepted transport evidence without final consumed handoff cannot publish", async () => {
   // Arrange
   const value = await fixture("missing-final-consumed");
-  const child = await childProgram(value, { finalTerminalConsumed: false });
+  const child = await hashrateChildProgram(value, { finalTerminalConsumed: false });
 
   try {
     // Act
@@ -209,7 +173,7 @@ test("accepted transport evidence without final consumed handoff cannot publish"
 test("consumed attempt-018 protected root is rejected before capture", async () => {
   // Arrange
   const value = await fixture("consumed-root");
-  const child = await childProgram(value);
+  const child = await hashrateChildProgram(value);
   const options = {
     ...value.options,
     privateRoot: "scratch/stat001-hashrate-monitor/attempt-018",
@@ -280,7 +244,7 @@ test("archived task cannot satisfy the pre-effect active admission", async () =>
 test("incomplete transport evidence is rejected before publication", async () => {
   // Arrange
   const value = await fixture("incomplete");
-  const child = await childProgram(value, { malformedTransport: true });
+  const child = await hashrateChildProgram(value, { malformedTransport: true });
 
   try {
     // Act
@@ -307,7 +271,7 @@ test("incomplete transport evidence is rejected before publication", async () =>
 test("sealed non-ready campaign publishes only the closed parse diagnostic", async () => {
   // Arrange
   const value = await fixture("sealed-failure");
-  const child = await childProgram(value, { sealedFailure: true });
+  const child = await hashrateChildProgram(value, { sealedFailure: true });
 
   try {
     // Act
@@ -343,7 +307,7 @@ test("sealed non-ready campaign publishes only the closed parse diagnostic", asy
 test("sealed panic campaign publishes only the closed panic tuple", async () => {
   // Arrange
   const value = await fixture("sealed-panic");
-  const child = await childProgram(value, {
+  const child = await hashrateChildProgram(value, {
     sealedFailure: true,
     mixedResetReason: "panic",
     panicSignature: "stack_overflow",
@@ -385,7 +349,7 @@ test("sealed panic campaign publishes only the closed panic tuple", async () => 
 test("unbound panic diagnostics are withheld", async () => {
   // Arrange
   const value = await fixture("unbound-panic");
-  const child = await childProgram(value, {
+  const child = await hashrateChildProgram(value, {
     sealedFailure: true,
     mixedResetReason: "panic",
     panicSignature: "stack_overflow",
@@ -420,7 +384,7 @@ test("unbound panic diagnostics are withheld", async () => {
 test("unsealed watchdog campaign withholds its phase and failure diagnostic", async () => {
   // Arrange
   const value = await fixture("tampered-seal");
-  const child = await childProgram(value, {
+  const child = await hashrateChildProgram(value, {
     sealedFailure: true,
     tamperedSeal: true,
     watchdogFailure: "watchdog_feed_stale",
@@ -479,7 +443,7 @@ test("every sealed watchdog failure publishes only its closed earliest discrimin
   ] as const) {
     // Arrange
     const value = await fixture(`sealed-watchdog-${watchdogFailure}`);
-    const child = await childProgram(value, { sealedFailure: true, watchdogFailure });
+    const child = await hashrateChildProgram(value, { sealedFailure: true, watchdogFailure });
 
     try {
       // Act
@@ -558,7 +522,7 @@ test("watchdog diagnostic requires the new sealed schema and matching terminal c
   ] as const) {
     // Arrange
     const value = await fixture(name);
-    const child = await childProgram(value, options);
+    const child = await hashrateChildProgram(value, options);
 
     try {
       // Act

@@ -179,6 +179,7 @@ async function campaignQuorum(campaignRoot: string): Promise<CampaignQuorum> {
   const network = await readJson(path.join(campaignRoot, "campaign-network.private.json"), "campaign network");
   const diagnostics = await readJson(path.join(campaignRoot, "campaign-diagnostics.private.json"), "campaign diagnostics");
   const flash = await readJson(path.join(campaignRoot, "campaign-flash.private.json"), "campaign flash diagnostics");
+  requiredBoolean(network.value, "terminal_close_requested", "campaign network");
   const seal = (await readFile(path.join(campaignRoot, "campaign-result.sha256"), "utf8")).trim();
   if (seal !== sha256(result.document)
     || requiredString(result.value, "diagnostics_sha256", "campaign result") !== sha256(diagnostics.document)
@@ -206,7 +207,6 @@ async function campaignQuorum(campaignRoot: string): Promise<CampaignQuorum> {
     || !requiredBoolean(network.value, "terminal_pool_persisted", "campaign network")
     || requiredString(network.value, "terminal_settlement", "campaign network")
       !== "accepted_after_serial_close"
-    || !requiredBoolean(network.value, "terminal_close_requested", "campaign network")
     || !requiredBoolean(network.value, "terminal_consumed_observed", "campaign network")
     || !requiredBoolean(network.value, "final_terminal_consumed", "campaign network")
     || !requiredBoolean(network.value, "serial_finished_observed", "campaign network")

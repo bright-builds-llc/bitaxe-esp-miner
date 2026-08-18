@@ -9,6 +9,7 @@ import {
 } from "./scoreboard-evidence.js";
 import {
   expectedPlanSha256,
+  requiredBoolean,
   scoreboardView,
   validateScoreboardTaskAndSources,
 } from "./scoreboard-evidence-contract.js";
@@ -94,6 +95,68 @@ test("changed scoreboard after restart withholds projection", async () => {
   }
 });
 
+test("natural analyzer closure publishes without a worker close request", async () => {
+  // Arrange
+  const fixture = await scoreboardFixture("natural-serial-close");
+  const server = await startScoreboardServer();
+  const child = await scoreboardChild(fixture, server.origin, { terminalCloseRequested: false });
+  try {
+    // Act
+    const evidence = await captureScoreboardEvidence(
+      fixture.root,
+      fixture.options,
+      createLocalProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }),
+      child,
+      child,
+      child,
+      fixture.planSha256,
+      async () => {},
+    );
+
+    // Assert
+    assert.equal(evidence.campaign_status, "accepted");
+    assert.equal((await stat(path.join(fixture.root, fixture.options.projection))).mode & 0o777, 0o644);
+  } finally {
+    await server.close();
+    await rm(fixture.root, { recursive: true });
+  }
+});
+
+test("invalid closure-request diagnostic shapes withhold scoreboard evidence", async () => {
+  for (const [name, options] of [
+    ["missing", { omitTerminalCloseRequested: true }],
+    ["non-boolean", { terminalCloseRequested: "false" }],
+  ] as const) {
+    // Arrange
+    const fixture = await scoreboardFixture(`terminal-close-${name}`);
+    const server = await startScoreboardServer();
+    const child = await scoreboardChild(fixture, server.origin, options);
+
+    try {
+      // Act
+      const error = await captureError(captureScoreboardEvidence(
+        fixture.root,
+        fixture.options,
+        createLocalProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }),
+        child,
+        child,
+        child,
+        fixture.planSha256,
+        async () => {},
+      ));
+
+      // Assert
+      assert.equal(error.category, "evidence_invalid");
+      await assert.rejects(readFile(path.join(fixture.root, fixture.options.projection), "utf8"), {
+        code: "ENOENT",
+      });
+    } finally {
+      await server.close();
+      await rm(fixture.root, { recursive: true });
+    }
+  }
+});
+
 test("accepted transport evidence without final consumed handoff withholds projection", async () => {
   // Arrange
   const fixture = await scoreboardFixture("missing-final-consumed");
@@ -170,6 +233,21 @@ test("scoreboard parser rejects ascending malformed and oversized input", () => 
   assert.throws(() => scoreboardView([{ ...entry }, { ...entry, difficulty: 2 }], "ascending"));
   assert.throws(() => scoreboardView([{ ...entry, nonce: "private" }], "malformed"));
   assert.throws(() => scoreboardView(Array.from({ length: 21 }, () => entry), "oversized"));
+});
+
+test("closed boolean diagnostics permit either value and reject invalid shapes", () => {
+  // Arrange
+  const context = "campaign network";
+
+  // Act / Assert
+  assert.equal(requiredBoolean({ terminal_close_requested: true }, "terminal_close_requested", context), true);
+  assert.equal(requiredBoolean({ terminal_close_requested: false }, "terminal_close_requested", context), false);
+  assert.throws(() => requiredBoolean({}, "terminal_close_requested", context));
+  assert.throws(() => requiredBoolean(
+    { terminal_close_requested: "false" },
+    "terminal_close_requested",
+    context,
+  ));
 });
 
 test("current immutable STAT-003 task and source inventory pass", async () => {

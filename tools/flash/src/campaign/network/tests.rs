@@ -227,6 +227,28 @@ fn twenty_complete_windows_and_terminal_state_are_accepted() {
 }
 
 #[test]
+fn natural_serial_close_accepts_without_worker_close_request() {
+    // Arrange
+    let mut accumulator = NetworkAccumulator::new(target());
+    record_complete_windows(&mut accumulator);
+    let terminal = terminal_sample(100, 100);
+    accumulator.record_terminal_sample(NetworkTransport::Http, &terminal);
+    accumulator.record_terminal_sample(NetworkTransport::WebSocket, &terminal);
+    accumulator.terminal_consumed_observed = true;
+    accumulator.note_terminal_settlement(TerminalSettlementDecision::AcceptAfterSerialClose);
+
+    // Act
+    let evidence = accumulator.finish(&complete_serial());
+
+    // Assert
+    assert_eq!(evidence.status, "accepted");
+    assert_eq!(evidence.terminal_settlement, "accepted_after_serial_close");
+    assert!(!evidence.terminal_close_requested);
+    assert!(evidence.final_terminal_consumed);
+    assert!(evidence.serial_finished_observed);
+}
+
+#[test]
 fn unknown_watchdog_owner_phase_fails_closed_without_republishing_free_text() {
     // Arrange
     let mut accumulator = NetworkAccumulator::new(target());

@@ -87,9 +87,16 @@ export async function scoreboardFixture(name: string): Promise<ScoreboardFixture
 export async function scoreboardChild(
   fixture: ScoreboardFixture,
   origin: string,
-  options: Readonly<{ finalTerminalConsumed?: boolean }> = {},
+  options: Readonly<{
+    finalTerminalConsumed?: boolean;
+    omitTerminalCloseRequested?: boolean;
+    terminalCloseRequested?: boolean | string;
+  }> = {},
 ): Promise<string> {
   const child = path.join(fixture.root, "child.mjs");
+  const terminalCloseRequestedField = options.omitTerminalCloseRequested === true
+    ? ""
+    : `terminal_close_requested: ${JSON.stringify(options.terminalCloseRequested ?? true)},`;
   await writeFile(child, `#!${nodeProgram}
 import { createHash } from "node:crypto";
 import { chmod, mkdir, writeFile } from "node:fs/promises";
@@ -101,7 +108,7 @@ if (args[0] === "mining-campaign") {
   await mkdir(root, { recursive: true, mode: 0o700 });
   await chmod(root, 0o700);
   const diagnostics = JSON.stringify({ schema: "mining-campaign-serial-diagnostics-v4", runtime_attestation_mixed_reset_reason: "none", panic_signature: "none", panic_signature_count: 0 }) + "\\n";
-  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v12", status: "accepted", correlation_failure: "none", required_window_count: 20, covered_window_count: 20, work_renewal_valid: true, terminal_http_valid: true, terminal_websocket_valid: true, terminal_pool_persisted: true, terminal_settlement: "accepted_after_serial_close", terminal_close_requested: true, terminal_consumed_observed: true, final_terminal_consumed: ${options.finalTerminalConsumed ?? true}, serial_finished_observed: true }) + "\\n";
+  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v12", status: "accepted", correlation_failure: "none", required_window_count: 20, covered_window_count: 20, work_renewal_valid: true, terminal_http_valid: true, terminal_websocket_valid: true, terminal_pool_persisted: true, terminal_settlement: "accepted_after_serial_close", ${terminalCloseRequestedField} terminal_consumed_observed: true, final_terminal_consumed: ${options.finalTerminalConsumed ?? true}, serial_finished_observed: true }) + "\\n";
   const flash = JSON.stringify({ schema: "mining-campaign-flash-diagnostics-v1", factory: {}, nvs: {}, raw_output_included: false }) + "\\n";
   const result = JSON.stringify({ schema: "mining-campaign-result-v16", status: "accepted", stage: "live-share", profile: "conservative", duration_seconds: 600, runtime_identity: "trusted", pool_config: "local_owner_supplied", safe_stop: "confirmed", usb_cleanup: "ready", redacted: true, qualified_candidate_count: 1, below_pool_target_count: 0, duplicate_candidate_count: 0, submit_outcome: "accepted", diagnostics_sha256: digest(diagnostics), network_continuity_sha256: digest(network), flash_diagnostics_sha256: digest(flash) }) + "\\n";
   const files = new Map([["campaign-diagnostics.private.json", diagnostics], ["campaign-network.private.json", network], ["campaign-flash.private.json", flash], ["campaign-mining-diagnostics.private.json", "{}\\n"], ["campaign-observations.private.json", "{}\\n"], ["campaign-result.json", result], ["campaign-result.sha256", digest(result) + "\\n"]]);
