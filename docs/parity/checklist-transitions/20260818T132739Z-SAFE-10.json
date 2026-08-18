@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260818T132739Z-SAFE-10",
+  "predecessor_sha256": "b86ad2f555ae5f5c9c765a5fed755b118052ed433d941ac3ca874b282c09ed4d",
+  "result_sha256": "9d29205bcaed22e7958605b520ef489d3944a03f0a7502c2bceb3a5f980aa220",
+  "row_id": "SAFE-10",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260818T132739Z-SAFE-10/PLAN.md",
+  "plan_sha256": "e0a508b8160f2446d1ada4a673c90d920e15094128c6e92072709828378b3cd0",
+  "result_path": "docs/parity/work-plans/20260818T132739Z-SAFE-10/RESULT.md",
+  "result_document_sha256": "e0623c993dc1a6caf79df0dbb5b3bc70752e1d7480444b1aac90dc910a4c5206",
+  "before_rust_owned_target": "`crates/bitaxe-safety/src/mining_preconditions.rs`, `crates/bitaxe-stratum/src/v1/production_session.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-safety/src/mining_preconditions.rs`, `crates/bitaxe-stratum/src/v1/production_session.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Phase 22 requires fresh or explicitly bounded power, thermal, fan, voltage, and safety observations before BM1366 work dispatch; see `docs/parity/evidence/phase-22-claim-ladder-and-safety-preconditions/safety-preconditions.md`. Phase 28 consolidation cross-links Phase 27 blocked categories; see [`docs/parity/evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md`](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). Status remains below `verified` without detector-gated live safety proof. Active voltage control, fan actuation, thermal fault stimulus, self-test hardware closure, fault-stimulus closure, accepted/rejected shares, OTAWWW/recovery, non-205 boards, Stratum v2, UI/BAP, and unbounded production mining are not verified.",
+  "after_notes": "phase-28-hardware-evidence-and-checklist-promotion/summary.md redaction_status: passed exact_non_claims detector-gated live safety hardware proof. Exact attempt-003 projection proves all five required/fresh Ultra 205 prerequisite classes, running-primary readiness with no prerequisite reason, 600,746 active ms, accepted work, 20/20 continuity, terminal settlement, safe stop, cleanup, protected modes, attempt/current production-source compatibility, and independent validation; see docs/parity/work-plans/20260818T132739Z-SAFE-10/RESULT.md and docs/parity/evidence/safe10-prerequisite-readiness/safe10-projection.json. SAFE-11 reason labels, fault injection, individual active-control policy, self-test, other boards/ASICs, arbitrary profiles/pools, unbounded mining, OTA, recovery, and release readiness remain outside this claim."
+}
