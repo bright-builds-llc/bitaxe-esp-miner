@@ -2199,6 +2199,23 @@ plan must add a redaction-safe panic discriminator, reproduce or isolate the
 source-level cause, and apply a targeted regression-backed fix before any new
 hardware authority contract.
 
+Panic-diagnostic software plan:
+`docs/parity/work-plans/20260818T040753Z-STAT-001/PLAN.md`
+
+- [ ] Add a complete value-free ESP-IDF/Rust panic-signature and closed task-
+      family classifier at the existing complete-line serial analyzer boundary.
+- [ ] Rotate private diagnostics and bind every reachable reducer/vocabulary
+      source into the hashrate evaluator identity and Bazel runfiles.
+- [ ] Add behavior/privacy/schema/drift/real-process regressions, run every
+      mandatory gate, and close without hardware or parity promotion.
+
+Authorization is software-only: source, fixtures, tests, builds, documentation,
+and Git. Do not inspect raw/private attempt data, access credentials or device
+runtime, flash, reset, monitor, mine, actuate, update, erase, inject faults,
+manipulate power, use external UART/BAP, touch electrical interfaces, reuse
+attempt-018, or create/run attempt-019. `STAT-001`, checklist, progress history,
+and README remain unchanged under this plan.
+
 ### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
 
 - [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
