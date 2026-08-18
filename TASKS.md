@@ -726,12 +726,12 @@ recurrence of the same closed boundary after this fix stops further retries.
 Attempt-003 verification plan:
 `docs/parity/work-plans/20260818T102038Z-STAT-003/PLAN.md`
 
-- [ ] Rotate the private-first scoreboard evidence workflow from consumed
+- [x] Rotate the private-first scoreboard evidence workflow from consumed
       attempt-002 to fresh attempt-003 and bind the immutable plan, task,
       ordinal, paths, runfiles, contracts, fixtures, and validators.
-- [ ] Pass focused/full gates, commit/push the exact implementation, build the
+- [x] Pass focused/full gates, commit/push the exact implementation, build the
       bound package, and run only wrapper-003 detector admission.
-- [ ] Run at most one conditional attempt-003 and promote only on the complete
+- [x] Run at most one conditional attempt-003 and promote only on the complete
       accepted mining/API/SPA/restart persistence quorum; otherwise preserve
       the earliest closed failure and stop without attempt-004.
 
@@ -745,6 +745,26 @@ normal HTTP restart may prove UI/API and boot durability. The linked plan
 freezes private roots, commands, recovery, retry, stop, promotion, privacy, and
 prohibited effects; starting capture consumes attempt-003 and no attempt-004 is
 authorized.
+
+Attempt-003 closure review: exact source/package `60a56d49`, pinned reference,
+focused/full gates, one detector, and the sole capture passed admission. The
+sealed campaign completed 600,746 active ms, accepted network v12, 20/20
+renewed windows, 175 candidates, accepted submit, trusted identity, fresh
+safety, stable watchdog, natural final closure, terminal transport/pool joins,
+safe stop, and cleanup. The private 20-entry scoreboard repeated identically
+and the live SPA route passed. The exact restart changed session, incremented
+ordinal once, reported `software_cpu`, and kept boot mining disabled, but the
+verifier rejected closed non-active `paused` because it hardcodes only
+`safe_blocked`. Later scoreboard reads and projection remained withheld; no
+retry ran and `STAT-003` remains `implemented`. See this plan's `WORKLOG.md`
+and `CLOSURE.md`.
+
+Next safe action: a software-only plan must centralize disabled boot mining as
+false boot intent plus either closed non-active state (`paused` or
+`safe_blocked`), reject active/unknown/enabled shapes, and retain every exact
+restart, identity, persistence, safety, privacy, and source gate. Only a later
+immutable plan may authorize attempt-004 after that fix is fully verified and
+pushed; recurrence of the same signature stops further retries.
 
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
