@@ -116,7 +116,7 @@ impl ScoreboardEvidence {
         }
         if !self.source.source_semantics_current
             || !self.source.reference_semantics_current
-            || self.source.source_path_count != 25
+            || self.source.source_path_count != 29
         {
             return Err("scoreboard source evidence is incomplete");
         }
@@ -173,7 +173,7 @@ mod tests {
                 source_inventory_sha256: "3".repeat(64),
                 source_semantics_current: true,
                 reference_semantics_current: true,
-                source_path_count: 25,
+                source_path_count: 29,
             },
             scoreboard: ScoreboardObservationEvidence {
                 fresh_nvs_seed_without_scoreboard_keys: true,

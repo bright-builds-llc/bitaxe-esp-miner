@@ -467,8 +467,14 @@ export async function captureHashrateMonitorEvidence(
       || Object.values(parseDiagnostic.runtime_attestation_parse_failure_counts)
         .some((count) => count !== 0)
       || requiredString(networkFile.value, "schema", "campaign network evidence")
-        !== "mining-campaign-network-continuity-v11"
-      || requiredString(networkFile.value, "status", "campaign network evidence") !== "accepted") {
+        !== "mining-campaign-network-continuity-v12"
+      || requiredString(networkFile.value, "status", "campaign network evidence") !== "accepted"
+      || requiredString(networkFile.value, "terminal_settlement", "campaign network evidence")
+        !== "accepted_after_serial_close"
+      || !requiredBoolean(networkFile.value, "terminal_close_requested", "campaign network evidence")
+      || !requiredBoolean(networkFile.value, "terminal_consumed_observed", "campaign network evidence")
+      || !requiredBoolean(networkFile.value, "final_terminal_consumed", "campaign network evidence")
+      || !requiredBoolean(networkFile.value, "serial_finished_observed", "campaign network evidence")) {
       throw failure("evidence_invalid", "campaign acceptance boundary is incomplete");
     }
     const resultWatchdogOwnerPhase = watchdogOwnerPhase(resultFile.value);

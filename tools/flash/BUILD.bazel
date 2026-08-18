@@ -23,7 +23,13 @@ filegroup(
 
 js_library(
     name = "scoreboard_evidence_source",
-    srcs = ["src/campaign/admission.rs"],
+    srcs = [
+        "src/campaign/admission.rs",
+        "src/campaign/network/model.rs",
+        "src/campaign/network/model/evidence.rs",
+        "src/campaign/network/observer.rs",
+        "src/campaign/network/terminal_settlement.rs",
+    ],
     visibility = ["//:__pkg__"],
 )
 
@@ -51,6 +57,17 @@ js_library(
         "src/campaign/serial.rs",
         "src/campaign/serial/diagnostics.rs",
         "src/campaign/serial/panic.rs",
+    ],
+    visibility = ["//:__pkg__"],
+)
+
+js_library(
+    name = "hashrate_terminal_settlement_sources",
+    srcs = [
+        "src/campaign/network/model.rs",
+        "src/campaign/network/model/evidence.rs",
+        "src/campaign/network/observer.rs",
+        "src/campaign/network/terminal_settlement.rs",
     ],
     visibility = ["//:__pkg__"],
 )
@@ -106,9 +123,11 @@ rust_binary(
         "src/campaign/network/model/evidence.rs",
         "src/campaign/network/observer.rs",
         "src/campaign/network/serial.rs",
+        "src/campaign/network/terminal_settlement.rs",
         "src/campaign/network/tests.rs",
         "src/campaign/network/test_evidence.rs",
         "src/campaign/network/tests/startup.rs",
+        "src/campaign/network/tests/terminal_settlement_evidence.rs",
         "src/campaign/network/tests/terminal_handoff.rs",
         "src/campaign/network/tests/watchdog.rs",
         "src/campaign/network/validation.rs",

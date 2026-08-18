@@ -10,6 +10,9 @@ use super::model::{
     CampaignNetworkEvidence, NetworkAccumulator, NetworkCorrelationFailure, NetworkTransport,
     SharedSerialState, TrustedNetworkTarget, TERMINAL_NETWORK_DEADLINE_SECONDS,
 };
+use super::terminal_settlement::{
+    terminal_settlement, TerminalSettlementDecision, TerminalSettlementInput,
+};
 
 const HTTP_POLL_INTERVAL: Duration = Duration::from_secs(5);
 const HTTP_DEADLINE: Duration = Duration::from_secs(3);
@@ -142,19 +145,26 @@ pub(super) fn observe_network(
             }
         }
 
-        if serial.terminal_consumed
-            && accumulator.terminal_http_valid
-            && accumulator.terminal_websocket_valid
-        {
-            break;
-        }
-        if maybe_terminal_deadline.is_some_and(|deadline| Instant::now() >= deadline) {
-            accumulator.fail(CampaignTerminalCategory::TerminalStateUnconfirmed);
-            break;
-        }
-        if serial.serial_finished && !serial.terminal_consumed {
-            accumulator.fail(CampaignTerminalCategory::TerminalStateUnconfirmed);
-            break;
+        accumulator.terminal_consumed_observed |= serial.terminal_consumed;
+        let settlement = terminal_settlement(TerminalSettlementInput {
+            prior_failure: accumulator.maybe_failure.is_some(),
+            serial_finished: serial.serial_finished,
+            terminal_consumed: serial.terminal_consumed,
+            terminal_http_valid: accumulator.terminal_http_valid,
+            terminal_websocket_valid: accumulator.terminal_websocket_valid,
+            terminal_deadline_expired: maybe_terminal_deadline
+                .is_some_and(|deadline| Instant::now() >= deadline),
+        });
+        accumulator.note_terminal_settlement(settlement);
+        match settlement {
+            TerminalSettlementDecision::Continue => {}
+            TerminalSettlementDecision::RequestSerialClose => request_serial_close(&shared),
+            TerminalSettlementDecision::AcceptAfterSerialClose
+            | TerminalSettlementDecision::PreserveFailureAfterSerialClose => break,
+            TerminalSettlementDecision::FailAfterSerialClose => {
+                accumulator.fail(CampaignTerminalCategory::TerminalStateUnconfirmed);
+                break;
+            }
         }
     }
 
@@ -233,6 +243,12 @@ fn shared_snapshot(shared: &Arc<Mutex<SharedSerialState>>) -> SharedSerialState 
         },
         |state| state.clone(),
     )
+}
+
+fn request_serial_close(shared: &Arc<Mutex<SharedSerialState>>) {
+    if let Ok(mut state) = shared.lock() {
+        state.network_stop_requested = true;
+    }
 }
 
 fn elapsed_millis(started: Instant) -> u64 {

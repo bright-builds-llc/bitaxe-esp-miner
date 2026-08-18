@@ -195,7 +195,7 @@ async function campaignQuorum(campaignRoot: string): Promise<CampaignQuorum> {
     || requiredString(result.value, "usb_cleanup", "campaign result") !== "ready"
     || !requiredBoolean(result.value, "redacted", "campaign result")
     || requiredString(network.value, "schema", "campaign network")
-      !== "mining-campaign-network-continuity-v11"
+      !== "mining-campaign-network-continuity-v12"
     || requiredString(network.value, "status", "campaign network") !== "accepted"
     || requiredString(network.value, "correlation_failure", "campaign network") !== "none"
     || requiredInteger(network.value, "required_window_count", "campaign network") !== 20
@@ -204,6 +204,12 @@ async function campaignQuorum(campaignRoot: string): Promise<CampaignQuorum> {
     || !requiredBoolean(network.value, "terminal_http_valid", "campaign network")
     || !requiredBoolean(network.value, "terminal_websocket_valid", "campaign network")
     || !requiredBoolean(network.value, "terminal_pool_persisted", "campaign network")
+    || requiredString(network.value, "terminal_settlement", "campaign network")
+      !== "accepted_after_serial_close"
+    || !requiredBoolean(network.value, "terminal_close_requested", "campaign network")
+    || !requiredBoolean(network.value, "terminal_consumed_observed", "campaign network")
+    || !requiredBoolean(network.value, "final_terminal_consumed", "campaign network")
+    || !requiredBoolean(network.value, "serial_finished_observed", "campaign network")
     || requiredString(diagnostics.value, "schema", "campaign diagnostics")
       !== "mining-campaign-serial-diagnostics-v4"
     || requiredString(diagnostics.value, "runtime_attestation_mixed_reset_reason", "campaign diagnostics") !== "none"

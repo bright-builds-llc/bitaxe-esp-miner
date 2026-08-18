@@ -91,6 +91,18 @@ export const sourceFragments = new Map<string, readonly string[]>([
     "pub(super) enum PanicTaskFamily {",
     "pub(super) fn classify_panic_line(line: &[u8])",
   ]],
+  ["tools/flash/src/campaign/network/terminal_settlement.rs", [
+    "pub(super) const fn terminal_settlement(",
+  ]],
+  ["tools/flash/src/campaign/network/observer.rs", [
+    "TerminalSettlementDecision::RequestSerialClose => request_serial_close(&shared),",
+  ]],
+  ["tools/flash/src/campaign/network/model.rs", [
+    "terminal_settlement: self.terminal_settlement,",
+  ]],
+  ["tools/flash/src/campaign/network/model/evidence.rs", [
+    "pub(in crate::campaign) final_terminal_consumed: bool,",
+  ]],
 ]);
 
 export const referenceFragments = new Map<string, readonly string[]>([

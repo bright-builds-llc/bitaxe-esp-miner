@@ -5,7 +5,6 @@ use bitaxe_api::{
     ApiSnapshot, ExpectedRuntimeAttestationIdentity, ObservationStateWire,
     OperatorSnapshotRevision, RuntimeBootAttestation, SystemInfoWire,
 };
-use bitaxe_http_transport::WebSocketReadFailureKind;
 
 use super::super::{CampaignTerminalCategory, MiningCampaignStage};
 use super::command_evidence::CommandEffectsEvidence;
@@ -14,8 +13,10 @@ use super::model::{
     TrustedNetworkTarget, EVIDENCE_DURATION_MILLIS, REQUIRED_WINDOWS, WINDOW_MILLIS,
 };
 use super::serial::NetworkSerialTracker;
+use super::terminal_settlement::TerminalSettlementDecision;
 use super::NetworkObservationMode;
 mod terminal_handoff;
+mod terminal_settlement_evidence;
 
 mod startup;
 mod watchdog;
@@ -162,6 +163,7 @@ fn complete_serial() -> SharedSerialState {
         latest_active_ms: 600_000,
         terminal_consumed: true,
         terminal_pool_persisted: true,
+        serial_finished: true,
         maximum_active_marker_gap_ms: 1_000,
         ..SharedSerialState::default()
     };
@@ -200,6 +202,9 @@ fn twenty_complete_windows_and_terminal_state_are_accepted() {
     let terminal = terminal_sample(100, 100);
     accumulator.record_terminal_sample(NetworkTransport::Http, &terminal);
     accumulator.record_terminal_sample(NetworkTransport::WebSocket, &terminal);
+    accumulator.terminal_consumed_observed = true;
+    accumulator.note_terminal_settlement(TerminalSettlementDecision::RequestSerialClose);
+    accumulator.note_terminal_settlement(TerminalSettlementDecision::AcceptAfterSerialClose);
 
     // Act
     let evidence = accumulator.finish(&complete_serial());
@@ -214,6 +219,11 @@ fn twenty_complete_windows_and_terminal_state_are_accepted() {
     assert_eq!(evidence.watchdog_owner_subphase, "unavailable");
     assert_eq!(evidence.watchdog_wait_state, "within_deadline");
     assert!(evidence.work_renewal_valid);
+    assert_eq!(evidence.terminal_settlement, "accepted_after_serial_close");
+    assert!(evidence.terminal_close_requested);
+    assert!(evidence.terminal_consumed_observed);
+    assert!(evidence.final_terminal_consumed);
+    assert!(evidence.serial_finished_observed);
 }
 
 #[test]
@@ -570,52 +580,4 @@ fn changed_session_attestation_after_admission_fails_closed() {
         shared.lock().expect("shared state").maybe_failure,
         Some(CampaignTerminalCategory::NetworkTargetUnavailable)
     );
-}
-
-#[test]
-fn network_evidence_serialization_contains_only_closed_aggregates() {
-    // Arrange
-    let mut accumulator = NetworkAccumulator::new(target());
-    accumulator.note_websocket_connect_failure();
-    accumulator.note_websocket_peer_close();
-    accumulator.note_websocket_failure(WebSocketReadFailureKind::Io);
-    accumulator.note_websocket_failure(WebSocketReadFailureKind::Protocol);
-    accumulator.note_websocket_failure(WebSocketReadFailureKind::Capacity);
-    accumulator.note_websocket_failure(WebSocketReadFailureKind::Other);
-    record_complete_windows(&mut accumulator);
-    let terminal = terminal_sample(100, 100);
-    accumulator.record_terminal_sample(NetworkTransport::Http, &terminal);
-    accumulator.record_terminal_sample(NetworkTransport::WebSocket, &terminal);
-    let evidence = accumulator.finish(&complete_serial());
-
-    // Act
-    let encoded = serde_json::to_string(&evidence).expect("evidence should serialize");
-
-    // Assert
-    for prohibited in [
-        "127.0.0.1",
-        "device_url",
-        "boot_session",
-        "poolUser",
-        "ssid",
-        "windows",
-        "sequence",
-        "poll_request_count",
-        "ConnectionReset",
-        "ResetWithoutClosingHandshake",
-        "AttackAttempt",
-    ] {
-        assert!(!encoded.contains(prohibited));
-    }
-    assert!(encoded.contains("mining-campaign-network-continuity-v11"));
-    assert!(encoded.contains("http_startup_transition_count"));
-    assert!(encoded.contains("websocket_startup_transition_count"));
-    assert!(encoded.contains("http_initial_active_observed"));
-    assert!(encoded.contains("websocket_initial_active_observed"));
-    assert_eq!(evidence.websocket_connect_failure_count, 1);
-    assert_eq!(evidence.websocket_peer_close_count, 1);
-    assert_eq!(evidence.websocket_io_failure_count, 1);
-    assert_eq!(evidence.websocket_protocol_failure_count, 1);
-    assert_eq!(evidence.websocket_capacity_failure_count, 1);
-    assert_eq!(evidence.websocket_other_failure_count, 1);
 }

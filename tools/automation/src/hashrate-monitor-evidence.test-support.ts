@@ -105,6 +105,18 @@ const sourceDocuments = new Map<string, string>([
     "pub(super) enum PanicTaskFamily {",
     "pub(super) fn classify_panic_line(line: &[u8])",
   ].join("\n")],
+  ["tools/flash/src/campaign/network/terminal_settlement.rs", [
+    "pub(super) const fn terminal_settlement(",
+  ].join("\n")],
+  ["tools/flash/src/campaign/network/observer.rs", [
+    "TerminalSettlementDecision::RequestSerialClose => request_serial_close(&shared),",
+  ].join("\n")],
+  ["tools/flash/src/campaign/network/model.rs", [
+    "terminal_settlement: self.terminal_settlement,",
+  ].join("\n")],
+  ["tools/flash/src/campaign/network/model/evidence.rs", [
+    "pub(in crate::campaign) final_terminal_consumed: bool,",
+  ].join("\n")],
 ]);
 
 export const okResult = {

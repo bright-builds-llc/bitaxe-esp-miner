@@ -5,6 +5,7 @@ mod hashrate;
 mod model;
 mod observer;
 mod serial;
+mod terminal_settlement;
 mod validation;
 mod watchdog;
 mod window;

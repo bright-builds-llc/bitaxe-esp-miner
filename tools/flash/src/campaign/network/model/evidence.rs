@@ -39,6 +39,11 @@ pub(crate) struct CampaignNetworkEvidence {
     pub(in crate::campaign) terminal_http_valid: bool,
     pub(in crate::campaign) terminal_websocket_valid: bool,
     pub(in crate::campaign) terminal_pool_persisted: bool,
+    pub(in crate::campaign) terminal_settlement: &'static str,
+    pub(in crate::campaign) terminal_close_requested: bool,
+    pub(in crate::campaign) terminal_consumed_observed: bool,
+    pub(in crate::campaign) final_terminal_consumed: bool,
+    pub(in crate::campaign) serial_finished_observed: bool,
     pub(in crate::campaign) hashrate_monitor: CampaignHashrateEvidence,
     pub(in crate::campaign) command_effects: Option<CommandEffectsEvidence>,
     pub(in crate::campaign) command_failure: Option<CommandFailureDiagnostic>,
@@ -75,7 +80,7 @@ impl CampaignNetworkEvidence {
 
     fn empty(status: &'static str, maybe_failure: Option<CampaignTerminalCategory>) -> Self {
         Self {
-            schema: "mining-campaign-network-continuity-v11",
+            schema: "mining-campaign-network-continuity-v12",
             status,
             correlation_failure: "not_observed",
             required_window_count: REQUIRED_WINDOWS,
@@ -110,6 +115,11 @@ impl CampaignNetworkEvidence {
             terminal_http_valid: false,
             terminal_websocket_valid: false,
             terminal_pool_persisted: false,
+            terminal_settlement: "not_applicable",
+            terminal_close_requested: false,
+            terminal_consumed_observed: false,
+            final_terminal_consumed: false,
+            serial_finished_observed: false,
             hashrate_monitor: CampaignHashrateEvidence::empty(),
             command_effects: None,
             command_failure: None,

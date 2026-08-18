@@ -53,6 +53,9 @@ fn startup_transitions_are_uncredited_before_all_twenty_windows_complete() {
     let terminal = terminal_sample(100, 100);
     accumulator.record_terminal_sample(NetworkTransport::Http, &terminal);
     accumulator.record_terminal_sample(NetworkTransport::WebSocket, &terminal);
+    accumulator.terminal_consumed_observed = true;
+    accumulator.note_terminal_settlement(TerminalSettlementDecision::RequestSerialClose);
+    accumulator.note_terminal_settlement(TerminalSettlementDecision::AcceptAfterSerialClose);
 
     // Act
     let evidence = accumulator.finish(&complete_serial());

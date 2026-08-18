@@ -5,7 +5,7 @@ use super::model::{CampaignNetworkEvidence, REQUIRED_WINDOWS};
 impl CampaignNetworkEvidence {
     pub(crate) fn fixture_complete() -> Self {
         Self {
-            schema: "mining-campaign-network-continuity-v11",
+            schema: "mining-campaign-network-continuity-v12",
             status: "accepted",
             correlation_failure: "none",
             required_window_count: REQUIRED_WINDOWS,
@@ -40,6 +40,11 @@ impl CampaignNetworkEvidence {
             terminal_http_valid: true,
             terminal_websocket_valid: true,
             terminal_pool_persisted: true,
+            terminal_settlement: "accepted_after_serial_close",
+            terminal_close_requested: true,
+            terminal_consumed_observed: true,
+            final_terminal_consumed: true,
+            serial_finished_observed: true,
             hashrate_monitor: CampaignHashrateEvidence {
                 monitor_cadence_ms: 1_000,
                 asic_count: 1,

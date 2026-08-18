@@ -8,6 +8,7 @@ use super::super::*;
 use super::command_evidence::CommandEffectsEvidence;
 use super::command_witness::CommandTransitionWitness;
 use super::hashrate::{CampaignHashrateEvidence, HashrateObservationPair};
+use super::terminal_settlement::TerminalSettlementDecision;
 use super::validation::{
     active_mining_state_valid, regresses, update_gap, validate_active_prerequisites,
     validate_sample, window_index, SampleValidationFailure,
@@ -129,6 +130,9 @@ pub(super) struct NetworkAccumulator {
     pub(super) maximum_websocket_gap_ms: u64,
     pub(super) terminal_http_valid: bool,
     pub(super) terminal_websocket_valid: bool,
+    pub(super) terminal_settlement: &'static str,
+    pub(super) terminal_close_requested: bool,
+    pub(super) terminal_consumed_observed: bool,
     pub(super) maybe_failure: Option<CampaignTerminalCategory>,
     correlation_failure: NetworkCorrelationFailure,
     same_boot_and_package: bool,
@@ -172,6 +176,9 @@ impl NetworkAccumulator {
             maximum_websocket_gap_ms: 0,
             terminal_http_valid: false,
             terminal_websocket_valid: false,
+            terminal_settlement: TerminalSettlementDecision::Continue.label(),
+            terminal_close_requested: false,
+            terminal_consumed_observed: false,
             maybe_failure: None,
             correlation_failure: NetworkCorrelationFailure::None,
             same_boot_and_package: true,
@@ -353,9 +360,13 @@ impl NetworkAccumulator {
         let covered_window_count = self.windows.iter().filter(|window| window.complete).count();
         let accepted = self.maybe_failure.is_none()
             && covered_window_count == REQUIRED_WINDOWS
-            && serial.terminal_consumed;
+            && serial.terminal_consumed
+            && serial.serial_finished
+            && self.terminal_close_requested
+            && self.terminal_settlement
+                == TerminalSettlementDecision::AcceptAfterSerialClose.label();
         CampaignNetworkEvidence {
-            schema: "mining-campaign-network-continuity-v11",
+            schema: "mining-campaign-network-continuity-v12",
             status: if accepted { "accepted" } else { "failed" },
             correlation_failure: self.correlation_failure.label(),
             required_window_count: REQUIRED_WINDOWS,
@@ -395,6 +406,11 @@ impl NetworkAccumulator {
             terminal_http_valid: self.terminal_http_valid,
             terminal_websocket_valid: self.terminal_websocket_valid,
             terminal_pool_persisted: serial.terminal_pool_persisted,
+            terminal_settlement: self.terminal_settlement,
+            terminal_close_requested: self.terminal_close_requested,
+            terminal_consumed_observed: self.terminal_consumed_observed,
+            final_terminal_consumed: serial.terminal_consumed,
+            serial_finished_observed: serial.serial_finished,
             hashrate_monitor: self.hashrate.evidence(),
             command_effects: None,
             command_failure: None,
@@ -404,6 +420,12 @@ impl NetworkAccumulator {
 
     pub(super) fn fail(&mut self, category: CampaignTerminalCategory) {
         self.maybe_failure.get_or_insert(category);
+    }
+
+    pub(super) fn note_terminal_settlement(&mut self, decision: TerminalSettlementDecision) {
+        self.terminal_settlement = decision.label();
+        self.terminal_close_requested |=
+            matches!(decision, TerminalSettlementDecision::RequestSerialClose);
     }
 
     pub(super) fn fail_correlation(&mut self, failure: NetworkCorrelationFailure) {

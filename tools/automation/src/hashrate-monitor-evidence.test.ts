@@ -25,6 +25,7 @@ async function childProgram(
   value: Fixture,
   options: Readonly<{
     malformedTransport?: boolean;
+    finalTerminalConsumed?: boolean;
     sealedFailure?: boolean;
     watchdogFailure?: string;
     watchdogReadOutcome?: string;
@@ -83,7 +84,7 @@ if (args[0] === "mining-campaign") {
   await mkdir(root, { recursive: true, mode: 0o700 });
   await chmod(root, 0o700);
   const transport = { active_sample_count: 3, positive_coherent_count: 3, distinct_positive_count: 2, warm_rolling_window_count: 2, terminal_zero_confirmed: true };
-  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v11", status: "accepted", correlation_failure: "none", watchdog_failure: "none", watchdog_read_outcome: "stable", watchdog_owner_phase: "waiting_inbox", watchdog_owner_subphase: "unavailable", watchdog_wait_state: "within_deadline", required_window_count: 20, covered_window_count: 20, hashrate_monitor: { monitor_cadence_ms: 1000, asic_count: 1, domain_count: 4, http: transport, websocket: ${options.malformedTransport === true ? "{ ...transport, distinct_positive_count: 1 }" : "transport"} } }) + "\\n";
+  const network = JSON.stringify({ schema: "mining-campaign-network-continuity-v12", status: "accepted", correlation_failure: "none", watchdog_failure: "none", watchdog_read_outcome: "stable", watchdog_owner_phase: "waiting_inbox", watchdog_owner_subphase: "unavailable", watchdog_wait_state: "within_deadline", required_window_count: 20, covered_window_count: 20, terminal_settlement: "accepted_after_serial_close", terminal_close_requested: true, terminal_consumed_observed: true, final_terminal_consumed: ${options.finalTerminalConsumed ?? true}, serial_finished_observed: true, hashrate_monitor: { monitor_cadence_ms: 1000, asic_count: 1, domain_count: 4, http: transport, websocket: ${options.malformedTransport === true ? "{ ...transport, distinct_positive_count: 1 }" : "transport"} } }) + "\\n";
   const diagnostics = JSON.stringify(${JSON.stringify(diagnostics)}) + "\\n";
   const resultData = ${JSON.stringify(options.sealedFailure === true ? failureResult : okResult)};
   const result = JSON.stringify({
@@ -137,7 +138,7 @@ test("admissible conservative campaign and independent validator publish only cl
     // Assert
     assert.equal(evidence.attempt_ordinal, 19);
     assert.equal(evidence.hashrate.http.distinct_positive_count, 2);
-    assert.equal(evidence.source.source_path_count, 21);
+    assert.equal(evidence.source.source_path_count, 25);
     assert.equal((await stat(path.join(value.root, value.options.projection))).mode & 0o777, 0o644);
     assert.doesNotMatch(
       await readFile(path.join(value.root, value.options.projection), "utf8"),
@@ -155,6 +156,33 @@ test("accepted campaign with a mixed reset cannot publish", async () => {
     mixedResetReason: "panic",
     panicSignature: "unknown",
   });
+
+  try {
+    // Act
+    const error = await captureError(captureHashrateMonitorEvidence(
+      value.root,
+      value.options,
+      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      child,
+      child,
+      validatorProgram,
+      value.planSha256,
+    ));
+
+    // Assert
+    assert.equal(error.category, "evidence_invalid");
+    await assert.rejects(readFile(path.join(value.root, value.options.projection), "utf8"), {
+      code: "ENOENT",
+    });
+  } finally {
+    await rm(value.root, { recursive: true });
+  }
+});
+
+test("accepted transport evidence without final consumed handoff cannot publish", async () => {
+  // Arrange
+  const value = await fixture("missing-final-consumed");
+  const child = await childProgram(value, { finalTerminalConsumed: false });
 
   try {
     // Act

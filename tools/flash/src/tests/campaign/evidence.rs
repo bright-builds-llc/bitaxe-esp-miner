@@ -108,7 +108,7 @@ fn campaign_evidence_never_projects_raw_serial_or_credentials() {
     );
     let network: serde_json::Value =
         serde_json::from_slice(&network_bytes).expect("network continuity JSON");
-    assert_eq!(network["schema"], "mining-campaign-network-continuity-v11");
+    assert_eq!(network["schema"], "mining-campaign-network-continuity-v12");
     assert_eq!(network["watchdog_failure"], "none");
     assert_eq!(network["watchdog_read_outcome"], "uninitialized");
     assert_eq!(network["http_startup_transition_count"], 0);

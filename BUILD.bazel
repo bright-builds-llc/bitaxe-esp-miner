@@ -143,7 +143,10 @@ js_library(
         "reference/esp-miner/main/tasks/protocol_coordinator.c",
         "reference/esp-miner/main/tasks/hashrate_monitor_task.c",
     ],
-    deps = ["//tools/flash:hashrate_panic_diagnostic_sources"],
+    deps = [
+        "//tools/flash:hashrate_panic_diagnostic_sources",
+        "//tools/flash:hashrate_terminal_settlement_sources",
+    ],
     visibility = ["//tools/automation:__pkg__"],
 )
 
