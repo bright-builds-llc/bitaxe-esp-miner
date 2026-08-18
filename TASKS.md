@@ -796,6 +796,29 @@ after exact package/source binding and must retain every detector, safety,
 privacy, recovery, persistence, cleanup, and promotion gate. Recurrence of the
 same stopped-state boundary after this fix stops further retries.
 
+Attempt-004 verification plan:
+`docs/parity/work-plans/20260818T114249Z-STAT-003/PLAN.md`
+
+- [ ] Rotate the scoreboard workflow from consumed attempt-003 to fresh
+      attempt-004 and bind the immutable plan, task, ordinal, paths, runfiles,
+      contracts, fixtures, and validators.
+- [ ] Pass focused/full gates, commit/push, build the bound package, and run
+      only wrapper-004 detector admission.
+- [ ] Run at most one conditional attempt-004 and promote only on the complete
+      accepted campaign/API/SPA/restart persistence quorum; otherwise preserve
+      the first closed failure and stop without attempt-005.
+
+Attempt-004 authorization: attempt-003's exact stopped-state failure now has a
+targeted, exhaustive, real-child, fully gated and pushed correction. After
+clean pushed gates, one exact board-205 package may repeat the conservative
+400 MHz / 1,100 mV core / 100% fan campaign for 600 accumulated active seconds.
+Its NVS seed intentionally clears prior scoreboard records and retains owner
+Wi-Fi/pool inputs plus the safe-stopped scoreboard. One passive same-origin
+capture and one normal HTTP restart may prove UI/API and boot durability. The
+linked plan freezes roots, commands, recovery, retry, stop, promotion, privacy,
+and prohibited effects; starting capture consumes attempt-004 and no
+attempt-005 is authorized.
+
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
 - [x] Add a typed private-first `/api/theme` capture that binds the exact
