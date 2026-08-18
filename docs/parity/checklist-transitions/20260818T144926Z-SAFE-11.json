@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260818T144926Z-SAFE-11",
+  "predecessor_sha256": "9d29205bcaed22e7958605b520ef489d3944a03f0a7502c2bceb3a5f980aa220",
+  "result_sha256": "3baa33ab62496197fe039e5c03de30d5af7fe6300e95958dc022c1c3fcf06546",
+  "row_id": "SAFE-11",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260818T140738Z-SAFE-11/PLAN.md",
+  "plan_sha256": "da6d3fb92ee912c0025903b56202d45b152dd43ac82df292f8b2a896f36cfa47",
+  "result_path": "docs/parity/work-plans/20260818T140738Z-SAFE-11/RESULT.md",
+  "result_document_sha256": "310db732367ade00f4687703a88acb60d253e506c62b1c87ebb8e7c338d7008c",
+  "before_rust_owned_target": "`crates/bitaxe-safety/src/mining_preconditions.rs`, `crates/bitaxe-stratum/src/v1/state.rs`, `crates/bitaxe-api/src/mining.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-stratum/src/v1/recovery_policy.rs`, `crates/bitaxe-stratum/src/v1/production_session/runtime.rs`, `crates/bitaxe-stratum/src/v1/state.rs`, `crates/bitaxe-api/src/mining.rs`, `firmware/bitaxe/src/production_mining_session.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Phase 22 carries exact stable blocker reasons through safety decisions, runtime state, and API mining output; see `docs/parity/evidence/phase-22-claim-ladder-and-safety-preconditions/blocker-reasons.md`. Phase 28 consolidation cites [`summary.md`](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md) and Phase 27 [`share-outcome.md`](evidence/phase-27-live-hardware-asic-and-stratum-bridge/share-outcome.md) with `share_outcome: blocked_safe_prerequisite`. Status remains below `verified` without detector-gated live safety proof. Active voltage control, fan actuation, thermal fault stimulus, self-test hardware closure, fault-stimulus closure, accepted/rejected shares, OTAWWW/recovery, non-205 boards, Stratum v2, UI/BAP, and unbounded production mining are not verified.",
+  "after_notes": "Verified at f0e4ea453a266a252062b74c04826f138eafad9f: the exact 17-label production reason vocabulary keeps all work disabled, preserves one operator-paused class, maps sixteen fail-closed failure classes to exact API reason labels, and clears stale reason text on ready state; see [SAFE-11 result](work-plans/20260818T140738Z-SAFE-11/RESULT.md), [source-bound evidence](evidence/safe11-production-blocker-reasons/summary.md), and detector-gated live safety hardware proof in [Phase 28 summary](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). redaction_status: passed. exact_non_claims: live fault injection, individual control effects, self-test, BAP/UART, other boards/ASICs, arbitrary profiles/pools, unbounded mining, OTA/recovery, and release readiness."
+}

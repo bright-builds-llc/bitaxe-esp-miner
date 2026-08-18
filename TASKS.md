@@ -4176,50 +4176,6 @@ hardware ordinal. Energized-rail values or accuracy, external calibration,
 induced failure, load behavior, long-duration drift, other boards, and release
 readiness remain explicit non-claims.
 
-### task-parity-safe11-fail-closed-reasons | 2026-08-18 | Verify production fail-closed reason propagation
-
-- [ ] Add an exhaustive current production blocker-to-runtime-to-API regression
-      covering exact labels, fail-closed state, uniqueness, and redaction.
-- [ ] Reconcile the stale Phase 22 ledger with the real production readiness,
-      runtime-state, API, and pinned-reference boundaries.
-- [ ] Bind accepted SAFE-10 live prerequisite proof to current source evidence,
-      run every required gate, and promote only `SAFE-11` on the complete quorum.
-
-Plan: `docs/parity/work-plans/20260818T135714Z-SAFE-11/PLAN.md`
-
-Plan closure review: pre-implementation source review found that the frozen
-promotion rule incorrectly required `OperatorPaused` to project
-`safe_blocked`. Production intentionally disables work submission while
-projecting that one operator-controlled state as `paused`; failure reasons use
-`safe_blocked`. No implementation or parity transition ran under this plan.
-See the linked `CLOSURE.md`.
-
-Next safe action: create a fresh immutable SAFE-11 plan with two exact classes:
-operator pause remains work-blocked/paused with no API failure reason, while
-every failure blocker remains work-blocked/safe-blocked with its exact
-redaction-safe API reason.
-
-Corrected verification plan:
-`docs/parity/work-plans/20260818T140738Z-SAFE-11/PLAN.md`
-
-- [ ] Preserve operator pause as work-blocked/paused without an API failure
-      reason and prove all sixteen failure variants work-blocked/safe-blocked
-      with their exact API reason.
-- [ ] Bind the corrected current-source evidence to accepted SAFE-10 live
-      prerequisite proof, then promote only on the complete privacy-safe quorum.
-
-Authorization: local source, tests, documentation, builds, and Git only. No
-protected input, detector, credentials, device/USB/network runtime, flash,
-monitor, mining, restart, recovery, hardware attempt, fault injection, external
-UART/BAP, pins, or electrical work.
-
-Promotion requires the exact closed production reason vocabulary to remain
-work-blocked, safe-blocked, API-visible, unique, and redaction-safe; the accepted
-SAFE-10 detector-gated board-205 projection to validate independently; current
-source/reference and privacy evidence to pass; and all mandatory gates to pass.
-Fault injection, individual active controls, self-test, other boards/ASICs,
-unbounded mining, OTA/recovery, and release readiness remain non-claims.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

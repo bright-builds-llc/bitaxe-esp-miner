@@ -11299,3 +11299,64 @@ Residual risks remain limited to SAFE-11 blocker labels, fault injection,
 individual active-control policies, self-test, arbitrary telemetry, other
 ASICs/boards, arbitrary profiles/pools, unbounded mining, OTA, recovery, and
 release readiness.
+
+### task-parity-safe11-fail-closed-reasons | 2026-08-18 | Verify production fail-closed reason propagation
+
+- [x] Add an exhaustive current production blocker-to-runtime-to-API regression
+      covering exact labels, fail-closed state, uniqueness, and redaction.
+- [x] Reconcile the stale Phase 22 ledger with the real production readiness,
+      runtime-state, API, and pinned-reference boundaries.
+- [x] Bind accepted SAFE-10 live prerequisite proof to current source evidence,
+      run every required gate, and promote only `SAFE-11` on the complete quorum.
+
+Plan: `docs/parity/work-plans/20260818T135714Z-SAFE-11/PLAN.md`
+
+Plan closure review: pre-implementation source review found that the frozen
+promotion rule incorrectly required `OperatorPaused` to project
+`safe_blocked`. Production intentionally disables work submission while
+projecting that one operator-controlled state as `paused`; failure reasons use
+`safe_blocked`. No implementation or parity transition ran under this plan.
+See the linked `CLOSURE.md`.
+
+Next safe action: create a fresh immutable SAFE-11 plan with two exact classes:
+operator pause remains work-blocked/paused with no API failure reason, while
+every failure blocker remains work-blocked/safe-blocked with its exact
+redaction-safe API reason.
+
+Corrected verification plan:
+`docs/parity/work-plans/20260818T140738Z-SAFE-11/PLAN.md`
+
+- [x] Preserve operator pause as work-blocked/paused without an API failure
+      reason and prove all sixteen failure variants work-blocked/safe-blocked
+      with their exact API reason.
+- [x] Bind the corrected current-source evidence to accepted SAFE-10 live
+      prerequisite proof, then promote only on the complete privacy-safe quorum.
+
+Authorization: local source, tests, documentation, builds, and Git only. No
+protected input, detector, credentials, device/USB/network runtime, flash,
+monitor, mining, restart, recovery, hardware attempt, fault injection, external
+UART/BAP, pins, or electrical work.
+
+Promotion requires the exact closed production reason vocabulary to remain
+work-blocked, safe-blocked, API-visible, unique, and redaction-safe; the accepted
+SAFE-10 detector-gated board-205 projection to validate independently; current
+source/reference and privacy evidence to pass; and all mandatory gates to pass.
+Fault injection, individual active controls, self-test, other boards/ASICs,
+unbounded mining, OTA/recovery, and release readiness remain non-claims.
+
+Verification review: implementation `0fee4942` adds four focused API regressions
+covering all 17 typed labels, one operator-paused state, sixteen fail-closed
+failure states, exact API reasons, ready-state clearing, uniqueness, and
+redaction-safe spelling. Focused Cargo/Bazel tests, the ordered Cargo gates,
+Bright Builds, all 47 Bazel targets, independent SAFE-10 validation, reference
+cleanliness, source-inventory preservation, redaction review, file-size, parity,
+progress, and diff checks passed. Evidence commit `f0e4ea45` binds the accepted
+source/reference and non-claims in the corrected plan's `RESULT.md` and
+`docs/parity/evidence/safe11-production-blocker-reasons/summary.md`.
+
+Completion review: transition `20260818T144926Z-SAFE-11` promotes only
+`SAFE-11` to `verified` with
+`unit,workflow,hardware-smoke,hardware-regression`; synchronized progress is
+79/94 active rows (84.0%). Residual risks remain live fault injection,
+individual active-control effects, self-test, BAP/UART, other boards/ASICs,
+arbitrary profiles/pools, unbounded mining, OTA/recovery, and release readiness.
