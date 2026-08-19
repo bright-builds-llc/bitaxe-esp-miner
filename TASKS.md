@@ -4178,9 +4178,9 @@ readiness remain explicit non-claims.
 
 ### task-parity-asic10-work-registry | 2026-08-19 | Verify pool-derived BM1366 work registry
 
-- [ ] Independently validate the accepted initialization and work-send
+- [x] Independently validate the accepted initialization and work-send
       hardware projections.
-- [ ] Bind current production-work registry and production-session tests to
+- [x] Bind current production-work registry and production-session tests to
       the accepted live production chain.
 - [ ] Produce exact source-bound evidence, run every gate, and promote only
       `ASIC-10` on the complete redacted quorum.
@@ -4198,6 +4198,13 @@ safe stop, cleanup, current registry source/tests, and redaction. Adjacent
 ASIC/Stratum/safety rows, live clean-jobs or reconnect, active controls, other
 boards/ASICs, arbitrary pools/profiles, unbounded mining, OTA/recovery, and
 release readiness remain non-claims.
+
+Verification: ASIC-002 and ASIC-003 independently validated at the planned
+digests. Current production-work and production-session tests passed.
+Reference verification and `just package` passed. See
+`docs/parity/evidence/asic10-work-registry/summary.md` and this plan's
+`WORKLOG.md` and `RESULT.md`. Promotion remains pending `SOURCE_COMMIT`,
+checklist transition, progress sync, and the ordered final gates.
 
 ## Future
 
