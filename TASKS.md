@@ -4178,9 +4178,9 @@ readiness remain explicit non-claims.
 
 ### task-parity-asic09-mode-separation | 2026-08-18 | Verify BM1366 diagnostic/production separation
 
-- [ ] Independently validate the accepted initialization, work-send,
+- [x] Independently validate the accepted initialization, work-send,
       result-parsing, and serial-transport hardware projections.
-- [ ] Bind current diagnostic admission and production executor separation
+- [x] Bind current diagnostic admission and production executor separation
       tests to the accepted live production chain.
 - [ ] Produce exact source-bound evidence, run every gate, and promote only
       `ASIC-09` on the complete redacted quorum.
@@ -4198,6 +4198,14 @@ production UART, safe stop, cleanup, current mode-separation source/tests, and
 redaction. Adjacent ASIC/Stratum rows, arbitrary diagnostics, active controls,
 other boards/ASICs, arbitrary pools/profiles, unbounded mining, OTA/recovery,
 and release readiness remain non-claims.
+
+Verification: the four accepted public projections independently validated at
+the planned digests. Current adapter-gate and production-command tests passed.
+The production executor source contains no diagnostic-work variant. Reference
+verification and `just package` passed. See
+`docs/parity/evidence/asic09-mode-separation/summary.md` and this plan's
+`WORKLOG.md` and `RESULT.md`. Promotion remains pending `SOURCE_COMMIT`,
+checklist transition, progress sync, and the ordered final gates.
 
 ## Future
 
