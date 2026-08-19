@@ -4176,6 +4176,30 @@ hardware ordinal. Energized-rail values or accuracy, external calibration,
 induced failure, load behavior, long-duration drift, other boards, and release
 readiness remain explicit non-claims.
 
+### task-parity-asic11-result-correlation | 2026-08-19 | Verify BM1366 result correlation before submit
+
+- [ ] Independently validate the accepted initialization, work-send, and
+      result-parsing hardware projections.
+- [ ] Bind current production-work correlation and production-session tests to
+      the accepted live production chain.
+- [ ] Produce exact source-bound evidence, run every gate, and promote only
+      `ASIC-11` on the complete redacted quorum.
+
+Plan: `docs/parity/work-plans/20260819T151339Z-ASIC-11/PLAN.md`
+
+Authorization: local tests/docs/builds, committed-public evidence reads, and
+Git only. No credential or protected-attempt access, detector,
+device/USB/network runtime, flash, monitor, mining, restart, recovery, hardware
+attempt, fault injection, external UART/BAP, pins, or electrical work.
+
+Promotion requires independently validated exact-package live qualified result
+correlation before submit intent, accepted response, safe stop, cleanup,
+current correlation source/tests, and redaction. Adjacent ASIC/Stratum/safety
+rows, submit classification ownership, rejected-share hardware, share-hash or
+network-target policy beyond the accepted qualified result, live clean-jobs or
+reconnect, active controls, other boards/ASICs, arbitrary pools/profiles,
+unbounded mining, OTA/recovery, and release readiness remain non-claims.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
