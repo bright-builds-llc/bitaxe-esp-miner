@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260819T150848Z-ASIC-10",
+  "predecessor_sha256": "8d8ca5f7e3cb40c1db4514a61023b0b4b2f494fdf8a4a469f2ab6ec59f14e99e",
+  "result_sha256": "6e128036bc7fa75fb8a65615fa67a3215f61d3613a1a052649a9deef782198f6",
+  "row_id": "ASIC-10",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260819T150619Z-ASIC-10/PLAN.md",
+  "plan_sha256": "222fd16bf8ca412658f98c44e325c962f07728037ca52fb7de2f5f6301a4a063",
+  "result_path": "docs/parity/work-plans/20260819T150619Z-ASIC-10/RESULT.md",
+  "result_document_sha256": "705cd9633aa0de6592a734a815cec7262fd2783f3aaf2b050bd3e80872a61b69",
+  "before_rust_owned_target": "`crates/bitaxe-stratum/src/v1/production_work.rs`, `crates/bitaxe-stratum/src/v1/production_session.rs`, `firmware/bitaxe/src/production_mining_session.rs`, `crates/bitaxe-stratum/src/v1/production_session/tests.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-stratum/src/v1/production_work.rs`, `crates/bitaxe-stratum/src/v1/production_session.rs`, `firmware/bitaxe/src/production_mining_session.rs`, `crates/bitaxe-stratum/src/v1/production_session/tests.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,golden,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Phase 27 wires pool-derived BM1366 production dispatch into the live Stratum firmware bridge and records detector-gated workflow evidence; see [`docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/summary.md`](evidence/phase-27-live-hardware-asic-and-stratum-bridge/summary.md). Phase 28 consolidation cites [`docs/parity/evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md`](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). The committed evidence records `share_outcome: blocked_safe_prerequisite` and `asic_bridge_status: blocked`; live hardware dispatch proof remains below verified. nonzero version-mask and multi-midstate production support remain non-claims; API/WebSocket/statistics/scoreboard promotion remains a Phase 26-owned non-claim.",
+  "after_notes": "Verified at 934cf3dcc3f3ed58dbb7d468725b11108d33c53e: independently validated ASIC-002 and ASIC-003 same-attempt live production chain with accepted share hardware plus current pool-derived work-registry and session tests; see [ASIC-10 result](work-plans/20260819T150619Z-ASIC-10/RESULT.md), [summary](evidence/asic10-work-registry/summary.md), and [Phase 28 summary](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). redaction_status: passed. exact_non_claims: result-correlation ownership, submit classification, frequency transitions, voltage/fan/thermal behavior, nonzero version-mask or multi-midstate breadth, live clean-jobs or reconnect, other ASICs/boards, arbitrary pools/profiles, unbounded mining, OTA/recovery, ASIC-11, ASIC-12, STR-08, STR-09, SAFE-12, SAFE-13, and release readiness."
+}

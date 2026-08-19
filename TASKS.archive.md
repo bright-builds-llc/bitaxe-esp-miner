@@ -11447,3 +11447,45 @@ nonzero version-mask or multi-midstate breadth, arbitrary-load serial
 behavior, other ASICs/boards, arbitrary pools/profiles, unbounded mining,
 OTA/recovery, ASIC-10, ASIC-11, ASIC-12, STR-08, STR-09, and release
 readiness.
+
+### task-parity-asic10-work-registry | 2026-08-19 | Verify pool-derived BM1366 work registry
+
+- [x] Independently validate the accepted initialization and work-send
+      hardware projections.
+- [x] Bind current production-work registry and production-session tests to
+      the accepted live production chain.
+- [x] Produce exact source-bound evidence, run every gate, and promote only
+      `ASIC-10` on the complete redacted quorum.
+
+Plan: `docs/parity/work-plans/20260819T150619Z-ASIC-10/PLAN.md`
+
+Authorization: local tests/docs/builds, committed-public evidence reads, and
+Git only. No credential or protected-attempt access, detector,
+device/USB/network runtime, flash, monitor, mining, restart, recovery, hardware
+attempt, fault injection, external UART/BAP, pins, or electrical work.
+
+Promotion requires independently validated exact-package live pool-derived
+work registration, production dispatch, qualified result, accepted response,
+safe stop, cleanup, current registry source/tests, and redaction. Adjacent
+ASIC/Stratum/safety rows, live clean-jobs or reconnect, active controls, other
+boards/ASICs, arbitrary pools/profiles, unbounded mining, OTA/recovery, and
+release readiness remain non-claims.
+
+Verification review: plan commit `9a57318a` and evidence commit `934cf3dc`
+join independently validated ASIC-002 and ASIC-003 projections into one
+same-attempt live production chain. Current production-work tests prove
+enqueue, dispatch context, generation advance, clean-jobs, reconnect, and
+redaction. Production-session tests bind ASIC effects to generation and
+valid-job context. Reference verification and `just package` passed. See this
+plan's `RESULT.md`, `WORKLOG.md`, and
+`docs/parity/evidence/asic10-work-registry/summary.md`.
+
+Completion review: evidence commit `934cf3dc` and transition
+`20260819T150848Z-ASIC-10` promote only `ASIC-10` to `verified` with
+`unit,golden,workflow,hardware-smoke,hardware-regression`; synchronized
+progress is 82/94 active rows (87.2%). Residual risks remain
+result-correlation ownership, submit classification, frequency transitions,
+voltage/fan/thermal behavior, nonzero version-mask or multi-midstate breadth,
+live clean-jobs or reconnect, other ASICs/boards, arbitrary pools/profiles,
+unbounded mining, OTA/recovery, ASIC-11, ASIC-12, STR-08, STR-09, SAFE-12,
+SAFE-13, and release readiness.
