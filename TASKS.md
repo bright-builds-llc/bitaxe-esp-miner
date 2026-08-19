@@ -4176,6 +4176,29 @@ hardware ordinal. Energized-rail values or accuracy, external calibration,
 induced failure, load behavior, long-duration drift, other boards, and release
 readiness remain explicit non-claims.
 
+### task-parity-asic09-mode-separation | 2026-08-18 | Verify BM1366 diagnostic/production separation
+
+- [ ] Independently validate the accepted initialization, work-send,
+      result-parsing, and serial-transport hardware projections.
+- [ ] Bind current diagnostic admission and production executor separation
+      tests to the accepted live production chain.
+- [ ] Produce exact source-bound evidence, run every gate, and promote only
+      `ASIC-09` on the complete redacted quorum.
+
+Plan: `docs/parity/work-plans/20260818T160811Z-ASIC-09/PLAN.md`
+
+Authorization: local tests/docs/builds, committed-public evidence reads, and
+Git only. No credential or protected-attempt access, detector,
+device/USB/network runtime, flash, monitor, mining, restart, recovery, hardware
+attempt, fault injection, external UART/BAP, pins, or electrical work.
+
+Promotion requires independently validated exact-package live initialization,
+production-ready-gated work, qualified result, accepted response, retained
+production UART, safe stop, cleanup, current mode-separation source/tests, and
+redaction. Adjacent ASIC/Stratum rows, arbitrary diagnostics, active controls,
+other boards/ASICs, arbitrary pools/profiles, unbounded mining, OTA/recovery,
+and release readiness remain non-claims.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
