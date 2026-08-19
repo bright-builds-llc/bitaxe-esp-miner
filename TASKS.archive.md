@@ -11489,3 +11489,49 @@ voltage/fan/thermal behavior, nonzero version-mask or multi-midstate breadth,
 live clean-jobs or reconnect, other ASICs/boards, arbitrary pools/profiles,
 unbounded mining, OTA/recovery, ASIC-11, ASIC-12, STR-08, STR-09, SAFE-12,
 SAFE-13, and release readiness.
+
+### task-parity-asic11-result-correlation | 2026-08-19 | Verify BM1366 result correlation before submit
+
+- [x] Independently validate the accepted initialization, work-send, and
+      result-parsing hardware projections.
+- [x] Bind current production-work correlation and production-session tests to
+      the accepted live production chain.
+- [x] Produce exact source-bound evidence, run every gate, and promote only
+      `ASIC-11` on the complete redacted quorum.
+
+Plan: `docs/parity/work-plans/20260819T151339Z-ASIC-11/PLAN.md`
+
+Authorization: local tests/docs/builds, committed-public evidence reads, and
+Git only. No credential or protected-attempt access, detector,
+device/USB/network runtime, flash, monitor, mining, restart, recovery, hardware
+attempt, fault injection, external UART/BAP, pins, or electrical work.
+
+Promotion requires independently validated exact-package live qualified result
+correlation before submit intent, accepted response, safe stop, cleanup,
+current correlation source/tests, and redaction. Adjacent ASIC/Stratum/safety
+rows, submit classification ownership, rejected-share hardware, share-hash or
+network-target policy beyond the accepted qualified result, live clean-jobs or
+reconnect, active controls, other boards/ASICs, arbitrary pools/profiles,
+unbounded mining, OTA/recovery, and release readiness remain non-claims.
+
+Verification review: plan commit `bbbf390d` and evidence commits `69b6f4eb`
+and `9cf0ca65` join independently validated ASIC-002 through ASIC-004
+projections into one same-attempt live production chain and record the exact
+Phase 30 ASIC-11 structured proof. Current production-work tests prove submit
+intent only for the current generation and active job, and fail-close
+uncorrelated, stale, duplicate, generation-mismatched, and drifted-target
+results. Production-session tests bind ASIC effects to generation and
+valid-job context. Reference verification and `just package` passed. See this
+plan's `RESULT.md`, `WORKLOG.md`, and
+`docs/parity/evidence/asic11-result-correlation/summary.md`.
+
+Completion review: evidence commit `9cf0ca65` and transition
+`20260819T151924Z-ASIC-11` promote only `ASIC-11` to `verified` with
+`unit,golden,workflow,hardware-smoke,hardware-regression`; synchronized
+progress is 83/94 active rows (88.3%). Residual risks remain submit-response
+classification ownership, share-reject hardware, frequency transitions,
+voltage/fan/thermal behavior, nonzero version-mask or multi-midstate breadth,
+share-hash or network-target policy beyond the accepted qualified result, live
+clean-jobs or reconnect, other ASICs/boards, arbitrary pools/profiles,
+unbounded mining, OTA/recovery, ASIC-12, STR-08, STR-09, SAFE-12, SAFE-13, and
+release readiness.

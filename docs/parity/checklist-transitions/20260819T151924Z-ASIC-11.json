@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260819T151924Z-ASIC-11",
+  "predecessor_sha256": "6e128036bc7fa75fb8a65615fa67a3215f61d3613a1a052649a9deef782198f6",
+  "result_sha256": "bb8a7d582e9451bce68337b7ec459cdcaddff0ff0ce39d52a4e7eecdbb8b2c71",
+  "row_id": "ASIC-11",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260819T151339Z-ASIC-11/PLAN.md",
+  "plan_sha256": "1cc38f93aaf94e82ae51b0f642b847bb141b791a653ace4674a303f33a02f79f",
+  "result_path": "docs/parity/work-plans/20260819T151339Z-ASIC-11/RESULT.md",
+  "result_document_sha256": "ca9b41dbb840d6df9c94c007007e53af49386495cfea95312623e000c8946363",
+  "before_rust_owned_target": "`crates/bitaxe-stratum/src/v1/production_work.rs`, `crates/bitaxe-stratum/src/v1/mining.rs`, `firmware/bitaxe/src/asic_adapter/production.rs`, `crates/bitaxe-stratum/src/v1/production_session/tests.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-stratum/src/v1/production_work.rs`, `crates/bitaxe-stratum/src/v1/mining.rs`, `firmware/bitaxe/src/asic_adapter/production.rs`, `crates/bitaxe-stratum/src/v1/production_session/tests.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,golden,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Phase 27 maps live BM1366 nonce/result observations to active pool work before submit intent in the firmware bridge and records workflow evidence; see [`docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/summary.md`](evidence/phase-27-live-hardware-asic-and-stratum-bridge/summary.md). Phase 28 consolidation cites [`docs/parity/evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md`](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). The committed evidence records `share_outcome: blocked_safe_prerequisite`; accepted/rejected live ASIC-derived share proof remains below verified. nonce-vs-target proof and share-hash validation remain non-claims; nonzero version-mask and multi-midstate production support remain non-claims. Phase 30 records [`disposition.md`](evidence/phase-30-live-share-outcome-and-verified-promotion/disposition.md) with `phase30_disposition: no_promotion_no_eligible_evidence`; this row remains below verified.",
+  "after_notes": "Verified at 9cf0ca652a9ff5b493fb9bc220d5d737bf52ba0f: independently validated ASIC-002 through ASIC-004 same-attempt live production chain with accepted share hardware plus current result-correlation and session tests; see [ASIC-11 result](work-plans/20260819T151339Z-ASIC-11/RESULT.md), [summary](evidence/asic11-result-correlation/summary.md), and [Phase 28 summary](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). redaction_status: passed. exact_non_claims: submit-response classification ownership, share-reject hardware, frequency transitions, voltage/fan/thermal behavior, nonzero version-mask or multi-midstate breadth, share-hash or network-target policy beyond the accepted qualified result, live clean-jobs or reconnect, other ASICs/boards, arbitrary pools/profiles, unbounded mining, OTA/recovery, ASIC-12, STR-08, STR-09, SAFE-12, SAFE-13, and release readiness. docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md"
+}

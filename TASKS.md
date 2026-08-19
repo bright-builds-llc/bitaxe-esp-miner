@@ -4176,37 +4176,6 @@ hardware ordinal. Energized-rail values or accuracy, external calibration,
 induced failure, load behavior, long-duration drift, other boards, and release
 readiness remain explicit non-claims.
 
-### task-parity-asic11-result-correlation | 2026-08-19 | Verify BM1366 result correlation before submit
-
-- [x] Independently validate the accepted initialization, work-send, and
-      result-parsing hardware projections.
-- [x] Bind current production-work correlation and production-session tests to
-      the accepted live production chain.
-- [ ] Produce exact source-bound evidence, run every gate, and promote only
-      `ASIC-11` on the complete redacted quorum.
-
-Plan: `docs/parity/work-plans/20260819T151339Z-ASIC-11/PLAN.md`
-
-Authorization: local tests/docs/builds, committed-public evidence reads, and
-Git only. No credential or protected-attempt access, detector,
-device/USB/network runtime, flash, monitor, mining, restart, recovery, hardware
-attempt, fault injection, external UART/BAP, pins, or electrical work.
-
-Promotion requires independently validated exact-package live qualified result
-correlation before submit intent, accepted response, safe stop, cleanup,
-current correlation source/tests, and redaction. Adjacent ASIC/Stratum/safety
-rows, submit classification ownership, rejected-share hardware, share-hash or
-network-target policy beyond the accepted qualified result, live clean-jobs or
-reconnect, active controls, other boards/ASICs, arbitrary pools/profiles,
-unbounded mining, OTA/recovery, and release readiness remain non-claims.
-
-Verification: ASIC-002, ASIC-003, and ASIC-004 independently validated at the
-planned digests. Current production-work and production-session tests passed.
-Reference verification and `just package` passed. See
-`docs/parity/evidence/asic11-result-correlation/summary.md` and this plan's
-`WORKLOG.md` and `RESULT.md`. Promotion remains pending `SOURCE_COMMIT`,
-checklist transition, progress sync, and the ordered final gates.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
