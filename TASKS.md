@@ -4176,6 +4176,29 @@ hardware ordinal. Energized-rail values or accuracy, external calibration,
 induced failure, load behavior, long-duration drift, other boards, and release
 readiness remain explicit non-claims.
 
+### task-parity-asic10-work-registry | 2026-08-19 | Verify pool-derived BM1366 work registry
+
+- [ ] Independently validate the accepted initialization and work-send
+      hardware projections.
+- [ ] Bind current production-work registry and production-session tests to
+      the accepted live production chain.
+- [ ] Produce exact source-bound evidence, run every gate, and promote only
+      `ASIC-10` on the complete redacted quorum.
+
+Plan: `docs/parity/work-plans/20260819T150619Z-ASIC-10/PLAN.md`
+
+Authorization: local tests/docs/builds, committed-public evidence reads, and
+Git only. No credential or protected-attempt access, detector,
+device/USB/network runtime, flash, monitor, mining, restart, recovery, hardware
+attempt, fault injection, external UART/BAP, pins, or electrical work.
+
+Promotion requires independently validated exact-package live pool-derived
+work registration, production dispatch, qualified result, accepted response,
+safe stop, cleanup, current registry source/tests, and redaction. Adjacent
+ASIC/Stratum/safety rows, live clean-jobs or reconnect, active controls, other
+boards/ASICs, arbitrary pools/profiles, unbounded mining, OTA/recovery, and
+release readiness remain non-claims.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
