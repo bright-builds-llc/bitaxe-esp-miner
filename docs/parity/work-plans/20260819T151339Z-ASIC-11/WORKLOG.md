@@ -20,3 +20,23 @@
 - Blocker or next safe action: none for ASIC-11. Commit summary, `WORKLOG.md`,
   and `RESULT.md` as `SOURCE_COMMIT`; then transition only ASIC-11, sync
   progress, archive this task, final-gate, and push.
+
+## 2026-08-19T15:16:49Z | Phase 30 admission correction
+
+- Source commit: `69b6f4ebdac2b4f25bec325a58df707f383561f6`.
+- Actions: first transition `20260819T151649Z-ASIC-11` failed `just parity`
+  because Phase 30 admission requires the conclusion artifact to carry
+  ASIC-11 structured proof. Reverted the uncommitted receipt, checklist,
+  progress, and README. Recorded the three exact ASIC-11 fields on the
+  canonical Phase 30 conclusion and bound the asic11 summary.
+- Verification: conclusion now includes
+  `ASIC-11.asic_result_to_active_work: correlated`,
+  `ASIC-11.submit_intent_from_correlated_result: true`, and
+  `ASIC-11.safe_stop_status: complete` while retaining CFG-07 proof and the
+  STR-09 non-promotion.
+- Evidence:
+  `docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md`
+  plus `docs/parity/evidence/asic11-result-correlation/summary.md`.
+- Outcome: Phase 30 structured proof is now present for a second transition.
+- Blocker or next safe action: commit this correction, re-transition only
+  ASIC-11 with Phase 28 and Phase 30 breadcrumbs, then sync and finalize.

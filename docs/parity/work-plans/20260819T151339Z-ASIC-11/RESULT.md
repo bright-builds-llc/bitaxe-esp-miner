@@ -40,6 +40,13 @@ The following focused gates passed on source `bbbf390d`:
 - `just verify-reference`
 - `just package`
 
+The canonical Phase 30 conclusion now records the three exact ASIC-11 proof
+fields required by parity admission:
+`ASIC-11.asic_result_to_active_work: correlated`,
+`ASIC-11.submit_intent_from_correlated_result: true`, and
+`ASIC-11.safe_stop_status: complete`. CFG-07 proof remains, and STR-09 remains
+unpromoted by that artifact.
+
 ## Conclusion
 
 `ASIC-11` has a closed proof that a live Ultra 205 BM1366 result was parsed

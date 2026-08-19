@@ -50,6 +50,9 @@ that correlation on hardware commit
 | Cleanup confirmed | true |
 | Hardware rerun used | false |
 | Redaction | passed |
+| ASIC-11.asic_result_to_active_work | correlated |
+| ASIC-11.submit_intent_from_correlated_result | true |
+| ASIC-11.safe_stop_status | complete |
 
 ## Current Correlation
 
