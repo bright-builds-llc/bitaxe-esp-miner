@@ -4178,9 +4178,9 @@ readiness remain explicit non-claims.
 
 ### task-parity-asic11-result-correlation | 2026-08-19 | Verify BM1366 result correlation before submit
 
-- [ ] Independently validate the accepted initialization, work-send, and
+- [x] Independently validate the accepted initialization, work-send, and
       result-parsing hardware projections.
-- [ ] Bind current production-work correlation and production-session tests to
+- [x] Bind current production-work correlation and production-session tests to
       the accepted live production chain.
 - [ ] Produce exact source-bound evidence, run every gate, and promote only
       `ASIC-11` on the complete redacted quorum.
@@ -4199,6 +4199,13 @@ rows, submit classification ownership, rejected-share hardware, share-hash or
 network-target policy beyond the accepted qualified result, live clean-jobs or
 reconnect, active controls, other boards/ASICs, arbitrary pools/profiles,
 unbounded mining, OTA/recovery, and release readiness remain non-claims.
+
+Verification: ASIC-002, ASIC-003, and ASIC-004 independently validated at the
+planned digests. Current production-work and production-session tests passed.
+Reference verification and `just package` passed. See
+`docs/parity/evidence/asic11-result-correlation/summary.md` and this plan's
+`WORKLOG.md` and `RESULT.md`. Promotion remains pending `SOURCE_COMMIT`,
+checklist transition, progress sync, and the ordered final gates.
 
 ## Future
 
