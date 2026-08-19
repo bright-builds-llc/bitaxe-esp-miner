@@ -11405,3 +11405,45 @@ Completion review: evidence commit `a5118afb` and transition
 rotation/persistence, STR-09, ASIC-11, arbitrary profiles/pools, active-control
 effects, self-test, BAP/UART, other boards/ASICs, unbounded mining,
 OTA/recovery, and release readiness.
+
+### task-parity-asic09-mode-separation | 2026-08-18 | Verify BM1366 diagnostic/production separation
+
+- [x] Independently validate the accepted initialization, work-send,
+      result-parsing, and serial-transport hardware projections.
+- [x] Bind current diagnostic admission and production executor separation
+      tests to the accepted live production chain.
+- [x] Produce exact source-bound evidence, run every gate, and promote only
+      `ASIC-09` on the complete redacted quorum.
+
+Plan: `docs/parity/work-plans/20260818T160811Z-ASIC-09/PLAN.md`
+
+Authorization: local tests/docs/builds, committed-public evidence reads, and
+Git only. No credential or protected-attempt access, detector,
+device/USB/network runtime, flash, monitor, mining, restart, recovery, hardware
+attempt, fault injection, external UART/BAP, pins, or electrical work.
+
+Promotion requires independently validated exact-package live initialization,
+production-ready-gated work, qualified result, accepted response, retained
+production UART, safe stop, cleanup, current mode-separation source/tests, and
+redaction. Adjacent ASIC/Stratum rows, arbitrary diagnostics, active controls,
+other boards/ASICs, arbitrary pools/profiles, unbounded mining, OTA/recovery,
+and release readiness remain non-claims.
+
+Verification review: plan commit `7f8ca3bb` and evidence commit `db698524`
+join independently validated ASIC-002, ASIC-003, ASIC-004, and ASIC-005
+projections into one same-attempt live production chain. Current adapter-gate
+tests prove fail-closed diagnostic admission, production-command tests prove
+production-only work/result variants, and the production executor source
+contains no diagnostic-work command. Reference verification and `just package`
+passed. See this plan's `RESULT.md`, `WORKLOG.md`, and
+`docs/parity/evidence/asic09-mode-separation/summary.md`.
+
+Completion review: evidence commit `db698524` and transition
+`20260819T145312Z-ASIC-09` promote only `ASIC-09` to `verified` with
+`unit,golden,workflow,hardware-smoke,hardware-regression`; synchronized
+progress is 81/94 active rows (86.2%). Residual risks remain arbitrary
+diagnostic builds, frequency transitions, voltage/fan/thermal behavior,
+nonzero version-mask or multi-midstate breadth, arbitrary-load serial
+behavior, other ASICs/boards, arbitrary pools/profiles, unbounded mining,
+OTA/recovery, ASIC-10, ASIC-11, ASIC-12, STR-08, STR-09, and release
+readiness.

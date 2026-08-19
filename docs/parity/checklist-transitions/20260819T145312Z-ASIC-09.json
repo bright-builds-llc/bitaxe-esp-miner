@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260819T145312Z-ASIC-09",
+  "predecessor_sha256": "ac52112705f2240d7559ca4bcd200b4319ad039c86c36923b174a6f81802cd1d",
+  "result_sha256": "8d8ca5f7e3cb40c1db4514a61023b0b4b2f494fdf8a4a469f2ab6ec59f14e99e",
+  "row_id": "ASIC-09",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260818T160811Z-ASIC-09/PLAN.md",
+  "plan_sha256": "b813a749174cc44f0a27d6e5fb6be9c6f7003d95a83405a54511b4f665df05ca",
+  "result_path": "docs/parity/work-plans/20260818T160811Z-ASIC-09/RESULT.md",
+  "result_document_sha256": "72dd8afab74d6e9a4ce62d547631bb14e8e239252804c627568e9ba1db95e581",
+  "before_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/production.rs`, `crates/bitaxe-stratum/src/v1/production_session.rs`, `firmware/bitaxe/src/asic_adapter/status.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/production.rs`, `crates/bitaxe-stratum/src/v1/production_session.rs`, `firmware/bitaxe/src/asic_adapter/status.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,golden,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Phase 24 adds production-only BM1366 command/status primitives and guarded dispatch proof; see [`docs/parity/evidence/phase-24-bm1366-production-work-path/summary.md`](evidence/phase-24-bm1366-production-work-path/summary.md). Phase 28 consolidation cross-links Phase 27 blocked categories; see [`docs/parity/evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md`](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). Live hardware production behavior remains below `verified`. nonzero version-mask and multi-midstate production support remain Phase 24 non-claims; accepted/rejected share outcomes remain Phase 25-owned non-claims; live Stratum socket success remains a Phase 25-owned non-claim; API/WebSocket/statistics/scoreboard promotion remains a Phase 26-owned non-claim.",
+  "after_notes": "Verified at db6985248e9b6e7726d2b9aae19ee502b9f0fa88: independently validated ASIC-002 through ASIC-005 same-attempt live production chain with accepted share hardware plus current fail-closed diagnostic admission and production-only executor source; see [ASIC-09 result](work-plans/20260818T160811Z-ASIC-09/RESULT.md), [summary](evidence/asic09-mode-separation/summary.md), and [Phase 28 summary](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). redaction_status: passed. exact_non_claims: arbitrary diagnostic builds, frequency transitions, voltage/fan/thermal behavior, nonzero version-mask or multi-midstate breadth, arbitrary-load serial behavior, other ASICs/boards, arbitrary pools/profiles, unbounded mining, OTA/recovery, ASIC-10, ASIC-11, ASIC-12, STR-08, STR-09, and release readiness."
+}

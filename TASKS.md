@@ -4176,37 +4176,6 @@ hardware ordinal. Energized-rail values or accuracy, external calibration,
 induced failure, load behavior, long-duration drift, other boards, and release
 readiness remain explicit non-claims.
 
-### task-parity-asic09-mode-separation | 2026-08-18 | Verify BM1366 diagnostic/production separation
-
-- [x] Independently validate the accepted initialization, work-send,
-      result-parsing, and serial-transport hardware projections.
-- [x] Bind current diagnostic admission and production executor separation
-      tests to the accepted live production chain.
-- [ ] Produce exact source-bound evidence, run every gate, and promote only
-      `ASIC-09` on the complete redacted quorum.
-
-Plan: `docs/parity/work-plans/20260818T160811Z-ASIC-09/PLAN.md`
-
-Authorization: local tests/docs/builds, committed-public evidence reads, and
-Git only. No credential or protected-attempt access, detector,
-device/USB/network runtime, flash, monitor, mining, restart, recovery, hardware
-attempt, fault injection, external UART/BAP, pins, or electrical work.
-
-Promotion requires independently validated exact-package live initialization,
-production-ready-gated work, qualified result, accepted response, retained
-production UART, safe stop, cleanup, current mode-separation source/tests, and
-redaction. Adjacent ASIC/Stratum rows, arbitrary diagnostics, active controls,
-other boards/ASICs, arbitrary pools/profiles, unbounded mining, OTA/recovery,
-and release readiness remain non-claims.
-
-Verification: the four accepted public projections independently validated at
-the planned digests. Current adapter-gate and production-command tests passed.
-The production executor source contains no diagnostic-work variant. Reference
-verification and `just package` passed. See
-`docs/parity/evidence/asic09-mode-separation/summary.md` and this plan's
-`WORKLOG.md` and `RESULT.md`. Promotion remains pending `SOURCE_COMMIT`,
-checklist transition, progress sync, and the ordered final gates.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
