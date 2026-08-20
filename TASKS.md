@@ -835,6 +835,37 @@ owner pool/network path is available again, without exposing endpoint or
 credentials. The selector may skip `STAT-003` as environment-blocked and work
 the next actionable parity row meanwhile.
 
+Readiness-gated attempt-005 plan:
+`docs/parity/work-plans/20260820T150151Z-STAT-003/PLAN.md`
+
+- [ ] Add a repo-owned, private-root-exclusive readiness tool that requires
+      three consecutive bounded Stratum V1 configure/subscribe/authorize
+      sessions without submitting shares or exposing protected pool values.
+- [ ] Rotate only the scoreboard workflow's plan/task/path/ordinal contracts
+      from consumed attempt 4 to fresh attempt 5 and pass every focused/full
+      software, privacy, reference, firmware, package, and source gate.
+- [ ] Run the readiness command exactly once. Only after its exact clean-source
+      private result is `ready`, run one detector and the sole conditional
+      attempt-005 conservative mining/share scoreboard capture.
+- [ ] Promote only on the complete campaign/API/SPA/restart persistence quorum;
+      otherwise preserve `implemented`, earliest failure, safe stop, cleanup,
+      public withholding, and no attempt-006.
+
+Authorization: On 2026-08-20 the user explicitly authorized use of the existing
+ignored pool credentials, mining, and share submission to simplify and complete
+STAT-003. The linked immutable plan limits the preflight to three closed
+Stratum V1 handshake sessions and the conditional hardware path to one existing
+400 MHz / 1,100 mV / 100% fan / 600-active-second attempt. It defines exact
+commands, protected roots, privacy, effects, recovery, retry, promotion, and
+stop conditions. No other endpoint, pool, profile, hardware, destructive,
+fault-injection, UART, pin, or electrical effect is authorized.
+
+Verification: Pending.
+
+Completion review: Pending. Attempt-005 is not eligible until the implemented
+readiness tool passes at clean pushed source; a non-ready probe closes without
+detector or hardware use.
+
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
 - [x] Add a typed private-first `/api/theme` capture that binds the exact
