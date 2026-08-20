@@ -4176,45 +4176,6 @@ hardware ordinal. Energized-rail values or accuracy, external calibration,
 induced failure, load behavior, long-duration drift, other boards, and release
 readiness remain explicit non-claims.
 
-### task-parity-asic12-fail-closed-redaction | 2026-08-19 | Verify BM1366 production blocker redaction
-
-- [x] Move exact production status rendering into the host-testable ASIC core
-      and cover every public state and fail-closed blocker reason.
-- [x] Preserve the firmware logging surface while proving closed labels, safe
-      disabled-state fields, and redacted work/result/target/submit context.
-- [x] Validate the accepted ASIC-002 through ASIC-005 projection chain and
-      promote only `ASIC-12` when its full current-source and hardware-backed
-      evidence quorum passes.
-
-Plan: `docs/parity/work-plans/20260820T041751Z-ASIC-12/PLAN.md`
-
-Authorization: local source edits, tests, committed-public evidence reads,
-documentation, build/package, Git commit, and push only. No credentials,
-protected attempt roots, detector, USB/device/network runtime, flash, monitor,
-mining, restart, recovery, hardware attempt, fault injection, external UART,
-BAP accessory, pins, or electrical work.
-
-Evidence and promotion contract: bind the accepted ASIC-002 initialization,
-ASIC-003 work-send, ASIC-004 result-parsing, and ASIC-005 serial-transport
-projections to current exact fail-closed rendering and redaction tests. Public
-evidence may contain only paths, commits, digests, closed labels, booleans,
-counts, and command outcomes. Promote only on independent projection validation,
-current source/tests, accepted-share hardware bridge proof, safe stop, cleanup,
-redaction, and all mandatory gates. Hardware fault injection for every blocker,
-other ASICs/boards, arbitrary loads/pools/profiles, active safety controls,
-OTA/recovery, unbounded mining, and release readiness remain non-claims.
-
-Verification: implementation source `30e0340695e1f307dfcdc7aa6949da07beb616f5`
-moves exact public production status rendering into the pure ASIC core while
-the firmware shell preserves its info/warning levels. Eleven production ASIC,
-21 production-work, and 70 production-session tests pass. All four accepted
-projection validators pass with matching digests and mode `0644`; the ordered
-Rust gates, managed checks, reference verification, and current Ultra 205
-package build pass. The source-bound summary is
-`docs/parity/evidence/asic12-fail-closed-redaction/summary.md`.
-
-Completion review: Pending.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260820T044331Z-ASIC-12",
+  "predecessor_sha256": "bb8a7d582e9451bce68337b7ec459cdcaddff0ff0ce39d52a4e7eecdbb8b2c71",
+  "result_sha256": "12637057a8575bf3d17c5903c7296de00861260c93f43721e3cb8068689df450",
+  "row_id": "ASIC-12",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260820T041751Z-ASIC-12/PLAN.md",
+  "plan_sha256": "95c7204ad0b0388203a54b8ccb9c9c0252704b9fb11f550802ab4b91313e8a8f",
+  "result_path": "docs/parity/work-plans/20260820T041751Z-ASIC-12/RESULT.md",
+  "result_document_sha256": "f3e39b56b089946bd75652be2f95d1d3ee3de643d6317fadb09103628ae2b9a6",
+  "before_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/production.rs`, `crates/bitaxe-stratum/src/v1/production_work.rs`, `firmware/bitaxe/src/asic_adapter/status.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-asic/src/bm1366/production.rs`, `crates/bitaxe-stratum/src/v1/production_work.rs`, `firmware/bitaxe/src/asic_adapter/status.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,golden,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Phase 24 renders production ASIC blockers and statuses as redaction-safe category labels and keeps raw runtime artifacts out of committed evidence; see [`docs/parity/evidence/phase-24-bm1366-production-work-path/summary.md`](evidence/phase-24-bm1366-production-work-path/summary.md). Phase 28 consolidation cross-links Phase 27 blocked categories; see [`docs/parity/evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md`](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). Live hardware production behavior remains below `verified`. nonzero version-mask and multi-midstate production support remain Phase 24 non-claims; accepted/rejected share outcomes remain Phase 25-owned non-claims; live Stratum socket success remains a Phase 25-owned non-claim; API/WebSocket/statistics/scoreboard promotion remains a Phase 26-owned non-claim.",
+  "after_notes": "Verified at d0b5df4b1d36c2ba6d51bf4dfa0d6afd7caad78a: accepted share hardware joins independently validated ASIC-002 through ASIC-005 same-attempt live production evidence with current exact fail-closed public status rendering for all eleven closed reasons and redacted production context; see [ASIC-12 result](work-plans/20260820T041751Z-ASIC-12/RESULT.md), [summary](evidence/asic12-fail-closed-redaction/summary.md), and [Phase 28 summary](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). redaction_status: passed. exact_non_claims: hardware fault injection for every reason, arbitrary diagnostic builds, nonzero version-mask or multi-midstate breadth, arbitrary-load serial behavior, rejected-share hardware, frequency transitions, voltage/fan/thermal behavior, other ASICs/boards, arbitrary pools/profiles, unbounded mining, OTA/recovery, STR-08, STR-09, SAFE-12, SAFE-13, and release readiness."
+}
