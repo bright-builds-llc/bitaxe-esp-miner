@@ -4176,6 +4176,36 @@ hardware ordinal. Energized-rail values or accuracy, external calibration,
 induced failure, load behavior, long-duration drift, other boards, and release
 readiness remain explicit non-claims.
 
+### task-parity-str09-submit-response-classification | 2026-08-20 | Verify live submit-response classification
+
+- [ ] Independently validate the accepted STR-001 socket, STR-006 coordinator,
+      and ASIC-004 result-correlation projections.
+- [ ] Bind current submit-response, live-runtime, and production-session tests
+      to the accepted hardware response.
+- [ ] Add exact STR-09 proof to the canonical Phase 30 artifact and its
+      current-artifact regression, then promote only `STR-09` on the complete
+      redacted quorum.
+
+Plan: `docs/parity/work-plans/20260820T050854Z-STR-09/PLAN.md`
+
+Authorization: local source/tests, committed-public evidence reads,
+documentation, build/package, Git commit, and push only. No credentials,
+protected attempt roots, detector, USB/device/network runtime, flash, monitor,
+mining, restart, recovery, hardware attempt, fault injection, external
+UART/BAP, pins, or electrical work.
+
+Promotion requires an accepted hardware share classified only from matching
+current-generation ASIC-derived submit intent, plus exact-package identity,
+safe stop, cleanup, current tests, independent validation, Phase 30 structured
+proof, and redaction. Rejected-share hardware, stale/mismatched response paths
+on hardware, fallback/reconnect hardware, arbitrary pools, TLS, Stratum v2,
+unbounded mining, other boards/ASICs, updates/recovery, and release readiness
+remain non-claims.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
