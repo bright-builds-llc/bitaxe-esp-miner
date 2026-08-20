@@ -1,0 +1,75 @@
+{
+  "schema_version": "bitaxe-bm1368-protocol-fixtures-v1",
+  "provenance": {
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "source_paths": [
+      "reference/esp-miner/components/asic/bm1368.c",
+      "reference/esp-miner/components/asic/include/bm1368.h",
+      "reference/esp-miner/main/device_config.h"
+    ]
+  },
+  "profile": {
+    "chip_id": 4968,
+    "default_frequency_mhz": 490,
+    "default_voltage_mv": 1166,
+    "difficulty": 256,
+    "core_count": 80,
+    "small_core_count": 1276,
+    "hash_domains": 4,
+    "default_asic_timeout_ms": 500
+  },
+  "commands": {
+    "version_mask": 536862720,
+    "version_mask_payload_hex": "00a49000ffff",
+    "default_baud": 115749,
+    "default_baud_payload_hex": "001800007a31",
+    "max_baud": 1000000,
+    "max_baud_payload_hex": "002811300200",
+    "global_init_payloads_hex": [
+      "00a800070000",
+      "0018ff0fc100",
+      "003c80008b00",
+      "003c80008018",
+      "0014000000ff",
+      "005400000003",
+      "005802111111"
+    ],
+    "single_chip_init_payloads_hex": [
+      "00a8000701f0",
+      "0018f000c100",
+      "003c80008b00",
+      "003c80008018",
+      "003c800082aa"
+    ]
+  },
+  "work": {
+    "job_id": 24,
+    "next_job_id": 48,
+    "num_midstates": 1,
+    "starting_nonce_hex": "01020304",
+    "nbits_hex": "05060708",
+    "ntime_hex": "090a0b0c",
+    "merkle_root_byte": 17,
+    "prev_block_hash_byte": 34,
+    "version_hex": "33343536",
+    "expected_payload_hex": "18010102030405060708090a0b0c1111111111111111111111111111111111111111111111111111111111111111222222222222222222222222222222222222222222222222222222222222222233343536"
+  },
+  "job_result": {
+    "body_hex": "9e401234013f0003",
+    "address_interval": 16,
+    "expected_job_id": 24,
+    "expected_nonce_hex": "3412409e",
+    "expected_asic_index": 2,
+    "expected_core_id": 79,
+    "expected_small_core_id": 15,
+    "expected_version_bits": 24576
+  },
+  "register_result": {
+    "body_hex": "01020304208c0000",
+    "address_interval": 16,
+    "expected_asic_index": 2,
+    "expected_asic_address": 32,
+    "expected_value": 16909060,
+    "expected_register": "total_count"
+  }
+}

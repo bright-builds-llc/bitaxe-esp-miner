@@ -157,7 +157,7 @@ pub(crate) fn transition_frequency_plan(frequency_quarter_mhz: u32) -> Option<Fr
     frequency_plan_for_quarter_mhz(frequency_quarter_mhz)
 }
 
-fn frequency_plan_for_quarter_mhz(target_quarter_mhz: u32) -> Option<FrequencyPlan> {
+pub(crate) fn frequency_plan_for_quarter_mhz(target_quarter_mhz: u32) -> Option<FrequencyPlan> {
     let pll = pll_parameters(target_quarter_mhz)?;
     let vdo_scale = if u16::from(pll.fb_divider) * FREQ_MULT_MHZ / u16::from(pll.refdiv) >= 2400 {
         0x50

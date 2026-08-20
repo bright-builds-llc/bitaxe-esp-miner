@@ -1,4 +1,5 @@
 pub mod bm1366;
+pub mod bm1368;
 pub mod dispatch;
 pub mod error;
 pub mod work_result_investigation;
