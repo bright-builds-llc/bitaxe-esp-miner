@@ -4178,11 +4178,11 @@ readiness remain explicit non-claims.
 
 ### task-parity-asic009-bm1368-core | 2026-08-20 | Implement the pure BM1368 protocol core
 
-- [ ] Add typed BM1368 init, work, result, register, framing, and error
+- [x] Add typed BM1368 init, work, result, register, framing, and error
       behavior under the pure ASIC crate.
-- [ ] Add pinned-reference provenance plus golden protocol fixtures and focused
+- [x] Add pinned-reference provenance plus golden protocol fixtures and focused
       behavioral coverage.
-- [ ] Keep BM1368 firmware dispatch deferred, run every gate, and transition
+- [x] Keep BM1368 firmware dispatch deferred, run every gate, and transition
       only `ASIC-009` to at most `implemented` with `unit,golden` evidence.
 
 Plan: `docs/parity/work-plans/20260820T060848Z-ASIC-009/PLAN.md`
@@ -4198,10 +4198,19 @@ Ultra 205 packaging, and all mandatory gates. `verified` additionally requires
 a supported BM1368 board, firmware adapter, detector-gated hardware smoke/
 regression, safe stop, and redaction; none are authorized or claimed here.
 
-Verification: Pending.
+Verification: Implementation commit
+`1dc17d9b9a8e12319b5ca01db297d6800bd38d46`; 12 focused BM1368 tests,
+124 ASIC-crate tests with 1 existing ignored test, the deferred-dispatch
+regression, Bazel ASIC tests, reference/package checks, ordered Rust gates, and
+Bright Builds checks passed. Evidence:
+`docs/parity/evidence/asic009-bm1368-core/summary.md`.
 
-Completion review: Pending. This task remains active after software
-implementation because hardware-backed parity will still be outstanding.
+Completion review: The authorized pure software scope is complete and supports
+`implemented` with `unit,golden` evidence only. This task remains active and
+unarchived because firmware dispatch, a supported BM1368 board, detector-gated
+hardware regression, safe-stop proof, and redaction are outstanding. Automatic
+selection may treat ASIC-009 as hardware-blocked until those prerequisites
+exist and continue to the next software-actionable row.
 
 ## Future
 
