@@ -838,10 +838,10 @@ the next actionable parity row meanwhile.
 Readiness-gated attempt-005 plan:
 `docs/parity/work-plans/20260820T150151Z-STAT-003/PLAN.md`
 
-- [ ] Add a repo-owned, private-root-exclusive readiness tool that requires
+- [x] Add a repo-owned, private-root-exclusive readiness tool that requires
       three consecutive bounded Stratum V1 configure/subscribe/authorize
       sessions without submitting shares or exposing protected pool values.
-- [ ] Rotate only the scoreboard workflow's plan/task/path/ordinal contracts
+- [x] Rotate only the scoreboard workflow's plan/task/path/ordinal contracts
       from consumed attempt 4 to fresh attempt 5 and pass every focused/full
       software, privacy, reference, firmware, package, and source gate.
 - [ ] Run the readiness command exactly once. Only after its exact clean-source
@@ -860,11 +860,17 @@ commands, protected roots, privacy, effects, recovery, retry, promotion, and
 stop conditions. No other endpoint, pool, profile, hardware, destructive,
 fault-injection, UART, pin, or electrical effect is authorized.
 
-Verification: Pending.
+Verification: Implementation commit
+`2eb620c530f612f7097e1b53d35c1e18b39ced07`; seven focused readiness tests,
+one real CLI/subprocess test, scoreboard Rust/TypeScript and generated-contract
+tests, ordered workspace Rust gates, Bright Builds, all 48 Bazel tests,
+redaction, reference, parity/progress, and package passed. No protected input or
+external/device effect was used during implementation verification.
 
-Completion review: Pending. Attempt-005 is not eligible until the implemented
-readiness tool passes at clean pushed source; a non-ready probe closes without
-detector or hardware use.
+Completion review: Software implementation and attempt rotation are complete.
+Attempt-005 remains ineligible until the sole readiness command passes at clean
+pushed source; a non-ready result closes this plan without detector or hardware
+use. See the linked `WORKLOG.md`.
 
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
