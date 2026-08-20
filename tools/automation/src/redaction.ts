@@ -14,6 +14,7 @@ const semanticSchemas = new Set([
   "bitaxe-ultra205-defaults-evidence-v1",
   "bitaxe-settings-patch-evidence-v1",
   "bitaxe-log-buffer-evidence-v1",
+  "bitaxe-scoreboard-evidence-v2",
   "bitaxe-partition-layout-evidence-v1",
   "bitaxe-network-scan-evidence-v1",
   "bitaxe-asic-initialization-evidence-v1",

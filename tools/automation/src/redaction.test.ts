@@ -26,6 +26,29 @@ test("semantic evidence scanner accepts digests and rejects operational fields",
   await rm(root, { recursive: true });
 });
 
+test("scoreboard v2 retained identity is included in the redaction scan", async () => {
+  // Arrange
+  const root = await mkdtemp(path.join(tmpdir(), "bitaxe-redaction-scoreboard-v2-"));
+  const evidence = path.join(root, "evidence.json");
+  await writeFile(evidence, JSON.stringify({
+    schema_version: "bitaxe-scoreboard-evidence-v2",
+    capture_package_identity_sha256: "0".repeat(64),
+    scoreboard: { post_restart_persistence: true },
+  }));
+
+  try {
+    // Act / Assert
+    assert.equal((await verifySemanticEvidenceRedaction(root)).checked, 1);
+    await writeFile(evidence, JSON.stringify({
+      schema_version: "bitaxe-scoreboard-evidence-v2",
+      poolUser: "private-worker",
+    }));
+    await assert.rejects(verifySemanticEvidenceRedaction(root));
+  } finally {
+    await rm(root, { recursive: true });
+  }
+});
+
 test("UI workflow evidence admits only closed origin and write-only-secret facts", async () => {
   // Arrange
   const root = await mkdtemp(path.join(tmpdir(), "bitaxe-redaction-ui-workflow-"));

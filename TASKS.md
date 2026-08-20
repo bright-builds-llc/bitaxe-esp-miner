@@ -945,9 +945,9 @@ manifest digest.
 Truthful v2 retained-identity evaluation plan:
 `docs/parity/work-plans/20260820T224453Z-STAT-003/PLAN.md`
 
-- [ ] Add strict v1/v2 evidence validation and a retained capture-package
+- [x] Add strict v1/v2 evidence validation and a retained capture-package
       identity commitment without an unavailable manifest-byte claim.
-- [ ] Run one diagnostic-complete v2 protected evaluation and independently
+- [x] Run one diagnostic-complete v2 protected evaluation and independently
       validate/redact the projection.
 - [ ] Promote only on the complete v2 quorum; otherwise preserve
       `implemented`, immutable evidence, and no attempt-006.
@@ -957,6 +957,19 @@ necessary to test and verify this row. The linked plan permits one read-only v2
 protected evaluation and conditional promotion, with no hardware, device,
 network, credential, mining, share, restart, recovery, UART/pin, or electrical
 effect.
+
+Verification: V2 evaluator `cbc5fa7f` passed strict v1/v2 contracts, protected
+success/failure/privacy fixtures, ordered Cargo gates, Bright Builds, all 48
+Bazel tests, firmware build/package, redaction, reference, parity/progress, and
+selector gates. The sole v2 protected command exited zero; independent Rust
+validation and semantic redaction (`checked=1`) passed for projection
+`e8054e9176154f154a82b4c9f5301f9d87f64ca558e2ad117be7c37fc4efe920`.
+
+Completion review: The complete accepted campaign, live SPA, exact restart,
+stable repeats, exact non-difficulty fields/order/count, and one-decimal durable
+difficulty projection now have truthful source-bound public evidence. No
+hardware rerun occurred. `STAT-003` is eligible for its planned isolated
+promotion and task archival.
 
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
