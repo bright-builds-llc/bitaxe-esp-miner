@@ -4178,11 +4178,11 @@ readiness remain explicit non-claims.
 
 ### task-parity-safe12-production-safe-stop | 2026-08-20 | Verify production mining safe stop
 
-- [ ] Independently validate the accepted SAFE-10, STR-006, PWR-002, and
+- [x] Independently validate the accepted SAFE-10, STR-006, PWR-002, and
       PWR-003 hardware projections.
-- [ ] Bind current production-session safe-stop and firmware actuation/status/
+- [x] Bind current production-session safe-stop and firmware actuation/status/
       owner-progress tests to the accepted live stop.
-- [ ] Produce exact source-bound evidence, run every gate, and promote only
+- [x] Produce exact source-bound evidence, run every gate, and promote only
       `SAFE-12` on the complete redacted quorum.
 
 Plan: `docs/parity/work-plans/20260820T052841Z-SAFE-12/PLAN.md`
@@ -4201,7 +4201,13 @@ power-loss interruption, automatic thermal/fan fault recovery, arbitrary
 profiles/pools, other boards/ASICs, unbounded mining, OTA/recovery, and release
 readiness remain non-claims.
 
-Verification: Pending.
+Verification: source `308f312f63951daceb2e49ead2a515e979e91453`
+joins independently validated SAFE-10, STR-006, PWR-002, and PWR-003
+projections with matching digests and mode `0644`. Eight safe-stop tests, 70
+production-session tests, and three focused firmware targets pass. The ordered
+Rust gates, managed checks, reference verification, and current Ultra 205
+package build pass. The source-bound summary is
+`docs/parity/evidence/safe12-production-safe-stop/summary.md`.
 
 Completion review: Pending.
 
