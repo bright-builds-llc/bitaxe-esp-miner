@@ -909,6 +909,24 @@ used; `STAT-003` remains `implemented`. See this plan's `WORKLOG.md` and
 `CLOSURE.md`. A future evidence re-evaluation or attempt requires its own
 immutable authorization and exact pushed-source binding.
 
+Protected attempt-005 re-evaluation plan:
+`docs/parity/work-plans/20260820T220854Z-STAT-003/PLAN.md`
+
+- [ ] Add a repo-owned read-only protected recheck that binds the old capture
+      and corrected clean pushed evaluator without exposing private values.
+- [ ] Recompute every campaign/API/SPA/restart/durable-persistence fact from
+      allowlisted sealed attempt-005 artifacts and publish only after
+      independent validation/redaction.
+- [ ] Promote only on the complete quorum; otherwise preserve `implemented`,
+      immutable protected evidence, projection withholding, and no attempt-006.
+
+Authorization: the user explicitly authorizes this evidence plan and the work
+necessary to test and verify `STAT-003`. The linked plan permits one read-only
+protected attempt-005 re-evaluation and conditional redacted promotion. It
+forbids credentials, external network, detector/device/USB access, flash,
+monitor, mining, shares, restart, recovery, attempt-006, UART/BAP, pins, and
+electrical work.
+
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
 - [x] Add a typed private-first `/api/theme` capture that binds the exact
