@@ -15,13 +15,13 @@ type FailureCategory = Extract<
   "hardware_blocked" | "evidence_invalid" | "timeout" | "process_failed"
 >;
 
-export const expectedPrivateRoot = "scratch/stat003-scoreboard/attempt-004";
-export const expectedWrapperRoot = "scratch/stat003-scoreboard/wrapper-004";
+export const expectedPrivateRoot = "scratch/stat003-scoreboard/attempt-005";
+export const expectedWrapperRoot = "scratch/stat003-scoreboard/wrapper-005";
 export const expectedProjection =
   "docs/parity/evidence/stat003-scoreboard/scoreboard-projection.json";
-export const expectedPlan = "docs/parity/work-plans/20260818T114249Z-STAT-003/PLAN.md";
+export const expectedPlan = "docs/parity/work-plans/20260820T150151Z-STAT-003/PLAN.md";
 export const expectedPlanSha256 =
-  "e39259c4c7f9eadb1f75be96c5475601de9615921f5b04f6c4df454ab2ab661e";
+  "43d13ec599e9f46988f0ebb44607dc000eff95db78c37fdc340fe52e14365684";
 export const expectedReferenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const activeTask = "task-parity-stat003-scoreboard";
 
@@ -141,7 +141,7 @@ export async function validateScoreboardTaskAndSources(
   const maybeEnd = taskDocument.indexOf("\n### ", start + heading.length);
   const block = taskDocument.slice(start, maybeEnd === -1 ? taskDocument.length : maybeEnd);
   if (start === -1 || taskDocument.indexOf(heading, start + heading.length) !== -1
-    || !block.includes(expectedPlan) || !block.includes("attempt-004")
+    || !block.includes(expectedPlan) || !block.includes("attempt-005")
     || sha256(planDocument) !== admittedPlanSha256
     || !planDocument.includes("- Parity row: `STAT-003`")
     || !planDocument.includes(`- Active task: \`${activeTask}\``)) {

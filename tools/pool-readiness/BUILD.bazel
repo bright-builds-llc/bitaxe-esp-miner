@@ -1,0 +1,36 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+
+rust_library(
+    name = "pool_readiness_lib",
+    srcs = [
+        "src/lib.rs",
+        "src/tests.rs",
+    ],
+    crate_name = "bitaxe_pool_readiness",
+    edition = "2021",
+    deps = [
+        "//crates/bitaxe-stratum:bitaxe_stratum",
+        "@crates//:serde",
+        "@crates//:serde_json",
+        "@crates//:thiserror",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_binary(
+    name = "pool-readiness",
+    srcs = ["src/main.rs"],
+    crate_name = "bitaxe_pool_readiness_cli",
+    edition = "2021",
+    deps = [
+        ":pool_readiness_lib",
+        "@crates//:clap",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+rust_test(
+    name = "tests",
+    crate = ":pool_readiness_lib",
+    deps = ["@crates//:tempfile"],
+)

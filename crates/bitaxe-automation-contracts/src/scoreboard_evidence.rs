@@ -91,7 +91,7 @@ impl ScoreboardEvidence {
     pub fn validate(&self) -> Result<(), &'static str> {
         if self.schema_version != SCOREBOARD_EVIDENCE_SCHEMA
             || self.board != 205
-            || self.attempt_ordinal != 4
+            || self.attempt_ordinal != 5
             || self.workflow.command != AutomationCommand::CaptureScoreboardEvidence
         {
             return Err("scoreboard identity is invalid");
@@ -156,7 +156,7 @@ mod tests {
         ScoreboardEvidence {
             schema_version: SCOREBOARD_EVIDENCE_SCHEMA.to_owned(),
             board: 205,
-            attempt_ordinal: 4,
+            attempt_ordinal: 5,
             source_commit: "a".repeat(40),
             reference_commit: "b".repeat(40),
             package_manifest_sha256: "c".repeat(64),

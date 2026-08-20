@@ -14,6 +14,7 @@ members = [
     "tools/device-session",
     "tools/http-transport",
     "tools/parity",
+    "tools/pool-readiness",
     "tools/xtask",
 ]
 default-members = [
@@ -28,6 +29,7 @@ default-members = [
     "tools/device-session",
     "tools/http-transport",
     "tools/parity",
+    "tools/pool-readiness",
     "tools/xtask",
 ]
 

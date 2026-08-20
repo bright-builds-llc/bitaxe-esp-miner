@@ -115,7 +115,7 @@ js_library(
     name = "scoreboard_evidence_inputs",
     srcs = [
         "TASKS.md",
-        "docs/parity/work-plans/20260818T114249Z-STAT-003/PLAN.md",
+        "docs/parity/work-plans/20260820T150151Z-STAT-003/PLAN.md",
         "reference/esp-miner/main/http_server/axe-os/src/app/components/scoreboard/scoreboard.component.ts",
         "reference/esp-miner/main/http_server/axe-os/src/app/services/system.service.ts",
         "reference/esp-miner/main/http_server/http_server.c",
