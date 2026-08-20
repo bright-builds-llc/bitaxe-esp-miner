@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260820T045751Z-STR-08",
+  "predecessor_sha256": "12637057a8575bf3d17c5903c7296de00861260c93f43721e3cb8068689df450",
+  "result_sha256": "409ee4120b22f8396d73d8d9837479e4553e8831714712a321ac62b2576597af",
+  "row_id": "STR-08",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260820T045045Z-STR-08/PLAN.md",
+  "plan_sha256": "18e4a60f4779e6285f2e16a910ede0501b86405b6fe76b60c533f85898b29480",
+  "result_path": "docs/parity/work-plans/20260820T045045Z-STR-08/RESULT.md",
+  "result_document_sha256": "a9768bd2d7e18b901f39f1f6a2e1d8dbc39c1e15d7c8fe1f289d81240397f729",
+  "before_rust_owned_target": "`crates/bitaxe-stratum/src/v1/live_runtime.rs`, `crates/bitaxe-stratum/src/v1/production_session.rs`, `firmware/bitaxe/src/production_mining_session.rs`, `crates/bitaxe-stratum/src/v1/production_session/tests.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-stratum/src/v1/live_runtime.rs`, `crates/bitaxe-stratum/src/v1/production_session.rs`, `firmware/bitaxe/src/production_mining_session.rs`, `crates/bitaxe-stratum/src/v1/production_session/tests.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Phase 25 implements the pure live runtime and gated firmware socket shell; Phase 27 extends that shell with the live ASIC bridge and records workflow evidence; see [`docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/summary.md`](evidence/phase-27-live-hardware-asic-and-stratum-bridge/summary.md). Phase 28 consolidation cites [`docs/parity/evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md`](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). The committed Phase 27 evidence records `share_outcome: blocked_safe_prerequisite`; detector-gated hardware live socket success remains below verified.",
+  "after_notes": "Verified at d4f8c4de1be2fc19b93bd5a71e94ab65d9e1f673: independently validated STR-001 and STR-006 same-attempt exact-package live socket success with accepted share hardware, authorization before ASIC dispatch, ordered safe stop, current lifecycle/transport tests, and redacted context; see [STR-08 result](work-plans/20260820T045045Z-STR-08/RESULT.md), [summary](evidence/str08-live-socket-lifecycle/summary.md), and [Phase 28 summary](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). redaction_status: passed. exact_non_claims: fallback or reconnect on hardware, exact upstream timeout or keepalive option equivalence, DNS/IP-family preference parity, arbitrary pools, TLS, Stratum v2, rejected-share hardware, unbounded socket stability, other boards, updates, recovery, profitability, STR-09, SAFE-12, SAFE-13, and release readiness."
+}

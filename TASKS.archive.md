@@ -11583,3 +11583,44 @@ or multi-midstate breadth, arbitrary-load serial behavior, rejected-share
 hardware, frequency transitions, voltage/fan/thermal behavior, other
 ASICs/boards, arbitrary pools/profiles, unbounded mining, OTA/recovery,
 STR-08, STR-09, SAFE-12, SAFE-13, and release readiness.
+
+### task-parity-str08-live-socket-lifecycle | 2026-08-19 | Verify the live Stratum socket lifecycle
+
+- [x] Independently validate the accepted STR-001 socket and STR-006
+      coordinator projections.
+- [x] Bind current live-runtime, production-session, and transport-loopback
+      tests to the accepted socket lifecycle.
+- [x] Produce exact source-bound evidence, run every gate, and promote only
+      `STR-08` on the complete redacted quorum.
+
+Plan: `docs/parity/work-plans/20260820T045045Z-STR-08/PLAN.md`
+
+Authorization: local tests, committed-public evidence reads, documentation,
+build/package, Git commit, and push only. No credentials, protected attempt
+roots, detector, USB/device/network runtime, flash, monitor, mining, restart,
+recovery, hardware attempt, fault injection, external UART/BAP, pins, or
+electrical work.
+
+Promotion requires independently validated exact-package live socket success,
+authorization before ASIC dispatch, accepted-share hardware, ordered safe stop,
+cleanup, current lifecycle/transport tests, and redaction. Hardware fallback or
+reconnect, exact upstream timeout/keepalive equivalence, DNS/IP-family parity,
+arbitrary pools, TLS, Stratum v2, rejected-share hardware, unbounded stability,
+other boards, updates/recovery, and release readiness remain non-claims.
+
+Verification: source `8f86924a34e3988da15b0bc6b274ecd1c3806c21`
+joins independently validated STR-001 and STR-006 projections with matching
+digests and mode `0644`. Forty-six live-runtime tests, 70 production-session
+tests, and the firmware production-transport loopback target pass. The ordered
+Rust gates, managed checks, reference verification, and current Ultra 205
+package build pass. The source-bound summary is
+`docs/parity/evidence/str08-live-socket-lifecycle/summary.md`.
+
+Completion review: plan commit `8f86924a`, evidence commit `d4f8c4de`, and
+transition `20260820T045751Z-STR-08` promote only `STR-08` to `verified` with
+`unit,workflow,hardware-smoke,hardware-regression`; synchronized progress is
+85/94 active rows (90.4%). Residual risks remain fallback or reconnect on
+hardware, exact upstream timeout or keepalive equivalence, DNS/IP-family parity,
+arbitrary pools, TLS, Stratum v2, rejected-share hardware, unbounded stability,
+other boards, updates/recovery, profitability, STR-09, SAFE-12, SAFE-13, and
+release readiness.
