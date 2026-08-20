@@ -11668,3 +11668,44 @@ rejected-share hardware, stale/mismatched response paths on hardware,
 fallback/reconnect hardware, arbitrary pools, TLS, Stratum v2, unbounded
 mining, other boards/ASICs, updates/recovery, profitability, SAFE-12, SAFE-13,
 and release readiness.
+
+### task-parity-safe12-production-safe-stop | 2026-08-20 | Verify production mining safe stop
+
+- [x] Independently validate the accepted SAFE-10, STR-006, PWR-002, and
+      PWR-003 hardware projections.
+- [x] Bind current production-session safe-stop and firmware actuation/status/
+      owner-progress tests to the accepted live stop.
+- [x] Produce exact source-bound evidence, run every gate, and promote only
+      `SAFE-12` on the complete redacted quorum.
+
+Plan: `docs/parity/work-plans/20260820T052841Z-SAFE-12/PLAN.md`
+
+Authorization: local tests, committed-public evidence reads, documentation,
+build/package, Git commit, and push only. No credentials, protected attempt
+roots, detector, USB/device/network runtime, flash, monitor, mining, restart,
+recovery, hardware attempt, fault injection, external UART/BAP, pins, or
+electrical work.
+
+Promotion requires detector-gated live safety hardware proof for the complete
+ordered production stop, disabled mining/control/submission state, consumed
+lease, terminal confirmation, cleanup, current tests, independent validation,
+and redaction. Fault-injected hardware stop, electrical timing/waveforms,
+power-loss interruption, automatic thermal/fan fault recovery, arbitrary
+profiles/pools, other boards/ASICs, unbounded mining, OTA/recovery, and release
+readiness remain non-claims.
+
+Verification: source `308f312f63951daceb2e49ead2a515e979e91453`
+joins independently validated SAFE-10, STR-006, PWR-002, and PWR-003
+projections with matching digests and mode `0644`. Eight safe-stop tests, 70
+production-session tests, and three focused firmware targets pass. The ordered
+Rust gates, managed checks, reference verification, and current Ultra 205
+package build pass. The source-bound summary is
+`docs/parity/evidence/safe12-production-safe-stop/summary.md`.
+
+Completion review: plan commit `308f312f`, evidence commit `5224ef05`, and
+transition `20260820T054247Z-SAFE-12` promote only `SAFE-12` to `verified` with
+`unit,workflow,hardware-smoke,hardware-regression`; synchronized progress is
+87/94 active rows (92.6%). Residual risks remain fault-injected hardware stop,
+electrical timing/waveforms, power-loss interruption, automatic thermal/fan
+fault recovery, arbitrary profiles/pools, other boards/ASICs, unbounded mining,
+OTA/recovery, SAFE-13, and release readiness.

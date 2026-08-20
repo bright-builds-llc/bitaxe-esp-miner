@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260820T054247Z-SAFE-12",
+  "predecessor_sha256": "dae8456e2ffa7a40216581e34eaa6b1961140574c6b2e2a2e35c2cc2389f9a91",
+  "result_sha256": "698b5607f36568d8432b4e9f2a737d8bd1673c14b958b2628da4bd35bdee1ec5",
+  "row_id": "SAFE-12",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260820T052841Z-SAFE-12/PLAN.md",
+  "plan_sha256": "e274a974b44503c189772026fc8797b7ea1c0a2db0ec2495725ddd2287494de9",
+  "result_path": "docs/parity/work-plans/20260820T052841Z-SAFE-12/RESULT.md",
+  "result_document_sha256": "cc440a414bb21da3e08425c4eb9b14c439187db2637e3a832b964b6ab33c8715",
+  "before_rust_owned_target": "`crates/bitaxe-stratum/src/v1/production_session.rs`, `firmware/bitaxe/src/production_mining_session.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`, `docs/parity/evidence/phase-25-live-stratum-runtime-and-safe-stop/safe-stop.md`",
+  "after_rust_owned_target": "`crates/bitaxe-stratum/src/v1/production_session.rs`, `firmware/bitaxe/src/production_mining_session.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`, `docs/parity/evidence/phase-25-live-stratum-runtime-and-safe-stop/safe-stop.md`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Phase 25 implements and records safe-stop markers for socket stopped, work invalidated, mining disabled, hardware control disabled, work submission disabled, and post-stop snapshot updated; see [`safe-stop.md`](evidence/phase-25-live-stratum-runtime-and-safe-stop/safe-stop.md). Phase 28 consolidation cites [`docs/parity/evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md`](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md) and inherits `safe_stop_status: blocked` from Phase 27. Status remains below `verified` without detector-gated live stop proof. Hardware-level live runtime stop remains below verified.",
+  "after_notes": "Verified at 5224ef05c73d631f170bc90436a24d2d27566787: detector-gated live safety hardware proof joins independently validated SAFE-10, STR-006, PWR-002, and PWR-003 evidence for an accepted campaign, ordered production stop, complete rollback, ASIC/core-rail disable, consumed terminal state, cleanup, current tests, and redaction; see [SAFE-12 result](work-plans/20260820T052841Z-SAFE-12/RESULT.md), [summary](evidence/safe12-production-safe-stop/summary.md), and [Phase 28 summary](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). redaction_status: passed. exact_non_claims: fault-injected safe stop on hardware, per-step electrical timing or waveform measurement, power-loss interruption, automatic thermal or fan fault recovery, arbitrary profiles/pools, other boards/ASICs, unbounded mining, OTA/recovery, SAFE-13, and release readiness."
+}
