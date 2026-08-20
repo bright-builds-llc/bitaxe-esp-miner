@@ -4178,11 +4178,11 @@ readiness remain explicit non-claims.
 
 ### task-parity-safe13-live-watchdog-responsiveness | 2026-08-20 | Verify watchdog responsiveness under live load
 
-- [ ] Independently validate the accepted SAFE-10, STR-006, and runtime-health
+- [x] Independently validate the accepted SAFE-10, STR-006, and runtime-health
       projections.
-- [ ] Bind current watchdog/runtime-health/session tests and firmware owner-
+- [x] Bind current watchdog/runtime-health/session tests and firmware owner-
       progress/checkpoint observation targets to the accepted live campaign.
-- [ ] Produce exact source-bound evidence, run every gate, and promote only
+- [x] Produce exact source-bound evidence, run every gate, and promote only
       `SAFE-13` on the complete redacted quorum.
 
 Plan: `docs/parity/work-plans/20260820T054935Z-SAFE-13/PLAN.md`
@@ -4201,7 +4201,14 @@ and redaction. Deliberate starvation/stalls on hardware, actual watchdog reset/
 recovery, unbounded load, every firmware task, other boards/ASICs, fault
 injection, OTA/recovery, and release readiness remain non-claims.
 
-Verification: Pending.
+Verification: source `57dba7b6673e5a25e28c5b1b4db83662d91735f3`
+joins independently validated SAFE-10, STR-006, and runtime-health projections
+with matching digests and mode `0644`. Six watchdog, 27 runtime-health, and 70
+production-session tests pass, as do the focused firmware progress/checkpoint/
+observation targets. The ordered Rust gates, managed checks, reference
+verification, and current Ultra 205 package build pass. The source-bound
+summary is
+`docs/parity/evidence/safe13-live-watchdog-responsiveness/summary.md`.
 
 Completion review: Pending.
 
