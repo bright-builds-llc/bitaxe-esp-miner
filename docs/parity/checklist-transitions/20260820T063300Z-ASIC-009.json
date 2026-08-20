@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260820T063300Z-ASIC-009",
+  "predecessor_sha256": "308d201172595c7729b25856f9b8b2123dc5aa7bd73adcf2f9482a7e4c496f67",
+  "result_sha256": "ef092e093c40143871041b16ceeafd1342c3d5dbfa8660102605b65f893dca80",
+  "row_id": "ASIC-009",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260820T060848Z-ASIC-009/PLAN.md",
+  "plan_sha256": "d46fecee642dce61bbd28e5d43f3a569f8d6188a48e124cfbcc13824488ebc81",
+  "result_path": null,
+  "result_document_sha256": null,
+  "before_rust_owned_target": "`crates/bitaxe-asic`",
+  "after_rust_owned_target": "`crates/bitaxe-asic`",
+  "before_status": "not-started",
+  "after_status": "implemented",
+  "before_evidence": "pending",
+  "after_evidence": "unit,golden",
+  "before_notes": "Later board expansion.",
+  "after_notes": "Pure BM1368 protocol core now covers framing/CRC, initialization plans, 82-byte work and 88-byte job frames, job rotation, strict result/register decoding, and pinned-reference golden fixtures; see docs/parity/evidence/asic009-bm1368-core/summary.md and docs/parity/work-plans/20260820T060848Z-ASIC-009/WORKLOG.md. Firmware dispatch, UART/device effects, every BM1368 board, and hardware verification remain unavailable and unclaimed."
+}
