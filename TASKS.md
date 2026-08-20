@@ -4214,6 +4214,35 @@ hardware regression, safe-stop proof, and redaction are outstanding. Automatic
 selection may treat ASIC-009 as hardware-blocked until those prerequisites
 exist and continue to the next software-actionable row.
 
+### task-parity-asic010-bm1397-core | 2026-08-20 | Implement the pure BM1397 protocol core
+
+- [ ] Add typed BM1397 init/frequency, work, result, framing, and error
+      behavior under the pure ASIC crate.
+- [ ] Add pinned-reference provenance plus golden one/four-midstate protocol
+      fixtures and focused behavioral coverage.
+- [ ] Keep BM1397 firmware dispatch deferred, run every gate, and transition
+      only `ASIC-010` to at most `implemented` with `unit,golden` evidence.
+
+Plan: `docs/parity/work-plans/20260820T064119Z-ASIC-010/PLAN.md`
+
+Authorization: local Rust/fixture/docs edits, deterministic tests,
+build/package, Git commit, and push only. No credentials, protected attempt
+roots, detector, USB/device/network runtime, flash, monitor, mining, restart,
+recovery, hardware attempt, fault injection, external UART/BAP, pins, or
+electrical work.
+
+Evidence and status boundary: `implemented` requires the complete pure BM1397
+surface, pinned fixture provenance, current tests, deferred dispatch, unchanged
+Ultra 205 packaging, and every mandatory gate. `verified` additionally requires
+a supported BM1397 board, firmware adapter, detector-gated hardware regression,
+safe stop, and redaction; none are authorized or claimed here.
+
+Verification: Pending.
+
+Completion review: Pending. This task remains active after pure software
+implementation because firmware and hardware-backed parity will remain
+outstanding.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
