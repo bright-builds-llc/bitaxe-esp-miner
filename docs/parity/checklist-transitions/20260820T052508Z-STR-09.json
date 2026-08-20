@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260820T052508Z-STR-09",
+  "predecessor_sha256": "409ee4120b22f8396d73d8d9837479e4553e8831714712a321ac62b2576597af",
+  "result_sha256": "dae8456e2ffa7a40216581e34eaa6b1961140574c6b2e2a2e35c2cc2389f9a91",
+  "row_id": "STR-09",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260820T050854Z-STR-09/PLAN.md",
+  "plan_sha256": "79b7a064108ece1e05f6e1c49963aa62605ed2738d694debc7bd83e5cfa6dddd",
+  "result_path": "docs/parity/work-plans/20260820T050854Z-STR-09/RESULT.md",
+  "result_document_sha256": "f301c418a34fe5795a93c219fa5ba7a16ba871cd601902abc92263d237037a9d",
+  "before_rust_owned_target": "`crates/bitaxe-stratum/src/v1/submit_response.rs`, `tools/parity/src/mining_allow.rs`, `docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/share-outcome.md`",
+  "after_rust_owned_target": "`crates/bitaxe-stratum/src/v1/submit_response.rs`, `tools/parity/src/mining_allow.rs`, `docs/parity/evidence/phase-27-live-hardware-asic-and-stratum-bridge/share-outcome.md`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Phase 27 classifies submit responses through `SubmitIntent` plus matching response identity and records the current `share_outcome: blocked_safe_prerequisite` in the live hardware bridge evidence root; see [`share-outcome.md`](evidence/phase-27-live-hardware-asic-and-stratum-bridge/share-outcome.md) and Phase 28 [`share-outcome.md`](evidence/phase-28-hardware-evidence-and-checklist-promotion/share-outcome.md). Phase 28 consolidation cites [`docs/parity/evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md`](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). Status remains below `verified` while `share_outcome: blocked_safe_prerequisite` persists. Accepted or rejected shares remain non-claims until detector-gated live hardware evidence with ASIC bridge correlation exists. Phase 30 records [`disposition.md`](evidence/phase-30-live-share-outcome-and-verified-promotion/disposition.md) with `phase30_disposition: no_promotion_no_eligible_evidence`; this row remains below verified.",
+  "after_notes": "Verified at 0e9e1abf0901796392b992cc5c7a1ad7ac593537: independently validated STR-001, STR-006, and ASIC-004 same-attempt accepted share hardware proof with asic bridge correlation, matching current-generation submit intent and response identity, ordered safe stop, current classification tests, and redaction; see [STR-09 result](work-plans/20260820T050854Z-STR-09/RESULT.md), [summary](evidence/str09-submit-response-classification/summary.md), and [Phase 28 summary](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). redaction_status: passed. exact_non_claims: rejected-share hardware, mismatched or stale response paths on hardware, fallback or reconnect on hardware, exact upstream timeout or keepalive equivalence, arbitrary pools, TLS, Stratum v2, unbounded mining, other boards/ASICs, updates, recovery, profitability, SAFE-12, SAFE-13, and release readiness. docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md"
+}

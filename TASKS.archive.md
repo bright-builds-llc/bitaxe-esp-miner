@@ -11624,3 +11624,47 @@ hardware, exact upstream timeout or keepalive equivalence, DNS/IP-family parity,
 arbitrary pools, TLS, Stratum v2, rejected-share hardware, unbounded stability,
 other boards, updates/recovery, profitability, STR-09, SAFE-12, SAFE-13, and
 release readiness.
+
+### task-parity-str09-submit-response-classification | 2026-08-20 | Verify live submit-response classification
+
+- [x] Independently validate the accepted STR-001 socket, STR-006 coordinator,
+      and ASIC-004 result-correlation projections.
+- [x] Bind current submit-response, live-runtime, and production-session tests
+      to the accepted hardware response.
+- [x] Add exact STR-09 proof to the canonical Phase 30 artifact and its
+      current-artifact regression, then promote only `STR-09` on the complete
+      redacted quorum.
+
+Plan: `docs/parity/work-plans/20260820T050854Z-STR-09/PLAN.md`
+
+Authorization: local source/tests, committed-public evidence reads,
+documentation, build/package, Git commit, and push only. No credentials,
+protected attempt roots, detector, USB/device/network runtime, flash, monitor,
+mining, restart, recovery, hardware attempt, fault injection, external
+UART/BAP, pins, or electrical work.
+
+Promotion requires an accepted hardware share classified only from matching
+current-generation ASIC-derived submit intent, plus exact-package identity,
+safe stop, cleanup, current tests, independent validation, Phase 30 structured
+proof, and redaction. Rejected-share hardware, stale/mismatched response paths
+on hardware, fallback/reconnect hardware, arbitrary pools, TLS, Stratum v2,
+unbounded mining, other boards/ASICs, updates/recovery, and release readiness
+remain non-claims.
+
+Verification: implementation source `532ab568228312157b3164820d9ad9f9ae221dbf`
+adds the three exact STR-09 Phase 30 fields and requires all current promotions
+in the checked-in artifact regressions. Six submit-response, 46 live-runtime,
+and 70 production-session tests pass, as does the parity target. All three
+accepted projection validators pass with matching digests and mode `0644`; the
+ordered Rust gates, managed checks, reference verification, and current Ultra
+205 package build pass. The source-bound summary is
+`docs/parity/evidence/str09-submit-response-classification/summary.md`.
+
+Completion review: implementation commit `532ab568`, evidence commit
+`0e9e1abf`, and transition `20260820T052508Z-STR-09` promote only `STR-09` to
+`verified` with `unit,workflow,hardware-smoke,hardware-regression`;
+synchronized progress is 86/94 active rows (91.5%). Residual risks remain
+rejected-share hardware, stale/mismatched response paths on hardware,
+fallback/reconnect hardware, arbitrary pools, TLS, Stratum v2, unbounded
+mining, other boards/ASICs, updates/recovery, profitability, SAFE-12, SAFE-13,
+and release readiness.
