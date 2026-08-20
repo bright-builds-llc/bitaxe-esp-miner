@@ -1,4 +1,4 @@
-import { access, chmod, mkdir, readFile, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
+import { access, chmod, lstat, mkdir, readFile, readdir, rename, stat, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -58,7 +58,7 @@ type SystemIdentity = Readonly<{
   startMiningOnBoot: boolean;
 }>;
 
-type CampaignQuorum = Readonly<{
+export type CampaignQuorum = Readonly<{
   resultDigest: string;
   networkDigest: string;
   diagnosticsDigest: string;
@@ -88,12 +88,22 @@ async function requireMode(candidate: string, mode: number, directory: boolean):
   }
 }
 
-async function requirePrivateTreeModes(root: string): Promise<void> {
-  await requireMode(root, 0o700, true);
+export async function requirePrivateTreeModes(root: string): Promise<void> {
+  const rootMetadata = await lstat(root);
+  if (rootMetadata.isSymbolicLink() || !rootMetadata.isDirectory()
+    || (rootMetadata.mode & 0o777) !== 0o700) {
+    throw failure("evidence_invalid", "protected evidence mode is invalid");
+  }
   for (const entry of await readdir(root, { withFileTypes: true })) {
     const candidate = path.join(root, entry.name);
     if (entry.isDirectory()) await requirePrivateTreeModes(candidate);
-    else await requireMode(candidate, 0o600, false);
+    else {
+      const metadata = await lstat(candidate);
+      if (metadata.isSymbolicLink() || !metadata.isFile()
+        || (metadata.mode & 0o777) !== 0o600) {
+        throw failure("evidence_invalid", "protected evidence mode is invalid");
+      }
+    }
   }
 }
 
@@ -176,7 +186,7 @@ async function runCampaign(
   }
 }
 
-async function campaignQuorum(campaignRoot: string): Promise<CampaignQuorum> {
+export async function campaignQuorum(campaignRoot: string): Promise<CampaignQuorum> {
   const result = await readJson(path.join(campaignRoot, "campaign-result.json"), "campaign result");
   const network = await readJson(path.join(campaignRoot, "campaign-network.private.json"), "campaign network");
   const diagnostics = await readJson(path.join(campaignRoot, "campaign-diagnostics.private.json"), "campaign diagnostics");

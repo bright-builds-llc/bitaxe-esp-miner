@@ -56,7 +56,7 @@ test("real child campaign API and restart publish only closed scoreboard evidenc
     // Assert
     assert.equal(evidence.scoreboard.entry_count, 2);
     assert.equal(evidence.scoreboard.post_restart_persistence, true);
-    assert.equal(evidence.source.source_path_count, 31);
+    assert.equal(evidence.source.source_path_count, 32);
     const projection = path.join(fixture.root, fixture.options.projection);
     assert.equal((await stat(projection)).mode & 0o777, 0o644);
     assert.doesNotMatch(
@@ -388,7 +388,7 @@ test("current immutable STAT-003 task and source inventory pass", async () => {
   const inventory = await validateScoreboardTaskAndSources(root, expectedPlanSha256);
 
   // Assert
-  assert.equal(inventory.pathCount, 31);
+  assert.equal(inventory.pathCount, 32);
   assert.match(inventory.digest, /^[0-9a-f]{64}$/u);
 });
 

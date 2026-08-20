@@ -122,6 +122,18 @@ js_binary(
     entry_point = "dist/cli.js",
 )
 
+js_binary(
+    name = "recheck_scoreboard_evidence",
+    chdir = "../../../..",
+    data = [
+        ":automation_sources",
+        ":automation_ts",
+        "//:scoreboard_evidence_inputs",
+        "//crates/bitaxe-automation-contracts:validate_scoreboard_evidence",
+    ],
+    entry_point = "dist/scoreboard-recheck-cli.js",
+)
+
 [
     js_binary(
         name = target,

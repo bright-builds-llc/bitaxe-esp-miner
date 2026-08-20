@@ -28,6 +28,7 @@ import "./emc2101-thermal-evidence.test.js";
 import "./hashrate-monitor-evidence.test.js";
 import "./hashrate-monitor-invocation.test.js";
 import "./scoreboard-evidence.test.js";
+import "./scoreboard-recheck.test.js";
 import "./scoreboard-invocation.test.js";
 import "./safe10-evidence.test.js";
 import "./cfg07-evidence.test.js";

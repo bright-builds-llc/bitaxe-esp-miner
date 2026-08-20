@@ -210,7 +210,7 @@ export async function validateScoreboardTaskAndSources(
   }
   try {
     const inventory = await scoreboardSourceInventory(workspaceRoot);
-    if (inventory.pathCount !== 31) {
+    if (inventory.pathCount !== 32) {
       throw new Error("path count drifted");
     }
     return inventory;

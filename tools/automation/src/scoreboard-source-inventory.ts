@@ -28,6 +28,7 @@ export const scoreboardSourceFragments = new Map<string, readonly string[]>([
   ["firmware/bitaxe/static/www/assets/app.js", ["async function refreshScoreboard()"]],
   ["firmware/bitaxe/static/www/assets/app.css", [".scoreboard-card table"]],
   ["tools/automation/src/scoreboard-evidence.ts", ["export async function captureScoreboardEvidence("]],
+  ["tools/automation/src/scoreboard-recheck.ts", ["export async function recheckScoreboardEvidence("]],
   ["tools/automation/src/scoreboard-evidence-contract.ts", ["export async function validateScoreboardTaskAndSources("]],
   ["tools/automation/src/scoreboard-source-inventory.ts", []],
   ["tools/automation/src/http.ts", ["export async function fetchJsonArrayFromSameOrigin("]],

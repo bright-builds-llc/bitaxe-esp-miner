@@ -142,6 +142,9 @@ capture-hashrate-monitor-evidence *args:
 capture-scoreboard-evidence *args:
     bazel run //tools/automation:capture_scoreboard_evidence -- {{ args }}
 
+recheck-scoreboard-evidence *args:
+    bazel run //tools/automation:recheck_scoreboard_evidence -- {{ args }}
+
 check-pool-readiness *args:
     bazel run //tools/pool-readiness:pool-readiness -- {{ args }}
 
