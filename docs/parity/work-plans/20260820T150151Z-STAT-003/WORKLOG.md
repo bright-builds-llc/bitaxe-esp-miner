@@ -24,3 +24,26 @@
   the pre-effect clean-source checks, then execute the sole readiness command.
   Continue to package/detector/attempt-005 only if its private result is exactly
   `ready`.
+
+## 2026-08-20T16:24:00Z | readiness and attempt-005
+
+- Source commit: `a31af2873e6b2d41fe47aa18a57626f33aaf099b`.
+- Actions: ran the sole source-bound three-session pool-readiness command; after
+  its exact private `ready` result, built the clean package, ran the sole
+  detector, and ran the sole 600-active-second scoreboard campaign with mining
+  and share submission. No raw protected value was read or published.
+- Verification: readiness passed 3/3 configure/subscribe/authorize sessions
+  without submit. The detector, package, result seal, mode checks, redaction,
+  runtime identity, 20/20 windows, safety, watchdog, safe stop, cleanup, live
+  SPA, software restart, and stable immediate reads passed. The campaign
+  recorded 19 qualified accepted shares and zero rejects.
+- Evidence: protected attempt-005 result and seal match. Public projection is
+  absent. Closed comparison found 20 entries before and after restart, stable
+  repeats in each epoch, exact equality for job ID, extranonce2, ntime, nonce,
+  and version bits, and difficulty-only mismatch for all 20 entries.
+- Outcome: `hardware_blocked` at `scoreboard restart persistence is invalid`.
+  Pinned source proves the verifier compared full in-memory difficulty against
+  the expected one-decimal NVS reload representation.
+- Blocker or next safe action: close without promotion or rerun. A fresh
+  software-only plan must validate the pinned durable difficulty projection and
+  explicitly govern any later protected attempt-005 re-evaluation.

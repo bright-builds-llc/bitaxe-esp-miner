@@ -844,7 +844,7 @@ Readiness-gated attempt-005 plan:
 - [x] Rotate only the scoreboard workflow's plan/task/path/ordinal contracts
       from consumed attempt 4 to fresh attempt 5 and pass every focused/full
       software, privacy, reference, firmware, package, and source gate.
-- [ ] Run the readiness command exactly once. Only after its exact clean-source
+- [x] Run the readiness command exactly once. Only after its exact clean-source
       private result is `ready`, run one detector and the sole conditional
       attempt-005 conservative mining/share scoreboard capture.
 - [ ] Promote only on the complete campaign/API/SPA/restart persistence quorum;
@@ -867,10 +867,15 @@ tests, ordered workspace Rust gates, Bright Builds, all 48 Bazel tests,
 redaction, reference, parity/progress, and package passed. No protected input or
 external/device effect was used during implementation verification.
 
-Completion review: Software implementation and attempt rotation are complete.
-Attempt-005 remains ineligible until the sole readiness command passes at clean
-pushed source; a non-ready result closes this plan without detector or hardware
-use. See the linked `WORKLOG.md`.
+Completion review: The sole readiness command passed 3/3 bounded Stratum V1
+sessions and objectively changed the prior network boundary. Attempt-005 then
+completed 600,306 active ms, 20/20 windows, 19 accepted shares, fresh safety,
+watchdog, safe stop, cleanup, live SPA, and one valid restart. Promotion was
+withheld because the verifier required full pre/post scoreboard equality even
+though pinned upstream persists difficulty with `%.1f` and reloads it with
+`%lf`; every other field and both immediate repeats were exact. Attempt-005 is
+consumed, no attempt-006 is authorized, and `STAT-003` remains implemented.
+See the linked `WORKLOG.md` and `CLOSURE.md`.
 
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
