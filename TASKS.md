@@ -4176,6 +4176,35 @@ hardware ordinal. Energized-rail values or accuracy, external calibration,
 induced failure, load behavior, long-duration drift, other boards, and release
 readiness remain explicit non-claims.
 
+### task-parity-safe12-production-safe-stop | 2026-08-20 | Verify production mining safe stop
+
+- [ ] Independently validate the accepted SAFE-10, STR-006, PWR-002, and
+      PWR-003 hardware projections.
+- [ ] Bind current production-session safe-stop and firmware actuation/status/
+      owner-progress tests to the accepted live stop.
+- [ ] Produce exact source-bound evidence, run every gate, and promote only
+      `SAFE-12` on the complete redacted quorum.
+
+Plan: `docs/parity/work-plans/20260820T052841Z-SAFE-12/PLAN.md`
+
+Authorization: local tests, committed-public evidence reads, documentation,
+build/package, Git commit, and push only. No credentials, protected attempt
+roots, detector, USB/device/network runtime, flash, monitor, mining, restart,
+recovery, hardware attempt, fault injection, external UART/BAP, pins, or
+electrical work.
+
+Promotion requires detector-gated live safety hardware proof for the complete
+ordered production stop, disabled mining/control/submission state, consumed
+lease, terminal confirmation, cleanup, current tests, independent validation,
+and redaction. Fault-injected hardware stop, electrical timing/waveforms,
+power-loss interruption, automatic thermal/fan fault recovery, arbitrary
+profiles/pools, other boards/ASICs, unbounded mining, OTA/recovery, and release
+readiness remain non-claims.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
