@@ -19,33 +19,14 @@ pub fn publish_default_fail_closed_status() {
 }
 
 pub fn publish_production_asic_status(status: ProductionAsicStatus) {
-    log::info!("{}", production_asic_status_log_line(status));
+    log::info!("{}", status.public_log_line());
 }
 
 pub fn publish_production_asic_blocked_status(reason: ProductionAsicBlocker) {
-    log::warn!("{}", production_asic_blocked_status_log_line(reason));
-}
-
-fn production_asic_status_log_line(status: ProductionAsicStatus) -> String {
-    match status {
-        ProductionAsicStatus::InitializedForProduction => {
-            "asic_production_status=initialized".to_owned()
-        }
-        ProductionAsicStatus::WorkDispatched => "asic_production_status=work_dispatched".to_owned(),
-        ProductionAsicStatus::ResultCorrelated => {
-            "asic_production_status=result_correlated".to_owned()
-        }
-        ProductionAsicStatus::FailClosed { reason } => {
-            production_asic_blocked_status_log_line(reason)
-        }
-    }
-}
-
-fn production_asic_blocked_status_log_line(reason: ProductionAsicBlocker) -> String {
-    format!(
-        "asic_production_status=fail_closed reason={} mining=disabled work_submission=disabled",
-        reason.as_str()
-    )
+    log::warn!(
+        "{}",
+        ProductionAsicStatus::FailClosed { reason }.public_log_line()
+    );
 }
 
 pub fn publish_work_result_diagnostic_started_status() {

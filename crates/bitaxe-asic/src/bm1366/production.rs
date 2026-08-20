@@ -140,6 +140,20 @@ impl ProductionAsicStatus {
             Self::InitializedForProduction | Self::WorkDispatched | Self::ResultCorrelated => None,
         }
     }
+
+    /// Renders the exact redaction-safe status line published by firmware.
+    #[must_use]
+    pub fn public_log_line(self) -> String {
+        match self {
+            Self::InitializedForProduction => "asic_production_status=initialized".to_owned(),
+            Self::WorkDispatched => "asic_production_status=work_dispatched".to_owned(),
+            Self::ResultCorrelated => "asic_production_status=result_correlated".to_owned(),
+            Self::FailClosed { reason } => format!(
+                "asic_production_status=fail_closed reason={} mining=disabled work_submission=disabled",
+                reason.as_str()
+            ),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -292,5 +306,62 @@ mod tests {
         // Assert
         assert_eq!(label, "production_fail_closed");
         assert_eq!(maybe_reason, Some(ProductionAsicBlocker::ResultTimeout));
+    }
+
+    #[test]
+    fn production_public_success_status_lines_are_exact() {
+        // Arrange
+        let statuses = [
+            ProductionAsicStatus::InitializedForProduction,
+            ProductionAsicStatus::WorkDispatched,
+            ProductionAsicStatus::ResultCorrelated,
+        ];
+
+        // Act
+        let lines: Vec<String> = statuses
+            .iter()
+            .map(|status| status.public_log_line())
+            .collect();
+
+        // Assert
+        assert_eq!(
+            lines,
+            [
+                "asic_production_status=initialized",
+                "asic_production_status=work_dispatched",
+                "asic_production_status=result_correlated",
+            ]
+        );
+    }
+
+    #[test]
+    fn production_public_fail_closed_lines_are_exact_and_redaction_safe() {
+        // Arrange
+        let blockers = ProductionAsicBlocker::ALL;
+
+        // Act
+        let lines: Vec<String> = blockers
+            .iter()
+            .map(|reason| ProductionAsicStatus::FailClosed { reason: *reason }.public_log_line())
+            .collect();
+
+        // Assert
+        assert_eq!(
+            lines,
+            [
+                "asic_production_status=fail_closed reason=production_prerequisite_blocked mining=disabled work_submission=disabled",
+                "asic_production_status=fail_closed reason=production_asic_init_failed mining=disabled work_submission=disabled",
+                "asic_production_status=fail_closed reason=production_uart_failed mining=disabled work_submission=disabled",
+                "asic_production_status=fail_closed reason=production_reset_failed mining=disabled work_submission=disabled",
+                "asic_production_status=fail_closed reason=production_result_timeout mining=disabled work_submission=disabled",
+                "asic_production_status=fail_closed reason=production_result_malformed mining=disabled work_submission=disabled",
+                "asic_production_status=fail_closed reason=production_work_stale mining=disabled work_submission=disabled",
+                "asic_production_status=fail_closed reason=production_job_uncorrelated mining=disabled work_submission=disabled",
+                "asic_production_status=fail_closed reason=production_duplicate_result mining=disabled work_submission=disabled",
+                "asic_production_status=fail_closed reason=production_wrong_session mining=disabled work_submission=disabled",
+                "asic_production_status=fail_closed reason=production_target_mismatch mining=disabled work_submission=disabled",
+            ]
+        );
+        assert!(lines.iter().all(|line| !contains_sensitive_fragment(line)));
     }
 }
