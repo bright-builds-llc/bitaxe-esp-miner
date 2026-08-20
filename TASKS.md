@@ -942,6 +942,22 @@ immutable and no hardware effect occurred. See this plan's `WORKLOG.md` and
 identity and old manifest-admission boundary without fabricating the missing
 manifest digest.
 
+Truthful v2 retained-identity evaluation plan:
+`docs/parity/work-plans/20260820T224453Z-STAT-003/PLAN.md`
+
+- [ ] Add strict v1/v2 evidence validation and a retained capture-package
+      identity commitment without an unavailable manifest-byte claim.
+- [ ] Run one diagnostic-complete v2 protected evaluation and independently
+      validate/redact the projection.
+- [ ] Promote only on the complete v2 quorum; otherwise preserve
+      `implemented`, immutable evidence, and no attempt-006.
+
+Authorization: the user explicitly authorizes the evidence plan and all work
+necessary to test and verify this row. The linked plan permits one read-only v2
+protected evaluation and conditional promotion, with no hardware, device,
+network, credential, mining, share, restart, recovery, UART/pin, or electrical
+effect.
+
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
 - [x] Add a typed private-first `/api/theme` capture that binds the exact
