@@ -4176,6 +4176,33 @@ hardware ordinal. Energized-rail values or accuracy, external calibration,
 induced failure, load behavior, long-duration drift, other boards, and release
 readiness remain explicit non-claims.
 
+### task-parity-asic009-bm1368-core | 2026-08-20 | Implement the pure BM1368 protocol core
+
+- [ ] Add typed BM1368 init, work, result, register, framing, and error
+      behavior under the pure ASIC crate.
+- [ ] Add pinned-reference provenance plus golden protocol fixtures and focused
+      behavioral coverage.
+- [ ] Keep BM1368 firmware dispatch deferred, run every gate, and transition
+      only `ASIC-009` to at most `implemented` with `unit,golden` evidence.
+
+Plan: `docs/parity/work-plans/20260820T060848Z-ASIC-009/PLAN.md`
+
+Authorization: local Rust/fixture/docs edits, tests, build/package, Git commit,
+and push only. No credentials, protected attempt roots, detector,
+USB/device/network runtime, flash, monitor, mining, restart, recovery, hardware
+attempt, fault injection, external UART/BAP, pins, or electrical work.
+
+Evidence and status boundary: `implemented` requires the complete pure protocol
+surface, pinned fixture provenance, current tests, deferred dispatch, unchanged
+Ultra 205 packaging, and all mandatory gates. `verified` additionally requires
+a supported BM1368 board, firmware adapter, detector-gated hardware smoke/
+regression, safe stop, and redaction; none are authorized or claimed here.
+
+Verification: Pending.
+
+Completion review: Pending. This task remains active after software
+implementation because hardware-backed parity will still be outstanding.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
