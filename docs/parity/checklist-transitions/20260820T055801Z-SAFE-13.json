@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260820T055801Z-SAFE-13",
+  "predecessor_sha256": "698b5607f36568d8432b4e9f2a737d8bd1673c14b958b2628da4bd35bdee1ec5",
+  "result_sha256": "308d201172595c7729b25856f9b8b2123dc5aa7bd73adcf2f9482a7e4c496f67",
+  "row_id": "SAFE-13",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260820T054935Z-SAFE-13/PLAN.md",
+  "plan_sha256": "377809918db548e05249e8bac4cb634ea01659c43f874a442557a1d41fb6b8eb",
+  "result_path": "docs/parity/work-plans/20260820T054935Z-SAFE-13/RESULT.md",
+  "result_document_sha256": "8bf815b60e7fd638130d2ef1aa08ad62a864188771b2a67720d4f01b4ad341c9",
+  "before_rust_owned_target": "`crates/bitaxe-safety/src/watchdog.rs`, `firmware/bitaxe/src/safety_adapter/watchdog.rs`, `firmware/bitaxe/src/production_mining_session.rs`, `crates/bitaxe-stratum/src/v1/production_session.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-safety/src/watchdog.rs`, `firmware/bitaxe/src/safety_adapter/watchdog.rs`, `firmware/bitaxe/src/production_mining_session.rs`, `crates/bitaxe-stratum/src/v1/production_session.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,hardware-smoke,hardware-regression",
+  "before_notes": "Phase 25 adds watchdog categories and wrapper/evidence-capture abort markers, but the committed evidence records `watchdog_responsiveness_status: blocked`; see [`summary.md`](evidence/phase-25-live-stratum-runtime-and-safe-stop/summary.md). Phase 28 consolidation cites [`docs/parity/evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md`](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). Status remains below `verified` without detector-gated live evidence. Hardware watchdog responsiveness remains below verified until detector-gated live evidence exists.",
+  "after_notes": "Verified at bb15b6d86acd76ae570665f286dfd22ebf7f1188: detector-gated live safety hardware proof joins independently validated SAFE-10, STR-006, and runtime-health evidence for watchdog validity through all 20 windows of an accepted 600-second campaign, participating fresh feeds, non-regressing sequences, healthy checkpoints, safe stop, cleanup, current tests, and redaction; see [SAFE-13 result](work-plans/20260820T054935Z-SAFE-13/RESULT.md), [summary](evidence/safe13-live-watchdog-responsiveness/summary.md), and [Phase 28 summary](evidence/phase-28-hardware-evidence-and-checklist-promotion/summary.md). redaction_status: passed. exact_non_claims: deliberate watchdog starvation or task stalls on hardware, actual watchdog-triggered reset/recovery, arbitrary long-running or unbounded load, every firmware task, other boards/ASICs, fault injection, OTA/recovery, and release readiness."
+}

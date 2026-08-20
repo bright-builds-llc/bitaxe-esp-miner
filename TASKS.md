@@ -4176,42 +4176,6 @@ hardware ordinal. Energized-rail values or accuracy, external calibration,
 induced failure, load behavior, long-duration drift, other boards, and release
 readiness remain explicit non-claims.
 
-### task-parity-safe13-live-watchdog-responsiveness | 2026-08-20 | Verify watchdog responsiveness under live load
-
-- [x] Independently validate the accepted SAFE-10, STR-006, and runtime-health
-      projections.
-- [x] Bind current watchdog/runtime-health/session tests and firmware owner-
-      progress/checkpoint observation targets to the accepted live campaign.
-- [x] Produce exact source-bound evidence, run every gate, and promote only
-      `SAFE-13` on the complete redacted quorum.
-
-Plan: `docs/parity/work-plans/20260820T054935Z-SAFE-13/PLAN.md`
-
-Authorization: local tests, committed-public evidence reads, documentation,
-build/package, Git commit, and push only. No credentials, protected attempt
-roots, detector, USB/device/network runtime, flash, monitor, mining, restart,
-recovery, hardware attempt, fault injection, external UART/BAP, pins, or
-electrical work.
-
-Promotion requires detector-gated live safety hardware proof for watchdog
-validity through all bounded campaign windows, current subscription/feed/
-progress semantics, fresh participating observation, non-regressing sequences,
-healthy supervisor checkpoints, safe stop, cleanup, independent validation,
-and redaction. Deliberate starvation/stalls on hardware, actual watchdog reset/
-recovery, unbounded load, every firmware task, other boards/ASICs, fault
-injection, OTA/recovery, and release readiness remain non-claims.
-
-Verification: source `57dba7b6673e5a25e28c5b1b4db83662d91735f3`
-joins independently validated SAFE-10, STR-006, and runtime-health projections
-with matching digests and mode `0644`. Six watchdog, 27 runtime-health, and 70
-production-session tests pass, as do the focused firmware progress/checkpoint/
-observation targets. The ordered Rust gates, managed checks, reference
-verification, and current Ultra 205 package build pass. The source-bound
-summary is
-`docs/parity/evidence/safe13-live-watchdog-responsiveness/summary.md`.
-
-Completion review: Pending.
-
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
