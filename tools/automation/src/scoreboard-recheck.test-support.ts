@@ -14,7 +14,6 @@ import type {
 } from "./scoreboard-recheck.js";
 
 const appElfSha256 = "e".repeat(64);
-const packageManifestSha256 = "f".repeat(64);
 
 export type ScoreboardRecheckFixture = Readonly<{
   root: string;
@@ -44,7 +43,7 @@ export async function scoreboardRecheckFixture(name: string): Promise<Scoreboard
   const evaluationPlan = "- Parity row: `STAT-003`\n- Active task: `task-parity-stat003-scoreboard`\n";
   const capturePlanPath = "docs/parity/work-plans/20260820T150151Z-STAT-003/PLAN.md";
   const captureClosurePath = "docs/parity/work-plans/20260820T150151Z-STAT-003/CLOSURE.md";
-  const evaluationPlanPath = "docs/parity/work-plans/20260820T220854Z-STAT-003/PLAN.md";
+  const evaluationPlanPath = "docs/parity/work-plans/20260820T224453Z-STAT-003/PLAN.md";
   await mkdir(path.join(base.root, path.dirname(captureClosurePath)), { recursive: true });
   await mkdir(path.join(base.root, path.dirname(evaluationPlanPath)), { recursive: true });
   await writeFile(path.join(base.root, capturePlanPath), capturePlan);
@@ -75,6 +74,8 @@ export async function scoreboardRecheckFixture(name: string): Promise<Scoreboard
   );
   await writePrivate(path.join(wrapperRoot, "recheck.stdout"), "");
   await writePrivate(path.join(wrapperRoot, "recheck.stderr"), "");
+  await writePrivate(path.join(wrapperRoot, "recheck-v2.stdout"), "");
+  await writePrivate(path.join(wrapperRoot, "recheck-v2.stderr"), "");
 
   const privateRoot = path.join(base.root, "scratch/stat003-scoreboard/attempt-005");
   const campaignRoot = path.join(privateRoot, "campaign");
@@ -147,6 +148,7 @@ export async function scoreboardRecheckFixture(name: string): Promise<Scoreboard
     bootSession,
     bootOrdinal,
     resetReasonCategory,
+    buildTimestampUtc: "2026-08-20T16:00:00Z",
     miningActivity: "safe_blocked",
     startMiningOnBoot: false,
   });
@@ -189,8 +191,6 @@ export async function scoreboardRecheckFixture(name: string): Promise<Scoreboard
       evaluationPlanSha256: sha256(evaluationPlan),
       captureSourceCommit: sourceCommit,
       referenceCommit,
-      appElfSha256,
-      packageManifestSha256,
     },
   };
 }

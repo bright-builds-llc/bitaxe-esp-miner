@@ -122,8 +122,9 @@ pub use release_recovery_evidence::{ReleaseRecoveryEvidence, RELEASE_RECOVERY_EV
 pub use runtime_health_evidence::{RuntimeHealthEvidence, RuntimeHealthObservationEvidence};
 pub use safe10_evidence::{Safe10Evidence, Safe10PrerequisiteEvidence, Safe10SourceEvidence};
 pub use scoreboard_evidence::{
-    ScoreboardEvidence, ScoreboardObservationEvidence, ScoreboardSourceEvidence,
-    SCOREBOARD_EVIDENCE_SCHEMA,
+    ScoreboardEvidence, ScoreboardEvidenceDocument, ScoreboardEvidenceV2,
+    ScoreboardObservationEvidence, ScoreboardSourceEvidence, ScoreboardSourceEvidenceV2,
+    SCOREBOARD_EVIDENCE_SCHEMA, SCOREBOARD_EVIDENCE_V2_SCHEMA,
 };
 pub use screen_flow_evidence::{
     ScreenFlowEvidence, ScreenFlowObservationEvidence, ScreenFlowSourceEvidence,

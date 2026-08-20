@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{AutomationCommand, WorkflowIdentity};
 
 pub const SCOREBOARD_EVIDENCE_SCHEMA: &str = "bitaxe-scoreboard-evidence-v1";
+pub const SCOREBOARD_EVIDENCE_V2_SCHEMA: &str = "bitaxe-scoreboard-evidence-v2";
 
 #[derive(Debug, Clone, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 pub struct ScoreboardSourceEvidence {
@@ -11,6 +12,21 @@ pub struct ScoreboardSourceEvidence {
     pub campaign_result_sha256: String,
     pub campaign_network_sha256: String,
     pub campaign_diagnostics_sha256: String,
+    pub source_inventory_sha256: String,
+    pub source_semantics_current: bool,
+    pub reference_semantics_current: bool,
+    pub source_path_count: u8,
+}
+
+#[derive(Debug, Clone, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
+pub struct ScoreboardSourceEvidenceV2 {
+    pub capture_plan_sha256: String,
+    pub capture_closure_sha256: String,
+    pub evaluation_plan_sha256: String,
+    pub campaign_result_sha256: String,
+    pub campaign_network_sha256: String,
+    pub campaign_diagnostics_sha256: String,
+    pub protected_input_sha256: String,
     pub source_inventory_sha256: String,
     pub source_semantics_current: bool,
     pub reference_semantics_current: bool,
@@ -87,6 +103,38 @@ pub struct ScoreboardEvidence {
     pub redaction_status: String,
 }
 
+#[derive(Debug, Clone, Deserialize, JsonSchema, PartialEq, Serialize)]
+pub struct ScoreboardEvidenceV2 {
+    pub schema_version: String,
+    pub board: u16,
+    pub attempt_ordinal: u8,
+    pub source_commit: String,
+    pub evaluation_source_commit: String,
+    pub reference_commit: String,
+    pub capture_package_identity_sha256: String,
+    pub capture_terminal_boundary: String,
+    pub workflow: WorkflowIdentity,
+    pub source: ScoreboardSourceEvidenceV2,
+    pub scoreboard: ScoreboardObservationEvidence,
+    pub detector_admitted: bool,
+    pub runtime_identity: String,
+    pub campaign_profile: String,
+    pub campaign_duration_seconds: u64,
+    pub campaign_status: String,
+    pub safe_stop_confirmed: bool,
+    pub cleanup_complete: bool,
+    pub hardware_rerun_used: bool,
+    pub private_modes_valid: bool,
+    pub redaction_status: String,
+}
+
+#[derive(Debug, Clone, Deserialize, JsonSchema, PartialEq, Serialize)]
+#[serde(untagged)]
+pub enum ScoreboardEvidenceDocument {
+    V1(ScoreboardEvidence),
+    V2(ScoreboardEvidenceV2),
+}
+
 impl ScoreboardEvidence {
     pub fn validate(&self) -> Result<(), &'static str> {
         if self.schema_version != SCOREBOARD_EVIDENCE_SCHEMA
@@ -135,6 +183,65 @@ impl ScoreboardEvidence {
             || self.redaction_status != "passed"
         {
             return Err("scoreboard campaign evidence is incomplete");
+        }
+        Ok(())
+    }
+}
+
+impl ScoreboardEvidenceV2 {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.schema_version != SCOREBOARD_EVIDENCE_V2_SCHEMA
+            || self.board != 205
+            || self.attempt_ordinal != 5
+            || self.workflow.command != AutomationCommand::CaptureScoreboardEvidence
+            || self.capture_terminal_boundary != "old_verifier_restart_persistence_only"
+        {
+            return Err("scoreboard v2 identity is invalid");
+        }
+        for commit in [
+            &self.source_commit,
+            &self.evaluation_source_commit,
+            &self.reference_commit,
+        ] {
+            if !is_commit(commit) {
+                return Err("scoreboard v2 commit identity is invalid");
+            }
+        }
+        for digest in [
+            &self.capture_package_identity_sha256,
+            &self.workflow.request_sha256,
+            &self.source.capture_plan_sha256,
+            &self.source.capture_closure_sha256,
+            &self.source.evaluation_plan_sha256,
+            &self.source.campaign_result_sha256,
+            &self.source.campaign_network_sha256,
+            &self.source.campaign_diagnostics_sha256,
+            &self.source.protected_input_sha256,
+            &self.source.source_inventory_sha256,
+        ] {
+            if !is_sha256(digest) {
+                return Err("scoreboard v2 digest is invalid");
+            }
+        }
+        if !self.source.source_semantics_current
+            || !self.source.reference_semantics_current
+            || self.source.source_path_count != 32
+            || !self.scoreboard.is_complete()
+        {
+            return Err("scoreboard v2 source or observation evidence is incomplete");
+        }
+        if !self.detector_admitted
+            || self.runtime_identity != "trusted"
+            || self.campaign_profile != "conservative"
+            || self.campaign_duration_seconds != 600
+            || self.campaign_status != "accepted"
+            || !self.safe_stop_confirmed
+            || !self.cleanup_complete
+            || self.hardware_rerun_used
+            || !self.private_modes_valid
+            || self.redaction_status != "passed"
+        {
+            return Err("scoreboard v2 campaign evidence is incomplete");
         }
         Ok(())
     }
@@ -242,5 +349,49 @@ mod tests {
 
         // Assert
         assert_eq!(result, Err("scoreboard identity is invalid"));
+    }
+
+    #[test]
+    fn complete_v2_scoreboard_evidence_passes() {
+        // Arrange
+        let v1 = evidence();
+        let evidence = ScoreboardEvidenceV2 {
+            schema_version: SCOREBOARD_EVIDENCE_V2_SCHEMA.to_owned(),
+            board: v1.board,
+            attempt_ordinal: v1.attempt_ordinal,
+            source_commit: v1.source_commit,
+            evaluation_source_commit: "d".repeat(40),
+            reference_commit: v1.reference_commit,
+            capture_package_identity_sha256: "4".repeat(64),
+            capture_terminal_boundary: "old_verifier_restart_persistence_only".to_owned(),
+            workflow: v1.workflow,
+            source: ScoreboardSourceEvidenceV2 {
+                capture_plan_sha256: "5".repeat(64),
+                capture_closure_sha256: "6".repeat(64),
+                evaluation_plan_sha256: "7".repeat(64),
+                campaign_result_sha256: "8".repeat(64),
+                campaign_network_sha256: "9".repeat(64),
+                campaign_diagnostics_sha256: "a".repeat(64),
+                protected_input_sha256: "b".repeat(64),
+                source_inventory_sha256: "c".repeat(64),
+                source_semantics_current: true,
+                reference_semantics_current: true,
+                source_path_count: 32,
+            },
+            scoreboard: v1.scoreboard,
+            detector_admitted: v1.detector_admitted,
+            runtime_identity: v1.runtime_identity,
+            campaign_profile: v1.campaign_profile,
+            campaign_duration_seconds: v1.campaign_duration_seconds,
+            campaign_status: v1.campaign_status,
+            safe_stop_confirmed: v1.safe_stop_confirmed,
+            cleanup_complete: v1.cleanup_complete,
+            hardware_rerun_used: v1.hardware_rerun_used,
+            private_modes_valid: v1.private_modes_valid,
+            redaction_status: v1.redaction_status,
+        };
+
+        // Act / Assert
+        assert_eq!(evidence.validate(), Ok(()));
     }
 }

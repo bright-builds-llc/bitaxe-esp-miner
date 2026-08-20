@@ -10,7 +10,10 @@ export const scoreboardSourceFragments = new Map<string, readonly string[]>([
   ]],
   ["crates/bitaxe-stratum/src/v1/production_session/runtime/asic.rs", ["ProductionSessionEffect::RecordScoreboard"]],
   ["crates/bitaxe-automation-contracts/src/scoreboard_evidence.rs", ["pub struct ScoreboardEvidence {"]],
-  ["crates/bitaxe-automation-contracts/src/bin/validate_scoreboard_evidence.rs", ["let evidence: ScoreboardEvidence ="]],
+  ["crates/bitaxe-automation-contracts/src/bin/validate_scoreboard_evidence.rs", [
+    "Some(\"bitaxe-scoreboard-evidence-v1\") =>",
+    "Some(\"bitaxe-scoreboard-evidence-v2\") =>",
+  ]],
   ["firmware/bitaxe/src/production_mining_session/scoreboard.rs", ["pub(super) fn record(candidate: ScoreboardCandidate) -> Option<ProductionSessionEvent>"]],
   ["firmware/bitaxe/src/scoreboard_adapter.rs", ["pub fn record_candidate(candidate: ScoreboardCandidate)"]],
   ["firmware/bitaxe/src/runtime_snapshot.rs", ["pub fn projected_scoreboard(_timestamp_ms: u64) -> Vec<ScoreboardEntryWire>"]],

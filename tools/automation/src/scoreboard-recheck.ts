@@ -11,7 +11,7 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 
-import type { ScoreboardEvidence } from "./contracts.generated.js";
+import type { ScoreboardEvidenceV2 } from "./contracts.generated.js";
 import { internalCommandSpec } from "./contracts.generated.js";
 import {
   bootMiningDisabled,
@@ -40,14 +40,12 @@ const expectedPrivateRoot = "scratch/stat003-scoreboard/attempt-005";
 const expectedWrapperRoot = "scratch/stat003-scoreboard/wrapper-005";
 const expectedCapturePlan = "docs/parity/work-plans/20260820T150151Z-STAT-003/PLAN.md";
 const expectedCaptureClosure = "docs/parity/work-plans/20260820T150151Z-STAT-003/CLOSURE.md";
-const expectedEvaluationPlan = "docs/parity/work-plans/20260820T220854Z-STAT-003/PLAN.md";
+const expectedEvaluationPlan = "docs/parity/work-plans/20260820T224453Z-STAT-003/PLAN.md";
 const expectedCapturePlanSha256 = "43d13ec599e9f46988f0ebb44607dc000eff95db78c37fdc340fe52e14365684";
 const expectedCaptureClosureSha256 = "65ea96446527414d7a91af203531f7284f59daaca157b68ddba9598e9de335f5";
-const expectedEvaluationPlanSha256 = "ec0df4b780dd6c9dd1fc6453dfd318feb16d917badd9c0e177db199e9fe1b8ee";
+const expectedEvaluationPlanSha256 = "80188c102499798c1907c9f757861c3ee28bc51206c225653908e0462836b692";
 const expectedCaptureSourceCommit = "a31af2873e6b2d41fe47aa18a57626f33aaf099b";
 const expectedReferenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
-const expectedAppElfSha256 = "6bf80011336101f4820cf84a6b338724b91a86e2547ce91f1a32c3dcfe14549c";
-const expectedPackageManifestSha256 = "e8a14fc2f269fd4472ef160d2fcb994ca300879bbcbfde041363ae6c2784b4bd";
 const activeTask = "task-parity-stat003-scoreboard";
 const portPattern = /^(?:\/dev\/(?:cu\.usbmodem|cu\.usbserial|ttyUSB|ttyACM)[A-Za-z0-9._-]*|COM[0-9]+)$/u;
 
@@ -77,6 +75,8 @@ const wrapperFiles = [
   "detector.stdout",
   "recheck.stderr",
   "recheck.stdout",
+  "recheck-v2.stderr",
+  "recheck-v2.stdout",
 ] as const;
 
 export type ScoreboardRecheckOptions = Readonly<{
@@ -94,8 +94,6 @@ export type ScoreboardRecheckIdentity = Readonly<{
   evaluationPlanSha256: string;
   captureSourceCommit: string;
   referenceCommit: string;
-  appElfSha256: string;
-  packageManifestSha256: string;
 }>;
 
 export const productionScoreboardRecheckIdentity: ScoreboardRecheckIdentity = {
@@ -104,8 +102,6 @@ export const productionScoreboardRecheckIdentity: ScoreboardRecheckIdentity = {
   evaluationPlanSha256: expectedEvaluationPlanSha256,
   captureSourceCommit: expectedCaptureSourceCommit,
   referenceCommit: expectedReferenceCommit,
-  appElfSha256: expectedAppElfSha256,
-  packageManifestSha256: expectedPackageManifestSha256,
 };
 
 type CapturedSystemIdentity = Readonly<{
@@ -114,6 +110,8 @@ type CapturedSystemIdentity = Readonly<{
   resetReason: string;
   miningActivity: string;
   startMiningOnBoot: boolean;
+  appElfSha256: string;
+  buildTimestampUtc: string;
 }>;
 
 async function requiredChildText(
@@ -158,8 +156,13 @@ function capturedSystemIdentity(
   identity: ScoreboardRecheckIdentity,
 ): CapturedSystemIdentity {
   if (requiredString(value, "sourceCommit", "captured system info") !== identity.captureSourceCommit
-    || requiredString(value, "referenceCommit", "captured system info") !== identity.referenceCommit
-    || requiredString(value, "appElfSha256", "captured system info") !== identity.appElfSha256) {
+    || requiredString(value, "referenceCommit", "captured system info") !== identity.referenceCommit) {
+    throw failure("evidence_invalid", "captured package identity is invalid");
+  }
+  const appElfSha256 = requiredString(value, "appElfSha256", "captured system info");
+  const buildTimestampUtc = requiredString(value, "buildTimestampUtc", "captured system info");
+  if (!/^[0-9a-f]{64}$/u.test(appElfSha256)
+    || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$/u.test(buildTimestampUtc)) {
     throw failure("evidence_invalid", "captured package identity is invalid");
   }
   return {
@@ -168,6 +171,8 @@ function capturedSystemIdentity(
     resetReason: requiredString(value, "resetReasonCategory", "captured system info"),
     miningActivity: requiredString(value, "miningActivity", "captured system info"),
     startMiningOnBoot: requiredBoolean(value, "startMiningOnBoot", "captured system info"),
+    appElfSha256,
+    buildTimestampUtc,
   };
 }
 
@@ -289,7 +294,7 @@ async function protectedInputDigest(
     digest.update(relative).update("\0");
     digest.update(await readFile(path.join(privateRoot, relative))).update("\0");
   }
-  for (const name of wrapperFiles.filter((candidate) => !candidate.startsWith("recheck."))) {
+  for (const name of wrapperFiles.filter((candidate) => !candidate.startsWith("recheck"))) {
     digest.update(`wrapper/${name}`).update("\0");
     digest.update(await readFile(path.join(wrapperRoot, name))).update("\0");
   }
@@ -321,7 +326,7 @@ export async function recheckScoreboardEvidence(
   gitProgram: string,
   validatorProgram: string,
   identity: ScoreboardRecheckIdentity = productionScoreboardRecheckIdentity,
-): Promise<ScoreboardEvidence> {
+): Promise<ScoreboardEvidenceV2> {
   const privateRoot = assertWithinWorkspace(workspaceRoot, options.privateRoot);
   const wrapperRoot = assertWithinWorkspace(workspaceRoot, options.wrapperRoot);
   const projection = assertWithinWorkspace(workspaceRoot, options.projection);
@@ -391,6 +396,8 @@ export async function recheckScoreboardEvidence(
   if (after === undefined || after.bootSession === before.bootSession
     || after.bootOrdinal !== before.bootOrdinal + 1
     || after.resetReason !== "software_cpu"
+    || after.appElfSha256 !== before.appElfSha256
+    || after.buildTimestampUtc !== before.buildTimestampUtc
     || !bootMiningDisabled(after.startMiningOnBoot, after.miningActivity)) {
     throw failure("evidence_invalid", "post-restart identity is invalid");
   }
@@ -411,13 +418,21 @@ export async function recheckScoreboardEvidence(
   }
 
   const protectedDigest = await protectedInputDigest(privateRoot, wrapperRoot, restartFiles);
-  const evidence: ScoreboardEvidence = {
-    schema_version: "bitaxe-scoreboard-evidence-v1",
+  const capturePackageIdentitySha256 = sha256(JSON.stringify({
+    source_commit: identity.captureSourceCommit,
+    reference_commit: identity.referenceCommit,
+    app_elf_sha256: before.appElfSha256,
+    build_timestamp_utc: before.buildTimestampUtc,
+  }));
+  const evidence: ScoreboardEvidenceV2 = {
+    schema_version: "bitaxe-scoreboard-evidence-v2",
     board: 205,
     attempt_ordinal: 5,
     source_commit: identity.captureSourceCommit,
+    evaluation_source_commit: currentSource,
     reference_commit: identity.referenceCommit,
-    package_manifest_sha256: identity.packageManifestSha256,
+    capture_package_identity_sha256: capturePackageIdentitySha256,
+    capture_terminal_boundary: "old_verifier_restart_persistence_only",
     workflow: {
       schema_version: "bitaxe-workflow-identity-v1",
       command: "capture-scoreboard-evidence",
@@ -431,10 +446,13 @@ export async function recheckScoreboardEvidence(
       })),
     },
     source: {
-      plan_sha256: identity.evaluationPlanSha256,
+      capture_plan_sha256: identity.capturePlanSha256,
+      capture_closure_sha256: identity.captureClosureSha256,
+      evaluation_plan_sha256: identity.evaluationPlanSha256,
       campaign_result_sha256: campaign.resultDigest,
       campaign_network_sha256: campaign.networkDigest,
       campaign_diagnostics_sha256: campaign.diagnosticsDigest,
+      protected_input_sha256: protectedDigest,
       source_inventory_sha256: inventory.digest,
       source_semantics_current: true,
       reference_semantics_current: true,

@@ -118,6 +118,7 @@ js_library(
         "docs/parity/work-plans/20260820T150151Z-STAT-003/CLOSURE.md",
         "docs/parity/work-plans/20260820T150151Z-STAT-003/PLAN.md",
         "docs/parity/work-plans/20260820T220854Z-STAT-003/PLAN.md",
+        "docs/parity/work-plans/20260820T224453Z-STAT-003/PLAN.md",
         "reference/esp-miner/main/http_server/axe-os/src/app/components/scoreboard/scoreboard.component.ts",
         "reference/esp-miner/main/http_server/axe-os/src/app/services/system.service.ts",
         "reference/esp-miner/main/http_server/http_server.c",

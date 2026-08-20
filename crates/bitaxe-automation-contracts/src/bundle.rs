@@ -76,7 +76,7 @@ pub fn contract_bundle() -> ContractBundle {
             HashrateMonitorEvidence
         ))
         .expect("hashrate monitor evidence schema must serialize"),
-        scoreboard_evidence_schema: serde_json::to_value(schema_for!(ScoreboardEvidence))
+        scoreboard_evidence_schema: serde_json::to_value(schema_for!(ScoreboardEvidenceDocument))
             .expect("scoreboard evidence schema must serialize"),
         safe10_evidence_schema: serde_json::to_value(schema_for!(Safe10Evidence))
             .expect("SAFE-10 evidence schema must serialize"),

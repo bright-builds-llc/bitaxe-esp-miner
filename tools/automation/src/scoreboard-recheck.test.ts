@@ -44,6 +44,7 @@ test("sealed durable-only restart recheck publishes validated evidence", async (
 
     // Assert
     assert.equal(evidence.scoreboard.entry_count, 2);
+    assert.equal(evidence.schema_version, "bitaxe-scoreboard-evidence-v2");
     assert.equal(evidence.scoreboard.post_restart_persistence, true);
     assert.equal(evidence.source.source_path_count, 32);
     assert.equal(evidence.hardware_rerun_used, false);

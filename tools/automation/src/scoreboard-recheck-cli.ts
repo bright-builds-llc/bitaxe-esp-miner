@@ -70,23 +70,37 @@ async function main(): Promise<number> {
       toolProgram(root, "crates/bitaxe-automation-contracts/validate_scoreboard_evidence"),
     );
     process.stdout.write(`${JSON.stringify({
-      schema_version: "bitaxe-scoreboard-recheck-result-v1",
+      schema_version: "bitaxe-scoreboard-recheck-result-v2",
       status: "succeeded",
       projection_published: true,
       entry_count: evidence.scoreboard.entry_count,
       hardware_rerun_used: evidence.hardware_rerun_used,
     })}\n`);
-    process.stderr.write("bitaxe-scoreboard-recheck: completed\n");
+    process.stderr.write("bitaxe-scoreboard-recheck-v2: completed\n");
     return 0;
-  } catch {
+  } catch (error) {
     process.stdout.write(`${JSON.stringify({
-      schema_version: "bitaxe-scoreboard-recheck-result-v1",
+      schema_version: "bitaxe-scoreboard-recheck-result-v2",
       status: "failed",
       projection_published: false,
+      stage: error instanceof Error ? scoreboardRecheckFailureStage(error.message) : "unexpected",
     })}\n`);
-    process.stderr.write("bitaxe-scoreboard-recheck: failed\n");
+    process.stderr.write("bitaxe-scoreboard-recheck-v2: failed\n");
     return 1;
   }
 }
 
 process.exitCode = await main();
+
+function scoreboardRecheckFailureStage(message: string): string {
+  if (/path contract|absent before recheck/u.test(message)) return "preflight";
+  if (/plan binding/u.test(message)) return "plan_binding";
+  if (/mode|inventory|detector handoff/u.test(message)) return "protected_admission";
+  if (/capture terminal|expected boundary/u.test(message)) return "capture_boundary";
+  if (/source identity|source inventory/u.test(message)) return "evaluation_identity";
+  if (/campaign/u.test(message)) return "campaign_quorum";
+  if (/package identity|safe stop|post-restart identity/u.test(message)) return "runtime_identity";
+  if (/retained observation/u.test(message)) return "scoreboard_quorum";
+  if (/publication|child validation/u.test(message)) return "publication";
+  return "unexpected";
+}
