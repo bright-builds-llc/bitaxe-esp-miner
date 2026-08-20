@@ -912,7 +912,7 @@ immutable authorization and exact pushed-source binding.
 Protected attempt-005 re-evaluation plan:
 `docs/parity/work-plans/20260820T220854Z-STAT-003/PLAN.md`
 
-- [ ] Add a repo-owned read-only protected recheck that binds the old capture
+- [x] Add a repo-owned read-only protected recheck that binds the old capture
       and corrected clean pushed evaluator without exposing private values.
 - [ ] Recompute every campaign/API/SPA/restart/durable-persistence fact from
       allowlisted sealed attempt-005 artifacts and publish only after
@@ -926,6 +926,21 @@ protected attempt-005 re-evaluation and conditional redacted promotion. It
 forbids credentials, external network, detector/device/USB access, flash,
 monitor, mining, shares, restart, recovery, attempt-006, UART/BAP, pins, and
 electrical work.
+
+Verification: Evaluator `d7ecc5066babe15a37d181bd4b799c235985f8fa`
+passed focused success/failure, mode, symlink, privacy, source, validator, full
+Cargo/Bazel, firmware/package, Bright Builds, redaction, reference, parity, and
+selector gates before clean push.
+
+Completion review: The sole protected recheck stopped closed with no candidate
+or projection. The retained original package manifest is absent, and an exact-
+source rebuild with the retained original build timestamp still changes the
+path-sensitive app ELF hash, so its byte digest cannot be truthfully
+reconstructed. `STAT-003` remains `implemented`; protected evidence stayed
+immutable and no hardware effect occurred. See this plan's `WORKLOG.md` and
+`CLOSURE.md`. A fresh v2 software contract may bind the retained exact package
+identity and old manifest-admission boundary without fabricating the missing
+manifest digest.
 
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
