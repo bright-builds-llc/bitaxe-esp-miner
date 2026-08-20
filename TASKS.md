@@ -4178,11 +4178,11 @@ readiness remain explicit non-claims.
 
 ### task-parity-asic12-fail-closed-redaction | 2026-08-19 | Verify BM1366 production blocker redaction
 
-- [ ] Move exact production status rendering into the host-testable ASIC core
+- [x] Move exact production status rendering into the host-testable ASIC core
       and cover every public state and fail-closed blocker reason.
-- [ ] Preserve the firmware logging surface while proving closed labels, safe
+- [x] Preserve the firmware logging surface while proving closed labels, safe
       disabled-state fields, and redacted work/result/target/submit context.
-- [ ] Validate the accepted ASIC-002 through ASIC-005 projection chain and
+- [x] Validate the accepted ASIC-002 through ASIC-005 projection chain and
       promote only `ASIC-12` when its full current-source and hardware-backed
       evidence quorum passes.
 
@@ -4204,7 +4204,14 @@ redaction, and all mandatory gates. Hardware fault injection for every blocker,
 other ASICs/boards, arbitrary loads/pools/profiles, active safety controls,
 OTA/recovery, unbounded mining, and release readiness remain non-claims.
 
-Verification: Pending.
+Verification: implementation source `30e0340695e1f307dfcdc7aa6949da07beb616f5`
+moves exact public production status rendering into the pure ASIC core while
+the firmware shell preserves its info/warning levels. Eleven production ASIC,
+21 production-work, and 70 production-session tests pass. All four accepted
+projection validators pass with matching digests and mode `0644`; the ordered
+Rust gates, managed checks, reference verification, and current Ultra 205
+package build pass. The source-bound summary is
+`docs/parity/evidence/asic12-fail-closed-redaction/summary.md`.
 
 Completion review: Pending.
 
