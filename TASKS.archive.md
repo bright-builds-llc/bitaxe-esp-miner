@@ -11750,3 +11750,428 @@ transition `20260820T055801Z-SAFE-13` promote only `SAFE-13` to `verified` with
 88/94 active rows (93.6%). Residual risks remain deliberate starvation/stalls
 on hardware, actual watchdog reset/recovery, unbounded load, every firmware
 task, other boards/ASICs, fault injection, OTA/recovery, and release readiness.
+
+### task-parity-stat003-scoreboard | 2026-08-04 | Implement production scoreboard
+
+- [x] Add the exact stable top-20 valid-nonce scoreboard and bounded indexed
+      persistence codec with focused regression coverage.
+- [x] Carry one redacted candidate from current-generation nonce correlation
+      through a typed production-session effect without changing submit policy.
+- [x] Add transactional indexed-NVS ownership, boot load, read-only API
+      projection, production ownership tests, and every mandatory gate.
+
+Plan: `docs/parity/work-plans/20260804T220000Z-STAT-003/PLAN.md`
+
+Authorization: local software, synthetic nonce/work fixtures, and build work
+only. No hardware attempt, credentials, external service, mining campaign, pool
+connection, frequency/voltage/fan/power effect, OTA, recovery, direct UART, or
+pins.
+
+Verification: Ten focused API tests, three production-session tests, five
+firmware ownership tests, the complete Cargo suite, real firmware build, Bright
+Builds checks, all 33 Bazel tests, parity validation/progress, redaction,
+reference cleanliness, and diff checks passed on the implementation tree.
+
+Completion review: Software implementation is complete at
+`0f3d46a77f5b2492880921cf524bc052d2283bc4` and the typed transition
+`20260804T225500Z-STAT-003` records `implemented` with
+`unit,workflow,api-compare`. Live nonce difficulty, device persistence, API and
+browser behavior, mining, and accepted/rejected share outcomes remain below
+verified, so this task remains active rather than archived.
+
+Verification-promotion plan:
+`docs/parity/work-plans/20260818T064430Z-STAT-003/PLAN.md`
+
+- [x] Add the missing `/scoreboard` operator route and complete private-first
+      Rust/TypeScript evidence contract with source-identity and real-process
+      regressions.
+- [x] Pass focused/full gates, commit and push the exact source/package, then
+      run only the frozen detector and sole conditional attempt-001 capture.
+- [ ] Promote only on the complete causal mining/API/UI/restart durability
+      quorum; otherwise preserve `implemented`, evidence withholding, safe
+      stop, cleanup, recovery policy, and no attempt-002.
+
+Attempt-001 authorization: after clean pushed gates, one exact board-205
+package may run the conservative 400 MHz / 1,100 mV core / 100% fan campaign
+for 600 active seconds. Its normal owner Wi-Fi/pool NVS seed intentionally
+replaces prior settings and scoreboard records before mining; the final state
+keeps the new scoreboard, owner inputs, package defaults, and safe stop. One
+passive receive-only capture and one normal HTTP restart may prove live API/UI
+and boot durability. Private roots, recovery, retry, stop, promotion, privacy,
+and prohibited effects are frozen in the linked plan.
+
+Attempt-001 closure review: exact pushed source/package `a337babc`, pinned
+reference, focused/full gates, one detector, and the sole capture passed
+admission. The campaign completed 600,320 active ms, 20/20 renewed windows,
+204 scoreboard candidates, accepted submit, trusted identity, fresh safety,
+stable watchdog, no panic/mixed reset, terminal HTTP/WebSocket/pool joins,
+confirmed safe stop, ready cleanup, modes, seals, and redaction. It failed
+closed as `terminal_state_unconfirmed` because the latest marker reported
+`campaign_lease_consumed` without authoritative campaign state `consumed`.
+No scoreboard API/SPA/restart step or public projection ran; no retry is
+authorized, and `STAT-003` remains `implemented`. See the linked `CLOSURE.md`.
+
+Next safe action: a fresh software-only plan must reproduce and correct the
+lease-reason/non-consumed-state terminal publication/handoff boundary without
+accepting reason-only terminal state or weakening safe stop. The wrapper's
+missing typed `hardware_blocked` classification is corrected under this plan,
+but a new hardware ordinal requires a separately gated post-fix plan.
+
+Terminal-settlement correction plan:
+`docs/parity/work-plans/20260818T082357Z-STAT-003/PLAN.md`
+
+- [x] Add a closed terminal-settlement reducer and reproduce complete terminal
+      transports racing the coordinator's final analyzer handoff.
+- [x] Request serial closure before finalization, accept/fail only after the
+      final handoff, and preserve every earlier failure and safety gate.
+- [x] Rotate network evidence/consumers to v12, pass all gates, commit/push,
+      and close without hardware, attempt-002, or parity promotion.
+
+Refined diagnosis: the sealed attempt-001 observation contains final campaign
+state `consumed`; the earlier closure's reason-without-state statement applied
+to the concurrent network worker snapshot, not the analyzer's final marker.
+The worker returned failed evidence before coordinator final handoff could
+settle that snapshot. This plan is software-only and does not access protected
+values or authorize another device effect.
+
+Terminal-settlement correction review: source
+`ca42d7de79ee250161904f1ae14f1bc2ff833324` adds one pure reducer, makes
+terminal transport quorum/deadline request capture closure, waits for the
+coordinator's final analyzer handoff before acceptance or failure, preserves
+earlier failures, and rotates network evidence plus hashrate/scoreboard
+consumers to v12 closed diagnostics. Focused tests, the ordered Cargo gates,
+Bright Builds, all 47 Bazel test targets, firmware build/package, redaction,
+reference, parity, and progress checks passed. No hardware or protected input
+was used; `STAT-003` remains `implemented`. See this plan's `WORKLOG.md` and
+`CLOSURE.md`.
+
+Next safe action: create a fresh exact-source/package hardware plan before any
+attempt-002. Preserve the detector, privacy, recovery, retry, stop, and full
+scoreboard API/SPA/restart promotion contract; do not treat this software
+correction as live parity evidence.
+
+Attempt-002 verification plan:
+`docs/parity/work-plans/20260818T090846Z-STAT-003/PLAN.md`
+
+- [x] Rotate the private-first scoreboard evidence workflow from consumed
+      attempt-001 to fresh attempt-002 and bind the new immutable plan, task,
+      ordinal, paths, runfiles, contracts, fixtures, and validators.
+- [x] Pass focused/full gates, commit and push the exact implementation, build
+      the bound package, and run only wrapper-002 detector admission.
+- [x] Run at most one conditional attempt-002 and promote only on the complete
+      accepted mining/API/SPA/restart persistence quorum; otherwise preserve
+      the earliest closed failure and stop without attempt-003.
+
+Attempt-002 authorization: after clean pushed gates, one exact board-205
+package may repeat the conservative 400 MHz / 1,100 mV core / 100% fan campaign
+for 600 accumulated active seconds because the prior terminal race now has a
+targeted verified correction. Its NVS seed intentionally clears earlier
+scoreboard records and retains the owner-supplied Wi-Fi/pool inputs and the new
+safe-stopped scoreboard. One passive same-origin capture and one normal HTTP
+restart may prove UI/API and boot durability. The linked plan freezes private
+roots, exact commands, recovery, retry, stop, promotion, privacy, and prohibited
+effects; starting the capture consumes attempt-002 and no attempt-003 is
+authorized.
+
+Attempt-002 closure review: exact pushed/package-bound source `e9034ea1`, the
+pinned reference, all focused/full gates, 31-path evaluator identity, one
+detector, and the sole capture passed admission. The sealed campaign completed
+600,148 active ms, 20/20 renewed windows, 202 scoreboard candidates, accepted
+submit, trusted identity, fresh safety, stable watchdog, no panic/mixed reset,
+terminal HTTP/WebSocket/pool joins, final consumed serial state, confirmed safe
+stop, and ready cleanup. It failed public `evidence_invalid` because network v12
+reached `accepted_after_serial_close` after natural analyzer closure while the
+model incorrectly required `terminal_close_requested=true`. API/SPA/restart and
+public projection remained withheld; no retry ran and `STAT-003` remains
+`implemented`. See this plan's `WORKLOG.md` and `CLOSURE.md`.
+
+Next safe action: a software-only plan must make closure initiator diagnostic,
+not acceptance truth; false remains a valid closed boolean when final consumed,
+serial-finished, accepted settlement and every transport/safety gate pass. Only
+a later immutable exact-package plan may authorize attempt-003 after that
+targeted correction is fully verified and pushed.
+
+Natural-closure correction plan:
+`docs/parity/work-plans/20260818T095707Z-STAT-003/PLAN.md`
+
+- [x] Prove natural analyzer closure with final consumed state and complete
+      terminal quorum is valid when `terminal_close_requested=false`.
+- [x] Remove only the closure-initiator truth requirement, retain the field as
+      mandatory closed diagnostics, and update both evidence consumers.
+- [x] Pass focused/full gates, commit/push, and close without detector,
+      credentials, device access, attempt-003, or parity promotion.
+
+Authorization: software, deterministic child processes, firmware/package
+builds, docs, and Git only. Attempt-002 remains immutable failed evidence. No
+detector, credentials, protected attempt roots, USB/device/network runtime,
+flash, monitor, mining, restart, public projection, attempt-003, recovery,
+external UART/BAP, pins, or electrical work is authorized by this plan.
+
+Natural-closure correction review: source `9da1d2c3` removes only the worker-
+request initiator from network acceptance truth while retaining its v12 boolean
+diagnostic. Rust and real-child regressions prove worker-requested true and
+analyzer-natural false acceptance, missing/non-boolean rejection, final-state
+requirements, and both hashrate/scoreboard consumers. Focused and mandatory
+gates, all 47 Bazel targets, firmware/package, redaction, reference, parity, and
+progress checks passed. No hardware or protected input was used; `STAT-003`
+remains `implemented`. See this plan's `WORKLOG.md` and `CLOSURE.md`.
+
+Next safe action: a fresh immutable hardware plan may rotate to attempt-003
+only after exact package/source binding and must reuse the complete detector,
+safety, privacy, recovery, cleanup, API/SPA/restart, and promotion contract. A
+recurrence of the same closed boundary after this fix stops further retries.
+
+Attempt-003 verification plan:
+`docs/parity/work-plans/20260818T102038Z-STAT-003/PLAN.md`
+
+- [x] Rotate the private-first scoreboard evidence workflow from consumed
+      attempt-002 to fresh attempt-003 and bind the immutable plan, task,
+      ordinal, paths, runfiles, contracts, fixtures, and validators.
+- [x] Pass focused/full gates, commit/push the exact implementation, build the
+      bound package, and run only wrapper-003 detector admission.
+- [x] Run at most one conditional attempt-003 and promote only on the complete
+      accepted mining/API/SPA/restart persistence quorum; otherwise preserve
+      the earliest closed failure and stop without attempt-004.
+
+Attempt-003 authorization: the exact attempt-002 failure now has a targeted,
+production-shaped, fully gated and pushed correction. After clean pushed gates,
+one exact board-205 package may repeat the conservative 400 MHz / 1,100 mV core /
+100% fan campaign for 600 accumulated active seconds. Its NVS seed intentionally
+clears earlier scoreboard records and retains owner-supplied Wi-Fi/pool inputs
+plus the new safe-stopped scoreboard. One passive same-origin capture and one
+normal HTTP restart may prove UI/API and boot durability. The linked plan
+freezes private roots, commands, recovery, retry, stop, promotion, privacy, and
+prohibited effects; starting capture consumes attempt-003 and no attempt-004 is
+authorized.
+
+Attempt-003 closure review: exact source/package `60a56d49`, pinned reference,
+focused/full gates, one detector, and the sole capture passed admission. The
+sealed campaign completed 600,746 active ms, accepted network v12, 20/20
+renewed windows, 175 candidates, accepted submit, trusted identity, fresh
+safety, stable watchdog, natural final closure, terminal transport/pool joins,
+safe stop, and cleanup. The private 20-entry scoreboard repeated identically
+and the live SPA route passed. The exact restart changed session, incremented
+ordinal once, reported `software_cpu`, and kept boot mining disabled, but the
+verifier rejected closed non-active `paused` because it hardcodes only
+`safe_blocked`. Later scoreboard reads and projection remained withheld; no
+retry ran and `STAT-003` remains `implemented`. See this plan's `WORKLOG.md`
+and `CLOSURE.md`.
+
+Next safe action: a software-only plan must centralize disabled boot mining as
+false boot intent plus either closed non-active state (`paused` or
+`safe_blocked`), reject active/unknown/enabled shapes, and retain every exact
+restart, identity, persistence, safety, privacy, and source gate. Only a later
+immutable plan may authorize attempt-004 after that fix is fully verified and
+pushed; recurrence of the same signature stops further retries.
+
+Stopped-state verifier correction plan:
+`docs/parity/work-plans/20260818T112336Z-STAT-003/PLAN.md`
+
+- [x] Define disabled boot mining once as false boot intent plus closed
+      non-active `paused` or `safe_blocked`, rejecting active/unknown/enabled.
+- [x] Use the predicate in restart admission and final evidence, with pure and
+      full real-child paused-restart regression coverage.
+- [x] Pass focused/full gates, commit/push, and close without detector,
+      credentials, device access, attempt-004, or parity promotion.
+
+Authorization: software, deterministic child processes, firmware/package
+builds, docs, and Git only. Attempt-003 remains immutable failed evidence. No
+detector, credentials, protected attempt roots, USB/device/network runtime,
+flash, monitor, mining, restart, public projection, attempt-004, recovery,
+external UART/BAP, pins, or electrical work is authorized by this plan.
+
+Stopped-state correction review: source `251205a5` centralizes disabled boot
+mining as false boot intent plus `paused` or `safe_blocked`, rejects active/
+unknown/enabled shapes, and uses the predicate for both restart admission and
+evidence. Pure and full real-child paused-restart tests pass alongside existing
+safe-blocked success and restart-drift withholding. Focused/full gates, all 47
+Bazel targets, firmware/package, redaction, reference, parity, and progress
+checks passed. No hardware or protected input was used; `STAT-003` remains
+`implemented`. See this plan's `WORKLOG.md` and `CLOSURE.md`.
+
+Next safe action: a fresh immutable hardware plan may rotate to attempt-004 only
+after exact package/source binding and must retain every detector, safety,
+privacy, recovery, persistence, cleanup, and promotion gate. Recurrence of the
+same stopped-state boundary after this fix stops further retries.
+
+Attempt-004 verification plan:
+`docs/parity/work-plans/20260818T114249Z-STAT-003/PLAN.md`
+
+- [x] Rotate the scoreboard workflow from consumed attempt-003 to fresh
+      attempt-004 and bind the immutable plan, task, ordinal, paths, runfiles,
+      contracts, fixtures, and validators.
+- [x] Pass focused/full gates, commit/push, build the bound package, and run
+      only wrapper-004 detector admission.
+- [x] Run at most one conditional attempt-004 and promote only on the complete
+      accepted campaign/API/SPA/restart persistence quorum; otherwise preserve
+      the first closed failure and stop without attempt-005.
+
+Attempt-004 authorization: attempt-003's exact stopped-state failure now has a
+targeted, exhaustive, real-child, fully gated and pushed correction. After
+clean pushed gates, one exact board-205 package may repeat the conservative
+400 MHz / 1,100 mV core / 100% fan campaign for 600 accumulated active seconds.
+Its NVS seed intentionally clears prior scoreboard records and retains owner
+Wi-Fi/pool inputs plus the safe-stopped scoreboard. One passive same-origin
+capture and one normal HTTP restart may prove UI/API and boot durability. The
+linked plan freezes roots, commands, recovery, retry, stop, promotion, privacy,
+and prohibited effects; starting capture consumes attempt-004 and no
+attempt-005 is authorized.
+
+Attempt-004 closure review: exact source/package `ca972836`, pinned reference,
+focused/full gates, one detector, and the sole capture passed admission. The
+sealed campaign stopped at 229,579 active ms with distinct closed
+`network_unavailable`, 8/20 windows, no qualified candidate, and no submit
+response. Identity, safety, watchdog, panic/mixed-reset/correlation diagnostics,
+final terminal settlement, terminal transport/pool, safe stop, cleanup, modes,
+and sealing remained valid. API/SPA/restart and projection were withheld; no
+retry ran and `STAT-003` remains `implemented`. See this plan's `WORKLOG.md` and
+`CLOSURE.md`.
+
+Next safe action: do not retry from unchanged external state. A future
+scoreboard plan requires an objective repo-owned signal that the protected
+owner pool/network path is available again, without exposing endpoint or
+credentials. The selector may skip `STAT-003` as environment-blocked and work
+the next actionable parity row meanwhile.
+
+Readiness-gated attempt-005 plan:
+`docs/parity/work-plans/20260820T150151Z-STAT-003/PLAN.md`
+
+- [x] Add a repo-owned, private-root-exclusive readiness tool that requires
+      three consecutive bounded Stratum V1 configure/subscribe/authorize
+      sessions without submitting shares or exposing protected pool values.
+- [x] Rotate only the scoreboard workflow's plan/task/path/ordinal contracts
+      from consumed attempt 4 to fresh attempt 5 and pass every focused/full
+      software, privacy, reference, firmware, package, and source gate.
+- [x] Run the readiness command exactly once. Only after its exact clean-source
+      private result is `ready`, run one detector and the sole conditional
+      attempt-005 conservative mining/share scoreboard capture.
+- [ ] Promote only on the complete campaign/API/SPA/restart persistence quorum;
+      otherwise preserve `implemented`, earliest failure, safe stop, cleanup,
+      public withholding, and no attempt-006.
+
+Authorization: On 2026-08-20 the user explicitly authorized use of the existing
+ignored pool credentials, mining, and share submission to simplify and complete
+STAT-003. The linked immutable plan limits the preflight to three closed
+Stratum V1 handshake sessions and the conditional hardware path to one existing
+400 MHz / 1,100 mV / 100% fan / 600-active-second attempt. It defines exact
+commands, protected roots, privacy, effects, recovery, retry, promotion, and
+stop conditions. No other endpoint, pool, profile, hardware, destructive,
+fault-injection, UART, pin, or electrical effect is authorized.
+
+Verification: Implementation commit
+`2eb620c530f612f7097e1b53d35c1e18b39ced07`; seven focused readiness tests,
+one real CLI/subprocess test, scoreboard Rust/TypeScript and generated-contract
+tests, ordered workspace Rust gates, Bright Builds, all 48 Bazel tests,
+redaction, reference, parity/progress, and package passed. No protected input or
+external/device effect was used during implementation verification.
+
+Completion review: The sole readiness command passed 3/3 bounded Stratum V1
+sessions and objectively changed the prior network boundary. Attempt-005 then
+completed 600,306 active ms, 20/20 windows, 19 accepted shares, fresh safety,
+watchdog, safe stop, cleanup, live SPA, and one valid restart. Promotion was
+withheld because the verifier required full pre/post scoreboard equality even
+though pinned upstream persists difficulty with `%.1f` and reloads it with
+`%lf`; every other field and both immediate repeats were exact. Attempt-005 is
+consumed, no attempt-006 is authorized, and `STAT-003` remains implemented.
+See the linked `WORKLOG.md` and `CLOSURE.md`.
+
+Durable-projection verifier correction plan:
+`docs/parity/work-plans/20260820T171138Z-STAT-003/PLAN.md`
+
+- [x] Add a source-bound one-decimal durable difficulty projection and retain
+      exact raw digests for same-boot repeat checks.
+- [x] Require pre-restart durable projection to equal the raw post-restart
+      scoreboard while preserving exact count, order, and non-difficulty data.
+- [x] Add positive and negative regressions, pass every software gate, and
+      close without protected attempt access, hardware, attempt-006, or parity
+      promotion.
+
+Authorization: software, deterministic local child processes, firmware/package
+builds, docs, and Git only. No credentials, protected attempt-005 artifacts,
+detector, USB/device or external network runtime, flash, monitor, mining, share
+submission, device restart, evidence projection/promotion, attempt-006,
+recovery, external UART/BAP, pins, or electrical work is authorized.
+
+Verification: Source `4594760b08e606959d952a1fc7803095967e5bf2`
+adds exact ties-to-even one-decimal durable projection, raw/durable digests,
+full-precision restart success, wrong-difficulty/non-difficulty/order/repeat
+failures, and source binding to both persistence codecs. Ordered Cargo gates,
+Bright Builds, focused automation, all 48 Bazel tests, firmware build/package,
+redaction, reference, parity/progress, selector, and diff checks passed.
+
+Completion review: The verifier now admits precisely the upstream-compatible
+restart transformation and no other field drift. `.bazelignore` also prevents
+full Bazel discovery from traversing protected/generated local trees, restoring
+`just test` to normal completion. No protected evidence or hardware effect was
+used; `STAT-003` remains `implemented`. See this plan's `WORKLOG.md` and
+`CLOSURE.md`. A future evidence re-evaluation or attempt requires its own
+immutable authorization and exact pushed-source binding.
+
+Protected attempt-005 re-evaluation plan:
+`docs/parity/work-plans/20260820T220854Z-STAT-003/PLAN.md`
+
+- [x] Add a repo-owned read-only protected recheck that binds the old capture
+      and corrected clean pushed evaluator without exposing private values.
+- [ ] Recompute every campaign/API/SPA/restart/durable-persistence fact from
+      allowlisted sealed attempt-005 artifacts and publish only after
+      independent validation/redaction.
+- [ ] Promote only on the complete quorum; otherwise preserve `implemented`,
+      immutable protected evidence, projection withholding, and no attempt-006.
+
+Authorization: the user explicitly authorizes this evidence plan and the work
+necessary to test and verify `STAT-003`. The linked plan permits one read-only
+protected attempt-005 re-evaluation and conditional redacted promotion. It
+forbids credentials, external network, detector/device/USB access, flash,
+monitor, mining, shares, restart, recovery, attempt-006, UART/BAP, pins, and
+electrical work.
+
+Verification: Evaluator `d7ecc5066babe15a37d181bd4b799c235985f8fa`
+passed focused success/failure, mode, symlink, privacy, source, validator, full
+Cargo/Bazel, firmware/package, Bright Builds, redaction, reference, parity, and
+selector gates before clean push.
+
+Completion review: The sole protected recheck stopped closed with no candidate
+or projection. The retained original package manifest is absent, and an exact-
+source rebuild with the retained original build timestamp still changes the
+path-sensitive app ELF hash, so its byte digest cannot be truthfully
+reconstructed. `STAT-003` remains `implemented`; protected evidence stayed
+immutable and no hardware effect occurred. See this plan's `WORKLOG.md` and
+`CLOSURE.md`. A fresh v2 software contract may bind the retained exact package
+identity and old manifest-admission boundary without fabricating the missing
+manifest digest.
+
+Truthful v2 retained-identity evaluation plan:
+`docs/parity/work-plans/20260820T224453Z-STAT-003/PLAN.md`
+
+- [x] Add strict v1/v2 evidence validation and a retained capture-package
+      identity commitment without an unavailable manifest-byte claim.
+- [x] Run one diagnostic-complete v2 protected evaluation and independently
+      validate/redact the projection.
+- [x] Promote only on the complete v2 quorum; otherwise preserve
+      `implemented`, immutable evidence, and no attempt-006.
+
+Authorization: the user explicitly authorizes the evidence plan and all work
+necessary to test and verify this row. The linked plan permits one read-only v2
+protected evaluation and conditional promotion, with no hardware, device,
+network, credential, mining, share, restart, recovery, UART/pin, or electrical
+effect.
+
+Verification: V2 evaluator `cbc5fa7f` passed strict v1/v2 contracts, protected
+success/failure/privacy fixtures, ordered Cargo gates, Bright Builds, all 48
+Bazel tests, firmware build/package, redaction, reference, parity/progress, and
+selector gates. The sole v2 protected command exited zero; independent Rust
+validation and semantic redaction (`checked=1`) passed for projection
+`e8054e9176154f154a82b4c9f5301f9d87f64ca558e2ad117be7c37fc4efe920`.
+
+Completion review: The complete accepted campaign, live SPA, exact restart,
+stable repeats, exact non-difficulty fields/order/count, and one-decimal durable
+difficulty projection now have truthful source-bound public evidence. No
+hardware rerun occurred. `STAT-003` is eligible for its planned isolated
+promotion and task archival.
+
+Promotion review: Transition `20260820T230613Z-STAT-003` changed only this row
+to `verified` with `unit,workflow,api-compare,static-route,hardware-smoke,
+hardware-regression`. The transition binds the v2 plan/result, independently
+validated projection, passed redaction, exact capture/evaluator sources, safe
+stop, cleanup, and explicit non-claims. Progress synchronized to 89/94 verified
+(94.7%). The task is complete and ready for immediate archive.

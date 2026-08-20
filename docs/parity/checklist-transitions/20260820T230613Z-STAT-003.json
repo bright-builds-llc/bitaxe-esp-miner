@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260820T230613Z-STAT-003",
+  "predecessor_sha256": "a62dce211b6626a00c19d6175cc28b668a215fb0e660ec3a3cac6ac6d4663e8e",
+  "result_sha256": "f10cdcbf904ff3ed24fdc4b51ce4967128709aa8ade92d5e29672950db43ed28",
+  "row_id": "STAT-003",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260820T224453Z-STAT-003/PLAN.md",
+  "plan_sha256": "80188c102499798c1907c9f757861c3ee28bc51206c225653908e0462836b692",
+  "result_path": "docs/parity/work-plans/20260820T224453Z-STAT-003/RESULT.md",
+  "result_document_sha256": "a2fef16f797c010407ca303b36eb2754220acfabc1b98417b313d534ecd115ff",
+  "before_rust_owned_target": "`crates/bitaxe-api/src/scoreboard.rs`, `crates/bitaxe-api/src/scoreboard/owner.rs`, `crates/bitaxe-stratum/src/v1/production_work.rs`, `crates/bitaxe-stratum/src/v1/production_session/runtime/asic.rs`, `firmware/bitaxe/src/scoreboard_adapter.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-api/src/scoreboard.rs`, `crates/bitaxe-api/src/scoreboard/owner.rs`, `crates/bitaxe-stratum/src/v1/production_work.rs`, `crates/bitaxe-stratum/src/v1/production_session/runtime/asic.rs`, `firmware/bitaxe/src/scoreboard_adapter.rs`, `firmware/bitaxe/src/runtime_snapshot.rs`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow,api-compare",
+  "after_evidence": "unit,workflow,api-compare,static-route,hardware-smoke,hardware-regression",
+  "before_notes": "Commit-bound production scoreboard result: docs/parity/work-plans/20260804T220000Z-STAT-003/RESULT.md. Live ASIC nonce difficulty, device persistence, device API and browser behavior, mining, accepted or rejected shares, pool interaction, safety controls, and release claims remain separate.",
+  "after_notes": "Verified at fa0e59e4: independently validated v2 evidence binds accepted Ultra 205 attempt-005 mining/share outcome, stable 20-entry scoreboard, live SPA, exact restart identity, same-boot repeats, unchanged non-difficulty fields/order/count, pinned one-decimal durable difficulty projection, safe stop, cleanup, current 32-path semantics, and no hardware rerun; see docs/parity/work-plans/20260820T224453Z-STAT-003/RESULT.md and docs/parity/evidence/stat003-scoreboard/summary.md. redaction_status: passed. exact_non_claims: original manifest bytes, absolute difficulty calibration, profitability, arbitrary pools/profiles, other boards/ASICs, unbounded mining, OTA/recovery, release readiness, UART/BAP, pins, and electrical behavior."
+}

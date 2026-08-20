@@ -78,6 +78,7 @@ js_library(
         ".github/workflows/evidence-redaction.yml",
         "Justfile",
         "TASKS.md",
+        "TASKS.archive.md",
         "docs/parity/evidence/api003-settings-patch/settings-patch-projection.json",
         "docs/parity/evidence/api010-theme-durability/theme-durability-projection.json",
         "docs/parity/evidence/log001-retained-stream/log-buffer-projection.json",

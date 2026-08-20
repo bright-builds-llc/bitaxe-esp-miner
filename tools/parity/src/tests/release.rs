@@ -349,3 +349,20 @@ fn phase26_guard_accepts_conservative_rows_and_evd08_closure() {
     // Assert
     assert!(errors.is_empty());
 }
+
+#[test]
+fn phase26_scoreboard_accepts_current_v2_live_result() {
+    // Arrange
+    let checklist = r#"
+| ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| STAT-003 | Scoreboard | `reference/esp-miner/main/tasks/scoreboard.c` | `crates/bitaxe-api` | verified | unit,workflow,api-compare,static-route,hardware-smoke,hardware-regression | Verified Ultra 205 v2 evidence; see docs/parity/work-plans/20260820T224453Z-STAT-003/RESULT.md and docs/parity/evidence/stat003-scoreboard/summary.md. redaction_status: passed. exact_non_claims: original manifest bytes, arbitrary pools, other boards/ASICs, UART/BAP, pins, and electrical behavior. |
+"#;
+    let rows = parse_checklist(checklist).expect("checklist should parse");
+
+    // Act
+    let errors = validate_rows(&rows);
+
+    // Assert
+    assert!(errors.is_empty());
+}

@@ -193,15 +193,19 @@ export async function validateScoreboardTaskAndSources(
   workspaceRoot: string,
   admittedPlanSha256 = expectedPlanSha256,
 ): Promise<{ readonly digest: string; readonly pathCount: number }> {
-  const [taskDocument, planDocument] = await Promise.all([
+  const [taskDocument, archivedTaskDocument, planDocument] = await Promise.all([
     readFile(path.join(workspaceRoot, "TASKS.md"), "utf8"),
+    readFile(path.join(workspaceRoot, "TASKS.archive.md"), "utf8").catch(() => ""),
     readFile(path.join(workspaceRoot, expectedPlan), "utf8"),
   ]);
   const heading = `### ${activeTask} |`;
-  const start = taskDocument.indexOf(heading);
-  const maybeEnd = taskDocument.indexOf("\n### ", start + heading.length);
-  const block = taskDocument.slice(start, maybeEnd === -1 ? taskDocument.length : maybeEnd);
-  if (start === -1 || taskDocument.indexOf(heading, start + heading.length) !== -1
+  const activeCount = taskDocument.split(heading).length - 1;
+  const archivedCount = archivedTaskDocument.split(heading).length - 1;
+  const sourceDocument = activeCount === 1 ? taskDocument : archivedTaskDocument;
+  const start = sourceDocument.indexOf(heading);
+  const maybeEnd = sourceDocument.indexOf("\n### ", start + heading.length);
+  const block = sourceDocument.slice(start, maybeEnd === -1 ? sourceDocument.length : maybeEnd);
+  if (activeCount + archivedCount !== 1
     || !block.includes(expectedPlan) || !block.includes("attempt-005")
     || sha256(planDocument) !== admittedPlanSha256
     || !planDocument.includes("- Parity row: `STAT-003`")

@@ -378,7 +378,7 @@ test("boot mining disabled accepts only closed non-active states with false inte
   }
 });
 
-test("current immutable STAT-003 task and source inventory pass", async () => {
+test("current or archived immutable STAT-003 task and source inventory pass", async () => {
   // Arrange
   const root = process.env["RUNFILES_DIR"] === undefined
     ? workspace

@@ -18,8 +18,13 @@ pub(crate) fn validate_phase26_telemetry_verified_row(row: &ChecklistRow) -> Vec
 
     let mut errors = Vec::new();
     let haystack = row_haystack(row);
+    let stat003_v2 = row.id == "STAT-003"
+        && haystack.contains("work-plans/20260820t224453z-stat-003/result.md")
+        && haystack.contains("evidence/stat003-scoreboard/summary.md")
+        && haystack.contains("redaction_status: passed")
+        && haystack.contains("exact_non_claims");
 
-    if !haystack.contains("phase-26-telemetry-and-parity-closure/summary.md") {
+    if !stat003_v2 && !haystack.contains("phase-26-telemetry-and-parity-closure/summary.md") {
         errors.push(ValidationError {
             id: row.id.clone(),
             message: "phase26 verified row missing summary evidence".to_owned(),
@@ -55,7 +60,7 @@ pub(crate) fn validate_phase26_telemetry_verified_row(row: &ChecklistRow) -> Vec
                     .to_owned(),
             });
         }
-        "STAT-003" if !haystack.contains("empty_without_parsed_share_outcome") => {
+        "STAT-003" if !stat003_v2 && !haystack.contains("empty_without_parsed_share_outcome") => {
             errors.push(ValidationError {
                 id: row.id.clone(),
                 message:

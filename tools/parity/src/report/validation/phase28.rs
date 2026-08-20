@@ -144,17 +144,18 @@ pub(crate) fn has_phase28_hardware_bridge_socket_proof(row: &ChecklistRow) -> bo
 }
 
 pub(crate) fn is_deferred_or_non_205_scope(row: &ChecklistRow) -> bool {
-    let haystack = row_haystack(row);
     let row_id = normalize(&row.id);
+    let scope_identity =
+        format!("{} {} {}", row.id, row.surface, row.rust_owned_target).to_ascii_lowercase();
 
     matches!(
         row_id.as_str(),
         "cfg-002" | "asic-008" | "asic-009" | "asic-010" | "str-005"
     ) || row_id.starts_with("bap-")
-        || haystack.contains("bap")
-        || haystack.contains("all-board")
-        || haystack.contains("all board")
-        || haystack.contains("angular")
+        || scope_identity.contains("bap")
+        || scope_identity.contains("all-board")
+        || scope_identity.contains("all board")
+        || scope_identity.contains("angular")
 }
 
 pub(crate) fn uses_ultra_205_evidence(row: &ChecklistRow) -> bool {
