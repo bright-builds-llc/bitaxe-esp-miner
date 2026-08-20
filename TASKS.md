@@ -4176,6 +4176,34 @@ hardware ordinal. Energized-rail values or accuracy, external calibration,
 induced failure, load behavior, long-duration drift, other boards, and release
 readiness remain explicit non-claims.
 
+### task-parity-str08-live-socket-lifecycle | 2026-08-19 | Verify the live Stratum socket lifecycle
+
+- [ ] Independently validate the accepted STR-001 socket and STR-006
+      coordinator projections.
+- [ ] Bind current live-runtime, production-session, and transport-loopback
+      tests to the accepted socket lifecycle.
+- [ ] Produce exact source-bound evidence, run every gate, and promote only
+      `STR-08` on the complete redacted quorum.
+
+Plan: `docs/parity/work-plans/20260820T045045Z-STR-08/PLAN.md`
+
+Authorization: local tests, committed-public evidence reads, documentation,
+build/package, Git commit, and push only. No credentials, protected attempt
+roots, detector, USB/device/network runtime, flash, monitor, mining, restart,
+recovery, hardware attempt, fault injection, external UART/BAP, pins, or
+electrical work.
+
+Promotion requires independently validated exact-package live socket success,
+authorization before ASIC dispatch, accepted-share hardware, ordered safe stop,
+cleanup, current lifecycle/transport tests, and redaction. Hardware fallback or
+reconnect, exact upstream timeout/keepalive equivalence, DNS/IP-family parity,
+arbitrary pools, TLS, Stratum v2, rejected-share hardware, unbounded stability,
+other boards, updates/recovery, and release readiness remain non-claims.
+
+Verification: Pending.
+
+Completion review: Pending.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
