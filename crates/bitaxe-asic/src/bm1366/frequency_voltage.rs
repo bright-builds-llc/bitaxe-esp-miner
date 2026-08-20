@@ -175,6 +175,18 @@ pub(crate) fn frequency_plan_for_quarter_mhz(target_quarter_mhz: u32) -> Option<
 }
 
 fn pll_parameters(target_quarter_mhz: u32) -> Option<PllParameters> {
+    pll_parameters_with_bounds(
+        target_quarter_mhz,
+        BM1366_FB_DIVIDER_MIN,
+        BM1366_FB_DIVIDER_MAX,
+    )
+}
+
+pub(crate) fn pll_parameters_with_bounds(
+    target_quarter_mhz: u32,
+    fb_divider_min: u16,
+    fb_divider_max: u16,
+) -> Option<PllParameters> {
     let mut maybe_best: Option<PllSearchCandidate> = None;
 
     for refdiv in (1..=2).rev() {
@@ -189,7 +201,7 @@ fn pll_parameters(target_quarter_mhz: u32) -> Option<PllParameters> {
                     target_quarter_mhz * u32::from(divider),
                     QUARTERS_PER_MHZ * 25,
                 );
-                if !(BM1366_FB_DIVIDER_MIN..=BM1366_FB_DIVIDER_MAX).contains(&fb_divider) {
+                if !(fb_divider_min..=fb_divider_max).contains(&fb_divider) {
                     continue;
                 }
 
@@ -231,11 +243,11 @@ const fn actual_diff_numerator(target_quarter_mhz: u32, fb_divider: u16, divider
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct PllParameters {
-    fb_divider: u8,
-    refdiv: u8,
-    postdiv1: u8,
-    postdiv2: u8,
+pub(crate) struct PllParameters {
+    pub(crate) fb_divider: u8,
+    pub(crate) refdiv: u8,
+    pub(crate) postdiv1: u8,
+    pub(crate) postdiv2: u8,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

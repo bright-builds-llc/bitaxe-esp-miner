@@ -1,0 +1,86 @@
+{
+  "schema_version": "bitaxe-bm1397-protocol-fixtures-v1",
+  "provenance": {
+    "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+    "source_paths": [
+      "reference/esp-miner/components/asic/bm1397.c",
+      "reference/esp-miner/components/asic/include/bm1397.h",
+      "reference/esp-miner/components/asic/pll.c",
+      "reference/esp-miner/components/asic/frequency_transition_bmXX.c",
+      "reference/esp-miner/components/stratum/mining.c",
+      "reference/esp-miner/main/device_config.h"
+    ]
+  },
+  "profile": {
+    "chip_id": 5015,
+    "default_frequency_mhz": 425,
+    "default_voltage_mv": 1400,
+    "difficulty": 256,
+    "core_count": 168,
+    "small_core_count": 672,
+    "hash_domains": 1,
+    "default_asic_timeout_ms": 20
+  },
+  "commands": {
+    "version_mask_placeholder": 536862720,
+    "default_baud": 115749,
+    "default_baud_payload_hex": "001800007a31",
+    "max_baud": 3125000,
+    "max_baud_payload_hex": "001800006031",
+    "init_payloads_hex": [
+      "008000000000",
+      "008400000000",
+      "002000000001",
+      "003c80008074",
+      "0014000000ff",
+      "0068c0700111",
+      "00280600000f",
+      "001800007a31"
+    ],
+    "frequency_mhz": 425,
+    "frequency_actual_mhz": 425,
+    "frequency_payload_hex": "000840440221",
+    "prefrequency_payload_hex": "00700f0f0f00"
+  },
+  "one_midstate_work": {
+    "job_id": 4,
+    "next_job_id": 8,
+    "starting_nonce_hex": "01020304",
+    "nbits_hex": "05060708",
+    "ntime_hex": "090a0b0c",
+    "merkle4_hex": "0d0e0f10",
+    "midstate_bytes": [17],
+    "expected_payload_hex": "04010102030405060708090a0b0c0d0e0f101111111111111111111111111111111111111111111111111111111111111111000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "four_midstate_work": {
+    "job_id": 124,
+    "next_job_id": 0,
+    "starting_nonce_hex": "01020304",
+    "nbits_hex": "05060708",
+    "ntime_hex": "090a0b0c",
+    "merkle4_hex": "0d0e0f10",
+    "midstate_bytes": [17, 34, 51, 68],
+    "expected_payload_hex": "7c040102030405060708090a0b0c0d0e0f101111111111111111111111111111111111111111111111111111111111111111222222222222222222222222222222222222222222222222222222222222222233333333333333333333333333333333333333333333333333333333333333334444444444444444444444444444444444444444444444444444444444444444"
+  },
+  "job_result": {
+    "body_hex": "c84012340106",
+    "address_interval": 16,
+    "job_id": 4,
+    "base_version": 536870916,
+    "version_mask": 536862720,
+    "expected_midstate_index": 2,
+    "expected_nonce_hex": "341240c8",
+    "expected_asic_index": 2,
+    "expected_core_id": 100,
+    "expected_small_core_id": 6,
+    "expected_rolled_version": 536887300
+  },
+  "register_result": {
+    "body_hex": "010203042004",
+    "address_interval": 16,
+    "expected_asic_index": 2,
+    "expected_asic_address": 32,
+    "expected_value": 16909060,
+    "expected_register": "hashrate"
+  }
+}
