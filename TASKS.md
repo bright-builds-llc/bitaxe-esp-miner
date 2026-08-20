@@ -4178,11 +4178,11 @@ readiness remain explicit non-claims.
 
 ### task-parity-str09-submit-response-classification | 2026-08-20 | Verify live submit-response classification
 
-- [ ] Independently validate the accepted STR-001 socket, STR-006 coordinator,
+- [x] Independently validate the accepted STR-001 socket, STR-006 coordinator,
       and ASIC-004 result-correlation projections.
-- [ ] Bind current submit-response, live-runtime, and production-session tests
+- [x] Bind current submit-response, live-runtime, and production-session tests
       to the accepted hardware response.
-- [ ] Add exact STR-09 proof to the canonical Phase 30 artifact and its
+- [x] Add exact STR-09 proof to the canonical Phase 30 artifact and its
       current-artifact regression, then promote only `STR-09` on the complete
       redacted quorum.
 
@@ -4202,7 +4202,14 @@ on hardware, fallback/reconnect hardware, arbitrary pools, TLS, Stratum v2,
 unbounded mining, other boards/ASICs, updates/recovery, and release readiness
 remain non-claims.
 
-Verification: Pending.
+Verification: implementation source `532ab568228312157b3164820d9ad9f9ae221dbf`
+adds the three exact STR-09 Phase 30 fields and requires all current promotions
+in the checked-in artifact regressions. Six submit-response, 46 live-runtime,
+and 70 production-session tests pass, as does the parity target. All three
+accepted projection validators pass with matching digests and mode `0644`; the
+ordered Rust gates, managed checks, reference verification, and current Ultra
+205 package build pass. The source-bound summary is
+`docs/parity/evidence/str09-submit-response-classification/summary.md`.
 
 Completion review: Pending.
 
