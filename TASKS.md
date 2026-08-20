@@ -880,11 +880,11 @@ See the linked `WORKLOG.md` and `CLOSURE.md`.
 Durable-projection verifier correction plan:
 `docs/parity/work-plans/20260820T171138Z-STAT-003/PLAN.md`
 
-- [ ] Add a source-bound one-decimal durable difficulty projection and retain
+- [x] Add a source-bound one-decimal durable difficulty projection and retain
       exact raw digests for same-boot repeat checks.
-- [ ] Require pre-restart durable projection to equal the raw post-restart
+- [x] Require pre-restart durable projection to equal the raw post-restart
       scoreboard while preserving exact count, order, and non-difficulty data.
-- [ ] Add positive and negative regressions, pass every software gate, and
+- [x] Add positive and negative regressions, pass every software gate, and
       close without protected attempt access, hardware, attempt-006, or parity
       promotion.
 
@@ -893,6 +893,21 @@ builds, docs, and Git only. No credentials, protected attempt-005 artifacts,
 detector, USB/device or external network runtime, flash, monitor, mining, share
 submission, device restart, evidence projection/promotion, attempt-006,
 recovery, external UART/BAP, pins, or electrical work is authorized.
+
+Verification: Source `4594760b08e606959d952a1fc7803095967e5bf2`
+adds exact ties-to-even one-decimal durable projection, raw/durable digests,
+full-precision restart success, wrong-difficulty/non-difficulty/order/repeat
+failures, and source binding to both persistence codecs. Ordered Cargo gates,
+Bright Builds, focused automation, all 48 Bazel tests, firmware build/package,
+redaction, reference, parity/progress, selector, and diff checks passed.
+
+Completion review: The verifier now admits precisely the upstream-compatible
+restart transformation and no other field drift. `.bazelignore` also prevents
+full Bazel discovery from traversing protected/generated local trees, restoring
+`just test` to normal completion. No protected evidence or hardware effect was
+used; `STAT-003` remains `implemented`. See this plan's `WORKLOG.md` and
+`CLOSURE.md`. A future evidence re-evaluation or attempt requires its own
+immutable authorization and exact pushed-source binding.
 
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
