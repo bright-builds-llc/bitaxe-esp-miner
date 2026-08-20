@@ -132,13 +132,15 @@ if (args[0] === "mining-campaign") {
 export async function startScoreboardServer(
   options: Readonly<{
     changeAfterRestart?: boolean;
+    changePostRestartRepeat?: boolean;
     postRestartMiningActivity?: string;
   }> = {},
 ): Promise<ScoreboardServer> {
   let restarted = false;
+  let postRestartScoreboardReads = 0;
   const entries = [
-    { difficulty: 42.5, job_id: "job-a", extranonce2: "0001", ntime: 1, nonce: "1234ABCD", version_bits: "20000000" },
-    { difficulty: 10, job_id: "job-b", extranonce2: "0002", ntime: 2, nonce: "00000001", version_bits: "00000000" },
+    { difficulty: 42.54, job_id: "job-a", extranonce2: "0001", ntime: 1, nonce: "1234ABCD", version_bits: "20000000" },
+    { difficulty: 10.06, job_id: "job-b", extranonce2: "0002", ntime: 2, nonce: "00000001", version_bits: "00000000" },
   ];
   const server: Server = http.createServer((request, response) => {
     if (request.method === "GET" && request.url === "/api/system/info") {
@@ -158,8 +160,24 @@ export async function startScoreboardServer(
       return;
     }
     if (request.method === "GET" && request.url === "/api/system/scoreboard") {
+      if (restarted) postRestartScoreboardReads += 1;
+      let responseEntries = restarted
+        ? entries.map((entry) => ({
+          ...entry,
+          difficulty: entry.difficulty === 42.54 ? 42.5 : 10.1,
+        }))
+        : entries;
+      if (restarted && options.changeAfterRestart === true) {
+        responseEntries = responseEntries.slice(0, 1);
+      }
+      if (restarted && options.changePostRestartRepeat === true
+        && postRestartScoreboardReads > 1) {
+        responseEntries = responseEntries.map((entry, index) => (
+          index === 0 ? { ...entry, nonce: "1234ABCE" } : entry
+        ));
+      }
       response.setHeader("content-type", "application/json");
-      response.end(JSON.stringify(restarted && options.changeAfterRestart === true ? entries.slice(0, 1) : entries));
+      response.end(JSON.stringify(responseEntries));
       return;
     }
     if (request.method === "GET" && request.url === "/scoreboard") {

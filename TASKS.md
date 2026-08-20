@@ -877,6 +877,23 @@ though pinned upstream persists difficulty with `%.1f` and reloads it with
 consumed, no attempt-006 is authorized, and `STAT-003` remains implemented.
 See the linked `WORKLOG.md` and `CLOSURE.md`.
 
+Durable-projection verifier correction plan:
+`docs/parity/work-plans/20260820T171138Z-STAT-003/PLAN.md`
+
+- [ ] Add a source-bound one-decimal durable difficulty projection and retain
+      exact raw digests for same-boot repeat checks.
+- [ ] Require pre-restart durable projection to equal the raw post-restart
+      scoreboard while preserving exact count, order, and non-difficulty data.
+- [ ] Add positive and negative regressions, pass every software gate, and
+      close without protected attempt access, hardware, attempt-006, or parity
+      promotion.
+
+Authorization: software, deterministic local child processes, firmware/package
+builds, docs, and Git only. No credentials, protected attempt-005 artifacts,
+detector, USB/device or external network runtime, flash, monitor, mining, share
+submission, device restart, evidence projection/promotion, attempt-006,
+recovery, external UART/BAP, pins, or electrical work is authorized.
+
 ### task-parity-api010-live-theme-durability | 2026-08-04 | Verify live theme route durability
 
 - [x] Add a typed private-first `/api/theme` capture that binds the exact

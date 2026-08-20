@@ -9,6 +9,7 @@ export type JsonObject = Readonly<Record<string, unknown>>;
 export type ScoreboardView = Readonly<{
   count: number;
   digest: string;
+  durableDigest: string;
 }>;
 type FailureCategory = Extract<
   AutomationCategory,
@@ -91,6 +92,49 @@ export function bootMiningDisabled(
     && (miningActivity === "paused" || miningActivity === "safe_blocked");
 }
 
+const fractionMask = (1n << 52n) - 1n;
+const implicitFractionBit = 1n << 52n;
+
+/** Matches the pinned Rust `{:.1}` and upstream C `%.1f` durable codec. */
+export function durableDifficulty(difficulty: number): number {
+  if (!Number.isFinite(difficulty) || difficulty <= 0) {
+    throw failure("evidence_invalid", "scoreboard durable difficulty is invalid");
+  }
+
+  const bytes = new ArrayBuffer(8);
+  const view = new DataView(bytes);
+  view.setFloat64(0, difficulty, false);
+  const bits = view.getBigUint64(0, false);
+  const exponentBits = Number((bits >> 52n) & 0x7ffn);
+  const fraction = bits & fractionMask;
+  const significand = exponentBits === 0 ? fraction : implicitFractionBit + fraction;
+  const binaryExponent = exponentBits === 0 ? -1074 : exponentBits - 1023 - 52;
+  const scaledSignificand = significand * 10n;
+
+  let roundedTenths: bigint;
+  if (binaryExponent >= 0) {
+    roundedTenths = scaledSignificand << BigInt(binaryExponent);
+  } else {
+    const divisor = 1n << BigInt(-binaryExponent);
+    const quotient = scaledSignificand / divisor;
+    const remainder = scaledSignificand % divisor;
+    const doubledRemainder = remainder * 2n;
+    const roundsUp = doubledRemainder > divisor
+      || (doubledRemainder === divisor && quotient % 2n !== 0n);
+    roundedTenths = quotient + (roundsUp ? 1n : 0n);
+  }
+
+  const digits = roundedTenths.toString();
+  const decimal = digits.length === 1
+    ? `0.${digits}`
+    : `${digits.slice(0, -1)}.${digits.slice(-1)}`;
+  const projected = Number(decimal);
+  if (!Number.isFinite(projected) || projected <= 0) {
+    throw failure("evidence_invalid", "scoreboard durable difficulty projection is invalid");
+  }
+  return projected;
+}
+
 export function scoreboardView(value: readonly unknown[], context: string): ScoreboardView {
   if (value.length === 0 || value.length > 20) {
     throw failure("hardware_blocked", `${context} entry count is incomplete`);
@@ -125,7 +169,24 @@ export function scoreboardView(value: readonly unknown[], context: string): Scor
     }
     return { difficulty, job_id: jobId, extranonce2, ntime, nonce, version_bits: versionBits };
   });
-  return { count: normalized.length, digest: sha256(JSON.stringify(normalized)) };
+  const durable = normalized.map((entry) => ({
+    ...entry,
+    difficulty: durableDifficulty(entry.difficulty),
+  }));
+  return {
+    count: normalized.length,
+    digest: sha256(JSON.stringify(normalized)),
+    durableDigest: sha256(JSON.stringify(durable)),
+  };
+}
+
+export function scoreboardRestartPersists(
+  beforeRestart: ScoreboardView,
+  afterRestart: ScoreboardView,
+): boolean {
+  return beforeRestart.count === afterRestart.count
+    && beforeRestart.durableDigest === afterRestart.digest
+    && afterRestart.durableDigest === afterRestart.digest;
 }
 
 export async function validateScoreboardTaskAndSources(

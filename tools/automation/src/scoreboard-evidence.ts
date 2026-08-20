@@ -26,6 +26,7 @@ import {
   requiredBoolean,
   requiredInteger,
   requiredString,
+  scoreboardRestartPersists,
   scoreboardView,
   ScoreboardEvidenceError,
   sha256,
@@ -401,9 +402,8 @@ export async function captureScoreboardEvidence(
     const afterRestart = await awaitRestart(origin, privateRoot, manifest, beforeRestart, wait);
     const postRestart = await readScoreboard(origin, privateRoot, "scoreboard-after-restart-a");
     const postRestartRepeat = await readScoreboard(origin, privateRoot, "scoreboard-after-restart-b");
-    if (scoreboard.digest !== postRestart.digest
-      || postRestart.digest !== postRestartRepeat.digest
-      || postRestart.count !== scoreboard.count) {
+    if (!scoreboardRestartPersists(scoreboard, postRestart)
+      || postRestart.digest !== postRestartRepeat.digest) {
       throw failure("hardware_blocked", "scoreboard restart persistence is invalid");
     }
     const evidence: ScoreboardEvidence = {

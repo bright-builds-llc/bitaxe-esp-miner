@@ -1,0 +1,7 @@
+.bazel-firmware-rollback-probe-target
+.bazel-firmware-target
+.embuild
+hardware-runs
+output
+scratch
+target

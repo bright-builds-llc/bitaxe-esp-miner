@@ -9,8 +9,10 @@ import {
 } from "./scoreboard-evidence.js";
 import {
   bootMiningDisabled,
+  durableDifficulty,
   expectedPlanSha256,
   requiredBoolean,
+  scoreboardRestartPersists,
   scoreboardView,
   validateScoreboardTaskAndSources,
 } from "./scoreboard-evidence-contract.js";
@@ -71,6 +73,35 @@ test("changed scoreboard after restart withholds projection", async () => {
   // Arrange
   const fixture = await scoreboardFixture("restart-drift");
   const server = await startScoreboardServer({ changeAfterRestart: true });
+  const child = await scoreboardChild(fixture, server.origin);
+  try {
+    // Act
+    const error = await captureError(captureScoreboardEvidence(
+      fixture.root,
+      fixture.options,
+      createLocalProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }),
+      child,
+      child,
+      child,
+      fixture.planSha256,
+      async () => {},
+    ));
+
+    // Assert
+    assert.equal(error.category, "hardware_blocked");
+    await assert.rejects(readFile(path.join(fixture.root, fixture.options.projection), "utf8"), {
+      code: "ENOENT",
+    });
+  } finally {
+    await server.close();
+    await rm(fixture.root, { recursive: true });
+  }
+});
+
+test("post-restart repeat drift withholds projection", async () => {
+  // Arrange
+  const fixture = await scoreboardFixture("post-restart-repeat-drift");
+  const server = await startScoreboardServer({ changePostRestartRepeat: true });
   const child = await scoreboardChild(fixture, server.origin);
   try {
     // Act
@@ -262,6 +293,54 @@ test("scoreboard parser rejects ascending malformed and oversized input", () => 
   assert.throws(() => scoreboardView([{ ...entry }, { ...entry, difficulty: 2 }], "ascending"));
   assert.throws(() => scoreboardView([{ ...entry, nonce: "private" }], "malformed"));
   assert.throws(() => scoreboardView(Array.from({ length: 21 }, () => entry), "oversized"));
+});
+
+test("durable difficulty matches pinned one-decimal ties-to-even semantics", () => {
+  // Arrange
+  const cases = [
+    { runtime: 1.25, durable: 1.2 },
+    { runtime: 1.35, durable: 1.4 },
+    { runtime: 42.54, durable: 42.5 },
+    { runtime: 42.55, durable: 42.5 },
+    { runtime: 42.56, durable: 42.6 },
+    { runtime: Number.MAX_VALUE, durable: Number.MAX_VALUE },
+  ] as const;
+
+  for (const candidate of cases) {
+    // Act
+    const result = durableDifficulty(candidate.runtime);
+
+    // Assert
+    assert.equal(result, candidate.durable);
+  }
+});
+
+test("restart persistence changes only durable difficulty", () => {
+  // Arrange
+  const beforeEntries = [
+    { difficulty: 42.54, job_id: "job-a", extranonce2: "0001", ntime: 1, nonce: "1234ABCD", version_bits: "20000000" },
+    { difficulty: 10.06, job_id: "job-b", extranonce2: "0002", ntime: 2, nonce: "00000001", version_bits: "00000000" },
+  ];
+  const afterEntries = [
+    { ...beforeEntries[0], difficulty: 42.5 },
+    { ...beforeEntries[1], difficulty: 10.1 },
+  ];
+  const before = scoreboardView(beforeEntries, "before restart");
+
+  // Act / Assert
+  assert.equal(
+    scoreboardRestartPersists(before, scoreboardView(afterEntries, "after restart")),
+    true,
+  );
+  assert.equal(scoreboardRestartPersists(before, scoreboardView([
+    { ...afterEntries[0], difficulty: 42.6 },
+    afterEntries[1],
+  ], "wrong difficulty")), false);
+  assert.equal(scoreboardRestartPersists(before, scoreboardView([
+    { ...afterEntries[0], nonce: "1234ABCE" },
+    afterEntries[1],
+  ], "changed nonce")), false);
+  assert.throws(() => scoreboardView([...afterEntries].reverse(), "reordered"));
 });
 
 test("closed boolean diagnostics permit either value and reject invalid shapes", () => {

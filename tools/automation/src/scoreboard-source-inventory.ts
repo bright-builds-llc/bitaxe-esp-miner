@@ -4,7 +4,10 @@ import path from "node:path";
 
 export const scoreboardSourceFragments = new Map<string, readonly string[]>([
   ["crates/bitaxe-api/src/scoreboard.rs", ["pub fn scoreboard_response(entries: &[ScoreboardEntry])"]],
-  ["crates/bitaxe-api/src/scoreboard/owner.rs", ["pub const MAX_SCOREBOARD_ENTRIES: usize = 20;"]],
+  ["crates/bitaxe-api/src/scoreboard/owner.rs", [
+    "pub const MAX_SCOREBOARD_ENTRIES: usize = 20;",
+    "\"{:.1};{};{};{};{};{}\",",
+  ]],
   ["crates/bitaxe-stratum/src/v1/production_session/runtime/asic.rs", ["ProductionSessionEffect::RecordScoreboard"]],
   ["crates/bitaxe-automation-contracts/src/scoreboard_evidence.rs", ["pub struct ScoreboardEvidence {"]],
   ["crates/bitaxe-automation-contracts/src/bin/validate_scoreboard_evidence.rs", ["let evidence: ScoreboardEvidence ="]],
@@ -32,7 +35,11 @@ export const scoreboardSourceFragments = new Map<string, readonly string[]>([
 ]);
 
 export const scoreboardReferenceFragments = new Map<string, readonly string[]>([
-  ["reference/esp-miner/main/tasks/scoreboard.c", ["esp_err_t scoreboard_add(Scoreboard *scoreboard"]],
+  ["reference/esp-miner/main/tasks/scoreboard.c", [
+    "esp_err_t scoreboard_add(Scoreboard *scoreboard",
+    "sscanf(entry_str, \"%lf;%31[^;];%31[^;];%lu;%lu;%lu\",",
+    "\"%.1f;%s;%s;%lu;%lu;%lu\",",
+  ]],
   ["reference/esp-miner/main/tasks/asic_result_task.c", ["scoreboard_add(&GLOBAL_STATE->SYSTEM_MODULE.scoreboard"]],
   ["reference/esp-miner/main/http_server/http_server.c", ["static esp_err_t GET_scoreboard(httpd_req_t * req)"]],
   ["reference/esp-miner/main/http_server/axe-os/src/app/components/scoreboard/scoreboard.component.ts", ["export class ScoreboardComponent"]],
