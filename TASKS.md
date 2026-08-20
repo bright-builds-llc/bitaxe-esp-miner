@@ -4245,7 +4245,9 @@ Bright Builds checks passed. Evidence:
 `docs/parity/evidence/asic010-bm1397-core/summary.md`.
 
 Completion review: The authorized pure software scope is complete and supports
-`implemented` with `unit,golden` evidence only. This task remains active and
+`implemented` with `unit,golden` evidence only. Transition
+`20260820T070850Z-ASIC-010` and progress sync accepted the exact plan and source
+commit while leaving parity at 88/94 verified. This task remains active and
 unarchived because firmware dispatch, a supported BM1397 board, detector-gated
 hardware regression, safe-stop proof, and redaction remain outstanding.
 Automatic selection may treat ASIC-010 as hardware-blocked until those

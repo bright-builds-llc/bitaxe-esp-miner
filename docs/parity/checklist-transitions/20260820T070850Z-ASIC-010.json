@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260820T070850Z-ASIC-010",
+  "predecessor_sha256": "ef092e093c40143871041b16ceeafd1342c3d5dbfa8660102605b65f893dca80",
+  "result_sha256": "a62dce211b6626a00c19d6175cc28b668a215fb0e660ec3a3cac6ac6d4663e8e",
+  "row_id": "ASIC-010",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260820T064119Z-ASIC-010/PLAN.md",
+  "plan_sha256": "4882bc9e7e96a47b3d8b0777e659337970298013945ebeca9caeb4f00f558ac8",
+  "result_path": null,
+  "result_document_sha256": null,
+  "before_rust_owned_target": "`crates/bitaxe-asic`",
+  "after_rust_owned_target": "`crates/bitaxe-asic`",
+  "before_status": "not-started",
+  "after_status": "implemented",
+  "before_evidence": "pending",
+  "after_evidence": "unit,golden",
+  "before_notes": "Later board expansion.",
+  "after_notes": "Pure BM1397 protocol core now covers framing/CRC, exact initialization and PLL/frequency sequencing, deterministic one/four-midstate work frames, job rotation, strict result/register decoding, version rolling, duplicate nonce suppression, and pinned-reference golden fixtures; see docs/parity/evidence/asic010-bm1397-core/summary.md and docs/parity/work-plans/20260820T064119Z-ASIC-010/WORKLOG.md. Firmware dispatch, UART/device effects, every BM1397 board, and hardware verification remain unavailable and unclaimed."
+}
