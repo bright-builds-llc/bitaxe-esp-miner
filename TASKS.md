@@ -4178,11 +4178,11 @@ readiness remain explicit non-claims.
 
 ### task-parity-str08-live-socket-lifecycle | 2026-08-19 | Verify the live Stratum socket lifecycle
 
-- [ ] Independently validate the accepted STR-001 socket and STR-006
+- [x] Independently validate the accepted STR-001 socket and STR-006
       coordinator projections.
-- [ ] Bind current live-runtime, production-session, and transport-loopback
+- [x] Bind current live-runtime, production-session, and transport-loopback
       tests to the accepted socket lifecycle.
-- [ ] Produce exact source-bound evidence, run every gate, and promote only
+- [x] Produce exact source-bound evidence, run every gate, and promote only
       `STR-08` on the complete redacted quorum.
 
 Plan: `docs/parity/work-plans/20260820T045045Z-STR-08/PLAN.md`
@@ -4200,7 +4200,13 @@ reconnect, exact upstream timeout/keepalive equivalence, DNS/IP-family parity,
 arbitrary pools, TLS, Stratum v2, rejected-share hardware, unbounded stability,
 other boards, updates/recovery, and release readiness remain non-claims.
 
-Verification: Pending.
+Verification: source `8f86924a34e3988da15b0bc6b274ecd1c3806c21`
+joins independently validated STR-001 and STR-006 projections with matching
+digests and mode `0644`. Forty-six live-runtime tests, 70 production-session
+tests, and the firmware production-transport loopback target pass. The ordered
+Rust gates, managed checks, reference verification, and current Ultra 205
+package build pass. The source-bound summary is
+`docs/parity/evidence/str08-live-socket-lifecycle/summary.md`.
 
 Completion review: Pending.
 
