@@ -56,10 +56,11 @@ fn phase30_complete_promotion_artifact(requirement_id: &str) -> String {
 }
 
 #[test]
-fn phase30_current_artifact_accepts_cfg07_only() {
+fn phase30_current_artifact_accepts_all_promoted_rows() {
     // Arrange
     let rows = [
         phase30_verified_row("CFG-07", DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH),
+        phase30_verified_row("ASIC-11", DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH),
         phase30_verified_row("STR-09", DEFAULT_PHASE30_PROMOTION_ARTIFACT_PATH),
     ];
     let artifact = parse_phase30_promotion_artifact(include_str!(
@@ -74,17 +75,18 @@ fn phase30_current_artifact_accepts_cfg07_only() {
     );
 
     // Assert
-    assert!(!errors.iter().any(|error| error.id == "CFG-07"));
-    assert_validation_error_contains(&errors, "STR-09", "STR-09.live_submit_response_classified");
+    assert!(errors.is_empty());
 }
 
 #[test]
-fn phase30_report_accepts_cfg07_against_current_promotion_artifact() {
+fn phase30_report_accepts_all_current_promotions() {
     // Arrange
     let checklist = r#"
 | ID | Surface | Reference Breadcrumb | Rust-Owned Target | Status | Evidence | Notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | CFG-07 | Runtime-only credential labels | `reference/esp-miner/main/nvs_config.c` | `tools/automation/src/cfg07-evidence.ts` | verified | unit,workflow,hardware-smoke,hardware-regression | phase-28-hardware-evidence-and-checklist-promotion/summary.md redaction_status: passed exact_non_claims runtime credentials same-chain hardware proof docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md |
+| ASIC-11 | BM1366 result correlation before submit intent | `reference/esp-miner/components/asic/bm1366.c` | `crates/bitaxe-stratum` | verified | unit,workflow,hardware-smoke,hardware-regression | phase-28-hardware-evidence-and-checklist-promotion/summary.md redaction_status: passed exact_non_claims accepted share hardware proof asic bridge correlation docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md |
+| STR-09 | Live submit response classification or blocker | `reference/esp-miner/main/system.c` | `crates/bitaxe-stratum` | verified | unit,workflow,hardware-smoke,hardware-regression | phase-28-hardware-evidence-and-checklist-promotion/summary.md redaction_status: passed exact_non_claims accepted share hardware proof asic bridge correlation docs/parity/evidence/phase-30-live-share-outcome-and-verified-promotion/conclusion.md |
 "#;
     let environment = FakeEnvironment::with_documents(
         checklist,
