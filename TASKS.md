@@ -62,7 +62,10 @@ is complete and supports `implemented` with `unit,workflow` evidence. This
 task remains active and unarchived because electrical UART behavior, a live
 accessory request/subscription session, Wi-Fi-password delivery, setting
 persistence/effects, detector-gated hardware evidence, cleanup, and redaction
-remain outstanding. No hardware or external effect occurred.
+remain outstanding. Transition `20260821T031800Z-BAP-001` and deterministic
+progress synchronization accepted source/evidence commit
+`294b5cf0a998f53ccfe5a6537ad8cf39dfcd6fff`. No hardware or external effect
+occurred.
 
 ### task-ultra205-default-profile-soak | 2026-07-28 | Run the bounded upstream-default mining soak
 

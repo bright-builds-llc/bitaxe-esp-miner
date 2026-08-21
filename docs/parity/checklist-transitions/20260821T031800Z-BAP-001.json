@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260821T031800Z-BAP-001",
+  "predecessor_sha256": "f10cdcbf904ff3ed24fdc4b51ce4967128709aa8ade92d5e29672950db43ed28",
+  "result_sha256": "bf50d0fae2cf3deec986b8727b60d831c4a225db05f07e39f7e8f359b8405088",
+  "row_id": "BAP-001",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260821T020549Z-BAP-001/PLAN.md",
+  "plan_sha256": "a4c7f4b8bc317a798596aaecadc5e357b408a06210bc51d2a11f964199d448cc",
+  "result_path": null,
+  "result_document_sha256": null,
+  "before_rust_owned_target": "`firmware/bitaxe`",
+  "after_rust_owned_target": "`firmware/bitaxe`",
+  "before_status": "not-started",
+  "after_status": "implemented",
+  "before_evidence": "pending",
+  "after_evidence": "unit,workflow",
+  "before_notes": "UART ownership, request handling, and subscription lifecycle remain explicit hardware-bound gaps.",
+  "after_notes": "Single-owner ESP-IDF UART2 firmware initialization, bounded ingress, request dispatch, AP announcements, and subscription cadence/timeout behavior are implemented with focused lifecycle and source-ownership tests plus the canonical firmware package; see docs/parity/evidence/bap001-firmware-interface/summary.md and docs/parity/work-plans/20260821T020549Z-BAP-001/WORKLOG.md. Live accessory electrical behavior, Wi-Fi-password subscription delivery, setting effects, and hardware verification remain unavailable and unclaimed."
+}
