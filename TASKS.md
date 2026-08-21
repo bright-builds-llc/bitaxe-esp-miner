@@ -26,7 +26,7 @@ new work.
 
 ### task-parity-self001-full-lifecycle | 2026-08-21 | Verify the complete Ultra 205 self-test lifecycle
 
-- [ ] Implement a consume-before-use boot-time self-test owner with no public
+- [x] Implement a consume-before-use boot-time self-test owner with no public
       mutation route and no ordinary-boot behavior change.
 - [ ] Prove controlled failure, complete safe-stop, physical BOOT-button
       cancellation/restart, full upstream-compatible pass, and auto-restart.
@@ -57,6 +57,14 @@ safe-stop step; hold reset low; disable core voltage and ASIC; cool to at most
 `mineonboot=false`; release owned processes/USB; withhold `RESULT.md`; and stop
 without unchanged retry. Human readiness has no deadline and begins only after
 the device is confirmed safe.
+
+Software verification: implementation commit
+`e95259ec0d5bfe100ba4d6b096179075476595f7`; focused pure, firmware,
+flash-tool, automation, restoration, and evidence-contract tests pass with the
+canonical ESP32-S3 package, ordered Cargo gates, Bright Builds, all 51 Bazel
+tests, parity/progress, redaction, reference cleanliness, file-size,
+sensitive-value, and diff checks. Software evidence:
+`docs/parity/evidence/self001-full-lifecycle/summary.md`.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
