@@ -24,6 +24,31 @@ new work.
 
 ## Active
 
+### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
+
+- [ ] Add a single-owner UART2 firmware shell for the pinned GPIO39/GPIO40
+      115200/8-N-1 BAP interface.
+- [ ] Route bounded ingress, requests, and subscriptions through the existing
+      pure BAP core with redaction-safe failure handling.
+- [ ] Add focused lifecycle and source-ownership coverage, build/package the
+      firmware, run every gate, and transition only `BAP-001` to at most
+      `implemented` with `unit,workflow` evidence.
+
+Plan: `docs/parity/work-plans/20260821T020549Z-BAP-001/PLAN.md`
+
+Authorization: repository source, fixture, test, documentation, build, commit,
+and push work only. No detector, USB/device session, flash, monitor, accessory,
+external UART, physical pins/pads/headers, credentials, network discovery,
+mining, ASIC traffic, hardware setting mutation, voltage/frequency/fan/power
+effects, restart, fault injection, OTA, or recovery.
+
+Evidence and status boundary: `implemented` requires the complete firmware
+ownership and lifecycle surface, exact UART configuration, bounded protocol
+handoff, current tests, canonical firmware build/package, and every mandatory
+gate. `verified` additionally requires a separately authorized live accessory
+and detector-gated named-board hardware regression with cleanup and redaction;
+none are authorized or claimed here.
+
 ### task-ultra205-default-profile-soak | 2026-07-28 | Run the bounded upstream-default mining soak
 
 - [x] Start a fresh exact-package attempt at 485 MHz, 1200 mV, and 100% fan
