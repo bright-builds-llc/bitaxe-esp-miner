@@ -88,15 +88,26 @@ pub(crate) fn run_flash_monitor(
         manifest: command.manifest.clone(),
         wifi_credentials: command.wifi_credentials.clone(),
     };
-    let wifi_mode = match &command.thermal_fault_stimulus_intent {
-        Some(intent) => WifiNvsSeedMode::ThermalFaultStimulus(admit_thermal_fault_stimulus_intent(
+    let wifi_mode = match (
+        &command.thermal_fault_stimulus_intent,
+        &command.self_test_intent,
+    ) {
+        (_, Some(intent)) => WifiNvsSeedMode::SelfTest(admit_self_test_intent(
             intent,
             command.manifest.as_ref(),
             command.common.board,
             environment,
         )?),
-        None if command.network_reconnect_probe => WifiNvsSeedMode::NetworkReconnectProbe,
-        None => WifiNvsSeedMode::Ordinary,
+        (Some(intent), None) => {
+            WifiNvsSeedMode::ThermalFaultStimulus(admit_thermal_fault_stimulus_intent(
+                intent,
+                command.manifest.as_ref(),
+                command.common.board,
+                environment,
+            )?)
+        }
+        (None, None) if command.network_reconnect_probe => WifiNvsSeedMode::NetworkReconnectProbe,
+        (None, None) => WifiNvsSeedMode::Ordinary,
     };
     let flash_outcome =
         run_flash_with_wifi_mode(&flash_command, wifi_mode, environment).map_err(|error| {

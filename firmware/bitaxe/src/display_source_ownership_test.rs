@@ -102,7 +102,8 @@ fn gpio0_input_has_one_pullup_owner_and_closed_effect_logs() {
     assert!(INPUT_SOURCE.contains("cancel_identify_if_active_at(now_ms)"));
     assert!(COMMAND_SURFACE_SOURCE.contains("mutate_command_visible_state_with_result("));
     assert!(COMMAND_SURFACE_SOURCE.contains("ButtonIdentifyCancellation::StateUnavailable"));
-    assert!(INPUT_SOURCE.contains("effect=self_test_reset status=unavailable"));
+    assert!(INPUT_SOURCE.contains("effect=self_test_cancel_requested"));
+    assert!(INPUT_SOURCE.contains("effect=self_test_cancel status=not_ready"));
     assert!(!INPUT_SOURCE.contains("ssid="));
     assert!(!INPUT_SOURCE.contains("ipv4="));
     assert!(!INPUT_SOURCE.contains("password="));

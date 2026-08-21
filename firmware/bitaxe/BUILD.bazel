@@ -297,6 +297,22 @@ rust_test(
 )
 
 rust_test(
+    name = "self_test_source_ownership_tests",
+    srcs = [
+        "src/http_api.rs",
+        "src/input_adapter.rs",
+        "src/main.rs",
+        "src/self_test_runtime.rs",
+        "src/self_test_source_ownership_test.rs",
+        "src/settings_adapter/self_test.rs",
+        "src/startup.rs",
+    ],
+    crate_name = "self_test_source_ownership_tests",
+    crate_root = "src/self_test_source_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "operator_snapshot_publication_shell_tests",
     srcs = ["src/operator_snapshot_publication.rs"],
     crate_name = "operator_snapshot_publication_shell_tests",
@@ -534,6 +550,7 @@ rust_test(
     name = "sensor_source_ownership_tests",
     srcs = [
         "src/asic_adapter/production.rs",
+        "src/asic_adapter/production/self_test.rs",
         "src/mining_actuation_adapter.rs",
         "src/fan_controller_plan.rs",
         "src/fan_controller_runtime.rs",
@@ -584,6 +601,7 @@ rust_test(
     name = "hashrate_source_ownership_tests",
     srcs = [
         "src/asic_adapter/production.rs",
+        "src/asic_adapter/production/self_test.rs",
         "src/hashrate_source_ownership_test.rs",
         "src/production_mining_session.rs",
         "src/production_mining_session/asic_worker.rs",

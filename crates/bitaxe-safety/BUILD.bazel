@@ -46,6 +46,7 @@ rust_library(
         "src/sensor_acquisition/emc2101.rs",
         "src/sensor_acquisition/completeness_tests.rs",
         "src/self_test.rs",
+        "src/self_test/hardware.rs",
         "src/status.rs",
         "src/thermal.rs",
         "src/thermal_fault_stimulus.rs",

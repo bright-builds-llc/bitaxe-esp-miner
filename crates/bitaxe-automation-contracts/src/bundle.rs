@@ -46,6 +46,7 @@ pub struct ContractBundle {
     pub provisioning_network_evidence_schema: Value,
     pub release_recovery_evidence_schema: Value,
     pub ui_workflow_evidence_schema: Value,
+    pub self_test_evidence_schema: Value,
     pub commands: Vec<AutomationCommand>,
     pub evidence_schemas: Vec<&'static str>,
 }
@@ -168,6 +169,8 @@ pub fn contract_bundle() -> ContractBundle {
         .expect("release recovery evidence schema must serialize"),
         ui_workflow_evidence_schema: serde_json::to_value(schema_for!(UiWorkflowEvidence))
             .expect("UI workflow evidence schema must serialize"),
+        self_test_evidence_schema: serde_json::to_value(schema_for!(SelfTestEvidence))
+            .expect("self-test evidence schema must serialize"),
         commands: vec![
             AutomationCommand::Doctor,
             AutomationCommand::BootstrapEsp,
@@ -188,6 +191,7 @@ pub fn contract_bundle() -> ContractBundle {
             AutomationCommand::CaptureOperatorEvidence,
             AutomationCommand::VerifySettingsDurability,
             AutomationCommand::ApiCommandEffectsCampaign,
+            AutomationCommand::SelfTestCampaign,
             AutomationCommand::CaptureCorrelatedRuntimeEvidence,
             AutomationCommand::CaptureVersionEvidence,
             AutomationCommand::CaptureOperatorSnapshotEvidence,
@@ -264,6 +268,7 @@ pub fn contract_bundle() -> ContractBundle {
             PROVISIONING_NETWORK_EVIDENCE_SCHEMA,
             RELEASE_RECOVERY_EVIDENCE_SCHEMA,
             UI_WORKFLOW_EVIDENCE_SCHEMA,
+            SELF_TEST_EVIDENCE_SCHEMA,
             MIGRATION_SCHEMA,
         ],
     }

@@ -168,6 +168,14 @@ pub(crate) struct FlashMonitorCommand {
     )]
     pub(crate) thermal_fault_stimulus_intent: Option<Utf8PathBuf>,
 
+    #[arg(
+        long = "self-test-intent",
+        value_parser = parse_utf8_path,
+        requires = "wifi_credentials",
+        conflicts_with_all = ["network_reconnect_probe", "thermal_fault_stimulus_intent"]
+    )]
+    pub(crate) self_test_intent: Option<Utf8PathBuf>,
+
     #[arg(long = "capture-timeout-seconds", default_value_t = DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS)]
     pub(crate) capture_timeout_seconds: u64,
 }

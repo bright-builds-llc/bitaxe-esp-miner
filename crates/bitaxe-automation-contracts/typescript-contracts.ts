@@ -18,7 +18,7 @@ export type AutomationCommand =
   | "verify-mining"
   | "capture-operator-evidence"
   | "verify-settings-durability"
-  | "api-command-effects-campaign"
+  | "api-command-effects-campaign" | "self-test-campaign"
   | "verify-theme-durability"
   | "capture-correlated-runtime-evidence"
   | "capture-version-evidence"
@@ -506,7 +506,7 @@ const automationCommands = new Set<AutomationCommand>([
   "verify-redaction", "verify-production-session", "observe-serial", "verify-flash-durability",
   "verify-firmware-ota", "verify-web-assets-ota", "verify-recovery", "verify-http-api",
   "verify-hardware-surface", "verify-mining", "capture-operator-evidence",
-  "verify-settings-durability", "api-command-effects-campaign", "verify-theme-durability", "capture-correlated-runtime-evidence", "capture-version-evidence",
+  "verify-settings-durability", "api-command-effects-campaign", "self-test-campaign", "verify-theme-durability", "capture-correlated-runtime-evidence", "capture-version-evidence",
   "capture-operator-snapshot-evidence", "capture-runtime-health-evidence",
   "capture-system-info-evidence", "capture-adc-observation-evidence",
   "capture-hashrate-monitor-evidence", "capture-scoreboard-evidence", "capture-ultra205-defaults-evidence",

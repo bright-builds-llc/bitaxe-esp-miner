@@ -37,6 +37,7 @@ mod safe10_evidence;
 mod scoreboard_evidence;
 mod screen_flow_evidence;
 mod sdkconfig_rollback_evidence;
+mod self_test_evidence;
 mod settings_patch_evidence;
 mod statistics_history_evidence;
 mod stratum_socket_evidence;
@@ -132,6 +133,10 @@ pub use screen_flow_evidence::{
 pub use sdkconfig_rollback_evidence::{
     SdkconfigRollbackEvidence, SdkconfigRollbackObservationEvidence,
 };
+pub use self_test_evidence::{
+    SelfTestEvidence, SelfTestFailureEvidence, SelfTestPassEvidence, SelfTestRestorationEvidence,
+    SELF_TEST_EVIDENCE_SCHEMA,
+};
 pub use settings_patch_evidence::{SettingsPatchEvidence, SettingsPatchObservationEvidence};
 pub use statistics_history_evidence::*;
 pub use stratum_socket_evidence::{
@@ -212,6 +217,7 @@ pub enum AutomationCommand {
     CaptureOperatorEvidence,
     VerifySettingsDurability,
     ApiCommandEffectsCampaign,
+    SelfTestCampaign,
     CaptureCorrelatedRuntimeEvidence,
     CaptureVersionEvidence,
     CaptureOperatorSnapshotEvidence,

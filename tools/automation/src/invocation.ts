@@ -102,6 +102,16 @@ const rules: Record<AutomationCommand, CommandRule> = {
     "--projection": value({ required: true }),
     "--duration-seconds": value({ required: true, values: ["600"] }),
   },
+  "self-test-campaign": {
+    "--action": value({ required: true, values: ["start", "resume"] }),
+    "--private-root": value({ required: true }),
+    "--package-manifest": value({ required: true }),
+    "--wifi-credentials": value(),
+    "--pool-credentials": value(),
+    "--detector-output": value({ required: true }),
+    "--plan": value({ required: true }),
+    "--projection": value({ required: true }),
+  },
   "verify-theme-durability": {
     "--private-root": value({ required: true }),
     "--package-manifest": value({ required: true }),

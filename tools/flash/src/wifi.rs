@@ -14,10 +14,17 @@ pub(crate) struct ThermalFaultNvsSeed {
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) struct SelfTestNvsSeed {
+    pub(crate) lease: u64,
+    pub(crate) case: &'static str,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum WifiNvsSeedMode {
     Ordinary,
     NetworkReconnectProbe,
     ThermalFaultStimulus(ThermalFaultNvsSeed),
+    SelfTest(SelfTestNvsSeed),
 }
 
 pub(crate) fn prepare_wifi_nvs_seed(
@@ -192,6 +199,14 @@ pub(crate) fn wifi_nvs_csv_for_mode(
                 private_nvs_csv_row(&StoredValue::string("thermfault", "emc2101_invalid_sample")),
                 private_nvs_csv_row(&StoredValue::u64("thermlease", seed.lease)),
                 private_nvs_csv_row(&StoredValue::u16("thermcount", seed.sample_count)),
+            ]);
+        }
+        WifiNvsSeedMode::SelfTest(seed) => {
+            rows.extend([
+                private_nvs_csv_row(&StoredValue::string("selftestkind", "ultra205_full_v1")),
+                private_nvs_csv_row(&StoredValue::u64("selftestlease", seed.lease)),
+                private_nvs_csv_row(&StoredValue::string("selftestcase", seed.case)),
+                private_nvs_csv_row(&StoredValue::u16("selftest", 1)),
             ]);
         }
     }

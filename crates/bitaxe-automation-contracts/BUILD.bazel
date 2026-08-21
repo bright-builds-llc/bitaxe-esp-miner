@@ -51,6 +51,7 @@ rust_library(
         "src/display_behavior_evidence.rs",
         "src/emc2101_thermal_evidence.rs",
         "src/emc2101_thermal_fault_evidence.rs",
+        "src/self_test_evidence.rs",
         "src/emc2101_thermal_input.rs",
         "src/hashrate_monitor_evidence.rs",
         "src/ina260_evidence.rs",
@@ -416,6 +417,17 @@ rust_binary(
     crate_name = "verify_typescript",
     edition = "2021",
     deps = [":bitaxe_automation_contracts"],
+)
+
+rust_binary(
+    name = "validate_self_test_evidence",
+    srcs = ["src/bin/validate_self_test_evidence.rs"],
+    crate_name = "validate_self_test_evidence",
+    edition = "2021",
+    deps = [
+        ":bitaxe_automation_contracts",
+        "@crates//:serde_json",
+    ],
 )
 
 rust_binary(

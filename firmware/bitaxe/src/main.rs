@@ -29,6 +29,7 @@ mod runtime_snapshot;
 mod runtime_uptime;
 mod safety_adapter;
 mod scoreboard_adapter;
+mod self_test_runtime;
 mod settings_adapter;
 mod settings_snapshot_store;
 mod startup;

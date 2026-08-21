@@ -137,6 +137,12 @@ impl Ultra205MiningActuationAdapter {
         execute_safe_stop_with_progress(self, purpose, progress)
     }
 
+    pub fn set_self_test_fan_duty(percent: u8) -> Result<(), MiningActuationAdapterError> {
+        let duty = FanDutyPercent::try_from(percent)
+            .map_err(|_| MiningActuationAdapterError::UnsupportedProfile)?;
+        Self::request_safety(SafetyActuationCommand::SetFanDuty(duty))
+    }
+
     fn request_safety(command: SafetyActuationCommand) -> Result<(), MiningActuationAdapterError> {
         match crate::safety_adapter::request_safety_actuation(command) {
             SafetyActuationRequestOutcome::Applied => Ok(()),

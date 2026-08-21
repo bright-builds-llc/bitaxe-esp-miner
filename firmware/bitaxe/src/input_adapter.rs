@@ -88,7 +88,12 @@ fn apply_event(event: ButtonEvent, now_ms: u64) {
     } else {
         false
     };
-    let route = route_button_event(event, ButtonSelfTestState::Inactive, identify_active);
+    let self_test_state = if crate::self_test_runtime::is_active() {
+        ButtonSelfTestState::Active
+    } else {
+        ButtonSelfTestState::Inactive
+    };
+    let route = route_button_event(event, self_test_state, identify_active);
     match route {
         ButtonRoute::AdvanceScreen => {
             enqueue_screen_advance();
@@ -109,7 +114,11 @@ fn apply_event(event: ButtonEvent, now_ms: u64) {
             }
         }
         ButtonRoute::ResetSelfTest => {
-            log::warn!("input_event=long_press effect=self_test_reset status=unavailable");
+            if crate::self_test_runtime::request_cancel() {
+                log::info!("input_event=long_press effect=self_test_cancel_requested");
+            } else {
+                log::warn!("input_event=long_press effect=self_test_cancel status=not_ready");
+            }
         }
         ButtonRoute::SelfTestResetUnavailable => {
             log::warn!("input_event=long_press effect=self_test_reset_unavailable");

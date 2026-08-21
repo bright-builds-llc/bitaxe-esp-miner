@@ -1,9 +1,7 @@
 //! Read-only firmware adapter for passive runtime-health projection.
 
 use bitaxe_api::LIVE_TELEMETRY_CADENCE_MS;
-use bitaxe_core::runtime_health::{
-    PassiveSelfTestState, RuntimeHealthSnapshot, RuntimeHealthTiming,
-};
+use bitaxe_core::runtime_health::{RuntimeHealthSnapshot, RuntimeHealthTiming};
 
 const MILLIS_PER_SECOND: u64 = 1_000;
 
@@ -19,7 +17,7 @@ pub(crate) fn collect() -> RuntimeHealthSnapshot {
     let task_watchdog = crate::task_watchdog_observation::coherent_observation();
     let current_monotonic_millis = crate::runtime_uptime::millis();
     RuntimeHealthSnapshot::evaluate(
-        PassiveSelfTestState::Unavailable,
+        crate::self_test_runtime::passive_state(),
         checkpoints.maybe_previous.as_ref(),
         checkpoints.maybe_latest.as_ref(),
         task_watchdog.maybe_previous,

@@ -6,8 +6,8 @@ use crate::{
     asic_adapter, bap_adapter, boot_evidence, boot_validation, display_adapter,
     fan_controller_runtime, filesystem, http_api, input_adapter, operator_sensor_runtime,
     production_mining_session, runtime_snapshot, runtime_uptime, safety_adapter,
-    scoreboard_adapter, settings_adapter, statistics_runtime, wifi_adapter, BOOT_LOG_LINE,
-    RUST_TARGET, SAFE_STATE_LOG_LINE,
+    scoreboard_adapter, self_test_runtime, settings_adapter, statistics_runtime, wifi_adapter,
+    BOOT_LOG_LINE, RUST_TARGET, SAFE_STATE_LOG_LINE,
 };
 
 /// Starts firmware services while preserving evidence-before-network ordering.
@@ -54,6 +54,17 @@ fn initialize_boot_identity_and_settings() -> anyhow::Result<(
     settings_adapter::initialize_default_nvs_partition()?;
     if let Err(error) = settings_adapter::initialize_current_settings_snapshot() {
         log::warn!("axeos_settings_snapshot=startup_refresh_failed error={error}");
+    }
+    match settings_adapter::maybe_self_test_receipt() {
+        Ok(Some((lease, receipt))) => crate::info_retained(&format!(
+            "self_test_receipt outcome={} lease={lease:016x}",
+            receipt.token()
+        )),
+        Ok(None) => {}
+        Err(error) => log::warn!(
+            "self_test_receipt=unavailable category={}",
+            error.category()
+        ),
     }
     match settings_adapter::current_ultra205_defaults_attestation() {
         Ok(attestation) => crate::info_retained(
@@ -227,13 +238,26 @@ fn start_runtime_services(startup_diagnostics: anyhow::Result<()>) -> anyhow::Re
     };
     startup_diagnostics?;
     safety_adapter::start_safety_supervisor();
-    if let Err(error) = production_mining_session::start() {
-        log::warn!(
-            "production_mining_session=unavailable reason=thread_spawn_failed error={error:#}"
-        );
-    }
-    if let Err(error) = fan_controller_runtime::start() {
-        log::warn!("fan_controller=unavailable reason=thread_spawn_failed error={error:#}");
+    let maybe_self_test_admission = match settings_adapter::load_self_test_admission() {
+        Ok(maybe_admission) => maybe_admission,
+        Err(error) => {
+            log::warn!("self_test_admission=rejected category={}", error.category());
+            None
+        }
+    };
+    if let Some(admission) = maybe_self_test_admission {
+        if let Err(error) = self_test_runtime::start(admission) {
+            log::warn!("self_test_runtime=unavailable reason=thread_spawn_failed error={error:#}");
+        }
+    } else {
+        if let Err(error) = production_mining_session::start() {
+            log::warn!(
+                "production_mining_session=unavailable reason=thread_spawn_failed error={error:#}"
+            );
+        }
+        if let Err(error) = fan_controller_runtime::start() {
+            log::warn!("fan_controller=unavailable reason=thread_spawn_failed error={error:#}");
+        }
     }
     if let Err(error) = statistics_runtime::start() {
         log::warn!("statistics_runtime=unavailable reason=thread_spawn_failed error={error:#}");

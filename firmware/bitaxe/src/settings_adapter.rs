@@ -25,12 +25,17 @@ mod nvs_owner;
 mod production;
 mod protocol_gate;
 mod protocol_gate_adapter;
+mod self_test;
 mod thermal_fault_stimulus;
 
 pub(crate) use production::{
     load_production_campaign_admission, read_production_pool_set, MiningCampaignStage,
 };
 pub(crate) use protocol_gate::ProductionProtocolGateDecision;
+pub(crate) use self_test::{
+    clear_self_test_flag_and_record_receipt, load_self_test_admission, maybe_self_test_receipt,
+    SelfTestAdmission, SelfTestReceipt,
+};
 pub(crate) use thermal_fault_stimulus::ThermalFaultStimulusAdmission;
 
 pub(crate) fn initialize_default_nvs_partition() -> Result<(), SettingsAdapterFailure> {

@@ -8,6 +8,7 @@ import { emitOperatorCheckpointSignal } from "./api-command-effects-checkpoint.j
 import { deviceSessionProgram, flashProgram, toolProgram } from "./cli-tools.js";
 import { captureHashrateMonitorEvidenceFromInvocation } from "./hashrate-monitor-command.js";
 import { captureScoreboardEvidenceFromInvocation } from "./scoreboard-command.js";
+import { selfTestCampaignFromInvocation } from "./self-test-campaign.js";
 import { projectAsicFrequencyTransitionEvidence } from "./asic-frequency-transition-evidence.js";
 import { projectAsicInitializationEvidence } from "./asic-initialization-evidence.js";
 import { projectAsicPowerInitializationEvidence } from "./asic-power-initialization-evidence.js";
@@ -196,6 +197,7 @@ async function dispatchProcess(
     case "capture-provisioning-network-evidence":
     case "project-ui-workflow-evidence":
     case "api-command-effects-campaign":
+    case "self-test-campaign":
     case "verify-theme-durability":
       throw new Error("specialized workflow reached generic dispatch");
   }
@@ -579,6 +581,14 @@ async function main(): Promise<number> {
         projection: optionValue(invocation, "--projection"),
         captureTimeoutSeconds: Number(optionValue(invocation, "--capture-timeout-seconds")),
       }, processPort, flashProgram(root), toolProgram(root, "tools/parity/report"), deviceSessionProgram(root));
+    } else if (invocation.command === "self-test-campaign") {
+      publicValue = await selfTestCampaignFromInvocation(
+        root,
+        invocation,
+        processPort,
+        flashProgram(root),
+        toolProgram(root, "crates/bitaxe-automation-contracts/validate_self_test_evidence"),
+      );
     } else if (invocation.command === "verify-redaction") {
       const evidenceRoot = assertWithinWorkspace(root, maybeOptionValue(invocation, "--evidence-root") ?? "docs/parity/evidence");
       publicValue = await verifySemanticEvidenceRedaction(evidenceRoot);

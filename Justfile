@@ -180,6 +180,9 @@ capture-emc2101-thermal-evidence *args:
 capture-emc2101-thermal-fault-evidence *args:
     bazel run //tools/automation:capture_emc2101_thermal_fault_evidence -- {{ args }}
 
+self-test-campaign action *args:
+    bazel run //tools/automation:self_test_campaign -- --action {{ quote(action) }} {{ args }}
+
 validate-emc2101-thermal-fault-evidence projection:
     #!/usr/bin/env bash
     set -euo pipefail

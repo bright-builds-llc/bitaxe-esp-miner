@@ -12,6 +12,9 @@ use crate::evidence::SafetyCriticalEvidence;
 use crate::status::SafetyStatus;
 use crate::watchdog::{StepProgress, StepSupervisor, WatchdogDecision};
 
+mod hardware;
+pub use hardware::*;
+
 pub const MODULE_NAME: &str = "self_test";
 
 pub const REFERENCE_BREADCRUMBS: &[&str] = &[

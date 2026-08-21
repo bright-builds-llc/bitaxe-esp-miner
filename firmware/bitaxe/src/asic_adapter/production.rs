@@ -27,6 +27,9 @@ use bitaxe_asic::bm1366::{
 
 use super::{reset, status, uart};
 
+mod self_test;
+pub use self_test::{execute_self_test_command, try_read_self_test_result};
+
 /// Outcome of a bounded production UART read poll.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProductionReadOutcome {
