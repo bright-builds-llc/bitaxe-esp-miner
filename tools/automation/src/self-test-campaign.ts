@@ -13,15 +13,22 @@ import { internalCommandSpec, monitorCommand } from "./contracts.generated.js";
 import { portFromDetectorOutput } from "./detector.js";
 import { maybeOptionValue, optionValue, type ParsedInvocation } from "./invocation.js";
 import type { ProcessPort } from "./process.js";
+import {
+  ordinaryFlashMonitorSpec,
+  selfTestFlashMonitorDryRunSpec,
+  selfTestFlashMonitorSpec,
+} from "./self-test-campaign-flash.js";
+import { createSelfTestEvidence } from "./self-test-campaign-evidence.js";
+import { restoreSelfTestSettings } from "./self-test-campaign-restoration.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
-const expectedRoot = "scratch/self001-full-lifecycle/attempt-002";
+const expectedRoot = "scratch/self001-full-lifecycle/attempt-003";
 const expectedProjection =
   "docs/parity/evidence/self001-full-lifecycle/self-test-projection.json";
 const expectedPlan =
-  "docs/parity/work-plans/20260821T192123Z-SELF-001-RETRY/PLAN.md";
+  "docs/parity/work-plans/20260821T200723Z-SELF-001-RETRY-2/PLAN.md";
 const expectedPlanSha256 =
-  "99f34e8db48f3eff9b84d9695636160d13b30f29aa9c55d8363a41bec550499e";
+  "aa331160188c07646ef7ce99e2047d41dd8a7dbe3457b2e02174dc9675c03a9a";
 const expectedReference = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const activeTask = "task-parity-self001-full-lifecycle";
 const monitorSeconds = 360;
@@ -36,7 +43,7 @@ type CampaignState = {
   readonly package_manifest_sha256: string;
   readonly settings_backup_sha256: string;
   readonly pre_boot_session: string;
-  readonly stage: "cancel_ready";
+  readonly stage: "failure_prepared" | "cancel_ready";
 };
 
 class SelfTestCampaignError extends Error {
@@ -106,6 +113,15 @@ async function privateJson(output: string, value: unknown): Promise<string> {
   return document;
 }
 
+async function replacePrivateJson(output: string, value: unknown): Promise<string> {
+  const temporary = `${output}.tmp`;
+  await requireAbsent(temporary, "private replacement");
+  const document = await privateJson(temporary, value);
+  await rename(temporary, output);
+  await requireMode(output, 0o600, false);
+  return document;
+}
+
 async function childText(
   processPort: ProcessPort,
   program: string,
@@ -171,7 +187,7 @@ function intent(
   return {
     schema_version: "bitaxe-self-test-intent-v1",
     board: 205,
-    attempt_ordinal: 2,
+    attempt_ordinal: 3,
     source_commit: state.source_commit,
     reference_commit: state.reference_commit,
     app_elf_sha256: state.app_elf_sha256,
@@ -182,36 +198,58 @@ function intent(
   };
 }
 
-function flashMonitorSpec(
-  flashProgram: string,
-  port: string,
-  manifest: string,
-  wifiCredentials: string,
-  intentPath: string,
-  evidenceDir: string,
-) {
-  return internalCommandSpec(flashProgram, [
-    "flash-monitor",
-    "--board", "205",
-    "--port", port,
-    "--manifest", manifest,
-    "--wifi-credentials", wifiCredentials,
-    "--self-test-intent", intentPath,
-    "--capture-timeout-seconds", String(monitorSeconds),
-    "--evidence-mode", "dual",
-    "--evidence-dir", evidenceDir,
-  ], value => value);
-}
-
 async function runFlashMonitor(
   processPort: ProcessPort,
-  spec: ReturnType<typeof flashMonitorSpec>,
+  spec: ReturnType<typeof internalCommandSpec>,
   context: string,
 ): Promise<void> {
   const outcome = await processPort.run(spec);
   if (outcome.timedOut) throw failure("timeout", `${context} timed out`, context);
   if (outcome.exitCode !== 0) {
     throw failure("hardware_blocked", `${context} did not complete`, context);
+  }
+}
+
+async function recoverOrdinaryRuntime(
+  processPort: ProcessPort,
+  flashProgram: string,
+  port: string,
+  manifestPath: string,
+  wifiPath: string,
+  poolPath: string,
+  privateRoot: string,
+  backup: JsonObject,
+): Promise<boolean> {
+  const recoveryRoot = path.join(privateRoot, "recovery");
+  let restored = false;
+  try {
+    await runFlashMonitor(
+      processPort,
+      ordinaryFlashMonitorSpec({
+        flashProgram,
+        port,
+        manifest: manifestPath,
+        wifiCredentials: wifiPath,
+        evidenceDir: recoveryRoot,
+      }),
+      "recovery",
+    );
+    const recoveryLog = await readFile(
+      path.join(recoveryRoot, "flash-monitor.classifier-input.log"),
+      "utf8",
+    );
+    await restoreSettings(singleOrigin(recoveryLog), backup, wifiPath, poolPath);
+    restored = true;
+    return true;
+  } catch {
+    return false;
+  } finally {
+    await privateJson(path.join(privateRoot, "recovery-status.private.json"), {
+      schema_version: "bitaxe-self-test-recovery-status-v1",
+      exact_package_attempted: true,
+      settings_restored: restored,
+      projection_published: false,
+    });
   }
 }
 
@@ -321,7 +359,7 @@ async function startCampaign(
 
   const leaseBytes = randomBytes(8);
   if (leaseBytes.every(byte => byte === 0)) leaseBytes[7] = 1;
-  const state: CampaignState = {
+  const preparedState: CampaignState = {
     schema_version: "bitaxe-self-test-campaign-state-v1",
     lease_hex: leaseBytes.toString("hex"),
     source_commit: requiredString(manifest, "source_commit", "manifest"),
@@ -330,30 +368,64 @@ async function startCampaign(
     package_manifest_sha256: sha256(manifestDocument),
     settings_backup_sha256: sha256(backupDocument),
     pre_boot_session: requiredString(settings, "bootSession", "settings snapshot"),
-    stage: "cancel_ready",
+    stage: "failure_prepared",
   };
-  await privateJson(path.join(privateRoot, "failure-intent.private.json"), intent(state, "planned_failure"));
-  const failureRoot = path.join(privateRoot, "failure");
+  const statePath = path.join(privateRoot, "campaign-state.private.json");
+  const backup = object(JSON.parse(backupDocument), "settings backup");
+  const failureIntentPath = path.join(privateRoot, "failure-intent.private.json");
+  await privateJson(failureIntentPath, intent(preparedState, "planned_failure"));
+  await privateJson(statePath, preparedState);
+  const relativeFailureIntent = path.relative(root, failureIntentPath);
   await runFlashMonitor(
     processPort,
-    flashMonitorSpec(
+    selfTestFlashMonitorDryRunSpec(
       flashProgram,
       port,
       manifestPath,
       wifiCredentials,
-      path.relative(root, path.join(privateRoot, "failure-intent.private.json")),
-      failureRoot,
+      relativeFailureIntent,
     ),
-    "failure_phase",
+    "failure_admission",
   );
-  const log = await readFile(path.join(failureRoot, "flash-monitor.classifier-input.log"), "utf8");
-  if (!log.includes('"stage":"measuring"')
-    || !log.includes('"checkpoint":"cancel_ready"')
-    || !log.includes('"safe_state":true')
-    || !log.includes('"failure":"planned_evaluation_failure"')) {
-    throw failure("hardware_blocked", "failure phase checkpoint is incomplete", "failure_phase");
+  const failureRoot = path.join(privateRoot, "failure");
+  try {
+    await runFlashMonitor(
+      processPort,
+      selfTestFlashMonitorSpec(
+        flashProgram,
+        port,
+        manifestPath,
+        wifiCredentials,
+        relativeFailureIntent,
+        failureRoot,
+      ),
+      "failure_phase",
+    );
+    const log = await readFile(
+      path.join(failureRoot, "flash-monitor.classifier-input.log"),
+      "utf8",
+    );
+    if (!log.includes('"stage":"measuring"')
+      || !log.includes('"checkpoint":"cancel_ready"')
+      || !log.includes('"safe_state":true')
+      || !log.includes('"failure":"planned_evaluation_failure"')) {
+      throw failure("hardware_blocked", "failure phase checkpoint is incomplete", "failure_phase");
+    }
+  } catch (error) {
+    await recoverOrdinaryRuntime(
+      processPort,
+      flashProgram,
+      port,
+      manifestPath,
+      wifiCredentials,
+      poolCredentials,
+      privateRoot,
+      backup,
+    );
+    throw error;
   }
-  await privateJson(path.join(privateRoot, "campaign-state.private.json"), state);
+  const readyState: CampaignState = { ...preparedState, stage: "cancel_ready" };
+  await replacePrivateJson(statePath, readyState);
   return {
     checkpoint: "cancel_ready",
     safe_state: true,
@@ -363,66 +435,16 @@ async function startCampaign(
   };
 }
 
-const restorableKeys = [
-  "hostname", "stratumProtocol", "stratumURL", "stratumPort", "stratumUser",
-  "stratumSuggestedDifficulty", "stratumExtranonceSubscribe", "stratumTLS", "stratumCert",
-  "stratumV2ChannelType", "stratumV2AuthorityPubkey", "stratumDecodeCoinbase",
-  "fallbackStratumProtocol", "fallbackStratumURL", "fallbackStratumPort", "fallbackStratumUser",
-  "fallbackStratumSuggestedDifficulty", "fallbackStratumExtranonceSubscribe", "fallbackStratumTLS",
-  "fallbackStratumCert", "fallbackStratumV2ChannelType", "fallbackStratumV2AuthorityPubkey",
-  "fallbackStratumDecodeCoinbase", "useFallbackStratum", "frequency", "coreVoltage",
-  "overclockEnabled", "display", "rotation", "invertscreen", "displayOffset", "displayTimeout",
-  "autofanspeed", "manualFanSpeed", "minFanSpeed", "temptarget", "overheat_mode", "statsFrequency",
-] as const;
-
 async function restoreSettings(
   origin: URL,
   backup: JsonObject,
   wifiPath: string,
   poolPath: string,
 ): Promise<void> {
-  const settings = object(backup["settings"], "settings backup");
-  const theme = object(backup["theme"], "theme backup");
-  const wifi = object(JSON.parse(await readFile(wifiPath, "utf8")), "Wi-Fi input");
-  const pool = object(JSON.parse(await readFile(poolPath, "utf8")), "pool input");
-  const body: JsonObject = { startMiningOnBoot: false };
-  for (const key of restorableKeys) {
-    if (Object.hasOwn(settings, key)) body[key] = settings[key];
-  }
-  body["ssid"] = wifi["ssid"];
-  body["wifiPass"] = wifi["wifiPass"];
-  body["stratumURL"] = pool["poolURL"];
-  body["stratumPort"] = pool["poolPort"];
-  body["stratumUser"] = pool["poolUser"];
-  body["stratumPassword"] = pool["poolPassword"];
-  let response: Response;
-  let themeResponse: Response;
   try {
-    response = await fetch(new URL("/api/system", origin), {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    themeResponse = await fetch(new URL("/api/theme", origin), {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(theme),
-    });
+    await restoreSelfTestSettings(origin, backup, wifiPath, poolPath);
   } catch {
-    throw failure("hardware_blocked", "settings restoration transport failed", "restoration");
-  }
-  if (!response.ok) throw failure("hardware_blocked", "settings restoration failed", "restoration");
-  if (!themeResponse.ok) throw failure("hardware_blocked", "theme restoration failed", "restoration");
-  const confirmed = await fetchJson(origin, "/api/system/info");
-  const confirmedTheme = await fetchJson(origin, "/api/theme");
-  for (const key of restorableKeys) {
-    if (Object.hasOwn(settings, key) && JSON.stringify(confirmed[key]) !== JSON.stringify(settings[key])) {
-      throw failure("hardware_blocked", "settings restoration mismatch", "restoration");
-    }
-  }
-  if (confirmed["startMiningOnBoot"] !== false
-    || JSON.stringify(confirmedTheme) !== JSON.stringify(theme)) {
-    throw failure("hardware_blocked", "restoration confirmation mismatch", "restoration");
+    throw failure("hardware_blocked", "settings restoration failed", "restoration");
   }
 }
 
@@ -469,91 +491,98 @@ async function resumeCampaign(
   if (!cancellationLog.includes(cancelMarker)) {
     throw failure("hardware_blocked", "physical cancellation receipt was not observed", "cancel");
   }
+  const backup = object(JSON.parse(backupDocument), "settings backup");
   await privateJson(path.join(privateRoot, "pass-intent.private.json"), intent(state, "pass"));
+  const relativePassIntent = path.relative(root, path.join(privateRoot, "pass-intent.private.json"));
+  try {
+    await runFlashMonitor(
+      processPort,
+      selfTestFlashMonitorDryRunSpec(
+        flashProgram,
+        port,
+        manifestPath,
+        wifiPath,
+        relativePassIntent,
+      ),
+      "pass_admission",
+    );
+  } catch (error) {
+    let restored = false;
+    try {
+      await restoreSettings(singleOrigin(cancellationLog), backup, wifiPath, poolPath);
+      restored = true;
+    } catch {
+      restored = false;
+    } finally {
+      await privateJson(path.join(privateRoot, "recovery-status.private.json"), {
+        schema_version: "bitaxe-self-test-recovery-status-v1",
+        exact_package_attempted: false,
+        settings_restored: restored,
+        projection_published: false,
+      });
+    }
+    throw error;
+  }
   const passRoot = path.join(privateRoot, "pass");
-  await runFlashMonitor(
-    processPort,
-    flashMonitorSpec(
+  let passLog: string;
+  try {
+    await runFlashMonitor(
+      processPort,
+      selfTestFlashMonitorSpec(
+        flashProgram,
+        port,
+        manifestPath,
+        wifiPath,
+        relativePassIntent,
+        passRoot,
+      ),
+      "pass_phase",
+    );
+    passLog = await readFile(path.join(passRoot, "flash-monitor.classifier-input.log"), "utf8");
+    const passMarker = `self_test_receipt outcome=passed lease=${state.lease_hex}`;
+    const passStages = ["warming", "measuring", "evaluating", "safe_stopping", "restarting"];
+    if (!passLog.includes('"outcome":"passed"')
+      || !passLog.includes(passMarker)
+      || passStages.some(stage => !passLog.includes(`"stage":"${stage}"`))) {
+      throw failure("hardware_blocked", "passing phase or automatic restart was not observed", "pass_phase");
+    }
+  } catch (error) {
+    await recoverOrdinaryRuntime(
+      processPort,
       flashProgram,
       port,
       manifestPath,
       wifiPath,
-      path.relative(root, path.join(privateRoot, "pass-intent.private.json")),
-      passRoot,
-    ),
-    "pass_phase",
-  );
-  const passLog = await readFile(path.join(passRoot, "flash-monitor.classifier-input.log"), "utf8");
-  const passMarker = `self_test_receipt outcome=passed lease=${state.lease_hex}`;
-  const passStages = ["warming", "measuring", "evaluating", "safe_stopping", "restarting"];
-  if (!passLog.includes('"outcome":"passed"')
-    || !passLog.includes(passMarker)
-    || passStages.some(stage => !passLog.includes(`"stage":"${stage}"`))) {
-    throw failure("hardware_blocked", "passing phase or automatic restart was not observed", "pass_phase");
+      poolPath,
+      privateRoot,
+      backup,
+    );
+    throw error;
   }
   const origin = singleOrigin(passLog);
-  const backup = object(JSON.parse(backupDocument), "settings backup");
-  await restoreSettings(origin, backup, wifiPath, poolPath);
+  try {
+    await restoreSettings(origin, backup, wifiPath, poolPath);
+  } catch (error) {
+    await recoverOrdinaryRuntime(
+      processPort,
+      flashProgram,
+      port,
+      manifestPath,
+      wifiPath,
+      poolPath,
+      privateRoot,
+      backup,
+    );
+    throw error;
+  }
 
   const manifestDocument = await readFile(manifestPath, "utf8");
-  const evidence = {
-    schema_version: "bitaxe-self-test-evidence-v1",
-    board: 205,
-    attempt_ordinal: 2,
-    source_commit: state.source_commit,
-    reference_commit: state.reference_commit,
-    app_elf_sha256: state.app_elf_sha256,
-    package_manifest_sha256: state.package_manifest_sha256,
-    plan_sha256: expectedPlanSha256,
-    workflow: {
-      schema_version: "bitaxe-workflow-identity-v1",
-      command: "self-test-campaign",
-      request_sha256: sha256(JSON.stringify({
-        manifest: sha256(manifestDocument), plan: expectedPlanSha256, attempt: 2,
-      })),
-    },
-    detector_admitted: true,
-    psram_available: passLog.includes("psram_status=available"),
-    failure: {
-      stable_load_ms: 5_000,
-      planned_evaluation_failure: true,
-      safe_stop_complete: true,
-      failed_state_observed: true,
-      cancel_checkpoint_safe: true,
-      physical_long_press_observed: true,
-      cancellation_receipt_observed: true,
-      cancellation_restart_observed: true,
-    },
-    pass: {
-      frequency_mhz: 485,
-      core_voltage_mv: 1_200,
-      difficulty: 16,
-      warmup_celsius: 55,
-      target_celsius: 65,
-      maximum_celsius: 70,
-      measurement_ms: 30_000,
-      total_hashrate_passed: true,
-      domain_count: 4,
-      domain_evaluation_passed: true,
-      electrical_checks_passed: true,
-      fan_check_passed: true,
-      watchdog_advanced: true,
-      safe_stop_complete: true,
-      pass_receipt_observed: true,
-      automatic_restart_observed: true,
-    },
-    restoration: {
-      settings_snapshot_captured_before_write: true,
-      local_credentials_used_in_memory: true,
-      settings_restored: true,
-      mine_on_boot_disabled: true,
-      production_mining_never_started: !passLog.includes("production_mining_session=active"),
-      pool_traffic_absent: !passLog.includes("pool_transport="),
-    },
-    cleanup_complete: true,
-    private_modes_valid: true,
-    redaction_status: "passed",
-  };
+  const evidence = createSelfTestEvidence(
+    state,
+    manifestDocument,
+    expectedPlanSha256,
+    passLog,
+  );
   const candidate = `${projection}.candidate`;
   await mkdir(path.dirname(projection), { recursive: true });
   await privateJson(candidate, evidence);

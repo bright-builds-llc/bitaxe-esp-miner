@@ -5,15 +5,15 @@ use std::os::unix::fs::PermissionsExt;
 use crate::*;
 
 pub(crate) const SELF_TEST_FAILURE_INTENT_RELATIVE_PATH: &str =
-    "scratch/self001-full-lifecycle/attempt-002/failure-intent.private.json";
+    "scratch/self001-full-lifecycle/attempt-003/failure-intent.private.json";
 pub(crate) const SELF_TEST_PASS_INTENT_RELATIVE_PATH: &str =
-    "scratch/self001-full-lifecycle/attempt-002/pass-intent.private.json";
+    "scratch/self001-full-lifecycle/attempt-003/pass-intent.private.json";
 pub(crate) const SELF_TEST_PLAN_RELATIVE_PATH: &str =
-    "docs/parity/work-plans/20260821T192123Z-SELF-001-RETRY/PLAN.md";
+    "docs/parity/work-plans/20260821T200723Z-SELF-001-RETRY-2/PLAN.md";
 pub(crate) const SELF_TEST_PLAN_SHA256: &str =
-    "99f34e8db48f3eff9b84d9695636160d13b30f29aa9c55d8363a41bec550499e";
+    "aa331160188c07646ef7ce99e2047d41dd8a7dbe3457b2e02174dc9675c03a9a";
 const SELF_TEST_INTENT_SCHEMA: &str = "bitaxe-self-test-intent-v1";
-const SELF_TEST_ATTEMPT_ORDINAL: u16 = 2;
+const SELF_TEST_ATTEMPT_ORDINAL: u16 = 3;
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -62,8 +62,8 @@ pub(crate) fn admit_self_test_intent(
         .read_to_string(&plan_path)
         .map_err(|_| anyhow::anyhow!("self_test_intent=blocked reason=plan_unreadable"))?;
 
-    validate_lower_hex("source_commit", &intent.source_commit, false)?;
-    validate_lower_hex("reference_commit", &intent.reference_commit, false)?;
+    validate_commit_hex("source_commit", &intent.source_commit)?;
+    validate_commit_hex("reference_commit", &intent.reference_commit)?;
     validate_lower_hex("app_elf_sha256", &intent.app_elf_sha256, true)?;
     validate_lower_hex("plan_sha256", &intent.plan_sha256, true)?;
     if intent.schema_version != SELF_TEST_INTENT_SCHEMA
@@ -98,6 +98,17 @@ pub(crate) fn admit_self_test_intent(
     })
 }
 
+fn validate_commit_hex(label: &str, value: &str) -> Result<()> {
+    if value.len() == 40
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    {
+        return Ok(());
+    }
+    bail!("identity_admission=blocked reason=invalid_{label}")
+}
+
 fn require_private_file(path: &Utf8Path) -> Result<()> {
     let metadata = fs::symlink_metadata(path.as_std_path())
         .map_err(|_| anyhow::anyhow!("self_test_intent=blocked reason=file_metadata"))?;
@@ -128,18 +139,36 @@ mod tests {
     use super::*;
 
     #[test]
-    fn attempt_two_contract_binds_exact_plan_and_private_paths() {
+    fn attempt_three_contract_binds_exact_plan_and_private_paths() {
         // Arrange
-        let plan =
-            include_str!("../../../docs/parity/work-plans/20260821T192123Z-SELF-001-RETRY/PLAN.md");
+        let plan = include_str!(
+            "../../../docs/parity/work-plans/20260821T200723Z-SELF-001-RETRY-2/PLAN.md"
+        );
 
         // Act
         let plan_sha256 = sha256_bytes(plan.as_bytes());
 
         // Assert
-        assert_eq!(SELF_TEST_ATTEMPT_ORDINAL, 2);
+        assert_eq!(SELF_TEST_ATTEMPT_ORDINAL, 3);
         assert_eq!(plan_sha256, SELF_TEST_PLAN_SHA256);
-        assert!(SELF_TEST_FAILURE_INTENT_RELATIVE_PATH.contains("attempt-002"));
-        assert!(SELF_TEST_PASS_INTENT_RELATIVE_PATH.contains("attempt-002"));
+        assert!(SELF_TEST_FAILURE_INTENT_RELATIVE_PATH.contains("attempt-003"));
+        assert!(SELF_TEST_PASS_INTENT_RELATIVE_PATH.contains("attempt-003"));
+    }
+
+    #[test]
+    fn commit_validator_accepts_only_exact_lowercase_sha1_shape() {
+        // Arrange
+        let valid = "a".repeat(40);
+
+        // Act / Assert
+        validate_commit_hex("source_commit", &valid).expect("valid commit");
+        for invalid in [
+            "a".repeat(39),
+            "a".repeat(41),
+            "A".repeat(40),
+            "g".repeat(40),
+        ] {
+            assert!(validate_commit_hex("source_commit", &invalid).is_err());
+        }
     }
 }

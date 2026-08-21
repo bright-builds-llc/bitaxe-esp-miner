@@ -76,6 +76,17 @@ and typed-failure repairs pass all gates and are committed, pushed, and
 package-bound. It is a changed attempt after verified progress; no unchanged
 retry is allowed.
 
+Attempt-002 on 2026-08-21 proved corrected settings/theme backup, then stopped
+before USB because the self-test intent owner applied a 64-character digest
+validator to valid 40-character commits. An exact dry-run reproduced
+`invalid_source_commit`; receive-only serial proved ordinary advancing runtime
+with no self-test markers. No projection or device effect occurred.
+Attempt-003 is authorized only by
+`docs/parity/work-plans/20260821T200723Z-SELF-001-RETRY-2/PLAN.md` after exact
+commit-length tests, an automatic real-command dry-run gate, durable
+pre-effect campaign state, full verification, commit/push, and package binding.
+Attempts 001 and 002 remain terminal and preserved.
+
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
 - [x] Add a single-owner UART2 firmware shell for the pinned GPIO39/GPIO40

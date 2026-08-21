@@ -39,3 +39,26 @@
   the immutable recovery plan at
   `docs/parity/work-plans/20260821T192123Z-SELF-001-RETRY/PLAN.md`, a verified
   repair, a new exact clean pushed package, and a fresh detector.
+
+## 2026-08-21T20:07:23Z | attempt-002 pre-flash failure
+
+- Source commit: `9f54c5a0a568c4ff0be536bb1724f36247708f93`
+- Actions: built the exact clean pushed package, admitted one Ultra 205, proved
+  corrected `/api/system/info` and `/api/theme` settings backup, and created
+  the ordinal-2 private intent.
+- Earliest failure: typed `hardware_blocked` at `failure_phase`; an identical
+  explicit `--dry-run` recovered `identity_admission=blocked
+  reason=invalid_source_commit`. The intent owner incorrectly required 64
+  characters for valid 40-character source/reference commits.
+- Effects: dual evidence stopped before the flash workflow. A bounded
+  receive-only capture showed ordinary advancing runtime and zero self-test
+  admission, stage, checkpoint, terminal, receipt, or PSRAM markers. No device
+  write, self-test effect, physical action, restoration write, or projection
+  occurred; no child process remained.
+- Evidence: protected ignored `wrapper-002`, `attempt-002`, settings backup,
+  intent, empty failure root, dry-run diagnostic, and receive-only capture.
+- Outcome: attempt-002 is terminal. Attempt-003 requires
+  `docs/parity/work-plans/20260821T200723Z-SELF-001-RETRY-2/PLAN.md`, exact
+  commit-length validation, automatic dry-run admission before each real
+  child, durable pre-effect state, all gates, a new commit/package, and a fresh
+  detector.

@@ -12,8 +12,8 @@ import { selfTestCampaignFromInvocation } from "./self-test-campaign.js";
 const sourceCommit = "a".repeat(40);
 const referenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const appElfSha256 = "b".repeat(64);
-const planRelative = "docs/parity/work-plans/20260821T192123Z-SELF-001-RETRY/PLAN.md";
-const rootRelative = "scratch/self001-full-lifecycle/attempt-002";
+const planRelative = "docs/parity/work-plans/20260821T200723Z-SELF-001-RETRY-2/PLAN.md";
+const rootRelative = "scratch/self001-full-lifecycle/attempt-003";
 const projectionRelative =
   "docs/parity/evidence/self001-full-lifecycle/self-test-projection.json";
 
@@ -21,6 +21,13 @@ const ok = (stdout = ""): ProcessOutcome => ({
   exitCode: 0,
   stdout,
   stderr: "",
+  timedOut: false,
+});
+
+const failed = (): ProcessOutcome => ({
+  exitCode: 1,
+  stdout: "",
+  stderr: "closed failure",
   timedOut: false,
 });
 
@@ -94,6 +101,9 @@ function invocation(value: Awaited<ReturnType<typeof fixture>>, action: "start" 
 test("start and resume preserve the protected two-phase contract", async () => {
   const value = await fixture();
   let monitorCount = 0;
+  let dryRunCount = 0;
+  let realFlashMonitorCount = 0;
+  const flashSequence: string[] = [];
   const processPort = createFakeProcessPort(async spec => {
     if (spec.program === "git") {
       if (spec.args.includes("status")) return ok();
@@ -111,6 +121,13 @@ test("start and resume preserve the protected two-phase contract", async () => {
       return ok(`self_test_receipt outcome=cancelled lease=${state.lease_hex}\ndevice_url=http://device.invalid\n`);
     }
     if (spec.args[0] === "flash-monitor") {
+      if (spec.args.includes("--dry-run")) {
+        dryRunCount += 1;
+        flashSequence.push("dry-run");
+        return ok();
+      }
+      realFlashMonitorCount += 1;
+      flashSequence.push("real");
       const evidenceRoot = String(spec.args[spec.args.indexOf("--evidence-dir") + 1]);
       await mkdir(evidenceRoot, { recursive: true, mode: 0o700 });
       await chmod(evidenceRoot, 0o700);
@@ -172,6 +189,9 @@ test("start and resume preserve the protected two-phase contract", async () => {
     // Assert
     assert.equal(started["checkpoint"], "cancel_ready");
     assert.equal(resumed["status"], "ready");
+    assert.equal(dryRunCount, 2);
+    assert.equal(realFlashMonitorCount, 2);
+    assert.deepEqual(flashSequence, ["dry-run", "real", "dry-run", "real"]);
     assert.equal(
       JSON.parse(await readFile(path.join(value.root, projectionRelative), "utf8"))["schema_version"],
       "bitaxe-self-test-evidence-v1",
@@ -196,4 +216,81 @@ test("invocation rejects missing phase and unknown options", () => {
     internalCommandSpec("self-test", ["--action", "start"], value => value).args,
     ["--action", "start"],
   );
+});
+
+test("real failure phase restores ordinary runtime and preserves prepared state", async () => {
+  // Arrange
+  const value = await fixture();
+  const flashSequence: string[] = [];
+  const processPort = createFakeProcessPort(async spec => {
+    if (spec.program === "git") {
+      if (spec.args.includes("status")) return ok();
+      if (spec.args.includes("reference/esp-miner")) return ok(`${referenceCommit}\n`);
+      return ok(`${sourceCommit}\n`);
+    }
+    if (spec.args[0] === "monitor") return ok("device_url=http://device.invalid\n");
+    if (spec.args[0] === "flash-monitor" && spec.args.includes("--dry-run")) {
+      flashSequence.push("dry-run");
+      return ok();
+    }
+    if (spec.args[0] === "flash-monitor" && spec.args.includes("--self-test-intent")) {
+      flashSequence.push("real-failure");
+      return failed();
+    }
+    if (spec.args[0] === "flash-monitor") {
+      flashSequence.push("recovery");
+      const evidenceRoot = String(spec.args[spec.args.indexOf("--evidence-dir") + 1]);
+      await mkdir(evidenceRoot, { recursive: true, mode: 0o700 });
+      await chmod(evidenceRoot, 0o700);
+      await writeFile(
+        path.join(evidenceRoot, "flash-monitor.classifier-input.log"),
+        "device_url=http://device.invalid\n",
+        { mode: 0o600 },
+      );
+      return ok();
+    }
+    return ok();
+  });
+  const settings = {
+    bootSession: "1".repeat(32), startMiningOnBoot: false, hostname: "bitaxe",
+    frequency: 485, coreVoltage: 1200, manualFanSpeed: 100,
+    ssid: "private", stratumURL: "private.invalid", stratumPort: 3333,
+    stratumUser: "private", useFallbackStratum: false, fallbackStratumURL: "",
+  };
+  const theme = { colorScheme: "dark" };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+    if (init?.method === "PATCH" || init?.method === "POST") {
+      return new Response("", { status: 200 });
+    }
+    return Response.json(url.pathname === "/api/theme" ? theme : settings);
+  };
+
+  try {
+    // Act
+    await assert.rejects(
+      selfTestCampaignFromInvocation(
+        value.root, invocation(value, "start"), processPort, "flash", "validator",
+      ),
+      (error: unknown) => error instanceof Error && error.message === "failure_phase did not complete",
+    );
+
+    // Assert
+    assert.deepEqual(flashSequence, ["dry-run", "real-failure", "recovery"]);
+    const state = JSON.parse(await readFile(
+      path.join(value.root, rootRelative, "campaign-state.private.json"),
+      "utf8",
+    )) as { stage: string };
+    assert.equal(state.stage, "failure_prepared");
+    const recovery = JSON.parse(await readFile(
+      path.join(value.root, rootRelative, "recovery-status.private.json"),
+      "utf8",
+    )) as { exact_package_attempted: boolean; settings_restored: boolean };
+    assert.equal(recovery.exact_package_attempted, true);
+    assert.equal(recovery.settings_restored, true);
+    await assert.rejects(readFile(path.join(value.root, projectionRelative), "utf8"));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
