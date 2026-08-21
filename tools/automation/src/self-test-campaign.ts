@@ -15,12 +15,13 @@ import { maybeOptionValue, optionValue, type ParsedInvocation } from "./invocati
 import type { ProcessPort } from "./process.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
-const expectedRoot = "scratch/self001-full-lifecycle/attempt-001";
+const expectedRoot = "scratch/self001-full-lifecycle/attempt-002";
 const expectedProjection =
   "docs/parity/evidence/self001-full-lifecycle/self-test-projection.json";
-const expectedPlan = "docs/parity/work-plans/20260821T180800Z-SELF-001/PLAN.md";
+const expectedPlan =
+  "docs/parity/work-plans/20260821T192123Z-SELF-001-RETRY/PLAN.md";
 const expectedPlanSha256 =
-  "4f089bc826a31881ce7668a78e2479370a96cf6e39c855ef3baecf6fd33c9936";
+  "99f34e8db48f3eff9b84d9695636160d13b30f29aa9c55d8363a41bec550499e";
 const expectedReference = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const activeTask = "task-parity-self001-full-lifecycle";
 const monitorSeconds = 360;
@@ -170,7 +171,7 @@ function intent(
   return {
     schema_version: "bitaxe-self-test-intent-v1",
     board: 205,
-    attempt_ordinal: 1,
+    attempt_ordinal: 2,
     source_commit: state.source_commit,
     reference_commit: state.reference_commit,
     app_elf_sha256: state.app_elf_sha256,
@@ -294,7 +295,7 @@ async function startCampaign(
   const preMonitor = await currentMonitor(processPort, flashProgram, port);
   const preOrigin = singleOrigin(preMonitor);
   const settings = await fetchJson(preOrigin, "/api/system/info");
-  const theme = await fetchJson(preOrigin, "/api/system/theme");
+  const theme = await fetchJson(preOrigin, "/api/theme");
   const wifiInput = object(JSON.parse(await readFile(wifiCredentials, "utf8")), "Wi-Fi input");
   const poolInput = object(JSON.parse(await readFile(poolCredentials, "utf8")), "pool input");
   if (settings["startMiningOnBoot"] !== false) {
@@ -402,7 +403,7 @@ async function restoreSettings(
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     });
-    themeResponse = await fetch(new URL("/api/system/theme", origin), {
+    themeResponse = await fetch(new URL("/api/theme", origin), {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(theme),
@@ -413,7 +414,7 @@ async function restoreSettings(
   if (!response.ok) throw failure("hardware_blocked", "settings restoration failed", "restoration");
   if (!themeResponse.ok) throw failure("hardware_blocked", "theme restoration failed", "restoration");
   const confirmed = await fetchJson(origin, "/api/system/info");
-  const confirmedTheme = await fetchJson(origin, "/api/system/theme");
+  const confirmedTheme = await fetchJson(origin, "/api/theme");
   for (const key of restorableKeys) {
     if (Object.hasOwn(settings, key) && JSON.stringify(confirmed[key]) !== JSON.stringify(settings[key])) {
       throw failure("hardware_blocked", "settings restoration mismatch", "restoration");
@@ -498,7 +499,7 @@ async function resumeCampaign(
   const evidence = {
     schema_version: "bitaxe-self-test-evidence-v1",
     board: 205,
-    attempt_ordinal: 1,
+    attempt_ordinal: 2,
     source_commit: state.source_commit,
     reference_commit: state.reference_commit,
     app_elf_sha256: state.app_elf_sha256,
@@ -508,7 +509,7 @@ async function resumeCampaign(
       schema_version: "bitaxe-workflow-identity-v1",
       command: "self-test-campaign",
       request_sha256: sha256(JSON.stringify({
-        manifest: sha256(manifestDocument), plan: expectedPlanSha256, attempt: 1,
+        manifest: sha256(manifestDocument), plan: expectedPlanSha256, attempt: 2,
       })),
     },
     detector_admitted: true,

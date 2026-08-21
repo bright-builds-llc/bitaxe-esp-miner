@@ -76,7 +76,7 @@ impl SelfTestEvidence {
     pub fn validate(&self) -> Result<(), &'static str> {
         if self.schema_version != SELF_TEST_EVIDENCE_SCHEMA
             || self.board != 205
-            || self.attempt_ordinal != 1
+            || self.attempt_ordinal != 2
             || self.workflow.schema_version != "bitaxe-workflow-identity-v1"
             || self.workflow.command != AutomationCommand::SelfTestCampaign
             || !self.detector_admitted
@@ -145,7 +145,7 @@ mod tests {
         SelfTestEvidence {
             schema_version: SELF_TEST_EVIDENCE_SCHEMA.to_owned(),
             board: 205,
-            attempt_ordinal: 1,
+            attempt_ordinal: 2,
             source_commit: "a".repeat(40),
             reference_commit: "b".repeat(40),
             app_elf_sha256: "c".repeat(64),

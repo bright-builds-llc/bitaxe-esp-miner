@@ -66,6 +66,16 @@ tests, parity/progress, redaction, reference cleanliness, file-size,
 sensitive-value, and diff checks. Software evidence:
 `docs/parity/evidence/self001-full-lifecycle/summary.md`.
 
+Attempt-001 hardware preflight on 2026-08-21 stopped before backup, mutation,
+flash, or self-test effects because the supervisor used the nonexistent
+`/api/system/theme` route; the CLI also collapsed its typed category. The
+protected failure is retained and no projection was published. Fresh
+attempt-002 is authorized only by
+`docs/parity/work-plans/20260821T192123Z-SELF-001-RETRY/PLAN.md` after the route
+and typed-failure repairs pass all gates and are committed, pushed, and
+package-bound. It is a changed attempt after verified progress; no unchanged
+retry is allowed.
+
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
 - [x] Add a single-owner UART2 firmware shell for the pinned GPIO39/GPIO40

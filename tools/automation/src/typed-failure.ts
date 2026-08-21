@@ -35,6 +35,7 @@ import { SystemInfoEvidenceError } from "./system-info-evidence.js";
 import { ThemeDurabilityError } from "./theme-durability.js";
 import { Ultra205DefaultsEvidenceError } from "./ultra205-defaults-evidence.js";
 import { UiWorkflowEvidenceError } from "./ui-workflow-evidence.js";
+import { SelfTestCampaignError } from "./self-test-campaign.js";
 import type { AutomationCategory } from "./contracts.generated.js";
 
 type TypedFailure = Error & {
@@ -79,7 +80,8 @@ function maybeTypedFailure(error: unknown): TypedFailure | undefined {
     || error instanceof SdkconfigRollbackEvidenceError
     || error instanceof LogBufferEvidenceError
     || error instanceof PartitionLayoutEvidenceError
-    || error instanceof UiWorkflowEvidenceError) {
+    || error instanceof UiWorkflowEvidenceError
+    || error instanceof SelfTestCampaignError) {
     return error;
   }
   return undefined;

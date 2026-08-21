@@ -12,8 +12,8 @@ import { selfTestCampaignFromInvocation } from "./self-test-campaign.js";
 const sourceCommit = "a".repeat(40);
 const referenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const appElfSha256 = "b".repeat(64);
-const planRelative = "docs/parity/work-plans/20260821T180800Z-SELF-001/PLAN.md";
-const rootRelative = "scratch/self001-full-lifecycle/attempt-001";
+const planRelative = "docs/parity/work-plans/20260821T192123Z-SELF-001-RETRY/PLAN.md";
+const rootRelative = "scratch/self001-full-lifecycle/attempt-002";
 const projectionRelative =
   "docs/parity/evidence/self001-full-lifecycle/self-test-projection.json";
 
@@ -149,12 +149,16 @@ test("start and resume preserve the protected two-phase contract", async () => {
   };
   const theme = { colorScheme: "dark" };
   const originalFetch = globalThis.fetch;
+  const requests: Array<{ readonly method: string; readonly path: string }> = [];
   globalThis.fetch = async (input, init) => {
     const url = new URL(typeof input === "string" ? input : input.toString());
+    requests.push({ method: init?.method ?? "GET", path: url.pathname });
     if (init?.method === "PATCH" || init?.method === "POST") {
       return new Response("", { status: 200 });
     }
-    return Response.json(url.pathname.endsWith("theme") ? theme : settings);
+    if (url.pathname === "/api/theme") return Response.json(theme);
+    if (url.pathname === "/api/system/info") return Response.json(settings);
+    return new Response("", { status: 404 });
   };
   try {
     // Act
@@ -172,6 +176,14 @@ test("start and resume preserve the protected two-phase contract", async () => {
       JSON.parse(await readFile(path.join(value.root, projectionRelative), "utf8"))["schema_version"],
       "bitaxe-self-test-evidence-v1",
     );
+    assert.deepEqual(requests, [
+      { method: "GET", path: "/api/system/info" },
+      { method: "GET", path: "/api/theme" },
+      { method: "PATCH", path: "/api/system" },
+      { method: "POST", path: "/api/theme" },
+      { method: "GET", path: "/api/system/info" },
+      { method: "GET", path: "/api/theme" },
+    ]);
   } finally {
     globalThis.fetch = originalFetch;
   }

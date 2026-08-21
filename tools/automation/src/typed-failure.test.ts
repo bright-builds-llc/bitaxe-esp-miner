@@ -21,6 +21,7 @@ import { NetworkScanEvidenceError } from "./network-scan-evidence.js";
 import { ScoreboardEvidenceError } from "./scoreboard-evidence.js";
 import { maybeTypedFailureCategory, maybeTypedFailurePublicValue } from "./typed-failure.js";
 import { DetectorHandoffError } from "./detector.js";
+import { SelfTestCampaignError } from "./self-test-campaign.js";
 
 test("theme durability failures retain their closed public projection", () => {
   // Arrange
@@ -62,6 +63,19 @@ test("scoreboard failures retain their closed hardware category", () => {
     stage: "scoreboard_capture",
     projection_published: false,
     campaign_evidence_created: true,
+  });
+
+  // Act / Assert
+  assert.equal(maybeTypedFailureCategory(error), "hardware_blocked");
+  assert.deepEqual(maybeTypedFailurePublicValue(error), error.publicValue);
+});
+
+test("self-test campaign failures retain their earliest closed category", () => {
+  // Arrange
+  const error = new SelfTestCampaignError("hardware_blocked", "safe failure", {
+    stage: "settings",
+    projection_published: false,
+    checkpoint: "unavailable",
   });
 
   // Act / Assert
