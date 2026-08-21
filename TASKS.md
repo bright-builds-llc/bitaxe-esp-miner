@@ -26,11 +26,11 @@ new work.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
-- [ ] Add a single-owner UART2 firmware shell for the pinned GPIO39/GPIO40
+- [x] Add a single-owner UART2 firmware shell for the pinned GPIO39/GPIO40
       115200/8-N-1 BAP interface.
-- [ ] Route bounded ingress, requests, and subscriptions through the existing
+- [x] Route bounded ingress, requests, and subscriptions through the existing
       pure BAP core with redaction-safe failure handling.
-- [ ] Add focused lifecycle and source-ownership coverage, build/package the
+- [x] Add focused lifecycle and source-ownership coverage, build/package the
       firmware, run every gate, and transition only `BAP-001` to at most
       `implemented` with `unit,workflow` evidence.
 
@@ -48,6 +48,21 @@ handoff, current tests, canonical firmware build/package, and every mandatory
 gate. `verified` additionally requires a separately authorized live accessory
 and detector-gated named-board hardware regression with cleanup and redaction;
 none are authorized or claimed here.
+
+Verification: Implementation commit
+`80f88df1799be63e3a71c291ad015f89c65cd8ae`; four focused lifecycle tests,
+two source-ownership/privacy tests, all twelve BAP core tests, the canonical
+six-file ESP32-S3 package, ordered Rust gates, Bright Builds, all 50 Bazel
+tests, parity/progress, redaction, reference cleanliness, sensitive-value,
+file-size, and diff checks passed. Evidence:
+`docs/parity/evidence/bap001-firmware-interface/summary.md`.
+
+Completion review: The software-only interface ownership and lifecycle scope
+is complete and supports `implemented` with `unit,workflow` evidence. This
+task remains active and unarchived because electrical UART behavior, a live
+accessory request/subscription session, Wi-Fi-password delivery, setting
+persistence/effects, detector-gated hardware evidence, cleanup, and redaction
+remain outstanding. No hardware or external effect occurred.
 
 ### task-ultra205-default-profile-soak | 2026-07-28 | Run the bounded upstream-default mining soak
 
