@@ -87,6 +87,16 @@ commit-length tests, an automatic real-command dry-run gate, durable
 pre-effect campaign state, full verification, commit/push, and package binding.
 Attempts 001 and 002 remain terminal and preserved.
 
+Attempt-003 installed the exact package, completed controlled load and
+safe-stop, published `cancel_ready`, and accepted the physical BOOT hold; later
+serial proved ordinary runtime. Resume missed the lease-bound cancellation
+receipt because it was logged only during early boot before monitor attachment.
+Phase B did not start, no projection was published, and exact settings/theme
+were restored with `mineonboot=false`. Attempt-004 is authorized only by
+`docs/parity/work-plans/20260821T211712Z-SELF-001-RETRY-3/PLAN.md` after a
+serial-only 10-second persisted-receipt replay, missing-receipt recovery, full
+verification, commit/push, and package binding.
+
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
 - [x] Add a single-owner UART2 firmware shell for the pinned GPIO39/GPIO40

@@ -22,13 +22,13 @@ import { createSelfTestEvidence } from "./self-test-campaign-evidence.js";
 import { restoreSelfTestSettings } from "./self-test-campaign-restoration.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
-const expectedRoot = "scratch/self001-full-lifecycle/attempt-003";
+const expectedRoot = "scratch/self001-full-lifecycle/attempt-004";
 const expectedProjection =
   "docs/parity/evidence/self001-full-lifecycle/self-test-projection.json";
 const expectedPlan =
-  "docs/parity/work-plans/20260821T200723Z-SELF-001-RETRY-2/PLAN.md";
+  "docs/parity/work-plans/20260821T211712Z-SELF-001-RETRY-3/PLAN.md";
 const expectedPlanSha256 =
-  "aa331160188c07646ef7ce99e2047d41dd8a7dbe3457b2e02174dc9675c03a9a";
+  "649c97b0ec66519bf6d45a5944170e7a043599c04ea8d2e835edc17547bef714";
 const expectedReference = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const activeTask = "task-parity-self001-full-lifecycle";
 const monitorSeconds = 360;
@@ -187,7 +187,7 @@ function intent(
   return {
     schema_version: "bitaxe-self-test-intent-v1",
     board: 205,
-    attempt_ordinal: 3,
+    attempt_ordinal: 4,
     source_commit: state.source_commit,
     reference_commit: state.reference_commit,
     app_elf_sha256: state.app_elf_sha256,
@@ -485,13 +485,23 @@ async function resumeCampaign(
     || sha256(backupDocument) !== state.settings_backup_sha256) {
     throw failure("evidence_invalid", "campaign resume state is invalid", "resume");
   }
+  const backup = object(JSON.parse(backupDocument), "settings backup");
   const port = await portFromDetectorOutput(root, detector);
   const cancellationLog = await currentMonitor(processPort, flashProgram, port);
   const cancelMarker = `self_test_receipt outcome=cancelled lease=${state.lease_hex}`;
   if (!cancellationLog.includes(cancelMarker)) {
+    await recoverOrdinaryRuntime(
+      processPort,
+      flashProgram,
+      port,
+      manifestPath,
+      wifiPath,
+      poolPath,
+      privateRoot,
+      backup,
+    );
     throw failure("hardware_blocked", "physical cancellation receipt was not observed", "cancel");
   }
-  const backup = object(JSON.parse(backupDocument), "settings backup");
   await privateJson(path.join(privateRoot, "pass-intent.private.json"), intent(state, "pass"));
   const relativePassIntent = path.relative(root, path.join(privateRoot, "pass-intent.private.json"));
   try {

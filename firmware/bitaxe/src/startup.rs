@@ -56,10 +56,13 @@ fn initialize_boot_identity_and_settings() -> anyhow::Result<(
         log::warn!("axeos_settings_snapshot=startup_refresh_failed error={error}");
     }
     match settings_adapter::maybe_self_test_receipt() {
-        Ok(Some((lease, receipt))) => crate::info_retained(&format!(
-            "self_test_receipt outcome={} lease={lease:016x}",
-            receipt.token()
-        )),
+        Ok(Some((lease, receipt))) => {
+            log::info!(
+                "self_test_receipt outcome={} lease={lease:016x}",
+                receipt.token()
+            );
+            boot_evidence::register_self_test_receipt(lease, receipt.token());
+        }
         Ok(None) => {}
         Err(error) => log::warn!(
             "self_test_receipt=unavailable category={}",

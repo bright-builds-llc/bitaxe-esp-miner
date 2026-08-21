@@ -4,6 +4,7 @@ const RUNTIME_SOURCE: &str = include_str!("self_test_runtime.rs");
 const SETTINGS_SOURCE: &str = include_str!("settings_adapter/self_test.rs");
 const INPUT_SOURCE: &str = include_str!("input_adapter.rs");
 const HTTP_SOURCE: &str = include_str!("http_api.rs");
+const BOOT_EVIDENCE_SOURCE: &str = include_str!("boot_evidence.rs");
 
 #[test]
 fn self_test_is_consume_before_use_and_mutually_exclusive_with_production() {
@@ -52,6 +53,19 @@ fn marker_receipt_and_button_boundaries_are_closed_and_private() {
     assert!(SETTINGS_SOURCE.contains("tuple_replay"));
     assert!(INPUT_SOURCE.contains("self_test_runtime::request_cancel()"));
     assert!(RUNTIME_SOURCE.contains("HardwareSelfTestStage::AwaitingCancel"));
+    assert!(STARTUP_SOURCE.contains("boot_evidence::register_self_test_receipt"));
+    assert!(BOOT_EVIDENCE_SOURCE.contains("BOOT_EVIDENCE_INTERVAL_MS"));
+    assert!(BOOT_EVIDENCE_SOURCE.contains("emit_due_self_test_receipt(now_ms)"));
+    let replay_start = BOOT_EVIDENCE_SOURCE
+        .find("fn emit_due_self_test_receipt")
+        .expect("receipt replay exists");
+    let replay_end = BOOT_EVIDENCE_SOURCE[replay_start..]
+        .find("fn emit_provisioning_network_ready")
+        .map(|offset| replay_start + offset)
+        .expect("receipt replay boundary exists");
+    let replay = &BOOT_EVIDENCE_SOURCE[replay_start..replay_end];
+    assert!(replay.contains("log::info!(\"{marker}\")"));
+    assert!(!replay.contains("log_buffer"));
     assert!(!HTTP_SOURCE.contains("/api/system/self-test"));
     assert!(!RUNTIME_SOURCE.contains("connect_pool"));
     assert!(!RUNTIME_SOURCE.contains("mining.submit"));

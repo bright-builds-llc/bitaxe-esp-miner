@@ -29,6 +29,7 @@ static RESET_REASON: OnceLock<ResetReasonCategory> = OnceLock::new();
 static CONNECTED_ORIGIN: OnceLock<Mutex<Option<ConnectedOriginReplay>>> = OnceLock::new();
 static RUNTIME_ATTESTATION: OnceLock<Mutex<Option<RuntimeAttestationReplay>>> = OnceLock::new();
 static PROVISIONING_NETWORK_READY: OnceLock<Mutex<Option<u64>>> = OnceLock::new();
+static SELF_TEST_RECEIPT: OnceLock<Mutex<Option<SelfTestReceiptReplay>>> = OnceLock::new();
 static DIAGNOSTIC_REPLAY_REQUESTED: AtomicBool = AtomicBool::new(false);
 const OBSERVER_THREAD_STACK_BYTES: usize = 8 * 1024;
 const OBSERVER_THREAD_NAME: &str = "runtime-observer";
@@ -40,6 +41,29 @@ struct BootSessionNonce([u32; 4]);
 struct ConnectedOriginReplay {
     device_url: String,
     next_deadline_ms: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SelfTestReceiptReplay {
+    marker: String,
+    next_deadline_ms: u64,
+}
+
+impl SelfTestReceiptReplay {
+    fn new(marker: String, now_ms: u64) -> Self {
+        Self {
+            marker,
+            next_deadline_ms: now_ms.saturating_add(BOOT_EVIDENCE_INTERVAL_MS),
+        }
+    }
+
+    fn maybe_take_due(&mut self, now_ms: u64) -> Option<String> {
+        if now_ms < self.next_deadline_ms {
+            return None;
+        }
+        self.next_deadline_ms = now_ms.saturating_add(BOOT_EVIDENCE_INTERVAL_MS);
+        Some(self.marker.clone())
+    }
 }
 
 impl ConnectedOriginReplay {
@@ -112,6 +136,7 @@ pub fn initialize_observer() {
     CONNECTED_ORIGIN.get_or_init(|| Mutex::new(None));
     RUNTIME_ATTESTATION.get_or_init(|| Mutex::new(None));
     PROVISIONING_NETWORK_READY.get_or_init(|| Mutex::new(None));
+    SELF_TEST_RECEIPT.get_or_init(|| Mutex::new(None));
     if asic_adapter::accepted_state_snapshot_enabled() {
         request_diagnostic_replay();
     }
@@ -125,6 +150,21 @@ pub fn initialize_observer() {
     if let Err(error) = result {
         log::warn!("runtime_observer=unavailable reason=thread_spawn_failed error={error}");
     }
+}
+
+/// Registers a validated persisted self-test receipt for serial-only replay.
+pub fn register_self_test_receipt(lease: u64, outcome: &'static str) {
+    if lease == 0 || !matches!(outcome, "cancelled" | "passed") {
+        log::warn!("self_test_receipt_replay=unavailable reason=invalid_receipt");
+        return;
+    }
+    let marker = format!("self_test_receipt outcome={outcome} lease={lease:016x}");
+    let cell = SELF_TEST_RECEIPT.get_or_init(|| Mutex::new(None));
+    let Ok(mut maybe_replay) = cell.lock() else {
+        log::warn!("self_test_receipt_replay=unavailable reason=mutex_poisoned");
+        return;
+    };
+    *maybe_replay = Some(SelfTestReceiptReplay::new(marker, runtime_uptime::millis()));
 }
 
 /// Requests bounded replay of privacy-safe retained diagnostics for this boot.
@@ -277,6 +317,7 @@ fn observe_boot_lifetime() {
         emit_due_runtime_origin(now_ms);
         emit_due_runtime_attestation(now_ms);
         emit_due_provisioning_network_ready(now_ms);
+        emit_due_self_test_receipt(now_ms);
 
         if maybe_replay_deadline_ms
             .is_some_and(|deadline_ms| now_ms >= deadline_ms && now_ms < replay_ends_at_ms)
@@ -303,6 +344,7 @@ fn observe_boot_lifetime() {
             .min(next_origin_deadline())
             .min(next_attestation_deadline());
         let next_wake_ms = next_wake_ms.min(next_provisioning_network_ready_deadline());
+        let next_wake_ms = next_wake_ms.min(next_self_test_receipt_deadline());
         let sleep_ms = next_wake_ms.saturating_sub(runtime_uptime::millis());
         if sleep_ms > 0 {
             thread::sleep(Duration::from_millis(sleep_ms));
@@ -310,6 +352,30 @@ fn observe_boot_lifetime() {
             thread::yield_now();
         }
     }
+}
+
+fn emit_due_self_test_receipt(now_ms: u64) {
+    let cell = SELF_TEST_RECEIPT.get_or_init(|| Mutex::new(None));
+    let Ok(mut maybe_replay) = cell.lock() else {
+        return;
+    };
+    let Some(replay) = maybe_replay.as_mut() else {
+        return;
+    };
+    if let Some(marker) = replay.maybe_take_due(now_ms) {
+        drop(maybe_replay);
+        log::info!("{marker}");
+    }
+}
+
+fn next_self_test_receipt_deadline() -> u64 {
+    let cell = SELF_TEST_RECEIPT.get_or_init(|| Mutex::new(None));
+    let Ok(maybe_replay) = cell.lock() else {
+        return u64::MAX;
+    };
+    maybe_replay
+        .as_ref()
+        .map_or(u64::MAX, |replay| replay.next_deadline_ms)
 }
 
 fn emit_provisioning_network_ready() {

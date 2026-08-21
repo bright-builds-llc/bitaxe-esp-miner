@@ -299,6 +299,7 @@ rust_test(
 rust_test(
     name = "self_test_source_ownership_tests",
     srcs = [
+        "src/boot_evidence.rs",
         "src/http_api.rs",
         "src/input_adapter.rs",
         "src/main.rs",

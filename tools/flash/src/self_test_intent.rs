@@ -5,15 +5,15 @@ use std::os::unix::fs::PermissionsExt;
 use crate::*;
 
 pub(crate) const SELF_TEST_FAILURE_INTENT_RELATIVE_PATH: &str =
-    "scratch/self001-full-lifecycle/attempt-003/failure-intent.private.json";
+    "scratch/self001-full-lifecycle/attempt-004/failure-intent.private.json";
 pub(crate) const SELF_TEST_PASS_INTENT_RELATIVE_PATH: &str =
-    "scratch/self001-full-lifecycle/attempt-003/pass-intent.private.json";
+    "scratch/self001-full-lifecycle/attempt-004/pass-intent.private.json";
 pub(crate) const SELF_TEST_PLAN_RELATIVE_PATH: &str =
-    "docs/parity/work-plans/20260821T200723Z-SELF-001-RETRY-2/PLAN.md";
+    "docs/parity/work-plans/20260821T211712Z-SELF-001-RETRY-3/PLAN.md";
 pub(crate) const SELF_TEST_PLAN_SHA256: &str =
-    "aa331160188c07646ef7ce99e2047d41dd8a7dbe3457b2e02174dc9675c03a9a";
+    "649c97b0ec66519bf6d45a5944170e7a043599c04ea8d2e835edc17547bef714";
 const SELF_TEST_INTENT_SCHEMA: &str = "bitaxe-self-test-intent-v1";
-const SELF_TEST_ATTEMPT_ORDINAL: u16 = 3;
+const SELF_TEST_ATTEMPT_ORDINAL: u16 = 4;
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -139,20 +139,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn attempt_three_contract_binds_exact_plan_and_private_paths() {
+    fn attempt_four_contract_binds_exact_plan_and_private_paths() {
         // Arrange
         let plan = include_str!(
-            "../../../docs/parity/work-plans/20260821T200723Z-SELF-001-RETRY-2/PLAN.md"
+            "../../../docs/parity/work-plans/20260821T211712Z-SELF-001-RETRY-3/PLAN.md"
         );
 
         // Act
         let plan_sha256 = sha256_bytes(plan.as_bytes());
 
         // Assert
-        assert_eq!(SELF_TEST_ATTEMPT_ORDINAL, 3);
+        assert_eq!(SELF_TEST_ATTEMPT_ORDINAL, 4);
         assert_eq!(plan_sha256, SELF_TEST_PLAN_SHA256);
-        assert!(SELF_TEST_FAILURE_INTENT_RELATIVE_PATH.contains("attempt-003"));
-        assert!(SELF_TEST_PASS_INTENT_RELATIVE_PATH.contains("attempt-003"));
+        assert!(SELF_TEST_FAILURE_INTENT_RELATIVE_PATH.contains("attempt-004"));
+        assert!(SELF_TEST_PASS_INTENT_RELATIVE_PATH.contains("attempt-004"));
     }
 
     #[test]

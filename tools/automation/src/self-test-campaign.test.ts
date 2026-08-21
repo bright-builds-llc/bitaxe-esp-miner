@@ -12,8 +12,8 @@ import { selfTestCampaignFromInvocation } from "./self-test-campaign.js";
 const sourceCommit = "a".repeat(40);
 const referenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const appElfSha256 = "b".repeat(64);
-const planRelative = "docs/parity/work-plans/20260821T200723Z-SELF-001-RETRY-2/PLAN.md";
-const rootRelative = "scratch/self001-full-lifecycle/attempt-003";
+const planRelative = "docs/parity/work-plans/20260821T211712Z-SELF-001-RETRY-3/PLAN.md";
+const rootRelative = "scratch/self001-full-lifecycle/attempt-004";
 const projectionRelative =
   "docs/parity/evidence/self001-full-lifecycle/self-test-projection.json";
 
@@ -283,6 +283,88 @@ test("real failure phase restores ordinary runtime and preserves prepared state"
       "utf8",
     )) as { stage: string };
     assert.equal(state.stage, "failure_prepared");
+    const recovery = JSON.parse(await readFile(
+      path.join(value.root, rootRelative, "recovery-status.private.json"),
+      "utf8",
+    )) as { exact_package_attempted: boolean; settings_restored: boolean };
+    assert.equal(recovery.exact_package_attempted, true);
+    assert.equal(recovery.settings_restored, true);
+    await assert.rejects(readFile(path.join(value.root, projectionRelative), "utf8"));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("missing cancellation receipt restores settings before blocking resume", async () => {
+  // Arrange
+  const value = await fixture();
+  let monitorCount = 0;
+  const flashSequence: string[] = [];
+  const processPort = createFakeProcessPort(async spec => {
+    if (spec.program === "git") {
+      if (spec.args.includes("status")) return ok();
+      if (spec.args.includes("reference/esp-miner")) return ok(`${referenceCommit}\n`);
+      return ok(`${sourceCommit}\n`);
+    }
+    if (spec.args[0] === "monitor") {
+      monitorCount += 1;
+      return ok("device_url=http://device.invalid\n");
+    }
+    if (spec.args[0] === "flash-monitor" && spec.args.includes("--dry-run")) {
+      flashSequence.push("dry-run");
+      return ok();
+    }
+    if (spec.args[0] === "flash-monitor") {
+      const recovery = !spec.args.includes("--self-test-intent");
+      flashSequence.push(recovery ? "recovery" : "failure-phase");
+      const evidenceRoot = String(spec.args[spec.args.indexOf("--evidence-dir") + 1]);
+      await mkdir(evidenceRoot, { recursive: true, mode: 0o700 });
+      await chmod(evidenceRoot, 0o700);
+      const log = recovery
+        ? "device_url=http://device.invalid\n"
+        : "self_test_stage={\"stage\":\"measuring\"}\nself_test_checkpoint={\"checkpoint\":\"cancel_ready\",\"safe_state\":true,\"failure\":\"planned_evaluation_failure\"}\n";
+      await writeFile(
+        path.join(evidenceRoot, "flash-monitor.classifier-input.log"),
+        log,
+        { mode: 0o600 },
+      );
+      return ok();
+    }
+    return ok();
+  });
+  const settings = {
+    bootSession: "1".repeat(32), startMiningOnBoot: false, hostname: "bitaxe",
+    frequency: 485, coreVoltage: 1200, manualFanSpeed: 100,
+    ssid: "private", stratumURL: "private.invalid", stratumPort: 3333,
+    stratumUser: "private", useFallbackStratum: false, fallbackStratumURL: "",
+  };
+  const theme = { colorScheme: "dark" };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => {
+    const url = new URL(typeof input === "string" ? input : input.toString());
+    if (init?.method === "PATCH" || init?.method === "POST") {
+      return new Response("", { status: 200 });
+    }
+    return Response.json(url.pathname === "/api/theme" ? theme : settings);
+  };
+
+  try {
+    await selfTestCampaignFromInvocation(
+      value.root, invocation(value, "start"), processPort, "flash", "validator",
+    );
+
+    // Act
+    await assert.rejects(
+      selfTestCampaignFromInvocation(
+        value.root, invocation(value, "resume"), processPort, "flash", "validator",
+      ),
+      (error: unknown) => error instanceof Error
+        && error.message === "physical cancellation receipt was not observed",
+    );
+
+    // Assert
+    assert.equal(monitorCount, 2);
+    assert.deepEqual(flashSequence, ["dry-run", "failure-phase", "recovery"]);
     const recovery = JSON.parse(await readFile(
       path.join(value.root, rootRelative, "recovery-status.private.json"),
       "utf8",

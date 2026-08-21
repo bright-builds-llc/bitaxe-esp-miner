@@ -62,3 +62,24 @@
   commit-length validation, automatic dry-run admission before each real
   child, durable pre-effect state, all gates, a new commit/package, and a fresh
   detector.
+
+## 2026-08-21T21:17:12Z | attempt-003 cancellation evidence race
+
+- Source commit: `7a2553f3855b6387031fa30c677ff4b0b5a1397b`
+- Actions: passed exact-package and intent dry-run admission, installed the
+  factory and private NVS tuple, completed controlled diagnostic load and
+  safe-stop, and published `cancel_ready` with `safe_state=true`. The user held
+  built-in BOOT for two seconds as requested.
+- Earliest failure: resume could not observe the exact cancellation receipt.
+  Firmware emitted the persisted receipt once during early boot, before the
+  post-action monitor attached; the retained HTTP buffer no longer contained
+  the marker.
+- Recovery: Phase B did not start. A bounded receive-only capture proved
+  ordinary advancing `waiting_inbox` runtime with no active self-test markers.
+  The exact backed-up settings and theme were restored through the fresh
+  same-origin route with `mineonboot=false`; no projection was published and no
+  child remained.
+- Outcome: attempt-003 is terminal. Attempt-004 requires serial-only replay of
+  the persisted receipt every 10 seconds, automatic missing-receipt recovery,
+  `docs/parity/work-plans/20260821T211712Z-SELF-001-RETRY-3/PLAN.md`, all gates,
+  a new exact package, and a fresh detector.
