@@ -3,10 +3,11 @@ use esp_idf_svc::hal::{modem::Modem, peripherals::Peripherals};
 use esp_idf_svc::sys;
 
 use crate::{
-    asic_adapter, boot_evidence, boot_validation, display_adapter, fan_controller_runtime,
-    filesystem, http_api, input_adapter, operator_sensor_runtime, production_mining_session,
-    runtime_snapshot, runtime_uptime, safety_adapter, scoreboard_adapter, settings_adapter,
-    statistics_runtime, wifi_adapter, BOOT_LOG_LINE, RUST_TARGET, SAFE_STATE_LOG_LINE,
+    asic_adapter, bap_adapter, boot_evidence, boot_validation, display_adapter,
+    fan_controller_runtime, filesystem, http_api, input_adapter, operator_sensor_runtime,
+    production_mining_session, runtime_snapshot, runtime_uptime, safety_adapter,
+    scoreboard_adapter, settings_adapter, statistics_runtime, wifi_adapter, BOOT_LOG_LINE,
+    RUST_TARGET, SAFE_STATE_LOG_LINE,
 };
 
 /// Starts firmware services while preserving evidence-before-network ordering.
@@ -107,6 +108,9 @@ fn initialize_hardware(
     };
     let modem = peripherals.modem;
     let pins = peripherals.pins;
+    if let Err(error) = bap_adapter::start(peripherals.uart2, pins.gpio39, pins.gpio40) {
+        log::warn!("bap_status=unavailable reason=initialization_failed error={error:#}");
+    }
     let boot_peripherals = asic_adapter::AsicBootPeripherals {
         uart: peripherals.uart1,
         reset: pins.gpio1,

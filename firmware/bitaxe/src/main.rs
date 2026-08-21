@@ -1,6 +1,8 @@
 use esp_idf_svc::sys;
 
 mod asic_adapter;
+mod bap_adapter;
+mod bap_runtime;
 mod boot_evidence;
 mod boot_validation;
 mod boot_validation_plan;

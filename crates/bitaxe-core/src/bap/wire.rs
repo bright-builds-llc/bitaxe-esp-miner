@@ -168,7 +168,9 @@ impl BapFrame {
         Self::new_token(command, parameter.token(), maybe_value)
     }
 
-    pub(crate) fn new_token(
+    /// Constructs a canonical outgoing frame with a response-only extension
+    /// token such as `deviceModel`, `chipTemp`, or `mode`.
+    pub fn new_token(
         command: BapCommand,
         parameter_token: &str,
         maybe_value: Option<String>,

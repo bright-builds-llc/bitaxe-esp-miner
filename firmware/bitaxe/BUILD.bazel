@@ -275,6 +275,28 @@ rust_test(
 )
 
 rust_test(
+    name = "bap_runtime_tests",
+    srcs = ["src/bap_runtime.rs"],
+    crate_name = "bap_runtime_tests",
+    deps = ["//crates/bitaxe-core:bitaxe_core"],
+    edition = "2021",
+)
+
+rust_test(
+    name = "bap_source_ownership_tests",
+    srcs = [
+        "src/bap_adapter.rs",
+        "src/bap_runtime.rs",
+        "src/bap_source_ownership_test.rs",
+        "src/main.rs",
+        "src/startup.rs",
+    ],
+    crate_name = "bap_source_ownership_tests",
+    crate_root = "src/bap_source_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "operator_snapshot_publication_shell_tests",
     srcs = ["src/operator_snapshot_publication.rs"],
     crate_name = "operator_snapshot_publication_shell_tests",
