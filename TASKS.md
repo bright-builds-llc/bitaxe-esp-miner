@@ -24,6 +24,40 @@ new work.
 
 ## Active
 
+### task-parity-self001-full-lifecycle | 2026-08-21 | Verify the complete Ultra 205 self-test lifecycle
+
+- [ ] Implement a consume-before-use boot-time self-test owner with no public
+      mutation route and no ordinary-boot behavior change.
+- [ ] Prove controlled failure, complete safe-stop, physical BOOT-button
+      cancellation/restart, full upstream-compatible pass, and auto-restart.
+- [ ] Preserve and exactly restore settings, protected evidence, process/USB
+      cleanup, and redaction; promote only on the complete hardware regression.
+
+Plan: `docs/parity/work-plans/20260821T180800Z-SELF-001/PLAN.md`
+
+Authorization: repository implementation, tests, build/package, Git commit and
+push, one exact detector, one exact-package two-phase board-205 campaign,
+private NVS marker/restoration writes, bounded fan/voltage/ASIC diagnostic
+effects, the controlled post-load evaluation failure, safe-stop, the built-in
+BOOT-button hold selected by the user, software restarts, passive USB/network
+observation, and bounded recovery defined by the plan. No external UART, pins,
+pads, probes, jumpers, accessories, pool traffic, share submission, sensor or
+electrical fault injection, OTA, erase-flash, arbitrary raw writes, other
+boards, or retry is authorized.
+
+Evidence/privacy: the supervisor exclusively creates the absent mode-0700
+attempt root and mode-0600 artifacts. Credential and settings values remain
+`NeverPersistRaw` or protected inputs and never reach terminal or committed
+evidence. Only the closed aggregate projection may be promoted after
+independent validation and redaction.
+
+Recovery/stop: preserve the earliest failure; attempt every independent
+safe-stop step; hold reset low; disable core voltage and ASIC; cool to at most
+45 C; settle fan at 30%; restore the exact package/settings with
+`mineonboot=false`; release owned processes/USB; withhold `RESULT.md`; and stop
+without unchanged retry. Human readiness has no deadline and begins only after
+the device is confirmed safe.
+
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
 - [x] Add a single-owner UART2 firmware shell for the pinned GPIO39/GPIO40
