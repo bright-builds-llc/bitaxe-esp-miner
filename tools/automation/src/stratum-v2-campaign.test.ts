@@ -1,14 +1,17 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, realpath, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, realpath, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
 import {
   campaignWorkspaceRoot,
+  inspectStratumV2CampaignPreflight,
   parseStratumV2CampaignArgs,
+  runCampaignProcess,
   selectRestorePackage,
   StratumV2CampaignError,
+  stratumV2CampaignFailureResult,
 } from "./stratum-v2-campaign.js";
 
 const exactArgs = [
@@ -16,25 +19,70 @@ const exactArgs = [
   "--port", "/dev/cu.usbmodem101",
   "--package-manifest", "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
   "--wifi-credentials", "wifi-credentials.json",
-  "--private-root", "scratch/str005-stratum-v2/attempt-002",
+  "--private-root", "scratch/str005-stratum-v2/attempt-003",
   "--projection", "docs/parity/evidence/str005-stratum-v2/stratum-v2-projection.json",
   "--duration-seconds", "180",
   "--redact-evidence",
 ] as const;
 
-test("real Bazel launcher resolves the repository workspace before paths", async () => {
+async function requireGit(workspace: string, args: readonly string[]): Promise<string> {
+  const outcome = await runCampaignProcess(workspace, "git", args, 5_000);
+  assert.equal(outcome.exitCode, 0, outcome.stderr);
+  return outcome.stdout.trim();
+}
+
+async function createPreflightWorkspace(): Promise<string> {
+  const workspace = await mkdtemp(path.join(os.tmpdir(), "str005-preflight-"));
+  await writeFile(path.join(workspace, ".gitignore"), [
+    "bazel-bin/",
+    "pool-credentials.json",
+    "scratch/",
+    "wifi-credentials.json",
+    "",
+  ].join("\n"));
+  await writeFile(path.join(workspace, "MODULE.bazel"), "module(name = \"fixture\")\n");
+  await writeFile(path.join(workspace, "wifi-credentials.json"), "{}\n", { mode: 0o600 });
+  await writeFile(path.join(workspace, "pool-credentials.json"), "{}\n", { mode: 0o600 });
+  await chmod(path.join(workspace, "wifi-credentials.json"), 0o600);
+  await chmod(path.join(workspace, "pool-credentials.json"), 0o600);
+  await requireGit(workspace, ["init", "--quiet"]);
+  await requireGit(workspace, ["add", ".gitignore", "MODULE.bazel"]);
+  await requireGit(workspace, [
+    "-c", "commit.gpgsign=false",
+    "-c", "user.name=Bitaxe Test",
+    "-c", "user.email=bitaxe-test@example.invalid",
+    "commit", "--quiet", "-m", "fixture",
+  ]);
+  const head = await requireGit(workspace, ["rev-parse", "HEAD"]);
+  const manifestDirectory = path.join(workspace, "bazel-bin", "firmware", "bitaxe");
+  await mkdir(manifestDirectory, { recursive: true });
+  await writeFile(
+    path.join(manifestDirectory, "bitaxe-ultra205-package.json"),
+    `${JSON.stringify({ source_commit: head })}\n`,
+  );
+  return workspace;
+}
+
+test("workspace discovery prefers an explicit workspace with a Bazel module", async () => {
   // Arrange
-  const configured = process.env["BUILD_WORKSPACE_DIRECTORY"];
+  const workspace = await mkdtemp(path.join(os.tmpdir(), "str005-workspace-"));
+  await writeFile(path.join(workspace, "MODULE.bazel"), "module(name = \"fixture\")\n");
+  await mkdir(path.join(workspace, ".git"));
+  try {
+    // Act
+    const selected = campaignWorkspaceRoot(
+      { BUILD_WORKSPACE_DIRECTORY: workspace },
+      path.join(workspace, "ignored"),
+    );
 
-  // Act
-  const workspace = campaignWorkspaceRoot();
-
-  // Assert
-  assert.ok((await stat(path.join(workspace, "MODULE.bazel"))).isFile());
-  if (configured !== undefined) assert.equal(workspace, await realpath(configured));
+    // Assert
+    assert.equal(selected, await realpath(workspace));
+  } finally {
+    await rm(workspace, { recursive: true, force: true });
+  }
 });
 
-test("campaign parser admits only the immutable attempt-002 command", () => {
+test("campaign parser admits only the immutable attempt-003 command", () => {
   // Arrange
   const changed: string[] = [...exactArgs];
   const durationIndex = changed.indexOf("180");
@@ -54,6 +102,51 @@ test("campaign parser admits only the immutable attempt-002 command", () => {
   assert.equal(admitted.redactEvidence, true);
   assert.ok(rejected instanceof StratumV2CampaignError);
   assert.equal(rejected.category, "invalid_invocation");
+  assert.equal(rejected.checkpoint, "invocation");
+});
+
+test("campaign failure output exposes only the closed pre-effect discriminator", () => {
+  // Arrange
+  const error = new StratumV2CampaignError(
+    "evidence_invalid",
+    "sensitive internal detail",
+    "private_path_ignored",
+  );
+
+  // Act
+  const result = stratumV2CampaignFailureResult(error);
+
+  // Assert
+  assert.deepEqual(result, {
+    schema_version: "bitaxe-stratum-v2-campaign-result-v1",
+    status: "failed",
+    category: "evidence_invalid",
+    checkpoint: "private_path_ignored",
+    projection_published: false,
+  });
+  assert(!JSON.stringify(result).includes("sensitive"));
+});
+
+test("preflight proves every read-only predicate without creating the private root", async () => {
+  // Arrange
+  const workspace = await createPreflightWorkspace();
+  try {
+    const args = parseStratumV2CampaignArgs(exactArgs);
+
+    // Act
+    const result = await inspectStratumV2CampaignPreflight(workspace, args);
+
+    // Assert
+    assert.deepEqual(result, {
+      schema_version: "bitaxe-stratum-v2-campaign-preflight-v1",
+      status: "ready",
+      checkpoint: "pre_effect_ready",
+      effect_started: false,
+      private_root_created: false,
+    });
+  } finally {
+    await rm(workspace, { recursive: true, force: true });
+  }
 });
 
 test("restore package discovery requires one exact identity with existing factory bytes", async () => {

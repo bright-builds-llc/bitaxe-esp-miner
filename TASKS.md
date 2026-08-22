@@ -41,13 +41,26 @@ new work.
 - [x] Transition only `STR-005` to the strongest evidence-supported status:
       `implemented` with `unit,golden,workflow`, or `verified` only after the
       exact accepted Ultra 205 campaign adds `hardware-regression`.
-- [ ] Run the exact eligible attempt-002 campaign and promote to `verified`
+- [x] Run the exact attempt-002 campaign once; preserve `implemented` after its
+      pre-effect `evidence_invalid` closure and consume the ordinal.
+- [x] Reproduce and distinguish the collapsed pre-effect `evidence_invalid`
+      boundary through the real Bazel launcher without consuming a hardware
+      attempt.
+- [x] Fix the diagnosed campaign boundary, add regression coverage at the real
+      process/runfiles seam, and pass the complete software verification gates.
+- [x] Authorize a fresh hardware ordinal only through a new immutable
+      continuation plan whose checkpoint discriminator proves the changed
+      pre-effect boundary before any effect.
+- [ ] Run the exact eligible attempt-003 campaign and promote to `verified`
       only if the independent redacted hardware projection is accepted.
 
 Plan: `docs/parity/work-plans/20260822T040442Z-STR-005/PLAN.md`
 
-Hardware continuation plan:
+Consumed hardware continuation plan:
 `docs/parity/work-plans/20260822T063702Z-STR-005-RETRY/PLAN.md`
+
+Current hardware continuation plan:
+`docs/parity/work-plans/20260822T165408Z-STR-005-RETRY2/PLAN.md`
 
 Reference scope:
 
@@ -60,8 +73,9 @@ Reference scope:
 Authorization: repository source, fixture, test, documentation, build/package,
 Git commit, push, network, pool, and Ultra 205 hardware work under the linked
 immutable plan. The only permitted effect commands are `just detect-ultra205`,
-`just package`, and the exact attempt-002 `just stratum-v2-campaign` command in
-the continuation plan. Attempt-001 is consumed without effect. Effects remain
+`just package`, and the exact attempt-003 `just stratum-v2-campaign` command in
+the current continuation plan. Attempts 001 and 002 are consumed without
+effect. Effects remain
 ineligible until the repo-owned command, private
 schemas, validator, recovery, tests, full gates, clean exact package, and pushed
 implementation commit exist. The campaign may use one host-owned local SV2
@@ -128,6 +142,33 @@ No third attempt is authorized. The row remains `implemented`, the hardware
 checkbox remains open, and a fresh audited continuation must first expose a
 closed pre-effect checkpoint discriminator; see
 `docs/parity/work-plans/20260822T063702Z-STR-005-RETRY/CLOSURE.md`.
+
+Bug-fix continuation: investigation started after explicit user authorization
+on 2026-08-22. This phase is software-only: it may add value-free closed
+pre-effect diagnostics and real-launch regression coverage, but it must not run
+the consumed campaign or touch hardware. A new effect contract is required
+after the root cause and fix are independently proven.
+
+Root-cause finding: the attempt-002 workspace patch resolved source file paths
+through `BUILD_WORKSPACE_DIRECTORY`, but the campaign's Git, flash, validator,
+route, and fixture children still inherited Bazel execroot as `cwd`. The first
+actual predicate, `git check-ignore -q` for the private attempt path, therefore
+returned nonzero and collapsed to `evidence_invalid`. The real-launch regression
+reproduced that exact exit and passes after every campaign child receives the
+resolved workspace explicitly. A separate read-only preflight now exposes only
+closed checkpoint names and proves `effect_started=false` plus
+`private_root_created=false`.
+
+Software fix verification: the exact real-launch loop first failed with child
+Git top-level at Bazel execroot and ignored-path exit 1, then passed twice after
+workspace binding. The hermetic campaign/preflight tests, aggregate automation
+suite, ordered Cargo format/clippy/build/test gates, Bright Builds, all 53 Bazel
+tests, canonical firmware build/package, parity/progress, redaction, reference
+cleanliness, open-plan selection, sensitive-value review, and diff checks pass.
+The shared source-workspace resolver now also rejects nested Bazel-output
+`MODULE.bazel` copies without Git identity. All temporary debug probes were
+removed. No detector, USB, device, fixture, network, pool, mining, or hardware
+effect ran during diagnosis and software verification.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 

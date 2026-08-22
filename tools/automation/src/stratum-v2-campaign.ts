@@ -1,21 +1,14 @@
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
-import { existsSync, realpathSync } from "node:fs";
-import {
-  chmod,
-  mkdir,
-  readFile,
-  readdir,
-  rename,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { chmod, mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { restoreSelfTestSettings } from "./self-test-campaign-restoration.js";
+import { type JsonObject, prepareStratumV2Campaign } from "./stratum-v2-campaign-preflight.js";
+import { validateRestorableInputs } from "./stratum-v2-campaign-settings.js";
+import { sourceWorkspaceRoot } from "./workspace.js";
 
-type JsonObject = Record<string, unknown>;
-type CampaignArgs = {
+export type CampaignArgs = {
   readonly board: "205";
   readonly port: string;
   readonly packageManifest: string;
@@ -26,42 +19,85 @@ type CampaignArgs = {
   readonly redactEvidence: true;
 };
 
-type ProcessResult = {
+export type ProcessResult = {
   readonly exitCode: number;
   readonly stdout: string;
   readonly stderr: string;
 };
 
-const expectedPrivateRoot = "scratch/str005-stratum-v2/attempt-002";
+export type StratumV2CampaignCheckpoint =
+  | "invocation"
+  | "workspace"
+  | "outputs_absent"
+  | "private_path_ignored"
+  | "wifi_restore_input"
+  | "pool_restore_input"
+  | "source_identity"
+  | "runtime_monitor"
+  | "pre_effect_ready"
+  | "unclassified";
+
+export type StratumV2CampaignFailureResult = {
+  readonly schema_version: "bitaxe-stratum-v2-campaign-result-v1";
+  readonly status: "failed";
+  readonly category: string;
+  readonly checkpoint: StratumV2CampaignCheckpoint;
+  readonly projection_published: false;
+};
+
+export type StratumV2CampaignPreflightResult = {
+  readonly schema_version: "bitaxe-stratum-v2-campaign-preflight-v1";
+  readonly status: "ready";
+  readonly checkpoint: "pre_effect_ready";
+  readonly effect_started: false;
+  readonly private_root_created: false;
+};
+
+const expectedPrivateRoot = "scratch/str005-stratum-v2/attempt-003";
 const expectedProjection =
   "docs/parity/evidence/str005-stratum-v2/stratum-v2-projection.json";
 const maximumOutputBytes = 1_048_576;
 
-export function campaignWorkspaceRoot(): string {
-  const configured = process.env["BUILD_WORKSPACE_DIRECTORY"];
-  const starts = configured === undefined ? [process.cwd()] : [configured, process.cwd()];
-  for (const start of starts) {
-    let candidate = path.resolve(start);
-    while (true) {
-      const moduleFile = path.join(candidate, "MODULE.bazel");
-      if (existsSync(moduleFile)) return path.dirname(realpathSync(moduleFile));
-      const parent = path.dirname(candidate);
-      if (parent === candidate) break;
-      candidate = parent;
-    }
+export function campaignWorkspaceRoot(
+  environment: NodeJS.ProcessEnv = process.env,
+  currentDirectory: string = process.cwd(),
+): string {
+  const configured = environment["BUILD_WORKSPACE_DIRECTORY"];
+  const starts = configured === undefined ? [currentDirectory] : [configured, currentDirectory];
+  try {
+    return sourceWorkspaceRoot(starts);
+  } catch {
+    throw new StratumV2CampaignError("evidence_invalid", "workspace unavailable", "workspace");
   }
-  throw new StratumV2CampaignError("evidence_invalid", "workspace unavailable");
 }
 
 export class StratumV2CampaignError extends Error {
-  public constructor(public readonly category: string, message: string) {
+  public constructor(
+    public readonly category: string,
+    message: string,
+    public readonly checkpoint: StratumV2CampaignCheckpoint = "unclassified",
+  ) {
     super(message);
     this.name = "StratumV2CampaignError";
   }
 }
 
-function fail(category: string, message: string): never {
-  throw new StratumV2CampaignError(category, message);
+export function stratumV2CampaignFailureResult(error: unknown): StratumV2CampaignFailureResult {
+  return {
+    schema_version: "bitaxe-stratum-v2-campaign-result-v1",
+    status: "failed",
+    category: error instanceof StratumV2CampaignError ? error.category : "process_failed",
+    checkpoint: error instanceof StratumV2CampaignError ? error.checkpoint : "unclassified",
+    projection_published: false,
+  };
+}
+
+function fail(
+  category: string,
+  message: string,
+  checkpoint: StratumV2CampaignCheckpoint = "unclassified",
+): never {
+  throw new StratumV2CampaignError(category, message, checkpoint);
 }
 
 function object(value: unknown, context: string): JsonObject {
@@ -88,16 +124,16 @@ export function parseStratumV2CampaignArgs(values: readonly string[]): CampaignA
   for (let index = 0; index < values.length; index += 1) {
     const key = values[index];
     if (key === "--redact-evidence") {
-      if (parsed.has(key)) fail("invalid_invocation", "duplicate campaign option");
+      if (parsed.has(key)) fail("invalid_invocation", "duplicate campaign option", "invocation");
       parsed.set(key, true);
       continue;
     }
     if (key === undefined || !key.startsWith("--")) {
-      fail("invalid_invocation", "campaign option is malformed");
+      fail("invalid_invocation", "campaign option is malformed", "invocation");
     }
     const optionValue = values[index + 1];
     if (optionValue === undefined || optionValue.startsWith("--") || parsed.has(key)) {
-      fail("invalid_invocation", "campaign option value is missing or duplicated");
+      fail("invalid_invocation", "campaign option value is missing or duplicated", "invocation");
     }
     parsed.set(key, optionValue);
     index += 1;
@@ -107,12 +143,12 @@ export function parseStratumV2CampaignArgs(values: readonly string[]): CampaignA
     "--projection", "--duration-seconds", "--redact-evidence",
   ]);
   if ([...parsed.keys()].some(key => !allowed.has(key))) {
-    fail("invalid_invocation", "campaign option is unsupported");
+    fail("invalid_invocation", "campaign option is unsupported", "invocation");
   }
   const value = (key: string): string => {
     const candidate = parsed.get(key);
     if (typeof candidate !== "string" || candidate.length === 0) {
-      fail("invalid_invocation", "campaign option is required");
+      fail("invalid_invocation", "campaign option is required", "invocation");
     }
     return candidate;
   };
@@ -122,7 +158,7 @@ export function parseStratumV2CampaignArgs(values: readonly string[]): CampaignA
   const projection = value("--projection");
   if (board !== "205" || duration !== "180" || parsed.get("--redact-evidence") !== true
     || privateRoot !== expectedPrivateRoot || projection !== expectedProjection) {
-    fail("invalid_invocation", "campaign contract does not match attempt-002");
+    fail("invalid_invocation", "campaign contract does not match attempt-003", "invocation");
   }
   return {
     board,
@@ -136,14 +172,15 @@ export function parseStratumV2CampaignArgs(values: readonly string[]): CampaignA
   };
 }
 
-async function runProcess(
+export async function runCampaignProcess(
+  workspace: string,
   program: string,
   args: readonly string[],
   timeoutMillis: number,
 ): Promise<ProcessResult> {
   return new Promise((resolve, reject) => {
     const child = spawn(program, [...args], {
-      cwd: process.cwd(),
+      cwd: workspace,
       env: process.env,
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -198,30 +235,12 @@ async function fetchObject(origin: URL, route: string): Promise<JsonObject> {
   return object(await response.json(), "same-origin response");
 }
 
-async function monitorOrigin(flashProgram: string, port: string): Promise<URL> {
-  const outcome = await runProcess(flashProgram, [
+async function monitorOrigin(workspace: string, flashProgram: string, port: string): Promise<URL> {
+  const outcome = await runCampaignProcess(workspace, flashProgram, [
     "monitor", "--board", "205", "--port", port, "--capture-timeout-seconds", "15",
   ], 30_000);
   if (outcome.exitCode !== 0) fail("hardware_blocked", "passive monitor failed");
   return singleOrigin(outcome.stdout);
-}
-
-async function requireMode(candidate: string, mode: number, directory: boolean): Promise<void> {
-  const metadata = await stat(candidate);
-  if ((directory ? !metadata.isDirectory() : !metadata.isFile())
-    || (metadata.mode & 0o777) !== mode) {
-    fail("evidence_invalid", "protected input mode is invalid");
-  }
-}
-
-async function requireAbsent(candidate: string): Promise<void> {
-  try {
-    await stat(candidate);
-    fail("evidence_invalid", "fresh campaign output already exists");
-  } catch (error) {
-    if (error instanceof StratumV2CampaignError) throw error;
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-  }
 }
 
 async function writePrivateJson(candidate: string, value: unknown): Promise<string> {
@@ -229,36 +248,6 @@ async function writePrivateJson(candidate: string, value: unknown): Promise<stri
   await writeFile(candidate, document, { encoding: "utf8", flag: "wx", mode: 0o600 });
   await chmod(candidate, 0o600);
   return document;
-}
-
-async function poolRestoreInput(root: string): Promise<string> {
-  const candidates = (await readdir(root))
-    .filter(name => /^pool-credentials(?:-[A-Za-z0-9_-]+)?\.json$/u.test(name))
-    .map(name => path.join(root, name));
-  if (candidates.length !== 1 || candidates[0] === undefined) {
-    fail("hardware_blocked", "exactly one ignored restoration pool input is required");
-  }
-  await requireMode(candidates[0], 0o600, false);
-  return candidates[0];
-}
-
-async function validateRestorableInputs(
-  settings: JsonObject,
-  wifiPath: string,
-  poolPath: string,
-): Promise<void> {
-  const wifi = object(JSON.parse(await readFile(wifiPath, "utf8")), "Wi-Fi input");
-  const pool = object(JSON.parse(await readFile(poolPath, "utf8")), "pool input");
-  if (settings["startMiningOnBoot"] !== false
-    || settings["ssid"] !== wifi["ssid"]
-    || settings["stratumURL"] !== pool["poolURL"]
-    || settings["stratumPort"] !== pool["poolPort"]
-    || settings["stratumUser"] !== pool["poolUser"]
-    || settings["useFallbackStratum"] === true
-    || (typeof settings["fallbackStratumURL"] === "string"
-      && settings["fallbackStratumURL"].length > 0)) {
-    fail("hardware_blocked", "local inputs cannot construct exact restoration");
-  }
 }
 
 type RestorePackage = {
@@ -339,13 +328,23 @@ async function restorePackageFromManifest(
   };
 }
 
-async function localIpv4(): Promise<string> {
-  const route = await runProcess("/sbin/route", ["-n", "get", "default"], 5_000);
+async function localIpv4(workspace: string): Promise<string> {
+  const route = await runCampaignProcess(
+    workspace,
+    "/sbin/route",
+    ["-n", "get", "default"],
+    5_000,
+  );
   const interfaceMatch = /^\s*interface:\s*([A-Za-z0-9]+)\s*$/mu.exec(route.stdout);
   if (route.exitCode !== 0 || interfaceMatch?.[1] === undefined) {
     fail("hardware_blocked", "local interface is unavailable");
   }
-  const address = await runProcess("/usr/sbin/ipconfig", ["getifaddr", interfaceMatch[1]], 5_000);
+  const address = await runCampaignProcess(
+    workspace,
+    "/usr/sbin/ipconfig",
+    ["getifaddr", interfaceMatch[1]],
+    5_000,
+  );
   const value = address.stdout.trim();
   if (address.exitCode !== 0 || !/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/u.test(value)) {
     fail("hardware_blocked", "local IPv4 address is unavailable");
@@ -365,12 +364,12 @@ async function waitForReady(candidate: string): Promise<JsonObject> {
   fail("timeout", "fixture readiness deadline elapsed");
 }
 
-function startFixture(program: string, fixtureRoot: string) {
+function startFixture(workspace: string, program: string, fixtureRoot: string) {
   const child = spawn(program, [
     "--private-root", fixtureRoot,
     "--accept-timeout-seconds", "120",
     "--session-timeout-seconds", "180",
-  ], { cwd: process.cwd(), env: process.env, stdio: ["ignore", "pipe", "pipe"] });
+  ], { cwd: workspace, env: process.env, stdio: ["ignore", "pipe", "pipe"] });
   const output: Buffer[] = [];
   let bytes = 0;
   for (const stream of [child.stdout, child.stderr]) {
@@ -392,6 +391,7 @@ function startFixture(program: string, fixtureRoot: string) {
 }
 
 async function restorePackageAndSettings(
+  workspace: string,
   flashProgram: string,
   args: CampaignArgs,
   restore: RestorePackage,
@@ -400,13 +400,13 @@ async function restorePackageAndSettings(
   changedPackage: boolean,
 ): Promise<JsonObject> {
   if (changedPackage) {
-    const flash = await runProcess(flashProgram, [
+    const flash = await runCampaignProcess(workspace, flashProgram, [
       "flash", "--board", "205", "--port", args.port, "--manifest", restore.manifestPath,
       "--wifi-credentials", args.wifiCredentials, "--redact-evidence",
     ], 180_000);
     if (flash.exitCode !== 0) fail("hardware_blocked", "prior package restoration failed");
   }
-  const origin = await monitorOrigin(flashProgram, args.port);
+  const origin = await monitorOrigin(workspace, flashProgram, args.port);
   await restoreSelfTestSettings(origin, backup, args.wifiCredentials, poolPath);
   const confirmed = await fetchObject(origin, "/api/system/info");
   if (confirmed["sourceCommit"] !== restore.sourceCommit
@@ -417,36 +417,52 @@ async function restorePackageAndSettings(
   return confirmed;
 }
 
+export async function inspectStratumV2CampaignPreflight(
+  workspace: string,
+  args: CampaignArgs,
+): Promise<StratumV2CampaignPreflightResult> {
+  await prepareStratumV2Campaign(workspace, args, {
+    runProcess: runCampaignProcess,
+    fail,
+  });
+  return {
+    schema_version: "bitaxe-stratum-v2-campaign-preflight-v1",
+    status: "ready",
+    checkpoint: "pre_effect_ready",
+    effect_started: false,
+    private_root_created: false,
+  };
+}
+
 export async function runStratumV2Campaign(
   workspace: string,
   args: CampaignArgs,
 ): Promise<JsonObject> {
-  const privateRoot = path.resolve(workspace, args.privateRoot);
-  const projection = path.resolve(workspace, args.projection);
-  const manifestPath = path.resolve(workspace, args.packageManifest);
-  const wifiPath = path.resolve(workspace, args.wifiCredentials);
-  await requireAbsent(privateRoot);
-  await requireAbsent(projection);
-  const ignored = await runProcess("git", ["check-ignore", "-q", args.privateRoot], 5_000);
-  if (ignored.exitCode !== 0) fail("evidence_invalid", "private campaign root is not ignored");
+  const preflight = await prepareStratumV2Campaign(workspace, args, {
+    runProcess: runCampaignProcess,
+    fail,
+  });
+  const {
+    privateRoot,
+    projection,
+    manifestPath,
+    wifiPath,
+    poolPath,
+    manifestDocument,
+    manifest,
+    head,
+  } = preflight;
   const privateParent = path.dirname(privateRoot);
   await mkdir(privateParent, { recursive: true, mode: 0o700 });
   await chmod(privateParent, 0o700);
-  await requireMode(wifiPath, 0o600, false);
-  const poolPath = await poolRestoreInput(workspace);
-  const manifestDocument = await readFile(manifestPath, "utf8");
-  const manifest = object(JSON.parse(manifestDocument), "package manifest");
-  const head = (await runProcess("git", ["rev-parse", "HEAD"], 5_000)).stdout.trim();
-  const status = await runProcess("git", ["status", "--porcelain"], 5_000);
-  if (status.exitCode !== 0 || status.stdout.length !== 0
-    || requiredString(manifest, "source_commit", "manifest") !== head) {
-    fail("evidence_invalid", "campaign source or package is not exact clean HEAD");
-  }
-
-  const preOrigin = await monitorOrigin(path.join(workspace, "bazel-bin/tools/flash/flash"), args.port);
+  const preOrigin = await monitorOrigin(
+    workspace,
+    path.join(workspace, "bazel-bin/tools/flash/flash"),
+    args.port,
+  );
   const settings = await fetchObject(preOrigin, "/api/system/info");
   const theme = await fetchObject(preOrigin, "/api/theme");
-  await validateRestorableInputs(settings, wifiPath, poolPath);
+  await validateRestorableInputs(settings, wifiPath, poolPath, fail);
   const currentAppElf = requiredString(settings, "appElfSha256", "current settings");
   const restore = manifest["app_elf_sha256"] === currentAppElf
     ? await restorePackageFromManifest(manifestPath, manifest)
@@ -461,6 +477,7 @@ export async function runStratumV2Campaign(
   const backupDocument = await writePrivateJson(path.join(privateRoot, "settings-backup.private.json"), backup);
   const fixtureRoot = path.join(privateRoot, "fixture");
   const fixture = startFixture(
+    workspace,
     path.join(workspace, "bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture"),
     fixtureRoot,
   );
@@ -471,7 +488,7 @@ export async function runStratumV2Campaign(
     !== requiredString(manifest, "app_elf_sha256", "campaign manifest");
   try {
     const ready = await waitForReady(path.join(fixtureRoot, "ready.json"));
-    const host = await localIpv4();
+    const host = await localIpv4(workspace);
     const fixturePoolPath = path.join(privateRoot, "fixture-pool.private.json");
     await writePrivateJson(fixturePoolPath, {
       poolURL: host,
@@ -483,13 +500,18 @@ export async function runStratumV2Campaign(
       stratumV2AuthorityPubkey: ready["authority_public_key"],
     });
     effectStarted = true;
-    const campaign = await runProcess(path.join(workspace, "bazel-bin/tools/flash/flash"), [
+    const campaign = await runCampaignProcess(
+      workspace,
+      path.join(workspace, "bazel-bin/tools/flash/flash"),
+      [
       "mining-campaign", "--stage", "stratum-v2", "--profile", "conservative",
       "--board", "205", "--port", args.port, "--manifest", manifestPath,
       "--wifi-credentials", wifiPath, "--pool-credentials", fixturePoolPath,
       "--evidence-dir", path.join(args.privateRoot, "campaign"),
       "--duration-seconds", "180", "--redact-evidence",
-    ], 420_000);
+      ],
+      420_000,
+    );
     await writePrivateJson(path.join(privateRoot, "campaign-child.private.json"), {
       exit_code: campaign.exitCode,
       stdout_sha256: sha256(campaign.stdout),
@@ -506,6 +528,7 @@ export async function runStratumV2Campaign(
       fail("evidence_invalid", "fixture result did not validate share");
     }
     await restorePackageAndSettings(
+      workspace,
       path.join(workspace, "bazel-bin/tools/flash/flash"),
       args,
       restore,
@@ -539,7 +562,8 @@ export async function runStratumV2Campaign(
     await writeFile(candidate, `${JSON.stringify(projectionValue, null, 2)}\n`, {
       encoding: "utf8", flag: "wx", mode: 0o600,
     });
-    const validation = await runProcess(
+    const validation = await runCampaignProcess(
+      workspace,
       path.join(
         workspace,
         "bazel-bin/tools/automation/stratum_v2_campaign_validator_/stratum_v2_campaign_validator",
@@ -561,6 +585,7 @@ export async function runStratumV2Campaign(
       let restored = false;
       try {
         await restorePackageAndSettings(
+          workspace,
           path.join(workspace, "bazel-bin/tools/flash/flash"),
           args,
           restore,

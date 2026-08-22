@@ -61,6 +61,8 @@ import "./theme-durability.test.js";
 import "./typed-failure.test.js";
 import "./static-provenance.test.js";
 import "./static-ui.test.js";
+import "./stratum-v2-campaign-validator.test.js";
+import "./stratum-v2-campaign.test.js";
 import "./workspace.test.js";
 import "./workflow.test.js";
 import "./version-evidence.test.js";

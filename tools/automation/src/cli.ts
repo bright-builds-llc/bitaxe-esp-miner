@@ -1,4 +1,4 @@
-import { constants, existsSync, promises, realpathSync } from "node:fs";
+import { constants, promises } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { buildFirmware } from "./build.js";
@@ -64,26 +64,15 @@ import { captureUltra205DefaultsEvidence } from "./ultra205-defaults-evidence.js
 import { projectUiWorkflowEvidenceFromInvocation } from "./ui-workflow-cli.js";
 import { captureVersionEvidence } from "./version-evidence.js";
 import { executeCommandSpec } from "./workflow.js";
-import { assertWithinWorkspace } from "./workspace.js";
+import { assertWithinWorkspace, sourceWorkspaceRoot } from "./workspace.js";
 class PolicyError extends Error {}
 function workspaceRoot(): string {
   const maybeWorkspace = process.env["BUILD_WORKSPACE_DIRECTORY"];
-  const starts = [
+  return sourceWorkspaceRoot([
     ...(maybeWorkspace === undefined ? [] : [maybeWorkspace]),
     process.cwd(),
     path.dirname(fileURLToPath(import.meta.url)),
-  ];
-  for (const start of starts) {
-    let candidate = path.resolve(start);
-    while (true) {
-      const moduleFile = path.join(candidate, "MODULE.bazel");
-      if (existsSync(moduleFile)) return path.dirname(realpathSync(moduleFile));
-      const parent = path.dirname(candidate);
-      if (parent === candidate) break;
-      candidate = parent;
-    }
-  }
-  throw new Error("cannot locate the canonical workspace root");
+  ]);
 }
 function automationResult(
   command: AutomationCommand,

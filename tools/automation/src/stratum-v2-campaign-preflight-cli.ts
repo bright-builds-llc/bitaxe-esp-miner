@@ -1,14 +1,14 @@
 import {
   campaignWorkspaceRoot,
+  inspectStratumV2CampaignPreflight,
   parseStratumV2CampaignArgs,
-  runStratumV2Campaign,
   stratumV2CampaignFailureResult,
 } from "./stratum-v2-campaign.js";
 
 async function main(): Promise<number> {
   try {
     const args = parseStratumV2CampaignArgs(process.argv.slice(2));
-    const result = await runStratumV2Campaign(campaignWorkspaceRoot(), args);
+    const result = await inspectStratumV2CampaignPreflight(campaignWorkspaceRoot(), args);
     process.stdout.write(`${JSON.stringify(result)}\n`);
     return 0;
   } catch (error) {

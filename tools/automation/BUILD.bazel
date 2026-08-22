@@ -148,6 +148,13 @@ js_binary(
 )
 
 js_binary(
+    name = "stratum_v2_campaign_preflight",
+    chdir = "../../../..",
+    data = [":automation_ts"],
+    entry_point = "dist/stratum-v2-campaign-preflight-cli.js",
+)
+
+js_binary(
     name = "stratum_v2_campaign_validator",
     chdir = "../../../..",
     data = [":automation_ts"],
@@ -360,4 +367,24 @@ js_test(
         "//crates/bitaxe-stratum:hashrate_monitor_source",
     ],
     entry_point = "test-dist/all.test.js",
+)
+
+js_binary(
+    name = "stratum_v2_campaign_launcher_test",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        ":automation_tests_ts",
+    ],
+    entry_point = "test-dist/stratum-v2-campaign-launcher.test.js",
+)
+
+js_test(
+    name = "stratum_v2_campaign_unit_test",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        ":automation_tests_ts",
+    ],
+    entry_point = "test-dist/stratum-v2-campaign.test.js",
 )
