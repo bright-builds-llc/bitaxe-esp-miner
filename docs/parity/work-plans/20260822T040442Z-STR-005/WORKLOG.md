@@ -131,3 +131,23 @@
   current directory instead of `BUILD_WORKSPACE_DIRECTORY`. Follow only
   `docs/parity/work-plans/20260822T063702Z-STR-005-RETRY/PLAN.md`; commit its
   regression-backed fix before the exact attempt-002 command.
+
+## 2026-08-22 07:03 UTC | Attempt-002 terminal closure
+
+- Source commit: `c8de00ca6d593cfab460706ed9e9bbd3c6403834`
+- Actions: Committed the attempt-002 plan before the workspace-root fix,
+  regression-tested and pushed the fix, reran every software/package/effect
+  gate on clean source, rebuilt the exact package, detector-admitted one board,
+  and invoked the exact attempt-002 command once.
+- Verification: Attempt-002 stopped immediately as `evidence_invalid`.
+  Read-only closure reconfirmed protected credential modes, ignored absent
+  attempt/projection paths, synchronized clean Git, and exact clean
+  source/reference package identity.
+- Evidence: Closed command category and
+  `docs/parity/work-plans/20260822T063702Z-STR-005-RETRY/CLOSURE.md`.
+- Outcome: No passive monitor, fixture, NVS, USB campaign session, flash,
+  network, mining, or hardware-control effect occurred. Attempt-002 is consumed;
+  no third retry is authorized and `STR-005` remains `implemented`.
+- Blocker or next safe action: A fresh task/plan must add a closed pre-effect
+  checkpoint discriminator and reproduce the remaining launcher predicate
+  without effects before any new ordinal can be considered.

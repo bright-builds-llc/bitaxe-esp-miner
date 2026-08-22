@@ -108,9 +108,8 @@ The outer command now fails before mutation unless current settings are exactly
 reconstructible from protected local inputs and an exact prior package is
 available; it supervises the owned fixture/campaign, restores package and
 settings on success or failure, and publishes only after an independent
-validator passes. Attempt-001 remains pending until this command is committed,
-pushed, rebuilt into an exact package, and passes every final effect gate;
-`verified` is not yet claimed.
+validator passes. The authorized ordinals later closed before any effect, so
+`verified` is not claimed.
 
 Status transition: source/evidence commit
 `abf6c1bdfaf3f929f2fea30ec630635262221755` is bound by transition
@@ -118,6 +117,17 @@ Status transition: source/evidence commit
 `20260822T062500Z-STR-005-TARGETS`; `STR-005` is `implemented` with
 `unit,golden,workflow`. The task remains active because the exact-restoration
 outer hardware campaign and `hardware-regression` evidence are incomplete.
+
+Hardware attempt closure: attempt-001 and the regression-backed attempt-002
+both stopped as `evidence_invalid` before passive monitoring, private-root
+creation, fixture start, NVS construction, USB campaign ownership, flash,
+network, mining, or hardware control. Attempt-002 ran only after every gate
+passed on clean pushed source `c8de00ca`; the exact package, credential modes,
+ignored absent paths, and synchronized Git state were re-confirmed afterward.
+No third attempt is authorized. The row remains `implemented`, the hardware
+checkbox remains open, and a fresh audited continuation must first expose a
+closed pre-effect checkpoint discriminator; see
+`docs/parity/work-plans/20260822T063702Z-STR-005-RETRY/CLOSURE.md`.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
