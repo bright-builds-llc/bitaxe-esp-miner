@@ -1,0 +1,30 @@
+{
+  "schema_version": "bitaxe-stratum-v2-vectors-v1",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "sources": [
+    "reference/esp-miner/components/stratum_v2/sv2_protocol.c",
+    "reference/esp-miner/components/stratum_v2/include/sv2_protocol.h"
+  ],
+  "cases": [
+    {
+      "name": "setup_connection",
+      "wire_hex": "00000020000000020002000100000004706f6f6c050d0662697461786506424d313336360000"
+    },
+    {
+      "name": "open_standard_channel",
+      "wire_hex": "0000102f00000100000006776f726b6572a5d46853ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    {
+      "name": "submit_standard",
+      "wire_hex": "00801a180000010000000200000003000000040000000500000006000000"
+    },
+    {
+      "name": "setup_success",
+      "wire_hex": "000001060000020001000000"
+    },
+    {
+      "name": "set_target",
+      "wire_hex": "00802124000007000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    }
+  ]
+}

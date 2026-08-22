@@ -1,6 +1,7 @@
 pub mod error;
 pub mod jsonrpc;
 pub mod v1;
+pub mod v2;
 
 pub use error::StratumV1Error;
 
@@ -9,6 +10,8 @@ pub use error::StratumV1Error;
 pub enum StratumRuntimeStatus {
     /// Stratum v1 protocol parsing and serialization are active in the pure core.
     ActiveV1Core,
+    /// Stratum v2 framing, message, and Noise transport logic are active.
+    ActiveV2Core,
 }
 
 #[cfg(test)]

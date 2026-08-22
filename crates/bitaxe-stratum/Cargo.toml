@@ -9,6 +9,8 @@ bitaxe-asic = { path = "../bitaxe-asic" }
 bitaxe-config = { path = "../bitaxe-config" }
 bitaxe-core = { path = "../bitaxe-core" }
 bitaxe-safety = { path = "../bitaxe-safety" }
+noise_sv2.workspace = true
+rand.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 sha2.workspace = true

@@ -77,6 +77,15 @@ SV2 Noise pool/Ultra 205 hardware regression with safe-stop, exact restoration,
 cleanup, independent validation, and redaction. External production-pool
 interoperability remains a non-claim.
 
+Progress: commit `4718a9e5` repaired legacy verified-plan selection and added
+the only audited deferred activation path, then transitioned `STR-005` to
+`in-progress`. The current pure slice adds official SRI Noise NX, bounded
+six-byte framing, pinned standard/extended messages, channel/job/target/share
+state, BM1366 work conversion, provenance-bound golden vectors, fail-closed
+malformed/tamper/nonce boundaries, and redaction-safe diagnostics. Focused Cargo
+tests and canonical Bazel `//crates/bitaxe-stratum:tests` pass. Firmware owner,
+campaign, package, full gates, and hardware evidence remain pending.
+
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
 - [x] Add a single-owner UART2 firmware shell for the pinned GPIO39/GPIO40
