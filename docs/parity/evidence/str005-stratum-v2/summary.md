@@ -59,12 +59,13 @@ real local TCP pool fixture, and closed campaign evidence admission.
 Evidence types: `unit,golden,workflow`.
 
 No hardware, USB, external network, owner pool, share submission, or credential
-effect occurred. The lower-level fixture and private `stratum-v2` flash campaign
-stage are not the immutable plan's outer campaign transaction. Hardware remains
-ineligible until `just stratum-v2-campaign` captures and proves exact restorable
-settings/package state before its first write, supervises fixture/flash/cleanup,
-restores exactly with `mineonboot=false`, independently validates the redacted
-projection, and passes interruption/recovery tests. Therefore
+effect occurred in this software evidence. `just stratum-v2-campaign` now
+captures and proves exact restorable settings/package state before its first
+write, supervises fixture/flash/cleanup, restores exactly with
+`mineonboot=false` on success or failure, and withholds publication unless the
+separate closed projection validator passes. Attempt-001 remains pending until
+the outer transaction is committed, pushed, rebuilt as the exact package, and
+passes every detector/effect gate. Therefore
 `hardware-regression`, external production-pool interoperability, arbitrary
 pools, mixed-protocol live fallback, unbounded mining, other boards, OTA, and
 release readiness remain explicit non-claims.

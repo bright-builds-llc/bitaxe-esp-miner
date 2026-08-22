@@ -35,12 +35,14 @@ new work.
 - [x] Add provenance-bound golden fixtures and focused pure, transport,
       lifecycle, fallback, malformed-input, and redaction tests; build/package
       the ESP32-S3 firmware and pass every mandatory repository gate.
-- [ ] Add the deterministic host-owned SV2 Noise pool fixture, private
+- [x] Add the deterministic host-owned SV2 Noise pool fixture, private
       detector-gated campaign, safe-stop/restoration path, closed evidence
       projection, and independent validator.
 - [x] Transition only `STR-005` to the strongest evidence-supported status:
       `implemented` with `unit,golden,workflow`, or `verified` only after the
       exact accepted Ultra 205 campaign adds `hardware-regression`.
+- [ ] Run the exact eligible attempt-001 campaign and promote to `verified`
+      only if the independent redacted hardware projection is accepted.
 
 Plan: `docs/parity/work-plans/20260822T040442Z-STR-005/PLAN.md`
 
@@ -97,10 +99,14 @@ stage admits only standard-channel canonical Base58Check authority credentials
 and requires ordered V2 runtime plus safe-stop markers. Canonical firmware
 build/package, all 52 Bazel tests, 23 pure V2 tests, the real fixture test, 393
 flash tests, Bright Builds, license generation, and reference cleanliness pass.
-No hardware or external-network effect occurred. The unchecked campaign item
-still requires its outer exact-settings/package capture and restoration command;
-until then the immutable hardware contract remains ineligible and `verified` is
-not claimed.
+No hardware or external-network effect occurred in the software checkpoint.
+The outer command now fails before mutation unless current settings are exactly
+reconstructible from protected local inputs and an exact prior package is
+available; it supervises the owned fixture/campaign, restores package and
+settings on success or failure, and publishes only after an independent
+validator passes. Attempt-001 remains pending until this command is committed,
+pushed, rebuilt into an exact package, and passes every final effect gate;
+`verified` is not yet claimed.
 
 Status transition: source/evidence commit
 `abf6c1bdfaf3f929f2fea30ec630635262221755` is bound by transition

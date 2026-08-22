@@ -186,6 +186,9 @@ self-test-campaign action *args:
 stratum-v2-fixture *args:
     bazel run //tools/stratum-v2-fixture:stratum_v2_fixture -- {{ args }}
 
+stratum-v2-campaign *args:
+    bazel run //tools/automation:stratum_v2_campaign -- {{ args }}
+
 validate-emc2101-thermal-fault-evidence projection:
     #!/usr/bin/env bash
     set -euo pipefail

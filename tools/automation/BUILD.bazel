@@ -135,6 +135,25 @@ js_binary(
     entry_point = "dist/scoreboard-recheck-cli.js",
 )
 
+js_binary(
+    name = "stratum_v2_campaign",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        "//tools/flash:flash",
+        "//tools/stratum-v2-fixture:stratum_v2_fixture",
+        ":stratum_v2_campaign_validator",
+    ],
+    entry_point = "dist/stratum-v2-campaign-cli.js",
+)
+
+js_binary(
+    name = "stratum_v2_campaign_validator",
+    chdir = "../../../..",
+    data = [":automation_ts"],
+    entry_point = "dist/stratum-v2-campaign-validator-cli.js",
+)
+
 [
     js_binary(
         name = target,

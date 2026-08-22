@@ -90,3 +90,25 @@
 - Outcome: `implemented` with `unit,golden,workflow`; task remains active.
 - Blocker or next safe action: Complete the outer restoration transaction and
   all hardware-effect gates before invoking attempt-001 or claiming `verified`.
+
+## 2026-08-22 06:45 UTC | Outer campaign transaction
+
+- Source commit: `8ec85eb8` plus the current working diff.
+- Actions: Added the exact `just stratum-v2-campaign` command, immutable argument
+  parser, pre-effect current-origin settings/theme capture, protected local-input
+  reconstruction, exact prior-package discovery, owned fixture supervision,
+  private V2 mining-campaign invocation, success/failure package and settings
+  restoration, bounded child output, closed public projection, and a separate
+  validator process.
+- Verification: Parser, exact/ambiguous restore-package inventory, accepted and
+  forbidden projection, TypeScript compile, real fixture, flash campaign, and
+  complete automation tests pass. Failure recovery attempts restoration while
+  preserving the original typed outcome.
+- Evidence: `tools/automation/src/stratum-v2-campaign.ts`,
+  `tools/automation/src/stratum-v2-campaign-validator.ts`, and their tests.
+- Outcome: The immutable outer hardware transaction is implemented; no hardware
+  or external-network effect occurred.
+- Blocker or next safe action: Commit and push the command, rebuild/package exact
+  HEAD, run all effect gates, then invoke attempt-001 once. A missing or
+  ambiguous prior package is a pre-effect `hardware_blocked` result, not grounds
+  to weaken restoration.
