@@ -24,6 +24,42 @@ new work.
 
 ## Active
 
+### task-parity-str005-stratum-v2 | 2026-08-22 | Implement Stratum V2 protocol and firmware ownership
+
+- [ ] Implement bounded Stratum V2 framing, Noise transport, SetupConnection,
+      standard and extended channel, job, target, and share-message behavior
+      against the pinned reference implementation.
+- [ ] Add a single firmware Stratum V2 task owner with typed configuration,
+      protocol-coordinator primary/fallback selection, bounded reconnect and
+      timeout behavior, explicit memory limits, and secret-free diagnostics.
+- [ ] Add provenance-bound golden fixtures and focused pure, transport,
+      lifecycle, fallback, malformed-input, and redaction tests; build/package
+      the ESP32-S3 firmware and pass every mandatory repository gate.
+- [ ] Transition only `STR-005` to at most `implemented` with
+      `unit,golden,workflow` evidence. Live pool interoperability and hardware
+      verification require a separate detector-gated task contract.
+
+Reference scope:
+
+- `reference/esp-miner/components/stratum_v2/sv2_protocol.c`
+- `reference/esp-miner/components/stratum_v2/sv2_noise.c`
+- `reference/esp-miner/main/tasks/stratum_v2_task.c`
+- `reference/esp-miner/main/tasks/protocol_coordinator.c`
+- `reference/esp-miner/main/nvs_config.c`
+
+Authorization: repository source, fixture, test, documentation, build/package,
+Git commit, and push work only. No real credentials, external pool session,
+detector, USB/device interaction, flash, monitor, mining, share submission,
+restart, recovery, hardware-control effect, fault injection, external UART,
+pins, or electrical work is authorized by this task promotion.
+
+Evidence/status boundary: promotion into `Active` does not change checklist
+status. `implemented` requires the complete bounded software owner, current
+pinned-reference provenance, deterministic tests, canonical firmware package,
+redaction review, and all mandatory gates. `verified` additionally requires a
+separately authorized live Stratum V2 pool and Ultra 205 hardware regression
+with safe-stop, cleanup, independent validation, and redaction.
+
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
 - [x] Add a single-owner UART2 firmware shell for the pinned GPIO39/GPIO40
