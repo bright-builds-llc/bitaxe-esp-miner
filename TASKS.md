@@ -56,8 +56,8 @@ new work.
       ordinal.
 - [x] Add typed runtime monitor, origin, settings, restoration-input, and
       restore-package admission plus a read-only real-device command.
-- [ ] Run the read-only admission under the new immutable plan and invoke
-      attempt-004 only if it returns `runtime_admission_ready`.
+- [x] Run the read-only admission under the new immutable plan; withhold
+      attempt-004 after the closed `restore_package` blocker.
 
 Plan: `docs/parity/work-plans/20260822T040442Z-STR-005/PLAN.md`
 
@@ -67,7 +67,7 @@ Consumed hardware continuation plan:
 Consumed hardware continuation plan:
 `docs/parity/work-plans/20260822T165408Z-STR-005-RETRY2/PLAN.md`
 
-Current hardware continuation plan:
+Closed runtime-admission plan:
 `docs/parity/work-plans/20260822T171824Z-STR-005-RUNTIME-ADMISSION/PLAN.md`
 
 Reference scope:
@@ -80,10 +80,10 @@ Reference scope:
 
 Authorization: repository source, fixture, test, documentation, build/package,
 Git commit, push, network, pool, and Ultra 205 hardware work under the linked
-immutable plan. The only permitted effect commands are `just detect-ultra205`,
-`just package`, the exact read-only runtime-admission command, and the exact
-attempt-004 `just stratum-v2-campaign` command in the current continuation plan.
-Attempts 001, 002, and 003 are consumed. Effects remain
+immutable plan. Attempts 001, 002, and 003 are consumed. Attempt-004 remains
+unused and is not effect-eligible because the closed runtime-admission plan did
+not reach `runtime_admission_ready`. No campaign command is currently
+authorized. Effects remain
 ineligible until the repo-owned command, private
 schemas, validator, recovery, tests, full gates, clean exact package, and pushed
 implementation commit exist. The campaign may use one host-owned local SV2
@@ -198,6 +198,17 @@ Bazel tests, canonical build/package, Bright Builds, parity/progress, redaction,
 reference cleanliness, selector lineage, sensitive-value review, and diff checks
 pass; focused tests also pass after the final error-classification cleanup. No
 device access occurred during this implementation/gate cycle.
+
+Runtime-admission outcome: clean pushed source and package `24180a94` passed
+`pre_effect_ready`, then a fresh detector admitted exactly one Ultra 205. The
+read-only command passed passive monitor completion, unique runtime-origin,
+same-origin system/theme reads, and exact restoration-input reconstruction, but
+stopped as `hardware_blocked` / `restore_package`. Attempt-004 was not consumed;
+its root and the public projection remain absent, and no fixture, flash, pool,
+mining, share, or hardware-control effect ran. The bounded local inventory has
+71 retained package manifests but cannot construct one exact restorable package
+for the firmware currently running. STR-005 remains `implemented`. Do not flash
+a new baseline or weaken exact rollback; see the linked closure.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
