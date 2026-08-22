@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
+import { existsSync, realpathSync } from "node:fs";
 import {
   chmod,
   mkdir,
@@ -31,10 +32,26 @@ type ProcessResult = {
   readonly stderr: string;
 };
 
-const expectedPrivateRoot = "scratch/str005-stratum-v2/attempt-001";
+const expectedPrivateRoot = "scratch/str005-stratum-v2/attempt-002";
 const expectedProjection =
   "docs/parity/evidence/str005-stratum-v2/stratum-v2-projection.json";
 const maximumOutputBytes = 1_048_576;
+
+export function campaignWorkspaceRoot(): string {
+  const configured = process.env["BUILD_WORKSPACE_DIRECTORY"];
+  const starts = configured === undefined ? [process.cwd()] : [configured, process.cwd()];
+  for (const start of starts) {
+    let candidate = path.resolve(start);
+    while (true) {
+      const moduleFile = path.join(candidate, "MODULE.bazel");
+      if (existsSync(moduleFile)) return path.dirname(realpathSync(moduleFile));
+      const parent = path.dirname(candidate);
+      if (parent === candidate) break;
+      candidate = parent;
+    }
+  }
+  throw new StratumV2CampaignError("evidence_invalid", "workspace unavailable");
+}
 
 export class StratumV2CampaignError extends Error {
   public constructor(public readonly category: string, message: string) {
@@ -105,7 +122,7 @@ export function parseStratumV2CampaignArgs(values: readonly string[]): CampaignA
   const projection = value("--projection");
   if (board !== "205" || duration !== "180" || parsed.get("--redact-evidence") !== true
     || privateRoot !== expectedPrivateRoot || projection !== expectedProjection) {
-    fail("invalid_invocation", "campaign contract does not match attempt-001");
+    fail("invalid_invocation", "campaign contract does not match attempt-002");
   }
   return {
     board,

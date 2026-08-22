@@ -1,6 +1,5 @@
-import path from "node:path";
-
 import {
+  campaignWorkspaceRoot,
   parseStratumV2CampaignArgs,
   runStratumV2Campaign,
   StratumV2CampaignError,
@@ -9,7 +8,7 @@ import {
 async function main(): Promise<number> {
   try {
     const args = parseStratumV2CampaignArgs(process.argv.slice(2));
-    const result = await runStratumV2Campaign(path.resolve(process.cwd()), args);
+    const result = await runStratumV2Campaign(campaignWorkspaceRoot(), args);
     process.stdout.write(`${JSON.stringify(result)}\n`);
     return 0;
   } catch (error) {

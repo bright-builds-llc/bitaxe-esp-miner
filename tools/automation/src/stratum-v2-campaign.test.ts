@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, realpath, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
 import {
+  campaignWorkspaceRoot,
   parseStratumV2CampaignArgs,
   selectRestorePackage,
   StratumV2CampaignError,
@@ -15,13 +16,25 @@ const exactArgs = [
   "--port", "/dev/cu.usbmodem101",
   "--package-manifest", "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
   "--wifi-credentials", "wifi-credentials.json",
-  "--private-root", "scratch/str005-stratum-v2/attempt-001",
+  "--private-root", "scratch/str005-stratum-v2/attempt-002",
   "--projection", "docs/parity/evidence/str005-stratum-v2/stratum-v2-projection.json",
   "--duration-seconds", "180",
   "--redact-evidence",
 ] as const;
 
-test("campaign parser admits only the immutable attempt-001 command", () => {
+test("real Bazel launcher resolves the repository workspace before paths", async () => {
+  // Arrange
+  const configured = process.env["BUILD_WORKSPACE_DIRECTORY"];
+
+  // Act
+  const workspace = campaignWorkspaceRoot();
+
+  // Assert
+  assert.ok((await stat(path.join(workspace, "MODULE.bazel"))).isFile());
+  if (configured !== undefined) assert.equal(workspace, await realpath(configured));
+});
+
+test("campaign parser admits only the immutable attempt-002 command", () => {
   // Arrange
   const changed: string[] = [...exactArgs];
   const durationIndex = changed.indexOf("180");
