@@ -112,3 +112,22 @@
   HEAD, run all effect gates, then invoke attempt-001 once. A missing or
   ambiguous prior package is a pre-effect `hardware_blocked` result, not grounds
   to weaken restoration.
+
+## 2026-08-22 06:34 UTC | Attempt-001 pre-effect closure
+
+- Source commit: `1c587e03d5dd5d356142d10b067243cab067aba3`
+- Actions: Built the clean exact package, detector-admitted one Ultra 205, and
+  invoked the exact attempt-001 outer command once.
+- Verification: The command returned `evidence_invalid` immediately. Protected
+  path absence/ignore status, credential modes, clean pushed HEAD, and exact
+  manifest identity were rechecked read-only. No private root, projection,
+  monitor, fixture, NVS, USB campaign session, flash, network connection,
+  mining, or hardware-control effect occurred.
+- Evidence: Closed command result category plus the absent attempt-001 root and
+  projection. Raw local inputs remain unread and unreported.
+- Outcome: Attempt-001 is consumed by its command-start rule; `STR-005` remains
+  `implemented` and no hardware evidence exists.
+- Blocker or next safe action: The standalone Bazel launcher used its runfiles
+  current directory instead of `BUILD_WORKSPACE_DIRECTORY`. Follow only
+  `docs/parity/work-plans/20260822T063702Z-STR-005-RETRY/PLAN.md`; commit its
+  regression-backed fix before the exact attempt-002 command.

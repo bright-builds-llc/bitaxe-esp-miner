@@ -41,10 +41,13 @@ new work.
 - [x] Transition only `STR-005` to the strongest evidence-supported status:
       `implemented` with `unit,golden,workflow`, or `verified` only after the
       exact accepted Ultra 205 campaign adds `hardware-regression`.
-- [ ] Run the exact eligible attempt-001 campaign and promote to `verified`
+- [ ] Run the exact eligible attempt-002 campaign and promote to `verified`
       only if the independent redacted hardware projection is accepted.
 
 Plan: `docs/parity/work-plans/20260822T040442Z-STR-005/PLAN.md`
+
+Hardware continuation plan:
+`docs/parity/work-plans/20260822T063702Z-STR-005-RETRY/PLAN.md`
 
 Reference scope:
 
@@ -57,8 +60,9 @@ Reference scope:
 Authorization: repository source, fixture, test, documentation, build/package,
 Git commit, push, network, pool, and Ultra 205 hardware work under the linked
 immutable plan. The only permitted effect commands are `just detect-ultra205`,
-`just package`, and the exact attempt-001 `just stratum-v2-campaign` command in
-that plan. Effects remain ineligible until its repo-owned command, private
+`just package`, and the exact attempt-002 `just stratum-v2-campaign` command in
+the continuation plan. Attempt-001 is consumed without effect. Effects remain
+ineligible until the repo-owned command, private
 schemas, validator, recovery, tests, full gates, clean exact package, and pushed
 implementation commit exist. The campaign may use one host-owned local SV2
 Noise pool fixture, exact package flash, temporary private Wi-Fi/SV2 NVS,
