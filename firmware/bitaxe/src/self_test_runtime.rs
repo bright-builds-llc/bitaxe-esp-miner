@@ -11,7 +11,7 @@ use std::time::Duration;
 use bitaxe_asic::bm1366::{
     command::Bm1366Command,
     mining_ready::difficulty_mask_value,
-    result::Bm1366ValidJobIds,
+    result::{Bm1366RegisterRead, Bm1366ValidJobIds},
     work::{Bm1366JobId, Bm1366WorkFields, Bm1366WorkPayload},
 };
 use bitaxe_core::runtime_health::{
@@ -42,7 +42,11 @@ const OWNER_THREAD_NAME: &str = "self-test";
 const OWNER_STACK_BYTES: usize = 24 * 1_024;
 const RESULT_POLL_MS: u32 = 100;
 const WORK_DISPATCH_MS: u64 = 2_000;
+const REGISTER_POLL_MS: u64 = 1_000;
 const SAFETY_PREFLIGHT_TIMEOUT_MS: u64 = 10_000;
+
+mod domain_measurement;
+use domain_measurement::DomainMeasurement;
 
 static ACTIVE: AtomicBool = AtomicBool::new(false);
 static CANCEL_REQUESTED: AtomicBool = AtomicBool::new(false);
@@ -251,6 +255,7 @@ fn run_inner(
 
     enter(admission, schedule, HardwareSelfTestStage::Evaluating, None)?;
     let metrics = measurement.finish(started_at_ms)?;
+    log_self_test_metrics(&metrics);
     evaluate_hardware_self_test_metrics(metrics)?;
     Ok(())
 }
@@ -390,6 +395,12 @@ fn service_diagnostic_work(
         .map_err(|_| HardwareSelfTestFailure::PreparationFailed)?;
         measurement.next_dispatch_ms = now_ms.saturating_add(WORK_DISPATCH_MS);
     }
+    if now_ms >= measurement.next_register_poll_ms {
+        if !crate::asic_adapter::production::request_hashrate_monitor_register_reads_tx() {
+            return Err(HardwareSelfTestFailure::MeasurementIncomplete);
+        }
+        measurement.next_register_poll_ms = now_ms.saturating_add(REGISTER_POLL_MS);
+    }
     watchdog.feed(TaskWatchdogOwnerSubphase::EffectPollChip);
     match crate::asic_adapter::production::try_read_self_test_result(
         &measurement.valid_jobs,
@@ -397,10 +408,11 @@ fn service_diagnostic_work(
     )
     .map_err(|_| HardwareSelfTestFailure::MeasurementIncomplete)?
     {
-        ProductionReadOutcome::JobNonce(result) => measurement.record_nonce(result.small_core_id),
-        ProductionReadOutcome::Pending
-        | ProductionReadOutcome::Discarded(_)
-        | ProductionReadOutcome::RegisterReadProof(_) => {}
+        ProductionReadOutcome::JobNonce(_) => measurement.record_nonce(),
+        ProductionReadOutcome::RegisterReadProof(read) => {
+            measurement.record_register(read, now_ms)?;
+        }
+        ProductionReadOutcome::Pending | ProductionReadOutcome::Discarded(_) => {}
     }
     Ok(())
 }
@@ -420,8 +432,9 @@ struct DiagnosticMeasurement {
     job_id: Bm1366JobId,
     valid_jobs: Bm1366ValidJobIds,
     next_dispatch_ms: u64,
+    next_register_poll_ms: u64,
     nonce_count: u64,
-    domain_nonce_counts: [u32; HARDWARE_SELF_TEST_DOMAIN_COUNT],
+    domains: DomainMeasurement,
     maximum_temperature_c: f32,
 }
 
@@ -432,16 +445,23 @@ impl DiagnosticMeasurement {
             job_id,
             valid_jobs: Bm1366ValidJobIds::single(job_id),
             next_dispatch_ms: 0,
+            next_register_poll_ms: 0,
             nonce_count: 0,
-            domain_nonce_counts: [0; HARDWARE_SELF_TEST_DOMAIN_COUNT],
+            domains: DomainMeasurement::new(),
             maximum_temperature_c: f32::MIN,
         }
     }
 
-    fn record_nonce(&mut self, small_core_id: u8) {
+    fn record_nonce(&mut self) {
         self.nonce_count = self.nonce_count.saturating_add(1);
-        let domain = usize::from(small_core_id) % HARDWARE_SELF_TEST_DOMAIN_COUNT;
-        self.domain_nonce_counts[domain] = self.domain_nonce_counts[domain].saturating_add(1);
+    }
+
+    fn record_register(
+        &mut self,
+        read: Bm1366RegisterRead,
+        now_ms: u64,
+    ) -> Result<(), HardwareSelfTestFailure> {
+        self.domains.record(read, now_ms)
     }
 
     fn finish(
@@ -455,16 +475,15 @@ impl DiagnosticMeasurement {
         let hash_unit = f64::from(HARDWARE_SELF_TEST_DIFFICULTY) * 4_294_967_296.0;
         let seconds = measured_ms as f64 / 1_000.0;
         let total_hashrate_ghs = (self.nonce_count as f64 * hash_unit / seconds / 1e9) as f32;
-        let domain_hashrate_ghs = self
-            .domain_nonce_counts
-            .map(|count| (f64::from(count) * hash_unit / seconds / 1e9) as f32);
+        let (domain_hashrate_ghs, domain_sample_counts, domain_rejected_counts) =
+            self.domains.finish();
         let observations = crate::safety_adapter::observation_snapshot();
         Ok(HardwareSelfTestMetrics {
             measured_ms,
             total_hashrate_ghs,
             domain_hashrate_ghs,
-            domain_sample_counts: self.domain_nonce_counts,
-            domain_rejected_counts: [0; HARDWARE_SELF_TEST_DOMAIN_COUNT],
+            domain_sample_counts,
+            domain_rejected_counts,
             input_voltage_volts: observation_f64(&observations.bus_voltage_volts)? as f32,
             core_voltage_mv: observation_f64(&observations.core_voltage_actual_mv)?
                 .round()
@@ -474,6 +493,31 @@ impl DiagnosticMeasurement {
             maximum_temperature_c: self.maximum_temperature_c,
         })
     }
+}
+
+fn log_self_test_metrics(metrics: &HardwareSelfTestMetrics) {
+    log::info!(
+        "self_test_metrics={{\"schema\":\"self-test-metrics-v1\",\"measured_ms\":{},\"total_ghs\":{:.3},\"domain_ghs\":[{:.3},{:.3},{:.3},{:.3}],\"domain_samples\":[{},{},{},{}],\"domain_rejected\":[{},{},{},{}],\"input_volts\":{:.3},\"core_mv\":{},\"power_watts\":{:.3},\"fan_rpm\":{},\"maximum_temperature_c\":{:.2}}}",
+        metrics.measured_ms,
+        metrics.total_hashrate_ghs,
+        metrics.domain_hashrate_ghs[0],
+        metrics.domain_hashrate_ghs[1],
+        metrics.domain_hashrate_ghs[2],
+        metrics.domain_hashrate_ghs[3],
+        metrics.domain_sample_counts[0],
+        metrics.domain_sample_counts[1],
+        metrics.domain_sample_counts[2],
+        metrics.domain_sample_counts[3],
+        metrics.domain_rejected_counts[0],
+        metrics.domain_rejected_counts[1],
+        metrics.domain_rejected_counts[2],
+        metrics.domain_rejected_counts[3],
+        metrics.input_voltage_volts,
+        metrics.core_voltage_mv,
+        metrics.power_watts,
+        metrics.fan_rpm,
+        metrics.maximum_temperature_c,
+    );
 }
 
 fn observation_f64(

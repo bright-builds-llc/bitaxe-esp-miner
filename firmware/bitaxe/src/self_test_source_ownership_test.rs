@@ -1,6 +1,7 @@
 const MAIN_SOURCE: &str = include_str!("main.rs");
 const STARTUP_SOURCE: &str = include_str!("startup.rs");
 const RUNTIME_SOURCE: &str = include_str!("self_test_runtime.rs");
+const DOMAIN_SOURCE: &str = include_str!("self_test_runtime/domain_measurement.rs");
 const SETTINGS_SOURCE: &str = include_str!("settings_adapter/self_test.rs");
 const INPUT_SOURCE: &str = include_str!("input_adapter.rs");
 const HTTP_SOURCE: &str = include_str!("http_api.rs");
@@ -82,13 +83,22 @@ fn self_test_uses_existing_safe_actuation_and_terminal_shutdown() {
         "HardwareSafeStopPurpose::Terminal",
         "HARDWARE_SELF_TEST_MAX_C",
         "HARDWARE_SELF_TEST_RESTART_DELAY_MS",
+        "request_hashrate_monitor_register_reads_tx",
+        "HashrateMonitor::new(1, HARDWARE_SELF_TEST_DOMAIN_COUNT)",
+        "HashrateRegister::DomainCount",
+        "domain_rejected_counts",
+        "self_test_metrics=",
     ];
 
     // Act
-    let all_present = required.iter().all(|token| RUNTIME_SOURCE.contains(token));
+    let all_present = required
+        .iter()
+        .all(|token| RUNTIME_SOURCE.contains(token) || DOMAIN_SOURCE.contains(token));
 
     // Assert
     assert!(all_present);
     assert!(RUNTIME_SOURCE.contains("PlannedEvaluationFailure"));
     assert!(RUNTIME_SOURCE.contains("safe_stop_complete"));
+    assert!(!RUNTIME_SOURCE.contains("small_core_id) % HARDWARE_SELF_TEST_DOMAIN_COUNT"));
+    assert!(!DOMAIN_SOURCE.contains("small_core_id"));
 }

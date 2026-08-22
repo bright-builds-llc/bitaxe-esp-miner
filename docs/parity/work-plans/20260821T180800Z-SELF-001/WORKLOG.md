@@ -83,3 +83,24 @@
   the persisted receipt every 10 seconds, automatic missing-receipt recovery,
   `docs/parity/work-plans/20260821T211712Z-SELF-001-RETRY-3/PLAN.md`, all gates,
   a new exact package, and a fresh detector.
+
+## 2026-08-22T02:40:37Z | attempt-004 domain measurement failure
+
+- Source commit: `0aae60b527403d6d574957a0dc9e811293db15c3`
+- Actions: completed controlled failure, safe-stop, physical cancellation,
+  private receipt replay, cancellation restart, pass dry-run, warm-up,
+  30-second diagnostic measurement, evaluation, and pass-run safe-stop.
+- Earliest failure: `domain_failed`; no pass terminal or automatic restart was
+  claimed. The private log contains exactly one each of warming, measuring,
+  evaluating, safe-stopping, and the terminal safe checkpoint.
+- Root cause: Rust fabricated domain rates by bucketing nonce
+  `small_core_id % 4`. Upstream instead polls BM1366 counter registers
+  `0x88–0x8B`, computes wrapping deltas at the `2^32` hash unit, averages fresh
+  samples, and applies implausible/unreliable-counter handling.
+- Recovery: ordinary exact-package recovery completed, exact settings/theme
+  were confirmed with `mineonboot=false`, no projection was published, and no
+  process remained.
+- Outcome: attempt-004 is terminal. Attempt-005 requires
+  `docs/parity/work-plans/20260822T024037Z-SELF-001-RETRY-4/PLAN.md`, the
+  existing typed register-read/pure hashrate path, removal of synthetic domain
+  attribution, all gates, a new exact package, and a fresh detector.

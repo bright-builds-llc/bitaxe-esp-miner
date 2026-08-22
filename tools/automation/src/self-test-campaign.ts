@@ -22,13 +22,13 @@ import { createSelfTestEvidence } from "./self-test-campaign-evidence.js";
 import { restoreSelfTestSettings } from "./self-test-campaign-restoration.js";
 import { assertWithinWorkspace } from "./workspace.js";
 
-const expectedRoot = "scratch/self001-full-lifecycle/attempt-004";
+const expectedRoot = "scratch/self001-full-lifecycle/attempt-005";
 const expectedProjection =
   "docs/parity/evidence/self001-full-lifecycle/self-test-projection.json";
 const expectedPlan =
-  "docs/parity/work-plans/20260821T211712Z-SELF-001-RETRY-3/PLAN.md";
+  "docs/parity/work-plans/20260822T024037Z-SELF-001-RETRY-4/PLAN.md";
 const expectedPlanSha256 =
-  "649c97b0ec66519bf6d45a5944170e7a043599c04ea8d2e835edc17547bef714";
+  "0c9a03ec490967fc95989d88b91848c7d4ed740a76825822a8107d94e8fd7f84";
 const expectedReference = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const activeTask = "task-parity-self001-full-lifecycle";
 const monitorSeconds = 360;
@@ -187,7 +187,7 @@ function intent(
   return {
     schema_version: "bitaxe-self-test-intent-v1",
     board: 205,
-    attempt_ordinal: 4,
+    attempt_ordinal: 5,
     source_commit: state.source_commit,
     reference_commit: state.reference_commit,
     app_elf_sha256: state.app_elf_sha256,

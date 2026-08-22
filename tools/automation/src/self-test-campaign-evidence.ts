@@ -20,7 +20,7 @@ export function createSelfTestEvidence(
   return {
     schema_version: "bitaxe-self-test-evidence-v1",
     board: 205,
-    attempt_ordinal: 4,
+    attempt_ordinal: 5,
     source_commit: identity.source_commit,
     reference_commit: identity.reference_commit,
     app_elf_sha256: identity.app_elf_sha256,
@@ -30,7 +30,7 @@ export function createSelfTestEvidence(
       schema_version: "bitaxe-workflow-identity-v1",
       command: "self-test-campaign",
       request_sha256: sha256(JSON.stringify({
-        manifest: sha256(manifestDocument), plan: planSha256, attempt: 4,
+        manifest: sha256(manifestDocument), plan: planSha256, attempt: 5,
       })),
     },
     detector_admitted: true,

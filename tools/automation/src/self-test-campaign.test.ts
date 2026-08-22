@@ -12,8 +12,8 @@ import { selfTestCampaignFromInvocation } from "./self-test-campaign.js";
 const sourceCommit = "a".repeat(40);
 const referenceCommit = "c1915b0a63bfabebdb95a515cedfee05146c1d50";
 const appElfSha256 = "b".repeat(64);
-const planRelative = "docs/parity/work-plans/20260821T211712Z-SELF-001-RETRY-3/PLAN.md";
-const rootRelative = "scratch/self001-full-lifecycle/attempt-004";
+const planRelative = "docs/parity/work-plans/20260822T024037Z-SELF-001-RETRY-4/PLAN.md";
+const rootRelative = "scratch/self001-full-lifecycle/attempt-005";
 const projectionRelative =
   "docs/parity/evidence/self001-full-lifecycle/self-test-projection.json";
 

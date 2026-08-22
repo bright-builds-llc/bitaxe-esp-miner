@@ -97,6 +97,16 @@ were restored with `mineonboot=false`. Attempt-004 is authorized only by
 serial-only 10-second persisted-receipt replay, missing-receipt recovery, full
 verification, commit/push, and package binding.
 
+Attempt-004 proved the complete failure/cancel lifecycle and advanced the pass
+run through warm-up, measurement, evaluation, and safe-stop, then failed closed
+as `domain_failed`. Automatic recovery restored the exact package/settings and
+withheld projection. The defect is synthetic Rust domain attribution from
+`small_core_id % 4`; upstream uses BM1366 counter registers `0x88–0x8B`.
+Attempt-005 is authorized only by
+`docs/parity/work-plans/20260822T024037Z-SELF-001-RETRY-4/PLAN.md` after the
+existing typed register-read and pure hashrate-monitor path replaces that
+mapping, all gates pass, and a new exact package is bound.
+
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
 - [x] Add a single-owner UART2 firmware shell for the pinned GPIO39/GPIO40

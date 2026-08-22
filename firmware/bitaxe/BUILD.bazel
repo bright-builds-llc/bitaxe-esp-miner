@@ -304,6 +304,7 @@ rust_test(
         "src/input_adapter.rs",
         "src/main.rs",
         "src/self_test_runtime.rs",
+        "src/self_test_runtime/domain_measurement.rs",
         "src/self_test_source_ownership_test.rs",
         "src/settings_adapter/self_test.rs",
         "src/startup.rs",
