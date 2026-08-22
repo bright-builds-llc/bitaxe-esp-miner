@@ -10,16 +10,18 @@ import {
   parseStratumV2CampaignArgs,
   runCampaignProcess,
   selectRestorePackage,
+  type StratumV2CampaignCheckpoint,
   StratumV2CampaignError,
   stratumV2CampaignFailureResult,
 } from "./stratum-v2-campaign.js";
+import { singleRuntimeOrigin } from "./stratum-v2-runtime-admission.js";
 
 const exactArgs = [
   "--board", "205",
   "--port", "/dev/cu.usbmodem101",
   "--package-manifest", "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
   "--wifi-credentials", "wifi-credentials.json",
-  "--private-root", "scratch/str005-stratum-v2/attempt-003",
+  "--private-root", "scratch/str005-stratum-v2/attempt-004",
   "--projection", "docs/parity/evidence/str005-stratum-v2/stratum-v2-projection.json",
   "--duration-seconds", "180",
   "--redact-evidence",
@@ -82,7 +84,7 @@ test("workspace discovery prefers an explicit workspace with a Bazel module", as
   }
 });
 
-test("campaign parser admits only the immutable attempt-003 command", () => {
+test("campaign parser admits only the immutable attempt-004 command", () => {
   // Arrange
   const changed: string[] = [...exactArgs];
   const durationIndex = changed.indexOf("180");
@@ -103,6 +105,28 @@ test("campaign parser admits only the immutable attempt-003 command", () => {
   assert.ok(rejected instanceof StratumV2CampaignError);
   assert.equal(rejected.category, "invalid_invocation");
   assert.equal(rejected.checkpoint, "invocation");
+});
+
+test("runtime origin requires exactly one origin-only candidate", () => {
+  // Arrange
+  const one = "runtime ready http://192.0.2.1:80";
+  const fail = (
+    category: string,
+    message: string,
+    checkpoint: StratumV2CampaignCheckpoint,
+  ): never => {
+    throw new StratumV2CampaignError(category, message, checkpoint);
+  };
+
+  // Act / Assert
+  assert.equal(singleRuntimeOrigin(one, fail).origin, "http://192.0.2.1");
+  for (const value of ["runtime ready", "http://192.0.2.1 http://192.0.2.2"]) {
+    assert.throws(
+      () => singleRuntimeOrigin(value, fail),
+      (error: unknown) => error instanceof StratumV2CampaignError
+        && error.checkpoint === "runtime_origin",
+    );
+  }
 });
 
 test("campaign failure output exposes only the closed pre-effect discriminator", () => {

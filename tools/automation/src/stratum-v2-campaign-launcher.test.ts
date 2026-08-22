@@ -45,7 +45,7 @@ test("real Bazel launcher admits the ignored private campaign path", async () =>
   const child = await runCampaignProcess(
     workspace,
     "git",
-    ["check-ignore", "-q", "scratch/str005-stratum-v2/attempt-003"],
+    ["check-ignore", "-q", "scratch/str005-stratum-v2/attempt-004"],
     5_000,
   );
 

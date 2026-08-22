@@ -155,6 +155,16 @@ js_binary(
 )
 
 js_binary(
+    name = "stratum_v2_runtime_admission",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        "//tools/flash:flash",
+    ],
+    entry_point = "dist/stratum-v2-runtime-admission-cli.js",
+)
+
+js_binary(
     name = "stratum_v2_campaign_validator",
     chdir = "../../../..",
     data = [":automation_ts"],

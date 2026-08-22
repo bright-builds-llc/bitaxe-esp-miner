@@ -51,16 +51,24 @@ new work.
 - [x] Authorize a fresh hardware ordinal only through a new immutable
       continuation plan whose checkpoint discriminator proves the changed
       pre-effect boundary before any effect.
-- [ ] Run the exact eligible attempt-003 campaign and promote to `verified`
-      only if the independent redacted hardware projection is accepted.
+- [x] Run the exact attempt-003 campaign once; preserve `implemented` after its
+      pre-root `hardware_blocked` / `unclassified` closure and consume the
+      ordinal.
+- [x] Add typed runtime monitor, origin, settings, restoration-input, and
+      restore-package admission plus a read-only real-device command.
+- [ ] Run the read-only admission under the new immutable plan and invoke
+      attempt-004 only if it returns `runtime_admission_ready`.
 
 Plan: `docs/parity/work-plans/20260822T040442Z-STR-005/PLAN.md`
 
 Consumed hardware continuation plan:
 `docs/parity/work-plans/20260822T063702Z-STR-005-RETRY/PLAN.md`
 
-Current hardware continuation plan:
+Consumed hardware continuation plan:
 `docs/parity/work-plans/20260822T165408Z-STR-005-RETRY2/PLAN.md`
+
+Current hardware continuation plan:
+`docs/parity/work-plans/20260822T171824Z-STR-005-RUNTIME-ADMISSION/PLAN.md`
 
 Reference scope:
 
@@ -73,9 +81,9 @@ Reference scope:
 Authorization: repository source, fixture, test, documentation, build/package,
 Git commit, push, network, pool, and Ultra 205 hardware work under the linked
 immutable plan. The only permitted effect commands are `just detect-ultra205`,
-`just package`, and the exact attempt-003 `just stratum-v2-campaign` command in
-the current continuation plan. Attempts 001 and 002 are consumed without
-effect. Effects remain
+`just package`, the exact read-only runtime-admission command, and the exact
+attempt-004 `just stratum-v2-campaign` command in the current continuation plan.
+Attempts 001, 002, and 003 are consumed. Effects remain
 ineligible until the repo-owned command, private
 schemas, validator, recovery, tests, full gates, clean exact package, and pushed
 implementation commit exist. The campaign may use one host-owned local SV2
@@ -169,6 +177,27 @@ The shared source-workspace resolver now also rejects nested Bazel-output
 `MODULE.bazel` copies without Git identity. All temporary debug probes were
 removed. No detector, USB, device, fixture, network, pool, mining, or hardware
 effect ran during diagnosis and software verification.
+
+Attempt-003 outcome: clean pushed source and package `39aefd23` passed the
+no-effect `pre_effect_ready` checkpoint and admitted exactly one Ultra 205. The
+single campaign stopped after about 20 seconds as `hardware_blocked` with the
+checkpoint still `unclassified`. The attempt root and public projection remain
+absent, proving fixture start, NVS construction, flash, pool traffic, mining,
+share submission, and hardware control did not begin. No owned process remains;
+a post-attempt detector again confirmed the same USB session ready. The timing
+and execution order place the remaining gap in passive runtime monitor/origin
+or settings/restoration admission, but the consumed evidence cannot distinguish
+those sub-boundaries. See the linked attempt-003 closure. No retry is allowed.
+
+Runtime-admission software verification: the effectful campaign and read-only
+diagnostic now share one monitor/origin/settings/restoration/package admission
+path with closed failure checkpoints and `runtime_admission_ready`. Pure origin
+cardinality, protected preflight, failure redaction, exact attempt-004 parsing,
+and real-launch workspace/ignored-path tests pass. Ordered Cargo gates, all 53
+Bazel tests, canonical build/package, Bright Builds, parity/progress, redaction,
+reference cleanliness, selector lineage, sensitive-value review, and diff checks
+pass; focused tests also pass after the final error-classification cleanup. No
+device access occurred during this implementation/gate cycle.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 

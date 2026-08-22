@@ -9,7 +9,12 @@ export async function validateRestorableInputs(
   fail: (category: string, message: string) => never,
 ): Promise<void> {
   const parse = async (candidate: string): Promise<JsonObject> => {
-    const value: unknown = JSON.parse(await readFile(candidate, "utf8"));
+    let value: unknown;
+    try {
+      value = JSON.parse(await readFile(candidate, "utf8"));
+    } catch {
+      fail("hardware_blocked", "local restoration input is malformed");
+    }
     if (typeof value !== "object" || value === null || Array.isArray(value)) {
       fail("hardware_blocked", "local restoration input is malformed");
     }
