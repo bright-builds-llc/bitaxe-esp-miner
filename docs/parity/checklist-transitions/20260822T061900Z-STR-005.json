@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260822T061900Z-STR-005",
+  "predecessor_sha256": "125825908ec90fe629c7f89fba9146fb4cb9d58f9721ea45767243bf4526230e",
+  "result_sha256": "11c298f96b98d186a8cee498464962453d24b96f4a65db0355adc75fd9b48685",
+  "row_id": "STR-005",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260822T040442Z-STR-005/PLAN.md",
+  "plan_sha256": "b5d52799b3791d869a7efe00f8b5b7e511e3496694d83b8db4e13dfda31b382e",
+  "result_path": null,
+  "result_document_sha256": null,
+  "before_rust_owned_target": "`crates/bitaxe-stratum/src/v1.rs`",
+  "after_rust_owned_target": "crates/bitaxe-stratum/src/v2, firmware/bitaxe/src/stratum_v2_session.rs, firmware/bitaxe/src/stratum_v2_session/transport.rs, firmware/bitaxe/src/settings_adapter/stratum_v2.rs, tools/stratum-v2-fixture/src/main.rs, tools/flash/src/campaign/serial/stratum_v2.rs",
+  "before_status": "in-progress",
+  "after_status": "implemented",
+  "before_evidence": "pending",
+  "after_evidence": "unit,golden,workflow",
+  "before_notes": "Explicit user-selected STR-005 work is active under the immutable audit plan; no implementation or hardware evidence is claimed.",
+  "after_notes": "Implemented at abf6c1bd with bounded pinned-reference frames/messages, official SRI Noise NX, standard and extended channel/job/share state, sole campaign-gated firmware ownership, real TCP fixture, canonical package, redaction, and software evidence in docs/parity/evidence/str005-stratum-v2/summary.md. Exact-restoration outer campaign, Ultra 205 hardware regression, external production pools, mixed-protocol live fallback, arbitrary pools, other boards, unbounded mining, OTA, and release readiness remain non-claims."
+}

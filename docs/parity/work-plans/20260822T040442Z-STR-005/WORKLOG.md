@@ -72,3 +72,21 @@
 - Blocker or next safe action: Implement and test the exact-restoration outer
   `just stratum-v2-campaign` transaction before attempt-001 can become effect
   eligible. Do not substitute the lower-level fixture or mining-campaign stage.
+
+## 2026-08-22 06:19 UTC | Implemented promotion
+
+- Source commit: `abf6c1bdfaf3f929f2fea30ec630635262221755`
+- Actions: Transitioned only `STR-005` from `in-progress` to `implemented` and
+  bound the exact implementation pointers, evidence types, notes, plan digest,
+  reference commit, and source evidence. A second same-status transition
+  corrected the pointers to the checklist's required Markdown code-span shape
+  without rewriting the original receipt.
+- Verification: Transition replay validation and deterministic progress sync
+  accepted the exact checklist mutation. Verified-row count remains 90 of 95
+  active rows because no hardware claim was made.
+- Evidence: Transitions `20260822T061900Z-STR-005` and
+  `20260822T062500Z-STR-005-TARGETS`, plus
+  `docs/parity/evidence/str005-stratum-v2/summary.md`.
+- Outcome: `implemented` with `unit,golden,workflow`; task remains active.
+- Blocker or next safe action: Complete the outer restoration transaction and
+  all hardware-effect gates before invoking attempt-001 or claiming `verified`.

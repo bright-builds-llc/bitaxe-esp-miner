@@ -38,7 +38,7 @@ new work.
 - [ ] Add the deterministic host-owned SV2 Noise pool fixture, private
       detector-gated campaign, safe-stop/restoration path, closed evidence
       projection, and independent validator.
-- [ ] Transition only `STR-005` to the strongest evidence-supported status:
+- [x] Transition only `STR-005` to the strongest evidence-supported status:
       `implemented` with `unit,golden,workflow`, or `verified` only after the
       exact accepted Ultra 205 campaign adds `hardware-regression`.
 
@@ -101,6 +101,13 @@ No hardware or external-network effect occurred. The unchecked campaign item
 still requires its outer exact-settings/package capture and restoration command;
 until then the immutable hardware contract remains ineligible and `verified` is
 not claimed.
+
+Status transition: source/evidence commit
+`abf6c1bdfaf3f929f2fea30ec630635262221755` is bound by transition
+`20260822T061900Z-STR-005` and code-span metadata correction
+`20260822T062500Z-STR-005-TARGETS`; `STR-005` is `implemented` with
+`unit,golden,workflow`. The task remains active because the exact-restoration
+outer hardware campaign and `hardware-regression` evidence are incomplete.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
