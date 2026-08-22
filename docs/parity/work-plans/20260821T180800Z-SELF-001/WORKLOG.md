@@ -104,3 +104,20 @@
   `docs/parity/work-plans/20260822T024037Z-SELF-001-RETRY-4/PLAN.md`, the
   existing typed register-read/pure hashrate path, removal of synthetic domain
   attribution, all gates, a new exact package, and a fresh detector.
+
+## 2026-08-22T03:31:10Z | attempt-005 verified
+
+- Source commit: `a11b579b62cb52a53bbf6072bde209d3eb3f17e2`
+- Actions: completed the full controlled-failure/cancel and passing/restart
+  lifecycle under one lease-bound detector-admitted Ultra 205 campaign.
+- Hardware: 30,101-ms workload; 1257.913 GH/s total; four BM1366 domain
+  averages 105.993/121.261/84.740/109.313 GH/s with 21/53/20/53 accepted and
+  zero rejected samples; 5.276 V, 1186 mV, 12.300 W, 2188 RPM, 61.00 C maximum.
+- Restoration: exact settings/theme confirmed with `mineonboot=false`; no
+  production mining or pool traffic; cleanup complete.
+- Evidence: projection
+  `1cbc357cb76c51bb354162e48f485442a3ce5eaeb03aead3b71ed50fd3235090`;
+  independent Rust validation and semantic redaction pass.
+- Outcome: complete and eligible for isolated `SELF-001` promotion to
+  `verified` with `unit,workflow,hardware-regression`, progress sync, task
+  archive, final verification, commit, and push.

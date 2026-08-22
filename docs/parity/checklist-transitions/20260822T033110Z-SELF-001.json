@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260822T033110Z-SELF-001",
+  "predecessor_sha256": "bf50d0fae2cf3deec986b8727b60d831c4a225db05f07e39f7e8f359b8405088",
+  "result_sha256": "4bcf8b3dd979116cbb55918b7de1140bbdbd0330583cdadc5335099e7c33e285",
+  "row_id": "SELF-001",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260822T024037Z-SELF-001-RETRY-4/PLAN.md",
+  "plan_sha256": "0c9a03ec490967fc95989d88b91848c7d4ed740a76825822a8107d94e8fd7f84",
+  "result_path": "docs/parity/work-plans/20260822T024037Z-SELF-001-RETRY-4/RESULT.md",
+  "result_document_sha256": "a9bc908ddd2211390ae670a33f87f842354e1c51e2bd441ee333a7ea321ec0cf",
+  "before_rust_owned_target": "`crates/bitaxe-safety/src/self_test.rs`, `crates/bitaxe-safety/src/watchdog.rs`, `firmware/bitaxe/src/safety_adapter/watchdog.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-safety/src/self_test/hardware.rs`, `firmware/bitaxe/src/self_test_runtime.rs`, `firmware/bitaxe/src/self_test_runtime/domain_measurement.rs`, `firmware/bitaxe/src/settings_adapter/self_test.rs`, `firmware/bitaxe/src/boot_evidence.rs`, `tools/automation/src/self-test-campaign.ts`",
+  "before_status": "implemented",
+  "after_status": "verified",
+  "before_evidence": "unit,workflow",
+  "after_evidence": "unit,workflow,hardware-regression",
+  "before_notes": "Pure self-test lifecycle, factory/manual/cancel/pass/fail effects, missing evidence gates, and watchdog-friendly steps are implemented. [Phase 14 self-test/watchdog/load evidence](evidence/phase-14-safety-hardware-evidence-completion/self-test-watchdog-load.md) observes watchdog supervisor startup/yield markers only; self-test hardware submodes remain below verified because no production-safe route exists and require `hardware-regression`. Phase 20 final evidence in `evidence/phase-20-active-safety-hardware-telemetry-evidence/summary.md`, `evidence/phase-20-active-safety-hardware-telemetry-evidence/self-test-watchdog-load.md`, and `evidence/phase-20-active-safety-hardware-telemetry-evidence/failure-paths.md` records watchdog breadcrumbs only and keeps self-test hardware/failure behavior blocked below verified.",
+  "after_notes": "Exact clean source a11b579b attempt-005 verifies the complete Ultra 205 controlled-failure, safe-stop, physical BOOT cancellation/restart, upstream-compatible pass, BM1366 counter domains, pass restart, exact restoration, cleanup, independent validation, and redaction; see docs/parity/work-plans/20260822T024037Z-SELF-001-RETRY-4/RESULT.md and docs/parity/evidence/self001-full-lifecycle/self-test-projection.json. Non-claims remain actual injected sensor/thermal/electrical/communication faults, other boards, unbounded load, pool mining, OTA/recovery, and release readiness."
+}

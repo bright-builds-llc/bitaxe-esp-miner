@@ -1,16 +1,16 @@
-# SELF-001 Full-Lifecycle Software Evidence
+# SELF-001 Full-Lifecycle Evidence
 
 ## Provenance
 
 | Field | Value |
 | --- | --- |
 | Parity row | `SELF-001` |
-| Immutable plan | `docs/parity/work-plans/20260821T180800Z-SELF-001/PLAN.md` |
-| Plan SHA-256 | `4f089bc826a31881ce7668a78e2479370a96cf6e39c855ef3baecf6fd33c9936` |
+| Immutable plan | `docs/parity/work-plans/20260822T024037Z-SELF-001-RETRY-4/PLAN.md` |
+| Plan SHA-256 | `0c9a03ec490967fc95989d88b91848c7d4ed740a76825822a8107d94e8fd7f84` |
 | Plan commit | `d358d74055449a5799d61cf2c4610a75f1e240f1` |
-| Implementation commit | `e95259ec0d5bfe100ba4d6b096179075476595f7` |
+| Implementation commit | `a11b579b62cb52a53bbf6072bde209d3eb3f17e2` |
 | Reference commit | `c1915b0a63bfabebdb95a515cedfee05146c1d50` |
-| Hardware attempts | none |
+| Hardware attempts | `attempt-005` accepted; 001-004 terminal and documented |
 
 ## Implemented route
 
@@ -49,12 +49,27 @@ only `bitaxe-self-test-evidence-v1` after independent validation.
   redaction, reference, contract generation, file-size, sensitive-value, and
   diff checks pass.
 
+## Hardware verification
+
+Detector-admitted Ultra 205 attempt-005 completed both phases under one
+lease-bound campaign. The controlled failure reached a safe checkpoint only
+after stable diagnostic load and complete safe-stop; the built-in BOOT hold
+produced a persisted cancellation receipt and restart. The passing phase met
+the thermal, workload, total/domain hashrate, voltage, power, fan, watchdog,
+safe-stop, pass-receipt, and restart contract. Settings and theme were restored
+exactly with `mineonboot=false`; production mining and pool transport remained
+absent; cleanup completed.
+
+The independently validated projection is
+`self-test-projection.json` with SHA-256
+`1cbc357cb76c51bb354162e48f485442a3ce5eaeb03aead3b71ed50fd3235090`
+and `redaction_status=passed`.
+
 ## Conclusion and non-claims
 
-The production-safe route is implemented but `SELF-001` remains `implemented`
-until the exact two-phase hardware campaign passes. No detector, USB/device
-effect, NVS write, fan/voltage/ASIC actuation, diagnostic load, BOOT action,
-restart, or hardware evidence occurred during this software checkpoint.
+The production-safe route and exact two-phase hardware campaign pass. This
+supports `SELF-001` at `verified` with
+`unit,workflow,hardware-regression` evidence.
 
 Actual overheat, zero-RPM, sensor, power, ASIC, or communication faults; other
 boards; unbounded load; pool mining; external electrical interfaces;
