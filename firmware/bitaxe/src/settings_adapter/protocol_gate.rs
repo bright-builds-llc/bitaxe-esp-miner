@@ -2,8 +2,69 @@
 pub(crate) enum ProtocolSelectorObservation {
     Missing,
     V1,
+    V2,
     Unsupported,
     Invalid,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ConfiguredStratumProtocol {
+    V1,
+    V2,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ConfiguredProtocolPlan {
+    pub(crate) primary: ConfiguredStratumProtocol,
+    pub(crate) fallback: ConfiguredStratumProtocol,
+    pub(crate) prefer_fallback: bool,
+}
+
+impl ConfiguredProtocolPlan {
+    pub(crate) const fn from_selectors(
+        primary: ProtocolSelectorObservation,
+        fallback: ProtocolSelectorObservation,
+        prefer_fallback: bool,
+    ) -> Result<Self, ProductionProtocolGateDecision> {
+        let primary = match primary {
+            ProtocolSelectorObservation::Missing | ProtocolSelectorObservation::V1 => {
+                ConfiguredStratumProtocol::V1
+            }
+            ProtocolSelectorObservation::V2 => ConfiguredStratumProtocol::V2,
+            ProtocolSelectorObservation::Invalid => {
+                return Err(ProductionProtocolGateDecision::PrimarySelectorInvalid)
+            }
+            ProtocolSelectorObservation::Unsupported => {
+                return Err(ProductionProtocolGateDecision::PrimarySelectorUnsupported)
+            }
+        };
+        let fallback = match fallback {
+            ProtocolSelectorObservation::Missing | ProtocolSelectorObservation::V1 => {
+                ConfiguredStratumProtocol::V1
+            }
+            ProtocolSelectorObservation::V2 => ConfiguredStratumProtocol::V2,
+            ProtocolSelectorObservation::Invalid => {
+                return Err(ProductionProtocolGateDecision::FallbackSelectorInvalid)
+            }
+            ProtocolSelectorObservation::Unsupported => {
+                return Err(ProductionProtocolGateDecision::FallbackSelectorUnsupported)
+            }
+        };
+        Ok(Self {
+            primary,
+            fallback,
+            prefer_fallback,
+        })
+    }
+
+    #[must_use]
+    pub(crate) const fn initial(self) -> ConfiguredStratumProtocol {
+        if self.prefer_fallback {
+            self.fallback
+        } else {
+            self.primary
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,11 +86,15 @@ impl ProductionProtocolGateDecision {
     ) -> Self {
         match primary {
             ProtocolSelectorObservation::Invalid => Self::PrimarySelectorInvalid,
-            ProtocolSelectorObservation::Unsupported => Self::PrimarySelectorUnsupported,
+            ProtocolSelectorObservation::V2 | ProtocolSelectorObservation::Unsupported => {
+                Self::PrimarySelectorUnsupported
+            }
             ProtocolSelectorObservation::Missing | ProtocolSelectorObservation::V1 => {
                 match fallback {
                     ProtocolSelectorObservation::Invalid => Self::FallbackSelectorInvalid,
-                    ProtocolSelectorObservation::Unsupported => Self::FallbackSelectorUnsupported,
+                    ProtocolSelectorObservation::V2 | ProtocolSelectorObservation::Unsupported => {
+                        Self::FallbackSelectorUnsupported
+                    }
                     ProtocolSelectorObservation::Missing | ProtocolSelectorObservation::V1 => {
                         Self::Ready
                     }
@@ -124,5 +189,22 @@ mod tests {
             assert!(!label.contains(':'));
             assert!(!label.contains('/'));
         }
+    }
+
+    #[test]
+    fn explicit_v2_plan_selects_primary_or_fallback_without_opening_secrets() {
+        // Arrange
+        let primary = ProtocolSelectorObservation::V2;
+        let fallback = ProtocolSelectorObservation::V1;
+
+        // Act
+        let primary_plan =
+            ConfiguredProtocolPlan::from_selectors(primary, fallback, false).expect("primary plan");
+        let fallback_plan =
+            ConfiguredProtocolPlan::from_selectors(primary, fallback, true).expect("fallback plan");
+
+        // Assert
+        assert_eq!(primary_plan.initial(), ConfiguredStratumProtocol::V2);
+        assert_eq!(fallback_plan.initial(), ConfiguredStratumProtocol::V1);
     }
 }

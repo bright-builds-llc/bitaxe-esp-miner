@@ -5,6 +5,7 @@
 //! - `reference/esp-miner/components/stratum_v2/sv2_noise.c`
 //! - `reference/esp-miner/main/tasks/stratum_v2_task.c`
 
+pub mod authority;
 pub mod frame;
 pub mod messages;
 pub mod noise;

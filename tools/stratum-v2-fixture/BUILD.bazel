@@ -1,0 +1,20 @@
+load("@rules_rust//rust:defs.bzl", "rust_binary")
+
+rust_binary(
+    name = "stratum_v2_fixture",
+    srcs = ["src/main.rs"],
+    crate_name = "bitaxe_stratum_v2_fixture",
+    edition = "2021",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//crates/bitaxe-asic:bitaxe_asic",
+        "//crates/bitaxe-stratum:bitaxe_stratum",
+        "@crates//:anyhow",
+        "@crates//:clap",
+        "@crates//:noise_sv2",
+        "@crates//:rand",
+        "@crates//:secp256k1",
+        "@crates//:serde",
+        "@crates//:serde_json",
+    ],
+)

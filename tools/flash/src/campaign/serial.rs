@@ -10,6 +10,7 @@ mod framing;
 mod panic;
 mod preparation;
 mod recovery;
+mod stratum_v2;
 use super::markers::CampaignFailureStepMarker;
 pub(super) use diagnostics::{
     CampaignSerialDiagnostics, RuntimeAttestationParseFailureCountsEvidence,
@@ -21,6 +22,7 @@ use preparation::CampaignPreparationOutcome;
 #[cfg(test)]
 use preparation::CampaignPreparationProgress;
 use recovery::PendingFramingFailure;
+pub(crate) use stratum_v2::StratumV2Aggregate;
 const TRACE_EDGE_CAPACITY: usize = 32;
 const MAX_RECORDED_LINE_LENGTH: usize = 4_096;
 const MAX_PENDING_LINE_BYTES: usize = 65_536;
@@ -61,6 +63,7 @@ pub(crate) struct CampaignSerialCapture {
     pub(super) diagnostics: CampaignSerialDiagnostics,
     pub(super) outcome_detail: CampaignSerialOutcomeDetail,
     pub(super) maybe_failure: Option<CampaignTerminalCategory>,
+    pub(super) stratum_v2: StratumV2Aggregate,
     runtime_attestations: RuntimeAttestationAccumulator,
 }
 
@@ -126,6 +129,7 @@ pub(crate) struct CampaignSerialAnalyzer {
     maybe_failure: Option<CampaignTerminalCategory>,
     maybe_pending_framing_failure: Option<PendingFramingFailure>,
     terminal_boundary_reached: bool,
+    stratum_v2: StratumV2Aggregate,
     trace: BoundedEventTrace,
 }
 
@@ -146,6 +150,7 @@ impl CampaignSerialAnalyzer {
             maybe_failure: None,
             maybe_pending_framing_failure: None,
             terminal_boundary_reached: false,
+            stratum_v2: StratumV2Aggregate::default(),
             trace: BoundedEventTrace::default(),
         }
     }
@@ -210,6 +215,7 @@ impl CampaignSerialAnalyzer {
         self.refresh_contract_failure();
         self.refresh_incomplete_preparation_failure();
         if self.aggregate.marker_count == 0
+            && self.stratum_v2.marker_count() == 0
             && self.maybe_failure.is_none()
             && self.outcome_detail == CampaignSerialOutcomeDetail::Clean
         {
@@ -226,6 +232,7 @@ impl CampaignSerialAnalyzer {
             diagnostics: self.diagnostics,
             outcome_detail: self.outcome_detail,
             maybe_failure: self.maybe_failure,
+            stratum_v2: self.stratum_v2,
             runtime_attestations: self.runtime_attestations,
         }
     }
@@ -275,7 +282,8 @@ impl CampaignSerialAnalyzer {
     fn accepted_live_terminal_boundary(&self) -> bool {
         self.admission.stage != MiningCampaignStage::Observation
             && self.maybe_failure.is_none()
-            && (self.aggregate.assess(self.admission).is_ok()
+            && (self.v2_assessment_succeeded()
+                || self.aggregate.assess(self.admission).is_ok()
                 || self
                     .aggregate
                     .terminal
@@ -307,10 +315,18 @@ impl CampaignSerialAnalyzer {
             find_bytes(line, bitaxe_api::RUNTIME_BOOT_ATTESTATION_MARKER.as_bytes());
         let attestation_index = bitaxe_api::runtime_boot_attestation_marker_start(line);
         let preparation_index = find_bytes(line, CAMPAIGN_PREPARATION_PREFIX.as_bytes());
-        let candidate_index = [marker_index, attestation_index, preparation_index]
-            .into_iter()
-            .flatten()
-            .min();
+        let v2_runtime_index = find_bytes(line, STRATUM_V2_RUNTIME_PREFIX.as_bytes());
+        let v2_terminal_index = find_bytes(line, STRATUM_V2_TERMINAL_PREFIX.as_bytes());
+        let candidate_index = [
+            marker_index,
+            attestation_index,
+            preparation_index,
+            v2_runtime_index,
+            v2_terminal_index,
+        ]
+        .into_iter()
+        .flatten()
+        .min();
         if std::str::from_utf8(line).is_err() {
             self.diagnostics.non_utf8_line_count =
                 self.diagnostics.non_utf8_line_count.saturating_add(1);
@@ -356,6 +372,12 @@ impl CampaignSerialAnalyzer {
                 line.len().saturating_sub(index),
                 trailing,
             );
+        }
+        if let Some(index) = v2_runtime_index {
+            self.process_v2_runtime(&line[index + STRATUM_V2_RUNTIME_PREFIX.len()..]);
+        }
+        if let Some(index) = v2_terminal_index {
+            self.process_v2_terminal(&line[index + STRATUM_V2_TERMINAL_PREFIX.len()..]);
         }
     }
 
@@ -535,7 +557,10 @@ impl CampaignSerialAnalyzer {
     }
 
     fn refresh_incomplete_preparation_failure(&mut self) {
-        if self.admission.stage == MiningCampaignStage::Observation || self.maybe_failure.is_some()
+        if matches!(
+            self.admission.stage,
+            MiningCampaignStage::Observation | MiningCampaignStage::StratumV2
+        ) || self.maybe_failure.is_some()
         {
             return;
         }
@@ -557,7 +582,8 @@ impl CampaignSerialAnalyzer {
         if self.maybe_failure.is_some() {
             return true;
         }
-        self.aggregate.assess(self.admission).is_ok()
+        self.v2_assessment_succeeded()
+            || self.aggregate.assess(self.admission).is_ok()
             || self
                 .aggregate
                 .terminal

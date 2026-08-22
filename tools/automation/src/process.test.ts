@@ -11,7 +11,10 @@ test("process environment uses an exact secret-safe allowlist", () => {
   const source = {
     PATH: "/usr/bin",
     BAZEL_BINDIR: ".",
+    AR_xtensa_esp32s3_espidf: "xtensa-esp32s3-elf-ar",
     CARGO_TARGET_DIR: "/workspace/.target",
+    CC_xtensa_esp32s3_espidf: "xtensa-esp32s3-elf-gcc",
+    CFLAGS_xtensa_esp32s3_espidf: "-mlongcalls",
     CARGO_UNSTABLE_AMBIENT: "must-not-pass",
     SERVICE_TOKEN: "must-not-pass",
     PHASE36_EFFECT_RESULT_PATH: "/private/effect.json",
@@ -24,7 +27,10 @@ test("process environment uses an exact secret-safe allowlist", () => {
   assert.deepEqual(environment, {
     PATH: "/usr/bin",
     BAZEL_BINDIR: ".",
+    AR_xtensa_esp32s3_espidf: "xtensa-esp32s3-elf-ar",
     CARGO_TARGET_DIR: "/workspace/.target",
+    CC_xtensa_esp32s3_espidf: "xtensa-esp32s3-elf-gcc",
+    CFLAGS_xtensa_esp32s3_espidf: "-mlongcalls",
     PHASE36_EFFECT_RESULT_PATH: "/private/effect.json",
   });
 });

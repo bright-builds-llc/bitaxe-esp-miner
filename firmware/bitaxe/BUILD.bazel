@@ -669,6 +669,21 @@ rust_test(
 )
 
 rust_test(
+    name = "stratum_v2_source_ownership_tests",
+    srcs = [
+        "src/production_mining_session.rs",
+        "src/settings_adapter/stratum_v2.rs",
+        "src/startup.rs",
+        "src/stratum_v2_session.rs",
+        "src/stratum_v2_session/transport.rs",
+        "src/stratum_v2_source_ownership_test.rs",
+    ],
+    crate_name = "stratum_v2_source_ownership_tests",
+    crate_root = "src/stratum_v2_source_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "scoreboard_source_ownership_tests",
     srcs = [
         "src/production_mining_session.rs",

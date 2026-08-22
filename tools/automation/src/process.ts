@@ -37,6 +37,8 @@ export function allowedEnvironment(source: NodeJS.ProcessEnv | Readonly<Record<s
     "PATH", "HOME", "USER", "TMPDIR", "LANG", "LC_ALL", "TERM", "SHELL", "VIRTUAL_ENV",
     "BAZEL_BINDIR",
     "LIBCLANG_PATH", "MCU", "OPENOCD_SCRIPTS", "PYTHONNOUSERSITE", "CCACHE_DIR",
+    "AR_xtensa_esp32s3_espidf", "CC_xtensa_esp32s3_espidf",
+    "CFLAGS_xtensa_esp32s3_espidf",
     "CARGO_HOME", "CARGO_NET_GIT_FETCH_WITH_CLI", "CARGO_TARGET_DIR", "CARGO_TERM_COLOR",
     "RUSTUP_HOME", "RUSTUP_TOOLCHAIN", "RUST_BACKTRACE",
     "BITAXE_BUILD_PROVENANCE_STAMP", "BITAXE_BUILD_TIMESTAMP_UTC_FILE",

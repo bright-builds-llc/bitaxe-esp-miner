@@ -12,6 +12,7 @@ struct CampaignObservationEvidence<'a> {
     marker_count: u64,
     maximum_active_marker_gap_ms: u64,
     terminal_marker: Option<&'a super::markers::CampaignStatusMarker>,
+    stratum_v2: &'a serial::StratumV2Aggregate,
 }
 
 #[derive(Serialize)]
@@ -75,6 +76,7 @@ struct CampaignResultEvidence<'a> {
     terminal_pool_persisted: bool,
     redacted: bool,
     parity_promotion: bool,
+    stratum_v2: &'a serial::StratumV2Aggregate,
 }
 
 #[derive(Clone)]
@@ -188,9 +190,13 @@ pub(super) fn finish_campaign_attempt(
         let observations = CampaignObservationEvidence {
             schema: CAMPAIGN_OBSERVATIONS_SCHEMA,
             stage: command.stage.as_str(),
-            marker_count: attempt.marker_aggregate.marker_count,
+            marker_count: attempt
+                .marker_aggregate
+                .marker_count
+                .saturating_add(attempt.stratum_v2.marker_count()),
             maximum_active_marker_gap_ms: attempt.marker_aggregate.maximum_active_marker_gap_ms,
             terminal_marker: attempt.marker_aggregate.terminal.as_ref(),
+            stratum_v2: &attempt.stratum_v2,
         };
         let mut observation_bytes = serde_json::to_vec_pretty(&observations)?;
         observation_bytes.push(b'\n');
@@ -233,7 +239,10 @@ pub(super) fn finish_campaign_attempt(
                 PoolConfigMarker::NotRead => "not_read",
                 PoolConfigMarker::LocalOwnerSupplied => "local_owner_supplied",
             }),
-            marker_count: attempt.marker_aggregate.marker_count,
+            marker_count: attempt
+                .marker_aggregate
+                .marker_count
+                .saturating_add(attempt.stratum_v2.marker_count()),
             submit_outcome: maybe_terminal.map_or("none", |marker| match marker.submit_outcome {
                 SubmitOutcomeMarker::None => "none",
                 SubmitOutcomeMarker::Accepted => "accepted",
@@ -301,6 +310,7 @@ pub(super) fn finish_campaign_attempt(
             terminal_pool_persisted: attempt.network_evidence.terminal_pool_persisted,
             redacted: true,
             parity_promotion: false,
+            stratum_v2: &attempt.stratum_v2,
         };
         let mut result_bytes = serde_json::to_vec_pretty(&evidence)?;
         result_bytes.push(b'\n');

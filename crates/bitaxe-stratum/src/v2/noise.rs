@@ -81,6 +81,7 @@ impl NoiseInitiator {
             codec,
             send_budget: NonceBudget::new(),
             receive_budget: NonceBudget::new(),
+            maybe_pending_header: None,
             poisoned: false,
         })
     }
@@ -90,6 +91,7 @@ pub struct NoiseTransport {
     codec: NoiseCodec,
     send_budget: NonceBudget,
     receive_budget: NonceBudget,
+    maybe_pending_header: Option<FrameHeader>,
     poisoned: bool,
 }
 
@@ -137,7 +139,18 @@ impl NoiseTransport {
         encrypted_header: &[u8],
         encrypted_payload: &[u8],
     ) -> Result<Frame, StratumV2Error> {
+        let pending = self.decrypt_header(encrypted_header)?;
+        self.decrypt_payload(pending, encrypted_payload)
+    }
+
+    pub fn decrypt_header(
+        &mut self,
+        encrypted_header: &[u8],
+    ) -> Result<DecryptedNoiseHeader, StratumV2Error> {
         self.require_usable()?;
+        if self.maybe_pending_header.is_some() {
+            return self.poison(StratumV2Error::InvalidNoiseState);
+        }
         if encrypted_header.len() != ENCRYPTED_HEADER_LEN {
             return self.poison(StratumV2Error::FrameLengthMismatch {
                 expected: ENCRYPTED_HEADER_LEN,
@@ -145,21 +158,39 @@ impl NoiseTransport {
             });
         }
 
-        let operation_count = 1 + usize::from(!encrypted_payload.is_empty());
-        self.receive_budget.reserve(operation_count)?;
+        self.receive_budget.reserve(1)?;
         let mut header_bytes = encrypted_header.to_vec();
         if self.codec.decrypt(&mut header_bytes).is_err() {
             return self.poison(StratumV2Error::NoiseAuthentication);
         }
-        let header = FrameHeader::parse(&header_bytes)?;
-        let expected_payload = if header.payload_len == 0 {
+        let header = match FrameHeader::parse(&header_bytes) {
+            Ok(header) => header,
+            Err(error) => return self.poison(error),
+        };
+        let encrypted_payload_len = if header.payload_len == 0 {
             0
         } else {
             header.payload_len + noise_sv2::AEAD_MAC_LEN
         };
-        if encrypted_payload.len() != expected_payload {
+        self.maybe_pending_header = Some(header);
+        Ok(DecryptedNoiseHeader {
+            encrypted_payload_len,
+        })
+    }
+
+    pub fn decrypt_payload(
+        &mut self,
+        pending: DecryptedNoiseHeader,
+        encrypted_payload: &[u8],
+    ) -> Result<Frame, StratumV2Error> {
+        self.require_usable()?;
+        let header = self
+            .maybe_pending_header
+            .take()
+            .ok_or(StratumV2Error::InvalidNoiseState)?;
+        if encrypted_payload.len() != pending.encrypted_payload_len {
             return self.poison(StratumV2Error::FrameLengthMismatch {
-                expected: expected_payload,
+                expected: pending.encrypted_payload_len,
                 actual: encrypted_payload.len(),
             });
         }
@@ -167,6 +198,7 @@ impl NoiseTransport {
         let payload = if encrypted_payload.is_empty() {
             Vec::new()
         } else {
+            self.receive_budget.reserve(1)?;
             let mut payload = encrypted_payload.to_vec();
             if self.codec.decrypt(&mut payload).is_err() {
                 return self.poison(StratumV2Error::NoiseAuthentication);
@@ -187,6 +219,18 @@ impl NoiseTransport {
     fn poison<T>(&mut self, error: StratumV2Error) -> Result<T, StratumV2Error> {
         self.poisoned = true;
         Err(error)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DecryptedNoiseHeader {
+    encrypted_payload_len: usize,
+}
+
+impl DecryptedNoiseHeader {
+    #[must_use]
+    pub const fn encrypted_payload_len(self) -> usize {
+        self.encrypted_payload_len
     }
 }
 

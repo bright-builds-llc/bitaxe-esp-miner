@@ -26,16 +26,20 @@ mod production;
 mod protocol_gate;
 mod protocol_gate_adapter;
 mod self_test;
+mod stratum_v2;
 mod thermal_fault_stimulus;
 
 pub(crate) use production::{
     load_production_campaign_admission, read_production_pool_set, MiningCampaignStage,
 };
-pub(crate) use protocol_gate::ProductionProtocolGateDecision;
+pub(crate) use protocol_gate::{
+    ConfiguredProtocolPlan, ConfiguredStratumProtocol, ProductionProtocolGateDecision,
+};
 pub(crate) use self_test::{
     clear_self_test_flag_and_record_receipt, load_self_test_admission, maybe_self_test_receipt,
     SelfTestAdmission, SelfTestReceipt,
 };
+pub(crate) use stratum_v2::{read_stratum_v2_pool_set, V2PoolSettings};
 pub(crate) use thermal_fault_stimulus::ThermalFaultStimulusAdmission;
 
 pub(crate) fn initialize_default_nvs_partition() -> Result<(), SettingsAdapterFailure> {
@@ -303,6 +307,11 @@ pub fn persist_theme_update(plan: &ThemePostPlan) -> Result<(), SettingsAdapterF
 #[must_use]
 pub fn configured_protocol_gate() -> ProductionProtocolGateDecision {
     protocol_gate_adapter::read()
+}
+
+pub(crate) fn configured_protocol_plan(
+) -> Result<ConfiguredProtocolPlan, ProductionProtocolGateDecision> {
+    protocol_gate_adapter::read_plan()
 }
 
 fn current_snapshot_cell() -> &'static crate::settings_snapshot_store::ConfirmedSnapshotStore {

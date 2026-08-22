@@ -9,7 +9,6 @@ mod stop_predicate;
 mod terminal_boundary;
 
 const CAMPAIGN_MARKER_PREFIX: &str = "mining_campaign_status=";
-
 fn campaign_command(
     dir: &TempDir,
     stage: MiningCampaignStage,
@@ -35,6 +34,7 @@ fn campaign_command(
             | MiningCampaignStage::Soak
             | MiningCampaignStage::CommandEffects => 600,
             MiningCampaignStage::JobTransition => 1_800,
+            MiningCampaignStage::StratumV2 => 180,
         },
         redact_evidence: true,
     }

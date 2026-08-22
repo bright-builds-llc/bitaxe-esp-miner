@@ -43,9 +43,9 @@ enum NetworkObservationMode {
 impl NetworkObservationMode {
     const fn for_stage(stage: MiningCampaignStage) -> Self {
         match stage {
-            MiningCampaignStage::Observation | MiningCampaignStage::JobTransition => {
-                Self::NotRequired
-            }
+            MiningCampaignStage::Observation
+            | MiningCampaignStage::JobTransition
+            | MiningCampaignStage::StratumV2 => Self::NotRequired,
             MiningCampaignStage::LiveShare | MiningCampaignStage::Soak => Self::Continuity,
             MiningCampaignStage::CommandEffects => Self::CommandEffects,
         }

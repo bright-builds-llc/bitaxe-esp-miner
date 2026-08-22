@@ -12,6 +12,7 @@ bitaxe-config = { path = "../../crates/bitaxe-config" }
 bitaxe-core = { path = "../../crates/bitaxe-core" }
 bitaxe-device-session = { path = "../device-session" }
 bitaxe-http-transport = { path = "../http-transport" }
+bitaxe-stratum = { path = "../../crates/bitaxe-stratum" }
 camino.workspace = true
 clap.workspace = true
 esp-idf-part = "0.6.0"

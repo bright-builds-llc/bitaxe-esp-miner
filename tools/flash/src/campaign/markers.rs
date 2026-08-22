@@ -1,8 +1,10 @@
 use super::*;
 mod command_effects;
+mod common;
 use command_effects::{
     assess_command_effects_terminal, is_recoverable_command_effects_stopped_readiness,
 };
+use common::expected_profile_marker;
 mod soak;
 use soak::assess_soak_terminal;
 mod protocol;
@@ -15,6 +17,8 @@ mod operator_sensor;
 pub(super) use operator_sensor::*;
 mod asic;
 pub(super) use asic::*;
+mod v2;
+use v2::v2_marker_not_supported;
 const JOB_TRANSITION_MAXIMUM_MARKER_GAP_MS: u64 = 5_000;
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
@@ -397,6 +401,7 @@ impl CampaignMarkerAggregate {
                 assess_job_transition_terminal(terminal, admission.duration_seconds)
             }
             MiningCampaignStage::CommandEffects => assess_command_effects_terminal(terminal),
+            MiningCampaignStage::StratumV2 => v2_marker_not_supported(),
         }
     }
 }
@@ -468,7 +473,8 @@ pub(super) fn campaign_marker_failure(
         MiningCampaignStage::LiveShare
         | MiningCampaignStage::Soak
         | MiningCampaignStage::JobTransition
-        | MiningCampaignStage::CommandEffects => {
+        | MiningCampaignStage::CommandEffects
+        | MiningCampaignStage::StratumV2 => {
             let terminal_consumed = marker.campaign_state == CampaignStateMarker::Consumed
                 && marker.actuation == ActuationMarker::SafeStopped
                 && marker.safe_stop == SafeStopMarker::Confirmed;
@@ -490,6 +496,7 @@ pub(super) fn campaign_marker_failure(
                         assess_job_transition_terminal(marker, admission.duration_seconds)
                     }
                     MiningCampaignStage::CommandEffects => assess_command_effects_terminal(marker),
+                    MiningCampaignStage::StratumV2 => v2_marker_not_supported(),
                     MiningCampaignStage::Observation => unreachable!("mining stage"),
                 };
                 if let Err(failure) = terminal_result {
@@ -571,14 +578,6 @@ fn assess_job_transition_terminal(
         ));
     }
     Ok(CampaignTerminalCategory::JobTransitionComplete)
-}
-
-fn expected_profile_marker(admission: CampaignAdmission) -> CampaignProfileMarker {
-    match admission.maybe_profile {
-        Some(MiningCampaignProfile::Conservative) => CampaignProfileMarker::Conservative,
-        Some(MiningCampaignProfile::UpstreamDefault) => CampaignProfileMarker::UpstreamDefault,
-        None => CampaignProfileMarker::None,
-    }
 }
 
 fn assess_observation_terminal(

@@ -1,0 +1,492 @@
+use std::fs::{self, OpenOptions};
+use std::io::{Read, Write};
+use std::net::{SocketAddr, TcpListener, TcpStream};
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+use anyhow::{bail, Context, Result};
+use bitaxe_asic::bm1366::{result::Bm1366NonceResult, work::Bm1366JobId};
+use bitaxe_stratum::v2::authority::encode_authority_public_key;
+use bitaxe_stratum::v2::frame::{Frame, FrameHeader, FRAME_HEADER_LEN};
+use bitaxe_stratum::v2::messages::{
+    ClientMessage, NewMiningJob, OpenStandardMiningChannelSuccess, SetNewPrevHash,
+    SetupConnectionSuccess, SubmitSharesStandard, SubmitSharesSuccess,
+};
+use bitaxe_stratum::v2::work::V2MiningWork;
+use clap::Parser;
+use noise_sv2::{NoiseCodec, Responder, AEAD_MAC_LEN, ELLSWIFT_ENCODING_SIZE};
+use rand::{rngs::OsRng, RngCore};
+use secp256k1::{Keypair, Secp256k1, SecretKey};
+use serde::Serialize;
+
+const ENCRYPTED_HEADER_LEN: usize = FRAME_HEADER_LEN + AEAD_MAC_LEN;
+const CHANNEL_ID: u32 = 1;
+const JOB_ID: u32 = 1;
+const VERSION: u32 = 0x2000_0000;
+const NBITS: u32 = 0x207f_ffff;
+
+#[derive(Debug, Parser)]
+struct Args {
+    #[arg(long)]
+    private_root: PathBuf,
+    #[arg(long, default_value = "0.0.0.0:0")]
+    listen_address: SocketAddr,
+    #[arg(long, default_value_t = 120)]
+    accept_timeout_seconds: u64,
+    #[arg(long, default_value_t = 180)]
+    session_timeout_seconds: u64,
+}
+
+#[derive(Serialize)]
+struct ReadyDocument {
+    schema_version: &'static str,
+    port: u16,
+    authority_public_key: String,
+}
+
+#[derive(Serialize)]
+struct ResultDocument {
+    schema_version: &'static str,
+    status: &'static str,
+    noise_authenticated: bool,
+    setup_accepted: bool,
+    channel_opened: bool,
+    job_sent: bool,
+    share_received: bool,
+    share_target_valid: bool,
+    response_sent: bool,
+    elapsed_millis: u64,
+}
+
+fn main() -> Result<()> {
+    let args = Args::parse();
+    validate_bounds(&args)?;
+    create_private_root(&args.private_root)?;
+    let listener = TcpListener::bind(args.listen_address).context("bind fixture listener")?;
+    listener
+        .set_nonblocking(true)
+        .context("set listener nonblocking")?;
+    let local_port = listener
+        .local_addr()
+        .context("read listener address")?
+        .port();
+    let (authority_private, authority_public) = generate_authority_keypair()?;
+    write_private_json(
+        &args.private_root.join("ready.json"),
+        &ReadyDocument {
+            schema_version: "bitaxe-stratum-v2-fixture-ready-v1",
+            port: local_port,
+            authority_public_key: encode_authority_public_key(authority_public),
+        },
+    )?;
+    println!("stratum_v2_fixture=ready");
+
+    let mut stream = accept_one(&listener, Duration::from_secs(args.accept_timeout_seconds))?;
+    stream
+        .set_read_timeout(Some(Duration::from_secs(10)))
+        .context("set read timeout")?;
+    stream
+        .set_write_timeout(Some(Duration::from_secs(10)))
+        .context("set write timeout")?;
+    let started = Instant::now();
+    let mut codec = respond_noise(&mut stream, authority_private, authority_public)?;
+    let result = run_pool_session(
+        &mut stream,
+        &mut codec,
+        started,
+        Duration::from_secs(args.session_timeout_seconds),
+    )?;
+    write_private_json(&args.private_root.join("result.json"), &result)?;
+    println!("stratum_v2_fixture=accepted");
+    Ok(())
+}
+
+fn validate_bounds(args: &Args) -> Result<()> {
+    if args.accept_timeout_seconds == 0
+        || args.accept_timeout_seconds > 300
+        || args.session_timeout_seconds == 0
+        || args.session_timeout_seconds > 300
+    {
+        bail!("fixture timeouts must be within 1..=300 seconds");
+    }
+    Ok(())
+}
+
+fn create_private_root(path: &Path) -> Result<()> {
+    if path.exists() {
+        bail!("private fixture root already exists");
+    }
+    fs::create_dir(path).context("create private fixture root")?;
+    fs::set_permissions(path, fs::Permissions::from_mode(0o700)).context("protect fixture root")
+}
+
+fn write_private_json(path: &Path, value: &impl Serialize) -> Result<()> {
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(path)
+        .context("create private fixture artifact")?;
+    serde_json::to_writer_pretty(&mut file, value).context("write fixture artifact")?;
+    file.write_all(b"\n").context("finish fixture artifact")
+}
+
+fn generate_authority_keypair() -> Result<([u8; 32], [u8; 32])> {
+    let secp = Secp256k1::new();
+    let mut rng = OsRng;
+    for _ in 0..16 {
+        let mut private = [0; 32];
+        rng.fill_bytes(&mut private);
+        let Ok(secret) = SecretKey::from_slice(&private) else {
+            continue;
+        };
+        let keypair = Keypair::from_secret_key(&secp, &secret);
+        return Ok((private, keypair.x_only_public_key().0.serialize()));
+    }
+    bail!("authority key generation failed")
+}
+
+fn accept_one(listener: &TcpListener, timeout: Duration) -> Result<TcpStream> {
+    let deadline = Instant::now() + timeout;
+    loop {
+        match listener.accept() {
+            Ok((stream, _)) => return Ok(stream),
+            Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                if Instant::now() >= deadline {
+                    bail!("fixture accept deadline elapsed");
+                }
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            Err(error) => return Err(error).context("accept fixture client"),
+        }
+    }
+}
+
+fn respond_noise(
+    stream: &mut TcpStream,
+    authority_private: [u8; 32],
+    authority_public: [u8; 32],
+) -> Result<NoiseCodec> {
+    let mut act_one = [0; ELLSWIFT_ENCODING_SIZE];
+    stream
+        .read_exact(&mut act_one)
+        .context("read Noise act one")?;
+    let mut rng = OsRng;
+    let mut responder = Responder::from_authority_kp_with_rng(
+        &authority_public,
+        &authority_private,
+        Duration::from_secs(300),
+        &mut rng,
+    )
+    .map_err(|_| anyhow::anyhow!("create Noise responder"))?;
+    let now = unix_time_u32()?;
+    let (act_two, codec) = responder
+        .step_1_with_now_rng(act_one, now, &mut rng)
+        .map_err(|_| anyhow::anyhow!("produce Noise act two"))?;
+    stream.write_all(&act_two).context("write Noise act two")?;
+    Ok(codec)
+}
+
+fn run_pool_session(
+    stream: &mut TcpStream,
+    codec: &mut NoiseCodec,
+    started: Instant,
+    timeout: Duration,
+) -> Result<ResultDocument> {
+    let setup = read_client_message(stream, codec, started, timeout)?;
+    if !matches!(setup, ClientMessage::SetupConnection(_)) {
+        bail!("expected setup connection");
+    }
+    write_server_frame(
+        stream,
+        codec,
+        &SetupConnectionSuccess {
+            used_version: 2,
+            flags: 1,
+        }
+        .encode()?,
+    )?;
+    let open = read_client_message(stream, codec, started, timeout)?;
+    let ClientMessage::OpenStandardMiningChannel(open) = open else {
+        bail!("fixture requires a standard channel");
+    };
+    write_server_frame(
+        stream,
+        codec,
+        &OpenStandardMiningChannelSuccess {
+            request_id: open.request_id,
+            channel_id: CHANNEL_ID,
+            target: [0xff; 32],
+            extranonce_prefix: Vec::new(),
+            group_channel_id: 0,
+        }
+        .encode()?,
+    )?;
+    let ntime = unix_time_u32()?;
+    let job = NewMiningJob {
+        channel_id: CHANNEL_ID,
+        job_id: JOB_ID,
+        maybe_min_ntime: None,
+        version: VERSION,
+        merkle_root: [0x11; 32],
+    };
+    let prev_hash = SetNewPrevHash {
+        channel_id: CHANNEL_ID,
+        job_id: JOB_ID,
+        prev_hash: [0x22; 32],
+        min_ntime: ntime,
+        nbits: NBITS,
+    };
+    write_server_frame(stream, codec, &job.encode()?)?;
+    write_server_frame(stream, codec, &prev_hash.encode()?)?;
+    let submit = read_client_message(stream, codec, started, timeout)?;
+    let ClientMessage::SubmitSharesStandard(submit) = submit else {
+        bail!("expected standard share submission");
+    };
+    let share_target_valid = validate_share(&job, &prev_hash, submit)?;
+    if !share_target_valid {
+        bail!("submitted share failed target validation");
+    }
+    write_server_frame(
+        stream,
+        codec,
+        &SubmitSharesSuccess {
+            channel_id: CHANNEL_ID,
+            last_sequence_number: submit.sequence_number,
+            accepted_count: 1,
+            shares_sum: 1,
+        }
+        .encode()?,
+    )?;
+    Ok(ResultDocument {
+        schema_version: "bitaxe-stratum-v2-fixture-result-v1",
+        status: "accepted",
+        noise_authenticated: true,
+        setup_accepted: true,
+        channel_opened: true,
+        job_sent: true,
+        share_received: true,
+        share_target_valid,
+        response_sent: true,
+        elapsed_millis: started.elapsed().as_millis().try_into().unwrap_or(u64::MAX),
+    })
+}
+
+fn validate_share(
+    job: &NewMiningJob,
+    prev_hash: &SetNewPrevHash,
+    submit: SubmitSharesStandard,
+) -> Result<bool> {
+    if submit.channel_id != CHANNEL_ID
+        || submit.job_id != JOB_ID
+        || submit.ntime != prev_hash.min_ntime
+        || submit.version & VERSION != VERSION
+    {
+        return Ok(false);
+    }
+    let work = V2MiningWork::standard(job, prev_hash, [0xff; 32], Bm1366JobId::new(0))?;
+    work.qualifies(Bm1366NonceResult {
+        job_id: Bm1366JobId::new(0),
+        nonce: submit.nonce,
+        asic_index: 0,
+        core_id: 0,
+        small_core_id: 0,
+        version_bits: submit.version ^ VERSION,
+    })
+    .map_err(Into::into)
+}
+
+fn read_client_message(
+    stream: &mut TcpStream,
+    codec: &mut NoiseCodec,
+    started: Instant,
+    timeout: Duration,
+) -> Result<ClientMessage> {
+    if started.elapsed() >= timeout {
+        bail!("fixture session deadline elapsed");
+    }
+    let mut encrypted_header = vec![0; ENCRYPTED_HEADER_LEN];
+    stream
+        .read_exact(&mut encrypted_header)
+        .context("read encrypted header")?;
+    codec
+        .decrypt(&mut encrypted_header)
+        .map_err(|_| anyhow::anyhow!("decrypt frame header"))?;
+    let header = FrameHeader::parse(&encrypted_header)?;
+    let mut payload = if header.payload_len == 0 {
+        Vec::new()
+    } else {
+        let mut encrypted = vec![0; header.payload_len + AEAD_MAC_LEN];
+        stream
+            .read_exact(&mut encrypted)
+            .context("read encrypted payload")?;
+        codec
+            .decrypt(&mut encrypted)
+            .map_err(|_| anyhow::anyhow!("decrypt frame payload"))?;
+        encrypted
+    };
+    let frame = Frame::new(
+        header.extension_type,
+        header.message_type,
+        std::mem::take(&mut payload),
+    )?;
+    ClientMessage::decode(&frame).map_err(Into::into)
+}
+
+fn write_server_frame(stream: &mut TcpStream, codec: &mut NoiseCodec, frame: &Frame) -> Result<()> {
+    let mut header = frame.header.encode().to_vec();
+    codec
+        .encrypt(&mut header)
+        .map_err(|_| anyhow::anyhow!("encrypt frame header"))?;
+    stream
+        .write_all(&header)
+        .context("write encrypted header")?;
+    if !frame.payload().is_empty() {
+        let mut payload = frame.payload().to_vec();
+        codec
+            .encrypt(&mut payload)
+            .map_err(|_| anyhow::anyhow!("encrypt frame payload"))?;
+        stream
+            .write_all(&payload)
+            .context("write encrypted payload")?;
+    }
+    Ok(())
+}
+
+fn unix_time_u32() -> Result<u32> {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .context("system time precedes Unix epoch")?
+        .as_secs()
+        .try_into()
+        .context("system time exceeds SV2 certificate range")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bitaxe_stratum::v2::messages::{ChannelKind, ServerMessage};
+    use bitaxe_stratum::v2::noise::{NoiseInitiator, NoiseTransport, ACT_TWO_LEN};
+    use bitaxe_stratum::v2::session::{SessionConfig, SessionEvent, V2Session};
+
+    #[test]
+    fn real_tcp_fixture_completes_noise_channel_job_and_accepted_share() {
+        // Arrange
+        let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
+        let address = listener.local_addr().expect("address");
+        let (authority_private, authority_public) = generate_authority_keypair().expect("keypair");
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().expect("accept");
+            let started = Instant::now();
+            let mut codec =
+                respond_noise(&mut stream, authority_private, authority_public).expect("Noise");
+            run_pool_session(&mut stream, &mut codec, started, Duration::from_secs(10))
+                .expect("pool session")
+        });
+        let mut stream = TcpStream::connect(address).expect("connect");
+        stream
+            .set_read_timeout(Some(Duration::from_secs(10)))
+            .expect("read timeout");
+        let mut rng = OsRng;
+        let mut initiator =
+            NoiseInitiator::new(Some(authority_public), &mut rng).expect("initiator");
+        stream
+            .write_all(&initiator.act_one().expect("act one"))
+            .expect("write act one");
+        let mut act_two = [0; ACT_TWO_LEN];
+        stream.read_exact(&mut act_two).expect("read act two");
+        let mut noise = initiator
+            .complete(&act_two, unix_time_u32().expect("time"))
+            .expect("complete Noise");
+        let mut session = V2Session::new(test_config()).expect("session");
+
+        // Act
+        send_session_event(
+            &mut stream,
+            &mut noise,
+            session.start().expect("setup event"),
+        );
+        let open_events = handle_one_server_frame(&mut stream, &mut noise, &mut session);
+        let open = open_events
+            .into_iter()
+            .find(|event| matches!(event, SessionEvent::Outbound(_)))
+            .expect("open event");
+        send_session_event(&mut stream, &mut noise, open);
+        handle_one_server_frame(&mut stream, &mut noise, &mut session);
+        handle_one_server_frame(&mut stream, &mut noise, &mut session);
+        let work_events = handle_one_server_frame(&mut stream, &mut noise, &mut session);
+        let work = work_events
+            .into_iter()
+            .find_map(|event| match event {
+                SessionEvent::Work(work) => Some(work),
+                _ => None,
+            })
+            .expect("work event");
+        let submit = session
+            .observe_nonce(Bm1366NonceResult {
+                job_id: work.asic_job_id,
+                nonce: 1,
+                asic_index: 0,
+                core_id: 0,
+                small_core_id: 0,
+                version_bits: 0,
+            })
+            .expect("nonce")
+            .expect("submit event");
+        send_session_event(&mut stream, &mut noise, submit);
+        let accepted = handle_one_server_frame(&mut stream, &mut noise, &mut session);
+        let server_result = server.join().expect("server join");
+
+        // Assert
+        assert!(accepted
+            .iter()
+            .any(|event| matches!(event, SessionEvent::ShareAccepted { accepted_count: 1 })));
+        assert_eq!(server_result.status, "accepted");
+        assert!(server_result.share_target_valid);
+    }
+
+    fn test_config() -> SessionConfig {
+        SessionConfig {
+            endpoint_host: "127.0.0.1".to_owned(),
+            endpoint_port: 1,
+            vendor: "test".to_owned(),
+            hardware_version: "BM1366".to_owned(),
+            firmware: String::new(),
+            device_id: String::new(),
+            user_identity: "worker".to_owned(),
+            nominal_hashrate: 1.0e12,
+            channel_kind: ChannelKind::Standard,
+            minimum_extranonce_size: 6,
+        }
+    }
+
+    fn handle_one_server_frame(
+        stream: &mut TcpStream,
+        noise: &mut NoiseTransport,
+        session: &mut V2Session,
+    ) -> Vec<SessionEvent> {
+        let frame = read_noise_frame(stream, noise);
+        let message = ServerMessage::decode(&frame).expect("server message");
+        session.handle(message).expect("handle server message")
+    }
+
+    fn send_session_event(stream: &mut TcpStream, noise: &mut NoiseTransport, event: SessionEvent) {
+        let SessionEvent::Outbound(frame) = event else {
+            panic!("expected outbound event");
+        };
+        let encrypted = noise.encrypt_frame(&frame).expect("encrypt frame");
+        stream.write_all(&encrypted).expect("write frame");
+    }
+
+    fn read_noise_frame(stream: &mut TcpStream, noise: &mut NoiseTransport) -> Frame {
+        let mut header = vec![0; ENCRYPTED_HEADER_LEN];
+        stream.read_exact(&mut header).expect("read header");
+        let pending = noise.decrypt_header(&header).expect("decrypt header");
+        let mut payload = vec![0; pending.encrypted_payload_len()];
+        stream.read_exact(&mut payload).expect("read payload");
+        noise
+            .decrypt_payload(pending, &payload)
+            .expect("decrypt payload")
+    }
+}

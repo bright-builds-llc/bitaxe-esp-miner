@@ -19,10 +19,15 @@ const CAMPAIGN_RESULT_SCHEMA: &str = "mining-campaign-result-v16";
 const CAMPAIGN_FLASH_DIAGNOSTICS_SCHEMA: &str = "mining-campaign-flash-diagnostics-v1";
 const CAMPAIGN_OBSERVATIONS_SCHEMA: &str = "mining-campaign-observations-v4";
 const CAMPAIGN_MINING_DIAGNOSTICS_SCHEMA: &str = "mining-campaign-asic-diagnostics-v1";
+const STRATUM_V2_RUNTIME_PREFIX: &str = "stratum_v2_runtime=";
+const STRATUM_V2_RUNTIME_SCHEMA: &str = "bitaxe-stratum-v2-runtime-v1";
+const STRATUM_V2_TERMINAL_PREFIX: &str = "stratum_v2_terminal=";
+const STRATUM_V2_TERMINAL_SCHEMA: &str = "bitaxe-stratum-v2-terminal-v1";
 const OBSERVATION_DURATION_SECONDS: u64 = 360;
 const MINING_DURATION_SECONDS: u64 = 600;
 const JOB_TRANSITION_DURATION_SECONDS: u64 = 1_800;
 const COMMAND_EFFECTS_DURATION_SECONDS: u64 = 600;
+const STRATUM_V2_DURATION_SECONDS: u64 = 180;
 const MINING_TERMINAL_GRACE_SECONDS: u64 = 180;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -39,6 +44,7 @@ pub(crate) enum CampaignTerminalCategory {
     JobTransitionComplete,
     JobTransitionNotObserved,
     CommandEffectsComplete,
+    StratumV2Accepted,
     CommandRequestFailed,
     ResumeIntentUnconfirmed,
     ResumeReactivationTimedOut,
@@ -105,6 +111,7 @@ impl CampaignTerminalCategory {
             Self::JobTransitionComplete => "job_transition_complete",
             Self::JobTransitionNotObserved => "job_transition_not_observed",
             Self::CommandEffectsComplete => "command_effects_complete",
+            Self::StratumV2Accepted => "stratum_v2_accepted",
             Self::CommandRequestFailed => "command_request_failed",
             Self::ResumeIntentUnconfirmed => "resume_intent_unconfirmed",
             Self::ResumeReactivationTimedOut => "resume_reactivation_timed_out",
@@ -204,6 +211,7 @@ struct CampaignAttempt {
     serial_diagnostics: CampaignSerialDiagnostics,
     serial_outcome_detail: CampaignSerialOutcomeDetail,
     network_evidence: network::CampaignNetworkEvidence,
+    stratum_v2: serial::StratumV2Aggregate,
     factory_flash_diagnostic: Option<UsbCommandDiagnostic>,
     nvs_flash_diagnostic: Option<UsbCommandDiagnostic>,
 }
@@ -219,6 +227,7 @@ impl Default for CampaignAttempt {
             serial_diagnostics: CampaignSerialDiagnostics::not_observed(),
             serial_outcome_detail: CampaignSerialOutcomeDetail::Clean,
             network_evidence: network::CampaignNetworkEvidence::not_required(),
+            stratum_v2: serial::StratumV2Aggregate::default(),
             factory_flash_diagnostic: None,
             nvs_flash_diagnostic: None,
         }
@@ -358,6 +367,7 @@ fn execute_campaign(
     attempt.serial_diagnostics = capture.serial.diagnostics;
     attempt.serial_outcome_detail = capture.serial.outcome_detail;
     attempt.marker_aggregate = capture.serial.aggregate;
+    attempt.stratum_v2 = capture.serial.stratum_v2;
     attempt.network_evidence = capture.network;
     if let Some(category) = capture.serial.maybe_failure {
         return Err(CampaignFailure::new(category));
@@ -365,7 +375,11 @@ fn execute_campaign(
     if let Some(category) = attempt.network_evidence.maybe_failure {
         return Err(CampaignFailure::new(category));
     }
-    let terminal = attempt.marker_aggregate.assess(admission)?;
+    let terminal = if admission.stage == MiningCampaignStage::StratumV2 {
+        attempt.stratum_v2.assess()?
+    } else {
+        attempt.marker_aggregate.assess(admission)?
+    };
     if !attempt.runtime_identity_trusted {
         return Err(CampaignFailure::new(
             CampaignTerminalCategory::RuntimeIdentityUntrusted,
@@ -425,6 +439,11 @@ fn campaign_capture_limit(admission: CampaignAdmission) -> CampaignCaptureLimit 
             admission
                 .duration_seconds
                 .saturating_mul(2)
+                .saturating_add(MINING_TERMINAL_GRACE_SECONDS),
+        ),
+        MiningCampaignStage::StratumV2 => CampaignCaptureLimit::Bounded(
+            admission
+                .duration_seconds
                 .saturating_add(MINING_TERMINAL_GRACE_SECONDS),
         ),
     }

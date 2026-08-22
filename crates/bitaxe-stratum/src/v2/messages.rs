@@ -2,12 +2,15 @@
 
 mod client;
 mod codec;
+mod downstream;
+mod pool;
 mod server;
 
 pub use client::{
     ChannelKind, OpenExtendedMiningChannel, OpenStandardMiningChannel, SetupConnection,
     SubmitSharesExtended, SubmitSharesStandard,
 };
+pub use downstream::ClientMessage;
 pub use server::{
     NewExtendedMiningJob, NewMiningJob, OpenExtendedMiningChannelSuccess, OpenMiningChannelError,
     OpenStandardMiningChannelSuccess, ServerMessage, SetNewPrevHash, SetTarget,

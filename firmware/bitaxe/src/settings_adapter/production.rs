@@ -19,6 +19,7 @@ const LIVE_SHARE_DURATION_MS: u64 = 600_000;
 const DEFAULT_SOAK_DURATION_MS: u64 = 600_000;
 const JOB_TRANSITION_DURATION_MS: u64 = 1_800_000;
 const COMMAND_EFFECTS_DURATION_MS: u64 = 600_000;
+const STRATUM_V2_DURATION_MS: u64 = 180_000;
 const CAMPAIGN_KEYS: [&str; 4] = ["campstage", "campprofile", "camplease", "campdurms"];
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,6 +29,7 @@ pub(crate) enum MiningCampaignStage {
     Soak,
     JobTransition,
     CommandEffects,
+    StratumV2,
 }
 
 impl MiningCampaignStage {
@@ -39,6 +41,7 @@ impl MiningCampaignStage {
             Self::Soak => "soak",
             Self::JobTransition => "job-transition",
             Self::CommandEffects => "command-effects",
+            Self::StratumV2 => "stratum-v2",
         }
     }
 }
@@ -56,7 +59,7 @@ pub(crate) struct ProductionSettingsReadError {
 }
 
 impl ProductionSettingsReadError {
-    const fn new(category: &'static str) -> Self {
+    pub(super) const fn new(category: &'static str) -> Self {
         Self { category }
     }
 
@@ -144,6 +147,9 @@ const fn maybe_campaign_stop_condition(
             activation_timeout: duration,
             duration,
         },
+        MiningCampaignStage::StratumV2 => {
+            MiningCampaignStopCondition::FirstSubmitResponse { timeout: duration }
+        }
         MiningCampaignStage::Observation => return None,
     };
     Some(condition)
@@ -171,6 +177,10 @@ const fn campaign_contract_valid(
         MiningCampaignStage::CommandEffects => {
             matches!(profile, MiningHardwareProfilePreset::Conservative)
                 && duration_ms == COMMAND_EFFECTS_DURATION_MS
+        }
+        MiningCampaignStage::StratumV2 => {
+            matches!(profile, MiningHardwareProfilePreset::Conservative)
+                && duration_ms == STRATUM_V2_DURATION_MS
         }
     }
 }
@@ -252,6 +262,7 @@ fn parse_campaign_stage(stage: &str) -> Option<MiningCampaignStage> {
         "soak" => Some(MiningCampaignStage::Soak),
         "job-transition" => Some(MiningCampaignStage::JobTransition),
         "command-effects" => Some(MiningCampaignStage::CommandEffects),
+        "stratum-v2" => Some(MiningCampaignStage::StratumV2),
         _ => None,
     }
 }

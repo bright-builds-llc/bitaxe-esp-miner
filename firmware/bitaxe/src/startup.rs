@@ -6,8 +6,8 @@ use crate::{
     asic_adapter, bap_adapter, boot_evidence, boot_validation, display_adapter,
     fan_controller_runtime, filesystem, http_api, input_adapter, operator_sensor_runtime,
     production_mining_session, runtime_snapshot, runtime_uptime, safety_adapter,
-    scoreboard_adapter, self_test_runtime, settings_adapter, statistics_runtime, wifi_adapter,
-    BOOT_LOG_LINE, RUST_TARGET, SAFE_STATE_LOG_LINE,
+    scoreboard_adapter, self_test_runtime, settings_adapter, statistics_runtime,
+    stratum_v2_session, wifi_adapter, BOOT_LOG_LINE, RUST_TARGET, SAFE_STATE_LOG_LINE,
 };
 
 /// Starts firmware services while preserving evidence-before-network ordering.
@@ -253,10 +253,27 @@ fn start_runtime_services(startup_diagnostics: anyhow::Result<()>) -> anyhow::Re
             log::warn!("self_test_runtime=unavailable reason=thread_spawn_failed error={error:#}");
         }
     } else {
-        if let Err(error) = production_mining_session::start() {
-            log::warn!(
-                "production_mining_session=unavailable reason=thread_spawn_failed error={error:#}"
-            );
+        match settings_adapter::configured_protocol_plan() {
+            Ok(plan) if plan.initial() == settings_adapter::ConfiguredStratumProtocol::V2 => {
+                if let Err(error) = stratum_v2_session::start() {
+                    log::warn!(
+                        "stratum_v2_session=unavailable reason=thread_spawn_failed error={error:#}"
+                    );
+                }
+            }
+            Ok(_) => {
+                if let Err(error) = production_mining_session::start() {
+                    log::warn!(
+                        "production_mining_session=unavailable reason=thread_spawn_failed error={error:#}"
+                    );
+                }
+            }
+            Err(decision) => {
+                log::warn!(
+                    "production_protocol_owner=unavailable category={}",
+                    decision.label()
+                );
+            }
         }
         if let Err(error) = fan_controller_runtime::start() {
             log::warn!("fan_controller=unavailable reason=thread_spawn_failed error={error:#}");

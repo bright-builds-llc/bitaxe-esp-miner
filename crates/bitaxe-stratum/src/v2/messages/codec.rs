@@ -21,6 +21,10 @@ impl Writer {
         self.bytes.extend_from_slice(&value.to_le_bytes());
     }
 
+    pub(super) fn u64(&mut self, value: u64) {
+        self.bytes.extend_from_slice(&value.to_le_bytes());
+    }
+
     pub(super) fn f32(&mut self, value: f32) {
         self.u32(value.to_bits());
     }
@@ -53,6 +57,20 @@ impl Writer {
             reason: "exceeds 255 bytes",
         })?;
         self.u8(len);
+        self.fixed(value);
+        Ok(())
+    }
+
+    pub(super) fn bytes064k(
+        &mut self,
+        field: &'static str,
+        value: &[u8],
+    ) -> Result<(), StratumV2Error> {
+        let len = u16::try_from(value.len()).map_err(|_| StratumV2Error::InvalidField {
+            field,
+            reason: "exceeds 65535 bytes",
+        })?;
+        self.u16(len);
         self.fixed(value);
         Ok(())
     }
@@ -94,6 +112,10 @@ impl<'a> Reader<'a> {
                 .try_into()
                 .expect("bounded eight-byte field must convert"),
         ))
+    }
+
+    pub(super) fn f32(&mut self, field: &'static str) -> Result<f32, StratumV2Error> {
+        Ok(f32::from_bits(self.u32(field)?))
     }
 
     pub(super) fn fixed<const N: usize>(

@@ -48,3 +48,27 @@
   occurred.
 - Blocker or next safe action: Add the sole firmware SV2 owner and keep it
   mutually exclusive with the existing V1 production owner.
+
+## 2026-08-22 06:08 UTC | Software implementation checkpoint
+
+- Source commit: `ab6e89ac` plus the current working diff.
+- Actions: Added the sole campaign-gated firmware V2 owner, protocol selection,
+  bounded same-protocol fallback, private Base58Check authority loading, ESP
+  hardware RNG, bounded encrypted transport, shared ASIC execution, watchdog
+  feeds, PSRAM/safety admission, complete safe stop, reverse-direction pool
+  codecs, a real TCP Noise fixture, private V2 NVS admission, and ordered V2
+  campaign marker validation. Bound the S3 cc-rs build to the target compiler,
+  archiver, and `-mlongcalls`.
+- Verification: 23 pure V2 tests, one real TCP fixture lifecycle, 393 flash
+  tests, firmware source-ownership tests, canonical `just build`, all 52 Bazel
+  tests, `just package`, Bright Builds, and the full Cargo sequence passed. The
+  Cargo license report was regenerated after reviewing the exact
+  MIT/Apache-2.0, CC0-1.0, and CDLA-Permissive-2.0 package licenses.
+- Evidence: `docs/parity/evidence/str005-stratum-v2/summary.md` and the
+  provenance-bound protocol fixture.
+- Outcome: The pinned-reference software surface supports `implemented` with
+  `unit,golden,workflow`; no credential, network, USB, device, mining, or other
+  hardware effect occurred.
+- Blocker or next safe action: Implement and test the exact-restoration outer
+  `just stratum-v2-campaign` transaction before attempt-001 can become effect
+  eligible. Do not substitute the lower-level fixture or mining-campaign stage.

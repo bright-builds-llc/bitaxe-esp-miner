@@ -271,6 +271,7 @@ pub(crate) enum MiningCampaignStage {
     Soak,
     JobTransition,
     CommandEffects,
+    StratumV2,
 }
 
 impl MiningCampaignStage {
@@ -281,6 +282,7 @@ impl MiningCampaignStage {
             Self::Soak => "soak",
             Self::JobTransition => "job-transition",
             Self::CommandEffects => "command-effects",
+            Self::StratumV2 => "stratum-v2",
         }
     }
 }

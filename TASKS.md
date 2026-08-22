@@ -26,13 +26,13 @@ new work.
 
 ### task-parity-str005-stratum-v2 | 2026-08-22 | Implement Stratum V2 protocol and firmware ownership
 
-- [ ] Implement bounded Stratum V2 framing, Noise transport, SetupConnection,
+- [x] Implement bounded Stratum V2 framing, Noise transport, SetupConnection,
       standard and extended channel, job, target, and share-message behavior
       against the pinned reference implementation.
-- [ ] Add a single firmware Stratum V2 task owner with typed configuration,
+- [x] Add a single firmware Stratum V2 task owner with typed configuration,
       protocol-coordinator primary/fallback selection, bounded reconnect and
       timeout behavior, explicit memory limits, and secret-free diagnostics.
-- [ ] Add provenance-bound golden fixtures and focused pure, transport,
+- [x] Add provenance-bound golden fixtures and focused pure, transport,
       lifecycle, fallback, malformed-input, and redaction tests; build/package
       the ESP32-S3 firmware and pass every mandatory repository gate.
 - [ ] Add the deterministic host-owned SV2 Noise pool fixture, private
@@ -85,6 +85,22 @@ state, BM1366 work conversion, provenance-bound golden vectors, fail-closed
 malformed/tamper/nonce boundaries, and redaction-safe diagnostics. Focused Cargo
 tests and canonical Bazel `//crates/bitaxe-stratum:tests` pass. Firmware owner,
 campaign, package, full gates, and hardware evidence remain pending.
+
+Software completion review: the firmware now selects exactly one V1/V2 owner,
+admits V2 effects only through the consumed 180-second conservative campaign,
+requires PSRAM plus fresh Ultra 205 safety before preparation, uses the shared
+ASIC/safety/watchdog owners, bounds pre-work retry to the configured V2 pool
+pair, poisons failed Noise sessions, and always attempts terminal safe stop.
+The host fixture completes a real TCP Noise handshake and validates one
+target-qualified standard share before success. The private flash campaign
+stage admits only standard-channel canonical Base58Check authority credentials
+and requires ordered V2 runtime plus safe-stop markers. Canonical firmware
+build/package, all 52 Bazel tests, 23 pure V2 tests, the real fixture test, 393
+flash tests, Bright Builds, license generation, and reference cleanliness pass.
+No hardware or external-network effect occurred. The unchecked campaign item
+still requires its outer exact-settings/package capture and restoration command;
+until then the immutable hardware contract remains ineligible and `verified` is
+not claimed.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 

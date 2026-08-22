@@ -46,9 +46,12 @@ export async function buildFirmware(
   const espEnvironment = await processPort.loadEspEnvironment();
   const environment = {
     ...espEnvironment,
+    AR_xtensa_esp32s3_espidf: "xtensa-esp32s3-elf-ar",
     BITAXE_BUILD_PROVENANCE_STAMP: provenanceStamp,
     BITAXE_BUILD_TIMESTAMP_UTC_FILE: buildTimestamp,
     CARGO_TARGET_DIR: cargoTargetDir,
+    CC_xtensa_esp32s3_espidf: "xtensa-esp32s3-elf-gcc",
+    CFLAGS_xtensa_esp32s3_espidf: "-mlongcalls",
     ESP_IDF_SDKCONFIG: outputSdkconfig,
     ESP_IDF_SDKCONFIG_DEFAULTS: outputDefaults,
     ESP_IDF_SYS_ROOT_CRATE: packageName,

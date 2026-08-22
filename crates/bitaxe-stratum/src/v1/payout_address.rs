@@ -104,6 +104,13 @@ pub fn encode_base58_check(version: u8, payload: &[u8]) -> String {
 
 /// Decodes and verifies one canonical Base58Check value.
 pub fn decode_base58_check(value: &str) -> Result<(u8, Vec<u8>), PayoutAddressError> {
+    let decoded = decode_base58_check_bytes(value)?;
+    Ok((decoded[0], decoded[1..].to_vec()))
+}
+
+/// Decodes and verifies a canonical Base58Check value while retaining all
+/// version bytes for protocols that use a multi-byte prefix.
+pub fn decode_base58_check_bytes(value: &str) -> Result<Vec<u8>, PayoutAddressError> {
     let decoded = decode_base58(value)?;
     if decoded.len() < 5 {
         return Err(PayoutAddressError::InvalidBase58);
@@ -113,7 +120,7 @@ pub fn decode_base58_check(value: &str) -> Result<(u8, Vec<u8>), PayoutAddressEr
     if decoded[payload_end..] != expected[..4] {
         return Err(PayoutAddressError::InvalidBase58Checksum);
     }
-    Ok((decoded[0], decoded[1..payload_end].to_vec()))
+    Ok(decoded[..payload_end].to_vec())
 }
 
 /// Encodes a valid SegWit witness program for the selected Bitcoin network.

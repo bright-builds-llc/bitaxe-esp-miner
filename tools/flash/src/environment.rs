@@ -424,9 +424,9 @@ impl FlashEnvironment for LocalFlashEnvironment {
             evidence_root.to_owned(),
         );
         let mut observe = |chunk: &[u8]| {
-            analyzer.observe_chunk(chunk);
+            let serial_should_stop = analyzer.observe_chunk(chunk);
             network.observe_serial_chunk(chunk);
-            analyzer.terminal_consumed() || network.should_stop()
+            serial_should_stop || analyzer.terminal_consumed() || network.should_stop()
         };
         match capture_limit {
             CampaignCaptureLimit::Bounded(timeout_seconds) => session

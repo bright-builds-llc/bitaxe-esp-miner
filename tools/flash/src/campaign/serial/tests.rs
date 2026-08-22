@@ -17,6 +17,8 @@ mod panic;
 mod pause_safe_stop;
 #[path = "tests/preparation.rs"]
 mod preparation;
+#[path = "tests/stratum_v2.rs"]
+mod stratum_v2;
 fn observation_admission() -> CampaignAdmission {
     CampaignAdmission {
         stage: MiningCampaignStage::Observation,

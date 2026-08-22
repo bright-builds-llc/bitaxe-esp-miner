@@ -17,13 +17,23 @@ struct PoolCredentialsFile {
     pool_user: String,
     #[serde(rename = "poolPassword")]
     pool_password: String,
+    #[serde(rename = "stratumProtocol", default)]
+    stratum_protocol: Option<String>,
+    #[serde(rename = "stratumV2ChannelType", default)]
+    stratum_v2_channel_type: Option<String>,
+    #[serde(rename = "stratumV2AuthorityPubkey", default)]
+    stratum_v2_authority_pubkey: Option<String>,
 }
 
+#[derive(Clone)]
 pub(super) struct PoolCredentials {
     pool_url: String,
     pool_port: u16,
     pool_user: String,
     pool_password: String,
+    stratum_protocol: String,
+    stratum_v2_channel_type: Option<String>,
+    stratum_v2_authority_pubkey: Option<String>,
 }
 
 pub(super) fn admit_campaign(
@@ -40,6 +50,7 @@ pub(super) fn admit_campaign(
         MiningCampaignStage::LiveShare | MiningCampaignStage::Soak => MINING_DURATION_SECONDS,
         MiningCampaignStage::JobTransition => JOB_TRANSITION_DURATION_SECONDS,
         MiningCampaignStage::CommandEffects => COMMAND_EFFECTS_DURATION_SECONDS,
+        MiningCampaignStage::StratumV2 => STRATUM_V2_DURATION_SECONDS,
     };
     if command.duration_seconds != expected_duration {
         return Err(CampaignFailure::new(
@@ -63,6 +74,10 @@ pub(super) fn admit_campaign(
                 && command.pool_credentials.is_some()
         }
         MiningCampaignStage::CommandEffects => {
+            command.profile == Some(MiningCampaignProfile::Conservative)
+                && command.pool_credentials.is_some()
+        }
+        MiningCampaignStage::StratumV2 => {
             command.profile == Some(MiningCampaignProfile::Conservative)
                 && command.pool_credentials.is_some()
         }
@@ -140,8 +155,21 @@ fn read_pool_credentials(
 }
 
 fn validate_pool_credentials(file: PoolCredentialsFile) -> Result<PoolCredentials> {
-    let patch = SettingsPatch::from_pairs([
-        ("stratumProtocol", RawSettingValue::String("SV1".to_owned())),
+    let protocol = file.stratum_protocol.unwrap_or_else(|| "SV1".to_owned());
+    if protocol == "SV2" {
+        if file.stratum_v2_channel_type.as_deref() != Some("standard") {
+            bail!("Stratum V2 campaign requires a standard channel");
+        }
+        let authority = file
+            .stratum_v2_authority_pubkey
+            .as_deref()
+            .context("Stratum V2 campaign authority key missing")?;
+        if bitaxe_stratum::v2::authority::parse_authority_public_key(authority)?.is_none() {
+            bail!("Stratum V2 campaign authority key missing");
+        }
+    }
+    let mut pairs = vec![
+        ("stratumProtocol", RawSettingValue::String(protocol.clone())),
         ("stratumURL", RawSettingValue::String(file.pool_url)),
         (
             "stratumPort",
@@ -153,7 +181,20 @@ fn validate_pool_credentials(file: PoolCredentialsFile) -> Result<PoolCredential
             RawSettingValue::String(file.pool_password),
         ),
         ("stratumTLS", RawSettingValue::Number(0)),
-    ]);
+    ];
+    if let Some(channel_type) = file.stratum_v2_channel_type {
+        pairs.push((
+            "stratumV2ChannelType",
+            RawSettingValue::String(channel_type),
+        ));
+    }
+    if let Some(authority) = file.stratum_v2_authority_pubkey {
+        pairs.push((
+            "stratumV2AuthorityPubkey",
+            RawSettingValue::String(authority),
+        ));
+    }
+    let patch = SettingsPatch::from_pairs(pairs);
     let writes = match apply_settings_patch(&patch) {
         SettingsUpdateDecision::Accepted { writes } => writes,
         SettingsUpdateDecision::Rejected { .. } => {
@@ -164,6 +205,15 @@ fn validate_pool_credentials(file: PoolCredentialsFile) -> Result<PoolCredential
     let pool_port = u16_write(&writes, "stratumport")?;
     let pool_user = string_write(&writes, "stratumuser")?;
     let pool_password = string_write(&writes, "stratumpass")?;
+    let stratum_protocol = string_write(&writes, "stratumprot")?;
+    let stratum_v2_channel_type = writes.iter().find_map(|write| match write {
+        NvsWrite::String { key, value } if key.as_str() == "sv2chantype" => Some(value.clone()),
+        _ => None,
+    });
+    let stratum_v2_authority_pubkey = writes.iter().find_map(|write| match write {
+        NvsWrite::String { key, value } if key.as_str() == "sv2authpubkey" => Some(value.clone()),
+        _ => None,
+    });
     if pool_url.is_empty() || pool_port == 0 || pool_user.is_empty() {
         bail!("pool credential input failed closed admission");
     }
@@ -172,6 +222,9 @@ fn validate_pool_credentials(file: PoolCredentialsFile) -> Result<PoolCredential
         pool_port,
         pool_user,
         pool_password,
+        stratum_protocol,
+        stratum_v2_channel_type,
+        stratum_v2_authority_pubkey,
     })
 }
 
@@ -217,6 +270,20 @@ pub(super) fn campaign_nvs_csv(
             bail!("observation campaign cannot seed pool credentials")
         }
         (_, Some(pool)) => {
+            let expected_protocol = if admission.stage == MiningCampaignStage::StratumV2 {
+                "SV2"
+            } else {
+                "SV1"
+            };
+            if pool.stratum_protocol != expected_protocol {
+                bail!("campaign pool protocol does not match stage");
+            }
+            if admission.stage == MiningCampaignStage::StratumV2
+                && (pool.stratum_v2_channel_type.as_deref() != Some("standard")
+                    || pool.stratum_v2_authority_pubkey.is_none())
+            {
+                bail!("Stratum V2 campaign requires standard channel and authority key");
+            }
             let profile = admission
                 .maybe_profile
                 .context("mining campaign profile missing")?;
@@ -230,7 +297,7 @@ pub(super) fn campaign_nvs_csv(
                     "campdurms,data,u64,{}",
                     admission.duration_seconds.saturating_mul(1_000)
                 ),
-                "stratumprot,data,string,SV1".to_owned(),
+                format!("stratumprot,data,string,{}", pool.stratum_protocol),
                 format!("stratumurl,data,string,{}", csv_cell(&pool.pool_url)),
                 format!("stratumport,data,u16,{}", pool.pool_port),
                 format!("stratumuser,data,string,{}", csv_cell(&pool.pool_user)),
@@ -238,8 +305,96 @@ pub(super) fn campaign_nvs_csv(
                 "stratumtls,data,u16,0".to_owned(),
                 "usefbstartum,data,u16,0".to_owned(),
             ]);
+            if let Some(channel_type) = &pool.stratum_v2_channel_type {
+                rows.push(format!(
+                    "sv2chantype,data,string,{}",
+                    csv_cell(channel_type)
+                ));
+            }
+            if let Some(authority) = &pool.stratum_v2_authority_pubkey {
+                rows.push(format!("sv2authpubkey,data,string,{}", csv_cell(authority)));
+            }
         }
         (_, None) => bail!("mining campaign pool credentials missing"),
     }
     Ok(rows.join("\n") + "\n")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stratum_v2_credentials_seed_only_standard_noise_campaign_keys() {
+        // Arrange
+        let pool = validate_pool_credentials(PoolCredentialsFile {
+            pool_url: "private-host-canary".to_owned(),
+            pool_port: 1234,
+            pool_user: "private-user-canary".to_owned(),
+            pool_password: String::new(),
+            stratum_protocol: Some("SV2".to_owned()),
+            stratum_v2_channel_type: Some("standard".to_owned()),
+            stratum_v2_authority_pubkey: Some(
+                bitaxe_stratum::v2::authority::encode_authority_public_key([0x22; 32]),
+            ),
+        })
+        .expect("V2 credentials");
+        let wifi = WifiCredentials {
+            ssid: "private-wifi-canary".to_owned(),
+            wifi_pass: "private-pass-canary".to_owned(),
+        };
+        let admission = CampaignAdmission {
+            stage: MiningCampaignStage::StratumV2,
+            maybe_profile: Some(MiningCampaignProfile::Conservative),
+            duration_seconds: 180,
+            maybe_lease_id: Some(7),
+        };
+
+        // Act
+        let csv = campaign_nvs_csv(&wifi, Some(&pool), admission).expect("campaign NVS");
+
+        // Assert
+        assert!(csv.contains("campstage,data,string,stratum-v2"));
+        assert!(csv.contains("stratumprot,data,string,SV2"));
+        assert!(csv.contains("sv2chantype,data,string,standard"));
+        assert!(csv.contains("sv2authpubkey,data,string,"));
+        assert!(!csv.contains("stratumprot,data,string,SV1"));
+    }
+
+    #[test]
+    fn stratum_v2_campaign_rejects_v1_or_unauthenticated_pool_shape() {
+        // Arrange
+        let wifi = WifiCredentials {
+            ssid: "wifi".to_owned(),
+            wifi_pass: "password".to_owned(),
+        };
+        let admission = CampaignAdmission {
+            stage: MiningCampaignStage::StratumV2,
+            maybe_profile: Some(MiningCampaignProfile::Conservative),
+            duration_seconds: 180,
+            maybe_lease_id: Some(7),
+        };
+        let v1 = PoolCredentials {
+            pool_url: "pool".to_owned(),
+            pool_port: 1,
+            pool_user: "user".to_owned(),
+            pool_password: String::new(),
+            stratum_protocol: "SV1".to_owned(),
+            stratum_v2_channel_type: None,
+            stratum_v2_authority_pubkey: None,
+        };
+        let unauthenticated_v2 = PoolCredentials {
+            stratum_protocol: "SV2".to_owned(),
+            stratum_v2_channel_type: Some("standard".to_owned()),
+            ..v1.clone()
+        };
+
+        // Act
+        let v1_result = campaign_nvs_csv(&wifi, Some(&v1), admission);
+        let unauthenticated_result = campaign_nvs_csv(&wifi, Some(&unauthenticated_v2), admission);
+
+        // Assert
+        assert!(v1_result.is_err());
+        assert!(unauthenticated_result.is_err());
+    }
 }

@@ -7,14 +7,14 @@ use std::ptr;
 use crate::task_watchdog_observation::{record, record_owner_progress};
 use bitaxe_core::runtime_health::TaskWatchdogOwnerSubphase;
 
-pub(super) struct ProductionTaskWatchdog {
+pub(crate) struct ProductionTaskWatchdog {
     owns_subscription: bool,
     failure_latched: bool,
     feed_sequence: u64,
 }
 
 impl ProductionTaskWatchdog {
-    pub(super) fn subscribe(now_millis: u64) -> Self {
+    pub(crate) fn subscribe(now_millis: u64) -> Self {
         let mut owner = Self {
             owns_subscription: false,
             failure_latched: false,
@@ -33,14 +33,14 @@ impl ProductionTaskWatchdog {
         owner
     }
 
-    pub(super) fn feed(&mut self, now_millis: u64) {
+    pub(crate) fn feed(&mut self, now_millis: u64) {
         let Some(observation) = self.maybe_feed_observation(now_millis) else {
             return;
         };
         record(observation);
     }
 
-    pub(super) fn feed_owner_progress(
+    pub(crate) fn feed_owner_progress(
         &mut self,
         now_millis: u64,
         subphase: TaskWatchdogOwnerSubphase,

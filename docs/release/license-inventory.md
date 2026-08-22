@@ -12,9 +12,12 @@ is required input, but it does not satisfy release compliance by itself.
 | Cargo lockfile | `Cargo.lock` | crates.io package metadata mirrored into the generated report | Required source for dependency version evidence. |
 | Workspace Rust crates | `crates/*`, `firmware/bitaxe`, `tools/flash`, `tools/parity`, `tools/xtask` | Root workspace MIT posture plus per-crate dependencies in `Cargo.lock` | Original project code is MIT-first unless a file is explicitly marked otherwise. |
 | ESP-IDF Rust bindings in Cargo graph | `esp-idf-sys 0.37.2`, `esp-idf-hal 0.46.2`, `esp-idf-svc 0.52.1` | Cargo metadata and `docs/release/cargo-about.html` | Covered as Cargo crates; linked ESP-IDF components are reviewed below. |
+| Stratum V2 Noise stack | `noise_sv2 1.4.2`, `secp256k1 0.28.2`, `secp256k1-sys 0.9.2`, `bitcoin_hashes 0.13.1`, `hex-conservative 0.1.2` | Packaged crate metadata and license files plus `docs/release/cargo-about.html` | `noise_sv2` is MIT OR Apache-2.0; the secp256k1 support crates are CC0-1.0. Accepted for the STR-005 firmware and host fixture after exact-version source review. |
+| Web PKI root data | `webpki-roots 1.0.9` | Packaged crate metadata and `LICENSE` plus `docs/release/cargo-about.html` | CDLA-Permissive-2.0 data license; existing host TLS dependency is covered by the full-workspace report. |
 
 - Accepted license identifiers in the current Cargo report: `Apache-2.0`,
-  `BSD-3-Clause`, `ISC`, `MIT`, `Unicode-3.0`, and `Zlib`.
+  `BSD-3-Clause`, `CC0-1.0`, `CDLA-Permissive-2.0`, `ISC`, `MIT`,
+  `Unicode-3.0`, and `Zlib`.
 - Owner: release tooling.
 - Follow-up: regenerate `docs/release/cargo-about.html` whenever `Cargo.lock`,
   `about.toml`, or workspace membership changes.
