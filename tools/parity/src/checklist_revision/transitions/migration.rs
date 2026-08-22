@@ -135,7 +135,15 @@ fn require_canonical_path(path: &Utf8Path) -> Result<(), String> {
 }
 
 fn require_monotonic(before: &str, after: &str) -> Result<(), String> {
-    if matches!(before, "verified" | "deferred") {
+    if before == "deferred" {
+        if after == "in-progress" {
+            return Ok(());
+        }
+        return Err(format!(
+            "explicit deferred activation permits only deferred -> in-progress, not {before} -> {after}"
+        ));
+    }
+    if before == "verified" {
         return Err(format!(
             "automatic transitions out of {before} are forbidden"
         ));
@@ -153,4 +161,29 @@ fn require_monotonic(before: &str, after: &str) -> Result<(), String> {
         return Err("parity transitions must move monotonically toward verified".to_owned());
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::require_policy;
+
+    #[test]
+    fn transition_accepts_only_deferred_to_in_progress_activation() {
+        // Arrange
+        let before = "deferred";
+
+        // Act
+        let accepted = require_policy(before, "in-progress", "STR-005", None);
+        let direct_implementation = require_policy(before, "implemented", "STR-005", None);
+        let unchanged = require_policy(before, before, "STR-005", None);
+
+        // Assert
+        assert!(accepted.is_ok());
+        assert!(direct_implementation
+            .expect_err("direct implementation must be rejected")
+            .contains("only deferred -> in-progress"));
+        assert!(unchanged
+            .expect_err("unchanged deferred status must be rejected")
+            .contains("only deferred -> in-progress"));
+    }
 }

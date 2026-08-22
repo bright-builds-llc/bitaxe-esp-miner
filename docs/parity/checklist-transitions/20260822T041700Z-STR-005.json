@@ -1,0 +1,20 @@
+{
+  "schema_version": "parity-checklist-transition-v1",
+  "transition_id": "20260822T041700Z-STR-005",
+  "predecessor_sha256": "4bcf8b3dd979116cbb55918b7de1140bbdbd0330583cdadc5335099e7c33e285",
+  "result_sha256": "125825908ec90fe629c7f89fba9146fb4cb9d58f9721ea45767243bf4526230e",
+  "row_id": "STR-005",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "plan_path": "docs/parity/work-plans/20260822T040442Z-STR-005/PLAN.md",
+  "plan_sha256": "b5d52799b3791d869a7efe00f8b5b7e511e3496694d83b8db4e13dfda31b382e",
+  "result_path": null,
+  "result_document_sha256": null,
+  "before_rust_owned_target": "`crates/bitaxe-stratum/src/v1.rs`",
+  "after_rust_owned_target": "`crates/bitaxe-stratum/src/v1.rs`",
+  "before_status": "deferred",
+  "after_status": "in-progress",
+  "before_evidence": "deferred",
+  "after_evidence": "pending",
+  "before_notes": "Phase 4 intentionally covers Stratum v1 first-loop behavior only; Stratum v2 transport, Noise session, messages, and task lifecycle remain explicitly deferred. See [Phase 4 evidence](evidence/phase-04-stratum-v1-mining-loop.md).",
+  "after_notes": "Explicit user-selected STR-005 work is active under the immutable audit plan; no implementation or hardware evidence is claimed."
+}

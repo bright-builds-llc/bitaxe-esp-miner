@@ -3,6 +3,8 @@ use std::fs;
 
 use crate::*;
 
+#[cfg(test)]
+mod activation_tests;
 mod closure;
 mod history;
 pub(crate) use history::{run_sync_progress_command, validate_progress_artifacts};
@@ -236,12 +238,16 @@ fn find_open_plan(workspace: &Utf8Path, rows: &[ChecklistRow]) -> Result<Option<
         }
         let document = fs::read_to_string(path.join("PLAN.md").as_std_path())
             .with_context(|| format!("failed to read open parity plan {path}/PLAN.md"))?;
-        let (row_id, initial_status) = parse_plan_metadata(&document)?;
+        let row_id = parse_plan_row_id(&document)?;
         let maybe_row = rows.iter().find(|row| row.id == row_id);
         let Some(row) = maybe_row else {
             bail!("open parity plan references missing row {row_id}");
         };
         let current_status = normalize(&row.status);
+        if current_status == "verified" {
+            continue;
+        }
+        let initial_status = parse_plan_initial_status(&document)?;
         let terminal_closed = closure::closes_plan(&path, &document, &row_id, &initial_status)?;
         if current_status != initial_status {
             require_plan_status_advance(&initial_status, &current_status, &row_id)?;
@@ -303,8 +309,11 @@ fn reconcile_open_plans(mut open_plans: Vec<OpenPlanDocument>) -> Result<Option<
     }
     Ok(active_plans.pop())
 }
-fn parse_plan_metadata(document: &str) -> Result<(String, String)> {
-    let row_id = parse_plan_metadata_value(document, "- Parity row: `", "parity-row")?;
+fn parse_plan_row_id(document: &str) -> Result<String> {
+    parse_plan_metadata_value(document, "- Parity row: `", "parity-row")
+}
+
+fn parse_plan_initial_status(document: &str) -> Result<String> {
     let initial_status = normalize(&parse_plan_metadata_value(
         document,
         "- Initial status: `",
@@ -313,7 +322,7 @@ fn parse_plan_metadata(document: &str) -> Result<(String, String)> {
     if plan_status_rank(&initial_status).is_none() {
         bail!("open parity plan has non-actionable initial status {initial_status}");
     }
-    Ok((row_id, initial_status))
+    Ok(initial_status)
 }
 
 fn parse_plan_metadata_value(document: &str, prefix: &str, label: &str) -> Result<String> {
@@ -349,10 +358,11 @@ fn require_plan_status_advance(initial: &str, current: &str, row_id: &str) -> Re
 
 fn plan_status_rank(status: &str) -> Option<u8> {
     match status {
-        "not-started" => Some(0),
-        "in-progress" => Some(1),
-        "implemented" => Some(2),
-        "verified" => Some(3),
+        "deferred" => Some(0),
+        "not-started" => Some(1),
+        "in-progress" => Some(2),
+        "implemented" => Some(3),
+        "verified" => Some(4),
         _ => None,
     }
 }
