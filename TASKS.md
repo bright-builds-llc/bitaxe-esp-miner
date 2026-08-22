@@ -35,9 +35,14 @@ new work.
 - [ ] Add provenance-bound golden fixtures and focused pure, transport,
       lifecycle, fallback, malformed-input, and redaction tests; build/package
       the ESP32-S3 firmware and pass every mandatory repository gate.
-- [ ] Transition only `STR-005` to at most `implemented` with
-      `unit,golden,workflow` evidence. Live pool interoperability and hardware
-      verification require a separate detector-gated task contract.
+- [ ] Add the deterministic host-owned SV2 Noise pool fixture, private
+      detector-gated campaign, safe-stop/restoration path, closed evidence
+      projection, and independent validator.
+- [ ] Transition only `STR-005` to the strongest evidence-supported status:
+      `implemented` with `unit,golden,workflow`, or `verified` only after the
+      exact accepted Ultra 205 campaign adds `hardware-regression`.
+
+Plan: `docs/parity/work-plans/20260822T040442Z-STR-005/PLAN.md`
 
 Reference scope:
 
@@ -48,17 +53,29 @@ Reference scope:
 - `reference/esp-miner/main/nvs_config.c`
 
 Authorization: repository source, fixture, test, documentation, build/package,
-Git commit, and push work only. No real credentials, external pool session,
-detector, USB/device interaction, flash, monitor, mining, share submission,
-restart, recovery, hardware-control effect, fault injection, external UART,
-pins, or electrical work is authorized by this task promotion.
+Git commit, push, network, pool, and Ultra 205 hardware work under the linked
+immutable plan. The only permitted effect commands are `just detect-ultra205`,
+`just package`, and the exact attempt-001 `just stratum-v2-campaign` command in
+that plan. Effects remain ineligible until its repo-owned command, private
+schemas, validator, recovery, tests, full gates, clean exact package, and pushed
+implementation commit exist. The campaign may use one host-owned local SV2
+Noise pool fixture, exact package flash, temporary private Wi-Fi/SV2 NVS,
+conservative 400 MHz/1100 mV/100% fan mining, one accepted share, safe stop,
+exact setting/package restoration, and cleanup. Third-party pools, external
+UART, pins/pads/headers/GPIO, probes, jumpers, electrical work, fault injection,
+unbounded mining, arbitrary profiles, OTA, erase, and raw secret output remain
+prohibited. The full objective, privacy/evidence policy, preconditions,
+effects, limits, recovery, retry bound, and stop conditions are authoritative
+in the linked plan.
 
-Evidence/status boundary: promotion into `Active` does not change checklist
-status. `implemented` requires the complete bounded software owner, current
-pinned-reference provenance, deterministic tests, canonical firmware package,
-redaction review, and all mandatory gates. `verified` additionally requires a
-separately authorized live Stratum V2 pool and Ultra 205 hardware regression
-with safe-stop, cleanup, independent validation, and redaction.
+Evidence/status boundary: promotion into `Active` and this explicit deferred
+activation do not themselves change checklist status. `implemented` requires
+the complete bounded software owner, current pinned-reference provenance,
+deterministic tests, canonical firmware package, redaction review, and all
+mandatory gates. `verified` additionally requires the linked accepted local
+SV2 Noise pool/Ultra 205 hardware regression with safe-stop, exact restoration,
+cleanup, independent validation, and redaction. External production-pool
+interoperability remains a non-claim.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
