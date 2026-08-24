@@ -4337,6 +4337,60 @@ detection pass. `STR-005` remains `implemented`; no retry is authorized.
 Closure:
 `docs/parity/work-plans/20260824T012436Z-STR-005-RESTORE-RECOVERY2/CLOSURE.md`.
 
+### task-parity-str005-installed-package-recovery-003 | 2026-08-24 | Diagnose validator child and continue STR-005 recovery
+
+- [x] Add a protected closed validator-child receipt and real Bazel launcher
+      regression for acceptance, rejection, launch failure, timeout, output
+      limit, working-directory binding, modes, and redaction.
+- [x] Bind the fresh recovery-003 root/projection/bundle across recovery,
+      admission, campaign, restore, runfiles, task, and tests.
+- [x] Pass every software/privacy/package/reference/selector/diff gate,
+      commit/push, and build the exact clean package before device access.
+- [ ] Run recovery-003 once and withhold attempt-004 unless the owner publishes
+      an independently accepted exact restore-readiness projection.
+- [ ] If admitted, run attempt-004 once, safe-stop, restore the original
+      bundle/settings, prove exact runtime/cleanup, and validate evidence.
+- [ ] Promote only `STR-005` on complete accepted hardware evidence; otherwise
+      close at `implemented`, withhold `RESULT.md`, and do not retry.
+
+Plan: `docs/parity/work-plans/20260824T214920Z-STR-005-RESTORE-RECOVERY3/PLAN.md`
+
+Authorization: repository source/test/docs/build/package, Git commit/push,
+bounded real-process validation, read-only runtime HTTP/USB observation, one
+fresh protected recovery-003, and the still-unused attempt-004 campaign under
+the immutable plan. Recovery retains a private closed validator-child receipt,
+searches only repository/Bazel package locations, performs at most one
+timestamp-pinned historical rebuild, then reads only the eight allowlisted
+firmware ranges at 460800 baud with 600 seconds per range. It never reads NVS or
+coredump. Attempt-004 may flash the exact current package, use the local SV2
+fixture and 400 MHz/1100 mV/100% fan profile, then restore the admitted original
+bundle/settings. A new baseline, external pool, direct UART/pins, fault
+injection, OTA, erase, arbitrary writes, unbounded mining, attempt-005, and
+unchanged retry remain prohibited.
+
+Evidence/status boundary: recovery readiness requires an accepted owner result,
+protected validator receipt, exact package or snapshot bundle, runtime
+continuity, independent validation, cleanup, and a closed redacted projection.
+The retained recovery-002 bundle is diagnostic evidence only and is not an
+admitted campaign restore source. `STR-005` remains `implemented` until the
+complete attempt-004 local Noise/share/safe-stop/exact-restoration evidence is
+independently accepted.
+
+Progress: authorized from the recovery-002 child-only validator discrepancy.
+The dedicated child runner strips inherited nested `JS_BINARY__*` state, bounds
+and hashes output, retains one closed protected receipt for every outcome, and
+requires an accepted receipt during later campaign admission. Focused recovery,
+campaign, real-launch, and all 395 flash tests pass across acceptance,
+rejection, launch failure, timeout, output limit, workspace binding, modes, and
+secret-canary exclusion. No recovery-003 or attempt-004 effect has begun.
+
+Software verification: ordered Cargo format/clippy/build/test, Bright Builds,
+all 55 Bazel tests including the real nested-launch regression, canonical
+firmware build/package, parity/progress, redaction, reference cleanliness,
+selector lineage, sensitive-value review, file-length checks, and final diff
+review pass. Commit/push and the exact clean package rebuild are the remaining
+atomic pre-device steps.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

@@ -3,11 +3,12 @@ import path from "node:path";
 
 import { sha256, type RestoreBundle } from "./stratum-v2-restore-model.js";
 import { validateRestoreReadiness } from "./stratum-v2-restore-validator.js";
+import { validateValidatorChildReceipt } from "./stratum-v2-validator-child.js";
 
 const restoreProjection =
-  "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-002.json";
+  "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-003.json";
 const restorePlan =
-  "docs/parity/work-plans/20260824T012436Z-STR-005-RESTORE-RECOVERY2/PLAN.md";
+  "docs/parity/work-plans/20260824T214920Z-STR-005-RESTORE-RECOVERY3/PLAN.md";
 
 type RunProcess = (
   workspace: string,
@@ -27,7 +28,13 @@ export async function admitStratumV2RestoreBundle(
     await runProcess(workspace, "git", ["rev-parse", "HEAD"], 5_000)
   ).stdout.trim();
   const planDocument = await readFile(path.join(workspace, restorePlan), "utf8");
-  await validateRestoreReadiness(bundlePath, projectionPath, source, sha256(planDocument));
+  const planSha256 = sha256(planDocument);
+  await validateRestoreReadiness(bundlePath, projectionPath, source, planSha256);
+  await validateValidatorChildReceipt(
+    path.join(path.dirname(bundlePath), "validator-child-receipt.private.json"),
+    source,
+    planSha256,
+  );
   return {
     bundle: JSON.parse(await readFile(bundlePath, "utf8")) as RestoreBundle,
     path: bundlePath,

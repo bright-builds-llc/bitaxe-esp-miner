@@ -409,6 +409,17 @@ js_binary(
 )
 
 js_test(
+    name = "stratum_v2_restore_launcher_test",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        ":automation_tests_ts",
+        ":stratum_v2_restore_validator",
+    ],
+    entry_point = "test-dist/stratum-v2-validator-launcher.test.js",
+)
+
+js_test(
     name = "stratum_v2_campaign_unit_test",
     chdir = "../../../..",
     data = [

@@ -48,7 +48,7 @@ export type PreparedStratumV2Campaign = {
 };
 
 const restoreProjectionStatus =
-  "?? docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-002.json";
+  "?? docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-003.json";
 
 async function requireMode(
   candidate: string,

@@ -21,7 +21,7 @@ const exactArgs = [
   "--port", "/dev/cu.usbmodem101",
   "--package-manifest", "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
   "--wifi-credentials", "wifi-credentials.json",
-  "--restore-bundle", "scratch/str005-installed-package-recovery/recovery-002/restore-bundle.private.json",
+  "--restore-bundle", "scratch/str005-installed-package-recovery/recovery-003/restore-bundle.private.json",
   "--private-root", "scratch/str005-stratum-v2/attempt-004",
   "--projection", "docs/parity/evidence/str005-stratum-v2/stratum-v2-projection.json",
   "--duration-seconds", "180",

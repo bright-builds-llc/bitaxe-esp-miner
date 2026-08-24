@@ -22,6 +22,10 @@ import {
 import { captureRestoreSnapshot } from "./stratum-v2-restore-snapshot.js";
 import { runCampaignProcess } from "./stratum-v2-campaign.js";
 import {
+  runValidatorChild,
+  validateValidatorChildReceipt,
+} from "./stratum-v2-validator-child.js";
+import {
   fetchRuntimeObject,
   monitorRuntimeOrigin,
 } from "./stratum-v2-runtime-admission.js";
@@ -34,11 +38,11 @@ export type RestoreRecoveryArgs = {
   readonly redactEvidence: true;
 };
 
-const taskId = "task-parity-str005-installed-package-recovery-002";
-const planRelative = "docs/parity/work-plans/20260824T012436Z-STR-005-RESTORE-RECOVERY2/PLAN.md";
-const expectedPrivateRoot = "scratch/str005-installed-package-recovery/recovery-002";
+const taskId = "task-parity-str005-installed-package-recovery-003";
+const planRelative = "docs/parity/work-plans/20260824T214920Z-STR-005-RESTORE-RECOVERY3/PLAN.md";
+const expectedPrivateRoot = "scratch/str005-installed-package-recovery/recovery-003";
 const expectedProjection =
-  "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-002.json";
+  "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-003.json";
 
 export class RestoreRecoveryError extends Error {
   public constructor(
@@ -297,13 +301,17 @@ export async function recoverInstalledFirmware(
     flag: "wx",
   });
   await chmod(candidateProjection, 0o600);
-  const validation = await runCampaignProcess(workspace, validatorProgram, [
-    bundlePath,
-    candidateProjection,
-    source.sourceCommit,
-    source.planSha256,
-  ], 30_000);
-  if (validation.exitCode !== 0) fail("evidence_invalid", "independent_validation");
+  const receiptPath = path.join(privateRoot, "validator-child-receipt.private.json");
+  const validation = await runValidatorChild({
+    workspace,
+    program: validatorProgram,
+    args: [bundlePath, candidateProjection, source.sourceCommit, source.planSha256],
+    receiptPath,
+    sourceCommit: source.sourceCommit,
+    planSha256: source.planSha256,
+  });
+  await validateValidatorChildReceipt(receiptPath, source.sourceCommit, source.planSha256);
+  if (!validation.validation_accepted) fail("evidence_invalid", "independent_validation");
   await rename(candidateProjection, projection);
   return projectionValue;
 }
