@@ -4346,11 +4346,11 @@ Closure:
       admission, campaign, restore, runfiles, task, and tests.
 - [x] Pass every software/privacy/package/reference/selector/diff gate,
       commit/push, and build the exact clean package before device access.
-- [ ] Run recovery-003 once and withhold attempt-004 unless the owner publishes
+- [x] Run recovery-003 once and withhold attempt-004 unless the owner publishes
       an independently accepted exact restore-readiness projection.
 - [ ] If admitted, run attempt-004 once, safe-stop, restore the original
       bundle/settings, prove exact runtime/cleanup, and validate evidence.
-- [ ] Promote only `STR-005` on complete accepted hardware evidence; otherwise
+- [x] Promote only `STR-005` on complete accepted hardware evidence; otherwise
       close at `implemented`, withhold `RESULT.md`, and do not retry.
 
 Plan: `docs/parity/work-plans/20260824T214920Z-STR-005-RESTORE-RECOVERY3/PLAN.md`
@@ -4390,6 +4390,17 @@ firmware build/package, parity/progress, redaction, reference cleanliness,
 selector lineage, sensitive-value review, file-length checks, and final diff
 review pass. Commit/push and the exact clean package rebuild are the remaining
 atomic pre-device steps.
+
+Hardware closure: exact pushed source/package `b33c89d1` and a fresh detector
+passed, but recovery-003 stopped `hardware_blocked` at
+`runtime_monitor_process` before installed identity, package search/rebuild,
+flash readback, bundle, validator, or receipt creation. The empty private root
+is `0700`; no public projection/candidate or campaign root exists. Attempt-004
+remains unused, no write/readback/fixture/pool/mining/ASIC/settings effect began,
+all children exited, and post-run one-board detection passed. The validator-
+child software boundary remains regression-proved but was not reached on the
+device path. `STR-005` remains `implemented`; no retry is authorized. Closure:
+`docs/parity/work-plans/20260824T214920Z-STR-005-RESTORE-RECOVERY3/CLOSURE.md`.
 
 ## Future
 
