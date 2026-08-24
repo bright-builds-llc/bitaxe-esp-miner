@@ -4271,6 +4271,57 @@ hardware regression, safe-stop proof, and redaction remain outstanding.
 Automatic selection may treat ASIC-010 as hardware-blocked until those
 prerequisites exist and continue to the next software-actionable row.
 
+### task-parity-str005-installed-package-recovery-002 | 2026-08-23 | Retry installed firmware recovery at corrected readback bounds
+
+- [x] Bind recovery-002 to the corrected explicit-baud/protected-target command,
+      a fresh private root, fresh public projection, and immutable continuation.
+- [x] Pass every software, privacy, package, reference, selector, and diff gate;
+      commit/push before device access and build the exact clean package.
+- [ ] Run recovery-002 once, independently validate its exact restore bundle,
+      and withhold the campaign unless all no-effect readiness gates pass.
+- [ ] Run still-unused attempt-004 once only after admission, then safe-stop,
+      restore the original bundle/settings, prove cleanup and exact identity,
+      and independently validate the closed campaign projection.
+- [ ] Promote only `STR-005` on complete accepted hardware evidence; otherwise
+      close truthfully at `implemented`, withhold `RESULT.md`, and do not retry.
+
+Plan: `docs/parity/work-plans/20260824T012436Z-STR-005-RESTORE-RECOVERY2/PLAN.md`
+
+Authorization: repository source/test/docs/build/package, Git commit/push,
+read-only runtime HTTP/USB observation, bounded Git/submodule/toolchain network,
+one fresh protected recovery-002, and the still-unused attempt-004 campaign
+under the immutable plan. Recovery may search only repository/Bazel package
+locations, create one owned detached worktree, perform one timestamp-pinned
+historical rebuild, and then read only the eight allowlisted firmware ranges at
+explicit 460800 baud with 600 seconds per range. It never reads NVS or coredump
+storage. Attempt-004 may flash the exact current package, use the local SV2
+fixture and conservative 400 MHz/1100 mV/100% fan profile, then restore the
+admitted original bundle and settings. A new baseline, external pool, direct
+UART/pins, fault injection, OTA, erase, arbitrary writes, unbounded mining,
+attempt-005, and unchanged recovery retry remain prohibited.
+
+Evidence/status boundary: recovery readiness requires one independently
+validated exact package or eight-range snapshot bundle with protected modes,
+containment, digests, installed identity, source/plan binding, runtime
+continuity, cleanup, and a closed redacted projection. `STR-005` stays
+`implemented` unless attempt-004 additionally proves the local Noise handshake,
+channel/job/work/share lifecycle, accepted response, complete safe stop, exact
+original runtime/settings restoration, cleanup, and independent redaction-safe
+validation.
+
+Progress: authorized after recovery-001 closed on the changed 4 MiB readback
+boundary. The recovery, campaign, historical restore, runfile, and focused test
+bindings now target only the new task/plan/root/projection, and focused recovery,
+campaign, launcher, and all 395 flash tests pass. No recovery-002 or attempt-004
+effect has begun.
+
+Software verification: ordered Cargo format/clippy/build/test, Bright Builds,
+all 54 Bazel tests, canonical firmware build/package, parity/progress,
+redaction, pinned-reference cleanliness, open-plan selection, sensitive-value
+review, and final diff checks pass. The selector resumes only `STR-005` through
+the new immutable plan. Commit/push and an exact clean package rebuild remain
+the final pre-device gates.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

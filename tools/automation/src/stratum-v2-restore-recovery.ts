@@ -34,11 +34,11 @@ export type RestoreRecoveryArgs = {
   readonly redactEvidence: true;
 };
 
-const taskId = "task-parity-str005-installed-package-recovery";
-const planRelative = "docs/parity/work-plans/20260824T000902Z-STR-005-RESTORE-RECOVERY/PLAN.md";
-const expectedPrivateRoot = "scratch/str005-installed-package-recovery/recovery-001";
+const taskId = "task-parity-str005-installed-package-recovery-002";
+const planRelative = "docs/parity/work-plans/20260824T012436Z-STR-005-RESTORE-RECOVERY2/PLAN.md";
+const expectedPrivateRoot = "scratch/str005-installed-package-recovery/recovery-002";
 const expectedProjection =
-  "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection.json";
+  "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-002.json";
 
 export class RestoreRecoveryError extends Error {
   public constructor(

@@ -5,9 +5,9 @@ import { sha256, type RestoreBundle } from "./stratum-v2-restore-model.js";
 import { validateRestoreReadiness } from "./stratum-v2-restore-validator.js";
 
 const restoreProjection =
-  "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection.json";
+  "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-002.json";
 const restorePlan =
-  "docs/parity/work-plans/20260824T000902Z-STR-005-RESTORE-RECOVERY/PLAN.md";
+  "docs/parity/work-plans/20260824T012436Z-STR-005-RESTORE-RECOVERY2/PLAN.md";
 
 type RunProcess = (
   workspace: string,

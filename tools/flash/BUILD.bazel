@@ -235,6 +235,7 @@ rust_binary(
         "//:docs/parity/work-plans/20260817T005227Z-REL-003/PLAN.md",
         "//:docs/parity/work-plans/20260822T024037Z-SELF-001-RETRY-4/PLAN.md",
         "//:docs/parity/work-plans/20260824T000902Z-STR-005-RESTORE-RECOVERY/PLAN.md",
+        "//:docs/parity/work-plans/20260824T012436Z-STR-005-RESTORE-RECOVERY2/PLAN.md",
     ],
     crate_name = "bitaxe_flash",
     edition = "2021",
