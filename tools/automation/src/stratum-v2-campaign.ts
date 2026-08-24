@@ -6,6 +6,8 @@ import path from "node:path";
 import { restoreSelfTestSettings } from "./self-test-campaign-restoration.js";
 import { type JsonObject, prepareStratumV2Campaign } from "./stratum-v2-campaign-preflight.js";
 import { fetchRuntimeObject, monitorRuntimeOrigin, prepareStratumV2RuntimeAdmission } from "./stratum-v2-runtime-admission.js";
+import type { RestoreBundle } from "./stratum-v2-restore-model.js";
+import { admitStratumV2RestoreBundle, restoreRuntimeMatches } from "./stratum-v2-restore-admission.js";
 import { sourceWorkspaceRoot } from "./workspace.js";
 
 export type CampaignArgs = {
@@ -13,6 +15,7 @@ export type CampaignArgs = {
   readonly port: string;
   readonly packageManifest: string;
   readonly wifiCredentials: string;
+  readonly restoreBundle: string;
   readonly privateRoot: string;
   readonly projection: string;
   readonly durationSeconds: 180;
@@ -67,6 +70,8 @@ export type StratumV2RuntimeAdmissionResult = {
 
 const expectedPrivateRoot = "scratch/str005-stratum-v2/attempt-004";
 const expectedProjection = "docs/parity/evidence/str005-stratum-v2/stratum-v2-projection.json";
+const expectedRestoreBundle =
+  "scratch/str005-installed-package-recovery/recovery-001/restore-bundle.private.json";
 const maximumOutputBytes = 1_048_576;
 
 export function campaignWorkspaceRoot(
@@ -157,7 +162,7 @@ export function parseStratumV2CampaignArgs(values: readonly string[]): CampaignA
     index += 1;
   }
   const allowed = new Set([
-    "--board", "--port", "--package-manifest", "--wifi-credentials", "--private-root",
+    "--board", "--port", "--package-manifest", "--wifi-credentials", "--restore-bundle", "--private-root",
     "--projection", "--duration-seconds", "--redact-evidence",
   ]);
   if ([...parsed.keys()].some(key => !allowed.has(key))) {
@@ -174,8 +179,10 @@ export function parseStratumV2CampaignArgs(values: readonly string[]): CampaignA
   const duration = value("--duration-seconds");
   const privateRoot = value("--private-root");
   const projection = value("--projection");
+  const restoreBundle = value("--restore-bundle");
   if (board !== "205" || duration !== "180" || parsed.get("--redact-evidence") !== true
-    || privateRoot !== expectedPrivateRoot || projection !== expectedProjection) {
+    || privateRoot !== expectedPrivateRoot || projection !== expectedProjection
+    || restoreBundle !== expectedRestoreBundle) {
     fail("invalid_invocation", "campaign contract does not match attempt-004", "invocation");
   }
   return {
@@ -183,6 +190,7 @@ export function parseStratumV2CampaignArgs(values: readonly string[]): CampaignA
     port: value("--port"),
     packageManifest: value("--package-manifest"),
     wifiCredentials: value("--wifi-credentials"),
+    restoreBundle,
     privateRoot,
     projection,
     durationSeconds: 180,
@@ -302,26 +310,6 @@ export async function selectRestorePackage(
   return candidates[0];
 }
 
-async function restorePackageFromManifest(
-  manifestPath: string,
-  manifest: JsonObject,
-): Promise<RestorePackage> {
-  const artifacts = manifest["artifacts"];
-  if (!Array.isArray(artifacts)) fail("evidence_invalid", "package artifacts are unavailable");
-  const factory = artifacts
-    .map(value => object(value, "artifact"))
-    .find(value => value["kind"] === "factory_merged_image");
-  if (factory === undefined) fail("evidence_invalid", "factory package artifact is unavailable");
-  const factoryPath = path.resolve(path.dirname(manifestPath), requiredString(factory, "path", "factory"));
-  if (!(await stat(factoryPath)).isFile()) fail("evidence_invalid", "factory package bytes are unavailable");
-  return {
-    manifestPath,
-    sourceCommit: requiredString(manifest, "source_commit", "manifest"),
-    appElfSha256: requiredString(manifest, "app_elf_sha256", "manifest"),
-    factorySha256: requiredString(factory, "sha256", "factory"),
-  };
-}
-
 async function localIpv4(workspace: string): Promise<string> {
   const route = await runCampaignProcess(
     workspace,
@@ -388,14 +376,16 @@ async function restorePackageAndSettings(
   workspace: string,
   flashProgram: string,
   args: CampaignArgs,
-  restore: RestorePackage,
+  restoreBundlePath: string,
+  restoreBundle: RestoreBundle,
   backup: JsonObject,
   poolPath: string,
   changedPackage: boolean,
 ): Promise<JsonObject> {
   if (changedPackage) {
     const flash = await runCampaignProcess(workspace, flashProgram, [
-      "flash", "--board", "205", "--port", args.port, "--manifest", restore.manifestPath,
+      "restore-installed", "--board", "205", "--port", args.port,
+      "--restore-bundle", restoreBundlePath,
       "--wifi-credentials", args.wifiCredentials, "--redact-evidence",
     ], 180_000);
     if (flash.exitCode !== 0) fail("hardware_blocked", "prior package restoration failed");
@@ -409,9 +399,7 @@ async function restorePackageAndSettings(
   );
   await restoreSelfTestSettings(origin, backup, args.wifiCredentials, poolPath);
   const confirmed = await fetchRuntimeObject(origin, "/api/system/info", fail);
-  if (confirmed["sourceCommit"] !== restore.sourceCommit
-    || confirmed["appElfSha256"] !== restore.appElfSha256
-    || confirmed["startMiningOnBoot"] !== false) {
+  if (!restoreRuntimeMatches(restoreBundle, confirmed)) {
     fail("hardware_blocked", "final package or settings restoration mismatch");
   }
   return confirmed;
@@ -425,6 +413,7 @@ export async function inspectStratumV2CampaignPreflight(
     runProcess: runCampaignProcess,
     fail,
   });
+  await admitStratumV2RestoreBundle(workspace, args.restoreBundle, runCampaignProcess);
   return {
     schema_version: "bitaxe-stratum-v2-campaign-preflight-v1",
     status: "ready",
@@ -438,6 +427,11 @@ async function runtimeAdmission(
   workspace: string,
   args: CampaignArgs,
 ): ReturnType<typeof prepareStratumV2RuntimeAdmission> {
+  const restore = await admitStratumV2RestoreBundle(
+    workspace,
+    args.restoreBundle,
+    runCampaignProcess,
+  );
   return prepareStratumV2RuntimeAdmission(workspace, args, {
     fail,
     preparePreflight: () => prepareStratumV2Campaign(
@@ -446,8 +440,8 @@ async function runtimeAdmission(
       { runProcess: runCampaignProcess, fail },
     ),
     runProcess: runCampaignProcess,
-    restorePackageFromManifest,
-    selectRestorePackage,
+    restoreBundle: restore.bundle,
+    restoreBundlePath: restore.path,
   });
 }
 
@@ -481,7 +475,8 @@ export async function runStratumV2Campaign(
     head,
     settings,
     theme,
-    restore,
+    restoreBundle,
+    restoreBundlePath,
     changedPackage,
   } = admission;
   const privateParent = path.dirname(privateRoot);
@@ -545,7 +540,8 @@ export async function runStratumV2Campaign(
       workspace,
       path.join(workspace, "bazel-bin/tools/flash/flash"),
       args,
-      restore,
+      restoreBundlePath,
+      restoreBundle,
       backup,
       poolPath,
       changedPackage,
@@ -602,7 +598,8 @@ export async function runStratumV2Campaign(
           workspace,
           path.join(workspace, "bazel-bin/tools/flash/flash"),
           args,
-          restore,
+          restoreBundlePath,
+          restoreBundle,
           backup,
           poolPath,
           changedPackage,

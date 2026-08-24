@@ -195,6 +195,9 @@ stratum-v2-campaign-preflight *args:
 stratum-v2-runtime-admission *args:
     bazel run //tools/automation:stratum_v2_runtime_admission -- {{ args }}
 
+stratum-v2-restore-recovery *args:
+    bazel run //tools/automation:stratum_v2_restore_recovery -- {{ args }}
+
 validate-emc2101-thermal-fault-evidence projection:
     #!/usr/bin/env bash
     set -euo pipefail

@@ -63,6 +63,8 @@ import "./static-provenance.test.js";
 import "./static-ui.test.js";
 import "./stratum-v2-campaign-validator.test.js";
 import "./stratum-v2-campaign.test.js";
+import "./stratum-v2-restore-model.test.js";
+import "./stratum-v2-restore-workflow.test.js";
 import "./workspace.test.js";
 import "./workflow.test.js";
 import "./version-evidence.test.js";

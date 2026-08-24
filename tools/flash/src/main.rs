@@ -51,6 +51,7 @@ mod package;
 mod package_admission;
 mod redaction;
 mod release_recovery;
+mod restore_installed;
 mod self_test_intent;
 mod support;
 mod thermal_fault_intent;
@@ -72,6 +73,7 @@ pub(crate) use output::*;
 pub(crate) use package::*;
 pub(crate) use redaction::*;
 pub(crate) use release_recovery::*;
+pub(crate) use restore_installed::*;
 pub(crate) use self_test_intent::*;
 pub(crate) use support::*;
 pub(crate) use thermal_fault_intent::*;
@@ -125,6 +127,7 @@ fn main() -> Result<()> {
         CliCommand::SignalIdentify(command) => run_signal_identify(&command, &environment),
         CliCommand::Phase35Probe(command) => run_phase35_probe(&command, &environment),
         CliCommand::ReleaseRecovery(command) => run_release_recovery(&command, &environment),
+        CliCommand::RestoreInstalled(command) => run_restore_installed(&command, &environment),
     };
     let device_effect_state = environment.device_effect_state();
     let cleanup_result = environment.finish_usb_session();

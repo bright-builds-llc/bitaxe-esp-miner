@@ -1,12 +1,11 @@
 import assert from "node:assert/strict";
-import { chmod, mkdtemp, mkdir, realpath, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, realpath, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
 import {
   campaignWorkspaceRoot,
-  inspectStratumV2CampaignPreflight,
   parseStratumV2CampaignArgs,
   runCampaignProcess,
   selectRestorePackage,
@@ -14,6 +13,7 @@ import {
   StratumV2CampaignError,
   stratumV2CampaignFailureResult,
 } from "./stratum-v2-campaign.js";
+import { prepareStratumV2Campaign } from "./stratum-v2-campaign-preflight.js";
 import { singleRuntimeOrigin } from "./stratum-v2-runtime-admission.js";
 
 const exactArgs = [
@@ -21,6 +21,7 @@ const exactArgs = [
   "--port", "/dev/cu.usbmodem101",
   "--package-manifest", "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
   "--wifi-credentials", "wifi-credentials.json",
+  "--restore-bundle", "scratch/str005-installed-package-recovery/recovery-001/restore-bundle.private.json",
   "--private-root", "scratch/str005-stratum-v2/attempt-004",
   "--projection", "docs/parity/evidence/str005-stratum-v2/stratum-v2-projection.json",
   "--duration-seconds", "180",
@@ -151,23 +152,22 @@ test("campaign failure output exposes only the closed pre-effect discriminator",
   assert(!JSON.stringify(result).includes("sensitive"));
 });
 
-test("preflight proves every read-only predicate without creating the private root", async () => {
+test("software preflight proves read-only source predicates without creating the private root", async () => {
   // Arrange
   const workspace = await createPreflightWorkspace();
   try {
     const args = parseStratumV2CampaignArgs(exactArgs);
 
     // Act
-    const result = await inspectStratumV2CampaignPreflight(workspace, args);
+    await prepareStratumV2Campaign(workspace, args, {
+      runProcess: runCampaignProcess,
+      fail: (category, message, checkpoint) => {
+        throw new StratumV2CampaignError(category, message, checkpoint);
+      },
+    });
 
     // Assert
-    assert.deepEqual(result, {
-      schema_version: "bitaxe-stratum-v2-campaign-preflight-v1",
-      status: "ready",
-      checkpoint: "pre_effect_ready",
-      effect_started: false,
-      private_root_created: false,
-    });
+    await assert.rejects(stat(path.join(workspace, "scratch/str005-stratum-v2/attempt-004")));
   } finally {
     await rm(workspace, { recursive: true, force: true });
   }

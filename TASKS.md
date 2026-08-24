@@ -210,6 +210,57 @@ mining, share, or hardware-control effect ran. The bounded local inventory has
 for the firmware currently running. STR-005 remains `implemented`. Do not flash
 a new baseline or weaken exact rollback; see the linked closure.
 
+Recovery continuation:
+`docs/parity/work-plans/20260824T000902Z-STR-005-RESTORE-RECOVERY/PLAN.md`
+
+### task-parity-str005-installed-package-recovery | 2026-08-23 | Recover installed firmware and verify STR-005
+
+- [x] Implement one protected restore-recovery owner with exact runtime identity,
+      bounded artifact search, one timestamp-pinned rebuild, and firmware-only
+      flash snapshot fallback that never reads NVS or coredump storage.
+- [x] Add a typed `package_v3` / `flash_snapshot_v1` restore bundle, independent
+      validator, historical-package admission, and exact snapshot restore adapter.
+- [x] Require the explicit validated restore bundle in the attempt-004 campaign
+      and prove original package/runtime/settings restoration on every terminal path.
+- [x] Pass all pure, real-process, flash-rendering, restoration, redaction,
+      Cargo, Bright Builds, Bazel, firmware, package, parity, and reference gates.
+- [ ] Commit and push the exact implementation before device access; recover the
+      installed bundle without mutation and run attempt-004 only after readiness.
+- [ ] Promote only `STR-005` on one independently accepted attempt-004 projection;
+      otherwise close truthfully, preserve `implemented`, and authorize no retry.
+
+Plan: `docs/parity/work-plans/20260824T000902Z-STR-005-RESTORE-RECOVERY/PLAN.md`
+
+Authorization: repository source/test/docs/build/package, Git commit/push,
+read-only runtime HTTP/USB observation, bounded Git/submodule/toolchain network,
+one protected installed-firmware recovery, and the single attempt-004 campaign
+under the immutable plan. Recovery may search only repository/Bazel package
+locations, create one owned detached worktree, perform one exact historical
+rebuild, and, only if no exact package is recovered, read the eight plan-listed
+firmware ranges. It must never read raw NVS or coredump storage. Attempt-004 may
+flash the exact current package, use the local SV2 fixture and conservative
+400 MHz/1100 mV/100% fan profile, then restore the admitted original bundle and
+settings. Historical/raw restoration writes are allowed only after campaign
+effects and only through the plan-bound recovery adapter. A new baseline,
+external pool, direct UART/pins, fault injection, OTA, erase, arbitrary writes,
+unbounded mining, and attempt-005 remain prohibited.
+
+Software checkpoint: the recovery owner parses the installed source/reference,
+ELF digest, timestamp, build identity, IDF version, and running partition; scans
+bounded repository/Bazel package locations; performs at most one clean detached-
+worktree rebuild with canonical stable/volatile provenance; and captures only
+the eight admitted firmware ranges when rebuild recovery is unavailable. The
+independent validator enforces protected modes, containment, schema-v3 artifact
+digests or exact snapshot ranges, plan/source binding, and a closed redacted
+projection. Attempt-004 preflight/runtime admission require the fixed bundle,
+and the Rust restore adapter admits historical packages separately from normal
+current-workspace flashing or renders one managed eight-range write followed by
+Wi-Fi seed and exact runtime/settings verification. Ordered Cargo gates, 395
+flash tests, recovery/campaign tests, Bright Builds, all 54 Bazel tests,
+canonical firmware/package, parity/progress, redaction, reference cleanliness,
+selector lineage, and diff checks pass. No device effect ran during software
+implementation.
+
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
 - [x] Add a single-owner UART2 firmware shell for the pinned GPIO39/GPIO40

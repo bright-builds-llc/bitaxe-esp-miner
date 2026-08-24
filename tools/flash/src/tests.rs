@@ -17,6 +17,7 @@ mod capture;
 mod cli;
 mod cli_identify;
 mod cli_release_recovery;
+mod cli_restore_installed;
 #[path = "tests/evidence.rs"]
 mod evidence_cases;
 mod input_uat;

@@ -27,6 +27,26 @@ pub(crate) enum CliCommand {
     Phase35Probe(Phase35ProbeCommand),
     #[command(name = "rel003-large-erase")]
     ReleaseRecovery(ReleaseRecoveryCommand),
+    #[command(name = "restore-installed")]
+    RestoreInstalled(RestoreInstalledCommand),
+}
+
+#[derive(Debug, Parser, Clone)]
+pub(crate) struct RestoreInstalledCommand {
+    #[arg(long, default_value = "205", value_parser = parse_board)]
+    pub(crate) board: BoardId,
+
+    #[arg(long)]
+    pub(crate) port: String,
+
+    #[arg(long = "restore-bundle", value_parser = parse_utf8_path)]
+    pub(crate) restore_bundle: Utf8PathBuf,
+
+    #[arg(long = "wifi-credentials", value_parser = parse_utf8_path)]
+    pub(crate) wifi_credentials: Utf8PathBuf,
+
+    #[arg(long = "redact-evidence")]
+    pub(crate) redact_evidence: bool,
 }
 
 #[derive(Debug, Parser, Clone)]

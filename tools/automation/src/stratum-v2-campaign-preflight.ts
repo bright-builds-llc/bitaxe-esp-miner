@@ -47,6 +47,9 @@ export type PreparedStratumV2Campaign = {
   readonly head: string;
 };
 
+const restoreProjectionStatus =
+  "?? docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection.json";
+
 async function requireMode(
   candidate: string,
   mode: number,
@@ -175,7 +178,10 @@ export async function prepareStratumV2Campaign(
     dependencies,
   );
   const head = headResult.stdout.trim();
-  if (status.exitCode !== 0 || status.stdout.length !== 0
+  const unexpectedStatus = status.stdout
+    .split(/\r?\n/u)
+    .filter(line => line.length > 0 && line !== restoreProjectionStatus);
+  if (status.exitCode !== 0 || unexpectedStatus.length !== 0
     || typeof manifest["source_commit"] !== "string"
     || manifest["source_commit"] !== head) {
     dependencies.fail(

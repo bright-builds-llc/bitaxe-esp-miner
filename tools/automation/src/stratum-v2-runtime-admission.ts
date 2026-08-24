@@ -5,6 +5,10 @@ import {
   type PreparedStratumV2Campaign,
 } from "./stratum-v2-campaign-preflight.js";
 import { validateRestorableInputs } from "./stratum-v2-campaign-settings.js";
+import {
+  parseInstalledIdentity,
+  type RestoreBundle,
+} from "./stratum-v2-restore-model.js";
 
 type RuntimeCheckpoint =
   | "runtime_monitor_process"
@@ -23,13 +27,6 @@ type RuntimeProcessResult = {
   readonly stdout: string;
 };
 
-type RuntimeRestorePackage = {
-  readonly manifestPath: string;
-  readonly sourceCommit: string;
-  readonly appElfSha256: string;
-  readonly factorySha256: string;
-};
-
 type RuntimeDependencies = {
   readonly fail: (
     category: string,
@@ -43,20 +40,15 @@ type RuntimeDependencies = {
     args: readonly string[],
     timeoutMillis: number,
   ) => Promise<RuntimeProcessResult>;
-  readonly restorePackageFromManifest: (
-    manifestPath: string,
-    manifest: JsonObject,
-  ) => Promise<RuntimeRestorePackage>;
-  readonly selectRestorePackage: (
-    workspace: string,
-    appElfSha256: string,
-  ) => Promise<RuntimeRestorePackage>;
+  readonly restoreBundle: RestoreBundle;
+  readonly restoreBundlePath: string;
 };
 
 export type PreparedStratumV2RuntimeAdmission = PreparedStratumV2Campaign & {
   readonly settings: JsonObject;
   readonly theme: JsonObject;
-  readonly restore: RuntimeRestorePackage;
+  readonly restoreBundle: RestoreBundle;
+  readonly restoreBundlePath: string;
   readonly changedPackage: boolean;
 };
 
@@ -155,28 +147,18 @@ export async function prepareStratumV2RuntimeAdmission(
   await validateRestorableInputs(settings, preflight.wifiPath, preflight.poolPath, (category, message) => {
     dependencies.fail(category, message, "restoration_inputs");
   });
+  const installedIdentity = parseInstalledIdentity(settings);
+  if (JSON.stringify(installedIdentity) !== JSON.stringify(dependencies.restoreBundle.installed_identity)) {
+    dependencies.fail("hardware_blocked", "restore bundle identity mismatch", "restore_package");
+  }
   const currentAppElf = requiredString(settings, "appElfSha256", dependencies.fail);
-  let restore: RuntimeRestorePackage;
-  try {
-    restore = preflight.manifest["app_elf_sha256"] === currentAppElf
-      ? await dependencies.restorePackageFromManifest(preflight.manifestPath, preflight.manifest)
-      : await dependencies.selectRestorePackage(workspace, currentAppElf);
-  } catch {
-    dependencies.fail("hardware_blocked", "prior package identity is unavailable", "restore_package");
-  }
-  if (restore.sourceCommit !== requiredString(settings, "sourceCommit", dependencies.fail)) {
-    dependencies.fail(
-      "hardware_blocked",
-      "prior package source identity is unavailable",
-      "restore_package",
-    );
-  }
   return {
     ...preflight,
     settings,
     theme,
-    restore,
-    changedPackage: restore.appElfSha256
+    restoreBundle: dependencies.restoreBundle,
+    restoreBundlePath: dependencies.restoreBundlePath,
+    changedPackage: currentAppElf
       !== requiredString(preflight.manifest, "app_elf_sha256", dependencies.fail),
   };
 }
