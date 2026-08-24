@@ -4277,12 +4277,12 @@ prerequisites exist and continue to the next software-actionable row.
       a fresh private root, fresh public projection, and immutable continuation.
 - [x] Pass every software, privacy, package, reference, selector, and diff gate;
       commit/push before device access and build the exact clean package.
-- [ ] Run recovery-002 once, independently validate its exact restore bundle,
+- [x] Run recovery-002 once, independently validate its exact restore bundle,
       and withhold the campaign unless all no-effect readiness gates pass.
 - [ ] Run still-unused attempt-004 once only after admission, then safe-stop,
       restore the original bundle/settings, prove cleanup and exact identity,
       and independently validate the closed campaign projection.
-- [ ] Promote only `STR-005` on complete accepted hardware evidence; otherwise
+- [x] Promote only `STR-005` on complete accepted hardware evidence; otherwise
       close truthfully at `implemented`, withhold `RESULT.md`, and do not retry.
 
 Plan: `docs/parity/work-plans/20260824T012436Z-STR-005-RESTORE-RECOVERY2/PLAN.md`
@@ -4321,6 +4321,21 @@ redaction, pinned-reference cleanliness, open-plan selection, sensitive-value
 review, and final diff checks pass. The selector resumes only `STR-005` through
 the new immutable plan. Commit/push and an exact clean package rebuild remain
 the final pre-device gates.
+
+Hardware closure: clean pushed source/package `de081a94` and a fresh detector
+passed. Recovery-002 completed all eight explicit-baud firmware-only reads,
+excluded NVS/coredump, created a protected snapshot bundle, and proved runtime
+continuity, but the owner stopped `evidence_invalid` at
+`independent_validation` and published no final projection. The same retained
+bundle/candidate passes a bounded post-run invocation of the validator with the
+original source/plan bindings, but the failed owner retained no diagnostic that
+can safely classify the child-only discrepancy. The post-run result does not
+override the terminal command. Attempt-004 remains unused and absent; no write,
+fixture, pool, mining, ASIC-control, or settings effect began. Private modes,
+process cleanup, unpublished-candidate containment, and post-run one-board
+detection pass. `STR-005` remains `implemented`; no retry is authorized.
+Closure:
+`docs/parity/work-plans/20260824T012436Z-STR-005-RESTORE-RECOVERY2/CLOSURE.md`.
 
 ## Future
 
