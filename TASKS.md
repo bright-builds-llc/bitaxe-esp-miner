@@ -213,6 +213,17 @@ a new baseline or weaken exact rollback; see the linked closure.
 Recovery continuation:
 `docs/parity/work-plans/20260824T000902Z-STR-005-RESTORE-RECOVERY/PLAN.md`
 
+Recovery outcome: clean pushed source and exact current package `5a0a3010`
+passed all gates, and a fresh detector admitted one Ultra 205. Bounded search
+and the single timestamp-pinned rebuild did not yield an exact installed
+package. Firmware-only fallback completed three allowed ranges, skipped NVS and
+coredump storage, then stopped as `hardware_blocked` / `snapshot_capture` when
+the 4 MiB factory read reached the fixed 300-second child limit. No bundle or
+public projection was published; attempt-004 remains unused and absent, no
+write or campaign effect began, private modes were repaired and verified, and
+post-run detection passed. `STR-005` remains `implemented`; this plan is closed
+and authorizes no retry. See the linked closure.
+
 ### task-parity-str005-installed-package-recovery | 2026-08-23 | Recover installed firmware and verify STR-005
 
 - [x] Implement one protected restore-recovery owner with exact runtime identity,
@@ -226,7 +237,7 @@ Recovery continuation:
       Cargo, Bright Builds, Bazel, firmware, package, parity, and reference gates.
 - [ ] Commit and push the exact implementation before device access; recover the
       installed bundle without mutation and run attempt-004 only after readiness.
-- [ ] Promote only `STR-005` on one independently accepted attempt-004 projection;
+- [x] Promote only `STR-005` on one independently accepted attempt-004 projection;
       otherwise close truthfully, preserve `implemented`, and authorize no retry.
 
 Plan: `docs/parity/work-plans/20260824T000902Z-STR-005-RESTORE-RECOVERY/PLAN.md`
@@ -260,6 +271,14 @@ flash tests, recovery/campaign tests, Bright Builds, all 54 Bazel tests,
 canonical firmware/package, parity/progress, redaction, reference cleanliness,
 selector lineage, and diff checks pass. No device effect ran during software
 implementation.
+
+Hardware closure: the recovery fallback stopped before readiness at the bounded
+factory-read timeout. Attempt-004 was withheld and remains unused; no device
+write, fixture, pool, mining, ASIC-control, or settings effect began. Cleanup,
+protected modes, absent campaign outputs, and a fresh one-board detector passed.
+The diagnosed readback timeout and interrupted-file mode defect is corrected in
+software but was not rerun. Closure:
+`docs/parity/work-plans/20260824T000902Z-STR-005-RESTORE-RECOVERY/CLOSURE.md`.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 

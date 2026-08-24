@@ -20,6 +20,10 @@ import {
 import { validateRestoreReadiness } from "./stratum-v2-restore-validator.js";
 import { parseRestoreRecoveryArgs } from "./stratum-v2-restore-recovery.js";
 import { restoreRuntimeMatches } from "./stratum-v2-restore-admission.js";
+import {
+  prepareSnapshotTarget,
+  snapshotReadArgs,
+} from "./stratum-v2-restore-snapshot.js";
 
 const sourceCommit = "a".repeat(40);
 const referenceCommit = "b".repeat(40);
@@ -203,4 +207,30 @@ test("snapshot readiness validator accepts only protected exact ranges", async (
     captureCommit,
     planDigest,
   ));
+});
+
+test("snapshot capture protects targets and renders the bounded fast read", async () => {
+  // Arrange
+  const root = await mkdtemp(path.join(os.tmpdir(), "restore-snapshot-target-"));
+  const candidate = path.join(root, "factory.bin");
+
+  // Act
+  await prepareSnapshotTarget(candidate);
+  const args = snapshotReadArgs("/dev/cu.usbmodem101", 0x10000, 0x400000, candidate);
+
+  // Assert
+  assert.equal((await stat(candidate)).mode & 0o777, 0o600);
+  assert.deepEqual(args, [
+    "read-flash",
+    "--chip", "esp32s3",
+    "--port", "/dev/cu.usbmodem101",
+    "--baud", "460800",
+    "--non-interactive",
+    "--before", "usb-reset",
+    "--after", "hard-reset",
+    "--skip-update-check",
+    "0x10000",
+    "0x400000",
+    candidate,
+  ]);
 });

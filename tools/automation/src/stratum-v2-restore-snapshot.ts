@@ -1,4 +1,4 @@
-import { chmod, mkdir, readFile, stat } from "node:fs/promises";
+import { chmod, mkdir, open, readFile, stat } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -13,6 +13,36 @@ import { runCampaignProcess } from "./stratum-v2-campaign.js";
 import { findEsptool } from "./package.js";
 
 function hex(value: number): string { return `0x${value.toString(16)}`; }
+
+const snapshotReadBaud = "460800";
+const snapshotReadTimeoutMillis = 600_000;
+
+export function snapshotReadArgs(
+  port: string,
+  address: number,
+  size: number,
+  candidate: string,
+): readonly string[] {
+  return [
+    "read-flash",
+    "--chip", "esp32s3",
+    "--port", port,
+    "--baud", snapshotReadBaud,
+    "--non-interactive",
+    "--before", "usb-reset",
+    "--after", "hard-reset",
+    "--skip-update-check",
+    hex(address),
+    hex(size),
+    candidate,
+  ];
+}
+
+export async function prepareSnapshotTarget(candidate: string): Promise<void> {
+  const handle = await open(candidate, "wx", 0o600);
+  await handle.close();
+  await chmod(candidate, 0o600);
+}
 
 async function requireSuccess(
   workspace: string,
@@ -60,19 +90,24 @@ export async function captureRestoreSnapshot(
   const ranges = [];
   for (const template of templates) {
     const candidate = path.join(privateRoot, template.path);
-    await requireSuccess(workspace, "espflash", [
-      "read-flash",
-      "--chip", "esp32s3",
-      "--port", port,
-      "--non-interactive",
-      "--before", "usb-reset",
-      "--after", "hard-reset",
-      "--skip-update-check",
-      hex(template.address),
-      hex(template.size),
-      candidate,
-    ], 300_000);
-    await chmod(candidate, 0o600);
+    await prepareSnapshotTarget(candidate);
+    let maybeChildError: unknown;
+    try {
+      await requireSuccess(
+        workspace,
+        "espflash",
+        snapshotReadArgs(port, template.address, template.size, candidate),
+        snapshotReadTimeoutMillis,
+      );
+    } catch (error) {
+      maybeChildError = error;
+    }
+    try {
+      await chmod(candidate, 0o600);
+    } catch (error) {
+      if (maybeChildError === undefined) throw error;
+    }
+    if (maybeChildError !== undefined) throw maybeChildError;
     const metadata = await stat(candidate);
     if (!metadata.isFile() || metadata.size !== template.size) {
       throw new Error("snapshot range size mismatch");
