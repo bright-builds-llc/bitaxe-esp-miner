@@ -15,7 +15,6 @@ function validProjection(): Record<string, unknown> {
     source_commit: source,
     reference_commit: reference,
     package_manifest_sha256: manifest,
-    settings_backup_sha256: "d".repeat(64),
     fixture_accepted: true,
     share_target_valid: true,
     safe_stop_complete: true,

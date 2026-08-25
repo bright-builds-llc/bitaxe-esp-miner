@@ -58,6 +58,7 @@ export type RuntimeMonitorDiagnostics = {
 };
 
 export type PreparedStratumV2RuntimeAdmission = PreparedStratumV2Campaign & {
+  readonly origin: URL;
   readonly settings: JsonObject;
   readonly theme: JsonObject;
   readonly restoreBundle: RestoreBundle;
@@ -195,6 +196,7 @@ export async function prepareStratumV2RuntimeAdmission(
   const currentAppElf = requiredString(settings, "appElfSha256", dependencies.fail);
   return {
     ...preflight,
+    origin,
     settings,
     theme,
     restoreBundle: dependencies.restoreBundle,

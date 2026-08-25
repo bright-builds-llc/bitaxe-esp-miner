@@ -81,7 +81,7 @@ test("budget components remain bound to child source limits", async () => {
   assert.match(campaign, /duration_seconds\s*\.saturating_mul\(2\)/u);
   assert(!campaign.includes("COMMAND_EFFECTS_OPERATOR_READY_SECONDS"));
   assert.match(environment, /Duration::from_secs\(10\)/u);
-  assert.equal(environment.match(/Duration::from_secs\(360\)/gu)?.length, 1);
+  assert.equal(environment.match(/Duration::from_secs\(360\)/gu)?.length, 2);
   assert.match(usb, /for attempt in 1\.\.=2/u);
   assert.match(observation, /observe_receive_only_ephemeral_chunks_operator_gated/u);
   assert.match(observation, /maybe_duration: Option<Duration>/u);

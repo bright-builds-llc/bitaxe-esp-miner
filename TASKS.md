@@ -4591,6 +4591,58 @@ remains `implemented`, and this task remains active but blocked at
 `stop_authority_boundary`. Closure:
 `docs/parity/work-plans/20260825T150417Z-STR-005-EXACT-RESTORATION/CLOSURE.md`.
 
+### task-str005-restore-and-verify-continuation | 2026-08-25 | Restore Ultra 205 and verify STR-005
+
+- [x] Add the exact managed-esptool USB executor with closed transfer
+      diagnostics and real-child regression coverage.
+- [ ] Restore recovery-006 plus exact settings/theme through fresh remediation
+      ordinal 2 and independently publish the restoration projection.
+- [x] Replace default-route fixture addressing with same-subnet admission and
+      add closed Stratum V2 transport/fixture terminal diagnostics.
+- [ ] Run the local authenticated fixture through fresh attempt-005 only after
+      exact original-state admission; safe-stop and restore on every outcome.
+- [ ] Continue only after a new regression-proved boundary; never retry an
+      unchanged signature or reuse a sealed root.
+- [ ] Promote only STR-005 after accepted Noise/channel/job/BM1366/share,
+      safe-stop, cleanup, and exact restoration evidence.
+
+Plan: `docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md`
+
+Authorization: repository diagnosis/fixes/tests/docs/build/package, Git
+commit/push, task-gated USB and local-network fixture use, fresh progress-backed
+restoration/campaign ordinals, exact recovery-006 writes, Wi-Fi NVS seed,
+settings/theme restoration, conservative Ultra 205 mining, protected evidence,
+and STR-005-only promotion under the linked immutable plan. External pools, raw
+NVS/coredump reads, a new baseline, direct UART/pins, fault injection, OTA,
+erase, arbitrary writes, other boards, and unbounded mining remain prohibited.
+
+Initial boundary: remediation-001 stopped before launching a write child because
+the snapshot adapter rendered managed `esptool.py` while the shared executor
+accepted only `espflash`. Current device evidence remains campaign source
+`78784a4a`, pinned reference, `mineonboot=false`, mining `safe_blocked`, and zero
+hashrate/shares. The first eligible hardware action is remediation ordinal 2
+after the exact executor boundary passes red/green, all gates, push, package,
+and no-effect admission.
+
+Verification: Pending.
+
+Completion review: Pending. `STR-005` remains `implemented` until the full
+hardware chain and exact final restoration are independently accepted.
+
+Progress: the generic executor still rejects non-espflash programs; a private
+managed-esptool type now admits only the exact snapshot transaction and runs it
+through the existing USB lease, owned-child supervision, effect classifier,
+reacquisition, retry, and cleanup. Separate protected snapshot/Wi-Fi receipts
+retain pre-transfer, partial, complete, termination, count, and digest facts.
+The real-child partial-transfer regression and standalone/campaign restore
+authorizations pass. Attempt-005 now selects one non-tunnel host address on the
+fresh device subnet, binds the fixture there, publishes seven closed firmware
+transport details, retains eight fixture progress facts, and maps child,
+fixture, and restoration failures to typed checkpoints. Focused tests, ordered
+Cargo gates, Bright Builds, and all 55 Bazel tests pass. One combined automation
+run exposed unrelated timing-sensitive child tests; their unchanged focused
+reruns and the unchanged full Bazel rerun passed.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

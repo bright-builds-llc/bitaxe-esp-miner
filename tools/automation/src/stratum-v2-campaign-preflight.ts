@@ -1,4 +1,5 @@
 import { readFile, readdir, stat } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 
 export type JsonObject = Record<string, unknown>;
@@ -8,6 +9,8 @@ type PreflightArgs = {
   readonly wifiCredentials: string;
   readonly privateRoot: string;
   readonly projection: string;
+  readonly plan: string;
+  readonly campaignOrdinal: 5;
 };
 
 type PreflightCheckpoint =
@@ -49,6 +52,8 @@ export type PreparedStratumV2Campaign = {
 
 const restoreProjectionStatus =
   "?? docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-006.json";
+const planSha256 = "946ec6b353add5e2ef08fe9047640f9271a68556021ca92e47661f6393103c1a";
+const taskId = "task-str005-restore-and-verify-continuation";
 
 async function requireMode(
   candidate: string,
@@ -135,6 +140,7 @@ export async function prepareStratumV2Campaign(
   const projection = path.resolve(workspace, args.projection);
   const manifestPath = path.resolve(workspace, args.packageManifest);
   const wifiPath = path.resolve(workspace, args.wifiCredentials);
+  const planPath = path.resolve(workspace, args.plan);
   await requireAbsent(privateRoot, dependencies);
   await requireAbsent(projection, dependencies);
   const ignored = await runAtCheckpoint(
@@ -152,6 +158,19 @@ export async function prepareStratumV2Campaign(
     );
   }
   await requireMode(wifiPath, 0o600, "wifi_restore_input", dependencies);
+  let plan: string;
+  let tasks: string;
+  try {
+    plan = await readFile(planPath, "utf8");
+    tasks = await readFile(path.join(workspace, "TASKS.md"), "utf8");
+  } catch {
+    dependencies.fail("evidence_invalid", "campaign plan binding is unavailable", "source_identity");
+  }
+  if (args.campaignOrdinal !== 5
+    || createHash("sha256").update(plan).digest("hex") !== planSha256
+    || !tasks.includes(`### ${taskId}`)) {
+    dependencies.fail("evidence_invalid", "campaign plan binding is invalid", "source_identity");
+  }
   const poolPath = await poolRestoreInput(workspace, dependencies);
   let manifestDocument: string;
   let manifest: JsonObject;

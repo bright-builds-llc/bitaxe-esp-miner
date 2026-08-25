@@ -353,6 +353,30 @@ impl FlashEnvironment for FakeFlashEnvironment {
         Ok(())
     }
 
+    fn execute_esptool_write_flash(&self, command: &ManagedEsptoolWriteFlash) -> Result<()> {
+        self.executed_commands.borrow_mut().push(CommandSpec::new(
+            command.program().as_str(),
+            command.args(),
+        ));
+        let effect = if self.snapshot_write_failure {
+            UsbDeviceEffectState::None
+        } else {
+            UsbDeviceEffectState::Completed
+        };
+        self.last_usb_command_diagnostic.replace(Some(fake_usb_command_diagnostic(
+            if self.snapshot_write_failure {
+                UsbTerminalCategory::FlashFailedBeforeTransfer
+            } else {
+                UsbTerminalCategory::Ready
+            },
+            effect,
+        )));
+        if self.snapshot_write_failure {
+            bail!("sentinel esptool failure");
+        }
+        Ok(())
+    }
+
     fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>> {
         self.execute(command_spec)?;
         Ok(b"Chip type: ESP32-S3\nMAC address: 02:00:00:00:A1:B1\n".to_vec())

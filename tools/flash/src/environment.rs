@@ -26,6 +26,7 @@ pub(crate) trait FlashEnvironment {
     ) -> Result<()>;
     fn begin_usb_session(&self, operation: UsbOperation, port: &str) -> Result<()>;
     fn execute(&self, command_spec: &CommandSpec) -> Result<()>;
+    fn execute_esptool_write_flash(&self, command: &ManagedEsptoolWriteFlash) -> Result<()>;
     fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>>;
     fn receive_only(&self, command_spec: &CommandSpec, timeout_seconds: u64) -> Result<Vec<u8>>;
     fn campaign_lease_id(&self) -> u64;
@@ -351,6 +352,39 @@ impl FlashEnvironment for LocalFlashEnvironment {
 
     fn execute(&self, command_spec: &CommandSpec) -> Result<()> {
         self.execute_with_output(command_spec).map(|_| ())
+    }
+
+    fn execute_esptool_write_flash(&self, command: &ManagedEsptoolWriteFlash) -> Result<()> {
+        let canonical_workspace = fs::canonicalize(self.workspace_dir.as_std_path())?;
+        let canonical_program = fs::canonicalize(command.program().as_std_path())?;
+        let relative = canonical_program
+            .strip_prefix(&canonical_workspace)
+            .context("managed esptool leaves workspace")?;
+        let allowed = [
+            ".embuild/espressif/python_env/idf5.5_py3.14_env/bin/esptool.py",
+            ".embuild/espressif/python_env/idf5.5_py3.9_env/bin/esptool.py",
+        ];
+        if !allowed
+            .iter()
+            .any(|candidate| relative == std::path::Path::new(candidate))
+            || fs::symlink_metadata(command.program().as_std_path())?
+                .file_type()
+                .is_symlink()
+        {
+            bail!("managed_esptool=blocked reason=program_contract");
+        }
+        let mut session_slot = self.usb_session.borrow_mut();
+        let Some(session) = session_slot.as_mut() else {
+            bail!("cleanup_failed: esptool write attempted without a repository session");
+        };
+        session
+            .run_esptool_write_flash(
+                command.program().as_std_path(),
+                command.args(),
+                Duration::from_secs(360),
+            )
+            .map(|_| ())
+            .map_err(|error| anyhow::anyhow!("{error}"))
     }
 
     fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>> {

@@ -59,10 +59,46 @@ struct ResultDocument {
     elapsed_millis: u64,
 }
 
+#[derive(Default, Serialize)]
+struct FixtureProgress {
+    listener_ready: bool,
+    connection_accepted: bool,
+    noise_authenticated: bool,
+    setup_accepted: bool,
+    channel_opened: bool,
+    job_sent: bool,
+    share_received: bool,
+    response_sent: bool,
+}
+
+#[derive(Serialize)]
+struct TerminalDocument<'a> {
+    schema_version: &'static str,
+    status: &'a str,
+    terminal_category: &'a str,
+    progress: &'a FixtureProgress,
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
     validate_bounds(&args)?;
     create_private_root(&args.private_root)?;
+    let mut progress = FixtureProgress::default();
+    let result = run_fixture(&args, &mut progress);
+    let accepted = result.is_ok();
+    write_private_json(
+        &args.private_root.join("terminal.json"),
+        &TerminalDocument {
+            schema_version: "bitaxe-stratum-v2-fixture-terminal-v1",
+            status: if accepted { "accepted" } else { "failed" },
+            terminal_category: fixture_terminal_category(&progress),
+            progress: &progress,
+        },
+    )?;
+    result
+}
+
+fn run_fixture(args: &Args, progress: &mut FixtureProgress) -> Result<()> {
     let listener = TcpListener::bind(args.listen_address).context("bind fixture listener")?;
     listener
         .set_nonblocking(true)
@@ -80,9 +116,10 @@ fn main() -> Result<()> {
             authority_public_key: encode_authority_public_key(authority_public),
         },
     )?;
+    progress.listener_ready = true;
     println!("stratum_v2_fixture=ready");
-
     let mut stream = accept_one(&listener, Duration::from_secs(args.accept_timeout_seconds))?;
+    progress.connection_accepted = true;
     stream
         .set_read_timeout(Some(Duration::from_secs(10)))
         .context("set read timeout")?;
@@ -91,15 +128,39 @@ fn main() -> Result<()> {
         .context("set write timeout")?;
     let started = Instant::now();
     let mut codec = respond_noise(&mut stream, authority_private, authority_public)?;
+    progress.noise_authenticated = true;
     let result = run_pool_session(
         &mut stream,
         &mut codec,
         started,
         Duration::from_secs(args.session_timeout_seconds),
+        progress,
     )?;
     write_private_json(&args.private_root.join("result.json"), &result)?;
     println!("stratum_v2_fixture=accepted");
     Ok(())
+}
+
+fn fixture_terminal_category(progress: &FixtureProgress) -> &'static str {
+    if !progress.listener_ready {
+        "listener"
+    } else if !progress.connection_accepted {
+        "accept"
+    } else if !progress.noise_authenticated {
+        "noise"
+    } else if !progress.setup_accepted {
+        "setup"
+    } else if !progress.channel_opened {
+        "channel"
+    } else if !progress.job_sent {
+        "job"
+    } else if !progress.share_received {
+        "share"
+    } else if !progress.response_sent {
+        "response"
+    } else {
+        "accepted"
+    }
 }
 
 fn validate_bounds(args: &Args) -> Result<()> {
@@ -193,11 +254,13 @@ fn run_pool_session(
     codec: &mut NoiseCodec,
     started: Instant,
     timeout: Duration,
+    progress: &mut FixtureProgress,
 ) -> Result<ResultDocument> {
     let setup = read_client_message(stream, codec, started, timeout)?;
     if !matches!(setup, ClientMessage::SetupConnection(_)) {
         bail!("expected setup connection");
     }
+    progress.setup_accepted = true;
     write_server_frame(
         stream,
         codec,
@@ -211,6 +274,7 @@ fn run_pool_session(
     let ClientMessage::OpenStandardMiningChannel(open) = open else {
         bail!("fixture requires a standard channel");
     };
+    progress.channel_opened = true;
     write_server_frame(
         stream,
         codec,
@@ -240,10 +304,12 @@ fn run_pool_session(
     };
     write_server_frame(stream, codec, &job.encode()?)?;
     write_server_frame(stream, codec, &prev_hash.encode()?)?;
+    progress.job_sent = true;
     let submit = read_client_message(stream, codec, started, timeout)?;
     let ClientMessage::SubmitSharesStandard(submit) = submit else {
         bail!("expected standard share submission");
     };
+    progress.share_received = true;
     let share_target_valid = validate_share(&job, &prev_hash, submit)?;
     if !share_target_valid {
         bail!("submitted share failed target validation");
@@ -259,6 +325,7 @@ fn run_pool_session(
         }
         .encode()?,
     )?;
+    progress.response_sent = true;
     Ok(ResultDocument {
         schema_version: "bitaxe-stratum-v2-fixture-result-v1",
         status: "accepted",
@@ -381,8 +448,21 @@ mod tests {
             let started = Instant::now();
             let mut codec =
                 respond_noise(&mut stream, authority_private, authority_public).expect("Noise");
-            run_pool_session(&mut stream, &mut codec, started, Duration::from_secs(10))
-                .expect("pool session")
+            let mut progress = FixtureProgress {
+                listener_ready: true,
+                connection_accepted: true,
+                noise_authenticated: true,
+                ..FixtureProgress::default()
+            };
+            let result = run_pool_session(
+                &mut stream,
+                &mut codec,
+                started,
+                Duration::from_secs(10),
+                &mut progress,
+            )
+            .expect("pool session");
+            (result, progress)
         });
         let mut stream = TcpStream::connect(address).expect("connect");
         stream
@@ -436,7 +516,7 @@ mod tests {
             .expect("submit event");
         send_session_event(&mut stream, &mut noise, submit);
         let accepted = handle_one_server_frame(&mut stream, &mut noise, &mut session);
-        let server_result = server.join().expect("server join");
+        let (server_result, progress) = server.join().expect("server join");
 
         // Assert
         assert!(accepted
@@ -444,6 +524,7 @@ mod tests {
             .any(|event| matches!(event, SessionEvent::ShareAccepted { accepted_count: 1 })));
         assert_eq!(server_result.status, "accepted");
         assert!(server_result.share_target_valid);
+        assert_eq!(fixture_terminal_category(&progress), "accepted");
     }
 
     fn test_config() -> SessionConfig {

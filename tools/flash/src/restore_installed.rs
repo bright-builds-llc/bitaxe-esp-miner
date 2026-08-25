@@ -8,12 +8,13 @@ pub(crate) const RESTORE_BUNDLE_RELATIVE: &str =
 pub(crate) const RESTORE_PLAN_RELATIVE: &str =
     "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md";
 pub(crate) const REMEDIATION_PLAN_RELATIVE: &str =
-    "docs/parity/work-plans/20260825T150417Z-STR-005-EXACT-RESTORATION/PLAN.md";
+    "docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md";
 pub(crate) const REMEDIATION_PLAN_SHA256: &str =
-    "55d821773eb277ed9e6e27ff0bc8cdd7aeb7c19fbe304ff5fe72cf8e452b8ceb";
+    "946ec6b353add5e2ef08fe9047640f9271a68556021ca92e47661f6393103c1a";
 const RECOVERY_CAPTURE_SOURCE: &str = "7d5d9504433d54ae28fe853c5827d6dd05693eef";
-pub(crate) const PREFLIGHT_ROOT: &str = "scratch/str005-exact-restoration/preflight-001";
-pub(crate) const EFFECT_ROOT: &str = "scratch/str005-exact-restoration/remediation-001";
+pub(crate) const PREFLIGHT_ROOT: &str = "scratch/str005-exact-restoration/preflight-002";
+pub(crate) const EFFECT_ROOT: &str = "scratch/str005-exact-restoration/remediation-002";
+pub(crate) const CAMPAIGN_RESTORE_ROOT: &str = "scratch/str005-stratum-v2/attempt-005/restoration";
 const RESTORE_SCHEMA: &str = "bitaxe-stratum-v2-restore-bundle-v1";
 pub(crate) const RESTORE_RANGES: [(&str, u32, u32); 8] = [
     ("bootloader", 0x000000, 0x008000),
@@ -75,9 +76,28 @@ enum RestoreBundle {
     },
 }
 
-struct PreparedRestore {
-    command: CommandSpec,
+pub(crate) struct ManagedEsptoolWriteFlash {
+    program: Utf8PathBuf,
+    args: Vec<String>,
     _snapshots: Vec<AdmittedExecutionSnapshot>,
+}
+
+impl ManagedEsptoolWriteFlash {
+    pub(crate) fn program(&self) -> &Utf8Path {
+        &self.program
+    }
+
+    pub(crate) fn args(&self) -> &[String] {
+        &self.args
+    }
+}
+
+enum PreparedRestore {
+    Package {
+        command: CommandSpec,
+        _snapshot: AdmittedExecutionSnapshot,
+    },
+    Snapshot(ManagedEsptoolWriteFlash),
 }
 
 #[derive(Debug, Deserialize)]
@@ -101,6 +121,23 @@ struct RestoreCommon<'a> {
     capture_source: &'a str,
     plan_sha256: &'a str,
     bundle_sha256: &'a str,
+}
+
+fn write_command_diagnostic(
+    private_root: &Utf8Path,
+    name: &str,
+    executor: &str,
+    environment: &impl FlashEnvironment,
+) -> Result<()> {
+    let diagnostic = environment.last_usb_command_diagnostic();
+    let mut bytes = serde_json::to_vec_pretty(&serde_json::json!({
+        "schema_version": "bitaxe-stratum-v2-restore-command-v1",
+        "executor": executor,
+        "diagnostic_available": diagnostic.is_some(),
+        "diagnostic": diagnostic,
+    }))?;
+    bytes.push(b'\n');
+    write_private_new_bytes(&private_root.join(name), &bytes)
 }
 
 fn require_mode(path: &Utf8Path, mode: u32, directory: bool) -> Result<()> {
@@ -151,8 +188,10 @@ fn validate_common(
         || provenance.build_identity().source_dirty()
         || authorization.schema_version != "bitaxe-stratum-v2-restore-authorization-v1"
         || authorization.board != 205
-        || authorization.ordinal != 1
-        || !matches!(authorization.action.as_str(), "preflight" | "start")
+        || !matches!(
+            (authorization.action.as_str(), authorization.ordinal),
+            ("preflight" | "start", 2) | ("campaign_restore", 5)
+        )
         || authorization.current_source_commit != provenance.build_identity().source_commit()
         || authorization.reference_commit != environment.reference_commit()
         || authorization.bundle_sha256 != common.bundle_sha256
@@ -227,7 +266,10 @@ fn snapshot_command(
     .into_iter()
     .map(Utf8Path::new)
     .map(|path| environment.workspace_path(path))
-    .find(|path| path.is_file())
+    .find(|path| {
+        fs::symlink_metadata(path.as_std_path())
+            .is_ok_and(|metadata| metadata.is_file() && !metadata.file_type().is_symlink())
+    })
     .context("restore_installed=blocked reason=esptool_missing")?;
     let mut args = vec![
         "--chip".to_owned(),
@@ -251,10 +293,11 @@ fn snapshot_command(
         args.push(format!("0x{address:x}"));
         args.push(snapshot.path().as_str().to_owned());
     }
-    Ok(Some(PreparedRestore {
-        command: CommandSpec::new(esptool.as_str(), args),
+    Ok(Some(PreparedRestore::Snapshot(ManagedEsptoolWriteFlash {
+        program: esptool,
+        args,
         _snapshots: snapshots,
-    }))
+    })))
 }
 
 fn package_command(
@@ -328,9 +371,9 @@ fn package_command(
             snapshot.path().as_str(),
         ],
     );
-    Ok(PreparedRestore {
+    Ok(PreparedRestore::Package {
         command,
-        _snapshots: vec![snapshot],
+        _snapshot: snapshot,
     })
 }
 
@@ -341,6 +384,8 @@ pub(crate) fn run_restore_installed(
     ensure_ultra_205(command.board)?;
     let expected_root = if command.admission_only {
         Utf8Path::new(PREFLIGHT_ROOT)
+    } else if command.private_root == Utf8Path::new(CAMPAIGN_RESTORE_ROOT) {
+        Utf8Path::new(CAMPAIGN_RESTORE_ROOT)
     } else {
         Utf8Path::new(EFFECT_ROOT)
     };
@@ -359,7 +404,17 @@ pub(crate) fn run_restore_installed(
     require_mode(&authorization_path, 0o600, false)?;
     let authorization: RestoreAuthorization =
         serde_json::from_str(&environment.read_to_string(&authorization_path)?)?;
-    if command.admission_only != (authorization.action == "preflight") {
+    let action_matches = matches!(
+        (
+            command.admission_only,
+            command.private_root.as_str(),
+            authorization.action.as_str()
+        ),
+        (true, PREFLIGHT_ROOT, "preflight")
+            | (false, EFFECT_ROOT, "start")
+            | (false, CAMPAIGN_RESTORE_ROOT, "campaign_restore")
+    );
+    if !action_matches {
         bail!("restore_installed=blocked reason=authorization_action");
     }
     let bundle_path = environment.workspace_path(&command.restore_bundle);
@@ -449,9 +504,37 @@ pub(crate) fn run_restore_installed(
     )?;
     emit_line("restore_installed", PROTECTED_OPERATIONAL)?;
     environment.begin_usb_session(UsbOperation::Flash, &command.port)?;
-    environment.execute(&prepared.command)?;
+    let restore_result = match &prepared {
+        PreparedRestore::Package { command, .. } => environment.execute(command),
+        PreparedRestore::Snapshot(command) => environment.execute_esptool_write_flash(command),
+    };
+    let restore_diagnostic = write_command_diagnostic(
+        &private_root,
+        "snapshot-write.private.json",
+        match prepared {
+            PreparedRestore::Package { .. } => "espflash_write_bin",
+            PreparedRestore::Snapshot(_) => "managed_esptool_write_flash",
+        },
+        environment,
+    );
+    if let Err(error) = restore_result {
+        restore_diagnostic.context("restore diagnostic write failed")?;
+        return Err(error);
+    }
+    restore_diagnostic?;
     environment.phase35_stage_readiness_gate("after-restore", &command.port)?;
-    environment.execute(&nvs.command)?;
+    let nvs_result = environment.execute(&nvs.command);
+    let nvs_diagnostic = write_command_diagnostic(
+        &private_root,
+        "wifi-seed.private.json",
+        "espflash_write_bin",
+        environment,
+    );
+    if let Err(error) = nvs_result {
+        nvs_diagnostic.context("Wi-Fi diagnostic write failed")?;
+        return Err(error);
+    }
+    nvs_diagnostic?;
     environment.phase35_stage_readiness_gate("after-restore-nvs", &command.port)?;
     Ok(())
 }

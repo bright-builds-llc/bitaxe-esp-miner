@@ -64,6 +64,6 @@ fn v2_admission() -> CampaignAdmission {
 
 fn accepted_terminal(safe_stop_complete: bool) -> String {
     format!(
-        "{STRATUM_V2_TERMINAL_PREFIX}{{\"schema\":\"{STRATUM_V2_TERMINAL_SCHEMA}\",\"category\":\"accepted\",\"accepted\":true,\"safe_stop_complete\":{safe_stop_complete}}}\n"
+        "{STRATUM_V2_TERMINAL_PREFIX}{{\"schema\":\"{STRATUM_V2_TERMINAL_SCHEMA}\",\"category\":\"accepted\",\"detail\":\"not_applicable\",\"accepted\":true,\"safe_stop_complete\":{safe_stop_complete}}}\n"
     )
 }

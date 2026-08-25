@@ -16,7 +16,7 @@ export async function validateExactRestorationProjection(
     || Object.keys(value).some(key => !allowedKeys.has(key))
     || value["schema_version"] !== "bitaxe-stratum-v2-exact-restoration-v1"
     || value["status"] !== "accepted" || value["board"] !== 205
-    || value["remediation_ordinal"] !== 1 || value["source_commit"] !== sourceCommit
+    || value["remediation_ordinal"] !== 2 || value["source_commit"] !== sourceCommit
     || value["redaction_status"] !== "passed"
     || ["original_runtime_restored", "settings_restored", "theme_restored",
       "mineonboot_false", "mining_safe_blocked", "zero_hashrate",

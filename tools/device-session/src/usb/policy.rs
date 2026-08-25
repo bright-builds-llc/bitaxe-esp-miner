@@ -109,6 +109,39 @@ pub(super) fn classify_espflash_failure(output: &SupervisedOutput) -> UsbTermina
     }
 }
 
+pub(super) fn classify_esptool_write_failure(output: &SupervisedOutput) -> UsbTerminalCategory {
+    if esptool_transfer_started(output) {
+        return UsbTerminalCategory::FlashFailedAfterTransfer;
+    }
+    if matches!(
+        output.termination,
+        SupervisedTermination::TimedOut | SupervisedTermination::Interrupted { .. }
+    ) || classify_bootloader_diagnostic(output) != UsbConnectionSignature::DiagnosticUnavailable
+    {
+        return UsbTerminalCategory::BootloaderConnectFailed;
+    }
+    UsbTerminalCategory::FlashFailedBeforeTransfer
+}
+
+pub(super) fn esptool_transfer_started(output: &SupervisedOutput) -> bool {
+    let mut bytes = Vec::with_capacity(output.stdout.len() + output.stderr.len());
+    bytes.extend_from_slice(&output.stdout);
+    bytes.extend_from_slice(&output.stderr);
+    let normalized = String::from_utf8_lossy(&bytes).to_ascii_lowercase();
+    [
+        "erasing flash",
+        "writing at ",
+        "wrote ",
+        "hash of data verified",
+    ]
+    .iter()
+    .any(|marker| normalized.contains(marker))
+}
+
+pub(super) fn is_esptool_write_effect(args: &[String]) -> bool {
+    args.iter().any(|argument| argument == "write_flash")
+}
+
 pub(super) fn classify_bootloader_diagnostic(output: &SupervisedOutput) -> UsbConnectionSignature {
     match output.termination {
         SupervisedTermination::TimedOut => return UsbConnectionSignature::ProcessTimeout,

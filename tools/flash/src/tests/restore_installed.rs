@@ -96,7 +96,7 @@ fn historical_snapshot_restore_is_admitted_from_clean_current_host() {
     let authorization = serde_json::json!({
         "schema_version": "bitaxe-stratum-v2-restore-authorization-v1",
         "board": 205,
-        "ordinal": 1,
+        "ordinal": 2,
         "action": "start",
         "current_source_commit": SOURCE_COMMIT,
         "reference_commit": REFERENCE_COMMIT,
@@ -128,6 +128,23 @@ fn historical_snapshot_restore_is_admitted_from_clean_current_host() {
             .expect("preflight authorization JSON")
             .as_bytes(),
     );
+    let campaign_root = workspace.join(CAMPAIGN_RESTORE_ROOT);
+    fs::create_dir_all(&campaign_root).expect("campaign restore root");
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&campaign_root, fs::Permissions::from_mode(0o700))
+            .expect("campaign restore root mode");
+    }
+    let mut campaign_authorization = authorization.clone();
+    campaign_authorization["action"] = serde_json::json!("campaign_restore");
+    campaign_authorization["ordinal"] = serde_json::json!(5);
+    write_protected(
+        &campaign_root.join("restore-authorization.private.json"),
+        serde_json::to_string_pretty(&campaign_authorization)
+            .expect("campaign authorization JSON")
+            .as_bytes(),
+    );
     let admission_command = RestoreInstalledCommand {
         board: BoardId::Ultra205,
         port: "/dev/cu.usbmodem101".to_owned(),
@@ -154,6 +171,19 @@ fn historical_snapshot_restore_is_admitted_from_clean_current_host() {
         redact_evidence: true,
         admission_only: false,
     };
+    let campaign_command = RestoreInstalledCommand {
+        board: BoardId::Ultra205,
+        port: "/dev/cu.usbmodem101".to_owned(),
+        restore_bundle: Utf8PathBuf::from(RESTORE_BUNDLE_RELATIVE),
+        restore_authorization: Utf8PathBuf::from(format!(
+            "{CAMPAIGN_RESTORE_ROOT}/restore-authorization.private.json"
+        )),
+        remediation_plan: Utf8PathBuf::from(REMEDIATION_PLAN_RELATIVE),
+        private_root: Utf8PathBuf::from(CAMPAIGN_RESTORE_ROOT),
+        wifi_credentials: Utf8PathBuf::from("wifi-credentials.json"),
+        redact_evidence: true,
+        admission_only: false,
+    };
     let environment = FakeFlashEnvironment::default().with_workspace_dir(workspace.clone());
 
     // Act
@@ -161,6 +191,9 @@ fn historical_snapshot_restore_is_admitted_from_clean_current_host() {
         FakeFlashEnvironment::default().with_workspace_dir(workspace.clone());
     let admission = run_restore_installed(&admission_command, &admission_environment);
     let result = run_restore_installed(&command, &environment);
+    let campaign_environment =
+        FakeFlashEnvironment::default().with_workspace_dir(workspace.clone());
+    let campaign_result = run_restore_installed(&campaign_command, &campaign_environment);
 
     // Assert
     assert!(admission.is_ok(), "{admission:#?}");
@@ -168,6 +201,8 @@ fn historical_snapshot_restore_is_admitted_from_clean_current_host() {
     assert!(admission_environment.executed_commands().is_empty());
     assert!(result.is_ok(), "{result:#?}");
     assert_eq!(environment.executed_commands().len(), 2);
+    assert!(campaign_result.is_ok(), "{campaign_result:#?}");
+    assert_eq!(campaign_environment.executed_commands().len(), 2);
 
     let mut tampered = authorization;
     tampered["current_source_commit"] = serde_json::json!(historical_source);

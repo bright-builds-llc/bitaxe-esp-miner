@@ -26,6 +26,7 @@ exports_files([
     "docs/parity/work-plans/20260824T214920Z-STR-005-RESTORE-RECOVERY3/PLAN.md",
     "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md",
     "docs/parity/work-plans/20260825T150417Z-STR-005-EXACT-RESTORATION/PLAN.md",
+    "docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md",
     "docs/parity/checklist-revisions/2026-07-26-source-pointer-refresh.json",
     "docs/parity/checklist-revisions/2026-07-27-module-ownership-refactor.json",
     "docs/parity/checklist-revisions/2026-07-28-runtime-display-documentation.json",
@@ -98,6 +99,15 @@ js_library(
         "docs/parity/work-plans/20260813T045300Z-UI-004/PLAN.md",
         "docs/parity/work-plans/20260813T045300Z-UI-004/CLOSURE.md",
         "docs/parity/work-plans/20260816T000806Z-UI-004/PLAN.md",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
+    name = "str005_restore_and_verify_inputs",
+    srcs = [
+        "TASKS.md",
+        "docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md",
     ],
     visibility = ["//tools/automation:__pkg__"],
 )

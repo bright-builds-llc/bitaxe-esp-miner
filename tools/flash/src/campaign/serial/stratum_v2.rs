@@ -88,11 +88,25 @@ enum StratumV2TerminalKind {
     TransportWorker,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum StratumV2TerminalDetail {
+    NotApplicable,
+    Resolve,
+    Connect,
+    Configure,
+    Handshake,
+    Write,
+    Read,
+    Frame,
+}
+
 #[derive(Clone, Debug, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(deny_unknown_fields)]
 struct StratumV2TerminalMarker {
     schema: String,
     category: StratumV2TerminalKind,
+    detail: StratumV2TerminalDetail,
     accepted: bool,
     safe_stop_complete: bool,
 }
@@ -139,6 +153,17 @@ impl StratumV2Aggregate {
                 CampaignTerminalCategory::MarkerMissing,
             ));
         };
+        let detail_valid = match terminal.category {
+            StratumV2TerminalKind::Transport => {
+                terminal.detail != StratumV2TerminalDetail::NotApplicable
+            }
+            _ => terminal.detail == StratumV2TerminalDetail::NotApplicable,
+        };
+        if !detail_valid {
+            return Err(CampaignFailure::new(
+                CampaignTerminalCategory::MarkerInvalid,
+            ));
+        }
         if !terminal.safe_stop_complete {
             return Err(CampaignFailure::new(
                 CampaignTerminalCategory::SafeStopUnconfirmed,

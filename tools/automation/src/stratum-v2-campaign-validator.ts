@@ -2,7 +2,7 @@ type JsonObject = Record<string, unknown>;
 
 const keys = [
   "schema_version", "status", "board", "source_commit", "reference_commit",
-  "package_manifest_sha256", "settings_backup_sha256", "fixture_accepted",
+  "package_manifest_sha256", "fixture_accepted",
   "share_target_valid", "safe_stop_complete", "settings_restored", "package_restored",
   "mineonboot_false", "usb_cleanup_ready", "redaction_status", "exact_non_claims",
 ] as const;
@@ -41,10 +41,6 @@ export function validateStratumV2CampaignProjection(
     "package_restored", "mineonboot_false", "usb_cleanup_ready",
   ]) {
     if (projection[key] !== true) throw new Error("projection proof is incomplete");
-  }
-  if (typeof projection["settings_backup_sha256"] !== "string"
-    || !/^[0-9a-f]{64}$/u.test(projection["settings_backup_sha256"])) {
-    throw new Error("projection backup digest is invalid");
   }
   if (JSON.stringify(projection["exact_non_claims"]) !== JSON.stringify(nonClaims)) {
     throw new Error("projection non-claim inventory mismatch");

@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
-import { chmod, mkdtemp, mkdir, realpath, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   campaignWorkspaceRoot,
   parseStratumV2CampaignArgs,
   runCampaignProcess,
+  sameSubnetFixtureAddress,
   selectRestorePackage,
   type StratumV2CampaignCheckpoint,
   StratumV2CampaignError,
@@ -22,8 +24,10 @@ const exactArgs = [
   "--package-manifest", "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
   "--wifi-credentials", "wifi-credentials.json",
   "--restore-bundle", "scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json",
-  "--private-root", "scratch/str005-stratum-v2/attempt-004",
+  "--private-root", "scratch/str005-stratum-v2/attempt-005",
   "--projection", "docs/parity/evidence/str005-stratum-v2/stratum-v2-projection.json",
+  "--plan", "docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md",
+  "--campaign-ordinal", "5",
   "--duration-seconds", "180",
   "--redact-evidence",
 ] as const;
@@ -44,12 +48,20 @@ async function createPreflightWorkspace(): Promise<string> {
     "",
   ].join("\n"));
   await writeFile(path.join(workspace, "MODULE.bazel"), "module(name = \"fixture\")\n");
+  const planRelative = "docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md";
+  const plan = await readFile(fileURLToPath(new URL(`../../../${planRelative}`, import.meta.url)), "utf8");
+  await mkdir(path.join(workspace, path.dirname(planRelative)), { recursive: true });
+  await writeFile(path.join(workspace, planRelative), plan);
+  await writeFile(
+    path.join(workspace, "TASKS.md"),
+    "### task-str005-restore-and-verify-continuation | fixture\n",
+  );
   await writeFile(path.join(workspace, "wifi-credentials.json"), "{}\n", { mode: 0o600 });
   await writeFile(path.join(workspace, "pool-credentials.json"), "{}\n", { mode: 0o600 });
   await chmod(path.join(workspace, "wifi-credentials.json"), 0o600);
   await chmod(path.join(workspace, "pool-credentials.json"), 0o600);
   await requireGit(workspace, ["init", "--quiet"]);
-  await requireGit(workspace, ["add", ".gitignore", "MODULE.bazel"]);
+  await requireGit(workspace, ["add", ".gitignore", "MODULE.bazel", "TASKS.md", "docs"]);
   await requireGit(workspace, [
     "-c", "commit.gpgsign=false",
     "-c", "user.name=Bitaxe Test",
@@ -85,7 +97,7 @@ test("workspace discovery prefers an explicit workspace with a Bazel module", as
   }
 });
 
-test("campaign parser admits only the immutable attempt-004 command", () => {
+test("campaign parser admits only the immutable attempt-005 command", () => {
   // Arrange
   const changed: string[] = [...exactArgs];
   const durationIndex = changed.indexOf("180");
@@ -128,6 +140,23 @@ test("runtime origin requires exactly one origin-only candidate", () => {
         && error.checkpoint === "runtime_origin",
     );
   }
+});
+
+test("fixture address selects only the non-tunnel interface sharing the device subnet", () => {
+  // Arrange
+  const origin = new URL("http://192.0.2.44");
+  const interfaces = {
+    en0: [{ address: "192.0.2.10", netmask: "255.255.255.0", family: "IPv4", internal: false }],
+    utun4: [{ address: "192.0.2.11", netmask: "255.255.255.0", family: "IPv4", internal: false }],
+    lo0: [{ address: "127.0.0.1", netmask: "255.0.0.0", family: "IPv4", internal: true }],
+  } as unknown as NodeJS.Dict<import("node:os").NetworkInterfaceInfo[]>;
+
+  // Act / Assert
+  assert.equal(sameSubnetFixtureAddress(origin, interfaces), "192.0.2.10");
+  assert.throws(() => sameSubnetFixtureAddress(origin, {
+    ...interfaces,
+    en1: [{ address: "192.0.2.12", netmask: "255.255.255.0", family: "IPv4", internal: false }],
+  } as unknown as NodeJS.Dict<import("node:os").NetworkInterfaceInfo[]>));
 });
 
 test("campaign failure output exposes only the closed pre-effect discriminator", () => {
@@ -173,7 +202,7 @@ test("software preflight proves read-only source predicates without creating the
     });
 
     // Assert
-    await assert.rejects(stat(path.join(workspace, "scratch/str005-stratum-v2/attempt-004")));
+    await assert.rejects(stat(path.join(workspace, "scratch/str005-stratum-v2/attempt-005")));
   } finally {
     await rm(workspace, { recursive: true, force: true });
   }
@@ -236,8 +265,8 @@ test("restore package discovery rejects conflicting identities", async () => {
     }
 
     // Assert
-    assert.ok(failure instanceof StratumV2CampaignError);
-    assert.equal(failure.category, "hardware_blocked");
+    assert.ok(failure instanceof Error);
+    assert.match(failure.message, /ambiguous/u);
   } finally {
     await rm(workspace, { recursive: true, force: true });
   }

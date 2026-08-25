@@ -18,16 +18,16 @@ const common = [
   "--campaign-root", "scratch/str005-stratum-v2/attempt-004",
   "--wifi-credentials", "wifi-credentials.json",
   "--projection", "docs/parity/evidence/str005-exact-restoration/restoration-projection.json",
-  "--plan", "docs/parity/work-plans/20260825T150417Z-STR-005-EXACT-RESTORATION/PLAN.md",
+  "--plan", "docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md",
   "--redact-evidence",
 ] as const;
 
 test("exact restoration parser binds preflight start and settings-only resume roots", () => {
   // Arrange
   const values = [
-    ["preflight", "scratch/str005-exact-restoration/preflight-001"],
-    ["start", "scratch/str005-exact-restoration/remediation-001"],
-    ["resume", "scratch/str005-exact-restoration/remediation-001"],
+    ["preflight", "scratch/str005-exact-restoration/preflight-002"],
+    ["start", "scratch/str005-exact-restoration/remediation-002"],
+    ["resume", "scratch/str005-exact-restoration/remediation-002"],
   ] as const;
 
   for (const [action, root] of values) {
@@ -48,7 +48,7 @@ test("exact restoration projection validator accepts only closed success facts",
   const source = "a".repeat(40);
   const value = {
     schema_version: "bitaxe-stratum-v2-exact-restoration-v1",
-    status: "accepted", board: 205, remediation_ordinal: 1,
+    status: "accepted", board: 205, remediation_ordinal: 2,
     original_runtime_restored: true, settings_restored: true, theme_restored: true,
     mineonboot_false: true, mining_safe_blocked: true, zero_hashrate: true,
     usb_cleanup_ready: true, redaction_status: "passed", source_commit: source,

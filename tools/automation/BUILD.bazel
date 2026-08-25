@@ -103,6 +103,7 @@ js_binary(
         "//crates/bitaxe-api:statistics_history_sources",
         "//:display_behavior_evidence_inputs",
         "//:screen_flow_evidence_inputs",
+        "//:str005_restore_and_verify_inputs",
         "//:statistics_history_evidence_inputs",
         "//:scoreboard_evidence_inputs",
         "//:cfg07_evidence_inputs",
@@ -383,6 +384,7 @@ js_test(
         "//:statistics_history_evidence_inputs",
         "//:display_behavior_evidence_inputs",
         "//:screen_flow_evidence_inputs",
+        "//:str005_restore_and_verify_inputs",
         "//crates/bitaxe-api:adc_observation_sources",
         "//crates/bitaxe-api:emc2101_thermal_sources",
         "//crates/bitaxe-api:hashrate_monitor_sources",
@@ -460,6 +462,7 @@ js_test(
     data = [
         ":automation_ts",
         ":automation_tests_ts",
+        "//:str005_restore_and_verify_inputs",
     ],
     entry_point = "test-dist/stratum-v2-campaign.test.js",
 )

@@ -88,6 +88,51 @@ fn real_child_diagnostic_exposes_only_counts_and_digests() {
 }
 
 #[test]
+fn real_esptool_shaped_child_proves_partial_transfer_classification() {
+    // Arrange
+    let directory = tempdir().expect("temporary directory");
+    let trace_root = directory.path().join("trace");
+    fs::create_dir(&trace_root).expect("trace root");
+    fs::set_permissions(&trace_root, fs::Permissions::from_mode(0o700))
+        .expect("private trace root");
+    let mut lease = DeviceLease::acquire("esptool-process-test", UsbOperation::Flash, &trace_root)
+        .expect("device lease");
+    let args = vec![
+        "-c".to_owned(),
+        "printf 'Writing at 0x00010000'; printf 'private-transfer-error' >&2; exit 1".to_owned(),
+    ];
+
+    // Act
+    let output = run_owned_process(
+        OwnedProcessRequest {
+            program: Path::new("/bin/sh"),
+            args: &args,
+            timeout: Duration::from_secs(2),
+            trace_root: &trace_root,
+            trace_label: "child-0001",
+            maybe_rust_log: None,
+        },
+        &mut lease,
+    )
+    .expect("supervised esptool-shaped child");
+    let category = crate::usb::policy::classify_esptool_write_failure(&output);
+    let diagnostic = UsbCommandDiagnostic::from_output(
+        &output,
+        category,
+        UsbDeviceEffectState::ConfirmedPartial,
+        1,
+    );
+    let encoded = serde_json::to_string(&diagnostic).expect("diagnostic JSON");
+
+    // Assert
+    assert_eq!(category, UsbTerminalCategory::FlashFailedAfterTransfer);
+    assert!(diagnostic.transfer_started);
+    assert!(!diagnostic.transfer_completed);
+    assert!(!encoded.contains("private-transfer-error"));
+    lease.mark_complete();
+}
+
+#[test]
 fn bootloader_diagnostic_real_child_receives_private_rust_log_override() {
     // Arrange
     let directory = tempdir().expect("temporary directory");

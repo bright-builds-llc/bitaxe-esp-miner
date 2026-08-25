@@ -28,9 +28,11 @@ export type RestorationArgs = {
   readonly redactEvidence: true;
 };
 
-const taskId = "task-str005-exact-restoration-remediation";
-const planRelative = "docs/parity/work-plans/20260825T150417Z-STR-005-EXACT-RESTORATION/PLAN.md";
-const planSha256 = "55d821773eb277ed9e6e27ff0bc8cdd7aeb7c19fbe304ff5fe72cf8e452b8ceb";
+const taskId = "task-str005-restore-and-verify-continuation";
+const planRelative = "docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md";
+const planSha256 = "946ec6b353add5e2ef08fe9047640f9271a68556021ca92e47661f6393103c1a";
+const recoveryBundleSha256 = "1d5e2e3b76489c36458f63f11bf28b399ea4cd6c2d45f8dab20ef060b03e18f4";
+const campaignBackupSha256 = "ac3d28d451c466f4fc6bfdc40b327c891dac9f3eba644ce62a7f2a2276790631";
 const recoveryPlanRelative =
   "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md";
 const currentDeviceSource = "78784a4ac3576f39fe451e85508ea878e2941eb4";
@@ -42,8 +44,8 @@ const expected = {
   campaignRoot: "scratch/str005-stratum-v2/attempt-004",
   wifiCredentials: "wifi-credentials.json",
   projection: "docs/parity/evidence/str005-exact-restoration/restoration-projection.json",
-  preflightRoot: "scratch/str005-exact-restoration/preflight-001",
-  effectRoot: "scratch/str005-exact-restoration/remediation-001",
+  preflightRoot: "scratch/str005-exact-restoration/preflight-002",
+  effectRoot: "scratch/str005-exact-restoration/remediation-002",
 } as const;
 
 export class ExactRestorationError extends Error {
@@ -177,6 +179,7 @@ async function commonAdmission(workspace: string, args: RestorationArgs, private
   const poolPath = await poolInput(workspace);
   const bundlePath = path.join(workspace, args.restoreBundle);
   const bundleDocument = await readFile(bundlePath, "utf8");
+  if (sha256(bundleDocument) !== recoveryBundleSha256) fail("evidence_invalid", "bundle_binding");
   const bundle = JSON.parse(bundleDocument) as RestoreBundle;
   const recoveryPlan = await readFile(path.join(workspace, recoveryPlanRelative), "utf8");
   await validateRestoreReadiness(
@@ -194,7 +197,7 @@ async function commonAdmission(workspace: string, args: RestorationArgs, private
   }
   const authorization = {
     schema_version: "bitaxe-stratum-v2-restore-authorization-v1",
-    board: 205, ordinal: 1, action: args.action === "preflight" ? "preflight" : "start",
+    board: 205, ordinal: 2, action: args.action === "preflight" ? "preflight" : "start",
     current_source_commit: source,
     reference_commit: manifest["reference_commit"],
     bundle_sha256: sha256(bundleDocument),
@@ -211,9 +214,11 @@ async function commonAdmission(workspace: string, args: RestorationArgs, private
   } else {
     await writePrivate(authorizationPath, authorization);
   }
-  const backup = object(JSON.parse(await readFile(
+  const backupDocument = await readFile(
     path.join(workspace, args.campaignRoot, "settings-backup.private.json"), "utf8",
-  )));
+  );
+  if (sha256(backupDocument) !== campaignBackupSha256) fail("evidence_invalid", "backup_binding");
+  const backup = object(JSON.parse(backupDocument));
   await validateRestorableInputs(
     object(backup["settings"]), path.join(workspace, args.wifiCredentials), poolPath,
     (category) => fail(category === "evidence_invalid" ? "evidence_invalid" : "hardware_blocked", "settings_inputs"),
@@ -259,7 +264,8 @@ async function requireFreshDetector(
 
 function safeCurrent(info: JsonObject): boolean {
   return info["sourceCommit"] === currentDeviceSource && info["startMiningOnBoot"] === false
-    && info["miningActivity"] === "safe_blocked" && Number(info["hashRate"] ?? 0) === 0;
+    && info["miningActivity"] === "safe_blocked" && Number(info["hashRate"] ?? 0) === 0
+    && Number(info["sharesAccepted"] ?? 0) === 0 && Number(info["sharesRejected"] ?? 0) === 0;
 }
 
 export async function runExactRestoration(workspace: string, args: RestorationArgs): Promise<JsonObject> {
@@ -304,7 +310,15 @@ export async function runExactRestoration(workspace: string, args: RestorationAr
     stdout_sha256: sha256(restored.stdout),
     stderr_sha256: sha256(restored.stderr),
   });
-  if (restored.exitCode !== 0) fail("hardware_blocked", "snapshot_restore");
+  if (restored.exitCode !== 0) {
+    await requireFreshDetector(
+      workspace,
+      privateRoot,
+      args.port,
+      "restore-cleanup.private.json",
+    );
+    fail("hardware_blocked", "snapshot_restore");
+  }
   const original = await currentRuntime(
     workspace, args.port, path.join(privateRoot, "original-monitor.private.json"), admitted.source,
   );
@@ -333,13 +347,15 @@ async function finishSettings(
   );
   if (!restoreRuntimeMatches(admitted.bundle, confirmed)
     || confirmed["referenceCommit"] !== admitted.bundle.installed_identity.reference_commit
-    || confirmed["miningActivity"] !== "safe_blocked" || Number(confirmed["hashRate"] ?? 0) !== 0) {
+    || confirmed["miningActivity"] !== "safe_blocked" || Number(confirmed["hashRate"] ?? 0) !== 0
+    || Number(confirmed["sharesAccepted"] ?? 0) !== 0
+    || Number(confirmed["sharesRejected"] ?? 0) !== 0) {
     fail("hardware_blocked", "final_runtime");
   }
   await replacePrivate(statePath, { schema_version: "bitaxe-stratum-v2-restoration-state-v1", stage: "complete" });
   const projection = {
     schema_version: "bitaxe-stratum-v2-exact-restoration-v1", status: "accepted", board: 205,
-    remediation_ordinal: 1, original_runtime_restored: true, settings_restored: true,
+    remediation_ordinal: 2, original_runtime_restored: true, settings_restored: true,
     theme_restored: true, mineonboot_false: true, mining_safe_blocked: true,
     zero_hashrate: true, usb_cleanup_ready: true, redaction_status: "passed",
     source_commit: admitted.source,

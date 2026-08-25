@@ -1,14 +1,17 @@
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
-import { chmod, mkdir, readFile, readdir, rename, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { restoreSelfTestSettings } from "./self-test-campaign-restoration.js";
 import { type JsonObject, prepareStratumV2Campaign } from "./stratum-v2-campaign-preflight.js";
+import { sameSubnetFixtureAddress } from "./stratum-v2-campaign-support.js";
 import { fetchRuntimeObject, monitorRuntimeOrigin, prepareStratumV2RuntimeAdmission } from "./stratum-v2-runtime-admission.js";
 import type { RestoreBundle } from "./stratum-v2-restore-model.js";
 import { admitStratumV2RestoreBundle, restoreRuntimeMatches } from "./stratum-v2-restore-admission.js";
 import { sourceWorkspaceRoot } from "./workspace.js";
+
+export { sameSubnetFixtureAddress, selectRestorePackage } from "./stratum-v2-campaign-support.js";
 
 export type CampaignArgs = {
   readonly board: "205";
@@ -18,6 +21,8 @@ export type CampaignArgs = {
   readonly restoreBundle: string;
   readonly privateRoot: string;
   readonly projection: string;
+  readonly plan: string;
+  readonly campaignOrdinal: 5;
   readonly durationSeconds: 180;
   readonly redactEvidence: true;
 };
@@ -40,6 +45,11 @@ export type StratumV2CampaignCheckpoint =
   | "runtime_settings"
   | "restoration_inputs"
   | "restore_package"
+  | "fixture_route"
+  | "campaign_child"
+  | "fixture_child"
+  | "fixture_result"
+  | "campaign_restoration"
   | "pre_effect_ready"
   | "runtime_admission_ready"
   | "unclassified";
@@ -68,10 +78,15 @@ export type StratumV2RuntimeAdmissionResult = {
   readonly private_root_created: false;
 };
 
-const expectedPrivateRoot = "scratch/str005-stratum-v2/attempt-004";
+const expectedPrivateRoot = "scratch/str005-stratum-v2/attempt-005";
 const expectedProjection = "docs/parity/evidence/str005-stratum-v2/stratum-v2-projection.json";
+const expectedPlan = "docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md";
+const expectedPlanSha256 = "946ec6b353add5e2ef08fe9047640f9271a68556021ca92e47661f6393103c1a";
 const expectedRestoreBundle =
   "scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json";
+const recoveryPlan =
+  "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md";
+const campaignRestoreRoot = "scratch/str005-stratum-v2/attempt-005/restoration";
 const maximumOutputBytes = 1_048_576;
 
 export function campaignWorkspaceRoot(
@@ -163,7 +178,7 @@ export function parseStratumV2CampaignArgs(values: readonly string[]): CampaignA
   }
   const allowed = new Set([
     "--board", "--port", "--package-manifest", "--wifi-credentials", "--restore-bundle", "--private-root",
-    "--projection", "--duration-seconds", "--redact-evidence",
+    "--projection", "--plan", "--campaign-ordinal", "--duration-seconds", "--redact-evidence",
   ]);
   if ([...parsed.keys()].some(key => !allowed.has(key))) {
     fail("invalid_invocation", "campaign option is unsupported", "invocation");
@@ -180,10 +195,12 @@ export function parseStratumV2CampaignArgs(values: readonly string[]): CampaignA
   const privateRoot = value("--private-root");
   const projection = value("--projection");
   const restoreBundle = value("--restore-bundle");
+  const plan = value("--plan");
+  const campaignOrdinal = value("--campaign-ordinal");
   if (board !== "205" || duration !== "180" || parsed.get("--redact-evidence") !== true
     || privateRoot !== expectedPrivateRoot || projection !== expectedProjection
-    || restoreBundle !== expectedRestoreBundle) {
-    fail("invalid_invocation", "campaign contract does not match attempt-004", "invocation");
+    || restoreBundle !== expectedRestoreBundle || plan !== expectedPlan || campaignOrdinal !== "5") {
+    fail("invalid_invocation", "campaign contract does not match attempt-005", "invocation");
   }
   return {
     board,
@@ -193,6 +210,8 @@ export function parseStratumV2CampaignArgs(values: readonly string[]): CampaignA
     restoreBundle,
     privateRoot,
     projection,
+    plan,
+    campaignOrdinal: 5,
     durationSeconds: 180,
     redactEvidence: true,
   };
@@ -252,88 +271,6 @@ async function writePrivateJson(candidate: string, value: unknown): Promise<stri
   return document;
 }
 
-type RestorePackage = {
-  readonly manifestPath: string;
-  readonly sourceCommit: string;
-  readonly appElfSha256: string;
-  readonly factorySha256: string;
-};
-
-async function walkManifests(root: string, output: string[], budget: { remaining: number }): Promise<void> {
-  if (budget.remaining <= 0) fail("evidence_invalid", "restore-package inventory exceeded bound");
-  budget.remaining -= 1;
-  const entries = await readdir(root, { withFileTypes: true });
-  for (const entry of entries) {
-    if (entry.isSymbolicLink()) continue;
-    const candidate = path.join(root, entry.name);
-    if (entry.isDirectory()) await walkManifests(candidate, output, budget);
-    else if (entry.isFile() && /(?:package-manifest|bitaxe-ultra205-package)\.json$/u.test(entry.name)) {
-      output.push(candidate);
-    }
-  }
-}
-
-export async function selectRestorePackage(
-  workspace: string,
-  appElfSha256: string,
-): Promise<RestorePackage> {
-  const manifestPaths: string[] = [];
-  await walkManifests(path.join(workspace, "scratch"), manifestPaths, { remaining: 10_000 });
-  const candidates: RestorePackage[] = [];
-  for (const manifestPath of manifestPaths.sort()) {
-    try {
-      const manifest = object(JSON.parse(await readFile(manifestPath, "utf8")), "manifest");
-      if (manifest["app_elf_sha256"] !== appElfSha256) continue;
-      const artifacts = manifest["artifacts"];
-      if (!Array.isArray(artifacts)) continue;
-      const factory = artifacts
-        .map(value => object(value, "artifact"))
-        .find(value => value["kind"] === "factory_merged_image");
-      if (factory === undefined) continue;
-      const factoryPath = path.resolve(path.dirname(manifestPath), requiredString(factory, "path", "factory"));
-      if (!(await stat(factoryPath)).isFile()) continue;
-      candidates.push({
-        manifestPath,
-        sourceCommit: requiredString(manifest, "source_commit", "manifest"),
-        appElfSha256,
-        factorySha256: requiredString(factory, "sha256", "factory"),
-      });
-    } catch {
-      continue;
-    }
-  }
-  const identities = new Set(candidates.map(candidate =>
-    `${candidate.sourceCommit}:${candidate.appElfSha256}:${candidate.factorySha256}`));
-  if (candidates.length === 0 || identities.size !== 1 || candidates[0] === undefined) {
-    fail("hardware_blocked", "exact prior package is unavailable or ambiguous");
-  }
-  return candidates[0];
-}
-
-async function localIpv4(workspace: string): Promise<string> {
-  const route = await runCampaignProcess(
-    workspace,
-    "/sbin/route",
-    ["-n", "get", "default"],
-    5_000,
-  );
-  const interfaceMatch = /^\s*interface:\s*([A-Za-z0-9]+)\s*$/mu.exec(route.stdout);
-  if (route.exitCode !== 0 || interfaceMatch?.[1] === undefined) {
-    fail("hardware_blocked", "local interface is unavailable");
-  }
-  const address = await runCampaignProcess(
-    workspace,
-    "/usr/sbin/ipconfig",
-    ["getifaddr", interfaceMatch[1]],
-    5_000,
-  );
-  const value = address.stdout.trim();
-  if (address.exitCode !== 0 || !/^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/u.test(value)) {
-    fail("hardware_blocked", "local IPv4 address is unavailable");
-  }
-  return value;
-}
-
 async function waitForReady(candidate: string): Promise<JsonObject> {
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
@@ -346,9 +283,10 @@ async function waitForReady(candidate: string): Promise<JsonObject> {
   fail("timeout", "fixture readiness deadline elapsed");
 }
 
-function startFixture(workspace: string, program: string, fixtureRoot: string) {
+function startFixture(workspace: string, program: string, fixtureRoot: string, host: string) {
   const child = spawn(program, [
     "--private-root", fixtureRoot,
+    "--listen-address", `${host}:0`,
     "--accept-timeout-seconds", "120",
     "--session-timeout-seconds", "180",
   ], { cwd: workspace, env: process.env, stdio: ["ignore", "pipe", "pipe"] });
@@ -381,13 +319,36 @@ async function restorePackageAndSettings(
   backup: JsonObject,
   poolPath: string,
   changedPackage: boolean,
+  head: string,
+  referenceCommit: string,
 ): Promise<JsonObject> {
   if (changedPackage) {
+    const restoreRoot = path.join(workspace, campaignRestoreRoot);
+    await mkdir(restoreRoot, { mode: 0o700 });
+    await chmod(restoreRoot, 0o700);
+    const bundleDocument = await readFile(restoreBundlePath, "utf8");
+    const recoveryPlanDocument = await readFile(path.join(workspace, recoveryPlan), "utf8");
+    const authorizationRelative = path.join(campaignRestoreRoot, "restore-authorization.private.json");
+    await writePrivateJson(path.join(workspace, authorizationRelative), {
+      schema_version: "bitaxe-stratum-v2-restore-authorization-v1",
+      board: 205,
+      ordinal: 5,
+      action: "campaign_restore",
+      current_source_commit: head,
+      reference_commit: referenceCommit,
+      bundle_sha256: sha256(bundleDocument),
+      bundle_capture_source_commit: restoreBundle.capture_source_commit,
+      recovery_plan_sha256: sha256(recoveryPlanDocument),
+      remediation_plan_sha256: expectedPlanSha256,
+    });
     const flash = await runCampaignProcess(workspace, flashProgram, [
       "restore-installed", "--board", "205", "--port", args.port,
       "--restore-bundle", restoreBundlePath,
+      "--restore-authorization", authorizationRelative,
+      "--remediation-plan", expectedPlan,
+      "--private-root", campaignRestoreRoot,
       "--wifi-credentials", args.wifiCredentials, "--redact-evidence",
-    ], 180_000);
+    ], 900_000);
     if (flash.exitCode !== 0) fail("hardware_blocked", "prior package restoration failed");
   }
   const origin = await monitorRuntimeOrigin(
@@ -478,6 +439,7 @@ export async function runStratumV2Campaign(
     restoreBundle,
     restoreBundlePath,
     changedPackage,
+    origin,
   } = admission;
   const privateParent = path.dirname(privateRoot);
   await mkdir(privateParent, { recursive: true, mode: 0o700 });
@@ -485,19 +447,19 @@ export async function runStratumV2Campaign(
   await mkdir(privateRoot, { recursive: false, mode: 0o700 });
   await chmod(privateRoot, 0o700);
   const backup: JsonObject = { settings, theme };
-  const backupDocument = await writePrivateJson(path.join(privateRoot, "settings-backup.private.json"), backup);
+  await writePrivateJson(path.join(privateRoot, "settings-backup.private.json"), backup);
+  let host: string;
+  try { host = sameSubnetFixtureAddress(origin); }
+  catch { fail("hardware_blocked", "same-subnet fixture route is unavailable", "fixture_route"); }
   const fixtureRoot = path.join(privateRoot, "fixture");
-  const fixture = startFixture(
-    workspace,
-    path.join(workspace, "bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture"),
-    fixtureRoot,
-  );
+  const fixtureProgram = path.join(workspace, "bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture");
+  const fixture = startFixture(workspace, fixtureProgram, fixtureRoot, host);
   let fixtureExit = 1;
   let effectStarted = false;
   let restorationComplete = false;
+  let restorationAttempted = false;
   try {
     const ready = await waitForReady(path.join(fixtureRoot, "ready.json"));
-    const host = await localIpv4(workspace);
     const fixturePoolPath = path.join(privateRoot, "fixture-pool.private.json");
     await writePrivateJson(fixturePoolPath, {
       poolURL: host,
@@ -509,43 +471,76 @@ export async function runStratumV2Campaign(
       stratumV2AuthorityPubkey: ready["authority_public_key"],
     });
     effectStarted = true;
-    const campaign = await runCampaignProcess(
-      workspace,
-      path.join(workspace, "bazel-bin/tools/flash/flash"),
-      [
-      "mining-campaign", "--stage", "stratum-v2", "--profile", "conservative",
-      "--board", "205", "--port", args.port, "--manifest", manifestPath,
-      "--wifi-credentials", wifiPath, "--pool-credentials", fixturePoolPath,
-      "--evidence-dir", path.join(args.privateRoot, "campaign"),
-      "--duration-seconds", "180", "--redact-evidence",
-      ],
-      420_000,
-    );
+    let campaign: ProcessResult;
+    try {
+      campaign = await runCampaignProcess(
+        workspace,
+        path.join(workspace, "bazel-bin/tools/flash/flash"),
+        [
+        "mining-campaign", "--stage", "stratum-v2", "--profile", "conservative",
+        "--board", "205", "--port", args.port, "--manifest", manifestPath,
+        "--wifi-credentials", wifiPath, "--pool-credentials", fixturePoolPath,
+        "--evidence-dir", path.join(args.privateRoot, "campaign"),
+        "--duration-seconds", "180", "--redact-evidence",
+        ],
+        420_000,
+      );
+    } catch (error) {
+      await writePrivateJson(path.join(privateRoot, "campaign-child.private.json"), {
+        exit_code: null,
+        terminal_category: error instanceof StratumV2CampaignError ? error.category : "process_failed",
+        stdout_sha256: sha256(""),
+        stderr_sha256: sha256(""),
+      });
+      fail("hardware_blocked", "private V2 campaign child failed", "campaign_child");
+    }
     await writePrivateJson(path.join(privateRoot, "campaign-child.private.json"), {
       exit_code: campaign.exitCode,
       stdout_sha256: sha256(campaign.stdout),
       stderr_sha256: sha256(campaign.stderr),
     });
-    if (campaign.exitCode !== 0) fail("hardware_blocked", "private V2 campaign failed");
+    if (campaign.exitCode !== 0) {
+      fail("hardware_blocked", "private V2 campaign failed", "campaign_child");
+    }
     fixtureExit = await fixture.wait();
-    if (fixtureExit !== 0) fail("hardware_blocked", "private V2 fixture failed");
+    if (fixtureExit !== 0) fail("hardware_blocked", "private V2 fixture failed", "fixture_child");
+    const fixtureTerminal = object(
+      JSON.parse(await readFile(path.join(fixtureRoot, "terminal.json"), "utf8")),
+      "fixture terminal",
+      "fixture_result",
+    );
+    const fixtureProgress = object(fixtureTerminal["progress"], "fixture progress", "fixture_result");
+    if (fixtureTerminal["status"] !== "accepted"
+      || fixtureTerminal["terminal_category"] !== "accepted"
+      || ["listener_ready", "connection_accepted", "noise_authenticated", "setup_accepted",
+        "channel_opened", "job_sent", "share_received", "response_sent"]
+        .some(key => fixtureProgress[key] !== true)) {
+      fail("evidence_invalid", "fixture terminal did not complete", "fixture_result");
+    }
     const fixtureResult = object(
       JSON.parse(await readFile(path.join(fixtureRoot, "result.json"), "utf8")),
       "fixture result",
     );
     if (fixtureResult["status"] !== "accepted" || fixtureResult["share_target_valid"] !== true) {
-      fail("evidence_invalid", "fixture result did not validate share");
+      fail("evidence_invalid", "fixture result did not validate share", "fixture_result");
     }
-    await restorePackageAndSettings(
-      workspace,
-      path.join(workspace, "bazel-bin/tools/flash/flash"),
-      args,
-      restoreBundlePath,
-      restoreBundle,
-      backup,
-      poolPath,
-      changedPackage,
-    );
+    restorationAttempted = true;
+    try {
+      await restorePackageAndSettings(
+        workspace,
+        path.join(workspace, "bazel-bin/tools/flash/flash"),
+        args,
+        restoreBundlePath,
+        restoreBundle,
+        backup,
+        poolPath,
+        changedPackage,
+        head,
+        requiredString(manifest, "reference_commit", "manifest"),
+      );
+    } catch {
+      fail("hardware_blocked", "campaign restoration failed", "campaign_restoration");
+    }
     restorationComplete = true;
     const projectionValue = {
       schema_version: "bitaxe-stratum-v2-campaign-projection-v1",
@@ -554,7 +549,6 @@ export async function runStratumV2Campaign(
       source_commit: head,
       reference_commit: requiredString(manifest, "reference_commit", "manifest"),
       package_manifest_sha256: sha256(manifestDocument),
-      settings_backup_sha256: sha256(backupDocument),
       fixture_accepted: true,
       share_target_valid: true,
       safe_stop_complete: true,
@@ -593,20 +587,25 @@ export async function runStratumV2Campaign(
     if (fixture.child.exitCode === null) fixture.child.kill("SIGTERM");
     if (effectStarted && !restorationComplete) {
       let restored = false;
-      try {
-        await restorePackageAndSettings(
-          workspace,
-          path.join(workspace, "bazel-bin/tools/flash/flash"),
-          args,
-          restoreBundlePath,
-          restoreBundle,
-          backup,
-          poolPath,
-          changedPackage,
-        );
-        restored = true;
-      } catch {
-        restored = false;
+      if (!restorationAttempted) {
+        try {
+          restorationAttempted = true;
+          await restorePackageAndSettings(
+            workspace,
+            path.join(workspace, "bazel-bin/tools/flash/flash"),
+            args,
+            restoreBundlePath,
+            restoreBundle,
+            backup,
+            poolPath,
+            changedPackage,
+            head,
+            requiredString(manifest, "reference_commit", "manifest"),
+          );
+          restored = true;
+        } catch {
+          restored = false;
+        }
       }
       await writePrivateJson(path.join(privateRoot, "recovery.private.json"), {
         attempted: true,

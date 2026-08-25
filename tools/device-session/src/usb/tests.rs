@@ -164,7 +164,12 @@ fn successful_large_erase_is_a_completed_flash_effect() {
 
     // Act
     let policy = successful_command_recovery_policy(&args);
-    let state = advance_device_effect_state(UsbDeviceEffectState::None, &args, &output);
+    let state = advance_device_effect_state(
+        UsbDeviceEffectState::None,
+        &args,
+        &output,
+        UsbWriteDialect::Espflash,
+    );
 
     // Assert
     assert_eq!(policy, RecoveryPhase::PostFlash);
@@ -368,6 +373,7 @@ fn successful_flash_records_completed_device_effect() {
         UsbDeviceEffectState::None,
         &["write-bin".to_owned()],
         &output,
+        UsbWriteDialect::Espflash,
     );
 
     // Assert
@@ -388,6 +394,7 @@ fn successful_board_info_does_not_claim_a_device_write() {
         UsbDeviceEffectState::None,
         &["board-info".to_owned()],
         &output,
+        UsbWriteDialect::Espflash,
     );
 
     // Assert
@@ -438,10 +445,61 @@ fn write_failure_records_confirmed_partial_device_effect() {
         UsbDeviceEffectState::None,
         &["write-bin".to_owned()],
         &output,
+        UsbWriteDialect::Espflash,
     );
 
     // Assert
     assert_eq!(state, UsbDeviceEffectState::ConfirmedPartial);
+}
+
+#[test]
+fn esptool_write_effect_distinguishes_pre_transfer_partial_and_complete() {
+    // Arrange
+    let args = vec!["write_flash".to_owned()];
+    let cases = [
+        (
+            SupervisedOutput {
+                termination: SupervisedTermination::ExitedFailure,
+                stdout: Vec::new(),
+                stderr: b"argument rejected".to_vec(),
+            },
+            UsbDeviceEffectState::None,
+            UsbTerminalCategory::FlashFailedBeforeTransfer,
+        ),
+        (
+            SupervisedOutput {
+                termination: SupervisedTermination::ExitedFailure,
+                stdout: b"Writing at 0x00010000".to_vec(),
+                stderr: b"connection lost".to_vec(),
+            },
+            UsbDeviceEffectState::ConfirmedPartial,
+            UsbTerminalCategory::FlashFailedAfterTransfer,
+        ),
+        (
+            SupervisedOutput {
+                termination: SupervisedTermination::ExitedSuccess,
+                stdout: b"Hash of data verified".to_vec(),
+                stderr: Vec::new(),
+            },
+            UsbDeviceEffectState::Completed,
+            UsbTerminalCategory::FlashFailedAfterTransfer,
+        ),
+    ];
+
+    for (output, expected_state, expected_failure) in cases {
+        // Act
+        let state = advance_device_effect_state(
+            UsbDeviceEffectState::None,
+            &args,
+            &output,
+            UsbWriteDialect::Esptool,
+        );
+        let failure = classify_esptool_write_failure(&output);
+
+        // Assert
+        assert_eq!(state, expected_state);
+        assert_eq!(failure, expected_failure);
+    }
 }
 
 #[test]

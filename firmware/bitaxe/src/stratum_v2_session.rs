@@ -42,7 +42,7 @@ fn run_owner() {
     let admission = match crate::settings_adapter::load_production_campaign_admission() {
         Ok(Some(admission)) if admission.stage == MiningCampaignStage::StratumV2 => admission,
         Ok(Some(_)) => {
-            publish_terminal("campaign_mismatch", false, false);
+            publish_terminal("campaign_mismatch", "not_applicable", false, false);
             return;
         }
         Ok(None) => {
@@ -58,18 +58,18 @@ fn run_owner() {
         .maybe_profile
         .unwrap_or(MiningHardwareProfilePreset::Conservative);
     if profile != MiningHardwareProfilePreset::Conservative || admission.maybe_lease.is_none() {
-        publish_terminal("campaign_contract", false, false);
+        publish_terminal("campaign_contract", "not_applicable", false, false);
         return;
     }
     let pool_set = match crate::settings_adapter::read_stratum_v2_pool_set() {
         Ok(Some(pool_set)) => pool_set,
         Ok(None) => {
-            publish_terminal("pool_configuration", false, false);
+            publish_terminal("pool_configuration", "not_applicable", false, false);
             return;
         }
         Err(error) => {
             log::warn!("stratum_v2_pool=unavailable category={}", error.category());
-            publish_terminal("pool_configuration", false, false);
+            publish_terminal("pool_configuration", "not_applicable", false, false);
             return;
         }
     };
@@ -88,11 +88,11 @@ fn run_owner() {
         }
     }
     if settings_order.is_empty() {
-        publish_terminal("pool_configuration", false, false);
+        publish_terminal("pool_configuration", "not_applicable", false, false);
         return;
     }
     if !wait_for_preflight(&mut watchdog) {
-        publish_terminal("preflight", false, false);
+        publish_terminal("preflight", "not_applicable", false, false);
         return;
     }
 
@@ -104,7 +104,7 @@ fn run_owner() {
             failure.original().step().label(),
             failure.original().source().category(),
         );
-        publish_terminal("hardware_preparation", false, false);
+        publish_terminal("hardware_preparation", "not_applicable", false, false);
         return;
     }
     publish_stage("hardware_prepared", 1);
@@ -133,7 +133,12 @@ fn run_owner() {
                 false
             }
         };
-    publish_terminal(outcome.label(), outcome.accepted(), safe_stop_complete);
+    publish_terminal(
+        outcome.label(),
+        outcome.detail(),
+        outcome.accepted(),
+        safe_stop_complete,
+    );
 }
 
 fn wait_for_preflight(
@@ -326,9 +331,9 @@ fn publish_stage(stage: &str, sequence: u64) {
     ));
 }
 
-fn publish_terminal(category: &str, accepted: bool, safe_stop_complete: bool) {
+fn publish_terminal(category: &str, detail: &str, accepted: bool, safe_stop_complete: bool) {
     crate::info_retained(&format!(
-        "stratum_v2_terminal={{\"schema\":\"bitaxe-stratum-v2-terminal-v1\",\"category\":\"{category}\",\"accepted\":{accepted},\"safe_stop_complete\":{safe_stop_complete}}}"
+        "stratum_v2_terminal={{\"schema\":\"bitaxe-stratum-v2-terminal-v1\",\"category\":\"{category}\",\"detail\":\"{detail}\",\"accepted\":{accepted},\"safe_stop_complete\":{safe_stop_complete}}}"
     ));
 }
 
@@ -365,6 +370,19 @@ impl OwnerOutcome {
             Self::TransportQueue => "transport_queue",
             Self::TransportWorker => "transport_worker",
             Self::Session(_) => "session",
+        }
+    }
+
+    const fn detail(self) -> &'static str {
+        match self {
+            Self::Transport(TransportFailure::Resolve) => "resolve",
+            Self::Transport(TransportFailure::Connect) => "connect",
+            Self::Transport(TransportFailure::Configure) => "configure",
+            Self::Transport(TransportFailure::Handshake) => "handshake",
+            Self::Transport(TransportFailure::Write) => "write",
+            Self::Transport(TransportFailure::Read) => "read",
+            Self::Transport(TransportFailure::Frame) => "frame",
+            _ => "not_applicable",
         }
     }
 

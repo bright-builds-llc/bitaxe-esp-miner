@@ -33,10 +33,16 @@ pub use policy::{retry_is_eligible, RetryContext};
 #[cfg(test)]
 use policy::EspflashConnectionSignature;
 use policy::{
-    classify_bootloader_diagnostic, classify_espflash_failure, espflash_diagnostic_filter,
-    ineligible_retry_detail, is_flash_effect, successful_command_recovery_policy,
-    validate_recovery_snapshot,
+    classify_bootloader_diagnostic, classify_espflash_failure, classify_esptool_write_failure,
+    espflash_diagnostic_filter, ineligible_retry_detail, is_esptool_write_effect, is_flash_effect,
+    successful_command_recovery_policy, validate_recovery_snapshot,
 };
+
+#[derive(Clone, Copy)]
+enum UsbWriteDialect {
+    Espflash,
+    Esptool,
+}
 
 pub struct UsbSession {
     operation: UsbOperation,
@@ -140,6 +146,31 @@ impl UsbSession {
         args: &[String],
         timeout: Duration,
     ) -> Result<SupervisedOutput, UsbSessionError> {
+        self.run_supervised_write(program, args, timeout, UsbWriteDialect::Espflash)
+    }
+
+    pub fn run_esptool_write_flash(
+        &mut self,
+        program: &Path,
+        args: &[String],
+        timeout: Duration,
+    ) -> Result<SupervisedOutput, UsbSessionError> {
+        if !is_esptool_write_effect(args) {
+            return Err(session_error(
+                UsbTerminalCategory::FlashFailedBeforeTransfer,
+                "managed esptool command is not write_flash",
+            ));
+        }
+        self.run_supervised_write(program, args, timeout, UsbWriteDialect::Esptool)
+    }
+
+    fn run_supervised_write(
+        &mut self,
+        program: &Path,
+        args: &[String],
+        timeout: Duration,
+        dialect: UsbWriteDialect,
+    ) -> Result<SupervisedOutput, UsbSessionError> {
         let mut first_boundary = None;
         let mut command_effect_state = UsbDeviceEffectState::None;
         for attempt in 1..=2 {
@@ -168,12 +199,19 @@ impl UsbSession {
                 }
             };
             command_effect_state =
-                advance_device_effect_state(command_effect_state, args, &process_result);
-            self.device_effect_state =
-                advance_device_effect_state(self.device_effect_state, args, &process_result);
+                advance_device_effect_state(command_effect_state, args, &process_result, dialect);
+            self.device_effect_state = advance_device_effect_state(
+                self.device_effect_state,
+                args,
+                &process_result,
+                dialect,
+            );
             if process_result.succeeded() {
                 self.transition(UsbLifecycleEvent::FlashComplete)?;
-                let phase = successful_command_recovery_policy(args);
+                let phase = match dialect {
+                    UsbWriteDialect::Espflash => successful_command_recovery_policy(args),
+                    UsbWriteDialect::Esptool => RecoveryPhase::PostFlash,
+                };
                 if let Err(error) = self.reacquire(phase) {
                     self.fail_once(error.category);
                     self.last_command_diagnostic = Some(UsbCommandDiagnostic::from_output(
@@ -193,7 +231,10 @@ impl UsbSession {
                 return Ok(process_result);
             }
 
-            let category = classify_espflash_failure(&process_result);
+            let category = match dialect {
+                UsbWriteDialect::Espflash => classify_espflash_failure(&process_result),
+                UsbWriteDialect::Esptool => classify_esptool_write_failure(&process_result),
+            };
             let maybe_signature = (category == UsbTerminalCategory::BootloaderConnectFailed)
                 .then(|| classify_bootloader_diagnostic(&process_result));
             if attempt == 2 {
@@ -416,14 +457,20 @@ fn advance_device_effect_state(
     current: UsbDeviceEffectState,
     args: &[String],
     output: &SupervisedOutput,
+    dialect: UsbWriteDialect,
 ) -> UsbDeviceEffectState {
-    let is_write = is_flash_effect(args);
+    let is_write = match dialect {
+        UsbWriteDialect::Espflash => is_flash_effect(args),
+        UsbWriteDialect::Esptool => is_esptool_write_effect(args),
+    };
     if current == UsbDeviceEffectState::Completed || (is_write && output.succeeded()) {
         return UsbDeviceEffectState::Completed;
     }
-    if is_write
-        && classify_espflash_failure(output) == UsbTerminalCategory::FlashFailedAfterTransfer
-    {
+    let category = match dialect {
+        UsbWriteDialect::Espflash => classify_espflash_failure(output),
+        UsbWriteDialect::Esptool => classify_esptool_write_failure(output),
+    };
+    if is_write && category == UsbTerminalCategory::FlashFailedAfterTransfer {
         return UsbDeviceEffectState::ConfirmedPartial;
     }
     current
