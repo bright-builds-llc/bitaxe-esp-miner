@@ -4488,6 +4488,26 @@ the next fresh ordinal and is ineligible until focused/full gates, push, exact
 package, and detector pass. Exact command:
 `just stratum-v2-restore-recovery --board 205 --port <detector-port> --private-root scratch/str005-installed-package-recovery/recovery-005 --projection docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-005.json --redact-evidence`.
 
+Recovery-005 outcome: exact pushed source/package `caf24be8` and fresh detector
+passed, but the initial monitor stopped `hardware_blocked/runtime_monitor_process`.
+Its protected signature is `timeout` with one unique origin and substantial
+bounded runtime output already observed, no stderr, launch failure, or output
+limit, and cleanup not yet reached when the outer 75-second supervisor expired.
+The root contains only the protected initial-monitor receipt; no identity,
+search/rebuild, readback, bundle, projection, validator, fixture, campaign, or
+device effect began. A post-run detector proved cleanup and one ready board.
+
+Continuation decision: `continue_after_verified_fix`. Device-session source
+proves the monitor command may independently spend 10 seconds probing, 60
+seconds admitting/reacquiring, 60 seconds capturing, and 60 seconds final-
+cleaning. The new timing regression failed red at 75 seconds and passed green
+after changing only the outer ceiling to 210 seconds; the internal 60-second
+capture and every device-session phase bound remain unchanged. Before
+recovery-006, the exact real-USB regression is:
+`just stratum-v2-runtime-monitor-diagnostic --board 205 --port <detector-port> --private-root scratch/str005-runtime-monitor-diagnostic/diagnostic-002 --redact-evidence`.
+Recovery-006 exact command:
+`just stratum-v2-restore-recovery --board 205 --port <detector-port> --private-root scratch/str005-installed-package-recovery/recovery-006 --projection docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-006.json --redact-evidence`.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

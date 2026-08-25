@@ -15,7 +15,7 @@ export type RuntimeMonitorDiagnosticArgs = {
 const taskId = "task-parity-str005-autonomous-continuation";
 const planRelative =
   "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md";
-const expectedPrivateRoot = "scratch/str005-runtime-monitor-diagnostic/diagnostic-001";
+const expectedPrivateRoot = "scratch/str005-runtime-monitor-diagnostic/diagnostic-002";
 
 export class RuntimeMonitorDiagnosticError extends Error {
   public constructor(

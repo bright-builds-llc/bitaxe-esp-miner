@@ -5,7 +5,11 @@ import path from "node:path";
 import test from "node:test";
 
 import { runCampaignProcess } from "./stratum-v2-campaign.js";
-import { monitorRuntimeOrigin } from "./stratum-v2-runtime-admission.js";
+import {
+  monitorRuntimeOrigin,
+  runtimeMonitorCaptureSeconds,
+  runtimeMonitorProcessTimeoutMillis,
+} from "./stratum-v2-runtime-admission.js";
 import { parseRuntimeMonitorDiagnosticArgs } from "./stratum-v2-runtime-monitor-diagnostic.js";
 import {
   runRuntimeMonitorChild,
@@ -15,12 +19,18 @@ import {
 const sourceCommit = "a".repeat(40);
 const planSha256 = "b".repeat(64);
 
+test("runtime monitor outer lifetime covers probe admission capture and cleanup", () => {
+  // Arrange / Act / Assert
+  assert.equal(runtimeMonitorCaptureSeconds, 60);
+  assert.equal(runtimeMonitorProcessTimeoutMillis, 210_000);
+});
+
 test("runtime monitor diagnostic parser admits only the rolling contract command", () => {
   // Arrange
   const exact = [
     "--board", "205",
     "--port", "/dev/cu.usbmodem101",
-    "--private-root", "scratch/str005-runtime-monitor-diagnostic/diagnostic-001",
+    "--private-root", "scratch/str005-runtime-monitor-diagnostic/diagnostic-002",
     "--redact-evidence",
   ];
 

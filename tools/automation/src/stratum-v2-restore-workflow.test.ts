@@ -113,8 +113,8 @@ test("restore recovery parser admits only the immutable protected command", () =
   const exact = [
     "--board", "205",
     "--port", "/dev/cu.usbmodem101",
-    "--private-root", "scratch/str005-installed-package-recovery/recovery-005",
-    "--projection", "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-005.json",
+    "--private-root", "scratch/str005-installed-package-recovery/recovery-006",
+    "--projection", "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-006.json",
     "--redact-evidence",
   ];
 

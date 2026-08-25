@@ -42,9 +42,9 @@ export type RestoreRecoveryArgs = {
 const taskId = "task-parity-str005-autonomous-continuation";
 const planRelative =
   "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md";
-const expectedPrivateRoot = "scratch/str005-installed-package-recovery/recovery-005";
+const expectedPrivateRoot = "scratch/str005-installed-package-recovery/recovery-006";
 const expectedProjection =
-  "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-005.json";
+  "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-006.json";
 
 export class RestoreRecoveryError extends Error {
   public constructor(

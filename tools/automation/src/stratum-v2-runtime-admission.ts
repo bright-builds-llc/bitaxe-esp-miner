@@ -48,6 +48,9 @@ type RuntimeDependencies = {
   readonly restoreBundlePath: string;
 };
 
+export const runtimeMonitorCaptureSeconds = 60;
+export const runtimeMonitorProcessTimeoutMillis = 210_000;
+
 export type RuntimeMonitorDiagnostics = {
   readonly receiptPath: string;
   readonly sourceCommit: string;
@@ -106,7 +109,8 @@ export async function monitorRuntimeOrigin(
   diagnostics?: RuntimeMonitorDiagnostics,
 ): Promise<URL> {
   const args = [
-    "monitor", "--board", "205", "--port", port, "--capture-timeout-seconds", "60",
+    "monitor", "--board", "205", "--port", port,
+    "--capture-timeout-seconds", String(runtimeMonitorCaptureSeconds),
   ];
   if (diagnostics !== undefined) {
     let monitored;
@@ -118,7 +122,7 @@ export async function monitorRuntimeOrigin(
         receiptPath: diagnostics.receiptPath,
         sourceCommit: diagnostics.sourceCommit,
         planSha256: diagnostics.planSha256,
-        timeoutMillis: 75_000,
+        timeoutMillis: runtimeMonitorProcessTimeoutMillis,
       });
       await validateRuntimeMonitorReceipt(
         diagnostics.receiptPath,
@@ -135,7 +139,7 @@ export async function monitorRuntimeOrigin(
   }
   let outcome: RuntimeProcessResult;
   try {
-    outcome = await runProcess(workspace, flashProgram, args, 75_000);
+    outcome = await runProcess(workspace, flashProgram, args, runtimeMonitorProcessTimeoutMillis);
   } catch {
     fail("hardware_blocked", "passive monitor failed", "runtime_monitor_process");
   }
