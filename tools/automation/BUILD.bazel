@@ -175,6 +175,23 @@ js_binary(
 )
 
 js_binary(
+    name = "stratum_v2_exact_restoration",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        "//tools/flash:flash",
+    ],
+    entry_point = "dist/stratum-v2-exact-restoration-cli.js",
+)
+
+js_binary(
+    name = "stratum_v2_exact_restoration_validator",
+    chdir = "../../../..",
+    data = [":automation_ts"],
+    entry_point = "dist/stratum-v2-exact-restoration-validator-cli.js",
+)
+
+js_binary(
     name = "stratum_v2_restore_validator",
     chdir = "../../../..",
     data = [":automation_ts"],

@@ -4531,6 +4531,49 @@ restoration are consumed; no second write is authorized. `STR-005` remains
 `implemented`. Closure:
 `docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/CLOSURE.md`.
 
+### task-str005-exact-restoration-remediation | 2026-08-25 | Restore the pre-campaign Ultra 205 state
+
+- [x] Add a red/green real-adapter regression proving the historical recovery
+      bundle fails only on current-host source equality.
+- [x] Add exact current-source authorization, remediation-plan binding,
+      admission-only restore validation, and protected diagnostics.
+- [x] Add the resumable host owner for snapshot/Wi-Fi/settings/theme restoration
+      and exact original-runtime verification.
+- [ ] Pass all software, privacy, package, reference, selector, and diff gates;
+      commit/push and build the exact host package before device access.
+- [ ] Run exact no-effect preflight, fresh detector, and remediation-001 once;
+      use settings-only resume only from proved `firmware_restored` state.
+- [ ] Publish remediation evidence and archive only this task on exact success;
+      never retry STR-005, promote STR-005, or weaken its campaign closure.
+
+Plan: `docs/parity/work-plans/20260825T150417Z-STR-005-EXACT-RESTORATION/PLAN.md`
+
+Authorization: source/test/docs/build/package, Git commit/push, read-only current
+runtime HTTP/USB observation, exact recovery-006 snapshot write, Wi-Fi NVS seed,
+settings/theme restoration, fresh detector/reacquisition, protected evidence,
+and one remediation ordinal under the linked plan. The canonical host package
+is a provenance gate and must not be flashed. The task permits no campaign,
+external pool, raw NVS/coredump read, direct UART/pins, fault injection, OTA,
+erase, arbitrary writes, or STR-005 promotion.
+
+Precondition: the board remains reachable on campaign package `78784a4a`, with
+`mineonboot=false`, mining `safe_blocked`, zero hashrate, and zero shares. The
+recovery-006 bundle/projection/receipts, attempt-004 backup, and ignored local
+credential files must remain protected and unchanged. Any mismatch stops before
+effects.
+
+Progress: the exact Rust feedback loop first failed red at
+`restore_installed=blocked reason=identity_contract` with a valid historical
+snapshot and clean current host. It now passes green only with the exact
+current-source-bound remediation authorization and rejects tampering before
+USB. Admission-only validates all eight protected ranges without snapshots or
+commands. The host owner implements fixed preflight/start/resume paths,
+protected authorization/state/child receipts, current-safe admission, one
+snapshot plus Wi-Fi seed, original-runtime proof, settings/theme restoration,
+settings-only resume, independent projection validation, and closed evidence.
+Focused Rust/TypeScript restoration and all flash tests pass. No new device
+effect has begun.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

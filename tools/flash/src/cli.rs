@@ -42,11 +42,23 @@ pub(crate) struct RestoreInstalledCommand {
     #[arg(long = "restore-bundle", value_parser = parse_utf8_path)]
     pub(crate) restore_bundle: Utf8PathBuf,
 
+    #[arg(long = "restore-authorization", value_parser = parse_utf8_path)]
+    pub(crate) restore_authorization: Utf8PathBuf,
+
+    #[arg(long = "remediation-plan", value_parser = parse_utf8_path)]
+    pub(crate) remediation_plan: Utf8PathBuf,
+
+    #[arg(long = "private-root", value_parser = parse_utf8_path)]
+    pub(crate) private_root: Utf8PathBuf,
+
     #[arg(long = "wifi-credentials", value_parser = parse_utf8_path)]
     pub(crate) wifi_credentials: Utf8PathBuf,
 
     #[arg(long = "redact-evidence")]
     pub(crate) redact_evidence: bool,
+
+    #[arg(long = "admission-only")]
+    pub(crate) admission_only: bool,
 }
 
 #[derive(Debug, Parser, Clone)]

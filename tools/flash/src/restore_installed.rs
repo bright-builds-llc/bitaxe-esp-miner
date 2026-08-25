@@ -5,10 +5,17 @@ use std::os::unix::fs::PermissionsExt;
 
 pub(crate) const RESTORE_BUNDLE_RELATIVE: &str =
     "scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json";
-const RESTORE_PLAN_RELATIVE: &str =
+pub(crate) const RESTORE_PLAN_RELATIVE: &str =
     "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md";
+pub(crate) const REMEDIATION_PLAN_RELATIVE: &str =
+    "docs/parity/work-plans/20260825T150417Z-STR-005-EXACT-RESTORATION/PLAN.md";
+pub(crate) const REMEDIATION_PLAN_SHA256: &str =
+    "55d821773eb277ed9e6e27ff0bc8cdd7aeb7c19fbe304ff5fe72cf8e452b8ceb";
+const RECOVERY_CAPTURE_SOURCE: &str = "7d5d9504433d54ae28fe853c5827d6dd05693eef";
+pub(crate) const PREFLIGHT_ROOT: &str = "scratch/str005-exact-restoration/preflight-001";
+pub(crate) const EFFECT_ROOT: &str = "scratch/str005-exact-restoration/remediation-001";
 const RESTORE_SCHEMA: &str = "bitaxe-stratum-v2-restore-bundle-v1";
-const RESTORE_RANGES: [(&str, u32, u32); 8] = [
+pub(crate) const RESTORE_RANGES: [(&str, u32, u32); 8] = [
     ("bootloader", 0x000000, 0x008000),
     ("partition_table", 0x008000, 0x001000),
     ("phy_init", 0x00f000, 0x001000),
@@ -73,6 +80,29 @@ struct PreparedRestore {
     _snapshots: Vec<AdmittedExecutionSnapshot>,
 }
 
+#[derive(Debug, Deserialize)]
+struct RestoreAuthorization {
+    schema_version: String,
+    board: u16,
+    ordinal: u16,
+    action: String,
+    current_source_commit: String,
+    reference_commit: String,
+    bundle_sha256: String,
+    bundle_capture_source_commit: String,
+    recovery_plan_sha256: String,
+    remediation_plan_sha256: String,
+}
+
+struct RestoreCommon<'a> {
+    schema: &'a str,
+    board: u16,
+    identity: &'a InstalledIdentity,
+    capture_source: &'a str,
+    plan_sha256: &'a str,
+    bundle_sha256: &'a str,
+}
+
 fn require_mode(path: &Utf8Path, mode: u32, directory: bool) -> Result<()> {
     let metadata = fs::symlink_metadata(path.as_std_path())?;
     if metadata.file_type().is_symlink()
@@ -109,37 +139,51 @@ fn contained(root: &Utf8Path, relative: &str) -> Result<Utf8PathBuf> {
 }
 
 fn validate_common(
-    schema: &str,
-    board: u16,
-    identity: &InstalledIdentity,
-    capture_source: &str,
-    plan_sha256: &str,
+    common: RestoreCommon<'_>,
+    authorization: &RestoreAuthorization,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
     let provenance = environment.current_provenance()?;
-    if schema != RESTORE_SCHEMA
-        || board != 205
-        || identity.source_dirty
-        || capture_source != provenance.build_identity().source_commit()
-        || identity.reference_commit != environment.reference_commit()
-        || identity.source_commit.len() != 40
-        || identity.app_elf_sha256.len() != 64
-        || identity.build_timestamp_utc.len() != 20
-        || identity.semantic_version.is_empty()
-        || !matches!(identity.build_channel.as_str(), "dev" | "release")
-        || (identity.build_channel == "release") != identity.release_tag.is_some()
-        || identity.idf_version != "v5.5.4"
+    if common.schema != RESTORE_SCHEMA
+        || common.board != 205
+        || common.identity.source_dirty
+        || common.capture_source != RECOVERY_CAPTURE_SOURCE
+        || provenance.build_identity().source_dirty()
+        || authorization.schema_version != "bitaxe-stratum-v2-restore-authorization-v1"
+        || authorization.board != 205
+        || authorization.ordinal != 1
+        || !matches!(authorization.action.as_str(), "preflight" | "start")
+        || authorization.current_source_commit != provenance.build_identity().source_commit()
+        || authorization.reference_commit != environment.reference_commit()
+        || authorization.bundle_sha256 != common.bundle_sha256
+        || authorization.bundle_capture_source_commit != common.capture_source
+        || authorization.recovery_plan_sha256 != common.plan_sha256
+        || authorization.remediation_plan_sha256 != REMEDIATION_PLAN_SHA256
+        || common.identity.reference_commit != environment.reference_commit()
+        || common.identity.source_commit.len() != 40
+        || common.identity.app_elf_sha256.len() != 64
+        || common.identity.build_timestamp_utc.len() != 20
+        || common.identity.semantic_version.is_empty()
+        || !matches!(common.identity.build_channel.as_str(), "dev" | "release")
+        || (common.identity.build_channel == "release") != common.identity.release_tag.is_some()
+        || common.identity.idf_version != "v5.5.4"
         || !matches!(
-            identity.running_partition.as_str(),
+            common.identity.running_partition.as_str(),
             "factory" | "ota_0" | "ota_1"
         )
-        || plan_sha256.len() != 64
+        || common.plan_sha256.len() != 64
     {
         bail!("restore_installed=blocked reason=identity_contract");
     }
-    let plan = environment.read_to_string(Utf8Path::new(RESTORE_PLAN_RELATIVE))?;
-    if sha256_bytes(plan.as_bytes()) != plan_sha256 {
+    let plan = environment
+        .read_to_string(&environment.workspace_path(Utf8Path::new(RESTORE_PLAN_RELATIVE)))?;
+    if sha256_bytes(plan.as_bytes()) != common.plan_sha256 {
         bail!("restore_installed=blocked reason=plan_drift");
+    }
+    let remediation = environment
+        .read_to_string(&environment.workspace_path(Utf8Path::new(REMEDIATION_PLAN_RELATIVE)))?;
+    if sha256_bytes(remediation.as_bytes()) != REMEDIATION_PLAN_SHA256 {
+        bail!("restore_installed=blocked reason=remediation_plan_drift");
     }
     Ok(())
 }
@@ -148,8 +192,9 @@ fn snapshot_command(
     root: &Utf8Path,
     ranges: &[SnapshotRange],
     port: &str,
+    admission_only: bool,
     environment: &impl FlashEnvironment,
-) -> Result<PreparedRestore> {
+) -> Result<Option<PreparedRestore>> {
     let expected = RESTORE_RANGES;
     if ranges.len() != expected.len() {
         bail!("restore_installed=blocked reason=range_count");
@@ -168,7 +213,12 @@ fn snapshot_command(
         if bytes.len() != size as usize || sha256_bytes(&bytes) != range.sha256 {
             bail!("restore_installed=blocked reason=range_digest");
         }
-        snapshots.push(environment.create_admitted_execution_snapshot(&bytes)?);
+        if !admission_only {
+            snapshots.push(environment.create_admitted_execution_snapshot(&bytes)?);
+        }
+    }
+    if admission_only {
+        return Ok(None);
     }
     let esptool = [
         ".embuild/espressif/python_env/idf5.5_py3.14_env/bin/esptool.py",
@@ -201,10 +251,10 @@ fn snapshot_command(
         args.push(format!("0x{address:x}"));
         args.push(snapshot.path().as_str().to_owned());
     }
-    Ok(PreparedRestore {
+    Ok(Some(PreparedRestore {
         command: CommandSpec::new(esptool.as_str(), args),
         _snapshots: snapshots,
-    })
+    }))
 }
 
 fn package_command(
@@ -289,9 +339,28 @@ pub(crate) fn run_restore_installed(
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
     ensure_ultra_205(command.board)?;
-    if !command.redact_evidence || command.restore_bundle != Utf8Path::new(RESTORE_BUNDLE_RELATIVE)
+    let expected_root = if command.admission_only {
+        Utf8Path::new(PREFLIGHT_ROOT)
+    } else {
+        Utf8Path::new(EFFECT_ROOT)
+    };
+    let expected_authorization = expected_root.join("restore-authorization.private.json");
+    if !command.redact_evidence
+        || command.restore_bundle != Utf8Path::new(RESTORE_BUNDLE_RELATIVE)
+        || command.remediation_plan != Utf8Path::new(REMEDIATION_PLAN_RELATIVE)
+        || command.private_root != expected_root
+        || command.restore_authorization != expected_authorization
     {
         bail!("restore_installed=blocked reason=invocation_contract");
+    }
+    let private_root = environment.workspace_path(&command.private_root);
+    let authorization_path = environment.workspace_path(&command.restore_authorization);
+    require_mode(&private_root, 0o700, true)?;
+    require_mode(&authorization_path, 0o600, false)?;
+    let authorization: RestoreAuthorization =
+        serde_json::from_str(&environment.read_to_string(&authorization_path)?)?;
+    if command.admission_only != (authorization.action == "preflight") {
+        bail!("restore_installed=blocked reason=authorization_action");
     }
     let bundle_path = environment.workspace_path(&command.restore_bundle);
     let root = bundle_path
@@ -300,8 +369,9 @@ pub(crate) fn run_restore_installed(
     require_mode(root, 0o700, true)?;
     require_mode(&bundle_path, 0o600, false)?;
     let bundle_document = environment.read_to_string(&bundle_path)?;
+    let bundle_sha256 = sha256_bytes(bundle_document.as_bytes());
     let bundle: RestoreBundle = serde_json::from_str(&bundle_document)?;
-    let prepared = match bundle {
+    let maybe_prepared = match bundle {
         RestoreBundle::Package {
             schema_version,
             board,
@@ -313,14 +383,21 @@ pub(crate) fn run_restore_installed(
             plan_sha256,
         } => {
             validate_common(
-                &schema_version,
-                board,
-                &installed_identity,
-                &capture_source_commit,
-                &plan_sha256,
+                RestoreCommon {
+                    schema: &schema_version,
+                    board,
+                    identity: &installed_identity,
+                    capture_source: &capture_source_commit,
+                    plan_sha256: &plan_sha256,
+                    bundle_sha256: &bundle_sha256,
+                },
+                &authorization,
                 environment,
             )?;
-            package_command(
+            if command.admission_only {
+                bail!("restore_installed=blocked reason=admission_only_requires_snapshot");
+            }
+            Some(package_command(
                 root,
                 &package_manifest,
                 &package_manifest_sha256,
@@ -328,7 +405,7 @@ pub(crate) fn run_restore_installed(
                 &installed_identity,
                 &command.port,
                 environment,
-            )?
+            )?)
         }
         RestoreBundle::Snapshot {
             schema_version,
@@ -339,16 +416,31 @@ pub(crate) fn run_restore_installed(
             plan_sha256,
         } => {
             validate_common(
-                &schema_version,
-                board,
-                &installed_identity,
-                &capture_source_commit,
-                &plan_sha256,
+                RestoreCommon {
+                    schema: &schema_version,
+                    board,
+                    identity: &installed_identity,
+                    capture_source: &capture_source_commit,
+                    plan_sha256: &plan_sha256,
+                    bundle_sha256: &bundle_sha256,
+                },
+                &authorization,
                 environment,
             )?;
-            snapshot_command(root, &ranges, &command.port, environment)?
+            snapshot_command(
+                root,
+                &ranges,
+                &command.port,
+                command.admission_only,
+                environment,
+            )?
         }
     };
+    if command.admission_only {
+        emit_line("restore_admission", "ready")?;
+        return Ok(());
+    }
+    let prepared = maybe_prepared.context("restore_installed=blocked reason=prepared_missing")?;
     let nvs = prepare_wifi_nvs_seed(
         &command.port,
         &command.wifi_credentials,

@@ -25,4 +25,5 @@ mod monitor;
 mod phase35;
 mod redaction;
 mod release_recovery;
+mod restore_installed;
 mod workflow;

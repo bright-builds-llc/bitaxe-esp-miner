@@ -12,6 +12,12 @@ fn parses_only_the_explicit_installed_restore_surface() {
         "/dev/cu.usbmodem101",
         "--restore-bundle",
         RESTORE_BUNDLE_RELATIVE,
+        "--restore-authorization",
+        "scratch/str005-exact-restoration/remediation-001/restore-authorization.private.json",
+        "--remediation-plan",
+        REMEDIATION_PLAN_RELATIVE,
+        "--private-root",
+        "scratch/str005-exact-restoration/remediation-001",
         "--wifi-credentials",
         "wifi-credentials.json",
         "--redact-evidence",
@@ -31,4 +37,5 @@ fn parses_only_the_explicit_installed_restore_surface() {
         Utf8Path::new(RESTORE_BUNDLE_RELATIVE)
     );
     assert!(command.redact_evidence);
+    assert!(!command.admission_only);
 }

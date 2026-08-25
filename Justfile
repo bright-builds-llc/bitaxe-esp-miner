@@ -198,6 +198,9 @@ stratum-v2-runtime-admission *args:
 stratum-v2-runtime-monitor-diagnostic *args:
     bazel run //tools/automation:stratum_v2_runtime_monitor_diagnostic -- {{ args }}
 
+stratum-v2-exact-restoration action *args:
+    bazel run //tools/automation:stratum_v2_exact_restoration -- {{ quote(action) }} {{ args }}
+
 stratum-v2-restore-recovery *args:
     bazel run //tools/automation:stratum_v2_restore_recovery -- {{ args }}
 
