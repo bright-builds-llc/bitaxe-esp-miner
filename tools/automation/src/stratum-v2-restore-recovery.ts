@@ -42,9 +42,9 @@ export type RestoreRecoveryArgs = {
 const taskId = "task-parity-str005-autonomous-continuation";
 const planRelative =
   "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md";
-const expectedPrivateRoot = "scratch/str005-installed-package-recovery/recovery-004";
+const expectedPrivateRoot = "scratch/str005-installed-package-recovery/recovery-005";
 const expectedProjection =
-  "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-004.json";
+  "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-005.json";
 
 export class RestoreRecoveryError extends Error {
   public constructor(
@@ -208,7 +208,7 @@ async function runtimeIdentity(
 export async function recoverInstalledFirmware(
   workspace: string,
   args: RestoreRecoveryArgs,
-  validatorProgram: string,
+  validator: { readonly program: string; readonly argsPrefix: readonly string[] },
 ): Promise<RestoreReadinessProjection> {
   if (args.board !== "205"
     || args.privateRoot !== expectedPrivateRoot
@@ -316,8 +316,14 @@ export async function recoverInstalledFirmware(
   const receiptPath = path.join(privateRoot, "validator-child-receipt.private.json");
   const validation = await runValidatorChild({
     workspace,
-    program: validatorProgram,
-    args: [bundlePath, candidateProjection, source.sourceCommit, source.planSha256],
+    program: validator.program,
+    args: [
+      ...validator.argsPrefix,
+      bundlePath,
+      candidateProjection,
+      source.sourceCommit,
+      source.planSha256,
+    ],
     receiptPath,
     sourceCommit: source.sourceCommit,
     planSha256: source.planSha256,

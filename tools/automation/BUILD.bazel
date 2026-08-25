@@ -186,7 +186,6 @@ js_binary(
     chdir = "../../../..",
     data = [
         ":automation_ts",
-        ":stratum_v2_restore_validator",
         "//tools/flash:flash",
         "//tools/xtask:xtask",
     ],
@@ -424,7 +423,16 @@ js_test(
     data = [
         ":automation_ts",
         ":automation_tests_ts",
-        ":stratum_v2_restore_validator",
+    ],
+    entry_point = "test-dist/stratum-v2-validator-launcher.test.js",
+)
+
+js_binary(
+    name = "stratum_v2_restore_workspace_launcher_test",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        ":automation_tests_ts",
     ],
     entry_point = "test-dist/stratum-v2-validator-launcher.test.js",
 )

@@ -6,7 +6,7 @@ import { allowedEnvironment } from "./process.js";
 import { sha256 } from "./stratum-v2-restore-model.js";
 
 export const validatorChildReceiptSchema =
-  "bitaxe-stratum-v2-validator-child-receipt-v1" as const;
+  "bitaxe-stratum-v2-validator-child-receipt-v2" as const;
 
 const maximumOutputBytes = 65_536;
 const acceptedOutput = "restore_readiness=accepted\n";
@@ -27,6 +27,16 @@ export type ValidatorChildReceipt = {
   readonly stdout_sha256: string;
   readonly stderr_sha256: string;
   readonly invocation_sha256: string;
+  readonly terminal_category:
+    | "accepted"
+    | "validator_rejected"
+    | "node_module_unavailable"
+    | "node_runtime_failed"
+    | "launcher_failed"
+    | "timeout"
+    | "output_limit"
+    | "spawn_failed"
+    | "unknown_failure";
   readonly validation_accepted: boolean;
   readonly source_commit: string;
   readonly plan_sha256: string;
@@ -68,6 +78,35 @@ function receiptIsAccepted(receipt: ValidatorChildReceipt): boolean {
     && receipt.stderr_bytes === 0
     && receipt.stdout_sha256 === sha256(acceptedOutput)
     && receipt.stderr_sha256 === sha256("");
+}
+
+function terminalCategory(input: {
+  readonly exitCode: number | null;
+  readonly timedOut: boolean;
+  readonly outputLimitExceeded: boolean;
+  readonly launchFailed: boolean;
+  readonly stdout: string;
+  readonly stderr: string;
+}): ValidatorChildReceipt["terminal_category"] {
+  if (input.launchFailed) return "spawn_failed";
+  if (input.timedOut) return "timeout";
+  if (input.outputLimitExceeded) return "output_limit";
+  if (input.exitCode === 0 && input.stdout === acceptedOutput && input.stderr === "") {
+    return "accepted";
+  }
+  if (input.stdout === "restore_readiness=rejected\n") return "validator_rejected";
+  if (input.stderr.includes("ERR_MODULE_NOT_FOUND")
+    || input.stderr.includes("Cannot find module")) {
+    return "node_module_unavailable";
+  }
+  if (input.stderr.includes("aspect_rules_js[js_binary]")
+    || input.stderr.includes("BAZEL_BINDIR")) {
+    return "launcher_failed";
+  }
+  if (input.stderr.includes("node:") || input.stderr.includes("Node.js v")) {
+    return "node_runtime_failed";
+  }
+  return "unknown_failure";
 }
 
 export async function runValidatorChild(input: ValidatorChildInput): Promise<ValidatorChildReceipt> {
@@ -121,6 +160,8 @@ export async function runValidatorChild(input: ValidatorChildInput): Promise<Val
   });
   const stdoutValue = outputBytes(stdout);
   const stderrValue = outputBytes(stderr);
+  const stdoutText = stdoutValue.toString("utf8");
+  const stderrText = stderrValue.toString("utf8");
   const base = {
     schema_version: validatorChildReceiptSchema,
     launcher: "bounded_spawn",
@@ -135,6 +176,14 @@ export async function runValidatorChild(input: ValidatorChildInput): Promise<Val
     stdout_sha256: sha256(stdoutValue),
     stderr_sha256: sha256(stderrValue),
     invocation_sha256: sha256(JSON.stringify(input.args)),
+    terminal_category: terminalCategory({
+      exitCode,
+      timedOut,
+      outputLimitExceeded,
+      launchFailed,
+      stdout: stdoutText,
+      stderr: stderrText,
+    }),
     validation_accepted: false,
     source_commit: input.sourceCommit,
     plan_sha256: input.planSha256,
@@ -161,6 +210,10 @@ export async function validateValidatorChildReceipt(
     throw new Error("validator receipt protection is invalid");
   }
   const value = JSON.parse(await readFile(candidate, "utf8")) as ValidatorChildReceipt;
+  const categories: readonly ValidatorChildReceipt["terminal_category"][] = [
+    "accepted", "validator_rejected", "node_module_unavailable", "node_runtime_failed",
+    "launcher_failed", "timeout", "output_limit", "spawn_failed", "unknown_failure",
+  ];
   if (value.schema_version !== validatorChildReceiptSchema
     || value.launcher !== "bounded_spawn"
     || value.working_directory !== "workspace_bound"
@@ -179,10 +232,12 @@ export async function validateValidatorChildReceipt(
     || !digestPattern.test(value.stdout_sha256)
     || !digestPattern.test(value.stderr_sha256)
     || !digestPattern.test(value.invocation_sha256)
+    || !categories.includes(value.terminal_category)
     || !commitPattern.test(value.source_commit)
     || !digestPattern.test(value.plan_sha256)
     || value.source_commit !== expectedSourceCommit
     || value.plan_sha256 !== expectedPlanSha256
+    || value.validation_accepted !== (value.terminal_category === "accepted")
     || value.validation_accepted !== receiptIsAccepted(value)) {
     throw new Error("validator receipt is invalid");
   }

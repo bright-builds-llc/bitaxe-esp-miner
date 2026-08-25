@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import { campaignWorkspaceRoot } from "./stratum-v2-campaign.js";
 import {
   recoverInstalledFirmware,
@@ -8,7 +10,10 @@ import {
 try {
   const workspace = campaignWorkspaceRoot();
   const args = parseRestoreRecoveryArgs(process.argv.slice(2));
-  const validator = `${workspace}/bazel-bin/tools/automation/stratum_v2_restore_validator_/stratum_v2_restore_validator`;
+  const validator = {
+    program: process.env["JS_BINARY__NODE_BINARY"] ?? process.execPath,
+    argsPrefix: [fileURLToPath(new URL("./stratum-v2-restore-validator-cli.js", import.meta.url))],
+  };
   const result = await recoverInstalledFirmware(workspace, args, validator);
   process.stdout.write(`${JSON.stringify(result)}\n`);
 } catch (error) {

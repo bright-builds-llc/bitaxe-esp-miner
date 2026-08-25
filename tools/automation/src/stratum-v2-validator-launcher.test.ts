@@ -19,16 +19,34 @@ const sourceCommit = "a".repeat(40);
 const referenceCommit = "b".repeat(40);
 const planSha256 = "c".repeat(64);
 
-function launcherContext(): { readonly workspace: string; readonly program: string } {
-  const workspace = process.cwd();
+function launcherContext(): {
+  readonly workspace: string;
+  readonly program: string;
+  readonly argsPrefix: readonly string[];
+} {
   const maybeRunfiles = process.env["RUNFILES_DIR"] ?? process.env["JS_BINARY__RUNFILES"];
   assert(maybeRunfiles !== undefined);
+  const mainRunfiles = path.basename(maybeRunfiles) === "_main"
+    ? maybeRunfiles
+    : path.join(maybeRunfiles, "_main");
+  const command = {
+    program: process.env["JS_BINARY__NODE_BINARY"] ?? process.execPath,
+    argsPrefix: [path.join(
+      mainRunfiles,
+      "tools/automation/dist/stratum-v2-restore-validator-cli.js",
+    )],
+  };
+  const configuredWorkspace = process.env["BUILD_WORKSPACE_DIRECTORY"];
+  if (configuredWorkspace !== undefined) {
+    return {
+      workspace: configuredWorkspace,
+      ...command,
+    };
+  }
+  const workspace = process.cwd();
   return {
     workspace,
-    program: path.join(
-      maybeRunfiles,
-      "_main/tools/automation/stratum_v2_restore_validator_/stratum_v2_restore_validator",
-    ),
+    ...command,
   };
 }
 
@@ -106,7 +124,7 @@ async function fixture(root: string): Promise<{
 
 test("real Bazel validator child accepts a protected fixture with sanitized launcher state", async () => {
   // Arrange
-  const { workspace, program } = launcherContext();
+  const { workspace, program, argsPrefix } = launcherContext();
   await mkdir(path.join(workspace, "scratch"), { recursive: true });
   const root = await mkdtemp(path.join(workspace, "scratch/str005-validator-launcher-"));
   await chmod(root, 0o700);
@@ -120,14 +138,22 @@ test("real Bazel validator child accepts a protected fixture with sanitized laun
     const receipt = await runValidatorChild({
       workspace,
       program,
-      args: [values.bundle, values.projection, sourceCommit, planSha256],
+      args: [...argsPrefix, values.bundle, values.projection, sourceCommit, planSha256],
       receiptPath,
       sourceCommit,
       planSha256,
     });
 
     // Assert
-    assert(receipt.validation_accepted);
+    assert(receipt.validation_accepted, JSON.stringify({
+      exit_code: receipt.exit_code,
+      timed_out: receipt.timed_out,
+      output_limit_exceeded: receipt.output_limit_exceeded,
+      launch_failed: receipt.launch_failed,
+      stdout_bytes: receipt.stdout_bytes,
+      stderr_bytes: receipt.stderr_bytes,
+      terminal_category: receipt.terminal_category,
+    }));
     assert.equal((await stat(receiptPath)).mode & 0o777, 0o600);
     assert(!(await readFile(receiptPath, "utf8")).includes(canary));
     await assert.doesNotReject(validateValidatorChildReceipt(
@@ -143,7 +169,7 @@ test("real Bazel validator child accepts a protected fixture with sanitized laun
 
 test("real Bazel validator child records rejection without publishing output text", async () => {
   // Arrange
-  const { workspace, program } = launcherContext();
+  const { workspace, program, argsPrefix } = launcherContext();
   await mkdir(path.join(workspace, "scratch"), { recursive: true });
   const root = await mkdtemp(path.join(workspace, "scratch/str005-validator-reject-"));
   await chmod(root, 0o700);
@@ -157,7 +183,7 @@ test("real Bazel validator child records rejection without publishing output tex
     const receipt = await runValidatorChild({
       workspace,
       program,
-      args: [values.bundle, values.projection, sourceCommit, planSha256],
+      args: [...argsPrefix, values.bundle, values.projection, sourceCommit, planSha256],
       receiptPath,
       sourceCommit,
       planSha256,

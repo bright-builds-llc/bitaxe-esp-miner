@@ -4,7 +4,7 @@ use crate::*;
 use std::os::unix::fs::PermissionsExt;
 
 pub(crate) const RESTORE_BUNDLE_RELATIVE: &str =
-    "scratch/str005-installed-package-recovery/recovery-004/restore-bundle.private.json";
+    "scratch/str005-installed-package-recovery/recovery-005/restore-bundle.private.json";
 const RESTORE_PLAN_RELATIVE: &str =
     "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md";
 const RESTORE_SCHEMA: &str = "bitaxe-stratum-v2-restore-bundle-v1";

@@ -4408,9 +4408,9 @@ device path. `STR-005` remains `implemented`; no retry is authorized. Closure:
       monitor-child receipt at the real process/USB boundary.
 - [x] Diagnose the recovery-003 boundary, add the regression before the fix,
       prove red/green, and pass every software/privacy/package/reference gate.
-- [ ] After push/package/detector, prove the real fixed boundary once with:
+- [x] After push/package/detector, prove the real fixed boundary once with:
       `just stratum-v2-runtime-monitor-diagnostic --board 205 --port <detector-port> --private-root scratch/str005-runtime-monitor-diagnostic/diagnostic-001 --redact-evidence`.
-- [ ] Commit/push, build the exact package, and run recovery-004 once with:
+- [x] Commit/push, build the exact package, and run recovery-004 once with:
       `just stratum-v2-restore-recovery --board 205 --port <detector-port> --private-root scratch/str005-installed-package-recovery/recovery-004 --projection docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-004.json --redact-evidence`.
 - [ ] For each later progress-backed recovery, append the fresh ordinal, exact
       expanded command, boundary signature, verified fix/regression, terminal
@@ -4462,6 +4462,31 @@ pass. One full Bazel run transiently reported both firmware Cargo actions
 failed; the narrowed concurrent build, a forced fresh concurrent rebuild, and
 an unchanged full rerun all passed, so no deterministic source or shared-target
 failure reproduced. No workaround or suppressed gate was added.
+
+Recovery-004 outcome: pushed source/package `ed69cc24`, fresh detector, and the
+read-only `diagnostic-001` real USB boundary passed `runtime_monitor_ready` with
+a protected accepted receipt. Recovery-004 then passed both qualified runtime
+monitors, identity/runtime continuity, all eight firmware-only reads, protected
+modes, and bundle construction, but stopped `evidence_invalid` at
+`independent_validation`. Its new receipt signature is child exit 1, no timeout,
+output limit, or spawn failure, zero stdout bytes, bounded stderr digest/count,
+and `validation_accepted=false`. No final projection or campaign root was
+published; attempt-004 remains unused. The unpublished candidate was preserved
+outside the sealed root, all children exited, and post-run one-board detection
+passed. No device write, NVS access, fixture, pool, mining, ASIC, or settings
+effect began.
+
+Continuation decision: `continue_after_verified_fix`. The exact workspace
+feedback command `bazel run
+//tools/automation:stratum_v2_restore_workspace_launcher_test` reproduced the
+child-only failure in milliseconds. It showed the nested Bazel launcher failed
+before validator stdout; direct CLI launch then exposed a Node runtime boundary.
+The Bazel wrapper's resolved `JS_BINARY__NODE_BINARY`, rather than
+`process.execPath`, is the correct independent child executable. The same exact
+workspace command now passes accepted and rejected fixtures. Recovery-005 is
+the next fresh ordinal and is ineligible until focused/full gates, push, exact
+package, and detector pass. Exact command:
+`just stratum-v2-restore-recovery --board 205 --port <detector-port> --private-root scratch/str005-installed-package-recovery/recovery-005 --projection docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-005.json --redact-evidence`.
 
 ## Future
 

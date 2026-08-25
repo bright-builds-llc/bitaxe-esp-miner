@@ -6,7 +6,7 @@ import { validateRestoreReadiness } from "./stratum-v2-restore-validator.js";
 import { validateValidatorChildReceipt } from "./stratum-v2-validator-child.js";
 
 const restoreProjection =
-  "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-004.json";
+  "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-005.json";
 const restorePlan =
   "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md";
 
