@@ -28,6 +28,7 @@ import {
 import {
   fetchRuntimeObject,
   monitorRuntimeOrigin,
+  type RuntimeMonitorDiagnostics,
 } from "./stratum-v2-runtime-admission.js";
 
 export type RestoreRecoveryArgs = {
@@ -38,11 +39,12 @@ export type RestoreRecoveryArgs = {
   readonly redactEvidence: true;
 };
 
-const taskId = "task-parity-str005-installed-package-recovery-003";
-const planRelative = "docs/parity/work-plans/20260824T214920Z-STR-005-RESTORE-RECOVERY3/PLAN.md";
-const expectedPrivateRoot = "scratch/str005-installed-package-recovery/recovery-003";
+const taskId = "task-parity-str005-autonomous-continuation";
+const planRelative =
+  "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md";
+const expectedPrivateRoot = "scratch/str005-installed-package-recovery/recovery-004";
 const expectedProjection =
-  "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-003.json";
+  "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-004.json";
 
 export class RestoreRecoveryError extends Error {
   public constructor(
@@ -176,6 +178,7 @@ function packageBundle(
 async function runtimeIdentity(
   workspace: string,
   port: string,
+  diagnostics: RuntimeMonitorDiagnostics,
 ): Promise<ReturnType<typeof parseInstalledIdentity>> {
   const runtimeFail = (
     category: string,
@@ -190,6 +193,7 @@ async function runtimeIdentity(
     port,
     runCampaignProcess,
     runtimeFail,
+    diagnostics,
   );
   try {
     return parseInstalledIdentity(
@@ -222,7 +226,11 @@ export async function recoverInstalledFirmware(
   await chmod(path.dirname(privateRoot), 0o700);
   await mkdir(privateRoot, { mode: 0o700 });
   await chmod(privateRoot, 0o700);
-  const identity = await runtimeIdentity(workspace, args.port);
+  const identity = await runtimeIdentity(workspace, args.port, {
+    receiptPath: path.join(privateRoot, "runtime-monitor-initial-receipt.private.json"),
+    sourceCommit: source.sourceCommit,
+    planSha256: source.planSha256,
+  });
   await privateJson(path.join(privateRoot, "installed-identity.private.json"), identity);
   let search: PackageSearchResult;
   try {
@@ -282,7 +290,11 @@ export async function recoverInstalledFirmware(
       source.planSha256,
     );
   }
-  const unchanged = await runtimeIdentity(workspace, args.port);
+  const unchanged = await runtimeIdentity(workspace, args.port, {
+    receiptPath: path.join(privateRoot, "runtime-monitor-final-receipt.private.json"),
+    sourceCommit: source.sourceCommit,
+    planSha256: source.planSha256,
+  });
   if (JSON.stringify(unchanged) !== JSON.stringify(identity)) {
     fail("hardware_blocked", "runtime_changed");
   }

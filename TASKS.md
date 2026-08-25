@@ -4402,6 +4402,67 @@ child software boundary remains regression-proved but was not reached on the
 device path. `STR-005` remains `implemented`; no retry is authorized. Closure:
 `docs/parity/work-plans/20260824T214920Z-STR-005-RESTORE-RECOVERY3/CLOSURE.md`.
 
+### task-parity-str005-autonomous-continuation | 2026-08-25 | Autonomously finish STR-005 with progress-gated attempts
+
+- [x] Add a tight red-capable runtime-monitor feedback loop and protected closed
+      monitor-child receipt at the real process/USB boundary.
+- [x] Diagnose the recovery-003 boundary, add the regression before the fix,
+      prove red/green, and pass every software/privacy/package/reference gate.
+- [ ] After push/package/detector, prove the real fixed boundary once with:
+      `just stratum-v2-runtime-monitor-diagnostic --board 205 --port <detector-port> --private-root scratch/str005-runtime-monitor-diagnostic/diagnostic-001 --redact-evidence`.
+- [ ] Commit/push, build the exact package, and run recovery-004 once with:
+      `just stratum-v2-restore-recovery --board 205 --port <detector-port> --private-root scratch/str005-installed-package-recovery/recovery-004 --projection docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-004.json --redact-evidence`.
+- [ ] For each later progress-backed recovery, append the fresh ordinal, exact
+      expanded command, boundary signature, verified fix/regression, terminal
+      outcome, and continuation decision to this block before effects.
+- [ ] After accepted recovery readiness, bind its exact bundle and run the
+      existing preflight, runtime admission, and single attempt-004 campaign.
+- [ ] Promote only `STR-005` after accepted hardware plus exact restoration;
+      otherwise stop only at a policy terminal and close truthfully.
+
+Plan: `docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md`
+
+Authorization: autonomous repository diagnosis/fixes/tests/docs/build/package,
+Git commit/push, network/toolchain use, read-only runtime HTTP/USB observation,
+fresh progress-backed recovery ordinals, and the still-unused single
+attempt-004 campaign under the rolling plan. No repeated human confirmation or
+new plan is required. Every fresh ordinal still requires a fully expanded exact
+command recorded here, a changed regression-backed boundary, all gates, exact
+clean pushed package, detector admission, fresh roots, one execution, cleanup,
+and one closed policy outcome. Unchanged retries and reused roots are forbidden.
+
+Initial authoritative boundary: recovery-003 ended
+`hardware_blocked/runtime_monitor_process` before identity capture. Recovery-004
+is ineligible until a protected monitor receipt, red/green real-process
+reproduction, targeted fix, accepted read-only real-USB diagnostic, complete
+gates, push, and exact package exist. Attempt-004 remains unused.
+
+Standing non-claims: raw NVS/coredump capture, new baseline, external pool,
+direct UART/pins, fault injection, OTA, erase, arbitrary writes, unbounded
+mining, repeated attempt-004, attempt-005 campaign, and release readiness.
+
+Progress ledger: the exact `bazel test
+//tools/automation:stratum_v2_restore_unit_test` loop failed red at
+`hardware_blocked/runtime_monitor_process` in 0.2 seconds when the production
+caller rendered its former 15-second capture bound. Changing only capture to
+the contract-required 60 seconds and child lifetime to 75 seconds made the same
+real-process loop green, confirming the highest-ranked timeout hypothesis. The
+recovery path now retains initial/final protected monitor receipts with closed
+exit, timeout, output-limit, origin-count, USB-cleanup, launcher, cwd, and digest
+facts. A dedicated read-only real-USB diagnostic is bound as the required
+real-boundary regression before recovery-004. Focused recovery, campaign,
+launcher, and all 395 flash tests pass. No autonomous-continuation hardware
+effect has begun.
+
+Software verification: ordered Cargo format/clippy/build/test, Bright Builds,
+all 55 Bazel tests, focused red/green and closed-receipt tests, canonical
+firmware build/package, parity/progress, redaction, reference cleanliness,
+selector lineage, sensitive-value review, file-length checks, and diff review
+pass. One full Bazel run transiently reported both firmware Cargo actions
+failed; the narrowed concurrent build, a forced fresh concurrent rebuild, and
+an unchanged full rerun all passed, so no deterministic source or shared-target
+failure reproduced. No workaround or suppressed gate was added.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

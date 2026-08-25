@@ -165,6 +165,16 @@ js_binary(
 )
 
 js_binary(
+    name = "stratum_v2_runtime_monitor_diagnostic",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        "//tools/flash:flash",
+    ],
+    entry_point = "dist/stratum-v2-runtime-monitor-diagnostic-cli.js",
+)
+
+js_binary(
     name = "stratum_v2_restore_validator",
     chdir = "../../../..",
     data = [":automation_ts"],

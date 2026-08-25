@@ -9,6 +9,10 @@ import {
   parseInstalledIdentity,
   type RestoreBundle,
 } from "./stratum-v2-restore-model.js";
+import {
+  runRuntimeMonitorChild,
+  validateRuntimeMonitorReceipt,
+} from "./stratum-v2-runtime-monitor-child.js";
 
 type RuntimeCheckpoint =
   | "runtime_monitor_process"
@@ -42,6 +46,12 @@ type RuntimeDependencies = {
   ) => Promise<RuntimeProcessResult>;
   readonly restoreBundle: RestoreBundle;
   readonly restoreBundlePath: string;
+};
+
+export type RuntimeMonitorDiagnostics = {
+  readonly receiptPath: string;
+  readonly sourceCommit: string;
+  readonly planSha256: string;
 };
 
 export type PreparedStratumV2RuntimeAdmission = PreparedStratumV2Campaign & {
@@ -93,12 +103,39 @@ export async function monitorRuntimeOrigin(
   port: string,
   runProcess: RuntimeDependencies["runProcess"],
   fail: RuntimeDependencies["fail"],
+  diagnostics?: RuntimeMonitorDiagnostics,
 ): Promise<URL> {
+  const args = [
+    "monitor", "--board", "205", "--port", port, "--capture-timeout-seconds", "60",
+  ];
+  if (diagnostics !== undefined) {
+    let monitored;
+    try {
+      monitored = await runRuntimeMonitorChild({
+        workspace,
+        program: flashProgram,
+        args,
+        receiptPath: diagnostics.receiptPath,
+        sourceCommit: diagnostics.sourceCommit,
+        planSha256: diagnostics.planSha256,
+        timeoutMillis: 75_000,
+      });
+      await validateRuntimeMonitorReceipt(
+        diagnostics.receiptPath,
+        diagnostics.sourceCommit,
+        diagnostics.planSha256,
+      );
+    } catch {
+      fail("evidence_invalid", "passive monitor receipt failed", "runtime_monitor_process");
+    }
+    if (monitored.receipt.terminal_category !== "ready") {
+      fail("hardware_blocked", "passive monitor failed", "runtime_monitor_process");
+    }
+    return singleRuntimeOrigin(monitored.stdout, fail);
+  }
   let outcome: RuntimeProcessResult;
   try {
-    outcome = await runProcess(workspace, flashProgram, [
-      "monitor", "--board", "205", "--port", port, "--capture-timeout-seconds", "15",
-    ], 30_000);
+    outcome = await runProcess(workspace, flashProgram, args, 75_000);
   } catch {
     fail("hardware_blocked", "passive monitor failed", "runtime_monitor_process");
   }

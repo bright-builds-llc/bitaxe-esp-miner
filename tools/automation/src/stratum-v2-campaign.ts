@@ -71,7 +71,7 @@ export type StratumV2RuntimeAdmissionResult = {
 const expectedPrivateRoot = "scratch/str005-stratum-v2/attempt-004";
 const expectedProjection = "docs/parity/evidence/str005-stratum-v2/stratum-v2-projection.json";
 const expectedRestoreBundle =
-  "scratch/str005-installed-package-recovery/recovery-003/restore-bundle.private.json";
+  "scratch/str005-installed-package-recovery/recovery-004/restore-bundle.private.json";
 const maximumOutputBytes = 1_048_576;
 
 export function campaignWorkspaceRoot(

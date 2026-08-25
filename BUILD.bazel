@@ -24,6 +24,7 @@ exports_files([
     "docs/parity/work-plans/20260824T000902Z-STR-005-RESTORE-RECOVERY/PLAN.md",
     "docs/parity/work-plans/20260824T012436Z-STR-005-RESTORE-RECOVERY2/PLAN.md",
     "docs/parity/work-plans/20260824T214920Z-STR-005-RESTORE-RECOVERY3/PLAN.md",
+    "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md",
     "docs/parity/checklist-revisions/2026-07-26-source-pointer-refresh.json",
     "docs/parity/checklist-revisions/2026-07-27-module-ownership-refactor.json",
     "docs/parity/checklist-revisions/2026-07-28-runtime-display-documentation.json",

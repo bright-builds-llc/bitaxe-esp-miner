@@ -4,9 +4,9 @@ use crate::*;
 use std::os::unix::fs::PermissionsExt;
 
 pub(crate) const RESTORE_BUNDLE_RELATIVE: &str =
-    "scratch/str005-installed-package-recovery/recovery-003/restore-bundle.private.json";
+    "scratch/str005-installed-package-recovery/recovery-004/restore-bundle.private.json";
 const RESTORE_PLAN_RELATIVE: &str =
-    "docs/parity/work-plans/20260824T214920Z-STR-005-RESTORE-RECOVERY3/PLAN.md";
+    "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md";
 const RESTORE_SCHEMA: &str = "bitaxe-stratum-v2-restore-bundle-v1";
 const RESTORE_RANGES: [(&str, u32, u32); 8] = [
     ("bootloader", 0x000000, 0x008000),
