@@ -19,7 +19,10 @@ import {
 } from "./stratum-v2-restore-model.js";
 import { validateRestoreReadiness } from "./stratum-v2-restore-validator.js";
 import { parseRestoreRecoveryArgs } from "./stratum-v2-restore-recovery.js";
-import { restoreRuntimeMatches } from "./stratum-v2-restore-admission.js";
+import {
+  restoreRuntimeMatches,
+  validateRecoverySourceLineage,
+} from "./stratum-v2-restore-admission.js";
 import {
   prepareSnapshotTarget,
   snapshotReadArgs,
@@ -233,4 +236,41 @@ test("snapshot capture protects targets and renders the bounded fast read", asyn
     "0x400000",
     candidate,
   ]);
+});
+
+test("recovery source lineage admits only the exact post-recovery preflight fix", async () => {
+  // Arrange
+  const current = "f".repeat(40);
+  const run = async (
+    _workspace: string,
+    _program: string,
+    args: readonly string[],
+    _timeoutMillis: number,
+  ): Promise<{ readonly exitCode: number; readonly stdout: string }> => ({
+    exitCode: 0,
+    stdout: args[0] === "diff"
+      ? [
+        "tools/automation/src/stratum-v2-campaign-preflight.ts",
+        "tools/automation/src/stratum-v2-campaign.test.ts",
+        "",
+      ].join("\n")
+      : "",
+  });
+
+  // Act / Assert
+  await assert.doesNotReject(validateRecoverySourceLineage(
+    "/workspace",
+    captureCommit,
+    current,
+    run,
+  ));
+  await assert.rejects(validateRecoverySourceLineage(
+    "/workspace",
+    captureCommit,
+    current,
+    async (workspace, program, args, timeoutMillis) => {
+      const result = await run(workspace, program, args, timeoutMillis);
+      return args[0] === "diff" ? { ...result, stdout: "firmware/bitaxe/src/main.rs\n" } : result;
+    },
+  ));
 });

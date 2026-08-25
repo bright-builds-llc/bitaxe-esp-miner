@@ -15,7 +15,40 @@ type RunProcess = (
   program: string,
   args: readonly string[],
   timeoutMillis: number,
-) => Promise<{ readonly stdout: string }>;
+) => Promise<{ readonly exitCode: number; readonly stdout: string }>;
+
+const postRecoveryHostOnlyFiles = new Set([
+  "tools/automation/src/stratum-v2-campaign-preflight.ts",
+  "tools/automation/src/stratum-v2-campaign.test.ts",
+]);
+
+export async function validateRecoverySourceLineage(
+  workspace: string,
+  captureSource: string,
+  currentSource: string,
+  runProcess: RunProcess,
+): Promise<void> {
+  if (captureSource === currentSource) return;
+  const ancestry = await runProcess(
+    workspace,
+    "git",
+    ["merge-base", "--is-ancestor", captureSource, currentSource],
+    5_000,
+  );
+  const changed = await runProcess(
+    workspace,
+    "git",
+    ["diff", "--name-only", `${captureSource}..${currentSource}`],
+    5_000,
+  );
+  const files = changed.stdout.split(/\r?\n/u).filter(value => value.length > 0);
+  if (ancestry.exitCode !== 0
+    || changed.exitCode !== 0
+    || files.length !== postRecoveryHostOnlyFiles.size
+    || files.some(value => !postRecoveryHostOnlyFiles.has(value))) {
+    throw new Error("restore recovery source lineage is invalid");
+  }
+}
 
 export async function admitStratumV2RestoreBundle(
   workspace: string,
@@ -29,14 +62,26 @@ export async function admitStratumV2RestoreBundle(
   ).stdout.trim();
   const planDocument = await readFile(path.join(workspace, restorePlan), "utf8");
   const planSha256 = sha256(planDocument);
-  await validateRestoreReadiness(bundlePath, projectionPath, source, planSha256);
+  const bundle = JSON.parse(await readFile(bundlePath, "utf8")) as RestoreBundle;
+  await validateRecoverySourceLineage(
+    workspace,
+    bundle.capture_source_commit,
+    source,
+    runProcess,
+  );
+  await validateRestoreReadiness(
+    bundlePath,
+    projectionPath,
+    bundle.capture_source_commit,
+    planSha256,
+  );
   await validateValidatorChildReceipt(
     path.join(path.dirname(bundlePath), "validator-child-receipt.private.json"),
-    source,
+    bundle.capture_source_commit,
     planSha256,
   );
   return {
-    bundle: JSON.parse(await readFile(bundlePath, "utf8")) as RestoreBundle,
+    bundle,
     path: bundlePath,
   };
 }
