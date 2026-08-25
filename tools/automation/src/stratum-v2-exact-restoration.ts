@@ -114,6 +114,19 @@ async function requireMode(candidate: string, mode: number, directory: boolean):
   }
 }
 
+export async function createProtectedPrivateRoot(privateRoot: string): Promise<void> {
+  const parent = path.dirname(privateRoot);
+  try {
+    await mkdir(parent, { mode: 0o700 });
+    await chmod(parent, 0o700);
+  } catch (error) {
+    if (!(error instanceof Error && "code" in error && error.code === "EEXIST")) throw error;
+    await requireMode(parent, 0o700, true);
+  }
+  await mkdir(privateRoot, { mode: 0o700 });
+  await chmod(privateRoot, 0o700);
+}
+
 async function writePrivate(candidate: string, value: unknown): Promise<string> {
   const document = `${JSON.stringify(value, null, 2)}\n`;
   await writeFile(candidate, document, { mode: 0o600, flag: "wx" });
@@ -177,8 +190,7 @@ async function commonAdmission(workspace: string, args: RestorationArgs, private
   if (args.action === "resume") {
     await requireMode(privateRoot, 0o700, true);
   } else {
-    await mkdir(privateRoot, { mode: 0o700 });
-    await chmod(privateRoot, 0o700);
+    await createProtectedPrivateRoot(privateRoot);
   }
   const authorization = {
     schema_version: "bitaxe-stratum-v2-restore-authorization-v1",

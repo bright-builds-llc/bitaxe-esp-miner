@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { lstat, mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { parseExactRestorationArgs } from "./stratum-v2-exact-restoration.js";
+import {
+  createProtectedPrivateRoot,
+  parseExactRestorationArgs,
+} from "./stratum-v2-exact-restoration.js";
 import { validateExactRestorationProjection } from "./stratum-v2-exact-restoration-validator.js";
 
 const common = [
@@ -56,4 +59,17 @@ test("exact restoration projection validator accepts only closed success facts",
   await assert.doesNotReject(validateExactRestorationProjection(candidate, source));
   await writeFile(candidate, `${JSON.stringify({ ...value, raw_path: "/private" })}\n`);
   await assert.rejects(validateExactRestorationProjection(candidate, source));
+});
+
+test("exact restoration creates an absent protected nested root", async () => {
+  // Arrange
+  const workspace = await mkdtemp(path.join(os.tmpdir(), "exact-restoration-root-"));
+  const privateRoot = path.join(workspace, "scratch", "remediation-001");
+
+  // Act
+  await createProtectedPrivateRoot(privateRoot);
+
+  // Assert
+  assert.equal((await lstat(path.dirname(privateRoot))).mode & 0o777, 0o700);
+  assert.equal((await lstat(privateRoot)).mode & 0o777, 0o700);
 });
