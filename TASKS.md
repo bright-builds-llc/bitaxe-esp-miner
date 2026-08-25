@@ -4412,12 +4412,12 @@ device path. `STR-005` remains `implemented`; no retry is authorized. Closure:
       `just stratum-v2-runtime-monitor-diagnostic --board 205 --port <detector-port> --private-root scratch/str005-runtime-monitor-diagnostic/diagnostic-001 --redact-evidence`.
 - [x] Commit/push, build the exact package, and run recovery-004 once with:
       `just stratum-v2-restore-recovery --board 205 --port <detector-port> --private-root scratch/str005-installed-package-recovery/recovery-004 --projection docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-004.json --redact-evidence`.
-- [ ] For each later progress-backed recovery, append the fresh ordinal, exact
+- [x] For each later progress-backed recovery, append the fresh ordinal, exact
       expanded command, boundary signature, verified fix/regression, terminal
       outcome, and continuation decision to this block before effects.
-- [ ] After accepted recovery readiness, bind its exact bundle and run the
+- [x] After accepted recovery readiness, bind its exact bundle and run the
       existing preflight, runtime admission, and single attempt-004 campaign.
-- [ ] Promote only `STR-005` after accepted hardware plus exact restoration;
+- [x] Promote only `STR-005` after accepted hardware plus exact restoration;
       otherwise stop only at a policy terminal and close truthfully.
 
 Plan: `docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md`
@@ -4507,6 +4507,29 @@ recovery-006, the exact real-USB regression is:
 `just stratum-v2-runtime-monitor-diagnostic --board 205 --port <detector-port> --private-root scratch/str005-runtime-monitor-diagnostic/diagnostic-002 --redact-evidence`.
 Recovery-006 exact command:
 `just stratum-v2-restore-recovery --board 205 --port <detector-port> --private-root scratch/str005-installed-package-recovery/recovery-006 --projection docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-006.json --redact-evidence`.
+
+Recovery-006 and campaign outcome: `diagnostic-002`, focused/full gates, pushed
+source/package `7d5d9504`, and fresh detector passed. Recovery-006 independently
+accepted its eight-range snapshot bundle and published the closed redacted
+readiness projection. A real-Git regression then fixed collapsed untracked-
+directory preflight status, and a four-file host-only descendant allowlist
+admitted only the reviewed preflight/lineage changes. Exact package `78784a4a`,
+`pre_effect_ready`, fresh detector, and `runtime_admission_ready` passed.
+
+The single attempt-004 campaign was consumed. Current factory and temporary NVS
+writes completed/verified, but active mining never began (`active_ms=0`), no
+protocol/share transition was observed, and the owner ended
+`timeout/unclassified`. USB cleanup passed. Original restoration was attempted
+once and failed (`restored=false`), so the public campaign projection and
+`RESULT.md` are withheld. Post-campaign detector plus protected same-session
+monitor/API audit prove the current package is running, original package is not,
+`mineonboot=false`, mining is `safe_blocked`, hashrate is zero, and no shares
+were accepted/rejected.
+
+Terminal outcome: `stop_authority_boundary`. Attempt-004 and its once-only
+restoration are consumed; no second write is authorized. `STR-005` remains
+`implemented`. Closure:
+`docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/CLOSURE.md`.
 
 ## Future
 

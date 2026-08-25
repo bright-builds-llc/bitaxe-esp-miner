@@ -1,0 +1,22 @@
+{
+  "schema_version": "bitaxe-stratum-v2-restore-readiness-v1",
+  "status": "accepted",
+  "board": 205,
+  "bundle_kind": "flash_snapshot_v1",
+  "installed_identity_sha256": "9d18649d04828c2611c202602378ad88ac3714bd55cde7ab7873d9672618e98a",
+  "restore_bundle_sha256": "1d5e2e3b76489c36458f63f11bf28b399ea4cd6c2d45f8dab20ef060b03e18f4",
+  "artifact_search_count": 25673,
+  "rebuild_attempted": true,
+  "snapshot_range_count": 8,
+  "runtime_unchanged": true,
+  "private_modes_valid": true,
+  "independent_validation": true,
+  "redaction_status": "passed",
+  "exact_non_claims": [
+    "raw_nvs",
+    "coredump",
+    "new_baseline",
+    "external_pool",
+    "attempt_005"
+  ]
+}
