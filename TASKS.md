@@ -4539,9 +4539,9 @@ restoration are consumed; no second write is authorized. `STR-005` remains
       admission-only restore validation, and protected diagnostics.
 - [x] Add the resumable host owner for snapshot/Wi-Fi/settings/theme restoration
       and exact original-runtime verification.
-- [ ] Pass all software, privacy, package, reference, selector, and diff gates;
+- [x] Pass all software, privacy, package, reference, selector, and diff gates;
       commit/push and build the exact host package before device access.
-- [ ] Run exact no-effect preflight, fresh detector, and remediation-001 once;
+- [x] Run exact no-effect preflight, fresh detector, and remediation-001 once;
       use settings-only resume only from proved `firmware_restored` state.
 - [ ] Publish remediation evidence and archive only this task on exact success;
       never retry STR-005, promote STR-005, or weaken its campaign closure.
@@ -4571,8 +4571,25 @@ commands. The host owner implements fixed preflight/start/resume paths,
 protected authorization/state/child receipts, current-safe admission, one
 snapshot plus Wi-Fi seed, original-runtime proof, settings/theme restoration,
 settings-only resume, independent projection validation, and closed evidence.
-Focused Rust/TypeScript restoration and all flash tests pass. No new device
-effect has begun.
+Focused Rust/TypeScript restoration and all flash tests pass. The later exact
+hardware outcome is recorded below.
+
+Remediation outcome: pushed source/package `276bb178` passed the complete
+software gate set, exact no-effect admission, and fresh one-board detection.
+The single remediation-001 invocation then stopped at `snapshot_restore` before
+launching a write child. Its protected stderr digest exactly matches the local
+`executor_program_mismatch`: the snapshot adapter rendered the required
+managed `esptool.py` transaction, while the shared execution environment
+accepts only `espflash`. The state remains `flash_started`, so settings-only
+resume is ineligible and no second host invocation is authorized.
+
+A fresh detector and same-session read-only runtime audit prove the unchanged
+campaign package is running with the pinned reference, `mineonboot=false`,
+mining `safe_blocked`, zero hashrate, and zero accepted/rejected shares. USB
+cleanup passed. No restoration projection or `RESULT.md` exists, `STR-005`
+remains `implemented`, and this task remains active but blocked at
+`stop_authority_boundary`. Closure:
+`docs/parity/work-plans/20260825T150417Z-STR-005-EXACT-RESTORATION/CLOSURE.md`.
 
 ## Future
 
