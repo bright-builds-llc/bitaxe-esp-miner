@@ -173,7 +173,7 @@ export async function prepareStratumV2Campaign(
   const status = await runAtCheckpoint(
     workspace,
     "git",
-    ["status", "--porcelain"],
+    ["status", "--porcelain", "--untracked-files=all"],
     "source_identity",
     dependencies,
   );

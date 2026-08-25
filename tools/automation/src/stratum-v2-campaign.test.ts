@@ -157,6 +157,12 @@ test("software preflight proves read-only source predicates without creating the
   const workspace = await createPreflightWorkspace();
   try {
     const args = parseStratumV2CampaignArgs(exactArgs);
+    const restoreProjection = path.join(
+      workspace,
+      "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-006.json",
+    );
+    await mkdir(path.dirname(restoreProjection), { recursive: true });
+    await writeFile(restoreProjection, "{}\n");
 
     // Act
     await prepareStratumV2Campaign(workspace, args, {
