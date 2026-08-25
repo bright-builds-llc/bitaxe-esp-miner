@@ -4643,6 +4643,25 @@ Cargo gates, Bright Builds, and all 55 Bazel tests pass. One combined automation
 run exposed unrelated timing-sensitive child tests; their unchanged focused
 reruns and the unchanged full Bazel rerun passed.
 
+Restoration-002 outcome: exact pushed source/package `e3bd08bb`, admission-only
+preflight, and both fresh detectors passed. The managed eight-range snapshot
+write and separate Wi-Fi seed each completed and verified once with closed
+`ready/completed/exited_success` diagnostics, one attempt, transfer started and
+completed, no raw output, and clean USB reacquisition. The board now runs exact
+original source `a11b579b`, app digest `32e2de54`, factory partition, and pinned
+reference; exact settings/theme restoration completed with `mineonboot=false`,
+zero hashrate, and zero shares.
+
+The final projection was truthfully withheld at `final_runtime` because the
+restored historical source reports `miningActivity=paused`, not `safe_blocked`.
+Source inspection proves this is its intentional operator-paused projection
+when `mineonboot=false`; forcing `safe_blocked` would require changing exact
+settings or manufacturing a different blocker. The immutable plan requires both
+facts, so the terminal result is `stop_impossible_contract`. Attempt-005 was not
+created or run. This task remains active but blocked; STR-005 remains
+`implemented`. Closure:
+`docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/CLOSURE.md`.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
