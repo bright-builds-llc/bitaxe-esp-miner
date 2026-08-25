@@ -252,6 +252,8 @@ test("recovery source lineage admits only the exact post-recovery preflight fix"
       ? [
         "tools/automation/src/stratum-v2-campaign-preflight.ts",
         "tools/automation/src/stratum-v2-campaign.test.ts",
+        "tools/automation/src/stratum-v2-restore-admission.ts",
+        "tools/automation/src/stratum-v2-restore-workflow.test.ts",
         "",
       ].join("\n")
       : "",
