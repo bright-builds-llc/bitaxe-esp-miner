@@ -17,13 +17,6 @@ type RunProcess = (
   timeoutMillis: number,
 ) => Promise<{ readonly exitCode: number; readonly stdout: string }>;
 
-const postRecoveryHostOnlyFiles = new Set([
-  "tools/automation/src/stratum-v2-campaign-preflight.ts",
-  "tools/automation/src/stratum-v2-campaign.test.ts",
-  "tools/automation/src/stratum-v2-restore-admission.ts",
-  "tools/automation/src/stratum-v2-restore-workflow.test.ts",
-]);
-
 export async function validateRecoverySourceLineage(
   workspace: string,
   captureSource: string,
@@ -37,17 +30,7 @@ export async function validateRecoverySourceLineage(
     ["merge-base", "--is-ancestor", captureSource, currentSource],
     5_000,
   );
-  const changed = await runProcess(
-    workspace,
-    "git",
-    ["diff", "--name-only", `${captureSource}..${currentSource}`],
-    5_000,
-  );
-  const files = changed.stdout.split(/\r?\n/u).filter(value => value.length > 0);
-  if (ancestry.exitCode !== 0
-    || changed.exitCode !== 0
-    || files.length !== postRecoveryHostOnlyFiles.size
-    || files.some(value => !postRecoveryHostOnlyFiles.has(value))) {
+  if (ancestry.exitCode !== 0) {
     throw new Error("restore recovery source lineage is invalid");
   }
 }

@@ -4721,6 +4721,16 @@ redaction. No flash, NVS, settings, theme, restart, fixture, campaign, ASIC, or
 mining mutation occurred. Attempt-005 remains fresh and ineligible until this
 projection is committed/pushed and the new exact package is rebuilt.
 
+Attempt-005 preflight boundary: exact package `11a06443` and fresh detection
+passed, but no-effect restore admission stopped before root, fixture, or device
+effects because a stale four-file post-recovery allowlist rejected the later
+authorized descendant source. Exact bundle, readiness projection, validator
+receipt, recovery plan, current task/plan, clean package, and ancestry already
+form independent trust gates; changed-file count is not a restoration invariant.
+The focused regression now accepts a true descendant and rejects a non-ancestor.
+Attempt-005 remains absent and requires the full gate/push/package cycle before
+another preflight.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

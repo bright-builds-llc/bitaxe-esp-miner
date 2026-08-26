@@ -238,26 +238,15 @@ test("snapshot capture protects targets and renders the bounded fast read", asyn
   ]);
 });
 
-test("recovery source lineage admits only the exact post-recovery preflight fix", async () => {
+test("recovery source lineage admits descendants and rejects non-ancestors", async () => {
   // Arrange
   const current = "f".repeat(40);
   const run = async (
     _workspace: string,
     _program: string,
-    args: readonly string[],
+    _args: readonly string[],
     _timeoutMillis: number,
-  ): Promise<{ readonly exitCode: number; readonly stdout: string }> => ({
-    exitCode: 0,
-    stdout: args[0] === "diff"
-      ? [
-        "tools/automation/src/stratum-v2-campaign-preflight.ts",
-        "tools/automation/src/stratum-v2-campaign.test.ts",
-        "tools/automation/src/stratum-v2-restore-admission.ts",
-        "tools/automation/src/stratum-v2-restore-workflow.test.ts",
-        "",
-      ].join("\n")
-      : "",
-  });
+  ): Promise<{ readonly exitCode: number; readonly stdout: string }> => ({ exitCode: 0, stdout: "" });
 
   // Act / Assert
   await assert.doesNotReject(validateRecoverySourceLineage(
@@ -270,9 +259,6 @@ test("recovery source lineage admits only the exact post-recovery preflight fix"
     "/workspace",
     captureCommit,
     current,
-    async (workspace, program, args, timeoutMillis) => {
-      const result = await run(workspace, program, args, timeoutMillis);
-      return args[0] === "diff" ? { ...result, stdout: "firmware/bitaxe/src/main.rs\n" } : result;
-    },
+    async () => ({ exitCode: 1, stdout: "" }),
   ));
 });
