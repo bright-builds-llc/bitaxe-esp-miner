@@ -4664,9 +4664,9 @@ created or run. This task remains active but blocked; STR-005 remains
 
 ### task-str005-inactive-restoration-and-campaign-continuation | 2026-08-26 | Finalize restoration and verify STR-005
 
-- [ ] Finalize remediation-002 read-only with exact original identity,
+- [x] Finalize remediation-002 read-only with exact original identity,
       settings/theme, `mineonboot=false`, zero work, and closed inactive state.
-- [ ] Publish the independently validated restoration projection without any
+- [x] Publish the independently validated restoration projection without any
       flash, NVS, settings, theme, or restart mutation.
 - [x] Rebind the untouched attempt-005 local-fixture campaign and its exact
       restoration authorization to the new immutable plan.
@@ -4711,6 +4711,15 @@ with zero work. Focused tests, ordered Cargo gates, Bright Builds, and all 55
 Bazel tests pass. One combined run hit the unchanged command-effects timing
 test; its focused real-child rerun, isolated aggregate rerun, and unchanged full
 suite all passed.
+
+Read-only finalization outcome: exact pushed source/package `30376b18`, sealed
+remediation-002 receipts, fresh one-board detection, qualified monitor, and
+same-origin settings/theme reads passed. The independently validated v2
+projection records exact original identity/restoration, `mineonboot=false`,
+`mining_inactive=true`, category `paused`, zero hashrate/shares, cleanup, and
+redaction. No flash, NVS, settings, theme, restart, fixture, campaign, ASIC, or
+mining mutation occurred. Attempt-005 remains fresh and ineligible until this
+projection is committed/pushed and the new exact package is rebuilt.
 
 ## Future
 
