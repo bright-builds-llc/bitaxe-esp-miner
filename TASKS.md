@@ -4731,6 +4731,15 @@ The focused regression now accepts a true descendant and rejects a non-ancestor.
 Attempt-005 remains absent and requires the full gate/push/package cycle before
 another preflight.
 
+Remediation-003 outcome: exact pushed source/package `ea9f2622`, fresh
+admission/detection, managed snapshot write, Wi-Fi seed, original identity,
+settings/theme, inactive `paused` state, zero work/shares, cleanup, and
+independent v2 projection validation all passed. Both write diagnostics are
+closed, completed, first-attempt, and raw-output-free. The board is again on the
+exact original firmware. Attempt-006 remains absent and ineligible until this
+recovery projection is committed/pushed and its new exact campaign package is
+built.
+
 Attempt-005 outcome: changed preflight and runtime admission passed on exact
 package `d54b7947`; the single campaign was consumed. Current package and NVS
 writes completed, hardware preparation completed, and terminal safe-stop/USB
