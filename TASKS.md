@@ -4760,6 +4760,13 @@ restore exact settings through roots `preflight-004`/`remediation-004` and its
 own projection. Only then may fresh attempt-007 use root
 `scratch/str005-stratum-v2/attempt-007`, after the full gate/push/package cycle.
 
+Remediation-004 outcome: exact pushed source/package `305872e4`, both fresh
+detectors, admission, first-attempt snapshot/Wi-Fi writes, original identity,
+all settings/theme, inactive `paused` state, zero work/shares, cleanup, and
+independent projection validation passed. The board is again exactly restored.
+Attempt-007 remains absent and requires this projection to be committed/pushed
+and a new exact package built before its no-effect gates.
+
 Attempt-005 outcome: changed preflight and runtime admission passed on exact
 package `d54b7947`; the single campaign was consumed. Current package and NVS
 writes completed, hardware preparation completed, and terminal safe-stop/USB
