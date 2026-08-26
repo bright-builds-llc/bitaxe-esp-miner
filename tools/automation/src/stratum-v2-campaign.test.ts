@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   campaignWorkspaceRoot,
+  fixtureAcceptTimeoutSeconds,
   parseStratumV2CampaignArgs,
   runCampaignProcess,
   sameSubnetFixtureAddress,
@@ -24,10 +25,10 @@ const exactArgs = [
   "--package-manifest", "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
   "--wifi-credentials", "wifi-credentials.json",
   "--restore-bundle", "scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json",
-  "--private-root", "scratch/str005-stratum-v2/attempt-005",
+  "--private-root", "scratch/str005-stratum-v2/attempt-006",
   "--projection", "docs/parity/evidence/str005-stratum-v2/stratum-v2-projection.json",
   "--plan", "docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/PLAN.md",
-  "--campaign-ordinal", "5",
+  "--campaign-ordinal", "6",
   "--duration-seconds", "180",
   "--redact-evidence",
 ] as const;
@@ -97,7 +98,7 @@ test("workspace discovery prefers an explicit workspace with a Bazel module", as
   }
 });
 
-test("campaign parser admits only the immutable attempt-005 command", () => {
+test("campaign parser admits only the progress-backed attempt-006 command", () => {
   // Arrange
   const changed: string[] = [...exactArgs];
   const durationIndex = changed.indexOf("180");
@@ -114,6 +115,7 @@ test("campaign parser admits only the immutable attempt-005 command", () => {
 
   // Assert
   assert.equal(admitted.durationSeconds, 180);
+  assert.equal(fixtureAcceptTimeoutSeconds, 300);
   assert.equal(admitted.redactEvidence, true);
   assert.ok(rejected instanceof StratumV2CampaignError);
   assert.equal(rejected.category, "invalid_invocation");
@@ -202,7 +204,7 @@ test("software preflight proves read-only source predicates without creating the
     });
 
     // Assert
-    await assert.rejects(stat(path.join(workspace, "scratch/str005-stratum-v2/attempt-005")));
+    await assert.rejects(stat(path.join(workspace, "scratch/str005-stratum-v2/attempt-006")));
   } finally {
     await rm(workspace, { recursive: true, force: true });
   }

@@ -4670,7 +4670,7 @@ created or run. This task remains active but blocked; STR-005 remains
       flash, NVS, settings, theme, or restart mutation.
 - [x] Rebind the untouched attempt-005 local-fixture campaign and its exact
       restoration authorization to the new immutable plan.
-- [ ] Run attempt-005 once after full gates, clean push/package, fresh detector,
+- [x] Run attempt-005 once after full gates, clean push/package, fresh detector,
       no-effect preflight, and runtime admission.
 - [ ] Continue only after a new regression-proved boundary and exact original
       restoration; stop repeated, hardware, authority, or impossible outcomes.
@@ -4730,6 +4730,29 @@ form independent trust gates; changed-file count is not a restoration invariant.
 The focused regression now accepts a true descendant and rejects a non-ancestor.
 Attempt-005 remains absent and requires the full gate/push/package cycle before
 another preflight.
+
+Attempt-005 outcome: changed preflight and runtime admission passed on exact
+package `d54b7947`; the single campaign was consumed. Current package and NVS
+writes completed, hardware preparation completed, and terminal safe-stop/USB
+cleanup passed, but the device stopped `transport/connect` before channel/work.
+The fixture terminal stayed at `listener_ready/accept`, proving no connection.
+The selected host exactly matched `en0`, while the macOS firewall, block-all,
+and stealth modes were disabled. The fixture's 120-second accept deadline began
+before two package writes, reboot/reacquisition, and up to 60 seconds of firmware
+preflight; it could close before the first device connection attempt. The new
+regression binds the accept window to 300 seconds, still within the fixture's
+existing maximum and campaign outer bound.
+
+Attempt-005 restoration was attempted once but stopped pre-transfer because the
+host passed the admitted absolute bundle path to the Rust adapter's exact
+relative-path contract. No snapshot diagnostic was created. Fresh detector and
+monitor prove the safe current package `d54b7947` with mining/control disabled.
+The targeted fix passes `args.restoreBundle` to the child while retaining the
+absolute path only for host-side reads. Before any campaign continuation,
+remediation-003 must restore the original through fresh preflight/effect roots
+and projection. After exact restoration, attempt-006 is the next eligible fresh
+campaign ordinal with root `scratch/str005-stratum-v2/attempt-006`; both require
+the complete gate/push/package/detector cycle and may each run once only.
 
 ## Future
 

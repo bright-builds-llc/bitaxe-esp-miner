@@ -96,7 +96,7 @@ fn historical_snapshot_restore_is_admitted_from_clean_current_host() {
     let authorization = serde_json::json!({
         "schema_version": "bitaxe-stratum-v2-restore-authorization-v1",
         "board": 205,
-        "ordinal": 2,
+        "ordinal": 3,
         "action": "start",
         "current_source_commit": SOURCE_COMMIT,
         "reference_commit": REFERENCE_COMMIT,
@@ -138,7 +138,7 @@ fn historical_snapshot_restore_is_admitted_from_clean_current_host() {
     }
     let mut campaign_authorization = authorization.clone();
     campaign_authorization["action"] = serde_json::json!("campaign_restore");
-    campaign_authorization["ordinal"] = serde_json::json!(5);
+    campaign_authorization["ordinal"] = serde_json::json!(6);
     write_protected(
         &campaign_root.join("restore-authorization.private.json"),
         serde_json::to_string_pretty(&campaign_authorization)

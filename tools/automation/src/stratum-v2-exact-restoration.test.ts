@@ -17,17 +17,17 @@ const common = [
   "--recovery-projection", "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-006.json",
   "--campaign-root", "scratch/str005-stratum-v2/attempt-004",
   "--wifi-credentials", "wifi-credentials.json",
-  "--projection", "docs/parity/evidence/str005-exact-restoration/restoration-projection.json",
-  "--plan", "docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md",
+  "--projection", "docs/parity/evidence/str005-exact-restoration/restoration-projection-remediation-003.json",
+  "--plan", "docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/PLAN.md",
   "--redact-evidence",
 ] as const;
 
 test("exact restoration parser binds preflight start and settings-only resume roots", () => {
   // Arrange
   const values = [
-    ["preflight", "scratch/str005-exact-restoration/preflight-002"],
-    ["start", "scratch/str005-exact-restoration/remediation-002"],
-    ["resume", "scratch/str005-exact-restoration/remediation-002"],
+    ["preflight", "scratch/str005-exact-restoration/preflight-003"],
+    ["start", "scratch/str005-exact-restoration/remediation-003"],
+    ["resume", "scratch/str005-exact-restoration/remediation-003"],
   ] as const;
 
   for (const [action, root] of values) {
