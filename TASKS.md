@@ -4740,6 +4740,26 @@ exact original firmware. Attempt-006 remains absent and ineligible until this
 recovery projection is committed/pushed and its new exact campaign package is
 built.
 
+Attempt-006 outcome: exact package `45adb606`, both no-effect gates, and fresh
+detection passed. The single campaign connected TCP—proving the listener-window
+fix—but stopped at closed `transport/handshake`; the fixture reached
+`connection_accepted` and stopped `noise`, with no channel/work/share. Safe-stop
+and USB cleanup passed. Both rollback writes completed and the original firmware
+is running, but nine named non-secret settings fields remain mismatched, so
+restoration is not accepted and attempt-007 is ineligible.
+
+Pinned upstream verifies the responder Schnorr signature without certificate
+date checks. The official Rust Noise crate additionally checks the signed dates
+against the ESP wall clock, while this firmware has no SNTP owner. The local
+fixture's former host-now/300-second certificate can therefore fail on-device
+despite correct authentication. The targeted parity fix issues a signed fixture
+certificate from zero through `u32::MAX`; authentication remains mandatory and
+the host regression verifies the extreme validity boundary. External pools and
+production clock policy remain non-claims. Fresh remediation-004 must first
+restore exact settings through roots `preflight-004`/`remediation-004` and its
+own projection. Only then may fresh attempt-007 use root
+`scratch/str005-stratum-v2/attempt-007`, after the full gate/push/package cycle.
+
 Attempt-005 outcome: changed preflight and runtime admission passed on exact
 package `d54b7947`; the single campaign was consumed. Current package and NVS
 writes completed, hardware preparation completed, and terminal safe-stop/USB

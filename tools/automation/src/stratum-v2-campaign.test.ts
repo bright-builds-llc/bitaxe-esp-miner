@@ -25,10 +25,10 @@ const exactArgs = [
   "--package-manifest", "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
   "--wifi-credentials", "wifi-credentials.json",
   "--restore-bundle", "scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json",
-  "--private-root", "scratch/str005-stratum-v2/attempt-006",
+  "--private-root", "scratch/str005-stratum-v2/attempt-007",
   "--projection", "docs/parity/evidence/str005-stratum-v2/stratum-v2-projection.json",
   "--plan", "docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/PLAN.md",
-  "--campaign-ordinal", "6",
+  "--campaign-ordinal", "7",
   "--duration-seconds", "180",
   "--redact-evidence",
 ] as const;
@@ -98,7 +98,7 @@ test("workspace discovery prefers an explicit workspace with a Bazel module", as
   }
 });
 
-test("campaign parser admits only the progress-backed attempt-006 command", () => {
+test("campaign parser admits only the progress-backed attempt-007 command", () => {
   // Arrange
   const changed: string[] = [...exactArgs];
   const durationIndex = changed.indexOf("180");
@@ -204,7 +204,7 @@ test("software preflight proves read-only source predicates without creating the
     });
 
     // Assert
-    await assert.rejects(stat(path.join(workspace, "scratch/str005-stratum-v2/attempt-006")));
+    await assert.rejects(stat(path.join(workspace, "scratch/str005-stratum-v2/attempt-007")));
   } finally {
     await rm(workspace, { recursive: true, force: true });
   }

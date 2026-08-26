@@ -25,6 +25,7 @@ const CHANNEL_ID: u32 = 1;
 const JOB_ID: u32 = 1;
 const VERSION: u32 = 0x2000_0000;
 const NBITS: u32 = 0x207f_ffff;
+const FIXTURE_CERTIFICATE_VALIDITY: Duration = Duration::from_secs(u32::MAX as u64);
 
 #[derive(Debug, Parser)]
 struct Args {
@@ -237,13 +238,12 @@ fn respond_noise(
     let mut responder = Responder::from_authority_kp_with_rng(
         &authority_public,
         &authority_private,
-        Duration::from_secs(300),
+        FIXTURE_CERTIFICATE_VALIDITY,
         &mut rng,
     )
     .map_err(|_| anyhow::anyhow!("create Noise responder"))?;
-    let now = unix_time_u32()?;
     let (act_two, codec) = responder
-        .step_1_with_now_rng(act_one, now, &mut rng)
+        .step_1_with_now_rng(act_one, 0, &mut rng)
         .map_err(|_| anyhow::anyhow!("produce Noise act two"))?;
     stream.write_all(&act_two).context("write Noise act two")?;
     Ok(codec)
@@ -477,7 +477,7 @@ mod tests {
         let mut act_two = [0; ACT_TWO_LEN];
         stream.read_exact(&mut act_two).expect("read act two");
         let mut noise = initiator
-            .complete(&act_two, unix_time_u32().expect("time"))
+            .complete(&act_two, u32::MAX)
             .expect("complete Noise");
         let mut session = V2Session::new(test_config()).expect("session");
 
@@ -525,6 +525,7 @@ mod tests {
         assert_eq!(server_result.status, "accepted");
         assert!(server_result.share_target_valid);
         assert_eq!(fixture_terminal_category(&progress), "accepted");
+        assert_eq!(FIXTURE_CERTIFICATE_VALIDITY.as_secs(), u64::from(u32::MAX));
     }
 
     fn test_config() -> SessionConfig {

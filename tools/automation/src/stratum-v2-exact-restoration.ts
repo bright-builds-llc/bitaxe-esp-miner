@@ -35,7 +35,7 @@ const recoveryBundleSha256 = "1d5e2e3b76489c36458f63f11bf28b399ea4cd6c2d45f8dab2
 const campaignBackupSha256 = "ac3d28d451c466f4fc6bfdc40b327c891dac9f3eba644ce62a7f2a2276790631";
 const recoveryPlanRelative =
   "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md";
-const currentDeviceSource = "d54b7947adbcc1331b14c69306c8b2e29382cc2f";
+const currentDeviceSource = "a11b579b62cb52a53bbf6072bde209d3eb3f17e2";
 const expected = {
   packageManifest: "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
   restoreBundle: "scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json",
@@ -43,9 +43,9 @@ const expected = {
     "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-006.json",
   campaignRoot: "scratch/str005-stratum-v2/attempt-004",
   wifiCredentials: "wifi-credentials.json",
-  projection: "docs/parity/evidence/str005-exact-restoration/restoration-projection-remediation-003.json",
-  preflightRoot: "scratch/str005-exact-restoration/preflight-003",
-  effectRoot: "scratch/str005-exact-restoration/remediation-003",
+  projection: "docs/parity/evidence/str005-exact-restoration/restoration-projection-remediation-004.json",
+  preflightRoot: "scratch/str005-exact-restoration/preflight-004",
+  effectRoot: "scratch/str005-exact-restoration/remediation-004",
 } as const;
 
 export class ExactRestorationError extends Error {
@@ -197,7 +197,7 @@ async function commonAdmission(workspace: string, args: RestorationArgs, private
   }
   const authorization = {
     schema_version: "bitaxe-stratum-v2-restore-authorization-v1",
-    board: 205, ordinal: 3, action: args.action === "preflight" ? "preflight" : "start",
+    board: 205, ordinal: 4, action: args.action === "preflight" ? "preflight" : "start",
     current_source_commit: source,
     reference_commit: manifest["reference_commit"],
     bundle_sha256: sha256(bundleDocument),
@@ -357,7 +357,7 @@ async function finishSettings(
   await replacePrivate(statePath, { schema_version: "bitaxe-stratum-v2-restoration-state-v1", stage: "complete" });
   const projection = {
     schema_version: "bitaxe-stratum-v2-exact-restoration-v2", status: "accepted", board: 205,
-    remediation_ordinal: 3, original_runtime_restored: true, settings_restored: true,
+    remediation_ordinal: 4, original_runtime_restored: true, settings_restored: true,
     theme_restored: true, mineonboot_false: true, mining_inactive: true,
     mining_activity_category: String(confirmed["miningActivity"]), zero_hashrate: true,
     zero_shares: true, read_only_finalization: false,

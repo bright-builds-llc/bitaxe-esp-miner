@@ -19,7 +19,7 @@ export type CampaignArgs = {
   readonly privateRoot: string;
   readonly projection: string;
   readonly plan: string;
-  readonly campaignOrdinal: 6;
+  readonly campaignOrdinal: 7;
   readonly durationSeconds: 180;
   readonly redactEvidence: true;
 };
@@ -72,7 +72,7 @@ export type StratumV2RuntimeAdmissionResult = {
   readonly private_root_created: false;
 };
 
-const expectedPrivateRoot = "scratch/str005-stratum-v2/attempt-006";
+const expectedPrivateRoot = "scratch/str005-stratum-v2/attempt-007";
 const expectedProjection = "docs/parity/evidence/str005-stratum-v2/stratum-v2-projection.json";
 const expectedPlan = "docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/PLAN.md";
 const expectedPlanSha256 = "14c7676fb26b6291a24d08d229bc38717691835978d61ae24fd8cff91736470a";
@@ -80,7 +80,7 @@ const expectedRestoreBundle =
   "scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json";
 const recoveryPlan =
   "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md";
-const campaignRestoreRoot = "scratch/str005-stratum-v2/attempt-006/restoration";
+const campaignRestoreRoot = "scratch/str005-stratum-v2/attempt-007/restoration";
 const maximumOutputBytes = 1_048_576;
 export const fixtureAcceptTimeoutSeconds = 300;
 
@@ -194,8 +194,8 @@ export function parseStratumV2CampaignArgs(values: readonly string[]): CampaignA
   const campaignOrdinal = value("--campaign-ordinal");
   if (board !== "205" || duration !== "180" || parsed.get("--redact-evidence") !== true
     || privateRoot !== expectedPrivateRoot || projection !== expectedProjection
-    || restoreBundle !== expectedRestoreBundle || plan !== expectedPlan || campaignOrdinal !== "6") {
-    fail("invalid_invocation", "campaign contract does not match attempt-006", "invocation");
+    || restoreBundle !== expectedRestoreBundle || plan !== expectedPlan || campaignOrdinal !== "7") {
+    fail("invalid_invocation", "campaign contract does not match attempt-007", "invocation");
   }
   return {
     board,
@@ -206,7 +206,7 @@ export function parseStratumV2CampaignArgs(values: readonly string[]): CampaignA
     privateRoot,
     projection,
     plan,
-    campaignOrdinal: 6,
+    campaignOrdinal: 7,
     durationSeconds: 180,
     redactEvidence: true,
   };
@@ -327,7 +327,7 @@ async function restorePackageAndSettings(
     await writePrivateJson(path.join(workspace, authorizationRelative), {
       schema_version: "bitaxe-stratum-v2-restore-authorization-v1",
       board: 205,
-      ordinal: 6,
+      ordinal: 7,
       action: "campaign_restore",
       current_source_commit: head,
       reference_commit: referenceCommit,

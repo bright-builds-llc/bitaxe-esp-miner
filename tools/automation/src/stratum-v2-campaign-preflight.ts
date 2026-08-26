@@ -10,7 +10,7 @@ type PreflightArgs = {
   readonly privateRoot: string;
   readonly projection: string;
   readonly plan: string;
-  readonly campaignOrdinal: 6;
+  readonly campaignOrdinal: 7;
 };
 
 type PreflightCheckpoint =
@@ -166,7 +166,7 @@ export async function prepareStratumV2Campaign(
   } catch {
     dependencies.fail("evidence_invalid", "campaign plan binding is unavailable", "source_identity");
   }
-  if (args.campaignOrdinal !== 6
+  if (args.campaignOrdinal !== 7
     || createHash("sha256").update(plan).digest("hex") !== planSha256
     || !tasks.includes(`### ${taskId}`)) {
     dependencies.fail("evidence_invalid", "campaign plan binding is invalid", "source_identity");
