@@ -8,9 +8,9 @@ pub(crate) const RESTORE_BUNDLE_RELATIVE: &str =
 pub(crate) const RESTORE_PLAN_RELATIVE: &str =
     "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md";
 pub(crate) const REMEDIATION_PLAN_RELATIVE: &str =
-    "docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md";
+    "docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/PLAN.md";
 pub(crate) const REMEDIATION_PLAN_SHA256: &str =
-    "946ec6b353add5e2ef08fe9047640f9271a68556021ca92e47661f6393103c1a";
+    "14c7676fb26b6291a24d08d229bc38717691835978d61ae24fd8cff91736470a";
 const RECOVERY_CAPTURE_SOURCE: &str = "7d5d9504433d54ae28fe853c5827d6dd05693eef";
 pub(crate) const PREFLIGHT_ROOT: &str = "scratch/str005-exact-restoration/preflight-002";
 pub(crate) const EFFECT_ROOT: &str = "scratch/str005-exact-restoration/remediation-002";

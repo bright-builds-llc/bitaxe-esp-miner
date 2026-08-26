@@ -47,10 +47,11 @@ test("exact restoration projection validator accepts only closed success facts",
   const candidate = path.join(root, "projection.json");
   const source = "a".repeat(40);
   const value = {
-    schema_version: "bitaxe-stratum-v2-exact-restoration-v1",
+    schema_version: "bitaxe-stratum-v2-exact-restoration-v2",
     status: "accepted", board: 205, remediation_ordinal: 2,
     original_runtime_restored: true, settings_restored: true, theme_restored: true,
-    mineonboot_false: true, mining_safe_blocked: true, zero_hashrate: true,
+    mineonboot_false: true, mining_inactive: true, mining_activity_category: "paused",
+    zero_hashrate: true, zero_shares: true, read_only_finalization: true,
     usb_cleanup_ready: true, redaction_status: "passed", source_commit: source,
   };
   await writeFile(candidate, `${JSON.stringify(value)}\n`);

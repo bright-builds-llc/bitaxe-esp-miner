@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-
 import { restoreSelfTestSettings } from "./self-test-campaign-restoration.js";
 import { type JsonObject, prepareStratumV2Campaign } from "./stratum-v2-campaign-preflight.js";
 import { sameSubnetFixtureAddress } from "./stratum-v2-campaign-support.js";
@@ -10,9 +9,7 @@ import { fetchRuntimeObject, monitorRuntimeOrigin, prepareStratumV2RuntimeAdmiss
 import type { RestoreBundle } from "./stratum-v2-restore-model.js";
 import { admitStratumV2RestoreBundle, restoreRuntimeMatches } from "./stratum-v2-restore-admission.js";
 import { sourceWorkspaceRoot } from "./workspace.js";
-
 export { sameSubnetFixtureAddress, selectRestorePackage } from "./stratum-v2-campaign-support.js";
-
 export type CampaignArgs = {
   readonly board: "205";
   readonly port: string;
@@ -26,7 +23,6 @@ export type CampaignArgs = {
   readonly durationSeconds: 180;
   readonly redactEvidence: true;
 };
-
 export type ProcessResult = {
   readonly exitCode: number;
   readonly stdout: string;
@@ -53,7 +49,6 @@ export type StratumV2CampaignCheckpoint =
   | "pre_effect_ready"
   | "runtime_admission_ready"
   | "unclassified";
-
 export type StratumV2CampaignFailureResult = {
   readonly schema_version: "bitaxe-stratum-v2-campaign-result-v1";
   readonly status: "failed";
@@ -80,8 +75,8 @@ export type StratumV2RuntimeAdmissionResult = {
 
 const expectedPrivateRoot = "scratch/str005-stratum-v2/attempt-005";
 const expectedProjection = "docs/parity/evidence/str005-stratum-v2/stratum-v2-projection.json";
-const expectedPlan = "docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md";
-const expectedPlanSha256 = "946ec6b353add5e2ef08fe9047640f9271a68556021ca92e47661f6393103c1a";
+const expectedPlan = "docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/PLAN.md";
+const expectedPlanSha256 = "14c7676fb26b6291a24d08d229bc38717691835978d61ae24fd8cff91736470a";
 const expectedRestoreBundle =
   "scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json";
 const recoveryPlan =
@@ -360,7 +355,11 @@ async function restorePackageAndSettings(
   );
   await restoreSelfTestSettings(origin, backup, args.wifiCredentials, poolPath);
   const confirmed = await fetchRuntimeObject(origin, "/api/system/info", fail);
-  if (!restoreRuntimeMatches(restoreBundle, confirmed)) {
+  if (!restoreRuntimeMatches(restoreBundle, confirmed)
+    || !["paused", "safe_blocked"].includes(String(confirmed["miningActivity"] ?? ""))
+    || Number(confirmed["hashRate"] ?? 0) !== 0
+    || Number(confirmed["sharesAccepted"] ?? 0) !== 0
+    || Number(confirmed["sharesRejected"] ?? 0) !== 0) {
     fail("hardware_blocked", "final package or settings restoration mismatch");
   }
   return confirmed;
@@ -525,8 +524,9 @@ export async function runStratumV2Campaign(
       fail("evidence_invalid", "fixture result did not validate share", "fixture_result");
     }
     restorationAttempted = true;
+    let finalRuntime: JsonObject;
     try {
-      await restorePackageAndSettings(
+      finalRuntime = await restorePackageAndSettings(
         workspace,
         path.join(workspace, "bazel-bin/tools/flash/flash"),
         args,
@@ -555,6 +555,10 @@ export async function runStratumV2Campaign(
       settings_restored: true,
       package_restored: true,
       mineonboot_false: true,
+      mining_inactive: true,
+      mining_activity_category: finalRuntime["miningActivity"],
+      zero_hashrate: true,
+      zero_shares: true,
       usb_cleanup_ready: true,
       redaction_status: "passed",
       exact_non_claims: [

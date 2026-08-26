@@ -104,6 +104,7 @@ js_binary(
         "//:display_behavior_evidence_inputs",
         "//:screen_flow_evidence_inputs",
         "//:str005_restore_and_verify_inputs",
+        "//:str005_inactive_restoration_inputs",
         "//:statistics_history_evidence_inputs",
         "//:scoreboard_evidence_inputs",
         "//:cfg07_evidence_inputs",
@@ -190,6 +191,16 @@ js_binary(
     chdir = "../../../..",
     data = [":automation_ts"],
     entry_point = "dist/stratum-v2-exact-restoration-validator-cli.js",
+)
+
+js_binary(
+    name = "stratum_v2_restoration_finalize",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        "//tools/flash:flash",
+    ],
+    entry_point = "dist/stratum-v2-restoration-finalize-cli.js",
 )
 
 js_binary(
@@ -385,6 +396,7 @@ js_test(
         "//:display_behavior_evidence_inputs",
         "//:screen_flow_evidence_inputs",
         "//:str005_restore_and_verify_inputs",
+        "//:str005_inactive_restoration_inputs",
         "//crates/bitaxe-api:adc_observation_sources",
         "//crates/bitaxe-api:emc2101_thermal_sources",
         "//crates/bitaxe-api:hashrate_monitor_sources",
@@ -463,6 +475,7 @@ js_test(
         ":automation_ts",
         ":automation_tests_ts",
         "//:str005_restore_and_verify_inputs",
+        "//:str005_inactive_restoration_inputs",
     ],
     entry_point = "test-dist/stratum-v2-campaign.test.js",
 )

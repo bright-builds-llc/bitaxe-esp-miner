@@ -4662,6 +4662,56 @@ created or run. This task remains active but blocked; STR-005 remains
 `implemented`. Closure:
 `docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/CLOSURE.md`.
 
+### task-str005-inactive-restoration-and-campaign-continuation | 2026-08-26 | Finalize restoration and verify STR-005
+
+- [ ] Finalize remediation-002 read-only with exact original identity,
+      settings/theme, `mineonboot=false`, zero work, and closed inactive state.
+- [ ] Publish the independently validated restoration projection without any
+      flash, NVS, settings, theme, or restart mutation.
+- [x] Rebind the untouched attempt-005 local-fixture campaign and its exact
+      restoration authorization to the new immutable plan.
+- [ ] Run attempt-005 once after full gates, clean push/package, fresh detector,
+      no-effect preflight, and runtime admission.
+- [ ] Continue only after a new regression-proved boundary and exact original
+      restoration; stop repeated, hardware, authority, or impossible outcomes.
+- [ ] Promote only STR-005 after the complete accepted hardware chain and exact
+      final inactive restoration.
+
+Plan: `docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/PLAN.md`
+
+Authorization: source/test/docs/build/package, Git commit/push, read-only
+remediation-002 validation, local authenticated fixture/network use, one fresh
+attempt-005, conservative Ultra 205 hardware work, safe-stop, exact recovery-006
+restoration, protected evidence, and STR-005-only promotion. The plan permits no
+restoration reflash before campaign, external pool, raw NVS/coredump read, new
+baseline, direct UART/pins, fault injection, OTA, erase, arbitrary write, other
+board, or unbounded mining.
+
+Initial truth: remediation-002 completed exact original firmware and settings,
+with `mineonboot=false`, zero hashrate/shares, and `miningActivity=paused` as the
+historical source's intentional operator-paused state. The old literal
+`safe_blocked` contract is terminal and cannot be reinterpreted. This task uses
+the closed `mining_inactive` union (`paused` or `safe_blocked`) without weakening
+identity, configuration, work, restoration, cleanup, or redaction evidence.
+
+Verification: Pending.
+
+Completion review: Pending. `STR-005` remains `implemented` until accepted
+attempt-005 hardware evidence and exact final restoration are independently
+validated.
+
+Progress: a dedicated read-only finalizer validates the sealed remediation-002
+state, authorization, successful snapshot/Wi-Fi diagnostics, exact bundle and
+backup, current original runtime, every restorable setting, exact theme,
+`mineonboot=false`, zero work/shares, and the closed expected category `paused`.
+It exposes no mutation command and independently validates the v2 projection
+with `mining_inactive=true`. Attempt-005 and its campaign restoration receipt
+now bind this plan; final restoration accepts only `paused` or `safe_blocked`
+with zero work. Focused tests, ordered Cargo gates, Bright Builds, and all 55
+Bazel tests pass. One combined run hit the unchanged command-effects timing
+test; its focused real-child rerun, isolated aggregate rerun, and unchanged full
+suite all passed.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

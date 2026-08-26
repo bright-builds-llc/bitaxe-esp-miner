@@ -3,7 +3,8 @@ import { readFile } from "node:fs/promises";
 const allowedKeys = new Set([
   "schema_version", "status", "board", "remediation_ordinal",
   "original_runtime_restored", "settings_restored", "theme_restored",
-  "mineonboot_false", "mining_safe_blocked", "zero_hashrate",
+  "mineonboot_false", "mining_inactive", "mining_activity_category",
+  "zero_hashrate", "zero_shares", "read_only_finalization",
   "usb_cleanup_ready", "redaction_status", "source_commit",
 ]);
 
@@ -14,12 +15,14 @@ export async function validateExactRestorationProjection(
   const value = JSON.parse(await readFile(candidate, "utf8")) as Record<string, unknown>;
   if (Object.keys(value).length !== allowedKeys.size
     || Object.keys(value).some(key => !allowedKeys.has(key))
-    || value["schema_version"] !== "bitaxe-stratum-v2-exact-restoration-v1"
+    || value["schema_version"] !== "bitaxe-stratum-v2-exact-restoration-v2"
     || value["status"] !== "accepted" || value["board"] !== 205
     || value["remediation_ordinal"] !== 2 || value["source_commit"] !== sourceCommit
     || value["redaction_status"] !== "passed"
+    || value["mining_activity_category"] !== "paused"
     || ["original_runtime_restored", "settings_restored", "theme_restored",
-      "mineonboot_false", "mining_safe_blocked", "zero_hashrate",
+      "mineonboot_false", "mining_inactive", "zero_hashrate", "zero_shares",
+      "read_only_finalization",
       "usb_cleanup_ready"].some(key => value[key] !== true)) {
     throw new Error("exact restoration projection rejected");
   }

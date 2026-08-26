@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 
 type JsonObject = Record<string, unknown>;
 
-const restorableKeys = [
+export const restorableKeys = [
   "hostname", "stratumProtocol", "stratumURL", "stratumPort", "stratumUser",
   "stratumSuggestedDifficulty", "stratumExtranonceSubscribe", "stratumTLS", "stratumCert",
   "stratumV2ChannelType", "stratumV2AuthorityPubkey", "stratumDecodeCoinbase",
@@ -13,6 +13,34 @@ const restorableKeys = [
   "overclockEnabled", "display", "rotation", "invertscreen", "displayOffset", "displayTimeout",
   "autofanspeed", "manualFanSpeed", "minFanSpeed", "temptarget", "overheat_mode", "statsFrequency",
 ] as const;
+
+export function validateRestoredSettingsAndTheme(
+  confirmed: JsonObject,
+  confirmedTheme: JsonObject,
+  backup: JsonObject,
+  wifi: JsonObject,
+  pool: JsonObject,
+): void {
+  const settings = object(backup["settings"]);
+  const theme = object(backup["theme"]);
+  for (const key of restorableKeys) {
+    if (Object.hasOwn(settings, key)
+      && JSON.stringify(confirmed[key]) !== JSON.stringify(settings[key])) {
+      throw new Error("restoration mismatch");
+    }
+  }
+  if (confirmed["startMiningOnBoot"] !== false
+    || confirmed["ssid"] !== wifi["ssid"]
+    || confirmed["stratumURL"] !== pool["poolURL"]
+    || confirmed["stratumPort"] !== pool["poolPort"]
+    || confirmed["stratumUser"] !== pool["poolUser"]
+    || confirmed["useFallbackStratum"] === true
+    || (typeof confirmed["fallbackStratumURL"] === "string"
+      && confirmed["fallbackStratumURL"].length > 0)
+    || JSON.stringify(confirmedTheme) !== JSON.stringify(theme)) {
+    throw new Error("restoration final state mismatch");
+  }
+}
 
 function object(value: unknown): JsonObject {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -60,14 +88,5 @@ export async function restoreSelfTestSettings(
   if (!response.ok || !themeResponse.ok) throw new Error("restoration mutation failed");
   const confirmed = await fetchObject(origin, "/api/system/info");
   const confirmedTheme = await fetchObject(origin, "/api/theme");
-  for (const key of restorableKeys) {
-    if (Object.hasOwn(settings, key)
-      && JSON.stringify(confirmed[key]) !== JSON.stringify(settings[key])) {
-      throw new Error("restoration mismatch");
-    }
-  }
-  if (confirmed["startMiningOnBoot"] !== false
-    || JSON.stringify(confirmedTheme) !== JSON.stringify(theme)) {
-    throw new Error("restoration final state mismatch");
-  }
+  validateRestoredSettingsAndTheme(confirmed, confirmedTheme, backup, wifi, pool);
 }

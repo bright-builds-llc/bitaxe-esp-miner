@@ -239,7 +239,7 @@ rust_binary(
         "//:docs/parity/work-plans/20260824T012436Z-STR-005-RESTORE-RECOVERY2/PLAN.md",
         "//:docs/parity/work-plans/20260824T214920Z-STR-005-RESTORE-RECOVERY3/PLAN.md",
         "//:docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md",
-        "//:docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md",
+        "//:docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/PLAN.md",
     ],
     crate_name = "bitaxe_flash",
     edition = "2021",
@@ -266,5 +266,5 @@ rust_binary(
 rust_test(
     name = "tests",
     crate = ":flash",
-    data = ["//:docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md"],
+    data = ["//:docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/PLAN.md"],
 )

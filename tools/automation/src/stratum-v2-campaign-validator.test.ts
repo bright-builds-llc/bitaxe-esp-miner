@@ -21,6 +21,10 @@ function validProjection(): Record<string, unknown> {
     settings_restored: true,
     package_restored: true,
     mineonboot_false: true,
+    mining_inactive: true,
+    mining_activity_category: "paused",
+    zero_hashrate: true,
+    zero_shares: true,
     usb_cleanup_ready: true,
     redaction_status: "passed",
     exact_non_claims: [

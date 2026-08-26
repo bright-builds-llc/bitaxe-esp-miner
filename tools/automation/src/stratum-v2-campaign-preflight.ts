@@ -52,8 +52,8 @@ export type PreparedStratumV2Campaign = {
 
 const restoreProjectionStatus =
   "?? docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-006.json";
-const planSha256 = "946ec6b353add5e2ef08fe9047640f9271a68556021ca92e47661f6393103c1a";
-const taskId = "task-str005-restore-and-verify-continuation";
+const planSha256 = "14c7676fb26b6291a24d08d229bc38717691835978d61ae24fd8cff91736470a";
+const taskId = "task-str005-inactive-restoration-and-campaign-continuation";
 
 async function requireMode(
   candidate: string,

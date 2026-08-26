@@ -4,7 +4,8 @@ const keys = [
   "schema_version", "status", "board", "source_commit", "reference_commit",
   "package_manifest_sha256", "fixture_accepted",
   "share_target_valid", "safe_stop_complete", "settings_restored", "package_restored",
-  "mineonboot_false", "usb_cleanup_ready", "redaction_status", "exact_non_claims",
+  "mineonboot_false", "mining_inactive", "mining_activity_category", "zero_hashrate",
+  "zero_shares", "usb_cleanup_ready", "redaction_status", "exact_non_claims",
 ] as const;
 
 const nonClaims = [
@@ -33,12 +34,14 @@ export function validateStratumV2CampaignProjection(
     || projection["source_commit"] !== expectedSource
     || projection["reference_commit"] !== expectedReference
     || projection["package_manifest_sha256"] !== expectedManifestSha256
+    || !["paused", "safe_blocked"].includes(String(projection["mining_activity_category"] ?? ""))
     || projection["redaction_status"] !== "passed") {
     throw new Error("projection identity or status mismatch");
   }
   for (const key of [
     "fixture_accepted", "share_target_valid", "safe_stop_complete", "settings_restored",
-    "package_restored", "mineonboot_false", "usb_cleanup_ready",
+    "package_restored", "mineonboot_false", "mining_inactive", "zero_hashrate", "zero_shares",
+    "usb_cleanup_ready",
   ]) {
     if (projection[key] !== true) throw new Error("projection proof is incomplete");
   }

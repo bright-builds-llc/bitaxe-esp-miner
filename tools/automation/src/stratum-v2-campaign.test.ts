@@ -26,7 +26,7 @@ const exactArgs = [
   "--restore-bundle", "scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json",
   "--private-root", "scratch/str005-stratum-v2/attempt-005",
   "--projection", "docs/parity/evidence/str005-stratum-v2/stratum-v2-projection.json",
-  "--plan", "docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md",
+  "--plan", "docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/PLAN.md",
   "--campaign-ordinal", "5",
   "--duration-seconds", "180",
   "--redact-evidence",
@@ -48,13 +48,13 @@ async function createPreflightWorkspace(): Promise<string> {
     "",
   ].join("\n"));
   await writeFile(path.join(workspace, "MODULE.bazel"), "module(name = \"fixture\")\n");
-  const planRelative = "docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md";
+  const planRelative = "docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/PLAN.md";
   const plan = await readFile(fileURLToPath(new URL(`../../../${planRelative}`, import.meta.url)), "utf8");
   await mkdir(path.join(workspace, path.dirname(planRelative)), { recursive: true });
   await writeFile(path.join(workspace, planRelative), plan);
   await writeFile(
     path.join(workspace, "TASKS.md"),
-    "### task-str005-restore-and-verify-continuation | fixture\n",
+    "### task-str005-inactive-restoration-and-campaign-continuation | fixture\n",
   );
   await writeFile(path.join(workspace, "wifi-credentials.json"), "{}\n", { mode: 0o600 });
   await writeFile(path.join(workspace, "pool-credentials.json"), "{}\n", { mode: 0o600 });
