@@ -12,8 +12,8 @@ pub(crate) const REMEDIATION_PLAN_RELATIVE: &str =
 pub(crate) const REMEDIATION_PLAN_SHA256: &str =
     "14c7676fb26b6291a24d08d229bc38717691835978d61ae24fd8cff91736470a";
 const RECOVERY_CAPTURE_SOURCE: &str = "7d5d9504433d54ae28fe853c5827d6dd05693eef";
-pub(crate) const PREFLIGHT_ROOT: &str = "scratch/str005-exact-restoration/preflight-004";
-pub(crate) const EFFECT_ROOT: &str = "scratch/str005-exact-restoration/remediation-004";
+pub(crate) const PREFLIGHT_ROOT: &str = "scratch/str005-exact-restoration/preflight-005";
+pub(crate) const EFFECT_ROOT: &str = "scratch/str005-exact-restoration/remediation-005";
 pub(crate) const CAMPAIGN_RESTORE_ROOT: &str = "scratch/str005-stratum-v2/attempt-007/restoration";
 const RESTORE_SCHEMA: &str = "bitaxe-stratum-v2-restore-bundle-v1";
 pub(crate) const RESTORE_RANGES: [(&str, u32, u32); 8] = [
@@ -190,7 +190,7 @@ fn validate_common(
         || authorization.board != 205
         || !matches!(
             (authorization.action.as_str(), authorization.ordinal),
-            ("preflight" | "start", 4) | ("campaign_restore", 7)
+            ("preflight" | "start", 5) | ("campaign_restore", 7)
         )
         || authorization.current_source_commit != provenance.build_identity().source_commit()
         || authorization.reference_commit != environment.reference_commit()

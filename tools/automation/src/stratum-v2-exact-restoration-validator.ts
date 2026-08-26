@@ -16,7 +16,7 @@ export async function validateExactRestorationProjection(
   const ordinal = value["remediation_ordinal"];
   const category = value["mining_activity_category"];
   const modeValid = (ordinal === 2 && category === "paused" && value["read_only_finalization"] === true)
-    || ([3, 4].includes(Number(ordinal)) && ["paused", "safe_blocked"].includes(String(category ?? ""))
+    || ([3, 4, 5].includes(Number(ordinal)) && ["paused", "safe_blocked"].includes(String(category ?? ""))
       && value["read_only_finalization"] === false);
   if (Object.keys(value).length !== allowedKeys.size
     || Object.keys(value).some(key => !allowedKeys.has(key))

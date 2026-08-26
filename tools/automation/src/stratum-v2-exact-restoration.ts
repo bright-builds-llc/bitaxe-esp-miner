@@ -43,9 +43,9 @@ const expected = {
     "docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-006.json",
   campaignRoot: "scratch/str005-stratum-v2/attempt-004",
   wifiCredentials: "wifi-credentials.json",
-  projection: "docs/parity/evidence/str005-exact-restoration/restoration-projection-remediation-004.json",
-  preflightRoot: "scratch/str005-exact-restoration/preflight-004",
-  effectRoot: "scratch/str005-exact-restoration/remediation-004",
+  projection: "docs/parity/evidence/str005-exact-restoration/restoration-projection-remediation-005.json",
+  preflightRoot: "scratch/str005-exact-restoration/preflight-005",
+  effectRoot: "scratch/str005-exact-restoration/remediation-005",
 } as const;
 
 export class ExactRestorationError extends Error {
@@ -197,7 +197,7 @@ async function commonAdmission(workspace: string, args: RestorationArgs, private
   }
   const authorization = {
     schema_version: "bitaxe-stratum-v2-restore-authorization-v1",
-    board: 205, ordinal: 4, action: args.action === "preflight" ? "preflight" : "start",
+    board: 205, ordinal: 5, action: args.action === "preflight" ? "preflight" : "start",
     current_source_commit: source,
     reference_commit: manifest["reference_commit"],
     bundle_sha256: sha256(bundleDocument),
@@ -357,7 +357,7 @@ async function finishSettings(
   await replacePrivate(statePath, { schema_version: "bitaxe-stratum-v2-restoration-state-v1", stage: "complete" });
   const projection = {
     schema_version: "bitaxe-stratum-v2-exact-restoration-v2", status: "accepted", board: 205,
-    remediation_ordinal: 4, original_runtime_restored: true, settings_restored: true,
+    remediation_ordinal: 5, original_runtime_restored: true, settings_restored: true,
     theme_restored: true, mineonboot_false: true, mining_inactive: true,
     mining_activity_category: String(confirmed["miningActivity"]), zero_hashrate: true,
     zero_shares: true, read_only_finalization: false,

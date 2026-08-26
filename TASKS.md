@@ -4767,6 +4767,22 @@ independent projection validation passed. The board is again exactly restored.
 Attempt-007 remains absent and requires this projection to be committed/pushed
 and a new exact package built before its no-effect gates.
 
+Attempt-007 outcome: exact package `ec75e680`, fresh detector, preflight, and
+runtime admission passed. The signed full-domain certificate still produced the
+same authoritative `transport/handshake` plus fixture `noise` signature after
+TCP acceptance; no channel/work/share occurred. Safe-stop and USB cleanup
+passed. Because the exact post-fix signature repeated, the terminal campaign
+decision is `stop_repeated_boundary`; attempt-008 and STR-005 promotion are
+prohibited under this plan.
+
+Rollback snapshot and Wi-Fi writes both completed, but final restoration again
+reported false. No campaign retry is allowed. Fresh remediation-005 is the sole
+remaining safety action: reuse the independently proven standalone restoration
+owner with roots `preflight-005`/`remediation-005` and projection
+`restoration-projection-remediation-005.json`, then close without campaign or
+promotion. It requires the complete gate/push/package/detector cycle and may run
+once only.
+
 Attempt-005 outcome: changed preflight and runtime admission passed on exact
 package `d54b7947`; the single campaign was consumed. Current package and NVS
 writes completed, hardware preparation completed, and terminal safe-stop/USB
