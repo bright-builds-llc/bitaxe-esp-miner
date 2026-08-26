@@ -4672,7 +4672,7 @@ created or run. This task remains active but blocked; STR-005 remains
       restoration authorization to the new immutable plan.
 - [x] Run attempt-005 once after full gates, clean push/package, fresh detector,
       no-effect preflight, and runtime admission.
-- [ ] Continue only after a new regression-proved boundary and exact original
+- [x] Continue only after a new regression-proved boundary and exact original
       restoration; stop repeated, hardware, authority, or impossible outcomes.
 - [ ] Promote only STR-005 after the complete accepted hardware chain and exact
       final inactive restoration.
@@ -4805,6 +4805,17 @@ remediation-003 must restore the original through fresh preflight/effect roots
 and projection. After exact restoration, attempt-006 is the next eligible fresh
 campaign ordinal with root `scratch/str005-stratum-v2/attempt-006`; both require
 the complete gate/push/package/detector cycle and may each run once only.
+
+Final restoration: remediation-005 on exact pushed source/package `28f9f1c2`
+passed fresh admission/detection, snapshot and Wi-Fi writes, exact original
+identity/settings/theme, inactive `paused`, zero work/shares, cleanup, and
+independent projection validation. The board is safely restored. Campaign
+attempts 005, 006, and 007 are consumed; attempt-007 repeated the post-fix
+`transport/handshake` plus fixture `noise` signature, so the final outcome is
+`stop_repeated_boundary`. No attempt-008, campaign projection, `RESULT.md`,
+hardware-regression evidence, or promotion is authorized. STR-005 remains
+`implemented`; this task remains active but blocked. Closure:
+`docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/CLOSURE.md`.
 
 ## Future
 

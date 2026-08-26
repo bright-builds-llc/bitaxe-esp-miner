@@ -1,0 +1,18 @@
+{
+  "schema_version": "bitaxe-stratum-v2-exact-restoration-v2",
+  "status": "accepted",
+  "board": 205,
+  "remediation_ordinal": 5,
+  "original_runtime_restored": true,
+  "settings_restored": true,
+  "theme_restored": true,
+  "mineonboot_false": true,
+  "mining_inactive": true,
+  "mining_activity_category": "paused",
+  "zero_hashrate": true,
+  "zero_shares": true,
+  "read_only_finalization": false,
+  "usb_cleanup_ready": true,
+  "redaction_status": "passed",
+  "source_commit": "28f9f1c249b76636f6e36d4d674505f2b5b385b3"
+}
