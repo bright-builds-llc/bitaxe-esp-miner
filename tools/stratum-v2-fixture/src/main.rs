@@ -14,7 +14,7 @@ use bitaxe_stratum::v2::messages::{
     SetupConnectionSuccess, SubmitSharesStandard, SubmitSharesSuccess,
 };
 use bitaxe_stratum::v2::work::V2MiningWork;
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use noise_sv2::{NoiseCodec, Responder, AEAD_MAC_LEN, ELLSWIFT_ENCODING_SIZE};
 use rand::{rngs::OsRng, RngCore};
 use secp256k1::{Keypair, Secp256k1, SecretKey};
@@ -37,6 +37,15 @@ struct Args {
     accept_timeout_seconds: u64,
     #[arg(long, default_value_t = 180)]
     session_timeout_seconds: u64,
+    #[arg(long, value_enum, default_value_t = FixtureMode::Pool)]
+    mode: FixtureMode,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ValueEnum)]
+#[serde(rename_all = "snake_case")]
+enum FixtureMode {
+    Pool,
+    HandshakeOnly,
 }
 
 #[derive(Serialize)]
@@ -51,6 +60,7 @@ struct ResultDocument {
     schema_version: &'static str,
     status: &'static str,
     noise_authenticated: bool,
+    client_authenticated: bool,
     setup_accepted: bool,
     channel_opened: bool,
     job_sent: bool,
@@ -64,6 +74,11 @@ struct ResultDocument {
 struct FixtureProgress {
     listener_ready: bool,
     connection_accepted: bool,
+    act_one_received: bool,
+    responder_created: bool,
+    act_two_created: bool,
+    act_two_sent: bool,
+    client_authenticated: bool,
     noise_authenticated: bool,
     setup_accepted: bool,
     channel_opened: bool,
@@ -77,6 +92,7 @@ struct TerminalDocument<'a> {
     schema_version: &'static str,
     status: &'a str,
     terminal_category: &'a str,
+    mode: FixtureMode,
     progress: &'a FixtureProgress,
 }
 
@@ -92,7 +108,8 @@ fn main() -> Result<()> {
         &TerminalDocument {
             schema_version: "bitaxe-stratum-v2-fixture-terminal-v1",
             status: if accepted { "accepted" } else { "failed" },
-            terminal_category: fixture_terminal_category(&progress),
+            terminal_category: fixture_terminal_category(&progress, args.mode),
+            mode: args.mode,
             progress: &progress,
         },
     )?;
@@ -128,8 +145,14 @@ fn run_fixture(args: &Args, progress: &mut FixtureProgress) -> Result<()> {
         .set_write_timeout(Some(Duration::from_secs(10)))
         .context("set write timeout")?;
     let started = Instant::now();
-    let mut codec = respond_noise(&mut stream, authority_private, authority_public)?;
-    progress.noise_authenticated = true;
+    let mut codec = respond_noise(&mut stream, authority_private, authority_public, progress)?;
+    if args.mode == FixtureMode::HandshakeOnly {
+        read_client_proof(&mut stream, &mut codec)?;
+        progress.client_authenticated = true;
+        progress.noise_authenticated = true;
+        println!("stratum_v2_fixture=accepted");
+        return Ok(());
+    }
     let result = run_pool_session(
         &mut stream,
         &mut codec,
@@ -142,13 +165,23 @@ fn run_fixture(args: &Args, progress: &mut FixtureProgress) -> Result<()> {
     Ok(())
 }
 
-fn fixture_terminal_category(progress: &FixtureProgress) -> &'static str {
+fn fixture_terminal_category(progress: &FixtureProgress, mode: FixtureMode) -> &'static str {
     if !progress.listener_ready {
         "listener"
     } else if !progress.connection_accepted {
         "accept"
-    } else if !progress.noise_authenticated {
-        "noise"
+    } else if !progress.act_one_received {
+        "act_one_read"
+    } else if !progress.responder_created {
+        "responder"
+    } else if !progress.act_two_created {
+        "act_two_create"
+    } else if !progress.act_two_sent {
+        "act_two_write"
+    } else if !progress.client_authenticated {
+        "client_authentication"
+    } else if mode == FixtureMode::HandshakeOnly {
+        "accepted"
     } else if !progress.setup_accepted {
         "setup"
     } else if !progress.channel_opened {
@@ -229,11 +262,13 @@ fn respond_noise(
     stream: &mut TcpStream,
     authority_private: [u8; 32],
     authority_public: [u8; 32],
+    progress: &mut FixtureProgress,
 ) -> Result<NoiseCodec> {
     let mut act_one = [0; ELLSWIFT_ENCODING_SIZE];
     stream
         .read_exact(&mut act_one)
         .context("read Noise act one")?;
+    progress.act_one_received = true;
     let mut rng = OsRng;
     let mut responder = Responder::from_authority_kp_with_rng(
         &authority_public,
@@ -242,11 +277,19 @@ fn respond_noise(
         &mut rng,
     )
     .map_err(|_| anyhow::anyhow!("create Noise responder"))?;
+    progress.responder_created = true;
     let (act_two, codec) = responder
         .step_1_with_now_rng(act_one, 0, &mut rng)
         .map_err(|_| anyhow::anyhow!("produce Noise act two"))?;
+    progress.act_two_created = true;
     stream.write_all(&act_two).context("write Noise act two")?;
+    progress.act_two_sent = true;
     Ok(codec)
+}
+
+fn read_client_proof(stream: &mut TcpStream, codec: &mut NoiseCodec) -> Result<()> {
+    let _ = read_noise_frame(stream, codec)?;
+    Ok(())
 }
 
 fn run_pool_session(
@@ -257,6 +300,8 @@ fn run_pool_session(
     progress: &mut FixtureProgress,
 ) -> Result<ResultDocument> {
     let setup = read_client_message(stream, codec, started, timeout)?;
+    progress.client_authenticated = true;
+    progress.noise_authenticated = true;
     if !matches!(setup, ClientMessage::SetupConnection(_)) {
         bail!("expected setup connection");
     }
@@ -330,6 +375,7 @@ fn run_pool_session(
         schema_version: "bitaxe-stratum-v2-fixture-result-v1",
         status: "accepted",
         noise_authenticated: true,
+        client_authenticated: true,
         setup_accepted: true,
         channel_opened: true,
         job_sent: true,
@@ -373,6 +419,11 @@ fn read_client_message(
     if started.elapsed() >= timeout {
         bail!("fixture session deadline elapsed");
     }
+    let frame = read_noise_frame(stream, codec)?;
+    ClientMessage::decode(&frame).map_err(Into::into)
+}
+
+fn read_noise_frame(stream: &mut TcpStream, codec: &mut NoiseCodec) -> Result<Frame> {
     let mut encrypted_header = vec![0; ENCRYPTED_HEADER_LEN];
     stream
         .read_exact(&mut encrypted_header)
@@ -393,12 +444,11 @@ fn read_client_message(
             .map_err(|_| anyhow::anyhow!("decrypt frame payload"))?;
         encrypted
     };
-    let frame = Frame::new(
+    Ok(Frame::new(
         header.extension_type,
         header.message_type,
         std::mem::take(&mut payload),
-    )?;
-    ClientMessage::decode(&frame).map_err(Into::into)
+    )?)
 }
 
 fn write_server_frame(stream: &mut TcpStream, codec: &mut NoiseCodec, frame: &Frame) -> Result<()> {
@@ -431,144 +481,4 @@ fn unix_time_u32() -> Result<u32> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use bitaxe_stratum::v2::messages::{ChannelKind, ServerMessage};
-    use bitaxe_stratum::v2::noise::{NoiseInitiator, NoiseTransport, ACT_TWO_LEN};
-    use bitaxe_stratum::v2::session::{SessionConfig, SessionEvent, V2Session};
-
-    #[test]
-    fn real_tcp_fixture_completes_noise_channel_job_and_accepted_share() {
-        // Arrange
-        let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
-        let address = listener.local_addr().expect("address");
-        let (authority_private, authority_public) = generate_authority_keypair().expect("keypair");
-        let server = std::thread::spawn(move || {
-            let (mut stream, _) = listener.accept().expect("accept");
-            let started = Instant::now();
-            let mut codec =
-                respond_noise(&mut stream, authority_private, authority_public).expect("Noise");
-            let mut progress = FixtureProgress {
-                listener_ready: true,
-                connection_accepted: true,
-                noise_authenticated: true,
-                ..FixtureProgress::default()
-            };
-            let result = run_pool_session(
-                &mut stream,
-                &mut codec,
-                started,
-                Duration::from_secs(10),
-                &mut progress,
-            )
-            .expect("pool session");
-            (result, progress)
-        });
-        let mut stream = TcpStream::connect(address).expect("connect");
-        stream
-            .set_read_timeout(Some(Duration::from_secs(10)))
-            .expect("read timeout");
-        let mut rng = OsRng;
-        let mut initiator =
-            NoiseInitiator::new(Some(authority_public), &mut rng).expect("initiator");
-        stream
-            .write_all(&initiator.act_one().expect("act one"))
-            .expect("write act one");
-        let mut act_two = [0; ACT_TWO_LEN];
-        stream.read_exact(&mut act_two).expect("read act two");
-        let mut noise = initiator
-            .complete(&act_two, u32::MAX)
-            .expect("complete Noise");
-        let mut session = V2Session::new(test_config()).expect("session");
-
-        // Act
-        send_session_event(
-            &mut stream,
-            &mut noise,
-            session.start().expect("setup event"),
-        );
-        let open_events = handle_one_server_frame(&mut stream, &mut noise, &mut session);
-        let open = open_events
-            .into_iter()
-            .find(|event| matches!(event, SessionEvent::Outbound(_)))
-            .expect("open event");
-        send_session_event(&mut stream, &mut noise, open);
-        handle_one_server_frame(&mut stream, &mut noise, &mut session);
-        handle_one_server_frame(&mut stream, &mut noise, &mut session);
-        let work_events = handle_one_server_frame(&mut stream, &mut noise, &mut session);
-        let work = work_events
-            .into_iter()
-            .find_map(|event| match event {
-                SessionEvent::Work(work) => Some(work),
-                _ => None,
-            })
-            .expect("work event");
-        let submit = session
-            .observe_nonce(Bm1366NonceResult {
-                job_id: work.asic_job_id,
-                nonce: 1,
-                asic_index: 0,
-                core_id: 0,
-                small_core_id: 0,
-                version_bits: 0,
-            })
-            .expect("nonce")
-            .expect("submit event");
-        send_session_event(&mut stream, &mut noise, submit);
-        let accepted = handle_one_server_frame(&mut stream, &mut noise, &mut session);
-        let (server_result, progress) = server.join().expect("server join");
-
-        // Assert
-        assert!(accepted
-            .iter()
-            .any(|event| matches!(event, SessionEvent::ShareAccepted { accepted_count: 1 })));
-        assert_eq!(server_result.status, "accepted");
-        assert!(server_result.share_target_valid);
-        assert_eq!(fixture_terminal_category(&progress), "accepted");
-        assert_eq!(FIXTURE_CERTIFICATE_VALIDITY.as_secs(), u64::from(u32::MAX));
-    }
-
-    fn test_config() -> SessionConfig {
-        SessionConfig {
-            endpoint_host: "127.0.0.1".to_owned(),
-            endpoint_port: 1,
-            vendor: "test".to_owned(),
-            hardware_version: "BM1366".to_owned(),
-            firmware: String::new(),
-            device_id: String::new(),
-            user_identity: "worker".to_owned(),
-            nominal_hashrate: 1.0e12,
-            channel_kind: ChannelKind::Standard,
-            minimum_extranonce_size: 6,
-        }
-    }
-
-    fn handle_one_server_frame(
-        stream: &mut TcpStream,
-        noise: &mut NoiseTransport,
-        session: &mut V2Session,
-    ) -> Vec<SessionEvent> {
-        let frame = read_noise_frame(stream, noise);
-        let message = ServerMessage::decode(&frame).expect("server message");
-        session.handle(message).expect("handle server message")
-    }
-
-    fn send_session_event(stream: &mut TcpStream, noise: &mut NoiseTransport, event: SessionEvent) {
-        let SessionEvent::Outbound(frame) = event else {
-            panic!("expected outbound event");
-        };
-        let encrypted = noise.encrypt_frame(&frame).expect("encrypt frame");
-        stream.write_all(&encrypted).expect("write frame");
-    }
-
-    fn read_noise_frame(stream: &mut TcpStream, noise: &mut NoiseTransport) -> Frame {
-        let mut header = vec![0; ENCRYPTED_HEADER_LEN];
-        stream.read_exact(&mut header).expect("read header");
-        let pending = noise.decrypt_header(&header).expect("decrypt header");
-        let mut payload = vec![0; pending.encrypted_payload_len()];
-        stream.read_exact(&mut payload).expect("read payload");
-        noise
-            .decrypt_payload(pending, &payload)
-            .expect("decrypt payload")
-    }
-}
+mod tests;

@@ -15,6 +15,12 @@ const RECOVERY_CAPTURE_SOURCE: &str = "7d5d9504433d54ae28fe853c5827d6dd05693eef"
 pub(crate) const PREFLIGHT_ROOT: &str = "scratch/str005-exact-restoration/preflight-005";
 pub(crate) const EFFECT_ROOT: &str = "scratch/str005-exact-restoration/remediation-005";
 pub(crate) const CAMPAIGN_RESTORE_ROOT: &str = "scratch/str005-stratum-v2/attempt-007/restoration";
+pub(crate) const NOISE_DIAGNOSTIC_RESTORE_ROOT: &str =
+    "scratch/str005-noise-diagnostic/diagnostic-001/restoration";
+pub(crate) const NOISE_DIAGNOSTIC_PLAN_RELATIVE: &str =
+    "docs/parity/work-plans/20260826T210025Z-STR-005-NOISE-DIAGNOSTIC/PLAN.md";
+pub(crate) const NOISE_DIAGNOSTIC_PLAN_SHA256: &str =
+    "5c5dcc8b030cd07acb60b00d8414d72bc4ad854550d70dad4b66381940629eec";
 const RESTORE_SCHEMA: &str = "bitaxe-stratum-v2-restore-bundle-v1";
 pub(crate) const RESTORE_RANGES: [(&str, u32, u32); 8] = [
     ("bootloader", 0x000000, 0x008000),
@@ -181,6 +187,8 @@ fn validate_common(
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
     let provenance = environment.current_provenance()?;
+    let (remediation_plan_relative, remediation_plan_sha256) =
+        authorized_remediation_plan(&authorization.action, authorization.ordinal)?;
     if common.schema != RESTORE_SCHEMA
         || common.board != 205
         || common.identity.source_dirty
@@ -188,16 +196,12 @@ fn validate_common(
         || provenance.build_identity().source_dirty()
         || authorization.schema_version != "bitaxe-stratum-v2-restore-authorization-v1"
         || authorization.board != 205
-        || !matches!(
-            (authorization.action.as_str(), authorization.ordinal),
-            ("preflight" | "start", 5) | ("campaign_restore", 7)
-        )
         || authorization.current_source_commit != provenance.build_identity().source_commit()
         || authorization.reference_commit != environment.reference_commit()
         || authorization.bundle_sha256 != common.bundle_sha256
         || authorization.bundle_capture_source_commit != common.capture_source
         || authorization.recovery_plan_sha256 != common.plan_sha256
-        || authorization.remediation_plan_sha256 != REMEDIATION_PLAN_SHA256
+        || authorization.remediation_plan_sha256 != remediation_plan_sha256
         || common.identity.reference_commit != environment.reference_commit()
         || common.identity.source_commit.len() != 40
         || common.identity.app_elf_sha256.len() != 64
@@ -220,11 +224,23 @@ fn validate_common(
         bail!("restore_installed=blocked reason=plan_drift");
     }
     let remediation = environment
-        .read_to_string(&environment.workspace_path(Utf8Path::new(REMEDIATION_PLAN_RELATIVE)))?;
-    if sha256_bytes(remediation.as_bytes()) != REMEDIATION_PLAN_SHA256 {
+        .read_to_string(&environment.workspace_path(Utf8Path::new(remediation_plan_relative)))?;
+    if sha256_bytes(remediation.as_bytes()) != remediation_plan_sha256 {
         bail!("restore_installed=blocked reason=remediation_plan_drift");
     }
     Ok(())
+}
+
+fn authorized_remediation_plan(action: &str, ordinal: u16) -> Result<(&'static str, &'static str)> {
+    match (action, ordinal) {
+        ("diagnostic_restore", 1) => {
+            Ok((NOISE_DIAGNOSTIC_PLAN_RELATIVE, NOISE_DIAGNOSTIC_PLAN_SHA256))
+        }
+        ("preflight" | "start", 5) | ("campaign_restore", 7) => {
+            Ok((REMEDIATION_PLAN_RELATIVE, REMEDIATION_PLAN_SHA256))
+        }
+        _ => bail!("restore_installed=blocked reason=identity_contract"),
+    }
 }
 
 fn snapshot_command(
@@ -384,6 +400,8 @@ pub(crate) fn run_restore_installed(
     ensure_ultra_205(command.board)?;
     let expected_root = if command.admission_only {
         Utf8Path::new(PREFLIGHT_ROOT)
+    } else if command.private_root == Utf8Path::new(NOISE_DIAGNOSTIC_RESTORE_ROOT) {
+        Utf8Path::new(NOISE_DIAGNOSTIC_RESTORE_ROOT)
     } else if command.private_root == Utf8Path::new(CAMPAIGN_RESTORE_ROOT) {
         Utf8Path::new(CAMPAIGN_RESTORE_ROOT)
     } else {
@@ -392,7 +410,14 @@ pub(crate) fn run_restore_installed(
     let expected_authorization = expected_root.join("restore-authorization.private.json");
     if !command.redact_evidence
         || command.restore_bundle != Utf8Path::new(RESTORE_BUNDLE_RELATIVE)
-        || command.remediation_plan != Utf8Path::new(REMEDIATION_PLAN_RELATIVE)
+        || command.remediation_plan
+            != Utf8Path::new(
+                if command.private_root == Utf8Path::new(NOISE_DIAGNOSTIC_RESTORE_ROOT) {
+                    NOISE_DIAGNOSTIC_PLAN_RELATIVE
+                } else {
+                    REMEDIATION_PLAN_RELATIVE
+                },
+            )
         || command.private_root != expected_root
         || command.restore_authorization != expected_authorization
     {
@@ -413,6 +438,7 @@ pub(crate) fn run_restore_installed(
         (true, PREFLIGHT_ROOT, "preflight")
             | (false, EFFECT_ROOT, "start")
             | (false, CAMPAIGN_RESTORE_ROOT, "campaign_restore")
+            | (false, NOISE_DIAGNOSTIC_RESTORE_ROOT, "diagnostic_restore")
     );
     if !action_matches {
         bail!("restore_installed=blocked reason=authorization_action");
@@ -556,5 +582,20 @@ mod restore_contract_tests {
             assert!(address >= nvs.end || end <= nvs.start);
             assert!(end <= coredump_start);
         }
+    }
+
+    #[test]
+    fn diagnostic_restore_authority_is_exact_and_does_not_admit_arbitrary_history() {
+        // Arrange / Act
+        let admitted =
+            authorized_remediation_plan("diagnostic_restore", 1).expect("diagnostic authority");
+
+        // Assert
+        assert_eq!(
+            admitted,
+            (NOISE_DIAGNOSTIC_PLAN_RELATIVE, NOISE_DIAGNOSTIC_PLAN_SHA256)
+        );
+        assert!(authorized_remediation_plan("diagnostic_restore", 2).is_err());
+        assert!(authorized_remediation_plan("historical_restore", 1).is_err());
     }
 }

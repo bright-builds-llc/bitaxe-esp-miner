@@ -12,6 +12,32 @@ pub const ACT_ONE_LEN: usize = 64;
 pub const ACT_TWO_LEN: usize = INITIATOR_EXPECTED_HANDSHAKE_MESSAGE_SIZE;
 pub const ENCRYPTED_HEADER_LEN: usize = FRAME_HEADER_LEN + noise_sv2::AEAD_MAC_LEN;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NoiseCompletionFailure {
+    MessageLength,
+    Decrypt,
+    PublicKey,
+    CertificateTime,
+    CertificateSignature,
+    State,
+    Other,
+}
+
+impl NoiseCompletionFailure {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::MessageLength => "message_length",
+            Self::Decrypt => "decrypt",
+            Self::PublicKey => "public_key",
+            Self::CertificateTime => "certificate_time",
+            Self::CertificateSignature => "certificate_signature",
+            Self::State => "state",
+            Self::Other => "other",
+        }
+    }
+}
+
 pub struct NoiseInitiator {
     inner: Option<Box<Initiator>>,
     act_one_sent: bool,
@@ -63,20 +89,37 @@ impl NoiseInitiator {
     }
 
     pub fn complete(
-        mut self,
+        self,
         act_two: &[u8],
         unix_time_seconds: u32,
     ) -> Result<NoiseTransport, StratumV2Error> {
-        if !self.act_one_sent || act_two.len() != ACT_TWO_LEN {
-            return Err(StratumV2Error::InvalidNoiseState);
+        self.complete_diagnostic(act_two, unix_time_seconds)
+            .map_err(|failure| match failure {
+                NoiseCompletionFailure::MessageLength | NoiseCompletionFailure::State => {
+                    StratumV2Error::InvalidNoiseState
+                }
+                _ => StratumV2Error::NoiseAuthentication,
+            })
+    }
+
+    pub fn complete_diagnostic(
+        mut self,
+        act_two: &[u8],
+        unix_time_seconds: u32,
+    ) -> Result<NoiseTransport, NoiseCompletionFailure> {
+        if !self.act_one_sent {
+            return Err(NoiseCompletionFailure::State);
+        }
+        if act_two.len() != ACT_TWO_LEN {
+            return Err(NoiseCompletionFailure::MessageLength);
         }
         let response: [u8; ACT_TWO_LEN] = act_two
             .try_into()
-            .map_err(|_| StratumV2Error::InvalidNoiseState)?;
-        let mut inner = self.inner.take().ok_or(StratumV2Error::InvalidNoiseState)?;
+            .map_err(|_| NoiseCompletionFailure::MessageLength)?;
+        let mut inner = self.inner.take().ok_or(NoiseCompletionFailure::State)?;
         let codec = inner
             .step_2_with_now(response, unix_time_seconds)
-            .map_err(|_| StratumV2Error::NoiseAuthentication)?;
+            .map_err(|error| classify_completion_error(error, unix_time_seconds))?;
         Ok(NoiseTransport {
             codec,
             send_budget: NonceBudget::new(),
@@ -84,6 +127,39 @@ impl NoiseInitiator {
             maybe_pending_header: None,
             poisoned: false,
         })
+    }
+}
+
+fn classify_completion_error(
+    error: noise_sv2::Error,
+    unix_time_seconds: u32,
+) -> NoiseCompletionFailure {
+    match error {
+        noise_sv2::Error::InvalidMessageLength => NoiseCompletionFailure::MessageLength,
+        noise_sv2::Error::AesGcm(_) => NoiseCompletionFailure::Decrypt,
+        noise_sv2::Error::InvalidRawPublicKey => NoiseCompletionFailure::PublicKey,
+        noise_sv2::Error::InvalidCertificate(certificate) => {
+            const TIME_LEEWAY_SECONDS: u32 = 10;
+            let starts_before_now =
+                certificate.valid_from.saturating_sub(TIME_LEEWAY_SECONDS) <= unix_time_seconds;
+            let ends_after_now = certificate
+                .not_valid_after
+                .saturating_add(TIME_LEEWAY_SECONDS)
+                >= unix_time_seconds;
+            if starts_before_now && ends_after_now {
+                NoiseCompletionFailure::CertificateSignature
+            } else {
+                NoiseCompletionFailure::CertificateTime
+            }
+        }
+        noise_sv2::Error::HandshakeNotFinalized
+        | noise_sv2::Error::InvalidCipherState
+        | noise_sv2::Error::ExpectedIncomingHandshakeMessage => NoiseCompletionFailure::State,
+        noise_sv2::Error::CipherListMustBeNonEmpty
+        | noise_sv2::Error::UnsupportedCiphers(_)
+        | noise_sv2::Error::InvalidCipherList(_)
+        | noise_sv2::Error::InvalidCipherChosed(_)
+        | noise_sv2::Error::InvalidRawPrivateKey => NoiseCompletionFailure::Other,
     }
 }
 
@@ -272,6 +348,76 @@ mod tests {
         0x07, 0x02, 0x9b, 0xfc, 0xdb, 0x2d, 0xce, 0x28, 0xd9, 0x59, 0xf2, 0x81, 0x5b, 0x16, 0xf8,
         0x17, 0x98,
     ];
+    const OTHER_AUTHORITY_PUBLIC_KEY: [u8; 32] = [
+        0xc6, 0x04, 0x7f, 0x94, 0x41, 0xed, 0x7d, 0x6d, 0x30, 0x45, 0x40, 0x6e, 0x95, 0xc0, 0x7c,
+        0xd8, 0x5c, 0x77, 0x8e, 0x4b, 0x8c, 0xef, 0x3c, 0xa7, 0xab, 0xac, 0x09, 0xb9, 0x5c, 0x70,
+        0x9e, 0xe5,
+    ];
+
+    #[test]
+    fn noise_completion_distinguishes_certificate_time_from_signature() {
+        // Arrange
+        let expired = completion_failure(AUTHORITY_PUBLIC_KEY, 1_000);
+        let invalid_signature = completion_failure(OTHER_AUTHORITY_PUBLIC_KEY, 100);
+
+        // Act and Assert
+        assert_eq!(expired, NoiseCompletionFailure::CertificateTime);
+        assert_eq!(
+            invalid_signature,
+            NoiseCompletionFailure::CertificateSignature
+        );
+    }
+
+    #[test]
+    fn noise_completion_reports_message_length_without_entering_noise() {
+        // Arrange
+        let mut rng = DeterministicRng::new(21);
+        let mut initiator =
+            NoiseInitiator::new(Some(AUTHORITY_PUBLIC_KEY), &mut rng).expect("initiator");
+        let _ = initiator.act_one().expect("act one");
+
+        // Act
+        let result = initiator.complete_diagnostic(&[0; ACT_TWO_LEN - 1], 100);
+
+        // Assert
+        assert_eq!(
+            result.expect_err("short act two must fail"),
+            NoiseCompletionFailure::MessageLength
+        );
+    }
+
+    #[test]
+    fn noise_completion_reports_state_before_act_one() {
+        // Arrange
+        let mut rng = DeterministicRng::new(22);
+        let initiator =
+            NoiseInitiator::new(Some(AUTHORITY_PUBLIC_KEY), &mut rng).expect("initiator");
+
+        // Act
+        let result = initiator.complete_diagnostic(&[0; ACT_TWO_LEN], 100);
+
+        // Assert
+        assert_eq!(
+            result.expect_err("completion before act one must fail"),
+            NoiseCompletionFailure::State
+        );
+    }
+
+    #[test]
+    fn noise_completion_reports_decrypt_for_tampered_act_two() {
+        // Arrange
+        let (initiator, mut act_two) = handshake_response(AUTHORITY_PUBLIC_KEY);
+        act_two[80] ^= 1;
+
+        // Act
+        let result = initiator.complete_diagnostic(&act_two, 100);
+
+        // Assert
+        assert_eq!(
+            result.expect_err("tampered act two must fail"),
+            NoiseCompletionFailure::Decrypt
+        );
+    }
 
     #[test]
     fn official_noise_handshake_round_trips_split_sv2_frame() {
@@ -353,6 +499,35 @@ mod tests {
             .expect("act two");
         let initiator_transport = initiator.complete(&act_two, 100).expect("complete");
         (initiator_transport, responder_codec)
+    }
+
+    fn completion_failure(
+        authority_public_key: [u8; 32],
+        completion_time: u32,
+    ) -> NoiseCompletionFailure {
+        let (initiator, act_two) = handshake_response(authority_public_key);
+        initiator
+            .complete_diagnostic(&act_two, completion_time)
+            .expect_err("completion must fail")
+    }
+
+    fn handshake_response(authority_public_key: [u8; 32]) -> (NoiseInitiator, [u8; ACT_TWO_LEN]) {
+        let mut initiator_rng = DeterministicRng::new(11);
+        let mut responder_rng = DeterministicRng::new(12);
+        let mut initiator =
+            NoiseInitiator::new(Some(authority_public_key), &mut initiator_rng).expect("initiator");
+        let act_one = initiator.act_one().expect("act one");
+        let mut responder = Responder::from_authority_kp_with_rng(
+            &AUTHORITY_PUBLIC_KEY,
+            &AUTHORITY_PRIVATE_KEY,
+            Duration::from_secs(60),
+            &mut responder_rng,
+        )
+        .expect("responder");
+        let (act_two, _) = responder
+            .step_1_with_now_rng(act_one, 100, &mut responder_rng)
+            .expect("act two");
+        (initiator, act_two)
     }
 
     struct DeterministicRng(u64);

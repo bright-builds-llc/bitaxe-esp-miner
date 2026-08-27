@@ -35,6 +35,7 @@ mod settings_snapshot_store;
 mod startup;
 mod static_files;
 mod statistics_runtime;
+mod stratum_v2_noise_diagnostic;
 mod stratum_v2_session;
 mod task_watchdog_observation;
 mod websocket_api;

@@ -1,6 +1,8 @@
 const STARTUP: &str = include_str!("startup.rs");
 const OWNER: &str = include_str!("stratum_v2_session.rs");
 const TRANSPORT: &str = include_str!("stratum_v2_session/transport.rs");
+const DIAGNOSTIC: &str = include_str!("stratum_v2_noise_diagnostic.rs");
+const DIAGNOSTIC_ADMISSION: &str = include_str!("settings_adapter/noise_diagnostic.rs");
 const V1_OWNER: &str = include_str!("production_mining_session.rs");
 const SETTINGS: &str = include_str!("settings_adapter/stratum_v2.rs");
 
@@ -27,6 +29,56 @@ fn startup_selects_exactly_one_protocol_owner_before_fan_controller_start() {
     assert!(v1_start < fan_start);
     assert_eq!(STARTUP.matches("stratum_v2_session::start").count(), 1);
     assert_eq!(STARTUP.matches("production_mining_session::start").count(), 1);
+}
+
+#[test]
+fn diagnostic_owner_precedes_other_owners_and_suppresses_the_fan() {
+    // Arrange
+    let diagnostic_admission = STARTUP
+        .find("load_noise_diagnostic_admission")
+        .expect("diagnostic admission");
+    let diagnostic_start = STARTUP
+        .find("stratum_v2_noise_diagnostic::start")
+        .expect("diagnostic start");
+    let self_test_start = STARTUP
+        .find("self_test_runtime::start")
+        .expect("self-test start");
+    let production_start = STARTUP
+        .find("production_mining_session::start")
+        .expect("production start");
+    let fan_start = STARTUP
+        .find("fan_controller_runtime::start")
+        .expect("fan start");
+
+    // Act / Assert
+    assert!(diagnostic_admission < diagnostic_start);
+    assert!(diagnostic_start < self_test_start);
+    assert!(diagnostic_start < production_start);
+    assert!(diagnostic_start < fan_start);
+    assert!(STARTUP.contains("if let Some(admission) = maybe_noise_diagnostic_admission"));
+    assert!(STARTUP.contains("} else if let Some(admission) = maybe_self_test_admission"));
+}
+
+#[test]
+fn diagnostic_owner_cannot_reach_hardware_or_mining_adapters() {
+    // Arrange
+    let forbidden = [
+        "asic_adapter",
+        "mining_actuation",
+        "production_mining_session",
+        "fan_controller",
+        "core_voltage",
+        "V2Session",
+    ];
+
+    // Act / Assert
+    for fragment in forbidden {
+        assert!(!DIAGNOSTIC.contains(fragment), "forbidden owner fragment {fragment}");
+    }
+    assert!(DIAGNOSTIC.contains("run_noise_diagnostic"));
+    assert!(DIAGNOSTIC.contains("mining_started\\\":false"));
+    assert!(DIAGNOSTIC_ADMISSION.contains("sv2diagkind"));
+    assert!(DIAGNOSTIC_ADMISSION.contains("erase_admission_tuple"));
 }
 
 #[test]

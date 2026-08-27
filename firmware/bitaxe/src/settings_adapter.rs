@@ -21,6 +21,7 @@ static CURRENT_SETTINGS_SNAPSHOT: OnceLock<crate::settings_snapshot_store::Confi
 static SETTINGS_TRANSACTION_LOCK: Mutex<()> = Mutex::new(());
 const NETWORK_RECONNECT_PROBE_KEY: &str = "netreconprobe";
 
+mod noise_diagnostic;
 mod nvs_owner;
 mod production;
 mod protocol_gate;
@@ -29,6 +30,7 @@ mod self_test;
 mod stratum_v2;
 mod thermal_fault_stimulus;
 
+pub(crate) use noise_diagnostic::{load_noise_diagnostic_admission, NoiseDiagnosticAdmission};
 pub(crate) use production::{
     load_production_campaign_admission, read_production_pool_set, MiningCampaignStage,
 };

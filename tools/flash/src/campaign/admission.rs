@@ -8,32 +8,32 @@ pub(super) struct CampaignNvsSeedOutcome {
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct PoolCredentialsFile {
+pub(crate) struct PoolCredentialsFile {
     #[serde(rename = "poolURL")]
-    pool_url: String,
+    pub(crate) pool_url: String,
     #[serde(rename = "poolPort")]
-    pool_port: u16,
+    pub(crate) pool_port: u16,
     #[serde(rename = "poolUser")]
-    pool_user: String,
+    pub(crate) pool_user: String,
     #[serde(rename = "poolPassword")]
-    pool_password: String,
+    pub(crate) pool_password: String,
     #[serde(rename = "stratumProtocol", default)]
-    stratum_protocol: Option<String>,
+    pub(crate) stratum_protocol: Option<String>,
     #[serde(rename = "stratumV2ChannelType", default)]
-    stratum_v2_channel_type: Option<String>,
+    pub(crate) stratum_v2_channel_type: Option<String>,
     #[serde(rename = "stratumV2AuthorityPubkey", default)]
-    stratum_v2_authority_pubkey: Option<String>,
+    pub(crate) stratum_v2_authority_pubkey: Option<String>,
 }
 
-#[derive(Clone)]
-pub(super) struct PoolCredentials {
-    pool_url: String,
-    pool_port: u16,
-    pool_user: String,
-    pool_password: String,
-    stratum_protocol: String,
-    stratum_v2_channel_type: Option<String>,
-    stratum_v2_authority_pubkey: Option<String>,
+#[derive(Debug, Clone)]
+pub(crate) struct PoolCredentials {
+    pub(crate) pool_url: String,
+    pub(crate) pool_port: u16,
+    pub(crate) pool_user: String,
+    pub(crate) pool_password: String,
+    pub(crate) stratum_protocol: String,
+    pub(crate) stratum_v2_channel_type: Option<String>,
+    pub(crate) stratum_v2_authority_pubkey: Option<String>,
 }
 
 pub(super) fn admit_campaign(
@@ -142,7 +142,7 @@ pub(super) fn prepare_campaign_nvs_seed(
     })
 }
 
-fn read_pool_credentials(
+pub(crate) fn read_pool_credentials(
     path: &Utf8Path,
     environment: &impl FlashEnvironment,
 ) -> Result<PoolCredentials> {
@@ -154,7 +154,7 @@ fn read_pool_credentials(
     validate_pool_credentials(file)
 }
 
-fn validate_pool_credentials(file: PoolCredentialsFile) -> Result<PoolCredentials> {
+pub(crate) fn validate_pool_credentials(file: PoolCredentialsFile) -> Result<PoolCredentials> {
     let protocol = file.stratum_protocol.unwrap_or_else(|| "SV1".to_owned());
     if protocol == "SV2" {
         if file.stratum_v2_channel_type.as_deref() != Some("standard") {

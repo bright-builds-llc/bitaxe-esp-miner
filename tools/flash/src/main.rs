@@ -46,6 +46,7 @@ mod execution_snapshot;
 mod input_uat;
 mod model;
 mod monitor;
+mod noise_diagnostic;
 mod output;
 mod package;
 mod package_admission;
@@ -69,6 +70,7 @@ pub(crate) use execution_snapshot::*;
 pub(crate) use input_uat::*;
 pub(crate) use model::*;
 pub(crate) use monitor::*;
+pub(crate) use noise_diagnostic::*;
 pub(crate) use output::*;
 pub(crate) use package::*;
 pub(crate) use redaction::*;
@@ -128,6 +130,9 @@ fn main() -> Result<()> {
         CliCommand::Phase35Probe(command) => run_phase35_probe(&command, &environment),
         CliCommand::ReleaseRecovery(command) => run_release_recovery(&command, &environment),
         CliCommand::RestoreInstalled(command) => run_restore_installed(&command, &environment),
+        CliCommand::NoiseDiagnostic(command) => {
+            run_noise_diagnostic_command(&command, &environment)
+        }
     };
     let device_effect_state = environment.device_effect_state();
     let cleanup_result = environment.finish_usb_session();

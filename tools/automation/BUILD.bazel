@@ -150,6 +150,26 @@ js_binary(
 )
 
 js_binary(
+    name = "stratum_v2_noise_diagnostic",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        ":stratum_v2_noise_diagnostic_validator",
+        "//:str005_noise_diagnostic_inputs",
+        "//tools/flash:flash",
+        "//tools/stratum-v2-fixture:stratum_v2_fixture",
+    ],
+    entry_point = "dist/stratum-v2-noise-diagnostic-cli.js",
+)
+
+js_binary(
+    name = "stratum_v2_noise_diagnostic_validator",
+    chdir = "../../../..",
+    data = [":automation_ts"],
+    entry_point = "dist/stratum-v2-noise-diagnostic-validator-cli.js",
+)
+
+js_binary(
     name = "stratum_v2_campaign_preflight",
     chdir = "../../../..",
     data = [":automation_ts"],
@@ -488,4 +508,15 @@ js_test(
         ":automation_tests_ts",
     ],
     entry_point = "test-dist/stratum-v2-restore-all.test.js",
+)
+
+js_test(
+    name = "stratum_v2_noise_diagnostic_unit_test",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        ":automation_tests_ts",
+        "//:str005_noise_diagnostic_inputs",
+    ],
+    entry_point = "test-dist/stratum-v2-noise-diagnostic.test.js",
 )

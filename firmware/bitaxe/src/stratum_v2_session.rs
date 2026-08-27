@@ -1,6 +1,6 @@
 //! Sole firmware owner for task-gated Stratum V2 production work.
 
-mod transport;
+pub(crate) mod transport;
 
 use std::sync::mpsc::{self, TrySendError};
 use std::time::{Duration, Instant};

@@ -4817,6 +4817,65 @@ hardware-regression evidence, or promotion is authorized. STR-005 remains
 `implemented`; this task remains active but blocked. Closure:
 `docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/CLOSURE.md`.
 
+### task-str005-noise-handshake-diagnostic | 2026-08-26 | Diagnose the STR-005 Noise handshake without mining
+
+- [x] Add a typed Noise completion failure model and deterministic red/green
+      coverage for message length, decrypt, public key, certificate time,
+      certificate signature, state, and other failures.
+- [x] Add a consume-before-use boot marker and sole no-mining firmware owner
+      that exercises only Wi-Fi, TCP, Noise, and one encrypted client proof.
+- [x] Add a handshake-only local fixture with closed progress and terminal
+      receipts that distinguish both sides of the Noise exchange.
+- [x] Add `just stratum-v2-noise-diagnostic preflight|start` with protected
+      roots, public closed projection, exact recovery-006 restoration, and no
+      campaign, ASIC, voltage, fan, or mining effects.
+- [ ] Run one fresh diagnostic ordinal only after all gates, clean push/package,
+      no-effect preflight, and fresh one-board detection; continue only after a
+      new authoritative signature receives a regression-proved fix.
+- [ ] Close and archive only this diagnostic task after authenticated Noise and
+      exact original restoration; keep STR-005 `implemented` and require a
+      separate future campaign plan for verification.
+
+Plan: `docs/parity/work-plans/20260826T210025Z-STR-005-NOISE-DIAGNOSTIC/PLAN.md`
+
+Authorization: source/test/docs/build/package, Git commit/push, task-gated USB
+and same-subnet local fixture use, fresh progress-backed diagnostic ordinals,
+boot-time one-shot NVS marker writes, Wi-Fi/TCP/Noise-only device execution,
+protected evidence, and exact recovery-006 firmware/settings restoration under
+the linked immutable plan. Campaign attempts, ASIC work, voltage/fan mutation,
+mining, external pools, raw NVS/coredump reads, new baselines, direct UART/pins,
+fault injection, OTA, erase, arbitrary writes, other boards, and STR-005
+promotion are prohibited.
+
+Initial boundary: attempt-007 repeated the authoritative firmware
+`transport/handshake` plus fixture `noise` signature after TCP acceptance even
+with a signed full-domain certificate. The existing production adapters erase
+the exact Noise completion error and responder substage, so another mining
+campaign cannot add information. The Ultra 205 is exactly restored to source
+`a11b579b`, app digest `32e2de54`, factory partition, pinned reference, exact
+settings/theme, `mineonboot=false`, inactive `paused`, and zero work/shares.
+
+Verification: Pending.
+
+Completion review: Pending. This task cannot change STR-005 status or produce
+hardware-regression evidence.
+
+Progress: the exact Noise completion boundary now preserves seven closed
+failure categories while production retains its stable public error surface.
+The focused regression first failed by conflating an expired valid signature
+with `certificate_signature`, then passed for certificate time/signature,
+decrypt, length, and state. A consume-before-use `sv2diag*` tuple selects one
+Wi-Fi/TCP/Noise-only owner ahead of self-test, production protocol, and the
+normal fan; source-ownership tests prohibit ASIC, actuation, fan, voltage,
+session, and mining reachability. The handshake-only fixture independently
+records both acts and decrypts one encrypted client proof. The private flash
+intent/NVS seed contains no campaign tuple, and the host owner binds exact clean
+package/plan/recovery inputs, same-subnet fixture selection, managed child
+process groups, closed projection validation, and recovery-006 restoration in
+the post-effect path. Ordered Cargo gates, the real ESP32-S3 build, Bright
+Builds, all Bazel tests, parity/progress, reference cleanliness, redaction, and
+focused real-child regressions pass before the clean implementation commit.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

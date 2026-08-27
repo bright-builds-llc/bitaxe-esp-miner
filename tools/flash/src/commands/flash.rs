@@ -7,7 +7,7 @@ pub(crate) fn run_flash(
     run_flash_with_wifi_mode(command, WifiNvsSeedMode::Ordinary, environment)
 }
 
-fn run_flash_with_wifi_mode(
+pub(crate) fn run_flash_with_wifi_mode(
     command: &FlashCommand,
     wifi_mode: WifiNvsSeedMode,
     environment: &impl FlashEnvironment,

@@ -160,6 +160,50 @@ fn network_reconnect_probe_marker_is_opt_in() {
 }
 
 #[test]
+fn noise_diagnostic_seed_contains_only_transport_marker_and_v2_pool_keys() {
+    // Arrange
+    let credentials = WifiCredentials {
+        ssid: "wifi-canary".to_owned(),
+        wifi_pass: "wifi-secret-canary".to_owned(),
+    };
+    let pool = crate::campaign::admission::validate_pool_credentials(
+        crate::campaign::admission::PoolCredentialsFile {
+            pool_url: "fixture-host-canary".to_owned(),
+            pool_port: 1234,
+            pool_user: "fixture-user-canary".to_owned(),
+            pool_password: String::new(),
+            stratum_protocol: Some("SV2".to_owned()),
+            stratum_v2_channel_type: Some("standard".to_owned()),
+            stratum_v2_authority_pubkey: Some(
+                bitaxe_stratum::v2::authority::encode_authority_public_key([0x22; 32]),
+            ),
+        },
+    )
+    .expect("V2 pool");
+    let seed = NoiseDiagnosticNvsSeed { lease: 7, pool };
+
+    // Act
+    let csv = wifi_nvs_csv_for_mode(&credentials, WifiNvsSeedMode::NoiseDiagnostic(seed));
+
+    // Assert
+    assert!(csv.contains("sv2diagkind,data,string,stratum_v2_noise_v1"));
+    assert!(csv.contains("sv2diaglease,data,u64,7"));
+    assert!(csv.contains("sv2diagcase,data,string,handshake_only_v1"));
+    assert!(csv.contains("stratumprot,data,string,SV2"));
+    assert!(csv.contains("sv2chantype,data,string,standard"));
+    assert!(csv.contains("mineonboot,data,u16,0"));
+    for prohibited in [
+        "campstage",
+        "campprofile",
+        "camplease",
+        "campdurms",
+        "selftestkind",
+    ] {
+        assert!(!csv.contains(prohibited));
+    }
+}
+
+#[test]
 fn thermal_fault_nvs_tuple_is_exact_and_ordinary_mode_has_no_stimulus() {
     // Arrange
     let credentials = WifiCredentials {

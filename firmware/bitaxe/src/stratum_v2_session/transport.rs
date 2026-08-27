@@ -6,7 +6,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use bitaxe_stratum::v2::frame::Frame;
 use bitaxe_stratum::v2::messages::ServerMessage;
 use bitaxe_stratum::v2::noise::{
-    DecryptedNoiseHeader, NoiseInitiator, NoiseTransport, ACT_TWO_LEN, ENCRYPTED_HEADER_LEN,
+    DecryptedNoiseHeader, NoiseCompletionFailure, NoiseInitiator, NoiseTransport, ACT_TWO_LEN,
+    ENCRYPTED_HEADER_LEN,
 };
 use bitaxe_stratum::v2::MAX_FRAME_PAYLOAD;
 use esp_idf_svc::sys;
@@ -32,6 +33,60 @@ pub(super) enum TransportFailure {
     Write,
     Read,
     Frame,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum NoiseDiagnosticStage {
+    TcpConnected,
+    ActOneCreated,
+    ActOneSent,
+    ActTwoReceived,
+    TimeSampled,
+    Authenticated,
+}
+
+impl NoiseDiagnosticStage {
+    pub(crate) const fn label(self) -> &'static str {
+        match self {
+            Self::TcpConnected => "tcp_connected",
+            Self::ActOneCreated => "act_one_created",
+            Self::ActOneSent => "act_one_sent",
+            Self::ActTwoReceived => "act_two_received",
+            Self::TimeSampled => "time_sampled",
+            Self::Authenticated => "authenticated",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum NoiseDiagnosticFailure {
+    Resolve,
+    Connect,
+    Configure,
+    Rng,
+    ActOne,
+    ActOneWrite,
+    ActTwoRead,
+    ClockBeforeEpoch,
+    ClockOverflow,
+    Completion(NoiseCompletionFailure),
+}
+
+impl NoiseDiagnosticFailure {
+    pub(crate) const fn label(self) -> &'static str {
+        match self {
+            Self::Resolve => "resolve",
+            Self::Connect => "connect",
+            Self::Configure => "configure",
+            Self::Rng => "rng",
+            Self::ActOne => "act_one",
+            Self::ActOneWrite => "act_one_write",
+            Self::ActTwoRead => "act_two_read",
+            Self::ClockBeforeEpoch => "clock_before_epoch",
+            Self::ClockOverflow => "clock_overflow",
+            Self::Completion(failure) => failure.as_str(),
+        }
+    }
 }
 
 pub(super) enum TransportCommand {
@@ -172,6 +227,73 @@ fn connect_and_run(
         .map_err(|_| TransportFailure::Configure)?;
     emit(TransportEvent::Established);
     run_encrypted_loop(stream, noise, receiver, emit)
+}
+
+pub(crate) fn run_noise_diagnostic(
+    settings: V2PoolSettings,
+    emit: impl Fn(NoiseDiagnosticStage),
+) -> Result<(), NoiseDiagnosticFailure> {
+    let addresses = (
+        settings.session.endpoint_host.as_str(),
+        settings.session.endpoint_port,
+    )
+        .to_socket_addrs()
+        .map_err(|_| NoiseDiagnosticFailure::Resolve)?
+        .take(ADDRESS_CAPACITY + 1)
+        .collect::<Vec<_>>();
+    if addresses.is_empty() || addresses.len() > ADDRESS_CAPACITY {
+        return Err(NoiseDiagnosticFailure::Resolve);
+    }
+    let mut maybe_stream = None;
+    for address in addresses {
+        if let Ok(stream) = TcpStream::connect_timeout(&address, CONNECT_TIMEOUT) {
+            maybe_stream = Some(stream);
+            break;
+        }
+    }
+    let mut stream = maybe_stream.ok_or(NoiseDiagnosticFailure::Connect)?;
+    emit(NoiseDiagnosticStage::TcpConnected);
+    stream
+        .set_read_timeout(Some(HANDSHAKE_TIMEOUT))
+        .map_err(|_| NoiseDiagnosticFailure::Configure)?;
+    stream
+        .set_write_timeout(Some(WRITE_TIMEOUT))
+        .map_err(|_| NoiseDiagnosticFailure::Configure)?;
+    let mut rng = EspHardwareRng;
+    let mut initiator = NoiseInitiator::new(settings.maybe_authority_public_key, &mut rng)
+        .map_err(|_| NoiseDiagnosticFailure::Rng)?;
+    let act_one = initiator
+        .act_one()
+        .map_err(|_| NoiseDiagnosticFailure::ActOne)?;
+    emit(NoiseDiagnosticStage::ActOneCreated);
+    stream
+        .write_all(&act_one)
+        .map_err(|_| NoiseDiagnosticFailure::ActOneWrite)?;
+    emit(NoiseDiagnosticStage::ActOneSent);
+    let mut act_two = [0; ACT_TWO_LEN];
+    stream
+        .read_exact(&mut act_two)
+        .map_err(|_| NoiseDiagnosticFailure::ActTwoRead)?;
+    emit(NoiseDiagnosticStage::ActTwoReceived);
+    let unix_time_seconds = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| NoiseDiagnosticFailure::ClockBeforeEpoch)?
+        .as_secs()
+        .try_into()
+        .map_err(|_| NoiseDiagnosticFailure::ClockOverflow)?;
+    emit(NoiseDiagnosticStage::TimeSampled);
+    let mut noise = initiator
+        .complete_diagnostic(&act_two, unix_time_seconds)
+        .map_err(NoiseDiagnosticFailure::Completion)?;
+    emit(NoiseDiagnosticStage::Authenticated);
+    let proof = Frame::new(0, 0, Vec::new())
+        .map_err(|_| NoiseDiagnosticFailure::Completion(NoiseCompletionFailure::Other))?;
+    let encrypted = noise
+        .encrypt_frame(&proof)
+        .map_err(|_| NoiseDiagnosticFailure::Completion(NoiseCompletionFailure::Other))?;
+    stream
+        .write_all(&encrypted)
+        .map_err(|_| NoiseDiagnosticFailure::Completion(NoiseCompletionFailure::Other))
 }
 
 fn run_encrypted_loop(
