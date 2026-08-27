@@ -4829,7 +4829,7 @@ hardware-regression evidence, or promotion is authorized. STR-005 remains
 - [x] Add `just stratum-v2-noise-diagnostic preflight|start` with protected
       roots, public closed projection, exact recovery-006 restoration, and no
       campaign, ASIC, voltage, fan, or mining effects.
-- [ ] Run one fresh diagnostic ordinal only after all gates, clean push/package,
+- [x] Run one fresh diagnostic ordinal only after all gates, clean push/package,
       no-effect preflight, and fresh one-board detection; continue only after a
       new authoritative signature receives a regression-proved fix.
 - [ ] Close and archive only this diagnostic task after authenticated Noise and
@@ -4855,10 +4855,21 @@ campaign cannot add information. The Ultra 205 is exactly restored to source
 `a11b579b`, app digest `32e2de54`, factory partition, pinned reference, exact
 settings/theme, `mineonboot=false`, inactive `paused`, and zero work/shares.
 
-Verification: Pending.
+Verification: Focused red/green Noise classification, real TCP fixture, exact
+peer, partial/timeout act-one, process-group, validator launcher, NVS tuple,
+historical restore-authority, and firmware source-ownership regressions pass.
+Ordered Cargo gates, Bright Builds, all Bazel tests, canonical ESP32-S3 build
+and packages, parity/progress, reference cleanliness, redaction, three fresh
+detectors/preflights, and all three exact restorations pass.
 
-Completion review: Pending. This task cannot change STR-005 status or produce
-hardware-regression evidence.
+Completion review: Terminal at `stop_repeated_boundary`. The diagnostic owner
+proved a pre-Noise local transport blocker: the exact device peer completed TCP,
+firmware reported a successful 64-byte act-one write, and the fixture received
+zero bytes before timeout. No unchanged or further ordinal is eligible under
+the plan. The task remains active but blocked; STR-005 remains `implemented`,
+and no `RESULT.md`, hardware-regression evidence, archive transition, campaign,
+or promotion exists. Closure:
+`docs/parity/work-plans/20260826T210025Z-STR-005-NOISE-DIAGNOSTIC/CLOSURE.md`.
 
 Progress: the exact Noise completion boundary now preserves seven closed
 failure categories while production retains its stable public error surface.
@@ -4905,6 +4916,16 @@ repo-owned Bazel target. A ten-second post-Wi-Fi monitor-arm delay and a bounded
 fixture act-one byte count with `complete/eof/timeout/io` classification bind
 fresh diagnostic ordinal 3 to root `diagnostic-003` and projection
 `noise-diagnostic-projection-003.json`. Diagnostic-002 is sealed.
+
+Diagnostic-003 outcome: exact package `dc6e5f0c`, fresh detection/no-effect
+preflight, the ten-second monitor arm, diagnostic and recovery writes, exact
+original identity/settings, inactive zero-work state, cleanup, and independent
+projection publication passed. Firmware retained `tcp_connected`,
+`act_one_created`, and `act_one_sent` before `act_two_read`; the exact device
+peer had zero unexpected peers and received exactly zero act-one bytes before a
+typed `timeout`. This repeats the post-instrumentation transport boundary and
+stops further ordinals. The accepted failed projection is
+`docs/parity/evidence/str005-noise-diagnostic/noise-diagnostic-projection-003.json`.
 
 ## Future
 
