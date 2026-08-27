@@ -172,6 +172,28 @@ fn fixture_peer_admission_rejects_an_unexpected_address() {
     assert!(!allowed);
 }
 
+#[test]
+fn act_one_reader_distinguishes_partial_eof_from_timeout() {
+    // Arrange
+    let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
+    let address = listener.local_addr().expect("address");
+    let client = std::thread::spawn(move || {
+        let mut stream = TcpStream::connect(address).expect("connect");
+        stream.write_all(&[0x11; 7]).expect("partial act one");
+    });
+    let (mut stream, _) = listener.accept().expect("accept");
+    let mut progress = FixtureProgress::default();
+
+    // Act
+    let result = read_act_one(&mut stream, &mut progress);
+    client.join().expect("client join");
+
+    // Assert
+    assert!(result.is_err());
+    assert_eq!(progress.act_one_bytes_received, 7);
+    assert_eq!(progress.act_one_read_category, "eof");
+}
+
 fn test_config() -> SessionConfig {
     SessionConfig {
         endpoint_host: "127.0.0.1".to_owned(),

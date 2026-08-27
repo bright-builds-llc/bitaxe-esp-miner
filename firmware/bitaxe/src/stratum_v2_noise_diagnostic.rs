@@ -12,6 +12,7 @@ const OWNER_THREAD_NAME: &str = "stratum-v2-noise-diag";
 const OWNER_STACK_BYTES: usize = 24 * 1_024;
 const WIFI_TIMEOUT: Duration = Duration::from_secs(60);
 const WIFI_POLL: Duration = Duration::from_millis(100);
+const MONITOR_ARM_DELAY: Duration = Duration::from_secs(10);
 
 pub(crate) fn start(admission: NoiseDiagnosticAdmission) -> anyhow::Result<()> {
     thread::Builder::new()
@@ -30,6 +31,10 @@ fn run(admission: NoiseDiagnosticAdmission) {
         publish_terminal("connect", false);
         return;
     }
+    thread::sleep(MONITOR_ARM_DELAY);
+    crate::info_retained(
+        "stratum_v2_noise_diagnostic={\"schema\":\"bitaxe-stratum-v2-noise-diagnostic-v1\",\"stage\":\"monitor_armed\"}",
+    );
     let settings = match exact_primary_settings() {
         Ok(settings) => settings,
         Err(failure) => {

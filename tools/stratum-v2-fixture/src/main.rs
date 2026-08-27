@@ -78,6 +78,8 @@ struct FixtureProgress {
     connection_accepted: bool,
     peer_matched: bool,
     unexpected_peer_count: u16,
+    act_one_bytes_received: u16,
+    act_one_read_category: &'static str,
     act_one_received: bool,
     responder_created: bool,
     act_two_created: bool,
@@ -286,11 +288,7 @@ fn respond_noise(
     authority_public: [u8; 32],
     progress: &mut FixtureProgress,
 ) -> Result<NoiseCodec> {
-    let mut act_one = [0; ELLSWIFT_ENCODING_SIZE];
-    stream
-        .read_exact(&mut act_one)
-        .context("read Noise act one")?;
-    progress.act_one_received = true;
+    let act_one = read_act_one(stream, progress)?;
     let mut rng = OsRng;
     let mut responder = Responder::from_authority_kp_with_rng(
         &authority_public,
@@ -307,6 +305,43 @@ fn respond_noise(
     stream.write_all(&act_two).context("write Noise act two")?;
     progress.act_two_sent = true;
     Ok(codec)
+}
+
+fn read_act_one(
+    stream: &mut TcpStream,
+    progress: &mut FixtureProgress,
+) -> Result<[u8; ELLSWIFT_ENCODING_SIZE]> {
+    let mut act_one = [0; ELLSWIFT_ENCODING_SIZE];
+    let mut received = 0_usize;
+    while received < act_one.len() {
+        match stream.read(&mut act_one[received..]) {
+            Ok(0) => {
+                progress.act_one_read_category = "eof";
+                progress.act_one_bytes_received = received.try_into().unwrap_or(u16::MAX);
+                bail!("Noise act one ended before the exact frame length");
+            }
+            Ok(count) => received += count,
+            Err(error)
+                if matches!(
+                    error.kind(),
+                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+                ) =>
+            {
+                progress.act_one_read_category = "timeout";
+                progress.act_one_bytes_received = received.try_into().unwrap_or(u16::MAX);
+                bail!("Noise act one read deadline elapsed");
+            }
+            Err(error) => {
+                progress.act_one_read_category = "io";
+                progress.act_one_bytes_received = received.try_into().unwrap_or(u16::MAX);
+                return Err(error).context("read Noise act one");
+            }
+        }
+    }
+    progress.act_one_bytes_received = received.try_into().unwrap_or(u16::MAX);
+    progress.act_one_read_category = "complete";
+    progress.act_one_received = true;
+    Ok(act_one)
 }
 
 fn read_client_proof(stream: &mut TcpStream, codec: &mut NoiseCodec) -> Result<()> {

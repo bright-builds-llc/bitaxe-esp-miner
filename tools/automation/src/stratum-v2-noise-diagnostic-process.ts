@@ -1,5 +1,4 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import path from "node:path";
 
 export type ManagedDiagnosticProcessResult = {
   readonly exitCode: number;
@@ -19,19 +18,15 @@ export class ManagedDiagnosticProcessError extends Error {
 
 const maximumOutputBytes = 1_048_576;
 
-export function noiseDiagnosticValidatorProgram(
-  workspace: string,
-  environment: NodeJS.ProcessEnv = process.env,
-): string {
-  const maybeRunfiles = environment["RUNFILES_DIR"];
-  const root = maybeRunfiles === undefined
-    ? path.join(workspace, "bazel-bin")
-    : path.join(maybeRunfiles, "_main");
-  return path.join(
-    root,
-    "tools/automation/stratum_v2_noise_diagnostic_validator_",
-    "stratum_v2_noise_diagnostic_validator",
-  );
+export function noiseDiagnosticValidatorArgs(
+  candidate: string,
+  expectedSource: string,
+  expectedOrdinal: number,
+): readonly string[] {
+  return [
+    "run", "//tools/automation:stratum_v2_noise_diagnostic_validator", "--",
+    candidate, expectedSource, String(expectedOrdinal),
+  ];
 }
 
 export function terminateManagedProcessGroup(child: ChildProcess): void {

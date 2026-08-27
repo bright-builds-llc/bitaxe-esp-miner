@@ -8,7 +8,7 @@ import {
   parseNoiseDiagnosticArgs,
   runNoiseDiagnosticProcess,
 } from "./stratum-v2-noise-diagnostic.js";
-import { noiseDiagnosticValidatorProgram } from "./stratum-v2-noise-diagnostic-process.js";
+import { noiseDiagnosticValidatorArgs } from "./stratum-v2-noise-diagnostic-process.js";
 import { validateNoiseDiagnosticProjection } from "./stratum-v2-noise-diagnostic-validator.js";
 
 const source = "a".repeat(40);
@@ -20,10 +20,10 @@ function exactArgs(): string[] {
     "--package-manifest", "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
     "--wifi-credentials", "wifi-credentials.json",
     "--restore-bundle", "scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json",
-    "--private-root", "scratch/str005-noise-diagnostic/diagnostic-002",
-    "--projection", "docs/parity/evidence/str005-noise-diagnostic/noise-diagnostic-projection-002.json",
+    "--private-root", "scratch/str005-noise-diagnostic/diagnostic-003",
+    "--projection", "docs/parity/evidence/str005-noise-diagnostic/noise-diagnostic-projection-003.json",
     "--plan", "docs/parity/work-plans/20260826T210025Z-STR-005-NOISE-DIAGNOSTIC/PLAN.md",
-    "--diagnostic-ordinal", "2",
+    "--diagnostic-ordinal", "3",
     "--redact-evidence",
   ];
 }
@@ -33,7 +33,7 @@ function acceptedProjection(): Record<string, unknown> {
     schema_version: "bitaxe-stratum-v2-noise-diagnostic-projection-v1",
     status: "accepted",
     board: 205,
-    diagnostic_ordinal: 2,
+    diagnostic_ordinal: 3,
     source_commit: source,
     reference_commit: "b".repeat(40),
     app_elf_sha256: "c".repeat(64),
@@ -80,11 +80,11 @@ test("diagnostic parser admits only the first exact no-mining contract", () => {
   const parsed = parseNoiseDiagnosticArgs("start", exactArgs());
 
   // Assert
-  assert.equal(parsed.diagnosticOrdinal, 2);
-  assert.equal(parsed.privateRoot, "scratch/str005-noise-diagnostic/diagnostic-002");
+  assert.equal(parsed.diagnosticOrdinal, 3);
+  assert.equal(parsed.privateRoot, "scratch/str005-noise-diagnostic/diagnostic-003");
   assert.equal(parsed.redactEvidence, true);
   assert.throws(() => parseNoiseDiagnosticArgs("start", exactArgs().map(value =>
-    value === "2" ? "3" : value)));
+    value === "3" ? "4" : value)));
 });
 
 test("projection validator requires the complete authenticated and restored chain", async () => {
@@ -96,10 +96,10 @@ test("projection validator requires the complete authenticated and restored chai
 
   try {
     // Act / Assert
-    await validateNoiseDiagnosticProjection(candidate, source, 2);
+    await validateNoiseDiagnosticProjection(candidate, source, 3);
     (projection["stages"] as Record<string, unknown>)["authenticated"] = false;
     await writeFile(candidate, JSON.stringify(projection));
-    await assert.rejects(validateNoiseDiagnosticProjection(candidate, source, 2));
+    await assert.rejects(validateNoiseDiagnosticProjection(candidate, source, 3));
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -116,26 +116,17 @@ test("diagnostic process owner terminates a timed-out real child", async () => {
   );
 });
 
-test("diagnostic projection launches the real Bazel validator wrapper", async () => {
-  // Arrange
-  const root = await mkdtemp(path.join(tmpdir(), "str005-noise-launcher-"));
-  const candidate = path.join(root, "projection.json");
-  await writeFile(candidate, JSON.stringify(acceptedProjection()));
-  const validator = noiseDiagnosticValidatorProgram(process.cwd());
+test("diagnostic projection routes independent validation through Bazel", () => {
+  // Arrange / Act
+  const args = noiseDiagnosticValidatorArgs("/private/candidate.json", source, 3);
 
-  try {
-    // Act
-    const result = await runNoiseDiagnosticProcess(
-      process.cwd(),
-      validator,
-      [candidate, source, "2"],
-      10_000,
-      "validator_child",
-    );
-
-    // Assert
-    assert.equal(result.exitCode, 0);
-  } finally {
-    await rm(root, { recursive: true, force: true });
-  }
+  // Assert
+  assert.deepEqual(args, [
+    "run",
+    "//tools/automation:stratum_v2_noise_diagnostic_validator",
+    "--",
+    "/private/candidate.json",
+    source,
+    "3",
+  ]);
 });

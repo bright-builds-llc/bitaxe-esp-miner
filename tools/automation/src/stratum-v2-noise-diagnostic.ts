@@ -14,7 +14,7 @@ import type { RestoreBundle } from "./stratum-v2-restore-model.js";
 import { sourceWorkspaceRoot } from "./workspace.js";
 import {
   ManagedDiagnosticProcessError,
-  noiseDiagnosticValidatorProgram,
+  noiseDiagnosticValidatorArgs,
   runManagedDiagnosticProcess,
   terminateManagedProcessGroup,
   type ManagedDiagnosticProcessResult,
@@ -33,13 +33,13 @@ export type NoiseDiagnosticArgs = {
   readonly privateRoot: string;
   readonly projection: string;
   readonly plan: string;
-  readonly diagnosticOrdinal: 2;
+  readonly diagnosticOrdinal: 3;
   readonly redactEvidence: true;
 };
 
-const expectedRoot = "scratch/str005-noise-diagnostic/diagnostic-002";
+const expectedRoot = "scratch/str005-noise-diagnostic/diagnostic-003";
 const expectedProjection =
-  "docs/parity/evidence/str005-noise-diagnostic/noise-diagnostic-projection-002.json";
+  "docs/parity/evidence/str005-noise-diagnostic/noise-diagnostic-projection-003.json";
 const expectedPlan =
   "docs/parity/work-plans/20260826T210025Z-STR-005-NOISE-DIAGNOSTIC/PLAN.md";
 const expectedPlanSha256 =
@@ -149,7 +149,7 @@ export function parseNoiseDiagnosticArgs(
     || value("--private-root") !== expectedRoot
     || value("--projection") !== expectedProjection
     || value("--plan") !== expectedPlan
-    || value("--diagnostic-ordinal") !== "2"
+    || value("--diagnostic-ordinal") !== "3"
     || parsed.get("--redact-evidence") !== true) {
     fail("invalid_invocation", "contract mismatch", "invocation");
   }
@@ -163,7 +163,7 @@ export function parseNoiseDiagnosticArgs(
     privateRoot: expectedRoot,
     projection: expectedProjection,
     plan: expectedPlan,
-    diagnosticOrdinal: 2,
+    diagnosticOrdinal: 3,
     redactEvidence: true,
   };
 }
@@ -379,7 +379,7 @@ async function exactRestore(
   await writePrivate(path.join(workspace, authorizationRelative), {
     schema_version: "bitaxe-stratum-v2-restore-authorization-v1",
     board: 205,
-    ordinal: 2,
+    ordinal: 3,
     action: "diagnostic_restore",
     current_source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],
@@ -420,12 +420,11 @@ async function publishProjection(
 ): Promise<void> {
   const privateCandidate = path.join(workspace, args.privateRoot, "projection-candidate.private.json");
   await writePrivate(privateCandidate, projection);
-  const validator = noiseDiagnosticValidatorProgram(workspace);
   const validated = await runCampaignProcess(
     workspace,
-    validator,
-    [privateCandidate, expectedSource, "2"],
-    30_000,
+    "bazel",
+    noiseDiagnosticValidatorArgs(privateCandidate, expectedSource, args.diagnosticOrdinal),
+    60_000,
   );
   if (validated.exitCode !== 0) fail("evidence_invalid", "projection rejected", "projection");
   const publicPath = path.join(workspace, args.projection);
@@ -493,7 +492,7 @@ export async function runNoiseDiagnostic(
     await writePrivate(path.join(workspace, intentRelative), {
       schema_version: "bitaxe-stratum-v2-noise-diagnostic-intent-v1",
       board: 205,
-      diagnostic_ordinal: 2,
+      diagnostic_ordinal: 3,
       source_commit: prepared.head,
       reference_commit: prepared.manifest["reference_commit"],
       app_elf_sha256: prepared.manifest["app_elf_sha256"],
@@ -577,7 +576,7 @@ export async function runNoiseDiagnostic(
     schema_version: "bitaxe-stratum-v2-noise-diagnostic-projection-v1",
     status: accepted ? "accepted" : "failed",
     board: 205,
-    diagnostic_ordinal: 2,
+    diagnostic_ordinal: 3,
     source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],
     app_elf_sha256: prepared.manifest["app_elf_sha256"],

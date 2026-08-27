@@ -1,0 +1,52 @@
+{
+  "schema_version": "bitaxe-stratum-v2-noise-diagnostic-projection-v1",
+  "status": "failed",
+  "board": 205,
+  "diagnostic_ordinal": 2,
+  "source_commit": "8470275cb397cb09b89b9eeb17e3b9f7be882e9b",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "app_elf_sha256": "c76fb1401ffa56faf0a0ab29cabd7f82da3aaf00be7a637caa495b04bd698f65",
+  "plan_sha256": "5c5dcc8b030cd07acb60b00d8414d72bc4ad854550d70dad4b66381940629eec",
+  "package_manifest_sha256": "1aff2fb7a579ee681e9771be96d46235026a412aa901b03fcc57e3ea6282d956",
+  "terminal_category": "terminal_missing",
+  "stages": {
+    "tcp_connected": false,
+    "act_one_created": false,
+    "act_one_sent": false,
+    "act_two_received": false,
+    "time_sampled": false,
+    "authenticated": false
+  },
+  "fixture": {
+    "listener_ready": true,
+    "connection_accepted": true,
+    "peer_matched": true,
+    "unexpected_peer_count": 0,
+    "act_one_received": false,
+    "responder_created": false,
+    "act_two_created": false,
+    "act_two_sent": false,
+    "client_authenticated": false,
+    "noise_authenticated": false,
+    "setup_accepted": false,
+    "channel_opened": false,
+    "job_sent": false,
+    "share_received": false,
+    "response_sent": false
+  },
+  "campaign_started": false,
+  "mining_started": false,
+  "asic_touched": false,
+  "fan_touched": false,
+  "voltage_touched": false,
+  "restoration": {
+    "identity_exact": true,
+    "settings_exact": true,
+    "mineonboot_disabled": true,
+    "mining_inactive": true,
+    "zero_work": true,
+    "usb_cleanup_complete": true,
+    "owned_processes_remaining": 0
+  },
+  "redaction_complete": true
+}

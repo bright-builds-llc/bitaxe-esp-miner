@@ -4891,6 +4891,21 @@ to root `scratch/str005-noise-diagnostic/diagnostic-002` and projection
 `docs/parity/evidence/str005-noise-diagnostic/noise-diagnostic-projection-002.json`;
 diagnostic-001 is sealed and will not be retried or reused.
 
+Diagnostic-002 outcome: exact package `8470275c`, fresh detection/no-effect
+preflight, diagnostic and recovery writes, exact original identity/settings,
+inactive zero-work state, and cleanup passed. Exact peer admission observed the
+device connection with zero unexpected peers, but the fixture again stopped at
+`act_one_read`; the late-attached serial monitor retained no diagnostic stage or
+terminal. The closed peer discriminator makes this a new signature rather than
+an unchanged diagnostic-001 retry. The candidate failed only through the nested
+validator launcher environment; the same independent validator accepted its
+absolute protected candidate, and the redacted failed projection is published
+as `noise-diagnostic-projection-002.json`. The validator now runs through its
+repo-owned Bazel target. A ten-second post-Wi-Fi monitor-arm delay and a bounded
+fixture act-one byte count with `complete/eof/timeout/io` classification bind
+fresh diagnostic ordinal 3 to root `diagnostic-003` and projection
+`noise-diagnostic-projection-003.json`. Diagnostic-002 is sealed.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

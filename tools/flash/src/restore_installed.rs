@@ -16,7 +16,7 @@ pub(crate) const PREFLIGHT_ROOT: &str = "scratch/str005-exact-restoration/prefli
 pub(crate) const EFFECT_ROOT: &str = "scratch/str005-exact-restoration/remediation-005";
 pub(crate) const CAMPAIGN_RESTORE_ROOT: &str = "scratch/str005-stratum-v2/attempt-007/restoration";
 pub(crate) const NOISE_DIAGNOSTIC_RESTORE_ROOT: &str =
-    "scratch/str005-noise-diagnostic/diagnostic-002/restoration";
+    "scratch/str005-noise-diagnostic/diagnostic-003/restoration";
 pub(crate) const NOISE_DIAGNOSTIC_PLAN_RELATIVE: &str =
     "docs/parity/work-plans/20260826T210025Z-STR-005-NOISE-DIAGNOSTIC/PLAN.md";
 pub(crate) const NOISE_DIAGNOSTIC_PLAN_SHA256: &str =
@@ -233,7 +233,7 @@ fn validate_common(
 
 fn authorized_remediation_plan(action: &str, ordinal: u16) -> Result<(&'static str, &'static str)> {
     match (action, ordinal) {
-        ("diagnostic_restore", 2) => {
+        ("diagnostic_restore", 3) => {
             Ok((NOISE_DIAGNOSTIC_PLAN_RELATIVE, NOISE_DIAGNOSTIC_PLAN_SHA256))
         }
         ("preflight" | "start", 5) | ("campaign_restore", 7) => {
@@ -588,14 +588,14 @@ mod restore_contract_tests {
     fn diagnostic_restore_authority_is_exact_and_does_not_admit_arbitrary_history() {
         // Arrange / Act
         let admitted =
-            authorized_remediation_plan("diagnostic_restore", 2).expect("diagnostic authority");
+            authorized_remediation_plan("diagnostic_restore", 3).expect("diagnostic authority");
 
         // Assert
         assert_eq!(
             admitted,
             (NOISE_DIAGNOSTIC_PLAN_RELATIVE, NOISE_DIAGNOSTIC_PLAN_SHA256)
         );
-        assert!(authorized_remediation_plan("diagnostic_restore", 1).is_err());
+        assert!(authorized_remediation_plan("diagnostic_restore", 2).is_err());
         assert!(authorized_remediation_plan("historical_restore", 1).is_err());
     }
 }
