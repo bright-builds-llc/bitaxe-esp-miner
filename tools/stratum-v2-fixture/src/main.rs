@@ -1,6 +1,6 @@
 use std::fs::{self, OpenOptions};
 use std::io::{Read, Write};
-use std::net::{SocketAddr, TcpListener, TcpStream};
+use std::net::{IpAddr, SocketAddr, TcpListener, TcpStream};
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -39,6 +39,8 @@ struct Args {
     session_timeout_seconds: u64,
     #[arg(long, value_enum, default_value_t = FixtureMode::Pool)]
     mode: FixtureMode,
+    #[arg(long)]
+    expected_peer_address: Option<IpAddr>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ValueEnum)]
@@ -74,6 +76,8 @@ struct ResultDocument {
 struct FixtureProgress {
     listener_ready: bool,
     connection_accepted: bool,
+    peer_matched: bool,
+    unexpected_peer_count: u16,
     act_one_received: bool,
     responder_created: bool,
     act_two_created: bool,
@@ -136,8 +140,14 @@ fn run_fixture(args: &Args, progress: &mut FixtureProgress) -> Result<()> {
     )?;
     progress.listener_ready = true;
     println!("stratum_v2_fixture=ready");
-    let mut stream = accept_one(&listener, Duration::from_secs(args.accept_timeout_seconds))?;
+    let (mut stream, unexpected_peer_count) = accept_one(
+        &listener,
+        Duration::from_secs(args.accept_timeout_seconds),
+        args.expected_peer_address,
+    )?;
     progress.connection_accepted = true;
+    progress.peer_matched = true;
+    progress.unexpected_peer_count = unexpected_peer_count;
     stream
         .set_read_timeout(Some(Duration::from_secs(10)))
         .context("set read timeout")?;
@@ -242,11 +252,23 @@ fn generate_authority_keypair() -> Result<([u8; 32], [u8; 32])> {
     bail!("authority key generation failed")
 }
 
-fn accept_one(listener: &TcpListener, timeout: Duration) -> Result<TcpStream> {
+fn accept_one(
+    listener: &TcpListener,
+    timeout: Duration,
+    maybe_expected_peer: Option<IpAddr>,
+) -> Result<(TcpStream, u16)> {
     let deadline = Instant::now() + timeout;
+    let mut unexpected_peer_count = 0_u16;
     loop {
         match listener.accept() {
-            Ok((stream, _)) => return Ok(stream),
+            Ok((stream, peer))
+                if maybe_expected_peer.is_none_or(|expected| peer.ip() == expected) =>
+            {
+                return Ok((stream, unexpected_peer_count));
+            }
+            Ok((_stream, _peer)) => {
+                unexpected_peer_count = unexpected_peer_count.saturating_add(1);
+            }
             Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
                 if Instant::now() >= deadline {
                     bail!("fixture accept deadline elapsed");

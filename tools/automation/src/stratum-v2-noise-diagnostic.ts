@@ -14,6 +14,7 @@ import type { RestoreBundle } from "./stratum-v2-restore-model.js";
 import { sourceWorkspaceRoot } from "./workspace.js";
 import {
   ManagedDiagnosticProcessError,
+  noiseDiagnosticValidatorProgram,
   runManagedDiagnosticProcess,
   terminateManagedProcessGroup,
   type ManagedDiagnosticProcessResult,
@@ -32,13 +33,13 @@ export type NoiseDiagnosticArgs = {
   readonly privateRoot: string;
   readonly projection: string;
   readonly plan: string;
-  readonly diagnosticOrdinal: 1;
+  readonly diagnosticOrdinal: 2;
   readonly redactEvidence: true;
 };
 
-const expectedRoot = "scratch/str005-noise-diagnostic/diagnostic-001";
+const expectedRoot = "scratch/str005-noise-diagnostic/diagnostic-002";
 const expectedProjection =
-  "docs/parity/evidence/str005-noise-diagnostic/noise-diagnostic-projection.json";
+  "docs/parity/evidence/str005-noise-diagnostic/noise-diagnostic-projection-002.json";
 const expectedPlan =
   "docs/parity/work-plans/20260826T210025Z-STR-005-NOISE-DIAGNOSTIC/PLAN.md";
 const expectedPlanSha256 =
@@ -66,6 +67,7 @@ type PreparedDiagnostic = {
   readonly restoreBundle: RestoreBundle;
   readonly restoreBundlePath: string;
   readonly host: string;
+  readonly expectedPeer: string;
 };
 
 export class NoiseDiagnosticError extends Error {
@@ -147,7 +149,7 @@ export function parseNoiseDiagnosticArgs(
     || value("--private-root") !== expectedRoot
     || value("--projection") !== expectedProjection
     || value("--plan") !== expectedPlan
-    || value("--diagnostic-ordinal") !== "1"
+    || value("--diagnostic-ordinal") !== "2"
     || parsed.get("--redact-evidence") !== true) {
     fail("invalid_invocation", "contract mismatch", "invocation");
   }
@@ -161,7 +163,7 @@ export function parseNoiseDiagnosticArgs(
     privateRoot: expectedRoot,
     projection: expectedProjection,
     plan: expectedPlan,
-    diagnosticOrdinal: 1,
+    diagnosticOrdinal: 2,
     redactEvidence: true,
   };
 }
@@ -273,6 +275,7 @@ async function preflight(workspace: string, args: NoiseDiagnosticArgs): Promise<
     restoreBundle: restore.bundle,
     restoreBundlePath: restore.path,
     host,
+    expectedPeer: origin.hostname,
   };
 }
 
@@ -282,13 +285,19 @@ type FixtureOwner = {
   readonly output: Buffer[];
 };
 
-function startFixture(workspace: string, fixtureRoot: string, host: string): FixtureOwner {
+function startFixture(
+  workspace: string,
+  fixtureRoot: string,
+  host: string,
+  expectedPeer: string,
+): FixtureOwner {
   const child = spawn(
     path.join(workspace, "bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture"),
     [
       "--private-root", fixtureRoot, "--listen-address", `${host}:0`,
       "--accept-timeout-seconds", "300", "--session-timeout-seconds", "120",
       "--mode", "handshake-only",
+      "--expected-peer-address", expectedPeer,
     ],
     { cwd: workspace, env: process.env, detached: true, stdio: ["ignore", "pipe", "pipe"] },
   );
@@ -370,7 +379,7 @@ async function exactRestore(
   await writePrivate(path.join(workspace, authorizationRelative), {
     schema_version: "bitaxe-stratum-v2-restore-authorization-v1",
     board: 205,
-    ordinal: 1,
+    ordinal: 2,
     action: "diagnostic_restore",
     current_source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],
@@ -411,14 +420,11 @@ async function publishProjection(
 ): Promise<void> {
   const privateCandidate = path.join(workspace, args.privateRoot, "projection-candidate.private.json");
   await writePrivate(privateCandidate, projection);
-  const validator = path.join(
-    workspace,
-    "bazel-bin/tools/automation/stratum_v2_noise_diagnostic_validator",
-  );
+  const validator = noiseDiagnosticValidatorProgram(workspace);
   const validated = await runCampaignProcess(
     workspace,
     validator,
-    [privateCandidate, expectedSource],
+    [privateCandidate, expectedSource, "2"],
     30_000,
   );
   if (validated.exitCode !== 0) fail("evidence_invalid", "projection rejected", "projection");
@@ -455,7 +461,12 @@ export async function runNoiseDiagnostic(
   await chmod(privateRoot, 0o700);
   await writePrivate(path.join(privateRoot, "settings-backup.private.json"), prepared.backup);
   const fixtureRoot = path.join(privateRoot, "fixture");
-  const fixture = startFixture(workspace, fixtureRoot, prepared.host);
+  const fixture = startFixture(
+    workspace,
+    fixtureRoot,
+    prepared.host,
+    prepared.expectedPeer,
+  );
   let terminal: JsonObject = { category: "process_failed", accepted: false };
   let stages: JsonObject = {};
   let fixtureTerminal: JsonObject = { progress: {} };
@@ -482,7 +493,7 @@ export async function runNoiseDiagnostic(
     await writePrivate(path.join(workspace, intentRelative), {
       schema_version: "bitaxe-stratum-v2-noise-diagnostic-intent-v1",
       board: 205,
-      diagnostic_ordinal: 1,
+      diagnostic_ordinal: 2,
       source_commit: prepared.head,
       reference_commit: prepared.manifest["reference_commit"],
       app_elf_sha256: prepared.manifest["app_elf_sha256"],
@@ -566,7 +577,7 @@ export async function runNoiseDiagnostic(
     schema_version: "bitaxe-stratum-v2-noise-diagnostic-projection-v1",
     status: accepted ? "accepted" : "failed",
     board: 205,
-    diagnostic_ordinal: 1,
+    diagnostic_ordinal: 2,
     source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],
     app_elf_sha256: prepared.manifest["app_elf_sha256"],

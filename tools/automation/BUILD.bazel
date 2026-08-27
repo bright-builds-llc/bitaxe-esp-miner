@@ -403,6 +403,7 @@ js_test(
         ":automation_ts",
         ":automation_tests_ts",
         ":automation_sources",
+        ":stratum_v2_noise_diagnostic_validator",
         ":macos_provisioning_association_helper",
         ":statistics_history_flash_child_fixture",
         "//:automation_ci_contract_inputs",
@@ -516,6 +517,7 @@ js_test(
     data = [
         ":automation_ts",
         ":automation_tests_ts",
+        ":stratum_v2_noise_diagnostic_validator",
         "//:str005_noise_diagnostic_inputs",
     ],
     entry_point = "test-dist/stratum-v2-noise-diagnostic.test.js",

@@ -12,6 +12,7 @@ function object(value: unknown): JsonObject {
 export async function validateNoiseDiagnosticProjection(
   candidate: string,
   expectedSource: string,
+  expectedOrdinal: number,
 ): Promise<void> {
   const projection = object(JSON.parse(await readFile(candidate, "utf8")));
   const stages = object(projection["stages"]);
@@ -20,7 +21,7 @@ export async function validateNoiseDiagnosticProjection(
   const accepted = projection["status"] === "accepted";
   if (projection["schema_version"] !== "bitaxe-stratum-v2-noise-diagnostic-projection-v1"
     || projection["board"] !== 205
-    || projection["diagnostic_ordinal"] !== 1
+    || projection["diagnostic_ordinal"] !== expectedOrdinal
     || projection["source_commit"] !== expectedSource
     || typeof projection["reference_commit"] !== "string"
     || typeof projection["app_elf_sha256"] !== "string"
@@ -46,7 +47,7 @@ export async function validateNoiseDiagnosticProjection(
     "time_sampled", "authenticated",
   ];
   const requiredFixture = [
-    "listener_ready", "connection_accepted", "act_one_received", "responder_created",
+    "listener_ready", "connection_accepted", "peer_matched", "act_one_received", "responder_created",
     "act_two_created", "act_two_sent", "client_authenticated",
   ];
   if (accepted && (requiredStages.some(key => stages[key] !== true)

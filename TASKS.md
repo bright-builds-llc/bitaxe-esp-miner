@@ -4876,6 +4876,21 @@ the post-effect path. Ordered Cargo gates, the real ESP32-S3 build, Bright
 Builds, all Bazel tests, parity/progress, reference cleanliness, redaction, and
 focused real-child regressions pass before the clean implementation commit.
 
+Diagnostic-001 outcome: exact package `35cf3865`, fresh detection, no-effect
+preflight, factory/NVS writes, sole diagnostic owner, exact recovery-006 writes,
+settings/theme restoration, inactive original runtime, zero work, and cleanup
+completed. The new closed signature is firmware `act_one_sent/act_two_read`
+paired with fixture `connection_accepted/act_one_read`; neither side reached
+authentication and no hardware/mining owner ran. The public projection was
+withheld because the independent validator child path named the Bazel target
+instead of its generated wrapper. A real-launch regression now resolves the
+validator from runfiles or the exact Bazel wrapper. The fixture now rejects
+non-device peers before consuming its sole session and records a bounded
+unexpected-peer count. These targeted changes rebind fresh diagnostic ordinal 2
+to root `scratch/str005-noise-diagnostic/diagnostic-002` and projection
+`docs/parity/evidence/str005-noise-diagnostic/noise-diagnostic-projection-002.json`;
+diagnostic-001 is sealed and will not be retried or reused.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

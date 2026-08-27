@@ -6,14 +6,14 @@ use crate::campaign::admission::read_pool_credentials;
 use crate::*;
 
 const INTENT_RELATIVE_PATH: &str =
-    "scratch/str005-noise-diagnostic/diagnostic-001/intent.private.json";
+    "scratch/str005-noise-diagnostic/diagnostic-002/intent.private.json";
 const POOL_RELATIVE_PATH: &str =
-    "scratch/str005-noise-diagnostic/diagnostic-001/fixture-pool.private.json";
+    "scratch/str005-noise-diagnostic/diagnostic-002/fixture-pool.private.json";
 const PLAN_RELATIVE_PATH: &str =
     "docs/parity/work-plans/20260826T210025Z-STR-005-NOISE-DIAGNOSTIC/PLAN.md";
 const PLAN_SHA256: &str = "5c5dcc8b030cd07acb60b00d8414d72bc4ad854550d70dad4b66381940629eec";
 const INTENT_SCHEMA: &str = "bitaxe-stratum-v2-noise-diagnostic-intent-v1";
-const DIAGNOSTIC_ORDINAL: u16 = 1;
+const DIAGNOSTIC_ORDINAL: u16 = 2;
 const CAPTURE_TIMEOUT_SECONDS: u64 = 120;
 
 #[derive(Debug, Deserialize)]
@@ -172,8 +172,8 @@ mod tests {
 
         // Assert
         assert_eq!(digest, PLAN_SHA256);
-        assert_eq!(DIAGNOSTIC_ORDINAL, 1);
-        assert!(INTENT_RELATIVE_PATH.contains("diagnostic-001"));
+        assert_eq!(DIAGNOSTIC_ORDINAL, 2);
+        assert!(INTENT_RELATIVE_PATH.contains("diagnostic-002"));
     }
 
     #[test]

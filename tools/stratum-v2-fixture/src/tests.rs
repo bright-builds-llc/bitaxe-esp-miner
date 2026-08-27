@@ -159,6 +159,19 @@ fn real_tcp_handshake_only_mode_proves_client_authentication() {
     );
 }
 
+#[test]
+fn fixture_peer_admission_rejects_an_unexpected_address() {
+    // Arrange
+    let expected: IpAddr = "192.0.2.1".parse().expect("expected peer");
+    let observed: SocketAddr = "192.0.2.2:1234".parse().expect("observed peer");
+
+    // Act
+    let allowed = Some(expected).is_none_or(|candidate| observed.ip() == candidate);
+
+    // Assert
+    assert!(!allowed);
+}
+
 fn test_config() -> SessionConfig {
     SessionConfig {
         endpoint_host: "127.0.0.1".to_owned(),
