@@ -139,3 +139,22 @@
   root, run every gate, commit/push/package, redetect, and invoke once to obtain
   closed firmware stage/timing/terminal discriminators for the zero-byte TCP
   boundary.
+
+## 2026-08-28T20:56:00Z | Diagnostic-003
+
+- Source commit: `1cd7ff0926f8d5e7db7a930c1997d2ee2756809d`
+- Actions: built the exact package, captured fresh detector admission, and ran
+  diagnostic-003 with timeout stream retention and current-task restoration.
+- Verification: the fixture never accepted a peer and retained firmware stages
+  were all false. Partial child output proved command rendering and USB session
+  ownership but no monitor command. Sanitized stderr classified the supervised
+  factory flash as `flash_failed_before_transfer`. Exact restoration fields all
+  passed; the private projection candidate was rejected only at final evidence
+  admission and no public projection was emitted.
+- Evidence: private root `scratch/str005-tcp-payload/diagnostic-003`; no
+  protected values are promoted.
+- Outcome: distinct pre-TCP `continue_after_verified_fix`; device restored.
+- Blocker or next safe action: persist the closed USB diagnostic, stop the
+  fixture immediately on pre-monitor failure, rotate to diagnostic-004, run all
+  gates, commit/push/package, redetect, and invoke once. A repeated
+  flash-before-transfer signature stops.

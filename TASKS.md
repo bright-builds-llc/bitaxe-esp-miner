@@ -153,6 +153,26 @@ limits. Its purpose is to distinguish monitor-armed, resolve, connect,
 configure/write, terminal, fixture receipt, and restoration boundaries; it does
 not authorize Noise, protocol, ASIC, mining, promotion, or unchanged retries.
 
+Diagnostic-003 outcome: `continue_after_verified_fix`. The supervised factory
+flash stopped before transfer, so the firmware owner and TCP fixture were never
+reached. Exact recovery-006 restoration still completed. Partial child output
+proved that the flash/NVS commands were rendered and USB ownership opened, but
+no monitor command ran; the sanitized failure was
+`flash_failed_before_transfer`.
+
+Diagnostic-004 continuation: the inner command now emits the closed USB command
+diagnostic on flash failure, and pre-monitor child failure terminates the
+fixture immediately instead of waiting its full accept deadline. After all
+gates pass and the exact source is committed/pushed/packaged, run fresh detector
+admission and exactly one command:
+
+`just stratum-v2-tcp-payload start --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/diagnostic-004 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-004.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 4 --capture-timeout-seconds 360 --redact-evidence`
+
+All original payload, privacy, safety, restoration, and non-promotion limits
+remain. Recurrence of the same closed flash-before-transfer signature stops as
+a repeated hardware/host boundary; it is not TCP evidence and does not permit
+diagnostic-005 without a targeted boundary fix.
+
 Verification: diagnostic-001 stopped before effects at
 `timeout:fixture_ready`; its regression-backed fixture-timeout fix passed every
 gate and was pushed as `35ae9cb33458ad6c76f6eedef5d0538720d80367`.

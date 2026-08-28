@@ -5,13 +5,13 @@ use std::os::unix::fs::PermissionsExt;
 use crate::campaign::admission::read_pool_credentials;
 use crate::*;
 
-const INTENT_RELATIVE_PATH: &str = "scratch/str005-tcp-payload/diagnostic-003/intent.private.json";
+const INTENT_RELATIVE_PATH: &str = "scratch/str005-tcp-payload/diagnostic-004/intent.private.json";
 const POOL_RELATIVE_PATH: &str =
-    "scratch/str005-tcp-payload/diagnostic-003/fixture-pool.private.json";
+    "scratch/str005-tcp-payload/diagnostic-004/fixture-pool.private.json";
 const PLAN_RELATIVE_PATH: &str = "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md";
 const PLAN_SHA256: &str = "14bd8aef5d78f38881a3da1a99a6808f7f6e8c93bb1d1a02d7972fcaaeb1d843";
 const INTENT_SCHEMA: &str = "bitaxe-stratum-v2-tcp-payload-intent-v1";
-const DIAGNOSTIC_ORDINAL: u16 = 3;
+const DIAGNOSTIC_ORDINAL: u16 = 4;
 const CAPTURE_TIMEOUT_SECONDS: u64 = 360;
 
 #[derive(Debug, Deserialize)]
@@ -51,11 +51,23 @@ pub(crate) fn run_tcp_payload_diagnostic_command(
         manifest: Some(command.manifest.clone()),
         wifi_credentials: Some(command.wifi_credentials.clone()),
     };
-    run_flash_with_wifi_mode(
+    let flash_result = run_flash_with_wifi_mode(
         &flash,
         WifiNvsSeedMode::TcpPayloadDiagnostic(seed),
         environment,
-    )?;
+    );
+    if let Err(error) = flash_result {
+        if let Some(diagnostic) = environment.last_usb_command_diagnostic() {
+            if diagnostic.raw_output_included {
+                bail!("tcp_payload_diagnostic=blocked reason=raw_diagnostic");
+            }
+            emit_line(
+                "tcp_payload_flash_diagnostic",
+                &serde_json::to_string(&diagnostic)?,
+            )?;
+        }
+        return Err(error);
+    }
     run_monitor(
         &MonitorCommand {
             common,
@@ -161,7 +173,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn plan_digest_and_instrumented_third_ordinal_are_immutable() {
+    fn plan_digest_and_flash_instrumented_fourth_ordinal_are_immutable() {
         // Arrange
         let plan = include_str!("../../../docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md");
 
@@ -170,7 +182,7 @@ mod tests {
 
         // Assert
         assert_eq!(digest, PLAN_SHA256);
-        assert_eq!(DIAGNOSTIC_ORDINAL, 3);
-        assert!(INTENT_RELATIVE_PATH.contains("diagnostic-003"));
+        assert_eq!(DIAGNOSTIC_ORDINAL, 4);
+        assert!(INTENT_RELATIVE_PATH.contains("diagnostic-004"));
     }
 }

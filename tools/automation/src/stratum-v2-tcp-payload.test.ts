@@ -7,6 +7,7 @@ import test from "node:test";
 import {
   parseTcpPayloadDiagnosticArgs,
   runTcpPayloadDiagnosticProcess,
+  shouldWaitForTcpFixture,
   tcpPayloadDiagnosticWorkspaceRoot,
 } from "./stratum-v2-tcp-payload.js";
 import { tcpPayloadFixtureArgs } from "./stratum-v2-tcp-fixture.js";
@@ -36,10 +37,10 @@ function exactArgs(): string[] {
     "--package-manifest", "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
     "--wifi-credentials", "wifi-credentials.json",
     "--restore-bundle", "scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json",
-    "--private-parent", "scratch/str005-tcp-payload/diagnostic-003",
-    "--projection", "docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-003.json",
+    "--private-parent", "scratch/str005-tcp-payload/diagnostic-004",
+    "--projection", "docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-004.json",
     "--plan", "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md",
-    "--diagnostic-ordinal", "3",
+    "--diagnostic-ordinal", "4",
     "--capture-timeout-seconds", "360",
     "--redact-evidence",
   ];
@@ -51,7 +52,7 @@ async function acceptedProjection(): Promise<Record<string, unknown>> {
     schema_version: "bitaxe-stratum-v2-tcp-payload-projection-v1",
     status: "accepted",
     board: 205,
-    diagnostic_ordinal: 3,
+    diagnostic_ordinal: 4,
     source_commit: source,
     reference_commit: "b".repeat(40),
     app_elf_sha256: "c".repeat(64),
@@ -102,11 +103,11 @@ test("diagnostic parser admits only the first exact no-mining contract", () => {
   const parsed = parseTcpPayloadDiagnosticArgs("start", exactArgs());
 
   // Assert
-  assert.equal(parsed.diagnosticOrdinal, 3);
-  assert.equal(parsed.privateRoot, "scratch/str005-tcp-payload/diagnostic-003");
+  assert.equal(parsed.diagnosticOrdinal, 4);
+  assert.equal(parsed.privateRoot, "scratch/str005-tcp-payload/diagnostic-004");
   assert.equal(parsed.redactEvidence, true);
   assert.throws(() => parseTcpPayloadDiagnosticArgs("start", exactArgs().map(value =>
-    value === "3" ? "5" : value)));
+    value === "4" ? "5" : value)));
 });
 
 test("fixture owner uses an admitted session timeout below the capture timeout", () => {
@@ -122,7 +123,7 @@ test("fixture owner uses an admitted session timeout below the capture timeout",
 
 test("recovery parser admits only the fresh recovery root", () => {
   // Arrange
-  const values = exactArgs().map(value => value === "scratch/str005-tcp-payload/diagnostic-003"
+  const values = exactArgs().map(value => value === "scratch/str005-tcp-payload/diagnostic-004"
     ? "scratch/str005-tcp-payload/recovery-002"
     : value);
 
@@ -144,10 +145,10 @@ test("projection validator requires the complete authenticated and restored chai
 
   try {
     // Act / Assert
-    await validateTcpPayloadDiagnosticProjection(candidate, source, 3, workspace);
+    await validateTcpPayloadDiagnosticProjection(candidate, source, 4, workspace);
     (projection["stages"] as Record<string, unknown>)["payload_sent"] = false;
     await writeFile(candidate, JSON.stringify(projection));
-    await assert.rejects(validateTcpPayloadDiagnosticProjection(candidate, source, 3, workspace));
+    await assert.rejects(validateTcpPayloadDiagnosticProjection(candidate, source, 4, workspace));
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -191,9 +192,16 @@ test("diagnostic marker parser retains only bounded stages and timings", () => {
   assert.equal(timings["write_ms"], 1);
 });
 
+test("pre-monitor child failure stops before the fixture accept deadline", () => {
+  // Arrange / Act / Assert
+  assert.equal(shouldWaitForTcpFixture(1, { category: "terminal_missing" }), false);
+  assert.equal(shouldWaitForTcpFixture(0, { category: "terminal_missing" }), true);
+  assert.equal(shouldWaitForTcpFixture(1, { category: "connect" }), true);
+});
+
 test("diagnostic projection routes independent validation through Bazel", () => {
   // Arrange / Act
-  const args = tcpPayloadDiagnosticValidatorArgs("/private/candidate.json", source, 3);
+  const args = tcpPayloadDiagnosticValidatorArgs("/private/candidate.json", source, 4);
 
   // Assert
   assert.deepEqual(args, [
@@ -202,6 +210,6 @@ test("diagnostic projection routes independent validation through Bazel", () => 
     "--",
     "/private/candidate.json",
     source,
-    "3",
+    "4",
   ]);
 });

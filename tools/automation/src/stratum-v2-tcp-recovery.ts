@@ -102,7 +102,7 @@ async function prepareRecovery(
     || args.wifiCredentials !== expectedWifiCredentials
     || args.restoreBundle !== expectedRestoreBundle
     || args.plan !== expectedPlan
-    || args.diagnosticOrdinal !== 3
+    || args.diagnosticOrdinal !== 4
     || !args.redactEvidence) {
     fail("invalid_invocation", "invocation");
   }
