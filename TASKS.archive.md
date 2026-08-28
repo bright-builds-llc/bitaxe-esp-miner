@@ -13314,3 +13314,39 @@ risk: the additional `parity next-item` probe still rejects two pre-existing
 immutable STR-005 closures whose historical metadata uses `Final parity status`
 instead of the parser's `Final status`; this plan preserves those closures
 unchanged and does not rely on that selector for the new task graph.
+
+### task-parity-legacy-closure-admission | 2026-08-28 | Unblock parity next-item on immutable STR-005 closures
+
+- [x] Reproduce the exact `next-item --format json` failure on the clean synced
+      repository and retain it as the end-to-end red/green boundary.
+- [x] Add regression coverage for exact admission of the two historical
+      STR-005 closures and rejection of path, plan, closure, metadata, and
+      canonical-schema downgrade drift.
+- [x] Add a narrow digest-pinned compatibility path without changing either
+      historical closure or weakening canonical closure validation.
+- [x] Pass focused and full repository gates, prove `next-item` returns valid
+      JSON, archive this task, commit, and push.
+
+Authorization: repository task, Rust parser/tests, build graph when required,
+verification, task archive, commit, and push only. Historical plans, closures,
+evidence, checklist fields, progress history, firmware, network, USB, hardware,
+credentials, mining, and parity promotion remained unchanged.
+
+Verification: The exact parser regression first failed with `parity plan
+closure requires exactly one concrete final status`, then passed for both real
+historical closure/plan pairs. Focused tests accept the complete legacy plus
+canonical decomposition lineage and reject directory, plan-byte,
+closure-byte, task, row, status, terminal-decision, mixed-schema, and caller
+identity drift. Ordered Cargo format, Clippy, build, and all-feature tests;
+Bright Builds; all 56 Bazel tests; parity; progress; `next-item --format json`;
+pinned-reference; redaction; and diff checks passed. Cargo verification used an
+isolated task target after the pre-existing default macOS cache stalled in
+uninterruptible I/O. The original command now returns valid JSON with no open
+plan and five candidates, including STR-005.
+
+Completion review: Complete. Canonical closure validation is unchanged. A
+private compatibility module admits only the two exact STR-005 historical
+records by repository-relative plan directory, plan digest, closure digest,
+row, status, task, and terminal decision; any copied or changed legacy record
+fails closed. The historical artifacts and parity checklist remain unchanged,
+and no parity row, firmware, network, or hardware work occurred.

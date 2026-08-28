@@ -5,6 +5,8 @@ use camino::Utf8Path;
 
 use crate::phase35_evidence::sha256_hex;
 
+mod legacy;
+
 pub(super) const CLOSURE_FILE: &str = "CLOSURE.md";
 
 pub(super) fn result_closes_plan(plan_root: &Utf8Path) -> Result<bool> {
@@ -28,6 +30,15 @@ pub(super) fn closes_plan(
     }
     let closure = fs::read_to_string(closure_path.as_std_path())
         .with_context(|| format!("failed to read parity plan closure {closure_path}"))?;
+    if legacy::closes_plan(
+        plan_root,
+        plan_document,
+        &closure,
+        plan_row_id,
+        initial_status,
+    )? {
+        return Ok(true);
+    }
     let closure_row = metadata_value(&closure, "- Parity row: `", "parity row")?;
     let final_status = metadata_value(&closure, "- Final status: `", "final status")?;
     let outcome = metadata_value(&closure, "- Outcome: `", "outcome")?;
