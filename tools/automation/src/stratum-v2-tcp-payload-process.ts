@@ -10,6 +10,8 @@ export class ManagedDiagnosticProcessError extends Error {
   public constructor(
     public readonly category: "timeout" | "evidence_invalid",
     public readonly checkpoint: string,
+    public readonly stdout: string,
+    public readonly stderr: string,
   ) {
     super(`${category}:${checkpoint}`);
     this.name = "ManagedDiagnosticProcessError";
@@ -87,6 +89,8 @@ export async function runManagedDiagnosticProcess(
         reject(new ManagedDiagnosticProcessError(
           terminal === "timeout" ? "timeout" : "evidence_invalid",
           checkpoint,
+          Buffer.concat(stdout).toString("utf8"),
+          Buffer.concat(stderr).toString("utf8"),
         ));
         return;
       }

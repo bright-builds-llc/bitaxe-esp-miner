@@ -8,6 +8,7 @@ package(default_visibility = ["//visibility:public"])
 js_library(
     name = "stratum_v2_tcp_payload_evaluator_sources",
     srcs = [
+        "src/stratum-v2-tcp-fixture.ts",
         "src/stratum-v2-tcp-payload-markers.ts",
         "src/stratum-v2-tcp-payload-process.ts",
         "src/stratum-v2-tcp-payload-validator.ts",

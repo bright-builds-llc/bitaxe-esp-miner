@@ -120,3 +120,22 @@
   the new recovery action. The focused tuple test reproduced red, then passed
   after the exact current-root arm. Rotate to recovery-002, run all gates,
   commit/push/package, redetect, and invoke once.
+
+## 2026-08-28T20:38:00Z | Recovery-002 and diagnostic completeness
+
+- Source commit: `41d19ed6150e189ff213848470761454ec1dbfe9`
+- Actions: ran recovery-002 from a fresh detector admission, then built a
+  red-capable real-child loop for the missing diagnostic output.
+- Verification: recovery-002 returned `accepted` with exact recovery-006
+  identity/settings, `mineonboot=false`, inactive zero-work/share state, final
+  detector admission, and cleanup. The timeout child test then failed because
+  partial stdout/stderr were discarded and passed after the managed error began
+  retaining the bounded streams.
+- Evidence: private root `scratch/str005-tcp-payload/recovery-002`; no protected
+  values are promoted.
+- Outcome: baseline restoration complete; diagnostic completeness fix verified
+  at the real child-process boundary.
+- Blocker or next safe action: bind diagnostic-003 and its exact restoration
+  root, run every gate, commit/push/package, redetect, and invoke once to obtain
+  closed firmware stage/timing/terminal discriminators for the zero-byte TCP
+  boundary.

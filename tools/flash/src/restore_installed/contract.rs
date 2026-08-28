@@ -19,6 +19,8 @@ pub(crate) const NOISE_DIAGNOSTIC_PLAN_SHA256: &str =
     "3bbdf04402a0a51c4d380ef4efa65b4ee3d434bf865970c161a7faf0760b6658";
 pub(crate) const TCP_PAYLOAD_RECOVERY_ROOT: &str =
     "scratch/str005-tcp-payload/recovery-002/restoration";
+pub(crate) const TCP_PAYLOAD_DIAGNOSTIC_RESTORE_ROOT: &str =
+    "scratch/str005-tcp-payload/diagnostic-003/restoration";
 pub(crate) const TCP_PAYLOAD_PLAN_RELATIVE: &str =
     "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md";
 pub(crate) const TCP_PAYLOAD_PLAN_SHA256: &str =
@@ -29,6 +31,9 @@ pub(crate) fn authorized_remediation_plan(
     ordinal: u16,
 ) -> Result<(&'static str, &'static str)> {
     match (action, ordinal) {
+        ("tcp_payload_diagnostic_restore", 3) => {
+            Ok((TCP_PAYLOAD_PLAN_RELATIVE, TCP_PAYLOAD_PLAN_SHA256))
+        }
         ("tcp_payload_recovery", 2) => Ok((TCP_PAYLOAD_PLAN_RELATIVE, TCP_PAYLOAD_PLAN_SHA256)),
         ("diagnostic_restore", 4) => {
             Ok((NOISE_DIAGNOSTIC_PLAN_RELATIVE, NOISE_DIAGNOSTIC_PLAN_SHA256))
@@ -46,6 +51,11 @@ pub(crate) fn restore_invocation_contract(
 ) -> (&'static Utf8Path, &'static str) {
     if admission_only {
         (Utf8Path::new(PREFLIGHT_ROOT), REMEDIATION_PLAN_RELATIVE)
+    } else if private_root == Utf8Path::new(TCP_PAYLOAD_DIAGNOSTIC_RESTORE_ROOT) {
+        (
+            Utf8Path::new(TCP_PAYLOAD_DIAGNOSTIC_RESTORE_ROOT),
+            TCP_PAYLOAD_PLAN_RELATIVE,
+        )
     } else if private_root == Utf8Path::new(TCP_PAYLOAD_RECOVERY_ROOT) {
         (
             Utf8Path::new(TCP_PAYLOAD_RECOVERY_ROOT),

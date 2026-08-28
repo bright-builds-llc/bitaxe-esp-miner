@@ -1,5 +1,4 @@
 import { createHash, randomBytes } from "node:crypto";
-import { spawn, type ChildProcess } from "node:child_process";
 import { chmod, lstat, mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -11,6 +10,10 @@ import { admitStratumV2RestoreBundle, restoreRuntimeMatches } from "./stratum-v2
 import type { JsonObject } from "./stratum-v2-campaign-preflight.js";
 import { fetchRuntimeObject, monitorRuntimeOrigin } from "./stratum-v2-runtime-admission.js";
 import type { RestoreBundle } from "./stratum-v2-restore-model.js";
+import {
+  startTcpPayloadFixture,
+  terminateTcpPayloadFixture,
+} from "./stratum-v2-tcp-fixture.js";
 import { tcpPayloadEvaluatorIdentity } from "./stratum-v2-tcp-payload-validator.js";
 import { sourceWorkspaceRoot } from "./workspace.js";
 import {
@@ -22,7 +25,6 @@ import {
   ManagedDiagnosticProcessError,
   tcpPayloadDiagnosticValidatorArgs,
   runManagedDiagnosticProcess,
-  terminateManagedProcessGroup,
   type ManagedDiagnosticProcessResult,
 } from "./stratum-v2-tcp-payload-process.js";
 export { runManagedDiagnosticProcess as runTcpPayloadDiagnosticProcess };
@@ -38,13 +40,13 @@ export type TcpPayloadDiagnosticArgs = {
   readonly privateRoot: string;
   readonly projection: string;
   readonly plan: string;
-  readonly diagnosticOrdinal: 2;
+  readonly diagnosticOrdinal: 3;
   readonly redactEvidence: true;
 };
-const expectedDiagnosticRoot = "scratch/str005-tcp-payload/diagnostic-002";
+const expectedDiagnosticRoot = "scratch/str005-tcp-payload/diagnostic-003";
 const expectedRecoveryRoot = "scratch/str005-tcp-payload/recovery-002";
 const expectedProjection =
-  "docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-002.json";
+  "docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-003.json";
 const expectedPlan = "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md";
 const expectedPlanSha256 =
   "14bd8aef5d78f38881a3da1a99a6808f7f6e8c93bb1d1a02d7972fcaaeb1d843";
@@ -58,8 +60,6 @@ const recoveryPlan =
 const backupRelative = "scratch/str005-stratum-v2/attempt-004/settings-backup.private.json";
 const backupSha256 = "ac3d28d451c466f4fc6bfdc40b327c891dac9f3eba644ce62a7f2a2276790631";
 const taskId = "task-str005-tcp-payload-205";
-const maximumOutputBytes = 1_048_576;
-
 type PreparedDiagnostic = {
   readonly manifestPath: string; readonly manifest: JsonObject;
   readonly manifestDocument: string; readonly head: string;
@@ -150,7 +150,7 @@ export function parseTcpPayloadDiagnosticArgs(
     || value("--private-parent") !== expectedRoot
     || value("--projection") !== expectedProjection
     || value("--plan") !== expectedPlan
-    || value("--diagnostic-ordinal") !== "2"
+    || value("--diagnostic-ordinal") !== "3"
     || value("--capture-timeout-seconds") !== "360"
     || parsed.get("--redact-evidence") !== true) {
     fail("invalid_invocation", "contract mismatch", "invocation");
@@ -165,7 +165,7 @@ export function parseTcpPayloadDiagnosticArgs(
     privateRoot: expectedRoot,
     projection: expectedProjection,
     plan: expectedPlan,
-    diagnosticOrdinal: 2,
+    diagnosticOrdinal: 3,
     redactEvidence: true,
   };
 }
@@ -281,51 +281,6 @@ async function preflight(workspace: string, args: TcpPayloadDiagnosticArgs): Pro
   };
 }
 
-type FixtureOwner = {
-  readonly child: ChildProcess; readonly completion: Promise<number>;
-  readonly stdout: Buffer[]; readonly stderr: Buffer[];
-};
-
-function startFixture(
-  workspace: string,
-  fixtureRoot: string,
-  host: string,
-  expectedPeer: string,
-): FixtureOwner {
-  const child = spawn(
-    path.join(workspace, "bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture"),
-    tcpPayloadFixtureArgs(fixtureRoot, host, expectedPeer),
-    { cwd: workspace, env: process.env, detached: true, stdio: ["ignore", "pipe", "pipe"] },
-  );
-  const stdout: Buffer[] = [];
-  const stderr: Buffer[] = [];
-  let outputBytes = 0;
-  const capture = (destination: Buffer[]) => (chunk: Buffer) => {
-      outputBytes += chunk.length;
-      if (outputBytes <= maximumOutputBytes) destination.push(chunk);
-      else terminateFixture(child);
-  };
-  child.stdout?.on("data", capture(stdout));
-  child.stderr?.on("data", capture(stderr));
-  const completion = new Promise<number>((resolve, reject) => {
-    child.once("error", reject);
-    child.once("close", code => resolve(code ?? 1));
-  });
-  return { child, completion, stdout, stderr };
-}
-
-export function tcpPayloadFixtureArgs(fixtureRoot: string, host: string, expectedPeer: string): string[] {
-  return [
-    "--private-root", fixtureRoot, "--listen-address", `${host}:0`,
-    "--accept-timeout-seconds", "300", "--session-timeout-seconds", "120",
-    "--mode", "tcp-payload", "--expected-peer-address", expectedPeer,
-  ];
-}
-
-function terminateFixture(child: ChildProcess): void {
-  terminateManagedProcessGroup(child);
-}
-
 async function waitForFixtureReady(candidate: string): Promise<JsonObject> {
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
@@ -362,8 +317,8 @@ async function exactRestore(
   await writePrivate(path.join(workspace, authorizationRelative), {
     schema_version: "bitaxe-stratum-v2-restore-authorization-v1",
     board: 205,
-    ordinal: 2,
-    action: "diagnostic_restore",
+    ordinal: 3,
+    action: "tcp_payload_diagnostic_restore",
     current_source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],
     bundle_sha256: sha256(bundleDocument),
@@ -443,7 +398,7 @@ export async function runTcpPayloadDiagnostic(
   await chmod(privateRoot, 0o700);
   await writePrivate(path.join(privateRoot, "settings-backup.private.json"), prepared.backup);
   const fixtureRoot = path.join(privateRoot, "fixture");
-  const fixture = startFixture(
+  const fixture = startTcpPayloadFixture(
     workspace,
     fixtureRoot,
     prepared.host,
@@ -476,7 +431,7 @@ export async function runTcpPayloadDiagnostic(
     await writePrivate(path.join(workspace, intentRelative), {
       schema_version: "bitaxe-stratum-v2-tcp-payload-intent-v1",
       board: 205,
-      diagnostic_ordinal: 2,
+      diagnostic_ordinal: 3,
       source_commit: prepared.head,
       reference_commit: prepared.manifest["reference_commit"],
       app_elf_sha256: prepared.manifest["app_elf_sha256"],
@@ -529,12 +484,35 @@ export async function runTcpPayloadDiagnostic(
     }
   } catch (error) {
     maybeDiagnosticError = error;
-    earliestCategory = error instanceof TcpPayloadDiagnosticError
-      || error instanceof ManagedDiagnosticProcessError
-      ? error.category
-      : "process_failed";
+    if (error instanceof ManagedDiagnosticProcessError) {
+      diagnosticChild = { exitCode: 1, stdout: error.stdout, stderr: error.stderr };
+      await writePrivate(path.join(privateRoot, "diagnostic-child.private.json"), {
+        exit_code: diagnosticChild.exitCode,
+        stdout_sha256: sha256(diagnosticChild.stdout),
+        stderr_sha256: sha256(diagnosticChild.stderr),
+        timed_out: error.category === "timeout",
+      });
+      await writePrivateText(
+        path.join(privateRoot, "diagnostic.stdout.private.log"),
+        diagnosticChild.stdout,
+      );
+      await writePrivateText(
+        path.join(privateRoot, "diagnostic.stderr.private.log"),
+        diagnosticChild.stderr,
+      );
+      stages = tcpPayloadStagesFromMonitor(diagnosticChild.stdout);
+      timings = tcpPayloadTimingsFromMonitor(diagnosticChild.stdout);
+      terminal = tcpPayloadTerminalFromMonitor(diagnosticChild.stdout);
+      earliestCategory = terminal["category"] === "terminal_missing"
+        ? error.category
+        : String(terminal["category"]);
+    } else {
+      earliestCategory = error instanceof TcpPayloadDiagnosticError
+        ? error.category
+        : "process_failed";
+    }
   } finally {
-    terminateFixture(fixture.child);
+    terminateTcpPayloadFixture(fixture.child);
     const cleanupResult = await Promise.race([
       fixture.completion.catch(() => 1),
       new Promise<number>(resolve => setTimeout(() => resolve(-1), 5_000)),
@@ -578,7 +556,7 @@ export async function runTcpPayloadDiagnostic(
     schema_version: "bitaxe-stratum-v2-tcp-payload-projection-v1",
     status: accepted ? "accepted" : "failed",
     board: 205,
-    diagnostic_ordinal: 2,
+    diagnostic_ordinal: 3,
     source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],
     app_elf_sha256: prepared.manifest["app_elf_sha256"],

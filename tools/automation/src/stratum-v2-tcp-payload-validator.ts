@@ -8,6 +8,7 @@ const evaluatorSources = [
   "firmware/bitaxe/src/settings_adapter/tcp_payload_diagnostic.rs",
   "firmware/bitaxe/src/startup.rs",
   "firmware/bitaxe/src/stratum_v2_tcp_payload_diagnostic.rs",
+  "tools/automation/src/stratum-v2-tcp-fixture.ts",
   "tools/automation/src/stratum-v2-tcp-payload-markers.ts",
   "tools/automation/src/stratum-v2-tcp-payload-process.ts",
   "tools/automation/src/stratum-v2-tcp-payload-validator.ts",

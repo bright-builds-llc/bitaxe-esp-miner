@@ -5,13 +5,13 @@ use std::os::unix::fs::PermissionsExt;
 use crate::campaign::admission::read_pool_credentials;
 use crate::*;
 
-const INTENT_RELATIVE_PATH: &str = "scratch/str005-tcp-payload/diagnostic-002/intent.private.json";
+const INTENT_RELATIVE_PATH: &str = "scratch/str005-tcp-payload/diagnostic-003/intent.private.json";
 const POOL_RELATIVE_PATH: &str =
-    "scratch/str005-tcp-payload/diagnostic-002/fixture-pool.private.json";
+    "scratch/str005-tcp-payload/diagnostic-003/fixture-pool.private.json";
 const PLAN_RELATIVE_PATH: &str = "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md";
 const PLAN_SHA256: &str = "14bd8aef5d78f38881a3da1a99a6808f7f6e8c93bb1d1a02d7972fcaaeb1d843";
 const INTENT_SCHEMA: &str = "bitaxe-stratum-v2-tcp-payload-intent-v1";
-const DIAGNOSTIC_ORDINAL: u16 = 2;
+const DIAGNOSTIC_ORDINAL: u16 = 3;
 const CAPTURE_TIMEOUT_SECONDS: u64 = 360;
 
 #[derive(Debug, Deserialize)]
@@ -161,7 +161,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn plan_digest_and_progress_backed_second_ordinal_are_immutable() {
+    fn plan_digest_and_instrumented_third_ordinal_are_immutable() {
         // Arrange
         let plan = include_str!("../../../docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md");
 
@@ -170,7 +170,7 @@ mod tests {
 
         // Assert
         assert_eq!(digest, PLAN_SHA256);
-        assert_eq!(DIAGNOSTIC_ORDINAL, 2);
-        assert!(INTENT_RELATIVE_PATH.contains("diagnostic-002"));
+        assert_eq!(DIAGNOSTIC_ORDINAL, 3);
+        assert!(INTENT_RELATIVE_PATH.contains("diagnostic-003"));
     }
 }

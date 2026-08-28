@@ -134,6 +134,25 @@ detector admission and exactly one command:
 The recovery-only effects, privacy, restoration acceptance, prohibitions, and
 no-unchanged-retry boundaries remain exactly those declared for recovery-001.
 
+Recovery-002 outcome: `complete`. Exact recovery-006 package identity and
+protected settings were restored and confirmed with `mineonboot=false`,
+inactive mining, zero work/share state, fresh final detector admission, and
+complete cleanup. The task may resume TCP diagnosis from this proved baseline.
+
+Diagnostic-003 continuation: the diagnostic child now retains bounded partial
+stdout/stderr and parses closed firmware stages, timings, and terminal markers
+even when the managed monitor reaches its timeout. Current-task diagnostic
+restoration is admitted before any new effect. After all gates pass, the source
+is committed/pushed, and an exact clean package is built, run fresh detector
+admission and exactly one command:
+
+`just stratum-v2-tcp-payload start --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/diagnostic-003 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-003.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 3 --capture-timeout-seconds 360 --redact-evidence`
+
+Diagnostic-003 reuses the original fixed-payload effect and all safety/privacy
+limits. Its purpose is to distinguish monitor-armed, resolve, connect,
+configure/write, terminal, fixture receipt, and restoration boundaries; it does
+not authorize Noise, protocol, ASIC, mining, promotion, or unchanged retries.
+
 Verification: diagnostic-001 stopped before effects at
 `timeout:fixture_ready`; its regression-backed fixture-timeout fix passed every
 gate and was pushed as `35ae9cb33458ad6c76f6eedef5d0538720d80367`.
