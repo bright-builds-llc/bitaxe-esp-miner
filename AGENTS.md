@@ -307,6 +307,13 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 - Task-gated destructive or fault-injection verification is allowed only when an active `TASKS.md` block records the exact command, evidence policy, recovery path, retry bounds, and accepted stop conditions. Do not run ad hoc erase, rollback, interrupted-update, voltage/fan/mining stress, or raw write commands outside that contract.
 - Every hardware run must record board `205`, selected port, source commit, reference commit, package manifest/artifacts when applicable, exact commands, `board-info` output, captured logs, observed behavior, and conclusion. Do not commit secrets, pool credentials, Wi-Fi credentials, private endpoints, or NVS secret values in evidence.
 
+### Iterative Hardware Fix Authorization
+
+- Once an active `TASKS.md` block and repo-owned command establish the complete objective, effects, safety, privacy, recovery, retry, evidence, and stop contract, iterate autonomously within that contract. Diagnose failures, patch code, add real-boundary regressions, run the required gates, commit and push, select fresh progress-backed ordinals, and retry without creating a new immutable plan for each fix or ordinal.
+- Treat a targeted fix plus a regression across the failed boundary, clean verification, and an exact pushed package as sufficient progress for the next bounded attempt. Keep the task record and worklog current; an unchanged retry remains ineligible.
+- Require a new formal plan only when an explicitly invoked skill requires one, the intended effects or authority materially expand, the safety/privacy/recovery/stop contract changes, or no active task contract covers the next effect.
+- This standing authorization covers recovery-only fixes and retries needed to return the admitted Ultra 205 to its declared baseline. Direct UART/pins and ad hoc destructive, fault-injection, electrical-stress, or broader network actions retain their separate authorization gates.
+
 ### Direct UART And Pin-Manipulation Authorization
 
 - Default all hardware work to the device's provided barrel-power and USB connectors under the existing detector, task, safety, and evidence gates. Standing USB permission does not authorize any other electrical interface.

@@ -199,3 +199,10 @@
 2. What went wrong: Repeated process-launch stalls and 300-second test timeouts inside the Codex execution environment were diagnosed as machine-wide macOS degradation requiring a reboot, but the user ran the exact uncached Bazel automation target in 68.1 seconds and the exact filtered Cargo command in 0.6 seconds from their normal shell.
 3. Preventive rule: Treat timeouts observed only inside the agent execution environment as agent-session or sandbox failures until the same exact uncached command is independently reproduced in the user's normal shell. Do not recommend a host reboot or declare a machine-wide blocker from agent-only timing evidence.
 4. Trigger signal: Agent tool calls show inconsistent multi-minute gaps between otherwise passing child processes, while an external user shell has not reproduced the delay or reports normal timings for the exact command.
+
+## lesson-hardware-fixes-do-not-require-plan-per-iteration | 2026-08-28 19:59
+
+1. Date: 2026-08-28 19:59 UTC
+2. What went wrong: Hardware progress was slowed by treating each diagnosed code fix and fresh progress-backed retry as requiring another formal immutable plan even after the active task already defined the complete effect, safety, privacy, recovery, evidence, retry, and stop contract.
+3. Preventive rule: Within a complete active hardware task contract, diagnose, fix, regression-test, verify, commit/push, select a fresh ordinal, and retry autonomously. Create a new plan only when an explicitly invoked skill requires one, authority or effects materially expand, the safety/recovery contract changes, or no active task covers the effect.
+4. Trigger signal: The next action is a targeted fix or fresh ordinal for the same admitted hardware boundary, and work is about to pause solely to create another plan rather than because scope, authority, safety, recovery, or evidence requirements changed.
