@@ -67,3 +67,21 @@
   production argument-constructor regression, move to fresh diagnostic-002,
   run every gate, commit/push, repackage, redetect, and invoke once. A recurrence
   of this signature stops the task.
+
+## 2026-08-28T20:22:00Z | Diagnostic-002 and terminal closure
+
+- Source commit: `35ae9cb33458ad6c76f6eedef5d0538720d80367`
+- Actions: rebuilt the exact clean package, captured fresh successful detector
+  admission, and invoked diagnostic-002 once after the verified fixture-bound
+  fix.
+- Verification: the protected fixture terminal records `payload_read`, zero of
+  64 bytes, no payload match, and zero extra bytes. The outer workflow then
+  stopped at `hardware_blocked:restoration`; no public projection exists.
+- Evidence: private roots `scratch/str005-tcp-payload/diagnostic-002` and
+  `scratch/str005-tcp-payload/detector-002`; no protected content is promoted.
+- Outcome: `stop_hardware_blocker`. TCP delivery and exact restoration are both
+  unverified; STR-005 remains `implemented | unit,golden,workflow`.
+- Blocker or next safe action: a fresh recovery-only task and immutable plan
+  must add current-root restore admission and prove recovery-006 identity,
+  settings, inactive zero-work runtime, and cleanup before any later TCP
+  diagnostic plan. Diagnostic-003 is not authorized.

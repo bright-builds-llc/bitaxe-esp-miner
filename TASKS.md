@@ -100,10 +100,21 @@ All allowed/prohibited effects, privacy, exact restoration, retry, stop, and
 non-promotion boundaries remain unchanged. Recurrence of the same fixture-bound
 signature selects `stop_repeated_boundary`; no diagnostic-003 is authorized.
 
-Verification: Pending.
+Verification: diagnostic-001 stopped before effects at
+`timeout:fixture_ready`; its regression-backed fixture-timeout fix passed every
+gate and was pushed as `35ae9cb33458ad6c76f6eedef5d0538720d80367`.
+Diagnostic-002 used that exact package and fresh one-board admission, then
+sealed `payload_read` with zero of 64 bytes before the mandatory restore path
+stopped at `hardware_blocked:restoration`. No public projection was published.
 
-Completion review: Pending. STR-005 remains `implemented` with
-`unit,golden,workflow`.
+Completion review: Blocked under
+`docs/parity/work-plans/20260828T185251Z-STR-005/CLOSURE.md`. The implementation
+and pre-effect fixture fix are complete, but TCP payload delivery, exact
+recovery-006 firmware/settings restoration, inactive final runtime, and cleanup
+remain unverified. Keep this task active. A fresh recovery-only task/plan must
+restore and prove the device before any later TCP diagnostic; diagnostic-003,
+Noise, V2 messages, ASIC work, mining, and STR-005 promotion are not authorized.
+STR-005 remains `implemented` with `unit,golden,workflow`.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
