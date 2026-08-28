@@ -50,3 +50,20 @@
   commit and clean push.
 - Blocker or next safe action: commit/push this source state, rebuild the exact
   clean package, then run detector admission and at most diagnostic-001.
+
+## 2026-08-28T20:02:00Z | Diagnostic-001
+
+- Source commit: `f2e559391f78e4f073b5e911fce999730c60cdd1`
+- Actions: built the exact clean package, privately captured successful
+  one-board detector admission, and invoked the sole diagnostic-001 workflow.
+- Verification: protected artifacts confirm the fixture rejected its
+  360-second session timeout before creating the listener root; no diagnostic
+  child or public projection exists.
+- Evidence: private root `scratch/str005-tcp-payload/diagnostic-001`; earliest
+  signature `timeout:fixture_ready`; `effect_started=false` and
+  `projection_published=false`.
+- Outcome: `continue_after_verified_fix`.
+- Blocker or next safe action: bind fixture session timeout to 120 seconds in a
+  production argument-constructor regression, move to fresh diagnostic-002,
+  run every gate, commit/push, repackage, redetect, and invoke once. A recurrence
+  of this signature stops the task.

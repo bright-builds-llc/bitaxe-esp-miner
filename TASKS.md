@@ -82,6 +82,24 @@ objective authorized remediation. Accepted evidence completes only this child;
 STR-005 remains `implemented | unit,golden,workflow` until the final cumulative
 share campaign and promotion task.
 
+Diagnostic-001 outcome: `continue_after_verified_fix`. The protected workflow
+stopped at `timeout:fixture_ready` before listener readiness, credential access,
+flash, NVS seed, device/network effect, or projection publication. Its private
+stderr confirms the fixture rejected the accidental 360-second session timeout
+against its 300-second maximum. The root is consumed and must not be reused.
+
+Diagnostic-002 continuation: the targeted fix routes the production fixture
+launcher through a tested argument constructor with a 120-second session
+timeout while retaining the separate 360-second monitor capture. After the fix
+is fully verified, committed, pushed, and repackaged from clean exact HEAD, run
+fresh detector admission and exactly one command:
+
+`just stratum-v2-tcp-payload start --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/diagnostic-002 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-002.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 2 --capture-timeout-seconds 360 --redact-evidence`
+
+All allowed/prohibited effects, privacy, exact restoration, retry, stop, and
+non-promotion boundaries remain unchanged. Recurrence of the same fixture-bound
+signature selects `stop_repeated_boundary`; no diagnostic-003 is authorized.
+
 Verification: Pending.
 
 Completion review: Pending. STR-005 remains `implemented` with

@@ -25,7 +25,6 @@ import {
   terminateManagedProcessGroup,
   type ManagedDiagnosticProcessResult,
 } from "./stratum-v2-tcp-payload-process.js";
-
 export { runManagedDiagnosticProcess as runTcpPayloadDiagnosticProcess };
 
 export type TcpPayloadDiagnosticAction = "preflight" | "start";
@@ -39,13 +38,13 @@ export type TcpPayloadDiagnosticArgs = {
   readonly privateRoot: string;
   readonly projection: string;
   readonly plan: string;
-  readonly diagnosticOrdinal: 1;
+  readonly diagnosticOrdinal: 2;
   readonly redactEvidence: true;
 };
 
-const expectedRoot = "scratch/str005-tcp-payload/diagnostic-001";
+const expectedRoot = "scratch/str005-tcp-payload/diagnostic-002";
 const expectedProjection =
-  "docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-001.json";
+  "docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-002.json";
 const expectedPlan =
   "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md";
 const expectedPlanSha256 =
@@ -151,7 +150,7 @@ export function parseTcpPayloadDiagnosticArgs(
     || value("--private-parent") !== expectedRoot
     || value("--projection") !== expectedProjection
     || value("--plan") !== expectedPlan
-    || value("--diagnostic-ordinal") !== "1"
+    || value("--diagnostic-ordinal") !== "2"
     || value("--capture-timeout-seconds") !== "360"
     || parsed.get("--redact-evidence") !== true) {
     fail("invalid_invocation", "contract mismatch", "invocation");
@@ -166,7 +165,7 @@ export function parseTcpPayloadDiagnosticArgs(
     privateRoot: expectedRoot,
     projection: expectedProjection,
     plan: expectedPlan,
-    diagnosticOrdinal: 1,
+    diagnosticOrdinal: 2,
     redactEvidence: true,
   };
 }
@@ -295,12 +294,7 @@ function startFixture(
 ): FixtureOwner {
   const child = spawn(
     path.join(workspace, "bazel-bin/tools/stratum-v2-fixture/stratum_v2_fixture"),
-    [
-      "--private-root", fixtureRoot, "--listen-address", `${host}:0`,
-      "--accept-timeout-seconds", "300", "--session-timeout-seconds", "360",
-      "--mode", "tcp-payload",
-      "--expected-peer-address", expectedPeer,
-    ],
+    tcpPayloadFixtureArgs(fixtureRoot, host, expectedPeer),
     { cwd: workspace, env: process.env, detached: true, stdio: ["ignore", "pipe", "pipe"] },
   );
   const stdout: Buffer[] = [];
@@ -318,6 +312,14 @@ function startFixture(
     child.once("close", code => resolve(code ?? 1));
   });
   return { child, completion, stdout, stderr };
+}
+
+export function tcpPayloadFixtureArgs(fixtureRoot: string, host: string, expectedPeer: string): string[] {
+  return [
+    "--private-root", fixtureRoot, "--listen-address", `${host}:0`,
+    "--accept-timeout-seconds", "300", "--session-timeout-seconds", "120",
+    "--mode", "tcp-payload", "--expected-peer-address", expectedPeer,
+  ];
 }
 
 function terminateFixture(child: ChildProcess): void {
@@ -360,7 +362,7 @@ async function exactRestore(
   await writePrivate(path.join(workspace, authorizationRelative), {
     schema_version: "bitaxe-stratum-v2-restore-authorization-v1",
     board: 205,
-    ordinal: 1,
+    ordinal: 2,
     action: "diagnostic_restore",
     current_source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],
@@ -474,7 +476,7 @@ export async function runTcpPayloadDiagnostic(
     await writePrivate(path.join(workspace, intentRelative), {
       schema_version: "bitaxe-stratum-v2-tcp-payload-intent-v1",
       board: 205,
-      diagnostic_ordinal: 1,
+      diagnostic_ordinal: 2,
       source_commit: prepared.head,
       reference_commit: prepared.manifest["reference_commit"],
       app_elf_sha256: prepared.manifest["app_elf_sha256"],
@@ -576,7 +578,7 @@ export async function runTcpPayloadDiagnostic(
     schema_version: "bitaxe-stratum-v2-tcp-payload-projection-v1",
     status: accepted ? "accepted" : "failed",
     board: 205,
-    diagnostic_ordinal: 1,
+    diagnostic_ordinal: 2,
     source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],
     app_elf_sha256: prepared.manifest["app_elf_sha256"],
