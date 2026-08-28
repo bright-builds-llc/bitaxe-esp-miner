@@ -1,4 +1,5 @@
 use super::*;
+use bitaxe_stratum::v2::connection_order::prepare_before_connect;
 use bitaxe_stratum::v2::messages::{ChannelKind, ServerMessage};
 use bitaxe_stratum::v2::noise::{NoiseInitiator, NoiseTransport, ACT_TWO_LEN};
 use bitaxe_stratum::v2::session::{SessionConfig, SessionEvent, V2Session};
@@ -22,6 +23,7 @@ fn real_tcp_fixture_completes_noise_channel_job_and_accepted_share() {
             authority_private,
             authority_public,
             &mut progress,
+            Instant::now(),
         )
         .expect("Noise");
         let result = run_pool_session(
@@ -118,6 +120,7 @@ fn real_tcp_handshake_only_mode_proves_client_authentication() {
             authority_private,
             authority_public,
             &mut progress,
+            Instant::now(),
         )
         .expect("Noise response");
         read_client_proof(&mut stream, &mut codec).expect("client proof");
@@ -185,13 +188,48 @@ fn act_one_reader_distinguishes_partial_eof_from_timeout() {
     let mut progress = FixtureProgress::default();
 
     // Act
-    let result = read_act_one(&mut stream, &mut progress);
+    let result = read_act_one(&mut stream, &mut progress, Instant::now());
     client.join().expect("client join");
 
     // Assert
     assert!(result.is_err());
     assert_eq!(progress.act_one_bytes_received, 7);
     assert_eq!(progress.act_one_read_category, "eof");
+}
+
+#[test]
+fn preconnect_act_one_avoids_accept_deadline() {
+    // Arrange
+    let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
+    let address = listener.local_addr().expect("address");
+    let server = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept");
+        stream
+            .set_read_timeout(Some(Duration::from_millis(25)))
+            .expect("read timeout");
+        let mut progress = FixtureProgress::default();
+        let _ = read_act_one(&mut stream, &mut progress, Instant::now());
+        progress
+    });
+
+    // Act
+    let (act_one, mut stream) = prepare_before_connect(
+        || {
+            std::thread::sleep(Duration::from_millis(75));
+            Ok::<_, &'static str>([0x22; ELLSWIFT_ENCODING_SIZE])
+        },
+        || TcpStream::connect(address),
+    )
+    .expect("prepare and connect");
+    let _ = stream.write_all(&act_one);
+    let progress = server.join().expect("server join");
+
+    // Assert
+    assert_eq!(
+        progress.act_one_bytes_received,
+        ELLSWIFT_ENCODING_SIZE as u16
+    );
+    assert_eq!(progress.act_one_read_category, "complete");
 }
 
 fn test_config() -> SessionConfig {

@@ -6,6 +6,7 @@
 //! - `reference/esp-miner/main/tasks/stratum_v2_task.c`
 
 pub mod authority;
+pub mod connection_order;
 pub mod frame;
 pub mod messages;
 pub mod noise;

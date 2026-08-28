@@ -80,6 +80,8 @@ struct FixtureProgress {
     unexpected_peer_count: u16,
     act_one_bytes_received: u16,
     act_one_read_category: &'static str,
+    accept_to_first_byte_millis: Option<u32>,
+    act_one_read_millis: u32,
     act_one_received: bool,
     responder_created: bool,
     act_two_created: bool,
@@ -150,6 +152,7 @@ fn run_fixture(args: &Args, progress: &mut FixtureProgress) -> Result<()> {
     progress.connection_accepted = true;
     progress.peer_matched = true;
     progress.unexpected_peer_count = unexpected_peer_count;
+    let accepted_at = Instant::now();
     stream
         .set_read_timeout(Some(Duration::from_secs(10)))
         .context("set read timeout")?;
@@ -157,7 +160,13 @@ fn run_fixture(args: &Args, progress: &mut FixtureProgress) -> Result<()> {
         .set_write_timeout(Some(Duration::from_secs(10)))
         .context("set write timeout")?;
     let started = Instant::now();
-    let mut codec = respond_noise(&mut stream, authority_private, authority_public, progress)?;
+    let mut codec = respond_noise(
+        &mut stream,
+        authority_private,
+        authority_public,
+        progress,
+        accepted_at,
+    )?;
     if args.mode == FixtureMode::HandshakeOnly {
         read_client_proof(&mut stream, &mut codec)?;
         progress.client_authenticated = true;
@@ -287,8 +296,9 @@ fn respond_noise(
     authority_private: [u8; 32],
     authority_public: [u8; 32],
     progress: &mut FixtureProgress,
+    accepted_at: Instant,
 ) -> Result<NoiseCodec> {
-    let act_one = read_act_one(stream, progress)?;
+    let act_one = read_act_one(stream, progress, accepted_at)?;
     let mut rng = OsRng;
     let mut responder = Responder::from_authority_kp_with_rng(
         &authority_public,
@@ -310,17 +320,25 @@ fn respond_noise(
 fn read_act_one(
     stream: &mut TcpStream,
     progress: &mut FixtureProgress,
+    accepted_at: Instant,
 ) -> Result<[u8; ELLSWIFT_ENCODING_SIZE]> {
     let mut act_one = [0; ELLSWIFT_ENCODING_SIZE];
     let mut received = 0_usize;
+    let read_started = Instant::now();
     while received < act_one.len() {
         match stream.read(&mut act_one[received..]) {
             Ok(0) => {
                 progress.act_one_read_category = "eof";
                 progress.act_one_bytes_received = received.try_into().unwrap_or(u16::MAX);
+                progress.act_one_read_millis = elapsed_millis(read_started);
                 bail!("Noise act one ended before the exact frame length");
             }
-            Ok(count) => received += count,
+            Ok(count) => {
+                if received == 0 {
+                    progress.accept_to_first_byte_millis = Some(elapsed_millis(accepted_at));
+                }
+                received += count;
+            }
             Err(error)
                 if matches!(
                     error.kind(),
@@ -329,19 +347,26 @@ fn read_act_one(
             {
                 progress.act_one_read_category = "timeout";
                 progress.act_one_bytes_received = received.try_into().unwrap_or(u16::MAX);
+                progress.act_one_read_millis = elapsed_millis(read_started);
                 bail!("Noise act one read deadline elapsed");
             }
             Err(error) => {
                 progress.act_one_read_category = "io";
                 progress.act_one_bytes_received = received.try_into().unwrap_or(u16::MAX);
+                progress.act_one_read_millis = elapsed_millis(read_started);
                 return Err(error).context("read Noise act one");
             }
         }
     }
     progress.act_one_bytes_received = received.try_into().unwrap_or(u16::MAX);
     progress.act_one_read_category = "complete";
+    progress.act_one_read_millis = elapsed_millis(read_started);
     progress.act_one_received = true;
     Ok(act_one)
+}
+
+fn elapsed_millis(started: Instant) -> u32 {
+    started.elapsed().as_millis().try_into().unwrap_or(u32::MAX)
 }
 
 fn read_client_proof(stream: &mut TcpStream, codec: &mut NoiseCodec) -> Result<()> {

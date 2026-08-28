@@ -4927,6 +4927,55 @@ typed `timeout`. This repeats the post-instrumentation transport boundary and
 stops further ordinals. The accepted failed projection is
 `docs/parity/evidence/str005-noise-diagnostic/noise-diagnostic-projection-003.json`.
 
+### task-str005-preconnect-noise-and-verification | 2026-08-27 | Precompute Noise act one and verify STR-005
+
+- [x] Add the fast delayed-preparation TCP regression and observe it fail before
+      changing transport order.
+- [x] Add `PreparedNoiseInitiator` and require resolution, Noise/act-one
+      preparation, then TCP connection in diagnostic and production V2 paths.
+- [x] Add bounded preparation/connect/write/read timings and rebind the
+      no-mining workflow to diagnostic ordinal 4 with exact restoration.
+- [ ] Prove authenticated local Noise and encrypted client proof on Ultra 205;
+      continue only after new regression-proved signatures.
+- [ ] Rebind and run local-fixture campaign attempt 008 only after diagnostic
+      success is committed, pushed, and packaged.
+- [ ] Promote only STR-005 after Noise/channel/job/BM1366/share, safe-stop,
+      cleanup, exact restoration, independent validation, and redaction.
+
+Plan: `docs/parity/work-plans/20260828T030951Z-STR-005-PRECONNECT-NOISE-VERIFY/PLAN.md`
+
+Authorization: repository source/test/docs/build/package, Git commit/push,
+task-gated USB and same-subnet authenticated fixture use, diagnostic ordinal 4,
+campaign attempt 008, progress-backed fresh ordinals after verified fixes,
+conservative Ultra 205 mining, protected evidence, and exact recovery-006
+firmware/settings restoration. External pools, other boards, direct UART/pins,
+raw NVS/coredump access, new baselines, fault injection, OTA, erase, arbitrary
+writes, and unbounded mining remain prohibited.
+
+Initial boundary: diagnostic 003 proved the exact device peer completed TCP,
+firmware reached `act_one_sent`, and the fixture received zero act-one bytes
+before its ten-second timeout. The Rust path currently creates the secp256k1
+context/keypair and ElligatorSwift act one only after connecting. The first
+eligible change is a red/green pre-connect-order regression; no hardware ordinal
+is eligible until that fix passes every gate and is committed/pushed/packaged.
+
+Verification: Pending.
+
+Completion review: Pending. STR-005 remains `implemented` until the full local
+campaign and exact final restoration are accepted.
+
+Progress: the required real-TCP loop first reproduced the authoritative split
+with a 25 ms responder deadline and 75 ms post-connect preparation: zero of 64
+act-one bytes arrived. Reversing only the generic effect seam to prepare before
+connect made the same command pass. A non-debuggable `PreparedNoiseInitiator`
+now owns the initialized state and exact act one; both production and diagnostic
+firmware consume the shared order seam before any connector call. Diagnostic
+markers retain bounded keypair, act-one, connect, write, and read durations;
+the fixture retains exact peer, byte count, read category, first-byte, and total
+read timing. Ordinal 4, its protected restore authority, the new immutable plan,
+and independent projection contract are rebound. Focused protocol, fixture,
+firmware ownership/build, flash, validator, and real-child tests pass.
+
 ## Future
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions

@@ -6,14 +6,14 @@ use crate::campaign::admission::read_pool_credentials;
 use crate::*;
 
 const INTENT_RELATIVE_PATH: &str =
-    "scratch/str005-noise-diagnostic/diagnostic-003/intent.private.json";
+    "scratch/str005-noise-diagnostic/diagnostic-004/intent.private.json";
 const POOL_RELATIVE_PATH: &str =
-    "scratch/str005-noise-diagnostic/diagnostic-003/fixture-pool.private.json";
+    "scratch/str005-noise-diagnostic/diagnostic-004/fixture-pool.private.json";
 const PLAN_RELATIVE_PATH: &str =
-    "docs/parity/work-plans/20260826T210025Z-STR-005-NOISE-DIAGNOSTIC/PLAN.md";
-const PLAN_SHA256: &str = "5c5dcc8b030cd07acb60b00d8414d72bc4ad854550d70dad4b66381940629eec";
+    "docs/parity/work-plans/20260828T030951Z-STR-005-PRECONNECT-NOISE-VERIFY/PLAN.md";
+const PLAN_SHA256: &str = "3bbdf04402a0a51c4d380ef4efa65b4ee3d434bf865970c161a7faf0760b6658";
 const INTENT_SCHEMA: &str = "bitaxe-stratum-v2-noise-diagnostic-intent-v1";
-const DIAGNOSTIC_ORDINAL: u16 = 3;
+const DIAGNOSTIC_ORDINAL: u16 = 4;
 const CAPTURE_TIMEOUT_SECONDS: u64 = 120;
 
 #[derive(Debug, Deserialize)]
@@ -164,7 +164,7 @@ mod tests {
     fn plan_digest_and_first_ordinal_are_immutable() {
         // Arrange
         let plan = include_str!(
-            "../../../docs/parity/work-plans/20260826T210025Z-STR-005-NOISE-DIAGNOSTIC/PLAN.md"
+            "../../../docs/parity/work-plans/20260828T030951Z-STR-005-PRECONNECT-NOISE-VERIFY/PLAN.md"
         );
 
         // Act
@@ -172,8 +172,8 @@ mod tests {
 
         // Assert
         assert_eq!(digest, PLAN_SHA256);
-        assert_eq!(DIAGNOSTIC_ORDINAL, 3);
-        assert!(INTENT_RELATIVE_PATH.contains("diagnostic-003"));
+        assert_eq!(DIAGNOSTIC_ORDINAL, 4);
+        assert!(INTENT_RELATIVE_PATH.contains("diagnostic-004"));
     }
 
     #[test]

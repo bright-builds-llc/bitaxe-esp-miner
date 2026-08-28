@@ -155,7 +155,7 @@ js_binary(
     data = [
         ":automation_ts",
         ":stratum_v2_noise_diagnostic_validator",
-        "//:str005_noise_diagnostic_inputs",
+        "//:str005_preconnect_noise_inputs",
         "//tools/flash:flash",
         "//tools/stratum-v2-fixture:stratum_v2_fixture",
     ],
@@ -518,7 +518,7 @@ js_test(
         ":automation_ts",
         ":automation_tests_ts",
         ":stratum_v2_noise_diagnostic_validator",
-        "//:str005_noise_diagnostic_inputs",
+        "//:str005_preconnect_noise_inputs",
     ],
     entry_point = "test-dist/stratum-v2-noise-diagnostic.test.js",
 )

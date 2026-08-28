@@ -16,11 +16,11 @@ pub(crate) const PREFLIGHT_ROOT: &str = "scratch/str005-exact-restoration/prefli
 pub(crate) const EFFECT_ROOT: &str = "scratch/str005-exact-restoration/remediation-005";
 pub(crate) const CAMPAIGN_RESTORE_ROOT: &str = "scratch/str005-stratum-v2/attempt-007/restoration";
 pub(crate) const NOISE_DIAGNOSTIC_RESTORE_ROOT: &str =
-    "scratch/str005-noise-diagnostic/diagnostic-003/restoration";
+    "scratch/str005-noise-diagnostic/diagnostic-004/restoration";
 pub(crate) const NOISE_DIAGNOSTIC_PLAN_RELATIVE: &str =
-    "docs/parity/work-plans/20260826T210025Z-STR-005-NOISE-DIAGNOSTIC/PLAN.md";
+    "docs/parity/work-plans/20260828T030951Z-STR-005-PRECONNECT-NOISE-VERIFY/PLAN.md";
 pub(crate) const NOISE_DIAGNOSTIC_PLAN_SHA256: &str =
-    "5c5dcc8b030cd07acb60b00d8414d72bc4ad854550d70dad4b66381940629eec";
+    "3bbdf04402a0a51c4d380ef4efa65b4ee3d434bf865970c161a7faf0760b6658";
 const RESTORE_SCHEMA: &str = "bitaxe-stratum-v2-restore-bundle-v1";
 pub(crate) const RESTORE_RANGES: [(&str, u32, u32); 8] = [
     ("bootloader", 0x000000, 0x008000),
@@ -233,7 +233,7 @@ fn validate_common(
 
 fn authorized_remediation_plan(action: &str, ordinal: u16) -> Result<(&'static str, &'static str)> {
     match (action, ordinal) {
-        ("diagnostic_restore", 3) => {
+        ("diagnostic_restore", 4) => {
             Ok((NOISE_DIAGNOSTIC_PLAN_RELATIVE, NOISE_DIAGNOSTIC_PLAN_SHA256))
         }
         ("preflight" | "start", 5) | ("campaign_restore", 7) => {
@@ -588,14 +588,14 @@ mod restore_contract_tests {
     fn diagnostic_restore_authority_is_exact_and_does_not_admit_arbitrary_history() {
         // Arrange / Act
         let admitted =
-            authorized_remediation_plan("diagnostic_restore", 3).expect("diagnostic authority");
+            authorized_remediation_plan("diagnostic_restore", 4).expect("diagnostic authority");
 
         // Assert
         assert_eq!(
             admitted,
             (NOISE_DIAGNOSTIC_PLAN_RELATIVE, NOISE_DIAGNOSTIC_PLAN_SHA256)
         );
-        assert!(authorized_remediation_plan("diagnostic_restore", 2).is_err());
+        assert!(authorized_remediation_plan("diagnostic_restore", 3).is_err());
         assert!(authorized_remediation_plan("historical_restore", 1).is_err());
     }
 }

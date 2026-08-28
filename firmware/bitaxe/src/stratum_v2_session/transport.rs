@@ -3,11 +3,12 @@ use std::net::{TcpStream, ToSocketAddrs};
 use std::sync::mpsc::{self, Receiver, SyncSender, TryRecvError, TrySendError};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use bitaxe_stratum::v2::connection_order::{prepare_before_connect, PrepareBeforeConnectError};
 use bitaxe_stratum::v2::frame::Frame;
 use bitaxe_stratum::v2::messages::ServerMessage;
 use bitaxe_stratum::v2::noise::{
-    DecryptedNoiseHeader, NoiseCompletionFailure, NoiseInitiator, NoiseTransport, ACT_TWO_LEN,
-    ENCRYPTED_HEADER_LEN,
+    DecryptedNoiseHeader, NoiseCompletionFailure, NoiseInitiator, NoisePreparationStage,
+    NoiseTransport, ACT_TWO_LEN, ENCRYPTED_HEADER_LEN,
 };
 use bitaxe_stratum::v2::MAX_FRAME_PAYLOAD;
 use esp_idf_svc::sys;
@@ -23,6 +24,7 @@ const WRITE_TIMEOUT: Duration = Duration::from_secs(2);
 const ADDRESS_CAPACITY: usize = 8;
 const WORKER_STACK_BYTES: usize = 24 * 1024;
 const ENCRYPTED_BUFFER_CAPACITY: usize = (MAX_FRAME_PAYLOAD + 16 + ENCRYPTED_HEADER_LEN) * 2;
+const MAX_NOISE_PREPARATION: Duration = Duration::from_secs(60);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum TransportFailure {
@@ -37,6 +39,7 @@ pub(super) enum TransportFailure {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum NoiseDiagnosticStage {
+    NoisePrepared,
     TcpConnected,
     ActOneCreated,
     ActOneSent,
@@ -48,6 +51,7 @@ pub(crate) enum NoiseDiagnosticStage {
 impl NoiseDiagnosticStage {
     pub(crate) const fn label(self) -> &'static str {
         match self {
+            Self::NoisePrepared => "noise_prepared",
             Self::TcpConnected => "tcp_connected",
             Self::ActOneCreated => "act_one_created",
             Self::ActOneSent => "act_one_sent",
@@ -67,6 +71,7 @@ pub(crate) enum NoiseDiagnosticFailure {
     ActOne,
     ActOneWrite,
     ActTwoRead,
+    PreparationSlow,
     ClockBeforeEpoch,
     ClockOverflow,
     Completion(NoiseCompletionFailure),
@@ -82,9 +87,31 @@ impl NoiseDiagnosticFailure {
             Self::ActOne => "act_one",
             Self::ActOneWrite => "act_one_write",
             Self::ActTwoRead => "act_two_read",
+            Self::PreparationSlow => "preparation_slow",
             Self::ClockBeforeEpoch => "clock_before_epoch",
             Self::ClockOverflow => "clock_overflow",
             Self::Completion(failure) => failure.as_str(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum NoiseDiagnosticTimingKind {
+    KeypairPreparation,
+    ActOneConstruction,
+    Connect,
+    ActOneWrite,
+    ActTwoRead,
+}
+
+impl NoiseDiagnosticTimingKind {
+    pub(crate) const fn label(self) -> &'static str {
+        match self {
+            Self::KeypairPreparation => "keypair_preparation",
+            Self::ActOneConstruction => "act_one_construction",
+            Self::Connect => "connect",
+            Self::ActOneWrite => "act_one_write",
+            Self::ActTwoRead => "act_two_read",
         }
     }
 }
@@ -186,28 +213,28 @@ fn connect_and_run(
     if addresses.is_empty() || addresses.len() > ADDRESS_CAPACITY {
         return Err(TransportFailure::Resolve);
     }
-    let mut maybe_stream = None;
-    for address in addresses {
-        if let Ok(stream) = TcpStream::connect_timeout(&address, CONNECT_TIMEOUT) {
-            maybe_stream = Some(stream);
-            break;
-        }
-    }
-    let mut stream = maybe_stream.ok_or(TransportFailure::Connect)?;
+    let mut rng = EspHardwareRng;
+    let preparation_started = std::time::Instant::now();
+    let (prepared, mut stream) = prepare_before_connect(
+        || {
+            let prepared = NoiseInitiator::prepare(settings.maybe_authority_public_key, &mut rng)
+                .map_err(|_| TransportFailure::Handshake)?;
+            if preparation_started.elapsed() > MAX_NOISE_PREPARATION {
+                return Err(TransportFailure::Handshake);
+            }
+            Ok(prepared)
+        },
+        || connect_first(&addresses).ok_or(TransportFailure::Connect),
+    )
+    .map_err(map_prepare_connect_failure)?;
     stream
         .set_read_timeout(Some(HANDSHAKE_TIMEOUT))
         .map_err(|_| TransportFailure::Configure)?;
     stream
         .set_write_timeout(Some(WRITE_TIMEOUT))
         .map_err(|_| TransportFailure::Configure)?;
-    let mut rng = EspHardwareRng;
-    let mut initiator = NoiseInitiator::new(settings.maybe_authority_public_key, &mut rng)
-        .map_err(|_| TransportFailure::Handshake)?;
-    let act_one = initiator
-        .act_one()
-        .map_err(|_| TransportFailure::Handshake)?;
     stream
-        .write_all(&act_one)
+        .write_all(prepared.act_one())
         .map_err(|_| TransportFailure::Handshake)?;
     let mut act_two = [0; ACT_TWO_LEN];
     stream
@@ -219,7 +246,7 @@ fn connect_and_run(
         .as_secs()
         .try_into()
         .map_err(|_| TransportFailure::Handshake)?;
-    let noise = initiator
+    let noise = prepared
         .complete(&act_two, unix_time_seconds)
         .map_err(|_| TransportFailure::Handshake)?;
     stream
@@ -231,7 +258,8 @@ fn connect_and_run(
 
 pub(crate) fn run_noise_diagnostic(
     settings: V2PoolSettings,
-    emit: impl Fn(NoiseDiagnosticStage),
+    emit_stage: impl Fn(NoiseDiagnosticStage),
+    emit_timing: impl Fn(NoiseDiagnosticTimingKind, u32),
 ) -> Result<(), NoiseDiagnosticFailure> {
     let addresses = (
         settings.session.endpoint_host.as_str(),
@@ -244,48 +272,84 @@ pub(crate) fn run_noise_diagnostic(
     if addresses.is_empty() || addresses.len() > ADDRESS_CAPACITY {
         return Err(NoiseDiagnosticFailure::Resolve);
     }
-    let mut maybe_stream = None;
-    for address in addresses {
-        if let Ok(stream) = TcpStream::connect_timeout(&address, CONNECT_TIMEOUT) {
-            maybe_stream = Some(stream);
-            break;
-        }
-    }
-    let mut stream = maybe_stream.ok_or(NoiseDiagnosticFailure::Connect)?;
-    emit(NoiseDiagnosticStage::TcpConnected);
+    let mut rng = EspHardwareRng;
+    let preparation_started = std::time::Instant::now();
+    let mut keypair_preparation_ms = 0_u32;
+    let mut connect_ms = 0_u32;
+    let (prepared, mut stream) = prepare_before_connect(
+        || {
+            let prepared = NoiseInitiator::prepare_with_observer(
+                settings.maybe_authority_public_key,
+                &mut rng,
+                |stage| match stage {
+                    NoisePreparationStage::KeypairReady => {
+                        keypair_preparation_ms = elapsed_ms(preparation_started);
+                        emit_timing(
+                            NoiseDiagnosticTimingKind::KeypairPreparation,
+                            keypair_preparation_ms,
+                        );
+                    }
+                    NoisePreparationStage::ActOneReady => {
+                        let total_ms = elapsed_ms(preparation_started);
+                        emit_timing(
+                            NoiseDiagnosticTimingKind::ActOneConstruction,
+                            total_ms.saturating_sub(keypair_preparation_ms),
+                        );
+                    }
+                },
+            )
+            .map_err(|_| NoiseDiagnosticFailure::Rng)?;
+            if preparation_started.elapsed() > MAX_NOISE_PREPARATION {
+                return Err(NoiseDiagnosticFailure::PreparationSlow);
+            }
+            emit_stage(NoiseDiagnosticStage::NoisePrepared);
+            Ok(prepared)
+        },
+        || {
+            let connect_started = std::time::Instant::now();
+            let stream = connect_first(&addresses).ok_or(NoiseDiagnosticFailure::Connect)?;
+            connect_ms = elapsed_ms(connect_started);
+            Ok(stream)
+        },
+    )
+    .map_err(map_diagnostic_prepare_connect_failure)?;
+    emit_timing(NoiseDiagnosticTimingKind::Connect, connect_ms);
+    emit_stage(NoiseDiagnosticStage::TcpConnected);
     stream
         .set_read_timeout(Some(HANDSHAKE_TIMEOUT))
         .map_err(|_| NoiseDiagnosticFailure::Configure)?;
     stream
         .set_write_timeout(Some(WRITE_TIMEOUT))
         .map_err(|_| NoiseDiagnosticFailure::Configure)?;
-    let mut rng = EspHardwareRng;
-    let mut initiator = NoiseInitiator::new(settings.maybe_authority_public_key, &mut rng)
-        .map_err(|_| NoiseDiagnosticFailure::Rng)?;
-    let act_one = initiator
-        .act_one()
-        .map_err(|_| NoiseDiagnosticFailure::ActOne)?;
-    emit(NoiseDiagnosticStage::ActOneCreated);
-    stream
-        .write_all(&act_one)
-        .map_err(|_| NoiseDiagnosticFailure::ActOneWrite)?;
-    emit(NoiseDiagnosticStage::ActOneSent);
+    emit_stage(NoiseDiagnosticStage::ActOneCreated);
+    let write_started = std::time::Instant::now();
+    let write_result = stream.write_all(prepared.act_one());
+    emit_timing(
+        NoiseDiagnosticTimingKind::ActOneWrite,
+        elapsed_ms(write_started),
+    );
+    write_result.map_err(|_| NoiseDiagnosticFailure::ActOneWrite)?;
+    emit_stage(NoiseDiagnosticStage::ActOneSent);
     let mut act_two = [0; ACT_TWO_LEN];
-    stream
-        .read_exact(&mut act_two)
-        .map_err(|_| NoiseDiagnosticFailure::ActTwoRead)?;
-    emit(NoiseDiagnosticStage::ActTwoReceived);
+    let read_started = std::time::Instant::now();
+    let read_result = stream.read_exact(&mut act_two);
+    emit_timing(
+        NoiseDiagnosticTimingKind::ActTwoRead,
+        elapsed_ms(read_started),
+    );
+    read_result.map_err(|_| NoiseDiagnosticFailure::ActTwoRead)?;
+    emit_stage(NoiseDiagnosticStage::ActTwoReceived);
     let unix_time_seconds = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(|_| NoiseDiagnosticFailure::ClockBeforeEpoch)?
         .as_secs()
         .try_into()
         .map_err(|_| NoiseDiagnosticFailure::ClockOverflow)?;
-    emit(NoiseDiagnosticStage::TimeSampled);
-    let mut noise = initiator
+    emit_stage(NoiseDiagnosticStage::TimeSampled);
+    let mut noise = prepared
         .complete_diagnostic(&act_two, unix_time_seconds)
         .map_err(NoiseDiagnosticFailure::Completion)?;
-    emit(NoiseDiagnosticStage::Authenticated);
+    emit_stage(NoiseDiagnosticStage::Authenticated);
     let proof = Frame::new(0, 0, Vec::new())
         .map_err(|_| NoiseDiagnosticFailure::Completion(NoiseCompletionFailure::Other))?;
     let encrypted = noise
@@ -294,6 +358,34 @@ pub(crate) fn run_noise_diagnostic(
     stream
         .write_all(&encrypted)
         .map_err(|_| NoiseDiagnosticFailure::Completion(NoiseCompletionFailure::Other))
+}
+
+fn connect_first(addresses: &[std::net::SocketAddr]) -> Option<TcpStream> {
+    addresses
+        .iter()
+        .find_map(|address| TcpStream::connect_timeout(address, CONNECT_TIMEOUT).ok())
+}
+
+fn map_prepare_connect_failure(
+    failure: PrepareBeforeConnectError<TransportFailure, TransportFailure>,
+) -> TransportFailure {
+    match failure {
+        PrepareBeforeConnectError::Preparation(failure)
+        | PrepareBeforeConnectError::Connection(failure) => failure,
+    }
+}
+
+fn map_diagnostic_prepare_connect_failure(
+    failure: PrepareBeforeConnectError<NoiseDiagnosticFailure, NoiseDiagnosticFailure>,
+) -> NoiseDiagnosticFailure {
+    match failure {
+        PrepareBeforeConnectError::Preparation(failure)
+        | PrepareBeforeConnectError::Connection(failure) => failure,
+    }
+}
+
+fn elapsed_ms(started: std::time::Instant) -> u32 {
+    started.elapsed().as_millis().try_into().unwrap_or(u32::MAX)
 }
 
 fn run_encrypted_loop(

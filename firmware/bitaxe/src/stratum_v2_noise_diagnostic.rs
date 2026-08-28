@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use crate::settings_adapter::NoiseDiagnosticAdmission;
 use crate::stratum_v2_session::transport::{
-    run_noise_diagnostic, NoiseDiagnosticFailure, NoiseDiagnosticStage,
+    run_noise_diagnostic, NoiseDiagnosticFailure, NoiseDiagnosticStage, NoiseDiagnosticTimingKind,
 };
 
 const OWNER_THREAD_NAME: &str = "stratum-v2-noise-diag";
@@ -42,10 +42,17 @@ fn run(admission: NoiseDiagnosticAdmission) {
             return;
         }
     };
-    match run_noise_diagnostic(settings, publish_stage) {
+    match run_noise_diagnostic(settings, publish_stage, publish_timing) {
         Ok(()) => publish_terminal("accepted", true),
         Err(failure) => publish_terminal(failure.label(), false),
     }
+}
+
+fn publish_timing(kind: NoiseDiagnosticTimingKind, duration_ms: u32) {
+    crate::info_retained(&format!(
+        "stratum_v2_noise_timing={{\"schema\":\"bitaxe-stratum-v2-noise-timing-v1\",\"phase\":\"{}\",\"duration_ms\":{duration_ms}}}",
+        kind.label()
+    ));
 }
 
 fn exact_primary_settings(

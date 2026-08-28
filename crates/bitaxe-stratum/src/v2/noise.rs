@@ -8,6 +8,9 @@ use rand::{CryptoRng, Rng};
 use super::frame::{Frame, FrameHeader, FRAME_HEADER_LEN};
 use super::StratumV2Error;
 
+mod preparation;
+pub use preparation::{NoisePreparationStage, PreparedNoiseInitiator};
+
 pub const ACT_ONE_LEN: usize = 64;
 pub const ACT_TWO_LEN: usize = INITIATOR_EXPECTED_HANDSHAKE_MESSAGE_SIZE;
 pub const ENCRYPTED_HEADER_LEN: usize = FRAME_HEADER_LEN + noise_sv2::AEAD_MAC_LEN;
@@ -353,6 +356,30 @@ mod tests {
         0xd8, 0x5c, 0x77, 0x8e, 0x4b, 0x8c, 0xef, 0x3c, 0xa7, 0xab, 0xac, 0x09, 0xb9, 0x5c, 0x70,
         0x9e, 0xe5,
     ];
+
+    #[test]
+    fn prepared_noise_reports_keypair_then_act_one_and_hides_internal_state() {
+        // Arrange
+        let mut rng = DeterministicRng::new(31);
+        let mut stages = Vec::new();
+
+        // Act
+        let prepared =
+            NoiseInitiator::prepare_with_observer(Some(AUTHORITY_PUBLIC_KEY), &mut rng, |stage| {
+                stages.push(stage)
+            })
+            .expect("prepared Noise");
+
+        // Assert
+        assert_eq!(prepared.act_one().len(), ACT_ONE_LEN);
+        assert_eq!(
+            stages,
+            vec![
+                NoisePreparationStage::KeypairReady,
+                NoisePreparationStage::ActOneReady,
+            ]
+        );
+    }
 
     #[test]
     fn noise_completion_distinguishes_certificate_time_from_signature() {

@@ -107,3 +107,31 @@ fn v2_transport_and_settings_diagnostics_are_value_free() {
     assert!(TRANSPORT.contains("TransportCommand::Send(redacted)"));
     assert!(SETTINGS.contains(".field(\"session\", &\"redacted\")"));
 }
+
+#[test]
+fn production_and_diagnostic_prepare_noise_before_connecting() {
+    // Arrange
+    let production_start = TRANSPORT.find("fn connect_and_run(").expect("production start");
+    let diagnostic_start = TRANSPORT
+        .find("pub(crate) fn run_noise_diagnostic(")
+        .expect("diagnostic start");
+    let encrypted_loop = TRANSPORT
+        .find("fn run_encrypted_loop(")
+        .expect("encrypted loop");
+    let production = &TRANSPORT[production_start..diagnostic_start];
+    let diagnostic = &TRANSPORT[diagnostic_start..encrypted_loop];
+
+    // Act / Assert
+    assert!(
+        production.find("NoiseInitiator::prepare").expect("production preparation")
+            < production.find("connect_first(&addresses)").expect("production connect")
+    );
+    assert!(
+        diagnostic
+            .find("NoiseInitiator::prepare_with_observer")
+            .expect("diagnostic preparation")
+            < diagnostic
+                .find("connect_first(&addresses)")
+                .expect("diagnostic connect")
+    );
+}

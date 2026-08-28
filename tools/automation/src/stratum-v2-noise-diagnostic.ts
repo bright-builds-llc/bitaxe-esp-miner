@@ -13,6 +13,11 @@ import { fetchRuntimeObject, monitorRuntimeOrigin } from "./stratum-v2-runtime-a
 import type { RestoreBundle } from "./stratum-v2-restore-model.js";
 import { sourceWorkspaceRoot } from "./workspace.js";
 import {
+  noiseStagesFromMonitor,
+  noiseTerminalFromMonitor,
+  noiseTimingsFromMonitor,
+} from "./stratum-v2-noise-diagnostic-markers.js";
+import {
   ManagedDiagnosticProcessError,
   noiseDiagnosticValidatorArgs,
   runManagedDiagnosticProcess,
@@ -33,17 +38,17 @@ export type NoiseDiagnosticArgs = {
   readonly privateRoot: string;
   readonly projection: string;
   readonly plan: string;
-  readonly diagnosticOrdinal: 3;
+  readonly diagnosticOrdinal: 4;
   readonly redactEvidence: true;
 };
 
-const expectedRoot = "scratch/str005-noise-diagnostic/diagnostic-003";
+const expectedRoot = "scratch/str005-noise-diagnostic/diagnostic-004";
 const expectedProjection =
-  "docs/parity/evidence/str005-noise-diagnostic/noise-diagnostic-projection-003.json";
+  "docs/parity/evidence/str005-noise-diagnostic/noise-diagnostic-projection-004.json";
 const expectedPlan =
-  "docs/parity/work-plans/20260826T210025Z-STR-005-NOISE-DIAGNOSTIC/PLAN.md";
+  "docs/parity/work-plans/20260828T030951Z-STR-005-PRECONNECT-NOISE-VERIFY/PLAN.md";
 const expectedPlanSha256 =
-  "5c5dcc8b030cd07acb60b00d8414d72bc4ad854550d70dad4b66381940629eec";
+  "3bbdf04402a0a51c4d380ef4efa65b4ee3d434bf865970c161a7faf0760b6658";
 const expectedRestoreBundle =
   "scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json";
 const expectedPackageManifest =
@@ -53,7 +58,7 @@ const recoveryPlan =
   "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md";
 const backupRelative = "scratch/str005-stratum-v2/attempt-004/settings-backup.private.json";
 const backupSha256 = "ac3d28d451c466f4fc6bfdc40b327c891dac9f3eba644ce62a7f2a2276790631";
-const taskId = "task-str005-noise-handshake-diagnostic";
+const taskId = "task-str005-preconnect-noise-and-verification";
 const maximumOutputBytes = 1_048_576;
 
 type PreparedDiagnostic = {
@@ -149,7 +154,7 @@ export function parseNoiseDiagnosticArgs(
     || value("--private-root") !== expectedRoot
     || value("--projection") !== expectedProjection
     || value("--plan") !== expectedPlan
-    || value("--diagnostic-ordinal") !== "3"
+    || value("--diagnostic-ordinal") !== "4"
     || parsed.get("--redact-evidence") !== true) {
     fail("invalid_invocation", "contract mismatch", "invocation");
   }
@@ -163,7 +168,7 @@ export function parseNoiseDiagnosticArgs(
     privateRoot: expectedRoot,
     projection: expectedProjection,
     plan: expectedPlan,
-    diagnosticOrdinal: 3,
+    diagnosticOrdinal: 4,
     redactEvidence: true,
   };
 }
@@ -337,33 +342,6 @@ async function writePrivate(candidate: string, value: unknown): Promise<string> 
   return document;
 }
 
-function stagesFromMonitor(output: string): JsonObject {
-  const stages: JsonObject = {
-    tcp_connected: false,
-    act_one_created: false,
-    act_one_sent: false,
-    act_two_received: false,
-    time_sampled: false,
-    authenticated: false,
-  };
-  for (const match of output.matchAll(/stratum_v2_noise_diagnostic=(\{[^\r\n]+\})/gu)) {
-    try {
-      const marker = object(JSON.parse(match[1] ?? ""), "diagnostic_marker");
-      const stage = marker["stage"];
-      if (typeof stage === "string" && Object.hasOwn(stages, stage)) stages[stage] = true;
-    } catch { continue; }
-  }
-  return stages;
-}
-
-function terminalFromMonitor(output: string): JsonObject {
-  const matches = [...output.matchAll(/stratum_v2_noise_terminal=(\{[^\r\n]+\})/gu)];
-  const last = matches.at(-1)?.[1];
-  if (last === undefined) return { category: "terminal_missing", accepted: false };
-  try { return object(JSON.parse(last), "diagnostic_terminal"); }
-  catch { return { category: "terminal_malformed", accepted: false }; }
-}
-
 async function exactRestore(
   workspace: string,
   args: NoiseDiagnosticArgs,
@@ -379,7 +357,7 @@ async function exactRestore(
   await writePrivate(path.join(workspace, authorizationRelative), {
     schema_version: "bitaxe-stratum-v2-restore-authorization-v1",
     board: 205,
-    ordinal: 3,
+    ordinal: 4,
     action: "diagnostic_restore",
     current_source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],
@@ -468,6 +446,7 @@ export async function runNoiseDiagnostic(
   );
   let terminal: JsonObject = { category: "process_failed", accepted: false };
   let stages: JsonObject = {};
+  let timings: JsonObject = {};
   let fixtureTerminal: JsonObject = { progress: {} };
   let diagnosticChild: ManagedDiagnosticProcessResult = { exitCode: 1, stdout: "", stderr: "" };
   let earliestCategory = "process_failed";
@@ -492,7 +471,7 @@ export async function runNoiseDiagnostic(
     await writePrivate(path.join(workspace, intentRelative), {
       schema_version: "bitaxe-stratum-v2-noise-diagnostic-intent-v1",
       board: 205,
-      diagnostic_ordinal: 3,
+      diagnostic_ordinal: 4,
       source_commit: prepared.head,
       reference_commit: prepared.manifest["reference_commit"],
       app_elf_sha256: prepared.manifest["app_elf_sha256"],
@@ -521,8 +500,9 @@ export async function runNoiseDiagnostic(
       stdout_sha256: sha256(diagnosticChild.stdout),
       stderr_sha256: sha256(diagnosticChild.stderr),
     });
-    stages = stagesFromMonitor(diagnosticChild.stdout);
-    terminal = terminalFromMonitor(diagnosticChild.stdout);
+    stages = noiseStagesFromMonitor(diagnosticChild.stdout);
+    timings = noiseTimingsFromMonitor(diagnosticChild.stdout);
+    terminal = noiseTerminalFromMonitor(diagnosticChild.stdout);
     earliestCategory = String(terminal["category"] ?? "terminal_missing");
     fixtureExit = await fixture.completion;
     fixtureTerminal = object(
@@ -576,7 +556,7 @@ export async function runNoiseDiagnostic(
     schema_version: "bitaxe-stratum-v2-noise-diagnostic-projection-v1",
     status: accepted ? "accepted" : "failed",
     board: 205,
-    diagnostic_ordinal: 3,
+    diagnostic_ordinal: 4,
     source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],
     app_elf_sha256: prepared.manifest["app_elf_sha256"],
@@ -584,6 +564,7 @@ export async function runNoiseDiagnostic(
     package_manifest_sha256: sha256(prepared.manifestDocument),
     terminal_category: accepted ? "accepted" : earliestCategory,
     stages,
+    timings,
     fixture: fixtureProgress,
     campaign_started: false,
     mining_started: false,
