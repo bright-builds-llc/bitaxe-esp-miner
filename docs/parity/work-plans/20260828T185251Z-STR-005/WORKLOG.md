@@ -104,3 +104,19 @@
 - Blocker or next safe action: finish the recovery-only supervisor that creates
   fresh authorization, restores package/settings, and confirms inactive
   zero-work runtime; run all gates, commit/push, then execute recovery-001 once.
+
+## 2026-08-28T20:25:00Z | Recovery-001
+
+- Source commit: `bdb35427782d1b89c261460895456cf0d2f5355c`
+- Actions: built the exact clean package, captured fresh detector admission,
+  and invoked recovery-001 without a fixture or payload effect.
+- Verification: the protected restore stderr reports only
+  `restore_installed=blocked reason=authorization_action`; no restore command
+  receipt or recovery result exists.
+- Evidence: private root `scratch/str005-tcp-payload/recovery-001`; no protected
+  values or artifacts are promoted.
+- Outcome: `continue_after_verified_fix` before flash writes.
+- Blocker or next safe action: the second inline action/root allowlist omitted
+  the new recovery action. The focused tuple test reproduced red, then passed
+  after the exact current-root arm. Rotate to recovery-002, run all gates,
+  commit/push/package, redetect, and invoke once.

@@ -14,7 +14,7 @@ import {
   type TcpPayloadDiagnosticArgs,
 } from "./stratum-v2-tcp-payload.js";
 
-const expectedRoot = "scratch/str005-tcp-payload/recovery-001";
+const expectedRoot = "scratch/str005-tcp-payload/recovery-002";
 const expectedPlan = "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md";
 const expectedPlanSha256 = "14bd8aef5d78f38881a3da1a99a6808f7f6e8c93bb1d1a02d7972fcaaeb1d843";
 const expectedRestoreBundle =
@@ -178,7 +178,7 @@ export async function runTcpPayloadRecovery(
   await writePrivate(path.join(workspace, authorizationRelative), {
     schema_version: "bitaxe-stratum-v2-restore-authorization-v1",
     board: 205,
-    ordinal: 1,
+    ordinal: 2,
     action: "tcp_payload_recovery",
     current_source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],

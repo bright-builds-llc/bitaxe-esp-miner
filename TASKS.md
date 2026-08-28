@@ -118,6 +118,22 @@ The absent private root is mode `0700` with mode-`0600` secret-sanitized files.
 No unchanged recovery retry is allowed; a distinct regression-backed fix is
 required after any typed failure.
 
+Recovery-001 outcome: `continue_after_verified_fix`. Fresh detector admission
+passed, but the restore child stopped before writes at
+`restore_installed=blocked reason=authorization_action`. The current plan/root
+mapping was accepted; a second inline action/root allowlist omitted
+`tcp_payload_recovery`. Recovery-001 is consumed and produced no restore result.
+
+Recovery-002 continuation: a focused production-seam regression now proves the
+action is admitted only with the current recovery root. After the fix is fully
+verified, committed, pushed, and packaged from clean exact HEAD, run fresh
+detector admission and exactly one command:
+
+`just stratum-v2-tcp-payload recover --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/recovery-002 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-002.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 2 --capture-timeout-seconds 360 --redact-evidence`
+
+The recovery-only effects, privacy, restoration acceptance, prohibitions, and
+no-unchanged-retry boundaries remain exactly those declared for recovery-001.
+
 Verification: diagnostic-001 stopped before effects at
 `timeout:fixture_ready`; its regression-backed fixture-timeout fix passed every
 gate and was pushed as `35ae9cb33458ad6c76f6eedef5d0538720d80367`.

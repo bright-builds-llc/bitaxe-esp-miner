@@ -368,6 +368,17 @@ fn package_command(
     })
 }
 
+fn authorization_action_allowed(admission_only: bool, private_root: &str, action: &str) -> bool {
+    matches!(
+        (admission_only, private_root, action),
+        (true, PREFLIGHT_ROOT, "preflight")
+            | (false, TCP_PAYLOAD_RECOVERY_ROOT, "tcp_payload_recovery")
+            | (false, EFFECT_ROOT, "start")
+            | (false, CAMPAIGN_RESTORE_ROOT, "campaign_restore")
+            | (false, NOISE_DIAGNOSTIC_RESTORE_ROOT, "diagnostic_restore")
+    )
+}
+
 pub(crate) fn run_restore_installed(
     command: &RestoreInstalledCommand,
     environment: &impl FlashEnvironment,
@@ -390,16 +401,10 @@ pub(crate) fn run_restore_installed(
     require_mode(&authorization_path, 0o600, false)?;
     let authorization: RestoreAuthorization =
         serde_json::from_str(&environment.read_to_string(&authorization_path)?)?;
-    let action_matches = matches!(
-        (
-            command.admission_only,
-            command.private_root.as_str(),
-            authorization.action.as_str()
-        ),
-        (true, PREFLIGHT_ROOT, "preflight")
-            | (false, EFFECT_ROOT, "start")
-            | (false, CAMPAIGN_RESTORE_ROOT, "campaign_restore")
-            | (false, NOISE_DIAGNOSTIC_RESTORE_ROOT, "diagnostic_restore")
+    let action_matches = authorization_action_allowed(
+        command.admission_only,
+        command.private_root.as_str(),
+        authorization.action.as_str(),
     );
     if !action_matches {
         bail!("restore_installed=blocked reason=authorization_action");
@@ -563,7 +568,7 @@ mod restore_contract_tests {
     #[test]
     fn tcp_payload_recovery_authority_is_current_and_narrow() {
         // Arrange / Act
-        let admitted = authorized_remediation_plan("tcp_payload_recovery", 1)
+        let admitted = authorized_remediation_plan("tcp_payload_recovery", 2)
             .expect("current TCP payload recovery authority");
 
         // Assert
@@ -574,7 +579,7 @@ mod restore_contract_tests {
                 "14bd8aef5d78f38881a3da1a99a6808f7f6e8c93bb1d1a02d7972fcaaeb1d843",
             )
         );
-        assert!(authorized_remediation_plan("tcp_payload_recovery", 2).is_err());
+        assert!(authorized_remediation_plan("tcp_payload_recovery", 1).is_err());
     }
 
     #[test]
@@ -585,5 +590,20 @@ mod restore_contract_tests {
         // Assert
         assert_eq!(contract.0, Utf8Path::new(TCP_PAYLOAD_RECOVERY_ROOT));
         assert_eq!(contract.1, TCP_PAYLOAD_PLAN_RELATIVE);
+    }
+
+    #[test]
+    fn tcp_payload_recovery_action_matches_only_the_recovery_root() {
+        // Arrange / Act / Assert
+        assert!(authorization_action_allowed(
+            false,
+            TCP_PAYLOAD_RECOVERY_ROOT,
+            "tcp_payload_recovery"
+        ));
+        assert!(!authorization_action_allowed(
+            false,
+            EFFECT_ROOT,
+            "tcp_payload_recovery"
+        ));
     }
 }

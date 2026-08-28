@@ -42,7 +42,7 @@ export type TcpPayloadDiagnosticArgs = {
   readonly redactEvidence: true;
 };
 const expectedDiagnosticRoot = "scratch/str005-tcp-payload/diagnostic-002";
-const expectedRecoveryRoot = "scratch/str005-tcp-payload/recovery-001";
+const expectedRecoveryRoot = "scratch/str005-tcp-payload/recovery-002";
 const expectedProjection =
   "docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-002.json";
 const expectedPlan = "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md";
