@@ -1,6 +1,6 @@
 //! Private boot-time STR-005 TCP payload diagnostic owner.
 
-use std::io::{Read, Write};
+use std::io::{ErrorKind, Read, Write};
 use std::net::{Shutdown, TcpStream, ToSocketAddrs};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -83,7 +83,9 @@ fn connect_and_send(settings: V2PoolSettings) -> Result<(), &'static str> {
     stream.flush().map_err(|_| "flush")?;
     publish_timing("write", started.elapsed());
     publish_stage("payload_sent");
-    stream.shutdown(Shutdown::Write).map_err(|_| "shutdown")?;
+    stream
+        .shutdown(Shutdown::Write)
+        .map_err(|error| shutdown_error_category(error.kind()))?;
     publish_stage("write_half_closed");
     stream
         .set_read_timeout(Some(WRITE_TIMEOUT))
@@ -95,6 +97,17 @@ fn connect_and_send(settings: V2PoolSettings) -> Result<(), &'static str> {
     }
     publish_stage("receipt_acknowledged");
     Ok(())
+}
+
+fn shutdown_error_category(kind: ErrorKind) -> &'static str {
+    match kind {
+        ErrorKind::WouldBlock => "shutdown_would_block",
+        ErrorKind::NotConnected => "shutdown_not_connected",
+        ErrorKind::OutOfMemory => "shutdown_out_of_memory",
+        ErrorKind::InvalidInput => "shutdown_invalid_input",
+        ErrorKind::Unsupported => "shutdown_unsupported",
+        _ => "shutdown_other",
+    }
 }
 
 fn exact_primary_settings() -> Result<V2PoolSettings, &'static str> {

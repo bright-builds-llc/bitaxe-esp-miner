@@ -233,6 +233,33 @@ prohibition, cleanup, non-promotion, and no-unchanged-retry boundary remains.
 Diagnostic-006 stops at its typed result; it does not authorize a seventh
 hardware attempt without another distinct evidence-backed change.
 
+Diagnostic-006 outcome: `continue_after_verified_discriminator`. Firmware
+reached exact-peer connect and payload-buffer write, then failed immediately at
+the new `shutdown` boundary before `write_half_closed`; connect took 179 ms and
+the buffer write reported 0 ms. The exact-peer fixture again received zero
+bytes. Exact recovery-006 identity/settings, inactive zero-work state, USB
+cleanup, and zero owned processes all passed. The failure arrived about 30 ms
+after the write marker, excluding the configured ten-second send timeout and
+isolating the next question to the shutdown error class.
+
+Diagnostic-007 continuation: without changing any device, network, payload,
+socket, restoration, or cleanup effect, map the write-half-close failure into
+one of six closed value-free categories: `shutdown_would_block`,
+`shutdown_not_connected`, `shutdown_out_of_memory`, `shutdown_invalid_input`,
+`shutdown_unsupported`, or `shutdown_other`. A red source regression requires
+the complete closed vocabulary and passes only after the production owner maps
+`std::io::ErrorKind` without logging raw errno or socket values. After every
+gate passes and exact source is committed/pushed/packaged, run fresh detector
+admission and exactly one command:
+
+`just stratum-v2-tcp-payload start --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/diagnostic-007 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-007.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 7 --capture-timeout-seconds 360 --redact-evidence`
+
+Diagnostic-007 is classification-only and admits no broader effect. Every prior
+privacy, exact restoration, safety, prohibition, cleanup, non-promotion, and
+no-unchanged-retry boundary remains. Its result must select a software fix or a
+typed stop; no raw OS error, endpoint, credential, or device identity may be
+promoted.
+
 Verification: diagnostic-001 stopped before effects at
 `timeout:fixture_ready`; its regression-backed fixture-timeout fix passed every
 gate and was pushed as `35ae9cb33458ad6c76f6eedef5d0538720d80367`.
@@ -243,7 +270,7 @@ stopped at `hardware_blocked:restoration`. No public projection was published.
 Current review: the earlier terminal closure is superseded by the user's
 standing iterative hardware-debug authorization and successful recovery-002.
 Exact restoration is now proved; TCP payload delivery remains the sole open
-child objective. Keep this task active through diagnostic-006. Noise, V2
+child objective. Keep this task active through diagnostic-007. Noise, V2
 messages, ASIC work, mining, and STR-005 promotion remain unauthorized. STR-005
 remains `implemented` with `unit,golden,workflow`.
 

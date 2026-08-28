@@ -20,7 +20,7 @@ pub(crate) const NOISE_DIAGNOSTIC_PLAN_SHA256: &str =
 pub(crate) const TCP_PAYLOAD_RECOVERY_ROOT: &str =
     "scratch/str005-tcp-payload/recovery-002/restoration";
 pub(crate) const TCP_PAYLOAD_DIAGNOSTIC_RESTORE_ROOT: &str =
-    "scratch/str005-tcp-payload/diagnostic-006/restoration";
+    "scratch/str005-tcp-payload/diagnostic-007/restoration";
 pub(crate) const TCP_PAYLOAD_PLAN_RELATIVE: &str =
     "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md";
 pub(crate) const TCP_PAYLOAD_PLAN_SHA256: &str =
@@ -31,7 +31,7 @@ pub(crate) fn authorized_remediation_plan(
     ordinal: u16,
 ) -> Result<(&'static str, &'static str)> {
     match (action, ordinal) {
-        ("tcp_payload_diagnostic_restore", 6) => {
+        ("tcp_payload_diagnostic_restore", 7) => {
             Ok((TCP_PAYLOAD_PLAN_RELATIVE, TCP_PAYLOAD_PLAN_SHA256))
         }
         ("tcp_payload_recovery", 2) => Ok((TCP_PAYLOAD_PLAN_RELATIVE, TCP_PAYLOAD_PLAN_SHA256)),

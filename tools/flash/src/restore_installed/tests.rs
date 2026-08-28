@@ -75,7 +75,7 @@ fn tcp_payload_recovery_action_matches_only_the_recovery_root() {
 #[test]
 fn tcp_payload_diagnostic_restore_is_current_and_narrow() {
     // Arrange / Act
-    let admitted = authorized_remediation_plan("tcp_payload_diagnostic_restore", 6)
+    let admitted = authorized_remediation_plan("tcp_payload_diagnostic_restore", 7)
         .expect("current diagnostic restore authority");
     let contract =
         restore_invocation_contract(Utf8Path::new(TCP_PAYLOAD_DIAGNOSTIC_RESTORE_ROOT), false);
@@ -95,5 +95,5 @@ fn tcp_payload_diagnostic_restore_is_current_and_narrow() {
         TCP_PAYLOAD_DIAGNOSTIC_RESTORE_ROOT,
         "tcp_payload_diagnostic_restore"
     ));
-    assert!(authorized_remediation_plan("tcp_payload_diagnostic_restore", 5).is_err());
+    assert!(authorized_remediation_plan("tcp_payload_diagnostic_restore", 6).is_err());
 }

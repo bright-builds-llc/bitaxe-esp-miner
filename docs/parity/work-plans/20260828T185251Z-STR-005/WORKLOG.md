@@ -243,3 +243,42 @@
 - Outcome: diagnostic-006 is ready for a distinct clean source checkpoint.
 - Blocker or next safe action: commit/push, rebuild the exact clean package,
   capture fresh one-board detector admission, then invoke diagnostic-006 once.
+
+## 2026-08-28T21:57:00Z | Diagnostic-006 and shutdown classifier
+
+- Source commit: `cbcae9ecc835faa236ffb94d45ec81b8eeb2c5e5`
+- Actions: built the exact clean package, captured fresh one-board admission,
+  ran diagnostic-006 once, completed exact restoration, and returned to a red
+  closed-error-vocabulary regression before changing production diagnostics.
+- Verification: firmware reached monitor armed, resolve, exact-peer connect,
+  and payload-buffer write, then emitted `shutdown` before the half-close stage.
+  Connect took 179 ms, the local write reported 0 ms, and terminal followed
+  about 30 ms later. The exact-peer fixture received zero bytes. Recovery-006
+  identity/settings, inactive zero-work runtime, USB cleanup, and zero owned
+  processes all passed; no public projection was published. The source test
+  failed red until all six safe shutdown error classes were mapped and then
+  passed with the focused automation and flash suites.
+- Evidence: protected roots `scratch/str005-tcp-payload/diagnostic-006` and
+  `scratch/str005-tcp-payload/detector-diagnostic-006`; no protected values are
+  promoted.
+- Outcome: distinct socket-shutdown boundary. Its immediate timing excludes
+  the ten-second send timeout; diagnostic-007 will classify only the safe
+  `ErrorKind` family without changing the hardware effect.
+- Blocker or next safe action: finish every gate, commit/push/package the exact
+  diagnostic-007 contract, redetect, and invoke once. No broader network,
+  protocol, mining, ASIC, fan, voltage, or hardware-control effect is admitted.
+
+## 2026-08-28T22:03:00Z | Diagnostic-007 software verification
+
+- Source commit: `cbcae9ecc835faa236ffb94d45ec81b8eeb2c5e5`
+- Actions: completed the six-category shutdown classifier and exact
+  seventh-ordinal command/restoration bindings without changing socket effects.
+- Verification: formatting, strict Clippy, all-target/all-feature build, full
+  Cargo tests, Bright Builds, all 57 Bazel tests, canonical six-artifact
+  ESP32-S3 package, parity with no validation errors, parity progress,
+  redaction, reference cleanliness, whitespace, and diff review passed.
+- Evidence: software classification only at this checkpoint; no new detector,
+  credential, network, USB, flash, monitor, or device effect.
+- Outcome: diagnostic-007 is ready for a distinct clean source checkpoint.
+- Blocker or next safe action: commit/push, rebuild the exact clean package,
+  capture fresh one-board detector admission, then invoke diagnostic-007 once.
