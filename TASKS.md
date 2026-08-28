@@ -100,6 +100,24 @@ All allowed/prohibited effects, privacy, exact restoration, retry, stop, and
 non-promotion boundaries remain unchanged. Recurrence of the same fixture-bound
 signature selects `stop_repeated_boundary`; no diagnostic-003 is authorized.
 
+Recovery-001 iterative continuation: the user explicitly resumed this task
+under the repository's iterative hardware-fix authorization. After the exact
+current recovery admission and recovery-only supervisor pass every required
+gate, are committed and pushed, and `just package` binds the clean source, run
+fresh detector admission and exactly one command:
+
+`just stratum-v2-tcp-payload recover --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/recovery-001 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-002.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 2 --capture-timeout-seconds 360 --redact-evidence`
+
+Recovery-001 may only admit the exact Ultra 205, restore the recovery-006
+package ranges, restore the protected settings backup using the ignored local
+Wi-Fi/pool inputs, confirm exact runtime identity, `mineonboot=false`, inactive
+zero-work/share state, and USB/process cleanup. It must not start a fixture,
+send TCP bytes, enter Noise or V2 protocol, touch ASIC/fan/voltage controls,
+mine, discover targets, mutate unrelated settings, or publish parity evidence.
+The absent private root is mode `0700` with mode-`0600` secret-sanitized files.
+No unchanged recovery retry is allowed; a distinct regression-backed fix is
+required after any typed failure.
+
 Verification: diagnostic-001 stopped before effects at
 `timeout:fixture_ready`; its regression-backed fixture-timeout fix passed every
 gate and was pushed as `35ae9cb33458ad6c76f6eedef5d0538720d80367`.

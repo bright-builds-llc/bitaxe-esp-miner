@@ -5,6 +5,7 @@ import {
   parseTcpPayloadDiagnosticArgs,
   runTcpPayloadDiagnostic,
 } from "./stratum-v2-tcp-payload.js";
+import { runTcpPayloadRecovery } from "./stratum-v2-tcp-recovery.js";
 
 async function main(): Promise<number> {
   try {
@@ -13,7 +14,9 @@ async function main(): Promise<number> {
     const workspace = tcpPayloadDiagnosticWorkspaceRoot();
     const result = action === "preflight"
       ? await inspectTcpPayloadDiagnosticPreflight(workspace, args)
-      : await runTcpPayloadDiagnostic(workspace, args);
+      : action === "recover"
+        ? await runTcpPayloadRecovery(workspace, args)
+        : await runTcpPayloadDiagnostic(workspace, args);
     process.stdout.write(`${JSON.stringify(result)}\n`);
     return 0;
   } catch (error) {

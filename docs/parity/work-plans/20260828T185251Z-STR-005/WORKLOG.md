@@ -85,3 +85,22 @@
   must add current-root restore admission and prove recovery-006 identity,
   settings, inactive zero-work runtime, and cleanup before any later TCP
   diagnostic plan. Diagnostic-003 is not authorized.
+
+## 2026-08-28T20:08:00Z | Iterative recovery debugging resumed
+
+- Source commit: `a3a490c24e7fdad71cd107d2c0ec244fe99faf86`
+- Actions: resumed the active task under the user's at-will hardware-fix
+  authorization; built a focused restore-admission feedback loop before
+  changing production code.
+- Verification: `cargo test -p bitaxe-flash
+  tcp_payload_recovery_authority_is_current_and_narrow --all-features` failed
+  red with `restore_installed=blocked reason=identity_contract`, then passed
+  after adding only the current plan/action/ordinal and recovery root. A second
+  focused test proves the root maps only to the current remediation plan.
+- Evidence: software-only; no additional hardware effect occurred.
+- Outcome: hypotheses 1 and 2 confirmed. The restore allowlist and root selector
+  omitted the decomposed task; old authorization documents also cannot be
+  reused because source identity must rotate.
+- Blocker or next safe action: finish the recovery-only supervisor that creates
+  fresh authorization, restores package/settings, and confirms inactive
+  zero-work runtime; run all gates, commit/push, then execute recovery-001 once.

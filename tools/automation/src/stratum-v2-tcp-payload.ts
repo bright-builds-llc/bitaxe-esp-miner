@@ -27,7 +27,7 @@ import {
 } from "./stratum-v2-tcp-payload-process.js";
 export { runManagedDiagnosticProcess as runTcpPayloadDiagnosticProcess };
 
-export type TcpPayloadDiagnosticAction = "preflight" | "start";
+export type TcpPayloadDiagnosticAction = "preflight" | "recover" | "start";
 export type TcpPayloadDiagnosticArgs = {
   readonly action: TcpPayloadDiagnosticAction;
   readonly board: "205";
@@ -41,12 +41,11 @@ export type TcpPayloadDiagnosticArgs = {
   readonly diagnosticOrdinal: 2;
   readonly redactEvidence: true;
 };
-
-const expectedRoot = "scratch/str005-tcp-payload/diagnostic-002";
+const expectedDiagnosticRoot = "scratch/str005-tcp-payload/diagnostic-002";
+const expectedRecoveryRoot = "scratch/str005-tcp-payload/recovery-001";
 const expectedProjection =
   "docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-002.json";
-const expectedPlan =
-  "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md";
+const expectedPlan = "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md";
 const expectedPlanSha256 =
   "14bd8aef5d78f38881a3da1a99a6808f7f6e8c93bb1d1a02d7972fcaaeb1d843";
 const expectedRestoreBundle =
@@ -109,7 +108,7 @@ export function parseTcpPayloadDiagnosticArgs(
   action: string | undefined,
   values: readonly string[],
 ): TcpPayloadDiagnosticArgs {
-  if (action !== "preflight" && action !== "start") {
+  if (action !== "preflight" && action !== "recover" && action !== "start") {
     fail("invalid_invocation", "action required", "invocation");
   }
   const parsed = new Map<string, string | true>();
@@ -143,6 +142,7 @@ export function parseTcpPayloadDiagnosticArgs(
     }
     return candidate;
   };
+  const expectedRoot = action === "recover" ? expectedRecoveryRoot : expectedDiagnosticRoot;
   if (value("--board") !== "205"
     || value("--package-manifest") !== expectedPackageManifest
     || value("--wifi-credentials") !== expectedWifiCredentials

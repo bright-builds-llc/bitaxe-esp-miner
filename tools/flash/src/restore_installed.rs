@@ -1,26 +1,13 @@
 use crate::*;
 
+mod contract;
+
+pub(crate) use contract::*;
+
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-pub(crate) const RESTORE_BUNDLE_RELATIVE: &str =
-    "scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json";
-pub(crate) const RESTORE_PLAN_RELATIVE: &str =
-    "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md";
-pub(crate) const REMEDIATION_PLAN_RELATIVE: &str =
-    "docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/PLAN.md";
-pub(crate) const REMEDIATION_PLAN_SHA256: &str =
-    "14c7676fb26b6291a24d08d229bc38717691835978d61ae24fd8cff91736470a";
 const RECOVERY_CAPTURE_SOURCE: &str = "7d5d9504433d54ae28fe853c5827d6dd05693eef";
-pub(crate) const PREFLIGHT_ROOT: &str = "scratch/str005-exact-restoration/preflight-005";
-pub(crate) const EFFECT_ROOT: &str = "scratch/str005-exact-restoration/remediation-005";
-pub(crate) const CAMPAIGN_RESTORE_ROOT: &str = "scratch/str005-stratum-v2/attempt-007/restoration";
-pub(crate) const NOISE_DIAGNOSTIC_RESTORE_ROOT: &str =
-    "scratch/str005-noise-diagnostic/diagnostic-004/restoration";
-pub(crate) const NOISE_DIAGNOSTIC_PLAN_RELATIVE: &str =
-    "docs/parity/work-plans/20260828T030951Z-STR-005-PRECONNECT-NOISE-VERIFY/PLAN.md";
-pub(crate) const NOISE_DIAGNOSTIC_PLAN_SHA256: &str =
-    "3bbdf04402a0a51c4d380ef4efa65b4ee3d434bf865970c161a7faf0760b6658";
 const RESTORE_SCHEMA: &str = "bitaxe-stratum-v2-restore-bundle-v1";
 pub(crate) const RESTORE_RANGES: [(&str, u32, u32); 8] = [
     ("bootloader", 0x000000, 0x008000),
@@ -231,18 +218,6 @@ fn validate_common(
     Ok(())
 }
 
-fn authorized_remediation_plan(action: &str, ordinal: u16) -> Result<(&'static str, &'static str)> {
-    match (action, ordinal) {
-        ("diagnostic_restore", 4) => {
-            Ok((NOISE_DIAGNOSTIC_PLAN_RELATIVE, NOISE_DIAGNOSTIC_PLAN_SHA256))
-        }
-        ("preflight" | "start", 5) | ("campaign_restore", 7) => {
-            Ok((REMEDIATION_PLAN_RELATIVE, REMEDIATION_PLAN_SHA256))
-        }
-        _ => bail!("restore_installed=blocked reason=identity_contract"),
-    }
-}
-
 fn snapshot_command(
     root: &Utf8Path,
     ranges: &[SnapshotRange],
@@ -398,26 +373,12 @@ pub(crate) fn run_restore_installed(
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
     ensure_ultra_205(command.board)?;
-    let expected_root = if command.admission_only {
-        Utf8Path::new(PREFLIGHT_ROOT)
-    } else if command.private_root == Utf8Path::new(NOISE_DIAGNOSTIC_RESTORE_ROOT) {
-        Utf8Path::new(NOISE_DIAGNOSTIC_RESTORE_ROOT)
-    } else if command.private_root == Utf8Path::new(CAMPAIGN_RESTORE_ROOT) {
-        Utf8Path::new(CAMPAIGN_RESTORE_ROOT)
-    } else {
-        Utf8Path::new(EFFECT_ROOT)
-    };
+    let (expected_root, expected_remediation_plan) =
+        restore_invocation_contract(&command.private_root, command.admission_only);
     let expected_authorization = expected_root.join("restore-authorization.private.json");
     if !command.redact_evidence
         || command.restore_bundle != Utf8Path::new(RESTORE_BUNDLE_RELATIVE)
-        || command.remediation_plan
-            != Utf8Path::new(
-                if command.private_root == Utf8Path::new(NOISE_DIAGNOSTIC_RESTORE_ROOT) {
-                    NOISE_DIAGNOSTIC_PLAN_RELATIVE
-                } else {
-                    REMEDIATION_PLAN_RELATIVE
-                },
-            )
+        || command.remediation_plan != Utf8Path::new(expected_remediation_plan)
         || command.private_root != expected_root
         || command.restore_authorization != expected_authorization
     {
@@ -597,5 +558,32 @@ mod restore_contract_tests {
         );
         assert!(authorized_remediation_plan("diagnostic_restore", 3).is_err());
         assert!(authorized_remediation_plan("historical_restore", 1).is_err());
+    }
+
+    #[test]
+    fn tcp_payload_recovery_authority_is_current_and_narrow() {
+        // Arrange / Act
+        let admitted = authorized_remediation_plan("tcp_payload_recovery", 1)
+            .expect("current TCP payload recovery authority");
+
+        // Assert
+        assert_eq!(
+            admitted,
+            (
+                "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md",
+                "14bd8aef5d78f38881a3da1a99a6808f7f6e8c93bb1d1a02d7972fcaaeb1d843",
+            )
+        );
+        assert!(authorized_remediation_plan("tcp_payload_recovery", 2).is_err());
+    }
+
+    #[test]
+    fn tcp_payload_recovery_root_selects_only_the_current_plan() {
+        // Arrange / Act
+        let contract = restore_invocation_contract(Utf8Path::new(TCP_PAYLOAD_RECOVERY_ROOT), false);
+
+        // Assert
+        assert_eq!(contract.0, Utf8Path::new(TCP_PAYLOAD_RECOVERY_ROOT));
+        assert_eq!(contract.1, TCP_PAYLOAD_PLAN_RELATIVE);
     }
 }

@@ -211,6 +211,7 @@ rust_binary(
         "src/redaction.rs",
         "src/release_recovery.rs",
         "src/restore_installed.rs",
+        "src/restore_installed/contract.rs",
         "src/support.rs",
         "src/self_test_intent.rs",
         "src/thermal_fault_intent.rs",

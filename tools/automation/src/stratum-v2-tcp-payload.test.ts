@@ -120,6 +120,20 @@ test("fixture owner uses an admitted session timeout below the capture timeout",
   assert(Number(args[sessionIndex + 1]) <= 300);
 });
 
+test("recovery parser admits only the fresh recovery root", () => {
+  // Arrange
+  const values = exactArgs().map(value => value === "scratch/str005-tcp-payload/diagnostic-002"
+    ? "scratch/str005-tcp-payload/recovery-001"
+    : value);
+
+  // Act
+  const parsed = parseTcpPayloadDiagnosticArgs("recover", values);
+
+  // Assert
+  assert.equal(parsed.privateRoot, "scratch/str005-tcp-payload/recovery-001");
+  assert.throws(() => parseTcpPayloadDiagnosticArgs("recover", exactArgs()));
+});
+
 test("projection validator requires the complete authenticated and restored chain", async () => {
   // Arrange
   const root = await mkdtemp(path.join(tmpdir(), "str005-noise-validator-"));
