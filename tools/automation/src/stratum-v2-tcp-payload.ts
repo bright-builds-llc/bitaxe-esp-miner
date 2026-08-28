@@ -23,6 +23,7 @@ import {
 } from "./stratum-v2-tcp-payload-markers.js";
 import {
   ManagedDiagnosticProcessError,
+  tcpPayloadDiagnosticAccepted,
   tcpPayloadDiagnosticValidatorArgs,
   runManagedDiagnosticProcess,
   type ManagedDiagnosticProcessResult,
@@ -40,13 +41,13 @@ export type TcpPayloadDiagnosticArgs = {
   readonly privateRoot: string;
   readonly projection: string;
   readonly plan: string;
-  readonly diagnosticOrdinal: 4;
+  readonly diagnosticOrdinal: 5;
   readonly redactEvidence: true;
 };
-const expectedDiagnosticRoot = "scratch/str005-tcp-payload/diagnostic-004";
+const expectedDiagnosticRoot = "scratch/str005-tcp-payload/diagnostic-005";
 const expectedRecoveryRoot = "scratch/str005-tcp-payload/recovery-002";
 const expectedProjection =
-  "docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-004.json";
+  "docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-005.json";
 const expectedPlan = "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md";
 const expectedPlanSha256 =
   "14bd8aef5d78f38881a3da1a99a6808f7f6e8c93bb1d1a02d7972fcaaeb1d843";
@@ -154,7 +155,7 @@ export function parseTcpPayloadDiagnosticArgs(
     || value("--private-parent") !== expectedRoot
     || value("--projection") !== expectedProjection
     || value("--plan") !== expectedPlan
-    || value("--diagnostic-ordinal") !== "4"
+    || value("--diagnostic-ordinal") !== "5"
     || value("--capture-timeout-seconds") !== "360"
     || parsed.get("--redact-evidence") !== true) {
     fail("invalid_invocation", "contract mismatch", "invocation");
@@ -169,7 +170,7 @@ export function parseTcpPayloadDiagnosticArgs(
     privateRoot: expectedRoot,
     projection: expectedProjection,
     plan: expectedPlan,
-    diagnosticOrdinal: 4,
+    diagnosticOrdinal: 5,
     redactEvidence: true,
   };
 }
@@ -321,7 +322,7 @@ async function exactRestore(
   await writePrivate(path.join(workspace, authorizationRelative), {
     schema_version: "bitaxe-stratum-v2-restore-authorization-v1",
     board: 205,
-    ordinal: 4,
+    ordinal: 5,
     action: "tcp_payload_diagnostic_restore",
     current_source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],
@@ -413,6 +414,7 @@ export async function runTcpPayloadDiagnostic(
   let timings: JsonObject = {};
   let fixtureTerminal: JsonObject = { progress: {} };
   let diagnosticChild: ManagedDiagnosticProcessResult = { exitCode: 1, stdout: "", stderr: "" };
+  let diagnosticTimedOut = false;
   let earliestCategory = "process_failed";
   let effectStarted = false;
   let maybeDiagnosticError: unknown;
@@ -435,7 +437,7 @@ export async function runTcpPayloadDiagnostic(
     await writePrivate(path.join(workspace, intentRelative), {
       schema_version: "bitaxe-stratum-v2-tcp-payload-intent-v1",
       board: 205,
-      diagnostic_ordinal: 4,
+      diagnostic_ordinal: 5,
       source_commit: prepared.head,
       reference_commit: prepared.manifest["reference_commit"],
       app_elf_sha256: prepared.manifest["app_elf_sha256"],
@@ -492,12 +494,13 @@ export async function runTcpPayloadDiagnostic(
   } catch (error) {
     maybeDiagnosticError = error;
     if (error instanceof ManagedDiagnosticProcessError) {
+      diagnosticTimedOut = error.category === "timeout";
       diagnosticChild = { exitCode: 1, stdout: error.stdout, stderr: error.stderr };
       await writePrivate(path.join(privateRoot, "diagnostic-child.private.json"), {
         exit_code: diagnosticChild.exitCode,
         stdout_sha256: sha256(diagnosticChild.stdout),
         stderr_sha256: sha256(diagnosticChild.stderr),
-        timed_out: error.category === "timeout",
+        timed_out: diagnosticTimedOut,
       });
       await writePrivateText(
         path.join(privateRoot, "diagnostic.stdout.private.log"),
@@ -555,15 +558,17 @@ export async function runTcpPayloadDiagnostic(
     fail("hardware_blocked", "fixture cleanup failed", "cleanup");
   }
   const fixtureProgress = object(fixtureTerminal["progress"] ?? {}, "fixture_terminal");
-  const accepted = terminal["accepted"] === true
-    && fixtureTerminal["status"] === "accepted"
-    && fixtureTerminal["terminal_category"] === "accepted"
-    && diagnosticChild.exitCode === 0;
+  const accepted = tcpPayloadDiagnosticAccepted(
+    diagnosticChild.exitCode,
+    diagnosticTimedOut,
+    terminal,
+    fixtureTerminal,
+  );
   const projection: JsonObject = {
     schema_version: "bitaxe-stratum-v2-tcp-payload-projection-v1",
     status: accepted ? "accepted" : "failed",
     board: 205,
-    diagnostic_ordinal: 4,
+    diagnostic_ordinal: 5,
     source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],
     app_elf_sha256: prepared.manifest["app_elf_sha256"],

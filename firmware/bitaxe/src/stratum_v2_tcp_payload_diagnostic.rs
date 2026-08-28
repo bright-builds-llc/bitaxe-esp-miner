@@ -1,6 +1,6 @@
 //! Private boot-time STR-005 TCP payload diagnostic owner.
 
-use std::io::Write;
+use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -15,6 +15,7 @@ const MONITOR_ARM_DELAY: Duration = Duration::from_secs(10);
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const WRITE_TIMEOUT: Duration = Duration::from_secs(10);
 const ADDRESS_CAPACITY: usize = 8;
+const RECEIPT_ACK: u8 = 0xa5;
 const PAYLOAD: [u8; 64] = [
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
     26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
@@ -81,6 +82,15 @@ fn connect_and_send(settings: V2PoolSettings) -> Result<(), &'static str> {
     stream.flush().map_err(|_| "flush")?;
     publish_timing("write", started.elapsed());
     publish_stage("payload_sent");
+    stream
+        .set_read_timeout(Some(WRITE_TIMEOUT))
+        .map_err(|_| "configure")?;
+    let mut receipt = [0_u8; 1];
+    stream.read_exact(&mut receipt).map_err(|_| "receipt")?;
+    if receipt[0] != RECEIPT_ACK {
+        return Err("receipt");
+    }
+    publish_stage("receipt_acknowledged");
     Ok(())
 }
 

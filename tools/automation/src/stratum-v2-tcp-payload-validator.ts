@@ -77,7 +77,7 @@ export async function validateTcpPayloadDiagnosticProjection(
     throw new Error("diagnostic projection contract mismatch");
   }
   const requiredStages = [
-    "monitor_armed", "resolved", "tcp_connected", "payload_sent",
+    "monitor_armed", "resolved", "tcp_connected", "payload_sent", "receipt_acknowledged",
   ];
   const requiredTimings = ["connect_ms", "write_ms"];
   const requiredFixture = [
@@ -96,6 +96,7 @@ export async function validateTcpPayloadDiagnosticProjection(
     || fixture["payload_bytes_received"] !== 64
     || fixture["payload_read_category"] !== "complete"
     || fixture["extra_bytes_received"] !== 0
+    || fixture["receipt_ack_sent"] !== true
     || projection["terminal_category"] !== "accepted")) {
     throw new Error("accepted diagnostic evidence is incomplete");
   }

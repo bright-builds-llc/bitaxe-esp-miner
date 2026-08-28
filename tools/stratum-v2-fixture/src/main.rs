@@ -92,6 +92,7 @@ struct FixtureProgress {
     payload_read_category: &'static str,
     payload_digest_match: bool,
     extra_bytes_received: u16,
+    receipt_ack_sent: bool,
     responder_created: bool,
     act_two_created: bool,
     act_two_sent: bool,
@@ -207,6 +208,8 @@ fn fixture_terminal_category(progress: &FixtureProgress, mode: FixtureMode) -> &
         "accept"
     } else if mode == FixtureMode::TcpPayload && !progress.payload_digest_match {
         "payload_read"
+    } else if mode == FixtureMode::TcpPayload && !progress.receipt_ack_sent {
+        "receipt_ack"
     } else if mode == FixtureMode::TcpPayload {
         "accepted"
     } else if mode != FixtureMode::TcpPayload && !progress.act_one_received {

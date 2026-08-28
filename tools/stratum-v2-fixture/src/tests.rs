@@ -186,13 +186,19 @@ fn real_tcp_payload_mode_accepts_exact_fixed_canary_without_noise() {
 
     // Act
     stream.write_all(&payload).expect("write payload");
+    let mut receipt = [0_u8; 1];
+    stream
+        .read_exact(&mut receipt)
+        .expect("read receipt acknowledgment");
     let progress = server.join().expect("server join");
 
     // Assert
+    assert_eq!(receipt, [0xa5]);
     assert_eq!(progress.payload_bytes_received, 64);
     assert_eq!(progress.payload_read_category, "complete");
     assert!(progress.payload_digest_match);
     assert_eq!(progress.extra_bytes_received, 0);
+    assert!(progress.receipt_ack_sent);
     assert_eq!(
         fixture_terminal_category(&progress, FixtureMode::TcpPayload),
         "accepted"

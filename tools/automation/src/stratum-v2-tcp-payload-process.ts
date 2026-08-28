@@ -30,6 +30,18 @@ export function tcpPayloadDiagnosticValidatorArgs(
   ];
 }
 
+export function tcpPayloadDiagnosticAccepted(
+  diagnosticExitCode: number,
+  diagnosticTimedOut: boolean,
+  terminal: Readonly<Record<string, unknown>>,
+  fixtureTerminal: Readonly<Record<string, unknown>>,
+): boolean {
+  return terminal["accepted"] === true
+    && fixtureTerminal["status"] === "accepted"
+    && fixtureTerminal["terminal_category"] === "accepted"
+    && (diagnosticExitCode === 0 || diagnosticTimedOut);
+}
+
 export function terminateManagedProcessGroup(child: ChildProcess): void {
   if (child.pid === undefined || child.exitCode !== null) return;
   try { process.kill(-child.pid, "SIGTERM"); }

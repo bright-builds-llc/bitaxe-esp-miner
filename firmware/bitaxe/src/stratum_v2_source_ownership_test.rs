@@ -112,6 +112,7 @@ fn tcp_payload_owner_precedes_noise_and_cannot_reach_noise_or_hardware() {
         assert!(!TCP_DIAGNOSTIC.contains(forbidden));
     }
     assert!(TCP_DIAGNOSTIC.contains("stream.write_all(&PAYLOAD)"));
+    assert!(TCP_DIAGNOSTIC.contains("receipt_acknowledged"));
     assert!(TCP_DIAGNOSTIC.contains("noise_started\\\":false"));
     assert!(TCP_DIAGNOSTIC_ADMISSION.contains("tcpdiagkind"));
     assert!(TCP_DIAGNOSTIC_ADMISSION.contains("erase_admission_tuple"));

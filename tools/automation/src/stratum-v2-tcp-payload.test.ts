@@ -11,7 +11,10 @@ import {
   tcpPayloadDiagnosticWorkspaceRoot,
 } from "./stratum-v2-tcp-payload.js";
 import { tcpPayloadFixtureArgs } from "./stratum-v2-tcp-fixture.js";
-import { tcpPayloadDiagnosticValidatorArgs } from "./stratum-v2-tcp-payload-process.js";
+import {
+  tcpPayloadDiagnosticAccepted,
+  tcpPayloadDiagnosticValidatorArgs,
+} from "./stratum-v2-tcp-payload-process.js";
 import { validateTcpPayloadDiagnosticProjection } from "./stratum-v2-tcp-payload-validator.js";
 import { tcpPayloadEvaluatorIdentity } from "./stratum-v2-tcp-payload-validator.js";
 import {
@@ -37,10 +40,10 @@ function exactArgs(): string[] {
     "--package-manifest", "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json",
     "--wifi-credentials", "wifi-credentials.json",
     "--restore-bundle", "scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json",
-    "--private-parent", "scratch/str005-tcp-payload/diagnostic-004",
-    "--projection", "docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-004.json",
+    "--private-parent", "scratch/str005-tcp-payload/diagnostic-005",
+    "--projection", "docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-005.json",
     "--plan", "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md",
-    "--diagnostic-ordinal", "4",
+    "--diagnostic-ordinal", "5",
     "--capture-timeout-seconds", "360",
     "--redact-evidence",
   ];
@@ -52,7 +55,7 @@ async function acceptedProjection(): Promise<Record<string, unknown>> {
     schema_version: "bitaxe-stratum-v2-tcp-payload-projection-v1",
     status: "accepted",
     board: 205,
-    diagnostic_ordinal: 4,
+    diagnostic_ordinal: 5,
     source_commit: source,
     reference_commit: "b".repeat(40),
     app_elf_sha256: "c".repeat(64),
@@ -64,6 +67,7 @@ async function acceptedProjection(): Promise<Record<string, unknown>> {
       resolved: true,
       tcp_connected: true,
       payload_sent: true,
+      receipt_acknowledged: true,
     },
     timings: {
       connect_ms: 5,
@@ -78,6 +82,7 @@ async function acceptedProjection(): Promise<Record<string, unknown>> {
       payload_read_category: "complete",
       payload_digest_match: true,
       extra_bytes_received: 0,
+      receipt_ack_sent: true,
     },
     campaign_started: false,
     mining_started: false,
@@ -103,11 +108,11 @@ test("diagnostic parser admits only the first exact no-mining contract", () => {
   const parsed = parseTcpPayloadDiagnosticArgs("start", exactArgs());
 
   // Assert
-  assert.equal(parsed.diagnosticOrdinal, 4);
-  assert.equal(parsed.privateRoot, "scratch/str005-tcp-payload/diagnostic-004");
+  assert.equal(parsed.diagnosticOrdinal, 5);
+  assert.equal(parsed.privateRoot, "scratch/str005-tcp-payload/diagnostic-005");
   assert.equal(parsed.redactEvidence, true);
   assert.throws(() => parseTcpPayloadDiagnosticArgs("start", exactArgs().map(value =>
-    value === "4" ? "5" : value)));
+    value === "5" ? "6" : value)));
 });
 
 test("fixture owner uses an admitted session timeout below the capture timeout", () => {
@@ -123,7 +128,7 @@ test("fixture owner uses an admitted session timeout below the capture timeout",
 
 test("recovery parser admits only the fresh recovery root", () => {
   // Arrange
-  const values = exactArgs().map(value => value === "scratch/str005-tcp-payload/diagnostic-004"
+  const values = exactArgs().map(value => value === "scratch/str005-tcp-payload/diagnostic-005"
     ? "scratch/str005-tcp-payload/recovery-002"
     : value);
 
@@ -145,10 +150,10 @@ test("projection validator requires the complete authenticated and restored chai
 
   try {
     // Act / Assert
-    await validateTcpPayloadDiagnosticProjection(candidate, source, 4, workspace);
+    await validateTcpPayloadDiagnosticProjection(candidate, source, 5, workspace);
     (projection["stages"] as Record<string, unknown>)["payload_sent"] = false;
     await writeFile(candidate, JSON.stringify(projection));
-    await assert.rejects(validateTcpPayloadDiagnosticProjection(candidate, source, 4, workspace));
+    await assert.rejects(validateTcpPayloadDiagnosticProjection(candidate, source, 5, workspace));
   } finally {
     await rm(root, { recursive: true, force: true });
   }
@@ -178,6 +183,7 @@ test("diagnostic marker parser retains only bounded stages and timings", () => {
     'stratum_v2_tcp_payload={"stage":"resolved"}',
     'stratum_v2_tcp_payload={"stage":"tcp_connected"}',
     'stratum_v2_tcp_payload={"stage":"payload_sent"}',
+    'stratum_v2_tcp_payload={"stage":"receipt_acknowledged"}',
     'stratum_v2_tcp_payload_timing={"phase":"connect","duration_ms":5}',
     'stratum_v2_tcp_payload_timing={"phase":"write","duration_ms":1}',
   ].join("\n");
@@ -199,9 +205,20 @@ test("pre-monitor child failure stops before the fixture accept deadline", () =>
   assert.equal(shouldWaitForTcpFixture(1, { category: "connect" }), true);
 });
 
+test("accepted fixture and firmware evidence survives the bounded monitor timeout", () => {
+  // Arrange
+  const terminal = { accepted: true };
+  const fixture = { status: "accepted", terminal_category: "accepted" };
+
+  // Act / Assert
+  assert.equal(tcpPayloadDiagnosticAccepted(1, true, terminal, fixture), true);
+  assert.equal(tcpPayloadDiagnosticAccepted(1, false, terminal, fixture), false);
+  assert.equal(tcpPayloadDiagnosticAccepted(1, true, { accepted: false }, fixture), false);
+});
+
 test("diagnostic projection routes independent validation through Bazel", () => {
   // Arrange / Act
-  const args = tcpPayloadDiagnosticValidatorArgs("/private/candidate.json", source, 4);
+  const args = tcpPayloadDiagnosticValidatorArgs("/private/candidate.json", source, 5);
 
   // Assert
   assert.deepEqual(args, [
@@ -210,6 +227,6 @@ test("diagnostic projection routes independent validation through Bazel", () => 
     "--",
     "/private/candidate.json",
     source,
-    "4",
+    "5",
   ]);
 });

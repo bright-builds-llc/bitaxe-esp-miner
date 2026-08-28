@@ -173,6 +173,36 @@ remain. Recurrence of the same closed flash-before-transfer signature stops as
 a repeated hardware/host boundary; it is not TCP evidence and does not permit
 diagnostic-005 without a targeted boundary fix.
 
+Diagnostic-004 outcome: `continue_after_verified_fix`. The exact-peer fixture
+accepted the device connection, while the firmware emitted `monitor_armed`,
+`resolved`, `tcp_connected`, and `payload_sent` with a 158 ms connect and 0 ms
+buffer write. The fixture then timed out with zero of 64 bytes and no extras.
+The diagnostic child retained an accepted firmware terminal but remained open
+for the bounded monitor capture, so the private candidate was conservatively
+rejected. Exact recovery-006 identity/settings, inactive zero-work state, and
+cleanup all passed. This is a distinct post-write TCP boundary, not a repeat of
+the diagnostic-003 flash failure.
+
+Diagnostic-005 continuation: the targeted transport fix keeps the firmware
+socket alive until the fixture has validated exactly `0x00..0x3f`, observed no
+extra byte, and returned one fixed non-secret `0xa5` receipt on the same exact
+peer connection. The firmware reads only that one receipt byte and emits a
+closed `receipt_acknowledged` stage; the fixture records only the boolean
+`receipt_ack_sent`. A focused real-loopback regression proves the receipt
+round-trip, and a supervisor regression proves that complete firmware and
+fixture evidence remains eligible when only the intentionally bounded monitor
+process times out. After every gate passes and the exact source is
+committed/pushed/packaged, run fresh detector admission and exactly one command:
+
+`just stratum-v2-tcp-payload start --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/diagnostic-005 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-005.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 5 --capture-timeout-seconds 360 --redact-evidence`
+
+The single fixed receipt is only a delivery acknowledgment, not Noise or a
+Stratum V2 message. Every original privacy, exact restoration, safety,
+prohibition, cleanup, non-promotion, and no-unchanged-retry boundary remains.
+Failure before receipt, recurrence of zero received bytes, or incomplete
+restoration selects a typed stop/next-fix outcome and cannot produce accepted
+evidence.
+
 Verification: diagnostic-001 stopped before effects at
 `timeout:fixture_ready`; its regression-backed fixture-timeout fix passed every
 gate and was pushed as `35ae9cb33458ad6c76f6eedef5d0538720d80367`.
@@ -180,14 +210,12 @@ Diagnostic-002 used that exact package and fresh one-board admission, then
 sealed `payload_read` with zero of 64 bytes before the mandatory restore path
 stopped at `hardware_blocked:restoration`. No public projection was published.
 
-Completion review: Blocked under
-`docs/parity/work-plans/20260828T185251Z-STR-005/CLOSURE.md`. The implementation
-and pre-effect fixture fix are complete, but TCP payload delivery, exact
-recovery-006 firmware/settings restoration, inactive final runtime, and cleanup
-remain unverified. Keep this task active. A fresh recovery-only task/plan must
-restore and prove the device before any later TCP diagnostic; diagnostic-003,
-Noise, V2 messages, ASIC work, mining, and STR-005 promotion are not authorized.
-STR-005 remains `implemented` with `unit,golden,workflow`.
+Current review: the earlier terminal closure is superseded by the user's
+standing iterative hardware-debug authorization and successful recovery-002.
+Exact restoration is now proved; TCP payload delivery remains the sole open
+child objective. Keep this task active through diagnostic-005. Noise, V2
+messages, ASIC work, mining, and STR-005 promotion remain unauthorized. STR-005
+remains `implemented` with `unit,golden,workflow`.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 

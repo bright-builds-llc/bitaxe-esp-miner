@@ -158,3 +158,46 @@
   fixture immediately on pre-monitor failure, rotate to diagnostic-004, run all
   gates, commit/push/package, redetect, and invoke once. A repeated
   flash-before-transfer signature stops.
+
+## 2026-08-28T21:12:45Z | Diagnostic-004 and receipt-bound fix
+
+- Source commit: `e6e22f29671394c8286c07860becfb38d7c20b8a`
+- Actions: ran diagnostic-004 from fresh one-board admission, retained the
+  complete closed TCP boundary, and built a receipt-bound discriminator for the
+  zero-byte result.
+- Verification: firmware reached monitor armed, resolve, exact-peer connect,
+  and payload-buffer write; connect was 158 ms and the local write reported 0
+  ms. The exact-peer fixture accepted the connection but timed out with zero of
+  64 bytes and no extras. Exact recovery-006 identity/settings, inactive
+  zero-work state, and cleanup all passed. Focused Cargo and Bazel tests now
+  prove a fixed `0xa5` receipt round-trip after exact payload validation, exact
+  diagnostic-005 restoration authority, source ownership, and acceptance of a
+  complete evidence chain when only bounded monitor capture times out.
+- Evidence: private root `scratch/str005-tcp-payload/diagnostic-004`; the
+  rejected private candidate retained closed categories and no protected value
+  is promoted.
+- Outcome: distinct post-write `continue_after_verified_fix`. The strongest
+  current hypothesis is immediate socket destruction before lwIP transmitted
+  its queued buffer; the receipt keeps ownership alive until fixture receipt.
+- Blocker or next safe action: finish every mandatory gate, commit/push and
+  package the exact diagnostic-005 contract, redetect, then invoke
+  diagnostic-005 once. The fixed receipt does not enter Noise, V2 protocol,
+  ASIC control, or mining.
+
+## 2026-08-28T21:18:00Z | Diagnostic-005 software verification
+
+- Source commit: `e6e22f29671394c8286c07860becfb38d7c20b8a`
+- Actions: completed the receipt-gated firmware/fixture path, closed projection
+  fields, exact fifth-ordinal command/restoration authority, and bounded
+  monitor-timeout acceptance predicate.
+- Verification: formatting, strict Clippy, all-target/all-feature build, full
+  Cargo tests, Bright Builds, all 57 Bazel tests, canonical six-artifact
+  ESP32-S3 package, parity with no validation errors, parity progress,
+  redaction, reference cleanliness, focused TCP/restore/source-ownership tests,
+  whitespace, and staged diff review passed.
+- Evidence: software and loopback behavior only at this checkpoint; no new
+  detector, credential, network, USB, flash, monitor, or device effect.
+- Outcome: exact diagnostic-005 source and evidence contract are ready for a
+  distinct commit and clean push.
+- Blocker or next safe action: commit/push, rebuild the exact clean package,
+  capture fresh one-board detector admission, then run diagnostic-005 once.

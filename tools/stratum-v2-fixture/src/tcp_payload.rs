@@ -1,4 +1,4 @@
-use std::io::Read;
+use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::time::Duration;
 
@@ -71,5 +71,10 @@ pub(super) fn read_tcp_payload(
     if progress.extra_bytes_received != 0 {
         bail!("payload contained extra bytes");
     }
+    stream
+        .write_all(&[0xa5])
+        .context("write receipt acknowledgment")?;
+    stream.flush().context("flush receipt acknowledgment")?;
+    progress.receipt_ack_sent = true;
     Ok(())
 }
