@@ -12274,3 +12274,1043 @@ result, projection, exact source/reference/package identity, both hardware
 phases, safe-stop, both receipts/restarts, restoration, cleanup, independent
 validation, and redaction. Progress synchronized to 90/94 verified (95.7%).
 The task is complete and ready for immediate archive.
+
+### task-parity-str005-stratum-v2 | 2026-08-22 | Implement Stratum V2 protocol and firmware ownership
+
+- [x] Implement bounded Stratum V2 framing, Noise transport, SetupConnection,
+      standard and extended channel, job, target, and share-message behavior
+      against the pinned reference implementation.
+- [x] Add a single firmware Stratum V2 task owner with typed configuration,
+      protocol-coordinator primary/fallback selection, bounded reconnect and
+      timeout behavior, explicit memory limits, and secret-free diagnostics.
+- [x] Add provenance-bound golden fixtures and focused pure, transport,
+      lifecycle, fallback, malformed-input, and redaction tests; build/package
+      the ESP32-S3 firmware and pass every mandatory repository gate.
+- [x] Add the deterministic host-owned SV2 Noise pool fixture, private
+      detector-gated campaign, safe-stop/restoration path, closed evidence
+      projection, and independent validator.
+- [x] Transition only `STR-005` to the strongest evidence-supported status:
+      `implemented` with `unit,golden,workflow`, or `verified` only after the
+      exact accepted Ultra 205 campaign adds `hardware-regression`.
+- [x] Run the exact attempt-002 campaign once; preserve `implemented` after its
+      pre-effect `evidence_invalid` closure and consume the ordinal.
+- [x] Reproduce and distinguish the collapsed pre-effect `evidence_invalid`
+      boundary through the real Bazel launcher without consuming a hardware
+      attempt.
+- [x] Fix the diagnosed campaign boundary, add regression coverage at the real
+      process/runfiles seam, and pass the complete software verification gates.
+- [x] Authorize a fresh hardware ordinal only through a new immutable
+      continuation plan whose checkpoint discriminator proves the changed
+      pre-effect boundary before any effect.
+- [x] Run the exact attempt-003 campaign once; preserve `implemented` after its
+      pre-root `hardware_blocked` / `unclassified` closure and consume the
+      ordinal.
+- [x] Add typed runtime monitor, origin, settings, restoration-input, and
+      restore-package admission plus a read-only real-device command.
+- [x] Run the read-only admission under the new immutable plan; withhold
+      attempt-004 after the closed `restore_package` blocker.
+
+Plan: `docs/parity/work-plans/20260822T040442Z-STR-005/PLAN.md`
+
+Consumed hardware continuation plan:
+`docs/parity/work-plans/20260822T063702Z-STR-005-RETRY/PLAN.md`
+
+Consumed hardware continuation plan:
+`docs/parity/work-plans/20260822T165408Z-STR-005-RETRY2/PLAN.md`
+
+Closed runtime-admission plan:
+`docs/parity/work-plans/20260822T171824Z-STR-005-RUNTIME-ADMISSION/PLAN.md`
+
+Reference scope:
+
+- `reference/esp-miner/components/stratum_v2/sv2_protocol.c`
+- `reference/esp-miner/components/stratum_v2/sv2_noise.c`
+- `reference/esp-miner/main/tasks/stratum_v2_task.c`
+- `reference/esp-miner/main/tasks/protocol_coordinator.c`
+- `reference/esp-miner/main/nvs_config.c`
+
+Authorization: repository source, fixture, test, documentation, build/package,
+Git commit, push, network, pool, and Ultra 205 hardware work under the linked
+immutable plan. Attempts 001, 002, and 003 are consumed. Attempt-004 remains
+unused and is not effect-eligible because the closed runtime-admission plan did
+not reach `runtime_admission_ready`. No campaign command is currently
+authorized. Effects remain
+ineligible until the repo-owned command, private
+schemas, validator, recovery, tests, full gates, clean exact package, and pushed
+implementation commit exist. The campaign may use one host-owned local SV2
+Noise pool fixture, exact package flash, temporary private Wi-Fi/SV2 NVS,
+conservative 400 MHz/1100 mV/100% fan mining, one accepted share, safe stop,
+exact setting/package restoration, and cleanup. Third-party pools, external
+UART, pins/pads/headers/GPIO, probes, jumpers, electrical work, fault injection,
+unbounded mining, arbitrary profiles, OTA, erase, and raw secret output remain
+prohibited. The full objective, privacy/evidence policy, preconditions,
+effects, limits, recovery, retry bound, and stop conditions are authoritative
+in the linked plan.
+
+Evidence/status boundary: promotion into `Active` and this explicit deferred
+activation do not themselves change checklist status. `implemented` requires
+the complete bounded software owner, current pinned-reference provenance,
+deterministic tests, canonical firmware package, redaction review, and all
+mandatory gates. `verified` additionally requires the linked accepted local
+SV2 Noise pool/Ultra 205 hardware regression with safe-stop, exact restoration,
+cleanup, independent validation, and redaction. External production-pool
+interoperability remains a non-claim.
+
+Progress: commit `4718a9e5` repaired legacy verified-plan selection and added
+the only audited deferred activation path, then transitioned `STR-005` to
+`in-progress`. The current pure slice adds official SRI Noise NX, bounded
+six-byte framing, pinned standard/extended messages, channel/job/target/share
+state, BM1366 work conversion, provenance-bound golden vectors, fail-closed
+malformed/tamper/nonce boundaries, and redaction-safe diagnostics. Focused Cargo
+tests and canonical Bazel `//crates/bitaxe-stratum:tests` pass. Firmware owner,
+campaign, package, full gates, and hardware evidence remain pending.
+
+Software completion review: the firmware now selects exactly one V1/V2 owner,
+admits V2 effects only through the consumed 180-second conservative campaign,
+requires PSRAM plus fresh Ultra 205 safety before preparation, uses the shared
+ASIC/safety/watchdog owners, bounds pre-work retry to the configured V2 pool
+pair, poisons failed Noise sessions, and always attempts terminal safe stop.
+The host fixture completes a real TCP Noise handshake and validates one
+target-qualified standard share before success. The private flash campaign
+stage admits only standard-channel canonical Base58Check authority credentials
+and requires ordered V2 runtime plus safe-stop markers. Canonical firmware
+build/package, all 52 Bazel tests, 23 pure V2 tests, the real fixture test, 393
+flash tests, Bright Builds, license generation, and reference cleanliness pass.
+No hardware or external-network effect occurred in the software checkpoint.
+The outer command now fails before mutation unless current settings are exactly
+reconstructible from protected local inputs and an exact prior package is
+available; it supervises the owned fixture/campaign, restores package and
+settings on success or failure, and publishes only after an independent
+validator passes. The authorized ordinals later closed before any effect, so
+`verified` is not claimed.
+
+Status transition: source/evidence commit
+`abf6c1bdfaf3f929f2fea30ec630635262221755` is bound by transition
+`20260822T061900Z-STR-005` and code-span metadata correction
+`20260822T062500Z-STR-005-TARGETS`; `STR-005` is `implemented` with
+`unit,golden,workflow`. The task remains active because the exact-restoration
+outer hardware campaign and `hardware-regression` evidence are incomplete.
+
+Hardware attempt closure: attempt-001 and the regression-backed attempt-002
+both stopped as `evidence_invalid` before passive monitoring, private-root
+creation, fixture start, NVS construction, USB campaign ownership, flash,
+network, mining, or hardware control. Attempt-002 ran only after every gate
+passed on clean pushed source `c8de00ca`; the exact package, credential modes,
+ignored absent paths, and synchronized Git state were re-confirmed afterward.
+No third attempt is authorized. The row remains `implemented`, the hardware
+checkbox remains open, and a fresh audited continuation must first expose a
+closed pre-effect checkpoint discriminator; see
+`docs/parity/work-plans/20260822T063702Z-STR-005-RETRY/CLOSURE.md`.
+
+Bug-fix continuation: investigation started after explicit user authorization
+on 2026-08-22. This phase is software-only: it may add value-free closed
+pre-effect diagnostics and real-launch regression coverage, but it must not run
+the consumed campaign or touch hardware. A new effect contract is required
+after the root cause and fix are independently proven.
+
+Root-cause finding: the attempt-002 workspace patch resolved source file paths
+through `BUILD_WORKSPACE_DIRECTORY`, but the campaign's Git, flash, validator,
+route, and fixture children still inherited Bazel execroot as `cwd`. The first
+actual predicate, `git check-ignore -q` for the private attempt path, therefore
+returned nonzero and collapsed to `evidence_invalid`. The real-launch regression
+reproduced that exact exit and passes after every campaign child receives the
+resolved workspace explicitly. A separate read-only preflight now exposes only
+closed checkpoint names and proves `effect_started=false` plus
+`private_root_created=false`.
+
+Software fix verification: the exact real-launch loop first failed with child
+Git top-level at Bazel execroot and ignored-path exit 1, then passed twice after
+workspace binding. The hermetic campaign/preflight tests, aggregate automation
+suite, ordered Cargo format/clippy/build/test gates, Bright Builds, all 53 Bazel
+tests, canonical firmware build/package, parity/progress, redaction, reference
+cleanliness, open-plan selection, sensitive-value review, and diff checks pass.
+The shared source-workspace resolver now also rejects nested Bazel-output
+`MODULE.bazel` copies without Git identity. All temporary debug probes were
+removed. No detector, USB, device, fixture, network, pool, mining, or hardware
+effect ran during diagnosis and software verification.
+
+Attempt-003 outcome: clean pushed source and package `39aefd23` passed the
+no-effect `pre_effect_ready` checkpoint and admitted exactly one Ultra 205. The
+single campaign stopped after about 20 seconds as `hardware_blocked` with the
+checkpoint still `unclassified`. The attempt root and public projection remain
+absent, proving fixture start, NVS construction, flash, pool traffic, mining,
+share submission, and hardware control did not begin. No owned process remains;
+a post-attempt detector again confirmed the same USB session ready. The timing
+and execution order place the remaining gap in passive runtime monitor/origin
+or settings/restoration admission, but the consumed evidence cannot distinguish
+those sub-boundaries. See the linked attempt-003 closure. No retry is allowed.
+
+Runtime-admission software verification: the effectful campaign and read-only
+diagnostic now share one monitor/origin/settings/restoration/package admission
+path with closed failure checkpoints and `runtime_admission_ready`. Pure origin
+cardinality, protected preflight, failure redaction, exact attempt-004 parsing,
+and real-launch workspace/ignored-path tests pass. Ordered Cargo gates, all 53
+Bazel tests, canonical build/package, Bright Builds, parity/progress, redaction,
+reference cleanliness, selector lineage, sensitive-value review, and diff checks
+pass; focused tests also pass after the final error-classification cleanup. No
+device access occurred during this implementation/gate cycle.
+
+Runtime-admission outcome: clean pushed source and package `24180a94` passed
+`pre_effect_ready`, then a fresh detector admitted exactly one Ultra 205. The
+read-only command passed passive monitor completion, unique runtime-origin,
+same-origin system/theme reads, and exact restoration-input reconstruction, but
+stopped as `hardware_blocked` / `restore_package`. Attempt-004 was not consumed;
+its root and the public projection remain absent, and no fixture, flash, pool,
+mining, share, or hardware-control effect ran. The bounded local inventory has
+71 retained package manifests but cannot construct one exact restorable package
+for the firmware currently running. STR-005 remains `implemented`. Do not flash
+a new baseline or weaken exact rollback; see the linked closure.
+
+Recovery continuation:
+`docs/parity/work-plans/20260824T000902Z-STR-005-RESTORE-RECOVERY/PLAN.md`
+
+Recovery outcome: clean pushed source and exact current package `5a0a3010`
+passed all gates, and a fresh detector admitted one Ultra 205. Bounded search
+and the single timestamp-pinned rebuild did not yield an exact installed
+package. Firmware-only fallback completed three allowed ranges, skipped NVS and
+coredump storage, then stopped as `hardware_blocked` / `snapshot_capture` when
+the 4 MiB factory read reached the fixed 300-second child limit. No bundle or
+public projection was published; attempt-004 remains unused and absent, no
+write or campaign effect began, private modes were repaired and verified, and
+post-run detection passed. `STR-005` remains `implemented`; this plan is closed
+and authorizes no retry. See the linked closure.
+
+Supersession review: Superseded by the decision-complete decomposition plan `docs/parity/work-plans/20260828T175218Z-STR-005-DECOMPOSITION/PLAN.md` and successor tasks task-str005-tcp-payload-205, task-str005-noise-auth-205, task-str005-v2-channel-job-205, task-str005-bm1366-share-205, task-str005-evidence-promotion. Existing plans, closures, evidence, attempt ordinals, and terminal decisions remain immutable; this archival does not change STR-005 from `implemented | unit,golden,workflow`.
+
+### task-parity-str005-installed-package-recovery | 2026-08-23 | Recover installed firmware and verify STR-005
+
+- [x] Implement one protected restore-recovery owner with exact runtime identity,
+      bounded artifact search, one timestamp-pinned rebuild, and firmware-only
+      flash snapshot fallback that never reads NVS or coredump storage.
+- [x] Add a typed `package_v3` / `flash_snapshot_v1` restore bundle, independent
+      validator, historical-package admission, and exact snapshot restore adapter.
+- [x] Require the explicit validated restore bundle in the attempt-004 campaign
+      and prove original package/runtime/settings restoration on every terminal path.
+- [x] Pass all pure, real-process, flash-rendering, restoration, redaction,
+      Cargo, Bright Builds, Bazel, firmware, package, parity, and reference gates.
+- [ ] Commit and push the exact implementation before device access; recover the
+      installed bundle without mutation and run attempt-004 only after readiness.
+- [x] Promote only `STR-005` on one independently accepted attempt-004 projection;
+      otherwise close truthfully, preserve `implemented`, and authorize no retry.
+
+Plan: `docs/parity/work-plans/20260824T000902Z-STR-005-RESTORE-RECOVERY/PLAN.md`
+
+Authorization: repository source/test/docs/build/package, Git commit/push,
+read-only runtime HTTP/USB observation, bounded Git/submodule/toolchain network,
+one protected installed-firmware recovery, and the single attempt-004 campaign
+under the immutable plan. Recovery may search only repository/Bazel package
+locations, create one owned detached worktree, perform one exact historical
+rebuild, and, only if no exact package is recovered, read the eight plan-listed
+firmware ranges. It must never read raw NVS or coredump storage. Attempt-004 may
+flash the exact current package, use the local SV2 fixture and conservative
+400 MHz/1100 mV/100% fan profile, then restore the admitted original bundle and
+settings. Historical/raw restoration writes are allowed only after campaign
+effects and only through the plan-bound recovery adapter. A new baseline,
+external pool, direct UART/pins, fault injection, OTA, erase, arbitrary writes,
+unbounded mining, and attempt-005 remain prohibited.
+
+Software checkpoint: the recovery owner parses the installed source/reference,
+ELF digest, timestamp, build identity, IDF version, and running partition; scans
+bounded repository/Bazel package locations; performs at most one clean detached-
+worktree rebuild with canonical stable/volatile provenance; and captures only
+the eight admitted firmware ranges when rebuild recovery is unavailable. The
+independent validator enforces protected modes, containment, schema-v3 artifact
+digests or exact snapshot ranges, plan/source binding, and a closed redacted
+projection. Attempt-004 preflight/runtime admission require the fixed bundle,
+and the Rust restore adapter admits historical packages separately from normal
+current-workspace flashing or renders one managed eight-range write followed by
+Wi-Fi seed and exact runtime/settings verification. Ordered Cargo gates, 395
+flash tests, recovery/campaign tests, Bright Builds, all 54 Bazel tests,
+canonical firmware/package, parity/progress, redaction, reference cleanliness,
+selector lineage, and diff checks pass. No device effect ran during software
+implementation.
+
+Hardware closure: the recovery fallback stopped before readiness at the bounded
+factory-read timeout. Attempt-004 was withheld and remains unused; no device
+write, fixture, pool, mining, ASIC-control, or settings effect began. Cleanup,
+protected modes, absent campaign outputs, and a fresh one-board detector passed.
+The diagnosed readback timeout and interrupted-file mode defect is corrected in
+software but was not rerun. Closure:
+`docs/parity/work-plans/20260824T000902Z-STR-005-RESTORE-RECOVERY/CLOSURE.md`.
+
+Supersession review: Superseded by the decision-complete decomposition plan `docs/parity/work-plans/20260828T175218Z-STR-005-DECOMPOSITION/PLAN.md` and successor tasks task-str005-tcp-payload-205, task-str005-noise-auth-205, task-str005-v2-channel-job-205, task-str005-bm1366-share-205, task-str005-evidence-promotion. Existing plans, closures, evidence, attempt ordinals, and terminal decisions remain immutable; this archival does not change STR-005 from `implemented | unit,golden,workflow`.
+
+### task-parity-str005-installed-package-recovery-002 | 2026-08-23 | Retry installed firmware recovery at corrected readback bounds
+
+- [x] Bind recovery-002 to the corrected explicit-baud/protected-target command,
+      a fresh private root, fresh public projection, and immutable continuation.
+- [x] Pass every software, privacy, package, reference, selector, and diff gate;
+      commit/push before device access and build the exact clean package.
+- [x] Run recovery-002 once, independently validate its exact restore bundle,
+      and withhold the campaign unless all no-effect readiness gates pass.
+- [ ] Run still-unused attempt-004 once only after admission, then safe-stop,
+      restore the original bundle/settings, prove cleanup and exact identity,
+      and independently validate the closed campaign projection.
+- [x] Promote only `STR-005` on complete accepted hardware evidence; otherwise
+      close truthfully at `implemented`, withhold `RESULT.md`, and do not retry.
+
+Plan: `docs/parity/work-plans/20260824T012436Z-STR-005-RESTORE-RECOVERY2/PLAN.md`
+
+Authorization: repository source/test/docs/build/package, Git commit/push,
+read-only runtime HTTP/USB observation, bounded Git/submodule/toolchain network,
+one fresh protected recovery-002, and the still-unused attempt-004 campaign
+under the immutable plan. Recovery may search only repository/Bazel package
+locations, create one owned detached worktree, perform one timestamp-pinned
+historical rebuild, and then read only the eight allowlisted firmware ranges at
+explicit 460800 baud with 600 seconds per range. It never reads NVS or coredump
+storage. Attempt-004 may flash the exact current package, use the local SV2
+fixture and conservative 400 MHz/1100 mV/100% fan profile, then restore the
+admitted original bundle and settings. A new baseline, external pool, direct
+UART/pins, fault injection, OTA, erase, arbitrary writes, unbounded mining,
+attempt-005, and unchanged recovery retry remain prohibited.
+
+Evidence/status boundary: recovery readiness requires one independently
+validated exact package or eight-range snapshot bundle with protected modes,
+containment, digests, installed identity, source/plan binding, runtime
+continuity, cleanup, and a closed redacted projection. `STR-005` stays
+`implemented` unless attempt-004 additionally proves the local Noise handshake,
+channel/job/work/share lifecycle, accepted response, complete safe stop, exact
+original runtime/settings restoration, cleanup, and independent redaction-safe
+validation.
+
+Progress: authorized after recovery-001 closed on the changed 4 MiB readback
+boundary. The recovery, campaign, historical restore, runfile, and focused test
+bindings now target only the new task/plan/root/projection, and focused recovery,
+campaign, launcher, and all 395 flash tests pass. No recovery-002 or attempt-004
+effect has begun.
+
+Software verification: ordered Cargo format/clippy/build/test, Bright Builds,
+all 54 Bazel tests, canonical firmware build/package, parity/progress,
+redaction, pinned-reference cleanliness, open-plan selection, sensitive-value
+review, and final diff checks pass. The selector resumes only `STR-005` through
+the new immutable plan. Commit/push and an exact clean package rebuild remain
+the final pre-device gates.
+
+Hardware closure: clean pushed source/package `de081a94` and a fresh detector
+passed. Recovery-002 completed all eight explicit-baud firmware-only reads,
+excluded NVS/coredump, created a protected snapshot bundle, and proved runtime
+continuity, but the owner stopped `evidence_invalid` at
+`independent_validation` and published no final projection. The same retained
+bundle/candidate passes a bounded post-run invocation of the validator with the
+original source/plan bindings, but the failed owner retained no diagnostic that
+can safely classify the child-only discrepancy. The post-run result does not
+override the terminal command. Attempt-004 remains unused and absent; no write,
+fixture, pool, mining, ASIC-control, or settings effect began. Private modes,
+process cleanup, unpublished-candidate containment, and post-run one-board
+detection pass. `STR-005` remains `implemented`; no retry is authorized.
+Closure:
+`docs/parity/work-plans/20260824T012436Z-STR-005-RESTORE-RECOVERY2/CLOSURE.md`.
+
+Supersession review: Superseded by the decision-complete decomposition plan `docs/parity/work-plans/20260828T175218Z-STR-005-DECOMPOSITION/PLAN.md` and successor tasks task-str005-tcp-payload-205, task-str005-noise-auth-205, task-str005-v2-channel-job-205, task-str005-bm1366-share-205, task-str005-evidence-promotion. Existing plans, closures, evidence, attempt ordinals, and terminal decisions remain immutable; this archival does not change STR-005 from `implemented | unit,golden,workflow`.
+
+### task-parity-str005-installed-package-recovery-003 | 2026-08-24 | Diagnose validator child and continue STR-005 recovery
+
+- [x] Add a protected closed validator-child receipt and real Bazel launcher
+      regression for acceptance, rejection, launch failure, timeout, output
+      limit, working-directory binding, modes, and redaction.
+- [x] Bind the fresh recovery-003 root/projection/bundle across recovery,
+      admission, campaign, restore, runfiles, task, and tests.
+- [x] Pass every software/privacy/package/reference/selector/diff gate,
+      commit/push, and build the exact clean package before device access.
+- [x] Run recovery-003 once and withhold attempt-004 unless the owner publishes
+      an independently accepted exact restore-readiness projection.
+- [ ] If admitted, run attempt-004 once, safe-stop, restore the original
+      bundle/settings, prove exact runtime/cleanup, and validate evidence.
+- [x] Promote only `STR-005` on complete accepted hardware evidence; otherwise
+      close at `implemented`, withhold `RESULT.md`, and do not retry.
+
+Plan: `docs/parity/work-plans/20260824T214920Z-STR-005-RESTORE-RECOVERY3/PLAN.md`
+
+Authorization: repository source/test/docs/build/package, Git commit/push,
+bounded real-process validation, read-only runtime HTTP/USB observation, one
+fresh protected recovery-003, and the still-unused attempt-004 campaign under
+the immutable plan. Recovery retains a private closed validator-child receipt,
+searches only repository/Bazel package locations, performs at most one
+timestamp-pinned historical rebuild, then reads only the eight allowlisted
+firmware ranges at 460800 baud with 600 seconds per range. It never reads NVS or
+coredump. Attempt-004 may flash the exact current package, use the local SV2
+fixture and 400 MHz/1100 mV/100% fan profile, then restore the admitted original
+bundle/settings. A new baseline, external pool, direct UART/pins, fault
+injection, OTA, erase, arbitrary writes, unbounded mining, attempt-005, and
+unchanged retry remain prohibited.
+
+Evidence/status boundary: recovery readiness requires an accepted owner result,
+protected validator receipt, exact package or snapshot bundle, runtime
+continuity, independent validation, cleanup, and a closed redacted projection.
+The retained recovery-002 bundle is diagnostic evidence only and is not an
+admitted campaign restore source. `STR-005` remains `implemented` until the
+complete attempt-004 local Noise/share/safe-stop/exact-restoration evidence is
+independently accepted.
+
+Progress: authorized from the recovery-002 child-only validator discrepancy.
+The dedicated child runner strips inherited nested `JS_BINARY__*` state, bounds
+and hashes output, retains one closed protected receipt for every outcome, and
+requires an accepted receipt during later campaign admission. Focused recovery,
+campaign, real-launch, and all 395 flash tests pass across acceptance,
+rejection, launch failure, timeout, output limit, workspace binding, modes, and
+secret-canary exclusion. No recovery-003 or attempt-004 effect has begun.
+
+Software verification: ordered Cargo format/clippy/build/test, Bright Builds,
+all 55 Bazel tests including the real nested-launch regression, canonical
+firmware build/package, parity/progress, redaction, reference cleanliness,
+selector lineage, sensitive-value review, file-length checks, and final diff
+review pass. Commit/push and the exact clean package rebuild are the remaining
+atomic pre-device steps.
+
+Hardware closure: exact pushed source/package `b33c89d1` and a fresh detector
+passed, but recovery-003 stopped `hardware_blocked` at
+`runtime_monitor_process` before installed identity, package search/rebuild,
+flash readback, bundle, validator, or receipt creation. The empty private root
+is `0700`; no public projection/candidate or campaign root exists. Attempt-004
+remains unused, no write/readback/fixture/pool/mining/ASIC/settings effect began,
+all children exited, and post-run one-board detection passed. The validator-
+child software boundary remains regression-proved but was not reached on the
+device path. `STR-005` remains `implemented`; no retry is authorized. Closure:
+`docs/parity/work-plans/20260824T214920Z-STR-005-RESTORE-RECOVERY3/CLOSURE.md`.
+
+Supersession review: Superseded by the decision-complete decomposition plan `docs/parity/work-plans/20260828T175218Z-STR-005-DECOMPOSITION/PLAN.md` and successor tasks task-str005-tcp-payload-205, task-str005-noise-auth-205, task-str005-v2-channel-job-205, task-str005-bm1366-share-205, task-str005-evidence-promotion. Existing plans, closures, evidence, attempt ordinals, and terminal decisions remain immutable; this archival does not change STR-005 from `implemented | unit,golden,workflow`.
+
+### task-parity-str005-autonomous-continuation | 2026-08-25 | Autonomously finish STR-005 with progress-gated attempts
+
+- [x] Add a tight red-capable runtime-monitor feedback loop and protected closed
+      monitor-child receipt at the real process/USB boundary.
+- [x] Diagnose the recovery-003 boundary, add the regression before the fix,
+      prove red/green, and pass every software/privacy/package/reference gate.
+- [x] After push/package/detector, prove the real fixed boundary once with:
+      `just stratum-v2-runtime-monitor-diagnostic --board 205 --port <detector-port> --private-root scratch/str005-runtime-monitor-diagnostic/diagnostic-001 --redact-evidence`.
+- [x] Commit/push, build the exact package, and run recovery-004 once with:
+      `just stratum-v2-restore-recovery --board 205 --port <detector-port> --private-root scratch/str005-installed-package-recovery/recovery-004 --projection docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-004.json --redact-evidence`.
+- [x] For each later progress-backed recovery, append the fresh ordinal, exact
+      expanded command, boundary signature, verified fix/regression, terminal
+      outcome, and continuation decision to this block before effects.
+- [x] After accepted recovery readiness, bind its exact bundle and run the
+      existing preflight, runtime admission, and single attempt-004 campaign.
+- [x] Promote only `STR-005` after accepted hardware plus exact restoration;
+      otherwise stop only at a policy terminal and close truthfully.
+
+Plan: `docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md`
+
+Authorization: autonomous repository diagnosis/fixes/tests/docs/build/package,
+Git commit/push, network/toolchain use, read-only runtime HTTP/USB observation,
+fresh progress-backed recovery ordinals, and the still-unused single
+attempt-004 campaign under the rolling plan. No repeated human confirmation or
+new plan is required. Every fresh ordinal still requires a fully expanded exact
+command recorded here, a changed regression-backed boundary, all gates, exact
+clean pushed package, detector admission, fresh roots, one execution, cleanup,
+and one closed policy outcome. Unchanged retries and reused roots are forbidden.
+
+Initial authoritative boundary: recovery-003 ended
+`hardware_blocked/runtime_monitor_process` before identity capture. Recovery-004
+is ineligible until a protected monitor receipt, red/green real-process
+reproduction, targeted fix, accepted read-only real-USB diagnostic, complete
+gates, push, and exact package exist. Attempt-004 remains unused.
+
+Standing non-claims: raw NVS/coredump capture, new baseline, external pool,
+direct UART/pins, fault injection, OTA, erase, arbitrary writes, unbounded
+mining, repeated attempt-004, attempt-005 campaign, and release readiness.
+
+Progress ledger: the exact `bazel test
+//tools/automation:stratum_v2_restore_unit_test` loop failed red at
+`hardware_blocked/runtime_monitor_process` in 0.2 seconds when the production
+caller rendered its former 15-second capture bound. Changing only capture to
+the contract-required 60 seconds and child lifetime to 75 seconds made the same
+real-process loop green, confirming the highest-ranked timeout hypothesis. The
+recovery path now retains initial/final protected monitor receipts with closed
+exit, timeout, output-limit, origin-count, USB-cleanup, launcher, cwd, and digest
+facts. A dedicated read-only real-USB diagnostic is bound as the required
+real-boundary regression before recovery-004. Focused recovery, campaign,
+launcher, and all 395 flash tests pass. No autonomous-continuation hardware
+effect has begun.
+
+Software verification: ordered Cargo format/clippy/build/test, Bright Builds,
+all 55 Bazel tests, focused red/green and closed-receipt tests, canonical
+firmware build/package, parity/progress, redaction, reference cleanliness,
+selector lineage, sensitive-value review, file-length checks, and diff review
+pass. One full Bazel run transiently reported both firmware Cargo actions
+failed; the narrowed concurrent build, a forced fresh concurrent rebuild, and
+an unchanged full rerun all passed, so no deterministic source or shared-target
+failure reproduced. No workaround or suppressed gate was added.
+
+Recovery-004 outcome: pushed source/package `ed69cc24`, fresh detector, and the
+read-only `diagnostic-001` real USB boundary passed `runtime_monitor_ready` with
+a protected accepted receipt. Recovery-004 then passed both qualified runtime
+monitors, identity/runtime continuity, all eight firmware-only reads, protected
+modes, and bundle construction, but stopped `evidence_invalid` at
+`independent_validation`. Its new receipt signature is child exit 1, no timeout,
+output limit, or spawn failure, zero stdout bytes, bounded stderr digest/count,
+and `validation_accepted=false`. No final projection or campaign root was
+published; attempt-004 remains unused. The unpublished candidate was preserved
+outside the sealed root, all children exited, and post-run one-board detection
+passed. No device write, NVS access, fixture, pool, mining, ASIC, or settings
+effect began.
+
+Continuation decision: `continue_after_verified_fix`. The exact workspace
+feedback command `bazel run
+//tools/automation:stratum_v2_restore_workspace_launcher_test` reproduced the
+child-only failure in milliseconds. It showed the nested Bazel launcher failed
+before validator stdout; direct CLI launch then exposed a Node runtime boundary.
+The Bazel wrapper's resolved `JS_BINARY__NODE_BINARY`, rather than
+`process.execPath`, is the correct independent child executable. The same exact
+workspace command now passes accepted and rejected fixtures. Recovery-005 is
+the next fresh ordinal and is ineligible until focused/full gates, push, exact
+package, and detector pass. Exact command:
+`just stratum-v2-restore-recovery --board 205 --port <detector-port> --private-root scratch/str005-installed-package-recovery/recovery-005 --projection docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-005.json --redact-evidence`.
+
+Recovery-005 outcome: exact pushed source/package `caf24be8` and fresh detector
+passed, but the initial monitor stopped `hardware_blocked/runtime_monitor_process`.
+Its protected signature is `timeout` with one unique origin and substantial
+bounded runtime output already observed, no stderr, launch failure, or output
+limit, and cleanup not yet reached when the outer 75-second supervisor expired.
+The root contains only the protected initial-monitor receipt; no identity,
+search/rebuild, readback, bundle, projection, validator, fixture, campaign, or
+device effect began. A post-run detector proved cleanup and one ready board.
+
+Continuation decision: `continue_after_verified_fix`. Device-session source
+proves the monitor command may independently spend 10 seconds probing, 60
+seconds admitting/reacquiring, 60 seconds capturing, and 60 seconds final-
+cleaning. The new timing regression failed red at 75 seconds and passed green
+after changing only the outer ceiling to 210 seconds; the internal 60-second
+capture and every device-session phase bound remain unchanged. Before
+recovery-006, the exact real-USB regression is:
+`just stratum-v2-runtime-monitor-diagnostic --board 205 --port <detector-port> --private-root scratch/str005-runtime-monitor-diagnostic/diagnostic-002 --redact-evidence`.
+Recovery-006 exact command:
+`just stratum-v2-restore-recovery --board 205 --port <detector-port> --private-root scratch/str005-installed-package-recovery/recovery-006 --projection docs/parity/evidence/str005-installed-package-recovery/restore-readiness-projection-006.json --redact-evidence`.
+
+Recovery-006 and campaign outcome: `diagnostic-002`, focused/full gates, pushed
+source/package `7d5d9504`, and fresh detector passed. Recovery-006 independently
+accepted its eight-range snapshot bundle and published the closed redacted
+readiness projection. A real-Git regression then fixed collapsed untracked-
+directory preflight status, and a four-file host-only descendant allowlist
+admitted only the reviewed preflight/lineage changes. Exact package `78784a4a`,
+`pre_effect_ready`, fresh detector, and `runtime_admission_ready` passed.
+
+The single attempt-004 campaign was consumed. Current factory and temporary NVS
+writes completed/verified, but active mining never began (`active_ms=0`), no
+protocol/share transition was observed, and the owner ended
+`timeout/unclassified`. USB cleanup passed. Original restoration was attempted
+once and failed (`restored=false`), so the public campaign projection and
+`RESULT.md` are withheld. Post-campaign detector plus protected same-session
+monitor/API audit prove the current package is running, original package is not,
+`mineonboot=false`, mining is `safe_blocked`, hashrate is zero, and no shares
+were accepted/rejected.
+
+Terminal outcome: `stop_authority_boundary`. Attempt-004 and its once-only
+restoration are consumed; no second write is authorized. `STR-005` remains
+`implemented`. Closure:
+`docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/CLOSURE.md`.
+
+Supersession review: Superseded by the decision-complete decomposition plan `docs/parity/work-plans/20260828T175218Z-STR-005-DECOMPOSITION/PLAN.md` and successor tasks task-str005-tcp-payload-205, task-str005-noise-auth-205, task-str005-v2-channel-job-205, task-str005-bm1366-share-205, task-str005-evidence-promotion. Existing plans, closures, evidence, attempt ordinals, and terminal decisions remain immutable; this archival does not change STR-005 from `implemented | unit,golden,workflow`.
+
+### task-str005-exact-restoration-remediation | 2026-08-25 | Restore the pre-campaign Ultra 205 state
+
+- [x] Add a red/green real-adapter regression proving the historical recovery
+      bundle fails only on current-host source equality.
+- [x] Add exact current-source authorization, remediation-plan binding,
+      admission-only restore validation, and protected diagnostics.
+- [x] Add the resumable host owner for snapshot/Wi-Fi/settings/theme restoration
+      and exact original-runtime verification.
+- [x] Pass all software, privacy, package, reference, selector, and diff gates;
+      commit/push and build the exact host package before device access.
+- [x] Run exact no-effect preflight, fresh detector, and remediation-001 once;
+      use settings-only resume only from proved `firmware_restored` state.
+- [ ] Publish remediation evidence and archive only this task on exact success;
+      never retry STR-005, promote STR-005, or weaken its campaign closure.
+
+Plan: `docs/parity/work-plans/20260825T150417Z-STR-005-EXACT-RESTORATION/PLAN.md`
+
+Authorization: source/test/docs/build/package, Git commit/push, read-only current
+runtime HTTP/USB observation, exact recovery-006 snapshot write, Wi-Fi NVS seed,
+settings/theme restoration, fresh detector/reacquisition, protected evidence,
+and one remediation ordinal under the linked plan. The canonical host package
+is a provenance gate and must not be flashed. The task permits no campaign,
+external pool, raw NVS/coredump read, direct UART/pins, fault injection, OTA,
+erase, arbitrary writes, or STR-005 promotion.
+
+Precondition: the board remains reachable on campaign package `78784a4a`, with
+`mineonboot=false`, mining `safe_blocked`, zero hashrate, and zero shares. The
+recovery-006 bundle/projection/receipts, attempt-004 backup, and ignored local
+credential files must remain protected and unchanged. Any mismatch stops before
+effects.
+
+Progress: the exact Rust feedback loop first failed red at
+`restore_installed=blocked reason=identity_contract` with a valid historical
+snapshot and clean current host. It now passes green only with the exact
+current-source-bound remediation authorization and rejects tampering before
+USB. Admission-only validates all eight protected ranges without snapshots or
+commands. The host owner implements fixed preflight/start/resume paths,
+protected authorization/state/child receipts, current-safe admission, one
+snapshot plus Wi-Fi seed, original-runtime proof, settings/theme restoration,
+settings-only resume, independent projection validation, and closed evidence.
+Focused Rust/TypeScript restoration and all flash tests pass. The later exact
+hardware outcome is recorded below.
+
+Remediation outcome: pushed source/package `276bb178` passed the complete
+software gate set, exact no-effect admission, and fresh one-board detection.
+The single remediation-001 invocation then stopped at `snapshot_restore` before
+launching a write child. Its protected stderr digest exactly matches the local
+`executor_program_mismatch`: the snapshot adapter rendered the required
+managed `esptool.py` transaction, while the shared execution environment
+accepts only `espflash`. The state remains `flash_started`, so settings-only
+resume is ineligible and no second host invocation is authorized.
+
+A fresh detector and same-session read-only runtime audit prove the unchanged
+campaign package is running with the pinned reference, `mineonboot=false`,
+mining `safe_blocked`, zero hashrate, and zero accepted/rejected shares. USB
+cleanup passed. No restoration projection or `RESULT.md` exists, `STR-005`
+remains `implemented`, and this task remains active but blocked at
+`stop_authority_boundary`. Closure:
+`docs/parity/work-plans/20260825T150417Z-STR-005-EXACT-RESTORATION/CLOSURE.md`.
+
+Supersession review: Superseded by the decision-complete decomposition plan `docs/parity/work-plans/20260828T175218Z-STR-005-DECOMPOSITION/PLAN.md` and successor tasks task-str005-tcp-payload-205, task-str005-noise-auth-205, task-str005-v2-channel-job-205, task-str005-bm1366-share-205, task-str005-evidence-promotion. Existing plans, closures, evidence, attempt ordinals, and terminal decisions remain immutable; this archival does not change STR-005 from `implemented | unit,golden,workflow`.
+
+### task-str005-restore-and-verify-continuation | 2026-08-25 | Restore Ultra 205 and verify STR-005
+
+- [x] Add the exact managed-esptool USB executor with closed transfer
+      diagnostics and real-child regression coverage.
+- [ ] Restore recovery-006 plus exact settings/theme through fresh remediation
+      ordinal 2 and independently publish the restoration projection.
+- [x] Replace default-route fixture addressing with same-subnet admission and
+      add closed Stratum V2 transport/fixture terminal diagnostics.
+- [ ] Run the local authenticated fixture through fresh attempt-005 only after
+      exact original-state admission; safe-stop and restore on every outcome.
+- [ ] Continue only after a new regression-proved boundary; never retry an
+      unchanged signature or reuse a sealed root.
+- [ ] Promote only STR-005 after accepted Noise/channel/job/BM1366/share,
+      safe-stop, cleanup, and exact restoration evidence.
+
+Plan: `docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md`
+
+Authorization: repository diagnosis/fixes/tests/docs/build/package, Git
+commit/push, task-gated USB and local-network fixture use, fresh progress-backed
+restoration/campaign ordinals, exact recovery-006 writes, Wi-Fi NVS seed,
+settings/theme restoration, conservative Ultra 205 mining, protected evidence,
+and STR-005-only promotion under the linked immutable plan. External pools, raw
+NVS/coredump reads, a new baseline, direct UART/pins, fault injection, OTA,
+erase, arbitrary writes, other boards, and unbounded mining remain prohibited.
+
+Initial boundary: remediation-001 stopped before launching a write child because
+the snapshot adapter rendered managed `esptool.py` while the shared executor
+accepted only `espflash`. Current device evidence remains campaign source
+`78784a4a`, pinned reference, `mineonboot=false`, mining `safe_blocked`, and zero
+hashrate/shares. The first eligible hardware action is remediation ordinal 2
+after the exact executor boundary passes red/green, all gates, push, package,
+and no-effect admission.
+
+Verification: Pending.
+
+Completion review: Pending. `STR-005` remains `implemented` until the full
+hardware chain and exact final restoration are independently accepted.
+
+Progress: the generic executor still rejects non-espflash programs; a private
+managed-esptool type now admits only the exact snapshot transaction and runs it
+through the existing USB lease, owned-child supervision, effect classifier,
+reacquisition, retry, and cleanup. Separate protected snapshot/Wi-Fi receipts
+retain pre-transfer, partial, complete, termination, count, and digest facts.
+The real-child partial-transfer regression and standalone/campaign restore
+authorizations pass. Attempt-005 now selects one non-tunnel host address on the
+fresh device subnet, binds the fixture there, publishes seven closed firmware
+transport details, retains eight fixture progress facts, and maps child,
+fixture, and restoration failures to typed checkpoints. Focused tests, ordered
+Cargo gates, Bright Builds, and all 55 Bazel tests pass. One combined automation
+run exposed unrelated timing-sensitive child tests; their unchanged focused
+reruns and the unchanged full Bazel rerun passed.
+
+Restoration-002 outcome: exact pushed source/package `e3bd08bb`, admission-only
+preflight, and both fresh detectors passed. The managed eight-range snapshot
+write and separate Wi-Fi seed each completed and verified once with closed
+`ready/completed/exited_success` diagnostics, one attempt, transfer started and
+completed, no raw output, and clean USB reacquisition. The board now runs exact
+original source `a11b579b`, app digest `32e2de54`, factory partition, and pinned
+reference; exact settings/theme restoration completed with `mineonboot=false`,
+zero hashrate, and zero shares.
+
+The final projection was truthfully withheld at `final_runtime` because the
+restored historical source reports `miningActivity=paused`, not `safe_blocked`.
+Source inspection proves this is its intentional operator-paused projection
+when `mineonboot=false`; forcing `safe_blocked` would require changing exact
+settings or manufacturing a different blocker. The immutable plan requires both
+facts, so the terminal result is `stop_impossible_contract`. Attempt-005 was not
+created or run. This task remains active but blocked; STR-005 remains
+`implemented`. Closure:
+`docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/CLOSURE.md`.
+
+Supersession review: Superseded by the decision-complete decomposition plan `docs/parity/work-plans/20260828T175218Z-STR-005-DECOMPOSITION/PLAN.md` and successor tasks task-str005-tcp-payload-205, task-str005-noise-auth-205, task-str005-v2-channel-job-205, task-str005-bm1366-share-205, task-str005-evidence-promotion. Existing plans, closures, evidence, attempt ordinals, and terminal decisions remain immutable; this archival does not change STR-005 from `implemented | unit,golden,workflow`.
+
+### task-str005-inactive-restoration-and-campaign-continuation | 2026-08-26 | Finalize restoration and verify STR-005
+
+- [x] Finalize remediation-002 read-only with exact original identity,
+      settings/theme, `mineonboot=false`, zero work, and closed inactive state.
+- [x] Publish the independently validated restoration projection without any
+      flash, NVS, settings, theme, or restart mutation.
+- [x] Rebind the untouched attempt-005 local-fixture campaign and its exact
+      restoration authorization to the new immutable plan.
+- [x] Run attempt-005 once after full gates, clean push/package, fresh detector,
+      no-effect preflight, and runtime admission.
+- [x] Continue only after a new regression-proved boundary and exact original
+      restoration; stop repeated, hardware, authority, or impossible outcomes.
+- [ ] Promote only STR-005 after the complete accepted hardware chain and exact
+      final inactive restoration.
+
+Plan: `docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/PLAN.md`
+
+Authorization: source/test/docs/build/package, Git commit/push, read-only
+remediation-002 validation, local authenticated fixture/network use, one fresh
+attempt-005, conservative Ultra 205 hardware work, safe-stop, exact recovery-006
+restoration, protected evidence, and STR-005-only promotion. The plan permits no
+restoration reflash before campaign, external pool, raw NVS/coredump read, new
+baseline, direct UART/pins, fault injection, OTA, erase, arbitrary write, other
+board, or unbounded mining.
+
+Initial truth: remediation-002 completed exact original firmware and settings,
+with `mineonboot=false`, zero hashrate/shares, and `miningActivity=paused` as the
+historical source's intentional operator-paused state. The old literal
+`safe_blocked` contract is terminal and cannot be reinterpreted. This task uses
+the closed `mining_inactive` union (`paused` or `safe_blocked`) without weakening
+identity, configuration, work, restoration, cleanup, or redaction evidence.
+
+Verification: Pending.
+
+Completion review: Pending. `STR-005` remains `implemented` until accepted
+attempt-005 hardware evidence and exact final restoration are independently
+validated.
+
+Progress: a dedicated read-only finalizer validates the sealed remediation-002
+state, authorization, successful snapshot/Wi-Fi diagnostics, exact bundle and
+backup, current original runtime, every restorable setting, exact theme,
+`mineonboot=false`, zero work/shares, and the closed expected category `paused`.
+It exposes no mutation command and independently validates the v2 projection
+with `mining_inactive=true`. Attempt-005 and its campaign restoration receipt
+now bind this plan; final restoration accepts only `paused` or `safe_blocked`
+with zero work. Focused tests, ordered Cargo gates, Bright Builds, and all 55
+Bazel tests pass. One combined run hit the unchanged command-effects timing
+test; its focused real-child rerun, isolated aggregate rerun, and unchanged full
+suite all passed.
+
+Read-only finalization outcome: exact pushed source/package `30376b18`, sealed
+remediation-002 receipts, fresh one-board detection, qualified monitor, and
+same-origin settings/theme reads passed. The independently validated v2
+projection records exact original identity/restoration, `mineonboot=false`,
+`mining_inactive=true`, category `paused`, zero hashrate/shares, cleanup, and
+redaction. No flash, NVS, settings, theme, restart, fixture, campaign, ASIC, or
+mining mutation occurred. Attempt-005 remains fresh and ineligible until this
+projection is committed/pushed and the new exact package is rebuilt.
+
+Attempt-005 preflight boundary: exact package `11a06443` and fresh detection
+passed, but no-effect restore admission stopped before root, fixture, or device
+effects because a stale four-file post-recovery allowlist rejected the later
+authorized descendant source. Exact bundle, readiness projection, validator
+receipt, recovery plan, current task/plan, clean package, and ancestry already
+form independent trust gates; changed-file count is not a restoration invariant.
+The focused regression now accepts a true descendant and rejects a non-ancestor.
+Attempt-005 remains absent and requires the full gate/push/package cycle before
+another preflight.
+
+Remediation-003 outcome: exact pushed source/package `ea9f2622`, fresh
+admission/detection, managed snapshot write, Wi-Fi seed, original identity,
+settings/theme, inactive `paused` state, zero work/shares, cleanup, and
+independent v2 projection validation all passed. Both write diagnostics are
+closed, completed, first-attempt, and raw-output-free. The board is again on the
+exact original firmware. Attempt-006 remains absent and ineligible until this
+recovery projection is committed/pushed and its new exact campaign package is
+built.
+
+Attempt-006 outcome: exact package `45adb606`, both no-effect gates, and fresh
+detection passed. The single campaign connected TCP—proving the listener-window
+fix—but stopped at closed `transport/handshake`; the fixture reached
+`connection_accepted` and stopped `noise`, with no channel/work/share. Safe-stop
+and USB cleanup passed. Both rollback writes completed and the original firmware
+is running, but nine named non-secret settings fields remain mismatched, so
+restoration is not accepted and attempt-007 is ineligible.
+
+Pinned upstream verifies the responder Schnorr signature without certificate
+date checks. The official Rust Noise crate additionally checks the signed dates
+against the ESP wall clock, while this firmware has no SNTP owner. The local
+fixture's former host-now/300-second certificate can therefore fail on-device
+despite correct authentication. The targeted parity fix issues a signed fixture
+certificate from zero through `u32::MAX`; authentication remains mandatory and
+the host regression verifies the extreme validity boundary. External pools and
+production clock policy remain non-claims. Fresh remediation-004 must first
+restore exact settings through roots `preflight-004`/`remediation-004` and its
+own projection. Only then may fresh attempt-007 use root
+`scratch/str005-stratum-v2/attempt-007`, after the full gate/push/package cycle.
+
+Remediation-004 outcome: exact pushed source/package `305872e4`, both fresh
+detectors, admission, first-attempt snapshot/Wi-Fi writes, original identity,
+all settings/theme, inactive `paused` state, zero work/shares, cleanup, and
+independent projection validation passed. The board is again exactly restored.
+Attempt-007 remains absent and requires this projection to be committed/pushed
+and a new exact package built before its no-effect gates.
+
+Attempt-007 outcome: exact package `ec75e680`, fresh detector, preflight, and
+runtime admission passed. The signed full-domain certificate still produced the
+same authoritative `transport/handshake` plus fixture `noise` signature after
+TCP acceptance; no channel/work/share occurred. Safe-stop and USB cleanup
+passed. Because the exact post-fix signature repeated, the terminal campaign
+decision is `stop_repeated_boundary`; attempt-008 and STR-005 promotion are
+prohibited under this plan.
+
+Rollback snapshot and Wi-Fi writes both completed, but final restoration again
+reported false. No campaign retry is allowed. Fresh remediation-005 is the sole
+remaining safety action: reuse the independently proven standalone restoration
+owner with roots `preflight-005`/`remediation-005` and projection
+`restoration-projection-remediation-005.json`, then close without campaign or
+promotion. It requires the complete gate/push/package/detector cycle and may run
+once only.
+
+Attempt-005 outcome: changed preflight and runtime admission passed on exact
+package `d54b7947`; the single campaign was consumed. Current package and NVS
+writes completed, hardware preparation completed, and terminal safe-stop/USB
+cleanup passed, but the device stopped `transport/connect` before channel/work.
+The fixture terminal stayed at `listener_ready/accept`, proving no connection.
+The selected host exactly matched `en0`, while the macOS firewall, block-all,
+and stealth modes were disabled. The fixture's 120-second accept deadline began
+before two package writes, reboot/reacquisition, and up to 60 seconds of firmware
+preflight; it could close before the first device connection attempt. The new
+regression binds the accept window to 300 seconds, still within the fixture's
+existing maximum and campaign outer bound.
+
+Attempt-005 restoration was attempted once but stopped pre-transfer because the
+host passed the admitted absolute bundle path to the Rust adapter's exact
+relative-path contract. No snapshot diagnostic was created. Fresh detector and
+monitor prove the safe current package `d54b7947` with mining/control disabled.
+The targeted fix passes `args.restoreBundle` to the child while retaining the
+absolute path only for host-side reads. Before any campaign continuation,
+remediation-003 must restore the original through fresh preflight/effect roots
+and projection. After exact restoration, attempt-006 is the next eligible fresh
+campaign ordinal with root `scratch/str005-stratum-v2/attempt-006`; both require
+the complete gate/push/package/detector cycle and may each run once only.
+
+Final restoration: remediation-005 on exact pushed source/package `28f9f1c2`
+passed fresh admission/detection, snapshot and Wi-Fi writes, exact original
+identity/settings/theme, inactive `paused`, zero work/shares, cleanup, and
+independent projection validation. The board is safely restored. Campaign
+attempts 005, 006, and 007 are consumed; attempt-007 repeated the post-fix
+`transport/handshake` plus fixture `noise` signature, so the final outcome is
+`stop_repeated_boundary`. No attempt-008, campaign projection, `RESULT.md`,
+hardware-regression evidence, or promotion is authorized. STR-005 remains
+`implemented`; this task remains active but blocked. Closure:
+`docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/CLOSURE.md`.
+
+Supersession review: Superseded by the decision-complete decomposition plan `docs/parity/work-plans/20260828T175218Z-STR-005-DECOMPOSITION/PLAN.md` and successor tasks task-str005-tcp-payload-205, task-str005-noise-auth-205, task-str005-v2-channel-job-205, task-str005-bm1366-share-205, task-str005-evidence-promotion. Existing plans, closures, evidence, attempt ordinals, and terminal decisions remain immutable; this archival does not change STR-005 from `implemented | unit,golden,workflow`.
+
+### task-str005-noise-handshake-diagnostic | 2026-08-26 | Diagnose the STR-005 Noise handshake without mining
+
+- [x] Add a typed Noise completion failure model and deterministic red/green
+      coverage for message length, decrypt, public key, certificate time,
+      certificate signature, state, and other failures.
+- [x] Add a consume-before-use boot marker and sole no-mining firmware owner
+      that exercises only Wi-Fi, TCP, Noise, and one encrypted client proof.
+- [x] Add a handshake-only local fixture with closed progress and terminal
+      receipts that distinguish both sides of the Noise exchange.
+- [x] Add `just stratum-v2-noise-diagnostic preflight|start` with protected
+      roots, public closed projection, exact recovery-006 restoration, and no
+      campaign, ASIC, voltage, fan, or mining effects.
+- [x] Run one fresh diagnostic ordinal only after all gates, clean push/package,
+      no-effect preflight, and fresh one-board detection; continue only after a
+      new authoritative signature receives a regression-proved fix.
+- [ ] Close and archive only this diagnostic task after authenticated Noise and
+      exact original restoration; keep STR-005 `implemented` and require a
+      separate future campaign plan for verification.
+
+Plan: `docs/parity/work-plans/20260826T210025Z-STR-005-NOISE-DIAGNOSTIC/PLAN.md`
+
+Authorization: source/test/docs/build/package, Git commit/push, task-gated USB
+and same-subnet local fixture use, fresh progress-backed diagnostic ordinals,
+boot-time one-shot NVS marker writes, Wi-Fi/TCP/Noise-only device execution,
+protected evidence, and exact recovery-006 firmware/settings restoration under
+the linked immutable plan. Campaign attempts, ASIC work, voltage/fan mutation,
+mining, external pools, raw NVS/coredump reads, new baselines, direct UART/pins,
+fault injection, OTA, erase, arbitrary writes, other boards, and STR-005
+promotion are prohibited.
+
+Initial boundary: attempt-007 repeated the authoritative firmware
+`transport/handshake` plus fixture `noise` signature after TCP acceptance even
+with a signed full-domain certificate. The existing production adapters erase
+the exact Noise completion error and responder substage, so another mining
+campaign cannot add information. The Ultra 205 is exactly restored to source
+`a11b579b`, app digest `32e2de54`, factory partition, pinned reference, exact
+settings/theme, `mineonboot=false`, inactive `paused`, and zero work/shares.
+
+Verification: Focused red/green Noise classification, real TCP fixture, exact
+peer, partial/timeout act-one, process-group, validator launcher, NVS tuple,
+historical restore-authority, and firmware source-ownership regressions pass.
+Ordered Cargo gates, Bright Builds, all Bazel tests, canonical ESP32-S3 build
+and packages, parity/progress, reference cleanliness, redaction, three fresh
+detectors/preflights, and all three exact restorations pass.
+
+Completion review: Terminal at `stop_repeated_boundary`. The diagnostic owner
+proved a pre-Noise local transport blocker: the exact device peer completed TCP,
+firmware reported a successful 64-byte act-one write, and the fixture received
+zero bytes before timeout. No unchanged or further ordinal is eligible under
+the plan. The task remains active but blocked; STR-005 remains `implemented`,
+and no `RESULT.md`, hardware-regression evidence, archive transition, campaign,
+or promotion exists. Closure:
+`docs/parity/work-plans/20260826T210025Z-STR-005-NOISE-DIAGNOSTIC/CLOSURE.md`.
+
+Progress: the exact Noise completion boundary now preserves seven closed
+failure categories while production retains its stable public error surface.
+The focused regression first failed by conflating an expired valid signature
+with `certificate_signature`, then passed for certificate time/signature,
+decrypt, length, and state. A consume-before-use `sv2diag*` tuple selects one
+Wi-Fi/TCP/Noise-only owner ahead of self-test, production protocol, and the
+normal fan; source-ownership tests prohibit ASIC, actuation, fan, voltage,
+session, and mining reachability. The handshake-only fixture independently
+records both acts and decrypts one encrypted client proof. The private flash
+intent/NVS seed contains no campaign tuple, and the host owner binds exact clean
+package/plan/recovery inputs, same-subnet fixture selection, managed child
+process groups, closed projection validation, and recovery-006 restoration in
+the post-effect path. Ordered Cargo gates, the real ESP32-S3 build, Bright
+Builds, all Bazel tests, parity/progress, reference cleanliness, redaction, and
+focused real-child regressions pass before the clean implementation commit.
+
+Diagnostic-001 outcome: exact package `35cf3865`, fresh detection, no-effect
+preflight, factory/NVS writes, sole diagnostic owner, exact recovery-006 writes,
+settings/theme restoration, inactive original runtime, zero work, and cleanup
+completed. The new closed signature is firmware `act_one_sent/act_two_read`
+paired with fixture `connection_accepted/act_one_read`; neither side reached
+authentication and no hardware/mining owner ran. The public projection was
+withheld because the independent validator child path named the Bazel target
+instead of its generated wrapper. A real-launch regression now resolves the
+validator from runfiles or the exact Bazel wrapper. The fixture now rejects
+non-device peers before consuming its sole session and records a bounded
+unexpected-peer count. These targeted changes rebind fresh diagnostic ordinal 2
+to root `scratch/str005-noise-diagnostic/diagnostic-002` and projection
+`docs/parity/evidence/str005-noise-diagnostic/noise-diagnostic-projection-002.json`;
+diagnostic-001 is sealed and will not be retried or reused.
+
+Diagnostic-002 outcome: exact package `8470275c`, fresh detection/no-effect
+preflight, diagnostic and recovery writes, exact original identity/settings,
+inactive zero-work state, and cleanup passed. Exact peer admission observed the
+device connection with zero unexpected peers, but the fixture again stopped at
+`act_one_read`; the late-attached serial monitor retained no diagnostic stage or
+terminal. The closed peer discriminator makes this a new signature rather than
+an unchanged diagnostic-001 retry. The candidate failed only through the nested
+validator launcher environment; the same independent validator accepted its
+absolute protected candidate, and the redacted failed projection is published
+as `noise-diagnostic-projection-002.json`. The validator now runs through its
+repo-owned Bazel target. A ten-second post-Wi-Fi monitor-arm delay and a bounded
+fixture act-one byte count with `complete/eof/timeout/io` classification bind
+fresh diagnostic ordinal 3 to root `diagnostic-003` and projection
+`noise-diagnostic-projection-003.json`. Diagnostic-002 is sealed.
+
+Diagnostic-003 outcome: exact package `dc6e5f0c`, fresh detection/no-effect
+preflight, the ten-second monitor arm, diagnostic and recovery writes, exact
+original identity/settings, inactive zero-work state, cleanup, and independent
+projection publication passed. Firmware retained `tcp_connected`,
+`act_one_created`, and `act_one_sent` before `act_two_read`; the exact device
+peer had zero unexpected peers and received exactly zero act-one bytes before a
+typed `timeout`. This repeats the post-instrumentation transport boundary and
+stops further ordinals. The accepted failed projection is
+`docs/parity/evidence/str005-noise-diagnostic/noise-diagnostic-projection-003.json`.
+
+Supersession review: Superseded by the decision-complete decomposition plan `docs/parity/work-plans/20260828T175218Z-STR-005-DECOMPOSITION/PLAN.md` and successor tasks task-str005-tcp-payload-205, task-str005-noise-auth-205, task-str005-v2-channel-job-205, task-str005-bm1366-share-205, task-str005-evidence-promotion. Existing plans, closures, evidence, attempt ordinals, and terminal decisions remain immutable; this archival does not change STR-005 from `implemented | unit,golden,workflow`.
+
+### task-str005-preconnect-noise-and-verification | 2026-08-27 | Precompute Noise act one and verify STR-005
+
+- [x] Add the fast delayed-preparation TCP regression and observe it fail before
+      changing transport order.
+- [x] Add `PreparedNoiseInitiator` and require resolution, Noise/act-one
+      preparation, then TCP connection in diagnostic and production V2 paths.
+- [x] Add bounded preparation/connect/write/read timings and rebind the
+      no-mining workflow to diagnostic ordinal 4 with exact restoration.
+- [ ] Prove authenticated local Noise and encrypted client proof on Ultra 205;
+      continue only after new regression-proved signatures.
+- [ ] Rebind and run local-fixture campaign attempt 008 only after diagnostic
+      success is committed, pushed, and packaged.
+- [ ] Promote only STR-005 after Noise/channel/job/BM1366/share, safe-stop,
+      cleanup, exact restoration, independent validation, and redaction.
+
+Plan: `docs/parity/work-plans/20260828T030951Z-STR-005-PRECONNECT-NOISE-VERIFY/PLAN.md`
+
+Authorization: repository source/test/docs/build/package, Git commit/push,
+task-gated USB and same-subnet authenticated fixture use, diagnostic ordinal 4,
+campaign attempt 008, progress-backed fresh ordinals after verified fixes,
+conservative Ultra 205 mining, protected evidence, and exact recovery-006
+firmware/settings restoration. External pools, other boards, direct UART/pins,
+raw NVS/coredump access, new baselines, fault injection, OTA, erase, arbitrary
+writes, and unbounded mining remain prohibited.
+
+Initial boundary: diagnostic 003 proved the exact device peer completed TCP,
+firmware reached `act_one_sent`, and the fixture received zero act-one bytes
+before its ten-second timeout. The Rust path currently creates the secp256k1
+context/keypair and ElligatorSwift act one only after connecting. The first
+eligible change is a red/green pre-connect-order regression; no hardware ordinal
+is eligible until that fix passes every gate and is committed/pushed/packaged.
+
+Verification: Required red/green delayed-preparation TCP loop, prepared-Noise
+observer, fixture peer/byte/category/timing, diagnostic marker/timing parser,
+projection validator, restore authorization, firmware order ownership, real
+child, ordered Cargo, Bright Builds, all Bazel, canonical ESP32-S3 build/package,
+parity/progress, reference, redaction, fresh detector/preflight, diagnostic 4,
+exact restoration, and post-run detection all passed at their claimed scopes.
+
+Completion review: Terminal at `stop_repeated_boundary`. Precomputing Noise
+before connect made the exact fast regression pass but did not change the Ultra
+205 boundary: the exact device peer connected and the fixture received zero
+bytes before timeout. The plan explicitly makes that post-fix repetition
+terminal. Diagnostic ordinal 5 and campaign attempt 008 were not created or
+run. STR-005 remains `implemented`; no `RESULT.md`, hardware-regression evidence,
+archive transition, or promotion exists. Closure:
+`docs/parity/work-plans/20260828T030951Z-STR-005-PRECONNECT-NOISE-VERIFY/CLOSURE.md`.
+
+Progress: the required real-TCP loop first reproduced the authoritative split
+with a 25 ms responder deadline and 75 ms post-connect preparation: zero of 64
+act-one bytes arrived. Reversing only the generic effect seam to prepare before
+connect made the same command pass. A non-debuggable `PreparedNoiseInitiator`
+now owns the initialized state and exact act one; both production and diagnostic
+firmware consume the shared order seam before any connector call. Diagnostic
+markers retain bounded keypair, act-one, connect, write, and read durations;
+the fixture retains exact peer, byte count, read category, first-byte, and total
+read timing. Ordinal 4, its protected restore authority, the new immutable plan,
+and independent projection contract are rebound. Focused protocol, fixture,
+firmware ownership/build, flash, validator, and real-child tests pass.
+
+Diagnostic-004 outcome: exact package `a13d91b8`, fresh detection/no-effect
+preflight, diagnostic and recovery writes, exact original identity/settings,
+inactive zero-work state, cleanup, independent failed projection, and post-run
+detection passed. The exact peer connected with zero unexpected peers, but the
+fixture again received zero act-one bytes and timed out; no firmware diagnostic
+stage or bounded timing marker was retained. This is the plan's explicit
+repeated zero-byte-after-precomputation stop condition. The accepted failed
+projection is `docs/parity/evidence/str005-noise-diagnostic/noise-diagnostic-projection-004.json`.
+
+Supersession review: Superseded by the decision-complete decomposition plan `docs/parity/work-plans/20260828T175218Z-STR-005-DECOMPOSITION/PLAN.md` and successor tasks task-str005-tcp-payload-205, task-str005-noise-auth-205, task-str005-v2-channel-job-205, task-str005-bm1366-share-205, task-str005-evidence-promotion. Existing plans, closures, evidence, attempt ordinals, and terminal decisions remain immutable; this archival does not change STR-005 from `implemented | unit,golden,workflow`.
+
+### task-str005-verification-decomposition | 2026-08-28 | Formally decompose STR-005 verification
+
+- [x] Create immutable decomposition plan
+      `docs/parity/work-plans/20260828T175218Z-STR-005-DECOMPOSITION/PLAN.md`.
+- [x] Add a supersession review to and archive the ten accumulated STR-005
+      implementation, recovery, remediation, diagnostic, and campaign records
+      without changing their historical plans, evidence, ordinals, or terminal
+      decisions.
+- [x] Add five dependency-ordered successor tasks with only the TCP payload
+      boundary active and every later task dependency-blocked under `Future`.
+- [x] Preserve the STR-005 checklist status and progress totals, leave old
+      effect commands ineligible, and introduce no firmware or hardware effect.
+
+Authorization: task tracker, immutable plan, task archive, verification,
+commit, and push only. Firmware changes, new command authority, hardware,
+network, package, flash, NVS, mining, evidence creation, `RESULT.md`, and parity
+promotion were prohibited.
+
+Verification: The successor and archived task IDs are unique across the active
+and archived trackers; exact-record comparison proves all ten native records
+changed only by their appended supersession review. Only
+`task-str005-tcp-payload-205` is active, and every later child records its exact
+dependency and effect boundary. Ordered Cargo format, Clippy, build, and test;
+Bright Builds; all 56 Bazel tests; parity; progress; pinned-reference;
+redaction; closure-digest; and diff checks passed. The STR-005 checklist row
+remains `implemented | unit,golden,workflow`, existing effect commands remain
+bound to archived authorities, and no hardware command was added or run.
+
+Completion review: Complete. STR-005 verification is now split into TCP
+payload, Noise authentication, channel/job, BM1366 accepted-share, and
+evidence-promotion tasks. Recovery-006 and the exact-restoration machinery
+remain shared prerequisites. Diagnostic projections cannot substitute for the
+final same-run cumulative campaign, and campaign ordinal `attempt-008` remains
+unconsumed. STR-005 remains `implemented` with `unit,golden,workflow`. Residual
+risk: the additional `parity next-item` probe still rejects two pre-existing
+immutable STR-005 closures whose historical metadata uses `Final parity status`
+instead of the parser's `Final status`; this plan preserves those closures
+unchanged and does not rely on that selector for the new task graph.
