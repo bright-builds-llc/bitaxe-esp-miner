@@ -4959,10 +4959,21 @@ context/keypair and ElligatorSwift act one only after connecting. The first
 eligible change is a red/green pre-connect-order regression; no hardware ordinal
 is eligible until that fix passes every gate and is committed/pushed/packaged.
 
-Verification: Pending.
+Verification: Required red/green delayed-preparation TCP loop, prepared-Noise
+observer, fixture peer/byte/category/timing, diagnostic marker/timing parser,
+projection validator, restore authorization, firmware order ownership, real
+child, ordered Cargo, Bright Builds, all Bazel, canonical ESP32-S3 build/package,
+parity/progress, reference, redaction, fresh detector/preflight, diagnostic 4,
+exact restoration, and post-run detection all passed at their claimed scopes.
 
-Completion review: Pending. STR-005 remains `implemented` until the full local
-campaign and exact final restoration are accepted.
+Completion review: Terminal at `stop_repeated_boundary`. Precomputing Noise
+before connect made the exact fast regression pass but did not change the Ultra
+205 boundary: the exact device peer connected and the fixture received zero
+bytes before timeout. The plan explicitly makes that post-fix repetition
+terminal. Diagnostic ordinal 5 and campaign attempt 008 were not created or
+run. STR-005 remains `implemented`; no `RESULT.md`, hardware-regression evidence,
+archive transition, or promotion exists. Closure:
+`docs/parity/work-plans/20260828T030951Z-STR-005-PRECONNECT-NOISE-VERIFY/CLOSURE.md`.
 
 Progress: the required real-TCP loop first reproduced the authoritative split
 with a 25 ms responder deadline and 75 ms post-connect preparation: zero of 64
@@ -4975,6 +4986,15 @@ the fixture retains exact peer, byte count, read category, first-byte, and total
 read timing. Ordinal 4, its protected restore authority, the new immutable plan,
 and independent projection contract are rebound. Focused protocol, fixture,
 firmware ownership/build, flash, validator, and real-child tests pass.
+
+Diagnostic-004 outcome: exact package `a13d91b8`, fresh detection/no-effect
+preflight, diagnostic and recovery writes, exact original identity/settings,
+inactive zero-work state, cleanup, independent failed projection, and post-run
+detection passed. The exact peer connected with zero unexpected peers, but the
+fixture again received zero act-one bytes and timed out; no firmware diagnostic
+stage or bounded timing marker was retained. This is the plan's explicit
+repeated zero-byte-after-precomputation stop condition. The accepted failed
+projection is `docs/parity/evidence/str005-noise-diagnostic/noise-diagnostic-projection-004.json`.
 
 ## Future
 
