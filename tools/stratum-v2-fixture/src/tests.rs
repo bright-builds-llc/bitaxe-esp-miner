@@ -3,6 +3,7 @@ use bitaxe_stratum::v2::connection_order::prepare_before_connect;
 use bitaxe_stratum::v2::messages::{ChannelKind, ServerMessage};
 use bitaxe_stratum::v2::noise::{NoiseInitiator, NoiseTransport, ACT_TWO_LEN};
 use bitaxe_stratum::v2::session::{SessionConfig, SessionEvent, V2Session};
+use std::net::Shutdown;
 
 #[test]
 fn real_tcp_fixture_completes_noise_channel_job_and_accepted_share() {
@@ -186,6 +187,9 @@ fn real_tcp_payload_mode_accepts_exact_fixed_canary_without_noise() {
 
     // Act
     stream.write_all(&payload).expect("write payload");
+    stream
+        .shutdown(Shutdown::Write)
+        .expect("half-close payload writer");
     let mut receipt = [0_u8; 1];
     stream
         .read_exact(&mut receipt)

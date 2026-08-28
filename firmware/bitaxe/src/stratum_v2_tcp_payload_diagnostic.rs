@@ -1,7 +1,7 @@
 //! Private boot-time STR-005 TCP payload diagnostic owner.
 
 use std::io::{Read, Write};
-use std::net::{TcpStream, ToSocketAddrs};
+use std::net::{Shutdown, TcpStream, ToSocketAddrs};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -74,6 +74,7 @@ fn connect_and_send(settings: V2PoolSettings) -> Result<(), &'static str> {
         .ok_or("connect")?;
     publish_timing("connect", started.elapsed());
     publish_stage("tcp_connected");
+    stream.set_nodelay(true).map_err(|_| "configure")?;
     stream
         .set_write_timeout(Some(WRITE_TIMEOUT))
         .map_err(|_| "configure")?;
@@ -82,6 +83,8 @@ fn connect_and_send(settings: V2PoolSettings) -> Result<(), &'static str> {
     stream.flush().map_err(|_| "flush")?;
     publish_timing("write", started.elapsed());
     publish_stage("payload_sent");
+    stream.shutdown(Shutdown::Write).map_err(|_| "shutdown")?;
+    publish_stage("write_half_closed");
     stream
         .set_read_timeout(Some(WRITE_TIMEOUT))
         .map_err(|_| "configure")?;

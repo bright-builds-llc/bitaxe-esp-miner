@@ -77,7 +77,8 @@ export async function validateTcpPayloadDiagnosticProjection(
     throw new Error("diagnostic projection contract mismatch");
   }
   const requiredStages = [
-    "monitor_armed", "resolved", "tcp_connected", "payload_sent", "receipt_acknowledged",
+    "monitor_armed", "resolved", "tcp_connected", "payload_sent", "write_half_closed",
+    "receipt_acknowledged",
   ];
   const requiredTimings = ["connect_ms", "write_ms"];
   const requiredFixture = [

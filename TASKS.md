@@ -203,6 +203,36 @@ Failure before receipt, recurrence of zero received bytes, or incomplete
 restoration selects a typed stop/next-fix outcome and cannot produce accepted
 evidence.
 
+Diagnostic-005 outcome: `stop_repeated_boundary` for the receipt-only
+hypothesis. From clean pushed source and fresh one-board admission, firmware
+again reached monitor armed, resolve, exact-peer connect, and payload-buffer
+write, then failed at the new `receipt` boundary. The fixture again accepted
+the exact peer but timed out with zero of 64 bytes, no extras, and no receipt.
+Exact recovery-006 identity/settings, inactive zero-work state, fresh USB
+admission, and owned-process cleanup all passed. This disproves immediate
+socket destruction as the sole cause; the receipt-only approach must not be
+retried unchanged.
+
+Diagnostic-006 continuation: under the user's standing iterative hardware-fix
+authorization, the next targeted discriminator gives the fixed one-way payload
+an explicit TCP completion boundary. The firmware mirrors the proven
+production transport's `TCP_NODELAY` configuration, writes only `0x00..0x3f`,
+then half-closes only the socket write direction before waiting for the fixed
+`0xa5` receipt. The fixture requires exactly 64 matching bytes followed by EOF
+and returns the receipt on the still-open read direction. A red production-seam
+regression failed before this sequence existed, then passed with exact
+write-before-half-close-before-receipt ordering; real loopback also proves the
+half-close/receipt round trip. After every gate passes and the exact source is
+committed/pushed/packaged, run fresh detector admission and exactly one command:
+
+`just stratum-v2-tcp-payload start --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/diagnostic-006 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-006.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 6 --capture-timeout-seconds 360 --redact-evidence`
+
+The half-close affects only this one admitted local fixture socket and cannot
+touch storage or hardware controls. Every prior privacy, restoration, safety,
+prohibition, cleanup, non-promotion, and no-unchanged-retry boundary remains.
+Diagnostic-006 stops at its typed result; it does not authorize a seventh
+hardware attempt without another distinct evidence-backed change.
+
 Verification: diagnostic-001 stopped before effects at
 `timeout:fixture_ready`; its regression-backed fixture-timeout fix passed every
 gate and was pushed as `35ae9cb33458ad6c76f6eedef5d0538720d80367`.
@@ -213,7 +243,7 @@ stopped at `hardware_blocked:restoration`. No public projection was published.
 Current review: the earlier terminal closure is superseded by the user's
 standing iterative hardware-debug authorization and successful recovery-002.
 Exact restoration is now proved; TCP payload delivery remains the sole open
-child objective. Keep this task active through diagnostic-005. Noise, V2
+child objective. Keep this task active through diagnostic-006. Noise, V2
 messages, ASIC work, mining, and STR-005 promotion remain unauthorized. STR-005
 remains `implemented` with `unit,golden,workflow`.
 

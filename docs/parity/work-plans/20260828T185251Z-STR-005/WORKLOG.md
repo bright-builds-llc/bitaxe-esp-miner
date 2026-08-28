@@ -201,3 +201,45 @@
   distinct commit and clean push.
 - Blocker or next safe action: commit/push, rebuild the exact clean package,
   capture fresh one-board detector admission, then run diagnostic-005 once.
+
+## 2026-08-28T21:33:49Z | Diagnostic-005 and TCP half-close discriminator
+
+- Source commit: `b52a5261b85a6c983f6361699460dfbf5ac589af`
+- Actions: built the exact clean package, captured fresh one-board admission,
+  ran diagnostic-005 once, allowed exact restoration to finish, and returned to
+  a red production-seam regression before changing the transport sequence.
+- Verification: firmware reached monitor armed, resolve, exact-peer connect,
+  payload-buffer write, and then the new receipt failure. The exact-peer fixture
+  timed out with zero of 64 bytes, no extras, and no receipt. Recovery-006
+  identity/settings, `mineonboot=false`, inactive zero-work runtime, USB
+  cleanup, and zero owned processes all passed. No public projection was
+  published. The source-ownership test then failed red because neither
+  `TCP_NODELAY` nor write half-close preceded the receipt read, and passed after
+  that exact sequence was implemented. Real loopback proves payload, write
+  half-close, EOF, and fixed receipt on the remaining read direction.
+- Evidence: protected roots `scratch/str005-tcp-payload/diagnostic-005` and
+  `scratch/str005-tcp-payload/detector-diagnostic-005`; no protected values are
+  promoted.
+- Outcome: receipt-only hypothesis stopped at a repeated zero-byte boundary.
+  The next distinct hypothesis is that this ESP-IDF socket needs an explicit
+  one-way completion boundary so queued bytes and FIN precede the receipt wait.
+- Blocker or next safe action: finish every gate, commit/push/package the exact
+  diagnostic-006 contract, redetect, and invoke once. No Noise, V2 message,
+  ASIC, mining, fan, voltage, or other hardware effect is admitted.
+
+## 2026-08-28T21:38:43Z | Diagnostic-006 software verification
+
+- Source commit: `b52a5261b85a6c983f6361699460dfbf5ac589af`
+- Actions: completed the exact sixth-ordinal command/restoration contract,
+  half-close stage/projection validation, and production/fixture regressions.
+- Verification: formatting, strict Clippy, all-target/all-feature build, full
+  Cargo tests, Bright Builds, all 57 Bazel tests, canonical six-artifact
+  ESP32-S3 package, parity with no validation errors, parity progress,
+  redaction, reference cleanliness, whitespace, and diff review passed. The
+  first full Bazel run exposed a 50 ms child-start test race; widening only that
+  test deadline to 500 ms passed three repeated focused runs and the full suite.
+- Evidence: software and loopback behavior only at this checkpoint; no new
+  detector, credential, network, USB, flash, monitor, or device effect.
+- Outcome: diagnostic-006 is ready for a distinct clean source checkpoint.
+- Blocker or next safe action: commit/push, rebuild the exact clean package,
+  capture fresh one-board detector admission, then invoke diagnostic-006 once.

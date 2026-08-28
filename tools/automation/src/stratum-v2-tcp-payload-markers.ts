@@ -13,6 +13,7 @@ export function tcpPayloadStagesFromMonitor(output: string): JsonObject {
     resolved: false,
     tcp_connected: false,
     payload_sent: false,
+    write_half_closed: false,
     receipt_acknowledged: false,
   };
   for (const match of output.matchAll(/stratum_v2_tcp_payload=(\{[^\r\n]+\})/gu)) {

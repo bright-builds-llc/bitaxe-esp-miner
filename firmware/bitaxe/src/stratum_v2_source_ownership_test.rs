@@ -112,6 +112,18 @@ fn tcp_payload_owner_precedes_noise_and_cannot_reach_noise_or_hardware() {
         assert!(!TCP_DIAGNOSTIC.contains(forbidden));
     }
     assert!(TCP_DIAGNOSTIC.contains("stream.write_all(&PAYLOAD)"));
+    let payload_write = TCP_DIAGNOSTIC
+        .find("stream.write_all(&PAYLOAD)")
+        .expect("fixed payload write");
+    let write_shutdown = TCP_DIAGNOSTIC
+        .find("stream.shutdown(Shutdown::Write)")
+        .expect("write half-close");
+    let receipt_read = TCP_DIAGNOSTIC
+        .find("stream.read_exact(&mut receipt)")
+        .expect("receipt read");
+    assert!(TCP_DIAGNOSTIC.contains("stream.set_nodelay(true)"));
+    assert!(payload_write < write_shutdown);
+    assert!(write_shutdown < receipt_read);
     assert!(TCP_DIAGNOSTIC.contains("receipt_acknowledged"));
     assert!(TCP_DIAGNOSTIC.contains("noise_started\\\":false"));
     assert!(TCP_DIAGNOSTIC_ADMISSION.contains("tcpdiagkind"));
