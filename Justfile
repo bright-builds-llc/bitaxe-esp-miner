@@ -210,6 +210,9 @@ stratum-v2-restore-recovery *args:
 stratum-v2-noise-diagnostic action *args:
     bazel run //tools/automation:stratum_v2_noise_diagnostic -- {{ quote(action) }} {{ args }}
 
+stratum-v2-tcp-payload action *args:
+    bazel run //tools/automation:stratum_v2_tcp_payload -- {{ quote(action) }} {{ args }}
+
 validate-emc2101-thermal-fault-evidence projection:
     #!/usr/bin/env bash
     set -euo pipefail

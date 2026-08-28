@@ -26,12 +26,19 @@ pub(crate) struct NoiseDiagnosticNvsSeed {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) struct TcpPayloadDiagnosticNvsSeed {
+    pub(crate) lease: u64,
+    pub(crate) pool: crate::campaign::admission::PoolCredentials,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) enum WifiNvsSeedMode {
     Ordinary,
     NetworkReconnectProbe,
     ThermalFaultStimulus(ThermalFaultNvsSeed),
     SelfTest(SelfTestNvsSeed),
     NoiseDiagnostic(NoiseDiagnosticNvsSeed),
+    TcpPayloadDiagnostic(TcpPayloadDiagnosticNvsSeed),
 }
 
 pub(crate) fn prepare_wifi_nvs_seed(
@@ -221,6 +228,31 @@ pub(crate) fn wifi_nvs_csv_for_mode(
                 private_nvs_csv_row(&StoredValue::string("sv2diagkind", "stratum_v2_noise_v1")),
                 private_nvs_csv_row(&StoredValue::u64("sv2diaglease", seed.lease)),
                 private_nvs_csv_row(&StoredValue::string("sv2diagcase", "handshake_only_v1")),
+                private_nvs_csv_row(&StoredValue::string("stratumprot", "SV2")),
+                private_nvs_csv_row(&StoredValue::string("stratumurl", &seed.pool.pool_url)),
+                private_nvs_csv_row(&StoredValue::u16("stratumport", seed.pool.pool_port)),
+                private_nvs_csv_row(&StoredValue::string("stratumuser", &seed.pool.pool_user)),
+                private_nvs_csv_row(&StoredValue::string(
+                    "stratumpass",
+                    &seed.pool.pool_password,
+                )),
+                private_nvs_csv_row(&StoredValue::u16("stratumtls", 0)),
+                private_nvs_csv_row(&StoredValue::u16("usefbstartum", 0)),
+                private_nvs_csv_row(&StoredValue::string("sv2chantype", "standard")),
+                private_nvs_csv_row(&StoredValue::string(
+                    "sv2authpubkey",
+                    seed.pool
+                        .stratum_v2_authority_pubkey
+                        .as_deref()
+                        .unwrap_or(""),
+                )),
+            ]);
+        }
+        WifiNvsSeedMode::TcpPayloadDiagnostic(seed) => {
+            rows.extend([
+                private_nvs_csv_row(&StoredValue::string("tcpdiagkind", "str005_tcp_v1")),
+                private_nvs_csv_row(&StoredValue::u64("tcpdiaglease", seed.lease)),
+                private_nvs_csv_row(&StoredValue::string("tcpdiagcase", "fixed_64_v1")),
                 private_nvs_csv_row(&StoredValue::string("stratumprot", "SV2")),
                 private_nvs_csv_row(&StoredValue::string("stratumurl", &seed.pool.pool_url)),
                 private_nvs_csv_row(&StoredValue::u16("stratumport", seed.pool.pool_port)),

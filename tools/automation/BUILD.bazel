@@ -1,9 +1,19 @@
-load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_test")
+load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_library", "js_test")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 load("@npm__at_types_node__24.13.3__links//:defs.bzl", npm_link_types_node = "npm_link_imported_package")
 load("@npm__undici_types__7.18.0__links//:defs.bzl", npm_link_undici_types = "npm_link_imported_package")
 
 package(default_visibility = ["//visibility:public"])
+
+js_library(
+    name = "stratum_v2_tcp_payload_evaluator_sources",
+    srcs = [
+        "src/stratum-v2-tcp-payload-markers.ts",
+        "src/stratum-v2-tcp-payload-process.ts",
+        "src/stratum-v2-tcp-payload-validator.ts",
+        "src/stratum-v2-tcp-payload.ts",
+    ],
+)
 
 filegroup(
     name = "automation_sources",
@@ -167,6 +177,30 @@ js_binary(
     chdir = "../../../..",
     data = [":automation_ts"],
     entry_point = "dist/stratum-v2-noise-diagnostic-validator-cli.js",
+)
+
+js_binary(
+    name = "stratum_v2_tcp_payload",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        ":stratum_v2_tcp_payload_validator",
+        "//:str005_tcp_payload_inputs",
+        ":stratum_v2_tcp_payload_evaluator_sources",
+        "//firmware/bitaxe:tcp_payload_evaluator_sources",
+        "//tools/flash:tcp_payload_evaluator_sources",
+        "//tools/stratum-v2-fixture:tcp_payload_evaluator_sources",
+        "//tools/flash:flash",
+        "//tools/stratum-v2-fixture:stratum_v2_fixture",
+    ],
+    entry_point = "dist/stratum-v2-tcp-payload-cli.js",
+)
+
+js_binary(
+    name = "stratum_v2_tcp_payload_validator",
+    chdir = "../../../..",
+    data = [":automation_ts"],
+    entry_point = "dist/stratum-v2-tcp-payload-validator-cli.js",
 )
 
 js_binary(
@@ -404,6 +438,8 @@ js_test(
         ":automation_tests_ts",
         ":automation_sources",
         ":stratum_v2_noise_diagnostic_validator",
+        ":stratum_v2_tcp_payload_validator",
+        ":stratum_v2_tcp_payload_evaluator_sources",
         ":macos_provisioning_association_helper",
         ":statistics_history_flash_child_fixture",
         "//:automation_ci_contract_inputs",
@@ -411,6 +447,9 @@ js_test(
         "//:emc2101_reference_sources",
         "//:hashrate_monitor_evidence_inputs",
         "//:scoreboard_evidence_inputs",
+        "//firmware/bitaxe:tcp_payload_evaluator_sources",
+        "//tools/flash:tcp_payload_evaluator_sources",
+        "//tools/stratum-v2-fixture:tcp_payload_evaluator_sources",
         "//:safe10_evidence_inputs",
         "//:cfg07_evidence_inputs",
         "//:statistics_history_evidence_inputs",
@@ -521,4 +560,20 @@ js_test(
         "//:str005_preconnect_noise_inputs",
     ],
     entry_point = "test-dist/stratum-v2-noise-diagnostic.test.js",
+)
+
+js_test(
+    name = "stratum_v2_tcp_payload_unit_test",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        ":automation_tests_ts",
+        ":stratum_v2_tcp_payload_validator",
+        "//:str005_tcp_payload_inputs",
+        ":stratum_v2_tcp_payload_evaluator_sources",
+        "//firmware/bitaxe:tcp_payload_evaluator_sources",
+        "//tools/flash:tcp_payload_evaluator_sources",
+        "//tools/stratum-v2-fixture:tcp_payload_evaluator_sources",
+    ],
+    entry_point = "test-dist/stratum-v2-tcp-payload.test.js",
 )

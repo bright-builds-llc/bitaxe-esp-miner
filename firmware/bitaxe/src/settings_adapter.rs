@@ -28,6 +28,7 @@ mod protocol_gate;
 mod protocol_gate_adapter;
 mod self_test;
 mod stratum_v2;
+mod tcp_payload_diagnostic;
 mod thermal_fault_stimulus;
 
 pub(crate) use noise_diagnostic::{load_noise_diagnostic_admission, NoiseDiagnosticAdmission};
@@ -42,6 +43,9 @@ pub(crate) use self_test::{
     SelfTestAdmission, SelfTestReceipt,
 };
 pub(crate) use stratum_v2::{read_stratum_v2_pool_set, V2PoolSettings};
+pub(crate) use tcp_payload_diagnostic::{
+    load_tcp_payload_diagnostic_admission, TcpPayloadDiagnosticAdmission,
+};
 pub(crate) use thermal_fault_stimulus::ThermalFaultStimulusAdmission;
 
 pub(crate) fn initialize_default_nvs_partition() -> Result<(), SettingsAdapterFailure> {

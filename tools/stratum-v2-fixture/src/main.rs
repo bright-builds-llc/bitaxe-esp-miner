@@ -20,6 +20,10 @@ use rand::{rngs::OsRng, RngCore};
 use secp256k1::{Keypair, Secp256k1, SecretKey};
 use serde::Serialize;
 
+mod tcp_payload;
+
+use tcp_payload::read_tcp_payload;
+
 const ENCRYPTED_HEADER_LEN: usize = FRAME_HEADER_LEN + AEAD_MAC_LEN;
 const CHANNEL_ID: u32 = 1;
 const JOB_ID: u32 = 1;
@@ -48,6 +52,7 @@ struct Args {
 enum FixtureMode {
     Pool,
     HandshakeOnly,
+    TcpPayload,
 }
 
 #[derive(Serialize)]
@@ -83,6 +88,10 @@ struct FixtureProgress {
     accept_to_first_byte_millis: Option<u32>,
     act_one_read_millis: u32,
     act_one_received: bool,
+    payload_bytes_received: u16,
+    payload_read_category: &'static str,
+    payload_digest_match: bool,
+    extra_bytes_received: u16,
     responder_created: bool,
     act_two_created: bool,
     act_two_sent: bool,
@@ -159,6 +168,11 @@ fn run_fixture(args: &Args, progress: &mut FixtureProgress) -> Result<()> {
     stream
         .set_write_timeout(Some(Duration::from_secs(10)))
         .context("set write timeout")?;
+    if args.mode == FixtureMode::TcpPayload {
+        read_tcp_payload(&mut stream, progress)?;
+        println!("stratum_v2_fixture=accepted");
+        return Ok(());
+    }
     let started = Instant::now();
     let mut codec = respond_noise(
         &mut stream,
@@ -191,7 +205,11 @@ fn fixture_terminal_category(progress: &FixtureProgress, mode: FixtureMode) -> &
         "listener"
     } else if !progress.connection_accepted {
         "accept"
-    } else if !progress.act_one_received {
+    } else if mode == FixtureMode::TcpPayload && !progress.payload_digest_match {
+        "payload_read"
+    } else if mode == FixtureMode::TcpPayload {
+        "accepted"
+    } else if mode != FixtureMode::TcpPayload && !progress.act_one_received {
         "act_one_read"
     } else if !progress.responder_created {
         "responder"
@@ -201,7 +219,7 @@ fn fixture_terminal_category(progress: &FixtureProgress, mode: FixtureMode) -> &
         "act_two_write"
     } else if !progress.client_authenticated {
         "client_authentication"
-    } else if mode == FixtureMode::HandshakeOnly {
+    } else if matches!(mode, FixtureMode::HandshakeOnly | FixtureMode::TcpPayload) {
         "accepted"
     } else if !progress.setup_accepted {
         "setup"

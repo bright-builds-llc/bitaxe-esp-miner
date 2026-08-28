@@ -19,6 +19,7 @@ mod cli_identify;
 mod cli_noise_diagnostic;
 mod cli_release_recovery;
 mod cli_restore_installed;
+mod cli_tcp_payload;
 #[path = "tests/evidence.rs"]
 mod evidence_cases;
 mod input_uat;

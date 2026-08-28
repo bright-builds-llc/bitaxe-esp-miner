@@ -37,6 +37,7 @@ mod static_files;
 mod statistics_runtime;
 mod stratum_v2_noise_diagnostic;
 mod stratum_v2_session;
+mod stratum_v2_tcp_payload_diagnostic;
 mod task_watchdog_observation;
 mod websocket_api;
 mod wifi_adapter;

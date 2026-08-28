@@ -1,6 +1,15 @@
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_test")
 load("@aspect_rules_js//js:defs.bzl", "js_library")
 
+js_library(
+    name = "tcp_payload_evaluator_sources",
+    srcs = [
+        "src/tcp_payload_diagnostic.rs",
+        "src/wifi.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
 filegroup(
     name = "phase34_identity_admission_sources",
     srcs = [
@@ -193,6 +202,7 @@ rust_binary(
         "src/model.rs",
         "src/monitor.rs",
         "src/noise_diagnostic.rs",
+        "src/tcp_payload_diagnostic.rs",
         "src/output.rs",
         "src/package.rs",
         "src/package_admission.rs",
@@ -219,6 +229,7 @@ rust_binary(
         "src/tests/cli.rs",
         "src/tests/cli_identify.rs",
         "src/tests/cli_noise_diagnostic.rs",
+        "src/tests/cli_tcp_payload.rs",
         "src/tests/cli_release_recovery.rs",
         "src/tests/cli_restore_installed.rs",
         "src/tests/evidence.rs",
@@ -244,6 +255,7 @@ rust_binary(
         "//:docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/PLAN.md",
         "//:docs/parity/work-plans/20260826T210025Z-STR-005-NOISE-DIAGNOSTIC/PLAN.md",
         "//:docs/parity/work-plans/20260828T030951Z-STR-005-PRECONNECT-NOISE-VERIFY/PLAN.md",
+        "//:docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md",
     ],
     crate_name = "bitaxe_flash",
     edition = "2021",
@@ -270,5 +282,8 @@ rust_binary(
 rust_test(
     name = "tests",
     crate = ":flash",
-    data = ["//:docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/PLAN.md"],
+    data = [
+        "//:docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/PLAN.md",
+        "//:docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md",
+    ],
 )

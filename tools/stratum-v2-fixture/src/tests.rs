@@ -163,6 +163,43 @@ fn real_tcp_handshake_only_mode_proves_client_authentication() {
 }
 
 #[test]
+fn real_tcp_payload_mode_accepts_exact_fixed_canary_without_noise() {
+    // Arrange
+    let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
+    let address = listener.local_addr().expect("address");
+    let server = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("accept");
+        stream
+            .set_read_timeout(Some(Duration::from_secs(1)))
+            .expect("read timeout");
+        let mut progress = FixtureProgress {
+            listener_ready: true,
+            connection_accepted: true,
+            peer_matched: true,
+            ..FixtureProgress::default()
+        };
+        read_tcp_payload(&mut stream, &mut progress).expect("payload");
+        progress
+    });
+    let mut stream = TcpStream::connect(address).expect("connect");
+    let payload = (0_u8..64).collect::<Vec<_>>();
+
+    // Act
+    stream.write_all(&payload).expect("write payload");
+    let progress = server.join().expect("server join");
+
+    // Assert
+    assert_eq!(progress.payload_bytes_received, 64);
+    assert_eq!(progress.payload_read_category, "complete");
+    assert!(progress.payload_digest_match);
+    assert_eq!(progress.extra_bytes_received, 0);
+    assert_eq!(
+        fixture_terminal_category(&progress, FixtureMode::TcpPayload),
+        "accepted"
+    );
+}
+
+#[test]
 fn fixture_peer_admission_rejects_an_unexpected_address() {
     // Arrange
     let expected: IpAddr = "192.0.2.1".parse().expect("expected peer");

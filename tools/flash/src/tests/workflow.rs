@@ -204,6 +204,42 @@ fn noise_diagnostic_seed_contains_only_transport_marker_and_v2_pool_keys() {
 }
 
 #[test]
+fn tcp_payload_seed_contains_only_fixed_payload_marker_and_fixture_keys() {
+    // Arrange
+    let credentials = WifiCredentials {
+        ssid: "wifi-canary".to_owned(),
+        wifi_pass: "wifi-secret-canary".to_owned(),
+    };
+    let pool = crate::campaign::admission::validate_pool_credentials(
+        crate::campaign::admission::PoolCredentialsFile {
+            pool_url: "fixture-host-canary".to_owned(),
+            pool_port: 1234,
+            pool_user: "fixture-user-canary".to_owned(),
+            pool_password: String::new(),
+            stratum_protocol: Some("SV2".to_owned()),
+            stratum_v2_channel_type: Some("standard".to_owned()),
+            stratum_v2_authority_pubkey: Some(
+                bitaxe_stratum::v2::authority::encode_authority_public_key([0x22; 32]),
+            ),
+        },
+    )
+    .expect("V2 fixture");
+    let seed = TcpPayloadDiagnosticNvsSeed { lease: 9, pool };
+
+    // Act
+    let csv = wifi_nvs_csv_for_mode(&credentials, WifiNvsSeedMode::TcpPayloadDiagnostic(seed));
+
+    // Assert
+    assert!(csv.contains("tcpdiagkind,data,string,str005_tcp_v1"));
+    assert!(csv.contains("tcpdiaglease,data,u64,9"));
+    assert!(csv.contains("tcpdiagcase,data,string,fixed_64_v1"));
+    assert!(csv.contains("mineonboot,data,u16,0"));
+    for prohibited in ["sv2diagkind", "campstage", "selftestkind"] {
+        assert!(!csv.contains(prohibited));
+    }
+}
+
+#[test]
 fn thermal_fault_nvs_tuple_is_exact_and_ordinary_mode_has_no_stimulus() {
     // Arrange
     let credentials = WifiCredentials {

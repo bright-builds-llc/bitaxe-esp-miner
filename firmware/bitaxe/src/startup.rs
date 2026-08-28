@@ -7,8 +7,8 @@ use crate::{
     fan_controller_runtime, filesystem, http_api, input_adapter, operator_sensor_runtime,
     production_mining_session, runtime_snapshot, runtime_uptime, safety_adapter,
     scoreboard_adapter, self_test_runtime, settings_adapter, statistics_runtime,
-    stratum_v2_noise_diagnostic, stratum_v2_session, wifi_adapter, BOOT_LOG_LINE, RUST_TARGET,
-    SAFE_STATE_LOG_LINE,
+    stratum_v2_noise_diagnostic, stratum_v2_session, stratum_v2_tcp_payload_diagnostic,
+    wifi_adapter, BOOT_LOG_LINE, RUST_TARGET, SAFE_STATE_LOG_LINE,
 };
 
 /// Starts firmware services while preserving evidence-before-network ordering.
@@ -242,15 +242,29 @@ fn start_runtime_services(startup_diagnostics: anyhow::Result<()>) -> anyhow::Re
     };
     startup_diagnostics?;
     safety_adapter::start_safety_supervisor();
-    let maybe_noise_diagnostic_admission = match settings_adapter::load_noise_diagnostic_admission()
-    {
-        Ok(maybe_admission) => maybe_admission,
-        Err(error) => {
-            log::warn!(
-                "stratum_v2_noise_admission=rejected category={}",
-                error.category()
-            );
-            None
+    let maybe_tcp_payload_admission =
+        match settings_adapter::load_tcp_payload_diagnostic_admission() {
+            Ok(maybe_admission) => maybe_admission,
+            Err(error) => {
+                log::warn!(
+                    "stratum_v2_tcp_payload_admission=rejected category={}",
+                    error.category()
+                );
+                None
+            }
+        };
+    let maybe_noise_diagnostic_admission = if maybe_tcp_payload_admission.is_some() {
+        None
+    } else {
+        match settings_adapter::load_noise_diagnostic_admission() {
+            Ok(maybe_admission) => maybe_admission,
+            Err(error) => {
+                log::warn!(
+                    "stratum_v2_noise_admission=rejected category={}",
+                    error.category()
+                );
+                None
+            }
         }
     };
     let maybe_self_test_admission = if maybe_noise_diagnostic_admission.is_some() {
@@ -264,7 +278,13 @@ fn start_runtime_services(startup_diagnostics: anyhow::Result<()>) -> anyhow::Re
             }
         }
     };
-    if let Some(admission) = maybe_noise_diagnostic_admission {
+    if let Some(admission) = maybe_tcp_payload_admission {
+        if let Err(error) = stratum_v2_tcp_payload_diagnostic::start(admission) {
+            log::warn!(
+                "stratum_v2_tcp_payload_diagnostic=unavailable reason=thread_spawn_failed error={error:#}"
+            );
+        }
+    } else if let Some(admission) = maybe_noise_diagnostic_admission {
         if let Err(error) = stratum_v2_noise_diagnostic::start(admission) {
             log::warn!(
                 "stratum_v2_noise_diagnostic=unavailable reason=thread_spawn_failed error={error:#}"

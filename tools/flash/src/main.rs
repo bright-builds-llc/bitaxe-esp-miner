@@ -55,6 +55,7 @@ mod release_recovery;
 mod restore_installed;
 mod self_test_intent;
 mod support;
+mod tcp_payload_diagnostic;
 mod thermal_fault_intent;
 mod wifi;
 
@@ -78,6 +79,7 @@ pub(crate) use release_recovery::*;
 pub(crate) use restore_installed::*;
 pub(crate) use self_test_intent::*;
 pub(crate) use support::*;
+pub(crate) use tcp_payload_diagnostic::*;
 pub(crate) use thermal_fault_intent::*;
 pub(crate) use wifi::*;
 
@@ -132,6 +134,9 @@ fn main() -> Result<()> {
         CliCommand::RestoreInstalled(command) => run_restore_installed(&command, &environment),
         CliCommand::NoiseDiagnostic(command) => {
             run_noise_diagnostic_command(&command, &environment)
+        }
+        CliCommand::TcpPayloadDiagnostic(command) => {
+            run_tcp_payload_diagnostic_command(&command, &environment)
         }
     };
     let device_effect_state = environment.device_effect_state();

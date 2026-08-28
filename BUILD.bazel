@@ -143,6 +143,15 @@ js_library(
 )
 
 js_library(
+    name = "str005_tcp_payload_inputs",
+    srcs = [
+        "TASKS.md",
+        "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "emc2101_reference_sources",
     srcs = [
         "reference/esp-miner/main/device_config.h",

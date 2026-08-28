@@ -1,9 +1,20 @@
 load("@rules_rust//rust:defs.bzl", "rust_binary")
+load("@aspect_rules_js//js:defs.bzl", "js_library")
+
+js_library(
+    name = "tcp_payload_evaluator_sources",
+    srcs = [
+        "src/main.rs",
+        "src/tcp_payload.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
 
 rust_binary(
     name = "stratum_v2_fixture",
     srcs = [
         "src/main.rs",
+        "src/tcp_payload.rs",
         "src/tests.rs",
     ],
     crate_name = "bitaxe_stratum_v2_fixture",

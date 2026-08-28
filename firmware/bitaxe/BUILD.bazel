@@ -2,6 +2,16 @@ load("//scripts:build_identity.bzl", "build_provenance")
 load("@rules_rust//rust:defs.bzl", "rust_test")
 load("@aspect_rules_js//js:defs.bzl", "js_library", "js_run_binary")
 
+js_library(
+    name = "tcp_payload_evaluator_sources",
+    srcs = [
+        "src/settings_adapter/tcp_payload_diagnostic.rs",
+        "src/startup.rs",
+        "src/stratum_v2_tcp_payload_diagnostic.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
 exports_files([
     "BUILD.bazel",
     "partitions-ultra205.csv",
@@ -673,9 +683,11 @@ rust_test(
     srcs = [
         "src/production_mining_session.rs",
         "src/settings_adapter/noise_diagnostic.rs",
+        "src/settings_adapter/tcp_payload_diagnostic.rs",
         "src/settings_adapter/stratum_v2.rs",
         "src/startup.rs",
         "src/stratum_v2_noise_diagnostic.rs",
+        "src/stratum_v2_tcp_payload_diagnostic.rs",
         "src/stratum_v2_session.rs",
         "src/stratum_v2_session/transport.rs",
         "src/stratum_v2_source_ownership_test.rs",
