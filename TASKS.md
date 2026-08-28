@@ -26,7 +26,7 @@ new work.
 
 ### task-str005-tcp-payload-205 | 2026-08-28 | Prove Ultra 205 TCP payload delivery
 
-- [ ] Create a separate immutable execution plan before implementation,
+- [x] Create a separate immutable execution plan before implementation,
       network use, package installation, or hardware effects.
 - [ ] Prove the exact Ultra 205 peer connects to the admitted same-subnet
       fixture and delivers one fixed 64-byte non-secret canary.
@@ -38,6 +38,8 @@ new work.
 Depends on: the archived STR-005 lineage and decomposition plan
 `docs/parity/work-plans/20260828T175218Z-STR-005-DECOMPOSITION/PLAN.md`.
 
+Plan: `docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md`
+
 Authorization: planning, repository implementation, tests, build/package,
 commit, and push after a child plan exists. No hardware or network effect is
 eligible until that immutable plan defines its exact command, evidence,
@@ -46,6 +48,39 @@ begins at `diagnostic-001`. Noise, Stratum V2 protocol messages, ASIC, fan,
 voltage, mining, external pools, other boards, direct UART/pins, raw
 NVS/coredump access, fault injection, OTA, erase, and arbitrary writes remain
 excluded.
+
+Diagnostic-001 command contract: after the immutable plan and a separate
+implementation/evidence-contract commit are clean, fully verified, committed,
+and pushed, run `just package`, then `just detect-ultra205`, then exactly one
+repo-owned command:
+
+`just stratum-v2-tcp-payload start --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/diagnostic-001 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-001.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 1 --capture-timeout-seconds 360 --redact-evidence`
+
+The command may flash the exact package, seed only private Wi-Fi plus a
+generated same-subnet fixture endpoint and bounded diagnostic lease, accept one
+exact-peer TCP connection, send the fixed public byte sequence `0x00..0x3f`,
+receive-only monitor the result, and execute exact recovery-006
+firmware/settings restoration. Mining, Noise, V2 messages, ASIC work, fan,
+voltage, thermal/power control, external pools, discovery, other boards,
+direct UART/pins, raw NVS/coredump access, fault injection, OTA, erase, and
+arbitrary writes remain prohibited.
+
+Evidence/privacy: the absent private parent is mode `0700`; supervisor-owned
+children and distinct stdout/stderr siblings are mode `0600`, secret-sanitized,
+ignored, sealed, and never promoted. Credential values never reach disk or
+terminal. The public projection contains only closed categories, booleans,
+bounded counts/timings, safe digests/provenance, restoration/cleanup truth, and
+`redaction_status: passed`, and must pass an identity-bound independent
+validator.
+
+Recovery/retry/stop: preserve the earliest typed failure, always restore the
+exact recovery-006 package/settings/appearance plus `mineonboot=false`, prove
+inactive zero-work runtime, fresh board admission, USB/holder cleanup, and zero
+owned processes. Diagnostic-001 runs once. No unchanged retry is allowed; a
+later ordinal requires a distinct closed signature and regression-backed fix or
+objective authorized remediation. Accepted evidence completes only this child;
+STR-005 remains `implemented | unit,golden,workflow` until the final cumulative
+share campaign and promotion task.
 
 Verification: Pending.
 
