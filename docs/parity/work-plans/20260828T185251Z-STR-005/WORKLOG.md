@@ -282,3 +282,26 @@
 - Outcome: diagnostic-007 is ready for a distinct clean source checkpoint.
 - Blocker or next safe action: commit/push, rebuild the exact clean package,
   capture fresh one-board detector admission, then invoke diagnostic-007 once.
+
+## 2026-08-28T22:18:00Z | Diagnostic-007 capture boundary
+
+- Source commit: `a1610b69e2089059315e5598eb12c4235d6e2a9e`
+- Actions: built the exact clean package, captured fresh one-board admission,
+  ran diagnostic-007 once, and allowed exact restoration/cleanup to complete.
+- Verification: the exact-peer fixture accepted one connection but timed out
+  with zero of 64 bytes. The bounded diagnostic child timed out with no retained
+  TCP stage, timing, terminal, flash-diagnostic, or stderr marker, so the closed
+  candidate category was `timeout` rather than a fabricated shutdown class.
+  Recovery-006 identity/settings, `mineonboot=false`, inactive zero-work
+  runtime, USB cleanup, and zero owned processes all passed. The repository
+  remained clean and synchronized; no public projection was published.
+- Evidence: protected roots `scratch/str005-tcp-payload/diagnostic-007` and
+  `scratch/str005-tcp-payload/detector-diagnostic-007`; no protected values are
+  promoted.
+- Outcome: distinct monitor-capture boundary. Diagnostic-006's immediate
+  shutdown failure remains the latest classified socket result; diagnostic-007
+  did not observe enough firmware output to refine it.
+- Blocker or next safe action: add a regression-backed deterministic
+  post-flash monitor-attachment boundary before authorizing a fresh ordinal.
+  Do not retry diagnostic-007 unchanged and do not broaden into Noise, V2
+  messages, mining, ASIC, fan, voltage, or other hardware control.

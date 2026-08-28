@@ -260,6 +260,17 @@ no-unchanged-retry boundary remains. Its result must select a software fix or a
 typed stop; no raw OS error, endpoint, credential, or device identity may be
 promoted.
 
+Diagnostic-007 outcome: `continue_after_verified_capture_fix`. Fresh one-board
+admission and the exact package passed, and the exact-peer fixture accepted one
+device connection, but the bounded serial child retained no TCP diagnostic
+stage, timing, or terminal marker. The closed result therefore remained
+`timeout`; it neither classified nor contradicted diagnostic-006's shutdown
+failure. The fixture received zero bytes, no public projection was published,
+and exact recovery-006 identity/settings, inactive zero-work runtime, USB
+cleanup, and zero owned processes all passed. The next attempt must first make
+post-flash monitor attachment deterministic enough to retain the classifier;
+an unchanged diagnostic-007 retry is prohibited.
+
 Verification: diagnostic-001 stopped before effects at
 `timeout:fixture_ready`; its regression-backed fixture-timeout fix passed every
 gate and was pushed as `35ae9cb33458ad6c76f6eedef5d0538720d80367`.
@@ -270,7 +281,8 @@ stopped at `hardware_blocked:restoration`. No public projection was published.
 Current review: the earlier terminal closure is superseded by the user's
 standing iterative hardware-debug authorization and successful recovery-002.
 Exact restoration is now proved; TCP payload delivery remains the sole open
-child objective. Keep this task active through diagnostic-007. Noise, V2
+child objective. Keep this task active at the monitor-capture boundary after
+diagnostic-007. Noise, V2
 messages, ASIC work, mining, and STR-005 promotion remain unauthorized. STR-005
 remains `implemented` with `unit,golden,workflow`.
 
