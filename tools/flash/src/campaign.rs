@@ -401,6 +401,20 @@ pub(crate) fn campaign_flash_failure(
             UsbTerminalCategory::ForeignHolder => CampaignTerminalCategory::ForeignHolder,
             UsbTerminalCategory::TransportAbsent => CampaignTerminalCategory::TransportAbsent,
             UsbTerminalCategory::IdentityDrift => CampaignTerminalCategory::IdentityDrift,
+            UsbTerminalCategory::PhysicalIdentityDrift => CampaignTerminalCategory::IdentityDrift,
+            UsbTerminalCategory::RuntimeProfileUnknown
+            | UsbTerminalCategory::HandoffUnsupported
+            | UsbTerminalCategory::HandoffRejectedUnsafeState
+            | UsbTerminalCategory::HandoffReadyTimeout
+            | UsbTerminalCategory::HandoffTransitionTimeout
+            | UsbTerminalCategory::BootloaderAmbiguous
+            | UsbTerminalCategory::BootloaderSyncFailed => {
+                CampaignTerminalCategory::BootloaderConnectFailed
+            }
+            UsbTerminalCategory::ApplicationReappearanceTimeout
+            | UsbTerminalCategory::RecoveryRequired => {
+                CampaignTerminalCategory::RecoveryNotObserved
+            }
             UsbTerminalCategory::BootloaderConnectFailed => {
                 CampaignTerminalCategory::BootloaderConnectFailed
             }

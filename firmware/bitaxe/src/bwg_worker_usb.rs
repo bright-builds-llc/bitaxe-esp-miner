@@ -14,6 +14,7 @@ use zeroize::Zeroize;
 use crate::bwg_worker_nvs::{BwgWorkerNvs, EspDeviceIdentitySeedGenerator};
 use crate::bwg_worker_session::ProductionWorkerSession;
 use crate::startup::BootMiningBaselineConfirmed;
+use crate::usb_runtime::{MaintenanceAction, MaintenanceEvent, UsbMaintenanceState};
 
 const OWNER_STACK_BYTES: usize = 16 * 1024;
 const EVENT_CAPACITY: usize = 8;
@@ -26,7 +27,6 @@ static EVENTS: OnceLock<SyncSender<UsbEvent>> = OnceLock::new();
 static INGRESS_LOST: AtomicBool = AtomicBool::new(false);
 
 unsafe extern "C" {
-    fn bwg_usb_install() -> i32;
     fn bwg_usb_vendor_write(bytes: *const u8, length: u32) -> u32;
     fn bwg_usb_evidence_write(bytes: *const u8, length: u32) -> u32;
 }
@@ -35,6 +35,8 @@ enum UsbEvent {
     Attached,
     Detached,
     Bytes(SecretUsbBytes),
+    LineCoding(u32),
+    LineState { dtr: bool, rts: bool },
 }
 
 struct SecretUsbBytes(Vec<u8>);
@@ -120,11 +122,7 @@ pub(crate) fn start(recovery: BwgWorkerRecovery) -> anyhow::Result<()> {
         .name("bwg-worker-control".to_owned())
         .stack_size(OWNER_STACK_BYTES)
         .spawn(move || run_owner(receiver, &mut worker))?;
-    let result = unsafe { bwg_usb_install() };
-    if result != esp_idf_sys::ESP_OK {
-        return Err(anyhow::anyhow!("BWG TinyUSB install failed: {result}"));
-    }
-    Ok(())
+    crate::usb_runtime::install_worker_runtime()
 }
 
 fn run_owner<V, S>(receiver: Receiver<UsbEvent>, worker: &mut WorkerControl<V, S>)
@@ -133,12 +131,15 @@ where
     S: bitaxe_worker_control::WorkerSession,
 {
     let mut accumulator = WorkerControlFrameAccumulator::new();
+    let mut maintenance = UsbMaintenanceState::default();
+    let mut maintenance_ingress_open = true;
     loop {
         let now = crate::runtime_uptime::millis();
         let event = match receiver.recv_timeout(Duration::from_millis(100)) {
             Ok(event) => event,
             Err(mpsc::RecvTimeoutError::Timeout) => {
                 note_control_result(worker.tick(now));
+                maintenance.expire(now);
                 continue;
             }
             Err(mpsc::RecvTimeoutError::Disconnected) => break,
@@ -146,15 +147,21 @@ where
         match event {
             UsbEvent::Attached => {
                 accumulator.clear();
+                maintenance_ingress_open = true;
                 worker.begin_enumeration();
                 write_evidence(b"bwg_worker={\"event\":\"attached\"}\n");
             }
             UsbEvent::Detached => {
                 accumulator.clear();
+                maintenance_ingress_open = false;
+                let _ = maintenance.observe(MaintenanceEvent::Detached, now);
                 note_control_result(worker.disconnect(now));
                 write_evidence(b"bwg_worker={\"event\":\"restoration_pending\"}\n");
             }
             UsbEvent::Bytes(chunk) => {
+                if !maintenance_ingress_open {
+                    continue;
+                }
                 let Ok(maybe_frame) = accumulator.push(&chunk.0) else {
                     note_control_result(worker.control_failed(now));
                     continue;
@@ -164,6 +171,20 @@ where
                     frame.zeroize();
                 }
             }
+            UsbEvent::LineCoding(bit_rate) => handle_maintenance(
+                maintenance.observe(MaintenanceEvent::LineCoding { bit_rate }, now),
+                &mut maintenance,
+                &mut maintenance_ingress_open,
+                worker,
+                now,
+            ),
+            UsbEvent::LineState { dtr, rts } => handle_maintenance(
+                maintenance.observe(MaintenanceEvent::LineState { dtr, rts }, now),
+                &mut maintenance,
+                &mut maintenance_ingress_open,
+                worker,
+                now,
+            ),
         }
         if INGRESS_LOST.swap(false, Ordering::AcqRel) {
             accumulator.clear();
@@ -171,6 +192,46 @@ where
         }
     }
     note_control_result(worker.control_failed(crate::runtime_uptime::millis()));
+}
+
+fn handle_maintenance<V, S>(
+    action: MaintenanceAction,
+    state: &mut UsbMaintenanceState,
+    maintenance_ingress_open: &mut bool,
+    worker: &mut WorkerControl<V, S>,
+    now: u64,
+) where
+    V: bitaxe_worker_control::LeaseAuthorizationVerifier,
+    S: bitaxe_worker_control::WorkerSession,
+{
+    match action {
+        MaintenanceAction::None => {}
+        MaintenanceAction::RequestSafeStop => {
+            *maintenance_ingress_open = false;
+            let active_effect = worker.has_active_lease();
+            let safe_stop_complete = worker.control_failed(now).is_ok();
+            let event = if safe_stop_complete && !active_effect {
+                MaintenanceEvent::SafeStopComplete
+            } else {
+                MaintenanceEvent::SafeStopFailed
+            };
+            handle_maintenance(
+                state.observe(event, now),
+                state,
+                maintenance_ingress_open,
+                worker,
+                now,
+            );
+        }
+        MaintenanceAction::EmitReady => {
+            write_evidence(b"usb_maintenance={\"status\":\"ready\"}\n");
+        }
+        MaintenanceAction::RestartBootloader => {
+            if let Err(error) = crate::usb_runtime::restart_into_rom_downloader() {
+                log::warn!("usb_maintenance=failed category=rom_handoff error={error:#}");
+            }
+        }
+    }
 }
 
 fn process_frame<V, S>(worker: &mut WorkerControl<V, S>, frame: &[u8], now: u64)
@@ -244,4 +305,14 @@ unsafe extern "C" fn bwg_worker_usb_vendor_received(bytes: *const u8, length: u3
     }
     let value = unsafe { std::slice::from_raw_parts(bytes, length) }.to_vec();
     send_event(UsbEvent::Bytes(SecretUsbBytes(value)));
+}
+
+#[no_mangle]
+extern "C" fn usb_runtime_line_coding(bit_rate: u32) {
+    send_event(UsbEvent::LineCoding(bit_rate));
+}
+
+#[no_mangle]
+extern "C" fn usb_runtime_line_state(dtr: bool, rts: bool) {
+    send_event(UsbEvent::LineState { dtr, rts });
 }

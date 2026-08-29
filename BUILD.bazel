@@ -16,6 +16,12 @@ exports_files([
     "AGENTS.md",
     "Justfile",
     "TASKS.md",
+    ".codex/tasks/lessons.md",
+    "docs/adr/0015-separate-bootloader-runtime-and-control-transports.md",
+    "docs/adr/0018-possession-bound-worker-usb-control.md",
+    "docs/adr/0020-time-multiplex-native-usb-ownership.md",
+    "docs/hardware/esp-device-session.md",
+    "docs/hardware/native-usb-ownership.md",
     "docs/adr/0019-supervise-bwg-restoration-through-a-protected-browser-campaign.md",
     "docs/hardware/hardware-attempt-policy.md",
     "docs/parity/evidence/phase-22-claim-ladder-and-safety-preconditions/claim-ladder.md",
@@ -79,6 +85,21 @@ filegroup(
         "MODULE.bazel.lock",
         "rust-toolchain.toml",
     ],
+)
+
+js_library(
+    name = "native_usb_ownership_guard_inputs",
+    srcs = [
+        ".codex/tasks/lessons.md",
+        "AGENTS.md",
+        "Justfile",
+        "docs/adr/0015-separate-bootloader-runtime-and-control-transports.md",
+        "docs/adr/0018-possession-bound-worker-usb-control.md",
+        "docs/adr/0020-time-multiplex-native-usb-ownership.md",
+        "docs/hardware/esp-device-session.md",
+        "docs/hardware/native-usb-ownership.md",
+    ],
+    visibility = ["//scripts:__pkg__"],
 )
 
 js_library(

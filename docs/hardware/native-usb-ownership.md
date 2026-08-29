@@ -1,17 +1,105 @@
 # Native USB ownership
 
-Read this before changing TinyUSB, USB descriptors/sdkconfig, firmware startup,
-detection, flashing, monitoring, or recovery.
+Read this before changing TinyUSB, USB descriptors or sdkconfig, firmware
+startup, detection, flashing, monitoring, or recovery. The ESP32-S3 has one
+internal USB PHY, so the repository time-multiplexes that PHY instead of
+maintaining separate development and production firmware.
 
-Profiles are `worker_runtime`, `serial_jtag_runtime`, and `rom_downloader`.
-VID/PID and product describe profile identity. Stable connector location plus a
-common serial describe physical identity. Device nodes and registry epochs are
-enumeration identity.
+## Profiles and identity
 
-The buttonless flow is Worker runtime → guarded 1200-baud/DTR maintenance
-gesture → safe stop → ROM downloader → admitted flash → expected runtime.
-Monitoring never arms handoff, and CDC payload bytes never request it.
+| Profile | Owner | Allowed host behavior |
+| --- | --- | --- |
+| `worker_runtime` | Boot-lifetime `UsbRuntime` using TinyUSB vendor control plus CDC evidence | Inspect, receive-only monitor, or guarded maintenance handoff |
+| `serial_jtag_runtime` | ESP-IDF USB-Serial-JTAG retained for consume-once diagnostics, recovery, and unconfirmed safe baselines | Inspect, receive-only monitor, or direct automatic reset into ROM |
+| `rom_downloader` | ESP32-S3 ROM | `board-info`, admitted flash, and recovery writes |
+| `unknown` | Unqualified | Fail closed |
 
-Run `just verify-native-usb-ownership` for software changes. Hardware changes
-remain incomplete until the active task records 20 automatic cycles with
-stable physical identity, exact package recovery, cleanup, and redaction.
+Profile identity comes from exact USB descriptors and, for `rom_downloader`, a
+successful ESP32-S3 `board-info` exchange. Physical identity is the stable
+macOS connector location, falling back to a stable USB serial only when the
+location is unavailable. VID/PID, product strings, device nodes, inode data,
+and registry epochs are profile or enumeration identity and never enter the
+physical digest. One `UsbSession` lease remains held while those fields change.
+
+## Firmware handoff
+
+Ordinary confirmed-safe boots select `worker_runtime`. A consume-once TCP,
+Noise, or self-test admission selects `serial_jtag_runtime`; an unconfirmed
+boot-safe baseline also retains Serial/JTAG by withholding TinyUSB startup.
+
+The only Worker-to-ROM command channel is this CDC class-control sequence:
+
+1. The host opens the admitted Worker CDC node, asserts DTR, and sets exact
+   1200-baud line coding.
+2. TinyUSB callbacks enqueue line-coding and line-state events. They perform no
+   safe stop, PHY mutation, or restart.
+3. The Rust owner closes Worker ingress, rejects an already-active Worker
+   effect, and requires Production Mining Session safe-stop success.
+4. The owner emits `usb_maintenance={"status":"ready"}` on CDC evidence.
+5. After observing that exact bounded receipt, the host clears DTR and closes
+   the node.
+6. The owner uninstalls TinyUSB, returns the internal PHY to hardware
+   USB-Serial-JTAG, registers the force-download shutdown handler, and restarts
+   into ROM.
+
+Wrong ordering, a duplicate event, timeout, disconnect, active effect, failed
+safe stop, missing receipt, or control I/O failure disarms without rebooting.
+CDC payload bytes remain non-command data under ADR-0018.
+
+The PHY and force-download sequence is the minimum ESP32-S3 behavior adapted
+from Espressif's pinned Arduino implementation at commit
+`bb0bb3ec57fbcf7efb8409f727fb792e3d28fe79`. See
+`cores/esp32/esp32-hal-tinyusb.c` and `cores/esp32/USBCDC.cpp` in
+`espressif/arduino-esp32`.
+
+## Host operations
+
+All profile crossings happen behind the existing repo-owned commands:
+`just detect-ultra205`, `just flash`, `just monitor`, `just flash-monitor`, and
+the recovery commands.
+
+Monitoring never arms handoff.
+
+- Inspect reports a known Worker profile without pretending `board-info` is
+  available. Serial/JTAG inspection may use `board-info` to distinguish ROM.
+- Flash and recovery first acquire the physical lease. Worker performs the
+  guarded handoff; Serial/JTAG enters ROM directly. Every write requires a
+  successful ESP32-S3 `board-info`, then uses `--before no-reset-no-sync` (or
+  the managed esptool equivalent) so synchronization never reaches Worker CDC.
+- Observe selects the receive-only Adapter for Worker or Serial/JTAG and never
+  arms maintenance.
+- After a write, the same lease reacquires the expected application profile
+  and remains responsible for process-group cleanup and final holder checks.
+
+Initial production support is macOS. Linux and Windows expose the same
+Interface but fail closed until their inventory, identity, serial-control, and
+process adapters receive separate qualification.
+
+## Closed failures and evidence
+
+Native ownership adds `runtime_profile_unknown`, `handoff_unsupported`,
+`handoff_rejected_unsafe_state`, `handoff_ready_timeout`,
+`handoff_transition_timeout`, `bootloader_ambiguous`,
+`physical_identity_drift`, `bootloader_sync_failed`,
+`application_reappearance_timeout`, and `recovery_required`. Existing
+flash/recovery/cleanup failures remain available, and the earliest failure is
+never replaced by a later cleanup error.
+
+Raw addresses, ports, descriptors, identities, serial data, process data, and
+timestamps remain in ignored mode-`0600` artifacts under mode-`0700` roots.
+Public output contains only closed categories, booleans, bounded counts and
+timings, and safe digests.
+
+## Development and recovery
+
+Run `just verify-native-usb-ownership` after every software change in this
+surface. It checks the sole TinyUSB owner, diagnostic Serial/JTAG retention,
+the maintenance reducer, centralized host routing, and linked agent/ADR/docs
+guardrails through Bazel.
+
+Manual BOOT/RESET is a one-time bootstrap or last-resort recovery path, never
+the normal development workflow. Buttonless flashing is not qualified until
+the active task records 20 automatic Worker-to-ROM-to-flash-to-Worker cycles
+with stable physical identity, exact package restoration, complete cleanup,
+and redacted evidence. OTA may accelerate application updates but cannot be
+the only recovery route.

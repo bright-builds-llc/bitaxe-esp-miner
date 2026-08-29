@@ -9,6 +9,7 @@ js_library(
         "src/startup.rs",
         "src/stratum_v2_tcp_payload_diagnostic.rs",
         "src/stratum_v2_tcp_payload_replay.rs",
+        "src/usb_runtime.rs",
     ],
     visibility = ["//tools/automation:__pkg__"],
 )
@@ -46,6 +47,17 @@ filegroup(
     name = "bwg_usb_native_source",
     srcs = ["bwg/native/bwg_usb.c"],
     visibility = ["//crates/bitaxe-worker-control:__pkg__"],
+)
+
+js_library(
+    name = "native_usb_ownership_sources",
+    srcs = [
+        "bwg/native/bwg_usb.c",
+        "src/bwg_worker_usb.rs",
+        "src/startup.rs",
+        "src/usb_runtime.rs",
+    ],
+    visibility = ["//scripts:__pkg__"],
 )
 
 js_library(

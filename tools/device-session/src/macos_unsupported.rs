@@ -11,6 +11,15 @@ pub(crate) struct UsbDeviceSnapshot {
     pub(crate) holder_count: u16,
 }
 
+pub(crate) struct UsbProfileFields {
+    pub(crate) port: String,
+    pub(crate) physical_identity_digest: String,
+    pub(crate) enumeration_token: String,
+    pub(crate) vendor: String,
+    pub(crate) product: String,
+    pub(crate) product_name: Option<String>,
+}
+
 pub(crate) struct DeviceObservation {
     pub(crate) event: SessionEvent,
     pub(crate) maybe_port: Option<String>,
@@ -35,6 +44,9 @@ impl ReceiveOnlyReader {
 pub(crate) struct MacOsDeviceAdapter;
 
 impl MacOsDeviceAdapter {
+    pub(crate) fn maybe_profile_fields(_port: &str) -> Result<Option<UsbProfileFields>> {
+        bail!("macOS identity adapter is unsupported on this platform")
+    }
     pub(crate) fn candidate_ports() -> Result<Vec<String>> {
         bail!("macOS identity adapter is unsupported on this platform")
     }

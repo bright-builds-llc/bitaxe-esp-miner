@@ -9,6 +9,7 @@ pub(super) const EXTENDED_RECOVERY_TIMEOUT: Duration = Duration::from_secs(60);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub(super) enum RecoveryPhase {
+    Handoff,
     PostFlash,
     PostProbe,
     RetryAdmission,
@@ -19,7 +20,7 @@ pub(super) enum RecoveryPhase {
 impl RecoveryPhase {
     pub(super) const fn timeout(self) -> Duration {
         match self {
-            Self::PostFlash | Self::MonitorAdmission | Self::FinalCleanup => {
+            Self::Handoff | Self::PostFlash | Self::MonitorAdmission | Self::FinalCleanup => {
                 EXTENDED_RECOVERY_TIMEOUT
             }
             Self::PostProbe | Self::RetryAdmission => STANDARD_RECOVERY_TIMEOUT,
@@ -28,6 +29,7 @@ impl RecoveryPhase {
 
     pub(super) const fn as_str(self) -> &'static str {
         match self {
+            Self::Handoff => "handoff",
             Self::PostFlash => "post_flash",
             Self::PostProbe => "post_probe",
             Self::RetryAdmission => "retry_admission",

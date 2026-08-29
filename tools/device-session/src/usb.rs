@@ -4,6 +4,7 @@ mod lease;
 mod line_admission;
 mod observation;
 mod process;
+mod profile_reacquire;
 mod recovery;
 
 use std::fs::{self, OpenOptions};

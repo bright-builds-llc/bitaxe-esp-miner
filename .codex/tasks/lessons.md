@@ -206,3 +206,10 @@
 2. What went wrong: Hardware progress was slowed by treating each diagnosed code fix and fresh progress-backed retry as requiring another formal immutable plan even after the active task already defined the complete effect, safety, privacy, recovery, evidence, retry, and stop contract.
 3. Preventive rule: Within a complete active hardware task contract, diagnose, fix, regression-test, verify, commit/push, select a fresh ordinal, and retry autonomously. Create a new plan only when an explicitly invoked skill requires one, authority or effects materially expand, the safety/recovery contract changes, or no active task covers the effect.
 4. Trigger signal: The next action is a targeted fix or fresh ordinal for the same admitted hardware boundary, and work is about to pause solely to create another plan rather than because scope, authority, safety, recovery, or evidence requirements changed.
+
+## lesson-visible-cdc-is-not-flash-admission | 2026-08-29 20:10
+
+1. Date: 2026-08-29
+2. What went wrong: Enabling the ESP32-S3 TinyUSB application profile produced a visible CDC node, but the existing flash path treated every serial node as an admitted ROM downloader and sent bootloader synchronization traffic to the Worker runtime.
+3. Preventive rule: Treat physical identity, USB profile, and enumeration identity separately. Any application profile that owns the internal USB PHY must retain a tested, repo-owned handoff to ROM; require successful ROM `board-info` before writes and never infer flash compatibility from CDC visibility.
+4. Trigger signal: TinyUSB descriptors, USB sdkconfig, or startup ownership changes while flash/recovery tests still identify targets only by a `/dev/cu.*` node or VID/PID and do not prove a profile transition plus ROM admission.

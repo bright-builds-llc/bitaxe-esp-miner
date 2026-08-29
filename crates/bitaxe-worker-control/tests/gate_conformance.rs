@@ -497,7 +497,19 @@ fn execute_usb_negatives(usb: &Value, source: &str) {
     assert!(declared_id("ambiguous_control_functions"));
     assert_eq!(source.matches("TUSB_CLASS_VENDOR_SPECIFIC").count(), 1);
     assert!(declared_id("bootloader_control_attempt"));
-    assert!(!source.contains("USB_SERIAL_JTAG"));
+    let vendor_start = source
+        .find("void tud_vendor_rx_cb")
+        .expect("vendor callback must exist");
+    let cdc_start = source[vendor_start..]
+        .find("void tud_cdc_rx_cb")
+        .map(|offset| vendor_start + offset)
+        .expect("CDC callback must follow vendor callback");
+    let vendor_callback = &source[vendor_start..cdc_start];
+    assert!(!vendor_callback.contains("bwg_usb_restart_bootloader"));
+    assert!(!vendor_callback.contains("USB_SERIAL_JTAG"));
+    assert!(!vendor_callback.contains("RTC_CNTL_FORCE_DOWNLOAD_BOOT"));
+    assert!(source.contains("usb_runtime_line_coding"));
+    assert!(source.contains("usb_runtime_line_state"));
     assert!(declared_id("unknown_profile_field"));
     assert!(source.contains("bwg_worker_usb_vendor_received"));
     assert!(declared_id("control_descriptor_drift"));

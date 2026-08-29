@@ -291,6 +291,9 @@ fn start_runtime_services(
             }
         }
     };
+    let serial_jtag_runtime = maybe_tcp_payload_admission.is_some()
+        || maybe_noise_diagnostic_admission.is_some()
+        || maybe_self_test_admission.is_some();
     if let Some(admission) = maybe_tcp_payload_admission {
         if let Err(error) = stratum_v2_tcp_payload_diagnostic::start(admission) {
             log::warn!(
@@ -337,7 +340,9 @@ fn start_runtime_services(
     if let Err(error) = statistics_runtime::start() {
         log::warn!("statistics_runtime=unavailable reason=thread_spawn_failed error={error:#}");
     }
-    if let Some(bwg_recovery) = maybe_bwg_recovery {
+    if serial_jtag_runtime {
+        log::info!("usb_runtime=serial_jtag reason=diagnostic_owner");
+    } else if let Some(bwg_recovery) = maybe_bwg_recovery {
         if let Err(error) = crate::bwg_worker_usb::start(bwg_recovery) {
             log::warn!("bwg_worker_control=unavailable category=startup_failed error={error:#}");
         }

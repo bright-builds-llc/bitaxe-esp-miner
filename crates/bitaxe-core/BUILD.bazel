@@ -32,6 +32,12 @@ js_library(
     visibility = ["//tools/automation:__pkg__"],
 )
 
+js_library(
+    name = "native_usb_ownership_source",
+    srcs = ["src/usb_maintenance.rs"],
+    visibility = ["//scripts:__pkg__"],
+)
+
 filegroup(
     name = "phase34_identity_sources",
     srcs = [
@@ -63,6 +69,7 @@ rust_library(
         "src/screen.rs",
         "src/screen/frame.rs",
         "src/screen/tests.rs",
+        "src/usb_maintenance.rs",
         "src/wifi_reconnect.rs",
     ],
     compile_data = glob(["fixtures/**"]),

@@ -70,6 +70,9 @@ verify-flash-durability *args:
 verify-reference:
     bazel run //tools/automation:verify_reference
 
+verify-native-usb-ownership:
+    bazel run //scripts:verify_native_usb_ownership
+
 parity:
     bazel run //tools/parity:report -- report --checklist docs/parity/checklist.md --fail-on-invalid-verified
 

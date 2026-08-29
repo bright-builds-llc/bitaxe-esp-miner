@@ -17,3 +17,25 @@
   pointer, profile-aware device-session types, and regression tests proving a
   Worker runtime flash selects handoff while monitoring never does.
 - Hardware effects: none. Firmware handoff and host adapters remain pending.
+
+## 2026-08-29T19:01:02Z | Complete software handoff
+
+- Moved the maintenance state machine into the pure core and covered the exact
+  DTR/1200-baud/safe-stop/readiness/commit sequence plus wrong-order,
+  duplicate, disconnect, timeout, active-effect, and failed-safe-stop disarm.
+- Made `UsbRuntime` the sole TinyUSB installation and PHY-handoff owner. The C
+  shell now uses the minimum pinned Espressif ESP32-S3 Serial/JTAG switch,
+  force-download shutdown handler, and explicit error returns.
+- Added macOS profile metadata, connector-stable physical identity, bounded CDC
+  serial control, retained-lease profile reacquisition, ROM `board-info`
+  admission, centralized espflash/esptool routing, and receive-only monitoring.
+- Added the Bazel-backed `just verify-native-usb-ownership` source guard, the
+  visible-CDC lesson, and detailed profile/recovery guidance. Updated the BWG
+  conformance boundary so vendor payloads remain unable to request bootloader
+  control.
+- Verification: ordered Cargo gates, Bright Builds, focused USB tests, all 69
+  Bazel tests, canonical firmware build/package, parity/progress, redaction,
+  pinned-reference cleanliness, and whitespace checks passed.
+- Hardware/network effects: none. The one-time manual bootstrap, automatic
+  handoff validation, 20-cycle durability run, and exact recovery-006 restore
+  remain the next stage.

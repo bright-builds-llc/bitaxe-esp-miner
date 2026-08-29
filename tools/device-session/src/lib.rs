@@ -47,4 +47,7 @@ pub use usb::{
     UsbCommandTermination, UsbConnectionSignature, UsbDeviceEffectState, UsbLifecycleEvent,
     UsbLifecycleState, UsbOperation, UsbSession, UsbSessionError, UsbTerminalCategory,
 };
-pub use usb_ownership::{plan_usb_operation, UsbIntent, UsbOperationPlan, UsbProfile};
+pub use usb_ownership::{
+    admit_rom_downloader, classify_usb_profile, handoff_worker_to_rom, inspect_usb_profile,
+    plan_usb_operation, UsbIntent, UsbOperationPlan, UsbProfile, UsbProfileInspection,
+};

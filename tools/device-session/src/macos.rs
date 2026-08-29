@@ -17,6 +17,9 @@ struct Candidate {
     port: String,
     physical_identity_digest: String,
     enumeration_token: String,
+    vendor: String,
+    product: String,
+    product_name: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -28,6 +31,15 @@ pub(crate) struct UsbDeviceSnapshot {
     pub(crate) holder_count: u16,
 }
 
+pub(crate) struct UsbProfileFields {
+    pub(crate) port: String,
+    pub(crate) physical_identity_digest: String,
+    pub(crate) enumeration_token: String,
+    pub(crate) vendor: String,
+    pub(crate) product: String,
+    pub(crate) product_name: Option<String>,
+}
+
 #[derive(Debug, Default)]
 struct NodeFields {
     usb_node: bool,
@@ -35,6 +47,7 @@ struct NodeFields {
     product: Option<String>,
     serial: Option<String>,
     location: Option<String>,
+    product_name: Option<String>,
 }
 
 #[derive(Debug)]
@@ -84,6 +97,25 @@ impl ReceiveOnlyReader {
 pub(crate) struct MacOsDeviceAdapter;
 
 impl MacOsDeviceAdapter {
+    pub(crate) fn maybe_profile_fields(port: &str) -> Result<Option<UsbProfileFields>> {
+        let candidates = scan_candidates()?;
+        let matches = candidates
+            .into_iter()
+            .filter(|candidate| candidate.port == port)
+            .collect::<Vec<_>>();
+        match matches.as_slice() {
+            [] => Ok(None),
+            [candidate] => Ok(Some(UsbProfileFields {
+                port: candidate.port.clone(),
+                physical_identity_digest: candidate.physical_identity_digest.clone(),
+                enumeration_token: candidate.enumeration_token.clone(),
+                vendor: candidate.vendor.clone(),
+                product: candidate.product.clone(),
+                product_name: candidate.product_name.clone(),
+            })),
+            _ => bail!("multiple USB profiles matched the selected device node"),
+        }
+    }
     pub(crate) fn candidate_ports() -> Result<Vec<String>> {
         scan_candidates().map(|candidates| {
             candidates
@@ -326,6 +358,7 @@ fn parse_ioreg(text: &str) -> Result<Vec<Candidate>> {
                     "idProduct" => node.product = Some(value.to_owned()),
                     "USB Serial Number" => node.serial = Some(value.to_owned()),
                     "locationID" => node.location = Some(value.to_owned()),
+                    "USB Product Name" => node.product_name = maybe_unquote(value),
                     _ => {}
                 }
             }
@@ -340,6 +373,7 @@ fn parse_ioreg(text: &str) -> Result<Vec<Candidate>> {
         let mut product = None;
         let mut serial = None;
         let mut location = None;
+        let mut product_name = None;
         for (_, node) in nodes.range(..=indent) {
             if !node.usb_node {
                 continue;
@@ -348,6 +382,7 @@ fn parse_ioreg(text: &str) -> Result<Vec<Candidate>> {
             product = node.product.clone().or(product);
             serial = node.serial.clone().or(serial);
             location = node.location.clone().or(location);
+            product_name = node.product_name.clone().or(product_name);
         }
         let (Some(vendor), Some(product)) = (vendor, product) else {
             continue;
@@ -355,15 +390,14 @@ fn parse_ioreg(text: &str) -> Result<Vec<Candidate>> {
         if serial.is_none() && location.is_none() {
             continue;
         }
-        let mut physical = format!("idVendor={vendor}\nidProduct={product}\n");
-        if let Some(serial) = serial {
-            physical.push_str("USB Serial Number=");
-            physical.push_str(&serial);
-            physical.push('\n');
-        }
+        let mut physical = String::new();
         if let Some(location) = location {
             physical.push_str("locationID=");
             physical.push_str(&location);
+            physical.push('\n');
+        } else if let Some(serial) = serial {
+            physical.push_str("USB Serial Number=");
+            physical.push_str(&serial);
             physical.push('\n');
         }
         let metadata = fs::metadata(&port)
@@ -379,6 +413,9 @@ fn parse_ioreg(text: &str) -> Result<Vec<Candidate>> {
             port,
             physical_identity_digest: sha256(physical.as_bytes()),
             enumeration_token: sha256(enumeration.as_bytes()),
+            vendor,
+            product,
+            product_name,
         });
     }
     Ok(candidates)
@@ -421,22 +458,29 @@ mod tests {
     #[test]
     fn ioreg_parser_keeps_physical_and_enumeration_identity_separate() {
         // Arrange
-        let port = tempfile::NamedTempFile::new().expect("temporary node must exist");
-        let port = port.path().to_string_lossy();
-        let fixture = format!(
-            "+-o usb  <class IOUSBHostDevice>\n  \"idVendor\" = 1234\n  \"idProduct\" = 5678\n  \"USB Serial Number\" = \"stable\"\n  +-o serial  <class IOSerialBSDClient>\n    \"IOCalloutDevice\" = \"{port}\"\n"
+        let worker = tempfile::NamedTempFile::new().expect("Worker node must exist");
+        let worker_port = worker.path().to_string_lossy();
+        let rom = tempfile::NamedTempFile::new().expect("ROM node must exist");
+        let rom_port = rom.path().to_string_lossy();
+        let worker_fixture = format!(
+            "+-o usb  <class IOUSBHostDevice>\n  \"idVendor\" = 0x1209\n  \"idProduct\" = 0xb17a\n  \"USB Product Name\" = \"Bitaxe Ultra 205 BWG Worker\"\n  \"locationID\" = 99\n  +-o serial  <class IOSerialBSDClient>\n    \"IOCalloutDevice\" = \"{worker_port}\"\n"
+        );
+        let rom_fixture = format!(
+            "+-o usb  <class IOUSBHostDevice>\n  \"idVendor\" = 0x303a\n  \"idProduct\" = 0x1001\n  \"USB Product Name\" = \"USB JTAG/serial debug unit\"\n  \"USB Serial Number\" = \"stable\"\n  \"locationID\" = 99\n  +-o serial  <class IOSerialBSDClient>\n    \"IOCalloutDevice\" = \"{rom_port}\"\n"
         );
 
         // Act
-        let candidates = parse_ioreg(&fixture).expect("fixture must parse");
+        let worker = parse_ioreg(&worker_fixture).expect("Worker fixture must parse");
+        let rom = parse_ioreg(&rom_fixture).expect("ROM fixture must parse");
 
         // Assert
-        assert_eq!(candidates.len(), 1);
-        assert_eq!(candidates[0].port, port);
-        assert_ne!(
-            candidates[0].physical_identity_digest,
-            candidates[0].enumeration_token
+        assert_eq!(
+            worker[0].physical_identity_digest,
+            rom[0].physical_identity_digest
         );
+        assert_ne!(worker[0].enumeration_token, rom[0].enumeration_token);
+        assert_ne!(worker[0].vendor, rom[0].vendor);
+        assert_ne!(worker[0].product_name, rom[0].product_name);
     }
 
     #[test]

@@ -8,6 +8,35 @@ exports_files([
     "verify-rollback-probe-isolation.sh",
 ])
 
+js_binary(
+    name = "verify_native_usb_ownership",
+    chdir = "..",
+    data = [
+        "verify-native-usb-ownership.mjs",
+        "//:native_usb_ownership_guard_inputs",
+        "//crates/bitaxe-core:native_usb_ownership_source",
+        "//firmware/bitaxe:native_usb_ownership_sources",
+        "//tools/device-session:native_usb_ownership_sources",
+        "//tools/flash:native_usb_ownership_sources",
+    ],
+    entry_point = "verify-native-usb-ownership.mjs",
+    visibility = ["//visibility:public"],
+)
+
+js_test(
+    name = "verify_native_usb_ownership_test",
+    chdir = "..",
+    data = [
+        "verify-native-usb-ownership.mjs",
+        "//:native_usb_ownership_guard_inputs",
+        "//crates/bitaxe-core:native_usb_ownership_source",
+        "//firmware/bitaxe:native_usb_ownership_sources",
+        "//tools/device-session:native_usb_ownership_sources",
+        "//tools/flash:native_usb_ownership_sources",
+    ],
+    entry_point = "verify-native-usb-ownership.mjs",
+)
+
 # Terminal Phase 28.1.1 and dormant external-UART/late-attach artifacts are
 # intentionally inert. They remain available as immutable historical software,
 # but no active Bazel command or test executes them.

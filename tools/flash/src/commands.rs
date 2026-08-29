@@ -143,6 +143,15 @@ pub(crate) fn run_detect(
 ) -> Result<()> {
     ensure_ultra_205(command.board)?;
     let port = resolve_port(command.port.as_deref(), environment)?;
+    match environment.usb_profile(&port)? {
+        UsbProfile::WorkerRuntime => {
+            emit_line("usb_profile", "worker_runtime")?;
+            emit_line("handoff_required", "true")?;
+            return Ok(());
+        }
+        UsbProfile::SerialJtagRuntime | UsbProfile::RomDownloader => {}
+        UsbProfile::Unknown => bail!("runtime_profile_unknown"),
+    }
     environment.begin_usb_session(UsbOperation::Detect, &port)?;
     let command_spec = CommandSpec::new(
         "espflash",
@@ -161,6 +170,7 @@ pub(crate) fn run_detect(
     );
     let output = environment.execute_with_output(&command_spec)?;
     let candidate = configuration_candidate_from_board_info(&output)?;
+    emit_line("usb_profile", "rom_downloader")?;
     emit_line("configuration_candidate", &candidate)?;
     Ok(())
 }

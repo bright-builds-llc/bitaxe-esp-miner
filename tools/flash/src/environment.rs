@@ -1,5 +1,10 @@
 use crate::*;
 
+mod usb_ownership;
+use usb_ownership::{
+    requires_rom_downloader, route_espflash_to_admitted_rom, route_esptool_to_admitted_rom,
+};
+
 pub(crate) trait FlashEnvironment {
     fn build_package(&self) -> Result<()>;
     fn bazel_bin(&self) -> Result<Utf8PathBuf>;
@@ -17,6 +22,9 @@ pub(crate) trait FlashEnvironment {
     fn approve_private_evidence_root(&self, path: &Utf8Path) -> Result<()>;
     fn current_provenance(&self) -> Result<BuildProvenance>;
     fn list_ports(&self) -> Result<String>;
+    fn usb_profile(&self, _port: &str) -> Result<UsbProfile> {
+        Ok(UsbProfile::SerialJtagRuntime)
+    }
     fn write_file(&self, path: &Utf8Path, contents: &str) -> Result<()>;
     fn generate_nvs_partition(
         &self,
@@ -150,6 +158,9 @@ pub(crate) fn approve_local_private_evidence_root(
 }
 
 impl FlashEnvironment for LocalFlashEnvironment {
+    fn usb_profile(&self, port: &str) -> Result<UsbProfile> {
+        inspect_usb_profile(port).map(|inspection| inspection.profile)
+    }
     fn build_package(&self) -> Result<()> {
         let status = Command::new("bazel")
             .current_dir(self.workspace_dir.as_std_path())
@@ -373,14 +384,16 @@ impl FlashEnvironment for LocalFlashEnvironment {
         {
             bail!("managed_esptool=blocked reason=program_contract");
         }
+        self.ensure_bootloader()?;
         let mut session_slot = self.usb_session.borrow_mut();
         let Some(session) = session_slot.as_mut() else {
             bail!("cleanup_failed: esptool write attempted without a repository session");
         };
+        let args = route_esptool_to_admitted_rom(command.args(), session.port())?;
         session
             .run_esptool_write_flash(
                 command.program().as_std_path(),
-                command.args(),
+                &args,
                 Duration::from_secs(360),
             )
             .map(|_| ())
@@ -392,11 +405,19 @@ impl FlashEnvironment for LocalFlashEnvironment {
             bail!("unsupported command program: {}", command_spec.program);
         }
 
+        let needs_rom = requires_rom_downloader(command_spec);
+        if needs_rom {
+            self.ensure_bootloader()?;
+        }
         let mut session_slot = self.usb_session.borrow_mut();
         let Some(session) = session_slot.as_mut() else {
             bail!("cleanup_failed: USB effect attempted without a repository session");
         };
-        let args = command_with_port(command_spec, session.port())?;
+        let args = if needs_rom {
+            route_espflash_to_admitted_rom(command_spec, session.port())?
+        } else {
+            command_with_port(command_spec, session.port())?
+        };
         let output = session
             .run_espflash(
                 self.espflash_bin.as_std_path(),
@@ -424,6 +445,7 @@ impl FlashEnvironment for LocalFlashEnvironment {
         let Some(session) = session_slot.as_mut() else {
             bail!("cleanup_failed: monitor attempted without a repository session");
         };
+        self.ensure_observable_runtime(session.port())?;
         emit_line("usb_reader", "admitted")?;
         let output = session
             .observe_receive_only(Duration::from_secs(timeout_seconds))

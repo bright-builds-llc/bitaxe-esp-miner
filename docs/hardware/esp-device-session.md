@@ -81,8 +81,11 @@ of `correlated`, `silent`, `reacquired`, or `failed`.
 - `watchdog-reset` is not an implicit fallback. It may be considered only after
   a distinct typed bootloader-exit diagnosis, a repository regression, and an
   explicit phase-plan change.
-- No device-session command may toggle modem-control lines, write serial input,
-  or use direct UART, pins, pads, probes, or other electrical interfaces.
+- No device-session command may toggle modem-control lines or write serial input
+  except the exact class-control-only maintenance Adapter defined in
+  `native-usb-ownership.md`. That Adapter may set 1200-baud line coding and DTR
+  under the retained lease; it never sends CDC payload commands. Direct UART,
+  pins, pads, probes, and other electrical interfaces remain excluded.
 
 ## Evidence And Platform Support
 
@@ -124,7 +127,12 @@ Success is returned only after three stable samples show the admitted physical
 device is accessible and holder-free. No postcondition probe reconnects to the
 bootloader. Public outcomes use the closed flash vocabulary:
 `ready`, `concurrent_repo_session`, `foreign_holder`, `transport_absent`,
-`identity_drift`, `bootloader_connect_failed`,
+`identity_drift`, `runtime_profile_unknown`, `handoff_unsupported`,
+`handoff_rejected_unsafe_state`, `handoff_ready_timeout`,
+`handoff_transition_timeout`, `bootloader_ambiguous`,
+`physical_identity_drift`, `bootloader_sync_failed`,
+`application_reappearance_timeout`, `recovery_required`,
+`bootloader_connect_failed`,
 `flash_failed_before_transfer`, `flash_failed_after_transfer`,
 `monitor_failed`, `cleanup_failed`, `recovery_not_observed`, and
 `repeated_boundary`.

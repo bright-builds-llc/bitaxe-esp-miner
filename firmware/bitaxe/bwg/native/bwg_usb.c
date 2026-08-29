@@ -7,10 +7,18 @@
 #include "task.h"
 #include "tinyusb.h"
 #include "tusb.h"
+#include "esp_system.h"
+#include "esp_private/periph_ctrl.h"
+#include "soc/soc.h"
+#include "soc/periph_defs.h"
+#include "soc/rtc_cntl_reg.h"
+#include "soc/usb_serial_jtag_reg.h"
 
 extern void bwg_worker_usb_attached(void);
 extern void bwg_worker_usb_detached(void);
 extern void bwg_worker_usb_vendor_received(const uint8_t *bytes, uint32_t length);
+extern void usb_runtime_line_coding(uint32_t bit_rate);
+extern void usb_runtime_line_state(bool dtr, bool rts);
 
 enum {
     BWG_INTERFACE_VENDOR = 0,
@@ -157,4 +165,57 @@ void tud_cdc_rx_cb(uint8_t interface)
     while (tud_cdc_n_available(interface) > 0) {
         (void)tud_cdc_n_read(interface, discarded, sizeof(discarded));
     }
+}
+
+void tud_cdc_line_coding_cb(uint8_t interface, cdc_line_coding_t const *coding)
+{
+    if (interface == 0 && coding != NULL) {
+        usb_runtime_line_coding(coding->bit_rate);
+    }
+}
+
+void tud_cdc_line_state_cb(uint8_t interface, bool dtr, bool rts)
+{
+    if (interface == 0) {
+        usb_runtime_line_state(dtr, rts);
+    }
+}
+
+static void IRAM_ATTR bwg_usb_force_download_shutdown(void)
+{
+    REG_WRITE(RTC_CNTL_OPTION1_REG, RTC_CNTL_FORCE_DOWNLOAD_BOOT);
+}
+
+static void bwg_usb_switch_to_serial_jtag(void)
+{
+    /*
+     * Minimal ESP32-S3 half of Espressif's usb_switch_to_cdc_jtag(), pinned at
+     * arduino-esp32 bb0bb3ec57fbcf7efb8409f727fb792e3d28fe79:
+     * cores/esp32/esp32-hal-tinyusb.c. esp_tinyusb already deletes the OTG PHY
+     * during uninstall, so retain only module reset and internal-PHY routing.
+     */
+    periph_module_reset(PERIPH_USB_MODULE);
+    periph_module_disable(PERIPH_USB_MODULE);
+    CLEAR_PERI_REG_MASK(
+        RTC_CNTL_USB_CONF_REG,
+        RTC_CNTL_SW_HW_USB_PHY_SEL | RTC_CNTL_SW_USB_PHY_SEL | RTC_CNTL_USB_PAD_ENABLE);
+    CLEAR_PERI_REG_MASK(USB_SERIAL_JTAG_CONF0_REG, USB_SERIAL_JTAG_PHY_SEL);
+    CLEAR_PERI_REG_MASK(USB_SERIAL_JTAG_CONF0_REG, USB_SERIAL_JTAG_USB_PAD_ENABLE);
+    SET_PERI_REG_MASK(USB_SERIAL_JTAG_CONF0_REG, USB_SERIAL_JTAG_USB_PAD_ENABLE);
+}
+
+int32_t bwg_usb_restart_bootloader(void)
+{
+    int32_t result = esp_register_shutdown_handler(bwg_usb_force_download_shutdown);
+    if (result != ESP_OK) {
+        return result;
+    }
+    result = tinyusb_driver_uninstall();
+    if (result != ESP_OK) {
+        (void)esp_unregister_shutdown_handler(bwg_usb_force_download_shutdown);
+        return result;
+    }
+    bwg_usb_switch_to_serial_jtag();
+    esp_restart();
+    return ESP_FAIL;
 }

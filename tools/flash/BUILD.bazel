@@ -81,6 +81,18 @@ filegroup(
     visibility = ["//visibility:private"],
 )
 
+js_library(
+    name = "native_usb_ownership_sources",
+    srcs = [
+        "src/commands.rs",
+        "src/commands/flash.rs",
+        "src/environment.rs",
+        "src/environment/usb_ownership.rs",
+        "src/restore_installed.rs",
+    ],
+    visibility = ["//scripts:__pkg__"],
+)
+
 filegroup(
     name = "flash_supervisor_monitor_source",
     srcs = ["src/monitor.rs"],
@@ -201,6 +213,7 @@ rust_binary(
         "src/commands/flash.rs",
         "src/commands/phase35_probe.rs",
         "src/environment.rs",
+        "src/environment/usb_ownership.rs",
         "src/esp32s3_image.rs",
         "src/esp32s3_image/tests.rs",
         "src/evidence.rs",

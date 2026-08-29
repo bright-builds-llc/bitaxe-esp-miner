@@ -25,8 +25,9 @@ use bitaxe_config::{
     NVS_NAMESPACE,
 };
 use bitaxe_device_session::{
-    discover_usb_ports, MonitorOutput, UsbCommandDiagnostic, UsbDeviceEffectState, UsbOperation,
-    UsbSession, UsbTerminalCategory,
+    admit_rom_downloader, discover_usb_ports, handoff_worker_to_rom, inspect_usb_profile,
+    plan_usb_operation, MonitorOutput, UsbCommandDiagnostic, UsbDeviceEffectState, UsbIntent,
+    UsbOperation, UsbOperationPlan, UsbProfile, UsbSession, UsbTerminalCategory,
 };
 #[cfg(test)]
 use bitaxe_device_session::{UsbCommandTermination, UsbConnectionSignature};

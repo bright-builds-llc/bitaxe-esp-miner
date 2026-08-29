@@ -26,11 +26,11 @@ new work.
 
 ### task-native-usb-ownership-handoff | 2026-08-29 | Preserve TinyUSB and restore buttonless flashing
 
-- [ ] Create and push the immutable native-USB ownership plan before firmware,
+- [x] Create and push the immutable native-USB ownership plan before firmware,
       host-tool, rules, or hardware effects.
-- [ ] Put TinyUSB and USB-Serial-JTAG profile ownership behind deep firmware and
+- [x] Put TinyUSB and USB-Serial-JTAG profile ownership behind deep firmware and
       host Modules while preserving the existing `just` command Interface.
-- [ ] Add unmissable agent guidance, ADR/hardware documentation, an active
+- [x] Add unmissable agent guidance, ADR/hardware documentation, an active
       lesson, and a Bazel-backed ownership guardrail.
 - [ ] Perform the authorized one-time built-in BOOT/RESET bootstrap, prove 20
       automatic handoff/flash/runtime cycles, then restore recovery-006 exactly.
@@ -51,11 +51,22 @@ fault injection, erase, mining, ASIC work, fan/voltage effects, external pools,
 other devices, other boards, arbitrary writes, and parity promotion are
 excluded.
 
-Verification: Pending.
+Verification: The software stage passes the ordered Rust formatting, strict
+Clippy, all-target/all-feature build, and all-feature test sequence; Bright
+Builds; focused reducer, macOS identity, profile-transition, flash-route, and
+BWG conformance tests; all 69 Bazel test targets; the ESP32-S3 firmware build;
+the six-artifact package; `just verify-native-usb-ownership`; parity/progress;
+redaction; pinned-reference cleanliness; and whitespace checks. The exact
+clean pushed package rebuild and manifest identity check follow the single
+implementation commit. Hardware verification remains pending.
 
-Progress: ADR/agent guardrails and the pure UsbOwnership profile planner are
-implemented. Firmware class-control handoff, host profile adapters, durability,
-manual bootstrap, and recovery remain pending.
+Progress: The complete software handoff is implemented. `UsbRuntime` owns
+TinyUSB installation and the guarded maintenance reducer; diagnostics retain
+Serial/JTAG; macOS inspection separates physical/profile/enumeration identity;
+one retained `UsbSession` performs Worker-to-ROM handoff and ROM admission;
+flash/recovery writes route centrally; and monitor remains receive-only.
+Manual bootstrap, automatic hardware handoff proof, 20-cycle durability, and
+recovery-006 restoration remain pending as the next hardware stage.
 
 Completion review: Pending. STR-005 and BWG remain unchanged until their own
 separate evidence tasks complete.

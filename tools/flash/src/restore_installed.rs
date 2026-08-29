@@ -522,7 +522,7 @@ pub(crate) fn run_restore_installed(
         environment,
     )?;
     emit_line("restore_installed", PROTECTED_OPERATIONAL)?;
-    environment.begin_usb_session(UsbOperation::Flash, &command.port)?;
+    environment.begin_usb_session(UsbOperation::Recover, &command.port)?;
     let restore_result = match &prepared {
         PreparedRestore::Package { command, .. } => environment.execute(command),
         PreparedRestore::Snapshot(command) => environment.execute_esptool_write_flash(command),
