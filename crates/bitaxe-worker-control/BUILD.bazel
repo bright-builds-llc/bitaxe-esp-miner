@@ -100,7 +100,8 @@ rust_test(
         "@bwg_gate_contract//:worker_usb_v02_fixtures",
         "@bwg_gate_contract//:worker_possession_fixtures",
         "@bwg_gate_contract//:worker_deployment_trust_fixtures",
-        "//firmware/bitaxe:bwg_usb_native_source",
+        "//firmware/bitaxe:bwg_usb_runtime_source",
+        "//firmware/bitaxe:usb_phy_handoff_source",
     ],
     edition = "2021",
     env = {
@@ -108,10 +109,12 @@ rust_test(
         "BWG_DEPLOYMENT_FIXTURES": "$(rootpath @bwg_gate_contract//:worker_deployment_trust_fixtures)",
         "BWG_POSSESSION_FIXTURES": "$(rootpath @bwg_gate_contract//:worker_possession_fixtures)",
         "BWG_USB_FIXTURES": "$(rootpath @bwg_gate_contract//:worker_usb_v02_fixtures)",
-        "BWG_USB_NATIVE_SOURCE": "$(rootpath //firmware/bitaxe:bwg_usb_native_source)",
+        "BWG_USB_RUNTIME_SOURCE": "$(rootpath //firmware/bitaxe:bwg_usb_runtime_source)",
+        "BWG_USB_PHY_SOURCE": "$(rootpath //firmware/bitaxe:usb_phy_handoff_source)",
     },
     deps = [
         ":bitaxe_worker_control",
+        "//crates/bitaxe-core:bitaxe_core",
         "@crates//:serde_json",
     ],
 )

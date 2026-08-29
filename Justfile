@@ -72,6 +72,7 @@ verify-reference:
 
 verify-native-usb-ownership:
     bazel run //scripts:verify_native_usb_ownership
+    bazel test //scripts:verify_native_usb_symbols_test
 
 parity:
     bazel run //tools/parity:report -- report --checklist docs/parity/checklist.md --fail-on-invalid-verified

@@ -18,15 +18,53 @@ const requireText = (path, needles) => {
 
 const count = (source, pattern) => [...source.matchAll(pattern)].length;
 
-const nativeOwner = requireText("firmware/bitaxe/bwg/native/bwg_usb.c", [
+const rustOwner = [
+  read("firmware/bitaxe/src/usb_runtime.rs"),
+  read("firmware/bitaxe/src/usb_runtime/tinyusb.rs"),
+  read("firmware/bitaxe/src/usb_runtime/callbacks.rs"),
+].join("\n");
+for (const required of [
   "tinyusb_driver_install",
+  "WORKER_DEVICE_DESCRIPTOR",
+  "WORKER_CONFIGURATION_DESCRIPTOR",
+  "tud_mount_cb",
+  "tud_umount_cb",
+  "tud_vendor_rx_cb",
+  "tud_cdc_rx_cb",
+  "tud_cdc_line_coding_cb",
+  "tud_cdc_line_state_cb",
+  "tud_vendor_n_write",
+  "tud_cdc_n_write",
+  "bytes.is_null()",
+  "coding.is_null()",
+  "read_unaligned()",
+]) {
+  if (!rustOwner.includes(required)) {
+    throw new Error(`Rust USB owner is missing ${JSON.stringify(required)}`);
+  }
+}
+if (count(rustOwner, /tinyusb_driver_install\s*\(/g) !== 1) {
+  throw new Error("firmware must retain exactly one TinyUSB installation owner");
+}
+
+const phyAdapter = requireText("firmware/bitaxe/bwg/native/usb_phy_handoff.c", [
+  "bitaxe_usb_restart_bootloader",
   "tinyusb_driver_uninstall",
   "RTC_CNTL_FORCE_DOWNLOAD_BOOT",
-  "usb_runtime_line_coding",
-  "usb_runtime_line_state",
+  "USB_SERIAL_JTAG",
 ]);
-if (count(nativeOwner, /tinyusb_driver_install\s*\(/g) !== 1) {
-  throw new Error("firmware must retain exactly one TinyUSB installation owner");
+for (const forbidden of [
+  "tinyusb_driver_install",
+  "tud_mount_cb",
+  "tud_umount_cb",
+  "tud_vendor_rx_cb",
+  "tud_cdc_rx_cb",
+  "TUD_CDC_DESCRIPTOR",
+  "BWG_DEVICE_DESCRIPTOR",
+]) {
+  if (phyAdapter.includes(forbidden)) {
+    throw new Error(`C PHY Adapter retained Rust-owned behavior ${JSON.stringify(forbidden)}`);
+  }
 }
 
 requireText("crates/bitaxe-core/src/usb_maintenance.rs", [
@@ -36,17 +74,23 @@ requireText("crates/bitaxe-core/src/usb_maintenance.rs", [
   "RestartBootloader",
   "HANDOFF_WINDOW_MS",
 ]);
+requireText("crates/bitaxe-core/src/usb_worker.rs", [
+  "WORKER_DEVICE_DESCRIPTOR",
+  "WORKER_CONFIGURATION_DESCRIPTOR",
+  "VendorWriteProgress",
+  "MAX_VENDOR_WRITE_WAITS",
+]);
 requireText("firmware/bitaxe/src/usb_runtime.rs", [
   "bitaxe_core::usb_maintenance",
-  "bwg_usb_install",
-  "bwg_usb_restart_bootloader",
+  "install_worker_runtime",
+  "send_worker_frame",
+  "emit_evidence",
+  "bitaxe_usb_restart_bootloader",
 ]);
 requireText("firmware/bitaxe/src/bwg_worker_usb.rs", [
   "usb_maintenance=",
   "status",
   "ready",
-  "usb_runtime_line_coding",
-  "usb_runtime_line_state",
   "restart_into_rom_downloader",
   "worker.has_active_lease()",
   "maintenance_ingress_open",

@@ -6,6 +6,7 @@ pub mod runtime_health;
 pub mod runtime_orchestration;
 pub mod screen;
 pub mod usb_maintenance;
+pub mod usb_worker;
 pub mod wifi_reconnect;
 
 /// First Phase 1 board target for boot/log bring-up.

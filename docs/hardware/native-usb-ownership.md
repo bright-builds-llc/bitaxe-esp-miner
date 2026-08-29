@@ -46,6 +46,21 @@ Wrong ordering, a duplicate event, timeout, disconnect, active effect, failed
 safe stop, missing receipt, or control I/O failure disarms without rebooting.
 CDC payload bytes remain non-command data under ADR-0018.
 
+## Firmware implementation ownership
+
+The pure `bitaxe-core` USB Worker model owns the exact device/configuration
+descriptor bytes and bounded vendor-write progress. The firmware `UsbRuntime`
+Module owns descriptor lifetimes, TinyUSB installation, exported TinyUSB
+callbacks, vendor responses, CDC evidence, and typed failures through private
+`esp-idf-sys` calls. The BWG Worker is an Adapter that receives ordinary Rust
+events and never owns USB FFI.
+
+Repository-owned C is intentionally limited to `usb_phy_handoff.c`. That
+Adapter registers the force-download shutdown handler, uninstalls TinyUSB,
+switches the ESP32-S3 internal PHY to USB-Serial-JTAG, and restarts. It owns no
+descriptor, callback, vendor/CDC data path, or Worker delegation. Removal of
+this final C Adapter is a later stage after hardware durability evidence.
+
 The PHY and force-download sequence is the minimum ESP32-S3 behavior adapted
 from Espressif's pinned Arduino implementation at commit
 `bb0bb3ec57fbcf7efb8409f727fb792e3d28fe79`. See
@@ -94,8 +109,8 @@ timings, and safe digests.
 
 Run `just verify-native-usb-ownership` after every software change in this
 surface. It checks the sole TinyUSB owner, diagnostic Serial/JTAG retention,
-the maintenance reducer, centralized host routing, and linked agent/ADR/docs
-guardrails through Bazel.
+the maintenance reducer, centralized host routing, linked callback/PHY symbols,
+and agent/ADR/docs guardrails through Bazel.
 
 Manual BOOT/RESET is a one-time bootstrap or last-resort recovery path, never
 the normal development workflow. Buttonless flashing is not qualified until

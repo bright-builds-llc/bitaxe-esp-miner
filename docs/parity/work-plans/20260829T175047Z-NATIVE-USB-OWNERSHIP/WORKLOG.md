@@ -39,3 +39,13 @@
 - Hardware/network effects: none. The one-time manual bootstrap, automatic
   handoff validation, 20-cycle durability run, and exact recovery-006 restore
   remain the next stage.
+
+## 2026-08-29T19:37:57Z | Rust runtime Adapter prerequisite
+
+- The stages 1–2 child moved exact descriptors, TinyUSB installation,
+  callbacks, vendor/CDC I/O, and bounded write behavior into Rust.
+- Repository-owned C is now the intentional PHY/force-download Adapter only.
+  The child verifies exact linked callback ownership and absence of retired C
+  symbols without touching hardware.
+- Hardware/network effects: none. Manual bootstrap and durability remain
+  blocked until the child is committed, pushed, archived, and repackaged.

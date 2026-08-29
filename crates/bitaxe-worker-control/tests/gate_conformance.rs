@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::env;
 use std::fs;
 
+use bitaxe_core::usb_worker::{WORKER_CONFIGURATION_DESCRIPTOR, WORKER_DEVICE_DESCRIPTOR};
 use bitaxe_worker_control::{
     AcceptedSequenceStore, DeviceIdentity, LeaseAuthorizationError, LeaseDeadlines,
     SequenceStoreResult, WorkLeaseAuthorityTrust, WorkLeaseAuthorizationVerifier, WorkerControl,
@@ -89,7 +90,8 @@ fn executes_the_pinned_gate_contract_against_the_firmware_core() {
     let possession = required_fixture("BWG_POSSESSION_FIXTURES");
     let deployment = required_fixture("BWG_DEPLOYMENT_FIXTURES");
     let usb = required_fixture("BWG_USB_FIXTURES");
-    let native_source = required_text("BWG_USB_NATIVE_SOURCE");
+    let runtime_source = required_text("BWG_USB_RUNTIME_SOURCE");
+    let phy_source = required_text("BWG_USB_PHY_SOURCE");
 
     // Arrange: consume the exact pinned public trust, capability, and proof.
     let capability = vector(&controller, "v03_discover")["response"]["result"].clone();
@@ -167,12 +169,12 @@ fn executes_the_pinned_gate_contract_against_the_firmware_core() {
     let mut accumulator = WorkerControlFrameAccumulator::new();
     assert!(accumulator.push(&vec![b'x'; maximum + 1]).is_err());
     assert!(accumulator.push(b"{}\n{}\n").is_err());
-    assert_native_topology(&usb, &native_source);
+    assert_native_topology(&usb, &runtime_source);
     assert_declared_negative_vectors_are_covered(&controller, &possession, &deployment, &usb);
     execute_controller_transfer_negatives(&controller, &deployment);
     execute_possession_request_negatives(&controller, &possession, &deployment);
     execute_deployment_negatives(&deployment);
-    execute_usb_negatives(&usb, &native_source);
+    execute_usb_negatives(&usb, &runtime_source, &phy_source);
 }
 
 fn fixture(variable: &str) -> Option<Value> {
@@ -222,7 +224,7 @@ fn response_value(response: &bitaxe_worker_control::PreparedResponse) -> Value {
     serde_json::from_slice(response.frame()).expect("controller response should be JSON")
 }
 
-fn assert_native_topology(usb: &Value, source: &str) {
+fn assert_native_topology(usb: &Value, runtime_source: &str) {
     let descriptor = &usb["topology"]["application"]["descriptor"];
     let control = &usb["topology"]["application"]["descriptor"]["control"];
     let evidence = &usb["topology"]["application"]["descriptor"]["evidence"];
@@ -255,24 +257,30 @@ fn assert_native_topology(usb: &Value, source: &str) {
         .expect("IN endpoint should be numeric");
     assert_eq!(class, 255);
     assert_eq!(transfer, "bulk");
-    assert!(source.contains(&format!("TUD_CONFIG_DESCRIPTOR({configuration},")));
-    assert!(source.contains(&format!("BWG_INTERFACE_VENDOR = {interface}")));
-    assert!(source.contains(&format!(
-        "TUSB_DESC_INTERFACE, BWG_INTERFACE_VENDOR, {alternate}, 2"
-    )));
-    assert!(source.contains(&format!(
-        "TUSB_CLASS_VENDOR_SPECIFIC, 0x{subclass:02x}, 0x{protocol:02x}"
-    )));
-    assert!(source.contains(&format!("0x{endpoint_out:02x}, TUSB_XFER_BULK")));
-    assert!(source.contains(&format!("0x8{endpoint_in:x}, TUSB_XFER_BULK")));
-    assert!(source.contains(&format!(
-        "BWG_INTERFACE_CDC = {}",
+    assert_eq!(WORKER_DEVICE_DESCRIPTOR.len(), 18);
+    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[5], configuration as u8);
+    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[11], interface as u8);
+    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[12], alternate as u8);
+    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[14], 0xff);
+    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[15], subclass as u8);
+    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[16], protocol as u8);
+    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[20], endpoint_out as u8);
+    assert_eq!(
+        WORKER_CONFIGURATION_DESCRIPTOR[27],
+        0x80 | endpoint_in as u8
+    );
+    assert_eq!(
+        WORKER_CONFIGURATION_DESCRIPTOR[34],
         evidence["communicationInterfaceNumber"]
-    )));
-    assert!(source.contains(&format!(
-        "BWG_INTERFACE_CDC_DATA = {}",
+            .as_u64()
+            .expect("CDC interface should be numeric") as u8
+    );
+    assert_eq!(
+        WORKER_CONFIGURATION_DESCRIPTOR[77],
         evidence["dataInterfaceNumber"]
-    )));
+            .as_u64()
+            .expect("CDC data interface should be numeric") as u8
+    );
     let notification = evidence["notificationEndpointIn"]
         .as_u64()
         .expect("notification endpoint should be numeric");
@@ -282,12 +290,15 @@ fn assert_native_topology(usb: &Value, source: &str) {
     let data_in = evidence["dataEndpointIn"]
         .as_u64()
         .expect("CDC IN endpoint should be numeric");
-    assert!(source.contains(&format!(
-        "0x8{notification:x}, 8, 0x{data_out:02x}, 0x8{data_in:x}, 64"
-    )));
+    assert_eq!(
+        WORKER_CONFIGURATION_DESCRIPTOR[70],
+        0x80 | notification as u8
+    );
+    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[86], data_out as u8);
+    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[93], 0x80 | data_in as u8);
     assert_eq!(evidence["hostWritesAccepted"], false);
-    assert!(source.contains("tud_cdc_n_read(interface, discarded"));
-    assert!(!source.contains("bwg_worker_usb_vendor_received(discarded"));
+    assert!(runtime_source.contains("discard_cdc(interface"));
+    assert!(!runtime_source.contains("enqueue_vendor_bytes(&discarded"));
 }
 
 fn assert_declared_negative_vectors_are_covered(
@@ -485,35 +496,36 @@ fn execute_deployment_negatives(deployment: &Value) {
     }
 }
 
-fn execute_usb_negatives(usb: &Value, source: &str) {
+fn execute_usb_negatives(usb: &Value, runtime_source: &str, phy_source: &str) {
     let declared = usb["negativeVectors"]
         .as_array()
         .expect("USB negatives should be an array");
     let declared_id = |id: &str| declared.iter().any(|vector| vector["id"] == id);
 
     assert!(declared_id("wrong_function_role"));
-    assert!(source.contains("tud_vendor_rx_cb"));
-    assert!(source.contains("tud_cdc_rx_cb"));
+    assert!(runtime_source.contains("tud_vendor_rx_cb"));
+    assert!(runtime_source.contains("tud_cdc_rx_cb"));
     assert!(declared_id("ambiguous_control_functions"));
-    assert_eq!(source.matches("TUSB_CLASS_VENDOR_SPECIFIC").count(), 1);
+    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[14], 0xff);
     assert!(declared_id("bootloader_control_attempt"));
-    let vendor_start = source
-        .find("void tud_vendor_rx_cb")
+    let vendor_start = runtime_source
+        .find("fn tud_vendor_rx_cb")
         .expect("vendor callback must exist");
-    let cdc_start = source[vendor_start..]
-        .find("void tud_cdc_rx_cb")
+    let cdc_start = runtime_source[vendor_start..]
+        .find("fn tud_cdc_rx_cb")
         .map(|offset| vendor_start + offset)
         .expect("CDC callback must follow vendor callback");
-    let vendor_callback = &source[vendor_start..cdc_start];
-    assert!(!vendor_callback.contains("bwg_usb_restart_bootloader"));
+    let vendor_callback = &runtime_source[vendor_start..cdc_start];
+    assert!(!vendor_callback.contains("bitaxe_usb_restart_bootloader"));
     assert!(!vendor_callback.contains("USB_SERIAL_JTAG"));
     assert!(!vendor_callback.contains("RTC_CNTL_FORCE_DOWNLOAD_BOOT"));
-    assert!(source.contains("usb_runtime_line_coding"));
-    assert!(source.contains("usb_runtime_line_state"));
+    assert!(runtime_source.contains("tud_cdc_line_coding_cb"));
+    assert!(runtime_source.contains("tud_cdc_line_state_cb"));
+    assert!(phy_source.contains("RTC_CNTL_FORCE_DOWNLOAD_BOOT"));
     assert!(declared_id("unknown_profile_field"));
-    assert!(source.contains("bwg_worker_usb_vendor_received"));
+    assert!(runtime_source.contains("enqueue_vendor_bytes"));
     assert!(declared_id("control_descriptor_drift"));
-    assert_native_topology(usb, source);
+    assert_native_topology(usb, runtime_source);
     assert!(declared_id("multiple_frame_transfer"));
     let mut accumulator = WorkerControlFrameAccumulator::new();
     assert!(accumulator.push(b"{}\n{}\n").is_err());

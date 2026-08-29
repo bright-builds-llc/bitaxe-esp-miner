@@ -4,7 +4,10 @@ const STARTUP_SOURCE: &str = include_str!("startup.rs");
 const NVS_SOURCE: &str = include_str!("bwg_worker_nvs.rs");
 const SESSION_SOURCE: &str = include_str!("bwg_worker_session.rs");
 const USB_SOURCE: &str = include_str!("bwg_worker_usb.rs");
-const USB_NATIVE_SOURCE: &str = include_str!("../bwg/native/bwg_usb.c");
+const USB_RUNTIME_SOURCE: &str = include_str!("usb_runtime.rs");
+const USB_CALLBACK_SOURCE: &str = include_str!("usb_runtime/callbacks.rs");
+const USB_TINYUSB_SOURCE: &str = include_str!("usb_runtime/tinyusb.rs");
+const USB_PHY_SOURCE: &str = include_str!("../bwg/native/usb_phy_handoff.c");
 
 #[test]
 fn bwg_private_state_has_one_dedicated_nvs_owner() {
@@ -44,22 +47,47 @@ fn bwg_mining_effects_route_only_through_the_production_owner() {
 }
 
 #[test]
-fn tinyusb_descriptor_keeps_control_and_receive_only_evidence_disjoint() {
-    // Arrange / Act
-    let source = USB_NATIVE_SOURCE;
-
-    // Assert
+fn rust_owns_tinyusb_while_c_is_only_the_phy_handoff_adapter() {
+    // Arrange / Act / Assert
+    let rust_source = format!("{USB_RUNTIME_SOURCE}{USB_CALLBACK_SOURCE}{USB_TINYUSB_SOURCE}");
     for required in [
-        "TUSB_CLASS_VENDOR_SPECIFIC, 0x42, 0x01",
-        "0x01, TUSB_XFER_BULK",
-        "0x81, TUSB_XFER_BULK",
-        "TUD_CDC_DESCRIPTOR(BWG_INTERFACE_CDC",
-        "0x82, 8, 0x03, 0x83, 64",
-        "tud_cdc_n_read(interface, discarded",
+        "WORKER_DEVICE_DESCRIPTOR",
+        "WORKER_CONFIGURATION_DESCRIPTOR",
+        "tinyusb_driver_install",
+        "tud_mount_cb",
+        "tud_umount_cb",
+        "tud_vendor_rx_cb",
+        "tud_cdc_rx_cb",
+        "tud_cdc_line_coding_cb",
+        "tud_cdc_line_state_cb",
+        "tud_cdc_n_read",
+        "bytes.is_null()",
+        "coding.is_null()",
+        "read_unaligned()",
     ] {
-        assert!(source.contains(required), "missing descriptor contract: {required}");
+        assert!(
+            rust_source.contains(required),
+            "missing Rust USB ownership: {required}"
+        );
     }
-    assert!(!source.contains("bwg_worker_usb_vendor_received(discarded"));
+
+    for forbidden in [
+        "tinyusb_driver_install",
+        "tud_mount_cb",
+        "tud_umount_cb",
+        "tud_vendor_rx_cb",
+        "tud_cdc_rx_cb",
+        "TUD_CDC_DESCRIPTOR",
+        "BWG_DEVICE_DESCRIPTOR",
+    ] {
+        assert!(
+            !USB_PHY_SOURCE.contains(forbidden),
+            "C retained Rust-owned behavior: {forbidden}"
+        );
+    }
+    assert_eq!(USB_PHY_SOURCE.matches("bitaxe_usb_restart_bootloader").count(), 1);
+    assert!(!USB_SOURCE.contains("extern \"C\""));
+    assert!(!USB_SOURCE.contains("#[no_mangle]"));
 }
 
 #[test]

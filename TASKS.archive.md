@@ -13842,3 +13842,43 @@ baseline actions succeed. That reason remains reportable until a valid request
 follows a sent status, after which normal runtime restoration can supersede it.
 No hardware or external effect occurred; Ticket 07 remains the sole authority
 for device qualification.
+
+### task-native-usb-rust-adapter | 2026-08-29 | Move native USB runtime ownership into Rust
+
+- [x] Create and push the immutable stages 1–2 plan before implementation.
+- [x] Port exact Worker descriptors, installation, callbacks, CDC/vendor I/O,
+      and bounded writes into the deep Rust `UsbRuntime` Module.
+- [x] Reduce native C to the allowlisted ESP32-S3 PHY/force-download Adapter.
+- [x] Verify, document, commit/push, rebuild the exact clean package, and stop
+      before hardware.
+
+Plan: `docs/parity/work-plans/20260829T191251Z-NATIVE-USB-RUST-ADAPTER/PLAN.md`
+
+Depends on: clean pushed native-USB software source
+`902108b7fc5d1941b8734732e6ea8dd6a8350a23`, pinned ESP-IDF `v5.5.4`, pinned
+`espressif/esp_tinyusb`, and accepted ADR-0020.
+
+Authorization: repository source, tests, build wiring, documentation, task and
+lesson records, canonical firmware build/package, commit, and push only.
+Detection, BOOT/RESET instructions, USB device-node access, flash, monitor,
+recovery, credentials, network effects, mining, ASIC work, fan/voltage effects,
+other devices, other boards, fault injection, parity promotion, and final C PHY
+Adapter removal were excluded.
+
+Verification: Seven exact descriptor/write tests, BWG conformance and source
+ownership, and the linked-ELF symbol test passed. Ordered Cargo formatting,
+strict Clippy, all-target/all-feature build, and all-feature tests passed.
+Bright Builds, all 70 Bazel tests, the ESP32-S3 firmware and six-artifact
+package, `just verify-native-usb-ownership`, parity/progress, redaction,
+reference cleanliness, and whitespace checks passed.
+
+Progress: Plan commit `88b24d20509f1c993c410c69d02efd1d9896d926`
+preceded implementation. Rust now owns exact descriptors, boot-lifetime pointer
+storage, TinyUSB installation, callbacks, bounded vendor responses, CDC
+evidence, and typed failures. Native C exposes only
+`bitaxe_usb_restart_bootloader` and the ordered ESP32-S3 handoff sequence.
+
+Completion review: Stages 1–2 are complete without hardware or network effects.
+The exact Worker USB profile and host Interface remain unchanged. The final C
+PHY Adapter, manual bootstrap, automatic handoff proof, 20-cycle durability,
+and recovery-006 restoration remain explicitly assigned to later stages.

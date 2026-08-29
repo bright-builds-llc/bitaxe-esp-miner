@@ -44,18 +44,27 @@ exports_files([
 ])
 
 filegroup(
-    name = "bwg_usb_native_source",
-    srcs = ["bwg/native/bwg_usb.c"],
+    name = "bwg_usb_runtime_source",
+    srcs = ["src/usb_runtime/callbacks.rs"],
+    visibility = ["//crates/bitaxe-worker-control:__pkg__"],
+)
+
+filegroup(
+    name = "usb_phy_handoff_source",
+    srcs = ["bwg/native/usb_phy_handoff.c"],
     visibility = ["//crates/bitaxe-worker-control:__pkg__"],
 )
 
 js_library(
     name = "native_usb_ownership_sources",
     srcs = [
-        "bwg/native/bwg_usb.c",
+        "bwg/native/usb_phy_handoff.c",
+        "bwg/native/include/usb_phy_handoff.h",
         "src/bwg_worker_usb.rs",
         "src/startup.rs",
         "src/usb_runtime.rs",
+        "src/usb_runtime/callbacks.rs",
+        "src/usb_runtime/tinyusb.rs",
     ],
     visibility = ["//scripts:__pkg__"],
 )
@@ -363,7 +372,12 @@ rust_test(
         "src/main.rs",
         "src/startup.rs",
     ],
-    compile_data = ["bwg/native/bwg_usb.c"],
+    compile_data = [
+        "bwg/native/usb_phy_handoff.c",
+        "src/usb_runtime.rs",
+        "src/usb_runtime/callbacks.rs",
+        "src/usb_runtime/tinyusb.rs",
+    ],
     crate_name = "bwg_worker_source_ownership_tests",
     crate_root = "src/bwg_worker_source_ownership_test.rs",
     edition = "2021",

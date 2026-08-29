@@ -26,11 +26,6 @@ const ULTRA205_CAPABILITY: &str = include_str!("../bwg/ultra205-capability.json"
 static EVENTS: OnceLock<SyncSender<UsbEvent>> = OnceLock::new();
 static INGRESS_LOST: AtomicBool = AtomicBool::new(false);
 
-unsafe extern "C" {
-    fn bwg_usb_vendor_write(bytes: *const u8, length: u32) -> u32;
-    fn bwg_usb_evidence_write(bytes: *const u8, length: u32) -> u32;
-}
-
 enum UsbEvent {
     Attached,
     Detached,
@@ -122,7 +117,7 @@ pub(crate) fn start(recovery: BwgWorkerRecovery) -> anyhow::Result<()> {
         .name("bwg-worker-control".to_owned())
         .stack_size(OWNER_STACK_BYTES)
         .spawn(move || run_owner(receiver, &mut worker))?;
-    crate::usb_runtime::install_worker_runtime()
+    Ok(crate::usb_runtime::install_worker_runtime()?)
 }
 
 fn run_owner<V, S>(receiver: Receiver<UsbEvent>, worker: &mut WorkerControl<V, S>)
@@ -246,9 +241,9 @@ where
         write_evidence(b"bwg_worker={\"event\":\"request_rejected\"}\n");
         return;
     };
-    let length = u32::try_from(response.frame().len()).unwrap_or(0);
-    let written = unsafe { bwg_usb_vendor_write(response.frame().as_ptr(), length) };
-    if length == 0 || written != length || worker.confirm_sent(response).is_err() {
+    if crate::usb_runtime::send_worker_frame(response.frame()).is_err()
+        || worker.confirm_sent(response).is_err()
+    {
         note_control_result(worker.control_failed(now));
         write_evidence(b"bwg_worker={\"event\":\"response_unknown\"}\n");
     }
@@ -261,10 +256,7 @@ fn note_control_result(result: Result<(), WorkerControlError>) {
 }
 
 fn write_evidence(bytes: &[u8]) {
-    let Ok(length) = u32::try_from(bytes.len()) else {
-        return;
-    };
-    let _ = unsafe { bwg_usb_evidence_write(bytes.as_ptr(), length) };
+    let _result = crate::usb_runtime::emit_evidence(bytes);
 }
 
 fn send_event(event: UsbEvent) {
@@ -279,40 +271,30 @@ fn send_event(event: UsbEvent) {
     }
 }
 
-#[no_mangle]
-extern "C" fn bwg_worker_usb_attached() {
+pub(crate) fn enqueue_attached() {
     send_event(UsbEvent::Attached);
 }
 
-#[no_mangle]
-extern "C" fn bwg_worker_usb_detached() {
+pub(crate) fn enqueue_detached() {
     send_event(UsbEvent::Detached);
 }
 
-#[no_mangle]
-unsafe extern "C" fn bwg_worker_usb_vendor_received(bytes: *const u8, length: u32) {
-    if bytes.is_null() || length == 0 {
+pub(crate) fn enqueue_vendor_bytes(bytes: &[u8]) {
+    if bytes.is_empty() || bytes.len() > MAXIMUM_FRAME_BYTES {
         INGRESS_LOST.store(true, Ordering::Release);
         return;
     }
-    let Ok(length) = usize::try_from(length) else {
-        INGRESS_LOST.store(true, Ordering::Release);
-        return;
-    };
-    if length > MAXIMUM_FRAME_BYTES {
-        INGRESS_LOST.store(true, Ordering::Release);
-        return;
-    }
-    let value = unsafe { std::slice::from_raw_parts(bytes, length) }.to_vec();
-    send_event(UsbEvent::Bytes(SecretUsbBytes(value)));
+    send_event(UsbEvent::Bytes(SecretUsbBytes(bytes.to_vec())));
 }
 
-#[no_mangle]
-extern "C" fn usb_runtime_line_coding(bit_rate: u32) {
+pub(crate) fn enqueue_line_coding(bit_rate: u32) {
     send_event(UsbEvent::LineCoding(bit_rate));
 }
 
-#[no_mangle]
-extern "C" fn usb_runtime_line_state(dtr: bool, rts: bool) {
+pub(crate) fn enqueue_line_state(dtr: bool, rts: bool) {
     send_event(UsbEvent::LineState { dtr, rts });
+}
+
+pub(crate) fn note_ingress_lost() {
+    INGRESS_LOST.store(true, Ordering::Release);
 }

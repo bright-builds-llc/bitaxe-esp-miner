@@ -37,6 +37,16 @@ js_test(
     entry_point = "verify-native-usb-ownership.mjs",
 )
 
+js_test(
+    name = "verify_native_usb_symbols_test",
+    args = ["$(rootpath //firmware/bitaxe:firmware)"],
+    data = [
+        "verify-native-usb-symbols.mjs",
+        "//firmware/bitaxe:firmware",
+    ],
+    entry_point = "verify-native-usb-symbols.mjs",
+)
+
 # Terminal Phase 28.1.1 and dormant external-UART/late-attach artifacts are
 # intentionally inert. They remain available as immutable historical software,
 # but no active Bazel command or test executes them.
