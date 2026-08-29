@@ -187,3 +187,8 @@
   whitespace. The first all-target run collided while building both
   non-hermetic firmware variants concurrently; the isolated rollback build and
   required complete rerun passed.
+- Delivery: implementation commit
+  `ea58797f85478d2a3f7e13cd8042e25dcaf1d28a` is pushed. The canonical package
+  rebuilt from that exact clean source with six artifacts, `source_dirty=false`,
+  reference `c1915b0a63bfabebdb95a515cedfee05146c1d50`, and manifest SHA-256
+  `d10c2668063a3c00b520b58f957452b9cd18b9f3b8fe8f2fa9a63ae9740c45b7`.

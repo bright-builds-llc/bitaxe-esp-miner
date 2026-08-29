@@ -98,7 +98,9 @@ commit receipt with host wait-before-close semantics, a bounded closed-category
 profile trace, and the complete D-/D+ plus observed BUS_RESET PHY handoff. No
 new hardware attempt or recovery is authorized by this implementation. All
 software, firmware-link, ownership, Bazel, package, parity, privacy, and
-reference gates pass; the clean implementation commit remains pending.
+reference gates pass. Implementation commit `ea58797f` is pushed; its exact
+clean six-artifact package has manifest SHA-256
+`d10c2668063a3c00b520b58f957452b9cd18b9f3b8fe8f2fa9a63ae9740c45b7`.
 
 Completion review: Blocked at the repeated ROM re-enumeration signature. The
 one-time manual bootstrap installed the handoff firmware and proved
