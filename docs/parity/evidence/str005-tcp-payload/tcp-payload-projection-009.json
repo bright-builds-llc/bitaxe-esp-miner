@@ -1,0 +1,69 @@
+{
+  "schema_version": "bitaxe-stratum-v2-tcp-payload-projection-v2",
+  "status": "accepted",
+  "board": 205,
+  "diagnostic_ordinal": 9,
+  "source_commit": "e0398abb74d710d6a3918f226f1c08fd3203d35f",
+  "reference_commit": "c1915b0a63bfabebdb95a515cedfee05146c1d50",
+  "app_elf_sha256": "0f92f18f43d2eb2e958da5a1e973b1783462497c53cdbc90ba5194cf7996f089",
+  "plan_sha256": "544f57f8c940bc4e5cfeb69539928e153629b55dc12c5d04e404219ca48a5ba5",
+  "package_manifest_sha256": "9b9b9c2e74bf3ef21f9a33cf5fdb10edf78c346a86e10b8e0871816499c3d638",
+  "payload_sha256": "fdeab9acf3710362bd2658cdc9a29e8f9c757fcf9811603a8c447cd1d9151108",
+  "evaluator_sha256": "500c47e8be9693a9b2a66ab24442b9a298412c2d6cfc70515f1412b909a090db",
+  "terminal_category": "accepted",
+  "stages": {
+    "monitor_armed": true,
+    "resolved": true,
+    "tcp_connected": true,
+    "payload_sent": true,
+    "write_half_closed": true,
+    "receipt_acknowledged": true
+  },
+  "timings": {
+    "connect_ms": 36,
+    "write_ms": 12
+  },
+  "connection": {
+    "tuple_match": true,
+    "local_marker_consistent": true,
+    "exact_peer_connection_count": 1,
+    "other_exact_peer_connection_count": 0,
+    "candidate_overflow": false,
+    "correlated_candidate_found": true
+  },
+  "send": {
+    "adapter": "std",
+    "reported_bytes": 64,
+    "pre_send_error": "none",
+    "post_send_error": "none",
+    "post_shutdown_error": "none",
+    "category": "accepted"
+  },
+  "fixture": {
+    "listener_ready": true,
+    "connection_accepted": true,
+    "peer_matched": true,
+    "unexpected_peer_count": 0,
+    "payload_bytes_received": 64,
+    "payload_read_category": "complete",
+    "payload_digest_match": true,
+    "extra_bytes_received": 0,
+    "receipt_ack_sent": true
+  },
+  "campaign_started": false,
+  "mining_started": false,
+  "asic_touched": false,
+  "fan_touched": false,
+  "voltage_touched": false,
+  "restoration": {
+    "identity_exact": true,
+    "settings_exact": true,
+    "mineonboot_disabled": true,
+    "mining_inactive": true,
+    "zero_work": true,
+    "usb_cleanup_complete": true,
+    "owned_processes_remaining": 0
+  },
+  "redaction_complete": true,
+  "redaction_status": "passed"
+}

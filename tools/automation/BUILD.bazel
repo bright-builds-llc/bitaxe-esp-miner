@@ -10,10 +10,13 @@ js_library(
     srcs = [
         "src/stratum-v2-tcp-fixture.ts",
         "src/stratum-v2-tcp-connection.ts",
+        "src/stratum-v2-tcp-finalize.ts",
         "src/stratum-v2-tcp-payload-markers.ts",
         "src/stratum-v2-tcp-payload-process.ts",
         "src/stratum-v2-tcp-projection.ts",
+        "src/stratum-v2-tcp-publish.ts",
         "src/stratum-v2-tcp-payload-validator.ts",
+        "src/stratum-v2-tcp-payload-validator-cli.ts",
         "src/stratum-v2-tcp-payload.ts",
         "src/stratum-v2-tcp-recovery-tooling.ts",
         "src/stratum-v2-tcp-recovery-readiness.ts",

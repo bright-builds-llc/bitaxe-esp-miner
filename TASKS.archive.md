@@ -13350,3 +13350,336 @@ records by repository-relative plan directory, plan digest, closure digest,
 row, status, task, and terminal decision; any copied or changed legacy record
 fails closed. The historical artifacts and parity checklist remain unchanged,
 and no parity row, firmware, network, or hardware work occurred.
+
+### task-str005-tcp-payload-205 | 2026-08-28 | Prove Ultra 205 TCP payload delivery
+
+- [x] Create a separate immutable execution plan before implementation,
+      network use, package installation, or hardware effects.
+- [x] Prove the exact Ultra 205 peer connects to the admitted same-subnet
+      fixture and delivers one fixed 64-byte non-secret canary.
+- [x] Retain typed connect, write, peer, byte-count, and fixture-receipt
+      boundaries in a closed independently validated projection.
+- [x] Restore the exact recovery-006 firmware/settings state and prove inactive
+      zero-work runtime plus USB/process cleanup.
+
+Depends on: the archived STR-005 lineage and decomposition plan
+`docs/parity/work-plans/20260828T175218Z-STR-005-DECOMPOSITION/PLAN.md`.
+
+Plan: `docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md`
+
+Connection-identity continuation plan:
+`docs/parity/work-plans/20260829T032813Z-STR-005-CONNECTION-IDENTITY/PLAN.md`
+
+Authorization: planning, repository implementation, tests, build/package,
+commit, and push after a child plan exists. No hardware or network effect is
+eligible until that immutable plan defines its exact command, evidence,
+privacy, recovery, retry, and stop contract. The task-local hardware namespace
+begins at `diagnostic-001`. Noise, Stratum V2 protocol messages, ASIC, fan,
+voltage, mining, external pools, other boards, direct UART/pins, raw
+NVS/coredump access, fault injection, OTA, erase, and arbitrary writes remain
+excluded.
+
+Diagnostic-001 command contract: after the immutable plan and a separate
+implementation/evidence-contract commit are clean, fully verified, committed,
+and pushed, run `just package`, then `just detect-ultra205`, then exactly one
+repo-owned command:
+
+`just stratum-v2-tcp-payload start --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/diagnostic-001 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-001.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 1 --capture-timeout-seconds 360 --redact-evidence`
+
+The command may flash the exact package, seed only private Wi-Fi plus a
+generated same-subnet fixture endpoint and bounded diagnostic lease, accept one
+exact-peer TCP connection, send the fixed public byte sequence `0x00..0x3f`,
+receive-only monitor the result, and execute exact recovery-006
+firmware/settings restoration. Mining, Noise, V2 messages, ASIC work, fan,
+voltage, thermal/power control, external pools, discovery, other boards,
+direct UART/pins, raw NVS/coredump access, fault injection, OTA, erase, and
+arbitrary writes remain prohibited.
+
+Evidence/privacy: the absent private parent is mode `0700`; supervisor-owned
+children and distinct stdout/stderr siblings are mode `0600`, secret-sanitized,
+ignored, sealed, and never promoted. Credential values never reach disk or
+terminal. The public projection contains only closed categories, booleans,
+bounded counts/timings, safe digests/provenance, restoration/cleanup truth, and
+`redaction_status: passed`, and must pass an identity-bound independent
+validator.
+
+Recovery/retry/stop: preserve the earliest typed failure, always restore the
+exact recovery-006 package/settings/appearance plus `mineonboot=false`, prove
+inactive zero-work runtime, fresh board admission, USB/holder cleanup, and zero
+owned processes. Diagnostic-001 runs once. No unchanged retry is allowed; a
+later ordinal requires a distinct closed signature and regression-backed fix or
+objective authorized remediation. Accepted evidence completes only this child;
+STR-005 remains `implemented | unit,golden,workflow` until the final cumulative
+share campaign and promotion task.
+
+Diagnostic-001 outcome: `continue_after_verified_fix`. The protected workflow
+stopped at `timeout:fixture_ready` before listener readiness, credential access,
+flash, NVS seed, device/network effect, or projection publication. Its private
+stderr confirms the fixture rejected the accidental 360-second session timeout
+against its 300-second maximum. The root is consumed and must not be reused.
+
+Diagnostic-002 continuation: the targeted fix routes the production fixture
+launcher through a tested argument constructor with a 120-second session
+timeout while retaining the separate 360-second monitor capture. After the fix
+is fully verified, committed, pushed, and repackaged from clean exact HEAD, run
+fresh detector admission and exactly one command:
+
+`just stratum-v2-tcp-payload start --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/diagnostic-002 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-002.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 2 --capture-timeout-seconds 360 --redact-evidence`
+
+All allowed/prohibited effects, privacy, exact restoration, retry, stop, and
+non-promotion boundaries remain unchanged. Recurrence of the same fixture-bound
+signature selects `stop_repeated_boundary`; no diagnostic-003 is authorized.
+
+Recovery-001 iterative continuation: the user explicitly resumed this task
+under the repository's iterative hardware-fix authorization. After the exact
+current recovery admission and recovery-only supervisor pass every required
+gate, are committed and pushed, and `just package` binds the clean source, run
+fresh detector admission and exactly one command:
+
+`just stratum-v2-tcp-payload recover --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/recovery-001 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-002.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 2 --capture-timeout-seconds 360 --redact-evidence`
+
+Recovery-001 may only admit the exact Ultra 205, restore the recovery-006
+package ranges, restore the protected settings backup using the ignored local
+Wi-Fi/pool inputs, confirm exact runtime identity, `mineonboot=false`, inactive
+zero-work/share state, and USB/process cleanup. It must not start a fixture,
+send TCP bytes, enter Noise or V2 protocol, touch ASIC/fan/voltage controls,
+mine, discover targets, mutate unrelated settings, or publish parity evidence.
+The absent private root is mode `0700` with mode-`0600` secret-sanitized files.
+No unchanged recovery retry is allowed; a distinct regression-backed fix is
+required after any typed failure.
+
+Recovery-001 outcome: `continue_after_verified_fix`. Fresh detector admission
+passed, but the restore child stopped before writes at
+`restore_installed=blocked reason=authorization_action`. The current plan/root
+mapping was accepted; a second inline action/root allowlist omitted
+`tcp_payload_recovery`. Recovery-001 is consumed and produced no restore result.
+
+Recovery-002 continuation: a focused production-seam regression now proves the
+action is admitted only with the current recovery root. After the fix is fully
+verified, committed, pushed, and packaged from clean exact HEAD, run fresh
+detector admission and exactly one command:
+
+`just stratum-v2-tcp-payload recover --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/recovery-002 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-002.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 2 --capture-timeout-seconds 360 --redact-evidence`
+
+The recovery-only effects, privacy, restoration acceptance, prohibitions, and
+no-unchanged-retry boundaries remain exactly those declared for recovery-001.
+
+Recovery-002 outcome: `complete`. Exact recovery-006 package identity and
+protected settings were restored and confirmed with `mineonboot=false`,
+inactive mining, zero work/share state, fresh final detector admission, and
+complete cleanup. The task may resume TCP diagnosis from this proved baseline.
+
+Diagnostic-003 continuation: the diagnostic child now retains bounded partial
+stdout/stderr and parses closed firmware stages, timings, and terminal markers
+even when the managed monitor reaches its timeout. Current-task diagnostic
+restoration is admitted before any new effect. After all gates pass, the source
+is committed/pushed, and an exact clean package is built, run fresh detector
+admission and exactly one command:
+
+`just stratum-v2-tcp-payload start --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/diagnostic-003 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-003.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 3 --capture-timeout-seconds 360 --redact-evidence`
+
+Diagnostic-003 reuses the original fixed-payload effect and all safety/privacy
+limits. Its purpose is to distinguish monitor-armed, resolve, connect,
+configure/write, terminal, fixture receipt, and restoration boundaries; it does
+not authorize Noise, protocol, ASIC, mining, promotion, or unchanged retries.
+
+Diagnostic-003 outcome: `continue_after_verified_fix`. The supervised factory
+flash stopped before transfer, so the firmware owner and TCP fixture were never
+reached. Exact recovery-006 restoration still completed. Partial child output
+proved that the flash/NVS commands were rendered and USB ownership opened, but
+no monitor command ran; the sanitized failure was
+`flash_failed_before_transfer`.
+
+Diagnostic-004 continuation: the inner command now emits the closed USB command
+diagnostic on flash failure, and pre-monitor child failure terminates the
+fixture immediately instead of waiting its full accept deadline. After all
+gates pass and the exact source is committed/pushed/packaged, run fresh detector
+admission and exactly one command:
+
+`just stratum-v2-tcp-payload start --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/diagnostic-004 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-004.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 4 --capture-timeout-seconds 360 --redact-evidence`
+
+All original payload, privacy, safety, restoration, and non-promotion limits
+remain. Recurrence of the same closed flash-before-transfer signature stops as
+a repeated hardware/host boundary; it is not TCP evidence and does not permit
+diagnostic-005 without a targeted boundary fix.
+
+Diagnostic-004 outcome: `continue_after_verified_fix`. The exact-peer fixture
+accepted the device connection, while the firmware emitted `monitor_armed`,
+`resolved`, `tcp_connected`, and `payload_sent` with a 158 ms connect and 0 ms
+buffer write. The fixture then timed out with zero of 64 bytes and no extras.
+The diagnostic child retained an accepted firmware terminal but remained open
+for the bounded monitor capture, so the private candidate was conservatively
+rejected. Exact recovery-006 identity/settings, inactive zero-work state, and
+cleanup all passed. This is a distinct post-write TCP boundary, not a repeat of
+the diagnostic-003 flash failure.
+
+Diagnostic-005 continuation: the targeted transport fix keeps the firmware
+socket alive until the fixture has validated exactly `0x00..0x3f`, observed no
+extra byte, and returned one fixed non-secret `0xa5` receipt on the same exact
+peer connection. The firmware reads only that one receipt byte and emits a
+closed `receipt_acknowledged` stage; the fixture records only the boolean
+`receipt_ack_sent`. A focused real-loopback regression proves the receipt
+round-trip, and a supervisor regression proves that complete firmware and
+fixture evidence remains eligible when only the intentionally bounded monitor
+process times out. After every gate passes and the exact source is
+committed/pushed/packaged, run fresh detector admission and exactly one command:
+
+`just stratum-v2-tcp-payload start --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/diagnostic-005 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-005.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 5 --capture-timeout-seconds 360 --redact-evidence`
+
+The single fixed receipt is only a delivery acknowledgment, not Noise or a
+Stratum V2 message. Every original privacy, exact restoration, safety,
+prohibition, cleanup, non-promotion, and no-unchanged-retry boundary remains.
+Failure before receipt, recurrence of zero received bytes, or incomplete
+restoration selects a typed stop/next-fix outcome and cannot produce accepted
+evidence.
+
+Diagnostic-005 outcome: `stop_repeated_boundary` for the receipt-only
+hypothesis. From clean pushed source and fresh one-board admission, firmware
+again reached monitor armed, resolve, exact-peer connect, and payload-buffer
+write, then failed at the new `receipt` boundary. The fixture again accepted
+the exact peer but timed out with zero of 64 bytes, no extras, and no receipt.
+Exact recovery-006 identity/settings, inactive zero-work state, fresh USB
+admission, and owned-process cleanup all passed. This disproves immediate
+socket destruction as the sole cause; the receipt-only approach must not be
+retried unchanged.
+
+Diagnostic-006 continuation: under the user's standing iterative hardware-fix
+authorization, the next targeted discriminator gives the fixed one-way payload
+an explicit TCP completion boundary. The firmware mirrors the proven
+production transport's `TCP_NODELAY` configuration, writes only `0x00..0x3f`,
+then half-closes only the socket write direction before waiting for the fixed
+`0xa5` receipt. The fixture requires exactly 64 matching bytes followed by EOF
+and returns the receipt on the still-open read direction. A red production-seam
+regression failed before this sequence existed, then passed with exact
+write-before-half-close-before-receipt ordering; real loopback also proves the
+half-close/receipt round trip. After every gate passes and the exact source is
+committed/pushed/packaged, run fresh detector admission and exactly one command:
+
+`just stratum-v2-tcp-payload start --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/diagnostic-006 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-006.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 6 --capture-timeout-seconds 360 --redact-evidence`
+
+The half-close affects only this one admitted local fixture socket and cannot
+touch storage or hardware controls. Every prior privacy, restoration, safety,
+prohibition, cleanup, non-promotion, and no-unchanged-retry boundary remains.
+Diagnostic-006 stops at its typed result; it does not authorize a seventh
+hardware attempt without another distinct evidence-backed change.
+
+Diagnostic-006 outcome: `continue_after_verified_discriminator`. Firmware
+reached exact-peer connect and payload-buffer write, then failed immediately at
+the new `shutdown` boundary before `write_half_closed`; connect took 179 ms and
+the buffer write reported 0 ms. The exact-peer fixture again received zero
+bytes. Exact recovery-006 identity/settings, inactive zero-work state, USB
+cleanup, and zero owned processes all passed. The failure arrived about 30 ms
+after the write marker, excluding the configured ten-second send timeout and
+isolating the next question to the shutdown error class.
+
+Diagnostic-007 continuation: without changing any device, network, payload,
+socket, restoration, or cleanup effect, map the write-half-close failure into
+one of six closed value-free categories: `shutdown_would_block`,
+`shutdown_not_connected`, `shutdown_out_of_memory`, `shutdown_invalid_input`,
+`shutdown_unsupported`, or `shutdown_other`. A red source regression requires
+the complete closed vocabulary and passes only after the production owner maps
+`std::io::ErrorKind` without logging raw errno or socket values. After every
+gate passes and exact source is committed/pushed/packaged, run fresh detector
+admission and exactly one command:
+
+`just stratum-v2-tcp-payload start --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/diagnostic-007 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-007.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 7 --capture-timeout-seconds 360 --redact-evidence`
+
+Diagnostic-007 is classification-only and admits no broader effect. Every prior
+privacy, exact restoration, safety, prohibition, cleanup, non-promotion, and
+no-unchanged-retry boundary remains. Its result must select a software fix or a
+typed stop; no raw OS error, endpoint, credential, or device identity may be
+promoted.
+
+Diagnostic-007 outcome: `continue_after_verified_capture_fix`. Fresh one-board
+admission and the exact package passed, and the exact-peer fixture accepted one
+device connection, but the bounded serial child retained no TCP diagnostic
+stage, timing, or terminal marker. The closed result therefore remained
+`timeout`; it neither classified nor contradicted diagnostic-006's shutdown
+failure. The fixture received zero bytes, no public projection was published,
+and exact recovery-006 identity/settings, inactive zero-work runtime, USB
+cleanup, and zero owned processes all passed. The next attempt must first make
+post-flash monitor attachment deterministic enough to retain the classifier;
+an unchanged diagnostic-007 retry is prohibited.
+
+Diagnostic-008 continuation: diagnostic-006 captured its first firmware line
+at 2,136 ms uptime, while diagnostic-007 attached only at 42,186 ms—well after
+the approximately 17.5-second shutdown terminal. Replace reliance on the
+arbitrary ten-second countdown with boot-lifetime replay of the complete closed
+diagnostic transcript. After the initial terminal, the sole diagnostic owner
+replays every completed stage, bounded timing, and terminal marker every five
+seconds through 120 seconds; it performs no additional socket, fixture,
+credential, storage, hardware, or control effect. A virtual-time regression
+starts red with no replay, then proves the measured 42,186 ms late attachment
+observes a complete replay at 45,000 ms and that exactly 24 replay slots end at
+120,000 ms. After every gate passes and exact source is
+committed/pushed/packaged, run fresh detector admission and exactly one command:
+
+`just stratum-v2-tcp-payload start --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/diagnostic-008 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-008.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 8 --capture-timeout-seconds 360 --redact-evidence`
+
+Diagnostic-008 changes only observation durability. The payload/socket effect,
+closed shutdown classifier, exact restoration, privacy, safety, prohibitions,
+cleanup, non-promotion, and no-unchanged-retry boundaries remain unchanged.
+Replay contains only the existing value-free public marker schema and stops
+before the bounded monitor horizon.
+
+Diagnostic-008 outcome: `complete_capture_fix_and_stop_transport_boundary`.
+The first isolated invocation stopped before effects because a committed
+recovery projection checked out at mode `0644`; applying its required local
+`0600` mode made the full read-only preflight pass. The admitted hardware run
+then retained one original plus all 24 replayed copies of every completed
+marker: monitor armed, resolve, exact-peer connect, zero-millisecond local
+buffer write, payload sent, write-half-close, and terminal `receipt`. Connect
+took 257 ms. This proves late monitor attachment is fixed and that
+`shutdown(Write)` succeeded in this run. The exact-peer fixture nevertheless
+timed out with zero of 64 bytes, no extras, and no receipt, so payload delivery
+remains unproved and no public projection was published.
+
+The diagnostic's inline restore stopped before writes because the isolated
+worktree's generated ESP-IDF tools canonicalized outside that workspace. Two
+recovery-only continuations also stopped before writes while successively
+identifying the local esptool-containment and NVS-Python dependencies. After
+installing real ignored local copies of those exact managed tools, the
+recovery-only supervisor completed exact recovery-006 identity/settings,
+`mineonboot=false`, inactive zero-work runtime, fresh device admission, and
+cleanup. No unchanged hardware diagnostic retry is authorized. The next work
+must explain how the ESP-IDF socket can report a complete write and successful
+write half-close while the admitted fixture receives zero bytes.
+
+Diagnostic-009 continuation: the immutable connection-identity plan hardens
+all recovery tooling before effects, privately joins the firmware local TCP
+port to a bounded three-candidate exact-peer fixture inventory, publishes only
+closed tuple/count/correlated-receipt fields in a v2 projection, and records
+locally reported bytes independently of terminal acceptance. After a distinct
+implementation commit is fully verified, pushed, and packaged, run its exact
+ordinal-9 command from the continuation plan once. Diagnostic-010 is prohibited
+unless diagnostic-009 proves exactly one tuple-matched connection with zero
+correlated bytes and complete restoration.
+
+Diagnostic-009 outcome: `complete`. Exact clean source `e0398abb` produced one
+and only one exact-peer connection; the replayed firmware local port matched
+the fixture remote port, all pre-send/post-send/post-shutdown socket error
+families were `none`, the standard adapter reported all 64 bytes, and the
+correlated fixture candidate received exact `0x00..0x3f`, observed no extras,
+and returned the fixed receipt. Inline restore completed both write boundaries
+but its final USB sampler reported `identity_drift`; fresh recovery-003 then
+proved exact recovery-006 identity/settings, `mineonboot=false`, inactive
+zero-work/share state, fresh device admission, and cleanup. A recovery-aware
+offline finalizer independently validated and published the mode-`0644` v2
+projection without another hardware effect. Diagnostic-010 is not eligible and
+must not run.
+
+Verification: diagnostic-001 stopped before effects at
+`timeout:fixture_ready`; its regression-backed fixture-timeout fix passed every
+gate and was pushed as `35ae9cb33458ad6c76f6eedef5d0538720d80367`.
+Diagnostic-002 used that exact package and fresh one-board admission, then
+sealed `payload_read` with zero of 64 bytes before the mandatory restore path
+stopped at `hardware_blocked:restoration`. No public projection was published.
+
+Completion review: complete at diagnostic-009. The accepted projection joins
+exact clean package identity, one correlated TCP connection, exact fixed
+payload and receipt, bounded replay, socket state, recovery-003, cleanup,
+independent validation, and redaction. Residual non-claims are Noise and V2
+messages, authentication, channel/job/share behavior, mining, ASIC/fan/voltage
+effects, soak, other boards, and parity promotion. STR-005 remains
+`implemented` with `unit,golden,workflow`; continue only through the separate
+Noise-authentication child.

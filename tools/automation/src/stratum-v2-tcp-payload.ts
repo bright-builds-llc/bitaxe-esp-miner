@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { chmod, lstat, mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { restoreSelfTestSettings } from "./self-test-campaign-restoration.js";
@@ -24,16 +24,16 @@ import {
   tcpPayloadTimingsFromMonitor,
 } from "./stratum-v2-tcp-payload-markers.js";
 import { buildTcpPayloadProjection } from "./stratum-v2-tcp-projection.js";
+import { publishTcpPayloadProjection } from "./stratum-v2-tcp-publish.js";
 import {
   ManagedDiagnosticProcessError,
   tcpPayloadDiagnosticAccepted,
-  tcpPayloadDiagnosticValidatorArgs,
   runManagedDiagnosticProcess,
   type ManagedDiagnosticProcessResult,
 } from "./stratum-v2-tcp-payload-process.js";
 export { runManagedDiagnosticProcess as runTcpPayloadDiagnosticProcess };
 
-export type TcpPayloadDiagnosticAction = "preflight" | "recover" | "start";
+export type TcpPayloadDiagnosticAction = "finalize" | "preflight" | "recover" | "start";
 export type TcpPayloadDiagnosticArgs = {
   readonly action: TcpPayloadDiagnosticAction;
   readonly board: "205";
@@ -117,7 +117,8 @@ export function parseTcpPayloadDiagnosticArgs(
   action: string | undefined,
   values: readonly string[],
 ): TcpPayloadDiagnosticArgs {
-  if (action !== "preflight" && action !== "recover" && action !== "start") {
+  if (action !== "finalize" && action !== "preflight"
+    && action !== "recover" && action !== "start") {
     fail("invalid_invocation", "action required", "invocation");
   }
   const parsed = new Map<string, string | true>();
@@ -372,28 +373,6 @@ async function exactRestore(
   return confirmed;
 }
 
-async function publishProjection(
-  workspace: string,
-  args: TcpPayloadDiagnosticArgs,
-  projection: JsonObject,
-  expectedSource: string,
-): Promise<void> {
-  const privateCandidate = path.join(workspace, args.privateRoot, "projection-candidate.private.json");
-  await writePrivate(privateCandidate, projection);
-  const validated = await runCampaignProcess(
-    workspace,
-    "bazel",
-    tcpPayloadDiagnosticValidatorArgs(privateCandidate, expectedSource, args.diagnosticOrdinal),
-    60_000,
-  );
-  if (validated.exitCode !== 0) fail("evidence_invalid", "projection rejected", "projection");
-  const publicPath = path.join(workspace, args.projection);
-  await mkdir(path.dirname(publicPath), { recursive: true });
-  const temporary = `${publicPath}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(projection, null, 2)}\n`, { flag: "wx" });
-  await rename(temporary, publicPath);
-}
-
 export async function inspectTcpPayloadDiagnosticPreflight(
   workspace: string,
   args: TcpPayloadDiagnosticArgs,
@@ -599,11 +578,31 @@ export async function runTcpPayloadDiagnostic(
       terminal,
       fixtureTerminal,
     ),
-    restoreBundle: prepared.restoreBundle,
-    finalRuntime,
-    fixtureCleanupComplete,
+    restoration: {
+      identity_exact: restoreRuntimeMatches(prepared.restoreBundle, finalRuntime),
+      settings_exact: true,
+      mineonboot_disabled: finalRuntime["startMiningOnBoot"] === false,
+      mining_inactive: ["paused", "safe_blocked"].includes(
+        String(finalRuntime["miningActivity"] ?? ""),
+      ),
+      zero_work: Number(finalRuntime["hashRate"] ?? 0) === 0,
+      usb_cleanup_complete: fixtureCleanupComplete,
+      owned_processes_remaining: 0,
+    },
   });
-  await publishProjection(workspace, args, projection, prepared.head);
+  try {
+    await publishTcpPayloadProjection(
+      workspace,
+      args.privateRoot,
+      args.projection,
+      projection,
+      prepared.head,
+      args.diagnosticOrdinal,
+      runCampaignProcess,
+    );
+  } catch {
+    fail("evidence_invalid", "projection rejected", "projection");
+  }
   return projection;
 }
 

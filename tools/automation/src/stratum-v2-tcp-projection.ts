@@ -1,6 +1,4 @@
 import { projectTcpPayloadConnection, type JsonObject } from "./stratum-v2-tcp-connection.js";
-import { restoreRuntimeMatches } from "./stratum-v2-restore-admission.js";
-import type { RestoreBundle } from "./stratum-v2-restore-model.js";
 
 type TcpPayloadProjectionInput = {
   readonly sourceCommit: string;
@@ -18,9 +16,7 @@ type TcpPayloadProjectionInput = {
   readonly fixtureTerminal: JsonObject;
   readonly fixtureProgress: JsonObject;
   readonly diagnosticAccepted: boolean;
-  readonly restoreBundle: RestoreBundle;
-  readonly finalRuntime: JsonObject;
-  readonly fixtureCleanupComplete: boolean;
+  readonly restoration: JsonObject;
 };
 
 export function buildTcpPayloadProjection(input: TcpPayloadProjectionInput): JsonObject {
@@ -66,17 +62,7 @@ export function buildTcpPayloadProjection(input: TcpPayloadProjectionInput): Jso
     asic_touched: false,
     fan_touched: false,
     voltage_touched: false,
-    restoration: {
-      identity_exact: restoreRuntimeMatches(input.restoreBundle, input.finalRuntime),
-      settings_exact: true,
-      mineonboot_disabled: input.finalRuntime["startMiningOnBoot"] === false,
-      mining_inactive: ["paused", "safe_blocked"].includes(
-        String(input.finalRuntime["miningActivity"] ?? ""),
-      ),
-      zero_work: Number(input.finalRuntime["hashRate"] ?? 0) === 0,
-      usb_cleanup_complete: input.fixtureCleanupComplete,
-      owned_processes_remaining: 0,
-    },
+    restoration: input.restoration,
     redaction_complete: true,
     redaction_status: "passed",
   };

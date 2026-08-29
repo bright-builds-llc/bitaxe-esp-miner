@@ -143,6 +143,16 @@ test("diagnostic parser admits only the first exact no-mining contract", () => {
     value === "9" ? "10" : value)));
 });
 
+test("finalize parser reuses only the exact diagnostic-009 evidence contract", () => {
+  // Arrange / Act
+  const parsed = parseTcpPayloadDiagnosticArgs("finalize", exactArgs());
+
+  // Assert
+  assert.equal(parsed.action, "finalize");
+  assert.equal(parsed.privateRoot, "scratch/str005-tcp-payload/diagnostic-009");
+  assert.equal(parsed.diagnosticOrdinal, 9);
+});
+
 test("fixture owner uses an admitted session timeout below the capture timeout", () => {
   // Arrange / Act
   const args = tcpPayloadFixtureArgs("/private/fixture", "192.0.2.1", "192.0.2.2");
