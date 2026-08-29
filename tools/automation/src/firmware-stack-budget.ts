@@ -29,7 +29,18 @@ function entryFrameBytes(disassembly: string, symbol: string): number {
   const entries = body
     .map((line) => line.match(/\bentry\s+a1,\s+(0x[0-9a-f]+|[0-9]+)/iu)?.[1])
     .filter((value): value is string => value !== undefined);
-  if (entries.length !== 1) throw new Error(`firmware stack audit requires one entry frame for ${symbol}`);
+  if (entries.length === 0) {
+    const rawWord = body[0]?.match(/^\s*[0-9a-f]+:\s+([0-9a-f]{8})\s*$/iu)?.[1];
+    if (rawWord !== undefined) {
+      const instruction = Number.parseInt(rawWord.slice(-6), 16);
+      if ((instruction & 0xfff) === 0x136) {
+        entries.push(String((instruction >>> 12) * 8));
+      }
+    }
+  }
+  if (entries.length !== 1) {
+    throw new Error(`firmware stack audit requires one entry frame for ${symbol}`);
+  }
 
   const encoded = entries[0];
   if (encoded === undefined) throw new Error("firmware stack audit frame disappeared");

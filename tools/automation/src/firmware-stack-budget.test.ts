@@ -39,6 +39,31 @@ test("firmware stack audit rejects a missing required symbol", () => {
   assert.throws(() => verifyFirmwareStackBudget(input), /exactly one/u);
 });
 
+test("firmware stack audit decodes an Xtensa entry grouped as a raw word", () => {
+  // Arrange
+  const rawOperator =
+    `42000000 <${operatorSymbol}>:\n42000000:\t5211c136 \n42000004:\t000000\tnop\n`;
+  const input = `${rawOperator}\n${symbol(readinessSymbol, "0x1e0")}\n` +
+    symbol(screenSymbol, "0x3c0");
+
+  // Act
+  const budget = verifyFirmwareStackBudget(input);
+
+  // Assert
+  assert.equal(budget.operatorSensorFrameBytes, 0x8e0);
+});
+
+test("firmware stack audit rejects a raw word without the exact Xtensa entry opcode", () => {
+  // Arrange
+  const rawOperator =
+    `42000000 <${operatorSymbol}>:\n42000000:\t5211c137 \n42000004:\t000000\tnop\n`;
+  const input = `${rawOperator}\n${symbol(readinessSymbol, "0x1e0")}\n` +
+    symbol(screenSymbol, "0x3c0");
+
+  // Act / Assert
+  assert.throws(() => verifyFirmwareStackBudget(input), /one entry frame/u);
+});
+
 test("firmware stack audit rejects a duplicated required symbol", () => {
   // Arrange
   const input = `${disassembly("0x800", "0x1e0", "0x3c0")}\n${symbol(operatorSymbol, "0x800")}`;
