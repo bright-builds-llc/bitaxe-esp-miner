@@ -11,6 +11,14 @@ use serde_json::json;
 struct FixtureVerifier;
 
 impl LeaseAuthorizationVerifier for FixtureVerifier {
+    fn mark_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError> {
+        Ok(())
+    }
+
+    fn clear_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError> {
+        Ok(())
+    }
+
     fn verify_start(
         &mut self,
         grant: &WorkerLeaseGrant,
@@ -331,6 +339,7 @@ fn worker_with_session(session: FakeSession) -> WorkerControl<FixtureVerifier, F
         DeviceIdentity::from_seed([7_u8; 32]),
         FixtureVerifier,
         session,
+        None,
         json!({
             "protocolVersion": "bwg-worker-controller/0.3",
             "transportProfile": "bwg-worker-usb/0.2"

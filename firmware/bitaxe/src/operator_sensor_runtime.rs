@@ -74,6 +74,9 @@ pub fn start(
     Ok(())
 }
 
+// Keep the producer frame explicit so normal and rollback release images can
+// enforce the operator/display stack budget at the same ownership boundary.
+#[inline(never)]
 fn run(
     mut maybe_owner: Option<RuntimeI2cOwner<'static>>,
     mut maybe_core_voltage_adc: Option<safety_adapter::Ultra205CoreVoltageAdc>,

@@ -331,6 +331,7 @@ rust_test(
 rust_test(
     name = "bwg_worker_source_ownership_tests",
     srcs = [
+        "src/asic_adapter.rs",
         "src/bwg_worker_nvs.rs",
         "src/bwg_worker_session.rs",
         "src/bwg_worker_source_ownership_test.rs",

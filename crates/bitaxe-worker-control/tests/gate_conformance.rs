@@ -21,6 +21,14 @@ struct MemorySequenceStore {
 }
 
 impl AcceptedSequenceStore for MemorySequenceStore {
+    fn mark_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError> {
+        Ok(())
+    }
+
+    fn clear_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError> {
+        Ok(())
+    }
+
     fn load(&self, key_id: &str) -> Result<Option<u64>, LeaseAuthorizationError> {
         Ok(self.accepted.get(key_id).copied())
     }
@@ -92,6 +100,7 @@ fn executes_the_pinned_gate_contract_against_the_firmware_core() {
         DeviceIdentity::from_seed(FIXTURE_DEVICE_SEED),
         verifier,
         ConformanceSession,
+        None,
         capability,
         "rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA",
     )
@@ -510,6 +519,7 @@ fn contract_worker(
         DeviceIdentity::from_seed(FIXTURE_DEVICE_SEED),
         WorkLeaseAuthorizationVerifier::new(trust, MemorySequenceStore::default()),
         ConformanceSession,
+        None,
         capability,
         "rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA",
     )

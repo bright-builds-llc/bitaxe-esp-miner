@@ -3,6 +3,7 @@
 mod authorization;
 mod codec;
 mod controller;
+mod effect_marker;
 mod identity;
 mod lease;
 mod possession;
@@ -14,6 +15,7 @@ pub use authorization::{
 };
 pub use codec::{WorkerControlFrameAccumulator, WorkerControlFrameAccumulatorError};
 pub use controller::{PreparedResponse, WorkerControl, WorkerControlError};
+pub use effect_marker::PersistedWorkerEffectState;
 pub use identity::{
     load_or_generate_device_identity, DeviceIdentity, DeviceIdentitySeedGenerator,
     DeviceIdentitySeedStore, IdentityLoadError,

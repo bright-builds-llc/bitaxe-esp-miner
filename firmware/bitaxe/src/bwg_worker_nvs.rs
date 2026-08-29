@@ -4,15 +4,18 @@ use std::collections::BTreeMap;
 
 use bitaxe_worker_control::{
     AcceptedSequenceStore, DeviceIdentitySeedGenerator, DeviceIdentitySeedStore, IdentityLoadError,
-    LeaseAuthorizationError, SequenceStoreResult,
+    LeaseAuthorizationError, PersistedWorkerEffectState, SequenceStoreResult,
 };
 use esp_idf_svc::nvs::{EspNvs, NvsDefault};
 use esp_idf_svc::sys;
 use zeroize::{Zeroize, Zeroizing};
 
+use crate::startup::BootMiningBaselineConfirmed;
+
 const NAMESPACE: &str = "bwg_worker";
 const IDENTITY_KEY: &str = "device_seed";
 const SEQUENCE_KEY: &str = "lease_seq";
+const EFFECT_PENDING_KEY: &str = "effect_pending";
 const MAXIMUM_SEQUENCE_DOCUMENT_BYTES: usize = 512;
 
 /// Sole owner of the dedicated BWG NVS namespace for one boot lifetime.
@@ -76,6 +79,48 @@ impl BwgWorkerNvs {
         }
         Ok(())
     }
+
+    pub(crate) fn confirm_reboot_baseline(
+        &mut self,
+        _proof: BootMiningBaselineConfirmed,
+    ) -> Result<bool, LeaseAuthorizationError> {
+        let current = self.effect_state()?;
+        let confirmed = current.after_boot_baseline();
+        if confirmed != current {
+            self.store_effect_state(confirmed)?;
+        }
+        Ok(confirmed.requires_reboot_report())
+    }
+
+    fn effect_state(&self) -> Result<PersistedWorkerEffectState, LeaseAuthorizationError> {
+        let value = self
+            .nvs
+            .get_u8(EFFECT_PENDING_KEY)
+            .map_err(|_| LeaseAuthorizationError::Persistence)?;
+        PersistedWorkerEffectState::parse(value)
+    }
+
+    fn store_effect_state(
+        &mut self,
+        state: PersistedWorkerEffectState,
+    ) -> Result<(), LeaseAuthorizationError> {
+        match state.stored_value() {
+            Some(value) => self
+                .nvs
+                .set_u8(EFFECT_PENDING_KEY, value)
+                .map_err(|_| LeaseAuthorizationError::Persistence)?,
+            None => {
+                self.nvs
+                    .remove(EFFECT_PENDING_KEY)
+                    .map_err(|_| LeaseAuthorizationError::Persistence)?;
+            }
+        }
+        if self.effect_state()? == state {
+            Ok(())
+        } else {
+            Err(LeaseAuthorizationError::Persistence)
+        }
+    }
 }
 
 impl DeviceIdentitySeedStore for BwgWorkerNvs {
@@ -123,6 +168,14 @@ impl DeviceIdentitySeedStore for BwgWorkerNvs {
 }
 
 impl AcceptedSequenceStore for BwgWorkerNvs {
+    fn mark_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError> {
+        self.store_effect_state(PersistedWorkerEffectState::EffectPending)
+    }
+
+    fn clear_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError> {
+        self.store_effect_state(PersistedWorkerEffectState::Clear)
+    }
+
     fn load(&self, key_id: &str) -> Result<Option<u64>, LeaseAuthorizationError> {
         if !valid_key_id(key_id) {
             return Err(LeaseAuthorizationError::Persistence);

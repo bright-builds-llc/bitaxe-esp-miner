@@ -13783,3 +13783,62 @@ Session. No USB/device, detector, flash, monitor, restart, pool, mining, ASIC,
 fan, voltage, or NVS hardware effect occurred. Real Ultra 205 qualification,
 protected evidence, and cross-repository parent closure remain exclusively in
 the separately authorized Ticket 07 campaign.
+
+### task-bwg006-reboot-restoration-marker | 2026-08-29 | Preserve interrupted Worker restoration across reboot
+
+- [x] Persist one closed non-secret effect journal before an accepted Start can
+      reach the Production Mining Session.
+- [x] Clear the marker only after safe-stop confirmation; retain it across
+      failed cleanup, reboot, firmware update, and rollback.
+- [x] On boot, advance a retained marker only after the existing boot-safe
+      hardware gate and before exposing Worker USB control, then report
+      `restoration=confirmed` with reason `reboot`.
+- [x] Prove marker-before-effect ordering, failed-clear retry, interrupted-boot
+      recovery, and absence of credentials or identity material in the marker.
+- [x] Run the ordered Rust, Bazel, package, Bright Builds, reference,
+      redaction, source-ownership, Standards, and Spec gates before commit and
+      push.
+
+Depends on: archived `task-bwg006-possession-bound-worker-control` and Gate
+Ticket 07's physical reboot/reacquisition acceptance item.
+
+Authorization: repository-local Rust, test, documentation, build, package,
+commit, and push effects only. No USB/device access, detection, flash, monitor,
+restart, hardware NVS mutation, pool connection, mining, ASIC/fan/voltage
+effect, direct UART/pin/probe, erasure, or hardware evidence was authorized or
+performed.
+
+Safety, privacy, retry, and stop: the journal contains only `effect_pending` or
+`reboot_baseline_confirmed`, never a lease, credential, proof, key, identity,
+endpoint, or command payload. Persistence failure stops before a mining effect.
+Cleanup failure retains both the marker and retry responsibility. Boot recovery
+fails closed without starting Worker USB control until the typed boot-safe
+baseline confirms.
+
+Verification:
+
+- Pure tests prove marker-before-effect ordering, mark failure before the
+  session effect, clear failure retention and retry, strict journal decoding,
+  reboot confirmation durability through invalid traffic, and preservation of
+  the reboot report across a pre-report physical disconnect.
+- Source-ownership tests require every GPIO/peripheral/diagnostic boot fallback
+  to return `BootMiningBaseline::Unconfirmed`; only successful ASIC disable,
+  reset hold, and retained production peripherals can mint `Confirmed`.
+- Worker USB advances the journal before identity, trust, optional protocol
+  owners, and USB setup; it remains unavailable for an unconfirmed boot
+  baseline. Runtime marker methods are mandatory on every verifier/store.
+- `cargo fmt --all`, `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, and `cargo test --all-features`
+  passed in order. All 67 Bazel tests, normal and rollback firmware stack
+  audits, the canonical six-file package, Bright Builds, reference cleanliness,
+  redaction over 22 public files, source ownership, and `git diff --check`
+  passed. The independent Standards review returned PASS; local Spec review
+  traced every follow-up requirement to code and regression evidence.
+
+Completion review: Interrupted mining responsibility now survives every crash
+window without retaining a credential or identity. The boot-safe hardware gate
+advances the journal to a durable reboot confirmation only after physical
+baseline actions succeed. That reason remains reportable until a valid request
+follows a sent status, after which normal runtime restoration can supersede it.
+No hardware or external effect occurred; Ticket 07 remains the sole authority
+for device qualification.

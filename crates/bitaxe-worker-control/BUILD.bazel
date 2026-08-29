@@ -60,6 +60,14 @@ rust_test(
 )
 
 rust_test(
+    name = "effect_marker_tests",
+    srcs = ["tests/effect_marker.rs"],
+    crate_name = "bitaxe_worker_control_effect_marker_tests",
+    edition = "2021",
+    deps = [":bitaxe_worker_control"],
+)
+
+rust_test(
     name = "possession_tests",
     srcs = ["tests/possession.rs"],
     crate_name = "bitaxe_worker_control_possession_tests",
@@ -69,6 +77,17 @@ rust_test(
         "@crates//:base64",
         "@crates//:serde_json",
         "@crates//:sha2",
+    ],
+)
+
+rust_test(
+    name = "reboot_restoration_tests",
+    srcs = ["tests/reboot_restoration.rs"],
+    crate_name = "bitaxe_worker_control_reboot_restoration_tests",
+    edition = "2021",
+    deps = [
+        ":bitaxe_worker_control",
+        "@crates//:serde_json",
     ],
 )
 

@@ -34,6 +34,8 @@ pub enum WorkerControlError {
     AuthenticationFailed,
     #[error("Work Lease state is invalid")]
     InvalidTransition,
+    #[error("Worker effect state persistence failed")]
+    PersistenceFailed,
     #[error("Worker monotonic continuity was lost")]
     MonotonicReset,
     #[error("Worker session effect failed")]
@@ -56,6 +58,7 @@ impl WorkerControlError {
             Self::InvalidProof => "invalid_proof",
             Self::AuthenticationFailed => "authentication_failed",
             Self::InvalidTransition => "invalid_transition",
+            Self::PersistenceFailed => "persistence_failed",
             Self::MonotonicReset => "monotonic_reset",
             Self::SessionFailed => "session_failed",
             Self::RestorationPending => "restoration_pending",
@@ -82,6 +85,9 @@ enum PreparedEffect {
         token: u64,
         established_at_monotonic_milliseconds: u64,
         control_session_binding_sha256: String,
+    },
+    BootRestorationReported {
+        generation: u64,
     },
 }
 
@@ -145,6 +151,9 @@ pub struct WorkerControl<V, S> {
     next_response_token: u64,
     seen_nonce_digests: Vec<[u8; 32]>,
     maybe_active: Option<ActiveLease>,
+    effect_cleanup_required: bool,
+    boot_restoration_clear_required: bool,
+    maybe_boot_restoration_report_generation: Option<u64>,
     maybe_cleanup_reason: Option<RestorationReason>,
     restoration: RestorationState,
     maybe_last_monotonic_milliseconds: Option<u64>,
@@ -155,6 +164,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         identity: DeviceIdentity,
         verifier: V,
         session: S,
+        initial_restoration: Option<RestorationReason>,
         capability: Value,
         descriptor_sha256: &str,
     ) -> Result<Self, WorkerControlError> {
@@ -166,6 +176,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                 .map_err(|_| WorkerControlError::Encoding)?
                 .as_bytes(),
         ));
+        let boot_restoration_clear_required = initial_restoration.is_some();
         Ok(Self {
             identity,
             verifier,
@@ -179,8 +190,12 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             next_response_token: 0,
             seen_nonce_digests: Vec::new(),
             maybe_active: None,
+            effect_cleanup_required: false,
+            boot_restoration_clear_required,
+            maybe_boot_restoration_report_generation: None,
             maybe_cleanup_reason: None,
-            restoration: RestorationState::NotRequired,
+            restoration: initial_restoration
+                .map_or(RestorationState::NotRequired, RestorationState::Confirmed),
             maybe_last_monotonic_milliseconds: None,
         })
     }
@@ -189,6 +204,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         self.generation = self.generation.saturating_add(1);
         self.maybe_admission = None;
         self.maybe_pending_admission_token = None;
+        self.maybe_boot_restoration_report_generation = None;
         self.seen_nonce_digests.clear();
     }
 
@@ -222,6 +238,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         let request: ControllerRequest =
             serde_json::from_str(json).map_err(|_| WorkerControlError::InvalidRequest)?;
         request.validate()?;
+        self.acknowledge_boot_restoration()?;
         self.prepare_controller(request, monotonic_milliseconds)
     }
 
@@ -229,25 +246,38 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         &mut self,
         mut response: PreparedResponse,
     ) -> Result<(), WorkerControlError> {
-        let Some(PreparedEffect::Admit {
-            generation,
-            token,
-            established_at_monotonic_milliseconds,
-            control_session_binding_sha256,
-        }) = response.maybe_effect.take()
-        else {
+        let Some(effect) = response.maybe_effect.take() else {
             return Ok(());
         };
-        if generation != self.generation || self.maybe_pending_admission_token != Some(token) {
-            return Err(WorkerControlError::StaleResponse);
+        match effect {
+            PreparedEffect::Admit {
+                generation,
+                token,
+                established_at_monotonic_milliseconds,
+                control_session_binding_sha256,
+            } => {
+                if generation != self.generation
+                    || self.maybe_pending_admission_token != Some(token)
+                {
+                    return Err(WorkerControlError::StaleResponse);
+                }
+                self.maybe_pending_admission_token = None;
+                self.maybe_admission = Some(EnumerationAdmission {
+                    generation,
+                    established_at_monotonic_milliseconds,
+                    context: WorkerLeaseAuthorizationContext::parse(
+                        &control_session_binding_sha256,
+                    )
+                    .map_err(|_| WorkerControlError::InvalidProof)?,
+                });
+            }
+            PreparedEffect::BootRestorationReported { generation } => {
+                if generation != self.generation || !self.boot_restoration_clear_required {
+                    return Err(WorkerControlError::StaleResponse);
+                }
+                self.maybe_boot_restoration_report_generation = Some(generation);
+            }
         }
-        self.maybe_pending_admission_token = None;
-        self.maybe_admission = Some(EnumerationAdmission {
-            generation,
-            established_at_monotonic_milliseconds,
-            context: WorkerLeaseAuthorizationContext::parse(&control_session_binding_sha256)
-                .map_err(|_| WorkerControlError::InvalidProof)?,
-        });
         Ok(())
     }
 
@@ -291,6 +321,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         {
             return Err(WorkerControlError::InvalidProof);
         }
+        self.acknowledge_boot_restoration()?;
         self.seen_nonce_digests.push(nonce_digest);
         let response = self.identity.prove(&request)?;
         let control_session_binding_sha256 = request.control_session_binding(&response)?;
@@ -341,13 +372,26 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             }
             _ => return Err(WorkerControlError::InvalidRequest),
         };
-        response(&request.request_id, result)
+        let reports_boot_restoration = request.command == "status"
+            && self.boot_restoration_clear_required
+            && result
+                .pointer("/restoration/reason")
+                .and_then(Value::as_str)
+                == Some("reboot");
+        response(
+            &request.request_id,
+            result,
+            reports_boot_restoration.then_some(PreparedEffect::BootRestorationReported {
+                generation: self.generation,
+            }),
+        )
     }
 
     fn start(&mut self, grant: WorkerLeaseGrant, now: u64) -> Result<Value, WorkerControlError> {
         let context = self.required_start_context(now)?.clone();
         if self.maybe_active.is_some()
             || self.maybe_cleanup_reason.is_some()
+            || self.boot_restoration_clear_required
             || matches!(self.restoration, RestorationState::Pending)
         {
             return Err(WorkerControlError::InvalidTransition);
@@ -364,6 +408,10 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             grant.renew_after_milliseconds(),
         )
         .ok_or(WorkerControlError::InvalidRequest)?;
+        self.verifier
+            .mark_effect_pending()
+            .map_err(|_| WorkerControlError::PersistenceFailed)?;
+        self.effect_cleanup_required = true;
         self.maybe_active = Some(ActiveLease { grant, deadlines });
         self.restoration = RestorationState::Pending;
         let start_result = self
@@ -428,12 +476,16 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         self.maybe_pending_admission_token = None;
         self.maybe_cleanup_reason = Some(reason);
         self.restoration = RestorationState::Pending;
-        if self.maybe_active.is_some() {
+        if self.maybe_active.is_some() || self.effect_cleanup_required {
             self.session
                 .safe_stop(reason)
                 .map_err(|_| WorkerControlError::SessionFailed)?;
+            self.verifier
+                .clear_effect_pending()
+                .map_err(|_| WorkerControlError::PersistenceFailed)?;
         }
         drop(self.maybe_active.take());
+        self.effect_cleanup_required = false;
         self.maybe_cleanup_reason = None;
         self.restoration = RestorationState::Confirmed(reason);
         self.maybe_last_monotonic_milliseconds = Some(now);
@@ -459,6 +511,18 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         {
             self.safe_stop(RestorationReason::LeaseExpired, now)?;
         }
+        Ok(())
+    }
+
+    fn acknowledge_boot_restoration(&mut self) -> Result<(), WorkerControlError> {
+        if self.maybe_boot_restoration_report_generation != Some(self.generation) {
+            return Ok(());
+        }
+        self.verifier
+            .clear_effect_pending()
+            .map_err(|_| WorkerControlError::PersistenceFailed)?;
+        self.boot_restoration_clear_required = false;
+        self.maybe_boot_restoration_report_generation = None;
         Ok(())
     }
 
@@ -502,12 +566,16 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                 "restoration": { "status": "pending" },
             }));
         }
-        let restoration = match self.restoration {
-            RestorationState::NotRequired => json!({ "status": "not_required" }),
-            RestorationState::Confirmed(reason) => {
-                json!({ "status": "confirmed", "reason": reason })
+        let restoration = if self.boot_restoration_clear_required {
+            json!({ "status": "confirmed", "reason": RestorationReason::Reboot })
+        } else {
+            match self.restoration {
+                RestorationState::NotRequired => json!({ "status": "not_required" }),
+                RestorationState::Confirmed(reason) => {
+                    json!({ "status": "confirmed", "reason": reason })
+                }
+                RestorationState::Pending => return Err(WorkerControlError::RestorationPending),
             }
-            RestorationState::Pending => return Err(WorkerControlError::RestorationPending),
         };
         Ok(json!({
             "protocolVersion": PROTOCOL_VERSION,
@@ -530,7 +598,11 @@ impl<V, S> fmt::Debug for WorkerControl<V, S> {
     }
 }
 
-fn response(request_id: &str, result: Value) -> Result<PreparedResponse, WorkerControlError> {
+fn response(
+    request_id: &str,
+    result: Value,
+    maybe_effect: Option<PreparedEffect>,
+) -> Result<PreparedResponse, WorkerControlError> {
     let mut frame = serde_json::to_vec(&json!({
         "protocolVersion": PROTOCOL_VERSION,
         "requestId": request_id,
@@ -541,6 +613,6 @@ fn response(request_id: &str, result: Value) -> Result<PreparedResponse, WorkerC
     frame.push(b'\n');
     Ok(PreparedResponse {
         frame,
-        maybe_effect: None,
+        maybe_effect,
     })
 }

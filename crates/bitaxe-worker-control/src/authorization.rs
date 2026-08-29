@@ -49,6 +49,9 @@ impl fmt::Debug for WorkerLeaseAuthorizationContext {
 
 /// Durable per-authority replay state. Compare-and-store must be one atomic transaction.
 pub trait AcceptedSequenceStore {
+    fn mark_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError>;
+    fn clear_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError>;
+
     fn load(&self, key_id: &str) -> Result<Option<u64>, LeaseAuthorizationError>;
 
     fn compare_and_store(
@@ -222,6 +225,14 @@ impl<S: AcceptedSequenceStore> WorkLeaseAuthorizationVerifier<S> {
 impl<S: AcceptedSequenceStore> crate::session::LeaseAuthorizationVerifier
     for WorkLeaseAuthorizationVerifier<S>
 {
+    fn mark_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError> {
+        self.store.mark_effect_pending()
+    }
+
+    fn clear_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError> {
+        self.store.clear_effect_pending()
+    }
+
     fn verify_start(
         &mut self,
         grant: &WorkerLeaseGrant,

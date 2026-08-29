@@ -8,6 +8,8 @@ use crate::{
 
 /// Deployment-owned verification over the complete parsed authorization input.
 pub trait LeaseAuthorizationVerifier {
+    fn mark_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError>;
+    fn clear_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError>;
     fn verify_start(
         &mut self,
         grant: &WorkerLeaseGrant,

@@ -11,6 +11,8 @@ use crate::{
     wifi_adapter, BOOT_LOG_LINE, RUST_TARGET, SAFE_STATE_LOG_LINE,
 };
 
+pub(crate) struct BootMiningBaselineConfirmed(());
+
 /// Starts firmware services while preserving evidence-before-network ordering.
 ///
 /// Platform readiness must remain before Wi-Fi admission because ESP-IDF's
@@ -106,7 +108,10 @@ fn initialize_boot_identity_and_settings() -> anyhow::Result<(
 fn initialize_hardware(
     startup_debug_text: StartupDebugText,
     maybe_thermal_fault_stimulus: Option<settings_adapter::ThermalFaultStimulusAdmission>,
-) -> (anyhow::Result<()>, Option<Modem<'static>>) {
+) -> (
+    anyhow::Result<asic_adapter::BootMiningBaseline>,
+    Option<Modem<'static>>,
+) {
     let peripherals = match Peripherals::take() {
         Ok(peripherals) => peripherals,
         Err(error) => {
@@ -231,7 +236,9 @@ fn initialize_operator_runtime(
     }
 }
 
-fn start_runtime_services(startup_diagnostics: anyhow::Result<()>) -> anyhow::Result<bool> {
+fn start_runtime_services(
+    startup_diagnostics: anyhow::Result<asic_adapter::BootMiningBaseline>,
+) -> anyhow::Result<bool> {
     let startup_diagnostics_passed = startup_diagnostics.is_ok();
     let boot_validation_ready = match boot_validation::validate_boot(startup_diagnostics_passed) {
         Ok(ready) => ready,
@@ -240,7 +247,13 @@ fn start_runtime_services(startup_diagnostics: anyhow::Result<()>) -> anyhow::Re
             false
         }
     };
-    startup_diagnostics?;
+    let boot_mining_baseline = startup_diagnostics?;
+    let maybe_bwg_recovery = match boot_mining_baseline {
+        asic_adapter::BootMiningBaseline::Confirmed => Some(
+            crate::bwg_worker_usb::recover_interrupted_effect(BootMiningBaselineConfirmed(()))?,
+        ),
+        asic_adapter::BootMiningBaseline::Unconfirmed => None,
+    };
     safety_adapter::start_safety_supervisor();
     let maybe_tcp_payload_admission =
         match settings_adapter::load_tcp_payload_diagnostic_admission() {
@@ -324,8 +337,12 @@ fn start_runtime_services(startup_diagnostics: anyhow::Result<()>) -> anyhow::Re
     if let Err(error) = statistics_runtime::start() {
         log::warn!("statistics_runtime=unavailable reason=thread_spawn_failed error={error:#}");
     }
-    if let Err(error) = crate::bwg_worker_usb::start() {
-        log::warn!("bwg_worker_control=unavailable category=startup_failed error={error:#}");
+    if let Some(bwg_recovery) = maybe_bwg_recovery {
+        if let Err(error) = crate::bwg_worker_usb::start(bwg_recovery) {
+            log::warn!("bwg_worker_control=unavailable category=startup_failed error={error:#}");
+        }
+    } else {
+        log::warn!("bwg_worker_control=unavailable category=boot_baseline_unconfirmed");
     }
     Ok(boot_validation_ready)
 }

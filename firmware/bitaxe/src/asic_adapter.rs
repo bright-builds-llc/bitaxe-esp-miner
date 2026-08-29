@@ -46,9 +46,15 @@ pub struct AsicBootPeripherals<UART, RESET, ENABLE, TX, RX> {
     pub rx: RX,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum BootMiningBaseline {
+    Confirmed,
+    Unconfirmed,
+}
+
 pub fn run_boot_gate_with_peripherals<UART, RESET, ENABLE, TX, RX>(
     peripherals: AsicBootPeripherals<UART, RESET, ENABLE, TX, RX>,
-) -> Result<()>
+) -> Result<BootMiningBaseline>
 where
     UART: Uart + 'static,
     RESET: OutputPin + 'static,
@@ -58,14 +64,18 @@ where
 {
     match adapter_mode_from_firmware_compile_env() {
         AsicAdapterMode::FailClosed => retain_safe_production_peripherals(peripherals),
-        AsicAdapterMode::ChipDetectOnly => run_chip_detect_only(peripherals),
-        AsicAdapterMode::WorkResultDiagnostic => run_work_result_uart_bootstrap(peripherals),
+        AsicAdapterMode::ChipDetectOnly => {
+            run_chip_detect_only(peripherals).map(|()| BootMiningBaseline::Unconfirmed)
+        }
+        AsicAdapterMode::WorkResultDiagnostic => {
+            run_work_result_uart_bootstrap(peripherals).map(|()| BootMiningBaseline::Unconfirmed)
+        }
     }
 }
 
 fn retain_safe_production_peripherals<UART, RESET, ENABLE, TX, RX>(
     peripherals: AsicBootPeripherals<UART, RESET, ENABLE, TX, RX>,
-) -> Result<()>
+) -> Result<BootMiningBaseline>
 where
     UART: Uart + 'static,
     RESET: OutputPin + 'static,
@@ -82,14 +92,14 @@ where
             log::warn!(
                 "asic_production_status=fail_closed reason=enable_unavailable error={error:#}"
             );
-            return Ok(());
+            return Ok(BootMiningBaseline::Unconfirmed);
         }
     };
     if let Err(error) = enable.disable() {
         log::warn!(
             "asic_production_status=fail_closed reason=enable_disable_failed error={error:#}"
         );
-        return Ok(());
+        return Ok(BootMiningBaseline::Unconfirmed);
     }
     let mut reset = match reset::AsicReset::new(peripherals.reset)
         .context("initialize ASIC reset GPIO adapter")
@@ -99,12 +109,12 @@ where
             log::warn!(
                 "asic_production_status=fail_closed reason=reset_unavailable error={error:#}"
             );
-            return Ok(());
+            return Ok(BootMiningBaseline::Unconfirmed);
         }
     };
     if let Err(error) = reset.hold_reset_low() {
         log::warn!("asic_production_status=fail_closed reason=reset_hold_failed error={error:#}");
-        return Ok(());
+        return Ok(BootMiningBaseline::Unconfirmed);
     }
     let uart = match uart::AsicUart::new(peripherals.uart, peripherals.tx, peripherals.rx)
         .context("initialize retained BM1366 UART1 adapter")
@@ -114,11 +124,11 @@ where
             log::warn!(
                 "asic_production_status=fail_closed reason=uart_unavailable error={error:#}"
             );
-            return Ok(());
+            return Ok(BootMiningBaseline::Unconfirmed);
         }
     };
     production::store_production_peripherals(uart, reset, enable, false);
-    Ok(())
+    Ok(BootMiningBaseline::Confirmed)
 }
 
 fn run_work_result_uart_bootstrap<UART, RESET, ENABLE, TX, RX>(
@@ -150,21 +160,21 @@ where
     )
 }
 
-pub fn run_boot_gate_without_peripherals(reason: &'static str) -> Result<()> {
+pub fn run_boot_gate_without_peripherals(reason: &'static str) -> Result<BootMiningBaseline> {
     match adapter_mode_from_firmware_compile_env() {
         AsicAdapterMode::FailClosed => {
             status::publish_default_fail_closed_status();
-            Ok(())
+            Ok(BootMiningBaseline::Unconfirmed)
         }
         AsicAdapterMode::ChipDetectOnly => {
             log::warn!("asic_status=fail_closed reason={reason}");
             status::publish_status(AsicInitStatus::FailClosed { reason });
-            Ok(())
+            Ok(BootMiningBaseline::Unconfirmed)
         }
         AsicAdapterMode::WorkResultDiagnostic => {
             log::warn!("asic_status=fail_closed reason={reason}");
             status::publish_status(AsicInitStatus::FailClosed { reason });
-            Ok(())
+            Ok(BootMiningBaseline::Unconfirmed)
         }
     }
 }

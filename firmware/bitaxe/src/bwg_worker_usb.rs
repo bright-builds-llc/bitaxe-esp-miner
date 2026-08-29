@@ -13,6 +13,7 @@ use zeroize::Zeroize;
 
 use crate::bwg_worker_nvs::{BwgWorkerNvs, EspDeviceIdentitySeedGenerator};
 use crate::bwg_worker_session::ProductionWorkerSession;
+use crate::startup::BootMiningBaselineConfirmed;
 
 const OWNER_STACK_BYTES: usize = 16 * 1024;
 const EVENT_CAPACITY: usize = 8;
@@ -38,15 +39,36 @@ enum UsbEvent {
 
 struct SecretUsbBytes(Vec<u8>);
 
+pub(crate) struct BwgWorkerRecovery {
+    nvs: BwgWorkerNvs,
+    reboot_report_required: bool,
+}
+
 impl Drop for SecretUsbBytes {
     fn drop(&mut self) {
         self.0.zeroize();
     }
 }
 
-pub(crate) fn start() -> anyhow::Result<()> {
+pub(crate) fn recover_interrupted_effect(
+    proof: BootMiningBaselineConfirmed,
+) -> anyhow::Result<BwgWorkerRecovery> {
     let mut nvs = BwgWorkerNvs::open()
         .map_err(|error| anyhow::anyhow!("BWG NVS unavailable: {}", error.category()))?;
+    let reboot_report_required = nvs.confirm_reboot_baseline(proof).map_err(|error| {
+        anyhow::anyhow!("BWG reboot restoration unavailable: {}", error.category())
+    })?;
+    Ok(BwgWorkerRecovery {
+        nvs,
+        reboot_report_required,
+    })
+}
+
+pub(crate) fn start(recovery: BwgWorkerRecovery) -> anyhow::Result<()> {
+    let BwgWorkerRecovery {
+        mut nvs,
+        reboot_report_required,
+    } = recovery;
     let identity = load_or_generate_device_identity(&mut nvs, &mut EspDeviceIdentitySeedGenerator)
         .map_err(|error| {
             anyhow::anyhow!("BWG Device Identity unavailable: {}", error.category())
@@ -81,6 +103,7 @@ pub(crate) fn start() -> anyhow::Result<()> {
         identity,
         verifier,
         ProductionWorkerSession,
+        reboot_report_required.then_some(bitaxe_worker_control::RestorationReason::Reboot),
         capability,
         DESCRIPTOR_SHA256,
     )

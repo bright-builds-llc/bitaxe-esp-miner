@@ -51,6 +51,17 @@ never automatically removes a mark when a key leaves current trust; destructive
 key retirement requires a separately authorized migration that prevents key-ID
 reuse.
 
+Before an authenticated Start can reach the Production Mining Session, the
+same dedicated NVS owner advances a closed non-secret journal from `clear` to
+`effect_pending`. Confirmed safe stop clears it last. A reboot, failed cleanup,
+firmware update, or rollback therefore retains cleanup responsibility without
+retaining the lease, credentials, proof, Device Identity, or pool data. On
+boot, the existing boot-safe hardware gate advances `effect_pending` to
+`reboot_baseline_confirmed` before identity, trust, protocol-owner, or USB
+initialization. That confirmation remains durable until a sent status is
+followed by another valid host request in the same enumeration, which proves
+the host observed the recovery before the journal clears.
+
 The firmware adapter translates accepted leases and every terminal or
 continuity-loss reason through the sole Production Mining Session. It allocates
 strictly increasing owner-local campaign identities and converts each Worker

@@ -35,6 +35,14 @@ struct MemorySequenceStore {
 }
 
 impl AcceptedSequenceStore for MemorySequenceStore {
+    fn mark_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError> {
+        Ok(())
+    }
+
+    fn clear_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError> {
+        Ok(())
+    }
+
     fn load(&self, key_id: &str) -> Result<Option<u64>, LeaseAuthorizationError> {
         Ok(self.accepted.get(key_id).copied())
     }
