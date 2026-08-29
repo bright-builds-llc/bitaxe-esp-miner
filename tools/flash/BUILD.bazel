@@ -248,6 +248,7 @@ rust_binary(
     ],
     compile_data = [
         "//:TASKS.md",
+        "//:docs/adr/0019-supervise-bwg-restoration-through-a-protected-browser-campaign.md",
         "//:docs/parity/work-plans/20260817T005227Z-REL-003/PLAN.md",
         "//:docs/parity/work-plans/20260822T024037Z-SELF-001-RETRY-4/PLAN.md",
         "//:docs/parity/work-plans/20260824T000902Z-STR-005-RESTORE-RECOVERY/PLAN.md",

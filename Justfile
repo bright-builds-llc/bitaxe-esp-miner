@@ -25,6 +25,12 @@ test:
 package:
     bazel build //firmware/bitaxe:firmware_image
 
+bwg-worker-restoration-preflight *args:
+    bazel run //scripts:bwg_worker_restoration_preflight -- {{ args }}
+
+bwg-worker-restoration-campaign *args:
+    bazel run //scripts:bwg_worker_restoration_campaign -- {{ args }}
+
 flash *args:
     bazel run //tools/flash:flash -- flash {{ args }}
 

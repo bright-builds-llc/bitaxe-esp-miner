@@ -4,6 +4,7 @@ rust_library(
     name = "pool_readiness_lib",
     srcs = [
         "src/lib.rs",
+        "src/network.rs",
         "src/tests.rs",
     ],
     crate_name = "bitaxe_pool_readiness",
@@ -12,6 +13,7 @@ rust_library(
         "//crates/bitaxe-stratum:bitaxe_stratum",
         "@crates//:serde",
         "@crates//:serde_json",
+        "@crates//:sha2",
         "@crates//:thiserror",
     ],
     visibility = ["//visibility:public"],

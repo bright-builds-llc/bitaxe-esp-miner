@@ -369,6 +369,12 @@ fn package_command(
 }
 
 fn authorization_action_allowed(admission_only: bool, private_root: &str, action: &str) -> bool {
+    if !admission_only
+        && action == "bwg_worker_restoration"
+        && contract::is_bwg_restoration_root(Utf8Path::new(private_root))
+    {
+        return true;
+    }
     matches!(
         (admission_only, private_root, action),
         (true, PREFLIGHT_ROOT, "preflight")

@@ -16,6 +16,7 @@ exports_files([
     "AGENTS.md",
     "Justfile",
     "TASKS.md",
+    "docs/adr/0019-supervise-bwg-restoration-through-a-protected-browser-campaign.md",
     "docs/hardware/hardware-attempt-policy.md",
     "docs/parity/evidence/phase-22-claim-ladder-and-safety-preconditions/claim-ladder.md",
     "docs/parity/checklist.md",

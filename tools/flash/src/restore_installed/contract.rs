@@ -26,6 +26,10 @@ pub(crate) const TCP_PAYLOAD_PLAN_RELATIVE: &str =
     "docs/parity/work-plans/20260829T032813Z-STR-005-CONNECTION-IDENTITY/PLAN.md";
 pub(crate) const TCP_PAYLOAD_PLAN_SHA256: &str =
     "544f57f8c940bc4e5cfeb69539928e153629b55dc12c5d04e404219ca48a5ba5";
+pub(crate) const BWG_RESTORATION_PLAN_RELATIVE: &str =
+    "docs/adr/0019-supervise-bwg-restoration-through-a-protected-browser-campaign.md";
+pub(crate) const BWG_RESTORATION_PLAN_SHA256: &str =
+    "eac4c2099b07f22f45c36e6c1daebad0723e759d86964b890a361525a4d1a2f2";
 
 pub(crate) fn authorized_remediation_plan(
     action: &str,
@@ -45,6 +49,9 @@ pub(crate) fn authorized_remediation_plan(
         ("preflight" | "start", 5) | ("campaign_restore", 7) => {
             Ok((REMEDIATION_PLAN_RELATIVE, REMEDIATION_PLAN_SHA256))
         }
+        ("bwg_worker_restoration", 1..=999) => {
+            Ok((BWG_RESTORATION_PLAN_RELATIVE, BWG_RESTORATION_PLAN_SHA256))
+        }
         _ => bail!("restore_installed=blocked reason=identity_contract"),
     }
 }
@@ -52,7 +59,7 @@ pub(crate) fn authorized_remediation_plan(
 pub(crate) fn restore_invocation_contract(
     private_root: &Utf8Path,
     admission_only: bool,
-) -> (&'static Utf8Path, &'static str) {
+) -> (&Utf8Path, &'static str) {
     if admission_only && private_root == Utf8Path::new(TCP_PAYLOAD_PREFLIGHT_ROOT) {
         (
             Utf8Path::new(TCP_PAYLOAD_PREFLIGHT_ROOT),
@@ -80,7 +87,20 @@ pub(crate) fn restore_invocation_contract(
             Utf8Path::new(CAMPAIGN_RESTORE_ROOT),
             REMEDIATION_PLAN_RELATIVE,
         )
+    } else if is_bwg_restoration_root(private_root) {
+        (private_root, BWG_RESTORATION_PLAN_RELATIVE)
     } else {
         (Utf8Path::new(EFFECT_ROOT), REMEDIATION_PLAN_RELATIVE)
     }
+}
+
+pub(crate) fn is_bwg_restoration_root(private_root: &Utf8Path) -> bool {
+    let value = private_root.as_str();
+    let Some(attempt) = value
+        .strip_prefix("scratch/bwg-worker-restoration/bwg007-attempt-")
+        .and_then(|suffix| suffix.strip_suffix("/recovery"))
+    else {
+        return false;
+    };
+    attempt.len() == 3 && attempt.bytes().all(|byte| byte.is_ascii_digit())
 }

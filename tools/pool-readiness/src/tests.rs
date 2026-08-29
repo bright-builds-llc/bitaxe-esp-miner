@@ -17,6 +17,10 @@ fn credentials(port: u16) -> PoolCredentials {
     }
 }
 
+fn loopback_addresses(port: u16) -> [SocketAddr; 1] {
+    [SocketAddr::from(([127, 0, 0, 1], port))]
+}
+
 fn spawn_pool(
     authorize: bool,
     malformed: bool,
@@ -114,8 +118,12 @@ fn real_loopback_session_configures_subscribes_and_authorizes_without_submit() {
     let (port, receiver, handle) = spawn_pool(true, false);
 
     // Act
-    let progress = probe_session(&credentials(port), Duration::from_secs(2))
-        .expect("loopback readiness should pass");
+    let progress = probe_session(
+        &credentials(port),
+        Duration::from_secs(2),
+        &loopback_addresses(port),
+    )
+    .expect("loopback readiness should pass");
     let methods = receiver.recv().expect("methods should be available");
     handle.join().expect("loopback pool should finish");
 
@@ -134,8 +142,12 @@ fn authorize_rejection_is_closed_and_secret_free() {
     let (port, receiver, handle) = spawn_pool(false, false);
 
     // Act
-    let error = probe_session(&credentials(port), Duration::from_secs(2))
-        .expect_err("authorize rejection should fail");
+    let error = probe_session(
+        &credentials(port),
+        Duration::from_secs(2),
+        &loopback_addresses(port),
+    )
+    .expect_err("authorize rejection should fail");
     let _ = receiver.recv().expect("methods should be available");
     handle.join().expect("loopback pool should finish");
     let rendered = format!("{error:?} {error}");
@@ -152,8 +164,12 @@ fn malformed_pool_response_fails_protocol_admission() {
     let (port, receiver, handle) = spawn_pool(true, true);
 
     // Act
-    let error = probe_session(&credentials(port), Duration::from_secs(2))
-        .expect_err("malformed response should fail");
+    let error = probe_session(
+        &credentials(port),
+        Duration::from_secs(2),
+        &loopback_addresses(port),
+    )
+    .expect_err("malformed response should fail");
     let _ = receiver.recv().expect("methods should be available");
     handle.join().expect("loopback pool should finish");
 
@@ -167,8 +183,12 @@ fn nonresponsive_pool_respects_the_sample_timeout() {
     let (port, handle) = spawn_nonresponsive_pool();
 
     // Act
-    let error = probe_session(&credentials(port), Duration::from_millis(100))
-        .expect_err("nonresponsive pool should time out");
+    let error = probe_session(
+        &credentials(port),
+        Duration::from_millis(100),
+        &loopback_addresses(port),
+    )
+    .expect_err("nonresponsive pool should time out");
     handle.join().expect("loopback pool should finish");
 
     // Assert
@@ -181,8 +201,12 @@ fn oversized_server_line_fails_before_unbounded_allocation() {
     let (port, handle) = spawn_oversized_pool();
 
     // Act
-    let error = probe_session(&credentials(port), Duration::from_secs(2))
-        .expect_err("oversized pool response should fail");
+    let error = probe_session(
+        &credentials(port),
+        Duration::from_secs(2),
+        &loopback_addresses(port),
+    )
+    .expect_err("oversized pool response should fail");
     handle.join().expect("loopback pool should finish");
 
     // Assert
@@ -201,6 +225,9 @@ fn private_report_is_mode_0600_and_contains_only_closed_fields() {
         source_commit: "a".repeat(40),
         reference_commit: "b".repeat(40),
         pool_config: "local-owner-supplied".to_owned(),
+        pool_credentials_sha256: "c".repeat(64),
+        private_lan_only: true,
+        resolved_endpoints_sha256: "d".repeat(64),
         protocol: "stratum_v1_configure_subscribe_authorize".to_owned(),
         samples_required: 3,
         samples_completed: 3,

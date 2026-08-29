@@ -4015,6 +4015,99 @@ hardware regression, safe-stop proof, and redaction remain outstanding.
 Automatic selection may treat ASIC-010 as hardware-blocked until those
 prerequisites exist and continue to the next software-actionable row.
 
+### task-bwg007-real-worker-restoration | 2026-08-29 | Prove possession-bound Worker restoration on Ultra 205
+
+- [ ] Commit and push this immutable effect contract and the repo-owned
+      `bwg-worker-restoration-preflight` and
+      `bwg-worker-restoration-campaign` commands before any device action.
+- [ ] Admit one Ultra 205, exact clean firmware/Gate commits, the canonical
+      package, protected authority/pool/recovery inputs, and an absent private
+      attempt root through the effect-free preflight.
+- [ ] Install the exact package once through the existing detector-gated flash
+      workflow, then exercise completion, Pause, terminal Cancel, exclusive
+      expiry, USB-only disconnect, both-power reboot, and monotonic uncertainty
+      plus the authorization-negative matrix through the production WebUSB
+      adapter and local mainnet-shaped pool path.
+- [ ] Prove replay/context negatives, credential absence, safe stop, same-key
+      reacquisition, journal/high-water durability, restoration, and cleanup.
+- [ ] Commit only independently redaction-validated typed projections, link the
+      Gate child evidence, and close BWG Core Ticket 23 only when every
+      acceptance link resolves.
+
+Depends on: firmware commits `aa973c43`, `5ddcad17`, `cc13193c`, and `616cc489`;
+Gate commits `7567fb5` and `0b07d36`;
+Gate child Tickets 04-06; ADRs 0018-0019; and the established detector, package,
+local mainnet-shaped pool, and recovery workflows.
+
+Authorization: after this contract commit is pushed, the commands below may use
+only the provided USB connector and barrel power on one detector-admitted Ultra
+205. They may inspect, install the exact package, request browser WebUSB
+permission, send bounded possession/Controller frames, use protected
+challenge-scoped pool credentials, mine under a maximum 60-second monotonic
+lease, remove/reconnect USB, remove/restore barrel power, and perform the exact
+recovery/cleanup encoded by the commands. Direct UART, pins, pads, probes,
+headers, GPIO/jumpers, soldering, erasure, arbitrary/ad hoc writes, unrelated
+settings changes, irreversible fuses, fault injection, other devices, other
+pools, and private evidence publication are prohibited.
+
+Commands:
+
+1. Create one fresh mode-`0700` private parent and one fresh protected detector
+   output using the existing detector workflow. For each scenario run:
+
+   `just bwg-worker-restoration-preflight --private-parent <firmware-repo>/scratch/bwg-worker-restoration --attempt-id bwg007-attempt-NNN --package-manifest <absolute-package-manifest> --firmware-repository <absolute-firmware-repo> --gate-repository <absolute-gate-repo> --gate-commit 0b07d36942aa8ca3473771d2f72a373e66cedf58 --authority-directory <absolute-protected-authority> --pool-credentials <absolute-mode-0600-pool-json> --pool-readiness <absolute-mode-0600-readiness-result> --restore-bundle <absolute-mode-0600-restore-bundle> --wifi-credentials <absolute-mode-0600-wifi-json> --detector-output <absolute-mode-0600-detector-output> --scenario <scenario> --projection <absolute-new-projection>`
+
+2. Only for the first admitted scenario, install the canonical package through
+   the existing `just flash` manifest workflow and its private evidence root.
+   Do not erase NVS or substitute an image/path outside the admitted manifest.
+3. Launch the exact protected plan:
+
+   `just bwg-worker-restoration-campaign --preflight <absolute-preflight.private.json>`
+
+4. Read `browser-url.private.txt` privately, open that loopback URL in Chrome,
+   and use its accessible buttons. For physical checkpoints, follow only the
+   page's USB/barrel instruction. Do not start an effect before the current page
+   and campaign owner are live.
+
+The package manifest path is exactly
+`<firmware-repo>/bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`; each
+projection is exactly
+`<firmware-repo>/docs/parity/evidence/bwg-worker-restoration/<attempt-id>-<scenario>.json`.
+Regenerate pool readiness after this contract commit so its protected report
+contains the exact pool-credential byte digest and exact source/reference
+identity. Campaign startup performs a 25-second receive-only USB CDC capture
+and requires two monotonic exact-package runtime attestations before exposing
+the browser URL.
+Each successful scenario remains protected and private until all eight unique
+scenarios succeed under the same identities. The final successful campaign
+publishes the complete projection set as one rollback-on-failure batch; no
+intermediate projection may dirty the exact-source checkout.
+
+Safety, privacy, recovery, retry, and stop: preflight creates no device or
+network effect. The campaign retains the first typed failure, attempts strict
+controller cleanup, and publishes no projection on failure. Reacquisition
+failure remains retryable under the same live owner. A lease expires locally
+within 60 seconds even if the browser/server fails. Repeat a hardware scenario
+only after a verified code/input/physical-boundary change; stop when the same
+authoritative signature recurs after its targeted fix. Private roots are
+mode-`0700`; sensitive files are mode-`0600`; signing intermediates are
+exclusive and deleted; committed projections contain only allowlisted digests,
+closed categories, and booleans.
+
+Current blocker: an ordinary both-power reboot proves `reboot`, not the
+in-process decreasing-clock path `monotonic_reset`. The standing authorization
+also prohibits fault injection and ad hoc control writes. Therefore the
+campaign command fails before effects for `monotonic_uncertainty` until a
+separate bounded stimulus seam is explicitly designed and authorized; reboot
+cannot be relabeled as monotonic-reset evidence.
+
+Durable replay evidence is also blocked before effects. After reboot, the old
+renewal is bound to the prior possession context; admitting a fresh Start first
+also advances the current high-water. A generic rejection therefore cannot
+attribute the result to persisted replay state. The scenario requires a new
+metadata-only, non-signing diagnostic seam that distinguishes durable replay
+from context rejection, and that seam is outside the standing authorization.
+
 ## Future
 
 ### task-str005-noise-auth-205 | 2026-08-28 | Prove Ultra 205 Noise authentication

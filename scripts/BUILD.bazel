@@ -34,6 +34,29 @@ js_library(
     visibility = ["//tools/automation:__pkg__"],
 )
 
+js_library(
+    name = "bwg_worker_restoration_sources",
+    srcs = glob(["bwg-worker-restoration/*"]),
+)
+
+js_binary(
+    name = "bwg_worker_restoration_preflight",
+    data = [":bwg_worker_restoration_sources"],
+    entry_point = "bwg-worker-restoration/preflight.mjs",
+)
+
+js_binary(
+    name = "bwg_worker_restoration_campaign",
+    data = [":bwg_worker_restoration_sources"],
+    entry_point = "bwg-worker-restoration/campaign.mjs",
+)
+
+js_test(
+    name = "bwg_worker_restoration_contract_test",
+    data = [":bwg_worker_restoration_sources"],
+    entry_point = "bwg-worker-restoration/contract.test.mjs",
+)
+
 js_test(
     name = "verify_bwg_fixture_exports_test",
     args = [

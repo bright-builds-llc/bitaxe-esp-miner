@@ -3,20 +3,22 @@
 use std::{
     fs::{self, OpenOptions},
     io::{BufRead, BufReader, Read, Write},
-    net::{SocketAddr, TcpStream, ToSocketAddrs},
+    net::{SocketAddr, TcpStream},
     os::unix::fs::{OpenOptionsExt, PermissionsExt},
     path::{Component, Path, PathBuf},
     process::Command,
-    sync::mpsc,
     thread,
     time::{Duration, Instant},
 };
+
+mod network;
 
 use bitaxe_stratum::{
     jsonrpc::StratumRequestId,
     v1::messages::{parse_server_message, StratumV1ClientMessage, StratumV1ServerMessage},
 };
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use thiserror::Error;
 
 const EXPECTED_ATTEMPT_ORDINAL: u8 = 5;
@@ -56,6 +58,7 @@ pub enum ReadinessCategory {
     SubscribeRejected,
     AuthorizeRejected,
     InputLimitExceeded,
+    EndpointNotPrivate,
 }
 
 impl ReadinessCategory {
@@ -76,6 +79,7 @@ impl ReadinessCategory {
             Self::SubscribeRejected => "subscribe_rejected",
             Self::AuthorizeRejected => "authorize_rejected",
             Self::InputLimitExceeded => "input_limit_exceeded",
+            Self::EndpointNotPrivate => "endpoint_not_private",
         }
     }
 }
@@ -87,7 +91,7 @@ pub struct ReadinessError {
 }
 
 impl ReadinessError {
-    const fn new(category: ReadinessCategory) -> Self {
+    pub(crate) const fn new(category: ReadinessCategory) -> Self {
         Self { category }
     }
 
@@ -104,6 +108,9 @@ pub struct PoolReadinessReport {
     pub source_commit: String,
     pub reference_commit: String,
     pub pool_config: String,
+    pub pool_credentials_sha256: String,
+    pub private_lan_only: bool,
+    pub resolved_endpoints_sha256: String,
     pub protocol: String,
     pub samples_required: u8,
     pub samples_completed: u8,
@@ -166,7 +173,20 @@ pub fn execute(options: ReadinessOptions) -> Result<ReadinessDisposition, Readin
         &credential_path,
         ReadinessCategory::CredentialInvalid,
     )?;
-    let credentials = read_credentials(&credential_path)?;
+    let credential_bytes = fs::read(&credential_path)
+        .map_err(|_| ReadinessError::new(ReadinessCategory::CredentialInvalid))?;
+    let credentials = read_credentials(&credential_bytes)?;
+    let pool_credentials_sha256 = Sha256::digest(&credential_bytes)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
+    let pool_addresses = network::resolve_private_addresses(
+        &credentials.host,
+        credentials.port,
+        options.sample_timeout,
+    )?;
+    let resolved_endpoints_sha256 = network::endpoint_set_sha256(&pool_addresses);
+    let private_lan_only = network::rfc1918_only(&pool_addresses);
     let private_root = admitted_absent_root(&workspace_root, &options.private_root)?;
     ensure_ignored(
         &workspace_root,
@@ -181,7 +201,7 @@ pub fn execute(options: ReadinessOptions) -> Result<ReadinessDisposition, Readin
     let mut terminal_category = ReadinessCategory::Ready;
 
     for sample_index in 0..options.samples {
-        match probe_session(&credentials, options.sample_timeout) {
+        match probe_session(&credentials, options.sample_timeout, &pool_addresses) {
             Ok(progress) => {
                 samples_completed = samples_completed.saturating_add(1);
                 ready_samples = ready_samples.saturating_add(1);
@@ -214,6 +234,9 @@ pub fn execute(options: ReadinessOptions) -> Result<ReadinessDisposition, Readin
         source_commit,
         reference_commit,
         pool_config: "local-owner-supplied".to_owned(),
+        pool_credentials_sha256,
+        private_lan_only,
+        resolved_endpoints_sha256,
         protocol: "stratum_v1_configure_subscribe_authorize".to_owned(),
         samples_required: options.samples,
         samples_completed,
@@ -358,10 +381,8 @@ fn create_private_root(private_root: &Path) -> Result<(), ReadinessError> {
         .map_err(|_| ReadinessError::new(ReadinessCategory::PrivateRootInvalid))
 }
 
-fn read_credentials(path: &Path) -> Result<PoolCredentials, ReadinessError> {
-    let document = fs::read_to_string(path)
-        .map_err(|_| ReadinessError::new(ReadinessCategory::CredentialInvalid))?;
-    let file: PoolCredentialFile = serde_json::from_str(&document)
+fn read_credentials(document: &[u8]) -> Result<PoolCredentials, ReadinessError> {
+    let file: PoolCredentialFile = serde_json::from_slice(document)
         .map_err(|_| ReadinessError::new(ReadinessCategory::CredentialInvalid))?;
     let host = normalized_host(&file.pool_url)?;
     if file.pool_port == 0 || file.pool_user.is_empty() || file.pool_user.len() > 255 {
@@ -394,10 +415,10 @@ fn normalized_host(value: &str) -> Result<String, ReadinessError> {
 fn probe_session(
     credentials: &PoolCredentials,
     timeout: Duration,
+    addresses: &[SocketAddr],
 ) -> Result<SessionProgress, ReadinessError> {
     let deadline = Instant::now() + timeout;
-    let addresses = resolve_addresses(&credentials.host, credentials.port, timeout)?;
-    let stream = connect(&addresses, deadline)?;
+    let stream = network::connect(addresses, deadline)?;
     stream
         .set_nodelay(true)
         .map_err(|_| ReadinessError::new(ReadinessCategory::TransportFailed))?;
@@ -487,41 +508,6 @@ fn probe_session(
         }
     }
     Ok(progress)
-}
-
-fn resolve_addresses(
-    host: &str,
-    port: u16,
-    timeout: Duration,
-) -> Result<Vec<SocketAddr>, ReadinessError> {
-    let (sender, receiver) = mpsc::sync_channel(1);
-    let owned_host = host.to_owned();
-    thread::spawn(move || {
-        let result = (owned_host.as_str(), port)
-            .to_socket_addrs()
-            .map(|addresses| addresses.collect::<Vec<_>>());
-        let _ = sender.send(result);
-    });
-    match receiver.recv_timeout(timeout) {
-        Ok(Ok(addresses)) if !addresses.is_empty() => Ok(addresses),
-        Ok(_) => Err(ReadinessError::new(ReadinessCategory::ResolutionFailed)),
-        Err(mpsc::RecvTimeoutError::Timeout) => {
-            Err(ReadinessError::new(ReadinessCategory::Timeout))
-        }
-        Err(mpsc::RecvTimeoutError::Disconnected) => {
-            Err(ReadinessError::new(ReadinessCategory::ResolutionFailed))
-        }
-    }
-}
-
-fn connect(addresses: &[SocketAddr], deadline: Instant) -> Result<TcpStream, ReadinessError> {
-    for address in addresses {
-        let remaining = remaining(deadline)?;
-        if let Ok(stream) = TcpStream::connect_timeout(address, remaining) {
-            return Ok(stream);
-        }
-    }
-    Err(ReadinessError::new(ReadinessCategory::ConnectionFailed))
 }
 
 fn write_client_message(
