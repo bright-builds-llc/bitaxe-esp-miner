@@ -171,7 +171,7 @@ pub fn admit_rom_downloader(
     board_info: &[u8],
 ) -> Result<UsbProfileInspection, UsbSessionError> {
     if inspection.profile != UsbProfile::SerialJtagRuntime
-        || !String::from_utf8_lossy(board_info).contains("ESP32-S3")
+        || !board_info_reports_esp32s3(board_info)
     {
         return Err(handoff_error(
             UsbTerminalCategory::BootloaderSyncFailed,
@@ -180,6 +180,19 @@ pub fn admit_rom_downloader(
     }
     inspection.profile = UsbProfile::RomDownloader;
     Ok(inspection)
+}
+
+fn board_info_reports_esp32s3(board_info: &[u8]) -> bool {
+    String::from_utf8_lossy(board_info).lines().any(|line| {
+        let Some(chip) = line
+            .trim_start()
+            .strip_prefix("Chip type:")
+            .and_then(|value| value.split_whitespace().next())
+        else {
+            return false;
+        };
+        chip.eq_ignore_ascii_case("esp32s3") || chip.eq_ignore_ascii_case("esp32-s3")
+    })
 }
 
 fn parse_usb_number(value: &str) -> Option<u16> {
@@ -389,6 +402,27 @@ mod tests {
         assert_eq!(
             rejected.expect_err("missing board-info must fail").category,
             UsbTerminalCategory::BootloaderSyncFailed
+        );
+    }
+
+    #[test]
+    fn real_espflash_chip_type_spelling_admits_rom_downloader() {
+        // Arrange
+        let inspection = UsbProfileInspection {
+            profile: UsbProfile::SerialJtagRuntime,
+            port: "port".to_owned(),
+            physical_identity_digest: "physical".to_owned(),
+            enumeration_token: "enumeration".to_owned(),
+        };
+        let board_info = b"Chip type:         esp32s3 (revision v0.2)\n";
+
+        // Act
+        let admitted = admit_rom_downloader(inspection, board_info);
+
+        // Assert
+        assert_eq!(
+            admitted.expect("real espflash ROM admission").profile,
+            UsbProfile::RomDownloader
         );
     }
 

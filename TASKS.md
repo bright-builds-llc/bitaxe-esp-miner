@@ -70,7 +70,11 @@ The Rust-adapter child is complete and archived: Rust owns descriptors,
 installation, callbacks, and data I/O, while C is limited to the intentional
 PHY/force-download Adapter. Manual bootstrap, automatic hardware handoff proof,
 20-cycle durability, and recovery-006 restoration remain as the next hardware
-stage.
+stage. Manual bootstrap-001 admitted the ROM downloader, but the first flash
+stopped before writes because real espflash 4.5.0 renders the chip type as
+`esp32s3` while the host admission accepted only the uppercase fixture
+spelling. A real-output regression and field parser now cover that boundary;
+the targeted retry awaits its clean pushed package.
 
 Completion review: Pending. STR-005 and BWG remain unchanged until their own
 separate evidence tasks complete.

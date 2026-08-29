@@ -49,3 +49,24 @@
   symbols without touching hardware.
 - Hardware/network effects: none. Manual bootstrap and durability remain
   blocked until the child is committed, pushed, archived, and repackaged.
+
+## 2026-08-29T20:00:00Z | Manual bootstrap and ROM-admission regression
+
+- Protected bootstrap-001 recorded the exact clean `632e9603` package and the
+  user completed the authorized built-in BOOT/RESET sequence.
+- Profile-aware detection admitted exactly one Ultra 205 ROM downloader and
+  successful board information. The subsequent exact-package flash stopped
+  before any write with `bootloader_sync_failed`.
+- Protected child output proved that espflash 4.5.0 reported
+  `Chip type: esp32s3`; the admission code compared presentation text against
+  only `ESP32-S3`. A red-to-green regression now uses the real output and the
+  owner parses the exact chip field case-insensitively.
+- Verification: ordered Cargo gates, Bright Builds, focused USB/flash tests,
+  all 70 Bazel tests, canonical package, native-USB ownership, parity/progress,
+  redaction, and pinned-reference checks passed. One unrelated automation test
+  transiently read an incomplete private JSON file; its immediate isolated
+  rerun and the following complete Bazel run passed.
+- Device effects: ROM detection and board information only; zero flash bytes
+  were written. Next action is a clean implementation commit/push, exact clean
+  package rebuild, and the progress-backed flash retry without another manual
+  button sequence when the board remains in ROM.
