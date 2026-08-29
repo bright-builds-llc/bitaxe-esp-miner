@@ -107,6 +107,11 @@ requireText("tools/device-session/src/usb_ownership.rs", [
   "SerialJtagRuntime",
   "RomDownloader",
   "handoff_worker_to_rom",
+  "maintenance_control_steps",
+  "MaintenanceControlStep::ClearDtr",
+  "MaintenanceControlStep::SetBitRate(115_200)",
+  "MaintenanceControlStep::AssertDtr",
+  "MaintenanceControlStep::SetBitRate(1_200)",
   "plan_usb_operation",
 ]);
 requireText("tools/device-session/src/macos.rs", [

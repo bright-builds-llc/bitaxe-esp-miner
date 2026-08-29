@@ -29,8 +29,10 @@ boot-safe baseline also retains Serial/JTAG by withholding TinyUSB startup.
 
 The only Worker-to-ROM command channel is this CDC class-control sequence:
 
-1. The host opens the admitted Worker CDC node, asserts DTR, and sets exact
-   1200-baud line coding.
+1. The host opens the admitted Worker CDC node, primes DTR low at 115200 baud,
+   and allows those callbacks to settle. It then asserts one DTR arm edge,
+   allows that callback to settle, and sets exact 1200-baud line coding. This
+   avoids duplicate DTR assertions from macOS open semantics.
 2. TinyUSB callbacks enqueue line-coding and line-state events. They perform no
    safe stop, PHY mutation, or restart.
 3. The Rust owner closes Worker ingress, rejects an already-active Worker

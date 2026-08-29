@@ -91,3 +91,28 @@
 - Device effects: successful board information only; zero image bytes were
   written. A new hardware retry requires this regression fix to pass every
   gate, reach a clean pushed commit, and produce a new exact clean package.
+
+## 2026-08-29T20:30:00Z | Worker boot and maintenance-arm boundary
+
+- Clean pushed source `a6fb6328` flashed successfully. A protected
+  receive-only reset capture proved the exact firmware boot, factory boot
+  validation, inactive ASIC reset-low state, disabled mining, and the expected
+  Serial/JTAG-to-TinyUSB transition. Fresh detection then admitted
+  `worker_runtime`.
+- Automatic cycle-001 stopped before ROM and before writes with
+  `handoff_ready_timeout`; cleanup completed and WorkerRuntime remained
+  available.
+- macOS may assert DTR as part of opening the CDC node. Reasserting DTR before
+  applying 1200 baud can therefore deliver the duplicate event that the strict
+  firmware reducer correctly disarms.
+- The targeted Adapter plan now clears DTR at 115200 baud, waits for those
+  callbacks to settle, emits one DTR assertion, waits again, and then applies
+  exact 1200-baud line coding. The firmware state machine and its duplicate,
+  wrong-order, timeout, disconnect, and unsafe-state rejection remain
+  unchanged.
+- Verification: the ordered Cargo gates, Bright Builds, focused USB/flash
+  tests, all 70 Bazel tests, canonical package, native-USB ownership,
+  parity/progress, redaction, reference cleanliness, and whitespace passed.
+- No automatic ROM transition or device write occurred in cycle-001. A retry
+  requires this host regression to pass every gate, reach a clean pushed
+  commit, and produce a new exact clean package.

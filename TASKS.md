@@ -78,7 +78,12 @@ the targeted clean-package retry passed ROM admission and then exposed a
 distinct pre-write `no-reset-no-sync` connection failure. The fresh espflash
 process requires `no-reset` so it may synchronize after ROM admission without
 driving reset control lines; that second targeted fix passed every software
-gate and awaits its clean pushed package.
+gate and produced exact clean package `a6fb6328`. That package flashed and
+reached WorkerRuntime after one reset-only observation. Automatic cycle-001
+then stopped before ROM with `handoff_ready_timeout`; the macOS Adapter now
+primes DTR low and settles callbacks before emitting the single arm edge and
+1200-baud line coding required by the strict firmware reducer. The targeted
+fix passed every software gate and awaits its clean pushed package.
 
 Completion review: Pending. STR-005 and BWG remain unchanged until their own
 separate evidence tasks complete.

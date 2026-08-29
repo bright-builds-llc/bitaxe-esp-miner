@@ -202,6 +202,65 @@ fn parse_usb_number(value: &str) -> Option<u16> {
         .unwrap_or_else(|| value.parse().ok())
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MaintenanceControlStep {
+    ClearDtr,
+    SetBitRate(u32),
+    Settle,
+    AssertDtr,
+}
+
+const fn maintenance_control_steps() -> [MaintenanceControlStep; 6] {
+    [
+        MaintenanceControlStep::ClearDtr,
+        MaintenanceControlStep::SetBitRate(115_200),
+        MaintenanceControlStep::Settle,
+        MaintenanceControlStep::AssertDtr,
+        MaintenanceControlStep::Settle,
+        MaintenanceControlStep::SetBitRate(1_200),
+    ]
+}
+
+#[cfg(target_os = "macos")]
+fn apply_maintenance_control_step(
+    fd: std::os::fd::RawFd,
+    dtr: &mut libc::c_int,
+    step: MaintenanceControlStep,
+) -> Result<(), UsbSessionError> {
+    const CONTROL_SETTLE_DURATION: Duration = Duration::from_millis(100);
+    let accepted = match step {
+        MaintenanceControlStep::ClearDtr => (unsafe { libc::ioctl(fd, libc::TIOCMBIC, dtr) }) == 0,
+        MaintenanceControlStep::AssertDtr => (unsafe { libc::ioctl(fd, libc::TIOCMBIS, dtr) }) == 0,
+        MaintenanceControlStep::SetBitRate(bit_rate) => {
+            let speed = match bit_rate {
+                1_200 => libc::B1200,
+                115_200 => libc::B115200,
+                _ => {
+                    return Err(handoff_error(
+                        UsbTerminalCategory::HandoffUnsupported,
+                        "the maintenance control plan requested an unsupported bit rate",
+                    ));
+                }
+            };
+            let mut termios = unsafe { std::mem::zeroed::<libc::termios>() };
+            (unsafe { libc::tcgetattr(fd, &mut termios) }) == 0
+                && (unsafe { libc::cfsetspeed(&mut termios, speed) }) == 0
+                && (unsafe { libc::tcsetattr(fd, libc::TCSANOW, &termios) }) == 0
+        }
+        MaintenanceControlStep::Settle => {
+            std::thread::sleep(CONTROL_SETTLE_DURATION);
+            true
+        }
+    };
+    if accepted {
+        return Ok(());
+    }
+    Err(handoff_error(
+        UsbTerminalCategory::HandoffUnsupported,
+        "the Worker CDC adapter rejected the maintenance control plan",
+    ))
+}
+
 pub fn handoff_worker_to_rom(session: &mut UsbSession) -> Result<(), UsbSessionError> {
     if !cfg!(target_os = "macos") {
         return Err(handoff_error(
@@ -237,22 +296,11 @@ pub fn handoff_worker_to_rom(session: &mut UsbSession) -> Result<(), UsbSessionE
             .map_err(|error| handoff_error(UsbTerminalCategory::ForeignHolder, error))?;
         let fd = file.as_raw_fd();
         let mut dtr = libc::TIOCM_DTR;
-        if unsafe { libc::ioctl(fd, libc::TIOCMBIS, &mut dtr) } != 0 {
-            return Err(handoff_error(
-                UsbTerminalCategory::HandoffUnsupported,
-                "the Worker CDC adapter rejected DTR assertion",
-            ));
-        }
-        let mut termios = unsafe { std::mem::zeroed::<libc::termios>() };
-        if unsafe { libc::tcgetattr(fd, &mut termios) } != 0
-            || unsafe { libc::cfsetspeed(&mut termios, libc::B1200) } != 0
-            || unsafe { libc::tcsetattr(fd, libc::TCSANOW, &termios) } != 0
-        {
-            clear_dtr(fd, &mut dtr);
-            return Err(handoff_error(
-                UsbTerminalCategory::HandoffUnsupported,
-                "the Worker CDC adapter rejected exact 1200-baud line coding",
-            ));
+        for step in maintenance_control_steps() {
+            if let Err(error) = apply_maintenance_control_step(fd, &mut dtr, step) {
+                clear_dtr(fd, &mut dtr);
+                return Err(error);
+            }
         }
         let deadline = Instant::now() + Duration::from_secs(6);
         let mut observed = Vec::new();
@@ -352,6 +400,25 @@ mod tests {
 
         // Assert
         assert_eq!(plan, UsbOperationPlan::HandoffThenEspflash);
+    }
+
+    #[test]
+    fn macos_control_plan_primes_low_before_the_single_dtr_arm_edge() {
+        // Arrange / Act
+        let steps = maintenance_control_steps();
+
+        // Assert
+        assert_eq!(
+            steps,
+            [
+                MaintenanceControlStep::ClearDtr,
+                MaintenanceControlStep::SetBitRate(115_200),
+                MaintenanceControlStep::Settle,
+                MaintenanceControlStep::AssertDtr,
+                MaintenanceControlStep::Settle,
+                MaintenanceControlStep::SetBitRate(1_200),
+            ]
+        );
     }
 
     #[test]
