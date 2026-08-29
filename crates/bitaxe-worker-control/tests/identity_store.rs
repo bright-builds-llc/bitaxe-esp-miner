@@ -86,7 +86,11 @@ fn proof(identity: &bitaxe_worker_control::DeviceIdentity) -> String {
     )
     .expect("identity test request should parse");
     identity
-        .prove(&request)
+        .prove(
+            &request,
+            &bitaxe_worker_control::FirmwareSourceCommit::parse(&"a".repeat(40))
+                .expect("fixture source commit should parse"),
+        )
         .expect("identity should sign")
         .compact_jws()
         .to_owned()

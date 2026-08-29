@@ -340,6 +340,8 @@ fn worker_with_session(session: FakeSession) -> WorkerControl<FixtureVerifier, F
         FixtureVerifier,
         session,
         None,
+        bitaxe_worker_control::FirmwareSourceCommit::parse(&"a".repeat(40))
+            .expect("fixture source commit should parse"),
         json!({
             "protocolVersion": "bwg-worker-controller/0.3",
             "transportProfile": "bwg-worker-usb/0.2"

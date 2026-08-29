@@ -1,6 +1,6 @@
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use bitaxe_worker_control::{DeviceIdentity, PossessionRequest};
+use bitaxe_worker_control::{DeviceIdentity, FirmwareSourceCommit, PossessionRequest};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
@@ -26,7 +26,7 @@ fn signs_only_the_closed_fresh_possession_claims() {
 
     // Act
     let response = identity
-        .prove(&request)
+        .prove(&request, &fixture_source_commit())
         .expect("strict possession claims should sign");
 
     // Assert
@@ -34,6 +34,12 @@ fn signs_only_the_closed_fresh_possession_claims() {
     assert!(response
         .compact_jws()
         .starts_with("eyJhbGciOiJFZDI1NTE5IiwidHlwIjoiYndnLXdvcmtlci1wb3NzZXNzaW9uK2p3cyJ9."));
+    let wire: Value = serde_json::from_slice(&response.to_frame().expect("response should encode"))
+        .expect("response should be JSON");
+    assert_eq!(
+        wire.pointer("/result/claims/firmwareSourceCommit"),
+        Some(&Value::String("a".repeat(40)))
+    );
     let redacted = format!("{response:?}");
     assert!(!redacted.contains("07070707"));
 }
@@ -44,7 +50,9 @@ fn derives_the_browser_canonical_control_session_transcript() {
     let identity = DeviceIdentity::from_seed([7_u8; 32]);
     let request = PossessionRequest::from_frame(REQUEST.as_bytes())
         .expect("published possession request should parse");
-    let response = identity.prove(&request).expect("identity should sign");
+    let response = identity
+        .prove(&request, &fixture_source_commit())
+        .expect("identity should sign");
     let request_value: Value = serde_json::from_str(REQUEST).expect("request should be JSON");
     let response_value: Value =
         serde_json::from_slice(&response.to_frame().expect("response should encode"))
@@ -64,6 +72,19 @@ fn derives_the_browser_canonical_control_session_transcript() {
     // Assert
     assert_eq!(actual, expected);
     assert_eq!(actual.len(), 43);
+}
+
+#[test]
+fn rejects_a_noncanonical_firmware_source_before_signing() {
+    // Arrange / Act
+    let proof = FirmwareSourceCommit::parse(&"A".repeat(40));
+
+    // Assert
+    assert!(proof.is_err());
+}
+
+fn fixture_source_commit() -> FirmwareSourceCommit {
+    FirmwareSourceCommit::parse(&"a".repeat(40)).expect("fixture source commit should parse")
 }
 
 fn canonical(value: &Value) -> String {

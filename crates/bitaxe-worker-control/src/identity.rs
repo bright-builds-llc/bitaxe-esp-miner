@@ -5,7 +5,9 @@ use thiserror::Error;
 use zeroize::{Zeroize, Zeroizing};
 
 use crate::codec::base64_url;
-use crate::possession::{PossessionClaims, PossessionError, PossessionRequest, PossessionResponse};
+use crate::possession::{
+    FirmwareSourceCommit, PossessionClaims, PossessionError, PossessionRequest, PossessionResponse,
+};
 
 /// Persistent signing identity reconstructed only from the private NVS seed.
 pub struct DeviceIdentity {
@@ -76,9 +78,11 @@ impl DeviceIdentity {
     pub fn prove(
         &self,
         request: &PossessionRequest,
+        firmware_source_commit: &FirmwareSourceCommit,
     ) -> Result<PossessionResponse, PossessionError> {
         let claims = PossessionClaims::from_request(
             request,
+            firmware_source_commit,
             base64_url(self.signing_key.verifying_key().to_bytes()),
         );
         let protected = base64_url(

@@ -11,6 +11,26 @@ use crate::codec::{base64_url, canonical_json, digest_text, strict_json_frame};
 const POSSESSION_PROFILE: &str = "bwg-worker-possession/0.1";
 const PROOF_PROFILE: &str = "bwg-worker-possession-proof/0.1";
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct FirmwareSourceCommit(String);
+
+impl FirmwareSourceCommit {
+    pub fn parse(value: &str) -> Result<Self, PossessionError> {
+        let valid = value.len() == 40
+            && value
+                .bytes()
+                .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase());
+        valid
+            .then(|| Self(value.to_owned()))
+            .ok_or(PossessionError::InvalidRequest)
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum PossessionError {
     #[error("Worker possession request is invalid")]
@@ -135,11 +155,16 @@ pub(crate) struct PossessionClaims {
     challenge_binding_sha256: String,
     controller_capability_sha256: String,
     application_descriptor_sha256: String,
+    firmware_source_commit: String,
     device_identity_jwk: DeviceIdentityJwk,
 }
 
 impl PossessionClaims {
-    pub(crate) fn from_request(request: &PossessionRequest, public_key: String) -> Self {
+    pub(crate) fn from_request(
+        request: &PossessionRequest,
+        firmware_source_commit: &FirmwareSourceCommit,
+        public_key: String,
+    ) -> Self {
         Self {
             profile: PROOF_PROFILE,
             purpose: request.payload.purpose,
@@ -147,6 +172,7 @@ impl PossessionClaims {
             challenge_binding_sha256: request.payload.challenge_binding_sha256.clone(),
             controller_capability_sha256: request.payload.controller_capability_sha256.clone(),
             application_descriptor_sha256: request.payload.application_descriptor_sha256.clone(),
+            firmware_source_commit: firmware_source_commit.as_str().to_owned(),
             device_identity_jwk: DeviceIdentityJwk {
                 kty: "OKP",
                 crv: "Ed25519",

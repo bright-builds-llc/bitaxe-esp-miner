@@ -10,7 +10,7 @@ use zeroize::Zeroize;
 use self::wire::{classify_json_error, ControllerRequest, FrameDiscriminator, RestorePayload};
 
 use crate::codec::{base64_url, canonical_json, digest_text, strict_json_frame};
-use crate::possession::{PossessionError, PossessionRequest};
+use crate::possession::{FirmwareSourceCommit, PossessionError, PossessionRequest};
 use crate::session::{LeaseAuthorizationVerifier, RestorationReason, WorkerSession};
 use crate::{
     DeviceIdentity, LeaseDeadlines, WorkerLeaseAuthorizationContext, WorkerLeaseGrant,
@@ -145,6 +145,7 @@ pub struct WorkerControl<V, S> {
     capability: Value,
     capability_sha256: String,
     descriptor_sha256: String,
+    firmware_source_commit: FirmwareSourceCommit,
     generation: u64,
     maybe_admission: Option<EnumerationAdmission>,
     maybe_pending_admission_token: Option<u64>,
@@ -165,6 +166,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         verifier: V,
         session: S,
         initial_restoration: Option<RestorationReason>,
+        firmware_source_commit: FirmwareSourceCommit,
         capability: Value,
         descriptor_sha256: &str,
     ) -> Result<Self, WorkerControlError> {
@@ -184,6 +186,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             capability,
             capability_sha256,
             descriptor_sha256: descriptor_sha256.to_owned(),
+            firmware_source_commit,
             generation: 0,
             maybe_admission: None,
             maybe_pending_admission_token: None,
@@ -323,7 +326,9 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         }
         self.acknowledge_boot_restoration()?;
         self.seen_nonce_digests.push(nonce_digest);
-        let response = self.identity.prove(&request)?;
+        let response = self
+            .identity
+            .prove(&request, &self.firmware_source_commit)?;
         let control_session_binding_sha256 = request.control_session_binding(&response)?;
         self.next_response_token = self.next_response_token.saturating_add(1);
         let token = self.next_response_token;

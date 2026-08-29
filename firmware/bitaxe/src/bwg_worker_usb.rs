@@ -99,11 +99,15 @@ pub(crate) fn start(recovery: BwgWorkerRecovery) -> anyhow::Result<()> {
             "BWG Ultra 205 capability does not match firmware"
         ));
     }
+    let firmware_source_commit =
+        bitaxe_worker_control::FirmwareSourceCommit::parse(crate::firmware_commit())
+            .map_err(|_| anyhow::anyhow!("BWG firmware source commitment is invalid"))?;
     let mut worker = WorkerControl::new(
         identity,
         verifier,
         ProductionWorkerSession,
         reboot_report_required.then_some(bitaxe_worker_control::RestorationReason::Reboot),
+        firmware_source_commit,
         capability,
         DESCRIPTOR_SHA256,
     )

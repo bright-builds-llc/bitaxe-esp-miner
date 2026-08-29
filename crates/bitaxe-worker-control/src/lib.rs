@@ -21,7 +21,7 @@ pub use identity::{
     DeviceIdentitySeedStore, IdentityLoadError,
 };
 pub use lease::{LeaseDeadlines, WorkerLeaseGrant, WorkerLeaseRenewal};
-pub use possession::{PossessionRequest, PossessionResponse};
+pub use possession::{FirmwareSourceCommit, PossessionRequest, PossessionResponse};
 pub use session::{
     LeaseAuthorizationVerifier, RestorationReason, WorkerSession, WorkerSessionError,
 };

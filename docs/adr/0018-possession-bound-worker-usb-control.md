@@ -72,8 +72,10 @@ credentials, and retain retry responsibility until the established safe-stop
 ordering confirms the Mining Baseline.
 
 The consumed conformance contract is pinned through Bazel to Gate commit
-`31d89dbaa228df4067cfb3ce30eabbbb57667a4f` and archive SHA-256
-`18699614b06877e80f213e310c25cb6696dbfb7094604f6143663b5ea04c0f7d`.
+`0b07d36942aa8ca3473771d2f72a373e66cedf58` and archive SHA-256
+`c23314d96b33f51119395fafb0dc2aa3f1b0017fd5db5379e42e3f8348f20f96`.
+The Device Identity signature includes the compiled firmware source commit so
+an exact-package browser can reject a possessed but stale installation.
 Bazel verifies the package export paths before fixture-based tests execute.
 
 ## Consequences

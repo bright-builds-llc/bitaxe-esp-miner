@@ -101,6 +101,7 @@ fn executes_the_pinned_gate_contract_against_the_firmware_core() {
         verifier,
         ConformanceSession,
         None,
+        fixture_source_commit(),
         capability,
         "rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA",
     )
@@ -297,7 +298,7 @@ fn assert_declared_negative_vectors_are_covered(
 ) {
     let expected = [
         (controller, "negativeTransfers", 7),
-        (possession, "negativeCases", 11),
+        (possession, "negativeCases", 13),
         (deployment, "negativeCases", 13),
         (usb, "negativeVectors", 7),
     ];
@@ -520,8 +521,14 @@ fn contract_worker(
         WorkLeaseAuthorizationVerifier::new(trust, MemorySequenceStore::default()),
         ConformanceSession,
         None,
+        fixture_source_commit(),
         capability,
         "rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA",
     )
     .expect("fixture Worker should configure")
+}
+
+fn fixture_source_commit() -> bitaxe_worker_control::FirmwareSourceCommit {
+    bitaxe_worker_control::FirmwareSourceCommit::parse(&"a".repeat(40))
+        .expect("fixture source commit should parse")
 }

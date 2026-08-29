@@ -279,6 +279,8 @@ fn lifecycle_worker(
             events: Rc::clone(&events),
         },
         pending.then_some(RestorationReason::Reboot),
+        bitaxe_worker_control::FirmwareSourceCommit::parse(&"a".repeat(40))
+            .expect("fixture source commit should parse"),
         json!({
             "protocolVersion": "bwg-worker-controller/0.3",
             "transportProfile": "bwg-worker-usb/0.2"
