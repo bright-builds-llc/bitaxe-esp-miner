@@ -24,6 +24,38 @@ new work.
 
 ## Active
 
+### task-native-usb-ownership-handoff | 2026-08-29 | Preserve TinyUSB and restore buttonless flashing
+
+- [ ] Create and push the immutable native-USB ownership plan before firmware,
+      host-tool, rules, or hardware effects.
+- [ ] Put TinyUSB and USB-Serial-JTAG profile ownership behind deep firmware and
+      host Modules while preserving the existing `just` command Interface.
+- [ ] Add unmissable agent guidance, ADR/hardware documentation, an active
+      lesson, and a Bazel-backed ownership guardrail.
+- [ ] Perform the authorized one-time built-in BOOT/RESET bootstrap, prove 20
+      automatic handoff/flash/runtime cycles, then restore recovery-006 exactly.
+
+Plan: `docs/parity/work-plans/20260829T175047Z-NATIVE-USB-OWNERSHIP/PLAN.md`
+
+Depends on: accepted ADRs 0015, 0018, and 0019; exact pushed source
+`a0337f01`; the connected Ultra 205 currently running the pre-handoff TinyUSB
+image; and recovery-006.
+
+Authorization: repository source/test/docs/rules/build/package, commit/push,
+profile-aware macOS USB inspection, one user-performed recovery through only
+the board's built-in BOOT and RESET buttons, exact-package flash, automatic
+TinyUSB-to-ROM handoff, 20 bounded no-mining durability cycles, protected
+evidence, and exact recovery-006 restoration under the immutable plan. Direct
+UART, headers, pins, pads, probes, jumpers, soldering, test points, eFuses,
+fault injection, erase, mining, ASIC work, fan/voltage effects, external pools,
+other devices, other boards, arbitrary writes, and parity promotion are
+excluded.
+
+Verification: Pending.
+
+Completion review: Pending. STR-005 and BWG remain unchanged until their own
+separate evidence tasks complete.
+
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
 - [x] Add a single-owner UART2 firmware shell for the pinned GPIO39/GPIO40
@@ -4034,7 +4066,8 @@ prerequisites exist and continue to the next software-actionable row.
       Gate child evidence, and close BWG Core Ticket 23 only when every
       acceptance link resolves.
 
-Depends on: firmware commits `aa973c43`, `5ddcad17`, `cc13193c`, and `616cc489`;
+Depends on: completed `task-native-usb-ownership-handoff`; firmware commits
+`aa973c43`, `5ddcad17`, `cc13193c`, and `616cc489`;
 Gate commits `7567fb5` and `0b07d36`;
 Gate child Tickets 04-06; ADRs 0018-0019; and the established detector, package,
 local mainnet-shaped pool, and recovery workflows.
@@ -4116,7 +4149,8 @@ from context rejection, and that seam is outside the standing authorization.
 - [ ] Restore recovery-006 exactly and independently validate the closed
       projection, cleanup, and redaction.
 
-Depends on: completed `task-str005-tcp-payload-205` with accepted evidence.
+Depends on: completed `task-str005-tcp-payload-205` with accepted evidence and
+completed `task-native-usb-ownership-handoff` with exact recovery-006 proof.
 
 Plan: `docs/parity/work-plans/20260829T143226Z-STR-005-NOISE-AUTH/PLAN.md`
 
