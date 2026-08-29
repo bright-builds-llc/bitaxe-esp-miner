@@ -91,6 +91,24 @@ fn rust_owns_tinyusb_while_c_is_only_the_phy_handoff_adapter() {
 }
 
 #[test]
+fn phy_handoff_forces_a_bounded_disconnect_before_serial_jtag_reconnect() {
+    // Arrange
+    let disconnect = USB_PHY_SOURCE
+        .find("CLEAR_PERI_REG_MASK(USB_SERIAL_JTAG_CONF0_REG, USB_SERIAL_JTAG_USB_PAD_ENABLE)")
+        .expect("Serial/JTAG pad disconnect");
+    let delay = USB_PHY_SOURCE
+        .find("esp_rom_delay_us(100000)")
+        .expect("bounded disconnect interval");
+    let reconnect = USB_PHY_SOURCE
+        .find("SET_PERI_REG_MASK(USB_SERIAL_JTAG_CONF0_REG, USB_SERIAL_JTAG_USB_PAD_ENABLE)")
+        .expect("Serial/JTAG pad reconnect");
+
+    // Act / Assert
+    assert!(disconnect < delay);
+    assert!(delay < reconnect);
+}
+
+#[test]
 fn startup_recovers_before_optional_owners_and_starts_control_after_production() {
     // Arrange
     let baseline = STARTUP_SOURCE

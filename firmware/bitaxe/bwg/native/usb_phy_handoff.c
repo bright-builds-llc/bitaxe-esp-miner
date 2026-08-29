@@ -1,6 +1,7 @@
 #include "usb_phy_handoff.h"
 
 #include "esp_private/periph_ctrl.h"
+#include "esp_rom_sys.h"
 #include "esp_system.h"
 #include "soc/periph_defs.h"
 #include "soc/rtc_cntl_reg.h"
@@ -28,6 +29,8 @@ static void bitaxe_usb_switch_to_serial_jtag(void)
         RTC_CNTL_SW_HW_USB_PHY_SEL | RTC_CNTL_SW_USB_PHY_SEL | RTC_CNTL_USB_PAD_ENABLE);
     CLEAR_PERI_REG_MASK(USB_SERIAL_JTAG_CONF0_REG, USB_SERIAL_JTAG_PHY_SEL);
     CLEAR_PERI_REG_MASK(USB_SERIAL_JTAG_CONF0_REG, USB_SERIAL_JTAG_USB_PAD_ENABLE);
+    /* Give the host a qualified disconnect before the Serial/JTAG pull-up returns. */
+    esp_rom_delay_us(100000);
     SET_PERI_REG_MASK(USB_SERIAL_JTAG_CONF0_REG, USB_SERIAL_JTAG_USB_PAD_ENABLE);
 }
 

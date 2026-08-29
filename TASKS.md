@@ -83,7 +83,12 @@ reached WorkerRuntime after one reset-only observation. Automatic cycle-001
 then stopped before ROM with `handoff_ready_timeout`; the macOS Adapter now
 primes DTR low and settles callbacks before emitting the single arm edge and
 1200-baud line coding required by the strict firmware reducer. The targeted
-fix passed every software gate and awaits its clean pushed package.
+fix passed every software gate and produced exact clean package `d9d7fd94`.
+Automatic cycle-002 accepted readiness and the commit edge, then timed out
+waiting for ROM because the reduced PHY Adapter immediately re-enabled the USB
+pad without a host-visible disconnect. A bounded ROM-level disconnect pulse is
+now covered by the C allowlist test and passed every software and firmware
+link gate; its clean pushed package remains pending.
 
 Completion review: Pending. STR-005 and BWG remain unchanged until their own
 separate evidence tasks complete.

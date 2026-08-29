@@ -41,8 +41,9 @@ The only Worker-to-ROM command channel is this CDC class-control sequence:
 5. After observing that exact bounded receipt, the host clears DTR and closes
    the node.
 6. The owner uninstalls TinyUSB, returns the internal PHY to hardware
-   USB-Serial-JTAG, registers the force-download shutdown handler, and restarts
-   into ROM.
+   USB-Serial-JTAG, holds the USB pad disconnected for a bounded 100 ms host
+   recognition interval, registers the force-download shutdown handler, and
+   restarts into ROM.
 
 Wrong ordering, a duplicate event, timeout, disconnect, active effect, failed
 safe stop, missing receipt, or control I/O failure disarms without rebooting.

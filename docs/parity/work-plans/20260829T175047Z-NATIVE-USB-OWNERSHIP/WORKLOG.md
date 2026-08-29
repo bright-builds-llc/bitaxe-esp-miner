@@ -116,3 +116,24 @@
 - No automatic ROM transition or device write occurred in cycle-001. A retry
   requires this host regression to pass every gate, reach a clean pushed
   commit, and produce a new exact clean package.
+
+## 2026-08-29T20:45:00Z | Host-visible PHY disconnect boundary
+
+- Clean pushed package `d9d7fd94` started automatic cycle-002 from admitted
+  WorkerRuntime. The corrected macOS control sequence received readiness and
+  committed maintenance, proving the prior timeout fixed.
+- The same connector remained absent through the 60-second ROM transition
+  window and later returned as WorkerRuntime. No ROM admission or device write
+  occurred.
+- Comparison with the pinned Espressif implementation showed that the reduced
+  PHY Adapter cleared and immediately re-enabled the Serial/JTAG USB pad. It
+  omitted the host-visible disconnect interval that precedes re-enumeration.
+- The targeted fix holds the pad disconnected for 100 ms using the ROM delay
+  primitive between the existing clear and set operations. It introduces no
+  FreeRTOS owner, callback, descriptor, data I/O, or additional C entrypoint.
+- A source-order regression requires disconnect, bounded delay, then reconnect.
+  The ordered Cargo gates, Bright Builds, focused USB/firmware tests, all 70
+  Bazel tests, actual ESP32-S3 link, canonical package, ownership, parity,
+  progress, redaction, reference, and whitespace gates passed.
+  A new cycle requires every gate, a clean pushed commit, and a new exact clean
+  package.

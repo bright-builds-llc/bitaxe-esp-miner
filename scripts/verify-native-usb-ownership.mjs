@@ -52,6 +52,7 @@ const phyAdapter = requireText("firmware/bitaxe/bwg/native/usb_phy_handoff.c", [
   "tinyusb_driver_uninstall",
   "RTC_CNTL_FORCE_DOWNLOAD_BOOT",
   "USB_SERIAL_JTAG",
+  "esp_rom_delay_us(100000)",
 ]);
 for (const forbidden of [
   "tinyusb_driver_install",
