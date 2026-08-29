@@ -41,13 +41,13 @@ export type TcpPayloadDiagnosticArgs = {
   readonly privateRoot: string;
   readonly projection: string;
   readonly plan: string;
-  readonly diagnosticOrdinal: 7;
+  readonly diagnosticOrdinal: 8;
   readonly redactEvidence: true;
 };
-const expectedDiagnosticRoot = "scratch/str005-tcp-payload/diagnostic-007";
+const expectedDiagnosticRoot = "scratch/str005-tcp-payload/diagnostic-008";
 const expectedRecoveryRoot = "scratch/str005-tcp-payload/recovery-002";
 const expectedProjection =
-  "docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-007.json";
+  "docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-008.json";
 const expectedPlan = "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md";
 const expectedPlanSha256 =
   "14bd8aef5d78f38881a3da1a99a6808f7f6e8c93bb1d1a02d7972fcaaeb1d843";
@@ -155,7 +155,7 @@ export function parseTcpPayloadDiagnosticArgs(
     || value("--private-parent") !== expectedRoot
     || value("--projection") !== expectedProjection
     || value("--plan") !== expectedPlan
-    || value("--diagnostic-ordinal") !== "7"
+    || value("--diagnostic-ordinal") !== "8"
     || value("--capture-timeout-seconds") !== "360"
     || parsed.get("--redact-evidence") !== true) {
     fail("invalid_invocation", "contract mismatch", "invocation");
@@ -170,7 +170,7 @@ export function parseTcpPayloadDiagnosticArgs(
     privateRoot: expectedRoot,
     projection: expectedProjection,
     plan: expectedPlan,
-    diagnosticOrdinal: 7,
+    diagnosticOrdinal: 8,
     redactEvidence: true,
   };
 }
@@ -322,7 +322,7 @@ async function exactRestore(
   await writePrivate(path.join(workspace, authorizationRelative), {
     schema_version: "bitaxe-stratum-v2-restore-authorization-v1",
     board: 205,
-    ordinal: 7,
+    ordinal: 8,
     action: "tcp_payload_diagnostic_restore",
     current_source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],
@@ -437,7 +437,7 @@ export async function runTcpPayloadDiagnostic(
     await writePrivate(path.join(workspace, intentRelative), {
       schema_version: "bitaxe-stratum-v2-tcp-payload-intent-v1",
       board: 205,
-      diagnostic_ordinal: 7,
+      diagnostic_ordinal: 8,
       source_commit: prepared.head,
       reference_commit: prepared.manifest["reference_commit"],
       app_elf_sha256: prepared.manifest["app_elf_sha256"],
@@ -568,7 +568,7 @@ export async function runTcpPayloadDiagnostic(
     schema_version: "bitaxe-stratum-v2-tcp-payload-projection-v1",
     status: accepted ? "accepted" : "failed",
     board: 205,
-    diagnostic_ordinal: 7,
+    diagnostic_ordinal: 8,
     source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],
     app_elf_sha256: prepared.manifest["app_elf_sha256"],

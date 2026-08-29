@@ -271,6 +271,27 @@ cleanup, and zero owned processes all passed. The next attempt must first make
 post-flash monitor attachment deterministic enough to retain the classifier;
 an unchanged diagnostic-007 retry is prohibited.
 
+Diagnostic-008 continuation: diagnostic-006 captured its first firmware line
+at 2,136 ms uptime, while diagnostic-007 attached only at 42,186 ms—well after
+the approximately 17.5-second shutdown terminal. Replace reliance on the
+arbitrary ten-second countdown with boot-lifetime replay of the complete closed
+diagnostic transcript. After the initial terminal, the sole diagnostic owner
+replays every completed stage, bounded timing, and terminal marker every five
+seconds through 120 seconds; it performs no additional socket, fixture,
+credential, storage, hardware, or control effect. A virtual-time regression
+starts red with no replay, then proves the measured 42,186 ms late attachment
+observes a complete replay at 45,000 ms and that exactly 24 replay slots end at
+120,000 ms. After every gate passes and exact source is
+committed/pushed/packaged, run fresh detector admission and exactly one command:
+
+`just stratum-v2-tcp-payload start --board 205 --port <detector-port> --package-manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --wifi-credentials wifi-credentials.json --restore-bundle scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json --private-parent scratch/str005-tcp-payload/diagnostic-008 --projection docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-008.json --plan docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md --diagnostic-ordinal 8 --capture-timeout-seconds 360 --redact-evidence`
+
+Diagnostic-008 changes only observation durability. The payload/socket effect,
+closed shutdown classifier, exact restoration, privacy, safety, prohibitions,
+cleanup, non-promotion, and no-unchanged-retry boundaries remain unchanged.
+Replay contains only the existing value-free public marker schema and stops
+before the bounded monitor horizon.
+
 Verification: diagnostic-001 stopped before effects at
 `timeout:fixture_ready`; its regression-backed fixture-timeout fix passed every
 gate and was pushed as `35ae9cb33458ad6c76f6eedef5d0538720d80367`.
@@ -282,8 +303,8 @@ Current review: the earlier terminal closure is superseded by the user's
 standing iterative hardware-debug authorization and successful recovery-002.
 Exact restoration is now proved; TCP payload delivery remains the sole open
 child objective. Keep this task active at the monitor-capture boundary after
-diagnostic-007. Noise, V2
-messages, ASIC work, mining, and STR-005 promotion remain unauthorized. STR-005
+diagnostic-007 and through diagnostic-008. Noise, V2 messages, ASIC work,
+mining, and STR-005 promotion remain unauthorized. STR-005
 remains `implemented` with `unit,golden,workflow`.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner

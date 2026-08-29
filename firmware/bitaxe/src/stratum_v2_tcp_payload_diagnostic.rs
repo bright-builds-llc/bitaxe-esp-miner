@@ -6,6 +6,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::settings_adapter::{TcpPayloadDiagnosticAdmission, V2PoolSettings};
+use crate::stratum_v2_tcp_payload_replay::replay_deadline_ms;
 
 const OWNER_THREAD_NAME: &str = "stratum-v2-tcp-diag";
 const OWNER_STACK_BYTES: usize = 8 * 1_024;
@@ -31,30 +32,34 @@ pub(crate) fn start(admission: TcpPayloadDiagnosticAdmission) -> anyhow::Result<
 }
 
 fn run(admission: TcpPayloadDiagnosticAdmission) {
+    let mut transcript = DiagnosticTranscript::default();
     if admission.lease() == 0 {
-        publish_terminal("state", false);
+        complete(&mut transcript, "state", false);
         return;
     }
     if !wait_for_wifi() {
-        publish_terminal("wifi", false);
+        complete(&mut transcript, "wifi", false);
         return;
     }
     thread::sleep(MONITOR_ARM_DELAY);
-    publish_stage("monitor_armed");
+    transcript.record_stage("monitor_armed");
     let settings = match exact_primary_settings() {
         Ok(settings) => settings,
         Err(category) => {
-            publish_terminal(category, false);
+            complete(&mut transcript, category, false);
             return;
         }
     };
-    match connect_and_send(settings) {
-        Ok(()) => publish_terminal("accepted", true),
-        Err(category) => publish_terminal(category, false),
+    match connect_and_send(settings, &mut transcript) {
+        Ok(()) => complete(&mut transcript, "accepted", true),
+        Err(category) => complete(&mut transcript, category, false),
     }
 }
 
-fn connect_and_send(settings: V2PoolSettings) -> Result<(), &'static str> {
+fn connect_and_send(
+    settings: V2PoolSettings,
+    transcript: &mut DiagnosticTranscript,
+) -> Result<(), &'static str> {
     let addresses = (
         settings.session.endpoint_host.as_str(),
         settings.session.endpoint_port,
@@ -66,14 +71,14 @@ fn connect_and_send(settings: V2PoolSettings) -> Result<(), &'static str> {
     if addresses.is_empty() || addresses.len() > ADDRESS_CAPACITY {
         return Err("resolve");
     }
-    publish_stage("resolved");
+    transcript.record_stage("resolved");
     let started = Instant::now();
     let mut stream = addresses
         .iter()
         .find_map(|address| TcpStream::connect_timeout(address, CONNECT_TIMEOUT).ok())
         .ok_or("connect")?;
-    publish_timing("connect", started.elapsed());
-    publish_stage("tcp_connected");
+    transcript.record_timing("connect", started.elapsed());
+    transcript.record_stage("tcp_connected");
     stream.set_nodelay(true).map_err(|_| "configure")?;
     stream
         .set_write_timeout(Some(WRITE_TIMEOUT))
@@ -81,12 +86,12 @@ fn connect_and_send(settings: V2PoolSettings) -> Result<(), &'static str> {
     let started = Instant::now();
     stream.write_all(&PAYLOAD).map_err(|_| "write")?;
     stream.flush().map_err(|_| "flush")?;
-    publish_timing("write", started.elapsed());
-    publish_stage("payload_sent");
+    transcript.record_timing("write", started.elapsed());
+    transcript.record_stage("payload_sent");
     stream
         .shutdown(Shutdown::Write)
         .map_err(|error| shutdown_error_category(error.kind()))?;
-    publish_stage("write_half_closed");
+    transcript.record_stage("write_half_closed");
     stream
         .set_read_timeout(Some(WRITE_TIMEOUT))
         .map_err(|_| "configure")?;
@@ -95,8 +100,60 @@ fn connect_and_send(settings: V2PoolSettings) -> Result<(), &'static str> {
     if receipt[0] != RECEIPT_ACK {
         return Err("receipt");
     }
-    publish_stage("receipt_acknowledged");
+    transcript.record_stage("receipt_acknowledged");
     Ok(())
+}
+
+#[derive(Default)]
+struct DiagnosticTranscript {
+    stages: Vec<&'static str>,
+    timings: Vec<(&'static str, u32)>,
+    terminal: Option<(&'static str, bool)>,
+}
+
+impl DiagnosticTranscript {
+    fn record_stage(&mut self, stage: &'static str) {
+        self.stages.push(stage);
+        publish_stage(stage);
+    }
+
+    fn record_timing(&mut self, phase: &'static str, duration: Duration) {
+        let duration_ms = u32::try_from(duration.as_millis()).unwrap_or(u32::MAX);
+        self.timings.push((phase, duration_ms));
+        publish_timing(phase, duration_ms);
+    }
+
+    fn record_terminal(&mut self, category: &'static str, accepted: bool) {
+        self.terminal = Some((category, accepted));
+        publish_terminal(category, accepted);
+    }
+
+    fn replay(&self) {
+        for stage in &self.stages {
+            publish_stage(stage);
+        }
+        for (phase, duration_ms) in &self.timings {
+            publish_timing(phase, *duration_ms);
+        }
+        if let Some((category, accepted)) = self.terminal {
+            publish_terminal(category, accepted);
+        }
+    }
+}
+
+fn complete(transcript: &mut DiagnosticTranscript, category: &'static str, accepted: bool) {
+    transcript.record_terminal(category, accepted);
+    let replay_started = Instant::now();
+    let mut ordinal = 1;
+    while let Some(deadline_ms) = replay_deadline_ms(ordinal) {
+        let deadline = Duration::from_millis(deadline_ms);
+        let elapsed = replay_started.elapsed();
+        if deadline > elapsed {
+            thread::sleep(deadline - elapsed);
+        }
+        transcript.replay();
+        ordinal = ordinal.saturating_add(1);
+    }
 }
 
 fn shutdown_error_category(kind: ErrorKind) -> &'static str {
@@ -137,8 +194,7 @@ fn publish_stage(stage: &'static str) {
     ));
 }
 
-fn publish_timing(phase: &'static str, duration: Duration) {
-    let duration_ms = u32::try_from(duration.as_millis()).unwrap_or(u32::MAX);
+fn publish_timing(phase: &'static str, duration_ms: u32) {
     crate::info_retained(&format!(
         "stratum_v2_tcp_payload_timing={{\"schema\":\"bitaxe-stratum-v2-tcp-payload-timing-v1\",\"phase\":\"{phase}\",\"duration_ms\":{duration_ms}}}"
     ));

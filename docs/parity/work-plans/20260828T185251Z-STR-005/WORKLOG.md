@@ -305,3 +305,40 @@
   post-flash monitor-attachment boundary before authorizing a fresh ordinal.
   Do not retry diagnostic-007 unchanged and do not broaden into Noise, V2
   messages, mining, ASIC, fan, voltage, or other hardware control.
+
+## 2026-08-29T02:11:42Z | Diagnostic-008 late-attachment replay
+
+- Source commit: `889ecdfc6820ce6c7d1354962c3a55fdaf1c91ef`
+- Actions: compared protected capture timing across diagnostics 006 and 007,
+  built a virtual-time replay loop, and wired the sole TCP diagnostic owner to
+  replay its complete closed transcript after terminal completion.
+- Verification: diagnostic-006 first captured firmware at 2,136 ms uptime;
+  diagnostic-007 first captured firmware at 42,186 ms, after the prior
+  approximately 17.5-second terminal. The focused replay tests failed red with
+  no deadlines, then passed with the first post-attachment replay at 45,000 ms,
+  five-second cadence, 24 total slots, and a 120,000 ms terminal boundary.
+  Source ownership now binds the production diagnostic to that pure policy.
+- Evidence: software and protected prior-run aggregate timing only; no new
+  detector, credential, network, USB, flash, monitor, or device effect yet.
+- Outcome: fixed countdown is no longer the sole observation path; replay is
+  boot-lifetime, value-free, bounded, and independent of external services.
+- Blocker or next safe action: finish all gates, commit/push/package exact
+  diagnostic-008 source, redetect, then invoke diagnostic-008 once.
+
+## 2026-08-29T02:18:00Z | Diagnostic-008 software verification
+
+- Source commit: `889ecdfc6820ce6c7d1354962c3a55fdaf1c91ef`
+- Actions: completed full-transcript replay, exact eighth-ordinal command and
+  restoration authority, source wiring, and isolated staging around concurrent
+  unrelated worker-control work.
+- Verification: formatting, strict Clippy, all-target/all-feature build, full
+  Cargo tests, Bright Builds, all 59 current Bazel tests, canonical six-artifact
+  ESP32-S3 package, parity with no validation errors, parity progress,
+  redaction, reference cleanliness, focused replay/TCP/restore tests,
+  whitespace, and staged diff review passed.
+- Evidence: software and virtual-time behavior only at this checkpoint; no new
+  detector, credential, network, USB, flash, monitor, or device effect.
+- Outcome: diagnostic-008 source is ready for an isolated commit and push.
+- Blocker or next safe action: after the shared worktree is clean, rebuild the
+  exact pushed package, capture fresh one-board admission, and invoke
+  diagnostic-008 once. Do not absorb or disturb the concurrent task's files.

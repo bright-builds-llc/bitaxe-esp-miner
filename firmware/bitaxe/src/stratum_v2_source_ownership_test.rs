@@ -1,4 +1,5 @@
 const STARTUP: &str = include_str!("startup.rs");
+const MAIN: &str = include_str!("main.rs");
 const OWNER: &str = include_str!("stratum_v2_session.rs");
 const TRANSPORT: &str = include_str!("stratum_v2_session/transport.rs");
 const DIAGNOSTIC: &str = include_str!("stratum_v2_noise_diagnostic.rs");
@@ -8,6 +9,9 @@ const TCP_DIAGNOSTIC_ADMISSION: &str =
     include_str!("settings_adapter/tcp_payload_diagnostic.rs");
 const V1_OWNER: &str = include_str!("production_mining_session.rs");
 const SETTINGS: &str = include_str!("settings_adapter/stratum_v2.rs");
+
+#[path = "stratum_v2_tcp_payload_replay.rs"]
+mod stratum_v2_tcp_payload_replay;
 
 #[test]
 fn startup_selects_exactly_one_protocol_owner_before_fan_controller_start() {
@@ -134,6 +138,9 @@ fn tcp_payload_owner_precedes_noise_and_cannot_reach_noise_or_hardware() {
     ] {
         assert!(TCP_DIAGNOSTIC.contains(category));
     }
+    assert!(MAIN.contains("mod stratum_v2_tcp_payload_replay;"));
+    assert!(TCP_DIAGNOSTIC.contains("replay_deadline_ms"));
+    assert!(TCP_DIAGNOSTIC.contains("transcript.replay()"));
     assert!(TCP_DIAGNOSTIC.contains("receipt_acknowledged"));
     assert!(TCP_DIAGNOSTIC.contains("noise_started\\\":false"));
     assert!(TCP_DIAGNOSTIC_ADMISSION.contains("tcpdiagkind"));
