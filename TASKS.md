@@ -93,6 +93,12 @@ same authoritative `handoff_transition_timeout` after that targeted fix. The
 immutable continuation rule makes the repeated signature terminal: further
 hardware attempts are stopped, recovery-006 remains pending, and another
 manual BOOT/RESET recovery would require a new explicit hardware contract.
+The subsequent software-only root-cause diagnostic stage adds an acknowledged
+commit receipt with host wait-before-close semantics, a bounded closed-category
+profile trace, and the complete D-/D+ plus observed BUS_RESET PHY handoff. No
+new hardware attempt or recovery is authorized by this implementation. All
+software, firmware-link, ownership, Bazel, package, parity, privacy, and
+reference gates pass; the clean implementation commit remains pending.
 
 Completion review: Blocked at the repeated ROM re-enumeration signature. The
 one-time manual bootstrap installed the handoff firmware and proved

@@ -16,7 +16,7 @@ pub enum MaintenanceAction {
     None,
     RequestSafeStop,
     EmitReady,
-    RestartBootloader,
+    CommitRestart,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,7 +65,7 @@ impl UsbMaintenanceState {
             (MaintenancePhase::Ready, MaintenanceEvent::LineState { dtr: false, .. }) => {
                 self.phase = MaintenancePhase::Committed;
                 self.deadline_ms = None;
-                MaintenanceAction::RestartBootloader
+                MaintenanceAction::CommitRestart
             }
             (_, MaintenanceEvent::Detached | MaintenanceEvent::SafeStopFailed) => {
                 self.disarm();
@@ -104,7 +104,7 @@ mod tests {
     }
 
     #[test]
-    fn exact_control_sequence_commits_one_restart() {
+    fn exact_control_sequence_acknowledges_one_committed_restart() {
         // Arrange
         let mut state = UsbMaintenanceState::default();
 
@@ -120,7 +120,7 @@ mod tests {
         );
         assert_eq!(
             state.observe(dtr(false), 13),
-            MaintenanceAction::RestartBootloader
+            MaintenanceAction::CommitRestart
         );
         assert_eq!(state.observe(dtr(false), 14), MaintenanceAction::None);
     }
@@ -152,6 +152,40 @@ mod tests {
         // Assert
         assert_eq!(duplicate, MaintenanceAction::None);
         assert_eq!(state.observe(dtr(false), 5), MaintenanceAction::None);
+    }
+
+    #[test]
+    fn detach_before_commit_disarms_without_restart() {
+        // Arrange
+        let mut state = UsbMaintenanceState::default();
+        let _action = state.observe(dtr(true), 1);
+        let _action = state.observe(MaintenanceEvent::LineCoding { bit_rate: 1_200 }, 2);
+        let _action = state.observe(MaintenanceEvent::SafeStopComplete, 3);
+
+        // Act
+        let detached = state.observe(MaintenanceEvent::Detached, 4);
+
+        // Assert
+        assert_eq!(detached, MaintenanceAction::None);
+        assert_eq!(state.observe(dtr(false), 5), MaintenanceAction::None);
+    }
+
+    #[test]
+    fn accepted_commit_stays_single_after_later_detach() {
+        // Arrange
+        let mut state = UsbMaintenanceState::default();
+        let _action = state.observe(dtr(true), 1);
+        let _action = state.observe(MaintenanceEvent::LineCoding { bit_rate: 1_200 }, 2);
+        let _action = state.observe(MaintenanceEvent::SafeStopComplete, 3);
+
+        // Act
+        let committed = state.observe(dtr(false), 4);
+        let detached = state.observe(MaintenanceEvent::Detached, 5);
+
+        // Assert
+        assert_eq!(committed, MaintenanceAction::CommitRestart);
+        assert_eq!(detached, MaintenanceAction::None);
+        assert_eq!(state.observe(dtr(false), 6), MaintenanceAction::None);
     }
 
     #[test]

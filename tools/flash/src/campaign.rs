@@ -406,6 +406,7 @@ pub(crate) fn campaign_flash_failure(
             | UsbTerminalCategory::HandoffUnsupported
             | UsbTerminalCategory::HandoffRejectedUnsafeState
             | UsbTerminalCategory::HandoffReadyTimeout
+            | UsbTerminalCategory::HandoffCommitTimeout
             | UsbTerminalCategory::HandoffTransitionTimeout
             | UsbTerminalCategory::BootloaderAmbiguous
             | UsbTerminalCategory::BootloaderSyncFailed => {

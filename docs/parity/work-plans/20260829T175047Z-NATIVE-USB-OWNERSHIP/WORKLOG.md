@@ -157,3 +157,33 @@
 - Required continuation: create a new explicit recovery contract if another
   built-in-button ROM entry is authorized, restore recovery-006 exactly, and
   separately redesign the ROM transition proof before resuming durability.
+
+## 2026-08-29T21:20:00Z | Software-only root-cause diagnostics
+
+- No hardware action was performed. The repeated transition artifacts and
+  host reducer proved that the old `absent` summary conflated true absence with
+  a same-physical wrong profile, while the host closed CDC immediately after
+  an unacknowledged DTR commit.
+- Firmware now emits a fixed committed receipt after accepting DTR falling and
+  before touching the PHY. The host keeps CDC open and requires that receipt;
+  readiness alone cannot satisfy the new `handoff_commit_timeout` boundary.
+- Protected mode-0600 transition traces record at most 512 closed samples:
+  `absent`, `same_worker`, `same_serial_jtag`, `same_unknown`, or
+  `physical_mismatch`. Ports and all physical/enumeration identity remain
+  excluded.
+- The one-function C Adapter now mirrors the pinned Espressif behavior without
+  Arduino framework ownership: it drives D-/D+ low, reconnects hardware
+  USB-Serial-JTAG, polls for an actual BUS_RESET for at most one second, and
+  returns an explicit timeout instead of restarting on assumption.
+- Unit/source tests cover detach-before-commit, one committed restart,
+  committed-versus-ready receipt classification, bounded profile evidence,
+  wrong-profile and physical-mismatch categories, BUS_RESET ordering, and
+  restart suppression on PHY failure. Hardware validation remains prohibited
+  until a new explicit recovery and diagnostic contract is approved.
+- Verification passed: ordered Cargo formatting, strict Clippy, all-target
+  build, all-feature tests, Bright Builds, focused USB/firmware tests, actual
+  normal and rollback ESP32-S3 links, all 70 Bazel tests, canonical package,
+  native-USB ownership, parity/progress, redaction, reference cleanliness, and
+  whitespace. The first all-target run collided while building both
+  non-hermetic firmware variants concurrently; the isolated rollback build and
+  required complete rerun passed.

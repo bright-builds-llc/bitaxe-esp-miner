@@ -221,7 +221,14 @@ fn handle_maintenance<V, S>(
         MaintenanceAction::EmitReady => {
             write_evidence(b"usb_maintenance={\"status\":\"ready\"}\n");
         }
-        MaintenanceAction::RestartBootloader => {
+        MaintenanceAction::CommitRestart => {
+            if crate::usb_runtime::emit_evidence(b"usb_maintenance={\"status\":\"committed\"}\n")
+                .is_err()
+            {
+                log::warn!("usb_maintenance=failed category=commit_receipt");
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(50));
             if let Err(error) = crate::usb_runtime::restart_into_rom_downloader() {
                 log::warn!("usb_maintenance=failed category=rom_handoff error={error:#}");
             }

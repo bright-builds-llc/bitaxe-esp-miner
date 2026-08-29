@@ -52,7 +52,10 @@ const phyAdapter = requireText("firmware/bitaxe/bwg/native/usb_phy_handoff.c", [
   "tinyusb_driver_uninstall",
   "RTC_CNTL_FORCE_DOWNLOAD_BOOT",
   "USB_SERIAL_JTAG",
-  "esp_rom_delay_us(100000)",
+  "gpio_set_level(USBPHY_DM_NUM, 0)",
+  "gpio_set_level(USBPHY_DP_NUM, 0)",
+  "USB_SERIAL_JTAG_INTR_BUS_RESET",
+  "BUS_RESET_TIMEOUT_US",
 ]);
 for (const forbidden of [
   "tinyusb_driver_install",
@@ -72,7 +75,7 @@ requireText("crates/bitaxe-core/src/usb_maintenance.rs", [
   "UsbMaintenanceState",
   "RequestSafeStop",
   "EmitReady",
-  "RestartBootloader",
+  "CommitRestart",
   "HANDOFF_WINDOW_MS",
 ]);
 requireText("crates/bitaxe-core/src/usb_worker.rs", [
@@ -92,6 +95,7 @@ requireText("firmware/bitaxe/src/bwg_worker_usb.rs", [
   "usb_maintenance=",
   "status",
   "ready",
+  "committed",
   "restart_into_rom_downloader",
   "worker.has_active_lease()",
   "maintenance_ingress_open",
@@ -107,13 +111,22 @@ requireText("tools/device-session/src/usb_ownership.rs", [
   "WorkerRuntime",
   "SerialJtagRuntime",
   "RomDownloader",
+  "plan_usb_operation",
+]);
+requireText("tools/device-session/src/usb_ownership/maintenance.rs", [
   "handoff_worker_to_rom",
   "maintenance_control_steps",
+  "maintenance_commit_steps",
+  "MaintenanceCommitStep::AwaitCommitted",
+  "HandoffCommitTimeout",
   "MaintenanceControlStep::ClearDtr",
   "MaintenanceControlStep::SetBitRate(115_200)",
   "MaintenanceControlStep::AssertDtr",
   "MaintenanceControlStep::SetBitRate(1_200)",
-  "plan_usb_operation",
+]);
+requireText("tools/device-session/src/usb_ownership/profile_trace.rs", [
+  "ProfileObservationTrace",
+  "ProfileObservationCategory::SameWorker",
 ]);
 requireText("tools/device-session/src/macos.rs", [
   "physical_identity_digest",

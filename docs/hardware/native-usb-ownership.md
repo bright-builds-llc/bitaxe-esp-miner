@@ -38,12 +38,17 @@ The only Worker-to-ROM command channel is this CDC class-control sequence:
 3. The Rust owner closes Worker ingress, rejects an already-active Worker
    effect, and requires Production Mining Session safe-stop success.
 4. The owner emits `usb_maintenance={"status":"ready"}` on CDC evidence.
-5. After observing that exact bounded receipt, the host clears DTR and closes
-   the node.
-6. The owner uninstalls TinyUSB, returns the internal PHY to hardware
-   USB-Serial-JTAG, holds the USB pad disconnected for a bounded 100 ms host
-   recognition interval, registers the force-download shutdown handler, and
-   restarts into ROM.
+5. After observing that exact bounded receipt, the host clears DTR but keeps
+   CDC open. The owner accepts the falling edge and emits
+   `usb_maintenance={"status":"committed"}` before PHY mutation. Failure to
+   emit that receipt disarms without rebooting.
+6. The host requires the committed receipt before closing CDC. A missing
+   receipt is `handoff_commit_timeout`, distinct from readiness and ROM-profile
+   transition failures.
+7. The owner uninstalls TinyUSB, drives the ESP32-S3 D-/D+ pads low, returns
+   the internal PHY to USB-Serial-JTAG, and waits up to one second for an
+   observed BUS_RESET. Only then does the registered force-download shutdown
+   handler restart into ROM; timeout returns an explicit handoff failure.
 
 Wrong ordering, a duplicate event, timeout, disconnect, active effect, failed
 safe stop, missing receipt, or control I/O failure disarms without rebooting.
@@ -100,7 +105,7 @@ process adapters receive separate qualification.
 
 Native ownership adds `runtime_profile_unknown`, `handoff_unsupported`,
 `handoff_rejected_unsafe_state`, `handoff_ready_timeout`,
-`handoff_transition_timeout`, `bootloader_ambiguous`,
+`handoff_commit_timeout`, `handoff_transition_timeout`, `bootloader_ambiguous`,
 `physical_identity_drift`, `bootloader_sync_failed`,
 `application_reappearance_timeout`, and `recovery_required`. Existing
 flash/recovery/cleanup failures remain available, and the earliest failure is
@@ -110,6 +115,12 @@ Raw addresses, ports, descriptors, identities, serial data, process data, and
 timestamps remain in ignored mode-`0600` artifacts under mode-`0700` roots.
 Public output contains only closed categories, booleans, bounded counts and
 timings, and safe digests.
+
+Each Worker-to-ROM transition also writes a bounded protected profile trace
+using only `absent`, `same_worker`, `same_serial_jtag`, `same_unknown`, and
+`physical_mismatch`. This trace distinguishes a wrong-profile same-device
+observation from true absence without recording ports, descriptors, location
+IDs, serial numbers, or physical digests.
 
 ## Development and recovery
 

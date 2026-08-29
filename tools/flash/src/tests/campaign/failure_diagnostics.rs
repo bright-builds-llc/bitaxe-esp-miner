@@ -9,6 +9,10 @@ fn typed_usb_flash_failures_are_not_collapsed_to_generic_flash_failed() {
             CampaignTerminalCategory::BootloaderConnectFailed,
         ),
         (
+            UsbTerminalCategory::HandoffCommitTimeout,
+            CampaignTerminalCategory::BootloaderConnectFailed,
+        ),
+        (
             UsbTerminalCategory::FlashFailedBeforeTransfer,
             CampaignTerminalCategory::FlashFailedBeforeTransfer,
         ),

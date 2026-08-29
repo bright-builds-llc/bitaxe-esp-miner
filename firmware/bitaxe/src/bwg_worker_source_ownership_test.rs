@@ -91,21 +91,65 @@ fn rust_owns_tinyusb_while_c_is_only_the_phy_handoff_adapter() {
 }
 
 #[test]
-fn phy_handoff_forces_a_bounded_disconnect_before_serial_jtag_reconnect() {
+fn phy_handoff_drives_disconnect_and_requires_bounded_bus_reset() {
     // Arrange
     let disconnect = USB_PHY_SOURCE
         .find("CLEAR_PERI_REG_MASK(USB_SERIAL_JTAG_CONF0_REG, USB_SERIAL_JTAG_USB_PAD_ENABLE)")
         .expect("Serial/JTAG pad disconnect");
-    let delay = USB_PHY_SOURCE
-        .find("esp_rom_delay_us(100000)")
-        .expect("bounded disconnect interval");
+    let drive_low = USB_PHY_SOURCE
+        .find("gpio_set_level(USBPHY_DM_NUM, 0)")
+        .expect("physical D-/D+ disconnect");
+    let drive_dp_low = USB_PHY_SOURCE
+        .find("gpio_set_level(USBPHY_DP_NUM, 0)")
+        .expect("physical D+ disconnect");
+    let arm_reset = USB_PHY_SOURCE
+        .find("usb_serial_jtag_ll_ena_intr_mask(USB_SERIAL_JTAG_INTR_BUS_RESET)")
+        .expect("BUS_RESET observation arm");
     let reconnect = USB_PHY_SOURCE
         .find("SET_PERI_REG_MASK(USB_SERIAL_JTAG_CONF0_REG, USB_SERIAL_JTAG_USB_PAD_ENABLE)")
         .expect("Serial/JTAG pad reconnect");
+    let observed_reset = USB_PHY_SOURCE
+        .find("usb_serial_jtag_ll_get_intraw_mask() & USB_SERIAL_JTAG_INTR_BUS_RESET")
+        .expect("BUS_RESET observation");
+    let timeout = USB_PHY_SOURCE
+        .find("BUS_RESET_TIMEOUT_US")
+        .expect("bounded BUS_RESET timeout");
 
     // Act / Assert
-    assert!(disconnect < delay);
-    assert!(delay < reconnect);
+    assert!(disconnect < drive_low);
+    assert!(drive_low < drive_dp_low);
+    assert!(drive_dp_low < arm_reset);
+    assert!(arm_reset < reconnect);
+    assert!(reconnect < observed_reset);
+    assert!(observed_reset < timeout || timeout < disconnect);
+    let switch_result = USB_PHY_SOURCE
+        .find("result = bitaxe_usb_switch_to_serial_jtag()")
+        .expect("checked PHY switch result");
+    let restart = USB_PHY_SOURCE.find("esp_restart()").expect("ESP restart");
+    assert!(switch_result < restart);
+}
+
+#[test]
+fn maintenance_commit_receipt_precedes_the_phy_restart() {
+    // Arrange
+    let receipt = USB_SOURCE
+        .find("usb_maintenance={\\\"status\\\":\\\"committed\\\"}")
+        .expect("committed maintenance receipt");
+    let restart = USB_SOURCE
+        .find("restart_into_rom_downloader")
+        .expect("ROM restart call");
+
+    // Act / Assert
+    assert!(receipt < restart);
+    let commit_failure = USB_SOURCE
+        .find("usb_maintenance=failed category=commit_receipt")
+        .expect("commit-receipt failure");
+    let failure_return = USB_SOURCE[commit_failure..]
+        .find("return;")
+        .map(|offset| commit_failure + offset)
+        .expect("commit-receipt failure return");
+    assert!(commit_failure < failure_return);
+    assert!(failure_return < restart);
 }
 
 #[test]

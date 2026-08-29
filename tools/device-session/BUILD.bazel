@@ -19,6 +19,8 @@ js_library(
         "src/usb/lifecycle.rs",
         "src/usb/profile_reacquire.rs",
         "src/usb_ownership.rs",
+        "src/usb_ownership/maintenance.rs",
+        "src/usb_ownership/profile_trace.rs",
     ],
     visibility = ["//scripts:__pkg__"],
 )
@@ -28,6 +30,8 @@ js_library(
     srcs = [
         "src/usb.rs",
         "src/usb_ownership.rs",
+        "src/usb_ownership/maintenance.rs",
+        "src/usb_ownership/profile_trace.rs",
         "src/usb/observation.rs",
         "src/usb/process.rs",
         "src/usb/profile_reacquire.rs",
@@ -40,6 +44,8 @@ rust_library(
     name = "device_session_lib",
     srcs = [
         "src/usb_ownership.rs",
+        "src/usb_ownership/maintenance.rs",
+        "src/usb_ownership/profile_trace.rs",
         "src/evidence.rs",
         "src/display_uat.rs",
         "src/display_uat/origin.rs",

@@ -31,6 +31,12 @@ pub(crate) struct UsbDeviceSnapshot {
     pub(crate) holder_count: u16,
 }
 
+pub(crate) enum PhysicalSnapshotObservation {
+    Absent,
+    PhysicalMismatch,
+    Match(UsbDeviceSnapshot),
+}
+
 pub(crate) struct UsbProfileFields {
     pub(crate) port: String,
     pub(crate) physical_identity_digest: String,
@@ -151,6 +157,29 @@ impl MacOsDeviceAdapter {
             [candidate] => Ok(Some(snapshot(candidate)?)),
             _ => bail!("multiple USB candidates matched the admitted physical device"),
         }
+    }
+
+    pub(crate) fn profile_transition_snapshot(
+        expected_physical_identity: &str,
+        previous_port: &str,
+    ) -> Result<PhysicalSnapshotObservation> {
+        let candidates = scan_candidates()?;
+        let matches = candidates
+            .iter()
+            .filter(|candidate| candidate.physical_identity_digest == expected_physical_identity)
+            .collect::<Vec<_>>();
+        match matches.as_slice() {
+            [candidate] => return Ok(PhysicalSnapshotObservation::Match(snapshot(candidate)?)),
+            [_, _, ..] => bail!("multiple USB candidates matched the admitted physical device"),
+            [] => {}
+        }
+        if candidates.iter().any(|candidate| {
+            candidate.port == previous_port
+                && candidate.physical_identity_digest != expected_physical_identity
+        }) {
+            return Ok(PhysicalSnapshotObservation::PhysicalMismatch);
+        }
+        Ok(PhysicalSnapshotObservation::Absent)
     }
 
     pub(crate) fn initial_sample(

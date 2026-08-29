@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::macos::{MacOsDeviceAdapter, UsbDeviceSnapshot};
+use crate::usb_ownership::ProfileObservationTrace;
 use lease::DeviceLease;
 use process::{run_owned_process, OwnedProcessRequest};
 use recovery::{RecoveryPhase, RecoverySample, RecoverySummary, RecoveryTracker};
@@ -59,6 +60,7 @@ pub struct UsbSession {
     trace_root: PathBuf,
     child_sequence: u32,
     recovery_sequence: u32,
+    profile_trace_sequence: u32,
 }
 
 impl UsbSession {
@@ -112,6 +114,7 @@ impl UsbSession {
             trace_root,
             child_sequence: 0,
             recovery_sequence: 0,
+            profile_trace_sequence: 0,
         })
     }
 
@@ -435,6 +438,21 @@ impl UsbSession {
             .trace_root
             .join(format!("recovery-{:04}.json", self.recovery_sequence));
         let mut bytes = serde_json::to_vec(summary)
+            .map_err(|error| session_error(UsbTerminalCategory::CleanupFailed, error))?;
+        bytes.push(b'\n');
+        write_private_trace(&trace_path, &bytes)
+    }
+
+    fn write_profile_observation_trace(
+        &mut self,
+        trace: &ProfileObservationTrace,
+    ) -> Result<(), UsbSessionError> {
+        self.profile_trace_sequence = self.profile_trace_sequence.saturating_add(1);
+        let trace_path = self.trace_root.join(format!(
+            "profile-transition-{:04}.json",
+            self.profile_trace_sequence
+        ));
+        let mut bytes = serde_json::to_vec(trace)
             .map_err(|error| session_error(UsbTerminalCategory::CleanupFailed, error))?;
         bytes.push(b'\n');
         write_private_trace(&trace_path, &bytes)

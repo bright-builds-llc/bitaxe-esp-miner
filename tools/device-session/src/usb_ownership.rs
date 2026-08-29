@@ -1,12 +1,27 @@
 //! Pure native-USB profile and operation planning.
 
-use std::io::Read;
-use std::time::{Duration, Instant};
-
 use anyhow::{Context, Result};
 
 use crate::macos::MacOsDeviceAdapter;
-use crate::{UsbSession, UsbSessionError, UsbTerminalCategory};
+use crate::{UsbSessionError, UsbTerminalCategory};
+
+#[cfg(test)]
+use std::time::Duration;
+
+mod maintenance;
+mod profile_trace;
+
+pub use maintenance::handoff_worker_to_rom;
+#[cfg(test)]
+use maintenance::{
+    maintenance_commit_steps, maintenance_control_steps, wait_for_maintenance_receipt,
+    MaintenanceCommitStep, MaintenanceControlStep,
+};
+#[cfg(test)]
+use profile_trace::MAX_PROFILE_OBSERVATION_SAMPLES;
+pub(crate) use profile_trace::{
+    profile_observation_category, ProfileObservationCategory, ProfileObservationTrace,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UsbProfile {
@@ -202,167 +217,6 @@ fn parse_usb_number(value: &str) -> Option<u16> {
         .unwrap_or_else(|| value.parse().ok())
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum MaintenanceControlStep {
-    ClearDtr,
-    SetBitRate(u32),
-    Settle,
-    AssertDtr,
-}
-
-const fn maintenance_control_steps() -> [MaintenanceControlStep; 6] {
-    [
-        MaintenanceControlStep::ClearDtr,
-        MaintenanceControlStep::SetBitRate(115_200),
-        MaintenanceControlStep::Settle,
-        MaintenanceControlStep::AssertDtr,
-        MaintenanceControlStep::Settle,
-        MaintenanceControlStep::SetBitRate(1_200),
-    ]
-}
-
-#[cfg(target_os = "macos")]
-fn apply_maintenance_control_step(
-    fd: std::os::fd::RawFd,
-    dtr: &mut libc::c_int,
-    step: MaintenanceControlStep,
-) -> Result<(), UsbSessionError> {
-    const CONTROL_SETTLE_DURATION: Duration = Duration::from_millis(100);
-    let accepted = match step {
-        MaintenanceControlStep::ClearDtr => (unsafe { libc::ioctl(fd, libc::TIOCMBIC, dtr) }) == 0,
-        MaintenanceControlStep::AssertDtr => (unsafe { libc::ioctl(fd, libc::TIOCMBIS, dtr) }) == 0,
-        MaintenanceControlStep::SetBitRate(bit_rate) => {
-            let speed = match bit_rate {
-                1_200 => libc::B1200,
-                115_200 => libc::B115200,
-                _ => {
-                    return Err(handoff_error(
-                        UsbTerminalCategory::HandoffUnsupported,
-                        "the maintenance control plan requested an unsupported bit rate",
-                    ));
-                }
-            };
-            let mut termios = unsafe { std::mem::zeroed::<libc::termios>() };
-            (unsafe { libc::tcgetattr(fd, &mut termios) }) == 0
-                && (unsafe { libc::cfsetspeed(&mut termios, speed) }) == 0
-                && (unsafe { libc::tcsetattr(fd, libc::TCSANOW, &termios) }) == 0
-        }
-        MaintenanceControlStep::Settle => {
-            std::thread::sleep(CONTROL_SETTLE_DURATION);
-            true
-        }
-    };
-    if accepted {
-        return Ok(());
-    }
-    Err(handoff_error(
-        UsbTerminalCategory::HandoffUnsupported,
-        "the Worker CDC adapter rejected the maintenance control plan",
-    ))
-}
-
-pub fn handoff_worker_to_rom(session: &mut UsbSession) -> Result<(), UsbSessionError> {
-    if !cfg!(target_os = "macos") {
-        return Err(handoff_error(
-            UsbTerminalCategory::HandoffUnsupported,
-            "native USB maintenance handoff is qualified only on macOS",
-        ));
-    }
-    let inspection = inspect_usb_profile(session.port())
-        .map_err(|error| handoff_error(UsbTerminalCategory::RuntimeProfileUnknown, error))?;
-    if inspection.profile != UsbProfile::WorkerRuntime {
-        return Err(handoff_error(
-            UsbTerminalCategory::HandoffUnsupported,
-            "maintenance handoff requires the admitted Worker runtime profile",
-        ));
-    }
-    if inspection.physical_identity_digest != session.physical_identity_digest() {
-        return Err(handoff_error(
-            UsbTerminalCategory::PhysicalIdentityDrift,
-            "the Worker profile does not match the retained USB lease",
-        ));
-    }
-    #[cfg(target_os = "macos")]
-    {
-        use std::fs::OpenOptions;
-        use std::os::fd::AsRawFd;
-        use std::os::unix::fs::OpenOptionsExt;
-
-        let mut file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .custom_flags(libc::O_NOCTTY | libc::O_NONBLOCK)
-            .open(session.port())
-            .map_err(|error| handoff_error(UsbTerminalCategory::ForeignHolder, error))?;
-        let fd = file.as_raw_fd();
-        let mut dtr = libc::TIOCM_DTR;
-        for step in maintenance_control_steps() {
-            if let Err(error) = apply_maintenance_control_step(fd, &mut dtr, step) {
-                clear_dtr(fd, &mut dtr);
-                return Err(error);
-            }
-        }
-        let deadline = Instant::now() + Duration::from_secs(6);
-        let mut observed = Vec::new();
-        while Instant::now() < deadline {
-            let mut chunk = [0_u8; 256];
-            match file.read(&mut chunk) {
-                Ok(count) if observed.len().saturating_add(count) <= 4_096 => {
-                    observed.extend_from_slice(&chunk[..count]);
-                }
-                Ok(_) => {
-                    clear_dtr(fd, &mut dtr);
-                    return Err(handoff_error(
-                        UsbTerminalCategory::HandoffRejectedUnsafeState,
-                        "the readiness transcript exceeded its fixed bound",
-                    ));
-                }
-                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {}
-                Err(error) if error.kind() == std::io::ErrorKind::Interrupted => continue,
-                Err(error) => {
-                    clear_dtr(fd, &mut dtr);
-                    return Err(handoff_error(
-                        UsbTerminalCategory::HandoffRejectedUnsafeState,
-                        error,
-                    ));
-                }
-            }
-            if observed
-                .windows(b"usb_maintenance={\"status\":\"ready\"}".len())
-                .any(|window| window == b"usb_maintenance={\"status\":\"ready\"}")
-            {
-                break;
-            }
-            std::thread::sleep(Duration::from_millis(20));
-        }
-        if !observed
-            .windows(b"usb_maintenance={\"status\":\"ready\"}".len())
-            .any(|window| window == b"usb_maintenance={\"status\":\"ready\"}")
-        {
-            clear_dtr(fd, &mut dtr);
-            return Err(handoff_error(
-                UsbTerminalCategory::HandoffReadyTimeout,
-                "the Worker did not emit the maintenance readiness receipt",
-            ));
-        }
-        if unsafe { libc::ioctl(fd, libc::TIOCMBIC, &mut dtr) } != 0 {
-            return Err(handoff_error(
-                UsbTerminalCategory::HandoffUnsupported,
-                "the Worker CDC adapter rejected the commit edge",
-            ));
-        }
-        drop(file);
-        session.reacquire_profile(UsbProfile::SerialJtagRuntime)
-    }
-    #[cfg(not(target_os = "macos"))]
-    unreachable!()
-}
-
-#[cfg(target_os = "macos")]
-fn clear_dtr(fd: std::os::fd::RawFd, dtr: &mut libc::c_int) {
-    let _result = unsafe { libc::ioctl(fd, libc::TIOCMBIC, dtr) };
-}
-
 fn handoff_error(category: UsbTerminalCategory, detail: impl std::fmt::Display) -> UsbSessionError {
     UsbSessionError {
         category,
@@ -419,6 +273,71 @@ mod tests {
                 MaintenanceControlStep::SetBitRate(1_200),
             ]
         );
+    }
+
+    #[test]
+    fn host_keeps_cdc_open_until_the_committed_receipt() {
+        // Arrange / Act
+        let steps = maintenance_commit_steps();
+
+        // Assert
+        assert_eq!(
+            steps,
+            [
+                MaintenanceCommitStep::ClearDtr,
+                MaintenanceCommitStep::AwaitCommitted,
+                MaintenanceCommitStep::CloseCdc,
+            ]
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn committed_receipt_is_admitted_from_the_bounded_transcript() {
+        use std::io::Write as _;
+
+        // Arrange
+        let mut transcript = tempfile::NamedTempFile::new().expect("private transcript");
+        transcript
+            .write_all(b"prefix usb_maintenance={\"status\":\"committed\"}\n")
+            .expect("write transcript");
+        let mut reader = transcript.reopen().expect("reopen transcript");
+
+        // Act
+        let result = wait_for_maintenance_receipt(
+            &mut reader,
+            b"usb_maintenance={\"status\":\"committed\"}",
+            Duration::from_millis(20),
+            UsbTerminalCategory::HandoffCommitTimeout,
+        );
+
+        // Assert
+        assert!(result.is_ok());
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn ready_receipt_cannot_satisfy_the_committed_wait() {
+        use std::io::Write as _;
+
+        // Arrange
+        let mut transcript = tempfile::NamedTempFile::new().expect("private transcript");
+        transcript
+            .write_all(b"usb_maintenance={\"status\":\"ready\"}\n")
+            .expect("write transcript");
+        let mut reader = transcript.reopen().expect("reopen transcript");
+
+        // Act
+        let error = wait_for_maintenance_receipt(
+            &mut reader,
+            b"usb_maintenance={\"status\":\"committed\"}",
+            Duration::from_millis(20),
+            UsbTerminalCategory::HandoffCommitTimeout,
+        )
+        .expect_err("ready is not committed");
+
+        // Assert
+        assert_eq!(error.category, UsbTerminalCategory::HandoffCommitTimeout);
     }
 
     #[test]
@@ -540,6 +459,84 @@ mod tests {
             transition.observe(sample()),
             ProfileTransitionDecision::Ready
         );
+    }
+
+    #[test]
+    fn closed_profile_trace_distinguishes_wrong_profile_absence_and_identity_drift() {
+        // Arrange
+        let mut trace = ProfileObservationTrace::new(UsbProfile::SerialJtagRuntime);
+
+        // Act
+        trace.observe(ProfileObservationCategory::SameWorker);
+        trace.observe(ProfileObservationCategory::Absent);
+        trace.observe(ProfileObservationCategory::PhysicalMismatch);
+
+        // Assert
+        assert_eq!(
+            trace.samples(),
+            [
+                ProfileObservationCategory::SameWorker,
+                ProfileObservationCategory::Absent,
+                ProfileObservationCategory::PhysicalMismatch,
+            ]
+        );
+        assert!(!trace.overflowed());
+    }
+
+    #[test]
+    fn closed_profile_trace_is_bounded() {
+        // Arrange
+        let mut trace = ProfileObservationTrace::new(UsbProfile::SerialJtagRuntime);
+
+        // Act
+        for _ in 0..=MAX_PROFILE_OBSERVATION_SAMPLES {
+            trace.observe(ProfileObservationCategory::SameWorker);
+        }
+
+        // Assert
+        assert_eq!(trace.samples().len(), MAX_PROFILE_OBSERVATION_SAMPLES);
+        assert!(trace.overflowed());
+    }
+
+    #[test]
+    fn closed_profile_categories_cover_every_observable_profile() {
+        // Arrange / Act / Assert
+        assert_eq!(
+            profile_observation_category(Some(UsbProfile::WorkerRuntime), true),
+            ProfileObservationCategory::SameWorker
+        );
+        assert_eq!(
+            profile_observation_category(Some(UsbProfile::SerialJtagRuntime), true),
+            ProfileObservationCategory::SameSerialJtag
+        );
+        assert_eq!(
+            profile_observation_category(Some(UsbProfile::Unknown), true),
+            ProfileObservationCategory::SameUnknown
+        );
+        assert_eq!(
+            profile_observation_category(None, true),
+            ProfileObservationCategory::Absent
+        );
+        assert_eq!(
+            profile_observation_category(Some(UsbProfile::WorkerRuntime), false),
+            ProfileObservationCategory::PhysicalMismatch
+        );
+    }
+
+    #[test]
+    fn serialized_profile_trace_excludes_raw_identity_fields() {
+        // Arrange
+        let mut trace = ProfileObservationTrace::new(UsbProfile::SerialJtagRuntime);
+        trace.observe(ProfileObservationCategory::SameWorker);
+
+        // Act
+        let encoded = serde_json::to_string(&trace).expect("profile trace JSON");
+
+        // Assert
+        assert!(encoded.contains("same_worker"));
+        for forbidden in ["port", "address", "serial", "location", "digest"] {
+            assert!(!encoded.contains(&format!("\"{forbidden}\":")));
+        }
     }
 
     #[test]
