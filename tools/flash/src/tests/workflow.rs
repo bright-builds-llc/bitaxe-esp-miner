@@ -188,7 +188,7 @@ fn noise_diagnostic_seed_contains_only_transport_marker_and_v2_pool_keys() {
     // Assert
     assert!(csv.contains("sv2diagkind,data,string,stratum_v2_noise_v1"));
     assert!(csv.contains("sv2diaglease,data,u64,7"));
-    assert!(csv.contains("sv2diagcase,data,string,handshake_only_v1"));
+    assert!(csv.contains("sv2diagcase,data,string,noise_auth_v1"));
     assert!(csv.contains("stratumprot,data,string,SV2"));
     assert!(csv.contains("sv2chantype,data,string,standard"));
     assert!(csv.contains("mineonboot,data,u16,0"));

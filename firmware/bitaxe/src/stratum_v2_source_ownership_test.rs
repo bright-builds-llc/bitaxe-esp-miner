@@ -89,6 +89,23 @@ fn diagnostic_owner_cannot_reach_hardware_or_mining_adapters() {
 }
 
 #[test]
+fn noise_auth_owner_replays_connection_send_and_exact_proof_evidence() {
+    // Arrange / Act / Assert
+    assert!(DIAGNOSTIC_ADMISSION.contains("noise_auth_v1"));
+    assert!(DIAGNOSTIC.contains("DiagnosticTranscript"));
+    assert!(DIAGNOSTIC.contains("replay_deadline_ms"));
+    assert!(DIAGNOSTIC.contains("transcript.replay()"));
+    assert!(DIAGNOSTIC.contains("stratum_v2_noise_connection_private="));
+    assert!(TRANSPORT.contains(".local_addr()"));
+    assert!(TRANSPORT.contains(".set_nodelay(true)"));
+    assert!(TRANSPORT.contains(".flush()"));
+    assert!(TRANSPORT.contains("DIAGNOSTIC_PROOF_EXTENSION"));
+    assert!(TRANSPORT.contains("DIAGNOSTIC_PROOF_MESSAGE"));
+    assert!(TRANSPORT.contains("0xffff"));
+    assert!(TRANSPORT.contains("0xff"));
+}
+
+#[test]
 fn tcp_payload_owner_precedes_noise_and_cannot_reach_noise_or_hardware() {
     // Arrange
     let tcp_admission = STARTUP

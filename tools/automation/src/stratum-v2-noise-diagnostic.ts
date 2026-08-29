@@ -1,13 +1,13 @@
 import { createHash, randomBytes } from "node:crypto";
 import { spawn, type ChildProcess } from "node:child_process";
-import { chmod, lstat, mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
+import { chmod, lstat, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { restoreSelfTestSettings } from "./self-test-campaign-restoration.js";
 import { validateRestorableInputs } from "./stratum-v2-campaign-settings.js";
 import { runCampaignProcess } from "./stratum-v2-campaign.js";
 import { sameSubnetFixtureAddress } from "./stratum-v2-campaign-support.js";
-import { admitStratumV2RestoreBundle, restoreRuntimeMatches } from "./stratum-v2-restore-admission.js";
+import { restoreRuntimeMatches } from "./stratum-v2-restore-admission.js";
 import type { JsonObject } from "./stratum-v2-campaign-preflight.js";
 import { fetchRuntimeObject, monitorRuntimeOrigin } from "./stratum-v2-runtime-admission.js";
 import type { RestoreBundle } from "./stratum-v2-restore-model.js";
@@ -17,17 +17,20 @@ import {
   noiseTerminalFromMonitor,
   noiseTimingsFromMonitor,
 } from "./stratum-v2-noise-diagnostic-markers.js";
+import { noiseAuthEvaluatorIdentity } from "./stratum-v2-noise-diagnostic-validator.js";
+import { buildNoiseAuthProjection } from "./stratum-v2-noise-projection.js";
+import { publishNoiseAuthProjection } from "./stratum-v2-noise-publish.js";
 import {
   ManagedDiagnosticProcessError,
-  noiseDiagnosticValidatorArgs,
   runManagedDiagnosticProcess,
   terminateManagedProcessGroup,
   type ManagedDiagnosticProcessResult,
 } from "./stratum-v2-noise-diagnostic-process.js";
+import { admitDiagnosticRecoveryReadiness } from "./stratum-v2-tcp-recovery-readiness.js";
 
 export { runManagedDiagnosticProcess as runNoiseDiagnosticProcess };
 
-export type NoiseDiagnosticAction = "preflight" | "start";
+export type NoiseDiagnosticAction = "finalize" | "preflight" | "recover" | "start";
 export type NoiseDiagnosticArgs = {
   readonly action: NoiseDiagnosticAction;
   readonly board: "205";
@@ -38,17 +41,18 @@ export type NoiseDiagnosticArgs = {
   readonly privateRoot: string;
   readonly projection: string;
   readonly plan: string;
-  readonly diagnosticOrdinal: 4;
+  readonly diagnosticOrdinal: 1;
   readonly redactEvidence: true;
 };
 
-const expectedRoot = "scratch/str005-noise-diagnostic/diagnostic-004";
+const expectedRoot = "scratch/str005-noise-auth/diagnostic-001";
+const expectedRecoveryRoot = "scratch/str005-noise-auth/recovery-001";
 const expectedProjection =
-  "docs/parity/evidence/str005-noise-diagnostic/noise-diagnostic-projection-004.json";
+  "docs/parity/evidence/str005-noise-auth/noise-auth-projection-001.json";
 const expectedPlan =
-  "docs/parity/work-plans/20260828T030951Z-STR-005-PRECONNECT-NOISE-VERIFY/PLAN.md";
+  "docs/parity/work-plans/20260829T143226Z-STR-005-NOISE-AUTH/PLAN.md";
 const expectedPlanSha256 =
-  "3bbdf04402a0a51c4d380ef4efa65b4ee3d434bf865970c161a7faf0760b6658";
+  "9a3e5a630a52de6b8819dcb33aac64f5324df030fab50fd248fc33437b6587ea";
 const expectedRestoreBundle =
   "scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json";
 const expectedPackageManifest =
@@ -58,7 +62,7 @@ const recoveryPlan =
   "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md";
 const backupRelative = "scratch/str005-stratum-v2/attempt-004/settings-backup.private.json";
 const backupSha256 = "ac3d28d451c466f4fc6bfdc40b327c891dac9f3eba644ce62a7f2a2276790631";
-const taskId = "task-str005-preconnect-noise-and-verification";
+const taskId = "task-str005-noise-auth-205";
 const maximumOutputBytes = 1_048_576;
 
 type PreparedDiagnostic = {
@@ -114,7 +118,8 @@ export function parseNoiseDiagnosticArgs(
   action: string | undefined,
   values: readonly string[],
 ): NoiseDiagnosticArgs {
-  if (action !== "preflight" && action !== "start") {
+  if (action !== "finalize" && action !== "preflight"
+    && action !== "recover" && action !== "start") {
     fail("invalid_invocation", "action required", "invocation");
   }
   const parsed = new Map<string, string | true>();
@@ -147,14 +152,15 @@ export function parseNoiseDiagnosticArgs(
     }
     return candidate;
   };
+  const requiredRoot = action === "recover" ? expectedRecoveryRoot : expectedRoot;
   if (value("--board") !== "205"
     || value("--package-manifest") !== expectedPackageManifest
     || value("--wifi-credentials") !== expectedWifiCredentials
     || value("--restore-bundle") !== expectedRestoreBundle
-    || value("--private-root") !== expectedRoot
+    || value("--private-root") !== requiredRoot
     || value("--projection") !== expectedProjection
     || value("--plan") !== expectedPlan
-    || value("--diagnostic-ordinal") !== "4"
+    || value("--diagnostic-ordinal") !== "1"
     || parsed.get("--redact-evidence") !== true) {
     fail("invalid_invocation", "contract mismatch", "invocation");
   }
@@ -165,10 +171,10 @@ export function parseNoiseDiagnosticArgs(
     packageManifest: value("--package-manifest"),
     wifiCredentials: value("--wifi-credentials"),
     restoreBundle: expectedRestoreBundle,
-    privateRoot: expectedRoot,
+    privateRoot: requiredRoot,
     projection: expectedProjection,
     plan: expectedPlan,
-    diagnosticOrdinal: 4,
+    diagnosticOrdinal: 1,
     redactEvidence: true,
   };
 }
@@ -245,7 +251,21 @@ async function preflight(workspace: string, args: NoiseDiagnosticArgs): Promise<
     fail("evidence_invalid", "backup drift", "restoration_inputs");
   }
   const backup = object(JSON.parse(backupDocument), "restoration_inputs");
-  const restore = await admitStratumV2RestoreBundle(workspace, args.restoreBundle, runCampaignProcess);
+  const restore = await admitDiagnosticRecoveryReadiness({
+    workspace,
+    port: args.port,
+    restoreBundleRelative: args.restoreBundle,
+    planRelative: args.plan,
+    planSha256: expectedPlanSha256,
+    wifiCredentialsRelative: args.wifiCredentials,
+    sourceCommit: head,
+    referenceCommit: manifest["reference_commit"],
+    runProcess: runCampaignProcess,
+    fail,
+    preflightRootRelative: "scratch/str005-noise-auth/preflight-001",
+    restoreOrdinal: 1,
+    restoreAction: "noise_auth_restore_preflight",
+  });
   const flashProgram = path.join(workspace, "bazel-bin/tools/flash/flash");
   const detector = await runCampaignProcess(
     workspace,
@@ -301,7 +321,7 @@ function startFixture(
     [
       "--private-root", fixtureRoot, "--listen-address", `${host}:0`,
       "--accept-timeout-seconds", "300", "--session-timeout-seconds", "120",
-      "--mode", "handshake-only",
+      "--mode", "noise-auth",
       "--expected-peer-address", expectedPeer,
     ],
     { cwd: workspace, env: process.env, detached: true, stdio: ["ignore", "pipe", "pipe"] },
@@ -357,8 +377,8 @@ async function exactRestore(
   await writePrivate(path.join(workspace, authorizationRelative), {
     schema_version: "bitaxe-stratum-v2-restore-authorization-v1",
     board: 205,
-    ordinal: 4,
-    action: "diagnostic_restore",
+    ordinal: 1,
+    action: "noise_auth_diagnostic_restore",
     current_source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],
     bundle_sha256: sha256(bundleDocument),
@@ -390,35 +410,13 @@ async function exactRestore(
   return confirmed;
 }
 
-async function publishProjection(
-  workspace: string,
-  args: NoiseDiagnosticArgs,
-  projection: JsonObject,
-  expectedSource: string,
-): Promise<void> {
-  const privateCandidate = path.join(workspace, args.privateRoot, "projection-candidate.private.json");
-  await writePrivate(privateCandidate, projection);
-  const validated = await runCampaignProcess(
-    workspace,
-    "bazel",
-    noiseDiagnosticValidatorArgs(privateCandidate, expectedSource, args.diagnosticOrdinal),
-    60_000,
-  );
-  if (validated.exitCode !== 0) fail("evidence_invalid", "projection rejected", "projection");
-  const publicPath = path.join(workspace, args.projection);
-  await mkdir(path.dirname(publicPath), { recursive: true });
-  const temporary = `${publicPath}.tmp`;
-  await writeFile(temporary, `${JSON.stringify(projection, null, 2)}\n`, { flag: "wx" });
-  await rename(temporary, publicPath);
-}
-
 export async function inspectNoiseDiagnosticPreflight(
   workspace: string,
   args: NoiseDiagnosticArgs,
 ): Promise<JsonObject> {
   await preflight(workspace, args);
   return {
-    schema_version: "bitaxe-stratum-v2-noise-diagnostic-preflight-v1",
+    schema_version: "bitaxe-stratum-v2-noise-auth-preflight-v1",
     status: "ready",
     checkpoint: "pre_effect_ready",
     effect_started: false,
@@ -469,12 +467,13 @@ export async function runNoiseDiagnostic(
     const lease = randomBytes(8).toString("hex").replace(/^0{16}$/u, "0000000000000001");
     const intentRelative = path.join(args.privateRoot, "intent.private.json");
     await writePrivate(path.join(workspace, intentRelative), {
-      schema_version: "bitaxe-stratum-v2-noise-diagnostic-intent-v1",
+      schema_version: "bitaxe-stratum-v2-noise-auth-intent-v1",
       board: 205,
-      diagnostic_ordinal: 4,
+      diagnostic_ordinal: 1,
       source_commit: prepared.head,
       reference_commit: prepared.manifest["reference_commit"],
       app_elf_sha256: prepared.manifest["app_elf_sha256"],
+      package_manifest_sha256: sha256(prepared.manifestDocument),
       plan_path: args.plan,
       plan_sha256: expectedPlanSha256,
       lease_hex: lease,
@@ -484,7 +483,7 @@ export async function runNoiseDiagnostic(
       workspace,
       path.join(workspace, "bazel-bin/tools/flash/flash"),
       [
-        "noise-diagnostic", "--board", "205", "--port", args.port,
+        "noise-auth-diagnostic", "--board", "205", "--port", args.port,
         "--manifest", args.packageManifest,
         "--wifi-credentials", args.wifiCredentials,
         "--pool-credentials", poolRelative,
@@ -494,6 +493,14 @@ export async function runNoiseDiagnostic(
       ],
       420_000,
       "diagnostic_child",
+    );
+    await writePrivate(
+      path.join(privateRoot, "diagnostic.stdout.private.log"),
+      diagnosticChild.stdout,
+    );
+    await writePrivate(
+      path.join(privateRoot, "diagnostic.stderr.private.log"),
+      diagnosticChild.stderr,
     );
     await writePrivate(path.join(privateRoot, "diagnostic-child.private.json"), {
       exit_code: diagnosticChild.exitCode,
@@ -548,29 +555,21 @@ export async function runNoiseDiagnostic(
     fail("hardware_blocked", "fixture cleanup failed", "cleanup");
   }
   const fixtureProgress = object(fixtureTerminal["progress"] ?? {}, "fixture_terminal");
-  const accepted = terminal["accepted"] === true
-    && fixtureTerminal["status"] === "accepted"
-    && fixtureTerminal["terminal_category"] === "accepted"
-    && diagnosticChild.exitCode === 0;
-  const projection: JsonObject = {
-    schema_version: "bitaxe-stratum-v2-noise-diagnostic-projection-v1",
-    status: accepted ? "accepted" : "failed",
-    board: 205,
-    diagnostic_ordinal: 4,
-    source_commit: prepared.head,
-    reference_commit: prepared.manifest["reference_commit"],
-    app_elf_sha256: prepared.manifest["app_elf_sha256"],
-    plan_sha256: expectedPlanSha256,
-    package_manifest_sha256: sha256(prepared.manifestDocument),
-    terminal_category: accepted ? "accepted" : earliestCategory,
+  const projection = buildNoiseAuthProjection({
+    sourceCommit: prepared.head,
+    referenceCommit: prepared.manifest["reference_commit"],
+    appElfSha256: prepared.manifest["app_elf_sha256"],
+    planSha256: expectedPlanSha256,
+    packageManifestSha256: sha256(prepared.manifestDocument),
+    evaluatorSha256: await noiseAuthEvaluatorIdentity(workspace),
+    earliestCategory,
     stages,
     timings,
-    fixture: fixtureProgress,
-    campaign_started: false,
-    mining_started: false,
-    asic_touched: false,
-    fan_touched: false,
-    voltage_touched: false,
+    terminal,
+    monitorOutput: diagnosticChild.stdout,
+    fixtureTerminal,
+    fixtureProgress,
+    diagnosticExitCode: diagnosticChild.exitCode,
     restoration: {
       identity_exact: restoreRuntimeMatches(prepared.restoreBundle, finalRuntime),
       settings_exact: true,
@@ -580,15 +579,26 @@ export async function runNoiseDiagnostic(
       usb_cleanup_complete: fixtureCleanupComplete,
       owned_processes_remaining: 0,
     },
-    redaction_complete: true,
-  };
-  await publishProjection(workspace, args, projection, prepared.head);
+  });
+  try {
+    await publishNoiseAuthProjection(
+      workspace,
+      args.privateRoot,
+      args.projection,
+      projection,
+      prepared.head,
+      args.diagnosticOrdinal,
+      runCampaignProcess,
+    );
+  } catch {
+    fail("evidence_invalid", "projection rejected", "projection");
+  }
   return projection;
 }
 
 export function noiseDiagnosticFailureResult(error: unknown): JsonObject {
   return {
-    schema_version: "bitaxe-stratum-v2-noise-diagnostic-result-v1",
+    schema_version: "bitaxe-stratum-v2-noise-auth-result-v1",
     status: "failed",
     category: error instanceof NoiseDiagnosticError
       || error instanceof ManagedDiagnosticProcessError

@@ -384,6 +384,11 @@ fn authorization_action_allowed(admission_only: bool, private_root: &str, action
                 "tcp_payload_restore_preflight"
             )
             | (
+                true,
+                NOISE_AUTH_PREFLIGHT_ROOT,
+                "noise_auth_restore_preflight"
+            )
+            | (
                 false,
                 TCP_PAYLOAD_DIAGNOSTIC_RESTORE_ROOT,
                 "tcp_payload_diagnostic_restore"
@@ -392,6 +397,12 @@ fn authorization_action_allowed(admission_only: bool, private_root: &str, action
             | (false, EFFECT_ROOT, "start")
             | (false, CAMPAIGN_RESTORE_ROOT, "campaign_restore")
             | (false, NOISE_DIAGNOSTIC_RESTORE_ROOT, "diagnostic_restore")
+            | (
+                false,
+                NOISE_AUTH_DIAGNOSTIC_RESTORE_ROOT,
+                "noise_auth_diagnostic_restore"
+            )
+            | (false, NOISE_AUTH_RECOVERY_ROOT, "noise_auth_recovery")
     )
 }
 

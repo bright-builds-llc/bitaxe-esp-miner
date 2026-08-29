@@ -17,6 +17,15 @@ pub(crate) const NOISE_DIAGNOSTIC_PLAN_RELATIVE: &str =
     "docs/parity/work-plans/20260828T030951Z-STR-005-PRECONNECT-NOISE-VERIFY/PLAN.md";
 pub(crate) const NOISE_DIAGNOSTIC_PLAN_SHA256: &str =
     "3bbdf04402a0a51c4d380ef4efa65b4ee3d434bf865970c161a7faf0760b6658";
+pub(crate) const NOISE_AUTH_PREFLIGHT_ROOT: &str = "scratch/str005-noise-auth/preflight-001";
+pub(crate) const NOISE_AUTH_DIAGNOSTIC_RESTORE_ROOT: &str =
+    "scratch/str005-noise-auth/diagnostic-001/restoration";
+pub(crate) const NOISE_AUTH_RECOVERY_ROOT: &str =
+    "scratch/str005-noise-auth/recovery-001/restoration";
+pub(crate) const NOISE_AUTH_PLAN_RELATIVE: &str =
+    "docs/parity/work-plans/20260829T143226Z-STR-005-NOISE-AUTH/PLAN.md";
+pub(crate) const NOISE_AUTH_PLAN_SHA256: &str =
+    "9a3e5a630a52de6b8819dcb33aac64f5324df030fab50fd248fc33437b6587ea";
 pub(crate) const TCP_PAYLOAD_RECOVERY_ROOT: &str =
     "scratch/str005-tcp-payload/recovery-003/restoration";
 pub(crate) const TCP_PAYLOAD_PREFLIGHT_ROOT: &str = "scratch/str005-tcp-payload/preflight-009";
@@ -46,6 +55,12 @@ pub(crate) fn authorized_remediation_plan(
         ("diagnostic_restore", 4) => {
             Ok((NOISE_DIAGNOSTIC_PLAN_RELATIVE, NOISE_DIAGNOSTIC_PLAN_SHA256))
         }
+        (
+            "noise_auth_restore_preflight"
+            | "noise_auth_diagnostic_restore"
+            | "noise_auth_recovery",
+            1,
+        ) => Ok((NOISE_AUTH_PLAN_RELATIVE, NOISE_AUTH_PLAN_SHA256)),
         ("preflight" | "start", 5) | ("campaign_restore", 7) => {
             Ok((REMEDIATION_PLAN_RELATIVE, REMEDIATION_PLAN_SHA256))
         }
@@ -65,6 +80,11 @@ pub(crate) fn restore_invocation_contract(
             Utf8Path::new(TCP_PAYLOAD_PREFLIGHT_ROOT),
             TCP_PAYLOAD_PLAN_RELATIVE,
         )
+    } else if admission_only && private_root == Utf8Path::new(NOISE_AUTH_PREFLIGHT_ROOT) {
+        (
+            Utf8Path::new(NOISE_AUTH_PREFLIGHT_ROOT),
+            NOISE_AUTH_PLAN_RELATIVE,
+        )
     } else if admission_only {
         (Utf8Path::new(PREFLIGHT_ROOT), REMEDIATION_PLAN_RELATIVE)
     } else if private_root == Utf8Path::new(TCP_PAYLOAD_DIAGNOSTIC_RESTORE_ROOT) {
@@ -81,6 +101,16 @@ pub(crate) fn restore_invocation_contract(
         (
             Utf8Path::new(NOISE_DIAGNOSTIC_RESTORE_ROOT),
             NOISE_DIAGNOSTIC_PLAN_RELATIVE,
+        )
+    } else if private_root == Utf8Path::new(NOISE_AUTH_DIAGNOSTIC_RESTORE_ROOT) {
+        (
+            Utf8Path::new(NOISE_AUTH_DIAGNOSTIC_RESTORE_ROOT),
+            NOISE_AUTH_PLAN_RELATIVE,
+        )
+    } else if private_root == Utf8Path::new(NOISE_AUTH_RECOVERY_ROOT) {
+        (
+            Utf8Path::new(NOISE_AUTH_RECOVERY_ROOT),
+            NOISE_AUTH_PLAN_RELATIVE,
         )
     } else if private_root == Utf8Path::new(CAMPAIGN_RESTORE_ROOT) {
         (

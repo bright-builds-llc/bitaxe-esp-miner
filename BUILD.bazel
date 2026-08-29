@@ -153,6 +153,15 @@ js_library(
 )
 
 js_library(
+    name = "str005_noise_auth_inputs",
+    srcs = [
+        "TASKS.md",
+        "docs/parity/work-plans/20260829T143226Z-STR-005-NOISE-AUTH/PLAN.md",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "emc2101_reference_sources",
     srcs = [
         "reference/esp-miner/main/device_config.h",

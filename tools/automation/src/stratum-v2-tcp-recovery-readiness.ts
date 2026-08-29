@@ -6,7 +6,7 @@ import {
   validateTcpPayloadRecoveryTooling,
 } from "./stratum-v2-tcp-recovery-tooling.js";
 import {
-  admitTcpPayloadRestorePreflight,
+  admitDiagnosticRestorePreflight,
   TcpPayloadRestorePreflightError,
 } from "./stratum-v2-tcp-restore-preflight.js";
 
@@ -32,7 +32,13 @@ type RecoveryReadinessInput = {
   readonly fail: Fail;
 };
 
-export async function admitTcpPayloadRecoveryReadiness(input: RecoveryReadinessInput) {
+type DiagnosticRecoveryReadinessInput = RecoveryReadinessInput & {
+  readonly preflightRootRelative: string;
+  readonly restoreOrdinal: number;
+  readonly restoreAction: string;
+};
+
+export async function admitDiagnosticRecoveryReadiness(input: DiagnosticRecoveryReadinessInput) {
   let restore: Awaited<ReturnType<typeof admitStratumV2RestoreBundle>>;
   try {
     restore = await admitStratumV2RestoreBundle(
@@ -56,7 +62,7 @@ export async function admitTcpPayloadRecoveryReadiness(input: RecoveryReadinessI
     input.fail("evidence_invalid", "restore tooling failed", "restore_tooling");
   }
   try {
-    await admitTcpPayloadRestorePreflight({
+    await admitDiagnosticRestorePreflight({
       workspace: input.workspace,
       flashProgram: path.join(input.workspace, "bazel-bin/tools/flash/flash"),
       port: input.port,
@@ -69,6 +75,10 @@ export async function admitTcpPayloadRecoveryReadiness(input: RecoveryReadinessI
       sourceCommit: input.sourceCommit,
       referenceCommit: input.referenceCommit,
       runProcess: input.runProcess,
+    }, {
+      rootRelative: input.preflightRootRelative,
+      ordinal: input.restoreOrdinal,
+      action: input.restoreAction,
     });
   } catch (error) {
     if (error instanceof TcpPayloadRestorePreflightError) {
@@ -77,4 +87,13 @@ export async function admitTcpPayloadRecoveryReadiness(input: RecoveryReadinessI
     input.fail("evidence_invalid", "restore admission failed", "restore_admission");
   }
   return restore;
+}
+
+export async function admitTcpPayloadRecoveryReadiness(input: RecoveryReadinessInput) {
+  return admitDiagnosticRecoveryReadiness({
+    ...input,
+    preflightRootRelative: "scratch/str005-tcp-payload/preflight-009",
+    restoreOrdinal: 9,
+    restoreAction: "tcp_payload_restore_preflight",
+  });
 }

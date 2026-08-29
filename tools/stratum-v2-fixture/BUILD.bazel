@@ -11,10 +11,22 @@ js_library(
     visibility = ["//tools/automation:__pkg__"],
 )
 
+js_library(
+    name = "noise_auth_evaluator_sources",
+    srcs = [
+        "src/main.rs",
+        "src/noise_auth_inventory.rs",
+        "src/noise_frame.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
 rust_binary(
     name = "stratum_v2_fixture",
     srcs = [
         "src/main.rs",
+        "src/noise_auth_inventory.rs",
+        "src/noise_frame.rs",
         "src/tcp_payload.rs",
         "src/tcp_payload_inventory.rs",
         "src/tests.rs",

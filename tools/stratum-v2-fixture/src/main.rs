@@ -8,27 +8,36 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use anyhow::{bail, Context, Result};
 use bitaxe_asic::bm1366::{result::Bm1366NonceResult, work::Bm1366JobId};
 use bitaxe_stratum::v2::authority::encode_authority_public_key;
-use bitaxe_stratum::v2::frame::{Frame, FrameHeader, FRAME_HEADER_LEN};
+use bitaxe_stratum::v2::frame::Frame;
 use bitaxe_stratum::v2::messages::{
     ClientMessage, NewMiningJob, OpenStandardMiningChannelSuccess, SetNewPrevHash,
     SetupConnectionSuccess, SubmitSharesStandard, SubmitSharesSuccess,
 };
 use bitaxe_stratum::v2::work::V2MiningWork;
 use clap::{Parser, ValueEnum};
-use noise_sv2::{NoiseCodec, Responder, AEAD_MAC_LEN, ELLSWIFT_ENCODING_SIZE};
+use noise_sv2::{NoiseCodec, Responder, ELLSWIFT_ENCODING_SIZE};
 use rand::{rngs::OsRng, RngCore};
 use secp256k1::{Keypair, Secp256k1, SecretKey};
 use serde::Serialize;
 
+mod noise_auth_inventory;
+mod noise_frame;
 #[cfg(test)]
 mod tcp_payload;
 mod tcp_payload_inventory;
 
 #[cfg(test)]
+use noise_auth_inventory::inventory_noise_auth;
+use noise_auth_inventory::{run_noise_auth_fixture, NoiseAuthCandidateProgress};
+use noise_frame::read_noise_frame;
+#[cfg(test)]
+use noise_frame::{
+    read_client_proof, DIAGNOSTIC_PROOF_EXTENSION, DIAGNOSTIC_PROOF_MESSAGE, ENCRYPTED_HEADER_LEN,
+};
+#[cfg(test)]
 use tcp_payload::read_tcp_payload;
 use tcp_payload_inventory::{inventory_tcp_payload, TcpPayloadCandidateProgress};
 
-const ENCRYPTED_HEADER_LEN: usize = FRAME_HEADER_LEN + AEAD_MAC_LEN;
 const CHANNEL_ID: u32 = 1;
 const JOB_ID: u32 = 1;
 const VERSION: u32 = 0x2000_0000;
@@ -55,7 +64,7 @@ struct Args {
 #[serde(rename_all = "snake_case")]
 enum FixtureMode {
     Pool,
-    HandshakeOnly,
+    NoiseAuth,
     TcpPayload,
 }
 
@@ -90,6 +99,7 @@ struct FixtureProgress {
     exact_peer_connection_count: u16,
     candidate_overflow: bool,
     tcp_candidates: Vec<TcpPayloadCandidateProgress>,
+    noise_candidates: Vec<NoiseAuthCandidateProgress>,
     act_one_bytes_received: u16,
     act_one_read_category: &'static str,
     accept_to_first_byte_millis: Option<u32>,
@@ -105,6 +115,7 @@ struct FixtureProgress {
     act_two_sent: bool,
     client_authenticated: bool,
     noise_authenticated: bool,
+    encrypted_proof_exact: bool,
     setup_accepted: bool,
     channel_opened: bool,
     job_sent: bool,
@@ -196,6 +207,19 @@ fn run_fixture(args: &Args, progress: &mut FixtureProgress) -> Result<()> {
         println!("stratum_v2_fixture=accepted");
         return Ok(());
     }
+    if args.mode == FixtureMode::NoiseAuth {
+        run_noise_auth_fixture(
+            &listener,
+            Duration::from_secs(args.accept_timeout_seconds),
+            Duration::from_secs(10),
+            args.expected_peer_address,
+            authority_private,
+            authority_public,
+            progress,
+        )?;
+        println!("stratum_v2_fixture=accepted");
+        return Ok(());
+    }
     let (mut stream, unexpected_peer_count) = accept_one(
         &listener,
         Duration::from_secs(args.accept_timeout_seconds),
@@ -219,13 +243,6 @@ fn run_fixture(args: &Args, progress: &mut FixtureProgress) -> Result<()> {
         progress,
         accepted_at,
     )?;
-    if args.mode == FixtureMode::HandshakeOnly {
-        read_client_proof(&mut stream, &mut codec)?;
-        progress.client_authenticated = true;
-        progress.noise_authenticated = true;
-        println!("stratum_v2_fixture=accepted");
-        return Ok(());
-    }
     let result = run_pool_session(
         &mut stream,
         &mut codec,
@@ -261,7 +278,7 @@ fn fixture_terminal_category(progress: &FixtureProgress, mode: FixtureMode) -> &
         "act_two_write"
     } else if !progress.client_authenticated {
         "client_authentication"
-    } else if matches!(mode, FixtureMode::HandshakeOnly | FixtureMode::TcpPayload) {
+    } else if matches!(mode, FixtureMode::NoiseAuth | FixtureMode::TcpPayload) {
         "accepted"
     } else if !progress.setup_accepted {
         "setup"
@@ -429,11 +446,6 @@ fn elapsed_millis(started: Instant) -> u32 {
     started.elapsed().as_millis().try_into().unwrap_or(u32::MAX)
 }
 
-fn read_client_proof(stream: &mut TcpStream, codec: &mut NoiseCodec) -> Result<()> {
-    let _ = read_noise_frame(stream, codec)?;
-    Ok(())
-}
-
 fn run_pool_session(
     stream: &mut TcpStream,
     codec: &mut NoiseCodec,
@@ -563,34 +575,6 @@ fn read_client_message(
     }
     let frame = read_noise_frame(stream, codec)?;
     ClientMessage::decode(&frame).map_err(Into::into)
-}
-
-fn read_noise_frame(stream: &mut TcpStream, codec: &mut NoiseCodec) -> Result<Frame> {
-    let mut encrypted_header = vec![0; ENCRYPTED_HEADER_LEN];
-    stream
-        .read_exact(&mut encrypted_header)
-        .context("read encrypted header")?;
-    codec
-        .decrypt(&mut encrypted_header)
-        .map_err(|_| anyhow::anyhow!("decrypt frame header"))?;
-    let header = FrameHeader::parse(&encrypted_header)?;
-    let mut payload = if header.payload_len == 0 {
-        Vec::new()
-    } else {
-        let mut encrypted = vec![0; header.payload_len + AEAD_MAC_LEN];
-        stream
-            .read_exact(&mut encrypted)
-            .context("read encrypted payload")?;
-        codec
-            .decrypt(&mut encrypted)
-            .map_err(|_| anyhow::anyhow!("decrypt frame payload"))?;
-        encrypted
-    };
-    Ok(Frame::new(
-        header.extension_type,
-        header.message_type,
-        std::mem::take(&mut payload),
-    )?)
 }
 
 fn write_server_frame(stream: &mut TcpStream, codec: &mut NoiseCodec, frame: &Frame) -> Result<()> {

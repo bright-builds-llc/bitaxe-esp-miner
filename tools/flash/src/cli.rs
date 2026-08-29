@@ -29,7 +29,7 @@ pub(crate) enum CliCommand {
     ReleaseRecovery(ReleaseRecoveryCommand),
     #[command(name = "restore-installed")]
     RestoreInstalled(RestoreInstalledCommand),
-    #[command(name = "noise-diagnostic")]
+    #[command(name = "noise-auth-diagnostic")]
     NoiseDiagnostic(NoiseDiagnosticCommand),
     #[command(name = "tcp-payload-diagnostic")]
     TcpPayloadDiagnostic(TcpPayloadDiagnosticCommand),

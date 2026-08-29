@@ -125,6 +125,41 @@ fn tcp_payload_restore_preflight_is_admission_only_and_current() {
 }
 
 #[test]
+fn noise_auth_restore_actions_are_current_and_root_specific() {
+    // Arrange / Act
+    let preflight = authorized_remediation_plan("noise_auth_restore_preflight", 1)
+        .expect("Noise-auth preflight authority");
+    let diagnostic = authorized_remediation_plan("noise_auth_diagnostic_restore", 1)
+        .expect("Noise-auth diagnostic authority");
+    let recovery = authorized_remediation_plan("noise_auth_recovery", 1)
+        .expect("Noise-auth recovery authority");
+
+    // Assert
+    assert_eq!(
+        preflight,
+        (NOISE_AUTH_PLAN_RELATIVE, NOISE_AUTH_PLAN_SHA256)
+    );
+    assert_eq!(diagnostic, preflight);
+    assert_eq!(recovery, preflight);
+    assert!(authorization_action_allowed(
+        true,
+        NOISE_AUTH_PREFLIGHT_ROOT,
+        "noise_auth_restore_preflight"
+    ));
+    assert!(authorization_action_allowed(
+        false,
+        NOISE_AUTH_DIAGNOSTIC_RESTORE_ROOT,
+        "noise_auth_diagnostic_restore"
+    ));
+    assert!(authorization_action_allowed(
+        false,
+        NOISE_AUTH_RECOVERY_ROOT,
+        "noise_auth_recovery"
+    ));
+    assert!(authorized_remediation_plan("noise_auth_recovery", 2).is_err());
+}
+
+#[test]
 fn bwg_restoration_root_and_authority_are_closed_to_one_attempt_grammar() {
     // Arrange
     let root = Utf8Path::new("scratch/bwg-worker-restoration/bwg007-attempt-001/recovery");

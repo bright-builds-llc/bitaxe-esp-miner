@@ -227,7 +227,7 @@ pub(crate) fn wifi_nvs_csv_for_mode(
             rows.extend([
                 private_nvs_csv_row(&StoredValue::string("sv2diagkind", "stratum_v2_noise_v1")),
                 private_nvs_csv_row(&StoredValue::u64("sv2diaglease", seed.lease)),
-                private_nvs_csv_row(&StoredValue::string("sv2diagcase", "handshake_only_v1")),
+                private_nvs_csv_row(&StoredValue::string("sv2diagcase", "noise_auth_v1")),
                 private_nvs_csv_row(&StoredValue::string("stratumprot", "SV2")),
                 private_nvs_csv_row(&StoredValue::string("stratumurl", &seed.pool.pool_url)),
                 private_nvs_csv_row(&StoredValue::u16("stratumport", seed.pool.pool_port)),

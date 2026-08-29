@@ -213,8 +213,8 @@ stratum-v2-restoration-finalize *args:
 stratum-v2-restore-recovery *args:
     bazel run //tools/automation:stratum_v2_restore_recovery -- {{ args }}
 
-stratum-v2-noise-diagnostic action *args:
-    bazel run //tools/automation:stratum_v2_noise_diagnostic -- {{ quote(action) }} {{ args }}
+stratum-v2-noise-auth action *args:
+    bazel run //tools/automation:stratum_v2_noise_auth -- {{ quote(action) }} {{ args }}
 
 stratum-v2-tcp-payload action *args:
     bazel run //tools/automation:stratum_v2_tcp_payload -- {{ quote(action) }} {{ args }}

@@ -13,6 +13,18 @@ js_library(
     visibility = ["//tools/automation:__pkg__"],
 )
 
+js_library(
+    name = "noise_auth_evaluator_sources",
+    srcs = [
+        "src/settings_adapter/noise_diagnostic.rs",
+        "src/startup.rs",
+        "src/stratum_v2_noise_diagnostic.rs",
+        "src/stratum_v2_session/transport.rs",
+        "src/stratum_v2_tcp_payload_replay.rs",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
 exports_files([
     "BUILD.bazel",
     "bwg/deployment-trust.json",

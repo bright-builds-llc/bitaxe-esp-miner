@@ -24,6 +24,26 @@ js_library(
     ],
 )
 
+js_library(
+    name = "stratum_v2_noise_auth_evaluator_sources",
+    srcs = [
+        "src/stratum-v2-noise-connection.ts",
+        "src/stratum-v2-noise-diagnostic-cli.ts",
+        "src/stratum-v2-noise-diagnostic-markers.ts",
+        "src/stratum-v2-noise-diagnostic-process.ts",
+        "src/stratum-v2-noise-diagnostic-validator-cli.ts",
+        "src/stratum-v2-noise-diagnostic-validator.ts",
+        "src/stratum-v2-noise-diagnostic.ts",
+        "src/stratum-v2-noise-finalize.ts",
+        "src/stratum-v2-noise-projection.ts",
+        "src/stratum-v2-noise-publish.ts",
+        "src/stratum-v2-noise-recovery.ts",
+        "src/stratum-v2-tcp-recovery-readiness.ts",
+        "src/stratum-v2-tcp-recovery-tooling.ts",
+        "src/stratum-v2-tcp-restore-preflight.ts",
+    ],
+)
+
 filegroup(
     name = "automation_sources",
     srcs = ["BUILD.bazel"] + glob(["src/**/*.ts", "src/**/*.swift"]),
@@ -169,12 +189,16 @@ js_binary(
 )
 
 js_binary(
-    name = "stratum_v2_noise_diagnostic",
+    name = "stratum_v2_noise_auth",
     chdir = "../../../..",
     data = [
         ":automation_ts",
-        ":stratum_v2_noise_diagnostic_validator",
-        "//:str005_preconnect_noise_inputs",
+        ":stratum_v2_noise_auth_validator",
+        "//:str005_noise_auth_inputs",
+        ":stratum_v2_noise_auth_evaluator_sources",
+        "//firmware/bitaxe:noise_auth_evaluator_sources",
+        "//tools/flash:noise_auth_evaluator_sources",
+        "//tools/stratum-v2-fixture:noise_auth_evaluator_sources",
         "//tools/flash:flash",
         "//tools/stratum-v2-fixture:stratum_v2_fixture",
     ],
@@ -182,7 +206,7 @@ js_binary(
 )
 
 js_binary(
-    name = "stratum_v2_noise_diagnostic_validator",
+    name = "stratum_v2_noise_auth_validator",
     chdir = "../../../..",
     data = [":automation_ts"],
     entry_point = "dist/stratum-v2-noise-diagnostic-validator-cli.js",
@@ -446,7 +470,7 @@ js_test(
         ":automation_ts",
         ":automation_tests_ts",
         ":automation_sources",
-        ":stratum_v2_noise_diagnostic_validator",
+        ":stratum_v2_noise_auth_validator",
         ":stratum_v2_tcp_payload_validator",
         ":stratum_v2_tcp_payload_evaluator_sources",
         ":macos_provisioning_association_helper",
@@ -565,7 +589,7 @@ js_test(
     data = [
         ":automation_ts",
         ":automation_tests_ts",
-        ":stratum_v2_noise_diagnostic_validator",
+        ":stratum_v2_noise_auth_validator",
         "//:str005_preconnect_noise_inputs",
     ],
     entry_point = "test-dist/stratum-v2-noise-diagnostic.test.js",

@@ -21,7 +21,7 @@ export class TcpPayloadRestorePreflightError extends Error {
   }
 }
 
-type RestorePreflightInput = {
+export type RestorePreflightInput = {
   readonly workspace: string;
   readonly flashProgram: string;
   readonly port: string;
@@ -34,6 +34,12 @@ type RestorePreflightInput = {
   readonly sourceCommit: string;
   readonly referenceCommit: unknown;
   readonly runProcess: RunProcess;
+};
+
+export type RestorePreflightContract = {
+  readonly rootRelative: string;
+  readonly ordinal: number;
+  readonly action: string;
 };
 
 async function isValidReceipt(
@@ -56,10 +62,13 @@ async function isValidReceipt(
   } catch { return false; }
 }
 
-export async function admitTcpPayloadRestorePreflight(input: RestorePreflightInput): Promise<void> {
-  const root = path.join(input.workspace, preflightRootRelative);
+export async function admitDiagnosticRestorePreflight(
+  input: RestorePreflightInput,
+  contract: RestorePreflightContract,
+): Promise<void> {
+  const root = path.join(input.workspace, contract.rootRelative);
   const authorizationRelative = path.join(
-    preflightRootRelative,
+    contract.rootRelative,
     "restore-authorization.private.json",
   );
   const authorization = path.join(input.workspace, authorizationRelative);
@@ -74,8 +83,8 @@ export async function admitTcpPayloadRestorePreflight(input: RestorePreflightInp
     await writeFile(authorization, `${JSON.stringify({
       schema_version: "bitaxe-stratum-v2-restore-authorization-v1",
       board: 205,
-      ordinal: 9,
-      action: "tcp_payload_restore_preflight",
+      ordinal: contract.ordinal,
+      action: contract.action,
       current_source_commit: input.sourceCommit,
       reference_commit: input.referenceCommit,
       bundle_sha256: bundleSha256,
@@ -89,7 +98,7 @@ export async function admitTcpPayloadRestorePreflight(input: RestorePreflightInp
       "--restore-bundle", input.restoreBundleRelative,
       "--restore-authorization", authorizationRelative,
       "--remediation-plan", input.planRelative,
-      "--private-root", preflightRootRelative,
+      "--private-root", contract.rootRelative,
       "--wifi-credentials", input.wifiCredentialsRelative,
       "--admission-only", "--redact-evidence",
     ], 120_000);
@@ -106,4 +115,12 @@ export async function admitTcpPayloadRestorePreflight(input: RestorePreflightInp
     if (error instanceof TcpPayloadRestorePreflightError) throw error;
     throw new TcpPayloadRestorePreflightError();
   }
+}
+
+export async function admitTcpPayloadRestorePreflight(input: RestorePreflightInput): Promise<void> {
+  await admitDiagnosticRestorePreflight(input, {
+    rootRelative: preflightRootRelative,
+    ordinal: 9,
+    action: "tcp_payload_restore_preflight",
+  });
 }

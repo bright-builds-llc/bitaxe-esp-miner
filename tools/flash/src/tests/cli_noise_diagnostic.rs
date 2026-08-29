@@ -5,7 +5,7 @@ fn parses_private_noise_diagnostic_command_without_campaign_fields() {
     // Arrange
     let args = [
         "bitaxe-flash",
-        "noise-diagnostic",
+        "noise-auth-diagnostic",
         "--board",
         "205",
         "--port",
@@ -15,9 +15,9 @@ fn parses_private_noise_diagnostic_command_without_campaign_fields() {
         "--wifi-credentials",
         "wifi-credentials.json",
         "--pool-credentials",
-        "scratch/str005-noise-diagnostic/diagnostic-004/fixture-pool.private.json",
+        "scratch/str005-noise-auth/diagnostic-001/fixture-pool.private.json",
         "--intent",
-        "scratch/str005-noise-diagnostic/diagnostic-004/intent.private.json",
+        "scratch/str005-noise-auth/diagnostic-001/intent.private.json",
         "--capture-timeout-seconds",
         "120",
         "--redact-evidence",

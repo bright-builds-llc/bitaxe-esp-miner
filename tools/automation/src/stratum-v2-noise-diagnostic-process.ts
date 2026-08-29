@@ -24,7 +24,7 @@ export function noiseDiagnosticValidatorArgs(
   expectedOrdinal: number,
 ): readonly string[] {
   return [
-    "run", "//tools/automation:stratum_v2_noise_diagnostic_validator", "--",
+    "run", "//tools/automation:stratum_v2_noise_auth_validator", "--",
     candidate, expectedSource, String(expectedOrdinal),
   ];
 }

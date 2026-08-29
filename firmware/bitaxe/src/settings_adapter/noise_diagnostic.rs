@@ -13,7 +13,7 @@ const KIND_KEY: &str = "sv2diagkind";
 const LEASE_KEY: &str = "sv2diaglease";
 const CASE_KEY: &str = "sv2diagcase";
 const KIND: &str = "stratum_v2_noise_v1";
-const CASE: &str = "handshake_only_v1";
+const CASE: &str = "noise_auth_v1";
 const ADMISSION_KEYS: [&str; 3] = [KIND_KEY, LEASE_KEY, CASE_KEY];
 const MAX_STRING_BYTES: usize = 64;
 

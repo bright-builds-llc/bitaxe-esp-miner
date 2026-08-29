@@ -104,7 +104,7 @@ fn real_tcp_fixture_completes_noise_channel_job_and_accepted_share() {
 }
 
 #[test]
-fn real_tcp_handshake_only_mode_proves_client_authentication() {
+fn real_tcp_noise_auth_mode_proves_exact_encrypted_diagnostic_frame() {
     // Arrange
     let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
     let address = listener.local_addr().expect("address");
@@ -143,7 +143,12 @@ fn real_tcp_handshake_only_mode_proves_client_authentication() {
     let mut noise = initiator
         .complete(&act_two, u32::MAX)
         .expect("complete Noise");
-    let proof = Frame::new(0, 0, Vec::new()).expect("proof frame");
+    let proof = Frame::new(
+        DIAGNOSTIC_PROOF_EXTENSION,
+        DIAGNOSTIC_PROOF_MESSAGE,
+        Vec::new(),
+    )
+    .expect("proof frame");
 
     // Act
     stream
@@ -158,9 +163,96 @@ fn real_tcp_handshake_only_mode_proves_client_authentication() {
     assert!(progress.act_two_sent);
     assert!(progress.client_authenticated);
     assert_eq!(
-        fixture_terminal_category(&progress, FixtureMode::HandshakeOnly),
+        fixture_terminal_category(&progress, FixtureMode::NoiseAuth),
         "accepted"
     );
+}
+
+#[test]
+fn noise_auth_inventory_retains_silent_and_complete_exact_peer_candidates() {
+    // Arrange
+    let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
+    listener
+        .set_nonblocking(true)
+        .expect("nonblocking listener");
+    let address = listener.local_addr().expect("address");
+    let _silent = TcpStream::connect(address).expect("silent connect");
+    let mut complete = TcpStream::connect(address).expect("complete connect");
+    complete.write_all(&[7; 64]).expect("write act one");
+
+    // Act
+    let inventory = inventory_noise_auth(
+        &listener,
+        Duration::from_secs(1),
+        Duration::from_secs(1),
+        Some(address.ip()),
+    )
+    .expect("inventory");
+
+    // Assert
+    assert_eq!(inventory.candidates.len(), 2);
+    assert!(inventory.selected.is_some());
+    assert_eq!(inventory.selected_index, Some(1));
+    assert_eq!(
+        inventory.candidates[0].act_one_read_category,
+        "observation_end"
+    );
+    assert_eq!(inventory.candidates[1].act_one_read_category, "complete");
+}
+
+#[test]
+fn noise_auth_inventory_rejects_a_fourth_exact_peer_candidate() {
+    // Arrange
+    let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
+    listener
+        .set_nonblocking(true)
+        .expect("nonblocking listener");
+    let address = listener.local_addr().expect("address");
+    let clients = (0..4)
+        .map(|_| TcpStream::connect(address).expect("connect"))
+        .collect::<Vec<_>>();
+
+    // Act
+    let inventory = inventory_noise_auth(
+        &listener,
+        Duration::from_secs(1),
+        Duration::from_secs(1),
+        Some(address.ip()),
+    )
+    .expect("inventory");
+
+    // Assert
+    assert_eq!(clients.len(), 4);
+    assert_eq!(inventory.candidates.len(), 3);
+    assert!(inventory.candidate_overflow);
+    assert!(inventory.selected.is_none());
+}
+
+#[test]
+fn noise_auth_inventory_classifies_partial_eof_without_selection() {
+    // Arrange
+    let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
+    listener
+        .set_nonblocking(true)
+        .expect("nonblocking listener");
+    let address = listener.local_addr().expect("address");
+    let mut client = TcpStream::connect(address).expect("connect");
+    client.write_all(&[9; 7]).expect("partial act one");
+    client.shutdown(Shutdown::Write).expect("write shutdown");
+
+    // Act
+    let inventory = inventory_noise_auth(
+        &listener,
+        Duration::from_secs(1),
+        Duration::from_secs(1),
+        Some(address.ip()),
+    )
+    .expect("inventory");
+
+    // Assert
+    assert!(inventory.selected.is_none());
+    assert_eq!(inventory.candidates[0].act_one_bytes_received, 7);
+    assert_eq!(inventory.candidates[0].act_one_read_category, "eof");
 }
 
 #[test]

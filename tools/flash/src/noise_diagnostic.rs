@@ -5,15 +5,14 @@ use std::os::unix::fs::PermissionsExt;
 use crate::campaign::admission::read_pool_credentials;
 use crate::*;
 
-const INTENT_RELATIVE_PATH: &str =
-    "scratch/str005-noise-diagnostic/diagnostic-004/intent.private.json";
+const INTENT_RELATIVE_PATH: &str = "scratch/str005-noise-auth/diagnostic-001/intent.private.json";
 const POOL_RELATIVE_PATH: &str =
-    "scratch/str005-noise-diagnostic/diagnostic-004/fixture-pool.private.json";
+    "scratch/str005-noise-auth/diagnostic-001/fixture-pool.private.json";
 const PLAN_RELATIVE_PATH: &str =
-    "docs/parity/work-plans/20260828T030951Z-STR-005-PRECONNECT-NOISE-VERIFY/PLAN.md";
-const PLAN_SHA256: &str = "3bbdf04402a0a51c4d380ef4efa65b4ee3d434bf865970c161a7faf0760b6658";
-const INTENT_SCHEMA: &str = "bitaxe-stratum-v2-noise-diagnostic-intent-v1";
-const DIAGNOSTIC_ORDINAL: u16 = 4;
+    "docs/parity/work-plans/20260829T143226Z-STR-005-NOISE-AUTH/PLAN.md";
+const PLAN_SHA256: &str = "9a3e5a630a52de6b8819dcb33aac64f5324df030fab50fd248fc33437b6587ea";
+const INTENT_SCHEMA: &str = "bitaxe-stratum-v2-noise-auth-intent-v1";
+const DIAGNOSTIC_ORDINAL: u16 = 1;
 const CAPTURE_TIMEOUT_SECONDS: u64 = 120;
 
 #[derive(Debug, Deserialize)]
@@ -25,6 +24,7 @@ struct NoiseDiagnosticIntent {
     source_commit: String,
     reference_commit: String,
     app_elf_sha256: String,
+    package_manifest_sha256: String,
     plan_path: String,
     plan_sha256: String,
     lease_hex: String,
@@ -97,6 +97,7 @@ fn admit_noise_diagnostic(
         || intent.source_commit != manifest.source_commit
         || intent.reference_commit != manifest.reference_commit
         || intent.app_elf_sha256 != manifest.app_elf_sha256
+        || intent.package_manifest_sha256 != sha256_bytes(manifest_document.as_bytes())
         || intent.plan_path != PLAN_RELATIVE_PATH
         || intent.plan_sha256 != PLAN_SHA256
         || sha256_bytes(plan_document.as_bytes()) != PLAN_SHA256
@@ -164,7 +165,7 @@ mod tests {
     fn plan_digest_and_first_ordinal_are_immutable() {
         // Arrange
         let plan = include_str!(
-            "../../../docs/parity/work-plans/20260828T030951Z-STR-005-PRECONNECT-NOISE-VERIFY/PLAN.md"
+            "../../../docs/parity/work-plans/20260829T143226Z-STR-005-NOISE-AUTH/PLAN.md"
         );
 
         // Act
@@ -172,8 +173,8 @@ mod tests {
 
         // Assert
         assert_eq!(digest, PLAN_SHA256);
-        assert_eq!(DIAGNOSTIC_ORDINAL, 4);
-        assert!(INTENT_RELATIVE_PATH.contains("diagnostic-004"));
+        assert_eq!(DIAGNOSTIC_ORDINAL, 1);
+        assert!(INTENT_RELATIVE_PATH.contains("diagnostic-001"));
     }
 
     #[test]

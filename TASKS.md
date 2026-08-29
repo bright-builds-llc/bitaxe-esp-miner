@@ -4130,7 +4130,12 @@ submission, mining, external pools, direct UART/pins, raw NVS/coredump access,
 fault injection, OTA, erase, arbitrary writes, and STR-005 promotion remain
 excluded.
 
-Verification: Pending.
+Verification: software gates complete; exact hardware ordinal pending.
+
+Implementation progress: the no-mining Noise-auth owner, exact encrypted proof,
+bounded fixture inventory, tuple join, hardened recovery/finalizer path, closed
+projection validator, and command surface are software-complete. Full
+repository verification and the exact hardware ordinal remain pending.
 
 Completion review: Pending. STR-005 remains `implemented` until the final
 promotion task succeeds.
