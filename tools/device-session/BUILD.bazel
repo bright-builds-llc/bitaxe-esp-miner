@@ -14,6 +14,7 @@ js_library(
     name = "command_effects_budget_sources",
     srcs = [
         "src/usb.rs",
+        "src/usb_ownership.rs",
         "src/usb/observation.rs",
         "src/usb/process.rs",
         "src/usb/recovery.rs",

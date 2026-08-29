@@ -53,6 +53,10 @@ excluded.
 
 Verification: Pending.
 
+Progress: ADR/agent guardrails and the pure UsbOwnership profile planner are
+implemented. Firmware class-control handoff, host profile adapters, durability,
+manual bootstrap, and recovery remain pending.
+
 Completion review: Pending. STR-005 and BWG remain unchanged until their own
 separate evidence tasks complete.
 

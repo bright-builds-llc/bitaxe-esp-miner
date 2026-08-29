@@ -80,6 +80,9 @@ Bazel verifies the package export paths before fixture-based tests execute.
 
 ## Consequences
 
+ADR-0020 owns the single-PHY maintenance handoff required to preserve
+buttonless flashing while this TinyUSB topology is active.
+
 - USB VID/PID, serial, and enumeration identity remain hints, not authority.
 - Admission is cleared on disconnect and reboot; an old lease never resumes.
 - The pure core and host conformance runner can be tested without ESP-IDF,

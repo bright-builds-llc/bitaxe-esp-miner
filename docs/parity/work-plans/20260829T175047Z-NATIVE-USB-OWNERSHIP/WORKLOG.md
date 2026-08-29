@@ -10,3 +10,10 @@
 - Hardware/network effects: none.
 - Next safe action: verify, commit, and push this plan separately, then implement
   the pre-agreed software seams without hardware effects.
+
+## 2026-08-29T18:20:00Z | Guardrail and profile core
+
+- Added ADR-0020, native USB ownership guidance, the always-loaded AGENTS
+  pointer, profile-aware device-session types, and regression tests proving a
+  Worker runtime flash selects handoff while monitoring never does.
+- Hardware effects: none. Firmware handoff and host adapters remain pending.

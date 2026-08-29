@@ -294,6 +294,18 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 
 ### Autonomous Ultra 205 Hardware Verification
 
+### Native USB Ownership
+
+- Before changing TinyUSB, USB descriptors/sdkconfig, firmware startup,
+  detection, flashing, monitoring, or recovery, read
+  `docs/hardware/native-usb-ownership.md` and ADR-0020.
+- Preserve one qualified buttonless path from every canonical application USB
+  profile to an admitted ROM downloader. A visible CDC node is not flash proof.
+- Cross USB profiles only through repo-owned `just` commands. Manual BOOT/RESET
+  is bootstrap or last-resort recovery, not routine development.
+- Complete USB ownership changes only after
+  `just verify-native-usb-ownership` and task-gated durability evidence pass.
+
 - The user grants standing permission for agents to autonomously execute every current and future repository task, including interacting with a connected Bitaxe Ultra 205 over USB and selecting fresh hardware-attempt ordinals after verified progress. Do not ask for per-task, per-attempt, per-ordinal, retry, or continuation confirmation.
 - Standing authorization becomes effect-eligible only after an active `TASKS.md` block and a repo-owned command define the exact objective, command, evidence and privacy policy, allowed and prohibited effects, recovery and cleanup, retry bounds, and accepted stop conditions. Agents may create or update that complete contract as ordinary task work, verify it, commit it, and push it before the effect; doing so does not require another user confirmation.
 - Before autonomous hardware use, run `just detect-ultra205`. Treat detection as successful only when it finds exactly one likely ESP USB serial port and `espflash board-info --chip esp32s3 --port <port> --non-interactive` succeeds.

@@ -97,6 +97,13 @@ The initial production adapter supports macOS. Linux and Windows fail closed as
 
 ## Flash And Reflash Session
 
+Classify the native USB profile described in `native-usb-ownership.md` before
+choosing an Adapter. Worker runtime is observation-capable but not directly
+eligible for `espflash`; the supervisor performs the guarded handoff while
+retaining the physical-device lease. Board-info and writes begin only after ROM
+admission. Profile changes are expected enumeration transitions, not physical
+identity drift by themselves.
+
 The supported `just detect-ultra205`, `just flash`, `just monitor`, and
 `just flash-monitor` entrypoints share one macOS USB supervisor. Package
 construction and immutable image admission complete before device ownership is

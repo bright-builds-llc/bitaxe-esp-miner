@@ -14,6 +14,7 @@ mod model;
 mod platform;
 mod transaction;
 mod usb;
+mod usb_ownership;
 
 pub use display_uat::{
     finalize_display_uat, run_display_uat_live, DisplayUatIntent, DisplayUatProjection,
@@ -46,3 +47,4 @@ pub use usb::{
     UsbCommandTermination, UsbConnectionSignature, UsbDeviceEffectState, UsbLifecycleEvent,
     UsbLifecycleState, UsbOperation, UsbSession, UsbSessionError, UsbTerminalCategory,
 };
+pub use usb_ownership::{plan_usb_operation, UsbIntent, UsbOperationPlan, UsbProfile};

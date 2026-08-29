@@ -55,6 +55,9 @@ See the esptool [advanced reset options](https://docs.espressif.com/projects/esp
 
 ## Consequences
 
+ADR-0020 extends this separation to TinyUSB application profiles and the
+buttonless transition back to the ROM downloader.
+
 - Runtime workflows must not select `espflash monitor` merely because flashing
   already uses espflash.
 - A reboot command is sent once. An ambiguous response is followed by bounded
