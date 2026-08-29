@@ -137,3 +137,23 @@
   progress, redaction, reference, and whitespace gates passed.
   A new cycle requires every gate, a clean pushed commit, and a new exact clean
   package.
+
+## 2026-08-29T21:00:00Z | Repeated terminal transition signature
+
+- Clean pushed source `4b165570` and its exact package started automatic
+  cycle-003 from WorkerRuntime after all software, firmware-link, ownership,
+  parity, privacy, and reference gates passed.
+- The maintenance readiness receipt and commit edge again completed, but the
+  same physical connector did not appear as an admitted ROM profile within the
+  bounded transition window. No ROM admission or device write occurred.
+- The authoritative `handoff_transition_timeout` signature exactly repeated
+  after its targeted PHY-disconnect fix. The immutable continuation contract
+  therefore makes this signature terminal; no further hardware retry or
+  speculative fix is eligible in this campaign.
+- Host cleanup completed with zero serial holders and zero owned espflash or
+  flash-tool processes. The installed device was not restored to recovery-006;
+  the automatic route cannot currently reach ROM, and the plan's one-time
+  manual BOOT/RESET bootstrap has been consumed.
+- Required continuation: create a new explicit recovery contract if another
+  built-in-button ROM entry is authorized, restore recovery-006 exactly, and
+  separately redesign the ROM transition proof before resuming durability.

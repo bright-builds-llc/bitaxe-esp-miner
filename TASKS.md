@@ -88,10 +88,16 @@ Automatic cycle-002 accepted readiness and the commit edge, then timed out
 waiting for ROM because the reduced PHY Adapter immediately re-enabled the USB
 pad without a host-visible disconnect. A bounded ROM-level disconnect pulse is
 now covered by the C allowlist test and passed every software and firmware
-link gate; its clean pushed package remains pending.
+link gate in clean pushed source `4b165570`. Automatic cycle-003 reproduced the
+same authoritative `handoff_transition_timeout` after that targeted fix. The
+immutable continuation rule makes the repeated signature terminal: further
+hardware attempts are stopped, recovery-006 remains pending, and another
+manual BOOT/RESET recovery would require a new explicit hardware contract.
 
-Completion review: Pending. STR-005 and BWG remain unchanged until their own
-separate evidence tasks complete.
+Completion review: Blocked at the repeated ROM re-enumeration signature. The
+one-time manual bootstrap installed the handoff firmware and proved
+WorkerRuntime, but automatic handoff durability and exact recovery-006
+restoration are incomplete. STR-005 and BWG remain unchanged.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
