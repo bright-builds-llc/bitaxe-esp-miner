@@ -24,6 +24,36 @@ new work.
 
 ## Active
 
+### task-native-usb-rust-adapter | 2026-08-29 | Move native USB runtime ownership into Rust
+
+- [ ] Create and push the immutable stages 1–2 plan before implementation.
+- [ ] Port exact Worker descriptors, installation, callbacks, CDC/vendor I/O,
+      and bounded writes into the deep Rust `UsbRuntime` Module.
+- [ ] Reduce native C to the allowlisted ESP32-S3 PHY/force-download Adapter.
+- [ ] Verify, document, commit/push, rebuild the exact clean package, and stop
+      before hardware.
+
+Plan: `docs/parity/work-plans/20260829T191251Z-NATIVE-USB-RUST-ADAPTER/PLAN.md`
+
+Depends on: clean pushed native-USB software source
+`902108b7fc5d1941b8734732e6ea8dd6a8350a23`, pinned ESP-IDF `v5.5.4`, pinned
+`espressif/esp_tinyusb`, and accepted ADR-0020.
+
+Authorization: repository source, tests, build wiring, documentation, task and
+lesson records, canonical firmware build/package, commit, and push only.
+Detection, BOOT/RESET instructions, USB device-node access, flash, monitor,
+recovery, credentials, network effects, mining, ASIC work, fan/voltage effects,
+other devices, other boards, fault injection, parity promotion, and final C PHY
+Adapter removal are excluded.
+
+Verification: Pending.
+
+Progress: Immutable plan pending its separate commit. No implementation or
+hardware effect has occurred.
+
+Completion review: Pending. The existing native-USB hardware task remains
+blocked until this child is completed and archived.
+
 ### task-native-usb-ownership-handoff | 2026-08-29 | Preserve TinyUSB and restore buttonless flashing
 
 - [x] Create and push the immutable native-USB ownership plan before firmware,
@@ -37,7 +67,8 @@ new work.
 
 Plan: `docs/parity/work-plans/20260829T175047Z-NATIVE-USB-OWNERSHIP/PLAN.md`
 
-Depends on: accepted ADRs 0015, 0018, and 0019; exact pushed source
+Depends on: completed `task-native-usb-rust-adapter`; accepted ADRs 0015, 0018,
+and 0019; exact pushed source
 `a0337f01`; the connected Ultra 205 currently running the pre-handoff TinyUSB
 image; and recovery-006.
 
@@ -65,8 +96,9 @@ TinyUSB installation and the guarded maintenance reducer; diagnostics retain
 Serial/JTAG; macOS inspection separates physical/profile/enumeration identity;
 one retained `UsbSession` performs Worker-to-ROM handoff and ROM admission;
 flash/recovery writes route centrally; and monitor remains receive-only.
-Manual bootstrap, automatic hardware handoff proof, 20-cycle durability, and
-recovery-006 restoration remain pending as the next hardware stage.
+The Rust-adapter child must complete first. Manual bootstrap, automatic hardware
+handoff proof, 20-cycle durability, and recovery-006 restoration then remain as
+the next hardware stage.
 
 Completion review: Pending. STR-005 and BWG remain unchanged until their own
 separate evidence tasks complete.
