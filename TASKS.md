@@ -40,6 +40,9 @@ Depends on: the archived STR-005 lineage and decomposition plan
 
 Plan: `docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md`
 
+Connection-identity continuation plan:
+`docs/parity/work-plans/20260829T032813Z-STR-005-CONNECTION-IDENTITY/PLAN.md`
+
 Authorization: planning, repository implementation, tests, build/package,
 commit, and push after a child plan exists. No hardware or network effect is
 eligible until that immutable plan defines its exact command, evidence,
@@ -314,6 +317,16 @@ recovery-only supervisor completed exact recovery-006 identity/settings,
 cleanup. No unchanged hardware diagnostic retry is authorized. The next work
 must explain how the ESP-IDF socket can report a complete write and successful
 write half-close while the admitted fixture receives zero bytes.
+
+Diagnostic-009 continuation: the immutable connection-identity plan hardens
+all recovery tooling before effects, privately joins the firmware local TCP
+port to a bounded three-candidate exact-peer fixture inventory, publishes only
+closed tuple/count/correlated-receipt fields in a v2 projection, and records
+locally reported bytes independently of terminal acceptance. After a distinct
+implementation commit is fully verified, pushed, and packaged, run its exact
+ordinal-9 command from the continuation plan once. Diagnostic-010 is prohibited
+unless diagnostic-009 proves exactly one tuple-matched connection with zero
+correlated bytes and complete restoration.
 
 Verification: diagnostic-001 stopped before effects at
 `timeout:fixture_ready`; its regression-backed fixture-timeout fix passed every
