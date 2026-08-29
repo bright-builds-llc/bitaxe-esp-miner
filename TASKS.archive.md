@@ -13683,3 +13683,103 @@ messages, authentication, channel/job/share behavior, mining, ASIC/fan/voltage
 effects, soak, other boards, and parity promotion. STR-005 remains
 `implemented` with `unit,golden,workflow`; continue only through the separate
 Noise-authentication child.
+
+### task-bwg006-possession-bound-worker-control | 2026-08-28 | Implement possession-bound BWG Worker control
+
+- [x] Pin the exact Gate package archive and verify its Controller 0.3, Worker
+      USB 0.2, and possession fixture export paths before consuming them.
+- [x] Add a pure Worker-control core plus thin Device Identity NVS, TinyUSB,
+      and Production Mining Session adapters.
+- [x] Prove possession-before-lease ordering, full-input authorization,
+      volatile credentials, bounded monotonic leases, control/evidence
+      isolation, and every local safe-stop reason in software.
+- [x] Run the ordered Rust gates, Bazel suite, package build, Bright Builds
+      checks, reference cleanliness, redaction, and affected source-ownership
+      checks before commit and push.
+
+Depends on: Gate repository commit
+`31d89dbaa228df4067cfb3ce30eabbbb57667a4f`, Gate Ticket 05 deployment trust,
+child Ticket 03 possession profiles, and ADRs 0016-0018.
+
+Authorization: repository-local documentation, Rust, Bazel, fixture,
+software-test, build, package, commit, and push effects only. This task does
+not authorize USB/device access, detector use, flash, monitor, restart, NVS
+mutation on hardware, network access to a pool, mining, ASIC/fan/voltage
+effects, direct UART/pins/probes, erasure, fault injection, or hardware
+evidence. Real effects remain reserved for the separately committed Ticket 07
+campaign contract.
+
+Command and identity contract: the application accepts only bounded
+`bwg-worker-possession/0.1` and `bwg-worker-controller/0.3` frames on the exact
+`bwg-worker-usb/0.2` vendor function. One Ed25519 Device Identity seed lives as
+a private blob in a dedicated `bwg_worker` NVS namespace, survives OTA, is
+generated with `esp_fill_random` only when absent, and rotates only after an
+explicit factory reset or fail-closed corruption recovery. ROM USB
+Serial/JTAG remains bootloader/debug-only; CDC application evidence is
+receive-only and never authorizes control.
+
+Effects and safety: Discover and possession may precede admission. Start and
+Renew require a fresh proof in the current USB enumeration plus the injected
+full-input authorization verifier. Challenge credentials remain volatile and
+flow only through the sole Production Mining Session. Pause, Cancel, expiry,
+disconnect, reboot, monotonic reset, lost continuity, and explicit Restore
+block new work, invalidate the lease, erase volatile credentials, and complete
+the Production Mining Session safe-stop ordering before baseline confirmation.
+
+Privacy and evidence: never emit the Device Identity seed, public JWK, proof,
+fingerprint, USB serial, authorization, Stratum endpoint/user/password, action
+payload, or raw control frame through logs, CDC evidence, telemetry, settings,
+backups, fixtures, errors, or committed evidence. Software evidence contains
+only fixed fixture provenance, closed result categories, counts, ordering, and
+digests.
+
+Recovery, cleanup, retry, and stop: disconnect/reboot clear enumeration
+admission and cannot resume an old lease. Corrupt identity state fails closed;
+after the documented factory-reset boundary a newly generated identity is a
+new Worker. Software retries must start from a clean deterministic test state
+and stop on a repeated unexplained boundary. Any request that cannot prove
+strict framing, possession, complete authorization, deadline continuity,
+credential removal, or safe-stop confirmation terminates this ticket as
+blocked rather than weakening the contract.
+
+Unblocked input: Gate Ticket 05 publishes the Update Authority-signed Ultra 205
+revision `205` capability bound to the exact application descriptor, separate
+Update and Work Lease public trust, and executable full-input authorization and
+replay/context fixtures. Firmware consumes those exact artifacts without
+promoting any private development key or weakening local admission. No
+hardware/runtime effect occurred in this software ticket.
+
+Verification:
+
+- Bazel pins Gate commit
+  `31d89dbaa228df4067cfb3ce30eabbbb57667a4f` with archive SHA-256
+  `18699614b06877e80f213e310c25cb6696dbfb7094604f6143663b5ea04c0f7d`.
+  The fixture gate verifies all package exports and exact firmware artifact
+  equality; the Rust conformance gate executes pinned possession, Controller,
+  deployment authorization, transfer-negative, and USB topology vectors.
+- Pure regressions cover proof-before-lease ordering, response-confirmed
+  admission, 60-second context expiry, fail-closed nonce capacity without
+  eviction, full-input signatures, durable replay, strict subgroup keys,
+  absolute monotonic deadlines, strictly increasing owner-local campaign IDs,
+  partial Start cleanup retry, volatile-secret zeroization, identity
+  generation/load/corruption, framing, and every local restoration reason.
+- The application cross-build and canonical six-file Ultra 205 package passed.
+  The optimized stack audit retained an explicit readiness boundary at 480
+  bytes and a 3,216-byte combined operator path, both within policy.
+- `cargo fmt --all`, `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo build --all-targets --all-features`, and `cargo test --all-features`
+  passed in order. All 65 Bazel tests, Bright Builds, reference cleanliness,
+  redaction over 22 public files, source ownership, and `git diff --check`
+  passed. The independent Standards review returned PASS. A local Spec review
+  traced every active-ticket requirement to implementation and test evidence;
+  the separate review agent was unavailable because its run was filtered.
+
+Completion review: The possession-bound application Worker control is complete
+at the authorized software seam. It keeps Controller 0.3 and Worker USB 0.2
+strict, holds Device Identity and replay state in dedicated NVS, preserves
+historical high-water marks across trust changes, keeps credentials volatile,
+and routes every mining or cleanup effect through the sole Production Mining
+Session. No USB/device, detector, flash, monitor, restart, pool, mining, ASIC,
+fan, voltage, or NVS hardware effect occurred. Real Ultra 205 qualification,
+protected evidence, and cross-repository parent closure remain exclusively in
+the separately authorized Ticket 07 campaign.

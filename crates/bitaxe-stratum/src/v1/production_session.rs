@@ -25,9 +25,9 @@ pub use asic_diagnostics::{
 };
 pub use campaign::{
     HardwarePreparationFailure, MiningCampaignDuration, MiningCampaignLease,
-    MiningCampaignLeaseError, MiningCampaignLeaseId, MiningCampaignState,
-    MiningCampaignStopCondition, MiningHardwareProfile, MiningHardwareProfilePreset,
-    MiningHardwareState, MAX_MINING_CAMPAIGN_DURATION_MS,
+    MiningCampaignLeaseError, MiningCampaignLeaseId, MiningCampaignMonotonicDeadline,
+    MiningCampaignState, MiningCampaignStopCondition, MiningHardwareProfile,
+    MiningHardwareProfilePreset, MiningHardwareState, MAX_MINING_CAMPAIGN_DURATION_MS,
 };
 pub use job_transition::{JobTransitionEvidence, JobTransitionState};
 pub use runtime::ProductionMiningSession;

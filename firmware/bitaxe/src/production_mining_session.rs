@@ -1,6 +1,6 @@
 //! Thin ESP owner and qualified live-I/O adapter for the Production Mining Session.
-
 mod asic_worker;
+mod bwg;
 mod campaign_status;
 mod hashrate;
 mod notifications;
@@ -11,22 +11,6 @@ mod readiness_trace;
 mod scoreboard;
 mod transport;
 pub(crate) mod watchdog;
-
-use bitaxe_core::runtime_health::TaskWatchdogOwnerSubphase;
-use bitaxe_core::runtime_orchestration::{PeriodicDeadline, PRODUCTION_REREAD_CADENCE_MS};
-use bitaxe_safety::observation::{MonotonicMillis, Observation};
-use bitaxe_safety::power::POWER_SAMPLE_STALE_AFTER_MS;
-use bitaxe_stratum::v1::production_session::{
-    AsicPollCompletion, ProductionAsicFailure, ProductionMiningSession, ProductionPool,
-    ProductionReadiness, ProductionSessionEffect, ProductionSessionEvent,
-    ProductionSessionSnapshot, ProductionSessionWakeup, ProductionTransportFailure,
-};
-use bitaxe_stratum::v1::production_work::ProductionNonceObservation;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
-use std::sync::OnceLock;
-use std::time::{Duration, Instant};
-
 use self::asic_worker::{AsicWorker, AsicWorkerCommand, AsicWorkerEvent};
 use self::campaign_status::publication::{
     CampaignStatusPublicationError, CampaignStatusPublicationSchedule,
@@ -37,22 +21,34 @@ use self::owner_loop::{run_owner, safe_stop_subphase};
 use self::readiness_trace::ReadinessTransitionTracker;
 use self::transport::{PoolTransportCommand, PoolTransportEvent, PoolTransportWorkers};
 use crate::mining_actuation::SafeShutdownStep;
-
+use bitaxe_core::runtime_health::TaskWatchdogOwnerSubphase;
+use bitaxe_core::runtime_orchestration::{PeriodicDeadline, PRODUCTION_REREAD_CADENCE_MS};
+use bitaxe_safety::observation::{MonotonicMillis, Observation};
+use bitaxe_safety::power::POWER_SAMPLE_STALE_AFTER_MS;
+use bitaxe_stratum::v1::production_session::{
+    AsicPollCompletion, ProductionAsicFailure, ProductionMiningSession, ProductionPool,
+    ProductionReadiness, ProductionSessionEffect, ProductionSessionEvent,
+    ProductionSessionSnapshot, ProductionSessionWakeup, ProductionTransportFailure,
+};
+use bitaxe_stratum::v1::production_work::ProductionNonceObservation;
+pub(crate) use bwg::{renew as bwg_renew, safe_stop as bwg_safe_stop, start as bwg_start};
 pub use notifications::notify;
-
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
+use std::sync::OnceLock;
+use std::time::{Duration, Instant};
 const OWNER_STACK_BYTES: usize = 16 * 1024;
 const NOTIFICATION_CAPACITY: usize = 16;
 static NOTIFICATIONS: OnceLock<SyncSender<OwnerInboxMessage>> = OnceLock::new();
 static FAN_CONTROLLER_ACTUATION_QUALIFIED: AtomicBool = AtomicBool::new(false);
-
 pub(crate) fn fan_controller_actuation_qualified() -> bool {
     FAN_CONTROLLER_ACTUATION_QUALIFIED.load(Ordering::Acquire)
 }
-
 enum OwnerInboxMessage {
     Wake(ProductionSessionWakeup),
     Transport(PoolTransportEvent),
     Asic(AsicWorkerEvent),
+    Bwg(bwg::OwnerCommand),
 }
 
 /// Starts the single boot-lifetime production mining owner and its bounded I/O workers.
@@ -62,7 +58,6 @@ pub fn start() -> anyhow::Result<()> {
         .set(sender.clone())
         .map_err(|_| anyhow::anyhow!("production mining session already started"))?;
     let adapter = OrdinaryEspProductionSessionAdapter::new(sender)?;
-
     std::thread::Builder::new()
         .name("production-mining-session".to_owned())
         .stack_size(OWNER_STACK_BYTES)
@@ -70,7 +65,6 @@ pub fn start() -> anyhow::Result<()> {
         .map(|_| ())
         .map_err(Into::into)
 }
-
 struct OrdinaryEspProductionSessionAdapter {
     mining_actuation: crate::mining_actuation_adapter::Ultra205MiningActuationAdapter,
     transports: PoolTransportWorkers,
@@ -81,8 +75,9 @@ struct OrdinaryEspProductionSessionAdapter {
     maybe_terminal_pool_persisted: Option<bool>,
     protocol_gate: crate::settings_adapter::ProductionProtocolGateDecision,
     readiness_trace: ReadinessTransitionTracker,
+    maybe_bwg_session: Option<bwg::OwnerSession>,
+    maybe_bwg_reply: Option<bwg::PendingReply>,
 }
-
 impl OrdinaryEspProductionSessionAdapter {
     fn new(owner_sender: SyncSender<OwnerInboxMessage>) -> anyhow::Result<Self> {
         let transport_sender = owner_sender.clone();
@@ -132,6 +127,8 @@ impl OrdinaryEspProductionSessionAdapter {
             protocol_gate:
                 crate::settings_adapter::ProductionProtocolGateDecision::PartitionOwnerUnavailable,
             readiness_trace: ReadinessTransitionTracker::default(),
+            maybe_bwg_session: None,
+            maybe_bwg_reply: None,
         })
     }
 
@@ -158,6 +155,7 @@ impl OrdinaryEspProductionSessionAdapter {
         message: OwnerInboxMessage,
         now_ms: u64,
         snapshot: &ProductionSessionSnapshot,
+        maybe_next_lease_id: Option<bitaxe_stratum::v1::production_session::MiningCampaignLeaseId>,
     ) -> ProductionSessionEvent {
         match message {
             OwnerInboxMessage::Wake(wakeup) => {
@@ -243,6 +241,9 @@ impl OrdinaryEspProductionSessionAdapter {
                     now_ms,
                 },
             },
+            OwnerInboxMessage::Bwg(command) => {
+                self.event(command, now_ms, snapshot, maybe_next_lease_id)
+            }
         }
     }
 
@@ -257,26 +258,35 @@ impl OrdinaryEspProductionSessionAdapter {
         let observations = crate::safety_adapter::observation_snapshot();
         let safety_prerequisites_fresh = observations.is_ultra_205_mining_safe_at(now());
         let maybe_campaign_lease = self
-            .maybe_campaign_status
+            .maybe_bwg_session
             .as_ref()
-            .and_then(CampaignStatusTracker::maybe_lease);
-        let operator_intent = self
-            .maybe_campaign_status
-            .as_ref()
-            .map_or(requested_operator_intent, |status| {
-                status.operator_intent(requested_operator_intent)
+            .map(|session| session.lease)
+            .or_else(|| {
+                self.maybe_campaign_status
+                    .as_ref()
+                    .and_then(CampaignStatusTracker::maybe_lease)
             });
-        let actuation_qualified = self
-            .maybe_campaign_status
-            .as_ref()
-            .is_some_and(CampaignStatusTracker::authorizes_actuation)
+        let operator_intent = if self.maybe_bwg_session.is_some() {
+            bitaxe_stratum::v1::state::MiningOperatorIntent::Run
+        } else {
+            self.maybe_campaign_status
+                .as_ref()
+                .map_or(requested_operator_intent, |status| {
+                    status.operator_intent(requested_operator_intent)
+                })
+        };
+        let actuation_qualified = (self.maybe_bwg_session.is_some()
+            || self
+                .maybe_campaign_status
+                .as_ref()
+                .is_some_and(CampaignStatusTracker::authorizes_actuation))
             && crate::safety_adapter::safety_actuation_available()
             && crate::asic_adapter::production::production_handle_available();
         self.protocol_gate = crate::settings_adapter::configured_protocol_gate();
         let readiness = ProductionReadiness {
             operator_intent,
             network_ready: wifi.wifi_status == "connected",
-            stratum_v1_supported: self.protocol_gate.is_ready(),
+            stratum_v1_supported: self.maybe_bwg_session.is_some() || self.protocol_gate.is_ready(),
             safety_prerequisites_fresh,
             maybe_campaign_lease,
             actuation_qualified,
@@ -367,14 +377,18 @@ impl OrdinaryEspProductionSessionAdapter {
                 }
             }
             ProductionSessionEffect::ReadPoolConfiguration => {
-                let maybe_pools = match crate::settings_adapter::read_production_pool_set() {
-                    Ok(maybe_pools) => maybe_pools,
-                    Err(error) => {
-                        log::warn!(
-                            "production_pool_configuration=unavailable category={}",
-                            error.category()
-                        );
-                        None
+                let maybe_pools = if let Some(session) = self.maybe_bwg_session.as_ref() {
+                    Some(session.pools.clone())
+                } else {
+                    match crate::settings_adapter::read_production_pool_set() {
+                        Ok(maybe_pools) => maybe_pools,
+                        Err(error) => {
+                            log::warn!(
+                                "production_pool_configuration=unavailable category={}",
+                                error.category()
+                            );
+                            None
+                        }
                     }
                 };
                 if let Some(status) = self.maybe_campaign_status.as_mut() {

@@ -51,3 +51,70 @@ crate.from_cargo(
     manifests = ["//:Cargo.toml"],
 )
 use_repo(crate, "crates")
+
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+http_archive(
+    name = "bwg_gate_contract",
+    build_file_content = """
+load("@aspect_rules_js//js:defs.bzl", "js_library")
+package(default_visibility = ["//visibility:public"])
+exports_files(["package.json"])
+filegroup(
+    name = "controller_v03_fixtures",
+    srcs = ["conformance/bwg-worker-controller-0.3/fixtures.json"],
+)
+filegroup(
+    name = "worker_usb_v02_fixtures",
+    srcs = ["conformance/bwg-worker-usb-0.2/fixtures.json"],
+)
+filegroup(
+    name = "worker_possession_fixtures",
+    srcs = ["conformance/bwg-worker-possession-0.1/fixtures.json"],
+)
+filegroup(
+    name = "worker_deployment_trust_fixtures",
+    srcs = ["conformance/bwg-worker-deployment-trust-0.1/fixtures.json"],
+)
+filegroup(
+    name = "worker_deployment_trust",
+    srcs = ["conformance/bwg-worker-deployment-trust-0.1/trust.json"],
+)
+filegroup(
+    name = "ultra205_signed_capability",
+    srcs = ["conformance/bwg-worker-deployment-trust-0.1/signed-capability.json"],
+)
+js_library(
+    name = "package_json_js",
+    srcs = ["package.json"],
+)
+js_library(
+    name = "controller_v03_fixtures_js",
+    srcs = ["conformance/bwg-worker-controller-0.3/fixtures.json"],
+)
+js_library(
+    name = "worker_usb_v02_fixtures_js",
+    srcs = ["conformance/bwg-worker-usb-0.2/fixtures.json"],
+)
+js_library(
+    name = "worker_possession_fixtures_js",
+    srcs = ["conformance/bwg-worker-possession-0.1/fixtures.json"],
+)
+js_library(
+    name = "worker_deployment_trust_fixtures_js",
+    srcs = ["conformance/bwg-worker-deployment-trust-0.1/fixtures.json"],
+)
+js_library(
+    name = "worker_deployment_trust_js",
+    srcs = ["conformance/bwg-worker-deployment-trust-0.1/trust.json"],
+)
+js_library(
+    name = "ultra205_signed_capability_js",
+    srcs = ["conformance/bwg-worker-deployment-trust-0.1/signed-capability.json"],
+)
+""",
+    sha256 = "18699614b06877e80f213e310c25cb6696dbfb7094604f6143663b5ea04c0f7d",
+    strip_prefix = "bitaxe-turnstile-system-31d89dbaa228df4067cfb3ce30eabbbb57667a4f",
+    urls = [
+        "https://github.com/bright-builds-llc/bitaxe-turnstile-system/archive/31d89dbaa228df4067cfb3ce30eabbbb57667a4f.tar.gz",
+    ],
+)

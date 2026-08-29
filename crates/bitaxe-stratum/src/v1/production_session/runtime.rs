@@ -194,6 +194,30 @@ impl ProductionMiningSession {
                 let recovery_actions = self.recovery.on_pool_configuration(availability);
                 self.apply_recovery_actions(recovery_actions, &mut effects)?;
             }
+            ProductionSessionEvent::CampaignLeaseRenewed { lease, now_ms } => {
+                if self.maybe_lease.map(MiningCampaignLease::id) != Some(lease.id())
+                    || !matches!(
+                        self.campaign_state,
+                        MiningCampaignState::Armed | MiningCampaignState::Active
+                    )
+                {
+                    self.begin_terminal_safe_stop(
+                        Some(ProductionSessionBlocker::CampaignLeaseConsumed),
+                        false,
+                        &mut effects,
+                    )?;
+                } else {
+                    self.maybe_lease = Some(lease);
+                    self.maybe_active_since_ms = Some(now_ms);
+                }
+            }
+            ProductionSessionEvent::CampaignLeaseRevoked => {
+                self.begin_terminal_safe_stop(
+                    Some(ProductionSessionBlocker::CampaignLeaseConsumed),
+                    false,
+                    &mut effects,
+                )?;
+            }
             ProductionSessionEvent::TransportConnected {
                 pool,
                 transport_epoch,

@@ -90,6 +90,25 @@ pub enum MiningCampaignLeaseError {
         "mining campaign duration {duration_ms}ms is outside 1..={MAX_MINING_CAMPAIGN_DURATION_MS}ms"
     )]
     InvalidDuration { duration_ms: u64 },
+    #[error("mining campaign monotonic deadline must be nonzero")]
+    ZeroMonotonicDeadline,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MiningCampaignMonotonicDeadline(u64);
+
+impl MiningCampaignMonotonicDeadline {
+    pub fn new(expires_at_ms: u64) -> Result<Self, MiningCampaignLeaseError> {
+        if expires_at_ms == 0 {
+            return Err(MiningCampaignLeaseError::ZeroMonotonicDeadline);
+        }
+        Ok(Self(expires_at_ms))
+    }
+
+    #[must_use]
+    pub const fn milliseconds(self) -> u64 {
+        self.0
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -128,6 +147,9 @@ impl MiningCampaignDuration {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MiningCampaignStopCondition {
+    MonotonicDeadline {
+        deadline: MiningCampaignMonotonicDeadline,
+    },
     FirstSubmitResponse {
         timeout: MiningCampaignDuration,
     },
@@ -152,6 +174,9 @@ impl MiningCampaignStopCondition {
         timing: MiningCampaignTiming,
     ) -> Option<CampaignExpiration> {
         match self {
+            Self::MonotonicDeadline { deadline } => {
+                (now_ms >= deadline.milliseconds()).then_some(CampaignExpiration::LeaseConsumed)
+            }
             Self::FirstSubmitResponse { timeout } => timing
                 .maybe_prepared_at_ms
                 .is_some_and(|started| now_ms.saturating_sub(started) >= timeout.milliseconds())

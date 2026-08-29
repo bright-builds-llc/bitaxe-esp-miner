@@ -12,6 +12,7 @@ bitaxe-config = { path = "../../crates/bitaxe-config" }
 bitaxe-core = { path = "../../crates/bitaxe-core" }
 bitaxe-safety = { path = "../../crates/bitaxe-safety" }
 bitaxe-stratum = { path = "../../crates/bitaxe-stratum" }
+bitaxe-worker-control = { path = "../../crates/bitaxe-worker-control" }
 embedded-graphics.workspace = true
 embedded-hal.workspace = true
 esp-idf-svc.workspace = true
@@ -20,7 +21,9 @@ log.workspace = true
 rand.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sha2.workspace = true
 ssd1306.workspace = true
+zeroize.workspace = true
 
 [build-dependencies]
 bitaxe-api = { path = "../../crates/bitaxe-api" }
@@ -31,3 +34,9 @@ esp_idf_version = "tag:v5.5.4"
 esp_idf_tools_install_dir = "workspace"
 esp_idf_sdkconfig = "sdkconfig"
 esp_idf_sdkconfig_defaults = ["sdkconfig.defaults"]
+
+[[package.metadata.esp-idf-sys.extra_components]]
+remote_component = { name = "espressif/esp_tinyusb", version = "1.4.5" }
+
+[[package.metadata.esp-idf-sys.extra_components]]
+component_dirs = ["bwg/native"]

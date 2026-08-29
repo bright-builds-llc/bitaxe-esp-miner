@@ -6,6 +6,22 @@ use crate::v1::production_session::campaign::{
 use crate::v1::recovery_policy::{ProductionSessionBlocker, ProductionSessionPhase};
 
 impl ProductionMiningSession {
+    /// Allocates the next owner-local campaign identity without reusing a
+    /// currently active or terminally consumed lease.
+    #[must_use]
+    pub fn next_campaign_lease_id(&self) -> Option<MiningCampaignLeaseId> {
+        let active = self.maybe_lease.map(MiningCampaignLease::id);
+        let highest = match (active, self.maybe_consumed_lease_id) {
+            (Some(active), Some(consumed)) => active.raw().max(consumed.raw()),
+            (Some(active), None) => active.raw(),
+            (None, Some(consumed)) => consumed.raw(),
+            (None, None) => 0,
+        };
+        highest
+            .checked_add(1)
+            .and_then(|next| MiningCampaignLeaseId::new(next).ok())
+    }
+
     pub(super) fn is_resumable_reactivation_safety_lapse(
         &self,
         blocker: ProductionSessionBlocker,
@@ -53,6 +69,9 @@ impl ProductionMiningSession {
     }
 
     pub(super) fn finish_terminal_safe_stop(&mut self, lease_id: MiningCampaignLeaseId) {
+        self.maybe_pool_set = None;
+        self.primary = None;
+        self.fallback = None;
         self.hardware_state = MiningHardwareState::Stopped;
         self.campaign_state = MiningCampaignState::Consumed;
         self.maybe_consumed_lease_id = Some(lease_id);

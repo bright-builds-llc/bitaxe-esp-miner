@@ -34,6 +34,34 @@ js_library(
     visibility = ["//tools/automation:__pkg__"],
 )
 
+js_test(
+    name = "verify_bwg_fixture_exports_test",
+    args = [
+        "$(rootpath @bwg_gate_contract//:package_json_js)",
+        "$(rootpath @bwg_gate_contract//:controller_v03_fixtures_js)",
+        "$(rootpath @bwg_gate_contract//:worker_usb_v02_fixtures_js)",
+        "$(rootpath @bwg_gate_contract//:worker_possession_fixtures_js)",
+        "$(rootpath @bwg_gate_contract//:worker_deployment_trust_fixtures_js)",
+        "$(rootpath @bwg_gate_contract//:worker_deployment_trust_js)",
+        "$(rootpath @bwg_gate_contract//:ultra205_signed_capability_js)",
+        "$(rootpath //firmware/bitaxe:bwg_deployment_trust_js)",
+        "$(rootpath //firmware/bitaxe:bwg_ultra205_capability_js)",
+    ],
+    chdir = ".",
+    data = [
+        "@bwg_gate_contract//:package_json_js",
+        "@bwg_gate_contract//:controller_v03_fixtures_js",
+        "@bwg_gate_contract//:worker_usb_v02_fixtures_js",
+        "@bwg_gate_contract//:worker_possession_fixtures_js",
+        "@bwg_gate_contract//:worker_deployment_trust_fixtures_js",
+        "@bwg_gate_contract//:worker_deployment_trust_js",
+        "@bwg_gate_contract//:ultra205_signed_capability_js",
+        "//firmware/bitaxe:bwg_deployment_trust_js",
+        "//firmware/bitaxe:bwg_ultra205_capability_js",
+    ],
+    entry_point = "verify-bwg-fixture-exports.mjs",
+)
+
 js_binary(
     name = "api_command_effects_stratum_pool",
     chdir = ".",

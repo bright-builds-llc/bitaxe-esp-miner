@@ -39,7 +39,8 @@ pub(super) fn run_owner(
                 ProductionSessionWakeup::ShutdownRequested
             ))
         );
-        let now_ms = elapsed_millis(started_at);
+        let schedule_now_ms = elapsed_millis(started_at);
+        let now_ms = crate::runtime_uptime::millis();
         let message_reads_readiness = matches!(&maybe_message, Some(OwnerInboxMessage::Wake(_)));
         let message_is_observation_wakeup = matches!(
             &maybe_message,
@@ -55,7 +56,12 @@ pub(super) fn run_owner(
                 TaskWatchdogOwnerSubphase::InboxMapping,
             );
             let snapshot = session.snapshot();
-            let event = adapter.event_from_inbox(message, now_ms, &snapshot);
+            let event = adapter.event_from_inbox(
+                message,
+                now_ms,
+                &snapshot,
+                session.next_campaign_lease_id(),
+            );
             drive_session(
                 &mut session,
                 &mut adapter,
@@ -66,7 +72,7 @@ pub(super) fn run_owner(
         }
         if pending_observations_changed && !message_is_observation_wakeup && !shutdown_requested {
             record_owner_phase(TaskWatchdogOwnerPhase::HandlingObservation);
-            let observation_now_ms = elapsed_millis(started_at);
+            let observation_now_ms = crate::runtime_uptime::millis();
             let snapshot = session.snapshot();
             let event = adapter.wake_event(
                 Some(ProductionSessionWakeup::ObservationsChanged),
@@ -82,7 +88,7 @@ pub(super) fn run_owner(
                 observation_now_ms,
             );
         }
-        if readiness_schedule.is_due(now_ms) {
+        if readiness_schedule.is_due(schedule_now_ms) {
             record_owner_phase(TaskWatchdogOwnerPhase::HandlingReadiness);
             if !message_reads_readiness {
                 let snapshot = session.snapshot();
@@ -95,7 +101,7 @@ pub(super) fn run_owner(
                     now_ms,
                 );
             }
-            if readiness_schedule.advance_past(now_ms).is_err() {
+            if readiness_schedule.advance_past(schedule_now_ms).is_err() {
                 log::error!(
                     "production_mining_session=fail_closed reason=readiness_deadline_overflow"
                 );
@@ -118,6 +124,7 @@ pub(super) fn run_owner(
                 return;
             }
         }
+        adapter.complete_reply(&session.snapshot());
         record_owner_phase(TaskWatchdogOwnerPhase::PublishingCampaignStatus);
         if let Err(error) = adapter.publish_campaign_status(&session.snapshot(), now_ms) {
             log::error!(

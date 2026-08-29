@@ -1,4 +1,5 @@
 use std::fmt;
+use zeroize::Zeroize;
 
 use bitaxe_asic::bm1366::{
     command::VersionMask, production::Bm1366ProductionCommand, result::Bm1366ValidJobIds,
@@ -24,6 +25,12 @@ use crate::v1::state::MiningRuntimeState;
 pub struct ProductionPoolEndpoint {
     pub host: String,
     pub port: u16,
+}
+
+impl Drop for ProductionPoolEndpoint {
+    fn drop(&mut self) {
+        self.host.zeroize();
+    }
 }
 
 impl fmt::Debug for ProductionPoolEndpoint {
@@ -149,6 +156,11 @@ pub enum ProductionSessionEvent {
         now_ms: u64,
     },
     PoolConfigurationLoaded(Option<Box<ProductionPoolSet>>),
+    CampaignLeaseRenewed {
+        lease: super::MiningCampaignLease,
+        now_ms: u64,
+    },
+    CampaignLeaseRevoked,
     TransportConnected {
         pool: ProductionPool,
         transport_epoch: ProductionTransportEpoch,
@@ -235,6 +247,8 @@ impl fmt::Debug for ProductionSessionEvent {
                 .finish(),
             other => formatter.write_str(match other {
                 Self::Wake { .. } => "ProductionSessionEvent::Wake",
+                Self::CampaignLeaseRenewed { .. } => "ProductionSessionEvent::CampaignLeaseRenewed",
+                Self::CampaignLeaseRevoked => "ProductionSessionEvent::CampaignLeaseRevoked",
                 Self::TransportConnected { .. } => "ProductionSessionEvent::TransportConnected",
                 Self::TransportFailed { .. } => "ProductionSessionEvent::TransportFailed",
                 Self::TransportClosed { .. } => "ProductionSessionEvent::TransportClosed",

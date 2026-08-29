@@ -9,6 +9,7 @@ members = [
     "crates/bitaxe-safety",
     "crates/bitaxe-stratum",
     "crates/bitaxe-test-support",
+    "crates/bitaxe-worker-control",
     "firmware/bitaxe",
     "tools/flash",
     "tools/device-session",
@@ -26,6 +27,7 @@ default-members = [
     "crates/bitaxe-safety",
     "crates/bitaxe-stratum",
     "crates/bitaxe-test-support",
+    "crates/bitaxe-worker-control",
     "tools/flash",
     "tools/device-session",
     "tools/http-transport",
@@ -41,11 +43,14 @@ license = "MIT"
 
 [workspace.dependencies]
 anyhow = "1.0.102"
+base64 = "0.22.1"
 camino = "1.2.3"
 clap = { version = "4.6.1", features = ["derive"] }
+curve25519-dalek = "5.0.0"
 embuild = "0.33.1"
 embedded-graphics = "0.8.2"
 embedded-hal = "1.0.0"
+ed25519-dalek = { version = "3.0.0", default-features = false, features = ["alloc", "zeroize"] }
 esp-idf-svc = "0.52.1"
 esp-idf-sys = "0.37.2"
 log = "0.4"
@@ -55,7 +60,7 @@ rand = { version = "0.8.5", default-features = false }
 secp256k1 = { version = "0.28.2", default-features = false, features = ["alloc"] }
 rustls = { version = "0.23.42", default-features = false, features = ["ring", "std", "tls12"] }
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.150"
+serde_json = { version = "1.0.150", features = ["raw_value"] }
 schemars = { version = "1.2.2", features = ["derive"] }
 sha2 = "0.11.0"
 ssd1306 = "0.10.0"
@@ -63,3 +68,7 @@ tempfile = "3.27.0"
 thiserror = "2.0.18"
 tungstenite = { version = "0.30.0", default-features = false, features = ["handshake"] }
 webpki-roots = "1.0.9"
+zeroize = { version = "1.8.2", features = ["derive", "serde"] }
+
+[patch.crates-io]
+esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf-sys.git", rev = "f616563a87595032f06f1fec95b6816b1c11135c" }

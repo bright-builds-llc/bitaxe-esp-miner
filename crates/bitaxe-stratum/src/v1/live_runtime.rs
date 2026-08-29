@@ -7,6 +7,7 @@
 //! - Parity checklist rows `STR-008`, `STR-009`, `STR-011`, and `SAFE-012`
 
 use std::fmt;
+use zeroize::Zeroize;
 
 use bitaxe_asic::bm1366::work::Bm1366JobId;
 
@@ -30,6 +31,13 @@ use crate::v1::submit_response::{RedactedSubmitRejectReason, SubmitClassificatio
 pub struct LivePoolCredentials {
     pub username: String,
     pub password: String,
+}
+
+impl Drop for LivePoolCredentials {
+    fn drop(&mut self) {
+        self.username.zeroize();
+        self.password.zeroize();
+    }
 }
 
 impl fmt::Debug for LivePoolCredentials {

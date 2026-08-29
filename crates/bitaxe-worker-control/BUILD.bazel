@@ -1,0 +1,98 @@
+load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+
+rust_library(
+    name = "bitaxe_worker_control",
+    srcs = glob(["src/**/*.rs"]),
+    crate_name = "bitaxe_worker_control",
+    edition = "2021",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@crates//:base64",
+        "@crates//:curve25519-dalek",
+        "@crates//:ed25519-dalek",
+        "@crates//:serde",
+        "@crates//:serde_json",
+        "@crates//:sha2",
+        "@crates//:thiserror",
+        "@crates//:zeroize",
+    ],
+)
+
+rust_test(
+    name = "authorization_tests",
+    srcs = ["tests/authorization.rs"],
+    crate_name = "bitaxe_worker_control_authorization_tests",
+    edition = "2021",
+    deps = [
+        ":bitaxe_worker_control",
+        "@crates//:base64",
+        "@crates//:curve25519-dalek",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_test(
+    name = "controller_tests",
+    srcs = ["tests/controller.rs"],
+    crate_name = "bitaxe_worker_control_controller_tests",
+    edition = "2021",
+    deps = [
+        ":bitaxe_worker_control",
+        "@crates//:base64",
+        "@crates//:serde_json",
+    ],
+)
+
+rust_test(
+    name = "identity_store_tests",
+    srcs = ["tests/identity_store.rs"],
+    crate_name = "bitaxe_worker_control_identity_store_tests",
+    edition = "2021",
+    deps = [":bitaxe_worker_control"],
+)
+
+rust_test(
+    name = "framing_tests",
+    srcs = ["tests/framing.rs"],
+    crate_name = "bitaxe_worker_control_framing_tests",
+    edition = "2021",
+    deps = [":bitaxe_worker_control"],
+)
+
+rust_test(
+    name = "possession_tests",
+    srcs = ["tests/possession.rs"],
+    crate_name = "bitaxe_worker_control_possession_tests",
+    edition = "2021",
+    deps = [
+        ":bitaxe_worker_control",
+        "@crates//:base64",
+        "@crates//:serde_json",
+        "@crates//:sha2",
+    ],
+)
+
+rust_test(
+    name = "gate_conformance_tests",
+    srcs = ["tests/gate_conformance.rs"],
+    crate_name = "bitaxe_worker_control_gate_conformance_tests",
+    data = [
+        "@bwg_gate_contract//:controller_v03_fixtures",
+        "@bwg_gate_contract//:worker_usb_v02_fixtures",
+        "@bwg_gate_contract//:worker_possession_fixtures",
+        "@bwg_gate_contract//:worker_deployment_trust_fixtures",
+        "//firmware/bitaxe:bwg_usb_native_source",
+    ],
+    edition = "2021",
+    env = {
+        "BWG_CONTROLLER_FIXTURES": "$(rootpath @bwg_gate_contract//:controller_v03_fixtures)",
+        "BWG_DEPLOYMENT_FIXTURES": "$(rootpath @bwg_gate_contract//:worker_deployment_trust_fixtures)",
+        "BWG_POSSESSION_FIXTURES": "$(rootpath @bwg_gate_contract//:worker_possession_fixtures)",
+        "BWG_USB_FIXTURES": "$(rootpath @bwg_gate_contract//:worker_usb_v02_fixtures)",
+        "BWG_USB_NATIVE_SOURCE": "$(rootpath //firmware/bitaxe:bwg_usb_native_source)",
+    },
+    deps = [
+        ":bitaxe_worker_control",
+        "@crates//:serde_json",
+    ],
+)

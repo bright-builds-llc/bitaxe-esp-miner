@@ -112,6 +112,9 @@ pub fn collect_api_snapshot() -> ApiSnapshot {
 }
 
 /// Collects only the platform facts needed to attest boot readiness.
+// Keep a distinct frame so the release build can enforce its boot-readiness
+// stack budget instead of silently losing that audit boundary to inlining.
+#[inline(never)]
 pub fn collect_platform_readiness_snapshot() -> PlatformSnapshot {
     let platform_identity = crate::platform_identity::collect();
     collect_platform_snapshot(PlatformSnapshot::safe_ultra_205(), &platform_identity)

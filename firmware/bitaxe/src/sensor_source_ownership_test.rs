@@ -110,7 +110,8 @@ fn runtime_owners_use_bounded_shared_cadence_and_queue_contracts() {
     ));
     assert!(PRODUCTION_OWNER_LOOP_SOURCE
         .contains("PeriodicDeadline::new(0, PRODUCTION_REREAD_CADENCE_MS)"));
-    assert!(PRODUCTION_OWNER_LOOP_SOURCE.contains("readiness_schedule.is_due(now_ms)"));
+    assert!(PRODUCTION_OWNER_LOOP_SOURCE.contains("readiness_schedule.is_due(schedule_now_ms)"));
+    assert!(PRODUCTION_OWNER_LOOP_SOURCE.contains("let now_ms = crate::runtime_uptime::millis()"));
     assert!(PRODUCTION_SESSION_SOURCE.contains("mpsc::sync_channel(NOTIFICATION_CAPACITY)"));
     assert!(PRODUCTION_ASIC_WORKER_SOURCE.contains("mpsc::sync_channel(COMMAND_CAPACITY)"));
     assert!(PRODUCTION_ASIC_WORKER_SOURCE.contains(

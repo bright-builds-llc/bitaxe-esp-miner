@@ -324,6 +324,9 @@ fn start_runtime_services(startup_diagnostics: anyhow::Result<()>) -> anyhow::Re
     if let Err(error) = statistics_runtime::start() {
         log::warn!("statistics_runtime=unavailable reason=thread_spawn_failed error={error:#}");
     }
+    if let Err(error) = crate::bwg_worker_usb::start() {
+        log::warn!("bwg_worker_control=unavailable category=startup_failed error={error:#}");
+    }
     Ok(boot_validation_ready)
 }
 

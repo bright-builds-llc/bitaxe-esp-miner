@@ -51,8 +51,10 @@ impl DeterministicProductionSessionAdapter {
                 | ProductionSessionEvent::HardwarePrepared { now_ms, .. }
                 | ProductionSessionEvent::HardwarePreparationFailed { now_ms, .. }
                 | ProductionSessionEvent::HardwareSafeStopConfirmed { now_ms, .. }
-                | ProductionSessionEvent::EffectFailed { now_ms, .. } => *now_ms,
-                ProductionSessionEvent::PoolConfigurationLoaded(_) => 0,
+                | ProductionSessionEvent::EffectFailed { now_ms, .. }
+                | ProductionSessionEvent::CampaignLeaseRenewed { now_ms, .. } => *now_ms,
+                ProductionSessionEvent::PoolConfigurationLoaded(_)
+                | ProductionSessionEvent::CampaignLeaseRevoked => 0,
             };
             let effects = self
                 .session
@@ -176,6 +178,17 @@ fn active_duration_lease(id: u64, duration_ms: u64) -> MiningCampaignLease {
         MiningCampaignStopCondition::ActiveDuration {
             duration: MiningCampaignDuration::new(duration_ms)
                 .expect("test duration should be valid"),
+        },
+    )
+}
+
+fn monotonic_deadline_lease(id: u64, deadline_ms: u64) -> MiningCampaignLease {
+    MiningCampaignLease::new(
+        MiningCampaignLeaseId::new(id).expect("test lease id should be valid"),
+        profile(),
+        MiningCampaignStopCondition::MonotonicDeadline {
+            deadline: MiningCampaignMonotonicDeadline::new(deadline_ms)
+                .expect("test deadline should be valid"),
         },
     )
 }
@@ -327,6 +340,7 @@ fn dispatched_observation(
 }
 
 mod block_found;
+mod bwg;
 mod campaign_timing;
 mod job_transition;
 mod lifecycle;

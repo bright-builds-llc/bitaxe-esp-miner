@@ -15,6 +15,8 @@ js_library(
 
 exports_files([
     "BUILD.bazel",
+    "bwg/deployment-trust.json",
+    "bwg/ultra205-capability.json",
     "partitions-ultra205.csv",
     "sdkconfig.defaults",
     "static/recovery_page.html",
@@ -27,6 +29,24 @@ exports_files([
     "static/www/assets/release.json",
     "static/www/assets/ui-core.js",
 ])
+
+filegroup(
+    name = "bwg_usb_native_source",
+    srcs = ["bwg/native/bwg_usb.c"],
+    visibility = ["//crates/bitaxe-worker-control:__pkg__"],
+)
+
+js_library(
+    name = "bwg_deployment_trust_js",
+    srcs = ["bwg/deployment-trust.json"],
+    visibility = ["//scripts:__pkg__"],
+)
+
+js_library(
+    name = "bwg_ultra205_capability_js",
+    srcs = ["bwg/ultra205-capability.json"],
+    visibility = ["//scripts:__pkg__"],
+)
 
 js_library(
     name = "safe10_evidence_sources",
@@ -169,6 +189,7 @@ filegroup(
         "//crates/bitaxe-safety:bitaxe_safety",
         "//crates/bitaxe-stratum:bitaxe_stratum",
     ] + glob([
+        "bwg/**",
         "src/**/*.rs",
         "static/**",
     ]) + [
@@ -304,6 +325,22 @@ rust_test(
     ],
     crate_name = "bap_source_ownership_tests",
     crate_root = "src/bap_source_ownership_test.rs",
+    edition = "2021",
+)
+
+rust_test(
+    name = "bwg_worker_source_ownership_tests",
+    srcs = [
+        "src/bwg_worker_nvs.rs",
+        "src/bwg_worker_session.rs",
+        "src/bwg_worker_source_ownership_test.rs",
+        "src/bwg_worker_usb.rs",
+        "src/main.rs",
+        "src/startup.rs",
+    ],
+    compile_data = ["bwg/native/bwg_usb.c"],
+    crate_name = "bwg_worker_source_ownership_tests",
+    crate_root = "src/bwg_worker_source_ownership_test.rs",
     edition = "2021",
 )
 

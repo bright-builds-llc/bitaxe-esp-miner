@@ -12,6 +12,7 @@ is required input, but it does not satisfy release compliance by itself.
 | Cargo lockfile | `Cargo.lock` | crates.io package metadata mirrored into the generated report | Required source for dependency version evidence. |
 | Workspace Rust crates | `crates/*`, `firmware/bitaxe`, `tools/flash`, `tools/parity`, `tools/xtask` | Root workspace MIT posture plus per-crate dependencies in `Cargo.lock` | Original project code is MIT-first unless a file is explicitly marked otherwise. |
 | ESP-IDF Rust bindings in Cargo graph | `esp-idf-sys 0.37.2`, `esp-idf-hal 0.46.2`, `esp-idf-svc 0.52.1` | Cargo metadata and `docs/release/cargo-about.html` | Covered as Cargo crates; linked ESP-IDF components are reviewed below. |
+| Worker cryptography | `ed25519-dalek 3.0.0`, `curve25519-dalek 5.0.0`, `zeroize 1.9.0` | Packaged crate metadata and license files plus `docs/release/cargo-about.html` | MIT OR Apache-2.0 dependencies used for possession and Work Lease verification; accepted for BWG firmware. |
 | Stratum V2 Noise stack | `noise_sv2 1.4.2`, `secp256k1 0.28.2`, `secp256k1-sys 0.9.2`, `bitcoin_hashes 0.13.1`, `hex-conservative 0.1.2` | Packaged crate metadata and license files plus `docs/release/cargo-about.html` | `noise_sv2` is MIT OR Apache-2.0; the secp256k1 support crates are CC0-1.0. Accepted for the STR-005 firmware and host fixture after exact-version source review. |
 | Web PKI root data | `webpki-roots 1.0.9` | Packaged crate metadata and `LICENSE` plus `docs/release/cargo-about.html` | CDLA-Permissive-2.0 data license; existing host TLS dependency is covered by the full-workspace report. |
 
@@ -41,10 +42,11 @@ is required input, but it does not satisfy release compliance by itself.
 | Input | Path or pin | License source | Release status |
 | --- | --- | --- | --- |
 | ESP-IDF version | `v5.5.4` through `esp-idf-sys` metadata | ESP-IDF source checkout and component notices | Required for firmware image source-availability review. |
-| ESP-IDF Rust sys crate | `esp-idf-sys 0.37.2` | `docs/release/cargo-about.html` plus `esp-idf-sys` metadata | Cargo license covered; native ESP-IDF download reviewed separately. |
+| ESP-IDF Rust sys crate | `esp-idf-sys 0.37.2` at `f616563a87595032f06f1fec95b6816b1c11135c` | `docs/release/cargo-about.html` plus pinned upstream Git metadata | Cargo license covered; exact upstream patch supplies the TinyUSB bindgen blocklist while native ESP-IDF remains reviewed separately. |
 | ESP-IDF HAL crate | `esp-idf-hal 0.46.2` | `docs/release/cargo-about.html` | Cargo license covered. |
 | ESP-IDF service crate | `esp-idf-svc 0.52.1` | `docs/release/cargo-about.html` | Cargo license covered. |
 | ESP-IDF components | Wi-Fi, HTTP server, NVS, SPIFFS, OTA, partition table, FreeRTOS, logging, and C runtime components selected by firmware build | ESP-IDF component notices from the pinned source tree | Release image review must preserve required notices and source references. |
+| ESP TinyUSB device stack | `espressif/esp_tinyusb 1.4.5`, resolving `espressif/tinyusb 0.21.0~1` | `components_esp32s3.lock` and ESP Component Registry package licenses | Apache-2.0 integration plus MIT TinyUSB stack; exact component hashes are locked for the BWG vendor/CDC composite device. |
 
 - Owner: firmware release.
 - Follow-up: package evidence must record the ESP-IDF checkout/tag and the
