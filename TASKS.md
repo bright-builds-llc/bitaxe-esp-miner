@@ -4108,11 +4108,9 @@ attribute the result to persisted replay state. The scenario requires a new
 metadata-only, non-signing diagnostic seam that distinguishes durable replay
 from context rejection, and that seam is outside the standing authorization.
 
-## Future
-
 ### task-str005-noise-auth-205 | 2026-08-28 | Prove Ultra 205 Noise authentication
 
-- [ ] After accepted TCP payload evidence, create a separate immutable plan.
+- [x] After accepted TCP payload evidence, create a separate immutable plan.
 - [ ] Re-prove TCP delivery, then complete act one, act two, authenticated
       Noise, and one encrypted diagnostic proof on the exact Ultra 205 peer.
 - [ ] Restore recovery-006 exactly and independently validate the closed
@@ -4120,14 +4118,24 @@ from context rejection, and that seam is outside the standing authorization.
 
 Depends on: completed `task-str005-tcp-payload-205` with accepted evidence.
 
-Authorization: software work only until its immutable plan exists. Its
-task-local hardware namespace begins at `diagnostic-001`. Channel/job handling,
-ASIC work, share submission, and mining remain excluded.
+Plan: `docs/parity/work-plans/20260829T143226Z-STR-005-NOISE-AUTH/PLAN.md`
+
+Authorization: plan and implementation commits must be separately verified and
+pushed before hardware. The exact ordinal-001 preflight/start commands, local
+same-subnet fixture, USB flash/monitor, protected evidence, recovery-006
+restoration, recovery-only continuation, signature-bounded retry rules, and
+stop conditions are defined by the immutable plan. The task-local hardware
+namespace begins at `diagnostic-001`. Channel/job handling, ASIC work, share
+submission, mining, external pools, direct UART/pins, raw NVS/coredump access,
+fault injection, OTA, erase, arbitrary writes, and STR-005 promotion remain
+excluded.
 
 Verification: Pending.
 
 Completion review: Pending. STR-005 remains `implemented` until the final
 promotion task succeeds.
+
+## Future
 
 ### task-str005-v2-channel-job-205 | 2026-08-28 | Prove Ultra 205 V2 channel and job receipt
 
