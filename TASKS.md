@@ -292,6 +292,29 @@ cleanup, non-promotion, and no-unchanged-retry boundaries remain unchanged.
 Replay contains only the existing value-free public marker schema and stops
 before the bounded monitor horizon.
 
+Diagnostic-008 outcome: `complete_capture_fix_and_stop_transport_boundary`.
+The first isolated invocation stopped before effects because a committed
+recovery projection checked out at mode `0644`; applying its required local
+`0600` mode made the full read-only preflight pass. The admitted hardware run
+then retained one original plus all 24 replayed copies of every completed
+marker: monitor armed, resolve, exact-peer connect, zero-millisecond local
+buffer write, payload sent, write-half-close, and terminal `receipt`. Connect
+took 257 ms. This proves late monitor attachment is fixed and that
+`shutdown(Write)` succeeded in this run. The exact-peer fixture nevertheless
+timed out with zero of 64 bytes, no extras, and no receipt, so payload delivery
+remains unproved and no public projection was published.
+
+The diagnostic's inline restore stopped before writes because the isolated
+worktree's generated ESP-IDF tools canonicalized outside that workspace. Two
+recovery-only continuations also stopped before writes while successively
+identifying the local esptool-containment and NVS-Python dependencies. After
+installing real ignored local copies of those exact managed tools, the
+recovery-only supervisor completed exact recovery-006 identity/settings,
+`mineonboot=false`, inactive zero-work runtime, fresh device admission, and
+cleanup. No unchanged hardware diagnostic retry is authorized. The next work
+must explain how the ESP-IDF socket can report a complete write and successful
+write half-close while the admitted fixture receives zero bytes.
+
 Verification: diagnostic-001 stopped before effects at
 `timeout:fixture_ready`; its regression-backed fixture-timeout fix passed every
 gate and was pushed as `35ae9cb33458ad6c76f6eedef5d0538720d80367`.
@@ -303,8 +326,9 @@ Current review: the earlier terminal closure is superseded by the user's
 standing iterative hardware-debug authorization and successful recovery-002.
 Exact restoration is now proved; TCP payload delivery remains the sole open
 child objective. Keep this task active at the monitor-capture boundary after
-diagnostic-007 and through diagnostic-008. Noise, V2 messages, ASIC work,
-mining, and STR-005 promotion remain unauthorized. STR-005
+diagnostic-008's resolved capture boundary and the remaining zero-byte
+transport boundary. Noise, V2 messages, ASIC work, mining, and STR-005
+promotion remain unauthorized. STR-005
 remains `implemented` with `unit,golden,workflow`.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner

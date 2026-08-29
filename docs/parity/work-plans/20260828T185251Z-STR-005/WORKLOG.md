@@ -342,3 +342,32 @@
 - Blocker or next safe action: after the shared worktree is clean, rebuild the
   exact pushed package, capture fresh one-board admission, and invoke
   diagnostic-008 once. Do not absorb or disturb the concurrent task's files.
+
+## 2026-08-29T02:45:50Z | Diagnostic-008 hardware and recovery
+
+- Source commit: `6885161ca05d932b052cbbab5e0a232239a626d2`
+- Actions: built the exact package in a clean isolated worktree, passed fresh
+  one-board admission and full read-only preflight, invoked diagnostic-008
+  once, preserved private evidence, completed recovery-only remediation, and
+  removed the temporary worktree and credential copies.
+- Verification: the receive-only reader retained 25 identical copies of each
+  completed marker—one original and all 24 bounded replays—including
+  `write_half_closed` and terminal `receipt`. Connect took 257 ms and the local
+  write reported 0 ms. The exact-peer fixture still timed out with zero of 64
+  bytes, no extras, and no receipt. The first restore and two recovery-only
+  attempts stopped before writes on isolated generated-tool containment and
+  NVS-Python availability. With exact managed tools copied locally under the
+  ignored workspace path, recovery returned accepted with exact identity and
+  settings, `mineonboot=false`, inactive zero-work runtime, final device
+  admission, and complete cleanup.
+- Evidence: protected primary roots
+  `scratch/str005-tcp-payload/diagnostic-008`,
+  `scratch/str005-tcp-payload/detector-diagnostic-008`, and the three
+  `recovery-after-008-*` roots; no protected values or raw artifacts are
+  promoted. No public projection exists.
+- Outcome: capture fix verified on hardware; diagnostic-007's missing-marker
+  boundary is closed. Payload delivery remains blocked at a stronger boundary:
+  successful local write and TCP write-half-close with zero fixture bytes.
+- Blocker or next safe action: return to software diagnosis of the zero-byte
+  data path. Do not retry diagnostic-008 unchanged or broaden into Noise, V2
+  messages, mining, ASIC, fan, voltage, or other hardware control.
