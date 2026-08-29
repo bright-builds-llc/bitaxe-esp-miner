@@ -40,6 +40,26 @@
   rerun passed.
 - Hardware/network effects: none.
 - Outcome: implementation is ready for its separate commit and push.
+
+## 2026-08-29T17:05:00Z | Diagnostic-001 consumed; recovery pending
+
+- Source commit: `0b690aa2`.
+- Admission: the canonical exact-HEAD package, fresh one-board detector, and
+  no-effect recovery/readiness preflight all passed.
+- Hardware result: ordinal-001 stopped at `hardware_blocked:restoration`.
+  The exact package flash completed, but the post-flash USB sampler never
+  observed a stable re-enumerated accessible session. The diagnostic child
+  therefore exited before monitor attachment; the fixture observed zero
+  connections and no TCP, act-one, act-two, Noise, or encrypted-proof evidence.
+- Recovery state: a fresh detector after the stopped supervisor found zero
+  serial ports. Recovery root `scratch/str005-noise-auth/recovery-001` remains
+  absent and unconsumed. No recovery command or second diagnostic was run.
+- Evidence/status: no public projection was published, no STR-005 status
+  changed, and no task checkbox was promoted from hardware evidence.
+- Next safe action: physically restore visibility through the provided USB and
+  barrel-power connectors, obtain fresh exact one-board detection, then run
+  only recovery-001. Do not rerun diagnostic-001 or start another Noise fixture
+  before exact recovery-006 restoration is proved.
 - Next safe action: verify, commit, and push this immutable plan separately;
   then implement the pre-agreed TDD seams without hardware effects.
 

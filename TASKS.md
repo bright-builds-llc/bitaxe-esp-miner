@@ -4137,6 +4137,16 @@ bounded fixture inventory, tuple join, hardened recovery/finalizer path, closed
 projection validator, and command surface are software-complete. Full
 repository verification and the exact hardware ordinal remain pending.
 
+Diagnostic-001 outcome: `hardware_blocked:restoration`. Exact pushed source
+`0b690aa2` passed package, fresh detector, and no-effect preflight admission,
+then flashed successfully but never regained a stable accessible USB session.
+The diagnostic stopped before monitor attachment; the fixture observed zero
+connections, so it produced no TCP or Noise evidence. Fresh post-run detection
+found zero serial ports. Recovery-001 remains absent and unconsumed; physically
+restore the provided USB/barrel-power connection, run fresh detector admission,
+then execute recovery-001 only. No diagnostic retry is eligible until exact
+recovery-006 restoration and cleanup are proved.
+
 Completion review: Pending. STR-005 remains `implemented` until the final
 promotion task succeeds.
 
