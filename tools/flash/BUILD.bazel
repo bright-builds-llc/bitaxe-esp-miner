@@ -258,6 +258,7 @@ rust_binary(
         "//:docs/parity/work-plans/20260826T210025Z-STR-005-NOISE-DIAGNOSTIC/PLAN.md",
         "//:docs/parity/work-plans/20260828T030951Z-STR-005-PRECONNECT-NOISE-VERIFY/PLAN.md",
         "//:docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md",
+        "//:docs/parity/work-plans/20260829T032813Z-STR-005-CONNECTION-IDENTITY/PLAN.md",
     ],
     crate_name = "bitaxe_flash",
     edition = "2021",
@@ -287,5 +288,6 @@ rust_test(
     data = [
         "//:docs/parity/work-plans/20260826T135721Z-STR-005-INACTIVE-RESTORATION/PLAN.md",
         "//:docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md",
+        "//:docs/parity/work-plans/20260829T032813Z-STR-005-CONNECTION-IDENTITY/PLAN.md",
     ],
 )

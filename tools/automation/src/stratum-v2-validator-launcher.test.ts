@@ -115,10 +115,12 @@ async function fixture(root: string): Promise<{
   const bundle = path.join(root, "bundle.json");
   const projection = path.join(root, "projection.json");
   await writeProtected(bundle, bundleDocument);
-  await writeProtected(
+  await writeFile(
     projection,
     `${JSON.stringify(projectRestoreReadiness(bundleValue, bundleDocument, 1, true), null, 2)}\n`,
+    { mode: 0o644 },
   );
+  await chmod(projection, 0o644);
   return { bundle, projection };
 }
 

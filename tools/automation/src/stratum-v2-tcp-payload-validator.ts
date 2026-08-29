@@ -8,15 +8,22 @@ const evaluatorSources = [
   "firmware/bitaxe/src/settings_adapter/tcp_payload_diagnostic.rs",
   "firmware/bitaxe/src/startup.rs",
   "firmware/bitaxe/src/stratum_v2_tcp_payload_diagnostic.rs",
+  "firmware/bitaxe/src/stratum_v2_tcp_payload_replay.rs",
+  "tools/automation/src/stratum-v2-tcp-connection.ts",
   "tools/automation/src/stratum-v2-tcp-fixture.ts",
   "tools/automation/src/stratum-v2-tcp-payload-markers.ts",
   "tools/automation/src/stratum-v2-tcp-payload-process.ts",
+  "tools/automation/src/stratum-v2-tcp-projection.ts",
   "tools/automation/src/stratum-v2-tcp-payload-validator.ts",
   "tools/automation/src/stratum-v2-tcp-payload.ts",
+  "tools/automation/src/stratum-v2-tcp-recovery-tooling.ts",
+  "tools/automation/src/stratum-v2-tcp-recovery-readiness.ts",
+  "tools/automation/src/stratum-v2-tcp-restore-preflight.ts",
   "tools/flash/src/tcp_payload_diagnostic.rs",
   "tools/flash/src/wifi.rs",
   "tools/stratum-v2-fixture/src/main.rs",
   "tools/stratum-v2-fixture/src/tcp_payload.rs",
+  "tools/stratum-v2-fixture/src/tcp_payload_inventory.rs",
 ] as const;
 
 export async function tcpPayloadEvaluatorIdentity(workspace: string): Promise<string> {
@@ -47,10 +54,18 @@ export async function validateTcpPayloadDiagnosticProjection(
   const projection = object(JSON.parse(await readFile(candidate, "utf8")));
   const stages = object(projection["stages"]);
   const timings = object(projection["timings"]);
+  const connection = object(projection["connection"]);
+  const send = object(projection["send"]);
   const fixture = object(projection["fixture"]);
   const restoration = object(projection["restoration"]);
   const accepted = projection["status"] === "accepted";
-  if (projection["schema_version"] !== "bitaxe-stratum-v2-tcp-payload-projection-v1"
+  const socketErrors = new Set([
+    "none", "would_block", "not_connected", "out_of_memory", "invalid_input",
+    "unsupported", "connection_aborted", "connection_reset", "broken_pipe", "timed_out",
+    "query_failed", "other", "unavailable",
+  ]);
+  const encoded = JSON.stringify(projection);
+  if (projection["schema_version"] !== "bitaxe-stratum-v2-tcp-payload-projection-v2"
     || projection["board"] !== 205
     || projection["diagnostic_ordinal"] !== expectedOrdinal
     || projection["source_commit"] !== expectedSource
@@ -73,7 +88,24 @@ export async function validateTcpPayloadDiagnosticProjection(
     || restoration["mining_inactive"] !== true
     || restoration["zero_work"] !== true
     || restoration["usb_cleanup_complete"] !== true
-    || restoration["owned_processes_remaining"] !== 0) {
+    || restoration["owned_processes_remaining"] !== 0
+    || typeof connection["tuple_match"] !== "boolean"
+    || typeof connection["local_marker_consistent"] !== "boolean"
+    || typeof connection["correlated_candidate_found"] !== "boolean"
+    || typeof connection["candidate_overflow"] !== "boolean"
+    || typeof connection["exact_peer_connection_count"] !== "number"
+    || Number(connection["exact_peer_connection_count"]) < 0
+    || Number(connection["exact_peer_connection_count"]) > 3
+    || typeof connection["other_exact_peer_connection_count"] !== "number"
+    || !["std", "lwip_direct"].includes(String(send["adapter"] ?? ""))
+    || typeof send["reported_bytes"] !== "number"
+    || !Number.isInteger(send["reported_bytes"])
+    || Number(send["reported_bytes"]) < 0
+    || Number(send["reported_bytes"]) > 64
+    || !socketErrors.has(String(send["pre_send_error"] ?? ""))
+    || !socketErrors.has(String(send["post_send_error"] ?? ""))
+    || !socketErrors.has(String(send["post_shutdown_error"] ?? ""))
+    || /local_port|remote_port|tcp_candidates/u.test(encoded)) {
     throw new Error("diagnostic projection contract mismatch");
   }
   const requiredStages = [
@@ -98,6 +130,14 @@ export async function validateTcpPayloadDiagnosticProjection(
     || fixture["payload_read_category"] !== "complete"
     || fixture["extra_bytes_received"] !== 0
     || fixture["receipt_ack_sent"] !== true
+    || connection["tuple_match"] !== true
+    || connection["local_marker_consistent"] !== true
+    || connection["exact_peer_connection_count"] !== 1
+    || connection["other_exact_peer_connection_count"] !== 0
+    || connection["candidate_overflow"] !== false
+    || connection["correlated_candidate_found"] !== true
+    || send["adapter"] !== "std"
+    || send["reported_bytes"] !== 64
     || projection["terminal_category"] !== "accepted")) {
     throw new Error("accepted diagnostic evidence is incomplete");
   }

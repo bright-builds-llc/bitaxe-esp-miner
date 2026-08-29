@@ -55,3 +55,28 @@ export function tcpPayloadTerminalFromMonitor(output: string): JsonObject {
   try { return object(JSON.parse(last)); }
   catch { return { category: "terminal_malformed", accepted: false }; }
 }
+
+export function tcpPayloadSocketErrorsFromMonitor(output: string): JsonObject {
+  const errors: JsonObject = {
+    pre_send: "unavailable",
+    post_send: "unavailable",
+    post_shutdown: "unavailable",
+  };
+  const admitted = new Set([
+    "none", "would_block", "not_connected", "out_of_memory", "invalid_input",
+    "unsupported", "connection_aborted", "connection_reset", "broken_pipe", "timed_out",
+    "query_failed", "other",
+  ]);
+  for (const match of output.matchAll(/stratum_v2_tcp_socket_error=(\{[^\r\n]+\})/gu)) {
+    try {
+      const marker = object(JSON.parse(match[1] ?? ""));
+      const phase = marker["phase"];
+      const category = marker["category"];
+      if (typeof phase === "string" && Object.hasOwn(errors, phase)
+        && typeof category === "string" && admitted.has(category)) {
+        errors[phase] = category;
+      }
+    } catch { continue; }
+  }
+  return errors;
+}

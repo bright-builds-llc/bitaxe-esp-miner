@@ -18,23 +18,27 @@ pub(crate) const NOISE_DIAGNOSTIC_PLAN_RELATIVE: &str =
 pub(crate) const NOISE_DIAGNOSTIC_PLAN_SHA256: &str =
     "3bbdf04402a0a51c4d380ef4efa65b4ee3d434bf865970c161a7faf0760b6658";
 pub(crate) const TCP_PAYLOAD_RECOVERY_ROOT: &str =
-    "scratch/str005-tcp-payload/recovery-002/restoration";
+    "scratch/str005-tcp-payload/recovery-003/restoration";
+pub(crate) const TCP_PAYLOAD_PREFLIGHT_ROOT: &str = "scratch/str005-tcp-payload/preflight-009";
 pub(crate) const TCP_PAYLOAD_DIAGNOSTIC_RESTORE_ROOT: &str =
-    "scratch/str005-tcp-payload/diagnostic-008/restoration";
+    "scratch/str005-tcp-payload/diagnostic-009/restoration";
 pub(crate) const TCP_PAYLOAD_PLAN_RELATIVE: &str =
-    "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md";
+    "docs/parity/work-plans/20260829T032813Z-STR-005-CONNECTION-IDENTITY/PLAN.md";
 pub(crate) const TCP_PAYLOAD_PLAN_SHA256: &str =
-    "14bd8aef5d78f38881a3da1a99a6808f7f6e8c93bb1d1a02d7972fcaaeb1d843";
+    "544f57f8c940bc4e5cfeb69539928e153629b55dc12c5d04e404219ca48a5ba5";
 
 pub(crate) fn authorized_remediation_plan(
     action: &str,
     ordinal: u16,
 ) -> Result<(&'static str, &'static str)> {
     match (action, ordinal) {
-        ("tcp_payload_diagnostic_restore", 8) => {
+        ("tcp_payload_diagnostic_restore", 9) => {
             Ok((TCP_PAYLOAD_PLAN_RELATIVE, TCP_PAYLOAD_PLAN_SHA256))
         }
-        ("tcp_payload_recovery", 2) => Ok((TCP_PAYLOAD_PLAN_RELATIVE, TCP_PAYLOAD_PLAN_SHA256)),
+        ("tcp_payload_restore_preflight", 9) => {
+            Ok((TCP_PAYLOAD_PLAN_RELATIVE, TCP_PAYLOAD_PLAN_SHA256))
+        }
+        ("tcp_payload_recovery", 3) => Ok((TCP_PAYLOAD_PLAN_RELATIVE, TCP_PAYLOAD_PLAN_SHA256)),
         ("diagnostic_restore", 4) => {
             Ok((NOISE_DIAGNOSTIC_PLAN_RELATIVE, NOISE_DIAGNOSTIC_PLAN_SHA256))
         }
@@ -49,7 +53,12 @@ pub(crate) fn restore_invocation_contract(
     private_root: &Utf8Path,
     admission_only: bool,
 ) -> (&'static Utf8Path, &'static str) {
-    if admission_only {
+    if admission_only && private_root == Utf8Path::new(TCP_PAYLOAD_PREFLIGHT_ROOT) {
+        (
+            Utf8Path::new(TCP_PAYLOAD_PREFLIGHT_ROOT),
+            TCP_PAYLOAD_PLAN_RELATIVE,
+        )
+    } else if admission_only {
         (Utf8Path::new(PREFLIGHT_ROOT), REMEDIATION_PLAN_RELATIVE)
     } else if private_root == Utf8Path::new(TCP_PAYLOAD_DIAGNOSTIC_RESTORE_ROOT) {
         (

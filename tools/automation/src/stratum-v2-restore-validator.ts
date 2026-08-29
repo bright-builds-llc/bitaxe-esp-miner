@@ -27,6 +27,13 @@ async function requireMode(candidate: string, mode: number, directory: boolean):
   }
 }
 
+async function requirePublicProjection(candidate: string): Promise<void> {
+  const metadata = await lstat(candidate);
+  if (metadata.isSymbolicLink() || !metadata.isFile() || (metadata.mode & 0o777) !== 0o644) {
+    throw new Error("public recovery projection mode is invalid");
+  }
+}
+
 async function containedFile(root: string, relative: string): Promise<string> {
   if (relative.length === 0 || path.isAbsolute(relative)) throw new Error("recovery path is invalid");
   const candidate = path.resolve(root, relative);
@@ -101,7 +108,7 @@ export async function validateRestoreReadiness(
   const root = path.dirname(bundlePath);
   await requireMode(root, 0o700, true);
   await requireMode(bundlePath, 0o600, false);
-  await requireMode(projectionPath, 0o600, false);
+  await requirePublicProjection(projectionPath);
   const bundleDocument = await readFile(bundlePath, "utf8");
   const bundle = JSON.parse(bundleDocument) as RestoreBundle;
   validateRestoreBundle(bundle);

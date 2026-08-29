@@ -373,6 +373,11 @@ fn authorization_action_allowed(admission_only: bool, private_root: &str, action
         (admission_only, private_root, action),
         (true, PREFLIGHT_ROOT, "preflight")
             | (
+                true,
+                TCP_PAYLOAD_PREFLIGHT_ROOT,
+                "tcp_payload_restore_preflight"
+            )
+            | (
                 false,
                 TCP_PAYLOAD_DIAGNOSTIC_RESTORE_ROOT,
                 "tcp_payload_diagnostic_restore"

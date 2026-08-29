@@ -8,6 +8,7 @@ js_library(
         "src/settings_adapter/tcp_payload_diagnostic.rs",
         "src/startup.rs",
         "src/stratum_v2_tcp_payload_diagnostic.rs",
+        "src/stratum_v2_tcp_payload_replay.rs",
     ],
     visibility = ["//tools/automation:__pkg__"],
 )

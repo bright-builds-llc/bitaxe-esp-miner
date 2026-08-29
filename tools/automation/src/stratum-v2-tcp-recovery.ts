@@ -14,9 +14,11 @@ import {
   type TcpPayloadDiagnosticArgs,
 } from "./stratum-v2-tcp-payload.js";
 
-const expectedRoot = "scratch/str005-tcp-payload/recovery-002";
-const expectedPlan = "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md";
-const expectedPlanSha256 = "14bd8aef5d78f38881a3da1a99a6808f7f6e8c93bb1d1a02d7972fcaaeb1d843";
+const expectedRoot = "scratch/str005-tcp-payload/recovery-003";
+const expectedPlan =
+  "docs/parity/work-plans/20260829T032813Z-STR-005-CONNECTION-IDENTITY/PLAN.md";
+const expectedPlanSha256 =
+  "544f57f8c940bc4e5cfeb69539928e153629b55dc12c5d04e404219ca48a5ba5";
 const expectedRestoreBundle =
   "scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json";
 const expectedPackageManifest = "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json";
@@ -102,7 +104,7 @@ async function prepareRecovery(
     || args.wifiCredentials !== expectedWifiCredentials
     || args.restoreBundle !== expectedRestoreBundle
     || args.plan !== expectedPlan
-    || args.diagnosticOrdinal !== 8
+    || args.diagnosticOrdinal !== 9
     || !args.redactEvidence) {
     fail("invalid_invocation", "invocation");
   }
@@ -178,7 +180,7 @@ export async function runTcpPayloadRecovery(
   await writePrivate(path.join(workspace, authorizationRelative), {
     schema_version: "bitaxe-stratum-v2-restore-authorization-v1",
     board: 205,
-    ordinal: 2,
+    ordinal: 3,
     action: "tcp_payload_recovery",
     current_source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],

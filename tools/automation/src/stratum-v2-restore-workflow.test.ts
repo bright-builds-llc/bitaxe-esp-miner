@@ -193,8 +193,8 @@ test("snapshot readiness validator accepts only protected exact ranges", async (
   await chmod(bundlePath, 0o600);
   const projection = projectRestoreReadiness(bundle, bundleDocument, 71, true);
   const projectionPath = path.join(root, "projection.json");
-  await writeFile(projectionPath, `${JSON.stringify(projection)}\n`, { mode: 0o600 });
-  await chmod(projectionPath, 0o600);
+  await writeFile(projectionPath, `${JSON.stringify(projection)}\n`, { mode: 0o644 });
+  await chmod(projectionPath, 0o644);
 
   // Act / Assert
   await assert.doesNotReject(validateRestoreReadiness(

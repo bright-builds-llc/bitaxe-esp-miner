@@ -6,6 +6,7 @@ js_library(
     srcs = [
         "src/main.rs",
         "src/tcp_payload.rs",
+        "src/tcp_payload_inventory.rs",
     ],
     visibility = ["//tools/automation:__pkg__"],
 )
@@ -15,6 +16,7 @@ rust_binary(
     srcs = [
         "src/main.rs",
         "src/tcp_payload.rs",
+        "src/tcp_payload_inventory.rs",
         "src/tests.rs",
     ],
     crate_name = "bitaxe_stratum_v2_fixture",

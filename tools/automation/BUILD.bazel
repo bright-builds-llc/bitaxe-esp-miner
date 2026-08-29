@@ -9,10 +9,15 @@ js_library(
     name = "stratum_v2_tcp_payload_evaluator_sources",
     srcs = [
         "src/stratum-v2-tcp-fixture.ts",
+        "src/stratum-v2-tcp-connection.ts",
         "src/stratum-v2-tcp-payload-markers.ts",
         "src/stratum-v2-tcp-payload-process.ts",
+        "src/stratum-v2-tcp-projection.ts",
         "src/stratum-v2-tcp-payload-validator.ts",
         "src/stratum-v2-tcp-payload.ts",
+        "src/stratum-v2-tcp-recovery-tooling.ts",
+        "src/stratum-v2-tcp-recovery-readiness.ts",
+        "src/stratum-v2-tcp-restore-preflight.ts",
     ],
 )
 

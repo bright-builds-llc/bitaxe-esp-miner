@@ -20,9 +20,13 @@ use rand::{rngs::OsRng, RngCore};
 use secp256k1::{Keypair, Secp256k1, SecretKey};
 use serde::Serialize;
 
+#[cfg(test)]
 mod tcp_payload;
+mod tcp_payload_inventory;
 
+#[cfg(test)]
 use tcp_payload::read_tcp_payload;
+use tcp_payload_inventory::{inventory_tcp_payload, TcpPayloadCandidateProgress};
 
 const ENCRYPTED_HEADER_LEN: usize = FRAME_HEADER_LEN + AEAD_MAC_LEN;
 const CHANNEL_ID: u32 = 1;
@@ -83,6 +87,9 @@ struct FixtureProgress {
     connection_accepted: bool,
     peer_matched: bool,
     unexpected_peer_count: u16,
+    exact_peer_connection_count: u16,
+    candidate_overflow: bool,
+    tcp_candidates: Vec<TcpPayloadCandidateProgress>,
     act_one_bytes_received: u16,
     act_one_read_category: &'static str,
     accept_to_first_byte_millis: Option<u32>,
@@ -154,6 +161,41 @@ fn run_fixture(args: &Args, progress: &mut FixtureProgress) -> Result<()> {
     )?;
     progress.listener_ready = true;
     println!("stratum_v2_fixture=ready");
+    if args.mode == FixtureMode::TcpPayload {
+        let inventory = inventory_tcp_payload(
+            &listener,
+            Duration::from_secs(args.accept_timeout_seconds),
+            Duration::from_secs(10),
+            args.expected_peer_address,
+        )?;
+        progress.connection_accepted = !inventory.candidates.is_empty();
+        progress.peer_matched = progress.connection_accepted;
+        progress.unexpected_peer_count = inventory.unexpected_peer_count;
+        progress.exact_peer_connection_count =
+            inventory.candidates.len().try_into().unwrap_or(u16::MAX);
+        progress.candidate_overflow = inventory.candidate_overflow;
+        if let Some(index) = inventory.matched_index {
+            if let Some(candidate) = inventory.candidates.get(index) {
+                progress.payload_bytes_received = candidate.payload_bytes_received;
+                progress.payload_read_category = candidate.payload_read_category;
+                progress.payload_digest_match = candidate.payload_digest_match;
+                progress.extra_bytes_received = candidate.extra_bytes_received;
+                progress.receipt_ack_sent = candidate.receipt_ack_sent;
+            }
+        } else if let Some(candidate) = inventory.candidates.first() {
+            progress.payload_bytes_received = candidate.payload_bytes_received;
+            progress.payload_read_category = candidate.payload_read_category;
+            progress.payload_digest_match = candidate.payload_digest_match;
+            progress.extra_bytes_received = candidate.extra_bytes_received;
+            progress.receipt_ack_sent = candidate.receipt_ack_sent;
+        }
+        progress.tcp_candidates = inventory.candidates;
+        if inventory.matched_index.is_none() || inventory.candidate_overflow {
+            bail!("no sole accepted payload candidate");
+        }
+        println!("stratum_v2_fixture=accepted");
+        return Ok(());
+    }
     let (mut stream, unexpected_peer_count) = accept_one(
         &listener,
         Duration::from_secs(args.accept_timeout_seconds),
@@ -169,11 +211,6 @@ fn run_fixture(args: &Args, progress: &mut FixtureProgress) -> Result<()> {
     stream
         .set_write_timeout(Some(Duration::from_secs(10)))
         .context("set write timeout")?;
-    if args.mode == FixtureMode::TcpPayload {
-        read_tcp_payload(&mut stream, progress)?;
-        println!("stratum_v2_fixture=accepted");
-        return Ok(());
-    }
     let started = Instant::now();
     let mut codec = respond_noise(
         &mut stream,
@@ -206,6 +243,8 @@ fn fixture_terminal_category(progress: &FixtureProgress, mode: FixtureMode) -> &
         "listener"
     } else if !progress.connection_accepted {
         "accept"
+    } else if mode == FixtureMode::TcpPayload && progress.candidate_overflow {
+        "candidate_overflow"
     } else if mode == FixtureMode::TcpPayload && !progress.payload_digest_match {
         "payload_read"
     } else if mode == FixtureMode::TcpPayload && !progress.receipt_ack_sent {

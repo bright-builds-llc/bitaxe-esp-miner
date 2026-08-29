@@ -6,7 +6,7 @@ import { restoreSelfTestSettings } from "./self-test-campaign-restoration.js";
 import { validateRestorableInputs } from "./stratum-v2-campaign-settings.js";
 import { runCampaignProcess } from "./stratum-v2-campaign.js";
 import { sameSubnetFixtureAddress } from "./stratum-v2-campaign-support.js";
-import { admitStratumV2RestoreBundle, restoreRuntimeMatches } from "./stratum-v2-restore-admission.js";
+import { restoreRuntimeMatches } from "./stratum-v2-restore-admission.js";
 import type { JsonObject } from "./stratum-v2-campaign-preflight.js";
 import { fetchRuntimeObject, monitorRuntimeOrigin } from "./stratum-v2-runtime-admission.js";
 import type { RestoreBundle } from "./stratum-v2-restore-model.js";
@@ -16,11 +16,14 @@ import {
 } from "./stratum-v2-tcp-fixture.js";
 import { tcpPayloadEvaluatorIdentity } from "./stratum-v2-tcp-payload-validator.js";
 import { sourceWorkspaceRoot } from "./workspace.js";
+import { admitTcpPayloadRecoveryReadiness } from "./stratum-v2-tcp-recovery-readiness.js";
 import {
   tcpPayloadStagesFromMonitor,
+  tcpPayloadSocketErrorsFromMonitor,
   tcpPayloadTerminalFromMonitor,
   tcpPayloadTimingsFromMonitor,
 } from "./stratum-v2-tcp-payload-markers.js";
+import { buildTcpPayloadProjection } from "./stratum-v2-tcp-projection.js";
 import {
   ManagedDiagnosticProcessError,
   tcpPayloadDiagnosticAccepted,
@@ -41,16 +44,17 @@ export type TcpPayloadDiagnosticArgs = {
   readonly privateRoot: string;
   readonly projection: string;
   readonly plan: string;
-  readonly diagnosticOrdinal: 8;
+  readonly diagnosticOrdinal: 9;
   readonly redactEvidence: true;
 };
-const expectedDiagnosticRoot = "scratch/str005-tcp-payload/diagnostic-008";
-const expectedRecoveryRoot = "scratch/str005-tcp-payload/recovery-002";
+const expectedDiagnosticRoot = "scratch/str005-tcp-payload/diagnostic-009";
+const expectedRecoveryRoot = "scratch/str005-tcp-payload/recovery-003";
 const expectedProjection =
-  "docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-008.json";
-const expectedPlan = "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md";
+  "docs/parity/evidence/str005-tcp-payload/tcp-payload-projection-009.json";
+const expectedPlan =
+  "docs/parity/work-plans/20260829T032813Z-STR-005-CONNECTION-IDENTITY/PLAN.md";
 const expectedPlanSha256 =
-  "14bd8aef5d78f38881a3da1a99a6808f7f6e8c93bb1d1a02d7972fcaaeb1d843";
+  "544f57f8c940bc4e5cfeb69539928e153629b55dc12c5d04e404219ca48a5ba5";
 const expectedRestoreBundle =
   "scratch/str005-installed-package-recovery/recovery-006/restore-bundle.private.json";
 const expectedPackageManifest =
@@ -155,7 +159,7 @@ export function parseTcpPayloadDiagnosticArgs(
     || value("--private-parent") !== expectedRoot
     || value("--projection") !== expectedProjection
     || value("--plan") !== expectedPlan
-    || value("--diagnostic-ordinal") !== "8"
+    || value("--diagnostic-ordinal") !== "9"
     || value("--capture-timeout-seconds") !== "360"
     || parsed.get("--redact-evidence") !== true) {
     fail("invalid_invocation", "contract mismatch", "invocation");
@@ -170,7 +174,7 @@ export function parseTcpPayloadDiagnosticArgs(
     privateRoot: expectedRoot,
     projection: expectedProjection,
     plan: expectedPlan,
-    diagnosticOrdinal: 8,
+    diagnosticOrdinal: 9,
     redactEvidence: true,
   };
 }
@@ -247,7 +251,18 @@ async function preflight(workspace: string, args: TcpPayloadDiagnosticArgs): Pro
     fail("evidence_invalid", "backup drift", "restoration_inputs");
   }
   const backup = object(JSON.parse(backupDocument), "restoration_inputs");
-  const restore = await admitStratumV2RestoreBundle(workspace, args.restoreBundle, runCampaignProcess);
+  const restore = await admitTcpPayloadRecoveryReadiness({
+    workspace,
+    port: args.port,
+    restoreBundleRelative: args.restoreBundle,
+    planRelative: args.plan,
+    planSha256: expectedPlanSha256,
+    wifiCredentialsRelative: args.wifiCredentials,
+    sourceCommit: head,
+    referenceCommit: manifest["reference_commit"],
+    runProcess: runCampaignProcess,
+    fail,
+  });
   const flashProgram = path.join(workspace, "bazel-bin/tools/flash/flash");
   const detector = await runCampaignProcess(
     workspace,
@@ -322,7 +337,7 @@ async function exactRestore(
   await writePrivate(path.join(workspace, authorizationRelative), {
     schema_version: "bitaxe-stratum-v2-restore-authorization-v1",
     board: 205,
-    ordinal: 8,
+    ordinal: 9,
     action: "tcp_payload_diagnostic_restore",
     current_source_commit: prepared.head,
     reference_commit: prepared.manifest["reference_commit"],
@@ -341,6 +356,8 @@ async function exactRestore(
     "--wifi-credentials", args.wifiCredentials,
     "--redact-evidence",
   ], 900_000, "restoration_child");
+  await writePrivateText(path.join(restoreRoot, "restore.stdout.private.log"), restored.stdout);
+  await writePrivateText(path.join(restoreRoot, "restore.stderr.private.log"), restored.stderr);
   if (restored.exitCode !== 0) fail("hardware_blocked", "firmware restore failed", "restoration");
   const origin = await monitorRuntimeOrigin(workspace, flashProgram, args.port, runCampaignProcess, fail);
   await restoreSelfTestSettings(origin, prepared.backup, prepared.wifiPath, prepared.poolPath);
@@ -412,6 +429,7 @@ export async function runTcpPayloadDiagnostic(
   let terminal: JsonObject = { category: "process_failed", accepted: false };
   let stages: JsonObject = {};
   let timings: JsonObject = {};
+  let socketErrors: JsonObject = {};
   let fixtureTerminal: JsonObject = { progress: {} };
   let diagnosticChild: ManagedDiagnosticProcessResult = { exitCode: 1, stdout: "", stderr: "" };
   let diagnosticTimedOut = false;
@@ -437,7 +455,7 @@ export async function runTcpPayloadDiagnostic(
     await writePrivate(path.join(workspace, intentRelative), {
       schema_version: "bitaxe-stratum-v2-tcp-payload-intent-v1",
       board: 205,
-      diagnostic_ordinal: 8,
+      diagnostic_ordinal: 9,
       source_commit: prepared.head,
       reference_commit: prepared.manifest["reference_commit"],
       app_elf_sha256: prepared.manifest["app_elf_sha256"],
@@ -476,6 +494,7 @@ export async function runTcpPayloadDiagnostic(
     );
     stages = tcpPayloadStagesFromMonitor(diagnosticChild.stdout);
     timings = tcpPayloadTimingsFromMonitor(diagnosticChild.stdout);
+    socketErrors = tcpPayloadSocketErrorsFromMonitor(diagnosticChild.stdout);
     terminal = tcpPayloadTerminalFromMonitor(diagnosticChild.stdout);
     earliestCategory = String(terminal["category"] ?? "terminal_missing");
     if (!shouldWaitForTcpFixture(diagnosticChild.exitCode, terminal)) {
@@ -512,6 +531,7 @@ export async function runTcpPayloadDiagnostic(
       );
       stages = tcpPayloadStagesFromMonitor(diagnosticChild.stdout);
       timings = tcpPayloadTimingsFromMonitor(diagnosticChild.stdout);
+      socketErrors = tcpPayloadSocketErrorsFromMonitor(diagnosticChild.stdout);
       terminal = tcpPayloadTerminalFromMonitor(diagnosticChild.stdout);
       earliestCategory = terminal["category"] === "terminal_missing"
         ? error.category
@@ -558,45 +578,31 @@ export async function runTcpPayloadDiagnostic(
     fail("hardware_blocked", "fixture cleanup failed", "cleanup");
   }
   const fixtureProgress = object(fixtureTerminal["progress"] ?? {}, "fixture_terminal");
-  const accepted = tcpPayloadDiagnosticAccepted(
-    diagnosticChild.exitCode,
-    diagnosticTimedOut,
-    terminal,
-    fixtureTerminal,
-  );
-  const projection: JsonObject = {
-    schema_version: "bitaxe-stratum-v2-tcp-payload-projection-v1",
-    status: accepted ? "accepted" : "failed",
-    board: 205,
-    diagnostic_ordinal: 8,
-    source_commit: prepared.head,
-    reference_commit: prepared.manifest["reference_commit"],
-    app_elf_sha256: prepared.manifest["app_elf_sha256"],
-    plan_sha256: expectedPlanSha256,
-    package_manifest_sha256: sha256(prepared.manifestDocument),
-    payload_sha256: "fdeab9acf3710362bd2658cdc9a29e8f9c757fcf9811603a8c447cd1d9151108",
-    evaluator_sha256: await tcpPayloadEvaluatorIdentity(workspace),
-    terminal_category: accepted ? "accepted" : earliestCategory,
+  const projection = buildTcpPayloadProjection({
+    sourceCommit: prepared.head,
+    referenceCommit: prepared.manifest["reference_commit"],
+    appElfSha256: prepared.manifest["app_elf_sha256"],
+    planSha256: expectedPlanSha256,
+    packageManifestSha256: sha256(prepared.manifestDocument),
+    evaluatorSha256: await tcpPayloadEvaluatorIdentity(workspace),
+    earliestCategory,
     stages,
     timings,
-    fixture: fixtureProgress,
-    campaign_started: false,
-    mining_started: false,
-    asic_touched: false,
-    fan_touched: false,
-    voltage_touched: false,
-    restoration: {
-      identity_exact: restoreRuntimeMatches(prepared.restoreBundle, finalRuntime),
-      settings_exact: true,
-      mineonboot_disabled: finalRuntime["startMiningOnBoot"] === false,
-      mining_inactive: ["paused", "safe_blocked"].includes(String(finalRuntime["miningActivity"] ?? "")),
-      zero_work: Number(finalRuntime["hashRate"] ?? 0) === 0,
-      usb_cleanup_complete: fixtureCleanupComplete,
-      owned_processes_remaining: 0,
-    },
-    redaction_complete: true,
-    redaction_status: "passed",
-  };
+    socketErrors,
+    terminal,
+    monitorOutput: diagnosticChild.stdout,
+    fixtureTerminal,
+    fixtureProgress,
+    diagnosticAccepted: tcpPayloadDiagnosticAccepted(
+      diagnosticChild.exitCode,
+      diagnosticTimedOut,
+      terminal,
+      fixtureTerminal,
+    ),
+    restoreBundle: prepared.restoreBundle,
+    finalRuntime,
+    fixtureCleanupComplete,
+  });
   await publishProjection(workspace, args, projection, prepared.head);
   return projection;
 }

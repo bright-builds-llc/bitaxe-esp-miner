@@ -5,13 +5,14 @@ use std::os::unix::fs::PermissionsExt;
 use crate::campaign::admission::read_pool_credentials;
 use crate::*;
 
-const INTENT_RELATIVE_PATH: &str = "scratch/str005-tcp-payload/diagnostic-008/intent.private.json";
+const INTENT_RELATIVE_PATH: &str = "scratch/str005-tcp-payload/diagnostic-009/intent.private.json";
 const POOL_RELATIVE_PATH: &str =
-    "scratch/str005-tcp-payload/diagnostic-008/fixture-pool.private.json";
-const PLAN_RELATIVE_PATH: &str = "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md";
-const PLAN_SHA256: &str = "14bd8aef5d78f38881a3da1a99a6808f7f6e8c93bb1d1a02d7972fcaaeb1d843";
+    "scratch/str005-tcp-payload/diagnostic-009/fixture-pool.private.json";
+const PLAN_RELATIVE_PATH: &str =
+    "docs/parity/work-plans/20260829T032813Z-STR-005-CONNECTION-IDENTITY/PLAN.md";
+const PLAN_SHA256: &str = "544f57f8c940bc4e5cfeb69539928e153629b55dc12c5d04e404219ca48a5ba5";
 const INTENT_SCHEMA: &str = "bitaxe-stratum-v2-tcp-payload-intent-v1";
-const DIAGNOSTIC_ORDINAL: u16 = 8;
+const DIAGNOSTIC_ORDINAL: u16 = 9;
 const CAPTURE_TIMEOUT_SECONDS: u64 = 360;
 
 #[derive(Debug, Deserialize)]
@@ -173,16 +174,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn plan_digest_and_replay_gated_eighth_ordinal_are_immutable() {
+    fn connection_identity_plan_and_ninth_ordinal_are_immutable() {
         // Arrange
-        let plan = include_str!("../../../docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md");
+        let plan = include_str!(
+            "../../../docs/parity/work-plans/20260829T032813Z-STR-005-CONNECTION-IDENTITY/PLAN.md"
+        );
 
         // Act
         let digest = sha256_bytes(plan.as_bytes());
 
         // Assert
         assert_eq!(digest, PLAN_SHA256);
-        assert_eq!(DIAGNOSTIC_ORDINAL, 8);
-        assert!(INTENT_RELATIVE_PATH.contains("diagnostic-008"));
+        assert_eq!(DIAGNOSTIC_ORDINAL, 9);
+        assert!(INTENT_RELATIVE_PATH.contains("diagnostic-009"));
     }
 }

@@ -210,6 +210,75 @@ fn real_tcp_payload_mode_accepts_exact_fixed_canary_without_noise() {
 }
 
 #[test]
+fn payload_inventory_correlates_payload_after_a_silent_exact_peer() {
+    // Arrange
+    let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
+    listener
+        .set_nonblocking(true)
+        .expect("listener nonblocking");
+    let address = listener.local_addr().expect("address");
+    let server = std::thread::spawn(move || {
+        inventory_tcp_payload(
+            &listener,
+            Duration::from_secs(1),
+            Duration::from_secs(1),
+            Some(address.ip()),
+        )
+        .expect("inventory")
+    });
+    let _silent = TcpStream::connect(address).expect("silent connection");
+    let mut payload_stream = TcpStream::connect(address).expect("payload connection");
+    let payload = (0_u8..64).collect::<Vec<_>>();
+
+    // Act
+    payload_stream.write_all(&payload).expect("write payload");
+    payload_stream
+        .shutdown(Shutdown::Write)
+        .expect("half-close payload writer");
+    let mut receipt = [0_u8; 1];
+    payload_stream.read_exact(&mut receipt).expect("receipt");
+    let inventory = server.join().expect("server join");
+
+    // Assert
+    assert_eq!(receipt, [0xa5]);
+    assert_eq!(inventory.candidates.len(), 2);
+    assert_eq!(inventory.matched_index, Some(1));
+    assert_eq!(inventory.candidates[1].payload_bytes_received, 64);
+    assert!(inventory.candidates[1].payload_digest_match);
+}
+
+#[test]
+fn payload_inventory_rejects_a_fourth_exact_peer_candidate() {
+    // Arrange
+    let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
+    listener
+        .set_nonblocking(true)
+        .expect("listener nonblocking");
+    let address = listener.local_addr().expect("address");
+    let server = std::thread::spawn(move || {
+        inventory_tcp_payload(
+            &listener,
+            Duration::from_secs(1),
+            Duration::from_secs(1),
+            Some(address.ip()),
+        )
+        .expect("inventory")
+    });
+    let clients = (0..4)
+        .map(|_| TcpStream::connect(address).expect("candidate"))
+        .collect::<Vec<_>>();
+
+    // Act
+    let inventory = server.join().expect("server join");
+
+    // Assert
+    assert_eq!(clients.len(), 4);
+    assert_eq!(inventory.candidates.len(), 3);
+    assert!(inventory.candidate_overflow);
+    assert_eq!(inventory.matched_index, None);
+}
+
+#[test]
 fn fixture_peer_admission_rejects_an_unexpected_address() {
     // Arrange
     let expected: IpAddr = "192.0.2.1".parse().expect("expected peer");

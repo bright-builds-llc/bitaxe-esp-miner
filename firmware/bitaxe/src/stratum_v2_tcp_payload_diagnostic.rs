@@ -79,6 +79,12 @@ fn connect_and_send(
         .ok_or("connect")?;
     transcript.record_timing("connect", started.elapsed());
     transcript.record_stage("tcp_connected");
+    let local_port = stream
+        .local_addr()
+        .map_err(|_| "connection_identity")?
+        .port();
+    transcript.record_local_port(local_port);
+    transcript.record_socket_error("pre_send", stream.take_error());
     stream.set_nodelay(true).map_err(|_| "configure")?;
     stream
         .set_write_timeout(Some(WRITE_TIMEOUT))
@@ -86,12 +92,15 @@ fn connect_and_send(
     let started = Instant::now();
     stream.write_all(&PAYLOAD).map_err(|_| "write")?;
     stream.flush().map_err(|_| "flush")?;
+    transcript.reported_bytes_written = PAYLOAD.len().try_into().unwrap_or(u16::MAX);
+    transcript.record_socket_error("post_send", stream.take_error());
     transcript.record_timing("write", started.elapsed());
     transcript.record_stage("payload_sent");
     stream
         .shutdown(Shutdown::Write)
         .map_err(|error| shutdown_error_category(error.kind()))?;
     transcript.record_stage("write_half_closed");
+    transcript.record_socket_error("post_shutdown", stream.take_error());
     stream
         .set_read_timeout(Some(WRITE_TIMEOUT))
         .map_err(|_| "configure")?;
@@ -108,6 +117,9 @@ fn connect_and_send(
 struct DiagnosticTranscript {
     stages: Vec<&'static str>,
     timings: Vec<(&'static str, u32)>,
+    socket_errors: Vec<(&'static str, &'static str)>,
+    local_port: Option<u16>,
+    reported_bytes_written: u16,
     terminal: Option<(&'static str, bool)>,
 }
 
@@ -123,9 +135,28 @@ impl DiagnosticTranscript {
         publish_timing(phase, duration_ms);
     }
 
+    fn record_local_port(&mut self, local_port: u16) {
+        self.local_port = Some(local_port);
+        publish_private_connection(local_port);
+    }
+
+    fn record_socket_error(
+        &mut self,
+        phase: &'static str,
+        result: std::io::Result<Option<std::io::Error>>,
+    ) {
+        let category = match result {
+            Ok(None) => "none",
+            Ok(Some(error)) => socket_error_kind(error.kind()),
+            Err(_) => "query_failed",
+        };
+        self.socket_errors.push((phase, category));
+        publish_socket_error(phase, category);
+    }
+
     fn record_terminal(&mut self, category: &'static str, accepted: bool) {
         self.terminal = Some((category, accepted));
-        publish_terminal(category, accepted);
+        publish_terminal(category, accepted, self.reported_bytes_written);
     }
 
     fn replay(&self) {
@@ -135,8 +166,14 @@ impl DiagnosticTranscript {
         for (phase, duration_ms) in &self.timings {
             publish_timing(phase, *duration_ms);
         }
+        if let Some(local_port) = self.local_port {
+            publish_private_connection(local_port);
+        }
+        for (phase, category) in &self.socket_errors {
+            publish_socket_error(phase, category);
+        }
         if let Some((category, accepted)) = self.terminal {
-            publish_terminal(category, accepted);
+            publish_terminal(category, accepted, self.reported_bytes_written);
         }
     }
 }
@@ -164,6 +201,21 @@ fn shutdown_error_category(kind: ErrorKind) -> &'static str {
         ErrorKind::InvalidInput => "shutdown_invalid_input",
         ErrorKind::Unsupported => "shutdown_unsupported",
         _ => "shutdown_other",
+    }
+}
+
+fn socket_error_kind(kind: ErrorKind) -> &'static str {
+    match kind {
+        ErrorKind::WouldBlock => "would_block",
+        ErrorKind::NotConnected => "not_connected",
+        ErrorKind::OutOfMemory => "out_of_memory",
+        ErrorKind::InvalidInput => "invalid_input",
+        ErrorKind::Unsupported => "unsupported",
+        ErrorKind::ConnectionAborted => "connection_aborted",
+        ErrorKind::ConnectionReset => "connection_reset",
+        ErrorKind::BrokenPipe => "broken_pipe",
+        ErrorKind::TimedOut => "timed_out",
+        _ => "other",
     }
 }
 
@@ -200,8 +252,19 @@ fn publish_timing(phase: &'static str, duration_ms: u32) {
     ));
 }
 
-fn publish_terminal(category: &'static str, accepted: bool) {
-    let bytes_written = if accepted { PAYLOAD.len() } else { 0 };
+fn publish_private_connection(local_port: u16) {
+    crate::info_retained(&format!(
+        "stratum_v2_tcp_connection_private={{\"schema\":\"bitaxe-stratum-v2-tcp-connection-private-v1\",\"local_port\":{local_port}}}"
+    ));
+}
+
+fn publish_socket_error(phase: &'static str, category: &'static str) {
+    crate::info_retained(&format!(
+        "stratum_v2_tcp_socket_error={{\"schema\":\"bitaxe-stratum-v2-tcp-socket-error-v1\",\"phase\":\"{phase}\",\"category\":\"{category}\"}}"
+    ));
+}
+
+fn publish_terminal(category: &'static str, accepted: bool, bytes_written: u16) {
     crate::info_retained(&format!(
         "stratum_v2_tcp_payload_terminal={{\"schema\":\"bitaxe-stratum-v2-tcp-payload-terminal-v1\",\"category\":\"{category}\",\"accepted\":{accepted},\"bytes_written\":{bytes_written},\"noise_started\":false,\"mining_started\":false,\"asic_touched\":false,\"fan_touched\":false,\"voltage_touched\":false}}"
     ));

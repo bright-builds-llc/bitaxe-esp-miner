@@ -126,6 +126,9 @@ fn tcp_payload_owner_precedes_noise_and_cannot_reach_noise_or_hardware() {
         .find("stream.read_exact(&mut receipt)")
         .expect("receipt read");
     assert!(TCP_DIAGNOSTIC.contains("stream.set_nodelay(true)"));
+    assert!(TCP_DIAGNOSTIC.contains(".local_addr()"));
+    assert!(TCP_DIAGNOSTIC.contains("stratum_v2_tcp_connection_private="));
+    assert!(TCP_DIAGNOSTIC.contains("reported_bytes_written"));
     assert!(payload_write < write_shutdown);
     assert!(write_shutdown < receipt_read);
     for category in [

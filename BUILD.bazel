@@ -146,7 +146,7 @@ js_library(
     name = "str005_tcp_payload_inputs",
     srcs = [
         "TASKS.md",
-        "docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md",
+        "docs/parity/work-plans/20260829T032813Z-STR-005-CONNECTION-IDENTITY/PLAN.md",
     ],
     visibility = ["//tools/automation:__pkg__"],
 )
