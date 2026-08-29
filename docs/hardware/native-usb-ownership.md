@@ -79,8 +79,11 @@ Monitoring never arms handoff.
   available. Serial/JTAG inspection may use `board-info` to distinguish ROM.
 - Flash and recovery first acquire the physical lease. Worker performs the
   guarded handoff; Serial/JTAG enters ROM directly. Every write requires a
-  successful ESP32-S3 `board-info`, then uses `--before no-reset-no-sync` (or
-  the managed esptool equivalent) so synchronization never reaches Worker CDC.
+  successful ESP32-S3 `board-info`, then uses `--before no-reset` (or the
+  managed esptool equivalent). This prevents DTR/RTS reset traffic while still
+  allowing each fresh flashing process to synchronize with the already
+  admitted ROM downloader. Synchronization never reaches Worker CDC because
+  the profile handoff and ROM admission precede the flashing process.
 - Observe selects the receive-only Adapter for Worker or Serial/JTAG and never
   arms maintenance.
 - After a write, the same lease reacquires the expected application profile

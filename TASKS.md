@@ -74,7 +74,11 @@ stage. Manual bootstrap-001 admitted the ROM downloader, but the first flash
 stopped before writes because real espflash 4.5.0 renders the chip type as
 `esp32s3` while the host admission accepted only the uppercase fixture
 spelling. A real-output regression and field parser now cover that boundary;
-the targeted retry awaits its clean pushed package.
+the targeted clean-package retry passed ROM admission and then exposed a
+distinct pre-write `no-reset-no-sync` connection failure. The fresh espflash
+process requires `no-reset` so it may synchronize after ROM admission without
+driving reset control lines; that second targeted fix passed every software
+gate and awaits its clean pushed package.
 
 Completion review: Pending. STR-005 and BWG remain unchanged until their own
 separate evidence tasks complete.

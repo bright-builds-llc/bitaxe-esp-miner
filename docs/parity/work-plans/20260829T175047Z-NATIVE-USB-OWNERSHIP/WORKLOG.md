@@ -70,3 +70,24 @@
   were written. Next action is a clean implementation commit/push, exact clean
   package rebuild, and the progress-backed flash retry without another manual
   button sequence when the board remains in ROM.
+
+## 2026-08-29T20:15:00Z | Fresh-process synchronization boundary
+
+- Clean pushed source `178f2ead` and its exact six-artifact package passed ROM
+  admission on the progress-backed retry. The write process then failed before
+  transfer with `bootloader_connect_failed`.
+- Espflash 4.5.0 documents `no-reset-no-sync` as skipping both reset control
+  lines and the serial synchronization command. Because ROM admission and
+  flashing are separate supervised processes, the latter must establish its
+  own protocol synchronization.
+- The targeted correction uses `no-reset`/`no_reset` only after `UsbOwnership`
+  has completed profile handoff and ROM admission. It still suppresses DTR/RTS
+  reset traffic and cannot send synchronization bytes to Worker CDC.
+- The immutable plan remains unchanged. This worklog records the
+  hardware-proven command-level deviation and its narrower safety invariant.
+- Verification: the ordered Cargo gates, Bright Builds, focused USB/flash
+  tests, all 70 Bazel tests, canonical package, native-USB ownership,
+  parity/progress, redaction, reference cleanliness, and whitespace passed.
+- Device effects: successful board information only; zero image bytes were
+  written. A new hardware retry requires this regression fix to pass every
+  gate, reach a clean pushed commit, and produce a new exact clean package.

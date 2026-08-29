@@ -117,7 +117,9 @@ requireText("tools/device-session/src/macos.rs", [
 requireText("tools/flash/src/environment/usb_ownership.rs", [
   "ensure_bootloader",
   "handoff_worker_to_rom(session)",
-  "no-reset-no-sync",
+  "ESPFLASH_ADMITTED_ROM_BEFORE",
+  'ESPFLASH_ADMITTED_ROM_BEFORE: &str = "no-reset"',
+  'ESPTOOL_ADMITTED_ROM_BEFORE: &str = "no_reset"',
   "ensure_observable_runtime",
   "UsbOperation::Recover",
 ]);

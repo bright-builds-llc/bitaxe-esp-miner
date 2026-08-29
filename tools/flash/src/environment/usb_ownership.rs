@@ -1,5 +1,8 @@
 use super::*;
 
+const ESPFLASH_ADMITTED_ROM_BEFORE: &str = "no-reset";
+const ESPTOOL_ADMITTED_ROM_BEFORE: &str = "no_reset";
+
 impl LocalFlashEnvironment {
     pub(super) fn ensure_bootloader(&self) -> Result<()> {
         let mut session_slot = self.usb_session.borrow_mut();
@@ -23,7 +26,7 @@ impl LocalFlashEnvironment {
             | UsbOperationPlan::ObserveOnly => bail!("runtime_profile_unknown"),
         };
         let before = if transitioned {
-            "no-reset-no-sync"
+            ESPFLASH_ADMITTED_ROM_BEFORE
         } else {
             "usb-reset"
         };
@@ -75,14 +78,14 @@ pub(super) fn route_espflash_to_admitted_rom(
     port: &str,
 ) -> Result<Vec<String>> {
     let mut args = command_with_port(command_spec, port)?;
-    replace_option_value(&mut args, "--before", "no-reset-no-sync")?;
+    replace_option_value(&mut args, "--before", ESPFLASH_ADMITTED_ROM_BEFORE)?;
     Ok(args)
 }
 
 pub(super) fn route_esptool_to_admitted_rom(args: &[String], port: &str) -> Result<Vec<String>> {
     let mut args = args.to_vec();
     replace_option_value(&mut args, "--port", port)?;
-    replace_option_value(&mut args, "--before", "no_reset_no_sync")?;
+    replace_option_value(&mut args, "--before", ESPTOOL_ADMITTED_ROM_BEFORE)?;
     Ok(args)
 }
 
@@ -109,7 +112,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn admitted_espflash_route_replaces_port_and_disables_reset_sync() {
+    fn admitted_espflash_route_replaces_port_and_preserves_rom_without_reset() {
         // Arrange
         let command = CommandSpec::new(
             "espflash",
@@ -120,14 +123,11 @@ mod tests {
         let args = route_espflash_to_admitted_rom(&command, "rom").expect("admitted route");
 
         // Assert
-        assert_eq!(
-            args,
-            ["write-bin", "--port", "rom", "--before", "no-reset-no-sync"]
-        );
+        assert_eq!(args, ["write-bin", "--port", "rom", "--before", "no-reset"]);
     }
 
     #[test]
-    fn admitted_esptool_route_uses_its_native_no_sync_spelling() {
+    fn admitted_esptool_route_uses_its_native_no_reset_spelling() {
         // Arrange
         let args = ["--port", "worker", "--before", "usb_reset"].map(str::to_owned);
 
@@ -135,7 +135,7 @@ mod tests {
         let routed = route_esptool_to_admitted_rom(&args, "rom").expect("admitted route");
 
         // Assert
-        assert_eq!(routed, ["--port", "rom", "--before", "no_reset_no_sync"]);
+        assert_eq!(routed, ["--port", "rom", "--before", "no_reset"]);
     }
 
     #[test]
