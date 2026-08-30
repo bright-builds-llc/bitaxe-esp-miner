@@ -105,8 +105,9 @@ process adapters receive separate qualification.
 
 Native ownership adds `runtime_profile_unknown`, `handoff_unsupported`,
 `handoff_rejected_unsafe_state`, `handoff_ready_timeout`,
-`handoff_commit_timeout`, `handoff_transition_timeout`, `bootloader_ambiguous`,
-`physical_identity_drift`, `bootloader_sync_failed`,
+`handoff_commit_timeout`, `bus_reset_timeout`, `same_worker_after_commit`,
+`handoff_transition_timeout`, `bootloader_ambiguous`,
+`physical_identity_drift`, `bootloader_sync_failed`, `rom_admission_failed`,
 `application_reappearance_timeout`, and `recovery_required`. Existing
 flash/recovery/cleanup failures remain available, and the earliest failure is
 never replaced by a later cleanup error.
@@ -128,6 +129,18 @@ Run `just verify-native-usb-ownership` after every software change in this
 surface. It checks the sole TinyUSB owner, diagnostic Serial/JTAG retention,
 the maintenance reducer, centralized host routing, linked callback/PHY symbols,
 and agent/ADR/docs guardrails through Bazel.
+
+The task-gated single-transition discriminator is
+`just verify-native-usb-transition`. It holds one physical lease across
+Worker readiness, acknowledged commit, Serial/JTAG re-enumeration, a
+read-only ESP32-S3 `board-info`, hard reset, and Worker reappearance. It never
+loads or writes an image. Its candidate result remains protected until
+`just native-usb-transition-recovery finalize` joins it to exact primary and
+final recovery-006 results; only that finalizer may publish the redacted
+projection. Recovery `preflight` validates the historical bundle, public
+readiness projection, private validator receipt, managed ESP-IDF tools, exact
+current package, and restore admission without leaving a private root or
+touching the device.
 
 Manual BOOT/RESET is a one-time bootstrap or last-resort recovery path, never
 the normal development workflow. Buttonless flashing is not qualified until

@@ -109,10 +109,10 @@ restoration are incomplete. STR-005 and BWG remain unchanged.
 
 ### task-native-usb-recovery-transition-205 | 2026-08-30 | Recover first and prove one no-write transition
 
-- [ ] Create and push the immutable recovery and single-transition plan before
+- [x] Create and push the immutable recovery and single-transition plan before
       implementation or hardware effects.
 - [ ] Restore recovery-006 exactly through a fresh recovery-only contract.
-- [ ] Add and verify `just verify-native-usb-transition` with acknowledged
+- [x] Add and verify `just verify-native-usb-transition` with acknowledged
       commit, closed profile evidence, ROM admission, application reappearance,
       and zero writes.
 - [ ] Install the exact diagnostic package, run one transition ordinal, then
@@ -135,8 +135,14 @@ pads, probes, headers, jumpers, soldering, test points, erase, fault injection,
 mining, ASIC, fan/voltage, external pools, other devices, durability, and parity
 promotion are excluded.
 
-Verification: Pending separate plan and implementation commits, exact package,
-primary recovery, single transition, final restoration, and cleanup.
+Verification: Plan commit `b4368a60` is pushed. The no-write verifier and
+recovery/finalization Interfaces pass the ordered Rust gates, Bright Builds,
+focused USB/flash/restoration tests, all 71 Bazel tests, normal and rollback
+firmware links, canonical package, native-USB ownership and symbol checks,
+parity/progress, redaction, reference cleanliness, sensitive-value scan,
+whitespace, and final diff review. The implementation commit, exact clean
+package, primary recovery, single transition, final restoration, and cleanup
+remain pending.
 
 Completion review: Pending. The parent native-USB task, STR-005, and BWG remain
 unchanged.

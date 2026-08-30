@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::macos::{MacOsDeviceAdapter, UsbDeviceSnapshot};
-use crate::usb_ownership::ProfileObservationTrace;
+use crate::usb_ownership::{ProfileObservationCounts, ProfileObservationTrace};
 use lease::DeviceLease;
 use process::{run_owned_process, OwnedProcessRequest};
 use recovery::{RecoveryPhase, RecoverySample, RecoverySummary, RecoveryTracker};
@@ -61,6 +61,7 @@ pub struct UsbSession {
     child_sequence: u32,
     recovery_sequence: u32,
     profile_trace_sequence: u32,
+    profile_observation_counts: ProfileObservationCounts,
 }
 
 impl UsbSession {
@@ -115,6 +116,7 @@ impl UsbSession {
             child_sequence: 0,
             recovery_sequence: 0,
             profile_trace_sequence: 0,
+            profile_observation_counts: ProfileObservationCounts::default(),
         })
     }
 
@@ -126,6 +128,15 @@ impl UsbSession {
     #[must_use]
     pub fn physical_identity_digest(&self) -> &str {
         &self.physical_identity_digest
+    }
+
+    #[must_use]
+    pub const fn profile_observation_counts(&self) -> ProfileObservationCounts {
+        self.profile_observation_counts
+    }
+
+    pub(crate) fn record_profile_observation_counts(&mut self, counts: ProfileObservationCounts) {
+        self.profile_observation_counts = self.profile_observation_counts.merge(counts);
     }
 
     #[must_use]

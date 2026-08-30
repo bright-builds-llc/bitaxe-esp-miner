@@ -151,6 +151,44 @@ requireText("tools/flash/src/commands.rs", [
   "handoff_required",
   "runtime_profile_unknown",
 ]);
+const transitionVerifier = requireText("tools/flash/src/native_usb_transition.rs", [
+  "run_verify_native_usb_transition",
+  "UsbOperation::VerifyTransition",
+  "transition-result.private.json",
+  "device_write_observed",
+  "restoration_complete",
+]);
+for (const forbidden of [
+  "write-bin",
+  "write_flash",
+  "erase_flash",
+  "generate_nvs_partition",
+  "wifi_credentials",
+  "pool_credentials",
+]) {
+  if (transitionVerifier.includes(forbidden)) {
+    throw new Error(`no-write transition verifier contains ${JSON.stringify(forbidden)}`);
+  }
+}
+requireText("tools/device-session/src/usb_ownership/verification.rs", [
+  "verify_native_usb_transition",
+  "board-info",
+  '"no-reset"',
+  '"hard-reset"',
+  "reacquire_profile(UsbProfile::WorkerRuntime)",
+]);
+requireText("tools/automation/src/native-usb-transition-recovery.ts", [
+  "preflightNativeUsbRecovery",
+  "startNativeUsbRecovery",
+  "finalizeNativeUsbRecovery",
+  "native_usb_recovery",
+  "restore_admission",
+  "restoration_complete",
+]);
+requireText("Justfile", [
+  "verify-native-usb-transition",
+  "native-usb-transition-recovery",
+]);
 
 requireText("AGENTS.md", [
   "docs/hardware/native-usb-ownership.md",

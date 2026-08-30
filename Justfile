@@ -74,6 +74,12 @@ verify-native-usb-ownership:
     bazel run //scripts:verify_native_usb_ownership
     bazel test //scripts:verify_native_usb_symbols_test
 
+verify-native-usb-transition *args:
+    bazel run //tools/flash:flash -- verify-native-usb-transition {{ args }}
+
+native-usb-transition-recovery action *args:
+    bazel run //tools/automation:native_usb_transition_recovery -- {{ quote(action) }} {{ args }}
+
 parity:
     bazel run //tools/parity:report -- report --checklist docs/parity/checklist.md --fail-on-invalid-verified
 

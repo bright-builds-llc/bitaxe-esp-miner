@@ -39,6 +39,16 @@ pub(crate) const BWG_RESTORATION_PLAN_RELATIVE: &str =
     "docs/adr/0019-supervise-bwg-restoration-through-a-protected-browser-campaign.md";
 pub(crate) const BWG_RESTORATION_PLAN_SHA256: &str =
     "eac4c2099b07f22f45c36e6c1daebad0723e759d86964b890a361525a4d1a2f2";
+pub(crate) const NATIVE_USB_TRANSITION_PLAN_RELATIVE: &str =
+    "docs/parity/work-plans/20260830T142327Z-NATIVE-USB-RECOVERY-TRANSITION/PLAN.md";
+pub(crate) const NATIVE_USB_TRANSITION_PLAN_SHA256: &str =
+    "cbc11639a51e67d24a04b33c05dd3dd2e570914be79f3a3d80b7326894e74eca";
+pub(crate) const NATIVE_USB_TRANSITION_PREFLIGHT_ROOT: &str =
+    "scratch/native-usb-transition/.preflight-002";
+pub(crate) const NATIVE_USB_TRANSITION_PRIMARY_ROOT: &str =
+    "scratch/native-usb-transition/recovery-002/restoration";
+pub(crate) const NATIVE_USB_TRANSITION_CONTINGENCY_ROOT: &str =
+    "scratch/native-usb-transition/recovery-003/restoration";
 
 pub(crate) fn authorized_remediation_plan(
     action: &str,
@@ -67,6 +77,10 @@ pub(crate) fn authorized_remediation_plan(
         ("bwg_worker_restoration", 1..=999) => {
             Ok((BWG_RESTORATION_PLAN_RELATIVE, BWG_RESTORATION_PLAN_SHA256))
         }
+        ("native_usb_recovery", 2 | 3) => Ok((
+            NATIVE_USB_TRANSITION_PLAN_RELATIVE,
+            NATIVE_USB_TRANSITION_PLAN_SHA256,
+        )),
         _ => bail!("restore_installed=blocked reason=identity_contract"),
     }
 }
@@ -75,7 +89,12 @@ pub(crate) fn restore_invocation_contract(
     private_root: &Utf8Path,
     admission_only: bool,
 ) -> (&Utf8Path, &'static str) {
-    if admission_only && private_root == Utf8Path::new(TCP_PAYLOAD_PREFLIGHT_ROOT) {
+    if admission_only && private_root == Utf8Path::new(NATIVE_USB_TRANSITION_PREFLIGHT_ROOT) {
+        (
+            Utf8Path::new(NATIVE_USB_TRANSITION_PREFLIGHT_ROOT),
+            NATIVE_USB_TRANSITION_PLAN_RELATIVE,
+        )
+    } else if admission_only && private_root == Utf8Path::new(TCP_PAYLOAD_PREFLIGHT_ROOT) {
         (
             Utf8Path::new(TCP_PAYLOAD_PREFLIGHT_ROOT),
             TCP_PAYLOAD_PLAN_RELATIVE,
@@ -111,6 +130,16 @@ pub(crate) fn restore_invocation_contract(
         (
             Utf8Path::new(NOISE_AUTH_RECOVERY_ROOT),
             NOISE_AUTH_PLAN_RELATIVE,
+        )
+    } else if private_root == Utf8Path::new(NATIVE_USB_TRANSITION_PRIMARY_ROOT) {
+        (
+            Utf8Path::new(NATIVE_USB_TRANSITION_PRIMARY_ROOT),
+            NATIVE_USB_TRANSITION_PLAN_RELATIVE,
+        )
+    } else if private_root == Utf8Path::new(NATIVE_USB_TRANSITION_CONTINGENCY_ROOT) {
+        (
+            Utf8Path::new(NATIVE_USB_TRANSITION_CONTINGENCY_ROOT),
+            NATIVE_USB_TRANSITION_PLAN_RELATIVE,
         )
     } else if private_root == Utf8Path::new(CAMPAIGN_RESTORE_ROOT) {
         (

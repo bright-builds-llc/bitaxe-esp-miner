@@ -293,6 +293,33 @@ impl FlashEnvironment for FakeFlashEnvironment {
         Ok(())
     }
 
+    fn verify_native_usb_transition(&self, _port: &str) -> Result<NativeUsbTransitionOutcome> {
+        Ok(NativeUsbTransitionOutcome {
+            ready_received: true,
+            committed_received: true,
+            bus_reset_observed: true,
+            profile_counts: bitaxe_device_session::ProfileObservationCounts {
+                absent: 1,
+                same_worker: 2,
+                same_serial_jtag: 3,
+                same_unknown: 0,
+                physical_mismatch: 0,
+            },
+            rom_admitted: true,
+            application_reappeared: true,
+        })
+    }
+
+    fn native_usb_profile_counts(&self) -> ProfileObservationCounts {
+        ProfileObservationCounts {
+            absent: 1,
+            same_worker: 2,
+            same_serial_jtag: 3,
+            same_unknown: 0,
+            physical_mismatch: 0,
+        }
+    }
+
     fn execute(&self, command_spec: &CommandSpec) -> Result<()> {
         self.executed_commands
             .borrow_mut()

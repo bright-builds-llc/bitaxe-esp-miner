@@ -7,6 +7,14 @@ use super::{handoff_error, inspect_usb_profile, UsbProfile};
 use crate::{UsbSession, UsbSessionError, UsbTerminalCategory};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct NativeUsbHandoffOutcome {
+    pub ready_received: bool,
+    pub committed_received: bool,
+    pub bus_reset_observed: bool,
+    pub profile_counts: super::ProfileObservationCounts,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum MaintenanceControlStep {
     ClearDtr,
     SetBitRate(u32),
@@ -165,7 +173,9 @@ fn commit_worker_maintenance(
     Ok(())
 }
 
-pub fn handoff_worker_to_rom(session: &mut UsbSession) -> Result<(), UsbSessionError> {
+pub fn handoff_worker_to_rom(
+    session: &mut UsbSession,
+) -> Result<NativeUsbHandoffOutcome, UsbSessionError> {
     if !cfg!(target_os = "macos") {
         return Err(handoff_error(
             UsbTerminalCategory::HandoffUnsupported,
@@ -216,7 +226,13 @@ pub fn handoff_worker_to_rom(session: &mut UsbSession) -> Result<(), UsbSessionE
             return Err(error);
         }
         commit_worker_maintenance(file, &mut dtr)?;
-        session.reacquire_profile(UsbProfile::SerialJtagRuntime)
+        let profile_counts = session.reacquire_profile(UsbProfile::SerialJtagRuntime)?;
+        Ok(NativeUsbHandoffOutcome {
+            ready_received: true,
+            committed_received: true,
+            bus_reset_observed: true,
+            profile_counts,
+        })
     }
     #[cfg(not(target_os = "macos"))]
     unreachable!()

@@ -12,6 +12,29 @@ pub(crate) enum ProfileObservationCategory {
     PhysicalMismatch,
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, serde::Serialize)]
+pub struct ProfileObservationCounts {
+    pub absent: u16,
+    pub same_worker: u16,
+    pub same_serial_jtag: u16,
+    pub same_unknown: u16,
+    pub physical_mismatch: u16,
+}
+
+impl ProfileObservationCounts {
+    pub fn merge(self, other: Self) -> Self {
+        Self {
+            absent: self.absent.saturating_add(other.absent),
+            same_worker: self.same_worker.saturating_add(other.same_worker),
+            same_serial_jtag: self.same_serial_jtag.saturating_add(other.same_serial_jtag),
+            same_unknown: self.same_unknown.saturating_add(other.same_unknown),
+            physical_mismatch: self
+                .physical_mismatch
+                .saturating_add(other.physical_mismatch),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub(crate) struct ProfileObservationTrace {
     schema_version: &'static str,
@@ -36,6 +59,21 @@ impl ProfileObservationTrace {
             return;
         }
         self.samples.push(category);
+    }
+
+    pub(crate) fn counts(&self) -> ProfileObservationCounts {
+        let mut counts = ProfileObservationCounts::default();
+        for category in &self.samples {
+            let target = match category {
+                ProfileObservationCategory::Absent => &mut counts.absent,
+                ProfileObservationCategory::SameWorker => &mut counts.same_worker,
+                ProfileObservationCategory::SameSerialJtag => &mut counts.same_serial_jtag,
+                ProfileObservationCategory::SameUnknown => &mut counts.same_unknown,
+                ProfileObservationCategory::PhysicalMismatch => &mut counts.physical_mismatch,
+            };
+            *target = target.saturating_add(1);
+        }
+        counts
     }
 
     #[cfg(test)]

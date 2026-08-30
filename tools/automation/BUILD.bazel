@@ -44,6 +44,24 @@ js_library(
     ],
 )
 
+js_library(
+    name = "native_usb_transition_evaluator_sources",
+    srcs = [
+        "src/native-usb-transition-recovery-cli.ts",
+        "src/native-usb-transition-recovery-contract.ts",
+        "src/native-usb-transition-recovery.ts",
+        "src/self-test-campaign-restoration.ts",
+        "src/stratum-v2-campaign.ts",
+        "src/stratum-v2-noise-diagnostic-process.ts",
+        "src/stratum-v2-restore-admission.ts",
+        "src/stratum-v2-restore-model.ts",
+        "src/stratum-v2-restore-validator.ts",
+        "src/stratum-v2-runtime-admission.ts",
+        "src/stratum-v2-tcp-recovery-tooling.ts",
+        "src/stratum-v2-validator-child.ts",
+    ],
+)
+
 filegroup(
     name = "automation_sources",
     srcs = ["BUILD.bazel"] + glob(["src/**/*.ts", "src/**/*.swift"]),
@@ -142,7 +160,7 @@ js_binary(
         "//crates/bitaxe-api:statistics_history_sources",
         "//:display_behavior_evidence_inputs",
         "//:screen_flow_evidence_inputs",
-        "//:str005_restore_and_verify_inputs",
+        "//:native_usb_transition_inputs",
         "//:str005_inactive_restoration_inputs",
         "//:statistics_history_evidence_inputs",
         "//:scoreboard_evidence_inputs",
@@ -203,6 +221,20 @@ js_binary(
         "//tools/stratum-v2-fixture:stratum_v2_fixture",
     ],
     entry_point = "dist/stratum-v2-noise-diagnostic-cli.js",
+)
+
+js_binary(
+    name = "native_usb_transition_recovery",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        ":native_usb_transition_evaluator_sources",
+        "//:str005_restore_and_verify_inputs",
+        "//tools/flash:flash",
+        "//tools/flash:native_usb_ownership_sources",
+        "//tools/device-session:native_usb_ownership_sources",
+    ],
+    entry_point = "dist/native-usb-transition-recovery-cli.js",
 )
 
 js_binary(
@@ -593,6 +625,16 @@ js_test(
         "//:str005_preconnect_noise_inputs",
     ],
     entry_point = "test-dist/stratum-v2-noise-diagnostic.test.js",
+)
+
+js_test(
+    name = "native_usb_transition_recovery_unit_test",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        ":automation_tests_ts",
+    ],
+    entry_point = "test-dist/native-usb-transition-recovery.test.js",
 )
 
 js_test(

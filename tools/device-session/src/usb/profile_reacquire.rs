@@ -10,7 +10,7 @@ impl UsbSession {
     pub(crate) fn reacquire_profile(
         &mut self,
         expected_profile: UsbProfile,
-    ) -> Result<(), UsbSessionError> {
+    ) -> Result<crate::usb_ownership::ProfileObservationCounts, UsbSessionError> {
         let phase = RecoveryPhase::Handoff;
         let timeout = phase.timeout();
         let deadline = Instant::now() + timeout;
@@ -96,13 +96,16 @@ impl UsbSession {
             }
             self.write_recovery_summary(&tracker.summary())?;
             self.write_profile_observation_trace(&observation_trace)?;
+            let counts = observation_trace.counts();
+            self.record_profile_observation_counts(counts);
             self.current_port = snapshot.port;
             self.current_enumeration_token = snapshot.enumeration_token;
-            return Ok(());
+            return Ok(counts);
         }
         let ProfileTransitionDecision::Failed(category) = transition.timeout() else {
             unreachable!("profile transition timeout must fail");
         };
+        let category = profile_timeout_category(expected_profile, &observation_trace, category);
         self.fail_once(category);
         Err(self.profile_transition_error(
             &tracker,
@@ -119,11 +122,89 @@ impl UsbSession {
         category: UsbTerminalCategory,
         detail: &str,
     ) -> UsbSessionError {
+        self.record_profile_observation_counts(trace.counts());
         let profile_trace_recorded = self.write_profile_observation_trace(trace).is_ok();
         self.recovery_error_with_summary(
             tracker,
             category,
             &format!("{detail} profile_trace_recorded={profile_trace_recorded}"),
         )
+    }
+}
+
+fn profile_timeout_category(
+    expected_profile: UsbProfile,
+    trace: &ProfileObservationTrace,
+    fallback: UsbTerminalCategory,
+) -> UsbTerminalCategory {
+    if expected_profile == UsbProfile::WorkerRuntime {
+        return UsbTerminalCategory::ApplicationReappearanceTimeout;
+    }
+    let counts = trace.counts();
+    if counts.same_worker > 0 {
+        UsbTerminalCategory::SameWorkerAfterCommit
+    } else if counts.absent > 0 {
+        UsbTerminalCategory::BusResetTimeout
+    } else {
+        fallback
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::usb_ownership::ProfileObservationCategory;
+
+    #[test]
+    fn worker_observed_after_commit_has_a_specific_terminal_category() {
+        // Arrange
+        let mut trace = ProfileObservationTrace::new(UsbProfile::SerialJtagRuntime);
+        trace.observe(ProfileObservationCategory::SameWorker);
+
+        // Act
+        let category = profile_timeout_category(
+            UsbProfile::SerialJtagRuntime,
+            &trace,
+            UsbTerminalCategory::HandoffTransitionTimeout,
+        );
+
+        // Assert
+        assert_eq!(category, UsbTerminalCategory::SameWorkerAfterCommit);
+    }
+
+    #[test]
+    fn missing_serial_jtag_after_detach_has_a_bus_reset_terminal_category() {
+        // Arrange
+        let mut trace = ProfileObservationTrace::new(UsbProfile::SerialJtagRuntime);
+        trace.observe(ProfileObservationCategory::Absent);
+
+        // Act
+        let category = profile_timeout_category(
+            UsbProfile::SerialJtagRuntime,
+            &trace,
+            UsbTerminalCategory::HandoffTransitionTimeout,
+        );
+
+        // Assert
+        assert_eq!(category, UsbTerminalCategory::BusResetTimeout);
+    }
+
+    #[test]
+    fn missing_worker_after_rom_admission_has_an_application_terminal_category() {
+        // Arrange
+        let trace = ProfileObservationTrace::new(UsbProfile::WorkerRuntime);
+
+        // Act
+        let category = profile_timeout_category(
+            UsbProfile::WorkerRuntime,
+            &trace,
+            UsbTerminalCategory::HandoffTransitionTimeout,
+        );
+
+        // Assert
+        assert_eq!(
+            category,
+            UsbTerminalCategory::ApplicationReappearanceTimeout
+        );
     }
 }

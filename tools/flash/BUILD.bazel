@@ -88,9 +88,14 @@ js_library(
         "src/commands/flash.rs",
         "src/environment.rs",
         "src/environment/usb_ownership.rs",
+        "src/native_usb_transition.rs",
         "src/restore_installed.rs",
+        "src/restore_installed/contract.rs",
     ],
-    visibility = ["//scripts:__pkg__"],
+    visibility = [
+        "//scripts:__pkg__",
+        "//tools/automation:__pkg__",
+    ],
 )
 
 filegroup(
@@ -225,6 +230,7 @@ rust_binary(
         "src/main.rs",
         "src/model.rs",
         "src/monitor.rs",
+        "src/native_usb_transition.rs",
         "src/noise_diagnostic.rs",
         "src/tcp_payload_diagnostic.rs",
         "src/output.rs",
@@ -263,6 +269,8 @@ rust_binary(
         "src/tests/fixtures.rs",
         "src/tests/input_uat.rs",
         "src/tests/monitor.rs",
+        "src/tests/cli_native_usb_transition.rs",
+        "src/tests/native_usb_transition.rs",
         "src/tests/phase35.rs",
         "src/tests/redaction.rs",
         "src/tests/release_recovery.rs",
@@ -285,6 +293,7 @@ rust_binary(
         "//:docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md",
         "//:docs/parity/work-plans/20260829T032813Z-STR-005-CONNECTION-IDENTITY/PLAN.md",
         "//:docs/parity/work-plans/20260829T143226Z-STR-005-NOISE-AUTH/PLAN.md",
+        "//:docs/parity/work-plans/20260830T142327Z-NATIVE-USB-RECOVERY-TRANSITION/PLAN.md",
     ],
     crate_name = "bitaxe_flash",
     edition = "2021",
@@ -316,5 +325,6 @@ rust_test(
         "//:docs/parity/work-plans/20260828T185251Z-STR-005/PLAN.md",
         "//:docs/parity/work-plans/20260829T032813Z-STR-005-CONNECTION-IDENTITY/PLAN.md",
         "//:docs/parity/work-plans/20260829T143226Z-STR-005-NOISE-AUTH/PLAN.md",
+        "//:docs/parity/work-plans/20260830T142327Z-NATIVE-USB-RECOVERY-TRANSITION/PLAN.md",
     ],
 )

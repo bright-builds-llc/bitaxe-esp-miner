@@ -407,9 +407,12 @@ pub(crate) fn campaign_flash_failure(
             | UsbTerminalCategory::HandoffRejectedUnsafeState
             | UsbTerminalCategory::HandoffReadyTimeout
             | UsbTerminalCategory::HandoffCommitTimeout
+            | UsbTerminalCategory::BusResetTimeout
+            | UsbTerminalCategory::SameWorkerAfterCommit
             | UsbTerminalCategory::HandoffTransitionTimeout
             | UsbTerminalCategory::BootloaderAmbiguous
-            | UsbTerminalCategory::BootloaderSyncFailed => {
+            | UsbTerminalCategory::BootloaderSyncFailed
+            | UsbTerminalCategory::RomAdmissionFailed => {
                 CampaignTerminalCategory::BootloaderConnectFailed
             }
             UsbTerminalCategory::ApplicationReappearanceTimeout

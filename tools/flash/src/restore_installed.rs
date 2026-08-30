@@ -377,7 +377,11 @@ fn authorization_action_allowed(admission_only: bool, private_root: &str, action
     }
     matches!(
         (admission_only, private_root, action),
-        (true, PREFLIGHT_ROOT, "preflight")
+        (
+            true,
+            NATIVE_USB_TRANSITION_PREFLIGHT_ROOT,
+            "native_usb_recovery"
+        ) | (true, PREFLIGHT_ROOT, "preflight")
             | (
                 true,
                 TCP_PAYLOAD_PREFLIGHT_ROOT,
@@ -403,6 +407,11 @@ fn authorization_action_allowed(admission_only: bool, private_root: &str, action
                 "noise_auth_diagnostic_restore"
             )
             | (false, NOISE_AUTH_RECOVERY_ROOT, "noise_auth_recovery")
+            | (
+                false,
+                NATIVE_USB_TRANSITION_PRIMARY_ROOT | NATIVE_USB_TRANSITION_CONTINGENCY_ROOT,
+                "native_usb_recovery"
+            )
     )
 }
 

@@ -138,6 +138,16 @@ js_library(
 )
 
 js_library(
+    name = "native_usb_transition_inputs",
+    srcs = [
+        "TASKS.md",
+        "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md",
+        "docs/parity/work-plans/20260830T142327Z-NATIVE-USB-RECOVERY-TRANSITION/PLAN.md",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "str005_inactive_restoration_inputs",
     srcs = [
         "TASKS.md",

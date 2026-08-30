@@ -33,6 +33,8 @@ pub(crate) enum CliCommand {
     NoiseDiagnostic(NoiseDiagnosticCommand),
     #[command(name = "tcp-payload-diagnostic")]
     TcpPayloadDiagnostic(TcpPayloadDiagnosticCommand),
+    #[command(name = "verify-native-usb-transition")]
+    VerifyNativeUsbTransition(VerifyNativeUsbTransitionCommand),
 }
 
 #[derive(Debug, Parser, Clone)]
@@ -179,6 +181,30 @@ pub(crate) struct DetectCommand {
 
     #[arg(long)]
     pub(crate) port: Option<String>,
+}
+
+#[derive(Debug, Parser, Clone)]
+pub(crate) struct VerifyNativeUsbTransitionCommand {
+    #[arg(long, default_value = "205", value_parser = parse_board)]
+    pub(crate) board: BoardId,
+
+    #[arg(long)]
+    pub(crate) port: String,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) manifest: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) plan: Utf8PathBuf,
+
+    #[arg(long = "private-root", value_parser = parse_utf8_path)]
+    pub(crate) private_root: Utf8PathBuf,
+
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) projection: Utf8PathBuf,
+
+    #[arg(long = "redact-evidence")]
+    pub(crate) redact_evidence: bool,
 }
 
 #[derive(Debug, Args, Clone)]

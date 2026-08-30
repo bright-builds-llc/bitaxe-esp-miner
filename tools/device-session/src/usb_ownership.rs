@@ -10,17 +10,22 @@ use std::time::Duration;
 
 mod maintenance;
 mod profile_trace;
+mod verification;
 
-pub use maintenance::handoff_worker_to_rom;
+pub use maintenance::{handoff_worker_to_rom, NativeUsbHandoffOutcome};
 #[cfg(test)]
 use maintenance::{
     maintenance_commit_steps, maintenance_control_steps, wait_for_maintenance_receipt,
     MaintenanceCommitStep, MaintenanceControlStep,
 };
+pub use profile_trace::ProfileObservationCounts;
 #[cfg(test)]
 use profile_trace::MAX_PROFILE_OBSERVATION_SAMPLES;
 pub(crate) use profile_trace::{
     profile_observation_category, ProfileObservationCategory, ProfileObservationTrace,
+};
+pub use verification::{
+    native_usb_transition_module_sha256, verify_native_usb_transition, NativeUsbTransitionOutcome,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

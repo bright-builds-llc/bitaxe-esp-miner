@@ -26,8 +26,10 @@ use bitaxe_config::{
 };
 use bitaxe_device_session::{
     admit_rom_downloader, discover_usb_ports, handoff_worker_to_rom, inspect_usb_profile,
-    plan_usb_operation, MonitorOutput, UsbCommandDiagnostic, UsbDeviceEffectState, UsbIntent,
-    UsbOperation, UsbOperationPlan, UsbProfile, UsbSession, UsbTerminalCategory,
+    native_usb_transition_module_sha256, plan_usb_operation, verify_native_usb_transition,
+    MonitorOutput, NativeUsbTransitionOutcome, ProfileObservationCounts, UsbCommandDiagnostic,
+    UsbDeviceEffectState, UsbIntent, UsbOperation, UsbOperationPlan, UsbProfile, UsbSession,
+    UsbTerminalCategory,
 };
 #[cfg(test)]
 use bitaxe_device_session::{UsbCommandTermination, UsbConnectionSignature};
@@ -47,6 +49,7 @@ mod execution_snapshot;
 mod input_uat;
 mod model;
 mod monitor;
+mod native_usb_transition;
 mod noise_diagnostic;
 mod output;
 mod package;
@@ -72,6 +75,7 @@ pub(crate) use execution_snapshot::*;
 pub(crate) use input_uat::*;
 pub(crate) use model::*;
 pub(crate) use monitor::*;
+pub(crate) use native_usb_transition::*;
 pub(crate) use noise_diagnostic::*;
 pub(crate) use output::*;
 pub(crate) use package::*;
@@ -138,6 +142,9 @@ fn main() -> Result<()> {
         }
         CliCommand::TcpPayloadDiagnostic(command) => {
             run_tcp_payload_diagnostic_command(&command, &environment)
+        }
+        CliCommand::VerifyNativeUsbTransition(command) => {
+            run_verify_native_usb_transition(&command, &environment)
         }
     };
     let device_effect_state = environment.device_effect_state();

@@ -33,6 +33,8 @@ pub(crate) trait FlashEnvironment {
         size: &str,
     ) -> Result<()>;
     fn begin_usb_session(&self, operation: UsbOperation, port: &str) -> Result<()>;
+    fn verify_native_usb_transition(&self, port: &str) -> Result<NativeUsbTransitionOutcome>;
+    fn native_usb_profile_counts(&self) -> ProfileObservationCounts;
     fn execute(&self, command_spec: &CommandSpec) -> Result<()>;
     fn execute_esptool_write_flash(&self, command: &ManagedEsptoolWriteFlash) -> Result<()>;
     fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>>;
@@ -363,6 +365,25 @@ impl FlashEnvironment for LocalFlashEnvironment {
 
     fn execute(&self, command_spec: &CommandSpec) -> Result<()> {
         self.execute_with_output(command_spec).map(|_| ())
+    }
+
+    fn verify_native_usb_transition(&self, port: &str) -> Result<NativeUsbTransitionOutcome> {
+        let mut session_slot = self.usb_session.borrow_mut();
+        let Some(session) = session_slot.as_mut() else {
+            bail!("cleanup_failed: native USB transition attempted without a repository session");
+        };
+        if session.port() != port {
+            bail!("physical_identity_drift");
+        }
+        verify_native_usb_transition(session, self.espflash_bin.as_std_path())
+            .map_err(|error| anyhow::anyhow!(error))
+    }
+
+    fn native_usb_profile_counts(&self) -> ProfileObservationCounts {
+        self.usb_session.borrow().as_ref().map_or_else(
+            ProfileObservationCounts::default,
+            UsbSession::profile_observation_counts,
+        )
     }
 
     fn execute_esptool_write_flash(&self, command: &ManagedEsptoolWriteFlash) -> Result<()> {

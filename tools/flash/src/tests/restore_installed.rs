@@ -216,3 +216,37 @@ fn historical_snapshot_restore_is_admitted_from_clean_current_host() {
     assert!(run_restore_installed(&command, &rejected_environment).is_err());
     assert!(rejected_environment.executed_commands().is_empty());
 }
+
+#[test]
+fn native_usb_recovery_contract_binds_both_ordinals_to_the_immutable_plan() {
+    // Arrange / Act
+    let primary =
+        authorized_remediation_plan("native_usb_recovery", 2).expect("primary recovery contract");
+    let contingency = authorized_remediation_plan("native_usb_recovery", 3)
+        .expect("contingency recovery contract");
+    let (primary_root, primary_plan) =
+        restore_invocation_contract(Utf8Path::new(NATIVE_USB_TRANSITION_PRIMARY_ROOT), false);
+    let (contingency_root, contingency_plan) =
+        restore_invocation_contract(Utf8Path::new(NATIVE_USB_TRANSITION_CONTINGENCY_ROOT), false);
+
+    // Assert
+    assert_eq!(
+        primary,
+        (
+            NATIVE_USB_TRANSITION_PLAN_RELATIVE,
+            NATIVE_USB_TRANSITION_PLAN_SHA256
+        )
+    );
+    assert_eq!(contingency, primary);
+    assert_eq!(
+        primary_root,
+        Utf8Path::new(NATIVE_USB_TRANSITION_PRIMARY_ROOT)
+    );
+    assert_eq!(
+        contingency_root,
+        Utf8Path::new(NATIVE_USB_TRANSITION_CONTINGENCY_ROOT)
+    );
+    assert_eq!(primary_plan, NATIVE_USB_TRANSITION_PLAN_RELATIVE);
+    assert_eq!(contingency_plan, NATIVE_USB_TRANSITION_PLAN_RELATIVE);
+    assert!(authorized_remediation_plan("native_usb_recovery", 4).is_err());
+}

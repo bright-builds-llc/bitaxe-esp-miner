@@ -21,8 +21,12 @@ js_library(
         "src/usb_ownership.rs",
         "src/usb_ownership/maintenance.rs",
         "src/usb_ownership/profile_trace.rs",
+        "src/usb_ownership/verification.rs",
     ],
-    visibility = ["//scripts:__pkg__"],
+    visibility = [
+        "//scripts:__pkg__",
+        "//tools/automation:__pkg__",
+    ],
 )
 
 js_library(
@@ -32,6 +36,7 @@ js_library(
         "src/usb_ownership.rs",
         "src/usb_ownership/maintenance.rs",
         "src/usb_ownership/profile_trace.rs",
+        "src/usb_ownership/verification.rs",
         "src/usb/observation.rs",
         "src/usb/process.rs",
         "src/usb/profile_reacquire.rs",
@@ -46,6 +51,7 @@ rust_library(
         "src/usb_ownership.rs",
         "src/usb_ownership/maintenance.rs",
         "src/usb_ownership/profile_trace.rs",
+        "src/usb_ownership/verification.rs",
         "src/evidence.rs",
         "src/display_uat.rs",
         "src/display_uat/origin.rs",
