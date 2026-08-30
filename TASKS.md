@@ -158,8 +158,23 @@ root remains protected and incomplete; a receipt-gated continuation will arm
 the observer immediately after one reset and explicitly prohibits repeating
 either completed write.
 
-Completion review: Pending. The parent native-USB task, STR-005, and BWG remain
-unchanged.
+Terminal update: retain-ROM fix `aebec324` and write-free continuation fix
+`2ebffb1f` are pushed; the latter's exact clean manifest SHA-256 is
+`b87030e8422231193942c133d50a70a84b9a4af1665a7fa5a4ce07498f1e9eed`.
+Protected receipts prove the recovery-006 snapshot and Wi-Fi seed writes both
+completed. The continuation validated those receipts, repeated neither write,
+performed one admitted reset, immediately attached the receive-only observer,
+and reproduced `runtime_origin` with zero unique origins. That authoritative
+post-fix signature is terminal. Host cleanup reports zero owned processes, one
+USB node remains, the diagnostic package was never installed, and no public
+projection exists.
+
+Completion review: Blocked before exact primary recovery confirmation because
+recovery-006 does not replay a current runtime origin to the qualified passive
+observer. Hardware work is stopped by the immutable recurrence rule. Settings
+exactness and inactive zero-work/share state remain unauthenticated; the
+single transition, final recovery, and public finalization are ineligible.
+The parent native-USB task, STR-005, and BWG remain unchanged.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
