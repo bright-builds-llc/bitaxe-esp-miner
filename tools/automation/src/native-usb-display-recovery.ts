@@ -97,6 +97,13 @@ export function displayRecoveryWorkspaceRoot(environment = process.env, cwd = pr
   return sourceWorkspaceRoot(configured === undefined ? [cwd] : [configured, cwd]);
 }
 
+export async function createDisplayRecoveryRoot(workspace: string): Promise<void> {
+  const target = path.join(workspace, root);
+  await mkdir(target, { recursive: true, mode: 0o700 });
+  await chmod(target, 0o700);
+  await requireMode(target, 0o700, true);
+}
+
 async function commonAdmission(workspace: string, args: DisplayRecoveryArgs, rootAbsent: boolean): Promise<void> {
   if ((await absent(path.join(workspace, root))) !== rootAbsent || !(await absent(path.join(workspace, projection)))) fail("outputs");
   if (!rootAbsent) await requireMode(path.join(workspace, root), 0o700, true);
@@ -148,7 +155,7 @@ export async function runDisplayRecovery(workspace: string, args: DisplayRecover
     const rootIsAbsent = await absent(path.join(workspace, root));
     await commonAdmission(workspace, args, rootIsAbsent);
     const generation = rootIsAbsent ? 1 : 2;
-    if (rootIsAbsent) { await mkdir(path.join(workspace, root), { mode: 0o700 }); await chmod(path.join(workspace, root), 0o700); }
+    if (rootIsAbsent) await createDisplayRecoveryRoot(workspace);
     else {
       await requireMode(path.join(workspace, root, "origin-unreachable.private.json"), 0o600);
       if (!(await absent(path.join(workspace, root, "display-origin-capture-002.private.json")))) fail("capture_consumed");

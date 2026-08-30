@@ -6,7 +6,11 @@ import path from "node:path";
 import test from "node:test";
 import { promisify } from "node:util";
 
-import { parseDisplayRecoveryArgs, projectDisplayRecovery } from "./native-usb-display-recovery.js";
+import {
+  createDisplayRecoveryRoot,
+  parseDisplayRecoveryArgs,
+  projectDisplayRecovery,
+} from "./native-usb-display-recovery.js";
 
 const run = promisify(execFile);
 const common = [
@@ -29,6 +33,19 @@ test("display recovery parser accepts only the task-bound interface", () => {
   assert.equal(parsed.port, "/dev/cu.fixture");
   assert.equal(parsed.privateRoot, "scratch/native-usb-display-recovery/attempt-001");
   assert.throws(() => parseDisplayRecoveryArgs("preflight", [...common, "--board", "601"]));
+});
+
+test("display recovery creates its nested private root", async () => {
+  // Arrange
+  const workspace = await mkdtemp(path.join(os.tmpdir(), "display-root-"));
+
+  // Act
+  await createDisplayRecoveryRoot(workspace);
+
+  // Assert
+  const metadata = await stat(path.join(workspace, "scratch/native-usb-display-recovery/attempt-001"));
+  assert.equal(metadata.isDirectory(), true);
+  assert.equal(metadata.mode & 0o777, 0o700);
 });
 
 test("macOS capture helper writes one mode-0600 fixture result", async () => {
