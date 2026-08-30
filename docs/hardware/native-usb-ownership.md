@@ -154,6 +154,16 @@ hard reset, and immediately attaches the receive-only observer. Missing or
 partial receipts, source-lineage drift, a prior continuation, or a completed
 result all fail closed.
 
+`just native-usb-display-recovery` is the recovery-only fallback when the
+qualified USB observer carries no application bytes but the running Bitaxe
+display shows its private IPv4 address. It accepts that address directly from
+the operator, obtains the ESP32-S3 base MAC through admitted USB `board-info`,
+and requires the API station MAC digest and complete recovery identity to
+match before sending a settings request. Local development UI and console
+output may show the address. Public evidence remains redacted. This fallback
+does not perform or authorize mDNS, ARP, router lookup, subnet scanning,
+hostname discovery, flashing, NVS writes, or a transition diagnostic.
+
 Manual BOOT/RESET is a one-time bootstrap or last-resort recovery path, never
 the normal development workflow. Buttonless flashing is not qualified until
 the active task records 20 automatic Worker-to-ROM-to-flash-to-Worker cycles

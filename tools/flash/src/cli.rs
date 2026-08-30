@@ -35,6 +35,8 @@ pub(crate) enum CliCommand {
     TcpPayloadDiagnostic(TcpPayloadDiagnosticCommand),
     #[command(name = "verify-native-usb-transition")]
     VerifyNativeUsbTransition(VerifyNativeUsbTransitionCommand),
+    #[command(name = "display-recovery-start")]
+    DisplayRecoveryStart(DisplayRecoveryStartCommand),
 }
 
 #[derive(Debug, Parser, Clone)]
@@ -206,6 +208,32 @@ pub(crate) struct VerifyNativeUsbTransitionCommand {
     #[arg(long, value_parser = parse_utf8_path)]
     pub(crate) projection: Utf8PathBuf,
 
+    #[arg(long = "redact-evidence")]
+    pub(crate) redact_evidence: bool,
+}
+
+#[derive(Debug, Parser, Clone)]
+pub(crate) struct DisplayRecoveryStartCommand {
+    #[arg(long, default_value = "205", value_parser = parse_board)]
+    pub(crate) board: BoardId,
+    #[arg(long)]
+    pub(crate) port: String,
+    #[arg(long = "package-manifest", value_parser = parse_utf8_path)]
+    pub(crate) package_manifest: Utf8PathBuf,
+    #[arg(long = "restore-bundle", value_parser = parse_utf8_path)]
+    pub(crate) restore_bundle: Utf8PathBuf,
+    #[arg(long = "settings-backup", value_parser = parse_utf8_path)]
+    pub(crate) settings_backup: Utf8PathBuf,
+    #[arg(long = "wifi-credentials", value_parser = parse_utf8_path)]
+    pub(crate) wifi_credentials: Utf8PathBuf,
+    #[arg(long = "pool-credentials", value_parser = parse_utf8_path)]
+    pub(crate) pool_credentials: Utf8PathBuf,
+    #[arg(long = "capture-input", value_parser = parse_utf8_path)]
+    pub(crate) capture_input: Utf8PathBuf,
+    #[arg(long = "private-root", value_parser = parse_utf8_path)]
+    pub(crate) private_root: Utf8PathBuf,
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) plan: Utf8PathBuf,
     #[arg(long = "redact-evidence")]
     pub(crate) redact_evidence: bool,
 }

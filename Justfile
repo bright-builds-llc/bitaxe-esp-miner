@@ -80,6 +80,9 @@ verify-native-usb-transition *args:
 native-usb-transition-recovery action *args:
     bazel run //tools/automation:native_usb_transition_recovery -- {{ quote(action) }} {{ args }}
 
+native-usb-display-recovery action *args:
+    bazel run //tools/automation:native_usb_display_recovery -- {{ quote(action) }} {{ args }}
+
 parity:
     bazel run //tools/parity:report -- report --checklist docs/parity/checklist.md --fail-on-invalid-verified
 

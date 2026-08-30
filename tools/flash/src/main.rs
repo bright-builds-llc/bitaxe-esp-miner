@@ -41,6 +41,7 @@ use sha2::{Digest, Sha256};
 mod campaign;
 mod cli;
 mod commands;
+mod display_recovery;
 mod environment;
 mod esp32s3_image;
 mod evidence;
@@ -69,6 +70,7 @@ mod tests;
 pub(crate) use campaign::*;
 pub(crate) use cli::*;
 pub(crate) use commands::*;
+pub(crate) use display_recovery::*;
 pub(crate) use environment::*;
 pub(crate) use evidence_record::*;
 pub(crate) use execution_snapshot::*;
@@ -145,6 +147,9 @@ fn main() -> Result<()> {
         }
         CliCommand::VerifyNativeUsbTransition(command) => {
             run_verify_native_usb_transition(&command, &environment)
+        }
+        CliCommand::DisplayRecoveryStart(command) => {
+            run_display_recovery_start(&command, &environment)
         }
     };
     let device_effect_state = environment.device_effect_state();

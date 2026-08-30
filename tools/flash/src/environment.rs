@@ -35,6 +35,8 @@ pub(crate) trait FlashEnvironment {
     fn begin_usb_session(&self, operation: UsbOperation, port: &str) -> Result<()>;
     fn verify_native_usb_transition(&self, port: &str) -> Result<NativeUsbTransitionOutcome>;
     fn native_usb_profile_counts(&self) -> ProfileObservationCounts;
+    fn usb_physical_identity_digest(&self) -> Result<String>;
+    fn current_usb_physical_identity_digest(&self, port: &str) -> Result<String>;
     fn execute(&self, command_spec: &CommandSpec) -> Result<()>;
     fn execute_esptool_write_flash(&self, command: &ManagedEsptoolWriteFlash) -> Result<()>;
     fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>>;
@@ -384,6 +386,18 @@ impl FlashEnvironment for LocalFlashEnvironment {
             ProfileObservationCounts::default,
             UsbSession::profile_observation_counts,
         )
+    }
+
+    fn usb_physical_identity_digest(&self) -> Result<String> {
+        self.usb_session
+            .borrow()
+            .as_ref()
+            .map(|session| session.physical_identity_digest().to_owned())
+            .context("display_recovery=blocked reason=usb_session_missing")
+    }
+
+    fn current_usb_physical_identity_digest(&self, port: &str) -> Result<String> {
+        inspect_usb_profile(port).map(|inspection| inspection.physical_identity_digest)
     }
 
     fn execute_esptool_write_flash(&self, command: &ManagedEsptoolWriteFlash) -> Result<()> {

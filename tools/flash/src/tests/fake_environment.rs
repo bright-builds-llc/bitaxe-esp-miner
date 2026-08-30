@@ -320,6 +320,14 @@ impl FlashEnvironment for FakeFlashEnvironment {
         }
     }
 
+    fn usb_physical_identity_digest(&self) -> Result<String> {
+        Ok("6".repeat(64))
+    }
+
+    fn current_usb_physical_identity_digest(&self, _port: &str) -> Result<String> {
+        Ok("6".repeat(64))
+    }
+
     fn execute(&self, command_spec: &CommandSpec) -> Result<()> {
         self.executed_commands
             .borrow_mut()

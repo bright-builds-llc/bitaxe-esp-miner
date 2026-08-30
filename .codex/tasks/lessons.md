@@ -213,3 +213,10 @@
 2. What went wrong: Enabling the ESP32-S3 TinyUSB application profile produced a visible CDC node, but the existing flash path treated every serial node as an admitted ROM downloader and sent bootloader synchronization traffic to the Worker runtime.
 3. Preventive rule: Treat physical identity, USB profile, and enumeration identity separately. Any application profile that owns the internal USB PHY must retain a tested, repo-owned handoff to ROM; require successful ROM `board-info` before writes and never infer flash compatibility from CDC visibility.
 4. Trigger signal: TinyUSB descriptors, USB sdkconfig, or startup ownership changes while flash/recovery tests still identify targets only by a `/dev/cu.*` node or VID/PID and do not prove a profile transition plus ROM admission.
+
+## lesson-development-ip-needs-share-redaction-not-interactive-secrecy | 2026-08-30 16:17
+
+1. Date: 2026-08-30 16:17 CDT
+2. What went wrong: A recovery design added masked dialogs and special interactive secrecy for a local RFC1918 address even though the user treats development IPs as ordinary local diagnostics.
+3. Preventive rule: Allow local development UI, console, and protected task artifacts to show RFC1918 addresses normally. Apply strict redaction when evidence is committed or shared, and keep credentials, public endpoints, tokens, and owner identifiers under their stronger existing protections.
+4. Trigger signal to catch it earlier: A workflow proposes hidden input, secret storage, or credential-grade handling solely because an operator must enter a private development IP address.

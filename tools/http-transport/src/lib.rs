@@ -12,12 +12,14 @@ use rustls::{ClientConfig, ClientConnection, RootCertStore, StreamOwned};
 
 mod commands;
 mod observation;
+mod recovery;
 mod websocket;
 
 pub use observation::{
     CompletedRequest, EstablishedTransport, ExchangeObservation, ExchangeState, HttpResponse,
     RequestProgress, ResponseRead, ResponseReadOutcome, Scheme, TlsVerification, TransportOutcome,
 };
+pub use recovery::strict_http_evaluator_sha256;
 pub use websocket::{PlainWebSocket, WebSocketRead, WebSocketReadFailureKind};
 
 pub const DEFAULT_CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
@@ -163,7 +165,7 @@ impl StrictHttpClient {
         deadline: Instant,
         connect_timeout: Duration,
     ) -> Result<ExchangeObservation> {
-        if !matches!(method, "GET" | "POST")
+        if !matches!(method, "GET" | "POST" | "PATCH")
             || !path.starts_with('/')
             || path.contains(char::is_whitespace)
             || content_type.contains(['\r', '\n'])

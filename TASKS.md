@@ -178,9 +178,9 @@ The parent native-USB task, STR-005, and BWG remain unchanged.
 
 ### task-native-usb-display-recovery-205 | 2026-08-30 | Authenticate recovery-006 from the displayed origin
 
-- [ ] Create and push the immutable display-bound recovery plan before
+- [x] Create and push the immutable display-bound recovery plan before
       implementation or hardware/network effects.
-- [ ] Add the task-gated display capture, private USB MAC receipt, strict HTTP
+- [x] Add the task-gated display capture, private USB MAC receipt, strict HTTP
       restoration Module, no-effect finalizer, and focused guardrails.
 - [ ] Authenticate recovery-006, restore exact settings/theme, and prove
       mine-on-boot disabled, inactive zero-work/share state, and cleanup.
@@ -206,8 +206,15 @@ diagnostic, mining, ASIC, fan/voltage, fault injection, OTA, discovery, mDNS,
 ARP, router state, scans, direct UART/pins/pads/probes/headers, other devices,
 other boards, durability, and parity promotion are excluded.
 
-Verification: Pending separate plan and implementation commits, exact clean
-package, one display-bound restoration, finalization, and cleanup.
+Verification: Immutable plan/audit/task commit `29a98fcc` is pushed. Focused
+RFC1918, MAC normalization, restoration payload, strict HTTP route, CLI,
+projection allowlist, Swift fixture/runfiles, file-mode, ownership, and source
+guard tests pass. Ordered Rust gates, Bright Builds, all 72 Bazel tests, normal
+and rollback firmware links, canonical package, native-USB ownership, parity
+and progress, redaction, reference cleanliness, sensitive-value scan,
+whitespace, and final diff review pass. The implementation commit, exact clean
+package, one display-bound restoration, finalization, and cleanup remain
+pending.
 
 Completion review: Pending. Recovery-006 remains installed; the blocked
 predecessor, parent native-USB task, STR-005, and BWG remain unchanged.

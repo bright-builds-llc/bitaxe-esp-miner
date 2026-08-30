@@ -145,7 +145,7 @@ function processIsAlive(pid: number): boolean {
   }
 }
 
-async function requireNoOwnedUsbProcesses(): Promise<void> {
+export async function requireNoOwnedUsbProcesses(): Promise<void> {
   const stateRoot = path.join(os.tmpdir(), `bitaxe-device-sessions-${process.getuid?.() ?? 0}`);
   let deviceRoots: string[];
   try {

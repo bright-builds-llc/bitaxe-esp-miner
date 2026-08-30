@@ -187,9 +187,26 @@ requireText("tools/automation/src/native-usb-transition-recovery.ts", [
   "completedRestoreCommandReceipt",
   "repeated_write_allowed: false",
 ]);
+requireText("tools/automation/src/native-usb-display-recovery.ts", [
+  "native-usb-display-recovery",
+  "completedRestoreCommandReceipt",
+  "display-origin-capture",
+]);
+const displayRecovery = requireText("tools/flash/src/display_recovery.rs", [
+  "run_display_recovery_start",
+  "display_mac_sha256",
+  "usb_mac_bound",
+  "patch_system_settings_once",
+]);
+for (const forbidden of ["write-bin", "write_flash", "erase-flash", "generate_nvs_partition"]) {
+  if (displayRecovery.includes(forbidden)) {
+    throw new Error(`display recovery contains forbidden effect ${JSON.stringify(forbidden)}`);
+  }
+}
 requireText("Justfile", [
   "verify-native-usb-transition",
   "native-usb-transition-recovery",
+  "native-usb-display-recovery",
 ]);
 
 requireText("AGENTS.md", [
@@ -206,6 +223,7 @@ requireText("docs/adr/0020-time-multiplex-native-usb-ownership.md", [
 requireText("docs/hardware/native-usb-ownership.md", [
   "Monitoring never arms handoff",
   "just verify-native-usb-ownership",
+  "just native-usb-display-recovery",
 ]);
 requireText("docs/hardware/esp-device-session.md", ["native-usb-ownership.md"]);
 requireText(".codex/tasks/lessons.md", ["lesson-visible-cdc-is-not-flash-admission"]);

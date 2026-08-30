@@ -6,6 +6,7 @@ rust_library(
         "src/lib.rs",
         "src/commands.rs",
         "src/observation.rs",
+        "src/recovery.rs",
         "src/tests.rs",
         "src/websocket.rs",
     ],
@@ -14,6 +15,7 @@ rust_library(
     deps = [
         "@crates//:anyhow",
         "@crates//:rustls",
+        "@crates//:sha2",
         "@crates//:tungstenite",
         "@crates//:webpki-roots",
     ],

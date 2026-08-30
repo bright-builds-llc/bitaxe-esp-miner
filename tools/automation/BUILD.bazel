@@ -63,6 +63,16 @@ js_library(
     ],
 )
 
+js_library(
+    name = "native_usb_display_recovery_sources",
+    srcs = [
+        "src/macos-display-origin-capture.swift",
+        "src/native-usb-display-recovery-cli.ts",
+        "src/native-usb-display-recovery.ts",
+    ],
+    visibility = ["//scripts:__pkg__"],
+)
+
 filegroup(
     name = "automation_sources",
     srcs = ["BUILD.bazel"] + glob(["src/**/*.ts", "src/**/*.swift"]),
@@ -76,6 +86,11 @@ filegroup(
 filegroup(
     name = "macos_provisioning_association_helper",
     srcs = ["src/macos-provisioning-associate.swift"],
+)
+
+filegroup(
+    name = "macos_display_origin_capture_helper",
+    srcs = ["src/macos-display-origin-capture.swift"],
 )
 
 npm_link_types_node()
@@ -236,6 +251,19 @@ js_binary(
         "//tools/device-session:native_usb_ownership_sources",
     ],
     entry_point = "dist/native-usb-transition-recovery-cli.js",
+)
+
+js_binary(
+    name = "native_usb_display_recovery",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        ":macos_display_origin_capture_helper",
+        ":native_usb_display_recovery_sources",
+        "//:native_usb_display_recovery_inputs",
+        "//tools/flash:flash",
+    ],
+    entry_point = "dist/native-usb-display-recovery-cli.js",
 )
 
 js_binary(
@@ -636,6 +664,17 @@ js_test(
         ":automation_tests_ts",
     ],
     entry_point = "test-dist/native-usb-transition-recovery.test.js",
+)
+
+js_test(
+    name = "native_usb_display_recovery_unit_test",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        ":automation_tests_ts",
+        ":macos_display_origin_capture_helper",
+    ],
+    entry_point = "test-dist/native-usb-display-recovery.test.js",
 )
 
 js_test(

@@ -91,6 +91,56 @@ fn command_status_helper_issues_the_read_only_extension_route() {
 }
 
 #[test]
+fn recovery_helpers_use_exact_bounded_json_routes() {
+    use std::net::TcpListener;
+
+    // Arrange
+    let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
+    let address = listener.local_addr().expect("test server address");
+    let server = std::thread::spawn(move || {
+        let mut request_lines = Vec::new();
+        for _ in 0..3 {
+            let (mut socket, _) = listener.accept().expect("accept recovery request");
+            let mut bytes = [0_u8; 2048];
+            let count = socket.read(&mut bytes).expect("read recovery request");
+            request_lines.push(
+                String::from_utf8(bytes[..count].to_vec())
+                    .expect("request UTF-8")
+                    .lines()
+                    .next()
+                    .expect("request line")
+                    .to_owned(),
+            );
+            socket
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\n{}")
+                .expect("write response");
+        }
+        request_lines
+    });
+    let client = StrictHttpClient::new(&format!("http://{address}")).expect("client");
+    let deadline = || Instant::now() + Duration::from_secs(2);
+
+    // Act
+    client
+        .patch_system_settings_once(b"{}", deadline())
+        .expect("settings request");
+    client
+        .post_theme_once(b"{}", deadline())
+        .expect("theme request");
+    client.get_theme(deadline()).expect("theme read");
+
+    // Assert
+    assert_eq!(
+        server.join().expect("server thread"),
+        [
+            "PATCH /api/system HTTP/1.1",
+            "POST /api/theme HTTP/1.1",
+            "GET /api/theme HTTP/1.1",
+        ]
+    );
+}
+
+#[test]
 fn incomplete_write_is_never_complete() {
     struct FailingWriter {
         remaining: usize,
