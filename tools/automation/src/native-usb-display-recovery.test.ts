@@ -8,6 +8,7 @@ import { promisify } from "node:util";
 
 import {
   createDisplayRecoveryRoot,
+  displayCaptureRetryEligible,
   parseDisplayRecoveryArgs,
   projectDisplayRecovery,
 } from "./native-usb-display-recovery.js";
@@ -46,6 +47,16 @@ test("display recovery creates its nested private root", async () => {
   const metadata = await stat(path.join(workspace, "scratch/native-usb-display-recovery/attempt-001"));
   assert.equal(metadata.isDirectory(), true);
   assert.equal(metadata.mode & 0o777, 0o700);
+});
+
+test("effect-free cancellation permits one fresh capture generation", () => {
+  // Arrange / Act / Assert
+  assert.equal(displayCaptureRetryEligible({ status: "cancelled" }, undefined), true);
+  assert.equal(displayCaptureRetryEligible({ status: "accepted" }, undefined), false);
+  assert.equal(displayCaptureRetryEligible(
+    { status: "accepted" },
+    { eligible: true, settings_request_count: 0 },
+  ), true);
 });
 
 test("macOS capture helper writes one mode-0600 fixture result", async () => {

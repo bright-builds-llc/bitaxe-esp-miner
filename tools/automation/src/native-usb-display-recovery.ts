@@ -104,6 +104,16 @@ export async function createDisplayRecoveryRoot(workspace: string): Promise<void
   await requireMode(target, 0o700, true);
 }
 
+export function displayCaptureRetryEligible(
+  firstCapture: JsonObject,
+  maybeUnreachable: JsonObject | undefined,
+): boolean {
+  return firstCapture["status"] === "cancelled"
+    || (firstCapture["status"] === "accepted"
+      && maybeUnreachable?.["eligible"] === true
+      && maybeUnreachable["settings_request_count"] === 0);
+}
+
 async function commonAdmission(workspace: string, args: DisplayRecoveryArgs, rootAbsent: boolean): Promise<void> {
   if ((await absent(path.join(workspace, root))) !== rootAbsent || !(await absent(path.join(workspace, projection)))) fail("outputs");
   if (!rootAbsent) await requireMode(path.join(workspace, root), 0o700, true);
@@ -157,7 +167,14 @@ export async function runDisplayRecovery(workspace: string, args: DisplayRecover
     const generation = rootIsAbsent ? 1 : 2;
     if (rootIsAbsent) await createDisplayRecoveryRoot(workspace);
     else {
-      await requireMode(path.join(workspace, root, "origin-unreachable.private.json"), 0o600);
+      const firstPath = path.join(workspace, root, "display-origin-capture-001.private.json");
+      await requireMode(firstPath, 0o600);
+      const first = object(JSON.parse(await readFile(firstPath, "utf8")));
+      const retryPath = path.join(workspace, root, "origin-unreachable.private.json");
+      const maybeRetry = (await absent(retryPath))
+        ? undefined
+        : object(JSON.parse(await readFile(retryPath, "utf8")));
+      if (!displayCaptureRetryEligible(first, maybeRetry)) fail("capture_ineligible");
       if (!(await absent(path.join(workspace, root, "display-origin-capture-002.private.json")))) fail("capture_consumed");
     }
     await runPrompt(workspace, generation);

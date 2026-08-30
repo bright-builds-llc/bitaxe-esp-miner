@@ -216,8 +216,21 @@ whitespace, and final diff review pass. The implementation commit, exact clean
 package, one display-bound restoration, finalization, and cleanup remain
 pending.
 
-Completion review: Pending. Recovery-006 remains installed; the blocked
-predecessor, parent native-USB task, STR-005, and BWG remain unchanged.
+Terminal update: implementation commit `54020484` and nested-root fix
+`cfcbfa9b` are pushed. Effect-free preflight accepted. The first capture
+returned `capture_cancelled` without creating a device or network effect; the
+operator then confirmed that the Bitaxe display shows no IP address. The
+plan's required displayed-origin assumption is therefore false. No USB
+admission, HTTP request, settings/theme mutation, final detector, or public
+projection occurred.
+
+Completion review: Blocked at `display_origin_unavailable`. Recovery-006
+remains installed, but Wi-Fi association and exact settings/runtime state are
+still unauthenticated. Another display capture, network discovery, or settings
+request is ineligible. Follow-up work requires a separate task contract for
+the recovery-006 Wi-Fi NVS/schema and runtime association boundary. The
+blocked predecessor, parent native-USB task, STR-005, and BWG remain
+unchanged.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
