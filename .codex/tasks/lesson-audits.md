@@ -44,3 +44,24 @@
   - Bytes and estimates: global `4,470` / `1,490`, repository `20,786` / `6,929`, combined `25,256` / `8,419`
   - Active source SHA-256 values for change detection: global `a6eeee0d2e6715150dfc35397a7bb29b3292b46a0a1d367992911e6f3d13eff9`; repository `c101b8991f5a9761d8e19636466f227babd3ee3f37eac32810e08a2953c46cba`
   - Threshold state: above both hard loading limits; this proposed-append trigger is consumed and does not recursively trigger another audit without a distinct later trigger
+
+## audit-display-origin-development-ip-baseline | 2026-08-30T16:17:00Z
+
+- Audit timestamp: `2026-08-30T16:17:00Z`
+- Trigger: nine active lessons accumulated after the 2026-08-03 baseline, and the proposed development-IP correction would be the tenth
+- Active source paths:
+  - Global: `/Users/peterryszkiewicz/.codex/tasks/lessons.md`
+  - Repository: `/Users/peterryszkiewicz/Repos/bitaxe-esp-miner/.codex/tasks/lessons.md`
+- Active lesson counts: global `7`; repository `31`; combined `38`
+- Active byte counts: global `5,230`; repository `28,410`; combined `33,640`
+- Conservative estimate: `ceil(5,230 / 3) = 1,744` global + `ceil(28,410 / 3) = 9,470` repository = `11,214` summed estimated tokens
+- Retained lesson IDs: all `38` active lessons
+- Consolidated lesson IDs: none; no active lessons share the same durable cause, preventive rule, and trigger signal
+- Archived lesson IDs: none; no lesson is obsolete, duplicate, or fully superseded
+- Archive files created: none
+- Next baseline:
+  - Timestamp: `2026-08-30T16:17:00Z`; the 90-day changed-lessons trigger becomes eligible on `2026-11-28T16:17:00Z`
+  - Counts: global `7`, repository `31`, combined `38`, with `0` new active lessons accumulated; the 10-new trigger occurs after 10 later additions
+  - Bytes and estimates: global `5,230` / `1,744`, repository `28,410` / `9,470`, combined `33,640` / `11,214`
+  - Active source SHA-256 values for change detection: global `664021be592cf86593dc360b54c3d21d1d6c6078f5ca5afb74d1dd3dbd8782ef`; repository `a613294cc49aec8e92c9acff8ee4eeacd0f8f79925df9c222d51c9a7f3957c67`
+  - Threshold state: above both hard loading limits; this 10-new-lesson trigger is consumed and cannot recursively retrigger without a distinct later trigger

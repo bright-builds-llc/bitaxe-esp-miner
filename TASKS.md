@@ -176,6 +176,42 @@ exactness and inactive zero-work/share state remain unauthenticated; the
 single transition, final recovery, and public finalization are ineligible.
 The parent native-USB task, STR-005, and BWG remain unchanged.
 
+### task-native-usb-display-recovery-205 | 2026-08-30 | Authenticate recovery-006 from the displayed origin
+
+- [ ] Create and push the immutable display-bound recovery plan before
+      implementation or hardware/network effects.
+- [ ] Add the task-gated display capture, private USB MAC receipt, strict HTTP
+      restoration Module, no-effect finalizer, and focused guardrails.
+- [ ] Authenticate recovery-006, restore exact settings/theme, and prove
+      mine-on-boot disabled, inactive zero-work/share state, and cleanup.
+- [ ] Publish the redacted recovery projection, write `RESULT.md`, and archive
+      only this child task.
+
+Plan: `docs/parity/work-plans/20260830T161148Z-NATIVE-USB-DISPLAY-RECOVERY/PLAN.md`
+
+Depends on: terminal predecessor `task-native-usb-recovery-transition-205`;
+completed recovery-006 snapshot and Wi-Fi-seed receipts under
+`scratch/native-usb-transition/recovery-002`; connected Ultra 205 displaying
+an RFC1918 address; recovery-006 bundle/readiness/validator evidence; and the
+existing strict HTTP and native-USB owners.
+
+Authorization: plan/source/test/docs/rules/build/package, lesson audit and one
+corrective lesson, commit/push, effect-free preflight/finalization, one
+operator display-address capture with one pre-mutation correction branch, one
+read-only USB/MAC admission, one exact settings PATCH, one exact theme POST,
+bounded reconciliation reads, final detector admission, protected evidence,
+and cleanup. Local development output may show the RFC1918 address; committed
+evidence remains redacted. Flash, NVS write, erase, manual buttons, transition
+diagnostic, mining, ASIC, fan/voltage, fault injection, OTA, discovery, mDNS,
+ARP, router state, scans, direct UART/pins/pads/probes/headers, other devices,
+other boards, durability, and parity promotion are excluded.
+
+Verification: Pending separate plan and implementation commits, exact clean
+package, one display-bound restoration, finalization, and cleanup.
+
+Completion review: Pending. Recovery-006 remains installed; the blocked
+predecessor, parent native-USB task, STR-005, and BWG remain unchanged.
+
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
 - [x] Add a single-owner UART2 firmware shell for the pinned GPIO39/GPIO40
