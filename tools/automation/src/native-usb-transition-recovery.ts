@@ -10,6 +10,7 @@ import { admitStratumV2RestoreBundle, restoreRuntimeMatches } from "./stratum-v2
 import type { RestoreBundle } from "./stratum-v2-restore-model.js";
 import { fetchRuntimeObject, monitorRuntimeOrigin } from "./stratum-v2-runtime-admission.js";
 import { validateTcpPayloadRecoveryTooling } from "./stratum-v2-tcp-recovery-tooling.js";
+import { validTransitionCandidate } from "./native-usb-transition-projection.js";
 import {
   backupRelative,
   backupSha256,
@@ -72,6 +73,16 @@ async function requireAbsent(candidate: string, checkpoint: string): Promise<voi
     fail("evidence_invalid", checkpoint);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+    throw error;
+  }
+}
+
+async function pathExists(candidate: string): Promise<boolean> {
+  try {
+    await lstat(candidate);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
     throw error;
   }
 }
@@ -164,8 +175,13 @@ async function requireNoOwnedUsbProcesses(): Promise<void> {
 async function prepareRecovery(
   workspace: string,
   args: NativeUsbRecoveryArgs,
+  freshRoot: boolean,
 ): Promise<PreparedRecovery> {
-  await requireAbsent(path.join(workspace, args.privateRoot), "outputs_absent");
+  if (freshRoot) {
+    await requireAbsent(path.join(workspace, args.privateRoot), "outputs_absent");
+  } else {
+    await requireMode(path.join(workspace, args.privateRoot), 0o700, true);
+  }
   const ignored = await runCampaignProcess(
     workspace,
     "git",
@@ -281,7 +297,7 @@ export async function preflightNativeUsbRecovery(
   workspace: string,
   args: NativeUsbRecoveryArgs,
 ): Promise<JsonObject> {
-  const prepared = await prepareRecovery(workspace, args);
+  const prepared = await prepareRecovery(workspace, args, true);
   await admitRecovery(workspace, args, prepared);
   await requireAbsent(path.join(workspace, transientPreflightRoot), "preflight_cleanup");
   return {
@@ -300,9 +316,13 @@ export async function startNativeUsbRecovery(
   workspace: string,
   args: NativeUsbRecoveryArgs,
 ): Promise<JsonObject> {
-  const prepared = await prepareRecovery(workspace, args);
-  await admitRecovery(workspace, args, prepared);
   const privateRoot = path.join(workspace, args.privateRoot);
+  const resuming = await pathExists(privateRoot);
+  const prepared = await prepareRecovery(workspace, args, !resuming);
+  if (resuming) {
+    return resumeNativeUsbRecovery(workspace, args, prepared, privateRoot);
+  }
+  await admitRecovery(workspace, args, prepared);
   await mkdir(privateRoot, { mode: 0o700 });
   await chmod(privateRoot, 0o700);
   const restorationRelative = path.join(args.privateRoot, "restoration");
@@ -325,6 +345,89 @@ export async function startNativeUsbRecovery(
   await writePrivate(path.join(privateRoot, "restore.stdout.private.log"), restored.stdout);
   await writePrivate(path.join(privateRoot, "restore.stderr.private.log"), restored.stderr);
   if (restored.exitCode !== 0) fail("hardware_blocked", "restoration");
+  return confirmNativeUsbRecovery(workspace, args, prepared, privateRoot, flashProgram);
+}
+
+export function completedRestoreCommandReceipt(
+  value: JsonObject,
+  executor: "managed_esptool_write_flash" | "espflash_write_bin",
+): boolean {
+  const diagnostic = object(value["diagnostic"], "resume_receipt");
+  return value["schema_version"] === "bitaxe-stratum-v2-restore-command-v1"
+    && value["executor"] === executor
+    && value["diagnostic_available"] === true
+    && diagnostic["terminal_category"] === "ready"
+    && diagnostic["device_effect_state"] === "completed"
+    && diagnostic["termination"] === "exited_success"
+    && diagnostic["transfer_started"] === true
+    && diagnostic["transfer_completed"] === true;
+}
+
+async function resumeNativeUsbRecovery(
+  workspace: string,
+  args: NativeUsbRecoveryArgs,
+  prepared: PreparedRecovery,
+  privateRoot: string,
+): Promise<JsonObject> {
+  const restoration = path.join(privateRoot, "restoration");
+  const snapshotPath = path.join(restoration, "snapshot-write.private.json");
+  const wifiSeedPath = path.join(restoration, "wifi-seed.private.json");
+  const authorizationPath = path.join(restoration, "restore-authorization.private.json");
+  const resultPath = path.join(privateRoot, "recovery-result.private.json");
+  const continuationPath = path.join(privateRoot, "continuation.private.json");
+  await requireMode(restoration, 0o700, true);
+  await requireMode(snapshotPath, 0o600, false);
+  await requireMode(wifiSeedPath, 0o600, false);
+  await requireMode(authorizationPath, 0o600, false);
+  await requireAbsent(resultPath, "recovery_already_complete");
+  await requireAbsent(continuationPath, "continuation_already_consumed");
+  const snapshot = object(JSON.parse(await readFile(snapshotPath, "utf8")), "resume_receipt");
+  const wifiSeed = object(JSON.parse(await readFile(wifiSeedPath, "utf8")), "resume_receipt");
+  const authorization = object(
+    JSON.parse(await readFile(authorizationPath, "utf8")),
+    "resume_authorization",
+  );
+  if (!completedRestoreCommandReceipt(snapshot, "managed_esptool_write_flash")
+    || !completedRestoreCommandReceipt(wifiSeed, "espflash_write_bin")
+    || authorization["schema_version"] !== "bitaxe-stratum-v2-restore-authorization-v1"
+    || authorization["action"] !== "native_usb_recovery"
+    || authorization["ordinal"] !== args.recoveryOrdinal
+    || typeof authorization["current_source_commit"] !== "string") {
+    fail("evidence_invalid", "resume_contract");
+  }
+  const ancestry = await runCampaignProcess(
+    workspace,
+    "git",
+    ["merge-base", "--is-ancestor", authorization["current_source_commit"], prepared.head],
+    5_000,
+  );
+  if (ancestry.exitCode !== 0) fail("evidence_invalid", "resume_lineage");
+  await writePrivate(continuationPath, {
+    schema_version: "bitaxe-native-usb-recovery-continuation-v1",
+    ordinal: args.recoveryOrdinal,
+    snapshot_write_complete: true,
+    wifi_seed_complete: true,
+    repeated_write_allowed: false,
+    source_commit: prepared.head,
+  });
+  const flashProgram = path.join(workspace, "bazel-bin/tools/flash/flash");
+  const detector = await runCampaignProcess(
+    workspace,
+    flashProgram,
+    ["detect", "--board", "205", "--port", args.port],
+    120_000,
+  );
+  if (detector.exitCode !== 0) fail("hardware_blocked", "continuation_detector");
+  return confirmNativeUsbRecovery(workspace, args, prepared, privateRoot, flashProgram);
+}
+
+async function confirmNativeUsbRecovery(
+  workspace: string,
+  args: NativeUsbRecoveryArgs,
+  prepared: PreparedRecovery,
+  privateRoot: string,
+  flashProgram: string,
+): Promise<JsonObject> {
   const origin = await monitorRuntimeOrigin(workspace, flashProgram, args.port, runCampaignProcess, fail);
   await restoreSelfTestSettings(origin, prepared.backup, prepared.wifiPath, prepared.poolPath);
   const confirmed = await fetchRuntimeObject(origin, "/api/system/info", fail);
@@ -374,60 +477,6 @@ function exactRecoveryResult(value: JsonObject, ordinal: number): boolean {
     && value["cleanup_complete"] === true
     && value["owned_processes_remaining"] === 0
     && value["status"] === "accepted";
-}
-
-export function validTransitionCandidate(value: JsonObject): boolean {
-  const terminalCategories = new Set([
-    "complete", "runtime_profile_unknown", "handoff_unsupported",
-    "handoff_rejected_unsafe_state", "handoff_ready_timeout", "handoff_commit_timeout",
-    "bus_reset_timeout", "same_worker_after_commit", "handoff_transition_timeout",
-    "bootloader_ambiguous", "physical_identity_drift", "rom_admission_failed",
-    "application_reappearance_timeout", "foreign_holder", "cleanup_failed",
-    "recovery_required",
-  ]);
-  const digestKeys = [
-    "source_commit", "reference_commit", "plan_sha256", "evaluator_sha256",
-    "manifest_sha256", "app_elf_sha256",
-  ] as const;
-  const countKeys = [
-    "absent_count", "same_worker_count", "same_serial_jtag_count",
-    "same_unknown_count", "physical_mismatch_count",
-  ] as const;
-  const booleanKeys = [
-    "ready_received", "committed_received", "bus_reset_observed", "rom_admitted",
-    "application_reappeared", "device_write_observed", "restoration_complete",
-    "cleanup_complete",
-  ] as const;
-  const stagesAreOrdered = value["committed_received"] !== true || value["ready_received"] === true;
-  const busResetIsOrdered = value["bus_reset_observed"] !== true
-    || value["committed_received"] === true;
-  const romIsOrdered = value["rom_admitted"] !== true || value["bus_reset_observed"] === true;
-  const applicationIsOrdered = value["application_reappeared"] !== true
-    || value["rom_admitted"] === true;
-  const completeIsExact = value["terminal_category"] !== "complete"
-    || (value["ready_received"] === true
-      && value["committed_received"] === true
-      && value["bus_reset_observed"] === true
-      && value["rom_admitted"] === true
-      && value["application_reappeared"] === true
-      && value["cleanup_complete"] === true);
-  return value["schema_version"] === "bitaxe-native-usb-transition-projection-v1"
-    && value["plan_sha256"] === planSha256
-    && digestKeys.every(key => typeof value[key] === "string"
-      && /^[0-9a-f]+$/u.test(value[key] as string)
-      && (key === "source_commit" || key === "reference_commit"
-        ? (value[key] as string).length === 40
-        : (value[key] as string).length === 64))
-    && countKeys.every(key => Number.isInteger(value[key])
-      && Number(value[key]) >= 0 && Number(value[key]) <= 1_024)
-    && booleanKeys.every(key => typeof value[key] === "boolean")
-    && stagesAreOrdered && busResetIsOrdered && romIsOrdered && applicationIsOrdered
-    && completeIsExact
-    && value["device_write_observed"] === false
-    && value["restoration_complete"] === false
-    && value["redaction_status"] === "passed"
-    && typeof value["terminal_category"] === "string"
-    && terminalCategories.has(value["terminal_category"] as string);
 }
 
 export async function finalizeNativeUsbRecovery(
@@ -486,6 +535,7 @@ export async function finalizeNativeUsbRecovery(
     "tools/automation/src/native-usb-transition-recovery-cli.ts",
     "tools/automation/src/native-usb-transition-recovery-contract.ts",
     "tools/automation/src/native-usb-transition-recovery.ts",
+    "tools/automation/src/native-usb-transition-projection.ts",
     "tools/automation/src/self-test-campaign-restoration.ts",
     "tools/automation/src/stratum-v2-campaign.ts",
     "tools/automation/src/stratum-v2-noise-diagnostic-process.ts",

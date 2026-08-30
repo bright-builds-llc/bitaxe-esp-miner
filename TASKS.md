@@ -151,6 +151,12 @@ Primary recovery preflight accepted every no-effect checkpoint and left both
 the transient and primary roots absent. The manual ROM entry then exposed that
 ordinary detection hard-resets into the application; a narrow `--retain-rom`
 detector mode is being verified before the already-authorized recovery write.
+Retain-ROM detection passed on the same physical connector. Both primary
+recovery writes then completed and normal restored-runtime admission passed,
+but two late passive monitor windows observed no unique origin. The recovery
+root remains protected and incomplete; a receipt-gated continuation will arm
+the observer immediately after one reset and explicitly prohibits repeating
+either completed write.
 
 Completion review: Pending. The parent native-USB task, STR-005, and BWG remain
 unchanged.

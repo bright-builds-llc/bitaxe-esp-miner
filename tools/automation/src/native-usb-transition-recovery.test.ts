@@ -2,10 +2,19 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  completedRestoreCommandReceipt,
   nativeUsbRecoveryFailure,
   parseNativeUsbRecoveryArgs,
-  validTransitionCandidate,
 } from "./native-usb-transition-recovery.js";
+import { validTransitionCandidate } from "./native-usb-transition-projection.js";
+
+const completedDiagnostic = {
+  terminal_category: "ready",
+  device_effect_state: "completed",
+  termination: "exited_success",
+  transfer_started: true,
+  transfer_completed: true,
+};
 
 const common = [
   "--board", "205",
@@ -83,4 +92,27 @@ test("transition candidate validator rejects impossible stage ordering", () => {
 
   // Act / Assert
   assert.equal(validTransitionCandidate(candidate), false);
+});
+
+test("recovery continuation requires a completed typed write receipt", () => {
+  // Arrange
+  const receipt = {
+    schema_version: "bitaxe-stratum-v2-restore-command-v1",
+    executor: "managed_esptool_write_flash",
+    diagnostic_available: true,
+    diagnostic: completedDiagnostic,
+  };
+
+  // Act / Assert
+  assert.equal(
+    completedRestoreCommandReceipt(receipt, "managed_esptool_write_flash"),
+    true,
+  );
+  assert.equal(
+    completedRestoreCommandReceipt({
+      ...receipt,
+      diagnostic: { ...completedDiagnostic, transfer_completed: false },
+    }, "managed_esptool_write_flash"),
+    false,
+  );
 });

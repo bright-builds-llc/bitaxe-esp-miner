@@ -146,6 +146,14 @@ readiness projection, private validator receipt, managed ESP-IDF tools, exact
 current package, and restore admission without leaving a private root or
 touching the device.
 
+If recovery writes complete but a late passive monitor misses one-shot boot
+evidence, the same `start` Interface may continue only after validating the
+protected completed snapshot and NVS receipts. That continuation records a
+consume-once private intent, permits no repeated write, performs one admitted
+hard reset, and immediately attaches the receive-only observer. Missing or
+partial receipts, source-lineage drift, a prior continuation, or a completed
+result all fail closed.
+
 Manual BOOT/RESET is a one-time bootstrap or last-resort recovery path, never
 the normal development workflow. Buttonless flashing is not qualified until
 the active task records 20 automatic Worker-to-ROM-to-flash-to-Worker cycles

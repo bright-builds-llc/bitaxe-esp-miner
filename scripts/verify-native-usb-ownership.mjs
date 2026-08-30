@@ -184,6 +184,8 @@ requireText("tools/automation/src/native-usb-transition-recovery.ts", [
   "native_usb_recovery",
   "restore_admission",
   "restoration_complete",
+  "completedRestoreCommandReceipt",
+  "repeated_write_allowed: false",
 ]);
 requireText("Justfile", [
   "verify-native-usb-transition",

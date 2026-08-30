@@ -50,6 +50,7 @@ js_library(
         "src/native-usb-transition-recovery-cli.ts",
         "src/native-usb-transition-recovery-contract.ts",
         "src/native-usb-transition-recovery.ts",
+        "src/native-usb-transition-projection.ts",
         "src/self-test-campaign-restoration.ts",
         "src/stratum-v2-campaign.ts",
         "src/stratum-v2-noise-diagnostic-process.ts",
@@ -229,7 +230,7 @@ js_binary(
     data = [
         ":automation_ts",
         ":native_usb_transition_evaluator_sources",
-        "//:str005_restore_and_verify_inputs",
+        "//:native_usb_transition_inputs",
         "//tools/flash:flash",
         "//tools/flash:native_usb_ownership_sources",
         "//tools/device-session:native_usb_ownership_sources",
