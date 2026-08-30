@@ -107,6 +107,40 @@ one-time manual bootstrap installed the handoff firmware and proved
 WorkerRuntime, but automatic handoff durability and exact recovery-006
 restoration are incomplete. STR-005 and BWG remain unchanged.
 
+### task-native-usb-recovery-transition-205 | 2026-08-30 | Recover first and prove one no-write transition
+
+- [ ] Create and push the immutable recovery and single-transition plan before
+      implementation or hardware effects.
+- [ ] Restore recovery-006 exactly through a fresh recovery-only contract.
+- [ ] Add and verify `just verify-native-usb-transition` with acknowledged
+      commit, closed profile evidence, ROM admission, application reappearance,
+      and zero writes.
+- [ ] Install the exact diagnostic package, run one transition ordinal, then
+      restore recovery-006 exactly and finalize cleanup.
+
+Plan: `docs/parity/work-plans/20260830T142327Z-NATIVE-USB-RECOVERY-TRANSITION/PLAN.md`
+
+Depends on: blocked parent `task-native-usb-ownership-handoff`; pushed
+diagnostic implementation `ea58797f`; recovery-006 bundle and readiness
+projection; connected Ultra 205; and the existing profile-aware USB owner.
+
+Authorization: plan/source/test/docs/build/package, commit/push, effect-free
+preflight/finalization, one primary built-in BOOT/RESET recovery entry, one
+conditional diagnostic bootstrap only when recovery yields an unqualified
+Worker profile, exact-package installation, one no-write transition ordinal,
+and one contingency built-in-button recovery solely to restore recovery-006.
+All effects, privacy rules, roots, retry bounds, branches, recovery, cleanup,
+and stop conditions are defined by the immutable plan. Direct UART, pins,
+pads, probes, headers, jumpers, soldering, test points, erase, fault injection,
+mining, ASIC, fan/voltage, external pools, other devices, durability, and parity
+promotion are excluded.
+
+Verification: Pending separate plan and implementation commits, exact package,
+primary recovery, single transition, final restoration, and cleanup.
+
+Completion review: Pending. The parent native-USB task, STR-005, and BWG remain
+unchanged.
+
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
 - [x] Add a single-owner UART2 firmware shell for the pinned GPIO39/GPIO40
