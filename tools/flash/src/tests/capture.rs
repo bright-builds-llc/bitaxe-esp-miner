@@ -360,6 +360,7 @@ fn detect_preserves_explicit_canonical_port() {
         "205",
         "--port",
         "/dev/cu.usbmodem101",
+        "--retain-rom",
     ];
 
     // Act
@@ -371,6 +372,36 @@ fn detect_preserves_explicit_canonical_port() {
     };
     assert_eq!(command.board, BoardId::Ultra205);
     assert_eq!(command.port.as_deref(), Some("/dev/cu.usbmodem101"));
+    assert!(command.retain_rom);
+}
+
+#[test]
+fn retain_rom_detection_uses_no_reset_before_and_after_board_info() {
+    // Arrange
+    let environment = FakeFlashEnvironment::default();
+    let command = DetectCommand {
+        board: BoardId::Ultra205,
+        port: Some("/dev/cu.usbmodem101".to_owned()),
+        retain_rom: true,
+    };
+
+    // Act
+    run_detect(&command, &environment).expect("retain-ROM detection");
+
+    // Assert
+    let executed = environment.executed_commands();
+    let [probe] = executed.as_slice() else {
+        panic!("expected one board-info probe");
+    };
+    assert!(probe
+        .args
+        .windows(2)
+        .any(|pair| pair == ["--before", "no-reset"]));
+    assert!(probe
+        .args
+        .windows(2)
+        .any(|pair| pair == ["--after", "no-reset"]));
+    assert!(!probe.args.iter().any(|value| value == "write-bin"));
 }
 
 #[test]

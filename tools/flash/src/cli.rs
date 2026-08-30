@@ -181,6 +181,9 @@ pub(crate) struct DetectCommand {
 
     #[arg(long)]
     pub(crate) port: Option<String>,
+
+    #[arg(long = "retain-rom")]
+    pub(crate) retain_rom: bool,
 }
 
 #[derive(Debug, Parser, Clone)]

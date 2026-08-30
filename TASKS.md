@@ -144,6 +144,14 @@ whitespace, and final diff review. The implementation commit, exact clean
 package, primary recovery, single transition, final restoration, and cleanup
 remain pending.
 
+Progress: Implementation commit `776ef8c4` is pushed and its exact clean
+package manifest SHA-256 is
+`1c4e39f26c6bb1ff98b8c340d81f41aea8c52f3256942e7be37a8fb069c22bce`.
+Primary recovery preflight accepted every no-effect checkpoint and left both
+the transient and primary roots absent. The manual ROM entry then exposed that
+ordinary detection hard-resets into the application; a narrow `--retain-rom`
+detector mode is being verified before the already-authorized recovery write.
+
 Completion review: Pending. The parent native-USB task, STR-005, and BWG remain
 unchanged.
 

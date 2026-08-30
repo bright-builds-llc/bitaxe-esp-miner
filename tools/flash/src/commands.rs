@@ -153,6 +153,16 @@ pub(crate) fn run_detect(
         UsbProfile::Unknown => bail!("runtime_profile_unknown"),
     }
     environment.begin_usb_session(UsbOperation::Detect, &port)?;
+    let reset_strategy = if command.retain_rom {
+        "no-reset"
+    } else {
+        "hard-reset"
+    };
+    let before_strategy = if command.retain_rom {
+        "no-reset"
+    } else {
+        "usb-reset"
+    };
     let command_spec = CommandSpec::new(
         "espflash",
         [
@@ -163,9 +173,9 @@ pub(crate) fn run_detect(
             port.as_str(),
             "--non-interactive",
             "--before",
-            "usb-reset",
+            before_strategy,
             "--after",
-            "hard-reset",
+            reset_strategy,
         ],
     );
     let output = environment.execute_with_output(&command_spec)?;

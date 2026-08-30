@@ -85,6 +85,10 @@ Monitoring never arms handoff.
 
 - Inspect reports a known Worker profile without pretending `board-info` is
   available. Serial/JTAG inspection may use `board-info` to distinguish ROM.
+  Recovery after a manual BOOT/RESET entry uses
+  `just detect-ultra205 --retain-rom`; this runs read-only `board-info` with
+  `--before no-reset --after no-reset` so detector admission does not discard
+  the already-established ROM profile before restoration.
 - Flash and recovery first acquire the physical lease. Worker performs the
   guarded handoff; Serial/JTAG enters ROM directly. Every write requires a
   successful ESP32-S3 `board-info`, then uses `--before no-reset` (or the
