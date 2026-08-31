@@ -272,9 +272,13 @@ verified. The first `read-nvs` launch stopped before root creation, USB
 acquisition, or NVS read because the wrapper lacked a typed child-admission
 checkpoint and rejected the managed virtualenv Python symlink. The targeted
 admission-only/closed-failure fix passes the real no-effect managed-tool
-boundary before any progress-backed hardware retry. Stage 2 configuration-AP
-recovery, finalization, and cleanup remain conditional on an accepted
-`nvs_match`.
+boundary in pushed commit `ee527b40`. Its exact clean package, fresh detector,
+and strengthened preflight passed. The progress-backed read consumed exactly
+24 KiB at `0x9000`, sealed `nvs_match` across all 30 expected typed entries,
+performed no device write or host-network effect, returned to the admitted ROM
+profile, and proved private modes and zero owned processes. Stage 2
+configuration-AP recovery is eligible but remains unimplemented; finalization
+and cleanup remain pending that separate child stage.
 
 Completion review: Pending. Recovery-006 remains installed; blocked
 predecessors, parent native-USB task, STR-005, and BWG remain unchanged.
