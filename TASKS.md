@@ -282,11 +282,19 @@ application profile did not reappear after the read. The first sealed `resume`
 proved that `board-info --after hard-reset` left the same device continuously
 in `SerialJtagRuntime`. A targeted successor uses the pinned esptool `run`
 command to execute the installed application without repeating the NVS read or
-writing the device. Finalization and cleanup remain pending the later Stage 2
-implementation.
+writing the device. Pushed commit `aba74ad9`, its exact package, and all gates
+passed, but the successor repeated the same authoritative signature: 132
+bounded observations were all `same_serial_jtag`, with no overflow, completion
+receipt, NVS reread, device write, host-network effect, or owned-process leak.
+The plan's repeated-signature stop is terminal. Stage 2 association, recovery,
+and finalization are prohibited until a separate contract resolves whether the
+installed application can be authenticated in `SerialJtagRuntime` without
+assuming Worker reappearance.
 
-Completion review: Pending. Recovery-006 remains installed; blocked
-predecessors, parent native-USB task, STR-005, and BWG remain unchanged.
+Completion review: Blocked after accepted `nvs_match` at the recovery-006
+runtime-profile boundary. Recovery-006 remains installed and the protected
+readback is immutable. No public projection was produced. Blocked predecessors,
+parent native-USB task, STR-005, and BWG remain unchanged.
 
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
