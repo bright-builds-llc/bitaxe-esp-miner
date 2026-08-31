@@ -24,6 +24,37 @@ new work.
 
 ## Active
 
+### task-native-usb-rom-exit-discriminator-205 | 2026-08-31 | Separate ROM exit from Serial/JTAG application ownership
+
+- [x] Create and push the immutable ROM-exit discriminator plan before source
+      changes or hardware effects.
+- [ ] Split transport profile from execution owner behind `UsbOwnership`.
+- [ ] Correct the force-download ROM exit and add boot-lifetime profile evidence.
+- [ ] Verify, commit/push, package, and run one no-write Ultra 205 discriminator.
+- [ ] Publish or record the closed result without reopening predecessor tasks.
+
+Plan: `docs/parity/work-plans/20260831T190744Z-NATIVE-USB-ROM-EXIT-DISCRIMINATOR/PLAN.md`
+
+Depends on: accepted immutable `nvs_match` under
+`task-native-usb-config-ap-recovery-205`; terminal repeated
+`same_serial_jtag` traces; installed recovery-006; connected Ultra 205; and
+the existing native-USB ownership, recovery, privacy, and process supervisors.
+
+Authorization: repository source/test/docs/rules/build/package, commit/push,
+effect-free preflight/finalization, one contained read of the exact
+force-download bit, one contained esptool hard-reset ROM exit, at most 30
+seconds of same-device passive application observation, protected evidence,
+and cleanup. Firmware/NVS/settings/theme writes, flash, erase, OTA, Wi-Fi or
+HTTP actions, discovery, mining, ASIC work, fan/voltage/power effects, manual
+buttons, direct UART/pins/pads/headers/probes, other devices, durability,
+recovery mutation, and parity promotion are excluded.
+
+Verification: Pending separate plan and implementation commits, exact clean
+package, effect-free preflight, one no-write hardware discriminator, redaction,
+and cleanup.
+
+Completion review: Pending. Predecessor tasks and recovery-006 remain unchanged.
+
 ### task-native-usb-ownership-handoff | 2026-08-29 | Preserve TinyUSB and restore buttonless flashing
 
 - [x] Create and push the immutable native-USB ownership plan before firmware,
