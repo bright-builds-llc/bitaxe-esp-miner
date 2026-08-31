@@ -86,8 +86,11 @@ pub(crate) fn run_nvs_readback(
         WifiNvsSeedMode::Ordinary,
         environment,
     )?;
-    let python = validate_managed_tool(environment, MANAGED_NVS_PYTHON)?;
+    let python = validate_managed_nvs_python(environment)?;
     let nvs_tool = validate_managed_tool(environment, MANAGED_NVS_TOOL)?;
+    if command.admission_only {
+        return emit_line("nvs_readback_admission", "ready");
+    }
     let root = environment.workspace_path(&command.private_root);
     if fs::symlink_metadata(root.as_std_path()).is_ok() {
         bail!("nvs_readback=blocked reason=root_exists");
@@ -318,6 +321,20 @@ fn validate_managed_tool(
         bail!("nvs_readback=blocked reason=managed_tool_escape path={relative}");
     }
     Ok(tool)
+}
+
+fn validate_managed_nvs_python(environment: &impl FlashEnvironment) -> Result<Utf8PathBuf> {
+    let python = environment.workspace_path(Utf8Path::new(MANAGED_NVS_PYTHON));
+    let metadata = fs::metadata(python.as_std_path())
+        .context("nvs_readback=blocked reason=nvs_python_missing")?;
+    if !metadata.is_file() {
+        bail!("nvs_readback=blocked reason=nvs_python_type");
+    }
+    #[cfg(unix)]
+    if metadata.permissions().mode() & 0o111 == 0 {
+        bail!("nvs_readback=blocked reason=nvs_python_mode");
+    }
+    Ok(python)
 }
 
 fn run_nvs_dump(python: &Utf8Path, nvs_tool: &Utf8Path, input: &Utf8Path) -> Result<Vec<u8>> {

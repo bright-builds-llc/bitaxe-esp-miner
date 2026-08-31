@@ -186,4 +186,33 @@ fn nvs_readback_cli_requires_the_sealed_stage_one_inputs() {
     assert_eq!(command.private_root, Utf8Path::new(NVS_READ_ROOT));
     assert_eq!(command.plan, Utf8Path::new(NVS_FIRST_PLAN));
     assert!(command.redact_evidence);
+    assert!(!command.admission_only);
+}
+
+#[test]
+fn nvs_readback_cli_exposes_a_no_effect_admission_checkpoint() {
+    // Arrange
+    let args = [
+        "bitaxe-flash",
+        "nvs-readback",
+        "--port",
+        "/dev/cu.usbmodem1101",
+        "--wifi-credentials",
+        "wifi-credentials.json",
+        "--private-root",
+        NVS_READ_ROOT,
+        "--plan",
+        NVS_FIRST_PLAN,
+        "--redact-evidence",
+        "--admission-only",
+    ];
+
+    // Act
+    let cli = parse_cli(args).expect("NVS admission-only CLI");
+
+    // Assert
+    let CliCommand::NvsReadback(command) = cli.command else {
+        panic!("expected NVS readback command");
+    };
+    assert!(command.admission_only);
 }

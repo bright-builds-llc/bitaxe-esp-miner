@@ -210,6 +210,25 @@ async function commonStageOneAdmission(
   await requireNoOwnedUsbProcesses();
 }
 
+function readbackArgs(args: ConfigApRecoveryArgs, admissionOnly: boolean): string[] {
+  const values = [
+    "nvs-readback",
+    "--board",
+    "205",
+    "--port",
+    args.port,
+    "--wifi-credentials",
+    args.wifiCredentials,
+    "--private-root",
+    args.privateRoot,
+    "--plan",
+    args.plan,
+    "--redact-evidence",
+  ];
+  if (admissionOnly) values.push("--admission-only");
+  return values;
+}
+
 export async function runConfigApRecovery(
   workspace: string,
   args: ConfigApRecoveryArgs,
@@ -219,6 +238,13 @@ export async function runConfigApRecovery(
   }
   await commonStageOneAdmission(workspace, args);
   if (args.action === "preflight") {
+    const admission = await runCampaignProcess(
+      workspace,
+      path.join(workspace, "bazel-bin/tools/flash/flash"),
+      readbackArgs(args, true),
+      30_000,
+    );
+    if (admission.exitCode !== 0) fail("nvs_admission_failed");
     return {
       schema_version: "bitaxe-native-usb-config-ap-recovery-preflight-v1",
       status: "ready",
@@ -229,23 +255,16 @@ export async function runConfigApRecovery(
   const result = await runCampaignProcess(
     workspace,
     path.join(workspace, "bazel-bin/tools/flash/flash"),
-    [
-      "nvs-readback",
-      "--board",
-      "205",
-      "--port",
-      args.port,
-      "--wifi-credentials",
-      args.wifiCredentials,
-      "--private-root",
-      args.privateRoot,
-      "--plan",
-      args.plan,
-      "--redact-evidence",
-    ],
+    readbackArgs(args, false),
     420_000,
   );
   const statePath = path.join(workspace, privateRoot, "state.private.json");
+  if (
+    await isAbsent(path.join(workspace, privateRoot))
+    || await isAbsent(statePath)
+  ) {
+    fail("nvs_read_failed");
+  }
   await requireMode(path.join(workspace, privateRoot), 0o700, true);
   await requireMode(statePath, 0o600);
   const state = object(JSON.parse(await readFile(statePath, "utf8")));

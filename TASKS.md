@@ -267,9 +267,14 @@ inspection, subnet discovery, direct UART/pins/pads/probes/headers, other
 devices/boards, durability, and parity promotion are excluded.
 
 Verification: Successor plan commit `7db48345` is pushed. Stage 1 software
-verification and its separate implementation commit/package/readback are in
-progress; Stage 2 configuration-AP recovery, finalization, and cleanup remain
-conditional on an accepted `nvs_match`.
+implementation commit `5e75017b` and its exact clean package are pushed and
+verified. The first `read-nvs` launch stopped before root creation, USB
+acquisition, or NVS read because the wrapper lacked a typed child-admission
+checkpoint and rejected the managed virtualenv Python symlink. The targeted
+admission-only/closed-failure fix passes the real no-effect managed-tool
+boundary before any progress-backed hardware retry. Stage 2 configuration-AP
+recovery, finalization, and cleanup remain conditional on an accepted
+`nvs_match`.
 
 Completion review: Pending. Recovery-006 remains installed; blocked
 predecessors, parent native-USB task, STR-005, and BWG remain unchanged.

@@ -254,6 +254,8 @@ pub(crate) struct NvsReadbackCommand {
     pub(crate) plan: Utf8PathBuf,
     #[arg(long = "redact-evidence")]
     pub(crate) redact_evidence: bool,
+    #[arg(long = "admission-only")]
+    pub(crate) admission_only: bool,
 }
 
 #[derive(Debug, Args, Clone)]
