@@ -234,7 +234,7 @@ unchanged.
 
 ### task-native-usb-config-ap-recovery-205 | 2026-08-30 | Recover through the detector-bound setup AP
 
-- [ ] Create and push the immutable configuration-AP recovery plan before
+- [x] Create and push the immutable configuration-AP recovery plan before
       implementation or hardware/host-network effects.
 - [ ] Add read-only NVS admission, semantic validation, detector-bound AP
       association, strict restoration, restart/resume, and host cleanup.
@@ -243,7 +243,11 @@ unchanged.
 - [ ] Publish the redacted projection, write `RESULT.md`, and archive only this
       child task.
 
-Plan: `docs/parity/work-plans/20260830T184150Z-NATIVE-USB-CONFIG-AP-RECOVERY/PLAN.md`
+Plan: `docs/parity/work-plans/20260831T033840Z-NATIVE-USB-CONFIG-AP-RECOVERY-NVS-FIRST/PLAN.md`
+
+Supersedes immutable planning contract
+`docs/parity/work-plans/20260830T184150Z-NATIVE-USB-CONFIG-AP-RECOVERY/PLAN.md`;
+the earlier plan remains historical and unmodified.
 
 Depends on: blocked display-origin and transition recovery tasks; completed
 recovery-006 snapshot/Wi-Fi-seed receipts; visible USB-derived `Bitaxe_ABCD`
