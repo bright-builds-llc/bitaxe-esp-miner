@@ -277,8 +277,11 @@ and strengthened preflight passed. The progress-backed read consumed exactly
 24 KiB at `0x9000`, sealed `nvs_match` across all 30 expected typed entries,
 performed no device write or host-network effect, returned to the admitted ROM
 profile, and proved private modes and zero owned processes. Stage 2
-configuration-AP recovery is eligible but remains unimplemented; finalization
-and cleanup remain pending that separate child stage.
+configuration-AP recovery remains blocked because the required recovery-006
+application profile did not reappear after the read. A sealed `resume` fix is
+in progress to hard-reset and reacquire the same device without repeating the
+NVS read or writing the device. Finalization and cleanup remain pending the
+later Stage 2 implementation.
 
 Completion review: Pending. Recovery-006 remains installed; blocked
 predecessors, parent native-USB task, STR-005, and BWG remain unchanged.

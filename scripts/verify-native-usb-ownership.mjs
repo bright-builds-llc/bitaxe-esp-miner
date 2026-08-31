@@ -172,6 +172,7 @@ for (const forbidden of [
 }
 requireText("tools/device-session/src/usb_ownership/verification.rs", [
   "verify_native_usb_transition",
+  "restore_application_runtime",
   "board-info",
   '"no-reset"',
   '"hard-reset"',
@@ -204,6 +205,8 @@ const nvsReadback = requireText("tools/flash/src/nvs_readback.rs", [
   "0x6000",
   "compare_expected_nvs",
   "device_write_observed",
+  "run_nvs_runtime_restore",
+  "nvs_read_repeated",
 ]);
 for (const forbidden of ["write_flash", "erase_flash", "erase_region"]) {
   if (nvsReadback.includes(forbidden)) {

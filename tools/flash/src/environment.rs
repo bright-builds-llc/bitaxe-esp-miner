@@ -40,6 +40,7 @@ pub(crate) trait FlashEnvironment {
     fn execute(&self, command_spec: &CommandSpec) -> Result<()>;
     fn execute_esptool_write_flash(&self, command: &ManagedEsptoolWriteFlash) -> Result<()>;
     fn execute_esptool_read_flash(&self, command: &ManagedEsptoolReadFlash) -> Result<()>;
+    fn restore_application_runtime(&self) -> Result<ProfileObservationCounts>;
     fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>>;
     fn receive_only(&self, command_spec: &CommandSpec, timeout_seconds: u64) -> Result<Vec<u8>>;
     fn campaign_lease_id(&self) -> u64;
@@ -433,16 +434,16 @@ impl FlashEnvironment for LocalFlashEnvironment {
             .map(|_| ())
             .map_err(|error| anyhow::anyhow!("{error}"))
     }
-
     fn execute_esptool_read_flash(&self, command: &ManagedEsptoolReadFlash) -> Result<()> {
         nvs_readback::execute_read_flash(self, command)
     }
-
+    fn restore_application_runtime(&self) -> Result<ProfileObservationCounts> {
+        nvs_readback::restore_application_runtime(self)
+    }
     fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>> {
         if command_spec.program != "espflash" {
             bail!("unsupported command program: {}", command_spec.program);
         }
-
         let needs_rom = requires_rom_downloader(command_spec);
         if needs_rom {
             self.ensure_bootloader()?;
@@ -467,7 +468,6 @@ impl FlashEnvironment for LocalFlashEnvironment {
         combined.extend_from_slice(&output.stderr);
         Ok(combined)
     }
-
     fn last_usb_command_diagnostic(&self) -> Option<UsbCommandDiagnostic> {
         self.usb_session
             .borrow()

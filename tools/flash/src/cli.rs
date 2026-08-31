@@ -39,6 +39,8 @@ pub(crate) enum CliCommand {
     DisplayRecoveryStart(DisplayRecoveryStartCommand),
     #[command(name = "nvs-readback")]
     NvsReadback(NvsReadbackCommand),
+    #[command(name = "nvs-runtime-restore")]
+    NvsRuntimeRestore(NvsRuntimeRestoreCommand),
 }
 
 #[derive(Debug, Parser, Clone)]
@@ -256,6 +258,20 @@ pub(crate) struct NvsReadbackCommand {
     pub(crate) redact_evidence: bool,
     #[arg(long = "admission-only")]
     pub(crate) admission_only: bool,
+}
+
+#[derive(Debug, Parser, Clone)]
+pub(crate) struct NvsRuntimeRestoreCommand {
+    #[arg(long, default_value = "205", value_parser = parse_board)]
+    pub(crate) board: BoardId,
+    #[arg(long)]
+    pub(crate) port: String,
+    #[arg(long = "private-root", value_parser = parse_utf8_path)]
+    pub(crate) private_root: Utf8PathBuf,
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) plan: Utf8PathBuf,
+    #[arg(long = "redact-evidence")]
+    pub(crate) redact_evidence: bool,
 }
 
 #[derive(Debug, Args, Clone)]

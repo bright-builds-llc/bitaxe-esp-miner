@@ -169,6 +169,87 @@ pub(crate) fn run_nvs_readback(
     Ok(())
 }
 
+pub(crate) fn run_nvs_runtime_restore(
+    command: &NvsRuntimeRestoreCommand,
+    environment: &impl FlashEnvironment,
+) -> Result<()> {
+    ensure_ultra_205(command.board)?;
+    if command.private_root != Utf8Path::new(NVS_READ_ROOT)
+        || command.plan != Utf8Path::new(NVS_FIRST_PLAN)
+        || !command.redact_evidence
+    {
+        bail!("nvs_runtime_restore=blocked reason=invocation");
+    }
+    let plan = environment.read_bytes(&environment.workspace_path(&command.plan))?;
+    let tasks =
+        environment.read_to_string(&environment.workspace_path(Utf8Path::new("TASKS.md")))?;
+    if sha256_bytes(&plan) != NVS_FIRST_PLAN_SHA256
+        || !tasks.contains("### task-native-usb-config-ap-recovery-205")
+    {
+        bail!("nvs_runtime_restore=blocked reason=plan_identity");
+    }
+    let root = environment.workspace_path(&command.private_root);
+    require_private_path(&root, 0o700, true)?;
+    let state_path = root.join("state.private.json");
+    require_private_path(&state_path, 0o600, false)?;
+    let state: serde_json::Value = serde_json::from_slice(&environment.read_bytes(&state_path)?)?;
+    if state
+        .get("schema_version")
+        .and_then(serde_json::Value::as_str)
+        != Some("bitaxe-native-usb-config-ap-recovery-state-v1")
+        || state.get("stage").and_then(serde_json::Value::as_str) != Some("nvs_match")
+        || state.get("nvs_match").and_then(serde_json::Value::as_bool) != Some(true)
+        || state
+            .get("device_write_observed")
+            .and_then(serde_json::Value::as_bool)
+            != Some(false)
+        || state
+            .get("cleanup_complete")
+            .and_then(serde_json::Value::as_bool)
+            != Some(true)
+    {
+        bail!("nvs_runtime_restore=blocked reason=state");
+    }
+    let receipt_path = root.join("runtime-restore.private.json");
+    if fs::symlink_metadata(receipt_path.as_std_path()).is_ok() {
+        bail!("nvs_runtime_restore=blocked reason=consumed");
+    }
+    environment.begin_usb_session(UsbOperation::Recover, &command.port)?;
+    let counts = environment.restore_application_runtime()?;
+    environment.finish_usb_session()?;
+    let receipt = serde_json::json!({
+        "schema_version": "bitaxe-native-usb-config-ap-runtime-restore-v1",
+        "stage": "nvs_match",
+        "runtime_profile": "worker_runtime",
+        "absent_count": counts.absent,
+        "same_worker_count": counts.same_worker,
+        "same_serial_jtag_count": counts.same_serial_jtag,
+        "same_unknown_count": counts.same_unknown,
+        "physical_mismatch_count": counts.physical_mismatch,
+        "nvs_read_repeated": false,
+        "device_write_observed": false,
+        "host_network_effect": false,
+        "cleanup_complete": true,
+    });
+    write_private_new_bytes(&receipt_path, &json_line(&receipt)?)?;
+    emit_line("nvs_runtime_restore", "complete")
+}
+
+fn require_private_path(path: &Utf8Path, mode: u32, directory: bool) -> Result<()> {
+    let metadata = fs::symlink_metadata(path.as_std_path())?;
+    if metadata.file_type().is_symlink()
+        || (directory && !metadata.is_dir())
+        || (!directory && !metadata.is_file())
+    {
+        bail!("nvs_runtime_restore=blocked reason=private_path_type");
+    }
+    #[cfg(unix)]
+    if metadata.permissions().mode() & 0o777 != mode {
+        bail!("nvs_runtime_restore=blocked reason=private_path_mode");
+    }
+    Ok(())
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct NvsSemanticEntry {

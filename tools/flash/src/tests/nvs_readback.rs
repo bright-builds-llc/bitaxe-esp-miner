@@ -216,3 +216,29 @@ fn nvs_readback_cli_exposes_a_no_effect_admission_checkpoint() {
     };
     assert!(command.admission_only);
 }
+
+#[test]
+fn nvs_runtime_restore_cli_is_distinct_from_readback() {
+    // Arrange
+    let args = [
+        "bitaxe-flash",
+        "nvs-runtime-restore",
+        "--port",
+        "/dev/cu.usbmodem1101",
+        "--private-root",
+        NVS_READ_ROOT,
+        "--plan",
+        NVS_FIRST_PLAN,
+        "--redact-evidence",
+    ];
+
+    // Act
+    let cli = parse_cli(args).expect("NVS runtime restore CLI");
+
+    // Assert
+    let CliCommand::NvsRuntimeRestore(command) = cli.command else {
+        panic!("expected NVS runtime restore command");
+    };
+    assert_eq!(command.private_root, Utf8Path::new(NVS_READ_ROOT));
+    assert!(command.redact_evidence);
+}

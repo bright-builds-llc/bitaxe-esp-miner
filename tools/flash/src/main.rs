@@ -26,7 +26,8 @@ use bitaxe_config::{
 };
 use bitaxe_device_session::{
     admit_rom_downloader, discover_usb_ports, handoff_worker_to_rom, inspect_usb_profile,
-    native_usb_transition_module_sha256, plan_usb_operation, verify_native_usb_transition,
+    native_usb_transition_module_sha256, plan_usb_operation,
+    restore_application_runtime as restore_usb_application_runtime, verify_native_usb_transition,
     MonitorOutput, NativeUsbTransitionOutcome, ProfileObservationCounts, UsbCommandDiagnostic,
     UsbDeviceEffectState, UsbIntent, UsbOperation, UsbOperationPlan, UsbProfile, UsbSession,
     UsbTerminalCategory,
@@ -154,6 +155,7 @@ fn main() -> Result<()> {
             run_display_recovery_start(&command, &environment)
         }
         CliCommand::NvsReadback(command) => run_nvs_readback(&command, &environment),
+        CliCommand::NvsRuntimeRestore(command) => run_nvs_runtime_restore(&command, &environment),
     };
     let device_effect_state = environment.device_effect_state();
     let cleanup_result = environment.finish_usb_session();

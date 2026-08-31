@@ -153,13 +153,15 @@ export function configApRecoveryWorkspaceRoot(
 async function commonStageOneAdmission(
   workspace: string,
   args: ConfigApRecoveryArgs,
+  rootAbsent: boolean,
 ): Promise<void> {
   if (
-    !(await isAbsent(path.join(workspace, privateRoot)))
+    (await isAbsent(path.join(workspace, privateRoot))) !== rootAbsent
     || !(await isAbsent(path.join(workspace, projection)))
   ) {
     fail("outputs");
   }
+  if (!rootAbsent) await requireMode(path.join(workspace, privateRoot), 0o700, true);
   const [planDocument, tasks, head, status, sync, manifestDocument] = await Promise.all([
     readFile(path.join(workspace, immutablePlan), "utf8"),
     readFile(path.join(workspace, "TASKS.md"), "utf8"),
@@ -229,14 +231,74 @@ function readbackArgs(args: ConfigApRecoveryArgs, admissionOnly: boolean): strin
   return values;
 }
 
+function runtimeRestoreArgs(args: ConfigApRecoveryArgs): string[] {
+  return [
+    "nvs-runtime-restore",
+    "--board",
+    "205",
+    "--port",
+    args.port,
+    "--private-root",
+    args.privateRoot,
+    "--plan",
+    args.plan,
+    "--redact-evidence",
+  ];
+}
+
 export async function runConfigApRecovery(
   workspace: string,
   args: ConfigApRecoveryArgs,
 ): Promise<JsonObject> {
-  if (args.action === "recover" || args.action === "resume" || args.action === "finalize") {
+  if (args.action === "recover" || args.action === "finalize") {
     fail("nvs_checkpoint_required");
   }
-  await commonStageOneAdmission(workspace, args);
+  if (args.action === "resume") {
+    await commonStageOneAdmission(workspace, args, false);
+    const statePath = path.join(workspace, privateRoot, "state.private.json");
+    const receiptPath = path.join(workspace, privateRoot, "runtime-restore.private.json");
+    await requireMode(statePath, 0o600);
+    if (!(await isAbsent(receiptPath))) fail("resume_consumed");
+    const state = object(JSON.parse(await readFile(statePath, "utf8")));
+    if (
+      state["stage"] !== "nvs_match"
+      || state["nvs_match"] !== true
+      || state["device_write_observed"] !== false
+      || state["cleanup_complete"] !== true
+    ) {
+      fail("resume_ineligible");
+    }
+    const result = await runCampaignProcess(
+      workspace,
+      path.join(workspace, "bazel-bin/tools/flash/flash"),
+      runtimeRestoreArgs(args),
+      120_000,
+    );
+    if (result.exitCode !== 0 || await isAbsent(receiptPath)) fail("runtime_restore_failed");
+    await requireMode(receiptPath, 0o600);
+    const receipt = object(JSON.parse(await readFile(receiptPath, "utf8")));
+    if (
+      receipt["schema_version"] !== "bitaxe-native-usb-config-ap-runtime-restore-v1"
+      || receipt["stage"] !== "nvs_match"
+      || receipt["runtime_profile"] !== "worker_runtime"
+      || receipt["nvs_read_repeated"] !== false
+      || receipt["device_write_observed"] !== false
+      || receipt["host_network_effect"] !== false
+      || receipt["cleanup_complete"] !== true
+    ) {
+      fail("runtime_restore_evidence_invalid");
+    }
+    return {
+      schema_version: "bitaxe-native-usb-config-ap-recovery-resume-result-v1",
+      status: "accepted",
+      stage: "nvs_match",
+      runtime_restored: true,
+      nvs_read_repeated: false,
+      device_write: false,
+      host_network_effect: false,
+    };
+  }
+  await commonStageOneAdmission(workspace, args, true);
   if (args.action === "preflight") {
     const admission = await runCampaignProcess(
       workspace,

@@ -53,17 +53,38 @@ pub fn verify_native_usb_transition(
     espflash_bin: &Path,
 ) -> Result<NativeUsbTransitionOutcome, UsbSessionError> {
     let handoff = handoff_worker_to_rom(session)?;
-    let serial_jtag = inspect_usb_profile(session.port()).map_err(|error| UsbSessionError {
+    let application_counts = restore_application_runtime(session, espflash_bin)?;
+    Ok(NativeUsbTransitionOutcome {
+        ready_received: handoff.ready_received,
+        committed_received: handoff.committed_received,
+        bus_reset_observed: handoff.bus_reset_observed,
+        profile_counts: handoff.profile_counts.merge(application_counts),
+        rom_admitted: true,
+        application_reappeared: true,
+    })
+}
+
+pub fn restore_application_runtime(
+    session: &mut UsbSession,
+    espflash_bin: &Path,
+) -> Result<ProfileObservationCounts, UsbSessionError> {
+    let downloader = inspect_usb_profile(session.port()).map_err(|error| UsbSessionError {
         category: UsbTerminalCategory::RuntimeProfileUnknown,
         detail: error.to_string(),
     })?;
-    if serial_jtag.profile != UsbProfile::SerialJtagRuntime
-        || serial_jtag.physical_identity_digest != session.physical_identity_digest()
-    {
+    if downloader.physical_identity_digest != session.physical_identity_digest() {
         return Err(UsbSessionError {
             category: UsbTerminalCategory::PhysicalIdentityDrift,
-            detail: "the pre-admission Serial/JTAG profile did not match the retained lease"
-                .to_owned(),
+            detail: "the downloader profile did not match the retained lease".to_owned(),
+        });
+    }
+    if !matches!(
+        downloader.profile,
+        UsbProfile::SerialJtagRuntime | UsbProfile::RomDownloader
+    ) {
+        return Err(UsbSessionError {
+            category: UsbTerminalCategory::RuntimeProfileUnknown,
+            detail: "runtime restoration requires an admitted downloader profile".to_owned(),
         });
     }
     let args = [
@@ -81,7 +102,7 @@ pub fn verify_native_usb_transition(
     let output = session.run_espflash_probe(espflash_bin, &args, Duration::from_secs(30))?;
     let mut board_info = output.stdout;
     board_info.extend_from_slice(&output.stderr);
-    let rom = admit_rom_downloader(serial_jtag, &board_info).map_err(|error| UsbSessionError {
+    let rom = admit_rom_downloader(downloader, &board_info).map_err(|error| UsbSessionError {
         category: UsbTerminalCategory::RomAdmissionFailed,
         detail: error.detail,
     })?;
@@ -91,15 +112,7 @@ pub fn verify_native_usb_transition(
             detail: "the admitted ROM profile did not match the retained lease".to_owned(),
         });
     }
-    let application_counts = session.reacquire_profile(UsbProfile::WorkerRuntime)?;
-    Ok(NativeUsbTransitionOutcome {
-        ready_received: handoff.ready_received,
-        committed_received: handoff.committed_received,
-        bus_reset_observed: handoff.bus_reset_observed,
-        profile_counts: handoff.profile_counts.merge(application_counts),
-        rom_admitted: true,
-        application_reappeared: true,
-    })
+    session.reacquire_profile(UsbProfile::WorkerRuntime)
 }
 
 #[cfg(test)]

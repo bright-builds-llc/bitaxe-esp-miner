@@ -26,6 +26,17 @@ pub(super) fn execute_read_flash(
     set_private_file_mode(command.output())
 }
 
+pub(super) fn restore_application_runtime(
+    environment: &LocalFlashEnvironment,
+) -> Result<ProfileObservationCounts> {
+    let mut session_slot = environment.usb_session.borrow_mut();
+    let Some(session) = session_slot.as_mut() else {
+        bail!("cleanup_failed: runtime restore attempted without a repository session");
+    };
+    restore_usb_application_runtime(session, environment.espflash_bin.as_std_path())
+        .map_err(|error| anyhow::anyhow!(error))
+}
+
 fn validate_managed_esptool(workspace: &Utf8Path, program: &Utf8Path) -> Result<()> {
     let canonical_workspace = fs::canonicalize(workspace.as_std_path())?;
     let canonical_program = fs::canonicalize(program.as_std_path())?;

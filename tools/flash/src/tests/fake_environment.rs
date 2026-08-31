@@ -420,6 +420,16 @@ impl FlashEnvironment for FakeFlashEnvironment {
         Ok(())
     }
 
+    fn restore_application_runtime(&self) -> Result<ProfileObservationCounts> {
+        Ok(ProfileObservationCounts {
+            absent: 1,
+            same_worker: 2,
+            same_serial_jtag: 0,
+            same_unknown: 0,
+            physical_mismatch: 0,
+        })
+    }
+
     fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>> {
         self.execute(command_spec)?;
         Ok(b"Chip type: ESP32-S3\nMAC address: 02:00:00:00:A1:B1\n".to_vec())
