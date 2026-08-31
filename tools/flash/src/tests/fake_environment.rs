@@ -578,6 +578,25 @@ impl FlashEnvironment for FakeFlashEnvironment {
     }
 }
 
+impl RomExitEnvironment for FakeFlashEnvironment {
+    fn execute_rom_exit(
+        &self,
+        _esptool: &Utf8Path,
+        _observation_seconds: u64,
+    ) -> Result<RomExitHardwareCapture> {
+        Ok(RomExitHardwareCapture {
+            force_download_bit_set: true,
+            transport: UsbProfile::SerialJtagRuntime,
+            reenumerated: true,
+            monitor: MonitorOutput {
+                bytes: Vec::new(),
+                interrupted_by: None,
+                reenumerated: true,
+            },
+        })
+    }
+}
+
 fn fake_usb_command_diagnostic(
     terminal_category: UsbTerminalCategory,
     device_effect_state: UsbDeviceEffectState,

@@ -166,6 +166,15 @@ js_library(
 )
 
 js_library(
+    name = "native_usb_rom_exit_inputs",
+    srcs = [
+        "TASKS.md",
+        "docs/parity/work-plans/20260831T190744Z-NATIVE-USB-ROM-EXIT-DISCRIMINATOR/PLAN.md",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "str005_inactive_restoration_inputs",
     srcs = [
         "TASKS.md",

@@ -113,6 +113,11 @@ requireText("tools/device-session/src/usb_ownership.rs", [
   "RomDownloader",
   "plan_usb_operation",
 ]);
+requireText("tools/device-session/src/usb_ownership/execution.rs", [
+  "UsbExecutionOwner",
+  "admit_rom_execution",
+  "admit_application_execution",
+]);
 requireText("tools/device-session/src/usb_ownership/maintenance.rs", [
   "handoff_worker_to_rom",
   "maintenance_control_steps",
@@ -176,7 +181,21 @@ requireText("tools/device-session/src/usb_ownership/verification.rs", [
   "board-info",
   '"no-reset"',
   '"hard-reset"',
+  '"hard_reset"',
   "reacquire_profile(UsbProfile::WorkerRuntime)",
+]);
+requireText("crates/bitaxe-api/src/usb_boot_profile.rs", [
+  "UsbBootProfileMarker",
+  "UsbBootProfileReplay",
+  "usb_boot_profile=",
+]);
+requireText("firmware/bitaxe/src/boot_evidence.rs", [
+  "publish_usb_boot_profile",
+  "usb_profile::emit_due",
+]);
+requireText("firmware/bitaxe/src/boot_evidence/usb_profile.rs", [
+  "UsbBootProfileReplay::new",
+  "maybe_take_due",
 ]);
 requireText("tools/automation/src/native-usb-transition-recovery.ts", [
   "preflightNativeUsbRecovery",
@@ -198,6 +217,11 @@ requireText("tools/automation/src/native-usb-config-ap-recovery.ts", [
   "nvs_checkpoint_required",
   "completedRestoreCommandReceipt",
   "host_network_effect: false",
+]);
+requireText("tools/automation/src/native-usb-rom-exit.ts", [
+  "native-usb-rom-exit",
+  "managed_esptool_hard_reset",
+  "execution_owner",
 ]);
 const nvsReadback = requireText("tools/flash/src/nvs_readback.rs", [
   "read_flash",
@@ -229,6 +253,7 @@ requireText("Justfile", [
   "native-usb-transition-recovery",
   "native-usb-display-recovery",
   "native-usb-config-ap-recovery",
+  "native-usb-rom-exit",
 ]);
 
 requireText("AGENTS.md", [
@@ -247,6 +272,7 @@ requireText("docs/hardware/native-usb-ownership.md", [
   "just verify-native-usb-ownership",
   "just native-usb-display-recovery",
   "just native-usb-config-ap-recovery",
+  "execution owner",
 ]);
 requireText("docs/hardware/esp-device-session.md", ["native-usb-ownership.md"]);
 requireText(".codex/tasks/lessons.md", ["lesson-visible-cdc-is-not-flash-admission"]);

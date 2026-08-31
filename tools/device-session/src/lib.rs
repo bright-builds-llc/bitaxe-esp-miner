@@ -48,8 +48,10 @@ pub use usb::{
     UsbLifecycleState, UsbOperation, UsbSession, UsbSessionError, UsbTerminalCategory,
 };
 pub use usb_ownership::{
-    admit_rom_downloader, classify_usb_profile, handoff_worker_to_rom, inspect_usb_profile,
+    admit_application_execution, admit_rom_downloader, admit_rom_execution, classify_usb_ownership,
+    classify_usb_profile, handoff_worker_to_rom, inspect_usb_profile,
     native_usb_transition_module_sha256, plan_usb_operation, run_installed_application,
-    verify_native_usb_transition, NativeUsbHandoffOutcome, NativeUsbTransitionOutcome,
-    ProfileObservationCounts, UsbIntent, UsbOperationPlan, UsbProfile, UsbProfileInspection,
+    verify_native_usb_transition, ApplicationTransportObservation, NativeUsbHandoffOutcome,
+    NativeUsbTransitionOutcome, ProfileObservationCounts, UsbExecutionOwner, UsbIntent,
+    UsbOperationPlan, UsbOwnershipIdentity, UsbProfile, UsbProfileInspection,
 };

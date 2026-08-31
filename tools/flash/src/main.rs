@@ -12,8 +12,9 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::{bail, Context, Result};
 use bitaxe_api::{
-    classify_runtime_boot_attestations, BuildProvenance, ExpectedRuntimeAttestationIdentity,
-    RuntimeAttestationAccumulator, RuntimeAttestationStatus,
+    classify_runtime_boot_attestations, runtime_boot_attestation_marker_start, BuildProvenance,
+    ExpectedRuntimeAttestationIdentity, RuntimeAttestationAccumulator, RuntimeAttestationStatus,
+    UsbBootProfileMarker, USB_BOOT_PROFILE_MARKER,
 };
 use bitaxe_automation_contracts::{
     InputUatEvidence, InputUatObservationEvidence, ReleaseRecoveryEvidence,
@@ -25,11 +26,12 @@ use bitaxe_config::{
     NVS_NAMESPACE,
 };
 use bitaxe_device_session::{
-    admit_rom_downloader, discover_usb_ports, handoff_worker_to_rom, inspect_usb_profile,
-    native_usb_transition_module_sha256, plan_usb_operation, run_installed_application,
-    verify_native_usb_transition, MonitorOutput, NativeUsbTransitionOutcome,
-    ProfileObservationCounts, UsbCommandDiagnostic, UsbDeviceEffectState, UsbIntent, UsbOperation,
-    UsbOperationPlan, UsbProfile, UsbSession, UsbTerminalCategory,
+    admit_application_execution, admit_rom_downloader, discover_usb_ports, handoff_worker_to_rom,
+    inspect_usb_profile, native_usb_transition_module_sha256, plan_usb_operation,
+    run_installed_application, verify_native_usb_transition, MonitorOutput,
+    NativeUsbTransitionOutcome, ProfileObservationCounts, UsbCommandDiagnostic,
+    UsbDeviceEffectState, UsbExecutionOwner, UsbIntent, UsbOperation, UsbOperationPlan, UsbProfile,
+    UsbSession, UsbTerminalCategory,
 };
 #[cfg(test)]
 use bitaxe_device_session::{UsbCommandTermination, UsbConnectionSignature};
@@ -59,6 +61,7 @@ mod package_admission;
 mod redaction;
 mod release_recovery;
 mod restore_installed;
+mod rom_exit;
 mod self_test_intent;
 mod support;
 mod tcp_payload_diagnostic;
@@ -86,6 +89,7 @@ pub(crate) use package::*;
 pub(crate) use redaction::*;
 pub(crate) use release_recovery::*;
 pub(crate) use restore_installed::*;
+pub(crate) use rom_exit::*;
 pub(crate) use self_test_intent::*;
 pub(crate) use support::*;
 pub(crate) use tcp_payload_diagnostic::*;
@@ -155,6 +159,7 @@ fn main() -> Result<()> {
         }
         CliCommand::NvsReadback(command) => run_nvs_readback(&command, &environment),
         CliCommand::NvsRuntimeRestore(command) => run_nvs_runtime_restore(&command, &environment),
+        CliCommand::RomExitDiagnostic(command) => run_rom_exit_diagnostic(&command, &environment),
     };
     let device_effect_state = environment.device_effect_state();
     let cleanup_result = environment.finish_usb_session();

@@ -7,6 +7,29 @@ use crate::usb_ownership::{
 use crate::{inspect_usb_profile, UsbProfile};
 
 impl UsbSession {
+    pub(crate) fn reacquire_application_transport(
+        &mut self,
+    ) -> Result<(UsbProfile, bool), UsbSessionError> {
+        let previous_enumeration = self.current_enumeration_token.clone();
+        let snapshot = self.reacquire(RecoveryPhase::Handoff)?;
+        let profile = inspect_usb_profile(&snapshot.port)
+            .map(|inspection| inspection.profile)
+            .map_err(|error| UsbSessionError {
+                category: UsbTerminalCategory::RuntimeProfileUnknown,
+                detail: error.to_string(),
+            })?;
+        if !matches!(
+            profile,
+            UsbProfile::WorkerRuntime | UsbProfile::SerialJtagRuntime
+        ) {
+            return Err(UsbSessionError {
+                category: UsbTerminalCategory::RuntimeProfileUnknown,
+                detail: "ROM exit did not expose an application-capable transport".to_owned(),
+            });
+        }
+        Ok((profile, snapshot.enumeration_token != previous_enumeration))
+    }
+
     pub(crate) fn reacquire_profile(
         &mut self,
         expected_profile: UsbProfile,

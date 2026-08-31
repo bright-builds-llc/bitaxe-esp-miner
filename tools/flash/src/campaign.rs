@@ -419,6 +419,9 @@ pub(crate) fn campaign_flash_failure(
             | UsbTerminalCategory::RecoveryRequired => {
                 CampaignTerminalCategory::RecoveryNotObserved
             }
+            UsbTerminalCategory::ApplicationIdentityMismatch => {
+                CampaignTerminalCategory::RuntimeIdentityUntrusted
+            }
             UsbTerminalCategory::BootloaderConnectFailed => {
                 CampaignTerminalCategory::BootloaderConnectFailed
             }

@@ -21,6 +21,13 @@ location is unavailable. VID/PID, product strings, device nodes, inode data,
 and registry epochs are profile or enumeration identity and never enter the
 physical digest. One `UsbSession` lease remains held while those fields change.
 
+Transport profile and execution owner are independent. The shared Espressif
+USB-Serial-JTAG descriptor can belong to ROM or to the running application;
+descriptors alone leave that owner unknown. A current `board-info` exchange
+admits ROM for that observation epoch, while a build-bound boot-profile or
+runtime-attestation marker admits the application. Worker descriptors admit
+the application because only the project firmware exposes that exact tuple.
+
 ## Firmware handoff
 
 Ordinary confirmed-safe boots select `worker_runtime`. A consume-once TCP,
@@ -100,6 +107,10 @@ Monitoring never arms handoff.
   arms maintenance.
 - After a write, the same lease reacquires the expected application profile
   and remains responsible for process-group cleanup and final holder checks.
+- A software handoff that set `RTC_CNTL_FORCE_DOWNLOAD_BOOT` exits ROM through
+  the contained managed esptool ESP32-S3 hard-reset path, which clears that
+  force bit before reset. `run` with `--after no_reset` is prohibited because
+  it intentionally retains the serial bootloader.
 
 Initial production support is macOS. Linux and Windows expose the same
 Interface but fail closed until their inventory, identity, serial-control, and
@@ -173,6 +184,11 @@ network change. Configuration-AP association remains prohibited unless that
 sealed discriminator reports `nvs_match`; later recovery must use the same
 Interface and the exact USB-derived AP candidate, never general Wi-Fi,
 hostname, ARP, mDNS, router, or subnet discovery.
+
+`just native-usb-rom-exit` is the no-write discriminator for the shared
+Serial/JTAG transport. It reads only the force-download bit, performs one
+contained hard-reset ROM exit, and requires Worker descriptors or exact
+application evidence before naming an execution owner.
 
 Manual BOOT/RESET is a one-time bootstrap or last-resort recovery path, never
 the normal development workflow. Buttonless flashing is not qualified until

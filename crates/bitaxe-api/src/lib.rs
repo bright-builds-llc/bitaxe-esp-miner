@@ -34,6 +34,7 @@ pub mod system_info_contract;
 pub mod telemetry;
 pub mod theme;
 pub mod update_plan;
+pub mod usb_boot_profile;
 pub mod v12_settings;
 pub mod websocket_state;
 pub mod wire;
@@ -148,6 +149,11 @@ pub use theme::{
 pub use update_plan::{
     plan_update_request, FirmwareOtaDecision, OtaWwwGapDecision, UpdateRequestDecision,
     UpdateRequestInput, UpdateRouteKind, UpdateStatusLabel,
+};
+pub use usb_boot_profile::{
+    UsbBootBaseline, UsbBootProfileError, UsbBootProfileMarker, UsbBootProfileReason,
+    UsbBootProfileReplay, UsbBootTransport, USB_BOOT_PROFILE_MARKER,
+    USB_BOOT_PROFILE_SCHEMA_VERSION,
 };
 pub use v12_settings::{
     decide_v12_settings_body, decide_v12_settings_value, Hostname, V12SettingsChange,

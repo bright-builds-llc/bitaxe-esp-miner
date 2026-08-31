@@ -341,12 +341,31 @@ fn start_runtime_services(
         log::warn!("statistics_runtime=unavailable reason=thread_spawn_failed error={error:#}");
     }
     if serial_jtag_runtime {
+        boot_evidence::publish_usb_boot_profile(
+            bitaxe_api::UsbBootTransport::SerialJtagRuntime,
+            bitaxe_api::UsbBootProfileReason::DiagnosticOwner,
+            bitaxe_api::UsbBootBaseline::Diagnostic,
+        );
         log::info!("usb_runtime=serial_jtag reason=diagnostic_owner");
     } else if let Some(bwg_recovery) = maybe_bwg_recovery {
-        if let Err(error) = crate::bwg_worker_usb::start(bwg_recovery) {
-            log::warn!("bwg_worker_control=unavailable category=startup_failed error={error:#}");
+        match crate::bwg_worker_usb::start(bwg_recovery) {
+            Ok(()) => boot_evidence::publish_usb_boot_profile(
+                bitaxe_api::UsbBootTransport::WorkerRuntime,
+                bitaxe_api::UsbBootProfileReason::WorkerStarted,
+                bitaxe_api::UsbBootBaseline::Confirmed,
+            ),
+            Err(error) => {
+                log::warn!(
+                    "bwg_worker_control=unavailable category=startup_failed error={error:#}"
+                );
+            }
         }
     } else {
+        boot_evidence::publish_usb_boot_profile(
+            bitaxe_api::UsbBootTransport::SerialJtagRuntime,
+            bitaxe_api::UsbBootProfileReason::BootBaselineUnconfirmed,
+            bitaxe_api::UsbBootBaseline::Unconfirmed,
+        );
         log::warn!("bwg_worker_control=unavailable category=boot_baseline_unconfirmed");
     }
     Ok(boot_validation_ready)

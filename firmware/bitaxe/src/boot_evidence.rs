@@ -17,10 +17,13 @@ use bitaxe_api::logs::{
 };
 use bitaxe_api::{
     provisioning::PROVISIONING_NETWORK_READY_MARKER, BootSessionId, RuntimeBootAttestation,
+    UsbBootBaseline, UsbBootProfileReason, UsbBootTransport,
 };
 use esp_idf_svc::sys;
 
 use crate::{asic_adapter, log_buffer, rtc_boot_ordinal, runtime_uptime};
+
+mod usb_profile;
 
 static BOOT_SESSION: OnceLock<BootSessionNonce> = OnceLock::new();
 static HEARTBEAT_MODEL: OnceLock<Mutex<RuntimeHeartbeatModel>> = OnceLock::new();
@@ -137,6 +140,7 @@ pub fn initialize_observer() {
     RUNTIME_ATTESTATION.get_or_init(|| Mutex::new(None));
     PROVISIONING_NETWORK_READY.get_or_init(|| Mutex::new(None));
     SELF_TEST_RECEIPT.get_or_init(|| Mutex::new(None));
+    usb_profile::initialize();
     if asic_adapter::accepted_state_snapshot_enabled() {
         request_diagnostic_replay();
     }
@@ -170,6 +174,24 @@ pub fn register_self_test_receipt(lease: u64, outcome: &'static str) {
 /// Requests bounded replay of privacy-safe retained diagnostics for this boot.
 pub fn request_diagnostic_replay() {
     DIAGNOSTIC_REPLAY_REQUESTED.store(true, Ordering::Release);
+}
+
+/// Publishes and replays the selected USB transport and application-owner reason.
+pub fn publish_usb_boot_profile(
+    transport: UsbBootTransport,
+    reason: UsbBootProfileReason,
+    baseline: UsbBootBaseline,
+) {
+    usb_profile::publish(
+        transport,
+        reason,
+        baseline,
+        crate::firmware_commit().to_owned(),
+        crate::app_elf_sha256(),
+        boot_ordinal(),
+        runtime_uptime::millis(),
+        BOOT_EVIDENCE_INTERVAL_MS,
+    );
 }
 
 /// Begins replaying exact-package ready-state proof for late monitor attachment.
@@ -318,6 +340,7 @@ fn observe_boot_lifetime() {
         emit_due_runtime_attestation(now_ms);
         emit_due_provisioning_network_ready(now_ms);
         emit_due_self_test_receipt(now_ms);
+        usb_profile::emit_due(now_ms);
 
         if maybe_replay_deadline_ms
             .is_some_and(|deadline_ms| now_ms >= deadline_ms && now_ms < replay_ends_at_ms)
@@ -345,6 +368,7 @@ fn observe_boot_lifetime() {
             .min(next_attestation_deadline());
         let next_wake_ms = next_wake_ms.min(next_provisioning_network_ready_deadline());
         let next_wake_ms = next_wake_ms.min(next_self_test_receipt_deadline());
+        let next_wake_ms = next_wake_ms.min(usb_profile::next_deadline());
         let sleep_ms = next_wake_ms.saturating_sub(runtime_uptime::millis());
         if sleep_ms > 0 {
             thread::sleep(Duration::from_millis(sleep_ms));

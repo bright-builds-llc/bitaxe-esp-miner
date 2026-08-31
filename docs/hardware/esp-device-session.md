@@ -81,6 +81,9 @@ of `correlated`, `silent`, `reacquired`, or `failed`.
 - `watchdog-reset` is not an implicit fallback. It may be considered only after
   a distinct typed bootloader-exit diagnosis, a repository regression, and an
   explicit phase-plan change.
+- When firmware entered ROM by setting `RTC_CNTL_FORCE_DOWNLOAD_BOOT`, use the
+  contained managed esptool hard-reset Adapter that clears that bit. Never use
+  `run` with `--after no_reset` as an application-exit operation.
 - No device-session command may toggle modem-control lines or write serial input
   except the exact class-control-only maintenance Adapter defined in
   `native-usb-ownership.md`. That Adapter may set 1200-baud line coding and DTR

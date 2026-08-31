@@ -8,10 +8,15 @@ use crate::{UsbSessionError, UsbTerminalCategory};
 #[cfg(test)]
 use std::time::Duration;
 
+mod execution;
 mod maintenance;
 mod profile_trace;
 mod verification;
 
+pub use execution::{
+    admit_application_execution, admit_rom_execution, classify_usb_ownership, UsbExecutionOwner,
+    UsbOwnershipIdentity,
+};
 pub use maintenance::{handoff_worker_to_rom, NativeUsbHandoffOutcome};
 #[cfg(test)]
 use maintenance::{
@@ -26,7 +31,7 @@ pub(crate) use profile_trace::{
 };
 pub use verification::{
     native_usb_transition_module_sha256, run_installed_application, verify_native_usb_transition,
-    NativeUsbTransitionOutcome,
+    ApplicationTransportObservation, NativeUsbTransitionOutcome,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

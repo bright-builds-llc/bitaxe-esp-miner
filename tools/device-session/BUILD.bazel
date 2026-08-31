@@ -20,6 +20,7 @@ js_library(
         "src/usb/profile_reacquire.rs",
         "src/usb_ownership.rs",
         "src/usb_ownership/maintenance.rs",
+        "src/usb_ownership/execution.rs",
         "src/usb_ownership/profile_trace.rs",
         "src/usb_ownership/verification.rs",
     ],
@@ -35,6 +36,7 @@ js_library(
         "src/usb.rs",
         "src/usb_ownership.rs",
         "src/usb_ownership/maintenance.rs",
+        "src/usb_ownership/execution.rs",
         "src/usb_ownership/profile_trace.rs",
         "src/usb_ownership/verification.rs",
         "src/usb/observation.rs",
@@ -50,6 +52,7 @@ rust_library(
     srcs = [
         "src/usb_ownership.rs",
         "src/usb_ownership/maintenance.rs",
+        "src/usb_ownership/execution.rs",
         "src/usb_ownership/profile_trace.rs",
         "src/usb_ownership/verification.rs",
         "src/evidence.rs",

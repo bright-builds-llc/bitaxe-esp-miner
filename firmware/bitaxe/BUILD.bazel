@@ -60,13 +60,18 @@ js_library(
     srcs = [
         "bwg/native/usb_phy_handoff.c",
         "bwg/native/include/usb_phy_handoff.h",
+        "src/boot_evidence.rs",
+        "src/boot_evidence/usb_profile.rs",
         "src/bwg_worker_usb.rs",
         "src/startup.rs",
         "src/usb_runtime.rs",
         "src/usb_runtime/callbacks.rs",
         "src/usb_runtime/tinyusb.rs",
     ],
-    visibility = ["//scripts:__pkg__"],
+    visibility = [
+        "//scripts:__pkg__",
+        "//tools/automation:__pkg__",
+    ],
 )
 
 js_library(
@@ -265,6 +270,7 @@ filegroup(
         "//crates/bitaxe-core:phase34_identity_sources",
         "build.rs",
         "src/boot_evidence.rs",
+        "src/boot_evidence/usb_profile.rs",
         "src/http_api.rs",
         "src/http_api/deferred_effect_queue.rs",
         "src/http_api/handlers.rs",
@@ -482,6 +488,7 @@ rust_test(
     name = "boot_evidence_source_ownership_tests",
     srcs = [
         "src/boot_evidence.rs",
+        "src/boot_evidence/usb_profile.rs",
         "src/boot_evidence_source_ownership_test.rs",
         "src/runtime_snapshot.rs",
         "src/startup.rs",

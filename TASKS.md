@@ -28,8 +28,8 @@ new work.
 
 - [x] Create and push the immutable ROM-exit discriminator plan before source
       changes or hardware effects.
-- [ ] Split transport profile from execution owner behind `UsbOwnership`.
-- [ ] Correct the force-download ROM exit and add boot-lifetime profile evidence.
+- [x] Split transport profile from execution owner behind `UsbOwnership`.
+- [x] Correct the force-download ROM exit and add boot-lifetime profile evidence.
 - [ ] Verify, commit/push, package, and run one no-write Ultra 205 discriminator.
 - [ ] Publish or record the closed result without reopening predecessor tasks.
 
@@ -49,9 +49,15 @@ HTTP actions, discovery, mining, ASIC work, fan/voltage/power effects, manual
 buttons, direct UART/pins/pads/headers/probes, other devices, durability,
 recovery mutation, and parity promotion are excluded.
 
-Verification: Pending separate plan and implementation commits, exact clean
-package, effect-free preflight, one no-write hardware discriminator, redaction,
-and cleanup.
+Verification: Plan commit `29950014` is pushed. Red-to-green coverage passes
+for execution-owner separation, ROM and application admission, force-bit
+parsing, hard-reset exit, periodic boot-profile replay, CLI shape, projection
+allowlisting, and ownership/source guards. Ordered Cargo gates, Bright Builds,
+all 74 Bazel tests, firmware build/package, native-USB ownership, parity,
+progress, redaction, reference cleanliness, whitespace, sensitive-value scan,
+and final diff review pass. The separate implementation commit/package,
+effect-free preflight, one no-write hardware discriminator, finalization, and
+cleanup remain.
 
 Completion review: Pending. Predecessor tasks and recovery-006 remain unchanged.
 

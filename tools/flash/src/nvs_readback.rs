@@ -206,6 +206,9 @@ pub(crate) fn run_nvs_runtime_restore(
     let esptool = find_managed_esptool(environment)?;
     environment.begin_usb_session(UsbOperation::Recover, &command.port)?;
     let counts = environment.restore_application_runtime(&esptool)?;
+    if counts.same_worker == 0 {
+        bail!("nvs_runtime_restore=blocked reason=execution_owner_unknown");
+    }
     environment.finish_usb_session()?;
     let receipt = serde_json::json!({
         "schema_version": "bitaxe-native-usb-config-ap-runtime-restore-v1",
@@ -394,7 +397,7 @@ fn validate_managed_tool(
     Ok(tool)
 }
 
-fn find_managed_esptool(environment: &impl FlashEnvironment) -> Result<Utf8PathBuf> {
+pub(crate) fn find_managed_esptool(environment: &impl FlashEnvironment) -> Result<Utf8PathBuf> {
     [
         ".embuild/espressif/python_env/idf5.5_py3.14_env/bin/esptool.py",
         ".embuild/espressif/python_env/idf5.5_py3.9_env/bin/esptool.py",

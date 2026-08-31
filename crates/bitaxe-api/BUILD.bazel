@@ -56,6 +56,15 @@ filegroup(
 )
 
 js_library(
+    name = "usb_boot_profile_source",
+    srcs = ["src/usb_boot_profile.rs"],
+    visibility = [
+        "//scripts:__pkg__",
+        "//tools/automation:__pkg__",
+    ],
+)
+
+js_library(
     name = "emc2101_thermal_sources",
     srcs = [
         "src/observation.rs",
@@ -149,6 +158,7 @@ rust_library(
         "src/theme.rs",
         "src/theme/tests.rs",
         "src/update_plan.rs",
+        "src/usb_boot_profile.rs",
         "src/v12_settings.rs",
         "src/websocket_state.rs",
         "src/wire.rs",

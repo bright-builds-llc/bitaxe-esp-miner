@@ -19,6 +19,12 @@ pub struct NativeUsbTransitionOutcome {
     pub application_reappeared: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ApplicationTransportObservation {
+    pub transport: UsbProfile,
+    pub reenumerated: bool,
+}
+
 #[must_use]
 pub fn native_usb_transition_module_sha256() -> String {
     let sources = [
@@ -105,7 +111,7 @@ pub fn verify_native_usb_transition(
 pub fn run_installed_application(
     session: &mut UsbSession,
     esptool_bin: &Path,
-) -> Result<ProfileObservationCounts, UsbSessionError> {
+) -> Result<ApplicationTransportObservation, UsbSessionError> {
     let downloader = inspect_usb_profile(session.port()).map_err(|error| UsbSessionError {
         category: UsbTerminalCategory::RuntimeProfileUnknown,
         detail: error.to_string(),
@@ -127,7 +133,11 @@ pub fn run_installed_application(
     }
     let args = installed_application_args(session.port());
     session.run_espflash_probe(esptool_bin, &args, Duration::from_secs(30))?;
-    session.reacquire_profile(UsbProfile::WorkerRuntime)
+    let (transport, reenumerated) = session.reacquire_application_transport()?;
+    Ok(ApplicationTransportObservation {
+        transport,
+        reenumerated,
+    })
 }
 
 fn installed_application_args(port: &str) -> [String; 10] {
@@ -139,7 +149,7 @@ fn installed_application_args(port: &str) -> [String; 10] {
         "--before".to_owned(),
         "no_reset".to_owned(),
         "--after".to_owned(),
-        "no_reset".to_owned(),
+        "hard_reset".to_owned(),
         "--no-stub".to_owned(),
         "run".to_owned(),
     ]
@@ -190,10 +200,11 @@ mod tests {
                 "--before",
                 "no_reset",
                 "--after",
-                "no_reset",
+                "hard_reset",
                 "--no-stub",
                 "run",
             ]
         );
+        assert_ne!(args[7], "no_reset");
     }
 }

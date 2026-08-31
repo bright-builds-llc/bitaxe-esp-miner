@@ -1,4 +1,5 @@
 const BOOT_EVIDENCE_SOURCE: &str = include_str!("boot_evidence.rs");
+const USB_PROFILE_SOURCE: &str = include_str!("boot_evidence/usb_profile.rs");
 const RUNTIME_SNAPSHOT_SOURCE: &str = include_str!("runtime_snapshot.rs");
 const STARTUP_SOURCE: &str = include_str!("startup.rs");
 
@@ -80,4 +81,27 @@ fn platform_readiness_precedes_blocking_wifi_admission() {
     // Assert
     assert!(readiness < network);
     assert!(network_service.contains("wifi_adapter::start_wifi(modem)"));
+}
+
+#[test]
+fn usb_boot_profile_is_selected_once_and_replayed_by_the_boot_lifetime_owner() {
+    // Arrange
+    let observer_start = BOOT_EVIDENCE_SOURCE
+        .find("fn observe_boot_lifetime()")
+        .expect("boot-lifetime observer must exist");
+    let observer_end = BOOT_EVIDENCE_SOURCE[observer_start..]
+        .find("fn runtime_attestation(")
+        .map(|offset| observer_start + offset)
+        .expect("observer boundary must exist");
+    let observer = &BOOT_EVIDENCE_SOURCE[observer_start..observer_end];
+
+    // Act / Assert
+    assert!(BOOT_EVIDENCE_SOURCE.contains("pub fn publish_usb_boot_profile("));
+    assert!(observer.contains("usb_profile::emit_due(now_ms);"));
+    assert!(USB_PROFILE_SOURCE.contains("UsbBootProfileReplay::new"));
+    assert!(USB_PROFILE_SOURCE.contains("replay.maybe_take_due(now_ms)"));
+    assert!(STARTUP_SOURCE.contains("UsbBootProfileReason::DiagnosticOwner"));
+    assert!(STARTUP_SOURCE.contains("UsbBootProfileReason::WorkerStarted"));
+    assert!(STARTUP_SOURCE.contains("UsbBootProfileReason::BootBaselineUnconfirmed"));
+    assert_eq!(STARTUP_SOURCE.matches("publish_usb_boot_profile(").count(), 3);
 }

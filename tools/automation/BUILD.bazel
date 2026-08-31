@@ -82,6 +82,15 @@ js_library(
     visibility = ["//scripts:__pkg__"],
 )
 
+js_library(
+    name = "native_usb_rom_exit_sources",
+    srcs = [
+        "src/native-usb-rom-exit-cli.ts",
+        "src/native-usb-rom-exit.ts",
+    ],
+    visibility = ["//scripts:__pkg__"],
+)
+
 filegroup(
     name = "automation_sources",
     srcs = ["BUILD.bazel"] + glob(["src/**/*.ts", "src/**/*.swift"]),
@@ -285,6 +294,22 @@ js_binary(
         "//tools/flash:flash",
     ],
     entry_point = "dist/native-usb-config-ap-recovery-cli.js",
+)
+
+js_binary(
+    name = "native_usb_rom_exit",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        ":native_usb_rom_exit_sources",
+        "//:native_usb_rom_exit_inputs",
+        "//crates/bitaxe-api:usb_boot_profile_source",
+        "//firmware/bitaxe:native_usb_ownership_sources",
+        "//tools/device-session:native_usb_ownership_sources",
+        "//tools/flash:flash",
+        "//tools/flash:native_usb_ownership_sources",
+    ],
+    entry_point = "dist/native-usb-rom-exit-cli.js",
 )
 
 js_binary(
@@ -706,6 +731,16 @@ js_test(
         ":automation_tests_ts",
     ],
     entry_point = "test-dist/native-usb-config-ap-recovery.test.js",
+)
+
+js_test(
+    name = "native_usb_rom_exit_unit_test",
+    chdir = "../../../..",
+    data = [
+        ":automation_ts",
+        ":automation_tests_ts",
+    ],
+    entry_point = "test-dist/native-usb-rom-exit.test.js",
 )
 
 js_test(
