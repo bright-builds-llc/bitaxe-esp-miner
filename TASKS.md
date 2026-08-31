@@ -59,7 +59,16 @@ and final diff review pass. The separate implementation commit/package,
 effect-free preflight, one no-write hardware discriminator, finalization, and
 cleanup remain.
 
-Completion review: Pending. Predecessor tasks and recovery-006 remain unchanged.
+Progress: Implementation commit `88fd860e` is pushed and its exact clean
+package is built. Fresh retain-ROM detection then stalled before board-info in
+an uninterruptible macOS host-I/O process. Termination reaped the `just` owner,
+but the child remains host-stuck with no USB file-descriptor holder. No
+preflight, task root, force-bit read, reset, monitor, projection, device write,
+or network effect occurred. A Mac reboot is required before the existing exact
+package and contract can resume; this is host remediation, not a hardware retry.
+
+Completion review: Blocked at host process cleanup before hardware admission.
+Predecessor tasks and recovery-006 remain unchanged.
 
 ### task-native-usb-ownership-handoff | 2026-08-29 | Preserve TinyUSB and restore buttonless flashing
 
