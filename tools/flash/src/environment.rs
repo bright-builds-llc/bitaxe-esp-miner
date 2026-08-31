@@ -40,7 +40,7 @@ pub(crate) trait FlashEnvironment {
     fn execute(&self, command_spec: &CommandSpec) -> Result<()>;
     fn execute_esptool_write_flash(&self, command: &ManagedEsptoolWriteFlash) -> Result<()>;
     fn execute_esptool_read_flash(&self, command: &ManagedEsptoolReadFlash) -> Result<()>;
-    fn restore_application_runtime(&self) -> Result<ProfileObservationCounts>;
+    fn restore_application_runtime(&self, esptool: &Utf8Path) -> Result<ProfileObservationCounts>;
     fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>>;
     fn receive_only(&self, command_spec: &CommandSpec, timeout_seconds: u64) -> Result<Vec<u8>>;
     fn campaign_lease_id(&self) -> u64;
@@ -437,8 +437,8 @@ impl FlashEnvironment for LocalFlashEnvironment {
     fn execute_esptool_read_flash(&self, command: &ManagedEsptoolReadFlash) -> Result<()> {
         nvs_readback::execute_read_flash(self, command)
     }
-    fn restore_application_runtime(&self) -> Result<ProfileObservationCounts> {
-        nvs_readback::restore_application_runtime(self)
+    fn restore_application_runtime(&self, esptool: &Utf8Path) -> Result<ProfileObservationCounts> {
+        nvs_readback::restore_application_runtime(self, esptool)
     }
     fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>> {
         if command_spec.program != "espflash" {

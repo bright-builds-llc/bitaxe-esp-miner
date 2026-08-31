@@ -26,11 +26,10 @@ use bitaxe_config::{
 };
 use bitaxe_device_session::{
     admit_rom_downloader, discover_usb_ports, handoff_worker_to_rom, inspect_usb_profile,
-    native_usb_transition_module_sha256, plan_usb_operation,
-    restore_application_runtime as restore_usb_application_runtime, verify_native_usb_transition,
-    MonitorOutput, NativeUsbTransitionOutcome, ProfileObservationCounts, UsbCommandDiagnostic,
-    UsbDeviceEffectState, UsbIntent, UsbOperation, UsbOperationPlan, UsbProfile, UsbSession,
-    UsbTerminalCategory,
+    native_usb_transition_module_sha256, plan_usb_operation, run_installed_application,
+    verify_native_usb_transition, MonitorOutput, NativeUsbTransitionOutcome,
+    ProfileObservationCounts, UsbCommandDiagnostic, UsbDeviceEffectState, UsbIntent, UsbOperation,
+    UsbOperationPlan, UsbProfile, UsbSession, UsbTerminalCategory,
 };
 #[cfg(test)]
 use bitaxe_device_session::{UsbCommandTermination, UsbConnectionSignature};

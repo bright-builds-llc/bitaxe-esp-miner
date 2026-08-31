@@ -420,7 +420,10 @@ impl FlashEnvironment for FakeFlashEnvironment {
         Ok(())
     }
 
-    fn restore_application_runtime(&self) -> Result<ProfileObservationCounts> {
+    fn restore_application_runtime(
+        &self,
+        _esptool: &Utf8Path,
+    ) -> Result<ProfileObservationCounts> {
         Ok(ProfileObservationCounts {
             absent: 1,
             same_worker: 2,

@@ -106,18 +106,7 @@ pub(crate) fn run_nvs_readback(
     )?;
     fs::create_dir(root.as_std_path())?;
     set_private_directory_mode(&root)?;
-    let program = [
-        ".embuild/espressif/python_env/idf5.5_py3.14_env/bin/esptool.py",
-        ".embuild/espressif/python_env/idf5.5_py3.9_env/bin/esptool.py",
-    ]
-    .into_iter()
-    .map(Utf8Path::new)
-    .map(|path| environment.workspace_path(path))
-    .find(|path| {
-        fs::symlink_metadata(path.as_std_path())
-            .is_ok_and(|m| m.is_file() && !m.file_type().is_symlink())
-    })
-    .context("nvs_readback=blocked reason=esptool_missing")?;
+    let program = find_managed_esptool(environment)?;
     let output = root.join("installed-nvs.private.bin");
     let read = ManagedEsptoolReadFlash {
         program,
@@ -214,8 +203,9 @@ pub(crate) fn run_nvs_runtime_restore(
     if fs::symlink_metadata(receipt_path.as_std_path()).is_ok() {
         bail!("nvs_runtime_restore=blocked reason=consumed");
     }
+    let esptool = find_managed_esptool(environment)?;
     environment.begin_usb_session(UsbOperation::Recover, &command.port)?;
-    let counts = environment.restore_application_runtime()?;
+    let counts = environment.restore_application_runtime(&esptool)?;
     environment.finish_usb_session()?;
     let receipt = serde_json::json!({
         "schema_version": "bitaxe-native-usb-config-ap-runtime-restore-v1",
@@ -402,6 +392,21 @@ fn validate_managed_tool(
         bail!("nvs_readback=blocked reason=managed_tool_escape path={relative}");
     }
     Ok(tool)
+}
+
+fn find_managed_esptool(environment: &impl FlashEnvironment) -> Result<Utf8PathBuf> {
+    [
+        ".embuild/espressif/python_env/idf5.5_py3.14_env/bin/esptool.py",
+        ".embuild/espressif/python_env/idf5.5_py3.9_env/bin/esptool.py",
+    ]
+    .into_iter()
+    .map(Utf8Path::new)
+    .map(|path| environment.workspace_path(path))
+    .find(|path| {
+        fs::symlink_metadata(path.as_std_path())
+            .is_ok_and(|metadata| metadata.is_file() && !metadata.file_type().is_symlink())
+    })
+    .context("nvs_readback=blocked reason=esptool_missing")
 }
 
 fn validate_managed_nvs_python(environment: &impl FlashEnvironment) -> Result<Utf8PathBuf> {

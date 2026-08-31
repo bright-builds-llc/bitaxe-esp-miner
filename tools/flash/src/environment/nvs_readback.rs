@@ -28,12 +28,15 @@ pub(super) fn execute_read_flash(
 
 pub(super) fn restore_application_runtime(
     environment: &LocalFlashEnvironment,
+    esptool: &Utf8Path,
 ) -> Result<ProfileObservationCounts> {
+    validate_managed_esptool(&environment.workspace_dir, esptool)?;
+    environment.ensure_bootloader()?;
     let mut session_slot = environment.usb_session.borrow_mut();
     let Some(session) = session_slot.as_mut() else {
         bail!("cleanup_failed: runtime restore attempted without a repository session");
     };
-    restore_usb_application_runtime(session, environment.espflash_bin.as_std_path())
+    run_installed_application(session, esptool.as_std_path())
         .map_err(|error| anyhow::anyhow!(error))
 }
 

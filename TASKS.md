@@ -278,10 +278,12 @@ and strengthened preflight passed. The progress-backed read consumed exactly
 performed no device write or host-network effect, returned to the admitted ROM
 profile, and proved private modes and zero owned processes. Stage 2
 configuration-AP recovery remains blocked because the required recovery-006
-application profile did not reappear after the read. A sealed `resume` fix is
-in progress to hard-reset and reacquire the same device without repeating the
-NVS read or writing the device. Finalization and cleanup remain pending the
-later Stage 2 implementation.
+application profile did not reappear after the read. The first sealed `resume`
+proved that `board-info --after hard-reset` left the same device continuously
+in `SerialJtagRuntime`. A targeted successor uses the pinned esptool `run`
+command to execute the installed application without repeating the NVS read or
+writing the device. Finalization and cleanup remain pending the later Stage 2
+implementation.
 
 Completion review: Pending. Recovery-006 remains installed; blocked
 predecessors, parent native-USB task, STR-005, and BWG remain unchanged.

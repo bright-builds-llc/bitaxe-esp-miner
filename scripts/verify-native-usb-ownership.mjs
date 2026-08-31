@@ -172,7 +172,7 @@ for (const forbidden of [
 }
 requireText("tools/device-session/src/usb_ownership/verification.rs", [
   "verify_native_usb_transition",
-  "restore_application_runtime",
+  "run_installed_application",
   "board-info",
   '"no-reset"',
   '"hard-reset"',

@@ -25,7 +25,7 @@ pub(crate) use profile_trace::{
     profile_observation_category, ProfileObservationCategory, ProfileObservationTrace,
 };
 pub use verification::{
-    native_usb_transition_module_sha256, restore_application_runtime, verify_native_usb_transition,
+    native_usb_transition_module_sha256, run_installed_application, verify_native_usb_transition,
     NativeUsbTransitionOutcome,
 };
 

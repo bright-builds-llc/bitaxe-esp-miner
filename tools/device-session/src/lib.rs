@@ -49,7 +49,7 @@ pub use usb::{
 };
 pub use usb_ownership::{
     admit_rom_downloader, classify_usb_profile, handoff_worker_to_rom, inspect_usb_profile,
-    native_usb_transition_module_sha256, plan_usb_operation, restore_application_runtime,
+    native_usb_transition_module_sha256, plan_usb_operation, run_installed_application,
     verify_native_usb_transition, NativeUsbHandoffOutcome, NativeUsbTransitionOutcome,
     ProfileObservationCounts, UsbIntent, UsbOperationPlan, UsbProfile, UsbProfileInspection,
 };
