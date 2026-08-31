@@ -192,6 +192,24 @@ requireText("tools/automation/src/native-usb-display-recovery.ts", [
   "completedRestoreCommandReceipt",
   "display-origin-capture",
 ]);
+requireText("tools/automation/src/native-usb-config-ap-recovery.ts", [
+  "native-usb-config-ap-recovery",
+  "nvs_checkpoint_required",
+  "completedRestoreCommandReceipt",
+  "host_network_effect: false",
+]);
+const nvsReadback = requireText("tools/flash/src/nvs_readback.rs", [
+  "read_flash",
+  "0x9000",
+  "0x6000",
+  "compare_expected_nvs",
+  "device_write_observed",
+]);
+for (const forbidden of ["write_flash", "erase_flash", "erase_region"]) {
+  if (nvsReadback.includes(forbidden)) {
+    throw new Error(`NVS discriminator contains forbidden effect ${JSON.stringify(forbidden)}`);
+  }
+}
 const displayRecovery = requireText("tools/flash/src/display_recovery.rs", [
   "run_display_recovery_start",
   "display_mac_sha256",
@@ -207,6 +225,7 @@ requireText("Justfile", [
   "verify-native-usb-transition",
   "native-usb-transition-recovery",
   "native-usb-display-recovery",
+  "native-usb-config-ap-recovery",
 ]);
 
 requireText("AGENTS.md", [
@@ -224,6 +243,7 @@ requireText("docs/hardware/native-usb-ownership.md", [
   "Monitoring never arms handoff",
   "just verify-native-usb-ownership",
   "just native-usb-display-recovery",
+  "just native-usb-config-ap-recovery",
 ]);
 requireText("docs/hardware/esp-device-session.md", ["native-usb-ownership.md"]);
 requireText(".codex/tasks/lessons.md", ["lesson-visible-cdc-is-not-flash-admission"]);

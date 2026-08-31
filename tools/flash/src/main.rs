@@ -52,6 +52,7 @@ mod model;
 mod monitor;
 mod native_usb_transition;
 mod noise_diagnostic;
+mod nvs_readback;
 mod output;
 mod package;
 mod package_admission;
@@ -79,6 +80,7 @@ pub(crate) use model::*;
 pub(crate) use monitor::*;
 pub(crate) use native_usb_transition::*;
 pub(crate) use noise_diagnostic::*;
+pub(crate) use nvs_readback::*;
 pub(crate) use output::*;
 pub(crate) use package::*;
 pub(crate) use redaction::*;
@@ -151,6 +153,7 @@ fn main() -> Result<()> {
         CliCommand::DisplayRecoveryStart(command) => {
             run_display_recovery_start(&command, &environment)
         }
+        CliCommand::NvsReadback(command) => run_nvs_readback(&command, &environment),
     };
     let device_effect_state = environment.device_effect_state();
     let cleanup_result = environment.finish_usb_session();

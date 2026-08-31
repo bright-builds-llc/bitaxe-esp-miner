@@ -37,6 +37,8 @@ pub(crate) enum CliCommand {
     VerifyNativeUsbTransition(VerifyNativeUsbTransitionCommand),
     #[command(name = "display-recovery-start")]
     DisplayRecoveryStart(DisplayRecoveryStartCommand),
+    #[command(name = "nvs-readback")]
+    NvsReadback(NvsReadbackCommand),
 }
 
 #[derive(Debug, Parser, Clone)]
@@ -230,6 +232,22 @@ pub(crate) struct DisplayRecoveryStartCommand {
     pub(crate) pool_credentials: Utf8PathBuf,
     #[arg(long = "capture-input", value_parser = parse_utf8_path)]
     pub(crate) capture_input: Utf8PathBuf,
+    #[arg(long = "private-root", value_parser = parse_utf8_path)]
+    pub(crate) private_root: Utf8PathBuf,
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) plan: Utf8PathBuf,
+    #[arg(long = "redact-evidence")]
+    pub(crate) redact_evidence: bool,
+}
+
+#[derive(Debug, Parser, Clone)]
+pub(crate) struct NvsReadbackCommand {
+    #[arg(long, default_value = "205", value_parser = parse_board)]
+    pub(crate) board: BoardId,
+    #[arg(long)]
+    pub(crate) port: String,
+    #[arg(long = "wifi-credentials", value_parser = parse_utf8_path)]
+    pub(crate) wifi_credentials: Utf8PathBuf,
     #[arg(long = "private-root", value_parser = parse_utf8_path)]
     pub(crate) private_root: Utf8PathBuf,
     #[arg(long, value_parser = parse_utf8_path)]

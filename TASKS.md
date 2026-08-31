@@ -236,8 +236,10 @@ unchanged.
 
 - [x] Create and push the immutable configuration-AP recovery plan before
       implementation or hardware/host-network effects.
-- [ ] Add read-only NVS admission, semantic validation, detector-bound AP
-      association, strict restoration, restart/resume, and host cleanup.
+- [x] Add the exact read-only NVS admission and protected typed semantic
+      discriminator; prohibit later actions until it seals `nvs_match`.
+- [ ] After an accepted `nvs_match`, add detector-bound AP association, strict
+      restoration, restart/resume, and host cleanup in a separate commit.
 - [ ] Prove exact recovery-006 settings/theme, station recovery, inactive
       zero-work/share state, final USB admission, and cleanup.
 - [ ] Publish the redacted projection, write `RESULT.md`, and archive only this
@@ -264,8 +266,10 @@ diagnostics, mining, ASIC, fan/voltage, OTA, broad scans, ARP, mDNS, router
 inspection, subnet discovery, direct UART/pins/pads/probes/headers, other
 devices/boards, durability, and parity promotion are excluded.
 
-Verification: Pending separate plan and implementation commits, exact clean
-package, one configuration-AP recovery, finalization, and cleanup.
+Verification: Successor plan commit `7db48345` is pushed. Stage 1 software
+verification and its separate implementation commit/package/readback are in
+progress; Stage 2 configuration-AP recovery, finalization, and cleanup remain
+conditional on an accepted `nvs_match`.
 
 Completion review: Pending. Recovery-006 remains installed; blocked
 predecessors, parent native-USB task, STR-005, and BWG remain unchanged.

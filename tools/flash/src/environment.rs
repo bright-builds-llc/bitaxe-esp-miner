@@ -1,10 +1,10 @@
 use crate::*;
 
+mod nvs_readback;
 mod usb_ownership;
 use usb_ownership::{
     requires_rom_downloader, route_espflash_to_admitted_rom, route_esptool_to_admitted_rom,
 };
-
 pub(crate) trait FlashEnvironment {
     fn build_package(&self) -> Result<()>;
     fn bazel_bin(&self) -> Result<Utf8PathBuf>;
@@ -39,6 +39,7 @@ pub(crate) trait FlashEnvironment {
     fn current_usb_physical_identity_digest(&self, port: &str) -> Result<String>;
     fn execute(&self, command_spec: &CommandSpec) -> Result<()>;
     fn execute_esptool_write_flash(&self, command: &ManagedEsptoolWriteFlash) -> Result<()>;
+    fn execute_esptool_read_flash(&self, command: &ManagedEsptoolReadFlash) -> Result<()>;
     fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>>;
     fn receive_only(&self, command_spec: &CommandSpec, timeout_seconds: u64) -> Result<Vec<u8>>;
     fn campaign_lease_id(&self) -> u64;
@@ -75,7 +76,6 @@ pub(crate) trait FlashEnvironment {
     fn reference_commit(&self) -> String;
     fn write_evidence(&self, path: &Utf8Path, contents: &str) -> Result<()>;
 }
-
 pub(crate) struct LocalFlashEnvironment {
     pub(crate) workspace_dir: Utf8PathBuf,
     pub(crate) espflash_bin: Utf8PathBuf,
@@ -83,7 +83,6 @@ pub(crate) struct LocalFlashEnvironment {
     pub(crate) espflash_sha256: String,
     pub(crate) usb_session: RefCell<Option<UsbSession>>,
 }
-
 impl LocalFlashEnvironment {
     pub(crate) fn detect() -> Result<Self> {
         let espflash_bin = resolve_espflash_executable()?;
@@ -433,6 +432,10 @@ impl FlashEnvironment for LocalFlashEnvironment {
             )
             .map(|_| ())
             .map_err(|error| anyhow::anyhow!("{error}"))
+    }
+
+    fn execute_esptool_read_flash(&self, command: &ManagedEsptoolReadFlash) -> Result<()> {
+        nvs_readback::execute_read_flash(self, command)
     }
 
     fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>> {

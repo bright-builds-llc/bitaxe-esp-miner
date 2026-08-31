@@ -412,6 +412,14 @@ impl FlashEnvironment for FakeFlashEnvironment {
         Ok(())
     }
 
+    fn execute_esptool_read_flash(&self, command: &ManagedEsptoolReadFlash) -> Result<()> {
+        self.executed_commands.borrow_mut().push(CommandSpec::new(
+            command.program().as_str(), command.args(),
+        ));
+        std::fs::write(command.output().as_std_path(), vec![0xff_u8; 0x6000])?;
+        Ok(())
+    }
+
     fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>> {
         self.execute(command_spec)?;
         Ok(b"Chip type: ESP32-S3\nMAC address: 02:00:00:00:A1:B1\n".to_vec())

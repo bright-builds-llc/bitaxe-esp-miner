@@ -164,6 +164,16 @@ output may show the address. Public evidence remains redacted. This fallback
 does not perform or authorize mDNS, ARP, router lookup, subnet scanning,
 hostname discovery, flashing, NVS writes, or a transition diagnostic.
 
+When the display has no station address, the task-gated
+`just native-usb-config-ap-recovery` Interface is the only configuration-AP
+continuation. Its first stage retains one admitted USB session, reads exactly
+the NVS partition range `0x9000..0xefff`, and compares the protected result to
+a freshly generated ordinary seed. It performs no device write and no host
+network change. Configuration-AP association remains prohibited unless that
+sealed discriminator reports `nvs_match`; later recovery must use the same
+Interface and the exact USB-derived AP candidate, never general Wi-Fi,
+hostname, ARP, mDNS, router, or subnet discovery.
+
 Manual BOOT/RESET is a one-time bootstrap or last-resort recovery path, never
 the normal development workflow. Buttonless flashing is not qualified until
 the active task records 20 automatic Worker-to-ROM-to-flash-to-Worker cycles

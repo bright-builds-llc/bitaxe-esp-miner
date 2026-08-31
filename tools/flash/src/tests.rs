@@ -27,6 +27,7 @@ mod evidence_cases;
 mod input_uat;
 mod monitor;
 mod native_usb_transition;
+mod nvs_readback;
 mod phase35;
 mod redaction;
 mod release_recovery;

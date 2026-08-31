@@ -157,6 +157,15 @@ js_library(
 )
 
 js_library(
+    name = "native_usb_config_ap_recovery_inputs",
+    srcs = [
+        "TASKS.md",
+        "docs/parity/work-plans/20260831T033840Z-NATIVE-USB-CONFIG-AP-RECOVERY-NVS-FIRST/PLAN.md",
+    ],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "str005_inactive_restoration_inputs",
     srcs = [
         "TASKS.md",
