@@ -232,6 +232,40 @@ the recovery-006 Wi-Fi NVS/schema and runtime association boundary. The
 blocked predecessor, parent native-USB task, STR-005, and BWG remain
 unchanged.
 
+### task-native-usb-config-ap-recovery-205 | 2026-08-30 | Recover through the detector-bound setup AP
+
+- [ ] Create and push the immutable configuration-AP recovery plan before
+      implementation or hardware/host-network effects.
+- [ ] Add read-only NVS admission, semantic validation, detector-bound AP
+      association, strict restoration, restart/resume, and host cleanup.
+- [ ] Prove exact recovery-006 settings/theme, station recovery, inactive
+      zero-work/share state, final USB admission, and cleanup.
+- [ ] Publish the redacted projection, write `RESULT.md`, and archive only this
+      child task.
+
+Plan: `docs/parity/work-plans/20260830T184150Z-NATIVE-USB-CONFIG-AP-RECOVERY/PLAN.md`
+
+Depends on: blocked display-origin and transition recovery tasks; completed
+recovery-006 snapshot/Wi-Fi-seed receipts; visible USB-derived `Bitaxe_ABCD`
+configuration AP; connected Ultra 205; protected Wi-Fi/pool/settings inputs;
+and the existing native-USB, strict HTTP, and CoreWLAN owners.
+
+Authorization: plan/source/test/docs/rules/build/package, commit/push,
+effect-free preflight/finalization, one exact NVS readback, one directed scan
+and association to the USB-derived AP, one settings PATCH, one theme POST, one
+software restart, one host Wi-Fi restoration, bounded reconciliation reads,
+one no-timeout station-IP checkpoint, final detector admission, protected
+evidence, and cleanup. Firmware/NVS writes, erase, manual buttons, transition
+diagnostics, mining, ASIC, fan/voltage, OTA, broad scans, ARP, mDNS, router
+inspection, subnet discovery, direct UART/pins/pads/probes/headers, other
+devices/boards, durability, and parity promotion are excluded.
+
+Verification: Pending separate plan and implementation commits, exact clean
+package, one configuration-AP recovery, finalization, and cleanup.
+
+Completion review: Pending. Recovery-006 remains installed; blocked
+predecessors, parent native-USB task, STR-005, and BWG remain unchanged.
+
 ### task-parity-bap001-firmware-interface | 2026-08-20 | Implement the firmware BAP owner
 
 - [x] Add a single-owner UART2 firmware shell for the pinned GPIO39/GPIO40
