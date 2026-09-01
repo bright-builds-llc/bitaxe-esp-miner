@@ -26,12 +26,12 @@ use bitaxe_config::{
     NVS_NAMESPACE,
 };
 use bitaxe_device_session::{
-    admit_application_execution, admit_rom_downloader, discover_usb_ports, handoff_worker_to_rom,
-    inspect_usb_profile, native_usb_transition_module_sha256, plan_usb_operation,
-    run_installed_application, verify_native_usb_transition, MonitorOutput,
-    NativeUsbTransitionOutcome, ProfileObservationCounts, UsbCommandDiagnostic,
-    UsbDeviceEffectState, UsbExecutionOwner, UsbIntent, UsbOperation, UsbOperationPlan, UsbProfile,
-    UsbSession, UsbTerminalCategory,
+    admit_application_execution, admit_rom_downloader, board_info_reports_esp32s3,
+    discover_usb_ports, handoff_worker_to_rom, inspect_usb_profile,
+    native_usb_transition_module_sha256, plan_usb_operation, run_installed_application,
+    verify_native_usb_transition, MonitorOutput, NativeUsbTransitionOutcome,
+    ProfileObservationCounts, UsbCommandDiagnostic, UsbDeviceEffectState, UsbExecutionOwner,
+    UsbIntent, UsbOperation, UsbOperationPlan, UsbProfile, UsbSession, UsbTerminalCategory,
 };
 #[cfg(test)]
 use bitaxe_device_session::{UsbCommandTermination, UsbConnectionSignature};
@@ -56,6 +56,7 @@ mod native_usb_transition;
 mod noise_diagnostic;
 mod nvs_readback;
 mod output;
+mod owner_recovery;
 mod package;
 mod package_admission;
 mod redaction;
@@ -85,6 +86,7 @@ pub(crate) use native_usb_transition::*;
 pub(crate) use noise_diagnostic::*;
 pub(crate) use nvs_readback::*;
 pub(crate) use output::*;
+pub(crate) use owner_recovery::*;
 pub(crate) use package::*;
 pub(crate) use redaction::*;
 pub(crate) use release_recovery::*;
@@ -160,6 +162,7 @@ fn main() -> Result<()> {
         CliCommand::NvsReadback(command) => run_nvs_readback(&command, &environment),
         CliCommand::NvsRuntimeRestore(command) => run_nvs_runtime_restore(&command, &environment),
         CliCommand::RomExitDiagnostic(command) => run_rom_exit_diagnostic(&command, &environment),
+        CliCommand::OwnerRecovery(command) => run_owner_recovery(command, &environment),
     };
     let device_effect_state = environment.device_effect_state();
     let cleanup_result = environment.finish_usb_session();

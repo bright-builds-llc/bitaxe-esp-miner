@@ -405,6 +405,24 @@ fn retain_rom_detection_uses_no_reset_before_and_after_board_info() {
 }
 
 #[test]
+fn ordinary_serial_jtag_detection_is_inspection_only() {
+    // Arrange
+    let environment = FakeFlashEnvironment::default();
+    let command = DetectCommand {
+        board: BoardId::Ultra205,
+        port: Some("/dev/cu.usbmodem101".to_owned()),
+        retain_rom: false,
+    };
+
+    // Act
+    run_detect(&command, &environment).expect("inspection-only detection");
+
+    // Assert
+    assert!(environment.executed_commands().is_empty());
+    assert_eq!(environment.cleanup_calls.get(), 0);
+}
+
+#[test]
 fn monitor_defaults_to_hardware_safe_capture_budget() {
     // Arrange
     let args = [

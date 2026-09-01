@@ -303,6 +303,10 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
   profile to an admitted ROM downloader. A visible CDC node is not flash proof.
 - Cross USB profiles only through repo-owned `just` commands. Manual BOOT/RESET
   is bootstrap or last-resort recovery, not routine development.
+- When Serial/JTAG is visible but ROM admission fails, use only the task-gated
+  `just native-usb-owner-recovery` passive-first Interface. Its manual
+  BOOT/RESET branch is eligible only after missing or insufficient exact
+  application evidence.
 - Complete USB ownership changes only after
   `just verify-native-usb-ownership` and task-gated durability evidence pass.
 

@@ -145,24 +145,24 @@ pub(crate) fn run_detect(
     let port = resolve_port(command.port.as_deref(), environment)?;
     match environment.usb_profile(&port)? {
         UsbProfile::WorkerRuntime => {
+            emit_line("port", &port)?;
             emit_line("usb_profile", "worker_runtime")?;
+            emit_line("execution_owner", "application")?;
+            emit_line("rom_admitted", "false")?;
             emit_line("handoff_required", "true")?;
+            return Ok(());
+        }
+        UsbProfile::SerialJtagRuntime if !command.retain_rom => {
+            emit_line("port", &port)?;
+            emit_line("usb_profile", "serial_jtag_runtime")?;
+            emit_line("execution_owner", "unknown")?;
+            emit_line("rom_admitted", "false")?;
             return Ok(());
         }
         UsbProfile::SerialJtagRuntime | UsbProfile::RomDownloader => {}
         UsbProfile::Unknown => bail!("runtime_profile_unknown"),
     }
     environment.begin_usb_session(UsbOperation::Detect, &port)?;
-    let reset_strategy = if command.retain_rom {
-        "no-reset"
-    } else {
-        "hard-reset"
-    };
-    let before_strategy = if command.retain_rom {
-        "no-reset"
-    } else {
-        "usb-reset"
-    };
     let command_spec = CommandSpec::new(
         "espflash",
         [
@@ -173,14 +173,16 @@ pub(crate) fn run_detect(
             port.as_str(),
             "--non-interactive",
             "--before",
-            before_strategy,
+            "no-reset",
             "--after",
-            reset_strategy,
+            "no-reset",
         ],
     );
     let output = environment.execute_with_output(&command_spec)?;
     let candidate = configuration_candidate_from_board_info(&output)?;
     emit_line("usb_profile", "rom_downloader")?;
+    emit_line("execution_owner", "rom")?;
+    emit_line("rom_admitted", "true")?;
     emit_line("configuration_candidate", &candidate)?;
     Ok(())
 }

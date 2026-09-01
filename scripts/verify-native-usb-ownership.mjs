@@ -223,6 +223,26 @@ requireText("tools/automation/src/native-usb-rom-exit.ts", [
   "managed_esptool_hard_reset",
   "execution_owner",
 ]);
+requireText("tools/automation/src/native-usb-owner-recovery.ts", [
+  "native-usb-owner-recovery",
+  "passive_marker_status",
+  "manual_boot_reset",
+  "managed_esptool_hard_reset",
+  "physical_identity_match",
+]);
+requireText("tools/flash/src/owner_recovery.rs", [
+  "classify_runtime_boot_attestations",
+  "RuntimeAttestationStatus::InsufficientSamples",
+  "board-info",
+  '"no-reset"',
+  "device_write_observed: false",
+  "host_network_effect: false",
+]);
+requireText("tools/flash/src/environment/owner_recovery.rs", [
+  "force_download_read_args",
+  "run_installed_application",
+  "observe_receive_only",
+]);
 const nvsReadback = requireText("tools/flash/src/nvs_readback.rs", [
   "read_flash",
   "0x9000",
@@ -254,6 +274,7 @@ requireText("Justfile", [
   "native-usb-display-recovery",
   "native-usb-config-ap-recovery",
   "native-usb-rom-exit",
+  "native-usb-owner-recovery",
 ]);
 
 requireText("AGENTS.md", [

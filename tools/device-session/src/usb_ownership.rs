@@ -208,7 +208,8 @@ pub fn admit_rom_downloader(
     Ok(inspection)
 }
 
-fn board_info_reports_esp32s3(board_info: &[u8]) -> bool {
+#[must_use]
+pub fn board_info_reports_esp32s3(board_info: &[u8]) -> bool {
     String::from_utf8_lossy(board_info).lines().any(|line| {
         let Some(chip) = line
             .trim_start()

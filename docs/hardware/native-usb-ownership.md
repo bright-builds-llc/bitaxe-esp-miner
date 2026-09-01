@@ -91,8 +91,10 @@ the recovery commands.
 Monitoring never arms handoff.
 
 - Inspect reports a known Worker profile without pretending `board-info` is
-  available. Serial/JTAG inspection may use `board-info` to distinguish ROM.
-  Recovery after a manual BOOT/RESET entry uses
+  available. Ordinary Serial/JTAG inspection reports unknown execution
+  ownership without sending synchronization traffic. Explicit ROM admission
+  uses `just detect-ultra205 --retain-rom`; it is never an implicit consequence
+  of observing the shared descriptor. Recovery after a manual BOOT/RESET entry uses
   `just detect-ultra205 --retain-rom`; this runs read-only `board-info` with
   `--before no-reset --after no-reset` so detector admission does not discard
   the already-established ROM profile before restoration.
@@ -189,6 +191,14 @@ hostname, ARP, mDNS, router, or subnet discovery.
 Serial/JTAG transport. It reads only the force-download bit, performs one
 contained hard-reset ROM exit, and requires Worker descriptors or exact
 application evidence before naming an execution owner.
+
+`just native-usb-owner-recovery` is the passive-first successor when the
+shared transport is already visible but explicit ROM admission fails. It first
+requires two exact recovery runtime attestations without transmitting serial
+data. Only missing or insufficient evidence may advance to one built-in
+BOOT/RESET checkpoint, one admitted ROM observation, and one managed hard-reset
+application exit. Malformed, inconsistent, or package-mismatched evidence is
+terminal and cannot be bypassed with the manual branch.
 
 Manual BOOT/RESET is a one-time bootstrap or last-resort recovery path, never
 the normal development workflow. Buttonless flashing is not qualified until

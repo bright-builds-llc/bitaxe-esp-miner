@@ -68,6 +68,18 @@ and final diff review pass. The separate implementation commit/package,
 effect-free preflight, one no-write hardware discriminator, finalization, and
 cleanup remain.
 
+Successor verification: Immutable successor plan commit `ed71ba15` is pushed.
+The software implementation makes ordinary Serial/JTAG detection inspection
+only, adds the sealed passive-first owner recovery Interface, binds two-sample
+recovery-006 attestation admission, permits the manual branch only for missing
+or insufficient samples, retains one-probe/no-repeat semantics, and projects
+only closed allowlisted fields. Focused Rust, TypeScript, Swift fixture,
+detector, flash, device-session, runfiles, and native-USB ownership tests pass.
+The ordered Cargo gates, Bright Builds, all 75 Bazel tests, firmware
+build/package, ownership verification, parity/progress, redaction, reference,
+whitespace, sensitive-value scan, and final source review pass. The separate
+implementation commit/push, exact clean package, and hardware workflow remain.
+
 Progress: Implementation commit `88fd860e` is pushed and its exact clean
 package is built. A Mac reboot cleared the uninterruptible host-I/O child. Fresh
 retain-ROM detection then found exactly one same-device Serial/JTAG transport,

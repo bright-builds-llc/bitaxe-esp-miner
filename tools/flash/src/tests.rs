@@ -18,6 +18,7 @@ mod cli;
 mod cli_identify;
 mod cli_native_usb_transition;
 mod cli_noise_diagnostic;
+mod cli_owner_recovery;
 mod cli_release_recovery;
 mod cli_restore_installed;
 mod cli_tcp_payload;

@@ -89,6 +89,9 @@ native-usb-config-ap-recovery action *args:
 native-usb-rom-exit action *args:
     bazel run //tools/automation:native_usb_rom_exit -- {{ quote(action) }} {{ args }}
 
+native-usb-owner-recovery action *args:
+    bazel run //tools/automation:native_usb_owner_recovery -- {{ quote(action) }} {{ args }}
+
 parity:
     bazel run //tools/parity:report -- report --checklist docs/parity/checklist.md --fail-on-invalid-verified
 
