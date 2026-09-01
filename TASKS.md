@@ -30,10 +30,17 @@ new work.
       changes or hardware effects.
 - [x] Split transport profile from execution owner behind `UsbOwnership`.
 - [x] Correct the force-download ROM exit and add boot-lifetime profile evidence.
+- [x] Create the immutable passive-first/manual-fallback successor plan after
+      the rebooted host proved Serial/JTAG transport without ROM admission.
 - [ ] Verify, commit/push, package, and run one no-write Ultra 205 discriminator.
 - [ ] Publish or record the closed result without reopening predecessor tasks.
 
 Plan: `docs/parity/work-plans/20260831T190744Z-NATIVE-USB-ROM-EXIT-DISCRIMINATOR/PLAN.md`
+
+Successor plan:
+`docs/parity/work-plans/20260901T161405Z-NATIVE-USB-SERIAL-OWNER-RECOVERY/PLAN.md`.
+The predecessor plan and unused `scratch/native-usb-rom-exit/attempt-001`
+remain immutable historical context.
 
 Depends on: accepted immutable `nvs_match` under
 `task-native-usb-config-ap-recovery-205`; terminal repeated
@@ -41,13 +48,15 @@ Depends on: accepted immutable `nvs_match` under
 the existing native-USB ownership, recovery, privacy, and process supervisors.
 
 Authorization: repository source/test/docs/rules/build/package, commit/push,
-effect-free preflight/finalization, one contained read of the exact
-force-download bit, one contained esptool hard-reset ROM exit, at most 30
-seconds of same-device passive application observation, protected evidence,
+effect-free preflight/finalization, one 25-second passive owner observation,
+one read-only ROM admission probe only after silence or insufficient samples,
+one conditional built-in BOOT/RESET sequence, one contained read of the exact
+force-download bit, one contained esptool hard-reset application exit, at most
+30 seconds of same-device passive application observation, protected evidence,
 and cleanup. Firmware/NVS/settings/theme writes, flash, erase, OTA, Wi-Fi or
-HTTP actions, discovery, mining, ASIC work, fan/voltage/power effects, manual
-buttons, direct UART/pins/pads/headers/probes, other devices, durability,
-recovery mutation, and parity promotion are excluded.
+HTTP actions, discovery, mining, ASIC work, fan/voltage/power effects, direct
+UART/pins/pads/headers/probes, other devices, durability, recovery mutation,
+and parity promotion are excluded.
 
 Verification: Plan commit `29950014` is pushed. Red-to-green coverage passes
 for execution-owner separation, ROM and application admission, force-bit
@@ -60,15 +69,17 @@ effect-free preflight, one no-write hardware discriminator, finalization, and
 cleanup remain.
 
 Progress: Implementation commit `88fd860e` is pushed and its exact clean
-package is built. Fresh retain-ROM detection then stalled before board-info in
-an uninterruptible macOS host-I/O process. Termination reaped the `just` owner,
-but the child remains host-stuck with no USB file-descriptor holder. No
-preflight, task root, force-bit read, reset, monitor, projection, device write,
-or network effect occurred. A Mac reboot is required before the existing exact
-package and contract can resume; this is host remediation, not a hardware retry.
+package is built. A Mac reboot cleared the uninterruptible host-I/O child. Fresh
+retain-ROM detection then found exactly one same-device Serial/JTAG transport,
+but read-only bootloader synchronization failed without enumeration change.
+The detector left no holder or owned process. No preflight, task root,
+force-bit read, reset, monitor, projection, device write, or network effect
+occurred. The successor corrects this admission inversion by authenticating the
+application passively before requesting ROM proof and allows one built-in
+BOOT/RESET recovery only when passive evidence is unavailable.
 
-Completion review: Blocked at host process cleanup before hardware admission.
-Predecessor tasks and recovery-006 remain unchanged.
+Completion review: Blocked at the shared Serial/JTAG execution-owner boundary
+before hardware admission. Predecessor tasks and recovery-006 remain unchanged.
 
 ### task-native-usb-ownership-handoff | 2026-08-29 | Preserve TinyUSB and restore buttonless flashing
 
