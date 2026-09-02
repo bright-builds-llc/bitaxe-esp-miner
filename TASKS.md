@@ -24,6 +24,34 @@ new work.
 
 ## Active
 
+### task-native-usb-boot-chain-integrity-205 | 2026-09-01 | Verify installed recovery boot bytes and OTA selection
+
+- [x] Create the immutable read-only boot-chain discriminator plan.
+- [ ] Implement exact boot metadata, OTA selection, selected-app readback, and
+      protected evidence.
+- [ ] Verify, commit/push, package, and run the single authorized Ultra 205
+      readback.
+- [ ] Record the closed result without repairing or reopening predecessor work.
+
+Plan: `docs/parity/work-plans/20260902T022334Z-NATIVE-USB-BOOT-CHAIN-INTEGRITY/PLAN.md`
+
+Depends on: terminal `application_missing` under
+`task-native-usb-rom-exit-discriminator-205`; immutable recovery-006 snapshot
+bundle; connected Ultra 205; and existing native-USB/process/privacy owners.
+
+Authorization: plan/source/test/docs/rules/build/package, commit/push,
+effect-free preflight/finalization, one closed display-state capture, one
+built-in BOOT/RESET sequence, one ROM admission, exact read-only bootloader,
+partition-table, OTA-data, and selected-app flash reads, one managed hard-reset
+application exit, protected evidence, and cleanup. All device writes, erase,
+network, mining, hardware-control, electrical-interface, other-device,
+durability, recovery mutation, and parity-promotion effects are excluded.
+
+Verification: Pending separate plan and implementation commits, full software
+gates, exact clean package, and one hardware readback.
+
+Completion review: Pending.
+
 ### task-native-usb-rom-exit-discriminator-205 | 2026-08-31 | Separate ROM exit from Serial/JTAG application ownership
 
 - [x] Create and push the immutable ROM-exit discriminator plan before source
