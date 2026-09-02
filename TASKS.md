@@ -32,8 +32,8 @@ new work.
 - [x] Correct the force-download ROM exit and add boot-lifetime profile evidence.
 - [x] Create the immutable passive-first/manual-fallback successor plan after
       the rebooted host proved Serial/JTAG transport without ROM admission.
-- [ ] Verify, commit/push, package, and run one no-write Ultra 205 discriminator.
-- [ ] Publish or record the closed result without reopening predecessor tasks.
+- [x] Verify, commit/push, package, and run one no-write Ultra 205 discriminator.
+- [x] Publish or record the closed result without reopening predecessor tasks.
 
 Plan: `docs/parity/work-plans/20260831T190744Z-NATIVE-USB-ROM-EXIT-DISCRIMINATOR/PLAN.md`
 
@@ -78,9 +78,23 @@ detector, flash, device-session, runfiles, and native-USB ownership tests pass.
 The ordered Cargo gates, Bright Builds, all 75 Bazel tests, firmware
 build/package, ownership verification, parity/progress, redaction, reference,
 whitespace, sensitive-value scan, and final source review pass. The separate
-implementation commit/push, exact clean package, and hardware workflow remain.
+implementation commit was admitted only after this complete gate set.
 
-Progress: Implementation commit `88fd860e` is pushed and its exact clean
+Successor hardware result: Implementation commit `9d3aec4b` and its exact clean
+package are pushed. Inspection-only detection admitted one Serial/JTAG
+transport without synchronization traffic, and the effect-free preflight
+passed. The single 25-second passive observation reported `missing`; its one
+read-only ROM probe failed without identity drift and sealed `manual_required`.
+The authorized built-in BOOT/RESET checkpoint then admitted the same physical
+board in ROM. The exact force-download bit was clear, the contained managed
+esptool hard-reset application exit completed once, and the subsequent
+30-second observation again reported `missing` on the same Serial/JTAG
+transport without enumeration change. The sealed terminal category is
+`application_missing`. Device writes, NVS reads, host-network effects, and
+repetition remained zero; private modes, USB cleanup, zero holders, and zero
+owned processes passed. No public projection or `RESULT.md` was produced.
+
+Predecessor progress: Implementation commit `88fd860e` is pushed and its exact clean
 package is built. A Mac reboot cleared the uninterruptible host-I/O child. Fresh
 retain-ROM detection then found exactly one same-device Serial/JTAG transport,
 but read-only bootloader synchronization failed without enumeration change.
@@ -90,8 +104,15 @@ occurred. The successor corrects this admission inversion by authenticating the
 application passively before requesting ROM proof and allows one built-in
 BOOT/RESET recovery only when passive evidence is unavailable.
 
-Completion review: Blocked at the shared Serial/JTAG execution-owner boundary
-before hardware admission. Predecessor tasks and recovery-006 remain unchanged.
+Predecessor checkpoint: Blocked at the shared Serial/JTAG execution-owner
+boundary before hardware admission. Predecessor tasks and recovery-006 remain
+unchanged.
+
+Completion review: Terminal and blocked after the one authorized passive/manual
+owner-recovery sequence. Recovery-006 remains installed, but execution owner
+cannot be authenticated from its silent Serial/JTAG runtime. Configuration-AP
+Stage 2, another reset, and another owner-recovery ordinal remain prohibited
+until a new contract addresses the missing application evidence boundary.
 
 ### task-native-usb-ownership-handoff | 2026-08-29 | Preserve TinyUSB and restore buttonless flashing
 
