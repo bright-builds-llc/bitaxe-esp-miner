@@ -29,9 +29,9 @@ new work.
 - [x] Create the immutable read-only boot-chain discriminator plan.
 - [x] Implement exact boot metadata, OTA selection, selected-app readback, and
       protected evidence.
-- [ ] Verify, commit/push, package, and run the single authorized Ultra 205
+- [x] Verify, commit/push, package, and run the single authorized Ultra 205
       readback.
-- [ ] Record the closed result without repairing or reopening predecessor work.
+- [x] Record the closed result without repairing or reopening predecessor work.
 
 Plan: `docs/parity/work-plans/20260902T022334Z-NATIVE-USB-BOOT-CHAIN-INTEGRITY/PLAN.md`
 
@@ -51,9 +51,28 @@ Verification: Plan commit `2f150921` is pushed. Exact read-only esptool range
 ownership, ESP-IDF partition/OTA selection, selected-app identity validation,
 closed display/manual checkpoints, consume-once evidence, and public
 allowlisting are implemented with focused tests. Full gates, implementation
-commit/package, and the hardware readback remain.
+commit/package, and hardware readback were admitted only after verification.
 
-Completion review: Pending.
+Hardware result: Implementation commit `897b83cc` and its exact clean package
+are pushed. The display checkpoint independently recorded `active_ui` before
+reset. One built-in BOOT/RESET sequence admitted the same physical Ultra 205 in
+ROM. Exact read-only bootloader, partition-table, and OTA-data reads completed,
+and all three match the immutable recovery-006 snapshots byte-for-byte. Both
+OTA select copies reduce to invalid, so the pinned bootloader rule selects the
+factory application. The single selected factory-partition read then failed
+mid-transfer at the macOS USB boundary with closed signature
+`device_not_configured`; no selected-app file, machine result, public
+projection, or `RESULT.md` was produced. Passive final inspection found the
+same Serial/JTAG transport with unknown execution owner. No write, erase, NVS,
+network, mining, or hardware-control effect occurred; no process or USB holder
+remains.
+
+Completion review: Terminal and blocked after the one authorized readback.
+Recovery-006 boot metadata is exact and its factory-selection state is proved;
+the remaining discriminator is the unstable long USB read or selected factory
+application boundary. The readback root is consumed, another reset/read is
+prohibited, and follow-up requires a new contract. Recovery-006 bytes remain
+unchanged.
 
 ### task-native-usb-rom-exit-discriminator-205 | 2026-08-31 | Separate ROM exit from Serial/JTAG application ownership
 
