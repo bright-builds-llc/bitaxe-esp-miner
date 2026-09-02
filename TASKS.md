@@ -27,7 +27,7 @@ new work.
 ### task-native-usb-boot-chain-integrity-205 | 2026-09-01 | Verify installed recovery boot bytes and OTA selection
 
 - [x] Create the immutable read-only boot-chain discriminator plan.
-- [ ] Implement exact boot metadata, OTA selection, selected-app readback, and
+- [x] Implement exact boot metadata, OTA selection, selected-app readback, and
       protected evidence.
 - [ ] Verify, commit/push, package, and run the single authorized Ultra 205
       readback.
@@ -47,8 +47,11 @@ application exit, protected evidence, and cleanup. All device writes, erase,
 network, mining, hardware-control, electrical-interface, other-device,
 durability, recovery mutation, and parity-promotion effects are excluded.
 
-Verification: Pending separate plan and implementation commits, full software
-gates, exact clean package, and one hardware readback.
+Verification: Plan commit `2f150921` is pushed. Exact read-only esptool range
+ownership, ESP-IDF partition/OTA selection, selected-app identity validation,
+closed display/manual checkpoints, consume-once evidence, and public
+allowlisting are implemented with focused tests. Full gates, implementation
+commit/package, and the hardware readback remain.
 
 Completion review: Pending.
 

@@ -101,6 +101,12 @@ js_library(
     visibility = ["//scripts:__pkg__"],
 )
 
+js_library(
+    name = "native_usb_boot_chain_integrity_sources",
+    srcs = ["src/macos-native-usb-boot-chain-display.swift", "src/native-usb-boot-chain-integrity-cli.ts", "src/native-usb-boot-chain-integrity.ts"],
+    visibility = ["//scripts:__pkg__"],
+)
+
 filegroup(
     name = "automation_sources",
     srcs = ["BUILD.bazel"] + glob(["src/**/*.ts", "src/**/*.swift"]),
@@ -334,6 +340,13 @@ js_binary(
         "//tools/device-session:native_usb_ownership_sources",
     ],
     entry_point = "dist/native-usb-owner-recovery-cli.js",
+)
+
+js_binary(
+    name = "native_usb_boot_chain_integrity",
+    chdir = "../../../..",
+    data = [":automation_ts", ":native_usb_boot_chain_integrity_sources", "//:native_usb_boot_chain_integrity_inputs", "//tools/flash:flash", "src/macos-native-usb-owner-recovery.swift"],
+    entry_point = "dist/native-usb-boot-chain-integrity-cli.js",
 )
 
 js_binary(
@@ -776,6 +789,13 @@ js_test(
         ":native_usb_owner_recovery_sources",
     ],
     entry_point = "test-dist/native-usb-owner-recovery.test.js",
+)
+
+js_test(
+    name = "native_usb_boot_chain_integrity_unit_test",
+    chdir = "../../../..",
+    data = [":automation_ts", ":automation_tests_ts"],
+    entry_point = "test-dist/native-usb-boot-chain-integrity.test.js",
 )
 
 js_test(

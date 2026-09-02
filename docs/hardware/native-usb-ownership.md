@@ -200,6 +200,12 @@ BOOT/RESET checkpoint, one admitted ROM observation, and one managed hard-reset
 application exit. Malformed, inconsistent, or package-mismatched evidence is
 terminal and cannot be bypassed with the manual branch.
 
+`just native-usb-boot-chain-integrity` is the read-only successor after both
+application observations are byte-empty. It uses one manual ROM entry to
+compare bootloader, partition table, OTA selection data, and exactly the
+selected application with the immutable recovery snapshot. It never repairs a
+range or treats a valid flash comparison as proof that the application ran.
+
 Manual BOOT/RESET is a one-time bootstrap or last-resort recovery path, never
 the normal development workflow. Buttonless flashing is not qualified until
 the active task records 20 automatic Worker-to-ROM-to-flash-to-Worker cycles

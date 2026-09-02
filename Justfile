@@ -92,6 +92,9 @@ native-usb-rom-exit action *args:
 native-usb-owner-recovery action *args:
     bazel run //tools/automation:native_usb_owner_recovery -- {{ quote(action) }} {{ args }}
 
+native-usb-boot-chain-integrity action *args:
+    bazel run //tools/automation:native_usb_boot_chain_integrity -- {{ quote(action) }} {{ args }}
+
 parity:
     bazel run //tools/parity:report -- report --checklist docs/parity/checklist.md --fail-on-invalid-verified
 

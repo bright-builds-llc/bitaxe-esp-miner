@@ -307,6 +307,9 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
   `just native-usb-owner-recovery` passive-first Interface. Its manual
   BOOT/RESET branch is eligible only after missing or insufficient exact
   application evidence.
+- After a terminal silent owner-recovery result, only the task-gated
+  `just native-usb-boot-chain-integrity` Interface may read boot metadata and
+  the selected application. It authorizes no flash repair.
 - Complete USB ownership changes only after
   `just verify-native-usb-ownership` and task-gated durability evidence pass.
 

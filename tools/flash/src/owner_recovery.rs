@@ -355,7 +355,7 @@ fn classify_recovered_application(
     }
 }
 
-fn owner_rom_probe_command(port: &str) -> CommandSpec {
+pub(crate) fn owner_rom_probe_command(port: &str) -> CommandSpec {
     CommandSpec::new(
         "espflash",
         [

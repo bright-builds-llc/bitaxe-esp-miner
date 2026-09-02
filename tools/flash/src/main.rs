@@ -40,6 +40,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+mod boot_chain;
 mod campaign;
 mod cli;
 mod commands;
@@ -72,6 +73,7 @@ mod wifi;
 #[cfg(test)]
 mod tests;
 
+pub(crate) use boot_chain::*;
 pub(crate) use campaign::*;
 pub(crate) use cli::*;
 pub(crate) use commands::*;
@@ -163,6 +165,7 @@ fn main() -> Result<()> {
         CliCommand::NvsRuntimeRestore(command) => run_nvs_runtime_restore(&command, &environment),
         CliCommand::RomExitDiagnostic(command) => run_rom_exit_diagnostic(&command, &environment),
         CliCommand::OwnerRecovery(command) => run_owner_recovery(command, &environment),
+        CliCommand::BootChainReadback(command) => run_boot_chain_readback(command, &environment),
     };
     let device_effect_state = environment.device_effect_state();
     let cleanup_result = environment.finish_usb_session();

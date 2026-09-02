@@ -184,6 +184,12 @@ js_library(
 )
 
 js_library(
+    name = "native_usb_boot_chain_integrity_inputs",
+    srcs = ["TASKS.md", "docs/parity/work-plans/20260902T022334Z-NATIVE-USB-BOOT-CHAIN-INTEGRITY/PLAN.md"],
+    visibility = ["//tools/automation:__pkg__"],
+)
+
+js_library(
     name = "str005_inactive_restoration_inputs",
     srcs = [
         "TASKS.md",

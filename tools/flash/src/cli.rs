@@ -45,6 +45,28 @@ pub(crate) enum CliCommand {
     RomExitDiagnostic(RomExitDiagnosticCommand),
     #[command(name = "owner-recovery")]
     OwnerRecovery(OwnerRecoveryCommand),
+    #[command(name = "boot-chain-readback")]
+    BootChainReadback(BootChainReadbackCommand),
+}
+
+#[derive(Debug, Parser, Clone)]
+pub(crate) struct BootChainReadbackCommand {
+    #[arg(long, default_value = "205", value_parser = parse_board)]
+    pub(crate) board: BoardId,
+    #[arg(long)]
+    pub(crate) port: String,
+    #[arg(long = "package-manifest", value_parser = parse_utf8_path)]
+    pub(crate) package_manifest: Utf8PathBuf,
+    #[arg(long = "restore-bundle", value_parser = parse_utf8_path)]
+    pub(crate) restore_bundle: Utf8PathBuf,
+    #[arg(long = "private-root", value_parser = parse_utf8_path)]
+    pub(crate) private_root: Utf8PathBuf,
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) plan: Utf8PathBuf,
+    #[arg(long = "manual-checkpoint", value_parser = parse_utf8_path)]
+    pub(crate) manual_checkpoint: Utf8PathBuf,
+    #[arg(long = "redact-evidence")]
+    pub(crate) redact_evidence: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]

@@ -46,6 +46,18 @@ pub(crate) trait FlashEnvironment {
     fn execute_owner_rom_probe(&self, command: &CommandSpec) -> Result<Vec<u8>> {
         self.execute_with_output(command)
     }
+    fn execute_boot_chain_read(
+        &self,
+        _esptool: &Utf8Path,
+        _address: u32,
+        _size: u32,
+        _output: &Utf8Path,
+    ) -> Result<()> {
+        bail!("boot_chain=blocked reason=adapter_unavailable")
+    }
+    fn exit_boot_chain_rom(&self, _esptool: &Utf8Path) -> Result<UsbProfile> {
+        bail!("boot_chain=blocked reason=adapter_unavailable")
+    }
     fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>>;
     fn receive_only(&self, command_spec: &CommandSpec, timeout_seconds: u64) -> Result<Vec<u8>>;
     fn campaign_lease_id(&self) -> u64;

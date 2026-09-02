@@ -84,9 +84,11 @@ filegroup(
 js_library(
     name = "native_usb_ownership_sources",
     srcs = [
+        "src/boot_chain.rs",
         "src/commands.rs",
         "src/commands/flash.rs",
         "src/environment.rs",
+        "src/environment/boot_chain.rs",
         "src/environment/contract.rs",
         "src/environment/nvs_readback.rs",
         "src/environment/owner_recovery.rs",
@@ -141,8 +143,10 @@ js_library(
 js_library(
     name = "command_effects_budget_sources",
     srcs = [
+        "src/boot_chain.rs",
         "src/campaign.rs",
         "src/environment.rs",
+        "src/environment/boot_chain.rs",
         "src/environment/contract.rs",
         "src/display_recovery.rs",
     ],
@@ -222,12 +226,14 @@ rust_binary(
         "src/campaign/serial/tests/pause_safe_stop.rs",
         "src/campaign/serial/tests/preparation.rs",
         "src/campaign/serial/tests/stratum_v2.rs",
+        "src/boot_chain.rs",
         "src/commands.rs",
         "src/commands/finalize.rs",
         "src/commands/flash.rs",
         "src/commands/phase35_probe.rs",
         "src/display_recovery.rs",
         "src/environment.rs",
+        "src/environment/boot_chain.rs",
         "src/environment/contract.rs",
         "src/environment/nvs_readback.rs",
         "src/environment/owner_recovery.rs",

@@ -1,5 +1,6 @@
 use crate::*;
 
+mod boot_chain;
 mod contract;
 mod nvs_readback;
 mod owner_recovery;
@@ -380,6 +381,18 @@ impl FlashEnvironment for LocalFlashEnvironment {
     }
     fn execute_owner_rom_probe(&self, command: &CommandSpec) -> Result<Vec<u8>> {
         owner_recovery::execute_rom_probe(self, command)
+    }
+    fn execute_boot_chain_read(
+        &self,
+        esptool: &Utf8Path,
+        address: u32,
+        size: u32,
+        output: &Utf8Path,
+    ) -> Result<()> {
+        boot_chain::execute_read(self, esptool, address, size, output)
+    }
+    fn exit_boot_chain_rom(&self, esptool: &Utf8Path) -> Result<UsbProfile> {
+        boot_chain::exit_rom(self, esptool)
     }
     fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>> {
         if command_spec.program != "espflash" {
