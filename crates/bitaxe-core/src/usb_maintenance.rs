@@ -62,7 +62,7 @@ impl UsbMaintenanceState {
                 self.phase = MaintenancePhase::Ready;
                 MaintenanceAction::EmitReady
             }
-            (MaintenancePhase::Ready, MaintenanceEvent::LineState { dtr: false, .. }) => {
+            (MaintenancePhase::Ready, MaintenanceEvent::LineCoding { bit_rate: 115_200 }) => {
                 self.phase = MaintenancePhase::Committed;
                 self.deadline_ms = None;
                 MaintenanceAction::CommitRestart
@@ -119,7 +119,7 @@ mod tests {
             MaintenanceAction::EmitReady
         );
         assert_eq!(
-            state.observe(dtr(false), 13),
+            state.observe(MaintenanceEvent::LineCoding { bit_rate: 115_200 }, 13),
             MaintenanceAction::CommitRestart
         );
         assert_eq!(state.observe(dtr(false), 14), MaintenanceAction::None);
@@ -171,6 +171,23 @@ mod tests {
     }
 
     #[test]
+    fn dtr_fall_before_the_baud_commit_disarms_without_restart() {
+        // Arrange
+        let mut state = UsbMaintenanceState::default();
+        let _action = state.observe(dtr(true), 1);
+        let _action = state.observe(MaintenanceEvent::LineCoding { bit_rate: 1_200 }, 2);
+        let _action = state.observe(MaintenanceEvent::SafeStopComplete, 3);
+
+        // Act
+        let early_disconnect = state.observe(dtr(false), 4);
+        let late_commit = state.observe(MaintenanceEvent::LineCoding { bit_rate: 115_200 }, 5);
+
+        // Assert
+        assert_eq!(early_disconnect, MaintenanceAction::None);
+        assert_eq!(late_commit, MaintenanceAction::None);
+    }
+
+    #[test]
     fn accepted_commit_stays_single_after_later_detach() {
         // Arrange
         let mut state = UsbMaintenanceState::default();
@@ -179,7 +196,7 @@ mod tests {
         let _action = state.observe(MaintenanceEvent::SafeStopComplete, 3);
 
         // Act
-        let committed = state.observe(dtr(false), 4);
+        let committed = state.observe(MaintenanceEvent::LineCoding { bit_rate: 115_200 }, 4);
         let detached = state.observe(MaintenanceEvent::Detached, 5);
 
         // Assert

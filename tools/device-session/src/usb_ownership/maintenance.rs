@@ -37,15 +37,17 @@ impl MaintenanceControlStep {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum MaintenanceCommitStep {
-    ClearDtr,
+    SetBitRate115200,
     AwaitCommitted,
+    ClearDtr,
     CloseCdc,
 }
 
-pub(super) const fn maintenance_commit_steps() -> [MaintenanceCommitStep; 3] {
+pub(super) const fn maintenance_commit_steps() -> [MaintenanceCommitStep; 4] {
     [
-        MaintenanceCommitStep::ClearDtr,
+        MaintenanceCommitStep::SetBitRate115200,
         MaintenanceCommitStep::AwaitCommitted,
+        MaintenanceCommitStep::ClearDtr,
         MaintenanceCommitStep::CloseCdc,
     ]
 }
@@ -162,6 +164,13 @@ fn commit_worker_maintenance(
     let mut maybe_file = Some(file);
     for step in maintenance_commit_steps() {
         match step {
+            MaintenanceCommitStep::SetBitRate115200 => {
+                apply_maintenance_control_step(
+                    fd,
+                    dtr,
+                    MaintenanceControlStep::SetBitRate(115_200),
+                )?;
+            }
             MaintenanceCommitStep::ClearDtr => {
                 if unsafe { libc::ioctl(fd, libc::TIOCMBIC, std::ptr::from_mut(dtr)) } != 0 {
                     return Err(handoff_error(

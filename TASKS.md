@@ -270,6 +270,16 @@ focused ownership tests, all 76 Bazel tests, Bright Builds, firmware packaging,
 native-USB ownership, redaction, and reference cleanliness pass. Exact-package
 hardware validation remains pending.
 
+Buttonless handoff result: The current stable Worker accepted the 1200-baud
+maintenance arm and emitted readiness, but the host timed out waiting for the
+committed receipt after clearing DTR; no flash occurred and Worker remained
+mounted. The corrected protocol uses exact 1200-to-115200 line coding as the
+post-readiness commit while DTR remains asserted, waits for the CDC receipt,
+then clears DTR and closes. Focused reducer/host tests, ordered fresh-target
+Rust gates, all 76 Bazel tests, Bright Builds, firmware packaging,
+native-USB ownership, redaction, reference cleanliness, and parity progress
+pass. Exact-package hardware validation remains pending.
+
 Latest hardware discriminator: exact `5ab0eb31` remained reboot-stable, but
 moving statistics increased the pre-Worker checkpoint only to 28,531 eligible
 bytes with an 11,264-byte largest block; owner spawn remained `ENOMEM`. The

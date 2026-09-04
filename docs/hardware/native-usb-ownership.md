@@ -45,19 +45,20 @@ The only Worker-to-ROM command channel is this CDC class-control sequence:
 3. The Rust owner closes Worker ingress, rejects an already-active Worker
    effect, and requires Production Mining Session safe-stop success.
 4. The owner emits `usb_maintenance={"status":"ready"}` on CDC evidence.
-5. After observing that exact bounded receipt, the host clears DTR but keeps
-   CDC open. The owner accepts the falling edge and emits
-   `usb_maintenance={"status":"committed"}` before PHY mutation. Failure to
-   emit that receipt disarms without rebooting.
-6. The host requires the committed receipt before closing CDC. A missing
-   receipt is `handoff_commit_timeout`, distinct from readiness and ROM-profile
-   transition failures.
+5. After observing that exact bounded receipt, the host changes line coding
+   from 1200 back to 115200 baud while DTR remains asserted. The owner accepts
+   that exact post-readiness transition as commit and emits
+   `usb_maintenance={"status":"committed"}` before PHY mutation. Keeping DTR
+   asserted makes the CDC acknowledgment deliverable.
+6. The host requires the committed receipt, then clears DTR and closes CDC. A
+   missing receipt is `handoff_commit_timeout`, distinct from readiness and
+   ROM-profile transition failures.
 7. The owner uninstalls TinyUSB, drives the ESP32-S3 D-/D+ pads low, returns
    the internal PHY to USB-Serial-JTAG, and waits up to one second for an
    observed BUS_RESET. Only then does the registered force-download shutdown
    handler restart into ROM; timeout returns an explicit handoff failure.
 
-Wrong ordering, a duplicate event, timeout, disconnect, active effect, failed
+Wrong ordering, a conflicting duplicate event, timeout, disconnect, active effect, failed
 safe stop, missing receipt, or control I/O failure disarms without rebooting.
 CDC payload bytes remain non-command data under ADR-0018.
 Host control-I/O failures retain the closed maintenance-step label and numeric

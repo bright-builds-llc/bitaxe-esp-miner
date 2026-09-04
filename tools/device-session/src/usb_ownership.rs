@@ -296,8 +296,9 @@ mod tests {
         assert_eq!(
             steps,
             [
-                MaintenanceCommitStep::ClearDtr,
+                MaintenanceCommitStep::SetBitRate115200,
                 MaintenanceCommitStep::AwaitCommitted,
+                MaintenanceCommitStep::ClearDtr,
                 MaintenanceCommitStep::CloseCdc,
             ]
         );
