@@ -17,7 +17,7 @@ test("firmware build rejects unknown Kconfig symbols", () => {
 test("firmware build requires the resolved USB and internal-memory budgets", () => {
   const resolved = [
     "CONFIG_TINYUSB_TASK_STACK_SIZE=3072",
-    "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536",
+    "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304",
     "",
   ].join("\n");
   assert.doesNotThrow(() =>
@@ -28,7 +28,7 @@ test("firmware build requires the resolved USB and internal-memory budgets", () 
     /USB memory contract/u,
   );
   assert.throws(
-    () => requireResolvedUsbMemoryContract(resolved.replace("65536", "32768")),
+    () => requireResolvedUsbMemoryContract(resolved.replace("98304", "65536")),
     /USB memory contract/u,
   );
   assert.throws(

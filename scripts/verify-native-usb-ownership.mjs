@@ -112,7 +112,7 @@ requireText("firmware/bitaxe/src/startup.rs", [
 ]);
 requireText("firmware/bitaxe/sdkconfig.defaults", [
   "CONFIG_TINYUSB_TASK_STACK_SIZE=3072",
-  "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536",
+  "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304",
 ]);
 if (read("firmware/bitaxe/sdkconfig.defaults").includes("TINYUSB_VENDOR_RX_BUFSIZE")) {
   throw new Error("firmware sdkconfig retained an unknown TinyUSB vendor RX symbol");

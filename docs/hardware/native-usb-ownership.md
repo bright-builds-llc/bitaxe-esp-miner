@@ -83,7 +83,7 @@ Worker's proven 16 KiB owner stack while internal memory remains contiguous,
 but defers TinyUSB installation until after HTTP and Wi-Fi have reserved their
 resources. This prevents the large pthread allocation and the USB/Wi-Fi DMA
 allocations from competing at the same fragmented boundary. Meanwhile,
-`CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536` prevents ordinary PSRAM-eligible
+`CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304` prevents ordinary PSRAM-eligible
 allocations from consuming the internal pool required by forced-internal task
 stacks and DMA. Diagnostic and unconfirmed-safe boots retain their earlier
 Serial/JTAG path. The non-safety-critical statistics producer starts after
@@ -93,6 +93,9 @@ compile-time and resolved-config assertions, source-ownership ordering tests,
 and live proof that Wi-Fi and the USB owner both remain stable. Closed
 pre-Worker heap facts and previous-boot panic/allocation receipts are retained
 so later failures do not depend on timing a serial attachment around reset.
+The 96 KiB reserve includes 32 KiB of measured margin over the first stable
+Worker boot, whose post-Wi-Fi/TinyUSB boundary left only 12,343 eligible bytes
+before the deferred 8 KiB statistics stack.
 
 Repository-owned C is intentionally limited to `usb_phy_handoff.c`. That
 Adapter registers the force-download shutdown handler, uninstalls TinyUSB,

@@ -13,7 +13,7 @@ use crate::{
 
 pub(crate) struct BootMiningBaselineConfirmed(());
 
-const _: () = assert!(sys::CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL == 65_536);
+const _: () = assert!(sys::CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL == 98_304);
 
 enum DeferredUsbRuntime {
     Worker(crate::bwg_worker_usb::PreparedWorkerRuntime),

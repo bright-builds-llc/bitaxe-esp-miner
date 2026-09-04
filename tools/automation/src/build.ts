@@ -112,7 +112,7 @@ export function requireResolvedUsbMemoryContract(sdkconfig: string): void {
   const lines = sdkconfig.split(/\r?\n/u);
   for (const required of [
     "CONFIG_TINYUSB_TASK_STACK_SIZE=3072",
-    "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536",
+    "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304",
   ]) {
     const key = required.slice(0, required.indexOf("=") + 1);
     const values = lines.filter(line => line.startsWith(key));

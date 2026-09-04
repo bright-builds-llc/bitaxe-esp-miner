@@ -281,6 +281,17 @@ Bazel tests, Bright Builds, firmware packaging, native-USB ownership,
 redaction, reference cleanliness, and parity progress pass. Exact-package
 hardware validation remains pending.
 
+Split-start hardware result: exact `21b11317` reached WorkerRuntime and stayed
+enumerated with one boot marker and zero reconnects. Its retained prior-boot
+receipt records an 8,192-byte internal allocation failure, while the successful
+boot's post-Wi-Fi `usb_install` checkpoint had only 12,343 eligible bytes and a
+3,712-byte largest block. The next measured correction raises the protected
+internal reserve from 64 KiB to 96 KiB, leaving 32 KiB additional margin for
+the deferred statistics stack and fragmentation. Ordered fresh-target Rust
+gates, all 76 Bazel tests, Bright Builds, firmware packaging with exact
+resolved config, native-USB ownership, redaction, reference cleanliness, and
+parity progress pass. Exact-package hardware validation remains pending.
+
 ### task-native-usb-recovery-transition-205 | 2026-08-30 | Recover first and prove one no-write transition
 
 - [x] Create and push the immutable recovery and single-transition plan before

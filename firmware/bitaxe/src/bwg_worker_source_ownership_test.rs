@@ -207,7 +207,7 @@ fn startup_prepares_worker_before_wifi_and_installs_usb_after_wifi() {
     assert!(worker_install < statistics);
     assert!(USB_SOURCE.contains("const OWNER_STACK_BYTES: usize = 16 * 1024;"));
     assert!(STARTUP_SOURCE.contains(
-        "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL == 65_536"
+        "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL == 98_304"
     ));
     assert!(STARTUP_SOURCE.contains("retain_usb_memory_checkpoint(\"worker_owner_prepare\")"));
     assert!(STARTUP_SOURCE.contains("retain_usb_memory_checkpoint(\"usb_install\")"));

@@ -69,7 +69,7 @@ fn assert_sdkconfig_contract() {
         "CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200",
         "CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG=y",
         "CONFIG_TINYUSB_TASK_STACK_SIZE=3072",
-        "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536",
+        "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304",
     ];
 
     println!("cargo:rerun-if-changed=sdkconfig.defaults");
