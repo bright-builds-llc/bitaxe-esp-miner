@@ -107,6 +107,19 @@ pub fn diagnostic_replay_lines() -> Vec<String> {
     allowlisted_diagnostic_replay_lines(&buffer)
 }
 
+/// Returns an exact closed Worker diagnostic field, with all values allowlisted.
+pub(crate) fn maybe_worker_diagnostic_line(token: &str, field: &str) -> Option<String> {
+    let buffer = LOG_BUFFER.get()?;
+    let buffer = buffer.lock().ok()?;
+    buffer
+        .complete_lines_with_first_token(token)
+        .into_iter()
+        .find(|line| {
+            line.split(' ').nth(1) == Some(field)
+                && bitaxe_core::usb_worker_diagnostics::is_worker_diagnostic_retained_line(line)
+        })
+}
+
 fn allowlisted_diagnostic_replay_lines(buffer: &RetainedLogBuffer) -> Vec<String> {
     [
         "plan13_boot_evidence",

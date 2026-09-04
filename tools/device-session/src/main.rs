@@ -7,7 +7,7 @@ use bitaxe_device_session::{
     run_admitted_inspection, run_admitted_transaction, run_display_uat_live, run_fixture_session,
     run_live_session, validate_private_input, DeviceInspectionIntent, DeviceTransactionIntent,
     DisplayUatIntent, FixtureTranscript, InspectionArtifacts, OtaIntent, RebootIntent,
-    SessionArtifacts, SessionRequest, TerminalCategory, TransactionGoal,
+    SessionArtifacts, SessionRequest, TerminalCategory, TransactionGoal, UsbRuntimeIdentity,
 };
 use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand};
@@ -189,6 +189,18 @@ struct ObserveUsbRebootLoopArgs {
 
     #[arg(long = "timeout-seconds", default_value_t = 15)]
     timeout_seconds: u64,
+
+    #[arg(
+        long = "expected-source-commit",
+        requires = "maybe_expected_app_elf_sha256"
+    )]
+    maybe_expected_source_commit: Option<String>,
+
+    #[arg(
+        long = "expected-app-elf-sha256",
+        requires = "maybe_expected_source_commit"
+    )]
+    maybe_expected_app_elf_sha256: Option<String>,
 }
 
 fn main() {
@@ -227,6 +239,12 @@ fn run_observe_usb_reboot_loop(args: ObserveUsbRebootLoopArgs) -> Result<Termina
     if args.timeout_seconds == 0 || args.timeout_seconds > 30 {
         anyhow::bail!("timeout-seconds must be between 1 and 30");
     }
+    let maybe_expected = args
+        .maybe_expected_source_commit
+        .as_deref()
+        .zip(args.maybe_expected_app_elf_sha256.as_deref())
+        .map(|(commit, digest)| UsbRuntimeIdentity::new(commit, digest))
+        .transpose()?;
     let observation =
         observe_usb_reboot_loop(&args.port, Duration::from_secs(args.timeout_seconds))?;
     println!("usb_reboot_loop: {}", observation.category().label());
@@ -252,6 +270,31 @@ fn run_observe_usb_reboot_loop(args: ObserveUsbRebootLoopArgs) -> Result<Termina
             println!("allocation_capabilities: {:08x}", marker.capabilities());
         }
         None => println!("allocation_failure_receipt: missing"),
+    }
+    if let Some(context) = observation.maybe_allocation_context() {
+        println!("{}", context.marker());
+    }
+    match observation.maybe_runtime_identity() {
+        Some(identity) => {
+            println!("runtime_firmware_commit: {}", identity.firmware_commit);
+            println!("runtime_app_elf_sha256: {}", identity.app_elf_sha256);
+        }
+        None => println!("runtime_identity: missing"),
+    }
+    for checkpoint in observation.memory_checkpoints() {
+        println!("usb_memory_checkpoint stage={} free_bytes={} largest_block_bytes={} reserve_bytes={} redacted=true",
+            checkpoint.stage, checkpoint.free_bytes, checkpoint.largest_block_bytes, checkpoint.reserve_bytes);
+    }
+    println!(
+        "worker_start_failure_observed: {}",
+        observation.worker_start_failed()
+    );
+    if let Some(expected) = maybe_expected {
+        if let Err(error) = observation.require_identity(&expected) {
+            eprintln!("{error}");
+            return Err(error);
+        }
+        println!("runtime_identity: exact_match");
     }
     Ok(TerminalCategory::Ready)
 }

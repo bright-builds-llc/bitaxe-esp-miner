@@ -7,6 +7,7 @@ const USB_SOURCE: &str = include_str!("bwg_worker_usb.rs");
 const USB_RUNTIME_SOURCE: &str = include_str!("usb_runtime.rs");
 const USB_CALLBACK_SOURCE: &str = include_str!("usb_runtime/callbacks.rs");
 const USB_TINYUSB_SOURCE: &str = include_str!("usb_runtime/tinyusb.rs");
+const USB_DIAGNOSTIC_SOURCE: &str = include_str!("boot_evidence/worker_diagnostics.rs");
 const USB_PHY_SOURCE: &str = include_str!("../bwg/native/usb_phy_handoff.c");
 
 #[test]
@@ -91,13 +92,33 @@ fn rust_owns_tinyusb_while_c_is_only_the_phy_handoff_adapter() {
 }
 
 #[test]
-fn worker_evidence_requires_mount_but_not_dtr() {
-    // Arrange / Act / Assert
-    assert!(USB_TINYUSB_SOURCE.contains("if !unsafe { sys::tud_mounted() }"));
-    assert!(!USB_TINYUSB_SOURCE.contains("tud_cdc_n_connected"));
-    assert!(USB_SOURCE.contains("crate::boot_evidence::worker_usb_boot_marker()"));
-    assert!(USB_SOURCE.contains("crate::boot_evidence::worker_rust_panic_marker()"));
-    assert!(USB_SOURCE.contains("crate::boot_evidence::worker_allocation_failure_marker()"));
+fn worker_receipts_require_mount_and_diagnostics_observe_late_attachment() {
+    // Arrange
+    let evidence = USB_TINYUSB_SOURCE
+        .split("fn try_emit_evidence(")
+        .nth(1)
+        .expect("evidence writer")
+        .split("pub(super) fn worker_observer_state")
+        .next()
+        .expect("evidence writer boundary");
+
+    // Act / Assert
+    assert!(evidence.contains("if !unsafe { sys::tud_mounted() }"));
+    assert!(!evidence.contains("tud_cdc_n_connected"));
+    assert!(!USB_TINYUSB_SOURCE.contains("tud_cdc_n_write_clear"));
+    assert!(USB_TINYUSB_SOURCE.contains("tud_cdc_n_get_line_coding"));
+    assert!(USB_TINYUSB_SOURCE.contains("tud_cdc_n_connected"));
+    assert!(USB_SOURCE.contains("worker_observer_state()"));
+    assert!(USB_SOURCE.contains("replay.maybe_due_slot(now, ingress_open)"));
+    assert!(USB_SOURCE.contains("emit_diagnostic(evidence, line.as_bytes())"));
+    assert!(USB_SOURCE.contains("emit_mount_boot_evidence(&mut evidence)"));
+    assert!(USB_SOURCE.contains("evidence = CdcEvidenceWriter::new()"));
+    assert!(!USB_TINYUSB_SOURCE.contains("Mutex"));
+    assert!(USB_DIAGNOSTIC_SOURCE.contains("super::worker_usb_boot_marker()"));
+    assert!(USB_DIAGNOSTIC_SOURCE.contains("super::worker_rust_panic_marker()"));
+    assert!(USB_DIAGNOSTIC_SOURCE.contains("super::worker_allocation_failure_marker()"));
+    assert!(USB_DIAGNOSTIC_SOURCE.contains("receipts.maybe_allocation_context"));
+    assert!(USB_DIAGNOSTIC_SOURCE.contains("usb_runtime_identity schema=v1 firmware_commit={} app_elf_sha256={} redacted=true"));
 }
 
 #[test]

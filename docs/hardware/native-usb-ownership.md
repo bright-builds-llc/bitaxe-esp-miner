@@ -273,10 +273,32 @@ panic location without persisting panic text; a missing receipt across later
 panic resets places the failure below Rust. This path never writes flash, so a
 rapid reboot loop cannot create coredump wear.
 The same Adapter registers ESP-IDF's allocation-failure callback and retains
-only the requested byte count and capability mask. It performs one volatile
-RTC write and no allocation, logging, lock, or flash operation. This separates
-allocator aborts from other ESP-IDF panic paths without enabling repeated
-coredump writes.
+the first requested byte count and capability mask after registration, plus a
+separate integrity-checked source hash and closed global startup stage. The
+callback performs only an atomic claim and fixed-size RTC writes, with no
+allocation, logging, lock, or flash operation. The context must match the
+allocation receipt before replay. It identifies the producing build and the
+startup boundary, not the allocating task or the cause of a later panic.
+The pinned configuration disables abort-on-allocation-failure: a failed
+allocation can recover before an unrelated panic, so receipt presence alone
+must never be reported as proof of an allocator-caused reset.
+
+A normal 115200-baud DTR observer receives one finite diagnostic report after
+the maintenance-arm window expires. The report contains exact source/ELF
+identity, two current-boot markers, prior failure receipts, and allowlisted
+pre/post-USB and statistics heap checkpoints. It contains no raw logs or
+network identifiers. Small nonblocking lines preserve FIFO capacity for
+maintenance receipts; entering maintenance cancels the diagnostic burst.
+Mount-time boot/failure markers remain available to discriminate fast reset
+loops before a full report can be emitted.
+
+Use `just diagnose-usb-reboot-loop --port <fresh-port> --timeout-seconds 30
+--expected-source-commit <manifest-source> --expected-app-elf-sha256
+<manifest-elf-digest>` to require runtime identity. Missing or conflicting
+identity fails closed. Multiple same-boot markers with zero reconnects are
+`stable_boot`; same-boot markers across observer reopens remain
+`usb_stack_reset`. Neither classification erases prior failure evidence or
+proves longer-term durability.
 
 Manual BOOT/RESET is a one-time bootstrap or last-resort recovery path, never
 the normal development workflow. Buttonless flashing is not qualified until

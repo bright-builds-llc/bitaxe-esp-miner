@@ -36,6 +36,8 @@ js_library(
     name = "native_usb_ownership_source",
     srcs = [
         "src/usb_maintenance.rs",
+        "src/usb_worker_diagnostics.rs",
+        "src/usb_worker_diagnostics/tests.rs",
         "src/usb_worker.rs",
     ],
     visibility = ["//scripts:__pkg__"],
@@ -73,6 +75,8 @@ rust_library(
         "src/screen/frame.rs",
         "src/screen/tests.rs",
         "src/usb_maintenance.rs",
+        "src/usb_worker_diagnostics.rs",
+        "src/usb_worker_diagnostics/tests.rs",
         "src/usb_worker.rs",
         "src/wifi_reconnect.rs",
     ],

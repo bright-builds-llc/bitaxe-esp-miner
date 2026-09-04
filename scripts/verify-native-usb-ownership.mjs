@@ -47,8 +47,18 @@ for (const required of [
 if (count(rustOwner, /tinyusb_driver_install\s*\(/g) !== 1) {
   throw new Error("firmware must retain exactly one TinyUSB installation owner");
 }
-if (rustOwner.includes("tud_cdc_n_connected")) {
+const tinyUsbAdapter = read("firmware/bitaxe/src/usb_runtime/tinyusb.rs");
+const evidenceStart = tinyUsbAdapter.indexOf("fn try_emit_evidence(");
+const observerStart = tinyUsbAdapter.indexOf("pub(super) fn worker_observer_state(");
+if (evidenceStart < 0 || observerStart <= evidenceStart) {
+  throw new Error("Worker CDC emission and observer sampling must remain separate");
+}
+const evidenceWriter = tinyUsbAdapter.slice(evidenceStart, observerStart);
+if (evidenceWriter.includes("tud_cdc_n_connected")) {
   throw new Error("Worker CDC evidence must not require host DTR");
+}
+if (!evidenceWriter.includes("tud_mounted()") || rustOwner.includes("tud_cdc_n_write_clear")) {
+  throw new Error("Worker CDC emission must preserve mounted evidence and queued receipts");
 }
 
 const phyAdapter = requireText("firmware/bitaxe/bwg/native/usb_phy_handoff.c", [

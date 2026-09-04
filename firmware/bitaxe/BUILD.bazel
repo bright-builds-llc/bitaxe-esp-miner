@@ -63,6 +63,7 @@ js_library(
         "sdkconfig.defaults",
         "src/boot_evidence.rs",
         "src/boot_evidence/usb_profile.rs",
+        "src/boot_evidence/worker_diagnostics.rs",
         "src/bwg_worker_usb.rs",
         "src/panic_evidence.rs",
         "src/startup.rs",
@@ -273,6 +274,7 @@ filegroup(
         "build.rs",
         "src/boot_evidence.rs",
         "src/boot_evidence/usb_profile.rs",
+        "src/boot_evidence/worker_diagnostics.rs",
         "src/http_api.rs",
         "src/http_api/deferred_effect_queue.rs",
         "src/http_api/handlers.rs",
@@ -382,6 +384,7 @@ rust_test(
     ],
     compile_data = [
         "bwg/native/usb_phy_handoff.c",
+        "src/boot_evidence/worker_diagnostics.rs",
         "src/usb_runtime.rs",
         "src/usb_runtime/callbacks.rs",
         "src/usb_runtime/tinyusb.rs",
@@ -491,6 +494,7 @@ rust_test(
     srcs = [
         "src/boot_evidence.rs",
         "src/boot_evidence/usb_profile.rs",
+        "src/boot_evidence/worker_diagnostics.rs",
         "src/boot_evidence_source_ownership_test.rs",
         "src/runtime_snapshot.rs",
         "src/startup.rs",
@@ -843,6 +847,7 @@ rust_test(
     edition = "2021",
     deps = [
         "//crates/bitaxe-api:bitaxe_api",
+        "//crates/bitaxe-core:bitaxe_core",
         "@crates//:log",
     ],
 )

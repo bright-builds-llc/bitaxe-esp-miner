@@ -302,6 +302,73 @@ gates, all 76 Bazel tests, Bright Builds, firmware packaging with exact
 resolved config, native-USB ownership, redaction, reference cleanliness, and
 parity progress pass. Exact-package hardware validation remains pending.
 
+Diagnostic continuation | 2026-09-04: The exact `d369154d` factory and ordinary
+Wi-Fi seed writes completed with cleanup. A 360-second passive capture was
+byte-empty, and no-reset admission proved ROM remained selected. The authorized
+built-in RESET-only bootstrap then reached WorkerRuntime. One 30-second
+observation recorded one boot marker, zero reconnects, boot ordinal 2, panic
+reset, no Rust panic receipt, and a prior allocation failure requesting 84 bytes
+with capability mask `0x00000804`. The current CDC evidence does not bind that
+receipt to a source build or startup stage and does not expose the retained
+heap checkpoints. No continuing reset loop was observed; memory resolution,
+exact runtime identity, buttonless flashing, durability, and parity remain
+unverified. Private evidence is retained under the ignored
+`scratch/native-usb-d369-bootstrap-20260904-01` root.
+
+- [x] Diagnose the 84-byte allocation boundary using pinned sources and add
+      bounded, source-bound diagnostic evidence where current observations
+      cannot discriminate it; do not guess another heap budget.
+- [ ] Regression-test the real evidence/transport boundary, run ordered Rust
+      gates, Bazel, firmware/package, ownership, redaction, and reference checks,
+      then commit/push and bind any continuation to the exact clean package.
+- [ ] Observe the next admitted runtime's build and heap/failure facts before
+      full buttonless flash verification. Preserve the earliest closed failure,
+      no unchanged retry, existing cleanup bounds, and all no-mining/no-ASIC/
+      no-fan-or-voltage/no-erase restrictions. This continues the existing
+      task contract under the user's iterative authorization, not a new plan.
+
+Software finding: The exact generated FreeRTOS queue object uses an 84-byte
+header for empty queues/mutexes/semaphores and its heap adapter requests
+`INTERNAL | 8BIT`. This identifies a caller family, not one failing task.
+`CONFIG_HEAP_ABORT_WHEN_ALLOCATION_FAILS` is disabled; the retained failure may
+have recovered before a later panic. The 16 KiB main task also remains live
+through statistics startup, so steady-state free memory can hide the startup
+peak. The successor preserves the 96 KiB reserve, records the first failed
+allocation's source/global-stage context, adds post-USB/statistics checkpoints,
+and exposes a finite closed Worker CDC report. Host identity and receipts are
+scoped to the final observed boot; earlier-boot facts cannot verify a later
+silent boot. It adds no mutex, raw-log/network export, or command payload path.
+
+Next bounded continuation: `native-usb-diagnostics-001` installs the exact
+clean pushed successor package after all required gates pass. Fresh
+`just detect-ultra205` supplies the port to one `just flash --board 205 --port
+<fresh-port> --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
+--wifi-credentials wifi-credentials.json --redact-evidence --evidence-dir
+<new-private-child>` invocation. The existing USB supervisor retains the
+physical lease, requires ROM admission before each write, and enforces its
+360-second write and 60-second recovery/cleanup bounds. Only the canonical
+factory image and ordinary Wi-Fi seed are authorized writes. Capture logs as
+mode-0600 siblings under a new mode-0700 parent; the evidence child must not
+exist before launch. After cleanup and fresh detection, one 30-second
+`just diagnose-usb-reboot-loop --port <fresh-port> --timeout-seconds 30
+--expected-source-commit <manifest-source> --expected-app-elf-sha256
+<manifest-elf-digest>` checks the actual runtime. Record the earliest closed
+failure and stop unchanged retries. Manual built-in BOOT/RESET remains only
+the explicitly authorized fallback if software handoff fails; no erase,
+mining, ASIC, fan/voltage, external pool, or unrelated network action is added.
+The current installed d369 image cannot itself supply the new diagnostic
+report, so this is a diagnostic-package installation, not a durability pass.
+
+Pre-hardware review: ordered Cargo formatting, strict all-target/all-feature
+Clippy, all-target/all-feature build, and all-feature tests pass with the fresh
+host target. All 76 Bazel tests, real firmware/package and ownership checks,
+Bright Builds, semantic redaction, pinned-reference cleanliness, parity
+progress, and whitespace checks pass. Regression evidence includes stable
+same-boot classification, final-boot-only identity/heap attribution, receipt
+integrity/source distinction, late observer replay, FIFO backpressure and
+partial-write framing, and maintenance receipt preservation. Hardware memory
+resolution and handoff durability remain pending; no parity was promoted.
+
 ### task-native-usb-recovery-transition-205 | 2026-08-30 | Recover first and prove one no-write transition
 
 - [x] Create and push the immutable recovery and single-transition plan before

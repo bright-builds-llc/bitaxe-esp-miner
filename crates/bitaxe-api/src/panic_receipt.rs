@@ -1,5 +1,12 @@
 //! Reset-retained, value-free Rust panic evidence.
 
+mod allocation_context;
+
+pub use allocation_context::{
+    allocation_source_hash, AllocationFailureContextMarker, RtcAllocationContextReceipt,
+    StartupStage,
+};
+
 /// Magic identifying a complete RTC panic receipt.
 pub const PANIC_RECEIPT_MAGIC: u32 = 0x4258_5052;
 /// Magic identifying a complete RTC allocation-failure receipt.

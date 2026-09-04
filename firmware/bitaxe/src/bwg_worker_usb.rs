@@ -5,6 +5,9 @@ use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
 use std::sync::OnceLock;
 use std::time::Duration;
 
+use bitaxe_core::usb_worker_diagnostics::{
+    CdcEvidenceWriter, WorkerDiagnosticReplay, DIAGNOSTIC_LINE_BYTES,
+};
 use bitaxe_worker_control::{
     load_or_generate_device_identity, WorkLeaseAuthorityTrust, WorkLeaseAuthorizationVerifier,
     WorkerControl, WorkerControlError, WorkerControlFrameAccumulator,
@@ -134,82 +137,147 @@ where
     V: bitaxe_worker_control::LeaseAuthorizationVerifier,
     S: bitaxe_worker_control::WorkerSession,
 {
+    let mut evidence = CdcEvidenceWriter::new();
     let mut accumulator = WorkerControlFrameAccumulator::new();
     let mut maintenance = UsbMaintenanceState::default();
+    let mut diagnostics = WorkerDiagnosticReplay::default();
     let mut maintenance_ingress_open = true;
     loop {
         let now = crate::runtime_uptime::millis();
         let event = match receiver.recv_timeout(Duration::from_millis(100)) {
             Ok(event) => event,
             Err(mpsc::RecvTimeoutError::Timeout) => {
-                note_control_result(worker.tick(now));
+                note_control_result(&mut evidence, worker.tick(now));
                 maintenance.expire(now);
+                emit_due_diagnostics(
+                    &mut evidence,
+                    &mut diagnostics,
+                    maintenance_ingress_open,
+                    now,
+                );
                 continue;
             }
             Err(mpsc::RecvTimeoutError::Disconnected) => break,
         };
         match event {
             UsbEvent::Attached => {
+                evidence = CdcEvidenceWriter::new();
+                diagnostics = WorkerDiagnosticReplay::default();
                 accumulator.clear();
                 maintenance_ingress_open = true;
                 worker.begin_enumeration();
-                write_evidence(b"bwg_worker={\"event\":\"attached\"}\n");
-                let mut marker = crate::boot_evidence::worker_usb_boot_marker();
-                marker.push('\n');
-                write_evidence(marker.as_bytes());
-                if let Some(mut marker) = crate::boot_evidence::worker_rust_panic_marker() {
-                    marker.push('\n');
-                    write_evidence(marker.as_bytes());
-                }
-                if let Some(mut marker) = crate::boot_evidence::worker_allocation_failure_marker() {
-                    marker.push('\n');
-                    write_evidence(marker.as_bytes());
-                }
+                write_evidence(&mut evidence, b"bwg_worker={\"event\":\"attached\"}\n");
+                emit_mount_boot_evidence(&mut evidence);
             }
             UsbEvent::Detached => {
+                diagnostics = WorkerDiagnosticReplay::default();
                 accumulator.clear();
                 maintenance_ingress_open = false;
                 let _ = maintenance.observe(MaintenanceEvent::Detached, now);
-                note_control_result(worker.disconnect(now));
-                write_evidence(b"bwg_worker={\"event\":\"restoration_pending\"}\n");
+                note_control_result(&mut evidence, worker.disconnect(now));
+                write_evidence(
+                    &mut evidence,
+                    b"bwg_worker={\"event\":\"restoration_pending\"}\n",
+                );
             }
             UsbEvent::Bytes(chunk) => {
                 if !maintenance_ingress_open {
                     continue;
                 }
                 let Ok(maybe_frame) = accumulator.push(&chunk.0) else {
-                    note_control_result(worker.control_failed(now));
+                    note_control_result(&mut evidence, worker.control_failed(now));
                     continue;
                 };
                 if let Some(mut frame) = maybe_frame {
-                    process_frame(worker, &frame, now);
+                    process_frame(&mut evidence, worker, &frame, now);
                     frame.zeroize();
                 }
             }
-            UsbEvent::LineCoding(bit_rate) => handle_maintenance(
-                maintenance.observe(MaintenanceEvent::LineCoding { bit_rate }, now),
-                &mut maintenance,
-                &mut maintenance_ingress_open,
-                worker,
-                now,
-            ),
-            UsbEvent::LineState { dtr, rts } => handle_maintenance(
-                maintenance.observe(MaintenanceEvent::LineState { dtr, rts }, now),
-                &mut maintenance,
-                &mut maintenance_ingress_open,
-                worker,
-                now,
-            ),
+            UsbEvent::LineCoding(bit_rate) => {
+                diagnostics.line_coding(bit_rate, now);
+                handle_maintenance(
+                    &mut evidence,
+                    maintenance.observe(MaintenanceEvent::LineCoding { bit_rate }, now),
+                    &mut maintenance,
+                    &mut maintenance_ingress_open,
+                    worker,
+                    now,
+                );
+            }
+            UsbEvent::LineState { dtr, rts } => {
+                diagnostics.line_state(dtr, now);
+                handle_maintenance(
+                    &mut evidence,
+                    maintenance.observe(MaintenanceEvent::LineState { dtr, rts }, now),
+                    &mut maintenance,
+                    &mut maintenance_ingress_open,
+                    worker,
+                    now,
+                );
+            }
         }
+        emit_due_diagnostics(
+            &mut evidence,
+            &mut diagnostics,
+            maintenance_ingress_open,
+            now,
+        );
         if INGRESS_LOST.swap(false, Ordering::AcqRel) {
             accumulator.clear();
-            note_control_result(worker.control_failed(now));
+            note_control_result(&mut evidence, worker.control_failed(now));
         }
     }
-    note_control_result(worker.control_failed(crate::runtime_uptime::millis()));
+    note_control_result(
+        &mut evidence,
+        worker.control_failed(crate::runtime_uptime::millis()),
+    );
+}
+
+fn emit_mount_boot_evidence(evidence: &mut CdcEvidenceWriter) {
+    let mut marker = crate::boot_evidence::worker_usb_boot_marker();
+    marker.push('\n');
+    write_evidence(evidence, marker.as_bytes());
+    if let Some(mut marker) = crate::boot_evidence::worker_rust_panic_marker() {
+        marker.push('\n');
+        write_evidence(evidence, marker.as_bytes());
+    }
+    if let Some(mut marker) = crate::boot_evidence::worker_allocation_failure_marker() {
+        marker.push('\n');
+        write_evidence(evidence, marker.as_bytes());
+    }
+}
+
+fn emit_due_diagnostics(
+    evidence: &mut CdcEvidenceWriter,
+    replay: &mut WorkerDiagnosticReplay,
+    ingress_open: bool,
+    now: u64,
+) {
+    let (bit_rate, dtr) = crate::usb_runtime::worker_observer_state();
+    replay.line_coding(bit_rate, now);
+    replay.line_state(dtr, now);
+    let Some(slot) = replay.maybe_due_slot(now, ingress_open) else {
+        return;
+    };
+    let Some(mut line) = crate::boot_evidence::maybe_worker_diagnostic_line(slot) else {
+        replay.advance(now);
+        return;
+    };
+    line.push('\n');
+    if line.len() > DIAGNOSTIC_LINE_BYTES {
+        log::warn!("worker_diagnostics=unavailable reason=line_bound");
+        replay.advance(now);
+        return;
+    }
+    if crate::usb_runtime::emit_diagnostic(evidence, line.as_bytes()).is_ok() {
+        replay.advance(now);
+    } else {
+        replay.retry_later(now);
+    }
 }
 
 fn handle_maintenance<V, S>(
+    evidence: &mut CdcEvidenceWriter,
     action: MaintenanceAction,
     state: &mut UsbMaintenanceState,
     maintenance_ingress_open: &mut bool,
@@ -231,6 +299,7 @@ fn handle_maintenance<V, S>(
                 MaintenanceEvent::SafeStopFailed
             };
             handle_maintenance(
+                evidence,
                 state.observe(event, now),
                 state,
                 maintenance_ingress_open,
@@ -239,11 +308,14 @@ fn handle_maintenance<V, S>(
             );
         }
         MaintenanceAction::EmitReady => {
-            write_evidence(b"usb_maintenance={\"status\":\"ready\"}\n");
+            write_evidence(evidence, b"usb_maintenance={\"status\":\"ready\"}\n");
         }
         MaintenanceAction::CommitRestart => {
-            if crate::usb_runtime::emit_evidence(b"usb_maintenance={\"status\":\"committed\"}\n")
-                .is_err()
+            if crate::usb_runtime::emit_evidence(
+                evidence,
+                b"usb_maintenance={\"status\":\"committed\"}\n",
+            )
+            .is_err()
             {
                 log::warn!("usb_maintenance=failed category=commit_receipt");
                 return;
@@ -256,34 +328,41 @@ fn handle_maintenance<V, S>(
     }
 }
 
-fn process_frame<V, S>(worker: &mut WorkerControl<V, S>, frame: &[u8], now: u64)
-where
+fn process_frame<V, S>(
+    evidence: &mut CdcEvidenceWriter,
+    worker: &mut WorkerControl<V, S>,
+    frame: &[u8],
+    now: u64,
+) where
     V: bitaxe_worker_control::LeaseAuthorizationVerifier,
     S: bitaxe_worker_control::WorkerSession,
 {
     let Ok(response) = worker.prepare_frame(frame, now) else {
         if worker.has_active_lease() {
-            note_control_result(worker.control_failed(now));
+            note_control_result(evidence, worker.control_failed(now));
         }
-        write_evidence(b"bwg_worker={\"event\":\"request_rejected\"}\n");
+        write_evidence(evidence, b"bwg_worker={\"event\":\"request_rejected\"}\n");
         return;
     };
     if crate::usb_runtime::send_worker_frame(response.frame()).is_err()
         || worker.confirm_sent(response).is_err()
     {
-        note_control_result(worker.control_failed(now));
-        write_evidence(b"bwg_worker={\"event\":\"response_unknown\"}\n");
+        note_control_result(evidence, worker.control_failed(now));
+        write_evidence(evidence, b"bwg_worker={\"event\":\"response_unknown\"}\n");
     }
 }
 
-fn note_control_result(result: Result<(), WorkerControlError>) {
+fn note_control_result(evidence: &mut CdcEvidenceWriter, result: Result<(), WorkerControlError>) {
     if result.is_err() {
-        write_evidence(b"bwg_worker={\"event\":\"restoration_pending\"}\n");
+        write_evidence(
+            evidence,
+            b"bwg_worker={\"event\":\"restoration_pending\"}\n",
+        );
     }
 }
 
-fn write_evidence(bytes: &[u8]) {
-    let _result = crate::usb_runtime::emit_evidence(bytes);
+fn write_evidence(evidence: &mut CdcEvidenceWriter, bytes: &[u8]) {
+    let _result = crate::usb_runtime::emit_evidence(evidence, bytes);
 }
 
 fn send_event(event: UsbEvent) {

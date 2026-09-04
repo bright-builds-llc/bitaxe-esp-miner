@@ -1,5 +1,7 @@
 //! Sole native-USB PHY owner with private TinyUSB and callback Adapters.
 
+use bitaxe_core::usb_worker_diagnostics::CdcEvidenceWriter;
+
 mod callbacks;
 mod tinyusb;
 
@@ -20,8 +22,22 @@ pub(crate) fn send_worker_frame(bytes: &[u8]) -> Result<(), UsbRuntimeFailure> {
     tinyusb::send_worker_frame(bytes)
 }
 
-pub(crate) fn emit_evidence(bytes: &[u8]) -> Result<(), UsbRuntimeFailure> {
-    tinyusb::emit_evidence(bytes)
+pub(crate) fn emit_evidence(
+    writer: &mut CdcEvidenceWriter,
+    bytes: &[u8],
+) -> Result<(), UsbRuntimeFailure> {
+    tinyusb::emit_evidence(writer, bytes)
+}
+
+pub(crate) fn emit_diagnostic(
+    writer: &mut CdcEvidenceWriter,
+    bytes: &[u8],
+) -> Result<(), UsbRuntimeFailure> {
+    tinyusb::emit_diagnostic(writer, bytes)
+}
+
+pub(crate) fn worker_observer_state() -> (u32, bool) {
+    tinyusb::worker_observer_state()
 }
 
 pub(crate) fn restart_into_rom_downloader() -> Result<(), UsbRuntimeFailure> {

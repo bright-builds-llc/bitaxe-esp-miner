@@ -1,3 +1,4 @@
+use bitaxe_api::panic_receipt::StartupStage;
 use bitaxe_core::{AsicTarget, BoardTarget, Phase1SafeState, StartupDebugText};
 use esp_idf_svc::hal::{modem::Modem, peripherals::Peripherals};
 use esp_idf_svc::sys;
@@ -32,21 +33,32 @@ struct RuntimeServicesStarted {
 /// shell can safely start first because it performs separate, idempotent
 /// network-stack initialization.
 pub(crate) fn run() -> anyhow::Result<()> {
+    crate::panic_evidence::enter_stage(StartupStage::EarlyIdentity);
     let (startup_debug_text, maybe_thermal_fault_stimulus) =
         initialize_boot_identity_and_settings()?;
+    crate::panic_evidence::enter_stage(StartupStage::Hardware);
     let (startup_diagnostics, maybe_modem) =
         initialize_hardware(startup_debug_text, maybe_thermal_fault_stimulus);
+    crate::panic_evidence::enter_stage(StartupStage::RuntimeServices);
     let runtime_services = start_runtime_services(startup_diagnostics)?;
+    crate::panic_evidence::enter_stage(StartupStage::StorageHttp);
     let (filesystem_status, route_shell_ready) = start_storage_and_http();
     publish_platform_readiness(
         runtime_services.boot_validation_ready,
         filesystem_status,
         route_shell_ready,
     );
+    crate::panic_evidence::enter_stage(StartupStage::Network);
     start_network_services(maybe_modem);
+    crate::panic_evidence::enter_stage(StartupStage::UsbInstall);
     start_deferred_usb_runtime(runtime_services.deferred_usb_runtime);
+    retain_usb_memory_checkpoint("usb_installed");
+    crate::panic_evidence::enter_stage(StartupStage::Statistics);
+    retain_usb_memory_checkpoint("statistics_start");
     start_statistics_runtime();
+    retain_usb_memory_checkpoint("statistics_started");
     wifi_adapter::maybe_start_network_reconnect_probe(route_shell_ready);
+    crate::panic_evidence::enter_stage(StartupStage::RuntimeReady);
     Ok(())
 }
 

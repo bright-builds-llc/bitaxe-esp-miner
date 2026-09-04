@@ -1,11 +1,17 @@
 use std::ffi::c_char;
 use std::fmt;
 
+use bitaxe_core::usb_worker_diagnostics::{
+    CdcEvidenceTransport, CdcEvidenceWriter, DIAGNOSTIC_LINE_BYTES,
+};
+
 use bitaxe_core::usb_worker::{
     UsbWriteFailure, VendorWriteProgress, VendorWriteStep, WORKER_CONFIGURATION_DESCRIPTOR,
     WORKER_DEVICE_DESCRIPTOR, WORKER_STRING_DESCRIPTORS,
 };
 use esp_idf_sys as sys;
+
+const _: () = assert!(sys::CFG_TUD_CDC_TX_BUFSIZE as usize > DIAGNOSTIC_LINE_BYTES);
 
 const WORKER_INTERFACE: u8 = 0;
 const EVIDENCE_INTERFACE: u8 = 0;
@@ -112,26 +118,74 @@ pub(super) fn send_worker_frame(bytes: &[u8]) -> Result<(), UsbRuntimeFailure> {
     }
 }
 
-pub(super) fn emit_evidence(bytes: &[u8]) -> Result<(), UsbRuntimeFailure> {
+pub(super) fn emit_evidence(
+    writer: &mut CdcEvidenceWriter,
+    bytes: &[u8],
+) -> Result<(), UsbRuntimeFailure> {
+    try_emit_evidence(writer, bytes, false)
+}
+
+pub(super) fn emit_diagnostic(
+    writer: &mut CdcEvidenceWriter,
+    bytes: &[u8],
+) -> Result<(), UsbRuntimeFailure> {
+    try_emit_evidence(writer, bytes, true)
+}
+
+fn try_emit_evidence(
+    writer: &mut CdcEvidenceWriter,
+    bytes: &[u8],
+    diagnostic: bool,
+) -> Result<(), UsbRuntimeFailure> {
     if bytes.is_empty() {
         return Err(UsbRuntimeFailure::UnavailableTransport);
     }
     if !unsafe { sys::tud_mounted() } {
         return Err(UsbRuntimeFailure::Disconnected);
     }
-    let length = u32::try_from(bytes.len()).map_err(|_| UsbRuntimeFailure::PartialWrite)?;
-    let written =
-        unsafe { sys::tud_cdc_n_write(EVIDENCE_INTERFACE, bytes.as_ptr().cast(), length) };
-    if written != length {
-        unsafe {
-            sys::tud_cdc_n_write_clear(EVIDENCE_INTERFACE);
-        }
+    let accepted = if diagnostic {
+        writer.try_emit_diagnostic(&mut TinyUsbEvidenceTransport, bytes)
+    } else {
+        writer.try_emit(&mut TinyUsbEvidenceTransport, bytes)
+    };
+    if !accepted {
         return Err(UsbRuntimeFailure::PartialWrite);
     }
-    unsafe {
-        sys::tud_cdc_n_write_flush(EVIDENCE_INTERFACE);
-    }
     Ok(())
+}
+
+pub(super) fn worker_observer_state() -> (u32, bool) {
+    if !unsafe { sys::tud_mounted() } {
+        return (0, false);
+    }
+    let mut coding = sys::cdc_line_coding_t::default();
+    unsafe {
+        sys::tud_cdc_n_get_line_coding(EVIDENCE_INTERFACE, &mut coding);
+    }
+    (coding.bit_rate, unsafe {
+        sys::tud_cdc_n_connected(EVIDENCE_INTERFACE)
+    })
+}
+
+struct TinyUsbEvidenceTransport;
+
+impl CdcEvidenceTransport for TinyUsbEvidenceTransport {
+    fn available(&self) -> usize {
+        unsafe { sys::tud_cdc_n_write_available(EVIDENCE_INTERFACE) as usize }
+    }
+
+    fn write(&mut self, bytes: &[u8]) -> usize {
+        let Ok(length) = u32::try_from(bytes.len()) else {
+            return 0;
+        };
+        unsafe { sys::tud_cdc_n_write(EVIDENCE_INTERFACE, bytes.as_ptr().cast(), length) as usize }
+    }
+
+    fn flush(&mut self) {
+        unsafe {
+            sys::tud_cdc_n_write_flush(EVIDENCE_INTERFACE);
+        }
+    }
 }
 
 pub(super) fn vendor_available() -> usize {

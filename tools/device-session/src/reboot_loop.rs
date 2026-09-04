@@ -2,11 +2,18 @@ use std::time::Duration;
 
 use anyhow::{bail, Result};
 use bitaxe_api::boot_identity::{ResetReasonCategory, WorkerUsbBootMarker};
-use bitaxe_api::panic_receipt::{AllocationFailureMarker, RustPanicMarker};
+use bitaxe_api::panic_receipt::{
+    AllocationFailureContextMarker, AllocationFailureMarker, RustPanicMarker,
+};
+
+mod diagnostics;
+pub use diagnostics::{UsbMemoryCheckpoint, UsbRuntimeIdentity};
 
 /// Closed classification for one bounded USB reboot-loop observation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UsbRebootLoopCategory {
+    /// Multiple same-boot markers arrived without reopening the observer.
+    StableBoot,
     /// One boot ordinal mounted repeatedly, so only the USB stack cycled.
     UsbStackReset,
     /// The reset-retained ordinal advanced, proving a chip reset.
@@ -20,6 +27,7 @@ impl UsbRebootLoopCategory {
     #[must_use]
     pub const fn label(self) -> &'static str {
         match self {
+            Self::StableBoot => "stable_boot",
             Self::UsbStackReset => "usb_stack_reset",
             Self::ChipReset => "chip_reset",
             Self::Inconclusive => "inconclusive",
@@ -37,9 +45,38 @@ pub struct UsbRebootLoopObservation {
     latest_reset_reason: ResetReasonCategory,
     latest_rust_panic: Option<RustPanicMarker>,
     latest_allocation_failure: Option<AllocationFailureMarker>,
+    maybe_allocation_context: Option<AllocationFailureContextMarker>,
+    diagnostics: diagnostics::WorkerDiagnostics,
 }
 
 impl UsbRebootLoopObservation {
+    /// Returns validated source/stage context for the prior allocation failure.
+    pub const fn maybe_allocation_context(&self) -> Option<AllocationFailureContextMarker> {
+        self.maybe_allocation_context
+    }
+    /// Returns exact current application identity, when the firmware emitted it.
+    pub fn maybe_runtime_identity(&self) -> Option<&UsbRuntimeIdentity> {
+        self.diagnostics.maybe_identity.as_ref()
+    }
+
+    /// Returns validated, deduplicated startup heap checkpoints.
+    pub fn memory_checkpoints(&self) -> &[UsbMemoryCheckpoint] {
+        &self.diagnostics.memory
+    }
+
+    /// Reports an explicit Worker startup failure independently from missing evidence.
+    pub const fn worker_start_failed(&self) -> bool {
+        self.diagnostics.worker_start_failed
+    }
+
+    /// Requires runtime evidence to match the caller's prevalidated exact package.
+    pub fn require_identity(&self, expected: &UsbRuntimeIdentity) -> Result<()> {
+        match self.maybe_runtime_identity() {
+            Some(observed) if observed == expected => Ok(()),
+            Some(_) => bail!("usb_diagnostics=runtime_identity_mismatch"),
+            None => bail!("usb_diagnostics=runtime_identity_missing"),
+        }
+    }
     /// Returns the reboot-loop classification.
     #[must_use]
     pub const fn category(&self) -> UsbRebootLoopCategory {
@@ -95,11 +132,30 @@ pub fn observe_usb_reboot_loop(port: &str, timeout: Duration) -> Result<UsbReboo
 fn classify_capture(bytes: &[u8], open_count: u16) -> Result<UsbRebootLoopObservation> {
     const MAX_MARKERS: usize = 256;
     let text = String::from_utf8_lossy(bytes);
-    let latest_rust_panic = text.lines().filter_map(RustPanicMarker::parse).next_back();
-    let latest_allocation_failure = text
+    let latest_boot_text = final_boot_segment(&text);
+    let latest_rust_panic = latest_boot_text
+        .lines()
+        .filter_map(RustPanicMarker::parse)
+        .next_back();
+    let latest_allocation_failure = latest_boot_text
         .lines()
         .filter_map(AllocationFailureMarker::parse)
         .next_back();
+    let maybe_allocation_context = latest_boot_text
+        .lines()
+        .filter(|line| line.starts_with("allocation_failure_context "))
+        .map(|line| {
+            AllocationFailureContextMarker::maybe_parse(line)
+                .ok_or_else(|| anyhow::anyhow!("usb_diagnostics=malformed_allocation_context"))
+        })
+        .collect::<Result<Vec<_>>>()?
+        .last()
+        .copied();
+    if maybe_allocation_context
+        .is_some_and(|context| Some(context.allocation()) != latest_allocation_failure)
+    {
+        bail!("usb_diagnostics=allocation_context_mismatch");
+    }
     let markers = text
         .lines()
         .filter_map(WorkerUsbBootMarker::parse)
@@ -124,8 +180,10 @@ fn classify_capture(bytes: &[u8], open_count: u16) -> Result<UsbRebootLoopObserv
         UsbRebootLoopCategory::Inconclusive
     } else if distinct_ordinals > 0 {
         UsbRebootLoopCategory::ChipReset
-    } else {
+    } else if open_count > 1 {
         UsbRebootLoopCategory::UsbStackReset
+    } else {
+        UsbRebootLoopCategory::StableBoot
     };
     let latest = *markers.last().expect("nonempty marker collection");
     Ok(UsbRebootLoopObservation {
@@ -136,7 +194,25 @@ fn classify_capture(bytes: &[u8], open_count: u16) -> Result<UsbRebootLoopObserv
         latest_reset_reason: latest.reset_reason(),
         latest_rust_panic,
         latest_allocation_failure,
+        maybe_allocation_context,
+        diagnostics: diagnostics::WorkerDiagnostics::parse(latest_boot_text)?,
     })
+}
+
+fn final_boot_segment(text: &str) -> &str {
+    let mut maybe_ordinal = None;
+    let mut segment_start = text.len();
+    let mut offset = 0;
+    for line in text.split_inclusive('\n') {
+        if let Some(marker) = WorkerUsbBootMarker::parse(line) {
+            if maybe_ordinal != Some(marker.boot_ordinal()) {
+                maybe_ordinal = Some(marker.boot_ordinal());
+                segment_start = offset;
+            }
+        }
+        offset += line.len();
+    }
+    &text[segment_start..]
 }
 
 #[cfg(test)]
@@ -145,6 +221,69 @@ mod tests {
 
     fn marker(ordinal: u64, reason: ResetReasonCategory, uptime_ms: u64) -> String {
         WorkerUsbBootMarker::new(ordinal, reason, uptime_ms).marker()
+    }
+
+    #[test]
+    fn periodic_same_boot_evidence_without_reconnect_is_stable() {
+        // Arrange
+        let input = format!(
+            "{}\n{}\n",
+            marker(2, ResetReasonCategory::Panic, 500),
+            marker(2, ResetReasonCategory::Panic, 2500)
+        );
+        // Act
+        let observation = classify_capture(input.as_bytes(), 1).expect("valid observed boot");
+        // Assert
+        assert_eq!(observation.category().label(), "stable_boot");
+    }
+
+    #[test]
+    fn exact_package_requirement_rejects_a_different_runtime() {
+        // Arrange
+        let input = format!("{}\nusb_runtime_identity schema=v1 firmware_commit={} app_elf_sha256={} redacted=true\n",
+            marker(2, ResetReasonCategory::Panic, 500), "a".repeat(40), "b".repeat(64));
+        let expected =
+            UsbRuntimeIdentity::new(&"c".repeat(40), &"b".repeat(64)).expect("expected identity");
+        let observation = classify_capture(input.as_bytes(), 1).expect("valid observed identity");
+        // Act / Assert
+        assert!(observation.require_identity(&expected).is_err());
+    }
+
+    #[test]
+    fn flashed_package_is_not_substituted_for_missing_runtime_identity() {
+        // Arrange
+        let input = format!("{}\n", marker(2, ResetReasonCategory::Panic, 500));
+        let expected =
+            UsbRuntimeIdentity::new(&"a".repeat(40), &"b".repeat(64)).expect("expected identity");
+        let observation = classify_capture(input.as_bytes(), 1).expect("valid boot marker");
+        // Act / Assert
+        assert!(observation.require_identity(&expected).is_err());
+    }
+
+    #[test]
+    fn earlier_boot_identity_cannot_verify_a_later_silent_boot() {
+        // Arrange
+        let input = format!("{}\nusb_runtime_identity schema=v1 firmware_commit={} app_elf_sha256={} redacted=true\n{}\n",
+            marker(2, ResetReasonCategory::Panic, 500), "a".repeat(40), "b".repeat(64),
+            marker(3, ResetReasonCategory::Panic, 100));
+        let expected =
+            UsbRuntimeIdentity::new(&"a".repeat(40), &"b".repeat(64)).expect("expected identity");
+        let observation = classify_capture(input.as_bytes(), 2).expect("valid reboot transcript");
+        // Act / Assert
+        assert!(observation.require_identity(&expected).is_err());
+    }
+
+    #[test]
+    fn different_heap_facts_on_two_boots_preserve_chip_reset_evidence() {
+        // Arrange
+        let input = format!("{}\nusb_memory_checkpoint stage=usb_install free_bytes=50000 largest_block_bytes=12000 reserve_bytes=98304 redacted=true\n{}\nusb_memory_checkpoint stage=usb_install free_bytes=40000 largest_block_bytes=10000 reserve_bytes=98304 redacted=true\n",
+            marker(2, ResetReasonCategory::Panic, 500), marker(3, ResetReasonCategory::Panic, 100));
+        // Act
+        let observation =
+            classify_capture(input.as_bytes(), 2).expect("valid differing boot heaps");
+        // Assert
+        assert_eq!(observation.category(), UsbRebootLoopCategory::ChipReset);
+        assert_eq!(observation.memory_checkpoints()[0].free_bytes, 40000);
     }
 
     #[test]
