@@ -13,6 +13,16 @@ use crate::{
 
 pub(crate) struct BootMiningBaselineConfirmed(());
 
+enum DeferredUsbRuntime {
+    Worker(crate::bwg_worker_usb::BwgWorkerRecovery),
+    AlreadySelected,
+}
+
+struct RuntimeServicesStarted {
+    boot_validation_ready: bool,
+    deferred_usb_runtime: DeferredUsbRuntime,
+}
+
 /// Starts firmware services while preserving evidence-before-network ordering.
 ///
 /// Platform readiness must remain before Wi-Fi admission because ESP-IDF's
@@ -24,10 +34,15 @@ pub(crate) fn run() -> anyhow::Result<()> {
         initialize_boot_identity_and_settings()?;
     let (startup_diagnostics, maybe_modem) =
         initialize_hardware(startup_debug_text, maybe_thermal_fault_stimulus);
-    let boot_validation_ready = start_runtime_services(startup_diagnostics)?;
+    let runtime_services = start_runtime_services(startup_diagnostics)?;
     let (filesystem_status, route_shell_ready) = start_storage_and_http();
-    publish_platform_readiness(boot_validation_ready, filesystem_status, route_shell_ready);
+    publish_platform_readiness(
+        runtime_services.boot_validation_ready,
+        filesystem_status,
+        route_shell_ready,
+    );
     start_network_services(maybe_modem);
+    start_deferred_usb_runtime(runtime_services.deferred_usb_runtime);
     wifi_adapter::maybe_start_network_reconnect_probe(route_shell_ready);
     Ok(())
 }
@@ -238,7 +253,7 @@ fn initialize_operator_runtime(
 
 fn start_runtime_services(
     startup_diagnostics: anyhow::Result<asic_adapter::BootMiningBaseline>,
-) -> anyhow::Result<bool> {
+) -> anyhow::Result<RuntimeServicesStarted> {
     let startup_diagnostics_passed = startup_diagnostics.is_ok();
     let boot_validation_ready = match boot_validation::validate_boot(startup_diagnostics_passed) {
         Ok(ready) => ready,
@@ -340,26 +355,16 @@ fn start_runtime_services(
     if let Err(error) = statistics_runtime::start() {
         log::warn!("statistics_runtime=unavailable reason=thread_spawn_failed error={error:#}");
     }
-    if serial_jtag_runtime {
+    let deferred_usb_runtime = if serial_jtag_runtime {
         boot_evidence::publish_usb_boot_profile(
             bitaxe_api::UsbBootTransport::SerialJtagRuntime,
             bitaxe_api::UsbBootProfileReason::DiagnosticOwner,
             bitaxe_api::UsbBootBaseline::Diagnostic,
         );
         log::info!("usb_runtime=serial_jtag reason=diagnostic_owner");
+        DeferredUsbRuntime::AlreadySelected
     } else if let Some(bwg_recovery) = maybe_bwg_recovery {
-        match crate::bwg_worker_usb::start(bwg_recovery) {
-            Ok(()) => boot_evidence::publish_usb_boot_profile(
-                bitaxe_api::UsbBootTransport::WorkerRuntime,
-                bitaxe_api::UsbBootProfileReason::WorkerStarted,
-                bitaxe_api::UsbBootBaseline::Confirmed,
-            ),
-            Err(error) => {
-                log::warn!(
-                    "bwg_worker_control=unavailable category=startup_failed error={error:#}"
-                );
-            }
-        }
+        DeferredUsbRuntime::Worker(bwg_recovery)
     } else {
         boot_evidence::publish_usb_boot_profile(
             bitaxe_api::UsbBootTransport::SerialJtagRuntime,
@@ -367,8 +372,28 @@ fn start_runtime_services(
             bitaxe_api::UsbBootBaseline::Unconfirmed,
         );
         log::warn!("bwg_worker_control=unavailable category=boot_baseline_unconfirmed");
+        DeferredUsbRuntime::AlreadySelected
+    };
+    Ok(RuntimeServicesStarted {
+        boot_validation_ready,
+        deferred_usb_runtime,
+    })
+}
+
+fn start_deferred_usb_runtime(deferred_usb_runtime: DeferredUsbRuntime) {
+    let DeferredUsbRuntime::Worker(bwg_recovery) = deferred_usb_runtime else {
+        return;
+    };
+    match crate::bwg_worker_usb::start(bwg_recovery) {
+        Ok(()) => boot_evidence::publish_usb_boot_profile(
+            bitaxe_api::UsbBootTransport::WorkerRuntime,
+            bitaxe_api::UsbBootProfileReason::WorkerStarted,
+            bitaxe_api::UsbBootBaseline::Confirmed,
+        ),
+        Err(error) => {
+            log::warn!("bwg_worker_control=unavailable category=startup_failed error={error:#}");
+        }
     }
-    Ok(boot_validation_ready)
 }
 
 fn start_network_services(maybe_modem: Option<Modem<'static>>) {

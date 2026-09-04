@@ -76,11 +76,15 @@ events and never owns USB FFI.
 USB and Wi-Fi share scarce ESP32-S3 internal DMA-capable heap. The pinned
 full-speed TinyUSB component fixes each vendor FIFO at 64 bytes; the 64 KiB
 Worker frame limit remains an incremental Rust framing bound, not a USB FIFO
-allocation. The default TinyUSB task stack is qualified at 3072 bytes instead
-of 4096, releasing one contiguous 1024-byte internal block for Wi-Fi startup.
-Changing the TinyUSB task stack requires the compile-time resolved-config
-assertion plus live proof that Wi-Fi obtains its internal/DMA allocations and
-the USB task remains stable.
+allocation. The TinyUSB task stack is pinned at 3072 bytes, but live evidence
+proved that this reduction alone did not make Wi-Fi's later internal/DMA
+allocation succeed. Ordinary confirmed-safe startup therefore lets Wi-Fi
+reserve its fixed internal/DMA resources before starting the optional Worker
+owner and installing TinyUSB. The Worker owner uses a bounded 12 KiB stack;
+diagnostic and unconfirmed-safe boots retain their earlier Serial/JTAG path.
+Changing either stack budget or this ordering requires the compile-time
+resolved-config assertion, source-ownership ordering tests, and live proof that
+Wi-Fi and the USB owner both remain stable.
 
 Repository-owned C is intentionally limited to `usb_phy_handoff.c`. That
 Adapter registers the force-download shutdown handler, uninstalls TinyUSB,

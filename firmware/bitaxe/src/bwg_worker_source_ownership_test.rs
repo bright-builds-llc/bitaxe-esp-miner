@@ -163,7 +163,7 @@ fn maintenance_commit_receipt_precedes_the_phy_restart() {
 }
 
 #[test]
-fn startup_recovers_before_optional_owners_and_starts_control_after_production() {
+fn startup_recovers_before_optional_owners_and_starts_control_after_wifi() {
     // Arrange
     let baseline = STARTUP_SOURCE
         .find("startup_diagnostics?;")
@@ -174,14 +174,26 @@ fn startup_recovers_before_optional_owners_and_starts_control_after_production()
     let production = STARTUP_SOURCE
         .find("production_mining_session::start()")
         .expect("production owner startup should exist");
-    let worker = STARTUP_SOURCE
-        .find("bwg_worker_usb::start(bwg_recovery)")
-        .expect("BWG worker startup should exist");
+    let run_start = STARTUP_SOURCE
+        .find("pub(crate) fn run()")
+        .expect("startup entrypoint should exist");
+    let run_end = STARTUP_SOURCE[run_start..]
+        .find("fn initialize_boot_identity_and_settings(")
+        .map(|offset| run_start + offset)
+        .expect("startup entrypoint boundary should exist");
+    let run = &STARTUP_SOURCE[run_start..run_end];
+    let network = run
+        .find("start_network_services(maybe_modem)")
+        .expect("Wi-Fi startup should exist");
+    let worker = run
+        .find("start_deferred_usb_runtime(runtime_services.deferred_usb_runtime)")
+        .expect("deferred BWG worker startup should exist");
 
     // Act / Assert
     assert!(baseline < recovery);
     assert!(recovery < production);
-    assert!(production < worker);
+    assert!(network < worker);
+    assert!(USB_SOURCE.contains("const OWNER_STACK_BYTES: usize = 12 * 1024;"));
     assert_eq!(MAIN_SOURCE.matches("mod bwg_worker_usb;").count(), 1);
 }
 

@@ -16,7 +16,9 @@ use crate::bwg_worker_session::ProductionWorkerSession;
 use crate::startup::BootMiningBaselineConfirmed;
 use crate::usb_runtime::{MaintenanceAction, MaintenanceEvent, UsbMaintenanceState};
 
-const OWNER_STACK_BYTES: usize = 16 * 1024;
+// Keep enough headroom for framed JSON and signature verification without
+// consuming the internal/DMA heap that ESP-IDF Wi-Fi must reserve at startup.
+const OWNER_STACK_BYTES: usize = 12 * 1024;
 const EVENT_CAPACITY: usize = 8;
 const MAXIMUM_FRAME_BYTES: usize = 65_536;
 const DESCRIPTOR_SHA256: &str = "rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA";

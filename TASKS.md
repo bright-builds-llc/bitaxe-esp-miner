@@ -247,6 +247,17 @@ one-time manual bootstrap installed the handoff firmware and proved
 WorkerRuntime, but automatic handoff durability and exact recovery-006
 restoration are incomplete. STR-005 and BWG remain unchanged.
 
+Stability continuation: Live reboot-loop diagnostics on the later Rust USB
+runtime isolated a direct allocator abort requesting 852 bytes with
+`DMA | 8BIT | INTERNAL` capabilities during Wi-Fi startup. The first guessed
+vendor-buffer setting was absent from the pinned component, and the verified
+TinyUSB task-stack reduction still reproduced the exact signature. The
+targeted successor reserves Wi-Fi's fixed resources before the optional Worker
+owner and bounds that owner's stack at 12 KiB. Ordered Rust gates, Bright
+Builds, all 76 Bazel tests, firmware packaging, native-USB ownership,
+parity/progress, redaction, reference cleanliness, whitespace, and final diff
+review pass. Exact-package hardware validation remains pending.
+
 ### task-native-usb-recovery-transition-205 | 2026-08-30 | Recover first and prove one no-write transition
 
 - [x] Create and push the immutable recovery and single-transition plan before
