@@ -111,4 +111,5 @@ fn worker_mount_replays_the_closed_reboot_discriminator() {
     // Act / Assert
     assert!(BOOT_EVIDENCE_SOURCE.contains("pub fn worker_usb_boot_marker()"));
     assert!(BOOT_EVIDENCE_SOURCE.contains("WorkerUsbBootMarker::new("));
+    assert!(BOOT_EVIDENCE_SOURCE.contains("pub fn worker_rust_panic_marker()"));
 }

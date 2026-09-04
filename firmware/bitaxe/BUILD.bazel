@@ -63,6 +63,7 @@ js_library(
         "src/boot_evidence.rs",
         "src/boot_evidence/usb_profile.rs",
         "src/bwg_worker_usb.rs",
+        "src/panic_evidence.rs",
         "src/startup.rs",
         "src/usb_runtime.rs",
         "src/usb_runtime/callbacks.rs",

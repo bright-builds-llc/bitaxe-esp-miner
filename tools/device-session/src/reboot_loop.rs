@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use anyhow::{bail, Result};
 use bitaxe_api::boot_identity::{ResetReasonCategory, WorkerUsbBootMarker};
+use bitaxe_api::panic_receipt::RustPanicMarker;
 
 /// Closed classification for one bounded USB reboot-loop observation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,6 +35,7 @@ pub struct UsbRebootLoopObservation {
     reconnect_count: u16,
     latest_boot_ordinal: u64,
     latest_reset_reason: ResetReasonCategory,
+    latest_rust_panic: Option<RustPanicMarker>,
 }
 
 impl UsbRebootLoopObservation {
@@ -66,6 +68,12 @@ impl UsbRebootLoopObservation {
     pub const fn latest_reset_reason(&self) -> ResetReasonCategory {
         self.latest_reset_reason
     }
+
+    /// Returns the previous boot's Rust panic receipt when present.
+    #[must_use]
+    pub const fn latest_rust_panic(&self) -> Option<RustPanicMarker> {
+        self.latest_rust_panic
+    }
 }
 
 /// Observes a flapping macOS USB profile without writing or changing control lines.
@@ -80,6 +88,7 @@ pub fn observe_usb_reboot_loop(port: &str, timeout: Duration) -> Result<UsbReboo
 fn classify_capture(bytes: &[u8], open_count: u16) -> Result<UsbRebootLoopObservation> {
     const MAX_MARKERS: usize = 256;
     let text = String::from_utf8_lossy(bytes);
+    let latest_rust_panic = text.lines().filter_map(RustPanicMarker::parse).next_back();
     let markers = text
         .lines()
         .filter_map(WorkerUsbBootMarker::parse)
@@ -114,6 +123,7 @@ fn classify_capture(bytes: &[u8], open_count: u16) -> Result<UsbRebootLoopObserv
         reconnect_count: open_count.saturating_sub(1),
         latest_boot_ordinal: latest.boot_ordinal(),
         latest_reset_reason: latest.reset_reason(),
+        latest_rust_panic,
     })
 }
 
@@ -128,10 +138,17 @@ mod tests {
     #[test]
     fn advancing_ordinals_prove_a_chip_reset_and_preserve_latest_reason() {
         // Arrange
+        let panic = RustPanicMarker::from_receipt(bitaxe_api::panic_receipt::RtcPanicReceipt::new(
+            "source.rs",
+            91,
+        ))
+        .expect("panic receipt must be valid")
+        .marker();
         let input = format!(
-            "{}\n{}\n",
+            "{}\n{}\n{}\n",
             marker(7, ResetReasonCategory::SoftwareCpu, 500),
-            marker(8, ResetReasonCategory::Panic, 400)
+            marker(8, ResetReasonCategory::Panic, 400),
+            panic
         );
 
         // Act
@@ -145,6 +162,10 @@ mod tests {
             ResetReasonCategory::Panic
         );
         assert_eq!(observation.reconnect_count(), 1);
+        assert_eq!(
+            observation.latest_rust_panic().map(RustPanicMarker::line),
+            Some(91)
+        );
     }
 
     #[test]

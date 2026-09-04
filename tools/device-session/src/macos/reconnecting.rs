@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::{bail, Context, Result};
 
-use super::{scan_candidates, ReceiveOnlyReader};
+use super::{scan_candidates, worker_evidence::WorkerEvidenceReader};
 
 pub(crate) struct ReconnectingReceiveCapture {
     pub(crate) bytes: Vec<u8>,
@@ -19,7 +19,7 @@ pub(crate) fn capture_reconnecting_receive_only(
 
     let deadline = Instant::now() + timeout;
     let mut maybe_physical_identity = None;
-    let mut maybe_reader: Option<ReceiveOnlyReader> = None;
+    let mut maybe_reader: Option<WorkerEvidenceReader> = None;
     let mut bytes = Vec::new();
     let mut open_count = 0_u16;
     while Instant::now() < deadline {
@@ -71,7 +71,7 @@ pub(crate) fn capture_reconnecting_receive_only(
         }
         if maybe_reader.is_none() {
             if let Some(port) = maybe_port {
-                if let Ok(reader) = ReceiveOnlyReader::open(port) {
+                if let Ok(reader) = WorkerEvidenceReader::open(port) {
                     open_count = open_count.saturating_add(1);
                     maybe_reader = Some(reader);
                 }

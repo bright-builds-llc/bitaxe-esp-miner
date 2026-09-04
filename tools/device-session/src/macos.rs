@@ -10,6 +10,7 @@ use crate::{DevicePhase, PhysicalMatch, SessionEvent};
 
 mod receive_only;
 mod reconnecting;
+mod worker_evidence;
 
 pub(crate) use receive_only::ReceiveOnlyReader;
 pub(crate) use reconnecting::capture_reconnecting_receive_only;

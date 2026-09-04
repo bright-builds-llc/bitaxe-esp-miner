@@ -171,6 +171,20 @@ for (const forbidden of [".write(", "write_all", "TIOCM", "ioctl(", "B1200"]) {
     );
   }
 }
+const workerEvidenceAdapter = read("tools/device-session/src/macos/worker_evidence.rs")
+  .split("#[cfg(test)]")[0];
+for (const required of ["configure_serial", ".write(true)", "TIOCMBIS", "TIOCMBIC"]) {
+  if (!workerEvidenceAdapter.includes(required)) {
+    throw new Error(`Worker evidence Adapter is missing ${JSON.stringify(required)}`);
+  }
+}
+for (const forbidden of ["B1200", "write_all", "std::io::Write", "SetBitRate(1_200)"]) {
+  if (workerEvidenceAdapter.includes(forbidden)) {
+    throw new Error(
+      `Worker evidence Adapter contains forbidden operation ${JSON.stringify(forbidden)}`,
+    );
+  }
+}
 requireText("tools/flash/src/environment/usb_ownership.rs", [
   "ensure_bootloader",
   "handoff_worker_to_rom(session)",
@@ -225,6 +239,12 @@ requireText("crates/bitaxe-api/src/usb_boot_profile.rs", [
 requireText("firmware/bitaxe/src/boot_evidence.rs", [
   "publish_usb_boot_profile",
   "usb_profile::emit_due",
+  "worker_rust_panic_marker",
+]);
+requireText("firmware/bitaxe/src/panic_evidence.rs", [
+  "RTC_PANIC_RECEIPT",
+  "std::panic::set_hook",
+  "write_volatile",
 ]);
 requireText("firmware/bitaxe/src/boot_evidence/usb_profile.rs", [
   "UsbBootProfileReplay::new",

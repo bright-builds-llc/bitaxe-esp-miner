@@ -25,18 +25,7 @@ impl ReceiveOnlyReader {
     }
 
     pub(crate) fn read_available(&mut self) -> Result<Vec<u8>> {
-        let mut collected = Vec::new();
-        loop {
-            let mut buffer = [0_u8; 4096];
-            match self.file.read(&mut buffer) {
-                Ok(0) => break,
-                Ok(count) => collected.extend_from_slice(&buffer[..count]),
-                Err(error) if error.kind() == io::ErrorKind::WouldBlock => break,
-                Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
-                Err(error) => return Err(error).context("receive-only serial read failed"),
-            }
-        }
-        Ok(collected)
+        read_available(&mut self.file)
     }
 
     pub(crate) fn port(&self) -> &str {
@@ -44,7 +33,22 @@ impl ReceiveOnlyReader {
     }
 }
 
-fn configure_serial(file: &File) -> Result<()> {
+pub(super) fn read_available(file: &mut File) -> Result<Vec<u8>> {
+    let mut collected = Vec::new();
+    loop {
+        let mut buffer = [0_u8; 4096];
+        match file.read(&mut buffer) {
+            Ok(0) => break,
+            Ok(count) => collected.extend_from_slice(&buffer[..count]),
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => break,
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
+            Err(error) => return Err(error).context("receive-only serial read failed"),
+        }
+    }
+    Ok(collected)
+}
+
+pub(super) fn configure_serial(file: &File) -> Result<()> {
     let fd = file.as_raw_fd();
     let mut terminal = unsafe { std::mem::zeroed::<libc::termios>() };
     if unsafe { libc::tcgetattr(fd, &mut terminal) } != 0 {
@@ -62,7 +66,7 @@ fn configure_serial(file: &File) -> Result<()> {
     Ok(())
 }
 
-const fn libc_flags() -> i32 {
+pub(super) const fn libc_flags() -> i32 {
     // Values are stable Darwin ABI constants: O_NOCTTY and O_NONBLOCK.
     0x0002_0000 | 0x0000_0004
 }

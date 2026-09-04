@@ -24,6 +24,7 @@ mod operator_sensor_runtime;
 mod operator_snapshot_publication;
 mod operator_snapshot_retention;
 mod ota_update;
+mod panic_evidence;
 mod platform_identity;
 mod production_mining_session;
 mod rtc_boot_ordinal;

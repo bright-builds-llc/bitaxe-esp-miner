@@ -18,6 +18,7 @@ pub mod network;
 pub mod observation;
 pub mod operator_snapshot;
 pub mod operator_snapshot_publication;
+pub mod panic_receipt;
 pub mod phase33_evidence;
 pub mod platform_identity;
 pub mod provisioning;

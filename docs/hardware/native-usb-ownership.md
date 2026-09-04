@@ -231,10 +231,22 @@ When a Worker node repeatedly disappears before normal session admission,
 `just diagnose-usb-reboot-loop --port <worker-port> --timeout-seconds 15`
 retains the physical connector and reopens only the receive-only Adapter. Each
 Worker mount emits a closed `boot_ordinal`, reset-reason category, and uptime
-marker without requiring DTR. Increasing ordinals prove a chip reset; one
-ordinal with increasing uptime proves a USB-stack-only reset. The diagnostic
-is bounded to 30 seconds, captures at most 64 KiB, sends no bytes, changes no
-control lines, performs no network action, and publishes no raw identity.
+marker without requiring DTR in firmware. The dedicated macOS observer opens
+the Worker CDC read/write only because the driver requires it for class
+control, fixes raw 115200, asserts DTR while observing, and clears DTR on drop.
+It contains no 1200-baud path and sends no payload, so it cannot arm Worker
+maintenance. Increasing ordinals prove a chip reset; one ordinal with
+increasing uptime proves a USB-stack-only reset. The diagnostic is bounded to
+30 seconds, captures at most 64 KiB, performs no network action, and publishes
+no raw identity.
+
+When the closed reset family is `panic`, a boot-installed Rust panic hook
+stores only an FNV-1a source-path digest and one-based source line in RTC
+no-init memory. The next boot consumes and clears that integrity-checked
+receipt and replays it over Worker CDC. A present receipt identifies a Rust
+panic location without persisting panic text; a missing receipt across later
+panic resets places the failure below Rust. This path never writes flash, so a
+rapid reboot loop cannot create coredump wear.
 
 Manual BOOT/RESET is a one-time bootstrap or last-resort recovery path, never
 the normal development workflow. Buttonless flashing is not qualified until

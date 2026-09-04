@@ -237,6 +237,14 @@ fn run_observe_usb_reboot_loop(args: ObserveUsbRebootLoopArgs) -> Result<Termina
         "latest_reset_reason: {}",
         observation.latest_reset_reason().label()
     );
+    match observation.latest_rust_panic() {
+        Some(marker) => {
+            println!("rust_panic_receipt: present");
+            println!("rust_panic_file_hash: {:08x}", marker.file_hash());
+            println!("rust_panic_line: {}", marker.line());
+        }
+        None => println!("rust_panic_receipt: missing"),
+    }
     Ok(TerminalCategory::Ready)
 }
 
