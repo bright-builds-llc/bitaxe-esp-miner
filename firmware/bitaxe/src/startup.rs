@@ -16,7 +16,7 @@ pub(crate) struct BootMiningBaselineConfirmed(());
 const _: () = assert!(sys::CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL == 65_536);
 
 enum DeferredUsbRuntime {
-    Worker(crate::bwg_worker_usb::BwgWorkerRecovery),
+    Worker(crate::bwg_worker_usb::PreparedWorkerRuntime),
     AlreadySelected,
 }
 
@@ -365,7 +365,14 @@ fn start_runtime_services(
         log::info!("usb_runtime=serial_jtag reason=diagnostic_owner");
         DeferredUsbRuntime::AlreadySelected
     } else if let Some(bwg_recovery) = maybe_bwg_recovery {
-        DeferredUsbRuntime::Worker(bwg_recovery)
+        retain_usb_memory_checkpoint("worker_owner_prepare");
+        match crate::bwg_worker_usb::prepare(bwg_recovery) {
+            Ok(prepared) => DeferredUsbRuntime::Worker(prepared),
+            Err(error) => {
+                retain_bwg_worker_start_failure(&error);
+                DeferredUsbRuntime::AlreadySelected
+            }
+        }
     } else {
         boot_evidence::publish_usb_boot_profile(
             bitaxe_api::UsbBootTransport::SerialJtagRuntime,
@@ -382,30 +389,36 @@ fn start_runtime_services(
 }
 
 fn start_deferred_usb_runtime(deferred_usb_runtime: DeferredUsbRuntime) {
-    let DeferredUsbRuntime::Worker(bwg_recovery) = deferred_usb_runtime else {
+    let DeferredUsbRuntime::Worker(prepared) = deferred_usb_runtime else {
         return;
     };
-    let internal_dma_caps = sys::MALLOC_CAP_INTERNAL | sys::MALLOC_CAP_DMA | sys::MALLOC_CAP_8BIT;
-    let free_bytes = unsafe { sys::heap_caps_get_free_size(internal_dma_caps) };
-    let largest_block_bytes = unsafe { sys::heap_caps_get_largest_free_block(internal_dma_caps) };
-    crate::info_retained(&format!(
-        "usb_memory_checkpoint stage=worker_start free_bytes={free_bytes} largest_block_bytes={largest_block_bytes} reserve_bytes={} redacted=true",
-        sys::CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL,
-    ));
-    match crate::bwg_worker_usb::start(bwg_recovery) {
+    retain_usb_memory_checkpoint("usb_install");
+    match crate::bwg_worker_usb::install(prepared) {
         Ok(()) => boot_evidence::publish_usb_boot_profile(
             bitaxe_api::UsbBootTransport::WorkerRuntime,
             bitaxe_api::UsbBootProfileReason::WorkerStarted,
             bitaxe_api::UsbBootBaseline::Confirmed,
         ),
-        Err(error) => {
-            log::warn!("bwg_worker_control=unavailable category=startup_failed error={error:#}");
-            let detail = bwg_worker_start_failure_detail(&error);
-            crate::info_retained(&format!(
-                "bwg_worker_start_failure category=startup_failed detail={detail} redacted=true"
-            ));
-        }
+        Err(error) => retain_bwg_worker_start_failure(&error),
     }
+}
+
+fn retain_usb_memory_checkpoint(stage: &str) {
+    let internal_dma_caps = sys::MALLOC_CAP_INTERNAL | sys::MALLOC_CAP_DMA | sys::MALLOC_CAP_8BIT;
+    let free_bytes = unsafe { sys::heap_caps_get_free_size(internal_dma_caps) };
+    let largest_block_bytes = unsafe { sys::heap_caps_get_largest_free_block(internal_dma_caps) };
+    crate::info_retained(&format!(
+        "usb_memory_checkpoint stage={stage} free_bytes={free_bytes} largest_block_bytes={largest_block_bytes} reserve_bytes={} redacted=true",
+        sys::CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL,
+    ));
+}
+
+fn retain_bwg_worker_start_failure(error: &anyhow::Error) {
+    log::warn!("bwg_worker_control=unavailable category=startup_failed error={error:#}");
+    let detail = bwg_worker_start_failure_detail(error);
+    crate::info_retained(&format!(
+        "bwg_worker_start_failure category=startup_failed detail={detail} redacted=true"
+    ));
 }
 
 fn bwg_worker_start_failure_detail(error: &anyhow::Error) -> &'static str {

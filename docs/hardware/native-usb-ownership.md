@@ -78,15 +78,17 @@ full-speed TinyUSB component fixes each vendor FIFO at 64 bytes; the 64 KiB
 Worker frame limit remains an incremental Rust framing bound, not a USB FIFO
 allocation. The TinyUSB task stack is pinned at 3072 bytes, but live evidence
 proved that this reduction alone did not make Wi-Fi's later internal/DMA
-allocation succeed. Ordinary confirmed-safe startup therefore lets Wi-Fi
-reserve its fixed internal/DMA resources before starting the optional Worker
-owner and installing TinyUSB. The Worker keeps its proven 16 KiB stack, while
+allocation succeed. Ordinary confirmed-safe startup prepares the optional
+Worker's proven 16 KiB owner stack while internal memory remains contiguous,
+but defers TinyUSB installation until after HTTP and Wi-Fi have reserved their
+resources. This prevents the large pthread allocation and the USB/Wi-Fi DMA
+allocations from competing at the same fragmented boundary. Meanwhile,
 `CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536` prevents ordinary PSRAM-eligible
 allocations from consuming the internal pool required by forced-internal task
 stacks and DMA. Diagnostic and unconfirmed-safe boots retain their earlier
-Serial/JTAG path. The non-safety-critical statistics producer starts after the
-Worker so its 8 KiB stack cannot split the last Worker-sized internal block;
-the fan and safety owners remain ahead of Worker. Changing either memory budget or this ordering requires
+Serial/JTAG path. The non-safety-critical statistics producer starts after
+TinyUSB installation; the fan and safety owners remain ahead of network and
+USB activation. Changing either memory budget or this ordering requires
 compile-time and resolved-config assertions, source-ownership ordering tests,
 and live proof that Wi-Fi and the USB owner both remain stable. Closed
 pre-Worker heap facts and previous-boot panic/allocation receipts are retained

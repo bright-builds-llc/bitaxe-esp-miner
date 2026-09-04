@@ -41,6 +41,8 @@ pub(crate) struct BwgWorkerRecovery {
     reboot_report_required: bool,
 }
 
+pub(crate) struct PreparedWorkerRuntime(());
+
 impl Drop for SecretUsbBytes {
     fn drop(&mut self) {
         self.0.zeroize();
@@ -61,7 +63,7 @@ pub(crate) fn recover_interrupted_effect(
     })
 }
 
-pub(crate) fn start(recovery: BwgWorkerRecovery) -> anyhow::Result<()> {
+pub(crate) fn prepare(recovery: BwgWorkerRecovery) -> anyhow::Result<PreparedWorkerRuntime> {
     let BwgWorkerRecovery {
         mut nvs,
         reboot_report_required,
@@ -118,6 +120,10 @@ pub(crate) fn start(recovery: BwgWorkerRecovery) -> anyhow::Result<()> {
         .stack_size(OWNER_STACK_BYTES)
         .spawn(move || run_owner(receiver, &mut worker))
         .map_err(|error| anyhow::anyhow!("owner_spawn: {error}"))?;
+    Ok(PreparedWorkerRuntime(()))
+}
+
+pub(crate) fn install(_prepared: PreparedWorkerRuntime) -> anyhow::Result<()> {
     crate::usb_runtime::install_worker_runtime()
         .map_err(|error| anyhow::anyhow!("usb_install: {error}"))?;
     Ok(())

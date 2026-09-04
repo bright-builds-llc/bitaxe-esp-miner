@@ -163,7 +163,7 @@ fn maintenance_commit_receipt_precedes_the_phy_restart() {
 }
 
 #[test]
-fn startup_recovers_before_optional_owners_and_starts_control_after_wifi() {
+fn startup_prepares_worker_before_wifi_and_installs_usb_after_wifi() {
     // Arrange
     let baseline = STARTUP_SOURCE
         .find("startup_diagnostics?;")
@@ -185,9 +185,9 @@ fn startup_recovers_before_optional_owners_and_starts_control_after_wifi() {
     let network = run
         .find("start_network_services(maybe_modem)")
         .expect("Wi-Fi startup should exist");
-    let worker = run
+    let worker_install = run
         .find("start_deferred_usb_runtime(runtime_services.deferred_usb_runtime)")
-        .expect("deferred BWG worker startup should exist");
+        .expect("deferred Worker USB installation should exist");
     let statistics = run
         .find("start_statistics_runtime()")
         .expect("statistics startup should exist");
@@ -195,15 +195,26 @@ fn startup_recovers_before_optional_owners_and_starts_control_after_wifi() {
     // Act / Assert
     assert!(baseline < recovery);
     assert!(recovery < production);
-    assert!(network < worker);
-    assert!(worker < statistics);
+    let prepare = STARTUP_SOURCE
+        .find("bwg_worker_usb::prepare(bwg_recovery)")
+        .expect("Worker owner preparation should exist");
+    let runtime_services = run
+        .find("start_runtime_services(startup_diagnostics)")
+        .expect("runtime services should exist");
+    assert!(recovery < prepare);
+    assert!(runtime_services < network);
+    assert!(network < worker_install);
+    assert!(worker_install < statistics);
     assert!(USB_SOURCE.contains("const OWNER_STACK_BYTES: usize = 16 * 1024;"));
     assert!(STARTUP_SOURCE.contains(
         "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL == 65_536"
     ));
-    assert!(STARTUP_SOURCE.contains("usb_memory_checkpoint stage=worker_start"));
+    assert!(STARTUP_SOURCE.contains("retain_usb_memory_checkpoint(\"worker_owner_prepare\")"));
+    assert!(STARTUP_SOURCE.contains("retain_usb_memory_checkpoint(\"usb_install\")"));
     assert!(STARTUP_SOURCE.contains("bwg_worker_start_failure category=startup_failed"));
-    assert!(STARTUP_SOURCE.contains("bwg_worker_start_failure_detail(&error)"));
+    assert!(STARTUP_SOURCE.contains("bwg_worker_start_failure_detail(error)"));
+    assert!(USB_SOURCE.contains("pub(crate) fn prepare("));
+    assert!(USB_SOURCE.contains("pub(crate) fn install("));
     assert_eq!(MAIN_SOURCE.matches("mod bwg_worker_usb;").count(), 1);
 }
 

@@ -270,6 +270,17 @@ focused ownership tests, all 76 Bazel tests, Bright Builds, firmware packaging,
 native-USB ownership, redaction, and reference cleanliness pass. Exact-package
 hardware validation remains pending.
 
+Latest hardware discriminator: exact `5ab0eb31` remained reboot-stable, but
+moving statistics increased the pre-Worker checkpoint only to 28,531 eligible
+bytes with an 11,264-byte largest block; owner spawn remained `ENOMEM`. The
+next correction splits Worker startup into early owner-stack preparation and
+post-Wi-Fi TinyUSB installation, retaining checkpoints at both boundaries.
+This preserves the proven 16 KiB Worker stack and avoids speculative stack
+shrinking. Ordered fresh-target Rust gates, focused ownership tests, all 76
+Bazel tests, Bright Builds, firmware packaging, native-USB ownership,
+redaction, reference cleanliness, and parity progress pass. Exact-package
+hardware validation remains pending.
+
 ### task-native-usb-recovery-transition-205 | 2026-08-30 | Recover first and prove one no-write transition
 
 - [x] Create and push the immutable recovery and single-transition plan before
