@@ -84,7 +84,9 @@ owner and installing TinyUSB. The Worker keeps its proven 16 KiB stack, while
 `CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536` prevents ordinary PSRAM-eligible
 allocations from consuming the internal pool required by forced-internal task
 stacks and DMA. Diagnostic and unconfirmed-safe boots retain their earlier
-Serial/JTAG path. Changing either memory budget or this ordering requires
+Serial/JTAG path. The non-safety-critical statistics producer starts after the
+Worker so its 8 KiB stack cannot split the last Worker-sized internal block;
+the fan and safety owners remain ahead of Worker. Changing either memory budget or this ordering requires
 compile-time and resolved-config assertions, source-ownership ordering tests,
 and live proof that Wi-Fi and the USB owner both remain stable. Closed
 pre-Worker heap facts and previous-boot panic/allocation receipts are retained

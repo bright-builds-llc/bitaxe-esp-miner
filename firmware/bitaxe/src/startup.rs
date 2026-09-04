@@ -45,6 +45,7 @@ pub(crate) fn run() -> anyhow::Result<()> {
     );
     start_network_services(maybe_modem);
     start_deferred_usb_runtime(runtime_services.deferred_usb_runtime);
+    start_statistics_runtime();
     wifi_adapter::maybe_start_network_reconnect_probe(route_shell_ready);
     Ok(())
 }
@@ -355,9 +356,6 @@ fn start_runtime_services(
             log::warn!("fan_controller=unavailable reason=thread_spawn_failed error={error:#}");
         }
     }
-    if let Err(error) = statistics_runtime::start() {
-        log::warn!("statistics_runtime=unavailable reason=thread_spawn_failed error={error:#}");
-    }
     let deferred_usb_runtime = if serial_jtag_runtime {
         boot_evidence::publish_usb_boot_profile(
             bitaxe_api::UsbBootTransport::SerialJtagRuntime,
@@ -427,6 +425,12 @@ fn retain_previous_boot_failure() {
     }
     if let Some(marker) = boot_evidence::worker_allocation_failure_marker() {
         crate::info_retained(&marker);
+    }
+}
+
+fn start_statistics_runtime() {
+    if let Err(error) = statistics_runtime::start() {
+        log::warn!("statistics_runtime=unavailable reason=thread_spawn_failed error={error:#}");
     }
 }
 

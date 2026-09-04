@@ -188,11 +188,15 @@ fn startup_recovers_before_optional_owners_and_starts_control_after_wifi() {
     let worker = run
         .find("start_deferred_usb_runtime(runtime_services.deferred_usb_runtime)")
         .expect("deferred BWG worker startup should exist");
+    let statistics = run
+        .find("start_statistics_runtime()")
+        .expect("statistics startup should exist");
 
     // Act / Assert
     assert!(baseline < recovery);
     assert!(recovery < production);
     assert!(network < worker);
+    assert!(worker < statistics);
     assert!(USB_SOURCE.contains("const OWNER_STACK_BYTES: usize = 16 * 1024;"));
     assert!(STARTUP_SOURCE.contains(
         "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL == 65_536"

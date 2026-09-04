@@ -261,7 +261,14 @@ PSRAM-eligible allocations cannot consume forced-internal stack/DMA memory,
 and retains closed heap/failure evidence. Ordered Rust gates, Bright Builds,
 all 76 Bazel tests, the real normal/rollback firmware builds, exact resolved
 sdkconfig checks, native-USB ownership, parity/progress, redaction, and
-reference cleanliness pass. Exact-package hardware validation remains pending.
+reference cleanliness pass. Exact-package hardware validation then measured
+19,295 eligible bytes but only a 9,216-byte largest block before the 16 KiB
+Worker spawn. The next minimal correction orders the 8 KiB statistics producer
+after Worker while keeping fan and safety owners ahead. Ordered Rust gates
+(using a fresh target after the workspace target hit the known host I/O stall),
+focused ownership tests, all 76 Bazel tests, Bright Builds, firmware packaging,
+native-USB ownership, redaction, and reference cleanliness pass. Exact-package
+hardware validation remains pending.
 
 ### task-native-usb-recovery-transition-205 | 2026-08-30 | Recover first and prove one no-write transition
 
