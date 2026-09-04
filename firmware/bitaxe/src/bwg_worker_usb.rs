@@ -145,6 +145,9 @@ where
                 maintenance_ingress_open = true;
                 worker.begin_enumeration();
                 write_evidence(b"bwg_worker={\"event\":\"attached\"}\n");
+                let mut marker = crate::boot_evidence::worker_usb_boot_marker();
+                marker.push('\n');
+                write_evidence(marker.as_bytes());
             }
             UsbEvent::Detached => {
                 accumulator.clear();

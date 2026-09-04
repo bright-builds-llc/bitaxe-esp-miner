@@ -3,11 +3,11 @@ use std::{env, fs};
 
 use anyhow::{Context, Result};
 use bitaxe_device_session::{
-    create_empty_private_root, finalize_display_uat, run_admitted_inspection,
-    run_admitted_transaction, run_display_uat_live, run_fixture_session, run_live_session,
-    validate_private_input, DeviceInspectionIntent, DeviceTransactionIntent, DisplayUatIntent,
-    FixtureTranscript, InspectionArtifacts, OtaIntent, RebootIntent, SessionArtifacts,
-    SessionRequest, TerminalCategory, TransactionGoal,
+    create_empty_private_root, finalize_display_uat, observe_usb_reboot_loop,
+    run_admitted_inspection, run_admitted_transaction, run_display_uat_live, run_fixture_session,
+    run_live_session, validate_private_input, DeviceInspectionIntent, DeviceTransactionIntent,
+    DisplayUatIntent, FixtureTranscript, InspectionArtifacts, OtaIntent, RebootIntent,
+    SessionArtifacts, SessionRequest, TerminalCategory, TransactionGoal,
 };
 use camino::Utf8PathBuf;
 use clap::{Args, Parser, Subcommand};
@@ -37,6 +37,8 @@ enum Command {
     DisplayUatLive(DisplayUatLiveArgs),
     #[command(name = "display-uat-finalize")]
     DisplayUatFinalize(DisplayUatFinalizeArgs),
+    #[command(name = "observe-usb-reboot-loop")]
+    ObserveUsbRebootLoop(ObserveUsbRebootLoopArgs),
 }
 
 #[derive(Debug, Args)]
@@ -180,6 +182,15 @@ struct DisplayUatFinalizeArgs {
     projection_output: Utf8PathBuf,
 }
 
+#[derive(Debug, Args)]
+struct ObserveUsbRebootLoopArgs {
+    #[arg(long)]
+    port: String,
+
+    #[arg(long = "timeout-seconds", default_value_t = 15)]
+    timeout_seconds: u64,
+}
+
 fn main() {
     match run() {
         Ok(TerminalCategory::Ready) => {}
@@ -208,7 +219,25 @@ fn run() -> Result<TerminalCategory> {
         Command::InspectLive(args) => run_inspect_live(args),
         Command::DisplayUatLive(args) => run_display_uat(args),
         Command::DisplayUatFinalize(args) => run_display_uat_finalize(args),
+        Command::ObserveUsbRebootLoop(args) => run_observe_usb_reboot_loop(args),
     }
+}
+
+fn run_observe_usb_reboot_loop(args: ObserveUsbRebootLoopArgs) -> Result<TerminalCategory> {
+    if args.timeout_seconds == 0 || args.timeout_seconds > 30 {
+        anyhow::bail!("timeout-seconds must be between 1 and 30");
+    }
+    let observation =
+        observe_usb_reboot_loop(&args.port, Duration::from_secs(args.timeout_seconds))?;
+    println!("usb_reboot_loop: {}", observation.category().label());
+    println!("marker_count: {}", observation.marker_count());
+    println!("reconnect_count: {}", observation.reconnect_count());
+    println!("latest_boot_ordinal: {}", observation.latest_boot_ordinal());
+    println!(
+        "latest_reset_reason: {}",
+        observation.latest_reset_reason().label()
+    );
+    Ok(TerminalCategory::Ready)
 }
 
 fn validate_timeout(timeout_seconds: u64) -> Result<()> {

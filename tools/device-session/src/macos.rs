@@ -1,13 +1,18 @@
 use std::collections::BTreeMap;
-use std::fs::{self, File, OpenOptions};
-use std::io::{self, Read};
-use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
+use std::fs;
+use std::os::unix::fs::MetadataExt;
 use std::process::Command;
 
 use anyhow::{bail, Context, Result};
 use sha2::{Digest, Sha256};
 
 use crate::{DevicePhase, PhysicalMatch, SessionEvent};
+
+mod receive_only;
+mod reconnecting;
+
+pub(crate) use receive_only::ReceiveOnlyReader;
+pub(crate) use reconnecting::capture_reconnecting_receive_only;
 
 const IOREG: &str = "/usr/sbin/ioreg";
 const LSOF: &str = "/usr/sbin/lsof";
@@ -60,44 +65,6 @@ struct NodeFields {
 pub(crate) struct DeviceObservation {
     pub(crate) event: SessionEvent,
     pub(crate) maybe_port: Option<String>,
-}
-
-pub(crate) struct ReceiveOnlyReader {
-    file: File,
-    port: String,
-}
-
-impl ReceiveOnlyReader {
-    pub(crate) fn open(port: &str) -> Result<Self> {
-        let file = OpenOptions::new()
-            .read(true)
-            .custom_flags(libc_flags())
-            .open(port)
-            .context("receive-only serial open failed")?;
-        Ok(Self {
-            file,
-            port: port.to_owned(),
-        })
-    }
-
-    pub(crate) fn read_available(&mut self) -> Result<Vec<u8>> {
-        let mut collected = Vec::new();
-        loop {
-            let mut buffer = [0_u8; 4096];
-            match self.file.read(&mut buffer) {
-                Ok(0) => break,
-                Ok(count) => collected.extend_from_slice(&buffer[..count]),
-                Err(error) if error.kind() == io::ErrorKind::WouldBlock => break,
-                Err(error) if error.kind() == io::ErrorKind::Interrupted => continue,
-                Err(error) => return Err(error).context("receive-only serial read failed"),
-            }
-        }
-        Ok(collected)
-    }
-
-    pub(crate) fn port(&self) -> &str {
-        &self.port
-    }
 }
 
 pub(crate) struct MacOsDeviceAdapter;
@@ -321,16 +288,7 @@ fn observation(
 }
 
 fn receive_only_accessible(port: &str) -> bool {
-    OpenOptions::new()
-        .read(true)
-        .custom_flags(libc_flags())
-        .open(port)
-        .is_ok()
-}
-
-const fn libc_flags() -> i32 {
-    // Values are stable Darwin ABI constants: O_NOCTTY and O_NONBLOCK.
-    0x0002_0000 | 0x0000_0004
+    ReceiveOnlyReader::open(port).is_ok()
 }
 
 fn scan_candidates() -> Result<Vec<Candidate>> {

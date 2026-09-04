@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use anyhow::{bail, Result};
 
 use crate::SessionEvent;
@@ -23,6 +25,18 @@ pub(crate) struct UsbProfileFields {
 pub(crate) struct DeviceObservation {
     pub(crate) event: SessionEvent,
     pub(crate) maybe_port: Option<String>,
+}
+
+pub(crate) struct ReconnectingReceiveCapture {
+    pub(crate) bytes: Vec<u8>,
+    pub(crate) open_count: u16,
+}
+
+pub(crate) fn capture_reconnecting_receive_only(
+    _requested_port: &str,
+    _timeout: Duration,
+) -> Result<ReconnectingReceiveCapture> {
+    bail!("reconnecting receive-only capture is unsupported on this platform")
 }
 
 pub(crate) struct ReceiveOnlyReader;

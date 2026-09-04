@@ -6,6 +6,8 @@ pub const BOOT_RECORD_MAGIC: u32 = 0x4258_5254;
 pub const BOOT_RECORD_SCHEMA_VERSION: u32 = 1;
 /// Cadence for replaying non-secret boot identity evidence.
 pub const BOOT_EVIDENCE_INTERVAL_MS: u64 = 10_000;
+/// Prefix for the closed Worker-CDC reboot discriminator.
+pub const WORKER_USB_BOOT_MARKER: &str = "usb_reboot_discriminator";
 
 /// Reset-retained boot counter with integrity fields for fail-closed continuity.
 #[repr(C)]
@@ -151,6 +153,83 @@ impl ResetReasonCategory {
     }
 }
 
+/// Closed boot identity replayed over Worker CDC after every USB mount.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WorkerUsbBootMarker {
+    boot_ordinal: u64,
+    reset_reason: ResetReasonCategory,
+    uptime_ms: u64,
+}
+
+impl WorkerUsbBootMarker {
+    /// Creates a marker from already-admitted boot-lifetime facts.
+    #[must_use]
+    pub const fn new(boot_ordinal: u64, reset_reason: ResetReasonCategory, uptime_ms: u64) -> Self {
+        Self {
+            boot_ordinal,
+            reset_reason,
+            uptime_ms,
+        }
+    }
+
+    /// Renders the exact value-free Worker CDC line.
+    #[must_use]
+    pub fn marker(self) -> String {
+        format!(
+            "{WORKER_USB_BOOT_MARKER} schema=v1 boot_ordinal={} reset_reason={} uptime_ms={} redacted=true",
+            self.boot_ordinal,
+            self.reset_reason.label(),
+            self.uptime_ms
+        )
+    }
+
+    /// Parses one exact Worker CDC line, tolerating a logger prefix.
+    #[must_use]
+    pub fn parse(line: &str) -> Option<Self> {
+        let tokens = line.split_whitespace().collect::<Vec<_>>();
+        let start = tokens
+            .iter()
+            .position(|token| *token == WORKER_USB_BOOT_MARKER)?;
+        let fields = tokens.get(start..)?;
+        if fields.len() != 6 || fields[1] != "schema=v1" || fields[5] != "redacted=true" {
+            return None;
+        }
+        let boot_ordinal = fields[2].strip_prefix("boot_ordinal=")?.parse().ok()?;
+        if boot_ordinal == 0 {
+            return None;
+        }
+        let reset_reason = match fields[3].strip_prefix("reset_reason=")? {
+            "power_on" => ResetReasonCategory::PowerOn,
+            "software_cpu" => ResetReasonCategory::SoftwareCpu,
+            "watchdog" => ResetReasonCategory::Watchdog,
+            "panic" => ResetReasonCategory::Panic,
+            "brownout" => ResetReasonCategory::Brownout,
+            "other" => ResetReasonCategory::Other,
+            _ => return None,
+        };
+        let uptime_ms = fields[4].strip_prefix("uptime_ms=")?.parse().ok()?;
+        Some(Self::new(boot_ordinal, reset_reason, uptime_ms))
+    }
+
+    /// Returns the reset-retained boot ordinal.
+    #[must_use]
+    pub const fn boot_ordinal(self) -> u64 {
+        self.boot_ordinal
+    }
+
+    /// Returns the closed reset-reason category.
+    #[must_use]
+    pub const fn reset_reason(self) -> ResetReasonCategory {
+        self.reset_reason
+    }
+
+    /// Returns the monotonic uptime sampled for this mount.
+    #[must_use]
+    pub const fn uptime_ms(self) -> u64 {
+        self.uptime_ms
+    }
+}
+
 /// Formats one session-bound boot identity marker.
 pub fn boot_identity_marker(
     session: [u32; 4],
@@ -189,6 +268,39 @@ mod tests {
         assert_eq!(transition.kind, RtcBootTransitionKind::Incremented);
         assert_eq!(transition.record.ordinal, 42);
         assert!(transition.record.is_valid());
+    }
+
+    #[test]
+    fn worker_usb_boot_marker_round_trips_closed_boot_facts() {
+        // Arrange
+        let expected = WorkerUsbBootMarker::new(42, ResetReasonCategory::Watchdog, 750);
+
+        // Act
+        let rendered = expected.marker();
+        let parsed = WorkerUsbBootMarker::parse(&rendered);
+
+        // Assert
+        assert_eq!(parsed, Some(expected));
+        assert_eq!(
+            rendered,
+            "usb_reboot_discriminator schema=v1 boot_ordinal=42 reset_reason=watchdog uptime_ms=750 redacted=true"
+        );
+    }
+
+    #[test]
+    fn worker_usb_boot_marker_rejects_open_or_malformed_fields() {
+        // Arrange
+        let candidates = [
+            "usb_reboot_discriminator schema=v1 boot_ordinal=0 reset_reason=panic uptime_ms=1 redacted=true",
+            "usb_reboot_discriminator schema=v1 boot_ordinal=1 reset_reason=raw_9 uptime_ms=1 redacted=true",
+            "usb_reboot_discriminator schema=v1 boot_ordinal=1 reset_reason=panic uptime_ms=1 redacted=false",
+            "usb_reboot_discriminator schema=v1 boot_ordinal=1 reset_reason=panic uptime_ms=1 redacted=true extra=value",
+        ];
+
+        // Act / Assert
+        for candidate in candidates {
+            assert_eq!(WorkerUsbBootMarker::parse(candidate), None);
+        }
     }
 
     #[test]

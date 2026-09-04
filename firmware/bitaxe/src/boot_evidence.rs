@@ -301,6 +301,16 @@ pub fn operator_snapshot_reset_reason_category() -> ResetReasonCategory {
     reset_reason()
 }
 
+/// Returns one closed reboot discriminator for the current Worker mount.
+pub fn worker_usb_boot_marker() -> String {
+    bitaxe_api::boot_identity::WorkerUsbBootMarker::new(
+        boot_ordinal(),
+        reset_reason(),
+        runtime_uptime::millis(),
+    )
+    .marker()
+}
+
 fn boot_session() -> BootSessionNonce {
     *BOOT_SESSION.get_or_init(BootSessionNonce::from_hardware_rng)
 }

@@ -105,3 +105,10 @@ fn usb_boot_profile_is_selected_once_and_replayed_by_the_boot_lifetime_owner() {
     assert!(STARTUP_SOURCE.contains("UsbBootProfileReason::BootBaselineUnconfirmed"));
     assert_eq!(STARTUP_SOURCE.matches("publish_usb_boot_profile(").count(), 3);
 }
+
+#[test]
+fn worker_mount_replays_the_closed_reboot_discriminator() {
+    // Act / Assert
+    assert!(BOOT_EVIDENCE_SOURCE.contains("pub fn worker_usb_boot_marker()"));
+    assert!(BOOT_EVIDENCE_SOURCE.contains("WorkerUsbBootMarker::new("));
+}

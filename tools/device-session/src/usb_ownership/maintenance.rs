@@ -22,6 +22,19 @@ pub(super) enum MaintenanceControlStep {
     AssertDtr,
 }
 
+impl MaintenanceControlStep {
+    const fn label(self) -> &'static str {
+        match self {
+            Self::ClearDtr => "clear_dtr",
+            Self::SetBitRate(115_200) => "set_115200",
+            Self::SetBitRate(1_200) => "set_1200",
+            Self::SetBitRate(_) => "set_unsupported_rate",
+            Self::Settle => "settle",
+            Self::AssertDtr => "assert_dtr",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum MaintenanceCommitStep {
     ClearDtr,
@@ -82,9 +95,13 @@ fn apply_maintenance_control_step(
     if accepted {
         return Ok(());
     }
+    let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
     Err(handoff_error(
         UsbTerminalCategory::HandoffUnsupported,
-        "the Worker CDC adapter rejected the maintenance control plan",
+        format!(
+            "the Worker CDC adapter rejected maintenance_step={} errno={errno}",
+            step.label()
+        ),
     ))
 }
 
@@ -241,4 +258,38 @@ pub fn handoff_worker_to_rom(
 #[cfg(target_os = "macos")]
 fn clear_dtr(fd: std::os::fd::RawFd, dtr: &mut libc::c_int) {
     let _result = unsafe { libc::ioctl(fd, libc::TIOCMBIC, dtr) };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::MaintenanceControlStep;
+
+    #[test]
+    fn maintenance_control_step_labels_are_closed() {
+        // Arrange
+        let steps = [
+            MaintenanceControlStep::ClearDtr,
+            MaintenanceControlStep::SetBitRate(115_200),
+            MaintenanceControlStep::Settle,
+            MaintenanceControlStep::AssertDtr,
+            MaintenanceControlStep::SetBitRate(1_200),
+            MaintenanceControlStep::SetBitRate(9_600),
+        ];
+
+        // Act
+        let labels = steps.map(MaintenanceControlStep::label);
+
+        // Assert
+        assert_eq!(
+            labels,
+            [
+                "clear_dtr",
+                "set_115200",
+                "settle",
+                "assert_dtr",
+                "set_1200",
+                "set_unsupported_rate",
+            ]
+        );
+    }
 }

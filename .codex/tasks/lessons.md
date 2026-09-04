@@ -220,3 +220,10 @@
 2. What went wrong: A recovery design added masked dialogs and special interactive secrecy for a local RFC1918 address even though the user treats development IPs as ordinary local diagnostics.
 3. Preventive rule: Allow local development UI, console, and protected task artifacts to show RFC1918 addresses normally. Apply strict redaction when evidence is committed or shared, and keep credentials, public endpoints, tokens, and owner identifiers under their stronger existing protections.
 4. Trigger signal to catch it earlier: A workflow proposes hidden input, secret storage, or credential-grade handling solely because an operator must enter a private development IP address.
+
+## lesson-receive-only-serial-still-requires-raw-terminal-configuration | 2026-09-04 15:00
+
+1. Date: 2026-09-04
+2. What went wrong: The macOS USB observer opened the CDC callout node read-only and nonblocking but left its terminal line discipline in canonical mode, so binary and partial firmware evidence could remain withheld and healthy application execution appeared silent.
+3. Preventive rule: A receive-only serial Adapter must still configure the admitted descriptor as raw at the expected baud, enable local receive, and disable hang-up-on-close while explicitly excluding payload writes, modem-control operations, DTR/RTS changes, and the maintenance baud.
+4. Trigger signal to catch it earlier: A serial reader opens successfully but receives no bytes, while a PTY regression with bytes lacking a newline also returns empty or the Adapter never applies raw termios configuration.

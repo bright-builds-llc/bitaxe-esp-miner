@@ -60,6 +60,9 @@ The only Worker-to-ROM command channel is this CDC class-control sequence:
 Wrong ordering, a duplicate event, timeout, disconnect, active effect, failed
 safe stop, missing receipt, or control I/O failure disarms without rebooting.
 CDC payload bytes remain non-command data under ADR-0018.
+Host control-I/O failures retain the closed maintenance-step label and numeric
+errno privately so a retry can target the failed boundary instead of repeating
+the same undifferentiated `handoff_unsupported` result.
 
 ## Firmware implementation ownership
 
@@ -106,7 +109,14 @@ Monitoring never arms handoff.
   admitted ROM downloader. Synchronization never reaches Worker CDC because
   the profile handoff and ROM admission precede the flashing process.
 - Observe selects the receive-only Adapter for Worker or Serial/JTAG and never
-  arms maintenance.
+  arms maintenance. On macOS the Adapter opens the callout node read-only,
+  configures it as raw 115200 serial, enables local receive, and disables
+  hang-up-on-close. It does not write payload bytes, issue modem-control
+  `ioctl`s, change DTR/RTS, or select the 1200-baud maintenance rate. Raw mode
+  is required even for receive-only operation: otherwise the terminal line
+  discipline may withhold binary or partial evidence until a newline arrives.
+  Profile accessibility probes use this same no-hangup open path; they must not
+  perform a separate default-terminal open/close cycle before monitoring.
 - After a write, the same lease reacquires the expected application profile
   and remains responsible for process-group cleanup and final holder checks.
 - A software handoff that set `RTC_CNTL_FORCE_DOWNLOAD_BOOT` exits ROM through
@@ -216,6 +226,15 @@ Use `--pattern repeated` for connection durability against one slice and
 `--pattern sequential` for bounded full-partition coverage.
 The first accepted no-stub baseline is recorded at
 `docs/parity/evidence/native-usb-stability/usb-stability-baseline-v1.json`.
+
+When a Worker node repeatedly disappears before normal session admission,
+`just diagnose-usb-reboot-loop --port <worker-port> --timeout-seconds 15`
+retains the physical connector and reopens only the receive-only Adapter. Each
+Worker mount emits a closed `boot_ordinal`, reset-reason category, and uptime
+marker without requiring DTR. Increasing ordinals prove a chip reset; one
+ordinal with increasing uptime proves a USB-stack-only reset. The diagnostic
+is bounded to 30 seconds, captures at most 64 KiB, sends no bytes, changes no
+control lines, performs no network action, and publishes no raw identity.
 
 Manual BOOT/RESET is a one-time bootstrap or last-resort recovery path, never
 the normal development workflow. Buttonless flashing is not qualified until

@@ -35,6 +35,7 @@ for (const required of [
   "tud_cdc_line_state_cb",
   "tud_vendor_n_write",
   "tud_cdc_n_write",
+  "tud_mounted",
   "bytes.is_null()",
   "coding.is_null()",
   "read_unaligned()",
@@ -45,6 +46,9 @@ for (const required of [
 }
 if (count(rustOwner, /tinyusb_driver_install\s*\(/g) !== 1) {
   throw new Error("firmware must retain exactly one TinyUSB installation owner");
+}
+if (rustOwner.includes("tud_cdc_n_connected")) {
+  throw new Error("Worker CDC evidence must not require host DTR");
 }
 
 const phyAdapter = requireText("firmware/bitaxe/bwg/native/usb_phy_handoff.c", [
@@ -128,6 +132,7 @@ requireText("tools/device-session/src/usb_ownership/maintenance.rs", [
   "MaintenanceControlStep::SetBitRate(115_200)",
   "MaintenanceControlStep::AssertDtr",
   "MaintenanceControlStep::SetBitRate(1_200)",
+  "maintenance_step={}",
 ]);
 requireText("tools/device-session/src/usb_ownership/profile_trace.rs", [
   "ProfileObservationTrace",
@@ -137,7 +142,35 @@ requireText("tools/device-session/src/macos.rs", [
   "physical_identity_digest",
   "enumeration_token",
   "product_name",
+  "ReceiveOnlyReader::open(port).is_ok()",
 ]);
+requireText("tools/device-session/src/reboot_loop.rs", [
+  "observe_usb_reboot_loop",
+  "WorkerUsbBootMarker::parse",
+  "UsbRebootLoopCategory::ChipReset",
+  "UsbRebootLoopCategory::UsbStackReset",
+]);
+const receiveOnlyAdapter = read("tools/device-session/src/macos/receive_only.rs")
+  .split("#[cfg(test)]")[0];
+for (const required of [
+  ".read(true)",
+  "cfmakeraw",
+  "B115200",
+  "CLOCAL",
+  "CREAD",
+  "!libc::HUPCL",
+]) {
+  if (!receiveOnlyAdapter.includes(required)) {
+    throw new Error(`macOS receive-only Adapter is missing ${JSON.stringify(required)}`);
+  }
+}
+for (const forbidden of [".write(", "write_all", "TIOCM", "ioctl(", "B1200"]) {
+  if (receiveOnlyAdapter.includes(forbidden)) {
+    throw new Error(
+      `macOS receive-only Adapter contains forbidden operation ${JSON.stringify(forbidden)}`,
+    );
+  }
+}
 requireText("tools/flash/src/environment/usb_ownership.rs", [
   "ensure_bootloader",
   "handoff_worker_to_rom(session)",
@@ -297,6 +330,7 @@ requireText("Justfile", [
   "native-usb-rom-exit",
   "native-usb-owner-recovery",
   "usb-stability-read",
+  "diagnose-usb-reboot-loop",
 ]);
 
 requireText("AGENTS.md", [

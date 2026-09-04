@@ -12,6 +12,7 @@ mod macos;
 mod macos;
 mod model;
 mod platform;
+mod reboot_loop;
 mod transaction;
 mod usb;
 mod usb_ownership;
@@ -38,6 +39,7 @@ pub use model::{
     REBOOT_INTENT_SCHEMA, REQUEST_SCHEMA,
 };
 pub use platform::current_platform;
+pub use reboot_loop::{observe_usb_reboot_loop, UsbRebootLoopCategory, UsbRebootLoopObservation};
 pub use transaction::{
     run_admitted_transaction, DeviceTransactionIntent, TransactionGoal, TRANSACTION_INTENT_SCHEMA,
 };

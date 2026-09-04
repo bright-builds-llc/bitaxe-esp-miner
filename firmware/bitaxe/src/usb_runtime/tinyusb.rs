@@ -115,7 +115,7 @@ pub(super) fn emit_evidence(bytes: &[u8]) -> Result<(), UsbRuntimeFailure> {
     if bytes.is_empty() {
         return Err(UsbRuntimeFailure::UnavailableTransport);
     }
-    if !unsafe { sys::tud_cdc_n_connected(EVIDENCE_INTERFACE) } {
+    if !unsafe { sys::tud_mounted() } {
         return Err(UsbRuntimeFailure::Disconnected);
     }
     let length = u32::try_from(bytes.len()).map_err(|_| UsbRuntimeFailure::PartialWrite)?;

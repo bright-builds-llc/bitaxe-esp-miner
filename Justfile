@@ -37,6 +37,9 @@ flash *args:
 monitor *args:
     bazel run //tools/flash:flash -- monitor {{ args }}
 
+diagnose-usb-reboot-loop *args:
+    bazel run //tools/device-session:device-session -- observe-usb-reboot-loop {{ args }}
+
 flash-monitor *args:
     bazel run //tools/flash:flash -- flash-monitor {{ args }}
 

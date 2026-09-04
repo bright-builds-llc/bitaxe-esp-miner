@@ -91,6 +91,14 @@ fn rust_owns_tinyusb_while_c_is_only_the_phy_handoff_adapter() {
 }
 
 #[test]
+fn worker_evidence_requires_mount_but_not_dtr() {
+    // Arrange / Act / Assert
+    assert!(USB_TINYUSB_SOURCE.contains("if !unsafe { sys::tud_mounted() }"));
+    assert!(!USB_TINYUSB_SOURCE.contains("tud_cdc_n_connected"));
+    assert!(USB_SOURCE.contains("crate::boot_evidence::worker_usb_boot_marker()"));
+}
+
+#[test]
 fn phy_handoff_drives_disconnect_and_requires_bounded_bus_reset() {
     // Arrange
     let disconnect = USB_PHY_SOURCE
