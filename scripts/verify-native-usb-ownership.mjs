@@ -111,8 +111,11 @@ requireText("firmware/bitaxe/src/startup.rs", [
   "usb_runtime=serial_jtag",
 ]);
 requireText("firmware/bitaxe/sdkconfig.defaults", [
-  "CONFIG_TINYUSB_VENDOR_RX_BUFSIZE=1024",
+  "CONFIG_TINYUSB_TASK_STACK_SIZE=3072",
 ]);
+if (read("firmware/bitaxe/sdkconfig.defaults").includes("TINYUSB_VENDOR_RX_BUFSIZE")) {
+  throw new Error("firmware sdkconfig retained an unknown TinyUSB vendor RX symbol");
+}
 
 requireText("tools/device-session/src/usb_ownership.rs", [
   "WorkerRuntime",

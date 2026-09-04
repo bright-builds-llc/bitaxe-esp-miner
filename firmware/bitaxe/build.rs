@@ -68,7 +68,7 @@ fn assert_sdkconfig_contract() {
         "CONFIG_ESP_CONSOLE_UART_DEFAULT=y",
         "CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200",
         "CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG=y",
-        "CONFIG_TINYUSB_VENDOR_RX_BUFSIZE=1024",
+        "CONFIG_TINYUSB_TASK_STACK_SIZE=3072",
     ];
 
     println!("cargo:rerun-if-changed=sdkconfig.defaults");

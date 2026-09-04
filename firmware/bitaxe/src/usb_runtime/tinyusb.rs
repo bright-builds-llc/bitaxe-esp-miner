@@ -9,6 +9,7 @@ use esp_idf_sys as sys;
 
 const WORKER_INTERFACE: u8 = 0;
 const EVIDENCE_INTERFACE: u8 = 0;
+const _: () = assert!(sys::CONFIG_TINYUSB_TASK_STACK_SIZE == 3_072);
 
 struct StaticStringPointers([*const c_char; 5]);
 

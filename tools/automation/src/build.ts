@@ -68,6 +68,7 @@ export async function buildFirmware(
     ),
   );
   if (cargo.exitCode !== 0) throw new Error("firmware Cargo build failed");
+  rejectUnknownKconfigWarnings(`${cargo.stdout}\n${cargo.stderr}`);
 
   const sourceElf = path.join(cargoTargetDir, target, "release", packageName);
   const disassembly = await processPort.run(internalCommandSpec(
@@ -83,6 +84,7 @@ export async function buildFirmware(
   await copyFile(sourceElf, path.join(outputDir, `${artifactPrefix}.elf`));
   const buildLabel = await requiredStampField(provenanceStamp, "build_label");
   const generated = await findGeneratedIdfBuild(cargoTargetDir, buildLabel);
+  requireResolvedUsbMemoryContract(await readFile(path.join(generated, "sdkconfig"), "utf8"));
   await Promise.all([
     copyFile(path.join(generated, "sdkconfig"), path.join(outputDir, `${artifactPrefix}.sdkconfig`)),
     copyFile(
@@ -98,6 +100,21 @@ export async function buildFirmware(
       path.join(outputDir, `${artifactPrefix}-otadata-initial.bin`),
     ),
   ]);
+}
+
+export function rejectUnknownKconfigWarnings(output: string): void {
+  if (/warning: unknown kconfig symbol /u.test(output)) {
+    throw new Error("firmware sdkconfig contains an unknown Kconfig symbol");
+  }
+}
+
+export function requireResolvedUsbMemoryContract(sdkconfig: string): void {
+  const values = sdkconfig
+    .split(/\r?\n/u)
+    .filter(line => line.startsWith("CONFIG_TINYUSB_TASK_STACK_SIZE="));
+  if (values.length !== 1 || values[0] !== "CONFIG_TINYUSB_TASK_STACK_SIZE=3072") {
+    throw new Error("resolved TinyUSB task stack does not match the qualified memory budget");
+  }
 }
 
 async function requiredStampField(file: string, key: string): Promise<string> {
