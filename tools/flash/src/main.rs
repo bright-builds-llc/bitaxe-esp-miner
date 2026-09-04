@@ -68,6 +68,7 @@ mod self_test_intent;
 mod support;
 mod tcp_payload_diagnostic;
 mod thermal_fault_intent;
+mod usb_stability;
 mod wifi;
 
 #[cfg(test)]
@@ -98,6 +99,7 @@ pub(crate) use self_test_intent::*;
 pub(crate) use support::*;
 pub(crate) use tcp_payload_diagnostic::*;
 pub(crate) use thermal_fault_intent::*;
+pub(crate) use usb_stability::*;
 pub(crate) use wifi::*;
 
 const PACKAGE_BUILD_DISPLAY: &str = "bazel build //firmware/bitaxe:firmware_image";
@@ -166,6 +168,7 @@ fn main() -> Result<()> {
         CliCommand::RomExitDiagnostic(command) => run_rom_exit_diagnostic(&command, &environment),
         CliCommand::OwnerRecovery(command) => run_owner_recovery(command, &environment),
         CliCommand::BootChainReadback(command) => run_boot_chain_readback(command, &environment),
+        CliCommand::UsbStabilityRead(command) => run_usb_stability_read(command, &environment),
     };
     let device_effect_state = environment.device_effect_state();
     let cleanup_result = environment.finish_usb_session();

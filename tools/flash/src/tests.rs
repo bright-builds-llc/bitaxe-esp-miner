@@ -22,6 +22,7 @@ mod cli_owner_recovery;
 mod cli_release_recovery;
 mod cli_restore_installed;
 mod cli_tcp_payload;
+mod cli_usb_stability;
 mod display_recovery;
 #[path = "tests/evidence.rs"]
 mod evidence_cases;

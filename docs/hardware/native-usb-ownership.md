@@ -206,6 +206,13 @@ compare bootloader, partition table, OTA selection data, and exactly the
 selected application with the immutable recovery snapshot. It never repairs a
 range or treats a valid flash comparison as proof that the application ran.
 
+During temporary USB stabilization, `just usb-stability-read` exercises a
+known recovery-006 factory slice through the ROM loader without the flasher
+stub. It pins the 16 MiB flash size, verifies every bounded chunk, holds the
+physical-device lease, and returns to the application without writing flash.
+Use a fresh ignored root for each calibration and change only one transport
+variable between failed runs.
+
 Manual BOOT/RESET is a one-time bootstrap or last-resort recovery path, never
 the normal development workflow. Buttonless flashing is not qualified until
 the active task records 20 automatic Worker-to-ROM-to-flash-to-Worker cycles

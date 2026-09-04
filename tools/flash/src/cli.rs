@@ -47,6 +47,26 @@ pub(crate) enum CliCommand {
     OwnerRecovery(OwnerRecoveryCommand),
     #[command(name = "boot-chain-readback")]
     BootChainReadback(BootChainReadbackCommand),
+    #[command(name = "usb-stability-read")]
+    UsbStabilityRead(UsbStabilityReadCommand),
+}
+
+#[derive(Debug, Parser, Clone)]
+pub(crate) struct UsbStabilityReadCommand {
+    #[arg(long, default_value = "205", value_parser = parse_board)]
+    pub(crate) board: BoardId,
+    #[arg(long)]
+    pub(crate) port: String,
+    #[arg(long = "restore-bundle", value_parser = parse_utf8_path)]
+    pub(crate) restore_bundle: Utf8PathBuf,
+    #[arg(long = "private-root", value_parser = parse_utf8_path)]
+    pub(crate) private_root: Utf8PathBuf,
+    #[arg(long = "chunk-bytes", default_value_t = 65_536)]
+    pub(crate) chunk_bytes: u32,
+    #[arg(long, default_value_t = 4)]
+    pub(crate) repetitions: u8,
+    #[arg(long = "redact-evidence")]
+    pub(crate) redact_evidence: bool,
 }
 
 #[derive(Debug, Parser, Clone)]

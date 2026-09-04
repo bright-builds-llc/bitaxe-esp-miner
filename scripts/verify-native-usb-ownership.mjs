@@ -243,6 +243,18 @@ requireText("tools/flash/src/environment/owner_recovery.rs", [
   "run_installed_application",
   "observe_receive_only",
 ]);
+requireText("tools/flash/src/environment/boot_chain.rs", [
+  '"--no-stub"',
+  '"--flash_size"',
+  '"16MB"',
+  '"read_flash"',
+]);
+requireText("tools/flash/src/usb_stability.rs", [
+  "rom_no_stub",
+  "digest_match_count",
+  "device_write_observed: false",
+  "host_network_effect: false",
+]);
 const nvsReadback = requireText("tools/flash/src/nvs_readback.rs", [
   "read_flash",
   "0x9000",
@@ -275,6 +287,7 @@ requireText("Justfile", [
   "native-usb-config-ap-recovery",
   "native-usb-rom-exit",
   "native-usb-owner-recovery",
+  "usb-stability-read",
 ]);
 
 requireText("AGENTS.md", [
@@ -293,6 +306,7 @@ requireText("docs/hardware/native-usb-ownership.md", [
   "just verify-native-usb-ownership",
   "just native-usb-display-recovery",
   "just native-usb-config-ap-recovery",
+  "just usb-stability-read",
   "execution owner",
 ]);
 requireText("docs/hardware/esp-device-session.md", ["native-usb-ownership.md"]);

@@ -95,6 +95,9 @@ native-usb-owner-recovery action *args:
 native-usb-boot-chain-integrity action *args:
     bazel run //tools/automation:native_usb_boot_chain_integrity -- {{ quote(action) }} {{ args }}
 
+usb-stability-read *args:
+    bazel run //tools/flash:flash -- usb-stability-read {{ args }}
+
 parity:
     bazel run //tools/parity:report -- report --checklist docs/parity/checklist.md --fail-on-invalid-verified
 
