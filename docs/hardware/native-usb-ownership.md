@@ -73,6 +73,12 @@ callbacks, vendor responses, CDC evidence, and typed failures through private
 `esp-idf-sys` calls. The BWG Worker is an Adapter that receives ordinary Rust
 events and never owns USB FFI.
 
+USB and Wi-Fi share scarce ESP32-S3 internal DMA-capable heap. The Worker
+vendor RX buffer is fixed at 1024 bytes; the 64 KiB Worker frame limit remains
+an incremental Rust framing bound, not a requirement for one USB FIFO-sized
+allocation. Raising TinyUSB buffers requires a firmware build guard plus live
+proof that Wi-Fi can still obtain its internal/DMA startup allocations.
+
 Repository-owned C is intentionally limited to `usb_phy_handoff.c`. That
 Adapter registers the force-download shutdown handler, uninstalls TinyUSB,
 switches the ESP32-S3 internal PHY to USB-Serial-JTAG, and restarts. It owns no

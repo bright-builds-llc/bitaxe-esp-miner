@@ -110,6 +110,9 @@ requireText("firmware/bitaxe/src/startup.rs", [
   "maybe_self_test_admission.is_some()",
   "usb_runtime=serial_jtag",
 ]);
+requireText("firmware/bitaxe/sdkconfig.defaults", [
+  "CONFIG_TINYUSB_VENDOR_RX_BUFSIZE=1024",
+]);
 
 requireText("tools/device-session/src/usb_ownership.rs", [
   "WorkerRuntime",

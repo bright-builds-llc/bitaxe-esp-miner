@@ -4,7 +4,7 @@ use std::fs;
 
 fn main() {
     embuild::espidf::sysenv::output();
-    assert_console_contract();
+    assert_sdkconfig_contract();
     println!("cargo:rerun-if-env-changed=BITAXE_BUILD_PROVENANCE_STAMP");
     println!("cargo:rerun-if-env-changed=BITAXE_BUILD_TIMESTAMP_UTC_FILE");
     println!("cargo:rerun-if-env-changed=BITAXE_HARDWARE_EVIDENCE_ACK");
@@ -63,11 +63,12 @@ fn rollback_probe_enabled() -> bool {
     }
 }
 
-fn assert_console_contract() {
-    const REQUIRED_DEFAULTS: [&str; 3] = [
+fn assert_sdkconfig_contract() {
+    const REQUIRED_DEFAULTS: [&str; 4] = [
         "CONFIG_ESP_CONSOLE_UART_DEFAULT=y",
         "CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200",
         "CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG=y",
+        "CONFIG_TINYUSB_VENDOR_RX_BUFSIZE=1024",
     ];
 
     println!("cargo:rerun-if-changed=sdkconfig.defaults");
@@ -76,7 +77,7 @@ fn assert_console_contract() {
     };
     for required in REQUIRED_DEFAULTS {
         if !defaults.lines().any(|line| line == required) {
-            panic!("firmware console contract missing {required}");
+            panic!("firmware sdkconfig contract missing {required}");
         }
     }
 }

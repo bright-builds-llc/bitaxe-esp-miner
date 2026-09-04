@@ -60,6 +60,7 @@ js_library(
     srcs = [
         "bwg/native/usb_phy_handoff.c",
         "bwg/native/include/usb_phy_handoff.h",
+        "sdkconfig.defaults",
         "src/boot_evidence.rs",
         "src/boot_evidence/usb_profile.rs",
         "src/bwg_worker_usb.rs",

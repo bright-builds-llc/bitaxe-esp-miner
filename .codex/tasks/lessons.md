@@ -227,3 +227,10 @@
 2. What went wrong: The macOS USB observer opened the CDC callout node read-only and nonblocking but left its terminal line discipline in canonical mode, so binary and partial firmware evidence could remain withheld and healthy application execution appeared silent.
 3. Preventive rule: A receive-only serial Adapter must still configure the admitted descriptor as raw at the expected baud, enable local receive, and disable hang-up-on-close while explicitly excluding payload writes, modem-control operations, DTR/RTS changes, and the maintenance baud.
 4. Trigger signal to catch it earlier: A serial reader opens successfully but receives no bytes, while a PTY regression with bytes lacking a newline also returns empty or the Adapter never applies raw termios configuration.
+
+## lesson-native-usb-and-wifi-share-internal-dma-heap | 2026-09-04 16:30
+
+1. Date: 2026-09-04
+2. What went wrong: TinyUSB Worker reserved a 4096-byte vendor RX FIFO before Wi-Fi startup, leaving the ESP32-S3 unable to satisfy a later 852-byte `DMA | 8BIT | INTERNAL` allocation; the allocator aborted directly and the board entered a panic reboot loop that looked like unstable USB enumeration.
+3. Preventive rule: Treat USB and Wi-Fi internal DMA-capable heap as one explicit budget. Keep USB FIFOs sized for incremental draining rather than maximum logical frame size, pin the qualified values in the firmware build and ownership verifier, and retain RTC-only allocation-failure evidence for field diagnosis.
+4. Trigger signal to catch it earlier: A TinyUSB buffer or task allocation grows, Worker enumerates briefly before repeated `panic` resets, or an allocation receipt reports capability mask `0x0000080c` during Wi-Fi startup.
