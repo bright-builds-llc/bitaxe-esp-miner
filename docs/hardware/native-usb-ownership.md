@@ -214,6 +214,8 @@ Use a fresh ignored root for each calibration and change only one transport
 variable between failed runs.
 Use `--pattern repeated` for connection durability against one slice and
 `--pattern sequential` for bounded full-partition coverage.
+The first accepted no-stub baseline is recorded at
+`docs/parity/evidence/native-usb-stability/usb-stability-baseline-v1.json`.
 
 Manual BOOT/RESET is a one-time bootstrap or last-resort recovery path, never
 the normal development workflow. Buttonless flashing is not qualified until

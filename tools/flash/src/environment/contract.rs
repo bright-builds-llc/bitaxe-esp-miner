@@ -34,7 +34,10 @@ pub(crate) trait FlashEnvironment {
     fn current_usb_physical_identity_digest(&self, port: &str) -> Result<String>;
     fn execute(&self, command_spec: &CommandSpec) -> Result<()>;
     fn execute_esptool_write_flash(&self, command: &ManagedEsptoolWriteFlash) -> Result<()>;
-    fn execute_esptool_read_flash(&self, command: &ManagedEsptoolReadFlash) -> Result<()>;
+    fn admit_flash_read(&self) -> Result<()> {
+        Ok(())
+    }
+    fn execute_flash_read(&self, read: &ManagedFlashRead) -> Result<()>;
     fn restore_application_runtime(&self, esptool: &Utf8Path) -> Result<ProfileObservationCounts>;
     fn execute_owner_recovery_exit(
         &self,
@@ -45,15 +48,6 @@ pub(crate) trait FlashEnvironment {
     }
     fn execute_owner_rom_probe(&self, command: &CommandSpec) -> Result<Vec<u8>> {
         self.execute_with_output(command)
-    }
-    fn execute_boot_chain_read(
-        &self,
-        _esptool: &Utf8Path,
-        _address: u32,
-        _size: u32,
-        _output: &Utf8Path,
-    ) -> Result<()> {
-        bail!("boot_chain=blocked reason=adapter_unavailable")
     }
     fn exit_boot_chain_rom(&self, _esptool: &Utf8Path) -> Result<UsbProfile> {
         bail!("boot_chain=blocked reason=adapter_unavailable")

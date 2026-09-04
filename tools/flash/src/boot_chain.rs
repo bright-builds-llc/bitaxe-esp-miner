@@ -151,11 +151,7 @@ pub(crate) fn run_boot_chain_readback(
     if current_physical != expected_physical {
         bail!("physical_identity_drift");
     }
-    let board_info =
-        environment.execute_owner_rom_probe(&owner_rom_probe_command(&command.port))?;
-    if !board_info_reports_esp32s3(&board_info) {
-        bail!("boot_chain=blocked reason=rom_admission");
-    }
+    environment.admit_flash_read()?;
     let esptool = find_managed_esptool(environment)?;
     let bundle_root = bundle_path
         .parent()
@@ -202,12 +198,14 @@ pub(crate) fn run_boot_chain_readback(
     if !selected_partition_bundle_match {
         bail!("boot_chain=blocked reason=selected_layout");
     }
-    environment.execute_boot_chain_read(
-        &esptool,
+    let selected_read = ManagedFlashRead::new(
+        esptool.clone(),
         selected.offset(),
         selected.size(),
-        &root.join("selected-app.private.bin"),
+        root.join("selected-app.private.bin"),
+        FlashReadDisposition::RetainRom,
     )?;
+    environment.execute_flash_read(&selected_read)?;
     let selected_bytes = environment.read_bytes(&root.join("selected-app.private.bin"))?;
     let snapshot_bytes =
         environment.read_bytes(&contained_snapshot(bundle_root, &selected_snapshot.path)?)?;
@@ -322,7 +320,14 @@ fn read_and_compare(
         .find(|range| range.name == name)
         .with_context(|| format!("boot_chain=blocked reason=range name={name}"))?;
     let output = root.join(format!("{name}.private.bin"));
-    environment.execute_boot_chain_read(esptool, range.address, range.size, &output)?;
+    let read = ManagedFlashRead::new(
+        esptool.to_owned(),
+        range.address,
+        range.size,
+        output.clone(),
+        FlashReadDisposition::RetainRom,
+    )?;
+    environment.execute_flash_read(&read)?;
     let actual = environment.read_bytes(&output)?;
     let expected = environment.read_bytes(&contained_snapshot(bundle_root, &range.path)?)?;
     Ok(actual == expected && sha256_bytes(&actual) == range.sha256)

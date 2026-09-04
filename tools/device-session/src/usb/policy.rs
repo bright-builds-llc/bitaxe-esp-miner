@@ -200,6 +200,23 @@ pub(super) fn espflash_diagnostic_filter(
     .then_some("espflash::connection=debug")
 }
 
+pub(super) fn classify_probe_failure(
+    args: &[String],
+    output: &SupervisedOutput,
+) -> UsbTerminalCategory {
+    let is_flash_read = args.iter().any(|argument| argument == "read_flash");
+    let mut bytes = output.stdout.clone();
+    bytes.extend_from_slice(&output.stderr);
+    let text = String::from_utf8_lossy(&bytes).to_ascii_lowercase();
+    if is_flash_read
+        && (text.contains("device not configured") || text.contains("serial data stream stopped"))
+    {
+        UsbTerminalCategory::UsbEnumerationLost
+    } else {
+        UsbTerminalCategory::FlashFailedBeforeTransfer
+    }
+}
+
 pub(super) fn ineligible_retry_detail(
     context: RetryContext,
     maybe_signature: Option<UsbConnectionSignature>,

@@ -6,49 +6,23 @@ const MANAGED_NVS_TOOL: &str =
 const WIFI_CREDENTIALS: &str = "wifi-credentials.json";
 pub(crate) const MAX_NVS_JSON_BYTES: usize = 1_048_576;
 
-pub(crate) const NVS_READ_ADDRESS: &str = "0x9000";
-pub(crate) const NVS_READ_SIZE: &str = "0x6000";
 pub(crate) const NVS_READ_ROOT: &str = "scratch/native-usb-config-ap-recovery/attempt-001";
 pub(crate) const NVS_FIRST_PLAN: &str =
     "docs/parity/work-plans/20260831T033840Z-NATIVE-USB-CONFIG-AP-RECOVERY-NVS-FIRST/PLAN.md";
 const NVS_FIRST_PLAN_SHA256: &str =
     "44f35fcef288199baab06da036adff88e815a49583aa3b230ea7fa565ff05bf6";
 
-pub(crate) struct ManagedEsptoolReadFlash {
-    program: Utf8PathBuf,
-    args: Vec<String>,
-    output: Utf8PathBuf,
-}
-
-impl ManagedEsptoolReadFlash {
-    pub(crate) fn program(&self) -> &Utf8Path {
-        &self.program
-    }
-    pub(crate) fn args(&self) -> &[String] {
-        &self.args
-    }
-    pub(crate) fn output(&self) -> &Utf8Path {
-        &self.output
-    }
-}
-
+#[cfg(test)]
 pub(crate) fn nvs_read_flash_args(port: &str, output: &Utf8Path) -> Vec<String> {
-    [
-        "--chip",
-        "esp32s3",
-        "--port",
-        port,
-        "--before",
-        "usb_reset",
-        "--after",
-        "hard_reset",
-        "read_flash",
-        NVS_READ_ADDRESS,
-        NVS_READ_SIZE,
-        output.as_str(),
-    ]
-    .map(str::to_owned)
-    .to_vec()
+    ManagedFlashRead::new(
+        Utf8PathBuf::from("esptool"),
+        0x9000,
+        0x6000,
+        output.to_owned(),
+        FlashReadDisposition::ReturnToApplication,
+    )
+    .expect("fixed NVS flash read is valid")
+    .args(port)
 }
 
 #[cfg(test)]
@@ -108,13 +82,16 @@ pub(crate) fn run_nvs_readback(
     set_private_directory_mode(&root)?;
     let program = find_managed_esptool(environment)?;
     let output = root.join("installed-nvs.private.bin");
-    let read = ManagedEsptoolReadFlash {
+    let read = ManagedFlashRead::new(
         program,
-        args: nvs_read_flash_args(&command.port, &output),
-        output: output.clone(),
-    };
+        0x9000,
+        0x6000,
+        output.clone(),
+        FlashReadDisposition::ReturnToApplication,
+    )?;
     environment.begin_usb_session(UsbOperation::Recover, &command.port)?;
-    environment.execute_esptool_read_flash(&read)?;
+    environment.admit_flash_read()?;
+    environment.execute_flash_read(&read)?;
     environment.finish_usb_session()?;
 
     let installed_json = run_nvs_dump(&python, &nvs_tool, &output)?;

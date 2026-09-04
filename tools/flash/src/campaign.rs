@@ -399,7 +399,9 @@ pub(crate) fn campaign_flash_failure(
                 CampaignTerminalCategory::ConcurrentRepoSession
             }
             UsbTerminalCategory::ForeignHolder => CampaignTerminalCategory::ForeignHolder,
-            UsbTerminalCategory::TransportAbsent => CampaignTerminalCategory::TransportAbsent,
+            UsbTerminalCategory::TransportAbsent | UsbTerminalCategory::UsbEnumerationLost => {
+                CampaignTerminalCategory::TransportAbsent
+            }
             UsbTerminalCategory::IdentityDrift => CampaignTerminalCategory::IdentityDrift,
             UsbTerminalCategory::PhysicalIdentityDrift => CampaignTerminalCategory::IdentityDrift,
             UsbTerminalCategory::RuntimeProfileUnknown

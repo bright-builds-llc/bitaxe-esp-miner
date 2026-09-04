@@ -502,6 +502,7 @@ fn esptool_write_effect_distinguishes_pre_transfer_partial_and_complete() {
     }
 }
 
+mod probe;
 #[test]
 fn protected_recovery_summary_is_mode_0600_and_excludes_stability_key() {
     // Arrange

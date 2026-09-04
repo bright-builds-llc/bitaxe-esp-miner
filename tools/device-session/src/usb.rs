@@ -36,8 +36,9 @@ pub use policy::{retry_is_eligible, RetryContext};
 use policy::EspflashConnectionSignature;
 use policy::{
     classify_bootloader_diagnostic, classify_espflash_failure, classify_esptool_write_failure,
-    espflash_diagnostic_filter, ineligible_retry_detail, is_esptool_write_effect, is_flash_effect,
-    successful_command_recovery_policy, validate_recovery_snapshot,
+    classify_probe_failure, espflash_diagnostic_filter, ineligible_retry_detail,
+    is_esptool_write_effect, is_flash_effect, successful_command_recovery_policy,
+    validate_recovery_snapshot,
 };
 
 #[derive(Clone, Copy)]
@@ -344,7 +345,7 @@ impl UsbSession {
             ));
             return Ok(output);
         }
-        let category = UsbTerminalCategory::FlashFailedBeforeTransfer;
+        let category = classify_probe_failure(args, &output);
         self.fail_once(category);
         self.last_command_diagnostic = Some(UsbCommandDiagnostic::from_output(
             &output,

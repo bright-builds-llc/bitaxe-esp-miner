@@ -75,11 +75,7 @@ pub(crate) fn run_usb_stability_read(
     create_stability_root(&root, &command.private_root, environment)?;
     environment.begin_usb_session(UsbOperation::Recover, &command.port)?;
     let initial_identity = environment.usb_physical_identity_digest()?;
-    let board_info =
-        environment.execute_owner_rom_probe(&owner_rom_probe_command(&command.port))?;
-    if !board_info_reports_esp32s3(&board_info) {
-        bail!("usb_stability=blocked reason=rom_admission");
-    }
+    environment.admit_flash_read()?;
     let esptool = find_managed_esptool(environment)?;
     let expected = snapshot
         .get(..command.chunk_bytes as usize)
@@ -93,11 +89,21 @@ pub(crate) fn run_usb_stability_read(
             .checked_add(offset)
             .context("usb_stability=blocked reason=address_overflow")?;
         let output = root.join(format!("chunk-{repetition:03}.private.bin"));
-        if environment
-            .execute_boot_chain_read(&esptool, address, command.chunk_bytes, &output)
-            .is_err()
-        {
-            maybe_failure = Some("transport_failed");
+        let read = ManagedFlashRead::new(
+            esptool.clone(),
+            address,
+            command.chunk_bytes,
+            output.clone(),
+            FlashReadDisposition::RetainRom,
+        )?;
+        if environment.execute_flash_read(&read).is_err() {
+            maybe_failure = Some(
+                environment
+                    .last_usb_command_diagnostic()
+                    .map_or("transport_failed", |diagnostic| {
+                        diagnostic.terminal_category.as_str()
+                    }),
+            );
             break;
         }
         completed_repetitions = completed_repetitions.saturating_add(1);

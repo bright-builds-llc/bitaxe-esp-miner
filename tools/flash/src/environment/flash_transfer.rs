@@ -1,17 +1,29 @@
 use super::*;
 
-pub(super) fn exit_rom(
+pub(super) fn execute_read(
     environment: &LocalFlashEnvironment,
-    esptool: &Utf8Path,
-) -> Result<UsbProfile> {
-    validate_esptool(environment, esptool)?;
+    read: &ManagedFlashRead,
+) -> Result<()> {
+    validate_esptool(environment, read.program())?;
+    if fs::symlink_metadata(read.output().as_std_path()).is_ok() {
+        bail!("flash_transfer=blocked reason=output_exists");
+    }
     let mut session_slot = environment.usb_session.borrow_mut();
     let Some(session) = session_slot.as_mut() else {
-        bail!("cleanup_failed: boot-chain exit attempted without a repository session");
+        bail!("cleanup_failed: flash read attempted without a repository session");
     };
-    let observation = run_installed_application(session, esptool.as_std_path())
+    session
+        .run_espflash_probe(
+            read.program().as_std_path(),
+            &read.args(session.port()),
+            Duration::from_secs(360),
+        )
         .map_err(|error| anyhow::anyhow!(error))?;
-    Ok(observation.transport)
+    let metadata = fs::symlink_metadata(read.output().as_std_path())?;
+    if !metadata.is_file() || metadata.len() != u64::from(read.size()) {
+        bail!("flash_transfer=blocked reason=output_size");
+    }
+    set_private_file_mode(read.output())
 }
 
 fn validate_esptool(environment: &LocalFlashEnvironment, esptool: &Utf8Path) -> Result<()> {
@@ -29,7 +41,7 @@ fn validate_esptool(environment: &LocalFlashEnvironment, esptool: &Utf8Path) -> 
             .file_type()
             .is_symlink()
     {
-        bail!("boot_chain=blocked reason=esptool_contract");
+        bail!("flash_transfer=blocked reason=esptool_contract");
     }
     Ok(())
 }

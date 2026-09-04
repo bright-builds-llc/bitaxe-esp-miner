@@ -243,12 +243,21 @@ requireText("tools/flash/src/environment/owner_recovery.rs", [
   "run_installed_application",
   "observe_receive_only",
 ]);
-requireText("tools/flash/src/environment/boot_chain.rs", [
+requireText("tools/flash/src/flash_transfer.rs", [
   '"--no-stub"',
   '"--flash_size"',
   '"16MB"',
   '"read_flash"',
 ]);
+for (const candidate of [
+  "tools/flash/src/boot_chain.rs",
+  "tools/flash/src/nvs_readback.rs",
+  "tools/flash/src/usb_stability.rs",
+]) {
+  if (read(candidate).includes('"read_flash"')) {
+    throw new Error(`${candidate}: raw read_flash bypasses UsbFlashTransfer`);
+  }
+}
 requireText("tools/flash/src/usb_stability.rs", [
   "rom_no_stub",
   "digest_match_count",
@@ -307,7 +316,16 @@ requireText("docs/hardware/native-usb-ownership.md", [
   "just native-usb-display-recovery",
   "just native-usb-config-ap-recovery",
   "just usb-stability-read",
+  "usb-stability-baseline-v1.json",
   "execution owner",
+]);
+requireText("docs/parity/evidence/native-usb-stability/usb-stability-baseline-v1.json", [
+  '"adapter": "rom_no_stub"',
+  '"repeated_passed": 20',
+  '"sequential_passed": 16',
+  '"full_factory_digest_match": true',
+  '"device_write_observed": false',
+  '"redaction_status": "passed"',
 ]);
 requireText("docs/hardware/esp-device-session.md", ["native-usb-ownership.md"]);
 requireText(".codex/tasks/lessons.md", ["lesson-visible-cdc-is-not-flash-admission"]);

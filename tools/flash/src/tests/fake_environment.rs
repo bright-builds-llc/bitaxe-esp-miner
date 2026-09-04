@@ -412,11 +412,11 @@ impl FlashEnvironment for FakeFlashEnvironment {
         Ok(())
     }
 
-    fn execute_esptool_read_flash(&self, command: &ManagedEsptoolReadFlash) -> Result<()> {
+    fn execute_flash_read(&self, command: &ManagedFlashRead) -> Result<()> {
         self.executed_commands.borrow_mut().push(CommandSpec::new(
-            command.program().as_str(), command.args(),
+            command.program().as_str(), command.args("admitted"),
         ));
-        std::fs::write(command.output().as_std_path(), vec![0xff_u8; 0x6000])?;
+        std::fs::write(command.output().as_std_path(), vec![0xff_u8; command.size() as usize])?;
         Ok(())
     }
 

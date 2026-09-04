@@ -82,6 +82,7 @@ rust_library(
         "src/usb/profile_reacquire.rs",
         "src/usb/recovery.rs",
         "src/usb/tests.rs",
+        "src/usb/probe.rs",
     ],
     crate_name = "bitaxe_device_session",
     edition = "2021",

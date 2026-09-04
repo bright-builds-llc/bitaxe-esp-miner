@@ -1,30 +1,4 @@
-use super::usb_ownership::route_esptool_to_admitted_rom;
 use super::*;
-
-pub(super) fn execute_read_flash(
-    environment: &LocalFlashEnvironment,
-    command: &ManagedEsptoolReadFlash,
-) -> Result<()> {
-    validate_managed_esptool(&environment.workspace_dir, command.program())?;
-    environment.ensure_bootloader()?;
-    let mut session_slot = environment.usb_session.borrow_mut();
-    let Some(session) = session_slot.as_mut() else {
-        bail!("cleanup_failed: esptool read attempted without a repository session");
-    };
-    let args = route_esptool_to_admitted_rom(command.args(), session.port())?;
-    session
-        .run_espflash_probe(
-            command.program().as_std_path(),
-            &args,
-            Duration::from_secs(360),
-        )
-        .map_err(|error| anyhow::anyhow!(error))?;
-    let metadata = fs::symlink_metadata(command.output().as_std_path())?;
-    if !metadata.is_file() || metadata.len() != 0x6000 {
-        bail!("nvs_readback=blocked reason=output_size");
-    }
-    set_private_file_mode(command.output())
-}
 
 pub(super) fn restore_application_runtime(
     environment: &LocalFlashEnvironment,

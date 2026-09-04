@@ -5,10 +5,11 @@ fn nvs_readback_owns_one_exact_read_only_range() {
     let output = Utf8Path::new("scratch/nvs.private.bin");
     let args = nvs_read_flash_args("admitted", output);
     assert!(nvs_read_args_are_exact(&args, output));
-    assert_eq!(
-        args[8..],
-        ["read_flash", "0x9000", "0x6000", output.as_str()]
-    );
+    assert!(args.iter().any(|argument| argument == "--no-stub"));
+    assert!(args.windows(2).any(|pair| pair == ["--flash_size", "16MB"]));
+    assert!(args
+        .windows(2)
+        .any(|pair| pair == ["--after", "hard_reset"]));
     for forbidden in ["write_flash", "erase_flash", "erase_region"] {
         assert!(!args.iter().any(|argument| argument == forbidden));
     }

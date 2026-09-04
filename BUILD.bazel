@@ -98,6 +98,7 @@ js_library(
         "docs/adr/0020-time-multiplex-native-usb-ownership.md",
         "docs/hardware/esp-device-session.md",
         "docs/hardware/native-usb-ownership.md",
+        "docs/parity/evidence/native-usb-stability/usb-stability-baseline-v1.json",
     ],
     visibility = ["//scripts:__pkg__"],
 )

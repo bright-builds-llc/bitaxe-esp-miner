@@ -2,6 +2,7 @@ use crate::*;
 
 mod boot_chain;
 mod contract;
+mod flash_transfer;
 mod nvs_readback;
 mod owner_recovery;
 mod usb_ownership;
@@ -366,8 +367,11 @@ impl FlashEnvironment for LocalFlashEnvironment {
             .map(|_| ())
             .map_err(|error| anyhow::anyhow!("{error}"))
     }
-    fn execute_esptool_read_flash(&self, command: &ManagedEsptoolReadFlash) -> Result<()> {
-        nvs_readback::execute_read_flash(self, command)
+    fn execute_flash_read(&self, read: &ManagedFlashRead) -> Result<()> {
+        flash_transfer::execute_read(self, read)
+    }
+    fn admit_flash_read(&self) -> Result<()> {
+        self.ensure_bootloader()
     }
     fn restore_application_runtime(&self, esptool: &Utf8Path) -> Result<ProfileObservationCounts> {
         nvs_readback::restore_application_runtime(self, esptool)
@@ -381,15 +385,6 @@ impl FlashEnvironment for LocalFlashEnvironment {
     }
     fn execute_owner_rom_probe(&self, command: &CommandSpec) -> Result<Vec<u8>> {
         owner_recovery::execute_rom_probe(self, command)
-    }
-    fn execute_boot_chain_read(
-        &self,
-        esptool: &Utf8Path,
-        address: u32,
-        size: u32,
-        output: &Utf8Path,
-    ) -> Result<()> {
-        boot_chain::execute_read(self, esptool, address, size, output)
     }
     fn exit_boot_chain_rom(&self, esptool: &Utf8Path) -> Result<UsbProfile> {
         boot_chain::exit_rom(self, esptool)
