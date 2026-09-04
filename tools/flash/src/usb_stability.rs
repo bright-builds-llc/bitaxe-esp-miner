@@ -28,6 +28,7 @@ struct StabilityResult {
     adapter: &'static str,
     flash_size: &'static str,
     chunk_bytes: u32,
+    pattern: &'static str,
     requested_repetitions: u8,
     completed_repetitions: u8,
     digest_match_count: u8,
@@ -87,9 +88,13 @@ pub(crate) fn run_usb_stability_read(
     let mut digest_match_count = 0_u8;
     let mut maybe_failure = None;
     for repetition in 1..=command.repetitions {
+        let offset = stability_chunk_offset(command.pattern, command.chunk_bytes, repetition)?;
+        let address = FACTORY_ADDRESS
+            .checked_add(offset)
+            .context("usb_stability=blocked reason=address_overflow")?;
         let output = root.join(format!("chunk-{repetition:03}.private.bin"));
         if environment
-            .execute_boot_chain_read(&esptool, FACTORY_ADDRESS, command.chunk_bytes, &output)
+            .execute_boot_chain_read(&esptool, address, command.chunk_bytes, &output)
             .is_err()
         {
             maybe_failure = Some("transport_failed");
@@ -97,7 +102,18 @@ pub(crate) fn run_usb_stability_read(
         }
         completed_repetitions = completed_repetitions.saturating_add(1);
         let actual = environment.read_bytes(&output)?;
-        if actual != expected {
+        let start = offset as usize;
+        let end = start
+            .checked_add(command.chunk_bytes as usize)
+            .context("usb_stability=blocked reason=chunk_range")?;
+        let expected_chunk = if command.pattern == UsbStabilityPattern::Repeated {
+            expected
+        } else {
+            snapshot
+                .get(start..end)
+                .context("usb_stability=blocked reason=chunk_range")?
+        };
+        if actual != expected_chunk {
             maybe_failure = Some("digest_mismatch");
             break;
         }
@@ -123,6 +139,7 @@ pub(crate) fn run_usb_stability_read(
         adapter: "rom_no_stub",
         flash_size: "16mb",
         chunk_bytes: command.chunk_bytes,
+        pattern: stability_pattern_label(command.pattern),
         requested_repetitions: command.repetitions,
         completed_repetitions,
         digest_match_count,
@@ -159,6 +176,13 @@ fn validate_stability_invocation(
     {
         bail!("usb_stability=blocked reason=invocation");
     }
+    if command.pattern == UsbStabilityPattern::Sequential
+        && u32::from(command.repetitions)
+            .checked_mul(command.chunk_bytes)
+            .is_none_or(|bytes| bytes > FACTORY_SIZE)
+    {
+        bail!("usb_stability=blocked reason=sequential_range");
+    }
     let provenance = environment.current_provenance()?;
     if provenance.build_identity().source_dirty()
         || environment.pushed_firmware_commit() != provenance.build_identity().source_commit()
@@ -170,6 +194,26 @@ fn validate_stability_invocation(
         bail!("usb_stability=blocked reason=root_exists");
     }
     Ok(root)
+}
+
+fn stability_chunk_offset(
+    pattern: UsbStabilityPattern,
+    chunk_bytes: u32,
+    repetition: u8,
+) -> Result<u32> {
+    match pattern {
+        UsbStabilityPattern::Repeated => Ok(0),
+        UsbStabilityPattern::Sequential => u32::from(repetition.saturating_sub(1))
+            .checked_mul(chunk_bytes)
+            .context("usb_stability=blocked reason=chunk_offset"),
+    }
+}
+
+const fn stability_pattern_label(pattern: UsbStabilityPattern) -> &'static str {
+    match pattern {
+        UsbStabilityPattern::Repeated => "repeated",
+        UsbStabilityPattern::Sequential => "sequential",
+    }
 }
 
 fn create_stability_root(
@@ -216,6 +260,28 @@ fn require_private_stability_path(path: &Utf8Path, mode: u32, directory: bool) -
 
 #[cfg(test)]
 mod tests {
+    use super::{stability_chunk_offset, UsbStabilityPattern};
+
+    #[test]
+    fn sequential_chunks_cover_distinct_offsets() {
+        // Arrange / Act / Assert
+        assert_eq!(
+            stability_chunk_offset(UsbStabilityPattern::Sequential, 262_144, 1)
+                .expect("first chunk"),
+            0
+        );
+        assert_eq!(
+            stability_chunk_offset(UsbStabilityPattern::Sequential, 262_144, 16)
+                .expect("last chunk"),
+            3_932_160
+        );
+        assert_eq!(
+            stability_chunk_offset(UsbStabilityPattern::Repeated, 65_536, 20)
+                .expect("repeated chunk"),
+            0
+        );
+    }
+
     #[test]
     fn production_source_has_no_device_write_or_network_surface() {
         // Arrange

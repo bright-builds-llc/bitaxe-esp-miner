@@ -18,6 +18,8 @@ fn usb_stability_read_cli_exposes_only_bounded_read_inputs() {
         "65536",
         "--repetitions",
         "4",
+        "--pattern",
+        "sequential",
         "--redact-evidence",
     ];
 
@@ -30,4 +32,5 @@ fn usb_stability_read_cli_exposes_only_bounded_read_inputs() {
     };
     assert_eq!(command.chunk_bytes, 65_536);
     assert_eq!(command.repetitions, 4);
+    assert_eq!(command.pattern, UsbStabilityPattern::Sequential);
 }

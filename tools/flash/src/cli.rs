@@ -65,8 +65,16 @@ pub(crate) struct UsbStabilityReadCommand {
     pub(crate) chunk_bytes: u32,
     #[arg(long, default_value_t = 4)]
     pub(crate) repetitions: u8,
+    #[arg(long, value_enum, default_value = "repeated")]
+    pub(crate) pattern: UsbStabilityPattern,
     #[arg(long = "redact-evidence")]
     pub(crate) redact_evidence: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub(crate) enum UsbStabilityPattern {
+    Repeated,
+    Sequential,
 }
 
 #[derive(Debug, Parser, Clone)]
