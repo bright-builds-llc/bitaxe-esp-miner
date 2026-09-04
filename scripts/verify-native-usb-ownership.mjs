@@ -240,10 +240,13 @@ requireText("firmware/bitaxe/src/boot_evidence.rs", [
   "publish_usb_boot_profile",
   "usb_profile::emit_due",
   "worker_rust_panic_marker",
+  "worker_allocation_failure_marker",
 ]);
 requireText("firmware/bitaxe/src/panic_evidence.rs", [
   "RTC_PANIC_RECEIPT",
+  "RTC_ALLOCATION_FAILURE_RECEIPT",
   "std::panic::set_hook",
+  "heap_caps_register_failed_alloc_callback",
   "write_volatile",
 ]);
 requireText("firmware/bitaxe/src/boot_evidence/usb_profile.rs", [

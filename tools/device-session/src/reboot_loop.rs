@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use anyhow::{bail, Result};
 use bitaxe_api::boot_identity::{ResetReasonCategory, WorkerUsbBootMarker};
-use bitaxe_api::panic_receipt::RustPanicMarker;
+use bitaxe_api::panic_receipt::{AllocationFailureMarker, RustPanicMarker};
 
 /// Closed classification for one bounded USB reboot-loop observation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -36,6 +36,7 @@ pub struct UsbRebootLoopObservation {
     latest_boot_ordinal: u64,
     latest_reset_reason: ResetReasonCategory,
     latest_rust_panic: Option<RustPanicMarker>,
+    latest_allocation_failure: Option<AllocationFailureMarker>,
 }
 
 impl UsbRebootLoopObservation {
@@ -74,6 +75,12 @@ impl UsbRebootLoopObservation {
     pub const fn latest_rust_panic(&self) -> Option<RustPanicMarker> {
         self.latest_rust_panic
     }
+
+    /// Returns the previous boot's allocation failure when present.
+    #[must_use]
+    pub const fn latest_allocation_failure(&self) -> Option<AllocationFailureMarker> {
+        self.latest_allocation_failure
+    }
 }
 
 /// Observes a flapping macOS USB profile without writing or changing control lines.
@@ -89,6 +96,10 @@ fn classify_capture(bytes: &[u8], open_count: u16) -> Result<UsbRebootLoopObserv
     const MAX_MARKERS: usize = 256;
     let text = String::from_utf8_lossy(bytes);
     let latest_rust_panic = text.lines().filter_map(RustPanicMarker::parse).next_back();
+    let latest_allocation_failure = text
+        .lines()
+        .filter_map(AllocationFailureMarker::parse)
+        .next_back();
     let markers = text
         .lines()
         .filter_map(WorkerUsbBootMarker::parse)
@@ -124,6 +135,7 @@ fn classify_capture(bytes: &[u8], open_count: u16) -> Result<UsbRebootLoopObserv
         latest_boot_ordinal: latest.boot_ordinal(),
         latest_reset_reason: latest.reset_reason(),
         latest_rust_panic,
+        latest_allocation_failure,
     })
 }
 
@@ -144,11 +156,17 @@ mod tests {
         ))
         .expect("panic receipt must be valid")
         .marker();
+        let allocation = AllocationFailureMarker::from_receipt(
+            bitaxe_api::panic_receipt::RtcAllocationFailureReceipt::new(8_192, 8),
+        )
+        .expect("allocation receipt must be valid")
+        .marker();
         let input = format!(
-            "{}\n{}\n{}\n",
+            "{}\n{}\n{}\n{}\n",
             marker(7, ResetReasonCategory::SoftwareCpu, 500),
             marker(8, ResetReasonCategory::Panic, 400),
-            panic
+            panic,
+            allocation
         );
 
         // Act
@@ -165,6 +183,12 @@ mod tests {
         assert_eq!(
             observation.latest_rust_panic().map(RustPanicMarker::line),
             Some(91)
+        );
+        assert_eq!(
+            observation
+                .latest_allocation_failure()
+                .map(AllocationFailureMarker::requested_bytes),
+            Some(8_192)
         );
     }
 

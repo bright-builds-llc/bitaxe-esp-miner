@@ -97,6 +97,7 @@ fn worker_evidence_requires_mount_but_not_dtr() {
     assert!(!USB_TINYUSB_SOURCE.contains("tud_cdc_n_connected"));
     assert!(USB_SOURCE.contains("crate::boot_evidence::worker_usb_boot_marker()"));
     assert!(USB_SOURCE.contains("crate::boot_evidence::worker_rust_panic_marker()"));
+    assert!(USB_SOURCE.contains("crate::boot_evidence::worker_allocation_failure_marker()"));
 }
 
 #[test]

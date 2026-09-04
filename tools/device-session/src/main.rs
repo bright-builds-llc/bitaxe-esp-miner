@@ -245,6 +245,14 @@ fn run_observe_usb_reboot_loop(args: ObserveUsbRebootLoopArgs) -> Result<Termina
         }
         None => println!("rust_panic_receipt: missing"),
     }
+    match observation.latest_allocation_failure() {
+        Some(marker) => {
+            println!("allocation_failure_receipt: present");
+            println!("allocation_requested_bytes: {}", marker.requested_bytes());
+            println!("allocation_capabilities: {:08x}", marker.capabilities());
+        }
+        None => println!("allocation_failure_receipt: missing"),
+    }
     Ok(TerminalCategory::Ready)
 }
 

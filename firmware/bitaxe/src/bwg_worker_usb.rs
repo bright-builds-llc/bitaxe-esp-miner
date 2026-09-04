@@ -152,6 +152,10 @@ where
                     marker.push('\n');
                     write_evidence(marker.as_bytes());
                 }
+                if let Some(mut marker) = crate::boot_evidence::worker_allocation_failure_marker() {
+                    marker.push('\n');
+                    write_evidence(marker.as_bytes());
+                }
             }
             UsbEvent::Detached => {
                 accumulator.clear();

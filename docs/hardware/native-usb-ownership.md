@@ -247,6 +247,11 @@ receipt and replays it over Worker CDC. A present receipt identifies a Rust
 panic location without persisting panic text; a missing receipt across later
 panic resets places the failure below Rust. This path never writes flash, so a
 rapid reboot loop cannot create coredump wear.
+The same Adapter registers ESP-IDF's allocation-failure callback and retains
+only the requested byte count and capability mask. It performs one volatile
+RTC write and no allocation, logging, lock, or flash operation. This separates
+allocator aborts from other ESP-IDF panic paths without enabling repeated
+coredump writes.
 
 Manual BOOT/RESET is a one-time bootstrap or last-resort recovery path, never
 the normal development workflow. Buttonless flashing is not qualified until

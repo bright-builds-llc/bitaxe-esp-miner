@@ -29,8 +29,7 @@ static BOOT_SESSION: OnceLock<BootSessionNonce> = OnceLock::new();
 static HEARTBEAT_MODEL: OnceLock<Mutex<RuntimeHeartbeatModel>> = OnceLock::new();
 static BOOT_ORDINAL: OnceLock<u64> = OnceLock::new();
 static RESET_REASON: OnceLock<ResetReasonCategory> = OnceLock::new();
-static RUST_PANIC_MARKER: OnceLock<Option<bitaxe_api::panic_receipt::RustPanicMarker>> =
-    OnceLock::new();
+static RESET_RECEIPTS: OnceLock<crate::panic_evidence::ResetReceipts> = OnceLock::new();
 static CONNECTED_ORIGIN: OnceLock<Mutex<Option<ConnectedOriginReplay>>> = OnceLock::new();
 static RUNTIME_ATTESTATION: OnceLock<Mutex<Option<RuntimeAttestationReplay>>> = OnceLock::new();
 static PROVISIONING_NETWORK_READY: OnceLock<Mutex<Option<u64>>> = OnceLock::new();
@@ -135,7 +134,7 @@ impl BootEvidenceState {
 pub fn initialize_observer() {
     let nonce = *BOOT_SESSION.get_or_init(BootSessionNonce::from_hardware_rng);
     let reset_reason = *RESET_REASON.get_or_init(rtc_boot_ordinal::reset_reason_category);
-    RUST_PANIC_MARKER.get_or_init(|| crate::panic_evidence::initialize(reset_reason));
+    RESET_RECEIPTS.get_or_init(|| crate::panic_evidence::initialize(reset_reason));
     let transition = rtc_boot_ordinal::initialize(reset_reason);
     let ordinal = *BOOT_ORDINAL.get_or_init(|| transition.record.ordinal);
     HEARTBEAT_MODEL.get_or_init(|| Mutex::new(RuntimeHeartbeatModel::new(nonce.0)));
@@ -316,11 +315,18 @@ pub fn worker_usb_boot_marker() -> String {
 
 /// Returns the previous boot's Rust panic receipt when its RTC record is valid.
 pub fn worker_rust_panic_marker() -> Option<String> {
-    RUST_PANIC_MARKER
+    RESET_RECEIPTS
         .get()
-        .copied()
-        .flatten()
+        .and_then(|receipts| receipts.rust_panic)
         .map(bitaxe_api::panic_receipt::RustPanicMarker::marker)
+}
+
+/// Returns the previous boot's allocation failure when its RTC record is valid.
+pub fn worker_allocation_failure_marker() -> Option<String> {
+    RESET_RECEIPTS
+        .get()
+        .and_then(|receipts| receipts.allocation_failure)
+        .map(bitaxe_api::panic_receipt::AllocationFailureMarker::marker)
 }
 
 fn boot_session() -> BootSessionNonce {
