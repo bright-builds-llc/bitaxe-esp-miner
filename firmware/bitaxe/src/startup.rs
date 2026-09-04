@@ -13,6 +13,8 @@ use crate::{
 
 pub(crate) struct BootMiningBaselineConfirmed(());
 
+const _: () = assert!(sys::CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL == 65_536);
+
 enum DeferredUsbRuntime {
     Worker(crate::bwg_worker_usb::BwgWorkerRecovery),
     AlreadySelected,
@@ -54,6 +56,7 @@ fn initialize_boot_identity_and_settings() -> anyhow::Result<(
     sys::link_patches();
     esp_idf_svc::log::EspLogger::initialize_default();
     boot_evidence::initialize_observer();
+    retain_previous_boot_failure();
 
     let safe_state = Phase1SafeState::default();
     let boot_log_line = format!(
@@ -384,6 +387,13 @@ fn start_deferred_usb_runtime(deferred_usb_runtime: DeferredUsbRuntime) {
     let DeferredUsbRuntime::Worker(bwg_recovery) = deferred_usb_runtime else {
         return;
     };
+    let internal_dma_caps = sys::MALLOC_CAP_INTERNAL | sys::MALLOC_CAP_DMA | sys::MALLOC_CAP_8BIT;
+    let free_bytes = unsafe { sys::heap_caps_get_free_size(internal_dma_caps) };
+    let largest_block_bytes = unsafe { sys::heap_caps_get_largest_free_block(internal_dma_caps) };
+    crate::info_retained(&format!(
+        "usb_memory_checkpoint stage=worker_start free_bytes={free_bytes} largest_block_bytes={largest_block_bytes} reserve_bytes={} redacted=true",
+        sys::CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL,
+    ));
     match crate::bwg_worker_usb::start(bwg_recovery) {
         Ok(()) => boot_evidence::publish_usb_boot_profile(
             bitaxe_api::UsbBootTransport::WorkerRuntime,
@@ -392,7 +402,31 @@ fn start_deferred_usb_runtime(deferred_usb_runtime: DeferredUsbRuntime) {
         ),
         Err(error) => {
             log::warn!("bwg_worker_control=unavailable category=startup_failed error={error:#}");
+            let detail = bwg_worker_start_failure_detail(&error);
+            crate::info_retained(&format!(
+                "bwg_worker_start_failure category=startup_failed detail={detail} redacted=true"
+            ));
         }
+    }
+}
+
+fn bwg_worker_start_failure_detail(error: &anyhow::Error) -> &'static str {
+    let message = error.to_string();
+    if message.starts_with("owner_spawn:") {
+        "owner_spawn"
+    } else if message.starts_with("usb_install:") {
+        "usb_install"
+    } else {
+        "control_owner"
+    }
+}
+
+fn retain_previous_boot_failure() {
+    if let Some(marker) = boot_evidence::worker_rust_panic_marker() {
+        crate::info_retained(&marker);
+    }
+    if let Some(marker) = boot_evidence::worker_allocation_failure_marker() {
+        crate::info_retained(&marker);
     }
 }
 

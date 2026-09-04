@@ -14,16 +14,25 @@ test("firmware build rejects unknown Kconfig symbols", () => {
   assert.doesNotThrow(() => rejectUnknownKconfigWarnings("warning: ordinary compiler warning"));
 });
 
-test("firmware build requires the resolved TinyUSB stack budget", () => {
+test("firmware build requires the resolved USB and internal-memory budgets", () => {
+  const resolved = [
+    "CONFIG_TINYUSB_TASK_STACK_SIZE=3072",
+    "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536",
+    "",
+  ].join("\n");
   assert.doesNotThrow(() =>
-    requireResolvedUsbMemoryContract("CONFIG_TINYUSB_TASK_STACK_SIZE=3072\n"),
+    requireResolvedUsbMemoryContract(resolved),
   );
   assert.throws(
-    () => requireResolvedUsbMemoryContract("CONFIG_TINYUSB_TASK_STACK_SIZE=4096\n"),
-    /qualified memory budget/u,
+    () => requireResolvedUsbMemoryContract(resolved.replace("3072", "4096")),
+    /USB memory contract/u,
   );
   assert.throws(
-    () => requireResolvedUsbMemoryContract("CONFIG_TINYUSB_CDC_RX_BUFSIZE=512\n"),
-    /qualified memory budget/u,
+    () => requireResolvedUsbMemoryContract(resolved.replace("65536", "32768")),
+    /USB memory contract/u,
+  );
+  assert.throws(
+    () => requireResolvedUsbMemoryContract("CONFIG_TINYUSB_TASK_STACK_SIZE=3072\n"),
+    /USB memory contract/u,
   );
 });

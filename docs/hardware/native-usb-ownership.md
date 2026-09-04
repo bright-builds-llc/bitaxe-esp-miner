@@ -80,11 +80,15 @@ allocation. The TinyUSB task stack is pinned at 3072 bytes, but live evidence
 proved that this reduction alone did not make Wi-Fi's later internal/DMA
 allocation succeed. Ordinary confirmed-safe startup therefore lets Wi-Fi
 reserve its fixed internal/DMA resources before starting the optional Worker
-owner and installing TinyUSB. The Worker owner uses a bounded 12 KiB stack;
-diagnostic and unconfirmed-safe boots retain their earlier Serial/JTAG path.
-Changing either stack budget or this ordering requires the compile-time
-resolved-config assertion, source-ownership ordering tests, and live proof that
-Wi-Fi and the USB owner both remain stable.
+owner and installing TinyUSB. The Worker keeps its proven 16 KiB stack, while
+`CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536` prevents ordinary PSRAM-eligible
+allocations from consuming the internal pool required by forced-internal task
+stacks and DMA. Diagnostic and unconfirmed-safe boots retain their earlier
+Serial/JTAG path. Changing either memory budget or this ordering requires
+compile-time and resolved-config assertions, source-ownership ordering tests,
+and live proof that Wi-Fi and the USB owner both remain stable. Closed
+pre-Worker heap facts and previous-boot panic/allocation receipts are retained
+so later failures do not depend on timing a serial attachment around reset.
 
 Repository-owned C is intentionally limited to `usb_phy_handoff.c`. That
 Adapter registers the force-download shutdown handler, uninstalls TinyUSB,

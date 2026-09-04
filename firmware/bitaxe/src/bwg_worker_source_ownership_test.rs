@@ -193,7 +193,13 @@ fn startup_recovers_before_optional_owners_and_starts_control_after_wifi() {
     assert!(baseline < recovery);
     assert!(recovery < production);
     assert!(network < worker);
-    assert!(USB_SOURCE.contains("const OWNER_STACK_BYTES: usize = 12 * 1024;"));
+    assert!(USB_SOURCE.contains("const OWNER_STACK_BYTES: usize = 16 * 1024;"));
+    assert!(STARTUP_SOURCE.contains(
+        "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL == 65_536"
+    ));
+    assert!(STARTUP_SOURCE.contains("usb_memory_checkpoint stage=worker_start"));
+    assert!(STARTUP_SOURCE.contains("bwg_worker_start_failure category=startup_failed"));
+    assert!(STARTUP_SOURCE.contains("bwg_worker_start_failure_detail(&error)"));
     assert_eq!(MAIN_SOURCE.matches("mod bwg_worker_usb;").count(), 1);
 }
 

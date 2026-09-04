@@ -252,11 +252,16 @@ runtime isolated a direct allocator abort requesting 852 bytes with
 `DMA | 8BIT | INTERNAL` capabilities during Wi-Fi startup. The first guessed
 vendor-buffer setting was absent from the pinned component, and the verified
 TinyUSB task-stack reduction still reproduced the exact signature. The
-targeted successor reserves Wi-Fi's fixed resources before the optional Worker
-owner and bounds that owner's stack at 12 KiB. Ordered Rust gates, Bright
-Builds, all 76 Bazel tests, firmware packaging, native-USB ownership,
-parity/progress, redaction, reference cleanliness, whitespace, and final diff
-review pass. Exact-package hardware validation remains pending.
+first targeted successor reserved Wi-Fi's fixed resources before the optional
+Worker and eliminated the panic reboot loop. Live evidence then proved the
+deferred 12 KiB Worker pthread failed closed with `ENOMEM` after Wi-Fi
+connected. The next targeted fix restores the proven 16 KiB Worker stack,
+raises ESP-IDF's internal reserve from 32 KiB to 64 KiB so ordinary
+PSRAM-eligible allocations cannot consume forced-internal stack/DMA memory,
+and retains closed heap/failure evidence. Ordered Rust gates, Bright Builds,
+all 76 Bazel tests, the real normal/rollback firmware builds, exact resolved
+sdkconfig checks, native-USB ownership, parity/progress, redaction, and
+reference cleanliness pass. Exact-package hardware validation remains pending.
 
 ### task-native-usb-recovery-transition-205 | 2026-08-30 | Recover first and prove one no-write transition
 

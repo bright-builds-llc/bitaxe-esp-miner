@@ -109,11 +109,16 @@ export function rejectUnknownKconfigWarnings(output: string): void {
 }
 
 export function requireResolvedUsbMemoryContract(sdkconfig: string): void {
-  const values = sdkconfig
-    .split(/\r?\n/u)
-    .filter(line => line.startsWith("CONFIG_TINYUSB_TASK_STACK_SIZE="));
-  if (values.length !== 1 || values[0] !== "CONFIG_TINYUSB_TASK_STACK_SIZE=3072") {
-    throw new Error("resolved TinyUSB task stack does not match the qualified memory budget");
+  const lines = sdkconfig.split(/\r?\n/u);
+  for (const required of [
+    "CONFIG_TINYUSB_TASK_STACK_SIZE=3072",
+    "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536",
+  ]) {
+    const key = required.slice(0, required.indexOf("=") + 1);
+    const values = lines.filter(line => line.startsWith(key));
+    if (values.length !== 1 || values[0] !== required) {
+      throw new Error(`resolved USB memory contract does not contain ${required}`);
+    }
   }
 }
 
