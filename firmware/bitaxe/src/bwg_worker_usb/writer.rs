@@ -109,6 +109,7 @@ pub(super) fn run(
     let mut last_replay = 0;
     let mut next_startup_marker = 0;
     let mut last_heartbeat = 0;
+    let mut maybe_write_failure = None;
     loop {
         let now = crate::runtime_uptime::millis();
         if epoch != 0
@@ -116,7 +117,10 @@ pub(super) fn run(
             && now.saturating_sub(last_heartbeat) >= 1000
         {
             last_heartbeat = now;
-            if next_record(SerialKind::Heartbeat, &session_id, &mut sequence, b"{}").is_err() {
+            if let Err(error) =
+                next_record(SerialKind::Heartbeat, &session_id, &mut sequence, b"{}")
+            {
+                retain_write_failure(&mut maybe_write_failure, &error);
                 revoke_epoch(epoch);
             }
         }
@@ -129,6 +133,7 @@ pub(super) fn run(
                 if CURRENT_SESSION.load(Ordering::Acquire) != next {
                     continue;
                 }
+                maybe_write_failure = None;
                 epoch = next;
                 session_id = id;
                 sequence = 0;
@@ -137,7 +142,8 @@ pub(super) fn run(
                 let result = serde_json::value::to_raw_value(&payload)
                     .map_err(anyhow::Error::from)
                     .and_then(|raw| emit(SerialKind::Session, &session_id, 0, &raw));
-                if result.is_err() {
+                if let Err(error) = result {
+                    retain_write_failure(&mut maybe_write_failure, &error);
                     revoke_epoch(epoch);
                 }
             }
@@ -146,10 +152,20 @@ pub(super) fn run(
                 bytes,
                 receipt,
             }) => {
-                let sent = wanted == epoch
-                    && CURRENT_SESSION.load(Ordering::Acquire) == epoch
-                    && next_record(SerialKind::Control, &session_id, &mut sequence, &bytes.0)
-                        .is_ok();
+                let current = wanted == epoch && CURRENT_SESSION.load(Ordering::Acquire) == epoch;
+                let mut result = Ok(());
+                if current && bytes.0.len() > 4096 {
+                    // An indivisible long record gets a fresh peer deadline before transmission.
+                    last_heartbeat = crate::runtime_uptime::millis();
+                    result = next_record(SerialKind::Heartbeat, &session_id, &mut sequence, b"{}");
+                }
+                if current && result.is_ok() {
+                    result = next_record(SerialKind::Control, &session_id, &mut sequence, &bytes.0);
+                }
+                if let Err(error) = &result {
+                    retain_write_failure(&mut maybe_write_failure, error);
+                }
+                let sent = current && result.is_ok();
                 if receipt.try_send(sent).is_err() || !sent {
                     revoke_epoch(wanted);
                 }
@@ -167,12 +183,14 @@ pub(super) fn run(
                         return None;
                     }
                     last_replay = now;
-                    let line = if replay_slot == 12 {
+                    let line = if replay_slot == 15 {
+                        maybe_write_failure.map(crate::usb_runtime::WriteFailure::marker)
+                    } else if replay_slot == 14 {
                         crate::wifi_adapter::maybe_startup_failure_marker()
                     } else {
                         crate::boot_evidence::maybe_worker_diagnostic_line(replay_slot)
                     };
-                    replay_slot = (replay_slot + 1) % 13;
+                    replay_slot = (replay_slot + 1) % 16;
                     line
                 });
                 let Some(line) = maybe_line else {
@@ -188,9 +206,10 @@ pub(super) fn run(
                 let Ok(payload) = serde_json::to_vec(&serde_json::json!({"line":line})) else {
                     continue;
                 };
-                if next_record(SerialKind::Diagnostic, &session_id, &mut sequence, &payload)
-                    .is_err()
+                if let Err(error) =
+                    next_record(SerialKind::Diagnostic, &session_id, &mut sequence, &payload)
                 {
+                    retain_write_failure(&mut maybe_write_failure, &error);
                     revoke_epoch(epoch);
                 }
             }
@@ -225,4 +244,15 @@ fn emit(
         payload,
     )?);
     crate::usb_runtime::write(&bytes)
+}
+
+fn retain_write_failure(
+    slot: &mut Option<crate::usb_runtime::WriteFailure>,
+    error: &anyhow::Error,
+) {
+    if slot.is_none() {
+        *slot = error
+            .downcast_ref::<crate::usb_runtime::WriteFailure>()
+            .copied();
+    }
 }

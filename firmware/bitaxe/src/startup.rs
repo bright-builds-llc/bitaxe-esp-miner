@@ -49,6 +49,13 @@ fn run_startup() -> anyhow::Result<()> {
     if startup_diagnostics.is_err() {
         PROGRESS.fail(DiagnosticStage::Hardware);
     }
+    let maybe_wifi = if startup_diagnostics.is_ok() {
+        PROGRESS.enter(DiagnosticStage::Network);
+        crate::panic_evidence::enter_stage(StartupStage::Network);
+        prepare_network_services(maybe_modem)
+    } else {
+        None
+    };
     PROGRESS.enter(DiagnosticStage::RuntimeServices);
     crate::panic_evidence::enter_stage(StartupStage::RuntimeServices);
     let runtime_services = start_runtime_services(startup_diagnostics)?;
@@ -62,7 +69,7 @@ fn run_startup() -> anyhow::Result<()> {
     );
     PROGRESS.enter(DiagnosticStage::Network);
     crate::panic_evidence::enter_stage(StartupStage::Network);
-    start_network_services(maybe_modem);
+    start_network_services(maybe_wifi);
     PROGRESS.enter(DiagnosticStage::WorkerControl);
     crate::panic_evidence::enter_stage(StartupStage::UsbInstall);
     start_deferred_usb_runtime(runtime_services.deferred_usb_runtime);
@@ -305,6 +312,9 @@ fn start_runtime_services(
             false
         }
     };
+    if !boot_validation_ready {
+        PROGRESS.fail(DiagnosticStage::RuntimeServices);
+    }
     let boot_mining_baseline = startup_diagnostics?;
     let maybe_bwg_recovery = match boot_mining_baseline {
         asic_adapter::BootMiningBaseline::Confirmed => {
@@ -316,7 +326,7 @@ fn start_runtime_services(
         }
         asic_adapter::BootMiningBaseline::Unconfirmed => None,
     };
-    safety_adapter::start_safety_supervisor();
+    required_runtime_owner(safety_adapter::start_safety_supervisor())?;
     let maybe_tcp_payload_admission =
         match settings_adapter::load_tcp_payload_diagnostic_admission() {
             Ok(maybe_admission) => maybe_admission,
@@ -357,47 +367,28 @@ fn start_runtime_services(
         || maybe_noise_diagnostic_admission.is_some()
         || maybe_self_test_admission.is_some();
     if let Some(admission) = maybe_tcp_payload_admission {
-        if let Err(error) = stratum_v2_tcp_payload_diagnostic::start(admission) {
-            log::warn!(
-                "stratum_v2_tcp_payload_diagnostic=unavailable reason=thread_spawn_failed error={error:#}"
-            );
-        }
+        required_runtime_owner(stratum_v2_tcp_payload_diagnostic::start(admission))?;
     } else if let Some(admission) = maybe_noise_diagnostic_admission {
-        if let Err(error) = stratum_v2_noise_diagnostic::start(admission) {
-            log::warn!(
-                "stratum_v2_noise_diagnostic=unavailable reason=thread_spawn_failed error={error:#}"
-            );
-        }
+        required_runtime_owner(stratum_v2_noise_diagnostic::start(admission))?;
     } else if let Some(admission) = maybe_self_test_admission {
-        if let Err(error) = self_test_runtime::start(admission) {
-            log::warn!("self_test_runtime=unavailable reason=thread_spawn_failed error={error:#}");
-        }
+        required_runtime_owner(self_test_runtime::start(admission))?;
     } else {
         match settings_adapter::configured_protocol_plan() {
             Ok(plan) if plan.initial() == settings_adapter::ConfiguredStratumProtocol::V2 => {
-                if let Err(error) = stratum_v2_session::start() {
-                    log::warn!(
-                        "stratum_v2_session=unavailable reason=thread_spawn_failed error={error:#}"
-                    );
-                }
+                required_runtime_owner(stratum_v2_session::start())?;
             }
             Ok(_) => {
-                if let Err(error) = production_mining_session::start() {
-                    log::warn!(
-                        "production_mining_session=unavailable reason=thread_spawn_failed error={error:#}"
-                    );
-                }
+                required_runtime_owner(production_mining_session::start())?;
             }
             Err(decision) => {
-                log::warn!(
-                    "production_protocol_owner=unavailable category={}",
+                PROGRESS.fail(DiagnosticStage::RuntimeServices);
+                return Err(anyhow::anyhow!(
+                    "production_protocol_owner_unavailable:{}",
                     decision.label()
-                );
+                ));
             }
         }
-        if let Err(error) = fan_controller_runtime::start() {
-            log::warn!("fan_controller=unavailable reason=thread_spawn_failed error={error:#}");
-        }
+        required_runtime_owner(fan_controller_runtime::start())?;
     }
     let deferred_usb_runtime = if serial_jtag_runtime {
         boot_evidence::publish_usb_boot_profile(
@@ -491,9 +482,32 @@ fn start_statistics_runtime() {
     }
 }
 
-fn start_network_services(maybe_modem: Option<Modem<'static>>) {
-    if let Some(modem) = maybe_modem {
-        if wifi_adapter::start_wifi(modem).is_err() {
+fn prepare_network_services(
+    maybe_modem: Option<Modem<'static>>,
+) -> Option<wifi_adapter::PreparedWifi> {
+    let modem = maybe_modem?;
+    retain_usb_memory_checkpoint("wifi_driver_prepare");
+    let result = wifi_adapter::prepare_wifi(modem);
+    retain_usb_memory_checkpoint("wifi_driver_prepared");
+    match result {
+        Ok(prepared) => Some(prepared),
+        Err(_) => {
+            PROGRESS.fail(DiagnosticStage::Network);
+            None
+        }
+    }
+}
+
+fn required_runtime_owner<T, E: Into<anyhow::Error>>(result: Result<T, E>) -> anyhow::Result<T> {
+    result.map_err(|error| {
+        PROGRESS.fail(DiagnosticStage::RuntimeServices);
+        error.into()
+    })
+}
+
+fn start_network_services(maybe_wifi: Option<wifi_adapter::PreparedWifi>) {
+    if let Some(prepared) = maybe_wifi {
+        if wifi_adapter::start_wifi(prepared).is_err() {
             PROGRESS.fail(DiagnosticStage::Network);
             log::warn!("wifi_status=unavailable reason=startup_failed");
         }

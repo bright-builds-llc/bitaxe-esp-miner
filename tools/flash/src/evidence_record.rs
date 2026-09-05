@@ -141,6 +141,7 @@ pub(crate) fn write_evidence_record(
             "completed".to_owned()
         },
         monitor_evidence_status: capture_projection.monitor_evidence_status.to_owned(),
+        fixed_serial_assessment: input.capture_outcome.fixed_serial_assessment.clone(),
         boot_transcript_status: input
             .capture_outcome
             .boot_transcript_status
@@ -237,6 +238,8 @@ pub(crate) struct EvidenceRecord {
     pub(crate) private_monitor_log_sha256: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) monitor_log_sha256: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) fixed_serial_assessment: Option<FixedSerialAssessment>,
     pub(crate) capture_mode: String,
     pub(crate) capture_status: CaptureStatus,
     pub(crate) capture_timeout_seconds: u64,
@@ -275,6 +278,7 @@ pub(crate) fn validate_evidence_record_capture_state(
             let basis = match record.trust_basis.as_str() {
                 "boot_transcript" => MonitorTrustBasis::BootTranscript,
                 "runtime_attestation" => MonitorTrustBasis::RuntimeAttestation,
+                "fixed_serial" => MonitorTrustBasis::FixedSerial,
                 _ => bail!("trusted capture requires a recognized trust basis"),
             };
             let completion = if record.capture_status == CaptureStatus::Completed {
@@ -305,6 +309,20 @@ pub(crate) fn validate_evidence_record_capture_state(
         },
     };
 
+    if record.fixed_serial_assessment.is_some()
+        && matches!(
+            state,
+            MonitorCaptureState::PendingPrivateClassification
+                | MonitorCaptureState::AdmittedPrivateClassification
+                | MonitorCaptureState::Trusted {
+                    basis: MonitorTrustBasis::BootTranscript
+                        | MonitorTrustBasis::RuntimeAttestation,
+                    ..
+                }
+        )
+    {
+        bail!("fixed-serial capture cannot use a superseded trust or classification path");
+    }
     let projection = state.projection();
     if record.capture_mode != projection.capture_mode
         || record.capture_status != projection.capture_status
@@ -328,6 +346,18 @@ pub(crate) fn validate_evidence_record_capture_state(
                 || runtime_status != RuntimeAttestationEvidenceStatus::NotCaptured =>
         {
             bail!("dry-run capture contains captured evidence state");
+        }
+        MonitorCaptureState::Trusted {
+            basis: MonitorTrustBasis::FixedSerial,
+            ..
+        } if boot_status != BootTranscriptStatus::NotApplicable
+            || runtime_status != RuntimeAttestationEvidenceStatus::NotApplicable
+            || !record
+                .fixed_serial_assessment
+                .as_ref()
+                .is_some_and(FixedSerialAssessment::qualified) =>
+        {
+            bail!("fixed-serial trust basis lacks qualified application evidence");
         }
         MonitorCaptureState::Trusted {
             basis: MonitorTrustBasis::BootTranscript,
@@ -364,6 +394,7 @@ pub(crate) fn apply_monitor_capture_state(
 
 pub(crate) fn parse_boot_transcript_status(value: &str) -> Result<BootTranscriptStatus> {
     match value {
+        "not_applicable" => Ok(BootTranscriptStatus::NotApplicable),
         "trusted" => Ok(BootTranscriptStatus::Trusted),
         "missing" => Ok(BootTranscriptStatus::Missing),
         "untrusted" => Ok(BootTranscriptStatus::Untrusted),
@@ -377,6 +408,7 @@ pub(crate) fn parse_runtime_attestation_evidence_status(
     value: &str,
 ) -> Result<RuntimeAttestationEvidenceStatus> {
     let status = match value {
+        "not_applicable" => return Ok(RuntimeAttestationEvidenceStatus::NotApplicable),
         "trusted" => RuntimeAttestationStatus::Trusted,
         "missing" => RuntimeAttestationStatus::Missing,
         "malformed" => RuntimeAttestationStatus::Malformed,

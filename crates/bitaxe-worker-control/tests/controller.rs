@@ -497,7 +497,11 @@ fn a_new_logical_connection_cannot_replace_active_work() {
 fn admitted_transport_probe_round_trips_maximum_controller_payload() {
     // Arrange
     let mut worker = admitted_worker();
-    let mut request = json!({"protocolVersion":"bwg-worker-controller/0.4", "requestId":"serial_probe", "command":"transport_probe", "payload":{"padding":""}});
+    let mut request = json!({"protocolVersion":"bwg-worker-controller/0.4", "requestId":"serial_probe", "command":"transport_probe", "payload":{"padding":"", "responsePaddingBytes":0}});
+    let response_overhead = serde_json::to_vec(&json!({"protocolVersion":"bwg-worker-controller/0.4", "requestId":"serial_probe", "ok":true, "result":{"padding":""}})).expect("response JSON").len();
+    let response_padding =
+        bitaxe_worker_control::serial::MAXIMUM_CONTROL_PAYLOAD_BYTES - response_overhead;
+    request["payload"]["responsePaddingBytes"] = response_padding.into();
     let overhead = serde_json::to_vec(&request).expect("probe JSON").len();
     let padding =
         "x".repeat(bitaxe_worker_control::serial::MAXIMUM_CONTROL_PAYLOAD_BYTES - overhead);
@@ -513,7 +517,9 @@ fn admitted_transport_probe_round_trips_maximum_controller_payload() {
         serde_json::from_slice(response.frame()).expect("probe response");
 
     // Assert
-    assert_eq!(value["result"]["padding"], padding);
+    assert_eq!(frame.len() - 1, 65536);
+    assert_eq!(response.frame().len() - 1, 65536);
+    assert_eq!(value["result"]["padding"], "x".repeat(response_padding));
     assert_eq!(worker.session().events, Vec::<&str>::new());
 }
 
@@ -521,7 +527,7 @@ fn admitted_transport_probe_round_trips_maximum_controller_payload() {
 fn transport_probe_cannot_echo_arbitrary_data() {
     // Arrange
     let mut worker = admitted_worker();
-    let mut frame = serde_json::to_vec(&json!({"protocolVersion":"bwg-worker-controller/0.4", "requestId":"serial_probe", "command":"transport_probe", "payload":{"padding":"arbitrary"}})).expect("probe JSON");
+    let mut frame = serde_json::to_vec(&json!({"protocolVersion":"bwg-worker-controller/0.4", "requestId":"serial_probe", "command":"transport_probe", "payload":{"padding":"arbitrary", "responsePaddingBytes":9}})).expect("probe JSON");
     frame.push(b'\n');
 
     // Act
@@ -534,4 +540,24 @@ fn transport_probe_cannot_echo_arbitrary_data() {
             .category(),
         "invalid_request"
     );
+}
+
+#[test]
+fn transport_probe_rejects_truncation_and_oversized_response_requests() {
+    // Arrange
+    let mut worker = admitted_worker();
+    // Act / Assert
+    for wanted in [0usize, 65536] {
+        let mut frame = serde_json::to_vec(&json!({"protocolVersion":"bwg-worker-controller/0.4",
+            "requestId":"serial_probe", "command":"transport_probe", "payload":{"padding":"x", "responsePaddingBytes":wanted}})).expect("probe JSON");
+        frame.push(b'\n');
+        assert_eq!(
+            worker
+                .prepare_frame(&frame, 1_001)
+                .expect_err("bounded nontruncating response")
+                .category(),
+            "invalid_request"
+        );
+        assert!(worker.session().events.is_empty());
+    }
 }

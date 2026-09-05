@@ -1,4 +1,6 @@
 use crate::*;
+mod fixed_serial;
+pub(crate) use fixed_serial::FixedSerialAssessment;
 
 pub(crate) fn resolve_port(
     maybe_port: Option<&str>,
@@ -62,172 +64,49 @@ pub(crate) fn command_with_port(command_spec: &CommandSpec, port: &str) -> Resul
     Ok(args)
 }
 
-pub(crate) fn monitor_log_has_trusted_boot_markers(log: &str) -> bool {
-    monitor_log_has_message(log, "bitaxe-rust boot: board=Ultra 205 asic=BM1366")
-        && monitor_log_has_message(
-            log,
-            "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled",
-        )
-        && monitor_log_has_token(log, "spiffs_mount=available")
-        && monitor_log_has_token(log, "axeos_api_route_shell=started")
-        && [
-            "ota_boot_validation=",
-            "reset_reason=",
-            "firmware_commit=",
-            "reference_commit=",
-            "esp_idf_version=",
-        ]
-        .iter()
-        .all(|marker| monitor_log_marker_value(log, marker) != UNAVAILABLE)
-}
-
-pub(crate) fn monitor_log_has_message(log: &str, marker: &str) -> bool {
-    let prefixed_marker = format!(": {marker}");
-    log.lines()
-        .map(str::trim)
-        .any(|line| line == marker || line.ends_with(&prefixed_marker))
-}
-
-pub(crate) fn monitor_log_has_token(log: &str, marker: &str) -> bool {
-    log.lines()
-        .flat_map(str::split_whitespace)
-        .any(|token| token == marker)
-}
-
 pub(crate) fn monitor_capture_outcome(
     process_status: &CaptureProcessStatus,
     monitor_log: &str,
     capture_timeout_seconds: u64,
-    expected_firmware_commit: &str,
-    expected_reference_commit: &str,
     maybe_runtime_identity: Option<&ExpectedRuntimeAttestationIdentity>,
-    allow_private_classification: bool,
 ) -> MonitorCaptureOutcome {
-    let observed_firmware_commit = monitor_log_marker_value(monitor_log, "firmware_commit=");
-    let observed_reference_commit = monitor_log_marker_value(monitor_log, "reference_commit=");
-    let maybe_trust_failure = maybe_monitor_trust_failure(
-        monitor_log,
-        &observed_firmware_commit,
-        expected_firmware_commit,
-        &observed_reference_commit,
-        expected_reference_commit,
-    );
-    let boot_transcript_status = if maybe_trust_failure.is_none() {
-        BootTranscriptStatus::Trusted
-    } else if !monitor_log_has_trusted_boot_markers(monitor_log) {
-        BootTranscriptStatus::Missing
-    } else {
-        BootTranscriptStatus::Untrusted
-    };
-    let runtime_attestation_status = maybe_runtime_identity
-        .map_or(RuntimeAttestationStatus::Missing, |identity| {
-            classify_runtime_boot_attestations(monitor_log, identity)
-        });
-    let maybe_trust_basis = if maybe_trust_failure.is_none() {
-        Some(MonitorTrustBasis::BootTranscript)
-    } else if runtime_attestation_status == RuntimeAttestationStatus::Trusted {
-        Some(MonitorTrustBasis::RuntimeAttestation)
-    } else {
-        None
-    };
-    let state = match (process_status, maybe_trust_basis) {
-        (CaptureProcessStatus::ExitedSuccess, Some(basis)) => MonitorCaptureState::Trusted {
-            completion: TrustedCaptureCompletion::Completed,
-            basis,
-        },
-        (CaptureProcessStatus::TimedOut, Some(basis)) => MonitorCaptureState::Trusted {
-            completion: TrustedCaptureCompletion::TimedOut,
-            basis,
-        },
-        (CaptureProcessStatus::TimedOut, None) if allow_private_classification => {
-            MonitorCaptureState::PendingPrivateClassification
-        }
-        (CaptureProcessStatus::TimedOut, None) => MonitorCaptureState::Untrusted {
-            timed_out: true,
-            conclusion: maybe_trust_failure.map_or_else(
-                || "failed - evidence capture is not trusted".to_owned(),
-                |failure| format!("failed - evidence capture is not trusted: {failure}"),
-            ),
-        },
-        (
-            CaptureProcessStatus::SpawnFailed
-            | CaptureProcessStatus::ExitedSuccess
-            | CaptureProcessStatus::ExitedFailure(_),
-            None,
-        ) => MonitorCaptureState::Untrusted {
-            timed_out: false,
-            conclusion: maybe_trust_failure.map_or_else(
-                || "failed - evidence capture is not trusted".to_owned(),
-                |failure| format!("failed - evidence capture is not trusted: {failure}"),
-            ),
-        },
-        (CaptureProcessStatus::SpawnFailed | CaptureProcessStatus::ExitedFailure(_), Some(_)) => {
-            MonitorCaptureState::Untrusted {
-                timed_out: false,
-                conclusion: "failed - monitor process did not complete successfully".to_owned(),
+    let assessment = fixed_serial::assess(monitor_log, maybe_runtime_identity);
+    let state = match process_status {
+        CaptureProcessStatus::ExitedSuccess | CaptureProcessStatus::TimedOut
+            if assessment.qualified() =>
+        {
+            MonitorCaptureState::Trusted {
+                completion: if *process_status == CaptureProcessStatus::TimedOut {
+                    TrustedCaptureCompletion::TimedOut
+                } else {
+                    TrustedCaptureCompletion::Completed
+                },
+                basis: MonitorTrustBasis::FixedSerial,
             }
         }
+        _ => MonitorCaptureState::Untrusted {
+            timed_out: *process_status == CaptureProcessStatus::TimedOut,
+            conclusion: if assessment.qualified() {
+                "unqualified - exact fixed Serial/JTAG execution observed, but monitor process failed".to_owned()
+            } else {
+                assessment.conclusion()
+            },
+        },
     };
-
     MonitorCaptureOutcome {
         state,
         capture_timeout_seconds,
-        observed_firmware_commit,
-        observed_reference_commit,
-        boot_transcript_status,
-        runtime_attestation_status: RuntimeAttestationEvidenceStatus::Observed(
-            runtime_attestation_status,
-        ),
+        observed_firmware_commit: maybe_runtime_identity
+            .filter(|_| assessment.execution_present)
+            .map_or_else(
+                || UNAVAILABLE.to_owned(),
+                |identity| identity.firmware_commit.clone(),
+            ),
+        observed_reference_commit: UNAVAILABLE.to_owned(),
+        boot_transcript_status: BootTranscriptStatus::NotApplicable,
+        runtime_attestation_status: RuntimeAttestationEvidenceStatus::NotApplicable,
+        fixed_serial_assessment: Some(assessment),
     }
-}
-
-pub(crate) fn monitor_log_marker_value(log: &str, marker: &str) -> String {
-    log.lines()
-        .flat_map(str::split_whitespace)
-        .find_map(|token| token.strip_prefix(marker))
-        .filter(|value| !value.is_empty())
-        .map(str::to_owned)
-        .unwrap_or_else(|| UNAVAILABLE.to_owned())
-}
-
-pub(crate) fn maybe_monitor_trust_failure(
-    monitor_log: &str,
-    observed_firmware_commit: &str,
-    expected_firmware_commit: &str,
-    observed_reference_commit: &str,
-    expected_reference_commit: &str,
-) -> Option<String> {
-    if !monitor_log_has_trusted_boot_markers(monitor_log) {
-        return Some("missing trusted Ultra 205 boot markers".to_owned());
-    }
-
-    if !commit_marker_matches_expected(observed_firmware_commit, expected_firmware_commit) {
-        return Some(format!(
-            "observed firmware_commit={observed_firmware_commit} did not match source commit={expected_firmware_commit}"
-        ));
-    }
-
-    if !commit_marker_matches_expected(observed_reference_commit, expected_reference_commit) {
-        return Some(format!(
-            "observed reference_commit={observed_reference_commit} did not match reference commit={expected_reference_commit}"
-        ));
-    }
-
-    None
-}
-
-pub(crate) fn commit_marker_matches_expected(observed: &str, expected: &str) -> bool {
-    observed != UNAVAILABLE
-        && expected != UNAVAILABLE
-        && observed.len() >= MIN_COMMIT_PREFIX_LEN
-        && observed.len() <= expected.len()
-        && observed
-            .chars()
-            .all(|character| character.is_ascii_hexdigit())
-        && expected
-            .chars()
-            .all(|character| character.is_ascii_hexdigit())
-        && expected.starts_with(observed)
 }
 
 pub(crate) fn dry_run_monitor_capture_outcome(
@@ -235,6 +114,7 @@ pub(crate) fn dry_run_monitor_capture_outcome(
 ) -> MonitorCaptureOutcome {
     MonitorCaptureOutcome {
         state: MonitorCaptureState::DryRun,
+        fixed_serial_assessment: None,
         capture_timeout_seconds,
         observed_firmware_commit: UNAVAILABLE.to_owned(),
         observed_reference_commit: UNAVAILABLE.to_owned(),
@@ -246,6 +126,7 @@ pub(crate) fn dry_run_monitor_capture_outcome(
 pub(crate) fn no_monitor_capture_outcome() -> MonitorCaptureOutcome {
     MonitorCaptureOutcome {
         state: MonitorCaptureState::NotRequested,
+        fixed_serial_assessment: None,
         capture_timeout_seconds: 0,
         observed_firmware_commit: UNAVAILABLE.to_owned(),
         observed_reference_commit: UNAVAILABLE.to_owned(),

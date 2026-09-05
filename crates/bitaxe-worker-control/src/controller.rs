@@ -1,17 +1,16 @@
+mod probe;
 mod status;
 mod wire;
 use status::response;
 
 use std::fmt;
 
-use serde_json::{json, Value};
+use serde_json::Value;
 use sha2::{Digest, Sha256};
 use thiserror::Error;
 use zeroize::Zeroize;
 
-use self::wire::{
-    classify_json_error, ControllerRequest, FrameDiscriminator, ProbePayload, RestorePayload,
-};
+use self::wire::{classify_json_error, ControllerRequest, FrameDiscriminator, RestorePayload};
 
 use crate::codec::{base64_url, canonical_json, digest_text, strict_json_frame};
 use crate::possession::{FirmwareIdentity, PossessionError, PossessionRequest};
@@ -394,7 +393,14 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                 request.require_no_payload()?;
                 self.capability.clone()
             }
-            "transport_probe" => self.probe(request.required_payload()?, now)?,
+            "transport_probe" => {
+                let payload = request.required_payload()?;
+                self.required_start_context(now)?;
+                if self.maybe_active.is_some() || self.effect_cleanup_required {
+                    return Err(WorkerControlError::InvalidTransition);
+                }
+                probe::response(payload, &request.request_id)?
+            }
             "start_lease" => self.start(request.required_payload()?, now)?,
             "renew_lease" => self.renew(request.required_payload()?, now)?,
             "status" => {
@@ -434,17 +440,6 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                 generation: self.generation,
             }),
         )
-    }
-
-    fn probe(&self, payload: ProbePayload, now: u64) -> Result<Value, WorkerControlError> {
-        self.required_start_context(now)?;
-        if self.maybe_active.is_some() || self.effect_cleanup_required {
-            return Err(WorkerControlError::InvalidTransition);
-        }
-        if !payload.padding.bytes().all(|byte| byte == b'x') {
-            return Err(WorkerControlError::InvalidRequest);
-        }
-        Ok(json!({"padding": payload.padding}))
     }
 
     fn start(&mut self, grant: WorkerLeaseGrant, now: u64) -> Result<Value, WorkerControlError> {

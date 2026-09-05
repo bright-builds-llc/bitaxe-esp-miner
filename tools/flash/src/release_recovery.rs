@@ -305,10 +305,7 @@ fn observe_restored_runtime(
         &capture.status,
         &monitor_log,
         command.capture_timeout_seconds,
-        &expected_runtime.firmware_commit,
-        &expected_runtime.reference_commit,
         Some(expected_runtime),
-        true,
     );
     if !outcome.accepted() {
         bail!("release_recovery=failed reason=runtime_proof_untrusted");

@@ -96,6 +96,27 @@ The migration's recovery destination is an exact fixed-Serial/JTAG safe baseline
 with mining disabled. Recovery-006 and old native-USB discriminator plans remain
 historical; their missing evidence is not promoted by architectural replacement.
 
+## Startup and capture assessment
+
+The diagnostic writer starts before blocking initialization. Wi-Fi construction
+reserves its mandatory internal resources before BWG/HTTP allocation; connection
+startup remains deferred. Required owner and boot-validation failures remain
+explicit startup failures. Stack sizes and reserves are not adjusted to hide
+allocation failures.
+
+Current flash/monitor assessment uses exact fixed-serial source/ELF identity,
+confirmed safe baseline, complete error-free startup, and advancing samples from
+a stable boot. Execution can be present while qualification fails. Complete
+conflicting or malformed application records fail closed; boot noise and an
+incomplete capture tail do not substitute for evidence. Replayed previous-boot
+panic/allocation receipts remain history. Allocation source hashes identify the
+firmware commit, not an allocator callsite.
+
+Maximum probes exercise 65536-byte Controller payloads in both directions. Each
+write and drain share a two-second budget, with heartbeat headroom before long
+records; the 2.8-second authority cutoff remains independent. Closed TX failure
+records report queued byte counts, which are not delivery confirmation.
+
 ## Verification and privacy
 
 Run just verify-native-usb-ownership after transport/startup/host changes.

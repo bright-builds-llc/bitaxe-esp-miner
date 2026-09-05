@@ -99,7 +99,8 @@ fn request_id(value: &str) -> bool {
 }
 
 #[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub(super) struct ProbePayload {
     pub padding: String,
+    pub response_padding_bytes: usize,
 }

@@ -1,3 +1,4 @@
+const WIFI_DRIVER_SOURCE: &str = include_str!("wifi_adapter/driver.rs");
 const WIFI_ADAPTER_SOURCE: &str = include_str!("wifi_adapter.rs");
 const CAPTIVE_DNS_SOURCE: &str = include_str!("wifi_adapter/captive_dns.rs");
 const WIFI_SCAN_SOURCE: &str = include_str!("wifi_adapter/scan.rs");
@@ -10,14 +11,19 @@ const STARTUP_SOURCE: &str = include_str!("startup.rs");
 fn startup_has_one_wifi_owner_before_network_notification() {
     // Arrange
     let wifi_start = STARTUP_SOURCE
-        .find("wifi_adapter::start_wifi(modem)")
+        .find("wifi_adapter::start_wifi(prepared)")
         .expect("startup must invoke the Wi-Fi owner");
     let network_notification = STARTUP_SOURCE
         .find("ProductionSessionWakeup::NetworkChanged")
         .expect("startup must notify production readiness");
 
     // Act / Assert
-    assert_eq!(STARTUP_SOURCE.matches("wifi_adapter::start_wifi(modem)").count(), 1);
+    assert_eq!(
+        STARTUP_SOURCE
+            .matches("wifi_adapter::start_wifi(prepared)")
+            .count(),
+        1
+    );
     assert!(wifi_start < network_notification);
 }
 
@@ -30,8 +36,18 @@ fn configuration_network_has_exact_ap_shape_and_one_dns_owner() {
     assert!(WIFI_ADAPTER_SOURCE.contains("auth_method: AuthMethod::None"));
     assert!(WIFI_ADAPTER_SOURCE.contains("Configuration::AccessPoint(ap_configuration.clone())"));
     assert!(WIFI_ADAPTER_SOURCE.contains("Configuration::Mixed("));
-    assert_eq!(WIFI_ADAPTER_SOURCE.matches("captive_dns::start_once(").count(), 2);
-    assert_eq!(CAPTIVE_DNS_SOURCE.matches("pub(super) fn start_once(").count(), 1);
+    assert_eq!(
+        WIFI_ADAPTER_SOURCE
+            .matches("captive_dns::start_once(")
+            .count(),
+        2
+    );
+    assert_eq!(
+        CAPTIVE_DNS_SOURCE
+            .matches("pub(super) fn start_once(")
+            .count(),
+        1
+    );
     assert_eq!(CAPTIVE_DNS_SOURCE.matches("UdpSocket::bind(").count(), 1);
     assert_eq!(CAPTIVE_DNS_SOURCE.matches(".spawn(move || run").count(), 1);
 }
@@ -108,9 +124,7 @@ fn scan_route_uses_one_exclusive_wifi_owner_and_restores_ap_mode() {
     assert!(WIFI_SCAN_SOURCE.contains("scan_n::<MAX_WIFI_SCAN_NETWORKS>()"));
     assert!(WIFI_SCAN_SOURCE.contains("Configuration::AccessPoint(ap_configuration)"));
     assert_eq!(
-        HTTP_API_SOURCE
-            .matches("\"/api/system/wifi/scan\"")
-            .count(),
+        HTTP_API_SOURCE.matches("\"/api/system/wifi/scan\"").count(),
         1
     );
     assert!(HTTP_HANDLERS_SOURCE.contains("wifi_adapter::scan_visible_networks()"));
@@ -149,4 +163,98 @@ fn reconnect_callbacks_only_enqueue_typed_events_before_the_worker_retries() {
     assert!(WIFI_RECONNECT_SOURCE.contains("WifiReconnectEvent::RetryDeadline"));
     assert!(WIFI_RECONNECT_SOURCE.contains("owner.wifi.wifi_mut().connect()"));
     assert!(WIFI_RECONNECT_SOURCE.contains("NETWORK_RECONNECT_PROBE_ARMED.swap(false"));
+}
+
+#[test]
+fn driver_construction_precedes_background_owners_and_preserves_late_connection_start() {
+    // Arrange
+    let run = STARTUP_SOURCE
+        .split("fn run_startup()")
+        .nth(1)
+        .expect("startup entry")
+        .split("fn initialize_boot_identity_and_settings(")
+        .next()
+        .expect("startup boundary");
+    // Act
+    let hardware = run
+        .find("initialize_hardware(")
+        .expect("safe hardware initialization");
+    let prepare = run
+        .find("prepare_network_services(maybe_modem)")
+        .expect("early Wi-Fi driver construction");
+    let owners = run
+        .find("start_runtime_services(startup_diagnostics)")
+        .expect("background owners");
+    let platform = run
+        .find("publish_platform_readiness(")
+        .expect("readiness publication");
+    let connect = run
+        .find("start_network_services(maybe_wifi)")
+        .expect("late blocking connection");
+    // Assert
+    assert!(hardware < prepare && prepare < owners);
+    assert!(owners < platform && platform < connect);
+}
+
+#[test]
+fn driver_preparation_does_not_start_rf_or_allocate_a_second_driver() {
+    // Arrange / Act / Assert
+    assert_eq!(WIFI_DRIVER_SOURCE.matches("EspWifi::new(").count(), 1);
+    assert!(!WIFI_ADAPTER_SOURCE.contains("EspWifi::new("));
+    for forbidden in ["wifi.start()", "wifi.connect()", "wait_netif_up()"] {
+        assert!(!WIFI_DRIVER_SOURCE.contains(forbidden));
+    }
+    assert!(WIFI_ADAPTER_SOURCE.contains("start_wifi(prepared: PreparedWifi)"));
+    assert_eq!(
+        STARTUP_SOURCE
+            .matches("wifi_adapter::prepare_wifi(modem)")
+            .count(),
+        1
+    );
+}
+
+#[test]
+fn driver_allocation_is_bracketed_by_closed_heap_checkpoints_even_on_failure() {
+    // Arrange
+    let prepare = STARTUP_SOURCE
+        .split("fn prepare_network_services(")
+        .nth(1)
+        .expect("driver preparation")
+        .split("fn required_runtime_owner<")
+        .next()
+        .expect("preparation boundary");
+    // Act
+    let before = prepare
+        .find(r#"retain_usb_memory_checkpoint("wifi_driver_prepare")"#)
+        .expect("before driver");
+    let constructor = prepare
+        .find("wifi_adapter::prepare_wifi(modem)")
+        .expect("driver construction");
+    let after = prepare
+        .find(r#"retain_usb_memory_checkpoint("wifi_driver_prepared")"#)
+        .expect("after driver");
+    // Assert
+    assert!(before < constructor && constructor < after);
+    assert!(prepare.contains("PROGRESS.fail(DiagnosticStage::Network)"));
+}
+
+#[test]
+fn required_runtime_owner_failures_propagate_instead_of_reporting_ready() {
+    // Arrange / Act / Assert
+    for start in [
+        "safety_adapter::start_safety_supervisor()",
+        "production_mining_session::start()",
+        "fan_controller_runtime::start()",
+    ] {
+        assert!(STARTUP_SOURCE.contains(&format!("required_runtime_owner({start})?")));
+    }
+    let guard = STARTUP_SOURCE
+        .split("fn required_runtime_owner<")
+        .nth(1)
+        .expect("required owner guard")
+        .split("fn start_network_services(")
+        .next()
+        .expect("guard boundary");
+    assert!(guard.contains("result.map_err("));
+    assert!(guard.contains("PROGRESS.fail(DiagnosticStage::RuntimeServices)"));
 }

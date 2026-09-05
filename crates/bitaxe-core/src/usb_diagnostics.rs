@@ -14,6 +14,8 @@ pub fn is_worker_diagnostic_retained_line(line: &str) -> bool {
                         | "stage=usb_installed"
                         | "stage=statistics_start"
                         | "stage=statistics_started"
+                        | "stage=wifi_driver_prepare"
+                        | "stage=wifi_driver_prepared"
                 )
             ) && fields
                 .next()
@@ -200,6 +202,17 @@ mod tests {
             "wifi_startup_failure schema=v1 phase=driver error=no_memory redacted=false",
         ] {
             assert!(!is_worker_diagnostic_retained_line(invalid));
+        }
+    }
+    #[test]
+    fn wifi_constructor_checkpoints_accept_only_the_existing_numeric_shape() {
+        // Arrange / Act / Assert
+        for stage in ["wifi_driver_prepare", "wifi_driver_prepared"] {
+            let line = format!("usb_memory_checkpoint stage={stage} free_bytes=100000 largest_block_bytes=64000 reserve_bytes=98304 redacted=true");
+            assert!(is_worker_diagnostic_retained_line(&line));
+            assert!(!is_worker_diagnostic_retained_line(&format!(
+                "{line} private=value"
+            )));
         }
     }
 }

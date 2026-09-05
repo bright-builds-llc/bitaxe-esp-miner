@@ -100,6 +100,7 @@ pub(crate) enum TrustedCaptureCompletion {
 pub(crate) enum MonitorTrustBasis {
     BootTranscript,
     RuntimeAttestation,
+    FixedSerial,
 }
 
 impl MonitorTrustBasis {
@@ -107,6 +108,7 @@ impl MonitorTrustBasis {
         match self {
             Self::BootTranscript => "boot_transcript",
             Self::RuntimeAttestation => "runtime_attestation",
+            Self::FixedSerial => "fixed_serial",
         }
     }
 }
@@ -129,6 +131,7 @@ pub(crate) enum MonitorCaptureState {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum BootTranscriptStatus {
+    NotApplicable,
     Trusted,
     Missing,
     Untrusted,
@@ -139,6 +142,7 @@ pub(crate) enum BootTranscriptStatus {
 impl BootTranscriptStatus {
     pub(crate) const fn label(self) -> &'static str {
         match self {
+            Self::NotApplicable => "not_applicable",
             Self::Trusted => "trusted",
             Self::Missing => "missing",
             Self::Untrusted => "untrusted",
@@ -150,6 +154,7 @@ impl BootTranscriptStatus {
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum RuntimeAttestationEvidenceStatus {
+    NotApplicable,
     Observed(RuntimeAttestationStatus),
     NotCaptured,
     NotRequested,
@@ -158,6 +163,7 @@ pub(crate) enum RuntimeAttestationEvidenceStatus {
 impl RuntimeAttestationEvidenceStatus {
     pub(crate) const fn label(self) -> &'static str {
         match self {
+            Self::NotApplicable => "not_applicable",
             Self::Observed(status) => status.label(),
             Self::NotCaptured => "not_captured",
             Self::NotRequested => "not_requested",
@@ -167,6 +173,7 @@ impl RuntimeAttestationEvidenceStatus {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) struct MonitorCaptureOutcome {
+    pub(crate) fixed_serial_assessment: Option<FixedSerialAssessment>,
     pub(crate) state: MonitorCaptureState,
     pub(crate) capture_timeout_seconds: u64,
     pub(crate) observed_firmware_commit: String,
@@ -178,10 +185,6 @@ pub(crate) struct MonitorCaptureOutcome {
 impl MonitorCaptureOutcome {
     pub(crate) fn accepted(&self) -> bool {
         matches!(self.state, MonitorCaptureState::Trusted { .. })
-    }
-
-    pub(crate) fn ready_for_private_classification(&self) -> bool {
-        self.state == MonitorCaptureState::PendingPrivateClassification
     }
 
     pub(crate) fn projection(&self) -> MonitorCaptureProjection<'_> {
@@ -226,6 +229,7 @@ impl MonitorCaptureState {
                     }
                 };
                 let conclusion = match basis {
+                    MonitorTrustBasis::FixedSerial => "passed - exact-package fixed Serial/JTAG execution, confirmed safe baseline, complete startup and stable boot observed; mining not verified",
                     MonitorTrustBasis::BootTranscript => "passed - original boot transcript captured and trusted; HTTP/static/recovery/OTA/rollback parity not claimed",
                     MonitorTrustBasis::RuntimeAttestation => "passed - exact-package runtime attestation trusted; original boot transcript was not captured",
                 };

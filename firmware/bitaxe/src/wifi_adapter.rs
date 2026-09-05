@@ -15,6 +15,8 @@ use esp_idf_svc::wifi::{
 use crate::{boot_evidence, log_buffer, network_stack, settings_adapter};
 
 mod captive_dns;
+mod driver;
+pub(crate) use driver::{prepare_wifi, PreparedWifi};
 mod reconnect;
 mod scan;
 mod startup_diagnostics;
@@ -133,19 +135,15 @@ impl ProvisioningReason {
     }
 }
 
-/// Starts the sole Wi-Fi owner in AP-only or mixed AP+STA mode.
-pub fn start_wifi(modem: Modem<'static>) -> anyhow::Result<()> {
+/// Consumes the preallocated driver and starts the sole AP-only or mixed AP+STA owner.
+pub(crate) fn start_wifi(prepared: PreparedWifi) -> anyhow::Result<()> {
+    let PreparedWifi {
+        mut wifi,
+        sysloop,
+        ap_mac,
+        ap_configuration,
+    } = prepared;
     let credential_state = wifi_credential_state();
-    observe(Phase::Netif, network_stack::initialize())?;
-
-    let sysloop = observe(Phase::EventLoop, EspSystemEventLoop::take())?;
-    let esp_wifi = observe(Phase::Driver, EspWifi::new(modem, sysloop.clone(), None))?;
-    let mut wifi = BlockingWifi::wrap(esp_wifi, sysloop.clone())?;
-    let ap_mac = observe(
-        Phase::ApConfiguration,
-        wifi.wifi().get_mac(WifiDeviceId::Ap),
-    )?;
-    let ap_configuration = observe(Phase::ApConfiguration, configuration_ap(ap_mac))?;
 
     match credential_state {
         WifiCredentialState::Missing => start_provisioning(

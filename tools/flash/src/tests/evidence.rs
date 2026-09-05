@@ -106,12 +106,12 @@ fn flash_monitor_evidence_json_records_capture_contract() {
     assert_eq!(json["capture_timeout_seconds"], 360);
     assert_eq!(json["flash_status"], "completed");
     assert_eq!(json["monitor_evidence_status"], "trusted");
-    assert_eq!(json["boot_transcript_status"], "trusted");
-    assert_eq!(json["runtime_attestation_status"], "missing");
-    assert_eq!(json["trust_basis"], "boot_transcript");
+    assert_eq!(json["boot_transcript_status"], "not_applicable");
+    assert_eq!(json["runtime_attestation_status"], "not_applicable");
+    assert_eq!(json["trust_basis"], "fixed_serial");
     assert_eq!(json["trusted_output"], true);
-    assert_eq!(json["observed_firmware_commit"], "0123456789ab");
-    assert_eq!(json["observed_reference_commit"], "abcdef012345");
+    assert_eq!(json["observed_firmware_commit"], SOURCE_COMMIT);
+    assert_eq!(json["observed_reference_commit"], "Unavailable");
 }
 
 #[test]

@@ -43,8 +43,12 @@ mod boot_evidence {
         (slot == 0).then(|| "usb_runtime_identity fixture=true redacted=true".to_owned())
     }
 }
+#[allow(dead_code)]
+#[path = "usb_write_failure.rs"]
+mod usb_write_failure;
 mod usb_runtime {
     use super::*;
+    pub(crate) use crate::usb_write_failure::WriteFailure;
     pub static DELAY_MS: AtomicU32 = AtomicU32::new(0);
     pub static SINK: Mutex<Option<mpsc::Sender<String>>> = Mutex::new(None);
     pub fn write(bytes: &[u8]) -> anyhow::Result<()> {
@@ -231,4 +235,44 @@ fn peer_heartbeat_has_priority_during_continuous_control_output() {
     // Assert
     assert!(heartbeat.contains("\"payload\":{}"));
     producer.join().expect("bounded control producer");
+}
+
+#[test]
+fn long_control_reply_refreshes_peer_heartbeat_before_the_indivisible_record() {
+    // Arrange
+    let _exclusive = TEST_LOCK.lock().expect("exclusive writer fixture");
+    let writer = WriterFixture::start(Arc::new(startup_diagnostics::StartupProgress::new()));
+    CURRENT_SESSION.store(4, Ordering::Release);
+    let sender = writer.maybe_output.as_ref().expect("writer sender");
+    sender
+        .send(writer::Output::Hello {
+            epoch: 4,
+            session_id: "AAAAAAAAAAAAAAAAAAAAAA".to_owned(),
+            payload: serde_json::json!({"op":"hello_ack"}),
+        })
+        .expect("hello queued");
+    writer.expect_marker("\"kind\":\"session\"");
+    let (receipt, completion) = mpsc::sync_channel(1);
+    let bytes = serde_json::to_vec(&serde_json::json!({"padding":"x".repeat(8192)}))
+        .expect("fixed large payload");
+    // Act
+    sender
+        .send(writer::Output::Control {
+            epoch: 4,
+            bytes: SecretBytes(bytes),
+            receipt,
+        })
+        .expect("control queued");
+    let heartbeat: serde_json::Value =
+        serde_json::from_str(&writer.expect_marker("\"kind\":\"heartbeat\"")).expect("heartbeat");
+    let control: serde_json::Value =
+        serde_json::from_str(&writer.expect_marker("\"kind\":\"control\"")).expect("control");
+    // Assert
+    assert!(completion
+        .recv_timeout(Duration::from_secs(1))
+        .expect("confirmed response"));
+    assert_eq!(
+        control["sequence"].as_u64().expect("control sequence"),
+        heartbeat["sequence"].as_u64().expect("heartbeat sequence") + 1
+    );
 }

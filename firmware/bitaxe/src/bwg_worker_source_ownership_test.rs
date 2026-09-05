@@ -107,7 +107,7 @@ fn startup_installs_diagnostics_before_nvs_and_gates_worker_until_after_baseline
         .expect("startup entrypoint boundary should exist");
     let run = &STARTUP_SOURCE[run_start..run_end];
     let network = run
-        .find("start_network_services(maybe_modem)")
+        .find("start_network_services(maybe_wifi)")
         .expect("Wi-Fi startup should exist");
     let worker_install = run
         .find("start_deferred_usb_runtime(runtime_services.deferred_usb_runtime)")

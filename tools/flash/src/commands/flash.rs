@@ -238,12 +238,37 @@ fn run_evidence_flash_monitor(
             &capture_result.status,
             &monitor_log,
             command.capture_timeout_seconds,
-            &environment.firmware_commit(),
-            &environment.reference_commit(),
             flash_outcome.runtime_identity.as_ref(),
-            dual_paths.is_some(),
         )
     };
+    if let Some(assessment) = &capture_outcome.fixed_serial_assessment {
+        emit_line(
+            "application_execution",
+            if assessment.execution_present {
+                "observed_exact_package"
+            } else {
+                "not_observed"
+            },
+        )?;
+        emit_line(
+            "startup_status",
+            if assessment.startup_failed {
+                "failed"
+            } else if assessment.startup_complete {
+                "complete"
+            } else {
+                "incomplete"
+            },
+        )?;
+        emit_line(
+            "monitor_qualified",
+            if capture_outcome.accepted() {
+                "true"
+            } else {
+                "false"
+            },
+        )?;
+    }
     let maybe_private_sha256 = dual_paths
         .as_ref()
         .map(|paths| evidence::private_log_sha256(&paths.private_log))
@@ -283,11 +308,6 @@ fn validate_evidence_capture(
     capture_outcome: &MonitorCaptureOutcome,
 ) -> Result<()> {
     if command.common.dry_run || capture_outcome.accepted() {
-        return Ok(());
-    }
-    if command.common.evidence_mode == Some(EvidenceMode::Dual)
-        && capture_outcome.ready_for_private_classification()
-    {
         return Ok(());
     }
     if command.common.evidence_mode == Some(EvidenceMode::Dual) {

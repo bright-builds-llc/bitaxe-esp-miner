@@ -266,6 +266,8 @@ rust_binary(
         "src/main.rs",
         "src/model.rs",
         "src/monitor.rs",
+        "src/monitor/fixed_serial.rs",
+        "src/monitor/fixed_serial/tests.rs",
         "src/nvs_readback.rs",
         "src/owner_recovery.rs",
         "src/noise_diagnostic.rs",

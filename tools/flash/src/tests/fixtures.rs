@@ -10,18 +10,7 @@ fn common_args() -> CommonArgs {
 }
 
 fn trusted_monitor_log() -> String {
-    [
-        "bitaxe-rust boot: board=Ultra 205 asic=BM1366",
-        "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled",
-        "ota_boot_validation=not_pending state=factory",
-        "spiffs_mount=available partition=www total_bytes=2884241 used_bytes=4518",
-        "axeos_api_route_shell=started registered_routes=15",
-        "reset_reason=11",
-        "firmware_commit=0123456789ab",
-        "reference_commit=abcdef012345",
-        "esp_idf_version=v5.5.4",
-    ]
-    .join("\n")
+    fixed_serial_monitor_log()
 }
 
 fn runtime_attestation_log() -> String {
@@ -146,7 +135,11 @@ fn write_manifest_v4_contents(
         ),
         ("otadata_initial", "otadata-initial.bin", otadata.as_slice()),
         ("bootloader", "bootloader.bin", bootloader.as_slice()),
-        ("partition_table", "partition-table.csv", CANONICAL_PARTITIONS.as_bytes()),
+        (
+            "partition_table",
+            "partition-table.csv",
+            CANONICAL_PARTITIONS.as_bytes(),
+        ),
     ];
     let mut artifact_values = Vec::new();
     for (kind, path, bytes) in artifacts {
@@ -282,10 +275,7 @@ fn add_manifest_artifact(
     path
 }
 
-fn run_explicit_image_admission(
-    manifest: &Utf8Path,
-    image: Utf8PathBuf,
-) -> Result<FlashOutcome> {
+fn run_explicit_image_admission(manifest: &Utf8Path, image: Utf8PathBuf) -> Result<FlashOutcome> {
     let command = FlashCommand {
         factory_reset: false,
         common: CommonArgs {
@@ -547,8 +537,10 @@ fn reseal_esp_application(image: &mut Vec<u8>) {
 }
 
 fn factory_partition_table_fixture() -> Vec<u8> {
-    esp_idf_part::PartitionTable::try_from_str(CANONICAL_PARTITIONS).expect("canonical partitions")
-        .to_bin().expect("binary partition table")
+    esp_idf_part::PartitionTable::try_from_str(CANONICAL_PARTITIONS)
+        .expect("canonical partitions")
+        .to_bin()
+        .expect("binary partition table")
 }
 
 fn factory_image_fixture(partition_table: &[u8], ota: &[u8]) -> Vec<u8> {
@@ -562,4 +554,11 @@ fn factory_image_fixture(partition_table: &[u8], ota: &[u8]) -> Vec<u8> {
         .copy_from_slice(partition_table);
     factory[FACTORY_APP_OFFSET..FACTORY_APP_OFFSET + ota.len()].copy_from_slice(ota);
     factory
+}
+
+fn fixed_serial_monitor_log() -> String {
+    [1000_u64, 3000, 5000].into_iter().map(|uptime_ms| {
+        let profile = serde_json::json!({"schema_version":1,"transport":"serial_jtag_runtime","reason":"worker_started","baseline":"confirmed","firmware_commit":SOURCE_COMMIT,"app_elf_sha256":APP_ELF_SHA256,"boot_ordinal":7});
+        format!("usb_reboot_discriminator schema=v1 boot_ordinal=7 reset_reason=other uptime_ms={uptime_ms} redacted=true\nusb_runtime_identity schema=v1 firmware_commit={SOURCE_COMMIT} app_elf_sha256={APP_ELF_SHA256} redacted=true\nusb_boot_profile={profile}\nusb_startup schema=v1 stage=runtime_ready state=complete first_failure=none uptime_ms={uptime_ms} redacted=true\n")
+    }).collect()
 }

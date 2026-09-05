@@ -15,14 +15,12 @@ const DS4432U_SOURCE: &str = include_str!("safety_adapter/ds4432u.rs");
 const MINING_ACTUATION_ADAPTER_SOURCE: &str = include_str!("mining_actuation_adapter.rs");
 const PRODUCTION_ASIC_SOURCE: &str = include_str!("asic_adapter/production.rs");
 const PRODUCTION_SESSION_SOURCE: &str = include_str!("production_mining_session.rs");
-const PRODUCTION_OWNER_LOOP_SOURCE: &str =
-    include_str!("production_mining_session/owner_loop.rs");
+const PRODUCTION_OWNER_LOOP_SOURCE: &str = include_str!("production_mining_session/owner_loop.rs");
 const PRODUCTION_NOTIFICATIONS_SOURCE: &str =
     include_str!("production_mining_session/notifications.rs");
 const PENDING_OBSERVATION_SOURCE: &str =
     include_str!("production_mining_session/pending_observation.rs");
-const PRODUCTION_TRANSPORT_SOURCE: &str =
-    include_str!("production_mining_session/transport.rs");
+const PRODUCTION_TRANSPORT_SOURCE: &str = include_str!("production_mining_session/transport.rs");
 const PRODUCTION_ASIC_WORKER_SOURCE: &str =
     include_str!("production_mining_session/asic_worker.rs");
 const SETTINGS_ADAPTER_SOURCE: &str = include_str!("settings_adapter.rs");
@@ -35,7 +33,7 @@ const STARTUP_SOURCE: &str = include_str!("startup.rs");
 fn runtime_owner_startup_and_notification_order_is_explicit() {
     // Arrange
     let safety = STARTUP_SOURCE
-        .find("safety_adapter::start_safety_supervisor();")
+        .find("safety_adapter::start_safety_supervisor()")
         .expect("startup must start the safety supervisor");
     let production = STARTUP_SOURCE
         .find("production_mining_session::start()")
@@ -44,7 +42,7 @@ fn runtime_owner_startup_and_notification_order_is_explicit() {
         .find("fan_controller_runtime::start()")
         .expect("startup must start the fan controller after the production owner");
     let network = STARTUP_SOURCE
-        .find("wifi_adapter::start_wifi(modem)")
+        .find("wifi_adapter::start_wifi(prepared)")
         .expect("startup must start the network owner");
     let network_wakeup = STARTUP_SOURCE
         .find("ProductionSessionWakeup::NetworkChanged")
@@ -55,9 +53,22 @@ fn runtime_owner_startup_and_notification_order_is_explicit() {
     assert!(production < fan_controller);
     assert!(production < network);
     assert!(network < network_wakeup);
-    assert_eq!(STARTUP_SOURCE.matches("operator_sensor_runtime::start(").count(), 1);
-    assert_eq!(STARTUP_SOURCE.matches("production_mining_session::start()").count(), 1);
-    assert_eq!(STARTUP_SOURCE.matches("start_safety_supervisor();").count(), 1);
+    assert_eq!(
+        STARTUP_SOURCE
+            .matches("operator_sensor_runtime::start(")
+            .count(),
+        1
+    );
+    assert_eq!(
+        STARTUP_SOURCE
+            .matches("production_mining_session::start()")
+            .count(),
+        1
+    );
+    assert_eq!(
+        STARTUP_SOURCE.matches("start_safety_supervisor()").count(),
+        1
+    );
     assert_eq!(
         STARTUP_SOURCE
             .matches("fan_controller_runtime::start()")
@@ -84,17 +95,15 @@ fn fan_controller_uses_the_pure_plan_and_typed_owner_queue_only() {
     assert!(PRODUCTION_SESSION_SOURCE.contains("FAN_CONTROLLER_ACTUATION_QUALIFIED"));
     assert!(PRODUCTION_SESSION_SOURCE.contains("MiningCampaignState::Active"));
     assert!(PRODUCTION_SESSION_SOURCE.contains("production_handle_available"));
-    assert!(PRODUCTION_SESSION_SOURCE.contains(
-        "FAN_CONTROLLER_ACTUATION_QUALIFIED.store(false, Ordering::Release)"
-    ));
+    assert!(PRODUCTION_SESSION_SOURCE
+        .contains("FAN_CONTROLLER_ACTUATION_QUALIFIED.store(false, Ordering::Release)"));
 }
 
 #[test]
 fn runtime_owners_use_bounded_shared_cadence_and_queue_contracts() {
     // Arrange / Act / Assert
-    assert!(OPERATOR_SENSOR_RUNTIME_SOURCE.contains(
-        "PeriodicDeadline::new(started_at_ms, SENSOR_SWEEP_CADENCE_MS)"
-    ));
+    assert!(OPERATOR_SENSOR_RUNTIME_SOURCE
+        .contains("PeriodicDeadline::new(started_at_ms, SENSOR_SWEEP_CADENCE_MS)"));
     assert!(OPERATOR_SENSOR_RUNTIME_SOURCE.contains("PRODUCER_THREAD_PRIORITY: u32 = 10"));
     assert_eq!(
         OPERATOR_SENSOR_RUNTIME_SOURCE
@@ -113,14 +122,18 @@ fn runtime_owners_use_bounded_shared_cadence_and_queue_contracts() {
     assert!(PRODUCTION_OWNER_LOOP_SOURCE.contains("readiness_schedule.is_due(schedule_now_ms)"));
     assert!(PRODUCTION_OWNER_LOOP_SOURCE.contains("let now_ms = crate::runtime_uptime::millis()"));
     assert!(PRODUCTION_SESSION_SOURCE.contains("mpsc::sync_channel(NOTIFICATION_CAPACITY)"));
-    let asic_tokens = PRODUCTION_ASIC_WORKER_SOURCE.split_whitespace().collect::<String>();
+    let asic_tokens = PRODUCTION_ASIC_WORKER_SOURCE
+        .split_whitespace()
+        .collect::<String>();
     assert!(asic_tokens.contains("constCOMMAND_CAPACITY:usize=8;"));
-    assert!(asic_tokens.contains("mpsc::sync_channel::<(AsicWorkerCommand,WorkPermit)>(COMMAND_CAPACITY)"));
-    assert!(asic_tokens.contains("executor.try_read_production_result(&valid_jobs,slice_ms.min(50))"));
+    assert!(asic_tokens
+        .contains("mpsc::sync_channel::<(AsicWorkerCommand,WorkPermit)>(COMMAND_CAPACITY)"));
+    assert!(
+        asic_tokens.contains("executor.try_read_production_result(&valid_jobs,slice_ms.min(50))")
+    );
     assert!(asic_tokens.contains("if!revocation::permits_work(permit)"));
-    assert!(PRODUCTION_ASIC_WORKER_SOURCE.contains(
-        "emit(AsicWorkerEvent::Result { generation, result })"
-    ));
+    assert!(PRODUCTION_ASIC_WORKER_SOURCE
+        .contains("emit(AsicWorkerEvent::Result { generation, result })"));
     assert!(PRODUCTION_SESSION_SOURCE.contains("ProductionSessionEvent::AsicResult"));
 }
 
@@ -182,8 +195,18 @@ fn core_voltage_adc_has_one_semantic_producer_and_exact_ultra205_configuration()
     let producer_call = "safety_adapter::read_core_voltage_acquisition";
 
     // Act / Assert
-    assert_eq!(OPERATOR_SENSOR_RUNTIME_SOURCE.matches(producer_call).count(), 1);
-    assert_eq!(SAFETY_ADAPTER_SOURCE.matches("adc.read_millivolts()").count(), 1);
+    assert_eq!(
+        OPERATOR_SENSOR_RUNTIME_SOURCE
+            .matches(producer_call)
+            .count(),
+        1
+    );
+    assert_eq!(
+        SAFETY_ADAPTER_SOURCE
+            .matches("adc.read_millivolts()")
+            .count(),
+        1
+    );
     assert!(ADC_SOURCE.contains("ADCCH1"));
     assert!(ADC_SOURCE.contains("Gpio2"));
     assert!(ADC_SOURCE.contains("attenuation::DB_12"));
@@ -221,7 +244,10 @@ fn every_runtime_i2c_capability_shares_the_sensor_publication_deadline() {
     let expected_runtime_transfer_shapes = 3;
 
     // Act / Assert
-    assert_eq!(I2C_BUS_SOURCE.matches("retry_driver_transfer(||").count(), 1);
+    assert_eq!(
+        I2C_BUS_SOURCE.matches("retry_driver_transfer(||").count(),
+        1
+    );
     assert_eq!(
         I2C_BUS_SOURCE
             .matches("retry_runtime_driver_transfer(")
@@ -331,7 +357,9 @@ fn observation_publication_releases_storage_before_owner_wakeup() {
     let producer = &OBSERVATION_STORE_SOURCE[producer_start..];
 
     // Act
-    let replace = producer.find("store.replace(observations);").expect("replace");
+    let replace = producer
+        .find("store.replace(observations);")
+        .expect("replace");
     let release = producer.find("drop(store);").expect("release");
     let wakeup = producer
         .find("production_mining_session::notify")
@@ -355,11 +383,9 @@ fn a_full_owner_queue_cannot_discard_the_fresh_observation_wakeup() {
 #[test]
 fn production_safe_stop_binds_the_typed_pause_purpose_without_sensor_waiting() {
     // Arrange / Act / Assert
-    assert!(PRODUCTION_SESSION_SOURCE.contains(
-        "ProductionSessionEffect::SafeStopHardware { lease_id, purpose }"
-    ));
     assert!(PRODUCTION_SESSION_SOURCE
-        .contains(".safe_stop(purpose, &mut safe_stop_progress)"));
+        .contains("ProductionSessionEffect::SafeStopHardware { lease_id, purpose }"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains(".safe_stop(purpose, &mut safe_stop_progress)"));
     assert!(MINING_ACTUATION_ADAPTER_SOURCE
         .contains("execute_safe_stop_with_progress(self, purpose, progress)"));
     assert!(MINING_ACTUATION_ADAPTER_SOURCE
@@ -378,17 +404,15 @@ fn long_frequency_shutdown_reports_progress_before_each_typed_asic_action() {
 
     // Act / Assert
     assert!(progress < execute);
-    assert!(MINING_ACTUATION_ADAPTER_SOURCE
-        .contains("execute_safe_shutdown_actions_with_progress"));
+    assert!(MINING_ACTUATION_ADAPTER_SOURCE.contains("execute_safe_shutdown_actions_with_progress"));
     assert!(MINING_ACTUATION_ADAPTER_SOURCE.contains("let mut action_progress = || progress(step)"));
 }
 
 #[test]
 fn unsupported_ultra205_vr_truth_is_projected_but_not_required_for_mining() {
     // Arrange / Act / Assert
-    assert!(OPERATOR_SENSOR_RUNTIME_SOURCE.contains(
-        "AcquisitionOutcome::Unavailable(UnavailableReason::UnsupportedOnBoard)"
-    ));
+    assert!(OPERATOR_SENSOR_RUNTIME_SOURCE
+        .contains("AcquisitionOutcome::Unavailable(UnavailableReason::UnsupportedOnBoard)"));
     assert!(OPERATOR_SENSOR_RUNTIME_SOURCE.contains("vr_temp_celsius: project_observation("));
     assert!(PRODUCTION_SESSION_SOURCE.contains("observations.is_ultra_205_mining_safe_at(now())"));
     assert!(PRODUCTION_SESSION_SOURCE.contains("self.mining_actuation.prepare(profile)"));
@@ -400,7 +424,13 @@ fn unsupported_ultra205_vr_truth_is_projected_but_not_required_for_mining() {
 #[test]
 fn production_owner_uses_typed_workers_without_owning_raw_io() {
     // Arrange
-    let owner_forbidden = ["TcpStream", "write_all", "EspNvs", "stratumurl", "stratumpass"];
+    let owner_forbidden = [
+        "TcpStream",
+        "write_all",
+        "EspNvs",
+        "stratumurl",
+        "stratumpass",
+    ];
 
     // Act / Assert
     for primitive in owner_forbidden {
@@ -428,6 +458,5 @@ fn pool_secrets_are_owned_only_by_the_lazy_settings_reader() {
     }
     assert!(SETTINGS_ADAPTER_SOURCE.contains("mod production;"));
     assert!(SETTINGS_PRODUCTION_SOURCE.contains("read_production_pool_set"));
-    assert!(PRODUCTION_SESSION_SOURCE
-        .contains("ProductionSessionEffect::ReadPoolConfiguration"));
+    assert!(PRODUCTION_SESSION_SOURCE.contains("ProductionSessionEffect::ReadPoolConfiguration"));
 }

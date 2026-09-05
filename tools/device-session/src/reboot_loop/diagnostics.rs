@@ -10,6 +10,19 @@ pub struct UsbRuntimeIdentity {
 }
 
 impl UsbRuntimeIdentity {
+    /// Parses one complete closed application-identity line without admitting a transport.
+    pub fn parse(line: &str) -> Result<Self> {
+        let fields: Vec<_> = line.split_whitespace().collect();
+        if fields.first() != Some(&"usb_runtime_identity") {
+            bail!("usb_diagnostics=malformed_runtime_identity");
+        }
+        let mut diagnostics = WorkerDiagnostics::default();
+        diagnostics.identity(&fields)?;
+        diagnostics
+            .maybe_identity
+            .ok_or_else(|| anyhow::anyhow!("usb_diagnostics=missing_runtime_identity"))
+    }
+
     /// Validates expected identity before any device observation.
     pub fn new(firmware_commit: &str, app_elf_sha256: &str) -> Result<Self> {
         if !lower_hex(firmware_commit, 40) || !lower_hex(app_elf_sha256, 64) {
@@ -48,6 +61,19 @@ pub struct UsbStartupProgress {
     pub uptime_ms: u64,
 }
 impl UsbStartupProgress {
+    /// Parses one complete closed startup line; capture framing belongs to the caller.
+    pub fn parse(line: &str) -> Result<Self> {
+        let fields: Vec<_> = line.split_whitespace().collect();
+        if fields.first() != Some(&"usb_startup") {
+            bail!("usb_diagnostics=malformed_startup_progress");
+        }
+        let mut diagnostics = WorkerDiagnostics::default();
+        diagnostics.startup(&fields)?;
+        diagnostics
+            .maybe_startup
+            .ok_or_else(|| anyhow::anyhow!("usb_diagnostics=missing_startup_progress"))
+    }
+
     /// Renders only closed validated fields for public diagnostic output.
     pub fn marker(&self) -> String {
         format!(
@@ -57,6 +83,22 @@ impl UsbStartupProgress {
             self.maybe_first_failure.unwrap_or("none"),
             self.uptime_ms
         )
+    }
+}
+
+impl UsbMemoryCheckpoint {
+    /// Parses one complete closed heap checkpoint without accepting arbitrary diagnostic text.
+    pub fn parse(line: &str) -> Result<Self> {
+        let fields: Vec<_> = line.split_whitespace().collect();
+        if fields.first() != Some(&"usb_memory_checkpoint") {
+            bail!("usb_diagnostics=malformed_memory_checkpoint");
+        }
+        let mut diagnostics = WorkerDiagnostics::default();
+        diagnostics.memory(&fields)?;
+        diagnostics
+            .memory
+            .pop()
+            .ok_or_else(|| anyhow::anyhow!("usb_diagnostics=missing_memory_checkpoint"))
     }
 }
 
@@ -157,6 +199,8 @@ impl WorkerDiagnostics {
                 | "usb_installed"
                 | "statistics_start"
                 | "statistics_started"
+                | "wifi_driver_prepare"
+                | "wifi_driver_prepared"
         ) {
             bail!("usb_diagnostics=unknown_memory_stage");
         }
@@ -326,5 +370,16 @@ mod tests {
         let capture = "usb_startup schema=v1 stage=net\n";
         // Act / Assert
         assert!(WorkerDiagnostics::parse(capture).is_err());
+    }
+    #[test]
+    fn wifi_constructor_checkpoints_are_retained_as_distinct_stages() {
+        // Arrange
+        let text = "usb_memory_checkpoint stage=wifi_driver_prepare free_bytes=100000 largest_block_bytes=64000 reserve_bytes=98304 redacted=true\nusb_memory_checkpoint stage=wifi_driver_prepared free_bytes=40000 largest_block_bytes=32000 reserve_bytes=98304 redacted=true\n";
+        // Act
+        let diagnostics = WorkerDiagnostics::parse(text).expect("closed Wi-Fi checkpoint pair");
+        // Assert
+        assert_eq!(diagnostics.memory.len(), 2);
+        assert_eq!(diagnostics.memory[0].stage, "wifi_driver_prepare");
+        assert_eq!(diagnostics.memory[1].stage, "wifi_driver_prepared");
     }
 }

@@ -41,6 +41,14 @@ pub(crate) fn maybe_worker_diagnostic_line(slot: usize) -> Option<String> {
             "bwg_worker_start_failure",
             "category=startup_failed",
         ),
+        12 => crate::log_buffer::maybe_worker_diagnostic_line(
+            "usb_memory_checkpoint",
+            "stage=wifi_driver_prepare",
+        ),
+        13 => crate::log_buffer::maybe_worker_diagnostic_line(
+            "usb_memory_checkpoint",
+            "stage=wifi_driver_prepared",
+        ),
         _ => None,
     }
 }

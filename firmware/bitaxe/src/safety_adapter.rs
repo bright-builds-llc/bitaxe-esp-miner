@@ -377,8 +377,6 @@ pub(crate) fn read_core_voltage_acquisition(
     }
 }
 
-pub fn start_safety_supervisor() {
-    if let Err(error) = watchdog::start_safety_supervisor_thread() {
-        log::warn!("safety_supervisor=unavailable reason=spawn_failed error={error}");
-    }
+pub fn start_safety_supervisor() -> std::io::Result<()> {
+    watchdog::start_safety_supervisor_thread()
 }

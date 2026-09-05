@@ -111,7 +111,6 @@ const PACKAGE_MANIFEST_RELATIVE_PATH: &str = "firmware/bitaxe/bitaxe-ultra205-pa
 const DEFAULT_ELF_NAME: &str = "bitaxe-ultra205.elf";
 const FACTORY_IMAGE_NAME: &str = "bitaxe-ultra205-factory.bin";
 const DEFAULT_MONITOR_CAPTURE_TIMEOUT_SECONDS: u64 = 360;
-const MIN_COMMIT_PREFIX_LEN: usize = 12;
 const NVS_PARTITION_OFFSET: &str = "0x9000";
 const NVS_PARTITION_SIZE: &str = "0x6000";
 const NVS_GENERATOR_PYTHON_RELATIVE_PATH: &str =

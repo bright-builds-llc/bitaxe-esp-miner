@@ -841,6 +841,7 @@ rust_test(
 rust_test(
     name = "wifi_source_ownership_tests",
     srcs = [
+        "src/wifi_adapter/driver.rs",
         "src/http_api.rs",
         "src/http_api/handlers.rs",
         "src/startup.rs",
@@ -1126,6 +1127,7 @@ rust_test(
     name = "usb_startup_diagnostics_tests",
     srcs = [
         "src/usb_startup_diagnostics_host_test.rs",
+        "src/usb_write_failure.rs",
         "src/bwg_worker_usb/writer.rs",
         "src/bwg_worker_usb/startup_diagnostics.rs",
     ],
@@ -1167,4 +1169,13 @@ rust_test(
     crate_name = "wifi_startup_diagnostics_tests",
     edition = "2021",
     deps = ["@crates//:anyhow", "//crates/bitaxe-core:bitaxe_core"],
+)
+
+rust_test(
+    name = "usb_runtime_tests",
+    srcs = ["src/usb_runtime_host_test.rs", "src/usb_runtime.rs", "src/usb_write_failure.rs"],
+    crate_root = "src/usb_runtime_host_test.rs",
+    crate_name = "usb_runtime_tests",
+    edition = "2021",
+    deps = ["@crates//:anyhow"],
 )

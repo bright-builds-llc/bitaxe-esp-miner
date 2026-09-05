@@ -21,9 +21,8 @@ fn boot_identity_replay_keeps_the_ten_second_contract() {
     assert!(observer.contains(
         "let mut identity_deadline_ms = started_at_ms.saturating_add(BOOT_EVIDENCE_INTERVAL_MS);",
     ));
-    assert!(observer.contains(
-        "identity_deadline_ms = now_ms.saturating_add(BOOT_EVIDENCE_INTERVAL_MS);",
-    ));
+    assert!(observer
+        .contains("identity_deadline_ms = now_ms.saturating_add(BOOT_EVIDENCE_INTERVAL_MS);",));
     assert_eq!(observer.matches("emit_boot_identity(").count(), 1);
 }
 
@@ -80,7 +79,7 @@ fn platform_readiness_precedes_blocking_wifi_admission() {
 
     // Assert
     assert!(readiness < network);
-    assert!(network_service.contains("wifi_adapter::start_wifi(modem)"));
+    assert!(network_service.contains("wifi_adapter::start_wifi(prepared)"));
 }
 
 #[test]
@@ -103,7 +102,10 @@ fn usb_boot_profile_is_selected_once_and_replayed_by_the_boot_lifetime_owner() {
     assert!(STARTUP_SOURCE.contains("UsbBootProfileReason::DiagnosticOwner"));
     assert!(STARTUP_SOURCE.contains("UsbBootProfileReason::WorkerStarted"));
     assert!(STARTUP_SOURCE.contains("UsbBootProfileReason::BootBaselineUnconfirmed"));
-    assert_eq!(STARTUP_SOURCE.matches("publish_usb_boot_profile(").count(), 3);
+    assert_eq!(
+        STARTUP_SOURCE.matches("publish_usb_boot_profile(").count(),
+        3
+    );
 }
 
 #[test]
@@ -113,4 +115,17 @@ fn worker_mount_replays_the_closed_reboot_discriminator() {
     assert!(BOOT_EVIDENCE_SOURCE.contains("WorkerUsbBootMarker::new("));
     assert!(BOOT_EVIDENCE_SOURCE.contains("pub fn worker_rust_panic_marker()"));
     assert!(BOOT_EVIDENCE_SOURCE.contains("pub fn worker_allocation_failure_marker()"));
+}
+
+#[test]
+fn false_or_failed_boot_validation_is_not_reported_as_clean_startup() {
+    // Arrange
+    let validation = STARTUP_SOURCE.split("let boot_validation_ready = match").nth(1).expect("boot validation")
+        .split("let boot_mining_baseline = startup_diagnostics?").next().expect("validation boundary");
+    // Act / Assert
+    assert!(validation.contains("Ok(ready) => ready"));
+    assert!(validation.contains("Err(error) =>"));
+    let not_ready = validation.find("if !boot_validation_ready").expect("false or error outcome");
+    assert!(validation[not_ready..].contains("PROGRESS.fail(DiagnosticStage::RuntimeServices)"));
+    assert!(!validation.contains("return Err"), "rollback execution remains unchanged");
 }

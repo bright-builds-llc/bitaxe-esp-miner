@@ -44,7 +44,7 @@ fn untrusted_timeout_capture_fails_after_writing_json() {
 }
 
 #[test]
-fn late_attached_exact_runtime_attestation_is_accepted_without_boot_transcript() {
+fn obsolete_runtime_attestation_cannot_qualify_current_fixed_package() {
     // Arrange
     let dir = tempdir().expect("tempdir");
     let evidence_dir = dir_path(&dir).join("evidence");
@@ -55,86 +55,46 @@ fn late_attached_exact_runtime_attestation_is_accepted_without_boot_transcript()
         .with_log_contents(&late_attach_log);
 
     // Act
-    run_flash_monitor(&command, &environment).expect("runtime attestation should be trusted");
+    run_flash_monitor(&command, &environment).expect_err("fixed records are required");
 
     // Assert
     let evidence_path = evidence_dir.join("flash-command-evidence.json");
     let evidence = fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
     let json: serde_json::Value = serde_json::from_str(&evidence).expect("evidence JSON");
     assert_eq!(json["flash_status"], "completed");
-    assert_eq!(json["boot_transcript_status"], "missing");
-    assert_eq!(json["runtime_attestation_status"], "trusted");
-    assert_eq!(json["trust_basis"], "runtime_attestation");
-    assert_eq!(json["trusted_output"], true);
+    assert_eq!(json["boot_transcript_status"], "not_applicable");
+    assert_eq!(json["runtime_attestation_status"], "not_applicable");
+    assert_eq!(json["trust_basis"], "none");
+    assert_eq!(json["trusted_output"], false);
 }
 
 #[test]
-fn dual_timeout_defers_late_attach_evidence_to_private_classifier() {
+fn dual_timeout_cannot_promote_missing_fixed_evidence_through_private_classification() {
     // Arrange
     let dir = tempdir().expect("tempdir");
     let evidence_dir = dir_path(&dir).join("evidence");
     let mut command = flash_monitor_fixture(&dir, evidence_dir.clone());
     command.common.evidence_mode = Some(EvidenceMode::Dual);
-    let late_attach_log = [
-        "runtime_boot_identity session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa boot_ordinal=7 reset_reason=power_on uptime_ms=10000 redacted=true",
-        "runtime_origin session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa boot_ordinal=7 device_url=http://fixture-target redacted=true",
-        "runtime_boot_identity session=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa boot_ordinal=7 reset_reason=power_on uptime_ms=20000 redacted=true",
-    ]
-    .join("\n");
     let environment = FakeFlashEnvironment::default()
         .with_capture_status(CaptureProcessStatus::TimedOut)
-        .with_log_contents(&late_attach_log);
-
+        .with_log_contents(&runtime_attestation_log());
     // Act
-    run_flash_monitor(&command, &environment).expect("deferred dual capture");
-
-    // Assert
-    let private_path = evidence_dir.join("flash-monitor.classifier-input.log");
-    let private = fs::read_to_string(private_path.as_std_path()).expect("private log");
-    bitaxe_api::phase33_evidence::classify_phase33_baseline(&private)
-        .expect("authoritative classification");
-    assert!(!evidence_dir.join("flash-monitor.log").exists());
-    assert!(!evidence_dir.join("flash-command-evidence.json").exists());
-    let private_record = fs::read_to_string(
-        evidence_dir
-            .join("flash-command-evidence.private.json")
-            .as_std_path(),
-    )
-    .expect("private record");
-    let private_json: serde_json::Value =
-        serde_json::from_str(&private_record).expect("private JSON");
-    assert_eq!(
-        private_json["capture_status"],
-        "timed_out_pending_private_classification"
-    );
-    assert_eq!(private_json["trusted_output"], false);
-    assert_eq!(private_json["commit_ready"], false);
-
-    // Act
-    run_finalize_evidence(
+    run_flash_monitor(&command, &environment).expect_err("fixed proof is required");
+    let private_log = evidence_dir.join("flash-monitor.classifier-input.log");
+    let finalized = run_finalize_evidence(
         &FinalizeEvidenceCommand {
             evidence_dir: evidence_dir.clone(),
-            expected_private_sha256: sha256_bytes(private.as_bytes()),
+            expected_private_sha256: evidence::private_log_sha256(&private_log)
+                .expect("private digest"),
         },
         &environment,
-    )
-    .expect("finalize classified evidence");
-
-    // Assert
-    let admitted_record = fs::read_to_string(
-        evidence_dir
-            .join("flash-command-evidence.json")
-            .as_std_path(),
-    )
-    .expect("admitted record");
-    let admitted_json: serde_json::Value =
-        serde_json::from_str(&admitted_record).expect("admitted JSON");
-    assert_eq!(
-        admitted_json["capture_status"],
-        "timed_out_after_private_classification"
     );
-    assert_eq!(admitted_json["trusted_output"], false);
-    assert_eq!(admitted_json["commit_ready"], true);
+    // Assert
+    assert!(
+        format!("{:#}", finalized.expect_err("no private classifier bypass"))
+            .contains("private_capture_not_classifiable")
+    );
+    assert!(!evidence_dir.join("flash-command-evidence.json").exists());
 }
 
 #[test]
@@ -175,7 +135,8 @@ fn finalize_evidence_rejects_contradictory_legacy_capture_fields() {
     let environment = FakeFlashEnvironment::default()
         .with_capture_status(CaptureProcessStatus::TimedOut)
         .with_log_contents("late private capture without trusted markers\n");
-    run_flash_monitor(&command, &environment).expect("stage private evidence");
+    run_flash_monitor(&command, &environment)
+        .expect_err("unqualified private evidence still recorded");
     let private_log = evidence_dir.join("flash-monitor.classifier-input.log");
     let private_record = evidence_dir.join("flash-command-evidence.private.json");
     let mut json: serde_json::Value = serde_json::from_str(
@@ -226,11 +187,11 @@ fn stale_firmware_commit_capture_fails_after_writing_json() {
 
     // Assert
     let error = format!("{result:#?}");
-    assert!(error.contains("observed firmware_commit=fedcba987654"));
+    assert!(error.contains("identity_mismatch"));
     let evidence_path = evidence_dir.join("flash-command-evidence.json");
     let evidence = std::fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
     assert!(evidence.contains(r#""trusted_output": false"#));
-    assert!(evidence.contains(r#""observed_firmware_commit": "fedcba987654""#));
+    assert!(evidence.contains("identity_mismatch"));
 }
 
 #[test]
@@ -248,11 +209,11 @@ fn truncated_firmware_commit_capture_fails_after_writing_json() {
 
     // Assert
     let error = format!("{result:#?}");
-    assert!(error.contains("observed firmware_commit=0"));
+    assert!(error.contains("malformed_record"));
     let evidence_path = evidence_dir.join("flash-command-evidence.json");
     let evidence = std::fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
     assert!(evidence.contains(r#""trusted_output": false"#));
-    assert!(evidence.contains(r#""observed_firmware_commit": "0""#));
+    assert!(evidence.contains("malformed_record"));
 }
 
 #[test]
@@ -272,11 +233,11 @@ fn prefixed_firmware_commit_marker_capture_fails_after_writing_json() {
 
     // Assert
     let error = format!("{result:#?}");
-    assert!(error.contains("missing trusted Ultra 205 boot markers"));
+    assert!(error.contains("malformed_record"));
     let evidence_path = evidence_dir.join("flash-command-evidence.json");
     let evidence = std::fs::read_to_string(evidence_path.as_std_path()).expect("evidence");
     assert!(evidence.contains(r#""trusted_output": false"#));
-    assert!(evidence.contains(r#""observed_firmware_commit": "Unavailable""#));
+    assert!(evidence.contains("malformed_record"));
 }
 
 #[test]
@@ -442,4 +403,66 @@ fn monitor_defaults_to_hardware_safe_capture_budget() {
         panic!("expected monitor command");
     };
     assert_eq!(command.capture_timeout_seconds, 360);
+}
+
+#[test]
+fn healthy_fixed_serial_records_qualify_current_package() {
+    // Arrange
+    let identity = ExpectedRuntimeAttestationIdentity {
+        firmware_commit: SOURCE_COMMIT.to_owned(),
+        reference_commit: REFERENCE_COMMIT.to_owned(),
+        app_elf_sha256: APP_ELF_SHA256.to_owned(),
+    };
+    // Act
+    let outcome = monitor_capture_outcome(
+        &CaptureProcessStatus::TimedOut,
+        &fixed_serial_monitor_log(),
+        15,
+        Some(&identity),
+    );
+    // Assert
+    assert!(outcome.accepted(), "{}", outcome.projection().conclusion);
+}
+
+#[test]
+fn execution_present_startup_failure_is_reported_without_claiming_missing_execution() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let evidence_dir = dir_path(&dir).join("evidence");
+    let command = flash_monitor_fixture(&dir, evidence_dir.clone());
+    let log = fixed_serial_monitor_log().replace("first_failure=none", "first_failure=network");
+    let environment = FakeFlashEnvironment::default().with_log_contents(&log);
+    // Act
+    let error = run_flash_monitor(&command, &environment).expect_err("startup failure");
+    let record: serde_json::Value = serde_json::from_str(
+        &fs::read_to_string(evidence_dir.join("flash-command-evidence.json")).expect("evidence"),
+    )
+    .expect("JSON");
+    // Assert
+    assert!(format!("{error:#}").contains("execution present; startup failed"));
+    assert_eq!(record["fixed_serial_assessment"]["execution_present"], true);
+    assert_eq!(record["fixed_serial_assessment"]["startup_failed"], true);
+    assert_eq!(record["trusted_output"], false);
+    assert_eq!(record["boot_transcript_status"], "not_applicable");
+}
+
+#[test]
+fn fixed_trust_record_cannot_hide_failed_assessment_fields() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let evidence_dir = dir_path(&dir).join("evidence");
+    let command = flash_monitor_fixture(&dir, evidence_dir.clone());
+    run_flash_monitor(&command, &FakeFlashEnvironment::default()).expect("healthy capture");
+    let mut record: EvidenceRecord = serde_json::from_str(
+        &fs::read_to_string(evidence_dir.join("flash-command-evidence.json")).expect("evidence"),
+    )
+    .expect("JSON");
+    // Act
+    record
+        .fixed_serial_assessment
+        .as_mut()
+        .expect("fixed assessment")
+        .startup_failed = true;
+    // Assert
+    assert!(validate_evidence_record_capture_state(&record).is_err());
 }
