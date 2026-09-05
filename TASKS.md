@@ -115,6 +115,14 @@ Attempt-006 evidence and next plan (2026-09-05): clean `0bdcbe29` installed all 
 
 Memory-profile software verification: the actual generated normal/rollback SDK configurations resolve RX 6, TX 6 and BA window 12 with the existing static TX mode, dynamic RX 32 and reserve. All 78 Bazel tests pass, including the restored build-validation tests and both native builds; ordered Cargo gates pass (2,070 tests, one preexisting ignored). Ownership/symbols, reference, redaction, standards, formatting and diff checks pass. Review found no blocking issue. Hardware success remains unverified; the next clean package must prove HTTP plus all later owners before any browser probe.
 
+Attempt-007 evidence and re-plan (2026-09-05): `4431b4dd` completed five verified segments and stable exact execution. Wi-Fi prepared internal/DMA free memory rose to195,447 bytes; SPIFFS and HTTP both report ready. Startup still fails at statistics: its8KiB thread cannot fit the observed largest6,656-byte block (14,535 bytes total free after the failed attempt). No browser or mining session opened; the command exited and both serial nodes are unowned. This is progress on HTTP allocation, not a complete baseline.
+
+- [x] Remove the transient overlap between the16KiB main startup task and the16KiB HTTP telemetry task: return an owning prepared HTTP runtime through startup, unwind startup frames, then run the existing500ms telemetry loop on main. Keep statistics on its existing8KiB owner.
+- [x] Activate main telemetry at priority5 before publishing HTTP/runtime readiness; keep the prepared server owned throughout operation and drop it on fatal preparation failure. Preserve earlier startup failures and avoid fallible initialization after ready.
+- [ ] Retain main's CPU0 affinity explicitly. This changes telemetry from an unpinned pthread to CPU0; document and qualify the scheduling difference while preserving independent safety and USB tasks. Guard resolved main stack/priority/affinity settings, test handoff/readiness/cleanup, and rerun required checks before a fresh hardware attempt.
+
+Main-handoff software verification: all 79 Bazel tests pass, including five actual-owner handoff/cleanup tests and both native builds. Ordered Cargo gates pass (2,070 tests, one preexisting ignored); ownership/symbols, reference, redaction, formatting and standards checks pass. The resolved affinity guard initially rejected ESP-IDF's hexadecimal `0x0`; an actual-format regression reproduced the failure and the corrected guard passes while retaining CPU0 enforcement. No stack was reduced and no timer or new queue model was added. Complete startup, CPU0 cadence under qualification load, maximum serial exchange and all cycle/mining evidence remain pending.
+
 ### task-fixed-usb-worker-live-acceptance | 2026-09-04 | Prove bounded foreground Worker mining over Web Serial
 
 Depends on: task-fixed-usb-serial-qualification.

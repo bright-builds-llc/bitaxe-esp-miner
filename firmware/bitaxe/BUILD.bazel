@@ -1191,3 +1191,19 @@ rust_test(
     edition = "2021",
     deps = ["@crates//:anyhow", "//crates/bitaxe-core:bitaxe_core"],
 )
+
+rust_test(
+    name = "main_telemetry_tests",
+    srcs = [
+        "src/main_telemetry_host_test.rs",
+        "src/http_api/cadence_owner.rs",
+        "src/http_api.rs",
+        "src/http_api/websocket.rs",
+        "src/startup.rs",
+        "src/main.rs",
+        "src/bwg_worker_usb/startup_diagnostics.rs",
+    ],
+    crate_root = "src/main_telemetry_host_test.rs",
+    crate_name = "main_telemetry_tests",
+    edition = "2021",
+)

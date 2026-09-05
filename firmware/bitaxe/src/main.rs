@@ -58,7 +58,11 @@ const SAFE_STATE_LOG_LINE: &str =
     "safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled";
 
 fn main() -> anyhow::Result<()> {
-    startup::run()
+    let maybe_http = startup::run()?;
+    if let Some(http) = maybe_http {
+        http.run();
+    }
+    Ok(())
 }
 
 fn firmware_commit() -> &'static str {

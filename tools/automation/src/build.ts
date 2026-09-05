@@ -117,6 +117,9 @@ export function requireResolvedUsbMemoryContract(sdkconfig: string): void {
   const lines = sdkconfig.split(/\r?\n/u);
   for (const required of [
     "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304",
+    "CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384",
+    "CONFIG_ESP_MAIN_TASK_AFFINITY=0x0",
+    "CONFIG_PTHREAD_TASK_PRIO_DEFAULT=5",
     "CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y",
     "CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=6",
     "CONFIG_ESP_WIFI_STATIC_TX_BUFFER_NUM=6",

@@ -5,6 +5,9 @@ import { rejectUnknownKconfigWarnings, requireResolvedUsbMemoryContract } from "
 
 const resolved = [
   "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304",
+  "CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384",
+  "CONFIG_ESP_MAIN_TASK_AFFINITY=0x0",
+  "CONFIG_PTHREAD_TASK_PRIO_DEFAULT=5",
   "CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y",
   "CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=6",
   "CONFIG_ESP_WIFI_STATIC_TX_BUFFER_NUM=6",
@@ -27,8 +30,8 @@ test("firmware build rejects unknown Kconfig symbols", () => {
 test("resolved coexistence profile preserves static DMA TX and the internal reserve", () => {
   // Arrange / Act / Assert
   assert.doesNotThrow(() => requireResolvedUsbMemoryContract(resolved));
-  for (const [before, after] of [["98304", "65536"], ["TX_BUFFER_TYPE=0", "TX_BUFFER_TYPE=1"]]) {
-    assert.throws(() => requireResolvedUsbMemoryContract(resolved.replace(before!, after!)), /USB memory contract/u);
+  for (const [before, after] of [["98304", "65536"], ["TX_BUFFER_TYPE=0", "TX_BUFFER_TYPE=1"]] as const) {
+    assert.throws(() => requireResolvedUsbMemoryContract(resolved.replace(before, after)), /USB memory contract/u);
   }
 });
 
@@ -46,5 +49,17 @@ test("missing or duplicate resolved buffer fields fail closed", () => {
   // Act / Assert
   for (const candidate of [resolved.replace(field, ""), resolved + field]) {
     assert.throws(() => requireResolvedUsbMemoryContract(candidate), /USB memory contract/u);
+  }
+});
+
+
+test("main telemetry handoff rejects incompatible stack or scheduling configuration", () => {
+  // Arrange / Act / Assert
+  for (const [before, after] of [
+    ["MAIN_TASK_STACK_SIZE=16384", "MAIN_TASK_STACK_SIZE=8192"],
+    ["MAIN_TASK_AFFINITY=0x0", "MAIN_TASK_AFFINITY=0x1"],
+    ["PTHREAD_TASK_PRIO_DEFAULT=5", "PTHREAD_TASK_PRIO_DEFAULT=1"],
+  ] as const) {
+    assert.throws(() => requireResolvedUsbMemoryContract(resolved.replace(before, after)), /USB memory contract/u);
   }
 });

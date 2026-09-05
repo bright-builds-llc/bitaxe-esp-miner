@@ -18,18 +18,8 @@ struct QueuedWebSocketFrame {
     payload: Box<[u8]>,
 }
 
-/// Starts the HTTP route shell and intentionally leaks the server so ESP-IDF's
-pub(super) fn start_live_telemetry_cadence_task(server: sys::httpd_handle_t) -> anyhow::Result<()> {
-    let server_addr = server as usize;
-    std::thread::Builder::new()
-        .name("axeos-live-ws".to_owned())
-        .stack_size(LIVE_TELEMETRY_THREAD_STACK_BYTES)
-        .spawn(move || live_telemetry_cadence_loop(server_addr))?;
-    Ok(())
-}
-
-pub(super) fn live_telemetry_cadence_loop(server_addr: usize) {
-    let server = server_addr as sys::httpd_handle_t;
+pub(super) fn live_telemetry_cadence_loop(owner: &EspHttpServer<'static>) -> ! {
+    let server = owner.handle();
     loop {
         std::thread::sleep(Duration::from_millis(LIVE_TELEMETRY_CADENCE_MS));
         broadcast_live_telemetry_cadence(server);

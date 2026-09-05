@@ -33,11 +33,12 @@ struct RuntimeServicesStarted {
 /// blocking Wi-Fi start can wait indefinitely for driver events. The HTTP route
 /// shell can safely start first because it performs separate, idempotent
 /// network-stack initialization.
-pub(crate) fn run() -> anyhow::Result<()> {
+#[inline(never)]
+pub(crate) fn run() -> anyhow::Result<Option<http_api::PreparedHttpRuntime>> {
     PROGRESS.guard(run_startup)
 }
 
-fn run_startup() -> anyhow::Result<()> {
+fn run_startup() -> anyhow::Result<Option<http_api::PreparedHttpRuntime>> {
     PROGRESS.enter(DiagnosticStage::EarlyIdentity);
     crate::panic_evidence::enter_stage(StartupStage::EarlyIdentity);
     let (startup_debug_text, maybe_thermal_fault_stimulus) =
@@ -61,7 +62,8 @@ fn run_startup() -> anyhow::Result<()> {
     let runtime_services = start_runtime_services(startup_diagnostics)?;
     PROGRESS.enter(DiagnosticStage::StorageHttp);
     crate::panic_evidence::enter_stage(StartupStage::StorageHttp);
-    let (filesystem_status, route_shell_ready) = start_storage_and_http();
+    let (filesystem_status, maybe_http) = start_storage_and_http();
+    let route_shell_ready = maybe_http.is_some();
     publish_platform_readiness(
         runtime_services.boot_validation_ready,
         filesystem_status,
@@ -79,10 +81,18 @@ fn run_startup() -> anyhow::Result<()> {
     start_statistics_runtime();
     retain_usb_memory_checkpoint("statistics_started");
     wifi_adapter::maybe_start_network_reconnect_probe(route_shell_ready);
+    if maybe_http.is_none() {
+        PROGRESS.enter(DiagnosticStage::RuntimeReady);
+        PROGRESS.fail(DiagnosticStage::StorageHttp);
+    }
+    Ok(maybe_http)
+}
+
+/// Marks completion only after main has activated the prepared telemetry owner.
+pub(crate) fn complete() {
     PROGRESS.enter(DiagnosticStage::RuntimeReady);
     crate::panic_evidence::enter_stage(StartupStage::RuntimeReady);
     PROGRESS.complete();
-    Ok(())
 }
 
 fn initialize_boot_identity_and_settings() -> anyhow::Result<(
@@ -519,7 +529,10 @@ fn start_network_services(maybe_wifi: Option<wifi_adapter::PreparedWifi>) {
     );
 }
 
-fn start_storage_and_http() -> (filesystem::FilesystemStatus, bool) {
+fn start_storage_and_http() -> (
+    filesystem::FilesystemStatus,
+    Option<http_api::PreparedHttpRuntime>,
+) {
     let filesystem_status = filesystem::mount_www_spiffs();
     if matches!(
         filesystem_status,
@@ -527,15 +540,15 @@ fn start_storage_and_http() -> (filesystem::FilesystemStatus, bool) {
     ) {
         PROGRESS.fail(DiagnosticStage::StorageHttp);
     }
-    let route_shell_ready = match http_api::start_http_api(filesystem_status) {
-        Ok(()) => true,
+    let maybe_http = match http_api::start_http_api(filesystem_status) {
+        Ok(prepared) => Some(prepared),
         Err(_) => {
             PROGRESS.fail(DiagnosticStage::StorageHttp);
             log::warn!("axeos_api_route_shell=unavailable reason=startup_failed");
-            false
+            None
         }
     };
-    (filesystem_status, route_shell_ready)
+    (filesystem_status, maybe_http)
 }
 
 fn publish_platform_readiness(

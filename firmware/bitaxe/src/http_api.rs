@@ -43,6 +43,7 @@ use crate::{
 };
 
 mod access;
+mod cadence_owner;
 mod deferred_effect_queue;
 mod deferred_effects;
 mod handlers;
@@ -53,6 +54,7 @@ mod updates;
 mod websocket;
 
 use access::*;
+pub(crate) use cadence_owner::PreparedHttpRuntime;
 use deferred_effects::*;
 use handlers::*;
 use response::*;
@@ -75,19 +77,24 @@ const UPGRADE_HEADER: &[u8] = b"Upgrade\0";
 const UPDATE_AP_MODE_REJECTION_BODY: &str = "Not allowed in AP mode";
 const WEBSOCKET_UPGRADE_REQUIRED_BODY: &str = "WebSocket upgrade required";
 const HTTP_SERVER_TASK_STACK_BYTES: usize = 16 * 1024;
-const LIVE_TELEMETRY_THREAD_STACK_BYTES: usize = 16 * 1024;
 const DEFERRED_EFFECT_QUEUE_CAPACITY: usize = 8;
 const DEFERRED_EFFECT_THREAD_STACK_BYTES: usize = 8 * 1024;
 const RESTART_POST_RESPONSE_DELAY_MS: u64 = 1_000;
 const SETTINGS_EFFECTS_POST_RESPONSE_DELAY_MS: u64 = 100;
 
-pub fn start_http_api(filesystem_status: FilesystemStatus) -> anyhow::Result<()> {
+pub(crate) fn start_http_api(
+    filesystem_status: FilesystemStatus,
+) -> anyhow::Result<PreparedHttpRuntime> {
     let result = start_http_api_inner(filesystem_status);
-    storage_http_diagnostics::http_outcome(result.is_ok());
+    if result.is_err() {
+        storage_http_diagnostics::http_outcome(false);
+    }
     result
 }
 
-fn start_http_api_inner(filesystem_status: FilesystemStatus) -> anyhow::Result<()> {
+fn start_http_api_inner(
+    filesystem_status: FilesystemStatus,
+) -> anyhow::Result<PreparedHttpRuntime> {
     storage_http_diagnostics::observe(StartupPhase::HttpNetif, network_stack::initialize())?;
     storage_http_diagnostics::observe(
         StartupPhase::HttpDeferredWorker,
@@ -113,10 +120,6 @@ fn start_http_api_inner(filesystem_status: FilesystemStatus) -> anyhow::Result<(
         StartupPhase::HttpRoutes,
         register_http_handlers(&mut server, filesystem_status),
     )?;
-    storage_http_diagnostics::observe(
-        StartupPhase::HttpTelemetryWorker,
-        start_live_telemetry_cadence_task(server.handle()),
-    )?;
     let route_report = phase07_route_report();
     log::info!(
         "axeos_api_route_shell=started manifest_routes={} firmware_update_routes={} otawww_gap_routes={} recovery_routes={} static_file_routes={}",
@@ -127,8 +130,7 @@ fn start_http_api_inner(filesystem_status: FilesystemStatus) -> anyhow::Result<(
         route_report.static_file_routes
     );
 
-    core::mem::forget(server);
-    Ok(())
+    Ok(PreparedHttpRuntime::new(server))
 }
 
 fn register_http_handlers(
