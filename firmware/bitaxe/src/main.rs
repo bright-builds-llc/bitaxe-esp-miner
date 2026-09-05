@@ -10,6 +10,7 @@ mod boot_validation_plan;
 mod bwg_worker_nvs;
 mod bwg_worker_session;
 mod bwg_worker_usb;
+mod crypto_entropy;
 mod display_adapter;
 mod fan_controller_plan;
 mod fan_controller_runtime;

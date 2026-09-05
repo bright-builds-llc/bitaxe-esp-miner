@@ -108,7 +108,18 @@ pub(super) fn run(
     let mut replay_slot = 0;
     let mut last_replay = 0;
     let mut next_startup_marker = 0;
+    let mut last_heartbeat = 0;
     loop {
+        let now = crate::runtime_uptime::millis();
+        if epoch != 0
+            && CURRENT_SESSION.load(Ordering::Acquire) == epoch
+            && now.saturating_sub(last_heartbeat) >= 1000
+        {
+            last_heartbeat = now;
+            if next_record(SerialKind::Heartbeat, &session_id, &mut sequence, b"{}").is_err() {
+                revoke_epoch(epoch);
+            }
+        }
         match output.recv_timeout(Duration::from_millis(10)) {
             Ok(Output::Hello {
                 epoch: next,
@@ -121,6 +132,7 @@ pub(super) fn run(
                 epoch = next;
                 session_id = id;
                 sequence = 0;
+                last_heartbeat = crate::runtime_uptime::millis();
                 replay_slot = 0;
                 let result = serde_json::value::to_raw_value(&payload)
                     .map_err(anyhow::Error::from)
@@ -155,8 +167,12 @@ pub(super) fn run(
                         return None;
                     }
                     last_replay = now;
-                    let line = crate::boot_evidence::maybe_worker_diagnostic_line(replay_slot);
-                    replay_slot = (replay_slot + 1) % 12;
+                    let line = if replay_slot == 12 {
+                        crate::wifi_adapter::maybe_startup_failure_marker()
+                    } else {
+                        crate::boot_evidence::maybe_worker_diagnostic_line(replay_slot)
+                    };
+                    replay_slot = (replay_slot + 1) % 13;
                     line
                 });
                 let Some(line) = maybe_line else {

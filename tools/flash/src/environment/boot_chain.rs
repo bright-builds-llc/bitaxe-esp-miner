@@ -9,8 +9,13 @@ pub(super) fn exit_rom(
     let Some(session) = session_slot.as_mut() else {
         bail!("cleanup_failed: boot-chain exit attempted without a repository session");
     };
-    let observation = run_installed_application(session, esptool.as_std_path())
-        .map_err(|error| anyhow::anyhow!(error))?;
+    environment.validate_espflash_identity()?;
+    let observation = run_installed_application(
+        session,
+        esptool.as_std_path(),
+        environment.espflash_bin.as_std_path(),
+    )
+    .map_err(|error| anyhow::anyhow!(error))?;
     Ok(observation.transport)
 }
 

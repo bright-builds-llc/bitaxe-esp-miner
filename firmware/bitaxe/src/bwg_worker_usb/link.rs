@@ -138,13 +138,13 @@ fn hello(envelope: SerialEnvelope, next_epoch: &mut u32) -> Option<Link> {
         return None;
     }
     *next_epoch = next_epoch.checked_add(1)?;
-    let generation = revocation::begin_link(crate::runtime_uptime::millis())?;
     let binding = SerialSessionBinding::parse(
-        &random_nonce::<16>(),
+        &random_nonce::<16>()?,
         &hello.host_nonce,
-        &random_nonce::<32>(),
+        &random_nonce::<32>()?,
     )
     .ok()?;
+    let generation = revocation::begin_link(crate::runtime_uptime::millis())?;
     let epoch = *next_epoch;
     CURRENT_SESSION.store(epoch, Ordering::Release);
     if !enqueue(ControlEvent::Session {
@@ -200,15 +200,14 @@ fn enqueue(event: ControlEvent) -> bool {
         .is_some_and(|events| events.try_send(event).is_ok())
 }
 
-fn random_nonce<const N: usize>() -> String {
-    // ESP-IDF hardware entropy is available after Wi-Fi initialization.
-    let mut bytes = [0u8; N];
-    unsafe { esp_idf_sys::esp_fill_random(bytes.as_mut_ptr().cast(), bytes.len()) };
+fn random_nonce<const N: usize>() -> Option<String> {
+    let mut bytes = Zeroizing::new([0u8; N]);
+    crate::crypto_entropy::fill(bytes.as_mut()).ok()?;
     const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
     let mut result = String::new();
     let mut buffer = 0u32;
     let mut bits = 0;
-    for byte in bytes {
+    for byte in bytes.iter().copied() {
         buffer = (buffer << 8) | u32::from(byte);
         bits += 8;
         while bits >= 6 {
@@ -219,5 +218,5 @@ fn random_nonce<const N: usize>() -> String {
     if bits != 0 {
         result.push(char::from(ALPHABET[((buffer << (6 - bits)) & 63) as usize]));
     }
-    result
+    Some(result)
 }

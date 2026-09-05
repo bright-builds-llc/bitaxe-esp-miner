@@ -17,6 +17,13 @@ use crate::{boot_evidence, log_buffer, network_stack, settings_adapter};
 mod captive_dns;
 mod reconnect;
 mod scan;
+mod startup_diagnostics;
+use startup_diagnostics::{observe, Phase};
+
+/// Replays only the first closed startup failure, independent of current RF state.
+pub(crate) fn maybe_startup_failure_marker() -> Option<String> {
+    startup_diagnostics::maybe_marker()
+}
 
 pub use scan::{scan_visible_networks, WifiScanFailure};
 
@@ -129,13 +136,16 @@ impl ProvisioningReason {
 /// Starts the sole Wi-Fi owner in AP-only or mixed AP+STA mode.
 pub fn start_wifi(modem: Modem<'static>) -> anyhow::Result<()> {
     let credential_state = wifi_credential_state();
-    network_stack::initialize()?;
+    observe(Phase::Netif, network_stack::initialize())?;
 
-    let sysloop = EspSystemEventLoop::take()?;
-    let esp_wifi = EspWifi::new(modem, sysloop.clone(), None)?;
+    let sysloop = observe(Phase::EventLoop, EspSystemEventLoop::take())?;
+    let esp_wifi = observe(Phase::Driver, EspWifi::new(modem, sysloop.clone(), None))?;
     let mut wifi = BlockingWifi::wrap(esp_wifi, sysloop.clone())?;
-    let ap_mac = wifi.wifi().get_mac(WifiDeviceId::Ap)?;
-    let ap_configuration = configuration_ap(ap_mac)?;
+    let ap_mac = observe(
+        Phase::ApConfiguration,
+        wifi.wifi().get_mac(WifiDeviceId::Ap),
+    )?;
+    let ap_configuration = observe(Phase::ApConfiguration, configuration_ap(ap_mac))?;
 
     match credential_state {
         WifiCredentialState::Missing => start_provisioning(
@@ -154,12 +164,18 @@ pub fn start_wifi(modem: Modem<'static>) -> anyhow::Result<()> {
         ),
         WifiCredentialState::Valid(credentials) => {
             apply_sta_hostname(&credentials.hostname);
-            let client_configuration = configuration_client(&credentials)?;
-            wifi.set_configuration(&Configuration::Mixed(
-                client_configuration.clone(),
-                ap_configuration.clone(),
-            ))?;
-            wifi.start()?;
+            let client_configuration = observe(
+                Phase::StationConfiguration,
+                configuration_client(&credentials),
+            )?;
+            observe(
+                Phase::StationConfiguration,
+                wifi.set_configuration(&Configuration::Mixed(
+                    client_configuration.clone(),
+                    ap_configuration.clone(),
+                )),
+            )?;
+            observe(Phase::DriverStart, wifi.start())?;
 
             if wifi.connect().and_then(|()| wifi.wait_netif_up()).is_err() {
                 log::warn!("wifi_status=connection_failed fallback=configuration_ap");
@@ -174,9 +190,18 @@ pub fn start_wifi(modem: Modem<'static>) -> anyhow::Result<()> {
                 );
             }
 
-            wifi.set_configuration(&Configuration::Client(client_configuration.clone()))?;
-            publish_connected_wifi(&wifi, credentials.ssid.as_str())?;
-            install_wifi_owner(wifi, ap_configuration, Some(client_configuration), ap_mac)?;
+            observe(
+                Phase::StationConfiguration,
+                wifi.set_configuration(&Configuration::Client(client_configuration.clone())),
+            )?;
+            observe(
+                Phase::StationNetif,
+                publish_connected_wifi(&wifi, credentials.ssid.as_str()),
+            )?;
+            observe(
+                Phase::OwnerInstall,
+                install_wifi_owner(wifi, ap_configuration, Some(client_configuration), ap_mac),
+            )?;
             reconnect::start(&sysloop, None)
         }
     }
@@ -360,9 +385,12 @@ fn start_provisioning(
     station_ssid: String,
     reason: ProvisioningReason,
 ) -> anyhow::Result<()> {
-    wifi.set_configuration(&Configuration::AccessPoint(ap_configuration.clone()))?;
-    wifi.start()?;
-    wifi.wait_netif_up()?;
+    observe(
+        Phase::ApConfiguration,
+        wifi.set_configuration(&Configuration::AccessPoint(ap_configuration.clone())),
+    )?;
+    observe(Phase::DriverStart, wifi.start())?;
+    observe(Phase::ApNetif, wifi.wait_netif_up())?;
     retain_provisioning(
         wifi,
         ap_configuration,
@@ -383,8 +411,8 @@ fn retain_provisioning(
     reason: ProvisioningReason,
     maybe_sysloop: Option<&EspSystemEventLoop>,
 ) -> anyhow::Result<()> {
-    let ap_ipv4 = wifi.wifi().ap_netif().get_ip_info()?.ip;
-    captive_dns::start_once(ap_ipv4)?;
+    let ap_ipv4 = observe(Phase::ApNetif, wifi.wifi().ap_netif().get_ip_info())?.ip;
+    observe(Phase::CaptiveDns, captive_dns::start_once(ap_ipv4))?;
     crate::boot_evidence::publish_provisioning_network_ready();
     publish_wifi_state(WifiRuntimeSnapshot {
         wifi_status: reason.wifi_status().to_owned(),
@@ -401,7 +429,10 @@ fn retain_provisioning(
         reason.wifi_status()
     ));
     let reconnect_available = maybe_client_configuration.is_some();
-    install_wifi_owner(wifi, ap_configuration, maybe_client_configuration, ap_mac)?;
+    observe(
+        Phase::OwnerInstall,
+        install_wifi_owner(wifi, ap_configuration, maybe_client_configuration, ap_mac),
+    )?;
     if reconnect_available {
         let sysloop = maybe_sysloop
             .ok_or_else(|| anyhow::anyhow!("Wi-Fi reconnect event loop was unavailable"))?;

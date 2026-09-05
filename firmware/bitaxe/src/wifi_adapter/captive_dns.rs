@@ -29,8 +29,7 @@ fn start(ap_ipv4: Ipv4Addr) -> anyhow::Result<()> {
     thread::Builder::new()
         .name(THREAD_NAME.to_owned())
         .stack_size(THREAD_STACK_BYTES)
-        .spawn(move || run(socket, ap_ipv4))
-        .map_err(|error| anyhow::anyhow!("failed to start captive DNS owner: {error}"))?;
+        .spawn(move || run(socket, ap_ipv4))?;
     Ok(())
 }
 

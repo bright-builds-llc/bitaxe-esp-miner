@@ -93,6 +93,7 @@ fn initialize_boot_identity_and_settings() -> anyhow::Result<(
     PROGRESS.enter(DiagnosticStage::EarlyIdentity);
     crate::panic_evidence::enter_stage(StartupStage::EarlyIdentity);
     retain_previous_boot_failure();
+    crate::crypto_entropy::initialize()?;
 
     let safe_state = Phase1SafeState::default();
     let boot_log_line = format!(
@@ -492,9 +493,9 @@ fn start_statistics_runtime() {
 
 fn start_network_services(maybe_modem: Option<Modem<'static>>) {
     if let Some(modem) = maybe_modem {
-        if let Err(error) = wifi_adapter::start_wifi(modem) {
+        if wifi_adapter::start_wifi(modem).is_err() {
             PROGRESS.fail(DiagnosticStage::Network);
-            log::warn!("wifi_status=unavailable error={error:#}");
+            log::warn!("wifi_status=unavailable reason=startup_failed");
         }
     } else {
         log::warn!("wifi_status=unavailable reason=peripherals_unavailable");

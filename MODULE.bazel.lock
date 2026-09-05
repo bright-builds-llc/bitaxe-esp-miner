@@ -571,7 +571,7 @@
           "FILE:@@//crates/bitaxe-automation-contracts/Cargo.toml 0315dac4e1e2b54291f85ca3430b4751fdaa554ba98c2a0e03f946be2ebf240a",
           "FILE:@@//crates/bitaxe-test-support/Cargo.toml cdefda371a942a3104e1a4961847f7eababb9cf2639d82beff1ed0099a5a8280",
           "FILE:@@//crates/bitaxe-worker-control/Cargo.toml d409f3db1fcd1cb217141cf2594f7a3b4a27cefada5e043a9df1cabb0d10e723",
-          "FILE:@@//firmware/bitaxe/Cargo.toml 6d676f8f48551babb3aacdfe0b54cfb1faee347e8c6969a3ac9e9b4c102d1b9b",
+          "FILE:@@//firmware/bitaxe/Cargo.toml 692092ffb919d386a4e92baf0beb51c0405b7a4321c412ab628588e484bebbc3",
           "FILE:@@//tools/flash/Cargo.toml 2aa6cebb15cdf27b2f2f4549ca1a4722701dbdc3c2c340ccc6da2c3f8639dc4d",
           "FILE:@@//tools/device-session/Cargo.toml e016ae7c28fa21c7dac7b289953337e20767a275f660345d1b787edc159836dd",
           "FILE:@@//tools/http-transport/Cargo.toml 8efc5f1f289b54e44283c8a606971360478f9f3a19897b905b0f0b4882d3dd05",

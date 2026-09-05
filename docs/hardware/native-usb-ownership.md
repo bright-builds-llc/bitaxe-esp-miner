@@ -19,6 +19,17 @@ source/ELF evidence. Browser possession additionally binds Device Identity,
 the signed serial application manifest and the current unpredictable session.
 VID/PID, device paths and serial strings are discovery hints, never authority.
 
+## Cryptographic randomness before network ownership
+
+Startup seeds the existing cryptographic `StdRng` once using a qualified ESP32-S3
+entropy source, then disables that source before ADC or Wi-Fi initialization.
+Session nonces and newly created Device Identity seeds use the seeded owner;
+missing or contended ownership fails closed. Stored Device Identity is preserved.
+There is no per-connection ADC reconfiguration or fallback to an unqualified
+hardware random stream after network failure. This follows the startup ordering
+in [ESP-IDF's RNG guidance](https://docs.espressif.com/projects/esp-idf/en/v5.5.4/esp32s3/api-reference/system/random.html)
+and uses the [pinned Rand cryptographic generator](https://github.com/rust-random/rand/blob/0.8.5/src/rngs/std.rs).
+
 ## Serial protocol and ownership
 
 Gate's published Controller 0.4, serial transport 0.1 and possession 0.2 are the
@@ -65,6 +76,14 @@ controller eliminates custom PHY handoff, not ROM execution or every USB
 re-enumeration. A manual BOOT/RESET bootstrap can need physical RESET to resample
 its boot strap. Do not repeat an unchanged ineffective reset. Software reset
 recipes require their own verified bounded contract.
+
+The standard application-return helper retains ROM admission and the physical
+lease, checks RTC FORCE_DOWNLOAD, conditionally clears only that bit with verified
+readback, and invokes the validated espflash native Serial/JTAG reset once. The
+native sequence clears virtual BOOT before reset/release. The exact command,
+register mask, 30-second child bounds, cleanup, and stop conditions are recorded
+in the active qualification task. There is no esptool `run` plus generic RTS-only
+reset. Hardware success still requires fresh application evidence.
 
 Completed writes, application return and cleanup are separate outcomes. Missing
 boot transcripts do not authorize repeat flashing. Reacquire only the admitted

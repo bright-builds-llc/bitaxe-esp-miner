@@ -219,9 +219,10 @@ test("CLI rejects commands with unrelated extra options before source or key acc
 
 test("browser admission reports retain only closed stages and actual ownership release", () => {
   const context = { gate_commit: GATE, firmware_commit: SOURCE, app_elf_sha256: "d".repeat(64) };
-  const value = state(context, { admissionFailureStage: "hello", serialOwnershipReleased: false });
+  const value = state(context, { admissionFailureStage: "hello", serialFailureCategory: "read_failed", serialOwnershipReleased: false });
   assert.equal(validateState(value, context).serialOwnershipReleased, false);
   assert.throws(() => validateState({ ...value, admissionFailureStage: "arbitrary-error-text" }, context));
   assert.throws(() => validateState({ ...value, serialOwnershipReleased: "true" }, context));
   assert.throws(() => validateState({ ...value, diagnostics: [] }, context));
+  assert.throws(() => validateState({ ...value, serialFailureCategory: "private-error" }, context));
 });

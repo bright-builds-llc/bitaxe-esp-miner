@@ -1141,3 +1141,30 @@ rust_test(
         "@crates//:zeroize",
     ],
 )
+
+
+rust_test(
+    name = "crypto_entropy_tests",
+    srcs = [
+        "src/crypto_entropy_host_test.rs",
+        "src/crypto_entropy/model.rs",
+        "src/crypto_entropy/model/tests.rs",
+    ],
+    crate_root = "src/crypto_entropy_host_test.rs",
+    crate_name = "crypto_entropy_tests",
+    edition = "2021",
+    deps = ["@crates//:rand", "@crates//:zeroize"],
+)
+
+rust_test(
+    name = "wifi_startup_diagnostics_tests",
+    srcs = [
+        "src/wifi_startup_diagnostics_host_test.rs",
+        "src/wifi_adapter/startup_diagnostics.rs",
+        "src/wifi_adapter/startup_diagnostics/model.rs",
+    ],
+    crate_root = "src/wifi_startup_diagnostics_host_test.rs",
+    crate_name = "wifi_startup_diagnostics_tests",
+    edition = "2021",
+    deps = ["@crates//:anyhow", "//crates/bitaxe-core:bitaxe_core"],
+)

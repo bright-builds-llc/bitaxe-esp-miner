@@ -15,6 +15,7 @@ use esp_idf_svc::wifi::{Configuration, WifiEvent};
 
 use super::{
     captive_dns, log_runtime_line, publish_connected_wifi, publish_ipv6_observation,
+    startup_diagnostics::{observe, Phase},
     wifi_snapshot_cell, WIFI_OWNER,
 };
 
@@ -23,6 +24,16 @@ const PROBE_STABILITY_WINDOW_MS: u64 = 15_000;
 static NETWORK_RECONNECT_PROBE_ARMED: AtomicBool = AtomicBool::new(false);
 
 pub(super) fn start(
+    sysloop: &EspSystemEventLoop,
+    maybe_initial_reason: Option<WifiDisconnectReason>,
+) -> anyhow::Result<()> {
+    observe(
+        Phase::ReconnectSubscription,
+        start_inner(sysloop, maybe_initial_reason),
+    )
+}
+
+fn start_inner(
     sysloop: &EspSystemEventLoop,
     maybe_initial_reason: Option<WifiDisconnectReason>,
 ) -> anyhow::Result<()> {
@@ -86,10 +97,13 @@ pub(super) fn start(
         owner._ip_subscription = Some(ip_subscription);
     }
 
-    std::thread::Builder::new()
-        .name("wifi-reconnect".to_owned())
-        .stack_size(8_192)
-        .spawn(move || run(receiver))?;
+    observe(
+        Phase::ReconnectSpawn,
+        std::thread::Builder::new()
+            .name("wifi-reconnect".to_owned())
+            .stack_size(8_192)
+            .spawn(move || run(receiver)),
+    )?;
     request_ipv6_link_local(station_netif_address);
     if let Some(reason) = maybe_initial_reason {
         sender.send(WifiReconnectEvent::StationDisconnected(reason))?;

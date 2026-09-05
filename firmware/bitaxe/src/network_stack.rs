@@ -11,7 +11,9 @@ use esp_idf_svc::sys;
 pub fn initialize() -> anyhow::Result<()> {
     let netif_result = unsafe { sys::esp_netif_init() };
     if !matches!(netif_result, sys::ESP_OK | sys::ESP_ERR_INVALID_STATE) {
-        anyhow::bail!("esp_netif_init failed: esp_err={netif_result}");
+        if let Some(error) = sys::EspError::from(netif_result) {
+            return Err(error.into());
+        }
     }
 
     Ok(())

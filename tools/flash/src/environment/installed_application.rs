@@ -72,13 +72,13 @@ pub(super) fn execute_exit(
     if rom.physical_identity_digest != session.physical_identity_digest() {
         bail!("physical_identity_drift");
     }
-    let register = session.run_espflash_probe(
+    environment.validate_espflash_identity()?;
+    let application = run_installed_application(
+        session,
         esptool.as_std_path(),
-        &force_download_read_args(session.port()),
-        Duration::from_secs(30),
+        environment.espflash_bin.as_std_path(),
     )?;
-    let force_download_bit_set = parse_force_download_bit(&register.stdout)?;
-    let application = run_installed_application(session, esptool.as_std_path())?;
+    let force_download_bit_set = application.force_download_bit_set;
     Ok(InstalledApplicationExit {
         force_download_bit_set,
         transport: application.transport,

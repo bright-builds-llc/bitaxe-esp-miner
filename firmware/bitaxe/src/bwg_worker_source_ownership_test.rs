@@ -23,7 +23,8 @@ fn bwg_private_state_has_one_dedicated_nvs_owner() {
     for source in [MAIN_SOURCE, STARTUP_SOURCE, SESSION_SOURCE, USB_SOURCE] {
         assert!(!source.contains("effect_pending"));
     }
-    assert!(NVS_SOURCE.contains("esp_fill_random"));
+    assert!(NVS_SOURCE.contains("crypto_entropy::fill(seed)"));
+    assert!(!NVS_SOURCE.contains("esp_fill_random"));
     assert!(!NVS_SOURCE.contains("state.retain("));
     assert!(NVS_SOURCE.contains("state.len() > 8"));
     assert!(!NVS_SOURCE.contains("log::"));
@@ -149,6 +150,20 @@ fn startup_installs_diagnostics_before_nvs_and_gates_worker_until_after_baseline
             < early
                 .find("settings_adapter::initialize_default_nvs_partition()")
                 .expect("NVS initialization")
+    );
+    assert!(
+        early
+            .find("crypto_entropy::initialize()")
+            .expect("startup entropy")
+            < early
+                .find("settings_adapter::initialize_default_nvs_partition()")
+                .expect("NVS before hardware")
+    );
+    assert_eq!(
+        STARTUP_SOURCE
+            .matches("crypto_entropy::initialize()")
+            .count(),
+        1
     );
     assert_eq!(
         STARTUP_SOURCE

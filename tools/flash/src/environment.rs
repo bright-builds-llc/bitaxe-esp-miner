@@ -19,6 +19,12 @@ pub(crate) struct LocalFlashEnvironment {
     pub(crate) usb_session: RefCell<Option<UsbSession>>,
 }
 impl LocalFlashEnvironment {
+    pub(super) fn validate_espflash_identity(&self) -> Result<()> {
+        if sha256_bytes(&fs::read(self.espflash_bin.as_std_path())?) != self.espflash_sha256 {
+            bail!("application_exit=blocked reason=espflash_identity_changed");
+        }
+        Ok(())
+    }
     pub(crate) fn detect() -> Result<Self> {
         let espflash_bin = resolve_espflash_executable()?;
         let espflash_version = format!("espflash {ESPFLASH_EXPECTED_VERSION}");

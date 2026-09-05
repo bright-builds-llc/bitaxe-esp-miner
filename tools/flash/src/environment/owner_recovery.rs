@@ -65,8 +65,13 @@ pub(super) fn execute_exit(
         )
         .map_err(|error| anyhow::anyhow!(error))?;
     let force_download_bit_set = parse_force_download_bit(&read.stdout)?;
-    let application = run_installed_application(session, esptool.as_std_path())
-        .map_err(|error| anyhow::anyhow!(error))?;
+    environment.validate_espflash_identity()?;
+    let application = run_installed_application(
+        session,
+        esptool.as_std_path(),
+        environment.espflash_bin.as_std_path(),
+    )
+    .map_err(|error| anyhow::anyhow!(error))?;
     let monitor = session
         .observe_receive_only(Duration::from_secs(observation_seconds.min(30)))
         .map_err(|error| anyhow::anyhow!(error))?;

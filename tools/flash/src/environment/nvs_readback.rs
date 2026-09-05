@@ -10,8 +10,13 @@ pub(super) fn restore_application_runtime(
     let Some(session) = session_slot.as_mut() else {
         bail!("cleanup_failed: runtime restore attempted without a repository session");
     };
-    let observation = run_installed_application(session, esptool.as_std_path())
-        .map_err(|error| anyhow::anyhow!(error))?;
+    environment.validate_espflash_identity()?;
+    let observation = run_installed_application(
+        session,
+        esptool.as_std_path(),
+        environment.espflash_bin.as_std_path(),
+    )
+    .map_err(|error| anyhow::anyhow!(error))?;
     let mut counts = ProfileObservationCounts::default();
     match observation.transport {
         UsbProfile::WorkerRuntime => counts.same_worker = 1,
@@ -43,8 +48,13 @@ pub(super) fn execute_rom_exit(
     if !force_download_bit_set {
         bail!("rom_exit=blocked reason=force_download_not_set");
     }
-    let observation = run_installed_application(session, esptool.as_std_path())
-        .map_err(|error| anyhow::anyhow!(error))?;
+    environment.validate_espflash_identity()?;
+    let observation = run_installed_application(
+        session,
+        esptool.as_std_path(),
+        environment.espflash_bin.as_std_path(),
+    )
+    .map_err(|error| anyhow::anyhow!(error))?;
     let monitor = session
         .observe_receive_only(Duration::from_secs(observation_seconds.min(30)))
         .map_err(|error| anyhow::anyhow!(error))?;

@@ -223,13 +223,12 @@ impl AcceptedSequenceStore for BwgWorkerNvs {
     }
 }
 
-/// ESP-IDF hardware entropy source used only for first identity creation.
+/// Boot-seeded cryptographic source used only for first identity creation.
 pub(crate) struct EspDeviceIdentitySeedGenerator;
 
 impl DeviceIdentitySeedGenerator for EspDeviceIdentitySeedGenerator {
     fn fill_seed(&mut self, seed: &mut [u8; 32]) -> Result<(), IdentityLoadError> {
-        unsafe { sys::esp_fill_random(seed.as_mut_ptr().cast(), seed.len()) };
-        Ok(())
+        crate::crypto_entropy::fill(seed).map_err(|_| IdentityLoadError::Entropy)
     }
 }
 

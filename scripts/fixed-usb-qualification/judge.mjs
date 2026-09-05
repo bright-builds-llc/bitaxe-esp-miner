@@ -40,12 +40,13 @@ export function validatePreservation(value) {
 
 export function validateState(value, context) {
   exactObject(value, ["schema", "gateCommit", "status", "connected", "running", "heartbeatSuppressed", "renewalsConfirmed", "deviceRestorationConfirmed", "deviceLeaseInactive", "serialOwnershipReleased"],
-    ["expectedFirmwareSourceCommit", "expectedAppElfSha256", "qualification", "preservation", "probe", "failure", "admissionFailureStage"]);
+    ["expectedFirmwareSourceCommit", "expectedAppElfSha256", "qualification", "preservation", "probe", "failure", "admissionFailureStage", "serialFailureCategory"]);
   requireCondition(value.schema === "worker-serial-acceptance-v1" && value.gateCommit === context.gate_commit &&
     value.expectedFirmwareSourceCommit === context.firmware_commit && value.expectedAppElfSha256 === context.app_elf_sha256 &&
     STATUSES.includes(value.status) && u32(value.renewalsConfirmed) && value.renewalsConfirmed <= 16 &&
     ["connected", "running", "heartbeatSuppressed", "deviceRestorationConfirmed", "deviceLeaseInactive", "serialOwnershipReleased"].every((key) => typeof value[key] === "boolean"), "browser_state_identity");
   if (value.admissionFailureStage !== undefined) requireCondition(["ownership", "permission", "device_filter", "scope", "opening", "hello", "manifest_identity", "capability", "possession", "baseline", "continuity", "cleanup"].includes(value.admissionFailureStage), "admission_stage_shape");
+  if (value.serialFailureCategory !== undefined) requireCondition(["timeout", "io", "read_failed", "write_failed", "disconnected", "liveness_lost", "wire_bound", "payload_bound", "utf8", "line_ending", "profile", "shape", "fields", "envelope", "session", "continuity", "heartbeat", "sequence_exhausted", "correlation", "command_rejected", "closed", "operation_failed"].includes(value.serialFailureCategory), "serial_failure_shape");
   if (value.failure !== undefined) requireCondition(FAILURES.includes(value.failure), "browser_failure_shape");
   if (value.qualification !== undefined) validateQualification(value.qualification);
   if (value.preservation !== undefined) validatePreservation(value.preservation);
