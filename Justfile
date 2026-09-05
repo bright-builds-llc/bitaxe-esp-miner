@@ -80,6 +80,9 @@ verify-native-usb-ownership:
 verify-native-usb-transition *args:
     bazel run //tools/flash:flash -- verify-native-usb-transition {{ args }}
 
+native-usb-start-installed *args:
+    bazel run //tools/flash:flash -- native-usb-start-installed {{ args }}
+
 native-usb-transition-recovery action *args:
     bazel run //tools/automation:native_usb_transition_recovery -- {{ quote(action) }} {{ args }}
 

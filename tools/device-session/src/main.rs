@@ -289,6 +289,9 @@ fn run_observe_usb_reboot_loop(args: ObserveUsbRebootLoopArgs) -> Result<Termina
         "worker_start_failure_observed: {}",
         observation.worker_start_failed()
     );
+    for trace in observation.maintenance_trace() {
+        println!("{}", trace.marker());
+    }
     if let Some(expected) = maybe_expected {
         if let Err(error) = observation.require_identity(&expected) {
             eprintln!("{error}");

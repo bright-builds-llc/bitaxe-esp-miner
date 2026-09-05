@@ -34,6 +34,10 @@ struct FakeFlashEnvironment {
     input_uat_interrupted: bool,
     cleanup_calls: Cell<usize>,
     cleanup_failure: bool,
+    application_exit_write_counts: RefCell<Vec<usize>>,
+    application_exit_failure: bool,
+    installed_session_calls: Cell<usize>,
+    maybe_installed_bytes: Option<Vec<u8>>,
     last_usb_command_diagnostic: RefCell<Option<UsbCommandDiagnostic>>,
 }
 
@@ -81,6 +85,10 @@ impl FakeFlashEnvironment {
             input_uat_interrupted: false,
             cleanup_calls: Cell::new(0),
             cleanup_failure: false,
+            application_exit_write_counts: RefCell::new(Vec::new()),
+            application_exit_failure: false,
+            installed_session_calls: Cell::new(0),
+            maybe_installed_bytes: None,
             last_usb_command_diagnostic: RefCell::new(None),
         }
     }
@@ -291,6 +299,36 @@ impl FlashEnvironment for FakeFlashEnvironment {
 
     fn begin_usb_session(&self, _operation: UsbOperation, _port: &str) -> Result<()> {
         Ok(())
+    }
+
+    fn prepare_application_exit(&self) -> Result<Utf8PathBuf> {
+        Ok(Utf8PathBuf::from("managed-esptool-fixture"))
+    }
+
+    fn begin_installed_session(&self, _port: &str, _root: &Utf8Path) -> Result<()> {
+        self.installed_session_calls.set(self.installed_session_calls.get() + 1);
+        Ok(())
+    }
+
+    fn observe_installed_runtime(&self) -> Result<UsbRebootLoopObservation> {
+        let bytes = self.maybe_installed_bytes.as_deref().context("fixture_missing_observation")?;
+        bitaxe_device_session::parse_usb_reboot_diagnostics(bytes, 1)
+    }
+
+    fn execute_application_exit(&self, _esptool: &Utf8Path) -> Result<InstalledApplicationExit> {
+        self.application_exit_write_counts.borrow_mut().push(
+            self.executed_commands.borrow().iter()
+                .filter(|command| command.args.first().is_some_and(|arg| arg == "write-bin"))
+                .count(),
+        );
+        if self.application_exit_failure {
+            bail!("application_exit=failed reason=managed_run_failed");
+        }
+        Ok(InstalledApplicationExit {
+            force_download_bit_set: true,
+            transport: UsbProfile::WorkerRuntime,
+            reenumerated: true,
+        })
     }
 
     fn verify_native_usb_transition(&self, _port: &str) -> Result<NativeUsbTransitionOutcome> {
@@ -575,45 +613,5 @@ impl FlashEnvironment for FakeFlashEnvironment {
         }
         std::fs::write(path.as_std_path(), contents).expect("write fake evidence");
         Ok(())
-    }
-}
-
-impl RomExitEnvironment for FakeFlashEnvironment {
-    fn execute_rom_exit(
-        &self,
-        _esptool: &Utf8Path,
-        _observation_seconds: u64,
-    ) -> Result<RomExitHardwareCapture> {
-        Ok(RomExitHardwareCapture {
-            force_download_bit_set: true,
-            transport: UsbProfile::SerialJtagRuntime,
-            reenumerated: true,
-            monitor: MonitorOutput {
-                bytes: Vec::new(),
-                interrupted_by: None,
-                reenumerated: true,
-            },
-        })
-    }
-}
-
-fn fake_usb_command_diagnostic(
-    terminal_category: UsbTerminalCategory,
-    device_effect_state: UsbDeviceEffectState,
-) -> UsbCommandDiagnostic {
-    UsbCommandDiagnostic {
-        schema_version: "esp-usb-command-diagnostic-v1".to_owned(),
-        terminal_category,
-        device_effect_state,
-        termination: UsbCommandTermination::ExitedSuccess,
-        attempt_count: 1,
-        connection_signature: UsbConnectionSignature::NotApplicable,
-        stdout_bytes: 0,
-        stderr_bytes: 0,
-        stdout_sha256: sha256_bytes(&[]),
-        stderr_sha256: sha256_bytes(&[]),
-        transfer_started: device_effect_state != UsbDeviceEffectState::None,
-        transfer_completed: device_effect_state == UsbDeviceEffectState::Completed,
-        raw_output_included: false,
     }
 }

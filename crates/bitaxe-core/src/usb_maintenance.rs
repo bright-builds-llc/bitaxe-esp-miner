@@ -1,5 +1,12 @@
 //! Pure maintenance-handoff state for the single native USB PHY.
 
+mod trace;
+
+pub use trace::{
+    MaintenanceTraceEffect, MaintenanceTraceOutcome, TracedUsbMaintenanceState,
+    MAINTENANCE_TRACE_CAPACITY,
+};
+
 const HANDOFF_WINDOW_MS: u64 = 5_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

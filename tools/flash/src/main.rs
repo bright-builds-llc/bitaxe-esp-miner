@@ -31,7 +31,8 @@ use bitaxe_device_session::{
     native_usb_transition_module_sha256, plan_usb_operation, run_installed_application,
     verify_native_usb_transition, MonitorOutput, NativeUsbTransitionOutcome,
     ProfileObservationCounts, UsbCommandDiagnostic, UsbDeviceEffectState, UsbExecutionOwner,
-    UsbIntent, UsbOperation, UsbOperationPlan, UsbProfile, UsbSession, UsbTerminalCategory,
+    UsbIntent, UsbOperation, UsbOperationPlan, UsbProfile, UsbRebootLoopObservation,
+    UsbRuntimeIdentity, UsbSession, UsbTerminalCategory,
 };
 #[cfg(test)]
 use bitaxe_device_session::{UsbCommandTermination, UsbConnectionSignature};
@@ -52,6 +53,7 @@ mod evidence_record;
 mod execution_snapshot;
 mod flash_transfer;
 mod input_uat;
+mod installed_application;
 mod model;
 mod monitor;
 mod native_usb_transition;
@@ -85,6 +87,7 @@ pub(crate) use evidence_record::*;
 pub(crate) use execution_snapshot::*;
 pub(crate) use flash_transfer::*;
 pub(crate) use input_uat::*;
+pub(crate) use installed_application::*;
 pub(crate) use model::*;
 pub(crate) use monitor::*;
 pub(crate) use native_usb_transition::*;
@@ -171,6 +174,7 @@ fn main() -> Result<()> {
         CliCommand::OwnerRecovery(command) => run_owner_recovery(command, &environment),
         CliCommand::BootChainReadback(command) => run_boot_chain_readback(command, &environment),
         CliCommand::UsbStabilityRead(command) => run_usb_stability_read(command, &environment),
+        CliCommand::StartInstalled(command) => run_start_installed(&command, &environment),
     };
     let device_effect_state = environment.device_effect_state();
     let cleanup_result = environment.finish_usb_session();

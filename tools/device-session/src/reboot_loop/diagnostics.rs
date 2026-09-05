@@ -35,11 +35,87 @@ pub struct UsbMemoryCheckpoint {
     pub reserve_bytes: u32,
 }
 
+/// Exact closed maintenance trace received over the admitted Worker CDC channel.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UsbMaintenanceTrace {
+    sequence: u32,
+    marker: String,
+}
+
+impl UsbMaintenanceTrace {
+    /// Returns the validated closed marker without arbitrary transport text.
+    pub fn marker(&self) -> &str {
+        &self.marker
+    }
+
+    fn parse(fields: &[&str]) -> Result<Self> {
+        if fields.len() != 11 || fields[1] != "schema=v1" || fields[10] != "redacted=true" {
+            bail!("usb_diagnostics=malformed_maintenance_trace");
+        }
+        let sequence = number(fields[2], "seq=")?;
+        if sequence == 0
+            || !matches!(
+                field(fields[3], "event=")?,
+                "coding_1200"
+                    | "coding_115200"
+                    | "coding_other"
+                    | "dtr0_rts0"
+                    | "dtr0_rts1"
+                    | "dtr1_rts0"
+                    | "dtr1_rts1"
+                    | "safe_stop_complete"
+                    | "safe_stop_failed"
+                    | "detached"
+                    | "expiry"
+                    | "queue_loss"
+                    | "ready_enqueue"
+                    | "commit_enqueue"
+                    | "phy_invoked"
+                    | "phy_returned"
+            )
+            || !trace_phase(field(fields[4], "before=")?)
+            || !trace_phase(field(fields[5], "after=")?)
+            || !matches!(
+                field(fields[6], "action=")?,
+                "none" | "request_safe_stop" | "emit_ready" | "commit_restart"
+            )
+            || !matches!(field(fields[7], "expired=")?, "true" | "false")
+            || number(fields[8], "remaining_ms=")? > 5_000
+            || !matches!(
+                field(fields[9], "outcome=")?,
+                "none"
+                    | "ok"
+                    | "unavailable_transport"
+                    | "disconnected"
+                    | "partial_write"
+                    | "timeout"
+                    | "install"
+                    | "handoff"
+            )
+        {
+            bail!("usb_diagnostics=invalid_maintenance_trace");
+        }
+        let marker = fields.join(" ");
+        if marker.len() >= 256 {
+            bail!("usb_diagnostics=maintenance_trace_line_bound");
+        }
+        Ok(Self { sequence, marker })
+    }
+}
+
+fn trace_phase(phase: &str) -> bool {
+    matches!(
+        phase,
+        "idle" | "dtr_asserted" | "safe_stop_pending" | "ready" | "committed"
+    )
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(super) struct WorkerDiagnostics {
     pub maybe_identity: Option<UsbRuntimeIdentity>,
     pub memory: Vec<UsbMemoryCheckpoint>,
     pub worker_start_failed: bool,
+    pub maintenance_trace: Vec<UsbMaintenanceTrace>,
 }
 
 impl WorkerDiagnostics {
@@ -50,11 +126,37 @@ impl WorkerDiagnostics {
             match fields.first().copied() {
                 Some("usb_runtime_identity") => diagnostics.identity(&fields)?,
                 Some("usb_memory_checkpoint") => diagnostics.memory(&fields)?,
+                Some("usb_maintenance_trace") => diagnostics.trace(&fields)?,
                 Some("bwg_worker_start_failure") => diagnostics.worker_start_failed = true,
                 _ => {}
             }
         }
         Ok(diagnostics)
+    }
+
+    fn trace(&mut self, fields: &[&str]) -> Result<()> {
+        let trace = UsbMaintenanceTrace::parse(fields)?;
+        let mut position = match self
+            .maintenance_trace
+            .binary_search_by_key(&trace.sequence, |prior| prior.sequence)
+        {
+            Ok(position) => {
+                if self.maintenance_trace[position] != trace {
+                    bail!("usb_diagnostics=maintenance_trace_changed");
+                }
+                return Ok(());
+            }
+            Err(position) => position,
+        };
+        if self.maintenance_trace.len() == 16 {
+            if position == 0 {
+                return Ok(());
+            }
+            self.maintenance_trace.remove(0);
+            position -= 1;
+        }
+        self.maintenance_trace.insert(position, trace);
+        Ok(())
     }
 
     fn identity(&mut self, fields: &[&str]) -> Result<()> {
@@ -173,6 +275,84 @@ mod tests {
     fn malformed_identity_is_not_silently_ignored() {
         // Arrange
         let text = identity('a').replace("schema=v1", "schema=v2");
+        // Act / Assert
+        assert!(WorkerDiagnostics::parse(&text).is_err());
+    }
+    fn trace(sequence: u32) -> String {
+        format!("usb_maintenance_trace schema=v1 seq={sequence} event=commit_enqueue before=committed after=committed action=none expired=false remaining_ms=0 outcome=partial_write redacted=true")
+    }
+
+    #[test]
+    fn failure_trace_is_available_without_runtime_identity() {
+        // Arrange
+        let text = trace(1);
+        // Act
+        let diagnostic = WorkerDiagnostics::parse(&text).expect("closed trace");
+        // Assert
+        assert!(diagnostic.maybe_identity.is_none());
+        assert_eq!(diagnostic.maintenance_trace[0].marker(), text);
+    }
+
+    #[test]
+    fn trace_rejects_unbounded_or_private_fields() {
+        // Arrange
+        let text = trace(1);
+        // Act / Assert
+        for invalid in [
+            text.replace("partial_write", "private-value"),
+            text.replace("remaining_ms=0", "remaining_ms=5001"),
+            format!("{text} payload=secret"),
+        ] {
+            assert!(WorkerDiagnostics::parse(&invalid).is_err());
+        }
+    }
+
+    #[test]
+    fn trace_capture_retains_only_the_latest_ring_window() {
+        // Arrange
+        let text = (1..=17).map(trace).collect::<Vec<_>>().join("\n");
+        // Act
+        let diagnostic = WorkerDiagnostics::parse(&text).expect("bounded rolling trace");
+        // Assert
+        assert_eq!(diagnostic.maintenance_trace.len(), 16);
+        assert_eq!(diagnostic.maintenance_trace[0].sequence, 2);
+        assert_eq!(diagnostic.maintenance_trace[15].sequence, 17);
+    }
+    #[test]
+    fn overlapping_trace_bursts_preserve_same_boot_reconnect_classification() {
+        // Arrange
+        use bitaxe_api::boot_identity::{ResetReasonCategory, WorkerUsbBootMarker};
+        let first = (1..=16).map(trace).collect::<Vec<_>>().join("\n");
+        let second = (5..=20).map(trace).collect::<Vec<_>>().join("\n");
+        let text = format!(
+            "{}\n{first}\n{}\n{second}\n{}\n",
+            WorkerUsbBootMarker::new(2, ResetReasonCategory::Panic, 100).marker(),
+            WorkerUsbBootMarker::new(2, ResetReasonCategory::Panic, 200).marker(),
+            trace(1)
+        );
+
+        // Act
+        let observed = crate::reboot_loop::classify_capture(text.as_bytes(), 2)
+            .expect("overlapping same-boot trace");
+
+        // Assert
+        assert_eq!(
+            observed.category(),
+            crate::reboot_loop::UsbRebootLoopCategory::UsbStackReset
+        );
+        assert_eq!(observed.maintenance_trace().len(), 16);
+        assert_eq!(observed.maintenance_trace()[0].sequence, 5);
+        assert_eq!(observed.maintenance_trace()[15].sequence, 20);
+    }
+
+    #[test]
+    fn conflicting_retained_trace_sequence_fails_closed() {
+        // Arrange
+        let text = format!(
+            "{}\n{}\n",
+            trace(5),
+            trace(5).replace("partial_write", "timeout")
+        );
         // Act / Assert
         assert!(WorkerDiagnostics::parse(&text).is_err());
     }

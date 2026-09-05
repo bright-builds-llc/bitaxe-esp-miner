@@ -5,9 +5,7 @@ use bitaxe_core::usb_worker_diagnostics::CdcEvidenceWriter;
 mod callbacks;
 mod tinyusb;
 
-pub(crate) use bitaxe_core::usb_maintenance::{
-    MaintenanceAction, MaintenanceEvent, UsbMaintenanceState,
-};
+pub(crate) use bitaxe_core::usb_maintenance::{MaintenanceAction, MaintenanceEvent};
 pub(crate) use tinyusb::UsbRuntimeFailure;
 
 unsafe extern "C" {

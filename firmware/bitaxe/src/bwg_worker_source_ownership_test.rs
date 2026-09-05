@@ -109,7 +109,7 @@ fn worker_receipts_require_mount_and_diagnostics_observe_late_attachment() {
     assert!(USB_TINYUSB_SOURCE.contains("tud_cdc_n_get_line_coding"));
     assert!(USB_TINYUSB_SOURCE.contains("tud_cdc_n_connected"));
     assert!(USB_SOURCE.contains("worker_observer_state()"));
-    assert!(USB_SOURCE.contains("replay.maybe_due_slot(now, ingress_open)"));
+    assert!(USB_SOURCE.contains("replay.maybe_due_slot(now, maintenance.diagnostics_allowed())"));
     assert!(USB_SOURCE.contains("emit_diagnostic(evidence, line.as_bytes())"));
     assert!(USB_SOURCE.contains("emit_mount_boot_evidence(&mut evidence)"));
     assert!(USB_SOURCE.contains("evidence = CdcEvidenceWriter::new()"));

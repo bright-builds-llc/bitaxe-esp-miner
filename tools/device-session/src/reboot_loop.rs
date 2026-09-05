@@ -7,7 +7,7 @@ use bitaxe_api::panic_receipt::{
 };
 
 mod diagnostics;
-pub use diagnostics::{UsbMemoryCheckpoint, UsbRuntimeIdentity};
+pub use diagnostics::{UsbMaintenanceTrace, UsbMemoryCheckpoint, UsbRuntimeIdentity};
 
 /// Closed classification for one bounded USB reboot-loop observation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -62,6 +62,11 @@ impl UsbRebootLoopObservation {
     /// Returns validated, deduplicated startup heap checkpoints.
     pub fn memory_checkpoints(&self) -> &[UsbMemoryCheckpoint] {
         &self.diagnostics.memory
+    }
+
+    /// Returns bounded closed maintenance trace independently of expected package identity.
+    pub fn maintenance_trace(&self) -> &[UsbMaintenanceTrace] {
+        &self.diagnostics.maintenance_trace
     }
 
     /// Reports an explicit Worker startup failure independently from missing evidence.
@@ -120,13 +125,26 @@ impl UsbRebootLoopObservation {
     }
 }
 
-/// Observes a flapping macOS USB profile without writing or changing control lines.
+/// Observes a flapping macOS USB profile using the fixed-115200 DTR evidence adapter.
+/// It sends no payload and never selects the maintenance baud.
 pub fn observe_usb_reboot_loop(port: &str, timeout: Duration) -> Result<UsbRebootLoopObservation> {
     if timeout.is_zero() || timeout > Duration::from_secs(30) {
         bail!("reboot-loop timeout is outside the 1..=30 second bound");
     }
     let capture = crate::macos::capture_reconnecting_receive_only(port, timeout)?;
-    classify_capture(&capture.bytes, capture.open_count)
+    parse_usb_reboot_diagnostics(&capture.bytes, capture.open_count)
+}
+
+/// Parses a bounded transcript without admitting a device or proving its physical origin.
+/// Callers must separately retain the physical lease and compare expected identity.
+pub fn parse_usb_reboot_diagnostics(
+    bytes: &[u8],
+    open_count: u16,
+) -> Result<UsbRebootLoopObservation> {
+    if bytes.len() > 64 * 1024 || open_count == 0 {
+        bail!("usb_diagnostics=invalid_capture_bounds");
+    }
+    classify_capture(bytes, open_count)
 }
 
 fn classify_capture(bytes: &[u8], open_count: u16) -> Result<UsbRebootLoopObservation> {

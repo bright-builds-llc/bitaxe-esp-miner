@@ -28,6 +28,18 @@ pub(crate) trait FlashEnvironment {
         size: &str,
     ) -> Result<()>;
     fn begin_usb_session(&self, operation: UsbOperation, port: &str) -> Result<()>;
+    fn prepare_application_exit(&self) -> Result<Utf8PathBuf> {
+        bail!("application_exit=blocked reason=adapter_unavailable")
+    }
+    fn execute_application_exit(&self, _esptool: &Utf8Path) -> Result<InstalledApplicationExit> {
+        bail!("application_exit=blocked reason=adapter_unavailable")
+    }
+    fn begin_installed_session(&self, _port: &str, _root: &Utf8Path) -> Result<()> {
+        bail!("start_installed=blocked reason=adapter_unavailable")
+    }
+    fn observe_installed_runtime(&self) -> Result<UsbRebootLoopObservation> {
+        bail!("start_installed=blocked reason=adapter_unavailable")
+    }
     fn verify_native_usb_transition(&self, port: &str) -> Result<NativeUsbTransitionOutcome>;
     fn native_usb_profile_counts(&self) -> ProfileObservationCounts;
     fn usb_physical_identity_digest(&self) -> Result<String>;

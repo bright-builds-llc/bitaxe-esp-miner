@@ -369,6 +369,61 @@ integrity/source distinction, late observer replay, FIFO backpressure and
 partial-write framing, and maintenance receipt preservation. Hardware memory
 resolution and handoff durability remain pending; no parity was promoted.
 
+ROM-exit continuation | 2026-09-04: Diagnostic installation attempt
+`native-usb-diagnostics-001` stopped before writes at `handoff_commit_timeout`
+on the installed d369 image; readiness arrived, cleanup passed, and fresh
+inspection still found Worker. The user-authorized BOOT/RESET bootstrap then
+installed exact `155bfae5a017da5e89009bed7199a83ab4956cb8`, ELF
+`425c9d7ae66d7e65ff4ebc9266a3b1f9f2f945dba16a37d3620a3cd91bd68ffa`, with
+factory/NVS completion and cleanup. Fresh no-reset `board-info` confirmed ROM
+remained selected. Pinned espflash's serial-line hard reset does not clear
+the force-download bit; the repository's existing managed esptool helper
+does. The canonical flash command currently omits that helper.
+
+- [x] Add a narrowly task-gated `just native-usb-start-installed` no-write
+      continuation and reuse the managed application-exit capability after
+      the final canonical flash/NVS write; regression-test ordering and failures.
+- [ ] Verify and commit/push the host fix before one no-write ROM exit of the
+      already installed 155bfae5 image. Its expected source/ELF above are the
+      verification target, not a claim that package files prove it is running.
+- [x] Add a fixed-size closed maintenance trace before any further handoff
+      diagnostic: distinguish redundant control events, deadline expiry,
+      event loss, commit enqueue failure, and PHY invocation/result. The pinned
+      TinyUSB callbacks do not suppress duplicate class requests; the current
+      reducer disarms on them, but no live evidence yet proves that cause.
+      Replay failure traces through the bounded read-only report after
+      maintenance terminates without reopening Worker command ingress. Do not
+      change protocol acceptance or memory budgets on this hypothesis alone.
+
+No-write effect contract: after fresh `just detect-ultra205 --retain-rom`, run
+one `just native-usb-start-installed --board 205 --port <fresh-port>
+--expected-source-commit 155bfae5a017da5e89009bed7199a83ab4956cb8
+--expected-app-elf-sha256 425c9d7ae66d7e65ff4ebc9266a3b1f9f2f945dba16a37d3620a3cd91bd68ffa
+--private-root <new-private-child> --redact-evidence`. The command validates
+the active task, canonical managed tool and expected identity before effects,
+retains one physical lease, admits ROM through no-reset board-info, reads only
+the force-download register, invokes the existing contained managed hard-reset
+helper once, and requires Worker plus its exact 30-second diagnostic identity.
+ROM I/O/reset and observation each have a 30-second bound; reacquisition and
+cleanup retain existing repository bounds. No image/NVS read/write, erase,
+mining, ASIC/fan/voltage, pool, network, or other-device effect is authorized.
+Create the protected parent and separate mode-0600 sibling logs; leave the
+mode-0700 supervisor child nonexistent before launch. Preserve first failure
+and all artifacts; no repeated reset or retry follows ambiguous completion.
+Unknown/shared-profile-only or missing/mismatched runtime evidence fails
+closed and permits only diagnosis or the user-authorized physical fallback.
+
+ROM-exit software review: ordered Cargo format/strict Clippy/build/tests,
+all 76 Bazel tests, the real firmware/package, ownership, Bright Builds,
+redaction, reference cleanliness, and parity progress pass. Tests cover exact
+and mismatched installed identity under a different tooling revision, one exit
+after the final write, no exit after write failure, existing/private-root
+rejection, no-write command bounds, cleanup/earliest-failure preservation,
+unchanged maintenance transitions with a fixed trace ring, and overlapping
+trace reports during same-boot reconnects. The already installed 155bfae5 image
+remains the no-write verification target. Firmware trace hardware validation,
+memory resolution, and buttonless durability remain pending.
+
 ### task-native-usb-recovery-transition-205 | 2026-08-30 | Recover first and prove one no-write transition
 
 - [x] Create and push the immutable recovery and single-transition plan before

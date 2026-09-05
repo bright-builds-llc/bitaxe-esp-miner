@@ -12,11 +12,23 @@ pub(crate) fn run_flash_with_wifi_mode(
     wifi_mode: WifiNvsSeedMode,
     environment: &impl FlashEnvironment,
 ) -> Result<FlashOutcome> {
+    let maybe_esptool = if command.common.dry_run {
+        None
+    } else {
+        Some(environment.prepare_application_exit()?)
+    };
     let PreparedFlash {
-        outcome,
-        execution_command,
+        mut outcome,
+        mut execution_command,
         _execution_snapshot,
     } = prepare_flash_with_wifi_mode(command, wifi_mode, environment)?;
+    if outcome.runtime_identity.is_some() {
+        retain_rom_after_write(&mut execution_command)?;
+        retain_rom_after_write(&mut outcome.command)?;
+    }
+    if let Some(seed) = outcome.nvs_seed.as_mut() {
+        retain_rom_after_write(&mut seed.command)?;
+    }
     emit_flash_outcome(
         &outcome,
         command.common.evidence_mode != Some(EvidenceMode::Dual),
@@ -32,6 +44,14 @@ pub(crate) fn run_flash_with_wifi_mode(
             environment.execute(&nvs_seed.command)?;
             environment.phase35_stage_readiness_gate("after-nvs", &port)?;
         }
+        let esptool = maybe_esptool
+            .as_deref()
+            .context("application_exit=missing_preflight")?;
+        let exit = environment.execute_application_exit(esptool)?;
+        emit_line(
+            "application_exit_transport",
+            installed_transport_label(exit.transport),
+        )?;
     }
 
     write_evidence_if_requested(&command.common, &outcome, "flash", environment)?;

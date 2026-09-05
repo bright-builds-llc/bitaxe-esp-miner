@@ -40,8 +40,8 @@ pub use model::{
 };
 pub use platform::current_platform;
 pub use reboot_loop::{
-    observe_usb_reboot_loop, UsbMemoryCheckpoint, UsbRebootLoopCategory, UsbRebootLoopObservation,
-    UsbRuntimeIdentity,
+    observe_usb_reboot_loop, parse_usb_reboot_diagnostics, UsbMaintenanceTrace,
+    UsbMemoryCheckpoint, UsbRebootLoopCategory, UsbRebootLoopObservation, UsbRuntimeIdentity,
 };
 pub use transaction::{
     run_admitted_transaction, DeviceTransactionIntent, TransactionGoal, TRANSACTION_INTENT_SCHEMA,

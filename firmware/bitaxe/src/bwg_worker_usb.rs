@@ -5,6 +5,9 @@ use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
 use std::sync::OnceLock;
 use std::time::Duration;
 
+use bitaxe_core::usb_maintenance::{
+    MaintenanceTraceEffect, MaintenanceTraceOutcome, TracedUsbMaintenanceState,
+};
 use bitaxe_core::usb_worker_diagnostics::{
     CdcEvidenceWriter, WorkerDiagnosticReplay, DIAGNOSTIC_LINE_BYTES,
 };
@@ -17,7 +20,7 @@ use zeroize::Zeroize;
 use crate::bwg_worker_nvs::{BwgWorkerNvs, EspDeviceIdentitySeedGenerator};
 use crate::bwg_worker_session::ProductionWorkerSession;
 use crate::startup::BootMiningBaselineConfirmed;
-use crate::usb_runtime::{MaintenanceAction, MaintenanceEvent, UsbMaintenanceState};
+use crate::usb_runtime::{MaintenanceAction, MaintenanceEvent, UsbRuntimeFailure};
 
 const OWNER_STACK_BYTES: usize = 16 * 1024;
 const EVENT_CAPACITY: usize = 8;
@@ -139,7 +142,7 @@ where
 {
     let mut evidence = CdcEvidenceWriter::new();
     let mut accumulator = WorkerControlFrameAccumulator::new();
-    let mut maintenance = UsbMaintenanceState::default();
+    let mut maintenance = TracedUsbMaintenanceState::default();
     let mut diagnostics = WorkerDiagnosticReplay::default();
     let mut maintenance_ingress_open = true;
     loop {
@@ -149,12 +152,7 @@ where
             Err(mpsc::RecvTimeoutError::Timeout) => {
                 note_control_result(&mut evidence, worker.tick(now));
                 maintenance.expire(now);
-                emit_due_diagnostics(
-                    &mut evidence,
-                    &mut diagnostics,
-                    maintenance_ingress_open,
-                    now,
-                );
+                emit_due_diagnostics(&mut evidence, &mut diagnostics, &maintenance, now);
                 continue;
             }
             Err(mpsc::RecvTimeoutError::Disconnected) => break,
@@ -216,13 +214,13 @@ where
                 );
             }
         }
-        emit_due_diagnostics(
-            &mut evidence,
-            &mut diagnostics,
-            maintenance_ingress_open,
-            now,
-        );
+        emit_due_diagnostics(&mut evidence, &mut diagnostics, &maintenance, now);
         if INGRESS_LOST.swap(false, Ordering::AcqRel) {
+            maintenance.record_effect(
+                MaintenanceTraceEffect::QueueLoss,
+                MaintenanceTraceOutcome::None,
+                now,
+            );
             accumulator.clear();
             note_control_result(&mut evidence, worker.control_failed(now));
         }
@@ -250,16 +248,21 @@ fn emit_mount_boot_evidence(evidence: &mut CdcEvidenceWriter) {
 fn emit_due_diagnostics(
     evidence: &mut CdcEvidenceWriter,
     replay: &mut WorkerDiagnosticReplay,
-    ingress_open: bool,
+    maintenance: &TracedUsbMaintenanceState,
     now: u64,
 ) {
     let (bit_rate, dtr) = crate::usb_runtime::worker_observer_state();
     replay.line_coding(bit_rate, now);
     replay.line_state(dtr, now);
-    let Some(slot) = replay.maybe_due_slot(now, ingress_open) else {
+    let Some(slot) = replay.maybe_due_slot(now, maintenance.diagnostics_allowed()) else {
         return;
     };
-    let Some(mut line) = crate::boot_evidence::maybe_worker_diagnostic_line(slot) else {
+    let maybe_line = if slot < 12 {
+        crate::boot_evidence::maybe_worker_diagnostic_line(slot)
+    } else {
+        maintenance.maybe_trace_marker(slot - 12)
+    };
+    let Some(mut line) = maybe_line else {
         replay.advance(now);
         return;
     };
@@ -279,7 +282,7 @@ fn emit_due_diagnostics(
 fn handle_maintenance<V, S>(
     evidence: &mut CdcEvidenceWriter,
     action: MaintenanceAction,
-    state: &mut UsbMaintenanceState,
+    state: &mut TracedUsbMaintenanceState,
     maintenance_ingress_open: &mut bool,
     worker: &mut WorkerControl<V, S>,
     now: u64,
@@ -308,23 +311,63 @@ fn handle_maintenance<V, S>(
             );
         }
         MaintenanceAction::EmitReady => {
-            write_evidence(evidence, b"usb_maintenance={\"status\":\"ready\"}\n");
+            let result = crate::usb_runtime::emit_evidence(
+                evidence,
+                b"usb_maintenance={\"status\":\"ready\"}\n",
+            );
+            state.record_effect(
+                MaintenanceTraceEffect::ReadyEnqueue,
+                trace_outcome(&result),
+                crate::runtime_uptime::millis(),
+            );
         }
         MaintenanceAction::CommitRestart => {
-            if crate::usb_runtime::emit_evidence(
+            let result = crate::usb_runtime::emit_evidence(
                 evidence,
                 b"usb_maintenance={\"status\":\"committed\"}\n",
-            )
-            .is_err()
-            {
+            );
+            state.record_effect(
+                MaintenanceTraceEffect::CommitEnqueue,
+                trace_outcome(&result),
+                crate::runtime_uptime::millis(),
+            );
+            if result.is_err() {
                 log::warn!("usb_maintenance=failed category=commit_receipt");
                 return;
             }
             std::thread::sleep(Duration::from_millis(50));
-            if let Err(error) = crate::usb_runtime::restart_into_rom_downloader() {
+            state.record_effect(
+                MaintenanceTraceEffect::PhyInvoked,
+                MaintenanceTraceOutcome::None,
+                crate::runtime_uptime::millis(),
+            );
+            let result = crate::usb_runtime::restart_into_rom_downloader();
+            state.record_effect(
+                MaintenanceTraceEffect::PhyReturned,
+                trace_outcome(&result),
+                crate::runtime_uptime::millis(),
+            );
+            if let Err(error) = result {
                 log::warn!("usb_maintenance=failed category=rom_handoff error={error:#}");
             }
         }
+    }
+}
+
+fn trace_outcome(result: &Result<(), UsbRuntimeFailure>) -> MaintenanceTraceOutcome {
+    match result {
+        Ok(()) => MaintenanceTraceOutcome::Ok,
+        Err(UsbRuntimeFailure::UnavailableTransport) => {
+            MaintenanceTraceOutcome::UnavailableTransport
+        }
+        Err(UsbRuntimeFailure::Disconnected) => MaintenanceTraceOutcome::Disconnected,
+        Err(UsbRuntimeFailure::PartialWrite) => MaintenanceTraceOutcome::PartialWrite,
+        Err(UsbRuntimeFailure::Timeout) => MaintenanceTraceOutcome::Timeout,
+        Err(UsbRuntimeFailure::Install(_)) => MaintenanceTraceOutcome::Install,
+        Err(UsbRuntimeFailure::Handoff(code)) if *code == esp_idf_sys::ESP_ERR_TIMEOUT => {
+            MaintenanceTraceOutcome::Timeout
+        }
+        Err(UsbRuntimeFailure::Handoff(_)) => MaintenanceTraceOutcome::Handoff,
     }
 }
 

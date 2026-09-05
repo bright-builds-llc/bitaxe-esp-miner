@@ -1,6 +1,80 @@
 use super::*;
 
 #[test]
+fn canonical_flash_exits_rom_once_after_the_final_nvs_write() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = FlashCommand {
+        common: CommonArgs {
+            dry_run: false,
+            ..common_args()
+        },
+        image: None,
+        manifest: Some(write_manifest_v3(&dir, DEFAULT_ELF_NAME)),
+        wifi_credentials: Some(write_wifi_credentials(&dir, "LabNet", "test-only")),
+    };
+    let environment = FakeFlashEnvironment::default();
+
+    // Act
+    run_flash(&command, &environment).expect("flash workflow");
+
+    // Assert
+    assert_eq!(*environment.application_exit_write_counts.borrow(), vec![2]);
+}
+
+#[test]
+fn canonical_flash_propagates_failed_final_rom_exit() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = FlashCommand {
+        common: CommonArgs {
+            dry_run: false,
+            ..common_args()
+        },
+        image: None,
+        manifest: Some(write_manifest_v3(&dir, DEFAULT_ELF_NAME)),
+        wifi_credentials: None,
+    };
+    let environment = FakeFlashEnvironment {
+        application_exit_failure: true,
+        ..FakeFlashEnvironment::default()
+    };
+
+    // Act
+    let result = run_flash(&command, &environment);
+
+    // Assert
+    assert!(result.is_err());
+    assert_eq!(*environment.application_exit_write_counts.borrow(), vec![1]);
+}
+
+#[test]
+fn start_installed_cli_accepts_only_the_no_write_identity_contract() {
+    // Arrange
+    let source = "1".repeat(40);
+    let digest = "2".repeat(64);
+    let args = [
+        "bitaxe-flash",
+        "native-usb-start-installed",
+        "--board",
+        "205",
+        "--port",
+        "/dev/test-only",
+        "--expected-source-commit",
+        &source,
+        "--expected-app-elf-sha256",
+        &digest,
+        "--private-root",
+        "scratch/new-attempt",
+        "--redact-evidence",
+    ];
+
+    // Act / Assert
+    assert!(parse_cli(args).is_ok());
+    assert!(parse_cli(args.into_iter().chain(["--manifest", "forbidden"])).is_err());
+}
+
+#[test]
 fn dry_run_flash_with_explicit_image_renders_vector_command() {
     // Arrange
     let command = FlashCommand {
@@ -84,7 +158,7 @@ fn flash_with_wifi_credentials_generates_and_executes_nvs_seed_after_flash() {
                     "--before",
                     "usb-reset",
                     "--after",
-                    "hard-reset",
+                    "no-reset",
                     "--skip-update-check",
                     "0x0",
                     executed_flash_path,
@@ -103,7 +177,7 @@ fn flash_with_wifi_credentials_generates_and_executes_nvs_seed_after_flash() {
                     "--before",
                     "usb-reset",
                     "--after",
-                    "hard-reset",
+                    "no-reset",
                     "--skip-update-check",
                     NVS_PARTITION_OFFSET,
                     nvs_seed.image.as_str(),

@@ -1,5 +1,8 @@
 use crate::*;
 
+mod rom_exit;
+pub(crate) use rom_exit::{RomExitDiagnosticCommand, StartInstalledCommand};
+
 #[derive(Debug, Parser)]
 #[command(name = "bitaxe-flash")]
 #[command(about = "Safe Bitaxe Ultra 205 flash and monitor workflow.")]
@@ -49,6 +52,8 @@ pub(crate) enum CliCommand {
     BootChainReadback(BootChainReadbackCommand),
     #[command(name = "usb-stability-read")]
     UsbStabilityRead(UsbStabilityReadCommand),
+    #[command(name = "native-usb-start-installed")]
+    StartInstalled(StartInstalledCommand),
 }
 
 #[derive(Debug, Parser, Clone)]
@@ -352,26 +357,6 @@ pub(crate) struct NvsRuntimeRestoreCommand {
     pub(crate) private_root: Utf8PathBuf,
     #[arg(long, value_parser = parse_utf8_path)]
     pub(crate) plan: Utf8PathBuf,
-    #[arg(long = "redact-evidence")]
-    pub(crate) redact_evidence: bool,
-}
-
-#[derive(Debug, Parser, Clone)]
-pub(crate) struct RomExitDiagnosticCommand {
-    #[arg(long, default_value = "205", value_parser = parse_board)]
-    pub(crate) board: BoardId,
-    #[arg(long)]
-    pub(crate) port: String,
-    #[arg(long = "package-manifest", value_parser = parse_utf8_path)]
-    pub(crate) package_manifest: Utf8PathBuf,
-    #[arg(long = "restore-bundle", value_parser = parse_utf8_path)]
-    pub(crate) restore_bundle: Utf8PathBuf,
-    #[arg(long = "private-root", value_parser = parse_utf8_path)]
-    pub(crate) private_root: Utf8PathBuf,
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) plan: Utf8PathBuf,
-    #[arg(long = "observation-seconds", default_value_t = 30)]
-    pub(crate) observation_seconds: u64,
     #[arg(long = "redact-evidence")]
     pub(crate) redact_evidence: bool,
 }

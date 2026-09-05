@@ -148,6 +148,22 @@ Monitoring never arms handoff.
   the contained managed esptool ESP32-S3 hard-reset path, which clears that
   force bit before reset. `run` with `--after no_reset` is prohibited because
   it intentionally retains the serial bootloader.
+- Canonical flashing performs the managed application exit after its final
+  factory/NVS write. espflash's serial-line hard reset alone is not this
+  capability, and shared Serial/JTAG descriptors do not prove application
+  return.
+
+`just native-usb-start-installed` is the active-task-gated no-write continuation
+for an image already installed by a completed flash. It validates expected
+source/ELF identity and the protected output root, retains the physical lease,
+admits ROM with no-reset board-info, reads only the force-download register,
+and invokes one managed application exit. It requires Worker plus exact
+runtime diagnostic identity before success. The expected image can precede
+the host-tooling commit; it is a verification target, never permission to infer
+runtime identity from package files. It accepts no image, NVS, credentials,
+erase, mining, or network arguments and does not retry a reset after ambiguous
+completion. Physical recovery remains a fallback when the contained exit or
+its postcondition fails.
 
 Initial production support is macOS. Linux and Windows expose the same
 Interface but fail closed until their inventory, identity, serial-control, and
@@ -291,6 +307,16 @@ network identifiers. Small nonblocking lines preserve FIFO capacity for
 maintenance receipts; entering maintenance cancels the diagnostic burst.
 Mount-time boot/failure markers remain available to discriminate fast reset
 loops before a full report can be emitted.
+
+The owner retains at most 16 closed maintenance trace entries. They distinguish
+class-control events, phases/actions, deadline expiry, queue loss, ready/commit
+enqueue results, and PHY invocation/result. Trace recording allocates no heap
+and leaves protocol acceptance unchanged. Failed or disarmed maintenance may
+replay this trace through a fresh ordinary observer without reopening Worker
+command ingress; pending safe stop, readiness, and successful commit suppress
+diagnostics. The finite report remains within the host's 64 KiB/30-second
+capture bound. Replayed overlapping trace windows retain the latest 16 entries
+without relabeling a same-boot USB re-enumeration as a parsing failure.
 
 Use `just diagnose-usb-reboot-loop --port <fresh-port> --timeout-seconds 30
 --expected-source-commit <manifest-source> --expected-app-elf-sha256

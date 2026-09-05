@@ -3,6 +3,7 @@ use crate::*;
 mod boot_chain;
 mod contract;
 mod flash_transfer;
+mod installed_application;
 mod nvs_readback;
 mod owner_recovery;
 mod usb_ownership;
@@ -296,6 +297,22 @@ impl FlashEnvironment for LocalFlashEnvironment {
         }
         *self.usb_session.borrow_mut() = Some(session);
         Ok(())
+    }
+
+    fn prepare_application_exit(&self) -> Result<Utf8PathBuf> {
+        installed_application::prepare(self)
+    }
+
+    fn execute_application_exit(&self, esptool: &Utf8Path) -> Result<InstalledApplicationExit> {
+        installed_application::execute_exit(self, esptool)
+    }
+
+    fn begin_installed_session(&self, port: &str, root: &Utf8Path) -> Result<()> {
+        installed_application::begin_session(self, port, root)
+    }
+
+    fn observe_installed_runtime(&self) -> Result<UsbRebootLoopObservation> {
+        installed_application::observe(self)
     }
 
     fn execute(&self, command_spec: &CommandSpec) -> Result<()> {

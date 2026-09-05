@@ -5,8 +5,10 @@ const REPORT_WINDOW_MS: u64 = 20_000;
 const LINE_INTERVAL_MS: u64 = 100;
 /// Maximum diagnostic line length, including its newline.
 pub const DIAGNOSTIC_LINE_BYTES: usize = 256;
+/// Reserved FIFO capacity for ready and committed maintenance receipts.
+pub const MAINTENANCE_RECEIPT_RESERVE_BYTES: usize = 128;
 /// Fixed report slots, including first and last current-boot observations.
-pub const DIAGNOSTIC_REPORT_SLOTS: usize = 12;
+pub const DIAGNOSTIC_REPORT_SLOTS: usize = 12 + crate::usb_maintenance::MAINTENANCE_TRACE_CAPACITY;
 
 /// A finite report triggered by ordinary baud/DTR observation, independent of mount time.
 #[derive(Debug, Default)]
@@ -41,9 +43,9 @@ impl WorkerDiagnosticReplay {
         }
     }
 
-    /// Returns a due report slot only while the normal Worker ingress remains open.
-    pub fn maybe_due_slot(&mut self, now_ms: u64, ingress_open: bool) -> Option<usize> {
-        if !ingress_open || now_ms >= self.expires_ms {
+    /// Returns a due report slot only while maintenance permits read-only diagnostics.
+    pub fn maybe_due_slot(&mut self, now_ms: u64, diagnostics_allowed: bool) -> Option<usize> {
+        if !diagnostics_allowed || now_ms >= self.expires_ms {
             self.cancel();
             return None;
         }
@@ -113,7 +115,7 @@ impl CdcEvidenceWriter {
         if line.len() > DIAGNOSTIC_LINE_BYTES {
             return false;
         }
-        self.try_emit_with_reserve(transport, line, 128)
+        self.try_emit_with_reserve(transport, line, MAINTENANCE_RECEIPT_RESERVE_BYTES)
     }
 
     fn try_emit_with_reserve(

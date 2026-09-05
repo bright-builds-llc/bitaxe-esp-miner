@@ -11,6 +11,52 @@ use super::{
 const MAX_MONITOR_BYTES: usize = 16 * 1024 * 1024;
 
 impl UsbSession {
+    /// Waits for the installed Worker, then collects bounded diagnostics under this lease.
+    pub fn observe_installed_worker(
+        &mut self,
+    ) -> Result<crate::UsbRebootLoopObservation, UsbSessionError> {
+        self.reacquire_profile(crate::UsbProfile::WorkerRuntime)?;
+        self.transition(UsbLifecycleEvent::BeginObservation)?;
+        let result = self.observe_installed_worker_inner();
+        let completion = self.transition(UsbLifecycleEvent::ObservationComplete);
+        if let Err(error) = &result {
+            self.fail_once(error.category);
+        }
+        match (result, completion) {
+            (Err(primary), _) => Err(primary),
+            (Ok(_), Err(error)) => Err(error),
+            (Ok(observation), Ok(())) => Ok(observation),
+        }
+    }
+
+    fn observe_installed_worker_inner(
+        &mut self,
+    ) -> Result<crate::UsbRebootLoopObservation, UsbSessionError> {
+        let before = crate::inspect_usb_profile(self.port()).map_err(|_| {
+            session_error(
+                UsbTerminalCategory::RuntimeProfileUnknown,
+                "Worker inspection failed",
+            )
+        })?;
+        if before.physical_identity_digest != self.physical_identity_digest() {
+            return Err(session_error(
+                UsbTerminalCategory::PhysicalIdentityDrift,
+                "Worker lease mismatch",
+            ));
+        }
+        let observation = crate::observe_usb_reboot_loop(self.port(), Duration::from_secs(30))
+            .map_err(|_| {
+                session_error(
+                    UsbTerminalCategory::MonitorFailed,
+                    "Worker diagnostic observation failed",
+                )
+            })?;
+        // Reacquisition refreshes a port renamed during the reconnecting capture
+        // and proves that its final Worker still belongs to the original lease.
+        self.reacquire_profile(crate::UsbProfile::WorkerRuntime)?;
+        Ok(observation)
+    }
+
     pub fn observe_receive_only(
         &mut self,
         duration: Duration,

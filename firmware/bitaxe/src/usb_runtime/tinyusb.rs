@@ -3,6 +3,7 @@ use std::fmt;
 
 use bitaxe_core::usb_worker_diagnostics::{
     CdcEvidenceTransport, CdcEvidenceWriter, DIAGNOSTIC_LINE_BYTES,
+    MAINTENANCE_RECEIPT_RESERVE_BYTES,
 };
 
 use bitaxe_core::usb_worker::{
@@ -11,7 +12,10 @@ use bitaxe_core::usb_worker::{
 };
 use esp_idf_sys as sys;
 
-const _: () = assert!(sys::CFG_TUD_CDC_TX_BUFSIZE as usize > DIAGNOSTIC_LINE_BYTES);
+const _: () = assert!(
+    sys::CFG_TUD_CDC_TX_BUFSIZE as usize
+        >= DIAGNOSTIC_LINE_BYTES + MAINTENANCE_RECEIPT_RESERVE_BYTES
+);
 
 const WORKER_INTERFACE: u8 = 0;
 const EVIDENCE_INTERFACE: u8 = 0;
