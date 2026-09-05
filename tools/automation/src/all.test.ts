@@ -1,3 +1,4 @@
+import "./build.test.js";
 import "./contracts.test.js";
 import "./api-command-effects-budget.test.js";
 import "./api-command-effects-checkpoint.test.js";

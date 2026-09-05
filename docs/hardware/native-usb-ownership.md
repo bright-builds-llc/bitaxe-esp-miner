@@ -102,7 +102,9 @@ The diagnostic writer starts before blocking initialization. Wi-Fi construction
 reserves its mandatory internal resources before BWG/HTTP allocation; connection
 startup remains deferred. Required owner and boot-validation failures remain
 explicit startup failures. Stack sizes and reserves are not adjusted to hide
-allocation failures.
+allocation failures. The [fixed-USB memory profile](fixed-usb-memory-profile.md)
+pins the Wi-Fi DMA pools for service coexistence and verifies the resolved
+configuration before publishing build artifacts.
 
 Current flash/monitor assessment uses exact fixed-serial source/ELF identity,
 confirmed safe baseline, complete error-free startup, and advancing samples from

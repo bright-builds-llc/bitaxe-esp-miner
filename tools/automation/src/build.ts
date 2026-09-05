@@ -86,10 +86,10 @@ export async function buildFirmware(
     throw new Error("firmware stack disassembly failed");
   }
   verifyFirmwareStackBudget(disassembly.stdout);
-  await copyFile(sourceElf, path.join(outputDir, `${artifactPrefix}.elf`));
   const buildLabel = await requiredStampField(provenanceStamp, "build_label");
   const generated = await findGeneratedIdfBuild(cargoTargetDir, buildLabel);
   requireResolvedUsbMemoryContract(await readFile(path.join(generated, "sdkconfig"), "utf8"));
+  await copyFile(sourceElf, path.join(outputDir, `${artifactPrefix}.elf`));
   await Promise.all([
     copyFile(path.join(generated, "sdkconfig"), path.join(outputDir, `${artifactPrefix}.sdkconfig`)),
     copyFile(
@@ -117,6 +117,13 @@ export function requireResolvedUsbMemoryContract(sdkconfig: string): void {
   const lines = sdkconfig.split(/\r?\n/u);
   for (const required of [
     "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304",
+    "CONFIG_SPIRAM_TRY_ALLOCATE_WIFI_LWIP=y",
+    "CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=6",
+    "CONFIG_ESP_WIFI_STATIC_TX_BUFFER_NUM=6",
+    "CONFIG_ESP_WIFI_TX_BUFFER_TYPE=0",
+    "CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=32",
+    "CONFIG_ESP_WIFI_AMPDU_RX_ENABLED=y",
+    "CONFIG_ESP_WIFI_RX_BA_WIN=12",
   ]) {
     const key = required.slice(0, required.indexOf("=") + 1);
     const values = lines.filter(line => line.startsWith(key));
