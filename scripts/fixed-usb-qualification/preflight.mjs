@@ -2,19 +2,17 @@ import { mkdir, readFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { authorityCall } from "./authority.mjs";
+import { loadAmendment } from "./amendment.mjs";
 import { admitTrust, BUNDLE, canonicalBase64, canonicalDirectory, cleanPushed, digest, fileDigest,
   ignored, missing, nonce, packageSnapshot, PAGE, protectedPath, readJson, requireCondition,
-  WINDOW_MS, writeNew } from "./contract.mjs";
+  REQUIRED_CYCLES, WINDOW_MS, writeNew } from "./contract.mjs";
 
 const SCRIPT_ROOT = dirname(fileURLToPath(import.meta.url));
 export async function inspectSources(options, operations = {}) {
   const checkRepo = operations.cleanPushed ?? cleanPushed;
   checkRepo(options.firmwareRoot, options.firmwareCommit);
   checkRepo(options.gateRoot, options.gateCommit);
-  const tasks = await readFile(resolve(options.firmwareRoot, "TASKS.md"), "utf8");
-  for (const task of ["task-fixed-usb-serial-qualification", "task-fixed-usb-worker-live-acceptance"]) {
-    requireCondition(activeTask(tasks, task), "active_task_missing");
-  }
+  await requireActiveTasks(options.firmwareRoot);
   const packaged = await packageSnapshot(options.firmwareRoot, options.manifest, options.firmwareCommit);
   const trustPath = resolve(options.firmwareRoot, "firmware/bitaxe/bwg/deployment-trust.json");
   const trust = await readJson(trustPath);
@@ -28,6 +26,13 @@ export async function inspectSources(options, operations = {}) {
     gate_bundle_sha256: digest(bundle), gate_page_sha256: await fileDigest(resolve(options.gateRoot, PAGE)),
     trust_sha256: await fileDigest(trustPath), authority_trust_sha256: digest(JSON.stringify(authorityTrust)),
     supervisor_client_sha256: await fileDigest(resolve(SCRIPT_ROOT, "client.mjs")) };
+}
+
+async function requireActiveTasks(firmwareRoot) {
+  const tasks = await readFile(resolve(firmwareRoot, "TASKS.md"), "utf8");
+  for (const task of ["task-fixed-usb-serial-qualification", "task-fixed-usb-worker-live-acceptance"]) {
+    requireCondition(activeTask(tasks, task), "active_task_missing");
+  }
 }
 
 export async function preflight(options, operations = {}) {
@@ -48,6 +53,7 @@ export async function preflight(options, operations = {}) {
   }
   requireCondition(campaign.schema === "fixed-usb-campaign-v1" && canonicalBase64(campaign.campaign_id, 16), "campaign_identity");
   const context = { schema: "fixed-usb-qualification-context-v1", ...snapshot,
+    required_no_mining_cycles: REQUIRED_CYCLES,
     campaign_id: campaign.campaign_id, window_limits_ms: WINDOW_MS,
     firmware_root: options.firmwareRoot, gate_root: options.gateRoot, manifest: resolve(options.manifest) };
   await mkdir(root, { mode: 0o700 });
@@ -61,22 +67,38 @@ export async function preflight(options, operations = {}) {
     device_effects: false, credential_timer_started: false };
 }
 
-export async function loadContext(root) {
+export async function loadContext(root, operations = {}) {
   await protectedPath(root, true);
   await protectedPath(resolve(root, "context.json"));
   const record = await readJson(resolve(root, "context.json"));
   requireCondition(record.context?.schema === "fixed-usb-qualification-context-v1" &&
-    record.sha256 === digest(JSON.stringify(record.context)) && canonicalBase64(record.context.campaign_id, 16), "context_integrity");
+    record.sha256 === digest(JSON.stringify(record.context)) && canonicalBase64(record.context.campaign_id, 16) &&
+    JSON.stringify(record.context.window_limits_ms) === JSON.stringify(WINDOW_MS), "context_integrity");
+  await loadAmendment(root, record.context, operations);
   return record.context;
 }
 
-export async function verifyFrozen(context, authorityDirectory, bun, operations = {}) {
+export async function verifyFrozen(context, authorityDirectory, bun, operations = {}, root) {
+  const maybeAmendment = root ? await loadAmendment(root, context, operations) : undefined;
+  if (maybeAmendment) {
+    await requireActiveTasks(context.firmware_root);
+    const trustPath = resolve(context.firmware_root, "firmware/bitaxe/bwg/deployment-trust.json");
+    requireCondition(await fileDigest(trustPath) === context.trust_sha256 &&
+      await fileDigest(resolve(SCRIPT_ROOT, "client.mjs")) === context.supervisor_client_sha256, "frozen_source_drift");
+    await protectedPath(authorityDirectory, true);
+    const call = operations.authorityCall ?? authorityCall;
+    const authorityTrust = await call(context.gate_root, authorityDirectory, "public-trust", undefined, bun);
+    admitTrust(await readJson(trustPath), authorityTrust);
+    requireCondition(digest(JSON.stringify(authorityTrust)) === context.authority_trust_sha256, "frozen_authority_drift");
+    return { gate_root: maybeAmendment.gate_root, amendment_sha256: digest(JSON.stringify(maybeAmendment.policy)) };
+  }
   const observed = await inspectSources({ firmwareRoot: context.firmware_root, gateRoot: context.gate_root,
     firmwareCommit: context.firmware_commit, gateCommit: context.gate_commit, manifest: context.manifest,
     authorityDirectory, bun }, operations);
   for (const [key, value] of Object.entries(observed)) {
     requireCondition(JSON.stringify(context[key]) === JSON.stringify(value), "frozen_source_drift");
   }
+  return { gate_root: context.gate_root };
 }
 
 function activeTask(tasks, identifier) {

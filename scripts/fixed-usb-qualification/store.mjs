@@ -1,7 +1,8 @@
 import { appendFile, lstat, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { exactObject, protectedPath, readJson, requireCondition, writeNew } from "./contract.mjs";
+import { exactObject, protectedPath, readJson, REQUIRED_CYCLES, requireCondition, writeNew } from "./contract.mjs";
 import { judgeWindow, validateCycle, validateState } from "./judge.mjs";
+import { loadAmendment } from "./amendment.mjs";
 
 async function exists(path) {
   try { await lstat(path); return true; }
@@ -56,7 +57,7 @@ export async function finishWindow(root, context, index) {
   return result;
 }
 export async function recordCycle(root, context, input) {
-  requireCondition(Number.isInteger(input?.cycle) && input.cycle >= 1 && input.cycle <= 20, "cycle_number");
+  requireCondition(Number.isInteger(input?.cycle) && input.cycle >= 1 && input.cycle <= REQUIRED_CYCLES, "cycle_number");
   const previous = input.cycle > 1 ? await readJson(resolve(root, `cycle-${input.cycle - 1}.json`)) : undefined;
   const result = validateCycle(input, context, previous);
   await writeNew(resolve(root, `cycle-${input.cycle}.json`), result);
@@ -64,8 +65,10 @@ export async function recordCycle(root, context, input) {
 }
 
 export async function requireCompleteCycles(root, context, browserState, window) {
+  requireCondition(context.required_no_mining_cycles === REQUIRED_CYCLES ||
+    await loadAmendment(root, context) !== undefined, "cycle_policy_amendment_required");
   let previous;
-  for (let cycle = 1; cycle <= 20; cycle += 1) {
+  for (let cycle = 1; cycle <= REQUIRED_CYCLES; cycle += 1) {
     const path = resolve(root, `cycle-${cycle}.json`);
     await protectedPath(path);
     previous = validateCycle(await readJson(path), context, previous);

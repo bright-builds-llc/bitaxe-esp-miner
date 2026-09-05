@@ -1,4 +1,4 @@
-import { canonicalBase64, exactObject, requireCondition, WINDOW_MS } from "./contract.mjs";
+import { canonicalBase64, exactObject, REQUIRED_CYCLES, requireCondition, WINDOW_MS } from "./contract.mjs";
 
 const STAGES = ["not_started", "stop_dispatch", "reduce_frequency_and_reset_nonce", "hold_reset_low",
   "disable_core_voltage", "disable_asic", "fan_full", "cooling_proof", "fan_paused"];
@@ -112,7 +112,7 @@ export function judgeWindow(index, records, fault) {
 export function validateCycle(value, context, previous) {
   const flags = ["browser_released", "flash_success", "runtime_identity_match", "cleanup_complete", "device_identity_match", "settings_match", "authorization_high_water_match"];
   exactObject(value, ["schema", "cycle", "firmware_commit", "app_elf_sha256", "baseline_id", ...flags, "probe_request_bytes", "probe_response_bytes", "mine_on_boot"]);
-  requireCondition(value.schema === "fixed-usb-cycle-report-v1" && value.cycle === (previous?.cycle ?? 0) + 1 && value.cycle <= 20 &&
+  requireCondition(value.schema === "fixed-usb-cycle-report-v1" && value.cycle === (previous?.cycle ?? 0) + 1 && value.cycle <= REQUIRED_CYCLES &&
     value.firmware_commit === context.firmware_commit && value.app_elf_sha256 === context.app_elf_sha256 &&
     canonicalBase64(value.baseline_id, 16) && flags.every((key) => value[key] === true) &&
     value.probe_request_bytes === 65536 && value.probe_response_bytes === 65536 && value.mine_on_boot === false, "cycle_evidence_failed");

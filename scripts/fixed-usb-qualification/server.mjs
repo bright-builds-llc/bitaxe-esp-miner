@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { authorityCall, readPoolForSigning, signWindow } from "./authority.mjs";
-import { BUNDLE, canonicalBase64, exactObject, missing, nonce, PAGE, QualificationError, readJson, requireCondition, writeNew } from "./contract.mjs";
+import { BUNDLE, canonicalBase64, digest, exactObject, missing, nonce, PAGE, QualificationError, readJson, requireCondition, writeNew } from "./contract.mjs";
 import { loadContext, verifyFrozen } from "./preflight.mjs";
 import { finishWindow, recordFault, recordState, requireCompleteCycles, selectedWindow } from "./store.mjs";
 import { validateState } from "./judge.mjs";
@@ -12,8 +12,9 @@ const SCRIPT_ROOT = dirname(fileURLToPath(import.meta.url));
 export async function createSupervisor(options, operations = {}) {
   const root = resolve(options.privateRoot);
   const context = options.context ?? await loadContext(root);
-  const verify = operations.verifyFrozen ?? (() => verifyFrozen(context, options.authorityDirectory, options.bun));
-  await verify();
+  const verify = operations.verifyFrozen ?? (() => verifyFrozen(context, options.authorityDirectory, options.bun, {}, root));
+  const frozen = await verify();
+  const gateAssetRoot = frozen?.gate_root ?? context.gate_root;
   const trust = await readJson(resolve(context.firmware_root, "firmware/bitaxe/bwg/deployment-trust.json"));
   let scope, pendingWindow, lastBrowserState, signing = false, recordQueue = Promise.resolve();
   const sign = operations.sign ?? ((operation, input) => authorityCall(context.gate_root, options.authorityDirectory, `sign-${operation}`, input, options.bun));
@@ -63,7 +64,7 @@ export async function createSupervisor(options, operations = {}) {
         requireCondition(index < 3, "campaign_complete");
         await missing(resolve(root, `window-${index}.issued.json`));
         await requireCompleteCycles(root, context, lastBrowserState, index);
-        await verify();
+        requireCondition(JSON.stringify(await verify()) === JSON.stringify(frozen), "supervisor_policy_changed");
         const artifacts = await signWindow({ campaignId: context.campaign_id, index, challengeId: scope.challengeId,
           binding: input.controlSessionBindingSha256, stratum: await readPool(), sign });
         requireCondition(Buffer.byteLength(JSON.stringify(artifacts)) <= 65536, "window_artifact_bound");
@@ -104,7 +105,8 @@ export async function createSupervisor(options, operations = {}) {
     }
     if (request.method === "GET" && ["/", `/${PAGE}`, `/${BUNDLE}`].includes(url.pathname)) {
       const isPage = url.pathname !== `/${BUNDLE}`;
-      let bytes = await readFile(resolve(context.gate_root, isPage ? PAGE : BUNDLE));
+      let bytes = await readFile(resolve(gateAssetRoot, isPage ? PAGE : BUNDLE));
+      requireCondition(digest(bytes) === (isPage ? context.gate_page_sha256 : context.gate_bundle_sha256), "served_asset_drift");
       if (isPage) bytes = Buffer.from(`${bytes.toString("utf8")}\n<script type="module" src="/supervisor-client.mjs"></script>`);
       return send(response, 200, bytes, isPage ? "text/html" : "text/javascript");
     }

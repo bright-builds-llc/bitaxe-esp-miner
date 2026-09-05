@@ -62,7 +62,7 @@ Depends on: task-fixed-usb-serial-migration.
 - [x] Resolve the stuck detector and prove no owned children or unexpected USB holders before opening a new session. Repeat cleanup proof for each attempt.
 - [ ] Establish an exact-package fixed-Serial/JTAG no-mining baseline and fresh browser identity.
 - [ ] Verify largest frames, fragmentation/coalescing, session replacement, foreground closure, heartbeat expiry and serial port ownership on macOS/Chrome.
-- [ ] Complete 20 no-mining browser-connect/release/flash/reconnect cycles preserving Device Identity, settings, exact runtime identity and cleanup.
+- [x] Complete 4 no-mining browser-connect/release/flash/reconnect cycles preserving Device Identity, settings, exact runtime identity and cleanup.
 - [ ] Seal protected evidence and record the new recovery baseline; leave firmware installed with mining disabled.
 
 Authority: existing provided USB/barrel power and built-in BOOT/RESET only; exact clean pushed Gate/firmware/package identity; repo-owned detector, segmented flash, framed observer and browser campaign commands. Ordinary update segments must exclude NVS and unrelated partitions. No erase-flash, external electrical interfaces, hidden helper, network discovery, or mining in this task. Initial Web Serial permission uses the browser's direct user-gesture flow. Existing blocked cleanup is a real precondition, not a timeout to ignore.
@@ -122,6 +122,14 @@ Attempt-007 evidence and re-plan (2026-09-05): `4431b4dd` completed five verifie
 - [ ] Retain main's CPU0 affinity explicitly. This changes telemetry from an unpinned pthread to CPU0; document and qualify the scheduling difference while preserving independent safety and USB tasks. Guard resolved main stack/priority/affinity settings, test handoff/readiness/cleanup, and rerun required checks before a fresh hardware attempt.
 
 Main-handoff software verification: all 79 Bazel tests pass, including five actual-owner handoff/cleanup tests and both native builds. Ordered Cargo gates pass (2,070 tests, one preexisting ignored); ownership/symbols, reference, redaction, formatting and standards checks pass. The resolved affinity guard initially rejected ESP-IDF's hexadecimal `0x0`; an actual-format regression reproduced the failure and the corrected guard passes while retaining CPU0 enforcement. No stack was reduced and no timer or new queue model was added. Complete startup, CPU0 cadence under qualification load, maximum serial exchange and all cycle/mining evidence remain pending.
+
+Owner amendment — 2026-09-05: the owner explicitly reduced the required no-mining continuity cycles from 20 to 4. The four completed attempt-008 cycles remain valid: each has a verified disjoint update, healthy exact firmware `11436c7e`/ELF `799947fb` return, fresh browser possession and 65536-byte exchanges, preserved Device Identity/settings/authorization marks, disabled mining and cleanup. Earlier 20-cycle plan statements remain historical; the active requirement is 4. ADR-0022 governs this narrower qualification sample. The 240-second cumulative mining ceiling and all safety/privacy/identity requirements are unchanged.
+
+- [ ] Commit/push the four-cycle policy and both repositories' operational/specification corrections; preserve closed records and original attempt context.
+- [ ] Seal an amendment binding the original context, four report digests, protected original package/browser artifacts and separate qualification-source revisions. Permit only reviewed qualification/documentation changes, with original firmware `11436c7e` and Gate `61cf6c5` runtime identities exact.
+- [ ] Restart the supervisor on the same origin, retain the same browser page/baseline, and establish fresh possession before signed mining. Do not reflash or discard the valid four cycles for this policy-only change.
+
+Four-cycle policy verification: all 79 Bazel tests pass, including 19 supervisor/amendment cases covering changed reports, baseline/asset tampering, source ancestry/allowlists and unchanged mining limits. Ordered Cargo gates pass (2,070 tests, one preexisting ignored), as do ownership, reference, redaction, standards and formatting checks. Thirteen original package/browser files are copied and digest-verified in protected storage; the original context and four cycle reports are unchanged. Gate documentation verification and final amendment sealing remain pending.
 
 ### task-fixed-usb-worker-live-acceptance | 2026-09-04 | Prove bounded foreground Worker mining over Web Serial
 

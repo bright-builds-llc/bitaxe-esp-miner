@@ -4,13 +4,15 @@ import { fstatSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { preflight, loadContext } from "./preflight.mjs";
+import { amendPolicy } from "./amendment.mjs";
 import { createSupervisor } from "./server.mjs";
 import { finishWindow, recordCycle } from "./store.mjs";
 import { protectedPath, QualificationError, readJson, requireCondition } from "./contract.mjs";
 
 const KEYS = { "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
   "--manifest": "manifest", "--private-root": "privateRoot", "--authority-directory": "authorityDirectory", "--pool-credentials": "poolCredentials",
-  "--bun": "bun", "--port": "port", "--window": "window", "--input": "input" };
+  "--bun": "bun", "--port": "port", "--window": "window", "--input": "input",
+  "--qualification-source-commit": "qualificationSourceCommit", "--gate-qualification-source-commit": "gateQualificationSourceCommit" };
 export async function main(args) {
   const [command, ...rest] = args;
   const options = {};
@@ -26,6 +28,7 @@ export async function main(args) {
     serve: ["privateRoot", "authorityDirectory", "poolCredentials", "port", "bun"],
     judge: ["privateRoot", "window"],
     "record-cycle": ["privateRoot", "input"],
+    "amend-policy": ["privateRoot", "qualificationSourceCommit", "gateQualificationSourceCommit"],
   }[command];
   requireCondition(allowed && Object.keys(options).every((key) => allowed.includes(key)), "command_arguments");
   if (command === "preflight") {
@@ -33,6 +36,10 @@ export async function main(args) {
     return preflight(options);
   }
   const context = await loadContext(resolve(options.privateRoot));
+  if (command === "amend-policy") {
+    requireCondition(options.qualificationSourceCommit && options.gateQualificationSourceCommit, "amendment_arguments_missing");
+    return amendPolicy(resolve(options.privateRoot), context, options);
+  }
   if (command === "serve") {
     requireCondition(options.authorityDirectory && options.poolCredentials, "serve_argument_missing");
     const stdout = fstatSync(1);

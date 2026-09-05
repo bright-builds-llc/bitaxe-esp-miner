@@ -77,3 +77,7 @@ No accepted share within the bound leaves that criterion unverified. Any
 failure preserves its earliest signature; a retry needs verified progress.
 Finish with the new firmware installed, leases/secrets cleared, mining disabled,
 and resources released. Hardware success does not automatically promote parity.
+
+## Qualification-count amendment
+
+On 2026-09-05 the owner reduced the no-mining continuity requirement from 20 to 4 cycles. [ADR-0022](0022-four-cycle-fixed-usb-qualification.md) supersedes only that sample count. The original decision text and its evidence remain historical; all runtime identity, safety, privacy, restoration and mining-budget requirements remain active.

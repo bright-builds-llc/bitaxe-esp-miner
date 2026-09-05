@@ -26,6 +26,7 @@ This index summarizes accepted decisions from the original project handoff.
 | ADR-0016  | Make the Production Mining Session the sole mining owner.                        | Accepted                                                |
 | ADR-0017  | Deepen the Production Mining Session into the software-complete mining engine.   | Accepted                                                |
 | ADR-0021  | Keep USB Serial/JTAG fixed and use direct browser Web Serial.                    | Accepted; supersedes USB topology in ADR-0018/0019/0020 |
+| ADR-0022  | Require four fixed-USB continuity cycles before bounded live acceptance.         | Accepted; supersedes only ADR-0021 sample count         |
 | PLAN-0001 | First milestone is project foundation plus Gamma 601 bring-up path.              | Superseded by ADR-0014                                  |
 | PLAN-0002 | First milestone is project foundation plus Ultra 205 safe-state boot/flash path. | Verified for safe-state boot/flash on 2026-06-26        |
 

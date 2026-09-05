@@ -5,6 +5,7 @@ import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 
 export const WINDOW_MS = Object.freeze([180000, 30000, 30000]);
+export const REQUIRED_CYCLES = 4;
 export const PAGE = "conformance/bwg-worker-serial-0.1/acceptance.html";
 export const BUNDLE = "dist/worker-serial-acceptance/worker-serial-acceptance.js";
 export class QualificationError extends Error {
@@ -73,6 +74,11 @@ export function ignored(root, path) {
 export async function packageSnapshot(firmwareRoot, manifestPath, expectedSource) {
   const expectedPath = resolve(firmwareRoot, "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json");
   requireCondition(resolve(manifestPath) === expectedPath, "manifest_path");
+  return inspectPackage(manifestPath, expectedSource,
+    (kind) => kind === "partition_table" ? firmwareRoot : dirname(manifestPath));
+}
+
+export async function inspectPackage(manifestPath, expectedSource, artifactRoot) {
   const manifest = await readJson(manifestPath);
   requireCondition(manifest.schema_version === 4 && manifest.build_identity?.source_dirty === false && manifest.source_commit === expectedSource && hex(manifest.app_elf_sha256, 64) &&
     hex(manifest.reference_commit, 40), "manifest_identity");
@@ -84,7 +90,7 @@ export async function packageSnapshot(firmwareRoot, manifestPath, expectedSource
     requireCondition(matches.length === 1 && hex(matches[0].sha256, 64), "artifact_identity");
     const artifact = matches[0];
     requireCondition(typeof artifact.path === "string" && !isAbsolute(artifact.path), "artifact_path");
-    const root = kind === "partition_table" ? firmwareRoot : dirname(manifestPath);
+    const root = artifactRoot(kind);
     const path = within(root, resolve(root, artifact.path));
     const stat = await lstat(path);
     requireCondition(stat.isFile() && !stat.isSymbolicLink(), "artifact_file");

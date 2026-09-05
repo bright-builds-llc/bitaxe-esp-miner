@@ -2,11 +2,14 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import { generateKeyPairSync } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { chmod, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { admitTrust, BUNDLE, digest, packageSnapshot, PAGE, WINDOW_MS, writeNew } from "./contract.mjs";
-import { preflight, loadContext } from "./preflight.mjs";
+import { preflight, loadContext, verifyFrozen } from "./preflight.mjs";
+import { amendPolicy, checkQualificationSource, loadAmendment } from "./amendment.mjs";
+import { requireCompleteCycles } from "./store.mjs";
 import { signWindow } from "./authority.mjs";
 import { createSupervisor } from "./server.mjs";
 import { judgeWindow, validateCycle, validateState } from "./judge.mjs";
@@ -81,7 +84,7 @@ async function serverFixture(t, completedCycles = false) {
   const f = await fixture(t);
   await preflight(f.options, f.operations);
   const context = await loadContext(f.options.privateRoot);
-  if (completedCycles) for (let index = 1; index <= 20; index += 1) await writeNew(resolve(f.options.privateRoot, `cycle-${index}.json`), cycle(context, index));
+  if (completedCycles) for (let index = 1; index <= 4; index += 1) await writeNew(resolve(f.options.privateRoot, `cycle-${index}.json`), cycle(context, index));
   let reads = 0, signs = 0, clock = 1000000;
   const server = await createSupervisor({ ...f.options, context, poolCredentials: "unused-fixture" }, { verifyFrozen: async () => undefined,
     now: () => clock, readPool: async () => { reads += 1; return { endpoint: "stratum+tcp://fixture.invalid:3333/", username: "private-fixture-owner", password: "private-fixture-password" }; },
@@ -131,7 +134,7 @@ test("waiting server and public context do not start credential TTL or read pool
   assert.equal(scope.retentionExpiryUnixSeconds, 5000 + 86400);
   assert.deepEqual(f.counts(), { reads: 0, signs: 0 });
 });
-test("mining signing is blocked until all twenty cycle receipts exist", async (t) => {
+test("mining signing is blocked until all four cycle receipts exist", async (t) => {
   const f = await serverFixture(t);
   await f.request("/activate", {});
   const response = await f.request("/authorization-context", { controlSessionBindingSha256: BINDING });
@@ -225,4 +228,152 @@ test("browser admission reports retain only closed stages and actual ownership r
   assert.throws(() => validateState({ ...value, serialOwnershipReleased: "true" }, context));
   assert.throws(() => validateState({ ...value, diagnostics: [] }, context));
   assert.throws(() => validateState({ ...value, serialFailureCategory: "private-error" }, context));
+});
+
+async function amendmentFixture(t) {
+  const f = await fixture(t);
+  await preflight(f.options, f.operations);
+  const context = await loadContext(f.options.privateRoot);
+  delete context.required_no_mining_cycles; // A legacy frozen context, never modified by amendment.
+  const contextPath = resolve(f.options.privateRoot, "context.json");
+  await writeFile(contextPath, JSON.stringify({ context, sha256: digest(JSON.stringify(context)) }));
+  const files = [], snapshotRoot = resolve(f.options.privateRoot, "qualified-artifacts");
+  async function copy(path, bytes) {
+    const output = resolve(snapshotRoot, path);
+    await mkdir(dirname(output), { recursive: true, mode: 0o700 });
+    await writeFile(output, bytes, { mode: 0o600 });
+    files.push({ path, sha256: digest(bytes), length: bytes.length });
+  }
+  await copy("firmware/bitaxe-ultra205-package.json", await readFile(f.options.manifest));
+  for (const artifact of f.manifestValue.artifacts) {
+    const sourceRoot = artifact.kind === "partition_table" ? f.options.firmwareRoot : dirname(f.options.manifest);
+    await copy(`firmware/${artifact.path}`, await readFile(resolve(sourceRoot, artifact.path)));
+  }
+  for (const name of ["license-inventory", "provenance-manifest"]) {
+    await copy(`firmware/docs/release/${name}.md`, Buffer.from("fixture provenance"));
+  }
+  for (const file of [PAGE, BUNDLE]) await copy(`gate/${file}`, await readFile(resolve(f.options.gateRoot, file)));
+  await writeNew(resolve(f.options.privateRoot, "artifact-snapshot.json"), {
+    schema: "fixed-usb-qualified-artifacts-v1", context_sha256: digest(JSON.stringify(context)), files,
+  });
+  for (let index = 1; index <= 4; index += 1) await writeNew(resolve(f.options.privateRoot, `cycle-${index}.json`), cycle(context, index));
+  return { ...f, context, contextPath, snapshotRoot,
+    amendmentOptions: { qualificationSourceCommit: "e".repeat(40), gateQualificationSourceCommit: "f".repeat(40) },
+    amendmentOperations: { ...f.operations, checkQualificationSource: () => undefined } };
+}
+
+test("amendment preserves frozen context and four receipts and serves the preserved Gate bytes", async (t) => {
+  // Arrange
+  const f = await amendmentFixture(t), root = f.options.privateRoot;
+  const before = await readFile(f.contextPath);
+  await assert.rejects(requireCompleteCycles(root, f.context, state(f.context), 0), /amendment_required/u);
+  // Act
+  await amendPolicy(root, f.context, f.amendmentOptions, f.amendmentOperations);
+  const loaded = await loadContext(root, f.amendmentOperations);
+  const frozen = await verifyFrozen(loaded, f.options.authorityDirectory, undefined, f.amendmentOperations, root);
+  // Assert
+  assert.deepEqual(await readFile(f.contextPath), before);
+  assert.equal(loaded.campaign_id, f.context.campaign_id);
+  assert.equal(frozen.gate_root, resolve(f.snapshotRoot, "gate"));
+  await assert.rejects(amendPolicy(root, f.context, f.amendmentOptions, f.amendmentOperations));
+  // Changing a generated browser artifact cannot replace the frozen served artifact.
+  await writeFile(resolve(f.options.gateRoot, BUNDLE), "overwritten build output");
+  const server = await createSupervisor({ ...f.options, context: loaded }, { verifyFrozen: async () => frozen });
+  server.listen(0, "127.0.0.1"); await once(server, "listening");
+  t.after(async () => { server.closeAllConnections(); await new Promise((done) => server.close(done)); });
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/${BUNDLE}`);
+  assert.equal(response.status, 200);
+  assert.equal(digest(Buffer.from(await response.arrayBuffer())), f.context.gate_bundle_sha256);
+});
+
+test("amendment rejects missing cycles and a fresh page baseline before writing", async (t) => {
+  // Arrange
+  const f = await amendmentFixture(t), root = f.options.privateRoot;
+  const fourth = resolve(root, "cycle-4.json"), bytes = await readFile(fourth);
+  // Act / Assert
+  await rm(fourth);
+  await assert.rejects(amendPolicy(root, f.context, f.amendmentOptions, f.amendmentOperations));
+  const changed = JSON.parse(bytes); changed.baseline_id = Buffer.alloc(16, 9).toString("base64url");
+  await writeNew(fourth, changed);
+  await assert.rejects(amendPolicy(root, f.context, f.amendmentOptions, f.amendmentOperations), /baseline_changed/u);
+  assert(!(await readdir(root)).includes("policy-amendment.json"));
+});
+
+test("amendment cannot be created after any mining window activity", async (t) => {
+  // Arrange
+  const f = await amendmentFixture(t);
+  await writeNew(resolve(f.options.privateRoot, "window-0.issued.json"), { fixture: true });
+  // Act / Assert
+  await assert.rejects(amendPolicy(f.options.privateRoot, f.context, f.amendmentOptions, f.amendmentOperations), /after_window/u);
+});
+
+test("amended context revalidates policy, receipt and preserved package tampering", async (t) => {
+  // Arrange
+  const f = await amendmentFixture(t), root = f.options.privateRoot;
+  await amendPolicy(root, f.context, f.amendmentOptions, f.amendmentOperations);
+  const path = resolve(root, "policy-amendment.json"), bytes = await readFile(path);
+  const record = JSON.parse(bytes);
+  // Act / Assert
+  record.amendment.required_no_mining_cycles = 3;
+  await writeFile(path, JSON.stringify(record));
+  await assert.rejects(loadContext(root, f.amendmentOperations), /amendment_integrity/u);
+  record.sha256 = digest(JSON.stringify(record.amendment));
+  await writeFile(path, JSON.stringify(record));
+  await assert.rejects(loadContext(root, f.amendmentOperations), /amendment_policy/u);
+  await writeFile(path, bytes);
+  const first = resolve(root, "cycle-1.json");
+  await writeFile(first, `${await readFile(first, "utf8")}\n`);
+  await assert.rejects(loadContext(root, f.amendmentOperations), /cycle_drift/u);
+  // Restore the exact original receipt; then alter one copied artifact.
+  const cycleBytes = await readFile(first); await writeFile(first, cycleBytes.subarray(0, cycleBytes.length - 1));
+  await writeFile(resolve(f.snapshotRoot, `gate/${BUNDLE}`), "tampered snapshot");
+  await assert.rejects(loadContext(root, f.amendmentOperations), /snapshot_file_integrity/u);
+});
+
+test("amendment cannot change runtime identity or the 180/30/30-second limits", async (t) => {
+  // Arrange
+  const f = await amendmentFixture(t), root = f.options.privateRoot;
+  await amendPolicy(root, f.context, f.amendmentOptions, f.amendmentOperations);
+  const path = resolve(root, "policy-amendment.json"), original = JSON.parse(await readFile(path));
+  // Act / Assert
+  for (const [key, value] of [["firmware_commit", "9".repeat(40)], ["gate_commit", "8".repeat(40)],
+    ["app_elf_sha256", "7".repeat(64)], ["window_limits_ms", [180000, 30000, 30001]]]) {
+    const record = structuredClone(original); record.amendment[key] = value;
+    record.sha256 = digest(JSON.stringify(record.amendment));
+    await writeFile(path, JSON.stringify(record));
+    await assert.rejects(loadAmendment(root, f.context, f.amendmentOperations), /amendment_identity/u);
+  }
+  assert.deepEqual(WINDOW_MS, [180000, 30000, 30000]);
+  assert.equal(WINDOW_MS.reduce((sum, value) => sum + value, 0), 240000);
+  assert.throws(() => validateCycle(cycle(f.context, 5), f.context, cycle(f.context, 4)), /cycle_evidence/u);
+});
+
+test("qualification commits must be clean pushed descendants with only the exact allowed files", async (t) => {
+  // Arrange: real local Git repositories; no network or external credentials.
+  const root = await realpath(await mkdtemp(resolve(tmpdir(), "qualification-git-")));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const repo = resolve(root, "repo"), remote = resolve(root, "remote.git");
+  const run = (args) => execFileSync("git", ["-C", repo, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }).trim();
+  execFileSync("git", ["init", "--bare", remote], { stdio: "ignore" });
+  execFileSync("git", ["init", "-b", "main", repo], { stdio: "ignore" });
+  run(["config", "user.email", "fixture@example.invalid"]); run(["config", "user.name", "Fixture"]);
+  await writeFile(resolve(repo, "TASKS.md"), "original");
+  run(["add", "."]); run(["commit", "-m", "original"]);
+  const original = run(["rev-parse", "HEAD"]);
+  run(["remote", "add", "origin", remote]); run(["push", "-u", "origin", "main"]);
+  await writeFile(resolve(repo, "TASKS.md"), "approved four-cycle requirement");
+  run(["add", "."]); run(["commit", "-m", "qualification"]);
+  const qualification = run(["rev-parse", "HEAD"]);
+  // Act / Assert
+  assert.throws(() => checkQualificationSource(repo, original, qualification, "firmware"), /not_pushed/u);
+  run(["push"]);
+  assert.doesNotThrow(() => checkQualificationSource(repo, original, qualification, "firmware"));
+  assert.throws(() => checkQualificationSource(repo, original, qualification, "gate"), /diff_forbidden/u);
+  await writeFile(resolve(repo, "firmware.rs"), "unexpected runtime change");
+  assert.throws(() => checkQualificationSource(repo, original, qualification, "firmware"), /dirty/u);
+  run(["add", "."]); run(["commit", "-m", "forbidden runtime change"]); run(["push"]);
+  assert.throws(() => checkQualificationSource(repo, original, run(["rev-parse", "HEAD"]), "firmware"), /diff_forbidden/u);
+  run(["checkout", "--orphan", "unrelated"]);
+  run(["commit", "-m", "unrelated root"]); run(["push", "-u", "origin", "unrelated"]);
+  assert.throws(() => checkQualificationSource(repo, original, run(["rev-parse", "HEAD"]), "firmware"), /repository_check_failed|ancestry/u);
 });

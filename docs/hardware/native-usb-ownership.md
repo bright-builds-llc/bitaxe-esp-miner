@@ -160,12 +160,12 @@ Do not replace that context to obtain another mining budget.
    ELF, and the browser's private Device Identity/settings/replay comparison,
    plus the maximum transport probe. Only continuity booleans and an unrelated
    random page-baseline identifier enter cycle reports; never persist those
-   fingerprints. Retain the same page for all 20 cycles. Close the browser port,
+   fingerprints. Retain the same page for all 4 cycles. Close the browser port,
    flash the same package,
-   reconnect explicitly and compare evidence for each of 20 cycles. Seal each
+   reconnect explicitly and compare evidence for each of 4 cycles. Seal each
    real observation using `just fixed-usb-qualification record-cycle --private-root <that-private-root> --input <protected-cycle-report>`.
    A report validator does not itself perform or prove a hardware operation.
-1. Only after all 20 cycles pass, prepare the three signed acceptance windows
+1. Only after all 4 cycles pass, prepare the three signed acceptance windows
    through the page. Use the task's conservative profile and cumulative device
    budget. The normal window requires a correlated accepted share; hide the
    page in window 1 and suppress heartbeats in window 2. Reconnect explicitly
@@ -178,3 +178,17 @@ Do not replace that context to obtain another mining budget.
 
 Human checkpoints have no deadline. Device leases, serial operations, signer
 children, active-mining windows and cooling retain their bounded deadlines.
+
+## Owner-approved four-cycle amendment
+
+ADR-0022 reduces the continuity sample from 20 to 4. Original contexts and completed cycle evidence remain unchanged. The live acceptance gate still requires every completed cycle, unchanged firmware/browser identities, settings and Device Identity continuity, and the original 180/30/30-second device windows.
+
+When a campaign has already started, close the browser port and stop its owned supervisor while retaining the page. Preserve the original clean package and browser bundle/page in the protected `qualified-artifacts` snapshot, with every copied digest checked against the original context. Commit/push the qualification-only and documentation changes, then run:
+
+```sh
+just fixed-usb-qualification amend-policy --private-root <existing-attempt-root> --qualification-source-commit <firmware-qualification-revision> --gate-qualification-source-commit <gate-documentation-revision>
+```
+
+The fixed amendment requires four valid report digests and allows no issued mining window. It preserves the original context, campaign, deployed firmware/Gate identities and budget. Exact reviewed source-path allowlists and clean/pushed qualification revisions keep tool-policy changes separate from the tested runtime. Artifact, report, amendment or source drift fails closed.
+
+Restart `serve` on the original port/origin, without reloading the page. Explicitly reconnect to obtain fresh possession and a new supervisor authorization scope; the page retains its private preservation baseline. No new firmware flash or replacement campaign is authorized by the amendment. Finish the existing bounded live acceptance and cleanup before recording final reviews.
