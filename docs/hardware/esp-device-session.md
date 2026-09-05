@@ -1,5 +1,11 @@
 # ESP Device Session Contract
 
+[ADR-0021](../adr/0021-fixed-serial-jtag-worker-transport.md) establishes fixed
+Serial/JTAG. Browser control uses the authenticated logical session in
+[native-usb-ownership.md](native-usb-ownership.md); a receive-only CLI observer
+must acquire exclusive ownership after the browser releases its port. Ordinary
+updates preserve NVS through admitted disjoint package segments.
+
 This contract applies to repository-owned workflows that cross bootloader,
 running-firmware, USB lifecycle, and HTTP application boundaries. It implements
 [ADR-0015](../adr/0015-separate-bootloader-runtime-and-control-transports.md)
@@ -8,13 +14,13 @@ policies.
 
 ## Responsibility Matrix
 
-| Responsibility                       | Required backend                                             | Prohibited substitution                                 |
-| ------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------- |
-| Detect and bind the target           | Task-gated repo-owned detector plus pinned espflash          | Stale node names or unrelated prior evidence            |
-| Probe or write flash                 | `espflash 4.5.0` with the phase's explicit reset flags       | Application HTTP or ad hoc raw writes                   |
-| Observe running firmware             | Receive-only OS-native reader                                | `espflash monitor` as an authoritative runtime observer |
-| Request a normal application restart | Existing HTTP restart route                                  | DTR/RTS, bootloader reset, or a repeated POST           |
-| Prove the restarted application      | Typed USB identity plus HTTP boot/build/postcondition quorum | Serial bytes, sampled downtime, or node change alone    |
+| Responsibility                       | Required backend                                                                         | Prohibited substitution                                       |
+| ------------------------------------ | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| Detect and bind the target           | Task-gated repo-owned detector plus pinned espflash                                      | Stale node names or unrelated prior evidence                  |
+| Probe or write flash                 | Pinned espflash ROM admission, then managed ESP-IDF tools for validated package segments | Application HTTP, implicit factory reset or ad hoc raw writes |
+| Observe running firmware             | Receive-only OS-native reader                                                            | `espflash monitor` as an authoritative runtime observer       |
+| Request a normal application restart | Existing HTTP restart route                                                              | DTR/RTS, bootloader reset, or a repeated POST                 |
+| Prove the restarted application      | Typed USB identity plus HTTP boot/build/postcondition quorum                             | Serial bytes, sampled downtime, or node change alone          |
 
 ## Session State
 
@@ -34,7 +40,7 @@ holder checks are required before initial use and after any re-acquisition.
 Zero or multiple physical matches, identity drift, an inaccessible node, or an
 unexpected holder fail closed.
 
-On macOS, derive physical identity from the same canonical `ioreg` USB fields
+For a receive-only CLI observation session on macOS, derive physical identity from the same canonical `ioreg` USB fields
 used by detector admission and keep the device-node metadata in a separate
 enumeration digest. Open the runtime port only with receive-only,
 non-controlling, nonblocking semantics (`O_RDONLY | O_NOCTTY | O_NONBLOCK`). Do
@@ -84,11 +90,11 @@ of `correlated`, `silent`, `reacquired`, or `failed`.
 - When firmware entered ROM by setting `RTC_CNTL_FORCE_DOWNLOAD_BOOT`, use the
   contained managed esptool hard-reset Adapter that clears that bit. Never use
   `run` with `--after no_reset` as an application-exit operation.
-- No device-session command may toggle modem-control lines or write serial input
-  except the exact class-control-only maintenance Adapter defined in
-  `native-usb-ownership.md`. That Adapter may set 1200-baud line coding and DTR
-  under the retained lease; it never sends CDC payload commands. Direct UART,
-  pins, pads, probes, and other electrical interfaces remain excluded.
+- Authenticated Worker serial records are sent only by the foreground browser
+  session. ROM reset signaling belongs only to the managed downloader adapter
+  under the retained physical lease. No baud/DTR maintenance gesture or custom
+  PHY handoff remains. Direct UART, pins, pads, probes, and other electrical
+  interfaces remain excluded.
 
 ## Evidence And Platform Support
 
@@ -103,12 +109,13 @@ The initial production adapter supports macOS. Linux and Windows fail closed as
 
 ## Flash And Reflash Session
 
-Classify the native USB profile described in `native-usb-ownership.md` before
-choosing an Adapter. Worker runtime is observation-capable but not directly
-eligible for `espflash`; the supervisor performs the guarded handoff while
-retaining the physical-device lease. Board-info and writes begin only after ROM
-admission. Profile changes are expected enumeration transitions, not physical
-identity drift by themselves.
+Classify native USB before choosing an adapter. Fixed Serial/JTAG descriptors
+are shared by ROM and the application, so descriptor matching alone proves
+neither. Release browser ownership, retain the physical-device lease, and
+require explicit board-info ROM admission before any write. Reacquisition
+requires the exact application source and ELF identity in runtime evidence.
+Legacy TinyUSB detection permits manual migration bootstrap only; it cannot
+admit the retired Worker control or PHY-handoff paths.
 
 The supported `just detect-ultra205`, `just flash`, `just monitor`, and
 `just flash-monitor` entrypoints share one macOS USB supervisor. Package
@@ -126,20 +133,13 @@ applications, browsers, and unmanaged `espflash` processes are never
 terminated.
 
 Routine monitoring is the macOS receive-only reader, not `espflash monitor`.
-Success is returned only after three stable samples show the admitted physical
-device is accessible and holder-free. No postcondition probe reconnects to the
-bootloader. Public outcomes use the closed flash vocabulary:
-`ready`, `concurrent_repo_session`, `foreign_holder`, `transport_absent`,
-`identity_drift`, `runtime_profile_unknown`, `handoff_unsupported`,
-`handoff_rejected_unsafe_state`, `handoff_ready_timeout`,
-`handoff_commit_timeout`, `bus_reset_timeout`, `same_worker_after_commit`,
-`handoff_transition_timeout`, `bootloader_ambiguous`,
-`physical_identity_drift`, `bootloader_sync_failed`, `rom_admission_failed`,
-`application_reappearance_timeout`, `recovery_required`,
-`bootloader_connect_failed`,
-`flash_failed_before_transfer`, `flash_failed_after_transfer`,
-`monitor_failed`, `cleanup_failed`, `recovery_not_observed`, and
-`repeated_boundary`.
+Cleanup succeeds only after three stable samples show the admitted physical
+device node has read/write permissions and no unexpected holder. Snapshot
+checks never open the driver; a permissions check is not ROM or application
+execution evidence. No postcondition probe reconnects to the
+bootloader. Public outcomes preserve typed ownership, identity, ROM admission,
+write, runtime-return, and cleanup failures. Historical handoff categories are
+not evidence that an obsolete mechanism remains executable.
 
 One retry is possible only for a software/transport-recoverable boundary after
 cleanup and an objective enumeration change of the same physical device. The
@@ -147,7 +147,7 @@ operation and admitted image remain unchanged. Identity drift, absence,
 foreign ownership, admission failure, a write/verify failure, or recurrence
 stops immediately.
 
-After a successful factory or NVS write, the supervisor observes one continuous
+After a successful segmented update or explicit factory/NVS write, the supervisor observes one continuous
 60-second same-device recovery window before classifying
 `recovery_not_observed`; it never repeats the successful write merely because
 recovery is delayed. Post-flash recovery, monitor admission, and final cleanup

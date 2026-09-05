@@ -294,34 +294,25 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 
 ### Autonomous Ultra 205 Hardware Verification
 
-### Native USB Ownership
+### Fixed USB Ownership
 
-- Before changing TinyUSB, USB descriptors/sdkconfig, firmware startup,
-  detection, flashing, monitoring, or recovery, read
-  `docs/hardware/native-usb-ownership.md` and ADR-0020.
-- Preserve one qualified buttonless path from every canonical application USB
-  profile to an admitted ROM downloader. A visible CDC node is not flash proof.
-- Cross USB profiles only through repo-owned `just` commands. Manual BOOT/RESET
-  is bootstrap or last-resort recovery, not routine development.
-- When Serial/JTAG is visible but ROM admission fails, use only the task-gated
-  `just native-usb-owner-recovery` passive-first Interface. Its manual
-  BOOT/RESET branch is eligible only after missing or insufficient exact
-  application evidence.
-- After a terminal silent owner-recovery result, only the task-gated
-  `just native-usb-boot-chain-integrity` Interface may read boot metadata and
-  the selected application. It authorizes no flash repair.
-- Complete USB ownership changes only after
-  `just verify-native-usb-ownership` and task-gated durability evidence pass.
+- Before changing USB startup, transport, detection, flashing, monitoring, or recovery, read ADR-0021 and `docs/hardware/native-usb-ownership.md`.
+- Keep USB Serial/JTAG as the sole controller; Worker activity is application state. Direct browser Web Serial is the only active Bitaxe control transport.
+- Use Controller 0.4/serial 0.1/possession 0.2, fresh logical sessions and exact identity. USB descriptors and node names never establish application authority.
+- Ordinary updates preserve NVS/Device Identity/replay state with admitted disjoint write segments. Factory installation/reset is explicit, not an implicit recovery path.
+- Enforce the device-local 2.8-second heartbeat deadline, actual generation revocation and shutdown initiation within three seconds, independently of blocking commands and diagnostics.
+- The active migration/qualification/live-acceptance tasks own effects. Old TinyUSB and recovery-006 plans are historical and cannot authorize new effects. Preserve their original evidence and non-claims.
+- Complete the migration only after fixed-USB ownership checks, 20 no-mining continuity/update cycles and the approved bounded live acceptance pass. Cleanup of the preexisting stuck detector is a precondition to hardware, not a reason to start another owner.
 
 - The user grants standing permission for agents to autonomously execute every current and future repository task, including interacting with a connected Bitaxe Ultra 205 over USB and selecting fresh hardware-attempt ordinals after verified progress. Do not ask for per-task, per-attempt, per-ordinal, retry, or continuation confirmation.
 - Standing authorization becomes effect-eligible only after an active `TASKS.md` block and a repo-owned command define the exact objective, command, evidence and privacy policy, allowed and prohibited effects, recovery and cleanup, retry bounds, and accepted stop conditions. Agents may create or update that complete contract as ordinary task work, verify it, commit it, and push it before the effect; doing so does not require another user confirmation.
-- Before autonomous hardware use, run `just detect-ultra205`. Treat inspection as successful only when it finds exactly one admitted physical device and classifies a known native-USB profile. A Worker runtime is inspectable without `board-info`; every flash, recovery, or other ROM-required effect must retain the same physical-device lease, complete the guarded handoff when needed, and pass `espflash board-info --chip esp32s3 --port <port> --non-interactive` before any write.
+- Before autonomous hardware use, run `just detect-ultra205`. Treat inspection as successful only when it finds exactly one admitted physical device and classifies a known native-USB profile. Application ownership requires fresh serial protocol evidence; every flash, recovery, or other ROM-required effect must retain the same physical-device lease and pass `espflash board-info --chip esp32s3 --port <port> --non-interactive` before any write.
 - If detection succeeds, use the printed port path with repo commands such as `just flash-monitor --board 205 --port <path> --evidence-dir <path>` and record the detector output in evidence.
-- If detection succeeds and the ignored local file `wifi-credentials.json` exists, agents may pass `--wifi-credentials wifi-credentials.json` to repo-owned `just flash` or `just flash-monitor` commands for developer bring-up. Do not read, print, summarize, or commit the credential file contents.
+- Existing ignored `wifi-credentials.json` may be supplied to repo-owned provisioning only within an explicitly authorized factory installation/reset contract. Ordinary state-preserving `just flash` and `just flash-monitor` reject `--wifi-credentials`; they retain the installed NVS configuration. Never add factory reset implicitly to an update or recovery. Do not read, print, summarize, or commit credential file contents.
 - If detection succeeds and an ignored local `pool-credentials*.json` file exists, agents may pass it with `--pool-credentials <path>` only as local runtime input for repo-owned live mining test or verification commands. Use the committed `pool-credentials.json.example` file for shape only; the real local file may define `poolURL`, `poolPort`, `poolUser`, and `poolPassword`, with `poolUser` derived from the owner BTC address, for example `<owner-btc-address>.bitaxe`.
 - Treat pool owner addresses, worker strings, endpoints, ports, passwords, and credential file contents as sensitive local test inputs. Do not print, summarize, commit, copy into evidence, or expose the real file contents. Committed evidence may record category labels such as `pool_config: local-owner-supplied` only, never raw pool URLs, ports, users, workers, passwords, addresses, endpoints, tokens, or NVS secret values.
 - Local developer hardware evidence may keep USB-observed SSIDs, IP addresses, MAC addresses, and `device_url` values to make bring-up and UAT practical. Evidence intended for commit or sharing must be produced with `--redact-evidence` or otherwise redacted before promotion.
-- When a repo-owned test or verification command needs `DEVICE_URL`, derive it from fresh monitor output after same-session detection. The display fallback is the task-gated `just native-usb-display-recovery` Interface described in `docs/hardware/native-usb-ownership.md`, which requires a board-displayed RFC1918 address and exact USB/API MAC binding. When no station address exists, only `just native-usb-config-ap-recovery` may continue: its first stage is an exact read-only NVS discriminator, and directed association to its USB-derived AP remains prohibited until that stage seals `nvs_match`. None of these paths authorize general Wi-Fi scanning, mDNS, ARP, router state, subnet discovery, stale logs, or unrelated evidence. Local development may display IPs; committed evidence must redact raw URLs, IPs, endpoints, MACs, Wi-Fi values, credentials, workers, passwords, tokens, and NVS secret values.
+- When a repo-owned test needs `DEVICE_URL`, derive it from fresh runtime diagnostics after same-session device admission and exact application identity. Browser diagnostics are the source while Web Serial owns the port; a CLI observer requires browser release. The retired display/config-AP recovery commands provide no current fallback authority. Missing station-address evidence remains blocked until a new task and repo-owned command define a bounded alternative. General Wi-Fi scanning, mDNS, ARP, router state, subnet discovery, stale logs, and unrelated evidence remain prohibited. Local development may display IPs; committed evidence must redact raw URLs, IPs, endpoints, MACs, Wi-Fi values, credentials, workers, passwords, tokens, and NVS secret values.
 - Stop and ask or record hardware evidence pending when there are zero likely ports, multiple likely ports, `board-info` fails, the target is not board `205`, or required recovery/evidence instructions are missing.
 - Task-gated destructive or fault-injection verification is allowed only when an active `TASKS.md` block records the exact command, evidence policy, recovery path, retry bounds, and accepted stop conditions. Do not run ad hoc erase, rollback, interrupted-update, voltage/fan/mining stress, or raw write commands outside that contract.
 - Every hardware run must record board `205`, selected port, source commit, reference commit, package manifest/artifacts when applicable, exact commands, `board-info` output, captured logs, observed behavior, and conclusion. Do not commit secrets, pool credentials, Wi-Fi credentials, private endpoints, or NVS secret values in evidence.

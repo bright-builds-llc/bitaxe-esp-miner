@@ -13882,3 +13882,337 @@ Completion review: Stages 1–2 are complete without hardware or network effects
 The exact Worker USB profile and host Interface remain unchanged. The final C
 PHY Adapter, manual bootstrap, automatic handoff proof, 20-cycle durability,
 and recovery-006 restoration remain explicitly assigned to later stages.
+
+### task-native-usb-ownership-handoff | 2026-08-29 | Preserve TinyUSB and restore buttonless flashing
+
+- [x] Create and push the immutable native-USB ownership plan before firmware,
+      host-tool, rules, or hardware effects.
+- [x] Put TinyUSB and USB-Serial-JTAG profile ownership behind deep firmware and
+      host Modules while preserving the existing `just` command Interface.
+- [x] Add unmissable agent guidance, ADR/hardware documentation, an active
+      lesson, and a Bazel-backed ownership guardrail.
+- [ ] Perform the authorized one-time built-in BOOT/RESET bootstrap, prove 20
+      automatic handoff/flash/runtime cycles, then restore recovery-006 exactly.
+
+Plan: `docs/parity/work-plans/20260829T175047Z-NATIVE-USB-OWNERSHIP/PLAN.md`
+
+Depends on: completed `task-native-usb-rust-adapter`; accepted ADRs 0015, 0018,
+and 0019; exact pushed source
+`a0337f01`; the connected Ultra 205 currently running the pre-handoff TinyUSB
+image; and recovery-006.
+
+Authorization: repository source/test/docs/rules/build/package, commit/push,
+profile-aware macOS USB inspection, one user-performed recovery through only
+the board's built-in BOOT and RESET buttons, exact-package flash, automatic
+TinyUSB-to-ROM handoff, 20 bounded no-mining durability cycles, protected
+evidence, and exact recovery-006 restoration under the immutable plan. Direct
+UART, headers, pins, pads, probes, jumpers, soldering, test points, eFuses,
+fault injection, erase, mining, ASIC work, fan/voltage effects, external pools,
+other devices, other boards, arbitrary writes, and parity promotion are
+excluded.
+
+Verification: The software stage passes the ordered Rust formatting, strict
+Clippy, all-target/all-feature build, and all-feature test sequence; Bright
+Builds; focused reducer, macOS identity, profile-transition, flash-route, and
+BWG conformance tests; all 69 Bazel test targets; the ESP32-S3 firmware build;
+the six-artifact package; `just verify-native-usb-ownership`; parity/progress;
+redaction; pinned-reference cleanliness; and whitespace checks. The exact
+clean pushed package rebuild and manifest identity check follow the single
+implementation commit. Hardware verification remains pending.
+
+Progress: The complete software handoff is implemented. `UsbRuntime` owns
+TinyUSB installation and the guarded maintenance reducer; diagnostics retain
+Serial/JTAG; macOS inspection separates physical/profile/enumeration identity;
+one retained `UsbSession` performs Worker-to-ROM handoff and ROM admission;
+flash/recovery writes route centrally; and monitor remains receive-only.
+The Rust-adapter child is complete and archived: Rust owns descriptors,
+installation, callbacks, and data I/O, while C is limited to the intentional
+PHY/force-download Adapter. Manual bootstrap, automatic hardware handoff proof,
+20-cycle durability, and recovery-006 restoration remain as the next hardware
+stage. Manual bootstrap-001 admitted the ROM downloader, but the first flash
+stopped before writes because real espflash 4.5.0 renders the chip type as
+`esp32s3` while the host admission accepted only the uppercase fixture
+spelling. A real-output regression and field parser now cover that boundary;
+the targeted clean-package retry passed ROM admission and then exposed a
+distinct pre-write `no-reset-no-sync` connection failure. The fresh espflash
+process requires `no-reset` so it may synchronize after ROM admission without
+driving reset control lines; that second targeted fix passed every software
+gate and produced exact clean package `a6fb6328`. That package flashed and
+reached WorkerRuntime after one reset-only observation. Automatic cycle-001
+then stopped before ROM with `handoff_ready_timeout`; the macOS Adapter now
+primes DTR low and settles callbacks before emitting the single arm edge and
+1200-baud line coding required by the strict firmware reducer. The targeted
+fix passed every software gate and produced exact clean package `d9d7fd94`.
+Automatic cycle-002 accepted readiness and the commit edge, then timed out
+waiting for ROM because the reduced PHY Adapter immediately re-enabled the USB
+pad without a host-visible disconnect. A bounded ROM-level disconnect pulse is
+now covered by the C allowlist test and passed every software and firmware
+link gate in clean pushed source `4b165570`. Automatic cycle-003 reproduced the
+same authoritative `handoff_transition_timeout` after that targeted fix. The
+immutable continuation rule makes the repeated signature terminal: further
+hardware attempts are stopped, recovery-006 remains pending, and another
+manual BOOT/RESET recovery would require a new explicit hardware contract.
+The subsequent software-only root-cause diagnostic stage adds an acknowledged
+commit receipt with host wait-before-close semantics, a bounded closed-category
+profile trace, and the complete D-/D+ plus observed BUS_RESET PHY handoff. No
+new hardware attempt or recovery is authorized by this implementation. All
+software, firmware-link, ownership, Bazel, package, parity, privacy, and
+reference gates pass. Implementation commit `ea58797f` is pushed; its exact
+clean six-artifact package has manifest SHA-256
+`d10c2668063a3c00b520b58f957452b9cd18b9f3b8fe8f2fa9a63ae9740c45b7`.
+
+Completion review: Blocked at the repeated ROM re-enumeration signature. The
+one-time manual bootstrap installed the handoff firmware and proved
+WorkerRuntime, but automatic handoff durability and exact recovery-006
+restoration are incomplete. STR-005 and BWG remain unchanged.
+
+Stability continuation: Live reboot-loop diagnostics on the later Rust USB
+runtime isolated a direct allocator abort requesting 852 bytes with
+`DMA | 8BIT | INTERNAL` capabilities during Wi-Fi startup. The first guessed
+vendor-buffer setting was absent from the pinned component, and the verified
+TinyUSB task-stack reduction still reproduced the exact signature. The
+first targeted successor reserved Wi-Fi's fixed resources before the optional
+Worker and eliminated the panic reboot loop. Live evidence then proved the
+deferred 12 KiB Worker pthread failed closed with `ENOMEM` after Wi-Fi
+connected. The next targeted fix restores the proven 16 KiB Worker stack,
+raises ESP-IDF's internal reserve from 32 KiB to 64 KiB so ordinary
+PSRAM-eligible allocations cannot consume forced-internal stack/DMA memory,
+and retains closed heap/failure evidence. Ordered Rust gates, Bright Builds,
+all 76 Bazel tests, the real normal/rollback firmware builds, exact resolved
+sdkconfig checks, native-USB ownership, parity/progress, redaction, and
+reference cleanliness pass. Exact-package hardware validation then measured
+19,295 eligible bytes but only a 9,216-byte largest block before the 16 KiB
+Worker spawn. The next minimal correction orders the 8 KiB statistics producer
+after Worker while keeping fan and safety owners ahead. Ordered Rust gates
+(using a fresh target after the workspace target hit the known host I/O stall),
+focused ownership tests, all 76 Bazel tests, Bright Builds, firmware packaging,
+native-USB ownership, redaction, and reference cleanliness pass. Exact-package
+hardware validation remains pending.
+
+Buttonless handoff result: The current stable Worker accepted the 1200-baud
+maintenance arm and emitted readiness, but the host timed out waiting for the
+committed receipt after clearing DTR; no flash occurred and Worker remained
+mounted. The corrected protocol uses exact 1200-to-115200 line coding as the
+post-readiness commit while DTR remains asserted, waits for the CDC receipt,
+then clears DTR and closes. Focused reducer/host tests, ordered fresh-target
+Rust gates, all 76 Bazel tests, Bright Builds, firmware packaging,
+native-USB ownership, redaction, reference cleanliness, and parity progress
+pass. Exact-package hardware validation remains pending.
+
+Latest hardware discriminator: exact `5ab0eb31` remained reboot-stable, but
+moving statistics increased the pre-Worker checkpoint only to 28,531 eligible
+bytes with an 11,264-byte largest block; owner spawn remained `ENOMEM`. The
+next correction splits Worker startup into early owner-stack preparation and
+post-Wi-Fi TinyUSB installation, retaining checkpoints at both boundaries.
+This preserves the proven 16 KiB Worker stack and avoids speculative stack
+shrinking. Ordered fresh-target Rust gates, focused ownership tests, all 76
+Bazel tests, Bright Builds, firmware packaging, native-USB ownership,
+redaction, reference cleanliness, and parity progress pass. Exact-package
+hardware validation remains pending.
+
+Split-start hardware result: exact `21b11317` reached WorkerRuntime and stayed
+enumerated with one boot marker and zero reconnects. Its retained prior-boot
+receipt records an 8,192-byte internal allocation failure, while the successful
+boot's post-Wi-Fi `usb_install` checkpoint had only 12,343 eligible bytes and a
+3,712-byte largest block. The next measured correction raises the protected
+internal reserve from 64 KiB to 96 KiB, leaving 32 KiB additional margin for
+the deferred statistics stack and fragmentation. Ordered fresh-target Rust
+gates, all 76 Bazel tests, Bright Builds, firmware packaging with exact
+resolved config, native-USB ownership, redaction, reference cleanliness, and
+parity progress pass. Exact-package hardware validation remains pending.
+
+Diagnostic continuation | 2026-09-04: The exact `d369154d` factory and ordinary
+Wi-Fi seed writes completed with cleanup. A 360-second passive capture was
+byte-empty, and no-reset admission proved ROM remained selected. The authorized
+built-in RESET-only bootstrap then reached WorkerRuntime. One 30-second
+observation recorded one boot marker, zero reconnects, boot ordinal 2, panic
+reset, no Rust panic receipt, and a prior allocation failure requesting 84 bytes
+with capability mask `0x00000804`. The current CDC evidence does not bind that
+receipt to a source build or startup stage and does not expose the retained
+heap checkpoints. No continuing reset loop was observed; memory resolution,
+exact runtime identity, buttonless flashing, durability, and parity remain
+unverified. Private evidence is retained under the ignored
+`scratch/native-usb-d369-bootstrap-20260904-01` root.
+
+- [x] Diagnose the 84-byte allocation boundary using pinned sources and add
+      bounded, source-bound diagnostic evidence where current observations
+      cannot discriminate it; do not guess another heap budget.
+- [ ] Regression-test the real evidence/transport boundary, run ordered Rust
+      gates, Bazel, firmware/package, ownership, redaction, and reference checks,
+      then commit/push and bind any continuation to the exact clean package.
+- [ ] Observe the next admitted runtime's build and heap/failure facts before
+      full buttonless flash verification. Preserve the earliest closed failure,
+      no unchanged retry, existing cleanup bounds, and all no-mining/no-ASIC/
+      no-fan-or-voltage/no-erase restrictions. This continues the existing
+      task contract under the user's iterative authorization, not a new plan.
+
+Software finding: The exact generated FreeRTOS queue object uses an 84-byte
+header for empty queues/mutexes/semaphores and its heap adapter requests
+`INTERNAL | 8BIT`. This identifies a caller family, not one failing task.
+`CONFIG_HEAP_ABORT_WHEN_ALLOCATION_FAILS` is disabled; the retained failure may
+have recovered before a later panic. The 16 KiB main task also remains live
+through statistics startup, so steady-state free memory can hide the startup
+peak. The successor preserves the 96 KiB reserve, records the first failed
+allocation's source/global-stage context, adds post-USB/statistics checkpoints,
+and exposes a finite closed Worker CDC report. Host identity and receipts are
+scoped to the final observed boot; earlier-boot facts cannot verify a later
+silent boot. It adds no mutex, raw-log/network export, or command payload path.
+
+Next bounded continuation: `native-usb-diagnostics-001` installs the exact
+clean pushed successor package after all required gates pass. Fresh
+`just detect-ultra205` supplies the port to one `just flash --board 205 --port
+<fresh-port> --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json
+--wifi-credentials wifi-credentials.json --redact-evidence --evidence-dir
+<new-private-child>` invocation. The existing USB supervisor retains the
+physical lease, requires ROM admission before each write, and enforces its
+360-second write and 60-second recovery/cleanup bounds. Only the canonical
+factory image and ordinary Wi-Fi seed are authorized writes. Capture logs as
+mode-0600 siblings under a new mode-0700 parent; the evidence child must not
+exist before launch. After cleanup and fresh detection, one 30-second
+`just diagnose-usb-reboot-loop --port <fresh-port> --timeout-seconds 30
+--expected-source-commit <manifest-source> --expected-app-elf-sha256
+<manifest-elf-digest>` checks the actual runtime. Record the earliest closed
+failure and stop unchanged retries. Manual built-in BOOT/RESET remains only
+the explicitly authorized fallback if software handoff fails; no erase,
+mining, ASIC, fan/voltage, external pool, or unrelated network action is added.
+The current installed d369 image cannot itself supply the new diagnostic
+report, so this is a diagnostic-package installation, not a durability pass.
+
+Pre-hardware review: ordered Cargo formatting, strict all-target/all-feature
+Clippy, all-target/all-feature build, and all-feature tests pass with the fresh
+host target. All 76 Bazel tests, real firmware/package and ownership checks,
+Bright Builds, semantic redaction, pinned-reference cleanliness, parity
+progress, and whitespace checks pass. Regression evidence includes stable
+same-boot classification, final-boot-only identity/heap attribution, receipt
+integrity/source distinction, late observer replay, FIFO backpressure and
+partial-write framing, and maintenance receipt preservation. Hardware memory
+resolution and handoff durability remain pending; no parity was promoted.
+
+ROM-exit continuation | 2026-09-04: Diagnostic installation attempt
+`native-usb-diagnostics-001` stopped before writes at `handoff_commit_timeout`
+on the installed d369 image; readiness arrived, cleanup passed, and fresh
+inspection still found Worker. The user-authorized BOOT/RESET bootstrap then
+installed exact `155bfae5a017da5e89009bed7199a83ab4956cb8`, ELF
+`425c9d7ae66d7e65ff4ebc9266a3b1f9f2f945dba16a37d3620a3cd91bd68ffa`, with
+factory/NVS completion and cleanup. Fresh no-reset `board-info` confirmed ROM
+remained selected. Pinned espflash's serial-line hard reset does not clear
+the force-download bit; the repository's existing managed esptool helper
+does. The canonical flash command currently omits that helper.
+
+- [x] Add a narrowly task-gated `just native-usb-start-installed` no-write
+      continuation and reuse the managed application-exit capability after
+      the final canonical flash/NVS write; regression-test ordering and failures.
+- [ ] Verify and commit/push the host fix before one no-write ROM exit of the
+      already installed 155bfae5 image. Its expected source/ELF above are the
+      verification target, not a claim that package files prove it is running.
+- [x] Add a fixed-size closed maintenance trace before any further handoff
+      diagnostic: distinguish redundant control events, deadline expiry,
+      event loss, commit enqueue failure, and PHY invocation/result. The pinned
+      TinyUSB callbacks do not suppress duplicate class requests; the current
+      reducer disarms on them, but no live evidence yet proves that cause.
+      Replay failure traces through the bounded read-only report after
+      maintenance terminates without reopening Worker command ingress. Do not
+      change protocol acceptance or memory budgets on this hypothesis alone.
+
+No-write effect contract: after fresh `just detect-ultra205 --retain-rom`, run
+one `just native-usb-start-installed --board 205 --port <fresh-port>
+--expected-source-commit 155bfae5a017da5e89009bed7199a83ab4956cb8
+--expected-app-elf-sha256 425c9d7ae66d7e65ff4ebc9266a3b1f9f2f945dba16a37d3620a3cd91bd68ffa
+--private-root <new-private-child> --redact-evidence`. The command validates
+the active task, canonical managed tool and expected identity before effects,
+retains one physical lease, admits ROM through no-reset board-info, reads only
+the force-download register, invokes the existing contained managed hard-reset
+helper once, and requires Worker plus its exact 30-second diagnostic identity.
+ROM I/O/reset and observation each have a 30-second bound; reacquisition and
+cleanup retain existing repository bounds. No image/NVS read/write, erase,
+mining, ASIC/fan/voltage, pool, network, or other-device effect is authorized.
+Create the protected parent and separate mode-0600 sibling logs; leave the
+mode-0700 supervisor child nonexistent before launch. Preserve first failure
+and all artifacts; no repeated reset or retry follows ambiguous completion.
+Unknown/shared-profile-only or missing/mismatched runtime evidence fails
+closed and permits only diagnosis or the user-authorized physical fallback.
+
+ROM-exit software review: ordered Cargo format/strict Clippy/build/tests,
+all 76 Bazel tests, the real firmware/package, ownership, Bright Builds,
+redaction, reference cleanliness, and parity progress pass. Tests cover exact
+and mismatched installed identity under a different tooling revision, one exit
+after the final write, no exit after write failure, existing/private-root
+rejection, no-write command bounds, cleanup/earliest-failure preservation,
+unchanged maintenance transitions with a fixed trace ring, and overlapping
+trace reports during same-boot reconnects. The already installed 155bfae5 image
+remains the no-write verification target. Firmware trace hardware validation,
+memory resolution, and buttonless durability remain pending.
+
+Supersession review | 2026-09-04: The owner approved ADR-0021 and replacement fixed-Serial/JTAG tasks. This prototype transport mechanism is superseded, not verified. Unfinished runtime, settings/identity continuity, flashing and cleanup obligations transfer to `task-fixed-usb-serial-migration` and `task-fixed-usb-serial-qualification`. Recovery-006 restoration is deliberately retired for this migration; its historical gaps and consumed attempts remain unchanged.
+
+
+### task-native-usb-recovery-transition-205 | 2026-08-30 | Recover first and prove one no-write transition
+
+- [x] Create and push the immutable recovery and single-transition plan before
+      implementation or hardware effects.
+- [ ] Restore recovery-006 exactly through a fresh recovery-only contract.
+- [x] Add and verify `just verify-native-usb-transition` with acknowledged
+      commit, closed profile evidence, ROM admission, application reappearance,
+      and zero writes.
+- [ ] Install the exact diagnostic package, run one transition ordinal, then
+      restore recovery-006 exactly and finalize cleanup.
+
+Plan: `docs/parity/work-plans/20260830T142327Z-NATIVE-USB-RECOVERY-TRANSITION/PLAN.md`
+
+Depends on: blocked parent `task-native-usb-ownership-handoff`; pushed
+diagnostic implementation `ea58797f`; recovery-006 bundle and readiness
+projection; connected Ultra 205; and the existing profile-aware USB owner.
+
+Authorization: plan/source/test/docs/build/package, commit/push, effect-free
+preflight/finalization, one primary built-in BOOT/RESET recovery entry, one
+conditional diagnostic bootstrap only when recovery yields an unqualified
+Worker profile, exact-package installation, one no-write transition ordinal,
+and one contingency built-in-button recovery solely to restore recovery-006.
+All effects, privacy rules, roots, retry bounds, branches, recovery, cleanup,
+and stop conditions are defined by the immutable plan. Direct UART, pins,
+pads, probes, headers, jumpers, soldering, test points, erase, fault injection,
+mining, ASIC, fan/voltage, external pools, other devices, durability, and parity
+promotion are excluded.
+
+Verification: Plan commit `b4368a60` is pushed. The no-write verifier and
+recovery/finalization Interfaces pass the ordered Rust gates, Bright Builds,
+focused USB/flash/restoration tests, all 71 Bazel tests, normal and rollback
+firmware links, canonical package, native-USB ownership and symbol checks,
+parity/progress, redaction, reference cleanliness, sensitive-value scan,
+whitespace, and final diff review. The implementation commit, exact clean
+package, primary recovery, single transition, final restoration, and cleanup
+remain pending.
+
+Progress: Implementation commit `776ef8c4` is pushed and its exact clean
+package manifest SHA-256 is
+`1c4e39f26c6bb1ff98b8c340d81f41aea8c52f3256942e7be37a8fb069c22bce`.
+Primary recovery preflight accepted every no-effect checkpoint and left both
+the transient and primary roots absent. The manual ROM entry then exposed that
+ordinary detection hard-resets into the application; a narrow `--retain-rom`
+detector mode is being verified before the already-authorized recovery write.
+Retain-ROM detection passed on the same physical connector. Both primary
+recovery writes then completed and normal restored-runtime admission passed,
+but two late passive monitor windows observed no unique origin. The recovery
+root remains protected and incomplete; a receipt-gated continuation will arm
+the observer immediately after one reset and explicitly prohibits repeating
+either completed write.
+
+Terminal update: retain-ROM fix `aebec324` and write-free continuation fix
+`2ebffb1f` are pushed; the latter's exact clean manifest SHA-256 is
+`b87030e8422231193942c133d50a70a84b9a4af1665a7fa5a4ce07498f1e9eed`.
+Protected receipts prove the recovery-006 snapshot and Wi-Fi seed writes both
+completed. The continuation validated those receipts, repeated neither write,
+performed one admitted reset, immediately attached the receive-only observer,
+and reproduced `runtime_origin` with zero unique origins. That authoritative
+post-fix signature is terminal. Host cleanup reports zero owned processes, one
+USB node remains, the diagnostic package was never installed, and no public
+projection exists.
+
+Completion review: Blocked before exact primary recovery confirmation because
+recovery-006 does not replay a current runtime origin to the qualified passive
+observer. Hardware work is stopped by the immutable recurrence rule. Settings
+exactness and inactive zero-work/share state remain unauthenticated; the
+single transition, final recovery, and public finalization are ineligible.
+The parent native-USB task, STR-005, and BWG remain unchanged.
+
+Supersession review | 2026-09-04: The owner approved ADR-0021 and replacement fixed-Serial/JTAG tasks. This prototype transport mechanism is superseded, not verified. Unfinished runtime, settings/identity continuity, flashing and cleanup obligations transfer to `task-fixed-usb-serial-migration` and `task-fixed-usb-serial-qualification`. Recovery-006 restoration is deliberately retired for this migration; its historical gaps and consumed attempts remain unchanged.

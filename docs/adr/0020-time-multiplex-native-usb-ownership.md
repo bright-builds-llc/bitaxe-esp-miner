@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [ADR-0021](0021-fixed-serial-jtag-worker-transport.md). The decision below is historical and is not an active implementation requirement.
 
 ## Decision
 

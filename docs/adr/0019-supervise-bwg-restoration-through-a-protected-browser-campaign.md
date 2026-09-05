@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded for USB topology and transport by [ADR-0021](0021-fixed-serial-jtag-worker-transport.md). Identity, authorization, privacy, and safe-stop obligations remain applicable.
 
 ## Context
 

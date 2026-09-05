@@ -6,27 +6,28 @@
 
 This index summarizes accepted decisions from the original project handoff.
 
-| ID | Decision | Outcome |
-| --- | --- | --- |
-| ADR-0001 | Define rewrite scope as device-user parity. | Accepted |
-| ADR-0002 | Use this repo as a new Rust firmware monorepo. | Accepted |
-| ADR-0003 | Use ESP-IDF Rust bindings for the first production stack. | Accepted |
-| ADR-0004 | Use Bazel as the automation graph and `just` as command surface. | Accepted |
-| ADR-0005 | Keep upstream ESP-Miner read-only at `reference/esp-miner`. | Accepted |
-| ADR-0006 | Treat the parity checklist as audit evidence. | Accepted |
-| ADR-0007 | Prioritize Bitaxe Gamma 601 BM1370 for hardware bring-up. | Superseded by ADR-0014 |
-| ADR-0008 | Use reference breadcrumbs at module and behavior boundaries. | Accepted |
-| ADR-0009 | Seed the monorepo with firmware, core crates, tools, docs, and reference. | Accepted |
-| ADR-0010 | Target AxeOS API and asset compatibility before UI rewrite. | Accepted |
-| ADR-0011 | Make USB flashing a first-class `just` workflow. | Accepted |
-| ADR-0012 | Require explicit verification evidence for parity. | Accepted |
-| ADR-0013 | Use MIT-first original code with GPL guardrails. | Accepted |
-| ADR-0014 | Pivot first parity target to Bitaxe Ultra 205 BM1366. | Accepted |
-| ADR-0015 | Separate bootloader, runtime observation, and application control transports. | Accepted |
-| ADR-0016 | Make the Production Mining Session the sole mining owner. | Accepted |
-| ADR-0017 | Deepen the Production Mining Session into the software-complete mining engine. | Accepted |
-| PLAN-0001 | First milestone is project foundation plus Gamma 601 bring-up path. | Superseded by ADR-0014 |
-| PLAN-0002 | First milestone is project foundation plus Ultra 205 safe-state boot/flash path. | Verified for safe-state boot/flash on 2026-06-26 |
+| ID        | Decision                                                                         | Outcome                                                 |
+| --------- | -------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| ADR-0001  | Define rewrite scope as device-user parity.                                      | Accepted                                                |
+| ADR-0002  | Use this repo as a new Rust firmware monorepo.                                   | Accepted                                                |
+| ADR-0003  | Use ESP-IDF Rust bindings for the first production stack.                        | Accepted                                                |
+| ADR-0004  | Use Bazel as the automation graph and `just` as command surface.                 | Accepted                                                |
+| ADR-0005  | Keep upstream ESP-Miner read-only at `reference/esp-miner`.                      | Accepted                                                |
+| ADR-0006  | Treat the parity checklist as audit evidence.                                    | Accepted                                                |
+| ADR-0007  | Prioritize Bitaxe Gamma 601 BM1370 for hardware bring-up.                        | Superseded by ADR-0014                                  |
+| ADR-0008  | Use reference breadcrumbs at module and behavior boundaries.                     | Accepted                                                |
+| ADR-0009  | Seed the monorepo with firmware, core crates, tools, docs, and reference.        | Accepted                                                |
+| ADR-0010  | Target AxeOS API and asset compatibility before UI rewrite.                      | Accepted                                                |
+| ADR-0011  | Make USB flashing a first-class `just` workflow.                                 | Accepted                                                |
+| ADR-0012  | Require explicit verification evidence for parity.                               | Accepted                                                |
+| ADR-0013  | Use MIT-first original code with GPL guardrails.                                 | Accepted                                                |
+| ADR-0014  | Pivot first parity target to Bitaxe Ultra 205 BM1366.                            | Accepted                                                |
+| ADR-0015  | Separate bootloader, runtime observation, and application control transports.    | Accepted                                                |
+| ADR-0016  | Make the Production Mining Session the sole mining owner.                        | Accepted                                                |
+| ADR-0017  | Deepen the Production Mining Session into the software-complete mining engine.   | Accepted                                                |
+| ADR-0021  | Keep USB Serial/JTAG fixed and use direct browser Web Serial.                    | Accepted; supersedes USB topology in ADR-0018/0019/0020 |
+| PLAN-0001 | First milestone is project foundation plus Gamma 601 bring-up path.              | Superseded by ADR-0014                                  |
+| PLAN-0002 | First milestone is project foundation plus Ultra 205 safe-state boot/flash path. | Verified for safe-state boot/flash on 2026-06-26        |
 
 ## Planning Implications
 
@@ -42,19 +43,37 @@ This index summarizes accepted decisions from the original project handoff.
 ## ADR Links
 
 - [ADR-0001](../adr/0001-device-user-parity.md)
+
 - [ADR-0002](../adr/0002-rust-firmware-monorepo.md)
+
 - [ADR-0003](../adr/0003-esp-idf-rust-production-stack.md)
+
 - [ADR-0004](../adr/0004-bazel-automation-with-just-wrapper.md)
+
 - [ADR-0005](../adr/0005-read-only-reference-implementation.md)
+
 - [ADR-0006](../adr/0006-parity-checklist-as-audit-evidence.md)
+
 - [ADR-0007](../adr/0007-prioritize-gamma-601-bm1370-bring-up.md)
+
 - [ADR-0008](../adr/0008-reference-breadcrumb-comments.md)
+
 - [ADR-0009](../adr/0009-monorepo-package-layout.md)
+
 - [ADR-0010](../adr/0010-axeos-api-and-asset-compatibility.md)
+
 - [ADR-0011](../adr/0011-usb-flashing-ergonomics.md)
+
 - [ADR-0012](../adr/0012-parity-verification-evidence.md)
+
 - [ADR-0013](../adr/0013-mit-first-with-gpl-guardrails.md)
+
 - [ADR-0014](../adr/0014-pivot-to-ultra-205-bm1366-first-parity.md)
+
 - [ADR-0015](../adr/0015-separate-bootloader-runtime-and-control-transports.md)
+
 - [ADR-0016](../adr/0016-production-mining-session.md)
+
 - [ADR-0017](../adr/0017-software-complete-production-mining-engine.md)
+
+- [ADR-0021](../adr/0021-fixed-serial-jtag-worker-transport.md)

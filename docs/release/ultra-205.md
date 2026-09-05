@@ -158,3 +158,23 @@ just parity
 is immutable and is not rewritten by the automation cutover. The migration
 ledger at `docs/parity/automation-migration.json` records equivalence decisions
 and any rows downgraded when an old evidence schema was retired.
+
+## Fixed Serial/JTAG update policy
+
+ADR-0021 makes ordinary `just flash` and `just flash-monitor` state-preserving.
+A schema-4 package declares bootloader, binary partition table, application,
+web image and boot-selection segments; sector-rounded writes exclude NVS and
+unrelated partitions. The merged factory image remains an explicit factory
+installation artifact, not the normal update command. Existing Device Identity,
+Wi-Fi settings and authorization replay marks survive routine updates.
+
+`--wifi-credentials` requires explicit factory provisioning/reset; normal
+updates reject it rather than silently replacing NVS. `--factory-reset` is a
+separate destructive choice that resets stored settings and Device Identity;
+it is not authorized by the fixed-USB migration's ordinary update or recovery
+steps. Provision Wi-Fi through the existing configuration flow when needed.
+
+The browser uses Web Serial directly and must release its streams/port before
+flashing. Shared Serial/JTAG descriptors never prove application identity;
+verify the exact running source/ELF after every update. Qualification uses the
+new safe baseline, not recovery-006 or historical TinyUSB evidence.

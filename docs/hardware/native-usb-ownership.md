@@ -1,334 +1,138 @@
-# Native USB ownership
+# Fixed native USB ownership
 
-Read this before changing TinyUSB, USB descriptors or sdkconfig, firmware
-startup, detection, flashing, monitoring, or recovery. The ESP32-S3 has one
-internal USB PHY, so the repository time-multiplexes that PHY instead of
-maintaining separate development and production firmware.
+ADR-0021 is authoritative. This guide replaces the TinyUSB/Serial-JTAG switching
+procedure. Historical work plans, archived task records and consumed attempts
+retain their original facts; they are not active hardware instructions.
 
-## Profiles and identity
+## Controller and execution identity
 
-| Profile | Owner | Allowed host behavior |
-| --- | --- | --- |
-| `worker_runtime` | Boot-lifetime `UsbRuntime` using TinyUSB vendor control plus CDC evidence | Inspect, receive-only monitor, or guarded maintenance handoff |
-| `serial_jtag_runtime` | ESP-IDF USB-Serial-JTAG retained for consume-once diagnostics, recovery, and unconfirmed safe baselines | Inspect, receive-only monitor, or direct automatic reset into ROM |
-| `rom_downloader` | ESP32-S3 ROM | `board-info`, admitted flash, and recovery writes |
-| `unknown` | Unqualified | Fail closed |
+ESP32-S3 USB Serial/JTAG stays enabled in normal, diagnostic, safe-baseline and
+Worker operation. The hardware controller provides the single serial channel
+used by the browser and maintenance tools. Worker activity changes application
+state. No TinyUSB installation, vendor interface, 1200-baud maintenance gesture,
+PHY handoff, or alternate application USB profile remains.
 
-Profile identity comes from exact USB descriptors and, for `rom_downloader`, a
-successful ESP32-S3 `board-info` exchange. Physical identity is the stable
-macOS connector location, falling back to a stable USB serial only when the
-location is unavailable. VID/PID, product strings, device nodes, inode data,
-and registry epochs are profile or enumeration identity and never enter the
-physical digest. One `UsbSession` lease remains held while those fields change.
+Physical identity, OS enumeration, execution owner and logical control session
+are separate. The shared Serial/JTAG descriptor can belong to ROM or firmware.
+Only current board-info admits ROM; application proof requires fresh exact
+source/ELF evidence. Browser possession additionally binds Device Identity,
+the signed serial application manifest and the current unpredictable session.
+VID/PID, device paths and serial strings are discovery hints, never authority.
 
-Transport profile and execution owner are independent. The shared Espressif
-USB-Serial-JTAG descriptor can belong to ROM or to the running application;
-descriptors alone leave that owner unknown. A current `board-info` exchange
-admits ROM for that observation epoch, while a build-bound boot-profile or
-runtime-attestation marker admits the application. Worker descriptors admit
-the application because only the project firmware exposes that exact tuple.
+## Serial protocol and ownership
 
-## Firmware handoff
+Gate's published Controller 0.4, serial transport 0.1 and possession 0.2 are the
+wire authority. Messages use bounded JSON-line envelopes with profile, kind,
+sessionId, sequence and payload. Control payloads are at most 65536 bytes;
+complete wire records are at most 66560 bytes including newline. Decoders
+handle arbitrary fragmentation, coalescing and boot-log resynchronization.
+Unknown, malformed or stale control traffic cannot authorize work.
 
-Ordinary confirmed-safe boots select `worker_runtime`. A consume-once TCP,
-Noise, or self-test admission selects `serial_jtag_runtime`; an unconfirmed
-boot-safe baseline also retains Serial/JTAG by withholding TinyUSB startup.
+One firmware owner serializes application output. Heartbeat/control traffic has
+priority over bounded diagnostics. Raw credentials, signing input, proofs and
+control payloads never become logs. Allowlisted boot diagnostics before hello
+are observation, not control authority; ROM output is not a Worker message.
 
-The only Worker-to-ROM command channel is this CDC class-control sequence:
+The browser uses Web Serial directly, with a user gesture for the first port
+grant. Web Locks coordinate one active Worker per origin; OS exclusivity protects
+the port. Fully release streams and locks before CLI flashing or another reader.
+Hidden, navigating or closing pages attempt restoration and invalidate/release
+the session. Foreground return requires explicit fresh connection/start.
 
-1. The host opens the admitted Worker CDC node, primes DTR low at 115200 baud,
-   and allows those callbacks to settle. It then asserts one DTR arm edge,
-   allows that callback to settle, and sets exact 1200-baud line coding. This
-   avoids duplicate DTR assertions from macOS open semantics.
-2. TinyUSB callbacks enqueue line-coding and line-state events. They perform no
-   safe stop, PHY mutation, or restart.
-3. The Rust owner closes Worker ingress, rejects an already-active Worker
-   effect, and requires Production Mining Session safe-stop success.
-4. The owner emits `usb_maintenance={"status":"ready"}` on CDC evidence.
-5. After observing that exact bounded receipt, the host changes line coding
-   from 1200 back to 115200 baud while DTR remains asserted. The owner accepts
-   that exact post-readiness transition as commit and emits
-   `usb_maintenance={"status":"committed"}` before PHY mutation. Keeping DTR
-   asserted makes the CDC acknowledgment deliverable.
-6. The host requires the committed receipt, then clears DTR and closes CDC. A
-   missing receipt is `handoff_commit_timeout`, distinct from readiness and
-   ROM-profile transition failures.
-7. The owner uninstalls TinyUSB, drives the ESP32-S3 D-/D+ pads low, returns
-   the internal PHY to USB-Serial-JTAG, and waits up to one second for an
-   observed BUS_RESET. Only then does the registered force-download shutdown
-   handler restart into ROM; timeout returns an explicit handoff failure.
+## Liveness and safety
 
-Wrong ordering, a conflicting duplicate event, timeout, disconnect, active effect, failed
-safe stop, missing receipt, or control I/O failure disarms without rebooting.
-CDC payload bytes remain non-command data under ADR-0018.
-Host control-I/O failures retain the closed maintenance-step label and numeric
-errno privately so a retry can target the failed boundary instead of repeating
-the same undifferentiated `handoff_unsupported` result.
+Only advancing authenticated heartbeats for the admitted session refresh link
+authority. They arrive every second and never renew a signed Work Lease. At
+2.8 seconds without one, a generation-bound atomic latch revokes work/submission
+admission. Bounded cancellation and scheduling must begin the existing ordered
+shutdown within three seconds. Blocking Start/Restore, NVS, diagnostics, queued
+actuation and late preparation completion cannot bypass this deadline.
 
-## Firmware implementation ownership
+Cooling remains a separate bounded postcondition. Live acceptance additionally
+has a durable 240000-ms cumulative budget; reconnect, renewal, interruption and
+retry cannot reset it. Missing or exhausted acceptance admission fails closed.
 
-The pure `bitaxe-core` USB Worker model owns the exact device/configuration
-descriptor bytes and bounded vendor-write progress. The firmware `UsbRuntime`
-Module owns descriptor lifetimes, TinyUSB installation, exported TinyUSB
-callbacks, vendor responses, CDC evidence, and typed failures through private
-`esp-idf-sys` calls. The BWG Worker is an Adapter that receives ordinary Rust
-events and never owns USB FFI.
+## Flashing and recovery
 
-USB and Wi-Fi share scarce ESP32-S3 internal DMA-capable heap. The pinned
-full-speed TinyUSB component fixes each vendor FIFO at 64 bytes; the 64 KiB
-Worker frame limit remains an incremental Rust framing bound, not a USB FIFO
-allocation. The TinyUSB task stack is pinned at 3072 bytes, but live evidence
-proved that this reduction alone did not make Wi-Fi's later internal/DMA
-allocation succeed. Ordinary confirmed-safe startup prepares the optional
-Worker's proven 16 KiB owner stack while internal memory remains contiguous,
-but defers TinyUSB installation until after HTTP and Wi-Fi have reserved their
-resources. This prevents the large pthread allocation and the USB/Wi-Fi DMA
-allocations from competing at the same fragmented boundary. Meanwhile,
-`CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304` prevents ordinary PSRAM-eligible
-allocations from consuming the internal pool required by forced-internal task
-stacks and DMA. Diagnostic and unconfirmed-safe boots retain their earlier
-Serial/JTAG path. The non-safety-critical statistics producer starts after
-TinyUSB installation; the fan and safety owners remain ahead of network and
-USB activation. Changing either memory budget or this ordering requires
-compile-time and resolved-config assertions, source-ownership ordering tests,
-and live proof that Wi-Fi and the USB owner both remain stable. Closed
-pre-Worker heap facts and previous-boot panic/allocation receipts are retained
-so later failures do not depend on timing a serial attachment around reset.
-The 96 KiB reserve includes 32 KiB of measured margin over the first stable
-Worker boot, whose post-Wi-Fi/TinyUSB boundary left only 12,343 eligible bytes
-before the deferred 8 KiB statistics stack.
+Use repo-owned just commands. Freeze a clean pushed package before effects,
+retain the physical lease, admit ESP32-S3 ROM before writes, and use validated
+non-overlapping package segments. Ordinary updates exclude NVS and unrelated
+data partitions, preserving Device Identity and durable replay marks. Factory
+reset is never a fallback for missing runtime evidence.
 
-Repository-owned C is intentionally limited to `usb_phy_handoff.c`. That
-Adapter registers the force-download shutdown handler, uninstalls TinyUSB,
-switches the ESP32-S3 internal PHY to USB-Serial-JTAG, and restarts. It owns no
-descriptor, callback, vendor/CDC data path, or Worker delegation. Removal of
-this final C Adapter is a later stage after hardware durability evidence.
+ROM entry/application exit remain explicit reset operations. The fixed
+controller eliminates custom PHY handoff, not ROM execution or every USB
+re-enumeration. A manual BOOT/RESET bootstrap can need physical RESET to resample
+its boot strap. Do not repeat an unchanged ineffective reset. Software reset
+recipes require their own verified bounded contract.
 
-The PHY and force-download sequence is the minimum ESP32-S3 behavior adapted
-from Espressif's pinned Arduino implementation at commit
-`bb0bb3ec57fbcf7efb8409f727fb792e3d28fe79`. See
-`cores/esp32/esp32-hal-tinyusb.c` and `cores/esp32/USBCDC.cpp` in
-`espressif/arduino-esp32`.
+Completed writes, application return and cleanup are separate outcomes. Missing
+boot transcripts do not authorize repeat flashing. Reacquire only the admitted
+physical device, never through network discovery. Preserve the earliest failure
+and require complete owned-process/port cleanup before reuse. An uninterruptible
+host open is an unresolved cleanup boundary; do not layer another session over
+it or infer machine-wide failure from agent-only timing evidence.
 
-## Host operations
+The migration's recovery destination is an exact fixed-Serial/JTAG safe baseline
+with mining disabled. Recovery-006 and old native-USB discriminator plans remain
+historical; their missing evidence is not promoted by architectural replacement.
 
-All profile crossings happen behind the existing repo-owned commands:
-`just detect-ultra205`, `just flash`, `just monitor`, `just flash-monitor`, and
-the recovery commands.
+## Verification and privacy
 
-Monitoring never arms handoff.
+Run just verify-native-usb-ownership after transport/startup/host changes.
+Qualification requires exact no-mining identity/framing checks and 20 complete
+browser-release/flash/reconnect cycles preserving Device Identity/settings.
+Only afterward run the active live-acceptance task's 180000/30000/30000-ms windows
+and Conservative hardware limits.
 
-- Inspect reports a known Worker profile without pretending `board-info` is
-  available. Ordinary Serial/JTAG inspection reports unknown execution
-  ownership without sending synchronization traffic. Explicit ROM admission
-  uses `just detect-ultra205 --retain-rom`; it is never an implicit consequence
-  of observing the shared descriptor. Recovery after a manual BOOT/RESET entry uses
-  `just detect-ultra205 --retain-rom`; this runs read-only `board-info` with
-  `--before no-reset --after no-reset` so detector admission does not discard
-  the already-established ROM profile before restoration.
-- Flash and recovery first acquire the physical lease. Worker performs the
-  guarded handoff; Serial/JTAG enters ROM directly. Every write requires a
-  successful ESP32-S3 `board-info`, then uses `--before no-reset` (or the
-  managed esptool equivalent). This prevents DTR/RTS reset traffic while still
-  allowing each fresh flashing process to synchronize with the already
-  admitted ROM downloader. Synchronization never reaches Worker CDC because
-  the profile handoff and ROM admission precede the flashing process.
-- Observe selects the receive-only Adapter for Worker or Serial/JTAG and never
-  arms maintenance. On macOS the Adapter opens the callout node read-only,
-  configures it as raw 115200 serial, enables local receive, and disables
-  hang-up-on-close. It does not write payload bytes, issue modem-control
-  `ioctl`s, change DTR/RTS, or select the 1200-baud maintenance rate. Raw mode
-  is required even for receive-only operation: otherwise the terminal line
-  discipline may withhold binary or partial evidence until a newline arrives.
-  Profile accessibility probes use this same no-hangup open path; they must not
-  perform a separate default-terminal open/close cycle before monitoring.
-- After a write, the same lease reacquires the expected application profile
-  and remains responsible for process-group cleanup and final holder checks.
-- A software handoff that set `RTC_CNTL_FORCE_DOWNLOAD_BOOT` exits ROM through
-  the contained managed esptool ESP32-S3 hard-reset path, which clears that
-  force bit before reset. `run` with `--after no_reset` is prohibited because
-  it intentionally retains the serial bootloader.
-- Canonical flashing performs the managed application exit after its final
-  factory/NVS write. espflash's serial-line hard reset alone is not this
-  capability, and shared Serial/JTAG descriptors do not prove application
-  return.
+Use a fresh mode-0700 parent, absent supervisor child, distinct mode-0600 logs,
+immutable attempt artifacts and closed outcomes. Raw operational material stays
+protected. Committed evidence excludes device, network, pool, credential, proof,
+token and NVS-secret values. Software completion or one stable boot never causes
+automatic parity promotion.
 
-`just native-usb-start-installed` is the active-task-gated no-write continuation
-for an image already installed by a completed flash. It validates expected
-source/ELF identity and the protected output root, retains the physical lease,
-admits ROM with no-reset board-info, reads only the force-download register,
-and invokes one managed application exit. It requires Worker plus exact
-runtime diagnostic identity before success. The expected image can precede
-the host-tooling commit; it is a verification target, never permission to infer
-runtime identity from package files. It accepts no image, NVS, credentials,
-erase, mining, or network arguments and does not retry a reset after ambiguous
-completion. Physical recovery remains a fallback when the contained exit or
-its postcondition fails.
+## Qualification command sequence
 
-Initial production support is macOS. Linux and Windows expose the same
-Interface but fail closed until their inventory, identity, serial-control, and
-process adapters receive separate qualification.
+The active `TASKS.md` contracts define the allowed effects and stop conditions.
+All placeholders below bind to the exact clean pushed sources, canonical
+package, admitted device, and protected ignored attempt root. A preflight is
+read-only with respect to the device; it creates one local campaign context.
+Do not replace that context to obtain another mining budget.
 
-## Closed failures and evidence
+1. Resolve the existing detector's pending cleanup before opening USB. If its
+   driver open remains uninterruptible, disconnect only the supplied USB cable,
+   keep barrel power attached, and wait for the known owner/child to exit.
+   Confirm their exit and lease cleanup before reconnecting. A built-in
+   BOOT/RESET bootstrap may be used only when standard ROM admission fails;
+   record the manual-bootstrap reset case separately from buttonless cycles.
+1. Run `just detect-ultra205` into a protected local log. Require one physical
+   device and explicit ROM admission for writes. Create each evidence directory
+   once; do not reuse a consumed failed attempt.
+1. Install with `just flash-monitor --board 205 --port <admitted-port> --manifest <canonical-package-json> --evidence-dir <new-private-directory> --redact-evidence`. Do not pass `--factory-reset`, image overrides, or NVS
+   provisioning inputs. The browser must have released the port first.
+1. Run `just fixed-usb-qualification preflight --firmware-root <firmware-repo> --gate-root <gate-repo> --firmware-commit <clean-firmware-commit> --gate-commit <exact-pinned-gate-commit> --manifest <canonical-package-json> --private-root <new-ignored-private-root> --authority-directory <protected-authority-directory>`. Its parent must be mode 0700.
+1. Run `just fixed-usb-qualification serve --private-root <that-private-root> --authority-directory <protected-authority-directory> --pool-credentials <ignored-owner-pool-file>` with separate protected stdout/stderr. Open the
+   emitted loopback page in desktop Chrome. The browser owns USB directly;
+   the local test server signs bounded grants and records closed facts.
+1. Configure and explicitly connect without starting work. Verify exact source,
+   ELF, and the browser's private Device Identity/settings/replay comparison,
+   plus the maximum transport probe. Only continuity booleans and an unrelated
+   random page-baseline identifier enter cycle reports; never persist those
+   fingerprints. Retain the same page for all 20 cycles. Close the browser port,
+   flash the same package,
+   reconnect explicitly and compare evidence for each of 20 cycles. Seal each
+   real observation using `just fixed-usb-qualification record-cycle --private-root <that-private-root> --input <protected-cycle-report>`.
+   A report validator does not itself perform or prove a hardware operation.
+1. Only after all 20 cycles pass, prepare the three signed acceptance windows
+   through the page. Use the task's conservative profile and cumulative device
+   budget. The normal window requires a correlated accepted share; hide the
+   page in window 1 and suppress heartbeats in window 2. Reconnect explicitly
+   to collect retained device stop evidence. Missing evidence remains a failure.
+1. Validate a completed window with the page's validation button or
+   `just fixed-usb-qualification judge --private-root <that-private-root> --window <0-or-1-or-2>`. Finish with qualified cooling, persisted
+   `mineonboot=false`, cleared leases/volatile credentials, browser closure,
+   supervisor termination and proved USB cleanup. Promote only independently
+   redacted evidence; leave unverified criteria and unrelated tasks open.
 
-Native ownership adds `runtime_profile_unknown`, `handoff_unsupported`,
-`handoff_rejected_unsafe_state`, `handoff_ready_timeout`,
-`handoff_commit_timeout`, `bus_reset_timeout`, `same_worker_after_commit`,
-`handoff_transition_timeout`, `bootloader_ambiguous`,
-`physical_identity_drift`, `bootloader_sync_failed`, `rom_admission_failed`,
-`application_reappearance_timeout`, and `recovery_required`. Existing
-flash/recovery/cleanup failures remain available, and the earliest failure is
-never replaced by a later cleanup error.
-
-Raw addresses, ports, descriptors, identities, serial data, process data, and
-timestamps remain in ignored mode-`0600` artifacts under mode-`0700` roots.
-Public output contains only closed categories, booleans, bounded counts and
-timings, and safe digests.
-
-Each Worker-to-ROM transition also writes a bounded protected profile trace
-using only `absent`, `same_worker`, `same_serial_jtag`, `same_unknown`, and
-`physical_mismatch`. This trace distinguishes a wrong-profile same-device
-observation from true absence without recording ports, descriptors, location
-IDs, serial numbers, or physical digests.
-
-## Development and recovery
-
-Run `just verify-native-usb-ownership` after every software change in this
-surface. It checks the sole TinyUSB owner, diagnostic Serial/JTAG retention,
-the maintenance reducer, centralized host routing, linked callback/PHY symbols,
-and agent/ADR/docs guardrails through Bazel.
-
-The task-gated single-transition discriminator is
-`just verify-native-usb-transition`. It holds one physical lease across
-Worker readiness, acknowledged commit, Serial/JTAG re-enumeration, a
-read-only ESP32-S3 `board-info`, hard reset, and Worker reappearance. It never
-loads or writes an image. Its candidate result remains protected until
-`just native-usb-transition-recovery finalize` joins it to exact primary and
-final recovery-006 results; only that finalizer may publish the redacted
-projection. Recovery `preflight` validates the historical bundle, public
-readiness projection, private validator receipt, managed ESP-IDF tools, exact
-current package, and restore admission without leaving a private root or
-touching the device.
-
-If recovery writes complete but a late passive monitor misses one-shot boot
-evidence, the same `start` Interface may continue only after validating the
-protected completed snapshot and NVS receipts. That continuation records a
-consume-once private intent, permits no repeated write, performs one admitted
-hard reset, and immediately attaches the receive-only observer. Missing or
-partial receipts, source-lineage drift, a prior continuation, or a completed
-result all fail closed.
-
-`just native-usb-display-recovery` is the recovery-only fallback when the
-qualified USB observer carries no application bytes but the running Bitaxe
-display shows its private IPv4 address. It accepts that address directly from
-the operator, obtains the ESP32-S3 base MAC through admitted USB `board-info`,
-and requires the API station MAC digest and complete recovery identity to
-match before sending a settings request. Local development UI and console
-output may show the address. Public evidence remains redacted. This fallback
-does not perform or authorize mDNS, ARP, router lookup, subnet scanning,
-hostname discovery, flashing, NVS writes, or a transition diagnostic.
-
-When the display has no station address, the task-gated
-`just native-usb-config-ap-recovery` Interface is the only configuration-AP
-continuation. Its first stage retains one admitted USB session, reads exactly
-the NVS partition range `0x9000..0xefff`, and compares the protected result to
-a freshly generated ordinary seed. It performs no device write and no host
-network change. Configuration-AP association remains prohibited unless that
-sealed discriminator reports `nvs_match`; later recovery must use the same
-Interface and the exact USB-derived AP candidate, never general Wi-Fi,
-hostname, ARP, mDNS, router, or subnet discovery.
-
-`just native-usb-rom-exit` is the no-write discriminator for the shared
-Serial/JTAG transport. It reads only the force-download bit, performs one
-contained hard-reset ROM exit, and requires Worker descriptors or exact
-application evidence before naming an execution owner.
-
-`just native-usb-owner-recovery` is the passive-first successor when the
-shared transport is already visible but explicit ROM admission fails. It first
-requires two exact recovery runtime attestations without transmitting serial
-data. Only missing or insufficient evidence may advance to one built-in
-BOOT/RESET checkpoint, one admitted ROM observation, and one managed hard-reset
-application exit. Malformed, inconsistent, or package-mismatched evidence is
-terminal and cannot be bypassed with the manual branch.
-
-`just native-usb-boot-chain-integrity` is the read-only successor after both
-application observations are byte-empty. It uses one manual ROM entry to
-compare bootloader, partition table, OTA selection data, and exactly the
-selected application with the immutable recovery snapshot. It never repairs a
-range or treats a valid flash comparison as proof that the application ran.
-
-During temporary USB stabilization, `just usb-stability-read` exercises a
-known recovery-006 factory slice through the ROM loader without the flasher
-stub. It pins the 16 MiB flash size, verifies every bounded chunk, holds the
-physical-device lease, and returns to the application without writing flash.
-Use a fresh ignored root for each calibration and change only one transport
-variable between failed runs.
-Use `--pattern repeated` for connection durability against one slice and
-`--pattern sequential` for bounded full-partition coverage.
-The first accepted no-stub baseline is recorded at
-`docs/parity/evidence/native-usb-stability/usb-stability-baseline-v1.json`.
-
-When a Worker node repeatedly disappears before normal session admission,
-`just diagnose-usb-reboot-loop --port <worker-port> --timeout-seconds 15`
-retains the physical connector and reopens only the receive-only Adapter. Each
-Worker mount emits a closed `boot_ordinal`, reset-reason category, and uptime
-marker without requiring DTR in firmware. The dedicated macOS observer opens
-the Worker CDC read/write only because the driver requires it for class
-control, fixes raw 115200, asserts DTR while observing, and clears DTR on drop.
-It contains no 1200-baud path and sends no payload, so it cannot arm Worker
-maintenance. Increasing ordinals prove a chip reset; one ordinal with
-increasing uptime proves a USB-stack-only reset. The diagnostic is bounded to
-30 seconds, captures at most 64 KiB, performs no network action, and publishes
-no raw identity.
-
-When the closed reset family is `panic`, a boot-installed Rust panic hook
-stores only an FNV-1a source-path digest and one-based source line in RTC
-no-init memory. The next boot consumes and clears that integrity-checked
-receipt and replays it over Worker CDC. A present receipt identifies a Rust
-panic location without persisting panic text; a missing receipt across later
-panic resets places the failure below Rust. This path never writes flash, so a
-rapid reboot loop cannot create coredump wear.
-The same Adapter registers ESP-IDF's allocation-failure callback and retains
-the first requested byte count and capability mask after registration, plus a
-separate integrity-checked source hash and closed global startup stage. The
-callback performs only an atomic claim and fixed-size RTC writes, with no
-allocation, logging, lock, or flash operation. The context must match the
-allocation receipt before replay. It identifies the producing build and the
-startup boundary, not the allocating task or the cause of a later panic.
-The pinned configuration disables abort-on-allocation-failure: a failed
-allocation can recover before an unrelated panic, so receipt presence alone
-must never be reported as proof of an allocator-caused reset.
-
-A normal 115200-baud DTR observer receives one finite diagnostic report after
-the maintenance-arm window expires. The report contains exact source/ELF
-identity, two current-boot markers, prior failure receipts, and allowlisted
-pre/post-USB and statistics heap checkpoints. It contains no raw logs or
-network identifiers. Small nonblocking lines preserve FIFO capacity for
-maintenance receipts; entering maintenance cancels the diagnostic burst.
-Mount-time boot/failure markers remain available to discriminate fast reset
-loops before a full report can be emitted.
-
-The owner retains at most 16 closed maintenance trace entries. They distinguish
-class-control events, phases/actions, deadline expiry, queue loss, ready/commit
-enqueue results, and PHY invocation/result. Trace recording allocates no heap
-and leaves protocol acceptance unchanged. Failed or disarmed maintenance may
-replay this trace through a fresh ordinary observer without reopening Worker
-command ingress; pending safe stop, readiness, and successful commit suppress
-diagnostics. The finite report remains within the host's 64 KiB/30-second
-capture bound. Replayed overlapping trace windows retain the latest 16 entries
-without relabeling a same-boot USB re-enumeration as a parsing failure.
-
-Use `just diagnose-usb-reboot-loop --port <fresh-port> --timeout-seconds 30
---expected-source-commit <manifest-source> --expected-app-elf-sha256
-<manifest-elf-digest>` to require runtime identity. Missing or conflicting
-identity fails closed. Multiple same-boot markers with zero reconnects are
-`stable_boot`; same-boot markers across observer reopens remain
-`usb_stack_reset`. Neither classification erases prior failure evidence or
-proves longer-term durability.
-
-Manual BOOT/RESET is a one-time bootstrap or last-resort recovery path, never
-the normal development workflow. Buttonless flashing is not qualified until
-the active task records 20 automatic Worker-to-ROM-to-flash-to-Worker cycles
-with stable physical identity, exact package restoration, complete cleanup,
-and redacted evidence. OTA may accelerate application updates but cannot be
-the only recovery route.
+Human checkpoints have no deadline. Device leases, serial operations, signer
+children, active-mining windows and cooling retain their bounded deadlines.

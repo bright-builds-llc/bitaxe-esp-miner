@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted. [ADR-0021](0021-fixed-serial-jtag-worker-transport.md) clarifies that separate responsibilities share the fixed Serial/JTAG channel; its serial control and observation rules supersede topology-specific statements below.
 
 ## Decision
 
