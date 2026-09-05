@@ -55,19 +55,14 @@ const sourceFragments = new Map<string, readonly string[]>([
     "PreparationStep::SetCoreVoltage(profile.core_voltage()),",
     "PreparationStep::WaitForCoreVoltageStabilization500Ms,",
     "PreparationStep::EnableAsic,",
-    "SafeShutdownStep::DisableCoreVoltage,",
-    "SafeShutdownStep::DisableAsic,",
+    "pub const fn safe_shutdown_plan() -> [SafeShutdownStep; 8] {\n    [\n        SafeShutdownStep::StopDispatch,\n        SafeShutdownStep::ReduceFrequencyAndResetNonce,\n        SafeShutdownStep::HoldResetLow,\n        SafeShutdownStep::DisableCoreVoltage,\n        SafeShutdownStep::DisableAsic,\n        SafeShutdownStep::SetFanDutyTo100Percent,\n        SafeShutdownStep::WaitForFreshTemperatureAtOrBelow45C,\n        SafeShutdownStep::SetFanDutyTo30Percent,\n    ]\n}",
   ]],
   [unchangedPaths[2], [
-    "SafetyActuationCommand::SetCoreVoltage(Self::core_voltage(voltage)?)",
-    "thread::sleep(Duration::from_millis(u64::from(\n                    CORE_VOLTAGE_STABILIZATION_MS,\n                )));",
-    "crate::asic_adapter::production::set_asic_power_enabled(true)",
     "SafeShutdownStep::DisableCoreVoltage | SafeShutdownStep::DisableAsic =>",
     "crate::asic_adapter::production::set_asic_power_enabled(false)",
     "Pinned upstream VCORE_set_voltage(0) performs no DS4432U write;",
   ]],
   [semanticPaths[0], [
-    "SafetyActuationCommand::SetCoreVoltage(voltage) => {\n            ds4432u::write_core_voltage(&mut bus, voltage)\n        }",
     "Ok(()) => SafetyActuationReply::Applied,",
     "Err(_) => SafetyActuationReply::HardwareWriteFailed,",
   ]],
@@ -201,6 +196,46 @@ function requireUniqueFragment(document: string, fragment: string): void {
   }
 }
 
+function requireVoltagePreparation(adapter: string, actuation: string): boolean {
+  const voltage = actuation.indexOf("PreparationStep::SetCoreVoltage(profile.core_voltage()),");
+  const stabilization = actuation.indexOf("PreparationStep::WaitForCoreVoltageStabilization500Ms,");
+  const enable = actuation.indexOf("PreparationStep::EnableAsic,");
+  if (voltage < 0 || stabilization <= voltage || enable <= stabilization) {
+    throw failure("evidence_invalid", "voltage stabilization must precede ASIC enable");
+  }
+  // Historical snapshots retain their exact blocking form. The current form
+  // additionally proves the complete cancellable wait and generation guards;
+  // neither form bypasses the unchanged-module Git comparison below.
+  const cancellable = adapter.includes("fn cancellable_delay(");
+  const fragments = cancellable ? [
+    "self.request_preparation_voltage(Self::core_voltage(voltage)?)",
+    "SafetyActuationCommand::SetCoreVoltageForGeneration {\n                voltage,\n                permit: crate::production_mining_session::revocation::stamp(\n                    self.maybe_worker_generation,\n                ),\n            }",
+    "PreparationStep::WaitForCoreVoltageStabilization500Ms => {\n                self.cancellable_delay(u64::from(CORE_VOLTAGE_STABILIZATION_MS))\n            }",
+    "crate::mining_actuation::wait_with_cancellation(\n            duration_ms,\n            crate::runtime_uptime::millis,\n            |milliseconds| thread::sleep(Duration::from_millis(milliseconds)),\n            || self.check_preparation_admission(),\n        )",
+    "if !crate::production_mining_session::revocation::permits(self.maybe_worker_generation) {\n            return Err(MiningActuationAdapterError::WorkerGenerationRevoked);\n        }",
+    "crate::asic_adapter::production::set_asic_power_enabled_guarded(\n                    true,\n                    self.maybe_worker_generation,\n                )",
+  ] : [
+    "SafetyActuationCommand::SetCoreVoltage(Self::core_voltage(voltage)?)",
+    "thread::sleep(Duration::from_millis(u64::from(\n                    CORE_VOLTAGE_STABILIZATION_MS,\n                )));",
+    "crate::asic_adapter::production::set_asic_power_enabled(true)",
+  ];
+  for (const fragment of fragments) requireUniqueFragment(adapter, fragment);
+  if (cancellable) {
+    requireUniqueFragment(actuation, "let deadline = now_ms().saturating_add(duration_ms);");
+    requireUniqueFragment(actuation, "loop {\n        check()?;\n        let remaining = deadline.saturating_sub(now_ms());\n        if remaining == 0 {\n            return Ok(());\n        }\n        sleep_ms(remaining.min(50));\n    }");
+  }
+  return cancellable;
+}
+
+function requireVoltageOwner(document: string, generationRequired: boolean): void {
+  const stamped = document.includes("SetCoreVoltageForGeneration");
+  if (generationRequired && !stamped) throw failure("evidence_invalid", "generation voltage route is absent");
+  const fragment = stamped
+    ? "SafetyActuationCommand::SetCoreVoltageForGeneration { voltage, permit } => {\n            if !crate::production_mining_session::revocation::permits_work(permit) {\n                return SafetyActuationReply::HardwareWriteFailed;\n            }\n            ds4432u::write_core_voltage(&mut bus, voltage)\n        }"
+    : "SafetyActuationCommand::SetCoreVoltage(voltage) => {\n            ds4432u::write_core_voltage(&mut bus, voltage)\n        }";
+  requireUniqueFragment(document, fragment);
+}
+
 function validateTaskAndPlan(
   taskDocument: string,
   planDocument: string,
@@ -237,20 +272,27 @@ async function validateSourceCompatibility(
   currentSourceCommit: string,
   referenceCommit: string,
 ): Promise<void> {
+  const unchangedDocuments = new Map<string, string>();
   for (const sourcePath of unchangedPaths) {
     await childText(processPort, gitProgram,
       ["diff", "--quiet", attemptSourceCommit, currentSourceCommit, "--", sourcePath],
       "core-voltage-control module compatibility");
     const document = await childText(processPort, gitProgram,
       ["show", `${currentSourceCommit}:${sourcePath}`], "core-voltage-control source admission");
+    unchangedDocuments.set(sourcePath, document);
     for (const fragment of sourceFragments.get(sourcePath) ?? []) {
       requireUniqueFragment(document, fragment);
     }
   }
+  const adapter = unchangedDocuments.get(unchangedPaths[2]);
+  const actuation = unchangedDocuments.get(unchangedPaths[1]);
+  if (adapter === undefined || actuation === undefined) throw failure("evidence_invalid", "voltage source pair is incomplete");
+  const generationRequired = requireVoltagePreparation(adapter, actuation);
   for (const sourcePath of semanticPaths) {
     for (const commit of [attemptSourceCommit, currentSourceCommit]) {
       const document = await childText(processPort, gitProgram,
         ["show", `${commit}:${sourcePath}`], "core-voltage-control semantic admission");
+      if (sourcePath === semanticPaths[0]) requireVoltageOwner(document, generationRequired);
       for (const fragment of sourceFragments.get(sourcePath) ?? []) {
         requireUniqueFragment(document, fragment);
       }

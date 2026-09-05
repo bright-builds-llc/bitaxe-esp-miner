@@ -14,16 +14,7 @@ js_binary(
     data = [
         "verify-native-usb-ownership.mjs",
         "//:native_usb_ownership_guard_inputs",
-        "//crates/bitaxe-core:native_usb_ownership_source",
-        "//crates/bitaxe-api:usb_boot_profile_source",
         "//firmware/bitaxe:native_usb_ownership_sources",
-        "//tools/automation:native_usb_transition_evaluator_sources",
-        "//tools/automation:native_usb_display_recovery_sources",
-        "//tools/automation:native_usb_config_ap_recovery_sources",
-        "//tools/automation:native_usb_rom_exit_sources",
-        "//tools/automation:native_usb_owner_recovery_sources",
-        "//tools/device-session:native_usb_ownership_sources",
-        "//tools/flash:native_usb_ownership_sources",
     ],
     entry_point = "verify-native-usb-ownership.mjs",
     visibility = ["//visibility:public"],
@@ -35,16 +26,7 @@ js_test(
     data = [
         "verify-native-usb-ownership.mjs",
         "//:native_usb_ownership_guard_inputs",
-        "//crates/bitaxe-core:native_usb_ownership_source",
-        "//crates/bitaxe-api:usb_boot_profile_source",
         "//firmware/bitaxe:native_usb_ownership_sources",
-        "//tools/automation:native_usb_transition_evaluator_sources",
-        "//tools/automation:native_usb_display_recovery_sources",
-        "//tools/automation:native_usb_config_ap_recovery_sources",
-        "//tools/automation:native_usb_rom_exit_sources",
-        "//tools/automation:native_usb_owner_recovery_sources",
-        "//tools/device-session:native_usb_ownership_sources",
-        "//tools/flash:native_usb_ownership_sources",
     ],
     entry_point = "verify-native-usb-ownership.mjs",
 )
@@ -85,35 +67,12 @@ js_library(
     visibility = ["//tools/automation:__pkg__"],
 )
 
-js_library(
-    name = "bwg_worker_restoration_sources",
-    srcs = glob(["bwg-worker-restoration/*"]),
-)
-
-js_binary(
-    name = "bwg_worker_restoration_preflight",
-    data = [":bwg_worker_restoration_sources"],
-    entry_point = "bwg-worker-restoration/preflight.mjs",
-)
-
-js_binary(
-    name = "bwg_worker_restoration_campaign",
-    data = [":bwg_worker_restoration_sources"],
-    entry_point = "bwg-worker-restoration/campaign.mjs",
-)
-
-js_test(
-    name = "bwg_worker_restoration_contract_test",
-    data = [":bwg_worker_restoration_sources"],
-    entry_point = "bwg-worker-restoration/contract.test.mjs",
-)
-
 js_test(
     name = "verify_bwg_fixture_exports_test",
     args = [
         "$(rootpath @bwg_gate_contract//:package_json_js)",
-        "$(rootpath @bwg_gate_contract//:controller_v03_fixtures_js)",
-        "$(rootpath @bwg_gate_contract//:worker_usb_v02_fixtures_js)",
+        "$(rootpath @bwg_gate_contract//:controller_v04_fixtures_js)",
+        "$(rootpath @bwg_gate_contract//:worker_serial_v01_fixtures_js)",
         "$(rootpath @bwg_gate_contract//:worker_possession_fixtures_js)",
         "$(rootpath @bwg_gate_contract//:worker_deployment_trust_fixtures_js)",
         "$(rootpath @bwg_gate_contract//:worker_deployment_trust_js)",
@@ -124,8 +83,8 @@ js_test(
     chdir = ".",
     data = [
         "@bwg_gate_contract//:package_json_js",
-        "@bwg_gate_contract//:controller_v03_fixtures_js",
-        "@bwg_gate_contract//:worker_usb_v02_fixtures_js",
+        "@bwg_gate_contract//:controller_v04_fixtures_js",
+        "@bwg_gate_contract//:worker_serial_v01_fixtures_js",
         "@bwg_gate_contract//:worker_possession_fixtures_js",
         "@bwg_gate_contract//:worker_deployment_trust_fixtures_js",
         "@bwg_gate_contract//:worker_deployment_trust_js",
@@ -148,4 +107,22 @@ js_test(
     chdir = "..",
     data = ["api-command-effects-stratum-pool.mjs"],
     entry_point = "api-command-effects-stratum-pool-test.mjs",
+)
+
+js_library(
+    name = "fixed_usb_qualification_sources",
+    srcs = glob(["fixed-usb-qualification/*.mjs"]),
+)
+
+js_binary(
+    name = "fixed_usb_qualification",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/main.mjs",
+    visibility = ["//visibility:public"],
+)
+
+js_test(
+    name = "fixed_usb_qualification_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/supervisor.test.mjs",
 )

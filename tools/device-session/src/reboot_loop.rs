@@ -7,7 +7,7 @@ use bitaxe_api::panic_receipt::{
 };
 
 mod diagnostics;
-pub use diagnostics::{UsbMaintenanceTrace, UsbMemoryCheckpoint, UsbRuntimeIdentity};
+pub use diagnostics::{UsbMemoryCheckpoint, UsbRuntimeIdentity};
 
 /// Closed classification for one bounded USB reboot-loop observation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -62,11 +62,6 @@ impl UsbRebootLoopObservation {
     /// Returns validated, deduplicated startup heap checkpoints.
     pub fn memory_checkpoints(&self) -> &[UsbMemoryCheckpoint] {
         &self.diagnostics.memory
-    }
-
-    /// Returns bounded closed maintenance trace independently of expected package identity.
-    pub fn maintenance_trace(&self) -> &[UsbMaintenanceTrace] {
-        &self.diagnostics.maintenance_trace
     }
 
     /// Reports an explicit Worker startup failure independently from missing evidence.
@@ -125,7 +120,7 @@ impl UsbRebootLoopObservation {
     }
 }
 
-/// Observes a flapping macOS USB profile using the fixed-115200 DTR evidence adapter.
+/// Observes a flapping macOS USB profile using the fixed-115200 receive-only adapter.
 /// It sends no payload and never selects the maintenance baud.
 pub fn observe_usb_reboot_loop(port: &str, timeout: Duration) -> Result<UsbRebootLoopObservation> {
     if timeout.is_zero() || timeout > Duration::from_secs(30) {

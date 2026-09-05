@@ -20,6 +20,7 @@ exports_files([
     "docs/adr/0015-separate-bootloader-runtime-and-control-transports.md",
     "docs/adr/0018-possession-bound-worker-usb-control.md",
     "docs/adr/0020-time-multiplex-native-usb-ownership.md",
+        "docs/adr/0021-fixed-serial-jtag-worker-transport.md",
     "docs/hardware/esp-device-session.md",
     "docs/hardware/native-usb-ownership.md",
     "docs/adr/0019-supervise-bwg-restoration-through-a-protected-browser-campaign.md",
@@ -90,15 +91,9 @@ filegroup(
 js_library(
     name = "native_usb_ownership_guard_inputs",
     srcs = [
-        ".codex/tasks/lessons.md",
         "AGENTS.md",
-        "Justfile",
-        "docs/adr/0015-separate-bootloader-runtime-and-control-transports.md",
-        "docs/adr/0018-possession-bound-worker-usb-control.md",
-        "docs/adr/0020-time-multiplex-native-usb-ownership.md",
-        "docs/hardware/esp-device-session.md",
+        "docs/adr/0021-fixed-serial-jtag-worker-transport.md",
         "docs/hardware/native-usb-ownership.md",
-        "docs/parity/evidence/native-usb-stability/usb-stability-baseline-v1.json",
     ],
     visibility = ["//scripts:__pkg__"],
 )
@@ -135,58 +130,6 @@ js_library(
         "TASKS.md",
         "docs/parity/work-plans/20260825T215446Z-STR-005-RESTORE-AND-VERIFY/PLAN.md",
     ],
-    visibility = ["//tools/automation:__pkg__"],
-)
-
-js_library(
-    name = "native_usb_transition_inputs",
-    srcs = [
-        "TASKS.md",
-        "docs/parity/work-plans/20260825T123346Z-STR-005-AUTONOMOUS-CONTINUATION/PLAN.md",
-        "docs/parity/work-plans/20260830T142327Z-NATIVE-USB-RECOVERY-TRANSITION/PLAN.md",
-    ],
-    visibility = ["//tools/automation:__pkg__"],
-)
-
-js_library(
-    name = "native_usb_display_recovery_inputs",
-    srcs = [
-        "TASKS.md",
-        "docs/parity/work-plans/20260830T161148Z-NATIVE-USB-DISPLAY-RECOVERY/PLAN.md",
-    ],
-    visibility = ["//tools/automation:__pkg__"],
-)
-
-js_library(
-    name = "native_usb_config_ap_recovery_inputs",
-    srcs = [
-        "TASKS.md",
-        "docs/parity/work-plans/20260831T033840Z-NATIVE-USB-CONFIG-AP-RECOVERY-NVS-FIRST/PLAN.md",
-    ],
-    visibility = ["//tools/automation:__pkg__"],
-)
-
-js_library(
-    name = "native_usb_rom_exit_inputs",
-    srcs = [
-        "TASKS.md",
-        "docs/parity/work-plans/20260831T190744Z-NATIVE-USB-ROM-EXIT-DISCRIMINATOR/PLAN.md",
-    ],
-    visibility = ["//tools/automation:__pkg__"],
-)
-
-js_library(
-    name = "native_usb_owner_recovery_inputs",
-    srcs = [
-        "TASKS.md",
-        "docs/parity/work-plans/20260901T161405Z-NATIVE-USB-SERIAL-OWNER-RECOVERY/PLAN.md",
-    ],
-    visibility = ["//tools/automation:__pkg__"],
-)
-
-js_library(
-    name = "native_usb_boot_chain_integrity_inputs",
-    srcs = ["TASKS.md", "docs/parity/work-plans/20260902T022334Z-NATIVE-USB-BOOT-CHAIN-INTEGRITY/PLAN.md"],
     visibility = ["//tools/automation:__pkg__"],
 )
 

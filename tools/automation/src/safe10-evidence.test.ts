@@ -250,6 +250,25 @@ test("checked-in SAFE-10 source inventory is complete", async () => {
   assert.equal(inventory.pathCount, 19);
 });
 
+for (const [name, before, after] of [
+  ["nonzero-fan", "*sample.value() > 0", "*sample.value() >= 0"],
+  ["freshness-conjunction", "&& observations", "|| observations"],
+] as const) {
+  test(`SAFE-10 source admission rejects weakened ${name}`, async () => {
+    // Arrange
+    const value = await fixture(name);
+    const relative = "firmware/bitaxe/src/production_mining_session.rs";
+    const source = value.sourceDocuments.get(relative);
+    assert.ok(source !== undefined);
+    assert.ok(source.includes(before));
+    await writeFile(path.join(value.root, relative), source.replace(before, after));
+
+    // Act / Assert
+    try { await assert.rejects(safe10CurrentInventory(value.root), /source semantics are invalid/u); }
+    finally { await rm(value.root, { recursive: true }); }
+  });
+}
+
 test("prerequisite or attempt-source drift withholds SAFE-10 projection", async () => {
   for (const [name, powerFresh, drift] of [
     ["prerequisite", false, false],

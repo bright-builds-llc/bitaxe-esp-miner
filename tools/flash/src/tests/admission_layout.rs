@@ -4,7 +4,7 @@ use super::*;
 fn identity_admission_rejects_digest_rewritten_factory_app_tamper_before_effects() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let factory_path = manifest
         .parent()
         .expect("manifest parent")
@@ -15,6 +15,7 @@ fn identity_admission_rejects_digest_rewritten_factory_app_tamper_before_effects
     std::fs::write(factory_path.as_std_path(), &factory).expect("tampered factory image");
     rewrite_manifest_artifact_digest(&manifest, "factory_merged_image", &factory);
     let command = FlashCommand {
+        factory_reset: false,
         common: CommonArgs {
             port: None,
             dry_run: false,
@@ -43,7 +44,7 @@ fn identity_admission_rejects_digest_rewritten_factory_app_tamper_before_effects
 fn executable_admission_rejects_zero_load_address_in_parsed_dry_run_before_effects() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let mut ota = esp_application_fixture(SOURCE_COMMIT, BUILD_LABEL);
     ota[24..28].copy_from_slice(&0_u32.to_le_bytes());
     reseal_esp_application(&mut ota);
@@ -77,7 +78,7 @@ fn executable_admission_rejects_zero_load_address_in_parsed_dry_run_before_effec
 fn executable_admission_rejects_mapped_mismatch_in_parsed_non_dry_run_before_effects() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let mut ota = esp_application_fixture(SOURCE_COMMIT, BUILD_LABEL);
     ota[24..28].copy_from_slice(&0x3c00_0024_u32.to_le_bytes());
     reseal_esp_application(&mut ota);
@@ -148,7 +149,7 @@ fn identity_admission_rejects_all_layout_classes_in_parsed_non_dry_run_before_ef
 fn firmware_elf_app_sha_rejects_changed_elf_in_parsed_dry_run_before_later_reads() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     rewrite_manifest_elf_artifact_only(&manifest, b"changed firmware elf");
     let cli = parse_cli([
         "bitaxe-flash".to_owned(),
@@ -185,7 +186,7 @@ fn firmware_elf_app_sha_rejects_changed_elf_in_parsed_dry_run_before_later_reads
 fn firmware_elf_app_sha_rejects_changed_elf_in_parsed_non_dry_run_before_effects() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     rewrite_manifest_elf_artifact_only(&manifest, b"changed firmware elf");
     let cli = parse_cli([
         "bitaxe-flash".to_owned(),
@@ -219,7 +220,7 @@ fn firmware_elf_app_sha_rejects_changed_elf_in_parsed_non_dry_run_before_effects
 fn identity_admission_rejects_explicit_manifest_elf_before_effects() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let image = manifest
         .parent()
         .expect("manifest parent")
@@ -238,7 +239,7 @@ fn identity_admission_rejects_explicit_manifest_elf_before_effects() {
 fn identity_admission_rejects_explicit_extra_artifact_before_effects() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let image = add_manifest_artifact(&manifest, "extra", "extra.bin", b"extra image");
 
     // Act
@@ -254,7 +255,7 @@ fn identity_admission_rejects_explicit_extra_artifact_before_effects() {
 fn identity_admission_rejects_explicit_factory_path_alias_before_effects() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let manifest_dir = manifest.parent().expect("manifest parent");
     let factory = manifest_dir.join(FACTORY_IMAGE_NAME);
     let factory_bytes = std::fs::read(factory.as_std_path()).expect("factory image");
@@ -278,7 +279,7 @@ fn identity_admission_rejects_explicit_factory_path_alias_before_effects() {
 fn identity_admission_rejects_explicit_factory_named_extra_before_effects() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let image = add_manifest_artifact(
         &manifest,
         "factory_named_extra",
@@ -299,13 +300,14 @@ fn identity_admission_rejects_explicit_factory_named_extra_before_effects() {
 fn admitted_execution_uses_original_bytes_after_package_replacement() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let factory_path = manifest
         .parent()
         .expect("manifest parent")
         .join(FACTORY_IMAGE_NAME);
     let admitted_bytes = std::fs::read(factory_path.as_std_path()).expect("factory image");
     let command = FlashCommand {
+        factory_reset: false,
         common: CommonArgs {
             dry_run: false,
             ..common_args()
@@ -322,20 +324,27 @@ fn admitted_execution_uses_original_bytes_after_package_replacement() {
 
     // Assert
     let observed = environment.observed_flashes();
-    assert_eq!(observed.len(), 1);
-    assert_ne!(observed[0].path, factory_path);
-    assert_eq!(observed[0].bytes, admitted_bytes);
-    #[cfg(unix)]
-    assert_eq!(observed[0].unix_mode, Some(0o600));
-    assert!(!observed[0].path.exists());
+    assert_eq!(observed.len(), 5);
+    for segment in observed.iter() {
+        assert_ne!(segment.path, factory_path);
+        let start = segment.offset as usize;
+        assert_eq!(
+            segment.bytes,
+            admitted_bytes[start..start + segment.bytes.len()]
+        );
+        #[cfg(unix)]
+        assert_eq!(segment.unix_mode, Some(0o600));
+        assert!(!segment.path.exists());
+    }
 }
 
 #[test]
 fn admitted_execution_child_failure_cleans_private_snapshot() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let command = FlashCommand {
+        factory_reset: false,
         common: CommonArgs {
             dry_run: false,
             ..common_args()
@@ -352,18 +361,22 @@ fn admitted_execution_child_failure_cleans_private_snapshot() {
     // Assert
     let error = format!("{error:#}");
     assert!(error.contains("sentinel child failure"));
-    let observed = environment.observed_flashes();
-    assert_eq!(observed.len(), 1);
-    assert!(!error.contains(observed[0].path.as_str()));
-    assert!(!observed[0].path.exists());
+    assert!(environment.observed_flashes().is_empty());
+    let snapshots = environment.created_snapshot_paths();
+    assert_eq!(snapshots.len(), 5);
+    for path in snapshots.iter() {
+        assert!(!error.contains(path.as_str()));
+        assert!(!path.exists());
+    }
 }
 
 #[test]
 fn admitted_execution_snapshot_write_failure_precedes_later_effects() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let command = FlashCommand {
+        factory_reset: true,
         common: CommonArgs {
             port: None,
             dry_run: false,
@@ -393,8 +406,9 @@ fn admitted_execution_snapshot_write_failure_precedes_later_effects() {
 fn admitted_execution_later_preparation_failure_cleans_private_snapshot() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let command = FlashCommand {
+        factory_reset: true,
         common: CommonArgs {
             dry_run: false,
             ..common_args()

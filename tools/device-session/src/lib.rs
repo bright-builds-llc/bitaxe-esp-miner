@@ -40,8 +40,8 @@ pub use model::{
 };
 pub use platform::current_platform;
 pub use reboot_loop::{
-    observe_usb_reboot_loop, parse_usb_reboot_diagnostics, UsbMaintenanceTrace,
-    UsbMemoryCheckpoint, UsbRebootLoopCategory, UsbRebootLoopObservation, UsbRuntimeIdentity,
+    observe_usb_reboot_loop, parse_usb_reboot_diagnostics, UsbMemoryCheckpoint,
+    UsbRebootLoopCategory, UsbRebootLoopObservation, UsbRuntimeIdentity,
 };
 pub use transaction::{
     run_admitted_transaction, DeviceTransactionIntent, TransactionGoal, TRANSACTION_INTENT_SCHEMA,
@@ -54,10 +54,8 @@ pub use usb::{
 };
 pub use usb_ownership::{
     admit_application_execution, admit_rom_downloader, admit_rom_execution,
-    board_info_reports_esp32s3, classify_usb_ownership, classify_usb_profile,
-    handoff_worker_to_rom, inspect_usb_profile, native_usb_transition_module_sha256,
-    plan_usb_operation, run_installed_application, verify_native_usb_transition,
-    ApplicationTransportObservation, NativeUsbHandoffOutcome, NativeUsbTransitionOutcome,
+    board_info_reports_esp32s3, classify_usb_ownership, classify_usb_profile, inspect_usb_profile,
+    plan_usb_operation, run_installed_application, ApplicationTransportObservation,
     ProfileObservationCounts, UsbExecutionOwner, UsbIntent, UsbOperationPlan, UsbOwnershipIdentity,
     UsbProfile, UsbProfileInspection,
 };

@@ -151,14 +151,16 @@ fn reboot_confirmation_stays_durable_until_a_followup_request() {
 }
 
 #[test]
-fn a_new_enumeration_cannot_acknowledge_an_old_status_response() {
+fn a_new_logical_session_cannot_acknowledge_an_old_status_response() {
     // Arrange
     let LifecycleHarness {
         mut worker,
         state,
         events,
     } = lifecycle_worker(true, 0, 0);
-    worker.begin_enumeration();
+    worker
+        .begin_serial_session(fixture_binding())
+        .expect("fresh serial session");
     let first_status = worker
         .prepare_frame(status_frame().as_bytes(), 1)
         .expect("first reboot status should render");
@@ -172,16 +174,16 @@ fn a_new_enumeration_cannot_acknowledge_an_old_status_response() {
     // Act
     worker
         .prepare_frame(discover_frame().as_bytes(), 3)
-        .expect("new enumeration discover should remain available");
-    let pending_after_new_enumeration = state.borrow().pending;
+        .expect("new logical session discover should remain available");
+    let pending_after_new_logical_session = state.borrow().pending;
     let second_status = worker
         .prepare_frame(status_frame().as_bytes(), 4)
-        .expect("new enumeration should report reboot again");
+        .expect("new logical session should report reboot again");
     let reported: serde_json::Value = serde_json::from_slice(second_status.frame())
         .expect("repeated reboot status should be JSON");
 
     // Assert
-    assert!(pending_after_new_enumeration);
+    assert!(pending_after_new_logical_session);
     assert!(events.borrow().is_empty());
     assert_eq!(reported["result"]["restoration"]["reason"], "reboot");
 }
@@ -279,11 +281,15 @@ fn lifecycle_worker(
             events: Rc::clone(&events),
         },
         pending.then_some(RestorationReason::Reboot),
-        bitaxe_worker_control::FirmwareSourceCommit::parse(&"a".repeat(40))
-            .expect("fixture source commit should parse"),
+        bitaxe_worker_control::FirmwareIdentity::new(
+            bitaxe_worker_control::FirmwareSourceCommit::parse(&"a".repeat(40))
+                .expect("fixture source commit should parse"),
+            &"b".repeat(64),
+        )
+        .expect("fixture firmware identity"),
         json!({
-            "protocolVersion": "bwg-worker-controller/0.3",
-            "transportProfile": "bwg-worker-usb/0.2"
+            "protocolVersion": "bwg-worker-controller/0.4",
+            "transportProfile": "bwg-worker-serial/0.1"
         }),
         "rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA",
     )
@@ -296,7 +302,9 @@ fn lifecycle_worker(
 }
 
 fn admit(worker: &mut WorkerControl<LifecycleVerifier, LifecycleSession>, now: u64) {
-    worker.begin_enumeration();
+    worker
+        .begin_serial_session(fixture_binding())
+        .expect("fresh serial session");
     let proof = worker
         .prepare_frame(possession_frame(worker.capability_sha256()).as_bytes(), now)
         .expect("possession response should prepare");
@@ -308,7 +316,7 @@ fn admit(worker: &mut WorkerControl<LifecycleVerifier, LifecycleSession>, now: u
 fn possession_frame(capability_sha256: &str) -> String {
     format!(
         concat!(
-            "{{\"profile\":\"bwg-worker-possession/0.1\",",
+            "{{\"profile\":\"bwg-worker-possession/0.2\",",
             "\"requestId\":\"pos_initial_01\",",
             "\"command\":\"prove_possession\",",
             "\"payload\":{{",
@@ -316,7 +324,10 @@ fn possession_frame(capability_sha256: &str) -> String {
             "\"possessionNonce\":\"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",",
             "\"challengeBindingSha256\":\"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC\",",
             "\"controllerCapabilitySha256\":\"{}\",",
-            "\"applicationDescriptorSha256\":\"rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA\"",
+            "\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",",
+            "\"hostNonce\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",",
+            "\"deviceNonce\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",",
+            "\"serialManifestSha256\":\"rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA\"",
             "}}}}\n"
         ),
         capability_sha256
@@ -325,11 +336,11 @@ fn possession_frame(capability_sha256: &str) -> String {
 
 fn start_frame() -> String {
     concat!(
-        "{\"protocolVersion\":\"bwg-worker-controller/0.3\",",
-        "\"requestId\":\"usb_v03_start\",",
+        "{\"protocolVersion\":\"bwg-worker-controller/0.4\",",
+        "\"requestId\":\"serial_v03_start\",",
         "\"command\":\"start_lease\",",
         "\"payload\":{",
-        "\"protocolVersion\":\"bwg-worker-controller/0.3\",",
+        "\"protocolVersion\":\"bwg-worker-controller/0.4\",",
         "\"leaseId\":\"lease_fixture_03\",",
         "\"challengeId\":\"challenge_00000000000000000000000000000001\",",
         "\"authorization\":\"fixture-authentication-not-a-production-secret\",",
@@ -346,8 +357,8 @@ fn start_frame() -> String {
 
 fn pause_frame() -> String {
     concat!(
-        "{\"protocolVersion\":\"bwg-worker-controller/0.3\",",
-        "\"requestId\":\"usb_v03_pause\",",
+        "{\"protocolVersion\":\"bwg-worker-controller/0.4\",",
+        "\"requestId\":\"serial_v03_pause\",",
         "\"command\":\"pause\"}\n"
     )
     .to_owned()
@@ -355,8 +366,8 @@ fn pause_frame() -> String {
 
 fn status_frame() -> String {
     concat!(
-        "{\"protocolVersion\":\"bwg-worker-controller/0.3\",",
-        "\"requestId\":\"usb_v03_status\",",
+        "{\"protocolVersion\":\"bwg-worker-controller/0.4\",",
+        "\"requestId\":\"serial_v03_status\",",
         "\"command\":\"status\"}\n"
     )
     .to_owned()
@@ -364,9 +375,18 @@ fn status_frame() -> String {
 
 fn discover_frame() -> String {
     concat!(
-        "{\"protocolVersion\":\"bwg-worker-controller/0.3\",",
-        "\"requestId\":\"usb_v03_discover\",",
+        "{\"protocolVersion\":\"bwg-worker-controller/0.4\",",
+        "\"requestId\":\"serial_v03_discover\",",
         "\"command\":\"discover\"}\n"
     )
     .to_owned()
+}
+
+fn fixture_binding() -> bitaxe_worker_control::serial::SerialSessionBinding {
+    bitaxe_worker_control::serial::SerialSessionBinding::parse(
+        "AAAAAAAAAAAAAAAAAAAAAA",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    )
+    .expect("fixture nonce encoding")
 }

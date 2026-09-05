@@ -67,7 +67,7 @@ fn initialize_boot_identity_and_settings() -> anyhow::Result<(
     Option<settings_adapter::ThermalFaultStimulusAdmission>,
 )> {
     sys::link_patches();
-    esp_idf_svc::log::EspLogger::initialize_default();
+    crate::application_log::initialize()?;
     boot_evidence::initialize_observer();
     retain_previous_boot_failure();
 
@@ -402,12 +402,15 @@ fn start_runtime_services(
 
 fn start_deferred_usb_runtime(deferred_usb_runtime: DeferredUsbRuntime) {
     let DeferredUsbRuntime::Worker(prepared) = deferred_usb_runtime else {
+        if let Err(error) = crate::bwg_worker_usb::install_diagnostics() {
+            retain_bwg_worker_start_failure(&error);
+        }
         return;
     };
     retain_usb_memory_checkpoint("usb_install");
     match crate::bwg_worker_usb::install(prepared) {
         Ok(()) => boot_evidence::publish_usb_boot_profile(
-            bitaxe_api::UsbBootTransport::WorkerRuntime,
+            bitaxe_api::UsbBootTransport::SerialJtagRuntime,
             bitaxe_api::UsbBootProfileReason::WorkerStarted,
             bitaxe_api::UsbBootBaseline::Confirmed,
         ),

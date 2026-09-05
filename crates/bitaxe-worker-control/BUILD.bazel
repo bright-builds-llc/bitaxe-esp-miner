@@ -33,7 +33,8 @@ rust_test(
 
 rust_test(
     name = "controller_tests",
-    srcs = ["tests/controller.rs"],
+    srcs = ["tests/controller.rs", "tests/controller/liveness.rs"],
+    crate_root = "tests/controller.rs",
     crate_name = "bitaxe_worker_control_controller_tests",
     edition = "2021",
     deps = [
@@ -52,11 +53,23 @@ rust_test(
 )
 
 rust_test(
+    name = "firmware_config_tests",
+    srcs = ["tests/firmware_config.rs"],
+    compile_data = [
+        "//firmware/bitaxe:bwg/deployment-trust.json",
+        "//firmware/bitaxe:bwg/ultra205-capability.json",
+    ],
+    crate_name = "bitaxe_worker_firmware_config_tests",
+    edition = "2021",
+    deps = [":bitaxe_worker_control", "@crates//:base64", "@crates//:ed25519-dalek", "@crates//:serde_json"],
+)
+
+rust_test(
     name = "framing_tests",
     srcs = ["tests/framing.rs"],
     crate_name = "bitaxe_worker_control_framing_tests",
     edition = "2021",
-    deps = [":bitaxe_worker_control"],
+    deps = [":bitaxe_worker_control", "@crates//:serde_json"],
 )
 
 rust_test(
@@ -96,25 +109,28 @@ rust_test(
     srcs = ["tests/gate_conformance.rs"],
     crate_name = "bitaxe_worker_control_gate_conformance_tests",
     data = [
-        "@bwg_gate_contract//:controller_v03_fixtures",
-        "@bwg_gate_contract//:worker_usb_v02_fixtures",
+        "@bwg_gate_contract//:controller_v04_fixtures",
+        "@bwg_gate_contract//:worker_serial_v01_fixtures",
         "@bwg_gate_contract//:worker_possession_fixtures",
         "@bwg_gate_contract//:worker_deployment_trust_fixtures",
-        "//firmware/bitaxe:bwg_usb_runtime_source",
-        "//firmware/bitaxe:usb_phy_handoff_source",
     ],
     edition = "2021",
     env = {
-        "BWG_CONTROLLER_FIXTURES": "$(rootpath @bwg_gate_contract//:controller_v03_fixtures)",
+        "BWG_SERIAL_FIXTURES": "$(rootpath @bwg_gate_contract//:worker_serial_v01_fixtures)",
         "BWG_DEPLOYMENT_FIXTURES": "$(rootpath @bwg_gate_contract//:worker_deployment_trust_fixtures)",
         "BWG_POSSESSION_FIXTURES": "$(rootpath @bwg_gate_contract//:worker_possession_fixtures)",
-        "BWG_USB_FIXTURES": "$(rootpath @bwg_gate_contract//:worker_usb_v02_fixtures)",
-        "BWG_USB_RUNTIME_SOURCE": "$(rootpath //firmware/bitaxe:bwg_usb_runtime_source)",
-        "BWG_USB_PHY_SOURCE": "$(rootpath //firmware/bitaxe:usb_phy_handoff_source)",
     },
     deps = [
         ":bitaxe_worker_control",
         "//crates/bitaxe-core:bitaxe_core",
         "@crates//:serde_json",
     ],
+)
+
+rust_test(
+    name = "preservation_tests",
+    srcs = ["tests/preservation.rs"],
+    crate_name = "bitaxe_worker_preservation_tests",
+    edition = "2021",
+    deps = [":bitaxe_worker_control", "@crates//:serde_json"],
 )

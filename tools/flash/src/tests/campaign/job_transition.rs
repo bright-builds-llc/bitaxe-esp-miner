@@ -62,7 +62,7 @@ fn campaign_uses_exact_duration_and_accepts_complete_chain() {
         FakeFlashEnvironment::default().with_log_contents(&campaign_log(&[terminal_marker(true)]));
 
     // Act
-    run_mining_campaign(&command, &environment).expect("complete transition campaign");
+    run_campaign_observation_fixture(&command, &environment).expect("complete transition campaign");
 
     // Assert
     let result = read_campaign_result(&command);
@@ -118,7 +118,7 @@ fn nonexact_duration_is_rejected_before_device_effects() {
     let environment = FakeFlashEnvironment::default();
 
     // Act
-    let error = run_mining_campaign(&command, &environment)
+    let error = run_campaign_observation_fixture(&command, &environment)
         .expect_err("nonexact transition duration must fail admission");
 
     // Assert
@@ -139,7 +139,7 @@ fn clean_full_duration_without_transition_is_inconclusive() {
         FakeFlashEnvironment::default().with_log_contents(&campaign_log(&[terminal_marker(false)]));
 
     // Act
-    run_mining_campaign(&command, &environment).expect("clean no-transition campaign");
+    run_campaign_observation_fixture(&command, &environment).expect("clean no-transition campaign");
 
     // Assert
     let result = read_campaign_result(&command);
@@ -166,7 +166,7 @@ fn any_rejected_share_fails_the_campaign() {
     let environment = FakeFlashEnvironment::default().with_log_contents(&campaign_log(&[rejected]));
 
     // Act
-    let error = run_mining_campaign(&command, &environment)
+    let error = run_campaign_observation_fixture(&command, &environment)
         .expect_err("rejected share must fail transition campaign");
 
     // Assert

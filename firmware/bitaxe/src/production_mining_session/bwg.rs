@@ -8,19 +8,25 @@ use bitaxe_stratum::v1::production_session::{
 use bitaxe_worker_control::{LeaseDeadlines, WorkerLeaseGrant, WorkerLeaseRenewal};
 
 pub(super) struct OwnerSession {
+    pub(super) generation: revocation::WorkerGeneration,
     pub(super) worker_lease_id: String,
     pub(super) lease: MiningCampaignLease,
     pub(super) pools: ProductionPoolSet,
+    pub(super) accepted_baseline: u64,
+    pub(super) rejected_baseline: u64,
+    pub(super) correlated_baseline: u64,
 }
 
 pub(super) enum OwnerCommand {
     Start {
+        generation: revocation::WorkerGeneration,
         worker_lease_id: String,
         deadline: MiningCampaignMonotonicDeadline,
         pools: ProductionPoolSet,
         reply: SyncSender<Result<(), Error>>,
     },
     Renew {
+        generation: revocation::WorkerGeneration,
         worker_lease_id: String,
         deadline: MiningCampaignMonotonicDeadline,
         reply: SyncSender<Result<(), Error>>,
@@ -43,11 +49,22 @@ pub(crate) enum Error {
     TimedOut,
 }
 
-pub(crate) fn start(grant: &WorkerLeaseGrant, deadlines: LeaseDeadlines) -> Result<(), Error> {
+pub(crate) fn start(
+    grant: &WorkerLeaseGrant,
+    deadlines: LeaseDeadlines,
+    generation: revocation::WorkerGeneration,
+) -> Result<(), Error> {
+    if !revocation::is_live(generation) {
+        return Err(Error::Rejected);
+    }
     let deadline = deadline(deadlines)?;
+    if !revocation::set_lease_deadline(generation, deadlines.expires_at_monotonic_milliseconds()) {
+        return Err(Error::Rejected);
+    }
     let pools = pool_set(grant)?;
     request(
         |reply| OwnerCommand::Start {
+            generation,
             worker_lease_id: grant.lease_id().to_owned(),
             deadline,
             pools,
@@ -57,10 +74,21 @@ pub(crate) fn start(grant: &WorkerLeaseGrant, deadlines: LeaseDeadlines) -> Resu
     )
 }
 
-pub(crate) fn renew(renewal: &WorkerLeaseRenewal, deadlines: LeaseDeadlines) -> Result<(), Error> {
+pub(crate) fn renew(
+    renewal: &WorkerLeaseRenewal,
+    deadlines: LeaseDeadlines,
+    generation: revocation::WorkerGeneration,
+) -> Result<(), Error> {
+    if !revocation::permits(Some(generation)) {
+        return Err(Error::Rejected);
+    }
     let deadline = deadline(deadlines)?;
+    if !revocation::set_lease_deadline(generation, deadlines.expires_at_monotonic_milliseconds()) {
+        return Err(Error::Rejected);
+    }
     request(
         |reply| OwnerCommand::Renew {
+            generation,
             worker_lease_id: renewal.lease_id().to_owned(),
             deadline,
             reply,
@@ -75,7 +103,7 @@ pub(crate) fn safe_stop() -> Result<(), Error> {
         .try_send(OwnerInboxMessage::Bwg(OwnerCommand::SafeStop { reply }))
         .map_err(|_| Error::Unavailable)?;
     receiver
-        .recv_timeout(Duration::from_secs(65))
+        .recv_timeout(Duration::from_secs(140))
         .map_err(|_| Error::TimedOut)?
 }
 
@@ -154,6 +182,7 @@ impl OrdinaryEspProductionSessionAdapter {
     ) -> ProductionSessionEvent {
         match command {
             OwnerCommand::Start {
+                generation,
                 worker_lease_id,
                 deadline,
                 pools,
@@ -176,10 +205,20 @@ impl OrdinaryEspProductionSessionAdapter {
                     let _ = reply.try_send(Err(Error::Rejected));
                     return self.wake_event(None, now_ms, snapshot, false);
                 };
+                revocation::check_deadline(now_ms);
+                if !revocation::activate(generation, now_ms) {
+                    let _ = reply.try_send(Err(Error::Rejected));
+                    return self.wake_event(None, now_ms, snapshot, false);
+                }
+                FAN_CONTROLLER_ACTUATION_QUALIFIED.store(false, Ordering::Release);
                 let session = OwnerSession {
+                    generation,
                     worker_lease_id,
                     lease: lease(id, deadline),
                     pools,
+                    accepted_baseline: snapshot.mining.counters.accepted,
+                    rejected_baseline: snapshot.mining.counters.rejected,
+                    correlated_baseline: snapshot.mining.counters.qualified_candidates,
                 };
                 self.maybe_bwg_session = Some(session);
                 self.maybe_bwg_reply = Some(PendingReply::Start(reply));
@@ -191,14 +230,16 @@ impl OrdinaryEspProductionSessionAdapter {
                 )
             }
             OwnerCommand::Renew {
+                generation,
                 worker_lease_id,
                 deadline,
                 reply,
             } => {
-                let same_lease = self
-                    .maybe_bwg_session
-                    .as_ref()
-                    .is_some_and(|session| session.worker_lease_id == worker_lease_id);
+                let same_lease = self.maybe_bwg_session.as_ref().is_some_and(|session| {
+                    session.worker_lease_id == worker_lease_id
+                        && session.generation == generation
+                        && revocation::permits(Some(generation))
+                });
                 if !same_lease || snapshot.campaign_state != MiningCampaignState::Active {
                     let _ = reply.try_send(Err(Error::Rejected));
                     return self.wake_event(None, now_ms, snapshot, false);
@@ -219,6 +260,9 @@ impl OrdinaryEspProductionSessionAdapter {
                 ProductionSessionEvent::CampaignLeaseRenewed { lease, now_ms }
             }
             OwnerCommand::SafeStop { reply } => {
+                if let Some(session) = self.maybe_bwg_session.as_ref() {
+                    revocation::revoke_at(session.generation, now_ms);
+                }
                 if self.maybe_bwg_session.is_none() {
                     let _ = reply.try_send(Ok(()));
                     return self.wake_event(None, now_ms, snapshot, false);
@@ -232,7 +276,11 @@ impl OrdinaryEspProductionSessionAdapter {
     pub(super) fn complete_reply(&mut self, snapshot: &ProductionSessionSnapshot) {
         let maybe_result = match self.maybe_bwg_reply.as_ref() {
             Some(PendingReply::Start(_) | PendingReply::Renew(_))
-                if snapshot.campaign_state == MiningCampaignState::Active =>
+                if snapshot.campaign_state == MiningCampaignState::Active
+                    && self
+                        .maybe_bwg_session
+                        .as_ref()
+                        .is_some_and(|session| revocation::permits(Some(session.generation))) =>
             {
                 Some(Ok(()))
             }
@@ -250,6 +298,7 @@ impl OrdinaryEspProductionSessionAdapter {
             _ => None,
         };
         let Some(result) = maybe_result else {
+            self.finish_consumed_generation(snapshot);
             return;
         };
         let Some(reply) = self.maybe_bwg_reply.take() else {
@@ -262,7 +311,24 @@ impl OrdinaryEspProductionSessionAdapter {
                 let _ = sender.try_send(result);
             }
         }
-        if snapshot.campaign_state == MiningCampaignState::Consumed {
+        self.finish_consumed_generation(snapshot);
+    }
+
+    fn finish_consumed_generation(&mut self, snapshot: &ProductionSessionSnapshot) {
+        if snapshot.campaign_state == MiningCampaignState::Consumed
+            && snapshot.hardware_state == MiningHardwareState::Stopped
+        {
+            if let Some(session) = self.maybe_bwg_session.as_ref() {
+                revocation::revoke_reason_at(
+                    session.generation,
+                    crate::runtime_uptime::millis(),
+                    revocation::RevocationReason::ControlFailed,
+                );
+                if crate::worker_acceptance_budget::finish(session.generation).is_err() {
+                    return;
+                }
+                revocation::finish_shutdown(session.generation);
+            }
             self.maybe_bwg_session = None;
         }
     }

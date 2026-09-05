@@ -108,7 +108,8 @@ test("a real child publishes ordered checkpoints before it settles", {
     "",
   ].join("\n"), { mode: 0o700 });
   await chmod(child, 0o700);
-  const local = createLocalProcessPort({ cwd: root, timeoutMs: 5_000 });
+  // Four deliberate one-second fixture delays must leave headroom for cold child startup.
+  const local = createLocalProcessPort({ cwd: root, timeoutMs: 10_000 });
   const childPromise = local.run(internalCommandSpec(child, [campaign], (value) => value));
   const settled = path.join(campaign, "child-settled.private");
   const signals: OperatorCheckpointSignal[] = [];
@@ -121,7 +122,9 @@ test("a real child publishes ordered checkpoints before it settles", {
   await new Promise((resolve) => setTimeout(resolve, 100));
 
   // Assert
+  assert.equal(supervised.outcome.timedOut, false, "checkpoint fixture must settle before its test-only deadline");
   assert.equal(supervised.outcome.exitCode, 1);
+  assert.equal((await stat(settled)).mode & 0o777, 0o600);
   assert.equal(supervised.maybeCheckpointError, undefined);
   assert.deepEqual(
     signals.map((checkpoint) => checkpoint.checkpoint),

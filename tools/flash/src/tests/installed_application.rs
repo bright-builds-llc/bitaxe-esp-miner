@@ -10,10 +10,11 @@ fn fixture() -> (
     let workspace = Utf8PathBuf::from_path_buf(directory.path().to_owned()).expect("UTF-8 path");
     set_private_directory_mode(&workspace).expect("private parent");
     let command = StartInstalledCommand {
+        manifest: Some(write_manifest_v4(&directory, DEFAULT_ELF_NAME)),
         board: BoardId::Ultra205,
         port: "/dev/test-only".to_owned(),
-        expected_source_commit: "1".repeat(40),
-        expected_app_elf_sha256: "2".repeat(64),
+        expected_source_commit: SOURCE_COMMIT.to_owned(),
+        expected_app_elf_sha256: APP_ELF_SHA256.to_owned(),
         private_root: Utf8PathBuf::from("attempt"),
         redact_evidence: true,
     };
@@ -26,9 +27,8 @@ fn fixture() -> (
     (directory, command, environment)
 }
 
-fn task(command: &StartInstalledCommand) -> String {
-    format!("## Active\n### task-native-usb-ownership-handoff | 2026-09-04 | Test\n\nNo-write effect contract: `just native-usb-start-installed --board 205 --port <fresh-port> --expected-source-commit {} --expected-app-elf-sha256 {} --private-root <new-private-child> --redact-evidence`.\n",
-        command.expected_source_commit, command.expected_app_elf_sha256)
+fn task(_command: &StartInstalledCommand) -> String {
+    "## Active\n### task-fixed-usb-serial-qualification | 2026-09-04 | Test\n\nNo-write effect contract: `just native-usb-start-installed --board 205 --port <fresh-port> --manifest <frozen-manifest> --expected-source-commit <package-source> --expected-app-elf-sha256 <package-elf> --private-root <new-private-child> --redact-evidence`.\n".to_owned()
 }
 
 fn transcript(source: &str, digest: &str) -> Vec<u8> {
@@ -116,50 +116,33 @@ fn failed_exit_remains_primary_when_cleanup_also_fails() {
 }
 
 #[test]
-fn different_tooling_head_does_not_replace_the_task_installed_identity() {
+fn task_contract_does_not_require_a_self_referential_future_build_hash() {
     // Arrange
     let (_directory, command, _environment) = fixture();
-    let expected = UsbRuntimeIdentity::new(
-        &command.expected_source_commit,
-        &command.expected_app_elf_sha256,
-    )
-    .expect("identity");
     // Act / Assert
-    assert!(admit_start_installed_task(&task(&command), &expected).is_ok());
+    assert!(admit_start_installed_task(&task(&command)).is_ok());
 }
 
 #[test]
 fn unrelated_task_cannot_supply_the_installed_identity() {
     // Arrange
     let (_directory, command, _environment) = fixture();
-    let expected = UsbRuntimeIdentity::new(
-        &command.expected_source_commit,
-        &command.expected_app_elf_sha256,
-    )
-    .expect("identity");
     let input = format!(
-        "## Active\n### task-native-usb-ownership-handoff | date\nNo contract here.\n{}",
-        task(&command).replace("task-native-usb-ownership-handoff", "task-unrelated")
+        "## Active\n### task-fixed-usb-serial-qualification | date\nNo contract here.\n{}",
+        task(&command).replace("task-fixed-usb-serial-qualification", "task-unrelated")
     );
     // Act / Assert
-    assert!(admit_start_installed_task(&input, &expected).is_err());
+    assert!(admit_start_installed_task(&input).is_err());
 }
 
 #[test]
 fn future_or_duplicated_task_is_not_active_admission() {
     // Arrange
     let (_directory, command, _environment) = fixture();
-    let expected = UsbRuntimeIdentity::new(
-        &command.expected_source_commit,
-        &command.expected_app_elf_sha256,
-    )
-    .expect("identity");
     let active = task(&command);
     // Act / Assert
-    assert!(
-        admit_start_installed_task(&active.replace("## Active", "## Future"), &expected).is_err()
-    );
-    assert!(admit_start_installed_task(&format!("{active}{active}"), &expected).is_err());
+    assert!(admit_start_installed_task(&active.replace("## Active", "## Future")).is_err());
+    assert!(admit_start_installed_task(&format!("{active}{active}")).is_err());
 }
 
 #[test]
@@ -232,12 +215,13 @@ fn failed_factory_write_does_not_start_the_application() {
     // Arrange
     let directory = tempfile::tempdir().expect("fixture");
     let command = FlashCommand {
+        factory_reset: false,
         common: CommonArgs {
             dry_run: false,
             ..common_args()
         },
         image: None,
-        manifest: Some(write_manifest_v3(&directory, DEFAULT_ELF_NAME)),
+        manifest: Some(write_manifest_v4(&directory, DEFAULT_ELF_NAME)),
         wifi_credentials: None,
     };
     let environment = FakeFlashEnvironment {

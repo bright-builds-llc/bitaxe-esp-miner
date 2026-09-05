@@ -2,6 +2,12 @@
 
 #[path = "mining_actuation.rs"]
 mod mining_actuation;
+#[path = "production_mining_session/revocation.rs"]
+mod revocation;
+#[path = "production_mining_session/shutdown_budget.rs"]
+mod shutdown_budget;
+#[path = "mining_actuation_cancellation_tests.rs"]
+mod cancellation_tests;
 
 use bitaxe_stratum::v1::production_session::{
     HardwareSafeStopPurpose, MiningCampaignDuration, MiningCampaignLease, MiningCampaignLeaseId,

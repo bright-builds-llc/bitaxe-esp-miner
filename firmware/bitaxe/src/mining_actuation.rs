@@ -98,6 +98,11 @@ pub trait MiningActuationBackend {
     /// Adapter-specific failure detail retained by the orchestration result.
     type Error;
 
+    /// Rechecks cancellation independently of queued effects and late readiness.
+    fn check_preparation_admission(&mut self) -> Result<(), Self::Error> {
+        Ok(())
+    }
+
     /// Establishes the state described by one preparation step.
     fn execute_preparation_step(&mut self, step: PreparationStep) -> Result<(), Self::Error>;
 
@@ -236,7 +241,11 @@ where
     B: MiningActuationBackend,
 {
     for step in preparation_plan(profile) {
-        let Err(source) = backend.execute_preparation_step(step) else {
+        let outcome = backend
+            .check_preparation_admission()
+            .and_then(|()| backend.execute_preparation_step(step))
+            .and_then(|()| backend.check_preparation_admission());
+        let Err(source) = outcome else {
             continue;
         };
 
@@ -249,6 +258,24 @@ where
     }
 
     Ok(())
+}
+
+/// Waits in at most 50ms slices, checking cancellation before and after every wait.
+pub fn wait_with_cancellation<E>(
+    duration_ms: u64,
+    mut now_ms: impl FnMut() -> u64,
+    mut sleep_ms: impl FnMut(u64),
+    mut check: impl FnMut() -> Result<(), E>,
+) -> Result<(), E> {
+    let deadline = now_ms().saturating_add(duration_ms);
+    loop {
+        check()?;
+        let remaining = deadline.saturating_sub(now_ms());
+        if remaining == 0 {
+            return Ok(());
+        }
+        sleep_ms(remaining.min(50));
+    }
 }
 
 /// Executes every safe-shutdown step and retains its first failed boundary.

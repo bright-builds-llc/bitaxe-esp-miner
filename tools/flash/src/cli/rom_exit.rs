@@ -2,6 +2,8 @@ use crate::*;
 
 #[derive(Debug, Parser, Clone)]
 pub(crate) struct StartInstalledCommand {
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) manifest: Option<Utf8PathBuf>,
     #[arg(long, default_value = "205", value_parser = parse_board)]
     pub(crate) board: BoardId,
     #[arg(long)]

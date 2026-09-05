@@ -13,10 +13,10 @@ use zeroize::Zeroizing;
 use crate::codec::{base64_url, canonical_json, digest_text};
 use crate::{WorkerLeaseGrant, WorkerLeaseRenewal};
 
-const TRUST_PROFILE: &str = "bwg-worker-deployment-trust/0.1";
-const AUTHORIZATION_PROFILE: &str = "bwg-worker-lease-authorization/0.1";
+const TRUST_PROFILE: &str = "bwg-worker-deployment-trust/0.2";
+const AUTHORIZATION_PROFILE: &str = "bwg-worker-lease-authorization/0.2";
 const AUTHORIZATION_TYPE: &str = "bwg-worker-lease-authorization+jws";
-const CONTROLLER_AUDIENCE: &str = "bwg-worker-controller/0.3";
+const CONTROLLER_AUDIENCE: &str = "bwg-worker-controller/0.4";
 const MAXIMUM_AUTHORIZATION_BYTES: usize = 512;
 
 /// Exact possession transcript binding retained only for the current admitted lease.
@@ -49,6 +49,12 @@ impl fmt::Debug for WorkerLeaseAuthorizationContext {
 
 /// Durable per-authority replay state. Compare-and-store must be one atomic transaction.
 pub trait AcceptedSequenceStore {
+    fn authorization_high_water_fingerprint(
+        &self,
+    ) -> Result<Option<crate::StateFingerprint>, LeaseAuthorizationError> {
+        Ok(None)
+    }
+
     fn mark_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError>;
     fn clear_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError>;
 
@@ -112,7 +118,7 @@ impl WorkLeaseAuthorityTrust {
             .map_err(|_| LeaseAuthorizationError::InvalidAuthorization)?;
         if document.profile != TRUST_PROFILE
             || document.update_authority.role != "update_authority"
-            || document.update_authority.audience != "bwg-reference-firmware-capability/0.1"
+            || document.update_authority.audience != "bwg-reference-firmware-capability/0.2"
             || document.work_lease_authority.profile != TRUST_PROFILE
             || document.work_lease_authority.role != "work_lease_authority"
             || document.work_lease_authority.audience != CONTROLLER_AUDIENCE
@@ -225,6 +231,12 @@ impl<S: AcceptedSequenceStore> WorkLeaseAuthorizationVerifier<S> {
 impl<S: AcceptedSequenceStore> crate::session::LeaseAuthorizationVerifier
     for WorkLeaseAuthorizationVerifier<S>
 {
+    fn authorization_high_water_fingerprint(
+        &self,
+    ) -> Result<Option<crate::StateFingerprint>, LeaseAuthorizationError> {
+        self.store.authorization_high_water_fingerprint()
+    }
+
     fn mark_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError> {
         self.store.mark_effect_pending()
     }

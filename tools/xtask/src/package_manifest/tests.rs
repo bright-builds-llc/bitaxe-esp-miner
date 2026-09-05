@@ -25,6 +25,7 @@ fn package_manifest_v3_requires_identity_and_release_artifact_kinds() {
     // Act
     let manifest = PackageManifestV3 {
         schema_version: 3,
+        update_segments: Vec::new(),
         release_name: "bitaxe-ultra205-v1".to_owned(),
         semantic_version: "0.1.0".to_owned(),
         source_commit: SOURCE_COMMIT.to_owned(),
@@ -308,6 +309,7 @@ fn valid_manifest_v3() -> PackageManifestV3 {
     };
     PackageManifestV3 {
         schema_version: 3,
+        update_segments: Vec::new(),
         release_name: "bitaxe-ultra205-v1".to_owned(),
         semantic_version: "0.1.0".to_owned(),
         source_commit: SOURCE_COMMIT.to_owned(),

@@ -36,8 +36,6 @@ pub(crate) enum CliCommand {
     NoiseDiagnostic(NoiseDiagnosticCommand),
     #[command(name = "tcp-payload-diagnostic")]
     TcpPayloadDiagnostic(TcpPayloadDiagnosticCommand),
-    #[command(name = "verify-native-usb-transition")]
-    VerifyNativeUsbTransition(VerifyNativeUsbTransitionCommand),
     #[command(name = "display-recovery-start")]
     DisplayRecoveryStart(DisplayRecoveryStartCommand),
     #[command(name = "nvs-readback")]
@@ -280,30 +278,6 @@ pub(crate) struct DetectCommand {
 }
 
 #[derive(Debug, Parser, Clone)]
-pub(crate) struct VerifyNativeUsbTransitionCommand {
-    #[arg(long, default_value = "205", value_parser = parse_board)]
-    pub(crate) board: BoardId,
-
-    #[arg(long)]
-    pub(crate) port: String,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) manifest: Utf8PathBuf,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) plan: Utf8PathBuf,
-
-    #[arg(long = "private-root", value_parser = parse_utf8_path)]
-    pub(crate) private_root: Utf8PathBuf,
-
-    #[arg(long, value_parser = parse_utf8_path)]
-    pub(crate) projection: Utf8PathBuf,
-
-    #[arg(long = "redact-evidence")]
-    pub(crate) redact_evidence: bool,
-}
-
-#[derive(Debug, Parser, Clone)]
 pub(crate) struct DisplayRecoveryStartCommand {
     #[arg(long, default_value = "205", value_parser = parse_board)]
     pub(crate) board: BoardId,
@@ -384,6 +358,10 @@ pub(crate) struct CommonArgs {
 
 #[derive(Debug, Parser, Clone)]
 pub(crate) struct FlashCommand {
+    /// Explicit factory installation erases NVS, including Device Identity and replay state.
+    #[arg(long = "factory-reset")]
+    pub(crate) factory_reset: bool,
+
     #[command(flatten)]
     pub(crate) common: CommonArgs,
 
@@ -408,6 +386,10 @@ pub(crate) struct MonitorCommand {
 
 #[derive(Debug, Parser, Clone)]
 pub(crate) struct FlashMonitorCommand {
+    /// Explicit factory installation erases NVS, including Device Identity and replay state.
+    #[arg(long = "factory-reset")]
+    pub(crate) factory_reset: bool,
+
     #[command(flatten)]
     pub(crate) common: CommonArgs,
 

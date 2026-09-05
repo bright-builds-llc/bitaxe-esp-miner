@@ -71,7 +71,7 @@ fn corrupt_seed_fails_closed_without_silent_rotation() {
 fn proof(identity: &bitaxe_worker_control::DeviceIdentity) -> String {
     let request = PossessionRequest::from_frame(
         concat!(
-            "{\"profile\":\"bwg-worker-possession/0.1\",",
+            "{\"profile\":\"bwg-worker-possession/0.2\",",
             "\"requestId\":\"pos_identity_01\",",
             "\"command\":\"prove_possession\",",
             "\"payload\":{",
@@ -79,7 +79,10 @@ fn proof(identity: &bitaxe_worker_control::DeviceIdentity) -> String {
             "\"possessionNonce\":\"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",",
             "\"challengeBindingSha256\":\"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC\",",
             "\"controllerCapabilitySha256\":\"JFWsyueHvXS9M9GlDlK6yEOwUzO8oPXtloalyTRxFvE\",",
-            "\"applicationDescriptorSha256\":\"rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA\"",
+            "\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",",
+            "\"hostNonce\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",",
+            "\"deviceNonce\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",",
+            "\"serialManifestSha256\":\"rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA\"",
             "}}\n"
         )
         .as_bytes(),
@@ -90,6 +93,7 @@ fn proof(identity: &bitaxe_worker_control::DeviceIdentity) -> String {
             &request,
             &bitaxe_worker_control::FirmwareSourceCommit::parse(&"a".repeat(40))
                 .expect("fixture source commit should parse"),
+            &"b".repeat(64),
         )
         .expect("identity should sign")
         .compact_jws()

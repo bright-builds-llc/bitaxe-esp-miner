@@ -13,7 +13,8 @@ fn rejected_submit_is_a_completed_campaign() {
         .with_log_contents(&campaign_log(&[live_terminal("rejected")]));
 
     // Act
-    run_mining_campaign(&command, &environment).expect("rejected submit is terminal evidence");
+    run_campaign_observation_fixture(&command, &environment)
+        .expect("rejected submit is terminal evidence");
 
     // Assert
     let result = read_campaign_result(&command);

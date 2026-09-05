@@ -18,17 +18,10 @@ pub(crate) fn run_flash_with_wifi_mode(
         Some(environment.prepare_application_exit()?)
     };
     let PreparedFlash {
-        mut outcome,
-        mut execution_command,
-        _execution_snapshot,
+        outcome,
+        execution_command,
+        maybe_segmented_write,
     } = prepare_flash_with_wifi_mode(command, wifi_mode, environment)?;
-    if outcome.runtime_identity.is_some() {
-        retain_rom_after_write(&mut execution_command)?;
-        retain_rom_after_write(&mut outcome.command)?;
-    }
-    if let Some(seed) = outcome.nvs_seed.as_mut() {
-        retain_rom_after_write(&mut seed.command)?;
-    }
     emit_flash_outcome(
         &outcome,
         command.common.evidence_mode != Some(EvidenceMode::Dual),
@@ -38,7 +31,10 @@ pub(crate) fn run_flash_with_wifi_mode(
         let port = maybe_command_port(&execution_command)
             .context("usb_session=blocked reason=port_unavailable")?;
         environment.begin_usb_session(UsbOperation::Flash, &port)?;
-        environment.execute(&execution_command)?;
+        let segmented = maybe_segmented_write
+            .as_ref()
+            .context("identity_admission=blocked reason=segmented_update_missing")?;
+        environment.execute_esptool_write_flash(segmented)?;
         environment.phase35_stage_readiness_gate("after-factory", &port)?;
         if let Some(nvs_seed) = &outcome.nvs_seed {
             environment.execute(&nvs_seed.command)?;
@@ -103,6 +99,7 @@ pub(crate) fn run_flash_monitor(
     let mut flash_common = command.common.clone();
     flash_common.evidence_dir = None;
     let flash_command = FlashCommand {
+        factory_reset: command.factory_reset,
         common: flash_common,
         image: command.image.clone(),
         manifest: command.manifest.clone(),

@@ -60,61 +60,61 @@ load("@aspect_rules_js//js:defs.bzl", "js_library")
 package(default_visibility = ["//visibility:public"])
 exports_files(["package.json"])
 filegroup(
-    name = "controller_v03_fixtures",
-    srcs = ["conformance/bwg-worker-controller-0.3/fixtures.json"],
+    name = "controller_v04_fixtures",
+    srcs = ["conformance/bwg-worker-controller-0.4/fixtures.json"],
 )
 filegroup(
-    name = "worker_usb_v02_fixtures",
-    srcs = ["conformance/bwg-worker-usb-0.2/fixtures.json"],
+    name = "worker_serial_v01_fixtures",
+    srcs = ["conformance/bwg-worker-serial-0.1/fixtures.json"],
 )
 filegroup(
     name = "worker_possession_fixtures",
-    srcs = ["conformance/bwg-worker-possession-0.1/fixtures.json"],
+    srcs = ["conformance/bwg-worker-possession-0.2/fixtures.json"],
 )
 filegroup(
     name = "worker_deployment_trust_fixtures",
-    srcs = ["conformance/bwg-worker-deployment-trust-0.1/fixtures.json"],
+    srcs = ["conformance/bwg-worker-deployment-trust-0.2/fixtures.json"],
 )
 filegroup(
     name = "worker_deployment_trust",
-    srcs = ["conformance/bwg-worker-deployment-trust-0.1/trust.json"],
+    srcs = ["conformance/bwg-worker-deployment-trust-0.2/trust.json"],
 )
 filegroup(
     name = "ultra205_signed_capability",
-    srcs = ["conformance/bwg-worker-deployment-trust-0.1/signed-capability.json"],
+    srcs = ["conformance/bwg-worker-deployment-trust-0.2/signed-capability.json"],
 )
 js_library(
     name = "package_json_js",
     srcs = ["package.json"],
 )
 js_library(
-    name = "controller_v03_fixtures_js",
-    srcs = ["conformance/bwg-worker-controller-0.3/fixtures.json"],
+    name = "controller_v04_fixtures_js",
+    srcs = ["conformance/bwg-worker-controller-0.4/fixtures.json"],
 )
 js_library(
-    name = "worker_usb_v02_fixtures_js",
-    srcs = ["conformance/bwg-worker-usb-0.2/fixtures.json"],
+    name = "worker_serial_v01_fixtures_js",
+    srcs = ["conformance/bwg-worker-serial-0.1/fixtures.json"],
 )
 js_library(
     name = "worker_possession_fixtures_js",
-    srcs = ["conformance/bwg-worker-possession-0.1/fixtures.json"],
+    srcs = ["conformance/bwg-worker-possession-0.2/fixtures.json"],
 )
 js_library(
     name = "worker_deployment_trust_fixtures_js",
-    srcs = ["conformance/bwg-worker-deployment-trust-0.1/fixtures.json"],
+    srcs = ["conformance/bwg-worker-deployment-trust-0.2/fixtures.json"],
 )
 js_library(
     name = "worker_deployment_trust_js",
-    srcs = ["conformance/bwg-worker-deployment-trust-0.1/trust.json"],
+    srcs = ["conformance/bwg-worker-deployment-trust-0.2/trust.json"],
 )
 js_library(
     name = "ultra205_signed_capability_js",
-    srcs = ["conformance/bwg-worker-deployment-trust-0.1/signed-capability.json"],
+    srcs = ["conformance/bwg-worker-deployment-trust-0.2/signed-capability.json"],
 )
 """,
-    sha256 = "c23314d96b33f51119395fafb0dc2aa3f1b0017fd5db5379e42e3f8348f20f96",
-    strip_prefix = "bitaxe-turnstile-system-0b07d36942aa8ca3473771d2f72a373e66cedf58",
+    sha256 = "2b3b7a706faf830d86c79dbc09a72a572f910b62017f28a6b810c88bfa934393",
+    strip_prefix = "bitaxe-turnstile-system-95af34a1d17f686ff7f511c22cef8597886c818e",
     urls = [
-        "https://github.com/bright-builds-llc/bitaxe-turnstile-system/archive/0b07d36942aa8ca3473771d2f72a373e66cedf58.tar.gz",
+        "https://github.com/bright-builds-llc/bitaxe-turnstile-system/archive/95af34a1d17f686ff7f511c22cef8597886c818e.tar.gz",
     ],
 )

@@ -15,21 +15,12 @@ impl LocalFlashEnvironment {
         } else {
             UsbIntent::Flash
         };
-        let transitioned = match plan_usb_operation(intent, inspection.profile) {
-            UsbOperationPlan::HandoffThenEspflash => {
-                handoff_worker_to_rom(session).map_err(|error| anyhow::anyhow!(error))?;
-                true
-            }
-            UsbOperationPlan::DirectEspflash => false,
-            UsbOperationPlan::RejectUnknownProfile
-            | UsbOperationPlan::InspectOnly
-            | UsbOperationPlan::ObserveOnly => bail!("runtime_profile_unknown"),
-        };
-        let before = if transitioned {
-            ESPFLASH_ADMITTED_ROM_BEFORE
-        } else {
-            "usb-reset"
-        };
+        if !matches!(
+            plan_usb_operation(intent, inspection.profile),
+            UsbOperationPlan::DirectEspflash
+        ) {
+            bail!("runtime_profile_unknown");
+        }
         let args = [
             "board-info".to_owned(),
             "--chip".to_owned(),
@@ -38,7 +29,7 @@ impl LocalFlashEnvironment {
             session.port().to_owned(),
             "--non-interactive".to_owned(),
             "--before".to_owned(),
-            before.to_owned(),
+            "usb-reset".to_owned(),
             "--after".to_owned(),
             "no-reset".to_owned(),
         ];
@@ -51,8 +42,8 @@ impl LocalFlashEnvironment {
             .map_err(|error| anyhow::anyhow!(error))?;
         let mut board_info = output.stdout;
         board_info.extend_from_slice(&output.stderr);
-        let post_handoff_inspection = inspect_usb_profile(session.port())?;
-        let rom = admit_rom_downloader(post_handoff_inspection, &board_info)
+        let post_admission_inspection = inspect_usb_profile(session.port())?;
+        let rom = admit_rom_downloader(post_admission_inspection, &board_info)
             .map_err(|error| anyhow::anyhow!(error))?;
         if rom.physical_identity_digest != inspection.physical_identity_digest {
             bail!("physical_identity_drift");
@@ -63,13 +54,13 @@ impl LocalFlashEnvironment {
 
     pub(super) fn ensure_observable_runtime(&self, port: &str) -> Result<()> {
         let profile = inspect_usb_profile(port)?.profile;
-        match plan_usb_operation(UsbIntent::Observe, profile) {
-            UsbOperationPlan::ObserveOnly => Ok(()),
-            UsbOperationPlan::RejectUnknownProfile
-            | UsbOperationPlan::InspectOnly
-            | UsbOperationPlan::DirectEspflash
-            | UsbOperationPlan::HandoffThenEspflash => bail!("runtime_profile_unknown"),
+        if !matches!(
+            plan_usb_operation(UsbIntent::Observe, profile),
+            UsbOperationPlan::ObserveOnly
+        ) {
+            bail!("runtime_profile_unknown");
         }
+        Ok(())
     }
 }
 

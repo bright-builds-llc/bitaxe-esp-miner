@@ -41,15 +41,7 @@ const symbols = outcome.stdout
   .split(/\r?\n/u)
   .map((line) => line.trim().split(/\s+/u).at(-1))
   .filter((symbol) => symbol !== undefined && symbol.length > 0);
-const required = [
-  "bitaxe_usb_restart_bootloader",
-  "tud_mount_cb",
-  "tud_umount_cb",
-  "tud_vendor_rx_cb",
-  "tud_cdc_rx_cb",
-  "tud_cdc_line_coding_cb",
-  "tud_cdc_line_state_cb",
-];
+const required = ["usb_serial_jtag_driver_install", "usb_serial_jtag_read_bytes", "usb_serial_jtag_write_bytes"];
 for (const symbol of required) {
   const matches = symbols.filter((candidate) => candidate === symbol).length;
   if (matches !== 1) {
@@ -57,6 +49,7 @@ for (const symbol of required) {
   }
 }
 for (const removed of [
+  "tinyusb_driver_install", "bitaxe_usb_restart_bootloader", "tud_mount_cb", "tud_vendor_rx_cb", "tud_cdc_line_coding_cb",
   "bwg_usb_install",
   "bwg_usb_vendor_write",
   "bwg_usb_evidence_write",

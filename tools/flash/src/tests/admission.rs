@@ -6,6 +6,7 @@ fn dry_run_flash_resolves_admitted_factory_artifact() {
     let dir = tempdir().expect("tempdir");
     let manifest = write_manifest(&dir, DEFAULT_ELF_NAME);
     let command = FlashCommand {
+        factory_reset: false,
         common: common_args(),
         image: None,
         manifest: Some(manifest.clone()),
@@ -22,25 +23,19 @@ fn dry_run_flash_resolves_admitted_factory_artifact() {
         outcome.flash_image,
         manifest.parent().expect("parent").join(FACTORY_IMAGE_NAME)
     );
+    assert_eq!(outcome.command.program, "managed-esptool");
+    let addresses: Vec<_> = outcome
+        .command
+        .args
+        .iter()
+        .filter(|arg| arg.starts_with("0x"))
+        .map(String::as_str)
+        .collect();
     assert_eq!(
-        outcome.command.args,
-        vec![
-            "write-bin",
-            "--no-stub",
-            "--chip",
-            "esp32s3",
-            "--port",
-            "/dev/cu.usbmodem101",
-            "--non-interactive",
-            "--before",
-            "usb-reset",
-            "--after",
-            "no-reset",
-            "--skip-update-check",
-            "0x0",
-            outcome.flash_image.as_str(),
-        ]
+        addresses,
+        ["0x0", "0x8000", "0x10000", "0x410000", "0xf10000"]
     );
+    assert!(environment.executed_commands().is_empty());
 }
 
 #[test]
@@ -49,6 +44,7 @@ fn relative_image_argument_resolves_under_workspace_dir() {
     let workspace = tempdir().expect("workspace");
     let workspace_dir = dir_path(&workspace);
     let command = FlashCommand {
+        factory_reset: false,
         common: common_args(),
         image: Some(Utf8PathBuf::from("docs/evidence/bitaxe-ultra205.elf")),
         manifest: None,
@@ -77,6 +73,7 @@ fn relative_manifest_argument_resolves_under_workspace_dir() {
         DEFAULT_ELF_NAME,
     );
     let command = FlashCommand {
+        factory_reset: false,
         common: common_args(),
         image: None,
         manifest: Some(Utf8PathBuf::from(
@@ -105,6 +102,7 @@ fn rejects_manifest_default_factory_bin() {
     let dir = tempdir().expect("tempdir");
     let manifest = write_manifest(&dir, FACTORY_IMAGE_NAME);
     let command = FlashCommand {
+        factory_reset: false,
         common: common_args(),
         image: None,
         manifest: Some(manifest),
@@ -120,11 +118,12 @@ fn rejects_manifest_default_factory_bin() {
 }
 
 #[test]
-fn manifest_v3_uses_factory_artifact_for_full_flash() {
+fn manifest_v4_renders_only_state_preserving_execution_snapshots() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let command = FlashCommand {
+        factory_reset: false,
         common: common_args(),
         image: None,
         manifest: Some(manifest.clone()),
@@ -141,25 +140,18 @@ fn manifest_v3_uses_factory_artifact_for_full_flash() {
         outcome.flash_image,
         manifest.parent().expect("parent").join(FACTORY_IMAGE_NAME)
     );
-    assert_eq!(
-        outcome.command.args,
-        vec![
-            "write-bin",
-            "--no-stub",
-            "--chip",
-            "esp32s3",
-            "--port",
-            "/dev/cu.usbmodem101",
-            "--non-interactive",
-            "--before",
-            "usb-reset",
-            "--after",
-            "no-reset",
-            "--skip-update-check",
-            "0x0",
-            outcome.flash_image.as_str(),
-        ]
-    );
+    assert_eq!(outcome.command.program, "managed-esptool");
+    assert!(outcome
+        .command
+        .args
+        .iter()
+        .any(|arg| arg == "<admitted-application-snapshot>"));
+    assert!(!outcome
+        .command
+        .args
+        .iter()
+        .any(|arg| arg == outcome.flash_image.as_str()));
+    assert!(!outcome.command.args.iter().any(|arg| arg == "0x9000"));
 }
 
 #[test]
@@ -186,9 +178,10 @@ fn identity_admission_accepts_clean_dev_and_release_builds() {
 
     for provenance in cases {
         let dir = tempdir().expect("tempdir");
-        let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+        let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
         rewrite_manifest_provenance(&manifest, &provenance);
         let command = FlashCommand {
+            factory_reset: false,
             common: common_args(),
             image: None,
             manifest: Some(manifest),
@@ -209,12 +202,13 @@ fn identity_admission_accepts_clean_dev_and_release_builds() {
 fn identity_admission_rejects_dirty_package_before_port_or_credentials() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let dirty_provenance =
         BuildProvenance::new("0.1.0", SOURCE_COMMIT, true, None::<&str>, REFERENCE_COMMIT)
             .expect("dirty provenance");
     rewrite_manifest_provenance(&manifest, &dirty_provenance);
     let command = FlashCommand {
+        factory_reset: false,
         common: CommonArgs {
             port: None,
             dry_run: false,
@@ -242,11 +236,12 @@ fn identity_admission_rejects_dirty_package_before_port_or_credentials() {
 fn identity_admission_rejects_dirty_current_workspace_before_port() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let dirty_provenance =
         BuildProvenance::new("0.1.0", SOURCE_COMMIT, true, None::<&str>, REFERENCE_COMMIT)
             .expect("dirty provenance");
     let command = FlashCommand {
+        factory_reset: false,
         common: CommonArgs {
             port: None,
             dry_run: false,
@@ -274,6 +269,7 @@ fn identity_admission_rejects_dirty_current_workspace_before_port() {
 fn identity_admission_rejects_unmanifested_explicit_image_before_port() {
     // Arrange
     let command = FlashCommand {
+        factory_reset: false,
         common: CommonArgs {
             port: None,
             dry_run: false,
@@ -292,7 +288,8 @@ fn identity_admission_rejects_unmanifested_explicit_image_before_port() {
 
     // Assert
     let error = format!("{result:#?}");
-    assert!(error.contains("identity_admission=blocked reason=explicit_image_requires_v3_manifest"));
+    assert!(error
+        .contains("identity_admission=blocked reason=explicit_image_requires_package_manifest"));
     assert!(!error.contains("Ambiguous serial ports"));
 }
 
@@ -300,13 +297,14 @@ fn identity_admission_rejects_unmanifested_explicit_image_before_port() {
 fn identity_admission_rejects_package_digest_mismatch() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let ota = manifest
         .parent()
         .expect("manifest parent")
         .join("esp-miner.bin");
     std::fs::write(ota.as_std_path(), b"tampered ota").expect("tamper ota");
     let command = FlashCommand {
+        factory_reset: false,
         common: common_args(),
         image: None,
         manifest: Some(manifest),
@@ -326,9 +324,10 @@ fn identity_admission_rejects_package_digest_mismatch() {
 fn identity_admission_rejects_duplicate_ota_before_port_or_credentials() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     duplicate_manifest_artifact(&manifest, "firmware_ota_image");
     let command = FlashCommand {
+        factory_reset: false,
         common: CommonArgs {
             port: None,
             dry_run: false,
@@ -358,9 +357,10 @@ fn identity_admission_rejects_duplicate_ota_before_port_or_credentials() {
 fn identity_admission_rejects_duplicate_factory_before_port_or_credentials() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     duplicate_manifest_artifact(&manifest, "factory_merged_image");
     let command = FlashCommand {
+        factory_reset: false,
         common: CommonArgs {
             port: None,
             dry_run: false,

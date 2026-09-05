@@ -15,13 +15,30 @@ pub(super) fn run_owner(
         .expect("production reread cadence is nonzero");
 
     loop {
+        let revocation_now = crate::runtime_uptime::millis();
+        revocation::check_deadline(revocation_now);
+        if let Some(generation) = revocation::maybe_revoked() {
+            if adapter.maybe_bwg_session.is_some() {
+                drive_session(
+                    &mut session,
+                    &mut adapter,
+                    &mut task_watchdog,
+                    ProductionSessionEvent::CampaignLeaseRevoked,
+                    revocation_now,
+                );
+                adapter.complete_reply(&session.snapshot());
+            } else {
+                revocation::finish_shutdown(generation);
+            }
+        }
         record_owner_phase(TaskWatchdogOwnerPhase::LoopStart);
         task_watchdog.feed(crate::runtime_uptime::millis());
         let before_wait_ms = elapsed_millis(started_at);
         let wait = Duration::from_millis(
             readiness_schedule
                 .next_deadline_ms()
-                .saturating_sub(before_wait_ms),
+                .saturating_sub(before_wait_ms)
+                .min(50),
         );
         let wait_millis = u64::try_from(wait.as_millis()).unwrap_or(u64::MAX);
         let maybe_wait_deadline_millis = crate::runtime_uptime::millis().checked_add(wait_millis);

@@ -220,6 +220,7 @@ pub(crate) fn run_input_uat(
     let manifest_sha256 = sha256_bytes(&manifest_before);
 
     let flash_command = FlashCommand {
+        factory_reset: false,
         common: CommonArgs {
             board: command.board,
             port: Some(command.port.clone()),

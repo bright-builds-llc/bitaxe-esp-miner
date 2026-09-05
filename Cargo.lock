@@ -389,7 +389,6 @@ name = "bitaxe-worker-control"
 version = "0.1.0"
 dependencies = [
  "base64",
- "bitaxe-core",
  "curve25519-dalek",
  "ed25519-dalek",
  "serde",

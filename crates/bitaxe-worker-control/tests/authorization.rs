@@ -10,24 +10,48 @@ use bitaxe_worker_control::{
 use curve25519_dalek::constants::{ED25519_BASEPOINT_POINT, EIGHT_TORSION};
 
 const TRUST: &str = r#"{
-  "profile":"bwg-worker-deployment-trust/0.1",
-  "updateAuthority":{
-    "issuer":"development-update-authority",
-    "audience":"bwg-reference-firmware-capability/0.1",
-    "role":"update_authority",
-    "keys":[{"kid":"dev-update-DwaQYLSvuWqah8oY","kty":"OKP","crv":"Ed25519","x":"xf8DO6ofYrezCboUdY03qe5Wq0zgFp3_k5kjW8ht96o","alg":"Ed25519","use":"sig","key_ops":["verify"]}]
+  "profile": "bwg-worker-deployment-trust/0.2",
+  "updateAuthority": {
+    "issuer": "development-update-authority",
+    "audience": "bwg-reference-firmware-capability/0.2",
+    "role": "update_authority",
+    "keys": [
+      {
+        "kid": "fixture-serial-update",
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "FqC19_WMEfE5IvmS3TRRv5YT7MszPYsGSGUqoK0Doks",
+        "alg": "Ed25519",
+        "use": "sig",
+        "key_ops": [
+          "verify"
+        ]
+      }
+    ]
   },
-  "workLeaseAuthority":{
-    "profile":"bwg-worker-deployment-trust/0.1",
-    "issuer":"development-worker-lease-authority",
-    "audience":"bwg-worker-controller/0.3",
-    "role":"work_lease_authority",
-    "keys":[{"kid":"dev-lease-OVBcK5Mlzd6E_zbg","kty":"OKP","crv":"Ed25519","x":"abl7RfBOVNNiVmOIJhpBBuFlscyifz8coOVEks7c9r8","alg":"Ed25519","use":"sig","key_ops":["verify"]}]
+  "workLeaseAuthority": {
+    "profile": "bwg-worker-deployment-trust/0.2",
+    "issuer": "development-worker-lease-authority",
+    "audience": "bwg-worker-controller/0.4",
+    "role": "work_lease_authority",
+    "keys": [
+      {
+        "kid": "fixture-serial-lease",
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "7yfVEFCiaXA5UJ31PkJcdJlDsqTbiKeXTJiuN3F1QVs",
+        "alg": "Ed25519",
+        "use": "sig",
+        "key_ops": [
+          "verify"
+        ]
+      }
+    ]
   }
 }"#;
 
-const START_AUTHORIZATION: &str = "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoiZGV2LWxlYXNlLU9WQmNLNU1semQ2RV96YmciLCJ0eXAiOiJid2ctd29ya2VyLWxlYXNlLWF1dGhvcml6YXRpb24randzIn0.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJ6RDV1RERuZEZuSzkxaGZWTFpGZnNQRHI3SFEyaVhPRUltOVZHUFBWQVdJIiwib3BlcmF0aW9uIjoic3RhcnQiLCJyZXF1ZXN0U2hhMjU2IjoiaVpQeVEwMVY0bzhsYUphaEhlZjQySXBBSWg4V2VqeFNPUHIzNTZlQzZMZyIsInNlcXVlbmNlIjoiMSJ9.jdMFNKg72Db3CCMaU1RZR9zGHQvXRe4kGeGnLEqPjzeaJuY974yhiSR5WTCScAZdrYtGq2U9dytuswI5ChKrCw";
-const RENEW_AUTHORIZATION: &str = "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoiZGV2LWxlYXNlLU9WQmNLNU1semQ2RV96YmciLCJ0eXAiOiJid2ctd29ya2VyLWxlYXNlLWF1dGhvcml6YXRpb24randzIn0.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJ6RDV1RERuZEZuSzkxaGZWTFpGZnNQRHI3SFEyaVhPRUltOVZHUFBWQVdJIiwib3BlcmF0aW9uIjoicmVuZXciLCJyZXF1ZXN0U2hhMjU2IjoiVkhpZ3VfX044TVFDMnB1dkhQckp6NmlGY0wwck9LaU1lMWJZMkZSUjd3MCIsInNlcXVlbmNlIjoiMiJ9.tFC46zNC0wUlUcRhojV6aFilKx-BjjMAKecv7kGuW5eUuPfb3Yw1fU-_xszjf5XCuVHHo-erIuxGcE69Zky5Bg";
+const START_AUTHORIZATION: &str = "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoiZml4dHVyZS1zZXJpYWwtbGVhc2UiLCJ0eXAiOiJid2ctd29ya2VyLWxlYXNlLWF1dGhvcml6YXRpb24randzIn0.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJEQXlreGh3ckxpNmNldzlmYnVibkhvYXRsNFlnVXVZTWlzVWpsM054RHpFIiwib3BlcmF0aW9uIjoic3RhcnQiLCJyZXF1ZXN0U2hhMjU2IjoidFRtSkNTOXhsLVVOWTVvQ0lKNmN5d29jWnM2cVpRRjcxd1dFRjBGRkhuZyIsInNlcXVlbmNlIjoiMSJ9.yfWvVCXNm7lOuma2kyli2JdGBUyDi0060ZfOp2W8OOvdvqyNFKH1wKDhIsE87n5Hi5mT9qEHmYlEaT0k5qF9Bg";
+const RENEW_AUTHORIZATION: &str = "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoiZml4dHVyZS1zZXJpYWwtbGVhc2UiLCJ0eXAiOiJid2ctd29ya2VyLWxlYXNlLWF1dGhvcml6YXRpb24randzIn0.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJEQXlreGh3ckxpNmNldzlmYnVibkhvYXRsNFlnVXVZTWlzVWpsM054RHpFIiwib3BlcmF0aW9uIjoicmVuZXciLCJyZXF1ZXN0U2hhMjU2IjoiSmJYbFpTSENYZDhwQUpabWtsRXZRZGRHRkpjeUlJcnZWd2dvYjZYYjNyUSIsInNlcXVlbmNlIjoiMiJ9.EZvX5QojqTCGRss-bk7mdrhq0C0sf5Mv_gOoF43cKIg7QSkY0SEASygbJG1fBCtKfNh5DiEckOyUKuc0J-pDDg";
 
 #[derive(Default)]
 struct MemorySequenceStore {
@@ -72,7 +96,7 @@ fn verifies_the_exact_pinned_start_and_renew_artifacts_once() {
         .expect("pinned deployment trust should parse");
     let mut verifier = WorkLeaseAuthorizationVerifier::new(trust, MemorySequenceStore::default());
     let context =
-        WorkerLeaseAuthorizationContext::parse("zD5uDDndFnK91hfVLZFfsPDr7HQ2iXOEIm9VGPPVAWI")
+        WorkerLeaseAuthorizationContext::parse("DAykxhwrLi6cew9fbubnHoatl4YgUuYMisUjl3NxDzE")
             .expect("pinned context should parse");
     let start = start(START_AUTHORIZATION, "fixture-session-password");
     let renewal = renewal(RENEW_AUTHORIZATION);
@@ -108,7 +132,7 @@ fn rejects_changed_complete_request_terms_under_a_valid_signature() {
         .expect("pinned deployment trust should parse");
     let mut verifier = WorkLeaseAuthorizationVerifier::new(trust, MemorySequenceStore::default());
     let context =
-        WorkerLeaseAuthorizationContext::parse("zD5uDDndFnK91hfVLZFfsPDr7HQ2iXOEIm9VGPPVAWI")
+        WorkerLeaseAuthorizationContext::parse("DAykxhwrLi6cew9fbubnHoatl4YgUuYMisUjl3NxDzE")
             .expect("pinned context should parse");
     let changed = start(START_AUTHORIZATION, "changed-password");
 
@@ -205,7 +229,7 @@ fn rejects_a_noncanonical_signature_encoding() {
         .expect("pinned deployment trust should parse");
     let mut verifier = WorkLeaseAuthorizationVerifier::new(trust, MemorySequenceStore::default());
     let context =
-        WorkerLeaseAuthorizationContext::parse("zD5uDDndFnK91hfVLZFfsPDr7HQ2iXOEIm9VGPPVAWI")
+        WorkerLeaseAuthorizationContext::parse("DAykxhwrLi6cew9fbubnHoatl4YgUuYMisUjl3NxDzE")
             .expect("pinned context should parse");
     let mut segments = START_AUTHORIZATION
         .split('.')
@@ -238,8 +262,8 @@ fn rejects_a_noncanonical_signature_encoding() {
 
 fn start(authorization: &str, password: &str) -> WorkerLeaseGrant {
     serde_json::from_value(serde_json::json!({
-        "protocolVersion": "bwg-worker-controller/0.3",
-        "leaseId": "lease_fixture_03",
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "leaseId": "lease_fixture_01",
         "challengeId": "challenge_00000000000000000000000000000001",
         "authorization": authorization,
         "durationMilliseconds": 60_000,
@@ -255,11 +279,37 @@ fn start(authorization: &str, password: &str) -> WorkerLeaseGrant {
 
 fn renewal(authorization: &str) -> WorkerLeaseRenewal {
     serde_json::from_value(serde_json::json!({
-        "protocolVersion": "bwg-worker-controller/0.3",
-        "leaseId": "lease_fixture_03",
+        "protocolVersion": "bwg-worker-controller/0.4",
+        "leaseId": "lease_fixture_01",
         "authorization": authorization,
         "durationMilliseconds": 60_000,
         "renewAfterMilliseconds": 20_000,
     }))
     .expect("Renew fixture should parse")
+}
+
+#[test]
+fn adding_an_unsigned_acceptance_campaign_invalidates_start_authorization() {
+    // Arrange
+    let trust = WorkLeaseAuthorityTrust::from_deployment_json(TRUST).expect("fixture trust");
+    let mut verifier = WorkLeaseAuthorizationVerifier::new(trust, MemorySequenceStore::default());
+    let context =
+        WorkerLeaseAuthorizationContext::parse("DAykxhwrLi6cew9fbubnHoatl4YgUuYMisUjl3NxDzE")
+            .expect("fixture context");
+    let grant: WorkerLeaseGrant = serde_json::from_value(serde_json::json!({
+        "protocolVersion":"bwg-worker-controller/0.4", "leaseId":"lease_fixture_01",
+        "challengeId":"challenge_00000000000000000000000000000001",
+        "authorization":START_AUTHORIZATION, "durationMilliseconds":60000,
+        "renewAfterMilliseconds":20000, "stratum":{"endpoint":"stratum+tcp://127.0.0.1:3333/", "username":"fixture-session-user", "password":"fixture-session-password"},
+        "acceptanceCampaign":{"id":"AAAAAAAAAAAAAAAAAAAAAA", "window":0,"maximumActiveMilliseconds":180000}
+    })).expect("structured grant");
+
+    // Act
+    let result = verifier.verify_start(&grant, &context);
+
+    // Assert
+    assert_eq!(
+        result.expect_err("campaign must be signed").category(),
+        "invalid_authorization"
+    );
 }

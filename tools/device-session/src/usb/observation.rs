@@ -15,7 +15,7 @@ impl UsbSession {
     pub fn observe_installed_worker(
         &mut self,
     ) -> Result<crate::UsbRebootLoopObservation, UsbSessionError> {
-        self.reacquire_profile(crate::UsbProfile::WorkerRuntime)?;
+        self.reacquire_profile(crate::UsbProfile::SerialJtagRuntime)?;
         self.transition(UsbLifecycleEvent::BeginObservation)?;
         let result = self.observe_installed_worker_inner();
         let completion = self.transition(UsbLifecycleEvent::ObservationComplete);
@@ -53,7 +53,7 @@ impl UsbSession {
             })?;
         // Reacquisition refreshes a port renamed during the reconnecting capture
         // and proves that its final Worker still belongs to the original lease.
-        self.reacquire_profile(crate::UsbProfile::WorkerRuntime)?;
+        self.reacquire_profile(crate::UsbProfile::SerialJtagRuntime)?;
         Ok(observation)
     }
 

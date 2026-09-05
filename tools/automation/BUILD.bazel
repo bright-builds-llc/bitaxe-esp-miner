@@ -44,69 +44,6 @@ js_library(
     ],
 )
 
-js_library(
-    name = "native_usb_transition_evaluator_sources",
-    srcs = [
-        "src/native-usb-transition-recovery-cli.ts",
-        "src/native-usb-transition-recovery-contract.ts",
-        "src/native-usb-transition-recovery.ts",
-        "src/native-usb-transition-projection.ts",
-        "src/self-test-campaign-restoration.ts",
-        "src/stratum-v2-campaign.ts",
-        "src/stratum-v2-noise-diagnostic-process.ts",
-        "src/stratum-v2-restore-admission.ts",
-        "src/stratum-v2-restore-model.ts",
-        "src/stratum-v2-restore-validator.ts",
-        "src/stratum-v2-runtime-admission.ts",
-        "src/stratum-v2-tcp-recovery-tooling.ts",
-        "src/stratum-v2-validator-child.ts",
-    ],
-)
-
-js_library(
-    name = "native_usb_display_recovery_sources",
-    srcs = [
-        "src/macos-display-origin-capture.swift",
-        "src/native-usb-display-recovery-cli.ts",
-        "src/native-usb-display-recovery.ts",
-    ],
-    visibility = ["//scripts:__pkg__"],
-)
-
-js_library(
-    name = "native_usb_config_ap_recovery_sources",
-    srcs = [
-        "src/native-usb-config-ap-recovery-cli.ts",
-        "src/native-usb-config-ap-recovery.ts",
-    ],
-    visibility = ["//scripts:__pkg__"],
-)
-
-js_library(
-    name = "native_usb_rom_exit_sources",
-    srcs = [
-        "src/native-usb-rom-exit-cli.ts",
-        "src/native-usb-rom-exit.ts",
-    ],
-    visibility = ["//scripts:__pkg__"],
-)
-
-js_library(
-    name = "native_usb_owner_recovery_sources",
-    srcs = [
-        "src/macos-native-usb-owner-recovery.swift",
-        "src/native-usb-owner-recovery-cli.ts",
-        "src/native-usb-owner-recovery.ts",
-    ],
-    visibility = ["//scripts:__pkg__"],
-)
-
-js_library(
-    name = "native_usb_boot_chain_integrity_sources",
-    srcs = ["src/macos-native-usb-boot-chain-display.swift", "src/native-usb-boot-chain-integrity-cli.ts", "src/native-usb-boot-chain-integrity.ts"],
-    visibility = ["//scripts:__pkg__"],
-)
-
 filegroup(
     name = "automation_sources",
     srcs = ["BUILD.bazel"] + glob(["src/**/*.ts", "src/**/*.swift"]),
@@ -120,11 +57,6 @@ filegroup(
 filegroup(
     name = "macos_provisioning_association_helper",
     srcs = ["src/macos-provisioning-associate.swift"],
-)
-
-filegroup(
-    name = "macos_display_origin_capture_helper",
-    srcs = ["src/macos-display-origin-capture.swift"],
 )
 
 npm_link_types_node()
@@ -210,7 +142,6 @@ js_binary(
         "//crates/bitaxe-api:statistics_history_sources",
         "//:display_behavior_evidence_inputs",
         "//:screen_flow_evidence_inputs",
-        "//:native_usb_transition_inputs",
         "//:str005_inactive_restoration_inputs",
         "//:statistics_history_evidence_inputs",
         "//:scoreboard_evidence_inputs",
@@ -271,82 +202,6 @@ js_binary(
         "//tools/stratum-v2-fixture:stratum_v2_fixture",
     ],
     entry_point = "dist/stratum-v2-noise-diagnostic-cli.js",
-)
-
-js_binary(
-    name = "native_usb_transition_recovery",
-    chdir = "../../../..",
-    data = [
-        ":automation_ts",
-        ":native_usb_transition_evaluator_sources",
-        "//:native_usb_transition_inputs",
-        "//tools/flash:flash",
-        "//tools/flash:native_usb_ownership_sources",
-        "//tools/device-session:native_usb_ownership_sources",
-    ],
-    entry_point = "dist/native-usb-transition-recovery-cli.js",
-)
-
-js_binary(
-    name = "native_usb_display_recovery",
-    chdir = "../../../..",
-    data = [
-        ":automation_ts",
-        ":macos_display_origin_capture_helper",
-        ":native_usb_display_recovery_sources",
-        "//:native_usb_display_recovery_inputs",
-        "//tools/flash:flash",
-    ],
-    entry_point = "dist/native-usb-display-recovery-cli.js",
-)
-
-js_binary(
-    name = "native_usb_config_ap_recovery",
-    chdir = "../../../..",
-    data = [
-        ":automation_ts",
-        ":native_usb_config_ap_recovery_sources",
-        "//:native_usb_config_ap_recovery_inputs",
-        "//tools/flash:flash",
-    ],
-    entry_point = "dist/native-usb-config-ap-recovery-cli.js",
-)
-
-js_binary(
-    name = "native_usb_rom_exit",
-    chdir = "../../../..",
-    data = [
-        ":automation_ts",
-        ":native_usb_rom_exit_sources",
-        "//:native_usb_rom_exit_inputs",
-        "//crates/bitaxe-api:usb_boot_profile_source",
-        "//firmware/bitaxe:native_usb_ownership_sources",
-        "//tools/device-session:native_usb_ownership_sources",
-        "//tools/flash:flash",
-        "//tools/flash:native_usb_ownership_sources",
-    ],
-    entry_point = "dist/native-usb-rom-exit-cli.js",
-)
-
-js_binary(
-    name = "native_usb_owner_recovery",
-    chdir = "../../../..",
-    data = [
-        ":automation_ts",
-        ":native_usb_owner_recovery_sources",
-        "//:native_usb_owner_recovery_inputs",
-        "//tools/flash:flash",
-        "//tools/flash:native_usb_ownership_sources",
-        "//tools/device-session:native_usb_ownership_sources",
-    ],
-    entry_point = "dist/native-usb-owner-recovery-cli.js",
-)
-
-js_binary(
-    name = "native_usb_boot_chain_integrity",
-    chdir = "../../../..",
-    data = [":automation_ts", ":native_usb_boot_chain_integrity_sources", "//:native_usb_boot_chain_integrity_inputs", "//tools/flash:flash", "src/macos-native-usb-owner-recovery.swift"],
-    entry_point = "dist/native-usb-boot-chain-integrity-cli.js",
 )
 
 js_binary(
@@ -737,65 +592,6 @@ js_test(
         "//:str005_preconnect_noise_inputs",
     ],
     entry_point = "test-dist/stratum-v2-noise-diagnostic.test.js",
-)
-
-js_test(
-    name = "native_usb_transition_recovery_unit_test",
-    chdir = "../../../..",
-    data = [
-        ":automation_ts",
-        ":automation_tests_ts",
-    ],
-    entry_point = "test-dist/native-usb-transition-recovery.test.js",
-)
-
-js_test(
-    name = "native_usb_display_recovery_unit_test",
-    chdir = "../../../..",
-    data = [
-        ":automation_ts",
-        ":automation_tests_ts",
-        ":macos_display_origin_capture_helper",
-    ],
-    entry_point = "test-dist/native-usb-display-recovery.test.js",
-)
-
-js_test(
-    name = "native_usb_config_ap_recovery_unit_test",
-    chdir = "../../../..",
-    data = [
-        ":automation_ts",
-        ":automation_tests_ts",
-    ],
-    entry_point = "test-dist/native-usb-config-ap-recovery.test.js",
-)
-
-js_test(
-    name = "native_usb_rom_exit_unit_test",
-    chdir = "../../../..",
-    data = [
-        ":automation_ts",
-        ":automation_tests_ts",
-    ],
-    entry_point = "test-dist/native-usb-rom-exit.test.js",
-)
-
-js_test(
-    name = "native_usb_owner_recovery_unit_test",
-    chdir = "../../../..",
-    data = [
-        ":automation_ts",
-        ":automation_tests_ts",
-        ":native_usb_owner_recovery_sources",
-    ],
-    entry_point = "test-dist/native-usb-owner-recovery.test.js",
-)
-
-js_test(
-    name = "native_usb_boot_chain_integrity_unit_test",
-    chdir = "../../../..",
-    data = [":automation_ts", ":automation_tests_ts"],
-    entry_point = "test-dist/native-usb-boot-chain-integrity.test.js",
 )
 
 js_test(

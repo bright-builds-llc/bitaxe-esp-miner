@@ -203,6 +203,7 @@ pub(crate) fn run_release_recovery(
 
 fn release_restore_flash_command(command: &ReleaseRecoveryCommand, port: &str) -> FlashCommand {
     FlashCommand {
+        factory_reset: false,
         common: CommonArgs {
             board: command.board,
             port: Some(port.to_owned()),

@@ -7,7 +7,7 @@ export const safe10ProductionFragments = new Map<string, readonly string[]>([
   ["crates/bitaxe-safety/src/mining_preconditions.rs", ["pub struct ProductionMiningPreconditions {"]],
   ["crates/bitaxe-stratum/src/v1/recovery_policy.rs", ["pub struct ProductionReadiness {", "if !self.safety_prerequisites_fresh"]],
   ["crates/bitaxe-stratum/src/v1/production_session/runtime.rs", ["pub fn snapshot(&self) -> ProductionSessionSnapshot"]],
-  ["firmware/bitaxe/src/production_mining_session.rs", ["let safety_prerequisites_fresh = observations.is_ultra_205_mining_safe_at(now());"]],
+  ["firmware/bitaxe/src/production_mining_session.rs", ["let safety_prerequisites_fresh = observations.is_ultra_205_mining_safe_at(now())\n            && observations\n                .fan_rpm\n                .maybe_last_good()\n                .is_some_and(|sample| *sample.value() > 0);"]],
   ["firmware/bitaxe/src/production_mining_session/readiness_trace.rs", ["safety_sample_fresh: readiness.safety_prerequisites_fresh"]],
   ["tools/flash/src/campaign/markers.rs", ["pub(super) observation_freshness: ObservationFreshnessMarker"]],
   ["tools/flash/src/campaign/evidence.rs", ["observation_freshness: maybe_terminal.map"]],

@@ -1,3 +1,5 @@
+#[path = "controller/liveness.rs"]
+mod liveness;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use bitaxe_worker_control::{
@@ -94,7 +96,9 @@ impl WorkerSession for FakeSession {
 fn possession_must_be_sent_before_a_work_lease_can_start() {
     // Arrange
     let mut worker = worker();
-    worker.begin_enumeration();
+    worker
+        .begin_serial_session(fixture_binding())
+        .expect("fresh serial session");
 
     // Act
     let rejected = worker.prepare_frame(start_frame().as_bytes(), 1_000);
@@ -126,7 +130,7 @@ fn possession_must_be_sent_before_a_work_lease_can_start() {
     // Act
     worker
         .confirm_sent(proof)
-        .expect("sent proof should admit this enumeration");
+        .expect("sent proof should admit this logical session");
     let started = worker
         .prepare_frame(start_frame().as_bytes(), 1_000)
         .expect("admitted authenticated Start should succeed");
@@ -137,7 +141,7 @@ fn possession_must_be_sent_before_a_work_lease_can_start() {
 }
 
 #[test]
-fn disconnect_safe_stops_before_it_clears_enumeration_admission() {
+fn disconnect_safe_stops_before_it_clears_logical_session_admission() {
     // Arrange
     let mut worker = admitted_worker();
     worker
@@ -254,7 +258,9 @@ fn partial_start_retains_cleanup_responsibility_until_safe_stop_confirms() {
 fn possession_nonce_is_not_evicted_after_seventeen_proofs() {
     // Arrange
     let mut worker = worker();
-    worker.begin_enumeration();
+    worker
+        .begin_serial_session(fixture_binding())
+        .expect("fresh serial session");
     let first_nonce = URL_SAFE_NO_PAD.encode([0_u8; 32]);
     for index in 0_u16..17 {
         let mut nonce_bytes = [0_u8; 32];
@@ -292,7 +298,9 @@ fn possession_nonce_is_not_evicted_after_seventeen_proofs() {
 fn possession_nonce_capacity_fails_closed_without_eviction() {
     // Arrange
     let mut worker = worker();
-    worker.begin_enumeration();
+    worker
+        .begin_serial_session(fixture_binding())
+        .expect("fresh serial session");
     for index in 0_u16..256 {
         let mut nonce_bytes = [0_u8; 32];
         nonce_bytes[..2].copy_from_slice(&index.to_be_bytes());
@@ -340,11 +348,15 @@ fn worker_with_session(session: FakeSession) -> WorkerControl<FixtureVerifier, F
         FixtureVerifier,
         session,
         None,
-        bitaxe_worker_control::FirmwareSourceCommit::parse(&"a".repeat(40))
-            .expect("fixture source commit should parse"),
+        bitaxe_worker_control::FirmwareIdentity::new(
+            bitaxe_worker_control::FirmwareSourceCommit::parse(&"a".repeat(40))
+                .expect("fixture source commit should parse"),
+            &"b".repeat(64),
+        )
+        .expect("fixture firmware identity"),
         json!({
-            "protocolVersion": "bwg-worker-controller/0.3",
-            "transportProfile": "bwg-worker-usb/0.2"
+            "protocolVersion": "bwg-worker-controller/0.4",
+            "transportProfile": "bwg-worker-serial/0.1"
         }),
         "rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA",
     )
@@ -358,13 +370,15 @@ fn admitted_worker() -> WorkerControl<FixtureVerifier, FakeSession> {
 }
 
 fn admit(worker: &mut WorkerControl<FixtureVerifier, FakeSession>, now: u64) {
-    worker.begin_enumeration();
+    worker
+        .begin_serial_session(fixture_binding())
+        .expect("fresh serial session");
     let proof = worker
         .prepare_frame(possession_frame(worker.capability_sha256()).as_bytes(), now)
         .expect("possession response should prepare");
     worker
         .confirm_sent(proof)
-        .expect("sent proof should admit this enumeration");
+        .expect("sent proof should admit this logical session");
 }
 
 fn possession_frame(capability_sha256: &str) -> String {
@@ -378,7 +392,7 @@ fn possession_frame(capability_sha256: &str) -> String {
 fn possession_frame_with_nonce(capability_sha256: &str, request_id: &str, nonce: &str) -> String {
     format!(
         concat!(
-            "{{\"profile\":\"bwg-worker-possession/0.1\",",
+            "{{\"profile\":\"bwg-worker-possession/0.2\",",
             "\"requestId\":\"{}\",",
             "\"command\":\"prove_possession\",",
             "\"payload\":{{",
@@ -386,7 +400,10 @@ fn possession_frame_with_nonce(capability_sha256: &str, request_id: &str, nonce:
             "\"possessionNonce\":\"{}\",",
             "\"challengeBindingSha256\":\"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC\",",
             "\"controllerCapabilitySha256\":\"{}\",",
-            "\"applicationDescriptorSha256\":\"rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA\"",
+            "\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",",
+            "\"hostNonce\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",",
+            "\"deviceNonce\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",",
+            "\"serialManifestSha256\":\"rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA\"",
             "}}}}\n"
         ),
         request_id, nonce, capability_sha256
@@ -395,11 +412,11 @@ fn possession_frame_with_nonce(capability_sha256: &str, request_id: &str, nonce:
 
 fn start_frame() -> String {
     concat!(
-        "{\"protocolVersion\":\"bwg-worker-controller/0.3\",",
-        "\"requestId\":\"usb_v03_start\",",
+        "{\"protocolVersion\":\"bwg-worker-controller/0.4\",",
+        "\"requestId\":\"serial_v03_start\",",
         "\"command\":\"start_lease\",",
         "\"payload\":{",
-        "\"protocolVersion\":\"bwg-worker-controller/0.3\",",
+        "\"protocolVersion\":\"bwg-worker-controller/0.4\",",
         "\"leaseId\":\"lease_fixture_03\",",
         "\"challengeId\":\"challenge_00000000000000000000000000000001\",",
         "\"authorization\":\"fixture-authentication-not-a-production-secret\",",
@@ -417,11 +434,104 @@ fn start_frame() -> String {
 fn restore_frame(reason: RestorationReason) -> String {
     format!(
         concat!(
-            "{{\"protocolVersion\":\"bwg-worker-controller/0.3\",",
-            "\"requestId\":\"usb_v03_restore\",",
+            "{{\"protocolVersion\":\"bwg-worker-controller/0.4\",",
+            "\"requestId\":\"serial_v03_restore\",",
             "\"command\":\"restore\",",
             "\"payload\":{{\"reason\":\"{}\"}}}}\n"
         ),
         reason.category()
     )
+}
+
+fn fixture_binding() -> bitaxe_worker_control::serial::SerialSessionBinding {
+    bitaxe_worker_control::serial::SerialSessionBinding::parse(
+        "AAAAAAAAAAAAAAAAAAAAAA",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    )
+    .expect("fixture nonce encoding")
+}
+
+#[test]
+fn possession_from_a_different_logical_connection_is_rejected() {
+    // Arrange
+    let mut worker = worker();
+    worker
+        .begin_serial_session(fixture_binding())
+        .expect("fresh connection");
+    let frame = possession_frame(worker.capability_sha256())
+        .replace("AAAAAAAAAAAAAAAAAAAAAA\"", "AgICAgICAgICAgICAgICAg\"");
+
+    // Act
+    let result = worker.prepare_frame(frame.as_bytes(), 0);
+
+    // Assert
+    assert_eq!(
+        result.expect_err("cross-session proof").category(),
+        "invalid_proof"
+    );
+}
+
+#[test]
+fn a_new_logical_connection_cannot_replace_active_work() {
+    // Arrange
+    let mut worker = admitted_worker();
+    worker
+        .prepare_frame(start_frame().as_bytes(), 1_001)
+        .expect("authorized Start");
+
+    // Act
+    let result = worker.begin_serial_session(fixture_binding());
+
+    // Assert
+    assert_eq!(
+        result
+            .expect_err("active session cannot be replaced")
+            .category(),
+        "invalid_transition"
+    );
+    assert!(worker.has_active_lease());
+}
+
+#[test]
+fn admitted_transport_probe_round_trips_maximum_controller_payload() {
+    // Arrange
+    let mut worker = admitted_worker();
+    let mut request = json!({"protocolVersion":"bwg-worker-controller/0.4", "requestId":"serial_probe", "command":"transport_probe", "payload":{"padding":""}});
+    let overhead = serde_json::to_vec(&request).expect("probe JSON").len();
+    let padding =
+        "x".repeat(bitaxe_worker_control::serial::MAXIMUM_CONTROL_PAYLOAD_BYTES - overhead);
+    request["payload"]["padding"] = padding.clone().into();
+    let mut frame = serde_json::to_vec(&request).expect("bounded probe JSON");
+    frame.push(b'\n');
+
+    // Act
+    let response = worker
+        .prepare_frame(&frame, 1_001)
+        .expect("maximum valid probe");
+    let value: serde_json::Value =
+        serde_json::from_slice(response.frame()).expect("probe response");
+
+    // Assert
+    assert_eq!(value["result"]["padding"], padding);
+    assert_eq!(worker.session().events, Vec::<&str>::new());
+}
+
+#[test]
+fn transport_probe_cannot_echo_arbitrary_data() {
+    // Arrange
+    let mut worker = admitted_worker();
+    let mut frame = serde_json::to_vec(&json!({"protocolVersion":"bwg-worker-controller/0.4", "requestId":"serial_probe", "command":"transport_probe", "payload":{"padding":"arbitrary"}})).expect("probe JSON");
+    frame.push(b'\n');
+
+    // Act
+    let result = worker.prepare_frame(&frame, 1_001);
+
+    // Assert
+    assert_eq!(
+        result
+            .expect_err("only fixed test pattern allowed")
+            .category(),
+        "invalid_request"
+    );
 }

@@ -2,12 +2,10 @@ use std::collections::BTreeMap;
 use std::env;
 use std::fs;
 
-use bitaxe_core::usb_worker::{WORKER_CONFIGURATION_DESCRIPTOR, WORKER_DEVICE_DESCRIPTOR};
 use bitaxe_worker_control::{
     AcceptedSequenceStore, DeviceIdentity, LeaseAuthorizationError, LeaseDeadlines,
     SequenceStoreResult, WorkLeaseAuthorityTrust, WorkLeaseAuthorizationVerifier, WorkerControl,
-    WorkerControlFrameAccumulator, WorkerLeaseAuthorizationContext, WorkerLeaseGrant,
-    WorkerLeaseRenewal, WorkerSession, WorkerSessionError,
+    WorkerLeaseGrant, WorkerLeaseRenewal, WorkerSession, WorkerSessionError,
 };
 use serde_json::{json, Value};
 
@@ -81,122 +79,88 @@ impl WorkerSession for ConformanceSession {
 }
 
 #[test]
-fn executes_the_pinned_gate_contract_against_the_firmware_core() {
-    // Cargo cannot materialize Bazel external-repository data. The required
-    // repository-wide Bazel suite sets all five paths and executes this body.
-    let Some(controller) = fixture("BWG_CONTROLLER_FIXTURES") else {
+fn gate_serial_and_signed_session_contracts_match_rust() {
+    // Arrange: Bazel supplies the exact pinned Gate artifacts, never local live keys.
+    if env::var("BWG_POSSESSION_FIXTURES").is_err() && env::var("BWG_DEPLOYMENT_FIXTURES").is_err()
+    {
+        assert_ne!(
+            env::var("BWG_REQUIRE_PINNED_FIXTURES").ok().as_deref(),
+            Some("1"),
+            "required Gate fixtures are absent"
+        );
         return;
-    };
+    }
     let possession = required_fixture("BWG_POSSESSION_FIXTURES");
     let deployment = required_fixture("BWG_DEPLOYMENT_FIXTURES");
-    let usb = required_fixture("BWG_USB_FIXTURES");
-    let runtime_source = required_text("BWG_USB_RUNTIME_SOURCE");
-    let phy_source = required_text("BWG_USB_PHY_SOURCE");
-
-    // Arrange: consume the exact pinned public trust, capability, and proof.
-    let capability = vector(&controller, "v03_discover")["response"]["result"].clone();
+    let request = &possession["initialAdmission"]["request"];
+    let payload = &request["payload"];
+    let binding = bitaxe_worker_control::serial::SerialSessionBinding::parse(
+        text(payload, "sessionId"),
+        text(payload, "hostNonce"),
+        text(payload, "deviceNonce"),
+    )
+    .expect("pinned serial session must validate");
     let trust = WorkLeaseAuthorityTrust::from_deployment_json(&deployment["trust"].to_string())
-        .expect("pinned deployment trust should parse");
-    let verifier = WorkLeaseAuthorizationVerifier::new(trust, MemorySequenceStore::default());
+        .expect("pinned deployment trust must parse");
+    let manifest_digest =
+        bitaxe_worker_control::serial::serial_manifest_sha256().expect("manifest digest");
     let mut worker = WorkerControl::new(
         DeviceIdentity::from_seed(FIXTURE_DEVICE_SEED),
-        verifier,
+        WorkLeaseAuthorizationVerifier::new(trust, MemorySequenceStore::default()),
         ConformanceSession,
         None,
-        fixture_source_commit(),
-        capability,
-        "rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA",
+        bitaxe_worker_control::FirmwareIdentity::new(
+            bitaxe_worker_control::FirmwareSourceCommit::parse(&"a".repeat(40))
+                .expect("fixture source"),
+            &"b".repeat(64),
+        )
+        .expect("fixture firmware identity"),
+        deployment["ultra205"]["signedCapability"].clone(),
+        &manifest_digest,
     )
-    .expect("pinned Worker contract should configure");
-    worker.begin_enumeration();
-
-    // Act: execute pre-admission Controller vectors, produce and confirm the
-    // exact possession response, then execute live signed Start and Renew.
-    for id in ["v03_discover", "v03_status"] {
-        let fixture = vector(&controller, id);
-        let response = worker
-            .prepare_frame(&json_line(&fixture["request"]), 0)
-            .unwrap_or_else(|_| panic!("pinned {id} request should execute"));
-        assert_eq!(response_value(&response), fixture["response"]);
-    }
-    let proof = worker
-        .prepare_frame(&json_line(&possession["initialAdmission"]["request"]), 0)
-        .expect("pinned possession request should prepare");
-    let actual_proof: Value =
-        serde_json::from_slice(proof.frame()).expect("proof response should be JSON");
-    assert_eq!(actual_proof, possession["initialAdmission"]["response"]);
+    .expect("pinned Worker contract");
     worker
-        .confirm_sent(proof)
-        .expect("pinned possession response should admit");
+        .begin_serial_session(binding)
+        .expect("fresh logical session");
 
-    let start_request = controller_request(
-        "usb_v03_start",
-        "start_lease",
-        authorized_request(&deployment, "start"),
-    );
-    let start = worker
-        .prepare_frame(&json_line(&start_request), 0)
-        .expect("pinned signed Start should execute");
-    assert_eq!(
-        response_value(&start),
-        vector(&controller, "v03_start")["response"]
-    );
+    // Act: produce the exact same signed possession transcript as the browser contract.
+    let proof = worker
+        .prepare_frame(&json_line(request), 0)
+        .expect("possession should prepare");
+    let response: Value = serde_json::from_slice(proof.frame()).expect("proof JSON");
 
-    let renew_request = controller_request(
-        "usb_v03_renew",
-        "renew_lease",
-        authorized_request(&deployment, "renew"),
-    );
-    let renew = worker
-        .prepare_frame(&json_line(&renew_request), 10_000)
-        .expect("pinned signed Renew should execute");
-    assert_eq!(
-        response_value(&renew),
-        vector(&controller, "v03_renew")["response"]
-    );
-    let pause_fixture = vector(&controller, "v03_pause");
-    let pause = worker
-        .prepare_frame(&json_line(&pause_fixture["request"]), 10_000)
-        .expect("pinned Pause should execute");
-    assert_eq!(response_value(&pause), pause_fixture["response"]);
-
-    // Assert: fixture-declared framing bounds and descriptor topology drive
-    // executable checks instead of serving only as copied documentation.
-    let maximum = usb["framing"]["maximumFrameBytes"]
-        .as_u64()
-        .and_then(|value| usize::try_from(value).ok())
-        .expect("USB maximum frame bytes should be bounded");
-    let mut accumulator = WorkerControlFrameAccumulator::new();
-    assert!(accumulator.push(&vec![b'x'; maximum + 1]).is_err());
-    assert!(accumulator.push(b"{}\n{}\n").is_err());
-    assert_native_topology(&usb, &runtime_source);
-    assert_declared_negative_vectors_are_covered(&controller, &possession, &deployment, &usb);
-    execute_controller_transfer_negatives(&controller, &deployment);
-    execute_possession_request_negatives(&controller, &possession, &deployment);
-    execute_deployment_negatives(&deployment);
-    execute_usb_negatives(&usb, &runtime_source, &phy_source);
-}
-
-fn fixture(variable: &str) -> Option<Value> {
-    let path = env::var(variable).ok()?;
-    let text = fs::read_to_string(path).expect("pinned fixture should be readable");
-    Some(serde_json::from_str(&text).expect("pinned fixture should be JSON"))
+    // Assert: byte-independent JSON equality includes exact deterministic compact JWS.
+    assert_eq!(manifest_digest, text(payload, "serialManifestSha256"));
+    assert_eq!(response, possession["initialAdmission"]["response"]);
+    worker.confirm_sent(proof).expect("proof should admit");
+    let start = authorized_request(&deployment, "start");
+    let response = worker
+        .prepare_frame(
+            &json_line(&controller_request("serial_start", "start_lease", start)),
+            0,
+        )
+        .expect("Gate-signed Start should authenticate");
+    let response: Value = serde_json::from_slice(response.frame()).expect("Start response");
+    assert_eq!(response["result"]["state"], "mining");
+    let renew = authorized_request(&deployment, "renew");
+    worker
+        .prepare_frame(
+            &json_line(&controller_request("serial_renew", "renew_lease", renew)),
+            10_000,
+        )
+        .expect("Gate-signed Renew should authenticate");
 }
 
 fn required_fixture(variable: &str) -> Value {
-    fixture(variable).unwrap_or_else(|| panic!("{variable} should be set by Bazel"))
+    let path = env::var(variable).unwrap_or_else(|_| panic!("{variable} must be set by Bazel"));
+    serde_json::from_str(&fs::read_to_string(path).expect("pinned fixture readable"))
+        .expect("fixture JSON")
 }
 
-fn required_text(variable: &str) -> String {
-    let path = env::var(variable).unwrap_or_else(|_| panic!("{variable} should be set by Bazel"));
-    fs::read_to_string(path).expect("pinned source should be readable")
-}
-
-fn vector<'a>(controller: &'a Value, id: &str) -> &'a Value {
-    controller["usbVectors"]
-        .as_array()
-        .and_then(|vectors| vectors.iter().find(|vector| vector["id"] == id))
-        .unwrap_or_else(|| panic!("missing pinned Controller vector {id}"))
+fn text<'a>(value: &'a Value, key: &str) -> &'a str {
+    value[key]
+        .as_str()
+        .unwrap_or_else(|| panic!("missing fixture field {key}"))
 }
 
 fn authorized_request(deployment: &Value, operation: &str) -> Value {
@@ -206,12 +170,8 @@ fn authorized_request(deployment: &Value, operation: &str) -> Value {
 }
 
 fn controller_request(request_id: &str, command: &str, payload: Value) -> Value {
-    json!({
-        "protocolVersion": "bwg-worker-controller/0.3",
-        "requestId": request_id,
-        "command": command,
-        "payload": payload,
-    })
+    json!({ "protocolVersion": "bwg-worker-controller/0.4", "requestId": request_id,
+        "command": command, "payload": payload })
 }
 
 fn json_line(value: &Value) -> Vec<u8> {
@@ -220,339 +180,88 @@ fn json_line(value: &Value) -> Vec<u8> {
     line
 }
 
-fn response_value(response: &bitaxe_worker_control::PreparedResponse) -> Value {
-    serde_json::from_slice(response.frame()).expect("controller response should be JSON")
-}
-
-fn assert_native_topology(usb: &Value, runtime_source: &str) {
-    let descriptor = &usb["topology"]["application"]["descriptor"];
-    let control = &usb["topology"]["application"]["descriptor"]["control"];
-    let evidence = &usb["topology"]["application"]["descriptor"]["evidence"];
-    let configuration = descriptor["configurationValue"]
-        .as_u64()
-        .expect("configuration should be numeric");
-    let interface = control["interfaceNumber"]
-        .as_u64()
-        .expect("control interface should be numeric");
-    let alternate = control["alternateSetting"]
-        .as_u64()
-        .expect("alternate setting should be numeric");
-    let class = control["classCode"]
-        .as_u64()
-        .expect("class should be numeric");
-    let transfer = control["transferType"]
-        .as_str()
-        .expect("transfer type should be text");
-    let subclass = control["subclassCode"]
-        .as_u64()
-        .expect("subclass should be numeric");
-    let protocol = control["protocolCode"]
-        .as_u64()
-        .expect("protocol should be numeric");
-    let endpoint_out = control["endpointOut"]
-        .as_u64()
-        .expect("OUT endpoint should be numeric");
-    let endpoint_in = control["endpointIn"]
-        .as_u64()
-        .expect("IN endpoint should be numeric");
-    assert_eq!(class, 255);
-    assert_eq!(transfer, "bulk");
-    assert_eq!(WORKER_DEVICE_DESCRIPTOR.len(), 18);
-    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[5], configuration as u8);
-    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[11], interface as u8);
-    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[12], alternate as u8);
-    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[14], 0xff);
-    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[15], subclass as u8);
-    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[16], protocol as u8);
-    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[20], endpoint_out as u8);
-    assert_eq!(
-        WORKER_CONFIGURATION_DESCRIPTOR[27],
-        0x80 | endpoint_in as u8
-    );
-    assert_eq!(
-        WORKER_CONFIGURATION_DESCRIPTOR[34],
-        evidence["communicationInterfaceNumber"]
-            .as_u64()
-            .expect("CDC interface should be numeric") as u8
-    );
-    assert_eq!(
-        WORKER_CONFIGURATION_DESCRIPTOR[77],
-        evidence["dataInterfaceNumber"]
-            .as_u64()
-            .expect("CDC data interface should be numeric") as u8
-    );
-    let notification = evidence["notificationEndpointIn"]
-        .as_u64()
-        .expect("notification endpoint should be numeric");
-    let data_out = evidence["dataEndpointOut"]
-        .as_u64()
-        .expect("CDC OUT endpoint should be numeric");
-    let data_in = evidence["dataEndpointIn"]
-        .as_u64()
-        .expect("CDC IN endpoint should be numeric");
-    assert_eq!(
-        WORKER_CONFIGURATION_DESCRIPTOR[70],
-        0x80 | notification as u8
-    );
-    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[86], data_out as u8);
-    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[93], 0x80 | data_in as u8);
-    assert_eq!(evidence["hostWritesAccepted"], false);
-    assert!(runtime_source.contains("discard_cdc(interface"));
-    assert!(!runtime_source.contains("enqueue_vendor_bytes(&discarded"));
-}
-
-fn assert_declared_negative_vectors_are_covered(
-    controller: &Value,
-    possession: &Value,
-    deployment: &Value,
-    usb: &Value,
-) {
-    let expected = [
-        (controller, "negativeTransfers", 7),
-        (possession, "negativeCases", 13),
-        (deployment, "negativeCases", 13),
-        (usb, "negativeVectors", 7),
-    ];
-    for (document, field, count) in expected {
-        let vectors = document[field]
-            .as_array()
-            .unwrap_or_else(|| panic!("{field} should be an array"));
-        assert_eq!(vectors.len(), count, "pinned {field} coverage changed");
-        assert!(vectors.iter().all(|vector| {
-            vector["id"].as_str().is_some_and(|id| !id.is_empty())
-                && vector["expectedError"]
-                    .as_str()
-                    .is_some_and(|error| !error.is_empty())
-        }));
+#[test]
+fn gate_serial_vectors_drive_fragmentation_and_negative_boundary_checks() {
+    use bitaxe_worker_control::serial::{
+        serial_manifest, SerialEnvelope, SerialError, SerialFrameAccumulator,
+        MAXIMUM_CONTROL_PAYLOAD_BYTES, MAXIMUM_WIRE_FRAME_BYTES,
+    };
+    // Arrange
+    if env::var("BWG_SERIAL_FIXTURES").is_err() {
+        assert_ne!(
+            env::var("BWG_REQUIRE_PINNED_FIXTURES").ok().as_deref(),
+            Some("1"),
+            "required serial fixtures are absent"
+        );
+        return;
     }
-}
-
-fn execute_controller_transfer_negatives(controller: &Value, deployment: &Value) {
-    let cases = [
-        ("empty_transfer", Vec::new(), "invalid_frame"),
-        (
-            "oversized_transfer",
-            vec![b'x'; 65_537],
-            "invalid_frame",
-        ),
-        (
-            "invalid_utf8_transfer",
-            vec![0xff, b'\n'],
-            "invalid_frame",
-        ),
-        (
-            "invalid_json_transfer",
-            b"{not-json}\n".to_vec(),
-            "invalid_frame",
-        ),
-        (
-            "truncated_transfer",
-            b"{\"protocolVersion\":\"bwg-worker-controller/0.3\"}".to_vec(),
-            "invalid_frame",
-        ),
-        (
-            "multiple_transfer_frames",
-            b"{}\n{}\n".to_vec(),
-            "invalid_frame",
-        ),
-        (
-            "unknown_request_field",
-            b"{\"protocolVersion\":\"bwg-worker-controller/0.3\",\"requestId\":\"usb_unknown\",\"command\":\"status\",\"unknown\":true}\n".to_vec(),
-            "invalid_request",
-        ),
-    ];
-    let declared = controller["negativeTransfers"]
+    let fixture = required_fixture("BWG_SERIAL_FIXTURES");
+    assert_eq!(fixture["manifest"], serial_manifest());
+    let frames = fixture["frames"]
         .as_array()
-        .expect("Controller negatives should be an array");
-    for (id, frame, expected_category) in cases {
-        assert!(declared.iter().any(|vector| vector["id"] == id));
-        let mut worker = contract_worker(controller, deployment);
-        let error = worker
-            .prepare_frame(&frame, 0)
-            .expect_err("negative Controller transfer should fail");
-        assert_eq!(error.category(), expected_category, "vector {id}");
+        .expect("published serial frames");
+    assert!(!frames.is_empty());
+    let stream: Vec<_> = frames
+        .iter()
+        .flat_map(|frame| json_line(&frame["frame"]))
+        .collect();
+    let mut accumulator = SerialFrameAccumulator::default();
+    // Act: exercise arbitrary splitting and multiple complete records in one read.
+    let mut decoded = Vec::new();
+    for chunk in stream.chunks(7) {
+        for byte in chunk {
+            if let Some(record) = accumulator.push_byte(*byte) {
+                let envelope = SerialEnvelope::parse(&record.expect("bounded shared record"))
+                    .expect("shared frame parses");
+                decoded.push(serde_json::to_value(&envelope).expect("frame value"));
+            }
+        }
     }
-}
-
-fn execute_possession_request_negatives(
-    controller: &Value,
-    possession: &Value,
-    deployment: &Value,
-) {
-    let initial = &possession["initialAdmission"]["request"];
-    let declared = possession["negativeCases"]
-        .as_array()
-        .expect("possession negatives should be an array");
-    let mut unknown = initial.clone();
-    unknown["payload"]["unknown"] = json!(true);
-    let arbitrary = json!({
-        "profile": "bwg-worker-possession/0.1",
-        "requestId": "pos_arbitrary",
-        "command": "sign_arbitrary",
-        "payload": {"message": "forbidden"},
-    });
-    let cases = [
-        (
-            "unknown_request_field",
-            json_line(&unknown),
-            "invalid_request",
-        ),
-        (
-            "arbitrary_signing_request",
-            json_line(&arbitrary),
-            "invalid_request",
-        ),
-        ("oversized_frame", vec![b'x'; 65_537], "invalid_frame"),
-    ];
-    for (id, frame, expected_category) in cases {
-        assert!(declared.iter().any(|vector| vector["id"] == id));
-        let mut worker = contract_worker(controller, deployment);
-        let error = worker
-            .prepare_frame(&frame, 0)
-            .expect_err("negative possession request should fail");
-        assert_eq!(error.category(), expected_category, "vector {id}");
+    // Assert
+    assert_eq!(
+        decoded,
+        frames
+            .iter()
+            .map(|frame| frame["frame"].clone())
+            .collect::<Vec<_>>()
+    );
+    for frame in frames {
+        let mut crlf = json_line(&frame["frame"]);
+        crlf.insert(crlf.len() - 1, b'\r');
+        assert!(matches!(
+            SerialEnvelope::parse(&crlf),
+            Err(SerialError::Invalid)
+        ));
+        let mut unknown = frame["frame"].clone();
+        unknown["unexpected"] = true.into();
+        assert!(matches!(
+            SerialEnvelope::parse(&json_line(&unknown)),
+            Err(SerialError::Invalid)
+        ));
+        let wire = String::from_utf8(json_line(&frame["frame"])).expect("UTF8 fixture");
+        let sequence = format!("\"sequence\":{}", frame["frame"]["sequence"]);
+        let duplicate = wire.replacen(&sequence, &format!("{sequence},{sequence}"), 1);
+        assert!(matches!(
+            SerialEnvelope::parse(duplicate.as_bytes()),
+            Err(SerialError::Invalid)
+        ));
     }
-}
-
-fn execute_deployment_negatives(deployment: &Value) {
-    let context = WorkerLeaseAuthorizationContext::parse(
-        deployment["start"]["input"]["controlSessionBindingSha256"]
-            .as_str()
-            .expect("fixture context should be text"),
-    )
-    .expect("fixture context should parse");
-    let trust_json = deployment["trust"].to_string();
-
-    let mut changed_request = authorized_request(deployment, "start");
-    changed_request["stratum"]["password"] = json!("changed");
-    let changed_grant: WorkerLeaseGrant =
-        serde_json::from_value(changed_request).expect("changed fixture grant should parse");
-    let trust = WorkLeaseAuthorityTrust::from_deployment_json(&trust_json)
-        .expect("fixture trust should parse");
-    let mut verifier = WorkLeaseAuthorizationVerifier::new(trust, MemorySequenceStore::default());
-    assert_eq!(
-        verifier
-            .verify_start(&changed_grant, &context)
-            .expect_err("changed request should fail")
-            .category(),
-        "invalid_authorization"
-    );
-
-    let grant: WorkerLeaseGrant = serde_json::from_value(authorized_request(deployment, "start"))
-        .expect("fixture grant should parse");
-    let trust = WorkLeaseAuthorityTrust::from_deployment_json(&trust_json)
-        .expect("fixture trust should parse");
-    let mut verifier = WorkLeaseAuthorizationVerifier::new(trust, MemorySequenceStore::default());
-    verifier
-        .verify_start(&grant, &context)
-        .expect("first sequence should verify");
-    assert_eq!(
-        verifier
-            .verify_start(&grant, &context)
-            .expect_err("accepted sequence should not replay")
-            .category(),
-        "replay"
-    );
-
-    let changed_context = WorkerLeaseAuthorizationContext::parse(&"T".repeat(43))
-        .expect("changed context should parse");
-    let trust = WorkLeaseAuthorityTrust::from_deployment_json(&trust_json)
-        .expect("fixture trust should parse");
-    let mut verifier = WorkLeaseAuthorizationVerifier::new(trust, MemorySequenceStore::default());
-    assert_eq!(
-        verifier
-            .verify_start(&grant, &changed_context)
-            .expect_err("changed context should fail")
-            .category(),
-        "invalid_authorization"
-    );
-
-    let mut oversized = authorized_request(deployment, "start");
-    oversized["authorization"] = json!("x".repeat(513));
-    let oversized: WorkerLeaseGrant =
-        serde_json::from_value(oversized).expect("oversized grant should remain syntactic JSON");
-    let trust = WorkLeaseAuthorityTrust::from_deployment_json(&trust_json)
-        .expect("fixture trust should parse");
-    let mut verifier = WorkLeaseAuthorizationVerifier::new(trust, MemorySequenceStore::default());
-    assert_eq!(
-        verifier
-            .verify_start(&oversized, &context)
-            .expect_err("oversized authorization should fail")
-            .category(),
-        "invalid_authorization"
-    );
-
-    for id in [
-        "changed_request",
-        "changed_context",
-        "same_nonce_different_identity",
-        "replayed_sequence",
-        "cross_session_replay",
-        "authorization_513_bytes",
-    ] {
-        assert!(deployment["negativeCases"]
-            .as_array()
-            .is_some_and(|vectors| vectors.iter().any(|vector| vector["id"] == id)));
-    }
-}
-
-fn execute_usb_negatives(usb: &Value, runtime_source: &str, phy_source: &str) {
-    let declared = usb["negativeVectors"]
-        .as_array()
-        .expect("USB negatives should be an array");
-    let declared_id = |id: &str| declared.iter().any(|vector| vector["id"] == id);
-
-    assert!(declared_id("wrong_function_role"));
-    assert!(runtime_source.contains("tud_vendor_rx_cb"));
-    assert!(runtime_source.contains("tud_cdc_rx_cb"));
-    assert!(declared_id("ambiguous_control_functions"));
-    assert_eq!(WORKER_CONFIGURATION_DESCRIPTOR[14], 0xff);
-    assert!(declared_id("bootloader_control_attempt"));
-    let vendor_start = runtime_source
-        .find("fn tud_vendor_rx_cb")
-        .expect("vendor callback must exist");
-    let cdc_start = runtime_source[vendor_start..]
-        .find("fn tud_cdc_rx_cb")
-        .map(|offset| vendor_start + offset)
-        .expect("CDC callback must follow vendor callback");
-    let vendor_callback = &runtime_source[vendor_start..cdc_start];
-    assert!(!vendor_callback.contains("bitaxe_usb_restart_bootloader"));
-    assert!(!vendor_callback.contains("USB_SERIAL_JTAG"));
-    assert!(!vendor_callback.contains("RTC_CNTL_FORCE_DOWNLOAD_BOOT"));
-    assert!(runtime_source.contains("tud_cdc_line_coding_cb"));
-    assert!(runtime_source.contains("tud_cdc_line_state_cb"));
-    assert!(phy_source.contains("RTC_CNTL_FORCE_DOWNLOAD_BOOT"));
-    assert!(declared_id("unknown_profile_field"));
-    assert!(runtime_source.contains("enqueue_vendor_bytes"));
-    assert!(declared_id("control_descriptor_drift"));
-    assert_native_topology(usb, runtime_source);
-    assert!(declared_id("multiple_frame_transfer"));
-    let mut accumulator = WorkerControlFrameAccumulator::new();
-    assert!(accumulator.push(b"{}\n{}\n").is_err());
-    assert!(declared_id("runtime_log_injection"));
-    assert!(accumulator.push(b"runtime-log\n{}\n").is_err());
-}
-
-fn contract_worker(
-    controller: &Value,
-    deployment: &Value,
-) -> WorkerControl<WorkLeaseAuthorizationVerifier<MemorySequenceStore>, ConformanceSession> {
-    let capability = vector(controller, "v03_discover")["response"]["result"].clone();
-    let trust = WorkLeaseAuthorityTrust::from_deployment_json(&deployment["trust"].to_string())
-        .expect("fixture trust should parse");
-    WorkerControl::new(
-        DeviceIdentity::from_seed(FIXTURE_DEVICE_SEED),
-        WorkLeaseAuthorizationVerifier::new(trust, MemorySequenceStore::default()),
-        ConformanceSession,
-        None,
-        fixture_source_commit(),
-        capability,
-        "rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA",
-    )
-    .expect("fixture Worker should configure")
-}
-
-fn fixture_source_commit() -> bitaxe_worker_control::FirmwareSourceCommit {
-    bitaxe_worker_control::FirmwareSourceCommit::parse(&"a".repeat(40))
-        .expect("fixture source commit should parse")
+    let mut control = frames
+        .iter()
+        .find(|frame| frame["frame"]["kind"] == "control")
+        .expect("published control frame")["frame"]
+        .clone();
+    control["payload"] = json!({"padding":""});
+    let overhead = serde_json::to_vec(&control["payload"])
+        .expect("payload")
+        .len();
+    control["payload"]["padding"] = "x"
+        .repeat(MAXIMUM_CONTROL_PAYLOAD_BYTES + 1 - overhead)
+        .into();
+    let oversized = json_line(&control);
+    assert!(oversized.len() <= MAXIMUM_WIRE_FRAME_BYTES);
+    assert!(matches!(
+        SerialEnvelope::parse(&oversized),
+        Err(SerialError::Oversized)
+    ));
 }

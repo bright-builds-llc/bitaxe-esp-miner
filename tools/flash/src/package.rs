@@ -12,7 +12,7 @@ pub(crate) struct FlashOutcome {
 pub(crate) struct PreparedFlash {
     pub(crate) outcome: FlashOutcome,
     pub(crate) execution_command: CommandSpec,
-    pub(crate) _execution_snapshot: Option<AdmittedExecutionSnapshot>,
+    pub(crate) maybe_segmented_write: Option<ManagedEsptoolWriteFlash>,
 }
 
 pub(crate) fn prepare_flash(
@@ -29,39 +29,82 @@ pub(crate) fn prepare_flash_with_wifi_mode(
 ) -> Result<PreparedFlash> {
     ensure_ultra_205(command.common.board)?;
     let admitted_image = resolve_flash_image(command, environment)?;
-    let maybe_execution_snapshot = if command.common.dry_run {
-        None
-    } else {
-        let Some(factory_bytes) = admitted_image.maybe_factory_bytes() else {
-            bail!("identity_admission=blocked reason=developer_image_requires_dry_run");
-        };
-        Some(environment.create_admitted_execution_snapshot(factory_bytes)?)
+    let package = match &admitted_image {
+        AdmittedFlashImage::Factory(package) => Some(package),
+        AdmittedFlashImage::DeveloperDryRun { .. } => None,
     };
-    let execution_path = maybe_execution_snapshot
-        .as_ref()
-        .map(AdmittedExecutionSnapshot::path)
-        .unwrap_or_else(|| admitted_image.display_path());
+    if command.factory_reset && package.is_none() {
+        bail!("identity_admission=blocked reason=factory_reset_requires_manifest");
+    }
+    if !command.factory_reset && package.is_some_and(|package| package.update_segments.len() != 5) {
+        bail!("identity_admission=blocked reason=manifest_update_segments_required");
+    }
+    if command.wifi_credentials.is_some() && !command.factory_reset {
+        bail!("identity_admission=blocked reason=ordinary_update_preserves_nvs_use_explicit_factory_reset");
+    }
+    let segments = package.map(|package| {
+        if command.factory_reset {
+            vec![(0, package.factory_bytes.clone())]
+        } else {
+            package.update_segments.clone()
+        }
+    });
+    let mut maybe_segmented_write = match &segments {
+        Some(segments) if !command.common.dry_run => Some(if command.factory_reset {
+            prepare_factory_write(
+                environment.prepare_application_exit()?,
+                "",
+                &segments[0].1,
+                environment,
+            )?
+        } else {
+            prepare_segmented_write(
+                environment.prepare_application_exit()?,
+                "",
+                segments,
+                environment,
+            )?
+        }),
+        _ => None,
+    };
     let port = resolve_port(command.common.port.as_deref(), environment)?;
-    let execution_command = flash_command_for_admitted_image(
-        &port,
-        &admitted_image,
-        execution_path,
-        command.common.dry_run,
-    )?;
-    let display_command = if maybe_execution_snapshot.is_some() {
+    if let Some(write) = maybe_segmented_write.as_mut() {
+        write.bind_port(&port)?;
+    }
+    let execution_command = if let Some(segmented) = &maybe_segmented_write {
+        CommandSpec::new(segmented.program().as_str(), segmented.args())
+    } else if let Some(segments) = &segments {
+        segmented_display_command(&port, segments)
+    } else {
         flash_command_for_admitted_image(
             &port,
             &admitted_image,
-            Utf8Path::new("<admitted-factory-snapshot>"),
-            command.common.dry_run,
+            admitted_image.display_path(),
+            true,
         )?
+    };
+    let display_command = segments.as_ref().map_or_else(
+        || execution_command.clone(),
+        |segments| segmented_display_command(&port, segments),
+    );
+    let mut nvs_seed = if command.factory_reset {
+        command
+            .wifi_credentials
+            .as_deref()
+            .map(|path| prepare_wifi_nvs_seed(&port, path, wifi_mode, environment))
+            .transpose()?
     } else {
-        execution_command.clone()
+        None
     };
-    let nvs_seed = match &command.wifi_credentials {
-        Some(path) => Some(prepare_wifi_nvs_seed(&port, path, wifi_mode, environment)?),
-        None => None,
-    };
+    if let Some(seed) = nvs_seed.as_mut() {
+        let after = seed
+            .command
+            .args
+            .iter()
+            .position(|arg| arg == "--after")
+            .context("NVS reset policy missing")?;
+        seed.command.args[after + 1] = "no-reset".to_owned();
+    }
 
     Ok(PreparedFlash {
         outcome: FlashOutcome {
@@ -72,7 +115,7 @@ pub(crate) fn prepare_flash_with_wifi_mode(
             nvs_seed,
         },
         execution_command,
-        _execution_snapshot: maybe_execution_snapshot,
+        maybe_segmented_write,
     })
 }
 
@@ -83,25 +126,9 @@ pub(crate) fn flash_command_for_admitted_image(
     dry_run: bool,
 ) -> Result<CommandSpec> {
     match admitted_image {
-        AdmittedFlashImage::Factory(_) => Ok(CommandSpec::new(
-            "espflash",
-            [
-                "write-bin",
-                "--no-stub",
-                "--chip",
-                "esp32s3",
-                "--port",
-                port,
-                "--non-interactive",
-                "--before",
-                "usb-reset",
-                "--after",
-                "hard-reset",
-                "--skip-update-check",
-                "0x0",
-                execution_path.as_str(),
-            ],
-        )),
+        AdmittedFlashImage::Factory(_) => {
+            bail!("identity_admission=blocked reason=factory_requires_admitted_write")
+        }
         AdmittedFlashImage::DeveloperDryRun { .. } if dry_run => Ok(CommandSpec::new(
             "espflash",
             [
@@ -125,7 +152,7 @@ pub(crate) fn resolve_flash_image(
 ) -> Result<AdmittedFlashImage> {
     if command.common.dry_run && command.manifest.is_none() {
         let Some(image) = &command.image else {
-            bail!("identity_admission=blocked reason=dry_run_requires_image_or_v3_manifest");
+            bail!("identity_admission=blocked reason=dry_run_requires_image_or_package_manifest");
         };
         return Ok(AdmittedFlashImage::DeveloperDryRun {
             display_path: environment.workspace_path(image),
@@ -133,7 +160,7 @@ pub(crate) fn resolve_flash_image(
     }
 
     if command.image.is_some() && command.manifest.is_none() {
-        bail!("identity_admission=blocked reason=explicit_image_requires_v3_manifest");
+        bail!("identity_admission=blocked reason=explicit_image_requires_package_manifest");
     }
 
     if command.manifest.is_none() {
@@ -171,8 +198,8 @@ pub(crate) fn validate_identity_admission(
     current_provenance: &BuildProvenance,
     environment: &impl FlashEnvironment,
 ) -> Result<AdmittedFactoryImage> {
-    if manifest.schema_version != 3 {
-        bail!("identity_admission=blocked reason=manifest_schema_not_v3");
+    if !matches!(manifest.schema_version, 3 | 4) {
+        bail!("identity_admission=blocked reason=manifest_schema_unsupported");
     }
     validate_required_artifact_kinds(manifest)?;
     let manifest_provenance = BuildProvenance::new(
@@ -226,10 +253,13 @@ pub(crate) fn validate_identity_admission(
         },
     )?;
 
+    let update_segments =
+        admit_update_segments(manifest_path, manifest, &factory_bytes, environment)?;
     Ok(AdmittedFactoryImage {
+        factory_bytes,
+        update_segments,
         manifest: manifest_path.to_owned(),
         display_path: factory_path,
-        bytes: factory_bytes,
         runtime_identity: ExpectedRuntimeAttestationIdentity {
             firmware_commit: manifest.source_commit.clone(),
             reference_commit: manifest.reference_commit.clone(),

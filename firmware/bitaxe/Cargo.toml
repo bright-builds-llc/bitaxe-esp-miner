@@ -34,9 +34,3 @@ esp_idf_version = "tag:v5.5.4"
 esp_idf_tools_install_dir = "workspace"
 esp_idf_sdkconfig = "sdkconfig"
 esp_idf_sdkconfig_defaults = ["sdkconfig.defaults"]
-
-[[package.metadata.esp-idf-sys.extra_components]]
-remote_component = { name = "espressif/esp_tinyusb", version = "1.4.5" }
-
-[[package.metadata.esp-idf-sys.extra_components]]
-component_dirs = ["bwg/native"]

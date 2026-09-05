@@ -1,5 +1,6 @@
 use esp_idf_svc::sys;
 
+mod application_log;
 mod asic_adapter;
 mod bap_adapter;
 mod bap_runtime;
@@ -47,6 +48,7 @@ mod task_watchdog_observation;
 mod usb_runtime;
 mod websocket_api;
 mod wifi_adapter;
+mod worker_acceptance_budget;
 
 const BOOT_LOG_LINE: &str = "bitaxe-rust boot: board=Ultra 205 asic=BM1366";
 const RUST_TARGET: &str = "xtensa-esp32s3-espidf";

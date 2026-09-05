@@ -30,10 +30,11 @@ impl CommandSpec {
 }
 
 pub(crate) struct AdmittedFactoryImage {
+    pub(crate) factory_bytes: Vec<u8>,
     pub(crate) manifest: Utf8PathBuf,
     pub(crate) display_path: Utf8PathBuf,
-    pub(crate) bytes: Vec<u8>,
     pub(crate) runtime_identity: ExpectedRuntimeAttestationIdentity,
+    pub(crate) update_segments: Vec<(u32, Vec<u8>)>,
 }
 
 pub(crate) enum AdmittedFlashImage {
@@ -53,13 +54,6 @@ impl AdmittedFlashImage {
         match self {
             Self::DeveloperDryRun { display_path } => display_path,
             Self::Factory(factory) => &factory.display_path,
-        }
-    }
-
-    pub(crate) fn maybe_factory_bytes(&self) -> Option<&[u8]> {
-        match self {
-            Self::DeveloperDryRun { .. } => None,
-            Self::Factory(factory) => Some(&factory.bytes),
         }
     }
 
@@ -324,6 +318,8 @@ pub(crate) struct PackageManifest {
     pub(crate) build_identity: PackageBuildIdentity,
     pub(crate) default_flash_image: String,
     pub(crate) artifacts: Vec<PackageArtifact>,
+    #[serde(default)]
+    pub(crate) update_segments: Vec<bitaxe_api::update_segments::UpdateSegment>,
 }
 
 #[derive(Debug, Deserialize)]

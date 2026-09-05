@@ -35,12 +35,7 @@ js_library(
 js_library(
     name = "native_usb_ownership_source",
     srcs = [
-        "src/usb_maintenance.rs",
-        "src/usb_maintenance/trace.rs",
-        "src/usb_maintenance/trace/tests.rs",
-        "src/usb_worker_diagnostics.rs",
-        "src/usb_worker_diagnostics/tests.rs",
-        "src/usb_worker.rs",
+        "src/usb_diagnostics.rs",
     ],
     visibility = ["//scripts:__pkg__"],
 )
@@ -76,13 +71,8 @@ rust_library(
         "src/screen.rs",
         "src/screen/frame.rs",
         "src/screen/tests.rs",
-        "src/usb_maintenance.rs",
-        "src/usb_maintenance/trace.rs",
-        "src/usb_maintenance/trace/tests.rs",
-        "src/usb_worker_diagnostics.rs",
-        "src/usb_worker_diagnostics/tests.rs",
-        "src/usb_worker.rs",
         "src/wifi_reconnect.rs",
+        "src/usb_diagnostics.rs",
     ],
     compile_data = glob(["fixtures/**"]),
     crate_name = "bitaxe_core",

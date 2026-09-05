@@ -120,8 +120,9 @@ fn flash_evidence_records_nvs_seed_without_credential_path_or_values() {
     let dir = tempdir().expect("tempdir");
     let evidence_dir = dir_path(&dir).join("evidence");
     let credentials_path = write_wifi_credentials(&dir, "LabNet", "super-secret");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let command = FlashCommand {
+        factory_reset: true,
         common: CommonArgs {
             evidence_dir: Some(evidence_dir.clone()),
             dry_run: false,

@@ -67,6 +67,12 @@ pub fn load_or_generate_device_identity(
 }
 
 impl DeviceIdentity {
+    /// Stable private continuity identifier derived only from the public signing key.
+    #[must_use]
+    pub fn public_key_fingerprint(&self) -> crate::StateFingerprint {
+        crate::StateFingerprint::of_public_state(&self.signing_key.verifying_key().to_bytes())
+    }
+
     #[must_use]
     pub fn from_seed(mut seed: [u8; 32]) -> Self {
         let signing_key = SigningKey::from_bytes(&seed);
@@ -79,11 +85,20 @@ impl DeviceIdentity {
         &self,
         request: &PossessionRequest,
         firmware_source_commit: &FirmwareSourceCommit,
+        app_elf_sha256: &str,
     ) -> Result<PossessionResponse, PossessionError> {
+        if app_elf_sha256.len() != 64
+            || !app_elf_sha256
+                .bytes()
+                .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+        {
+            return Err(PossessionError::InvalidRequest);
+        }
         let claims = PossessionClaims::from_request(
             request,
             firmware_source_commit,
             base64_url(self.signing_key.verifying_key().to_bytes()),
+            app_elf_sha256,
         );
         let protected = base64_url(
             crate::codec::canonical_json(&serde_json::json!({

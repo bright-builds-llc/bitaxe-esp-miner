@@ -5,11 +5,7 @@ use anyhow::{Context, Result};
 use crate::macos::MacOsDeviceAdapter;
 use crate::{UsbSessionError, UsbTerminalCategory};
 
-#[cfg(test)]
-use std::time::Duration;
-
 mod execution;
-mod maintenance;
 mod profile_trace;
 mod verification;
 
@@ -17,22 +13,13 @@ pub use execution::{
     admit_application_execution, admit_rom_execution, classify_usb_ownership, UsbExecutionOwner,
     UsbOwnershipIdentity,
 };
-pub use maintenance::{handoff_worker_to_rom, NativeUsbHandoffOutcome};
-#[cfg(test)]
-use maintenance::{
-    maintenance_commit_steps, maintenance_control_steps, wait_for_maintenance_receipt,
-    MaintenanceCommitStep, MaintenanceControlStep,
-};
 pub use profile_trace::ProfileObservationCounts;
 #[cfg(test)]
 use profile_trace::MAX_PROFILE_OBSERVATION_SAMPLES;
 pub(crate) use profile_trace::{
     profile_observation_category, ProfileObservationCategory, ProfileObservationTrace,
 };
-pub use verification::{
-    native_usb_transition_module_sha256, run_installed_application, verify_native_usb_transition,
-    ApplicationTransportObservation, NativeUsbTransitionOutcome,
-};
+pub use verification::{run_installed_application, ApplicationTransportObservation};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UsbProfile {
@@ -55,7 +42,6 @@ pub enum UsbOperationPlan {
     InspectOnly,
     ObserveOnly,
     DirectEspflash,
-    HandoffThenEspflash,
     RejectUnknownProfile,
 }
 
@@ -241,11 +227,9 @@ pub const fn plan_usb_operation(intent: UsbIntent, profile: UsbProfile) -> UsbOp
     match (intent, profile) {
         (UsbIntent::Inspect, UsbProfile::Unknown) => UsbOperationPlan::RejectUnknownProfile,
         (UsbIntent::Inspect, _) => UsbOperationPlan::InspectOnly,
-        (UsbIntent::Observe, UsbProfile::WorkerRuntime | UsbProfile::SerialJtagRuntime) => {
-            UsbOperationPlan::ObserveOnly
-        }
+        (UsbIntent::Observe, UsbProfile::SerialJtagRuntime) => UsbOperationPlan::ObserveOnly,
         (UsbIntent::Flash | UsbIntent::Recover, UsbProfile::WorkerRuntime) => {
-            UsbOperationPlan::HandoffThenEspflash
+            UsbOperationPlan::RejectUnknownProfile
         }
         (
             UsbIntent::Flash | UsbIntent::Recover,
@@ -260,97 +244,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn worker_runtime_flash_requires_handoff_before_espflash() {
+    fn legacy_tinyusb_flash_is_rejected_without_maintenance() {
         // Arrange / Act
         let plan = plan_usb_operation(UsbIntent::Flash, UsbProfile::WorkerRuntime);
 
         // Assert
-        assert_eq!(plan, UsbOperationPlan::HandoffThenEspflash);
-    }
-
-    #[test]
-    fn macos_control_plan_primes_low_before_the_single_dtr_arm_edge() {
-        // Arrange / Act
-        let steps = maintenance_control_steps();
-
-        // Assert
-        assert_eq!(
-            steps,
-            [
-                MaintenanceControlStep::ClearDtr,
-                MaintenanceControlStep::SetBitRate(115_200),
-                MaintenanceControlStep::Settle,
-                MaintenanceControlStep::AssertDtr,
-                MaintenanceControlStep::Settle,
-                MaintenanceControlStep::SetBitRate(1_200),
-            ]
-        );
-    }
-
-    #[test]
-    fn host_keeps_cdc_open_until_the_committed_receipt() {
-        // Arrange / Act
-        let steps = maintenance_commit_steps();
-
-        // Assert
-        assert_eq!(
-            steps,
-            [
-                MaintenanceCommitStep::SetBitRate115200,
-                MaintenanceCommitStep::AwaitCommitted,
-                MaintenanceCommitStep::ClearDtr,
-                MaintenanceCommitStep::CloseCdc,
-            ]
-        );
-    }
-
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn committed_receipt_is_admitted_from_the_bounded_transcript() {
-        use std::io::Write as _;
-
-        // Arrange
-        let mut transcript = tempfile::NamedTempFile::new().expect("private transcript");
-        transcript
-            .write_all(b"prefix usb_maintenance={\"status\":\"committed\"}\n")
-            .expect("write transcript");
-        let mut reader = transcript.reopen().expect("reopen transcript");
-
-        // Act
-        let result = wait_for_maintenance_receipt(
-            &mut reader,
-            b"usb_maintenance={\"status\":\"committed\"}",
-            Duration::from_millis(20),
-            UsbTerminalCategory::HandoffCommitTimeout,
-        );
-
-        // Assert
-        assert!(result.is_ok());
-    }
-
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn ready_receipt_cannot_satisfy_the_committed_wait() {
-        use std::io::Write as _;
-
-        // Arrange
-        let mut transcript = tempfile::NamedTempFile::new().expect("private transcript");
-        transcript
-            .write_all(b"usb_maintenance={\"status\":\"ready\"}\n")
-            .expect("write transcript");
-        let mut reader = transcript.reopen().expect("reopen transcript");
-
-        // Act
-        let error = wait_for_maintenance_receipt(
-            &mut reader,
-            b"usb_maintenance={\"status\":\"committed\"}",
-            Duration::from_millis(20),
-            UsbTerminalCategory::HandoffCommitTimeout,
-        )
-        .expect_err("ready is not committed");
-
-        // Assert
-        assert_eq!(error.category, UsbTerminalCategory::HandoffCommitTimeout);
+        assert_eq!(plan, UsbOperationPlan::RejectUnknownProfile);
     }
 
     #[test]
@@ -426,13 +325,13 @@ mod tests {
     }
 
     #[test]
-    fn monitoring_never_arms_handoff() {
+    fn observation_rejects_legacy_tinyusb_and_accepts_fixed_serial() {
         // Arrange / Act
         let worker = plan_usb_operation(UsbIntent::Observe, UsbProfile::WorkerRuntime);
         let serial = plan_usb_operation(UsbIntent::Observe, UsbProfile::SerialJtagRuntime);
 
         // Assert
-        assert_eq!(worker, UsbOperationPlan::ObserveOnly);
+        assert_eq!(worker, UsbOperationPlan::RejectUnknownProfile);
         assert_eq!(serial, UsbOperationPlan::ObserveOnly);
     }
 

@@ -8,6 +8,13 @@ use crate::{
 
 /// Deployment-owned verification over the complete parsed authorization input.
 pub trait LeaseAuthorizationVerifier {
+    /// Fingerprints validated persistent replay marks through their existing owner.
+    fn authorization_high_water_fingerprint(
+        &self,
+    ) -> Result<Option<crate::StateFingerprint>, LeaseAuthorizationError> {
+        Ok(None)
+    }
+
     fn mark_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError>;
     fn clear_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError>;
     fn verify_start(
@@ -25,6 +32,18 @@ pub trait LeaseAuthorizationVerifier {
 
 /// Sole mining-owner adapter; implementations must keep supplied credentials volatile.
 pub trait WorkerSession {
+    /// Returns only an allowlisted nonsecret-settings fingerprint and boot preference.
+    fn settings_preservation(
+        &self,
+    ) -> Result<Option<crate::SettingsPreservation>, WorkerSessionError> {
+        Ok(None)
+    }
+
+    /// Returns only bounded, non-secret qualification observations; never authority.
+    fn status_evidence(&self) -> Option<serde_json::Value> {
+        None
+    }
+
     fn start(
         &mut self,
         grant: &WorkerLeaseGrant,

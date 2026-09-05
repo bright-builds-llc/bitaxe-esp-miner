@@ -279,3 +279,22 @@ test("EMC2101 thermal evidence is included in the operational-field scan", async
     await rm(root, { recursive: true });
   }
 });
+
+for (const schema of ["fixed-usb-cycle-report-v1", "fixed-usb-window-report-v1"]) {
+  test(`${schema} scans closed reports and rejects private Worker fingerprints`, async () => {
+    // Arrange
+    const root = await mkdtemp(path.join(tmpdir(), "bitaxe-redaction-fixed-usb-"));
+    const evidence = path.join(root, "report.json");
+    try {
+      await writeFile(evidence, JSON.stringify({ schema, settings_match: true, active_ms: 1000 }));
+      // Act / Assert
+      assert.equal((await verifySemanticEvidenceRedaction(root)).checked, 1);
+      for (const key of ["device_identity_sha256", "settings_before_sha256", "authorization_high_water_sha256", "poolUser"]) {
+        await writeFile(evidence, JSON.stringify({ schema, [key]: "0".repeat(64) }));
+        await assert.rejects(verifySemanticEvidenceRedaction(root));
+      }
+    } finally {
+      await rm(root, { recursive: true });
+    }
+  });
+}

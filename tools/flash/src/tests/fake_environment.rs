@@ -1,5 +1,6 @@
 #[derive(Debug)]
 struct ObservedFlash {
+    offset: u32,
     path: Utf8PathBuf,
     bytes: Vec<u8>,
     unix_mode: Option<u32>,
@@ -318,7 +319,7 @@ impl FlashEnvironment for FakeFlashEnvironment {
     fn execute_application_exit(&self, _esptool: &Utf8Path) -> Result<InstalledApplicationExit> {
         self.application_exit_write_counts.borrow_mut().push(
             self.executed_commands.borrow().iter()
-                .filter(|command| command.args.first().is_some_and(|arg| arg == "write-bin"))
+                .filter(|command| command.args.iter().any(|arg| arg == "write-bin" || arg == "write_flash"))
                 .count(),
         );
         if self.application_exit_failure {
@@ -326,37 +327,12 @@ impl FlashEnvironment for FakeFlashEnvironment {
         }
         Ok(InstalledApplicationExit {
             force_download_bit_set: true,
-            transport: UsbProfile::WorkerRuntime,
+            transport: UsbProfile::SerialJtagRuntime,
             reenumerated: true,
         })
     }
 
-    fn verify_native_usb_transition(&self, _port: &str) -> Result<NativeUsbTransitionOutcome> {
-        Ok(NativeUsbTransitionOutcome {
-            ready_received: true,
-            committed_received: true,
-            bus_reset_observed: true,
-            profile_counts: bitaxe_device_session::ProfileObservationCounts {
-                absent: 1,
-                same_worker: 2,
-                same_serial_jtag: 3,
-                same_unknown: 0,
-                physical_mismatch: 0,
-            },
-            rom_admitted: true,
-            application_reappeared: true,
-        })
-    }
 
-    fn native_usb_profile_counts(&self) -> ProfileObservationCounts {
-        ProfileObservationCounts {
-            absent: 1,
-            same_worker: 2,
-            same_serial_jtag: 3,
-            same_unknown: 0,
-            physical_mismatch: 0,
-        }
-    }
 
     fn usb_physical_identity_digest(&self) -> Result<String> {
         Ok("6".repeat(64))
@@ -415,6 +391,7 @@ impl FlashEnvironment for FakeFlashEnvironment {
             #[cfg(not(unix))]
             let unix_mode = None;
             self.observed_flash.borrow_mut().push(ObservedFlash {
+                offset: 0,
                 path,
                 bytes,
                 unix_mode,
@@ -427,26 +404,30 @@ impl FlashEnvironment for FakeFlashEnvironment {
     }
 
     fn execute_esptool_write_flash(&self, command: &ManagedEsptoolWriteFlash) -> Result<()> {
-        self.executed_commands.borrow_mut().push(CommandSpec::new(
-            command.program().as_str(),
-            command.args(),
-        ));
-        let effect = if self.snapshot_write_failure {
-            UsbDeviceEffectState::None
-        } else {
-            UsbDeviceEffectState::Completed
-        };
-        self.last_usb_command_diagnostic.replace(Some(fake_usb_command_diagnostic(
-            if self.snapshot_write_failure {
-                UsbTerminalCategory::FlashFailedBeforeTransfer
-            } else {
-                UsbTerminalCategory::Ready
-            },
-            effect,
-        )));
-        if self.snapshot_write_failure {
-            bail!("sentinel esptool failure");
+        self.executed_commands.borrow_mut().push(CommandSpec::new(command.program().as_str(), command.args()));
+        if let Some((path, bytes)) = &self.source_replacement {
+            std::fs::write(path.as_std_path(), bytes).expect("replace admitted package source");
         }
+        let mut wrote = false;
+        for pair in command.args().windows(2).filter(|pair| pair[0].starts_with("0x")) {
+            if self.execute_failure || self.snapshot_write_failure || self.maybe_execute_failure_offset.as_ref() == Some(&pair[0]) {
+                self.last_usb_command_diagnostic.replace(Some(fake_usb_command_diagnostic(
+                    if wrote { UsbTerminalCategory::FlashFailedAfterTransfer } else { UsbTerminalCategory::FlashFailedBeforeTransfer },
+                    if wrote { UsbDeviceEffectState::ConfirmedPartial } else { UsbDeviceEffectState::None },
+                )));
+                bail!("sentinel child failure");
+            }
+            let offset = u32::from_str_radix(&pair[0][2..], 16).expect("admitted flash address");
+            let path = Utf8PathBuf::from(&pair[1]);
+            let bytes = std::fs::read(path.as_std_path()).expect("admitted immutable snapshot");
+            #[cfg(unix)]
+            let unix_mode = { use std::os::unix::fs::PermissionsExt; Some(std::fs::metadata(path.as_std_path()).expect("snapshot metadata").permissions().mode() & 0o777) };
+            #[cfg(not(unix))]
+            let unix_mode = None;
+            self.observed_flash.borrow_mut().push(ObservedFlash { offset, path, bytes, unix_mode });
+            wrote = true;
+        }
+        self.last_usb_command_diagnostic.replace(Some(fake_usb_command_diagnostic(UsbTerminalCategory::Ready, UsbDeviceEffectState::Completed)));
         Ok(())
     }
 

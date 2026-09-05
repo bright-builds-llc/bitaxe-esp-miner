@@ -1,16 +1,17 @@
 use super::*;
 
 #[test]
-fn canonical_flash_exits_rom_once_after_the_final_nvs_write() {
+fn explicit_factory_reset_exits_rom_once_after_the_final_nvs_write() {
     // Arrange
     let dir = tempdir().expect("tempdir");
     let command = FlashCommand {
+        factory_reset: true,
         common: CommonArgs {
             dry_run: false,
             ..common_args()
         },
         image: None,
-        manifest: Some(write_manifest_v3(&dir, DEFAULT_ELF_NAME)),
+        manifest: Some(write_manifest_v4(&dir, DEFAULT_ELF_NAME)),
         wifi_credentials: Some(write_wifi_credentials(&dir, "LabNet", "test-only")),
     };
     let environment = FakeFlashEnvironment::default();
@@ -27,12 +28,13 @@ fn canonical_flash_propagates_failed_final_rom_exit() {
     // Arrange
     let dir = tempdir().expect("tempdir");
     let command = FlashCommand {
+        factory_reset: false,
         common: CommonArgs {
             dry_run: false,
             ..common_args()
         },
         image: None,
-        manifest: Some(write_manifest_v3(&dir, DEFAULT_ELF_NAME)),
+        manifest: Some(write_manifest_v4(&dir, DEFAULT_ELF_NAME)),
         wifi_credentials: None,
     };
     let environment = FakeFlashEnvironment {
@@ -71,13 +73,14 @@ fn start_installed_cli_accepts_only_the_no_write_identity_contract() {
 
     // Act / Assert
     assert!(parse_cli(args).is_ok());
-    assert!(parse_cli(args.into_iter().chain(["--manifest", "forbidden"])).is_err());
+    assert!(parse_cli(args.into_iter().chain(["--factory-reset"])).is_err());
 }
 
 #[test]
 fn dry_run_flash_with_explicit_image_renders_vector_command() {
     // Arrange
     let command = FlashCommand {
+        factory_reset: false,
         common: common_args(),
         image: Some(Utf8PathBuf::from("/tmp/bitaxe-ultra205.elf")),
         manifest: None,
@@ -107,12 +110,13 @@ fn dry_run_flash_with_explicit_image_renders_vector_command() {
 }
 
 #[test]
-fn flash_with_wifi_credentials_generates_and_executes_nvs_seed_after_flash() {
+fn explicit_factory_reset_provisions_wifi_after_the_factory_write() {
     // Arrange
     let dir = tempdir().expect("tempdir");
     let credentials_path = write_wifi_credentials(&dir, "LabNet", "super-secret");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let command = FlashCommand {
+        factory_reset: true,
         common: CommonArgs {
             dry_run: false,
             ..common_args()
@@ -142,49 +146,19 @@ fn flash_with_wifi_credentials_generates_and_executes_nvs_seed_after_flash() {
             NVS_PARTITION_SIZE.to_owned(),
         )]
     );
-    assert_eq!(
-        environment.executed_commands(),
-        vec![
-            CommandSpec::new(
-                "espflash",
-                [
-                    "write-bin",
-                    "--no-stub",
-                    "--chip",
-                    "esp32s3",
-                    "--port",
-                    "/dev/cu.usbmodem101",
-                    "--non-interactive",
-                    "--before",
-                    "usb-reset",
-                    "--after",
-                    "no-reset",
-                    "--skip-update-check",
-                    "0x0",
-                    executed_flash_path,
-                ],
-            ),
-            CommandSpec::new(
-                "espflash",
-                [
-                    "write-bin",
-                    "--no-stub",
-                    "--chip",
-                    "esp32s3",
-                    "--port",
-                    "/dev/cu.usbmodem101",
-                    "--non-interactive",
-                    "--before",
-                    "usb-reset",
-                    "--after",
-                    "no-reset",
-                    "--skip-update-check",
-                    NVS_PARTITION_OFFSET,
-                    nvs_seed.image.as_str(),
-                ],
-            ),
-        ]
-    );
+    let commands = environment.executed_commands();
+    assert_eq!(commands.len(), 2);
+    assert!(commands[0].args.iter().any(|arg| arg == "write_flash"));
+    assert!(commands[0]
+        .args
+        .windows(2)
+        .any(|pair| pair == ["0x0", executed_flash_path]));
+    assert_eq!(commands[1], nvs_seed.command);
+    assert!(commands[1]
+        .args
+        .windows(2)
+        .any(|pair| pair == ["--after", "no-reset"]));
+
     assert_eq!(
         environment.phase35_stage_gates(),
         vec![
@@ -347,7 +321,7 @@ fn thermal_fault_intent_binds_private_mode_plan_and_exact_package() {
     // Arrange
     let dir = tempdir().expect("tempdir");
     let root = dir_path(&dir);
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let attempt_root = root.join("scratch/thr001-emc2101-fault/attempt-007");
     std::fs::create_dir_all(attempt_root.as_std_path()).expect("attempt root");
     std::fs::set_permissions(

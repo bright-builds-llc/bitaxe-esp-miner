@@ -1,4 +1,4 @@
-//! Closed Worker CDC report; no raw logs or runtime network identifiers.
+//! Closed fixed Serial/JTAG report; no raw logs or runtime network identifiers.
 
 use bitaxe_api::panic_receipt::AllocationFailureContextMarker;
 

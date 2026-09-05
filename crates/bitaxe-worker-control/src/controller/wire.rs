@@ -91,9 +91,15 @@ pub(super) struct RestorePayload {
 }
 
 fn request_id(value: &str) -> bool {
-    value.starts_with("usb_")
+    value.starts_with("serial_")
         && value.len() <= 128
         && value
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(super) struct ProbePayload {
+    pub padding: String,
 }

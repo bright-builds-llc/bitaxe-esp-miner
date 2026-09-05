@@ -1,11 +1,15 @@
 use super::*;
 
+const FLASH_SEGMENT_SOURCE: &str = include_str!("../../../flash/src/package_segments.rs");
+const FLASH_WRITE_OWNER_SOURCE: &str = include_str!("../../../flash/src/restore_installed.rs");
+
 #[test]
 fn phase34_package_admission_manifest_uses_stamped_provenance() {
     // Arrange
     let required_manifest_markers = [
         "BuildProvenance::parse_stamp",
-        "schema_version: 3",
+        "schema_version: if segmented { 4 } else { 3 }",
+        "validate_update_segments(&update_segments)?",
         "app_elf_sha256",
         "validate_package_manifest_v3(&manifest)?",
     ];
@@ -51,17 +55,17 @@ fn phase34_package_admission_snapshots_bytes_before_device_effects() {
     // Arrange
     let preparation_order = [
         "resolve_flash_image",
-        "create_admitted_execution_snapshot",
+        "prepare_segmented_write",
         "resolve_port",
     ];
     let execution_markers = [
-        "_execution_snapshot",
+        "maybe_segmented_write",
         "environment.begin_usb_session",
-        "environment.execute(&execution_command)",
+        "environment.execute_esptool_write_flash(segmented)",
     ];
     let execution_order = [
         "environment.begin_usb_session",
-        "environment.execute(&execution_command)",
+        "environment.execute_esptool_write_flash(segmented)",
     ];
 
     // Act
@@ -74,6 +78,25 @@ fn phase34_package_admission_snapshots_bytes_before_device_effects() {
 
     // Assert
     assert_markers_in_order(flash_preparation, &preparation_order, "flash preparation");
+    assert_contains_all(
+        FLASH_SEGMENT_SOURCE,
+        &[
+            "create_admitted_execution_snapshot(bytes)",
+            "snapshots.push(snapshot)",
+            "validate_update_segments",
+            "update_factory_artifact_mismatch",
+            "update_partition_layout_mismatch",
+        ],
+        "immutable state-preserving segment admission",
+    );
+    assert_contains_all(
+        FLASH_PACKAGE_SOURCE,
+        &[
+            "ordinary_update_preserves_nvs_use_explicit_factory_reset",
+            "factory_requires_admitted_write",
+        ],
+        "explicit factory reset and typed write ownership",
+    );
     assert_contains_all(
         flash_execution,
         &execution_markers,
@@ -142,7 +165,9 @@ fn phase34_package_admission_flash_command_requires_typed_images() {
         "struct AdmittedFactoryImage",
         "enum AdmittedFlashImage",
         "struct AdmittedExecutionSnapshot",
-        "<admitted-factory-snapshot>",
+        "ManagedEsptoolWriteFlash",
+        "from_admitted_segments",
+        "_snapshots: Vec<AdmittedExecutionSnapshot>",
     ];
     let required_package_markers = [
         "explicit_image_not_admitted_factory",
@@ -165,6 +190,8 @@ fn phase34_package_admission_flash_command_requires_typed_images() {
         FLASH_MODEL_SOURCE,
         FLASH_EXECUTION_SNAPSHOT_SOURCE,
         FLASH_PACKAGE_SOURCE,
+        FLASH_SEGMENT_SOURCE,
+        FLASH_WRITE_OWNER_SOURCE,
     ];
     let bypass_sources = [
         FLASH_PACKAGE_SOURCE,

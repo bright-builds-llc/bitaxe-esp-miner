@@ -25,12 +25,6 @@ test:
 package:
     bazel build //firmware/bitaxe:firmware_image
 
-bwg-worker-restoration-preflight *args:
-    bazel run //scripts:bwg_worker_restoration_preflight -- {{ args }}
-
-bwg-worker-restoration-campaign *args:
-    bazel run //scripts:bwg_worker_restoration_campaign -- {{ args }}
-
 flash *args:
     bazel run //tools/flash:flash -- flash {{ args }}
 
@@ -77,32 +71,8 @@ verify-native-usb-ownership:
     bazel run //scripts:verify_native_usb_ownership
     bazel test //scripts:verify_native_usb_symbols_test
 
-verify-native-usb-transition *args:
-    bazel run //tools/flash:flash -- verify-native-usb-transition {{ args }}
-
 native-usb-start-installed *args:
     bazel run //tools/flash:flash -- native-usb-start-installed {{ args }}
-
-native-usb-transition-recovery action *args:
-    bazel run //tools/automation:native_usb_transition_recovery -- {{ quote(action) }} {{ args }}
-
-native-usb-display-recovery action *args:
-    bazel run //tools/automation:native_usb_display_recovery -- {{ quote(action) }} {{ args }}
-
-native-usb-config-ap-recovery action *args:
-    bazel run //tools/automation:native_usb_config_ap_recovery -- {{ quote(action) }} {{ args }}
-
-native-usb-rom-exit action *args:
-    bazel run //tools/automation:native_usb_rom_exit -- {{ quote(action) }} {{ args }}
-
-native-usb-owner-recovery action *args:
-    bazel run //tools/automation:native_usb_owner_recovery -- {{ quote(action) }} {{ args }}
-
-native-usb-boot-chain-integrity action *args:
-    bazel run //tools/automation:native_usb_boot_chain_integrity -- {{ quote(action) }} {{ args }}
-
-usb-stability-read *args:
-    bazel run //tools/flash:flash -- usb-stability-read {{ args }}
 
 parity:
     bazel run //tools/parity:report -- report --checklist docs/parity/checklist.md --fail-on-invalid-verified
@@ -363,3 +333,6 @@ validate-ui-workflow-evidence projection:
     test -f "$projection"
     projection_path="$(/bin/realpath "$projection")"
     bazel run //crates/bitaxe-automation-contracts:validate_ui_workflow_evidence -- "$projection_path"
+
+fixed-usb-qualification *args:
+    bazel run //scripts:fixed_usb_qualification -- {{ args }}

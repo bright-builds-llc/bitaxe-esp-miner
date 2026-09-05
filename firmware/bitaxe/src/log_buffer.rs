@@ -116,7 +116,7 @@ pub(crate) fn maybe_worker_diagnostic_line(token: &str, field: &str) -> Option<S
         .into_iter()
         .find(|line| {
             line.split(' ').nth(1) == Some(field)
-                && bitaxe_core::usb_worker_diagnostics::is_worker_diagnostic_retained_line(line)
+                && bitaxe_core::usb_diagnostics::is_worker_diagnostic_retained_line(line)
         })
 }
 

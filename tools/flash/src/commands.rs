@@ -144,14 +144,7 @@ pub(crate) fn run_detect(
     ensure_ultra_205(command.board)?;
     let port = resolve_port(command.port.as_deref(), environment)?;
     match environment.usb_profile(&port)? {
-        UsbProfile::WorkerRuntime => {
-            emit_line("port", &port)?;
-            emit_line("usb_profile", "worker_runtime")?;
-            emit_line("execution_owner", "application")?;
-            emit_line("rom_admitted", "false")?;
-            emit_line("handoff_required", "true")?;
-            return Ok(());
-        }
+        UsbProfile::WorkerRuntime => bail!("legacy_tinyusb_requires_manual_bootstrap"),
         UsbProfile::SerialJtagRuntime if !command.retain_rom => {
             emit_line("port", &port)?;
             emit_line("usb_profile", "serial_jtag_runtime")?;

@@ -39,6 +39,7 @@ const SAFE_COOLING_THRESHOLD_C: f64 = 45.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MiningActuationAdapterError {
+    WorkerGenerationRevoked,
     SafetyObservationsUnavailable,
     SafetyOwnerUnavailable,
     SafetyQueueFull,
@@ -56,7 +57,8 @@ impl MiningActuationAdapterError {
     #[must_use]
     pub const fn hardware_preparation_failure(self) -> HardwarePreparationFailure {
         match self {
-            Self::SafetyObservationsUnavailable
+            Self::WorkerGenerationRevoked
+            | Self::SafetyObservationsUnavailable
             | Self::SafetyOwnerUnavailable
             | Self::SafetyQueueFull
             | Self::UnsupportedProfile => HardwarePreparationFailure::Rejected,
@@ -73,6 +75,7 @@ impl MiningActuationAdapterError {
     #[must_use]
     pub const fn category(self) -> &'static str {
         match self {
+            Self::WorkerGenerationRevoked => "worker_generation_revoked",
             Self::SafetyObservationsUnavailable => "safety_observations_unavailable",
             Self::SafetyOwnerUnavailable => "safety_owner_unavailable",
             Self::SafetyQueueFull => "safety_queue_full",
@@ -96,6 +99,7 @@ struct ObservationStamp {
 }
 
 pub struct Ultra205MiningActuationAdapter {
+    maybe_worker_generation: Option<crate::production_mining_session::revocation::WorkerGeneration>,
     maybe_requested_profile: Option<MiningHardwareProfile>,
     maybe_fan_command_baseline: Option<ObservationStamp>,
     maybe_fan_command_started_at_ms: Option<u64>,
@@ -104,12 +108,14 @@ pub struct Ultra205MiningActuationAdapter {
     maybe_asic_profile: Option<Bm1366MiningProfile>,
     cooling_fan_full_applied: bool,
     cooling_proven: bool,
+    fan_proof_confirmed: bool,
 }
 
 impl Ultra205MiningActuationAdapter {
     #[must_use]
     pub const fn new() -> Self {
         Self {
+            maybe_worker_generation: None,
             maybe_requested_profile: None,
             maybe_fan_command_baseline: None,
             maybe_fan_command_started_at_ms: None,
@@ -118,6 +124,7 @@ impl Ultra205MiningActuationAdapter {
             maybe_asic_profile: None,
             cooling_fan_full_applied: false,
             cooling_proven: false,
+            fan_proof_confirmed: false,
         }
     }
 
@@ -126,7 +133,99 @@ impl Ultra205MiningActuationAdapter {
         profile: MiningHardwareProfile,
     ) -> Result<(), PreparationExecutionFailure<MiningActuationAdapterError>> {
         self.maybe_requested_profile = Some(profile);
+        self.fan_proof_confirmed = false;
         execute_preparation(self, profile)
+    }
+
+    pub fn set_worker_generation(
+        &mut self,
+        maybe_generation: Option<crate::production_mining_session::revocation::WorkerGeneration>,
+    ) {
+        self.maybe_worker_generation = maybe_generation;
+    }
+
+    fn note_shutdown_step(&self, step: SafeShutdownStep) {
+        if let Some(generation) = self.maybe_worker_generation {
+            let now_ms = crate::runtime_uptime::millis();
+            crate::production_mining_session::revocation::revoke_at(generation, now_ms);
+            crate::production_mining_session::revocation::note_shutdown(
+                generation,
+                step as u32 + 1,
+                now_ms,
+            );
+        }
+    }
+
+    fn check_preparation_admission(&self) -> Result<(), MiningActuationAdapterError> {
+        crate::production_mining_session::revocation::check_deadline(
+            crate::runtime_uptime::millis(),
+        );
+        if !crate::production_mining_session::revocation::permits(self.maybe_worker_generation) {
+            return Err(MiningActuationAdapterError::WorkerGenerationRevoked);
+        }
+        if self.fan_proof_confirmed {
+            let observations = crate::safety_adapter::observation_snapshot();
+            if !observations
+                .is_ultra_205_mining_safe_at(MonotonicMillis::new(crate::runtime_uptime::millis()))
+                || !observations
+                    .fan_rpm
+                    .maybe_last_good()
+                    .is_some_and(|sample| *sample.value() > 0)
+            {
+                return Err(MiningActuationAdapterError::SafetyObservationsUnavailable);
+            }
+        }
+        Ok(())
+    }
+
+    fn cancellable_delay(&self, duration_ms: u64) -> Result<(), MiningActuationAdapterError> {
+        crate::mining_actuation::wait_with_cancellation(
+            duration_ms,
+            crate::runtime_uptime::millis,
+            |milliseconds| thread::sleep(Duration::from_millis(milliseconds)),
+            || self.check_preparation_admission(),
+        )
+    }
+
+    fn request_preparation_voltage(
+        &self,
+        voltage: Ultra205CoreVoltage,
+    ) -> Result<(), MiningActuationAdapterError> {
+        self.check_preparation_admission()?;
+        let pending = match crate::safety_adapter::queue_safety_actuation(
+            SafetyActuationCommand::SetCoreVoltageForGeneration {
+                voltage,
+                permit: crate::production_mining_session::revocation::stamp(
+                    self.maybe_worker_generation,
+                ),
+            },
+        ) {
+            SafetyActuationQueueOutcome::Queued(pending) => pending,
+            SafetyActuationQueueOutcome::QueueFull => {
+                return Err(MiningActuationAdapterError::SafetyQueueFull)
+            }
+            SafetyActuationQueueOutcome::OwnerUnavailable => {
+                return Err(MiningActuationAdapterError::SafetyOwnerUnavailable)
+            }
+        };
+        let deadline = crate::runtime_uptime::millis().saturating_add(3_000);
+        loop {
+            self.check_preparation_admission()?;
+            match pending.poll() {
+                SafetyActuationPollOutcome::Applied => return self.check_preparation_admission(),
+                SafetyActuationPollOutcome::OwnerUnavailable => {
+                    return Err(MiningActuationAdapterError::SafetyOwnerUnavailable)
+                }
+                SafetyActuationPollOutcome::HardwareWriteFailed => {
+                    return Err(MiningActuationAdapterError::SafetyHardwareWriteFailed)
+                }
+                SafetyActuationPollOutcome::Pending => {}
+            }
+            if crate::runtime_uptime::millis() >= deadline {
+                return Err(MiningActuationAdapterError::SafetyReplyTimedOut);
+            }
+            self.cancellable_delay(50)?;
+        }
     }
 
     pub fn safe_stop(
@@ -193,6 +292,7 @@ impl Ultra205MiningActuationAdapter {
         let deadline_ms = crate::runtime_uptime::millis().saturating_add(FAN_PROOF_TIMEOUT_MS);
         let mut actuation_applied = false;
         loop {
+            self.check_preparation_admission()?;
             if !actuation_applied {
                 let Some(pending) = self.maybe_pending_fan_actuation.as_ref() else {
                     return Err(MiningActuationAdapterError::SafetyOwnerUnavailable);
@@ -229,6 +329,13 @@ impl Ultra205MiningActuationAdapter {
                         })
                 })
             {
+                self.fan_proof_confirmed = true;
+                if let Some(generation) = self.maybe_worker_generation {
+                    crate::production_mining_session::revocation::note_fan_proof(
+                        generation,
+                        crate::runtime_uptime::millis(),
+                    );
+                }
                 return Ok(());
             }
             if crate::runtime_uptime::millis() >= deadline_ms {
@@ -353,7 +460,12 @@ impl Default for Ultra205MiningActuationAdapter {
 impl MiningActuationBackend for Ultra205MiningActuationAdapter {
     type Error = MiningActuationAdapterError;
 
+    fn check_preparation_admission(&mut self) -> Result<(), Self::Error> {
+        Ultra205MiningActuationAdapter::check_preparation_admission(self)
+    }
+
     fn execute_preparation_step(&mut self, step: PreparationStep) -> Result<(), Self::Error> {
+        self.check_preparation_admission()?;
         log_preparation_progress(step, "started");
         let result = (|| match step {
             PreparationStep::RequireFreshSafetyObservations => {
@@ -372,18 +484,18 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
             }
             PreparationStep::SetFanDutyTo100Percent => self.set_fan_full(),
             PreparationStep::RequireFreshNonzeroFanRpm => self.wait_for_post_command_fan_proof(),
-            PreparationStep::SetCoreVoltage(voltage) => Self::request_safety(
-                SafetyActuationCommand::SetCoreVoltage(Self::core_voltage(voltage)?),
-            ),
+            PreparationStep::SetCoreVoltage(voltage) => {
+                self.request_preparation_voltage(Self::core_voltage(voltage)?)
+            }
             PreparationStep::WaitForCoreVoltageStabilization500Ms => {
-                thread::sleep(Duration::from_millis(u64::from(
-                    CORE_VOLTAGE_STABILIZATION_MS,
-                )));
-                Ok(())
+                self.cancellable_delay(u64::from(CORE_VOLTAGE_STABILIZATION_MS))
             }
             PreparationStep::EnableAsic => {
-                crate::asic_adapter::production::set_asic_power_enabled(true)
-                    .map_err(MiningActuationAdapterError::Asic)
+                crate::asic_adapter::production::set_asic_power_enabled_guarded(
+                    true,
+                    self.maybe_worker_generation,
+                )
+                .map_err(MiningActuationAdapterError::Asic)
             }
             PreparationStep::ResetAndDetectExactlyOneChip => {
                 let decision = Bm1366InitPlan::chip_detect_with_options(
@@ -397,8 +509,11 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
                 if decision.maybe_fail_closed_action().is_some() {
                     return Err(MiningActuationAdapterError::AsicPlanInvalid);
                 }
-                crate::asic_adapter::production::execute_chip_detection_actions(decision.actions())
-                    .map_err(MiningActuationAdapterError::Asic)
+                crate::asic_adapter::production::execute_chip_detection_actions_guarded(
+                    decision.actions(),
+                    self.maybe_worker_generation,
+                )
+                .map_err(MiningActuationAdapterError::Asic)
             }
             PreparationStep::InitializeMiningReadyWithFrequencyRamp(frequency) => {
                 let profile = Self::asic_profile(frequency)?;
@@ -412,8 +527,11 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
                 if decision.maybe_fail_closed_action().is_some() {
                     return Err(MiningActuationAdapterError::AsicPlanInvalid);
                 }
-                crate::asic_adapter::production::execute_mining_ready_actions(decision.actions())
-                    .map_err(MiningActuationAdapterError::Asic)
+                crate::asic_adapter::production::execute_mining_ready_actions_guarded(
+                    decision.actions(),
+                    self.maybe_worker_generation,
+                )
+                .map_err(MiningActuationAdapterError::Asic)
             }
             PreparationStep::RetainProductionUart => {
                 if crate::asic_adapter::production::production_handle_available()
@@ -427,6 +545,7 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
                 }
             }
         })();
+        let result = result.and_then(|()| self.check_preparation_admission());
         log_preparation_progress(
             step,
             if result.is_ok() {
@@ -439,6 +558,7 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
     }
 
     fn execute_safe_shutdown_step(&mut self, step: SafeShutdownStep) -> Result<(), Self::Error> {
+        self.note_shutdown_step(step);
         match step {
             SafeShutdownStep::StopDispatch => {
                 crate::asic_adapter::production::block_production_dispatch()
@@ -472,7 +592,7 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
                 if !self.cooling_proven {
                     return Err(MiningActuationAdapterError::CoolingProofRequired);
                 }
-                Self::request_safety(SafetyActuationCommand::SetFanDuty(FanDutyPercent::PAUSED))
+                Self::request_safety(SafetyActuationCommand::SetFanDutyAfterCoolingProof)
             }
         }
     }
@@ -482,6 +602,7 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
         step: SafeShutdownStep,
         progress: &mut dyn FnMut(SafeShutdownStep),
     ) -> Result<(), Self::Error> {
+        self.note_shutdown_step(step);
         if step == SafeShutdownStep::ReduceFrequencyAndResetNonce {
             let mut action_progress = || progress(step);
             return self.reduce_frequency_and_reset_nonce(&mut action_progress);

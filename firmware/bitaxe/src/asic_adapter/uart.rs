@@ -94,6 +94,8 @@ enum ReadAccumulateOutcome {
 
 pub struct AsicUart<'d> {
     driver: UartDriver<'d>,
+    maybe_worker_generation: Option<crate::production_mining_session::revocation::WorkerGeneration>,
+    maybe_work_permit: Option<crate::production_mining_session::revocation::WorkPermit>,
 }
 
 impl<'d> AsicUart<'d> {
@@ -112,6 +114,7 @@ impl<'d> AsicUart<'d> {
             .parity_none()
             .stop_bits(config::StopBits::STOP1)
             .flow_control(config::FlowControl::None)
+            .tx_fifo_size(0)
             .rx_fifo_size(UART_RX_BUFFER_BYTES);
         let driver = UartDriver::new(
             uart,
@@ -122,7 +125,54 @@ impl<'d> AsicUart<'d> {
             &config,
         )?;
 
-        Ok(Self { driver })
+        Ok(Self {
+            driver,
+            maybe_worker_generation: None,
+            maybe_work_permit: None,
+        })
+    }
+
+    pub fn set_worker_generation(
+        &mut self,
+        maybe_generation: Option<crate::production_mining_session::revocation::WorkerGeneration>,
+    ) {
+        self.maybe_worker_generation = maybe_generation;
+        self.maybe_work_permit = None;
+    }
+
+    pub fn set_work_permit(
+        &mut self,
+        permit: crate::production_mining_session::revocation::WorkPermit,
+    ) {
+        self.maybe_worker_generation = permit.maybe_generation();
+        self.maybe_work_permit = Some(permit);
+    }
+
+    pub fn check_cancellation(&self) -> Result<()> {
+        if self.maybe_work_permit.is_some_and(|permit| {
+            !crate::production_mining_session::revocation::permits_work(permit)
+        }) {
+            anyhow::bail!("production_work_invalidated");
+        }
+        if self.maybe_worker_generation.is_some_and(|generation| {
+            !crate::production_mining_session::revocation::permits(Some(generation))
+        }) {
+            anyhow::bail!("worker_generation_revoked");
+        }
+        Ok(())
+    }
+
+    pub fn cancellable_delay(&self, duration_ms: u32) -> Result<()> {
+        let deadline =
+            std::time::Instant::now() + std::time::Duration::from_millis(u64::from(duration_ms));
+        loop {
+            self.check_cancellation()?;
+            let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+            if remaining.is_zero() {
+                return Ok(());
+            }
+            std::thread::sleep(remaining.min(std::time::Duration::from_millis(50)));
+        }
     }
 
     pub fn change_baud(&mut self, baud: u32) -> Result<()> {
@@ -133,7 +183,16 @@ impl<'d> AsicUart<'d> {
 
     pub fn wait_tx_done(&self, timeout_ms: u32) -> Result<()> {
         let started = std::time::Instant::now();
-        let outcome = self.driver.wait_tx_done(ticks(timeout_ms));
+        let deadline = started + std::time::Duration::from_millis(u64::from(timeout_ms));
+        let outcome = loop {
+            self.check_cancellation()?;
+            let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+            let slice_ms = remaining.as_millis().min(50) as u32;
+            match self.driver.wait_tx_done(ticks(slice_ms)) {
+                Err(error) if is_uart_timeout_error(&error) && !remaining.is_zero() => continue,
+                outcome => break outcome,
+            }
+        };
         if uart_trace_enabled() {
             log::info!(
                 "asic_uart_trace=wait_tx_done outcome={outcome:?} elapsed_ms={}",
@@ -152,8 +211,23 @@ impl<'d> AsicUart<'d> {
                 hex_bytes(frame)
             );
         }
-        let written = self.driver.write(frame)?;
-        ensure!(written == frame.len(), "partial BM1366 UART frame write");
+        let deadline = std::time::Instant::now()
+            + std::time::Duration::from_millis(u64::from(
+                crate::production_mining_session::shutdown_budget::UART_WRITE_BOUND_MS,
+            ));
+        let mut written = 0;
+        while written < frame.len() {
+            self.check_cancellation()?;
+            ensure!(
+                std::time::Instant::now() < deadline,
+                "BM1366 UART write deadline"
+            );
+            written += self.driver.write_nb(&frame[written..])?;
+            if written < frame.len() {
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            }
+        }
+        self.check_cancellation()?;
         Ok(())
     }
 
@@ -194,6 +268,7 @@ impl<'d> AsicUart<'d> {
         let mut read_index = 0_u32;
 
         while buf.len() < len {
+            self.check_cancellation()?;
             let remaining = deadline.saturating_duration_since(std::time::Instant::now());
             if remaining.is_zero() {
                 break;
@@ -206,10 +281,10 @@ impl<'d> AsicUart<'d> {
             // timeout as zero bytes so drain-until-idle can exit cleanly.
             let read = match self
                 .driver
-                .read(&mut scratch[..chunk_cap], ticks(remaining_ms))
+                .read(&mut scratch[..chunk_cap], ticks(remaining_ms.min(50)))
             {
                 Ok(n) => n,
-                Err(error) if is_uart_timeout_error(&error) && buf.is_empty() => 0,
+                Err(error) if is_uart_timeout_error(&error) => 0,
                 Err(error) => return Err(error.into()),
             };
             read_index = read_index.saturating_add(1);

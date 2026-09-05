@@ -47,6 +47,7 @@ pub(crate) fn run_tcp_payload_diagnostic_command(
         evidence_dir: None,
     };
     let flash = FlashCommand {
+        factory_reset: false,
         common: common.clone(),
         image: None,
         manifest: Some(command.manifest.clone()),

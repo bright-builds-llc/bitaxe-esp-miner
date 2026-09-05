@@ -9,7 +9,7 @@ fn campaign_evidence_never_projects_raw_serial_or_credentials() {
         .with_log_contents(&campaign_log(&[observation_marker("fresh")]));
 
     // Act
-    run_mining_campaign(&command, &environment).expect("observation campaign");
+    run_campaign_observation_fixture(&command, &environment).expect("observation campaign");
 
     // Assert
     for name in [
@@ -97,10 +97,9 @@ fn campaign_evidence_never_projects_raw_serial_or_credentials() {
     let flash: serde_json::Value =
         serde_json::from_slice(&flash_diagnostic_bytes).expect("flash diagnostic JSON");
     assert_eq!(flash["schema"], "mining-campaign-flash-diagnostics-v1");
-    assert_eq!(flash["factory"]["terminal_category"], "ready");
-    assert_eq!(flash["factory"]["device_effect_state"], "completed");
-    assert_eq!(flash["nvs"]["terminal_category"], "ready");
-    assert_eq!(flash["nvs"]["device_effect_state"], "completed");
+    // Observation fixtures cannot fabricate flash or NVS effect evidence.
+    assert!(flash["factory"].is_null());
+    assert!(flash["nvs"].is_null());
     assert_eq!(flash["raw_output_included"], false);
     assert_eq!(
         result["network_continuity_sha256"],

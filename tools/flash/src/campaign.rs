@@ -53,6 +53,7 @@ pub(crate) enum CampaignTerminalCategory {
     OperatorCheckpointDeclined,
     AdmissionFailed,
     PackageAdmissionFailed,
+    ProvisioningRequiresFactoryReset,
     DeviceAdmissionFailed,
     CredentialAdmissionFailed,
     FlashFailed,
@@ -120,6 +121,7 @@ impl CampaignTerminalCategory {
             Self::OperatorCheckpointDeclined => "operator_checkpoint_declined",
             Self::AdmissionFailed => "admission_failed",
             Self::PackageAdmissionFailed => "package_admission_failed",
+            Self::ProvisioningRequiresFactoryReset => "provisioning_requires_factory_reset",
             Self::DeviceAdmissionFailed => "device_admission_failed",
             Self::CredentialAdmissionFailed => "credential_admission_failed",
             Self::FlashFailed => "flash_failed",
@@ -242,6 +244,20 @@ pub(crate) fn run_mining_campaign(
     command: &MiningCampaignCommand,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
+    run_campaign_with_executor(command, environment, execute_campaign)
+}
+
+fn run_campaign_with_executor<E: FlashEnvironment>(
+    command: &MiningCampaignCommand,
+    environment: &E,
+    execute: impl FnOnce(
+        &MiningCampaignCommand,
+        CampaignAdmission,
+        &Utf8Path,
+        &mut CampaignAttempt,
+        &E,
+    ) -> std::result::Result<CampaignTerminalCategory, CampaignFailure>,
+) -> Result<()> {
     let evidence_root = environment.workspace_path(&command.evidence_dir);
     environment
         .approve_private_evidence_root(&evidence_root)
@@ -257,7 +273,7 @@ pub(crate) fn run_mining_campaign(
         }
     };
 
-    let operation_result = execute_campaign(
+    let operation_result = execute(
         command,
         admission,
         &evidence_root,
@@ -305,6 +321,7 @@ fn execute_campaign(
     environment: &impl FlashEnvironment,
 ) -> std::result::Result<CampaignTerminalCategory, CampaignFailure> {
     let flash_command = FlashCommand {
+        factory_reset: false,
         common: CommonArgs {
             board: command.board,
             port: command.port.clone(),
@@ -320,6 +337,11 @@ fn execute_campaign(
     let prepared = prepare_flash(&flash_command, environment)
         .map_err(|_| CampaignFailure::new(CampaignTerminalCategory::PackageAdmissionFailed))?;
     attempt.package_admitted = true;
+    if !flash_command.factory_reset {
+        return Err(CampaignFailure::new(
+            CampaignTerminalCategory::ProvisioningRequiresFactoryReset,
+        ));
+    }
     let port = maybe_command_port(&prepared.execution_command)
         .ok_or_else(|| CampaignFailure::new(CampaignTerminalCategory::DeviceAdmissionFailed))?;
     environment
@@ -352,6 +374,22 @@ fn execute_campaign(
         prepared.outcome.runtime_identity.clone().ok_or_else(|| {
             CampaignFailure::new(CampaignTerminalCategory::PackageAdmissionFailed)
         })?;
+    observe_campaign(
+        admission,
+        expected_runtime,
+        evidence_root,
+        attempt,
+        environment,
+    )
+}
+
+fn observe_campaign(
+    admission: CampaignAdmission,
+    expected_runtime: ExpectedRuntimeAttestationIdentity,
+    evidence_root: &Utf8Path,
+    attempt: &mut CampaignAttempt,
+    environment: &impl FlashEnvironment,
+) -> std::result::Result<CampaignTerminalCategory, CampaignFailure> {
     let capture = environment
         .receive_campaign_until(
             admission,
@@ -487,5 +525,43 @@ fn campaign_board_info_command(port: &str) -> CommandSpec {
             "--after",
             "hard-reset",
         ],
+    )
+}
+
+/// Executes observation/evidence reducers against a fake transport, with no provisioning capability.
+#[cfg(test)]
+pub(crate) fn run_campaign_observation_fixture(
+    command: &MiningCampaignCommand,
+    environment: &impl FlashEnvironment,
+) -> Result<()> {
+    run_campaign_with_executor(
+        command,
+        environment,
+        |command, admission, root, attempt, environment| {
+            let manifest_path = command.manifest.as_ref().expect("fixture manifest");
+            let manifest: PackageManifest = serde_json::from_str(
+                &environment
+                    .read_to_string(manifest_path)
+                    .expect("fixture manifest readable"),
+            )
+            .expect("fixture manifest JSON");
+            let expected = ExpectedRuntimeAttestationIdentity {
+                firmware_commit: manifest.source_commit,
+                reference_commit: manifest.reference_commit,
+                app_elf_sha256: manifest.app_elf_sha256,
+            };
+            // Build only the public-fixture provisioning artifact; never execute its write command.
+            let _seed = prepare_campaign_nvs_seed(
+                command,
+                admission,
+                command.port.as_deref().unwrap_or("fixture-only"),
+                environment,
+            )
+            .map_err(|_| {
+                CampaignFailure::new(CampaignTerminalCategory::CredentialAdmissionFailed)
+            })?;
+            attempt.package_admitted = true;
+            observe_campaign(admission, expected, root, attempt, environment)
+        },
     )
 }

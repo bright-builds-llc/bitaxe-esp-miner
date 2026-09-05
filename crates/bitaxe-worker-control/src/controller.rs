@@ -1,4 +1,6 @@
+mod status;
 mod wire;
+use status::response;
 
 use std::fmt;
 
@@ -7,17 +9,19 @@ use sha2::{Digest, Sha256};
 use thiserror::Error;
 use zeroize::Zeroize;
 
-use self::wire::{classify_json_error, ControllerRequest, FrameDiscriminator, RestorePayload};
+use self::wire::{
+    classify_json_error, ControllerRequest, FrameDiscriminator, ProbePayload, RestorePayload,
+};
 
 use crate::codec::{base64_url, canonical_json, digest_text, strict_json_frame};
-use crate::possession::{FirmwareSourceCommit, PossessionError, PossessionRequest};
+use crate::possession::{FirmwareIdentity, PossessionError, PossessionRequest};
 use crate::session::{LeaseAuthorizationVerifier, RestorationReason, WorkerSession};
 use crate::{
     DeviceIdentity, LeaseDeadlines, WorkerLeaseAuthorizationContext, WorkerLeaseGrant,
     WorkerLeaseRenewal,
 };
 
-const PROTOCOL_VERSION: &str = "bwg-worker-controller/0.3";
+const PROTOCOL_VERSION: &str = "bwg-worker-controller/0.4";
 const MAXIMUM_SEEN_NONCES: usize = 256;
 
 #[derive(Debug, Error)]
@@ -131,23 +135,25 @@ struct ActiveLease {
     deadlines: LeaseDeadlines,
 }
 
-struct EnumerationAdmission {
+struct LogicalSessionAdmission {
     generation: u64,
     established_at_monotonic_milliseconds: u64,
     context: WorkerLeaseAuthorizationContext,
 }
 
-/// Pure Worker-control owner for one boot lifetime and one current USB enumeration.
+/// Pure Worker-control owner for one boot lifetime and one current logical serial session.
 pub struct WorkerControl<V, S> {
     identity: DeviceIdentity,
     verifier: V,
     session: S,
     capability: Value,
     capability_sha256: String,
-    descriptor_sha256: String,
-    firmware_source_commit: FirmwareSourceCommit,
+    manifest_sha256: String,
+    firmware_identity: FirmwareIdentity,
+    maybe_serial_binding: Option<crate::serial::SerialSessionBinding>,
     generation: u64,
-    maybe_admission: Option<EnumerationAdmission>,
+    maybe_admission: Option<LogicalSessionAdmission>,
+    authenticated_logical_session: bool,
     maybe_pending_admission_token: Option<u64>,
     next_response_token: u64,
     seen_nonce_digests: Vec<[u8; 32]>,
@@ -166,11 +172,11 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         verifier: V,
         session: S,
         initial_restoration: Option<RestorationReason>,
-        firmware_source_commit: FirmwareSourceCommit,
+        firmware_identity: FirmwareIdentity,
         capability: Value,
-        descriptor_sha256: &str,
+        manifest_sha256: &str,
     ) -> Result<Self, WorkerControlError> {
-        if !digest_text(descriptor_sha256) || !capability.is_object() {
+        if !digest_text(manifest_sha256) || !capability.is_object() {
             return Err(WorkerControlError::InvalidRequest);
         }
         let capability_sha256 = base64_url(Sha256::digest(
@@ -185,10 +191,12 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             session,
             capability,
             capability_sha256,
-            descriptor_sha256: descriptor_sha256.to_owned(),
-            firmware_source_commit,
+            manifest_sha256: manifest_sha256.to_owned(),
+            firmware_identity,
+            maybe_serial_binding: None,
             generation: 0,
             maybe_admission: None,
+            authenticated_logical_session: false,
             maybe_pending_admission_token: None,
             next_response_token: 0,
             seen_nonce_digests: Vec::new(),
@@ -203,7 +211,32 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         })
     }
 
-    pub fn begin_enumeration(&mut self) {
+    /// Installs a fresh transport identity only after prior work has stopped.
+    pub fn begin_serial_session(
+        &mut self,
+        binding: crate::serial::SerialSessionBinding,
+    ) -> Result<(), WorkerControlError> {
+        if self.maybe_active.is_some() || self.effect_cleanup_required {
+            return Err(WorkerControlError::InvalidTransition);
+        }
+        self.invalidate_session();
+        self.maybe_serial_binding = Some(binding);
+        Ok(())
+    }
+
+    /// Configures the firmware effect adapter when a fresh logical session begins.
+    pub fn session_mut(&mut self) -> &mut S {
+        &mut self.session
+    }
+
+    #[must_use]
+    pub fn is_admitted(&self) -> bool {
+        self.maybe_admission.is_some()
+    }
+
+    fn invalidate_session(&mut self) {
+        self.authenticated_logical_session = false;
+        self.maybe_serial_binding = None;
         self.generation = self.generation.saturating_add(1);
         self.maybe_admission = None;
         self.maybe_pending_admission_token = None;
@@ -265,7 +298,8 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                     return Err(WorkerControlError::StaleResponse);
                 }
                 self.maybe_pending_admission_token = None;
-                self.maybe_admission = Some(EnumerationAdmission {
+                self.authenticated_logical_session = true;
+                self.maybe_admission = Some(LogicalSessionAdmission {
                     generation,
                     established_at_monotonic_milliseconds,
                     context: WorkerLeaseAuthorizationContext::parse(
@@ -286,13 +320,13 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
 
     pub fn disconnect(&mut self, monotonic_milliseconds: u64) -> Result<(), WorkerControlError> {
         let result = self.safe_stop(RestorationReason::ConnectivityLost, monotonic_milliseconds);
-        self.begin_enumeration();
+        self.invalidate_session();
         result
     }
 
     pub fn reboot(&mut self, monotonic_milliseconds: u64) -> Result<(), WorkerControlError> {
         let result = self.safe_stop(RestorationReason::Reboot, monotonic_milliseconds);
-        self.begin_enumeration();
+        self.invalidate_session();
         result
     }
 
@@ -301,7 +335,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         monotonic_milliseconds: u64,
     ) -> Result<(), WorkerControlError> {
         let result = self.safe_stop(RestorationReason::ControlFailed, monotonic_milliseconds);
-        self.begin_enumeration();
+        self.invalidate_session();
         result
     }
 
@@ -315,8 +349,12 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         now: u64,
     ) -> Result<PreparedResponse, WorkerControlError> {
         let request = PossessionRequest::from_frame(frame)?;
+        let binding = self
+            .maybe_serial_binding
+            .as_ref()
+            .ok_or(WorkerControlError::AdmissionRequired)?;
         let nonce_digest: [u8; 32] = Sha256::digest(request.nonce().as_bytes()).into();
-        if !request.matches_bindings(&self.capability_sha256, &self.descriptor_sha256)
+        if !request.matches_bindings(&self.capability_sha256, &self.manifest_sha256, binding)
             || self.seen_nonce_digests.contains(&nonce_digest)
             || self.seen_nonce_digests.len() >= MAXIMUM_SEEN_NONCES
             || self.maybe_pending_admission_token.is_some()
@@ -326,9 +364,11 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         }
         self.acknowledge_boot_restoration()?;
         self.seen_nonce_digests.push(nonce_digest);
-        let response = self
-            .identity
-            .prove(&request, &self.firmware_source_commit)?;
+        let response = self.identity.prove(
+            &request,
+            &self.firmware_identity.source_commit,
+            &self.firmware_identity.app_elf_sha256,
+        )?;
         let control_session_binding_sha256 = request.control_session_binding(&response)?;
         self.next_response_token = self.next_response_token.saturating_add(1);
         let token = self.next_response_token;
@@ -349,11 +389,12 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         request: ControllerRequest,
         now: u64,
     ) -> Result<PreparedResponse, WorkerControlError> {
-        let result = match request.command.as_str() {
+        let mut result = match request.command.as_str() {
             "discover" => {
                 request.require_no_payload()?;
                 self.capability.clone()
             }
+            "transport_probe" => self.probe(request.required_payload()?, now)?,
             "start_lease" => self.start(request.required_payload()?, now)?,
             "renew_lease" => self.renew(request.required_payload()?, now)?,
             "status" => {
@@ -377,6 +418,9 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             }
             _ => return Err(WorkerControlError::InvalidRequest),
         };
+        if request.command != "discover" && request.command != "transport_probe" {
+            result = self.with_status_evidence(result)?;
+        }
         let reports_boot_restoration = request.command == "status"
             && self.boot_restoration_clear_required
             && result
@@ -390,6 +434,17 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                 generation: self.generation,
             }),
         )
+    }
+
+    fn probe(&self, payload: ProbePayload, now: u64) -> Result<Value, WorkerControlError> {
+        self.required_start_context(now)?;
+        if self.maybe_active.is_some() || self.effect_cleanup_required {
+            return Err(WorkerControlError::InvalidTransition);
+        }
+        if !payload.padding.bytes().all(|byte| byte == b'x') {
+            return Err(WorkerControlError::InvalidRequest);
+        }
+        Ok(json!({"padding": payload.padding}))
     }
 
     fn start(&mut self, grant: WorkerLeaseGrant, now: u64) -> Result<Value, WorkerControlError> {
@@ -555,40 +610,6 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             .map(|admission| &admission.context)
             .ok_or(WorkerControlError::AdmissionRequired)
     }
-
-    fn status(&self, now: u64) -> Result<Value, WorkerControlError> {
-        if let Some(active) = self.maybe_active.as_ref() {
-            return Ok(json!({
-                "protocolVersion": PROTOCOL_VERSION,
-                "state": "mining",
-                "monotonicMilliseconds": now,
-                "lease": {
-                    "leaseId": active.grant.lease_id(),
-                    "challengeId": active.grant.challenge_id(),
-                    "renewAtMonotonicMilliseconds": active.deadlines.renew_at_monotonic_milliseconds(),
-                    "expiresAtMonotonicMilliseconds": active.deadlines.expires_at_monotonic_milliseconds(),
-                },
-                "restoration": { "status": "pending" },
-            }));
-        }
-        let restoration = if self.boot_restoration_clear_required {
-            json!({ "status": "confirmed", "reason": RestorationReason::Reboot })
-        } else {
-            match self.restoration {
-                RestorationState::NotRequired => json!({ "status": "not_required" }),
-                RestorationState::Confirmed(reason) => {
-                    json!({ "status": "confirmed", "reason": reason })
-                }
-                RestorationState::Pending => return Err(WorkerControlError::RestorationPending),
-            }
-        };
-        Ok(json!({
-            "protocolVersion": PROTOCOL_VERSION,
-            "state": "baseline",
-            "monotonicMilliseconds": now,
-            "restoration": restoration,
-        }))
-    }
 }
 
 impl<V, S> fmt::Debug for WorkerControl<V, S> {
@@ -601,23 +622,4 @@ impl<V, S> fmt::Debug for WorkerControl<V, S> {
             .field("private_material", &"[redacted]")
             .finish()
     }
-}
-
-fn response(
-    request_id: &str,
-    result: Value,
-    maybe_effect: Option<PreparedEffect>,
-) -> Result<PreparedResponse, WorkerControlError> {
-    let mut frame = serde_json::to_vec(&json!({
-        "protocolVersion": PROTOCOL_VERSION,
-        "requestId": request_id,
-        "ok": true,
-        "result": result,
-    }))
-    .map_err(|_| WorkerControlError::Encoding)?;
-    frame.push(b'\n');
-    Ok(PreparedResponse {
-        frame,
-        maybe_effect,
-    })
 }

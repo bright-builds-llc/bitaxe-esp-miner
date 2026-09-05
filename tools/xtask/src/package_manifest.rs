@@ -33,6 +33,8 @@ pub(crate) struct PackageManifestV3 {
     pub(crate) provenance_manifest: String,
     pub(crate) otadata_source: String,
     pub(crate) artifacts: Vec<ReleaseArtifact>,
+    #[serde(default)]
+    pub(crate) update_segments: Vec<bitaxe_api::update_segments::UpdateSegment>,
 }
 
 #[derive(Debug, Clone, Deserialize, Eq, PartialEq, Serialize)]
@@ -53,6 +55,10 @@ pub(crate) struct ReleaseArtifact {
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) enum ArtifactKind {
+    #[serde(rename = "bootloader")]
+    Bootloader,
+    #[serde(rename = "partition_table_binary")]
+    PartitionTableBinary,
     #[serde(rename = "firmware_elf")]
     FirmwareElf,
     #[serde(rename = "firmware_ota_image")]
@@ -72,6 +78,8 @@ pub(crate) enum ArtifactKind {
 impl fmt::Display for ArtifactKind {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Bootloader => formatter.write_str("bootloader"),
+            Self::PartitionTableBinary => formatter.write_str("partition_table_binary"),
             Self::FirmwareElf => formatter.write_str("firmware_elf"),
             Self::FirmwareOtaImage => formatter.write_str("firmware_ota_image"),
             Self::WwwSpiffsImage => formatter.write_str("www_spiffs_image"),
@@ -142,7 +150,7 @@ pub(crate) fn build_manifest(
         bail!("factory image is required for package manifest v3");
     };
 
-    let artifacts = vec![
+    let mut artifacts = vec![
         artifact_entry(
             ArtifactKind::FirmwareElf,
             &package_request.firmware_elf,
@@ -181,8 +189,54 @@ pub(crate) fn build_manifest(
         )?,
     ];
 
+    let bootloader = package_request.out_dir.join("bootloader.bin");
+    let binary_table = package_request.out_dir.join("partition-table.bin");
+    // Explicit legacy construction remains readable for immutable historical packages.
+    let segmented = bootloader.is_file() && binary_table.is_file();
+    let mut update_segments = Vec::new();
+    if segmented {
+        artifacts.push(artifact_entry(
+            ArtifactKind::Bootloader,
+            &bootloader,
+            "0x0",
+            &package_request.manifest,
+        )?);
+        artifacts.push(artifact_entry(
+            ArtifactKind::PartitionTableBinary,
+            &binary_table,
+            "0x8000",
+            &package_request.manifest,
+        )?);
+        for (kind, offset, path) in [
+            ("bootloader", 0, bootloader.as_path()),
+            ("partition_table_binary", 0x8000, binary_table.as_path()),
+            (
+                "firmware_ota_image",
+                0x10000,
+                package_request.firmware_ota_image.as_path(),
+            ),
+            (
+                "www_spiffs_image",
+                0x410000,
+                package_request.www_bin.as_path(),
+            ),
+            (
+                "otadata_initial",
+                0xf10000,
+                package_request.otadata_initial.as_path(),
+            ),
+        ] {
+            update_segments.push(bitaxe_api::update_segments::UpdateSegment {
+                artifact_kind: kind.to_owned(),
+                offset,
+                length: u32::try_from(fs::metadata(path)?.len())?,
+            });
+        }
+        bitaxe_api::update_segments::validate_update_segments(&update_segments)?;
+    }
+
     let manifest = PackageManifestV3 {
-        schema_version: 3,
+        schema_version: if segmented { 4 } else { 3 },
         release_name: package_request.release_name.clone(),
         semantic_version: provenance.semantic_version().to_owned(),
         source_commit: identity.source_commit().to_owned(),
@@ -220,6 +274,7 @@ pub(crate) fn build_manifest(
         ),
         otadata_source: package_request.otadata_source.clone(),
         artifacts,
+        update_segments,
     };
     validate_package_manifest_v3(&manifest)?;
 
@@ -252,7 +307,7 @@ pub(crate) fn read_manifest_v3(path: &Utf8Path) -> Result<PackageManifestV3> {
 }
 
 pub(crate) fn validate_package_manifest_v3(manifest: &PackageManifestV3) -> Result<()> {
-    if manifest.schema_version != 3 {
+    if !matches!(manifest.schema_version, 3 | 4) {
         bail!(
             "package manifest schema_version must be 3, found {}",
             manifest.schema_version
@@ -320,6 +375,11 @@ pub(crate) fn validate_package_manifest_v3(manifest: &PackageManifestV3) -> Resu
         require_non_empty("artifact.offset", &artifact.offset)?;
     }
     validate_firmware_elf_app_sha_relationship(manifest)?;
+    if manifest.schema_version == 4 {
+        require_artifact_kind(manifest, ArtifactKind::Bootloader)?;
+        require_artifact_kind(manifest, ArtifactKind::PartitionTableBinary)?;
+        bitaxe_api::update_segments::validate_update_segments(&manifest.update_segments)?;
+    }
 
     require_artifact_offset(manifest, ArtifactKind::FirmwareElf, UNAVAILABLE)?;
     require_artifact_offset(manifest, ArtifactKind::FirmwareOtaImage, "0x10000")?;
@@ -416,6 +476,10 @@ fn require_artifact_offset(
 
 fn required_artifact_message(kind: ArtifactKind) -> String {
     match kind {
+        ArtifactKind::Bootloader => "required artifact kind bootloader missing".to_owned(),
+        ArtifactKind::PartitionTableBinary => {
+            "required artifact kind partition_table_binary missing".to_owned()
+        }
         ArtifactKind::FirmwareElf => "required artifact kind firmware_elf missing".to_owned(),
         ArtifactKind::FirmwareOtaImage => {
             "required artifact kind firmware_ota_image missing".to_owned()

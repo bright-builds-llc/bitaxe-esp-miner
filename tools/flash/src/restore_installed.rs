@@ -47,7 +47,7 @@ struct SnapshotRange {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "kind")]
 enum RestoreBundle {
-    #[serde(rename = "package_v3")]
+    #[serde(rename = "package_v4", alias = "package_v3")]
     Package {
         schema_version: String,
         board: u16,
@@ -76,6 +76,30 @@ pub(crate) struct ManagedEsptoolWriteFlash {
 }
 
 impl ManagedEsptoolWriteFlash {
+    pub(crate) fn from_admitted_segments(
+        program: Utf8PathBuf,
+        args: Vec<String>,
+        snapshots: Vec<AdmittedExecutionSnapshot>,
+    ) -> Self {
+        Self {
+            program,
+            args,
+            _snapshots: snapshots,
+        }
+    }
+    pub(crate) fn bind_port(&mut self, port: &str) -> Result<()> {
+        let index = self
+            .args
+            .iter()
+            .position(|arg| arg == "--port")
+            .context("admitted write port missing")?;
+        let target = self
+            .args
+            .get_mut(index + 1)
+            .context("admitted write port missing")?;
+        *target = port.to_owned();
+        Ok(())
+    }
     pub(crate) fn program(&self) -> &Utf8Path {
         &self.program
     }
@@ -86,10 +110,7 @@ impl ManagedEsptoolWriteFlash {
 }
 
 enum PreparedRestore {
-    Package {
-        command: CommandSpec,
-        _snapshot: AdmittedExecutionSnapshot,
-    },
+    Package(ManagedEsptoolWriteFlash),
     Snapshot(ManagedEsptoolWriteFlash),
 }
 
@@ -306,8 +327,10 @@ fn package_command(
         bail!("restore_installed=blocked reason=manifest_digest");
     }
     let manifest: PackageManifest = serde_json::from_str(&manifest_document)?;
-    if manifest.schema_version != 3
-        || manifest.source_commit != identity.source_commit
+    if manifest.schema_version != 4 {
+        bail!("restore_installed=blocked reason=state_preserving_manifest_required");
+    }
+    if manifest.source_commit != identity.source_commit
         || manifest.reference_commit != identity.reference_commit
         || manifest.app_elf_sha256 != identity.app_elf_sha256
         || manifest.build_identity.label != identity.build_label
@@ -342,39 +365,17 @@ fn package_command(
             app_elf_sha256: &app_sha,
         },
     )?;
-    let snapshot = environment.create_admitted_execution_snapshot(&factory_bytes)?;
-    let command = CommandSpec::new(
-        "espflash",
-        [
-            "write-bin",
-            "--no-stub",
-            "--chip",
-            "esp32s3",
-            "--port",
-            port,
-            "--non-interactive",
-            "--before",
-            "usb-reset",
-            "--after",
-            "hard-reset",
-            "--skip-update-check",
-            "0x0",
-            snapshot.path().as_str(),
-        ],
-    );
-    Ok(PreparedRestore::Package {
-        command,
-        _snapshot: snapshot,
-    })
+    let segments = admit_update_segments(&manifest_path, &manifest, &factory_bytes, environment)?;
+    let write = prepare_segmented_write(
+        environment.prepare_application_exit()?,
+        port,
+        &segments,
+        environment,
+    )?;
+    Ok(PreparedRestore::Package(write))
 }
 
 fn authorization_action_allowed(admission_only: bool, private_root: &str, action: &str) -> bool {
-    if !admission_only
-        && action == "bwg_worker_restoration"
-        && contract::is_bwg_restoration_root(Utf8Path::new(private_root))
-    {
-        return true;
-    }
     matches!(
         (admission_only, private_root, action),
         (
@@ -533,14 +534,14 @@ pub(crate) fn run_restore_installed(
     emit_line("restore_installed", PROTECTED_OPERATIONAL)?;
     environment.begin_usb_session(UsbOperation::Recover, &command.port)?;
     let restore_result = match &prepared {
-        PreparedRestore::Package { command, .. } => environment.execute(command),
+        PreparedRestore::Package(command) => environment.execute_esptool_write_flash(command),
         PreparedRestore::Snapshot(command) => environment.execute_esptool_write_flash(command),
     };
     let restore_diagnostic = write_command_diagnostic(
         &private_root,
         "snapshot-write.private.json",
         match prepared {
-            PreparedRestore::Package { .. } => "espflash_write_bin",
+            PreparedRestore::Package(..) => "esptool_write_flash",
             PreparedRestore::Snapshot(_) => "managed_esptool_write_flash",
         },
         environment,

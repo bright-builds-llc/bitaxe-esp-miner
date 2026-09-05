@@ -31,6 +31,9 @@ impl<'d> AsicEnable<'d> {
 
     pub fn disable(&mut self) -> Result<()> {
         self.enable.set_high()?;
+        crate::production_mining_session::revocation::note_asic_halted(
+            crate::runtime_uptime::millis(),
+        );
         log::info!("asic_enable_status=inactive gpio={ASIC_ENABLE_GPIO}");
         Ok(())
     }
@@ -53,19 +56,46 @@ impl<'d> AsicReset<'d> {
     }
 
     pub fn reset_pulse(&mut self, low_ms: u32, high_ms: u32) -> Result<()> {
+        self.reset_pulse_cancellable(low_ms, high_ms, &mut || Ok(()))
+    }
+
+    pub fn reset_pulse_cancellable(
+        &mut self,
+        low_ms: u32,
+        high_ms: u32,
+        check: &mut dyn FnMut() -> Result<()>,
+    ) -> Result<()> {
         debug_assert_eq!(RESET_PULSE_LOW_MS, 100);
         debug_assert_eq!(RESET_PULSE_HIGH_MS, 100);
 
+        check()?;
         self.reset.set_low()?;
-        std::thread::sleep(std::time::Duration::from_millis(u64::from(low_ms)));
+        cancellable_delay(low_ms, check)?;
+        check()?;
         self.reset.set_high()?;
-        std::thread::sleep(std::time::Duration::from_millis(u64::from(high_ms)));
+        cancellable_delay(high_ms, check)?;
         Ok(())
     }
 
     pub fn hold_reset_low(&mut self) -> Result<()> {
         self.reset.set_low()?;
+        crate::production_mining_session::revocation::note_asic_halted(
+            crate::runtime_uptime::millis(),
+        );
         log::info!("asic_status=hold_reset_low gpio={ASIC_RESET_GPIO}");
         Ok(())
+    }
+}
+
+fn cancellable_delay(duration_ms: u32, check: &mut dyn FnMut() -> Result<()>) -> Result<()> {
+    let deadline =
+        std::time::Instant::now() + std::time::Duration::from_millis(u64::from(duration_ms));
+    loop {
+        check()?;
+        let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+        if remaining.is_zero() {
+            return Ok(());
+        }
+        std::thread::sleep(remaining.min(std::time::Duration::from_millis(50)));
     }
 }

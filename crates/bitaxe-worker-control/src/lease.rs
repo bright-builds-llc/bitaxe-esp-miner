@@ -3,7 +3,7 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 use zeroize::Zeroizing;
 
-const PROTOCOL_VERSION: &str = "bwg-worker-controller/0.3";
+const PROTOCOL_VERSION: &str = "bwg-worker-controller/0.4";
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
@@ -24,6 +24,12 @@ pub struct WorkerLeaseGrant {
     duration_milliseconds: u64,
     renew_after_milliseconds: u64,
     stratum: WireStratumConfig,
+    #[serde(
+        default,
+        rename = "acceptanceCampaign",
+        deserialize_with = "acceptance_campaign"
+    )]
+    maybe_acceptance_campaign: Option<AcceptanceCampaign>,
 }
 
 impl WorkerLeaseGrant {
@@ -36,6 +42,10 @@ impl WorkerLeaseGrant {
             && secret(&self.stratum.password)
             && stratum_endpoint(&self.stratum.endpoint)
             && valid_window(self.duration_milliseconds, self.renew_after_milliseconds)
+            && self
+                .maybe_acceptance_campaign
+                .as_ref()
+                .is_none_or(AcceptanceCampaign::validate)
     }
 
     #[must_use]
@@ -78,8 +88,14 @@ impl WorkerLeaseGrant {
         self.renew_after_milliseconds
     }
 
+    #[must_use]
+    pub fn maybe_acceptance_campaign(&self) -> Option<&AcceptanceCampaign> {
+        self.maybe_acceptance_campaign.as_ref()
+    }
+
     pub(crate) fn authorizationless(&self) -> impl Serialize + '_ {
         AuthorizationlessGrant {
+            maybe_acceptance_campaign: self.maybe_acceptance_campaign.as_ref(),
             challenge_id: &self.challenge_id,
             duration_milliseconds: self.duration_milliseconds,
             lease_id: &self.lease_id,
@@ -94,9 +110,42 @@ impl WorkerLeaseGrant {
     }
 }
 
+/// Signed, durable no-refund hardware acceptance window.
+#[derive(Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct AcceptanceCampaign {
+    id: String,
+    window: u8,
+    maximum_active_milliseconds: u64,
+}
+
+impl AcceptanceCampaign {
+    fn validate(&self) -> bool {
+        crate::serial::canonical_nonce(&self.id, 16)
+            && matches!(
+                (self.window, self.maximum_active_milliseconds),
+                (0, 180_000) | (1 | 2, 30_000)
+            )
+    }
+    #[must_use]
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+    #[must_use]
+    pub const fn window(&self) -> u8 {
+        self.window
+    }
+    #[must_use]
+    pub const fn maximum_active_milliseconds(&self) -> u64 {
+        self.maximum_active_milliseconds
+    }
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AuthorizationlessGrant<'a> {
+    #[serde(rename = "acceptanceCampaign", skip_serializing_if = "Option::is_none")]
+    maybe_acceptance_campaign: Option<&'a AcceptanceCampaign>,
     challenge_id: &'a str,
     duration_milliseconds: u64,
     lease_id: &'a str,
@@ -252,4 +301,10 @@ fn stratum_endpoint(value: &str) -> bool {
         && port
             .parse::<u16>()
             .is_ok_and(|parsed| parsed > 0 && parsed.to_string() == port)
+}
+
+fn acceptance_campaign<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<AcceptanceCampaign>, D::Error> {
+    AcceptanceCampaign::deserialize(deserializer).map(Some)
 }

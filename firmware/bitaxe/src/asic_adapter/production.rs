@@ -186,63 +186,13 @@ pub fn production_ready() -> bool {
     })
 }
 
-/// Stops new production UART work before any safe-shutdown command is sent.
-pub fn block_production_dispatch() -> Result<(), ProductionAsicBlocker> {
-    let Ok(mut state) = production_state().lock() else {
-        return Err(ProductionAsicBlocker::UartFailed);
-    };
-    state.production_ready = false;
-    Ok(())
-}
-
-/// Applies the active-low Ultra 205 ASIC-enable line through its retained owner.
-pub fn set_asic_power_enabled(enabled: bool) -> Result<(), ProductionAsicBlocker> {
-    let Ok(mut state) = production_state().lock() else {
-        return Err(ProductionAsicBlocker::UartFailed);
-    };
-    if !enabled {
-        state.production_ready = false;
-    }
-    let enable = state
-        .maybe_enable
-        .as_mut()
-        .ok_or(ProductionAsicBlocker::AsicInitFailed)?;
-    if enabled {
-        enable
-            .enable()
-            .map_err(|_| ProductionAsicBlocker::AsicInitFailed)
-    } else {
-        enable
-            .disable()
-            .map_err(|_| ProductionAsicBlocker::AsicInitFailed)
-    }
-}
-
-/// Executes reset and exact chip-count proof without admitting production work.
-pub fn execute_chip_detection_actions(
-    actions: &[Bm1366AdapterAction],
-) -> Result<(), ProductionAsicBlocker> {
-    let Ok(mut state) = production_state().lock() else {
-        return Err(ProductionAsicBlocker::UartFailed);
-    };
-    state.production_ready = false;
-    execute_adapter_actions_on_state(actions, &mut state)
-}
-
-/// Executes mining-ready initialization and admits UART work only after every
-/// typed action succeeds.
-pub fn execute_mining_ready_actions(
-    actions: &[Bm1366AdapterAction],
-) -> Result<(), ProductionAsicBlocker> {
-    let Ok(mut state) = production_state().lock() else {
-        return Err(ProductionAsicBlocker::UartFailed);
-    };
-    state.production_ready = false;
-    execute_adapter_actions_on_state(actions, &mut state)?;
-    state.production_ready = true;
-    status::publish_production_asic_status(ProductionAsicStatus::InitializedForProduction);
-    Ok(())
-}
+mod admission;
+pub use admission::{
+    block_production_dispatch, execute_chip_detection_actions,
+    execute_chip_detection_actions_guarded, execute_mining_ready_actions,
+    execute_mining_ready_actions_guarded, set_asic_power_enabled, set_asic_power_enabled_guarded,
+    set_production_work_permit,
+};
 
 /// Executes the typed frequency-down, nonce-reset, and reset-low plan while
 /// production dispatch remains blocked.
@@ -261,6 +211,9 @@ pub fn execute_safe_shutdown_actions_with_progress(
         return Err(ProductionAsicBlocker::UartFailed);
     };
     state.production_ready = false;
+    if let Some(uart) = state.maybe_uart.as_mut() {
+        uart.set_worker_generation(None);
+    }
     execute_adapter_actions_on_state_with_progress(actions, &mut state, progress)
 }
 
@@ -438,16 +391,41 @@ impl ProductionAsicExecutor {
         command: Bm1366ProductionCommand,
         valid_jobs: &Bm1366ValidJobIds,
     ) -> Result<Option<Bm1366NonceResult>, ProductionAsicBlocker> {
+        self.maybe_execute_guarded(
+            command,
+            valid_jobs,
+            crate::production_mining_session::revocation::stamp(None),
+        )
+    }
+
+    pub fn maybe_execute_guarded(
+        &mut self,
+        command: Bm1366ProductionCommand,
+        valid_jobs: &Bm1366ValidJobIds,
+        permit: crate::production_mining_session::revocation::WorkPermit,
+    ) -> Result<Option<Bm1366NonceResult>, ProductionAsicBlocker> {
         let Ok(mut state) = production_state().lock() else {
             return Err(ProductionAsicBlocker::UartFailed);
         };
         if !state.production_ready || state.maybe_uart.is_none() {
             return Err(ProductionAsicBlocker::AsicInitFailed);
         }
+        if !crate::production_mining_session::revocation::permits_work(permit) {
+            return Err(ProductionAsicBlocker::AsicInitFailed);
+        }
+        if let Some(uart) = state.maybe_uart.as_mut() {
+            uart.set_work_permit(permit);
+        }
 
         let actions = command.adapter_actions();
         match command {
             Bm1366ProductionCommand::SendProductionWork(_) => {
+                if !crate::production_mining_session::revocation::begin_dispatch(
+                    permit,
+                    crate::runtime_uptime::millis(),
+                ) {
+                    return Err(ProductionAsicBlocker::AsicInitFailed);
+                }
                 if super::work_result_investigation::clear_rx_before_production_work() {
                     let uart = state
                         .maybe_uart

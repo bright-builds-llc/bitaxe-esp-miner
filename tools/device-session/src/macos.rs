@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::fs;
-use std::os::unix::fs::MetadataExt;
+use std::os::unix::fs::{FileTypeExt, MetadataExt};
 use std::process::Command;
 
 use anyhow::{bail, Context, Result};
@@ -10,7 +10,6 @@ use crate::{DevicePhase, PhysicalMatch, SessionEvent};
 
 mod receive_only;
 mod reconnecting;
-mod worker_evidence;
 
 pub(crate) use receive_only::ReceiveOnlyReader;
 pub(crate) use reconnecting::capture_reconnecting_receive_only;
@@ -227,7 +226,7 @@ fn snapshot(candidate: &Candidate) -> Result<UsbDeviceSnapshot> {
         port: candidate.port.clone(),
         physical_identity_digest: candidate.physical_identity_digest.clone(),
         enumeration_token: candidate.enumeration_token.clone(),
-        accessible: receive_only_accessible(&candidate.port),
+        accessible: device_node_accessible(&candidate.port),
         holder_count: MacOsDeviceAdapter::holder_count(&candidate.port)?,
     })
 }
@@ -254,7 +253,7 @@ fn sample_from_candidates(
     } else {
         PhysicalMatch::UniqueDifferent
     };
-    let accessible = receive_only_accessible(&candidate.port);
+    let accessible = device_node_accessible(&candidate.port);
     let holder_count = MacOsDeviceAdapter::holder_count(&candidate.port)?;
     Ok(observation(
         phase,
@@ -288,8 +287,20 @@ fn observation(
     }
 }
 
-fn receive_only_accessible(port: &str) -> bool {
-    ReceiveOnlyReader::open(port).is_ok()
+// Snapshot/cleanup must not open a driver: even O_NONBLOCK can sleep inside
+// macOS USB open. This proves node permission only; ROM and runtime proofs
+// remain separate operations under the same physical lease.
+fn device_node_accessible(port: &str) -> bool {
+    let Ok(metadata) = fs::metadata(port) else {
+        return false;
+    };
+    if !metadata.file_type().is_char_device() {
+        return false;
+    }
+    let Ok(path) = std::ffi::CString::new(port) else {
+        return false;
+    };
+    unsafe { libc::access(path.as_ptr(), libc::R_OK | libc::W_OK) == 0 }
 }
 
 fn scan_candidates() -> Result<Vec<Candidate>> {
@@ -442,6 +453,24 @@ fn hex_lower(bytes: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn accessibility_rejects_regular_files_without_opening_them() {
+        // Arrange
+        let file = tempfile::NamedTempFile::new().expect("temporary regular file");
+        // Act
+        let accessible = device_node_accessible(file.path().to_str().expect("temporary path"));
+        // Assert
+        assert!(!accessible);
+    }
+
+    #[test]
+    fn accessibility_checks_character_node_permissions_without_driver_open() {
+        // Arrange / Act
+        let accessible = device_node_accessible("/dev/null");
+        // Assert
+        assert!(accessible);
+    }
 
     #[test]
     fn ioreg_parser_keeps_physical_and_enumeration_identity_separate() {

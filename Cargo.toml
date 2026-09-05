@@ -72,3 +72,7 @@ zeroize = { version = "1.8.2", features = ["derive", "serde"] }
 
 [patch.crates-io]
 esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf-sys.git", rev = "f616563a87595032f06f1fec95b6816b1c11135c" }
+
+# Keep the application within the fixed 4 MiB slots without moving persistent partitions.
+[profile.release.package.bitaxe-firmware]
+opt-level = "s"

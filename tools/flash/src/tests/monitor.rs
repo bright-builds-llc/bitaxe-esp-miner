@@ -1,11 +1,12 @@
 use super::*;
 
 #[test]
-fn manifest_v3_rejects_wrong_factory_artifact_name() {
+fn manifest_v4_rejects_wrong_factory_artifact_name() {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3_with_factory_artifact(&dir, DEFAULT_ELF_NAME, "wrong.bin");
+    let manifest = write_manifest_v4_with_factory_artifact(&dir, DEFAULT_ELF_NAME, "wrong.bin");
     let command = FlashCommand {
+        factory_reset: false,
         common: common_args(),
         image: None,
         manifest: Some(manifest),

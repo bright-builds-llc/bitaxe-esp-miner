@@ -73,7 +73,7 @@ fn exact_package_short_click_writes_closed_projection_after_cleanup() {
             .expect("input UAT evidence");
     assert_eq!(evidence.validate(), Ok(()));
     assert_eq!(environment.cleanup_calls(), 1);
-    assert_eq!(environment.observed_flashes().len(), 1);
+    assert_eq!(environment.observed_flashes().len(), 5);
     assert!(root
         .join(INPUT_UAT_PRIVATE_ROOT)
         .join("short-click.required.json")

@@ -86,7 +86,7 @@ fn hardware_preparation_failure_precedes_missing_pool_configuration() {
     let environment = FakeFlashEnvironment::default().with_log_contents(&campaign_log(&[terminal]));
 
     // Act
-    let error = run_mining_campaign(&command, &environment)
+    let error = run_campaign_observation_fixture(&command, &environment)
         .expect_err("typed preparation failure must remain terminal");
 
     // Assert

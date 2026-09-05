@@ -1,4 +1,4 @@
-import { copyFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { internalCommandSpec } from "./contracts.generated.js";
@@ -67,7 +67,12 @@ export async function buildFirmware(
       environment,
     ),
   );
-  if (cargo.exitCode !== 0) throw new Error("firmware Cargo build failed");
+  if (cargo.exitCode !== 0) {
+    await mkdir(path.join(workspaceRoot, "scratch"), { recursive: true });
+    const diagnostic = await mkdtemp(path.join(workspaceRoot, "scratch/firmware-build-"));
+    await writeFile(path.join(diagnostic, "cargo.stderr"), cargo.stderr, { mode: 0o600 });
+    throw new Error(`firmware Cargo build failed; protected diagnostic ${path.relative(workspaceRoot, diagnostic)}`);
+  }
   rejectUnknownKconfigWarnings(`${cargo.stdout}\n${cargo.stderr}`);
 
   const sourceElf = path.join(cargoTargetDir, target, "release", packageName);
@@ -111,7 +116,6 @@ export function rejectUnknownKconfigWarnings(output: string): void {
 export function requireResolvedUsbMemoryContract(sdkconfig: string): void {
   const lines = sdkconfig.split(/\r?\n/u);
   for (const required of [
-    "CONFIG_TINYUSB_TASK_STACK_SIZE=3072",
     "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304",
   ]) {
     const key = required.slice(0, required.indexOf("=") + 1);

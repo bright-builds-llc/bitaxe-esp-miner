@@ -71,7 +71,7 @@ fn command_effects_requires_the_typed_network_quorum_and_safe_stop() {
         .with_log_contents(&campaign_log(&[command_effects_terminal()]));
 
     // Act
-    run_mining_campaign(&command, &environment).expect("command effects campaign");
+    run_campaign_observation_fixture(&command, &environment).expect("command effects campaign");
 
     // Assert
     let result = read_campaign_result(&command);
@@ -124,7 +124,7 @@ fn command_effects_preserves_typed_activation_timeout() {
     let environment = FakeFlashEnvironment::default().with_log_contents(&campaign_log(&[terminal]));
 
     // Act
-    let error = run_mining_campaign(&command, &environment)
+    let error = run_campaign_observation_fixture(&command, &environment)
         .expect_err("activation timeout must remain terminal");
 
     // Assert
@@ -151,7 +151,7 @@ fn command_effects_resume_waits_for_fresh_observation_recovery() {
     ]));
 
     // Act
-    let result = run_mining_campaign(&command, &environment);
+    let result = run_campaign_observation_fixture(&command, &environment);
 
     // Assert
     result.expect("fresh observation wakeup must recover a stale resume sample");
@@ -176,7 +176,7 @@ fn command_effects_active_stale_marker_remains_terminal() {
     ]));
 
     // Act
-    let error = run_mining_campaign(&command, &environment)
+    let error = run_campaign_observation_fixture(&command, &environment)
         .expect_err("active stale safety must remain terminal");
 
     // Assert

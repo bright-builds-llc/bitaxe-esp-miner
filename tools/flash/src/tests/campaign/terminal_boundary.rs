@@ -29,7 +29,7 @@ fn live_share_accepts_repeated_markers_and_cleared_terminal_lease() {
     ]));
 
     // Act
-    run_mining_campaign(&command, &environment).expect("live-share campaign");
+    run_campaign_observation_fixture(&command, &environment).expect("live-share campaign");
 
     // Assert
     let result = read_campaign_result(&command);
@@ -85,7 +85,7 @@ fn live_terminal_boundary_ignores_a_partial_following_marker() {
     let environment = FakeFlashEnvironment::default().with_campaign_bytes(campaign_bytes);
 
     // Act
-    run_mining_campaign(&command, &environment)
+    run_campaign_observation_fixture(&command, &environment)
         .expect("bytes after a complete terminal marker are outside the campaign boundary");
 
     // Assert

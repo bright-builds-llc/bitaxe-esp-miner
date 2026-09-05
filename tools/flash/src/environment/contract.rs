@@ -40,8 +40,6 @@ pub(crate) trait FlashEnvironment {
     fn observe_installed_runtime(&self) -> Result<UsbRebootLoopObservation> {
         bail!("start_installed=blocked reason=adapter_unavailable")
     }
-    fn verify_native_usb_transition(&self, port: &str) -> Result<NativeUsbTransitionOutcome>;
-    fn native_usb_profile_counts(&self) -> ProfileObservationCounts;
     fn usb_physical_identity_digest(&self) -> Result<String>;
     fn current_usb_physical_identity_digest(&self, port: &str) -> Result<String>;
     fn execute(&self, command_spec: &CommandSpec) -> Result<()>;

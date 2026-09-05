@@ -10,6 +10,9 @@ js_library(
         "src/stratum_v2_tcp_payload_diagnostic.rs",
         "src/stratum_v2_tcp_payload_replay.rs",
         "src/usb_runtime.rs",
+        "src/bwg_worker_usb/link.rs",
+        "src/bwg_worker_usb/writer.rs",
+        "src/application_log.rs",
     ],
     visibility = ["//tools/automation:__pkg__"],
 )
@@ -45,21 +48,20 @@ exports_files([
 
 filegroup(
     name = "bwg_usb_runtime_source",
-    srcs = ["src/usb_runtime/callbacks.rs"],
+    srcs = ["src/usb_runtime.rs"],
     visibility = ["//crates/bitaxe-worker-control:__pkg__"],
 )
 
 filegroup(
     name = "usb_phy_handoff_source",
-    srcs = ["bwg/native/usb_phy_handoff.c"],
+    srcs = ["src/usb_runtime.rs"],
     visibility = ["//crates/bitaxe-worker-control:__pkg__"],
 )
 
 js_library(
     name = "native_usb_ownership_sources",
     srcs = [
-        "bwg/native/usb_phy_handoff.c",
-        "bwg/native/include/usb_phy_handoff.h",
+        "Cargo.toml",
         "sdkconfig.defaults",
         "src/boot_evidence.rs",
         "src/boot_evidence/usb_profile.rs",
@@ -68,8 +70,9 @@ js_library(
         "src/panic_evidence.rs",
         "src/startup.rs",
         "src/usb_runtime.rs",
-        "src/usb_runtime/callbacks.rs",
-        "src/usb_runtime/tinyusb.rs",
+        "src/bwg_worker_usb/link.rs",
+        "src/bwg_worker_usb/writer.rs",
+        "src/application_log.rs",
     ],
     visibility = [
         "//scripts:__pkg__",
@@ -167,7 +170,7 @@ js_library(
 
 js_library(
     name = "core_voltage_control_production_source",
-    srcs = ["src/mining_actuation_adapter.rs"],
+    srcs = ["src/mining_actuation_adapter.rs", "src/mining_actuation.rs", "src/safety_adapter.rs"],
     visibility = ["//tools/automation:__pkg__"],
 )
 
@@ -383,11 +386,11 @@ rust_test(
         "src/startup.rs",
     ],
     compile_data = [
-        "bwg/native/usb_phy_handoff.c",
         "src/boot_evidence/worker_diagnostics.rs",
         "src/usb_runtime.rs",
-        "src/usb_runtime/callbacks.rs",
-        "src/usb_runtime/tinyusb.rs",
+        "src/bwg_worker_usb/link.rs",
+        "src/bwg_worker_usb/writer.rs",
+        "src/application_log.rs",
     ],
     crate_name = "bwg_worker_source_ownership_tests",
     crate_root = "src/bwg_worker_source_ownership_test.rs",
@@ -552,13 +555,20 @@ rust_test(
 rust_test(
     name = "mining_actuation_tests",
     srcs = [
+        "src/production_mining_session/shutdown_budget.rs",
         "src/mining_actuation.rs",
         "src/mining_actuation_host_test.rs",
+        "src/mining_actuation_cancellation_tests.rs",
+        "src/production_mining_session/revocation.rs",
+        "src/production_mining_session/revocation/reason.rs",
+        "src/production_mining_session/revocation/timing.rs",
+        "src/production_mining_session/revocation/tests.rs",
     ],
     crate_name = "mining_actuation_tests",
     crate_root = "src/mining_actuation_host_test.rs",
     edition = "2021",
     deps = [
+        "//crates/bitaxe-asic:bitaxe_asic",
         "//crates/bitaxe-config:bitaxe_config",
         "//crates/bitaxe-stratum:bitaxe_stratum",
     ],
@@ -567,15 +577,24 @@ rust_test(
 rust_test(
     name = "production_transport_tests",
     srcs = [
+        "src/production_mining_session/shutdown_budget.rs",
         "src/production_mining_session/transport.rs",
+        "src/production_mining_session/transport/tests.rs",
+        "src/production_mining_session/status_publication.rs",
         "src/production_transport_host_test.rs",
+        "src/production_mining_session/revocation.rs",
+        "src/production_mining_session/revocation/reason.rs",
+        "src/production_mining_session/revocation/timing.rs",
+        "src/production_mining_session/revocation/tests.rs",
     ],
     crate_name = "production_transport_tests",
     crate_root = "src/production_transport_host_test.rs",
     edition = "2021",
     deps = [
+        "//crates/bitaxe-asic:bitaxe_asic",
         "//crates/bitaxe-stratum:bitaxe_stratum",
         "@crates//:log",
+        "@crates//:serde_json",
     ],
 )
 
@@ -664,6 +683,8 @@ rust_test(
         "src/production_mining_session/owner_progress.rs",
         "src/production_mining_session/pending_observation.rs",
         "src/production_mining_session/transport.rs",
+        "src/production_mining_session/transport/tests.rs",
+        "src/production_mining_session/status_publication.rs",
         "src/safety_adapter.rs",
         "src/safety_adapter/adc.rs",
         "src/settings_adapter.rs",
@@ -1046,6 +1067,8 @@ js_run_binary(
         "esp-miner.bin",
         "www.bin",
         "otadata-initial.bin",
+        "bootloader.bin",
+        "partition-table.bin",
         "bitaxe-ultra205-factory.bin",
         "bitaxe-ultra205-package.json",
     ],
@@ -1078,4 +1101,23 @@ js_run_binary(
     ],
     tool = "//tools/automation:package_firmware",
     visibility = ["//visibility:public"],
+)
+
+rust_test(
+    name = "settings_preservation_tests",
+    srcs = [
+        "src/settings_preservation_host_test.rs",
+        "src/settings_adapter/preservation/model.rs",
+    ],
+    crate_root = "src/settings_preservation_host_test.rs",
+    crate_name = "settings_preservation_tests",
+    edition = "2021",
+    deps = [
+        "//crates/bitaxe-api:bitaxe_api",
+        "//crates/bitaxe-config:bitaxe_config",
+        "//crates/bitaxe-worker-control:bitaxe_worker_control",
+        "@crates//:serde_json",
+        "@crates//:sha2",
+        "@crates//:zeroize",
+    ],
 )

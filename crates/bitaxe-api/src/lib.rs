@@ -197,3 +197,7 @@ mod tests {
         assert!(wire.start_mining_on_boot);
     }
 }
+
+pub mod update_segments;
+
+pub mod acceptance_budget;

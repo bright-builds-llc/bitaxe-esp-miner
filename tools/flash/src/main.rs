@@ -27,12 +27,10 @@ use bitaxe_config::{
 };
 use bitaxe_device_session::{
     admit_application_execution, admit_rom_downloader, board_info_reports_esp32s3,
-    discover_usb_ports, handoff_worker_to_rom, inspect_usb_profile,
-    native_usb_transition_module_sha256, plan_usb_operation, run_installed_application,
-    verify_native_usb_transition, MonitorOutput, NativeUsbTransitionOutcome,
-    ProfileObservationCounts, UsbCommandDiagnostic, UsbDeviceEffectState, UsbExecutionOwner,
-    UsbIntent, UsbOperation, UsbOperationPlan, UsbProfile, UsbRebootLoopObservation,
-    UsbRuntimeIdentity, UsbSession, UsbTerminalCategory,
+    discover_usb_ports, inspect_usb_profile, plan_usb_operation, run_installed_application,
+    MonitorOutput, ProfileObservationCounts, UsbCommandDiagnostic, UsbDeviceEffectState,
+    UsbExecutionOwner, UsbIntent, UsbOperation, UsbOperationPlan, UsbProfile,
+    UsbRebootLoopObservation, UsbRuntimeIdentity, UsbSession, UsbTerminalCategory,
 };
 #[cfg(test)]
 use bitaxe_device_session::{UsbCommandTermination, UsbConnectionSignature};
@@ -56,13 +54,13 @@ mod input_uat;
 mod installed_application;
 mod model;
 mod monitor;
-mod native_usb_transition;
 mod noise_diagnostic;
 mod nvs_readback;
 mod output;
 mod owner_recovery;
 mod package;
 mod package_admission;
+mod package_segments;
 mod redaction;
 mod release_recovery;
 mod restore_installed;
@@ -90,12 +88,12 @@ pub(crate) use input_uat::*;
 pub(crate) use installed_application::*;
 pub(crate) use model::*;
 pub(crate) use monitor::*;
-pub(crate) use native_usb_transition::*;
 pub(crate) use noise_diagnostic::*;
 pub(crate) use nvs_readback::*;
 pub(crate) use output::*;
 pub(crate) use owner_recovery::*;
 pub(crate) use package::*;
+pub(crate) use package_segments::*;
 pub(crate) use redaction::*;
 pub(crate) use release_recovery::*;
 pub(crate) use restore_installed::*;
@@ -162,9 +160,7 @@ fn main() -> Result<()> {
         CliCommand::TcpPayloadDiagnostic(command) => {
             run_tcp_payload_diagnostic_command(&command, &environment)
         }
-        CliCommand::VerifyNativeUsbTransition(command) => {
-            run_verify_native_usb_transition(&command, &environment)
-        }
+
         CliCommand::DisplayRecoveryStart(command) => {
             run_display_recovery_start(&command, &environment)
         }

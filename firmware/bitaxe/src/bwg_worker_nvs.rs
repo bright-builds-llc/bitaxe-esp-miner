@@ -12,6 +12,8 @@ use zeroize::{Zeroize, Zeroizing};
 
 use crate::startup::BootMiningBaselineConfirmed;
 
+mod acceptance;
+
 const NAMESPACE: &str = "bwg_worker";
 const IDENTITY_KEY: &str = "device_seed";
 const SEQUENCE_KEY: &str = "lease_seq";
@@ -82,8 +84,10 @@ impl BwgWorkerNvs {
 
     pub(crate) fn confirm_reboot_baseline(
         &mut self,
-        _proof: BootMiningBaselineConfirmed,
+        proof: BootMiningBaselineConfirmed,
     ) -> Result<bool, LeaseAuthorizationError> {
+        crate::worker_acceptance_budget::recover_after_boot(&proof)
+            .map_err(|_| LeaseAuthorizationError::Persistence)?;
         let current = self.effect_state()?;
         let confirmed = current.after_boot_baseline();
         if confirmed != current {
@@ -168,6 +172,16 @@ impl DeviceIdentitySeedStore for BwgWorkerNvs {
 }
 
 impl AcceptedSequenceStore for BwgWorkerNvs {
+    fn authorization_high_water_fingerprint(
+        &self,
+    ) -> Result<Option<bitaxe_worker_control::StateFingerprint>, LeaseAuthorizationError> {
+        let state = self.sequence_state()?;
+        let bytes = serde_json::to_vec(&state).map_err(|_| LeaseAuthorizationError::Persistence)?;
+        Ok(Some(
+            bitaxe_worker_control::StateFingerprint::of_public_state(&bytes),
+        ))
+    }
+
     fn mark_effect_pending(&mut self) -> Result<(), LeaseAuthorizationError> {
         self.store_effect_state(PersistedWorkerEffectState::EffectPending)
     }

@@ -160,30 +160,18 @@ fn noise_auth_restore_actions_are_current_and_root_specific() {
 }
 
 #[test]
-fn bwg_restoration_root_and_authority_are_closed_to_one_attempt_grammar() {
+fn superseded_bwg_restoration_cannot_select_an_effect_root_or_authority() {
     // Arrange
     let root = Utf8Path::new("scratch/bwg-worker-restoration/bwg007-attempt-001/recovery");
-
     // Act
-    let contract = restore_invocation_contract(root, false);
-    let authority = authorized_remediation_plan("bwg_worker_restoration", 1)
-        .expect("BWG restoration authority should be explicit");
-
+    let (admitted_root, _) = restore_invocation_contract(root, false);
+    let authority = authorized_remediation_plan("bwg_worker_restoration", 1);
     // Assert
-    assert_eq!(contract, (root, BWG_RESTORATION_PLAN_RELATIVE));
-    assert_eq!(
-        authority,
-        (BWG_RESTORATION_PLAN_RELATIVE, BWG_RESTORATION_PLAN_SHA256)
-    );
-    assert!(is_bwg_restoration_root(root));
-    assert!(!is_bwg_restoration_root(Utf8Path::new(
-        "scratch/bwg-worker-restoration/bwg007-attempt-1/recovery"
-    )));
-    assert!(authorized_remediation_plan("bwg_worker_restoration", 1_000).is_err());
-    assert_eq!(
-        sha256_bytes(include_str!(
-            "../../../../docs/adr/0019-supervise-bwg-restoration-through-a-protected-browser-campaign.md"
-        ).as_bytes()),
-        BWG_RESTORATION_PLAN_SHA256
-    );
+    assert_ne!(admitted_root, root);
+    assert!(authority.is_err());
+    assert!(!authorization_action_allowed(
+        false,
+        root.as_str(),
+        "bwg_worker_restoration"
+    ));
 }

@@ -1,5 +1,6 @@
 //! Bounded per-pool TCP workers for the production mining owner.
 
+use super::revocation::{self, WorkPermit};
 use std::fmt;
 use std::io::{self, Read, Write};
 use std::net::{Shutdown, TcpStream, ToSocketAddrs};
@@ -14,7 +15,7 @@ use bitaxe_stratum::v1::production_session::{
 const COMMAND_CAPACITY: usize = 8;
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
 const READ_TIMEOUT: Duration = Duration::from_millis(50);
-const WRITE_TIMEOUT: Duration = Duration::from_secs(2);
+const WRITE_TIMEOUT: Duration = Duration::from_millis(50);
 const READ_BUFFER_BYTES: usize = 2 * 1024;
 const WORKER_STACK_BYTES: usize = 12 * 1024;
 
@@ -27,6 +28,7 @@ pub(super) enum PoolTransportCommand {
     Write {
         transport_epoch: ProductionTransportEpoch,
         line: String,
+        permit: WorkPermit,
     },
     Close {
         transport_epoch: ProductionTransportEpoch,
@@ -318,6 +320,7 @@ fn apply_command(
         PoolTransportCommand::Write {
             transport_epoch,
             line,
+            permit,
         } => {
             let Some(connection) = maybe_connection.as_mut() else {
                 emit(PoolTransportEvent::Failed {
@@ -330,7 +333,7 @@ fn apply_command(
             if connection.transport_epoch != transport_epoch {
                 return true;
             }
-            if connection.stream.write_all(line.as_bytes()).is_err()
+            if write_admitted_line(&mut connection.stream, line.as_bytes(), permit).is_err()
                 || connection.stream.flush().is_err()
             {
                 emit(PoolTransportEvent::Failed {
@@ -339,6 +342,17 @@ fn apply_command(
                     failure: ProductionTransportFailure::Write,
                 });
                 close_connection(maybe_connection);
+            } else if serde_json::from_str::<serde_json::Value>(&line)
+                .ok()
+                .and_then(|value| {
+                    value
+                        .get("method")
+                        .and_then(serde_json::Value::as_str)
+                        .map(str::to_owned)
+                })
+                .is_some_and(|method| method == "mining.submit")
+            {
+                revocation::note_submission(permit.maybe_generation());
             }
         }
         PoolTransportCommand::Close { transport_epoch } => {
@@ -355,6 +369,44 @@ fn apply_command(
         }
     }
     true
+}
+
+fn write_admitted_line(
+    stream: &mut impl Write,
+    remaining: &[u8],
+    permit: WorkPermit,
+) -> io::Result<()> {
+    write_while_admitted(stream, remaining, || revocation::permits_work(permit))
+}
+
+fn write_while_admitted(
+    stream: &mut impl Write,
+    mut remaining: &[u8],
+    allowed: impl Fn() -> bool,
+) -> io::Result<()> {
+    while !remaining.is_empty() {
+        if !allowed() {
+            return Err(io::Error::new(
+                io::ErrorKind::PermissionDenied,
+                "production_generation_revoked",
+            ));
+        }
+        let count = stream.write(remaining)?;
+        if count == 0 {
+            return Err(io::Error::new(
+                io::ErrorKind::WriteZero,
+                "production_pool_write_zero",
+            ));
+        }
+        remaining = &remaining[count..];
+    }
+    if !allowed() {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "production_generation_revoked",
+        ));
+    }
+    Ok(())
 }
 
 fn connect(endpoint: &ProductionPoolEndpoint) -> io::Result<TcpStream> {
@@ -419,151 +471,5 @@ fn close_connection(maybe_connection: &mut Option<PoolConnection>) {
 }
 
 #[cfg(test)]
-mod tests {
-    use std::io::{Read, Write};
-    use std::net::TcpListener;
-    use std::sync::mpsc;
-    use std::thread;
-    use std::time::Duration;
-
-    use super::*;
-
-    fn next_epoch() -> ProductionTransportEpoch {
-        ProductionTransportEpoch::initial().next()
-    }
-
-    #[test]
-    fn loopback_worker_connects_writes_and_preserves_partial_bytes() {
-        // Arrange
-        let listener = TcpListener::bind("127.0.0.1:0").expect("loopback listener should bind");
-        let address = listener
-            .local_addr()
-            .expect("loopback listener should expose its address");
-        let server = thread::spawn(move || {
-            let (mut stream, _) = listener.accept().expect("worker should connect");
-            let mut request = [0_u8; 5];
-            stream
-                .read_exact(&mut request)
-                .expect("worker should write the complete line");
-            assert_eq!(&request, b"ping\n");
-            stream.write_all(b"{\"id\"").expect("first fragment");
-            thread::sleep(Duration::from_millis(25));
-            stream.write_all(b":1}\n").expect("second fragment");
-        });
-        let (event_sender, event_receiver) = mpsc::channel();
-        let workers =
-            PoolTransportWorkers::spawn(move |event| event_sender.send(event).expect("receiver"))
-                .expect("workers should spawn");
-        let epoch = next_epoch();
-
-        // Act
-        workers
-            .try_send(
-                ProductionPool::Primary,
-                PoolTransportCommand::Connect {
-                    transport_epoch: epoch,
-                    endpoint: ProductionPoolEndpoint {
-                        host: address.ip().to_string(),
-                        port: address.port(),
-                    },
-                },
-            )
-            .expect("connect command should queue");
-        assert_eq!(
-            event_receiver
-                .recv_timeout(Duration::from_secs(2))
-                .expect("connected event"),
-            PoolTransportEvent::Connected {
-                pool: ProductionPool::Primary,
-                transport_epoch: epoch,
-            }
-        );
-        workers
-            .try_send(
-                ProductionPool::Primary,
-                PoolTransportCommand::Write {
-                    transport_epoch: epoch,
-                    line: "ping\n".to_owned(),
-                },
-            )
-            .expect("write command should queue");
-
-        let mut received = Vec::new();
-        while !received.ends_with(b"\n") {
-            match event_receiver
-                .recv_timeout(Duration::from_secs(2))
-                .expect("transport event")
-            {
-                PoolTransportEvent::Bytes { bytes, .. } => received.extend(bytes),
-                PoolTransportEvent::Closed { .. } if received.ends_with(b"\n") => break,
-                other => panic!("unexpected event: {other:?}"),
-            }
-        }
-
-        // Assert
-        assert_eq!(received, b"{\"id\":1}\n");
-        workers
-            .request_close(ProductionPool::Primary, epoch)
-            .expect("close request should register");
-        server.join().expect("loopback server should finish");
-    }
-
-    #[test]
-    fn failed_connect_is_typed_and_debug_output_is_redacted() {
-        // Arrange
-        let listener = TcpListener::bind("127.0.0.1:0").expect("loopback listener should bind");
-        let address = listener
-            .local_addr()
-            .expect("loopback listener should expose its address");
-        drop(listener);
-        let (event_sender, event_receiver) = mpsc::channel();
-        let workers =
-            PoolTransportWorkers::spawn(move |event| event_sender.send(event).expect("receiver"))
-                .expect("workers should spawn");
-        let epoch = next_epoch();
-        let command = PoolTransportCommand::Connect {
-            transport_epoch: epoch,
-            endpoint: ProductionPoolEndpoint {
-                host: address.ip().to_string(),
-                port: address.port(),
-            },
-        };
-
-        // Act
-        let debug = format!("{command:?}");
-        workers
-            .try_send(ProductionPool::Fallback, command)
-            .expect("connect command should queue");
-        let event = event_receiver
-            .recv_timeout(Duration::from_secs(2))
-            .expect("failed event");
-
-        // Assert
-        assert!(!debug.contains(&address.port().to_string()));
-        assert!(debug.contains("redacted"));
-        assert_eq!(
-            event,
-            PoolTransportEvent::Failed {
-                pool: ProductionPool::Fallback,
-                transport_epoch: epoch,
-                failure: ProductionTransportFailure::Connect,
-            }
-        );
-    }
-
-    #[test]
-    fn write_debug_never_contains_pool_line() {
-        // Arrange
-        let command = PoolTransportCommand::Write {
-            transport_epoch: next_epoch(),
-            line: "sensitive-owner-worker-value".to_owned(),
-        };
-
-        // Act
-        let debug = format!("{command:?}");
-
-        // Assert
-        assert!(!debug.contains("sensitive-owner-worker-value"));
-        assert!(debug.contains("redacted"));
-    }
-}
+#[path = "transport/tests.rs"]
+mod tests;

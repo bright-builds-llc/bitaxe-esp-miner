@@ -23,6 +23,7 @@ const NETWORK_RECONNECT_PROBE_KEY: &str = "netreconprobe";
 
 mod noise_diagnostic;
 mod nvs_owner;
+pub(crate) mod preservation;
 mod production;
 mod protocol_gate;
 mod protocol_gate_adapter;

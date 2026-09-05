@@ -7,15 +7,17 @@ mod notifications;
 mod owner_loop;
 mod owner_progress;
 mod pending_observation;
+mod qualification;
 mod readiness_trace;
+pub(crate) mod revocation;
 mod scoreboard;
+pub(crate) mod shutdown_budget;
+mod status_publication;
 mod transport;
 pub(crate) mod watchdog;
 use self::asic_worker::{AsicWorker, AsicWorkerCommand, AsicWorkerEvent};
-use self::campaign_status::publication::{
-    CampaignStatusPublicationError, CampaignStatusPublicationSchedule,
-};
-use self::campaign_status::{CampaignObservationFreshness, CampaignStatusTracker};
+use self::campaign_status::publication::CampaignStatusPublicationSchedule;
+use self::campaign_status::CampaignStatusTracker;
 use self::hashrate::ProductionHashrateMonitor;
 use self::owner_loop::{run_owner, safe_stop_subphase};
 use self::readiness_trace::ReadinessTransitionTracker;
@@ -23,8 +25,7 @@ use self::transport::{PoolTransportCommand, PoolTransportEvent, PoolTransportWor
 use crate::mining_actuation::SafeShutdownStep;
 use bitaxe_core::runtime_health::TaskWatchdogOwnerSubphase;
 use bitaxe_core::runtime_orchestration::{PeriodicDeadline, PRODUCTION_REREAD_CADENCE_MS};
-use bitaxe_safety::observation::{MonotonicMillis, Observation};
-use bitaxe_safety::power::POWER_SAMPLE_STALE_AFTER_MS;
+use bitaxe_safety::observation::MonotonicMillis;
 use bitaxe_stratum::v1::production_session::{
     AsicPollCompletion, ProductionAsicFailure, ProductionMiningSession, ProductionPool,
     ProductionReadiness, ProductionSessionEffect, ProductionSessionEvent,
@@ -33,6 +34,7 @@ use bitaxe_stratum::v1::production_session::{
 use bitaxe_stratum::v1::production_work::ProductionNonceObservation;
 pub(crate) use bwg::{renew as bwg_renew, safe_stop as bwg_safe_stop, start as bwg_start};
 pub use notifications::notify;
+pub(crate) use qualification::status_evidence;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
 use std::sync::OnceLock;
@@ -256,7 +258,11 @@ impl OrdinaryEspProductionSessionAdapter {
         let requested_operator_intent = crate::runtime_snapshot::requested_mining_operator_intent();
         let wifi = crate::wifi_adapter::current_wifi_snapshot();
         let observations = crate::safety_adapter::observation_snapshot();
-        let safety_prerequisites_fresh = observations.is_ultra_205_mining_safe_at(now());
+        let safety_prerequisites_fresh = observations.is_ultra_205_mining_safe_at(now())
+            && observations
+                .fan_rpm
+                .maybe_last_good()
+                .is_some_and(|sample| *sample.value() > 0);
         let maybe_campaign_lease = self
             .maybe_bwg_session
             .as_ref()
@@ -309,9 +315,35 @@ impl OrdinaryEspProductionSessionAdapter {
     ) -> Option<ProductionSessionEvent> {
         match effect {
             ProductionSessionEffect::Publish(snapshot) => {
+                if let Some(session) = self.maybe_bwg_session.as_ref() {
+                    revocation::publish_counts(
+                        session.generation,
+                        snapshot
+                            .mining
+                            .counters
+                            .accepted
+                            .saturating_sub(session.accepted_baseline),
+                        snapshot
+                            .mining
+                            .counters
+                            .rejected
+                            .saturating_sub(session.rejected_baseline),
+                        snapshot
+                            .mining
+                            .counters
+                            .qualified_candidates
+                            .saturating_sub(session.correlated_baseline),
+                    );
+                }
                 if let Some(status) = self.maybe_campaign_status.as_mut() {
                     status.note_snapshot(&snapshot, now_ms);
                     let qualified = status.authorizes_actuation()
+                        && self.maybe_bwg_session.is_none()
+                        && revocation::permits(
+                            self.maybe_bwg_session
+                                .as_ref()
+                                .map(|session| session.generation),
+                        )
                         && snapshot.campaign_state
                             == bitaxe_stratum::v1::production_session::MiningCampaignState::Active
                         && crate::safety_adapter::safety_actuation_available()
@@ -324,7 +356,10 @@ impl OrdinaryEspProductionSessionAdapter {
                 None
             }
             ProductionSessionEffect::BlockSubmissions
-            | ProductionSessionEffect::InvalidateWorkAndSubmissions => None,
+            | ProductionSessionEffect::InvalidateWorkAndSubmissions => {
+                revocation::block_work();
+                None
+            }
             ProductionSessionEffect::StopAsicInteraction => {
                 if crate::asic_adapter::production::block_production_dispatch().is_err() {
                     return Some(ProductionSessionEvent::EffectFailed {
@@ -336,8 +371,16 @@ impl OrdinaryEspProductionSessionAdapter {
                 None
             }
             ProductionSessionEffect::PrepareHardware { lease_id, profile } => {
+                self.mining_actuation.set_worker_generation(
+                    self.maybe_bwg_session
+                        .as_ref()
+                        .map(|session| session.generation),
+                );
                 match self.mining_actuation.prepare(profile) {
-                    Ok(()) => Some(ProductionSessionEvent::HardwarePrepared { lease_id, now_ms }),
+                    Ok(()) if revocation::permits(self.maybe_bwg_session.as_ref().map(|session| session.generation)) => Some(ProductionSessionEvent::HardwarePrepared { lease_id, now_ms: crate::runtime_uptime::millis() }),
+                    Ok(()) => Some(ProductionSessionEvent::HardwarePreparationFailed { lease_id,
+                        failure: bitaxe_stratum::v1::production_session::HardwarePreparationFailure::Rejected,
+                        now_ms: crate::runtime_uptime::millis() }),
                     Err(failure) => {
                         let original = failure.original();
                         let original_category = original.source().category();
@@ -423,6 +466,11 @@ impl OrdinaryEspProductionSessionAdapter {
                 PoolTransportCommand::Write {
                     transport_epoch,
                     line,
+                    permit: revocation::stamp(
+                        self.maybe_bwg_session
+                            .as_ref()
+                            .map(|session| session.generation),
+                    ),
                 },
                 now_ms,
             ),
@@ -447,6 +495,13 @@ impl OrdinaryEspProductionSessionAdapter {
                 }
             },
             ProductionSessionEffect::SafeStopHardware { lease_id, purpose } => {
+                if let Some(session) = self.maybe_bwg_session.as_ref() {
+                    revocation::revoke_reason_at(
+                        session.generation,
+                        crate::runtime_uptime::millis(),
+                        revocation::RevocationReason::ControlFailed,
+                    );
+                }
                 FAN_CONTROLLER_ACTUATION_QUALIFIED.store(false, Ordering::Release);
                 if let Some(status) = self.maybe_campaign_status.as_mut() {
                     status.note_safe_stop_pending();
@@ -516,7 +571,12 @@ impl OrdinaryEspProductionSessionAdapter {
             | AsicWorkerCommand::ReadHashrateRegisters { generation } => *generation,
             AsicWorkerCommand::Shutdown => return None,
         };
-        match self.asic.try_send(command) {
+        match self.asic.try_send(
+            command,
+            self.maybe_bwg_session
+                .as_ref()
+                .map(|session| session.generation),
+        ) {
             Ok(()) => None,
             Err(TrySendError::Full(_)) => Some(ProductionSessionEvent::AsicInteractionFailed {
                 generation,
@@ -532,91 +592,6 @@ impl OrdinaryEspProductionSessionAdapter {
             }
         }
     }
-
-    fn publish_campaign_status(
-        &mut self,
-        snapshot: &bitaxe_stratum::v1::production_session::ProductionSessionSnapshot,
-        now_ms: u64,
-    ) -> Result<(), CampaignStatusPublicationError> {
-        if self.maybe_campaign_status.is_none() {
-            return Ok(());
-        }
-        if snapshot.campaign_state
-            == bitaxe_stratum::v1::production_session::MiningCampaignState::Consumed
-            && self.maybe_terminal_pool_persisted.is_none()
-        {
-            self.maybe_terminal_pool_persisted = Some(matches!(
-                crate::settings_adapter::read_production_pool_set(),
-                Ok(Some(_))
-            ));
-        }
-        let pool_config_persisted = self.maybe_terminal_pool_persisted.unwrap_or(false);
-        let Some(status) = self.maybe_campaign_status.as_ref() else {
-            return Ok(());
-        };
-        let Some(readiness_transition) = self.readiness_trace.evidence() else {
-            log::error!("mining_campaign_status=withheld category=readiness_transition_missing");
-            return Ok(());
-        };
-        let terminal = snapshot.campaign_state
-            == bitaxe_stratum::v1::production_session::MiningCampaignState::Consumed;
-        if !self
-            .campaign_status_publication
-            .should_publish(now_ms, terminal)?
-        {
-            return Ok(());
-        }
-        let observations = crate::safety_adapter::observation_snapshot();
-        let safety_now = now();
-        let safety_fresh = observations.is_ultra_205_mining_safe_at(safety_now);
-        let observation_freshness = CampaignObservationFreshness {
-            power_watts: is_current(&observations.power_watts, safety_now),
-            bus_voltage_volts: is_current(&observations.bus_voltage_volts, safety_now),
-            current_amps: is_current(&observations.current_amps, safety_now),
-            chip_temp_celsius: is_current(&observations.chip_temp_celsius, safety_now),
-            vr_temp_celsius: is_current(&observations.vr_temp_celsius, safety_now),
-            fan_rpm: is_current(&observations.fan_rpm, safety_now),
-        };
-        let marker = status.marker(
-            snapshot,
-            now_ms,
-            safety_fresh,
-            observation_freshness,
-            crate::settings_adapter::start_mining_on_boot(),
-            pool_config_persisted,
-            self.protocol_gate.label(),
-            readiness_transition,
-        );
-        crate::info_retained(&format!("mining_campaign_status={marker}"));
-        Ok(())
-    }
-
-    fn service_hashrate_monitor(&mut self, snapshot: &ProductionSessionSnapshot, now_ms: u64) {
-        let Ok(maybe_tick) = self.hashrate.service_snapshot(snapshot, now_ms) else {
-            log::warn!("hashrate_monitor=unavailable category=schedule_overflow");
-            return;
-        };
-        let Some(tick) = maybe_tick else { return };
-        crate::runtime_snapshot::publish_hashrate_snapshot(tick.snapshot);
-        if tick.request_registers
-            && self
-                .asic
-                .try_send(AsicWorkerCommand::ReadHashrateRegisters {
-                    generation: snapshot.generation,
-                })
-                .is_err()
-        {
-            log::warn!("hashrate_monitor_read=skipped category=worker_unavailable");
-        }
-    }
-}
-
-fn is_current<T>(observation: &Observation<T>, now: MonotonicMillis) -> bool {
-    observation.is_fresh()
-        && observation.maybe_last_good().is_some_and(|sample| {
-            now.get().saturating_sub(sample.acquired_at().get())
-                <= u64::from(POWER_SAMPLE_STALE_AFTER_MS)
-        })
 }
 
 fn now() -> MonotonicMillis {

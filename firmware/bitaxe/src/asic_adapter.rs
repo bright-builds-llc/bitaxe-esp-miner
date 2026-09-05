@@ -341,6 +341,7 @@ fn interpret_action(
     uart: &mut uart::AsicUart<'_>,
     reset: &mut reset::AsicReset<'_>,
 ) -> Result<ActionOutcome> {
+    uart.check_cancellation()?;
     match action {
         Bm1366AdapterAction::UseDefaultBaud { baud } | Bm1366AdapterAction::UseMaxBaud { baud } => {
             uart.change_baud(*baud)?;
@@ -367,11 +368,11 @@ fn interpret_action(
             timeout_ms,
         } => count_asic_chips_rx_loop(uart, reset, *expected_chips, *timeout_ms),
         Bm1366AdapterAction::DelayMs(delay_ms) => {
-            std::thread::sleep(std::time::Duration::from_millis(u64::from(*delay_ms)));
+            uart.cancellable_delay(*delay_ms)?;
             Ok(ActionOutcome::Continue)
         }
         Bm1366AdapterAction::ResetPulse { low_ms, high_ms } => {
-            reset.reset_pulse(*low_ms, *high_ms)?;
+            reset.reset_pulse_cancellable(*low_ms, *high_ms, &mut || uart.check_cancellation())?;
             Ok(ActionOutcome::Continue)
         }
         Bm1366AdapterAction::HoldResetLow => {

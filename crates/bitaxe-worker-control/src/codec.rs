@@ -2,67 +2,8 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use serde::Serialize;
 use serde_json::Value;
-use thiserror::Error;
-use zeroize::Zeroize;
 
-pub(crate) const MAXIMUM_CONTROL_FRAME_BYTES: usize = 65_536;
-
-/// Bounded secret-bearing JSON-lines accumulator for fragmented USB packets.
-pub struct WorkerControlFrameAccumulator {
-    bytes: Vec<u8>,
-}
-
-/// Closed framing failure with no frame contents.
-#[derive(Clone, Copy, Debug, Eq, Error, PartialEq)]
-pub enum WorkerControlFrameAccumulatorError {
-    #[error("Worker control transfer is oversized")]
-    Oversized,
-    #[error("Worker control transfer contains multiple frames")]
-    MultipleFrames,
-}
-
-impl WorkerControlFrameAccumulator {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self { bytes: Vec::new() }
-    }
-
-    pub fn push(
-        &mut self,
-        chunk: &[u8],
-    ) -> Result<Option<Vec<u8>>, WorkerControlFrameAccumulatorError> {
-        if self.bytes.len().saturating_add(chunk.len()) > MAXIMUM_CONTROL_FRAME_BYTES {
-            self.clear();
-            return Err(WorkerControlFrameAccumulatorError::Oversized);
-        }
-        self.bytes.extend_from_slice(chunk);
-        let Some(newline) = self.bytes.iter().position(|byte| *byte == b'\n') else {
-            return Ok(None);
-        };
-        if self.bytes[newline + 1..].contains(&b'\n') {
-            self.clear();
-            return Err(WorkerControlFrameAccumulatorError::MultipleFrames);
-        }
-        Ok(Some(self.bytes.drain(..=newline).collect()))
-    }
-
-    pub fn clear(&mut self) {
-        self.bytes.zeroize();
-        self.bytes.clear();
-    }
-}
-
-impl Default for WorkerControlFrameAccumulator {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Drop for WorkerControlFrameAccumulator {
-    fn drop(&mut self) {
-        self.clear();
-    }
-}
+pub(crate) const MAXIMUM_CONTROL_FRAME_BYTES: usize = 65_537;
 
 pub(crate) fn strict_json_frame(bytes: &[u8]) -> Result<&str, &'static str> {
     if bytes.is_empty() || bytes.len() > MAXIMUM_CONTROL_FRAME_BYTES {

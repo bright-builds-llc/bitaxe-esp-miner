@@ -12,6 +12,7 @@ use bitaxe_stratum::v1::production_session::AsicPollCompletion;
 use bitaxe_stratum::v1::production_session::{ProductionAsicFailure, ProductionSessionEffect};
 use bitaxe_stratum::v1::production_work::PoolSessionGeneration;
 
+use super::revocation::{self, WorkPermit, WorkerGeneration};
 use crate::asic_adapter::production::{
     apply_negotiated_version_mask, request_hashrate_monitor_register_reads_tx,
     ProductionAsicExecutor, ProductionReadOutcome,
@@ -135,19 +136,29 @@ impl core::fmt::Debug for AsicWorkerEvent {
 }
 
 pub(super) struct AsicWorker {
-    sender: SyncSender<AsicWorkerCommand>,
+    sender: SyncSender<(AsicWorkerCommand, WorkPermit)>,
 }
 
 impl AsicWorker {
     pub(super) fn spawn(emit: impl Fn(AsicWorkerEvent) + Send + 'static) -> std::io::Result<Self> {
-        let (sender, receiver) = mpsc::sync_channel(COMMAND_CAPACITY);
+        let (sender, receiver) =
+            mpsc::sync_channel::<(AsicWorkerCommand, WorkPermit)>(COMMAND_CAPACITY);
         std::thread::Builder::new()
             .name("production-asic".to_owned())
             .stack_size(WORKER_STACK_BYTES)
             .spawn(move || {
                 let started_at = Instant::now();
                 let mut executor = ProductionAsicExecutor::new();
-                while let Ok(command) = receiver.recv() {
+                while let Ok((command, permit)) = receiver.recv() {
+                    if matches!(command, AsicWorkerCommand::Shutdown) {
+                        return;
+                    }
+                    if !revocation::permits_work(permit) {
+                        continue;
+                    }
+                    if !crate::asic_adapter::production::set_production_work_permit(permit) {
+                        continue;
+                    }
                     match command {
                         AsicWorkerCommand::ApplyVersionMask { generation, mask } => {
                             if !apply_negotiated_version_mask(mask) {
@@ -161,11 +172,18 @@ impl AsicWorker {
                             generation,
                             valid_jobs,
                             command,
-                        } => match executor.maybe_execute(command, &valid_jobs) {
+                        } => match executor.maybe_execute_guarded(command, &valid_jobs, permit) {
                             Ok(Some(result)) => {
+                                revocation::note_dispatch(
+                                    permit.maybe_generation(),
+                                    crate::runtime_uptime::millis(),
+                                );
                                 emit(AsicWorkerEvent::Result { generation, result });
                             }
-                            Ok(None) => {}
+                            Ok(None) => revocation::note_dispatch(
+                                permit.maybe_generation(),
+                                crate::runtime_uptime::millis(),
+                            ),
                             Err(_) => emit(AsicWorkerEvent::Failed {
                                 generation,
                                 failure: ProductionAsicFailure::Dispatch,
@@ -175,7 +193,9 @@ impl AsicWorker {
                             generation,
                             valid_jobs,
                             slice_ms,
-                        } => match executor.try_read_production_result(&valid_jobs, slice_ms) {
+                        } => match executor
+                            .try_read_production_result(&valid_jobs, slice_ms.min(50))
+                        {
                             Ok(ProductionReadOutcome::JobNonce(result)) => {
                                 emit(AsicWorkerEvent::Result { generation, result });
                             }
@@ -215,8 +235,14 @@ impl AsicWorker {
     pub(super) fn try_send(
         &self,
         command: AsicWorkerCommand,
+        maybe_generation: Option<WorkerGeneration>,
     ) -> Result<(), TrySendError<AsicWorkerCommand>> {
-        self.sender.try_send(command)
+        self.sender
+            .try_send((command, revocation::stamp(maybe_generation)))
+            .map_err(|error| match error {
+                TrySendError::Full((command, _)) => TrySendError::Full(command),
+                TrySendError::Disconnected((command, _)) => TrySendError::Disconnected(command),
+            })
     }
 
     pub(super) fn command_from_effect(
@@ -255,7 +281,11 @@ fn elapsed_micros(started_at: Instant) -> u64 {
 
 impl Drop for AsicWorker {
     fn drop(&mut self) {
-        if self.sender.try_send(AsicWorkerCommand::Shutdown).is_err() {
+        if self
+            .sender
+            .try_send((AsicWorkerCommand::Shutdown, revocation::stamp(None)))
+            .is_err()
+        {
             log::warn!("production_asic_worker_shutdown=degraded");
         }
     }

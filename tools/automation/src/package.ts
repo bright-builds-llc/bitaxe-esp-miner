@@ -37,6 +37,8 @@ export async function packageFirmware(
   const wwwImage = path.join(input.outDir, "www.bin");
   const otadata = path.join(input.outDir, "otadata-initial.bin");
   const factoryImage = path.join(input.outDir, "bitaxe-ultra205-factory.bin");
+  await copyFile(input.bootloaderBin, path.join(input.outDir, "bootloader.bin"));
+  await copyFile(input.partitionTableBin, path.join(input.outDir, "partition-table.bin"));
   await copyFile(input.firmwareElf, packageElf);
 
   const buildLabel = await requiredStampField(input.buildProvenanceStamp, "build_label");

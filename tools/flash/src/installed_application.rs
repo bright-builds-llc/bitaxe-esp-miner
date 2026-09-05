@@ -32,22 +32,6 @@ pub(crate) fn installed_transport_label(profile: UsbProfile) -> &'static str {
     }
 }
 
-pub(crate) fn retain_rom_after_write(command: &mut CommandSpec) -> Result<()> {
-    if command.args.first().map(String::as_str) != Some("write-bin") {
-        bail!("application_exit=blocked reason=write_command_shape");
-    }
-    let index = command
-        .args
-        .iter()
-        .position(|arg| arg == "--after")
-        .context("application_exit=blocked reason=after_option_missing")?;
-    *command
-        .args
-        .get_mut(index + 1)
-        .context("application_exit=blocked reason=after_value_missing")? = "no-reset".to_owned();
-    Ok(())
-}
-
 pub(crate) fn run_start_installed(
     command: &StartInstalledCommand,
     environment: &impl FlashEnvironment,
@@ -63,7 +47,7 @@ pub(crate) fn run_start_installed(
     let tasks = environment
         .read_to_string(&environment.workspace_path(Utf8Path::new("TASKS.md")))
         .map_err(|_| anyhow::anyhow!("start_installed=blocked reason=task_unavailable"))?;
-    admit_start_installed_task(&tasks, &expected)?;
+    admit_start_installed_task(&tasks)?;
     let provenance = environment
         .current_provenance()
         .map_err(|_| anyhow::anyhow!("start_installed=blocked reason=tooling_identity"))?;
@@ -71,6 +55,25 @@ pub(crate) fn run_start_installed(
         || environment.pushed_firmware_commit() != provenance.build_identity().source_commit()
     {
         bail!("start_installed=blocked reason=tooling_not_clean_and_pushed");
+    }
+    let manifest_path = match &command.manifest {
+        Some(path) => environment.workspace_path(path),
+        None => environment
+            .bazel_bin()?
+            .join(PACKAGE_MANIFEST_RELATIVE_PATH),
+    };
+    let manifest: PackageManifest =
+        serde_json::from_str(&environment.read_to_string(&manifest_path)?)
+            .context("start_installed=blocked reason=package_manifest")?;
+    if manifest.schema_version != 4 {
+        bail!("start_installed=blocked reason=state_preserving_manifest_required");
+    }
+    let admitted =
+        validate_identity_admission(&manifest_path, &manifest, &provenance, environment)?;
+    if admitted.runtime_identity.firmware_commit != expected.firmware_commit
+        || admitted.runtime_identity.app_elf_sha256 != expected.app_elf_sha256
+    {
+        bail!("start_installed=blocked reason=package_identity_mismatch");
     }
     let esptool = environment
         .prepare_application_exit()
@@ -175,8 +178,8 @@ fn create_start_installed_root(root: &Utf8Path, environment: &impl FlashEnvironm
     Ok(())
 }
 
-pub(super) fn admit_start_installed_task(tasks: &str, expected: &UsbRuntimeIdentity) -> Result<()> {
-    const TASK: &str = "task-native-usb-ownership-handoff";
+pub(super) fn admit_start_installed_task(tasks: &str) -> Result<()> {
+    const TASK: &str = "task-fixed-usb-serial-qualification";
     let mut active = false;
     let mut collecting = false;
     let mut matches = 0;
@@ -208,24 +211,17 @@ pub(super) fn admit_start_installed_task(tasks: &str, expected: &UsbRuntimeIdent
         bail!("start_installed=blocked reason=task_command");
     };
     let fields = command.split_whitespace().collect::<Vec<_>>();
-    for (key, expected_value) in [
-        (
-            "--expected-source-commit",
-            expected.firmware_commit.as_str(),
-        ),
-        (
-            "--expected-app-elf-sha256",
-            expected.app_elf_sha256.as_str(),
-        ),
-        ("--board", "205"),
-    ] {
-        let values = fields
-            .windows(2)
-            .filter(|pair| pair[0] == key)
-            .map(|pair| pair[1])
-            .collect::<Vec<_>>();
-        if values != [expected_value] {
-            bail!("start_installed=blocked reason=task_identity");
+    let boards = fields
+        .windows(2)
+        .filter(|pair| pair[0] == "--board")
+        .map(|pair| pair[1])
+        .collect::<Vec<_>>();
+    if boards != ["205"] {
+        bail!("start_installed=blocked reason=task_board");
+    }
+    for required in ["--port", "--private-root"] {
+        if fields.iter().filter(|field| **field == required).count() != 1 {
+            bail!("start_installed=blocked reason=task_command");
         }
     }
     if !fields.contains(&"--redact-evidence") {
@@ -255,7 +251,6 @@ fn installed_observation_record(
         "allocation_failure_receipt": observation.latest_allocation_failure().map(|marker| marker.marker()),
         "allocation_context": observation.maybe_allocation_context().map(|marker| marker.marker()),
         "memory_checkpoints": memory,
-        "maintenance_trace": observation.maintenance_trace().iter().map(|entry| entry.marker()).collect::<Vec<_>>(),
         "worker_start_failed": observation.worker_start_failed(),
     })
 }

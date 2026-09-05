@@ -2,6 +2,8 @@ import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 const semanticSchemas = new Set([
+  "fixed-usb-cycle-report-v1",
+  "fixed-usb-window-report-v1",
   "bitaxe-hardware-attempt-v1",
   "bitaxe-correlated-runtime-evidence-v1",
   "bitaxe-substantive-evidence-v1",
@@ -58,15 +60,18 @@ const prohibitedKeys = new RegExp([
 const localPath = /(?:\/Users\/[^\s"']+|\/home\/[^\s"']+|[A-Za-z]:\\[^\s"']+)/u;
 const networkAddress = /(?:\b(?:\d{1,3}\.){3}\d{1,3}\b|\b[0-9a-f]{2}(?::[0-9a-f]{2}){5}\b|https?:\/\/)/iu;
 
-function inspectValue(value: unknown, keyPath: string): string[] {
-  if (Array.isArray(value)) return value.flatMap((item, index) => inspectValue(item, `${keyPath}[${String(index)}]`));
+function inspectValue(value: unknown, keyPath: string, workerPrivacy = false): string[] {
+  if (Array.isArray(value)) return value.flatMap((item, index) => inspectValue(item, `${keyPath}[${String(index)}]`, workerPrivacy));
   if (typeof value === "object" && value !== null) {
     const violations: string[] = [];
     for (const [key, child] of Object.entries(value)) {
       if (prohibitedKeys.test(key) && !safeSemanticKeys.has(key)) {
         violations.push(`${keyPath}.${key}: prohibited operational field`);
       }
-      violations.push(...inspectValue(child, `${keyPath}.${key}`));
+      if (workerPrivacy && /(?:device_identity|settings|authorization_high_water).*sha256/iu.test(key)) {
+        violations.push(`${keyPath}.${key}: private Worker fingerprint`);
+      }
+      violations.push(...inspectValue(child, `${keyPath}.${key}`, workerPrivacy));
     }
     return violations;
   }
@@ -99,10 +104,11 @@ export async function verifySemanticEvidenceRedaction(root: string): Promise<{ r
       continue;
     }
     if (typeof value !== "object" || value === null) continue;
-    const schema = (value as Record<string, unknown>)["schema_version"];
+    const fields = value as Record<string, unknown>;
+    const schema = fields["schema_version"] ?? fields["schema"];
     if (typeof schema !== "string" || !semanticSchemas.has(schema)) continue;
     checked += 1;
-    for (const violation of inspectValue(value, "$")) {
+    for (const violation of inspectValue(value, "$", schema.startsWith("fixed-usb-"))) {
       violations.push(`${path.relative(root, file)} ${violation}`);
     }
   }

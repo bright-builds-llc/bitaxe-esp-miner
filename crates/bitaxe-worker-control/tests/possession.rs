@@ -5,7 +5,7 @@ use serde_json::Value;
 use sha2::{Digest, Sha256};
 
 const REQUEST: &str = concat!(
-    "{\"profile\":\"bwg-worker-possession/0.1\",",
+    "{\"profile\":\"bwg-worker-possession/0.2\",",
     "\"requestId\":\"pos_initial_01\",",
     "\"command\":\"prove_possession\",",
     "\"payload\":{",
@@ -13,7 +13,10 @@ const REQUEST: &str = concat!(
     "\"possessionNonce\":\"BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\",",
     "\"challengeBindingSha256\":\"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC\",",
     "\"controllerCapabilitySha256\":\"JFWsyueHvXS9M9GlDlK6yEOwUzO8oPXtloalyTRxFvE\",",
-    "\"applicationDescriptorSha256\":\"rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA\"",
+    "\"sessionId\":\"AAAAAAAAAAAAAAAAAAAAAA\",",
+    "\"hostNonce\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",",
+    "\"deviceNonce\":\"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\",",
+    "\"serialManifestSha256\":\"rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA\"",
     "}}\n",
 );
 
@@ -26,7 +29,7 @@ fn signs_only_the_closed_fresh_possession_claims() {
 
     // Act
     let response = identity
-        .prove(&request, &fixture_source_commit())
+        .prove(&request, &fixture_source_commit(), &"b".repeat(64))
         .expect("strict possession claims should sign");
 
     // Assert
@@ -51,14 +54,14 @@ fn derives_the_browser_canonical_control_session_transcript() {
     let request = PossessionRequest::from_frame(REQUEST.as_bytes())
         .expect("published possession request should parse");
     let response = identity
-        .prove(&request, &fixture_source_commit())
+        .prove(&request, &fixture_source_commit(), &"b".repeat(64))
         .expect("identity should sign");
     let request_value: Value = serde_json::from_str(REQUEST).expect("request should be JSON");
     let response_value: Value =
         serde_json::from_slice(&response.to_frame().expect("response should encode"))
             .expect("response should be JSON");
     let transcript = serde_json::json!({
-        "profile": "bwg-worker-control-session/0.1",
+        "profile": "bwg-worker-control-session/0.2",
         "request": request_value,
         "response": response_value,
     });

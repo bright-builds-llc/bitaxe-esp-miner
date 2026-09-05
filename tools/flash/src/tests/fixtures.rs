@@ -44,8 +44,9 @@ fn runtime_attestation_log() -> String {
 }
 
 fn flash_monitor_fixture(dir: &TempDir, evidence_dir: Utf8PathBuf) -> FlashMonitorCommand {
-    let manifest = write_manifest_v3(dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(dir, DEFAULT_ELF_NAME);
     FlashMonitorCommand {
+        factory_reset: false,
         common: CommonArgs {
             evidence_dir: Some(evidence_dir),
             dry_run: false,
@@ -96,26 +97,26 @@ fn write_manifest_at(
     let manifest = workspace_dir.join(manifest_relative_path);
     let manifest_dir = manifest.parent().expect("parent");
     std::fs::create_dir_all(manifest_dir.as_std_path()).expect("create manifest dir");
-    write_manifest_v3_contents(&manifest, default_flash_image, FACTORY_IMAGE_NAME);
+    write_manifest_v4_contents(&manifest, default_flash_image, FACTORY_IMAGE_NAME);
     manifest
 }
 
-fn write_manifest_v3(dir: &TempDir, default_flash_image: &str) -> Utf8PathBuf {
-    write_manifest_v3_with_factory_artifact(dir, default_flash_image, FACTORY_IMAGE_NAME)
+fn write_manifest_v4(dir: &TempDir, default_flash_image: &str) -> Utf8PathBuf {
+    write_manifest_v4_with_factory_artifact(dir, default_flash_image, FACTORY_IMAGE_NAME)
 }
 
-fn write_manifest_v3_with_factory_artifact(
+fn write_manifest_v4_with_factory_artifact(
     dir: &TempDir,
     default_flash_image: &str,
     factory_artifact_path: &str,
 ) -> Utf8PathBuf {
     let dir_path = dir_path(dir);
     let manifest = dir_path.join(PACKAGE_MANIFEST_RELATIVE_PATH);
-    write_manifest_v3_contents(&manifest, default_flash_image, factory_artifact_path);
+    write_manifest_v4_contents(&manifest, default_flash_image, factory_artifact_path);
     manifest
 }
 
-fn write_manifest_v3_contents(
+fn write_manifest_v4_contents(
     manifest: &Utf8Path,
     default_flash_image: &str,
     factory_artifact_path: &str,
@@ -127,7 +128,8 @@ fn write_manifest_v3_contents(
     let partition_table = factory_partition_table_fixture();
     let factory = factory_image_fixture(&partition_table, &ota);
     let www = b"synthetic www".to_vec();
-    let otadata = b"synthetic otadata".to_vec();
+    let otadata = vec![0xff; 0x2000];
+    let bootloader = b"synthetic bootloader".to_vec();
     let artifacts = [
         ("firmware_elf", DEFAULT_ELF_NAME, elf.as_slice()),
         ("firmware_ota_image", "esp-miner.bin", ota.as_slice()),
@@ -138,11 +140,13 @@ fn write_manifest_v3_contents(
         ),
         ("www_spiffs_image", "www.bin", www.as_slice()),
         (
-            "partition_table",
+            "partition_table_binary",
             "partition-table.bin",
             partition_table.as_slice(),
         ),
         ("otadata_initial", "otadata-initial.bin", otadata.as_slice()),
+        ("bootloader", "bootloader.bin", bootloader.as_slice()),
+        ("partition_table", "partition-table.csv", CANONICAL_PARTITIONS.as_bytes()),
     ];
     let mut artifact_values = Vec::new();
     for (kind, path, bytes) in artifacts {
@@ -155,7 +159,7 @@ fn write_manifest_v3_contents(
         }));
     }
     let value = serde_json::json!({
-        "schema_version": 3,
+        "schema_version": 4,
         "release_name": "bitaxe-ultra205",
         "semantic_version": "0.1.0",
         "source_commit": SOURCE_COMMIT,
@@ -169,6 +173,13 @@ fn write_manifest_v3_contents(
         },
         "default_flash_image": default_flash_image,
         "artifacts": artifact_values,
+        "update_segments": [
+            {"artifact_kind":"bootloader", "offset":0, "length":bootloader.len()},
+            {"artifact_kind":"partition_table_binary", "offset":0x8000, "length":partition_table.len()},
+            {"artifact_kind":"firmware_ota_image", "offset":0x10000, "length":ota.len()},
+            {"artifact_kind":"www_spiffs_image", "offset":0x410000, "length":www.len()},
+            {"artifact_kind":"otadata_initial", "offset":0xf10000, "length":otadata.len()},
+        ],
     });
     std::fs::write(
         manifest.as_std_path(),
@@ -276,6 +287,7 @@ fn run_explicit_image_admission(
     image: Utf8PathBuf,
 ) -> Result<FlashOutcome> {
     let command = FlashCommand {
+        factory_reset: false,
         common: CommonArgs {
             port: None,
             dry_run: false,
@@ -343,7 +355,7 @@ fn assert_parsed_layout_rejected_before_effects(
 ) {
     // Arrange
     let dir = tempdir().expect("tempdir");
-    let manifest = write_manifest_v3(&dir, DEFAULT_ELF_NAME);
+    let manifest = write_manifest_v4(&dir, DEFAULT_ELF_NAME);
     let ota = layout_fixture(fixture_kind);
     rewrite_manifest_application(&manifest, &ota);
     let mut args = vec![
@@ -535,23 +547,17 @@ fn reseal_esp_application(image: &mut Vec<u8>) {
 }
 
 fn factory_partition_table_fixture() -> Vec<u8> {
-    let mut record = [0_u8; 32];
-    record[..2].copy_from_slice(&[0xaa, 0x50]);
-    record[2] = 0x00;
-    record[3] = 0x00;
-    record[4..8].copy_from_slice(&0x10000_u32.to_le_bytes());
-    record[8..12].copy_from_slice(&0x400000_u32.to_le_bytes());
-    record[12..19].copy_from_slice(b"factory");
-    let mut table = record.to_vec();
-    table.extend_from_slice(&[0xff; 32]);
-    table
+    esp_idf_part::PartitionTable::try_from_str(CANONICAL_PARTITIONS).expect("canonical partitions")
+        .to_bin().expect("binary partition table")
 }
 
 fn factory_image_fixture(partition_table: &[u8], ota: &[u8]) -> Vec<u8> {
     const PARTITION_TABLE_OFFSET: usize = 0x8000;
     const FACTORY_APP_OFFSET: usize = 0x10000;
 
-    let mut factory = vec![0xff; FACTORY_APP_OFFSET + ota.len()];
+    let mut factory = vec![0xff; 0xf12000];
+    factory[..b"synthetic bootloader".len()].copy_from_slice(b"synthetic bootloader");
+    factory[0x410000..0x41000d].copy_from_slice(b"synthetic www");
     factory[PARTITION_TABLE_OFFSET..PARTITION_TABLE_OFFSET + partition_table.len()]
         .copy_from_slice(partition_table);
     factory[FACTORY_APP_OFFSET..FACTORY_APP_OFFSET + ota.len()].copy_from_slice(ota);

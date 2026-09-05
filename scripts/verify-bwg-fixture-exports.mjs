@@ -22,20 +22,20 @@ if (
 const packageDocument = JSON.parse(await readFile(packagePath, "utf8"));
 const expectedExports = new Map([
   [
-    "./worker-controller-v03-conformance/fixtures",
-    "./conformance/bwg-worker-controller-0.3/fixtures.json",
+    "./worker-controller-conformance/fixtures",
+    "./conformance/bwg-worker-controller-0.4/fixtures.json",
   ],
   [
-    "./worker-usb-v02-conformance/fixtures",
-    "./conformance/bwg-worker-usb-0.2/fixtures.json",
+    "./worker-serial-conformance/fixtures",
+    "./conformance/bwg-worker-serial-0.1/fixtures.json",
   ],
   [
     "./worker-possession-conformance/fixtures",
-    "./conformance/bwg-worker-possession-0.1/fixtures.json",
+    "./conformance/bwg-worker-possession-0.2/fixtures.json",
   ],
   [
     "./worker-deployment-trust-conformance/fixtures",
-    "./conformance/bwg-worker-deployment-trust-0.1/fixtures.json",
+    "./conformance/bwg-worker-deployment-trust-0.2/fixtures.json",
   ],
 ]);
 for (const [subpath, expected] of expectedExports) {
@@ -51,10 +51,10 @@ const fixtures = await Promise.all(
 );
 const [controller, usb, possession, trust] = fixtures;
 if (
-  controller.capabilities?.protocolVersion !== "bwg-worker-controller/0.3" ||
-  usb.profile !== "bwg-worker-usb/0.2" ||
-  possession.profile !== "bwg-worker-possession/0.1" ||
-  trust.profile !== "bwg-worker-deployment-trust/0.1" ||
+  controller.capabilities?.protocolVersion !== "bwg-worker-controller/0.4" ||
+  usb.profile !== "bwg-worker-serial/0.1" ||
+  possession.profile !== "bwg-worker-possession/0.2" ||
+  trust.profile !== "bwg-worker-deployment-trust/0.2" ||
   trust.ultra205?.signedCapability?.board?.revision !== "205"
 ) {
   throw new Error("BWG fixture profile mismatch");
@@ -68,9 +68,23 @@ const deploymentArtifacts = await Promise.all(
     firmwareCapabilityPath,
   ].map(async (artifactPath) => JSON.parse(await readFile(artifactPath, "utf8"))),
 );
-if (
-  JSON.stringify(deploymentArtifacts[0]) !== JSON.stringify(deploymentArtifacts[2]) ||
-  JSON.stringify(deploymentArtifacts[1]) !== JSON.stringify(deploymentArtifacts[3])
-) {
-  throw new Error("firmware BWG deployment artifact drift");
+const firmwareTrust = deploymentArtifacts[2];
+const firmwareCapability = deploymentArtifacts[3];
+if (firmwareTrust.profile !== "bwg-worker-deployment-trust/0.2" ||
+    firmwareTrust.workLeaseAuthority?.audience !== "bwg-worker-controller/0.4") {
+  throw new Error("firmware deployment profile drift");
+}
+for (const field of ["protocolVersion", "board", "firmware", "compatibility", "transportProfile"]) {
+  if (JSON.stringify(deploymentArtifacts[1][field]) !== JSON.stringify(firmwareCapability[field])) {
+    throw new Error(`firmware capability contract drift: ${field}`);
+  }
+}
+// Runtime deployment keys are deliberately separate from disposable conformance keys.
+// firmware_config_tests verifies the actual installed Update signature/manifest;
+// these checks ensure both roles remain represented without exposing private material.
+for (const role of ["updateAuthority", "workLeaseAuthority"]) {
+  const keys = firmwareTrust[role]?.keys;
+  if (!Array.isArray(keys) || keys.length === 0 || keys.some((key) => "d" in key)) {
+    throw new Error("firmware public deployment trust invalid");
+  }
 }

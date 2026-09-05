@@ -1,9 +1,9 @@
 {
-  "protocolVersion": "bwg-worker-controller/0.3",
+  "protocolVersion": "bwg-worker-controller/0.4",
   "board": {
     "model": "bitaxe-ultra",
     "revision": "205",
-    "usbTransport": "web_usb"
+    "usbTransport": "web_serial"
   },
   "firmware": {
     "name": "bright-builds-reference-firmware",
@@ -15,18 +15,18 @@
     "miningBaselineRestoration": "supported",
     "settingsPreservation": "compatible"
   },
-  "transportProfile": "bwg-worker-usb/0.2",
+  "transportProfile": "bwg-worker-serial/0.1",
   "attestation": {
     "claims": {
-      "profile": "bwg-reference-firmware-capability/0.1",
-      "protocolVersion": "bwg-worker-controller/0.3",
+      "profile": "bwg-reference-firmware-capability/0.2",
+      "protocolVersion": "bwg-worker-controller/0.4",
       "board": {
         "model": "bitaxe-ultra",
         "revision": "205"
       },
       "firmware": {
         "name": "bright-builds-reference-firmware",
-      "version": "0.1.0"
+        "version": "0.1.0"
       },
       "compatibility": {
         "referenceFirmware": true,
@@ -34,9 +34,9 @@
         "miningBaselineRestoration": "supported",
         "settingsPreservation": "compatible"
       },
-      "transportProfile": "bwg-worker-usb/0.2",
-      "applicationDescriptorSha256": "rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA"
+      "transportProfile": "bwg-worker-serial/0.1",
+      "serialManifestSha256": "ff749MMrgnM5q2-PIXvDEZPt3ScoBjbCwOi-XNj1fok"
     },
-    "compactJws": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoiZGV2LXVwZGF0ZS1Ed2FRWUxTdnVXcWFoOG9ZIiwidHlwIjoiYndnLXdvcmtlci1jYXBhYmlsaXR5K2p3cyJ9.eyJhcHBsaWNhdGlvbkRlc2NyaXB0b3JTaGEyNTYiOiJyT0tPXzd3aFpmeTBudE1LTTlSSWVaTkFBM3g5N3R0M3JXTUFtX1FzaFZBIiwiYm9hcmQiOnsibW9kZWwiOiJiaXRheGUtdWx0cmEiLCJyZXZpc2lvbiI6IjIwNSJ9LCJjb21wYXRpYmlsaXR5Ijp7Im1pbmluZ0Jhc2VsaW5lUmVzdG9yYXRpb24iOiJzdXBwb3J0ZWQiLCJyZWZlcmVuY2VGaXJtd2FyZSI6dHJ1ZSwic2V0dGluZ3NQcmVzZXJ2YXRpb24iOiJjb21wYXRpYmxlIiwid29ya0xlYXNlIjoic3VwcG9ydGVkIn0sImZpcm13YXJlIjp7Im5hbWUiOiJicmlnaHQtYnVpbGRzLXJlZmVyZW5jZS1maXJtd2FyZSIsInZlcnNpb24iOiIwLjEuMCJ9LCJwcm9maWxlIjoiYndnLXJlZmVyZW5jZS1maXJtd2FyZS1jYXBhYmlsaXR5LzAuMSIsInByb3RvY29sVmVyc2lvbiI6ImJ3Zy13b3JrZXItY29udHJvbGxlci8wLjMiLCJ0cmFuc3BvcnRQcm9maWxlIjoiYndnLXdvcmtlci11c2IvMC4yIn0.bhHtrWreAN7cFH5cwmpQBSJX2-unJDisKGc45MX2BkeSWYDWMol9G6vfWFQ8y2zopGiqv_7sIOwZXft9uTFqCg"
+    "compactJws": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoiZGV2LXVwZGF0ZS1QWTU3Tzc3ZUFVRm1ZekdXIiwidHlwIjoiYndnLXdvcmtlci1jYXBhYmlsaXR5K2p3cyJ9.eyJib2FyZCI6eyJtb2RlbCI6ImJpdGF4ZS11bHRyYSIsInJldmlzaW9uIjoiMjA1In0sImNvbXBhdGliaWxpdHkiOnsibWluaW5nQmFzZWxpbmVSZXN0b3JhdGlvbiI6InN1cHBvcnRlZCIsInJlZmVyZW5jZUZpcm13YXJlIjp0cnVlLCJzZXR0aW5nc1ByZXNlcnZhdGlvbiI6ImNvbXBhdGlibGUiLCJ3b3JrTGVhc2UiOiJzdXBwb3J0ZWQifSwiZmlybXdhcmUiOnsibmFtZSI6ImJyaWdodC1idWlsZHMtcmVmZXJlbmNlLWZpcm13YXJlIiwidmVyc2lvbiI6IjAuMS4wIn0sInByb2ZpbGUiOiJid2ctcmVmZXJlbmNlLWZpcm13YXJlLWNhcGFiaWxpdHkvMC4yIiwicHJvdG9jb2xWZXJzaW9uIjoiYndnLXdvcmtlci1jb250cm9sbGVyLzAuNCIsInNlcmlhbE1hbmlmZXN0U2hhMjU2IjoiZmY3NDlNTXJnbk01cTItUElYdkRFWlB0M1Njb0JqYkN3T2ktWE5qMWZvayIsInRyYW5zcG9ydFByb2ZpbGUiOiJid2ctd29ya2VyLXNlcmlhbC8wLjEifQ.64eMxlK-YPqXMCz6ycM1iO3_lSnGf59ybG_QTG3L9GoRneap8BLxKipb3gIyMFLn3it-oHaOtAHhpva9JwYqBw"
   }
 }

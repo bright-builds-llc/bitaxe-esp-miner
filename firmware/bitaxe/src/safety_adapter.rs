@@ -13,7 +13,21 @@ mod watchdog;
 
 pub(crate) use ds4432u::Ultra205CoreVoltage;
 pub(crate) use i2c_bus::{BitaxeI2cBus, RuntimeI2cOwner};
-pub(crate) use observation_store::{observation_snapshot, replace_observations_from_producer};
+pub(crate) use observation_store::observation_snapshot;
+
+pub(crate) fn replace_observations_from_producer(observations: bitaxe_api::TelemetryObservations) {
+    let now_ms = crate::runtime_uptime::millis();
+    crate::production_mining_session::revocation::check_safety(
+        observations
+            .is_ultra_205_mining_safe_at(bitaxe_safety::observation::MonotonicMillis::new(now_ms)),
+        observations
+            .fan_rpm
+            .maybe_last_good()
+            .is_some_and(|sample| *sample.value() > 0),
+        now_ms,
+    );
+    observation_store::replace_observations_from_producer(observations);
+}
 pub(crate) use watchdog::supervisor_checkpoint_history;
 
 use std::{
@@ -69,7 +83,12 @@ impl TryFrom<u8> for FanDutyPercent {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SafetyActuationCommand {
     SetFanDuty(FanDutyPercent),
+    SetFanDutyAfterCoolingProof,
     SetCoreVoltage(Ultra205CoreVoltage),
+    SetCoreVoltageForGeneration {
+        voltage: Ultra205CoreVoltage,
+        permit: crate::production_mining_session::revocation::WorkPermit,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -177,7 +196,7 @@ pub(crate) fn request_safety_actuation(
         return SafetyActuationRequestOutcome::OwnerUnavailable;
     };
     let (reply_sender, reply_receiver) = mpsc::sync_channel(ACTUATION_REPLY_CAPACITY);
-    match enqueue(request_sender, command, reply_sender) {
+    match enqueue(request_sender, stamp_safety_command(command), reply_sender) {
         EnqueueOutcome::Queued => {}
         EnqueueOutcome::Full => return SafetyActuationRequestOutcome::QueueFull,
         EnqueueOutcome::Disconnected => {
@@ -211,7 +230,7 @@ pub(crate) fn queue_safety_actuation(
     };
 
     let (reply_sender, reply_receiver) = mpsc::sync_channel(ACTUATION_REPLY_CAPACITY);
-    match enqueue(request_sender, command, reply_sender) {
+    match enqueue(request_sender, stamp_safety_command(command), reply_sender) {
         EnqueueOutcome::Queued => {
             SafetyActuationQueueOutcome::Queued(PendingSafetyActuation { reply_receiver })
         }
@@ -286,15 +305,42 @@ fn apply_safety_actuation(
     let mut bus = owner.actuators(budget);
     let result = match command {
         SafetyActuationCommand::SetFanDuty(percent) => {
+            if percent.get() < 100 && !crate::production_mining_session::revocation::permits(None) {
+                return SafetyActuationReply::HardwareWriteFailed;
+            }
             emc2101::write_fan_duty_percent(&mut bus, percent.get())
         }
+        SafetyActuationCommand::SetFanDutyAfterCoolingProof => {
+            emc2101::write_fan_duty_percent(&mut bus, FanDutyPercent::PAUSED.get())
+        }
         SafetyActuationCommand::SetCoreVoltage(voltage) => {
+            if !crate::production_mining_session::revocation::permits(None) {
+                return SafetyActuationReply::HardwareWriteFailed;
+            }
+            ds4432u::write_core_voltage(&mut bus, voltage)
+        }
+        SafetyActuationCommand::SetCoreVoltageForGeneration { voltage, permit } => {
+            if !crate::production_mining_session::revocation::permits_work(permit) {
+                return SafetyActuationReply::HardwareWriteFailed;
+            }
             ds4432u::write_core_voltage(&mut bus, voltage)
         }
     };
     match result {
         Ok(()) => SafetyActuationReply::Applied,
         Err(_) => SafetyActuationReply::HardwareWriteFailed,
+    }
+}
+
+fn stamp_safety_command(command: SafetyActuationCommand) -> SafetyActuationCommand {
+    match command {
+        SafetyActuationCommand::SetCoreVoltage(voltage) => {
+            SafetyActuationCommand::SetCoreVoltageForGeneration {
+                voltage,
+                permit: crate::production_mining_session::revocation::stamp(None),
+            }
+        }
+        other => other,
     }
 }
 
