@@ -1,3 +1,4 @@
+use crate::bwg_worker_usb::startup_diagnostics::{Stage as DiagnosticStage, PROGRESS};
 use bitaxe_api::panic_receipt::StartupStage;
 use bitaxe_core::{AsicTarget, BoardTarget, Phase1SafeState, StartupDebugText};
 use esp_idf_svc::hal::{modem::Modem, peripherals::Peripherals};
@@ -33,14 +34,25 @@ struct RuntimeServicesStarted {
 /// shell can safely start first because it performs separate, idempotent
 /// network-stack initialization.
 pub(crate) fn run() -> anyhow::Result<()> {
+    PROGRESS.guard(run_startup)
+}
+
+fn run_startup() -> anyhow::Result<()> {
+    PROGRESS.enter(DiagnosticStage::EarlyIdentity);
     crate::panic_evidence::enter_stage(StartupStage::EarlyIdentity);
     let (startup_debug_text, maybe_thermal_fault_stimulus) =
         initialize_boot_identity_and_settings()?;
+    PROGRESS.enter(DiagnosticStage::Hardware);
     crate::panic_evidence::enter_stage(StartupStage::Hardware);
     let (startup_diagnostics, maybe_modem) =
         initialize_hardware(startup_debug_text, maybe_thermal_fault_stimulus);
+    if startup_diagnostics.is_err() {
+        PROGRESS.fail(DiagnosticStage::Hardware);
+    }
+    PROGRESS.enter(DiagnosticStage::RuntimeServices);
     crate::panic_evidence::enter_stage(StartupStage::RuntimeServices);
     let runtime_services = start_runtime_services(startup_diagnostics)?;
+    PROGRESS.enter(DiagnosticStage::StorageHttp);
     crate::panic_evidence::enter_stage(StartupStage::StorageHttp);
     let (filesystem_status, route_shell_ready) = start_storage_and_http();
     publish_platform_readiness(
@@ -48,17 +60,21 @@ pub(crate) fn run() -> anyhow::Result<()> {
         filesystem_status,
         route_shell_ready,
     );
+    PROGRESS.enter(DiagnosticStage::Network);
     crate::panic_evidence::enter_stage(StartupStage::Network);
     start_network_services(maybe_modem);
+    PROGRESS.enter(DiagnosticStage::WorkerControl);
     crate::panic_evidence::enter_stage(StartupStage::UsbInstall);
     start_deferred_usb_runtime(runtime_services.deferred_usb_runtime);
-    retain_usb_memory_checkpoint("usb_installed");
+    PROGRESS.enter(DiagnosticStage::Statistics);
     crate::panic_evidence::enter_stage(StartupStage::Statistics);
     retain_usb_memory_checkpoint("statistics_start");
     start_statistics_runtime();
     retain_usb_memory_checkpoint("statistics_started");
     wifi_adapter::maybe_start_network_reconnect_probe(route_shell_ready);
+    PROGRESS.enter(DiagnosticStage::RuntimeReady);
     crate::panic_evidence::enter_stage(StartupStage::RuntimeReady);
+    PROGRESS.complete();
     Ok(())
 }
 
@@ -69,6 +85,13 @@ fn initialize_boot_identity_and_settings() -> anyhow::Result<(
     sys::link_patches();
     crate::application_log::initialize()?;
     boot_evidence::initialize_observer();
+    PROGRESS.enter(DiagnosticStage::UsbInstall);
+    crate::panic_evidence::enter_stage(StartupStage::UsbInstall);
+    retain_usb_memory_checkpoint("usb_install");
+    crate::bwg_worker_usb::install_diagnostics()?;
+    retain_usb_memory_checkpoint("usb_installed");
+    PROGRESS.enter(DiagnosticStage::EarlyIdentity);
+    crate::panic_evidence::enter_stage(StartupStage::EarlyIdentity);
     retain_previous_boot_failure();
 
     let safe_state = Phase1SafeState::default();
@@ -85,8 +108,10 @@ fn initialize_boot_identity_and_settings() -> anyhow::Result<(
     boot_evidence::record_booted();
     crate::info_retained(&safe_state_log_line);
     crate::retain_build_identity();
+    PROGRESS.enter(DiagnosticStage::Nvs);
     settings_adapter::initialize_default_nvs_partition()?;
     if let Err(error) = settings_adapter::initialize_current_settings_snapshot() {
+        PROGRESS.fail(DiagnosticStage::Nvs);
         log::warn!("axeos_settings_snapshot=startup_refresh_failed error={error}");
     }
     match settings_adapter::maybe_self_test_receipt() {
@@ -146,6 +171,7 @@ fn initialize_hardware(
     let peripherals = match Peripherals::take() {
         Ok(peripherals) => peripherals,
         Err(error) => {
+            PROGRESS.fail(DiagnosticStage::Hardware);
             log::warn!("display_status=unavailable reason=peripherals_unavailable error={error}");
             display_adapter::publish_runtime_display_input_boundary(
                 display_adapter::RuntimeDisplayMode::Unavailable,
@@ -280,9 +306,13 @@ fn start_runtime_services(
     };
     let boot_mining_baseline = startup_diagnostics?;
     let maybe_bwg_recovery = match boot_mining_baseline {
-        asic_adapter::BootMiningBaseline::Confirmed => Some(
-            crate::bwg_worker_usb::recover_interrupted_effect(BootMiningBaselineConfirmed(()))?,
-        ),
+        asic_adapter::BootMiningBaseline::Confirmed => {
+            PROGRESS.enter(DiagnosticStage::WorkerRecovery);
+            let recovery =
+                crate::bwg_worker_usb::recover_interrupted_effect(BootMiningBaselineConfirmed(()))?;
+            PROGRESS.enter(DiagnosticStage::RuntimeServices);
+            Some(recovery)
+        }
         asic_adapter::BootMiningBaseline::Unconfirmed => None,
     };
     safety_adapter::start_safety_supervisor();
@@ -402,12 +432,8 @@ fn start_runtime_services(
 
 fn start_deferred_usb_runtime(deferred_usb_runtime: DeferredUsbRuntime) {
     let DeferredUsbRuntime::Worker(prepared) = deferred_usb_runtime else {
-        if let Err(error) = crate::bwg_worker_usb::install_diagnostics() {
-            retain_bwg_worker_start_failure(&error);
-        }
         return;
     };
-    retain_usb_memory_checkpoint("usb_install");
     match crate::bwg_worker_usb::install(prepared) {
         Ok(()) => boot_evidence::publish_usb_boot_profile(
             bitaxe_api::UsbBootTransport::SerialJtagRuntime,
@@ -429,6 +455,7 @@ fn retain_usb_memory_checkpoint(stage: &str) {
 }
 
 fn retain_bwg_worker_start_failure(error: &anyhow::Error) {
+    PROGRESS.fail(DiagnosticStage::WorkerControl);
     log::warn!("bwg_worker_control=unavailable category=startup_failed error={error:#}");
     let detail = bwg_worker_start_failure_detail(error);
     crate::info_retained(&format!(
@@ -458,6 +485,7 @@ fn retain_previous_boot_failure() {
 
 fn start_statistics_runtime() {
     if let Err(error) = statistics_runtime::start() {
+        PROGRESS.fail(DiagnosticStage::Statistics);
         log::warn!("statistics_runtime=unavailable reason=thread_spawn_failed error={error:#}");
     }
 }
@@ -465,6 +493,7 @@ fn start_statistics_runtime() {
 fn start_network_services(maybe_modem: Option<Modem<'static>>) {
     if let Some(modem) = maybe_modem {
         if let Err(error) = wifi_adapter::start_wifi(modem) {
+            PROGRESS.fail(DiagnosticStage::Network);
             log::warn!("wifi_status=unavailable error={error:#}");
         }
     } else {
@@ -477,9 +506,16 @@ fn start_network_services(maybe_modem: Option<Modem<'static>>) {
 
 fn start_storage_and_http() -> (filesystem::FilesystemStatus, bool) {
     let filesystem_status = filesystem::mount_www_spiffs();
+    if matches!(
+        filesystem_status,
+        filesystem::FilesystemStatus::Unavailable { .. }
+    ) {
+        PROGRESS.fail(DiagnosticStage::StorageHttp);
+    }
     let route_shell_ready = match http_api::start_http_api(filesystem_status) {
         Ok(()) => true,
         Err(error) => {
+            PROGRESS.fail(DiagnosticStage::StorageHttp);
             log::warn!("axeos_api_route_shell=unavailable error={error:#}");
             false
         }

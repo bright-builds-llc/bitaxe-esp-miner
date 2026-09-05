@@ -47,11 +47,19 @@ Final-review correction verified in software: active time now runs from first di
 
 Verification scope: new and edited Markdown blocks and current operational guides are formatted. Preexisting whole-file formatting differences in `AGENTS.md`, `TASKS.md`, and `TASKS.archive.md` are retained to preserve managed text and immutable/native historical records. The checkpoint host fixture now has a test-only 10-second budget for its four intentional 1-second sleeps and asserts actual non-timeout settlement; production deadlines are unchanged.
 
+Diagnostic follow-up: fixed-USB firmware `b0165cd57149aeed9c62c8295623a64134a06c98` and Gate `95af34a1d17f686ff7f511c22cef8597886c818e` passed software checks and were pushed. Attempt-002 installed all five state-preserving segments with hash verification. Application execution is still unverified: automatic return had no trusted application markers, and the user-assisted RESET yielded only a partial bootloader line. That fragment does not establish where execution stopped. Browser discovery selected the device but admission failed without a stage; its port streams and origin locks were subsequently released and its supervisor exited. No mining occurred.
+
+Follow-up implementation starts the sole USB diagnostic writer before NVS/hardware/network initialization, while retaining deferred Worker control admission. It replays bounded startup stages and the earliest closed failure. Gate reports closed admission stages, displays allowlisted non-authoritative startup observations locally, and retains ownership across timed-out native opens until actual cleanup. Regression checks and exact new Gate/firmware packaging precede another hardware attempt.
+
+Diagnostic consumer pin: Gate `9eb097d1c555967023e1fe567b853b583d49248a` is pushed and its codeload archive SHA-256 `6674f26f7bffadf8b674ab9a8c0c67a8062dd4cf3df217147cbdbfd6946c6dc9` is pinned. Full Gate verification passes (291 web/CLI tests plus Rust/browser/package/type/standards). Firmware startup-marker capture discards an incomplete trailing line while rejecting malformed complete lines; its regression was observed failing before the fix and passing afterward.
+
+Diagnostic follow-up verification: ordered Cargo format/lint/build/tests pass (2,038 tests), all 74 Bazel tests pass including actual ESP32-S3 packaging, and fixed-USB ownership/symbols, reference integrity, redaction, standards, and diff review pass. The startup observer is independent of blocking initialization; the early driver/writer installation remains its explicit pre-observation boundary. No hardware runtime or mining acceptance is claimed by these software results.
+
 ### task-fixed-usb-serial-qualification | 2026-09-04 | Qualify fixed Serial/JTAG browser and flashing continuity
 
 Depends on: task-fixed-usb-serial-migration.
 
-- [ ] Resolve the stuck detector and prove no owned children or unexpected USB holders before opening a new session.
+- [x] Resolve the stuck detector and prove no owned children or unexpected USB holders before opening a new session. Repeat cleanup proof for each attempt.
 - [ ] Establish an exact-package fixed-Serial/JTAG no-mining baseline and fresh browser identity.
 - [ ] Verify largest frames, fragmentation/coalescing, session replacement, foreground closure, heartbeat expiry and serial port ownership on macOS/Chrome.
 - [ ] Complete 20 no-mining browser-connect/release/flash/reconnect cycles preserving Device Identity, settings, exact runtime identity and cleanup.

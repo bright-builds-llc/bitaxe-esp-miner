@@ -1,6 +1,7 @@
 //! Fixed Serial/JTAG Worker owner with independent link supervision.
 
 mod link;
+pub(crate) mod startup_diagnostics;
 mod writer;
 
 use crate::bwg_worker_nvs::{BwgWorkerNvs, EspDeviceIdentitySeedGenerator};
@@ -128,7 +129,7 @@ pub(crate) fn prepare(recovery: BwgWorkerRecovery) -> anyhow::Result<PreparedWor
 }
 
 pub(crate) fn install(_prepared: PreparedWorkerRuntime) -> anyhow::Result<()> {
-    install_writer()?;
+    anyhow::ensure!(OUTPUT.get().is_some(), "diagnostic_transport_not_installed");
     std::thread::Builder::new()
         .name("bwg-serial-link".into())
         .stack_size(8192)
@@ -146,10 +147,11 @@ fn install_writer() -> anyhow::Result<()> {
         .set(sender)
         .map_err(|_| anyhow::anyhow!("serial writer already started"))?;
     crate::usb_runtime::install()?;
+    let diagnostics = writer::prepare_diagnostics()?;
     std::thread::Builder::new()
         .name("bwg-serial-writer".into())
         .stack_size(8192)
-        .spawn(move || writer::run(output))?;
+        .spawn(move || writer::run(output, diagnostics, &startup_diagnostics::PROGRESS))?;
     Ok(())
 }
 

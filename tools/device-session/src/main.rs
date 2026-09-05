@@ -281,6 +281,9 @@ fn run_observe_usb_reboot_loop(args: ObserveUsbRebootLoopArgs) -> Result<Termina
         }
         None => println!("runtime_identity: missing"),
     }
+    if let Some(startup) = observation.maybe_startup_progress() {
+        println!("{}", startup.marker());
+    }
     for checkpoint in observation.memory_checkpoints() {
         println!("usb_memory_checkpoint stage={} free_bytes={} largest_block_bytes={} reserve_bytes={} redacted=true",
             checkpoint.stage, checkpoint.free_bytes, checkpoint.largest_block_bytes, checkpoint.reserve_bytes);

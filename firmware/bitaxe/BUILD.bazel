@@ -1121,3 +1121,23 @@ rust_test(
         "@crates//:zeroize",
     ],
 )
+
+rust_test(
+    name = "usb_startup_diagnostics_tests",
+    srcs = [
+        "src/usb_startup_diagnostics_host_test.rs",
+        "src/bwg_worker_usb/writer.rs",
+        "src/bwg_worker_usb/startup_diagnostics.rs",
+    ],
+    crate_root = "src/usb_startup_diagnostics_host_test.rs",
+    crate_name = "usb_startup_diagnostics_tests",
+    edition = "2021",
+    deps = [
+        "//crates/bitaxe-api:bitaxe_api",
+        "//crates/bitaxe-core:bitaxe_core",
+        "//crates/bitaxe-worker-control:bitaxe_worker_control",
+        "@crates//:anyhow",
+        "@crates//:serde_json",
+        "@crates//:zeroize",
+    ],
+)

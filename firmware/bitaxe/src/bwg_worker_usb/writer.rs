@@ -89,16 +89,25 @@ pub(super) fn diagnostic(line: &str) {
     }
 }
 
-pub(super) fn run(output: Receiver<Output>) {
+pub(super) fn prepare_diagnostics() -> anyhow::Result<Receiver<String>> {
     let (sender, diagnostics) = mpsc::sync_channel(8);
-    if DIAGNOSTICS.set(sender).is_err() {
-        return;
-    }
+    DIAGNOSTICS
+        .set(sender)
+        .map_err(|_| anyhow::anyhow!("diagnostic_writer_already_registered"))?;
+    Ok(diagnostics)
+}
+
+pub(super) fn run(
+    output: Receiver<Output>,
+    diagnostics: Receiver<String>,
+    progress: &startup_diagnostics::StartupProgress,
+) {
     let mut epoch = 0;
     let mut session_id = String::new();
     let mut sequence = 0u32;
     let mut replay_slot = 0;
     let mut last_replay = 0;
+    let mut next_startup_marker = 0;
     loop {
         match output.recv_timeout(Duration::from_millis(10)) {
             Ok(Output::Hello {
@@ -135,7 +144,13 @@ pub(super) fn run(output: Receiver<Output>) {
             }
             Err(mpsc::RecvTimeoutError::Timeout) => {
                 let now = crate::runtime_uptime::millis();
-                let maybe_line = diagnostics.try_recv().ok().or_else(|| {
+                let maybe_line = if now >= next_startup_marker {
+                    next_startup_marker = now.saturating_add(500);
+                    Some(progress.marker(now))
+                } else {
+                    diagnostics.try_recv().ok()
+                }
+                .or_else(|| {
                     if now.saturating_sub(last_replay) < 250 {
                         return None;
                     }

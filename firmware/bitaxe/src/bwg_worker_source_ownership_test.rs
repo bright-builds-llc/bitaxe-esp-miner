@@ -55,7 +55,20 @@ fn fixed_serial_driver_has_one_writer_and_no_phy_switching() {
     let link = include_str!("bwg_worker_usb/link.rs");
 
     // Act / Assert
-    assert!(USB_RUNTIME_SOURCE.contains("usb_serial_jtag_driver_install"));
+    assert_eq!(
+        USB_RUNTIME_SOURCE
+            .matches("usb_serial_jtag_driver_install")
+            .count(),
+        1
+    );
+    assert_eq!(
+        USB_SOURCE.matches("crate::usb_runtime::install()?").count(),
+        1
+    );
+    assert_eq!(
+        USB_SOURCE.matches("writer::prepare_diagnostics()?").count(),
+        1
+    );
     assert!(USB_RUNTIME_SOURCE.contains("usb_serial_jtag_read_bytes"));
     assert!(USB_RUNTIME_SOURCE.contains("usb_serial_jtag_write_bytes"));
     for source in [USB_RUNTIME_SOURCE, USB_SOURCE, writer, link] {
@@ -73,7 +86,7 @@ fn fixed_serial_driver_has_one_writer_and_no_phy_switching() {
 }
 
 #[test]
-fn startup_prepares_worker_before_wifi_and_installs_usb_after_wifi() {
+fn startup_installs_diagnostics_before_nvs_and_gates_worker_until_after_baseline() {
     // Arrange
     let baseline = STARTUP_SOURCE
         .find("startup_diagnostics?;")
@@ -114,6 +127,44 @@ fn startup_prepares_worker_before_wifi_and_installs_usb_after_wifi() {
     assert!(recovery < prepare);
     assert!(runtime_services < network);
     assert!(network < worker_install);
+    let identity_start = STARTUP_SOURCE
+        .find("fn initialize_boot_identity_and_settings(")
+        .expect("identity startup");
+    let early = &STARTUP_SOURCE[identity_start
+        ..STARTUP_SOURCE
+            .find("fn initialize_hardware(")
+            .expect("hardware boundary")];
+    assert!(
+        early
+            .find("boot_evidence::initialize_observer()")
+            .expect("boot identity")
+            < early
+                .find("bwg_worker_usb::install_diagnostics()")
+                .expect("early diagnostic owner")
+    );
+    assert!(
+        early
+            .find("bwg_worker_usb::install_diagnostics()")
+            .expect("early diagnostic owner")
+            < early
+                .find("settings_adapter::initialize_default_nvs_partition()")
+                .expect("NVS initialization")
+    );
+    assert_eq!(
+        STARTUP_SOURCE
+            .matches("bwg_worker_usb::install_diagnostics()")
+            .count(),
+        1
+    );
+    let install = USB_SOURCE
+        .split("pub(crate) fn install(")
+        .nth(1)
+        .expect("worker activation")
+        .split("pub(crate) fn install_diagnostics(")
+        .next()
+        .expect("activation boundary");
+    assert!(!install.contains("install_writer()"));
+    assert!(!install.contains("usb_runtime::install()"));
     assert!(worker_install < statistics);
     assert!(USB_SOURCE.contains("const OWNER_STACK_BYTES: usize = 16 * 1024;"));
     assert!(STARTUP_SOURCE.contains("CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL == 98_304"));

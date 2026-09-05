@@ -7,7 +7,7 @@ use bitaxe_api::panic_receipt::{
 };
 
 mod diagnostics;
-pub use diagnostics::{UsbMemoryCheckpoint, UsbRuntimeIdentity};
+pub use diagnostics::{UsbMemoryCheckpoint, UsbRuntimeIdentity, UsbStartupProgress};
 
 /// Closed classification for one bounded USB reboot-loop observation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -62,6 +62,11 @@ impl UsbRebootLoopObservation {
     /// Returns validated, deduplicated startup heap checkpoints.
     pub fn memory_checkpoints(&self) -> &[UsbMemoryCheckpoint] {
         &self.diagnostics.memory
+    }
+
+    /// Returns the latest closed progress from the current boot, before or after Worker admission.
+    pub fn maybe_startup_progress(&self) -> Option<&UsbStartupProgress> {
+        self.diagnostics.maybe_startup.as_ref()
     }
 
     /// Reports an explicit Worker startup failure independently from missing evidence.
@@ -234,6 +239,25 @@ mod tests {
 
     fn marker(ordinal: u64, reason: ResetReasonCategory, uptime_ms: u64) -> String {
         WorkerUsbBootMarker::new(ordinal, reason, uptime_ms).marker()
+    }
+
+    #[test]
+    fn startup_progress_is_scoped_to_the_current_boot_without_identity_admission() {
+        // Arrange
+        let input = format!("{}\nusb_startup schema=v1 stage=nvs state=failed first_failure=nvs uptime_ms=600 redacted=true\n{}\nusb_startup schema=v1 stage=network state=entered first_failure=none uptime_ms=200 redacted=true\n",
+            marker(2, ResetReasonCategory::Panic, 500), marker(3, ResetReasonCategory::Panic, 100));
+        let expected =
+            UsbRuntimeIdentity::new(&"a".repeat(40), &"b".repeat(64)).expect("expected identity");
+        // Act
+        let observation = classify_capture(input.as_bytes(), 2).expect("valid reboot progress");
+        let progress = observation
+            .maybe_startup_progress()
+            .expect("latest startup");
+        // Assert
+        assert_eq!(progress.stage, "network");
+        assert_eq!(progress.maybe_first_failure, None);
+        assert_eq!(progress.uptime_ms, 200);
+        assert!(observation.require_identity(&expected).is_err());
     }
 
     #[test]

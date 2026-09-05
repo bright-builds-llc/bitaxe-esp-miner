@@ -59,7 +59,7 @@ function preservation() {
 function state(context, extra = {}) {
   return { schema: "worker-serial-acceptance-v1", gateCommit: context.gate_commit, expectedFirmwareSourceCommit: context.firmware_commit,
     expectedAppElfSha256: context.app_elf_sha256, status: "ready", connected: true, running: false, heartbeatSuppressed: false, renewalsConfirmed: 0,
-    deviceRestorationConfirmed: true, deviceLeaseInactive: true, preservation: preservation(), ...extra };
+    deviceRestorationConfirmed: true, deviceLeaseInactive: true, serialOwnershipReleased: false, preservation: preservation(), ...extra };
 }
 function cycle(context, index, extra = {}) {
   return { schema: "fixed-usb-cycle-report-v1", cycle: index, firmware_commit: context.firmware_commit, app_elf_sha256: context.app_elf_sha256,
@@ -214,4 +214,14 @@ test("signer plans preserve campaign and never extend the fixed three windows", 
 });
 test("CLI rejects commands with unrelated extra options before source or key access", async () => {
   await assert.rejects(main(["judge", "--private-root", "/missing", "--window", "0", "--pool-credentials", "/forbidden"]));
+});
+
+
+test("browser admission reports retain only closed stages and actual ownership release", () => {
+  const context = { gate_commit: GATE, firmware_commit: SOURCE, app_elf_sha256: "d".repeat(64) };
+  const value = state(context, { admissionFailureStage: "hello", serialOwnershipReleased: false });
+  assert.equal(validateState(value, context).serialOwnershipReleased, false);
+  assert.throws(() => validateState({ ...value, admissionFailureStage: "arbitrary-error-text" }, context));
+  assert.throws(() => validateState({ ...value, serialOwnershipReleased: "true" }, context));
+  assert.throws(() => validateState({ ...value, diagnostics: [] }, context));
 });

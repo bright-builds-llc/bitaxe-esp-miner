@@ -1,6 +1,6 @@
 use anyhow::{bail, Result};
 
-/// Exact application identity received from the admitted Worker CDC transport.
+/// Exact application identity received from the admitted Serial/JTAG transport.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UsbRuntimeIdentity {
     /// Full firmware source commit.
@@ -35,26 +35,95 @@ pub struct UsbMemoryCheckpoint {
     pub reserve_bytes: u32,
 }
 
+/// Closed, nonsecret progress retained even when application startup cannot complete.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UsbStartupProgress {
+    /// Current allowlisted startup phase.
+    pub stage: &'static str,
+    /// Entered, failed, or complete phase state.
+    pub state: &'static str,
+    /// Earliest failed phase in the current boot, if present.
+    pub maybe_first_failure: Option<&'static str>,
+    /// Device monotonic time when this diagnostic was emitted.
+    pub uptime_ms: u64,
+}
+impl UsbStartupProgress {
+    /// Renders only closed validated fields for public diagnostic output.
+    pub fn marker(&self) -> String {
+        format!(
+            "usb_startup schema=v1 stage={} state={} first_failure={} uptime_ms={} redacted=true",
+            self.stage,
+            self.state,
+            self.maybe_first_failure.unwrap_or("none"),
+            self.uptime_ms
+        )
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(super) struct WorkerDiagnostics {
     pub maybe_identity: Option<UsbRuntimeIdentity>,
     pub memory: Vec<UsbMemoryCheckpoint>,
     pub worker_start_failed: bool,
+    pub maybe_startup: Option<UsbStartupProgress>,
 }
 
 impl WorkerDiagnostics {
     pub fn parse(text: &str) -> Result<Self> {
         let mut diagnostics = Self::default();
-        for line in text.lines() {
+        for line in text.split_inclusive('\n') {
             let fields = line.split_whitespace().collect::<Vec<_>>();
             match fields.first().copied() {
                 Some("usb_runtime_identity") => diagnostics.identity(&fields)?,
                 Some("usb_memory_checkpoint") => diagnostics.memory(&fields)?,
+                // A bounded read can stop within a wire record; only LF closes this record.
+                Some("usb_startup") if line.ends_with('\n') => diagnostics.startup(&fields)?,
                 Some("bwg_worker_start_failure") => diagnostics.worker_start_failed = true,
                 _ => {}
             }
         }
         Ok(diagnostics)
+    }
+
+    fn startup(&mut self, fields: &[&str]) -> Result<()> {
+        if fields.len() != 7 || fields[1] != "schema=v1" || fields[6] != "redacted=true" {
+            bail!("usb_diagnostics=malformed_startup_progress");
+        }
+        let stage = startup_stage(field(fields[2], "stage=")?)?;
+        let state = match field(fields[3], "state=")? {
+            "entered" => "entered",
+            "failed" => "failed",
+            "complete" => "complete",
+            _ => bail!("usb_diagnostics=unknown_startup_state"),
+        };
+        let maybe_first_failure = match field(fields[4], "first_failure=")? {
+            "none" => None,
+            other => Some(startup_stage(other)?),
+        };
+        if state == "failed" && maybe_first_failure.is_none() {
+            bail!("usb_diagnostics=missing_startup_failure");
+        }
+        let uptime = field(fields[5], "uptime_ms=")?;
+        if uptime.is_empty() || !uptime.bytes().all(|byte| byte.is_ascii_digit()) {
+            bail!("usb_diagnostics=invalid_startup_uptime");
+        }
+        let uptime_ms = uptime
+            .parse::<u64>()
+            .map_err(|_| anyhow::anyhow!("usb_diagnostics=invalid_startup_uptime"))?;
+        if self.maybe_startup.as_ref().is_some_and(|prior| {
+            prior.uptime_ms > uptime_ms
+                || (prior.maybe_first_failure.is_some()
+                    && prior.maybe_first_failure != maybe_first_failure)
+        }) {
+            bail!("usb_diagnostics=inconsistent_startup_progress");
+        }
+        self.maybe_startup = Some(UsbStartupProgress {
+            stage,
+            state,
+            maybe_first_failure,
+            uptime_ms,
+        });
+        Ok(())
     }
 
     fn identity(&mut self, fields: &[&str]) -> Result<()> {
@@ -108,6 +177,23 @@ impl WorkerDiagnostics {
         }
         self.memory.push(checkpoint);
         Ok(())
+    }
+}
+
+fn startup_stage(value: &str) -> Result<&'static str> {
+    match value {
+        "early_identity" => Ok("early_identity"),
+        "usb_install" => Ok("usb_install"),
+        "nvs" => Ok("nvs"),
+        "hardware" => Ok("hardware"),
+        "worker_recovery" => Ok("worker_recovery"),
+        "runtime_services" => Ok("runtime_services"),
+        "storage_http" => Ok("storage_http"),
+        "network" => Ok("network"),
+        "worker_control" => Ok("worker_control"),
+        "statistics" => Ok("statistics"),
+        "runtime_ready" => Ok("runtime_ready"),
+        _ => bail!("usb_diagnostics=unknown_startup_stage"),
     }
 }
 
@@ -175,5 +261,70 @@ mod tests {
         let text = identity('a').replace("schema=v1", "schema=v2");
         // Act / Assert
         assert!(WorkerDiagnostics::parse(&text).is_err());
+    }
+
+    #[test]
+    fn startup_failure_survives_later_completed_stages() {
+        // Arrange
+        let first = "usb_startup schema=v1 stage=nvs state=failed first_failure=nvs uptime_ms=10 redacted=true";
+        let final_line = "usb_startup schema=v1 stage=runtime_ready state=complete first_failure=nvs uptime_ms=20 redacted=true";
+        // Act
+        let diagnostics = WorkerDiagnostics::parse(&format!("{first}\n{final_line}\n"))
+            .expect("closed startup records");
+        // Assert
+        assert_eq!(
+            diagnostics.maybe_startup.expect("latest startup").marker(),
+            final_line
+        );
+    }
+
+    #[test]
+    fn arbitrary_startup_fields_cannot_reach_public_output() {
+        // Arrange
+        let valid = "usb_startup schema=v1 stage=network state=entered first_failure=none uptime_ms=10 redacted=true";
+        // Act / Assert
+        for invalid in [
+            valid.replace("stage=network", "stage=private-value"),
+            valid.replace("state=entered", "state=private-value"),
+            valid.replace("first_failure=none", "first_failure=private-value"),
+            valid.replace("uptime_ms=10", "uptime_ms=private-value"),
+            valid.replace("redacted=true", "redacted=false"),
+            format!("{valid} extra=private-value"),
+        ] {
+            assert!(WorkerDiagnostics::parse(&format!("{invalid}\n")).is_err());
+        }
+    }
+
+    #[test]
+    fn startup_progress_cannot_erase_the_first_failure_in_one_boot() {
+        // Arrange
+        let first = "usb_startup schema=v1 stage=nvs state=failed first_failure=nvs uptime_ms=10 redacted=true";
+        let later = "usb_startup schema=v1 stage=network state=entered first_failure=none uptime_ms=20 redacted=true";
+        // Act / Assert
+        assert!(WorkerDiagnostics::parse(&format!("{first}\n{later}\n")).is_err());
+    }
+    #[test]
+    fn bounded_capture_ending_inside_next_startup_record_keeps_last_complete_progress() {
+        // Arrange
+        let complete = "usb_startup schema=v1 stage=network state=entered first_failure=none uptime_ms=10 redacted=true";
+        let capture = format!("{complete}\nusb_startup schema=v1 stage=net");
+        // Act
+        let diagnostics = WorkerDiagnostics::parse(&capture).expect("incomplete capture tail");
+        // Assert
+        assert_eq!(
+            diagnostics
+                .maybe_startup
+                .expect("complete startup")
+                .marker(),
+            complete
+        );
+    }
+
+    #[test]
+    fn malformed_newline_terminated_startup_record_remains_an_error() {
+        // Arrange
+        let capture = "usb_startup schema=v1 stage=net\n";
+        // Act / Assert
+        assert!(WorkerDiagnostics::parse(capture).is_err());
     }
 }
