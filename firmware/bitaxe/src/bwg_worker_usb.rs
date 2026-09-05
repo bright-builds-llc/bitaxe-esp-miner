@@ -1,6 +1,7 @@
 //! Fixed Serial/JTAG Worker owner with independent link supervision.
 
 mod link;
+mod rx_diagnostics;
 pub(crate) mod startup_diagnostics;
 mod writer;
 

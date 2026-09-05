@@ -24,7 +24,9 @@ pub(super) fn initialize_deferred_effect_worker() -> anyhow::Result<()> {
                 .stack_size(DEFERRED_EFFECT_THREAD_STACK_BYTES)
                 .spawn(worker)
                 .map(|_| ())
-                .map_err(|_| ())
+                .map_err(|error| {
+                    storage_http_diagnostics::record_io(StartupPhase::HttpDeferredWorker, &error);
+                })
         },
         execute_deferred_firmware_effect,
     )

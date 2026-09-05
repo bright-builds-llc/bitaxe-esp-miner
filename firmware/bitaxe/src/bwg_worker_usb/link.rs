@@ -1,5 +1,6 @@
 //! Serial RX and heartbeat supervision never wait for Worker effects or TX completion.
 
+use super::rx_diagnostics::{Stage, FAILURE};
 use super::*;
 use bitaxe_worker_control::serial::{
     canonical_nonce, serial_manifest, SerialEnvelope, SerialFrameAccumulator, SerialLinkLiveness,
@@ -27,28 +28,50 @@ pub(super) fn run() {
     let mut accumulator = SerialFrameAccumulator::default();
     let mut maybe_link: Option<Link> = None;
     let mut next_epoch = 0u32;
+    let mut observed_bytes = 0usize;
     let mut bytes = [0u8; 512];
     loop {
         let now = crate::runtime_uptime::millis();
         revocation::check_deadline(now);
-        if maybe_link.as_mut().is_some_and(|link| {
-            CURRENT_SESSION.load(Ordering::Acquire) != link.epoch || !link.liveness.poll(now)
-        }) {
-            close(&mut maybe_link);
+        if let Some(link) = maybe_link.as_mut() {
+            let stage = if CURRENT_SESSION.load(Ordering::Acquire) != link.epoch {
+                Some(Stage::SessionRevoked)
+            } else if !link.liveness.poll(now) {
+                Some(Stage::HeartbeatTimeout)
+            } else {
+                None
+            };
+            if let Some(stage) = stage {
+                FAILURE.record(stage, observed_bytes);
+                close(&mut maybe_link);
+                accumulator.clear();
+                observed_bytes = 0;
+            }
         }
         let count = match crate::usb_runtime::read(&mut bytes) {
             Ok(count) => count,
             Err(_) => {
+                if maybe_link.is_some() {
+                    FAILURE.record(Stage::Read, observed_bytes);
+                }
                 close(&mut maybe_link);
+                accumulator.clear();
+                observed_bytes = 0;
                 std::thread::sleep(Duration::from_millis(20));
                 continue;
             }
         };
         for byte in &bytes[..count] {
+            observed_bytes = observed_bytes.saturating_add(1).min(66560);
             let Some(result) = accumulator.push_byte(*byte) else {
                 continue;
             };
+            let frame_bytes = observed_bytes;
+            observed_bytes = 0;
             let Ok(frame) = result else {
+                if maybe_link.is_some() {
+                    FAILURE.record(Stage::Framing, frame_bytes);
+                }
                 close(&mut maybe_link);
                 continue;
             };
@@ -56,6 +79,7 @@ pub(super) fn run() {
             let Ok(envelope) = SerialEnvelope::parse(&frame) else {
                 // Boot text is permissible before hello; malformed established input revokes.
                 if maybe_link.is_some() {
+                    FAILURE.record(Stage::Envelope, frame_bytes);
                     close(&mut maybe_link);
                 }
                 continue;
@@ -74,11 +98,13 @@ pub(super) fn run() {
             if envelope.session_id.as_deref() != Some(link.binding.session_id.as_str())
                 || envelope.sequence <= link.sequence
             {
+                FAILURE.record(Stage::Sequence, frame_bytes);
                 close(&mut maybe_link);
                 continue;
             }
             link.sequence = envelope.sequence;
             if envelope.sequence == u32::MAX {
+                FAILURE.record(Stage::Sequence, frame_bytes);
                 close(&mut maybe_link);
                 continue;
             }
@@ -91,6 +117,7 @@ pub(super) fn run() {
                         .filter(|byte| !byte.is_ascii_whitespace())
                         .eq(b"{}".iter().copied())
                     {
+                        FAILURE.record(Stage::HeartbeatPayload, frame_bytes);
                         close(&mut maybe_link);
                         continue;
                     }
@@ -102,6 +129,7 @@ pub(super) fn run() {
                     link.liveness.authenticate();
                     let now = crate::runtime_uptime::millis();
                     if !link.liveness.heartbeat(now) {
+                        FAILURE.record(Stage::HeartbeatTimeout, frame_bytes);
                         close(&mut maybe_link);
                         continue;
                     }
@@ -112,6 +140,7 @@ pub(super) fn run() {
                     let payload = envelope.payload.get().as_bytes();
                     let mut frame = Vec::new();
                     if frame.try_reserve_exact(payload.len() + 1).is_err() {
+                        FAILURE.record(Stage::ControlAllocation, frame_bytes);
                         close(&mut maybe_link);
                         continue;
                     }
@@ -122,10 +151,20 @@ pub(super) fn run() {
                         bytes: SecretBytes(frame),
                     };
                     if !enqueue(event) {
+                        FAILURE.record(Stage::ControlQueue, frame_bytes);
                         close(&mut maybe_link);
                     }
                 }
-                SerialKind::Session | SerialKind::Diagnostic => close(&mut maybe_link),
+                SerialKind::Session => {
+                    if !envelope.is_close() {
+                        FAILURE.record(Stage::UnexpectedKind, frame_bytes);
+                    }
+                    close(&mut maybe_link);
+                }
+                SerialKind::Diagnostic => {
+                    FAILURE.record(Stage::UnexpectedKind, frame_bytes);
+                    close(&mut maybe_link);
+                }
             }
         }
         bytes.zeroize();
@@ -146,6 +185,7 @@ fn hello(envelope: SerialEnvelope, next_epoch: &mut u32) -> Option<Link> {
     .ok()?;
     let generation = revocation::begin_link(crate::runtime_uptime::millis())?;
     let epoch = *next_epoch;
+    FAILURE.clear();
     CURRENT_SESSION.store(epoch, Ordering::Release);
     if !enqueue(ControlEvent::Session {
         epoch,

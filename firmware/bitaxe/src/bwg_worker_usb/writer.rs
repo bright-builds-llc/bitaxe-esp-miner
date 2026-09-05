@@ -183,14 +183,16 @@ pub(super) fn run(
                         return None;
                     }
                     last_replay = now;
-                    let line = if replay_slot == 15 {
+                    let line = if replay_slot == 18 {
+                        rx_diagnostics::FAILURE.marker()
+                    } else if replay_slot == 15 {
                         maybe_write_failure.map(crate::usb_runtime::WriteFailure::marker)
                     } else if replay_slot == 14 {
                         crate::wifi_adapter::maybe_startup_failure_marker()
                     } else {
                         crate::boot_evidence::maybe_worker_diagnostic_line(replay_slot)
                     };
-                    replay_slot = (replay_slot + 1) % 16;
+                    replay_slot = (replay_slot + 1) % 19;
                     line
                 });
                 let Some(line) = maybe_line else {

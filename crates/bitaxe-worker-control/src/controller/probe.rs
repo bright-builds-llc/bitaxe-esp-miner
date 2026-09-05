@@ -9,8 +9,9 @@ pub(super) fn response(
     if !payload.padding.bytes().all(|byte| byte == b'x') {
         return Err(WorkerControlError::InvalidRequest);
     }
+    let request_padding_bytes = payload.padding.len();
     let overhead = serde_json::to_vec(&json!({"protocolVersion": PROTOCOL_VERSION,
-            "requestId": request_id, "ok": true, "result": {"padding": ""}}))
+            "requestId": request_id, "ok": true, "result": {"padding": "", "requestPaddingBytes": request_padding_bytes}}))
     .map_err(|_| WorkerControlError::Encoding)?
     .len();
     if payload.response_padding_bytes < payload.padding.len()
@@ -26,5 +27,5 @@ pub(super) fn response(
     for _ in 0..extra {
         payload.padding.push('x');
     }
-    Ok(json!({"padding": payload.padding}))
+    Ok(json!({"padding": payload.padding, "requestPaddingBytes": request_padding_bytes}))
 }

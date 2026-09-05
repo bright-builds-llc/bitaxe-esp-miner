@@ -13,6 +13,10 @@ mod startup_diagnostics;
 #[path = "bwg_worker_usb/writer.rs"]
 mod writer;
 
+#[allow(dead_code)]
+#[path = "bwg_worker_usb/rx_diagnostics.rs"]
+mod rx_diagnostics;
+
 static CURRENT_SESSION: AtomicU32 = AtomicU32::new(0);
 static OUTPUT: OnceLock<SyncSender<writer::Output>> = OnceLock::new();
 static TEST_LOCK: Mutex<()> = Mutex::new(());

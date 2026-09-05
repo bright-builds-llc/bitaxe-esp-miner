@@ -150,3 +150,49 @@ fn omitted_session_field_is_not_a_hello() {
         Err(SerialError::Invalid)
     ));
 }
+
+#[test]
+fn clean_close_requires_exact_session_payload_and_known_reason() {
+    // Arrange
+    for (payload, expected) in [
+        (r#"{"op":"close","reason":"tab_closed"}"#, true),
+        (r#"{"op":"close","reason":"unknown"}"#, false),
+        (r#"{"op":"other","reason":"tab_closed"}"#, false),
+        (
+            r#"{"op":"close","reason":"tab_closed","extra":true}"#,
+            false,
+        ),
+    ] {
+        let raw = RawValue::from_string(payload.to_owned()).expect("fixture JSON");
+        let wire =
+            SerialEnvelope::encode(SerialKind::Session, Some("AAAAAAAAAAAAAAAAAAAAAA"), 3, &raw)
+                .expect("session frame");
+        // Act / Assert
+        assert_eq!(
+            SerialEnvelope::parse(&wire)
+                .expect("valid frame")
+                .is_close(),
+            expected
+        );
+        assert!(!SerialEnvelope::parse(&record(payload))
+            .expect("control frame")
+            .is_close());
+    }
+}
+
+#[test]
+fn clearing_revoked_partial_input_allows_a_fresh_record() {
+    // Arrange
+    let mut accumulator = SerialFrameAccumulator::default();
+    for byte in b"{\"profile\":\"truncated" {
+        assert!(accumulator.push_byte(*byte).is_none());
+    }
+    // Act
+    accumulator.clear();
+    let frames: Vec<_> = record("{}")
+        .into_iter()
+        .filter_map(|byte| accumulator.push_byte(byte))
+        .collect();
+    // Assert
+    assert_eq!(frames, vec![Ok(record("{}"))]);
+}

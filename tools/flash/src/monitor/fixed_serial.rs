@@ -144,11 +144,21 @@ impl Samples {
             self.startup(line);
         } else if line.starts_with("wifi_startup_failure")
             || line.starts_with("bwg_worker_start_failure")
+            || line.starts_with("storage_http_failure")
         {
             self.assessment.startup_failed = true;
             self.assessment.issue(FixedSerialIssue::ErrorDiagnostic);
             if !bitaxe_core::usb_diagnostics::is_worker_diagnostic_retained_line(line) {
                 self.assessment.issue(FixedSerialIssue::MalformedRecord);
+            }
+        } else if line.starts_with("storage_http_status") {
+            match bitaxe_core::usb_diagnostics::StorageHttpOutcome::parse(line) {
+                Some(status) if status.spiffs_available && status.http_ready => (),
+                Some(_) => {
+                    self.assessment.startup_failed = true;
+                    self.assessment.issue(FixedSerialIssue::StartupFailed);
+                }
+                None => self.assessment.issue(FixedSerialIssue::MalformedRecord),
             }
         } else if line.starts_with("usb_memory_checkpoint") {
             if UsbMemoryCheckpoint::parse(line).is_err() {

@@ -1,4 +1,8 @@
 //! Closed boot diagnostic allowlist for the single Serial/JTAG writer.
+mod storage_http;
+pub use storage_http::{
+    StorageHttpError, StorageHttpFailure, StorageHttpOutcome, StorageHttpPhase,
+};
 
 /// Selects only exact closed memory/startup fields, never arbitrary retained log text.
 #[must_use]
@@ -29,6 +33,8 @@ pub fn is_worker_diagnostic_retained_line(line: &str) -> bool {
                 && fields.next() == Some("redacted=true")
                 && fields.next().is_none()
         }
+        Some("storage_http_failure") => StorageHttpFailure::parse(line).is_some(),
+        Some("storage_http_status") => StorageHttpOutcome::parse(line).is_some(),
         Some("wifi_startup_failure") => valid_network_startup_failure(fields),
         Some("bwg_worker_start_failure") => {
             fields.next() == Some("category=startup_failed")

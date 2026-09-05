@@ -2,7 +2,8 @@
 //!
 //! Reference breadcrumb: `reference/esp-miner/main/filesystem.c`.
 
-use std::ffi::{CStr, CString};
+use crate::storage_http_diagnostics::{self, Phase};
+use std::ffi::CString;
 
 use esp_idf_svc::sys;
 
@@ -55,6 +56,23 @@ impl FilesystemUnavailableReason {
 /// Mounts the `www` SPIFFS partition at `/www` without formatting on failure.
 #[must_use]
 pub fn mount_www_spiffs() -> FilesystemStatus {
+    let status = mount_www_spiffs_inner();
+    match status {
+        FilesystemStatus::Available { .. } => storage_http_diagnostics::filesystem_outcome(true),
+        FilesystemStatus::Unavailable { reason, esp_err } => {
+            let phase = if reason == FilesystemUnavailableReason::InfoFailed {
+                Phase::SpiffsInfo
+            } else {
+                Phase::SpiffsRegister
+            };
+            storage_http_diagnostics::record_esp(phase, esp_err);
+            storage_http_diagnostics::filesystem_outcome(false);
+        }
+    }
+    status
+}
+
+fn mount_www_spiffs_inner() -> FilesystemStatus {
     let base_path = match CString::new(WWW_BASE_PATH) {
         Ok(base_path) => base_path,
         Err(error) => {
@@ -119,21 +137,9 @@ fn unavailable_status(
     esp_err: sys::esp_err_t,
 ) -> FilesystemStatus {
     log::warn!(
-        "spiffs_mount=unavailable partition=www reason={} esp_err={} esp_err_name={}",
+        "spiffs_mount=unavailable partition=www reason={} esp_err={}",
         reason.as_str(),
-        esp_err,
-        esp_err_name(esp_err)
+        esp_err
     );
     FilesystemStatus::Unavailable { reason, esp_err }
-}
-
-fn esp_err_name(error: sys::esp_err_t) -> String {
-    let name = unsafe { sys::esp_err_to_name(error) };
-    if name.is_null() {
-        return "unknown".to_owned();
-    }
-
-    unsafe { CStr::from_ptr(name) }
-        .to_string_lossy()
-        .into_owned()
 }

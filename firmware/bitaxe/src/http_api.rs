@@ -37,6 +37,7 @@ use crate::runtime_snapshot::{
     publish_projected_live_telemetry_payload, publish_projected_system_info,
     record_restart_command,
 };
+use crate::storage_http_diagnostics::{self, Phase as StartupPhase};
 use crate::{
     log_buffer, network_stack, settings_adapter, static_files, websocket_api, wifi_adapter,
 };
@@ -62,8 +63,6 @@ use websocket::*;
 
 type ApiRequest<'request, 'connection> = Request<&'request mut EspHttpConnection<'connection>>;
 
-const API_WS_ROUTE: &str = "/api/ws";
-const API_WS_LIVE_ROUTE: &str = "/api/ws/live";
 const API_WS_PATH: &[u8] = b"/api/ws\0";
 const API_WS_LIVE_PATH: &[u8] = b"/api/ws/live\0";
 const CONNECTION_HEADER: &[u8] = b"Connection\0";
@@ -83,8 +82,17 @@ const RESTART_POST_RESPONSE_DELAY_MS: u64 = 1_000;
 const SETTINGS_EFFECTS_POST_RESPONSE_DELAY_MS: u64 = 100;
 
 pub fn start_http_api(filesystem_status: FilesystemStatus) -> anyhow::Result<()> {
-    network_stack::initialize()?;
-    initialize_deferred_effect_worker()?;
+    let result = start_http_api_inner(filesystem_status);
+    storage_http_diagnostics::http_outcome(result.is_ok());
+    result
+}
+
+fn start_http_api_inner(filesystem_status: FilesystemStatus) -> anyhow::Result<()> {
+    storage_http_diagnostics::observe(StartupPhase::HttpNetif, network_stack::initialize())?;
+    storage_http_diagnostics::observe(
+        StartupPhase::HttpDeferredWorker,
+        initialize_deferred_effect_worker(),
+    )?;
 
     let config = Configuration {
         stack_size: HTTP_SERVER_TASK_STACK_BYTES,
@@ -94,14 +102,21 @@ pub fn start_http_api(filesystem_status: FilesystemStatus) -> anyhow::Result<()>
         uri_match_wildcard: true,
         ..Default::default()
     };
-    let mut server = EspHttpServer::new(&config)?;
+    let mut server =
+        storage_http_diagnostics::observe(StartupPhase::HttpServer, EspHttpServer::new(&config))?;
 
     if let Err(error) = settings_adapter::initialize_current_settings_snapshot() {
         log::warn!("axeos_settings_snapshot=startup_refresh_failed error={error}");
     }
 
-    register_http_handlers(&mut server, filesystem_status)?;
-    start_live_telemetry_cadence_task(server.handle())?;
+    storage_http_diagnostics::observe(
+        StartupPhase::HttpRoutes,
+        register_http_handlers(&mut server, filesystem_status),
+    )?;
+    storage_http_diagnostics::observe(
+        StartupPhase::HttpTelemetryWorker,
+        start_live_telemetry_cadence_task(server.handle()),
+    )?;
     let route_report = phase07_route_report();
     log::info!(
         "axeos_api_route_shell=started manifest_routes={} firmware_update_routes={} otawww_gap_routes={} recovery_routes={} static_file_routes={}",

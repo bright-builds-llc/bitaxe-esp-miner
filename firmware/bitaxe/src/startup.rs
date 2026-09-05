@@ -529,9 +529,9 @@ fn start_storage_and_http() -> (filesystem::FilesystemStatus, bool) {
     }
     let route_shell_ready = match http_api::start_http_api(filesystem_status) {
         Ok(()) => true,
-        Err(error) => {
+        Err(_) => {
             PROGRESS.fail(DiagnosticStage::StorageHttp);
-            log::warn!("axeos_api_route_shell=unavailable error={error:#}");
+            log::warn!("axeos_api_route_shell=unavailable reason=startup_failed");
             false
         }
     };

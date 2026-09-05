@@ -147,3 +147,17 @@ fn malformed_complete_heap_record_remains_unqualified() {
         .issues
         .contains(&FixedSerialIssue::MalformedRecord));
 }
+
+#[test]
+fn explicit_storage_or_http_failure_cannot_hide_behind_complete_startup() {
+    for suffix in [
+        "storage_http_status schema=v1 spiffs_available=false http_ready=true redacted=true\n",
+        "storage_http_status schema=v1 spiffs_available=true http_ready=false redacted=true\n",
+        "storage_http_failure schema=v1 phase=http_routes error=handlers_full redacted=true\n",
+    ] {
+        let assessment = assess(&(healthy() + suffix), Some(&identity()));
+        assert!(assessment.execution_present);
+        assert!(assessment.startup_failed);
+        assert!(!assessment.qualified());
+    }
+}

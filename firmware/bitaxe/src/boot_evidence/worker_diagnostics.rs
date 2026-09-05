@@ -49,6 +49,8 @@ pub(crate) fn maybe_worker_diagnostic_line(slot: usize) -> Option<String> {
             "usb_memory_checkpoint",
             "stage=wifi_driver_prepared",
         ),
+        16 => crate::storage_http_diagnostics::maybe_failure_marker(),
+        17 => crate::storage_http_diagnostics::maybe_status_marker(),
         _ => None,
     }
 }

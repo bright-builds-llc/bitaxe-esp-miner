@@ -125,13 +125,8 @@ fn handle_websocket_send_failures(route: WebSocketRouteKind, failures: Vec<WebSo
 pub(super) fn register_websocket_handlers(
     server: &mut EspHttpServer<'static>,
 ) -> anyhow::Result<()> {
-    register_websocket_handler(server, API_WS_PATH, API_WS_ROUTE, websocket_logs_handler)?;
-    register_websocket_handler(
-        server,
-        API_WS_LIVE_PATH,
-        API_WS_LIVE_ROUTE,
-        websocket_live_handler,
-    )?;
+    register_websocket_handler(server, API_WS_PATH, websocket_logs_handler)?;
+    register_websocket_handler(server, API_WS_LIVE_PATH, websocket_live_handler)?;
     Ok(())
 }
 
@@ -146,7 +141,6 @@ unsafe extern "C" fn websocket_live_handler(request: *mut sys::httpd_req_t) -> s
 pub(super) fn register_websocket_handler(
     server: &mut EspHttpServer<'static>,
     path: &'static [u8],
-    display_path: &'static str,
     handler: unsafe extern "C" fn(*mut sys::httpd_req_t) -> sys::esp_err_t,
 ) -> anyhow::Result<()> {
     let uri = sys::httpd_uri_t {
@@ -163,9 +157,9 @@ pub(super) fn register_websocket_handler(
         return Ok(());
     }
 
-    Err(anyhow::anyhow!(
-        "failed to register websocket route {display_path}: esp_err={result}"
-    ))
+    let error = sys::EspError::from(result)
+        .ok_or_else(|| anyhow::anyhow!("http_route_registration_failed"))?;
+    Err(error.into())
 }
 
 pub(super) fn handle_websocket_upgrade(

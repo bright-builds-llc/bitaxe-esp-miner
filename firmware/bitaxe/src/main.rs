@@ -41,6 +41,7 @@ mod settings_snapshot_store;
 mod startup;
 mod static_files;
 mod statistics_runtime;
+mod storage_http_diagnostics;
 mod stratum_v2_noise_diagnostic;
 mod stratum_v2_session;
 mod stratum_v2_tcp_payload_diagnostic;

@@ -12,6 +12,7 @@ js_library(
         "src/usb_runtime.rs",
         "src/bwg_worker_usb/link.rs",
         "src/bwg_worker_usb/writer.rs",
+        "src/bwg_worker_usb/rx_diagnostics.rs",
         "src/application_log.rs",
     ],
     visibility = ["//tools/automation:__pkg__"],
@@ -52,12 +53,6 @@ filegroup(
     visibility = ["//crates/bitaxe-worker-control:__pkg__"],
 )
 
-filegroup(
-    name = "usb_phy_handoff_source",
-    srcs = ["src/usb_runtime.rs"],
-    visibility = ["//crates/bitaxe-worker-control:__pkg__"],
-)
-
 js_library(
     name = "native_usb_ownership_sources",
     srcs = [
@@ -72,6 +67,7 @@ js_library(
         "src/usb_runtime.rs",
         "src/bwg_worker_usb/link.rs",
         "src/bwg_worker_usb/writer.rs",
+        "src/bwg_worker_usb/rx_diagnostics.rs",
         "src/application_log.rs",
     ],
     visibility = [
@@ -390,6 +386,7 @@ rust_test(
         "src/usb_runtime.rs",
         "src/bwg_worker_usb/link.rs",
         "src/bwg_worker_usb/writer.rs",
+        "src/bwg_worker_usb/rx_diagnostics.rs",
         "src/application_log.rs",
     ],
     crate_name = "bwg_worker_source_ownership_tests",
@@ -1129,6 +1126,7 @@ rust_test(
         "src/usb_startup_diagnostics_host_test.rs",
         "src/usb_write_failure.rs",
         "src/bwg_worker_usb/writer.rs",
+        "src/bwg_worker_usb/rx_diagnostics.rs",
         "src/bwg_worker_usb/startup_diagnostics.rs",
     ],
     crate_root = "src/usb_startup_diagnostics_host_test.rs",
@@ -1178,4 +1176,18 @@ rust_test(
     crate_name = "usb_runtime_tests",
     edition = "2021",
     deps = ["@crates//:anyhow"],
+)
+
+
+rust_test(
+    name = "storage_http_diagnostics_tests",
+    srcs = [
+        "src/storage_http_diagnostics_host_test.rs",
+        "src/storage_http_diagnostics.rs",
+        "src/storage_http_diagnostics/model.rs",
+    ],
+    crate_root = "src/storage_http_diagnostics_host_test.rs",
+    crate_name = "storage_http_diagnostics_tests",
+    edition = "2021",
+    deps = ["@crates//:anyhow", "//crates/bitaxe-core:bitaxe_core"],
 )

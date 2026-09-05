@@ -107,6 +107,26 @@ pub enum SerialError {
 }
 
 impl SerialEnvelope {
+    /// Recognizes a closed session payload; callers must still validate its session and sequence.
+    #[must_use]
+    pub fn is_close(&self) -> bool {
+        #[derive(Deserialize)]
+        enum Op {
+            #[serde(rename = "close")]
+            Close,
+        }
+        #[derive(Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Close {
+            #[serde(rename = "op")]
+            _op: Op,
+            #[serde(rename = "reason")]
+            _reason: crate::RestorationReason,
+        }
+        self.kind == SerialKind::Session
+            && serde_json::from_str::<Close>(self.payload.get()).is_ok()
+    }
+
     /// Parses one bounded UTF-8 JSON object followed by a single LF.
     pub fn parse(bytes: &[u8]) -> Result<Self, SerialError> {
         if bytes.len() > MAXIMUM_WIRE_FRAME_BYTES {

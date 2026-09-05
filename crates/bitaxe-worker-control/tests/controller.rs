@@ -498,7 +498,7 @@ fn admitted_transport_probe_round_trips_maximum_controller_payload() {
     // Arrange
     let mut worker = admitted_worker();
     let mut request = json!({"protocolVersion":"bwg-worker-controller/0.4", "requestId":"serial_probe", "command":"transport_probe", "payload":{"padding":"", "responsePaddingBytes":0}});
-    let response_overhead = serde_json::to_vec(&json!({"protocolVersion":"bwg-worker-controller/0.4", "requestId":"serial_probe", "ok":true, "result":{"padding":""}})).expect("response JSON").len();
+    let response_overhead = serde_json::to_vec(&json!({"protocolVersion":"bwg-worker-controller/0.4", "requestId":"serial_probe", "ok":true, "result":{"padding":"", "requestPaddingBytes":65536}})).expect("response JSON").len();
     let response_padding =
         bitaxe_worker_control::serial::MAXIMUM_CONTROL_PAYLOAD_BYTES - response_overhead;
     request["payload"]["responsePaddingBytes"] = response_padding.into();
@@ -520,6 +520,7 @@ fn admitted_transport_probe_round_trips_maximum_controller_payload() {
     assert_eq!(frame.len() - 1, 65536);
     assert_eq!(response.frame().len() - 1, 65536);
     assert_eq!(value["result"]["padding"], "x".repeat(response_padding));
+    assert_eq!(value["result"]["requestPaddingBytes"], padding.len());
     assert_eq!(worker.session().events, Vec::<&str>::new());
 }
 
