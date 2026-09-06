@@ -1,0 +1,104 @@
+{
+  "provenance": {
+    "generator": "Gate web/worker-lease-authorization.ts signWorkerLeaseAuthorization; verified by verifyWorkerLeaseAuthorization",
+    "gateSourceCommit": "61cf6c599807abbdb12d88f5b810df73e564c757",
+    "signingKey": "RFC 8032 section 7.1 TEST 1 public test key only",
+    "inputs": "Gate public conformance fixture plus synthetic acceptance campaign; no device or owner inputs"
+  },
+  "authority": {
+    "profile": "bwg-worker-deployment-trust/0.2",
+    "issuer": "fixture-campaign",
+    "audience": "bwg-worker-controller/0.4",
+    "role": "work_lease_authority",
+    "keys": [
+      {
+        "kid": "fixture-campaign",
+        "kty": "OKP",
+        "crv": "Ed25519",
+        "x": "11qYAYKxCrfVS_7TyWQHOg7hcvPapiMlrwIaaPcHURo",
+        "alg": "Ed25519",
+        "use": "sig",
+        "key_ops": [
+          "verify"
+        ]
+      }
+    ]
+  },
+  "vectors": [
+    {
+      "input": {
+        "operation": "start",
+        "activeChallengeId": "challenge_00000000000000000000000000000001",
+        "controlSessionBindingSha256": "DAykxhwrLi6cew9fbubnHoatl4YgUuYMisUjl3NxDzE",
+        "request": {
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "leaseId": "lease_fixture_01",
+          "challengeId": "challenge_00000000000000000000000000000001",
+          "durationMilliseconds": 60000,
+          "renewAfterMilliseconds": 20000,
+          "stratum": {
+            "endpoint": "stratum+tcp://127.0.0.1:3333/",
+            "username": "fixture-session-user",
+            "password": "fixture-session-password"
+          },
+          "acceptanceCampaign": {
+            "id": "AAAAAAAAAAAAAAAAAAAAAA",
+            "window": 0,
+            "maximumActiveMilliseconds": 180000
+          }
+        }
+      },
+      "authorization": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoiZml4dHVyZS1jYW1wYWlnbiIsInR5cCI6ImJ3Zy13b3JrZXItbGVhc2UtYXV0aG9yaXphdGlvbitqd3MifQ.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJEQXlreGh3ckxpNmNldzlmYnVibkhvYXRsNFlnVXVZTWlzVWpsM054RHpFIiwib3BlcmF0aW9uIjoic3RhcnQiLCJyZXF1ZXN0U2hhMjU2IjoiNVlCOGxfbUxURThDMTJTSF84SDhvQU5Hb3o4ajlZY3c4TUxrZTFseUZITSIsInNlcXVlbmNlIjoiMSJ9.Z0XhmX0Hnx3wxMsCqggIH5oM4XGwwUx86vFXhP9l4m3j7gzDmKPQ4kDxXcWEe9wjyeHelep0Qma_EXKbrOh9AA"
+    },
+    {
+      "input": {
+        "operation": "start",
+        "activeChallengeId": "challenge_00000000000000000000000000000001",
+        "controlSessionBindingSha256": "DAykxhwrLi6cew9fbubnHoatl4YgUuYMisUjl3NxDzE",
+        "request": {
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "leaseId": "lease_fixture_01",
+          "challengeId": "challenge_00000000000000000000000000000001",
+          "durationMilliseconds": 60000,
+          "renewAfterMilliseconds": 20000,
+          "stratum": {
+            "endpoint": "stratum+tcp://127.0.0.1:3333/",
+            "username": "fixture-session-user",
+            "password": "fixture-session-password"
+          },
+          "acceptanceCampaign": {
+            "id": "AAAAAAAAAAAAAAAAAAAAAA",
+            "window": 1,
+            "maximumActiveMilliseconds": 30000
+          }
+        }
+      },
+      "authorization": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoiZml4dHVyZS1jYW1wYWlnbiIsInR5cCI6ImJ3Zy13b3JrZXItbGVhc2UtYXV0aG9yaXphdGlvbitqd3MifQ.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJEQXlreGh3ckxpNmNldzlmYnVibkhvYXRsNFlnVXVZTWlzVWpsM054RHpFIiwib3BlcmF0aW9uIjoic3RhcnQiLCJyZXF1ZXN0U2hhMjU2IjoiYzNoanpJZHNoeFVhRmJNWXhKaUdhMFVVeFlDVlZXMnhLWGdIdDZqR2pNWSIsInNlcXVlbmNlIjoiMiJ9.XrdvoioBRDNs-_vZ6q3G8Mp1ZrBs26DeC_wq0UF3UgUj_YbShannjWEvOUn8WEITaXx9wdLzpZzknVwYyM7FDA"
+    },
+    {
+      "input": {
+        "operation": "start",
+        "activeChallengeId": "challenge_00000000000000000000000000000001",
+        "controlSessionBindingSha256": "DAykxhwrLi6cew9fbubnHoatl4YgUuYMisUjl3NxDzE",
+        "request": {
+          "protocolVersion": "bwg-worker-controller/0.4",
+          "leaseId": "lease_fixture_01",
+          "challengeId": "challenge_00000000000000000000000000000001",
+          "durationMilliseconds": 60000,
+          "renewAfterMilliseconds": 20000,
+          "stratum": {
+            "endpoint": "stratum+tcp://127.0.0.1:3333/",
+            "username": "fixture-session-user",
+            "password": "fixture-session-password"
+          },
+          "acceptanceCampaign": {
+            "id": "AAAAAAAAAAAAAAAAAAAAAA",
+            "window": 2,
+            "maximumActiveMilliseconds": 30000
+          }
+        }
+      },
+      "authorization": "eyJhbGciOiJFZDI1NTE5Iiwia2lkIjoiZml4dHVyZS1jYW1wYWlnbiIsInR5cCI6ImJ3Zy13b3JrZXItbGVhc2UtYXV0aG9yaXphdGlvbitqd3MifQ.eyJjb250cm9sU2Vzc2lvbkJpbmRpbmdTaGEyNTYiOiJEQXlreGh3ckxpNmNldzlmYnVibkhvYXRsNFlnVXVZTWlzVWpsM054RHpFIiwib3BlcmF0aW9uIjoic3RhcnQiLCJyZXF1ZXN0U2hhMjU2Ijoid3VTZ1RZV2Y0NU1sVVRwN0M0Nm9NNHNiMnRzdnNHenlUWXRGbmd6Nk8yQSIsInNlcXVlbmNlIjoiMyJ9.tFqFZW3hut7aqvG1jWW9GfgjVQnckIb7D9h_z2Fc53RoqFTk2n3qlmdZLcFKrARw9Ex2E5oKy8gOJvdyTmSFDw"
+    }
+  ]
+}

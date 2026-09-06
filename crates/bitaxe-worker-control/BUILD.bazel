@@ -20,7 +20,9 @@ rust_library(
 
 rust_test(
     name = "authorization_tests",
-    srcs = ["tests/authorization.rs"],
+    srcs = ["tests/authorization.rs", "tests/authorization/campaign.rs"],
+    compile_data = ["tests/authorization/gate-campaign.json"],
+    crate_root = "tests/authorization.rs",
     crate_name = "bitaxe_worker_control_authorization_tests",
     edition = "2021",
     deps = [

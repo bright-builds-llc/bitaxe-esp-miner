@@ -9,6 +9,9 @@ use bitaxe_worker_control::{
 };
 use curve25519_dalek::constants::{ED25519_BASEPOINT_POINT, EIGHT_TORSION};
 
+#[path = "authorization/campaign.rs"]
+mod campaign;
+
 const TRUST: &str = r#"{
   "profile": "bwg-worker-deployment-trust/0.2",
   "updateAuthority": {

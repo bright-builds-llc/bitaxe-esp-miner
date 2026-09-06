@@ -114,9 +114,11 @@ impl WorkerLeaseGrant {
 #[derive(Deserialize, Serialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct AcceptanceCampaign {
+    // Authorization hashing streams directly into a zeroizing buffer, so preserve
+    // canonical JSON key order without copying credentials into a JSON value tree.
     id: String,
-    window: u8,
     maximum_active_milliseconds: u64,
+    window: u8,
 }
 
 impl AcceptanceCampaign {
