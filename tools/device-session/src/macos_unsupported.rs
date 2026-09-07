@@ -46,6 +46,10 @@ impl ReceiveOnlyReader {
         bail!("receive-only reader is unsupported on this platform")
     }
 
+    pub(crate) fn read_into(&mut self, _buffer: &mut [u8]) -> std::io::Result<usize> {
+        Err(std::io::ErrorKind::Unsupported.into())
+    }
+
     pub(crate) fn read_available(&mut self) -> Result<Vec<u8>> {
         bail!("receive-only reader is unsupported on this platform")
     }

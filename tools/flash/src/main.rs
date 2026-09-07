@@ -44,6 +44,7 @@ mod campaign;
 mod cli;
 mod commands;
 mod display_recovery;
+mod drain_worker_serial;
 mod environment;
 mod esp32s3_image;
 mod evidence;
@@ -130,6 +131,9 @@ fn main() -> Result<()> {
             return Err(error);
         }
     };
+    if let CliCommand::DrainWorkerSerial(command) = &cli.command {
+        return drain_worker_serial::run(command);
+    }
     let environment = match LocalFlashEnvironment::detect() {
         Ok(environment) => environment,
         Err(error) => {
@@ -142,6 +146,7 @@ fn main() -> Result<()> {
     emit_line("espflash_executable_sha256", &environment.espflash_sha256)?;
 
     let operation_result = match cli.command {
+        CliCommand::DrainWorkerSerial(command) => drain_worker_serial::run(&command),
         CliCommand::Detect(command) => run_detect(&command, &environment),
         CliCommand::Flash(command) => run_flash(&command, &environment).map(|_| ()),
         CliCommand::Monitor(command) => run_monitor(&command, &environment),

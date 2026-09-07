@@ -24,6 +24,10 @@ impl ReceiveOnlyReader {
         })
     }
 
+    pub(crate) fn read_into(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
+        self.file.read(buffer)
+    }
+
     pub(crate) fn read_available(&mut self) -> Result<Vec<u8>> {
         read_available(&mut self.file)
     }
@@ -165,5 +169,57 @@ mod tests {
                 "receive-only source contains forbidden operation {forbidden}"
             );
         }
+    }
+    #[test]
+    fn bounded_discard_is_read_only_no_echo_and_releases_descriptor() {
+        // Arrange
+        let mut master_fd = -1;
+        let mut slave_fd = -1;
+        let mut name = [0_i8; 1024];
+        assert_eq!(
+            unsafe {
+                libc::openpty(
+                    &mut master_fd,
+                    &mut slave_fd,
+                    name.as_mut_ptr(),
+                    ptr::null_mut(),
+                    ptr::null_mut(),
+                )
+            },
+            0
+        );
+        let path = unsafe { CStr::from_ptr(name.as_ptr()) }
+            .to_str()
+            .expect("PTY path");
+        assert_eq!(unsafe { libc::close(slave_fd) }, 0);
+        let mut master = unsafe { File::from_raw_fd(master_fd) };
+        let mut reader = ReceiveOnlyReader::open(path).expect("reader");
+        let descriptor = reader.file.as_raw_fd();
+        assert_eq!(
+            unsafe { libc::fcntl(descriptor, libc::F_GETFL) } & libc::O_ACCMODE,
+            libc::O_RDONLY
+        );
+        let flags = unsafe { libc::fcntl(master_fd, libc::F_GETFL) };
+        assert_eq!(
+            unsafe { libc::fcntl(master_fd, libc::F_SETFL, flags | libc::O_NONBLOCK) },
+            0
+        );
+        master.write_all(&[0xa5; 32]).expect("synthetic payload");
+        // Act
+        let result = crate::usb::drain::discard(
+            |buffer| reader.read_into(buffer),
+            Duration::from_millis(20),
+        )
+        .expect("discard");
+        // Assert
+        assert_eq!(result.discarded_bytes, 32);
+        assert!(result.elapsed_milliseconds < 1000);
+        let mut byte = [0];
+        assert_eq!(
+            master.read(&mut byte).expect_err("no TX or echo").kind(),
+            io::ErrorKind::WouldBlock
+        );
+        drop(reader);
+        assert_eq!(unsafe { libc::fcntl(descriptor, libc::F_GETFL) }, -1);
     }
 }

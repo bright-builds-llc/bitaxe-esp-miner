@@ -346,5 +346,6 @@ mod job_transition;
 mod lifecycle;
 mod readiness_recovery;
 mod recovery;
+mod restart;
 mod scoreboard;
 mod terminal_expiry;

@@ -523,6 +523,12 @@ impl RecoveryPolicy {
         actions
     }
 
+    /// Drops cached availability when a terminal lease releases its pool configuration.
+    /// The global shutdown phase remains terminal; this does not authorize restart.
+    pub(super) fn discard_pool_configuration(&mut self) {
+        self.reset_pool_policy();
+    }
+
     fn reset_pool_policy(&mut self) {
         self.maybe_pool_availability = None;
         self.attempts = [0; 2];

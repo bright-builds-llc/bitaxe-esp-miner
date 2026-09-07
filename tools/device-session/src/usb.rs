@@ -1,5 +1,7 @@
 //! Durable ownership and lifecycle supervision for repository USB operations.
 
+pub(crate) mod drain;
+pub use drain::SerialDrainMetadata;
 mod lease;
 mod line_admission;
 mod observation;

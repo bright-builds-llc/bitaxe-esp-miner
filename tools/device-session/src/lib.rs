@@ -48,9 +48,10 @@ pub use transaction::{
 };
 pub use usb::{
     discover_usb_ports, reduce_lifecycle, retry_is_eligible, MonitorOutput, ReflashReady,
-    RetryContext, SupervisedOutput, SupervisedTermination, UsbCommandDiagnostic,
-    UsbCommandTermination, UsbConnectionSignature, UsbDeviceEffectState, UsbLifecycleEvent,
-    UsbLifecycleState, UsbOperation, UsbSession, UsbSessionError, UsbTerminalCategory,
+    RetryContext, SerialDrainMetadata, SupervisedOutput, SupervisedTermination,
+    UsbCommandDiagnostic, UsbCommandTermination, UsbConnectionSignature, UsbDeviceEffectState,
+    UsbLifecycleEvent, UsbLifecycleState, UsbOperation, UsbSession, UsbSessionError,
+    UsbTerminalCategory,
 };
 pub use usb_ownership::{
     admit_application_execution, admit_rom_downloader, admit_rom_execution,

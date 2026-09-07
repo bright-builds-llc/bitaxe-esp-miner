@@ -340,3 +340,7 @@ fixed-usb-qualification *args:
 # Audit a built native ELF before hardware qualification; all paths must be absolute.
 audit-owner-stack elf objdump owner_source:
     bazel run //scripts:audit_owner_stack -- "{{ elf }}" "{{ objdump }}" "{{ owner_source }}"
+
+# Metadata-only bounded receive drain; never enters the downloader.
+drain-worker-serial *args:
+    bazel run //tools/flash:flash -- drain-worker-serial {{ args }}

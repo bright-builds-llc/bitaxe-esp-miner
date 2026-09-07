@@ -70,6 +70,7 @@ impl ProductionMiningSession {
 
     pub(super) fn finish_terminal_safe_stop(&mut self, lease_id: MiningCampaignLeaseId) {
         self.maybe_pool_set = None;
+        self.recovery.discard_pool_configuration();
         self.primary = None;
         self.fallback = None;
         self.hardware_state = MiningHardwareState::Stopped;

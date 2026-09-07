@@ -20,6 +20,7 @@ js_library(
         "src/reboot_loop.rs",
         "src/reboot_loop/diagnostics.rs",
         "src/usb.rs",
+        "src/usb/drain.rs",
         "src/usb/lifecycle.rs",
         "src/usb/profile_reacquire.rs",
         "src/usb_ownership.rs",
@@ -37,6 +38,7 @@ js_library(
     name = "command_effects_budget_sources",
     srcs = [
         "src/usb.rs",
+        "src/usb/drain.rs",
         "src/usb_ownership.rs",
         "src/usb_ownership/execution.rs",
         "src/usb_ownership/profile_trace.rs",
@@ -77,6 +79,7 @@ rust_library(
         "src/reboot_loop/diagnostics.rs",
         "src/transaction.rs",
         "src/usb.rs",
+        "src/usb/drain.rs",
         "src/usb/lease.rs",
         "src/usb/line_admission.rs",
         "src/usb/lifecycle.rs",

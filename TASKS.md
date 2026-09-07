@@ -4780,6 +4780,53 @@ mining reservation occurred during this failed preflight.
 Sample sealing verification: all 73 harness tests pass, including the exact 52-row prefix plus two equivalent late-close pattern, unsafe suffixes, missing/nonunique prefixes and mutations after recovery. Canonical harness targets and ordered Cargo gates pass. Original sample/result files have not been changed; invoke the published strict recovery command before a fresh preflight.
 
 
+Diagnostic 002 passed on firmware 40f999ec / Gate 50b42d72: all four cycles,
+one real work item, 7360 ms active and qualified shutdown. The fresh owner-stack
+minimum of 8500 bytes exceeded the 4096-byte requirement. The separate ledger
+showed 60000 ms charged and next ordinal 3; the original ledger was unchanged.
+Normal ordinal 3 on the same pair timed out at Start after all nine preparation
+steps completed (generation 3, stack 8500, heap 15571/largest 4608, same boot 5).
+No new running sample was received. Recovery Hello failed at
+`manifest_identity/fields`. Serial ownership was released, but generation 3's
+safe state and ledger remain unconfirmed. Preserve the first failure and both
+closed diagnostic exports; the old page qualification for generation 2 is not
+current-generation proof.
+
+Offline progress: the actual core two-lease test reproduces the restart stall.
+Terminal cleanup clears volatile pool configuration but retains cached
+availability; the next hardware-ready event skips reading pool configuration,
+and the adapter cannot connect. The targeted fix clears availability, retry and
+probe caches while preserving shutdown, consumed leases and epoch cursors.
+The regression verifies new configuration, transport and work, rejection of
+stale events, and both stops. Separately, the actual browser channel reproduces
+`manifest_identity/fields` from stale complete device-to-host records preceding
+HelloAck, even when no fresh acknowledgment exists. This does not prove manifest
+corruption or successful fresh admission.
+
+Recovery-only effect contract after publishing verified progress:
+`just drain-worker-serial --board 205 --port <fresh-detector-port> --evidence-dir <fresh-private-child>`
+performs **one** receive-only discard under the physical-device lease, bounded
+to a two-second read window and 66560 bytes. The reader uses `O_RDONLY`,
+`O_NONBLOCK`, `CLOCAL` and disabled `HUPCL`, with no reset, DTR/RTS changes,
+transmission, or payload retention/logging. Prove browser release and the known
+Serial/JTAG profile first; record only counts, duration and ownership metadata,
+then prove CLI cleanup. Permit **one** fresh browser Hello/identity/status
+recovery attempt against installed firmware 40f999ec, with no Work allowance.
+Confirm the current ledger, restoration and cooling before new firmware effects.
+If recovery fails again, stop hardware and retain the missing proof. Generic
+monitoring is not admitted for this drain because it persists raw serial traces.
+This recovery step authorizes no raw memory dump, reflash or new mining.
+
+Verification of the restart correction and recovery command: ordered Cargo
+format/lint/build/test gates passed (2127 tests, one ignored), managed standards
+and fixed-USB ownership/reference checks passed, and all 89 Bazel targets passed
+across the full run and isolated rerun of two process-launch timeouts. The
+ESP32-S3 package built; the native owner entry remains 4400 bytes against an
+8192-byte cap with a 24576-byte configured stack. No test deadline was widened.
+Protected software evidence includes the failing reproduction, passing
+regressions, stale-frame reproduction, and receive-only PTY/no-TX/cleanup tests.
+Hardware recovery and the final live acceptance remain incomplete.
+
 ## Future
 
 ### task-str005-v2-channel-job-205 | 2026-08-28 | Prove Ultra 205 V2 channel and job receipt

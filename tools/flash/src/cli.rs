@@ -13,6 +13,8 @@ pub(crate) struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum CliCommand {
+    #[command(name = "drain-worker-serial")]
+    DrainWorkerSerial(crate::drain_worker_serial::DrainWorkerSerialCommand),
     Detect(DetectCommand),
     Flash(FlashCommand),
     Monitor(MonitorCommand),
