@@ -12,7 +12,7 @@ import { protectedPath, QualificationError, readJson, requireCondition } from ".
 
 const KEYS = { "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
   "--manifest": "manifest", "--private-root": "privateRoot", "--authority-directory": "authorityDirectory", "--pool-credentials": "poolCredentials",
-  "--predecessor-root": "predecessorRoot", "--bun": "bun", "--port": "port", "--window": "window", "--input": "input",
+  "--cooling-input": "coolingInput", "--predecessor-root": "predecessorRoot", "--bun": "bun", "--port": "port", "--window": "window", "--input": "input",
   "--qualification-source-commit": "qualificationSourceCommit", "--gate-qualification-source-commit": "gateQualificationSourceCommit" };
 export async function main(args) {
   const [command, ...rest] = args;
@@ -29,7 +29,7 @@ export async function main(args) {
     serve: ["privateRoot", "authorityDirectory", "poolCredentials", "port", "bun"],
     judge: ["privateRoot", "window"],
     "record-cycle": ["privateRoot", "input"],
-    "create-successor": ["privateRoot", "predecessorRoot", "input"],
+    "create-successor": ["privateRoot", "predecessorRoot", "input", "coolingInput"],
     "amend-policy": ["privateRoot", "qualificationSourceCommit", "gateQualificationSourceCommit"],
   }[command];
   requireCondition(allowed && Object.keys(options).every((key) => allowed.includes(key)), "command_arguments");
@@ -40,7 +40,7 @@ export async function main(args) {
   const context = await loadContext(resolve(options.privateRoot));
   if (command === "create-successor") {
     requireCondition(options.predecessorRoot && options.input, "successor_arguments_missing");
-    return createSuccessor(resolve(options.privateRoot), context, options.predecessorRoot, options.input);
+    return createSuccessor(resolve(options.privateRoot), context, options.predecessorRoot, options.input, options.coolingInput);
   }
   if (command === "amend-policy") {
     requireCondition(options.qualificationSourceCommit && options.gateQualificationSourceCommit, "amendment_arguments_missing");

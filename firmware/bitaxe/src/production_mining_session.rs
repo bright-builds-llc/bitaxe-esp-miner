@@ -3,12 +3,15 @@ pub(crate) mod admission_diagnostics;
 mod asic_worker;
 mod bwg;
 mod campaign_status;
+pub(crate) mod cooling;
+pub(crate) mod cooling_core;
 mod hashrate;
 mod notifications;
 mod owner_loop;
 mod owner_progress;
 mod pending_observation;
 mod qualification;
+mod readiness;
 mod readiness_trace;
 pub(crate) mod revocation;
 mod scoreboard;
@@ -33,7 +36,9 @@ use bitaxe_stratum::v1::production_session::{
     ProductionSessionSnapshot, ProductionSessionWakeup, ProductionTransportFailure,
 };
 use bitaxe_stratum::v1::production_work::ProductionNonceObservation;
-pub(crate) use bwg::{renew as bwg_renew, safe_stop as bwg_safe_stop, start as bwg_start};
+pub(crate) use bwg::{
+    cooling as bwg_cooling, renew as bwg_renew, safe_stop as bwg_safe_stop, start as bwg_start,
+};
 pub use notifications::notify;
 pub(crate) use qualification::status_evidence;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -80,6 +85,7 @@ struct OrdinaryEspProductionSessionAdapter {
     readiness_trace: ReadinessTransitionTracker,
     maybe_bwg_session: Option<bwg::OwnerSession>,
     maybe_bwg_reply: Option<bwg::PendingReply>,
+    maybe_cooling_generation: Option<revocation::WorkerGeneration>,
 }
 impl OrdinaryEspProductionSessionAdapter {
     fn new(owner_sender: SyncSender<OwnerInboxMessage>) -> anyhow::Result<Self> {
@@ -132,6 +138,7 @@ impl OrdinaryEspProductionSessionAdapter {
             readiness_trace: ReadinessTransitionTracker::default(),
             maybe_bwg_session: None,
             maybe_bwg_reply: None,
+            maybe_cooling_generation: None,
         })
     }
 
@@ -248,67 +255,6 @@ impl OrdinaryEspProductionSessionAdapter {
                 self.event(command, now_ms, snapshot, maybe_next_lease_id)
             }
         }
-    }
-
-    fn read_authoritative_readiness(
-        &mut self,
-        wakeup: Option<ProductionSessionWakeup>,
-        snapshot: &ProductionSessionSnapshot,
-        pending_observation_recovered: bool,
-    ) -> ProductionReadiness {
-        let requested_operator_intent = crate::runtime_snapshot::requested_mining_operator_intent();
-        let wifi = crate::wifi_adapter::current_wifi_snapshot();
-        let observations = crate::safety_adapter::observation_snapshot();
-        let safety_prerequisites_fresh = observations.is_ultra_205_mining_safe_at(now())
-            && observations
-                .fan_rpm
-                .maybe_last_good()
-                .is_some_and(|sample| *sample.value() > 0);
-        let maybe_campaign_lease = self
-            .maybe_bwg_session
-            .as_ref()
-            .map(|session| session.lease)
-            .or_else(|| {
-                self.maybe_campaign_status
-                    .as_ref()
-                    .and_then(CampaignStatusTracker::maybe_lease)
-            });
-        let operator_intent = if self.maybe_bwg_session.is_some() {
-            bitaxe_stratum::v1::state::MiningOperatorIntent::Run
-        } else {
-            self.maybe_campaign_status
-                .as_ref()
-                .map_or(requested_operator_intent, |status| {
-                    status.operator_intent(requested_operator_intent)
-                })
-        };
-        let actuation_qualified = (self.maybe_bwg_session.is_some()
-            || self
-                .maybe_campaign_status
-                .as_ref()
-                .is_some_and(CampaignStatusTracker::authorizes_actuation))
-            && crate::safety_adapter::safety_actuation_available()
-            && crate::asic_adapter::production::production_handle_available();
-        self.protocol_gate = crate::settings_adapter::configured_protocol_gate();
-        let readiness = ProductionReadiness {
-            operator_intent,
-            network_ready: wifi.wifi_status == "connected",
-            stratum_v1_supported: self.maybe_bwg_session.is_some() || self.protocol_gate.is_ready(),
-            safety_prerequisites_fresh,
-            maybe_campaign_lease,
-            actuation_qualified,
-        };
-        if self.maybe_bwg_session.is_some() {
-            admission_diagnostics::readiness(readiness);
-        }
-        self.readiness_trace.observe(
-            wakeup,
-            readiness,
-            &observations,
-            snapshot,
-            pending_observation_recovered,
-        );
-        readiness
     }
 
     fn maybe_execute(

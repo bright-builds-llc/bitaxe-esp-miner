@@ -15,6 +15,7 @@ const DS4432U_SOURCE: &str = include_str!("safety_adapter/ds4432u.rs");
 const MINING_ACTUATION_ADAPTER_SOURCE: &str = include_str!("mining_actuation_adapter.rs");
 const PRODUCTION_ASIC_SOURCE: &str = include_str!("asic_adapter/production.rs");
 const PRODUCTION_SESSION_SOURCE: &str = include_str!("production_mining_session.rs");
+const READINESS_SOURCE: &str = include_str!("production_mining_session/readiness.rs");
 const PRODUCTION_OWNER_LOOP_SOURCE: &str = include_str!("production_mining_session/owner_loop.rs");
 const PRODUCTION_NOTIFICATIONS_SOURCE: &str =
     include_str!("production_mining_session/notifications.rs");
@@ -414,10 +415,10 @@ fn unsupported_ultra205_vr_truth_is_projected_but_not_required_for_mining() {
     assert!(OPERATOR_SENSOR_RUNTIME_SOURCE
         .contains("AcquisitionOutcome::Unavailable(UnavailableReason::UnsupportedOnBoard)"));
     assert!(OPERATOR_SENSOR_RUNTIME_SOURCE.contains("vr_temp_celsius: project_observation("));
-    assert!(PRODUCTION_SESSION_SOURCE.contains("observations.is_ultra_205_mining_safe_at(now())"));
+    assert!(READINESS_SOURCE.contains("observations.is_ultra_205_mining_safe_at(now())"));
     assert!(PRODUCTION_SESSION_SOURCE.contains("self.mining_actuation.prepare(profile)"));
-    assert!(PRODUCTION_SESSION_SOURCE.contains("safety_prerequisites_fresh"));
-    assert!(PRODUCTION_SESSION_SOURCE.contains("actuation_qualified"));
+    assert!(READINESS_SOURCE.contains("safety_prerequisites_fresh"));
+    assert!(READINESS_SOURCE.contains("actuation_qualified"));
     assert!(PRODUCTION_SESSION_SOURCE.contains("ProductionSessionEffect::DispatchAsic"));
 }
 

@@ -64,6 +64,7 @@ mod worker_acceptance_budget {
 struct OrdinaryEspProductionSessionAdapter {
     maybe_bwg_session: Option<bwg::OwnerSession>,
     maybe_bwg_reply: Option<bwg::PendingReply>,
+    maybe_cooling_generation: Option<revocation::WorkerGeneration>,
     readiness: ProductionReadiness,
 }
 
@@ -95,6 +96,7 @@ impl TestScope {
     fn new() -> Self {
         let lock = TEST_LOCK.lock().unwrap_or_else(|error| error.into_inner());
         worker_acceptance_budget::FAIL_FINISH.store(false, Ordering::SeqCst);
+        cooling::FAIL_RESTORE.store(false, Ordering::SeqCst);
         worker_acceptance_budget::FINISH_CALLS.store(0, Ordering::SeqCst);
         Self {
             _lock: lock,
@@ -134,6 +136,7 @@ fn blocked_adapter() -> OrdinaryEspProductionSessionAdapter {
     OrdinaryEspProductionSessionAdapter {
         maybe_bwg_session: None,
         maybe_bwg_reply: None,
+        maybe_cooling_generation: None,
         readiness: ProductionReadiness {
             safety_prerequisites_fresh: false,
             ..readiness()
@@ -504,3 +507,83 @@ fn rejected_unprepared_start_does_not_acknowledge_stop_during_budget_failure() {
 
 #[path = "production_worker_admission_host_test/start_boundary.rs"]
 mod start_boundary;
+
+#[path = "production_mining_session/cooling_core.rs"]
+mod cooling_core;
+mod cooling {
+    use super::*;
+    pub(crate) static FAIL_RESTORE: AtomicBool = AtomicBool::new(false);
+    pub(crate) fn qualify(
+        _: revocation::WorkerGeneration,
+    ) -> Result<serde_json::Value, cooling_core::CoolingError> {
+        Ok(serde_json::json!({"fan_duty_percent":100}))
+    }
+    pub(crate) fn restore(
+        _: revocation::WorkerGeneration,
+    ) -> Result<serde_json::Value, cooling_core::CoolingError> {
+        if FAIL_RESTORE.load(Ordering::SeqCst) {
+            Err(cooling_core::CoolingError::Rejected)
+        } else {
+            Ok(serde_json::json!({"fan_duty_percent":30}))
+        }
+    }
+}
+
+#[test]
+fn cooling_owner_fences_link_without_reserving_mining_budget() {
+    // Arrange
+    let mut scope = TestScope::new();
+    let generation = scope.link();
+    let mut adapter = blocked_adapter();
+    let snapshot = ProductionMiningSession::new().snapshot();
+    let (reply, receiver) = mpsc::sync_channel(1);
+    // Act
+    adapter.event(
+        bwg::OwnerCommand::Cooling {
+            generation,
+            restore: false,
+            reply,
+        },
+        1_000,
+        &snapshot,
+        None,
+    );
+    // Assert
+    assert!(receiver.try_recv().expect("cooling reply").is_ok());
+    assert_eq!(adapter.maybe_cooling_generation, Some(generation));
+    assert!(!revocation::permits(Some(generation)));
+    assert_eq!(
+        worker_acceptance_budget::FINISH_CALLS.load(Ordering::SeqCst),
+        0
+    );
+    revocation::revoke_at(generation, 1_000);
+    assert!(revocation::begin_link(1_000).is_none());
+}
+
+#[test]
+fn no_session_safe_stop_cannot_acknowledge_failed_cooling_restore() {
+    // Arrange
+    let mut scope = TestScope::new();
+    let generation = scope.link();
+    assert!(revocation::begin_reservation(generation));
+    let mut adapter = blocked_adapter();
+    adapter.maybe_cooling_generation = Some(generation);
+    cooling::FAIL_RESTORE.store(true, Ordering::SeqCst);
+    revocation::revoke_at(generation, 1_000);
+    let snapshot = ProductionMiningSession::new().snapshot();
+    let (reply, receiver) = mpsc::sync_channel(1);
+    // Act
+    adapter.event(
+        bwg::OwnerCommand::SafeStop { reply },
+        1_000,
+        &snapshot,
+        None,
+    );
+    // Assert
+    assert_eq!(
+        receiver.try_recv().expect("stop reply"),
+        Err(bwg::Error::Rejected)
+    );
+    assert_eq!(adapter.maybe_cooling_generation, Some(generation));
+    assert!(revocation::begin_link(1_000).is_none());
+}

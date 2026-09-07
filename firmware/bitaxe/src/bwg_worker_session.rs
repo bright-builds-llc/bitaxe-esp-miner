@@ -21,6 +21,18 @@ impl ProductionWorkerSession {
 }
 
 impl WorkerSession for ProductionWorkerSession {
+    fn qualify_cooling(&mut self) -> Result<serde_json::Value, WorkerSessionError> {
+        let generation = self.maybe_generation.ok_or(WorkerSessionError::Rejected)?;
+        crate::production_mining_session::bwg_cooling(generation, false)
+            .map_err(|_| WorkerSessionError::Rejected)
+    }
+
+    fn restore_cooling(&mut self) -> Result<serde_json::Value, WorkerSessionError> {
+        let generation = self.maybe_generation.ok_or(WorkerSessionError::Rejected)?;
+        crate::production_mining_session::bwg_cooling(generation, true)
+            .map_err(|_| WorkerSessionError::SafeStopFailed)
+    }
+
     fn settings_preservation(
         &self,
     ) -> Result<Option<bitaxe_worker_control::SettingsPreservation>, WorkerSessionError> {

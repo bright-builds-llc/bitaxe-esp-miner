@@ -91,6 +91,10 @@ js_library(
 js_library(
     name = "safe10_evidence_sources",
     srcs = [
+        "src/production_mining_session/readiness.rs",
+        "src/production_mining_session/cooling_core.rs",
+        "src/mining_actuation_adapter.rs",
+        "src/mining_actuation.rs",
         "src/production_mining_session.rs",
         "src/production_mining_session/readiness_trace.rs",
     ],
@@ -557,6 +561,7 @@ rust_test(
         "src/mining_actuation_host_test.rs",
         "src/mining_actuation_cancellation_tests.rs",
         "src/production_mining_session/revocation.rs",
+        "src/production_mining_session/revocation/global.rs",
         "src/production_mining_session/revocation/reason.rs",
         "src/production_mining_session/revocation/timing.rs",
         "src/production_mining_session/revocation/tests.rs",
@@ -574,11 +579,13 @@ rust_test(
 rust_test(
     name = "production_worker_admission_tests",
     srcs = [
+        "src/production_mining_session/cooling_core.rs",
         "src/production_worker_admission_host_test.rs",
         "src/production_worker_admission_host_test/start_boundary.rs",
         "src/production_mining_session/admission_diagnostics.rs",
         "src/production_mining_session/bwg.rs",
         "src/production_mining_session/revocation.rs",
+        "src/production_mining_session/revocation/global.rs",
         "src/production_mining_session/revocation/reason.rs",
         "src/production_mining_session/revocation/timing.rs",
         "src/production_mining_session/revocation/tests.rs",
@@ -588,6 +595,8 @@ rust_test(
     crate_root = "src/production_worker_admission_host_test.rs",
     edition = "2021",
     deps = [
+        "//crates/bitaxe-api:bitaxe_api",
+        "//crates/bitaxe-safety:bitaxe_safety",
         "@crates//:serde_json",
         "//crates/bitaxe-asic:bitaxe_asic",
         "//crates/bitaxe-stratum:bitaxe_stratum",
@@ -604,6 +613,7 @@ rust_test(
         "src/production_mining_session/status_publication.rs",
         "src/production_transport_host_test.rs",
         "src/production_mining_session/revocation.rs",
+        "src/production_mining_session/revocation/global.rs",
         "src/production_mining_session/revocation/reason.rs",
         "src/production_mining_session/revocation/timing.rs",
         "src/production_mining_session/revocation/tests.rs",
@@ -668,6 +678,7 @@ rust_test(
     srcs = [
         "src/operator_intent_source_ownership_test.rs",
         "src/production_mining_session.rs",
+        "src/production_mining_session/readiness.rs",
         "src/runtime_snapshot.rs",
         "src/runtime_snapshot/command_surface.rs",
     ],
@@ -698,6 +709,7 @@ rust_test(
         "src/fan_controller_runtime.rs",
         "src/operator_sensor_runtime.rs",
         "src/production_mining_session.rs",
+        "src/production_mining_session/readiness.rs",
         "src/production_mining_session/asic_worker.rs",
         "src/production_mining_session/notifications.rs",
         "src/production_mining_session/owner_loop.rs",
@@ -1240,6 +1252,7 @@ rust_test(
         "src/bwg_worker_session.rs",
         "src/worker_acceptance_budget.rs",
         "src/production_mining_session/revocation.rs",
+        "src/production_mining_session/revocation/global.rs",
         "src/production_mining_session/revocation/reason.rs",
         "src/production_mining_session/revocation/timing.rs",
         "src/production_mining_session/revocation/tests.rs",
@@ -1255,4 +1268,12 @@ rust_test(
         "@crates//:anyhow",
         "@crates//:serde_json",
     ],
+)
+
+rust_test(
+    name = "worker_cooling_tests",
+    srcs = ["src/worker_cooling_host_test.rs", "src/mining_actuation.rs", "src/production_mining_session/cooling_core.rs"],
+    crate_root = "src/worker_cooling_host_test.rs",
+    edition = "2021",
+    deps = ["//crates/bitaxe-config:bitaxe_config", "//crates/bitaxe-stratum:bitaxe_stratum","//crates/bitaxe-api:bitaxe_api", "//crates/bitaxe-safety:bitaxe_safety"],
 )

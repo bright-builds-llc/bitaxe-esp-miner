@@ -91,12 +91,9 @@ impl MiningActuationAdapterError {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-struct ObservationStamp {
-    boot_session: u64,
-    sequence: u64,
-    acquired_at_ms: u64,
-}
+use crate::production_mining_session::cooling_core::{
+    post_command_fan, FanStamp as ObservationStamp,
+};
 
 pub struct Ultra205MiningActuationAdapter {
     maybe_worker_generation: Option<crate::production_mining_session::revocation::WorkerGeneration>,
@@ -300,6 +297,10 @@ impl Ultra205MiningActuationAdapter {
                 match pending.poll() {
                     SafetyActuationPollOutcome::Pending => {}
                     SafetyActuationPollOutcome::Applied => {
+                        // Require a producer sample after acknowledgement, never
+                        // merely after queueing a command that may apply later.
+                        self.maybe_fan_command_started_at_ms =
+                            Some(crate::runtime_uptime::millis());
                         actuation_applied = true;
                         self.maybe_pending_fan_actuation = None;
                     }
@@ -353,15 +354,7 @@ impl Ultra205MiningActuationAdapter {
         let Some(started_at_ms) = self.maybe_fan_command_started_at_ms else {
             return false;
         };
-        if candidate.acquired_at_ms <= started_at_ms {
-            return false;
-        }
-        let Some(baseline) = self.maybe_fan_command_baseline else {
-            return true;
-        };
-        candidate.boot_session != baseline.boot_session
-            || candidate.sequence > baseline.sequence
-            || candidate.acquired_at_ms > baseline.acquired_at_ms
+        post_command_fan(candidate, self.maybe_fan_command_baseline, started_at_ms)
     }
 
     fn wait_for_cooling_proof(&mut self) -> Result<(), MiningActuationAdapterError> {

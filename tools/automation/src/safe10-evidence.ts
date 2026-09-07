@@ -320,7 +320,7 @@ export async function projectSafe10Evidence(
   const attemptSourceDigest = safe10AttemptProductionDigest(attemptDocuments);
   const sourceCompatible = attemptSourceDigest === currentInventory.productionDigest;
   const evidence: Safe10Evidence = {
-    schema_version: "bitaxe-safe10-evidence-v1",
+    schema_version: "bitaxe-safe10-evidence-v2",
     board: 205,
     attempt_ordinal: 3,
     attempt_source_commit: expectedAttemptSourceCommit,

@@ -76,6 +76,13 @@ mod bwg_worker_nvs {
     }
 }
 mod production_mining_session {
+    pub(crate) fn bwg_cooling(
+        _generation: crate::revocation::WorkerGeneration,
+        _restore: bool,
+    ) -> Result<serde_json::Value, ()> {
+        Err(())
+    }
+
     pub(crate) use super::{admission_diagnostics, revocation};
     pub fn status_evidence(_: Option<revocation::WorkerGeneration>) -> Option<serde_json::Value> {
         None

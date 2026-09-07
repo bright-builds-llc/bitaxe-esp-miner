@@ -1,6 +1,6 @@
 use super::*;
 
-fn frame(campaign: &str) -> String {
+pub(super) fn frame(campaign: &str) -> String {
     format!(
         "{}\n",
         json!({"protocolVersion":"bwg-worker-controller/0.4","requestId":"serial_budget_review","command":"acceptance_budget_review","payload":{"campaignId":campaign}})

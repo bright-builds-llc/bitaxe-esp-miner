@@ -1,4 +1,5 @@
 const PRODUCTION_SOURCE: &str = include_str!("production_mining_session.rs");
+const READINESS_SOURCE: &str = include_str!("production_mining_session/readiness.rs");
 const RUNTIME_SOURCE: &str = include_str!("runtime_snapshot.rs");
 const COMMAND_SURFACE_SOURCE: &str = include_str!("runtime_snapshot/command_surface.rs");
 
@@ -39,11 +40,7 @@ fn command_intent_has_a_distinct_boot_lifetime_owner() {
 #[test]
 fn authoritative_readiness_reads_requested_intent_not_the_projection() {
     // Arrange
-    let readiness = function_source(
-        PRODUCTION_SOURCE,
-        "fn read_authoritative_readiness",
-        "fn maybe_execute",
-    );
+    let readiness = function_source(READINESS_SOURCE, "fn read_authoritative_readiness", "\n}\n");
 
     // Act
     let requested_reads = readiness

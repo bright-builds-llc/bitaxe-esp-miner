@@ -7,11 +7,15 @@ const LIVE: u32 = 1;
 const ACTIVE: u32 = 2;
 const RESERVED: u32 = 3;
 const REVOKED: u32 = 4;
+const BUDGETED: u32 = 5;
 const FLAGS: u32 = 7;
 const GENERATION_SHIFT: u32 = 3;
 
+#[path = "revocation/global.rs"]
+mod global;
 #[path = "revocation/reason.rs"]
 mod reason;
+pub(crate) use global::*;
 #[path = "revocation/timing.rs"]
 mod timing;
 pub(crate) use reason::RevocationReason;
@@ -160,6 +164,7 @@ impl GenerationGate {
         let state = self.state.load(Ordering::Acquire);
         state == generation.0 | LIVE
             || state == generation.0 | RESERVED
+            || state == generation.0 | BUDGETED
             || state == generation.0 | ACTIVE
     }
 
@@ -176,6 +181,20 @@ impl GenerationGate {
             || self.state.load(Ordering::Acquire) == generation.0 | RESERVED
     }
 
+    /// Releases acknowledged fan-only effects while retaining the live link.
+    pub fn release_unbudgeted_reservation(&self, generation: WorkerGeneration) -> bool {
+        self.budget_generation.load(Ordering::Acquire) == 0
+            && self
+                .state
+                .compare_exchange(
+                    generation.0 | RESERVED,
+                    generation.0 | LIVE,
+                    Ordering::AcqRel,
+                    Ordering::Acquire,
+                )
+                .is_ok()
+    }
+
     pub fn activate(&self, generation: WorkerGeneration) -> bool {
         self.activate_at(
             generation,
@@ -190,7 +209,7 @@ impl GenerationGate {
         let activated = self
             .state
             .compare_exchange(
-                generation.0 | RESERVED,
+                generation.0 | BUDGETED,
                 generation.0 | ACTIVE,
                 Ordering::AcqRel,
                 Ordering::Acquire,
@@ -241,6 +260,20 @@ impl GenerationGate {
         if !self.begin_reservation(generation) {
             return false;
         }
+        // Budget publication and unbudgeted fan restoration compete through
+        // one state CAS; restoration cannot release a newly budgeted owner.
+        if self
+            .state
+            .compare_exchange(
+                generation.0 | RESERVED,
+                generation.0 | BUDGETED,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .is_err()
+        {
+            return false;
+        }
         if self
             .budget_generation
             .compare_exchange(0, generation.0, Ordering::AcqRel, Ordering::Acquire)
@@ -289,7 +322,7 @@ impl GenerationGate {
         reason: RevocationReason,
     ) -> bool {
         // Only the winning CAS publishes a reason. A later cleanup cannot replace it.
-        for flag in [ACTIVE, RESERVED, LIVE, RESERVED, ACTIVE] {
+        for flag in [ACTIVE, BUDGETED, RESERVED, LIVE, RESERVED, BUDGETED, ACTIVE] {
             let revoked_state = if flag == LIVE {
                 0
             } else {
@@ -330,7 +363,7 @@ impl GenerationGate {
 
     pub fn check_deadline(&self, now_ms: u64) {
         let state = self.state.load(Ordering::Acquire);
-        if !matches!(state & FLAGS, LIVE | RESERVED | ACTIVE) {
+        if !matches!(state & FLAGS, LIVE | RESERVED | BUDGETED | ACTIVE) {
             return;
         }
         let now = now_ms as u32;
@@ -534,95 +567,6 @@ impl GenerationGate {
     }
 }
 
-static GATE: GenerationGate = GenerationGate::new();
-
-pub fn begin_link(now_ms: u64) -> Option<WorkerGeneration> {
-    GATE.begin_link(now_ms)
-}
-pub fn heartbeat(generation: WorkerGeneration, now_ms: u64) -> bool {
-    GATE.heartbeat(generation, now_ms)
-}
-pub(crate) fn revoke_reason_at(
-    generation: WorkerGeneration,
-    now_ms: u64,
-    reason: RevocationReason,
-) -> bool {
-    GATE.revoke_reason_at(generation, now_ms, reason)
-}
-pub fn revoke_at(generation: WorkerGeneration, now_ms: u64) -> bool {
-    GATE.revoke_at(generation, now_ms)
-}
-pub(crate) fn set_lease_deadline(generation: WorkerGeneration, deadline_ms: u64) -> bool {
-    GATE.set_lease_deadline(generation, deadline_ms)
-}
-pub(crate) fn note_shutdown(generation: WorkerGeneration, stage: u32, now_ms: u64) {
-    GATE.note_shutdown(generation, stage, now_ms);
-}
-pub(crate) fn timing(now_ms: u64) -> Option<RevocationTiming> {
-    GATE.timing(now_ms)
-}
-pub(crate) fn publish_counts(
-    generation: WorkerGeneration,
-    accepted: u64,
-    rejected: u64,
-    correlated: u64,
-) {
-    GATE.publish_counts(generation, accepted, rejected, correlated);
-}
-pub(crate) fn note_submission(maybe_generation: Option<WorkerGeneration>) {
-    GATE.note_io(maybe_generation, true);
-}
-pub(crate) fn note_dispatch(maybe_generation: Option<WorkerGeneration>, _now_ms: u64) {
-    GATE.note_io(maybe_generation, false);
-}
-pub fn check_deadline(now_ms: u64) {
-    GATE.check_deadline(now_ms);
-}
-pub(crate) fn note_fan_proof(generation: WorkerGeneration, now_ms: u64) {
-    GATE.note_fan_proof(generation, now_ms);
-}
-pub(crate) fn check_safety(safe: bool, nonzero_fan: bool, now_ms: u64) {
-    GATE.check_safety(safe, nonzero_fan, now_ms);
-}
-pub(crate) fn begin_reservation(generation: WorkerGeneration) -> bool {
-    GATE.begin_reservation(generation)
-}
-pub(crate) fn admit_budget(generation: WorkerGeneration, active_limit_ms: u64) -> bool {
-    super::shutdown_budget::conservative_plan_is_bounded()
-        && GATE.admit_budget(generation, active_limit_ms)
-}
-pub(crate) fn activate(generation: WorkerGeneration, now_ms: u64) -> bool {
-    GATE.activate_at(generation, now_ms)
-}
-pub(crate) fn is_live(generation: WorkerGeneration) -> bool {
-    GATE.is_live(generation)
-}
-pub(crate) fn permits(maybe_generation: Option<WorkerGeneration>) -> bool {
-    GATE.permits(maybe_generation)
-}
-pub(crate) fn maybe_revoked() -> Option<WorkerGeneration> {
-    GATE.maybe_revoked()
-}
-pub(crate) fn finish_shutdown(generation: WorkerGeneration) {
-    GATE.finish_shutdown(generation);
-}
-pub(crate) fn block_work() {
-    GATE.block_work();
-}
-pub(crate) fn stamp(maybe_generation: Option<WorkerGeneration>) -> WorkPermit {
-    GATE.stamp(maybe_generation)
-}
-pub(crate) fn permits_work(permit: WorkPermit) -> bool {
-    GATE.permits_work(permit)
-}
-
 #[cfg(test)]
 #[path = "revocation/tests.rs"]
 mod tests;
-
-pub(crate) fn begin_dispatch(permit: WorkPermit, now_ms: u64) -> bool {
-    GATE.begin_dispatch(permit, now_ms)
-}
-pub(crate) fn note_asic_halted(now_ms: u64) {
-    GATE.note_asic_halted(now_ms);
-}

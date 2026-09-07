@@ -19,6 +19,11 @@ pub(super) struct OwnerSession {
 }
 
 pub(super) enum OwnerCommand {
+    Cooling {
+        generation: revocation::WorkerGeneration,
+        restore: bool,
+        reply: SyncSender<Result<serde_json::Value, Error>>,
+    },
     Start {
         generation: revocation::WorkerGeneration,
         worker_lease_id: String,
@@ -96,6 +101,23 @@ pub(crate) fn renew(
         },
         deadlines,
     )
+}
+
+pub(crate) fn cooling(
+    generation: revocation::WorkerGeneration,
+    restore: bool,
+) -> Result<serde_json::Value, Error> {
+    let (reply, receiver) = mpsc::sync_channel(1);
+    notifications()?
+        .try_send(OwnerInboxMessage::Bwg(OwnerCommand::Cooling {
+            generation,
+            restore,
+            reply,
+        }))
+        .map_err(|_| Error::Unavailable)?;
+    receiver
+        .recv_timeout(Duration::from_secs(4))
+        .map_err(|_| Error::TimedOut)?
 }
 
 pub(crate) fn safe_stop() -> Result<(), Error> {
@@ -182,6 +204,15 @@ impl OrdinaryEspProductionSessionAdapter {
         maybe_next_lease_id: Option<MiningCampaignLeaseId>,
     ) -> ProductionSessionEvent {
         match command {
+            OwnerCommand::Cooling {
+                generation,
+                restore,
+                reply,
+            } => {
+                let result = self.cooling_command(generation, restore, snapshot);
+                let _ = reply.try_send(result);
+                self.wake_event(None, now_ms, snapshot, false)
+            }
             OwnerCommand::Start {
                 generation,
                 worker_lease_id,
@@ -190,6 +221,9 @@ impl OrdinaryEspProductionSessionAdapter {
                 reply,
             } => {
                 if self.maybe_bwg_session.is_some()
+                    || self
+                        .maybe_cooling_generation
+                        .is_some_and(|owned| owned != generation)
                     || !matches!(
                         snapshot.campaign_state,
                         MiningCampaignState::Unavailable | MiningCampaignState::Consumed
@@ -211,6 +245,7 @@ impl OrdinaryEspProductionSessionAdapter {
                     let _ = reply.try_send(Err(Error::Rejected));
                     return self.wake_event(None, now_ms, snapshot, false);
                 }
+                self.maybe_cooling_generation = None; // Ownership transfers to ordered mining cleanup.
                 FAN_CONTROLLER_ACTUATION_QUALIFIED.store(false, Ordering::Release);
                 let session = OwnerSession {
                     generation,
@@ -267,13 +302,87 @@ impl OrdinaryEspProductionSessionAdapter {
                     revocation::revoke_at(session.generation, now_ms);
                 }
                 if self.maybe_bwg_session.is_none() {
-                    let _ = reply.try_send(Ok(()));
+                    let result = self.restore_owned_cooling(snapshot);
+                    let _ = reply.try_send(result);
                     return self.wake_event(None, now_ms, snapshot, false);
                 }
                 self.maybe_bwg_reply = Some(PendingReply::SafeStop(reply));
                 ProductionSessionEvent::CampaignLeaseRevoked
             }
         }
+    }
+
+    fn cooling_command(
+        &mut self,
+        generation: revocation::WorkerGeneration,
+        restore: bool,
+        snapshot: &ProductionSessionSnapshot,
+    ) -> Result<serde_json::Value, Error> {
+        if self.maybe_bwg_session.is_some()
+            || !Self::cooling_hardware_idle(snapshot)
+            || !revocation::is_live(generation)
+            || self
+                .maybe_cooling_generation
+                .is_some_and(|owned| owned != generation)
+        {
+            return Err(Error::Rejected);
+        }
+        if restore {
+            if self.maybe_cooling_generation != Some(generation) {
+                return Err(Error::Rejected);
+            }
+            let result = cooling::restore(generation).map_err(Self::cooling_error)?;
+            if !revocation::release_unbudgeted_reservation(generation)
+                && revocation::maybe_revoked() != Some(generation)
+            {
+                return Err(Error::Rejected);
+            }
+            self.maybe_cooling_generation = None;
+            return Ok(result);
+        }
+        if self.maybe_cooling_generation.is_some() || !revocation::begin_reservation(generation) {
+            return Err(Error::Rejected);
+        }
+        self.maybe_cooling_generation = Some(generation);
+        FAN_CONTROLLER_ACTUATION_QUALIFIED.store(false, Ordering::Release);
+        cooling::qualify(generation).map_err(Self::cooling_error)
+    }
+
+    fn cooling_hardware_idle(snapshot: &ProductionSessionSnapshot) -> bool {
+        matches!(
+            snapshot.campaign_state,
+            MiningCampaignState::Unavailable | MiningCampaignState::Consumed
+        ) && matches!(
+            snapshot.hardware_state,
+            MiningHardwareState::Unprepared | MiningHardwareState::Stopped
+        )
+    }
+
+    fn cooling_error(error: cooling_core::CoolingError) -> Error {
+        match error {
+            cooling_core::CoolingError::TimedOut => Error::TimedOut,
+            _ => Error::Rejected,
+        }
+    }
+
+    pub(super) fn restore_owned_cooling(
+        &mut self,
+        snapshot: &ProductionSessionSnapshot,
+    ) -> Result<(), Error> {
+        let Some(generation) = self.maybe_cooling_generation else {
+            return Ok(());
+        };
+        if self.maybe_bwg_session.is_some() || !Self::cooling_hardware_idle(snapshot) {
+            return Err(Error::Rejected);
+        }
+        cooling::restore(generation).map_err(Self::cooling_error)?;
+        if !revocation::release_unbudgeted_reservation(generation)
+            && revocation::maybe_revoked() != Some(generation)
+        {
+            return Err(Error::Rejected);
+        }
+        self.maybe_cooling_generation = None;
+        Ok(())
     }
 
     pub(super) fn note_worker_preparation_started(&mut self) {

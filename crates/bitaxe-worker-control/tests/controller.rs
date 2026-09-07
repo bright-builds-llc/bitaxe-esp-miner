@@ -1,5 +1,7 @@
 #[path = "controller/budget_review.rs"]
 mod budget_review;
+#[path = "controller/cooling.rs"]
+mod cooling;
 #[path = "controller/liveness.rs"]
 mod liveness;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -57,10 +59,28 @@ impl LeaseAuthorizationVerifier for FixtureVerifier {
 struct FakeSession {
     events: Vec<&'static str>,
     fail_start: bool,
+    fail_cooling: bool,
     remaining_safe_stop_failures: usize,
 }
 
 impl WorkerSession for FakeSession {
+    fn qualify_cooling(&mut self) -> Result<serde_json::Value, WorkerSessionError> {
+        self.events.push("cooling");
+        if self.fail_cooling {
+            return Err(WorkerSessionError::Rejected);
+        }
+        Ok(
+            json!({"schema":"worker-cooling-proof-v1","fan_duty_percent":100,"fan_rpm":1200,
+            "post_command_fan_proven":true,"asic_effects":false,"budget_reserved":false}),
+        )
+    }
+    fn restore_cooling(&mut self) -> Result<serde_json::Value, WorkerSessionError> {
+        self.events.push("restore_cooling");
+        Ok(
+            json!({"schema":"worker-cooling-baseline-v1","fan_duty_percent":30,
+            "cooling_proven":true,"asic_effects":false,"budget_reserved":false}),
+        )
+    }
     fn acceptance_budget_review(
         &self,
         expected: &str,
@@ -350,15 +370,28 @@ fn possession_nonce_capacity_fails_closed_without_eviction() {
 }
 
 fn worker() -> WorkerControl<FixtureVerifier, FakeSession> {
-    worker_with_session(FakeSession::default())
+    worker_with_restoration(None)
+}
+
+fn worker_with_restoration(
+    maybe_restoration: Option<RestorationReason>,
+) -> WorkerControl<FixtureVerifier, FakeSession> {
+    worker_config(FakeSession::default(), maybe_restoration)
 }
 
 fn worker_with_session(session: FakeSession) -> WorkerControl<FixtureVerifier, FakeSession> {
+    worker_config(session, None)
+}
+
+fn worker_config(
+    session: FakeSession,
+    maybe_restoration: Option<RestorationReason>,
+) -> WorkerControl<FixtureVerifier, FakeSession> {
     WorkerControl::new(
         DeviceIdentity::from_seed([7_u8; 32]),
         FixtureVerifier,
         session,
-        None,
+        maybe_restoration,
         bitaxe_worker_control::FirmwareIdentity::new(
             bitaxe_worker_control::FirmwareSourceCommit::parse(&"a".repeat(40))
                 .expect("fixture source commit should parse"),

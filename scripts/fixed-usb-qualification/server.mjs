@@ -6,7 +6,7 @@ import { authorityCall, readPoolForSigning, signWindow } from "./authority.mjs";
 import { BUNDLE, canonicalBase64, contextPage, digest, exactObject, missing, nonce, QualificationError, readJson, requireCondition, writeNew } from "./contract.mjs";
 import { loadContext, verifyFrozen } from "./preflight.mjs";
 import { finishWindow, recordFault, recordState, requireCompleteCycles, selectedWindow } from "./store.mjs";
-import { loadSuccessor, requireSuccessorBaseline, validateBudgetReview } from "./successor.mjs";
+import { loadSuccessor, requireSuccessorBaseline, validateBudgetReview, validateCoolingReview } from "./successor.mjs";
 import { validateState } from "./judge.mjs";
 
 const SCRIPT_ROOT = dirname(fileURLToPath(import.meta.url));
@@ -18,7 +18,7 @@ export async function createSupervisor(options, operations = {}) {
   const frozen = await verify();
   const gateAssetRoot = frozen?.gate_root ?? context.gate_root;
   const trust = await readJson(resolve(context.firmware_root, "firmware/bitaxe/bwg/deployment-trust.json"));
-  let scope, pendingWindow, lastBrowserState, reviewChallenge, reviewedBudget, signing = false, recordQueue = Promise.resolve();
+  let scope, pendingWindow, lastBrowserState, reviewChallenge, coolingChallenge, reviewedBudget, signing = false, recordQueue = Promise.resolve();
   const sign = operations.sign ?? ((operation, input) => authorityCall(context.gate_root, options.authorityDirectory, `sign-${operation}`, input, options.bun));
   const readPool = operations.readPool ?? (() => readPoolForSigning(context.firmware_root, options.poolCredentials));
   const now = operations.now ?? Date.now;
@@ -52,9 +52,33 @@ export async function createSupervisor(options, operations = {}) {
       exactObject(await body(request), []);
       requireCondition(!signing && pendingWindow === undefined, "context_busy");
       reviewChallenge = undefined;
+      coolingChallenge = undefined;
       reviewedBudget = undefined;
       scope = { challengeId: `challenge_${nonce()}`, retentionExpiryUnixSeconds: Math.floor(now() / 1000) + 86400 };
       return send(response, 200, scope);
+    }
+    if (request.method === "POST" && url.pathname === "/cooling-review-context") {
+      exactObject(await body(request), []);
+      requireCondition(scope && !signing && pendingWindow === undefined, "cooling_review_scope");
+      reviewedBudget = undefined;
+      reviewChallenge = undefined;
+      coolingChallenge = { nonce: nonce(), challengeId: scope.challengeId, expires: now() + 45000 };
+      return send(response, 200, { campaignId: context.campaign_id, nonce: coolingChallenge.nonce });
+    }
+    if (request.method === "POST" && url.pathname === "/cooling-review") {
+      const input = await body(request);
+      exactObject(input, ["nonce", "proof", "restoration", "budget_before", "budget_after", "state"]);
+      const challenge = coolingChallenge;
+      coolingChallenge = undefined;
+      requireCondition(challenge && challenge.nonce === input.nonce && challenge.challengeId === scope?.challengeId &&
+        challenge.expires > now() && !signing && pendingWindow === undefined, "cooling_review_challenge");
+      const { nonce: requestNonce, ...review } = input;
+      validateCoolingReview(review);
+      await requireSuccessorBaseline(root, context, input.state);
+      const file = `cooling-review-${challenge.nonce}.json`;
+      await writeNew(resolve(root, file), { schema: "fixed-usb-cooling-review-v1", context_sha256: digest(JSON.stringify(context)), ...review });
+      lastBrowserState = input.state;
+      return send(response, 200, { cooling_review_saved: true, review_file: file });
     }
     if (request.method === "POST" && url.pathname === "/budget-review-context") {
       exactObject(await body(request), []);
@@ -71,7 +95,7 @@ export async function createSupervisor(options, operations = {}) {
       requireCondition(challenge && challenge.nonce === input.nonce && challenge.challengeId === scope?.challengeId &&
         challenge.expires > now() && canonicalBase64(input.controlSessionBindingSha256, 32), "budget_review_challenge");
       const successor = await loadSuccessor(root, context);
-      const index = successor ? await selectedWindow(root) : 1;
+      const index = successor ? await selectedWindow(root) : input.report?.charged_ms === 210000 ? 2 : 1;
       validateBudgetReview(input.report, index);
       await requireSuccessorBaseline(root, context, input.state);
       const file = `budget-review-${challenge.nonce}.json`;
@@ -131,6 +155,7 @@ export async function createSupervisor(options, operations = {}) {
       if (!lastBrowserState.connected || lastBrowserState.failure || lastBrowserState.running) {
         reviewedBudget = undefined;
         reviewChallenge = undefined;
+        coolingChallenge = undefined;
       }
       return send(response, 200, await serializeRecord(() => recordState(root, context, value.state)));
     }

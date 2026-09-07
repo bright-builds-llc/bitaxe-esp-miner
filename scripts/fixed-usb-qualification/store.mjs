@@ -12,7 +12,7 @@ async function exists(path) {
 export async function selectedWindow(root) {
   const { context } = await readJson(resolve(root, "context.json"));
   const successor = await loadSuccessor(root, context);
-  for (let index = successor ? 1 : 0; index < 3; index += 1) {
+  for (let index = successor?.remaining_windows[0] ?? 0; index < 3; index += 1) {
     const resultPath = resolve(root, `window-${index}.result.json`);
     if (!await exists(resultPath)) return index;
     if (successor) {
@@ -20,7 +20,7 @@ export async function selectedWindow(root) {
       const records = await windowRecords(root, index);
       for (const record of records) validateState(record.state, context);
       const fault = await readJson(resolve(root, `window-${index}.fault.json`));
-      const expected = judgeWindow(index, records, fault, { successor: true });
+      const expected = judgeWindow(index, records, fault, { successor: true, lastWindowOnly: successor.remaining_windows[0] === 2 });
       requireCondition(JSON.stringify(await readJson(resultPath)) === JSON.stringify(expected), "successor_result_integrity");
     }
   }
@@ -65,7 +65,7 @@ export async function finishWindow(root, context, index) {
   const faultPath = resolve(root, `window-${index}.fault.json`);
   const fault = await exists(faultPath) ? await readJson(faultPath) : undefined;
   const successor = await loadSuccessor(root, context);
-  const result = judgeWindow(index, records, fault, { successor: successor !== undefined });
+  const result = judgeWindow(index, records, fault, { successor: successor !== undefined, lastWindowOnly: successor?.remaining_windows[0] === 2 });
   await writeNew(resolve(root, `window-${index}.result.json`), result);
   return result;
 }

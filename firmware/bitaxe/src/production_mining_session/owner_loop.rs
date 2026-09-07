@@ -27,7 +27,9 @@ pub(super) fn run_owner(
                     revocation_now,
                 );
                 adapter.complete_reply(&session.snapshot());
-            } else if crate::worker_acceptance_budget::finish(generation).is_ok() {
+            } else if adapter.restore_owned_cooling(&session.snapshot()).is_ok()
+                && crate::worker_acceptance_budget::finish(generation).is_ok()
+            {
                 // A queued or rejected Start may own a reservation before it
                 // reaches this owner. Never retire through in-flight NVS work.
                 revocation::finish_shutdown(generation);

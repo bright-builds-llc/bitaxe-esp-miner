@@ -38,6 +38,13 @@ impl ControllerRequest {
         Ok(())
     }
 
+    pub(super) fn includes_status_evidence(&self) -> bool {
+        !matches!(
+            self.command.as_str(),
+            "discover" | "transport_probe" | "acceptance_budget_review" | "qualification_cooling"
+        )
+    }
+
     pub(super) fn require_no_payload(&self) -> Result<(), WorkerControlError> {
         if self.payload.is_none() {
             Ok(())

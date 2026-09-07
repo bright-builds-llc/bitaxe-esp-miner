@@ -39,6 +39,16 @@ pub trait WorkerSession {
         Ok(None)
     }
 
+    /// Proves full cooling without ASIC or voltage effects or a mining reservation.
+    fn qualify_cooling(&mut self) -> Result<serde_json::Value, WorkerSessionError> {
+        Err(WorkerSessionError::Rejected)
+    }
+
+    /// Restores only this session's fan-only effects after fresh cooling proof.
+    fn restore_cooling(&mut self) -> Result<serde_json::Value, WorkerSessionError> {
+        Err(WorkerSessionError::Rejected)
+    }
+
     /// Reads campaign-bound reservation facts after fresh possession; never mutates the ledger.
     fn acceptance_budget_review(
         &self,

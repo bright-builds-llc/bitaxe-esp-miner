@@ -414,3 +414,22 @@ fn pending_reservation_is_revocable_before_durable_write_and_budget_admission() 
     gate.finish_shutdown(generation);
     assert!(gate.begin_link(2802).is_some());
 }
+
+#[test]
+fn fan_restoration_cannot_release_budgeted_or_revoked_ownership() {
+    // Arrange
+    let gate = GenerationGate::new();
+    let generation = gate.begin_link(0).expect("link");
+    assert!(gate.begin_reservation(generation));
+    assert!(gate.release_unbudgeted_reservation(generation));
+    assert!(gate.begin_reservation(generation));
+    assert!(gate.admit_budget(generation, 30_000));
+    // Act / Assert
+    assert!(!gate.release_unbudgeted_reservation(generation));
+    assert!(gate.activate(generation));
+    gate.revoke_at(generation, 10);
+    assert!(!gate.release_unbudgeted_reservation(generation));
+    assert!(gate.begin_link(11).is_none());
+    gate.finish_shutdown(generation);
+    assert!(gate.begin_link(12).is_some());
+}

@@ -1,7 +1,9 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::{AutomationCommand, WorkflowIdentity, SAFE10_EVIDENCE_SCHEMA};
+use crate::{
+    AutomationCommand, WorkflowIdentity, LEGACY_SAFE10_EVIDENCE_SCHEMA, SAFE10_EVIDENCE_SCHEMA,
+};
 
 #[derive(Debug, Clone, Deserialize, Eq, JsonSchema, PartialEq, Serialize)]
 pub struct Safe10SourceEvidence {
@@ -125,8 +127,12 @@ pub struct Safe10Evidence {
 
 impl Safe10Evidence {
     pub fn validate(&self) -> Result<(), &'static str> {
-        if self.schema_version != SAFE10_EVIDENCE_SCHEMA
-            || self.board != 205
+        let (source_paths, production_paths) = match self.schema_version.as_str() {
+            LEGACY_SAFE10_EVIDENCE_SCHEMA => (19, 9),
+            SAFE10_EVIDENCE_SCHEMA => (23, 13),
+            _ => return Err("SAFE-10 identity is invalid"),
+        };
+        if self.board != 205
             || self.attempt_ordinal != 3
             || self.workflow.command != AutomationCommand::ProjectSafe10Evidence
         {
@@ -160,8 +166,8 @@ impl Safe10Evidence {
         if !self.source.source_semantics_current
             || !self.source.reference_semantics_current
             || !self.source.attempt_source_compatible
-            || self.source.source_path_count != 19
-            || self.source.production_path_count != 9
+            || self.source.source_path_count != source_paths
+            || self.source.production_path_count != production_paths
             || self.source.reference_path_count != 2
         {
             return Err("SAFE-10 source evidence is incomplete");
@@ -224,8 +230,8 @@ mod tests {
                 source_semantics_current: true,
                 reference_semantics_current: true,
                 attempt_source_compatible: true,
-                source_path_count: 19,
-                production_path_count: 9,
+                source_path_count: 23,
+                production_path_count: 13,
                 reference_path_count: 2,
             },
             prerequisites: Safe10PrerequisiteEvidence {
@@ -328,5 +334,58 @@ mod tests {
             bad_modes.validate(),
             Err("SAFE-10 live evidence is incomplete")
         );
+    }
+    #[test]
+    fn obsolete_nineteen_path_inventory_is_rejected() {
+        // Arrange
+        let mut evidence = evidence();
+        evidence.source.source_path_count = 19;
+        // Act / Assert
+        assert_eq!(
+            evidence.validate(),
+            Err("SAFE-10 source evidence is incomplete")
+        );
+    }
+    #[test]
+    fn obsolete_nine_production_paths_are_rejected() {
+        // Arrange
+        let mut evidence = evidence();
+        evidence.source.production_path_count = 9;
+        // Act / Assert
+        assert_eq!(
+            evidence.validate(),
+            Err("SAFE-10 source evidence is incomplete")
+        );
+    }
+    #[test]
+    fn historical_v1_inventory_remains_valid() {
+        // Arrange
+        let mut evidence = evidence();
+        evidence.schema_version = LEGACY_SAFE10_EVIDENCE_SCHEMA.to_owned();
+        evidence.source.source_path_count = 19;
+        evidence.source.production_path_count = 9;
+        // Act / Assert
+        assert_eq!(evidence.validate(), Ok(()));
+    }
+
+    #[test]
+    fn schema_and_inventory_versions_cannot_be_mixed() {
+        for (schema, total, production) in [
+            (LEGACY_SAFE10_EVIDENCE_SCHEMA, 23, 13),
+            (LEGACY_SAFE10_EVIDENCE_SCHEMA, 19, 13),
+            (SAFE10_EVIDENCE_SCHEMA, 19, 9),
+            (SAFE10_EVIDENCE_SCHEMA, 23, 9),
+        ] {
+            // Arrange
+            let mut evidence = evidence();
+            evidence.schema_version = schema.to_owned();
+            evidence.source.source_path_count = total;
+            evidence.source.production_path_count = production;
+            // Act / Assert
+            assert_eq!(
+                evidence.validate(),
+                Err("SAFE-10 source evidence is incomplete")
+            );
+        }
     }
 }

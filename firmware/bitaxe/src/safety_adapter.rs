@@ -84,6 +84,9 @@ impl TryFrom<u8> for FanDutyPercent {
 pub(crate) enum SafetyActuationCommand {
     SetFanDuty(FanDutyPercent),
     SetFanDutyAfterCoolingProof,
+    RestoreCoolingBaseline {
+        generation: crate::production_mining_session::revocation::WorkerGeneration,
+    },
     SetCoreVoltage(Ultra205CoreVoltage),
     SetCoreVoltageForGeneration {
         voltage: Ultra205CoreVoltage,
@@ -309,6 +312,21 @@ fn apply_safety_actuation(
                 return SafetyActuationReply::HardwareWriteFailed;
             }
             emc2101::write_fan_duty_percent(&mut bus, percent.get())
+        }
+        SafetyActuationCommand::RestoreCoolingBaseline { generation } => {
+            let now_ms = crate::runtime_uptime::millis();
+            if !(crate::production_mining_session::revocation::is_live(generation)
+                || crate::production_mining_session::revocation::maybe_revoked()
+                    == Some(generation))
+                || crate::production_mining_session::revocation::permits(Some(generation))
+                || !crate::production_mining_session::cooling_core::baseline_safe(
+                    &observation_snapshot(),
+                    now_ms,
+                )
+            {
+                return SafetyActuationReply::HardwareWriteFailed;
+            }
+            emc2101::write_fan_duty_percent(&mut bus, FanDutyPercent::PAUSED.get())
         }
         SafetyActuationCommand::SetFanDutyAfterCoolingProof => {
             emc2101::write_fan_duty_percent(&mut bus, FanDutyPercent::PAUSED.get())
