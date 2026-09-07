@@ -138,3 +138,16 @@ js_test(
     data = [":fixed_usb_qualification_sources"],
     entry_point = "fixed-usb-qualification/iterative.test.mjs",
 )
+
+js_binary(
+    name = "audit_owner_stack",
+    data = ["owner-stack-audit.mjs"],
+    entry_point = "owner-stack-audit-cli.mjs",
+    visibility = ["//visibility:public"],
+)
+
+js_test(
+    name = "owner_stack_audit_test",
+    data = ["owner-stack-audit.mjs"],
+    entry_point = "owner-stack-audit.test.mjs",
+)

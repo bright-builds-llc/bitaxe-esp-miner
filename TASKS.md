@@ -4734,6 +4734,34 @@ Final Gate publication: `53bb4fd354e04889b6b0251aa55e316e3a0ac172`, archive SHA-
 
 Final publication checks: all 87 exact-pin Bazel targets pass; real ESP32-S3 packaging, USB ownership, reference and redaction checks pass. A final diagnostic-only regression accepts an immediate stopping sample only when it contains actual dispatched work and fresh safe observations; normal/fault/legacy running requirements remain unchanged. All 62 harness tests and its canonical Bazel target pass. Firmware diagnostics and accounting are ready for publication; no panic root cause or physical retention/mining success is claimed yet.
 
+Diagnostic 001 hardware review: d5524872 / Gate 53bb4fd3 passed initial install,
+four current-image cycles, fan proof and a separately signed diagnostic. One
+real work item was dispatched; active 7359 ms, gate closure 408 ms and shutdown
+initiation 446 ms, qualified cooling and restoration were recorded. New ledger
+30000 ms/next ordinal 2/complete; original 240000 ms/masks 7 unchanged. All resources
+released. The valid preparation receipt measured only 28 bytes minimum owner
+stack (configured 16384), with heap free 23999 / largest 10752. No panic occurred in
+this diagnostic and the earlier cause remains unproven. See
+[diagnostic 001 evidence](docs/parity/evidence/20260907-iterative-diagnostic-001.md).
+
+Targeted stack correction before another allowance:
+
+- [x] Increase the sole owner's stack to 24576 bytes; verify exact native entry
+  frame ≤8192 bytes and preserve all ownership/cancellation boundaries.
+- [x] Capture fresh owner-thread resources before Start acknowledgement,
+  during active work and after shutdown; never query another task's watermark
+  from the control reader or block heartbeat supervision.
+- [x] Add qualification context v2 requiring ≥4096 bytes observed headroom and
+  generation/phase/freshness-bound resources. Preserve v1 historical judgments;
+  an earlier low/missing-resource observation cannot be hidden by later cleanup.
+- [ ] Verify/publish the changed pair and qualify four new cycles plus a fresh
+  30000-ms diagnostic. Proceed to full acceptance only with adequate measured
+  stack and heap observations; no predicted margin is hardware evidence.
+
+Stack correction contract: run `just audit-owner-stack <absolute-exact-ELF> <absolute-managed-objdump> <absolute-production_mining_session.rs>` before publication and against the clean final package. The named native owner entry must reserve at most 8192 bytes and its requested task stack must be 24576 bytes. Gate `50b42d72f7d30b3293c833dbe04d06233f2fcebc` is published with full verification (400 web/CLI tests) and pinned archive SHA-256 `b7d9784a12786b01aad1af35500b72a44e8a4283f1c01259973e778d7c823760`. New allowances require iterative context v2 with a 4096-byte owner-stack floor; old v1 evidence remains immutable and readable but cannot serve new allowances. Collect owner-thread resources before Start acknowledgement, periodically while active and after durable shutdown before Stop acknowledgement; omit stale or wrong-generation snapshots. Any missing/low/wrong-phase evidence fails closed and remains visible even if cleanup also fails. The original signing and manifest contracts are unchanged.
+
+Stack correction verification: ordered Cargo checks pass (2118 tests, one preexisting ignored); all 89 pinned Bazel targets, real ESP32-S3 packaging, native owner-stack audit, USB ownership, reference and redaction pass. The ownership check was updated for the deliberately reused completed-loop snapshot, and its original failure is preserved. The native owner entry now uses 4400 bytes against the 8192-byte ceiling. Gate full checks pass including 400 web/CLI tests, and all 67 harness tests pass. Fresh hardware verification of the 24576-byte allocation and ≥4096-byte measured margin remains required before full acceptance.
+
 
 ## Future
 

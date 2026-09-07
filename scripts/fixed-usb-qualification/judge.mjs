@@ -16,9 +16,17 @@ const BOOLEANS = ["budget_complete", "safe_stop_complete", "voltage_fresh", "pow
 const NUMBERS = ["voltage_volts", "power_watts", "chip_temp_celsius", "fan_rpm"];
 export const u32 = (value) => Number.isInteger(value) && value >= 0 && value <= 0xffffffff;
 
+function validateOwnerResources(resource) {
+    exactObject(resource, ["schema", "generation", "phase", "observed_at_ms", "heap_free_bytes", "heap_largest_bytes", "stack_free_bytes"]);
+    requireCondition(resource.schema === "worker-owner-resources-v1" && u32(resource.generation) &&
+      ["preparation", "active", "shutdown_complete"].includes(resource.phase) && typeof resource.observed_at_ms === "string" &&
+      /^(0|[1-9][0-9]{0,19})$/u.test(resource.observed_at_ms) && BigInt(resource.observed_at_ms) <= 18446744073709551615n &&
+      ["heap_free_bytes", "heap_largest_bytes", "stack_free_bytes"].every((key) => u32(resource[key])), "owner_resources_shape");
+}
+
 export function validateQualification(value) {
   exactObject(value, ["schema", ...COUNTS, ...BOOLEANS, ...NUMBERS, "gate_closed_ms", "shutdown_started_ms", "safe_stop_stage", "revocation_reason",
-    "active_limit_ms", "shutdown_budget_ms", "work_gate_remaining_ms"], ["attempt"]);
+    "active_limit_ms", "shutdown_budget_ms", "work_gate_remaining_ms"], ["attempt", "owner_resources"]);
   requireCondition(value.schema === "worker-qualification-v1" && COUNTS.every((key) => u32(value[key])) &&
     BOOLEANS.every((key) => typeof value[key] === "boolean") && value.budget_reserved_ms <= 240000 &&
     STAGES.includes(value.safe_stop_stage), "qualification_shape");
@@ -30,6 +38,9 @@ export function validateQualification(value) {
   for (const [numeric, flag] of [["voltage_volts", "voltage_fresh"], ["power_watts", "power_fresh"],
     ["chip_temp_celsius", "temperature_fresh"], ["fan_rpm", "fan_fresh"]]) {
     requireCondition(value[flag] === (value[numeric] !== null), "freshness_shape");
+  }
+  if (value.owner_resources !== undefined) {
+    validateOwnerResources(value.owner_resources);
   }
   if (value.attempt !== undefined) {
     const a = value.attempt;
@@ -52,7 +63,7 @@ export function validatePreservation(value) {
 
 export function validateState(value, context) {
   exactObject(value, ["schema", "gateCommit", "status", "connected", "running", "heartbeatSuppressed", "renewalsConfirmed", "deviceRestorationConfirmed", "deviceLeaseInactive", "serialOwnershipReleased"],
-    ["expectedFirmwareSourceCommit", "expectedAppElfSha256", "qualification", "preservation", "probe", "failure", "admissionFailureStage", "serialFailureCategory"]);
+    ["expectedFirmwareSourceCommit", "expectedAppElfSha256", "qualification", "preservation", "probe", "failure", "admissionFailureStage", "serialFailureCategory", "ownerResourceFailure"]);
   requireCondition(value.schema === "worker-serial-acceptance-v1" && value.gateCommit === context.gate_commit &&
     value.expectedFirmwareSourceCommit === context.firmware_commit && value.expectedAppElfSha256 === context.app_elf_sha256 &&
     STATUSES.includes(value.status) && u32(value.renewalsConfirmed) && value.renewalsConfirmed <= 16 &&
@@ -60,6 +71,13 @@ export function validateState(value, context) {
   if (value.admissionFailureStage !== undefined) requireCondition(["ownership", "permission", "device_filter", "scope", "opening", "hello", "manifest_identity", "capability", "possession", "baseline", "continuity", "cleanup"].includes(value.admissionFailureStage), "admission_stage_shape");
   if (value.serialFailureCategory !== undefined) requireCondition(SERIAL_FAILURES.includes(value.serialFailureCategory), "serial_failure_shape");
   if (value.failure !== undefined) requireCondition(FAILURES.includes(value.failure), "browser_failure_shape");
+  if (value.ownerResourceFailure !== undefined) {
+    const failure = value.ownerResourceFailure;
+    exactObject(failure, ["schema", "generation", "resources"]);
+    requireCondition(failure.schema === "worker-owner-resource-failure-v1" &&
+      (failure.generation === null || u32(failure.generation)), "owner_resource_failure_shape");
+    if (failure.resources !== null) validateOwnerResources(failure.resources);
+  }
   if (value.qualification !== undefined) validateQualification(value.qualification);
   if (value.preservation !== undefined) validatePreservation(value.preservation);
   if (value.probe !== undefined) {

@@ -48,6 +48,10 @@ impl Ultra205MiningActuationAdapter {
         crate::preparation_evidence::record(generation.raw(), number, outcome, failure, position);
         let resources = crate::preparation_evidence::observe_resources(position);
         crate::preparation_evidence::record(generation.raw(), number, outcome, failure, resources);
+        crate::production_mining_session::owner_resources::capture(
+            generation.raw(),
+            crate::production_mining_session::owner_resources::Phase::Preparation,
+        );
     }
 
     fn preparation_failure(

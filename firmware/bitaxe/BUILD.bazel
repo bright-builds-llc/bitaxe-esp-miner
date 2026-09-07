@@ -582,6 +582,7 @@ rust_test(
         "src/production_mining_session/cooling_core.rs",
         "src/production_worker_admission_host_test.rs",
         "src/production_worker_admission_host_test/start_boundary.rs",
+        "src/production_worker_admission_host_test/resource_acknowledgement.rs",
         "src/production_mining_session/admission_diagnostics.rs",
         "src/production_mining_session/bwg.rs",
         "src/production_mining_session/revocation.rs",
@@ -1287,4 +1288,12 @@ rust_test(
     edition = "2021",
     rustc_env = {"BITAXE_FIRMWARE_COMMIT": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
     deps = ["//crates/bitaxe-api:bitaxe_api"],
+)
+
+rust_test(
+    name = "production_owner_resources_tests",
+    srcs = ["src/production_owner_resources_host_test.rs", "src/production_mining_session/owner_resources.rs", "src/production_mining_session/owner_resources/cache.rs", "src/production_mining_session/owner_resources/tests.rs"],
+    crate_root = "src/production_owner_resources_host_test.rs",
+    edition = "2021",
+    deps = ["@crates//:serde_json"],
 )

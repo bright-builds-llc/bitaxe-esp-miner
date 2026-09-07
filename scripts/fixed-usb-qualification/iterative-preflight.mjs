@@ -5,6 +5,13 @@ import { inspectSources } from "./preflight.mjs";
 import { validateCycle, validateState } from "./judge.mjs";
 import { maximumActiveMs, PURPOSES, requireExhaustedOriginal, requireIdleLedger, validateAttempt } from "./iterative-contract.mjs";
 
+export function validateIterativePolicy(context, live = false) {
+  const v2 = context.schema === "fixed-usb-iterative-context-v2";
+  requireCondition(v2 ? context.owner_stack_minimum_bytes === 4096 :
+    context.schema === "fixed-usb-iterative-context-v1" && context.owner_stack_minimum_bytes === undefined, "iterative_policy");
+  requireCondition(!live || v2, "iterative_policy_upgrade_required");
+  return v2;
+}
 export async function requireIterativeTask(firmwareRoot) {
   const tasks = await readFile(resolve(firmwareRoot, "TASKS.md"), "utf8");
   let active = false, count = 0, total = 0;
@@ -123,6 +130,7 @@ export async function iterativePreflight(options, operations = {}) {
     purpose: options.purpose, maximumActiveMilliseconds: maximumActiveMs(options.purpose) });
   if (previous.schema !== "worker-iterative-bootstrap-v1") {
     const prior = previous.context;
+    if (prior.schema === "fixed-usb-iterative-context-v1") requireCondition(options.purpose === "diagnostic", "iterative_policy_upgrade_required");
     const same = ["firmware_commit", "gate_commit", "app_elf_sha256"].every((key) => prior[key] === snapshot[key]);
     if (previous.result === "passed") {
       const nextPurpose = { diagnostic: "normal", normal: "foreground_loss", foreground_loss: "heartbeat_loss" }[prior.qualification_attempt.purpose];
@@ -134,7 +142,7 @@ export async function iterativePreflight(options, operations = {}) {
       prior.qualification_attempt.purpose === (options.purpose === "foreground_loss" ? "normal" : "foreground_loss"), "iterative_final_sequence");
   } else requireCondition(options.purpose === "diagnostic", "iterative_initial_purpose");
   const cycleSource = options.cyclesFrom ? await reusableCycles(resolve(options.cyclesFrom), snapshot, parent) : undefined;
-  const context = { schema: "fixed-usb-iterative-context-v1", ...snapshot, qualification_attempt: attempt,
+  const context = { schema: "fixed-usb-iterative-context-v2", owner_stack_minimum_bytes: 4096, ...snapshot, qualification_attempt: attempt,
     required_no_mining_cycles: 4, ...(cycleSource ? { cycle_source: cycleSource.proof } : {}), original_campaign_id: previous.original_campaign_id,
     previous_receipt: previousPath, previous_receipt_sha256: await fileDigest(previousPath),
     progress_sha256: await fileDigest(options.input), progress_path: resolve(options.input),
@@ -147,6 +155,7 @@ export async function iterativePreflight(options, operations = {}) {
     device_effects: false, allowance_reserved_on_device: false };
 }
 export async function validateIterativeContext(root, context) {
+  validateIterativePolicy(context);
   await requireIterativeTask(context.firmware_root);
   validateAttempt(context.qualification_attempt);
   const previous = await readPrevious(context.previous_receipt);

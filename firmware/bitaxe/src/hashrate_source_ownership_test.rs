@@ -14,10 +14,13 @@ const SDKCONFIG_DEFAULTS: &str = include_str!("../sdkconfig.defaults");
 #[test]
 fn sole_production_owner_schedules_active_only_hashrate_reads() {
     // Arrange
-    let service = "service_hashrate_monitor(&session.snapshot(), now_ms)";
+    let service = "service_hashrate_monitor(&snapshot, now_ms)";
+    let (_, completed_iteration) = OWNER_LOOP_SOURCE
+        .rsplit_once("let snapshot = session.snapshot();")
+        .expect("completed owner snapshot");
 
     // Act
-    let service_count = OWNER_LOOP_SOURCE.matches(service).count();
+    let service_count = completed_iteration.matches(service).count();
 
     // Assert
     assert_eq!(service_count, 1);
@@ -74,21 +77,20 @@ fn owner_phase_and_campaign_publication_have_single_production_ownership() {
     assert_eq!(OWNER_LOOP_SOURCE.matches(publication).count(), 1);
     assert!(OWNER_LOOP_SOURCE
         .contains("record_owner_phase(TaskWatchdogOwnerPhase::PublishingCampaignStatus)"));
-    assert!(OWNER_LOOP_SOURCE
-        .contains("record_owner_phase(TaskWatchdogOwnerPhase::ServicingHashrate)"));
+    assert!(
+        OWNER_LOOP_SOURCE.contains("record_owner_phase(TaskWatchdogOwnerPhase::ServicingHashrate)")
+    );
     assert_eq!(
         TASK_WATCHDOG_OBSERVATION_SOURCE
             .matches(observation_store)
             .count(),
         1
     );
-    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE
-        .contains("state: Mutex<TaskWatchdogObservationState>"));
+    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("state: Mutex<TaskWatchdogObservationState>"));
     assert!(!TASK_WATCHDOG_OBSERVATION_SOURCE.contains("publication_sequence"));
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains(".with_task_watchdog_owner_phase("));
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains(".with_task_watchdog_owner_subphase("));
-    assert!(CAMPAIGN_STATUS_SOURCE
-        .contains("CAMPAIGN_STATUS_PUBLICATION_INTERVAL_MS: u64 = 1_000"));
+    assert!(CAMPAIGN_STATUS_SOURCE.contains("CAMPAIGN_STATUS_PUBLICATION_INTERVAL_MS: u64 = 1_000"));
 }
 
 #[test]
@@ -112,7 +114,10 @@ fn runtime_health_copies_producer_facts_before_sampling_evaluation_time() {
     // Assert
     assert!(checkpoint_index < clock_index);
     assert!(watchdog_index < clock_index);
-    assert_eq!(RUNTIME_HEALTH_ADAPTER_SOURCE.matches(watchdog_read).count(), 1);
+    assert_eq!(
+        RUNTIME_HEALTH_ADAPTER_SOURCE.matches(watchdog_read).count(),
+        1
+    );
     assert!(!RUNTIME_HEALTH_ADAPTER_SOURCE.contains("observation_history()"));
     assert!(!RUNTIME_HEALTH_ADAPTER_SOURCE.contains("owner_observation()"));
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE.contains("pub(crate) fn collect()"));
@@ -189,8 +194,7 @@ fn watchdog_snapshot_copies_every_fact_under_one_state_mutex() {
     assert!(phase_index < subphase_index);
     assert!(subphase_index < wait_index);
     assert!(!TASK_WATCHDOG_OBSERVATION_SOURCE.contains("RetryExhausted"));
-    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE
-        .contains("TaskWatchdogReadOutcome::HistoryPoisoned"));
+    assert!(TASK_WATCHDOG_OBSERVATION_SOURCE.contains("TaskWatchdogReadOutcome::HistoryPoisoned"));
     assert!(RUNTIME_HEALTH_ADAPTER_SOURCE
         .contains(".with_task_watchdog_read_outcome(task_watchdog.read_outcome)"));
 }
@@ -328,8 +332,5 @@ fn runtime_service_ignores_inactive_reads_and_resets_on_stop() {
 #[path = "production_mining_session/hashrate.rs"]
 mod hashrate;
 
-use bitaxe_asic::bm1366::{
-    registers::Bm1366Register,
-    result::Bm1366RegisterRead,
-};
+use bitaxe_asic::bm1366::{registers::Bm1366Register, result::Bm1366RegisterRead};
 use hashrate::ProductionHashrateMonitor;

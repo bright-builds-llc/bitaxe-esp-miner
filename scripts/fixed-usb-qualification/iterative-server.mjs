@@ -8,7 +8,7 @@ import { body, send } from "./http.mjs";
 import { validateState } from "./judge.mjs";
 import { requireSuccessorBaseline } from "./successor.mjs";
 import { requireIdleLedger, validateCooling } from "./iterative-contract.mjs";
-import { validateIterativeContext } from "./iterative-preflight.mjs";
+import { validateIterativeContext, validateIterativePolicy } from "./iterative-preflight.mjs";
 import { finishIterative } from "./iterative-judge.mjs";
 import { verifyFrozen } from "./preflight.mjs";
 import { saveDiagnosticExport, validateDiagnosticExport } from "./diagnostic-export.mjs";
@@ -16,6 +16,7 @@ import { saveDiagnosticExport, validateDiagnosticExport } from "./diagnostic-exp
 const SCRIPT_ROOT = dirname(fileURLToPath(import.meta.url));
 export async function createIterativeSupervisor(options, operations = {}) {
   const root = resolve(options.privateRoot), context = options.context, attempt = context.qualification_attempt;
+  validateIterativePolicy(context, true);
   const verify = operations.verifyFrozen ?? (() => verifyFrozen(context, options.authorityDirectory, options.bun, {}, root));
   await verify(); await validateIterativeContext(root, context);
   const now = operations.now ?? Date.now, page = contextPage(context);
@@ -101,6 +102,7 @@ export async function createIterativeSupervisor(options, operations = {}) {
       exactObject(input, ["controlSessionBindingSha256"]);
       const saved = review; review = undefined;
       requireCondition(scope && !pending && saved && saved.binding === input.controlSessionBindingSha256 && saved.expires > now(), "iterative_fresh_review_required");
+      validateIterativePolicy(context, true);
       await missing(resolve(root, "issued.json")); await safeState(lastState); await validateIterativeContext(root, context); await verify();
       await protectedPath(resolve(root, "cooling.json"));
       const cooling = await readJson(resolve(root, "cooling.json"));

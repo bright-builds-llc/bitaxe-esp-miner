@@ -418,6 +418,12 @@ impl OrdinaryEspProductionSessionAdapter {
                         .as_ref()
                         .is_some_and(|session| revocation::permits(Some(session.generation))) =>
             {
+                if let Some(worker) = self.maybe_bwg_session.as_ref() {
+                    owner_resources::capture(
+                        worker.generation.raw(),
+                        owner_resources::Phase::Active,
+                    );
+                }
                 admission_diagnostics::stage(admission_diagnostics::Stage::Active);
                 Some(Ok(()))
             }
@@ -466,6 +472,10 @@ impl OrdinaryEspProductionSessionAdapter {
                 admission_diagnostics::fail(admission_diagnostics::Failure::Cleanup);
                 return false;
             }
+            owner_resources::capture(
+                session.generation.raw(),
+                owner_resources::Phase::ShutdownComplete,
+            );
             revocation::finish_shutdown(session.generation);
             self.maybe_bwg_session = None;
             admission_diagnostics::stage(admission_diagnostics::Stage::Complete);

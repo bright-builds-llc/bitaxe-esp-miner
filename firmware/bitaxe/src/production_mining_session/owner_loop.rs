@@ -2,10 +2,14 @@ use super::owner_progress::{drive_feedback, OwnerProgressBoundary};
 use super::*;
 use bitaxe_core::runtime_health::{TaskWatchdogOwnerPhase, TaskWatchdogOwnerSubphase};
 
+// Keep a named ELF entry for the native stack-frame budget audit.
+#[inline(never)]
+#[export_name = "bitaxe_production_owner_entry"]
 pub(super) fn run_owner(
     receiver: Receiver<OwnerInboxMessage>,
     mut adapter: OrdinaryEspProductionSessionAdapter,
 ) {
+    owner_resources::bind_owner_thread();
     let started_at = Instant::now();
     let mut session = ProductionMiningSession::new();
     record_owner_phase(TaskWatchdogOwnerPhase::Subscribing);
@@ -145,9 +149,20 @@ pub(super) fn run_owner(
                 return;
             }
         }
-        adapter.complete_reply(&session.snapshot());
+        let snapshot = session.snapshot();
+        adapter.complete_reply(&snapshot);
+        if let Some(worker) = adapter.maybe_bwg_session.as_ref() {
+            if snapshot.campaign_state
+                == bitaxe_stratum::v1::production_session::MiningCampaignState::Active
+                && revocation::permits(Some(worker.generation))
+            {
+                owner_resources::capture(worker.generation.raw(), owner_resources::Phase::Active);
+            }
+        } else if adapter.maybe_cooling_generation.is_none() {
+            owner_resources::refresh_retired();
+        }
         record_owner_phase(TaskWatchdogOwnerPhase::PublishingCampaignStatus);
-        if let Err(error) = adapter.publish_campaign_status(&session.snapshot(), now_ms) {
+        if let Err(error) = adapter.publish_campaign_status(&snapshot, now_ms) {
             log::error!(
                 "production_mining_session=fail_closed reason=campaign_status_schedule_{}",
                 error.label()
@@ -156,7 +171,7 @@ pub(super) fn run_owner(
             let event = adapter.wake_event(
                 Some(ProductionSessionWakeup::ShutdownRequested),
                 now_ms,
-                &session.snapshot(),
+                &snapshot,
                 false,
             );
             drive_session(
@@ -171,7 +186,7 @@ pub(super) fn run_owner(
         }
         task_watchdog.feed(crate::runtime_uptime::millis());
         record_owner_phase(TaskWatchdogOwnerPhase::ServicingHashrate);
-        adapter.service_hashrate_monitor(&session.snapshot(), now_ms);
+        adapter.service_hashrate_monitor(&snapshot, now_ms);
         if shutdown_requested {
             record_owner_phase(TaskWatchdogOwnerPhase::Shutdown);
             return;

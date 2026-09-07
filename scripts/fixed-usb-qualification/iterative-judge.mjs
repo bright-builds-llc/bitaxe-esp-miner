@@ -3,9 +3,10 @@ import { resolve } from "node:path";
 import { digest, exactObject, fileDigest, protectedPath, QualificationError, readJson, requireCondition, writeNew } from "./contract.mjs";
 import { judgeWindow, validateState } from "./judge.mjs";
 import { requireExhaustedOriginal, requireIdleLedger } from "./iterative-contract.mjs";
-import { requireReleasedState, validateIterativeContext } from "./iterative-preflight.mjs";
+import { requireReleasedState, validateIterativeContext, validateIterativePolicy } from "./iterative-preflight.mjs";
 
 export function judgeIterative(context, records, fault) {
+  const resourcePolicy = validateIterativePolicy(context);
   const attempt = context.qualification_attempt;
   for (const record of records) validateState(record.state, context);
   const observed = records.filter((record) => record.state.qualification?.attempt?.ordinal === attempt.ordinal);
@@ -17,6 +18,15 @@ export function judgeIterative(context, records, fault) {
       q.budget_complete === true, "iterative_observation_binding");
   }
   requireCondition(observed.at(-1).state.qualification.attempt.complete === true, "iterative_stop_incomplete");
+  if (resourcePolicy) {
+    for (const record of observed) {
+      const q = record.state.qualification;
+      requireCondition(record.state.ownerResourceFailure === undefined, "iterative_owner_resources_unqualified");
+      const active = record.state.running || (attempt.purpose === "diagnostic" && record.state.status === "stopping" && q.work_dispatched > 0);
+      if (active && !q.safe_stop_complete) requireOwnerResources(q, "active", context.owner_stack_minimum_bytes);
+    }
+    requireOwnerResources(observed.at(-1).state.qualification, "shutdown_complete", context.owner_stack_minimum_bytes);
+  }
   const index = attempt.purpose === "foreground_loss" ? 1 : attempt.purpose === "heartbeat_loss" ? 2 : 0;
   const translatedFault = fault ? { ...fault, window: index } : undefined;
   const result = judgeWindow(index, observed, translatedFault, { iterativePurpose: attempt.purpose });
@@ -69,4 +79,11 @@ export async function finishIterative(root, context, inputPath) {
   await writeNew(resolve(root, "result.json"), { receipt, sha256: digest(JSON.stringify(receipt)) });
   return { result: receipt.result, ordinal: a.ordinal, purpose: a.purpose, first_failure: receipt.first_failure, judgment_failure: receipt.judgment_failure,
     cumulative_charged_ms: receipt.total_charged_ms, cleanup_confirmed: true };
+}
+
+function requireOwnerResources(qualification, phase, minimum) {
+  const resource = qualification.owner_resources;
+  // Firmware omits stale (>1000 ms) observations; host and device clocks are not interchangeable.
+  requireCondition(resource && resource.generation === qualification.generation && resource.phase === phase &&
+    resource.stack_free_bytes >= minimum, "iterative_owner_resources_unqualified");
 }

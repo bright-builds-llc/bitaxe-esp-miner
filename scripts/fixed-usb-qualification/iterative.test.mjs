@@ -5,7 +5,7 @@ import { chmod, mkdir, mkdtemp, realpath, readFile, readdir, rm, writeFile } fro
 import { dirname, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { BUNDLE, digest, PAGE, readJson, writeNew } from "./contract.mjs";
-import { iterativeBootstrap, iterativePreflight, requireIterativeTask, validateIterativeContext } from "./iterative-preflight.mjs";
+import { iterativeBootstrap, iterativePreflight, readPrevious, requireIterativeTask, validateIterativeContext, validateIterativePolicy } from "./iterative-preflight.mjs";
 import { requireIdleLedger, validateAttempt } from "./iterative-contract.mjs";
 import { judgeIterative, finishIterative } from "./iterative-judge.mjs";
 import { createIterativeSupervisor } from "./iterative-server.mjs";
@@ -62,11 +62,12 @@ function observations(context) {
     last_valid_heartbeat_ms: 1000, gate_closed_ms: null, shutdown_started_ms: null, safe_stop_complete: false,
     safe_stop_stage: "not_started", revocation_reason: "none", voltage_volts: 5, power_watts: 10, chip_temp_celsius: 40,
     fan_rpm: 2000, voltage_fresh: true, power_fresh: true, temperature_fresh: true, fan_fresh: true, watchdog_alive: true, mine_on_boot: false,
+    owner_resources: { schema: "worker-owner-resources-v1", generation: 1, phase: "active", observed_at_ms: "2000", heap_free_bytes: 50000, heap_largest_bytes: 12000, stack_free_bytes: 8192 },
     attempt: { schema: "worker-qualification-observation-v1", ordinal: a.ordinal, purpose: a.purpose, maximum_active_ms: a.maximumActiveMilliseconds,
       reserved_ms: a.maximumActiveMilliseconds, complete: false, active_ms: 1000 } };
   return [{ sequence: 1, state: { ...state(context), running: true, qualification: q } }, { sequence: 2, state: {
     ...state(context), qualification: { ...q, gate_closed_ms: 1800, shutdown_started_ms: 1900, safe_stop_complete: true,
-      safe_stop_stage: "fan_paused", revocation_reason: "restoration_requested", attempt: { ...q.attempt, complete: true } } } }];
+      safe_stop_stage: "fan_paused", revocation_reason: "restoration_requested", owner_resources: { ...q.owner_resources, phase: "shutdown_complete" }, attempt: { ...q.attempt, complete: true } } } }];
 }
 test("iterative bootstrap leaves original allowance immutable and cannot mint a legacy campaign", async (t) => {
   const f = await fixture(t);
@@ -258,4 +259,64 @@ test("normal acceptance cannot substitute stopping for running evidence", async 
   const records = observations(f.context);
   records[0].state.running = false; records[0].state.status = "stopping";
   assert.throws(() => judgeIterative(f.context, records), /running_device_evidence_missing/u);
+});
+test("v2 owner policy rejects low, stale, mismatched and malformed resource observations", async (t) => {
+  const f = await fixture(t);
+  assert.equal(f.context.schema, "fixed-usb-iterative-context-v2");
+  assert.equal(f.context.owner_stack_minimum_bytes, 4096);
+  for (const mutation of [{ stack_free_bytes: 28 }, { generation: 2 }, { phase: "preparation" },
+    { heap_free_bytes: -1 }, { heap_largest_bytes: "123" }, { observed_at_ms: "18446744073709551616" }]) {
+    const records = observations(f.context);
+    Object.assign(records[0].state.qualification.owner_resources, mutation);
+    assert.throws(() => judgeIterative(f.context, records), /owner_resources/u);
+  }
+  const stale = observations(f.context); delete stale[0].state.qualification.owner_resources;
+  assert.throws(() => judgeIterative(f.context, stale), /owner_resources/u);
+  const wrongTerminal = observations(f.context); wrongTerminal[1].state.qualification.owner_resources.phase = "active";
+  assert.throws(() => judgeIterative(f.context, wrongTerminal), /owner_resources/u);
+  const lowTerminal = observations(f.context); lowTerminal[1].state.qualification.owner_resources.stack_free_bytes = 28;
+  assert.throws(() => judgeIterative(f.context, lowTerminal), /owner_resources/u);
+  assert.equal(judgeIterative(f.context, observations(f.context)).diagnostic_only, true);
+});
+test("immutable v1 history retains its original judgment but cannot serve new allowances", async (t) => {
+  const f = await fixture(t);
+  const original = { ...f.context, schema: "fixed-usb-iterative-context-v1" };
+  delete original.owner_stack_minimum_bytes;
+  const records = observations(original);
+  for (const record of records) delete record.state.qualification.owner_resources;
+  const originalBytes = JSON.stringify(records);
+  assert.equal(judgeIterative(original, records).diagnostic_only, true);
+  assert.equal(JSON.stringify(records), originalBytes);
+  assert.throws(() => validateIterativePolicy(original, true), /policy_upgrade/u);
+  await assert.rejects(createIterativeSupervisor({ ...f.options, context: original }), /policy_upgrade/u);
+});
+test("v2 cannot lower its stack floor or downgrade a required context field", async (t) => {
+  const f = await fixture(t);
+  for (const floor of [undefined, 28, 4095, 8192]) assert.throws(() => validateIterativePolicy({ ...f.context, owner_stack_minimum_bytes: floor }), /iterative_policy/u);
+});
+
+test("v1 completed receipt is revalidated under its historical resource policy", async (t) => {
+  const f = await completedDiagnostic(t), root = f.options.privateRoot;
+  const context = { ...f.context, schema: "fixed-usb-iterative-context-v1" };
+  delete context.owner_stack_minimum_bytes;
+  const records = observations(context);
+  for (const record of records) delete record.state.qualification.owner_resources;
+  const sampleBytes = records.map((record) => JSON.stringify(record) + "\n").join("");
+  await writeFile(resolve(root, "context.json"), JSON.stringify({ context, sha256: digest(JSON.stringify(context)) }));
+  await writeFile(resolve(root, "iterative.samples.jsonl"), sampleBytes);
+  const resultPath = resolve(root, "result.json"), record = await readJson(resultPath);
+  record.receipt.context = context; record.receipt.context_sha256 = digest(JSON.stringify(context));
+  record.receipt.samples_sha256 = digest(sampleBytes); record.sha256 = digest(JSON.stringify(record.receipt));
+  await writeFile(resultPath, JSON.stringify(record));
+  const before = await readFile(resultPath);
+  assert.equal((await readPrevious(resultPath)).result, "passed");
+  assert.deepEqual(await readFile(resultPath), before);
+});
+test("v2 retains a low-stack failure even when shutdown later reports healthy resources", async (t) => {
+  const f = await fixture(t), records = observations(f.context);
+  records[0].state.ownerResourceFailure = { schema: "worker-owner-resource-failure-v1", generation: 1,
+    resources: { ...records[0].state.qualification.owner_resources, stack_free_bytes: 28 } };
+  assert.throws(() => judgeIterative(f.context, records), /owner_resources_unqualified/u);
+  records[0].state.ownerResourceFailure = { schema: "worker-owner-resource-failure-v1", generation: 1, resources: null };
+  assert.throws(() => judgeIterative(f.context, records), /owner_resources_unqualified/u);
 });

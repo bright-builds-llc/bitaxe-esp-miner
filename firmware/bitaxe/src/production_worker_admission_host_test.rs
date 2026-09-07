@@ -97,6 +97,8 @@ impl TestScope {
         let lock = TEST_LOCK.lock().unwrap_or_else(|error| error.into_inner());
         worker_acceptance_budget::FAIL_FINISH.store(false, Ordering::SeqCst);
         cooling::FAIL_RESTORE.store(false, Ordering::SeqCst);
+        owner_resources::ACTIVE_CAPTURED.store(false, Ordering::SeqCst);
+        owner_resources::SHUTDOWN_CAPTURED.store(false, Ordering::SeqCst);
         worker_acceptance_budget::FINISH_CALLS.store(0, Ordering::SeqCst);
         Self {
             _lock: lock,
@@ -425,6 +427,10 @@ fn safe_stop_ack_waits_for_durable_finalization_after_hardware_confirmation() {
     assert_eq!(before_finalization, Err(mpsc::TryRecvError::Empty));
     assert!(maybe_early_link.is_none());
     assert_eq!(after_finalization, Ok(Ok(())));
+    assert!(
+        owner_resources::SHUTDOWN_CAPTURED.load(Ordering::SeqCst),
+        "Stop acknowledgement includes post-shutdown owner observation"
+    );
     assert!(maybe_fresh.is_some());
     assert!(!revocation::permits(Some(generation)));
 }
@@ -587,3 +593,21 @@ fn no_session_safe_stop_cannot_acknowledge_failed_cooling_restore() {
     assert_eq!(adapter.maybe_cooling_generation, Some(generation));
     assert!(revocation::begin_link(1_000).is_none());
 }
+
+mod owner_resources {
+    pub(crate) enum Phase {
+        Active,
+        ShutdownComplete,
+    }
+    pub(crate) static ACTIVE_CAPTURED: super::AtomicBool = super::AtomicBool::new(false);
+    pub(crate) static SHUTDOWN_CAPTURED: super::AtomicBool = super::AtomicBool::new(false);
+    pub(crate) fn capture(_: u32, phase: Phase) {
+        match phase {
+            Phase::Active => ACTIVE_CAPTURED.store(true, super::Ordering::SeqCst),
+            Phase::ShutdownComplete => SHUTDOWN_CAPTURED.store(true, super::Ordering::SeqCst),
+        }
+    }
+}
+
+#[path = "production_worker_admission_host_test/resource_acknowledgement.rs"]
+mod resource_acknowledgement;

@@ -61,6 +61,9 @@ pub(crate) fn status_evidence(
     ) {
         value["attempt"] = attempt;
     }
+    if let Some(resources) = super::owner_resources::observation(timing.generation, now_ms) {
+        value["owner_resources"] = resources;
+    }
     Some(value)
 }
 
