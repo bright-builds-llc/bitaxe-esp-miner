@@ -28,6 +28,7 @@ mod operator_snapshot_retention;
 mod ota_update;
 mod panic_evidence;
 mod platform_identity;
+mod preparation_evidence;
 mod production_mining_session;
 mod rtc_boot_ordinal;
 mod runtime_health_adapter;
@@ -51,6 +52,7 @@ mod usb_runtime;
 mod websocket_api;
 mod wifi_adapter;
 mod worker_acceptance_budget;
+mod worker_qualification_budget;
 
 const BOOT_LOG_LINE: &str = "bitaxe-rust boot: board=Ultra 205 asic=BM1366";
 const RUST_TARGET: &str = "xtensa-esp32s3-espidf";

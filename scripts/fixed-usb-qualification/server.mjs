@@ -1,3 +1,6 @@
+import { saveDiagnosticExport, validateDiagnosticExport } from "./diagnostic-export.mjs";
+import { body, send } from "./http.mjs";
+import { createIterativeSupervisor } from "./iterative-server.mjs";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -13,6 +16,7 @@ const SCRIPT_ROOT = dirname(fileURLToPath(import.meta.url));
 export async function createSupervisor(options, operations = {}) {
   const root = resolve(options.privateRoot);
   const context = options.context ?? await loadContext(root);
+  if (context.schema === "fixed-usb-iterative-context-v1") return createIterativeSupervisor({ ...options, context }, operations);
   const page = contextPage(context);
   const verify = operations.verifyFrozen ?? (() => verifyFrozen(context, options.authorityDirectory, options.bun, {}, root));
   const frozen = await verify();
@@ -44,6 +48,11 @@ export async function createSupervisor(options, operations = {}) {
     const allowedOrigin = request.headers.origin === origin ||
       (request.headers.origin === undefined && request.headers["sec-fetch-site"] === "same-origin");
     if (request.method === "POST" || url.pathname === "/window-artifacts") requireCondition(allowedOrigin, "origin_rejected");
+    if (request.method === "POST" && url.pathname === "/diagnostic-export") {
+      await verify();
+      const validate = operations.validateDiagnostics ?? ((input) => validateDiagnosticExport(input, context.gate_root, options.bun));
+      return send(response, 200, await saveDiagnosticExport(root, context, await body(request), validate));
+    }
     if (request.method === "GET" && url.pathname === "/context") {
       return send(response, 200, { expectedGateCommit: context.gate_commit, expectedFirmwareSourceCommit: context.firmware_commit,
         expectedAppElfSha256: context.app_elf_sha256, trust });
@@ -185,21 +194,4 @@ export async function createSupervisor(options, operations = {}) {
     send(response, 404, { error: "route_unavailable" });
   }
   return server;
-}
-
-async function body(request) {
-  const chunks = [];
-  let size = 0;
-  for await (const chunk of request) {
-    size += chunk.length;
-    requireCondition(size <= 65536, "request_body_bound");
-    chunks.push(chunk);
-  }
-  try { return JSON.parse(Buffer.concat(chunks).toString("utf8")); }
-  catch { throw new QualificationError("request_json"); }
-}
-function send(response, status, value, contentType = "application/json") {
-  response.writeHead(status, { "Content-Type": contentType, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
-    "Referrer-Policy": "no-referrer", "Cross-Origin-Resource-Policy": "same-origin" });
-  response.end(Buffer.isBuffer(value) ? value : JSON.stringify(value));
 }

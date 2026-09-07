@@ -72,8 +72,13 @@ export async function loadContext(root, operations = {}) {
   await protectedPath(root, true);
   await protectedPath(resolve(root, "context.json"));
   const record = await readJson(resolve(root, "context.json"));
-  requireCondition(record.context?.schema === "fixed-usb-qualification-context-v1" &&
-    record.sha256 === digest(JSON.stringify(record.context)) && canonicalBase64(record.context.campaign_id, 16) &&
+  requireCondition(record.sha256 === digest(JSON.stringify(record.context)), "context_integrity");
+  if (record.context?.schema === "fixed-usb-iterative-context-v1") {
+    const { validateIterativeContext } = await import("./iterative-preflight.mjs");
+    await validateIterativeContext(root, record.context);
+    return record.context;
+  }
+  requireCondition(record.context?.schema === "fixed-usb-qualification-context-v1" && canonicalBase64(record.context.campaign_id, 16) &&
     JSON.stringify(record.context.window_limits_ms) === JSON.stringify(WINDOW_MS), "context_integrity");
   await loadAmendment(root, record.context, operations);
   return record.context;

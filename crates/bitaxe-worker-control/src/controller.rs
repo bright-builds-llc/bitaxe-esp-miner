@@ -403,6 +403,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                 }
                 probe::response(payload, &request.request_id)?
             }
+            "qualification_attempt_review" => self.review_qualification_attempt(&request, now)?,
             "acceptance_budget_review" => self.review_acceptance_budget(&request, now)?,
             "qualification_cooling" => self.qualify_cooling(&request, now)?,
             "start_lease" => self.start(request.required_payload()?, now)?,

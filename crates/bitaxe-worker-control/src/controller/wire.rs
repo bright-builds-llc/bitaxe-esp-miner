@@ -41,7 +41,11 @@ impl ControllerRequest {
     pub(super) fn includes_status_evidence(&self) -> bool {
         !matches!(
             self.command.as_str(),
-            "discover" | "transport_probe" | "acceptance_budget_review" | "qualification_cooling"
+            "discover"
+                | "transport_probe"
+                | "acceptance_budget_review"
+                | "qualification_attempt_review"
+                | "qualification_cooling"
         )
     }
 

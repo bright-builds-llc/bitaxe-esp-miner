@@ -1,5 +1,7 @@
 //! Ordinary ESP adapter for the pure Ultra 205 mining-actuation coordinator.
 
+mod preparation_trace;
+
 use std::thread;
 use std::time::Duration;
 
@@ -457,8 +459,13 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
         Ultra205MiningActuationAdapter::check_preparation_admission(self)
     }
 
+    fn observe_preparation_rejection(&mut self, step: PreparationStep, error: &Self::Error) {
+        self.record_preparation_result(step, &Err(*error));
+    }
+
     fn execute_preparation_step(&mut self, step: PreparationStep) -> Result<(), Self::Error> {
         self.check_preparation_admission()?;
+        self.record_preparation_started(step);
         log_preparation_progress(step, "started");
         let result = (|| match step {
             PreparationStep::RequireFreshSafetyObservations => {
@@ -539,6 +546,7 @@ impl MiningActuationBackend for Ultra205MiningActuationAdapter {
             }
         })();
         let result = result.and_then(|()| self.check_preparation_admission());
+        self.record_preparation_result(step, &result);
         log_preparation_progress(
             step,
             if result.is_ok() {

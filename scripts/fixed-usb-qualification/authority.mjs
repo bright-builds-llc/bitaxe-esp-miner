@@ -75,3 +75,24 @@ export async function signWindow({ campaignId, index, challengeId, binding, stra
   }
   return { grant: signedGrant, renewals };
 }
+
+export async function signAttempt({ attempt, challengeId, binding, stratum, sign }) {
+  const { validateAttempt } = await import("./iterative-contract.mjs");
+  validateAttempt(attempt);
+  requireCondition(canonicalBase64(binding, 32) && /^challenge_[A-Za-z0-9_-]{1,118}$/u.test(challengeId), "signing_context");
+  const common = { protocolVersion: "bwg-worker-controller/0.4", leaseId: `lease_${nonce()}`,
+    durationMilliseconds: 60000, renewAfterMilliseconds: 5000 };
+  const attach = async (operation, request) => {
+    const artifact = await sign(operation, { operation, activeChallengeId: challengeId, controlSessionBindingSha256: binding, request });
+    requireCondition(artifact.profile === "bwg-worker-lease-authorization-artifact/0.1" && artifact.operation === operation &&
+      typeof artifact.authorization === "string" && artifact.authorization.length > 0 && artifact.authorization.length <= 8192, "authorization_shape");
+    return { ...request, authorization: artifact.authorization };
+  };
+  const grant = await attach("start", { ...common, challengeId, stratum, qualificationAttempt: attempt });
+  const renewals = [];
+  // Sixteen is the existing browser artifact bound; normal renewals need at most nine.
+  for (let index = 0; index < (attempt.purpose === "normal" ? 9 : 2); index += 1) {
+    renewals.push(await attach("renew", { ...common, renewAfterMilliseconds: attempt.purpose === "normal" ? 20000 : 5000 }));
+  }
+  return { grant, renewals };
+}

@@ -23,7 +23,7 @@ pub(crate) fn status_evidence(
     let watchdog_alive = matches!(watchdog.maybe_latest,
         Some(TaskWatchdogObservation::Fed { observed_at_millis, .. })
             if now_ms >= observed_at_millis && now_ms - observed_at_millis <= 1_000);
-    Some(serde_json::json!({
+    let mut value = serde_json::json!({
         "schema": "worker-qualification-v1",
         "generation": timing.generation,
         "revocation_reason": timing.revocation_reason.label(),
@@ -54,7 +54,14 @@ pub(crate) fn status_evidence(
         "fan_fresh": rpm.is_some(),
         "watchdog_alive": watchdog_alive,
         "mine_on_boot": crate::settings_adapter::start_mining_on_boot(),
-    }))
+    });
+    if let Some(attempt) = crate::worker_qualification_budget::observation(
+        timing.generation,
+        u64::from(timing.active_ms),
+    ) {
+        value["attempt"] = attempt;
+    }
+    Some(value)
 }
 
 fn fresh_value<T: Copy>(observation: &Observation<T>, now_ms: u64) -> Option<T> {

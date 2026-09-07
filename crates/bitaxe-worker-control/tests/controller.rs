@@ -81,6 +81,13 @@ impl WorkerSession for FakeSession {
             "cooling_proven":true,"asic_effects":false,"budget_reserved":false}),
         )
     }
+    fn qualification_attempt_review(
+        &self,
+    ) -> Result<Option<serde_json::Value>, WorkerSessionError> {
+        Ok(Some(
+            json!({"schema":"worker-qualification-ledger-v1","next_ordinal":1,"total_charged_ms":0,"pending":false,"last_completed_ordinal":0}),
+        ))
+    }
     fn acceptance_budget_review(
         &self,
         expected: &str,

@@ -29,6 +29,9 @@ fn acquire() -> anyhow::Result<Guard> {
 
 /// Called after full Start authorization, before activation or hardware preparation.
 pub(crate) fn admit(generation: WorkerGeneration, grant: &WorkerLeaseGrant) -> anyhow::Result<()> {
+    if let Some(allowance) = grant.maybe_qualification_attempt() {
+        return crate::worker_qualification_budget::admit(generation, allowance);
+    }
     let _guard = acquire()?;
     if !revocation::begin_reservation(generation) {
         anyhow::bail!("acceptance_budget=revoked_generation");
@@ -74,6 +77,7 @@ pub(crate) fn admit(generation: WorkerGeneration, grant: &WorkerLeaseGrant) -> a
 
 /// Qualified stop completes a reserved window; repeated completion is idempotent.
 pub(crate) fn finish(generation: WorkerGeneration) -> anyhow::Result<()> {
+    crate::worker_qualification_budget::finish(generation)?;
     let _guard = acquire()?;
     if ACCEPTANCE_GENERATION.load(Ordering::Acquire) != generation.raw() {
         return Ok(());
@@ -105,8 +109,9 @@ pub(crate) fn finish(generation: WorkerGeneration) -> anyhow::Result<()> {
 
 /// Only called with the existing boot-safe proof; interruption never refunds its reservation.
 pub(crate) fn recover_after_boot(
-    _proof: &crate::startup::BootMiningBaselineConfirmed,
+    proof: &crate::startup::BootMiningBaselineConfirmed,
 ) -> anyhow::Result<()> {
+    crate::worker_qualification_budget::recover_after_boot(proof)?;
     let _guard = acquire()?;
     let mut store =
         BwgWorkerNvs::open().map_err(|_| anyhow::anyhow!("acceptance_budget=storage"))?;

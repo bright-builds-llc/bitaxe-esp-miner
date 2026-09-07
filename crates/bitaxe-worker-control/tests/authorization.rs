@@ -11,6 +11,8 @@ use curve25519_dalek::constants::{ED25519_BASEPOINT_POINT, EIGHT_TORSION};
 
 #[path = "authorization/campaign.rs"]
 mod campaign;
+#[path = "authorization/qualification.rs"]
+mod qualification;
 
 const TRUST: &str = r#"{
   "profile": "bwg-worker-deployment-trust/0.2",

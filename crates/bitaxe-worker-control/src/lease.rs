@@ -30,6 +30,12 @@ pub struct WorkerLeaseGrant {
         deserialize_with = "acceptance_campaign"
     )]
     maybe_acceptance_campaign: Option<AcceptanceCampaign>,
+    #[serde(
+        default,
+        rename = "qualificationAttempt",
+        deserialize_with = "qualification_attempt"
+    )]
+    maybe_qualification_attempt: Option<crate::QualificationAttempt>,
 }
 
 impl WorkerLeaseGrant {
@@ -42,6 +48,12 @@ impl WorkerLeaseGrant {
             && secret(&self.stratum.password)
             && stratum_endpoint(&self.stratum.endpoint)
             && valid_window(self.duration_milliseconds, self.renew_after_milliseconds)
+            && !(self.maybe_acceptance_campaign.is_some()
+                && self.maybe_qualification_attempt.is_some())
+            && self
+                .maybe_qualification_attempt
+                .as_ref()
+                .is_none_or(crate::QualificationAttempt::validate)
             && self
                 .maybe_acceptance_campaign
                 .as_ref()
@@ -93,9 +105,14 @@ impl WorkerLeaseGrant {
         self.maybe_acceptance_campaign.as_ref()
     }
 
+    pub fn maybe_qualification_attempt(&self) -> Option<&crate::QualificationAttempt> {
+        self.maybe_qualification_attempt.as_ref()
+    }
+
     pub(crate) fn authorizationless(&self) -> impl Serialize + '_ {
         AuthorizationlessGrant {
             maybe_acceptance_campaign: self.maybe_acceptance_campaign.as_ref(),
+            maybe_qualification_attempt: self.maybe_qualification_attempt.as_ref(),
             challenge_id: &self.challenge_id,
             duration_milliseconds: self.duration_milliseconds,
             lease_id: &self.lease_id,
@@ -152,6 +169,11 @@ struct AuthorizationlessGrant<'a> {
     duration_milliseconds: u64,
     lease_id: &'a str,
     protocol_version: &'a str,
+    #[serde(
+        rename = "qualificationAttempt",
+        skip_serializing_if = "Option::is_none"
+    )]
+    maybe_qualification_attempt: Option<&'a crate::QualificationAttempt>,
     renew_after_milliseconds: u64,
     stratum: AuthorizationlessStratum<'a>,
 }
@@ -309,4 +331,10 @@ fn acceptance_campaign<'de, D: serde::Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Option<AcceptanceCampaign>, D::Error> {
     AcceptanceCampaign::deserialize(deserializer).map(Some)
+}
+
+fn qualification_attempt<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<crate::QualificationAttempt>, D::Error> {
+    crate::QualificationAttempt::deserialize(deserializer).map(Some)
 }

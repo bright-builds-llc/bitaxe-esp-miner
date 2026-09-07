@@ -4,13 +4,15 @@ import { fstatSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { preflight, loadContext } from "./preflight.mjs";
+import { iterativeBootstrap, iterativePreflight } from "./iterative-preflight.mjs";
+import { finishIterative } from "./iterative-judge.mjs";
 import { createSuccessor } from "./successor.mjs";
 import { amendPolicy } from "./amendment.mjs";
 import { createSupervisor } from "./server.mjs";
 import { finishWindow, recordCycle } from "./store.mjs";
 import { protectedPath, QualificationError, readJson, requireCondition } from "./contract.mjs";
 
-const KEYS = { "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
+const KEYS = { "--cycles-from": "cyclesFrom", "--purpose": "purpose", "--previous-receipt": "previousReceipt", "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
   "--manifest": "manifest", "--private-root": "privateRoot", "--authority-directory": "authorityDirectory", "--pool-credentials": "poolCredentials",
   "--cooling-input": "coolingInput", "--predecessor-root": "predecessorRoot", "--bun": "bun", "--port": "port", "--window": "window", "--input": "input",
   "--qualification-source-commit": "qualificationSourceCommit", "--gate-qualification-source-commit": "gateQualificationSourceCommit" };
@@ -25,6 +27,9 @@ export async function main(args) {
   }
   requireCondition(options.privateRoot, "private_root_required");
   const allowed = {
+    "iterative-bootstrap": ["privateRoot", "input"],
+    "iterative-judge": ["privateRoot", "input"],
+    "iterative-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "authorityDirectory", "bun", "purpose", "previousReceipt", "input", "cyclesFrom"],
     preflight: ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "authorityDirectory", "bun"],
     serve: ["privateRoot", "authorityDirectory", "poolCredentials", "port", "bun"],
     judge: ["privateRoot", "window"],
@@ -33,11 +38,23 @@ export async function main(args) {
     "amend-policy": ["privateRoot", "qualificationSourceCommit", "gateQualificationSourceCommit"],
   }[command];
   requireCondition(allowed && Object.keys(options).every((key) => allowed.includes(key)), "command_arguments");
+  if (command === "iterative-bootstrap") {
+    requireCondition(options.input, "input_required");
+    return iterativeBootstrap(resolve(options.privateRoot), options.input);
+  }
+  if (command === "iterative-preflight") {
+    for (const key of ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "authorityDirectory", "purpose", "previousReceipt", "input"]) requireCondition(options[key], "preflight_argument_missing");
+    return iterativePreflight(options);
+  }
   if (command === "preflight") {
     for (const key of ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "authorityDirectory"]) requireCondition(options[key], "preflight_argument_missing");
     return preflight(options);
   }
   const context = await loadContext(resolve(options.privateRoot));
+  if (command === "iterative-judge") {
+    requireCondition(options.input, "input_required");
+    return finishIterative(resolve(options.privateRoot), context, options.input);
+  }
   if (command === "create-successor") {
     requireCondition(options.predecessorRoot && options.input, "successor_arguments_missing");
     return createSuccessor(resolve(options.privateRoot), context, options.predecessorRoot, options.input, options.coolingInput);

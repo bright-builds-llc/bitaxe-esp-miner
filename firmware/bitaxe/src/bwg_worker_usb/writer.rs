@@ -237,7 +237,7 @@ pub(super) fn run(
                     } else {
                         crate::boot_evidence::maybe_worker_diagnostic_line(replay_slot)
                     };
-                    replay_slot = (replay_slot + 1) % 19;
+                    replay_slot = (replay_slot + 1) % 21;
                     line
                 });
                 let Some(line) = maybe_line else {

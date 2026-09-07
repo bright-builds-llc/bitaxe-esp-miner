@@ -4657,6 +4657,84 @@ recovery-006 restoration and cleanup are proved.
 Completion review: Pending. STR-005 remains `implemented` until the final
 promotion task succeeds.
 
+
+### task-worker-preparation-panic-qualification | 2026-09-07 | Diagnose preparation panics and complete iterative live acceptance
+
+Authorization: the owner explicitly approved the implementation plan and
+iteration until successful mining and outstanding stop tests pass. ADR-0026
+supersedes the previous restriction against new qualification allowances;
+the exhausted original campaign and its evidence remain immutable.
+
+- [x] Inspect retained existing evidence and record unavailable crash detail.
+- [x] Implement reset-retained, allocation-free per-step receipts and replay;
+  distinguish interrupted/corrupt/stale/wrong-firmware evidence.
+- [x] Add mutually exclusive signed qualificationAttempt contracts, separate
+  durable accounting and protected diagnostic export in firmware and Gate.
+- [x] Implement repo-owned iterative preflight/sign/review/judge commands with
+  exact pair, four-cycle, fan-proof, cleanup and verified-progress gates.
+- [ ] Verify both repositories, publish Gate, pin its exact archive, publish
+  firmware and build the exact clean ESP32-S3 package before hardware effects.
+- [ ] For each new runtime pair, prove cleanup/detection, admitted NVS-preserving
+  install, exact safe browser identity, four maximum-exchange continuity/update
+  cycles and fan-only proof before one 30000-ms diagnostic Start.
+- [ ] Preserve each first failure, recover/read retained diagnostics before
+  reset/reflash, implement a targeted regression-backed correction, then
+  permit another attempt only after documented verified progress.
+- [ ] Complete a new exact-pair final campaign: normal 180000 ms with real work,
+  renewal and correlated accepted share; foreground loss 30000 ms;
+  heartbeat loss 30000 ms with measured ≤3000-ms authority closure/shutdown initiation.
+- [ ] Verify no post-revocation work/submission/activation, qualified ordered
+  shutdown/cooling, persisted mine-on-boot false, inactive leases and released
+  browser/CLI/supervisor ownership. Publish redacted evidence/task review.
+
+Effect contract: `just fixed-usb-qualification iterative-bootstrap --private-root <new-protected-parent> --input <original-context-budget-and-final-state-paths.json>` creates the immutable bridge to the exhausted original campaign. `iterative-preflight` takes `--private-root <new-attempt-child> --firmware-root <repository> --gate-root <Gate-repository> --firmware-commit <published-clean-commit> --gate-commit <published-Gate-commit> --manifest <exact-clean-package> --authority-directory <protected-existing-authorities> --purpose <diagnostic|normal|foreground_loss|heartbeat_loss> --previous-receipt <bootstrap-or-prior-result.json> --input <verified-progress.json>`. Only an unchanged exact runtime pair may add `--cycles-from <completed-prior-attempt>` to reference immutable four-cycle proofs and the preserved browser baseline. `serve --private-root <attempt> --authority-directory <protected-authorities> --pool-credentials <ignored-owner-file> --port 64252` owns only the local signing/evidence supervisor. Browser helpers perform maximum probes, cooling/ledger reviews, explicit redacted diagnostic export and acknowledged attempt completion. `iterative-judge --private-root <attempt> --input <closed-ledger-and-final-state-review.json>` provides a bounded fallback for the same evidence contract; no hand-written passing result is allowed. USB effects use just detect-ultra205
+and just flash-monitor --board 205 --manifest <exact-clean-package> --image
+<declared-package-image> --port <fresh-detector-port> --evidence-dir
+<fresh-private-child> --redact-evidence --capture-timeout-seconds 30. Retain the
+same physical lease and explicit ROM admission before every disjoint segment
+write; prove browser release first and reap each bounded CLI before reconnect.
+
+Protected existing authority and owner-pool files are runtime inputs only;
+never print or commit their contents. Fresh logical sessions/possession and
+signed allowances bind exact application identity. Each attempt charges its
+full allowance before preparation, with independent 2.8-second heartbeat
+expiry, existing shutdown reserve and ≤3-second gate closure/shutdown initiation.
+Diagnostic attempts stop promptly after preparation/initial work succeeds.
+Keep 400 MHz/1100 mV/fan 100%, fresh 4.5–5.5 V, ≤15 W, \<75 C and nonzero RPM.
+On failure revoke work/submissions, close owned pool transports and perform
+ordered ASIC/voltage/enable shutdown; retain fan 100% until fresh ≤45 C permits 30%
+under the existing bounded cooling policy. No unchanged failed retry,
+accounting refund/reset, factory reset, electrical fault injection, direct pins,
+raw memory dump or unrelated network discovery. Stop hardware on uncertain
+ownership, failed recovery, unsafe observations or missing evidence.
+
+Existing evidence: attempt-012's 14 closed browser states contain no running
+qualification sample. Its displayed post-reset diagnostics identify panic and
+preparation but provide no Rust panic/allocation receipt; no root cause or active
+mining duration can be decoded from those observations. Exact a90b436e ELF and
+all 13 runtime artifacts remain preserved. Installed firmware is safe and all
+resources were released before this task.
+
+Software progress: the exact signed allowance passes all four Gate-to-Rust
+purpose vectors and tamper tests. New attempt cleanup tests exercise failed
+writes, ambiguous readback, revocation during storage and qualified reboot
+recovery without changing the original ledger. Independent review found and
+regression-tested a malformed-ledger total check; reachable normal-window
+counts now fail closed. Receipt tests cover every preparation/write boundary,
+CRC damage, stale/wrong-firmware records, typed failures, native-abort
+simulation and zero allocations/driver queries inside the actual RTC writer.
+ESP32-S3 compilation and RTC section placement pass. The first pinned full
+Bazel run passes all 87 targets; ordered host Cargo gates passed 2116 tests
+(one preexisting ignored) before final added regressions. Gate's signed manifest
+and contract implementation is published; a further tested retention correction
+keeps allocation receipts in reserved crash capacity. Final exact pin and
+verification/publication precede any new hardware effect.
+
+Final Gate publication: `53bb4fd354e04889b6b0251aa55e316e3a0ac172`, archive SHA-256 `85b37535ccb687e0eb26cfed97bf7c9679b8206316dfe5383bcb3a8288bb75ab`, is pinned. Full Gate verification passes including 396 web/CLI tests. Final firmware ordered Cargo gates pass 2118 tests (one preexisting ignored). Actual retained-RTC writer and outer preparation admission tests pass, and the firmware compiles with the 144-byte receipt in the RTC no-init section. Original schema, ledger-total and history-saturation failures remain preserved alongside passing regressions. No hardware effects have occurred in this task yet.
+
+Final publication checks: all 87 exact-pin Bazel targets pass; real ESP32-S3 packaging, USB ownership, reference and redaction checks pass. A final diagnostic-only regression accepts an immediate stopping sample only when it contains actual dispatched work and fresh safe observations; normal/fault/legacy running requirements remain unchanged. All 62 harness tests and its canonical Bazel target pass. Firmware diagnostics and accounting are ready for publication; no panic root cause or physical retention/mining success is claimed yet.
+
+
 ## Future
 
 ### task-str005-v2-channel-job-205 | 2026-08-28 | Prove Ultra 205 V2 channel and job receipt

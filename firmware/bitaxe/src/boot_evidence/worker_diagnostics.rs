@@ -51,6 +51,8 @@ pub(crate) fn maybe_worker_diagnostic_line(slot: usize) -> Option<String> {
         ),
         16 => crate::storage_http_diagnostics::maybe_failure_marker(),
         17 => crate::storage_http_diagnostics::maybe_status_marker(),
+        19 => Some(crate::preparation_evidence::marker(true)),
+        20 => Some(crate::preparation_evidence::marker(false)),
         _ => None,
     }
 }

@@ -35,6 +35,7 @@ pub fn serial_manifest() -> Value {
         "maximumHostWriteChunkBytes": MAXIMUM_HOST_WRITE_CHUNK_BYTES,
         "recordWriteTimeoutMilliseconds": RECORD_WRITE_TIMEOUT_MILLISECONDS,
         "payloadIntegrity": "sha256_exact_utf8_json",
+        "qualificationAttemptProfile": "worker-qualification-attempt-v1",
     })
 }
 

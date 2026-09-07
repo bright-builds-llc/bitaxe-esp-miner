@@ -14,6 +14,7 @@ struct Backend {
     cancel_at_step: PreparationStep,
     late_success: bool,
     preparation: Vec<PreparationStep>,
+    rejections: Vec<(PreparationStep, &'static str)>,
     shutdown: Vec<(SafeShutdownStep, u64)>,
 }
 
@@ -30,6 +31,7 @@ impl Backend {
             cancel_at_step,
             late_success,
             preparation: Vec::new(),
+            rejections: Vec::new(),
             shutdown: Vec::new(),
         }
     }
@@ -44,6 +46,10 @@ impl MiningActuationBackend for Backend {
             .permits(Some(self.generation))
             .then_some(())
             .ok_or("revoked")
+    }
+
+    fn observe_preparation_rejection(&mut self, step: PreparationStep, error: &Self::Error) {
+        self.rejections.push((step, *error));
     }
 
     fn execute_preparation_step(&mut self, step: PreparationStep) -> Result<(), Self::Error> {
@@ -126,6 +132,26 @@ fn successful_late_preparation_cannot_publish_ready_after_revocation() {
     let outcome = execute_preparation(&mut backend, profile());
     // Assert
     assert!(outcome.is_err());
+    assert_eq!(
+        backend.shutdown.first(),
+        Some(&(SafeShutdownStep::StopDispatch, 2_500))
+    );
+}
+
+#[test]
+fn rejected_outer_admission_records_closed_failure_before_any_preparation_effect() {
+    // Arrange
+    let mut backend = Backend::new(PreparationStep::RetainProductionUart, false);
+    backend.gate.revoke(backend.generation);
+    // Act
+    let result = execute_preparation(&mut backend, profile());
+    // Assert
+    assert!(result.is_err());
+    assert!(backend.preparation.is_empty());
+    assert_eq!(
+        backend.rejections,
+        vec![(PreparationStep::RequireFreshSafetyObservations, "revoked")]
+    );
     assert_eq!(
         backend.shutdown.first(),
         Some(&(SafeShutdownStep::StopDispatch, 2_500))

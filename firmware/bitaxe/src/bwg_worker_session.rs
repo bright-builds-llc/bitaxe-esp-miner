@@ -45,6 +45,14 @@ impl WorkerSession for ProductionWorkerSession {
         crate::production_mining_session::status_evidence(self.maybe_generation)
     }
 
+    fn qualification_attempt_review(
+        &self,
+    ) -> Result<Option<serde_json::Value>, WorkerSessionError> {
+        crate::worker_qualification_budget::review()
+            .map(Some)
+            .map_err(|_| WorkerSessionError::Rejected)
+    }
+
     fn acceptance_budget_review(
         &self,
         expected_campaign: &str,

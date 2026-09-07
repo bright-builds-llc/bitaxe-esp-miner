@@ -13,6 +13,7 @@ use zeroize::{Zeroize, Zeroizing};
 use crate::startup::BootMiningBaselineConfirmed;
 
 mod acceptance;
+mod qualification;
 
 const NAMESPACE: &str = "bwg_worker";
 const IDENTITY_KEY: &str = "device_seed";

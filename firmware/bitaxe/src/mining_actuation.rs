@@ -103,6 +103,9 @@ pub trait MiningActuationBackend {
         Ok(())
     }
 
+    /// Records an observed rejection without changing actuation or rollback behavior.
+    fn observe_preparation_rejection(&mut self, _step: PreparationStep, _error: &Self::Error) {}
+
     /// Establishes the state described by one preparation step.
     fn execute_preparation_step(&mut self, step: PreparationStep) -> Result<(), Self::Error>;
 
@@ -249,6 +252,7 @@ where
             continue;
         };
 
+        backend.observe_preparation_rejection(step, &source);
         let original = PreparationStepFailure { step, source };
         let maybe_safe_shutdown_failure = execute_safe_shutdown(backend).err();
         return Err(PreparationExecutionFailure {

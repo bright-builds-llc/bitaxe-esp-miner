@@ -57,6 +57,12 @@ pub trait WorkerSession {
         Ok(None)
     }
 
+    fn qualification_attempt_review(
+        &self,
+    ) -> Result<Option<serde_json::Value>, WorkerSessionError> {
+        Ok(None)
+    }
+
     /// Returns only bounded, non-secret qualification observations; never authority.
     fn status_evidence(&self) -> Option<serde_json::Value> {
         None

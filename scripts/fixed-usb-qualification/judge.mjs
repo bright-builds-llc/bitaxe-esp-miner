@@ -18,7 +18,7 @@ export const u32 = (value) => Number.isInteger(value) && value >= 0 && value <= 
 
 export function validateQualification(value) {
   exactObject(value, ["schema", ...COUNTS, ...BOOLEANS, ...NUMBERS, "gate_closed_ms", "shutdown_started_ms", "safe_stop_stage", "revocation_reason",
-    "active_limit_ms", "shutdown_budget_ms", "work_gate_remaining_ms"]);
+    "active_limit_ms", "shutdown_budget_ms", "work_gate_remaining_ms"], ["attempt"]);
   requireCondition(value.schema === "worker-qualification-v1" && COUNTS.every((key) => u32(value[key])) &&
     BOOLEANS.every((key) => typeof value[key] === "boolean") && value.budget_reserved_ms <= 240000 &&
     STAGES.includes(value.safe_stop_stage), "qualification_shape");
@@ -30,6 +30,14 @@ export function validateQualification(value) {
   for (const [numeric, flag] of [["voltage_volts", "voltage_fresh"], ["power_watts", "power_fresh"],
     ["chip_temp_celsius", "temperature_fresh"], ["fan_rpm", "fan_fresh"]]) {
     requireCondition(value[flag] === (value[numeric] !== null), "freshness_shape");
+  }
+  if (value.attempt !== undefined) {
+    const a = value.attempt;
+    exactObject(a, ["schema", "ordinal", "purpose", "maximum_active_ms", "reserved_ms", "complete", "active_ms"]);
+    requireCondition(a.schema === "worker-qualification-observation-v1" && u32(a.ordinal) && a.ordinal > 0 &&
+      ["diagnostic", "normal", "foreground_loss", "heartbeat_loss"].includes(a.purpose) && a.maximum_active_ms === (a.purpose === "normal" ? 180000 : 30000) &&
+      Number.isSafeInteger(a.reserved_ms) && a.reserved_ms === a.maximum_active_ms && typeof a.complete === "boolean" &&
+      a.active_ms === value.active_ms, "iterative_observation_shape");
   }
   return value;
 }
@@ -61,13 +69,17 @@ export function validateState(value, context) {
   return value;
 }
 
-export function judgeWindow(index, records, fault, { successor = false, lastWindowOnly = false } = {}) {
+export function judgeWindow(index, records, fault, { successor = false, lastWindowOnly = false, iterativePurpose } = {}) {
   requireCondition(Number.isInteger(index) && index >= 0 && index < 3 && records.length > 0, "window_records_missing");
-  const start = records.find((record) => record.state.running && record.state.qualification?.generation > 0 &&
+  const diagnostic = iterativePurpose === "diagnostic";
+  const activeObservation = (state) => state.running || (diagnostic && state.status === "stopping" &&
+    state.qualification?.work_dispatched > 0);
+  const start = records.find((record) => activeObservation(record.state) && record.state.qualification?.generation > 0 &&
     !record.state.qualification.safe_stop_complete);
   requireCondition(start !== undefined, "running_device_evidence_missing");
   const generation = start.state.qualification.generation;
-  const expectedBudget = WINDOW_MS.slice(0, index + 1).reduce((sum, value) => sum + value, 0);
+  const maximum = diagnostic ? 30000 : WINDOW_MS[index];
+  const expectedBudget = iterativePurpose ? 240000 : WINDOW_MS.slice(0, index + 1).reduce((sum, value) => sum + value, 0);
   const bound = records.filter((record) => record.state.qualification?.generation === generation &&
     record.state.qualification.budget_reserved_ms === expectedBudget);
   requireCondition(bound.length > 0, "campaign_budget_evidence_missing");
@@ -77,15 +89,15 @@ export function judgeWindow(index, records, fault, { successor = false, lastWind
     "qualified_stop_missing");
   requireCondition(q.safe_stop_stage === "fan_paused" && q.temperature_fresh && q.chip_temp_celsius <= 45 &&
     q.fan_fresh && q.fan_rpm > 0, "terminal_cooling_proof_missing");
-  requireCondition(q.active_ms > 0 && q.active_ms <= q.generation_elapsed_ms && q.active_ms <= WINDOW_MS[index] &&
-    q.active_limit_ms === WINDOW_MS[index] && q.shutdown_budget_ms === 15550 &&
-    q.submitted >= q.accepted + q.rejected && q.work_dispatched > 0 && q.nonce_work_correlations > 0, "mining_evidence_missing");
-  if (index === 0) {
+  requireCondition(q.active_ms > 0 && q.active_ms <= q.generation_elapsed_ms && q.active_ms <= maximum &&
+    q.active_limit_ms === maximum && q.shutdown_budget_ms === 15550 &&
+    q.submitted >= q.accepted + q.rejected && q.work_dispatched > 0 && (diagnostic || q.nonce_work_correlations > 0), "mining_evidence_missing");
+  if (index === 0 && !diagnostic) {
     requireCondition(bound.some((record) => record.state.renewalsConfirmed >= 1) && fault === undefined &&
       records.every((record) => record.state.failure === undefined), "foreground_window_incomplete");
   }
-  if (index > 0) requireCondition(fault?.window === index && fault.kind === (index === 1 ? "visibility_hidden" : "heartbeats_suppressed"), "fault_observation_missing");
-  if (index > 0) {
+  if (index > 0 && !diagnostic) requireCondition(fault?.window === index && fault.kind === (index === 1 ? "visibility_hidden" : "heartbeats_suppressed"), "fault_observation_missing");
+  if (index > 0 && !diagnostic) {
     const checkpoint = records.find((record) => record.sequence === fault.after_sequence);
     requireCondition(fault.generation === generation && checkpoint?.state.running === true &&
       checkpoint.state.qualification?.generation === generation && checkpoint.state.qualification.gate_closed_ms === null &&
@@ -98,7 +110,7 @@ export function judgeWindow(index, records, fault, { successor = false, lastWind
   const gateDelay = (q.gate_closed_ms - q.last_valid_heartbeat_ms) >>> 0;
   const stopDelay = (q.shutdown_started_ms - q.last_valid_heartbeat_ms) >>> 0;
   requireCondition(gateDelay <= 3000 && stopDelay <= 3000, "revocation_deadline_missed");
-  for (const record of bound.filter((entry) => entry.state.running && !entry.state.qualification.safe_stop_complete)) {
+  for (const record of bound.filter((entry) => activeObservation(entry.state) && !entry.state.qualification.safe_stop_complete)) {
     const sample = record.state.qualification;
     requireCondition(sample.voltage_fresh && sample.power_fresh && sample.temperature_fresh && sample.fan_fresh &&
       sample.voltage_volts >= 4.5 && sample.voltage_volts <= 5.5 && sample.power_watts >= 0 && sample.power_watts <= 15 &&

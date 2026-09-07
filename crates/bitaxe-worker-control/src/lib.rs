@@ -29,3 +29,8 @@ pub use possession::{
 pub use session::{
     LeaseAuthorizationVerifier, RestorationReason, WorkerSession, WorkerSessionError,
 };
+
+mod qualification;
+pub use qualification::{
+    QualificationAttempt, QualificationLedger, QualificationPurpose, QualificationRejected,
+};

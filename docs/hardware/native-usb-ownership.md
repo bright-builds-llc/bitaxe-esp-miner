@@ -204,3 +204,20 @@ just fixed-usb-qualification amend-policy --private-root <existing-attempt-root>
 The fixed amendment requires four valid report digests and allows no issued mining window. It preserves the original context, campaign, deployed firmware/Gate identities and budget. Exact reviewed source-path allowlists and clean/pushed qualification revisions keep tool-policy changes separate from the tested runtime. Artifact, report, amendment or source drift fails closed.
 
 Restart `serve` on the original port/origin, without reloading the page. Explicitly reconnect to obtain fresh possession and a new supervisor authorization scope; the page retains its private preservation baseline. No new firmware flash or replacement campaign is authorized by the amendment. Finish the existing bounded live acceptance and cleanup before recording final reviews.
+
+## Iterative preparation diagnostics
+
+ADR-0026 and `task-worker-preparation-panic-qualification` authorize separately
+signed, bounded qualification attempts after the immutable original campaign
+was exhausted. The `qualificationAttempt` allowance is bound into the Work
+Lease, advertised by the signed serial application manifest and accounted in
+its own durable ledger. This is not a reset or extension of the old campaign.
+
+Collect reset-retained preparation diagnostics through the browser before any
+additional reset or reflash. Closed crash records are observations only, never
+application identity or Work authority. Every new runtime pair requires four
+no-mining continuity/update cycles and fan-only restoration proof. Verified
+same-pair cycle receipts may be referenced by subsequent purposes with exact
+identity, baseline and receipt-hash continuity. Each retry requires verified
+progress; every effect retains the existing physical lease, ROM admission,
+state-preserving segments, conservative limits and proven cleanup.
