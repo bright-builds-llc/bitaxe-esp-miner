@@ -336,3 +336,7 @@ validate-ui-workflow-evidence projection:
 
 fixed-usb-qualification *args:
     bazel run //scripts:fixed_usb_qualification -- {{ args }}
+
+# Audit a built native ELF before hardware qualification; all paths must be absolute.
+audit-owner-stack elf objdump owner_source:
+    bazel run //scripts:audit_owner_stack -- "{{ elf }}" "{{ objdump }}" "{{ owner_source }}"
