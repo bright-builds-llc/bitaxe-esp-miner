@@ -8,18 +8,18 @@ use bitaxe_safety::power::POWER_SAMPLE_STALE_AFTER_MS;
 pub(crate) fn status_evidence(
     _maybe_generation: Option<WorkerGeneration>,
 ) -> Option<serde_json::Value> {
+    let observations = crate::safety_adapter::observation_snapshot();
+    let watchdog = crate::task_watchdog_observation::coherent_observation();
     let now_ms = crate::runtime_uptime::millis();
     let timing = revocation::timing(now_ms)?;
     let (budget_reserved_ms, budget_complete) =
         crate::worker_acceptance_budget::diagnostic_snapshot();
-    let observations = crate::safety_adapter::observation_snapshot();
     let voltage =
         fresh_value(&observations.bus_voltage_volts, now_ms).filter(|value| value.is_finite());
     let power = fresh_value(&observations.power_watts, now_ms).filter(|value| value.is_finite());
     let temperature =
         fresh_value(&observations.chip_temp_celsius, now_ms).filter(|value| value.is_finite());
     let rpm = fresh_value(&observations.fan_rpm, now_ms);
-    let watchdog = crate::task_watchdog_observation::coherent_observation();
     let watchdog_alive = matches!(watchdog.maybe_latest,
         Some(TaskWatchdogObservation::Fed { observed_at_millis, .. })
             if now_ms >= observed_at_millis && now_ms - observed_at_millis <= 1_000);
@@ -61,8 +61,11 @@ pub(crate) fn status_evidence(
     ) {
         value["attempt"] = attempt;
     }
-    if let Some(resources) = super::owner_resources::observation(timing.generation, now_ms) {
+    if let Some(resources) = super::owner_resources::observation(timing.generation) {
         value["owner_resources"] = resources;
+    }
+    if let Some(progress) = super::mining_progress::observation(timing.generation) {
+        value["mining_progress"] = progress;
     }
     Some(value)
 }

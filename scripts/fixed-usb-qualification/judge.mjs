@@ -1,4 +1,5 @@
 import { canonicalBase64, exactObject, REQUIRED_CYCLES, requireCondition, WINDOW_MS } from "./contract.mjs";
+import { validateMiningProgress } from "./mining-progress.mjs";
 
 const STAGES = ["not_started", "stop_dispatch", "reduce_frequency_and_reset_nonce", "hold_reset_low",
   "disable_core_voltage", "disable_asic", "fan_full", "cooling_proof", "fan_paused"];
@@ -26,7 +27,7 @@ function validateOwnerResources(resource) {
 
 export function validateQualification(value) {
   exactObject(value, ["schema", ...COUNTS, ...BOOLEANS, ...NUMBERS, "gate_closed_ms", "shutdown_started_ms", "safe_stop_stage", "revocation_reason",
-    "active_limit_ms", "shutdown_budget_ms", "work_gate_remaining_ms"], ["attempt", "owner_resources"]);
+    "active_limit_ms", "shutdown_budget_ms", "work_gate_remaining_ms"], ["attempt", "owner_resources", "mining_progress"]);
   requireCondition(value.schema === "worker-qualification-v1" && COUNTS.every((key) => u32(value[key])) &&
     BOOLEANS.every((key) => typeof value[key] === "boolean") && value.budget_reserved_ms <= 240000 &&
     STAGES.includes(value.safe_stop_stage), "qualification_shape");
@@ -42,6 +43,7 @@ export function validateQualification(value) {
   if (value.owner_resources !== undefined) {
     validateOwnerResources(value.owner_resources);
   }
+  if (value.mining_progress !== undefined) validateMiningProgress(value.mining_progress, value.generation);
   if (value.attempt !== undefined) {
     const a = value.attempt;
     exactObject(a, ["schema", "ordinal", "purpose", "maximum_active_ms", "reserved_ms", "complete", "active_ms"]);

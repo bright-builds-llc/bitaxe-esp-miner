@@ -4687,7 +4687,7 @@ the exhausted original campaign and its evidence remain immutable.
   shutdown/cooling, persisted mine-on-boot false, inactive leases and released
   browser/CLI/supervisor ownership. Publish redacted evidence/task review.
 
-Effect contract: `just fixed-usb-qualification iterative-bootstrap --private-root <new-protected-parent> --input <original-context-budget-and-final-state-paths.json>` creates the immutable bridge to the exhausted original campaign. `iterative-preflight` takes `--private-root <new-attempt-child> --firmware-root <repository> --gate-root <Gate-repository> --firmware-commit <published-clean-commit> --gate-commit <published-Gate-commit> --manifest <exact-clean-package> --authority-directory <protected-existing-authorities> --purpose <diagnostic|normal|foreground_loss|heartbeat_loss> --previous-receipt <bootstrap-or-prior-result.json> --input <verified-progress.json>`. Only an unchanged exact runtime pair may add `--cycles-from <completed-prior-attempt>` to reference immutable four-cycle proofs and the preserved browser baseline. `serve --private-root <attempt> --authority-directory <protected-authorities> --pool-credentials <ignored-owner-file> --port 64252` owns only the local signing/evidence supervisor. Browser helpers perform maximum probes, cooling/ledger reviews, explicit redacted diagnostic export and acknowledged attempt completion. `iterative-judge --private-root <attempt> --input <closed-ledger-and-final-state-review.json>` provides a bounded fallback for the same evidence contract; no hand-written passing result is allowed. USB effects use just detect-ultra205
+Effect contract: `just fixed-usb-qualification iterative-bootstrap --private-root <new-protected-parent> --input <original-context-budget-and-final-state-paths.json>` creates the immutable bridge to the exhausted original campaign. `iterative-preflight` takes `--private-root <new-attempt-child> --firmware-root <repository> --gate-root <Gate-repository> --firmware-commit <published-clean-commit> --gate-commit <published-Gate-commit> --manifest <exact-clean-package> --authority-directory <protected-existing-authorities> --purpose <diagnostic|normal|foreground_loss|heartbeat_loss> --previous-receipt <bootstrap-or-prior-result.json> --input <verified-progress.json>`. Only an unchanged exact runtime pair may add `--cycles-from <completed-prior-attempt>` to reference immutable four-cycle proofs and the preserved browser baseline. `serve --private-root <attempt> --authority-directory <protected-authorities> --pool-credentials <ignored-owner-file> --port <loopback-port>` owns only the local signing/evidence supervisor. Browser helpers perform maximum probes, cooling/ledger reviews, explicit redacted diagnostic export and acknowledged attempt completion. `iterative-judge --private-root <attempt> --input <closed-ledger-and-final-state-review.json>` provides a bounded fallback for the same evidence contract; no hand-written passing result is allowed. USB effects use just detect-ultra205
 and just flash-monitor --board 205 --manifest <exact-clean-package> --image
 <declared-package-image> --port <fresh-detector-port> --evidence-dir
 <fresh-private-child> --redact-evidence --capture-timeout-seconds 30. Retain the
@@ -4826,6 +4826,73 @@ ESP32-S3 package built; the native owner entry remains 4400 bytes against an
 Protected software evidence includes the failing reproduction, passing
 regressions, stale-frame reproduction, and receive-only PTY/no-TX/cleanup tests.
 Hardware recovery and the final live acceptance remain incomplete.
+
+Recovery of normal ordinal 3 succeeded after the published receive-only drain
+(discarded 5382 bytes in 2000 ms, cleanup complete). Fresh generation-3 evidence
+confirmed no dispatched work, completed shutdown, safe cooling and inactive
+lease; the separate ledger was 240000 ms/next ordinal 4 with no pending entry.
+The original ledger remained exhausted and unchanged. The result is sealed as
+unverified with the original Start timeout preserved.
+
+Firmware fe4427e7 / Gate 50b42d72 passed initial installation and all four
+no-mining update/reconnect cycles. Diagnostic ordinal 4 passed: one work item,
+7279 active ms, 8500-byte owner-stack minimum, qualified restoration and cleanup.
+Normal ordinal 5 then proved the second-Start correction on hardware, with four
+signed renewals and 37 work dispatches. At 79361 active ms the browser stopped
+for `window_control_failed` / missing `owner_resources`; safe restoration and
+fresh accounting were confirmed. The separate ledger now totals 450000 ms,
+next ordinal 6, no pending reservation. Original accounting is unchanged.
+The normal result is sealed unverified; browser, CLI and supervisor ownership
+are released. The final accepted-share and foreground/heartbeat stop criteria
+remain unresolved.
+
+Next diagnostic correction and discriminator work (hardware paused):
+- [x] Reproduce and fix the resource timestamp/publication race without widening
+  the 1000-ms freshness rule or the 4096-byte stack requirement. A missing object
+  alone does not distinguish a stalled owner from an observation race.
+- [x] Add versioned closed mining-progress counts to distinguish received,
+  discarded, correlated-below-target and qualified results, with no raw jobs,
+  pool settings, credentials or private possession information. The legacy
+  `nonce_work_correlations` field counts qualified candidates, so zero does not
+  prove an absence of ASIC responses.
+- [ ] Verify both changes, publish Gate first, pin it in firmware, publish and
+  build the exact clean package, then qualify four cycles before a fresh
+  diagnostic ordinal. Preserve ordinal 5's earliest failure and sealed evidence.
+
+Resource correction evidence: two request-time/publication regressions and the
+paused-publisher regression failed before their fixes. All seven resource tests
+now pass. Two validated atomic slots preserve the preceding fresh sample during
+publication; reads retry at most four times and evaluate age after the coherent
+copy. No allocation, blocking lock, widened freshness or reduced stack floor was
+introduced. This repairs proven false-omission paths; ordinal 5's precise omission
+cause remains unproven. The mining-progress harness independently rejects private
+fields and preserves historical receipts; all 77 harness tests pass.
+
+The optional mining-progress producer, Gate parser/type/protocol definition and
+independent evidence validator are implemented. Focused tests pass (three native
+producer tests, seven resource-cache tests, ten Gate tests, and 77 harness tests).
+Independent review confirmed exact closed-field alignment and that even maximal
+diagnostic counters cannot substitute for actual work, accepted shares or safe
+shutdown in the real judge. Firmware ordered Cargo gates, all 91 Bazel targets,
+fixed-USB ownership/reference checks, ESP32-S3 packaging and the 4400-byte native
+owner-entry audit pass. Gate's full verification and coordinated publication
+remain pending; hardware is paused.
+
+Gate e284f1572133f1a1fc8c8869b51b10280722899c is published and pinned with archive
+SHA-256 588ee54c268ae401ea9aa8b9b9c910aa4bf87a6b4be63def487d3c113d040850.
+All Gate checks pass: 352 Rust tests, 404 JavaScript tests, type/build, headless
+browser, lookup, package and standards. A fixture setup failure was corrected by
+building its exact Cargo target before the unchanged server-readiness timer and
+inheriting the caller's profile. No browser or device deadline was widened.
+Firmware pin verification/publication and the next clean package remain pending.
+
+Firmware verification with the published Gate pin passes all 91 Bazel targets,
+ESP32-S3 packaging, fixed-USB ownership, reference and managed standards checks.
+The owner entry remains 4400 bytes with the unchanged 24576-byte task stack and
+4096-byte measured-floor requirement. Ordered host Cargo gates also passed.
+The next effect sequence is a clean published package, four no-mining cycles,
+and diagnostic ordinal 6 against the sealed ordinal-5 receipt; no failed mining
+attempt has been repeated unchanged.
 
 ## Future
 

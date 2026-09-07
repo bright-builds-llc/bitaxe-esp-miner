@@ -6,6 +6,7 @@ mod campaign_status;
 pub(crate) mod cooling;
 pub(crate) mod cooling_core;
 mod hashrate;
+pub(crate) mod mining_progress;
 mod notifications;
 mod owner_loop;
 mod owner_progress;
@@ -267,6 +268,7 @@ impl OrdinaryEspProductionSessionAdapter {
         match effect {
             ProductionSessionEffect::Publish(snapshot) => {
                 if let Some(session) = self.maybe_bwg_session.as_ref() {
+                    mining_progress::capture(session.generation.raw(), &snapshot);
                     revocation::publish_counts(
                         session.generation,
                         snapshot

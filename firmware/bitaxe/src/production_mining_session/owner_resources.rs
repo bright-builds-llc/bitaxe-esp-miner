@@ -60,8 +60,8 @@ pub(crate) fn refresh_retired() {
     capture(RETIRED.load(Ordering::Acquire), Phase::ShutdownComplete);
 }
 /// Formatting is on the ordinary status path; the coherent cache read itself allocates nothing.
-pub(crate) fn observation(generation: u32, now_ms: u64) -> Option<serde_json::Value> {
-    let value = CACHE.read(generation, now_ms)?;
+pub(crate) fn observation(generation: u32) -> Option<serde_json::Value> {
+    let value = CACHE.read_now(generation, crate::runtime_uptime::millis)?;
     Some(
         serde_json::json!({"schema":"worker-owner-resources-v1","generation":value.generation,"phase":value.phase.label(),"observed_at_ms":value.observed_at_ms.to_string(),"heap_free_bytes":value.heap_free_bytes,"heap_largest_bytes":value.heap_largest_bytes,"stack_free_bytes":value.stack_free_bytes}),
     )
