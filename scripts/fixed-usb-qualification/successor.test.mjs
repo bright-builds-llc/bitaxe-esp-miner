@@ -6,7 +6,7 @@ import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import { digest, writeNew } from "./contract.mjs";
-import { createSuccessor, loadSuccessor, validateBudgetReview, validateCoolingReview } from "./successor.mjs";
+import { createSuccessor, loadSuccessor, requireSuccessorBaseline, validateBudgetReview, validateCoolingReview } from "./successor.mjs";
 import { judgeWindow } from "./judge.mjs";
 import { selectedWindow } from "./store.mjs";
 import { signWindow } from "./authority.mjs";
@@ -166,7 +166,7 @@ async function lastWindowFixture(t) {
     hardware_preparation_started: false, readiness_mask: 55, first_device_failure: "readiness", fan_rpm: 0 });
   const remaining = { ...report, reserved_mask: 3, completed_mask: 3, charged_ms: 210000 };
   await writeNew(resolve(f.root, "window-1.budget-review.json"), { schema: "fixed-usb-budget-review-v1",
-    context_sha256: digest(JSON.stringify(f.context)), report: remaining, state: f.state });
+    context_sha256: digest(JSON.stringify(f.context)), report: remaining, state: { ...f.state, connected: false, serialOwnershipReleased: true, status: "closed" } });
   const root = resolve(f.root, "../attempt-last");
   await mkdir(root, { mode: 0o700 });
   const context = { ...f.context, firmware_commit: "e".repeat(40) };
@@ -302,4 +302,28 @@ test("cooling endpoint records bounded proof once and expires stale challenges",
   const saved = await readFile(resolve(f.root, receipt.review_file), "utf8");
   assert(!saved.includes(f.context.campaign_id));
   assert.equal((await post("/cooling-review", { nonce: challenge.nonce, ...coolingReview(f.state) })).status, 400);
+});
+test("retired historical budget rejects connected, unsafe or mismatched recovery states", async (t) => {
+  const f = await lastWindowFixture(t);
+  const path = resolve(f.predecessor, "window-1.budget-review.json");
+  const receipt = JSON.parse(await readFile(path, "utf8"));
+  const mutations = [
+    { connected: true, serialOwnershipReleased: false }, { deviceRestorationConfirmed: false },
+    { deviceLeaseInactive: false }, { expectedAppElfSha256: "f".repeat(64) },
+    { preservation: { ...receipt.state.preservation, baseline_id: Buffer.alloc(16, 7).toString("base64url") } },
+    { preservation: { ...receipt.state.preservation, mine_on_boot: true } },
+  ];
+  for (const mutation of mutations) {
+    await writeFile(path, JSON.stringify({ ...receipt, state: { ...receipt.state, ...mutation } }));
+    await assert.rejects(createSuccessor(f.root, f.context, f.predecessor, f.review, f.cooling));
+  }
+});
+
+test("current successor baseline rejects the released state accepted for historical recovery", async (t) => {
+  // Arrange
+  const f = await fixture(t);
+  const historical = { ...f.state, connected: false, serialOwnershipReleased: true, status: "closed" };
+  // Act / Assert
+  await assert.rejects(requireSuccessorBaseline(f.root, f.context, historical), /successor_baseline/u);
+  await assert.doesNotReject(requireSuccessorBaseline(f.root, f.context, f.state));
 });

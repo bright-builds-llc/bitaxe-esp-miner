@@ -231,11 +231,11 @@ test("browser admission reports retain only closed stages and actual ownership r
   assert.throws(() => validateState({ ...value, serialFailureCategory: "private-error" }, context));
 });
 
-async function amendmentFixture(t) {
+async function amendmentFixture(t, current = false) {
   const f = await fixture(t);
   await preflight(f.options, f.operations);
   const context = await loadContext(f.options.privateRoot);
-  delete context.required_no_mining_cycles; // A legacy frozen context, never modified by amendment.
+  if (!current) delete context.required_no_mining_cycles; // A legacy frozen context, never modified by amendment.
   const contextPath = resolve(f.options.privateRoot, "context.json");
   await writeFile(contextPath, JSON.stringify({ context, sha256: digest(JSON.stringify(context)) }));
   const files = [], snapshotRoot = resolve(f.options.privateRoot, "qualified-artifacts");
@@ -259,7 +259,7 @@ async function amendmentFixture(t) {
   });
   for (let index = 1; index <= 4; index += 1) await writeNew(resolve(f.options.privateRoot, `cycle-${index}.json`), cycle(context, index));
   return { ...f, context, contextPath, snapshotRoot,
-    amendmentOptions: { qualificationSourceCommit: "e".repeat(40), gateQualificationSourceCommit: "f".repeat(40) },
+    amendmentOptions: { qualificationSourceCommit: "e".repeat(40), gateQualificationSourceCommit: current ? GATE : "f".repeat(40) },
     amendmentOperations: { ...f.operations, checkQualificationSource: () => undefined } };
 }
 
@@ -411,12 +411,46 @@ test("qualification commits must be clean pushed descendants with only the exact
   assert.throws(() => checkQualificationSource(repo, original, qualification, "firmware"), /not_pushed/u);
   run(["push"]);
   assert.doesNotThrow(() => checkQualificationSource(repo, original, qualification, "firmware"));
+  assert.doesNotThrow(() => checkQualificationSource(repo, original, qualification, "firmware-current"));
+  assert.throws(() => checkQualificationSource(repo, original, qualification, "gate-current"), /gate_changed/u);
   assert.throws(() => checkQualificationSource(repo, original, qualification, "gate"), /diff_forbidden/u);
   await writeFile(resolve(repo, "firmware.rs"), "unexpected runtime change");
   assert.throws(() => checkQualificationSource(repo, original, qualification, "firmware"), /dirty/u);
   run(["add", "."]); run(["commit", "-m", "forbidden runtime change"]); run(["push"]);
   assert.throws(() => checkQualificationSource(repo, original, run(["rev-parse", "HEAD"]), "firmware"), /diff_forbidden/u);
+  assert.throws(() => checkQualificationSource(repo, original, run(["rev-parse", "HEAD"]), "firmware-current"), /diff_forbidden/u);
   run(["checkout", "--orphan", "unrelated"]);
   run(["commit", "-m", "unrelated root"]); run(["push", "-u", "origin", "unrelated"]);
   assert.throws(() => checkQualificationSource(repo, original, run(["rev-parse", "HEAD"]), "firmware"), /repository_check_failed|ancestry/u);
+});
+
+test("current four-cycle amendment preserves its context and runtime snapshots", async (t) => {
+  const f = await amendmentFixture(t, true), root = f.options.privateRoot;
+  const before = await readFile(f.contextPath);
+  await amendPolicy(root, f.context, f.amendmentOptions, f.amendmentOperations);
+  const loaded = await loadAmendment(root, f.context, f.amendmentOperations);
+  assert.equal(loaded.policy.schema, "fixed-usb-qualification-amendment-v2");
+  assert.equal(loaded.policy.previous_required_no_mining_cycles, 4);
+  assert.deepEqual(await readFile(f.contextPath), before);
+});
+test("current amendment cannot change runtime, Gate, campaign, budget or cycles", async (t) => {
+  const f = await amendmentFixture(t, true), root = f.options.privateRoot;
+  await amendPolicy(root, f.context, f.amendmentOptions, f.amendmentOperations);
+  const path = resolve(root, "policy-amendment.json"), original = JSON.parse(await readFile(path));
+  for (const [key, value] of [["firmware_commit", "9".repeat(40)], ["gate_commit", "8".repeat(40)],
+    ["gate_qualification_source_commit", "8".repeat(40)], ["app_elf_sha256", "7".repeat(64)],
+    ["campaign_id", Buffer.alloc(16, 8).toString("base64url")], ["window_limits_ms", [180000, 30000, 30001]],
+    ["previous_required_no_mining_cycles", 20], ["required_no_mining_cycles", 3]]) {
+    const record = structuredClone(original);
+    record.amendment[key] = value; record.sha256 = digest(JSON.stringify(record.amendment));
+    await writeFile(path, JSON.stringify(record));
+    await assert.rejects(loadAmendment(root, f.context, f.amendmentOperations));
+  }
+});
+test("current amendment creation rejects issued windows without rewriting context", async (t) => {
+  const f = await amendmentFixture(t, true);
+  const before = await readFile(f.contextPath);
+  await writeNew(resolve(f.options.privateRoot, "window-2.issued.json"), { window: 2 });
+  await assert.rejects(amendPolicy(f.options.privateRoot, f.context, f.amendmentOptions, f.amendmentOperations), /after_window/u);
+  assert.deepEqual(await readFile(f.contextPath), before);
 });

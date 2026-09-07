@@ -42,9 +42,12 @@ async function readCoolingReview(root, context, path) {
   return receipt;
 }
 export async function requireSuccessorBaseline(root, context, state) {
+  return requireBaselineContinuity(root, context, state, false);
+}
+async function requireBaselineContinuity(root, context, state, released) {
   validateState(state, context);
-  requireCondition(state.connected && !state.running && state.deviceRestorationConfirmed && state.deviceLeaseInactive &&
-    !state.serialOwnershipReleased && !state.failure && state.preservation?.device_identity_match === true &&
+  requireCondition(state.connected === !released && !state.running && state.deviceRestorationConfirmed && state.deviceLeaseInactive &&
+    state.serialOwnershipReleased === released && !state.failure && state.preservation?.device_identity_match === true &&
     state.preservation.settings_match === true && state.preservation.mine_on_boot === false, "successor_baseline");
   let previous;
   for (let index = 1; index <= 4; index += 1) {
@@ -98,7 +101,7 @@ async function validateRetiredForeground(root, record) {
   const budget = await readJson(resolve(root, "window-1.budget-review.json"));
   requireCondition(budget.schema === "fixed-usb-budget-review-v1" && budget.context_sha256 === record.sha256, "successor_retired_budget_context");
   validateBudgetReview(budget.report, 2);
-  await requireSuccessorBaseline(root, record.context, budget.state);
+  await requireBaselineContinuity(root, record.context, budget.state, true);
 }
 
 export async function createSuccessor(root, context, predecessorRoot, reviewPath, maybeCoolingPath) {

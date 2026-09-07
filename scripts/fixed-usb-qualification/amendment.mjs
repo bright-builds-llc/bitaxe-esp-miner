@@ -12,6 +12,8 @@ const FIRMWARE_FILES = new Set([
   ...["amendment.mjs", "snapshot.mjs", "contract.mjs", "preflight.mjs", "store.mjs",
     "judge.mjs", "server.mjs", "main.mjs", "supervisor.test.mjs"].map((name) => `scripts/fixed-usb-qualification/${name}`),
 ]);
+const CURRENT_FILES = new Set(["TASKS.md", ...["successor.mjs", "successor.test.mjs", "amendment.mjs", "supervisor.test.mjs"]
+  .map((name) => `scripts/fixed-usb-qualification/${name}`)]);
 const GATE_FILES = new Set(["docs/protocol/bwg-worker-serial-0.1.md", "docs/adr/0095-four-cycle-worker-qualification.md",
   ".scratch/bwg-worker-serial/issues/06-four-cycle-qualification.md"]);
 const IDENTITY_FIELDS = ["firmware_commit", "gate_commit", "app_elf_sha256", "campaign_id", "window_limits_ms"];
@@ -20,7 +22,8 @@ export function checkQualificationSource(root, original, qualified, role) {
   requireCondition(hex(original, 40) && hex(qualified, 40), "qualification_commit");
   cleanPushed(root, qualified);
   requireCondition(git(root, ["merge-base", original, qualified]) === original, "qualification_ancestry");
-  const allowed = role === "firmware" ? FIRMWARE_FILES : GATE_FILES;
+  requireCondition(role !== "gate-current" || original === qualified, "qualification_gate_changed");
+  const allowed = role === "firmware-current" ? CURRENT_FILES : role === "firmware" ? FIRMWARE_FILES : GATE_FILES;
   const changes = git(root, ["diff", "--name-status", "--no-renames", original, qualified]);
   for (const line of changes.split("\n").filter(Boolean)) {
     const [status, path, extra] = line.split("\t");
@@ -49,16 +52,19 @@ async function verifyPolicy(root, context, policy, operations) {
   exactObject(policy, ["schema", "context_sha256", "required_no_mining_cycles", "previous_required_no_mining_cycles",
     "qualification_source_commit", "gate_qualification_source_commit", "artifact_snapshot_sha256", "cycle_receipts",
     "baseline_id", ...IDENTITY_FIELDS]);
-  requireCondition(policy.schema === "fixed-usb-qualification-amendment-v1" &&
+  const current = policy.schema === "fixed-usb-qualification-amendment-v2";
+  requireCondition((current || policy.schema === "fixed-usb-qualification-amendment-v1") &&
     policy.context_sha256 === digest(JSON.stringify(context)) && policy.required_no_mining_cycles === REQUIRED_CYCLES &&
-    policy.previous_required_no_mining_cycles === 20 && !Object.hasOwn(context, "required_no_mining_cycles"), "amendment_policy");
+    (current ? policy.previous_required_no_mining_cycles === 4 && context.required_no_mining_cycles === 4 :
+      policy.previous_required_no_mining_cycles === 20 && !Object.hasOwn(context, "required_no_mining_cycles")), "amendment_policy");
+  if (current) requireCondition(policy.gate_qualification_source_commit === context.gate_commit, "qualification_gate_changed");
   unchangedLimits(context);
   for (const key of IDENTITY_FIELDS) {
     requireCondition(JSON.stringify(policy[key]) === JSON.stringify(context[key]), "amendment_identity");
   }
   const check = operations.checkQualificationSource ?? checkQualificationSource;
-  check(context.firmware_root, context.firmware_commit, policy.qualification_source_commit, "firmware");
-  check(context.gate_root, context.gate_commit, policy.gate_qualification_source_commit, "gate");
+  check(context.firmware_root, context.firmware_commit, policy.qualification_source_commit, current ? "firmware-current" : "firmware");
+  check(context.gate_root, context.gate_commit, policy.gate_qualification_source_commit, current ? "gate-current" : "gate");
   const cycles = await cycleReceipts(root, context);
   requireCondition(JSON.stringify(cycles.receipts) === JSON.stringify(policy.cycle_receipts) &&
     cycles.baseline_id === policy.baseline_id, "amendment_cycle_drift");
@@ -83,8 +89,9 @@ export async function amendPolicy(root, context, options, operations = {}) {
   const cycles = await cycleReceipts(root, context);
   const snapshot = await verifyArtifactSnapshot(root, context);
   const identity = Object.fromEntries(IDENTITY_FIELDS.map((key) => [key, context[key]]));
-  const policy = { schema: "fixed-usb-qualification-amendment-v1", context_sha256: digest(JSON.stringify(context)),
-    required_no_mining_cycles: REQUIRED_CYCLES, previous_required_no_mining_cycles: 20,
+  const current = context.required_no_mining_cycles === 4;
+  const policy = { schema: current ? "fixed-usb-qualification-amendment-v2" : "fixed-usb-qualification-amendment-v1", context_sha256: digest(JSON.stringify(context)),
+    required_no_mining_cycles: REQUIRED_CYCLES, previous_required_no_mining_cycles: current ? 4 : 20,
     qualification_source_commit: options.qualificationSourceCommit,
     gate_qualification_source_commit: options.gateQualificationSourceCommit,
     artifact_snapshot_sha256: snapshot.receipt_sha256, cycle_receipts: cycles.receipts,
