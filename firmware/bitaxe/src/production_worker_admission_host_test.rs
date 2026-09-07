@@ -2,6 +2,8 @@
 
 //! Runs the production BWG owner mapping with synthetic readiness and no hardware.
 
+#[path = "production_mining_session/admission_diagnostics.rs"]
+mod admission_diagnostics;
 #[path = "production_mining_session/bwg.rs"]
 mod bwg;
 #[path = "production_mining_session/revocation.rs"]
@@ -44,6 +46,10 @@ mod worker_acceptance_budget {
 
     pub(crate) static FAIL_FINISH: AtomicBool = AtomicBool::new(false);
     pub(crate) static FINISH_CALLS: AtomicU32 = AtomicU32::new(0);
+
+    pub(crate) fn diagnostic_snapshot() -> (u32, bool) {
+        (0, false)
+    }
 
     pub(crate) fn finish(_generation: super::revocation::WorkerGeneration) -> Result<(), ()> {
         // The actual durable ledger is outside this owner-admission test boundary.
@@ -495,3 +501,6 @@ fn rejected_unprepared_start_does_not_acknowledge_stop_during_budget_failure() {
     assert_eq!(receiver.try_recv(), Ok(Ok(())));
     assert!(adapter.maybe_bwg_session.is_none());
 }
+
+#[path = "production_worker_admission_host_test/start_boundary.rs"]
+mod start_boundary;

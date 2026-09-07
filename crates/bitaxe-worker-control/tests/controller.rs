@@ -1,3 +1,5 @@
+#[path = "controller/budget_review.rs"]
+mod budget_review;
 #[path = "controller/liveness.rs"]
 mod liveness;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -59,6 +61,15 @@ struct FakeSession {
 }
 
 impl WorkerSession for FakeSession {
+    fn acceptance_budget_review(
+        &self,
+        expected: &str,
+    ) -> Result<Option<serde_json::Value>, WorkerSessionError> {
+        Ok(Some(
+            json!({"schema":"worker-budget-review-v1", "campaign_match": expected == URL_SAFE_NO_PAD.encode([7_u8;16]),
+            "reserved_mask":1,"completed_mask":1,"charged_ms":180000,"pending":false}),
+        ))
+    }
     fn start(
         &mut self,
         _grant: &WorkerLeaseGrant,

@@ -4,6 +4,7 @@ import { fstatSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { preflight, loadContext } from "./preflight.mjs";
+import { createSuccessor } from "./successor.mjs";
 import { amendPolicy } from "./amendment.mjs";
 import { createSupervisor } from "./server.mjs";
 import { finishWindow, recordCycle } from "./store.mjs";
@@ -11,7 +12,7 @@ import { protectedPath, QualificationError, readJson, requireCondition } from ".
 
 const KEYS = { "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
   "--manifest": "manifest", "--private-root": "privateRoot", "--authority-directory": "authorityDirectory", "--pool-credentials": "poolCredentials",
-  "--bun": "bun", "--port": "port", "--window": "window", "--input": "input",
+  "--predecessor-root": "predecessorRoot", "--bun": "bun", "--port": "port", "--window": "window", "--input": "input",
   "--qualification-source-commit": "qualificationSourceCommit", "--gate-qualification-source-commit": "gateQualificationSourceCommit" };
 export async function main(args) {
   const [command, ...rest] = args;
@@ -28,6 +29,7 @@ export async function main(args) {
     serve: ["privateRoot", "authorityDirectory", "poolCredentials", "port", "bun"],
     judge: ["privateRoot", "window"],
     "record-cycle": ["privateRoot", "input"],
+    "create-successor": ["privateRoot", "predecessorRoot", "input"],
     "amend-policy": ["privateRoot", "qualificationSourceCommit", "gateQualificationSourceCommit"],
   }[command];
   requireCondition(allowed && Object.keys(options).every((key) => allowed.includes(key)), "command_arguments");
@@ -36,6 +38,10 @@ export async function main(args) {
     return preflight(options);
   }
   const context = await loadContext(resolve(options.privateRoot));
+  if (command === "create-successor") {
+    requireCondition(options.predecessorRoot && options.input, "successor_arguments_missing");
+    return createSuccessor(resolve(options.privateRoot), context, options.predecessorRoot, options.input);
+  }
   if (command === "amend-policy") {
     requireCondition(options.qualificationSourceCommit && options.gateQualificationSourceCommit, "amendment_arguments_missing");
     return amendPolicy(resolve(options.privateRoot), context, options);

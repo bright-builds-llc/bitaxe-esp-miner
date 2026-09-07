@@ -61,7 +61,7 @@ export function validateState(value, context) {
   return value;
 }
 
-export function judgeWindow(index, records, fault) {
+export function judgeWindow(index, records, fault, { successor = false } = {}) {
   requireCondition(Number.isInteger(index) && index >= 0 && index < 3 && records.length > 0, "window_records_missing");
   const start = records.find((record) => record.state.running && record.state.qualification?.generation > 0 &&
     !record.state.qualification.safe_stop_complete);
@@ -104,7 +104,13 @@ export function judgeWindow(index, records, fault) {
       sample.voltage_volts >= 4.5 && sample.voltage_volts <= 5.5 && sample.power_watts >= 0 && sample.power_watts <= 15 &&
       sample.chip_temp_celsius < 75 && sample.fan_rpm > 0 && sample.watchdog_alive && !sample.mine_on_boot, "safety_evidence_failed");
   }
-  return { schema: "fixed-usb-window-report-v1", window: index, generation, active_ms: q.active_ms,
+  const prefix = successor && index === 1 ? bound.filter((record) => record.sequence <= fault.after_sequence) : [];
+  const renewalVerified = prefix.some((record) => record.state.renewalsConfirmed >= 1 &&
+    record.state.qualification.work_dispatched > 0 && record.state.qualification.nonce_work_correlations > 0);
+  return { ...(successor ? { original_normal_window: "consumed_unverified",
+    foreground_prefix_renewal_verified: renewalVerified,
+    foreground_prefix_accepted_share_verified: prefix.some((record) => record.state.qualification.accepted > 0) } : {}),
+    schema: "fixed-usb-window-report-v1", window: index, generation, active_ms: q.active_ms,
     budget_reserved_ms: q.budget_reserved_ms, accepted: q.accepted, rejected: q.rejected,
     submitted: q.submitted, nonce_work_correlations: q.nonce_work_correlations,
     gate_close_delay_ms: gateDelay, shutdown_start_delay_ms: stopDelay,

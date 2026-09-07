@@ -22,7 +22,7 @@ impl GenerationGate {
         };
         let active_limit = self.timing_budget_limit_ms.load(Ordering::Acquire);
         let timing = RevocationTiming {
-            generation: generation >> 2,
+            generation: generation >> super::GENERATION_SHIFT,
             revocation_reason: if closed_for_generation {
                 RevocationReason::from_code(self.closed_reason.load(Ordering::Acquire))
             } else {

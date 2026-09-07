@@ -1,5 +1,6 @@
 //! Thin BWG port into the sole boot-lifetime Production Mining Session owner.
 
+use crate::production_mining_session::admission_diagnostics::{self, Failure, Stage};
 use bitaxe_worker_control::{
     LeaseDeadlines, RestorationReason, WorkerLeaseGrant, WorkerLeaseRenewal, WorkerSession,
     WorkerSessionError,
@@ -32,16 +33,33 @@ impl WorkerSession for ProductionWorkerSession {
         crate::production_mining_session::status_evidence(self.maybe_generation)
     }
 
+    fn acceptance_budget_review(
+        &self,
+        expected_campaign: &str,
+    ) -> Result<Option<serde_json::Value>, WorkerSessionError> {
+        crate::worker_acceptance_budget::review(expected_campaign)
+            .map(Some)
+            .map_err(|_| WorkerSessionError::Rejected)
+    }
+
     fn start(
         &mut self,
         grant: &WorkerLeaseGrant,
         deadlines: LeaseDeadlines,
     ) -> Result<(), WorkerSessionError> {
-        let generation = self.maybe_generation.ok_or(WorkerSessionError::Rejected)?;
-        crate::worker_acceptance_budget::admit(generation, grant)
-            .map_err(|_| WorkerSessionError::Rejected)?;
-        crate::production_mining_session::bwg_start(grant, deadlines, generation)
-            .map_err(|_| WorkerSessionError::Rejected)
+        admission_diagnostics::begin();
+        let generation = self.maybe_generation.ok_or_else(|| {
+            admission_diagnostics::fail(Failure::Admission);
+            WorkerSessionError::Rejected
+        })?;
+        crate::worker_acceptance_budget::admit(generation, grant).map_err(|_| {
+            admission_diagnostics::fail(Failure::Admission);
+            WorkerSessionError::Rejected
+        })?;
+        crate::production_mining_session::bwg_start(grant, deadlines, generation).map_err(|_| {
+            admission_diagnostics::fail(Failure::Admission);
+            WorkerSessionError::Rejected
+        })
     }
 
     fn renew(
@@ -55,6 +73,7 @@ impl WorkerSession for ProductionWorkerSession {
     }
 
     fn safe_stop(&mut self, reason: RestorationReason) -> Result<(), WorkerSessionError> {
+        admission_diagnostics::stage(Stage::Cleanup);
         if let Some(generation) = self.maybe_generation {
             use crate::production_mining_session::revocation::{self, RevocationReason};
             let cause = match reason {
@@ -67,7 +86,20 @@ impl WorkerSession for ProductionWorkerSession {
             };
             revocation::revoke_reason_at(generation, crate::runtime_uptime::millis(), cause);
         }
-        crate::production_mining_session::bwg_safe_stop()
-            .map_err(|_| WorkerSessionError::SafeStopFailed)
+        crate::production_mining_session::bwg_safe_stop().map_err(|_| {
+            admission_diagnostics::fail(Failure::Cleanup);
+            WorkerSessionError::SafeStopFailed
+        })?;
+        if let Some(generation) = self.maybe_generation {
+            // The owner acknowledged termination (or absence) of its effects.
+            // A pre-owner rejection still owns a durable reservation to finalize.
+            crate::worker_acceptance_budget::finish(generation).map_err(|_| {
+                admission_diagnostics::fail(Failure::Cleanup);
+                WorkerSessionError::SafeStopFailed
+            })?;
+            crate::production_mining_session::revocation::finish_shutdown(generation);
+        }
+        admission_diagnostics::stage(Stage::Complete);
+        Ok(())
     }
 }

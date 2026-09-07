@@ -316,3 +316,24 @@ fn adding_an_unsigned_acceptance_campaign_invalidates_start_authorization() {
         "invalid_authorization"
     );
 }
+
+#[test]
+fn all_zero_signature_is_rejected_without_consuming_the_valid_sequence() {
+    // Arrange
+    let trust = WorkLeaseAuthorityTrust::from_deployment_json(TRUST).expect("public fixture trust");
+    let mut verifier = WorkLeaseAuthorizationVerifier::new(trust, MemorySequenceStore::default());
+    let context =
+        WorkerLeaseAuthorizationContext::parse("DAykxhwrLi6cew9fbubnHoatl4YgUuYMisUjl3NxDzE")
+            .expect("public context");
+    let (signed_input, _) = START_AUTHORIZATION.rsplit_once('.').expect("JWS");
+    let invalid = format!("{signed_input}.{}", URL_SAFE_NO_PAD.encode([0_u8; 64]));
+    // Act
+    let rejected = verifier.verify_start(&start(&invalid, "fixture-session-password"), &context);
+    let original = verifier.verify_start(
+        &start(START_AUTHORIZATION, "fixture-session-password"),
+        &context,
+    );
+    // Assert
+    assert_eq!(rejected, Err(LeaseAuthorizationError::InvalidAuthorization));
+    assert_eq!(original, Ok(()));
+}

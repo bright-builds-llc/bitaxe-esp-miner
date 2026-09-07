@@ -2,6 +2,7 @@ import { appendFile, lstat, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { exactObject, protectedPath, readJson, REQUIRED_CYCLES, requireCondition, writeNew } from "./contract.mjs";
 import { judgeWindow, validateCycle, validateState } from "./judge.mjs";
+import { loadSuccessor } from "./successor.mjs";
 import { loadAmendment } from "./amendment.mjs";
 
 async function exists(path) {
@@ -9,8 +10,19 @@ async function exists(path) {
   catch (error) { if (error.code === "ENOENT") return false; throw error; }
 }
 export async function selectedWindow(root) {
-  for (let index = 0; index < 3; index += 1) {
-    if (!await exists(resolve(root, `window-${index}.result.json`))) return index;
+  const { context } = await readJson(resolve(root, "context.json"));
+  const successor = await loadSuccessor(root, context);
+  for (let index = successor ? 1 : 0; index < 3; index += 1) {
+    const resultPath = resolve(root, `window-${index}.result.json`);
+    if (!await exists(resultPath)) return index;
+    if (successor) {
+      await protectedPath(resultPath);
+      const records = await windowRecords(root, index);
+      for (const record of records) validateState(record.state, context);
+      const fault = await readJson(resolve(root, `window-${index}.fault.json`));
+      const expected = judgeWindow(index, records, fault, { successor: true });
+      requireCondition(JSON.stringify(await readJson(resultPath)) === JSON.stringify(expected), "successor_result_integrity");
+    }
   }
   return 3;
 }
@@ -52,7 +64,8 @@ export async function finishWindow(root, context, index) {
   for (const record of records) validateState(record.state, context);
   const faultPath = resolve(root, `window-${index}.fault.json`);
   const fault = await exists(faultPath) ? await readJson(faultPath) : undefined;
-  const result = judgeWindow(index, records, fault);
+  const successor = await loadSuccessor(root, context);
+  const result = judgeWindow(index, records, fault, { successor: successor !== undefined });
   await writeNew(resolve(root, `window-${index}.result.json`), result);
   return result;
 }

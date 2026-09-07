@@ -39,5 +39,14 @@ document.addEventListener("visibilitychange", () => {
 });
 finish.addEventListener("click", () => enqueue(async () => {
   const result = await post("/advance", {});
-  note.textContent = result.next_window < 3 ? `Window validated. Close, reconnect, then prepare window ${result.next_window}.` : "Three browser reports validated. Hardware qualification still requires the operator's real-device evidence review.";
+  note.textContent = result.next_window < 3 ? `Window validated. Close, reconnect, then prepare window ${result.next_window}.` : "Available window reports validated. Original failed windows remain unverified; hardware evidence requires review.";
+}));
+
+const review = document.createElement("button");
+review.id = "review-campaign-budget";
+review.textContent = "Review remaining campaign budget";
+document.body.append(review);
+review.addEventListener("click", () => enqueue(async () => {
+  await window.workerAcceptance.submitBudgetReview();
+  note.textContent = "Device budget reviewed. The original reservation remains consumed; prepare the remaining window promptly.";
 }));

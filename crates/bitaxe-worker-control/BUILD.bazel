@@ -40,7 +40,7 @@ rust_test(
 
 rust_test(
     name = "controller_tests",
-    srcs = ["tests/controller.rs", "tests/controller/liveness.rs"],
+    srcs = ["tests/controller.rs", "tests/controller/liveness.rs", "tests/controller/budget_review.rs"],
     crate_root = "tests/controller.rs",
     crate_name = "bitaxe_worker_control_controller_tests",
     edition = "2021",

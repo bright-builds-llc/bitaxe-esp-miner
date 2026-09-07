@@ -1,4 +1,5 @@
 //! Thin ESP owner and qualified live-I/O adapter for the Production Mining Session.
+pub(crate) mod admission_diagnostics;
 mod asic_worker;
 mod bwg;
 mod campaign_status;
@@ -297,6 +298,9 @@ impl OrdinaryEspProductionSessionAdapter {
             maybe_campaign_lease,
             actuation_qualified,
         };
+        if self.maybe_bwg_session.is_some() {
+            admission_diagnostics::readiness(readiness);
+        }
         self.readiness_trace.observe(
             wakeup,
             readiness,
@@ -383,6 +387,9 @@ impl OrdinaryEspProductionSessionAdapter {
                         failure: bitaxe_stratum::v1::production_session::HardwarePreparationFailure::Rejected,
                         now_ms: crate::runtime_uptime::millis() }),
                     Err(failure) => {
+                        if self.maybe_bwg_session.is_some() {
+                            admission_diagnostics::fail(admission_diagnostics::Failure::Preparation);
+                        }
                         let original = failure.original();
                         let original_category = original.source().category();
                         let (rollback_step, rollback_detail) = failure
@@ -421,6 +428,9 @@ impl OrdinaryEspProductionSessionAdapter {
                 }
             }
             ProductionSessionEffect::ReadPoolConfiguration => {
+                if self.maybe_bwg_session.is_some() {
+                    admission_diagnostics::stage(admission_diagnostics::Stage::PoolActivation);
+                }
                 let maybe_pools = if let Some(session) = self.maybe_bwg_session.as_ref() {
                     Some(session.pools.clone())
                 } else {
@@ -496,6 +506,10 @@ impl OrdinaryEspProductionSessionAdapter {
                 }
             },
             ProductionSessionEffect::SafeStopHardware { lease_id, purpose } => {
+                if self.maybe_bwg_session.is_some() {
+                    admission_diagnostics::fail_current();
+                    admission_diagnostics::stage(admission_diagnostics::Stage::Cleanup);
+                }
                 if let Some(session) = self.maybe_bwg_session.as_ref() {
                     revocation::revoke_reason_at(
                         session.generation,
@@ -516,6 +530,7 @@ impl OrdinaryEspProductionSessionAdapter {
                         Some(ProductionSessionEvent::HardwareSafeStopConfirmed { lease_id, now_ms })
                     }
                     Err(failure) => {
+                        admission_diagnostics::fail(admission_diagnostics::Failure::Cleanup);
                         log::error!(
                             "production_mining_session=fail_closed action=hardware_safe_stop failed_step={:?} category={}",
                             failure.step(),

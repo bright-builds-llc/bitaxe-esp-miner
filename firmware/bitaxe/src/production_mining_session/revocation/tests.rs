@@ -360,3 +360,57 @@ fn a_signed_lease_cutoff_records_its_own_reason_with_fresh_heartbeats() {
         RevocationReason::LeaseOrBudgetExpired
     );
 }
+
+#[test]
+fn reserved_but_unactivated_link_retains_ownership_until_cleanup() {
+    // Arrange
+    let gate = GenerationGate::new();
+    let generation = gate.begin_link(0).expect("link");
+    assert!(gate.admit_budget(generation, 30_000));
+
+    // Act
+    gate.revoke_at(generation, 10);
+    let maybe_early = gate.begin_link(20);
+
+    // Assert
+    assert!(
+        maybe_early.is_none(),
+        "reservation cleanup must fence a new link"
+    );
+    assert_eq!(gate.maybe_revoked(), Some(generation));
+    gate.finish_shutdown(generation);
+    assert!(gate.begin_link(30).is_some());
+}
+
+#[test]
+fn stale_shutdown_completion_cannot_clear_a_successor_reservation() {
+    // Arrange
+    let gate = GenerationGate::new();
+    let old = gate.begin_link(0).expect("old link");
+    assert!(gate.begin_reservation(old));
+    gate.revoke_at(old, 10);
+    gate.finish_shutdown(old);
+    let fresh = gate.begin_link(20).expect("new link");
+    assert!(gate.admit_budget(fresh, 30_000));
+    // Act
+    gate.finish_shutdown(old);
+    // Assert
+    assert!(gate.activate_at(fresh, 21));
+    assert!(gate.permits(Some(fresh)));
+}
+
+#[test]
+fn pending_reservation_is_revocable_before_durable_write_and_budget_admission() {
+    // Arrange
+    let gate = GenerationGate::new();
+    let generation = gate.begin_link(0).expect("link");
+    assert!(gate.begin_reservation(generation));
+    // Act
+    gate.check_deadline(2800);
+    // Assert
+    assert_eq!(gate.maybe_revoked(), Some(generation));
+    assert!(gate.begin_link(2801).is_none());
+    assert!(!gate.admit_budget(generation, 30_000));
+    gate.finish_shutdown(generation);
+    assert!(gate.begin_link(2802).is_some());
+}

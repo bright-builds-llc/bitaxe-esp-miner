@@ -5,8 +5,10 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 pub const HEARTBEAT_CUTOFF_MS: u32 = 2_800;
 const LIVE: u32 = 1;
 const ACTIVE: u32 = 2;
-const REVOKED: u32 = 3;
-const FLAGS: u32 = 3;
+const RESERVED: u32 = 3;
+const REVOKED: u32 = 4;
+const FLAGS: u32 = 7;
+const GENERATION_SHIFT: u32 = 3;
 
 #[path = "revocation/reason.rs"]
 mod reason;
@@ -40,7 +42,7 @@ pub struct WorkerGeneration(u32);
 
 impl WorkerGeneration {
     pub const fn raw(self) -> u32 {
-        self.0 >> 2
+        self.0 >> GENERATION_SHIFT
     }
 }
 
@@ -133,10 +135,10 @@ impl GenerationGate {
 
     pub fn begin_link(&self, now_ms: u64) -> Option<WorkerGeneration> {
         let id = self.next_generation.fetch_add(1, Ordering::AcqRel);
-        if id == 0 || id > (u32::MAX >> 2) {
+        if id == 0 || id > (u32::MAX >> GENERATION_SHIFT) {
             return None;
         }
-        let generation = WorkerGeneration(id << 2);
+        let generation = WorkerGeneration(id << GENERATION_SHIFT);
         self.state
             .compare_exchange(0, generation.0, Ordering::AcqRel, Ordering::Acquire)
             .ok()?;
@@ -156,7 +158,22 @@ impl GenerationGate {
 
     pub fn is_live(&self, generation: WorkerGeneration) -> bool {
         let state = self.state.load(Ordering::Acquire);
-        state == generation.0 | LIVE || state == generation.0 | ACTIVE
+        state == generation.0 | LIVE
+            || state == generation.0 | RESERVED
+            || state == generation.0 | ACTIVE
+    }
+
+    /// Fences cleanup before any fallible durable reservation operation.
+    pub fn begin_reservation(&self, generation: WorkerGeneration) -> bool {
+        self.state
+            .compare_exchange(
+                generation.0 | LIVE,
+                generation.0 | RESERVED,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .is_ok()
+            || self.state.load(Ordering::Acquire) == generation.0 | RESERVED
     }
 
     pub fn activate(&self, generation: WorkerGeneration) -> bool {
@@ -173,7 +190,7 @@ impl GenerationGate {
         let activated = self
             .state
             .compare_exchange(
-                generation.0 | LIVE,
+                generation.0 | RESERVED,
                 generation.0 | ACTIVE,
                 Ordering::AcqRel,
                 Ordering::Acquire,
@@ -221,7 +238,7 @@ impl GenerationGate {
         {
             return false;
         }
-        if self.state.load(Ordering::Acquire) != generation.0 | LIVE {
+        if !self.begin_reservation(generation) {
             return false;
         }
         if self
@@ -272,7 +289,7 @@ impl GenerationGate {
         reason: RevocationReason,
     ) -> bool {
         // Only the winning CAS publishes a reason. A later cleanup cannot replace it.
-        for flag in [ACTIVE, LIVE, ACTIVE] {
+        for flag in [ACTIVE, RESERVED, LIVE, RESERVED, ACTIVE] {
             let revoked_state = if flag == LIVE {
                 0
             } else {
@@ -298,7 +315,7 @@ impl GenerationGate {
                 self.closed_reason.store(reason as u32, Ordering::Release);
                 self.closed_generation
                     .store(generation.0, Ordering::Release);
-            } else {
+            } else if flag == LIVE {
                 let _result = self.budget_generation.compare_exchange(
                     generation.0,
                     0,
@@ -313,7 +330,7 @@ impl GenerationGate {
 
     pub fn check_deadline(&self, now_ms: u64) {
         let state = self.state.load(Ordering::Acquire);
-        if !matches!(state & FLAGS, LIVE | ACTIVE) {
+        if !matches!(state & FLAGS, LIVE | RESERVED | ACTIVE) {
             return;
         }
         let now = now_ms as u32;
@@ -370,7 +387,18 @@ impl GenerationGate {
     }
 
     pub fn finish_shutdown(&self, generation: WorkerGeneration) {
-        if self.state.load(Ordering::Acquire) != generation.0 | REVOKED {
+        // Claim retirement before touching shared counters. Competing cleanup
+        // callers cannot clear or publish over a newly admitted generation.
+        if self
+            .state
+            .compare_exchange(
+                generation.0 | REVOKED,
+                generation.0,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .is_err()
+        {
             return;
         }
         self.budget_generation.store(0, Ordering::Release);
@@ -378,12 +406,7 @@ impl GenerationGate {
             self.complete_generation
                 .store(generation.0, Ordering::Release);
         }
-        let _result = self.state.compare_exchange(
-            generation.0 | REVOKED,
-            0,
-            Ordering::AcqRel,
-            Ordering::Acquire,
-        );
+        self.state.store(0, Ordering::Release);
     }
 
     pub fn note_shutdown(&self, generation: WorkerGeneration, stage: u32, now_ms: u64) {
@@ -560,6 +583,9 @@ pub(crate) fn note_fan_proof(generation: WorkerGeneration, now_ms: u64) {
 }
 pub(crate) fn check_safety(safe: bool, nonzero_fan: bool, now_ms: u64) {
     GATE.check_safety(safe, nonzero_fan, now_ms);
+}
+pub(crate) fn begin_reservation(generation: WorkerGeneration) -> bool {
+    GATE.begin_reservation(generation)
 }
 pub(crate) fn admit_budget(generation: WorkerGeneration, active_limit_ms: u64) -> bool {
     super::shutdown_budget::conservative_plan_is_bounded()

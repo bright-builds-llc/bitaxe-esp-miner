@@ -95,3 +95,15 @@ The previously verified serial-0.2 firmware remains installed with mining
 disabled. The original consumed window and all four hardware cycle receipts
 remain historical evidence of their exact source/ELF pair. This correction
 requires its own hardware qualification before a hardware-success claim.
+
+## Pre-owner follow-up
+
+ADR-0024 addresses the earlier reservation gap: a reservation fence precedes
+NVS work, cleanup waits for in-flight writes and owner acknowledgment, and
+competing finalizers claim retirement before updating counters. Ambiguous
+writes preserve the intended full charge. Actual owner queue rejection,
+revoked admission, durable failure and read-only ledger review have dedicated
+host regressions. Bounded correlated errors and independent closed diagnostics
+make rejection distinguishable from transport timeout. The original hardware
+failure remains its original evidence; only a new qualified attempt can
+establish hardware behavior after these corrections.

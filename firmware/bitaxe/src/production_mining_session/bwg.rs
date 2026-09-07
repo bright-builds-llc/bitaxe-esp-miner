@@ -222,6 +222,7 @@ impl OrdinaryEspProductionSessionAdapter {
                     correlated_baseline: snapshot.mining.counters.qualified_candidates,
                     preparation_started: false,
                 };
+                admission_diagnostics::stage(admission_diagnostics::Stage::Readiness);
                 self.maybe_bwg_session = Some(session);
                 self.maybe_bwg_reply = Some(PendingReply::Start(reply));
                 self.wake_event(
@@ -279,6 +280,7 @@ impl OrdinaryEspProductionSessionAdapter {
         if let Some(session) = self.maybe_bwg_session.as_mut() {
             // Even cancelled or failed preparation must follow ordered safe stop.
             session.preparation_started = true;
+            admission_diagnostics::stage(admission_diagnostics::Stage::Preparation);
         }
     }
 
@@ -288,6 +290,7 @@ impl OrdinaryEspProductionSessionAdapter {
             .as_ref()
             .is_some_and(|session| !session.preparation_started);
         if never_prepared && matches!(self.maybe_bwg_reply, Some(PendingReply::Start(_))) {
+            admission_diagnostics::fail(admission_diagnostics::Failure::Readiness);
             if let Some(session) = self.maybe_bwg_session.as_ref() {
                 revocation::revoke_reason_at(
                     session.generation,
@@ -306,6 +309,7 @@ impl OrdinaryEspProductionSessionAdapter {
                         .as_ref()
                         .is_some_and(|session| revocation::permits(Some(session.generation))) =>
             {
+                admission_diagnostics::stage(admission_diagnostics::Stage::Active);
                 Some(Ok(()))
             }
             Some(PendingReply::SafeStop(_)) if retired => Some(Ok(())),
@@ -343,16 +347,19 @@ impl OrdinaryEspProductionSessionAdapter {
             && snapshot.campaign_state == MiningCampaignState::Consumed
             && snapshot.hardware_state == MiningHardwareState::Stopped;
         if unstarted_revoked || stopped {
+            admission_diagnostics::stage(admission_diagnostics::Stage::Cleanup);
             revocation::revoke_reason_at(
                 session.generation,
                 crate::runtime_uptime::millis(),
                 revocation::RevocationReason::ControlFailed,
             );
             if crate::worker_acceptance_budget::finish(session.generation).is_err() {
+                admission_diagnostics::fail(admission_diagnostics::Failure::Cleanup);
                 return false;
             }
             revocation::finish_shutdown(session.generation);
             self.maybe_bwg_session = None;
+            admission_diagnostics::stage(admission_diagnostics::Stage::Complete);
             return true;
         }
         false

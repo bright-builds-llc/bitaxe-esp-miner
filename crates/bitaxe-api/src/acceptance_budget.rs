@@ -89,6 +89,23 @@ impl AcceptanceBudget {
         Ok(next)
     }
 
+    /// Compares the caller's campaign without exposing the persisted identifier.
+    pub fn matches_campaign(&self, expected: &str) -> bool {
+        self.campaign_id == expected
+    }
+    /// Reserved windows remain charged after completion or reboot.
+    pub const fn reserved_mask(&self) -> u8 {
+        self.reserved
+    }
+    /// Windows with confirmed finalization; this is not a mining-success claim.
+    pub const fn completed_mask(&self) -> u8 {
+        self.completed
+    }
+    /// Whether a reservation still needs finalization.
+    pub const fn pending(&self) -> bool {
+        self.maybe_running_window.is_some()
+    }
+
     pub fn complete(&self) -> bool {
         self.validate().is_ok() && self.completed == 7
     }

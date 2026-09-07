@@ -50,12 +50,14 @@ export async function readPoolForSigning(firmwareRoot, path) {
   return { endpoint: endpoint.href, username: input.poolUser, password: input.poolPassword };
 }
 
-export async function signWindow({ campaignId, index, challengeId, binding, stratum, sign }) {
+export async function signWindow({ campaignId, index, challengeId, binding, stratum, sign, successor = false }) {
   requireCondition(canonicalBase64(campaignId, 16) && canonicalBase64(binding, 32) &&
     /^challenge_[A-Za-z0-9_-]{1,118}$/u.test(challengeId) && Number.isInteger(index) && index >= 0 && index < 3, "signing_context");
+  requireCondition(!successor || index === 1 || index === 2, "successor_signing_window");
+  const renewalMs = successor ? 5000 : 20000;
   const leaseId = `lease_${nonce()}`;
   const common = { protocolVersion: "bwg-worker-controller/0.4", leaseId,
-    durationMilliseconds: 60000, renewAfterMilliseconds: 20000 };
+    durationMilliseconds: 60000, renewAfterMilliseconds: renewalMs };
   const grant = { ...common, challengeId, stratum,
     acceptanceCampaign: { id: campaignId, window: index, maximumActiveMilliseconds: WINDOW_MS[index] } };
   const input = (operation, request) => ({ operation, activeChallengeId: challengeId,
@@ -68,7 +70,7 @@ export async function signWindow({ campaignId, index, challengeId, binding, stra
   };
   const signedGrant = await attach("start", grant);
   const renewals = [];
-  for (let index = 0; index < Math.ceil(WINDOW_MS[grant.acceptanceCampaign.window] / 20000); index += 1) {
+  for (let index = 0; index < Math.ceil(WINDOW_MS[grant.acceptanceCampaign.window] / renewalMs); index += 1) {
     renewals.push(await attach("renew", common));
   }
   return { grant: signedGrant, renewals };

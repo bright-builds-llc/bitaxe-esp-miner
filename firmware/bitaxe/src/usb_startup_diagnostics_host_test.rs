@@ -560,3 +560,11 @@ fn long_control_reply_refreshes_peer_heartbeat_before_the_indivisible_record() {
         heartbeat["sequence"].as_u64().expect("heartbeat sequence") + 1
     );
 }
+
+mod production_mining_session {
+    pub mod admission_diagnostics {
+        pub fn marker() -> String {
+            "worker_admission schema=v1 stage=idle first_failure=none readiness=0 budget_reserved_ms=180000 budget_complete=false redacted=true".to_owned()
+        }
+    }
+}

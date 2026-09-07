@@ -1,3 +1,4 @@
+mod inspection;
 mod probe;
 mod status;
 mod wire;
@@ -401,6 +402,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                 }
                 probe::response(payload, &request.request_id)?
             }
+            "acceptance_budget_review" => self.review_acceptance_budget(&request, now)?,
             "start_lease" => self.start(request.required_payload()?, now)?,
             "renew_lease" => self.renew(request.required_payload()?, now)?,
             "status" => {
@@ -424,7 +426,10 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             }
             _ => return Err(WorkerControlError::InvalidRequest),
         };
-        if request.command != "discover" && request.command != "transport_probe" {
+        if !matches!(
+            request.command.as_str(),
+            "discover" | "transport_probe" | "acceptance_budget_review"
+        ) {
             result = self.with_status_evidence(result)?;
         }
         let reports_boot_restoration = request.command == "status"

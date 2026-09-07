@@ -6,6 +6,7 @@ import { authorityCall, readPoolForSigning, signWindow } from "./authority.mjs";
 import { BUNDLE, canonicalBase64, contextPage, digest, exactObject, missing, nonce, QualificationError, readJson, requireCondition, writeNew } from "./contract.mjs";
 import { loadContext, verifyFrozen } from "./preflight.mjs";
 import { finishWindow, recordFault, recordState, requireCompleteCycles, selectedWindow } from "./store.mjs";
+import { loadSuccessor, requireSuccessorBaseline, validateBudgetReview } from "./successor.mjs";
 import { validateState } from "./judge.mjs";
 
 const SCRIPT_ROOT = dirname(fileURLToPath(import.meta.url));
@@ -17,7 +18,7 @@ export async function createSupervisor(options, operations = {}) {
   const frozen = await verify();
   const gateAssetRoot = frozen?.gate_root ?? context.gate_root;
   const trust = await readJson(resolve(context.firmware_root, "firmware/bitaxe/bwg/deployment-trust.json"));
-  let scope, pendingWindow, lastBrowserState, signing = false, recordQueue = Promise.resolve();
+  let scope, pendingWindow, lastBrowserState, reviewChallenge, reviewedBudget, signing = false, recordQueue = Promise.resolve();
   const sign = operations.sign ?? ((operation, input) => authorityCall(context.gate_root, options.authorityDirectory, `sign-${operation}`, input, options.bun));
   const readPool = operations.readPool ?? (() => readPoolForSigning(context.firmware_root, options.poolCredentials));
   const now = operations.now ?? Date.now;
@@ -50,8 +51,36 @@ export async function createSupervisor(options, operations = {}) {
     if (request.method === "POST" && url.pathname === "/activate") {
       exactObject(await body(request), []);
       requireCondition(!signing && pendingWindow === undefined, "context_busy");
+      reviewChallenge = undefined;
+      reviewedBudget = undefined;
       scope = { challengeId: `challenge_${nonce()}`, retentionExpiryUnixSeconds: Math.floor(now() / 1000) + 86400 };
       return send(response, 200, scope);
+    }
+    if (request.method === "POST" && url.pathname === "/budget-review-context") {
+      exactObject(await body(request), []);
+      requireCondition(scope && !signing && pendingWindow === undefined, "budget_review_scope");
+      reviewedBudget = undefined;
+      reviewChallenge = { nonce: nonce(), challengeId: scope.challengeId, expires: now() + 45000 };
+      return send(response, 200, { campaignId: context.campaign_id, nonce: reviewChallenge.nonce });
+    }
+    if (request.method === "POST" && url.pathname === "/budget-review") {
+      const input = await body(request);
+      exactObject(input, ["nonce", "report", "controlSessionBindingSha256", "state"]);
+      const challenge = reviewChallenge;
+      reviewChallenge = undefined;
+      requireCondition(challenge && challenge.nonce === input.nonce && challenge.challengeId === scope?.challengeId &&
+        challenge.expires > now() && canonicalBase64(input.controlSessionBindingSha256, 32), "budget_review_challenge");
+      const successor = await loadSuccessor(root, context);
+      const index = successor ? await selectedWindow(root) : 1;
+      validateBudgetReview(input.report, index);
+      await requireSuccessorBaseline(root, context, input.state);
+      const file = `budget-review-${challenge.nonce}.json`;
+      await writeNew(resolve(root, file), { schema: "fixed-usb-budget-review-v1", context_sha256: digest(JSON.stringify(context)),
+        report: input.report, state: input.state });
+      reviewedBudget = { binding: input.controlSessionBindingSha256, challengeId: challenge.challengeId,
+        expires: challenge.expires, report: input.report, index };
+      lastBrowserState = input.state;
+      return send(response, 200, { budget_review_saved: true, review_file: file });
     }
     if (request.method === "POST" && url.pathname === "/authorization-context") {
       const input = await body(request);
@@ -62,13 +91,26 @@ export async function createSupervisor(options, operations = {}) {
       signing = true;
       try {
         const index = await selectedWindow(root);
+        const successor = await loadSuccessor(root, context);
+        requireCondition(!reviewedBudget || successor, "successor_creation_required");
+        let reviewExpires;
+        if (successor) {
+          const reviewed = reviewedBudget;
+          reviewedBudget = undefined;
+          requireCondition(reviewed && reviewed.index === index && reviewed.binding === input.controlSessionBindingSha256 &&
+            reviewed.challengeId === scope.challengeId && reviewed.expires > now(), "successor_fresh_review_required");
+          validateBudgetReview(reviewed.report, index);
+          reviewExpires = reviewed.expires;
+        }
         requireCondition(index < 3, "campaign_complete");
         await missing(resolve(root, `window-${index}.issued.json`));
         await requireCompleteCycles(root, context, lastBrowserState, index);
         requireCondition(JSON.stringify(await verify()) === JSON.stringify(frozen), "supervisor_policy_changed");
         const artifacts = await signWindow({ campaignId: context.campaign_id, index, challengeId: scope.challengeId,
-          binding: input.controlSessionBindingSha256, stratum: await readPool(), sign });
+          binding: input.controlSessionBindingSha256, stratum: await readPool(), sign, successor: successor !== undefined });
         requireCondition(Buffer.byteLength(JSON.stringify(artifacts)) <= 65536, "window_artifact_bound");
+        if (successor) requireCondition(now() < reviewExpires && lastBrowserState?.connected &&
+          !lastBrowserState.running && !lastBrowserState.failure, "successor_review_expired_during_signing");
         await writeNew(resolve(root, `window-${index}.issued.json`), { schema: "fixed-usb-window-issuance-v1", window: index,
           private_payload_persisted: false, maximum_active_ms: context.window_limits_ms[index] });
         pendingWindow = { index, artifacts };
@@ -86,6 +128,10 @@ export async function createSupervisor(options, operations = {}) {
       const value = await body(request);
       exactObject(value, ["state"]);
       lastBrowserState = validateState(value.state, context);
+      if (!lastBrowserState.connected || lastBrowserState.failure || lastBrowserState.running) {
+        reviewedBudget = undefined;
+        reviewChallenge = undefined;
+      }
       return send(response, 200, await serializeRecord(() => recordState(root, context, value.state)));
     }
     if (request.method === "POST" && url.pathname === "/fault") {

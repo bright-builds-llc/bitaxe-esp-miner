@@ -39,6 +39,14 @@ pub trait WorkerSession {
         Ok(None)
     }
 
+    /// Reads campaign-bound reservation facts after fresh possession; never mutates the ledger.
+    fn acceptance_budget_review(
+        &self,
+        _expected_campaign: &str,
+    ) -> Result<Option<serde_json::Value>, WorkerSessionError> {
+        Ok(None)
+    }
+
     /// Returns only bounded, non-secret qualification observations; never authority.
     fn status_evidence(&self) -> Option<serde_json::Value> {
         None

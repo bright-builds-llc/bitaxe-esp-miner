@@ -575,6 +575,8 @@ rust_test(
     name = "production_worker_admission_tests",
     srcs = [
         "src/production_worker_admission_host_test.rs",
+        "src/production_worker_admission_host_test/start_boundary.rs",
+        "src/production_mining_session/admission_diagnostics.rs",
         "src/production_mining_session/bwg.rs",
         "src/production_mining_session/revocation.rs",
         "src/production_mining_session/revocation/reason.rs",
@@ -586,6 +588,7 @@ rust_test(
     crate_root = "src/production_worker_admission_host_test.rs",
     edition = "2021",
     deps = [
+        "@crates//:serde_json",
         "//crates/bitaxe-asic:bitaxe_asic",
         "//crates/bitaxe-stratum:bitaxe_stratum",
         "//crates/bitaxe-worker-control:bitaxe_worker_control",
@@ -1227,4 +1230,29 @@ rust_test(
     crate_root = "src/main_telemetry_host_test.rs",
     crate_name = "main_telemetry_tests",
     edition = "2021",
+)
+
+rust_test(
+    name = "worker_session_cleanup_tests",
+    srcs = [
+        "src/worker_session_cleanup_host_test.rs",
+        "src/production_mining_session/admission_diagnostics.rs",
+        "src/bwg_worker_session.rs",
+        "src/worker_acceptance_budget.rs",
+        "src/production_mining_session/revocation.rs",
+        "src/production_mining_session/revocation/reason.rs",
+        "src/production_mining_session/revocation/timing.rs",
+        "src/production_mining_session/revocation/tests.rs",
+        "src/production_mining_session/shutdown_budget.rs",
+    ],
+    crate_root = "src/worker_session_cleanup_host_test.rs",
+    edition = "2021",
+    deps = [
+        "//crates/bitaxe-api:bitaxe_api",
+        "//crates/bitaxe-stratum:bitaxe_stratum",
+        "//crates/bitaxe-asic:bitaxe_asic",
+        "//crates/bitaxe-worker-control:bitaxe_worker_control",
+        "@crates//:anyhow",
+        "@crates//:serde_json",
+    ],
 )

@@ -229,6 +229,13 @@ fn process_frame<V>(
         Ok(response) => response,
         Err(error) => {
             diagnostic(error.category());
+            if CURRENT_SESSION.load(Ordering::Acquire) == epoch {
+                if let Ok(rejection) = worker.prepare_rejection(bytes, &error) {
+                    if writer::send_control(epoch, rejection.frame()).is_err() {
+                        diagnostic("stale_response");
+                    }
+                }
+            }
             revoke_epoch(epoch);
             return;
         }

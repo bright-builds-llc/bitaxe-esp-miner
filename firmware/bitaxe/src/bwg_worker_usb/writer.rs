@@ -108,6 +108,7 @@ pub(super) fn run(
     let mut replay_slot = 0;
     let mut last_replay = 0;
     let mut next_startup_marker = 0;
+    let mut next_admission_marker = 0;
     let mut last_heartbeat = 0;
     let mut credited_bytes = 0;
     let mut maybe_write_failure = None;
@@ -216,6 +217,9 @@ pub(super) fn run(
                 let maybe_line = if now >= next_startup_marker {
                     next_startup_marker = now.saturating_add(500);
                     Some(progress.marker(now))
+                } else if now >= next_admission_marker {
+                    next_admission_marker = now.saturating_add(1000);
+                    Some(crate::production_mining_session::admission_diagnostics::marker())
                 } else {
                     diagnostics.try_recv().ok()
                 }
