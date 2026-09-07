@@ -1,3 +1,4 @@
+import { parseSamples, writeSealedSamples } from "./sample-seal.mjs";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { digest, exactObject, fileDigest, protectedPath, QualificationError, readJson, requireCondition, writeNew } from "./contract.mjs";
@@ -50,9 +51,11 @@ export async function finishIterative(root, context, inputPath) {
   requireIdleLedger(input.ledger_after, a.ordinal + 1, context.expected_charged_ms + a.maximumActiveMilliseconds);
   requireExhaustedOriginal(input.original_budget);
   requireReleasedState(input.final_state, context);
+  await writeNew(resolve(root, "sample-seal-intent.json"), { context_sha256: digest(JSON.stringify(context)), final_state: input.final_state });
   const samplePath = resolve(root, "iterative.samples.jsonl");
   await protectedPath(samplePath);
-  const records = (await readFile(samplePath, "utf8")).trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
+  const sampleBytes = await readFile(samplePath);
+  const records = parseSamples(sampleBytes, context);
   let fault;
   try { await protectedPath(resolve(root, "iterative.fault.json")); fault = await readJson(resolve(root, "iterative.fault.json")); }
   catch (error) { if (error.code !== "ENOENT") throw error; }
@@ -70,12 +73,13 @@ export async function finishIterative(root, context, inputPath) {
   let judgment, failure;
   try { judgment = judgeIterative(context, records, fault); }
   catch (error) { if (!(error instanceof QualificationError)) throw error; failure = error.code; }
-  const receipt = { schema: "worker-iterative-result-v1", context, context_sha256: digest(JSON.stringify(context)),
+  const sealed = await writeSealedSamples(root, sampleBytes);
+  const receipt = { schema: "worker-iterative-result-v2", context, context_sha256: digest(JSON.stringify(context)),
     original_campaign_id: context.original_campaign_id, next_ordinal: a.ordinal + 1,
     total_charged_ms: input.ledger_after.total_charged_ms, cleanup_confirmed: true, result: judgment ? "passed" : "unverified",
     ...(judgment ? { judgment } : {}), first_failure: firstFailure?.details.browser ?? null,
     first_failure_evidence: firstFailure ?? null, judgment_failure: failure ?? null, ...input,
-    samples_sha256: await fileDigest(samplePath), progress_sha256: context.progress_sha256 };
+    ...sealed, progress_sha256: context.progress_sha256 };
   await writeNew(resolve(root, "result.json"), { receipt, sha256: digest(JSON.stringify(receipt)) });
   return { result: receipt.result, ordinal: a.ordinal, purpose: a.purpose, first_failure: receipt.first_failure, judgment_failure: receipt.judgment_failure,
     cumulative_charged_ms: receipt.total_charged_ms, cleanup_confirmed: true };

@@ -1,3 +1,4 @@
+import { resultSamples } from "./sample-seal.mjs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { canonicalBase64, canonicalDirectory, digest, exactObject, fileDigest, hex, ignored, missing, nonce, protectedPath, readJson, requireCondition, writeNew } from "./contract.mjs";
@@ -57,7 +58,7 @@ export async function readPrevious(path) {
   const record = await protectedJson(path);
   requireCondition(record.sha256 === digest(JSON.stringify(record.receipt)), "iterative_receipt_integrity");
   const receipt = record.receipt;
-  requireCondition(["worker-iterative-bootstrap-v1", "worker-iterative-result-v1"].includes(receipt.schema) && receipt.cleanup_confirmed === true,
+  requireCondition(["worker-iterative-bootstrap-v1", "worker-iterative-result-v1", "worker-iterative-result-v2"].includes(receipt.schema) && receipt.cleanup_confirmed === true,
     "iterative_previous_cleanup");
   if (receipt.schema === "worker-iterative-bootstrap-v1") {
     for (const source of Object.values(receipt.original)) {
@@ -66,13 +67,15 @@ export async function readPrevious(path) {
     }
     requireCondition(receipt.next_ordinal === 1 && receipt.total_charged_ms === 0, "iterative_bootstrap_ledger");
   } else {
+    await validateCompletedReceipt(path, receipt, await resultSamples(dirname(path), receipt));
+  }
+  return receipt;
+}
+export async function validateCompletedReceipt(path, receipt, records) {
+  requireCondition(receipt.cleanup_confirmed === true, "iterative_previous_cleanup");
     requireCondition(receipt.context_sha256 === digest(JSON.stringify(receipt.context)), "iterative_result_context");
     const frozen = await protectedJson(resolve(dirname(path), "context.json"));
     requireCondition(frozen.sha256 === receipt.context_sha256 && digest(JSON.stringify(frozen.context)) === frozen.sha256, "iterative_result_context");
-    const samplesPath = resolve(dirname(path), "iterative.samples.jsonl");
-    await protectedPath(samplesPath);
-    requireCondition(await fileDigest(samplesPath) === receipt.samples_sha256, "iterative_result_samples_changed");
-    const records = (await readFile(samplesPath, "utf8")).trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
     const earliest = records.find((record) => record.state.failure);
     if (earliest) {
       const evidence = receipt.first_failure_evidence;
@@ -104,8 +107,6 @@ export async function readPrevious(path) {
     requireExhaustedOriginal(receipt.original_budget);
     requireIdleLedger(receipt.ledger_after, receipt.context.qualification_attempt.ordinal + 1,
       receipt.ledger_before.total_charged_ms + receipt.context.qualification_attempt.maximumActiveMilliseconds);
-  }
-  return receipt;
 }
 export async function iterativePreflight(options, operations = {}) {
   const root = resolve(options.privateRoot), parent = dirname(root);
@@ -179,7 +180,7 @@ export async function validateIterativeContext(root, context) {
 async function reusableCycles(root, context, parent) {
   requireCondition(dirname(root) === parent, "iterative_cycle_source_parent");
   const result = await readPrevious(resolve(root, "result.json"));
-  requireCondition(result.schema === "worker-iterative-result-v1" &&
+  requireCondition(["worker-iterative-result-v1", "worker-iterative-result-v2"].includes(result.schema) &&
     ["firmware_commit", "gate_commit", "app_elf_sha256"].every((key) => result.context[key] === context[key]), "iterative_cycle_runtime_changed");
   const record = await protectedJson(resolve(root, "context.json"));
   requireCondition(record.sha256 === digest(JSON.stringify(record.context)) && record.sha256 === result.context_sha256, "iterative_cycle_context");

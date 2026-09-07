@@ -1,3 +1,4 @@
+import { recoverSampleSeal, uniquePrefix } from "./sample-seal.mjs";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { once } from "node:events";
@@ -189,7 +190,7 @@ test("failed cleanup and forged prior pass never authorize the next ordinal", as
   await assert.rejects(iterativePreflight(options, f.operations), /cleanup_required/u);
   await writeFile(path, originalBytes);
   await writeFile(resolve(f.options.privateRoot, "iterative.samples.jsonl"), '[]\n');
-  await assert.rejects(iterativePreflight(options, f.operations), /samples_changed/u);
+  await assert.rejects(iterativePreflight(options, f.operations), /samples_changed|sealed_journal_prefix_changed/u);
 });
 test("diagnostic export rejects raw fields and unbounded observations before invoking a validator", async () => {
   await assert.rejects(validateDiagnosticExport({ schema: "worker-diagnostic-export-v1", observations: [], raw: "private-fixture" }, "/unused"), /object_fields/u);
@@ -305,6 +306,7 @@ test("v1 completed receipt is revalidated under its historical resource policy",
   await writeFile(resolve(root, "context.json"), JSON.stringify({ context, sha256: digest(JSON.stringify(context)) }));
   await writeFile(resolve(root, "iterative.samples.jsonl"), sampleBytes);
   const resultPath = resolve(root, "result.json"), record = await readJson(resultPath);
+  record.receipt.schema = "worker-iterative-result-v1"; delete record.receipt.samples_file;
   record.receipt.context = context; record.receipt.context_sha256 = digest(JSON.stringify(context));
   record.receipt.samples_sha256 = digest(sampleBytes); record.sha256 = digest(JSON.stringify(record.receipt));
   await writeFile(resultPath, JSON.stringify(record));
@@ -319,4 +321,73 @@ test("v2 retains a low-stack failure even when shutdown later reports healthy re
   assert.throws(() => judgeIterative(f.context, records), /owner_resources_unqualified/u);
   records[0].state.ownerResourceFailure = { schema: "worker-owner-resource-failure-v1", generation: 1, resources: null };
   assert.throws(() => judgeIterative(f.context, records), /owner_resources_unqualified/u);
+});
+
+test("delayed benign close posts cannot modify a completed sample snapshot", async (t) => {
+  const f = await completedDiagnostic(t), root = f.options.privateRoot;
+  const receipt = (await readJson(resolve(root, "result.json"))).receipt;
+  const before = await readFile(resolve(root, "sealed.samples.jsonl"));
+  for (const status of ["closing", "closed"]) {
+    const response = await f.request("/record", { state: { ...receipt.final_state, status } });
+    assert.equal(response.status, 200); assert.equal((await response.json()).recorded, false);
+  }
+  assert.deepEqual(await readFile(resolve(root, "sealed.samples.jsonl")), before);
+  assert.equal((await readPrevious(resolve(root, "result.json"))).result, "passed");
+});
+test("different late evidence is preserved as a conflict and blocks future allowance", async (t) => {
+  const f = await completedDiagnostic(t), root = f.options.privateRoot;
+  const receipt = (await readJson(resolve(root, "result.json"))).receipt;
+  const response = await f.request("/record", { state: { ...receipt.final_state, failure: "window_control_failed" } });
+  assert.equal(response.status, 400);
+  assert.equal((await readJson(resolve(root, "post-seal-conflict.json"))).state.failure, "window_control_failed");
+  await assert.rejects(readPrevious(resolve(root, "result.json")));
+});
+async function legacyTailFixture(t) {
+  const f = await completedDiagnostic(t), root = f.options.privateRoot, resultPath = resolve(root, "result.json");
+  const record = await readJson(resultPath), rows = observations(f.context);
+  while (rows.length < 52) rows.push({ sequence: rows.length + 1, state: structuredClone(rows.at(-1).state) });
+  const prefix = rows.map((row) => JSON.stringify(row) + "\n").join("");
+  record.receipt.schema = "worker-iterative-result-v1"; delete record.receipt.samples_file;
+  record.receipt.samples_sha256 = digest(prefix); record.sha256 = digest(JSON.stringify(record.receipt));
+  await writeFile(resultPath, JSON.stringify(record));
+  for (const status of ["closing", "closed"]) rows.push({ sequence: rows.length + 1, state: { ...record.receipt.final_state, status } });
+  const journal = rows.map((row) => JSON.stringify(row) + "\n").join("");
+  await writeFile(resolve(root, "iterative.samples.jsonl"), journal);
+  await rm(resolve(root, "sealed.samples.jsonl")); await rm(resolve(root, "sample-seal-intent.json"));
+  return { ...f, root, resultPath, prefix, journal, rows };
+}
+test("legacy exact 52-row prefix recovery preserves all original files and verdict", async (t) => {
+  const f = await legacyTailFixture(t), before = await readFile(f.resultPath);
+  await assert.rejects(readPrevious(f.resultPath), /samples_changed/u);
+  const recovered = await recoverSampleSeal(f.root);
+  assert.equal(recovered.prefix_rows, 52); assert.equal(recovered.journal_rows, 54);
+  assert.deepEqual(await readFile(f.resultPath), before);
+  assert.equal(await readFile(resolve(f.root, "iterative.samples.jsonl"), "utf8"), f.journal);
+  assert.equal(await readFile(resolve(f.root, "sealed.samples.jsonl"), "utf8"), f.prefix);
+  assert.equal((await readPrevious(f.resultPath)).result, "passed");
+  await writeFile(resolve(f.root, "iterative.samples.jsonl"), f.journal + JSON.stringify({ sequence: 55, state: f.rows.at(-1).state }) + "\n");
+  await assert.rejects(readPrevious(f.resultPath), /recovery_changed/u);
+  await writeFile(resolve(f.root, "iterative.samples.jsonl"), f.prefix);
+  await assert.rejects(readPrevious(f.resultPath), /recovery_changed/u);
+});
+test("legacy recovery rejects nonclose, active, failure and changed metric suffixes", async (t) => {
+  const f = await legacyTailFixture(t), path = resolve(f.root, "iterative.samples.jsonl");
+  for (const mutation of [{ status: "ready" }, { running: true }, { failure: "close_failed" }, { renewalsConfirmed: 1 }]) {
+    const rows = structuredClone(f.rows); Object.assign(rows[52].state, mutation);
+    await writeFile(path, rows.map((row) => JSON.stringify(row) + "\n").join(""));
+    await assert.rejects(recoverSampleSeal(f.root), /nonclosing_suffix/u);
+    await assert.rejects(readFile(resolve(f.root, "sealed.samples.jsonl")), { code: "ENOENT" });
+  }
+});
+test("prefix recovery rejects missing or ambiguous matches", () => {
+  const bytes = Buffer.from("one\ntwo\n");
+  assert.throws(() => uniquePrefix(bytes, "missing"), /prefix_not_unique/u);
+  assert.throws(() => uniquePrefix(bytes, "collision", () => "collision"), /prefix_not_unique/u);
+});
+
+test("a sealed snapshot cannot be changed by a later writer without blocking history", async (t) => {
+  const f = await completedDiagnostic(t), root = f.options.privateRoot;
+  const path = resolve(root, "sealed.samples.jsonl"), bytes = await readFile(path);
+  await writeFile(path, Buffer.concat([bytes, Buffer.from("\n")]));
+  await assert.rejects(readPrevious(resolve(root, "result.json")), /samples_changed/u);
 });

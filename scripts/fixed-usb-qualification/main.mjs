@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { recoverSampleSeal } from "./sample-seal.mjs";
 import { once } from "node:events";
 import { fstatSync } from "node:fs";
 import { resolve } from "node:path";
@@ -27,6 +28,7 @@ export async function main(args) {
   }
   requireCondition(options.privateRoot, "private_root_required");
   const allowed = {
+    "iterative-recover-seal": ["privateRoot"],
     "iterative-bootstrap": ["privateRoot", "input"],
     "iterative-judge": ["privateRoot", "input"],
     "iterative-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "authorityDirectory", "bun", "purpose", "previousReceipt", "input", "cyclesFrom"],
@@ -38,6 +40,7 @@ export async function main(args) {
     "amend-policy": ["privateRoot", "qualificationSourceCommit", "gateQualificationSourceCommit"],
   }[command];
   requireCondition(allowed && Object.keys(options).every((key) => allowed.includes(key)), "command_arguments");
+  if (command === "iterative-recover-seal") return recoverSampleSeal(resolve(options.privateRoot));
   if (command === "iterative-bootstrap") {
     requireCondition(options.input, "input_required");
     return iterativeBootstrap(resolve(options.privateRoot), options.input);

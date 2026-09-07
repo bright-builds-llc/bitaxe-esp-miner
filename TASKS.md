@@ -4762,6 +4762,23 @@ Stack correction contract: run `just audit-owner-stack <absolute-exact-ELF> <abs
 
 Stack correction verification: ordered Cargo checks pass (2118 tests, one preexisting ignored); all 89 pinned Bazel targets, real ESP32-S3 packaging, native owner-stack audit, USB ownership, reference and redaction pass. The ownership check was updated for the deliberately reused completed-loop snapshot, and its original failure is preserved. The native owner entry now uses 4400 bytes against the 8192-byte ceiling. Gate full checks pass including 400 web/CLI tests, and all 67 harness tests pass. Fresh hardware verification of the 24576-byte allocation and ≥4096-byte measured margin remains required before full acceptance.
 
+Seal-integrity correction before ordinal 2: preflight rejected
+`iterative_result_samples_changed` before creating any context/ordinal claim
+or issuing an allowance. Diagnostic 001's original result digest exactly
+matches the first 52 of 54 journal rows; the two appended close notifications
+match its final state in every field except closing/closed status. Preserve
+the original journal and result. Add an explicit repo-owned
+`iterative-recover-seal --private-root <completed-v1-attempt>` command that
+writes only a verified immutable prefix and recovery supplement, with exact
+original-result/full-journal/prefix hashes and narrow terminal-suffix checks.
+New results bind immutable sealed sample files; late equivalent close events
+cannot alter them, and any conflicting late evidence is preserved and blocks
+further allowances. Verify/review/publish this correction and recover the seal
+before retrying preflight with a new protected progress input. No hardware or
+mining reservation occurred during this failed preflight.
+
+Sample sealing verification: all 73 harness tests pass, including the exact 52-row prefix plus two equivalent late-close pattern, unsafe suffixes, missing/nonunique prefixes and mutations after recovery. Canonical harness targets and ordered Cargo gates pass. Original sample/result files have not been changed; invoke the published strict recovery command before a fresh preflight.
+
 
 ## Future
 

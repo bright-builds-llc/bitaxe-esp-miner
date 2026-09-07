@@ -1,3 +1,4 @@
+import { guardLateRecord } from "./sample-seal.mjs";
 import { createServer } from "node:http";
 import { appendFile, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -122,7 +123,9 @@ export async function createIterativeSupervisor(options, operations = {}) {
       const artifacts = pending; pending = undefined; return send(response, 200, artifacts);
     }
     if (path === "/record" && input) {
-      exactObject(input, ["state"]); validateState(input.state, context); lastState = input.state;
+      exactObject(input, ["state"]);
+      if (await guardLateRecord(root, context, input.state)) return send(response, 200, { recorded: false });
+      validateState(input.state, context); lastState = input.state;
       if (!lastState.connected || lastState.failure) review = undefined;
       requireCondition(sequence < 512, "sample_bound");
       sequence += 1; lastRecord = { sequence, state: lastState };
