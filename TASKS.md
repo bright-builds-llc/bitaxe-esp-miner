@@ -31,7 +31,7 @@ new work.
 - [x] Replace firmware TinyUSB with a fixed Serial/JTAG reader/single writer and fresh logical sessions.
 - [x] Implement and software-test generation revocation at 2.8 seconds, bounded shutdown initiation, and physical active-time accounting; real timing remains qualification work.
 - [x] Preserve NVS/Device Identity/replay state with validated disjoint update segments.
-- [ ] Verify, commit/push Gate, pin its exact archive, then verify and commit/push firmware with an exact clean package.
+- [x] Verify, commit/push Gate, pin its exact archive, then verify and commit/push firmware with an exact clean package.
 
 Decision: ADR-0021 and the owner-approved 2026-09-04 implementation plan. Direct browser USB, no helper, no active legacy WebUSB support. Preserve historical plans/evidence unchanged. Requirements commits precede hardware effects. Root tooling commit at migration start is `48569a7166347cc800882b0351d277c2aaa188d6`; the last installed image is `155bfae5a017da5e89009bed7199a83ab4956cb8`, whose application runtime remains unverified.
 
@@ -55,15 +55,17 @@ Diagnostic consumer pin: Gate `9eb097d1c555967023e1fe567b853b583d49248a` is push
 
 Diagnostic follow-up verification: ordered Cargo format/lint/build/tests pass (2,038 tests), all 74 Bazel tests pass including actual ESP32-S3 packaging, and fixed-USB ownership/symbols, reference integrity, redaction, standards, and diff review pass. The startup observer is independent of blocking initialization; the early driver/writer installation remains its explicit pre-observation boundary. No hardware runtime or mining acceptance is claimed by these software results.
 
+Attempt-010 review (2026-09-06): serial 0.2 firmware `59f065ed5887e66a69bd8ba24aa2144b2696f321` and Gate `95fbb9856ccfe1902b03a90d0632fd857282f295` are published with an exact clean package. All required software gates pass, including 2083 Cargo tests (one preexisting ignored), all 80 Bazel targets and Gate's 361 web/CLI tests. Four current-profile hardware cycles passed. Implementation/publication is complete, but overall migration remains open because the approved live acceptance has not passed. See [attempt-010 evidence](docs/parity/evidence/20260906-fixed-usb-attempt-010.md).
+
 ### task-fixed-usb-serial-qualification | 2026-09-04 | Qualify fixed Serial/JTAG browser and flashing continuity
 
 Depends on: task-fixed-usb-serial-migration.
 
 - [x] Resolve the stuck detector and prove no owned children or unexpected USB holders before opening a new session. Repeat cleanup proof for each attempt.
-- [ ] Establish an exact-package fixed-Serial/JTAG no-mining baseline and fresh browser identity.
+- [x] Establish an exact-package fixed-Serial/JTAG no-mining baseline and fresh browser identity.
 - [ ] Verify largest frames, fragmentation/coalescing, session replacement, foreground closure, heartbeat expiry and serial port ownership on macOS/Chrome.
-- [ ] Complete 4 no-mining serial-0.2 browser-connect/release/flash/reconnect cycles preserving Device Identity, settings, exact runtime identity and cleanup. Earlier-profile cycle receipts remain historical.
-- [ ] Seal protected evidence and record the new recovery baseline; leave firmware installed with mining disabled.
+- [x] Complete 4 no-mining serial-0.2 browser-connect/release/flash/reconnect cycles preserving Device Identity, settings, exact runtime identity and cleanup. Earlier-profile cycle receipts remain historical.
+- [x] Seal protected evidence and record the new recovery baseline; leave firmware installed with mining disabled.
 
 Authority: existing provided USB/barrel power and built-in BOOT/RESET only; exact clean pushed Gate/firmware/package identity; repo-owned detector, segmented flash, framed observer and browser campaign commands. Ordinary update segments must exclude NVS and unrelated partitions. No erase-flash, external electrical interfaces, hidden helper, network discovery, or mining in this task. Initial Web Serial permission uses the browser's direct user-gesture flow. Existing blocked cleanup is a real precondition, not a timeout to ignore.
 
@@ -76,7 +78,7 @@ Qualification follow-up plan (2026-09-05): physical RESET of installed `49082929
 - [x] Seed Worker cryptographic randomness once from a qualified boot entropy source before ADC/Wi-Fi; preserve stored Device Identity and fail closed when uninitialized.
 - [x] Retain nonsecret Wi-Fi startup phase/error evidence, with no credential/error-display logging or resource-budget guesses.
 - [x] Replace the generic esptool application-exit reset with the qualified official espflash native Serial/JTAG reset sequence, preserving retained ROM admission, tool identity, cleanup and bounded execution.
-- [ ] Run cross-language/host/browser/native package checks, publish exact coordinated pins, then requalify the fixed-USB baseline and max frames before cycle/mining acceptance.
+- [x] Run cross-language/host/browser/native package checks, publish exact coordinated pins, then requalify the fixed-USB baseline and max frames before cycle/mining acceptance.
 
 Application-return effect contract: retain the same physical-device lease and positive ESP32-S3 ROM admission. Using the admitted managed esptool, read RTC OPTION1 at `0x6000812c`; only when bit 0 is set, issue `write_mem 0x6000812c 0x00000000 0x00000001`, then require a readback with that bit cleared. No other register bits or flash ranges are writable through this helper. Invoke the validated espflash 4.5 executable once with `reset --chip esp32s3 --port <retained-port> --before no-reset-no-sync --after hard-reset --no-stub --non-interactive --skip-update-check`. Each child retains its 30-second bound; same-connector reacquisition and cleanup retain existing bounds. The reset path clears native virtual BOOT before reset/release. It establishes no application claim without subsequent exact source/ELF observation. Any command, readback, identity, or cleanup failure stops the sequence; no unchanged retry or additional hardware effect is admitted.
 
@@ -139,17 +141,19 @@ Attempt-009 receive-loss re-plan (2026-09-05): firmware `eb67af45` / ELF `ec1d92
 - [x] Remove full-capacity heartbeat wipes without secret-bearing reallocations, buffer increases or large stack temporaries.
 - [x] Prove the actual channel against a bounded lossy receiver, including partial/final credits, lexical integrity, cancellation, counter exhaustion and blocked control owners.
 - [x] Update active contracts, exports, fixtures, manifests and operational references; retain all earlier-profile evidence as historical.
-- [ ] Run required checks, publish coordinated exact pins/package, then establish a fresh 0.2 baseline and four cycles under the same campaign before live acceptance. No unchanged hardware retry or budget refund.
+- [x] Run required checks, publish coordinated exact pins/package, then establish a fresh 0.2 baseline and four cycles under the same campaign before live acceptance. No unchanged hardware retry or budget refund.
 
 Serial 0.2 software progress: Gate `95fbb9856ccfe1902b03a90d0632fd857282f295` is published and pinned with archive SHA-256 `831c138f4da988b806d059009dd1577f9a4b164f092d52ab8a5cd456f9362951`. Its full checks pass, including 361 web/CLI tests and browser conformance. Firmware ordered Cargo gates pass (2083 tests, one preexisting ignored), and producer/native-loop regressions cover partial progress, blocked output revocation, final Close receipt, interrupted-prefix recovery and lexical integrity. The actual capability was re-signed through the unchanged protected Update Authority and verified against existing public trust. Review findings are resolved; final pinned Bazel/package checks and new hardware evidence remain pending. Historical snapshots for attempts 008 and 009 still verify without context rewrites.
 
 Serial 0.2 final software verification: all 80 pinned Bazel targets pass, including actual ESP32-S3 builds, cross-language fixtures, receive/writer ownership and cancellation. USB ownership, reference integrity, redaction, native formatting, standards and 22 supervisor/history tests pass. Host Rust checks used unchanged behavior with debug information disabled; no safety or test deadline was relaxed. Combined review regressions establish synchronous Hello admission, bounded stale-prefix handling, immediate Work revocation with a final Close receipt, and no spliced command during a pending response. The exact clean post-commit package and fresh hardware qualification remain required; no serial-0.2 mining claim is made by these checks.
 
+Attempt-010 review (2026-09-06): all four serial-0.2 cycle receipts validate against exact firmware `59f065ed` / ELF `6c02e63e` and Gate `95fbb985`. Each proves fresh possession, actual 65536-byte request/response payloads, same Device Identity/settings/authorization marks, mining disabled, segmented update, stable exact runtime and cleanup. Following the separate live Start failure, the same package was recovered through state-preserving reflash; fresh restoration confirmed the safe baseline, matching identity/settings, inactive lease and mine-on-boot false. The post-authorization high-water comparison changed; no reset or numeric reservation is inferred. All thirteen original runtime artifacts and final receipts are preserved and verified. Browser page, streams, locks, supervisor and serial holders are released. Physical mining-time heartbeat/foreground-stop evidence remains unresolved in the live task, so this record stays active. See [attempt-010 evidence](docs/parity/evidence/20260906-fixed-usb-attempt-010.md).
+
 ### task-fixed-usb-worker-live-acceptance | 2026-09-04 | Prove bounded foreground Worker mining over Web Serial
 
 Depends on: task-fixed-usb-serial-qualification.
 
-- [ ] Bind one acceptance campaign to exact Gate/firmware/ELF identity and existing ignored owner pool/Wi-Fi inputs without displaying their contents.
+- [x] Bind one acceptance campaign to exact Gate/firmware/ELF identity and existing ignored owner pool/Wi-Fi inputs without displaying their contents.
 - [ ] Enforce a device-local cumulative 240000-ms active budget that survives renewals, reconnects, retries and reboot.
 - [ ] Run up to 180 active seconds of normal Worker mining with signed renewals and a correlated accepted share.
 - [ ] Run at most 30 active seconds before foreground loss and at most 30 before intentional application-level heartbeat suppression; prove gate closure and shutdown initiation within three seconds.
@@ -169,8 +173,8 @@ Progress-backed correction plan:
 
 - [x] Reproduce the signed campaign digest mismatch using Gate's actual signer and public synthetic values across the firmware authorization boundary; fix canonical serialization and retain a positive cross-language regression.
 - [x] Expose only the firmware producer's closed command-failure categories in browser diagnostics so a rejected Start is not explained solely by later heartbeat loss. Keep arbitrary logs and sensitive control fields excluded.
-- [ ] Run required Gate and firmware verification, publish coordinated exact pins and a clean package, and preserve the failed attempt and four successful predecessor cycles as their original evidence.
-- [ ] Create a fresh qualification attempt under the existing protected campaign parent only after regression-backed progress. Use the same sealed campaign identifier, fresh possession and disjoint NVS-preserving updates; qualify the corrected exact package before further live acceptance. Existing device reservations remain consumed and device rejection must never be bypassed by a new campaign or modified budget.
+- [x] Run required Gate and firmware verification, publish coordinated exact pins and a clean package, and preserve the failed attempt and four successful predecessor cycles as their original evidence.
+- [x] Create a fresh qualification attempt under the existing protected campaign parent only after regression-backed progress. Use the same sealed campaign identifier, fresh possession and disjoint NVS-preserving updates; qualify the corrected exact package before further live acceptance. Existing device reservations remain consumed and device rejection must never be bypassed by a new campaign or modified budget.
 - [ ] Complete the remaining bounded acceptance and cleanup if admitted; otherwise record the earliest unresolved failure without promoting mining or parity claims.
 
 Correction evidence: a positive fixture generated and verified by Gate's actual signer failed in the Rust verifier with `InvalidAuthorization`. Ordering campaign fields as `id/maximumActiveMilliseconds/window` makes all three signed window vectors pass; changing a signed window/budget remains rejected. Direct serialization into the zeroizing buffer is retained, avoiding additional unprotected credential copies. All 51 Worker control crate tests and the Bazel authorization target pass. The browser's raw-line regression retains the first of the twelve closed producer error categories through later liveness loss and verifies port release; arbitrary added text remains excluded. These software results do not establish the discarded hardware error or a successful mining run.
@@ -178,6 +182,19 @@ Correction evidence: a positive fixture generated and verified by Gate's actual 
 Correction publication: Gate `368adbd8f4c25fd6729e443314a02d7231a685d9` is pushed and pinned with archive SHA-256 `2bc8e40e22b2413692075be602228a636103720a57fc31f0c2867ef726837cd0`. Full Gate verification passes, including 316 web/CLI tests and browser conformance. Firmware ordered Cargo gates pass (2,072 tests, one preexisting ignored). The full Bazel run passed 78 of 79 targets; four child-process fixtures in the final automation target exceeded their unchanged deadlines during observed macOS loader delays. After concurrent builds finished, that isolated target passed in 78.5 seconds with no changed deadline or assertion. The first failures remain retained. Final pinned conformance/package checks precede publication and any new hardware effect.
 
 Final pinned checks pass: all eleven affected Worker/conformance/native-symbol targets, plus ESP32-S3 package generation. Ownership, reference, redaction, standards and diff checks pass. A fresh attempt uses `just fixed-usb-qualification preflight/serve/record-cycle/judge`, `just detect-ultra205`, and state-preserving `just flash-monitor --board 205 --manifest <exact-package> --image <declared-image> --port <detected-port> --evidence-dir <fresh-private-child> --redact-evidence --capture-timeout-seconds 30`. The 30-second capture is the task-specific no-mining stability window; ROM, write, application-return and cleanup retain their existing independent bounds. Qualify four cycles of the corrected exact package, preserve all predecessor receipts without relabeling, then attempt the original 180000/30000/30000-ms windows only if the unchanged device campaign admits them. No extra budget, reset, credential provisioning or factory write is authorized.
+
+Attempt-010 review (2026-09-06): the original campaign's normal window was issued and consumed, but Start failed first as `start_failed/timeout` at the 30000-ms browser response bound. No running or qualification sample exists; the repo-owned judge rejects it as `running_device_evidence_missing`. Recovery connections failed at manifest fields and then Hello after a bounded receive-only drain. The same exact package was recovered with admitted NVS-preserving segments, then fresh browser restoration and release confirmed a safe installed baseline. Actual active milliseconds, reserved amount, accepted share, qualified cooling history and three-second stop timing remain unverified. No refund, replacement campaign, later window or unchanged Start retry is permitted. Preserve the original first failure and all consumed records. See [attempt-010 evidence](docs/parity/evidence/20260906-fixed-usb-attempt-010.md).
+
+Follow-up plan and stop condition:
+
+- [x] Preserve all thirteen original runtime artifacts; validate four cycle receipts, final browser state and resource release; run the failed-window judge without manufacturing a passing result.
+- [x] Verify the evidence/task diff, run required pre-commit gates and publish this review without reflashing for documentation-only changes.
+- [ ] Diagnose Start completion, production-owner readiness and recovery admission using software reproductions and closed diagnostics. A browser/owner wait mismatch alone is not a proven cause; do not widen deadlines to conceal it.
+- [ ] Establish regression-backed progress and admissible remaining budget before any further live effect. Keep the original campaign and reservations; missing generation evidence is not permission to reset accounting.
+
+Final review verification: ordered Cargo format/lint/build/tests pass again (2083 passed, one preexisting ignored). New evidence and changed task blocks pass Markdown checks; standards, staged redaction and diff checks pass. Only this task review and its public evidence report changed; installed runtime provenance remains `59f065ed` / Gate `95fbb985`.
+
+Current outcome: `stop_hardware_blocker` for live acceptance. Safe recovery and cleanup are complete; missing live proof keeps this task, the overall migration and dependent unresolved parity work active.
 
 ### task-native-usb-boot-chain-integrity-205 | 2026-09-01 | Verify installed recovery boot bytes and OTA selection
 
