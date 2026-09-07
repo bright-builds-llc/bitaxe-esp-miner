@@ -194,6 +194,17 @@ Follow-up plan and stop condition:
 
 Final review verification: ordered Cargo format/lint/build/tests pass again (2083 passed, one preexisting ignored). New evidence and changed task blocks pass Markdown checks; standards, staged redaction and diff checks pass. Only this task review and its public evidence report changed; installed runtime provenance remains `59f065ed` / Gate `95fbb985`.
 
+Start/recovery diagnosis plan (2026-09-06, owner requested):
+
+- [x] Build and run a deterministic production-session reproduction for a Worker lease presented while readiness is blocked, followed by revocation and recovery admission.
+- [x] Distinguish initial admission, preparation, pool activation, command completion and generation retirement; test competing explanations before changing bounds.
+- [x] Apply a narrow regression-backed correction if the failing seam is established, then run affected host/native checks and the required publication gates.
+- [x] Preserve attempt-010 and the original campaign unchanged. This software investigation does not authorize a budget reset or an unchanged hardware retry.
+
+Diagnosis review (2026-09-06): the actual firmware owner/core/generation host seam reproduced a pending Start reply and permanently blocked fresh-link admission when readiness prevents core lease adoption. The correction tracks the actual preparation boundary, rejects never-prepared registered candidates promptly and retires their original reservation before releasing ownership. Once preparation has begun, core shutdown confirmation and durable finalization remain mandatory; SafeStop acknowledgment follows both. Ten new regressions plus 22 existing gate/shutdown tests pass, including failed storage, previous consumption, network/safety/actuation blockers and late preparation completion. Ordered Cargo checks pass (2083 tests, one preexisting ignored), and all 81 Bazel tests pass. Real ESP32-S3 packaging, fixed-USB ownership/symbols, reference integrity, redaction, native/test formatting, standards and diff review pass. The dedicated 32-test target also passes after final formatting. An initial follow-on verification command used a nonexistent recipe; the correct `just verify-native-usb-ownership` subsequently passed without changing a check or deadline. No hardware effect, timeout change, protocol change, reservation refund or new campaign occurred.
+
+Proof limit and follow-up: attempt-010 lacks a readiness discriminator, so this reproducible defect is consistent with its timeout/recovery symptoms but does not establish the exact hardware trigger or explain its manifest-fields failure. Reservation failures before OwnerSession installation are a separate preexisting cleanup gap and still require their own regression. The original campaign remains consumed; no live retry follows solely from this software result. See [Start/recovery diagnosis](docs/hardware/worker-start-recovery-diagnosis.md).
+
 Current outcome: `stop_hardware_blocker` for live acceptance. Safe recovery and cleanup are complete; missing live proof keeps this task, the overall migration and dependent unresolved parity work active.
 
 ### task-native-usb-boot-chain-integrity-205 | 2026-09-01 | Verify installed recovery boot bytes and OTA selection

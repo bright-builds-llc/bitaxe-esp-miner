@@ -15,6 +15,7 @@ pub(super) struct OwnerSession {
     pub(super) accepted_baseline: u64,
     pub(super) rejected_baseline: u64,
     pub(super) correlated_baseline: u64,
+    pub(super) preparation_started: bool,
 }
 
 pub(super) enum OwnerCommand {
@@ -219,6 +220,7 @@ impl OrdinaryEspProductionSessionAdapter {
                     accepted_baseline: snapshot.mining.counters.accepted,
                     rejected_baseline: snapshot.mining.counters.rejected,
                     correlated_baseline: snapshot.mining.counters.qualified_candidates,
+                    preparation_started: false,
                 };
                 self.maybe_bwg_session = Some(session);
                 self.maybe_bwg_reply = Some(PendingReply::Start(reply));
@@ -273,8 +275,30 @@ impl OrdinaryEspProductionSessionAdapter {
         }
     }
 
+    pub(super) fn note_worker_preparation_started(&mut self) {
+        if let Some(session) = self.maybe_bwg_session.as_mut() {
+            // Even cancelled or failed preparation must follow ordered safe stop.
+            session.preparation_started = true;
+        }
+    }
+
     pub(super) fn complete_reply(&mut self, snapshot: &ProductionSessionSnapshot) {
+        let never_prepared = self
+            .maybe_bwg_session
+            .as_ref()
+            .is_some_and(|session| !session.preparation_started);
+        if never_prepared && matches!(self.maybe_bwg_reply, Some(PendingReply::Start(_))) {
+            if let Some(session) = self.maybe_bwg_session.as_ref() {
+                revocation::revoke_reason_at(
+                    session.generation,
+                    crate::runtime_uptime::millis(),
+                    revocation::RevocationReason::ControlFailed,
+                );
+            }
+        }
+        let retired = self.finish_consumed_generation(snapshot);
         let maybe_result = match self.maybe_bwg_reply.as_ref() {
+            Some(PendingReply::Start(_)) if never_prepared => Some(Err(Error::Rejected)),
             Some(PendingReply::Start(_) | PendingReply::Renew(_))
                 if snapshot.campaign_state == MiningCampaignState::Active
                     && self
@@ -284,21 +308,15 @@ impl OrdinaryEspProductionSessionAdapter {
             {
                 Some(Ok(()))
             }
-            Some(PendingReply::SafeStop(_))
-                if snapshot.campaign_state == MiningCampaignState::Consumed
-                    && snapshot.hardware_state == MiningHardwareState::Stopped =>
-            {
-                Some(Ok(()))
-            }
+            Some(PendingReply::SafeStop(_)) if retired => Some(Ok(())),
             Some(PendingReply::Start(_) | PendingReply::Renew(_))
-                if snapshot.campaign_state == MiningCampaignState::Consumed =>
+                if retired || snapshot.campaign_state == MiningCampaignState::Consumed =>
             {
                 Some(Err(Error::Rejected))
             }
             _ => None,
         };
         let Some(result) = maybe_result else {
-            self.finish_consumed_generation(snapshot);
             return;
         };
         let Some(reply) = self.maybe_bwg_reply.take() else {
@@ -311,25 +329,32 @@ impl OrdinaryEspProductionSessionAdapter {
                 let _ = sender.try_send(result);
             }
         }
-        self.finish_consumed_generation(snapshot);
     }
 
-    fn finish_consumed_generation(&mut self, snapshot: &ProductionSessionSnapshot) {
-        if snapshot.campaign_state == MiningCampaignState::Consumed
-            && snapshot.hardware_state == MiningHardwareState::Stopped
-        {
-            if let Some(session) = self.maybe_bwg_session.as_ref() {
-                revocation::revoke_reason_at(
-                    session.generation,
-                    crate::runtime_uptime::millis(),
-                    revocation::RevocationReason::ControlFailed,
-                );
-                if crate::worker_acceptance_budget::finish(session.generation).is_err() {
-                    return;
-                }
-                revocation::finish_shutdown(session.generation);
+    fn finish_consumed_generation(&mut self, snapshot: &ProductionSessionSnapshot) -> bool {
+        let Some(session) = self.maybe_bwg_session.as_ref() else {
+            return false;
+        };
+        // A rejected candidate has no hardware effects to undo and no core
+        // terminal receipt to await. Its reserved budget must still be finalized.
+        let unstarted_revoked =
+            !session.preparation_started && !revocation::is_live(session.generation);
+        let stopped = session.preparation_started
+            && snapshot.campaign_state == MiningCampaignState::Consumed
+            && snapshot.hardware_state == MiningHardwareState::Stopped;
+        if unstarted_revoked || stopped {
+            revocation::revoke_reason_at(
+                session.generation,
+                crate::runtime_uptime::millis(),
+                revocation::RevocationReason::ControlFailed,
+            );
+            if crate::worker_acceptance_budget::finish(session.generation).is_err() {
+                return false;
             }
+            revocation::finish_shutdown(session.generation);
             self.maybe_bwg_session = None;
+            return true;
         }
+        false
     }
 }

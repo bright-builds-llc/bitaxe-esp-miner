@@ -371,6 +371,7 @@ impl OrdinaryEspProductionSessionAdapter {
                 None
             }
             ProductionSessionEffect::PrepareHardware { lease_id, profile } => {
+                self.note_worker_preparation_started();
                 self.mining_actuation.set_worker_generation(
                     self.maybe_bwg_session
                         .as_ref()
