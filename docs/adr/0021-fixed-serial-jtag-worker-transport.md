@@ -81,3 +81,9 @@ and resources released. Hardware success does not automatically promote parity.
 ## Qualification-count amendment
 
 On 2026-09-05 the owner reduced the no-mining continuity requirement from 20 to 4 cycles. [ADR-0022](0022-four-cycle-fixed-usb-qualification.md) supersedes only that sample count. The original decision text and its evidence remain historical; all runtime identity, safety, privacy, restoration and mining-budget requirements remain active.
+
+## Receive-progress successor
+
+[ADR-0023](0023-bound-native-serial-receive-progress.md) supersedes the serial
+0.1 wire contract with receive credit and payload integrity in serial 0.2.
+The fixed USB controller and the safety/identity requirements above remain.

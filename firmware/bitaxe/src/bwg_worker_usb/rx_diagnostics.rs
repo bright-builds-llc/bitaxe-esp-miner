@@ -14,6 +14,8 @@ pub(super) enum Stage {
     ControlQueue,
     UnexpectedKind,
     SessionRevoked,
+    Integrity,
+    ReceiveCounter,
 }
 
 pub(super) struct Receipt(AtomicU32);
@@ -44,6 +46,8 @@ impl Receipt {
             8 => "control_queue",
             9 => "unexpected_kind",
             10 => "session_revoked",
+            11 => "integrity",
+            12 => "receive_counter",
             _ => return None,
         };
         Some(format!(

@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { authorityCall, readPoolForSigning, signWindow } from "./authority.mjs";
-import { BUNDLE, canonicalBase64, digest, exactObject, missing, nonce, PAGE, QualificationError, readJson, requireCondition, writeNew } from "./contract.mjs";
+import { BUNDLE, canonicalBase64, contextPage, digest, exactObject, missing, nonce, QualificationError, readJson, requireCondition, writeNew } from "./contract.mjs";
 import { loadContext, verifyFrozen } from "./preflight.mjs";
 import { finishWindow, recordFault, recordState, requireCompleteCycles, selectedWindow } from "./store.mjs";
 import { validateState } from "./judge.mjs";
@@ -12,6 +12,7 @@ const SCRIPT_ROOT = dirname(fileURLToPath(import.meta.url));
 export async function createSupervisor(options, operations = {}) {
   const root = resolve(options.privateRoot);
   const context = options.context ?? await loadContext(root);
+  const page = contextPage(context);
   const verify = operations.verifyFrozen ?? (() => verifyFrozen(context, options.authorityDirectory, options.bun, {}, root));
   const frozen = await verify();
   const gateAssetRoot = frozen?.gate_root ?? context.gate_root;
@@ -103,9 +104,9 @@ export async function createSupervisor(options, operations = {}) {
     if (request.method === "GET" && url.pathname === "/supervisor-client.mjs") {
       return send(response, 200, await readFile(resolve(SCRIPT_ROOT, "client.mjs")), "text/javascript");
     }
-    if (request.method === "GET" && ["/", `/${PAGE}`, `/${BUNDLE}`].includes(url.pathname)) {
+    if (request.method === "GET" && ["/", `/${page}`, `/${BUNDLE}`].includes(url.pathname)) {
       const isPage = url.pathname !== `/${BUNDLE}`;
-      let bytes = await readFile(resolve(gateAssetRoot, isPage ? PAGE : BUNDLE));
+      let bytes = await readFile(resolve(gateAssetRoot, isPage ? page : BUNDLE));
       requireCondition(digest(bytes) === (isPage ? context.gate_page_sha256 : context.gate_bundle_sha256), "served_asset_drift");
       if (isPage) bytes = Buffer.from(`${bytes.toString("utf8")}\n<script type="module" src="/supervisor-client.mjs"></script>`);
       return send(response, 200, bytes, isPage ? "text/html" : "text/javascript");

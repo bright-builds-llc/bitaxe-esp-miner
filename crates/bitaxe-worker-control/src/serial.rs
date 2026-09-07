@@ -1,7 +1,9 @@
 //! Bounded fixed Serial/JTAG framing and logical connection identity.
 
 mod liveness;
+mod receive;
 pub use liveness::SerialLinkLiveness;
+pub use receive::{ReceiveCreditMailbox, SerialReceiveProgress};
 
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use serde::{Deserialize, Serialize};
@@ -10,10 +12,13 @@ use sha2::{Digest, Sha256};
 use thiserror::Error;
 use zeroize::Zeroize;
 
-pub const SERIAL_PROFILE: &str = "bwg-worker-serial/0.1";
+pub const SERIAL_PROFILE: &str = "bwg-worker-serial/0.2";
 pub const MAXIMUM_CONTROL_PAYLOAD_BYTES: usize = 65_536;
 pub const MAXIMUM_WIRE_FRAME_BYTES: usize = 66_560;
 pub const HEARTBEAT_TIMEOUT_MILLISECONDS: u64 = 2_800;
+pub const HOST_RECEIVE_WINDOW_BYTES: u32 = 2048;
+pub const MAXIMUM_HOST_WRITE_CHUNK_BYTES: u32 = 1024;
+pub const RECORD_WRITE_TIMEOUT_MILLISECONDS: u64 = 2000;
 
 #[must_use]
 /// Returns the canonical signed application transport manifest.
@@ -26,6 +31,10 @@ pub fn serial_manifest() -> Value {
         "heartbeatIntervalMilliseconds": 1000,
         "heartbeatTimeoutMilliseconds": HEARTBEAT_TIMEOUT_MILLISECONDS,
         "foregroundOnly": true,
+        "hostToDeviceReceiveWindowBytes": HOST_RECEIVE_WINDOW_BYTES,
+        "maximumHostWriteChunkBytes": MAXIMUM_HOST_WRITE_CHUNK_BYTES,
+        "recordWriteTimeoutMilliseconds": RECORD_WRITE_TIMEOUT_MILLISECONDS,
+        "payloadIntegrity": "sha256_exact_utf8_json",
     })
 }
 
@@ -93,6 +102,8 @@ pub struct SerialEnvelope {
     #[serde(deserialize_with = "required_session_id")]
     pub session_id: Option<String>,
     pub sequence: u32,
+    payload_bytes: u32,
+    payload_sha256: String,
     pub payload: Box<RawValue>,
 }
 
@@ -104,6 +115,8 @@ pub enum SerialError {
     Oversized,
     #[error("serial frame buffer allocation failed")]
     Unavailable,
+    #[error("serial payload integrity failed")]
+    Integrity,
 }
 
 impl SerialEnvelope {
@@ -151,6 +164,13 @@ impl SerialEnvelope {
         {
             return Err(SerialError::Oversized);
         }
+        if envelope.payload.get().len() != envelope.payload_bytes as usize
+            || !canonical_nonce(&envelope.payload_sha256, 32)
+            || envelope.payload_sha256
+                != URL_SAFE_NO_PAD.encode(Sha256::digest(envelope.payload.get().as_bytes()))
+        {
+            return Err(SerialError::Integrity);
+        }
         Ok(envelope)
     }
 
@@ -168,6 +188,8 @@ impl SerialEnvelope {
             kind: SerialKind,
             session_id: Option<&'a str>,
             sequence: u32,
+            payload_bytes: usize,
+            payload_sha256: String,
             payload: &'a RawValue,
         }
         let mut bytes = serde_json::to_vec(&Wire {
@@ -175,6 +197,8 @@ impl SerialEnvelope {
             kind,
             session_id,
             sequence,
+            payload_bytes: payload.get().len(),
+            payload_sha256: URL_SAFE_NO_PAD.encode(Sha256::digest(payload.get().as_bytes())),
             payload,
         })
         .map_err(|_| SerialError::Invalid)?;
@@ -216,12 +240,26 @@ impl SerialFrameAccumulator {
             return Some(Err(SerialError::Unavailable));
         }
         self.bytes.push(byte);
-        (byte == b'\n').then(|| Ok(std::mem::take(&mut self.bytes)))
+        if byte != b'\n' {
+            return None;
+        }
+        // Keep the receive allocation for the next record. Only the initialized
+        // prefix holds secrets; completed ownership uses an exact-length buffer.
+        let mut frame = Vec::new();
+        let result = frame
+            .try_reserve_exact(self.bytes.len())
+            .map(|()| {
+                frame.extend_from_slice(&self.bytes);
+                frame
+            })
+            .map_err(|_| SerialError::Unavailable);
+        self.clear();
+        Some(result)
     }
 
     /// Clears partial secret-bearing input and resets framing recovery.
     pub fn clear(&mut self) {
-        self.bytes.zeroize();
+        self.bytes.as_mut_slice().zeroize();
         self.bytes.clear();
         self.discarding = false;
     }

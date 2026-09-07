@@ -18,6 +18,8 @@ mod writer;
 mod rx_diagnostics;
 
 static CURRENT_SESSION: AtomicU32 = AtomicU32::new(0);
+static RECEIVE_CREDIT: bitaxe_worker_control::serial::ReceiveCreditMailbox =
+    bitaxe_worker_control::serial::ReceiveCreditMailbox::new();
 static OUTPUT: OnceLock<SyncSender<writer::Output>> = OnceLock::new();
 static TEST_LOCK: Mutex<()> = Mutex::new(());
 struct SecretBytes(Vec<u8>);
@@ -27,7 +29,12 @@ impl Drop for SecretBytes {
     }
 }
 fn revoke_epoch(epoch: u32) {
-    let _ = CURRENT_SESSION.compare_exchange(epoch, 0, Ordering::AcqRel, Ordering::Acquire);
+    if CURRENT_SESSION
+        .compare_exchange(epoch, 0, Ordering::AcqRel, Ordering::Acquire)
+        .is_ok()
+    {
+        RECEIVE_CREDIT.close(epoch);
+    }
 }
 
 mod runtime_uptime {
@@ -54,11 +61,20 @@ mod usb_runtime {
     use super::*;
     pub(crate) use crate::usb_write_failure::WriteFailure;
     pub static DELAY_MS: AtomicU32 = AtomicU32::new(0);
+    pub static PARTIAL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
     pub static SINK: Mutex<Option<mpsc::Sender<String>>> = Mutex::new(None);
-    pub fn write(bytes: &[u8]) -> anyhow::Result<()> {
+    pub static BLOCK_NEXT: Mutex<Option<(mpsc::Sender<()>, Receiver<()>)>> = Mutex::new(None);
+    pub fn write_if(bytes: &[u8], admitted: impl Fn() -> bool) -> anyhow::Result<()> {
+        let maybe_block = BLOCK_NEXT.lock().expect("test block").take();
+        if let Some((entered, release)) = maybe_block {
+            entered.send(())?;
+            release.recv_timeout(Duration::from_secs(2))?;
+        }
+        anyhow::ensure!(admitted(), "serial_output_revoked");
         std::thread::sleep(Duration::from_millis(u64::from(
             DELAY_MS.load(Ordering::Relaxed),
         )));
+        anyhow::ensure!(admitted(), "serial_output_revoked");
         let sink = SINK
             .lock()
             .map_err(|_| anyhow::anyhow!("test sink poisoned"))?;
@@ -67,6 +83,182 @@ mod usb_runtime {
             .send(std::str::from_utf8(bytes)?.to_owned())?;
         Ok(())
     }
+    pub fn resynchronize_if(admitted: impl Fn() -> bool) -> anyhow::Result<()> {
+        anyhow::ensure!(admitted(), "serial_output_revoked");
+        Ok(())
+    }
+    pub fn has_partial_output() -> bool {
+        PARTIAL.load(Ordering::Acquire)
+    }
+}
+
+#[test]
+fn cancelled_ordinary_credit_preserves_the_new_terminal_close_receipt() {
+    // Arrange
+    let _exclusive = TEST_LOCK.lock().expect("exclusive writer fixture");
+    let writer = WriterFixture::start(Arc::new(startup_diagnostics::StartupProgress::new()));
+    CURRENT_SESSION.store(32, Ordering::Release);
+    RECEIVE_CREDIT.begin(32);
+    writer
+        .maybe_output
+        .as_ref()
+        .expect("sender")
+        .send(writer::Output::Hello {
+            epoch: 32,
+            session_id: "AAAAAAAAAAAAAAAAAAAAAA".into(),
+            payload: serde_json::json!({"op":"hello_ack"}),
+        })
+        .expect("hello");
+    writer.expect_marker("hello_ack");
+    let (entered, waiting) = mpsc::channel();
+    let (release, blocked) = mpsc::channel();
+    *usb_runtime::BLOCK_NEXT.lock().expect("test block") = Some((entered, blocked));
+    RECEIVE_CREDIT.publish(255);
+    waiting
+        .recv_timeout(Duration::from_secs(2))
+        .expect("blocked ordinary credit");
+    // Act: clean Close lands while an earlier credit is waiting for native admission.
+    RECEIVE_CREDIT.close_record(32, 256, runtime_uptime::millis(), || revoke_epoch(32));
+    assert_eq!(CURRENT_SESSION.load(Ordering::Acquire), 0);
+    release.send(()).expect("release cancelled ordinary credit");
+    let line = writer
+        .lines
+        .recv_timeout(Duration::from_secs(2))
+        .expect("terminal receipt");
+    // Assert: idempotent cancellation must preserve the strictly newer Close credit.
+    let envelope = bitaxe_worker_control::serial::SerialEnvelope::parse(line.as_bytes())
+        .expect("protected receipt");
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(envelope.payload.get()).expect("credit"),
+        serde_json::json!({"op":"receive_credit","receivedBytes":256})
+    );
+}
+
+#[test]
+fn revoked_pre_control_heartbeat_cannot_resume_a_queued_control_response() {
+    // Arrange
+    let _exclusive = TEST_LOCK.lock().expect("exclusive writer fixture");
+    let writer = WriterFixture::start(Arc::new(startup_diagnostics::StartupProgress::new()));
+    CURRENT_SESSION.store(20, Ordering::Release);
+    RECEIVE_CREDIT.begin(20);
+    let sender = writer.maybe_output.as_ref().expect("sender");
+    sender
+        .send(writer::Output::Hello {
+            epoch: 20,
+            session_id: "AAAAAAAAAAAAAAAAAAAAAA".into(),
+            payload: serde_json::json!({"op":"hello_ack"}),
+        })
+        .expect("hello");
+    writer.expect_marker("hello_ack");
+    let (entered, waiting) = mpsc::channel();
+    let (release, blocked) = mpsc::channel();
+    *usb_runtime::BLOCK_NEXT.lock().expect("test block") = Some((entered, blocked));
+    let (receipt, completion) = mpsc::sync_channel(1);
+    sender
+        .send(writer::Output::Control {
+            epoch: 20,
+            bytes: SecretBytes(
+                serde_json::to_vec(&serde_json::json!({"padding":"x".repeat(8192)}))
+                    .expect("payload"),
+            ),
+            receipt,
+        })
+        .expect("control");
+    // Act
+    waiting
+        .recv_timeout(Duration::from_secs(2))
+        .expect("blocked native output");
+    revoke_epoch(20);
+    release.send(()).expect("release native sink");
+    let sent = completion
+        .recv_timeout(Duration::from_secs(2))
+        .expect("control completion");
+    // Assert
+    assert!(
+        !sent,
+        "revocation must cancel the already-selected control output"
+    );
+}
+
+#[test]
+fn validated_close_receives_final_credit_after_immediate_revocation() {
+    // Arrange
+    let _exclusive = TEST_LOCK.lock().expect("exclusive writer fixture");
+    let writer = WriterFixture::start(Arc::new(startup_diagnostics::StartupProgress::new()));
+    CURRENT_SESSION.store(21, Ordering::Release);
+    RECEIVE_CREDIT.begin(21);
+    writer
+        .maybe_output
+        .as_ref()
+        .expect("sender")
+        .send(writer::Output::Hello {
+            epoch: 21,
+            session_id: "AAAAAAAAAAAAAAAAAAAAAA".into(),
+            payload: serde_json::json!({"op":"hello_ack"}),
+        })
+        .expect("hello");
+    writer.expect_marker("hello_ack");
+    // Act: the same close primitive is called by the production RX link.
+    RECEIVE_CREDIT.publish(255);
+    RECEIVE_CREDIT.close_record(21, 256, runtime_uptime::millis(), || revoke_epoch(21));
+    assert_eq!(CURRENT_SESSION.load(Ordering::Acquire), 0);
+    let credit = writer.expect_marker("\"receivedBytes\":256");
+    // Assert
+    let credit = bitaxe_worker_control::serial::SerialEnvelope::parse(credit.as_bytes())
+        .expect("protected terminal receipt");
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(credit.payload.get()).expect("credit"),
+        serde_json::json!({"op":"receive_credit","receivedBytes":256})
+    );
+}
+
+#[test]
+fn blocked_credit_is_discarded_when_a_new_hello_replaces_its_epoch() {
+    // Arrange
+    let _exclusive = TEST_LOCK.lock().expect("exclusive writer fixture");
+    let writer = WriterFixture::start(Arc::new(startup_diagnostics::StartupProgress::new()));
+    CURRENT_SESSION.store(30, Ordering::Release);
+    RECEIVE_CREDIT.begin(30);
+    let sender = writer.maybe_output.as_ref().expect("sender");
+    sender
+        .send(writer::Output::Hello {
+            epoch: 30,
+            session_id: "AAAAAAAAAAAAAAAAAAAAAA".into(),
+            payload: serde_json::json!({"op":"hello_ack"}),
+        })
+        .expect("hello");
+    writer.expect_marker("hello_ack");
+    let (entered, waiting) = mpsc::channel();
+    let (release, blocked) = mpsc::channel();
+    *usb_runtime::BLOCK_NEXT.lock().expect("test block") = Some((entered, blocked));
+    RECEIVE_CREDIT.publish(1024);
+    waiting
+        .recv_timeout(Duration::from_secs(2))
+        .expect("blocked credit output");
+    // Act
+    revoke_epoch(30);
+    RECEIVE_CREDIT.begin(31);
+    CURRENT_SESSION.store(31, Ordering::Release);
+    sender
+        .send(writer::Output::Hello {
+            epoch: 31,
+            session_id: "AQEBAQEBAQEBAQEBAQEBAQ".into(),
+            payload: serde_json::json!({"op":"hello_ack"}),
+        })
+        .expect("new hello");
+    release.send(()).expect("release native sink");
+    // Assert: consume the next actual output rather than skipping stale records.
+    let line = writer
+        .lines
+        .recv_timeout(Duration::from_secs(2))
+        .expect("new hello output");
+    let envelope = bitaxe_worker_control::serial::SerialEnvelope::parse(line.as_bytes())
+        .expect("protected new output");
+    assert_eq!(
+        envelope.session_id.as_deref(),
+        Some("AQEBAQEBAQEBAQEBAQEBAQ")
+    );
+    assert_eq!(envelope.sequence, 0);
 }
 struct WriterFixture {
     maybe_output: Option<SyncSender<writer::Output>>,
@@ -101,14 +293,102 @@ impl WriterFixture {
 }
 impl Drop for WriterFixture {
     fn drop(&mut self) {
+        RECEIVE_CREDIT.close(CURRENT_SESSION.load(Ordering::Acquire));
         CURRENT_SESSION.store(0, Ordering::Release);
         usb_runtime::DELAY_MS.store(0, Ordering::Relaxed);
+        usb_runtime::PARTIAL.store(false, Ordering::Release);
         self.maybe_output.take();
         if let Some(thread) = self.maybe_thread.take() {
             thread.join().expect("writer owner exits");
         }
         *usb_runtime::SINK.lock().expect("test sink") = None;
     }
+}
+
+#[test]
+fn partial_native_output_cannot_be_spliced_with_a_terminal_close_credit() {
+    // Arrange
+    let _exclusive = TEST_LOCK.lock().expect("exclusive writer fixture");
+    let writer = WriterFixture::start(Arc::new(startup_diagnostics::StartupProgress::new()));
+    CURRENT_SESSION.store(33, Ordering::Release);
+    RECEIVE_CREDIT.begin(33);
+    writer
+        .maybe_output
+        .as_ref()
+        .expect("sender")
+        .send(writer::Output::Hello {
+            epoch: 33,
+            session_id: "AAAAAAAAAAAAAAAAAAAAAA".into(),
+            payload: serde_json::json!({"op":"hello_ack"}),
+        })
+        .expect("hello");
+    writer.expect_marker("hello_ack");
+    // Act: actual native-loop tests establish when this partial-prefix flag is set.
+    usb_runtime::PARTIAL.store(true, Ordering::Release);
+    RECEIVE_CREDIT.publish(255);
+    RECEIVE_CREDIT.close_record(33, 256, runtime_uptime::millis(), || revoke_epoch(33));
+    // Assert: observe the writer return to unframed diagnostics without credit output.
+    let deadline = Instant::now() + Duration::from_secs(2);
+    loop {
+        let line = writer
+            .lines
+            .recv_timeout(deadline.saturating_duration_since(Instant::now()))
+            .expect("bounded writer progress");
+        assert!(
+            !line.contains("receive_credit"),
+            "terminal credit cannot follow partial JSON"
+        );
+        if line.starts_with("usb_startup ") {
+            break;
+        }
+    }
+    assert_eq!(
+        RECEIVE_CREDIT.maybe_terminal_bytes(33, runtime_uptime::millis()),
+        None
+    );
+    assert_eq!(CURRENT_SESSION.load(Ordering::Acquire), 0);
+}
+
+#[test]
+fn partial_receive_credit_is_written_without_a_controller_reply() {
+    // Arrange: the command owner has supplied no output at all after admission.
+    let _exclusive = TEST_LOCK.lock().expect("exclusive writer fixture");
+    let writer = WriterFixture::start(Arc::new(startup_diagnostics::StartupProgress::new()));
+    CURRENT_SESSION.store(8, Ordering::Release);
+    RECEIVE_CREDIT.begin(8);
+    writer
+        .maybe_output
+        .as_ref()
+        .expect("writer sender")
+        .send(writer::Output::Hello {
+            epoch: 8,
+            session_id: "AAAAAAAAAAAAAAAAAAAAAA".to_owned(),
+            payload: serde_json::json!({"op":"hello_ack"}),
+        })
+        .expect("hello queued");
+    writer.expect_marker("hello_ack");
+
+    // Act: partial records must grant capacity before any complete command exists.
+    RECEIVE_CREDIT.publish(1024);
+    let first = writer.expect_marker("receive_credit");
+    RECEIVE_CREDIT.publish(1536);
+    let second = writer.expect_marker("receive_credit");
+
+    // Assert: run the real producer and validate its exact protected wire records.
+    let first = bitaxe_worker_control::serial::SerialEnvelope::parse(first.as_bytes())
+        .expect("first protected credit");
+    let second = bitaxe_worker_control::serial::SerialEnvelope::parse(second.as_bytes())
+        .expect("second protected credit");
+    assert_eq!(first.kind, SerialKind::Session);
+    assert!(second.sequence > first.sequence);
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(first.payload.get()).expect("credit JSON"),
+        serde_json::json!({"op":"receive_credit", "receivedBytes":1024})
+    );
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(second.payload.get()).expect("credit JSON"),
+        serde_json::json!({"op":"receive_credit", "receivedBytes":1536})
+    );
 }
 
 #[test]

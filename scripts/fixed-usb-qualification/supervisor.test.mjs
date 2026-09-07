@@ -14,6 +14,7 @@ import { signWindow } from "./authority.mjs";
 import { createSupervisor } from "./server.mjs";
 import { judgeWindow, validateCycle, validateState } from "./judge.mjs";
 import { main } from "./main.mjs";
+import { verifyArtifactSnapshot } from "./snapshot.mjs";
 
 const SOURCE = "a".repeat(40), GATE = "b".repeat(40), REFERENCE = "c".repeat(40);
 const BASELINE = Buffer.alloc(16, 3).toString("base64url");
@@ -284,6 +285,48 @@ test("amendment preserves frozen context and four receipts and serves the preser
   const response = await fetch(`http://127.0.0.1:${server.address().port}/${BUNDLE}`);
   assert.equal(response.status, 200);
   assert.equal(digest(Buffer.from(await response.arrayBuffer())), f.context.gate_bundle_sha256);
+});
+
+test("historical snapshots retain their original page without rewriting the context", async (t) => {
+  // Arrange
+  const f = await amendmentFixture(t), root = f.options.privateRoot;
+  const context = { ...f.context };
+  delete context.gate_page_relative_path;
+  const original = JSON.stringify(context);
+  const oldPage = "gate/conformance/bwg-worker-serial-0.1/acceptance.html";
+  const currentPage = resolve(f.snapshotRoot, `gate/${PAGE}`);
+  await mkdir(dirname(resolve(f.snapshotRoot, oldPage)), { recursive: true, mode: 0o700 });
+  await writeFile(resolve(f.snapshotRoot, oldPage), await readFile(currentPage), { mode: 0o600 });
+  await rm(currentPage);
+  const receiptPath = resolve(root, "artifact-snapshot.json");
+  const receipt = JSON.parse(await readFile(receiptPath, "utf8"));
+  receipt.context_sha256 = digest(original);
+  receipt.files.find((file) => file.path === `gate/${PAGE}`).path = oldPage;
+  await writeFile(receiptPath, JSON.stringify(receipt));
+  // Act
+  const observed = await verifyArtifactSnapshot(root, context);
+  // Assert
+  assert.equal(observed.gate_root, resolve(f.snapshotRoot, "gate"));
+  assert.equal(JSON.stringify(context), original);
+});
+
+test("snapshot page metadata cannot select an unrelated file", async (t) => {
+  // Arrange
+  const f = await amendmentFixture(t);
+  const context = { ...f.context, gate_page_relative_path: "../../private-input.json" };
+  // Act / Assert
+  await assert.rejects(verifyArtifactSnapshot(f.options.privateRoot, context), /page_profile/u);
+});
+
+test("recorder preserves new closed transport failures without accepting arbitrary text", () => {
+  // Arrange
+  const context = { gate_commit: GATE, firmware_commit: SOURCE, app_elf_sha256: "d".repeat(64) };
+  const failed = state(context, { status: "failed", connected: false, failure: "arm_foreground_failed" });
+  // Act / Assert
+  for (const serialFailureCategory of ["integrity", "probe_bound", "probe_mismatch", "operation_active", "credit_invalid", "credit_counter", "credit_closed", "credit_session", "write_bound", "request_failed", "probe_failed"]) {
+    assert.equal(validateState({ ...failed, serialFailureCategory }, context).serialFailureCategory, serialFailureCategory);
+  }
+  assert.throws(() => validateState({ ...failed, serialFailureCategory: "synthetic-private-message" }, context), /serial_failure_shape/u);
 });
 
 test("amendment rejects missing cycles and a fresh page baseline before writing", async (t) => {

@@ -9,7 +9,7 @@ use crate::bwg_worker_nvs::{BwgWorkerNvs, EspDeviceIdentitySeedGenerator};
 use crate::bwg_worker_session::ProductionWorkerSession;
 use crate::production_mining_session::revocation::{self, WorkerGeneration};
 use crate::startup::BootMiningBaselineConfirmed;
-use bitaxe_worker_control::serial::{SerialKind, SerialSessionBinding};
+use bitaxe_worker_control::serial::{ReceiveCreditMailbox, SerialKind, SerialSessionBinding};
 use bitaxe_worker_control::{
     load_or_generate_device_identity, WorkLeaseAuthorityTrust, WorkLeaseAuthorizationVerifier,
     WorkerControl,
@@ -28,6 +28,7 @@ static EVENTS: OnceLock<SyncSender<ControlEvent>> = OnceLock::new();
 static OUTPUT: OnceLock<SyncSender<writer::Output>> = OnceLock::new();
 static CURRENT_SESSION: AtomicU32 = AtomicU32::new(0);
 static AUTHENTICATED_SESSION: AtomicU32 = AtomicU32::new(0);
+static RECEIVE_CREDIT: ReceiveCreditMailbox = ReceiveCreditMailbox::new();
 
 enum ControlEvent {
     Session {
@@ -247,7 +248,12 @@ fn process_frame<V>(
 }
 
 fn revoke_epoch(epoch: u32) {
-    let _ = CURRENT_SESSION.compare_exchange(epoch, 0, Ordering::AcqRel, Ordering::Acquire);
+    if CURRENT_SESSION
+        .compare_exchange(epoch, 0, Ordering::AcqRel, Ordering::Acquire)
+        .is_ok()
+    {
+        RECEIVE_CREDIT.close(epoch);
+    }
     let _ = AUTHENTICATED_SESSION.compare_exchange(epoch, 0, Ordering::AcqRel, Ordering::Acquire);
 }
 

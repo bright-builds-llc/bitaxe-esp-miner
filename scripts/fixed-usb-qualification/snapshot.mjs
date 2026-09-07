@@ -1,9 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { BUNDLE, digest, exactObject, fileDigest, hex, inspectPackage, PAGE, protectedPath,
+import { BUNDLE, contextPage, digest, exactObject, fileDigest, hex, inspectPackage, protectedPath,
   readJson, requireCondition, within } from "./contract.mjs";
 
 export async function verifyArtifactSnapshot(root, context) {
+  const page = contextPage(context);
   const receiptPath = resolve(root, "artifact-snapshot.json");
   await protectedPath(receiptPath);
   const receipt = await readJson(receiptPath);
@@ -29,7 +30,7 @@ export async function verifyArtifactSnapshot(root, context) {
   const manifestPath = resolve(snapshotRoot, "firmware/bitaxe-ultra205-package.json");
   const manifest = await readJson(manifestPath);
   const expected = ["firmware/bitaxe-ultra205-package.json", "firmware/docs/release/license-inventory.md",
-    "firmware/docs/release/provenance-manifest.md", `gate/${BUNDLE}`, `gate/${PAGE}`,
+    "firmware/docs/release/provenance-manifest.md", `gate/${BUNDLE}`, `gate/${page}`,
     ...manifest.artifacts.map((artifact) => `firmware/${artifact.path}`)];
   requireCondition(new Set(expected).size === 13 && expected.every((path) => observed.has(path)), "snapshot_file_set");
   const packaged = await inspectPackage(manifestPath, context.firmware_commit, () => resolve(snapshotRoot, "firmware"));
@@ -38,6 +39,6 @@ export async function verifyArtifactSnapshot(root, context) {
   }
   const gateRoot = resolve(snapshotRoot, "gate");
   requireCondition(await fileDigest(resolve(gateRoot, BUNDLE)) === context.gate_bundle_sha256 &&
-    await fileDigest(resolve(gateRoot, PAGE)) === context.gate_page_sha256, "snapshot_gate_drift");
+    await fileDigest(resolve(gateRoot, page)) === context.gate_page_sha256, "snapshot_gate_drift");
   return { receipt_sha256: await fileDigest(receiptPath), gate_root: gateRoot };
 }

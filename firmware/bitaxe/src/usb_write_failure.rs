@@ -4,6 +4,7 @@ pub(crate) enum WriteStage {
     Write,
     WriteTimeout,
     FlushTimeout,
+    Cancelled,
 }
 impl WriteStage {
     fn label(self) -> &'static str {
@@ -11,6 +12,7 @@ impl WriteStage {
             Self::Write => "write",
             Self::WriteTimeout => "write_timeout",
             Self::FlushTimeout => "flush_timeout",
+            Self::Cancelled => "cancelled",
         }
     }
 }

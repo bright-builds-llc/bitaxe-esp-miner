@@ -62,7 +62,7 @@ fn compiled_runtime_trust_capability_and_manifest_agree() {
     assert_eq!(claims["profile"], trust["updateAuthority"]["audience"]);
     assert_eq!(trust["updateAuthority"]["role"], "update_authority");
     assert_eq!(capability["protocolVersion"], "bwg-worker-controller/0.4");
-    assert_eq!(capability["transportProfile"], "bwg-worker-serial/0.1");
+    assert_eq!(capability["transportProfile"], "bwg-worker-serial/0.2");
     assert_eq!(
         claims["serialManifestSha256"],
         serial_manifest_sha256().expect("serial manifest digest")

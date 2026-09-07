@@ -27,6 +27,7 @@ This index summarizes accepted decisions from the original project handoff.
 | ADR-0017  | Deepen the Production Mining Session into the software-complete mining engine.   | Accepted                                                |
 | ADR-0021  | Keep USB Serial/JTAG fixed and use direct browser Web Serial.                    | Accepted; supersedes USB topology in ADR-0018/0019/0020 |
 | ADR-0022  | Require four fixed-USB continuity cycles before bounded live acceptance.         | Accepted; supersedes only ADR-0021 sample count         |
+| ADR-0023  | Bound native serial receive progress and verify exact payload integrity.        | Accepted; succeeds serial 0.1 with serial 0.2           |
 | PLAN-0001 | First milestone is project foundation plus Gamma 601 bring-up path.              | Superseded by ADR-0014                                  |
 | PLAN-0002 | First milestone is project foundation plus Ultra 205 safe-state boot/flash path. | Verified for safe-state boot/flash on 2026-06-26        |
 
@@ -78,3 +79,7 @@ This index summarizes accepted decisions from the original project handoff.
 - [ADR-0017](../adr/0017-software-complete-production-mining-engine.md)
 
 - [ADR-0021](../adr/0021-fixed-serial-jtag-worker-transport.md)
+
+- [ADR-0022](../adr/0022-four-cycle-fixed-usb-qualification.md)
+
+- [ADR-0023](../adr/0023-bound-native-serial-receive-progress.md)

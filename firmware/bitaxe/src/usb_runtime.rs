@@ -5,6 +5,14 @@ use esp_idf_sys as sys;
 mod failure;
 pub(crate) use failure::WriteFailure;
 use failure::WriteStage;
+use std::sync::atomic::{AtomicBool, Ordering};
+static PARTIAL_OUTPUT: AtomicBool = AtomicBool::new(false);
+
+/// Only an unfinished record needs bootstrap resynchronization; queued complete
+/// records retain their delimiter even if cancellation interrupts drain polling.
+pub(crate) fn has_partial_output() -> bool {
+    PARTIAL_OUTPUT.load(Ordering::Acquire)
+}
 
 pub(crate) fn install() -> anyhow::Result<()> {
     let mut config = sys::usb_serial_jtag_driver_config_t {
@@ -25,19 +33,28 @@ pub(crate) fn read(bytes: &mut [u8]) -> anyhow::Result<usize> {
 }
 
 /// Only the serial writer task may call this; partial writes resume without interleaving.
-pub(crate) fn write(bytes: &[u8]) -> anyhow::Result<()> {
+pub(crate) fn write_if(bytes: &[u8], admitted: impl Fn() -> bool) -> anyhow::Result<()> {
     let started = crate::runtime_uptime::millis();
     let deadline = started.saturating_add(2000);
-    let failure = |stage, queued_bytes| WriteFailure {
-        stage,
-        queued_bytes,
-        record_bytes: bytes.len(),
-        elapsed_ms: crate::runtime_uptime::millis().saturating_sub(started),
+    let failure = |stage, queued_bytes| {
+        if queued_bytes > 0 && queued_bytes < bytes.len() {
+            PARTIAL_OUTPUT.store(true, Ordering::Release);
+        }
+        WriteFailure {
+            stage,
+            queued_bytes,
+            record_bytes: bytes.len(),
+            elapsed_ms: crate::runtime_uptime::millis().saturating_sub(started),
+        }
     };
     let mut remaining = bytes;
     while !remaining.is_empty() {
+        if !admitted() {
+            return Err(failure(WriteStage::Cancelled, bytes.len() - remaining.len()).into());
+        }
         let count = unsafe {
-            sys::usb_serial_jtag_write_bytes(remaining.as_ptr().cast(), remaining.len().min(512), 1)
+            // Never wait for driver capacity after checking epoch admission.
+            sys::usb_serial_jtag_write_bytes(remaining.as_ptr().cast(), remaining.len().min(512), 0)
         };
         if count < 0 {
             return Err(failure(WriteStage::Write, bytes.len() - remaining.len()).into());
@@ -46,14 +63,36 @@ pub(crate) fn write(bytes: &[u8]) -> anyhow::Result<()> {
         if crate::runtime_uptime::millis() >= deadline {
             return Err(failure(WriteStage::WriteTimeout, bytes.len() - remaining.len()).into());
         }
+        if count == 0 {
+            std::thread::yield_now();
+        }
     }
-    // The ring buffer may still contain data. Drain within the same total record budget.
-    let ticks = (deadline.saturating_sub(crate::runtime_uptime::millis())
-        * u64::from(sys::configTICK_RATE_HZ)
-        / 1000) as u32;
-    let flushed = unsafe { sys::usb_serial_jtag_wait_tx_done(ticks) };
-    if flushed != sys::ESP_OK || crate::runtime_uptime::millis() > deadline {
-        return Err(failure(WriteStage::FlushTimeout, bytes.len()).into());
+    // Already-queued bytes cannot be retracted. Poll their drain without holding
+    // a revocation lock, and never admit another chunk after cancellation.
+    loop {
+        if !admitted() {
+            return Err(failure(WriteStage::Cancelled, bytes.len()).into());
+        }
+        let ticks = (deadline.saturating_sub(crate::runtime_uptime::millis())
+            * u64::from(sys::configTICK_RATE_HZ)
+            / 1000)
+            .min(1) as u32;
+        let flushed = unsafe { sys::usb_serial_jtag_wait_tx_done(ticks) };
+        if flushed == sys::ESP_OK && crate::runtime_uptime::millis() <= deadline {
+            anyhow::ensure!(admitted(), "serial_output_revoked");
+            return Ok(());
+        }
+        if ticks == 0 || crate::runtime_uptime::millis() >= deadline {
+            return Err(failure(WriteStage::FlushTimeout, bytes.len()).into());
+        }
+    }
+}
+
+/// Terminate an interrupted old line before the next fresh Hello acknowledgement.
+pub(crate) fn resynchronize_if(admitted: impl Fn() -> bool) -> anyhow::Result<()> {
+    if PARTIAL_OUTPUT.load(Ordering::Acquire) {
+        write_if(b"\n", admitted)?;
+        PARTIAL_OUTPUT.store(false, Ordering::Release);
     }
     Ok(())
 }

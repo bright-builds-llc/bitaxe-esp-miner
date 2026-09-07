@@ -64,8 +64,12 @@ filegroup(
     srcs = ["conformance/bwg-worker-controller-0.4/fixtures.json"],
 )
 filegroup(
-    name = "worker_serial_v01_fixtures",
-    srcs = ["conformance/bwg-worker-serial-0.1/fixtures.json"],
+    name = "worker_serial_v02_fixtures",
+    srcs = ["conformance/bwg-worker-serial-0.2/fixtures.json"],
+)
+filegroup(
+    name = "worker_serial_v02_integrity_fixtures",
+    srcs = ["conformance/bwg-worker-serial-0.2/integrity-vectors.json"],
 )
 filegroup(
     name = "worker_possession_fixtures",
@@ -92,8 +96,12 @@ js_library(
     srcs = ["conformance/bwg-worker-controller-0.4/fixtures.json"],
 )
 js_library(
-    name = "worker_serial_v01_fixtures_js",
-    srcs = ["conformance/bwg-worker-serial-0.1/fixtures.json"],
+    name = "worker_serial_v02_fixtures_js",
+    srcs = ["conformance/bwg-worker-serial-0.2/fixtures.json"],
+)
+js_library(
+    name = "worker_serial_v02_integrity_fixtures_js",
+    srcs = ["conformance/bwg-worker-serial-0.2/integrity-vectors.json"],
 )
 js_library(
     name = "worker_possession_fixtures_js",
@@ -112,9 +120,9 @@ js_library(
     srcs = ["conformance/bwg-worker-deployment-trust-0.2/signed-capability.json"],
 )
 """,
-    sha256 = "2bc8e40e22b2413692075be602228a636103720a57fc31f0c2867ef726837cd0",
-    strip_prefix = "bitaxe-turnstile-system-368adbd8f4c25fd6729e443314a02d7231a685d9",
+    sha256 = "831c138f4da988b806d059009dd1577f9a4b164f092d52ab8a5cd456f9362951",
+    strip_prefix = "bitaxe-turnstile-system-95fbb9856ccfe1902b03a90d0632fd857282f295",
     urls = [
-        "https://github.com/bright-builds-llc/bitaxe-turnstile-system/archive/368adbd8f4c25fd6729e443314a02d7231a685d9.tar.gz",
+        "https://github.com/bright-builds-llc/bitaxe-turnstile-system/archive/95fbb9856ccfe1902b03a90d0632fd857282f295.tar.gz",
     ],
 )

@@ -27,7 +27,7 @@ const expectedExports = new Map([
   ],
   [
     "./worker-serial-conformance/fixtures",
-    "./conformance/bwg-worker-serial-0.1/fixtures.json",
+    "./conformance/bwg-worker-serial-0.2/fixtures.json",
   ],
   [
     "./worker-possession-conformance/fixtures",
@@ -52,7 +52,7 @@ const fixtures = await Promise.all(
 const [controller, usb, possession, trust] = fixtures;
 if (
   controller.capabilities?.protocolVersion !== "bwg-worker-controller/0.4" ||
-  usb.profile !== "bwg-worker-serial/0.1" ||
+  usb.profile !== "bwg-worker-serial/0.2" ||
   possession.profile !== "bwg-worker-possession/0.2" ||
   trust.profile !== "bwg-worker-deployment-trust/0.2" ||
   trust.ultra205?.signedCapability?.board?.revision !== "205"

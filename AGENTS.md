@@ -296,9 +296,10 @@ Architecture not yet mapped. Follow existing patterns found in the codebase.
 
 ### Fixed USB Ownership
 
-- Before changing USB startup, transport, detection, flashing, monitoring, or recovery, read ADR-0021 and `docs/hardware/native-usb-ownership.md`.
+- Before changing USB startup, transport, detection, flashing, monitoring, or recovery, read ADR-0021, ADR-0023 and `docs/hardware/native-usb-ownership.md`.
 - Keep USB Serial/JTAG as the sole controller; Worker activity is application state. Direct browser Web Serial is the only active Bitaxe control transport.
-- Use Controller 0.4/serial 0.1/possession 0.2, fresh logical sessions and exact identity. USB descriptors and node names never establish application authority.
+- Use Controller 0.4/serial 0.2/possession 0.2, fresh logical sessions and exact identity. USB descriptors and node names never establish application authority.
+- Bound raw host bytes by the signed receive window and verify exact payload length/digest before dispatch. Receive acknowledgements never extend heartbeat, possession or Work Lease authority; partial-record cancellation requires fresh-session recovery.
 - Ordinary updates preserve NVS/Device Identity/replay state with admitted disjoint write segments. Factory installation/reset is explicit, not an implicit recovery path.
 - Enforce the device-local 2.8-second heartbeat deadline, actual generation revocation and shutdown initiation within three seconds, independently of blocking commands and diagnostics.
 - The active migration/qualification/live-acceptance tasks own effects. Old TinyUSB and recovery-006 plans are historical and cannot authorize new effects. Preserve their original evidence and non-claims.

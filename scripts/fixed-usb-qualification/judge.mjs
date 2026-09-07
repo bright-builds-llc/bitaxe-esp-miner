@@ -5,7 +5,11 @@ const STAGES = ["not_started", "stop_dispatch", "reduce_frequency_and_reset_nonc
 const STATUSES = ["unconfigured", "configured", "ready", "window_loaded", "running", "stopping", "baseline_confirmed",
   "closing", "closed", "failed", "restoration_unconfirmed", "disconnected"];
 const FAILURES = ["configuration_failed", "connect_failed", "prepare_failed", "start_failed", "load_failed", "stop_failed",
-  "close_failed", "probe_failed", "suppress_failed", "local_input_invalid", "window_control_failed", "cleanup_failed"];
+  "close_failed", "probe_failed", "suppress_failed", "arm_foreground_failed", "local_input_invalid", "window_control_failed", "cleanup_failed"];
+const SERIAL_FAILURES = ["timeout", "io", "read_failed", "write_failed", "disconnected", "liveness_lost", "wire_bound", "payload_bound",
+  "utf8", "line_ending", "profile", "shape", "fields", "envelope", "session", "continuity", "heartbeat", "sequence_exhausted",
+  "correlation", "command_rejected", "closed", "operation_failed", "integrity", "probe_bound", "probe_mismatch", "operation_active",
+  "credit_invalid", "credit_counter", "credit_closed", "credit_session", "write_bound", "request_failed", "probe_failed"];
 const COUNTS = ["generation", "active_ms", "generation_elapsed_ms", "budget_reserved_ms", "submitted", "accepted", "rejected",
   "nonce_work_correlations", "work_dispatched", "last_valid_heartbeat_ms"];
 const BOOLEANS = ["budget_complete", "safe_stop_complete", "voltage_fresh", "power_fresh", "temperature_fresh", "fan_fresh", "watchdog_alive", "mine_on_boot"];
@@ -46,7 +50,7 @@ export function validateState(value, context) {
     STATUSES.includes(value.status) && u32(value.renewalsConfirmed) && value.renewalsConfirmed <= 16 &&
     ["connected", "running", "heartbeatSuppressed", "deviceRestorationConfirmed", "deviceLeaseInactive", "serialOwnershipReleased"].every((key) => typeof value[key] === "boolean"), "browser_state_identity");
   if (value.admissionFailureStage !== undefined) requireCondition(["ownership", "permission", "device_filter", "scope", "opening", "hello", "manifest_identity", "capability", "possession", "baseline", "continuity", "cleanup"].includes(value.admissionFailureStage), "admission_stage_shape");
-  if (value.serialFailureCategory !== undefined) requireCondition(["timeout", "io", "read_failed", "write_failed", "disconnected", "liveness_lost", "wire_bound", "payload_bound", "utf8", "line_ending", "profile", "shape", "fields", "envelope", "session", "continuity", "heartbeat", "sequence_exhausted", "correlation", "command_rejected", "closed", "operation_failed"].includes(value.serialFailureCategory), "serial_failure_shape");
+  if (value.serialFailureCategory !== undefined) requireCondition(SERIAL_FAILURES.includes(value.serialFailureCategory), "serial_failure_shape");
   if (value.failure !== undefined) requireCondition(FAILURES.includes(value.failure), "browser_failure_shape");
   if (value.qualification !== undefined) validateQualification(value.qualification);
   if (value.preservation !== undefined) validatePreservation(value.preservation);

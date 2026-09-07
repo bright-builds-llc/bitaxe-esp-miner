@@ -356,7 +356,7 @@ fn worker_with_session(session: FakeSession) -> WorkerControl<FixtureVerifier, F
         .expect("fixture firmware identity"),
         json!({
             "protocolVersion": "bwg-worker-controller/0.4",
-            "transportProfile": "bwg-worker-serial/0.1"
+            "transportProfile": "bwg-worker-serial/0.2"
         }),
         "rOKO_7whZfy0ntMKM9RIeZNAA3x97tt3rWMAm_QshVA",
     )

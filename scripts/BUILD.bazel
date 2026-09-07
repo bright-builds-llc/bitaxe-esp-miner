@@ -72,7 +72,7 @@ js_test(
     args = [
         "$(rootpath @bwg_gate_contract//:package_json_js)",
         "$(rootpath @bwg_gate_contract//:controller_v04_fixtures_js)",
-        "$(rootpath @bwg_gate_contract//:worker_serial_v01_fixtures_js)",
+        "$(rootpath @bwg_gate_contract//:worker_serial_v02_fixtures_js)",
         "$(rootpath @bwg_gate_contract//:worker_possession_fixtures_js)",
         "$(rootpath @bwg_gate_contract//:worker_deployment_trust_fixtures_js)",
         "$(rootpath @bwg_gate_contract//:worker_deployment_trust_js)",
@@ -84,7 +84,7 @@ js_test(
     data = [
         "@bwg_gate_contract//:package_json_js",
         "@bwg_gate_contract//:controller_v04_fixtures_js",
-        "@bwg_gate_contract//:worker_serial_v01_fixtures_js",
+        "@bwg_gate_contract//:worker_serial_v02_fixtures_js",
         "@bwg_gate_contract//:worker_possession_fixtures_js",
         "@bwg_gate_contract//:worker_deployment_trust_fixtures_js",
         "@bwg_gate_contract//:worker_deployment_trust_js",

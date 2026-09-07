@@ -3,7 +3,8 @@
 use super::rx_diagnostics::{Stage, FAILURE};
 use super::*;
 use bitaxe_worker_control::serial::{
-    canonical_nonce, serial_manifest, SerialEnvelope, SerialFrameAccumulator, SerialLinkLiveness,
+    canonical_nonce, serial_manifest, SerialEnvelope, SerialError, SerialFrameAccumulator,
+    SerialLinkLiveness, SerialReceiveProgress, HOST_RECEIVE_WINDOW_BYTES,
 };
 use serde::Deserialize;
 use serde_json::json;
@@ -15,6 +16,7 @@ struct Link {
     generation: WorkerGeneration,
     sequence: u32,
     liveness: SerialLinkLiveness,
+    received: SerialReceiveProgress,
 }
 
 #[derive(Deserialize)]
@@ -62,6 +64,22 @@ pub(super) fn run() {
             }
         };
         for byte in &bytes[..count] {
+            // Account per byte so a Hello LF inside this read batch establishes
+            // the exact next epoch's counter origin. Partial frames earn credit.
+            if let Some(link) = maybe_link.as_mut() {
+                let Some(received) = link.received.advance(1) else {
+                    FAILURE.record(Stage::ReceiveCounter, observed_bytes);
+                    close(&mut maybe_link);
+                    accumulator.clear();
+                    observed_bytes = 0;
+                    continue;
+                };
+                // The LF is credited after classification so a validated Close
+                // has one strictly newer terminal receipt, never a duplicate.
+                if *byte != b'\n' {
+                    RECEIVE_CREDIT.publish(received);
+                }
+            }
             observed_bytes = observed_bytes.saturating_add(1).min(66560);
             let Some(result) = accumulator.push_byte(*byte) else {
                 continue;
@@ -76,20 +94,30 @@ pub(super) fn run() {
                 continue;
             };
             let frame = Zeroizing::new(frame);
-            let Ok(envelope) = SerialEnvelope::parse(&frame) else {
-                // Boot text is permissible before hello; malformed established input revokes.
-                if maybe_link.is_some() {
-                    FAILURE.record(Stage::Envelope, frame_bytes);
-                    close(&mut maybe_link);
+            let envelope = match SerialEnvelope::parse(&frame) {
+                Ok(envelope) => envelope,
+                Err(error) => {
+                    // Boot text is permissible before hello; corrupt established input revokes.
+                    if maybe_link.is_some() {
+                        let stage = if error == SerialError::Integrity {
+                            Stage::Integrity
+                        } else {
+                            Stage::Envelope
+                        };
+                        FAILURE.record(stage, frame_bytes);
+                        close(&mut maybe_link);
+                    }
+                    continue;
                 }
-                continue;
             };
             if envelope.kind == SerialKind::Session
                 && envelope.session_id.is_none()
                 && envelope.sequence == 0
             {
                 close(&mut maybe_link);
-                maybe_link = hello(envelope, &mut next_epoch);
+                if frame_bytes <= HOST_RECEIVE_WINDOW_BYTES as usize {
+                    maybe_link = hello(envelope, &mut next_epoch);
+                }
                 continue;
             }
             let Some(link) = maybe_link.as_mut() else {
@@ -107,6 +135,10 @@ pub(super) fn run() {
                 FAILURE.record(Stage::Sequence, frame_bytes);
                 close(&mut maybe_link);
                 continue;
+            }
+            let clean_close = envelope.kind == SerialKind::Session && envelope.is_close();
+            if !clean_close {
+                RECEIVE_CREDIT.publish(link.received.received_bytes());
             }
             match envelope.kind {
                 SerialKind::Heartbeat => {
@@ -156,10 +188,21 @@ pub(super) fn run() {
                     }
                 }
                 SerialKind::Session => {
-                    if !envelope.is_close() {
+                    if !clean_close {
                         FAILURE.record(Stage::UnexpectedKind, frame_bytes);
+                        close(&mut maybe_link);
+                    } else {
+                        let epoch = link.epoch;
+                        let received = link.received.received_bytes();
+                        RECEIVE_CREDIT.close_record(
+                            epoch,
+                            received,
+                            crate::runtime_uptime::millis(),
+                            || {
+                                close(&mut maybe_link);
+                            },
+                        );
                     }
-                    close(&mut maybe_link);
                 }
                 SerialKind::Diagnostic => {
                     FAILURE.record(Stage::UnexpectedKind, frame_bytes);
@@ -186,6 +229,7 @@ fn hello(envelope: SerialEnvelope, next_epoch: &mut u32) -> Option<Link> {
     let generation = revocation::begin_link(crate::runtime_uptime::millis())?;
     let epoch = *next_epoch;
     FAILURE.clear();
+    RECEIVE_CREDIT.begin(epoch);
     CURRENT_SESSION.store(epoch, Ordering::Release);
     if !enqueue(ControlEvent::Session {
         epoch,
@@ -204,6 +248,7 @@ fn hello(envelope: SerialEnvelope, next_epoch: &mut u32) -> Option<Link> {
         "op": "hello_ack", "hostNonce": binding.host_nonce, "deviceNonce": binding.device_nonce,
         "serialManifest": serial_manifest(), "firmwareSourceCommit": crate::firmware_commit(),
         "appElfSha256": crate::app_elf_sha256(),
+        "receiveWindowBytes": HOST_RECEIVE_WINDOW_BYTES, "receivedBytes": 0,
     });
     if writer::hello(epoch, &binding.session_id, payload).is_err() {
         revocation::revoke_reason_at(
@@ -220,6 +265,7 @@ fn hello(envelope: SerialEnvelope, next_epoch: &mut u32) -> Option<Link> {
         generation,
         sequence: 0,
         liveness: SerialLinkLiveness::new(crate::runtime_uptime::millis()),
+        received: SerialReceiveProgress::default(),
     })
 }
 

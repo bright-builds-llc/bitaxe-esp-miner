@@ -203,7 +203,7 @@ fn gate_serial_vectors_drive_fragmentation_and_negative_boundary_checks() {
     assert!(!frames.is_empty());
     let stream: Vec<_> = frames
         .iter()
-        .flat_map(|frame| json_line(&frame["frame"]))
+        .flat_map(|frame| text(frame, "wire").as_bytes().iter().copied())
         .collect();
     let mut accumulator = SerialFrameAccumulator::default();
     // Act: exercise arbitrary splitting and multiple complete records in one read.
@@ -226,7 +226,7 @@ fn gate_serial_vectors_drive_fragmentation_and_negative_boundary_checks() {
             .collect::<Vec<_>>()
     );
     for frame in frames {
-        let mut crlf = json_line(&frame["frame"]);
+        let mut crlf = text(frame, "wire").as_bytes().to_vec();
         crlf.insert(crlf.len() - 1, b'\r');
         assert!(matches!(
             SerialEnvelope::parse(&crlf),
@@ -238,7 +238,7 @@ fn gate_serial_vectors_drive_fragmentation_and_negative_boundary_checks() {
             SerialEnvelope::parse(&json_line(&unknown)),
             Err(SerialError::Invalid)
         ));
-        let wire = String::from_utf8(json_line(&frame["frame"])).expect("UTF8 fixture");
+        let wire = text(frame, "wire");
         let sequence = format!("\"sequence\":{}", frame["frame"]["sequence"]);
         let duplicate = wire.replacen(&sequence, &format!("{sequence},{sequence}"), 1);
         assert!(matches!(
@@ -264,4 +264,44 @@ fn gate_serial_vectors_drive_fragmentation_and_negative_boundary_checks() {
         SerialEnvelope::parse(&oversized),
         Err(SerialError::Oversized)
     ));
+}
+
+#[test]
+fn gate_payload_integrity_vectors_match_exact_rust_lexical_bytes() {
+    use bitaxe_worker_control::serial::{SerialEnvelope, SerialError, SerialKind};
+    use serde_json::value::RawValue;
+    // Arrange
+    if env::var("BWG_SERIAL_INTEGRITY_FIXTURES").is_err() {
+        assert_ne!(
+            env::var("BWG_REQUIRE_PINNED_FIXTURES").ok().as_deref(),
+            Some("1"),
+            "required payload integrity fixtures are absent"
+        );
+        return;
+    }
+    let fixture = required_fixture("BWG_SERIAL_INTEGRITY_FIXTURES");
+    for vector in fixture["vectors"].as_array().expect("integrity vectors") {
+        let payload =
+            RawValue::from_string(text(vector, "payloadJson").to_owned()).expect("lexical JSON");
+        // Act
+        let encoded = SerialEnvelope::encode(
+            SerialKind::Control,
+            Some("AAAAAAAAAAAAAAAAAAAAAA"),
+            1,
+            &payload,
+        )
+        .expect("protected envelope");
+        let envelope = SerialEnvelope::parse(&encoded).expect("lexical envelope");
+        let encoded: Value = serde_json::from_slice(&encoded).expect("envelope metadata");
+        // Assert
+        assert_eq!(envelope.payload.get(), text(vector, "payloadJson"));
+        assert_eq!(encoded["payloadBytes"], vector["payloadBytes"]);
+        assert_eq!(encoded["payloadSha256"], vector["payloadSha256"]);
+        let mut corrupt = encoded;
+        corrupt["payloadBytes"] = 0.into();
+        assert!(matches!(
+            SerialEnvelope::parse(&json_line(&corrupt)),
+            Err(SerialError::Integrity)
+        ));
+    }
 }

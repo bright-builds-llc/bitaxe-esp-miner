@@ -23,7 +23,8 @@ export async function inspectSources(options, operations = {}) {
   const bundle = await readFile(resolve(options.gateRoot, BUNDLE));
   requireCondition(bundle.includes(options.gateCommit), "gate_bundle_stale");
   return { ...packaged, firmware_commit: options.firmwareCommit, gate_commit: options.gateCommit,
-    gate_bundle_sha256: digest(bundle), gate_page_sha256: await fileDigest(resolve(options.gateRoot, PAGE)),
+    gate_bundle_sha256: digest(bundle), gate_page_relative_path: PAGE,
+    gate_page_sha256: await fileDigest(resolve(options.gateRoot, PAGE)),
     trust_sha256: await fileDigest(trustPath), authority_trust_sha256: digest(JSON.stringify(authorityTrust)),
     supervisor_client_sha256: await fileDigest(resolve(SCRIPT_ROOT, "client.mjs")) };
 }

@@ -19,6 +19,11 @@ rust_library(
 )
 
 rust_test(
+    name = "serial_unit_tests",
+    crate = ":bitaxe_worker_control",
+)
+
+rust_test(
     name = "authorization_tests",
     srcs = ["tests/authorization.rs", "tests/authorization/campaign.rs"],
     compile_data = ["tests/authorization/gate-campaign.json"],
@@ -112,13 +117,15 @@ rust_test(
     crate_name = "bitaxe_worker_control_gate_conformance_tests",
     data = [
         "@bwg_gate_contract//:controller_v04_fixtures",
-        "@bwg_gate_contract//:worker_serial_v01_fixtures",
+        "@bwg_gate_contract//:worker_serial_v02_fixtures",
+        "@bwg_gate_contract//:worker_serial_v02_integrity_fixtures",
         "@bwg_gate_contract//:worker_possession_fixtures",
         "@bwg_gate_contract//:worker_deployment_trust_fixtures",
     ],
     edition = "2021",
     env = {
-        "BWG_SERIAL_FIXTURES": "$(rootpath @bwg_gate_contract//:worker_serial_v01_fixtures)",
+        "BWG_SERIAL_FIXTURES": "$(rootpath @bwg_gate_contract//:worker_serial_v02_fixtures)",
+        "BWG_SERIAL_INTEGRITY_FIXTURES": "$(rootpath @bwg_gate_contract//:worker_serial_v02_integrity_fixtures)",
         "BWG_DEPLOYMENT_FIXTURES": "$(rootpath @bwg_gate_contract//:worker_deployment_trust_fixtures)",
         "BWG_POSSESSION_FIXTURES": "$(rootpath @bwg_gate_contract//:worker_possession_fixtures)",
     },

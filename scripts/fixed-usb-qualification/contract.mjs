@@ -6,13 +6,21 @@ import { execFileSync } from "node:child_process";
 
 export const WINDOW_MS = Object.freeze([180000, 30000, 30000]);
 export const REQUIRED_CYCLES = 4;
-export const PAGE = "conformance/bwg-worker-serial-0.1/acceptance.html";
+export const PAGE = "conformance/bwg-worker-serial-0.2/acceptance.html";
+const HISTORICAL_PAGE = "conformance/bwg-worker-serial-0.1/acceptance.html";
 export const BUNDLE = "dist/worker-serial-acceptance/worker-serial-acceptance.js";
 export class QualificationError extends Error {
   constructor(code) { super(code); this.code = code; }
 }
 export function requireCondition(condition, code) {
   if (!condition) throw new QualificationError(code);
+}
+// Older immutable contexts omitted the page path. This is artifact verification,
+// not permission to resume an old runtime through the active transport.
+export function contextPage(context) {
+  const page = context.gate_page_relative_path ?? HISTORICAL_PAGE;
+  requireCondition(page === PAGE || page === HISTORICAL_PAGE, "page_profile");
+  return page;
 }
 export const hex = (value, length) => typeof value === "string" &&
   new RegExp(`^[0-9a-f]{${length}}$`, "u").test(value);

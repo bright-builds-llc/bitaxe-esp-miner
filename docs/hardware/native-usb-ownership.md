@@ -1,6 +1,6 @@
 # Fixed native USB ownership
 
-ADR-0021 is authoritative. This guide replaces the TinyUSB/Serial-JTAG switching
+ADRs 0021 and 0023 are authoritative. This guide replaces the TinyUSB/Serial-JTAG switching
 procedure. Historical work plans, archived task records and consumed attempts
 retain their original facts; they are not active hardware instructions.
 
@@ -32,15 +32,23 @@ and uses the [pinned Rand cryptographic generator](https://github.com/rust-rando
 
 ## Serial protocol and ownership
 
-Gate's published Controller 0.4, serial transport 0.1 and possession 0.2 are the
+Gate's published Controller 0.4, serial transport 0.2 and possession 0.2 are the
 wire authority. Messages use bounded JSON-line envelopes with profile, kind,
-sessionId, sequence and payload. Control payloads are at most 65536 bytes;
+sessionId, sequence, payloadBytes, payloadSha256 and payload. Control payloads are at most 65536 bytes;
 complete wire records are at most 66560 bytes including newline. Decoders
 handle arbitrary fragmentation, coalescing and boot-log resynchronization.
 Unknown, malformed or stale control traffic cannot authorize work.
 
-One firmware owner serializes application output. Heartbeat/control traffic has
-priority over bounded diagnostics. Raw credentials, signing input, proofs and
+Validate the exact lexical UTF-8 payload length and digest before dispatch.
+The signed manifest fixes a 2048-byte host outstanding window and native writes
+of at most 1024 bytes. The device acknowledges actual drained bytes, including
+partial records, independently of Worker commands. One two-second record
+deadline includes all credit waits and final consumption. Credits carry no
+liveness or Work authority. Abort partial records on cancellation; do not splice
+Restore or Close into them. Recover and verify restoration in a fresh session.
+
+One firmware owner serializes application output. Heartbeat and receive-credit
+traffic precede control replies and bounded diagnostics. Raw credentials, signing input, proofs and
 control payloads never become logs. Allowlisted boot diagnostics before hello
 are observation, not control authority; ROM output is not a Worker message.
 
@@ -122,7 +130,7 @@ records report queued byte counts, which are not delivery confirmation.
 ## Verification and privacy
 
 Run just verify-native-usb-ownership after transport/startup/host changes.
-Qualification requires exact no-mining identity/framing checks and 20 complete
+Qualification requires exact no-mining identity/framing checks and 4 complete
 browser-release/flash/reconnect cycles preserving Device Identity/settings.
 Only afterward run the active live-acceptance task's 180000/30000/30000-ms windows
 and Conservative hardware limits.
@@ -180,6 +188,10 @@ Human checkpoints have no deadline. Device leases, serial operations, signer
 children, active-mining windows and cooling retain their bounded deadlines.
 
 ## Owner-approved four-cycle amendment
+
+This policy-only procedure preserves historical twenty-cycle contexts. It
+cannot authorize changed runtime bytes or replace serial 0.2 qualification
+under ADR-0023.
 
 ADR-0022 reduces the continuity sample from 20 to 4. Original contexts and completed cycle evidence remain unchanged. The live acceptance gate still requires every completed cycle, unchanged firmware/browser identities, settings and Device Identity continuity, and the original 180/30/30-second device windows.
 

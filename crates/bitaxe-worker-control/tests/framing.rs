@@ -142,13 +142,40 @@ fn unknown_envelope_fields_are_rejected() {
 #[test]
 fn omitted_session_field_is_not_a_hello() {
     // Arrange
-    let bytes = b"{\"profile\":\"bwg-worker-serial/0.1\",\"kind\":\"session\",\"sequence\":0,\"payload\":{}}\n";
+    let mut value: serde_json::Value = serde_json::from_slice(&record("{}")).expect("fixture");
+    value.as_object_mut().expect("envelope").remove("sessionId");
+    let mut bytes = serde_json::to_vec(&value).expect("fixture encoding");
+    bytes.push(b'\n');
 
     // Act / Assert
     assert!(matches!(
-        SerialEnvelope::parse(bytes),
+        SerialEnvelope::parse(&bytes),
         Err(SerialError::Invalid)
     ));
+}
+
+#[test]
+fn changed_payload_bytes_of_the_same_length_fail_integrity() {
+    // Arrange
+    let wire = String::from_utf8(record(r#"{"padding":"xxxx"}"#)).expect("UTF-8 fixture");
+    let changed = wire.replace("xxxx", "yyyy");
+    // Act / Assert
+    assert!(matches!(
+        SerialEnvelope::parse(changed.as_bytes()),
+        Err(SerialError::Integrity)
+    ));
+}
+
+#[test]
+fn lexical_payload_whitespace_key_order_and_escapes_are_preserved() {
+    // Arrange
+    for payload in [r#"{ "z": 1, "\u0061":"\u0078" }"#, r#"{"text":"雪🚀"}"#] {
+        let wire = record(payload);
+        // Act
+        let envelope = SerialEnvelope::parse(&wire).expect("exact lexical integrity");
+        // Assert
+        assert_eq!(envelope.payload.get(), payload);
+    }
 }
 
 #[test]
@@ -195,4 +222,61 @@ fn clearing_revoked_partial_input_allows_a_fresh_record() {
         .collect();
     // Assert
     assert_eq!(frames, vec![Ok(record("{}"))]);
+}
+
+#[test]
+fn deleted_payload_bytes_never_reach_control_dispatch() {
+    // Arrange: deleting repeated bytes leaves syntactically valid JSON.
+    let wire = record(r#"{"padding":"xxxxxxxx"}"#);
+    let text = String::from_utf8(wire).expect("UTF-8 fixture");
+    let shortened = text.replace("xxxxxxxx", "xxxx");
+
+    // Act
+    let result = SerialEnvelope::parse(shortened.as_bytes());
+
+    // Assert
+    assert!(
+        result.is_err(),
+        "valid JSON is insufficient for payload integrity"
+    );
+}
+
+#[test]
+fn short_completed_records_do_not_own_a_maximum_sized_secret_allocation() {
+    // Arrange
+    let mut accumulator = SerialFrameAccumulator::default();
+    let wire = record("{}");
+
+    // Act
+    let completed = wire
+        .iter()
+        .find_map(|byte| accumulator.push_byte(*byte))
+        .expect("complete frame")
+        .expect("bounded frame");
+
+    // Assert
+    assert_eq!(completed.capacity(), completed.len());
+}
+
+#[test]
+fn a_short_record_after_maximum_input_has_no_retained_payload_tail() {
+    // Arrange
+    let mut accumulator = SerialFrameAccumulator::default();
+    let large = record(&format!(
+        "{{\"x\":\"{}\"}}",
+        "x".repeat(MAXIMUM_CONTROL_PAYLOAD_BYTES - 8)
+    ));
+    let small = record("{}");
+    for byte in large {
+        let _completed = accumulator.push_byte(byte);
+    }
+    // Act
+    let completed = small
+        .iter()
+        .find_map(|byte| accumulator.push_byte(*byte))
+        .expect("short record")
+        .expect("bounded frame");
+    // Assert
+    assert_eq!(completed, small);
+    assert_eq!(completed.capacity(), completed.len());
 }
