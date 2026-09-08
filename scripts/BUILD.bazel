@@ -145,6 +145,18 @@ js_test(
     entry_point = "fixed-usb-qualification/mining-progress.test.mjs",
 )
 
+js_test(
+    name = "fixed_usb_retained_runtime_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/runtime-source.test.mjs",
+)
+
+js_test(
+    name = "fixed_usb_unreserved_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/unreserved.test.mjs",
+)
+
 js_binary(
     name = "audit_owner_stack",
     data = ["owner-stack-audit.mjs"],

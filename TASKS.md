@@ -5076,6 +5076,60 @@ preserved and all owned processes were reaped. The correction is ready for
 firmware publication and a clean exact package. Hardware remains stopped until
 that package is admitted and its four current-image cycles are complete.
 
+Hinted runtime hardware results: firmware f3bbfd6a / Gate 2106f1c passed
+installation and all four current-image cycles. Diagnostic ordinal 10 passed
+after 12310 active ms with four work items and three expected-filter matches.
+Normal ordinal 11 passed: five correlated accepted shares, three renewals,
+26 work items, 59069 active ms and qualified restoration at 43 C. Its full
+180000-ms reservation was charged; the separate ledger reached 1080000 ms,
+next ordinal 12, no pending reservation. The original ledger remains unchanged.
+
+Foreground ordinal 12 did not reach a fault or reservation. The operator
+prepared the observer after loading the grant and exceeded the existing
+60-second possession lifetime. Start correctly returned `admission_required`
+before signature/sequence persistence or session effects, as confirmed by the
+existing expiry boundary test. Preserve the first `start_failed/command_rejected`
+delivery and its diagnostic export. Fresh same-image recovery and ledger review
+confirmed last completed ordinal 11, next ordinal 12, charged 1080000 ms,
+pending false, retired generation 3, safe restoration and released USB/host
+ownership. No refund, charge, skipped ordinal or foreground success is claimed.
+
+Unreserved continuation plan (no further hardware effects until published):
+- [ ] Add an immutable pre-admission rejection record and one exclusive
+  continuation for the same unused allowance identity/ordinal/purpose/limit/hint.
+  Preserve the original context, issuance, consumption, samples and failure.
+- [ ] Bind the updated qualification driver to an exact pushed host commit;
+  admit only an explicit host/docs file allowlist since the installed runtime.
+  Retain and verify the exact existing firmware/Gate artifact snapshots and four
+  cycles. No firmware, Gate, trust, client-script or timing changes are allowed.
+- [ ] Require unchanged recovered ledger/idle state, then fresh possession,
+  fan proof and an unchanged fresh ledger again before one new signed delivery.
+  Reject pending/advanced ledgers, work observations, wrong identities, changed
+  evidence, duplicate continuations and a reused binding or authorization.
+- [ ] Test the denial matrix, source separation and successor-window binding;
+  run required checks and publish this host-only recovery contract before effects.
+- [ ] Prepare and verify the observer first; then authorize/start promptly for
+  the foreground continuation and the final heartbeat test on f3bbfd6a/2106f1c.
+  Preserve the accepted normal result and all 30-second/three-second limits.
+
+ADR-0028 implementation and verification: all 114 qualification harness tests,
+93 canonical targets, ordered Rust format/lint/build/test checks, ownership,
+reference and standards checks pass. Actual protected ordinal-12 evidence was
+validated without mutation; the unpublished dirty driver correctly prevented
+creation before publication. Historical lineage validation no longer depends
+on future checkout state or a future Gate diagnostic parser; sealed evidence
+hashes remain mandatory. The heartbeat successor must reference the completed
+foreground child and its exact retained artifacts, cycles and driver.
+
+Observer preparation (disconnected, no mining): debugger focus emulation was
+keeping the background page visible. It was disabled for the qualification tab;
+real visible/hidden/visible transitions now pass using an HTTP(S) observer tab.
+No document property or synthetic visibility event was used. Prior normal
+evidence establishes real work, shares and renewal; it makes no foreground-loss
+enforcement claim. The agent brought that page foreground before the normal run
+and did not move it during work. The actual foreground test will use the
+verified un-emulated visibility path and a contiguous fresh admission sequence.
+
 ## Future
 
 ### task-str005-v2-channel-job-205 | 2026-08-28 | Prove Ultra 205 V2 channel and job receipt

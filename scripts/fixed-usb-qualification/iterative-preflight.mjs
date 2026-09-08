@@ -5,14 +5,20 @@ import { canonicalBase64, canonicalDirectory, digest, exactObject, fileDigest, h
 import { inspectSources } from "./preflight.mjs";
 import { validateCycle, validateState } from "./judge.mjs";
 import { maximumActiveMs, PURPOSES, requireExhaustedOriginal, requireIdleLedger, validateAttempt } from "./iterative-contract.mjs";
+import { copyRetainedArtifacts, inspectRetainedSources, retainedManifestPath } from "./runtime-source.mjs";
 
 export function validateIterativePolicy(context, live = false) {
+  const v4 = context.schema === "fixed-usb-iterative-context-v4";
   const v3 = context.schema === "fixed-usb-iterative-context-v3";
-  const resources = v3 || context.schema === "fixed-usb-iterative-context-v2";
+  const resources = v4 || v3 || context.schema === "fixed-usb-iterative-context-v2";
   requireCondition(resources ? context.owner_stack_minimum_bytes === 4096 :
     context.schema === "fixed-usb-iterative-context-v1" && context.owner_stack_minimum_bytes === undefined, "iterative_policy");
-  requireCondition(v3 ? context.suggested_difficulty === 1000 : context.suggested_difficulty === undefined, "iterative_hint_policy");
-  requireCondition(!live || v3, "iterative_policy_upgrade_required");
+  requireCondition(v4 || v3 ? context.suggested_difficulty === 1000 : context.suggested_difficulty === undefined, "iterative_hint_policy");
+  if (v4) {
+    exactObject(context.qualification_driver, ["profile", "source_commit"]);
+    requireCondition(context.qualification_driver.profile === "fixed-usb-retained-runtime-driver-v1" && hex(context.qualification_driver.source_commit, 40), "iterative_driver_policy");
+  } else requireCondition(context.qualification_driver === undefined && context.unreserved_continuation === undefined && context.retained_runtime_source === undefined, "iterative_driver_policy");
+  requireCondition(!live || v3 || v4, "iterative_policy_upgrade_required");
   return resources;
 }
 export async function requireIterativeTask(firmwareRoot) {
@@ -78,6 +84,7 @@ export async function validateCompletedReceipt(path, receipt, records) {
     requireCondition(receipt.context_sha256 === digest(JSON.stringify(receipt.context)), "iterative_result_context");
     const frozen = await protectedJson(resolve(dirname(path), "context.json"));
     requireCondition(frozen.sha256 === receipt.context_sha256 && digest(JSON.stringify(frozen.context)) === frozen.sha256, "iterative_result_context");
+    if (receipt.context.schema === "fixed-usb-iterative-context-v4") await validateIterativeContext(dirname(path), receipt.context, { historical: true });
     const earliest = records.find((record) => record.state.failure);
     if (earliest) {
       const evidence = receipt.first_failure_evidence;
@@ -118,7 +125,7 @@ export async function iterativePreflight(options, operations = {}) {
   (operations.ignored ?? ignored)(options.firmwareRoot, root);
   const previousPath = resolve(options.previousReceipt);
   requireCondition(previousPath === resolve(parent, "bootstrap.json") || dirname(dirname(previousPath)) === parent, "iterative_parent_receipt");
-  const previous = await readPrevious(previousPath);
+  const previous = await (operations.readPrevious ?? readPrevious)(previousPath);
   const progress = await protectedJson(options.input);
   exactObject(progress, ["schema", "review", "reason", "evidence_sha256"]);
   requireCondition(progress.schema === "worker-qualification-progress-v1" && progress.review === "verified" &&
@@ -127,7 +134,18 @@ export async function iterativePreflight(options, operations = {}) {
     progress.evidence_sha256.every((value) => hex(value, 64)), "iterative_progress_review");
   requireCondition(PURPOSES.includes(options.purpose), "iterative_purpose");
   await requireIterativeTask(options.firmwareRoot);
-  const snapshot = await (operations.inspectSources ?? inspectSources)(options, operations);
+  const retained = options.retainedRuntimeFrom !== undefined || options.qualificationSourceCommit !== undefined;
+  let retainedSource;
+  if (retained) {
+    requireCondition(options.retainedRuntimeFrom && options.qualificationSourceCommit && previous.result === "passed" &&
+      previous.context?.schema === "fixed-usb-iterative-context-v4" && previous.context.unreserved_continuation &&
+      previous.context.qualification_attempt.purpose === "foreground_loss" && options.purpose === "heartbeat_loss" &&
+      resolve(options.retainedRuntimeFrom) === dirname(previousPath) &&
+      options.cyclesFrom && resolve(options.cyclesFrom) === resolve(options.retainedRuntimeFrom) &&
+      options.qualificationSourceCommit === previous.context.qualification_driver.source_commit, "iterative_retained_successor");
+    retainedSource = await (operations.inspectRetainedSources ?? inspectRetainedSources)(resolve(options.retainedRuntimeFrom), options, operations);
+  }
+  const snapshot = retainedSource?.snapshot ?? await (operations.inspectSources ?? inspectSources)(options, operations);
   const ordinal = previous.next_ordinal;
   requireCondition(Number.isSafeInteger(previous.total_charged_ms + maximumActiveMs(options.purpose)), "iterative_ledger_exhausted");
   const attempt = validateAttempt({ schema: "worker-qualification-attempt-v1", id: nonce(), ordinal,
@@ -145,26 +163,31 @@ export async function iterativePreflight(options, operations = {}) {
     if (["foreground_loss", "heartbeat_loss"].includes(options.purpose)) requireCondition(same && previous.result === "passed" &&
       prior.qualification_attempt.purpose === (options.purpose === "foreground_loss" ? "normal" : "foreground_loss"), "iterative_final_sequence");
   } else requireCondition(options.purpose === "diagnostic", "iterative_initial_purpose");
-  const cycleSource = options.cyclesFrom ? await reusableCycles(resolve(options.cyclesFrom), snapshot, parent) : undefined;
-  const context = { schema: "fixed-usb-iterative-context-v3", owner_stack_minimum_bytes: 4096, suggested_difficulty: 1000, ...snapshot, qualification_attempt: attempt,
+  const cycleSource = options.cyclesFrom ? await reusableCycles(resolve(options.cyclesFrom), snapshot, parent, operations) : undefined;
+  const context = { schema: retained ? "fixed-usb-iterative-context-v4" : "fixed-usb-iterative-context-v3", owner_stack_minimum_bytes: 4096, suggested_difficulty: 1000, ...snapshot, qualification_attempt: attempt,
+    ...(retained ? { qualification_driver: structuredClone(previous.context.qualification_driver), retained_runtime_source: {
+      root: resolve(options.retainedRuntimeFrom), context_sha256: retainedSource.sourceContextSha256, artifact_snapshot_sha256: retainedSource.artifactSnapshotSha256 } } : {}),
     required_no_mining_cycles: 4, ...(cycleSource ? { cycle_source: cycleSource.proof } : {}), original_campaign_id: previous.original_campaign_id,
     previous_receipt: previousPath, previous_receipt_sha256: await fileDigest(previousPath),
     progress_sha256: await fileDigest(options.input), progress_path: resolve(options.input),
-    expected_charged_ms: previous.total_charged_ms, firmware_root: options.firmwareRoot, gate_root: options.gateRoot, manifest: resolve(options.manifest) };
+    expected_charged_ms: previous.total_charged_ms, firmware_root: options.firmwareRoot, gate_root: options.gateRoot, manifest: retained ? retainedManifestPath(root) : resolve(options.manifest) };
   await mkdir(root, { mode: 0o700 });
   if (cycleSource) for (const file of cycleSource.files) await writeFile(resolve(root, file.name), file.bytes, { flag: "wx", mode: 0o600 });
   await writeNew(resolve(parent, `ordinal-${ordinal}.json`), { context_sha256: digest(JSON.stringify(context)), attempt_root: root });
   await writeNew(resolve(root, "context.json"), { context, sha256: digest(JSON.stringify(context)) });
+  if (retained) await (operations.copyRetainedArtifacts ?? copyRetainedArtifacts)(resolve(options.retainedRuntimeFrom), root, context);
   return { iterative_preflight_created: true, ordinal, purpose: attempt.purpose, maximum_active_ms: attempt.maximumActiveMilliseconds,
     device_effects: false, allowance_reserved_on_device: false };
 }
-export async function validateIterativeContext(root, context) {
+export async function validateIterativeContext(root, context, { historical = false } = {}) {
   validateIterativePolicy(context);
-  await requireIterativeTask(context.firmware_root);
+  if (!historical) await requireIterativeTask(context.firmware_root);
   validateAttempt(context.qualification_attempt);
+  const parent = dirname(root), previousPath = resolve(context.previous_receipt);
+  requireCondition(previousPath === resolve(parent, "bootstrap.json") || dirname(dirname(previousPath)) === parent, "iterative_parent_receipt");
+  requireCondition(await fileDigest(previousPath) === context.previous_receipt_sha256, "iterative_previous_changed");
   const previous = await readPrevious(context.previous_receipt);
-  requireCondition(await fileDigest(context.previous_receipt) === context.previous_receipt_sha256 &&
-    previous.next_ordinal === context.qualification_attempt.ordinal && previous.total_charged_ms === context.expected_charged_ms &&
+  requireCondition(previous.next_ordinal === context.qualification_attempt.ordinal && previous.total_charged_ms === context.expected_charged_ms &&
     previous.original_campaign_id === context.original_campaign_id, "iterative_previous_changed");
   await protectedPath(context.progress_path);
   requireCondition(await fileDigest(context.progress_path) === context.progress_sha256, "iterative_progress_changed");
@@ -176,13 +199,28 @@ export async function validateIterativeContext(root, context) {
       requireCondition(await fileDigest(resolve(root, file.name)) === file.sha256, "iterative_reused_cycle_changed");
     }
   }
-  const marker = await protectedJson(resolve(dirname(root), `ordinal-${context.qualification_attempt.ordinal}.json`));
-  requireCondition(marker.attempt_root === root && marker.context_sha256 === digest(JSON.stringify(context)), "iterative_ordinal_replay");
+  if (context.unreserved_continuation) {
+    requireCondition(context.schema === "fixed-usb-iterative-context-v4" && context.retained_runtime_source === undefined, "iterative_continuation_profile");
+    const { validateUnreservedContinuation } = await import("./unreserved.mjs");
+    await validateUnreservedContinuation(root, context);
+  } else {
+    const marker = await protectedJson(resolve(dirname(root), `ordinal-${context.qualification_attempt.ordinal}.json`));
+    requireCondition(marker.attempt_root === root && marker.context_sha256 === digest(JSON.stringify(context)), "iterative_ordinal_replay");
+    if (context.schema === "fixed-usb-iterative-context-v4") {
+      exactObject(context.retained_runtime_source, ["root", "context_sha256", "artifact_snapshot_sha256"]);
+      const source = context.retained_runtime_source;
+      requireCondition(source.root === dirname(context.previous_receipt) && previous.result === "passed" &&
+        previous.context.schema === "fixed-usb-iterative-context-v4" && previous.context.unreserved_continuation &&
+        previous.context.qualification_attempt.purpose === "foreground_loss" && context.qualification_attempt.purpose === "heartbeat_loss" &&
+        JSON.stringify(context.qualification_driver) === JSON.stringify(previous.context.qualification_driver) &&
+        source.context_sha256 === previous.context_sha256 && source.artifact_snapshot_sha256 === await fileDigest(resolve(source.root, "artifact-snapshot.json")), "iterative_retained_lineage");
+    }
+  }
 }
 
-async function reusableCycles(root, context, parent) {
+async function reusableCycles(root, context, parent, operations = {}) {
   requireCondition(dirname(root) === parent, "iterative_cycle_source_parent");
-  const result = await readPrevious(resolve(root, "result.json"));
+  const result = await (operations.readPrevious ?? readPrevious)(resolve(root, "result.json"));
   requireCondition(["worker-iterative-result-v1", "worker-iterative-result-v2"].includes(result.schema) &&
     ["firmware_commit", "gate_commit", "app_elf_sha256"].every((key) => result.context[key] === context[key]), "iterative_cycle_runtime_changed");
   const record = await protectedJson(resolve(root, "context.json"));

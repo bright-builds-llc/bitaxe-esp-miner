@@ -420,3 +420,103 @@ test("immutable v2 observations retain their judgment but cannot authorize hinte
   assert.throws(() => validateIterativePolicy(context, true), /policy_upgrade/u);
   await assert.rejects(createIterativeSupervisor({ ...f.options, context }), /policy_upgrade/u);
 });
+
+// Retained-runtime successor workflow: artifact validation itself is covered by runtime-source tests.
+async function retainedHeartbeatFixture(t) {
+  const f = await fixture(t), sourceRoot = f.options.privateRoot;
+  const driver = { source_commit: "e".repeat(40), archive_sha256: "f".repeat(64) };
+  const priorContext = { ...f.context, schema: "fixed-usb-iterative-context-v4", qualification_driver: driver,
+    qualification_attempt: { ...f.context.qualification_attempt, ordinal: 12, purpose: "foreground_loss" },
+    unreserved_continuation: { allowance_source: "must-not-copy" } };
+  const previous = { schema: "worker-iterative-result-v2", result: "passed", cleanup_confirmed: true,
+    context: priorContext, context_sha256: digest(JSON.stringify(priorContext)), next_ordinal: 13,
+    total_charged_ms: 1110000, original_campaign_id: ID };
+  const previousPath = resolve(sourceRoot, "result.json");
+  await writeFile(resolve(sourceRoot, "context.json"), JSON.stringify({ context: priorContext, sha256: previous.context_sha256 }));
+  await writeNew(previousPath, { receipt: previous, sha256: digest(JSON.stringify(previous)) });
+  await writeFile(f.options.input, JSON.stringify({ schema: "worker-qualification-progress-v1", review: "verified",
+    reason: "next_acceptance_window", evidence_sha256: ["d".repeat(64)] }));
+  const options = { ...f.options, privateRoot: resolve(f.parent, "attempt-013"), previousReceipt: previousPath,
+    purpose: "heartbeat_loss", retainedRuntimeFrom: sourceRoot, cyclesFrom: sourceRoot,
+    qualificationSourceCommit: driver.source_commit };
+  const calls = { reads: [], inspections: [], copies: [] };
+  const snapshot = Object.fromEntries(["firmware_commit", "gate_commit", "app_elf_sha256", "gate_page_relative_path", "gate_page_sha256", "gate_bundle_sha256"].map(key => [key, f.context[key]]));
+  const operations = { ignored: () => undefined,
+    readPrevious: async path => { calls.reads.push(path); assert.equal(path, previousPath); return previous; },
+    inspectRetainedSources: async (root, input) => { calls.inspections.push([root, input]); return {
+      snapshot, sourceContextSha256: previous.context_sha256, artifactSnapshotSha256: "9".repeat(64) }; },
+    copyRetainedArtifacts: async (...args) => { calls.copies.push(args); },
+    inspectSources: async () => { throw new Error("live source inspection forbidden"); } };
+  return { ...f, sourceRoot, previous, options, operations, calls, snapshot };
+}
+
+test("retained heartbeat successor copies exact cycles and keeps runtime separate from driver", async t => {
+  // Arrange
+  const f = await retainedHeartbeatFixture(t);
+  // Act
+  const result = await iterativePreflight(f.options, f.operations);
+  const { context } = await readJson(resolve(f.options.privateRoot, "context.json"));
+  // Assert
+  assert.equal(result.ordinal, 13); assert.equal(result.allowance_reserved_on_device, false);
+  assert.equal(context.schema, "fixed-usb-iterative-context-v4");
+  assert.equal(context.expected_charged_ms, 1110000);
+  assert.equal(context.qualification_attempt.purpose, "heartbeat_loss");
+  assert.equal(context.qualification_attempt.maximumActiveMilliseconds, 30000);
+  assert.equal(context.manifest, resolve(f.options.privateRoot, "qualified-artifacts/firmware/bitaxe-ultra205-package.json"));
+  assert.deepEqual(context.qualification_driver, f.previous.context.qualification_driver);
+  assert.equal(context.firmware_commit, f.snapshot.firmware_commit);
+  assert.equal(context.retained_runtime_source.root, f.sourceRoot);
+  assert.equal(context.retained_runtime_source.context_sha256, f.previous.context_sha256);
+  assert.equal(context.unreserved_continuation, undefined);
+  assert.equal(JSON.stringify(context).includes("must-not-copy"), false);
+  assert.equal(f.calls.inspections.length, 1); assert.equal(f.calls.inspections[0][0], f.sourceRoot);
+  assert.deepEqual(f.calls.reads, [f.options.previousReceipt, f.options.previousReceipt]);
+  assert.deepEqual(f.calls.copies, [[f.sourceRoot, f.options.privateRoot, context]]);
+  for (let cycle = 1; cycle <= 4; cycle += 1) assert.deepEqual(
+    await readFile(resolve(f.options.privateRoot, `cycle-${cycle}.json`)), await readFile(resolve(f.sourceRoot, `cycle-${cycle}.json`)));
+});
+
+for (const mutation of ["pending", "unverified", "wrong_previous_purpose", "wrong_purpose", "wrong_source", "wrong_driver", "wrong_cycles", "wrong_pair"]) {
+  test(`retained heartbeat successor rejects ${mutation} before copy`, async t => {
+    // Arrange
+    const f = await retainedHeartbeatFixture(t);
+    if (["pending", "unverified"].includes(mutation)) f.previous.result = mutation;
+    if (mutation === "wrong_previous_purpose") f.previous.context.qualification_attempt.purpose = "normal";
+    if (mutation === "wrong_purpose") f.options.purpose = "foreground_loss";
+    if (mutation === "wrong_source") f.options.retainedRuntimeFrom = f.parent;
+    if (mutation === "wrong_driver") f.options.qualificationSourceCommit = "8".repeat(40);
+    if (mutation === "wrong_cycles") f.options.cyclesFrom = f.parent;
+    if (mutation === "wrong_pair") f.snapshot.app_elf_sha256 = "8".repeat(64);
+    // Act / Assert
+    await assert.rejects(iterativePreflight(f.options, f.operations), /iterative_(retained_successor|next_progress)/u);
+    assert.equal(f.calls.copies.length, 0);
+    await assert.rejects(readFile(resolve(f.options.privateRoot, "context.json")), { code: "ENOENT" });
+  });
+}
+
+test("iterative browser server serves verified retained bytes instead of live Gate bytes", async t => {
+  // Arrange
+  const f = await fixture(t), retained = resolve(f.base, "retained-gate");
+  for (const [path, bytes] of [[PAGE, "page"], [BUNDLE, "bundle"]]) {
+    await mkdir(dirname(resolve(retained, path)), { recursive: true }); await writeFile(resolve(retained, path), bytes);
+  }
+  await writeFile(resolve(f.options.gateRoot, PAGE), "live-page-must-not-be-served");
+  await writeFile(resolve(f.options.gateRoot, BUNDLE), "live-bundle-must-not-be-served");
+  const server = await createIterativeSupervisor({ ...f.options, context: f.context }, { verifyFrozen: async () => ({ gate_root: retained }) });
+  server.listen(0, "127.0.0.1"); await once(server, "listening");
+  t.after(() => new Promise(done => { server.close(done); server.closeAllConnections(); }));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  // Act / Assert
+  assert.equal(await (await fetch(origin + "/")).text(), 'page\n<script type="module" src="/supervisor-client.mjs"></script>');
+  assert.equal(await (await fetch(origin + "/" + BUNDLE)).text(), "bundle");
+});
+
+test("untrusted previous receipt hash rejects before following recursive source paths", async t => {
+  // Arrange
+  const f = await fixture(t), path = resolve(f.base, "untrusted-previous.json");
+  const receipt = { schema: "worker-iterative-bootstrap-v1", cleanup_confirmed: true,
+    original: { source: { path: resolve(f.base, "must-not-be-read.json"), sha256: "0".repeat(64) } } };
+  await writeNew(path, { receipt, sha256: "0".repeat(64) });
+  // Act / Assert
+  await assert.rejects(readPrevious(path), /iterative_receipt_integrity/u);
+});

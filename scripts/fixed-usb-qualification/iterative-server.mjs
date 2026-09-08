@@ -19,7 +19,8 @@ export async function createIterativeSupervisor(options, operations = {}) {
   const root = resolve(options.privateRoot), context = options.context, attempt = context.qualification_attempt;
   validateIterativePolicy(context, true);
   const verify = operations.verifyFrozen ?? (() => verifyFrozen(context, options.authorityDirectory, options.bun, {}, root));
-  await verify(); await validateIterativeContext(root, context);
+  const verifiedRuntime = await verify(); await validateIterativeContext(root, context);
+  const browserRoot = verifiedRuntime.gate_root ?? context.gate_root;
   const now = operations.now ?? Date.now, page = contextPage(context);
   const trust = await readJson(resolve(context.firmware_root, "firmware/bitaxe/bwg/deployment-trust.json"));
   const sign = operations.sign ?? ((operation, input) => authorityCall(context.gate_root, options.authorityDirectory, `sign-${operation}`, input, options.bun));
@@ -169,7 +170,7 @@ export async function createIterativeSupervisor(options, operations = {}) {
     if (path === "/supervisor-client.mjs") return send(response, 200, await readFile(resolve(SCRIPT_ROOT, "client.mjs")), "text/javascript");
     if (["/", `/${page}`, `/${BUNDLE}`].includes(path)) {
       const isPage = path !== `/${BUNDLE}`;
-      let bytes = await readFile(resolve(context.gate_root, isPage ? page : BUNDLE));
+      let bytes = await readFile(resolve(browserRoot, isPage ? page : BUNDLE));
       requireCondition(digest(bytes) === (isPage ? context.gate_page_sha256 : context.gate_bundle_sha256), "served_asset_drift");
       if (isPage) bytes = Buffer.from(bytes.toString("utf8") + '\n<script type="module" src="/supervisor-client.mjs"></script>');
       return send(response, 200, bytes, isPage ? "text/html" : "text/javascript");

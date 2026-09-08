@@ -231,3 +231,13 @@ credential files or reuse another endpoint's NVS settings to supply it.
 Older contexts remain immutable historical evidence and cannot issue new
 allowances through the current supervisor. Stack, accounting and timing limits
 remain unchanged, including the four-cycle requirement for each new package.
+
+ADR-0028 permits one host-only continuation of an issued foreground allowance
+that was rejected before reservation. Preserve the failed delivery and require
+unchanged recovered accounting, closed ownership, fresh fan/ledger proof and a
+new logical session/signature for the identical unused allowance. Its version-4
+context separately binds the published qualification driver and retained exact
+runtime artifacts. The accepted normal result and four cycles remain bound to
+that runtime. Never substitute a newly built driver-stamped image or fabricate
+a charge/refund. Prepare the observer with focus emulation disabled before the
+fresh admission/signing/Start sequence, which must fit within 60 seconds.

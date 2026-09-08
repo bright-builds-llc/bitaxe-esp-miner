@@ -3,6 +3,7 @@ import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { authorityCall } from "./authority.mjs";
 import { loadAmendment } from "./amendment.mjs";
+import { verifyRetainedRuntime } from "./runtime-source.mjs";
 import { admitTrust, BUNDLE, canonicalBase64, canonicalDirectory, cleanPushed, digest, fileDigest,
   ignored, missing, nonce, packageSnapshot, PAGE, protectedPath, readJson, requireCondition,
   REQUIRED_CYCLES, WINDOW_MS, writeNew } from "./contract.mjs";
@@ -73,7 +74,7 @@ export async function loadContext(root, operations = {}) {
   await protectedPath(resolve(root, "context.json"));
   const record = await readJson(resolve(root, "context.json"));
   requireCondition(record.sha256 === digest(JSON.stringify(record.context)), "context_integrity");
-  if (["fixed-usb-iterative-context-v1", "fixed-usb-iterative-context-v2", "fixed-usb-iterative-context-v3"].includes(record.context?.schema)) {
+  if (["fixed-usb-iterative-context-v1", "fixed-usb-iterative-context-v2", "fixed-usb-iterative-context-v3", "fixed-usb-iterative-context-v4"].includes(record.context?.schema)) {
     const { validateIterativeContext } = await import("./iterative-preflight.mjs");
     await validateIterativeContext(root, record.context);
     return record.context;
@@ -85,6 +86,11 @@ export async function loadContext(root, operations = {}) {
 }
 
 export async function verifyFrozen(context, authorityDirectory, bun, operations = {}, root) {
+  if (context.schema === "fixed-usb-iterative-context-v4") {
+    requireCondition(typeof root === "string", "retained_root_required");
+    await requireActiveTasks(context.firmware_root);
+    return verifyRetainedRuntime(root, context, authorityDirectory, bun, operations);
+  }
   const maybeAmendment = root ? await loadAmendment(root, context, operations) : undefined;
   if (maybeAmendment) {
     await requireActiveTasks(context.firmware_root);
