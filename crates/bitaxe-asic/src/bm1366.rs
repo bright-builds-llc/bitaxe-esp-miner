@@ -10,6 +10,7 @@ pub mod adapter_gate;
 pub mod chip_detect;
 pub mod command;
 pub mod crc;
+pub mod expected_filter;
 pub mod frequency_voltage;
 pub mod init_plan;
 pub mod mining_ready;

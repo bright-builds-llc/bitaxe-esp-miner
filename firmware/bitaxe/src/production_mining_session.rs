@@ -268,25 +268,13 @@ impl OrdinaryEspProductionSessionAdapter {
         match effect {
             ProductionSessionEffect::Publish(snapshot) => {
                 if let Some(session) = self.maybe_bwg_session.as_ref() {
-                    mining_progress::capture(session.generation.raw(), &snapshot);
-                    revocation::publish_counts(
-                        session.generation,
-                        snapshot
-                            .mining
-                            .counters
-                            .accepted
-                            .saturating_sub(session.accepted_baseline),
-                        snapshot
-                            .mining
-                            .counters
-                            .rejected
-                            .saturating_sub(session.rejected_baseline),
-                        snapshot
-                            .mining
-                            .counters
-                            .qualified_candidates
-                            .saturating_sub(session.correlated_baseline),
+                    mining_progress::capture(
+                        session.generation.raw(),
+                        &snapshot,
+                        session.expected_filter_counts,
                     );
+                    let [accepted, rejected, qualified] = session.publication_counts(&snapshot);
+                    revocation::publish_counts(session.generation, accepted, rejected, qualified);
                 }
                 if let Some(status) = self.maybe_campaign_status.as_mut() {
                     status.note_snapshot(&snapshot, now_ms);
@@ -494,6 +482,12 @@ impl OrdinaryEspProductionSessionAdapter {
                 }
             }
             ProductionSessionEffect::RecordScoreboard { candidate } => {
+                if let Some(session) = self.maybe_bwg_session.as_mut() {
+                    mining_progress::note_expected_filter(
+                        &mut session.expected_filter_counts,
+                        candidate.matches_expected_asic_filter(),
+                    );
+                }
                 scoreboard::record(candidate)
             }
             ProductionSessionEffect::RecordBlockFound => {

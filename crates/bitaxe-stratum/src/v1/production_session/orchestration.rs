@@ -201,6 +201,17 @@ impl ProductionMiningSession {
                 if let Some(runtime) = self.maybe_pool_runtime_mut(pool) {
                     runtime.runtime.record_submit_classification(classification);
                 }
+                match classification {
+                    crate::v1::submit_response::SubmitClassification::Accepted => {
+                        self.share_counters.accepted =
+                            self.share_counters.accepted.saturating_add(1);
+                    }
+                    crate::v1::submit_response::SubmitClassification::Rejected { .. } => {
+                        self.share_counters.rejected =
+                            self.share_counters.rejected.saturating_add(1);
+                    }
+                    _ => {}
+                }
                 if matches!(
                     classification,
                     crate::v1::submit_response::SubmitClassification::Accepted

@@ -14,7 +14,7 @@ use crate::v1::messages::PoolDifficulty;
 use crate::v1::mining::{MiningWork, ShareSubmission};
 use crate::v1::queue::{BoundedWorkQueue, STRATUM_WORK_QUEUE_CAPACITY};
 use crate::v1::share_validation::{
-    nonce_difficulty, nonce_difficulty_meets_network_target, nonce_difficulty_meets_pool_target,
+    nonce_difficulty_meets_network_target, nonce_difficulty_meets_pool_target, nonce_validation,
 };
 
 const SEEN_SHARE_CANDIDATE_CAPACITY: usize = 64;
@@ -148,10 +148,17 @@ pub(crate) struct SubmitIntent {
 #[derive(Clone, PartialEq)]
 pub struct ScoreboardCandidate {
     difficulty: f64,
+    matches_expected_asic_filter: bool,
     submission: ShareSubmission,
 }
 
 impl ScoreboardCandidate {
+    /// Software-expected fixed ASIC filter observation; never a pool admission predicate.
+    #[must_use]
+    pub const fn matches_expected_asic_filter(&self) -> bool {
+        self.matches_expected_asic_filter
+    }
+
     #[must_use]
     pub const fn difficulty(&self) -> f64 {
         self.difficulty
@@ -369,7 +376,8 @@ impl ProductionWorkRegistry {
             return CorrelationReceipt::blocked(ProductionAsicBlocker::TargetMismatch);
         }
 
-        let difficulty = nonce_difficulty(&record.work, observation.result);
+        let (difficulty, matches_expected_asic_filter) =
+            nonce_validation(&record.work, observation.result);
         let Ok(submission) = ShareSubmission::from_nonce_result(&record.work, observation.result)
         else {
             return CorrelationReceipt::blocked(ProductionAsicBlocker::TargetMismatch);
@@ -384,6 +392,7 @@ impl ProductionWorkRegistry {
         };
         let scoreboard_candidate = ScoreboardCandidate {
             difficulty,
+            matches_expected_asic_filter,
             submission: submission.clone(),
         };
 

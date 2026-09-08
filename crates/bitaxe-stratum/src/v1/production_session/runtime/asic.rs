@@ -43,6 +43,10 @@ impl ProductionMiningSession {
             .as_ref()
             .is_some_and(|receipt| receipt.found_block);
         if let Some(receipt) = &maybe_receipt {
+            if matches!(receipt.outcome, BridgeObservationOutcome::SubmitQueued) {
+                self.share_counters.qualified_candidates =
+                    self.share_counters.qualified_candidates.saturating_add(1);
+            }
             self.asic_diagnostics.note_correlation(
                 observation.observed_generation,
                 correlation_category(receipt.outcome),

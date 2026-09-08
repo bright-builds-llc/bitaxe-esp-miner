@@ -104,6 +104,7 @@ export function judgeWindow(index, records, fault, { successor = false, lastWind
     record.state.qualification.budget_reserved_ms === expectedBudget);
   requireCondition(bound.length > 0, "campaign_budget_evidence_missing");
   const q = bound.at(-1).state.qualification;
+  const filterFaultWork = Boolean(iterativePurpose && index > 0 && q.nonce_work_correlations === 0 && expectedFilterWork(q));
   requireCondition(bound.at(-1).state.deviceRestorationConfirmed && bound.at(-1).state.deviceLeaseInactive, "device_restoration_ack_missing");
   requireCondition(q.safe_stop_complete && !q.mine_on_boot && q.gate_closed_ms !== null && q.shutdown_started_ms !== null,
     "qualified_stop_missing");
@@ -111,7 +112,7 @@ export function judgeWindow(index, records, fault, { successor = false, lastWind
     q.fan_fresh && q.fan_rpm > 0, "terminal_cooling_proof_missing");
   requireCondition(q.active_ms > 0 && q.active_ms <= q.generation_elapsed_ms && q.active_ms <= maximum &&
     q.active_limit_ms === maximum && q.shutdown_budget_ms === 15550 &&
-    q.submitted >= q.accepted + q.rejected && q.work_dispatched > 0 && (diagnostic || q.nonce_work_correlations > 0), "mining_evidence_missing");
+    q.submitted >= q.accepted + q.rejected && q.work_dispatched > 0 && (diagnostic || q.nonce_work_correlations > 0 || filterFaultWork), "mining_evidence_missing");
   if (index === 0 && !diagnostic) {
     requireCondition(bound.some((record) => record.state.renewalsConfirmed >= 1) && fault === undefined &&
       records.every((record) => record.state.failure === undefined), "foreground_window_incomplete");
@@ -123,6 +124,7 @@ export function judgeWindow(index, records, fault, { successor = false, lastWind
       checkpoint.state.qualification?.generation === generation && checkpoint.state.qualification.gate_closed_ms === null &&
       checkpoint.state.qualification.work_gate_remaining_ms > 3000 &&
       bound.at(-1).sequence > fault.after_sequence && (index !== 2 || checkpoint.state.heartbeatSuppressed), "fault_generation_binding");
+    if (filterFaultWork) requireCondition(expectedFilterWork(checkpoint.state.qualification), "fault_work_not_observed");
   }
   if (index === 2) requireCondition(q.revocation_reason === "heartbeat_timeout", "heartbeat_timeout_not_proven");
   if (index === 2) requireCondition(q.budget_complete === true, "campaign_budget_incomplete");
@@ -143,6 +145,7 @@ export function judgeWindow(index, records, fault, { successor = false, lastWind
     ...(lastWindowOnly ? { original_foreground_loss_window: "consumed_unverified" } : {}),
     foreground_prefix_renewal_verified: renewalVerified,
     foreground_prefix_accepted_share_verified: prefix.some((record) => record.state.qualification.accepted > 0) } : {}),
+    ...(filterFaultWork ? { expected_filter_work_verified: true } : {}),
     schema: "fixed-usb-window-report-v1", window: index, generation, active_ms: q.active_ms,
     budget_reserved_ms: q.budget_reserved_ms, accepted: q.accepted, rejected: q.rejected,
     submitted: q.submitted, nonce_work_correlations: q.nonce_work_correlations,
@@ -150,6 +153,12 @@ export function judgeWindow(index, records, fault, { successor = false, lastWind
     accepted_share_verified: q.accepted > 0,
     unverified_reason: index === 0 && q.accepted === 0 ? "no_accepted_share_within_budget" : null,
     browser_report_accepted: true, hardware_execution_claimed_by_supervisor: false };
+}
+
+function expectedFilterWork(qualification) {
+  const progress = qualification?.mining_progress;
+  return qualification?.work_dispatched > 0 && progress?.schema === "worker-mining-progress-v2" && progress.generation === qualification.generation &&
+    progress.expected_filter === "bm1366-ticket-256-leading-zero-40-v1" && BigInt(progress.expected_filter_matches) > 0n;
 }
 
 export function validateCycle(value, context, previous) {

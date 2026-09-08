@@ -4894,6 +4894,107 @@ The next effect sequence is a clean published package, four no-mining cycles,
 and diagnostic ordinal 6 against the sealed ordinal-5 receipt; no failed mining
 attempt has been repeated unchanged.
 
+Firmware f791df95 / Gate e284f157 passed initial installation and four no-mining
+cycles. Diagnostic ordinal 6 passed after 7456 active ms with one work dispatch,
+8500-byte stack watermark and qualified restoration. Normal ordinal 7 completed
+169819 active ms including shutdown, with eight signed renewals, 83 work items
+and 51 parsed nonce results, all classified below the pool target. No parser or
+blocked-correlation errors occurred and the resource-omission failure did not
+recur; the minimum owner stack was 7460 bytes. No accepted share was observed,
+so the normal result is sealed unverified (`mining_evidence_missing`). Fresh
+accounting is 660000 ms charged, next ordinal 8, no pending reservation; the
+original 240000-ms ledger is unchanged. Restoration and all resource releases
+are proven. No unchanged mining retry is admitted.
+
+Next evidence-backed discriminator (hardware paused):
+- [x] Add an independent nonzero-version-bit end-to-end header/hash vector.
+- [x] Define and test the software-expected BM1366 ticket-256 filter boundary;
+  distinguish that model from a verified silicon/register assertion.
+- [ ] Publish optional `worker-mining-progress-v2` with the closed filter ID and
+  match/miss counts for reconstructed candidate hashes, including below-target
+  candidates. Retain v1 history; expose no raw hash, header, nonce, job, pool
+  difficulty, credentials or endpoints. Counts do not alter work admission,
+  target qualification, shutdown, or difficulty negotiation.
+- [ ] Verify and publish the exact pair before four cycles and a fresh diagnostic
+  allowance. Keep accepted-share and both final stop criteria unresolved.
+
+The literal nonzero-version wire/header/hash fixture agrees with Python and
+OpenSSL and passes actual parser, dispatch, reconstruction and qualification
+paths. The software filter boundary is H < 2^216 (raw digest bytes 27–31 zero),
+not floating-point difficulty >=256; the baseline 32-bit expectation remains an
+explicit model assumption. No behavior bug was found in this offline vector.
+Classifier output is observation-only and reuses the existing hash. Worker-owned
+match/miss counters reset for a new generation, survive pool replacement and
+are captured before terminal ownership release. Independent review found no
+privacy, generation-binding or authority changes.
+
+Gate a5e4bda610f24f720777d24a5b77e630c4e942a2 is published and pinned with archive
+SHA-256 ab987614d3eba9bd06eedf4857bd28fa31d04ca609470b055769d1a41b7a75cb.
+Gate's full checks pass (352 Rust and 407 JavaScript tests, headless browser,
+lookup, package and standards). A test-only stale-proof timing defect was
+reproduced and fixed without changing authentication limits. Firmware ordered
+Cargo gates, all 91 Bazel targets, ESP32-S3 packaging, ownership/reference and
+4400-byte owner-entry checks pass; the new pin is being verified before firmware
+publication. No further hardware allowance has been issued.
+
+For the fixed-filter diagnostic, initial-work collection ends promptly after the
+first reconstructed candidate receives either filter classification. The signed
+30000-ms cap, existing shutdown reserve and no-accepted-share-wait rule remain
+unchanged; absence of candidate data is not filter proof. The harness change is
+being verified and published before effects. A separate source check is testing
+whether prior pool-view counter baselines can undercount a fresh generation's
+accepted/qualified results after a pool runtime reset; no allowance accounting or work
+behavior change is authorized by this observation check.
+
+The evidence-counter check reproduced a first-share undercount across pool
+runtime resets. Projection now uses monotonic core-lifetime accepted, rejected
+and qualified-candidate counters with per-Worker baselines. Existing matched
+classification boundaries update them; replayed/late responses do not. Physical
+submission counting, pool behavior, expected-filter counters and NVS allowance
+accounting are unchanged. Real two-lease, pool-replacement and replay regressions
+pass. Historical zero-count results are not retroactively upgraded.
+
+Final firmware host checks and all 91 canonical targets pass, including the
+unchanged SAFE-10 source inventory, native packaging, ownership/reference,
+redaction/provenance and standards checks. The owner entry is 4480 bytes against
+the 8192-byte cap; task stack and measured floor remain 24576/4096 bytes.
+A trivial Default delegation moved out of the runtime module to meet the size
+rule while keeping its safety snapshot in the existing inventory. Gate's latest
+verification encountered PostgreSQL fixture EOF failures. A proposed readiness
+change was disproved: the original stderr condition already selects the final
+server; the temporary server logs readiness to stdout. The proposal was fully
+reverted. An observed rerun of the unchanged group passed all six tests; all six
+owned containers and processes were removed, with no observed OOM or backend
+failure. The original transient cause remains unresolved. Production TLS,
+authentication, deadlines and older unowned containers remain unchanged.
+No further hardware effects have occurred.
+
+For new iterative stop windows, work evidence may be a same-generation v2
+reconstructed candidate that meets the fixed software filter, observed before
+the fault, together with actual dispatch. This corrects the old assumption that
+`nonce_work_correlations` counted all correlated work; it counts pool-qualified
+candidates. The normal window still requires a correlated accepted share, and
+normal acceptance must pass before either final stop window. Fixed-filter misses,
+post-fault-only matches, missing work, unqualified restoration, unsafe samples,
+and late shutdown cannot pass. Legacy judgments remain unchanged, and the new
+witness is explicitly labeled in the result. No timing or safety limit changed.
+
+Gate d9b093b2f0277dc1c076fe9fb23a8554229c93bc is published; firmware pins its
+archive SHA-256 f8aedcb6caee0c01cf769295fb97f2ae4e56bf7d5308db0fa83cae5a680003ef.
+The complete unchanged-profile Rust run passes 352 tests with two existing
+opt-in tests ignored; 411 JavaScript tests, browser conformance, formatting,
+lint, type/build, lookup, package and standards checks pass. The PostgreSQL
+failure did not recur. All 85 firmware harness tests pass, including rejection
+of a dispatch first observed after the fault. Final pin checks and firmware
+publication precede the clean-package four-cycle diagnostic ordinal 8.
+
+The final published Gate pin passes all 91 canonical firmware test targets in
+one run, ESP32-S3 packaging, fixed-USB ownership, reference and standards checks.
+Ordered host Cargo verification and the 4480-byte owner-entry audit also pass.
+The optional v2 discriminator, lifetime counter correction and diagnostic-stop
+harness are ready for firmware publication; accepted-share and final stop
+evidence remain unresolved until the exact clean package is exercised.
+
 ## Future
 
 ### task-str005-v2-channel-job-205 | 2026-08-28 | Prove Ultra 205 V2 channel and job receipt

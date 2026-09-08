@@ -301,6 +301,7 @@ mod tests {
             job_transition: JobTransitionEvidence::default(),
             asic_bridge: AsicBridgeEvidence::default(),
             mining: MiningRuntimeState::default(),
+            lifetime_share_counters: Default::default(),
         }
     }
 }

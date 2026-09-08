@@ -53,12 +53,7 @@ pub struct ProductionMiningSession {
     pub(super) terminal_publication_pending: bool,
     pub(super) maybe_retained_mining: Option<crate::v1::state::MiningRuntimeState>,
     pub(super) maybe_last_snapshot: Option<ProductionSessionSnapshot>,
-}
-
-impl Default for ProductionMiningSession {
-    fn default() -> Self {
-        Self::new()
-    }
+    pub(super) share_counters: super::types::ProductionShareCounters,
 }
 
 impl ProductionMiningSession {
@@ -97,6 +92,7 @@ impl ProductionMiningSession {
             terminal_publication_pending: false,
             maybe_retained_mining: None,
             maybe_last_snapshot: None,
+            share_counters: super::types::ProductionShareCounters::default(),
         }
     }
 
@@ -160,6 +156,7 @@ impl ProductionMiningSession {
             job_transition: self.job_transition.evidence(),
             asic_bridge: self.asic_diagnostics.evidence(),
             mining,
+            lifetime_share_counters: self.share_counters,
         }
     }
 

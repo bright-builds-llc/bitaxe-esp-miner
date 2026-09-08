@@ -135,6 +135,14 @@ pub enum ProductionAsicFailure {
     WorkerDisconnected,
 }
 
+/// Monotonic classified-share facts over one production core lifetime, across pool runtimes.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct ProductionShareCounters {
+    pub accepted: u64,
+    pub rejected: u64,
+    pub qualified_candidates: u64,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ProductionSessionSnapshot {
     pub phase: ProductionSessionPhase,
@@ -146,6 +154,7 @@ pub struct ProductionSessionSnapshot {
     pub job_transition: JobTransitionEvidence,
     pub asic_bridge: AsicBridgeEvidence,
     pub mining: MiningRuntimeState,
+    pub lifetime_share_counters: ProductionShareCounters,
 }
 
 #[derive(Clone, PartialEq)]

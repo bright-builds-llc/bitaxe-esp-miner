@@ -34,8 +34,15 @@ pub use runtime::ProductionMiningSession;
 pub use types::{
     HardwareSafeStopPurpose, ProductionAsicFailure, ProductionPoolConfiguration,
     ProductionPoolEndpoint, ProductionPoolSet, ProductionSessionEffect, ProductionSessionEvent,
-    ProductionSessionSnapshot, ProductionTransportEpoch, ProductionTransportFailure,
+    ProductionSessionSnapshot, ProductionShareCounters, ProductionTransportEpoch,
+    ProductionTransportFailure,
 };
+
+impl Default for ProductionMiningSession {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 #[cfg(test)]
 mod tests;

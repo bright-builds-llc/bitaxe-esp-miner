@@ -16,6 +16,26 @@ pub(super) struct OwnerSession {
     pub(super) rejected_baseline: u64,
     pub(super) correlated_baseline: u64,
     pub(super) preparation_started: bool,
+    pub(super) expected_filter_counts: [u64; 2],
+}
+
+impl OwnerSession {
+    pub(super) fn publication_counts(&self, snapshot: &ProductionSessionSnapshot) -> [u64; 3] {
+        [
+            snapshot
+                .lifetime_share_counters
+                .accepted
+                .saturating_sub(self.accepted_baseline),
+            snapshot
+                .lifetime_share_counters
+                .rejected
+                .saturating_sub(self.rejected_baseline),
+            snapshot
+                .lifetime_share_counters
+                .qualified_candidates
+                .saturating_sub(self.correlated_baseline),
+        ]
+    }
 }
 
 pub(super) enum OwnerCommand {
@@ -252,10 +272,11 @@ impl OrdinaryEspProductionSessionAdapter {
                     worker_lease_id,
                     lease: lease(id, deadline),
                     pools,
-                    accepted_baseline: snapshot.mining.counters.accepted,
-                    rejected_baseline: snapshot.mining.counters.rejected,
-                    correlated_baseline: snapshot.mining.counters.qualified_candidates,
+                    accepted_baseline: snapshot.lifetime_share_counters.accepted,
+                    rejected_baseline: snapshot.lifetime_share_counters.rejected,
+                    correlated_baseline: snapshot.lifetime_share_counters.qualified_candidates,
                     preparation_started: false,
+                    expected_filter_counts: [0; 2],
                 };
                 admission_diagnostics::stage(admission_diagnostics::Stage::Readiness);
                 self.maybe_bwg_session = Some(session);
@@ -472,6 +493,11 @@ impl OrdinaryEspProductionSessionAdapter {
                 admission_diagnostics::fail(admission_diagnostics::Failure::Cleanup);
                 return false;
             }
+            mining_progress::capture(
+                session.generation.raw(),
+                snapshot,
+                session.expected_filter_counts,
+            );
             owner_resources::capture(
                 session.generation.raw(),
                 owner_resources::Phase::ShutdownComplete,

@@ -611,3 +611,17 @@ mod owner_resources {
 
 #[path = "production_worker_admission_host_test/resource_acknowledgement.rs"]
 mod resource_acknowledgement;
+
+mod mining_progress {
+    pub(crate) static LAST: std::sync::Mutex<Option<(u32, [u64; 2])>> = std::sync::Mutex::new(None);
+    pub(crate) fn capture(
+        generation: u32,
+        _snapshot: &bitaxe_stratum::v1::production_session::ProductionSessionSnapshot,
+        counts: [u64; 2],
+    ) {
+        *LAST.lock().expect("test capture") = Some((generation, counts));
+    }
+}
+
+#[path = "production_worker_admission_host_test/worker_observations.rs"]
+mod worker_observations;

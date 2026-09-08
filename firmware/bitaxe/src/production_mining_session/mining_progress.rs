@@ -1,7 +1,7 @@
 //! Closed owner snapshots for receive/correlation diagnosis, never work authority.
 use bitaxe_stratum::v1::production_session::ProductionSessionSnapshot;
 use std::sync::atomic::{AtomicU32, Ordering};
-const COUNT: usize = 21;
+const COUNT: usize = 23;
 const WORDS: usize = 1 + 2 * (COUNT + 1);
 struct Cache {
     sequence: AtomicU32,
@@ -60,14 +60,18 @@ impl Cache {
 }
 static CACHE: Cache = Cache::new();
 /// Called only while the sole production owner publishes a snapshot.
-pub(crate) fn capture(generation: u32, snapshot: &ProductionSessionSnapshot) {
+pub(crate) fn capture(
+    generation: u32,
+    snapshot: &ProductionSessionSnapshot,
+    filter_counts: [u64; 2],
+) {
     CACHE.publish(
         generation,
         crate::runtime_uptime::millis(),
-        counts(snapshot),
+        counts(snapshot, filter_counts),
     );
 }
-fn counts(snapshot: &ProductionSessionSnapshot) -> [u64; COUNT] {
+fn counts(snapshot: &ProductionSessionSnapshot, filter_counts: [u64; 2]) -> [u64; COUNT] {
     let a = &snapshot.asic_bridge;
     let c = &snapshot.mining.counters;
     let d = &a.discards;
@@ -94,7 +98,14 @@ fn counts(snapshot: &ProductionSessionSnapshot) -> [u64; COUNT] {
         b.work_stale,
         b.target_mismatch,
         b.other,
+        filter_counts[0],
+        filter_counts[1],
     ]
+}
+/// Called only for the current Worker's matched scoreboard candidate, including below-target results.
+pub(crate) fn note_expected_filter(counts: &mut [u64; 2], matches: bool) {
+    let index = usize::from(!matches);
+    counts[index] = counts[index].saturating_add(1);
 }
 /// No freshness gate: retained terminal evidence carries its original capture time.
 pub(crate) fn observation(generation: u32) -> Option<serde_json::Value> {
@@ -103,10 +114,10 @@ pub(crate) fn observation(generation: u32) -> Option<serde_json::Value> {
 }
 fn project(generation: u32, observed: u64, c: [u64; COUNT]) -> serde_json::Value {
     let v = |index: usize| c[index].to_string();
-    serde_json::json!({"schema":"worker-mining-progress-v1","generation":generation,"observed_at_ms":observed.to_string(),
+    serde_json::json!({"schema":"worker-mining-progress-v2","generation":generation,"observed_at_ms":observed.to_string(),
  "poll_requested":v(0),"poll_idle":v(1),"poll_nonce":v(2),"poll_register":v(3),"stale_completion":v(4),"qualified_candidates":v(5),"below_pool_target":v(6),"duplicate_candidates":v(7),
  "discards":{"invalid_length":v(8),"invalid_preamble":v(9),"invalid_crc":v(10),"job_lookup":v(11),"core":v(12),"address_interval":v(13),"register_response":v(14),"parser_invariant":v(15)},
- "blocked":{"wrong_session":v(16),"job_lookup":v(17),"work_stale":v(18),"target_mismatch":v(19),"other":v(20)}})
+ "blocked":{"wrong_session":v(16),"job_lookup":v(17),"work_stale":v(18),"target_mismatch":v(19),"other":v(20)},"expected_filter":bitaxe_asic::bm1366::expected_filter::PROFILE,"expected_filter_matches":v(21),"expected_filter_misses":v(22)})
 }
 #[cfg(test)]
 #[path = "mining_progress/tests.rs"]

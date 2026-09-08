@@ -7,6 +7,16 @@ fn second_lease_after_terminal_stop_reloads_pool_configuration_before_connecting
     establish_active(&mut adapter);
     let first_epoch = adapter.latest_transport_epoch(ProductionPool::Primary);
     let old_work = dispatched_observation(&adapter);
+    adapter.drive(ProductionSessionEvent::AsicResult {
+        observation: old_work,
+        now_ms: 4,
+    });
+    adapter.bytes(
+        ProductionPool::Primary,
+        b"{\"id\":4,\"result\":true,\"error\":null}\n",
+        5,
+    );
+    assert_eq!(adapter.session.snapshot().mining.counters.accepted, 1);
     adapter.drive(ProductionSessionEvent::CampaignLeaseRevoked);
     assert_eq!(
         adapter.session.snapshot().campaign_state,
@@ -108,6 +118,28 @@ fn second_lease_after_terminal_stop_reloads_pool_configuration_before_connecting
     assert!(adapter.writes[writes_before_old_result..]
         .iter()
         .any(|(_, line)| line.contains("mining.submit")));
+    adapter.bytes(
+        ProductionPool::Primary,
+        b"{\"id\":4,\"result\":true,\"error\":null}\n",
+        1_006,
+    );
+    assert_eq!(
+        adapter.session.snapshot().mining.counters.accepted,
+        1,
+        "second runtime's first acceptance is one again"
+    );
+    assert_eq!(
+        adapter.session.snapshot().lifetime_share_counters.accepted,
+        2
+    );
+    assert_eq!(
+        adapter
+            .session
+            .snapshot()
+            .lifetime_share_counters
+            .qualified_candidates,
+        2
+    );
     adapter.drive(ProductionSessionEvent::CampaignLeaseRevoked);
     assert_eq!(
         adapter.session.snapshot().campaign_state,

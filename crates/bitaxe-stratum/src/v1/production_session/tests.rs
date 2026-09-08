@@ -348,4 +348,5 @@ mod readiness_recovery;
 mod recovery;
 mod restart;
 mod scoreboard;
+mod share_counters;
 mod terminal_expiry;

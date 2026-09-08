@@ -80,10 +80,18 @@ pub(super) fn network_difficulty(compact_nbits: u32) -> Result<f64, StratumV1Err
     Ok(difficulty)
 }
 
-pub(super) fn nonce_difficulty(work: &MiningWork, result: Bm1366NonceResult) -> f64 {
+/// Derives both observations from the existing reconstructed digest; neither changes admission.
+pub(super) fn nonce_validation(work: &MiningWork, result: Bm1366NonceResult) -> (f64, bool) {
     let header = reconstructed_header(work, result);
     let hash = double_sha256(&header);
-    TRUE_DIFFICULTY_ONE / little_endian_256_to_f64(hash)
+    (
+        TRUE_DIFFICULTY_ONE / little_endian_256_to_f64(hash),
+        bitaxe_asic::bm1366::expected_filter::matches(&hash),
+    )
+}
+#[cfg(test)]
+fn nonce_difficulty(work: &MiningWork, result: Bm1366NonceResult) -> f64 {
+    nonce_validation(work, result).0
 }
 
 fn reconstructed_header(work: &MiningWork, result: Bm1366NonceResult) -> [u8; 80] {
@@ -247,3 +255,7 @@ mod tests {
         input
     }
 }
+
+#[cfg(test)]
+#[path = "share_validation/nonzero_version_test.rs"]
+mod nonzero_version_test;

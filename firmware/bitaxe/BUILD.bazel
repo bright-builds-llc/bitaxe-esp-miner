@@ -583,6 +583,7 @@ rust_test(
         "src/production_worker_admission_host_test.rs",
         "src/production_worker_admission_host_test/start_boundary.rs",
         "src/production_worker_admission_host_test/resource_acknowledgement.rs",
+        "src/production_worker_admission_host_test/worker_observations.rs",
         "src/production_mining_session/admission_diagnostics.rs",
         "src/production_mining_session/bwg.rs",
         "src/production_mining_session/revocation.rs",
@@ -1303,5 +1304,5 @@ rust_test(
     srcs = ["src/production_mining_progress_host_test.rs", "src/production_mining_session/mining_progress.rs", "src/production_mining_session/mining_progress/tests.rs"],
     crate_root = "src/production_mining_progress_host_test.rs",
     edition = "2021",
-    deps = ["//crates/bitaxe-stratum:bitaxe_stratum", "@crates//:serde_json"],
+    deps = ["//crates/bitaxe-asic:bitaxe_asic", "//crates/bitaxe-stratum:bitaxe_stratum", "@crates//:serde_json"],
 )
