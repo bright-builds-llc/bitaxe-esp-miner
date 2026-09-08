@@ -4910,12 +4910,12 @@ Next evidence-backed discriminator (hardware paused):
 - [x] Add an independent nonzero-version-bit end-to-end header/hash vector.
 - [x] Define and test the software-expected BM1366 ticket-256 filter boundary;
   distinguish that model from a verified silicon/register assertion.
-- [ ] Publish optional `worker-mining-progress-v2` with the closed filter ID and
+- [x] Publish optional `worker-mining-progress-v2` with the closed filter ID and
   match/miss counts for reconstructed candidate hashes, including below-target
   candidates. Retain v1 history; expose no raw hash, header, nonce, job, pool
   difficulty, credentials or endpoints. Counts do not alter work admission,
   target qualification, shutdown, or difficulty negotiation.
-- [ ] Verify and publish the exact pair before four cycles and a fresh diagnostic
+- [x] Verify and publish the exact pair before four cycles and a fresh diagnostic
   allowance. Keep accepted-share and both final stop criteria unresolved.
 
 The literal nonzero-version wire/header/hash fixture agrees with Python and
@@ -4994,6 +4994,87 @@ Ordered host Cargo verification and the 4480-byte owner-entry audit also pass.
 The optional v2 discriminator, lifetime counter correction and diagnostic-stop
 harness are ready for firmware publication; accepted-share and final stop
 evidence remain unresolved until the exact clean package is exercised.
+
+Firmware 553e4df861412dc301fb92d0f458ca1e9da20035 / Gate d9b093b2 passed
+initial installation and four no-mining update/reconnect cycles with exact ELF
+4eddecb32b6b0ddee97ee2d29f1a17c553bd9702f58d333885a063675f877fa5,
+preserved identity/settings/authorization marks, 65536-byte exchanges and
+cleanup. Diagnostic ordinal 8 passed after 11566 active ms, three work items,
+one renewal and two software-filter matches with zero misses. Normal ordinal 9
+completed 169577 active ms, eight renewals and 85 work items; all 57 parsed
+nonce results matched the expected filter but were below the pool target.
+No candidate qualified or was submitted/accepted. Its result is sealed
+unverified (`mining_evidence_missing`); prior zero-count records stay unchanged.
+Minimum owner stack was 7656 bytes. Ordered safe restoration completed at fresh
+45 C, then the browser page, serial ownership, supervisor and listener closed.
+The separate ledger is 870000 ms charged, next ordinal 10, no pending reservation;
+the original exhausted ledger is unchanged. Final stop tests remain blocked by
+the missing accepted-share criterion.
+
+Next source diagnosis (hardware paused):
+- [x] Trace the existing configured difficulty hint through authorized pool
+  selection. The encoder exists, but production authorization does not emit it.
+  Compare the pinned reference's nonzero hint after successful authorization.
+- [x] Define the narrowest explicit binding to the authorized owner pool; do
+  not assume the installed setting applies to a different granted endpoint or
+  invent a setting value. Preserve actual pool-assigned target authority.
+- [x] Add focused ordering, zero/absent hint, response classification, reconnect
+  and revocation regressions before publishing a targeted correction.
+- [ ] Re-run required checks and package verification, publish any required
+  contract changes first, then qualify the next exact package with four cycles
+  and a new diagnostic. No unchanged normal retry is admitted.
+
+Targeted correction decision: add optional signed `stratum.suggestedDifficulty`
+as an integer 0..65535. Absent or zero means no Worker hint; no implicit fallback
+to another pool's NVS settings. Ordinary configured pools may carry their own
+existing hint. Qualification explicitly requests 1000 through a public
+`--suggested-difficulty 1000` option frozen in the attempt context and signed
+grant. This is the repository's public default selected as test policy, not an
+assertion about installed NVS. Send the advisory once after matched successful
+authorization with a fresh request ID; only actual `mining.set_difficulty` may
+change share qualification. Advisory replies cannot count as shares or grant
+authority. Advertise support in the signed application manifest and update
+strict validation/canonical vectors/signing together. No credential file or NVS
+mutation, ASIC ticket-mask change, timing relaxation or accepted-share waiver.
+
+ADR-0027 records the correction and version-3 qualification context. The missing
+post-authorization hint was reproduced before the fix. Focused verification
+passes 325 Stratum tests, 46 worker-admission tests, transport revocation tests
+and all 87 qualification harness tests. Old v1/v2 observations retain their
+original judgments and cannot issue new allowances; actual ordinal-8/9 sealed
+receipts revalidate unchanged. The new manifest advertises hint support with
+digest pDwsfWH5X8bHMTqyB0SgAxTKA0_KpzBqdSLxMpKVNhU. Cross-language
+contracts, capability signing, full verification and publication remain pending.
+
+Hint verification update: 39 focused Worker contract tests pass, including
+independent Gate vectors and tamper/replay checks. The actual firmware capability
+was re-signed through the existing protected Update Authority and verified
+against unchanged deployment trust. Independent harness review found no
+binding, replay, privacy or accounting regression. Ordered firmware host gates
+pass all 2148 tests (one existing ignored); real ESP32-S3 preview packaging,
+ownership/reference and standards checks pass. The native owner entry is 4512
+bytes against the 8192-byte cap; task stack/floor remain 24576/4096. Gate's full
+run reached an unchanged lifecycle streaming-test timeout after lint/type/build
+passed; that failure is being investigated without widening deadlines.
+
+Gate 2106f1c1587025d0570e058647a29492159e5d20 is published and pinned with
+archive SHA-256 565a1879ae9b192dd31b1d6992abc64724d4a5cf2b635f5fb1e717a85c5ebb8f.
+All required Gate checks pass: 352 Rust tests (two existing opt-in tests ignored),
+417 JavaScript tests, browser conformance, format/lint/type/build, lookup,
+package and standards. The streaming test passed unchanged in isolated and
+full-group reruns. A later debug-info-disabled binary stalled before test main;
+its owned process was terminated and reaped. The complete default-profile Rust
+run passed without a source or deadline workaround. Final firmware pin checks
+and publication precede a clean-package four-cycle diagnostic ordinal 10 with
+the explicit signed hint; no further hardware effects have occurred.
+
+Final hinted-pair pin verification passes all 91 canonical targets in one run,
+ESP32-S3 packaging, the 4512-byte owner-entry audit, fixed-USB ownership,
+reference, provenance/redaction and standards checks. The single proven Gate
+browser-fixture container was removed; every other preexisting container was
+preserved and all owned processes were reaped. The correction is ready for
+firmware publication and a clean exact package. Hardware remains stopped until
+that package is admitted and its four current-image cycles are complete.
 
 ## Future
 

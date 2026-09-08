@@ -280,3 +280,16 @@ fn a_short_record_after_maximum_input_has_no_retained_payload_tail() {
     assert_eq!(completed, small);
     assert_eq!(completed.capacity(), completed.len());
 }
+
+#[test]
+fn signed_manifest_advertises_exact_difficulty_hint_profile() {
+    // Arrange / Act
+    let manifest = bitaxe_worker_control::serial::serial_manifest();
+    let digest = bitaxe_worker_control::serial::serial_manifest_sha256().expect("manifest");
+    // Assert: independently computed canonical Gate manifest hash.
+    assert_eq!(
+        manifest["poolDifficultyHintProfile"],
+        "worker-stratum-difficulty-hint-v1"
+    );
+    assert_eq!(digest, "pDwsfWH5X8bHMTqyB0SgAxTKA0_KpzBqdSLxMpKVNhU");
+}

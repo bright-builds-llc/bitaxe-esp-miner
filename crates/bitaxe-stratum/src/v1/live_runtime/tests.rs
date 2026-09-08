@@ -10,6 +10,7 @@ mod work;
 fn runtime() -> LiveStratumRuntime {
     LiveStratumRuntime::new_with_generation(
         LiveRuntimeConfig {
+            maybe_suggested_difficulty: None,
             model: "ultra".to_owned(),
             version: "205".to_owned(),
             credentials: LivePoolCredentials {

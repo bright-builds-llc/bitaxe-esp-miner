@@ -83,3 +83,5 @@ This index summarizes accepted decisions from the original project handoff.
 - [ADR-0022](../adr/0022-four-cycle-fixed-usb-qualification.md)
 
 - [ADR-0023](../adr/0023-bound-native-serial-receive-progress.md)
+
+- [ADR-0027](../adr/0027-bind-advisory-pool-difficulty-hints.md)

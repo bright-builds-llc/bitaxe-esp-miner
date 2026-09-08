@@ -36,6 +36,7 @@ pub fn serial_manifest() -> Value {
         "recordWriteTimeoutMilliseconds": RECORD_WRITE_TIMEOUT_MILLISECONDS,
         "payloadIntegrity": "sha256_exact_utf8_json",
         "qualificationAttemptProfile": "worker-qualification-attempt-v1",
+        "poolDifficultyHintProfile": "worker-stratum-difficulty-hint-v1",
     })
 }
 

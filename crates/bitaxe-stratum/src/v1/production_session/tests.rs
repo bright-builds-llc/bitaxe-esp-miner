@@ -231,6 +231,7 @@ fn pool(host: &str) -> ProductionPoolConfiguration {
             port: 3333,
         },
         runtime: LiveRuntimeConfig {
+            maybe_suggested_difficulty: None,
             model: "ultra".to_owned(),
             version: "205".to_owned(),
             credentials: LivePoolCredentials {
@@ -342,6 +343,7 @@ fn dispatched_observation(
 mod block_found;
 mod bwg;
 mod campaign_timing;
+mod difficulty_hint;
 mod job_transition;
 mod lifecycle;
 mod readiness_recovery;

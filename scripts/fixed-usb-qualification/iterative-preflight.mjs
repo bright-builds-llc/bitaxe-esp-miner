@@ -7,11 +7,13 @@ import { validateCycle, validateState } from "./judge.mjs";
 import { maximumActiveMs, PURPOSES, requireExhaustedOriginal, requireIdleLedger, validateAttempt } from "./iterative-contract.mjs";
 
 export function validateIterativePolicy(context, live = false) {
-  const v2 = context.schema === "fixed-usb-iterative-context-v2";
-  requireCondition(v2 ? context.owner_stack_minimum_bytes === 4096 :
+  const v3 = context.schema === "fixed-usb-iterative-context-v3";
+  const resources = v3 || context.schema === "fixed-usb-iterative-context-v2";
+  requireCondition(resources ? context.owner_stack_minimum_bytes === 4096 :
     context.schema === "fixed-usb-iterative-context-v1" && context.owner_stack_minimum_bytes === undefined, "iterative_policy");
-  requireCondition(!live || v2, "iterative_policy_upgrade_required");
-  return v2;
+  requireCondition(v3 ? context.suggested_difficulty === 1000 : context.suggested_difficulty === undefined, "iterative_hint_policy");
+  requireCondition(!live || v3, "iterative_policy_upgrade_required");
+  return resources;
 }
 export async function requireIterativeTask(firmwareRoot) {
   const tasks = await readFile(resolve(firmwareRoot, "TASKS.md"), "utf8");
@@ -109,6 +111,7 @@ export async function validateCompletedReceipt(path, receipt, records) {
       receipt.ledger_before.total_charged_ms + receipt.context.qualification_attempt.maximumActiveMilliseconds);
 }
 export async function iterativePreflight(options, operations = {}) {
+  requireCondition(options.suggestedDifficulty === "1000", "iterative_hint_policy");
   const root = resolve(options.privateRoot), parent = dirname(root);
   await protectedPath(parent, true); await missing(root);
   for (const key of ["firmwareRoot", "gateRoot", "authorityDirectory"]) options[key] = await canonicalDirectory(options[key]);
@@ -143,7 +146,7 @@ export async function iterativePreflight(options, operations = {}) {
       prior.qualification_attempt.purpose === (options.purpose === "foreground_loss" ? "normal" : "foreground_loss"), "iterative_final_sequence");
   } else requireCondition(options.purpose === "diagnostic", "iterative_initial_purpose");
   const cycleSource = options.cyclesFrom ? await reusableCycles(resolve(options.cyclesFrom), snapshot, parent) : undefined;
-  const context = { schema: "fixed-usb-iterative-context-v2", owner_stack_minimum_bytes: 4096, ...snapshot, qualification_attempt: attempt,
+  const context = { schema: "fixed-usb-iterative-context-v3", owner_stack_minimum_bytes: 4096, suggested_difficulty: 1000, ...snapshot, qualification_attempt: attempt,
     required_no_mining_cycles: 4, ...(cycleSource ? { cycle_source: cycleSource.proof } : {}), original_campaign_id: previous.original_campaign_id,
     previous_receipt: previousPath, previous_receipt_sha256: await fileDigest(previousPath),
     progress_sha256: await fileDigest(options.input), progress_path: resolve(options.input),

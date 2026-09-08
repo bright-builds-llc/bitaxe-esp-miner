@@ -248,6 +248,7 @@ fn read_pool_configuration(
     Ok(Some(ProductionPoolConfiguration {
         endpoint: ProductionPoolEndpoint { host, port },
         runtime: LiveRuntimeConfig {
+            maybe_suggested_difficulty: read_optional_u16(nvs, &format!("{prefix}stratumdiff"))?,
             model: model.to_owned(),
             version: version.to_owned(),
             credentials: LivePoolCredentials { username, password },

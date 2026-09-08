@@ -202,6 +202,7 @@ fn pool_set(grant: &WorkerLeaseGrant) -> Result<ProductionPoolSet, Error> {
                 port,
             },
             runtime: LiveRuntimeConfig {
+                maybe_suggested_difficulty: grant.maybe_suggested_difficulty(),
                 model: "bitaxe-ultra".to_owned(),
                 version: crate::semantic_version().to_owned(),
                 credentials: LivePoolCredentials {

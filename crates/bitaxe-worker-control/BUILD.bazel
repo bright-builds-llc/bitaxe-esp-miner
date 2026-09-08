@@ -25,8 +25,8 @@ rust_test(
 
 rust_test(
     name = "authorization_tests",
-    srcs = ["tests/authorization.rs", "tests/authorization/campaign.rs", "tests/authorization/qualification.rs"],
-    compile_data = ["tests/authorization/gate-campaign.json", "tests/authorization/gate-qualification.json"],
+    srcs = ["tests/authorization.rs", "tests/authorization/campaign.rs", "tests/authorization/qualification.rs", "tests/authorization/difficulty_hint.rs"],
+    compile_data = ["tests/authorization/gate-campaign.json", "tests/authorization/gate-qualification.json", "tests/authorization/gate-difficulty-hint.json"],
     crate_root = "tests/authorization.rs",
     crate_name = "bitaxe_worker_control_authorization_tests",
     edition = "2021",

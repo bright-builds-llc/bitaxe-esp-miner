@@ -11,6 +11,12 @@ struct WireStratumConfig {
     endpoint: Zeroizing<String>,
     username: Zeroizing<String>,
     password: Zeroizing<String>,
+    #[serde(
+        default,
+        rename = "suggestedDifficulty",
+        deserialize_with = "suggested_difficulty"
+    )]
+    maybe_suggested_difficulty: Option<u16>,
 }
 
 /// Strict authenticated Start input whose secret fields are zeroized on drop.
@@ -90,6 +96,12 @@ impl WorkerLeaseGrant {
         &self.stratum.password
     }
 
+    /// Signed advisory value; absent and zero both request no suggestion.
+    #[must_use]
+    pub const fn maybe_suggested_difficulty(&self) -> Option<u16> {
+        self.stratum.maybe_suggested_difficulty
+    }
+
     #[must_use]
     pub const fn duration_milliseconds(&self) -> u64 {
         self.duration_milliseconds
@@ -121,6 +133,7 @@ impl WorkerLeaseGrant {
             stratum: AuthorizationlessStratum {
                 endpoint: &self.stratum.endpoint,
                 password: &self.stratum.password,
+                maybe_suggested_difficulty: self.stratum.maybe_suggested_difficulty,
                 username: &self.stratum.username,
             },
         }
@@ -182,6 +195,11 @@ struct AuthorizationlessGrant<'a> {
 struct AuthorizationlessStratum<'a> {
     endpoint: &'a str,
     password: &'a str,
+    #[serde(
+        rename = "suggestedDifficulty",
+        skip_serializing_if = "Option::is_none"
+    )]
+    maybe_suggested_difficulty: Option<u16>,
     username: &'a str,
 }
 
@@ -338,3 +356,13 @@ fn qualification_attempt<'de, D: serde::Deserializer<'de>>(
 ) -> Result<Option<crate::QualificationAttempt>, D::Error> {
     crate::QualificationAttempt::deserialize(deserializer).map(Some)
 }
+
+fn suggested_difficulty<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<u16>, D::Error> {
+    u16::deserialize(deserializer).map(Some)
+}
+
+#[cfg(test)]
+#[path = "lease/suggested_difficulty_tests.rs"]
+mod suggested_difficulty_tests;

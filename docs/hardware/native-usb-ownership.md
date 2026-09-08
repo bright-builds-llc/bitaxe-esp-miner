@@ -221,3 +221,13 @@ same-pair cycle receipts may be referenced by subsequent purposes with exact
 identity, baseline and receipt-hash continuity. Each retry requires verified
 progress; every effect retains the existing physical lease, ROM admission,
 state-preserving segments, conservative limits and proven cleanup.
+
+ADR-0027 requires new iterative contexts to use version 3 and an explicit
+`--suggested-difficulty 1000` on `just fixed-usb-qualification iterative-preflight`.
+The protected context freezes this public test policy before the existing
+supervisor signs it as `stratum.suggestedDifficulty`. The hint is advisory;
+only the pool's assigned difficulty controls share qualification. Do not edit
+credential files or reuse another endpoint's NVS settings to supply it.
+Older contexts remain immutable historical evidence and cannot issue new
+allowances through the current supervisor. Stack, accounting and timing limits
+remain unchanged, including the four-cycle requirement for each new package.

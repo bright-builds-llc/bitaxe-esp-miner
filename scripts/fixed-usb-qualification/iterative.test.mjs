@@ -39,7 +39,7 @@ async function fixture(t, purpose = "diagnostic") {
   await writeNew(bootstrapInput, input); await iterativeBootstrap(parent, bootstrapInput, { ignored: () => undefined });
   const progress = resolve(base, "progress.json");
   await writeNew(progress, { schema: "worker-qualification-progress-v1", review: "verified", reason: "software_correction", evidence_sha256: ["d".repeat(64)] });
-  const options = { privateRoot: resolve(parent, "attempt-001"), firmwareRoot, gateRoot, authorityDirectory, purpose,
+  const options = { suggestedDifficulty: "1000", privateRoot: resolve(parent, "attempt-001"), firmwareRoot, gateRoot, authorityDirectory, purpose,
     firmwareCommit: "d".repeat(40), gateCommit: old.gate_commit, manifest: resolve(base, "manifest.json"), previousReceipt: resolve(parent, "bootstrap.json"), input: progress };
   const snapshot = { firmware_commit: options.firmwareCommit, gate_commit: options.gateCommit, app_elf_sha256: old.app_elf_sha256,
     gate_page_relative_path: PAGE, gate_page_sha256: digest("page"), gate_bundle_sha256: digest("bundle") };
@@ -132,6 +132,7 @@ test("iterative server requires fan proof, fresh possession ledger and one deliv
   assert.equal((await f.request("/authorization-context", { controlSessionBindingSha256: f.binding })).status, 200);
   const artifacts = await (await f.request("/window-artifacts")).json();
   assert.equal(artifacts.grant.qualificationAttempt.ordinal, 1);
+  assert.equal(artifacts.grant.stratum.suggestedDifficulty, 1000);
   assert.equal((await f.request("/window-artifacts")).status, 400);
   assert(!(await readFile(resolve(f.options.privateRoot, "issued.json"), "utf8")).includes(f.binding));
 });
@@ -263,7 +264,7 @@ test("normal acceptance cannot substitute stopping for running evidence", async 
 });
 test("v2 owner policy rejects low, stale, mismatched and malformed resource observations", async (t) => {
   const f = await fixture(t);
-  assert.equal(f.context.schema, "fixed-usb-iterative-context-v2");
+  assert.equal(f.context.schema, "fixed-usb-iterative-context-v3");
   assert.equal(f.context.owner_stack_minimum_bytes, 4096);
   for (const mutation of [{ stack_free_bytes: 28 }, { generation: 2 }, { phase: "preparation" },
     { heap_free_bytes: -1 }, { heap_largest_bytes: "123" }, { observed_at_ms: "18446744073709551616" }]) {
@@ -283,6 +284,7 @@ test("immutable v1 history retains its original judgment but cannot serve new al
   const f = await fixture(t);
   const original = { ...f.context, schema: "fixed-usb-iterative-context-v1" };
   delete original.owner_stack_minimum_bytes;
+  delete original.suggested_difficulty;
   const records = observations(original);
   for (const record of records) delete record.state.qualification.owner_resources;
   const originalBytes = JSON.stringify(records);
@@ -300,6 +302,7 @@ test("v1 completed receipt is revalidated under its historical resource policy",
   const f = await completedDiagnostic(t), root = f.options.privateRoot;
   const context = { ...f.context, schema: "fixed-usb-iterative-context-v1" };
   delete context.owner_stack_minimum_bytes;
+  delete context.suggested_difficulty;
   const records = observations(context);
   for (const record of records) delete record.state.qualification.owner_resources;
   const sampleBytes = records.map((record) => JSON.stringify(record) + "\n").join("");
@@ -390,4 +393,30 @@ test("a sealed snapshot cannot be changed by a later writer without blocking his
   const path = resolve(root, "sealed.samples.jsonl"), bytes = await readFile(path);
   await writeFile(path, Buffer.concat([bytes, Buffer.from("\n")]));
   await assert.rejects(readPrevious(resolve(root, "result.json")), /samples_changed/u);
+});
+
+test("new qualification requires the explicit fixed difficulty hint before creating an attempt", async (t) => {
+  // Arrange
+  const f = await fixture(t);
+  // Act / Assert
+  for (const suggestedDifficulty of [undefined, "0", "256", "1000.0", "1e3", "65536", "-1"]) {
+    await assert.rejects(iterativePreflight({ ...f.options, suggestedDifficulty }, f.operations), /iterative_hint_policy/u);
+  }
+  assert.equal(f.context.suggested_difficulty, 1000);
+  for (const suggested_difficulty of [undefined, null, 0, 256, 1000.5, "1000"]) {
+    assert.throws(() => validateIterativePolicy({ ...f.context, suggested_difficulty }), /iterative_hint_policy/u);
+  }
+});
+
+test("immutable v2 observations retain their judgment but cannot authorize hinted work", async (t) => {
+  // Arrange
+  const f = await fixture(t);
+  const context = { ...f.context, schema: "fixed-usb-iterative-context-v2" };
+  delete context.suggested_difficulty;
+  const records = observations(context), original = JSON.stringify(records);
+  // Act / Assert
+  assert.equal(judgeIterative(context, records).diagnostic_only, true);
+  assert.equal(JSON.stringify(records), original);
+  assert.throws(() => validateIterativePolicy(context, true), /policy_upgrade/u);
+  await assert.rejects(createIterativeSupervisor({ ...f.options, context }), /policy_upgrade/u);
 });

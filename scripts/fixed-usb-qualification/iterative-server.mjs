@@ -111,7 +111,8 @@ export async function createIterativeSupervisor(options, operations = {}) {
       validateCooling(cooling.proof, cooling.restoration); await safeState(cooling.state);
       requireIdleLedger(cooling.budget_before, attempt.ordinal, context.expected_charged_ms);
       requireIdleLedger(cooling.budget_after, attempt.ordinal, context.expected_charged_ms);
-      const artifacts = await signAttempt({ attempt, challengeId: scope.challengeId, binding: saved.binding, stratum: await readPool(), sign });
+      const stratum = { ...await readPool(), suggestedDifficulty: context.suggested_difficulty };
+      const artifacts = await signAttempt({ attempt, challengeId: scope.challengeId, binding: saved.binding, stratum, sign });
       requireCondition(saved.expires > now() && Buffer.byteLength(JSON.stringify(artifacts)) <= 65536, "iterative_signing_expired");
       await writeNew(resolve(root, "issued.json"), { schema: "worker-iterative-issuance-v1", ordinal: attempt.ordinal,
         context_sha256: digest(JSON.stringify(context)), ledger_before: saved.report, private_payload_persisted: false });

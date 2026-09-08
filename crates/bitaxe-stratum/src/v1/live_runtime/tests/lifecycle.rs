@@ -24,6 +24,7 @@ fn credentials_debug_redacts_pool_values() {
 fn runtime_config_debug_redacts_credentials() {
     // Arrange
     let config = LiveRuntimeConfig {
+        maybe_suggested_difficulty: None,
         model: "ultra".to_owned(),
         version: "205".to_owned(),
         credentials: LivePoolCredentials {

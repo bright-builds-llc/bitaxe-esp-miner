@@ -120,9 +120,9 @@ js_library(
     srcs = ["conformance/bwg-worker-deployment-trust-0.2/signed-capability.json"],
 )
 """,
-    sha256 = "f8aedcb6caee0c01cf769295fb97f2ae4e56bf7d5308db0fa83cae5a680003ef",
-    strip_prefix = "bitaxe-turnstile-system-d9b093b2f0277dc1c076fe9fb23a8554229c93bc",
+    sha256 = "565a1879ae9b192dd31b1d6992abc64724d4a5cf2b635f5fb1e717a85c5ebb8f",
+    strip_prefix = "bitaxe-turnstile-system-2106f1c1587025d0570e058647a29492159e5d20",
     urls = [
-        "https://github.com/bright-builds-llc/bitaxe-turnstile-system/archive/d9b093b2f0277dc1c076fe9fb23a8554229c93bc.tar.gz",
+        "https://github.com/bright-builds-llc/bitaxe-turnstile-system/archive/2106f1c1587025d0570e058647a29492159e5d20.tar.gz",
     ],
 )

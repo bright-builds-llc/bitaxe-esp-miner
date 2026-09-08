@@ -51,6 +51,8 @@ impl fmt::Debug for LivePoolCredentials {
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct LiveRuntimeConfig {
+    /// Advisory setup hint; only a later server difficulty message sets a share target.
+    pub maybe_suggested_difficulty: Option<u16>,
     pub model: String,
     pub version: String,
     pub credentials: LivePoolCredentials,
@@ -325,6 +327,17 @@ impl LiveStratumRuntime {
                     return Ok(Some(LiveRuntimeEvent::WorkInvalidated));
                 }
                 self.state.set_lifecycle(PoolLifecycleStatus::Authorized);
+                if let Some(difficulty) = self
+                    .config
+                    .maybe_suggested_difficulty
+                    .filter(|value| *value > 0)
+                {
+                    let id = self.next_request_id();
+                    self.outbound_actions
+                        .push(LiveRuntimeAction::SendClientMessage(
+                            StratumV1ClientMessage::suggest_difficulty(id, u32::from(difficulty)),
+                        ));
+                }
                 Ok(Some(LiveRuntimeEvent::Authorized))
             }
         }
