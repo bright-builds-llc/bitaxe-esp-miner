@@ -57,6 +57,8 @@ Diagnostic follow-up verification: ordered Cargo format/lint/build/tests pass (2
 
 Attempt-010 review (2026-09-06): serial 0.2 firmware `59f065ed5887e66a69bd8ba24aa2144b2696f321` and Gate `95fbb9856ccfe1902b03a90d0632fd857282f295` are published with an exact clean package. All required software gates pass, including 2083 Cargo tests (one preexisting ignored), all 80 Bazel targets and Gate's 361 web/CLI tests. Four current-profile hardware cycles passed. Implementation/publication is complete, but overall migration remains open because the approved live acceptance has not passed. See [attempt-010 evidence](docs/parity/evidence/20260906-fixed-usb-attempt-010.md).
 
+Successor evidence update | 2026-09-08: The exact installed f3bbfd6a / Gate 2106f1c pair now passes the separately authorized normal/share/renewal and both fault-stop windows. See [final review](docs/parity/evidence/20260908-worker-preparation-live-acceptance.md). Earlier campaign failures remain unchanged. Abrupt-loss reconnect reliability remains assigned to `task-fixed-usb-hello-resynchronization`; retain this broader migration record open.
+
 ### task-fixed-usb-serial-qualification | 2026-09-04 | Qualify fixed Serial/JTAG browser and flashing continuity
 
 Depends on: task-fixed-usb-serial-migration.
@@ -148,6 +150,8 @@ Serial 0.2 software progress: Gate `95fbb9856ccfe1902b03a90d0632fd857282f295` is
 Serial 0.2 final software verification: all 80 pinned Bazel targets pass, including actual ESP32-S3 builds, cross-language fixtures, receive/writer ownership and cancellation. USB ownership, reference integrity, redaction, native formatting, standards and 22 supervisor/history tests pass. Host Rust checks used unchanged behavior with debug information disabled; no safety or test deadline was relaxed. Combined review regressions establish synchronous Hello admission, bounded stale-prefix handling, immediate Work revocation with a final Close receipt, and no spliced command during a pending response. The exact clean post-commit package and fresh hardware qualification remain required; no serial-0.2 mining claim is made by these checks.
 
 Attempt-010 review (2026-09-06): all four serial-0.2 cycle receipts validate against exact firmware `59f065ed` / ELF `6c02e63e` and Gate `95fbb985`. Each proves fresh possession, actual 65536-byte request/response payloads, same Device Identity/settings/authorization marks, mining disabled, segmented update, stable exact runtime and cleanup. Following the separate live Start failure, the same package was recovered through state-preserving reflash; fresh restoration confirmed the safe baseline, matching identity/settings, inactive lease and mine-on-boot false. The post-authorization high-water comparison changed; no reset or numeric reservation is inferred. All thirteen original runtime artifacts and final receipts are preserved and verified. Browser page, streams, locks, supervisor and serial holders are released. Physical mining-time heartbeat/foreground-stop evidence remains unresolved in the live task, so this record stays active. See [attempt-010 evidence](docs/parity/evidence/20260906-fixed-usb-attempt-010.md).
+
+Successor evidence update | 2026-09-08: Four current-image no-mining cycles, maximum-size exchanges, exact identity/preservation, session replacement and both fault-stop windows passed on f3bbfd6a / Gate 2106f1c. See [final review](docs/parity/evidence/20260908-worker-preparation-live-acceptance.md). Abrupt-loss recovery still required a bounded receive-only drain; `task-fixed-usb-hello-resynchronization` owns that remaining reliability obligation. This record remains open.
 
 ### task-fixed-usb-worker-live-acceptance | 2026-09-04 | Prove bounded foreground Worker mining over Web Serial
 
@@ -255,6 +259,8 @@ This amendment is an explicitly authorized qualification-tool correction within 
 Attempt-012 final review (2026-09-07): qualification-only correction `96c6c218` passed 45 supervisor tests and was sealed against unchanged firmware `a90b436e` / ELF `c43fd085` / Gate `c8ffb634`, all thirteen artifacts and four valid cycle receipts. Original final window 2 was issued and consumed, then Start failed as `start_failed/timeout`; closed diagnostics showed preparation/readiness 63 followed by a panic reboot. No running sample, renewal or heartbeat fault exists; the judge rejects `running_device_evidence_missing`. Fresh same-image recovery proved identity/settings preserved, inactive lease, acknowledged restoration and mine-on-boot false. The authenticated original ledger is exhausted at 240000 ms/masks 7/no pending reservation; actual active time remains unverified. Final fan-only cooling proved fresh 7681 RPM and qualified restoration to 30% without ASIC/budget effects. Browser page, serial streams/locks, exact supervisor and both node holders are released. No new mining authorization, reflash or accounting reset followed. See [attempt-012 evidence](docs/parity/evidence/20260907-fixed-usb-attempt-012.md). Live work/share/renewal/three-second timing and the original failed windows remain unverified; keep migration/live acceptance and dependent parity unresolved. Offline diagnosis of the preparation panic is the next actionable work; another mining campaign requires an explicit budget decision.
 
 Prior hardware outcome: `stop_hardware_blocker` for live acceptance. Safe recovery and cleanup are complete; missing live proof keeps this task, the overall migration and dependent unresolved parity work active.
+
+Successor evidence update | 2026-09-08: The original campaign remains failed/exhausted at 240000 ms with immutable evidence. The independently authorized successor task completed normal/share/renewal, foreground-loss and heartbeat-loss acceptance, documented in [the final review](docs/parity/evidence/20260908-worker-preparation-live-acceptance.md). Its separate ledger is 1140000 ms charged, next ordinal 14, no pending reservation. These results do not convert the original execution checkboxes into passes.
 
 ### task-native-usb-boot-chain-integrity-205 | 2026-09-01 | Verify installed recovery boot bytes and OTA selection
 
@@ -4612,6 +4618,8 @@ attribute the result to persisted replay state. The scenario requires a new
 metadata-only, non-signing diagnostic seam that distinguishes durable replay
 from context rejection, and that seam is outside the standing authorization.
 
+Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/parity/evidence/20260908-worker-preparation-live-acceptance.md) proves real shares/renewal and foreground/heartbeat safe-stop on the exact fixed-USB pair. This broader task remains open: its Pause, independent expiry, USB-only disconnect, reboot/uncertain-time, negative authorization and credential-absence matrix still requires its own complete successor contract and evidence.
+
 ### task-str005-noise-auth-205 | 2026-08-28 | Prove Ultra 205 Noise authentication
 
 Migration dependency: `task-fixed-usb-serial-qualification` replaces TinyUSB handoff/recovery-006 requirements. The immutable legacy plan is historical and requires a successor contract before effects. Independent authorization, replay, monotonicity, protocol and evidence blockers remain unresolved.
@@ -4658,477 +4666,30 @@ Completion review: Pending. STR-005 remains `implemented` until the final
 promotion task succeeds.
 
 
-### task-worker-preparation-panic-qualification | 2026-09-07 | Diagnose preparation panics and complete iterative live acceptance
+### task-fixed-usb-hello-resynchronization | 2026-09-08 | Recover fresh browser sessions after stale device replies
 
-Authorization: the owner explicitly approved the implementation plan and
-iteration until successful mining and outstanding stop tests pass. ADR-0026
-supersedes the previous restriction against new qualification allowances;
-the exhausted original campaign and its evidence remain immutable.
+Status: open; offline diagnosis is eligible. Successor to completed
+`task-worker-preparation-panic-qualification` and the fixed-USB qualification
+recovery obligation. See [final acceptance evidence](docs/parity/evidence/20260908-worker-preparation-live-acceptance.md).
 
-- [x] Inspect retained existing evidence and record unavailable crash detail.
-- [x] Implement reset-retained, allocation-free per-step receipts and replay;
-  distinguish interrupted/corrupt/stale/wrong-firmware evidence.
-- [x] Add mutually exclusive signed qualificationAttempt contracts, separate
-  durable accounting and protected diagnostic export in firmware and Gate.
-- [x] Implement repo-owned iterative preflight/sign/review/judge commands with
-  exact pair, four-cycle, fan-proof, cleanup and verified-progress gates.
-- [ ] Verify both repositories, publish Gate, pin its exact archive, publish
-  firmware and build the exact clean ESP32-S3 package before hardware effects.
-- [ ] For each new runtime pair, prove cleanup/detection, admitted NVS-preserving
-  install, exact safe browser identity, four maximum-exchange continuity/update
-  cycles and fan-only proof before one 30000-ms diagnostic Start.
-- [ ] Preserve each first failure, recover/read retained diagnostics before
-  reset/reflash, implement a targeted regression-backed correction, then
-  permit another attempt only after documented verified progress.
-- [ ] Complete a new exact-pair final campaign: normal 180000 ms with real work,
-  renewal and correlated accepted share; foreground loss 30000 ms;
-  heartbeat loss 30000 ms with measured ≤3000-ms authority closure/shutdown initiation.
-- [ ] Verify no post-revocation work/submission/activation, qualified ordered
-  shutdown/cooling, persisted mine-on-boot false, inactive leases and released
-  browser/CLI/supervisor ownership. Publish redacted evidence/task review.
+- [ ] Reproduce stale complete device-to-host records preceding HelloAck after
+  abrupt loss and interrupted admission using the production browser channel.
+- [ ] Implement bounded fresh-session resynchronization that rejects wrong
+  identity, stale replies and absent fresh acknowledgment without granting work.
+- [ ] Verify fragmentation/coalescing, stale/oversized input, bounded deadlines,
+  reconnect history and stream/lock release; preserve possession/replay rules.
+- [ ] Define and publish an exact no-mining hardware command/evidence/recovery
+  contract before effects; any changed runtime pair requires four current-image
+  no-mining cycles. Existing completed allowances authorize no new mining here.
+- [ ] Prove fresh recovery without the CLI receive-only drain, exact identity,
+  unchanged accounting/settings, safe mining-disabled state and complete cleanup.
 
-Effect contract: `just fixed-usb-qualification iterative-bootstrap --private-root <new-protected-parent> --input <original-context-budget-and-final-state-paths.json>` creates the immutable bridge to the exhausted original campaign. `iterative-preflight` takes `--private-root <new-attempt-child> --firmware-root <repository> --gate-root <Gate-repository> --firmware-commit <published-clean-commit> --gate-commit <published-Gate-commit> --manifest <exact-clean-package> --authority-directory <protected-existing-authorities> --purpose <diagnostic|normal|foreground_loss|heartbeat_loss> --previous-receipt <bootstrap-or-prior-result.json> --input <verified-progress.json>`. Only an unchanged exact runtime pair may add `--cycles-from <completed-prior-attempt>` to reference immutable four-cycle proofs and the preserved browser baseline. `serve --private-root <attempt> --authority-directory <protected-authorities> --pool-credentials <ignored-owner-file> --port <loopback-port>` owns only the local signing/evidence supervisor. Browser helpers perform maximum probes, cooling/ledger reviews, explicit redacted diagnostic export and acknowledged attempt completion. `iterative-judge --private-root <attempt> --input <closed-ledger-and-final-state-review.json>` provides a bounded fallback for the same evidence contract; no hand-written passing result is allowed. USB effects use just detect-ultra205
-and just flash-monitor --board 205 --manifest <exact-clean-package> --image
-<declared-package-image> --port <fresh-detector-port> --evidence-dir
-<fresh-private-child> --redact-evidence --capture-timeout-seconds 30. Retain the
-same physical lease and explicit ROM admission before every disjoint segment
-write; prove browser release first and reap each bounded CLI before reconnect.
+Residual: successful foreground/heartbeat acceptance required the published
+bounded receive-only drain before fresh Hello. Fixed descriptors and port names
+never establish application authority. Keep installed f3bbfd6a safe; no reset,
+flash, new allowance or device session is required merely to record this task.
+No wider parity claim, helper transport or weakened session binding is allowed.
 
-Protected existing authority and owner-pool files are runtime inputs only;
-never print or commit their contents. Fresh logical sessions/possession and
-signed allowances bind exact application identity. Each attempt charges its
-full allowance before preparation, with independent 2.8-second heartbeat
-expiry, existing shutdown reserve and ≤3-second gate closure/shutdown initiation.
-Diagnostic attempts stop promptly after preparation/initial work succeeds.
-Keep 400 MHz/1100 mV/fan 100%, fresh 4.5–5.5 V, ≤15 W, \<75 C and nonzero RPM.
-On failure revoke work/submissions, close owned pool transports and perform
-ordered ASIC/voltage/enable shutdown; retain fan 100% until fresh ≤45 C permits 30%
-under the existing bounded cooling policy. No unchanged failed retry,
-accounting refund/reset, factory reset, electrical fault injection, direct pins,
-raw memory dump or unrelated network discovery. Stop hardware on uncertain
-ownership, failed recovery, unsafe observations or missing evidence.
-
-Existing evidence: attempt-012's 14 closed browser states contain no running
-qualification sample. Its displayed post-reset diagnostics identify panic and
-preparation but provide no Rust panic/allocation receipt; no root cause or active
-mining duration can be decoded from those observations. Exact a90b436e ELF and
-all 13 runtime artifacts remain preserved. Installed firmware is safe and all
-resources were released before this task.
-
-Software progress: the exact signed allowance passes all four Gate-to-Rust
-purpose vectors and tamper tests. New attempt cleanup tests exercise failed
-writes, ambiguous readback, revocation during storage and qualified reboot
-recovery without changing the original ledger. Independent review found and
-regression-tested a malformed-ledger total check; reachable normal-window
-counts now fail closed. Receipt tests cover every preparation/write boundary,
-CRC damage, stale/wrong-firmware records, typed failures, native-abort
-simulation and zero allocations/driver queries inside the actual RTC writer.
-ESP32-S3 compilation and RTC section placement pass. The first pinned full
-Bazel run passes all 87 targets; ordered host Cargo gates passed 2116 tests
-(one preexisting ignored) before final added regressions. Gate's signed manifest
-and contract implementation is published; a further tested retention correction
-keeps allocation receipts in reserved crash capacity. Final exact pin and
-verification/publication precede any new hardware effect.
-
-Final Gate publication: `53bb4fd354e04889b6b0251aa55e316e3a0ac172`, archive SHA-256 `85b37535ccb687e0eb26cfed97bf7c9679b8206316dfe5383bcb3a8288bb75ab`, is pinned. Full Gate verification passes including 396 web/CLI tests. Final firmware ordered Cargo gates pass 2118 tests (one preexisting ignored). Actual retained-RTC writer and outer preparation admission tests pass, and the firmware compiles with the 144-byte receipt in the RTC no-init section. Original schema, ledger-total and history-saturation failures remain preserved alongside passing regressions. No hardware effects have occurred in this task yet.
-
-Final publication checks: all 87 exact-pin Bazel targets pass; real ESP32-S3 packaging, USB ownership, reference and redaction checks pass. A final diagnostic-only regression accepts an immediate stopping sample only when it contains actual dispatched work and fresh safe observations; normal/fault/legacy running requirements remain unchanged. All 62 harness tests and its canonical Bazel target pass. Firmware diagnostics and accounting are ready for publication; no panic root cause or physical retention/mining success is claimed yet.
-
-Diagnostic 001 hardware review: d5524872 / Gate 53bb4fd3 passed initial install,
-four current-image cycles, fan proof and a separately signed diagnostic. One
-real work item was dispatched; active 7359 ms, gate closure 408 ms and shutdown
-initiation 446 ms, qualified cooling and restoration were recorded. New ledger
-30000 ms/next ordinal 2/complete; original 240000 ms/masks 7 unchanged. All resources
-released. The valid preparation receipt measured only 28 bytes minimum owner
-stack (configured 16384), with heap free 23999 / largest 10752. No panic occurred in
-this diagnostic and the earlier cause remains unproven. See
-[diagnostic 001 evidence](docs/parity/evidence/20260907-iterative-diagnostic-001.md).
-
-Targeted stack correction before another allowance:
-
-- [x] Increase the sole owner's stack to 24576 bytes; verify exact native entry
-  frame ≤8192 bytes and preserve all ownership/cancellation boundaries.
-- [x] Capture fresh owner-thread resources before Start acknowledgement,
-  during active work and after shutdown; never query another task's watermark
-  from the control reader or block heartbeat supervision.
-- [x] Add qualification context v2 requiring ≥4096 bytes observed headroom and
-  generation/phase/freshness-bound resources. Preserve v1 historical judgments;
-  an earlier low/missing-resource observation cannot be hidden by later cleanup.
-- [ ] Verify/publish the changed pair and qualify four new cycles plus a fresh
-  30000-ms diagnostic. Proceed to full acceptance only with adequate measured
-  stack and heap observations; no predicted margin is hardware evidence.
-
-Stack correction contract: run `just audit-owner-stack <absolute-exact-ELF> <absolute-managed-objdump> <absolute-production_mining_session.rs>` before publication and against the clean final package. The named native owner entry must reserve at most 8192 bytes and its requested task stack must be 24576 bytes. Gate `50b42d72f7d30b3293c833dbe04d06233f2fcebc` is published with full verification (400 web/CLI tests) and pinned archive SHA-256 `b7d9784a12786b01aad1af35500b72a44e8a4283f1c01259973e778d7c823760`. New allowances require iterative context v2 with a 4096-byte owner-stack floor; old v1 evidence remains immutable and readable but cannot serve new allowances. Collect owner-thread resources before Start acknowledgement, periodically while active and after durable shutdown before Stop acknowledgement; omit stale or wrong-generation snapshots. Any missing/low/wrong-phase evidence fails closed and remains visible even if cleanup also fails. The original signing and manifest contracts are unchanged.
-
-Stack correction verification: ordered Cargo checks pass (2118 tests, one preexisting ignored); all 89 pinned Bazel targets, real ESP32-S3 packaging, native owner-stack audit, USB ownership, reference and redaction pass. The ownership check was updated for the deliberately reused completed-loop snapshot, and its original failure is preserved. The native owner entry now uses 4400 bytes against the 8192-byte ceiling. Gate full checks pass including 400 web/CLI tests, and all 67 harness tests pass. Fresh hardware verification of the 24576-byte allocation and ≥4096-byte measured margin remains required before full acceptance.
-
-Seal-integrity correction before ordinal 2: preflight rejected
-`iterative_result_samples_changed` before creating any context/ordinal claim
-or issuing an allowance. Diagnostic 001's original result digest exactly
-matches the first 52 of 54 journal rows; the two appended close notifications
-match its final state in every field except closing/closed status. Preserve
-the original journal and result. Add an explicit repo-owned
-`iterative-recover-seal --private-root <completed-v1-attempt>` command that
-writes only a verified immutable prefix and recovery supplement, with exact
-original-result/full-journal/prefix hashes and narrow terminal-suffix checks.
-New results bind immutable sealed sample files; late equivalent close events
-cannot alter them, and any conflicting late evidence is preserved and blocks
-further allowances. Verify/review/publish this correction and recover the seal
-before retrying preflight with a new protected progress input. No hardware or
-mining reservation occurred during this failed preflight.
-
-Sample sealing verification: all 73 harness tests pass, including the exact 52-row prefix plus two equivalent late-close pattern, unsafe suffixes, missing/nonunique prefixes and mutations after recovery. Canonical harness targets and ordered Cargo gates pass. Original sample/result files have not been changed; invoke the published strict recovery command before a fresh preflight.
-
-
-Diagnostic 002 passed on firmware 40f999ec / Gate 50b42d72: all four cycles,
-one real work item, 7360 ms active and qualified shutdown. The fresh owner-stack
-minimum of 8500 bytes exceeded the 4096-byte requirement. The separate ledger
-showed 60000 ms charged and next ordinal 3; the original ledger was unchanged.
-Normal ordinal 3 on the same pair timed out at Start after all nine preparation
-steps completed (generation 3, stack 8500, heap 15571/largest 4608, same boot 5).
-No new running sample was received. Recovery Hello failed at
-`manifest_identity/fields`. Serial ownership was released, but generation 3's
-safe state and ledger remain unconfirmed. Preserve the first failure and both
-closed diagnostic exports; the old page qualification for generation 2 is not
-current-generation proof.
-
-Offline progress: the actual core two-lease test reproduces the restart stall.
-Terminal cleanup clears volatile pool configuration but retains cached
-availability; the next hardware-ready event skips reading pool configuration,
-and the adapter cannot connect. The targeted fix clears availability, retry and
-probe caches while preserving shutdown, consumed leases and epoch cursors.
-The regression verifies new configuration, transport and work, rejection of
-stale events, and both stops. Separately, the actual browser channel reproduces
-`manifest_identity/fields` from stale complete device-to-host records preceding
-HelloAck, even when no fresh acknowledgment exists. This does not prove manifest
-corruption or successful fresh admission.
-
-Recovery-only effect contract after publishing verified progress:
-`just drain-worker-serial --board 205 --port <fresh-detector-port> --evidence-dir <fresh-private-child>`
-performs **one** receive-only discard under the physical-device lease, bounded
-to a two-second read window and 66560 bytes. The reader uses `O_RDONLY`,
-`O_NONBLOCK`, `CLOCAL` and disabled `HUPCL`, with no reset, DTR/RTS changes,
-transmission, or payload retention/logging. Prove browser release and the known
-Serial/JTAG profile first; record only counts, duration and ownership metadata,
-then prove CLI cleanup. Permit **one** fresh browser Hello/identity/status
-recovery attempt against installed firmware 40f999ec, with no Work allowance.
-Confirm the current ledger, restoration and cooling before new firmware effects.
-If recovery fails again, stop hardware and retain the missing proof. Generic
-monitoring is not admitted for this drain because it persists raw serial traces.
-This recovery step authorizes no raw memory dump, reflash or new mining.
-
-Verification of the restart correction and recovery command: ordered Cargo
-format/lint/build/test gates passed (2127 tests, one ignored), managed standards
-and fixed-USB ownership/reference checks passed, and all 89 Bazel targets passed
-across the full run and isolated rerun of two process-launch timeouts. The
-ESP32-S3 package built; the native owner entry remains 4400 bytes against an
-8192-byte cap with a 24576-byte configured stack. No test deadline was widened.
-Protected software evidence includes the failing reproduction, passing
-regressions, stale-frame reproduction, and receive-only PTY/no-TX/cleanup tests.
-Hardware recovery and the final live acceptance remain incomplete.
-
-Recovery of normal ordinal 3 succeeded after the published receive-only drain
-(discarded 5382 bytes in 2000 ms, cleanup complete). Fresh generation-3 evidence
-confirmed no dispatched work, completed shutdown, safe cooling and inactive
-lease; the separate ledger was 240000 ms/next ordinal 4 with no pending entry.
-The original ledger remained exhausted and unchanged. The result is sealed as
-unverified with the original Start timeout preserved.
-
-Firmware fe4427e7 / Gate 50b42d72 passed initial installation and all four
-no-mining update/reconnect cycles. Diagnostic ordinal 4 passed: one work item,
-7279 active ms, 8500-byte owner-stack minimum, qualified restoration and cleanup.
-Normal ordinal 5 then proved the second-Start correction on hardware, with four
-signed renewals and 37 work dispatches. At 79361 active ms the browser stopped
-for `window_control_failed` / missing `owner_resources`; safe restoration and
-fresh accounting were confirmed. The separate ledger now totals 450000 ms,
-next ordinal 6, no pending reservation. Original accounting is unchanged.
-The normal result is sealed unverified; browser, CLI and supervisor ownership
-are released. The final accepted-share and foreground/heartbeat stop criteria
-remain unresolved.
-
-Next diagnostic correction and discriminator work (hardware paused):
-- [x] Reproduce and fix the resource timestamp/publication race without widening
-  the 1000-ms freshness rule or the 4096-byte stack requirement. A missing object
-  alone does not distinguish a stalled owner from an observation race.
-- [x] Add versioned closed mining-progress counts to distinguish received,
-  discarded, correlated-below-target and qualified results, with no raw jobs,
-  pool settings, credentials or private possession information. The legacy
-  `nonce_work_correlations` field counts qualified candidates, so zero does not
-  prove an absence of ASIC responses.
-- [ ] Verify both changes, publish Gate first, pin it in firmware, publish and
-  build the exact clean package, then qualify four cycles before a fresh
-  diagnostic ordinal. Preserve ordinal 5's earliest failure and sealed evidence.
-
-Resource correction evidence: two request-time/publication regressions and the
-paused-publisher regression failed before their fixes. All seven resource tests
-now pass. Two validated atomic slots preserve the preceding fresh sample during
-publication; reads retry at most four times and evaluate age after the coherent
-copy. No allocation, blocking lock, widened freshness or reduced stack floor was
-introduced. This repairs proven false-omission paths; ordinal 5's precise omission
-cause remains unproven. The mining-progress harness independently rejects private
-fields and preserves historical receipts; all 77 harness tests pass.
-
-The optional mining-progress producer, Gate parser/type/protocol definition and
-independent evidence validator are implemented. Focused tests pass (three native
-producer tests, seven resource-cache tests, ten Gate tests, and 77 harness tests).
-Independent review confirmed exact closed-field alignment and that even maximal
-diagnostic counters cannot substitute for actual work, accepted shares or safe
-shutdown in the real judge. Firmware ordered Cargo gates, all 91 Bazel targets,
-fixed-USB ownership/reference checks, ESP32-S3 packaging and the 4400-byte native
-owner-entry audit pass. Gate's full verification and coordinated publication
-remain pending; hardware is paused.
-
-Gate e284f1572133f1a1fc8c8869b51b10280722899c is published and pinned with archive
-SHA-256 588ee54c268ae401ea9aa8b9b9c910aa4bf87a6b4be63def487d3c113d040850.
-All Gate checks pass: 352 Rust tests, 404 JavaScript tests, type/build, headless
-browser, lookup, package and standards. A fixture setup failure was corrected by
-building its exact Cargo target before the unchanged server-readiness timer and
-inheriting the caller's profile. No browser or device deadline was widened.
-Firmware pin verification/publication and the next clean package remain pending.
-
-Firmware verification with the published Gate pin passes all 91 Bazel targets,
-ESP32-S3 packaging, fixed-USB ownership, reference and managed standards checks.
-The owner entry remains 4400 bytes with the unchanged 24576-byte task stack and
-4096-byte measured-floor requirement. Ordered host Cargo gates also passed.
-The next effect sequence is a clean published package, four no-mining cycles,
-and diagnostic ordinal 6 against the sealed ordinal-5 receipt; no failed mining
-attempt has been repeated unchanged.
-
-Firmware f791df95 / Gate e284f157 passed initial installation and four no-mining
-cycles. Diagnostic ordinal 6 passed after 7456 active ms with one work dispatch,
-8500-byte stack watermark and qualified restoration. Normal ordinal 7 completed
-169819 active ms including shutdown, with eight signed renewals, 83 work items
-and 51 parsed nonce results, all classified below the pool target. No parser or
-blocked-correlation errors occurred and the resource-omission failure did not
-recur; the minimum owner stack was 7460 bytes. No accepted share was observed,
-so the normal result is sealed unverified (`mining_evidence_missing`). Fresh
-accounting is 660000 ms charged, next ordinal 8, no pending reservation; the
-original 240000-ms ledger is unchanged. Restoration and all resource releases
-are proven. No unchanged mining retry is admitted.
-
-Next evidence-backed discriminator (hardware paused):
-- [x] Add an independent nonzero-version-bit end-to-end header/hash vector.
-- [x] Define and test the software-expected BM1366 ticket-256 filter boundary;
-  distinguish that model from a verified silicon/register assertion.
-- [x] Publish optional `worker-mining-progress-v2` with the closed filter ID and
-  match/miss counts for reconstructed candidate hashes, including below-target
-  candidates. Retain v1 history; expose no raw hash, header, nonce, job, pool
-  difficulty, credentials or endpoints. Counts do not alter work admission,
-  target qualification, shutdown, or difficulty negotiation.
-- [x] Verify and publish the exact pair before four cycles and a fresh diagnostic
-  allowance. Keep accepted-share and both final stop criteria unresolved.
-
-The literal nonzero-version wire/header/hash fixture agrees with Python and
-OpenSSL and passes actual parser, dispatch, reconstruction and qualification
-paths. The software filter boundary is H < 2^216 (raw digest bytes 27–31 zero),
-not floating-point difficulty >=256; the baseline 32-bit expectation remains an
-explicit model assumption. No behavior bug was found in this offline vector.
-Classifier output is observation-only and reuses the existing hash. Worker-owned
-match/miss counters reset for a new generation, survive pool replacement and
-are captured before terminal ownership release. Independent review found no
-privacy, generation-binding or authority changes.
-
-Gate a5e4bda610f24f720777d24a5b77e630c4e942a2 is published and pinned with archive
-SHA-256 ab987614d3eba9bd06eedf4857bd28fa31d04ca609470b055769d1a41b7a75cb.
-Gate's full checks pass (352 Rust and 407 JavaScript tests, headless browser,
-lookup, package and standards). A test-only stale-proof timing defect was
-reproduced and fixed without changing authentication limits. Firmware ordered
-Cargo gates, all 91 Bazel targets, ESP32-S3 packaging, ownership/reference and
-4400-byte owner-entry checks pass; the new pin is being verified before firmware
-publication. No further hardware allowance has been issued.
-
-For the fixed-filter diagnostic, initial-work collection ends promptly after the
-first reconstructed candidate receives either filter classification. The signed
-30000-ms cap, existing shutdown reserve and no-accepted-share-wait rule remain
-unchanged; absence of candidate data is not filter proof. The harness change is
-being verified and published before effects. A separate source check is testing
-whether prior pool-view counter baselines can undercount a fresh generation's
-accepted/qualified results after a pool runtime reset; no allowance accounting or work
-behavior change is authorized by this observation check.
-
-The evidence-counter check reproduced a first-share undercount across pool
-runtime resets. Projection now uses monotonic core-lifetime accepted, rejected
-and qualified-candidate counters with per-Worker baselines. Existing matched
-classification boundaries update them; replayed/late responses do not. Physical
-submission counting, pool behavior, expected-filter counters and NVS allowance
-accounting are unchanged. Real two-lease, pool-replacement and replay regressions
-pass. Historical zero-count results are not retroactively upgraded.
-
-Final firmware host checks and all 91 canonical targets pass, including the
-unchanged SAFE-10 source inventory, native packaging, ownership/reference,
-redaction/provenance and standards checks. The owner entry is 4480 bytes against
-the 8192-byte cap; task stack and measured floor remain 24576/4096 bytes.
-A trivial Default delegation moved out of the runtime module to meet the size
-rule while keeping its safety snapshot in the existing inventory. Gate's latest
-verification encountered PostgreSQL fixture EOF failures. A proposed readiness
-change was disproved: the original stderr condition already selects the final
-server; the temporary server logs readiness to stdout. The proposal was fully
-reverted. An observed rerun of the unchanged group passed all six tests; all six
-owned containers and processes were removed, with no observed OOM or backend
-failure. The original transient cause remains unresolved. Production TLS,
-authentication, deadlines and older unowned containers remain unchanged.
-No further hardware effects have occurred.
-
-For new iterative stop windows, work evidence may be a same-generation v2
-reconstructed candidate that meets the fixed software filter, observed before
-the fault, together with actual dispatch. This corrects the old assumption that
-`nonce_work_correlations` counted all correlated work; it counts pool-qualified
-candidates. The normal window still requires a correlated accepted share, and
-normal acceptance must pass before either final stop window. Fixed-filter misses,
-post-fault-only matches, missing work, unqualified restoration, unsafe samples,
-and late shutdown cannot pass. Legacy judgments remain unchanged, and the new
-witness is explicitly labeled in the result. No timing or safety limit changed.
-
-Gate d9b093b2f0277dc1c076fe9fb23a8554229c93bc is published; firmware pins its
-archive SHA-256 f8aedcb6caee0c01cf769295fb97f2ae4e56bf7d5308db0fa83cae5a680003ef.
-The complete unchanged-profile Rust run passes 352 tests with two existing
-opt-in tests ignored; 411 JavaScript tests, browser conformance, formatting,
-lint, type/build, lookup, package and standards checks pass. The PostgreSQL
-failure did not recur. All 85 firmware harness tests pass, including rejection
-of a dispatch first observed after the fault. Final pin checks and firmware
-publication precede the clean-package four-cycle diagnostic ordinal 8.
-
-The final published Gate pin passes all 91 canonical firmware test targets in
-one run, ESP32-S3 packaging, fixed-USB ownership, reference and standards checks.
-Ordered host Cargo verification and the 4480-byte owner-entry audit also pass.
-The optional v2 discriminator, lifetime counter correction and diagnostic-stop
-harness are ready for firmware publication; accepted-share and final stop
-evidence remain unresolved until the exact clean package is exercised.
-
-Firmware 553e4df861412dc301fb92d0f458ca1e9da20035 / Gate d9b093b2 passed
-initial installation and four no-mining update/reconnect cycles with exact ELF
-4eddecb32b6b0ddee97ee2d29f1a17c553bd9702f58d333885a063675f877fa5,
-preserved identity/settings/authorization marks, 65536-byte exchanges and
-cleanup. Diagnostic ordinal 8 passed after 11566 active ms, three work items,
-one renewal and two software-filter matches with zero misses. Normal ordinal 9
-completed 169577 active ms, eight renewals and 85 work items; all 57 parsed
-nonce results matched the expected filter but were below the pool target.
-No candidate qualified or was submitted/accepted. Its result is sealed
-unverified (`mining_evidence_missing`); prior zero-count records stay unchanged.
-Minimum owner stack was 7656 bytes. Ordered safe restoration completed at fresh
-45 C, then the browser page, serial ownership, supervisor and listener closed.
-The separate ledger is 870000 ms charged, next ordinal 10, no pending reservation;
-the original exhausted ledger is unchanged. Final stop tests remain blocked by
-the missing accepted-share criterion.
-
-Next source diagnosis (hardware paused):
-- [x] Trace the existing configured difficulty hint through authorized pool
-  selection. The encoder exists, but production authorization does not emit it.
-  Compare the pinned reference's nonzero hint after successful authorization.
-- [x] Define the narrowest explicit binding to the authorized owner pool; do
-  not assume the installed setting applies to a different granted endpoint or
-  invent a setting value. Preserve actual pool-assigned target authority.
-- [x] Add focused ordering, zero/absent hint, response classification, reconnect
-  and revocation regressions before publishing a targeted correction.
-- [ ] Re-run required checks and package verification, publish any required
-  contract changes first, then qualify the next exact package with four cycles
-  and a new diagnostic. No unchanged normal retry is admitted.
-
-Targeted correction decision: add optional signed `stratum.suggestedDifficulty`
-as an integer 0..65535. Absent or zero means no Worker hint; no implicit fallback
-to another pool's NVS settings. Ordinary configured pools may carry their own
-existing hint. Qualification explicitly requests 1000 through a public
-`--suggested-difficulty 1000` option frozen in the attempt context and signed
-grant. This is the repository's public default selected as test policy, not an
-assertion about installed NVS. Send the advisory once after matched successful
-authorization with a fresh request ID; only actual `mining.set_difficulty` may
-change share qualification. Advisory replies cannot count as shares or grant
-authority. Advertise support in the signed application manifest and update
-strict validation/canonical vectors/signing together. No credential file or NVS
-mutation, ASIC ticket-mask change, timing relaxation or accepted-share waiver.
-
-ADR-0027 records the correction and version-3 qualification context. The missing
-post-authorization hint was reproduced before the fix. Focused verification
-passes 325 Stratum tests, 46 worker-admission tests, transport revocation tests
-and all 87 qualification harness tests. Old v1/v2 observations retain their
-original judgments and cannot issue new allowances; actual ordinal-8/9 sealed
-receipts revalidate unchanged. The new manifest advertises hint support with
-digest pDwsfWH5X8bHMTqyB0SgAxTKA0_KpzBqdSLxMpKVNhU. Cross-language
-contracts, capability signing, full verification and publication remain pending.
-
-Hint verification update: 39 focused Worker contract tests pass, including
-independent Gate vectors and tamper/replay checks. The actual firmware capability
-was re-signed through the existing protected Update Authority and verified
-against unchanged deployment trust. Independent harness review found no
-binding, replay, privacy or accounting regression. Ordered firmware host gates
-pass all 2148 tests (one existing ignored); real ESP32-S3 preview packaging,
-ownership/reference and standards checks pass. The native owner entry is 4512
-bytes against the 8192-byte cap; task stack/floor remain 24576/4096. Gate's full
-run reached an unchanged lifecycle streaming-test timeout after lint/type/build
-passed; that failure is being investigated without widening deadlines.
-
-Gate 2106f1c1587025d0570e058647a29492159e5d20 is published and pinned with
-archive SHA-256 565a1879ae9b192dd31b1d6992abc64724d4a5cf2b635f5fb1e717a85c5ebb8f.
-All required Gate checks pass: 352 Rust tests (two existing opt-in tests ignored),
-417 JavaScript tests, browser conformance, format/lint/type/build, lookup,
-package and standards. The streaming test passed unchanged in isolated and
-full-group reruns. A later debug-info-disabled binary stalled before test main;
-its owned process was terminated and reaped. The complete default-profile Rust
-run passed without a source or deadline workaround. Final firmware pin checks
-and publication precede a clean-package four-cycle diagnostic ordinal 10 with
-the explicit signed hint; no further hardware effects have occurred.
-
-Final hinted-pair pin verification passes all 91 canonical targets in one run,
-ESP32-S3 packaging, the 4512-byte owner-entry audit, fixed-USB ownership,
-reference, provenance/redaction and standards checks. The single proven Gate
-browser-fixture container was removed; every other preexisting container was
-preserved and all owned processes were reaped. The correction is ready for
-firmware publication and a clean exact package. Hardware remains stopped until
-that package is admitted and its four current-image cycles are complete.
-
-Hinted runtime hardware results: firmware f3bbfd6a / Gate 2106f1c passed
-installation and all four current-image cycles. Diagnostic ordinal 10 passed
-after 12310 active ms with four work items and three expected-filter matches.
-Normal ordinal 11 passed: five correlated accepted shares, three renewals,
-26 work items, 59069 active ms and qualified restoration at 43 C. Its full
-180000-ms reservation was charged; the separate ledger reached 1080000 ms,
-next ordinal 12, no pending reservation. The original ledger remains unchanged.
-
-Foreground ordinal 12 did not reach a fault or reservation. The operator
-prepared the observer after loading the grant and exceeded the existing
-60-second possession lifetime. Start correctly returned `admission_required`
-before signature/sequence persistence or session effects, as confirmed by the
-existing expiry boundary test. Preserve the first `start_failed/command_rejected`
-delivery and its diagnostic export. Fresh same-image recovery and ledger review
-confirmed last completed ordinal 11, next ordinal 12, charged 1080000 ms,
-pending false, retired generation 3, safe restoration and released USB/host
-ownership. No refund, charge, skipped ordinal or foreground success is claimed.
-
-Unreserved continuation plan (no further hardware effects until published):
-- [ ] Add an immutable pre-admission rejection record and one exclusive
-  continuation for the same unused allowance identity/ordinal/purpose/limit/hint.
-  Preserve the original context, issuance, consumption, samples and failure.
-- [ ] Bind the updated qualification driver to an exact pushed host commit;
-  admit only an explicit host/docs file allowlist since the installed runtime.
-  Retain and verify the exact existing firmware/Gate artifact snapshots and four
-  cycles. No firmware, Gate, trust, client-script or timing changes are allowed.
-- [ ] Require unchanged recovered ledger/idle state, then fresh possession,
-  fan proof and an unchanged fresh ledger again before one new signed delivery.
-  Reject pending/advanced ledgers, work observations, wrong identities, changed
-  evidence, duplicate continuations and a reused binding or authorization.
-- [ ] Test the denial matrix, source separation and successor-window binding;
-  run required checks and publish this host-only recovery contract before effects.
-- [ ] Prepare and verify the observer first; then authorize/start promptly for
-  the foreground continuation and the final heartbeat test on f3bbfd6a/2106f1c.
-  Preserve the accepted normal result and all 30-second/three-second limits.
-
-ADR-0028 implementation and verification: all 114 qualification harness tests,
-93 canonical targets, ordered Rust format/lint/build/test checks, ownership,
-reference and standards checks pass. Actual protected ordinal-12 evidence was
-validated without mutation; the unpublished dirty driver correctly prevented
-creation before publication. Historical lineage validation no longer depends
-on future checkout state or a future Gate diagnostic parser; sealed evidence
-hashes remain mandatory. The heartbeat successor must reference the completed
-foreground child and its exact retained artifacts, cycles and driver.
-
-Observer preparation (disconnected, no mining): debugger focus emulation was
-keeping the background page visible. It was disabled for the qualification tab;
-real visible/hidden/visible transitions now pass using an HTTP(S) observer tab.
-No document property or synthetic visibility event was used. Prior normal
-evidence establishes real work, shares and renewal; it makes no foreground-loss
-enforcement claim. The agent brought that page foreground before the normal run
-and did not move it during work. The actual foreground test will use the
-verified un-emulated visibility path and a contiguous fresh admission sequence.
 
 ## Future
 
