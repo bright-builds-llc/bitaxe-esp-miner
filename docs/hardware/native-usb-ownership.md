@@ -68,8 +68,10 @@ shutdown within three seconds. Blocking Start/Restore, NVS, diagnostics, queued
 actuation and late preparation completion cannot bypass this deadline.
 
 Cooling remains a separate bounded postcondition. Live acceptance additionally
-has a durable 240000-ms cumulative budget; reconnect, renewal, interruption and
-retry cannot reset it. Missing or exhausted acceptance admission fails closed.
+used a durable 240000-ms cumulative budget, now exhausted and immutable. The
+separately authorized ADR-0026 attempts use their own durable ledger; neither
+ledger can be reset by reconnect, renewal, interruption or retry. Completed
+campaigns authorize no further mining. Missing or exhausted admission fails closed.
 
 ## Flashing and recovery
 
@@ -143,6 +145,11 @@ automatic parity promotion.
 
 ## Qualification command sequence
 
+The original campaign sequence below is retained for interpreting its evidence.
+That campaign is exhausted; do not replay it or create a replacement context
+to obtain authority. For future work, use a complete active successor contract
+and the [reusable qualification guidance](worker-qualification-lessons.md).
+
 The active `TASKS.md` contracts define the allowed effects and stop conditions.
 All placeholders below bind to the exact clean pushed sources, canonical
 package, admitted device, and protected ignored attempt root. A preflight is
@@ -207,9 +214,11 @@ Restart `serve` on the original port/origin, without reloading the page. Explici
 
 ## Iterative preparation diagnostics
 
-ADR-0026 and `task-worker-preparation-panic-qualification` authorize separately
-signed, bounded qualification attempts after the immutable original campaign
-was exhausted. The `qualificationAttempt` allowance is bound into the Work
+ADR-0026 and the now-completed `task-worker-preparation-panic-qualification`
+defined separately signed, bounded attempts after the immutable original
+campaign was exhausted. Its [final acceptance review](../parity/evidence/20260908-worker-preparation-live-acceptance.md)
+records the results; that archived task is not authority for new effects.
+The `qualificationAttempt` allowance is bound into the Work
 Lease, advertised by the signed serial application manifest and accounted in
 its own durable ledger. This is not a reset or extension of the old campaign.
 

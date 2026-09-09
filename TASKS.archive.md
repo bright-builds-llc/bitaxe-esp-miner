@@ -14726,3 +14726,35 @@ already fail whole-file formatter checks at the unchanged baseline; their native
 historical formatting is preserved under the append-only record contract. The
 original archive bytes are an unchanged prefix, and the selected record occurs
 exactly once in the archive and no longer in the active tracker.
+
+### task-worker-qualification-durable-guidance | 2026-09-08 | Preserve reusable lessons from live acceptance
+
+- [x] Add focused firmware guidance separating measured facts, interpretation,
+  browser readiness, counter semantics and immutable attempt evidence.
+- [x] Link it from USB operations and clarify that completed campaigns grant no
+  new effects; preserve original evidence and the active recovery follow-up.
+- [x] Verify source links, privacy, scoped Markdown, standards and record
+  integrity; record review and archive this completed documentation task.
+
+Scope: documentation only. No firmware, signing, runtime, hardware, accounting,
+credential or safety-policy changes. Gate records its reusable browser/evidence
+lessons in its existing active lesson file. Avoid enlarging the over-budget
+firmware lesson ledger or duplicating the acceptance report.
+
+Completion review | 2026-09-08: Added
+[focused operational guidance](docs/hardware/worker-qualification-lessons.md)
+and linked it from native USB ownership. Corrected completed-campaign wording;
+no prior result, allowance, safety limit or runtime changed. Gate appended three
+browser/evidence lessons while preserving its original lesson bytes. Scoped
+Markdown, local links, redaction, standards, unique lesson IDs and diff checks
+passed. The firmware lesson ledger was not enlarged or rewritten. Existing
+full runtime verification remains recorded with the acceptance report; no new
+runtime tests or hardware effects were needed for this documentation change.
+Publication follow-up: the owner requested commit/push of both repositories.
+The completed task record and guidance are published together after the required
+pre-commit verification. Runtime and hardware remain unchanged.
+
+Publication verification | 2026-09-08: ordered Cargo formatting, clippy, build
+and tests passed (2148 tests, one existing ignored). Scoped Markdown, local
+links, redaction, standards, archive-prefix integrity and diff checks passed.
+No hardware effects or runtime edits were performed.
