@@ -63,6 +63,7 @@ rust_binary(
         "src/parity_work/closure/legacy.rs",
         "src/parity_work/history.rs",
         "src/parity_work/history/tests.rs",
+        "src/parity_work/plan_metadata.rs",
         "src/phase35_evidence.rs",
         "src/phase35_evidence/contract.rs",
         "src/phase35_evidence/digests.rs",

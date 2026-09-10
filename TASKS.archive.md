@@ -14758,3 +14758,49 @@ Publication verification | 2026-09-08: ordered Cargo formatting, clippy, build
 and tests passed (2148 tests, one existing ignored). Scoped Markdown, local
 links, redaction, standards, archive-prefix integrity and diff checks passed.
 No hardware effects or runtime edits were performed.
+
+### task-parity-selection-status-metadata | 2026-09-10 | Parse recorded status and evidence in automatic selection
+
+- [x] Reproduce automatic selection failure with a status-plus-evidence plan fixture.
+- [x] Parse the bounded recorded metadata format without editing immutable plans or weakening status, closure, or lineage validation.
+- [x] Distinguish unrelated task plans in the shared directory while rejecting incomplete parity plans.
+- [x] Verify regressions, the real next-item command, ordered Rust gates, Bazel parity tests, standards, and parity/progress consistency.
+- [x] Review the diff and archive this task after verification.
+
+Scope: repair parity selection tooling only. The current Noise-auth plan records
+`implemented | unit,golden,workflow` in its initial-status field; selection must
+extract the status while rejecting malformed evidence suffixes. Preserve all
+plan bytes, checklist/progress records, and hardware authorization requirements.
+
+Failure signal: `bazel run //tools/parity:report -- next-item --format json`
+exits with `open parity plan has non-actionable initial status implemented | unit,golden,workflow`.
+
+Progress: both failures were reproduced before their fixes. The parser accepts
+only recognized evidence labels after the status separator. Selection skips
+task-only plans but still validates documents with parity metadata or a known
+row-named directory. Fifty focused parity-work tests and the Bazel parity suite
+pass. The real next-item command now returns the STR-005 Noise-auth plan;
+parity/progress and redaction validation pass with progress unchanged at 94.7%.
+
+Completion review: automatic selection succeeds and returns the open STR-005
+Noise-auth plan. Six added regressions cover status/evidence separation,
+malformed suffixes, status regression, unrelated task plans, and incomplete
+parity metadata. Immutable plans, checklist, progress history, and README are
+unchanged. The simplification review kept parsing and plan identification in
+one small pure module; closure and lineage policy remain unchanged.
+
+Verification: `cargo fmt --all`,
+`cargo clippy --all-targets --all-features -- -D warnings`,
+`cargo build --all-targets --all-features`, and
+`CARGO_TARGET_DIR=target/parity-selection-verification cargo test --all-features`
+passed, as did `bazel test //tools/parity:tests`,
+`bun scripts/bright-builds-check.ts all`, `just parity`, `just parity-progress`,
+`just verify-redaction`, the real JSON next-item command, scoped GFM formatting,
+and diff checks. The initial full test run passed unit/integration tests but
+was stopped after a process sample proved rustdoc blocked in directory
+enumeration of the existing `target/debug/deps`; the complete isolated rerun
+passed without changing or deleting that cache.
+
+Residual risks: this repairs plan selection, not the Noise-auth task's current
+hardware prerequisites or successor effect contract. No hardware session,
+parity promotion, or historical-plan rewrite occurred.

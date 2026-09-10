@@ -7,7 +7,9 @@ use crate::*;
 mod activation_tests;
 mod closure;
 mod history;
+mod plan_metadata;
 pub(crate) use history::{run_sync_progress_command, validate_progress_artifacts};
+use plan_metadata::{is_parity_plan, parse_plan_initial_status};
 
 pub(crate) const WORK_PLANS_ROOT: &str = "docs/parity/work-plans";
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, serde::Deserialize)]
@@ -238,7 +240,14 @@ fn find_open_plan(workspace: &Utf8Path, rows: &[ChecklistRow]) -> Result<Option<
         }
         let document = fs::read_to_string(path.join("PLAN.md").as_std_path())
             .with_context(|| format!("failed to read open parity plan {path}/PLAN.md"))?;
-        let row_id = parse_plan_row_id(&document)?;
+        let directory_name = path
+            .file_name()
+            .context("work-plan directory has no name")?;
+        if !is_parity_plan(&document, directory_name, rows) {
+            continue;
+        }
+        let row_id = parse_plan_row_id(&document)
+            .with_context(|| format!("invalid parity plan metadata in {path}/PLAN.md"))?;
         let maybe_row = rows.iter().find(|row| row.id == row_id);
         let Some(row) = maybe_row else {
             bail!("open parity plan references missing row {row_id}");
@@ -247,7 +256,8 @@ fn find_open_plan(workspace: &Utf8Path, rows: &[ChecklistRow]) -> Result<Option<
         if current_status == "verified" {
             continue;
         }
-        let initial_status = parse_plan_initial_status(&document)?;
+        let initial_status = parse_plan_initial_status(&document)
+            .with_context(|| format!("invalid parity plan metadata in {path}/PLAN.md"))?;
         let terminal_closed = closure::closes_plan(&path, &document, &row_id, &initial_status)?;
         if current_status != initial_status {
             require_plan_status_advance(&initial_status, &current_status, &row_id)?;
@@ -311,18 +321,6 @@ fn reconcile_open_plans(mut open_plans: Vec<OpenPlanDocument>) -> Result<Option<
 }
 fn parse_plan_row_id(document: &str) -> Result<String> {
     parse_plan_metadata_value(document, "- Parity row: `", "parity-row")
-}
-
-fn parse_plan_initial_status(document: &str) -> Result<String> {
-    let initial_status = normalize(&parse_plan_metadata_value(
-        document,
-        "- Initial status: `",
-        "initial-status",
-    )?);
-    if plan_status_rank(&initial_status).is_none() {
-        bail!("open parity plan has non-actionable initial status {initial_status}");
-    }
-    Ok(initial_status)
 }
 
 fn parse_plan_metadata_value(document: &str, prefix: &str, label: &str) -> Result<String> {
