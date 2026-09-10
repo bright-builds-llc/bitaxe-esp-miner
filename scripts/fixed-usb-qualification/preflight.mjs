@@ -74,6 +74,11 @@ export async function loadContext(root, operations = {}) {
   await protectedPath(resolve(root, "context.json"));
   const record = await readJson(resolve(root, "context.json"));
   requireCondition(record.sha256 === digest(JSON.stringify(record.context)), "context_integrity");
+  if (record.context?.schema === "fixed-usb-no-mining-context-v1") {
+    const { validateNoMiningContext } = await import("./no-mining-context.mjs");
+    validateNoMiningContext(record.context);
+    return record.context;
+  }
   if (["fixed-usb-iterative-context-v1", "fixed-usb-iterative-context-v2", "fixed-usb-iterative-context-v3", "fixed-usb-iterative-context-v4"].includes(record.context?.schema)) {
     const { validateIterativeContext } = await import("./iterative-preflight.mjs");
     await validateIterativeContext(root, record.context);

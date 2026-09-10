@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import { noMiningPreflight, NO_MINING_SCHEMA } from "./no-mining-context.mjs";
+import { createNoMiningSupervisor } from "./no-mining-server.mjs";
+import { finishNoMining } from "./no-mining-judge.mjs";
 import { recoverSampleSeal } from "./sample-seal.mjs";
 import { once } from "node:events";
 import { fstatSync } from "node:fs";
@@ -14,7 +17,7 @@ import { createSupervisor } from "./server.mjs";
 import { finishWindow, recordCycle } from "./store.mjs";
 import { protectedPath, QualificationError, readJson, requireCondition } from "./contract.mjs";
 
-const KEYS = { "--retained-runtime-from": "retainedRuntimeFrom", "--suggested-difficulty": "suggestedDifficulty", "--cycles-from": "cyclesFrom", "--purpose": "purpose", "--previous-receipt": "previousReceipt", "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
+const KEYS = { "--original-campaign-record": "originalCampaignRecord", "--retained-runtime-from": "retainedRuntimeFrom", "--suggested-difficulty": "suggestedDifficulty", "--cycles-from": "cyclesFrom", "--purpose": "purpose", "--previous-receipt": "previousReceipt", "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
   "--manifest": "manifest", "--private-root": "privateRoot", "--authority-directory": "authorityDirectory", "--pool-credentials": "poolCredentials",
   "--cooling-input": "coolingInput", "--predecessor-root": "predecessorRoot", "--bun": "bun", "--port": "port", "--window": "window", "--input": "input",
   "--qualification-source-commit": "qualificationSourceCommit", "--gate-qualification-source-commit": "gateQualificationSourceCommit" };
@@ -34,6 +37,9 @@ export async function main(args) {
     "iterative-bootstrap": ["privateRoot", "input"],
     "iterative-judge": ["privateRoot", "input"],
     "iterative-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "authorityDirectory", "bun", "purpose", "previousReceipt", "input", "cyclesFrom", "suggestedDifficulty", "retainedRuntimeFrom", "qualificationSourceCommit"],
+    "no-mining-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "originalCampaignRecord"],
+    "no-mining-serve": ["privateRoot", "port", "bun"],
+    "no-mining-judge": ["privateRoot", "input"],
     preflight: ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "authorityDirectory", "bun"],
     serve: ["privateRoot", "authorityDirectory", "poolCredentials", "port", "bun"],
     judge: ["privateRoot", "window"],
@@ -55,11 +61,20 @@ export async function main(args) {
     for (const key of ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "authorityDirectory", "purpose", "previousReceipt", "input"]) requireCondition(options[key], "preflight_argument_missing");
     return iterativePreflight(options);
   }
+  if (command === "no-mining-preflight") {
+    for (const key of ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest"]) requireCondition(options[key], "preflight_argument_missing");
+    return noMiningPreflight(options);
+  }
   if (command === "preflight") {
     for (const key of ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "authorityDirectory"]) requireCondition(options[key], "preflight_argument_missing");
     return preflight(options);
   }
   const context = await loadContext(resolve(options.privateRoot));
+  if (context.schema === NO_MINING_SCHEMA) requireCondition(["no-mining-serve", "no-mining-judge", "record-cycle"].includes(command), "no_mining_command_required");
+  if (command === "no-mining-judge") {
+    requireCondition(options.input, "input_required");
+    return finishNoMining(resolve(options.privateRoot), context, options.input);
+  }
   if (command === "iterative-judge") {
     requireCondition(options.input, "input_required");
     return finishIterative(resolve(options.privateRoot), context, options.input);
@@ -72,13 +87,13 @@ export async function main(args) {
     requireCondition(options.qualificationSourceCommit && options.gateQualificationSourceCommit, "amendment_arguments_missing");
     return amendPolicy(resolve(options.privateRoot), context, options);
   }
-  if (command === "serve") {
-    requireCondition(options.authorityDirectory && options.poolCredentials, "serve_argument_missing");
+  if (command === "serve" || command === "no-mining-serve") {
+    if (command === "serve") requireCondition(options.authorityDirectory && options.poolCredentials, "serve_argument_missing");
     const stdout = fstatSync(1);
     requireCondition(stdout.isFile() && (stdout.mode & 0o777) === 0o600, "protected_stdout_required");
     const port = Number(options.port ?? 0);
     requireCondition(Number.isInteger(port) && port >= 0 && port <= 65535, "port_argument");
-    const server = await createSupervisor({ ...options, context });
+    const server = command === "no-mining-serve" ? await createNoMiningSupervisor({ ...options, context }) : await createSupervisor({ ...options, context });
     server.listen(port, "127.0.0.1");
     await once(server, "listening");
     process.stdout.write(`qualification_url=http://127.0.0.1:${server.address().port}/\n`);

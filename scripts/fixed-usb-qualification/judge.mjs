@@ -65,11 +65,16 @@ export function validatePreservation(value) {
 
 export function validateState(value, context) {
   exactObject(value, ["schema", "gateCommit", "status", "connected", "running", "heartbeatSuppressed", "renewalsConfirmed", "deviceRestorationConfirmed", "deviceLeaseInactive", "serialOwnershipReleased"],
-    ["expectedFirmwareSourceCommit", "expectedAppElfSha256", "qualification", "preservation", "probe", "failure", "admissionFailureStage", "serialFailureCategory", "ownerResourceFailure"]);
+    ["expectedFirmwareSourceCommit", "expectedAppElfSha256", "qualification", "preservation", "probe", "failure", "admissionFailureStage", "serialFailureCategory", "ownerResourceFailure", "helloRecovery"]);
   requireCondition(value.schema === "worker-serial-acceptance-v1" && value.gateCommit === context.gate_commit &&
     value.expectedFirmwareSourceCommit === context.firmware_commit && value.expectedAppElfSha256 === context.app_elf_sha256 &&
     STATUSES.includes(value.status) && u32(value.renewalsConfirmed) && value.renewalsConfirmed <= 16 &&
     ["connected", "running", "heartbeatSuppressed", "deviceRestorationConfirmed", "deviceLeaseInactive", "serialOwnershipReleased"].every((key) => typeof value[key] === "boolean"), "browser_state_identity");
+  if (value.helloRecovery !== undefined) {
+    exactObject(value.helloRecovery, ["discardedRecords", "discardedBytes"]);
+    requireCondition(u32(value.helloRecovery.discardedRecords) && value.helloRecovery.discardedRecords <= 32 &&
+      u32(value.helloRecovery.discardedBytes) && value.helloRecovery.discardedBytes <= 66560, "hello_recovery_shape");
+  }
   if (value.admissionFailureStage !== undefined) requireCondition(["ownership", "permission", "device_filter", "scope", "opening", "hello", "manifest_identity", "capability", "possession", "baseline", "continuity", "cleanup"].includes(value.admissionFailureStage), "admission_stage_shape");
   if (value.serialFailureCategory !== undefined) requireCondition(SERIAL_FAILURES.includes(value.serialFailureCategory), "serial_failure_shape");
   if (value.failure !== undefined) requireCondition(FAILURES.includes(value.failure), "browser_failure_shape");
