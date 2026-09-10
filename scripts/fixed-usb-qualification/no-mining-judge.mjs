@@ -21,12 +21,13 @@ export function validateNoMiningReview(input, context, finalCycle) {
     isDeepStrictEqual(input.original_budget_before, input.original_budget_after), "no_mining_accounting_changed");
   for (const state of [input.recovery_before, input.recovery_after, input.final_state]) {
     validateState(state, context);
-    requireCondition(!state.running && state.renewalsConfirmed === 0 && !state.failure && state.deviceRestorationConfirmed && state.deviceLeaseInactive &&
+    requireCondition(!state.running && state.renewalsConfirmed === 0 && !state.failure && state.deviceBaselineConfirmed === true && state.deviceLeaseInactive &&
       state.preservation?.baseline_id === finalCycle.baseline_id && state.preservation.device_identity_match &&
       state.preservation.settings_match && state.preservation.authorization_high_water_match && !state.preservation.mine_on_boot,
     "no_mining_safe_baseline_missing");
   }
-  requireCondition(input.recovery_after.helloRecovery?.discardedRecords > 0 && input.recovery_after.helloRecovery.discardedBytes > 0,
+  requireCondition(input.recovery_after.helloRecovery?.discardedRecords > 0 && input.recovery_after.helloRecovery.discardedBytes > 0 &&
+    input.recovery_after.helloRecovery.discardedReplies > 0,
     "no_mining_stale_recovery_missing");
   requireCondition(input.recovery_before.connected && input.recovery_before.status === "ready" &&
     input.recovery_after.connected && input.recovery_after.status === "ready" && !input.final_state.connected &&

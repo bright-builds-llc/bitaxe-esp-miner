@@ -4682,26 +4682,25 @@ the diff and archive this task only after its exact acceptance criteria pass.
 AGENTS.md, the Bright Builds sidecar, architecture/testing/verification standards,
 ADRs 0021/0023 and fixed native-USB ownership govern this work.
 
-Software progress: Gate `ad961ea7e00697adf22382cf10dbaf4b5b60869d` is pushed
-and its archive SHA-256 `64d80292cd0a46238dff89399cea129e49a2e631648739fd2f7e7d827f419c70`
+Software progress: Gate `627a537396d022f3087ee3837f811c44d28d5b5f` is pushed
+and its archive SHA-256 `67ad2c96de19df8fcc5ee05750c61a7ec2fc9de035badb3e4ac5da426bc8f95f`
 is pinned. The original stale-reply admission failure is reproduced and fixed;
-43 focused tests and all Gate gates pass (352 Rust, two existing ignored;
-438 web/crypto tests; browser, type/build/package/lookup/standards). Firmware's
+59 focused browser tests and all Gate gates pass (352 Rust, two existing ignored;
+454 web/crypto tests; browser, type/build/package/lookup/standards). Firmware's
 ordered Rust gates pass (2154 tests, one existing ignored). The dedicated
 no-mining supervisor requires real release/reconnect journal ordering and
 unchanged immutable accounting receipts. All 94 canonical tests, real ESP32-S3
 build/package, ownership/symbols, reference, redaction, parity/progress and
-standards checks pass. Final supervisor review corrections passed its 20 tests.
-The source is ready for publication and a clean exact-HEAD hardware package;
-physical acceptance remains pending and no new hardware evidence is claimed.
+standards checks pass. Final supervisor review corrections passed its 27 tests.
+These software checks do not establish physical acceptance. The first bounded
+hardware observations and their unresolved evidence boundary are recorded below.
 
 Pre-hardware follow-up: a queued possession-profile response from interrupted
 admission reproduced `admission_failed` against the first Gate fix. The existing
 possession response/claims parser now validates that old response for discard
 without granting possession; the new session still proves its own transcript.
 All 43 focused cases and supplemental full verification pass; Gate is published.
-The final pinned native package precedes the first device attempt; no detector, flash, browser USB session or mining has
-run for this task yet.
+The final pinned native package preceded the first device attempt.
 
 - [x] Reproduce stale complete device-to-host records preceding HelloAck after
   abrupt loss and interrupted admission using the production browser channel.
@@ -4717,7 +4716,7 @@ run for this task yet.
 
 Residual: successful foreground/heartbeat acceptance required the published
 bounded receive-only drain before fresh Hello. Fixed descriptors and port names
-never establish application authority. Keep installed f3bbfd6a safe; no reset,
+never establish application authority. Keep installed `1b888f44` safe; no reset,
 flash, new allowance or device session is required merely to record this task.
 No wider parity claim, helper transport or weakened session binding is allowed.
 
@@ -4803,6 +4802,42 @@ and both USB nodes holder-free. Keep private evidence mode 0600 under the ignore
 public source/artifact hashes and explicit non-claims. Archive only this task
 after all its acceptance criteria pass; broader migration/qualification records
 are separate. No automatic checklist promotion.
+
+Attempt-001 | 2026-09-10: Exact firmware `1b888f44` / Gate `ad961ea` installed
+and reached fresh browser admission with idle lease and mine-on-boot false.
+The no-mining checker could not represent the valid cold `not_required`
+baseline. Closed as `stop_impossible_contract:cold_baseline_evidence` before
+cycles or fault tests. Browser/USB/server cleanup passed; original artifacts
+and observations are sealed. See [attempt review](docs/parity/evidence/20260910-hello-recovery-attempt-001.md).
+
+Successor contract | hello-recovery-002: After the explicit cold-baseline
+producer/checker correction passes all gates and both sources are published,
+use the same no-mining commands and constraints with fresh supervisor child
+`attempt-002`, initial flash child `install-002`, and four later flash children
+`attempt-002-cycle-001` through `attempt-002-cycle-004`. All paths remain under
+`scratch/hello-recovery-20260910`; each child must be absent before its owner
+creates it. Revalidate the new exact clean package before fresh detection.
+The new `deviceBaselineConfirmed` observation must be true from an actual
+baseline status with `confirmed` or `not_required`; inactive lease, preserved
+settings/accounting, no mining, exact identity, live journal ordering and final
+cleanup remain mandatory. Keep the distinct restoration-confirmation flag and
+all live-mining restoration judgments strict. No retry of the sealed first
+child or old package, no new mining allowance, and no CLI drain is authorized.
+This evidence correction grants no new hardware effect beyond the existing
+no-mining contract. A repeated post-fix boundary signature stops.
+
+Reply-specific evidence: the successor also records `helloRecovery.discardedReplies`
+for validated old Controller or possession responses. Require a positive value
+bounded by the total discarded record count; old receive credits alone cannot
+prove the newly repaired path. Preserve the 32-record/66560-byte limits and all
+fresh nonce, identity, possession, journal, accounting and cleanup requirements.
+
+Successor verification: all 94 canonical targets and ownership, reference,
+redaction, parity-progress and standards checks pass. One existing automation
+error-type assertion failed once, then passed the exact filtered test and the
+unchanged full rerun; no related code or deadline changed. Gate's full gates
+passed with debug information disabled after preserving a default-profile
+loader stall. Hardware attempt 002 remains pending at this publication.
 
 
 ## Future

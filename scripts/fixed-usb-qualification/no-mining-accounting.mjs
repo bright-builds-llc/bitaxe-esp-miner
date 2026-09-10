@@ -38,7 +38,7 @@ export async function saveNoMiningAccounting(root, context, input) {
   requireExhaustedOriginal(input.original_budget);
   const state = validateState(input.state, context);
   requireCondition(!input.ledger.pending && state.status === "ready" && state.connected && !state.running && !state.failure &&
-    state.renewalsConfirmed === 0 && state.deviceRestorationConfirmed && state.deviceLeaseInactive &&
+    state.renewalsConfirmed === 0 && state.deviceBaselineConfirmed === true && state.deviceLeaseInactive &&
     state.preservation?.device_identity_match && state.preservation.settings_match && state.preservation.authorization_high_water_match &&
     !state.preservation.mine_on_boot, "no_mining_accounting_baseline");
   const records = await readNoMiningStates(root, context);

@@ -11,6 +11,7 @@ import { noMiningPreflight, inspectNoMiningSources, verifyNoMiningFrozen } from 
 import { createNoMiningSupervisor } from "./no-mining-server.mjs";
 import { readFrozenCampaign, saveNoMiningAccounting } from "./no-mining-accounting.mjs";
 import { finishNoMining, validateNoMiningReview } from "./no-mining-judge.mjs";
+import { judgeWindow } from "./judge.mjs";
 import { recordCycle } from "./store.mjs";
 import { main } from "./main.mjs";
 
@@ -62,7 +63,7 @@ function preservation() {
 function state(context, extra = {}) {
   return { schema: "worker-serial-acceptance-v1", gateCommit: context.gate_commit, expectedFirmwareSourceCommit: context.firmware_commit,
     expectedAppElfSha256: context.app_elf_sha256, status: "ready", connected: true, running: false, heartbeatSuppressed: false, renewalsConfirmed: 0,
-    deviceRestorationConfirmed: true, deviceLeaseInactive: true, serialOwnershipReleased: false, preservation: preservation(), ...extra };
+    deviceBaselineConfirmed: true, deviceRestorationConfirmed: false, deviceLeaseInactive: true, serialOwnershipReleased: false, preservation: preservation(), ...extra };
 }
 function cycle(context, index, extra = {}) {
   return { schema: "fixed-usb-cycle-report-v1", cycle: index, firmware_commit: context.firmware_commit, app_elf_sha256: context.app_elf_sha256,
@@ -96,7 +97,7 @@ function review(context) {
   const original = { schema: "worker-budget-review-v1", campaign_match: true, reserved_mask: 7, completed_mask: 7, charged_ms: 240000, pending: false };
   return { schema: "fixed-usb-no-mining-review-v1", ledger_before: ledger, ledger_after: { ...ledger },
     original_budget_before: original, original_budget_after: { ...original },
-    recovery_before: state(context), recovery_after: state(context, { helloRecovery: { discardedRecords: 2, discardedBytes: 512 } }),
+    recovery_before: state(context), recovery_after: state(context, { helloRecovery: { discardedRecords: 2, discardedBytes: 512, discardedReplies: 1 } }),
     final_state: state(context, { connected: false, serialOwnershipReleased: true, status: "closed" }),
     recovery_without_drain: true, cleanup_complete: true };
 }
@@ -333,4 +334,64 @@ test("a later reopen invalidates the earlier closed cleanup observation", async 
   // Act / Assert
   await assert.rejects(finishNoMining(f.options.privateRoot, f.context, inputPath), /no_mining_final_cleanup_missing/u);
   assert(!(await readdir(f.options.privateRoot)).includes("no-mining.result.json"));
+});
+
+test("canonical cold baseline qualifies without claiming restoration occurred", async (t) => {
+  // Arrange
+  const f = await prepared(t, true), reviewed = review(f.context);
+  await appendState(f, reviewed.recovery_before, 1);
+  // Act
+  const receipt = await saveNoMiningAccounting(f.options.privateRoot, f.context, { stage: "before", ledger: reviewed.ledger_before,
+    original_budget: reviewed.original_budget_before, state: reviewed.recovery_before });
+  const result = validateNoMiningReview(reviewed, f.context, cycle(f.context, 4));
+  // Assert
+  assert.equal(reviewed.recovery_before.deviceBaselineConfirmed, true);
+  assert.equal(reviewed.recovery_before.deviceRestorationConfirmed, false);
+  assert.deepEqual(receipt, { accounting_saved: true, stage: "before" });
+  assert.equal(result.accounting_unchanged, true);
+});
+test("no-mining accounting rejects missing or false baseline confirmation", async (t) => {
+  const f = await prepared(t, true), reviewed = review(f.context);
+  for (const maybeConfirmed of [undefined, false]) {
+    const observed = { ...reviewed.recovery_before };
+    if (maybeConfirmed === undefined) delete observed.deviceBaselineConfirmed;
+    else observed.deviceBaselineConfirmed = maybeConfirmed;
+    await assert.rejects(saveNoMiningAccounting(f.options.privateRoot, f.context, { stage: "before", ledger: reviewed.ledger_before,
+      original_budget: reviewed.original_budget_before, state: observed }), /no_mining_accounting_baseline/u);
+  }
+});
+test("no-mining review requires baseline confirmation on recovery and final cleanup", async (t) => {
+  const f = await prepared(t, true);
+  for (const stage of ["recovery_before", "recovery_after", "final_state"]) {
+    for (const maybeConfirmed of [undefined, false]) {
+      const reviewed = review(f.context);
+      if (maybeConfirmed === undefined) delete reviewed[stage].deviceBaselineConfirmed;
+      else reviewed[stage].deviceBaselineConfirmed = maybeConfirmed;
+      assert.throws(() => validateNoMiningReview(reviewed, f.context, cycle(f.context, 4)), /no_mining_safe_baseline_missing/u);
+    }
+  }
+});
+
+test("baseline confirmation alone does not satisfy live-mining restoration evidence", () => {
+  // Arrange
+  const records = [{ sequence: 1, state: { running: true, deviceBaselineConfirmed: true, deviceRestorationConfirmed: false,
+    deviceLeaseInactive: true, qualification: { generation: 1, safe_stop_complete: false, budget_reserved_ms: 180000 } } }];
+  // Act / Assert
+  assert.throws(() => judgeWindow(0, records), /device_restoration_ack_missing/u);
+});
+
+test("credits-only stale records do not establish old control-reply recovery", async (t) => {
+  const f = await prepared(t, true), reviewed = review(f.context);
+  reviewed.recovery_after.helloRecovery.discardedReplies = 0;
+  assert.throws(() => validateNoMiningReview(reviewed, f.context, cycle(f.context, 4)), /no_mining_stale_recovery_missing/u);
+});
+test("legacy aggregate discard counts cannot establish control-reply recovery", async (t) => {
+  const f = await prepared(t, true), reviewed = review(f.context);
+  delete reviewed.recovery_after.helloRecovery.discardedReplies;
+  assert.throws(() => validateNoMiningReview(reviewed, f.context, cycle(f.context, 4)), /no_mining_stale_recovery_missing/u);
+});
+test("discarded reply counts cannot exceed the observed record count", async (t) => {
+  const f = await prepared(t, true), reviewed = review(f.context);
+  reviewed.recovery_after.helloRecovery.discardedReplies = 3;
+  assert.throws(() => validateNoMiningReview(reviewed, f.context, cycle(f.context, 4)), /hello_recovery_reply_shape/u);
 });
