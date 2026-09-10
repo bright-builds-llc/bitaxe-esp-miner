@@ -4668,7 +4668,7 @@ promotion task succeeds.
 
 ### task-fixed-usb-hello-resynchronization | 2026-09-08 | Recover fresh browser sessions after stale device replies
 
-Status: open; offline diagnosis is eligible. Successor to completed
+Status: open; software verified, no-mining hardware qualification pending. Successor to completed
 `task-worker-preparation-panic-qualification` and the fixed-USB qualification
 recovery obligation. See [final acceptance evidence](docs/parity/evidence/20260908-worker-preparation-live-acceptance.md).
 
@@ -4682,11 +4682,11 @@ the diff and archive this task only after its exact acceptance criteria pass.
 AGENTS.md, the Bright Builds sidecar, architecture/testing/verification standards,
 ADRs 0021/0023 and fixed native-USB ownership govern this work.
 
-Software progress: Gate `5f4e054fcce45042836856d782f9cd5cd0c09bbe` is pushed
-and its archive SHA-256 `f5c42b014b9a44a941e73da2ea05ef3e3421d8e37ab9b7c763a03dcdd6096232`
+Software progress: Gate `ad961ea7e00697adf22382cf10dbaf4b5b60869d` is pushed
+and its archive SHA-256 `64d80292cd0a46238dff89399cea129e49a2e631648739fd2f7e7d827f419c70`
 is pinned. The original stale-reply admission failure is reproduced and fixed;
-39 focused tests and all Gate gates pass (352 Rust, two existing ignored;
-434 web/crypto tests; browser, type/build/package/lookup/standards). Firmware's
+43 focused tests and all Gate gates pass (352 Rust, two existing ignored;
+438 web/crypto tests; browser, type/build/package/lookup/standards). Firmware's
 ordered Rust gates pass (2154 tests, one existing ignored). The dedicated
 no-mining supervisor requires real release/reconnect journal ordering and
 unchanged immutable accounting receipts. All 94 canonical tests, real ESP32-S3
@@ -4695,13 +4695,21 @@ standards checks pass. Final supervisor review corrections passed its 20 tests.
 The source is ready for publication and a clean exact-HEAD hardware package;
 physical acceptance remains pending and no new hardware evidence is claimed.
 
+Pre-hardware follow-up: a queued possession-profile response from interrupted
+admission reproduced `admission_failed` against the first Gate fix. The existing
+possession response/claims parser now validates that old response for discard
+without granting possession; the new session still proves its own transcript.
+All 43 focused cases and supplemental full verification pass; Gate is published.
+The final pinned native package precedes the first device attempt; no detector, flash, browser USB session or mining has
+run for this task yet.
+
 - [x] Reproduce stale complete device-to-host records preceding HelloAck after
   abrupt loss and interrupted admission using the production browser channel.
 - [x] Implement bounded fresh-session resynchronization that rejects wrong
   identity, stale replies and absent fresh acknowledgment without granting work.
 - [x] Verify fragmentation/coalescing, stale/oversized input, bounded deadlines,
   reconnect history and stream/lock release; preserve possession/replay rules.
-- [ ] Define and publish an exact no-mining hardware command/evidence/recovery
+- [x] Define and publish an exact no-mining hardware command/evidence/recovery
   contract before effects; any changed runtime pair requires four current-image
   no-mining cycles. Existing completed allowances authorize no new mining here.
 - [ ] Prove fresh recovery without the CLI receive-only drain, exact identity,
