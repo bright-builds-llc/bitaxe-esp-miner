@@ -4668,8 +4668,8 @@ promotion task succeeds.
 
 ### task-fixed-usb-hello-resynchronization | 2026-09-08 | Recover fresh browser sessions after stale device replies
 
-Status: open; precise-interruption software verified; hardware attempt 003
-remains pending. Successor to completed
+Status: open; attempt 003 is consumed and sealed at an evidence/observability
+blocker. No further hardware attempt is currently eligible. Successor to completed
 `task-worker-preparation-panic-qualification` and the fixed-USB qualification
 recovery obligation. See [final acceptance evidence](docs/parity/evidence/20260908-worker-preparation-live-acceptance.md).
 
@@ -4717,7 +4717,7 @@ The final pinned native package preceded the first device attempt.
 
 Residual: successful foreground/heartbeat acceptance required the published
 bounded receive-only drain before fresh Hello. Fixed descriptors and port names
-never establish application authority. Keep installed `854265b1` safe; no reset,
+never establish application authority. Keep installed `772bd5c0` safe; no reset,
 flash, new allowance or device session is required merely to record this task.
 No wider parity claim, helper transport or weakened session binding is allowed.
 
@@ -4933,9 +4933,45 @@ SHA-256 `8d2e6b669fad94caf4d7cf9dd4b873e841599ef52690ef226c101c788d8a9756`.
 The supervisor/observer rerun passes all 37 tests. All 95 canonical firmware
 tests, the native firmware package, USB ownership, reference, redaction, parity
 and progress checks pass. Standards and scoped Markdown/diff checks pass.
-Earlier failed and interrupted checks remain historical evidence. Hardware attempt 003 has not started; its
+Earlier failed and interrupted checks remain historical evidence. At that publication, hardware attempt 003 had not started; its
 exact-pair package, detector, no-mining cycle, recovery and cleanup gates remain
 mandatory before effects or acceptance.
+
+Attempt-003 | 2026-09-10: Exact firmware `772bd5c0` / Gate `54dd512` passed
+initial installation, four no-mining update/reconnect cycles and fresh 65536-byte
+exchanges. The precise status interruption positively proved consumed bytes,
+pending response and completed release. Fresh Hello/possession recovered without
+a drain, but discarded one record and zero control replies (2136 skipped bytes).
+The official judge retained `no_mining_stale_recovery_missing`; the consumed
+attempt is sealed as `stop_impossible_contract` at
+`complete_stale_control_reply_not_observed`. No acceptance or parity promotion.
+
+Both ledgers remained unchanged; final baseline/lease/mine-on-boot state was
+safe, the tab closed, the supervisor exited and serial holders cleared. All 13
+runtime artifacts and supporting observations revalidated independently. Host
+output permissions were corrected with unchanged bytes; future permitted flash
+callers require `umask 077`. Two unsupported auditor assumptions were corrected
+against the fixed-serial/redaction producers without changing the official judge.
+See [attempt review](docs/parity/evidence/20260910-hello-recovery-attempt-003.md).
+
+Offline continuation | 2026-09-10: A pinned production-channel fixture proved
+that an entire valid reply can already be in the channel reader while hashing
+keeps its response logically pending; the positive interruption receipt is not
+proof of undelivered output. One test/six assertions passed with no hardware.
+This does not assign the physical attempt's cause. Current diagnostics cannot
+distinguish non-dispatch, completed/partial TX and already-read response bytes.
+Another unchanged fault is not authorized. A successor needs a distinct diagnosed
+cause, relevant-boundary regression, verified fix and published fresh contract;
+adding instrumentation alone cannot bypass the progress gate. Keep this task
+open and preserve all sealed attempts. No new ordinal is selected here.
+
+Finalization verification | 2026-09-11: Ordered Cargo gates and all 100
+canonical targets passed, as did reference, redaction, parity/progress,
+standards and scoped Markdown checks. A separate historical failure auditor
+revalidated the 104-file seal, four cycles, positive interruption, unchanged
+accounting, final 35-record journal and 13 artifacts using the preserved
+manifest. Its result explicitly remains strict_success=false with the original
+missing-reply guard. No source fix or further hardware attempt is claimed.
 
 ## Future
 
