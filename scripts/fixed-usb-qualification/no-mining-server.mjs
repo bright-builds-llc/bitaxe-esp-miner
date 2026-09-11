@@ -1,3 +1,4 @@
+import { saveNoMiningReadOnlyInterruption } from "./no-mining-interruption.mjs";
 import { readFrozenCampaign, saveNoMiningAccounting } from "./no-mining-accounting.mjs";
 import { createServer } from "node:http";
 import { readFile, readdir } from "node:fs/promises";
@@ -52,6 +53,11 @@ export async function createNoMiningSupervisor(options, operations = {}) {
       await readFrozenCampaign(context);
       await recordQueue;
       return send(response, 200, await saveNoMiningAccounting(root, context, await body(request)));
+    }
+    if (request.method === "POST" && url.pathname === "/read-only-interruption") {
+      await verify();
+      await recordQueue;
+      return send(response, 200, await saveNoMiningReadOnlyInterruption(root, context, await body(request)));
     }
     if (request.method === "POST" && url.pathname === "/record") {
       const input = await body(request);

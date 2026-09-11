@@ -134,6 +134,12 @@ js_test(
 )
 
 js_test(
+    name = "fixed_usb_no_mining_client_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/no-mining-client.test.mjs",
+)
+
+js_test(
     name = "fixed_usb_successor_test",
     data = [":fixed_usb_qualification_sources"],
     entry_point = "fixed-usb-qualification/successor.test.mjs",

@@ -11,6 +11,7 @@ import { noMiningPreflight, inspectNoMiningSources, verifyNoMiningFrozen } from 
 import { createNoMiningSupervisor } from "./no-mining-server.mjs";
 import { readFrozenCampaign, saveNoMiningAccounting } from "./no-mining-accounting.mjs";
 import { finishNoMining, validateNoMiningReview } from "./no-mining-judge.mjs";
+import { validateNoMiningReadOnlyInterruption } from "./no-mining-interruption.mjs";
 import { judgeWindow } from "./judge.mjs";
 import { recordCycle } from "./store.mjs";
 import { main } from "./main.mjs";
@@ -394,4 +395,93 @@ test("discarded reply counts cannot exceed the observed record count", async (t)
   const f = await prepared(t, true), reviewed = review(f.context);
   reviewed.recovery_after.helloRecovery.discardedReplies = 3;
   assert.throws(() => validateNoMiningReview(reviewed, f.context, cycle(f.context, 4)), /hello_recovery_reply_shape/u);
+});
+
+function interruptionInput(context) {
+  return { receipt: { schema: "worker-read-interruption-v1", interrupted: true, request_consumed: true, response_pending: true, ownership_released: true },
+    before: state(context), after: state(context, { status: "closed", connected: false, serialOwnershipReleased: true }) };
+}
+function interruptionRecords(context, input) {
+  return [input.before, input.after].map((state, index) => ({ schema: "fixed-usb-no-mining-state-v1",
+    context_sha256: digest(JSON.stringify(context)), sequence: index + 1, state }));
+}
+async function postInterruptionStates(f, input) {
+  for (const state of [input.before, input.after]) assert.equal((await f.request("/record", { state })).status, 200);
+}
+test("consumed read-only interruption records bind exact ordered browser states and digests", async (t) => {
+  // Arrange
+  const f = await serving(t), input = interruptionInput(f.context);
+  await postInterruptionStates(f, input);
+  // Act
+  const response = await f.request("/read-only-interruption", input);
+  // Assert
+  assert.equal(response.status, 200);
+  const saved = JSON.parse(await readFile(resolve(f.options.privateRoot, "no-mining-read-only-interruption.json"), "utf8"));
+  assert.deepEqual(saved, validateNoMiningReadOnlyInterruption(input, f.context, interruptionRecords(f.context, input)));
+  assert.equal(saved.before_sequence, 1);
+  assert.equal(saved.after_sequence, 2);
+  assert.equal(saved.receipt_sha256, digest(JSON.stringify(input.receipt)));
+  assert.equal(saved.hardware_execution_claimed_by_supervisor, false);
+});
+test("missing request consumption is preserved as unqualified without a passing receipt", async (t) => {
+  const f = await serving(t), input = interruptionInput(f.context);
+  input.receipt.request_consumed = false;
+  await postInterruptionStates(f, input);
+  const response = await f.request("/read-only-interruption", input);
+  assert.equal(response.status, 400);
+  assert.equal((await response.json()).error, "read_only_interruption_not_observed");
+  const attempt = JSON.parse(await readFile(resolve(f.options.privateRoot, "no-mining-read-only-interruption-attempt.json"), "utf8"));
+  assert.equal(attempt.outcome, "unqualified");
+  assert.equal(attempt.input.receipt.request_consumed, false);
+  assert(!(await readdir(f.options.privateRoot)).includes("no-mining-read-only-interruption.json"));
+});
+test("already-received replies retain the ready no-interruption outcome without retry", async (t) => {
+  const f = await serving(t), input = interruptionInput(f.context);
+  input.receipt.interrupted = false;
+  input.receipt.response_pending = false;
+  input.receipt.ownership_released = false;
+  input.after = input.before;
+  await postInterruptionStates(f, input);
+  assert.equal((await f.request("/read-only-interruption", input)).status, 400);
+  const path = resolve(f.options.privateRoot, "no-mining-read-only-interruption-attempt.json");
+  const before = await readFile(path, "utf8");
+  assert.equal(JSON.parse(before).input.after.status, "ready");
+  assert.equal((await f.request("/read-only-interruption", input)).status, 400);
+  assert.equal(await readFile(path, "utf8"), before);
+  assert(!(await readdir(f.options.privateRoot)).includes("no-mining-read-only-interruption.json"));
+});
+test("read-only interruption cannot qualify a nonbaseline or active-lease observation", async (t) => {
+  const f = await prepared(t);
+  for (const change of [{ deviceBaselineConfirmed: false }, { deviceLeaseInactive: false }, { running: true }]) {
+    const input = interruptionInput(f.context);
+    Object.assign(input.before, change);
+    assert.throws(() => validateNoMiningReadOnlyInterruption(input, f.context, interruptionRecords(f.context, input)), /read_only_interruption_baseline/u);
+  }
+});
+test("read-only interruption requires actual release and matching ordered journal observations", async (t) => {
+  const f = await prepared(t), input = interruptionInput(f.context);
+  const unreleased = structuredClone(input);
+  unreleased.after.serialOwnershipReleased = false;
+  assert.throws(() => validateNoMiningReadOnlyInterruption(unreleased, f.context, interruptionRecords(f.context, unreleased)), /read_only_interruption_release/u);
+  const mismatch = interruptionRecords(f.context, input);
+  mismatch[0].state = { ...input.before, helloRecovery: { discardedRecords: 0, discardedBytes: 10, discardedReplies: 0 } };
+  assert.throws(() => validateNoMiningReadOnlyInterruption(input, f.context, mismatch), /read_only_interruption_journal/u);
+  const reopened = interruptionRecords(f.context, input);
+  reopened.push({ ...reopened[0], sequence: 3 });
+  assert.throws(() => validateNoMiningReadOnlyInterruption(input, f.context, reopened), /read_only_interruption_journal/u);
+});
+test("duplicate read-only interruption cannot replace the immutable qualified receipt", async (t) => {
+  const f = await serving(t), input = interruptionInput(f.context);
+  await postInterruptionStates(f, input);
+  assert.equal((await f.request("/read-only-interruption", input)).status, 200);
+  const path = resolve(f.options.privateRoot, "no-mining-read-only-interruption.json"), before = await readFile(path, "utf8");
+  assert.equal((await f.request("/read-only-interruption", input)).status, 400);
+  assert.equal(await readFile(path, "utf8"), before);
+});
+test("read-only interruption rejects cross-origin and raw fields before persistence", async (t) => {
+  const f = await serving(t), input = interruptionInput(f.context);
+  await postInterruptionStates(f, input);
+  assert.equal((await f.request("/read-only-interruption", input, "http://untrusted.invalid")).status, 400);
+  assert.equal((await f.request("/read-only-interruption", { ...input, raw_serial: "forbidden" })).status, 400);
+  assert(!(await readdir(f.options.privateRoot)).some((name) => name.startsWith("no-mining-read-only-interruption")));
 });

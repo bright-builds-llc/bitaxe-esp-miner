@@ -9,6 +9,7 @@ note.textContent = "No-mining qualification. Close the Worker connection before 
 document.body.append(note);
 let queue = Promise.resolve();
 let recordFailed = false;
+let readOnlyInterruptionAttempted = false;
 const maybeOutput = document.querySelector("#state");
 if (maybeOutput) new MutationObserver(() => {
   const maybeState = window.workerAcceptance?.state();
@@ -43,4 +44,25 @@ async function recordAccounting(stage) {
   // Never expose the original campaign identifier through this observer API.
   return receipt;
 }
-Object.assign(window, { noMiningSupervisor: { flush, recordAccounting } });
+function publishedState() {
+  const maybeState = document.querySelector("#state");
+  if (!maybeState?.textContent) throw new Error("read_only_interruption_state_missing");
+  return JSON.parse(maybeState.textContent);
+}
+async function interruptReadOnlyStatus() {
+  if (readOnlyInterruptionAttempted) throw new Error("read_only_interruption_already_attempted");
+  await flush();
+  if (readOnlyInterruptionAttempted) throw new Error("read_only_interruption_already_attempted");
+  const before = publishedState();
+  if (before.status !== "ready" || !before.connected || before.running || !before.deviceLeaseInactive ||
+    before.deviceBaselineConfirmed !== true || before.failure || before.serialOwnershipReleased || before.renewalsConfirmed !== 0 ||
+    !before.preservation?.device_identity_match || !before.preservation.settings_match ||
+    !before.preservation.authorization_high_water_match || before.preservation.mine_on_boot !== false)
+    throw new Error("read_only_interruption_baseline");
+  readOnlyInterruptionAttempted = true;
+  const receipt = await window.workerAcceptance.interruptPendingStatusForQualification();
+  await flush();
+  const after = publishedState();
+  return post("/read-only-interruption", { receipt, before, after });
+}
+Object.assign(window, { noMiningSupervisor: { flush, recordAccounting, interruptReadOnlyStatus } });
