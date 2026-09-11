@@ -10,6 +10,13 @@ function runfileRoot(): string {
     : path.join(maybeRunfiles, "_main");
 }
 
+test("host diagnostic bootstrap preserves positional arguments without echoing them", async () => {
+  // Arrange
+  const justfile = await readFile(path.join(runfileRoot(), "Justfile"), "utf8");
+  // Act / Assert
+  assert.match(justfile, /\[positional-arguments\]\n@diagnose-host-stalls \*args:\n\s+node scripts\/host-stalls\/main\.mjs "\$@"/u);
+});
+
 test("redaction CI uses the host toolchain and bare semantic command", async () => {
   // Arrange
   const root = runfileRoot();
@@ -24,7 +31,7 @@ test("redaction CI uses the host toolchain and bare semantic command", async () 
   // Assert
   assert.match(
     bazelConfig,
-    /^build --workspace_status_command="cargo \+stable run --quiet -p xtask -- build-identity-status"$/mu,
+    /^build --workspace_status_command="cargo \+stable run --quiet -p xtask --target-dir \.bazel-workspace-status-target -- build-identity-status"$/mu,
   );
   assert.match(workflow, /^\s*run: just verify-redaction$/mu);
   for (const legacy of removedSurface) assert.equal(workflow.includes(legacy), false);

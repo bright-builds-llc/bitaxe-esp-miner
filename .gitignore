@@ -4,6 +4,7 @@ bazel-*
 target/
 /.bazel-firmware-target/
 /.bazel-firmware-rollback-probe-target/
+/.bazel-workspace-status-target/
 .embuild/
 /.planning/phases/**/hardware-runs/
 /.planning/milestones/**/hardware-runs/

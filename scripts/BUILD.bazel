@@ -2,6 +2,41 @@ load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_library", "js_test")
 
 package(default_visibility = ["//visibility:private"])
 
+filegroup(
+    name = "host_stall_sources",
+    srcs = glob(["host-stalls/*.mjs", "host-stalls/fixtures/*"]),
+)
+
+js_test(
+    name = "host_stall_recorder_test",
+    data = [":host_stall_sources"],
+    entry_point = "host-stalls/runner.test.mjs",
+)
+
+js_test(
+    name = "host_stall_probe_test",
+    data = [":host_stall_sources"],
+    entry_point = "host-stalls/probe.test.mjs",
+)
+
+js_test(
+    name = "host_stall_cli_test",
+    data = [":host_stall_sources"],
+    entry_point = "host-stalls/main.test.mjs",
+)
+
+js_test(
+    name = "host_stall_cargo_lock_test",
+    data = [":host_stall_sources"],
+    entry_point = "host-stalls/cargo-lock-experiment.test.mjs",
+)
+
+js_test(
+    name = "host_stall_cargo_jobs_test",
+    data = [":host_stall_sources"],
+    entry_point = "host-stalls/cargo-jobs-experiment.test.mjs",
+)
+
 exports_files([
     "build-identity-pathspecs.txt",
     "build_identity.bzl",

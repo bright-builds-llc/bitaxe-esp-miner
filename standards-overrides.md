@@ -4,9 +4,9 @@ Use this file to record deliberate deviations from the canonical coding and arch
 
 ## Active overrides
 
-| Standard | Local decision | Rationale | Owner | Review date |
-| --- | --- | --- | --- | --- |
-| `REPLACE_WITH_STANDARD` | `REPLACE_WITH_LOCAL_DECISION` | `REPLACE_WITH_REASON` | `REPLACE_WITH_OWNER` | `REPLACE_WITH_DATE` |
+| Standard                                  | Local decision                                                                                     | Rationale                                                                                            | Owner                  | Review date |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------- | ----------- |
+| Build orchestration: `just` invokes Bazel | Only `diagnose-host-stalls` starts the installed Node runtime directly. Its tests remain in Bazel. | The recorder must start before Bazel to observe Bazel startup and Cargo workspace-status lock waits. | Repository maintainers | 2026-09-10  |
 
 ## Notes
 

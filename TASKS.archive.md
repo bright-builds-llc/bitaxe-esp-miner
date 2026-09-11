@@ -14804,3 +14804,75 @@ passed without changing or deleting that cache.
 Residual risks: this repairs plan selection, not the Noise-auth task's current
 hardware prerequisites or successor effect contract. No hardware session,
 parity promotion, or historical-plan rewrite occurred.
+
+### task-host-stall-diagnostics | 2026-09-10 | Capture and distinguish native execution stalls
+
+- [x] Implement a host command recorder with monotonic stage timing, bounded
+  private output, owned-process identity and quiet-triggered snapshots.
+- [x] Build a reusable Rust entry-marker probe and compare identical artifacts
+  through agent execution and a real Terminal session, preserving successes and
+  delays without attributing an OS-wide cause from one execution environment.
+- [x] Exercise recorder failures, quiet-but-successful commands, cancellation,
+  descendants, privacy and capture limits through deterministic integration tests.
+- [x] Compare concurrency and target-directory conditions one variable at a time;
+  isolate Bazel workspace-status Cargo output after measuring shared-lock effects.
+- [x] Document commands, evidence interpretation and residual uncertainty; run
+  required checks, review the diff, archive the completed task and publish.
+
+Plan: implement the recorder and probe independently; establish their red-capable
+self-tests before real measurements; collect agent/Terminal comparisons and
+controlled lock evidence; make only evidence-supported build orchestration
+changes; verify and preserve the result. The prior native-launch, loader,
+directory-read and Cargo-lock observations remain separate signatures.
+
+Scope and effects: host-only commands, local temporary build fixtures and user-run
+Terminal sessions. Experiments perform no device, USB, mining, credential, Work
+Lease signing or network-account operations. The human diagnostic command starts directly with the installed Node
+runtime so it can observe Bazel/Cargo startup and lock waits; routing its launcher
+through Bazel would hide that boundary. Tests remain in the canonical Bazel graph.
+This is a deliberate diagnostic-bootstrap exception to just-to-Bazel routing.
+
+Evidence: ignored mode-0700 roots, mode-0600 evidence files and mode-0700
+probe executables, allowlisted environment fields,
+command/output retained privately with bounded sizes. No complete environment or
+unrelated-process arguments. Sample only tracked live process identities; record
+capture failures explicitly. Quiet output triggers bounded diagnostics, not a
+failure verdict or automatic retry. An explicit overall deadline or interruption
+stops only owned process groups and records cleanup. Never widen test or device
+deadlines, clear broad caches, change security settings, or restart host services.
+
+Acceptance: self-tests catch the intended stall/cleanup boundaries; paired runs
+bind the same executable digest and recorded conditions; reports distinguish
+observed delays, tool delivery gaps and untested hypotheses. Lack of a live stall
+is reported as non-reproduction, not proof of a fix. Preserve prior evidence.
+
+Completion review | 2026-09-10: Implemented the direct host recorder, immutable
+entry-marker probe, strict comparison, bounded Cargo lock/jobs experiments and
+published command guidance. Fifteen same-binary launches passed across agent,
+app-hosted interactive shell and externally confirmed Terminal.app; no original
+native stall reproduced. Shared Cargo status targets added approximately 5.2s
+of real lock delay; separate targets entered in 150–190ms. Dedicated workspace
+status preserved byte-identical output. One/two-job controls showed expected
+serial/parallel scheduling without a stall. The recorder's quiet capture and
+quoted-argument/privacy smoke passed.
+
+Verification: 64 focused diagnostic tests; ordered Cargo format, Clippy, build
+and tests (2154 passed, one existing ignored); all 100 canonical Bazel targets;
+native firmware package; reference, redaction, parity/progress, standards and
+scoped Markdown/Rust-fixture formatting checks passed. Initial recorder failure
+under canonical load was preserved and fixed with compact process metadata,
+bounded failed-cleanup handle release and regression coverage. Final review
+also corrected cancellation, malformed comparison and public-error privacy
+boundaries. No test/device deadline or signal authority was widened.
+
+Evidence and usage: [investigation report](docs/development/host-stall-results-20260910.md)
+and [command guide](docs/development/host-stall-diagnostics.md). Private traces,
+comparison series, marker files, timing HTMLs, failure records and copy manifests
+remain under `scratch/host-stalls-20260910`.
+
+Residuals: intermittent loader/filesystem causes remain unproven. The recorder
+cannot adopt an existing shared Bazel server; macOS identity checks are not
+atomic and deliberately daemonized processes may escape polling. Missing
+ownership produces an explicit cleanup failure. Future native-stall diagnosis
+needs a captured recurrence, not a claim that these successful observations
+fixed it. Hardware qualification is separate and remains open.

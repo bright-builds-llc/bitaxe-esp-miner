@@ -1,6 +1,11 @@
 doctor:
     bazel run //tools/automation:doctor
 
+# Starts before Bazel so its startup and Cargo status-lock waits are observable.
+[positional-arguments]
+@diagnose-host-stalls *args:
+    node scripts/host-stalls/main.mjs "$@"
+
 bootstrap-esp *args:
     bazel run //tools/automation:bootstrap_esp -- {{ args }}
 
