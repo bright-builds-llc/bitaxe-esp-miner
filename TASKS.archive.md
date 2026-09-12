@@ -14876,3 +14876,451 @@ atomic and deliberately daemonized processes may escape polling. Missing
 ownership produces an explicit cleanup failure. Future native-stall diagnosis
 needs a captured recurrence, not a claim that these successful observations
 fixed it. Hardware qualification is separate and remains open.
+
+### task-fixed-usb-hello-resynchronization | 2026-09-08 | Recover fresh browser sessions after stale device replies
+
+Status: completed under the prospectively approved version-5 contract. Earlier
+attempts 001–003 retain their original unverified outcomes. Successor to completed
+`task-worker-preparation-panic-qualification` and the fixed-USB qualification
+recovery obligation. See [final acceptance evidence](docs/parity/evidence/20260908-worker-preparation-live-acceptance.md).
+
+Execution plan | 2026-09-10: Reproduce the stale-complete-reply boundary in
+Gate's production Web Serial harness; implement the smallest bounded bootstrap
+correction with adversarial identity/deadline/cleanup regressions; verify and
+publish Gate, then consume its exact archive in firmware. Define and publish
+the no-mining qualification contract before device effects, run four exact-pair
+continuity cycles and fresh-session recovery, and seal redacted results. Review
+the diff and archive this task only after its exact acceptance criteria pass.
+AGENTS.md, the Bright Builds sidecar, architecture/testing/verification standards,
+ADRs 0021/0023 and fixed native-USB ownership govern this work.
+
+Attempt-002 software baseline: Gate `627a537396d022f3087ee3837f811c44d28d5b5f` was pushed
+and its archive SHA-256 `67ad2c96de19df8fcc5ee05750c61a7ec2fc9de035badb3e4ac5da426bc8f95f`
+was pinned. The original stale-reply admission failure is reproduced and fixed;
+59 focused browser tests and all Gate gates pass (352 Rust, two existing ignored;
+454 web/crypto tests; browser, type/build/package/lookup/standards). Firmware's
+ordered Rust gates pass (2154 tests, one existing ignored). The dedicated
+no-mining supervisor requires real release/reconnect journal ordering and
+unchanged immutable accounting receipts. All 94 canonical tests, real ESP32-S3
+build/package, ownership/symbols, reference, redaction, parity/progress and
+standards checks pass. Final supervisor review corrections passed its 27 tests.
+These software checks do not establish physical acceptance. The first bounded
+hardware observations and their unresolved evidence boundary are recorded below.
+
+Pre-hardware follow-up: a queued possession-profile response from interrupted
+admission reproduced `admission_failed` against the first Gate fix. The existing
+possession response/claims parser now validates that old response for discard
+without granting possession; the new session still proves its own transcript.
+All 43 focused cases and supplemental full verification pass; Gate is published.
+The final pinned native package preceded the first device attempt.
+
+- [x] Reproduce stale complete device-to-host records preceding HelloAck after
+  abrupt loss and interrupted admission using the production browser channel.
+- [x] Implement bounded fresh-session resynchronization that rejects wrong
+  identity, stale replies and absent fresh acknowledgment without granting work.
+- [x] Verify fragmentation/coalescing, stale/oversized input, bounded deadlines,
+  reconnect history and stream/lock release; preserve possession/replay rules.
+- [x] Define and publish an exact no-mining hardware command/evidence/recovery
+  contract before effects; any changed runtime pair requires four current-image
+  no-mining cycles. Existing completed allowances authorize no new mining here.
+- [ ] Prove fresh recovery without the CLI receive-only drain, exact identity,
+  unchanged accounting/settings, safe mining-disabled state and complete cleanup.
+
+Residual: successful foreground/heartbeat acceptance required the published
+bounded receive-only drain before fresh Hello. Fixed descriptors and port names
+never establish application authority. Keep installed `772bd5c0` safe; no reset,
+flash, new allowance or device session is required merely to record this task.
+No wider parity claim, helper transport or weakened session binding is allowed.
+
+No-mining hardware contract | 2026-09-10 | hello-recovery-001
+
+Objective: qualify the published bounded browser Hello recovery with fixed
+Serial/JTAG on exactly one admitted Ultra 205. The Gate runtime changes, so a
+fresh exact firmware/Gate pair must pass four no-mining update/reconnect cycles.
+Preserve the installed Device Identity, settings, authorization high-water
+marks, original exhausted campaign, and qualification-attempt ledger. This
+contract grants no mining or signing allowance and supersedes no old evidence.
+
+Before effects: complete ordered Cargo gates, Gate verification, canonical
+Bazel tests/package, native USB ownership, reference, redaction, standards and
+diff review; publish Gate, pin its exact archive, then publish firmware/task
+contract. Build `just package` at that clean pushed firmware HEAD. Resolve the
+Gate commit from MODULE.bazel and require its clean pushed checkout and bundle.
+Create mode-0700 `scratch/hello-recovery-20260910`; the supervisor exclusively
+creates its absent `attempt-001` child. Detector/flash output uses distinct
+mode-0600 sibling logs. Existing original campaign input is read-only:
+`scratch/fixed-usb-qualification-20260904/campaign.json`; never print its value.
+
+Commands, with `FIRMWARE_SHA` and `GATE_SHA` bound to those exact published
+commits and `PORT` taken only from fresh same-device admission:
+
+Resolve path arguments absolutely from the firmware repository before launching
+Bazel; relative paths below identify the repository-owned locations.
+
+```text
+just detect-ultra205
+just fixed-usb-qualification no-mining-preflight --firmware-root /Users/peterryszkiewicz/Repos/bitaxe-esp-miner --gate-root /Users/peterryszkiewicz/Repos/bitaxe-turnstile-system --firmware-commit FIRMWARE_SHA --gate-commit GATE_SHA --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --private-root scratch/hello-recovery-20260910/attempt-001 --original-campaign-record scratch/fixed-usb-qualification-20260904/campaign.json
+just fixed-usb-qualification no-mining-serve --private-root scratch/hello-recovery-20260910/attempt-001
+just flash-monitor --board 205 --port PORT --manifest bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json --evidence-dir scratch/hello-recovery-20260910/install-001 --capture-timeout-seconds 30 --redact-evidence
+just fixed-usb-qualification record-cycle --private-root scratch/hello-recovery-20260910/attempt-001 --input PRIVATE_CYCLE_REPORT
+just fixed-usb-qualification no-mining-judge --private-root scratch/hello-recovery-20260910/attempt-001 --input PRIVATE_REVIEW
+```
+
+The task-specific 30-second flash-monitor capture is a bounded no-mining
+safe-baseline smoke using the existing exact-source/ELF and advancing-runtime
+classifier; it does not replace general 360-second bring-up evidence. Use
+fresh `cycle-001` through `cycle-004` evidence directories for the four later
+same-package flashes. Every write requires same-physical-device ownership and
+successful ESP32-S3 ROM board-info. Admit the existing validated disjoint update
+segments only; never provision or erase NVS. Standard flash-owned application
+return/reset is allowed once per write; no standalone reset or reflash retry
+is authorized merely because browser admission failed.
+
+Browser/evidence sequence: use only the served no-mining page in macOS Chrome,
+with the original campaign identifier obtained inside that local page through
+the read-only supervisor route. Record both ledgers before/after, retain the
+page's private preservation baseline, await completed Connect, record exact
+identity and inactive/restored/mine-on-boot-false state, and run the 65536-byte
+probe. Release streams/locks and prove no unexpected USB holder before every
+flash. Reconnect and record each real cycle against the same baseline. Preserve
+all original command/browser samples; validators alone are not physical proof.
+
+After four cycles, exercise one baseline foreground-loss disconnect while a
+read-only refresh/probe is pending, and one cancellation during fresh Connect
+using the existing Close action. These are no-work transport interruptions;
+never load/start a window, suppress heartbeats during work, or request ASIC,
+fan/voltage, pool, provisioning or network-discovery effects. Record actual
+visible/hidden transitions, completed closure and a fresh explicit Connect.
+Require at least one observed stale complete record discarded within 32 records
+and 66560 skipped wire bytes, followed by completed exact-identity possession,
+safe restoration and unchanged accounting. If no stale backlog occurs, retain
+the valid continuity evidence and report that hardware criterion unverified;
+do not manufacture or inject device records or blindly repeat the fault.
+
+Recovery/stop: after an interrupted admission, await owner cleanup, retain
+provided USB/barrel power, and permit one fresh explicit browser session under
+the same exact pair. No CLI drain is permitted for this acceptance. On failed
+fresh admission, unexpected identity/holder, detector ambiguity, unsafe state,
+changed accounting/preservation, write/runtime failure, missing evidence or
+unproved cleanup, stop effects, preserve the earliest boundary and leave the
+task open. Fix/retest/publish before a new progress-backed ordinal; no unchanged
+retry, new mining reservation, direct UART/pins, factory reset, arbitrary write
+or speculative power manipulation. No human-response timeout is introduced.
+
+Finish: confirm restored baseline and inactive lease, mine-on-boot false,
+unchanged ledgers/preservation, browser streams/locks closed, supervisor reaped
+and both USB nodes holder-free. Keep private evidence mode 0600 under the ignored
+0700 root; committed evidence contains only validated closed counts/categories,
+public source/artifact hashes and explicit non-claims. Archive only this task
+after all its acceptance criteria pass; broader migration/qualification records
+are separate. No automatic checklist promotion.
+
+Attempt-001 | 2026-09-10: Exact firmware `1b888f44` / Gate `ad961ea` installed
+and reached fresh browser admission with idle lease and mine-on-boot false.
+The no-mining checker could not represent the valid cold `not_required`
+baseline. Closed as `stop_impossible_contract:cold_baseline_evidence` before
+cycles or fault tests. Browser/USB/server cleanup passed; original artifacts
+and observations are sealed. See [attempt review](docs/parity/evidence/20260910-hello-recovery-attempt-001.md).
+
+Successor contract | hello-recovery-002: After the explicit cold-baseline
+producer/checker correction passes all gates and both sources are published,
+use the same no-mining commands and constraints with fresh supervisor child
+`attempt-002`, initial flash child `install-002`, and four later flash children
+`attempt-002-cycle-001` through `attempt-002-cycle-004`. All paths remain under
+`scratch/hello-recovery-20260910`; each child must be absent before its owner
+creates it. Revalidate the new exact clean package before fresh detection.
+The new `deviceBaselineConfirmed` observation must be true from an actual
+baseline status with `confirmed` or `not_required`; inactive lease, preserved
+settings/accounting, no mining, exact identity, live journal ordering and final
+cleanup remain mandatory. Keep the distinct restoration-confirmation flag and
+all live-mining restoration judgments strict. No retry of the sealed first
+child or old package, no new mining allowance, and no CLI drain is authorized.
+This evidence correction grants no new hardware effect beyond the existing
+no-mining contract. A repeated post-fix boundary signature stops.
+
+Reply-specific evidence: the successor also records `helloRecovery.discardedReplies`
+for validated old Controller or possession responses. Require a positive value
+bounded by the total discarded record count; old receive credits alone cannot
+prove the newly repaired path. Preserve the 32-record/66560-byte limits and all
+fresh nonce, identity, possession, journal, accounting and cleanup requirements.
+
+Successor verification: all 94 canonical targets and ownership, reference,
+redaction, parity-progress and standards checks pass. One existing automation
+error-type assertion failed once, then passed the exact filtered test and the
+unchanged full rerun; no related code or deadline changed. Gate's full gates
+passed with debug information disabled after preserving a default-profile
+loader stall. Hardware attempt 002 remains pending at this publication.
+
+Attempt-002 | 2026-09-10: Four cycles, both planned pending-operation
+interruptions, fresh recovery without a drain, preservation and unchanged
+accounting passed. The final two connections each discarded one record but no
+control reply. The strict judge retained `no_mining_stale_recovery_missing`;
+the attempt closed as `stop_impossible_contract` at
+`complete_stale_control_reply_not_observed`. Independent audit confirmed the
+supporting observations and non-claim. USB/server/tab cleanup and all 13 copied
+artifacts verified. See [attempt review](docs/parity/evidence/20260910-hello-recovery-attempt-002.md).
+
+Next software work: establish a qualification-only interruption after actual
+device receive-credit confirmation of a complete ordinary read-only request,
+while its correlated response is still pending. It must require an explicit
+qualification hook, a fresh inactive baseline and the same generation, exclude
+concurrent work admission, close without additional wire traffic, and return
+only a closed receipt. No frame synthesis, replay injection, mining, signing,
+firmware delay, relaxed deadline or hardware effect is authorized by this
+software investigation. A complete published successor contract and passing
+real-boundary regressions are required before another device ordinal.
+
+Successor contract | hello-recovery-003: Once the consumed-request production
+regressions, receipt validation and all required gates pass, publish the exact
+new Gate/firmware pair and build its clean package. Apply the same no-mining
+preflight, detector, state-preserving installation, four current-image cycles,
+65536-byte probes, accounting, privacy and cleanup requirements above. Use only
+fresh `attempt-003`, `install-003` and `attempt-003-cycle-001` through
+`attempt-003-cycle-004` children beneath `scratch/hello-recovery-20260910`.
+The software change establishes an actual receive-credit/pending-response
+boundary; it does not justify repeating either sealed attempt's faults.
+
+After four passing cycles, invoke exactly once the served repo-owned browser
+command `await window.noMiningSupervisor.interruptReadOnlyStatus()`. Its Gate
+operation requires an explicit qualification hook, completes one fresh real
+inactive-baseline status query in the same generation, excludes concurrent
+commands, then sends one additional ordinary status request for the bounded
+interruption and waits for normal channel receive-credit completion.
+It closes without additional wire traffic only while that correlated response
+is still pending. The supervisor preserves the immutable attempt and requires
+the positive consumed/pending/released receipt with ordered matching journal
+states in `no-mining-read-only-interruption.json`. No-interruption, missing
+credit, failed cleanup or receipt rejection consumes this fault and stops the
+attempt; do not repeat it or manufacture a stale reply.
+
+After positive interruption and proven owner release, wait at least three
+seconds measured from the positive ownership-release receipt to allow the
+existing device-local heartbeat deadline to expire, then make one fresh ordinary Connect
+with no drain. Require completed exact identity/possession, confirmed inactive
+baseline, unchanged preservation and a positive `discardedReplies` count within
+the existing limits. Record accounting after, close and flush the final journal,
+run the unchanged strict `no-mining-judge`, and independently validate the saved
+interruption against its journal prefix. Acceptance requires both judgments.
+Keep all 13 exact runtime artifacts before any subsequent rebuild. Other stop,
+recovery, effect and non-claim rules remain as above; there is no mining, signing,
+firmware delay, deadline relaxation, raw-record injection or unchanged retry.
+
+Software checkpoint | 2026-09-10: At the initial checkpoint, the precise
+consumed-request hook and private receipt recorder were implemented but
+uncommitted in the Gate and firmware worktrees. Gate's 71 focused browser tests and typecheck pass; firmware's
+34 no-mining and three observer tests pass, as do the three corresponding
+canonical test actions. A preceding full canonical firmware run passed all 94
+targets. The final focused Bazel invocation did not complete its build-identity
+step; passing test actions do not establish a completed command.
+
+That verification run was blocked. The original firmware Rust run stalled
+before a test frame; a no-debug rerun stalled loading a generated proc-macro.
+Scoped Cargo cleanup also stalled reading the build directory, and a fresh
+isolated target stalled launching build scripts. Traces and original exit
+outcomes are retained under protected `software-gates-003` evidence. A separate
+empty Rust program compiled successfully but its fresh executable did not
+launch within a bounded 15-second control observation. This establishes a
+native-launch blocker in this execution session, without identifying an OS-wide
+cause. No security setting, toolchain, test deadline or device deadline changed.
+
+Gate's full run separately hit an existing SSE expiry test timeout; its exact
+unchanged test and whole 21-test suite both passed on rerun. The full retry then
+stalled before a different Rust test entered any test frame. Both full failures
+remain preserved. All owned check processes were stopped and reaped; no new
+device session, flash, interruption, signing or mining occurred. Attempt 003
+remains unused and its contract is conditional on publication and completed
+gates. Resume by completing ordered checks in a working native execution
+environment, then publish Gate, pin/build/publish firmware and execute the
+exact successor contract. Publication was held pending completed software gates;
+task archival and final acceptance still require the missing hardware proof.
+
+Publication continuation | 2026-09-10: Native execution resumed without a
+security, toolchain or deadline change. Ordered firmware Cargo gates pass
+(2154 tests, one existing ignored). Gate full verification passes (352 Rust
+tests, two existing opt-in ignores; 462 web/crypto tests; browser, type, build,
+package, lookup and standards checks). Gate commit
+`54dd512cc53f8454a83f88e443e3fde3430362bb` is published and pinned with archive
+SHA-256 `8d2e6b669fad94caf4d7cf9dd4b873e841599ef52690ef226c101c788d8a9756`.
+The supervisor/observer rerun passes all 37 tests. All 95 canonical firmware
+tests, the native firmware package, USB ownership, reference, redaction, parity
+and progress checks pass. Standards and scoped Markdown/diff checks pass.
+Earlier failed and interrupted checks remain historical evidence. At that publication, hardware attempt 003 had not started; its
+exact-pair package, detector, no-mining cycle, recovery and cleanup gates remain
+mandatory before effects or acceptance.
+
+Attempt-003 | 2026-09-10: Exact firmware `772bd5c0` / Gate `54dd512` passed
+initial installation, four no-mining update/reconnect cycles and fresh 65536-byte
+exchanges. The precise status interruption positively proved consumed bytes,
+pending response and completed release. Fresh Hello/possession recovered without
+a drain, but discarded one record and zero control replies (2136 skipped bytes).
+The official judge retained `no_mining_stale_recovery_missing`; the consumed
+attempt is sealed as `stop_impossible_contract` at
+`complete_stale_control_reply_not_observed`. No acceptance or parity promotion.
+
+Both ledgers remained unchanged; final baseline/lease/mine-on-boot state was
+safe, the tab closed, the supervisor exited and serial holders cleared. All 13
+runtime artifacts and supporting observations revalidated independently. Host
+output permissions were corrected with unchanged bytes; future permitted flash
+callers require `umask 077`. Two unsupported auditor assumptions were corrected
+against the fixed-serial/redaction producers without changing the official judge.
+See [attempt review](docs/parity/evidence/20260910-hello-recovery-attempt-003.md).
+
+Offline continuation | 2026-09-10: A pinned production-channel fixture proved
+that an entire valid reply can already be in the channel reader while hashing
+keeps its response logically pending; the positive interruption receipt is not
+proof of undelivered output. One test/six assertions passed with no hardware.
+This does not assign the physical attempt's cause. Current diagnostics cannot
+distinguish non-dispatch, completed/partial TX and already-read response bytes.
+Another unchanged fault is not authorized. A successor needs a distinct diagnosed
+cause, relevant-boundary regression, verified fix and published fresh contract;
+adding instrumentation alone cannot bypass the progress gate. Keep this task
+open and preserve all sealed attempts. No new ordinal is selected here.
+
+Finalization verification | 2026-09-11: Ordered Cargo gates and all 100
+canonical targets passed, as did reference, redaction, parity/progress,
+standards and scoped Markdown checks. A separate historical failure auditor
+revalidated the 104-file seal, four cycles, positive interruption, unchanged
+accounting, final 35-record journal and 13 artifacts using the preserved
+manifest. Its result explicitly remains strict_success=false with the original
+missing-reply guard. No source fix or further hardware attempt is claimed.
+
+Successor execution plan | 2026-09-11: The owner explicitly authorizes the
+recommended correlated diagnostics, prospective qualification correction, and
+true live-mining recovery test. Attempt 003 remains sealed and unverified. The
+reproduced repository defect is an evidence inference: a consumed request with
+a logically pending response does not prove that response bytes are undelivered.
+Fix the receipt and qualification contract at that actual browser boundary;
+instrumentation alone is not retry progress and no physical cause is assigned.
+
+- [x] Add bounded firmware and browser metadata traces that distinguish request
+  validation/dispatch, reply creation/transmission, native receipt, validation,
+  delivery and closure, retaining evidence across Hello without raw payloads.
+- [x] Promote the coalesced-credit/reply delayed-hash reproduction into a
+  regression and cover non-dispatch, partial TX, stale replies and trace bounds.
+- [x] Publish a versioned successor command contract separating deterministic
+  stale-reply software coverage from four exact-pair continuity cycles and
+  real-device mining-loss/reconnect/resumption proof. Keep prior judges unchanged.
+- [x] Complete source review, required ordered Cargo/browser/canonical checks,
+  exact Gate publication/pin and native package verification before effects.
+- [x] Run detector-admitted current-image continuity and bounded live recovery
+  with fresh 30000-ms qualification allowances in the existing ledger; preserve
+  the exhausted original campaign and all previous reservation charges.
+- [x] Verify real work before loss, device-local revocation/shutdown, fresh
+  Hello/possession without a CLI drain, exact identity/accounting/preservation,
+  real work after explicit reauthorization, cooling and final owner release.
+- [x] Seal original evidence, review redacted findings and report completion or
+  the earliest hard blocker. Iterate only after a targeted regression-backed fix.
+
+Pre-effect checkpoint: software work is authorized now. The exact successor
+schema, commands, evidence paths, allowance ordinals, recovery and stop policy
+will be recorded and published below before any device effect. Fixed Serial/JTAG,
+conservative hardware limits, three-second revocation, no factory reset or
+pin access, protected evidence and no automatic parity promotion remain in force.
+
+Live recovery contract | 2026-09-11: The complete narrowed command, objective,
+effects, privacy/evidence policy, safety limits, recovery/cleanup and progress
+stops are recorded in [Hello recovery qualification](docs/hardware/hello-recovery-qualification.md).
+The repo-owned entry is `just fixed-usb-qualification recovery-preflight`
+(version-5 context), followed by `serve`, four `record-cycle` observations and
+`iterative-judge`/the page completion route. All paths are absolute and protected.
+This supersedes only future test criteria; the old no-mining judge is unchanged.
+
+The existing independently revalidated ordinal-13 result selects loss ordinal
+14 with prior charge 1140000 ms. Use fresh child
+`scratch/qualification-implementation-20260907/iterative/hello-loss-014` and
+conditionally `hello-resume-015` in that same mode-0700 ledger parent. Each adds
+one full 30000-ms reservation only when the device admits Start. The legacy
+240000-ms exhausted campaign remains unchanged. The exact pushed source/package
+pair and progress-evidence hashes are bound by preflight before effects. The
+four no-mining cycles precede signing; no fixed ordinal cap or blind retry is
+introduced. Required trace exports are separate bounded browser/device records.
+
+Implementation checkpoint | 2026-09-11: Firmware capture uses 4168 native bytes
+of fixed storage and a single-attempt atomic guard, retaining current/previous
+epoch tails across Hello. The native package compile and owner-entry audit pass
+(4512-byte entry against 8192; the 24576-byte owner allocation and 4096-byte
+measured-free requirement are unchanged). That dirty-source verification package
+is ineligible for effects. Browser focused transport/recovery tests and all 483
+web/crypto tests pass. Full Gate Rust verification encountered quiet Clippy
+processes; canceled runs and controlled output-directory/concurrency variants
+remain preserved, with no toolchain, security or hardware-deadline changes.
+
+The root's first ordered run passed lint/build but exposed a two-millisecond
+loopback-handshake setup race in the existing 109-idle-interval WebSocket test.
+The original executable subsequently passed in isolation, confirming that the
+failure is intermittent. The fixture now gives setup one second and applies its
+unchanged two-millisecond read interval after handshake; production code and
+idle assertions are unchanged. A fresh ordered run owns fix verification.
+The misnamed `http-idle-fixed` prebuilt-binary observation is explicitly annotated
+as original-code evidence, not verification of the source edit.
+
+Supervisor tests cover immutable ordered loss receipts, complete trace/journal
+and prior-epoch binding, pre-sign baseline diagnostics, exact final-close binding,
+separate resumed generations and either heartbeat expiry or trace-backed link
+closure. Both remain subject to the unchanged three-second safety gate. No
+hardware session, flash, grant issuance or new reservation has occurred.
+
+Publication checkpoint | 2026-09-11: Gate
+`632db8110bc74d4a7e3dac60fd915a5900b81f6a` is published and pinned with archive
+SHA-256 `9025c151fb18d2fa3ef27c7af03dfc754855c04e5dd2f62c14e2930333f0510c`.
+Its exact-HEAD browser bundle is
+`9cafd6ab90f23f440a6556648cac51bf205e6454c361d271499c1f2c87fb84c5`.
+Gate's full verification and final browser follow-ups pass (352 Rust tests,
+two existing opt-in ignores; 497 web/crypto tests). Root ordered Cargo gates
+pass in a fresh output directory (2170 tests, one existing ignored); the original
+output directory was left untouched and its canceled run was fully reaped.
+This establishes completed verification, not a diagnosed filesystem/OS cause.
+
+All 200 supervisor tests pass, including the post-work authorization checkpoint.
+Accepted Start/Renew advances the durable authorization map, so the original
+baseline remains immutable while a separate private post-work digest is compared
+across fresh reconnect. Only a generation-bound checkpoint identifier and match
+result enter evidence; a mismatch stays failed. The explicit negative-permission
+fixture now sets its intended mode independently of the caller's protective
+umask. Root canonical tests, final source review/publication and the clean exact
+package remain before effects. The observer's real subprocess pre-arm/reap
+fixture passed without opening USB.
+
+Pre-publication timing review | 2026-09-11: The device's 15550-ms shutdown
+reservation covers only its pre-reset ASIC plan; cooling has a separate
+120000-ms bound. The live contract therefore waits 145000 ms after the recorded
+cut before the single fresh admission. This changes only when the observer
+reconnects, not the three-second local revocation/shutdown deadline, active
+mining allowance or evidence requirements. Elapsed time is never stop proof.
+
+Final software verification | 2026-09-11: All 103 canonical targets now pass.
+The first canonical run identified a missing trace backend in the synthetic
+session-cleanup test crate; that host fixture now supplies the pure trace store
+without changing production behavior. The final ordered Cargo run passes
+(2170 tests, one existing ignored), and the final supervisor suite passes all
+200 tests. Native compile/stack verification, reference and redaction checks
+pass. Gate is clean and published; root publication and the clean exact-HEAD
+package/preflight precede the selected hardware effects. All failed/canceled
+software runs remain under protected local evidence.
+
+Completion review | 2026-09-11: Closed outcome `complete`. The published
+6b6aa29e / Gate 632db811 pair passed all four fresh no-mining update/reconnect
+cycles, maximum-size exchanges, diagnostic mining-loss recovery and separately
+authorized resumed mining. Allowance 14 dispatched real work, released the
+channel without Restore/Close traffic, and recovered on the first fresh Hello
+without a CLI drain/reset/flash. Gate revocation was 2651 ms and shutdown began
+at 2676 ms; retained TX-abandonment/epoch-revocation evidence supports link closure.
+The post-work authorization checkpoint matched without resetting the original
+baseline. Allowance 15 produced new work in generation 3 and safely stopped.
+
+Both 30000-ms reservations remain charged. The qualification ledger is now next
+ordinal 16, total 1200000 ms, last completed 15, pending false; the original
+240000-ms campaign remains exhausted. Three ASIC nonce results were below the
+pool target; no accepted share or renewal is claimed. The device is restored
+with no active lease and mine-on-boot false. Both supervisors, owned processes,
+listeners and serial holders cleared; the qualification tab closed explicitly.
+The loss root was sealed before resume, and independent final verification bound
+both immutable inventories and all 26 runtime-artifact copies.
+
+The original unchecked no-mining stale-reply criterion above was superseded
+prospectively, not retroactively passed: recovery skipped zero control replies,
+so stale-reply hardware coverage remains false. Production-channel regressions
+cover that branch separately. The active successor checklist is complete;
+older failed evidence and unrelated parity statuses remain unchanged. See the
+[complete qualification report](docs/parity/evidence/20260911-hello-recovery-live.md).
+The qualified 6b6aa29e image remains installed after documentation finalization.
