@@ -16,5 +16,7 @@ jobs:
           fetch-depth: 0
           submodules: recursive
       - uses: extractions/setup-just@v3
+      - name: Test host device-session contracts
+        run: bazel test //tools/device-session:tests
       - name: Verify active semantic evidence
         run: just verify-redaction

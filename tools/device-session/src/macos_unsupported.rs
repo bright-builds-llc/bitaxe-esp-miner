@@ -13,6 +13,14 @@ pub(crate) struct UsbDeviceSnapshot {
     pub(crate) holder_count: u16,
 }
 
+// The unsupported adapter preserves the observation contract but never returns one.
+#[allow(dead_code)]
+pub(crate) enum PhysicalSnapshotObservation {
+    Absent,
+    PhysicalMismatch,
+    Match(UsbDeviceSnapshot),
+}
+
 pub(crate) struct UsbProfileFields {
     pub(crate) port: String,
     pub(crate) physical_identity_digest: String,
@@ -40,6 +48,12 @@ pub(crate) fn capture_reconnecting_receive_only(
 }
 
 pub(crate) struct ReceiveOnlyReader;
+
+impl Drop for ReceiveOnlyReader {
+    fn drop(&mut self) {
+        // Mirror the resource-owning reader's explicit release contract on supported hosts.
+    }
+}
 
 impl ReceiveOnlyReader {
     pub(crate) fn open(_port: &str) -> Result<Self> {
@@ -79,6 +93,13 @@ impl MacOsDeviceAdapter {
         bail!("macOS identity adapter is unsupported on this platform")
     }
 
+    pub(crate) fn profile_transition_snapshot(
+        _expected_physical_identity: &str,
+        _previous_port: &str,
+    ) -> Result<PhysicalSnapshotObservation> {
+        bail!("macOS identity adapter is unsupported on this platform")
+    }
+
     pub(crate) fn initial_sample(
         _admitted_port: &str,
         _expected_physical_identity: &str,
@@ -95,5 +116,30 @@ impl MacOsDeviceAdapter {
 
     pub(crate) fn holder_count(_port: &str) -> Result<u16> {
         bail!("macOS ownership adapter is unsupported on this platform")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn profile_transition_rejects_unsupported_platform() {
+        // Arrange
+        let physical_identity = "fixture-physical-identity";
+        let previous_port = "/fixture/serial";
+
+        // Act
+        let result =
+            MacOsDeviceAdapter::profile_transition_snapshot(physical_identity, previous_port);
+
+        // Assert
+        let Err(error) = result else {
+            panic!("unsupported adapter must not produce a USB observation");
+        };
+        assert_eq!(
+            error.to_string(),
+            "macOS identity adapter is unsupported on this platform"
+        );
     }
 }

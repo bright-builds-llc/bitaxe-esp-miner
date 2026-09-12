@@ -329,6 +329,13 @@ fn wait_for_process_start(pid: u32) -> Result<String, UsbSessionError> {
     ))
 }
 
+#[cfg(target_os = "linux")]
+fn maybe_process_executable(pid: u32) -> Option<PathBuf> {
+    // Linux ps reports only a command name; procfs identifies the actual executable.
+    fs::read_link(format!("/proc/{pid}/exe")).ok()
+}
+
+#[cfg(not(target_os = "linux"))]
 fn maybe_process_executable(pid: u32) -> Option<PathBuf> {
     let output = Command::new("/bin/ps")
         .args(["-o", "comm=", "-p", &pid.to_string()])
