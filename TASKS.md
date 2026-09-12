@@ -24,52 +24,6 @@ new work.
 
 ## Active
 
-### task-ci-linux-device-session-build | 2026-09-12T03:43:55Z | Restore Linux evidence-redaction CI
-
-- [x] Inspect current GitHub failures and identify the Linux-only device-session
-  compilation boundary after synchronizing with origin/main.
-- [x] Reproduce the missing unsupported-platform adapter API on Linux.
-- [x] Restore the fail-closed API and add a regression at the platform boundary.
-- [x] Fix the Linux process-executable identity mismatch exposed by the broader
-  device-session regression suite, preserving every ownership check.
-- [x] Run ordered Rust gates, affected Bazel tests, semantic redaction, standards,
-  formatting and diff review; inspect downstream workflow stages.
-- [ ] Publish the verified fix to main and confirm GitHub CI results.
-
-Scope: software-only CI repair. Linux and Windows hardware adapters remain
-unqualified; no device access, firmware flash or hardware evidence is involved.
-Guidance: AGENTS.md, AGENTS.bright-builds.md, standards-overrides.md, verification,
-testing and Rust standards, ADR-0021/0023 and native USB ownership.
-
-Verification: Original Linux Cargo check reproduced E0432/E0599 from GitHub run
-34670281440; the corrected adapter compiles and its rejection test passes.
-Full Linux tests initially failed two cleanup cases without an init process.
-With Docker --init, orphan reaping passes and one executable-identity mismatch
-was isolated to Linux ps returning a basename. Using procfs for executable
-identity restores all 136 library and five CLI tests without relaxing ownership
-checks. No hardware qualification is claimed.
-
-Workflow review: the active semantic verifier and its contract tests reject the
-base/head flags still mentioned by AGENTS.md; preserve the working bare command
-in this repair. No evidence or redaction-policy change is required.
-
-Simplification review: retain the existing unsupported adapter shape and use
-only a Linux-specific executable lookup; no new dependency or platform framework.
-
-Additional verification: Linux Rust 1.88 ordered format/lint/build/test gates
-pass for the default workspace: 2,162 tests passed, one preexisting ignored.
-Docker build artifacts require a native Linux volume; a host-shared target
-produced missing-crate metadata errors, eliminated with isolated native storage.
-macOS format/lint/build and the affected Bazel target pass; the initial Bazel
-test stalled before output and timed out, then passed after fresh compilation.
-`just verify-redaction` passes with 22 recognized files. The unsupported reader
-also mirrors the supported release trait so strict Linux lint accepts explicit
-resource-release call sites. Actionlint, standards and diff review pass.
-Native Cargo tests and publication remain pending.
-
-Completion review: Pending GitHub confirmation. Linux hardware adapters remain
-unqualified; macOS USB behavior and all ownership predicates remain unchanged.
-
 ### task-fixed-usb-serial-migration | 2026-09-04 | Replace switching USB with fixed Serial/JTAG and Web Serial
 
 - [x] Record successor decisions, contracts, guidance, and task dependency corrections in both repos.
