@@ -63,6 +63,13 @@ pub trait WorkerSession {
         Ok(None)
     }
 
+    /// Explicit read-only export of boot-local serial observations after fresh possession.
+    fn serial_trace_review(
+        &self,
+    ) -> Result<Option<crate::serial::trace::SerialTraceSnapshot>, WorkerSessionError> {
+        Ok(None)
+    }
+
     /// Returns only bounded, non-secret qualification observations; never authority.
     fn status_evidence(&self) -> Option<serde_json::Value> {
         None

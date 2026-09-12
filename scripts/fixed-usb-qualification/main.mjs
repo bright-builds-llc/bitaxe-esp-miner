@@ -8,7 +8,7 @@ import { fstatSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { preflight, loadContext } from "./preflight.mjs";
-import { iterativeBootstrap, iterativePreflight } from "./iterative-preflight.mjs";
+import { iterativeBootstrap, iterativePreflight, recoveryPreflight } from "./iterative-preflight.mjs";
 import { createUnreservedContinuation } from "./unreserved.mjs";
 import { finishIterative } from "./iterative-judge.mjs";
 import { createSuccessor } from "./successor.mjs";
@@ -17,7 +17,7 @@ import { createSupervisor } from "./server.mjs";
 import { finishWindow, recordCycle } from "./store.mjs";
 import { protectedPath, QualificationError, readJson, requireCondition } from "./contract.mjs";
 
-const KEYS = { "--original-campaign-record": "originalCampaignRecord", "--retained-runtime-from": "retainedRuntimeFrom", "--suggested-difficulty": "suggestedDifficulty", "--cycles-from": "cyclesFrom", "--purpose": "purpose", "--previous-receipt": "previousReceipt", "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
+const KEYS = { "--recovery-phase": "recoveryPhase", "--original-campaign-record": "originalCampaignRecord", "--retained-runtime-from": "retainedRuntimeFrom", "--suggested-difficulty": "suggestedDifficulty", "--cycles-from": "cyclesFrom", "--purpose": "purpose", "--previous-receipt": "previousReceipt", "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
   "--manifest": "manifest", "--private-root": "privateRoot", "--authority-directory": "authorityDirectory", "--pool-credentials": "poolCredentials",
   "--cooling-input": "coolingInput", "--predecessor-root": "predecessorRoot", "--bun": "bun", "--port": "port", "--window": "window", "--input": "input",
   "--qualification-source-commit": "qualificationSourceCommit", "--gate-qualification-source-commit": "gateQualificationSourceCommit" };
@@ -37,6 +37,7 @@ export async function main(args) {
     "iterative-bootstrap": ["privateRoot", "input"],
     "iterative-judge": ["privateRoot", "input"],
     "iterative-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "authorityDirectory", "bun", "purpose", "previousReceipt", "input", "cyclesFrom", "suggestedDifficulty", "retainedRuntimeFrom", "qualificationSourceCommit"],
+    "recovery-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "authorityDirectory", "bun", "recoveryPhase", "previousReceipt", "input", "cyclesFrom", "suggestedDifficulty"],
     "no-mining-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "originalCampaignRecord"],
     "no-mining-serve": ["privateRoot", "port", "bun"],
     "no-mining-judge": ["privateRoot", "input"],
@@ -56,6 +57,10 @@ export async function main(args) {
   if (command === "iterative-bootstrap") {
     requireCondition(options.input, "input_required");
     return iterativeBootstrap(resolve(options.privateRoot), options.input);
+  }
+  if (command === "recovery-preflight") {
+    for (const key of ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "authorityDirectory", "recoveryPhase", "previousReceipt", "input"]) requireCondition(options[key], "preflight_argument_missing");
+    return recoveryPreflight(options);
   }
   if (command === "iterative-preflight") {
     for (const key of ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "authorityDirectory", "purpose", "previousReceipt", "input"]) requireCondition(options[key], "preflight_argument_missing");

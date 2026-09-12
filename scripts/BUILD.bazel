@@ -181,6 +181,24 @@ js_test(
 )
 
 js_test(
+    name = "fixed_usb_recovery_trace_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/recovery-trace.test.mjs",
+)
+
+js_test(
+    name = "fixed_usb_recovery_judge_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/recovery-judge.test.mjs",
+)
+
+js_test(
+    name = "fixed_usb_recovery_preflight_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/recovery-preflight.test.mjs",
+)
+
+js_test(
     name = "fixed_usb_iterative_test",
     data = [":fixed_usb_qualification_sources"],
     entry_point = "fixed-usb-qualification/iterative.test.mjs",

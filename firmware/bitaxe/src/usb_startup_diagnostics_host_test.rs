@@ -1,5 +1,6 @@
 //! Runs the production single-writer loop against a host sink while startup fails or stalls.
 use bitaxe_worker_control::serial::SerialKind;
+use bitaxe_worker_control::serial::trace::{SerialTraceCorrelation, SerialTraceStage};
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{self, Receiver, SyncSender};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -16,6 +17,9 @@ mod writer;
 #[allow(dead_code)]
 #[path = "bwg_worker_usb/rx_diagnostics.rs"]
 mod rx_diagnostics;
+#[allow(dead_code)]
+#[path = "bwg_worker_usb/trace.rs"]
+mod trace;
 
 static CURRENT_SESSION: AtomicU32 = AtomicU32::new(0);
 static RECEIVE_CREDIT: bitaxe_worker_control::serial::ReceiveCreditMailbox =
@@ -59,7 +63,7 @@ mod boot_evidence {
 mod usb_write_failure;
 mod usb_runtime {
     use super::*;
-    pub(crate) use crate::usb_write_failure::WriteFailure;
+    pub(crate) use crate::usb_write_failure::{WriteFailure, WriteObservation, WriteObservationStage};
     pub static DELAY_MS: AtomicU32 = AtomicU32::new(0);
     pub static PARTIAL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
     pub static SINK: Mutex<Option<mpsc::Sender<String>>> = Mutex::new(None);
@@ -86,6 +90,13 @@ mod usb_runtime {
     pub fn resynchronize_if(admitted: impl Fn() -> bool) -> anyhow::Result<()> {
         anyhow::ensure!(admitted(), "serial_output_revoked");
         Ok(())
+    }
+    pub fn write_observed_if(bytes: &[u8], admitted: impl Fn() -> bool, mut observe: impl FnMut(WriteObservation)) -> anyhow::Result<()> {
+        let result = write_if(bytes, admitted);
+        let queued_bytes = if result.is_ok() { bytes.len() } else { 0 };
+        observe(WriteObservation { stage: if result.is_ok() { WriteObservationStage::Completed } else { WriteObservationStage::Abandoned },
+            at_ms: crate::runtime_uptime::millis(), queued_bytes, record_bytes: bytes.len() });
+        result
     }
     pub fn has_partial_output() -> bool {
         PARTIAL.load(Ordering::Acquire)
@@ -157,6 +168,7 @@ fn revoked_pre_control_heartbeat_cannot_resume_a_queued_control_response() {
     sender
         .send(writer::Output::Control {
             epoch: 20,
+            request_sequence: 1,
             bytes: SecretBytes(
                 serde_json::to_vec(&serde_json::json!({"padding":"x".repeat(8192)}))
                     .expect("payload"),
@@ -506,6 +518,7 @@ fn peer_heartbeat_has_priority_during_continuous_control_output() {
             sender
                 .send(writer::Output::Control {
                     epoch: 2,
+                    request_sequence: 1,
                     bytes: SecretBytes(b"{}".to_vec()),
                     receipt,
                 })
@@ -543,6 +556,7 @@ fn long_control_reply_refreshes_peer_heartbeat_before_the_indivisible_record() {
     sender
         .send(writer::Output::Control {
             epoch: 4,
+            request_sequence: 1,
             bytes: SecretBytes(bytes),
             receipt,
         })

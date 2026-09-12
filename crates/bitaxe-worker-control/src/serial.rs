@@ -2,6 +2,7 @@
 
 mod liveness;
 mod receive;
+pub mod trace;
 pub use liveness::SerialLinkLiveness;
 pub use receive::{ReceiveCreditMailbox, SerialReceiveProgress};
 

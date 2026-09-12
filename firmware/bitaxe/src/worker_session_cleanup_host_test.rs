@@ -35,6 +35,16 @@ mod runtime_uptime {
         1_000
     }
 }
+// This fixture replaces USB ownership while exercising the real durable cleanup adapter.
+mod bwg_worker_usb {
+    pub(crate) mod trace {
+        use bitaxe_worker_control::serial::trace::{SerialTrace, SerialTraceSnapshot};
+        static TRACE: SerialTrace = SerialTrace::new();
+        pub(crate) fn snapshot() -> SerialTraceSnapshot {
+            TRACE.snapshot()
+        }
+    }
+}
 mod startup {
     pub struct BootMiningBaselineConfirmed;
 }

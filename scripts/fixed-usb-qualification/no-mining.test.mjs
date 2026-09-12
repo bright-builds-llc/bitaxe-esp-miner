@@ -266,6 +266,8 @@ test("missing, unprotected or malformed campaign records cannot create a no-mini
   f.options.originalCampaignRecord = resolve(f.base, "missing-campaign.json");
   await assert.rejects(noMiningPreflight(f.options, f.operations), /ENOENT/u);
   await writeFile(f.options.originalCampaignRecord, JSON.stringify({ schema: "fixed-usb-campaign-v1", campaign_id: BASELINE }), { mode: 0o644 });
+  // Make the negative fixture independent of the caller's protective umask.
+  await chmod(f.options.originalCampaignRecord, 0o644);
   await assert.rejects(noMiningPreflight(f.options, f.operations), /private_path_policy/u);
   await chmod(f.options.originalCampaignRecord, 0o600);
   await writeFile(f.options.originalCampaignRecord, JSON.stringify({ schema: "fixed-usb-campaign-v1", campaign_id: "invalid" }));

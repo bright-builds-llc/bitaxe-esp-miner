@@ -1,3 +1,6 @@
+import { isDeepStrictEqual } from "node:util";
+import { requireRecoveryTraces } from "./recovery-trace.mjs";
+import { RECOVERY_SCHEMA, validateRecoveryPhase } from "./recovery-judge.mjs";
 import { resultSamples } from "./sample-seal.mjs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -8,30 +11,39 @@ import { maximumActiveMs, PURPOSES, requireExhaustedOriginal, requireIdleLedger,
 import { copyRetainedArtifacts, inspectRetainedSources, retainedManifestPath } from "./runtime-source.mjs";
 
 export function validateIterativePolicy(context, live = false) {
+  const recovery = context.schema === RECOVERY_SCHEMA;
+  if (recovery) {
+    validateRecoveryPhase(context);
+    requireCondition(context.required_no_mining_cycles === 4, "recovery_cycle_policy");
+    requireCondition(context.recovery_phase === "loss" ? context.recovery_loss_generation === undefined :
+      Number.isInteger(context.recovery_loss_generation) && context.recovery_loss_generation > 0 && context.recovery_loss_generation <= 0xffffffff,
+    "recovery_generation_policy");
+  }
   const v4 = context.schema === "fixed-usb-iterative-context-v4";
   const v3 = context.schema === "fixed-usb-iterative-context-v3";
-  const resources = v4 || v3 || context.schema === "fixed-usb-iterative-context-v2";
+  const resources = recovery || v4 || v3 || context.schema === "fixed-usb-iterative-context-v2";
   requireCondition(resources ? context.owner_stack_minimum_bytes === 4096 :
     context.schema === "fixed-usb-iterative-context-v1" && context.owner_stack_minimum_bytes === undefined, "iterative_policy");
-  requireCondition(v4 || v3 ? context.suggested_difficulty === 1000 : context.suggested_difficulty === undefined, "iterative_hint_policy");
+  requireCondition(recovery || v4 || v3 ? context.suggested_difficulty === 1000 : context.suggested_difficulty === undefined, "iterative_hint_policy");
   if (v4) {
     exactObject(context.qualification_driver, ["profile", "source_commit"]);
     requireCondition(context.qualification_driver.profile === "fixed-usb-retained-runtime-driver-v1" && hex(context.qualification_driver.source_commit, 40), "iterative_driver_policy");
   } else requireCondition(context.qualification_driver === undefined && context.unreserved_continuation === undefined && context.retained_runtime_source === undefined, "iterative_driver_policy");
-  requireCondition(!live || v3 || v4, "iterative_policy_upgrade_required");
+  requireCondition(!live || recovery || v3 || v4, "iterative_policy_upgrade_required");
   return resources;
 }
-export async function requireIterativeTask(firmwareRoot) {
+export async function requireIterativeTask(firmwareRoot, recovery = false) {
   const tasks = await readFile(resolve(firmwareRoot, "TASKS.md"), "utf8");
+  const task = recovery ? "task-fixed-usb-hello-resynchronization" : "task-worker-preparation-panic-qualification";
   let active = false, count = 0, total = 0;
   for (const line of tasks.split(/\r?\n/u)) {
     if (line.startsWith("## ")) active = line === "## Active";
-    if (line.startsWith("### ") && line.slice(4).split(/\s/u)[0] === "task-worker-preparation-panic-qualification") {
+    if (line.startsWith("### ") && line.slice(4).split(/\s/u)[0] === task) {
       total += 1;
       if (active) count += 1;
     }
   }
-  requireCondition(count === 1 && total === 1, "iterative_active_task_required");
+  requireCondition(count === 1 && total === 1, recovery ? "recovery_active_task_required" : "iterative_active_task_required");
 }
 export function requireReleasedState(state, context) {
   validateState(state, context);
@@ -84,7 +96,8 @@ export async function validateCompletedReceipt(path, receipt, records) {
     requireCondition(receipt.context_sha256 === digest(JSON.stringify(receipt.context)), "iterative_result_context");
     const frozen = await protectedJson(resolve(dirname(path), "context.json"));
     requireCondition(frozen.sha256 === receipt.context_sha256 && digest(JSON.stringify(frozen.context)) === frozen.sha256, "iterative_result_context");
-    if (receipt.context.schema === "fixed-usb-iterative-context-v4") await validateIterativeContext(dirname(path), receipt.context, { historical: true });
+    if (["fixed-usb-iterative-context-v4", RECOVERY_SCHEMA].includes(receipt.context.schema)) await validateIterativeContext(dirname(path), receipt.context, { historical: true });
+    if (receipt.context.schema === RECOVERY_SCHEMA) requireCondition(isDeepStrictEqual(records.at(-1)?.state, receipt.final_state), "recovery_final_journal_binding");
     const earliest = records.find((record) => record.state.failure);
     if (earliest) {
       const evidence = receipt.first_failure_evidence;
@@ -104,11 +117,16 @@ export async function validateCompletedReceipt(path, receipt, records) {
     try { fault = await protectedJson(resolve(dirname(path), "iterative.fault.json")); }
     catch (error) { if (error.code !== "ENOENT") throw error; }
     const { judgeIterative } = await import("./iterative-judge.mjs");
-    let judged;
-    try { judged = judgeIterative(receipt.context, records, fault); }
+    let judged, traceEvidence = [];
+    try {
+      traceEvidence = await requireRecoveryTraces(dirname(path), receipt.context, records, fault);
+      judged = judgeIterative(receipt.context, records, fault, traceEvidence);
+    }
     catch (error) {
       requireCondition(typeof error.code === "string" && receipt.result === "unverified" && receipt.judgment_failure === error.code, "iterative_result_judgment");
     }
+    if (receipt.context.schema === RECOVERY_SCHEMA) requireCondition(
+      JSON.stringify(receipt.recovery_trace_evidence) === JSON.stringify(traceEvidence), "recovery_trace_evidence_changed");
     if (judged) requireCondition(receipt.result === "passed" && JSON.stringify(judged) === JSON.stringify(receipt.judgment), "iterative_result_judgment");
     requireCondition(receipt.next_ordinal === receipt.ledger_after.next_ordinal && receipt.total_charged_ms === receipt.ledger_after.total_charged_ms &&
       receipt.original_campaign_id === receipt.context.original_campaign_id, "iterative_result_ledger_binding");
@@ -117,6 +135,66 @@ export async function validateCompletedReceipt(path, receipt, records) {
     requireIdleLedger(receipt.ledger_after, receipt.context.qualification_attempt.ordinal + 1,
       receipt.ledger_before.total_charged_ms + receipt.context.qualification_attempt.maximumActiveMilliseconds);
 }
+/** Preserve the existing ledger chain while admitting a new loss or its separately authorized resume. */
+export function validateRecoveryTransition(phase, previous, snapshot, progress) {
+  requireCondition(["loss", "resume"].includes(phase), "recovery_phase");
+  requireCondition(["worker-iterative-result-v1", "worker-iterative-result-v2"].includes(previous.schema) &&
+    previous.cleanup_confirmed === true && previous.context && ["passed", "unverified"].includes(previous.result), "recovery_completed_predecessor");
+  exactObject(progress, ["schema", "review", "reason", "evidence_sha256"]);
+  requireCondition(progress.schema === "worker-qualification-progress-v1" && progress.review === "verified" &&
+    Array.isArray(progress.evidence_sha256) && progress.evidence_sha256.length > 0 && progress.evidence_sha256.length <= 16 &&
+    progress.evidence_sha256.every(value => hex(value, 64)), "iterative_progress_review");
+  const same = ["firmware_commit", "gate_commit", "app_elf_sha256"].every(key => previous.context[key] === snapshot[key]);
+  if (phase === "loss") {
+    requireCondition(!same && progress.reason === "software_correction", "recovery_loss_progress");
+    return;
+  }
+  requireCondition(same && previous.result === "passed" && previous.context.schema === RECOVERY_SCHEMA &&
+    previous.context.recovery_phase === "loss" && previous.context.qualification_attempt.purpose === "diagnostic" &&
+    progress.reason === "next_acceptance_window", "recovery_resume_progress");
+  requireCondition(Number.isInteger(previous.judgment?.generation) && previous.judgment.generation > 0 &&
+    previous.judgment.generation <= 0xffffffff, "recovery_loss_generation_missing");
+}
+
+/** Freeze one v5 allowance without creating a campaign or reserving any device budget. */
+export async function recoveryPreflight(options, operations = {}) {
+  requireCondition(["loss", "resume"].includes(options.recoveryPhase) && options.suggestedDifficulty === "1000" &&
+    options.purpose === undefined && options.retainedRuntimeFrom === undefined && options.qualificationSourceCommit === undefined, "recovery_arguments");
+  const root = resolve(options.privateRoot), parent = dirname(root);
+  await protectedPath(parent, true); await missing(root);
+  for (const key of ["firmwareRoot", "gateRoot", "authorityDirectory"]) options[key] = await canonicalDirectory(options[key]);
+  (operations.ignored ?? ignored)(options.firmwareRoot, root);
+  const previousPath = resolve(options.previousReceipt);
+  requireCondition(dirname(dirname(previousPath)) === parent && previousPath === resolve(dirname(previousPath), "result.json"), "recovery_existing_chain_required");
+  const previous = await (operations.readPrevious ?? readPrevious)(previousPath);
+  const progress = await protectedJson(options.input);
+  await requireIterativeTask(options.firmwareRoot, true);
+  const snapshot = await (operations.inspectSources ?? inspectSources)(options, operations);
+  validateRecoveryTransition(options.recoveryPhase, previous, snapshot, progress);
+  requireCondition(canonicalBase64(previous.original_campaign_id, 16) && Number.isSafeInteger(previous.total_charged_ms) &&
+    previous.total_charged_ms >= 0 && Number.isSafeInteger(previous.total_charged_ms + 30000), "recovery_ledger_binding");
+  const attempt = validateAttempt({ schema: "worker-qualification-attempt-v1", id: nonce(), ordinal: previous.next_ordinal,
+    purpose: "diagnostic", maximumActiveMilliseconds: 30000 });
+  requireCondition(options.recoveryPhase === "resume" ? options.cyclesFrom === undefined || resolve(options.cyclesFrom) === dirname(previousPath) :
+    options.cyclesFrom === undefined, "recovery_cycle_source");
+  const cycleSource = options.recoveryPhase === "resume" ? await reusableCycles(dirname(previousPath), snapshot, parent, operations) : undefined;
+  const context = { schema: RECOVERY_SCHEMA, recovery_phase: options.recoveryPhase, owner_stack_minimum_bytes: 4096,
+    suggested_difficulty: 1000, ...snapshot, qualification_attempt: attempt, required_no_mining_cycles: 4,
+    ...(options.recoveryPhase === "resume" ? { recovery_loss_generation: previous.judgment.generation } : {}),
+    ...(cycleSource ? { cycle_source: cycleSource.proof } : {}), original_campaign_id: previous.original_campaign_id,
+    previous_receipt: previousPath, previous_receipt_sha256: await fileDigest(previousPath), progress_sha256: await fileDigest(options.input),
+    progress_path: resolve(options.input), expected_charged_ms: previous.total_charged_ms, firmware_root: options.firmwareRoot,
+    gate_root: options.gateRoot, manifest: resolve(options.manifest) };
+  validateIterativePolicy(context, true);
+  await missing(resolve(parent, `ordinal-${attempt.ordinal}.json`));
+  await mkdir(root, { mode: 0o700 });
+  if (cycleSource) for (const file of cycleSource.files) await writeFile(resolve(root, file.name), file.bytes, { flag: "wx", mode: 0o600 });
+  await writeNew(resolve(parent, `ordinal-${attempt.ordinal}.json`), { context_sha256: digest(JSON.stringify(context)), attempt_root: root });
+  await writeNew(resolve(root, "context.json"), { context, sha256: digest(JSON.stringify(context)) });
+  return { recovery_preflight_created: true, phase: options.recoveryPhase, ordinal: attempt.ordinal, maximum_active_ms: 30000,
+    device_effects: false, allowance_reserved_on_device: false };
+}
+
 export async function iterativePreflight(options, operations = {}) {
   requireCondition(options.suggestedDifficulty === "1000", "iterative_hint_policy");
   const root = resolve(options.privateRoot), parent = dirname(root);
@@ -181,7 +259,7 @@ export async function iterativePreflight(options, operations = {}) {
 }
 export async function validateIterativeContext(root, context, { historical = false } = {}) {
   validateIterativePolicy(context);
-  if (!historical) await requireIterativeTask(context.firmware_root);
+  if (!historical) await requireIterativeTask(context.firmware_root, context.schema === RECOVERY_SCHEMA);
   validateAttempt(context.qualification_attempt);
   const parent = dirname(root), previousPath = resolve(context.previous_receipt);
   requireCondition(previousPath === resolve(parent, "bootstrap.json") || dirname(dirname(previousPath)) === parent, "iterative_parent_receipt");
@@ -191,6 +269,14 @@ export async function validateIterativeContext(root, context, { historical = fal
     previous.original_campaign_id === context.original_campaign_id, "iterative_previous_changed");
   await protectedPath(context.progress_path);
   requireCondition(await fileDigest(context.progress_path) === context.progress_sha256, "iterative_progress_changed");
+  if (context.schema === RECOVERY_SCHEMA) {
+    requireCondition(previousPath === resolve(dirname(previousPath), "result.json"), "recovery_existing_chain_required");
+    validateRecoveryTransition(context.recovery_phase, previous, context, await protectedJson(context.progress_path));
+    requireCondition(context.recovery_phase === "loss" ? context.recovery_loss_generation === undefined :
+      context.recovery_loss_generation === previous.judgment.generation, "recovery_generation_lineage");
+    requireCondition(context.recovery_phase === "loss" ? context.cycle_source === undefined :
+      context.cycle_source?.root === dirname(previousPath), "recovery_cycle_source");
+  }
   if (context.cycle_source) {
     const source = await reusableCycles(context.cycle_source.root, context, dirname(root));
     requireCondition(JSON.stringify(source.proof) === JSON.stringify(context.cycle_source), "iterative_cycle_source_changed");

@@ -65,11 +65,18 @@ export function validatePreservation(value) {
 
 export function validateState(value, context) {
   exactObject(value, ["schema", "gateCommit", "status", "connected", "running", "heartbeatSuppressed", "renewalsConfirmed", "deviceRestorationConfirmed", "deviceLeaseInactive", "serialOwnershipReleased"],
-    ["expectedFirmwareSourceCommit", "expectedAppElfSha256", "qualification", "preservation", "probe", "failure", "admissionFailureStage", "serialFailureCategory", "ownerResourceFailure", "helloRecovery", "deviceBaselineConfirmed"]);
+    ["expectedFirmwareSourceCommit", "expectedAppElfSha256", "qualification", "preservation", "probe", "failure", "admissionFailureStage", "serialFailureCategory", "ownerResourceFailure", "helloRecovery", "deviceBaselineConfirmed", "authorizationRecovery"]);
   requireCondition(value.schema === "worker-serial-acceptance-v1" && value.gateCommit === context.gate_commit &&
     value.expectedFirmwareSourceCommit === context.firmware_commit && value.expectedAppElfSha256 === context.app_elf_sha256 &&
     STATUSES.includes(value.status) && u32(value.renewalsConfirmed) && value.renewalsConfirmed <= 16 &&
     ["connected", "running", "heartbeatSuppressed", "deviceRestorationConfirmed", "deviceLeaseInactive", "serialOwnershipReleased"].every((key) => typeof value[key] === "boolean"), "browser_state_identity");
+  if (value.authorizationRecovery !== undefined) {
+    const checkpoint = value.authorizationRecovery;
+    exactObject(checkpoint, ["schema", "checkpointId", "generation", "matched"]);
+    requireCondition(checkpoint.schema === "worker-authorization-recovery-v1" && canonicalBase64(checkpoint.checkpointId, 16) &&
+      u32(checkpoint.generation) && checkpoint.generation > 0 && (checkpoint.matched === null || typeof checkpoint.matched === "boolean"),
+    "authorization_recovery_shape");
+  }
   if (value.deviceBaselineConfirmed !== undefined) requireCondition(typeof value.deviceBaselineConfirmed === "boolean", "device_baseline_shape");
   if (value.helloRecovery !== undefined) {
     exactObject(value.helloRecovery, ["discardedRecords", "discardedBytes"], ["discardedReplies"]);

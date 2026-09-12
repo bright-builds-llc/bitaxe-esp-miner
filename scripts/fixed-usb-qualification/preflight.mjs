@@ -1,3 +1,4 @@
+import { RECOVERY_SCHEMA, validateRecoveryPhase } from "./recovery-judge.mjs";
 import { mkdir, readFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -13,7 +14,7 @@ export async function inspectSources(options, operations = {}) {
   const checkRepo = operations.cleanPushed ?? cleanPushed;
   checkRepo(options.firmwareRoot, options.firmwareCommit);
   checkRepo(options.gateRoot, options.gateCommit);
-  await requireActiveTasks(options.firmwareRoot);
+  await requireActiveTasks(options.firmwareRoot, options.recoveryPhase);
   const packaged = await packageSnapshot(options.firmwareRoot, options.manifest, options.firmwareCommit);
   const trustPath = resolve(options.firmwareRoot, "firmware/bitaxe/bwg/deployment-trust.json");
   const trust = await readJson(trustPath);
@@ -30,9 +31,11 @@ export async function inspectSources(options, operations = {}) {
     supervisor_client_sha256: await fileDigest(resolve(SCRIPT_ROOT, "client.mjs")) };
 }
 
-async function requireActiveTasks(firmwareRoot) {
+async function requireActiveTasks(firmwareRoot, maybeRecoveryPhase) {
+  if (maybeRecoveryPhase !== undefined) requireCondition(["loss", "resume"].includes(maybeRecoveryPhase), "recovery_phase");
   const tasks = await readFile(resolve(firmwareRoot, "TASKS.md"), "utf8");
-  for (const task of ["task-fixed-usb-serial-qualification", "task-fixed-usb-worker-live-acceptance"]) {
+  const required = maybeRecoveryPhase === undefined ? ["task-fixed-usb-serial-qualification", "task-fixed-usb-worker-live-acceptance"] : ["task-fixed-usb-hello-resynchronization"];
+  for (const task of required) {
     requireCondition(activeTask(tasks, task), "active_task_missing");
   }
 }
@@ -79,7 +82,7 @@ export async function loadContext(root, operations = {}) {
     validateNoMiningContext(record.context);
     return record.context;
   }
-  if (["fixed-usb-iterative-context-v1", "fixed-usb-iterative-context-v2", "fixed-usb-iterative-context-v3", "fixed-usb-iterative-context-v4"].includes(record.context?.schema)) {
+  if (["fixed-usb-iterative-context-v1", "fixed-usb-iterative-context-v2", "fixed-usb-iterative-context-v3", "fixed-usb-iterative-context-v4", RECOVERY_SCHEMA].includes(record.context?.schema)) {
     const { validateIterativeContext } = await import("./iterative-preflight.mjs");
     await validateIterativeContext(root, record.context);
     return record.context;
@@ -91,6 +94,16 @@ export async function loadContext(root, operations = {}) {
 }
 
 export async function verifyFrozen(context, authorityDirectory, bun, operations = {}, root) {
+  if (context.schema === RECOVERY_SCHEMA) {
+    validateRecoveryPhase(context);
+    const observed = await inspectSources({ firmwareRoot: context.firmware_root, gateRoot: context.gate_root,
+      firmwareCommit: context.firmware_commit, gateCommit: context.gate_commit, manifest: context.manifest,
+      authorityDirectory, bun, recoveryPhase: context.recovery_phase }, operations);
+    for (const [key, value] of Object.entries(observed)) {
+      requireCondition(JSON.stringify(context[key]) === JSON.stringify(value), "frozen_source_drift");
+    }
+    return { gate_root: context.gate_root };
+  }
   if (context.schema === "fixed-usb-iterative-context-v4") {
     requireCondition(typeof root === "string", "retained_root_required");
     await requireActiveTasks(context.firmware_root);

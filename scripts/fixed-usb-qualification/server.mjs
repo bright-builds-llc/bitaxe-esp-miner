@@ -1,3 +1,4 @@
+import { RECOVERY_SCHEMA } from "./recovery-judge.mjs";
 import { saveDiagnosticExport, validateDiagnosticExport } from "./diagnostic-export.mjs";
 import { body, send } from "./http.mjs";
 import { createIterativeSupervisor } from "./iterative-server.mjs";
@@ -16,7 +17,7 @@ const SCRIPT_ROOT = dirname(fileURLToPath(import.meta.url));
 export async function createSupervisor(options, operations = {}) {
   const root = resolve(options.privateRoot);
   const context = options.context ?? await loadContext(root);
-  if (["fixed-usb-iterative-context-v1", "fixed-usb-iterative-context-v2", "fixed-usb-iterative-context-v3", "fixed-usb-iterative-context-v4"].includes(context.schema)) return createIterativeSupervisor({ ...options, context }, operations);
+  if (["fixed-usb-iterative-context-v1", "fixed-usb-iterative-context-v2", "fixed-usb-iterative-context-v3", "fixed-usb-iterative-context-v4", RECOVERY_SCHEMA].includes(context.schema)) return createIterativeSupervisor({ ...options, context }, operations);
   const page = contextPage(context);
   const verify = operations.verifyFrozen ?? (() => verifyFrozen(context, options.authorityDirectory, options.bun, {}, root));
   const frozen = await verify();

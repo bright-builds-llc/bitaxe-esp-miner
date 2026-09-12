@@ -390,6 +390,9 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         request: ControllerRequest,
         now: u64,
     ) -> Result<PreparedResponse, WorkerControlError> {
+        if request.command == "serial_trace_review" {
+            return self.review_serial_trace(&request, now);
+        }
         let mut result = match request.command.as_str() {
             "discover" => {
                 request.require_no_payload()?;

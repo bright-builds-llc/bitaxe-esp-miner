@@ -35,3 +35,19 @@ impl std::fmt::Display for WriteFailure {
     }
 }
 impl std::error::Error for WriteFailure {}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum WriteObservationStage {
+    Queued,
+    Completed,
+    Abandoned,
+}
+
+/// Reports only actual native queue acceptance and terminal drain outcomes.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct WriteObservation {
+    pub stage: WriteObservationStage,
+    pub at_ms: u64,
+    pub queued_bytes: usize,
+    pub record_bytes: usize,
+}

@@ -1,4 +1,6 @@
-import { guardLateRecord } from "./sample-seal.mjs";
+import { requireBeforeRecoveryTraces, saveRecoveryTrace, validateRecoveryTrace } from "./recovery-trace.mjs";
+import { RECOVERY_SCHEMA, validateLossReceipt } from "./recovery-judge.mjs";
+import { guardLateRecord, parseSamples } from "./sample-seal.mjs";
 import { createServer } from "node:http";
 import { appendFile, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -66,7 +68,8 @@ export async function createIterativeSupervisor(options, operations = {}) {
       (request.headers.origin === undefined && request.headers["sec-fetch-site"] === "same-origin"), "origin_rejected");
     const input = request.method === "POST" ? await body(request) : undefined;
     if (path === "/context" && request.method === "GET") return send(response, 200, {
-      expectedGateCommit: context.gate_commit, expectedFirmwareSourceCommit: context.firmware_commit, expectedAppElfSha256: context.app_elf_sha256, trust });
+      expectedGateCommit: context.gate_commit, expectedFirmwareSourceCommit: context.firmware_commit, expectedAppElfSha256: context.app_elf_sha256, trust,
+      ...(context.schema === RECOVERY_SCHEMA ? { recoveryPhase: context.recovery_phase } : {}) });
     if (path === "/activate" && input) {
       exactObject(input, []); requireCondition(!pending, "iterative_pending");
       scope = { challengeId: `challenge_${nonce()}`, retentionExpiryUnixSeconds: Math.floor(now() / 1000) + 86400 };
@@ -105,7 +108,12 @@ export async function createIterativeSupervisor(options, operations = {}) {
       const saved = review; review = undefined;
       requireCondition(scope && !pending && saved && saved.binding === input.controlSessionBindingSha256 && saved.expires > now(), "iterative_fresh_review_required");
       validateIterativePolicy(context, true);
-      await missing(resolve(root, "issued.json")); await safeState(lastState); await validateIterativeContext(root, context); await verify();
+      await missing(resolve(root, "issued.json"));
+      if (context.schema === RECOVERY_SCHEMA) {
+        const records = parseSamples(await readFile(samplesPath), context);
+        await requireBeforeRecoveryTraces(root, context, records);
+      }
+      await safeState(lastState); await validateIterativeContext(root, context); await verify();
       await protectedPath(resolve(root, "cooling.json"));
       const cooling = await readJson(resolve(root, "cooling.json"));
       requireCondition(cooling.context_sha256 === digest(JSON.stringify(context)), "iterative_cooling_context");
@@ -144,6 +152,22 @@ export async function createIterativeSupervisor(options, operations = {}) {
         }
       }
       return send(response, 200, { recorded: true, sequence });
+    }
+    if (path === "/recovery-trace" && input) {
+      await verify();
+      return send(response, 200, await saveRecoveryTrace(root, context, input, sequence, lastRecord?.state,
+        (value) => validateRecoveryTrace(value, browserRoot, options.bun)));
+    }
+    if (path === "/recovery-loss" && input) {
+      requireCondition(context.schema === RECOVERY_SCHEMA && context.recovery_phase === "loss", "recovery_loss_scope");
+      await missing(resolve(root, "iterative.fault.json"));
+      await protectedPath(resolve(root, "consumed.json"));
+      const consumption = await readJson(resolve(root, "consumed.json"));
+      requireCondition(consumption.ordinal === attempt.ordinal && consumption.delivery_attempted === true, "recovery_loss_not_consumed");
+      const records = parseSamples(await readFile(samplesPath), context);
+      const fault = validateLossReceipt(input, context, records);
+      await writeNew(resolve(root, "iterative.fault.json"), fault);
+      return send(response, 200, { recovery_loss_saved: true });
     }
     if (path === "/fault" && input) {
       exactObject(input, ["kind", "running", "visibility", "heartbeatSuppressed", "generation"]);

@@ -17,6 +17,7 @@ pub(super) enum Output {
     },
     Control {
         epoch: u32,
+        request_sequence: u32,
         bytes: SecretBytes,
         receipt: SyncSender<bool>,
     },
@@ -34,17 +35,29 @@ pub(super) fn hello(epoch: u32, session_id: &str, payload: Value) -> anyhow::Res
         .map_err(|_| anyhow::anyhow!("serial_writer_full"))
 }
 
-pub(super) fn send_control(epoch: u32, bytes: &[u8]) -> anyhow::Result<()> {
+pub(super) fn send_control(
+    correlation: SerialTraceCorrelation,
+    bytes: &[u8],
+) -> anyhow::Result<()> {
     let (receipt, completion) = mpsc::sync_channel(1);
-    OUTPUT
+    let result = OUTPUT
         .get()
-        .ok_or_else(|| anyhow::anyhow!("serial_writer_unavailable"))?
-        .try_send(Output::Control {
-            epoch,
-            bytes: SecretBytes(bytes.to_vec()),
-            receipt,
-        })
-        .map_err(|_| anyhow::anyhow!("serial_writer_full"))?;
+        .ok_or_else(|| anyhow::anyhow!("serial_writer_unavailable"))
+        .and_then(|output| {
+            output
+                .try_send(Output::Control {
+                    epoch: correlation.epoch,
+                    request_sequence: correlation.request_sequence,
+                    bytes: SecretBytes(bytes.to_vec()),
+                    receipt,
+                })
+                .map_err(|_| anyhow::anyhow!("serial_writer_full"))
+        });
+    if result.is_err() {
+        trace::event(correlation, SerialTraceStage::WriterRejected, 0);
+    }
+    result?;
+    trace::event(correlation, SerialTraceStage::WriterAccepted, 0);
     anyhow::ensure!(
         completion.recv_timeout(Duration::from_millis(2200)) == Ok(true),
         "serial_response_unconfirmed"
@@ -125,6 +138,7 @@ pub(super) fn run(
                 &session_id,
                 &mut sequence,
                 b"{}",
+                None,
             ) {
                 retain_write_failure(&mut maybe_write_failure, &error);
                 revoke_epoch(epoch);
@@ -159,7 +173,7 @@ pub(super) fn run(
                     .and_then(|raw| {
                         let admission = OutputAdmission::active(epoch);
                         crate::usb_runtime::resynchronize_if(|| admission.permits())?;
-                        emit(admission, SerialKind::Session, &session_id, 0, &raw)
+                        emit(admission, SerialKind::Session, &session_id, 0, &raw, None)
                     });
                 if let Err(error) = result {
                     retain_write_failure(&mut maybe_write_failure, &error);
@@ -168,10 +182,18 @@ pub(super) fn run(
             }
             Ok(Output::Control {
                 epoch: wanted,
+                request_sequence,
                 bytes,
                 receipt,
             }) => {
                 let current = wanted == epoch && CURRENT_SESSION.load(Ordering::Acquire) == epoch;
+                let correlation = SerialTraceCorrelation {
+                    epoch: wanted,
+                    request_sequence,
+                };
+                if !current {
+                    trace::event(correlation, SerialTraceStage::WriterRejected, 0);
+                }
                 let mut result = Ok(());
                 if current && bytes.0.len() > 4096 {
                     // An indivisible long record gets a fresh peer deadline before transmission.
@@ -182,6 +204,7 @@ pub(super) fn run(
                         &session_id,
                         &mut sequence,
                         b"{}",
+                        None,
                     );
                 }
                 if current && result.is_ok() {
@@ -195,9 +218,16 @@ pub(super) fn run(
                         &session_id,
                         &mut sequence,
                         &bytes.0,
+                        Some(correlation),
                     );
                 }
                 if let Err(error) = &result {
+                    if error
+                        .downcast_ref::<crate::usb_runtime::WriteFailure>()
+                        .is_none()
+                    {
+                        trace::event(correlation, SerialTraceStage::WriterRejected, 0);
+                    }
                     retain_write_failure(&mut maybe_write_failure, error);
                 }
                 let sent = current && result.is_ok() && OutputAdmission::active(epoch).permits();
@@ -263,6 +293,7 @@ pub(super) fn run(
                     &session_id,
                     &mut sequence,
                     &payload,
+                    None,
                 ) {
                     retain_write_failure(&mut maybe_write_failure, &error);
                     revoke_epoch(epoch);
@@ -306,6 +337,7 @@ fn send_receive_credit(
         session_id,
         sequence,
         &payload,
+        None,
     );
     if admission.terminal {
         RECEIVE_CREDIT.finish_terminal(epoch);
@@ -346,13 +378,21 @@ fn next_record(
     session_id: &str,
     sequence: &mut u32,
     bytes: &[u8],
+    maybe_correlation: Option<SerialTraceCorrelation>,
 ) -> anyhow::Result<()> {
     anyhow::ensure!(admission.permits(), "serial_output_revoked");
     *sequence = sequence
         .checked_add(1)
         .ok_or_else(|| anyhow::anyhow!("serial_sequence_exhausted"))?;
     let raw: Box<RawValue> = serde_json::from_slice(bytes)?;
-    emit(admission, kind, session_id, *sequence, &raw)
+    emit(
+        admission,
+        kind,
+        session_id,
+        *sequence,
+        &raw,
+        maybe_correlation,
+    )
 }
 
 fn emit(
@@ -361,6 +401,7 @@ fn emit(
     session_id: &str,
     sequence: u32,
     payload: &RawValue,
+    maybe_correlation: Option<SerialTraceCorrelation>,
 ) -> anyhow::Result<()> {
     anyhow::ensure!(admission.permits(), "serial_output_revoked");
     let bytes = zeroize::Zeroizing::new(SerialEnvelope::encode(
@@ -369,7 +410,16 @@ fn emit(
         sequence,
         payload,
     )?);
-    crate::usb_runtime::write_if(&bytes, || admission.permits())
+    let correlation = maybe_correlation.unwrap_or(SerialTraceCorrelation {
+        epoch: admission.epoch,
+        request_sequence: 0,
+    });
+    trace::event(correlation, SerialTraceStage::WriterStarted, bytes.len());
+    crate::usb_runtime::write_observed_if(
+        &bytes,
+        || admission.permits(),
+        |observation| trace::observe(correlation, observation),
+    )
 }
 
 fn retain_write_failure(

@@ -76,4 +76,48 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             .map_err(|_| WorkerControlError::SessionFailed)?
             .ok_or(WorkerControlError::InvalidRequest)
     }
+
+    pub(super) fn review_serial_trace(
+        &self,
+        request: &ControllerRequest,
+        now: u64,
+    ) -> Result<PreparedResponse, WorkerControlError> {
+        #[derive(serde::Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Empty {}
+        let _: Empty = request.required_payload()?;
+        self.required_start_context(now)?;
+        if self.maybe_active.is_some() || self.effect_cleanup_required {
+            return Err(WorkerControlError::InvalidTransition);
+        }
+        let result = self
+            .session
+            .serial_trace_review()
+            .map_err(|_| WorkerControlError::SessionFailed)?
+            .ok_or(WorkerControlError::InvalidRequest)?;
+        #[derive(serde::Serialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Response<'a> {
+            protocol_version: &'static str,
+            request_id: &'a str,
+            ok: bool,
+            result: crate::serial::trace::SerialTraceSnapshot,
+        }
+        let mut frame = serde_json::to_vec(&Response {
+            protocol_version: PROTOCOL_VERSION,
+            request_id: &request.request_id,
+            ok: true,
+            result,
+        })
+        .map_err(|_| WorkerControlError::Encoding)?;
+        if frame.len() > crate::serial::MAXIMUM_CONTROL_PAYLOAD_BYTES {
+            frame.fill(0);
+            return Err(WorkerControlError::InvalidFrame);
+        }
+        frame.push(b'\n');
+        Ok(PreparedResponse {
+            frame,
+            maybe_effect: None,
+        })
+    }
 }

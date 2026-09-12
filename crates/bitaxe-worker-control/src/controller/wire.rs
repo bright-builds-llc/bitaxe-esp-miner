@@ -45,6 +45,7 @@ impl ControllerRequest {
                 | "transport_probe"
                 | "acceptance_budget_review"
                 | "qualification_attempt_review"
+                | "serial_trace_review"
                 | "qualification_cooling"
         )
     }

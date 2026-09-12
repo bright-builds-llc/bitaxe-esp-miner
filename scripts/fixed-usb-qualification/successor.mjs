@@ -1,3 +1,4 @@
+import { RECOVERY_SCHEMA } from "./recovery-judge.mjs";
 import { lstat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { digest, exactObject, fileDigest, missing, protectedPath, readJson, requireCondition, writeNew } from "./contract.mjs";
@@ -46,7 +47,8 @@ export async function requireSuccessorBaseline(root, context, state) {
 }
 async function requireBaselineContinuity(root, context, state, released) {
   validateState(state, context);
-  requireCondition(state.connected === !released && !state.running && state.deviceRestorationConfirmed && state.deviceLeaseInactive &&
+  const baselineConfirmed = context.schema === RECOVERY_SCHEMA && !released ? state.deviceBaselineConfirmed === true : state.deviceRestorationConfirmed;
+  requireCondition(state.connected === !released && !state.running && baselineConfirmed && state.deviceLeaseInactive &&
     state.serialOwnershipReleased === released && !state.failure && state.preservation?.device_identity_match === true &&
     state.preservation.settings_match === true && state.preservation.mine_on_boot === false, "successor_baseline");
   let previous;

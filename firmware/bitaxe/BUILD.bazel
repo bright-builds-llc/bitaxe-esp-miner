@@ -13,6 +13,7 @@ js_library(
         "src/bwg_worker_usb/link.rs",
         "src/bwg_worker_usb/writer.rs",
         "src/bwg_worker_usb/rx_diagnostics.rs",
+        "src/bwg_worker_usb/trace.rs",
         "src/application_log.rs",
     ],
     visibility = ["//tools/automation:__pkg__"],
@@ -1166,6 +1167,7 @@ rust_test(
         "src/bwg_worker_usb/writer.rs",
         "src/bwg_worker_usb/rx_diagnostics.rs",
         "src/bwg_worker_usb/startup_diagnostics.rs",
+        "src/bwg_worker_usb/trace.rs",
     ],
     crate_root = "src/usb_startup_diagnostics_host_test.rs",
     crate_name = "usb_startup_diagnostics_tests",
@@ -1209,11 +1211,11 @@ rust_test(
 
 rust_test(
     name = "usb_runtime_tests",
-    srcs = ["src/usb_runtime_host_test.rs", "src/usb_runtime.rs", "src/usb_write_failure.rs"],
+    srcs = ["src/usb_runtime_host_test.rs", "src/usb_runtime.rs", "src/usb_write_failure.rs", "src/bwg_worker_usb/trace.rs"],
     crate_root = "src/usb_runtime_host_test.rs",
     crate_name = "usb_runtime_tests",
     edition = "2021",
-    deps = ["@crates//:anyhow"],
+    deps = ["@crates//:anyhow", "//crates/bitaxe-worker-control:bitaxe_worker_control"],
 )
 
 

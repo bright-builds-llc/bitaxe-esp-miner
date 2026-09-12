@@ -1,3 +1,6 @@
+import { isDeepStrictEqual } from "node:util";
+import { requireRecoveryTraces } from "./recovery-trace.mjs";
+import { judgeRecovery, RECOVERY_SCHEMA } from "./recovery-judge.mjs";
 import { parseSamples, writeSealedSamples } from "./sample-seal.mjs";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -6,7 +9,7 @@ import { judgeWindow, validateState } from "./judge.mjs";
 import { requireExhaustedOriginal, requireIdleLedger } from "./iterative-contract.mjs";
 import { requireReleasedState, validateIterativeContext, validateIterativePolicy } from "./iterative-preflight.mjs";
 
-export function judgeIterative(context, records, fault) {
+export function judgeIterative(context, records, fault, traceEvidence = []) {
   const resourcePolicy = validateIterativePolicy(context);
   const attempt = context.qualification_attempt;
   for (const record of records) validateState(record.state, context);
@@ -32,7 +35,8 @@ export function judgeIterative(context, records, fault) {
   const translatedFault = fault ? { ...fault, window: index } : undefined;
   const result = judgeWindow(index, observed, translatedFault, { iterativePurpose: attempt.purpose });
   if (attempt.purpose === "normal") requireCondition(result.accepted_share_verified, "no_accepted_share_within_allowance");
-  return { ...result, purpose: attempt.purpose, diagnostic_only: attempt.purpose === "diagnostic" };
+  const judged = context.schema === RECOVERY_SCHEMA ? judgeRecovery(context, records, fault, result, traceEvidence) : result;
+  return { ...judged, purpose: attempt.purpose, diagnostic_only: attempt.purpose === "diagnostic" };
 }
 export async function finishIterative(root, context, inputPath) {
   await validateIterativeContext(root, context);
@@ -51,11 +55,13 @@ export async function finishIterative(root, context, inputPath) {
   requireIdleLedger(input.ledger_after, a.ordinal + 1, context.expected_charged_ms + a.maximumActiveMilliseconds);
   requireExhaustedOriginal(input.original_budget);
   requireReleasedState(input.final_state, context);
-  await writeNew(resolve(root, "sample-seal-intent.json"), { context_sha256: digest(JSON.stringify(context)), final_state: input.final_state });
+  if (context.schema !== RECOVERY_SCHEMA) await writeNew(resolve(root, "sample-seal-intent.json"), { context_sha256: digest(JSON.stringify(context)), final_state: input.final_state });
   const samplePath = resolve(root, "iterative.samples.jsonl");
   await protectedPath(samplePath);
   const sampleBytes = await readFile(samplePath);
   const records = parseSamples(sampleBytes, context);
+  if (context.schema === RECOVERY_SCHEMA) requireCondition(isDeepStrictEqual(records.at(-1)?.state, input.final_state), "recovery_final_journal_binding");
+  if (context.schema === RECOVERY_SCHEMA) await writeNew(resolve(root, "sample-seal-intent.json"), { context_sha256: digest(JSON.stringify(context)), final_state: input.final_state });
   let fault;
   try { await protectedPath(resolve(root, "iterative.fault.json")); fault = await readJson(resolve(root, "iterative.fault.json")); }
   catch (error) { if (error.code !== "ENOENT") throw error; }
@@ -70,8 +76,11 @@ export async function finishIterative(root, context, inputPath) {
     requireCondition(JSON.stringify(details) === JSON.stringify(expected), "iterative_first_failure_changed");
     firstFailure = { details, sha256: await fileDigest(path) };
   }
-  let judgment, failure;
-  try { judgment = judgeIterative(context, records, fault); }
+  let judgment, failure, traceEvidence = [];
+  try {
+    traceEvidence = await requireRecoveryTraces(root, context, records, fault);
+    judgment = judgeIterative(context, records, fault, traceEvidence);
+  }
   catch (error) { if (!(error instanceof QualificationError)) throw error; failure = error.code; }
   const sealed = await writeSealedSamples(root, sampleBytes);
   const receipt = { schema: "worker-iterative-result-v2", context, context_sha256: digest(JSON.stringify(context)),
@@ -79,7 +88,8 @@ export async function finishIterative(root, context, inputPath) {
     total_charged_ms: input.ledger_after.total_charged_ms, cleanup_confirmed: true, result: judgment ? "passed" : "unverified",
     ...(judgment ? { judgment } : {}), first_failure: firstFailure?.details.browser ?? null,
     first_failure_evidence: firstFailure ?? null, judgment_failure: failure ?? null, ...input,
-    ...sealed, progress_sha256: context.progress_sha256 };
+    ...sealed, ...(context.schema === RECOVERY_SCHEMA ? { recovery_trace_evidence: traceEvidence } : {}),
+    progress_sha256: context.progress_sha256 };
   await writeNew(resolve(root, "result.json"), { receipt, sha256: digest(JSON.stringify(receipt)) });
   return { result: receipt.result, ordinal: a.ordinal, purpose: a.purpose, first_failure: receipt.first_failure, judgment_failure: receipt.judgment_failure,
     cumulative_charged_ms: receipt.total_charged_ms, cleanup_confirmed: true };

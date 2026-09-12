@@ -8,6 +8,7 @@ finish.textContent = "Validate window and select next";
 finish.id = "finish-window";
 document.body.append(finish);
 let queue = Promise.resolve();
+let recordFailed = false;
 async function post(route, body) {
   const response = await fetch(route, { method: "POST", headers: { "Content-Type": "application/json" },
     cache: "no-store", body: JSON.stringify(body), keepalive: true });
@@ -18,7 +19,7 @@ function current() {
   return window.workerAcceptance?.state();
 }
 function enqueue(operation) {
-  queue = queue.then(operation).catch(() => { note.textContent = "Supervisor record rejected; inspect the bounded local result before continuing."; });
+  queue = queue.then(operation).catch(() => { recordFailed = true; note.textContent = "Supervisor record rejected; inspect the bounded local result before continuing."; });
 }
 const output = document.querySelector("#state");
 if (output) new MutationObserver(() => {
@@ -50,3 +51,23 @@ review.addEventListener("click", () => enqueue(async () => {
   await window.workerAcceptance.submitBudgetReview();
   note.textContent = "Device budget reviewed. The original reservation remains consumed; prepare the remaining window promptly.";
 }));
+
+// The recovery hook flushes the published checkpoint before cutting the channel.
+async function flush() {
+  await Promise.resolve();
+  await queue;
+  if (recordFailed) throw new Error("supervisor_record_rejected");
+  return { records_flushed: true };
+}
+async function recordTrace(stage) {
+  await flush();
+  if (stage !== "loss") {
+    const trace = await window.workerAcceptance.deviceSerialTraceReview();
+    await flush();
+    await post("/recovery-trace", { stage, source: "device", trace });
+  }
+  const trace = window.workerAcceptance.exportBrowserSerialTrace();
+  await flush();
+  return post("/recovery-trace", { stage, source: "browser", trace });
+}
+Object.assign(window, { recoverySupervisor: { flush, recordTrace } });

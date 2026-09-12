@@ -334,9 +334,11 @@ mod tests {
             &origin,
             "/api/ws/live",
             Duration::from_secs(1),
-            Duration::from_millis(2),
+            Duration::from_secs(1),
         )
         .expect("client handshake");
+        // The short observation interval must not become a scheduler-sensitive handshake limit.
+        client.read_timeout = Duration::from_millis(2);
 
         // Act
         let idle_started = Instant::now();

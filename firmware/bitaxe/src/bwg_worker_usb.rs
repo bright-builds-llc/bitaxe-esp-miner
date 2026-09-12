@@ -3,12 +3,14 @@
 mod link;
 mod rx_diagnostics;
 pub(crate) mod startup_diagnostics;
+pub(crate) mod trace;
 mod writer;
 
 use crate::bwg_worker_nvs::{BwgWorkerNvs, EspDeviceIdentitySeedGenerator};
 use crate::bwg_worker_session::ProductionWorkerSession;
 use crate::production_mining_session::revocation::{self, WorkerGeneration};
 use crate::startup::BootMiningBaselineConfirmed;
+use bitaxe_worker_control::serial::trace::{SerialTraceCorrelation, SerialTraceStage};
 use bitaxe_worker_control::serial::{ReceiveCreditMailbox, SerialKind, SerialSessionBinding};
 use bitaxe_worker_control::{
     load_or_generate_device_identity, WorkLeaseAuthorityTrust, WorkLeaseAuthorizationVerifier,
@@ -37,7 +39,8 @@ enum ControlEvent {
         generation: WorkerGeneration,
     },
     Frame {
-        epoch: u32,
+        correlation: SerialTraceCorrelation,
+        wire_bytes: usize,
         bytes: SecretBytes,
     },
 }
@@ -204,11 +207,21 @@ fn run_owner<V>(
                 worker.session_mut().set_generation(generation);
                 owner_epoch = epoch;
             }
-            ControlEvent::Frame { epoch, bytes } => {
-                if epoch != owner_epoch || CURRENT_SESSION.load(Ordering::Acquire) != epoch {
+            ControlEvent::Frame {
+                correlation,
+                wire_bytes,
+                bytes,
+            } => {
+                if !trace::TRACE.admit_dispatch(
+                    correlation,
+                    owner_epoch,
+                    CURRENT_SESSION.load(Ordering::Acquire),
+                    crate::runtime_uptime::millis(),
+                    wire_bytes,
+                ) {
                     continue;
                 }
-                process_frame(worker, epoch, &bytes.0, now);
+                process_frame(worker, correlation, &bytes.0, now);
             }
         }
     }
@@ -219,19 +232,22 @@ fn run_owner<V>(
 
 fn process_frame<V>(
     worker: &mut WorkerControl<V, ProductionWorkerSession>,
-    epoch: u32,
+    correlation: SerialTraceCorrelation,
     bytes: &[u8],
     now: u64,
 ) where
     V: bitaxe_worker_control::LeaseAuthorizationVerifier,
 {
+    let epoch = correlation.epoch;
     let response = match worker.prepare_frame(bytes, now) {
         Ok(response) => response,
         Err(error) => {
+            trace::event(correlation, SerialTraceStage::ReplyRejected, 0);
             diagnostic(error.category());
             if CURRENT_SESSION.load(Ordering::Acquire) == epoch {
                 if let Ok(rejection) = worker.prepare_rejection(bytes, &error) {
-                    if writer::send_control(epoch, rejection.frame()).is_err() {
+                    trace::event(correlation, SerialTraceStage::ReplyCreated, 0);
+                    if writer::send_control(correlation, rejection.frame()).is_err() {
                         diagnostic("stale_response");
                     }
                 }
@@ -240,10 +256,12 @@ fn process_frame<V>(
             return;
         }
     };
+    trace::event(correlation, SerialTraceStage::ReplyCreated, 0);
     if CURRENT_SESSION.load(Ordering::Acquire) != epoch {
+        trace::event(correlation, SerialTraceStage::WriterRejected, 0);
         return;
     }
-    if writer::send_control(epoch, response.frame()).is_err()
+    if writer::send_control(correlation, response.frame()).is_err()
         || worker.confirm_sent(response).is_err()
     {
         revoke_epoch(epoch);
@@ -259,6 +277,14 @@ fn revoke_epoch(epoch: u32) {
         .compare_exchange(epoch, 0, Ordering::AcqRel, Ordering::Acquire)
         .is_ok()
     {
+        trace::event(
+            SerialTraceCorrelation {
+                epoch,
+                request_sequence: 0,
+            },
+            SerialTraceStage::EpochRevoked,
+            0,
+        );
         RECEIVE_CREDIT.close(epoch);
     }
     let _ = AUTHENTICATED_SESSION.compare_exchange(epoch, 0, Ordering::AcqRel, Ordering::Acquire);

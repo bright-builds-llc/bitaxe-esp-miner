@@ -45,6 +45,13 @@ impl WorkerSession for ProductionWorkerSession {
         crate::production_mining_session::status_evidence(self.maybe_generation)
     }
 
+    fn serial_trace_review(
+        &self,
+    ) -> Result<Option<bitaxe_worker_control::serial::trace::SerialTraceSnapshot>, WorkerSessionError>
+    {
+        Ok(Some(crate::bwg_worker_usb::trace::snapshot()))
+    }
+
     fn qualification_attempt_review(
         &self,
     ) -> Result<Option<serde_json::Value>, WorkerSessionError> {

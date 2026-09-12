@@ -87,7 +87,8 @@ pub(super) fn run() {
             let frame_bytes = observed_bytes;
             observed_bytes = 0;
             let Ok(frame) = result else {
-                if maybe_link.is_some() {
+                if let Some(link) = maybe_link.as_ref() {
+                    rejected(link.epoch, frame_bytes);
                     FAILURE.record(Stage::Framing, frame_bytes);
                 }
                 close(&mut maybe_link);
@@ -98,7 +99,8 @@ pub(super) fn run() {
                 Ok(envelope) => envelope,
                 Err(error) => {
                     // Boot text is permissible before hello; corrupt established input revokes.
-                    if maybe_link.is_some() {
+                    if let Some(link) = maybe_link.as_ref() {
+                        rejected(link.epoch, frame_bytes);
                         let stage = if error == SerialError::Integrity {
                             Stage::Integrity
                         } else {
@@ -116,7 +118,7 @@ pub(super) fn run() {
             {
                 close(&mut maybe_link);
                 if frame_bytes <= HOST_RECEIVE_WINDOW_BYTES as usize {
-                    maybe_link = hello(envelope, &mut next_epoch);
+                    maybe_link = hello(envelope, &mut next_epoch, frame_bytes);
                 }
                 continue;
             }
@@ -126,17 +128,26 @@ pub(super) fn run() {
             if envelope.session_id.as_deref() != Some(link.binding.session_id.as_str())
                 || envelope.sequence <= link.sequence
             {
+                rejected(link.epoch, frame_bytes);
                 FAILURE.record(Stage::Sequence, frame_bytes);
                 close(&mut maybe_link);
                 continue;
             }
             link.sequence = envelope.sequence;
             if envelope.sequence == u32::MAX {
+                rejected(link.epoch, frame_bytes);
                 FAILURE.record(Stage::Sequence, frame_bytes);
                 close(&mut maybe_link);
                 continue;
             }
             let clean_close = envelope.kind == SerialKind::Session && envelope.is_close();
+            let correlation = SerialTraceCorrelation {
+                epoch: link.epoch,
+                request_sequence: envelope.sequence,
+            };
+            if envelope.kind == SerialKind::Control {
+                trace::event(correlation, SerialTraceStage::Validated, frame_bytes);
+            }
             if !clean_close {
                 RECEIVE_CREDIT.publish(link.received.received_bytes());
             }
@@ -169,9 +180,11 @@ pub(super) fn run() {
                     let _work_still_live = revocation::heartbeat(link.generation, now);
                 }
                 SerialKind::Control => {
+                    trace::event(correlation, SerialTraceStage::EnqueueStarted, frame_bytes);
                     let payload = envelope.payload.get().as_bytes();
                     let mut frame = Vec::new();
                     if frame.try_reserve_exact(payload.len() + 1).is_err() {
+                        trace::event(correlation, SerialTraceStage::EnqueueRejected, frame_bytes);
                         FAILURE.record(Stage::ControlAllocation, frame_bytes);
                         close(&mut maybe_link);
                         continue;
@@ -179,12 +192,16 @@ pub(super) fn run() {
                     frame.extend_from_slice(payload);
                     frame.push(b'\n');
                     let event = ControlEvent::Frame {
-                        epoch: link.epoch,
+                        correlation,
+                        wire_bytes: frame_bytes,
                         bytes: SecretBytes(frame),
                     };
                     if !enqueue(event) {
+                        trace::event(correlation, SerialTraceStage::EnqueueRejected, frame_bytes);
                         FAILURE.record(Stage::ControlQueue, frame_bytes);
                         close(&mut maybe_link);
+                    } else {
+                        trace::event(correlation, SerialTraceStage::Enqueued, frame_bytes);
                     }
                 }
                 SerialKind::Session => {
@@ -214,7 +231,7 @@ pub(super) fn run() {
     }
 }
 
-fn hello(envelope: SerialEnvelope, next_epoch: &mut u32) -> Option<Link> {
+fn hello(envelope: SerialEnvelope, next_epoch: &mut u32, wire_bytes: usize) -> Option<Link> {
     let hello: Hello = serde_json::from_str(envelope.payload.get()).ok()?;
     if hello.op != "hello" || !canonical_nonce(&hello.host_nonce, 32) {
         return None;
@@ -231,6 +248,14 @@ fn hello(envelope: SerialEnvelope, next_epoch: &mut u32) -> Option<Link> {
     FAILURE.clear();
     RECEIVE_CREDIT.begin(epoch);
     CURRENT_SESSION.store(epoch, Ordering::Release);
+    trace::event(
+        SerialTraceCorrelation {
+            epoch,
+            request_sequence: 0,
+        },
+        SerialTraceStage::Hello,
+        wire_bytes,
+    );
     if !enqueue(ControlEvent::Session {
         epoch,
         binding: binding.clone(),
@@ -267,6 +292,17 @@ fn hello(envelope: SerialEnvelope, next_epoch: &mut u32) -> Option<Link> {
         liveness: SerialLinkLiveness::new(crate::runtime_uptime::millis()),
         received: SerialReceiveProgress::default(),
     })
+}
+
+fn rejected(epoch: u32, wire_bytes: usize) {
+    trace::event(
+        SerialTraceCorrelation {
+            epoch,
+            request_sequence: 0,
+        },
+        SerialTraceStage::ValidationRejected,
+        wire_bytes,
+    );
 }
 
 fn close(maybe_link: &mut Option<Link>) {

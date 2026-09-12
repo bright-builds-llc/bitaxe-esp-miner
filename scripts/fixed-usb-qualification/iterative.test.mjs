@@ -6,7 +6,7 @@ import { chmod, mkdir, mkdtemp, realpath, readFile, readdir, rm, writeFile } fro
 import { dirname, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { BUNDLE, digest, PAGE, readJson, writeNew } from "./contract.mjs";
-import { iterativeBootstrap, iterativePreflight, readPrevious, requireIterativeTask, validateIterativeContext, validateIterativePolicy } from "./iterative-preflight.mjs";
+import { iterativeBootstrap, iterativePreflight, recoveryPreflight, readPrevious, requireIterativeTask, validateIterativeContext, validateIterativePolicy } from "./iterative-preflight.mjs";
 import { requireIdleLedger, validateAttempt } from "./iterative-contract.mjs";
 import { judgeIterative, finishIterative } from "./iterative-judge.mjs";
 import { createIterativeSupervisor } from "./iterative-server.mjs";
@@ -519,4 +519,99 @@ test("untrusted previous receipt hash rejects before following recursive source 
   await writeNew(path, { receipt, sha256: "0".repeat(64) });
   // Act / Assert
   await assert.rejects(readPrevious(path), /iterative_receipt_integrity/u);
+});
+
+
+async function recoveryServerFixture(t) {
+  const prior = await completedDiagnostic(t);
+  await writeFile(resolve(prior.options.firmwareRoot, "TASKS.md"), "## Active\n### task-fixed-usb-hello-resynchronization | fixture\n");
+  const options = { ...prior.options, privateRoot: resolve(prior.parent, "recovery-loss"),
+    previousReceipt: resolve(prior.options.privateRoot, "result.json"), firmwareCommit: "e".repeat(40), recoveryPhase: "loss" };
+  const operations = { ...prior.operations, inspectSources: async () => ({ ...await prior.operations.inspectSources(), firmware_commit: options.firmwareCommit }) };
+  delete options.purpose;
+  await recoveryPreflight(options, operations);
+  const { context } = await readJson(resolve(options.privateRoot, "context.json"));
+  let signs = 0, poolReads = 0;
+  const server = await createIterativeSupervisor({ ...options, context }, { verifyFrozen: async () => ({}),
+    readPool: async () => { poolReads += 1; return {}; },
+    sign: async operation => { signs += 1; return { profile: "bwg-worker-lease-authorization-artifact/0.1", operation, authorization: "fixture" }; } });
+  server.listen(0, "127.0.0.1"); await once(server, "listening");
+  t.after(() => new Promise((done) => { server.close(done); server.closeAllConnections(); }));
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const request = (path, input) => fetch(origin + path, { method: "POST", headers: { Origin: origin, "Content-Type": "application/json" }, body: JSON.stringify(input) });
+  for (let n = 1; n <= 4; n++) await writeNew(resolve(options.privateRoot, `cycle-${n}.json`), {
+    ...await readJson(resolve(prior.options.privateRoot, `cycle-${n}.json`)), firmware_commit: context.firmware_commit, app_elf_sha256: context.app_elf_sha256 });
+  return { prior, options, context, request, signs: () => signs, poolReads: () => poolReads };
+}
+
+test("live recovery endpoint binds actual ordered journal snapshots and rejects reuse", async (t) => {
+  const { options, context, request } = await recoveryServerFixture(t);
+  const before = { ...observations(context)[0].state, status: "running", authorizationRecovery: {
+    schema: "worker-authorization-recovery-v1", checkpointId: ID, generation: 1, matched: null } };
+  const after = { ...before, status: "disconnected", running: false, connected: false, serialOwnershipReleased: true };
+  const input = { before, after, receipt: { schema: "worker-mining-interruption-v1", generation: 1,
+    workDispatched: 1, workGateRemainingMs: 10000, ownershipReleased: true, controlRecordsSent: 0 } };
+  assert.equal((await request("/recovery-loss", input)).status, 400);
+  await writeNew(resolve(options.privateRoot, "consumed.json"), { ordinal: 2, delivery_attempted: true });
+  assert.equal((await request("/record", { state: before })).status, 200);
+  assert.equal((await request("/recovery-loss", input)).status, 400);
+  assert.equal((await request("/record", { state: after })).status, 200);
+  const missingCheckpoint = { ...before }; delete missingCheckpoint.authorizationRecovery;
+  const denied = await request("/recovery-loss", { ...input, before: missingCheckpoint });
+  assert.equal(denied.status, 400); assert.equal((await denied.json()).error, "recovery_authorization_checkpoint");
+  assert(!(await readdir(options.privateRoot)).includes("iterative.fault.json"));
+  assert.deepEqual(await (await request("/recovery-loss", input)).json(), { recovery_loss_saved: true });
+  const path = resolve(options.privateRoot, "iterative.fault.json"), bytes = await readFile(path);
+  assert.equal((await request("/recovery-loss", input)).status, 400);
+  assert.deepEqual(await readFile(path), bytes);
+  const fault = JSON.parse(bytes);
+  assert.equal(fault.after_sequence, 1); assert.equal(fault.released_sequence, 2);
+});
+
+
+test("v5 completion cannot seal a caller-supplied close before the final journal observation", async t => {
+  // Arrange
+  const { options, context, request } = await recoveryServerFixture(t), root = options.privateRoot;
+  const before = ledger(context.qualification_attempt.ordinal, context.expected_charged_ms);
+  await writeNew(resolve(root, "issued.json"), { context_sha256: digest(JSON.stringify(context)), ordinal: before.next_ordinal, ledger_before: before });
+  await writeNew(resolve(root, "consumed.json"), { ordinal: before.next_ordinal, delivery_attempted: true });
+  const records = observations(context);
+  for (const record of records) assert.equal((await request("/record", { state: record.state })).status, 200);
+  const closed = { ...records.at(-1).state, ...state(context, true) }, input = resolve(root, "final-input.json");
+  await writeNew(input, { ledger_before: before, ledger_after: ledger(before.next_ordinal + 1, before.total_charged_ms + 30000), original_budget: original, final_state: closed });
+  const unchanged = await readFile(resolve(root, "iterative.samples.jsonl"));
+  // Act / Assert
+  await assert.rejects(finishIterative(root, context, input), { code: "recovery_final_journal_binding" });
+  for (const file of ["sample-seal-intent.json", "sealed.samples.jsonl", "result.json"]) assert(!(await readdir(root)).includes(file));
+  assert.deepEqual(await readFile(resolve(root, "iterative.samples.jsonl")), unchanged);
+  assert.equal((await request("/record", { state: closed })).status, 200);
+  const result = await finishIterative(root, context, input);
+  assert.equal(result.result, "unverified"); assert.equal(result.judgment_failure, "recovery_trace_missing");
+  assert.deepEqual((await readJson(resolve(root, "sample-seal-intent.json"))).final_state, closed);
+});
+
+test("missing v5 before traces block the real signing endpoint before pool access or signatures", async t => {
+  // Arrange
+  const f = await recoveryServerFixture(t), root = f.options.privateRoot, current = { ...state(f.context), deviceBaselineConfirmed: true };
+  const before = ledger(f.context.qualification_attempt.ordinal, f.context.expected_charged_ms), binding = Buffer.alloc(32, 2).toString("base64url");
+  await f.request("/activate", {}); assert.equal((await f.request("/record", { state: current })).status, 200);
+  await writeNew(resolve(root, "cooling.json"), { schema: "worker-iterative-cooling-v1", context_sha256: digest(JSON.stringify(f.context)), state: current,
+    budget_before: before, budget_after: before, proof: { schema: "worker-cooling-proof-v1", fan_duty_percent: 100, fan_rpm: 2000, post_command_fan_proven: true, asic_effects: false, budget_reserved: false },
+    restoration: { schema: "worker-cooling-baseline-v1", fan_duty_percent: 30, cooling_proven: true, asic_effects: false, budget_reserved: false } });
+  const review = async () => {
+    const challenge = await (await f.request("/budget-review-context", {})).json();
+    assert.equal((await f.request("/budget-review", { nonce: challenge.nonce, report: before, controlSessionBindingSha256: binding, state: current })).status, 200);
+  };
+  await review();
+  // Act / Assert
+  assert.equal((await f.request("/authorization-context", { controlSessionBindingSha256: binding })).status, 400);
+  assert.equal(f.signs(), 0); assert.equal(f.poolReads(), 0); assert(!(await readdir(root)).includes("issued.json"));
+  const range = { firstEventOrdinal: 1, nextEventOrdinal: 2, overwrittenEvents: 0 };
+  const event = { ordinal: 1, epoch: 1, requestSequence: 0, atMs: 0, wireBytes: 0, queuedBytes: 0 };
+  const traces = { browser: { schema: "worker-browser-serial-trace-v1", capacity: 256, ...range, events: [{ ...event, frameOrdinal: 0, requestOrdinal: 0, stage: "epoch_started" }] },
+    device: { schema: "worker-serial-trace-v1", capacity: 64, snapshotAvailable: true, droppedEvents: 0, current: { epoch: 1, ...range, events: [{ ...event, stage: "hello" }] }, previous: null } };
+  for (const source of ["browser", "device"]) await writeNew(resolve(root, `recovery-trace-before-${source}.json`), {
+    schema: "fixed-usb-recovery-trace-v1", context_sha256: digest(JSON.stringify(f.context)), stage: "before", source, after_sequence: 1, trace: traces[source] });
+  await review(); assert.equal((await f.request("/authorization-context", { controlSessionBindingSha256: binding })).status, 200);
+  assert.equal(f.signs(), 3); assert.equal(f.poolReads(), 1);
 });

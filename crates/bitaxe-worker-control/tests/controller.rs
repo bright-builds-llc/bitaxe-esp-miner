@@ -4,6 +4,8 @@ mod budget_review;
 mod cooling;
 #[path = "controller/liveness.rs"]
 mod liveness;
+#[path = "controller/serial_trace.rs"]
+mod serial_trace;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use bitaxe_worker_control::{
@@ -64,6 +66,14 @@ struct FakeSession {
 }
 
 impl WorkerSession for FakeSession {
+    fn serial_trace_review(
+        &self,
+    ) -> Result<Option<bitaxe_worker_control::serial::trace::SerialTraceSnapshot>, WorkerSessionError>
+    {
+        Ok(Some(
+            bitaxe_worker_control::serial::trace::SerialTrace::new().snapshot(),
+        ))
+    }
     fn qualify_cooling(&mut self) -> Result<serde_json::Value, WorkerSessionError> {
         self.events.push("cooling");
         if self.fail_cooling {

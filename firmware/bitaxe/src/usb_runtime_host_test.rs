@@ -83,6 +83,8 @@ mod runtime_uptime {
 }
 #[path = "usb_runtime.rs"]
 mod usb_runtime;
+#[path = "bwg_worker_usb/trace.rs"]
+mod trace;
 
 #[test]
 fn maximum_record_can_flush_within_the_existing_total_write_budget() {
@@ -226,4 +228,56 @@ fn complete_queued_record_cancelled_during_flush_is_not_a_partial_prefix() {
     assert_eq!(failure.queued_bytes, failure.record_bytes);
     assert!(!usb_runtime::has_partial_output());
     assert_eq!(STATE.lock().expect("state").emitted, b"{}\n");
+}
+
+fn trace_fixture(revoke_on_write: bool) {
+    ADMITTED.store(true, Ordering::Release);
+    *STATE.lock().expect("test state") = State { now: 0, write_ms: 1, flush_ms: 0, flush_ticks: 0,
+        writes: 0, emitted: Vec::new(), revoke_on_write, revoke_on_flush: false, force_full: false };
+}
+
+#[test]
+fn real_partial_native_write_is_retained_after_successor_admission_traffic() {
+    // Arrange
+    use bitaxe_worker_control::serial::trace::{SerialTrace, SerialTraceCorrelation, SerialTraceStage};
+    let _exclusive = EXCLUSIVE.lock().expect("exclusive driver fixture");
+    trace_fixture(true);
+    let retained = SerialTrace::new();
+    let request = SerialTraceCorrelation { epoch: 1, request_sequence: 19 };
+    // Act
+    let result = usb_runtime::write_observed_if(&[b'x'; 1024], || ADMITTED.load(Ordering::Acquire),
+        |observed| trace::observe_in(&retained, request, observed));
+    for time in 10..110 {
+        retained.record(SerialTraceCorrelation { epoch: 2, request_sequence: 1 }, SerialTraceStage::Validated, time, 300, 0);
+    }
+    // Assert
+    assert!(result.is_err());
+    let old = retained.snapshot().previous.expect("old epoch retained");
+    assert_eq!(old.events.len(), 2);
+    assert_eq!(old.events[0].stage, SerialTraceStage::WriterQueued);
+    assert_eq!(old.events[1].stage, SerialTraceStage::WriterAbandoned);
+    assert_eq!(old.events[1].queued_bytes, 512);
+    assert_eq!(old.events[1].wire_bytes, 1024);
+    assert_eq!(STATE.lock().expect("state").writes, 1);
+    usb_runtime::resynchronize_if(|| true).expect("fixture partial-line cleanup");
+}
+
+#[test]
+fn real_native_tx_completion_remains_visible_after_a_fresh_hello() {
+    // Arrange
+    use bitaxe_worker_control::serial::trace::{SerialTrace, SerialTraceCorrelation, SerialTraceStage};
+    let _exclusive = EXCLUSIVE.lock().expect("exclusive driver fixture");
+    trace_fixture(false);
+    let retained = SerialTrace::new();
+    let request = SerialTraceCorrelation { epoch: 1, request_sequence: 23 };
+    // Act
+    usb_runtime::write_observed_if(b"{}\n", || ADMITTED.load(Ordering::Acquire),
+        |observed| trace::observe_in(&retained, request, observed)).expect("native complete");
+    retained.record(SerialTraceCorrelation { epoch: 2, request_sequence: 0 }, SerialTraceStage::Hello, 10, 300, 0);
+    // Assert
+    let old = retained.snapshot().previous.expect("completed prior epoch");
+    assert_eq!(old.events.len(), 2);
+    assert_eq!(old.events[1].stage, SerialTraceStage::WriterCompleted);
+    assert_eq!(old.events[1].queued_bytes, 3);
+    assert_eq!(old.events[1].wire_bytes, 3);
 }
