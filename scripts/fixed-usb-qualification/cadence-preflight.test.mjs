@@ -5,7 +5,8 @@ import { resolve } from "node:path";
 import test from "node:test";
 import { CADENCE_LIMITS, CADENCE_SCHEMA, CADENCE_TASK, requireCadenceTask, validateCadencePolicy } from "./cadence-contract.mjs";
 import { cadencePreflight, validateCadenceContext } from "./cadence-preflight.mjs";
-import { fileDigest, writeNew } from "./contract.mjs";
+import { digest, fileDigest, writeNew } from "./contract.mjs";
+import { closeUnissued, readUnissued } from "./cadence-unissued.mjs";
 
 async function fixture(t) {
   const base = await realpath(await mkdtemp(resolve(tmpdir(), "cadence-preflight-"))); await chmod(base, 0o700);
@@ -114,4 +115,80 @@ test("both live and historical context review reject a modified retained observe
   for (const historical of [false, true]) {
     await assert.rejects(validateCadenceContext(f.options.privateRoot, context, { historical }), { code: "cadence_observer_snapshot" });
   }
+});
+
+async function unissuedFixture(t) {
+  const f = await fixture(t); await cadencePreflight(f.options, f.operations);
+  const oldRoot = f.options.privateRoot, { context } = JSON.parse(await readFile(resolve(oldRoot, "context.json"), "utf8"));
+  f.operations.verifyArtifactSnapshot = async () => undefined;
+  await writeNew(resolve(oldRoot, "artifact-snapshot.json"), { fixture: "retained artifacts" });
+  const final = { schema: "worker-serial-acceptance-v1", gateCommit: context.gate_commit, expectedFirmwareSourceCommit: context.firmware_commit,
+    status: "closed", connected: false, running: false, heartbeatSuppressed: false, renewalsConfirmed: 0, deviceRestorationConfirmed: false,
+    deviceBaselineConfirmed: true, deviceLeaseInactive: true, serialOwnershipReleased: true,
+    preservation: { schema: "worker-preservation-continuity-v1", baseline_id: Buffer.alloc(16, 2).toString("base64url"), device_identity_match: true,
+      settings_match: true, authorization_high_water_match: true, mine_on_boot: false } };
+  const records = [{ sequence: 1, state: { ...final, status: "failed", failure: "connect_failed", admissionFailureStage: "permission", serialFailureCategory: "operation_failed" } },
+    { sequence: 2, state: final }];
+  await writeFile(resolve(oldRoot, "iterative.samples.jsonl"), records.map(record => JSON.stringify(record) + "\n").join(""), { mode: 0o600 });
+  await writeNew(resolve(oldRoot, "first-failure.json"), { schema: "worker-iterative-first-failure-v1", ordinal: 16, sequence: 1,
+    browser: "connect_failed", serial: "operation_failed", admission: "permission" });
+  await writeNew(resolve(oldRoot, "native-gesture-remediation.json"), { schema: "cadence-preparation-remediation-v1",
+    original_boundary: { failure: "connect_failed", stage: "permission", serial: "operation_failed" },
+    remediation: "foreground_native_accessibility_click", native_chooser_observed: true, exact_firmware_admitted: true,
+    baseline_confirmed: true, ledger_read_method: "workerAcceptance.reviewQualificationAttempts", original_budget_read_method: "workerAcceptance.reviewBudget",
+    private_values_exported: false, qualification_claimed: false });
+  const input = { ledger: { schema: "worker-qualification-ledger-v1", next_ordinal: 16, total_charged_ms: 1200000, pending: false, last_completed_ordinal: 15 },
+    original_budget: f.previous.original_budget, cleanup: { schema: "worker-unissued-cleanup-v1", source: "parent-observed", browser_closed: true,
+      supervisor_exited: true, supervisor_exit_code: 0, listener_absent: true, owned_children_absent: true, serial_holders_absent: true } };
+  await closeUnissued(oldRoot, input, f.operations);
+  const successorInput = resolve(f.base, "successor-progress.json");
+  await writeNew(successorInput, { schema: "worker-qualification-progress-v1", review: "verified", reason: "manual_remediation",
+    evidence_sha256: [await fileDigest(resolve(oldRoot, "native-gesture-remediation.json"))] });
+  const options = { ...f.options, input: successorInput, privateRoot: resolve(f.base, "attempts/successor"), supersedeUnissued: resolve(oldRoot, "unissued-closure.json") };
+  f.operations.inspectSources = async () => ({ firmware_commit: "f".repeat(40), gate_commit: context.gate_commit });
+  return { ...f, options, oldRoot, oldContext: context };
+}
+
+test("sealed unissued preparation reuses the unspent ordinal with fresh identity and an exclusive separate marker", async t => {
+  // Arrange
+  const f = await unissuedFixture(t), oldMarker = resolve(f.base, "attempts/ordinal-16.json"), oldHash = await fileDigest(oldMarker);
+  const closureHash = await fileDigest(f.options.supersedeUnissued);
+  // Act
+  await cadencePreflight(f.options, f.operations);
+  const { context } = JSON.parse(await readFile(resolve(f.options.privateRoot, "context.json"), "utf8"));
+  // Assert
+  assert.equal(context.preparation_attempt, 2); assert.equal(context.qualification_attempt.ordinal, 16);
+  assert.notEqual(context.qualification_attempt.id, f.oldContext.qualification_attempt.id);
+  assert.deepEqual(context.unissued_predecessor, { root: f.oldRoot, closure_sha256: closureHash });
+  assert.equal(await fileDigest(oldMarker), oldHash); assert.equal(await fileDigest(f.options.supersedeUnissued), closureHash);
+  assert.deepEqual(JSON.parse(await readFile(resolve(f.base, "attempts/ordinal-16-preparation-2.json"), "utf8")),
+    { context_sha256: digest(JSON.stringify(context)), attempt_root: f.options.privateRoot });
+  await validateCadenceContext(f.options.privateRoot, context, { operations: f.operations });
+  await readUnissued(f.options.supersedeUnissued, f.operations);
+  await assert.rejects(validateCadenceContext(f.oldRoot, f.oldContext, { operations: f.operations }), { code: "private_path_exists" });
+  await assert.rejects(cadencePreflight({ ...f.options, privateRoot: resolve(f.base, "attempts/duplicate") }, f.operations), { code: "private_path_exists" });
+});
+
+test("unchanged pair, different charged predecessor and mutated closure cannot supersede preparation", async t => {
+  // Arrange / Act / Assert
+  for (const mode of ["pair", "predecessor", "closure"]) {
+    const f = await unissuedFixture(t);
+    if (mode === "pair") f.operations.inspectSources = async () => ({ firmware_commit: f.oldContext.firmware_commit, gate_commit: f.oldContext.gate_commit });
+    if (mode === "predecessor") {
+      const other = resolve(f.base, "attempts/other"); await mkdir(other, { mode: 0o700 });
+      f.options.previousReceipt = resolve(other, "result.json"); await writeNew(f.options.previousReceipt, { another: "completed predecessor" });
+    }
+    if (mode === "closure") await writeFile(resolve(f.oldRoot, "native-gesture-remediation.json"), "{}");
+    await assert.rejects(cadencePreflight(f.options, f.operations));
+    assert(!(await readdir(resolve(f.base, "attempts"))).includes("ordinal-16-preparation-2.json"));
+  }
+});
+
+test("ordinary cadence preflight cannot use manual remediation without sealed unissued lineage", async t => {
+  // Arrange
+  const f = await fixture(t);
+  await writeFile(f.options.input, JSON.stringify({ schema: "worker-qualification-progress-v1", review: "verified", reason: "manual_remediation", evidence_sha256: ["d".repeat(64)] }));
+  // Act / Assert
+  await assert.rejects(cadencePreflight(f.options, f.operations), { code: "cadence_verified_progress_required" });
+  assert.equal(f.inspections(), 0);
 });

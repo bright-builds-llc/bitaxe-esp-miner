@@ -40,10 +40,10 @@ export async function cadenceValidatorDigest(root) {
   return digest(JSON.stringify(rows));
 }
 
-export function validateCadenceProgress(progress) {
+export function validateCadenceProgress(progress, allowManual = false) {
   exactObject(progress, ["schema", "review", "reason", "evidence_sha256"]);
   requireCondition(progress.schema === "worker-qualification-progress-v1" && progress.review === "verified" &&
-    progress.reason === "software_correction" && Array.isArray(progress.evidence_sha256) &&
+    (progress.reason === "software_correction" || (allowManual && progress.reason === "manual_remediation")) && Array.isArray(progress.evidence_sha256) &&
     progress.evidence_sha256.length > 0 && progress.evidence_sha256.length <= 16 &&
     progress.evidence_sha256.every(value => hex(value, 64)), "cadence_verified_progress_required");
 }

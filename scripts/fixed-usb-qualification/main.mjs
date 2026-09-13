@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { CADENCE_SCHEMA } from "./cadence-contract.mjs";
 import { cadencePreflight } from "./cadence-preflight.mjs";
+import { closeUnissued } from "./cadence-unissued.mjs";
 import { noMiningPreflight, NO_MINING_SCHEMA } from "./no-mining-context.mjs";
 import { createNoMiningSupervisor } from "./no-mining-server.mjs";
 import { finishNoMining } from "./no-mining-judge.mjs";
@@ -19,7 +20,7 @@ import { createSupervisor } from "./server.mjs";
 import { finishWindow, recordCycle } from "./store.mjs";
 import { protectedPath, QualificationError, readJson, requireCondition } from "./contract.mjs";
 
-const KEYS = { "--observer-binary": "observerBinary", "--recovery-phase": "recoveryPhase", "--original-campaign-record": "originalCampaignRecord", "--retained-runtime-from": "retainedRuntimeFrom", "--suggested-difficulty": "suggestedDifficulty", "--cycles-from": "cyclesFrom", "--purpose": "purpose", "--previous-receipt": "previousReceipt", "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
+const KEYS = { "--supersede-unissued": "supersedeUnissued", "--observer-binary": "observerBinary", "--recovery-phase": "recoveryPhase", "--original-campaign-record": "originalCampaignRecord", "--retained-runtime-from": "retainedRuntimeFrom", "--suggested-difficulty": "suggestedDifficulty", "--cycles-from": "cyclesFrom", "--purpose": "purpose", "--previous-receipt": "previousReceipt", "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
   "--manifest": "manifest", "--private-root": "privateRoot", "--authority-directory": "authorityDirectory", "--pool-credentials": "poolCredentials",
   "--cooling-input": "coolingInput", "--predecessor-root": "predecessorRoot", "--bun": "bun", "--port": "port", "--window": "window", "--input": "input",
   "--qualification-source-commit": "qualificationSourceCommit", "--gate-qualification-source-commit": "gateQualificationSourceCommit" };
@@ -34,8 +35,9 @@ export async function main(args) {
   }
   requireCondition(options.privateRoot, "private_root_required");
   const allowed = {
-    "cadence-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "authorityDirectory", "bun", "previousReceipt", "input", "suggestedDifficulty", "observerBinary"],
+    "cadence-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "authorityDirectory", "bun", "previousReceipt", "input", "suggestedDifficulty", "observerBinary", "supersedeUnissued"],
     "cadence-judge": ["privateRoot", "input"],
+    "cadence-close-unissued": ["privateRoot", "input"],
     "iterative-recover-seal": ["privateRoot"],
     "iterative-continue-unreserved": ["privateRoot", "predecessorRoot", "input", "qualificationSourceCommit", "authorityDirectory", "bun"],
     "iterative-bootstrap": ["privateRoot", "input"],
@@ -61,6 +63,11 @@ export async function main(args) {
   if (command === "iterative-bootstrap") {
     requireCondition(options.input, "input_required");
     return iterativeBootstrap(resolve(options.privateRoot), options.input);
+  }
+  if (command === "cadence-close-unissued") {
+    requireCondition(options.input, "input_required");
+    await protectedPath(options.input);
+    return closeUnissued(resolve(options.privateRoot), await readJson(options.input));
   }
   if (command === "cadence-preflight") {
     for (const key of ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "authorityDirectory", "previousReceipt", "input", "observerBinary"]) requireCondition(options[key], "preflight_argument_missing");

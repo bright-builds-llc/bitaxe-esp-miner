@@ -125,3 +125,35 @@ A pass closes cadence, USB qualification and migration with exact evidence; BWG
 and STR-005 still need their own successor contracts. Failure retains those tasks
 with the precise blocker. Never relax thresholds after measurement, retry an
 unchanged boundary, refund a reservation or automatically promote parity.
+
+## Unissued preparation supersession
+
+A permission-stage preparation failure before any signed issuance must remain
+unverified. Use a native foreground click for Chrome's original user gesture;
+do not bypass the SDK's gesture guard or synthesize possession. Read-only
+recovery may verify the exact installed identity, safe baseline and unchanged
+ledgers, then close all owned browser, USB and supervisor resources.
+
+`just fixed-usb-qualification cadence-close-unissued --private-root <old root> --input <protected observed closure input>` is an effect-free classifier. It
+requires no issued/consumed/result or mining evidence, closed safe-baseline
+journal state, no running observations, unchanged authenticated ledgers,
+parent-observed cleanup and the actual original failure. It seals all original
+files and a typed unissued closure without claiming hardware qualification.
+
+After verified native-gesture remediation and publication of the bookkeeping
+correction, `cadence-preflight` may accept
+`--supersede-unissued <old root/unissued-closure.json>`. The completed charged
+predecessor must remain the same. Increment a separate preparation ordinal,
+create a fresh context and allowance identifier, preserve the original
+`ordinal-N.json`, and append `ordinal-N-preparation-K.json`. The device ordinal
+N is still unused, not refunded or replayed. Validate the sealed predecessor,
+exclusive assignment, corrected source pair and unchanged next/charged ledger
+before any issuance. No issued, consumed, funded, active or unclean attempt is
+eligible. Old preparations cannot be resumed as active authority. Four fresh
+cycles and all original measurement, safety, privacy and cleanup bounds apply.
+
+The sealed closure records `continue_after_manual_remediation` for this native
+gesture boundary; the host bookkeeping repair is separate. A progress reason of
+`manual_remediation` is admitted only with that validated, sealed unissued
+predecessor and its native-gesture evidence. Ordinary first preflights still
+require `software_correction`. No consumed allowance is eligible for this path.

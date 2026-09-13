@@ -4585,6 +4585,13 @@ Final publication review | 2026-09-13: Ordered Rust checks passed again after th
 Verification: No hardware effect is eligible before the complete contract, all software gates, clean exact-pair publication, artifact snapshots, fresh device/accounting admission and complete prior cleanup.
 
 
+Preparation-001 outcome | 2026-09-13: Initial state-preserving installation of4b66d61c passed exact identity, stable healthy startup and complete process cleanup. The automated browser click failed at permission before opening USB. Bringing the qualification window forward and using a native accessibility click opened the actual chooser; read-only recovery then proved exact identity, safe baseline, inactive lease, unchanged original240000-ms ledger and separate ledger1200000 ms/next16/no pending reservation. No allowance was signed, delivered or reserved, no observer started and no cadence phase ran. The failed preparation remains unverified; native recovery does not turn it into a pass.
+
+Unissued preparation amendment: A read-only `cadence-close-unissued` command may seal this failed preparation only after actual browser/USB/supervisor cleanup, validated final closed baseline and unchanged authenticated ledgers, with no issued/consumed/mining evidence. A fresh `cadence-preflight --supersede-unissued <sealed closure>` may then create a new preparation ordinal and fresh context/allowance identity for the still-unspent device ordinal16. Preserve the original ordinal marker and every original artifact; append a separately bound preparation-assignment marker, never rewrite or refund device accounting. Both predecessor/successor bind the same completed charged-ledger predecessor and fresh device review remains mandatory before issuance. Require verified correction and a changed published source pair; no unchanged retry. This repairs unissued host preparation bookkeeping only, not any issued or consumed allowance. All cadence/safety thresholds, four fresh exact-pair cycles and180000-ms reservation remain unchanged.
+
+Unissued repair verification | 2026-09-13: The real filesystem regression closes an unissued permission failure, preserves the original marker/closure, assigns preparation2 exclusively and rejects reuse after issuance, funding, mutation or unproved cleanup. Ordinary preflights still require software correction; manual remediation requires the sealed native-gesture predecessor. Ordered Rust gates (2209 tests, one existing ignored), all272 supervisor tests, all109 canonical targets, native package, ownership, reference and redaction passed. No ledger value, safety threshold or measured phase duration changed.
+
+
 ## Future
 
 ### task-str005-v2-channel-job-205 | 2026-08-28 | Prove Ultra 205 V2 channel and job receipt
