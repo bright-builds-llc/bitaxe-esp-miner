@@ -10,6 +10,7 @@ use anyhow::{bail, Result};
 use rustls::pki_types::ServerName;
 use rustls::{ClientConfig, ClientConnection, RootCertStore, StreamOwned};
 
+pub mod cadence;
 mod commands;
 mod observation;
 mod recovery;

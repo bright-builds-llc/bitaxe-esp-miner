@@ -9,6 +9,7 @@ mod lease;
 mod possession;
 mod preservation;
 pub use preservation::{SettingsPreservation, StateFingerprint};
+pub mod cadence;
 pub mod serial;
 mod session;
 

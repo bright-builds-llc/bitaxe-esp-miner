@@ -1,3 +1,4 @@
+import { CADENCE_SCHEMA } from "./cadence-contract.mjs";
 import { RECOVERY_SCHEMA } from "./recovery-judge.mjs";
 import { lstat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -47,7 +48,7 @@ export async function requireSuccessorBaseline(root, context, state) {
 }
 async function requireBaselineContinuity(root, context, state, released) {
   validateState(state, context);
-  const baselineConfirmed = context.schema === RECOVERY_SCHEMA && !released ? state.deviceBaselineConfirmed === true : state.deviceRestorationConfirmed;
+  const baselineConfirmed = [RECOVERY_SCHEMA, CADENCE_SCHEMA].includes(context.schema) && !released ? state.deviceBaselineConfirmed === true : state.deviceRestorationConfirmed;
   requireCondition(state.connected === !released && !state.running && baselineConfirmed && state.deviceLeaseInactive &&
     state.serialOwnershipReleased === released && !state.failure && state.preservation?.device_identity_match === true &&
     state.preservation.settings_match === true && state.preservation.mine_on_boot === false, "successor_baseline");

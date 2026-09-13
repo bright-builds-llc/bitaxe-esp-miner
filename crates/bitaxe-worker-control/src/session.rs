@@ -70,6 +70,31 @@ pub trait WorkerSession {
         Ok(None)
     }
 
+    /// Nonblocking diagnostic witness after successful Controller probe preparation, never delivery.
+    fn telemetry_cadence_probe_prepared(&self, _request_bytes: usize, _response_bytes: usize) {}
+
+    /// Arms one bounded diagnostic phase without granting work or extending liveness.
+    fn telemetry_cadence_arm(
+        &mut self,
+        _phase: crate::cadence::CadencePhase,
+    ) -> Result<Option<crate::cadence::CadenceArmReceipt>, WorkerSessionError> {
+        Ok(None)
+    }
+
+    /// Copies immutable phase summaries after fresh idle possession.
+    fn telemetry_cadence_review(
+        &self,
+    ) -> Result<Option<crate::cadence::CadenceSnapshot>, WorkerSessionError> {
+        Ok(None)
+    }
+
+    /// Private, freshly observed station endpoint; never part of public status evidence.
+    fn telemetry_cadence_endpoint(
+        &self,
+    ) -> Result<Option<crate::cadence::CadenceEndpoint>, WorkerSessionError> {
+        Ok(None)
+    }
+
     /// Returns only bounded, non-secret qualification observations; never authority.
     fn status_evidence(&self) -> Option<serde_json::Value> {
         None

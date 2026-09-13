@@ -516,7 +516,7 @@ fn next_attestation_deadline() -> u64 {
         .map_or(u64::MAX, |replay| replay.next_deadline_ms)
 }
 
-fn boot_ordinal() -> u64 {
+pub(crate) fn boot_ordinal() -> u64 {
     *BOOT_ORDINAL
         .get()
         .expect("boot ordinal is initialized before the observer starts")

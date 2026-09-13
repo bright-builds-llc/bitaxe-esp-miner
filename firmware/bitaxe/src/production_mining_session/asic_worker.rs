@@ -174,13 +174,13 @@ impl AsicWorker {
                             command,
                         } => match executor.maybe_execute_guarded(command, &valid_jobs, permit) {
                             Ok(Some(result)) => {
-                                revocation::note_dispatch(
+                                note_successful_dispatch(
                                     permit.maybe_generation(),
                                     crate::runtime_uptime::millis(),
                                 );
                                 emit(AsicWorkerEvent::Result { generation, result });
                             }
-                            Ok(None) => revocation::note_dispatch(
+                            Ok(None) => note_successful_dispatch(
                                 permit.maybe_generation(),
                                 crate::runtime_uptime::millis(),
                             ),
@@ -288,5 +288,13 @@ impl Drop for AsicWorker {
         {
             log::warn!("production_asic_worker_shutdown=degraded");
         }
+    }
+}
+
+fn note_successful_dispatch(maybe_generation: Option<WorkerGeneration>, now_ms: u64) {
+    revocation::note_dispatch(maybe_generation, now_ms);
+    if let Some(generation) = maybe_generation {
+        crate::telemetry_cadence::RECORDER
+            .successful_dispatch(generation.raw(), crate::telemetry_cadence::now_us());
     }
 }

@@ -1,3 +1,5 @@
+import { requireCadenceEvidence } from "./cadence-judge.mjs";
+import { CADENCE_SCHEMA, validateCadencePolicy } from "./cadence-contract.mjs";
 import { isDeepStrictEqual } from "node:util";
 import { requireRecoveryTraces } from "./recovery-trace.mjs";
 import { RECOVERY_SCHEMA, validateRecoveryPhase } from "./recovery-judge.mjs";
@@ -11,6 +13,7 @@ import { maximumActiveMs, PURPOSES, requireExhaustedOriginal, requireIdleLedger,
 import { copyRetainedArtifacts, inspectRetainedSources, retainedManifestPath } from "./runtime-source.mjs";
 
 export function validateIterativePolicy(context, live = false) {
+  if (context.schema === CADENCE_SCHEMA) { validateCadencePolicy(context); return true; }
   const recovery = context.schema === RECOVERY_SCHEMA;
   if (recovery) {
     validateRecoveryPhase(context);
@@ -96,7 +99,7 @@ export async function validateCompletedReceipt(path, receipt, records) {
     requireCondition(receipt.context_sha256 === digest(JSON.stringify(receipt.context)), "iterative_result_context");
     const frozen = await protectedJson(resolve(dirname(path), "context.json"));
     requireCondition(frozen.sha256 === receipt.context_sha256 && digest(JSON.stringify(frozen.context)) === frozen.sha256, "iterative_result_context");
-    if (["fixed-usb-iterative-context-v4", RECOVERY_SCHEMA].includes(receipt.context.schema)) await validateIterativeContext(dirname(path), receipt.context, { historical: true });
+    if (["fixed-usb-iterative-context-v4", RECOVERY_SCHEMA, CADENCE_SCHEMA].includes(receipt.context.schema)) await validateIterativeContext(dirname(path), receipt.context, { historical: true });
     if (receipt.context.schema === RECOVERY_SCHEMA) requireCondition(isDeepStrictEqual(records.at(-1)?.state, receipt.final_state), "recovery_final_journal_binding");
     const earliest = records.find((record) => record.state.failure);
     if (earliest) {
@@ -119,7 +122,7 @@ export async function validateCompletedReceipt(path, receipt, records) {
     const { judgeIterative } = await import("./iterative-judge.mjs");
     let judged, traceEvidence = [];
     try {
-      traceEvidence = await requireRecoveryTraces(dirname(path), receipt.context, records, fault);
+      traceEvidence = receipt.context.schema === CADENCE_SCHEMA ? await requireCadenceEvidence(dirname(path), receipt.context, records) : await requireRecoveryTraces(dirname(path), receipt.context, records, fault);
       judged = judgeIterative(receipt.context, records, fault, traceEvidence);
     }
     catch (error) {
@@ -127,6 +130,7 @@ export async function validateCompletedReceipt(path, receipt, records) {
     }
     if (receipt.context.schema === RECOVERY_SCHEMA) requireCondition(
       JSON.stringify(receipt.recovery_trace_evidence) === JSON.stringify(traceEvidence), "recovery_trace_evidence_changed");
+    if (receipt.context.schema === CADENCE_SCHEMA) requireCondition(JSON.stringify(receipt.cadence_evidence) === JSON.stringify(traceEvidence), "cadence_evidence_changed");
     if (judged) requireCondition(receipt.result === "passed" && JSON.stringify(judged) === JSON.stringify(receipt.judgment), "iterative_result_judgment");
     requireCondition(receipt.next_ordinal === receipt.ledger_after.next_ordinal && receipt.total_charged_ms === receipt.ledger_after.total_charged_ms &&
       receipt.original_campaign_id === receipt.context.original_campaign_id, "iterative_result_ledger_binding");
@@ -258,6 +262,10 @@ export async function iterativePreflight(options, operations = {}) {
     device_effects: false, allowance_reserved_on_device: false };
 }
 export async function validateIterativeContext(root, context, { historical = false } = {}) {
+  if (context.schema === CADENCE_SCHEMA) {
+    const { validateCadenceContext } = await import("./cadence-preflight.mjs");
+    return validateCadenceContext(root, context, { historical });
+  }
   validateIterativePolicy(context);
   if (!historical) await requireIterativeTask(context.firmware_root, context.schema === RECOVERY_SCHEMA);
   validateAttempt(context.qualification_attempt);

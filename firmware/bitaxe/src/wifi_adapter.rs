@@ -605,3 +605,16 @@ fn format_mac_addr(mac: [u8; 6]) -> String {
         mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]
     )
 }
+
+/// Reads the live station netif through its existing owner, without cloning private Wi-Fi state.
+pub(crate) fn maybe_connected_station_ipv4() -> Option<std::net::Ipv4Addr> {
+    let owner = WIFI_OWNER.get()?.try_lock().ok()?;
+    if !owner.wifi.is_connected().ok()? {
+        return None;
+    }
+    let ip = owner.wifi.wifi().sta_netif().get_ip_info().ok()?.ip;
+    if ip.is_unspecified() || ip.is_loopback() || ip.is_multicast() || ip.is_broadcast() {
+        return None;
+    }
+    Some(ip)
+}

@@ -276,7 +276,13 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             serde_json::from_str(json).map_err(|_| WorkerControlError::InvalidRequest)?;
         request.validate()?;
         self.acknowledge_boot_restoration()?;
-        self.prepare_controller(request, monotonic_milliseconds)
+        let is_probe = request.command == "transport_probe";
+        let prepared = self.prepare_controller(request, monotonic_milliseconds)?;
+        if is_probe {
+            self.session
+                .telemetry_cadence_probe_prepared(json.len(), prepared.frame.len() - 1);
+        }
+        Ok(prepared)
     }
 
     pub fn confirm_sent(
@@ -407,6 +413,9 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                 probe::response(payload, &request.request_id)?
             }
             "qualification_attempt_review" => self.review_qualification_attempt(&request, now)?,
+            "telemetry_cadence_arm" | "telemetry_cadence_review" | "telemetry_cadence_endpoint" => {
+                self.telemetry_cadence(&request, now)?
+            }
             "acceptance_budget_review" => self.review_acceptance_budget(&request, now)?,
             "qualification_cooling" => self.qualify_cooling(&request, now)?,
             "start_lease" => self.start(request.required_payload()?, now)?,
@@ -612,17 +621,5 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             .filter(|admission| admission.generation == self.generation)
             .map(|admission| &admission.context)
             .ok_or(WorkerControlError::AdmissionRequired)
-    }
-}
-
-impl<V, S> fmt::Debug for WorkerControl<V, S> {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter
-            .debug_struct("WorkerControl")
-            .field("generation", &self.generation)
-            .field("admitted", &self.maybe_admission.is_some())
-            .field("active", &self.maybe_active.is_some())
-            .field("private_material", &"[redacted]")
-            .finish()
     }
 }

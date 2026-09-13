@@ -1,9 +1,12 @@
-load("@rules_rust//rust:defs.bzl", "rust_library", "rust_test")
+load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 
 rust_library(
     name = "http_transport",
     srcs = [
         "src/lib.rs",
+        "src/cadence.rs",
+        "src/cadence/input.rs",
+        "src/cadence/tests.rs",
         "src/commands.rs",
         "src/observation.rs",
         "src/recovery.rs",
@@ -14,6 +17,10 @@ rust_library(
     edition = "2021",
     deps = [
         "@crates//:anyhow",
+        "@crates//:libc",
+        "@crates//:serde",
+        "@crates//:serde_json",
+        "@crates//:zeroize",
         "@crates//:rustls",
         "@crates//:sha2",
         "@crates//:tungstenite",
@@ -25,4 +32,13 @@ rust_library(
 rust_test(
     name = "tests",
     crate = ":http_transport",
+)
+
+rust_binary(
+    name = "cadence_observer",
+    srcs = ["src/bin/cadence-observer.rs"],
+    crate_name = "cadence_observer",
+    edition = "2021",
+    deps = [":http_transport"],
+    visibility = ["//visibility:public"],
 )

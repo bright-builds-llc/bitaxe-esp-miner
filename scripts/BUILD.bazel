@@ -151,7 +151,7 @@ js_library(
 
 js_binary(
     name = "fixed_usb_qualification",
-    data = [":fixed_usb_qualification_sources"],
+    data = [":fixed_usb_qualification_sources", "//tools/http-transport:cadence_observer"],
     entry_point = "fixed-usb-qualification/main.mjs",
     visibility = ["//visibility:public"],
 )
@@ -233,4 +233,34 @@ js_test(
     name = "owner_stack_audit_test",
     data = ["owner-stack-audit.mjs"],
     entry_point = "owner-stack-audit.test.mjs",
+)
+
+js_test(
+    name = "fixed_usb_cadence_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/cadence-evidence.test.mjs",
+)
+
+js_test(
+    name = "fixed_usb_cadence_observer_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/cadence-observer.test.mjs",
+)
+
+js_test(
+    name = "fixed_usb_cadence_preflight_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/cadence-preflight.test.mjs",
+)
+
+js_test(
+    name = "fixed_usb_cadence_server_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/cadence-server.test.mjs",
+)
+
+js_test(
+    name = "fixed_usb_cadence_client_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/cadence-client.test.mjs",
 )

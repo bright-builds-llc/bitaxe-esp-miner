@@ -46,6 +46,9 @@ impl ControllerRequest {
                 | "acceptance_budget_review"
                 | "qualification_attempt_review"
                 | "serial_trace_review"
+                | "telemetry_cadence_arm"
+                | "telemetry_cadence_review"
+                | "telemetry_cadence_endpoint"
                 | "qualification_cooling"
         )
     }

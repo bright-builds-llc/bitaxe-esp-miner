@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { CADENCE_SCHEMA } from "./cadence-contract.mjs";
+import { cadencePreflight } from "./cadence-preflight.mjs";
 import { noMiningPreflight, NO_MINING_SCHEMA } from "./no-mining-context.mjs";
 import { createNoMiningSupervisor } from "./no-mining-server.mjs";
 import { finishNoMining } from "./no-mining-judge.mjs";
@@ -17,7 +19,7 @@ import { createSupervisor } from "./server.mjs";
 import { finishWindow, recordCycle } from "./store.mjs";
 import { protectedPath, QualificationError, readJson, requireCondition } from "./contract.mjs";
 
-const KEYS = { "--recovery-phase": "recoveryPhase", "--original-campaign-record": "originalCampaignRecord", "--retained-runtime-from": "retainedRuntimeFrom", "--suggested-difficulty": "suggestedDifficulty", "--cycles-from": "cyclesFrom", "--purpose": "purpose", "--previous-receipt": "previousReceipt", "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
+const KEYS = { "--observer-binary": "observerBinary", "--recovery-phase": "recoveryPhase", "--original-campaign-record": "originalCampaignRecord", "--retained-runtime-from": "retainedRuntimeFrom", "--suggested-difficulty": "suggestedDifficulty", "--cycles-from": "cyclesFrom", "--purpose": "purpose", "--previous-receipt": "previousReceipt", "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
   "--manifest": "manifest", "--private-root": "privateRoot", "--authority-directory": "authorityDirectory", "--pool-credentials": "poolCredentials",
   "--cooling-input": "coolingInput", "--predecessor-root": "predecessorRoot", "--bun": "bun", "--port": "port", "--window": "window", "--input": "input",
   "--qualification-source-commit": "qualificationSourceCommit", "--gate-qualification-source-commit": "gateQualificationSourceCommit" };
@@ -32,6 +34,8 @@ export async function main(args) {
   }
   requireCondition(options.privateRoot, "private_root_required");
   const allowed = {
+    "cadence-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "authorityDirectory", "bun", "previousReceipt", "input", "suggestedDifficulty", "observerBinary"],
+    "cadence-judge": ["privateRoot", "input"],
     "iterative-recover-seal": ["privateRoot"],
     "iterative-continue-unreserved": ["privateRoot", "predecessorRoot", "input", "qualificationSourceCommit", "authorityDirectory", "bun"],
     "iterative-bootstrap": ["privateRoot", "input"],
@@ -58,6 +62,10 @@ export async function main(args) {
     requireCondition(options.input, "input_required");
     return iterativeBootstrap(resolve(options.privateRoot), options.input);
   }
+  if (command === "cadence-preflight") {
+    for (const key of ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "authorityDirectory", "previousReceipt", "input", "observerBinary"]) requireCondition(options[key], "preflight_argument_missing");
+    return cadencePreflight(options);
+  }
   if (command === "recovery-preflight") {
     for (const key of ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "authorityDirectory", "recoveryPhase", "previousReceipt", "input"]) requireCondition(options[key], "preflight_argument_missing");
     return recoveryPreflight(options);
@@ -75,10 +83,15 @@ export async function main(args) {
     return preflight(options);
   }
   const context = await loadContext(resolve(options.privateRoot));
+  if (context.schema === CADENCE_SCHEMA) requireCondition(["serve", "record-cycle", "cadence-judge"].includes(command), "cadence_command_required");
   if (context.schema === NO_MINING_SCHEMA) requireCondition(["no-mining-serve", "no-mining-judge", "record-cycle"].includes(command), "no_mining_command_required");
   if (command === "no-mining-judge") {
     requireCondition(options.input, "input_required");
     return finishNoMining(resolve(options.privateRoot), context, options.input);
+  }
+  if (command === "cadence-judge") {
+    requireCondition(context.schema === CADENCE_SCHEMA && options.input, "cadence_judge_arguments");
+    return finishIterative(resolve(options.privateRoot), context, options.input);
   }
   if (command === "iterative-judge") {
     requireCondition(options.input, "input_required");
@@ -104,6 +117,7 @@ export async function main(args) {
     process.stdout.write(`qualification_url=http://127.0.0.1:${server.address().port}/\n`);
     for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, () => { server.close(); server.closeIdleConnections(); });
     await once(server, "close");
+    if (server.closeQualificationResources) await server.closeQualificationResources();
     return { supervisor: "closed", device_effects: false };
   }
   if (command === "judge") return finishWindow(resolve(options.privateRoot), context, Number(options.window));

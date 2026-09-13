@@ -22,7 +22,11 @@ pub fn register_client(session: i32, route: WebSocketRouteKind) -> WebSocketRegi
         };
     };
 
-    state.register_client(session, route)
+    let outcome = state.register_client(session, route);
+    crate::telemetry_cadence::RECORDER.subscribers_changed(
+        state.active_route_client_count(WebSocketRouteKind::LiveTelemetry) as u32,
+    );
+    outcome
 }
 
 /// Removes a client only when the exact connection generation still owns it.
@@ -33,7 +37,11 @@ pub fn unregister_if_current(lease: WebSocketClientLease) -> bool {
         return false;
     };
 
-    state.unregister_if_current(lease)
+    let removed = state.unregister_if_current(lease);
+    crate::telemetry_cadence::RECORDER.subscribers_changed(
+        state.active_route_client_count(WebSocketRouteKind::LiveTelemetry) as u32,
+    );
+    removed
 }
 
 /// Reports whether an exact connection generation still owns its route.
@@ -72,16 +80,22 @@ pub fn maybe_live_connect_frame(current: Value) -> Option<Value> {
     Some(state.live_connect_frame(current))
 }
 
+/// Explicit failure distinguishes poisoned owner state from valid unchanged-data suppression.
+#[derive(Debug)]
+pub struct LiveCadenceStateUnavailable;
+
 /// Plans a cadence live telemetry frame for connected clients.
 #[must_use]
-pub fn maybe_live_cadence_frame(current: Value) -> Option<Value> {
+pub fn plan_live_cadence_frame(
+    current: Value,
+) -> Result<Option<Value>, LiveCadenceStateUnavailable> {
     let state = WEBSOCKET_STATE.get_or_init(|| Mutex::new(WebSocketState::default()));
     let Ok(mut state) = state.lock() else {
         log::warn!("axeos_websocket_state=unavailable reason=mutex_poisoned");
-        return None;
+        return Err(LiveCadenceStateUnavailable);
     };
 
-    state.maybe_live_cadence_frame(current)
+    Ok(state.maybe_live_cadence_frame(current))
 }
 
 /// Updates raw retained-log stream state after a `/api/ws` client connects.

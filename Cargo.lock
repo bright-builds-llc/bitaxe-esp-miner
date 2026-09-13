@@ -297,10 +297,14 @@ name = "bitaxe-http-transport"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "libc",
  "rustls",
+ "serde",
+ "serde_json",
  "sha2",
  "tungstenite",
  "webpki-roots",
+ "zeroize",
 ]
 
 [[package]]

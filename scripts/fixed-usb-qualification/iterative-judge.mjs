@@ -1,3 +1,5 @@
+import { CADENCE_SCHEMA } from "./cadence-contract.mjs";
+import { judgeCadence, requireCadenceEvidence } from "./cadence-judge.mjs";
 import { isDeepStrictEqual } from "node:util";
 import { requireRecoveryTraces } from "./recovery-trace.mjs";
 import { judgeRecovery, RECOVERY_SCHEMA } from "./recovery-judge.mjs";
@@ -10,6 +12,10 @@ import { requireExhaustedOriginal, requireIdleLedger } from "./iterative-contrac
 import { requireReleasedState, validateIterativeContext, validateIterativePolicy } from "./iterative-preflight.mjs";
 
 export function judgeIterative(context, records, fault, traceEvidence = []) {
+  if (context.schema === CADENCE_SCHEMA) {
+    for (const record of records) validateState(record.state, context);
+    return judgeCadence(context, records, fault, traceEvidence);
+  }
   const resourcePolicy = validateIterativePolicy(context);
   const attempt = context.qualification_attempt;
   for (const record of records) validateState(record.state, context);
@@ -55,13 +61,13 @@ export async function finishIterative(root, context, inputPath) {
   requireIdleLedger(input.ledger_after, a.ordinal + 1, context.expected_charged_ms + a.maximumActiveMilliseconds);
   requireExhaustedOriginal(input.original_budget);
   requireReleasedState(input.final_state, context);
-  if (context.schema !== RECOVERY_SCHEMA) await writeNew(resolve(root, "sample-seal-intent.json"), { context_sha256: digest(JSON.stringify(context)), final_state: input.final_state });
+  if (![RECOVERY_SCHEMA, CADENCE_SCHEMA].includes(context.schema)) await writeNew(resolve(root, "sample-seal-intent.json"), { context_sha256: digest(JSON.stringify(context)), final_state: input.final_state });
   const samplePath = resolve(root, "iterative.samples.jsonl");
   await protectedPath(samplePath);
   const sampleBytes = await readFile(samplePath);
   const records = parseSamples(sampleBytes, context);
-  if (context.schema === RECOVERY_SCHEMA) requireCondition(isDeepStrictEqual(records.at(-1)?.state, input.final_state), "recovery_final_journal_binding");
-  if (context.schema === RECOVERY_SCHEMA) await writeNew(resolve(root, "sample-seal-intent.json"), { context_sha256: digest(JSON.stringify(context)), final_state: input.final_state });
+  if ([RECOVERY_SCHEMA, CADENCE_SCHEMA].includes(context.schema)) requireCondition(isDeepStrictEqual(records.at(-1)?.state, input.final_state), "recovery_final_journal_binding");
+  if ([RECOVERY_SCHEMA, CADENCE_SCHEMA].includes(context.schema)) await writeNew(resolve(root, "sample-seal-intent.json"), { context_sha256: digest(JSON.stringify(context)), final_state: input.final_state });
   let fault;
   try { await protectedPath(resolve(root, "iterative.fault.json")); fault = await readJson(resolve(root, "iterative.fault.json")); }
   catch (error) { if (error.code !== "ENOENT") throw error; }
@@ -78,7 +84,7 @@ export async function finishIterative(root, context, inputPath) {
   }
   let judgment, failure, traceEvidence = [];
   try {
-    traceEvidence = await requireRecoveryTraces(root, context, records, fault);
+    traceEvidence = context.schema === CADENCE_SCHEMA ? await requireCadenceEvidence(root, context, records) : await requireRecoveryTraces(root, context, records, fault);
     judgment = judgeIterative(context, records, fault, traceEvidence);
   }
   catch (error) { if (!(error instanceof QualificationError)) throw error; failure = error.code; }
@@ -89,13 +95,14 @@ export async function finishIterative(root, context, inputPath) {
     ...(judgment ? { judgment } : {}), first_failure: firstFailure?.details.browser ?? null,
     first_failure_evidence: firstFailure ?? null, judgment_failure: failure ?? null, ...input,
     ...sealed, ...(context.schema === RECOVERY_SCHEMA ? { recovery_trace_evidence: traceEvidence } : {}),
+    ...(context.schema === CADENCE_SCHEMA ? { cadence_evidence: traceEvidence } : {}),
     progress_sha256: context.progress_sha256 };
   await writeNew(resolve(root, "result.json"), { receipt, sha256: digest(JSON.stringify(receipt)) });
   return { result: receipt.result, ordinal: a.ordinal, purpose: a.purpose, first_failure: receipt.first_failure, judgment_failure: receipt.judgment_failure,
     cumulative_charged_ms: receipt.total_charged_ms, cleanup_confirmed: true };
 }
 
-function requireOwnerResources(qualification, phase, minimum) {
+export function requireOwnerResources(qualification, phase, minimum) {
   const resource = qualification.owner_resources;
   // Firmware omits stale (>1000 ms) observations; host and device clocks are not interchangeable.
   requireCondition(resource && resource.generation === qualification.generation && resource.phase === phase &&

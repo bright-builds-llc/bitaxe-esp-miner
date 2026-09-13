@@ -130,6 +130,7 @@ fn start_http_api_inner(
         route_report.static_file_routes
     );
 
+    crate::telemetry_cadence::http_prepared(config.http_port);
     Ok(PreparedHttpRuntime::new(server))
 }
 

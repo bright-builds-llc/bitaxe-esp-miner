@@ -39,6 +39,11 @@ mod storage_http_diagnostics {
         super::EVENTS.with_borrow_mut(|events| events.push("http_ready"));
     }
 }
+mod telemetry_cadence {
+    pub fn http_activated() {
+        super::EVENTS.with_borrow_mut(|events| events.push("endpoint_ready"));
+    }
+}
 mod startup {
     pub fn complete() {
         super::PROGRESS.with(|progress| {
@@ -104,7 +109,15 @@ fn activation_sets_priority_before_readiness_and_keeps_server_alive() {
     let active = prepared.activate();
     // Assert
     EVENTS.with_borrow(|events| {
-        assert_eq!(events, &["priority_set", "http_ready", "runtime_complete"]);
+        assert_eq!(
+            events,
+            &[
+                "priority_set",
+                "http_ready",
+                "runtime_complete",
+                "endpoint_ready"
+            ]
+        );
     });
     PROGRESS.with(|progress| {
         assert!(progress

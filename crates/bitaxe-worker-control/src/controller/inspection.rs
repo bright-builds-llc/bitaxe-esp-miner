@@ -77,6 +77,55 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             .ok_or(WorkerControlError::InvalidRequest)
     }
 
+    pub(super) fn telemetry_cadence(
+        &mut self,
+        request: &ControllerRequest,
+        now: u64,
+    ) -> Result<Value, WorkerControlError> {
+        self.required_start_context(now)?;
+        if self.maybe_active.is_some() || self.effect_cleanup_required {
+            return Err(WorkerControlError::InvalidTransition);
+        }
+        #[derive(serde::Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Empty {}
+        #[derive(serde::Deserialize)]
+        #[serde(deny_unknown_fields)]
+        struct Arm {
+            phase: crate::cadence::CadencePhase,
+        }
+        match request.command.as_str() {
+            "telemetry_cadence_arm" => {
+                let payload: Arm = request.required_payload()?;
+                let result = self
+                    .session
+                    .telemetry_cadence_arm(payload.phase)
+                    .map_err(|_| WorkerControlError::SessionFailed)?
+                    .ok_or(WorkerControlError::InvalidTransition)?;
+                serde_json::to_value(result).map_err(|_| WorkerControlError::Encoding)
+            }
+            "telemetry_cadence_review" => {
+                let _: Empty = request.required_payload()?;
+                let result = self
+                    .session
+                    .telemetry_cadence_review()
+                    .map_err(|_| WorkerControlError::SessionFailed)?
+                    .ok_or(WorkerControlError::InvalidRequest)?;
+                serde_json::to_value(result).map_err(|_| WorkerControlError::Encoding)
+            }
+            "telemetry_cadence_endpoint" => {
+                let _: Empty = request.required_payload()?;
+                let result = self
+                    .session
+                    .telemetry_cadence_endpoint()
+                    .map_err(|_| WorkerControlError::SessionFailed)?
+                    .ok_or(WorkerControlError::InvalidRequest)?;
+                serde_json::to_value(result).map_err(|_| WorkerControlError::Encoding)
+            }
+            _ => Err(WorkerControlError::InvalidRequest),
+        }
+    }
+
     pub(super) fn review_serial_trace(
         &self,
         request: &ControllerRequest,
@@ -119,5 +168,17 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             frame,
             maybe_effect: None,
         })
+    }
+}
+
+impl<V, S> std::fmt::Debug for WorkerControl<V, S> {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("WorkerControl")
+            .field("generation", &self.generation)
+            .field("admitted", &self.maybe_admission.is_some())
+            .field("active", &self.maybe_active.is_some())
+            .field("private_material", &"[redacted]")
+            .finish()
     }
 }

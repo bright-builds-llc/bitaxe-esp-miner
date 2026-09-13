@@ -1,3 +1,5 @@
+import { CADENCE_SCHEMA } from "./cadence-contract.mjs";
+import { validateCadenceBrowser } from "./cadence-evidence.mjs";
 import { canonicalBase64, exactObject, REQUIRED_CYCLES, requireCondition, WINDOW_MS } from "./contract.mjs";
 import { validateMiningProgress } from "./mining-progress.mjs";
 
@@ -65,11 +67,15 @@ export function validatePreservation(value) {
 
 export function validateState(value, context) {
   exactObject(value, ["schema", "gateCommit", "status", "connected", "running", "heartbeatSuppressed", "renewalsConfirmed", "deviceRestorationConfirmed", "deviceLeaseInactive", "serialOwnershipReleased"],
-    ["expectedFirmwareSourceCommit", "expectedAppElfSha256", "qualification", "preservation", "probe", "failure", "admissionFailureStage", "serialFailureCategory", "ownerResourceFailure", "helloRecovery", "deviceBaselineConfirmed", "authorizationRecovery"]);
+    ["expectedFirmwareSourceCommit", "expectedAppElfSha256", "qualification", "preservation", "probe", "failure", "admissionFailureStage", "serialFailureCategory", "ownerResourceFailure", "helloRecovery", "deviceBaselineConfirmed", "authorizationRecovery", "cadence"]);
   requireCondition(value.schema === "worker-serial-acceptance-v1" && value.gateCommit === context.gate_commit &&
     value.expectedFirmwareSourceCommit === context.firmware_commit && value.expectedAppElfSha256 === context.app_elf_sha256 &&
     STATUSES.includes(value.status) && u32(value.renewalsConfirmed) && value.renewalsConfirmed <= 16 &&
     ["connected", "running", "heartbeatSuppressed", "deviceRestorationConfirmed", "deviceLeaseInactive", "serialOwnershipReleased"].every((key) => typeof value[key] === "boolean"), "browser_state_identity");
+  if (value.cadence !== undefined) {
+    requireCondition(context.schema === CADENCE_SCHEMA, "cadence_context_required");
+    validateCadenceBrowser(value.cadence);
+  }
   if (value.authorizationRecovery !== undefined) {
     const checkpoint = value.authorizationRecovery;
     exactObject(checkpoint, ["schema", "checkpointId", "generation", "matched"]);

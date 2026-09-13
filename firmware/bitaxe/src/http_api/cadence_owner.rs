@@ -27,6 +27,7 @@ impl PreparedHttpRuntime {
         };
         crate::storage_http_diagnostics::http_outcome(true);
         crate::startup::complete();
+        crate::telemetry_cadence::http_activated();
         active
     }
 

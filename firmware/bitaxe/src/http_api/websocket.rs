@@ -1,9 +1,12 @@
 use super::*;
+use crate::telemetry_cadence::RECORDER;
+use bitaxe_worker_control::cadence::{CadenceLoopIo, CadencePublication, CadenceSendToken};
 
 const MAX_WEBSOCKET_CONTROL_PAYLOAD_BYTES: usize = 125;
 
 enum LiveCadenceIssueError {
     SerializeFrame,
+    StateUnavailable,
 }
 
 struct WebSocketSendFailure {
@@ -16,22 +19,51 @@ struct QueuedWebSocketFrame {
     lease: websocket_api::WebSocketClientLease,
     frame_type: sys::httpd_ws_type_t,
     payload: Box<[u8]>,
+    maybe_cadence: Option<CadenceSendToken>,
 }
 
 pub(super) fn live_telemetry_cadence_loop(owner: &EspHttpServer<'static>) -> ! {
     let server = owner.handle();
     loop {
         std::thread::sleep(Duration::from_millis(LIVE_TELEMETRY_CADENCE_MS));
-        broadcast_live_telemetry_cadence(server);
-        broadcast_raw_log_chunks(server);
-        prune_stale_websocket_sessions(server);
+        bitaxe_worker_control::cadence::run_iteration(&mut TelemetryIteration(server), &RECORDER);
+    }
+}
+
+struct TelemetryIteration(sys::httpd_handle_t);
+impl CadenceLoopIo for TelemetryIteration {
+    fn now_us(&self) -> u64 {
+        crate::telemetry_cadence::now_us()
+    }
+    fn cpu(&self) -> u32 {
+        esp_idf_svc::hal::cpu::core() as u32
+    }
+    fn priority(&self) -> u32 {
+        unsafe { sys::uxTaskPriorityGet(ptr::null_mut()) as u32 }
+    }
+    fn live(&mut self) {
+        broadcast_live_telemetry_cadence(self.0);
+    }
+    fn logs(&mut self) {
+        broadcast_raw_log_chunks(self.0);
+    }
+    fn prune(&mut self) {
+        prune_stale_websocket_sessions(self.0);
     }
 }
 
 pub(super) fn broadcast_live_telemetry_cadence(server: sys::httpd_handle_t) {
     let result =
         publish_projected_live_telemetry_payload(crate::runtime_uptime::millis(), |current| {
-            let Some(frame) = websocket_api::maybe_live_cadence_frame(current) else {
+            RECORDER.publication(CadencePublication::Projected);
+            let maybe_frame = websocket_api::plan_live_cadence_frame(current)
+                .map_err(|_| LiveCadenceIssueError::StateUnavailable)?;
+            let Some(frame) = maybe_frame else {
+                RECORDER.publication(if RECORDER.subscriber_count() == 0 {
+                    CadencePublication::NoSubscribers
+                } else {
+                    CadencePublication::Unchanged
+                });
                 return Ok(Vec::new());
             };
             let body =
@@ -47,8 +79,12 @@ pub(super) fn broadcast_live_telemetry_cadence(server: sys::httpd_handle_t) {
         Err(OperatorSnapshotPublishError::Issuance {
             source: LiveCadenceIssueError::SerializeFrame,
             ..
-        }) => log::warn!("axeos_websocket_live_cadence=skipped reason=serialize_frame"),
+        }) => {
+            RECORDER.publication(CadencePublication::SerializationFailed);
+            log::warn!("axeos_websocket_live_cadence=skipped reason=serialize_frame");
+        }
         Err(_) => {
+            RECORDER.publication(CadencePublication::ProjectionFailed);
             log::warn!("axeos_websocket_live_cadence=skipped reason=snapshot_publication")
         }
     }
@@ -461,6 +497,7 @@ pub(super) fn queue_websocket_frame(
         lease,
         frame_type,
         payload: payload.to_vec().into_boxed_slice(),
+        maybe_cadence: RECORDER.maybe_begin_send(),
     });
     let queued_ptr = Box::into_raw(queued);
     let result = unsafe {
@@ -471,7 +508,11 @@ pub(super) fn queue_websocket_frame(
         )
     };
     if result != sys::ESP_OK {
-        drop(unsafe { Box::from_raw(queued_ptr) });
+        let queued = unsafe { Box::from_raw(queued_ptr) };
+        if let Some(token) = queued.maybe_cadence {
+            RECORDER.queue_failed(token);
+        }
+        drop(queued);
     }
     result
 }
@@ -482,6 +523,9 @@ unsafe extern "C" fn send_queued_websocket_frame(argument: *mut c_void) {
     }
     let mut queued = unsafe { Box::from_raw(argument.cast::<QueuedWebSocketFrame>()) };
     if !websocket_api::is_current(queued.lease) {
+        if let Some(token) = queued.maybe_cadence {
+            RECORDER.send_completed(token, false);
+        }
         return;
     }
 
@@ -490,6 +534,9 @@ unsafe extern "C" fn send_queued_websocket_frame(argument: *mut c_void) {
             == sys::httpd_ws_client_info_t_HTTPD_WS_CLIENT_WEBSOCKET
     };
     if !session_is_websocket {
+        if let Some(token) = queued.maybe_cadence {
+            RECORDER.send_completed(token, false);
+        }
         websocket_api::unregister_if_current(queued.lease);
         return;
     }
@@ -509,6 +556,9 @@ unsafe extern "C" fn send_queued_websocket_frame(argument: *mut c_void) {
     let result = unsafe {
         sys::httpd_ws_send_frame_async(queued.server, queued.lease.session(), &mut frame)
     };
+    if let Some(token) = queued.maybe_cadence {
+        RECORDER.send_completed(token, result == sys::ESP_OK);
+    }
     if result != sys::ESP_OK {
         websocket_api::unregister_if_current(queued.lease);
     }

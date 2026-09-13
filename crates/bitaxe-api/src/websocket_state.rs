@@ -170,7 +170,9 @@ impl WebSocketState {
         self.log_clients.len() + self.live_clients.len()
     }
 
-    fn active_route_client_count(&self, route: WebSocketRouteKind) -> usize {
+    /// Reads route membership without allocating a lease snapshot.
+    #[must_use]
+    pub fn active_route_client_count(&self, route: WebSocketRouteKind) -> usize {
         match route {
             WebSocketRouteKind::Logs => self.log_clients.len(),
             WebSocketRouteKind::LiveTelemetry => self.live_clients.len(),

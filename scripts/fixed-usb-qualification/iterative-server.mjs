@@ -1,3 +1,5 @@
+import { CADENCE_SCHEMA } from "./cadence-contract.mjs";
+import { createCadenceRoutes } from "./cadence-server.mjs";
 import { requireBeforeRecoveryTraces, saveRecoveryTrace, validateRecoveryTrace } from "./recovery-trace.mjs";
 import { RECOVERY_SCHEMA, validateLossReceipt } from "./recovery-judge.mjs";
 import { guardLateRecord, parseSamples } from "./sample-seal.mjs";
@@ -37,6 +39,7 @@ export async function createIterativeSupervisor(options, operations = {}) {
     for (const record of previous) validateState(record.state, context);
     sequence = previous.length; lastRecord = previous.at(-1); lastState = lastRecord?.state;
   } catch (error) { if (error.code !== "ENOENT") throw error; }
+  const cadence = context.schema === CADENCE_SCHEMA ? await createCadenceRoutes(root, context, () => ({ sequence, lastRecord, lastState, reviewedBinding: review }), operations) : undefined;
   const server = createServer((request, response) => {
     const operation = () => handle(request, response);
     const result = request.method === "POST" ? queue.then(operation) : operation();
@@ -46,6 +49,7 @@ export async function createIterativeSupervisor(options, operations = {}) {
       send(response, 400, { error: error instanceof QualificationError ? error.code : "local_operation_failed" });
     });
   });
+  if (cadence) server.closeQualificationResources = () => cadence.finish();
   server.requestTimeout = 5000; server.headersTimeout = 10000;
   server.on("close", () => { scope = undefined; pending = undefined; review = undefined; challenge = undefined; });
   async function safeState(state) { validateState(state, context); await requireSuccessorBaseline(root, context, state); }
@@ -69,7 +73,12 @@ export async function createIterativeSupervisor(options, operations = {}) {
     const input = request.method === "POST" ? await body(request) : undefined;
     if (path === "/context" && request.method === "GET") return send(response, 200, {
       expectedGateCommit: context.gate_commit, expectedFirmwareSourceCommit: context.firmware_commit, expectedAppElfSha256: context.app_elf_sha256, trust,
-      ...(context.schema === RECOVERY_SCHEMA ? { recoveryPhase: context.recovery_phase } : {}) });
+      ...(context.schema === RECOVERY_SCHEMA ? { recoveryPhase: context.recovery_phase } : {}),
+      ...(cadence ? { cadenceQualification: true } : {}) });
+    if (cadence && path.startsWith("/cadence/")) {
+      const result = await cadence.handle(path, input);
+      if (result !== undefined) return send(response, 200, result);
+    }
     if (path === "/activate" && input) {
       exactObject(input, []); requireCondition(!pending, "iterative_pending");
       scope = { challengeId: `challenge_${nonce()}`, retentionExpiryUnixSeconds: Math.floor(now() / 1000) + 86400 };
@@ -113,6 +122,7 @@ export async function createIterativeSupervisor(options, operations = {}) {
         const records = parseSamples(await readFile(samplesPath), context);
         await requireBeforeRecoveryTraces(root, context, records);
       }
+      if (cadence) await cadence.readyToSign();
       await safeState(lastState); await validateIterativeContext(root, context); await verify();
       await protectedPath(resolve(root, "cooling.json"));
       const cooling = await readJson(resolve(root, "cooling.json"));
@@ -171,12 +181,19 @@ export async function createIterativeSupervisor(options, operations = {}) {
     }
     if (path === "/fault" && input) {
       exactObject(input, ["kind", "running", "visibility", "heartbeatSuppressed", "generation"]);
-      const expected = attempt.purpose === "foreground_loss" ? "visibility_hidden" : attempt.purpose === "heartbeat_loss" ? "heartbeats_suppressed" : undefined;
+      const expected = cadence ? "heartbeats_suppressed" : attempt.purpose === "foreground_loss" ? "visibility_hidden" : attempt.purpose === "heartbeat_loss" ? "heartbeats_suppressed" : undefined;
       requireCondition(expected && input.kind === expected && input.running === true &&
         (expected === "visibility_hidden" ? input.visibility === "hidden" : input.heartbeatSuppressed === true) &&
         lastRecord?.state.running && lastRecord.state.qualification?.generation === input.generation &&
         lastRecord.state.qualification.work_gate_remaining_ms > 3000, "iterative_fault_evidence");
+      if (cadence) {
+        const c = lastRecord.state.cadence;
+        requireCondition(c?.suppressionRequested && c.latestWork?.atMs >= c.firstWorkObservedAtMs + 60000, "cadence_fault_early");
+        try { await protectedPath(resolve(root, "iterative.fault.json")); return send(response, 200, { recorded: false }); }
+        catch (error) { if (error.code !== "ENOENT") throw error; }
+      }
       await writeNew(resolve(root, "iterative.fault.json"), { kind: input.kind, generation: input.generation, after_sequence: sequence });
+      if (cadence) await cadence.recordFault();
       return send(response, 200, { recorded: true });
     }
     if (path === "/completion-review" && input) {
@@ -191,12 +208,13 @@ export async function createIterativeSupervisor(options, operations = {}) {
     }
     if (path === "/supervisor-state" && request.method === "GET") return send(response, 200, {
       mode: "iterative", purpose: attempt.purpose, ordinal: attempt.ordinal, waiting_for_human_has_no_deadline: true, private_payload_pending_in_memory: Boolean(pending) });
+    if (cadence && path === "/cadence-client.mjs") return send(response, 200, await readFile(resolve(SCRIPT_ROOT, "cadence-client.mjs")), "text/javascript");
     if (path === "/supervisor-client.mjs") return send(response, 200, await readFile(resolve(SCRIPT_ROOT, "client.mjs")), "text/javascript");
     if (["/", `/${page}`, `/${BUNDLE}`].includes(path)) {
       const isPage = path !== `/${BUNDLE}`;
       let bytes = await readFile(resolve(browserRoot, isPage ? page : BUNDLE));
       requireCondition(digest(bytes) === (isPage ? context.gate_page_sha256 : context.gate_bundle_sha256), "served_asset_drift");
-      if (isPage) bytes = Buffer.from(bytes.toString("utf8") + '\n<script type="module" src="/supervisor-client.mjs"></script>');
+      if (isPage) bytes = Buffer.from(bytes.toString("utf8") + '\n<script type="module" src="/supervisor-client.mjs"></script>' + (cadence ? '\n<script type="module" src="/cadence-client.mjs"></script>' : ''));
       return send(response, 200, bytes, isPage ? "text/html" : "text/javascript");
     }
     send(response, 404, { error: "route_unavailable" });

@@ -1,7 +1,11 @@
 #[path = "controller/budget_review.rs"]
 mod budget_review;
+#[path = "controller/cadence.rs"]
+mod cadence;
 #[path = "controller/cooling.rs"]
 mod cooling;
+#[path = "controller/fixture_session.rs"]
+mod fixture_session;
 #[path = "controller/liveness.rs"]
 mod liveness;
 #[path = "controller/serial_trace.rs"]
@@ -59,85 +63,11 @@ impl LeaseAuthorizationVerifier for FixtureVerifier {
 
 #[derive(Default)]
 struct FakeSession {
+    prepared_probes: std::cell::RefCell<Vec<(usize, usize)>>,
     events: Vec<&'static str>,
     fail_start: bool,
     fail_cooling: bool,
     remaining_safe_stop_failures: usize,
-}
-
-impl WorkerSession for FakeSession {
-    fn serial_trace_review(
-        &self,
-    ) -> Result<Option<bitaxe_worker_control::serial::trace::SerialTraceSnapshot>, WorkerSessionError>
-    {
-        Ok(Some(
-            bitaxe_worker_control::serial::trace::SerialTrace::new().snapshot(),
-        ))
-    }
-    fn qualify_cooling(&mut self) -> Result<serde_json::Value, WorkerSessionError> {
-        self.events.push("cooling");
-        if self.fail_cooling {
-            return Err(WorkerSessionError::Rejected);
-        }
-        Ok(
-            json!({"schema":"worker-cooling-proof-v1","fan_duty_percent":100,"fan_rpm":1200,
-            "post_command_fan_proven":true,"asic_effects":false,"budget_reserved":false}),
-        )
-    }
-    fn restore_cooling(&mut self) -> Result<serde_json::Value, WorkerSessionError> {
-        self.events.push("restore_cooling");
-        Ok(
-            json!({"schema":"worker-cooling-baseline-v1","fan_duty_percent":30,
-            "cooling_proven":true,"asic_effects":false,"budget_reserved":false}),
-        )
-    }
-    fn qualification_attempt_review(
-        &self,
-    ) -> Result<Option<serde_json::Value>, WorkerSessionError> {
-        Ok(Some(
-            json!({"schema":"worker-qualification-ledger-v1","next_ordinal":1,"total_charged_ms":0,"pending":false,"last_completed_ordinal":0}),
-        ))
-    }
-    fn acceptance_budget_review(
-        &self,
-        expected: &str,
-    ) -> Result<Option<serde_json::Value>, WorkerSessionError> {
-        Ok(Some(
-            json!({"schema":"worker-budget-review-v1", "campaign_match": expected == URL_SAFE_NO_PAD.encode([7_u8;16]),
-            "reserved_mask":1,"completed_mask":1,"charged_ms":180000,"pending":false}),
-        ))
-    }
-    fn start(
-        &mut self,
-        _grant: &WorkerLeaseGrant,
-        _deadlines: LeaseDeadlines,
-    ) -> Result<(), WorkerSessionError> {
-        self.events.push("start");
-        if self.fail_start {
-            Err(WorkerSessionError::Rejected)
-        } else {
-            Ok(())
-        }
-    }
-
-    fn renew(
-        &mut self,
-        _renewal: &WorkerLeaseRenewal,
-        _deadlines: LeaseDeadlines,
-    ) -> Result<(), WorkerSessionError> {
-        self.events.push("renew");
-        Ok(())
-    }
-
-    fn safe_stop(&mut self, reason: RestorationReason) -> Result<(), WorkerSessionError> {
-        self.events.push(reason.category());
-        if self.remaining_safe_stop_failures > 0 {
-            self.remaining_safe_stop_failures -= 1;
-            Err(WorkerSessionError::SafeStopFailed)
-        } else {
-            Ok(())
-        }
-    }
 }
 
 #[test]
@@ -580,6 +510,7 @@ fn admitted_transport_probe_round_trips_maximum_controller_payload() {
     // Assert
     assert_eq!(frame.len() - 1, 65536);
     assert_eq!(response.frame().len() - 1, 65536);
+    assert_eq!(*worker.session().prepared_probes.borrow(), [(65536, 65536)]);
     assert_eq!(value["result"]["padding"], "x".repeat(response_padding));
     assert_eq!(value["result"]["requestPaddingBytes"], padding.len());
     assert_eq!(worker.session().events, Vec::<&str>::new());
@@ -602,6 +533,7 @@ fn transport_probe_cannot_echo_arbitrary_data() {
             .category(),
         "invalid_request"
     );
+    assert!(worker.session().prepared_probes.borrow().is_empty());
 }
 
 #[test]

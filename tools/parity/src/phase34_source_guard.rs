@@ -552,7 +552,7 @@ fn phase34_snapshot_publication_orders_real_retention_and_issuance() {
     assert!(system_info.contains("publish_projected_system_info"));
     assert!(system_info.contains("send_json(request, &system_info)"));
     assert!(live_cadence.contains("publish_projected_live_telemetry_payload"));
-    assert!(live_cadence.contains("websocket_api::maybe_live_cadence_frame(current)"));
+    assert!(live_cadence.contains("websocket_api::plan_live_cadence_frame(current)"));
     assert!(live_cadence.contains("broadcast_websocket_text_frame("));
     assert!(live_connect.contains("publish_projected_live_telemetry_payload"));
     assert!(live_connect.contains("websocket_api::maybe_live_connect_frame(current)"));

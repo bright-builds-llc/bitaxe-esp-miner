@@ -52,6 +52,39 @@ impl WorkerSession for ProductionWorkerSession {
         Ok(Some(crate::bwg_worker_usb::trace::snapshot()))
     }
 
+    fn telemetry_cadence_probe_prepared(&self, request_bytes: usize, response_bytes: usize) {
+        crate::telemetry_cadence::RECORDER.max_probe_prepared(
+            request_bytes,
+            response_bytes,
+            crate::telemetry_cadence::now_us(),
+        );
+    }
+
+    fn telemetry_cadence_arm(
+        &mut self,
+        phase: bitaxe_worker_control::cadence::CadencePhase,
+    ) -> Result<Option<bitaxe_worker_control::cadence::CadenceArmReceipt>, WorkerSessionError> {
+        let generation = self.maybe_generation.ok_or(WorkerSessionError::Rejected)?;
+        Ok(crate::telemetry_cadence::RECORDER.maybe_arm(
+            phase,
+            crate::telemetry_cadence::now_us(),
+            generation.raw(),
+        ))
+    }
+
+    fn telemetry_cadence_review(
+        &self,
+    ) -> Result<Option<bitaxe_worker_control::cadence::CadenceSnapshot>, WorkerSessionError> {
+        Ok(Some(crate::telemetry_cadence::snapshot()))
+    }
+
+    fn telemetry_cadence_endpoint(
+        &self,
+    ) -> Result<Option<bitaxe_worker_control::cadence::CadenceEndpoint>, WorkerSessionError> {
+        let generation = self.maybe_generation.ok_or(WorkerSessionError::Rejected)?;
+        Ok(crate::telemetry_cadence::maybe_endpoint(generation.raw()))
+    }
+
     fn qualification_attempt_review(
         &self,
     ) -> Result<Option<serde_json::Value>, WorkerSessionError> {

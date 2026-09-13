@@ -45,6 +45,20 @@ mod bwg_worker_usb {
         }
     }
 }
+// Only the diagnostic I/O boundary is replaced; cleanup and ledger adapters stay real.
+mod telemetry_cadence {
+    use bitaxe_worker_control::cadence::{CadenceEndpoint, CadenceRecorder, CadenceSnapshot};
+    pub(crate) static RECORDER: CadenceRecorder = CadenceRecorder::new();
+    pub(crate) fn now_us() -> u64 {
+        1_000_000
+    }
+    pub(crate) fn snapshot() -> CadenceSnapshot {
+        RECORDER.snapshot()
+    }
+    pub(crate) fn maybe_endpoint(_generation: u32) -> Option<CadenceEndpoint> {
+        None
+    }
+}
 mod startup {
     pub struct BootMiningBaselineConfirmed;
 }

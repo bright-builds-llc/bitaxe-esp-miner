@@ -4564,6 +4564,27 @@ promotion task succeeds.
 
 
 
+### task-cpu0-telemetry-cadence-qualification | 2026-09-13 | Qualify CPU0 telemetry cadence on Ultra 205
+
+- [x] Implement bounded device timing/publication instrumentation, authenticated arm/review and fresh endpoint observation; test the actual loop and asynchronous outcomes.
+- [x] Implement Gate cadence workflow, passive WebSocket observer and independent cadence context/preflight/judge with strict historical compatibility and privacy.
+- [ ] Run ordered software, cross-language, native storage/stack/package and safety/ownership checks; publish the exact Gate/firmware/observer pair before effects.
+- [ ] Detect/admit one Ultra 205, install state-preserving exact package, complete four current-pair cycles, then idle/USB/mining cadence phases under the prospective contract.
+- [ ] Validate sealed timings, unchanged ledger ancestry, safe stop/cooling and resource cleanup; close qualification/migration only on complete evidence and publish the truthful outcome.
+
+Contract: `docs/hardware/cpu0-telemetry-cadence-qualification.md`. The owner explicitly requested this full plan, including 60 seconds of real mining, one fresh signed normal allowance (180000 ms reserved), and application heartbeat suppression after the measured mining phase. Existing original campaign is exhausted and never reset; use the validated predecessor and fresh durable ledger (expected next ordinal 16 / total charged 1200000 ms). Each progress-backed retry uses a fresh ordinal and full charge, never an unchanged blind retry.
+
+Authority: implementation, software verification, coordinated git publication, one detector-admitted Ultra 205 through provided USB/barrel power, state-preserving repo-owned flashing, Web Serial control, and one bounded passive `/api/ws/live` observer admitted from fresh authenticated runtime endpoint evidence. No endpoint discovery, origin-policy weakening, raw log subscription, credential publication, NVS seed/erase, direct UART/pins, unrelated device effects, parity promotion or Stratum V2 work.
+
+Effects and cleanup: exact `just fixed-usb-qualification cadence-preflight/serve/record-cycle/cadence-judge` and repo-owned passive observer described by the contract; detector and same-lease ROM board-info before admitted disjoint writes; capture timeout 30 seconds for the contract's safe-baseline flash observer. Four 65536-byte bidirectional continuity cycles precede live work. Keep 400 MHz / 1100 mV / fan 100%, fresh 4.5–5.5 V, at most 15 W, below 75 C and nonzero RPM. Preserve 2800-ms heartbeat cutoff, <=3000-ms revocation/shutdown initiation, existing shutdown-tail reserve and 120-second cooling. Stop with inactive leases, mine-on-boot false and qualified fan restoration; reap every owned process/socket/USB stream. Failure preserves earliest cause and all protected evidence.
+
+Software verification | 2026-09-13: Gate `687021821affa33ca0afbdd5bf21f93e4adfc83b` is published and pinned; full checks passed (352 Rust, two existing ignored; final 544 web tests). Root ordered Cargo gates passed (2208 tests, one existing ignored), all 108 canonical targets passed, and the native package compiles. Actual cadence static symbols total 540 bytes. Source review added device-timestamped maximum-probe witnesses, exact reviewed-possession endpoint reuse, typed observer journals, and distinct capture-end/collection times. Observer closes after the witnessed heartbeat cut plus five seconds while normal cooling continues; fresh reconnect has an explicitly armed trusted-click checkpoint after the 145-second recovery wait. Remaining pre-effect gates: final native stack/input audit, exact clean firmware publication/package and protected artifact/admission preparation.
+
+Final publication review | 2026-09-13: Ordered Rust checks passed again after the first-dispatch contention regression (2209 tests, one existing ignored); all 262 supervisor tests and 108 canonical targets pass. Native source inputs include the main-cadence owner in both image builds. The native owner entry is 4496/8192 bytes, with unchanged24576-byte stack and4096-byte observed-free requirement. Independent review regressions reject compressed probe schedules and unproved observer process cleanup. The exact canonical observer rejects invalid stdin before network access and exits cleanly. Standards, native ownership, reference, redaction and scoped formatting pass. Publication precedes the exact clean package, detector and hardware admission.
+
+Verification: No hardware effect is eligible before the complete contract, all software gates, clean exact-pair publication, artifact snapshots, fresh device/accounting admission and complete prior cleanup.
+
+
 ## Future
 
 ### task-str005-v2-channel-job-205 | 2026-08-28 | Prove Ultra 205 V2 channel and job receipt

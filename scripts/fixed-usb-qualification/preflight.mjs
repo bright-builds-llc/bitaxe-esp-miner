@@ -1,3 +1,4 @@
+import { CADENCE_SCHEMA, requireCadenceTask } from "./cadence-contract.mjs";
 import { RECOVERY_SCHEMA, validateRecoveryPhase } from "./recovery-judge.mjs";
 import { mkdir, readFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
@@ -14,7 +15,8 @@ export async function inspectSources(options, operations = {}) {
   const checkRepo = operations.cleanPushed ?? cleanPushed;
   checkRepo(options.firmwareRoot, options.firmwareCommit);
   checkRepo(options.gateRoot, options.gateCommit);
-  await requireActiveTasks(options.firmwareRoot, options.recoveryPhase);
+  if (options.cadence === true) await requireCadenceTask(options.firmwareRoot);
+  else await requireActiveTasks(options.firmwareRoot, options.recoveryPhase);
   const packaged = await packageSnapshot(options.firmwareRoot, options.manifest, options.firmwareCommit);
   const trustPath = resolve(options.firmwareRoot, "firmware/bitaxe/bwg/deployment-trust.json");
   const trust = await readJson(trustPath);
@@ -82,6 +84,11 @@ export async function loadContext(root, operations = {}) {
     validateNoMiningContext(record.context);
     return record.context;
   }
+  if (record.context?.schema === CADENCE_SCHEMA) {
+    const { validateCadenceContext } = await import("./cadence-preflight.mjs");
+    await validateCadenceContext(root, record.context);
+    return record.context;
+  }
   if (["fixed-usb-iterative-context-v1", "fixed-usb-iterative-context-v2", "fixed-usb-iterative-context-v3", "fixed-usb-iterative-context-v4", RECOVERY_SCHEMA].includes(record.context?.schema)) {
     const { validateIterativeContext } = await import("./iterative-preflight.mjs");
     await validateIterativeContext(root, record.context);
@@ -94,11 +101,11 @@ export async function loadContext(root, operations = {}) {
 }
 
 export async function verifyFrozen(context, authorityDirectory, bun, operations = {}, root) {
-  if (context.schema === RECOVERY_SCHEMA) {
-    validateRecoveryPhase(context);
+  if (context.schema === CADENCE_SCHEMA || context.schema === RECOVERY_SCHEMA) {
+    if (context.schema === RECOVERY_SCHEMA) validateRecoveryPhase(context);
     const observed = await inspectSources({ firmwareRoot: context.firmware_root, gateRoot: context.gate_root,
       firmwareCommit: context.firmware_commit, gateCommit: context.gate_commit, manifest: context.manifest,
-      authorityDirectory, bun, recoveryPhase: context.recovery_phase }, operations);
+      authorityDirectory, bun, recoveryPhase: context.recovery_phase, cadence: context.schema === CADENCE_SCHEMA }, operations);
     for (const [key, value] of Object.entries(observed)) {
       requireCondition(JSON.stringify(context[key]) === JSON.stringify(value), "frozen_source_drift");
     }
