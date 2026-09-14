@@ -8,11 +8,13 @@ import { validateAttempt, requireExhaustedOriginal } from "./iterative-contract.
 import { readPrevious } from "./iterative-preflight.mjs";
 import { inspectSources } from "./preflight.mjs";
 import { readUnissued } from "./cadence-unissued.mjs";
+import { preminingClosurePath, readPremining } from "./cadence-premining.mjs";
 
 function assignmentPath(root, context) {
   const preparation = context.preparation_attempt;
   requireCondition(preparation === undefined || (Number.isSafeInteger(preparation) && preparation >= 2), "cadence_preparation_shape");
-  requireCondition((preparation === undefined) === (context.unissued_predecessor === undefined), "cadence_preparation_shape");
+  const sources = [context.unissued_predecessor, context.premining_predecessor].filter(value => value !== undefined);
+  requireCondition(sources.length === (preparation === undefined ? 0 : 1), "cadence_preparation_shape");
   return resolve(dirname(root), `ordinal-${context.qualification_attempt.ordinal}${preparation === undefined ? "" : `-preparation-${preparation}`}.json`);
 }
 
@@ -26,6 +28,7 @@ function requireUnissuedLineage(prior, context, previousPath, previousHash) {
 }
 
 export async function cadencePreflight(options, operations = {}) {
+  requireCondition(!(options.supersedeUnissued && options.supersedePremining), "cadence_supersession_exclusive");
   requireCondition(options.suggestedDifficulty === "1000" && options.observerBinary, "cadence_arguments");
   const root = resolve(options.privateRoot), parent = dirname(root);
   await protectedPath(parent, true); await missing(root);
@@ -40,6 +43,10 @@ export async function cadencePreflight(options, operations = {}) {
   await (operations.verifyArtifactSnapshot ?? verifyArtifactSnapshot)(dirname(previousPath), previous.context);
   const unissuedPath = options.supersedeUnissued ? resolve(options.supersedeUnissued) : undefined;
   const unissued = unissuedPath ? await readUnissued(unissuedPath, operations) : undefined;
+  const preminingPath = options.supersedePremining ? resolve(options.supersedePremining) : undefined;
+  const premining = preminingPath ? await readPremining(preminingPath, operations) : undefined;
+  const superseded = unissued ?? premining;
+  if (premining) requireCondition(dirname(premining.root) === parent && premining.root !== root, "cadence_premining_sibling_required");
   if (unissued) requireCondition(dirname(unissued.root) === parent && unissued.root !== root, "cadence_unissued_sibling_required");
   await protectedPath(options.input);
   const progress = await readJson(options.input); validateCadenceProgress(progress, Boolean(unissued));
@@ -61,17 +68,21 @@ export async function cadencePreflight(options, operations = {}) {
     firmware_root: options.firmwareRoot, gate_root: options.gateRoot, manifest: resolve(options.manifest),
     cadence_limits: CADENCE_LIMITS, cadence_observer: { path: observerPath, sha256: await fileDigest(observerPath) },
     cadence_validator_sha256: await cadenceValidatorDigest(options.firmwareRoot),
-    ...(unissued ? { preparation_attempt: (unissued.context.preparation_attempt ?? 1) + 1,
-      unissued_predecessor: { root: unissued.root, closure_sha256: await fileDigest(unissuedPath) } } : {}) };
+    ...(superseded ? { preparation_attempt: (superseded.context.preparation_attempt ?? 1) + 1,
+      [unissued ? "unissued_predecessor" : "premining_predecessor"]: { root: superseded.root,
+        closure_sha256: await fileDigest(unissuedPath ?? preminingPath) } } : {}) };
   validateCadencePolicy(context);
-  if (unissued) requireUnissuedLineage(unissued, context, previousPath, context.previous_receipt_sha256);
+  if (superseded) requireUnissuedLineage(superseded, context, previousPath, context.previous_receipt_sha256);
   const markerPath = assignmentPath(root, context); await missing(markerPath);
-  await mkdir(root, { mode: 0o700 });
+  const marker = { context_sha256: digest(JSON.stringify(context)), attempt_root: root };
+  // An interrupted pre-mining successor retains its preparation assignment permanently.
+  if (premining) await writeNew(markerPath, marker);
+  await (operations.mkdir ?? mkdir)(root, { mode: 0o700 });
   const retainedObserver = resolve(root, "cadence-observer.bin");
-  await copyFile(observerPath, retainedObserver, constants.COPYFILE_EXCL);
+  await (operations.copyFile ?? copyFile)(observerPath, retainedObserver, constants.COPYFILE_EXCL);
   await chmod(retainedObserver, 0o600);
   requireCondition(await fileDigest(retainedObserver) === context.cadence_observer.sha256, "cadence_observer_snapshot");
-  await writeNew(markerPath, { context_sha256: digest(JSON.stringify(context)), attempt_root: root });
+  if (!premining) await writeNew(markerPath, marker);
   await writeNew(resolve(root, "context.json"), { context, sha256: digest(JSON.stringify(context)) });
   return { cadence_preflight_created: true, ordinal: attempt.ordinal, reserved_on_device: false, maximum_active_ms: 180000, device_effects: false };
 }
@@ -81,6 +92,8 @@ export async function validateCadenceContext(root, context, { historical = false
   const markerPath = assignmentPath(root, context);
   if (!historical) {
     await missing(resolve(root, "unissued-closure.json"));
+    await missing(resolve(root, "failed-inventory.json"));
+    await missing(preminingClosurePath(root));
     await requireCadenceTask(context.firmware_root);
     requireCondition(await cadenceValidatorDigest(context.firmware_root) === context.cadence_validator_sha256, "cadence_validator_drift");
     requireCondition(await fileDigest(context.cadence_observer.path) === context.cadence_observer.sha256, "cadence_observer_drift");
@@ -104,6 +117,15 @@ export async function validateCadenceContext(root, context, { historical = false
     const closurePath = resolve(source.root, "unissued-closure.json");
     requireCondition(await fileDigest(closurePath) === source.closure_sha256, "cadence_unissued_closure_changed");
     const prior = await readUnissued(closurePath, operations);
+    requireUnissuedLineage(prior, context, previousPath, context.previous_receipt_sha256);
+  }
+  if (context.premining_predecessor) {
+    const source = context.premining_predecessor;
+    requireCondition(Object.keys(source).length === 2 && typeof source.root === "string" && dirname(source.root) === dirname(root) && source.root !== root,
+      "cadence_premining_sibling_required");
+    const closurePath = preminingClosurePath(source.root);
+    requireCondition(await fileDigest(closurePath) === source.closure_sha256, "cadence_premining_closure_changed");
+    const prior = await readPremining(closurePath, operations);
     requireUnissuedLineage(prior, context, previousPath, context.previous_receipt_sha256);
   }
   validateCadenceProgress(progress, Boolean(context.unissued_predecessor));

@@ -157,3 +157,64 @@ gesture boundary; the host bookkeeping repair is separate. A progress reason of
 `manual_remediation` is admitted only with that validated, sealed unissued
 predecessor and its native-gesture evidence. Ordinary first preflights still
 require `software_correction`. No consumed allowance is eligible for this path.
+
+## Pre-mining failure closure and preparation 3
+
+The 2026-09-13 owner-approved continuation implements
+`cadence-close-premining --private-root <failed preparation>` and
+`cadence-review-premining --private-root <failed preparation>` through
+`just fixed-usb-qualification`. They perform no hardware, credential or signing
+access. The close command exclusively writes the protected sibling
+`<failed preparation>.premining-closure.json`; review is read-only. Neither
+command adds, rewrites or removes any file inside the already sealed root.
+
+The supported failure class is the observed idle-review `probe_admission`
+before USB-load/mining. Independently verify its sealed inventory, exact
+context/charged predecessor and permission-failure ancestry, thirteen artifacts,
+five flash/process receipts, four cycle audits, idle arm, observer journal,
+parent-observed earliest failure and authenticated ledger observation, final
+safe baseline and real host cleanup. Preserve parent-observed provenance:
+do not manufacture a browser journal failure or missing device summary.
+
+Initial closure must match the already published preparation-2 inventory SHA-256
+`6895f2fcfe161a0d7617b51b02b9f12fcdf49454c9ee540295c31f40b463a5a7`
+and its recognized producer. Internal consistency alone cannot admit a
+replacement inventory. The CLI and environment provide no override for this
+accepted evidence anchor; coherent evidence-plus-inventory rewrites fail.
+
+Require no issuance, consumption, loaded grant, work, renewal, suppression or
+later phase evidence. Fan-only cooling and cleanup transitions are valid when
+consistent with that no-work evidence; they may temporarily report a pending
+restoration, but the final baseline and ledger must be inactive and unchanged.
+Any missing, conflicting, altered or unsafe-path evidence rejects closure.
+The receipt is unverified, retains the original failure, records unchanged
+accounting and grants no continuation authority. Existing permission-only
+closure and funded-result judges remain unchanged.
+
+`cadence-preflight --supersede-premining <sibling closure>` is mutually exclusive
+with `--supersede-unissued`. It revalidates all closed evidence and requires
+`software_correction`, a changed clean published pair, the same charged
+predecessor, an exclusively assigned preparation number, a fresh allowance ID
+and an absent protected evidence child. Preparation 3 expects still-unused
+ordinal 16 and 1200000 ms charged; fresh authenticated device accounting must agree
+before issuance. Preserve all earlier markers. Reject duplicate/conflicting or
+partial assignments, recursive ancestry, archived-task authority and serving
+sealed failed preparations; historical read-only validation remains available.
+
+Publish and test these changes with corrected Gate ad16c23d, build the exact
+clean package, close/review preparation 2 and create the new preparation context
+before hardware. Repeat initial installation and all four cycles; no old cycle
+or capture is transferred. Then run the existing idle/USB/mining sequence,
+heartbeat suppression, observer tail/reaping, ordered shutdown/cooling and
+fresh authenticated final review. Timing, storage, stack, publication, safety,
+privacy and 360-second observer limits above are unchanged. Fully charge the
+one 180000-ms reservation once consumed: expected next 17 / last 16 / 1380000 ms with no
+pending reservation. An accepted share remains unnecessary for this judge.
+
+A missing or failed proof keeps qualification unverified. Another attempt needs
+verified targeted progress and appropriate guarded admission; recurrence of the
+same authoritative boundary after its verified fix stops under the existing
+hardware-attempt policy. On complete evidence, finalize/archive cadence,
+qualification and migration and update BWG/STR-005 dependencies without granting
+them effects. Otherwise retain precise active blockers and publish the truthful
+result. Parity remains 90/95 throughout.
