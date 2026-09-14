@@ -22,7 +22,8 @@ import {
   writeNew,
 } from "./contract.mjs";
 import { cadenceValidatorDigest, requireCadenceTask } from "./cadence-contract.mjs";
-import { loadStartupRecoveryContext } from "./cadence-startup-context.mjs";
+import { RUNTIME_KEYS, runtimeSource } from "./reset-origin-runtime-source.mjs";
+export { RESET_ORIGIN_SOURCE_SEAL } from "./reset-origin-runtime-source.mjs";
 import { inventory, proof } from "./cadence-premining-evidence.mjs";
 import { inspectOriginalCampaign, readFrozenCampaign } from "./no-mining-accounting.mjs";
 import { NO_MINING_SCHEMA, validateNoMiningContext } from "./no-mining-context.mjs";
@@ -32,6 +33,11 @@ import {
   RESET_ORIGIN_JOURNAL_REGRESSION,
   RESET_ORIGIN_CORRECTED_JOURNAL_CLIENT,
 } from "./reset-origin-journal-failure.mjs";
+import {
+  readFinalizationFailure,
+  RESET_ORIGIN_FINALIZATION_REGRESSION,
+  RESET_ORIGIN_FINALIZATION_CLIENT,
+} from "./reset-origin-finalization-failure.mjs";
 import { readPreparationReview } from "./reset-origin-preparation-review.mjs";
 import { verifyArtifactSnapshot } from "./snapshot.mjs";
 
@@ -45,22 +51,7 @@ export const RESET_ORIGIN_POLICY = Object.freeze({
   maximum_records: 4096,
   maximum_batches: 1024,
 });
-export const RESET_ORIGIN_SOURCE_SEAL = "0ed37434d6bb8587ea51dec6b1e3cf41128ee555635058bd74fd2c84b702e834";
 export const RESET_ORIGIN_UNSTARTED_SEAL = "c17d89b7451c54df7eadc94de79dde7734e4367c17a4ebbf3fe3b62fe12ac593";
-const RUNTIME_KEYS = [
-  "manifest_sha256",
-  "app_elf_sha256",
-  "reference_commit",
-  "artifacts",
-  "update_segments",
-  "firmware_commit",
-  "gate_commit",
-  "gate_bundle_sha256",
-  "gate_page_relative_path",
-  "gate_page_sha256",
-  "trust_sha256",
-  "supervisor_client_sha256",
-];
 const DRIVER_FILES = [
   "reset-origin-context.mjs",
   "reset-origin-judge.mjs",
@@ -80,6 +71,10 @@ const ALLOWED_CHANGES = new Set([
     ...DRIVER_FILES,
     "reset-origin-preparation-review.mjs",
     "reset-origin-journal-failure.mjs",
+    "reset-origin-finalization-failure.mjs",
+    "reset-origin-runtime-source.mjs",
+    "reset-origin-observation-review.mjs",
+    "reset-origin-pipeline.test.mjs",
     "reset-origin-successor-fixtures.mjs",
     "no-mining-client.mjs",
     "no-mining-client.test.mjs",
@@ -94,46 +89,23 @@ const ALLOWED_CHANGES = new Set([
 const SCRIPT_ROOT = dirname(fileURLToPath(import.meta.url));
 export function forbidResetOriginEffects(options) {
   check(
-    [options.supersedeUnstarted, options.supersedePreparationReview, options.supersedeJournalFailure].filter((value) => value !== undefined)
-      .length <= 1,
+    [options.supersedeUnstarted, options.supersedePreparationReview, options.supersedeJournalFailure, options.supersedeFinalization].filter(
+      (value) => value !== undefined,
+    ).length <= 1,
     "reset_origin_supersession_conflict",
   );
   check(options.authorityDirectory === undefined && options.poolCredentials === undefined, "reset_origin_credentials_forbidden");
 }
-async function runtimeSource(root, operations, runtimeCache) {
-  root = await canonicalDirectory(root);
-  if (!runtimeCache.has(root)) runtimeCache.set(root, readRuntimeSource(root, operations));
-  return runtimeCache.get(root);
-}
-async function readRuntimeSource(root, operations) {
-  root = await canonicalDirectory(root);
-  const seal = await proof(resolve(root, "failed-inventory.json"));
-  check(
-    seal.sha256 === (operations.expectedResetOriginSourceSeal ?? RESET_ORIGIN_SOURCE_SEAL) &&
-      seal.value.schema === "cpu0-cadence-startup-recovery-failed-inventory-v1" &&
-      seal.value.outcome === "stop_impossible_contract" &&
-      seal.value.qualification_pass === false &&
-      seal.value.device_recovery_claimed === false &&
-      seal.value.new_hardware_authorized === false,
-    "reset_origin_source_anchor",
-  );
-  const context = await loadStartupRecoveryContext(root, { historical: true, operations });
-  const snapshot = await verifyArtifactSnapshot(root, context);
-  check(
-    seal.value.context_sha256 === digest(JSON.stringify(context)) &&
-      seal.value.artifact_snapshot_sha256 === snapshot.receipt_sha256 &&
-      isDeepStrictEqual(seal.value.inventory, await inventory(root)),
-    "reset_origin_source_changed",
-  );
-  return {
-    context,
-    binding: {
-      root,
-      failed_inventory_sha256: seal.sha256,
-      context_sha256: digest(JSON.stringify(context)),
-      artifact_snapshot_sha256: snapshot.receipt_sha256,
+function invocationOperations(operations) {
+  const receipts = new Map(),
+    read = operations.readPrevious ?? readPrevious;
+  return Object.assign(Object.create(operations), {
+    readPrevious(path) {
+      const key = resolve(path);
+      if (!receipts.has(key)) receipts.set(key, read(key));
+      return receipts.get(key);
     },
-  };
+  });
 }
 const UNSTARTED_FILES = new Set([
   "artifact-snapshot.json",
@@ -155,7 +127,7 @@ const UNSTARTED_FILES = new Set([
   "unused-host-cleanup.json",
 ]);
 function assignmentPath(context) {
-  const suffix = [2, 3, 4].includes(context.observation_attempt) ? `-${context.observation_attempt}` : "";
+  const suffix = [2, 3, 4, 5].includes(context.observation_attempt) ? `-${context.observation_attempt}` : "";
   return `${context.runtime_source.root}.reset-origin-assignment${suffix}.json`;
 }
 async function readUnstarted(root, operations, runtimeCache) {
@@ -250,11 +222,16 @@ async function readUnstarted(root, operations, runtimeCache) {
   return { context, binding: { root, failed_inventory_sha256: saved.sha256 } };
 }
 async function verifyObservationSuccessor(root, context, operations, runtimeCache, maybePrevious) {
-  const fields = { 2: "unstarted_predecessor", 3: "preparation_review_predecessor", 4: "journal_failure_predecessor" };
+  const fields = {
+    2: "unstarted_predecessor",
+    3: "preparation_review_predecessor",
+    4: "journal_failure_predecessor",
+    5: "finalization_predecessor",
+  };
   if (context.observation_attempt === undefined && Object.values(fields).every((field) => context[field] === undefined)) return;
   const field = fields[context.observation_attempt];
   check(
-    [2, 3, 4].includes(context.observation_attempt) &&
+    [2, 3, 4, 5].includes(context.observation_attempt) &&
       field &&
       Object.values(fields).every((other) => other === field || context[other] === undefined),
     "reset_origin_observation_attempt",
@@ -264,17 +241,21 @@ async function verifyObservationSuccessor(root, context, operations, runtimeCach
   const load = (root, options) => loadContext(root, options, runtimeCache);
   const old =
     maybePrevious ??
-    (context.observation_attempt === 4
-      ? await readJournalFailure(predecessor.root, operations, load)
-      : context.observation_attempt === 3
-        ? await readPreparationReview(predecessor.root, operations, load)
-        : await readUnstarted(predecessor.root, operations, runtimeCache));
+    (context.observation_attempt === 5
+      ? await readFinalizationFailure(predecessor.root, operations, load)
+      : context.observation_attempt === 4
+        ? await readJournalFailure(predecessor.root, operations, load)
+        : context.observation_attempt === 3
+          ? await readPreparationReview(predecessor.root, operations, load)
+          : await readUnstarted(predecessor.root, operations, runtimeCache));
   check(
     isDeepStrictEqual(old.binding, predecessor) &&
       root !== old.binding.root &&
       dirname(root) === dirname(old.binding.root) &&
       context.observation_id !== old.context.observation_id &&
       context.qualification_driver.source_commit !== old.context.qualification_driver.source_commit &&
+      (context.observation_attempt !== 5 ||
+        context.qualification_driver.client_sha256 !== old.context.qualification_driver.client_sha256) &&
       isDeepStrictEqual(context.runtime_source, old.context.runtime_source) &&
       context.previous_receipt === old.context.previous_receipt &&
       context.previous_receipt_sha256 === old.context.previous_receipt_sha256 &&
@@ -285,7 +266,8 @@ async function verifyObservationSuccessor(root, context, operations, runtimeCach
   check(
     plan.reason === "software_correction" &&
       plan.evidence_sha256.includes(old.binding.failed_inventory_sha256) &&
-      (context.observation_attempt !== 4 || plan.evidence_sha256.includes(RESET_ORIGIN_JOURNAL_REGRESSION)),
+      (context.observation_attempt !== 4 || plan.evidence_sha256.includes(RESET_ORIGIN_JOURNAL_REGRESSION)) &&
+      (context.observation_attempt !== 5 || plan.evidence_sha256.includes(RESET_ORIGIN_FINALIZATION_REGRESSION)),
     "reset_origin_unstarted_correction",
   );
 }
@@ -307,7 +289,11 @@ async function verifyDriver(context, operations) {
     readGit = operations.git ?? git;
   const driver = context.qualification_driver;
   check(
-    context.observation_attempt !== 4 || driver.no_mining_client_sha256 === RESET_ORIGIN_CORRECTED_JOURNAL_CLIENT,
+    context.observation_attempt !== 5 || driver.client_sha256 === RESET_ORIGIN_FINALIZATION_CLIENT,
+    "reset_origin_finalization_client_binding",
+  );
+  check(
+    ![4, 5].includes(context.observation_attempt) || driver.no_mining_client_sha256 === RESET_ORIGIN_CORRECTED_JOURNAL_CLIENT,
     "reset_origin_host_client_binding",
   );
   checkRepo(context.firmware_root, driver.source_commit);
@@ -337,7 +323,7 @@ async function verifyDriver(context, operations) {
   check(
     (await fileDigest(trustPath)) === context.trust_sha256 &&
       (await fileDigest(resolve(SCRIPT_ROOT, "no-mining-client.mjs"))) ===
-        (context.observation_attempt === 4 ? driver.no_mining_client_sha256 : context.supervisor_client_sha256),
+        ([4, 5].includes(context.observation_attempt) ? driver.no_mining_client_sha256 : context.supervisor_client_sha256),
     "reset_origin_public_input_drift",
   );
   const trust = await readJson(trustPath);
@@ -347,8 +333,9 @@ function inner(root, context) {
   return {
     schema: NO_MINING_SCHEMA,
     ...Object.fromEntries(RUNTIME_KEYS.map((key) => [key, context[key]])),
-    supervisor_client_sha256:
-      context.observation_attempt === 4 ? context.qualification_driver.no_mining_client_sha256 : context.supervisor_client_sha256,
+    supervisor_client_sha256: [4, 5].includes(context.observation_attempt)
+      ? context.qualification_driver.no_mining_client_sha256
+      : context.supervisor_client_sha256,
     mining_authorized: false,
     required_no_mining_cycles: 4,
     original_campaign_record: context.original_campaign_record,
@@ -383,6 +370,7 @@ async function copyRuntime(sourceRoot, root, context) {
 }
 export async function resetOriginPreflight(options, operations = {}) {
   forbidResetOriginEffects(options);
+  operations = invocationOperations(operations);
   const runtimeCache = new Map();
   const root = resolve(options.privateRoot);
   await protectedPath(dirname(root), true);
@@ -462,6 +450,15 @@ export async function resetOriginPreflight(options, operations = {}) {
     context.qualification_driver.no_mining_client_sha256 = await fileDigest(resolve(SCRIPT_ROOT, "no-mining-client.mjs"));
     await verifyObservationSuccessor(root, context, operations, runtimeCache, old);
   }
+  if (options.supersedeFinalization !== undefined) {
+    const old = await readFinalizationFailure(options.supersedeFinalization, operations, (root, options) =>
+      loadContext(root, options, runtimeCache),
+    );
+    context.observation_attempt = 5;
+    context.finalization_predecessor = old.binding;
+    context.qualification_driver.no_mining_client_sha256 = await fileDigest(resolve(SCRIPT_ROOT, "no-mining-client.mjs"));
+    await verifyObservationSuccessor(root, context, operations, runtimeCache, old);
+  }
   context.no_mining_context = inner(root, context);
   validateNoMiningContext(context.no_mining_context);
   await verifyDriver(context, operations);
@@ -482,7 +479,7 @@ export async function resetOriginPreflight(options, operations = {}) {
   };
 }
 export async function loadResetOriginContext(root, options = {}) {
-  return loadContext(root, options, new Map());
+  return loadContext(root, { ...options, operations: invocationOperations(options.operations ?? {}) }, new Map());
 }
 async function loadContext(root, { historical = false, operations = {} }, runtimeCache) {
   root = await canonicalDirectory(root);
@@ -514,13 +511,26 @@ async function loadContext(root, { historical = false, operations = {} }, runtim
       "installation_authorized",
       "no_mining_context",
     ],
-    ["observation_attempt", "unstarted_predecessor", "preparation_review_predecessor", "journal_failure_predecessor"],
+    [
+      "observation_attempt",
+      "unstarted_predecessor",
+      "preparation_review_predecessor",
+      "journal_failure_predecessor",
+      "finalization_predecessor",
+    ],
   );
-  check(context.observation_attempt === undefined || [2, 3, 4].includes(context.observation_attempt), "reset_origin_observation_attempt");
+  check(
+    context.observation_attempt === undefined || [2, 3, 4, 5].includes(context.observation_attempt),
+    "reset_origin_observation_attempt",
+  );
   exactObject(context.runtime_source, ["root", "failed_inventory_sha256", "context_sha256", "artifact_snapshot_sha256"]);
   exactObject(context.qualification_driver, ["profile", "source_commit", "validator_sha256", "client_sha256"], ["no_mining_client_sha256"]);
   check(
-    context.observation_attempt === 4
+    context.observation_attempt !== 5 || context.qualification_driver.client_sha256 === RESET_ORIGIN_FINALIZATION_CLIENT,
+    "reset_origin_finalization_client_binding",
+  );
+  check(
+    [4, 5].includes(context.observation_attempt)
       ? context.qualification_driver.no_mining_client_sha256 === RESET_ORIGIN_CORRECTED_JOURNAL_CLIENT
       : context.qualification_driver.no_mining_client_sha256 === undefined,
     "reset_origin_host_client_binding",

@@ -191,6 +191,8 @@ test("actual client primes, polls continuously, refreshes, finishes accounting a
   assert(kinds.indexOf("/diagnostic-export") < start);
   assert(end > start);
   assert(kinds.indexOf("accounting_after") > end);
+  assert(kinds.slice(end + 1, kinds.indexOf("accounting_after")).includes("refresh"));
+  assert(kinds.slice(end + 1, kinds.indexOf("accounting_after")).includes("flush"));
   assert(kinds.indexOf("close") > kinds.indexOf("accounting_after"));
   const batches = f.events
     .slice(start + 1, end)

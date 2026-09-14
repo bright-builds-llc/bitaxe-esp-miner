@@ -153,6 +153,36 @@ Require a changed clean published driver and an exclusive observation-4 marker,
 then repeat fresh baseline, both accounting reviews and the complete observation
 under every existing limit. No reset, installation or mining effect is added.
 
+### Final status and accounting boundary
+
+Observation 004 completed capture, both ledger reads and a closed journal, but
+the independent judge rejected its end and after-accounting records sharing
+sequence115. Preserve that reviewer failure, all original records and their
+safe final state. It is not a browser failure and is not an accepted observation.
+
+Require a fresh authenticated status read and completed journal flush after the
+end boundary and before after-accounting. Keep the existing strict
+`end.observed_sequence < after.observed_sequence` rule. The regression must run
+both production clients against the real supervisor and independent judge with
+a fake device clock, demonstrating the exact rejection before correction and
+successful evidence afterward. Capture-only validation is extracted unchanged;
+it cannot substitute for session, accounting or effect checks.
+
+`reset-origin-preflight --supersede-finalization <failed-root>` may allocate
+one fresh observation005 only from the exact sealed004 finalization failure,
+with its fixed ancestry, both unchanged ledgers, complete closed journal and
+actual cleanup. All supersession flags remain mutually exclusive. Require a
+changed clean published driver and a correction plan bound to the failure seal,
+verified full-pipeline regression and exact corrected observer client. Preserve
+the separate pinned host journal client and every retained runtime artifact.
+An exclusive observation-5 assignment precedes creation; all observations and
+accounting must be collected again. No old result is promoted or rewritten.
+
+Each fresh validation invocation may deduplicate its identical charged
+predecessor read as well as its retained-runtime source. Every ancestor's own
+inventory and binding still verifies; a later invocation starts with empty
+caches and detects changes. Request, capture and authority limits stay fixed.
+
 ## Stage B: controlled restart interface and observation
 
 The installed Worker interface has no authenticated software-restart command.

@@ -333,6 +333,12 @@ js_test(
 )
 
 js_test(
+    name = "fixed_usb_reset_origin_pipeline_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/reset-origin-pipeline.test.mjs",
+)
+
+js_test(
     name = "fixed_usb_reset_origin_judge_test",
     data = [":fixed_usb_qualification_sources"],
     entry_point = "fixed-usb-qualification/reset-origin-judge.test.mjs",

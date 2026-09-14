@@ -66,6 +66,8 @@ async function run() {
       await delay(250);
     }
     await bounded(window.noMiningSupervisor.flush(), "reset_origin_record_timeout"); await post("/reset-origin/end", {}, 30000);
+    await window.workerAcceptance.refresh(); baseline();
+    await bounded(window.noMiningSupervisor.flush(), "reset_origin_record_timeout");
     await bounded(window.noMiningSupervisor.recordAccounting("after"), "reset_origin_accounting_timeout");
     await window.workerAcceptance.close(); await bounded(window.noMiningSupervisor.flush(), "reset_origin_record_timeout");
     stage = "closed"; note.textContent = "Observation collected and Worker connection closed. Independent review is required.";

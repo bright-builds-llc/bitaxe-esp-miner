@@ -3,7 +3,7 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { inventory } from "./cadence-premining-evidence.mjs";
-import { unusedObservation, preparationReview, journalFailure } from "./reset-origin-successor-fixtures.mjs";
+import { unusedObservation, preparationReview, journalFailure, finalizationFailure } from "./reset-origin-successor-fixtures.mjs";
 import { resetOriginFixture } from "./reset-origin-fixtures.mjs";
 import { loadResetOriginContext, resetOriginPreflight, RESET_ORIGIN_POLICY } from "./reset-origin-context.mjs";
 import { digest, fileDigest, readJson, writeNew } from "./contract.mjs";
@@ -486,7 +486,7 @@ test("observation attempts require numeric values and the corrected client must 
   const path = resolve(f.fourth.privateRoot, "context.json"),
     original = await readJson(path);
   // Act / Assert
-  for (const attempt of ["4", "toString", 5]) {
+  for (const attempt of ["4", "toString", 6]) {
     const saved = structuredClone(original);
     saved.context.observation_attempt = attempt;
     delete saved.context.qualification_driver.no_mining_client_sha256;
@@ -502,5 +502,112 @@ test("observation attempts require numeric values and the corrected client must 
   await writeFile(path, JSON.stringify(saved));
   await assert.rejects(loadResetOriginContext(f.fourth.privateRoot, { historical: true, operations: f.operations }), {
     code: "reset_origin_host_client_binding",
+  });
+});
+
+test("exact finalization failure admits a fresh observer without altering the failed ordering or client baseline", async (t) => {
+  // Arrange
+  const f = await finalizationFailure(t),
+    before = await inventory(f.finalizationRoot);
+  // Act
+  await resetOriginPreflight(f.fifth, f.operations);
+  const context = await loadResetOriginContext(f.fifth.privateRoot, { operations: f.operations });
+  // Assert
+  assert.equal(context.observation_attempt, 5);
+  assert.notEqual(context.observation_id, f.finalizationContext.observation_id);
+  assert.notEqual(context.qualification_driver.client_sha256, f.finalizationContext.qualification_driver.client_sha256);
+  assert.equal(context.qualification_driver.no_mining_client_sha256, f.finalizationContext.qualification_driver.no_mining_client_sha256);
+  assert.equal(context.supervisor_client_sha256, f.context.supervisor_client_sha256);
+  assert.equal(context.expected_next_ordinal, 17);
+  assert.equal(context.expected_charged_ms, 1380000);
+  assert.deepEqual(await inventory(f.finalizationRoot), before);
+  assert.equal((await readJson(resolve(f.finalizationRoot, "reset-origin-end.json"))).observed_sequence, 115);
+  assert.equal((await readJson(resolve(f.finalizationRoot, "no-mining-accounting-after.json"))).observed_sequence, 115);
+});
+
+test("finalization guard rejects other seals and coherently rewritten ordering", async (t) => {
+  // Arrange
+  const f = await finalizationFailure(t),
+    operations = { ...f.operations };
+  delete operations.expectedResetOriginFinalizationSeal;
+  // Act / Assert
+  await assert.rejects(resetOriginPreflight(f.fifth, operations), { code: "reset_origin_finalization_anchor" });
+  await assert.rejects(resetOriginPreflight({ ...f.fifth, supersedeFinalization: f.journalRoot }, f.operations), {
+    code: "reset_origin_finalization_anchor",
+  });
+  const path = resolve(f.finalizationRoot, "reset-origin-end.json"),
+    end = await readJson(path);
+  end.observed_sequence = 114;
+  await writeFile(path, JSON.stringify(end));
+  const sealPath = resolve(f.finalizationRoot, "failed-inventory.json"),
+    seal = await readJson(sealPath);
+  seal.end_sha256 = await fileDigest(path);
+  seal.inventory = await inventory(f.finalizationRoot);
+  await writeFile(sealPath, JSON.stringify(seal));
+  await assert.rejects(resetOriginPreflight(f.fifth, f.operations), { code: "reset_origin_finalization_anchor" });
+  f.operations.expectedResetOriginFinalizationSeal = await fileDigest(sealPath);
+  await assert.rejects(resetOriginPreflight(f.fifth, f.operations), { code: "reset_origin_finalization_exact_failure" });
+});
+
+test("fifth observation reserves before partial creation and rejects all conflicting supersession flags", async (t) => {
+  // Arrange
+  const f = await finalizationFailure(t);
+  // Act / Assert
+  for (const key of ["supersedeUnstarted", "supersedePreparationReview", "supersedeJournalFailure"])
+    await assert.rejects(resetOriginPreflight({ privateRoot: "/missing", supersedeFinalization: "/missing", [key]: "/missing" }), {
+      code: "reset_origin_supersession_conflict",
+    });
+  await assert.rejects(
+    resetOriginPreflight(f.fifth, {
+      ...f.operations,
+      mkdir: async () => {
+        throw Error("fixture partial fifth");
+      },
+    }),
+    /fixture partial fifth/u,
+  );
+  await assert.rejects(resetOriginPreflight({ ...f.fifth, privateRoot: resolve(dirname(f.root), "alternate-fifth") }, f.operations), {
+    code: "EEXIST",
+  });
+});
+
+test("charged predecessor is read once per invocation and changed accounting fails the next invocation", async (t) => {
+  // Arrange
+  const f = await finalizationFailure(t);
+  await resetOriginPreflight(f.fifth, f.operations);
+  const read = f.operations.readPrevious;
+  let calls = 0,
+    changed = false;
+  f.operations.readPrevious = async (path) => {
+    calls++;
+    const result = await read(path);
+    return changed ? { ...result, total_charged_ms: 0 } : result;
+  };
+  // Act / Assert
+  await loadResetOriginContext(f.fifth.privateRoot, { operations: f.operations });
+  assert.equal(calls, 1);
+  await loadResetOriginContext(f.fifth.privateRoot, { operations: f.operations });
+  assert.equal(calls, 2);
+  changed = true;
+  await assert.rejects(loadResetOriginContext(f.fifth.privateRoot, { operations: f.operations }));
+  assert.equal(calls, 3);
+});
+
+test("fifth observer requires its pinned full-pipeline regression and corrected client bytes", async (t) => {
+  // Arrange
+  const f = await finalizationFailure(t),
+    plan = await readJson(f.fifth.input);
+  await writeFile(f.fifth.input, JSON.stringify({ ...plan, evidence_sha256: [f.operations.expectedResetOriginFinalizationSeal] }));
+  // Act / Assert
+  await assert.rejects(resetOriginPreflight(f.fifth, f.operations), { code: "reset_origin_unstarted_correction" });
+  await writeFile(f.fifth.input, JSON.stringify(plan));
+  await resetOriginPreflight(f.fifth, f.operations);
+  const path = resolve(f.fifth.privateRoot, "context.json"),
+    saved = await readJson(path);
+  saved.context.qualification_driver.client_sha256 = "a".repeat(64);
+  saved.sha256 = digest(JSON.stringify(saved.context));
+  await writeFile(path, JSON.stringify(saved));
+  await assert.rejects(loadResetOriginContext(f.fifth.privateRoot, { historical: true, operations: f.operations }), {
+    code: "reset_origin_finalization_client_binding",
   });
 });
