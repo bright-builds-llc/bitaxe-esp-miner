@@ -19,6 +19,7 @@ export function selectResetOriginDiagnostics(input) {
     requireCondition(!FAILURE_CATEGORIES.has(value.category), "reset_origin_failure_diagnostic");
     if (RESET_ORIGIN_CATEGORIES.includes(value.category)) {
       const parsed = parseResetOriginDiagnostic(value);
+      requireCondition(parsed.category !== "statistics_startup" || ["prepared", "active"].includes(parsed.state), "statistics_startup_not_active");
       requireCondition(parsed.category !== "startup" || (parsed.state !== "failed" && parsed.first_failure === "none"), "reset_origin_startup_failure");
       selected.push(parsed); continue;
     }

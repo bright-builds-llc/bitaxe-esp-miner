@@ -1,6 +1,7 @@
+import { parseStatisticsStartup } from "./reset-origin-restart-statistics.mjs";
 import { exactObject, hex, QualificationError, requireCondition as check } from './contract.mjs';
 
-export const RESET_ORIGIN_CATEGORIES = Object.freeze(['boot', 'startup', 'runtime_identity', 'panic', 'allocation_failure', 'allocation_context', 'storage_http_status', 'worker_preparation_receipt']);
+export const RESET_ORIGIN_CATEGORIES = Object.freeze(['boot', 'startup', 'runtime_identity', 'panic', 'allocation_failure', 'allocation_context', 'storage_http_status', 'worker_preparation_receipt', 'statistics_startup']);
 const STAGES = ['early_identity', 'usb_install', 'nvs', 'hardware', 'worker_recovery', 'runtime_services', 'storage_http', 'network', 'worker_control', 'statistics', 'runtime_ready'];
 const ALLOCATION_STAGES = ['early_identity', 'hardware', 'runtime_services', 'storage_http', 'network', 'usb_install', 'statistics', 'runtime_ready'];
 const RESET_REASONS = ['power_on', 'software_cpu', 'watchdog', 'panic', 'brownout', 'other'];
@@ -14,6 +15,7 @@ const fields = {
 };
 /** Validates one selected Gate diagnostic before any persistence boundary. */
 export function parseResetOriginDiagnostic(value) {
+  if (value?.category === "statistics_startup") return parseStatisticsStartup(value);
   check(value && RESET_ORIGIN_CATEGORIES.includes(value.category), 'reset_origin_category');
   if (value.category === 'worker_preparation_receipt') check(
     ['current_boot', 'previous_boot'].includes(value.origin) &&

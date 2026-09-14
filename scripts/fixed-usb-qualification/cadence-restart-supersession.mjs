@@ -1,3 +1,4 @@
+import { RESTART_INSTALL_FAILURE_SHA256 } from "./reset-origin-restart-install-failure.mjs";
 import { dirname, resolve } from "node:path";
 import { isDeepStrictEqual as equal } from "node:util";
 import { digest, exactObject, requireCondition as check } from "./contract.mjs";
@@ -81,6 +82,13 @@ export function validateCadenceRestartEvidence(receipt, accepted, recovery, fail
       receipt.qualification_pass === false &&
       receipt.cadence_admission_authorized === false,
     "cadence_restart_result_required",
+  );
+  check(
+    receipt.context.restart_attempt === undefined ||
+      (receipt.context.restart_attempt === 2 &&
+        receipt.context.statistics_startup_required === true &&
+        receipt.context.install_failure_predecessor?.failed_inventory_sha256 === RESTART_INSTALL_FAILURE_SHA256),
+    "cadence_restart_successor_class",
   );
   requireIdleLedger(receipt.ledger, 17, 1380000);
   requireExhaustedOriginal(receipt.original_budget);

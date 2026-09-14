@@ -53,7 +53,18 @@ mod wifi_adapter {
         None
     }
 }
+#[path = "statistics_runtime/diagnostics.rs"]
+mod statistics_startup_diagnostics;
+mod statistics_runtime {
+    pub(crate) use crate::statistics_startup_diagnostics as diagnostics;
+}
+#[path = "usb_startup_diagnostics_host_test/statistics.rs"]
+mod statistics_tests;
+
 mod boot_evidence {
+    pub fn worker_usb_boot_marker() -> String {
+        "usb_reboot_discriminator schema=v1 boot_ordinal=2 reset_reason=software_cpu uptime_ms=1 redacted=true".to_owned()
+    }
     pub fn maybe_worker_diagnostic_line(slot: usize) -> Option<String> {
         (slot == 0).then(|| "usb_runtime_identity fixture=true redacted=true".to_owned())
     }

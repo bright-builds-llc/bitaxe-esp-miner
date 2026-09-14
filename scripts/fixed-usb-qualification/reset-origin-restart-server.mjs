@@ -1,3 +1,5 @@
+import { savePreinstallFailure } from "./reset-origin-restart-preinstall.mjs";
+import { requireActiveStatistics } from "./reset-origin-restart-statistics.mjs";
 import { createServer } from "node:http";
 import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -117,6 +119,12 @@ export async function createRestartSupervisor(options, operations = {}) {
     }
     assertActive();
     if (["/activate", "/original-budget-context", "/accounting", "/diagnostic-export"].includes(path)) return metadata(path, input);
+    if (path === "/restart/preinstall-review") {
+      check(phase === "before-install", "restart_preinstall_phase");
+      await verify();
+      await current();
+      return savePreinstallFailure(root, context, input);
+    }
     if (path === "/restart/result") return receiveRestart(path, input);
     exactObject(input, []);
     if (["/restart/installed", "/restart/observation-start", "/restart/observation-end"].includes(path)) return observationAction(path);
@@ -161,6 +169,7 @@ export async function createRestartSupervisor(options, operations = {}) {
       check(sequence <= 1024, "restart_batch_bound");
       const observations = selectResetOriginDiagnostics(input),
         at = now();
+      if (context.statistics_startup_required) requireActiveStatistics(observations);
       if (phase === "after-install") {
         const installed = await requireRestartInstallation(root, context),
           boots = observations.filter((d) => d.category === "boot");
@@ -365,7 +374,12 @@ export async function createRestartSupervisor(options, operations = {}) {
       });
     }
     if (request.method === "GET" && path === "/supervisor-state")
-      return send(response, 200, { mode: "restart-qualification", phase, mining_authorized: false });
+      return send(response, 200, {
+        mode: "restart-qualification",
+        phase,
+        mining_authorized: false,
+        ...(context.restart_attempt === 2 ? { preinstall_failure_review_required: true, statistics_startup_required: true } : {}),
+      });
     if (request.method === "GET" && ["/no-mining-client.mjs", "/reset-origin-restart-client.mjs"].includes(path)) {
       const bytes = await readFile(resolve(root, "host-clients", path.slice(1)));
       check(
@@ -392,6 +406,7 @@ export async function createRestartSupervisor(options, operations = {}) {
       "/diagnostic-export",
       "/restart/failure",
       "/restart/installed",
+      "/restart/preinstall-review",
       "/restart/observation-start",
       "/restart/observation-end",
       "/restart/consume",

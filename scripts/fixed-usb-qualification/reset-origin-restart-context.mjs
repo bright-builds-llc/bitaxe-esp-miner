@@ -25,6 +25,7 @@ import { inspectOriginalCampaign } from "./no-mining-accounting.mjs";
 import { NO_MINING_SCHEMA, validateNoMiningContext } from "./no-mining-context.mjs";
 import { verifyArtifactSnapshot } from "./snapshot.mjs";
 import { RUNTIME_KEYS } from "./reset-origin-runtime-source.mjs";
+import { readRestartInstallFailure, RESTART_INSTALL_FAILURE_SHA256 } from "./reset-origin-restart-install-failure.mjs";
 import { RESET_ORIGIN_POLICY } from "./reset-origin-context.mjs";
 
 export const RESTART_SCHEMA = "fixed-usb-reset-origin-restart-context-v1";
@@ -37,6 +38,20 @@ export const RESTART_LIMITS = Object.freeze({
   maximum_reopens: 1,
 });
 const HERE = dirname(fileURLToPath(import.meta.url));
+const REQUEST_SCOPE = Symbol("restart-reader-scope");
+function requestScope(operations) {
+  if (operations[REQUEST_SCOPE]) return operations;
+  const cache = new Map(),
+    read = operations.readStageA ?? readResetOrigin;
+  return Object.assign(Object.create(operations), {
+    [REQUEST_SCOPE]: true,
+    readStageA(path) {
+      const key = resolve(path);
+      if (!cache.has(key)) cache.set(key, read(key));
+      return cache.get(key);
+    },
+  });
+}
 export function rejectRestartCredentials(options) {
   check(
     options.authorityDirectory === undefined && options.poolCredentials === undefined && options.context === undefined,
@@ -101,6 +116,18 @@ async function snapshot(root, context) {
   await retain(resolve(root, "host-clients/process-observer.mjs"), await readFile(context.process_observer.path));
   await verifyArtifactSnapshot(root, context);
 }
+function assignmentPath(context) {
+  return `${dirname(context.stage_a.path)}.restart-assignment${context.restart_attempt === 2 ? "-2" : ""}.json`;
+}
+async function failedInstallation(path, operations) {
+  const failed = await (operations.readInstallFailure ?? readRestartInstallFailure)(path, operations);
+  check(failed.binding.failed_inventory_sha256 === RESTART_INSTALL_FAILURE_SHA256, "restart_install_failure_anchor");
+  return failed;
+}
+async function requireStatisticsCapability(gateRoot, expectedHash) {
+  const bytes = await readFile(resolve(gateRoot, BUNDLE));
+  check(digest(bytes) === expectedHash && bytes.includes("statistics_startup schema=v1 state="), "restart_statistics_capability_missing");
+}
 async function stageA(path, operations) {
   const receipt = await (operations.readStageA ?? readResetOrigin)(path);
   check(
@@ -116,6 +143,7 @@ async function stageA(path, operations) {
 }
 /** Effect-free preparation; reserves the sole successor before creating any child. */
 export async function restartPreflight(options, operations = {}) {
+  operations = requestScope(operations);
   rejectRestartCredentials(options);
   const root = resolve(options.privateRoot);
   await protectedPath(dirname(root), true);
@@ -130,10 +158,31 @@ export async function restartPreflight(options, operations = {}) {
   validateCadenceProgress(await readJson(options.input));
   await protectedPath(options.observerScript);
   check(options.observerScript.endsWith(".mjs"), "restart_observer_source");
+  const failed =
+    options.supersedeInstallFailure === undefined
+      ? undefined
+      : await failedInstallation(resolve(options.supersedeInstallFailure), operations);
+  if (failed)
+    check(
+      (await readJson(options.input)).evidence_sha256.includes(RESTART_INSTALL_FAILURE_SHA256) &&
+        equal(failed.context.stage_a, {
+          path: priorPath,
+          sha256: await fileDigest(priorPath),
+          context_sha256: digest(JSON.stringify(prior.context)),
+        }) &&
+        dirname(failed.root) === dirname(root) &&
+        failed.root !== root,
+      "restart_install_failure_relation",
+    );
+  const beforeSource = failed?.context ?? prior.context;
   const source = await (operations.inspectSources ?? inspectStartupSources)(options, operations);
+  if (failed) await requireStatisticsCapability(options.gateRoot, source.gate_bundle_sha256);
   check(
-    source.firmware_commit !== prior.context.firmware_commit &&
+    source.firmware_commit !== beforeSource.firmware_commit &&
       source.gate_commit !== prior.context.gate_commit &&
+      (!failed ||
+        source.gate_commit !== failed.context.gate_commit ||
+        ["gate_bundle_sha256", "gate_page_sha256", "gate_page_relative_path"].every((key) => source[key] === failed.context[key])) &&
       source.trust_sha256 === prior.context.trust_sha256,
     "restart_new_pair_required",
   );
@@ -148,8 +197,16 @@ export async function restartPreflight(options, operations = {}) {
     gate_root: options.gateRoot,
     manifest: resolve(options.manifest),
     stage_a: { path: priorPath, sha256: await fileDigest(priorPath), context_sha256: digest(JSON.stringify(prior.context)) },
-    before_source: Object.fromEntries(RUNTIME_KEYS.map((key) => [key, prior.context[key]])),
-    before_manifest: prior.context.manifest,
+    before_source: Object.fromEntries(RUNTIME_KEYS.map((key) => [key, beforeSource[key]])),
+    before_manifest: failed ? resolve(failed.root, "qualified-artifacts/firmware/bitaxe-ultra205-package.json") : prior.context.manifest,
+    ...(failed
+      ? {
+          restart_attempt: 2,
+          install_failure_predecessor: failed.binding,
+          before_install_failure: failed.known_failure,
+          statistics_startup_required: true,
+        }
+      : {}),
     original_campaign_record: original,
     expected_next_ordinal: 17,
     expected_charged_ms: 1380000,
@@ -166,8 +223,13 @@ export async function restartPreflight(options, operations = {}) {
     installation_directory: "install-001",
     mining_authorized: false,
   };
+  if (failed)
+    check(
+      context.restart_id !== failed.context.restart_id && context.request_nonce !== failed.context.request_nonce,
+      "restart_successor_nonce_reused",
+    );
   for (const phase of ["before-install", "after-install"]) validateNoMiningContext(restartInnerContext(root, context, phase));
-  await writeNew(`${dirname(priorPath)}.restart-assignment.json`, {
+  await writeNew(assignmentPath(context), {
     schema: "fixed-usb-restart-assignment-v1",
     context_sha256: digest(JSON.stringify(context)),
     root,
@@ -179,34 +241,39 @@ export async function restartPreflight(options, operations = {}) {
   return { restart_preflight_created: true, mining_authorized: false, installations_consumed: 0, restarts_consumed: 0 };
 }
 export async function loadRestartContext(root, { historical = false, operations = {} } = {}) {
+  operations = requestScope(operations);
   root = await canonicalDirectory(root);
   await protectedPath(root, true);
   await protectedPath(resolve(root, "context.json"));
   const saved = await readJson(resolve(root, "context.json")),
     context = saved.context;
   exactObject(saved, ["context", "sha256"]);
-  exactObject(context, [
-    "schema",
-    "restart_id",
-    "request_nonce",
-    ...RUNTIME_KEYS,
-    "firmware_root",
-    "gate_root",
-    "manifest",
-    "stage_a",
-    "before_source",
-    "before_manifest",
-    "original_campaign_record",
-    "expected_next_ordinal",
-    "expected_charged_ms",
-    "driver",
-    "process_observer",
-    "progress",
-    "observation_policy",
-    "limits",
-    "installation_directory",
-    "mining_authorized",
-  ]);
+  exactObject(
+    context,
+    [
+      "schema",
+      "restart_id",
+      "request_nonce",
+      ...RUNTIME_KEYS,
+      "firmware_root",
+      "gate_root",
+      "manifest",
+      "stage_a",
+      "before_source",
+      "before_manifest",
+      "original_campaign_record",
+      "expected_next_ordinal",
+      "expected_charged_ms",
+      "driver",
+      "process_observer",
+      "progress",
+      "observation_policy",
+      "limits",
+      "installation_directory",
+      "mining_authorized",
+    ],
+    ["restart_attempt", "install_failure_predecessor", "before_install_failure", "statistics_startup_required"],
+  );
   exactObject(context.driver, ["source_commit", "validator_sha256", "client_sha256", "no_mining_client_sha256"]);
   exactObject(context.stage_a, ["path", "sha256", "context_sha256"]);
   for (const value of [context.process_observer, context.progress]) exactObject(value, ["path", "sha256"]);
@@ -227,22 +294,50 @@ export async function loadRestartContext(root, { historical = false, operations 
     "restart_context",
   );
   const prior = await stageA(context.stage_a.path, operations);
+  const successor =
+    context.restart_attempt !== undefined ||
+    context.install_failure_predecessor !== undefined ||
+    context.before_install_failure !== undefined ||
+    context.statistics_startup_required !== undefined;
+  let failed;
+  if (successor) {
+    check(context.restart_attempt === 2 && context.statistics_startup_required === true, "restart_successor_shape");
+    exactObject(context.install_failure_predecessor, ["root", "failed_inventory_sha256"]);
+    failed = await failedInstallation(context.install_failure_predecessor.root, operations);
+    check(
+      equal(failed.binding, context.install_failure_predecessor) &&
+        equal(failed.known_failure, context.before_install_failure) &&
+        equal(failed.context.stage_a, context.stage_a) &&
+        dirname(failed.root) === dirname(root) &&
+        failed.root !== root &&
+        context.restart_id !== failed.context.restart_id &&
+        context.request_nonce !== failed.context.request_nonce,
+      "restart_install_failure_lineage",
+    );
+  }
+  const beforeSource = failed?.context ?? prior.context;
+  const beforeManifest = failed
+    ? resolve(failed.root, "qualified-artifacts/firmware/bitaxe-ultra205-package.json")
+    : prior.context.manifest;
   check(
     (await fileDigest(context.stage_a.path)) === context.stage_a.sha256 &&
       digest(JSON.stringify(prior.context)) === context.stage_a.context_sha256 &&
-      equal(context.before_source, Object.fromEntries(RUNTIME_KEYS.map((key) => [key, prior.context[key]]))) &&
-      context.before_manifest === prior.context.manifest &&
+      equal(context.before_source, Object.fromEntries(RUNTIME_KEYS.map((key) => [key, beforeSource[key]]))) &&
+      context.before_manifest === beforeManifest &&
       equal(context.original_campaign_record, prior.context.original_campaign_record) &&
-      context.firmware_commit !== prior.context.firmware_commit &&
+      context.firmware_commit !== beforeSource.firmware_commit &&
       context.gate_commit !== prior.context.gate_commit &&
+      (!failed ||
+        context.gate_commit !== failed.context.gate_commit ||
+        ["gate_bundle_sha256", "gate_page_sha256", "gate_page_relative_path"].every((key) => context[key] === failed.context[key])) &&
       context.trust_sha256 === prior.context.trust_sha256 &&
       dirname(root) === dirname(dirname(context.stage_a.path)) &&
       root !== dirname(context.stage_a.path),
     "restart_stage_a_changed",
   );
-  await protectedPath(`${dirname(context.stage_a.path)}.restart-assignment.json`);
+  await protectedPath(assignmentPath(context));
   check(
-    equal(await readJson(`${dirname(context.stage_a.path)}.restart-assignment.json`), {
+    equal(await readJson(assignmentPath(context)), {
       schema: "fixed-usb-restart-assignment-v1",
       context_sha256: saved.sha256,
       root,
@@ -251,7 +346,9 @@ export async function loadRestartContext(root, { historical = false, operations 
   );
   await protectedPath(context.progress.path);
   check((await fileDigest(context.progress.path)) === context.progress.sha256, "restart_progress_changed");
-  validateCadenceProgress(await readJson(context.progress.path));
+  const progress = await readJson(context.progress.path);
+  validateCadenceProgress(progress);
+  if (successor) check(progress.evidence_sha256.includes(RESTART_INSTALL_FAILURE_SHA256), "restart_successor_progress");
   await verifyArtifactSnapshot(root, context);
   for (const [name, hash] of [
     ["no-mining-client.mjs", context.driver.no_mining_client_sha256],
@@ -275,6 +372,7 @@ export async function loadRestartContext(root, { historical = false, operations 
       },
       operations,
     );
+    if (context.statistics_startup_required) await requireStatisticsCapability(context.gate_root, source.gate_bundle_sha256);
     check(
       RUNTIME_KEYS.every((key) => equal(source[key], context[key])) &&
         (await cadenceValidatorDigest(context.firmware_root)) === context.driver.validator_sha256 &&

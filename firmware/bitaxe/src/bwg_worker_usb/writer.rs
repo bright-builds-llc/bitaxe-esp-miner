@@ -245,8 +245,13 @@ pub(super) fn run(
                 }
                 let now = crate::runtime_uptime::millis();
                 let maybe_line = if now >= next_startup_marker {
+                    if let Err(error) = send_statistics_startup(epoch, &session_id, &mut sequence) {
+                        retain_write_failure(&mut maybe_write_failure, &error);
+                        revoke_epoch(epoch);
+                        continue;
+                    }
                     next_startup_marker = now.saturating_add(500);
-                    Some(progress.marker(now))
+                    Some(progress.marker(crate::runtime_uptime::millis()))
                 } else if now >= next_admission_marker {
                     next_admission_marker = now.saturating_add(1000);
                     Some(crate::production_mining_session::admission_diagnostics::marker())
@@ -273,28 +278,7 @@ pub(super) fn run(
                 let Some(line) = maybe_line else {
                     continue;
                 };
-                if CURRENT_SESSION.load(Ordering::Acquire) != epoch || epoch == 0 {
-                    let line = format!("{line}\n");
-                    if crate::usb_runtime::write_if(line.as_bytes(), || {
-                        CURRENT_SESSION.load(Ordering::Acquire) == 0
-                    })
-                    .is_err()
-                    {
-                        DROPPED_DIAGNOSTICS.fetch_add(1, Ordering::Relaxed);
-                    }
-                    continue;
-                }
-                let Ok(payload) = serde_json::to_vec(&serde_json::json!({"line":line})) else {
-                    continue;
-                };
-                if let Err(error) = next_record(
-                    OutputAdmission::active(epoch),
-                    SerialKind::Diagnostic,
-                    &session_id,
-                    &mut sequence,
-                    &payload,
-                    None,
-                ) {
+                if let Err(error) = send_diagnostic_line(epoch, &session_id, &mut sequence, line) {
                     retain_write_failure(&mut maybe_write_failure, &error);
                     revoke_epoch(epoch);
                 }
@@ -302,6 +286,46 @@ pub(super) fn run(
             Err(mpsc::RecvTimeoutError::Disconnected) => return,
         }
     }
+}
+
+fn send_statistics_startup(epoch: u32, session_id: &str, sequence: &mut u32) -> anyhow::Result<()> {
+    let Some(marker) = crate::statistics_runtime::diagnostics::STARTUP.maybe_marker() else {
+        return Ok(());
+    };
+    send_diagnostic_line(
+        epoch,
+        session_id,
+        sequence,
+        crate::boot_evidence::worker_usb_boot_marker(),
+    )?;
+    send_diagnostic_line(epoch, session_id, sequence, marker)
+}
+
+fn send_diagnostic_line(
+    epoch: u32,
+    session_id: &str,
+    sequence: &mut u32,
+    line: String,
+) -> anyhow::Result<()> {
+    if CURRENT_SESSION.load(Ordering::Acquire) != epoch || epoch == 0 {
+        let line = format!("{line}\n");
+        let result = crate::usb_runtime::write_if(line.as_bytes(), || {
+            CURRENT_SESSION.load(Ordering::Acquire) == 0
+        });
+        if result.is_err() {
+            DROPPED_DIAGNOSTICS.fetch_add(1, Ordering::Relaxed);
+        }
+        return result;
+    }
+    let payload = serde_json::to_vec(&serde_json::json!({"line":line}))?;
+    next_record(
+        OutputAdmission::active(epoch),
+        SerialKind::Diagnostic,
+        session_id,
+        sequence,
+        &payload,
+        None,
+    )
 }
 
 fn send_receive_credit(

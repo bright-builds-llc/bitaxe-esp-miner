@@ -1,3 +1,4 @@
+import { requireActiveStatistics } from "./reset-origin-restart-statistics.mjs";
 import { readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { isDeepStrictEqual as equal } from "node:util";
@@ -65,6 +66,11 @@ export async function inspectResetOriginObservation(root, context, start, end) {
       "reset_origin_batch_binding",
     );
     const values = diagnostics(batch.observations);
+    check(
+      values.every((value) => value.category !== "statistics_startup" || ["prepared", "active"].includes(value.state)),
+      "statistics_startup_not_active",
+    );
+    if (context.statistics_startup_required) requireActiveStatistics(values);
     hashes.push({ file: name, sha256: saved.sha256 });
     if (index === 0) {
       check(
@@ -75,7 +81,10 @@ export async function inspectResetOriginObservation(root, context, start, end) {
       );
       primeBoot = values.find((d) => d.category === "boot");
       primeStartup = values.find(healthy);
-      check(values.every((d) => d.category !== "startup" || (d.state !== "failed" && d.first_failure === "none")), "reset_origin_prime_failure");
+      check(
+        values.every((d) => d.category !== "startup" || (d.state !== "failed" && d.first_failure === "none")),
+        "reset_origin_prime_failure",
+      );
       check(
         primeBoot &&
           primeStartup &&

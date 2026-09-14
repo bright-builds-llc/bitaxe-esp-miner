@@ -43,6 +43,7 @@ fn run_startup() -> anyhow::Result<Option<http_api::PreparedHttpRuntime>> {
     crate::panic_evidence::enter_stage(StartupStage::EarlyIdentity);
     let (startup_debug_text, maybe_thermal_fault_stimulus) =
         initialize_boot_identity_and_settings()?;
+    let maybe_statistics = prepare_statistics_runtime();
     PROGRESS.enter(DiagnosticStage::Hardware);
     crate::panic_evidence::enter_stage(StartupStage::Hardware);
     let (startup_diagnostics, maybe_modem) =
@@ -78,7 +79,7 @@ fn run_startup() -> anyhow::Result<Option<http_api::PreparedHttpRuntime>> {
     PROGRESS.enter(DiagnosticStage::Statistics);
     crate::panic_evidence::enter_stage(StartupStage::Statistics);
     retain_usb_memory_checkpoint("statistics_start");
-    start_statistics_runtime();
+    activate_statistics_runtime(maybe_statistics);
     retain_usb_memory_checkpoint("statistics_started");
     wifi_adapter::maybe_start_network_reconnect_probe(route_shell_ready);
     if maybe_http.is_none() {
@@ -485,10 +486,25 @@ fn retain_previous_boot_failure() {
     }
 }
 
-fn start_statistics_runtime() {
-    if let Err(error) = statistics_runtime::start() {
-        PROGRESS.fail(DiagnosticStage::Statistics);
-        log::warn!("statistics_runtime=unavailable reason=thread_spawn_failed error={error:#}");
+fn prepare_statistics_runtime() -> Option<statistics_runtime::PreparedStatistics> {
+    PROGRESS.enter(DiagnosticStage::Statistics);
+    crate::panic_evidence::enter_stage(StartupStage::Statistics);
+    match statistics_runtime::prepare() {
+        Ok(prepared) => Some(prepared),
+        Err(_) => {
+            PROGRESS.fail(DiagnosticStage::Statistics);
+            log::warn!("statistics_runtime=unavailable reason=preparation_failed");
+            None
+        }
+    }
+}
+
+fn activate_statistics_runtime(maybe_prepared: Option<statistics_runtime::PreparedStatistics>) {
+    if let Some(prepared) = maybe_prepared {
+        if !prepared.activate() {
+            PROGRESS.fail(DiagnosticStage::Statistics);
+            log::warn!("statistics_runtime=unavailable reason=activation_failed");
+        }
     }
 }
 

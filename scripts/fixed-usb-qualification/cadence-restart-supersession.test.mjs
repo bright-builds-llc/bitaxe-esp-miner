@@ -1,3 +1,4 @@
+import { RESTART_INSTALL_FAILURE_SHA256 } from "./reset-origin-restart-install-failure.mjs";
 import assert from "node:assert/strict";
 import { copyFile, readFile, readdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -73,6 +74,15 @@ test("production reader retains exact actual StageA/recovery/original-preparatio
     valid = verifiedFacts(f);
   // Act / Assert
   validateCadenceRestartEvidence(...valid);
+  const successor = structuredClone(valid);
+  Object.assign(successor[0].context, {
+    restart_attempt: 2,
+    statistics_startup_required: true,
+    install_failure_predecessor: { root: "/verified-fixture", failed_inventory_sha256: RESTART_INSTALL_FAILURE_SHA256 },
+  });
+  validateCadenceRestartEvidence(...successor);
+  successor[0].context.install_failure_predecessor.failed_inventory_sha256 = "0".repeat(64);
+  assert.throws(() => validateCadenceRestartEvidence(...successor), { code: "cadence_restart_successor_class" });
   for (const change of [
     (args) => {
       args[4] = "0".repeat(64);

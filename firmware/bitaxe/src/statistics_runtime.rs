@@ -2,21 +2,73 @@
 
 use std::{thread, time::Duration};
 
-use anyhow::{Context, Result};
 use bitaxe_core::runtime_orchestration::PeriodicDeadline;
+
+pub(crate) mod diagnostics;
+mod lifecycle;
+mod native;
 
 pub const STATISTICS_CADENCE_MS: u64 = 1_000;
 const PRODUCER_THREAD_NAME: &str = "statistics";
 const PRODUCER_THREAD_STACK_BYTES: usize = 8 * 1024;
 
-pub fn start() -> Result<()> {
-    thread::Builder::new()
-        .name(PRODUCER_THREAD_NAME.to_owned())
-        .stack_size(PRODUCER_THREAD_STACK_BYTES)
-        .spawn(run)
-        .context("spawn statistics producer")?;
-    log::info!("statistics_runtime=started cadence_ms={STATISTICS_CADENCE_MS}");
-    Ok(())
+pub(crate) struct PreparedStatistics(lifecycle::Prepared);
+
+#[derive(Debug)]
+pub(crate) enum PreparationFailure {
+    AlreadyPrepared,
+    Configuration,
+    Spawn,
+}
+
+pub(crate) fn prepare() -> Result<PreparedStatistics, PreparationFailure> {
+    if !diagnostics::STARTUP.begin(PRODUCER_THREAD_STACK_BYTES as u32) {
+        return Err(PreparationFailure::AlreadyPrepared);
+    }
+    let Some(caps) = native::stack_capabilities() else {
+        diagnostics::STARTUP.config_failed(PRODUCER_THREAD_STACK_BYTES as u32);
+        return Err(PreparationFailure::Configuration);
+    };
+    diagnostics::STARTUP.observe_before(caps, native::heap(caps));
+    let result = lifecycle::prepare(|gate| {
+        thread::Builder::new()
+            .name(PRODUCER_THREAD_NAME.to_owned())
+            .stack_size(PRODUCER_THREAD_STACK_BYTES)
+            .spawn(move || {
+                if gate.wait() {
+                    run();
+                }
+            })
+    });
+    diagnostics::STARTUP.finish(
+        native::heap(caps),
+        result
+            .as_ref()
+            .map(|_| ())
+            .map_err(|error| error.raw_os_error()),
+    );
+    result
+        .map(PreparedStatistics)
+        .map_err(|_| PreparationFailure::Spawn)
+}
+
+impl PreparedStatistics {
+    pub(crate) fn activate(mut self) -> bool {
+        if !self.0.activate() {
+            return false;
+        }
+        diagnostics::STARTUP.active();
+        log::info!("statistics_runtime=started cadence_ms={STATISTICS_CADENCE_MS}");
+        true
+    }
+}
+
+impl Drop for PreparedStatistics {
+    fn drop(&mut self) {
+        if self.0.is_prepared() {
+            diagnostics::STARTUP.cancelled();
+        }
+    }
 }
 
 fn run() -> ! {

@@ -30,7 +30,7 @@ import { createSupervisor } from "./server.mjs";
 import { finishWindow, recordCycle } from "./store.mjs";
 import { protectedPath, QualificationError, readJson, requireCondition } from "./contract.mjs";
 
-const KEYS = { "--supersede-restart": "supersedeRestart", "--stage-a-result": "stageAResult", "--observer-script": "observerScript", "--supersede-finalization": "supersedeFinalization", "--supersede-journal-failure": "supersedeJournalFailure", "--supersede-preparation-review": "supersedePreparationReview", "--supersede-unstarted": "supersedeUnstarted", "--supersede-startup": "supersedeStartup", "--supersede-premining": "supersedePremining", "--supersede-unissued": "supersedeUnissued", "--observer-binary": "observerBinary", "--recovery-phase": "recoveryPhase", "--original-campaign-record": "originalCampaignRecord", "--retained-runtime-from": "retainedRuntimeFrom", "--suggested-difficulty": "suggestedDifficulty", "--cycles-from": "cyclesFrom", "--purpose": "purpose", "--previous-receipt": "previousReceipt", "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
+const KEYS = { "--supersede-install-failure": "supersedeInstallFailure", "--supersede-restart": "supersedeRestart", "--stage-a-result": "stageAResult", "--observer-script": "observerScript", "--supersede-finalization": "supersedeFinalization", "--supersede-journal-failure": "supersedeJournalFailure", "--supersede-preparation-review": "supersedePreparationReview", "--supersede-unstarted": "supersedeUnstarted", "--supersede-startup": "supersedeStartup", "--supersede-premining": "supersedePremining", "--supersede-unissued": "supersedeUnissued", "--observer-binary": "observerBinary", "--recovery-phase": "recoveryPhase", "--original-campaign-record": "originalCampaignRecord", "--retained-runtime-from": "retainedRuntimeFrom", "--suggested-difficulty": "suggestedDifficulty", "--cycles-from": "cyclesFrom", "--purpose": "purpose", "--previous-receipt": "previousReceipt", "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
   "--manifest": "manifest", "--private-root": "privateRoot", "--authority-directory": "authorityDirectory", "--pool-credentials": "poolCredentials",
   "--cooling-input": "coolingInput", "--predecessor-root": "predecessorRoot", "--bun": "bun", "--port": "port", "--window": "window", "--input": "input",
   "--qualification-source-commit": "qualificationSourceCommit", "--gate-qualification-source-commit": "gateQualificationSourceCommit" };
@@ -45,7 +45,7 @@ export async function main(args, operations = {}) {
   }
   requireCondition(options.privateRoot, "private_root_required");
   const allowed = {
-    "reset-origin-restart-preflight": ["privateRoot", "firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "input", "originalCampaignRecord", "stageAResult", "observerScript"],
+    "reset-origin-restart-preflight": ["supersedeInstallFailure","privateRoot", "firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "input", "originalCampaignRecord", "stageAResult", "observerScript"],
     "reset-origin-restart-serve": ["privateRoot", "port", "bun"],
     "reset-origin-restart-consume-install": ["privateRoot"],
     "reset-origin-restart-install-review": ["privateRoot", "input"],

@@ -149,7 +149,7 @@ export async function installedRestartFixture(t, { panic = false } = {}) {
   await recordRestartFixture(scope, before, recoveryState(before, true));
   return installRestartFixture(f, { panic });
 }
-export async function installRestartFixture(f, { panic = false, review = true } = {}) {
+export async function installRestartFixture(f, { panic = false, review = true, additionalCapture = "" } = {}) {
   const owner = { pid: 101, pgid: 101, startedAt: "fixture-process" };
   await writeNew(resolve(f.root, "install-001.host-root.json"), owner);
   await writeNew(resolve(f.root, "install-001.observer-armed.json"), owner);
@@ -195,7 +195,11 @@ export async function installRestartFixture(f, { panic = false, review = true } 
     finished_at_unix_ms: 5000,
   });
   const captureFile = "install-001/flash-monitor.log";
-  await writeFile(resolve(f.root, captureFile), startupCapture(f.context, panic ? "panic" : "software_cpu"), { mode: 0o600 });
+  await writeFile(
+    resolve(f.root, captureFile),
+    Buffer.concat([startupCapture(f.context, panic ? "panic" : "software_cpu"), Buffer.from(additionalCapture)]),
+    { mode: 0o600 },
+  );
   const reviewInput = resolve(f.root, "installation-input.json");
   await writeNew(reviewInput, {
     schema: "worker-restart-install-review-input-v1",

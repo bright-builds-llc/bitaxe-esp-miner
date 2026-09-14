@@ -1,3 +1,4 @@
+import { requireActiveStatistics } from "./reset-origin-restart-statistics.mjs";
 import { digest, exactObject, requireCondition as check } from "./contract.mjs";
 import { parseResetOriginDiagnostic } from "./reset-origin-observation.mjs";
 const integer = (value, maximum) => Number.isSafeInteger(value) && value >= 0 && value <= maximum;
@@ -126,6 +127,7 @@ export function validateRestartEvidence(value, context, expectedBootOrdinal) {
     const parsed = parseResetOriginDiagnostic(d);
     check(
       !["panic", "allocation_failure", "allocation_context"].includes(parsed.category) &&
+        (parsed.category !== "statistics_startup" || ["prepared", "active"].includes(parsed.state)) &&
         (parsed.category !== "startup" || (parsed.state !== "failed" && parsed.first_failure === "none")) &&
         (parsed.category !== "storage_http_status" || (parsed.spiffs_available === "true" && parsed.http_ready === "true")),
       "restart_failure_observed",
@@ -150,6 +152,8 @@ export function validateRestartEvidence(value, context, expectedBootOrdinal) {
   );
   const boot = observed.find((row) => row.diagnostic.category === "boot" && row.diagnostic.boot_ordinal === expectedBootOrdinal + 1);
   check(boot, "restart_fresh_boot_missing");
+  if (context.statistics_startup_required)
+    requireActiveStatistics(observed.filter((row) => row.record > boot.record).map((row) => row.diagnostic));
   const identities = observed.filter((row) => row.diagnostic.category === "runtime_identity");
   check(
     identities.length > 0 &&

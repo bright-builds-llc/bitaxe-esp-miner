@@ -1,3 +1,9 @@
+import {
+  successorRestartFixture,
+  knownFailureDiagnostics,
+  statisticsActive,
+  statisticsLine,
+} from "./reset-origin-restart-successor-fixtures.mjs";
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import { readFile } from "node:fs/promises";
@@ -12,10 +18,10 @@ import { resetDiagnostics } from "./reset-origin-fixtures.mjs";
 import { inspectStartupSources } from "./cadence-startup-context.mjs";
 import { writeNew } from "./contract.mjs";
 
-async function pipeline(t, { largeEvidence = false, deferConsume = false } = {}) {
+async function pipeline(t, { largeEvidence = false, deferConsume = false, successor = false } = {}) {
   let closeServer = async () => {};
   t.after(() => closeServer());
-  const f = await restartFixture(t);
+  const f = await (successor ? successorRestartFixture(t) : restartFixture(t));
   let clock = 100,
     state,
     config,
@@ -99,6 +105,12 @@ async function pipeline(t, { largeEvidence = false, deferConsume = false } = {})
       publish();
       await new Promise((resolve) => setImmediate(resolve));
       const evidence = restartPacket(f.context, { ordinal: request.expectedBootOrdinal });
+      if (successor) {
+        const hello = evidence.lifecycle.at(-2);
+        evidence.observations.push({ record: ++hello.record, atMs: hello.atMs - 1, diagnostic: statisticsActive() });
+        evidence.lifecycle.at(-1).record++;
+        evidence.summary.records++;
+      }
       if (largeEvidence) {
         evidence.observations = evidence.observations.slice(0, 2);
         for (let record = 4; record <= 511; record++)
@@ -129,8 +141,10 @@ async function pipeline(t, { largeEvidence = false, deferConsume = false } = {})
   };
   const diagnosticNode = {
     get textContent() {
+      if (successor && config.expectedFirmwareSourceCommit === f.context.before_source.firmware_commit)
+        return JSON.stringify(knownFailureDiagnostics(f.context).observations);
       return JSON.stringify(
-        resetDiagnostics(f.context, clock + 1000).map((d) =>
+        [...resetDiagnostics(f.context, clock + 1000), ...(successor ? [statisticsActive()] : [])].map((d) =>
           d.category === "boot" ? { ...d, boot_ordinal: 7, reset_reason: "software_cpu" } : d,
         ),
       );
@@ -334,4 +348,39 @@ test("terminal failure during deferred consume verification cannot return a perm
   await assert.rejects(readFile(resolve(f.root, "restart-consumed.json")), { code: "ENOENT" });
   const state = await (await fetch(`${f.origin}/supervisor-state`)).json();
   assert.equal(state.phase, "failed");
+});
+
+test("successor real HTTP pipeline inspects the failed installed image then independently verifies healthy statistics through restart", async (t) => {
+  // Arrange
+  const f = await pipeline(t, { successor: true });
+  // Act
+  await f.client.configureBeforeInstall();
+  await f.worker.connect();
+  await f.client.prepareInstallation();
+  await installRestartFixture(f, { additionalCapture: statisticsLine() });
+  await f.client.configureAfterInstall();
+  await f.worker.connect();
+  await f.client.observeAndRestart();
+  await f.server.closeQualificationResources();
+  await new Promise((resolve) => f.server.close(resolve));
+  const cleanup = resolve(f.root, "host-cleanup.json");
+  await writeNew(cleanup, {
+    schema: "worker-restart-host-cleanup-v1",
+    source: "parent-observed",
+    browser_closed: true,
+    supervisor_exited: true,
+    supervisor_exit_code: 0,
+    listener_absent: true,
+    owned_children_absent: true,
+    serial_holders_absent: true,
+  });
+  const result = await judgeRestart(f.root, cleanup, f.operations),
+    reviewed = await readRestartResult(resolve(f.root, "result.json"), f.operations);
+  // Assert
+  assert.equal(result.result, "controlled_restart_verified");
+  assert.equal(reviewed.context.restart_attempt, 2);
+  assert.equal(f.calls.filter((v) => v === "/restart/preinstall-review").length, 1);
+  assert.equal(f.calls.filter((v) => v === "qualification_restart").length, 1);
+  assert.equal(reviewed.ledger.next_ordinal, 17);
+  assert.equal(reviewed.ledger.total_charged_ms, 1380000);
 });

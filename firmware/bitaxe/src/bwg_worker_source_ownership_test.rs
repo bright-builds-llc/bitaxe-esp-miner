@@ -113,8 +113,8 @@ fn startup_installs_diagnostics_before_nvs_and_gates_worker_until_after_baseline
         .find("start_deferred_usb_runtime(runtime_services.deferred_usb_runtime)")
         .expect("deferred Worker USB installation should exist");
     let statistics = run
-        .find("start_statistics_runtime()")
-        .expect("statistics startup should exist");
+        .find("activate_statistics_runtime(maybe_statistics)")
+        .expect("statistics activation should exist");
 
     // Act / Assert
     assert!(baseline < recovery);

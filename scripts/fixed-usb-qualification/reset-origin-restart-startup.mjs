@@ -1,3 +1,4 @@
+import { parseStatisticsStartupLine, requireActiveStatistics } from "./reset-origin-restart-statistics.mjs";
 import { parseResetOriginDiagnostic } from "./reset-origin-observation.mjs";
 import { exactObject, requireCondition as check } from "./contract.mjs";
 
@@ -6,6 +7,7 @@ export function inspectRestartStartup(bytes, context) {
   check(Buffer.isBuffer(bytes) && bytes.length > 0 && bytes.length <= 1048576, "restart_install_capture_bound");
   const lines = bytes.toString("utf8").split("\n");
   lines.pop();
+  const statistics = [];
   const boots = [],
     complete = [];
   let identities = 0,
@@ -21,6 +23,7 @@ export function inspectRestartStartup(bytes, context) {
       ) && !/Guru Meditation Error|abort\(\) was called|stack overflow/iu.test(line),
       "restart_install_failure_observed",
     );
+    if (line.startsWith("statistics_startup")) statistics.push(parseStatisticsStartupLine(line));
     if (line.startsWith("usb_reboot_discriminator")) {
       const m =
         /^usb_reboot_discriminator schema=v1 boot_ordinal=([0-9]+) reset_reason=(power_on|software_cpu|panic|other) uptime_ms=([0-9]+) redacted=true$/u.exec(
@@ -98,7 +101,9 @@ export function inspectRestartStartup(bytes, context) {
     identities > 0 && profiles > 0 && ready && boots.length >= 2 && complete.length >= 2 && bootSpan >= 1000 && startupSpan >= 1000,
     "restart_install_advancing_startup",
   );
+  const activeStatistics = context.statistics_startup_required || statistics.length > 0 ? requireActiveStatistics(statistics) : undefined;
   return {
+    ...(activeStatistics ? { statistics_startup: activeStatistics } : {}),
     schema: "worker-restart-install-startup-v1",
     boot_ordinal: boots[0].ordinal,
     initial_reset_category: boots[0].reason,

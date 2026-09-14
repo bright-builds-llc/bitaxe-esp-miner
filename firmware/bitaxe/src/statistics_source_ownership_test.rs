@@ -7,7 +7,7 @@ const HTTP_HANDLER_SOURCE: &str = include_str!("http_api/handlers.rs");
 #[test]
 fn startup_creates_exactly_one_statistics_producer() {
     // Arrange
-    let start_call = "statistics_runtime::start()";
+    let start_call = "statistics_runtime::prepare()";
 
     // Act
     let startup_count = STARTUP_SOURCE.matches(start_call).count();
@@ -16,6 +16,36 @@ fn startup_creates_exactly_one_statistics_producer() {
     assert_eq!(startup_count, 1);
     assert_eq!(RUNTIME_SOURCE.matches("thread::Builder::new()").count(), 1);
     assert!(RUNTIME_SOURCE.contains("PRODUCER_THREAD_NAME: &str = \"statistics\""));
+}
+
+#[test]
+fn statistics_allocates_before_fragmenting_startup_and_activates_at_the_old_boundary() {
+    // Arrange
+    let prepare = STARTUP_SOURCE
+        .find("let maybe_statistics = prepare_statistics_runtime();")
+        .expect("early preparation");
+    let hardware = STARTUP_SOURCE
+        .find("initialize_hardware(startup_debug_text")
+        .expect("hardware startup");
+    let network = STARTUP_SOURCE
+        .find("prepare_network_services(maybe_modem)")
+        .expect("network preparation");
+    let usb = STARTUP_SOURCE
+        .find("start_deferred_usb_runtime(runtime_services.deferred_usb_runtime);")
+        .expect("USB startup");
+    let activate = STARTUP_SOURCE
+        .find("activate_statistics_runtime(maybe_statistics);")
+        .expect("original activation boundary");
+    // Act / Assert
+    assert!(prepare < hardware && hardware < network && network < usb && usb < activate);
+    assert_eq!(
+        STARTUP_SOURCE
+            .matches("activate_statistics_runtime(maybe_statistics);")
+            .count(),
+        1
+    );
+    assert!(RUNTIME_SOURCE.contains("PRODUCER_THREAD_STACK_BYTES: usize = 8 * 1024"));
+    assert!(RUNTIME_SOURCE.contains("if gate.wait()"));
 }
 
 #[test]
@@ -38,7 +68,9 @@ fn producer_uses_absolute_one_second_deadlines_and_confirmed_frequency() {
 fn frequency_reader_uses_only_confirmed_settings_snapshot() {
     // Arrange
     let function = "pub fn statistics_frequency_seconds() -> u16";
-    let start = SETTINGS_SOURCE.find(function).expect("frequency reader must exist");
+    let start = SETTINGS_SOURCE
+        .find(function)
+        .expect("frequency reader must exist");
     let source = &SETTINGS_SOURCE[start..];
 
     // Act
@@ -55,7 +87,9 @@ fn frequency_reader_uses_only_confirmed_settings_snapshot() {
 fn http_statistics_reads_history_without_recording_or_draining() {
     // Arrange
     let function = "pub fn projected_statistics(timestamp_ms: u64) -> StatisticsWire";
-    let start = SNAPSHOT_SOURCE.find(function).expect("projection must exist");
+    let start = SNAPSHOT_SOURCE
+        .find(function)
+        .expect("projection must exist");
     let end = SNAPSHOT_SOURCE[start..]
         .find("/// Records one producer-cadence statistics sample")
         .map(|offset| start + offset)

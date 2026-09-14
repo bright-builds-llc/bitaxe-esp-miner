@@ -1,3 +1,4 @@
+import { requirePreinstallFailure } from "./reset-origin-restart-preinstall.mjs";
 import { readFile, readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { isDeepStrictEqual as equal } from "node:util";
@@ -45,6 +46,7 @@ export async function consumeRestartInstall(root, operations = {}) {
       records.at(-1).state.preservation.baseline_id === before.state.preservation.baseline_id,
     "restart_install_baseline_join",
   );
+  await requirePreinstallFailure(root, context, records.at(-1).sequence);
   const armed = await proof(resolve(root, "install-001.observer-armed.json")),
     owner = await proof(resolve(root, "install-001.host-root.json"));
   check(sameProcess(armed.value, owner.value), "restart_install_not_armed");
@@ -96,6 +98,7 @@ async function installation(root, context, input) {
       claim.claimed_at_unix_ms > 0,
     "restart_install_claim",
   );
+  await requirePreinstallFailure(root, context, claim.closed_sequence);
   check(
     !(await readdir(root)).some((name) => /^(flash|install)-[0-9]/u.test(name) && !/^install-001(?:\.|$)/u.test(name)),
     "restart_extra_installation",

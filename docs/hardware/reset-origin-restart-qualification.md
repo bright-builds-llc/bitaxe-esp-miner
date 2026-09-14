@@ -254,3 +254,87 @@ unchanged thresholds. The ordinary allowance is 180,000 ms; after it is consumed
 and finalized, require next ordinal 18, last completed ordinal 17, charged 1,560,000 ms and
 `pending:false`. Stage B supplies no grant, budget reset, refund or completed
 cadence evidence.
+
+### Exact statistics-install failure successor 002
+
+Stage-B 001 remains failed and immutable. Its failed inventory SHA256 is
+`883b0a4f40eb97c59ec03f517d283d556e4ea3412de9e807e44371fdcf7ab3f1`;
+the source-bound failure auditor SHA256 is
+`72064ed17475fcf45c96d61d7ed95b7330e4830f8c6982ec6f644c7c7abd7101`.
+One ordinary write completed, but its retained startup had `first_failure=statistics`.
+No authenticated post-install preservation or accounting, controlled restart,
+health qualification or cadence authority was established. The captured ordinal
+507/reset category `other` does not explain earlier boots.
+
+The sole additional preparation is:
+
+```text
+just fixed-usb-qualification reset-origin-restart-preflight ... \
+  --stage-a-result <accepted-observation-005/result.json> \
+  --supersede-install-failure <sealed-restart-001-root>
+```
+
+Use a fresh sibling root, the corrected clean published firmware/package, the
+verified Gate build and a protected `software_correction` progress receipt citing
+that exact failure seal and the targeted regression evidence. The classifier
+accepts only that sealed failure class and independently rederives its unchanged
+artifacts, original accounting, before-install closed journal, startup failure
+and actual host cleanup. It admits no generic retry or recursive failed-successor
+reuse. It exclusively reserves observation 005's `restart-assignment-2.json`
+before creating the child. The original assignment and failed root are untouched;
+a partial new preparation keeps its assignment consumed.
+
+The successor's `before_source` is the image actually installed by failed 001:
+firmware `a74701d68505070dd00435005641fc3882ae8af8`, ELF
+`a3f11024e17aa091157c4b44e410cbd07e0e2eb516f350e9e087a4b029680299`,
+bound to that root's retained package. It is not Stage A's earlier image. The
+original accepted Stage A remains the ancestry anchor. A fresh page captures a
+new private preservation baseline on the currently installed image; it cannot
+import or attest the old page's unobserved post-install baseline.
+
+`prepareInstallation()` first reads fresh authenticated idle state and unchanged
+accounting (next 17, last 16, charged 1,380,000 ms, no pending allowance; original
+240,000 ms and masks 7/7). It then refreshes and records
+`before-install-failure-review.json`: exact current firmware/ELF, the same captured
+boot ordinal and reset category, advancing boot/startup uptime beyond the failed
+capture, and the known statistics startup failure. Other failures, a new boot or
+missing proof stop preparation. This receipt explicitly records an unhealthy
+startup inspection, not a recovery or health success. It precedes the final
+closed/released journal row and is required again by the installation consumer
+and independent installation judge.
+
+Successor 002 permits one corrected state-preserving install and one authenticated
+restart, each exclusively consumed in that fresh root. It retains all existing
+source, process-observer, cleanup, installation chronology and terminal-failure
+guards. After installation, the same page keeps its newly observed private
+baseline across reconfiguration. The corrected image must independently satisfy
+the unchanged healthy 130-second capture, fresh accounting and controlled restart
+proof before any passing receipt exists.
+
+For this new context only, `statistics_startup_required:true` additionally binds
+closed statistics startup metadata. A successful `active` receipt has stack
+8192 bytes, capabilities 2052 (`INTERNAL|8BIT`), unavailable errno, and numeric
+before/after heap measurements, with each largest block no larger than its same
+snapshot's free bytes. No allocation-size delta is inferred between those two
+snapshots. Preserve `prepared` before `active`; reject failed, cancelled or
+prepared-only final evidence. Require active evidence in the installation
+capture, the new-pair observation snapshots, and after the expected restart boot
+(and any permitted same-port reopen). These markers receive no boot/startup
+advance, timing or authority credit. Earlier contexts without these markers
+retain their historical validation rules.
+
+Only a strictly accepted `controlled_restart_verified` successor 002 may use the
+existing conditional `--supersede-restart` cadence branch. It still binds accepted
+005, recovery 1, original 017 and charged 016; it carries no mining grant. Fresh
+cadence preparation 17-2 repeats all four update/browser cycles and all three
+phases with the ordinary 180,000 ms allowance. After its consumed allowance is
+finalized, accounting must be next 18, last 17, charged 1,560,000 ms and no pending
+allowance. No prior failure is promoted and no charge is reset or refunded.
+
+Before reserving successor 002, the preflight checks that the exact hash-bound
+Gate bundle contains its `statistics_startup schema=v1 state=` decoder grammar.
+Live context validation repeats that capability check together with the existing
+clean published source and bundle identity checks. An older Gate bundle such as
+e3 without this decoder cannot reserve the new assignment or reach installation
+consumption. This guard does not change the historical failed-001 reader and is
+not a substitute for the required active statistics evidence after installation.
