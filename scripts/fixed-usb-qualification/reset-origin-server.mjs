@@ -27,10 +27,6 @@ export function selectResetOriginDiagnostics(input) {
       requireCondition(value.stage === "idle" && value.first_failure === "none", "reset_origin_unexpected_worker_activity");
       continue;
     }
-    if (value.category === "worker_preparation_receipt") {
-      requireCondition(["corrupt", "unavailable"].includes(value.status), "reset_origin_preparation_receipt_review_required");
-      continue;
-    }
     throw new QualificationError("reset_origin_unsupported_diagnostic");
   }
   return selected;

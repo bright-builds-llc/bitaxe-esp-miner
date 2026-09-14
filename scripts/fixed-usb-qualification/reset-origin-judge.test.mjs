@@ -185,3 +185,24 @@ test("unchanged failed startup history in the prime cannot disappear through ded
   // Act / Assert
   await assert.rejects(judgeResetOrigin(f.root, f.cleanupPath, f.operations), { code: "reset_origin_prime_failure" });
 });
+
+test("independent review retains separate preparation origins without crediting them as healthy progress", async (t) => {
+  // Arrange
+  const f = await completeResetOriginFixture(t);
+  const markers = [
+    { category: "worker_preparation_receipt", authoritative: false, origin: "previous_boot", status: "wrong_firmware" },
+    { category: "worker_preparation_receipt", authoritative: false, origin: "current_boot", status: "unavailable" },
+  ];
+  await batches(f, (b) => b.observations.push(...markers));
+  await change(f, "reset-origin-start.json", (start) => start.primeObservations.push(...markers));
+  // Act
+  await judgeResetOrigin(f.root, f.cleanupPath, f.operations);
+  const receipt = await readResetOrigin(resolve(f.root, "result.json"), f.operations);
+  // Assert
+  assert.deepEqual(receipt.summary.preparationMarkers.map(({ origin, status }) => ({ origin, status })),
+    markers.map(({ origin, status }) => ({ origin, status })));
+  assert.equal(receipt.summary.bootAdvances, 259);
+  assert.equal(receipt.summary.healthyStartupAdvances, 259);
+  assert.equal(receipt.prior_reset_attribution, "unknown");
+  assert.equal(receipt.cadence_admission_authorized, false);
+});

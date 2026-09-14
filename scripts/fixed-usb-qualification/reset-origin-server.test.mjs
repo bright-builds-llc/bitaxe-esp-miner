@@ -37,6 +37,7 @@ test("selected diagnostic metadata is validated and unrelated allowed metadata i
     { category: "worker_admission", stage: "idle", first_failure: "none" },
     {
       category: "worker_preparation_receipt",
+      authoritative: false,
       status: "corrupt",
       origin: "previous_boot",
     },
@@ -45,6 +46,7 @@ test("selected diagnostic metadata is validated and unrelated allowed metadata i
   assert.deepEqual(selectResetOriginDiagnostics(exportOf(observations)), [
     boot,
     startup,
+    observations[4],
   ]);
   assert.throws(
     () =>
@@ -379,4 +381,16 @@ test("real page response contains executable HTML rather than a JSON string", as
   assert.equal(response.headers.get("content-type"), "text/html");
   assert.equal(page, `${original}\n<script type="module" src="/no-mining-client.mjs"></script>\n<script type="module" src="/reset-origin-client.mjs"></script>`);
   assert(!page.includes('src=\\"'));
+});
+
+test("unattributable preparation metadata is preserved without claiming a current failure", () => {
+  // Arrange
+  const previous = { category: "worker_preparation_receipt", authoritative: false, origin: "previous_boot", status: "wrong_firmware" };
+  const current = { ...previous, origin: "current_boot", status: "unavailable" };
+  // Act / Assert
+  assert.deepEqual(selectResetOriginDiagnostics(exportOf([previous, current])), [previous, current]);
+  for (const changed of [{ ...previous, status: "valid" }, { ...previous, status: "incomplete" },
+    { ...previous, origin: "current_boot" }, { ...previous, private: "fixture" }, { ...previous, authoritative: true }]) {
+    assert.throws(() => selectResetOriginDiagnostics(exportOf([changed])));
+  }
 });

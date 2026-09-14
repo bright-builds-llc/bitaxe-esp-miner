@@ -27,6 +27,7 @@ import { inventory, proof } from "./cadence-premining-evidence.mjs";
 import { inspectOriginalCampaign, readFrozenCampaign } from "./no-mining-accounting.mjs";
 import { NO_MINING_SCHEMA, validateNoMiningContext } from "./no-mining-context.mjs";
 import { readPrevious } from "./iterative-preflight.mjs";
+import { readPreparationReview } from "./reset-origin-preparation-review.mjs";
 import { verifyArtifactSnapshot } from "./snapshot.mjs";
 
 export const RESET_ORIGIN_SCHEMA = "fixed-usb-reset-origin-observation-context-v1";
@@ -72,6 +73,7 @@ const ALLOWED_CHANGES = new Set([
   "scripts/fixed-usb-qualification/main.mjs",
   ...[
     ...DRIVER_FILES,
+    "reset-origin-preparation-review.mjs",
     "reset-origin-context.test.mjs",
     "reset-origin-judge.test.mjs",
     "reset-origin-server.test.mjs",
@@ -82,9 +84,15 @@ const ALLOWED_CHANGES = new Set([
 ]);
 const SCRIPT_ROOT = dirname(fileURLToPath(import.meta.url));
 export function forbidResetOriginEffects(options) {
+  check(options.supersedeUnstarted === undefined || options.supersedePreparationReview === undefined, "reset_origin_supersession_conflict");
   check(options.authorityDirectory === undefined && options.poolCredentials === undefined, "reset_origin_credentials_forbidden");
 }
-async function runtimeSource(root, operations) {
+async function runtimeSource(root, operations, runtimeCache) {
+  root = await canonicalDirectory(root);
+  if (!runtimeCache.has(root)) runtimeCache.set(root, readRuntimeSource(root, operations));
+  return runtimeCache.get(root);
+}
+async function readRuntimeSource(root, operations) {
   root = await canonicalDirectory(root);
   const seal = await proof(resolve(root, "failed-inventory.json"));
   check(
@@ -134,10 +142,10 @@ const UNSTARTED_FILES = new Set([
   "unused-host-cleanup.json",
 ]);
 function assignmentPath(context) {
-  const suffix = context.observation_attempt === 2 ? "-2" : "";
+  const suffix = [2, 3].includes(context.observation_attempt) ? `-${context.observation_attempt}` : "";
   return `${context.runtime_source.root}.reset-origin-assignment${suffix}.json`;
 }
-async function readUnstarted(root, operations) {
+async function readUnstarted(root, operations, runtimeCache) {
   root = await canonicalDirectory(root);
   const saved = await proof(resolve(root, "failed-inventory.json")),
     seal = saved.value;
@@ -163,7 +171,7 @@ async function readUnstarted(root, operations) {
     wrapper.value.context.observation_attempt === undefined && wrapper.value.context.unstarted_predecessor === undefined,
     "reset_origin_unstarted_class",
   );
-  const context = await loadResetOriginContext(root, { historical: true, operations });
+  const context = await loadContext(root, { historical: true, operations }, runtimeCache);
   check(
     seal.context_sha256 === digest(JSON.stringify(context)) &&
       seal.artifact_snapshot_sha256 === (await fileDigest(resolve(root, "artifact-snapshot.json"))) &&
@@ -228,13 +236,29 @@ async function readUnstarted(root, operations) {
   );
   return { context, binding: { root, failed_inventory_sha256: saved.sha256 } };
 }
-async function verifyUnstartedSuccessor(root, context, operations) {
-  if (context.observation_attempt === undefined && context.unstarted_predecessor === undefined) return;
-  check(context.observation_attempt === 2, "reset_origin_observation_attempt");
-  exactObject(context.unstarted_predecessor, ["root", "failed_inventory_sha256"]);
-  const old = await readUnstarted(context.unstarted_predecessor.root, operations);
+async function verifyObservationSuccessor(root, context, operations, runtimeCache, maybePrevious) {
+  if (
+    context.observation_attempt === undefined &&
+    context.unstarted_predecessor === undefined &&
+    context.preparation_review_predecessor === undefined
+  )
+    return;
+  const review = context.observation_attempt === 3;
   check(
-    isDeepStrictEqual(old.binding, context.unstarted_predecessor) &&
+    review
+      ? context.unstarted_predecessor === undefined
+      : context.observation_attempt === 2 && context.preparation_review_predecessor === undefined,
+    "reset_origin_observation_attempt",
+  );
+  const predecessor = review ? context.preparation_review_predecessor : context.unstarted_predecessor;
+  exactObject(predecessor, ["root", "failed_inventory_sha256"]);
+  const old =
+    maybePrevious ??
+    (review
+      ? await readPreparationReview(predecessor.root, operations, (root, options) => loadContext(root, options, runtimeCache))
+      : await readUnstarted(predecessor.root, operations, runtimeCache));
+  check(
+    isDeepStrictEqual(old.binding, predecessor) &&
       root !== old.binding.root &&
       dirname(root) === dirname(old.binding.root) &&
       context.observation_id !== old.context.observation_id &&
@@ -338,13 +362,14 @@ async function copyRuntime(sourceRoot, root, context) {
 }
 export async function resetOriginPreflight(options, operations = {}) {
   forbidResetOriginEffects(options);
+  const runtimeCache = new Map();
   const root = resolve(options.privateRoot);
   await protectedPath(dirname(root), true);
   await missing(root);
   for (const key of ["firmwareRoot", "gateRoot", "predecessorRoot"]) options[key] = await canonicalDirectory(options[key]);
   await requireCadenceTask(options.firmwareRoot);
   (operations.ignored ?? ignored)(options.firmwareRoot, root);
-  const source = await runtimeSource(options.predecessorRoot, operations),
+  const source = await runtimeSource(options.predecessorRoot, operations, runtimeCache),
     runtime = source.context;
   check(
     root !== source.binding.root &&
@@ -394,10 +419,18 @@ export async function resetOriginPreflight(options, operations = {}) {
   };
   check(hex(context.qualification_driver.source_commit, 40), "reset_origin_driver_commit");
   if (options.supersedeUnstarted !== undefined) {
-    const old = await readUnstarted(options.supersedeUnstarted, operations);
+    const old = await readUnstarted(options.supersedeUnstarted, operations, runtimeCache);
     context.observation_attempt = 2;
     context.unstarted_predecessor = old.binding;
-    await verifyUnstartedSuccessor(root, context, operations);
+    await verifyObservationSuccessor(root, context, operations, runtimeCache, old);
+  }
+  if (options.supersedePreparationReview !== undefined) {
+    const old = await readPreparationReview(options.supersedePreparationReview, operations, (root, options) =>
+      loadContext(root, options, runtimeCache),
+    );
+    context.observation_attempt = 3;
+    context.preparation_review_predecessor = old.binding;
+    await verifyObservationSuccessor(root, context, operations, runtimeCache, old);
   }
   context.no_mining_context = inner(root, context);
   validateNoMiningContext(context.no_mining_context);
@@ -418,7 +451,10 @@ export async function resetOriginPreflight(options, operations = {}) {
     device_effects: false,
   };
 }
-export async function loadResetOriginContext(root, { historical = false, operations = {} } = {}) {
+export async function loadResetOriginContext(root, options = {}) {
+  return loadContext(root, options, new Map());
+}
+async function loadContext(root, { historical = false, operations = {} }, runtimeCache) {
   root = await canonicalDirectory(root);
   await protectedPath(root, true);
   const saved = await proof(resolve(root, "context.json")),
@@ -448,7 +484,7 @@ export async function loadResetOriginContext(root, { historical = false, operati
       "installation_authorized",
       "no_mining_context",
     ],
-    ["observation_attempt", "unstarted_predecessor"],
+    ["observation_attempt", "unstarted_predecessor", "preparation_review_predecessor"],
   );
   exactObject(context.runtime_source, ["root", "failed_inventory_sha256", "context_sha256", "artifact_snapshot_sha256"]);
   exactObject(context.qualification_driver, ["profile", "source_commit", "validator_sha256", "client_sha256"]);
@@ -469,7 +505,7 @@ export async function loadResetOriginContext(root, { historical = false, operati
     "reset_origin_context",
   );
   check(context.runtime_source.root !== root && dirname(context.runtime_source.root) === dirname(root), "reset_origin_source_relation");
-  const source = await runtimeSource(context.runtime_source.root, operations);
+  const source = await runtimeSource(context.runtime_source.root, operations, runtimeCache);
   check(
     isDeepStrictEqual(source.binding, context.runtime_source) &&
       RUNTIME_KEYS.every((key) => isDeepStrictEqual(context[key], source.context[key])) &&
@@ -499,7 +535,7 @@ export async function loadResetOriginContext(root, { historical = false, operati
   await protectedPath(context.plan_path);
   check((await fileDigest(context.plan_path)) === context.plan_sha256, "reset_origin_plan_changed");
   validatePlan(await readJson(context.plan_path));
-  await verifyUnstartedSuccessor(root, context, operations);
+  await verifyObservationSuccessor(root, context, operations, runtimeCache);
   await verifyArtifactSnapshot(root, context);
   if (!historical) {
     await requireCadenceTask(context.firmware_root);

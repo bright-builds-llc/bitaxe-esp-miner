@@ -87,6 +87,41 @@ Conflicting or duplicate successors, changed evidence, any prior USB/browser
 control or observation activity, and incomplete cleanup remain ineligible.
 The new context repeats the complete observation under unchanged limits.
 
+### Unattributable preparation-marker correction
+
+Observation 002 reached fresh authenticated idle preservation and verified
+before-accounting, then rejected its first diagnostic export before capture.
+The parent retained the closed `previous_boot/wrong_firmware` and
+`current_boot/unavailable` markers and actual cleanup. No after-accounting,
+complete observation, recovered result or new reset attribution is claimed.
+
+The firmware emits `wrong_firmware` only after decoding retained receipt data
+whose source hash differs from the running firmware. It deliberately withholds
+the old payload. The frozen previous-boot slot can contain older retained data;
+this marker does not identify its firmware, immediately preceding boot, outcome
+or panic cause. Preserve its exact closed metadata separately from current
+identity, startup and timing evidence. It contributes no boot/startup advance,
+health proof or reset attribution. Continue rejecting valid or incomplete
+receipts for separate review, current-boot `wrong_firmware`, extra fields,
+authoritative claims and unsupported statuses.
+
+After the targeted classifier and independent-judge regressions pass,
+`reset-origin-preflight --supersede-preparation-review <failed-root>` may create
+one fresh observation 003 from the exact sealed observation-002 failure. It
+is mutually exclusive with `--supersede-unstarted`. Require the original
+001-to-002 lineage, verified before-accounting and final closed baseline,
+absence of capture/work/issuance, actual cleanup, a seal-linked software
+correction, changed clean published driver and exclusive observation-3 marker.
+Keep the installed runtime, charged predecessor and every observation limit
+unchanged. The prior root and assignments remain unavailable for effects;
+the successor must independently repeat both ledger reviews and full capture.
+
+Historical-chain validation must fit the existing request bounds. Within one
+validation invocation, reuse the same verified retained-runtime source when
+multiple ancestors reference it. Rebuild this cache for every new invocation;
+keep each ancestor inventory, assignment and plan check. Never reuse validation
+across requests or extend a timeout to hide growing duplicate work.
+
 ## Stage B: controlled restart interface and observation
 
 The installed Worker interface has no authenticated software-restart command.

@@ -156,3 +156,18 @@ test('backward finish time cannot fabricate a positive observation span', () => 
   const result=reducer.finish({hostMonotonicMs:999}); assert.equal(result.hostSpanMs,0);
   assert.equal(result.coverageComplete,false); assert(result.issues.includes('host_clock_regression'));
 });
+
+test('preparation markers alone cannot provide liveness, startup, identity or coverage', () => {
+  // Arrange
+  const reducer = createResetOriginObservation(policy);
+  // Act
+  reducer.observe({sequence:1,hostMonotonicMs:0,diagnostic:{category:'worker_preparation_receipt',authoritative:false,origin:'previous_boot',status:'wrong_firmware'}});
+  const result = reducer.finish({hostMonotonicMs:policy.minimumSpanMs});
+  // Assert
+  assert.equal(result.coverageComplete,false);
+  assert.equal(result.bootAdvances,0);
+  assert.equal(result.healthyStartupAdvances,0);
+  assert.equal(result.identityRecords,0);
+  assert.equal(result.priorResetAttribution,'unknown');
+  assert.deepEqual(result.preparationMarkers,[{sequence:1,origin:'previous_boot',status:'wrong_firmware'}]);
+});

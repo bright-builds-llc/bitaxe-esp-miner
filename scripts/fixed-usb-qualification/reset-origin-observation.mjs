@@ -1,6 +1,6 @@
 import { exactObject, hex, QualificationError, requireCondition as check } from './contract.mjs';
 
-export const RESET_ORIGIN_CATEGORIES = Object.freeze(['boot', 'startup', 'runtime_identity', 'panic', 'allocation_failure', 'allocation_context', 'storage_http_status']);
+export const RESET_ORIGIN_CATEGORIES = Object.freeze(['boot', 'startup', 'runtime_identity', 'panic', 'allocation_failure', 'allocation_context', 'storage_http_status', 'worker_preparation_receipt']);
 const STAGES = ['early_identity', 'usb_install', 'nvs', 'hardware', 'worker_recovery', 'runtime_services', 'storage_http', 'network', 'worker_control', 'statistics', 'runtime_ready'];
 const ALLOCATION_STAGES = ['early_identity', 'hardware', 'runtime_services', 'storage_http', 'network', 'usb_install', 'statistics', 'runtime_ready'];
 const RESET_REASONS = ['power_on', 'software_cpu', 'watchdog', 'panic', 'brownout', 'other'];
@@ -10,10 +10,15 @@ const fields = {
   runtime_identity: ['firmware_commit', 'app_elf_sha256'], panic: ['file_hash', 'line'],
   allocation_failure: ['requested_bytes', 'capabilities'], allocation_context: ['requested_bytes', 'capabilities', 'source_hash', 'stage'],
   storage_http_status: ['spiffs_available', 'http_ready'],
+  worker_preparation_receipt: ['origin', 'status'],
 };
 /** Validates one selected Gate diagnostic before any persistence boundary. */
 export function parseResetOriginDiagnostic(value) {
   check(value && RESET_ORIGIN_CATEGORIES.includes(value.category), 'reset_origin_category');
+  if (value.category === 'worker_preparation_receipt') check(
+    ['current_boot', 'previous_boot'].includes(value.origin) &&
+    (['corrupt', 'unavailable'].includes(value.status) || (value.origin === 'previous_boot' && value.status === 'wrong_firmware')),
+    'reset_origin_preparation_receipt_review_required');
   exactObject(value, ['category', 'authoritative', ...fields[value.category]]);
   check(value.authoritative === false, 'reset_origin_authority');
   if (value.category === 'boot') check(integer(value.boot_ordinal) && value.boot_ordinal > 0 && RESET_REASONS.includes(value.reset_reason) && integer(value.uptime_ms), 'reset_origin_boot');
@@ -117,6 +122,8 @@ function summarize(records, policy, end, inputIssues) {
     unattributedPanicReceiptRecords: panicRecords, unattributedAllocationReceiptRecords: allocationRecords,
     storageReadyRecords: storage.filter(row=>row.diagnostic.spiffs_available === 'true' && row.diagnostic.http_ready === 'true').length,
     storageUnavailableRecords: storage.filter(row=>row.diagnostic.spiffs_available === 'false' || row.diagnostic.http_ready === 'false').length,
+    preparationMarkers: records.filter(row => row.diagnostic.category === 'worker_preparation_receipt')
+      .map(row => ({ sequence: row.sequence, origin: row.diagnostic.origin, status: row.diagnostic.status })),
     issues: [...issues] };
 }
 

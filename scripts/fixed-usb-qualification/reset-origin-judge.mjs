@@ -9,7 +9,7 @@ import { requireExhaustedOriginal, requireIdleLedger } from "./iterative-contrac
 import { createResetOriginObservation, parseResetOriginDiagnostic } from "./reset-origin-observation.mjs";
 import { loadResetOriginContext } from "./reset-origin-context.mjs";
 
-const key = (d) => `${d.category}:${d.stage ?? ""}`;
+const key = (d) => `${d.category}:${d.stage ?? d.origin ?? ""}`;
 const healthy = (d) => d.category === "startup" && d.stage === "runtime_ready" && d.state === "complete" && d.first_failure === "none";
 const integer = (value) => Number.isSafeInteger(value) && value >= 0;
 function diagnostics(values) {
