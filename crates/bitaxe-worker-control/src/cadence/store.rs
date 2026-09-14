@@ -1,3 +1,4 @@
+use super::outcomes::SendOutcomes;
 use super::*;
 use std::cell::UnsafeCell;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
@@ -30,6 +31,8 @@ impl Storage {
 pub struct CadenceRecorder {
     owned: AtomicBool,
     enabled: AtomicBool,
+    active_phase: AtomicU32,
+    outcomes: [SendOutcomes; 3],
     dropped: AtomicU32,
     subscribers: AtomicU32,
     storage: UnsafeCell<Storage>,
@@ -58,6 +61,12 @@ impl CadenceRecorder {
         Self {
             owned: AtomicBool::new(false),
             enabled: AtomicBool::new(false),
+            active_phase: AtomicU32::new(0),
+            outcomes: [
+                SendOutcomes::new(),
+                SendOutcomes::new(),
+                SendOutcomes::new(),
+            ],
             dropped: AtomicU32::new(0),
             subscribers: AtomicU32::new(0),
             storage: UnsafeCell::new(Storage::new()),
@@ -73,6 +82,10 @@ impl CadenceRecorder {
             if self.enabled.load(Ordering::Relaxed) {
                 // A single saturated terminal loss bit avoids a retry loop on the recording path.
                 self.dropped.store(1, Ordering::Relaxed);
+                let phase = self.active_phase.load(Ordering::Acquire);
+                if let Some(outcomes) = self.outcomes.get(phase as usize) {
+                    outcomes.drop_observation();
+                }
             }
             return None;
         }
@@ -95,7 +108,12 @@ impl CadenceRecorder {
                 || storage.phases[index].state != CadenceState::Empty
                 || storage.phases[..index]
                     .iter()
-                    .any(|prior| prior.state != CadenceState::Complete || prior.pending_sends != 0)
+                    .enumerate()
+                    .any(|(index, prior)| {
+                        prior.state != CadenceState::Complete
+                            || self.outcomes[index].maybe_terminal_count()
+                                != Some(prior.sends_queued)
+                    })
                 || storage
                     .maybe_previous_start_us
                     .is_none_or(|previous| previous > at_us)
@@ -120,6 +138,7 @@ impl CadenceRecorder {
             }
             // Losing the first dispatch while armed must invalidate the capture;
             // a later dispatch cannot silently replace its start boundary.
+            self.active_phase.store(index as u32, Ordering::Release);
             self.enabled.store(true, Ordering::Release);
             Some(CadenceArmReceipt {
                 schema: "worker-telemetry-cadence-arm-v1",
@@ -290,31 +309,18 @@ impl CadenceRecorder {
         self.maybe_access(|storage| {
             let summary = storage.maybe_capturing()?;
             increment(&mut summary.sends_queued, &mut summary.overflow);
-            increment(&mut summary.pending_sends, &mut summary.overflow);
             Some(CadenceSendToken(summary.phase.index()))
         })
         .flatten()
     }
 
     pub fn queue_failed(&self, token: CadenceSendToken) {
-        self.maybe_access(|storage| {
-            let summary = &mut storage.phases[token.0];
-            decrement(&mut summary.pending_sends, &mut summary.overflow);
-            decrement(&mut summary.sends_queued, &mut summary.overflow);
-            increment(&mut summary.queue_failures, &mut summary.overflow);
-        });
+        self.outcomes[token.0].queue_failed();
     }
 
-    /// Completes the original phase even after that phase has frozen or another has started.
+    /// The exact original phase receives every terminal callback without the timing-store guard.
     pub fn send_completed(&self, token: CadenceSendToken, successful: bool) {
-        self.maybe_access(|storage| {
-            let summary = &mut storage.phases[token.0];
-            decrement(&mut summary.pending_sends, &mut summary.overflow);
-            increment(&mut summary.sends_completed, &mut summary.overflow);
-            if !successful {
-                increment(&mut summary.send_failures, &mut summary.overflow);
-            }
-        });
+        self.outcomes[token.0].completed(successful);
     }
 
     #[must_use]
@@ -322,8 +328,9 @@ impl CadenceRecorder {
         let maybe_phases = self.maybe_access(|storage| storage.phases);
         let dropped = self.dropped.load(Ordering::Acquire);
         let mut phases = maybe_phases.unwrap_or_else(|| Storage::new().phases);
-        for phase in &mut phases {
-            phase.refresh_passed(dropped);
+        for (index, phase) in phases.iter_mut().enumerate() {
+            self.outcomes[index].project(phase);
+            phase.refresh_passed(self.outcomes[index].dropped());
         }
         CadenceSnapshot {
             schema: "worker-telemetry-cadence-v1",
@@ -341,16 +348,143 @@ fn increment(counter: &mut u32, overflow: &mut bool) {
         None => *overflow = true,
     }
 }
-fn decrement(counter: &mut u32, overflow: &mut bool) {
-    match counter.checked_sub(1) {
-        Some(value) => *counter = value,
-        None => *overflow = true,
-    }
-}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn armed_idle() -> CadenceRecorder {
+        let recorder = CadenceRecorder::new();
+        recorder.subscribers_changed(1);
+        recorder.iteration(CadenceIteration {
+            started_at_us: 1,
+            live_finished_at_us: 11,
+            logs_finished_at_us: 11,
+            finished_at_us: 11,
+            cpu: 0,
+            priority: 5,
+        });
+        recorder.maybe_arm(CadencePhase::Idle, 100, 0).expect("arm");
+        recorder
+    }
+
+    #[test]
+    fn successful_callbacks_survive_timing_writer_contention_without_false_pending() {
+        // Arrange
+        let recorder = armed_idle();
+        let first = recorder.maybe_begin_send().expect("queued");
+        let second = recorder.maybe_begin_send().expect("queued");
+        for _ in 0..180 {
+            let token = recorder.maybe_begin_send().expect("queued");
+            recorder.send_completed(token, true);
+        }
+        assert_eq!(recorder.snapshot().phases[0].pending_sends, 2);
+        // Act
+        recorder
+            .maybe_access(|_| {
+                std::thread::scope(|scope| {
+                    scope
+                        .spawn(|| {
+                            recorder.send_completed(first, true);
+                            recorder.send_completed(second, true);
+                        })
+                        .join()
+                        .expect("completion worker");
+                });
+            })
+            .expect("timing writer owns capture storage");
+        // Assert
+        let snapshot = recorder.snapshot();
+        assert_eq!(snapshot.dropped_observations, 0);
+        assert_eq!(snapshot.phases[0].sends_queued, 182);
+        assert_eq!(snapshot.phases[0].sends_completed, 182);
+        assert_eq!(snapshot.phases[0].pending_sends, 0);
+        assert_eq!(snapshot.phases[0].send_failures, 0);
+    }
+
+    #[test]
+    fn failed_callback_is_retained_while_timing_writer_is_busy() {
+        // Arrange
+        let recorder = armed_idle();
+        let token = recorder.maybe_begin_send().expect("queued");
+        // Act
+        recorder.owned.store(true, Ordering::Release);
+        recorder.send_completed(token, false);
+        recorder.owned.store(false, Ordering::Release);
+        // Assert
+        let snapshot = recorder.snapshot();
+        assert_eq!(snapshot.dropped_observations, 0);
+        assert_eq!(snapshot.phases[0].send_failures, 1);
+        assert_eq!(snapshot.phases[0].sends_completed, 1);
+        assert_eq!(snapshot.phases[0].pending_sends, 0);
+        assert!(!snapshot.phases[0].passed);
+    }
+
+    #[test]
+    fn queue_rejection_is_retained_while_timing_writer_is_busy() {
+        // Arrange
+        let recorder = armed_idle();
+        let token = recorder.maybe_begin_send().expect("queued");
+        // Act
+        recorder.owned.store(true, Ordering::Release);
+        recorder.queue_failed(token);
+        recorder.owned.store(false, Ordering::Release);
+        // Assert
+        let snapshot = recorder.snapshot();
+        assert_eq!(snapshot.dropped_observations, 0);
+        assert_eq!(snapshot.phases[0].queue_failures, 1);
+        assert_eq!(snapshot.phases[0].sends_queued, 0);
+        assert_eq!(snapshot.phases[0].pending_sends, 0);
+        assert_eq!(snapshot.phases[0].sends_completed, 0);
+    }
+
+    #[test]
+    fn impossible_duplicate_terminal_outcomes_remain_explicit_failures() {
+        // Arrange
+        let recorder = armed_idle();
+        let token = recorder.maybe_begin_send().expect("queued");
+        // Act
+        recorder.queue_failed(token);
+        recorder.send_completed(token, true);
+        // Assert
+        let phase = recorder.snapshot().phases[0];
+        assert!(phase.overflow);
+        assert!(!phase.passed);
+    }
+
+    #[test]
+    fn later_phase_loss_cannot_rewrite_a_frozen_prior_phase() {
+        // Arrange
+        let recorder = armed_idle();
+        for interval in 1..=120 {
+            let started_at_us = 100 + interval * 500_000;
+            recorder.iteration(CadenceIteration {
+                started_at_us,
+                live_finished_at_us: started_at_us + 10,
+                logs_finished_at_us: started_at_us + 10,
+                finished_at_us: started_at_us + 10,
+                cpu: 0,
+                priority: 5,
+            });
+        }
+        let idle = serde_json::to_value(recorder.snapshot().phases[0]).expect("summary");
+        assert_eq!(idle["passed"], true);
+        recorder
+            .maybe_arm(CadencePhase::Usb, 61_000_000, 0)
+            .expect("next phase");
+        // Act
+        recorder.owned.store(true, Ordering::Release);
+        recorder.publication(CadencePublication::Projected);
+        recorder.owned.store(false, Ordering::Release);
+        // Assert
+        let snapshot = recorder.snapshot();
+        assert_eq!(snapshot.dropped_observations, 1);
+        assert_eq!(
+            serde_json::to_value(snapshot.phases[0]).expect("summary"),
+            idle
+        );
+        assert!(!snapshot.phases[1].passed);
+    }
 
     #[test]
     fn contended_recorder_reports_loss_without_waiting() {

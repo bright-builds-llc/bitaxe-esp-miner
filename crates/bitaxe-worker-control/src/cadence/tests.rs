@@ -346,3 +346,24 @@ fn short_or_unmatched_probe_payloads_do_not_count_as_maximum_load() {
     // Assert
     assert_eq!(recorder.snapshot().phases[1].max_probe_count, 0);
 }
+
+#[test]
+fn next_phase_waits_for_late_completion_using_terminal_counters() {
+    // Arrange
+    let recorder = seeded();
+    recorder.maybe_arm(CadencePhase::Idle, 100, 0).expect("arm");
+    let token = recorder.maybe_begin_send().expect("queued");
+    for index in 1..=120 {
+        tick(&recorder, 100 + index * 500_000, 20);
+    }
+    assert!(recorder
+        .maybe_arm(CadencePhase::Usb, 61_000_000, 0)
+        .is_none());
+    // Act
+    recorder.send_completed(token, true);
+    let next = recorder.maybe_arm(CadencePhase::Usb, 61_000_000, 0);
+    // Assert
+    assert!(next.is_some());
+    assert_eq!(recorder.snapshot().phases[0].pending_sends, 0);
+    assert!(recorder.snapshot().phases[0].passed);
+}

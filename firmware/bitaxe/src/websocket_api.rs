@@ -6,6 +6,8 @@ use bitaxe_api::{RetainedLogBuffer, WebSocketRouteKind, WebSocketState};
 pub use bitaxe_api::{WebSocketClientLease, WebSocketRegisterOutcome};
 use serde_json::Value;
 
+mod log_stream;
+
 /// Upstream ESP HTTP server WebSocket client cap.
 pub const MAX_WEBSOCKET_CLIENTS: usize = bitaxe_api::MAX_WEBSOCKET_CLIENTS;
 
@@ -119,4 +121,17 @@ pub fn raw_log_chunks(buffer: &RetainedLogBuffer) -> Vec<String> {
     };
 
     state.raw_log_chunks(buffer)
+}
+
+/// Plans periodic raw-log output without copying retained storage when nobody subscribes.
+#[must_use]
+pub fn cadence_log_chunks(snapshot: impl FnOnce() -> RetainedLogBuffer) -> Vec<String> {
+    let state = WEBSOCKET_STATE.get_or_init(|| Mutex::new(WebSocketState::default()));
+    match log_stream::cadence_chunks(state, snapshot) {
+        Ok(chunks) => chunks,
+        Err(_) => {
+            log::warn!("axeos_websocket_state=unavailable reason=mutex_poisoned");
+            Vec::new()
+        }
+    }
 }

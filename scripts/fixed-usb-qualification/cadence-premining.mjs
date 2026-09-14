@@ -20,6 +20,8 @@ import { parseSamples } from "./sample-seal.mjs";
 import { verifyArtifactSnapshot } from "./snapshot.mjs";
 import { baseline, inventory, observerProof, proof, verifyPreparationCycles } from "./cadence-premining-evidence.mjs";
 
+import { ACCEPTED_USB_PREMINING_INVENTORY, reviewUsbPreminingEvidence } from "./cadence-premining-usb.mjs";
+
 // Recognize the retained producer, then independently rederive every supported fact.
 export const LEGACY_PREMINING_AUDITOR = "53849ff5e24230bb3ff7181fda40bc9ab61b2722ea96152b32824e95846673fe";
 export const ACCEPTED_PREMINING_INVENTORY = "6895f2fcfe161a0d7617b51b02b9f12fcdf49454c9ee540295c31f40b463a5a7";
@@ -226,10 +228,25 @@ async function reviewEvidence(root, operations) {
   };
 }
 
+async function reviewAcceptedEvidence(root, operations) {
+  const seal = await proof(resolve(root, "failed-inventory.json"));
+  if (seal.value.schema === "cpu0-cadence-usb-failed-inventory-v1") {
+    check(
+      seal.sha256 === (operations.expectedUsbPreminingInventorySha256 ?? ACCEPTED_USB_PREMINING_INVENTORY),
+      "cadence_usb_premining_accepted_seal_required",
+    );
+    return reviewUsbPreminingEvidence(root, operations);
+  }
+  return reviewEvidence(root, operations);
+}
+
+const closureSchema = (evidence) =>
+  evidence.failure_class === "usb_cadence_failure" ? "worker-cadence-premining-closure-v2" : "worker-cadence-premining-closure-v1";
+
 function summary(evidence) {
   return {
     result: "unverified",
-    classification: "premining_failure",
+    classification: evidence.failure_class === "usb_cadence_failure" ? "premining_usb_failure" : "premining_failure",
     qualification_pass: false,
     continuation_authority: false,
     device_effects: false,
@@ -253,7 +270,9 @@ export async function reviewPremining(root, operations = {}) {
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
   }
-  return summary(siblingExists ? await readPremining(preminingClosurePath(root), operations) : await reviewEvidence(root, operations));
+  return summary(
+    siblingExists ? await readPremining(preminingClosurePath(root), operations) : await reviewAcceptedEvidence(root, operations),
+  );
 }
 
 /** Append a sibling classification receipt; the sealed preparation is never edited. */
@@ -263,11 +282,11 @@ export async function closePremining(root, operations = {}) {
   await protectedPath(dirname(root), true);
   const path = preminingClosurePath(root);
   await missing(path);
-  const evidence = await reviewEvidence(root, operations);
+  const evidence = await reviewAcceptedEvidence(root, operations);
   await requireCadenceTask(evidence.context.firmware_root);
-  const receipt = { schema: "worker-cadence-premining-closure-v1", root, ...summary(evidence), ...evidence };
+  const receipt = { schema: closureSchema(evidence), root, ...summary(evidence), ...evidence };
   // Catch a changed or partially rewritten source before creating the exclusive sibling.
-  check(isDeepStrictEqual(await reviewEvidence(root, operations), evidence), "cadence_premining_concurrent_change");
+  check(isDeepStrictEqual(await reviewAcceptedEvidence(root, operations), evidence), "cadence_premining_concurrent_change");
   await requireCadenceTask(evidence.context.firmware_root);
   await writeNew(path, { receipt, sha256: digest(JSON.stringify(receipt)) });
   return summary(evidence);
@@ -287,8 +306,8 @@ export async function readPremining(path, operations = {}) {
   check(!ancestors.includes(root), "cadence_premining_recursive_lineage");
   operations = { ...operations, preminingAncestors: [...ancestors, root] };
   check(saved.value.sha256 === digest(JSON.stringify(receipt)), "cadence_premining_closure_integrity");
-  const evidence = await reviewEvidence(root, operations);
-  const expected = { schema: "worker-cadence-premining-closure-v1", root, ...summary(evidence), ...evidence };
+  const evidence = await reviewAcceptedEvidence(root, operations);
+  const expected = { schema: closureSchema(evidence), root, ...summary(evidence), ...evidence };
   check(isDeepStrictEqual(receipt, expected), "cadence_premining_closure_changed");
   return receipt;
 }

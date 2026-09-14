@@ -7,8 +7,8 @@ import { inventory } from "./cadence-premining-evidence.mjs";
 import { LEGACY_PREMINING_AUDITOR } from "./cadence-premining.mjs";
 import { unissuedFixture } from "./cadence-premining-fixture-base.mjs";
 
-async function artifactFixture(f) {
-  const sourceRoot = resolve(f.base, "source-artifacts"),
+export async function artifactFixture(f, sourceCommit = "f".repeat(40)) {
+  const sourceRoot = resolve(f.base, `source-artifacts-${sourceCommit}`),
     entries = [];
   async function artifact(path, bytes) {
     const output = resolve(sourceRoot, path);
@@ -41,7 +41,7 @@ async function artifactFixture(f) {
   ];
   const manifest = {
     schema_version: 4,
-    source_commit: "f".repeat(40),
+    source_commit: sourceCommit,
     reference_commit: "e".repeat(40),
     build_identity: { source_dirty: false },
     app_elf_sha256: artifacts[0].sha256,
@@ -70,7 +70,7 @@ async function artifactFixture(f) {
   return { sourceRoot, entries, snapshot };
 }
 
-function baselineFixture(context) {
+export function baselineFixture(context) {
   const state = {
     schema: "worker-serial-acceptance-v1",
     gateCommit: context.gate_commit,
@@ -98,7 +98,7 @@ function baselineFixture(context) {
   return state;
 }
 
-async function cycleFixture(root, context, state) {
+export async function cycleFixture(root, context, state) {
   const records = [],
     probe = { paddingBytes: 65000, requestPayloadBytes: 65536, responsePayloadBytes: 65536 };
   await writeNew(resolve(root, "detector.device.private.json"), { port: "/dev/cu.fixture", usb_profile: "serial_jtag_runtime" });

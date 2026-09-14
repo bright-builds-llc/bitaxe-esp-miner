@@ -276,3 +276,9 @@ js_test(
     data = [":fixed_usb_qualification_sources"],
     entry_point = "fixed-usb-qualification/cadence-premining.test.mjs",
 )
+
+js_test(
+    name = "fixed_usb_cadence_premining_usb_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/cadence-premining-usb.test.mjs",
+)

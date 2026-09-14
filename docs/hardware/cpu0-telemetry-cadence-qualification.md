@@ -218,3 +218,37 @@ hardware-attempt policy. On complete evidence, finalize/archive cadence,
 qualification and migration and update BWG/STR-005 dependencies without granting
 them effects. Otherwise retain precise active blockers and publish the truthful
 result. Parity remains 90/95 throughout.
+
+## Verified correction after preparation 3 USB capture failure
+
+The sealed preparation-3 USB failure is eligible only for a distinct v2
+pre-mining classification, never the v1 idle-review matcher. Its accepted
+inventory SHA-256 is
+`1936ad2be4fffa59dbc650fd833bc335e280dd31394ab3378e5d2760aa1ab580`,
+with producer SHA-256
+`66653e866e924d7811acf1b13b3889f20fec2c92c5c31588d00f4f040b171d11`.
+Both are anchored before new effects. Close/review may dispatch by supported
+sealed schema and exact hash; no arbitrary failure fallback or CLI/environment
+anchor override is allowed. Independently validate the original passing idle
+receipt, all twelve bounded probes, first failed USB review and later identical
+fresh diagnostic review, unchanged numeric idle summary, absence of mining and
+issuance, unchanged ledger, full artifact/cycle/observer chain and actual cleanup.
+Preserve the old global-loss-derived idle flag change as failed evidence.
+
+The v2 sibling receipt remains unverified and grants no continuation authority.
+Historical v1/v2 readers revalidate complete ancestry without reviving old roots.
+Only verified targeted correction, a changed clean published pair, the same
+charged predecessor, fresh accounting and an exclusive new preparation/allowance
+identity admit preparation 4 for still-unused ordinal 16. Preserve both earlier
+sibling receipts, all markers and every sealed byte.
+
+The targeted correction separates asynchronous outcome accounting from timing
+ownership contention and avoids the unused retained-log snapshot when there are
+no log subscribers. It does not relax real capture-loss, overflow, timing,
+publication, storage or safety requirements. The same complete hardware workflow
+above must repeat: initial state-preserving installation, four new exact-pair
+cycles, idle/USB/mining captures, heartbeat suppression, ordered shutdown,
+cooling and cleanup. Every reservation actually consumed remains fully charged.
+No accepted-share requirement is added, no exhausted allowance is reused and
+no parity transition occurs. A repeated authoritative boundary after its
+verified fix stops under the existing hardware-attempt policy.

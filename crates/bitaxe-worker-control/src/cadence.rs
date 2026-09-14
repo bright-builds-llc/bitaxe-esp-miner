@@ -1,5 +1,6 @@
 //! Fixed-memory telemetry measurements. Timestamps are device-local microseconds.
 
+mod outcomes;
 mod store;
 mod summary;
 pub use store::CadenceRecorder;

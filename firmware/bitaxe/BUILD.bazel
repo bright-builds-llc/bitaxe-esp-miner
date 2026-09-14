@@ -303,6 +303,7 @@ filegroup(
         "src/settings_snapshot_store.rs",
         "src/startup.rs",
         "src/websocket_api.rs",
+        "src/websocket_api/log_stream.rs",
     ],
     visibility = ["//tools/parity:__pkg__"],
 )
@@ -1309,4 +1310,16 @@ rust_test(
     crate_root = "src/production_mining_progress_host_test.rs",
     edition = "2021",
     deps = ["//crates/bitaxe-asic:bitaxe_asic", "//crates/bitaxe-stratum:bitaxe_stratum", "@crates//:serde_json"],
+)
+
+rust_test(
+    name = "websocket_log_stream_tests",
+    srcs = [
+        "src/websocket_log_stream_host_test.rs",
+        "src/websocket_api/log_stream.rs",
+    ],
+    crate_root = "src/websocket_log_stream_host_test.rs",
+    crate_name = "websocket_log_stream_tests",
+    edition = "2021",
+    deps = ["//crates/bitaxe-api:bitaxe_api"],
 )

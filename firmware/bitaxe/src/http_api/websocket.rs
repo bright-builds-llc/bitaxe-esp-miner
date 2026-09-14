@@ -91,8 +91,7 @@ pub(super) fn broadcast_live_telemetry_cadence(server: sys::httpd_handle_t) {
 }
 
 pub(super) fn broadcast_raw_log_chunks(server: sys::httpd_handle_t) {
-    let buffer = log_buffer::retained_log_buffer();
-    for chunk in websocket_api::raw_log_chunks(&buffer) {
+    for chunk in websocket_api::cadence_log_chunks(log_buffer::retained_log_buffer) {
         let failures = broadcast_websocket_text_frame(server, WebSocketRouteKind::Logs, &chunk);
         handle_websocket_send_failures(WebSocketRouteKind::Logs, failures);
     }
