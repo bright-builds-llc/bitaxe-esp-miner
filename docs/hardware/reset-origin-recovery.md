@@ -72,6 +72,21 @@ does not identify the preceding panic, and grants no cadence/mining authority.
 Preserve failed observations and their earliest cause. Any incomplete capture
 or cleanup blocks continuation; never restart the same context.
 
+### Unstarted HTML-serving failure
+
+Observation 001 exposed JSON-encoded HTML before configuration or USB control.
+Preserve its exact parent-observed page failure, original server-close marker,
+zero-activity evidence and actual browser/process/USB cleanup. Its failure seal
+cannot authorize work or turn it into an observation result.
+
+After the real HTTP response regression passes, `reset-origin-preflight --supersede-unstarted <failed-root>` may create observation 002 with a fresh
+context/marker only for this exact verified unused failure and a changed clean
+published driver. Require a software-correction plan, identical retained
+runtime/accounting, and preserved original context/assignment/inventory.
+Conflicting or duplicate successors, changed evidence, any prior USB/browser
+control or observation activity, and incomplete cleanup remain ineligible.
+The new context repeats the complete observation under unchanged limits.
+
 ## Stage B: controlled restart interface and observation
 
 The installed Worker interface has no authenticated software-restart command.

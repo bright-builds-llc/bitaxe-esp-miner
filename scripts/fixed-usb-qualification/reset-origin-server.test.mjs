@@ -367,3 +367,16 @@ test("an unchanged failed startup snapshot cannot be hidden beside healthy runti
   // Act / Assert
   assert.throws(() => selectResetOriginDiagnostics(exportOf([startup, failed])), { code: "reset_origin_startup_failure" });
 });
+
+test("real page response contains executable HTML rather than a JSON string", async (t) => {
+  // Arrange
+  const f = await serverFixture(t);
+  const original = await readFile(resolve(f.context.no_mining_context.gate_root, f.context.gate_page_relative_path), "utf8");
+  // Act
+  const response = await fetch(`http://127.0.0.1:${f.server.address().port}/`);
+  const page = await response.text();
+  // Assert
+  assert.equal(response.headers.get("content-type"), "text/html");
+  assert.equal(page, `${original}\n<script type="module" src="/no-mining-client.mjs"></script>\n<script type="module" src="/reset-origin-client.mjs"></script>`);
+  assert(!page.includes('src=\\"'));
+});

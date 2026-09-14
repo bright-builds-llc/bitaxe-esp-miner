@@ -1,4 +1,4 @@
-import { mkdir, open, readFile } from "node:fs/promises";
+import { mkdir, open, readFile, readdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
@@ -40,6 +40,7 @@ export const RESET_ORIGIN_POLICY = Object.freeze({
   maximum_batches: 1024,
 });
 export const RESET_ORIGIN_SOURCE_SEAL = "0ed37434d6bb8587ea51dec6b1e3cf41128ee555635058bd74fd2c84b702e834";
+export const RESET_ORIGIN_UNSTARTED_SEAL = "c17d89b7451c54df7eadc94de79dde7734e4367c17a4ebbf3fe3b62fe12ac593";
 const RUNTIME_KEYS = [
   "manifest_sha256",
   "app_elf_sha256",
@@ -112,6 +113,143 @@ async function runtimeSource(root, operations) {
       artifact_snapshot_sha256: snapshot.receipt_sha256,
     },
   };
+}
+const UNSTARTED_FILES = new Set([
+  "artifact-snapshot.json",
+  "context.json",
+  "qualified-artifacts",
+  "failed-inventory.json",
+  "detector.detect.host-root.json",
+  "detector.detect.observer-armed.json",
+  "detector.detect.stderr.log",
+  "detector.detect.stdout.log",
+  "detector.device.private.json",
+  "detector.observation.json",
+  "page-serving-failure.json",
+  "reset-origin-failure.json",
+  "reset-origin-server-claim.json",
+  "server-stop-request.json",
+  "supervisor.stderr.log",
+  "supervisor.stdout.log",
+  "unused-host-cleanup.json",
+]);
+function assignmentPath(context) {
+  const suffix = context.observation_attempt === 2 ? "-2" : "";
+  return `${context.runtime_source.root}.reset-origin-assignment${suffix}.json`;
+}
+async function readUnstarted(root, operations) {
+  root = await canonicalDirectory(root);
+  const saved = await proof(resolve(root, "failed-inventory.json")),
+    seal = saved.value;
+  check(saved.sha256 === (operations.expectedResetOriginUnstartedSeal ?? RESET_ORIGIN_UNSTARTED_SEAL), "reset_origin_unstarted_anchor");
+  check(
+    seal.schema === "fixed-usb-reset-origin-unstarted-failed-inventory-v1" &&
+      seal.outcome === "unverified" &&
+      seal.first_failure === "html_response_json_encoded" &&
+      seal.secondary_failure === "reset_origin_server_closed_before_end" &&
+      seal.observation_started === false &&
+      seal.qualification_pass === false &&
+      seal.device_recovery_claimed === false &&
+      seal.continuation_authorized === false,
+    "reset_origin_unstarted_outcome",
+  );
+  check(
+    (await readdir(root)).every((name) => UNSTARTED_FILES.has(name)),
+    "reset_origin_unstarted_activity",
+  );
+  const wrapper = await proof(resolve(root, "context.json"));
+  // This classifier supports only the original, unused preparation; it cannot recursively reopen successors.
+  check(
+    wrapper.value.context.observation_attempt === undefined && wrapper.value.context.unstarted_predecessor === undefined,
+    "reset_origin_unstarted_class",
+  );
+  const context = await loadResetOriginContext(root, { historical: true, operations });
+  check(
+    seal.context_sha256 === digest(JSON.stringify(context)) &&
+      seal.artifact_snapshot_sha256 === (await fileDigest(resolve(root, "artifact-snapshot.json"))) &&
+      isDeepStrictEqual(seal.inventory, await inventory(root)),
+    "reset_origin_unstarted_changed",
+  );
+  const failure = await proof(resolve(root, "page-serving-failure.json"));
+  exactObject(failure.value, [
+    "schema",
+    "source",
+    "http_status",
+    "content_type",
+    "body_sha256",
+    "json_encoded_html",
+    "browser_control_opened",
+    "browser_closed",
+    "first_failure",
+  ]);
+  check(
+    failure.sha256 === seal.page_failure_sha256 &&
+      failure.value.schema === "reset-origin-page-serving-failure-v1" &&
+      failure.value.source === "parent-observed" &&
+      failure.value.http_status === 200 &&
+      failure.value.content_type === "text/html" &&
+      hex(failure.value.body_sha256, 64) &&
+      failure.value.json_encoded_html === true &&
+      failure.value.browser_control_opened === false &&
+      failure.value.browser_closed === true &&
+      failure.value.first_failure === seal.first_failure,
+    "reset_origin_unstarted_failure",
+  );
+  const cleanup = await proof(resolve(root, "unused-host-cleanup.json"));
+  check(
+    cleanup.sha256 === seal.cleanup_sha256 &&
+      isDeepStrictEqual(cleanup.value, {
+        schema: "reset-origin-unused-host-cleanup-v1",
+        source: "parent-observed",
+        browser_closed: true,
+        browser_control_opened: false,
+        supervisor_exited: true,
+        supervisor_exit_code: 0,
+        listener_absent: true,
+        owned_children_absent: true,
+        serial_holders_absent: true,
+        observation_started: false,
+      }),
+    "reset_origin_unstarted_cleanup",
+  );
+  const secondary = await proof(resolve(root, "reset-origin-failure.json"));
+  check(
+    secondary.sha256 === seal.secondary_failure_sha256 &&
+      isDeepStrictEqual(secondary.value, {
+        schema: "fixed-usb-reset-origin-failure-v1",
+        context_sha256: seal.context_sha256,
+        code: seal.secondary_failure,
+      }) &&
+      isDeepStrictEqual((await proof(resolve(root, "reset-origin-server-claim.json"))).value, {
+        schema: "fixed-usb-reset-origin-server-claim-v1",
+        context_sha256: seal.context_sha256,
+      }),
+    "reset_origin_unstarted_claim",
+  );
+  return { context, binding: { root, failed_inventory_sha256: saved.sha256 } };
+}
+async function verifyUnstartedSuccessor(root, context, operations) {
+  if (context.observation_attempt === undefined && context.unstarted_predecessor === undefined) return;
+  check(context.observation_attempt === 2, "reset_origin_observation_attempt");
+  exactObject(context.unstarted_predecessor, ["root", "failed_inventory_sha256"]);
+  const old = await readUnstarted(context.unstarted_predecessor.root, operations);
+  check(
+    isDeepStrictEqual(old.binding, context.unstarted_predecessor) &&
+      root !== old.binding.root &&
+      dirname(root) === dirname(old.binding.root) &&
+      context.observation_id !== old.context.observation_id &&
+      context.qualification_driver.source_commit !== old.context.qualification_driver.source_commit &&
+      isDeepStrictEqual(context.runtime_source, old.context.runtime_source) &&
+      context.previous_receipt === old.context.previous_receipt &&
+      context.previous_receipt_sha256 === old.context.previous_receipt_sha256 &&
+      isDeepStrictEqual(context.original_campaign_record, old.context.original_campaign_record),
+    "reset_origin_unstarted_lineage",
+  );
+  const plan = await readJson(context.plan_path);
+  check(
+    plan.reason === "software_correction" && plan.evidence_sha256.includes(old.binding.failed_inventory_sha256),
+    "reset_origin_unstarted_correction",
+  );
 }
 function validatePlan(value) {
   exactObject(value, ["schema", "review", "reason", "evidence_sha256"]);
@@ -255,10 +393,16 @@ export async function resetOriginPreflight(options, operations = {}) {
     installation_authorized: false,
   };
   check(hex(context.qualification_driver.source_commit, 40), "reset_origin_driver_commit");
+  if (options.supersedeUnstarted !== undefined) {
+    const old = await readUnstarted(options.supersedeUnstarted, operations);
+    context.observation_attempt = 2;
+    context.unstarted_predecessor = old.binding;
+    await verifyUnstartedSuccessor(root, context, operations);
+  }
   context.no_mining_context = inner(root, context);
   validateNoMiningContext(context.no_mining_context);
   await verifyDriver(context, operations);
-  await writeNew(`${source.binding.root}.reset-origin-assignment.json`, {
+  await writeNew(assignmentPath(context), {
     schema: "fixed-usb-reset-origin-assignment-v1",
     context_sha256: digest(JSON.stringify(context)),
     observation_root: root,
@@ -280,28 +424,32 @@ export async function loadResetOriginContext(root, { historical = false, operati
   const saved = await proof(resolve(root, "context.json")),
     context = saved.value.context;
   exactObject(saved.value, ["context", "sha256"]);
-  exactObject(context, [
-    "schema",
-    "observation_id",
-    ...RUNTIME_KEYS,
-    "firmware_root",
-    "gate_root",
-    "manifest",
-    "runtime_source",
-    "qualification_driver",
-    "previous_receipt",
-    "previous_receipt_sha256",
-    "expected_next_ordinal",
-    "expected_charged_ms",
-    "original_campaign_record",
-    "plan_path",
-    "plan_sha256",
-    "observation_policy",
-    "mining_authorized",
-    "restart_authorized",
-    "installation_authorized",
-    "no_mining_context",
-  ]);
+  exactObject(
+    context,
+    [
+      "schema",
+      "observation_id",
+      ...RUNTIME_KEYS,
+      "firmware_root",
+      "gate_root",
+      "manifest",
+      "runtime_source",
+      "qualification_driver",
+      "previous_receipt",
+      "previous_receipt_sha256",
+      "expected_next_ordinal",
+      "expected_charged_ms",
+      "original_campaign_record",
+      "plan_path",
+      "plan_sha256",
+      "observation_policy",
+      "mining_authorized",
+      "restart_authorized",
+      "installation_authorized",
+      "no_mining_context",
+    ],
+    ["observation_attempt", "unstarted_predecessor"],
+  );
   exactObject(context.runtime_source, ["root", "failed_inventory_sha256", "context_sha256", "artifact_snapshot_sha256"]);
   exactObject(context.qualification_driver, ["profile", "source_commit", "validator_sha256", "client_sha256"]);
   check(
@@ -339,7 +487,7 @@ export async function loadResetOriginContext(root, { historical = false, operati
   );
   validateNoMiningContext(context.no_mining_context);
   check(isDeepStrictEqual(context.no_mining_context, inner(root, context)), "reset_origin_inner_binding");
-  const assignment = await proof(`${context.runtime_source.root}.reset-origin-assignment.json`);
+  const assignment = await proof(assignmentPath(context));
   check(
     isDeepStrictEqual(assignment.value, {
       schema: "fixed-usb-reset-origin-assignment-v1",
@@ -351,6 +499,7 @@ export async function loadResetOriginContext(root, { historical = false, operati
   await protectedPath(context.plan_path);
   check((await fileDigest(context.plan_path)) === context.plan_sha256, "reset_origin_plan_changed");
   validatePlan(await readJson(context.plan_path));
+  await verifyUnstartedSuccessor(root, context, operations);
   await verifyArtifactSnapshot(root, context);
   if (!historical) {
     await requireCadenceTask(context.firmware_root);

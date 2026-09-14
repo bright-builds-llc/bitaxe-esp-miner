@@ -126,7 +126,8 @@ export async function createResetOriginSupervisor(options, operations = {}) {
     if (request.method === "GET" && ["/", `/${context.gate_page_relative_path}`].includes(path)) {
       const bytes = await readFile(resolve(inner.gate_root, context.gate_page_relative_path));
       requireCondition(digest(bytes) === context.gate_page_sha256, "served_asset_drift");
-      return send(response, 200, `${bytes}\n<script type="module" src="/no-mining-client.mjs"></script>\n<script type="module" src="/reset-origin-client.mjs"></script>`, "text/html");
+      const page = Buffer.from(`${bytes}\n<script type="module" src="/no-mining-client.mjs"></script>\n<script type="module" src="/reset-origin-client.mjs"></script>`);
+      return send(response, 200, page, "text/html");
     }
     if (request.method === "GET" && path === "/reset-origin-client.mjs") {
       const bytes = await readFile(resolve(HERE, "reset-origin-client.mjs"));
