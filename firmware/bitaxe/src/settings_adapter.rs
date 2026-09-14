@@ -1,5 +1,7 @@
 //! ESP-IDF NVS adapter for storage-confirmed AxeOS hostname settings.
 
+mod system_info_read;
+use bitaxe_worker_control::cadence::{LiveStage, LiveStageProfiler};
 use std::ffi::CString;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
@@ -150,7 +152,7 @@ pub(crate) fn consume_network_reconnect_probe() -> Result<bool, SettingsAdapterF
         .lock()
         .map_err(|_| SettingsAdapterFailure::failed("settings transaction lock poisoned"))?;
     let partition = default_nvs_partition()?;
-    let mut nvs = EspNvs::new(partition.clone(), NVS_NAMESPACE, true).map_err(settings_failure)?;
+    let nvs = EspNvs::new(partition.clone(), NVS_NAMESPACE, true).map_err(settings_failure)?;
     let marker = nvs
         .get_u16(NETWORK_RECONNECT_PROBE_KEY)
         .map_err(settings_failure)?;
@@ -203,26 +205,13 @@ pub fn current_settings_snapshot() -> NvsSnapshot {
 /// Wi-Fi secrets, themes, and unrelated retained values are never admitted.
 #[must_use]
 pub fn current_system_info_settings_snapshot() -> NvsSnapshot {
-    let Ok(_transaction_guard) = SETTINGS_TRANSACTION_LOCK.lock() else {
-        log::warn!("system_info_settings=unavailable reason=transaction_lock_poisoned");
-        return NvsSnapshot::new();
-    };
-    let partition = match default_nvs_partition() {
-        Ok(partition) => partition,
-        Err(error) => {
-            log::warn!("system_info_settings=unavailable reason=nvs_partition error={error}");
-            return NvsSnapshot::new();
-        }
-    };
-    let nvs = match EspNvs::new(partition, NVS_NAMESPACE, false) {
-        Ok(nvs) => nvs,
-        Err(error) => {
-            log::warn!("system_info_settings=unavailable reason=nvs_open error={error}");
-            return NvsSnapshot::new();
-        }
-    };
+    current_system_info_settings_snapshot_profiled(&LiveStageProfiler::disabled())
+}
 
-    read_system_info_settings_snapshot_best_effort(&nvs)
+pub(crate) fn current_system_info_settings_snapshot_profiled(
+    timing: &LiveStageProfiler,
+) -> NvsSnapshot {
+    system_info_read::read(timing)
 }
 
 /// Strictly reads and compares the loaded live settings with the Ultra 205 seed.

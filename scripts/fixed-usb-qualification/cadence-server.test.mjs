@@ -137,6 +137,17 @@ test("observer failure and phase reordering block arming and signing", async t =
   await assert.rejects(routes.handle("/cadence/phase/start", { arm: arm(value, "idle") }), { code: "cadence_phase_order" });
 });
 
+test("v2 context rejects legacy phase metadata before advancement or signing", async t => {
+  // Arrange
+  const f = await fixture(t); f.context.cadence_diagnostics_version = 2;
+  const routes = await f.create(), value = review(); await f.connect(routes);
+  await routes.handle("/cadence/phase/start", { arm: arm(value, "idle") });
+  // Act / Assert
+  await assert.rejects(finishPhase(f, routes, value, "idle"), { code: "cadence_diagnostics_identity" });
+  assert(!(await readdir(f.root)).includes("cadence-idle.json"));
+  await assert.rejects(routes.readyToSign(), { code: "cadence_before_work_required" });
+});
+
 test("phase completion binds arm, advancing journal and immutable earlier summaries", async t => {
   // Arrange
   const f = await fixture(t), routes = await f.create(), value = review(); await f.connect(routes);

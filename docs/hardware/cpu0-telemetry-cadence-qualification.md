@@ -252,3 +252,44 @@ cooling and cleanup. Every reservation actually consumed remains fully charged.
 No accepted-share requirement is added, no exhausted allowance is reused and
 no parity transition occurs. A repeated authoritative boundary after its
 verified fix stops under the existing hardware-attempt policy.
+
+## Ordinal 17 live-stage diagnosis
+
+Ordinal 16 completed its charged work and safe restoration but failed the
+mining interval percentile. Its canonical completed unverified result is the
+next charged predecessor; ordinary cadence preflight must allocate ordinal 17
+with a fresh normal allowance and the unchanged 180000-ms reservation. Do not
+use unissued supersession or refund any of the 1380000ms already charged.
+
+Before effects, publish the positive-only boot/mount installed-asset version
+fact and diagnostics v2. The fact reads/parses the actual mounted version until
+success; missing/malformed initial reads remain retryable, and the firmware
+build label is never substituted. Dynamic facts stay freshly collected. A
+future same-boot WWW replacement/remount must invalidate the retained version;
+current supported updates reboot. Retaining version identity intentionally does
+not model later transient filesystem-read availability.
+
+V2 retains all original fields and adds each phase's `maximumLiveStagesUs`
+(fixed array of eleven independent maxima) and `worstInterval` containing
+`previousExecutionUs`, `previousLiveStagesUs` (eleven exclusive durations) and
+`gapUs`. Stage order is: visible state, platform identity, health/safety,
+confirmed settings, settings transaction wait, settings NVS read, Wi-Fi,
+publication-order wait, projection completion, retention, serialization/queue.
+The worst interval is joined to the PREVIOUS iteration's work. Its gap includes
+nominal sleep and other scheduling/overhead; it is not attributed to a cause.
+Never sum independent maxima as if they describe one iteration.
+
+Measure on the stack and merge once per iteration. Recording still cannot
+allocate, log, persist or wait on a lock; total added static storage remains at
+most2048 bytes. Missing/invalid current measured-stage observations fail rather
+than appearing as measured zeros. A pre-capture previous iteration with no live
+subscriber may legitimately have zero stage durations in its boundary witness.
+
+New contexts set `cadence_diagnostics_version:2`; their phase completion and
+signing require v2 metadata. Historical contexts without that field retain v1
+validation. Gate and host readers preserve old evidence, while current v2
+qualification checks coherent worst-interval arithmetic and stage bounds in
+addition to every unchanged cadence/publication/safety criterion. Publish the
+coordinated pair, run all required software/native gates, preserve exact
+artifacts and collect four fresh cycles and all three phases. On completion,
+expected accounting is next18/last17/1560000ms with no pending reservation.

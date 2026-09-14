@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 struct Storage {
     phases: [CadenceSummary; 3],
-    maybe_previous_start_us: Option<u64>,
+    maybe_previous: Option<CadenceIteration>,
 }
 
 impl Storage {
@@ -16,7 +16,7 @@ impl Storage {
                 CadenceSummary::empty(CadencePhase::Usb),
                 CadenceSummary::empty(CadencePhase::Mining),
             ],
-            maybe_previous_start_us: None,
+            maybe_previous: None,
         }
     }
 
@@ -115,8 +115,8 @@ impl CadenceRecorder {
                                 != Some(prior.sends_queued)
                     })
                 || storage
-                    .maybe_previous_start_us
-                    .is_none_or(|previous| previous > at_us)
+                    .maybe_previous
+                    .is_none_or(|previous| previous.started_at_us > at_us)
             {
                 return None;
             }
@@ -196,9 +196,7 @@ impl CadenceRecorder {
     /// Records an entire real iteration, including the interval spanning each capture boundary.
     pub fn iteration(&self, iteration: CadenceIteration) {
         self.maybe_access(|storage| {
-            let maybe_previous = storage
-                .maybe_previous_start_us
-                .replace(iteration.started_at_us);
+            let maybe_previous = storage.maybe_previous.replace(iteration);
             let Some(summary) = storage.maybe_capturing() else {
                 return;
             };
@@ -214,16 +212,28 @@ impl CadenceRecorder {
             if iteration.priority != 5 {
                 increment(&mut summary.priority_mismatch_count, &mut summary.overflow);
             }
-            let valid = maybe_previous.is_some_and(|previous| previous < iteration.started_at_us)
-                && iteration.started_at_us <= iteration.live_finished_at_us
+            let valid = maybe_previous.is_some_and(|previous| {
+                previous.started_at_us < iteration.started_at_us
+                    && previous.started_at_us <= previous.finished_at_us
+                    && previous.finished_at_us <= iteration.started_at_us
+            }) && iteration.started_at_us <= iteration.live_finished_at_us
                 && iteration.live_finished_at_us <= iteration.logs_finished_at_us
-                && iteration.logs_finished_at_us <= iteration.finished_at_us;
+                && iteration.logs_finished_at_us <= iteration.finished_at_us
+                && iteration.live_stages.complete
+                && iteration
+                    .live_stages
+                    .durations_us
+                    .iter()
+                    .try_fold(0u64, |sum, value| sum.checked_add(*value))
+                    .is_some_and(|sum| {
+                        sum <= iteration.live_finished_at_us - iteration.started_at_us
+                    });
             if !valid {
                 increment(&mut summary.clock_failures, &mut summary.overflow);
                 return;
             }
             let previous = maybe_previous.expect("validated previous iteration exists");
-            let interval = iteration.started_at_us - previous;
+            let interval = iteration.started_at_us - previous.started_at_us;
             increment(&mut summary.interval_count, &mut summary.overflow);
             let bucket = if interval <= 500_000 {
                 0
@@ -235,7 +245,26 @@ impl CadenceRecorder {
                 3
             };
             increment(&mut summary.interval_buckets[bucket], &mut summary.overflow);
+            if interval > summary.maximum_interval_us {
+                let previous_execution_us = previous.finished_at_us - previous.started_at_us;
+                summary.worst_interval = super::summary::WorstInterval {
+                    previous_execution_us,
+                    previous_live_stages_us: if previous.live_stages.complete {
+                        previous.live_stages.durations_us
+                    } else {
+                        [0; LIVE_STAGE_COUNT]
+                    },
+                    gap_us: interval - previous_execution_us,
+                };
+            }
             summary.maximum_interval_us = summary.maximum_interval_us.max(interval);
+            for (maximum, current) in summary
+                .maximum_live_stages_us
+                .iter_mut()
+                .zip(iteration.live_stages.durations_us)
+            {
+                *maximum = (*maximum).max(current);
+            }
             summary.maximum_execution_us = summary
                 .maximum_execution_us
                 .max(iteration.finished_at_us - iteration.started_at_us);
@@ -333,7 +362,7 @@ impl CadenceRecorder {
             phase.refresh_passed(self.outcomes[index].dropped());
         }
         CadenceSnapshot {
-            schema: "worker-telemetry-cadence-v1",
+            schema: "worker-telemetry-cadence-v2",
             snapshot_available: maybe_phases.is_some(),
             dropped_observations: dropped,
             storage_bytes: std::mem::size_of::<Self>(),
@@ -363,6 +392,10 @@ mod tests {
             finished_at_us: 11,
             cpu: 0,
             priority: 5,
+            live_stages: LiveStageMeasurements {
+                durations_us: [0; LIVE_STAGE_COUNT],
+                complete: true,
+            },
         });
         recorder.maybe_arm(CadencePhase::Idle, 100, 0).expect("arm");
         recorder
@@ -465,6 +498,10 @@ mod tests {
                 finished_at_us: started_at_us + 10,
                 cpu: 0,
                 priority: 5,
+                live_stages: LiveStageMeasurements {
+                    durations_us: [0; LIVE_STAGE_COUNT],
+                    complete: true,
+                },
             });
         }
         let idle = serde_json::to_value(recorder.snapshot().phases[0]).expect("summary");
@@ -507,7 +544,18 @@ mod tests {
         recorder.maybe_access(|storage| {
             storage.phases[0].state = CadenceState::Complete;
             storage.phases[1].state = CadenceState::Complete;
-            storage.maybe_previous_start_us = Some(1);
+            storage.maybe_previous = Some(CadenceIteration {
+                started_at_us: 1,
+                live_finished_at_us: 11,
+                logs_finished_at_us: 11,
+                finished_at_us: 11,
+                cpu: 0,
+                priority: 5,
+                live_stages: LiveStageMeasurements {
+                    durations_us: [0; LIVE_STAGE_COUNT],
+                    complete: true,
+                },
+            });
         });
         recorder
             .maybe_arm(CadencePhase::Mining, 100, 7)
@@ -527,6 +575,10 @@ mod tests {
                 finished_at_us: started_at_us + 10,
                 cpu: 0,
                 priority: 5,
+                live_stages: LiveStageMeasurements {
+                    durations_us: [0; LIVE_STAGE_COUNT],
+                    complete: true,
+                },
             });
         }
 

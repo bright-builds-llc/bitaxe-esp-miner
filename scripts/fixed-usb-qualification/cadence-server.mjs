@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { createCadenceObserver } from "./cadence-observer.mjs";
 import { CADENCE_PHASES, requireCadenceTask } from "./cadence-contract.mjs";
-import { requireCadencePhase, validateCadenceProbe } from "./cadence-evidence.mjs";
+import { requireCadenceDiagnostics, requireCadencePhase, validateCadenceProbe } from "./cadence-evidence.mjs";
 import { canonicalBase64, digest, exactObject, missing, nonce, readJson, requireCondition, writeNew } from "./contract.mjs";
 import { validateState } from "./judge.mjs";
 import { requireSuccessorBaseline } from "./successor.mjs";
@@ -24,6 +24,7 @@ export async function createCadenceRoutes(root, context, current, operations = {
       observer.status().connected && !observer.status().failed, "cadence_before_work_required");
     for (const name of ["idle", "usb"]) {
       const saved = await readJson(resolve(root, `cadence-${name}.json`));
+      requireCadenceDiagnostics(context, saved.review);
       requireCadencePhase(saved.review, name);
     }
     requireCondition(previousProbe?.ordinal === 12, "cadence_probes_required");
@@ -80,6 +81,7 @@ export async function createCadenceRoutes(root, context, current, operations = {
     }
     if (path === "/cadence/phase/finish" && input) {
       exactObject(input, ["phase", "review"]); await idle(current().lastState);
+      requireCadenceDiagnostics(context, input.review);
       const capturedBeforeClose = input.phase === "mining" && miningMeasurementEnd && observerResult?.cleanupComplete === true &&
         observerResult.reason === "requested" && observerResult.exitCode === 0 && observerResult.closedAtUnixMs >= miningMeasurementEnd.observedAtUnixMs + 5000;
       requireCondition(activePhase?.phase === input.phase && ((observer.status().alive && observer.status().connected && !observer.status().failed) || capturedBeforeClose) &&

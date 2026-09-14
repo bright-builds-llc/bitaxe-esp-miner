@@ -1,6 +1,8 @@
 use super::*;
 use crate::telemetry_cadence::RECORDER;
-use bitaxe_worker_control::cadence::{CadenceLoopIo, CadencePublication, CadenceSendToken};
+use bitaxe_worker_control::cadence::{
+    CadenceLoopIo, CadencePublication, CadenceSendToken, LiveStageMeasurements, LiveStageProfiler,
+};
 
 const MAX_WEBSOCKET_CONTROL_PAYLOAD_BYTES: usize = 125;
 
@@ -41,8 +43,10 @@ impl CadenceLoopIo for TelemetryIteration {
     fn priority(&self) -> u32 {
         unsafe { sys::uxTaskPriorityGet(ptr::null_mut()) as u32 }
     }
-    fn live(&mut self) {
-        broadcast_live_telemetry_cadence(self.0);
+    fn live(&mut self) -> LiveStageMeasurements {
+        let timing = LiveStageProfiler::new(crate::telemetry_cadence::now_us);
+        broadcast_live_telemetry_cadence(self.0, &timing);
+        timing.measurements()
     }
     fn logs(&mut self) {
         broadcast_raw_log_chunks(self.0);
@@ -52,9 +56,13 @@ impl CadenceLoopIo for TelemetryIteration {
     }
 }
 
-pub(super) fn broadcast_live_telemetry_cadence(server: sys::httpd_handle_t) {
-    let result =
-        publish_projected_live_telemetry_payload(crate::runtime_uptime::millis(), |current| {
+pub(super) fn broadcast_live_telemetry_cadence(
+    server: sys::httpd_handle_t,
+    timing: &LiveStageProfiler,
+) {
+    let result = publish_projected_live_telemetry_payload_profiled(
+        crate::runtime_uptime::millis(),
+        |current| {
             RECORDER.publication(CadencePublication::Projected);
             let maybe_frame = websocket_api::plan_live_cadence_frame(current)
                 .map_err(|_| LiveCadenceIssueError::StateUnavailable)?;
@@ -73,7 +81,9 @@ pub(super) fn broadcast_live_telemetry_cadence(server: sys::httpd_handle_t) {
                 WebSocketRouteKind::LiveTelemetry,
                 &body,
             ))
-        });
+        },
+        timing,
+    );
     match result {
         Ok(failures) => handle_websocket_send_failures(WebSocketRouteKind::LiveTelemetry, failures),
         Err(OperatorSnapshotPublishError::Issuance {

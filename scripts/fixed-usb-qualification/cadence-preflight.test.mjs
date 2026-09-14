@@ -43,6 +43,7 @@ test("cadence preflight retains exhausted legacy accounting and allocates one ex
   assert.equal((await stat(retained)).mode & 0o777, 0o600);
   assert.deepEqual(await readFile(retained), await readFile(f.options.observerBinary));
   assert.equal(context.expected_charged_ms, 1200000); assert.equal(context.qualification_attempt.maximumActiveMilliseconds, 180000);
+  assert.equal(context.cadence_diagnostics_version, 2);
   assert.deepEqual(context.cadence_limits, CADENCE_LIMITS); assert.equal(f.previous.original_budget.charged_ms, 240000);
   assert(!(await readdir(resolve(f.base, "attempts"))).includes("campaign.json"));
   await assert.rejects(cadencePreflight({ ...f.options, privateRoot: resolve(f.base, "attempts/repeated") }, f.operations));

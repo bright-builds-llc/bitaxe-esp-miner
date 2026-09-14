@@ -5,6 +5,9 @@ import { digest, exactObject, hex, requireCondition } from "./contract.mjs";
 export const CADENCE_SCHEMA = "fixed-usb-cadence-context-v1";
 export const CADENCE_TASK = "task-cpu0-telemetry-cadence-qualification";
 export const CADENCE_PHASES = ["idle", "usb", "mining"];
+export const CADENCE_DIAGNOSTICS_VERSION = 2;
+export const CADENCE_LIVE_STAGES = Object.freeze(["visible_state", "platform", "health_safety", "confirmed_settings",
+  "settings_transaction_wait", "settings_nvs_read", "wifi", "publication_order_wait", "projection_complete", "retention", "serialization_queue"]);
 export const CADENCE_LIMITS = Object.freeze({ duration_ms: 60000, minimum_intervals: 60,
   percent_within_750_ms: 95, maximum_interval_ms: 1500, maximum_execution_ms: 500,
   maximum_storage_bytes: 2048, observer_lifetime_ms: 360000, usb_probes: 12, probe_period_ms: 5000 });
@@ -20,6 +23,8 @@ export async function requireCadenceTask(root) {
 }
 
 export function validateCadencePolicy(context) {
+  requireCondition(context.cadence_diagnostics_version === undefined || context.cadence_diagnostics_version === CADENCE_DIAGNOSTICS_VERSION,
+    "cadence_diagnostics_version");
   requireCondition(context.schema === CADENCE_SCHEMA && context.required_no_mining_cycles === 4 &&
     context.owner_stack_minimum_bytes === 4096 && context.suggested_difficulty === 1000 &&
     context.qualification_attempt?.purpose === "normal" && context.qualification_attempt.maximumActiveMilliseconds === 180000 &&

@@ -2,7 +2,7 @@ import { constants } from "node:fs";
 import { verifyArtifactSnapshot } from "./snapshot.mjs";
 import { copyFile, chmod, mkdir, realpath, stat } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { CADENCE_SCHEMA, CADENCE_LIMITS, cadenceValidatorDigest, requireCadenceTask, validateCadencePolicy, validateCadenceProgress } from "./cadence-contract.mjs";
+import { CADENCE_SCHEMA, CADENCE_LIMITS, CADENCE_DIAGNOSTICS_VERSION, cadenceValidatorDigest, requireCadenceTask, validateCadencePolicy, validateCadenceProgress } from "./cadence-contract.mjs";
 import { canonicalDirectory, digest, fileDigest, ignored, missing, nonce, protectedPath, readJson, requireCondition, writeNew } from "./contract.mjs";
 import { validateAttempt, requireExhaustedOriginal } from "./iterative-contract.mjs";
 import { readPrevious } from "./iterative-preflight.mjs";
@@ -60,7 +60,7 @@ export async function cadencePreflight(options, operations = {}) {
   const attempt = validateAttempt({ schema: "worker-qualification-attempt-v1", id: nonce(), ordinal: previous.next_ordinal,
     purpose: "normal", maximumActiveMilliseconds: 180000 });
   requireCondition(Number.isSafeInteger(previous.total_charged_ms + 180000), "cadence_ledger_overflow");
-  const context = { schema: CADENCE_SCHEMA, owner_stack_minimum_bytes: 4096, suggested_difficulty: 1000,
+  const context = { schema: CADENCE_SCHEMA, cadence_diagnostics_version: CADENCE_DIAGNOSTICS_VERSION, owner_stack_minimum_bytes: 4096, suggested_difficulty: 1000,
     ...snapshot, qualification_attempt: attempt, required_no_mining_cycles: 4,
     original_campaign_id: previous.original_campaign_id, previous_receipt: previousPath,
     previous_receipt_sha256: await fileDigest(previousPath), expected_charged_ms: previous.total_charged_ms,

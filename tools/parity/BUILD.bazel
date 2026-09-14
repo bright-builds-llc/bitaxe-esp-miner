@@ -87,6 +87,7 @@ rust_binary(
         "src/reference_inventory.rs",
         "src/phase34_source_guard.rs",
         "src/phase34_source_guard/package_admission.rs",
+        "src/phase34_source_guard/platform_identity.rs",
         "src/release_evidence.rs",
         "src/release_evidence/tests.rs",
         "src/release_gate.rs",
@@ -160,6 +161,7 @@ rust_binary(
 rust_test(
     name = "tests",
     crate = ":report",
+    deps = ["//crates/bitaxe-worker-control:bitaxe_worker_control"],
     visibility = [
         "//firmware/bitaxe:__pkg__",
         "//tools/automation:__pkg__",
@@ -169,5 +171,6 @@ rust_test(
 rust_test(
     name = "operator_evidence_generation_tests",
     crate = ":report",
+    deps = ["//crates/bitaxe-worker-control:bitaxe_worker_control"],
     visibility = ["//visibility:public"],
 )

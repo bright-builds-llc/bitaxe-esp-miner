@@ -1,10 +1,14 @@
 //! Fixed-memory telemetry measurements. Timestamps are device-local microseconds.
 
 mod outcomes;
+mod profiling;
+pub use profiling::{LiveStage, LiveStageMeasurements, LiveStageProfiler, LIVE_STAGE_COUNT};
 mod store;
 mod summary;
 pub use store::CadenceRecorder;
-pub use summary::{CadenceArmReceipt, CadencePhase, CadenceSnapshot, CadenceState, CadenceSummary};
+pub use summary::{
+    CadenceArmReceipt, CadencePhase, CadenceSnapshot, CadenceState, CadenceSummary, WorstInterval,
+};
 
 pub const CAPTURE_DURATION_US: u64 = 60_000_000;
 
@@ -17,6 +21,7 @@ pub struct CadenceIteration {
     pub finished_at_us: u64,
     pub cpu: u32,
     pub priority: u32,
+    pub live_stages: LiveStageMeasurements,
 }
 
 /// Closed publication outcomes. Queue/send completion is recorded separately.
@@ -53,7 +58,7 @@ pub trait CadenceLoopIo {
     fn now_us(&self) -> u64;
     fn cpu(&self) -> u32;
     fn priority(&self) -> u32;
-    fn live(&mut self);
+    fn live(&mut self) -> LiveStageMeasurements;
     fn logs(&mut self);
     fn prune(&mut self);
 }
@@ -63,13 +68,14 @@ pub fn run_iteration(io: &mut impl CadenceLoopIo, recorder: &CadenceRecorder) {
     let started_at_us = io.now_us();
     let cpu = io.cpu();
     let priority = io.priority();
-    io.live();
+    let live_stages = io.live();
     let live_finished_at_us = io.now_us();
     io.logs();
     let logs_finished_at_us = io.now_us();
     io.prune();
     recorder.iteration(CadenceIteration {
         started_at_us,
+        live_stages,
         live_finished_at_us,
         logs_finished_at_us,
         finished_at_us: io.now_us(),

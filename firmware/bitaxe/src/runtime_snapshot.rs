@@ -3,6 +3,8 @@
 mod command_surface;
 mod operator_intent;
 
+pub(crate) mod settings_projection;
+use bitaxe_worker_control::cadence::{LiveStage, LiveStageProfiler};
 pub(crate) use command_surface::apply_command_effects_run_bootstrap;
 pub use command_surface::{
     apply_block_found_dismiss_command, apply_identify_mode_command,
@@ -10,6 +12,7 @@ pub use command_surface::{
     cancel_identify_if_active_at, command_status_wire, identify_mode, record_display_availability,
     record_display_render, record_found_block, record_restart_command, ButtonIdentifyCancellation,
 };
+use settings_projection::collect_settings_projection;
 mod screen;
 mod screen_projection;
 pub use screen::collect_screen_snapshot;
@@ -211,7 +214,20 @@ pub fn publish_projected_live_telemetry_payload<T, E>(
     timestamp_ms: u64,
     issue: impl FnOnce(serde_json::Value) -> Result<T, E>,
 ) -> Result<T, OperatorSnapshotPublishError<RetainedPairStorageError, E>> {
-    publish_operator_snapshot(
+    publish_projected_live_telemetry_payload_profiled(
+        timestamp_ms,
+        issue,
+        &LiveStageProfiler::disabled(),
+    )
+}
+
+/// Measures the real live-publication path without changing its ordering or effects.
+pub fn publish_projected_live_telemetry_payload_profiled<T, E>(
+    timestamp_ms: u64,
+    issue: impl FnOnce(serde_json::Value) -> Result<T, E>,
+    timing: &LiveStageProfiler,
+) -> Result<T, OperatorSnapshotPublishError<RetainedPairStorageError, E>> {
+    publish_operator_snapshot_profiled(
         false,
         |snapshot, projection, maybe_sample_marker| {
             project_api_views(
@@ -223,6 +239,7 @@ pub fn publish_projected_live_telemetry_payload<T, E>(
             )
         },
         |views| issue(views.telemetry_payload),
+        timing,
     )
 }
 
@@ -330,10 +347,28 @@ fn publish_operator_snapshot<Publication, T, E>(
     ) -> Publication,
     issue: impl FnOnce(Publication) -> Result<T, E>,
 ) -> Result<T, OperatorSnapshotPublishError<RetainedPairStorageError, E>> {
+    publish_operator_snapshot_profiled(
+        drain_sample_marker,
+        project,
+        issue,
+        &LiveStageProfiler::disabled(),
+    )
+}
+
+fn publish_operator_snapshot_profiled<Publication, T, E>(
+    drain_sample_marker: bool,
+    project: impl FnOnce(
+        ApiSnapshot,
+        RuntimeTelemetryProjection,
+        Option<RuntimeProjectionSampleMarker>,
+    ) -> Publication,
+    issue: impl FnOnce(Publication) -> Result<T, E>,
+    timing: &LiveStageProfiler,
+) -> Result<T, OperatorSnapshotPublishError<RetainedPairStorageError, E>> {
     let publisher = OPERATOR_SNAPSHOT_PUBLISHER.get_or_init(OperatorSnapshotPublisher::new);
-    let result = publisher.publish(
+    let result = publisher.publish_profiled(
         crate::boot_evidence::operator_snapshot_boot_session(),
-        || collect_operator_snapshot_candidate(drain_sample_marker),
+        || collect_operator_snapshot_candidate_profiled(drain_sample_marker, timing),
         |candidate, identity| {
             let maybe_sample_marker = candidate.maybe_sample_marker;
             let projection = candidate.projection.clone();
@@ -357,22 +392,42 @@ fn publish_operator_snapshot<Publication, T, E>(
             )
         },
         |publication| issue(publication.output),
+        timing,
     );
     log_recovered_publication_lock(&result);
     result.map(|publication| publication.output)
 }
 
 fn collect_operator_snapshot_candidate(drain_sample_marker: bool) -> OperatorSnapshotCandidate {
-    let (projection, maybe_sample_marker, block_found) =
-        runtime_projection_for_api_views(drain_sample_marker);
-    let platform_identity = crate::platform_identity::collect();
-    let platform =
-        collect_platform_snapshot(PlatformSnapshot::safe_ultra_205(), &platform_identity);
-    let runtime_health = crate::runtime_health_adapter::collect();
-    let observations = crate::safety_adapter::observation_snapshot();
-    let safe_telemetry = SafeTelemetrySnapshot::from_observations(&observations);
-    let settings = collect_settings_projection();
-    let wifi = crate::wifi_adapter::current_wifi_snapshot();
+    collect_operator_snapshot_candidate_profiled(
+        drain_sample_marker,
+        &LiveStageProfiler::disabled(),
+    )
+}
+
+fn collect_operator_snapshot_candidate_profiled(
+    drain_sample_marker: bool,
+    timing: &LiveStageProfiler,
+) -> OperatorSnapshotCandidate {
+    let (projection, maybe_sample_marker, block_found) = timing
+        .measure(LiveStage::VisibleState, || {
+            runtime_projection_for_api_views(drain_sample_marker)
+        });
+    let (platform_identity, platform) = timing.measure(LiveStage::Platform, || {
+        let identity = crate::platform_identity::collect();
+        let platform = collect_platform_snapshot(PlatformSnapshot::safe_ultra_205(), &identity);
+        (identity, platform)
+    });
+    let (runtime_health, safe_telemetry) = timing.measure(LiveStage::HealthSafety, || {
+        let runtime_health = crate::runtime_health_adapter::collect();
+        let observations = crate::safety_adapter::observation_snapshot();
+        (
+            runtime_health,
+            SafeTelemetrySnapshot::from_observations(&observations),
+        )
+    });
+    let settings = collect_settings_projection(timing);
+    let wifi = timing.measure(LiveStage::Wifi, crate::wifi_adapter::current_wifi_snapshot);
     OperatorSnapshotCandidate {
         projection,
         maybe_sample_marker,
@@ -452,40 +507,6 @@ impl CommandVisibleState {
         &mut self,
     ) -> Option<RuntimeProjectionSampleMarker> {
         self.runtime_projection.maybe_drain_pending_sample_marker()
-    }
-}
-
-fn collect_settings_projection() -> SettingsProjection {
-    let confirmed_settings = crate::settings_adapter::current_settings_snapshot();
-    let loaded = reload_snapshot(&confirmed_settings);
-    SettingsProjection {
-        maybe_hostname: match loaded.maybe_loaded_value("hostname") {
-            Some(LoadedValue::Str(hostname)) => Some(hostname.clone()),
-            _ => None,
-        },
-        maybe_frequency: match loaded.maybe_loaded_value("asicfrequency_f") {
-            Some(LoadedValue::Float(frequency)) => Some(f64::from(*frequency)),
-            _ => None,
-        },
-        maybe_voltage: match loaded.maybe_loaded_value("asicvoltage") {
-            Some(LoadedValue::U16(voltage)) => Some(*voltage),
-            _ => None,
-        },
-        maybe_auto_fan_speed: match loaded.maybe_loaded_value("autofanspeed") {
-            Some(LoadedValue::Bool(auto_fan_speed)) => Some(*auto_fan_speed),
-            _ => None,
-        },
-        maybe_manual_fan_speed: match loaded.maybe_loaded_value("manualfanspeed") {
-            Some(LoadedValue::U16(manual_fan_speed)) => Some(*manual_fan_speed),
-            _ => None,
-        },
-        start_mining_on_boot: match loaded.maybe_loaded_value("mineonboot") {
-            Some(LoadedValue::Bool(value)) => *value,
-            _ => true,
-        },
-        system_info: Box::new(SystemInfoSettingsSnapshot::from_nvs_snapshot(
-            &crate::settings_adapter::current_system_info_settings_snapshot(),
-        )),
     }
 }
 

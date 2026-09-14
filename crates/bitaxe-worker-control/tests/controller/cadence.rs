@@ -65,7 +65,7 @@ fn cadence_review_never_exposes_private_endpoint() {
         .expect("review");
     let value: serde_json::Value = serde_json::from_slice(response.frame()).expect("json");
     // Assert
-    assert_eq!(value["result"]["schema"], "worker-telemetry-cadence-v1");
+    assert_eq!(value["result"]["schema"], "worker-telemetry-cadence-v2");
     assert!(value["result"].get("ipv4").is_none());
     assert!(worker.session().events.is_empty());
 }

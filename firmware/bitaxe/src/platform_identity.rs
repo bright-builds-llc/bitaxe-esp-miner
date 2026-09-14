@@ -4,14 +4,20 @@ use std::ffi::CStr;
 use std::fs;
 
 use bitaxe_api::{
-    parse_static_asset_version, PlatformAsic, PlatformBoard, PlatformFact, PlatformIdentity,
-    PlatformResetReason, PlatformUnavailableReason,
+    PlatformAsic, PlatformBoard, PlatformFact, PlatformIdentity, PlatformResetReason,
+    PlatformUnavailableReason,
 };
 use esp_idf_svc::sys;
 
+mod installed_asset_version;
+use installed_asset_version::InstalledAssetVersion;
+
+// Current WWW updates require reboot; live OTAWWW remains unsupported. This
+// successful file-derived identity is not a probe of subsequent filesystem health.
+static INSTALLED_ASSET_VERSION: InstalledAssetVersion = InstalledAssetVersion::new();
 const STATIC_ASSET_VERSION_PATH: &str = "/www/version.txt";
 
-/// Captures each read-only running-platform fact once for one operator snapshot.
+/// Collects live platform facts with the installed asset identity retained for this boot.
 pub fn collect() -> PlatformIdentity {
     PlatformIdentity {
         esp_idf_version: esp_idf_version(),
@@ -45,14 +51,7 @@ fn esp_idf_version() -> PlatformFact<String> {
 }
 
 fn axe_os_static_asset() -> PlatformFact<String> {
-    let maybe_name = fs::read(STATIC_ASSET_VERSION_PATH)
-        .ok()
-        .and_then(|bytes| parse_static_asset_version(&bytes).ok());
-
-    maybe_name.map_or_else(
-        || PlatformFact::unavailable(PlatformUnavailableReason::StaticAssetUnavailable),
-        PlatformFact::available,
-    )
+    INSTALLED_ASSET_VERSION.observe(|| fs::read(STATIC_ASSET_VERSION_PATH).ok())
 }
 
 fn running_partition() -> PlatformFact<String> {

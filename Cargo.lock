@@ -317,6 +317,7 @@ dependencies = [
  "bitaxe-config",
  "bitaxe-device-session",
  "bitaxe-http-transport",
+ "bitaxe-worker-control",
  "camino",
  "clap",
  "libc",

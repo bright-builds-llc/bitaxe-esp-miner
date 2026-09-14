@@ -8,6 +8,10 @@ fn tick(recorder: &CadenceRecorder, start: u64, work: u64) {
         finished_at_us: start + work,
         cpu: 0,
         priority: 5,
+        live_stages: LiveStageMeasurements {
+            durations_us: [0; LIVE_STAGE_COUNT],
+            complete: true,
+        },
     });
 }
 fn seeded() -> CadenceRecorder {
@@ -218,8 +222,14 @@ impl CadenceLoopIo for FakeLoop {
     fn priority(&self) -> u32 {
         self.priority
     }
-    fn live(&mut self) {
+    fn live(&mut self) -> LiveStageMeasurements {
         self.now += self.durations[0];
+        let mut durations_us = [0; LIVE_STAGE_COUNT];
+        durations_us[0] = self.durations[0];
+        LiveStageMeasurements {
+            durations_us,
+            complete: true,
+        }
     }
     fn logs(&mut self) {
         self.now += self.durations[1];
@@ -366,4 +376,105 @@ fn next_phase_waits_for_late_completion_using_terminal_counters() {
     assert!(next.is_some());
     assert_eq!(recorder.snapshot().phases[0].pending_sends, 0);
     assert!(recorder.snapshot().phases[0].passed);
+}
+
+#[test]
+fn worst_interval_joins_the_previous_iterations_work_not_the_current_stages() {
+    // Arrange
+    let recorder = seeded();
+    recorder.maybe_arm(CadencePhase::Idle, 100, 0).expect("arm");
+    let mut slow = FakeLoop {
+        now: 500_100,
+        durations: [260_000, 10, 20],
+        cpu: 0,
+        priority: 5,
+    };
+    run_iteration(&mut slow, &recorder);
+    let mut fast = FakeLoop {
+        now: slow.now + 500_000,
+        durations: [1_000, 10, 20],
+        cpu: 0,
+        priority: 5,
+    };
+    // Act
+    run_iteration(&mut fast, &recorder);
+    // Assert
+    let phase = recorder.snapshot().phases[0];
+    assert_eq!(phase.maximum_interval_us, 760_030);
+    assert_eq!(phase.worst_interval.previous_execution_us, 260_030);
+    assert_eq!(phase.worst_interval.previous_live_stages_us[0], 260_000);
+    assert_eq!(phase.worst_interval.gap_us, 500_000);
+    assert_eq!(phase.maximum_live_stages_us[0], 260_000);
+}
+
+#[test]
+fn unprofiled_previous_boundary_does_not_invalidate_a_complete_current_iteration() {
+    // Arrange
+    let recorder = CadenceRecorder::new();
+    recorder.iteration(CadenceIteration {
+        started_at_us: 1,
+        live_finished_at_us: 11,
+        logs_finished_at_us: 11,
+        finished_at_us: 11,
+        cpu: 0,
+        priority: 5,
+        live_stages: LiveStageMeasurements {
+            durations_us: [0; LIVE_STAGE_COUNT],
+            complete: false,
+        },
+    });
+    recorder.subscribers_changed(1);
+    recorder.maybe_arm(CadencePhase::Idle, 100, 0).expect("arm");
+    // Act
+    tick(&recorder, 500_100, 20);
+    // Assert
+    let phase = recorder.snapshot().phases[0];
+    assert_eq!(phase.clock_failures, 0);
+    assert_eq!(phase.interval_count, 1);
+    assert_eq!(phase.worst_interval.previous_execution_us, 10);
+    assert_eq!(
+        phase.worst_interval.previous_live_stages_us,
+        [0; LIVE_STAGE_COUNT]
+    );
+}
+
+#[test]
+fn missing_current_profile_is_explicitly_invalid() {
+    // Arrange
+    let recorder = seeded();
+    recorder.maybe_arm(CadencePhase::Idle, 100, 0).expect("arm");
+    // Act
+    recorder.iteration(CadenceIteration {
+        started_at_us: 500_100,
+        live_finished_at_us: 500_110,
+        logs_finished_at_us: 500_110,
+        finished_at_us: 500_110,
+        cpu: 0,
+        priority: 5,
+        live_stages: LiveStageMeasurements {
+            durations_us: [0; LIVE_STAGE_COUNT],
+            complete: false,
+        },
+    });
+    // Assert
+    let phase = recorder.snapshot().phases[0];
+    assert_eq!(phase.clock_failures, 1);
+    assert!(!phase.passed);
+}
+
+#[test]
+fn absent_subscribers_are_not_misreported_as_a_profile_clock_failure() {
+    // Arrange
+    let recorder = seeded();
+    recorder.subscribers_changed(0);
+    recorder.maybe_arm(CadencePhase::Idle, 100, 0).expect("arm");
+    // Act
+    recorder.publication(CadencePublication::NoSubscribers);
+    tick(&recorder, 500_100, 20);
+    // Assert
+    let phase = recorder.snapshot().phases[0];
+    assert_eq!(phase.no_subscriber_count, 1);
+    assert!(phase.subscriber_mismatch_count > 0);
+    assert_eq!(phase.clock_failures, 0);
+    assert!(!phase.passed);
 }

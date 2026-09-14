@@ -1,4 +1,13 @@
+use super::LIVE_STAGE_COUNT;
 use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Copy, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorstInterval {
+    pub previous_execution_us: u64,
+    pub previous_live_stages_us: [u64; LIVE_STAGE_COUNT],
+    pub gap_us: u64,
+}
 
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -53,6 +62,8 @@ pub struct CadenceSummary {
     pub maximum_interval_us: u64,
     pub maximum_execution_us: u64,
     pub maximum_live_us: u64,
+    pub maximum_live_stages_us: [u64; LIVE_STAGE_COUNT],
+    pub worst_interval: WorstInterval,
     pub maximum_logs_us: u64,
     pub maximum_prune_us: u64,
     pub cpu_mismatch_count: u32,
@@ -90,6 +101,12 @@ impl CadenceSummary {
             maximum_interval_us: 0,
             maximum_execution_us: 0,
             maximum_live_us: 0,
+            maximum_live_stages_us: [0; LIVE_STAGE_COUNT],
+            worst_interval: WorstInterval {
+                previous_execution_us: 0,
+                previous_live_stages_us: [0; LIVE_STAGE_COUNT],
+                gap_us: 0,
+            },
             maximum_logs_us: 0,
             maximum_prune_us: 0,
             cpu_mismatch_count: 0,

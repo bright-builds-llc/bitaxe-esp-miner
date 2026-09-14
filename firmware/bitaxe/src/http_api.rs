@@ -34,8 +34,8 @@ use crate::runtime_snapshot::{
     apply_block_found_dismiss_command, apply_identify_mode_command,
     apply_mining_operator_intent_command, block_found_notification_state, collect_api_snapshot,
     command_status_wire, identify_mode, projected_scoreboard, projected_statistics,
-    publish_projected_live_telemetry_payload, publish_projected_system_info,
-    record_restart_command,
+    publish_projected_live_telemetry_payload, publish_projected_live_telemetry_payload_profiled,
+    publish_projected_system_info, record_restart_command,
 };
 use crate::storage_http_diagnostics::{self, Phase as StartupPhase};
 use crate::{

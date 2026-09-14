@@ -544,7 +544,7 @@ fn phase34_operator_snapshot_runtime_source_guard() {
     assert!(RUNTIME_SNAPSHOT_SOURCE
         .contains("static OPERATOR_SNAPSHOT_PUBLISHER: OnceLock<OperatorSnapshotPublisher>"));
     let collect_adapter = publication
-        .find("|| collect_operator_snapshot_candidate(drain_sample_marker)")
+        .find("|| collect_operator_snapshot_candidate_profiled(drain_sample_marker, timing)")
         .expect("unnumbered candidate collection adapter");
     let complete_adapter = publication
         .find("|candidate, identity|")

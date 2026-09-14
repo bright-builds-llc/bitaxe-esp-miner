@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { CADENCE_PHASES, validateCadencePolicy } from "./cadence-contract.mjs";
-import { requireCadencePhase, validateCadenceProbe } from "./cadence-evidence.mjs";
+import { requireCadenceDiagnostics, requireCadencePhase, validateCadenceProbe } from "./cadence-evidence.mjs";
 import { digest, exactObject, fileDigest, protectedPath, QualificationError, readJson, requireCondition } from "./contract.mjs";
 import { requireOwnerResources } from "./iterative-judge.mjs";
 
@@ -23,6 +23,7 @@ async function readCadenceEvidence(root, context, records) {
     const path = resolve(root, `cadence-${name}.json`);
     await protectedPath(path);
     const record = await readJson(path);
+    requireCadenceDiagnostics(context, record?.review);
     exactObject(record, ["schema", "context_sha256", "phase", "arm", "started_sequence", "finished_sequence", "started_at_unix_ms", "finished_at_unix_ms", "collected_at_unix_ms", "measurement_end_sequence", "review", "observer_connected"]);
     requireCondition(record.schema === "worker-cadence-phase-v1" && record.context_sha256 === digest(JSON.stringify(context)) &&
       record.phase === name && record.observer_connected === true && Number.isInteger(record.started_sequence) &&

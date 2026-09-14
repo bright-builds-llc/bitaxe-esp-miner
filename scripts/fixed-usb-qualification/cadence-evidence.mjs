@@ -1,4 +1,4 @@
-import { CADENCE_PHASES } from "./cadence-contract.mjs";
+import { CADENCE_PHASES, CADENCE_LIVE_STAGES } from "./cadence-contract.mjs";
 import { exactObject, requireCondition } from "./contract.mjs";
 
 const integer = value => Number.isSafeInteger(value) && value >= 0;
@@ -9,16 +9,29 @@ const COUNTS = ["armedAtUs", "startedAtUs", "endedAtUs", "generation", "maxProbe
 const ZERO = ["cpuMismatchCount", "priorityMismatchCount", "subscriberMismatchCount", "noSubscriberCount",
   "projectionFailures", "serializationFailures", "queueFailures", "sendFailures", "pendingSends", "clockFailures"];
 
+export function requireCadenceDiagnostics(context, review) {
+  requireCondition(review?.schema === (context.cadence_diagnostics_version === 2 ? "worker-telemetry-cadence-v2" : "worker-telemetry-cadence-v1"),
+    "cadence_diagnostics_identity");
+}
+
 export function validateCadenceReview(value) {
   exactObject(value, ["schema", "snapshotAvailable", "droppedObservations", "storageBytes", "phases"]);
-  requireCondition(value.schema === "worker-telemetry-cadence-v1" && typeof value.snapshotAvailable === "boolean" &&
+  requireCondition(["worker-telemetry-cadence-v1", "worker-telemetry-cadence-v2"].includes(value.schema) && typeof value.snapshotAvailable === "boolean" &&
     integer(value.droppedObservations) && integer(value.storageBytes) && value.storageBytes <= 2048 &&
     Array.isArray(value.phases) && value.phases.length === 3, "cadence_review_shape");
   for (const [index, phase] of value.phases.entries()) {
-    exactObject(phase, ["phase", "state", ...COUNTS, "intervalBuckets", "overflow", "passed"]);
+    const diagnostics = value.schema === "worker-telemetry-cadence-v2";
+    exactObject(phase, ["phase", "state", ...COUNTS, "intervalBuckets", "overflow", "passed",
+      ...(diagnostics ? ["maximumLiveStagesUs", "worstInterval"] : [])]);
     requireCondition(phase.phase === CADENCE_PHASES[index] && ["empty", "armed", "capturing", "complete"].includes(phase.state) &&
       COUNTS.every(key => integer(phase[key]) && (key.endsWith("Us") || phase[key] <= 0xffffffff)) && typeof phase.overflow === "boolean" && typeof phase.passed === "boolean" &&
       Array.isArray(phase.intervalBuckets) && phase.intervalBuckets.length === 4 && phase.intervalBuckets.every(value => integer(value) && value <= 0xffffffff), "cadence_phase_shape");
+    if (diagnostics) {
+      exactObject(phase.worstInterval, ["previousExecutionUs", "previousLiveStagesUs", "gapUs"]);
+      requireCondition([phase.maximumLiveStagesUs, phase.worstInterval.previousLiveStagesUs].every(values =>
+        Array.isArray(values) && values.length === CADENCE_LIVE_STAGES.length && [...values].every(integer)) &&
+        integer(phase.worstInterval.previousExecutionUs) && integer(phase.worstInterval.gapUs), "cadence_live_diagnostics_shape");
+    }
   }
   return value;
 }
@@ -37,6 +50,12 @@ export function requireCadencePhase(value, name) {
     phase.maximumPruneUs <= phase.maximumExecutionUs && ZERO.every(key => phase[key] === 0) &&
     phase.sendsQueued === phase.sendsCompleted && phase.intervalBuckets[3] === 0,
   "cadence_phase_unqualified");
+  if (value.schema === "worker-telemetry-cadence-v2") {
+    const witness = phase.worstInterval;
+    requireCondition(witness.previousExecutionUs + witness.gapUs === phase.maximumIntervalUs &&
+      witness.previousLiveStagesUs.reduce((sum, duration) => sum + duration, 0) <= witness.previousExecutionUs &&
+      phase.maximumLiveStagesUs.every(duration => duration <= phase.maximumLiveUs), "cadence_live_diagnostics_incoherent");
+  }
   if (name === "usb") requireCondition(phase.maxProbeCount === 12 && phase.firstMaxProbeAtUs >= phase.startedAtUs &&
     phase.lastMaxProbeAtUs >= phase.firstMaxProbeAtUs && phase.lastMaxProbeAtUs - phase.startedAtUs < 60000000,
     "cadence_device_probes");

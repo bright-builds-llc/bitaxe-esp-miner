@@ -15,6 +15,54 @@ function review() {
       intervalBuckets: [0, 100, 0, 0], overflow: false, passed: true })) };
 }
 
+function diagnosticReview() {
+  const value = review(); value.schema = "worker-telemetry-cadence-v2";
+  for (const phase of value.phases) {
+    phase.maximumLiveStagesUs = Array(11).fill(50000);
+    phase.worstInterval = { previousExecutionUs: 100000, previousLiveStagesUs: Array(11).fill(1000), gapUs: 500000 };
+  }
+  return value;
+}
+
+test("v2 diagnostics preserve v1 compatibility and do not sum independent maxima", () => {
+  // Arrange
+  const value = diagnosticReview();
+  // Act / Assert
+  assert.equal(requireCadencePhase(review(), "idle").phase, "idle");
+  assert.equal(requireCadencePhase(value, "idle").phase, "idle");
+  assert(value.phases[0].maximumLiveStagesUs.reduce((a, b) => a + b) > value.phases[0].maximumLiveUs);
+});
+
+test("v2 diagnostic shape rejects missing, private, nonfinite and wrong-length fields", () => {
+  // Arrange / Act / Assert
+  for (const change of [p => delete p.worstInterval, p => p.maximumLiveStagesUs.pop(),
+    p => p.worstInterval.previousLiveStagesUs.push(0), p => p.maximumLiveStagesUs[0] = NaN,
+    p => p.worstInterval.gapUs = -1, p => delete p.maximumLiveStagesUs[0], p => p.worstInterval.private = "fixture"]) {
+    const value = diagnosticReview(); change(value.phases[0]); assert.throws(() => validateCadenceReview(value));
+  }
+  const value = diagnosticReview(); value.schema = "worker-telemetry-cadence-v1";
+  assert.throws(() => validateCadenceReview(value));
+});
+
+test("v2 passing witness joins the prior execution and gap to the actual worst interval", () => {
+  // Arrange / Act / Assert
+  for (const change of [p => p.worstInterval.gapUs++, p => p.worstInterval.previousLiveStagesUs[0] = 100001,
+    p => p.maximumLiveStagesUs[0] = p.maximumLiveUs + 1]) {
+    const value = diagnosticReview(); change(value.phases[0]);
+    assert.throws(() => requireCadencePhase(value, "idle"), { code: "cadence_live_diagnostics_incoherent" });
+  }
+  const boundary = diagnosticReview(); boundary.phases[0].worstInterval.previousLiveStagesUs.fill(0);
+  assert.equal(requireCadencePhase(boundary, "idle").phase, "idle");
+});
+
+test("failed clock diagnostics remain readable but cannot qualify", () => {
+  // Arrange
+  const value = diagnosticReview(); value.phases[0].clockFailures = 1; value.phases[0].worstInterval.gapUs = 0;
+  // Act / Assert
+  assert.equal(validateCadenceReview(value), value);
+  assert.throws(() => requireCadencePhase(value, "idle"), { code: "cadence_phase_unqualified" });
+});
+
 test("numeric phase guard accepts exact percentile/time limits", () => {
   // Arrange
   const value = review(); Object.assign(value.phases[0], { intervalBuckets: [0, 95, 5, 0], maximumIntervalUs: 1500000, maximumExecutionUs: 500000 });
@@ -106,14 +154,15 @@ test("browser cadence data rejects accidental endpoint export and malformed work
   assert.throws(() => validateCadenceBrowser({ ...value, latestWork: { ...value.latestWork, generation: 0 } }));
 });
 
-async function sealedFixture(t) {
+async function sealedFixture(t, diagnostics = false) {
   const { chmod, mkdtemp, realpath, rm, writeFile } = await import("node:fs/promises");
   const { tmpdir } = await import("node:os");
   const { resolve } = await import("node:path");
   const { digest, writeNew } = await import("./contract.mjs");
   const root = await realpath(await mkdtemp(resolve(tmpdir(), "cadence-evidence-"))); await chmod(root, 0o700);
   t.after(() => rm(root, { recursive: true, force: true }));
-  const context = { fixture: true }, value = review(), records = [], phases = [];
+  const context = { fixture: true, ...(diagnostics ? { cadence_diagnostics_version: 2 } : {}) };
+  const value = diagnostics ? diagnosticReview() : review(), records = [], phases = [];
   for (const [index, name] of ["idle", "usb", "mining"].entries()) {
     const summary = value.phases[index];
     const phase = { schema: "worker-cadence-phase-v1", context_sha256: digest(JSON.stringify(context)), phase: name,
@@ -151,6 +200,25 @@ test("sealed observer accepts distinct terminal-arrival and actual reap timestam
   // Act / Assert
   await f.write("cadence-observer-result.json", { ...f.result, closedAtUnixMs: 210002 });
   assert.equal((await requireCadenceEvidence(f.root, f.context, f.records)).length, 5);
+});
+
+test("a diagnostics-v2 context cannot qualify legacy review payloads", async t => {
+  // Arrange
+  const f = await sealedFixture(t); const { requireCadenceEvidence } = await import("./cadence-judge.mjs");
+  // Act / Assert
+  await assert.rejects(requireCadenceEvidence(f.root, { ...f.context, cadence_diagnostics_version: 2 }, f.records),
+    { code: "cadence_diagnostics_identity" });
+});
+
+test("v2 evidence retains and revalidates frozen diagnostic witnesses", async t => {
+  // Arrange
+  const f = await sealedFixture(t, true); const { requireCadenceEvidence } = await import("./cadence-judge.mjs");
+  // Act / Assert
+  assert.equal((await requireCadenceEvidence(f.root, f.context, f.records)).length, 5);
+  f.phases[2].review.phases[0].maximumLiveStagesUs[0]--;
+  f.records[5].state.cadence.review = structuredClone(f.phases[2].review);
+  await f.write("cadence-mining.json", f.phases[2]);
+  await assert.rejects(requireCadenceEvidence(f.root, f.context, f.records), { code: "cadence_frozen_summary_changed" });
 });
 
 test("observer journal tampering, private result keys and incomplete cleanup reject evidence", async t => {
