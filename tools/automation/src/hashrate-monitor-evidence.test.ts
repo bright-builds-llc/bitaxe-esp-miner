@@ -3,6 +3,7 @@ import { readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
 import {
   captureHashrateMonitorEvidence,
   HashrateMonitorEvidenceError,
@@ -14,7 +15,6 @@ import {
   validatorProgram,
   workspace,
 } from "./hashrate-monitor-evidence.test-support.js";
-import { createLocalProcessPort } from "./process.js";
 
 async function captureError(promise: Promise<unknown>): Promise<HashrateMonitorEvidenceError> {
   try {
@@ -35,7 +35,7 @@ test("admissible conservative campaign and independent validator publish only cl
     const evidence = await captureHashrateMonitorEvidence(
       value.root,
       value.options,
-      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       validatorProgram,
@@ -69,7 +69,7 @@ test("accepted campaign with a mixed reset cannot publish", async () => {
     const error = await captureError(captureHashrateMonitorEvidence(
       value.root,
       value.options,
-      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       validatorProgram,
@@ -96,7 +96,7 @@ test("natural analyzer closure publishes without a worker close request", async 
     const evidence = await captureHashrateMonitorEvidence(
       value.root,
       value.options,
-      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       validatorProgram,
@@ -125,7 +125,7 @@ test("invalid closure-request diagnostic shapes cannot publish hashrate evidence
       const error = await captureError(captureHashrateMonitorEvidence(
         value.root,
         value.options,
-        createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+        createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
         child,
         child,
         validatorProgram,
@@ -153,7 +153,7 @@ test("accepted transport evidence without final consumed handoff cannot publish"
     const error = await captureError(captureHashrateMonitorEvidence(
       value.root,
       value.options,
-      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       validatorProgram,
@@ -184,7 +184,7 @@ test("consumed attempt-018 protected root is rejected before capture", async () 
     const error = await captureError(captureHashrateMonitorEvidence(
       value.root,
       options,
-      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       validatorProgram,
@@ -251,7 +251,7 @@ test("incomplete transport evidence is rejected before publication", async () =>
     const error = await captureError(captureHashrateMonitorEvidence(
       value.root,
       value.options,
-      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       validatorProgram,
@@ -278,7 +278,7 @@ test("sealed non-ready campaign publishes only the closed parse diagnostic", asy
     const error = await captureError(captureHashrateMonitorEvidence(
       value.root,
       value.options,
-      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       validatorProgram,
@@ -320,7 +320,7 @@ test("sealed panic campaign publishes only the closed panic tuple", async () => 
     const error = await captureError(captureHashrateMonitorEvidence(
       value.root,
       value.options,
-      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       validatorProgram,
@@ -363,7 +363,7 @@ test("unbound panic diagnostics are withheld", async () => {
     const error = await captureError(captureHashrateMonitorEvidence(
       value.root,
       value.options,
-      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       validatorProgram,
@@ -395,7 +395,7 @@ test("unsealed watchdog campaign withholds its phase and failure diagnostic", as
     const error = await captureError(captureHashrateMonitorEvidence(
       value.root,
       value.options,
-      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       validatorProgram,
@@ -450,7 +450,7 @@ test("every sealed watchdog failure publishes only its closed earliest discrimin
       const error = await captureError(captureHashrateMonitorEvidence(
         value.root,
         value.options,
-        createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+        createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
         child,
         child,
         validatorProgram,
@@ -529,7 +529,7 @@ test("watchdog diagnostic requires the new sealed schema and matching terminal c
       const error = await captureError(captureHashrateMonitorEvidence(
         value.root,
         value.options,
-        createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+        createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
         child,
         child,
         validatorProgram,

@@ -4,11 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
 import {
   AsicInitializationEvidenceError,
   projectAsicInitializationEvidence,
 } from "./asic-initialization-evidence.js";
-import { createFakeProcessPort, createLocalProcessPort, type ProcessOutcome } from "./process.js";
+import { createFakeProcessPort, type ProcessOutcome } from "./process.js";
 
 const attemptCommit = "a".repeat(40);
 const currentCommit = "b".repeat(40);
@@ -196,7 +197,7 @@ exit 0
   const evidence = await projectAsicInitializationEvidence(
     value.root,
     value.options,
-    createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+    createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [git]: "shell", [validator]: "shell" }),
     git,
     validator,
   );

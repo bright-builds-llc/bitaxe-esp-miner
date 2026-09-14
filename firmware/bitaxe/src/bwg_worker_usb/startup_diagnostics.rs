@@ -80,6 +80,10 @@ impl StartupProgress {
         }
         result
     }
+    /// Reads one coherent startup state without formatting or waiting on a lock.
+    pub(crate) fn successful(&self) -> bool {
+        self.0.load(Ordering::Acquire) == (Stage::RuntimeReady as u32 | 0x100)
+    }
     pub(crate) fn marker(&self, now_ms: u64) -> String {
         let value = self.0.load(Ordering::Acquire);
         let state = if value & 0x200 != 0 {

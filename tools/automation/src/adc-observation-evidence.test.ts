@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
 import {
   captureAdcObservationEvidence,
   AdcObservationEvidenceError,
@@ -13,7 +14,6 @@ import {
 } from "./adc-observation-evidence.js";
 import {
   createFakeProcessPort,
-  createLocalProcessPort,
   type ProcessOutcome,
   type ProcessPort,
 } from "./process.js";
@@ -494,7 +494,7 @@ if (args[0] === "flash-monitor") {
     const evidence = await captureAdcObservationEvidence(
       value.root,
       value.options,
-      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       child,

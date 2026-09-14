@@ -4,12 +4,13 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
 import {
   captureProvisioningNetworkEvidence,
   ProvisioningNetworkEvidenceError,
   type ProvisioningClientPort,
 } from "./provisioning-network-evidence.js";
-import { createFakeProcessPort, createLocalProcessPort, type ProcessOutcome } from "./process.js";
+import { createFakeProcessPort, type ProcessOutcome } from "./process.js";
 import {
   ProvisioningClientError,
   type ProvisioningClientBoundary,
@@ -392,7 +393,7 @@ fi
   const evidence = await captureProvisioningNetworkEvidence(
     value.root,
     value.options,
-    createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+    createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "shell" }),
     child,
     child,
     readyClient(),

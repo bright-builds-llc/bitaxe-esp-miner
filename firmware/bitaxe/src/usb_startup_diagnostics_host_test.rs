@@ -1,6 +1,6 @@
 //! Runs the production single-writer loop against a host sink while startup fails or stalls.
-use bitaxe_worker_control::serial::SerialKind;
 use bitaxe_worker_control::serial::trace::{SerialTraceCorrelation, SerialTraceStage};
+use bitaxe_worker_control::serial::SerialKind;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::mpsc::{self, Receiver, SyncSender};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -63,7 +63,9 @@ mod boot_evidence {
 mod usb_write_failure;
 mod usb_runtime {
     use super::*;
-    pub(crate) use crate::usb_write_failure::{WriteFailure, WriteObservation, WriteObservationStage};
+    pub(crate) use crate::usb_write_failure::{
+        WriteFailure, WriteObservation, WriteObservationStage,
+    };
     pub static DELAY_MS: AtomicU32 = AtomicU32::new(0);
     pub static PARTIAL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
     pub static SINK: Mutex<Option<mpsc::Sender<String>>> = Mutex::new(None);
@@ -91,11 +93,23 @@ mod usb_runtime {
         anyhow::ensure!(admitted(), "serial_output_revoked");
         Ok(())
     }
-    pub fn write_observed_if(bytes: &[u8], admitted: impl Fn() -> bool, mut observe: impl FnMut(WriteObservation)) -> anyhow::Result<()> {
+    pub fn write_observed_if(
+        bytes: &[u8],
+        admitted: impl Fn() -> bool,
+        mut observe: impl FnMut(WriteObservation),
+    ) -> anyhow::Result<()> {
         let result = write_if(bytes, admitted);
         let queued_bytes = if result.is_ok() { bytes.len() } else { 0 };
-        observe(WriteObservation { stage: if result.is_ok() { WriteObservationStage::Completed } else { WriteObservationStage::Abandoned },
-            at_ms: crate::runtime_uptime::millis(), queued_bytes, record_bytes: bytes.len() });
+        observe(WriteObservation {
+            stage: if result.is_ok() {
+                WriteObservationStage::Completed
+            } else {
+                WriteObservationStage::Abandoned
+            },
+            at_ms: crate::runtime_uptime::millis(),
+            queued_bytes,
+            record_bytes: bytes.len(),
+        });
         result
     }
     pub fn has_partial_output() -> bool {
@@ -581,4 +595,18 @@ mod production_mining_session {
             "worker_admission schema=v1 stage=idle first_failure=none readiness=0 budget_reserved_ms=180000 budget_complete=false redacted=true".to_owned()
         }
     }
+}
+
+#[test]
+fn restart_readiness_requires_completed_successful_runtime_startup() {
+    // Arrange
+    let progress = startup_diagnostics::StartupProgress::new();
+    // Act / Assert
+    assert!(!progress.successful());
+    progress.enter(startup_diagnostics::Stage::RuntimeReady);
+    assert!(!progress.successful());
+    progress.complete();
+    assert!(progress.successful());
+    progress.fail(startup_diagnostics::Stage::Statistics);
+    assert!(!progress.successful());
 }

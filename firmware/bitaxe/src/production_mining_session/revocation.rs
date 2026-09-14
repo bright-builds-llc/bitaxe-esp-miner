@@ -160,6 +160,31 @@ impl GenerationGate {
         self.is_live(generation)
     }
 
+    /// Restart admission requires idle authority, excluding every work reservation/activation.
+    pub fn is_idle(&self, generation: WorkerGeneration) -> bool {
+        self.state.load(Ordering::Acquire) == generation.0 | LIVE
+    }
+
+    /// Commits an idle restart without entering mining shutdown or altering accounting.
+    /// The unflagged generation fences new admission until the immediate CPU reset.
+    pub fn claim_idle_restart(&self, generation: WorkerGeneration) -> bool {
+        self.state
+            .compare_exchange(
+                generation.0 | LIVE,
+                generation.0,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            )
+            .is_ok()
+    }
+
+    /// Releases only an uncommitted idle restart claim after transport cancellation won.
+    pub fn abort_idle_restart(&self, generation: WorkerGeneration) -> bool {
+        self.state
+            .compare_exchange(generation.0, 0, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok()
+    }
+
     pub fn is_live(&self, generation: WorkerGeneration) -> bool {
         let state = self.state.load(Ordering::Acquire);
         state == generation.0 | LIVE

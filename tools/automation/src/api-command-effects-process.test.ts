@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
 import {
   ApiCommandEffectsError,
   captureApiCommandEffects,
@@ -120,7 +121,7 @@ test("a running real child without readiness times out and receives cleanup", {
     "",
   ].join("\n"), { mode: 0o700 });
   await chmod(silentFixture, 0o700);
-  const processPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 20_000 });
+  const processPort = createFixtureProcessPort({ cwd: value.root, timeoutMs: 20_000 }, { [silentFixture]: "shell" });
 
   // Act
   const error = await captureApiCommandEffects(

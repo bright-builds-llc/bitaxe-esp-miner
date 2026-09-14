@@ -59,6 +59,22 @@ mod telemetry_cadence {
         None
     }
 }
+mod qualification_restart {
+    use super::*;
+    pub fn context(
+        _generation: revocation::WorkerGeneration,
+    ) -> Result<Option<bitaxe_worker_control::QualificationRestartContext>, WorkerSessionError>
+    {
+        Ok(None)
+    }
+    pub fn restart(
+        _generation: revocation::WorkerGeneration,
+        _context: bitaxe_worker_control::QualificationRestartContext,
+        _expires: u64,
+    ) -> Result<(), WorkerSessionError> {
+        Err(WorkerSessionError::Rejected)
+    }
+}
 mod startup {
     pub struct BootMiningBaselineConfirmed;
 }

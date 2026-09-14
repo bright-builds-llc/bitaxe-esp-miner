@@ -4,12 +4,13 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
 import {
   captureNetworkScanEvidence,
   NetworkScanEvidenceError,
   stationAddressKind,
 } from "./network-scan-evidence.js";
-import { createFakeProcessPort, createLocalProcessPort, type ProcessOutcome } from "./process.js";
+import { createFakeProcessPort, type ProcessOutcome } from "./process.js";
 
 const sourceCommit = "a".repeat(40);
 const referenceCommit = "b".repeat(40);
@@ -240,7 +241,7 @@ fi
     const evidence = await captureNetworkScanEvidence(
       value.root,
       value.options,
-      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "shell" }),
       child,
       child,
     );

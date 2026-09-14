@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import { restartPreflight } from "./reset-origin-restart-context.mjs";
+import { createRestartSupervisor } from "./reset-origin-restart-server.mjs";
+import { consumeRestartInstall, reviewRestartInstallation } from "./reset-origin-restart-install.mjs";
+import { judgeRestart, readRestartResult } from "./reset-origin-restart-judge.mjs";
 import { CADENCE_SCHEMA } from "./cadence-contract.mjs";
 import { cadencePreflight } from "./cadence-preflight.mjs";
 import { resetOriginPreflight } from "./reset-origin-context.mjs";
@@ -26,7 +30,7 @@ import { createSupervisor } from "./server.mjs";
 import { finishWindow, recordCycle } from "./store.mjs";
 import { protectedPath, QualificationError, readJson, requireCondition } from "./contract.mjs";
 
-const KEYS = { "--supersede-finalization": "supersedeFinalization", "--supersede-journal-failure": "supersedeJournalFailure", "--supersede-preparation-review": "supersedePreparationReview", "--supersede-unstarted": "supersedeUnstarted", "--supersede-startup": "supersedeStartup", "--supersede-premining": "supersedePremining", "--supersede-unissued": "supersedeUnissued", "--observer-binary": "observerBinary", "--recovery-phase": "recoveryPhase", "--original-campaign-record": "originalCampaignRecord", "--retained-runtime-from": "retainedRuntimeFrom", "--suggested-difficulty": "suggestedDifficulty", "--cycles-from": "cyclesFrom", "--purpose": "purpose", "--previous-receipt": "previousReceipt", "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
+const KEYS = { "--supersede-restart": "supersedeRestart", "--stage-a-result": "stageAResult", "--observer-script": "observerScript", "--supersede-finalization": "supersedeFinalization", "--supersede-journal-failure": "supersedeJournalFailure", "--supersede-preparation-review": "supersedePreparationReview", "--supersede-unstarted": "supersedeUnstarted", "--supersede-startup": "supersedeStartup", "--supersede-premining": "supersedePremining", "--supersede-unissued": "supersedeUnissued", "--observer-binary": "observerBinary", "--recovery-phase": "recoveryPhase", "--original-campaign-record": "originalCampaignRecord", "--retained-runtime-from": "retainedRuntimeFrom", "--suggested-difficulty": "suggestedDifficulty", "--cycles-from": "cyclesFrom", "--purpose": "purpose", "--previous-receipt": "previousReceipt", "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
   "--manifest": "manifest", "--private-root": "privateRoot", "--authority-directory": "authorityDirectory", "--pool-credentials": "poolCredentials",
   "--cooling-input": "coolingInput", "--predecessor-root": "predecessorRoot", "--bun": "bun", "--port": "port", "--window": "window", "--input": "input",
   "--qualification-source-commit": "qualificationSourceCommit", "--gate-qualification-source-commit": "gateQualificationSourceCommit" };
@@ -41,11 +45,17 @@ export async function main(args, operations = {}) {
   }
   requireCondition(options.privateRoot, "private_root_required");
   const allowed = {
+    "reset-origin-restart-preflight": ["privateRoot", "firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "input", "originalCampaignRecord", "stageAResult", "observerScript"],
+    "reset-origin-restart-serve": ["privateRoot", "port", "bun"],
+    "reset-origin-restart-consume-install": ["privateRoot"],
+    "reset-origin-restart-install-review": ["privateRoot", "input"],
+    "reset-origin-restart-judge": ["privateRoot", "input"],
+    "reset-origin-restart-review": ["privateRoot"],
     "reset-origin-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "input", "originalCampaignRecord", "predecessorRoot", "previousReceipt", "qualificationSourceCommit", "supersedeUnstarted", "supersedePreparationReview", "supersedeJournalFailure", "supersedeFinalization"],
     "reset-origin-serve": ["privateRoot", "port", "bun"],
     "reset-origin-judge": ["privateRoot", "input"],
     "reset-origin-review": ["privateRoot"],
-    "cadence-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "authorityDirectory", "bun", "previousReceipt", "input", "suggestedDifficulty", "observerBinary", "supersedeUnissued", "supersedePremining", "supersedeStartup"],
+    "cadence-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "authorityDirectory", "bun", "previousReceipt", "input", "suggestedDifficulty", "observerBinary", "supersedeUnissued", "supersedePremining", "supersedeStartup", "supersedeRestart"],
     "cadence-startup-recovery-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "input", "originalCampaignRecord", "predecessorRoot", "previousReceipt"],
     "cadence-startup-recovery-serve": ["privateRoot", "port", "bun"],
     "cadence-startup-recovery-judge": ["privateRoot", "input"],
@@ -72,6 +82,21 @@ export async function main(args, operations = {}) {
     "amend-policy": ["privateRoot", "qualificationSourceCommit", "gateQualificationSourceCommit"],
   }[command];
   requireCondition(allowed && Object.keys(options).every((key) => allowed.includes(key)), "command_arguments");
+  if (command === "reset-origin-restart-preflight") {
+    for (const key of ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "input", "originalCampaignRecord", "stageAResult", "observerScript"])
+      requireCondition(options[key], "preflight_argument_missing");
+    return restartPreflight(options, operations);
+  }
+  if (command === "reset-origin-restart-serve") return serveSupervisor(() => createRestartSupervisor(options, operations), options);
+  if (command === "reset-origin-restart-consume-install") return consumeRestartInstall(resolve(options.privateRoot), operations);
+  if (command === "reset-origin-restart-install-review" || command === "reset-origin-restart-judge") {
+    requireCondition(options.input, "input_required");
+    return command === "reset-origin-restart-install-review" ? reviewRestartInstallation(resolve(options.privateRoot), options.input, operations) : judgeRestart(resolve(options.privateRoot), options.input, operations);
+  }
+  if (command === "reset-origin-restart-review") {
+    await readRestartResult(resolve(options.privateRoot, "result.json"), operations);
+    return { controlled_restart_verified: true, qualification_pass: false, mining_authorized: false };
+  }
   if (command === "reset-origin-preflight") {
     for (const key of ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "input", "originalCampaignRecord", "predecessorRoot", "qualificationSourceCommit"])
       requireCondition(options[key], "preflight_argument_missing");

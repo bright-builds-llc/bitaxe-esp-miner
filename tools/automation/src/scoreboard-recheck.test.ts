@@ -3,6 +3,7 @@ import { chmod, readFile, rm, stat, symlink, unlink, writeFile } from "node:fs/p
 import path from "node:path";
 import test from "node:test";
 
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
 import { scoreboardChild } from "./scoreboard-evidence.test-support.js";
 import { ScoreboardEvidenceError } from "./scoreboard-evidence.js";
 import {
@@ -10,7 +11,7 @@ import {
   type ScoreboardRecheckOptions,
 } from "./scoreboard-recheck.js";
 import { scoreboardRecheckFixture } from "./scoreboard-recheck.test-support.js";
-import { createLocalProcessPort, type ProcessPort } from "./process.js";
+import { type ProcessPort } from "./process.js";
 
 async function runFixture(
   root: string,
@@ -23,7 +24,7 @@ async function runFixture(
   return recheckScoreboardEvidence(
     root,
     options,
-    maybeProcessPort ?? createLocalProcessPort({ cwd: root, timeoutMs: 5_000 }),
+    maybeProcessPort ?? createFixtureProcessPort({ cwd: root, timeoutMs: 5_000 }, { [child]: "node" }),
     child,
     child,
     identity,
@@ -138,7 +139,7 @@ test("validator failure removes candidate and withholds projection", async () =>
   // Arrange
   const fixture = await scoreboardRecheckFixture("validator-failure");
   const child = await scoreboardChild(fixture.base, "http://127.0.0.1:1");
-  const local = createLocalProcessPort({ cwd: fixture.root, timeoutMs: 5_000 });
+  const local = createFixtureProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }, { [child]: "node" });
   const processPort: ProcessPort = {
     loadEspEnvironment: local.loadEspEnvironment,
     run(spec, maybeLifetime) {

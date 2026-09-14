@@ -4,12 +4,13 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
 import {
   captureOperatorSnapshotEvidence,
   OperatorSnapshotEvidenceError,
   type OperatorSnapshotEvidenceOptions,
 } from "./operator-snapshot-evidence.js";
-import { createFakeProcessPort, createLocalProcessPort, type ProcessOutcome, type ProcessPort } from "./process.js";
+import { createFakeProcessPort, type ProcessOutcome, type ProcessPort } from "./process.js";
 import type { WebSocketClient, WebSocketFactory } from "./websocket.js";
 
 const ok = (stdout = ""): ProcessOutcome => ({ exitCode: 0, stdout, stderr: "", timedOut: false });
@@ -305,7 +306,7 @@ if (args[0] === "flash-monitor") {
 }
 `);
   await chmod(child, 0o700);
-  const port = createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 });
+  const port = createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" });
 
   try {
     // Act

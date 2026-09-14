@@ -65,12 +65,26 @@ async function retainSnapshot(root, context, f) {
   });
 }
 function publicTrust() {
-  const key = generateKeyPairSync("ed25519").publicKey.export({ format: "jwk" });
-  const keys = [{ kid: "fixture", kty: "OKP", crv: "Ed25519", x: key.x, alg: "Ed25519", use: "sig", key_ops: ["verify"] }];
+  function publicKey(role) {
+    const key = generateKeyPairSync("ed25519").publicKey.export({ format: "jwk" });
+    return { kid: `fixture-${role}`, kty: "OKP", crv: "Ed25519", x: key.x, alg: "Ed25519", use: "sig", key_ops: ["verify"] };
+  }
+  const profile = "bwg-worker-deployment-trust/0.2";
   return {
-    profile: "bwg-worker-deployment-trust/0.2",
-    updateAuthority: { issuer: "fixture-update", audience: "bwg-reference-firmware-capability/0.2", keys },
-    workLeaseAuthority: { issuer: "fixture-lease", audience: "bwg-worker-controller/0.4", keys },
+    profile,
+    updateAuthority: {
+      issuer: "fixture-update",
+      audience: "bwg-reference-firmware-capability/0.2",
+      role: "update_authority",
+      keys: [publicKey("update")],
+    },
+    workLeaseAuthority: {
+      profile,
+      issuer: "fixture-lease",
+      audience: "bwg-worker-controller/0.4",
+      role: "work_lease_authority",
+      keys: [publicKey("lease")],
+    },
   };
 }
 export async function startupFixture(t) {

@@ -8,6 +8,8 @@ mod cooling;
 mod fixture_session;
 #[path = "controller/liveness.rs"]
 mod liveness;
+#[path = "controller/restart.rs"]
+mod restart;
 #[path = "controller/serial_trace.rs"]
 mod serial_trace;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -63,6 +65,7 @@ impl LeaseAuthorizationVerifier for FixtureVerifier {
 
 #[derive(Default)]
 struct FakeSession {
+    maybe_restart_context: Option<bitaxe_worker_control::QualificationRestartContext>,
     prepared_probes: std::cell::RefCell<Vec<(usize, usize)>>,
     events: Vec<&'static str>,
     fail_start: bool,

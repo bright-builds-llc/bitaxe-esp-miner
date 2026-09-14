@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
 import {
   captureLogBufferEvidence,
   LogBufferEvidenceError,
@@ -11,7 +12,6 @@ import {
 } from "./log-buffer-evidence.js";
 import {
   createFakeProcessPort,
-  createLocalProcessPort,
   type ProcessOutcome,
   type ProcessPort,
 } from "./process.js";
@@ -310,7 +310,7 @@ test("real child processes preserve flash-effect and validation file boundaries"
     const evidence = await captureLogBufferEvidence(
       value.root,
       options(value),
-      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       device.websocketFactory,

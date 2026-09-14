@@ -4,7 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { createFakeProcessPort, createLocalProcessPort, type ProcessOutcome, type ProcessPort } from "./process.js";
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
+import { createFakeProcessPort, type ProcessOutcome, type ProcessPort } from "./process.js";
 import { captureSettingsPatchEvidence, SettingsPatchEvidenceError } from "./settings-patch-evidence.js";
 
 const sourceCommit = "a".repeat(40);
@@ -245,7 +246,7 @@ test("real child process supplies flash and validation boundaries", async () => 
     const evidence = await captureSettingsPatchEvidence(
       value.root,
       options(value),
-      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
     );

@@ -262,7 +262,10 @@ fn process_frame<V>(
         return;
     }
     if writer::send_control(correlation, response.frame()).is_err()
-        || worker.confirm_sent(response).is_err()
+        || CURRENT_SESSION.load(Ordering::Acquire) != epoch
+        || worker
+            .confirm_sent_at(response, crate::runtime_uptime::millis())
+            .is_err()
     {
         revoke_epoch(epoch);
         return;
@@ -270,6 +273,23 @@ fn process_frame<V>(
     if worker.is_admitted() && CURRENT_SESSION.load(Ordering::Acquire) == epoch {
         AUTHENTICATED_SESSION.store(epoch, Ordering::Release);
     }
+}
+
+pub(crate) fn maybe_authenticated_epoch() -> Option<u32> {
+    let epoch = CURRENT_SESSION.load(Ordering::Acquire);
+    (epoch != 0
+        && AUTHENTICATED_SESSION.load(Ordering::Acquire) == epoch
+        && CURRENT_SESSION.load(Ordering::Acquire) == epoch)
+        .then_some(epoch)
+}
+
+/// Atomically chooses reset over cancellation after the caller fenced idle generation effects.
+pub(crate) fn claim_restart_epoch(epoch: u32) -> bool {
+    epoch != 0
+        && AUTHENTICATED_SESSION.load(Ordering::Acquire) == epoch
+        && CURRENT_SESSION
+            .compare_exchange(epoch, 0, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok()
 }
 
 fn revoke_epoch(epoch: u32) {

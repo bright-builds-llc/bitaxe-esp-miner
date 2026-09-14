@@ -32,6 +32,22 @@ pub trait LeaseAuthorizationVerifier {
 
 /// Sole mining-owner adapter; implementations must keep supplied credentials volatile.
 pub trait WorkerSession {
+    /// Supplies only an exact idle native restart binding; unsupported adapters reject by default.
+    fn qualification_restart_context(
+        &self,
+    ) -> Result<Option<crate::QualificationRestartContext>, WorkerSessionError> {
+        Ok(None)
+    }
+
+    /// Rechecks native ownership/readiness and immediately restarts after confirmed reply completion.
+    fn qualification_restart(
+        &mut self,
+        _context: crate::QualificationRestartContext,
+        _expires_at_ms: u64,
+    ) -> Result<(), WorkerSessionError> {
+        Err(WorkerSessionError::Rejected)
+    }
+
     /// Returns only an allowlisted nonsecret-settings fingerprint and boot preference.
     fn settings_preservation(
         &self,

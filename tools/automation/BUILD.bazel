@@ -81,7 +81,7 @@ ts_project(
         "package.json",
         "tsconfig.json",
     ],
-    srcs = glob(["src/**/*.ts"], exclude = ["src/**/*.test.ts"]),
+    srcs = glob(["src/**/*.ts"], exclude = ["src/**/*.test.ts", "src/**/*.test-support.ts"]),
     declaration = True,
     out_dir = "dist",
     root_dir = "src",

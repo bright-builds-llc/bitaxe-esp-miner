@@ -4,13 +4,13 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
 import {
   captureEmc2101ThermalFaultEvidence,
   Emc2101ThermalFaultEvidenceError,
 } from "./emc2101-thermal-fault-evidence.js";
 import {
   createFakeProcessPort,
-  createLocalProcessPort,
   type ProcessOutcome,
   type ProcessPort,
 } from "./process.js";
@@ -540,7 +540,7 @@ if (args.includes("flash-monitor")) {
 else if (args.includes("rev-parse")) process.stdout.write("${sourceCommit}\\n");
 `, { mode: 0o700 });
   await chmod(child, 0o700);
-  const processPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 });
+  const processPort = createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" });
   const childSpec = (args: readonly string[]) =>
     internalCommandSpec(child, [...args], (input: unknown) => input);
   try {

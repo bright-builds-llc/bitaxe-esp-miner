@@ -4,13 +4,13 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
 import {
   AsicWorkSendEvidenceError,
   projectAsicWorkSendEvidence,
 } from "./asic-work-send-evidence.js";
 import {
   createFakeProcessPort,
-  createLocalProcessPort,
   type ProcessOutcome,
   type ProcessPort,
 } from "./process.js";
@@ -227,7 +227,7 @@ test("real child validators must accept both source and candidate files", async 
   const validator = path.join(value.root, "validator-child.sh");
   await writeFile(validator, "#!/bin/sh\ntest -s \"$1\"\n");
   await chmod(validator, 0o700);
-  const localPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 });
+  const localPort = createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [validator]: "shell" });
   const gitPort = fakePort();
   const processPort: ProcessPort = {
     loadEspEnvironment: () => localPort.loadEspEnvironment(),

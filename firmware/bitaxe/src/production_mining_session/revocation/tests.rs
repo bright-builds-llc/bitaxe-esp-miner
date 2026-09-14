@@ -433,3 +433,67 @@ fn fan_restoration_cannot_release_budgeted_or_revoked_ownership() {
     gate.finish_shutdown(generation);
     assert!(gate.begin_link(12).is_some());
 }
+
+#[test]
+fn restart_claim_requires_exact_idle_generation_and_fences_new_work() {
+    // Arrange
+    let gate = GenerationGate::new();
+    let generation = gate.begin_link(0).expect("generation");
+    // Act
+    assert!(gate.is_idle(generation));
+    assert!(gate.claim_idle_restart(generation));
+    // Assert
+    assert!(!gate.is_live(generation));
+    assert!(!gate.is_idle(generation));
+    assert!(!gate.heartbeat(generation, 1));
+    assert!(!gate.claim_idle_restart(generation));
+    assert!(!gate.permits(None));
+    assert!(!gate.permits(Some(generation)));
+    assert!(gate.maybe_revoked().is_none());
+    assert!(gate.begin_link(2).is_none());
+}
+
+#[test]
+fn restart_claim_rejects_reserved_and_active_work() {
+    // Arrange
+    let gate = GenerationGate::new();
+    let generation = gate.begin_link(0).expect("generation");
+    assert!(gate.begin_reservation(generation));
+    // Act / Assert
+    assert!(!gate.is_idle(generation));
+    assert!(!gate.claim_idle_restart(generation));
+    assert!(gate.admit_budget(generation, 180_000));
+    assert!(!gate.claim_idle_restart(generation));
+    assert!(gate.activate(generation));
+    assert!(!gate.claim_idle_restart(generation));
+}
+
+#[test]
+fn restart_claim_rejects_a_revoked_or_replaced_generation() {
+    // Arrange
+    let gate = GenerationGate::new();
+    let previous = gate.begin_link(0).expect("first generation");
+    assert!(gate.revoke_at(previous, 1));
+    // Act / Assert
+    assert!(!gate.claim_idle_restart(previous));
+    let current = gate.begin_link(2).expect("second generation");
+    assert!(!gate.is_idle(previous));
+    assert!(!gate.claim_idle_restart(previous));
+    assert!(gate.is_idle(current));
+}
+
+#[test]
+fn cancelled_restart_releases_only_its_claimed_idle_generation() {
+    // Arrange
+    let gate = GenerationGate::new();
+    let previous = gate.begin_link(0).expect("generation");
+    assert!(!gate.abort_idle_restart(previous));
+    assert!(gate.claim_idle_restart(previous));
+    // Act
+    assert!(gate.abort_idle_restart(previous));
+    let current = gate.begin_link(1).expect("fresh generation");
+    // Assert
+    assert!(!gate.abort_idle_restart(previous));
+    assert!(!gate.abort_idle_restart(current));
+    assert!(gate.is_idle(current));
+}

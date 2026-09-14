@@ -4,7 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { createFakeProcessPort, createLocalProcessPort, type ProcessOutcome, type ProcessPort } from "./process.js";
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
+import { createFakeProcessPort, type ProcessOutcome, type ProcessPort } from "./process.js";
 import { captureRuntimeHealthEvidence, RuntimeHealthEvidenceError } from "./runtime-health-evidence.js";
 import type { WebSocketClient, WebSocketFactory } from "./websocket.js";
 
@@ -157,7 +158,7 @@ test("real child process supplies flash and final validation boundaries", async 
   await writeFile(child, `#!${nodeProgram}\nimport { writeFile } from "node:fs/promises"; import path from "node:path"; const args=process.argv.slice(2); if(args[0]==="flash-monitor"){const root=args[args.indexOf("--evidence-dir")+1]; await writeFile(path.join(root,"flash-monitor.classifier-input.log"),${JSON.stringify(`safe_state: mining=disabled asic_work_submission=disabled hardware_control=disabled\nruntime_origin session=${session} device_url=http://private-device.test redacted=true\n`)});}\n`);
   await chmod(child, 0o700);
   try {
-    const evidence = await captureRuntimeHealthEvidence(value.root, value.options, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), child, child, websocketFactory());
+    const evidence = await captureRuntimeHealthEvidence(value.root, value.options, createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }), child, child, websocketFactory());
     assert.equal(evidence.schema_version, "bitaxe-runtime-health-evidence-v1");
   } finally { restore(); }
 });

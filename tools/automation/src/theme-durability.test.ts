@@ -4,7 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { createFakeProcessPort, createLocalProcessPort, type ProcessOutcome, type ProcessPort } from "./process.js";
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
+import { createFakeProcessPort, type ProcessOutcome, type ProcessPort } from "./process.js";
 import { captureThemeDurability, ThemeDurabilityError } from "./theme-durability.js";
 
 const ok = (stdout = ""): ProcessOutcome => ({ exitCode: 0, stdout, stderr: "", timedOut: false });
@@ -332,7 +333,7 @@ process.stderr.write("private /dev/test-sensitive-port dual_evidence=failed reas
 process.exitCode = 17;
 `);
   await chmod(child, 0o700);
-  const processPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 });
+  const processPort = createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" });
 
   // Act
   const error = await themeError(captureThemeDurability(
@@ -431,7 +432,7 @@ if (args[0] === "flash-monitor") {
 }
 `);
   await chmod(child, 0o700);
-  const processPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 });
+  const processPort = createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" });
 
   try {
     // Act

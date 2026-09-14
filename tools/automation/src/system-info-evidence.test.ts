@@ -4,7 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { createFakeProcessPort, createLocalProcessPort, type ProcessOutcome, type ProcessPort } from "./process.js";
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
+import { createFakeProcessPort, type ProcessOutcome, type ProcessPort } from "./process.js";
 import { captureSystemInfoEvidence, SystemInfoEvidenceError } from "./system-info-evidence.js";
 import type { WebSocketClient, WebSocketFactory } from "./websocket.js";
 
@@ -213,7 +214,7 @@ test("real child process supplies flash and validation boundaries", async () => 
     const evidence = await captureSystemInfoEvidence(
       value.root,
       value.options,
-      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       websocketFactory(snapshot(value.contract, 8, 10)),

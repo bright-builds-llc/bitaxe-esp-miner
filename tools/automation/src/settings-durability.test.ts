@@ -4,7 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { createFakeProcessPort, createLocalProcessPort, type ProcessOutcome, type ProcessPort } from "./process.js";
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
+import { createFakeProcessPort, type ProcessOutcome, type ProcessPort } from "./process.js";
 import { captureSettingsDurability, SettingsDurabilityError } from "./settings-durability.js";
 
 const ok = (stdout = ""): ProcessOutcome => ({ exitCode: 0, stdout, stderr: "", timedOut: false });
@@ -358,7 +359,7 @@ if (args[0] === "flash-monitor") {
 }
 `);
   await chmod(child, 0o700);
-  const processPort = createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 });
+  const processPort = createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" });
 
   try {
     // Act

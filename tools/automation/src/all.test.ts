@@ -72,3 +72,4 @@ import "./workspace.test.js";
 import "./workflow.test.js";
 import "./version-evidence.test.js";
 import "./validator-boundary.test.js";
+import "./fixture-process.test.js";

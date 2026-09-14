@@ -4,13 +4,13 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
 import {
   formatOperatorCheckpointSignal,
   superviseOperatorCheckpoints,
   type OperatorCheckpointSignal,
 } from "./api-command-effects-checkpoint.js";
 import { internalCommandSpec } from "./contracts.generated.js";
-import { createLocalProcessPort } from "./process.js";
 
 const ok = { exitCode: 0, stdout: "", stderr: "", timedOut: false } as const;
 
@@ -109,7 +109,7 @@ test("a real child publishes ordered checkpoints before it settles", {
   ].join("\n"), { mode: 0o700 });
   await chmod(child, 0o700);
   // Four deliberate one-second fixture delays must leave headroom for cold child startup.
-  const local = createLocalProcessPort({ cwd: root, timeoutMs: 10_000 });
+  const local = createFixtureProcessPort({ cwd: root, timeoutMs: 10_000 }, { [child]: "shell" });
   const childPromise = local.run(internalCommandSpec(child, [campaign], (value) => value));
   const settled = path.join(campaign, "child-settled.private");
   const signals: OperatorCheckpointSignal[] = [];

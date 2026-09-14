@@ -21,6 +21,23 @@ impl ProductionWorkerSession {
 }
 
 impl WorkerSession for ProductionWorkerSession {
+    fn qualification_restart_context(
+        &self,
+    ) -> Result<Option<bitaxe_worker_control::QualificationRestartContext>, WorkerSessionError>
+    {
+        let generation = self.maybe_generation.ok_or(WorkerSessionError::Rejected)?;
+        crate::qualification_restart::context(generation)
+    }
+
+    fn qualification_restart(
+        &mut self,
+        context: bitaxe_worker_control::QualificationRestartContext,
+        expires_at_ms: u64,
+    ) -> Result<(), WorkerSessionError> {
+        let generation = self.maybe_generation.ok_or(WorkerSessionError::Rejected)?;
+        crate::qualification_restart::restart(generation, context, expires_at_ms)
+    }
+
     fn qualify_cooling(&mut self) -> Result<serde_json::Value, WorkerSessionError> {
         let generation = self.maybe_generation.ok_or(WorkerSessionError::Rejected)?;
         crate::production_mining_session::bwg_cooling(generation, false)

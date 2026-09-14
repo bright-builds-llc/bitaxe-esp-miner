@@ -343,3 +343,33 @@ js_test(
     data = [":fixed_usb_qualification_sources"],
     entry_point = "fixed-usb-qualification/reset-origin-judge.test.mjs",
 )
+
+js_test(
+    name = "fixed_usb_reset_origin_restart_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/reset-origin-restart.test.mjs",
+)
+
+js_test(
+    name = "fixed_usb_reset_origin_restart_pipeline_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/reset-origin-restart-pipeline.test.mjs",
+)
+
+js_test(
+    name = "fixed_usb_reset_origin_restart_gate_config_test",
+    chdir = ".",
+    args = ["$(rootpath @bwg_gate_contract//:package_json_js)"],
+    data = [
+        ":fixed_usb_qualification_sources",
+        "@bwg_gate_contract//:package_json_js",
+        "@bwg_gate_contract//:restart_acceptance_sources_js",
+    ],
+    entry_point = "fixed-usb-qualification/reset-origin-restart-gate-config.test.mjs",
+)
+
+js_test(
+    name = "fixed_usb_cadence_restart_supersession_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/cadence-restart-supersession.test.mjs",
+)

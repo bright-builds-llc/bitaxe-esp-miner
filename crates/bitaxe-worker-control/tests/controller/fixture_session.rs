@@ -1,6 +1,23 @@
 use super::*;
 
 impl WorkerSession for FakeSession {
+    fn qualification_restart_context(
+        &self,
+    ) -> Result<Option<bitaxe_worker_control::QualificationRestartContext>, WorkerSessionError>
+    {
+        Ok(self.maybe_restart_context)
+    }
+    fn qualification_restart(
+        &mut self,
+        context: bitaxe_worker_control::QualificationRestartContext,
+        _expires_at_ms: u64,
+    ) -> Result<(), WorkerSessionError> {
+        if self.maybe_restart_context != Some(context) {
+            return Err(WorkerSessionError::Rejected);
+        }
+        self.events.push("qualification_restart");
+        Ok(())
+    }
     fn telemetry_cadence_probe_prepared(&self, request_bytes: usize, response_bytes: usize) {
         self.prepared_probes
             .borrow_mut()

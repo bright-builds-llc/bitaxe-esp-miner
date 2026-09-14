@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { createLocalProcessPort } from "./process.js";
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
 import {
   projectUiWorkflowEvidence,
   UiWorkflowEvidenceError,
@@ -206,7 +206,7 @@ test("real child projection joins exact package browser and prior evidence", asy
     operatorSnapshotProjection: value.operatorPath,
     browserAttestation: value.browserPath,
     projection: value.projection,
-  }, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), value.child, value.validators);
+  }, createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [value.child]: "shell" }), value.child, value.validators);
 
   // Assert
   assert.equal(evidence.schema_version, "bitaxe-ui-workflow-evidence-v1");
@@ -230,7 +230,7 @@ test("incomplete mobile route quorum withholds public evidence", async () => {
     operatorSnapshotProjection: value.operatorPath,
     browserAttestation: value.browserPath,
     projection: value.projection,
-  }, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), value.child, value.validators);
+  }, createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [value.child]: "shell" }), value.child, value.validators);
 
   // Assert
   await assert.rejects(outcome, (error: unknown) =>
@@ -250,7 +250,7 @@ test("missing private browser artifact withholds public evidence", async () => {
     operatorSnapshotProjection: value.operatorPath,
     browserAttestation: value.browserPath,
     projection: value.projection,
-  }, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), value.child, value.validators);
+  }, createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [value.child]: "shell" }), value.child, value.validators);
 
   // Assert
   await assert.rejects(outcome, (error: unknown) =>
@@ -272,7 +272,7 @@ test("process-default redirect mode is rejected before protected evidence is rea
     operatorSnapshotProjection: value.operatorPath,
     browserAttestation: value.browserPath,
     projection: value.projection,
-  }, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), value.child, value.validators);
+  }, createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [value.child]: "shell" }), value.child, value.validators);
 
   // Assert
   await assert.rejects(outcome, (error: unknown) =>
@@ -295,7 +295,7 @@ test("immutable continuation plan drift withholds public evidence", async () => 
     operatorSnapshotProjection: value.operatorPath,
     browserAttestation: value.browserPath,
     projection: value.projection,
-  }, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), value.child, value.validators);
+  }, createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [value.child]: "shell" }), value.child, value.validators);
 
   // Assert
   await assert.rejects(outcome, (error: unknown) =>
@@ -324,7 +324,7 @@ test("captured UI source drift withholds public evidence", async () => {
     operatorSnapshotProjection: value.operatorPath,
     browserAttestation: value.browserPath,
     projection: value.projection,
-  }, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), value.child, value.validators);
+  }, createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [value.child]: "shell" }), value.child, value.validators);
 
   // Assert
   await assert.rejects(outcome, (error: unknown) =>
@@ -353,7 +353,7 @@ test("captured source ancestry failure withholds public evidence", async () => {
     operatorSnapshotProjection: value.operatorPath,
     browserAttestation: value.browserPath,
     projection: value.projection,
-  }, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), value.child, value.validators);
+  }, createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [value.child]: "shell" }), value.child, value.validators);
 
   // Assert
   await assert.rejects(outcome, (error: unknown) =>
@@ -382,7 +382,7 @@ test("dirty compatibility path withholds public evidence", async () => {
     operatorSnapshotProjection: value.operatorPath,
     browserAttestation: value.browserPath,
     projection: value.projection,
-  }, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), value.child, value.validators);
+  }, createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [value.child]: "shell" }), value.child, value.validators);
 
   // Assert
   await assert.rejects(outcome, (error: unknown) =>
@@ -405,7 +405,7 @@ test("mismatched protected source identity withholds public evidence", async () 
     operatorSnapshotProjection: value.operatorPath,
     browserAttestation: value.browserPath,
     projection: value.projection,
-  }, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), value.child, value.validators);
+  }, createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [value.child]: "shell" }), value.child, value.validators);
 
   // Assert
   await assert.rejects(outcome, (error: unknown) =>
@@ -426,7 +426,7 @@ test("prior closure drift withholds public evidence", async () => {
     operatorSnapshotProjection: value.operatorPath,
     browserAttestation: value.browserPath,
     projection: value.projection,
-  }, createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }), value.child, value.validators);
+  }, createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [value.child]: "shell" }), value.child, value.validators);
 
   // Assert
   await assert.rejects(outcome, (error: unknown) =>

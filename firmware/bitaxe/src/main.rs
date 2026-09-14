@@ -30,6 +30,7 @@ mod panic_evidence;
 mod platform_identity;
 mod preparation_evidence;
 mod production_mining_session;
+mod qualification_restart;
 mod rtc_boot_ordinal;
 mod runtime_health_adapter;
 mod runtime_snapshot;

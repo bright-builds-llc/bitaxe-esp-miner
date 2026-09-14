@@ -10,8 +10,10 @@ mod possession;
 mod preservation;
 pub use preservation::{SettingsPreservation, StateFingerprint};
 pub mod cadence;
+mod restart;
 pub mod serial;
 mod session;
+pub use restart::QualificationRestartContext;
 
 pub use authorization::{
     AcceptedSequenceStore, LeaseAuthorizationError, SequenceStoreResult, WorkLeaseAuthorityTrust,

@@ -4,7 +4,8 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { createFakeProcessPort, createLocalProcessPort, type ProcessOutcome } from "./process.js";
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
+import { createFakeProcessPort, type ProcessOutcome } from "./process.js";
 import {
   captureUltra205DefaultsEvidence,
   Ultra205DefaultsEvidenceError,
@@ -188,7 +189,7 @@ test("real process capture emits only closed Ultra 205 defaults evidence", async
     const evidence = await captureUltra205DefaultsEvidence(
       value.root,
       value.options,
-      createLocalProcessPort({ cwd: value.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: value.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       child,

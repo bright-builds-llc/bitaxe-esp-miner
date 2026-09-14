@@ -1258,6 +1258,14 @@ rust_test(
 )
 
 rust_test(
+    name = "qualification_restart_tests",
+    srcs = ["src/qualification_restart_host_test.rs", "src/qualification_restart.rs"],
+    crate_root = "src/qualification_restart_host_test.rs",
+    edition = "2021",
+    deps = ["//crates/bitaxe-worker-control:bitaxe_worker_control"],
+)
+
+rust_test(
     name = "worker_session_cleanup_tests",
     srcs = [
         "src/worker_session_cleanup_host_test.rs",

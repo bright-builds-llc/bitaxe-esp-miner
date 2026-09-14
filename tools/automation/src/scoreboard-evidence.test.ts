@@ -3,6 +3,7 @@ import { readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
 
+import { createFixtureProcessPort } from "./fixture-process.test-support.js";
 import {
   captureScoreboardEvidence,
   ScoreboardEvidenceError,
@@ -21,7 +22,6 @@ import {
   scoreboardFixture,
   startScoreboardServer,
 } from "./scoreboard-evidence.test-support.js";
-import { createLocalProcessPort } from "./process.js";
 
 const workspace = process.env["BUILD_WORKSPACE_DIRECTORY"] ?? process.cwd();
 
@@ -45,7 +45,7 @@ test("real child campaign API and restart publish only closed scoreboard evidenc
     const evidence = await captureScoreboardEvidence(
       fixture.root,
       fixture.options,
-      createLocalProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       child,
@@ -79,7 +79,7 @@ test("changed scoreboard after restart withholds projection", async () => {
     const error = await captureError(captureScoreboardEvidence(
       fixture.root,
       fixture.options,
-      createLocalProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       child,
@@ -108,7 +108,7 @@ test("post-restart repeat drift withholds projection", async () => {
     const error = await captureError(captureScoreboardEvidence(
       fixture.root,
       fixture.options,
-      createLocalProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       child,
@@ -137,7 +137,7 @@ test("paused post-restart state with disabled boot mining publishes", async () =
     const evidence = await captureScoreboardEvidence(
       fixture.root,
       fixture.options,
-      createLocalProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       child,
@@ -165,7 +165,7 @@ test("natural analyzer closure publishes without a worker close request", async 
     const evidence = await captureScoreboardEvidence(
       fixture.root,
       fixture.options,
-      createLocalProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       child,
@@ -197,7 +197,7 @@ test("invalid closure-request diagnostic shapes withhold scoreboard evidence", a
       const error = await captureError(captureScoreboardEvidence(
         fixture.root,
         fixture.options,
-        createLocalProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }),
+        createFixtureProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }, { [child]: "node" }),
         child,
         child,
         child,
@@ -227,7 +227,7 @@ test("accepted transport evidence without final consumed handoff withholds proje
     const error = await captureError(captureScoreboardEvidence(
       fixture.root,
       fixture.options,
-      createLocalProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       child,
@@ -260,7 +260,7 @@ test("consumed attempt-004 root is rejected before hardware orchestration", asyn
     const error = await captureError(captureScoreboardEvidence(
       fixture.root,
       options,
-      createLocalProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }),
+      createFixtureProcessPort({ cwd: fixture.root, timeoutMs: 5_000 }, { [child]: "node" }),
       child,
       child,
       child,

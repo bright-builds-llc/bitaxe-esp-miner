@@ -1,6 +1,8 @@
+mod confirmation;
 mod cooling;
 mod inspection;
 mod probe;
+mod restart;
 mod status;
 mod wire;
 use status::response;
@@ -85,6 +87,12 @@ impl From<PossessionError> for WorkerControlError {
 
 #[derive(Clone, Debug)]
 enum PreparedEffect {
+    QualificationRestart {
+        generation: u64,
+        token: u64,
+        context: crate::QualificationRestartContext,
+        expires_at_ms: u64,
+    },
     Admit {
         generation: u64,
         token: u64,
@@ -157,6 +165,8 @@ pub struct WorkerControl<V, S> {
     authenticated_logical_session: bool,
     maybe_pending_admission_token: Option<u64>,
     next_response_token: u64,
+    restart_consumed: bool,
+    maybe_restart_token: Option<u64>,
     seen_nonce_digests: Vec<[u8; 32]>,
     maybe_active: Option<ActiveLease>,
     effect_cleanup_required: bool,
@@ -200,6 +210,8 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             authenticated_logical_session: false,
             maybe_pending_admission_token: None,
             next_response_token: 0,
+            restart_consumed: false,
+            maybe_restart_token: None,
             seen_nonce_digests: Vec::new(),
             maybe_active: None,
             effect_cleanup_required: false,
@@ -241,6 +253,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         self.generation = self.generation.saturating_add(1);
         self.maybe_admission = None;
         self.maybe_pending_admission_token = None;
+        self.maybe_restart_token = None;
         self.maybe_boot_restoration_report_generation = None;
         self.seen_nonce_digests.clear();
     }
@@ -283,46 +296,6 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                 .telemetry_cadence_probe_prepared(json.len(), prepared.frame.len() - 1);
         }
         Ok(prepared)
-    }
-
-    pub fn confirm_sent(
-        &mut self,
-        mut response: PreparedResponse,
-    ) -> Result<(), WorkerControlError> {
-        let Some(effect) = response.maybe_effect.take() else {
-            return Ok(());
-        };
-        match effect {
-            PreparedEffect::Admit {
-                generation,
-                token,
-                established_at_monotonic_milliseconds,
-                control_session_binding_sha256,
-            } => {
-                if generation != self.generation
-                    || self.maybe_pending_admission_token != Some(token)
-                {
-                    return Err(WorkerControlError::StaleResponse);
-                }
-                self.maybe_pending_admission_token = None;
-                self.authenticated_logical_session = true;
-                self.maybe_admission = Some(LogicalSessionAdmission {
-                    generation,
-                    established_at_monotonic_milliseconds,
-                    context: WorkerLeaseAuthorizationContext::parse(
-                        &control_session_binding_sha256,
-                    )
-                    .map_err(|_| WorkerControlError::InvalidProof)?,
-                });
-            }
-            PreparedEffect::BootRestorationReported { generation } => {
-                if generation != self.generation || !self.boot_restoration_clear_required {
-                    return Err(WorkerControlError::StaleResponse);
-                }
-                self.maybe_boot_restoration_report_generation = Some(generation);
-            }
-        }
-        Ok(())
     }
 
     pub fn disconnect(&mut self, monotonic_milliseconds: u64) -> Result<(), WorkerControlError> {
@@ -396,6 +369,9 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         request: ControllerRequest,
         now: u64,
     ) -> Result<PreparedResponse, WorkerControlError> {
+        if request.command == "qualification_restart" {
+            return self.prepare_qualification_restart(&request, now);
+        }
         if request.command == "serial_trace_review" {
             return self.review_serial_trace(&request, now);
         }

@@ -92,3 +92,14 @@ pub(crate) fn begin_dispatch(permit: WorkPermit, now_ms: u64) -> bool {
 pub(crate) fn note_asic_halted(now_ms: u64) {
     GATE.note_asic_halted(now_ms);
 }
+
+pub(crate) fn is_idle(generation: WorkerGeneration) -> bool {
+    GATE.is_idle(generation)
+}
+pub(crate) fn claim_idle_restart(generation: WorkerGeneration) -> bool {
+    GATE.claim_idle_restart(generation)
+}
+
+pub(crate) fn abort_idle_restart(generation: WorkerGeneration) -> bool {
+    GATE.abort_idle_restart(generation)
+}
