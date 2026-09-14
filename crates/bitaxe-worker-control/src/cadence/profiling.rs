@@ -63,6 +63,21 @@ impl LiveStageProfiler {
         }
     }
 
+    /// Starts an explicit timing boundary without forwarding its operation's value.
+    #[inline(always)]
+    pub fn maybe_start_stage(&self) -> Option<u64> {
+        self.maybe_clock.map(|clock| clock())
+    }
+
+    /// Completes an explicit boundary after the caller has materialized its own result in place.
+    #[inline(always)]
+    pub fn finish_stage(&self, stage: LiveStage, maybe_started: Option<u64>) {
+        let (Some(started), Some(clock)) = (maybe_started, self.maybe_clock) else {
+            return;
+        };
+        self.finish_record(stage, started, clock());
+    }
+
     /// Measures one exclusive operation. Missing/duplicate stages and invalid clocks remain explicit.
     #[inline(always)]
     pub fn measure<T>(&self, stage: LiveStage, operation: impl FnOnce() -> T) -> T {

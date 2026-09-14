@@ -57,6 +57,7 @@ rust_binary(
         "src/operator_evidence/snapshot_coherence_tests.rs",
         "src/operator_snapshot_evidence.rs",
         "src/operator_snapshot_evidence/tests.rs",
+        "src/operator_snapshot_evidence/tests/source_guard.rs",
         "src/parity_work.rs",
         "src/parity_work/activation_tests.rs",
         "src/parity_work/closure.rs",

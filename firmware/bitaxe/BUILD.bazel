@@ -289,6 +289,7 @@ filegroup(
         "src/main.rs",
         "src/operator_snapshot_retention.rs",
         "src/operator_snapshot_publication.rs",
+        "src/operator_snapshot_publication/profiling_tests.rs",
         "src/platform_identity.rs",
         "src/platform_identity/installed_asset_version.rs",
         "src/production_mining_session/watchdog.rs",
@@ -422,7 +423,8 @@ rust_test(
 
 rust_test(
     name = "operator_snapshot_publication_shell_tests",
-    srcs = ["src/operator_snapshot_publication.rs"],
+    srcs = ["src/operator_snapshot_publication.rs", "src/operator_snapshot_publication/profiling_tests.rs"],
+    crate_root = "src/operator_snapshot_publication.rs",
     crate_name = "operator_snapshot_publication_shell_tests",
     edition = "2021",
     deps = ["//crates/bitaxe-api:bitaxe_api", "//crates/bitaxe-worker-control:bitaxe_worker_control"],
@@ -900,6 +902,7 @@ rust_test(
     srcs = [
         "src/log_buffer.rs",
         "src/operator_snapshot_publication.rs",
+        "src/operator_snapshot_publication/profiling_tests.rs",
         "src/operator_snapshot_retention.rs",
         "src/operator_snapshot_retention_production_tests.rs",
     ],

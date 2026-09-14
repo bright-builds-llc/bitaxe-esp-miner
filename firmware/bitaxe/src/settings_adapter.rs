@@ -205,7 +205,7 @@ pub fn current_settings_snapshot() -> NvsSnapshot {
 /// Wi-Fi secrets, themes, and unrelated retained values are never admitted.
 #[must_use]
 pub fn current_system_info_settings_snapshot() -> NvsSnapshot {
-    current_system_info_settings_snapshot_profiled(&LiveStageProfiler::disabled())
+    system_info_read::read_unprofiled()
 }
 
 pub(crate) fn current_system_info_settings_snapshot_profiled(

@@ -282,3 +282,28 @@ js_test(
     data = [":fixed_usb_qualification_sources"],
     entry_point = "fixed-usb-qualification/cadence-premining-usb.test.mjs",
 )
+
+js_binary(
+    name = "audit_telemetry_stack",
+    data = ["telemetry-stack-audit.mjs"],
+    entry_point = "telemetry-stack-audit-cli.mjs",
+    visibility = ["//visibility:public"],
+)
+
+js_test(
+    name = "telemetry_stack_audit_test",
+    data = ["telemetry-stack-audit.mjs"],
+    entry_point = "telemetry-stack-audit.test.mjs",
+)
+
+js_test(
+    name = "fixed_usb_cadence_startup_recovery_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/cadence-startup-recovery.test.mjs",
+)
+
+js_test(
+    name = "fixed_usb_cadence_startup_supersession_test",
+    data = [":fixed_usb_qualification_sources"],
+    entry_point = "fixed-usb-qualification/cadence-startup-supersession.test.mjs",
+)

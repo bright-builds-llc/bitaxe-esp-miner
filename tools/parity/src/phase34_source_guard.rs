@@ -225,12 +225,25 @@ fn phase34_runtime_health_is_passive_correlated_and_effect_free() {
     assert!(!TASK_WATCHDOG_OBSERVATION_SOURCE.contains("publication_sequence"));
     assert!(candidate_collection.contains("runtime_health_adapter::collect()"));
     assert!(!candidate_collection.contains("collect(crate::runtime_uptime::millis())"));
-    assert_eq!(
-        candidate_collection
-            .matches("runtime_health_adapter::collect")
-            .count(),
-        1
-    );
+    for collection in [
+        source_between(
+            RUNTIME_SNAPSHOT_SOURCE,
+            "fn collect_operator_snapshot_candidate(",
+            "fn collect_operator_snapshot_candidate_profiled(",
+        ),
+        source_between(
+            RUNTIME_SNAPSHOT_SOURCE,
+            "fn collect_operator_snapshot_candidate_profiled(",
+            "fn runtime_projection_for_api_views",
+        ),
+    ] {
+        assert_eq!(
+            collection
+                .matches("runtime_health_adapter::collect")
+                .count(),
+            1
+        );
+    }
     let identity_assignment = completed_snapshot
         .find("snapshot.operator_snapshot_identity = operator_snapshot_identity")
         .expect("capture identity assignment");
@@ -465,8 +478,13 @@ fn phase34_snapshot_publication_orders_real_retention_and_issuance() {
         .expect("issuance adapter");
     assert!(collect < complete && complete < retain && retain < issue);
     assert!(SNAPSHOT_PUBLICATION_SOURCE.contains("let candidate = collect();"));
-    assert!(SNAPSHOT_PUBLICATION_SOURCE
-        .contains("measure(LiveStage::SerializationQueue, || issue(publication))"));
+    let issue_call = SNAPSHOT_PUBLICATION_SOURCE
+        .find("let issue_result = issue(publication);")
+        .expect("direct issuance without a large timing-wrapper result");
+    let issue_timing = SNAPSHOT_PUBLICATION_SOURCE
+        .find("timing.finish_stage(LiveStage::SerializationQueue, maybe_started);")
+        .expect("issuance timing boundary");
+    assert!(issue_call < issue_timing);
     assert!(SNAPSHOT_PUBLICATION_SOURCE
         .contains("map_err(|source| OperatorSnapshotPublishError::Issuance"));
     assert!(SNAPSHOT_PUBLICATION_SOURCE.contains("RetentionError, IssueError"));

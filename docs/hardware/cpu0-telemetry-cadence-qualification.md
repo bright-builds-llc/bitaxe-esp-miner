@@ -293,3 +293,53 @@ addition to every unchanged cadence/publication/safety criterion. Publish the
 coordinated pair, run all required software/native gates, preserve exact
 artifacts and collect four fresh cycles and all three phases. On completion,
 expected accounting is next18/last17/1560000ms with no pending reservation.
+
+## Recovery from ordinal 17 initial startup failure
+
+The first ordinal-17 installation wrote its admitted segments but failed
+startup qualification before any browser, phase, cycle or allowance issuance.
+Keep that preparation and its failure-only inventory unchanged. It cannot be
+served again or classified by the existing permission-only or idle/USB
+pre-mining closure classes. Its host cleanup proves no device restoration or
+fresh accounting. The last validated charged predecessor remains ordinal 16;
+next17/1380000ms is an expectation until freshly authenticated.
+
+The targeted software correction removes the large temporary completion
+`Result` that expanded the emitted main-task call chain beyond 16384 bytes.
+Preserve all task stacks, task placement, priorities, sleep and safety limits.
+Verify the actual native path against the failing image and corrected image,
+alongside behavioral and canonical tests, before any additional installation.
+
+Use distinct repo-owned `cadence-startup-recovery-preflight`,
+`cadence-startup-recovery-consume-install`, `cadence-startup-recovery-serve`,
+`cadence-startup-recovery-judge` and read-only
+`cadence-startup-recovery-review` commands.
+This is a recovery-only context with no signer, pool input, grant delivery,
+work routes, allowance reservation or fault injection. Bind the active cadence
+task, sealed failed predecessor, last charged result, verified correction,
+changed clean published pair and exact artifacts. Assign a new protected
+recovery directory exclusively; neither the failure seal nor its ordinal
+marker may be rewritten. Historical Hello commands keep their archived-task
+rejection.
+
+Allow one fresh detector admission and one state-preserving corrected package
+installation through the existing physical lease, same-device ROM proof and
+disjoint-segment guards. Prearm the command's process observer, then exclusively
+consume the installation claim before any write or installation-evidence child
+creation. The claim remains consumed after failure. Require healthy exact startup and complete flash-owner
+release before the native browser gesture. Fresh authenticated possession must
+confirm inactive leases, mine-on-boot false, stable exact identity, safe baseline
+and both unchanged ledgers. Observe and close the same admitted recovery
+session, preserving its baseline and actual host/browser/USB cleanup. No
+pre-failure settings-baseline continuity is manufactured; write-segment
+preservation and the later four full qualification cycles remain distinct
+obligations. A failure remains unverified and cannot authorize an unchanged
+retry; preserve the earliest cause and apply the existing repeated-boundary stop.
+
+Only a sealed, independently verified recovery receipt can support
+`cadence-preflight --supersede-startup <receipt>`. Require that exact recovered
+pair, the same charged predecessor, fresh unused allowance identity and an
+exclusive ordinal-17 preparation-2 assignment. This grants no authority from
+the failed preparation itself. Repeat all four qualification cycles and all
+three captures with fresh accounting before issuance. Recovery observations
+never substitute for those measurements or relax any acceptance criterion.

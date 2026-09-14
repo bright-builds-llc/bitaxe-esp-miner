@@ -12,7 +12,10 @@ pub use command_surface::{
     cancel_identify_if_active_at, command_status_wire, identify_mode, record_display_availability,
     record_display_render, record_found_block, record_restart_command, ButtonIdentifyCancellation,
 };
-use settings_projection::collect_settings_projection;
+use settings_projection::{
+    apply_settings_snapshot, apply_wifi_snapshot, collect_settings_projection,
+    collect_settings_projection_profiled,
+};
 mod screen;
 mod screen_projection;
 pub use screen::collect_screen_snapshot;
@@ -214,10 +217,18 @@ pub fn publish_projected_live_telemetry_payload<T, E>(
     timestamp_ms: u64,
     issue: impl FnOnce(serde_json::Value) -> Result<T, E>,
 ) -> Result<T, OperatorSnapshotPublishError<RetainedPairStorageError, E>> {
-    publish_projected_live_telemetry_payload_profiled(
-        timestamp_ms,
-        issue,
-        &LiveStageProfiler::disabled(),
+    publish_operator_snapshot(
+        false,
+        |snapshot, projection, maybe_sample_marker| {
+            project_api_views(
+                snapshot,
+                &projection,
+                maybe_sample_marker,
+                timestamp_ms,
+                0.0,
+            )
+        },
+        |views| issue(views.telemetry_payload),
     )
 }
 
@@ -347,12 +358,36 @@ fn publish_operator_snapshot<Publication, T, E>(
     ) -> Publication,
     issue: impl FnOnce(Publication) -> Result<T, E>,
 ) -> Result<T, OperatorSnapshotPublishError<RetainedPairStorageError, E>> {
-    publish_operator_snapshot_profiled(
-        drain_sample_marker,
-        project,
-        issue,
-        &LiveStageProfiler::disabled(),
-    )
+    let publisher = OPERATOR_SNAPSHOT_PUBLISHER.get_or_init(OperatorSnapshotPublisher::new);
+    let result = publisher.publish(
+        crate::boot_evidence::operator_snapshot_boot_session(),
+        || collect_operator_snapshot_candidate(drain_sample_marker),
+        |candidate, identity| {
+            let maybe_sample_marker = candidate.maybe_sample_marker;
+            let projection = candidate.projection.clone();
+            let snapshot = complete_operator_snapshot(candidate, identity);
+            let retained_marker = identity.retained_marker();
+            let retained_runtime_health = bitaxe_api::retained_runtime_health_record(
+                identity.boot_session(),
+                identity.revision(),
+                &snapshot.runtime_health,
+            );
+            CompletedOperatorSnapshot {
+                output: project(snapshot, projection, maybe_sample_marker),
+                retained_marker,
+                retained_runtime_health,
+            }
+        },
+        |publication| {
+            crate::operator_snapshot_retention::retain_completed_operator_snapshot(
+                &publication.retained_marker,
+                &publication.retained_runtime_health,
+            )
+        },
+        |publication| issue(publication.output),
+    );
+    log_recovered_publication_lock(&result);
+    result.map(|publication| publication.output)
 }
 
 fn publish_operator_snapshot_profiled<Publication, T, E>(
@@ -399,35 +434,51 @@ fn publish_operator_snapshot_profiled<Publication, T, E>(
 }
 
 fn collect_operator_snapshot_candidate(drain_sample_marker: bool) -> OperatorSnapshotCandidate {
-    collect_operator_snapshot_candidate_profiled(
-        drain_sample_marker,
-        &LiveStageProfiler::disabled(),
-    )
+    let (projection, maybe_sample_marker, block_found) =
+        runtime_projection_for_api_views(drain_sample_marker);
+    let platform_identity = crate::platform_identity::collect();
+    let platform =
+        collect_platform_snapshot(PlatformSnapshot::safe_ultra_205(), &platform_identity);
+    let runtime_health = crate::runtime_health_adapter::collect();
+    let observations = crate::safety_adapter::observation_snapshot();
+    let safe_telemetry = SafeTelemetrySnapshot::from_observations(&observations);
+    let settings = collect_settings_projection();
+    let wifi = crate::wifi_adapter::current_wifi_snapshot();
+    OperatorSnapshotCandidate {
+        projection,
+        maybe_sample_marker,
+        block_found,
+        platform_identity,
+        platform,
+        runtime_health,
+        safe_telemetry,
+        settings,
+        wifi,
+    }
 }
 
 fn collect_operator_snapshot_candidate_profiled(
     drain_sample_marker: bool,
     timing: &LiveStageProfiler,
 ) -> OperatorSnapshotCandidate {
-    let (projection, maybe_sample_marker, block_found) = timing
-        .measure(LiveStage::VisibleState, || {
-            runtime_projection_for_api_views(drain_sample_marker)
-        });
-    let (platform_identity, platform) = timing.measure(LiveStage::Platform, || {
-        let identity = crate::platform_identity::collect();
-        let platform = collect_platform_snapshot(PlatformSnapshot::safe_ultra_205(), &identity);
-        (identity, platform)
-    });
-    let (runtime_health, safe_telemetry) = timing.measure(LiveStage::HealthSafety, || {
-        let runtime_health = crate::runtime_health_adapter::collect();
-        let observations = crate::safety_adapter::observation_snapshot();
-        (
-            runtime_health,
-            SafeTelemetrySnapshot::from_observations(&observations),
-        )
-    });
-    let settings = collect_settings_projection(timing);
-    let wifi = timing.measure(LiveStage::Wifi, crate::wifi_adapter::current_wifi_snapshot);
+    let maybe_started = timing.maybe_start_stage();
+    let (projection, maybe_sample_marker, block_found) =
+        runtime_projection_for_api_views(drain_sample_marker);
+    timing.finish_stage(LiveStage::VisibleState, maybe_started);
+    let maybe_started = timing.maybe_start_stage();
+    let platform_identity = crate::platform_identity::collect();
+    let platform =
+        collect_platform_snapshot(PlatformSnapshot::safe_ultra_205(), &platform_identity);
+    timing.finish_stage(LiveStage::Platform, maybe_started);
+    let maybe_started = timing.maybe_start_stage();
+    let runtime_health = crate::runtime_health_adapter::collect();
+    let observations = crate::safety_adapter::observation_snapshot();
+    let safe_telemetry = SafeTelemetrySnapshot::from_observations(&observations);
+    timing.finish_stage(LiveStage::HealthSafety, maybe_started);
+    let settings = collect_settings_projection_profiled(timing);
+    let maybe_started = timing.maybe_start_stage();
+    let wifi = crate::wifi_adapter::current_wifi_snapshot();
+    timing.finish_stage(LiveStage::Wifi, maybe_started);
     OperatorSnapshotCandidate {
         projection,
         maybe_sample_marker,
@@ -507,42 +558,6 @@ impl CommandVisibleState {
         &mut self,
     ) -> Option<RuntimeProjectionSampleMarker> {
         self.runtime_projection.maybe_drain_pending_sample_marker()
-    }
-}
-
-fn apply_settings_snapshot(snapshot: &mut ApiSnapshot, settings: SettingsProjection) {
-    snapshot.system_info_settings = settings.system_info;
-    snapshot.project_settings.start_mining_on_boot = settings.start_mining_on_boot;
-    if let Some(hostname) = settings.maybe_hostname {
-        snapshot.platform.hostname = hostname;
-    }
-
-    if let Some(frequency) = settings.maybe_frequency {
-        snapshot.config.asic_frequency_mhz = frequency;
-    }
-
-    if let Some(voltage) = settings.maybe_voltage {
-        snapshot.config.asic_voltage_mv = voltage;
-    }
-
-    if let Some(auto_fan_speed) = settings.maybe_auto_fan_speed {
-        snapshot.config.auto_fan_speed = auto_fan_speed;
-    }
-
-    if let Some(manual_fan_speed) = settings.maybe_manual_fan_speed {
-        snapshot.config.manual_fan_speed = manual_fan_speed;
-    }
-}
-
-fn apply_wifi_snapshot(snapshot: &mut ApiSnapshot, wifi: crate::wifi_adapter::WifiRuntimeSnapshot) {
-    snapshot.platform.wifi_status = wifi.wifi_status;
-    snapshot.platform.ssid = wifi.ssid;
-    snapshot.platform.ipv4 = wifi.ipv4;
-    snapshot.platform.ipv6 = wifi.ipv6;
-    snapshot.platform.mac_addr = wifi.mac_addr;
-    snapshot.platform.ap_enabled = wifi.ap_enabled;
-    if let Some(rssi) = wifi.maybe_rssi_dbm {
-        snapshot.safe_telemetry.wifi_rssi_dbm = rssi;
     }
 }
 

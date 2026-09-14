@@ -43,14 +43,36 @@ impl OperatorSnapshotPublisher {
         OperatorSnapshotPublication<T>,
         OperatorSnapshotPublishError<RetentionError, IssueError>,
     > {
-        self.publish_profiled(
-            boot_session,
-            collect,
-            complete,
-            retain,
-            issue,
-            &LiveStageProfiler::disabled(),
-        )
+        let Some(_depth_guard) = PublicationDepthGuard::maybe_enter() else {
+            return Err(OperatorSnapshotPublishError::Reentrant);
+        };
+        let candidate = collect();
+        let (mut sequence, lock_health) = match self.sequence.lock() {
+            Ok(sequence) => (sequence, OperatorSnapshotLockHealth::Healthy),
+            Err(poisoned) => {
+                let sequence = poisoned.into_inner();
+                self.sequence.clear_poison();
+                (sequence, OperatorSnapshotLockHealth::RecoveredPoison)
+            }
+        };
+        let identity = sequence
+            .next_identity(boot_session)
+            .map_err(|_| OperatorSnapshotPublishError::SequenceExhausted { lock_health })?;
+        let publication = complete(candidate, identity);
+        retain(&publication).map_err(|source| OperatorSnapshotPublishError::Retention {
+            source,
+            lock_health,
+        })?;
+        let output =
+            issue(publication).map_err(|source| OperatorSnapshotPublishError::Issuance {
+                source,
+                lock_health,
+            })?;
+
+        Ok(OperatorSnapshotPublication {
+            output,
+            lock_health,
+        })
     }
 
     /// Preserves publication ordering while measuring exclusive stages for the main telemetry owner.
@@ -70,33 +92,39 @@ impl OperatorSnapshotPublisher {
             return Err(OperatorSnapshotPublishError::Reentrant);
         };
         let candidate = collect();
-        let (mut sequence, lock_health) =
-            match timing.measure(LiveStage::PublicationOrderWait, || self.sequence.lock()) {
-                Ok(sequence) => (sequence, OperatorSnapshotLockHealth::Healthy),
-                Err(poisoned) => {
-                    let sequence = poisoned.into_inner();
-                    self.sequence.clear_poison();
-                    (sequence, OperatorSnapshotLockHealth::RecoveredPoison)
-                }
-            };
-        let publication = timing.measure(LiveStage::ProjectionComplete, || {
-            let identity = sequence
-                .next_identity(boot_session)
-                .map_err(|_| OperatorSnapshotPublishError::SequenceExhausted { lock_health })?;
-            Ok(complete(candidate, identity))
+        let maybe_started = timing.maybe_start_stage();
+        let lock_result = self.sequence.lock();
+        timing.finish_stage(LiveStage::PublicationOrderWait, maybe_started);
+        let (mut sequence, lock_health) = match lock_result {
+            Ok(sequence) => (sequence, OperatorSnapshotLockHealth::Healthy),
+            Err(poisoned) => {
+                let sequence = poisoned.into_inner();
+                self.sequence.clear_poison();
+                (sequence, OperatorSnapshotLockHealth::RecoveredPoison)
+            }
+        };
+        let identity = sequence
+            .next_identity(boot_session)
+            .map_err(|_| OperatorSnapshotPublishError::SequenceExhausted { lock_health })?;
+        // Materialize the potentially large publication/result only in this owner,
+        // never through an additional generic timing closure or Result wrapper.
+        let maybe_started = timing.maybe_start_stage();
+        let publication = complete(candidate, identity);
+        timing.finish_stage(LiveStage::ProjectionComplete, maybe_started);
+        let maybe_started = timing.maybe_start_stage();
+        let retention_result = retain(&publication);
+        timing.finish_stage(LiveStage::Retention, maybe_started);
+        retention_result.map_err(|source| OperatorSnapshotPublishError::Retention {
+            source,
+            lock_health,
         })?;
-        timing
-            .measure(LiveStage::Retention, || retain(&publication))
-            .map_err(|source| OperatorSnapshotPublishError::Retention {
-                source,
-                lock_health,
-            })?;
-        let output = timing
-            .measure(LiveStage::SerializationQueue, || issue(publication))
-            .map_err(|source| OperatorSnapshotPublishError::Issuance {
-                source,
-                lock_health,
-            })?;
+        let maybe_started = timing.maybe_start_stage();
+        let issue_result = issue(publication);
+        timing.finish_stage(LiveStage::SerializationQueue, maybe_started);
+        let output = issue_result.map_err(|source| OperatorSnapshotPublishError::Issuance {
+            source,
+            lock_health,
+        })?;
 
         Ok(OperatorSnapshotPublication {
             output,
@@ -499,94 +527,5 @@ mod tests {
 }
 
 #[cfg(test)]
-mod profiling_tests {
-    use super::*;
-    thread_local! { static NOW: Cell<u64> = const { Cell::new(100) }; }
-    fn now() -> u64 {
-        NOW.with(Cell::get)
-    }
-    fn advance(delta: u64) {
-        NOW.with(|clock| clock.set(clock.get() + delta));
-    }
-
-    #[test]
-    fn production_publisher_profiles_completion_retention_and_issuance_exclusively() {
-        // Arrange
-        NOW.with(|clock| clock.set(100));
-        let publisher = OperatorSnapshotPublisher::new();
-        let timing = LiveStageProfiler::new(now);
-        let collection = [
-            LiveStage::VisibleState,
-            LiveStage::Platform,
-            LiveStage::HealthSafety,
-            LiveStage::ConfirmedSettings,
-            LiveStage::SettingsTransactionWait,
-            LiveStage::SettingsNvsRead,
-            LiveStage::Wifi,
-        ];
-        // Act
-        let result = publisher.publish_profiled(
-            BootSessionId::from_words([1, 2, 3, 4]),
-            || {
-                for stage in collection {
-                    timing.measure(stage, || advance(10));
-                }
-            },
-            |(), identity| {
-                advance(300);
-                identity
-            },
-            |_| {
-                advance(400);
-                Ok::<_, &'static str>(())
-            },
-            |identity| {
-                advance(500);
-                Ok::<_, &'static str>(identity.revision().get())
-            },
-            &timing,
-        );
-        // Assert
-        assert_eq!(result.expect("published").output, 1);
-        assert!(timing.measurements().complete);
-        assert_eq!(
-            timing.measurements().durations_us,
-            [10, 10, 10, 10, 10, 10, 10, 0, 300, 400, 500]
-        );
-    }
-
-    #[test]
-    fn failed_retention_remains_a_failure_with_explicit_incomplete_profiling() {
-        // Arrange
-        NOW.with(|clock| clock.set(100));
-        let publisher = OperatorSnapshotPublisher::new();
-        let timing = LiveStageProfiler::new(now);
-        let issued = Cell::new(false);
-        // Act
-        let result = publisher.publish_profiled(
-            BootSessionId::from_words([1, 2, 3, 4]),
-            || (),
-            |(), _| (),
-            |_| {
-                advance(400);
-                Err("retention failure")
-            },
-            |()| {
-                issued.set(true);
-                Ok::<_, &'static str>(())
-            },
-            &timing,
-        );
-        // Assert
-        assert!(matches!(
-            result,
-            Err(OperatorSnapshotPublishError::Retention { .. })
-        ));
-        assert!(!issued.get());
-        assert_eq!(
-            timing.measurements().durations_us[LiveStage::Retention as usize],
-            400
-        );
-        assert!(!timing.measurements().complete);
-    }
-}
+#[path = "operator_snapshot_publication/profiling_tests.rs"]
+mod profiling_tests;

@@ -38,12 +38,25 @@ fn phase34_source_guard_rejects_platform_substitution_and_effects() {
         .find("snapshot.platform_identity = candidate.platform_identity")
         .expect("platform candidate attachment");
     assert!(identity_assignment < platform_attachment);
-    assert_eq!(
-        candidate_collection
-            .matches("crate::platform_identity::collect()")
-            .count(),
-        1
-    );
+    for collection in [
+        source_between(
+            RUNTIME_SNAPSHOT_SOURCE,
+            "fn collect_operator_snapshot_candidate(",
+            "fn collect_operator_snapshot_candidate_profiled(",
+        ),
+        source_between(
+            RUNTIME_SNAPSHOT_SOURCE,
+            "fn collect_operator_snapshot_candidate_profiled(",
+            "fn runtime_projection_for_api_views",
+        ),
+    ] {
+        assert_eq!(
+            collection
+                .matches("crate::platform_identity::collect()")
+                .count(),
+            1
+        );
+    }
 
     for source in production_identity_sources {
         for forbidden in [

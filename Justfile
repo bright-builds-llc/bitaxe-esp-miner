@@ -346,6 +346,9 @@ fixed-usb-qualification *args:
 audit-owner-stack elf objdump owner_source:
     bazel run //scripts:audit_owner_stack -- "{{ elf }}" "{{ objdump }}" "{{ owner_source }}"
 
+audit-telemetry-stack elf objdump sdkconfig:
+    bazel run //scripts:audit_telemetry_stack -- "{{ elf }}" "{{ objdump }}" "{{ sdkconfig }}"
+
 # Metadata-only bounded receive drain; never enters the downloader.
 drain-worker-serial *args:
     bazel run //tools/flash:flash -- drain-worker-serial {{ args }}

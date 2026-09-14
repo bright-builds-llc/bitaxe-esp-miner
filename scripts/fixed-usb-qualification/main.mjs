@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { CADENCE_SCHEMA } from "./cadence-contract.mjs";
 import { cadencePreflight } from "./cadence-preflight.mjs";
+import { startupRecoveryPreflight, createStartupRecoverySupervisor, judgeStartupRecovery,
+  readStartupRecovery, consumeStartupRecoveryInstall } from "./cadence-startup-recovery.mjs";
 import { closeUnissued } from "./cadence-unissued.mjs";
 import { closePremining, reviewPremining } from "./cadence-premining.mjs";
 import { noMiningPreflight, NO_MINING_SCHEMA } from "./no-mining-context.mjs";
@@ -21,7 +23,7 @@ import { createSupervisor } from "./server.mjs";
 import { finishWindow, recordCycle } from "./store.mjs";
 import { protectedPath, QualificationError, readJson, requireCondition } from "./contract.mjs";
 
-const KEYS = { "--supersede-premining": "supersedePremining", "--supersede-unissued": "supersedeUnissued", "--observer-binary": "observerBinary", "--recovery-phase": "recoveryPhase", "--original-campaign-record": "originalCampaignRecord", "--retained-runtime-from": "retainedRuntimeFrom", "--suggested-difficulty": "suggestedDifficulty", "--cycles-from": "cyclesFrom", "--purpose": "purpose", "--previous-receipt": "previousReceipt", "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
+const KEYS = { "--supersede-startup": "supersedeStartup", "--supersede-premining": "supersedePremining", "--supersede-unissued": "supersedeUnissued", "--observer-binary": "observerBinary", "--recovery-phase": "recoveryPhase", "--original-campaign-record": "originalCampaignRecord", "--retained-runtime-from": "retainedRuntimeFrom", "--suggested-difficulty": "suggestedDifficulty", "--cycles-from": "cyclesFrom", "--purpose": "purpose", "--previous-receipt": "previousReceipt", "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
   "--manifest": "manifest", "--private-root": "privateRoot", "--authority-directory": "authorityDirectory", "--pool-credentials": "poolCredentials",
   "--cooling-input": "coolingInput", "--predecessor-root": "predecessorRoot", "--bun": "bun", "--port": "port", "--window": "window", "--input": "input",
   "--qualification-source-commit": "qualificationSourceCommit", "--gate-qualification-source-commit": "gateQualificationSourceCommit" };
@@ -36,7 +38,12 @@ export async function main(args, operations = {}) {
   }
   requireCondition(options.privateRoot, "private_root_required");
   const allowed = {
-    "cadence-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "authorityDirectory", "bun", "previousReceipt", "input", "suggestedDifficulty", "observerBinary", "supersedeUnissued", "supersedePremining"],
+    "cadence-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "authorityDirectory", "bun", "previousReceipt", "input", "suggestedDifficulty", "observerBinary", "supersedeUnissued", "supersedePremining", "supersedeStartup"],
+    "cadence-startup-recovery-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "input", "originalCampaignRecord", "predecessorRoot", "previousReceipt"],
+    "cadence-startup-recovery-serve": ["privateRoot", "port", "bun"],
+    "cadence-startup-recovery-judge": ["privateRoot", "input"],
+    "cadence-startup-recovery-review": ["privateRoot"],
+    "cadence-startup-recovery-consume-install": ["privateRoot"],
     "cadence-judge": ["privateRoot", "input"],
     "cadence-close-unissued": ["privateRoot", "input"],
     "cadence-close-premining": ["privateRoot"],
@@ -58,6 +65,21 @@ export async function main(args, operations = {}) {
     "amend-policy": ["privateRoot", "qualificationSourceCommit", "gateQualificationSourceCommit"],
   }[command];
   requireCondition(allowed && Object.keys(options).every((key) => allowed.includes(key)), "command_arguments");
+  if (command === "cadence-startup-recovery-preflight") {
+    for (const key of ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "input", "originalCampaignRecord", "predecessorRoot"])
+      requireCondition(options[key], "preflight_argument_missing");
+    return startupRecoveryPreflight(options);
+  }
+  if (command === "cadence-startup-recovery-serve") return serveSupervisor(() => createStartupRecoverySupervisor(options), options);
+  if (command === "cadence-startup-recovery-consume-install") return consumeStartupRecoveryInstall(resolve(options.privateRoot));
+  if (command === "cadence-startup-recovery-judge") {
+    requireCondition(options.input, "input_required");
+    return judgeStartupRecovery(resolve(options.privateRoot), options.input);
+  }
+  if (command === "cadence-startup-recovery-review") {
+    await readStartupRecovery(resolve(options.privateRoot, "result.json"));
+    return { startup_recovery_verified: true, mining_authorized: false, qualification_pass: false };
+  }
   if (command === "iterative-recover-seal") return recoverSampleSeal(resolve(options.privateRoot));
   if (command === "iterative-continue-unreserved") {
     for (const key of ["predecessorRoot", "input", "qualificationSourceCommit", "authorityDirectory"]) requireCondition(options[key], "continuation_argument_missing");
@@ -119,18 +141,7 @@ export async function main(args, operations = {}) {
   }
   if (command === "serve" || command === "no-mining-serve") {
     if (command === "serve") requireCondition(options.authorityDirectory && options.poolCredentials, "serve_argument_missing");
-    const stdout = fstatSync(1);
-    requireCondition(stdout.isFile() && (stdout.mode & 0o777) === 0o600, "protected_stdout_required");
-    const port = Number(options.port ?? 0);
-    requireCondition(Number.isInteger(port) && port >= 0 && port <= 65535, "port_argument");
-    const server = command === "no-mining-serve" ? await createNoMiningSupervisor({ ...options, context }) : await createSupervisor({ ...options, context });
-    server.listen(port, "127.0.0.1");
-    await once(server, "listening");
-    process.stdout.write(`qualification_url=http://127.0.0.1:${server.address().port}/\n`);
-    for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, () => { server.close(); server.closeIdleConnections(); });
-    await once(server, "close");
-    if (server.closeQualificationResources) await server.closeQualificationResources();
-    return { supervisor: "closed", device_effects: false };
+    return serveSupervisor(() => command === "no-mining-serve" ? createNoMiningSupervisor({ ...options, context }) : createSupervisor({ ...options, context }), options);
   }
   if (command === "judge") return finishWindow(resolve(options.privateRoot), context, Number(options.window));
   if (command === "record-cycle") {
@@ -139,6 +150,21 @@ export async function main(args, operations = {}) {
     return recordCycle(resolve(options.privateRoot), context, await readJson(options.input));
   }
   throw new QualificationError("command_unavailable");
+}
+
+async function serveSupervisor(create, options) {
+  const stdout = fstatSync(1);
+  requireCondition(stdout.isFile() && (stdout.mode & 0o777) === 0o600, "protected_stdout_required");
+  const port = Number(options.port ?? 0);
+  requireCondition(Number.isInteger(port) && port >= 0 && port <= 65535, "port_argument");
+  const server = await create();
+  server.listen(port, "127.0.0.1");
+  await once(server, "listening");
+  process.stdout.write(`qualification_url=http://127.0.0.1:${server.address().port}/\n`);
+  for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, () => { server.close(); server.closeIdleConnections(); });
+  await once(server, "close");
+  if (server.closeQualificationResources) await server.closeQualificationResources();
+  return { supervisor: "closed", device_effects: false };
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main(process.argv.slice(2)).then((result) => process.stdout.write(`${JSON.stringify(result)}\n`))
