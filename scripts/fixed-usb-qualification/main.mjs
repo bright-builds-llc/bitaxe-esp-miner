@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 import { CADENCE_SCHEMA } from "./cadence-contract.mjs";
 import { cadencePreflight } from "./cadence-preflight.mjs";
+import { resetOriginPreflight } from "./reset-origin-context.mjs";
+import { createResetOriginSupervisor } from "./reset-origin-server.mjs";
+import { judgeResetOrigin, readResetOrigin } from "./reset-origin-judge.mjs";
 import { startupRecoveryPreflight, createStartupRecoverySupervisor, judgeStartupRecovery,
   readStartupRecovery, consumeStartupRecoveryInstall } from "./cadence-startup-recovery.mjs";
 import { closeUnissued } from "./cadence-unissued.mjs";
@@ -38,6 +41,10 @@ export async function main(args, operations = {}) {
   }
   requireCondition(options.privateRoot, "private_root_required");
   const allowed = {
+    "reset-origin-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "input", "originalCampaignRecord", "predecessorRoot", "previousReceipt", "qualificationSourceCommit"],
+    "reset-origin-serve": ["privateRoot", "port", "bun"],
+    "reset-origin-judge": ["privateRoot", "input"],
+    "reset-origin-review": ["privateRoot"],
     "cadence-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "authorityDirectory", "bun", "previousReceipt", "input", "suggestedDifficulty", "observerBinary", "supersedeUnissued", "supersedePremining", "supersedeStartup"],
     "cadence-startup-recovery-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "input", "originalCampaignRecord", "predecessorRoot", "previousReceipt"],
     "cadence-startup-recovery-serve": ["privateRoot", "port", "bun"],
@@ -65,6 +72,20 @@ export async function main(args, operations = {}) {
     "amend-policy": ["privateRoot", "qualificationSourceCommit", "gateQualificationSourceCommit"],
   }[command];
   requireCondition(allowed && Object.keys(options).every((key) => allowed.includes(key)), "command_arguments");
+  if (command === "reset-origin-preflight") {
+    for (const key of ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "input", "originalCampaignRecord", "predecessorRoot", "qualificationSourceCommit"])
+      requireCondition(options[key], "preflight_argument_missing");
+    return resetOriginPreflight(options);
+  }
+  if (command === "reset-origin-serve") return serveSupervisor(() => createResetOriginSupervisor(options), options);
+  if (command === "reset-origin-judge") {
+    requireCondition(options.input, "input_required");
+    return judgeResetOrigin(resolve(options.privateRoot), options.input);
+  }
+  if (command === "reset-origin-review") {
+    await readResetOrigin(resolve(options.privateRoot, "result.json"));
+    return { observation_verified: true, device_recovery_claimed: false, mining_authorized: false };
+  }
   if (command === "cadence-startup-recovery-preflight") {
     for (const key of ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "input", "originalCampaignRecord", "predecessorRoot"])
       requireCondition(options[key], "preflight_argument_missing");
