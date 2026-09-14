@@ -122,6 +122,37 @@ multiple ancestors reference it. Rebuild this cache for every new invocation;
 keep each ancestor inventory, assignment and plan check. Never reuse validation
 across requests or extend a timeout to hide growing duplicate work.
 
+### Journal response completion
+
+Observation 003 sampled through its last batch at 130227 ms but failed journal
+flush after 83 saved ready-state records. No end record, after-accounting or
+closed journal row exists. The parent separately observed Worker Close and
+actual page/process/USB cleanup. Preserve the failed inventory and the original
+transport cause as unretained; the sampled progression is partial evidence.
+
+The production no-mining journal must consume each HTTP response body before
+advancing its queue or completing `flush()`. Successful headers alone do not
+complete the response. A no-hardware browser replay using the production client
+and response helper rejects request84 before this correction and completes 200
+records after it. The [Fetch standard](https://fetch.spec.whatwg.org/#http-network-or-cache-fetch)
+bounds in-flight keepalive bodies at 64 KiB. Preserve existing headers, origin
+rules and keepalive policy; interrupted receipt bodies remain failures.
+
+After verified correction, `reset-origin-preflight --supersede-journal-failure <failed-root>` may reserve one fresh observation004 from the exact sealed003
+journal failure. All supersession flags are mutually exclusive. Require the
+original fixed lineage, unchanged before-accounting, no work or issuance,
+separately verified actual cleanup, and a software-correction plan linked to
+both the failure seal and the exact browser regression receipt. Do not infer
+missing final journal/end/accounting records from cleanup or manufacture them.
+
+Bind the corrected no-mining client under the current qualification-driver
+identity. Its hash selects the served host client in the inner supervisor
+context; the outer retained-runtime client hash and all thirteen historical
+artifacts remain unchanged. Old readers retain their exact historical binding.
+Require a changed clean published driver and an exclusive observation-4 marker,
+then repeat fresh baseline, both accounting reviews and the complete observation
+under every existing limit. No reset, installation or mining effect is added.
+
 ## Stage B: controlled restart interface and observation
 
 The installed Worker interface has no authenticated software-restart command.

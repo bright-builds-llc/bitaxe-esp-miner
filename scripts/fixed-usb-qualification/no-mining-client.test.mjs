@@ -64,3 +64,57 @@ test("published nonbaseline state prevents the observer from invoking Gate", asy
   await assert.rejects(f.helper.interruptReadOnlyStatus(), /read_only_interruption_baseline/u);
   assert.equal(f.posts.length, 0);
 });
+
+function journalFixture({ holdBody = false, failBody = false } = {}) {
+  let observe, accepted = 0, consumed = 0, pendingBytes = 0, release;
+  const bodyGate = new Promise(resolve => { release = resolve; });
+  const state = { expectedFirmwareSourceCommit: "a".repeat(40), status: "ready", padding: "x".repeat(674) };
+  const window = { workerAcceptance: { state: () => state } };
+  const context = createContext({ window, document: { getElementById: () => undefined,
+    createElement: () => ({}), body: { append: () => undefined }, querySelector: () => ({}) },
+    MutationObserver: class { constructor(callback) { observe = callback; } observe() {} },
+    fetch: async (_path, options) => {
+      const bytes = Buffer.byteLength(options.body);
+      if (options.keepalive && pendingBytes + bytes > 65536) throw TypeError("fixture keepalive quota");
+      pendingBytes += bytes; const sequence = ++accepted;
+      return { ok: true, json: async () => {
+        if (holdBody) await bodyGate;
+        if (failBody) throw Error("fixture receipt interrupted");
+        pendingBytes -= bytes; consumed++;
+        return { recorded: true, sequence };
+      } };
+    } });
+  runInContext(client, context);
+  return { helper: window.noMiningSupervisor, record: () => observe(), release,
+    counts: () => ({ accepted, consumed, pendingBytes }) };
+}
+
+test("journal consumes response bodies so repeated records do not exhaust the keepalive quota", async () => {
+  // Arrange
+  const f = journalFixture();
+  // Act
+  for (let index = 0; index < 200; index++) { f.record(); await f.helper.flush(); }
+  // Assert
+  assert.deepEqual(f.counts(), { accepted: 200, consumed: 200, pendingBytes: 0 });
+});
+
+test("flush waits for the receipt body before claiming the state record completed", async () => {
+  // Arrange
+  const f = journalFixture({ holdBody: true });
+  f.record(); let complete = false;
+  // Act
+  const pending = f.helper.flush().then(() => { complete = true; });
+  await new Promise(resolve => setImmediate(resolve));
+  // Assert
+  assert.equal(complete, false);
+  f.release(); await pending;
+  assert.equal(f.counts().consumed, 1);
+});
+
+test("receipt-body failure remains a journal failure", async () => {
+  // Arrange
+  const f = journalFixture({ failBody: true });
+  f.record();
+  // Act / Assert
+  await assert.rejects(f.helper.flush(), /no_mining_record_rejected/u);
+});

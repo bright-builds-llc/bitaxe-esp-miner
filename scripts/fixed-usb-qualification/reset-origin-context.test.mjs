@@ -2,9 +2,8 @@ import assert from "node:assert/strict";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
-import { recoveryState, recordRecoveryState } from "./cadence-startup-fixtures.mjs";
-import { saveNoMiningAccounting } from "./no-mining-accounting.mjs";
 import { inventory } from "./cadence-premining-evidence.mjs";
+import { unusedObservation, preparationReview, journalFailure } from "./reset-origin-successor-fixtures.mjs";
 import { resetOriginFixture } from "./reset-origin-fixtures.mjs";
 import { loadResetOriginContext, resetOriginPreflight, RESET_ORIGIN_POLICY } from "./reset-origin-context.mjs";
 import { digest, fileDigest, readJson, writeNew } from "./contract.mjs";
@@ -102,76 +101,6 @@ test("authority and pool inputs fail before source or credential paths can be in
       code: "reset_origin_credentials_forbidden",
     });
 });
-
-async function unusedObservation(t) {
-  const f = await resetOriginFixture(t),
-    hash = digest(JSON.stringify(f.context));
-  await writeNew(resolve(f.root, "page-serving-failure.json"), {
-    schema: "reset-origin-page-serving-failure-v1",
-    source: "parent-observed",
-    http_status: 200,
-    content_type: "text/html",
-    body_sha256: "a".repeat(64),
-    json_encoded_html: true,
-    browser_control_opened: false,
-    browser_closed: true,
-    first_failure: "html_response_json_encoded",
-  });
-  await writeNew(resolve(f.root, "unused-host-cleanup.json"), {
-    schema: "reset-origin-unused-host-cleanup-v1",
-    source: "parent-observed",
-    browser_closed: true,
-    browser_control_opened: false,
-    supervisor_exited: true,
-    supervisor_exit_code: 0,
-    listener_absent: true,
-    owned_children_absent: true,
-    serial_holders_absent: true,
-    observation_started: false,
-  });
-  await writeNew(resolve(f.root, "reset-origin-server-claim.json"), {
-    schema: "fixed-usb-reset-origin-server-claim-v1",
-    context_sha256: hash,
-  });
-  await writeNew(resolve(f.root, "reset-origin-failure.json"), {
-    schema: "fixed-usb-reset-origin-failure-v1",
-    context_sha256: hash,
-    code: "reset_origin_server_closed_before_end",
-  });
-  const seal = {
-    schema: "fixed-usb-reset-origin-unstarted-failed-inventory-v1",
-    outcome: "unverified",
-    first_failure: "html_response_json_encoded",
-    secondary_failure: "reset_origin_server_closed_before_end",
-    observation_started: false,
-    qualification_pass: false,
-    device_recovery_claimed: false,
-    continuation_authorized: false,
-    context_sha256: hash,
-    artifact_snapshot_sha256: await fileDigest(resolve(f.root, "artifact-snapshot.json")),
-    page_failure_sha256: await fileDigest(resolve(f.root, "page-serving-failure.json")),
-    cleanup_sha256: await fileDigest(resolve(f.root, "unused-host-cleanup.json")),
-    secondary_failure_sha256: await fileDigest(resolve(f.root, "reset-origin-failure.json")),
-    inventory: await inventory(f.root),
-  };
-  await writeNew(resolve(f.root, "failed-inventory.json"), seal);
-  f.operations.expectedResetOriginUnstartedSeal = await fileDigest(resolve(f.root, "failed-inventory.json"));
-  const plan = resolve(dirname(f.root), "observation-correction.json");
-  await writeNew(plan, {
-    schema: "worker-qualification-progress-v1",
-    review: "verified",
-    reason: "software_correction",
-    evidence_sha256: [f.operations.expectedResetOriginUnstartedSeal],
-  });
-  f.successor = {
-    ...f.options,
-    privateRoot: resolve(dirname(f.root), "observation-2"),
-    input: plan,
-    qualificationSourceCommit: "f".repeat(40),
-    supersedeUnstarted: f.root,
-  };
-  return f;
-}
 
 test("exact unstarted failure supports a new driver and exclusive observation assignment without changing runtime or old evidence", async (t) => {
   // Arrange
@@ -298,104 +227,6 @@ test("successor admission and later live validation reject changed predecessor b
     code: "reset_origin_unstarted_changed",
   });
 });
-
-async function preparationReview(t) {
-  const f = await unusedObservation(t);
-  await resetOriginPreflight(f.successor, f.operations);
-  const root = f.successor.privateRoot,
-    context = (await readJson(resolve(root, "context.json"))).context,
-    inner = context.no_mining_context,
-    hash = digest(JSON.stringify(context));
-  for (const status of ["configured", "configured", "ready"]) {
-    const state = recoveryState(inner);
-    if (status === "configured")
-      Object.assign(state, { status, connected: false, deviceBaselineConfirmed: false, deviceLeaseInactive: false });
-    await recordRecoveryState(root, inner, state);
-  }
-  await saveNoMiningAccounting(root, inner, {
-    stage: "before",
-    ledger: f.ledger,
-    original_budget: f.original,
-    state: recoveryState(inner),
-  });
-  for (const status of ["closing", "closing", "closed"]) await recordRecoveryState(root, inner, { ...recoveryState(inner, true), status });
-  await writeNew(resolve(root, "parent-failure-review.json"), {
-    schema: "reset-origin-parent-failure-review-v1",
-    source: "parent-observed",
-    first_failure: "reset_origin_preparation_receipt_review_required",
-    capture_started: false,
-    browser_closed: true,
-    observer: { stage: "failed", started: true, cleanupFailed: false },
-    worker: {
-      status: "closed",
-      connected: false,
-      running: false,
-      serialOwnershipReleased: true,
-      baseline: true,
-      inactive: true,
-      failure: null,
-    },
-    preparation: [
-      { authoritative: false, category: "worker_preparation_receipt", origin: "previous_boot", status: "wrong_firmware" },
-      { authoritative: false, category: "worker_preparation_receipt", origin: "current_boot", status: "unavailable" },
-    ],
-  });
-  await writeNew(resolve(root, "host-cleanup.json"), {
-    schema: "worker-reset-origin-cleanup-v1",
-    source: "parent-observed",
-    browser_closed: true,
-    supervisor_exited: true,
-    supervisor_exit_code: 0,
-    listener_absent: true,
-    owned_children_absent: true,
-    serial_holders_absent: true,
-  });
-  await writeNew(resolve(root, "reset-origin-server-claim.json"), {
-    schema: "fixed-usb-reset-origin-server-claim-v1",
-    context_sha256: hash,
-  });
-  await writeNew(resolve(root, "reset-origin-failure.json"), {
-    schema: "fixed-usb-reset-origin-failure-v1",
-    context_sha256: hash,
-    code: "reset_origin_preparation_receipt_review_required",
-  });
-  await writeNew(resolve(root, "failed-inventory.json"), {
-    schema: "fixed-usb-reset-origin-preparation-review-failed-inventory-v1",
-    outcome: "unverified",
-    first_failure: "reset_origin_preparation_receipt_review_required",
-    capture_started: false,
-    observation_pass: false,
-    device_recovery_claimed: false,
-    continuation_authorized: false,
-    after_accounting_observed: false,
-    context_sha256: hash,
-    artifact_snapshot_sha256: await fileDigest(resolve(root, "artifact-snapshot.json")),
-    parent_failure_sha256: await fileDigest(resolve(root, "parent-failure-review.json")),
-    cleanup_sha256: await fileDigest(resolve(root, "host-cleanup.json")),
-    before_accounting_sha256: await fileDigest(resolve(root, "no-mining-accounting-before.json")),
-    inventory: await inventory(root),
-  });
-  f.operations.expectedResetOriginPreparationReviewSeal = await fileDigest(resolve(root, "failed-inventory.json"));
-  const input = resolve(dirname(root), "preparation-review-correction.json");
-  await writeNew(input, {
-    schema: "worker-qualification-progress-v1",
-    review: "verified",
-    reason: "software_correction",
-    evidence_sha256: [f.operations.expectedResetOriginPreparationReviewSeal],
-  });
-  return {
-    ...f,
-    reviewRoot: root,
-    reviewContext: context,
-    third: {
-      ...f.options,
-      privateRoot: resolve(dirname(root), "observation-3"),
-      qualificationSourceCommit: "1".repeat(40),
-      input,
-      supersedePreparationReview: root,
-    },
-  };
-}
 
 test("exact pre-capture review admits only a new observation with both sealed ancestors unchanged", async (t) => {
   // Arrange
@@ -532,5 +363,144 @@ test("per-invocation shared runtime verification still checks every ancestor inv
   // Act / Assert
   await assert.rejects(loadResetOriginContext(f.third.privateRoot, { operations: f.operations }), {
     code: "reset_origin_unstarted_changed",
+  });
+});
+
+test("exact journal failure admits a separate host-client binding while preserving all incomplete evidence", async (t) => {
+  // Arrange
+  const f = await journalFailure(t),
+    old = await inventory(f.journalRoot);
+  // Act
+  await resetOriginPreflight(f.fourth, f.operations);
+  const context = await loadResetOriginContext(f.fourth.privateRoot, { operations: f.operations });
+  // Assert
+  assert.equal(context.observation_attempt, 4);
+  assert.notEqual(context.observation_id, f.journalContext.observation_id);
+  assert.equal(context.supervisor_client_sha256, f.context.supervisor_client_sha256);
+  assert.equal(context.no_mining_context.supervisor_client_sha256, context.qualification_driver.no_mining_client_sha256);
+  assert.equal(context.qualification_driver.no_mining_client_sha256, await fileDigest(new URL("./no-mining-client.mjs", import.meta.url)));
+  assert.equal(context.mining_authorized, false);
+  assert.equal(context.expected_next_ordinal, 17);
+  assert.equal(context.expected_charged_ms, 1380000);
+  assert.deepEqual(await inventory(f.journalRoot), old);
+  for (const file of ["result.json", "reset-origin-end.json", "no-mining-accounting-after.json"])
+    await assert.rejects(readFile(resolve(f.journalRoot, file)), { code: "ENOENT" });
+  assert.equal((await readJson(resolve(f.journalRoot, "no-mining-state-0083.json"))).state.status, "ready");
+  assert.deepEqual(await loadResetOriginContext(f.journalRoot, { historical: true, operations: f.operations }), f.journalContext);
+});
+
+test("journal successor requires its exact seal and the pinned independently verified regression", async (t) => {
+  // Arrange
+  const f = await journalFailure(t),
+    operations = { ...f.operations };
+  delete operations.expectedResetOriginJournalFailureSeal;
+  // Act / Assert
+  await assert.rejects(resetOriginPreflight(f.fourth, operations), { code: "reset_origin_journal_failure_anchor" });
+  const plan = await readJson(f.fourth.input);
+  plan.evidence_sha256 = [f.operations.expectedResetOriginJournalFailureSeal, "0".repeat(64)];
+  await writeFile(f.fourth.input, JSON.stringify(plan));
+  await assert.rejects(resetOriginPreflight(f.fourth, f.operations), { code: "reset_origin_unstarted_correction" });
+});
+
+test("journal successor rejects fabricated final evidence, cleanup claims and captured batch changes", async (t) => {
+  // Arrange / Act / Assert
+  for (const mode of ["end", "closure", "batch"]) {
+    const f = await journalFailure(t),
+      root = f.journalRoot;
+    if (mode === "end") await writeNew(resolve(root, "reset-origin-end.json"), {});
+    if (mode === "closure") {
+      const path = resolve(root, "parent-journal-failure.json"),
+        value = await readJson(path);
+      value.worker.serialOwnershipReleased = false;
+      await writeFile(path, JSON.stringify(value));
+    }
+    if (mode === "batch") {
+      const path = resolve(root, "diagnostic-export-0445.json"),
+        value = await readJson(path);
+      value.sequence = 9;
+      await writeFile(path, JSON.stringify(value));
+    }
+    const path = resolve(root, "failed-inventory.json"),
+      seal = await readJson(path);
+    seal.inventory = await inventory(root);
+    seal.parent_failure_sha256 = await fileDigest(resolve(root, "parent-journal-failure.json"));
+    await writeFile(path, JSON.stringify(seal));
+    await assert.rejects(resetOriginPreflight(f.fourth, f.operations), { code: "reset_origin_journal_failure_anchor" });
+    f.operations.expectedResetOriginJournalFailureSeal = await fileDigest(path);
+    await assert.rejects(resetOriginPreflight(f.fourth, f.operations), {
+      code: {
+        end: "reset_origin_journal_failure_activity",
+        closure: "reset_origin_journal_failure_provenance",
+        batch: "reset_origin_journal_failure_batch",
+      }[mode],
+    });
+  }
+});
+
+test("host-client override is unavailable to old contexts and required for the fourth observation", async (t) => {
+  // Arrange
+  const f = await journalFailure(t);
+  await resetOriginPreflight(f.fourth, f.operations);
+  // Act / Assert
+  for (const root of [f.root, f.fourth.privateRoot]) {
+    const path = resolve(root, "context.json"),
+      saved = await readJson(path);
+    if (root === f.root) saved.context.qualification_driver.no_mining_client_sha256 = "a".repeat(64);
+    else delete saved.context.qualification_driver.no_mining_client_sha256;
+    saved.sha256 = digest(JSON.stringify(saved.context));
+    await writeFile(path, JSON.stringify(saved));
+    await assert.rejects(loadResetOriginContext(root, { historical: true, operations: f.operations }), {
+      code: "reset_origin_host_client_binding",
+    });
+  }
+});
+
+test("fourth observation keeps exclusive reservation and rejects every conflicting predecessor flag", async (t) => {
+  // Arrange
+  const f = await journalFailure(t);
+  // Act / Assert
+  for (const field of ["supersedeUnstarted", "supersedePreparationReview"])
+    await assert.rejects(resetOriginPreflight({ privateRoot: "/missing", supersedeJournalFailure: "/missing", [field]: "/missing" }), {
+      code: "reset_origin_supersession_conflict",
+    });
+  await assert.rejects(
+    resetOriginPreflight(f.fourth, {
+      ...f.operations,
+      mkdir: async (root, options) => {
+        await mkdir(root, options);
+        throw Error("fixture partial fourth");
+      },
+    }),
+    /fixture partial fourth/u,
+  );
+  await assert.rejects(resetOriginPreflight({ ...f.fourth, privateRoot: resolve(dirname(f.root), "alternate-fourth") }, f.operations), {
+    code: "EEXIST",
+  });
+  await assert.rejects(loadResetOriginContext(f.fourth.privateRoot, { operations: f.operations }), { code: "ENOENT" });
+});
+
+test("observation attempts require numeric values and the corrected client must match its pinned regression", async (t) => {
+  // Arrange
+  const f = await journalFailure(t);
+  await resetOriginPreflight(f.fourth, f.operations);
+  const path = resolve(f.fourth.privateRoot, "context.json"),
+    original = await readJson(path);
+  // Act / Assert
+  for (const attempt of ["4", "toString", 5]) {
+    const saved = structuredClone(original);
+    saved.context.observation_attempt = attempt;
+    delete saved.context.qualification_driver.no_mining_client_sha256;
+    saved.sha256 = digest(JSON.stringify(saved.context));
+    await writeFile(path, JSON.stringify(saved));
+    await assert.rejects(loadResetOriginContext(f.fourth.privateRoot, { historical: true, operations: f.operations }), {
+      code: "reset_origin_observation_attempt",
+    });
+  }
+  const saved = structuredClone(original);
+  saved.context.qualification_driver.no_mining_client_sha256 = "a".repeat(64);
+  saved.sha256 = digest(JSON.stringify(saved.context));
+  await writeFile(path, JSON.stringify(saved));
+  await assert.rejects(loadResetOriginContext(f.fourth.privateRoot, { historical: true, operations: f.operations }), {
+    code: "reset_origin_host_client_binding",
   });
 });

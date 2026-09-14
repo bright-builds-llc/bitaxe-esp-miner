@@ -27,6 +27,11 @@ import { inventory, proof } from "./cadence-premining-evidence.mjs";
 import { inspectOriginalCampaign, readFrozenCampaign } from "./no-mining-accounting.mjs";
 import { NO_MINING_SCHEMA, validateNoMiningContext } from "./no-mining-context.mjs";
 import { readPrevious } from "./iterative-preflight.mjs";
+import {
+  readJournalFailure,
+  RESET_ORIGIN_JOURNAL_REGRESSION,
+  RESET_ORIGIN_CORRECTED_JOURNAL_CLIENT,
+} from "./reset-origin-journal-failure.mjs";
 import { readPreparationReview } from "./reset-origin-preparation-review.mjs";
 import { verifyArtifactSnapshot } from "./snapshot.mjs";
 
@@ -74,6 +79,10 @@ const ALLOWED_CHANGES = new Set([
   ...[
     ...DRIVER_FILES,
     "reset-origin-preparation-review.mjs",
+    "reset-origin-journal-failure.mjs",
+    "reset-origin-successor-fixtures.mjs",
+    "no-mining-client.mjs",
+    "no-mining-client.test.mjs",
     "reset-origin-context.test.mjs",
     "reset-origin-judge.test.mjs",
     "reset-origin-server.test.mjs",
@@ -84,7 +93,11 @@ const ALLOWED_CHANGES = new Set([
 ]);
 const SCRIPT_ROOT = dirname(fileURLToPath(import.meta.url));
 export function forbidResetOriginEffects(options) {
-  check(options.supersedeUnstarted === undefined || options.supersedePreparationReview === undefined, "reset_origin_supersession_conflict");
+  check(
+    [options.supersedeUnstarted, options.supersedePreparationReview, options.supersedeJournalFailure].filter((value) => value !== undefined)
+      .length <= 1,
+    "reset_origin_supersession_conflict",
+  );
   check(options.authorityDirectory === undefined && options.poolCredentials === undefined, "reset_origin_credentials_forbidden");
 }
 async function runtimeSource(root, operations, runtimeCache) {
@@ -142,7 +155,7 @@ const UNSTARTED_FILES = new Set([
   "unused-host-cleanup.json",
 ]);
 function assignmentPath(context) {
-  const suffix = [2, 3].includes(context.observation_attempt) ? `-${context.observation_attempt}` : "";
+  const suffix = [2, 3, 4].includes(context.observation_attempt) ? `-${context.observation_attempt}` : "";
   return `${context.runtime_source.root}.reset-origin-assignment${suffix}.json`;
 }
 async function readUnstarted(root, operations, runtimeCache) {
@@ -237,26 +250,25 @@ async function readUnstarted(root, operations, runtimeCache) {
   return { context, binding: { root, failed_inventory_sha256: saved.sha256 } };
 }
 async function verifyObservationSuccessor(root, context, operations, runtimeCache, maybePrevious) {
-  if (
-    context.observation_attempt === undefined &&
-    context.unstarted_predecessor === undefined &&
-    context.preparation_review_predecessor === undefined
-  )
-    return;
-  const review = context.observation_attempt === 3;
+  const fields = { 2: "unstarted_predecessor", 3: "preparation_review_predecessor", 4: "journal_failure_predecessor" };
+  if (context.observation_attempt === undefined && Object.values(fields).every((field) => context[field] === undefined)) return;
+  const field = fields[context.observation_attempt];
   check(
-    review
-      ? context.unstarted_predecessor === undefined
-      : context.observation_attempt === 2 && context.preparation_review_predecessor === undefined,
+    [2, 3, 4].includes(context.observation_attempt) &&
+      field &&
+      Object.values(fields).every((other) => other === field || context[other] === undefined),
     "reset_origin_observation_attempt",
   );
-  const predecessor = review ? context.preparation_review_predecessor : context.unstarted_predecessor;
+  const predecessor = context[field];
   exactObject(predecessor, ["root", "failed_inventory_sha256"]);
+  const load = (root, options) => loadContext(root, options, runtimeCache);
   const old =
     maybePrevious ??
-    (review
-      ? await readPreparationReview(predecessor.root, operations, (root, options) => loadContext(root, options, runtimeCache))
-      : await readUnstarted(predecessor.root, operations, runtimeCache));
+    (context.observation_attempt === 4
+      ? await readJournalFailure(predecessor.root, operations, load)
+      : context.observation_attempt === 3
+        ? await readPreparationReview(predecessor.root, operations, load)
+        : await readUnstarted(predecessor.root, operations, runtimeCache));
   check(
     isDeepStrictEqual(old.binding, predecessor) &&
       root !== old.binding.root &&
@@ -271,7 +283,9 @@ async function verifyObservationSuccessor(root, context, operations, runtimeCach
   );
   const plan = await readJson(context.plan_path);
   check(
-    plan.reason === "software_correction" && plan.evidence_sha256.includes(old.binding.failed_inventory_sha256),
+    plan.reason === "software_correction" &&
+      plan.evidence_sha256.includes(old.binding.failed_inventory_sha256) &&
+      (context.observation_attempt !== 4 || plan.evidence_sha256.includes(RESET_ORIGIN_JOURNAL_REGRESSION)),
     "reset_origin_unstarted_correction",
   );
 }
@@ -292,6 +306,10 @@ async function verifyDriver(context, operations) {
   const checkRepo = operations.cleanPushed ?? cleanPushed,
     readGit = operations.git ?? git;
   const driver = context.qualification_driver;
+  check(
+    context.observation_attempt !== 4 || driver.no_mining_client_sha256 === RESET_ORIGIN_CORRECTED_JOURNAL_CLIENT,
+    "reset_origin_host_client_binding",
+  );
   checkRepo(context.firmware_root, driver.source_commit);
   checkRepo(context.gate_root, context.gate_commit);
   check(
@@ -318,7 +336,8 @@ async function verifyDriver(context, operations) {
   const trustPath = resolve(context.firmware_root, "firmware/bitaxe/bwg/deployment-trust.json");
   check(
     (await fileDigest(trustPath)) === context.trust_sha256 &&
-      (await fileDigest(resolve(SCRIPT_ROOT, "no-mining-client.mjs"))) === context.supervisor_client_sha256,
+      (await fileDigest(resolve(SCRIPT_ROOT, "no-mining-client.mjs"))) ===
+        (context.observation_attempt === 4 ? driver.no_mining_client_sha256 : context.supervisor_client_sha256),
     "reset_origin_public_input_drift",
   );
   const trust = await readJson(trustPath);
@@ -328,6 +347,8 @@ function inner(root, context) {
   return {
     schema: NO_MINING_SCHEMA,
     ...Object.fromEntries(RUNTIME_KEYS.map((key) => [key, context[key]])),
+    supervisor_client_sha256:
+      context.observation_attempt === 4 ? context.qualification_driver.no_mining_client_sha256 : context.supervisor_client_sha256,
     mining_authorized: false,
     required_no_mining_cycles: 4,
     original_campaign_record: context.original_campaign_record,
@@ -432,6 +453,15 @@ export async function resetOriginPreflight(options, operations = {}) {
     context.preparation_review_predecessor = old.binding;
     await verifyObservationSuccessor(root, context, operations, runtimeCache, old);
   }
+  if (options.supersedeJournalFailure !== undefined) {
+    const old = await readJournalFailure(options.supersedeJournalFailure, operations, (root, options) =>
+      loadContext(root, options, runtimeCache),
+    );
+    context.observation_attempt = 4;
+    context.journal_failure_predecessor = old.binding;
+    context.qualification_driver.no_mining_client_sha256 = await fileDigest(resolve(SCRIPT_ROOT, "no-mining-client.mjs"));
+    await verifyObservationSuccessor(root, context, operations, runtimeCache, old);
+  }
   context.no_mining_context = inner(root, context);
   validateNoMiningContext(context.no_mining_context);
   await verifyDriver(context, operations);
@@ -484,10 +514,17 @@ async function loadContext(root, { historical = false, operations = {} }, runtim
       "installation_authorized",
       "no_mining_context",
     ],
-    ["observation_attempt", "unstarted_predecessor", "preparation_review_predecessor"],
+    ["observation_attempt", "unstarted_predecessor", "preparation_review_predecessor", "journal_failure_predecessor"],
   );
+  check(context.observation_attempt === undefined || [2, 3, 4].includes(context.observation_attempt), "reset_origin_observation_attempt");
   exactObject(context.runtime_source, ["root", "failed_inventory_sha256", "context_sha256", "artifact_snapshot_sha256"]);
-  exactObject(context.qualification_driver, ["profile", "source_commit", "validator_sha256", "client_sha256"]);
+  exactObject(context.qualification_driver, ["profile", "source_commit", "validator_sha256", "client_sha256"], ["no_mining_client_sha256"]);
+  check(
+    context.observation_attempt === 4
+      ? context.qualification_driver.no_mining_client_sha256 === RESET_ORIGIN_CORRECTED_JOURNAL_CLIENT
+      : context.qualification_driver.no_mining_client_sha256 === undefined,
+    "reset_origin_host_client_binding",
+  );
   check(
     saved.value.sha256 === digest(JSON.stringify(context)) &&
       context.schema === RESET_ORIGIN_SCHEMA &&

@@ -18,6 +18,7 @@ if (maybeOutput) new MutationObserver(() => {
     const response = await fetch("/record", { method: "POST", headers: { "Content-Type": "application/json" },
       cache: "no-store", body: JSON.stringify({ state: maybeState }), keepalive: true });
     if (!response.ok) throw new Error("no_mining_record_rejected");
+    await response.json();
   }).catch(() => { recordFailed = true; note.textContent = "No-mining evidence rejected. Stop and inspect the preserved failure before continuing."; });
 }).observe(maybeOutput, { childList: true, subtree: true, characterData: true });
 
