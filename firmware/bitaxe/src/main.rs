@@ -29,6 +29,7 @@ mod ota_update;
 mod panic_evidence;
 mod platform_identity;
 mod preparation_evidence;
+mod prepared_thread;
 mod production_mining_session;
 mod qualification_restart;
 mod rtc_boot_ordinal;

@@ -338,3 +338,82 @@ clean published source and bundle identity checks. An older Gate bundle such as
 e3 without this decoder cannot reserve the new assignment or reach installation
 consumption. This guard does not change the historical failed-001 reader and is
 not a substitute for the required active statistics evidence after installation.
+
+### Exact reconnect allocation failure successor 003
+
+Successor002 remains an unverified failed installation on firmware
+`582fc2bf94779e6ea867e5de87b97695df5a20cd`, Gate
+`72235d884c3605ff77d484f210fcaa0d7218b47e`, and ELF
+`8095cfcf3991129188a39bc28f56796ee1859fd22d70ada6a1dc8c7359051558`.
+Its retained statistics task became active, but the closed network diagnostic
+reports `phase=reconnect_spawn error=no_memory`. This is not a healthy startup
+or an accepted controlled restart. The exact sealed failure and its independent
+audit are the only eligible predecessor for preparation003.
+
+The [failure report](../parity/evidence/20260915-reconnect-startup-failure.md)
+binds failed-inventory SHA256
+`29c8f6bb14b1962676bdd8af4a5c9b406ea81ab0f68c61882c51c2680eb0d7ad`
+and producer SHA256
+`4946a65aaa619c0dd291ca09932cadaa87ed2c7f1eccb7507cf8ef2a34e5efab`.
+
+Use the existing `reset-origin-restart-preflight --supersede-install-failure`
+command with that failed002 root, a verified software-correction receipt, and a
+fresh protected sibling directory. The finite lineage is 003 → failed002 →
+failed001 → accepted Stage-A005 and its original ancestry. Each historical
+reader retains its original predicates. Unknown failures, altered inventory,
+recursive lineage, conflicting assignments and archived-task authority are
+rejected. Reserve `restart-assignment-3.json` exclusively before creating the
+child; interrupted preparation does not release the assignment.
+
+The correction reserves the unchanged 8192-byte Wi-Fi reconnect and USB receive
+threads before late startup allocations fragment internal memory. Both remain
+inactive until their existing activation boundaries. Statistics retains its
+existing reservation, activation boundary and cadence. Tests must cover failed
+spawn, cancelled preparation, queued events before activation, subscription
+rollback and absence of USB reads before activation. Native verification must
+check unchanged task configuration, storage and stack costs and the existing
+4-MiB image limit. Early reservation alone is not evidence that the complete
+service set fits on hardware.
+
+Capture the initialized Wi-Fi credential state once during preparation and
+reserve reconnect only for valid station credentials. Missing/invalid states
+must not attempt that allocation; later startup consumes the captured state
+without a second read. Retain the existing association-failure fallback and its
+single prepared worker. No credential value enters diagnostics or evidence.
+
+The size-recovery experiment may change only the existing
+`profile.release.package.bitaxe-firmware` optimization level from `s` to `z`.
+Dependencies, the global release profile and ESP-IDF/C options remain fixed.
+Cargo's [profile documentation](https://doc.rust-lang.org/cargo/reference/profiles.html#opt-level)
+describes both size settings and cautions that results must be measured.
+Freeze the selected setting in the published source and include it in the
+native audit. Recheck main, owner, statistics, receive and reconnect paths;
+compiler optimization can change frames and instruction timing even when the
+configured stacks, priorities and deadlines are unchanged. The existing cadence
+and independent shutdown criteria still determine hardware acceptance.
+
+Bind the before-install source to the image actually installed by failed002,
+not to Stage A or failed001. Before consuming the sole installation, obtain
+fresh authenticated idle baseline and accounting: next 17, last 16, charged
+1380000 ms, pending false; original campaign remains charged 240000 ms with masks
+7/7. Require the same captured boot ordinal 1/reset category `other`, advancing
+boot/startup uptime beyond the failed capture, exact runtime identity, active
+statistics metadata, and only the known network reconnect-spawn/no-memory
+failure. This review records an unhealthy installed image and cannot establish
+post-install preservation retrospectively. Missing or changed proof stops the
+new context without an installation claim.
+
+The new firmware must be changed, clean and published with its exact clean
+package. The existing verified Gate72235d8 may remain unchanged when its retained
+page and bundle hashes match. Bind the observer, validator, client, trust and
+all thirteen runtime artifacts before effects. The new context allows one
+state-preserving installation and one authenticated restart under the unchanged
+observation, source, timing and cleanup requirements above. No new mining
+authority, reset fallback, NVS alteration or repeated effect is introduced.
+
+After a strictly accepted controlled restart, the existing cadence17-2 path
+still requires fresh accounting, four update/reconnect cycles and all three
+captures with the original thresholds and independent heartbeat shutdown proof.
+It consumes one normal 180000-ms reservation and expects next 18, last 17,
+charged 1560000 ms, pending false after finalization. A failure leaves cadence,
+USB qualification and migration active and all earlier failures unchanged.

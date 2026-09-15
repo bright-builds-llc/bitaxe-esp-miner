@@ -1,7 +1,7 @@
 //! Nonblocking ESP-IDF bridge for the pure reconnect lifecycle policy.
 
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time::{Duration, Instant};
 
 use bitaxe_api::project_ipv6_address;
@@ -19,25 +19,32 @@ use super::{
     wifi_snapshot_cell, WIFI_OWNER,
 };
 
+mod preparation;
+pub(super) use preparation::{
+    prepare_credentials, CredentialState, PreparedCredentials, PreparedReconnect,
+};
+
 const PROBE_DISCONNECT_DELAY_MS: u64 = 2_000;
 const PROBE_STABILITY_WINDOW_MS: u64 = 15_000;
 static NETWORK_RECONNECT_PROBE_ARMED: AtomicBool = AtomicBool::new(false);
 
 pub(super) fn start(
+    prepared: PreparedReconnect,
     sysloop: &EspSystemEventLoop,
     maybe_initial_reason: Option<WifiDisconnectReason>,
 ) -> anyhow::Result<()> {
     observe(
         Phase::ReconnectSubscription,
-        start_inner(sysloop, maybe_initial_reason),
+        start_inner(prepared, sysloop, maybe_initial_reason),
     )
 }
 
 fn start_inner(
+    mut prepared: PreparedReconnect,
     sysloop: &EspSystemEventLoop,
     maybe_initial_reason: Option<WifiDisconnectReason>,
 ) -> anyhow::Result<()> {
-    let (sender, receiver) = mpsc::channel();
+    let sender = prepared.sender().clone();
     let station_netif_address = {
         let owner = WIFI_OWNER
             .get()
@@ -93,17 +100,22 @@ fn start_inner(
             .ok_or_else(|| anyhow::anyhow!("Wi-Fi owner was unavailable"))?
             .lock()
             .map_err(|_| anyhow::anyhow!("Wi-Fi owner lock was poisoned"))?;
-        owner._wifi_subscription = Some(wifi_subscription);
-        owner._ip_subscription = Some(ip_subscription);
+        let super::WifiOwner {
+            _wifi_subscription,
+            _ip_subscription,
+            ..
+        } = &mut *owner;
+        anyhow::ensure!(
+            prepared.activate_subscribed(
+                _wifi_subscription,
+                _ip_subscription,
+                wifi_subscription,
+                ip_subscription
+            ),
+            "Wi-Fi reconnect activation failed"
+        );
     }
 
-    observe(
-        Phase::ReconnectSpawn,
-        std::thread::Builder::new()
-            .name("wifi-reconnect".to_owned())
-            .stack_size(8_192)
-            .spawn(move || run(receiver)),
-    )?;
     request_ipv6_link_local(station_netif_address);
     if let Some(reason) = maybe_initial_reason {
         sender.send(WifiReconnectEvent::StationDisconnected(reason))?;

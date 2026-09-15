@@ -225,3 +225,28 @@ fn only_confirmed_boot_hardware_actions_can_advance_bwg_recovery() {
         "production::store_production_peripherals(uart, reset, enable, false);\n    Ok(BootMiningBaseline::Confirmed)"
     ));
 }
+
+#[test]
+fn usb_link_stack_is_reserved_early_but_install_only_activates_the_same_reader() {
+    // Arrange
+    let prepared_link = include_str!("bwg_worker_usb/prepared_link.rs");
+    let install = USB_SOURCE
+        .split("pub(crate) fn install(mut prepared:")
+        .nth(1)
+        .expect("install boundary")
+        .split("pub(crate) fn install_diagnostics()")
+        .next()
+        .expect("install end");
+    // Act / Assert
+    assert_eq!(USB_SOURCE.matches("prepared_link::prepare()").count(), 1);
+    assert!(prepared_link.contains("8192,"));
+    assert!(include_str!("prepared_thread.rs").contains("if gate.wait()"));
+    assert!(prepared_link.contains("super::link::run()"));
+    assert!(!install.contains(".spawn("));
+    assert!(
+        install
+            .find("OUTPUT.get().is_some()")
+            .expect("transport readiness")
+            < install.find("prepared.0.activate()").expect("activation")
+    );
+}

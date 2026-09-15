@@ -1,3 +1,4 @@
+import { RESTART_NETWORK_FAILURE_SHA256 } from "./reset-origin-restart-network-failure.mjs";
 import { RESTART_INSTALL_FAILURE_SHA256 } from "./reset-origin-restart-install-failure.mjs";
 import assert from "node:assert/strict";
 import { copyFile, readFile, readdir, writeFile } from "node:fs/promises";
@@ -80,6 +81,9 @@ test("production reader retains exact actual StageA/recovery/original-preparatio
     statistics_startup_required: true,
     install_failure_predecessor: { root: "/verified-fixture", failed_inventory_sha256: RESTART_INSTALL_FAILURE_SHA256 },
   });
+  validateCadenceRestartEvidence(...successor);
+  successor[0].context.restart_attempt = 3;
+  successor[0].context.install_failure_predecessor.failed_inventory_sha256 = RESTART_NETWORK_FAILURE_SHA256;
   validateCadenceRestartEvidence(...successor);
   successor[0].context.install_failure_predecessor.failed_inventory_sha256 = "0".repeat(64);
   assert.throws(() => validateCadenceRestartEvidence(...successor), { code: "cadence_restart_successor_class" });

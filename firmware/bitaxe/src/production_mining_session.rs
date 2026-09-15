@@ -162,6 +162,8 @@ impl OrdinaryEspProductionSessionAdapter {
         }
     }
 
+    // Keep a distinct inbox-mapping boundary for native code-size and stack audits.
+    #[inline(never)]
     fn event_from_inbox(
         &mut self,
         message: OwnerInboxMessage,

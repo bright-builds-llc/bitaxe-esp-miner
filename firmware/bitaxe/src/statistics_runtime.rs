@@ -5,7 +5,7 @@ use std::{thread, time::Duration};
 use bitaxe_core::runtime_orchestration::PeriodicDeadline;
 
 pub(crate) mod diagnostics;
-mod lifecycle;
+use crate::prepared_thread as lifecycle;
 mod native;
 
 pub const STATISTICS_CADENCE_MS: u64 = 1_000;
@@ -30,16 +30,11 @@ pub(crate) fn prepare() -> Result<PreparedStatistics, PreparationFailure> {
         return Err(PreparationFailure::Configuration);
     };
     diagnostics::STARTUP.observe_before(caps, native::heap(caps));
-    let result = lifecycle::prepare(|gate| {
-        thread::Builder::new()
-            .name(PRODUCER_THREAD_NAME.to_owned())
-            .stack_size(PRODUCER_THREAD_STACK_BYTES)
-            .spawn(move || {
-                if gate.wait() {
-                    run();
-                }
-            })
-    });
+    let result = lifecycle::spawn(
+        PRODUCER_THREAD_NAME,
+        PRODUCER_THREAD_STACK_BYTES,
+        Box::new(|| run()),
+    );
     diagnostics::STARTUP.finish(
         native::heap(caps),
         result

@@ -23,3 +23,51 @@ Main retains its existing CPU0 affinity. Telemetry therefore changes from an unp
 ## Required evidence
 
 Require complete healthy startup and later-owner readiness on the exact clean package. Preserve fresh heap checkpoints, serial identity, settings and authorization continuity, maximum-size exchanges and cleanup. Wi-Fi stability and production pool behavior still require the planned bounded acceptance; no network or hardware parity is promoted by the configuration change or host tests.
+
+## Required thread reservations
+
+September 15's [failed controlled-restart preparation](../parity/evidence/20260915-reconnect-startup-failure.md)
+shows why late allocation must be reviewed across the complete required service
+set. Reserving the statistics thread early allowed it to become active, but the
+later 8192-byte Wi-Fi reconnect thread returned an out-of-memory error. The USB
+receive thread was another required 8192-byte allocation after association.
+
+The successor reserves reconnect together with the prepared Wi-Fi owner and
+receive together with the prepared Worker runtime. The existing statistics
+activation gate is shared by these preparations. Reservation allocates the
+unchanged thread while internal memory is available; activation permits its
+existing loop to run only at the original owner/subscription or USB-install
+boundary. Dropped or failed preparations cancel the parked thread. Preparing a
+receiver does not permit USB reads or application authority, and preparing
+reconnect does not process queued network events.
+
+Wi-Fi preparation captures the already initialized credential state once and
+reserves reconnect only for valid station credentials. Startup consumes that
+same state. Missing or invalid credentials must reach AP-only provisioning
+without attempting an unused reconnect allocation. Current startup has no
+intervening credential writer: RF and the USB command reader are still inactive.
+
+This preserves the selected buffer counts, internal reserve, stacks, priorities,
+CPU affinity, statistics sampling and heartbeat deadlines. It changes allocation
+order rather than reducing the required resource budget. Conditional captive-DNS
+and explicit reconnect-probe threads remain separate allocations. Deterministic
+lifecycle tests cannot prove available device heap; the full service set must
+still pass exact-package startup and the subsequent hardware qualification.
+
+## Firmware package size profile
+
+The application crate's release profile uses `opt-level = "z"`; dependency
+versions and their profile settings, the global release profile, and ESP-IDF/C
+options remain unchanged. The successor003 preview measured 4118992 bytes,
+leaving 75312 bytes in the existing 4194304-byte OTA slot. This is an observed
+build result, not a guarantee for later revisions.
+
+Changing optimization can change stack layout and instruction timing. The
+native telemetry audit therefore recognizes the exact outlined
+`OperatorSnapshotPublisher::publish_profiled` call hop and includes its full
+7392-byte frame. The measured projection path totals12448/16384 bytes; the
+recognizer still rejects unknown wrappers, clobbered call targets and dynamic
+stack adjustments, and reports oversized paths as budget failures. Complete
+callgraph and hardware safety claims remain false. Exact clean publication,
+fresh native audits and the unchanged hardware cadence/shutdown criteria remain
+required before qualification can close.

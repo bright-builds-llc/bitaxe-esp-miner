@@ -18,9 +18,10 @@ const symbols = [
 const frames = [64,48,48,224,208,5552,5968,1808,2224,224,96];
 const hex = value => value.toString(16);
 const base = index => 0x42000000 + index * 0x100;
-function fixture({ inline = false, edit = (_index, instructions) => instructions } = {}) {
+function fixture({ inline = false, publisher = false, publisherFrame = 7392, edit = (_index, instructions) => instructions } = {}) {
   const names = [...symbols], sizes = [...frames];
   if (inline) { names.splice(6,1); sizes.splice(6,1); sizes[5] = 7344; }
+  if (publisher) { names[6] = 'bitaxe_firmware::operator_snapshot_publication::OperatorSnapshotPublisher::publish_profiled'; sizes[6] = publisherFrame; sizes[5] = 112; }
   return names.map((name,index) => {
     const instructions = [`entry a1, ${sizes[index]}`];
     if (index < names.length-1) instructions.push(`l32r a3, 42009000 <literal> (${hex(base(index+1))} <${names[index+1]}>)`, 'callx8 a3');
@@ -101,4 +102,45 @@ test('ordinary stores preserve target registers but compare-and-store overwrites
   // Act / Assert
   assert.equal(auditTelemetryStack(stored,sdkconfig).targeted_path_bytes,16464);
   assert.throws(()=>auditTelemetryStack(overwritten,sdkconfig), /telemetry_path_unknown/u);
+});
+
+test('outlined publisher detour counts the entire emitted method frame', () => {
+  // Arrange / Act
+  const result = auditTelemetryStack(fixture({publisher:true}), sdkconfig);
+  // Assert
+  assert.equal(result.result, 'targeted_path_fits');
+  assert.equal(result.targeted_path_bytes, 12448);
+  assert.equal(result.nodes[6].entry_bytes, 7392);
+  assert.match(result.nodes[6].symbol, /::publish_profiled$/u);
+  assert.equal(result.edges[5].target, hex(base(6)));
+  assert.equal(result.edges[6].target, hex(base(7)));
+});
+
+test('oversized outlined publisher remains a measured budget failure', () => {
+  // Arrange / Act
+  const result = auditTelemetryStack(fixture({publisher:true,publisherFrame:16384}), sdkconfig);
+  // Assert
+  assert.equal(result.result, 'budget_exceeded');
+  assert.equal(result.targeted_path_bytes, 21440);
+});
+
+test('unrecognized publisher wrapper is never skipped to reach projection', () => {
+  // Arrange
+  const text = fixture({publisher:true}).replaceAll('OperatorSnapshotPublisher::publish_profiled', 'OperatorSnapshotPublisher::unrecognized_wrapper');
+  // Act / Assert
+  assert.throws(()=>auditTelemetryStack(text,sdkconfig), /telemetry_path_unknown/u);
+});
+
+test('clobbered outlined publisher callee fails closed', () => {
+  // Arrange
+  const text = fixture({publisher:true,edit:(index,ins)=>index===6 ? [ins[0],ins[1].replace('a3,','a8,'),'callx8 a2','callx8 a8','retw.n'] : ins});
+  // Act / Assert
+  assert.throws(()=>auditTelemetryStack(text,sdkconfig), /telemetry_path_unknown/u);
+});
+
+test('outlined publisher with dynamic stack adjustment cannot claim a bound', () => {
+  // Arrange
+  const text = fixture({publisher:true,edit:(index,ins)=>index===6 ? [ins[0],'addi a1, a1, -16',...ins.slice(1)] : ins});
+  // Act / Assert
+  assert.throws(()=>auditTelemetryStack(text,sdkconfig), /telemetry_dynamic_stack_unknown/u);
 });

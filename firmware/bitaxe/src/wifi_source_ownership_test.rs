@@ -1,3 +1,4 @@
+const PREPARED_THREAD_SOURCE: &str = include_str!("prepared_thread.rs");
 const WIFI_DRIVER_SOURCE: &str = include_str!("wifi_adapter/driver.rs");
 const WIFI_ADAPTER_SOURCE: &str = include_str!("wifi_adapter.rs");
 const CAPTIVE_DNS_SOURCE: &str = include_str!("wifi_adapter/captive_dns.rs");
@@ -257,4 +258,53 @@ fn required_runtime_owner_failures_propagate_instead_of_reporting_ready() {
         .expect("guard boundary");
     assert!(guard.contains("result.map_err("));
     assert!(guard.contains("PROGRESS.fail(DiagnosticStage::RuntimeServices)"));
+}
+
+#[test]
+fn reconnect_reservation_precedes_connection_and_activation_never_spawns() {
+    // Arrange
+    let preparation = include_str!("wifi_adapter/reconnect/preparation.rs");
+    let activation = WIFI_RECONNECT_SOURCE
+        .split("fn start_inner(")
+        .nth(1)
+        .expect("activation")
+        .split("pub(super) fn start_probe()")
+        .next()
+        .expect("activation boundary");
+    // Act / Assert
+    assert_eq!(
+        WIFI_DRIVER_SOURCE
+            .matches("let credential_state = wifi_credential_state();")
+            .count(),
+        1
+    );
+    assert!(!WIFI_ADAPTER_SOURCE.contains("let credential_state = wifi_credential_state();"));
+    assert!(WIFI_DRIVER_SOURCE.contains("reconnect::prepare_credentials(credential_state)"));
+    assert!(WIFI_DRIVER_SOURCE
+        .contains("pub(super) credential_state: reconnect::PreparedCredentials<WifiCredentials>"));
+    assert_eq!(preparation.matches("\"wifi-reconnect\"").count(), 1);
+    assert!(preparation.contains("8_192,"));
+    assert!(PREPARED_THREAD_SOURCE.contains("if gate.wait()"));
+    assert!(!activation.contains(".spawn("));
+    assert!(
+        activation
+            .find("subscribe::<WifiEvent")
+            .expect("Wi-Fi subscription")
+            < activation.find("activate_subscribed(").expect("activation")
+    );
+    assert!(
+        activation
+            .find("subscribe::<IpEvent")
+            .expect("IP subscription")
+            < activation.find("activate_subscribed(").expect("activation")
+    );
+}
+
+#[test]
+fn provisioning_modes_cannot_own_a_worker_and_station_fallback_keeps_its_worker() {
+    // Arrange / Act / Assert
+    assert!(!WIFI_ADAPTER_SOURCE.contains("Wi-Fi reconnect preparation missing"));
+    assert!(!WIFI_DRIVER_SOURCE.contains("maybe_reconnect"));
+    assert!(WIFI_ADAPTER_SOURCE.contains("Some((&sysloop, prepared_reconnect))"));
+    assert!(WIFI_ADAPTER_SOURCE.contains("reconnect::start(prepared_reconnect, &sysloop, None)"));
 }

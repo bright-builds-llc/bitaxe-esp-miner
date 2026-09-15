@@ -1,3 +1,4 @@
+const PREPARED_THREAD_SOURCE: &str = include_str!("prepared_thread.rs");
 const STARTUP_SOURCE: &str = include_str!("startup.rs");
 const RUNTIME_SOURCE: &str = include_str!("statistics_runtime.rs");
 const SNAPSHOT_SOURCE: &str = include_str!("runtime_snapshot.rs");
@@ -14,7 +15,12 @@ fn startup_creates_exactly_one_statistics_producer() {
 
     // Assert
     assert_eq!(startup_count, 1);
-    assert_eq!(RUNTIME_SOURCE.matches("thread::Builder::new()").count(), 1);
+    assert_eq!(
+        PREPARED_THREAD_SOURCE
+            .matches("thread::Builder::new()")
+            .count(),
+        1
+    );
     assert!(RUNTIME_SOURCE.contains("PRODUCER_THREAD_NAME: &str = \"statistics\""));
 }
 
@@ -45,7 +51,8 @@ fn statistics_allocates_before_fragmenting_startup_and_activates_at_the_old_boun
         1
     );
     assert!(RUNTIME_SOURCE.contains("PRODUCER_THREAD_STACK_BYTES: usize = 8 * 1024"));
-    assert!(RUNTIME_SOURCE.contains("if gate.wait()"));
+    assert!(PREPARED_THREAD_SOURCE.contains("if gate.wait()"));
+    assert!(RUNTIME_SOURCE.contains("lifecycle::spawn("));
 }
 
 #[test]

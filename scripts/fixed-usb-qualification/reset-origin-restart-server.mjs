@@ -378,7 +378,7 @@ export async function createRestartSupervisor(options, operations = {}) {
         mode: "restart-qualification",
         phase,
         mining_authorized: false,
-        ...(context.restart_attempt === 2 ? { preinstall_failure_review_required: true, statistics_startup_required: true } : {}),
+        ...([2, 3].includes(context.restart_attempt) ? { preinstall_failure_review_required: true, statistics_startup_required: true } : {}),
       });
     if (request.method === "GET" && ["/no-mining-client.mjs", "/reset-origin-restart-client.mjs"].includes(path)) {
       const bytes = await readFile(resolve(root, "host-clients", path.slice(1)));

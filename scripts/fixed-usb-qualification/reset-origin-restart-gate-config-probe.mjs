@@ -35,6 +35,15 @@ assert.equal(parseWorkerSerialAcceptanceConfiguration(input, input.expectedGateC
 assert.throws(() => parseWorkerSerialAcceptanceConfiguration({ ...input, restartPhase: "before-install" }, input.expectedGateCommit));
 const source = await readFile(resolve(gateRoot, "web/worker-serial-acceptance.ts"), "utf8");
 assert.match(source, /localJson\("\/context"\)\s*\.then\(configure\)/u);
+// Exercise the actual pinned decoder used by fresh preinstall inspection.
+const { maybeWorkerSerialDiagnostic } = await import(pathToFileURL(resolve(gateRoot, "web/worker-serial-diagnostics.ts")));
+assert.deepEqual(maybeWorkerSerialDiagnostic("wifi_startup_failure schema=v1 phase=reconnect_spawn error=no_memory redacted=true"), {
+  category: "network_failure",
+  authoritative: false,
+  phase: "reconnect_spawn",
+  error: "no_memory",
+});
+
 process.stdout.write(
   JSON.stringify({ actual_gate_configuration_accepted: true, autoload_uses_same_payload: true, phase_key_rejected: true }),
 );

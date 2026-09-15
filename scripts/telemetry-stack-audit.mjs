@@ -11,7 +11,7 @@ const STAGES = [
   /^bitaxe_api::mining::mining_state_from_runtime$/,
   /^<alloc::vec::.*SpecFromIterNested.*>::from_iter$/,
 ];
-const COMPLETION = /^bitaxe_firmware::operator_snapshot_publication::OperatorSnapshotPublisher::publish_profiled::\{\{closure\}\}$/;
+const PROJECTION_WRAPPER = /^bitaxe_firmware::operator_snapshot_publication::OperatorSnapshotPublisher::publish_profiled(?:::\{\{closure\}\})?$/;
 const check = (condition, code) => { if (!condition) throw Error(code); };
 
 function functions(text) {
@@ -114,7 +114,8 @@ export function auditTelemetryStack(disassembly, sdkconfig) {
       for (const edge of outgoing(caller)) {
         const target = symbols.get(edge.target); if (!target) continue;
         if (STAGES[stage].test(target.symbol)) next.push({ nodes: [...path.nodes, target], edges: [...path.edges, edge] });
-        if (stage === 6 && COMPLETION.test(target.symbol)) {
+        // Admit only the observed named, single-hop publisher or completion detour.
+        if (stage === 6 && PROJECTION_WRAPPER.test(target.symbol)) {
           for (const inner of outgoing(target)) {
             const projected = symbols.get(inner.target);
             if (projected && STAGES[stage].test(projected.symbol)) next.push({ nodes: [...path.nodes, target, projected], edges: [...path.edges, edge, inner] });

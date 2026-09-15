@@ -382,6 +382,8 @@ rust_test(
 rust_test(
     name = "bwg_worker_source_ownership_tests",
     srcs = [
+        "src/prepared_thread.rs",
+        "src/bwg_worker_usb/prepared_link.rs",
         "src/asic_adapter.rs",
         "src/bwg_worker_nvs.rs",
         "src/bwg_worker_session.rs",
@@ -804,13 +806,40 @@ rust_test(
 )
 
 rust_test(
+    name = "wifi_prepared_reconnect_tests",
+    srcs = [
+        "src/wifi_prepared_reconnect_host_test.rs",
+        "src/wifi_adapter/reconnect/preparation.rs",
+        "src/wifi_adapter/reconnect/preparation_tests.rs",
+        "src/prepared_thread.rs",
+        "src/prepared_thread/tests.rs",
+    ],
+    crate_root = "src/wifi_prepared_reconnect_host_test.rs",
+    edition = "2021",
+    deps = ["//crates/bitaxe-core:bitaxe_core"],
+)
+
+rust_test(
+    name = "usb_prepared_link_tests",
+    srcs = [
+        "src/usb_prepared_link_host_test.rs",
+        "src/bwg_worker_usb/prepared_link.rs",
+        "src/bwg_worker_usb/prepared_link_tests.rs",
+        "src/prepared_thread.rs",
+        "src/prepared_thread/tests.rs",
+    ],
+    crate_root = "src/usb_prepared_link_host_test.rs",
+    edition = "2021",
+)
+
+rust_test(
     name = "statistics_runtime_tests",
     srcs = [
         "src/statistics_runtime_host_test.rs",
         "src/statistics_runtime/diagnostics.rs",
         "src/statistics_runtime/diagnostics_tests.rs",
-        "src/statistics_runtime/lifecycle.rs",
-        "src/statistics_runtime/lifecycle/tests.rs",
+        "src/prepared_thread.rs",
+        "src/prepared_thread/tests.rs",
     ],
     crate_root = "src/statistics_runtime_host_test.rs",
     edition = "2021",
@@ -819,6 +848,7 @@ rust_test(
 rust_test(
     name = "statistics_source_ownership_tests",
     srcs = [
+        "src/prepared_thread.rs",
         "src/http_api/handlers.rs",
         "src/runtime_snapshot.rs",
         "src/settings_adapter.rs",
@@ -908,6 +938,8 @@ rust_test(
 rust_test(
     name = "wifi_source_ownership_tests",
     srcs = [
+        "src/prepared_thread.rs",
+        "src/wifi_adapter/reconnect/preparation.rs",
         "src/wifi_adapter/driver.rs",
         "src/http_api.rs",
         "src/http_api/handlers.rs",

@@ -1,3 +1,4 @@
+import { readRestartNetworkFailure, RESTART_NETWORK_FAILURE_SHA256 } from "./reset-origin-restart-network-failure.mjs";
 import { mkdir, open, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -117,11 +118,33 @@ async function snapshot(root, context) {
   await verifyArtifactSnapshot(root, context);
 }
 function assignmentPath(context) {
-  return `${dirname(context.stage_a.path)}.restart-assignment${context.restart_attempt === 2 ? "-2" : ""}.json`;
+  return `${dirname(context.stage_a.path)}.restart-assignment${context.restart_attempt === undefined ? "" : `-${context.restart_attempt}`}.json`;
+}
+function successorAttempt(failed) {
+  if (failed.binding.failed_inventory_sha256 === RESTART_INSTALL_FAILURE_SHA256 && failed.context.restart_attempt === undefined) return 2;
+  if (failed.binding.failed_inventory_sha256 === RESTART_NETWORK_FAILURE_SHA256 && failed.context.restart_attempt === 2) return 3;
+  check(false, "restart_install_failure_anchor");
+}
+/** Select only the two anchored failures, before reading or traversing their lineage. */
+export async function readRestartInstallPredecessor(path, operations = {}) {
+  path = await canonicalDirectory(path);
+  await protectedPath(path, true);
+  const sealPath = resolve(path, "failed-inventory.json");
+  await protectedPath(sealPath);
+  const bytes = await readFile(sealPath),
+    hash = digest(bytes);
+  check([RESTART_INSTALL_FAILURE_SHA256, RESTART_NETWORK_FAILURE_SHA256].includes(hash), "restart_install_failure_anchor");
+  const seal = JSON.parse(bytes.toString("utf8")),
+    contextPath = resolve(path, "context.json");
+  await protectedPath(contextPath);
+  const entry = seal.files?.find((value) => value.path === "context.json" && value.type === "file");
+  check(entry && entry.sha256 === (await fileDigest(contextPath)), "restart_failure_context_changed");
+  if (hash === RESTART_INSTALL_FAILURE_SHA256) return readRestartInstallFailure(path, operations);
+  return readRestartNetworkFailure(path, operations);
 }
 async function failedInstallation(path, operations) {
-  const failed = await (operations.readInstallFailure ?? readRestartInstallFailure)(path, operations);
-  check(failed.binding.failed_inventory_sha256 === RESTART_INSTALL_FAILURE_SHA256, "restart_install_failure_anchor");
+  const failed = await (operations.readInstallFailure ?? readRestartInstallPredecessor)(path, operations);
+  successorAttempt(failed);
   return failed;
 }
 async function requireStatisticsCapability(gateRoot, expectedHash) {
@@ -164,7 +187,7 @@ export async function restartPreflight(options, operations = {}) {
       : await failedInstallation(resolve(options.supersedeInstallFailure), operations);
   if (failed)
     check(
-      (await readJson(options.input)).evidence_sha256.includes(RESTART_INSTALL_FAILURE_SHA256) &&
+      (await readJson(options.input)).evidence_sha256.includes(failed.binding.failed_inventory_sha256) &&
         equal(failed.context.stage_a, {
           path: priorPath,
           sha256: await fileDigest(priorPath),
@@ -201,7 +224,7 @@ export async function restartPreflight(options, operations = {}) {
     before_manifest: failed ? resolve(failed.root, "qualified-artifacts/firmware/bitaxe-ultra205-package.json") : prior.context.manifest,
     ...(failed
       ? {
-          restart_attempt: 2,
+          restart_attempt: successorAttempt(failed),
           install_failure_predecessor: failed.binding,
           before_install_failure: failed.known_failure,
           statistics_startup_required: true,
@@ -301,11 +324,12 @@ export async function loadRestartContext(root, { historical = false, operations 
     context.statistics_startup_required !== undefined;
   let failed;
   if (successor) {
-    check(context.restart_attempt === 2 && context.statistics_startup_required === true, "restart_successor_shape");
+    check([2, 3].includes(context.restart_attempt) && context.statistics_startup_required === true, "restart_successor_shape");
     exactObject(context.install_failure_predecessor, ["root", "failed_inventory_sha256"]);
     failed = await failedInstallation(context.install_failure_predecessor.root, operations);
     check(
-      equal(failed.binding, context.install_failure_predecessor) &&
+      context.restart_attempt === successorAttempt(failed) &&
+        equal(failed.binding, context.install_failure_predecessor) &&
         equal(failed.known_failure, context.before_install_failure) &&
         equal(failed.context.stage_a, context.stage_a) &&
         dirname(failed.root) === dirname(root) &&
@@ -348,7 +372,7 @@ export async function loadRestartContext(root, { historical = false, operations 
   check((await fileDigest(context.progress.path)) === context.progress.sha256, "restart_progress_changed");
   const progress = await readJson(context.progress.path);
   validateCadenceProgress(progress);
-  if (successor) check(progress.evidence_sha256.includes(RESTART_INSTALL_FAILURE_SHA256), "restart_successor_progress");
+  if (successor) check(progress.evidence_sha256.includes(failed.binding.failed_inventory_sha256), "restart_successor_progress");
   await verifyArtifactSnapshot(root, context);
   for (const [name, hash] of [
     ["no-mining-client.mjs", context.driver.no_mining_client_sha256],

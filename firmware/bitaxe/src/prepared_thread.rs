@@ -1,4 +1,4 @@
-//! One statistics owner is allocated early and cannot sample before activation.
+//! Fixed runtime threads reserve their stack early and cannot run before activation.
 use std::io;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::Arc;
@@ -8,9 +8,9 @@ const PREPARED: u8 = 0;
 const ACTIVE: u8 = 1;
 const CANCELLED: u8 = 2;
 
-pub(super) struct ActivationGate(AtomicU8);
+pub(crate) struct ActivationGate(AtomicU8);
 impl ActivationGate {
-    pub(super) fn wait(&self) -> bool {
+    pub(crate) fn wait(&self) -> bool {
         loop {
             match self.0.load(Ordering::Acquire) {
                 ACTIVE => return true,
@@ -21,12 +21,31 @@ impl ActivationGate {
     }
 }
 
-pub(super) struct Prepared {
+pub(crate) struct Prepared {
     gate: Arc<ActivationGate>,
     maybe_thread: Option<JoinHandle<()>>,
 }
 
-pub(super) fn prepare(
+/// Uses one compiled spawn path for all prepared owners; callback allocation is startup-only.
+#[inline(never)]
+pub(crate) fn spawn(
+    name: &str,
+    stack_bytes: usize,
+    operation: Box<dyn FnOnce() + Send>,
+) -> io::Result<Prepared> {
+    prepare(|gate| {
+        thread::Builder::new()
+            .name(name.to_owned())
+            .stack_size(stack_bytes)
+            .spawn(move || {
+                if gate.wait() {
+                    operation();
+                }
+            })
+    })
+}
+
+pub(crate) fn prepare(
     spawn: impl FnOnce(Arc<ActivationGate>) -> io::Result<JoinHandle<()>>,
 ) -> io::Result<Prepared> {
     let gate = Arc::new(ActivationGate(AtomicU8::new(PREPARED)));
@@ -38,11 +57,11 @@ pub(super) fn prepare(
 }
 
 impl Prepared {
-    pub(super) fn is_prepared(&self) -> bool {
+    pub(crate) fn is_prepared(&self) -> bool {
         self.maybe_thread.is_some()
     }
 
-    pub(super) fn activate(&mut self) -> bool {
+    pub(crate) fn activate(&mut self) -> bool {
         let Some(handle) = self.maybe_thread.as_ref() else {
             return false;
         };
@@ -77,5 +96,5 @@ impl Drop for Prepared {
 }
 
 #[cfg(test)]
-#[path = "lifecycle/tests.rs"]
+#[path = "prepared_thread/tests.rs"]
 mod tests;

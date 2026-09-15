@@ -1,3 +1,4 @@
+import { requireActiveStatistics } from "./reset-origin-restart-statistics.mjs";
 import { resolve } from "node:path";
 import { isDeepStrictEqual as equal } from "node:util";
 import { digest, exactObject, requireCondition as check, writeNew } from "./contract.mjs";
@@ -8,8 +9,10 @@ import { readRestartAccounting, readRestartStates } from "./reset-origin-restart
 
 /** This one known failure is inspected as failure; no health or restoration inference is made. */
 export function inspectPreinstallFailure(input, context) {
+  const network = context.restart_attempt === 3;
+  const expectedFailure = network ? "network" : "statistics";
   check(
-    context.restart_attempt === 2 && context.before_install_failure?.first_failure === "statistics",
+    [2, 3].includes(context.restart_attempt) && context.before_install_failure?.first_failure === expectedFailure,
     "restart_preinstall_review_not_allowed",
   );
   exactObject(input, ["schema", "observations"]);
@@ -25,17 +28,26 @@ export function inspectPreinstallFailure(input, context) {
       check(value.stage === "idle" && value.first_failure === "none", "restart_preinstall_activity");
       continue;
     }
+    if (network && value.category === "network_failure") {
+      exactObject(value, ["category", "authoritative", "phase", "error"]);
+      check(
+        value.authoritative === false && value.phase === "reconnect_spawn" && value.error === "no_memory",
+        "restart_preinstall_network_failure",
+      );
+      observations.push({ ...value });
+      continue;
+    }
     check(RESET_ORIGIN_CATEGORIES.includes(value.category), "restart_preinstall_unexpected_diagnostic");
     const parsed = parseResetOriginDiagnostic(value);
     check(
-      !["panic", "allocation_failure", "allocation_context", "statistics_startup"].includes(parsed.category),
+      !["panic", "allocation_failure", "allocation_context", ...(network ? [] : ["statistics_startup"])].includes(parsed.category),
       "restart_preinstall_unexpected_failure",
     );
     if (parsed.category === "startup")
       check(
         parsed.state !== "failed" &&
           (parsed.first_failure === "none" ||
-            (parsed.first_failure === "statistics" && parsed.stage === "runtime_ready" && parsed.state === "complete")),
+            (parsed.first_failure === expectedFailure && parsed.stage === "runtime_ready" && parsed.state === "complete")),
         "restart_preinstall_unexpected_failure",
       );
     observations.push(parsed);
@@ -68,7 +80,7 @@ export function inspectPreinstallFailure(input, context) {
         v.category === "startup" &&
         v.stage === "runtime_ready" &&
         v.state === "complete" &&
-        v.first_failure === "statistics" &&
+        v.first_failure === expectedFailure &&
         v.uptime_ms > known.last_startup_uptime_ms,
     ),
     "restart_preinstall_failure_missing",
@@ -77,6 +89,15 @@ export function inspectPreinstallFailure(input, context) {
     observations.some((v) => v.category === "storage_http_status" && v.http_ready === "true" && v.spiffs_available === "true"),
     "restart_preinstall_storage",
   );
+  if (network) {
+    check(
+      known.network_phase === "reconnect_spawn" &&
+        known.network_error === "no_memory" &&
+        observations.some((value) => value.category === "network_failure"),
+      "restart_preinstall_network_missing",
+    );
+    check(equal(requireActiveStatistics(observations), known.statistics_active), "restart_preinstall_statistics_changed");
+  }
   return observations;
 }
 export async function savePreinstallFailure(root, context, input) {

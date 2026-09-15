@@ -169,10 +169,16 @@ export function knownFailureDiagnostics(context) {
         authoritative: false,
         stage: "runtime_ready",
         state: "complete",
-        first_failure: "statistics",
+        first_failure: known.first_failure,
         uptime_ms: known.last_startup_uptime_ms + 5000,
       },
       { category: "storage_http_status", authoritative: false, http_ready: "true", spiffs_available: "true" },
+      ...(context.restart_attempt === 3
+        ? [
+            { category: "network_failure", authoritative: false, phase: "reconnect_spawn", error: "no_memory" },
+            { ...known.statistics_active },
+          ]
+        : []),
     ],
   };
 }

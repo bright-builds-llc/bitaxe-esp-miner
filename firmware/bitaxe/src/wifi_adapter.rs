@@ -16,6 +16,7 @@ use crate::{boot_evidence, log_buffer, network_stack, settings_adapter};
 
 mod captive_dns;
 mod driver;
+use driver::apply_sta_hostname;
 pub(crate) use driver::{prepare_wifi, PreparedWifi};
 mod reconnect;
 mod scan;
@@ -112,11 +113,7 @@ struct WifiCredentials {
     hostname: String,
 }
 
-enum WifiCredentialState {
-    Missing,
-    Invalid,
-    Valid(WifiCredentials),
-}
+type WifiCredentialState = reconnect::CredentialState<WifiCredentials>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ProvisioningReason {
@@ -142,25 +139,28 @@ pub(crate) fn start_wifi(prepared: PreparedWifi) -> anyhow::Result<()> {
         sysloop,
         ap_mac,
         ap_configuration,
+        credential_state,
     } = prepared;
-    let credential_state = wifi_credential_state();
 
     match credential_state {
-        WifiCredentialState::Missing => start_provisioning(
+        reconnect::PreparedCredentials::Missing => start_provisioning(
             wifi,
             ap_configuration,
             ap_mac,
             String::new(),
             ProvisioningReason::CredentialsMissing,
         ),
-        WifiCredentialState::Invalid => start_provisioning(
+        reconnect::PreparedCredentials::Invalid => start_provisioning(
             wifi,
             ap_configuration,
             ap_mac,
             String::new(),
             ProvisioningReason::CredentialsInvalid,
         ),
-        WifiCredentialState::Valid(credentials) => {
+        reconnect::PreparedCredentials::Valid {
+            credentials,
+            reconnect: prepared_reconnect,
+        } => {
             apply_sta_hostname(&credentials.hostname);
             let client_configuration = observe(
                 Phase::StationConfiguration,
@@ -184,7 +184,7 @@ pub(crate) fn start_wifi(prepared: PreparedWifi) -> anyhow::Result<()> {
                     ap_mac,
                     credentials.ssid.as_str().to_owned(),
                     ProvisioningReason::StationAdmissionFailed,
-                    Some(&sysloop),
+                    Some((&sysloop, prepared_reconnect)),
                 );
             }
 
@@ -200,7 +200,7 @@ pub(crate) fn start_wifi(prepared: PreparedWifi) -> anyhow::Result<()> {
                 Phase::OwnerInstall,
                 install_wifi_owner(wifi, ap_configuration, Some(client_configuration), ap_mac),
             )?;
-            reconnect::start(&sysloop, None)
+            reconnect::start(prepared_reconnect, &sysloop, None)
         }
     }
 }
@@ -407,7 +407,7 @@ fn retain_provisioning(
     ap_mac: [u8; 6],
     station_ssid: String,
     reason: ProvisioningReason,
-    maybe_sysloop: Option<&EspSystemEventLoop>,
+    maybe_reconnect: Option<(&EspSystemEventLoop, reconnect::PreparedReconnect)>,
 ) -> anyhow::Result<()> {
     let ap_ipv4 = observe(Phase::ApNetif, wifi.wifi().ap_netif().get_ip_info())?.ip;
     observe(Phase::CaptiveDns, captive_dns::start_once(ap_ipv4))?;
@@ -432,9 +432,10 @@ fn retain_provisioning(
         install_wifi_owner(wifi, ap_configuration, maybe_client_configuration, ap_mac),
     )?;
     if reconnect_available {
-        let sysloop = maybe_sysloop
-            .ok_or_else(|| anyhow::anyhow!("Wi-Fi reconnect event loop was unavailable"))?;
+        let (sysloop, prepared) = maybe_reconnect
+            .ok_or_else(|| anyhow::anyhow!("Wi-Fi reconnect preparation was unavailable"))?;
         reconnect::start(
+            prepared,
             sysloop,
             Some(bitaxe_core::wifi_reconnect::WifiDisconnectReason::Other),
         )?;
@@ -555,29 +556,6 @@ fn wifi_auth_method(password: &str) -> AuthMethod {
     }
 
     AuthMethod::WPA2Personal
-}
-
-fn apply_sta_hostname(hostname: &str) {
-    let Ok(hostname_cstr) = std::ffi::CString::new(hostname) else {
-        log::warn!("wifi_hostname_status=skipped reason=interior_nul");
-        return;
-    };
-
-    let netif = unsafe {
-        esp_idf_svc::sys::esp_netif_get_handle_from_ifkey(b"WIFI_STA_DEF\0".as_ptr().cast())
-    };
-    if netif.is_null() {
-        log::warn!("wifi_hostname_status=skipped reason=netif_unavailable");
-        return;
-    }
-
-    let result = unsafe { esp_idf_svc::sys::esp_netif_set_hostname(netif, hostname_cstr.as_ptr()) };
-    if result == esp_idf_svc::sys::ESP_OK {
-        log::info!("wifi_hostname_status=applied");
-        return;
-    }
-
-    log::warn!("wifi_hostname_status=failed esp_err={result}");
 }
 
 fn publish_wifi_state(snapshot: WifiRuntimeSnapshot) {

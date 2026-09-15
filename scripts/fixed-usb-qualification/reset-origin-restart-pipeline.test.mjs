@@ -1,3 +1,4 @@
+import { networkRestartFixture } from "./reset-origin-restart-network-fixtures.mjs";
 import {
   successorRestartFixture,
   knownFailureDiagnostics,
@@ -18,10 +19,11 @@ import { resetDiagnostics } from "./reset-origin-fixtures.mjs";
 import { inspectStartupSources } from "./cadence-startup-context.mjs";
 import { writeNew } from "./contract.mjs";
 
-async function pipeline(t, { largeEvidence = false, deferConsume = false, successor = false } = {}) {
+async function pipeline(t, { largeEvidence = false, deferConsume = false, successor = false, network = false, badNetwork = false } = {}) {
   let closeServer = async () => {};
   t.after(() => closeServer());
-  const f = await (successor ? successorRestartFixture(t) : restartFixture(t));
+  if (network) successor = true;
+  const f = await (network ? networkRestartFixture(t) : successor ? successorRestartFixture(t) : restartFixture(t));
   let clock = 100,
     state,
     config,
@@ -141,8 +143,11 @@ async function pipeline(t, { largeEvidence = false, deferConsume = false, succes
   };
   const diagnosticNode = {
     get textContent() {
-      if (successor && config.expectedFirmwareSourceCommit === f.context.before_source.firmware_commit)
-        return JSON.stringify(knownFailureDiagnostics(f.context).observations);
+      if (successor && config.expectedFirmwareSourceCommit === f.context.before_source.firmware_commit) {
+        const observations = knownFailureDiagnostics(f.context).observations;
+        if (badNetwork) observations.find((value) => value.category === "network_failure").error = "timeout";
+        return JSON.stringify(observations);
+      }
       return JSON.stringify(
         [...resetDiagnostics(f.context, clock + 1000), ...(successor ? [statisticsActive()] : [])].map((d) =>
           d.category === "boot" ? { ...d, boot_ordinal: 7, reset_reason: "software_cpu" } : d,
@@ -383,4 +388,56 @@ test("successor real HTTP pipeline inspects the failed installed image then inde
   assert.equal(f.calls.filter((v) => v === "qualification_restart").length, 1);
   assert.equal(reviewed.ledger.next_ordinal, 17);
   assert.equal(reviewed.ledger.total_charged_ms, 1380000);
+});
+
+test("attempt3 real pipeline verifies known network failure then healthy install/capture/restart with unchanged accounting", async (t) => {
+  // Arrange
+  const f = await pipeline(t, { network: true });
+  // Act
+  await f.client.configureBeforeInstall();
+  await f.worker.connect();
+  await f.client.prepareInstallation();
+  await installRestartFixture(f, { additionalCapture: statisticsLine() });
+  await f.client.configureAfterInstall();
+  await f.worker.connect();
+  await f.client.observeAndRestart();
+  await f.server.closeQualificationResources();
+  await new Promise((resolve) => f.server.close(resolve));
+  const cleanup = resolve(f.root, "host-cleanup.json");
+  await writeNew(cleanup, {
+    schema: "worker-restart-host-cleanup-v1",
+    source: "parent-observed",
+    browser_closed: true,
+    supervisor_exited: true,
+    supervisor_exit_code: 0,
+    listener_absent: true,
+    owned_children_absent: true,
+    serial_holders_absent: true,
+  });
+  await judgeRestart(f.root, cleanup, f.operations);
+  const receipt = await readRestartResult(resolve(f.root, "result.json"), f.operations);
+  // Assert
+  assert.equal(receipt.result, "controlled_restart_verified");
+  assert.equal(receipt.context.restart_attempt, 3);
+  assert.equal(receipt.ledger.next_ordinal, 17);
+  assert.equal(receipt.ledger.total_charged_ms, 1380000);
+  assert.equal(f.calls.filter((value) => value === "qualification_restart").length, 1);
+});
+test("attempt3 production client closes on changed network failure without consuming installation or returning restart authority", async (t) => {
+  // Arrange
+  const f = await pipeline(t, { network: true, badNetwork: true });
+  await f.client.configureBeforeInstall();
+  await f.worker.connect();
+  // Act / Assert
+  await assert.rejects(f.client.prepareInstallation());
+  assert.equal(f.worker.state().status, "closed");
+  assert.equal(f.worker.state().serialOwnershipReleased, true);
+  const { readdir } = await import("node:fs/promises"),
+    names = await readdir(f.root);
+  assert.equal(names.includes("restart-failure.json"), true);
+  assert.equal(names.includes("before-install-failure-review.json"), false);
+  assert.equal(names.includes("install-consumed.json"), false);
+  assert.equal(names.includes("restart-consumed.json"), false);
+  await assert.rejects(f.client.prepareInstallation());
+  assert.equal(f.calls.includes("qualification_restart"), false);
 });

@@ -1,6 +1,7 @@
 //! Fixed Serial/JTAG Worker owner with independent link supervision.
 
 mod link;
+mod prepared_link;
 mod rx_diagnostics;
 pub(crate) mod startup_diagnostics;
 pub(crate) mod trace;
@@ -54,7 +55,7 @@ pub(crate) struct BwgWorkerRecovery {
     nvs: BwgWorkerNvs,
     reboot_report_required: bool,
 }
-pub(crate) struct PreparedWorkerRuntime(());
+pub(crate) struct PreparedWorkerRuntime(crate::prepared_thread::Prepared);
 pub(crate) fn recover_interrupted_effect(
     proof: BootMiningBaselineConfirmed,
 ) -> anyhow::Result<BwgWorkerRecovery> {
@@ -121,6 +122,8 @@ pub(crate) fn prepare(recovery: BwgWorkerRecovery) -> anyhow::Result<PreparedWor
         &manifest_sha256,
     )
     .map_err(|error| anyhow::anyhow!("BWG Worker control unavailable: {}", error.category()))?;
+    let prepared_link =
+        prepared_link::prepare().map_err(|error| anyhow::anyhow!("usb_install: {error}"))?;
     let (sender, receiver) = mpsc::sync_channel(EVENT_CAPACITY);
     EVENTS
         .set(sender)
@@ -130,15 +133,15 @@ pub(crate) fn prepare(recovery: BwgWorkerRecovery) -> anyhow::Result<PreparedWor
         .stack_size(OWNER_STACK_BYTES)
         .spawn(move || run_owner(receiver, &mut worker))
         .map_err(|error| anyhow::anyhow!("owner_spawn: {error}"))?;
-    Ok(PreparedWorkerRuntime(()))
+    Ok(PreparedWorkerRuntime(prepared_link))
 }
 
-pub(crate) fn install(_prepared: PreparedWorkerRuntime) -> anyhow::Result<()> {
+pub(crate) fn install(mut prepared: PreparedWorkerRuntime) -> anyhow::Result<()> {
     anyhow::ensure!(OUTPUT.get().is_some(), "diagnostic_transport_not_installed");
-    std::thread::Builder::new()
-        .name("bwg-serial-link".into())
-        .stack_size(8192)
-        .spawn(link::run)?;
+    anyhow::ensure!(
+        prepared.0.activate(),
+        "usb_install: prepared_link_unavailable"
+    );
     Ok(())
 }
 

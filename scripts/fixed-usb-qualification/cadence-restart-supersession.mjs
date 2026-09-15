@@ -1,3 +1,4 @@
+import { RESTART_NETWORK_FAILURE_SHA256 } from "./reset-origin-restart-network-failure.mjs";
 import { RESTART_INSTALL_FAILURE_SHA256 } from "./reset-origin-restart-install-failure.mjs";
 import { dirname, resolve } from "node:path";
 import { isDeepStrictEqual as equal } from "node:util";
@@ -85,9 +86,10 @@ export function validateCadenceRestartEvidence(receipt, accepted, recovery, fail
   );
   check(
     receipt.context.restart_attempt === undefined ||
-      (receipt.context.restart_attempt === 2 &&
+      ([2, 3].includes(receipt.context.restart_attempt) &&
         receipt.context.statistics_startup_required === true &&
-        receipt.context.install_failure_predecessor?.failed_inventory_sha256 === RESTART_INSTALL_FAILURE_SHA256),
+        receipt.context.install_failure_predecessor?.failed_inventory_sha256 ===
+          (receipt.context.restart_attempt === 2 ? RESTART_INSTALL_FAILURE_SHA256 : RESTART_NETWORK_FAILURE_SHA256)),
     "cadence_restart_successor_class",
   );
   requireIdleLedger(receipt.ledger, 17, 1380000);

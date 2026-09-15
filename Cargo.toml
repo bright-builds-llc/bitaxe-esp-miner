@@ -75,4 +75,4 @@ esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf-sys.git", rev = "f61656
 
 # Keep the application within the fixed 4 MiB slots without moving persistent partitions.
 [profile.release.package.bitaxe-firmware]
-opt-level = "s"
+opt-level = "z"
