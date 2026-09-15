@@ -44,6 +44,31 @@ assert.deepEqual(maybeWorkerSerialDiagnostic("wifi_startup_failure schema=v1 pha
   error: "no_memory",
 });
 
+assert.deepEqual(maybeWorkerSerialDiagnostic("storage_http_failure schema=v1 phase=http_server error=http_task redacted=true"), {
+  category: "storage_http_failure",
+  authoritative: false,
+  phase: "http_server",
+  error: "http_task",
+});
+assert.deepEqual(
+  maybeWorkerSerialDiagnostic(
+    "usb_startup schema=v1 stage=runtime_ready state=failed first_failure=storage_http uptime_ms=30000 redacted=true",
+  ),
+  {
+    category: "startup",
+    authoritative: false,
+    stage: "runtime_ready",
+    state: "failed",
+    first_failure: "storage_http",
+    uptime_ms: 30000,
+  },
+);
+assert.deepEqual(maybeWorkerSerialDiagnostic("storage_http_status schema=v1 spiffs_available=true http_ready=false redacted=true"), {
+  category: "storage_http_status",
+  authoritative: false,
+  spiffs_available: "true",
+  http_ready: "false",
+});
 process.stdout.write(
   JSON.stringify({ actual_gate_configuration_accepted: true, autoload_uses_same_payload: true, phase_key_rejected: true }),
 );

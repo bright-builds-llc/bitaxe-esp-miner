@@ -168,15 +168,34 @@ export function knownFailureDiagnostics(context) {
         category: "startup",
         authoritative: false,
         stage: "runtime_ready",
-        state: "complete",
+        state: context.restart_attempt === 4 ? "failed" : "complete",
         first_failure: known.first_failure,
         uptime_ms: known.last_startup_uptime_ms + 5000,
       },
-      { category: "storage_http_status", authoritative: false, http_ready: "true", spiffs_available: "true" },
+      {
+        category: "storage_http_status",
+        authoritative: false,
+        http_ready: context.restart_attempt === 4 ? "false" : "true",
+        spiffs_available: "true",
+      },
       ...(context.restart_attempt === 3
         ? [
             { category: "network_failure", authoritative: false, phase: "reconnect_spawn", error: "no_memory" },
             { ...known.statistics_active },
+          ]
+        : []),
+      ...(context.restart_attempt === 4
+        ? [
+            { category: "storage_http_failure", authoritative: false, phase: "http_server", error: "http_task" },
+            { ...known.statistics_active },
+            {
+              category: "startup",
+              authoritative: false,
+              stage: "network",
+              state: "entered",
+              first_failure: "storage_http",
+              uptime_ms: known.last_startup_uptime_ms,
+            },
           ]
         : []),
     ],

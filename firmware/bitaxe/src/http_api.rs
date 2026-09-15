@@ -49,6 +49,7 @@ mod deferred_effects;
 mod handlers;
 mod response;
 mod settings;
+mod startup_owners;
 mod theme;
 mod updates;
 mod websocket;
@@ -96,11 +97,6 @@ fn start_http_api_inner(
     filesystem_status: FilesystemStatus,
 ) -> anyhow::Result<PreparedHttpRuntime> {
     storage_http_diagnostics::observe(StartupPhase::HttpNetif, network_stack::initialize())?;
-    storage_http_diagnostics::observe(
-        StartupPhase::HttpDeferredWorker,
-        initialize_deferred_effect_worker(),
-    )?;
-
     let config = Configuration {
         stack_size: HTTP_SERVER_TASK_STACK_BYTES,
         max_open_sockets: 7,
@@ -109,8 +105,15 @@ fn start_http_api_inner(
         uri_match_wildcard: true,
         ..Default::default()
     };
-    let mut server =
-        storage_http_diagnostics::observe(StartupPhase::HttpServer, EspHttpServer::new(&config))?;
+    let mut server = startup_owners::initialize(
+        || storage_http_diagnostics::observe(StartupPhase::HttpServer, EspHttpServer::new(&config)),
+        || {
+            storage_http_diagnostics::observe(
+                StartupPhase::HttpDeferredWorker,
+                initialize_deferred_effect_worker(),
+            )
+        },
+    )?;
 
     if let Err(error) = settings_adapter::initialize_current_settings_snapshot() {
         log::warn!("axeos_settings_snapshot=startup_refresh_failed error={error}");

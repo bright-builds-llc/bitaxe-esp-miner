@@ -6,6 +6,7 @@ let stage = "initial",
   busy = false,
   baselineId,
   preinstallFailureReview = false,
+  preinstallStartupState = "complete",
   statisticsRequired = false,
   cleanupFailed = false;
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -80,6 +81,7 @@ async function configureBeforeInstall() {
   );
   preinstallFailureReview = state.preinstall_failure_review_required === true;
   statisticsRequired = state.statistics_startup_required === true;
+  preinstallStartupState = state.preinstall_startup_state === "failed" ? "failed" : "complete";
   stage = "before-install";
   note.textContent = "Connect the Worker, then record the baseline and release USB for the single installation.";
   return { configured: true };
@@ -93,7 +95,7 @@ async function prepareInstallation() {
     if (preinstallFailureReview) {
       await window.workerAcceptance.refresh();
       baseline();
-      await diagnosticsReady(false);
+      await diagnosticsReady(false, preinstallStartupState);
       await bounded(window.noMiningSupervisor.flush());
       const observations = JSON.parse(document.querySelector("#diagnostics").textContent);
       await request("/restart/preinstall-review", { schema: "worker-diagnostic-export-v1", observations });
@@ -147,7 +149,7 @@ async function exportDiagnostics() {
   if (!text) throw Error("restart_diagnostics_missing");
   return request("/diagnostic-export", { schema: "worker-diagnostic-export-v1", observations: JSON.parse(text) }, 5000);
 }
-async function diagnosticsReady(requireStatistics = statisticsRequired) {
+async function diagnosticsReady(requireStatistics = statisticsRequired, expectedStartupState = "complete") {
   const began = performance.now();
   while (performance.now() - began < 15000) {
     baseline();
@@ -157,7 +159,7 @@ async function diagnosticsReady(requireStatistics = statisticsRequired) {
       if (
         (!requireStatistics || values.some((value) => value.category === "statistics_startup" && value.state === "active")) &&
         ["boot", "runtime_identity", "storage_http_status"].every((category) => values.some((value) => value.category === category)) &&
-        values.some((value) => value.category === "startup" && value.stage === "runtime_ready" && value.state === "complete")
+        values.some((value) => value.category === "startup" && value.stage === "runtime_ready" && value.state === expectedStartupState)
       )
         return;
     }

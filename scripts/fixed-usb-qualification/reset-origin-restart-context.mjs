@@ -1,3 +1,4 @@
+import { readRestartStorageFailure, RESTART_STORAGE_FAILURE_SHA256 } from "./reset-origin-restart-storage-failure.mjs";
 import { readRestartNetworkFailure, RESTART_NETWORK_FAILURE_SHA256 } from "./reset-origin-restart-network-failure.mjs";
 import { mkdir, open, readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -123,9 +124,10 @@ function assignmentPath(context) {
 function successorAttempt(failed) {
   if (failed.binding.failed_inventory_sha256 === RESTART_INSTALL_FAILURE_SHA256 && failed.context.restart_attempt === undefined) return 2;
   if (failed.binding.failed_inventory_sha256 === RESTART_NETWORK_FAILURE_SHA256 && failed.context.restart_attempt === 2) return 3;
+  if (failed.binding.failed_inventory_sha256 === RESTART_STORAGE_FAILURE_SHA256 && failed.context.restart_attempt === 3) return 4;
   check(false, "restart_install_failure_anchor");
 }
-/** Select only the two anchored failures, before reading or traversing their lineage. */
+/** Select only known anchored failures before reading or traversing their lineage. */
 export async function readRestartInstallPredecessor(path, operations = {}) {
   path = await canonicalDirectory(path);
   await protectedPath(path, true);
@@ -133,14 +135,18 @@ export async function readRestartInstallPredecessor(path, operations = {}) {
   await protectedPath(sealPath);
   const bytes = await readFile(sealPath),
     hash = digest(bytes);
-  check([RESTART_INSTALL_FAILURE_SHA256, RESTART_NETWORK_FAILURE_SHA256].includes(hash), "restart_install_failure_anchor");
+  check(
+    [RESTART_INSTALL_FAILURE_SHA256, RESTART_NETWORK_FAILURE_SHA256, RESTART_STORAGE_FAILURE_SHA256].includes(hash),
+    "restart_install_failure_anchor",
+  );
   const seal = JSON.parse(bytes.toString("utf8")),
     contextPath = resolve(path, "context.json");
   await protectedPath(contextPath);
   const entry = seal.files?.find((value) => value.path === "context.json" && value.type === "file");
   check(entry && entry.sha256 === (await fileDigest(contextPath)), "restart_failure_context_changed");
   if (hash === RESTART_INSTALL_FAILURE_SHA256) return readRestartInstallFailure(path, operations);
-  return readRestartNetworkFailure(path, operations);
+  if (hash === RESTART_NETWORK_FAILURE_SHA256) return readRestartNetworkFailure(path, operations);
+  return readRestartStorageFailure(path, operations);
 }
 async function failedInstallation(path, operations) {
   const failed = await (operations.readInstallFailure ?? readRestartInstallPredecessor)(path, operations);
@@ -324,7 +330,7 @@ export async function loadRestartContext(root, { historical = false, operations 
     context.statistics_startup_required !== undefined;
   let failed;
   if (successor) {
-    check([2, 3].includes(context.restart_attempt) && context.statistics_startup_required === true, "restart_successor_shape");
+    check([2, 3, 4].includes(context.restart_attempt) && context.statistics_startup_required === true, "restart_successor_shape");
     exactObject(context.install_failure_predecessor, ["root", "failed_inventory_sha256"]);
     failed = await failedInstallation(context.install_failure_predecessor.root, operations);
     check(

@@ -417,3 +417,46 @@ captures with the original thresholds and independent heartbeat shutdown proof.
 It consumes one normal 180000-ms reservation and expects next 18, last 17,
 charged 1560000 ms, pending false after finalization. A failure leaves cadence,
 USB qualification and migration active and all earlier failures unchanged.
+
+### Exact HTTP task allocation failure successor 004
+
+The separately sealed003 failure is bound by
+[its report](../parity/evidence/20260915-http-task-startup-failure.md): inventory
+`d560b740bcca4936dd6c39722a81165112decc5579ce2c4f78d8d588903c855c`, producer
+`7e90435786f3ab61594991757863ed8d7f3eae4e841e0d2252c6416e2c33acac`.
+It completed one write on253658ce/ELF6991aab2/Gate72235d8, then failed HTTP task
+creation. It provides no post-install authentication, restart or mining proof.
+
+Use the same `reset-origin-restart-preflight --supersede-install-failure`
+command, now restricted to that exact additional failure class. Its finite
+ancestry is004→failed003→failed002→failed001→accepted005 and the existing older
+chain. Preserve every earlier assignment and seal. Exclusively reserve
+`restart-assignment-4.json` before creating the fresh protected child; changed,
+recursive, conflicting, interrupted or archived-task inputs confer no effects.
+
+Verify the targeted allocation-order correction: create the16KiB HTTP server
+before its8KiB deferred worker inside the existing HTTP startup stage, publish
+routes/readiness only after both succeed, and release the server if deferred
+startup fails. No buffer, reserve, stack, affinity, priority or deadline change
+is permitted by this correction. Run production-boundary regression tests,
+ordered software/native verification and exact clean publication before effects.
+
+The before-install configuration must bind the image actually installed by003.
+Fresh authenticated idle accounting must remain next17, last16, charged1380000 ms,
+pending false; the original campaign remains charged240000 ms and masks7/7.
+Require the same boot1/other with advancing boot/startup uptimes beyond29801/29802,
+active statistics matching the retained startup record, the exact
+`storage_http_failure/http_server/http_task` observation, SPIFFS available and
+HTTP not ready. Accept only the recorded `network/entered/storage_http` and
+`runtime_ready/failed/storage_http` startup states for this unhealthy pre-install
+inspection. The browser's pre-install diagnostic wait is specifically scoped to
+that expected failed state; post-install observation still requires complete,
+healthy startup. Other failures or missing proof stop before installation.
+
+One installation and one authenticated restart remain the maximum in the new
+context. No signing/mining credentials enter this stage. All existing exact
+identity, preservation, process observation, healthy130-second observation,
+restart30-second limit and actual cleanup rules remain. Only an independently
+accepted controlled restart admits cadence17-2 and its unchanged four cycles,
+three captures, normal180000-ms reservation, shutdown/cooling and accounting
+requirements. Missing proof leaves the three broader tasks active.

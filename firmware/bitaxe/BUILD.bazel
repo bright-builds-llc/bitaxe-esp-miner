@@ -1303,6 +1303,18 @@ rust_test(
 )
 
 rust_test(
+    name = "http_startup_owners_tests",
+    srcs = [
+        "src/http_startup_owners_host_test.rs",
+        "src/http_api/startup_owners.rs",
+        "src/http_api/startup_owners_tests.rs",
+    ],
+    crate_root = "src/http_startup_owners_host_test.rs",
+    crate_name = "http_startup_owners_tests",
+    edition = "2021",
+)
+
+rust_test(
     name = "main_telemetry_tests",
     srcs = [
         "src/main_telemetry_host_test.rs",
