@@ -98,9 +98,9 @@ export function baselineFixture(context) {
   return state;
 }
 
-export async function cycleFixture(root, context, state) {
+export async function cycleFixture(root, context, state, {paddingBytes=65000}={}) {
   const records = [],
-    probe = { paddingBytes: 65000, requestPayloadBytes: 65536, responsePayloadBytes: 65536 };
+    probe = { paddingBytes, requestPayloadBytes: 65536, responsePayloadBytes: 65536 };
   await writeNew(resolve(root, "detector.device.private.json"), { port: "/dev/cu.fixture", usb_profile: "serial_jtag_runtime" });
   const deviceHash = await fileDigest(resolve(root, "detector.device.private.json"));
   for (let n = 0; n <= 4; n++) {

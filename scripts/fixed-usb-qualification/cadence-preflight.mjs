@@ -1,3 +1,4 @@
+import { readCadenceFailure, requireCadenceFailureLineage } from "./cadence-failure.mjs";
 import { constants } from "node:fs";
 import { verifyArtifactSnapshot } from "./snapshot.mjs";
 import { copyFile, chmod, mkdir, realpath, stat } from "node:fs/promises";
@@ -15,7 +16,7 @@ import { preminingClosurePath, readPremining } from "./cadence-premining.mjs";
 function assignmentPath(root, context) {
   const preparation = context.preparation_attempt;
   requireCondition(preparation === undefined || (Number.isSafeInteger(preparation) && preparation >= 2), "cadence_preparation_shape");
-  const sources = [context.unissued_predecessor, context.premining_predecessor, context.startup_predecessor, context.restart_predecessor].filter(value => value !== undefined);
+  const sources = [context.unissued_predecessor, context.premining_predecessor, context.startup_predecessor, context.restart_predecessor, context.cadence_failure_predecessor].filter(value => value !== undefined);
   requireCondition(sources.length === (preparation === undefined ? 0 : 1) && sources.every(value => value !== null && typeof value === "object" && !Array.isArray(value)), "cadence_preparation_shape");
   return resolve(dirname(root), `ordinal-${context.qualification_attempt.ordinal}${preparation === undefined ? "" : `-preparation-${preparation}`}.json`);
 }
@@ -43,7 +44,7 @@ async function requireStartupLineage(recovery, context, previousPath) {
 }
 
 export async function cadencePreflight(options, operations = {}) {
-  requireCondition([options.supersedeUnissued, options.supersedePremining, options.supersedeStartup, options.supersedeRestart].filter(value => value !== undefined).length <= 1, "cadence_supersession_exclusive");
+  requireCondition([options.supersedeUnissued, options.supersedePremining, options.supersedeStartup, options.supersedeRestart, options.supersedeCadenceFailure].filter(value => value !== undefined).length <= 1, "cadence_supersession_exclusive");
   requireCondition(options.suggestedDifficulty === "1000" && options.observerBinary, "cadence_arguments");
   const root = resolve(options.privateRoot), parent = dirname(root);
   await protectedPath(parent, true); await missing(root);
@@ -64,6 +65,8 @@ export async function cadencePreflight(options, operations = {}) {
   const startup = startupPath ? await readStartupRecovery(startupPath, operations) : undefined;
   const restartPath = options.supersedeRestart ? resolve(options.supersedeRestart) : undefined;
   const restart = restartPath ? await (operations.readCadenceRestart ?? readCadenceRestart)(restartPath, operations) : undefined;
+  const failedCadence = options.supersedeCadenceFailure
+    ? await (operations.readCadenceFailure ?? readCadenceFailure)(resolve(options.supersedeCadenceFailure), operations) : undefined;
   if (startup) requireCondition(dirname(dirname(startupPath)) === parent && dirname(startupPath) !== root, "cadence_startup_sibling_required");
   const superseded = unissued ?? premining;
   if (premining) requireCondition(dirname(premining.root) === parent && premining.root !== root, "cadence_premining_sibling_required");
@@ -92,21 +95,23 @@ export async function cadencePreflight(options, operations = {}) {
       [unissued ? "unissued_predecessor" : "premining_predecessor"]: { root: superseded.root,
         closure_sha256: await fileDigest(unissuedPath ?? preminingPath) } } : {}),
     ...(startup ? { preparation_attempt: 2, startup_predecessor: { root: dirname(startupPath), receipt_sha256: await fileDigest(startupPath) } } : {}),
-    ...(restart ? { preparation_attempt: 2, restart_predecessor: restart.binding } : {}) };
+    ...(restart ? { preparation_attempt: 2, restart_predecessor: restart.binding } : {}),
+    ...(failedCadence ? { preparation_attempt: 3, cadence_failure_predecessor: failedCadence.binding } : {}) };
   validateCadencePolicy(context);
   if (superseded) requireUnissuedLineage(superseded, context, previousPath, context.previous_receipt_sha256);
   if (startup) await requireStartupLineage(startup, context, previousPath);
   if (restart) requireCadenceRestartLineage(root, context, restart);
+  if (failedCadence) requireCadenceFailureLineage(root, context, failedCadence, progress);
   const markerPath = assignmentPath(root, context); await missing(markerPath);
   const marker = { context_sha256: digest(JSON.stringify(context)), attempt_root: root };
   // An interrupted pre-mining successor retains its preparation assignment permanently.
-  if (premining || startup || restart) await writeNew(markerPath, marker);
+  if (premining || startup || restart || failedCadence) await writeNew(markerPath, marker);
   await (operations.mkdir ?? mkdir)(root, { mode: 0o700 });
   const retainedObserver = resolve(root, "cadence-observer.bin");
   await (operations.copyFile ?? copyFile)(observerPath, retainedObserver, constants.COPYFILE_EXCL);
   await chmod(retainedObserver, 0o600);
   requireCondition(await fileDigest(retainedObserver) === context.cadence_observer.sha256, "cadence_observer_snapshot");
-  if (!premining && !startup && !restart) await writeNew(markerPath, marker);
+  if (!premining && !startup && !restart && !failedCadence) await writeNew(markerPath, marker);
   await writeNew(resolve(root, "context.json"), { context, sha256: digest(JSON.stringify(context)) });
   return { cadence_preflight_created: true, ordinal: attempt.ordinal, reserved_on_device: false, maximum_active_ms: 180000, device_effects: false };
 }
@@ -165,6 +170,12 @@ export async function validateCadenceContext(root, context, { historical = false
     requireCondition(Object.keys(source).length === 2 && typeof source.root === "string", "cadence_restart_predecessor_shape");
     const prior = await (operations.readCadenceRestart ?? readCadenceRestart)(resolve(source.root, "result.json"), operations);
     requireCadenceRestartLineage(root, context, prior);
+  }
+  if (context.cadence_failure_predecessor !== undefined) {
+    const source = context.cadence_failure_predecessor;
+    requireCondition(source && typeof source.root === "string", "cadence_failure_predecessor_shape");
+    const prior = await (operations.readCadenceFailure ?? readCadenceFailure)(source.root, operations);
+    requireCadenceFailureLineage(root, context, prior, progress);
   }
   validateCadenceProgress(progress, Boolean(context.unissued_predecessor));
   await protectedPath(markerPath);

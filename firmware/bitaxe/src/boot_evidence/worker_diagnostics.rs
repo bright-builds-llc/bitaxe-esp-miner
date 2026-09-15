@@ -1,8 +1,9 @@
 //! Closed fixed Serial/JTAG report; no raw logs or runtime network identifiers.
 
+use crate::boot_diagnostic_cache::{Checkpoint, CACHE};
 use bitaxe_api::panic_receipt::AllocationFailureContextMarker;
 
-/// Builds one small line lazily, avoiding a report-sized retained-log clone.
+/// Replays typed boot observations without touching the general retained-log buffer.
 pub(crate) fn maybe_worker_diagnostic_line(slot: usize) -> Option<String> {
     match slot {
         0 | 11 => Some(super::worker_usb_boot_marker()),
@@ -17,38 +18,14 @@ pub(crate) fn maybe_worker_diagnostic_line(slot: usize) -> Option<String> {
             .get()
             .and_then(|receipts| receipts.maybe_allocation_context)
             .map(AllocationFailureContextMarker::marker),
-        5 => crate::log_buffer::maybe_worker_diagnostic_line(
-            "usb_memory_checkpoint",
-            "stage=worker_owner_prepare",
-        ),
-        6 => crate::log_buffer::maybe_worker_diagnostic_line(
-            "usb_memory_checkpoint",
-            "stage=usb_install",
-        ),
-        7 => crate::log_buffer::maybe_worker_diagnostic_line(
-            "usb_memory_checkpoint",
-            "stage=usb_installed",
-        ),
-        8 => crate::log_buffer::maybe_worker_diagnostic_line(
-            "usb_memory_checkpoint",
-            "stage=statistics_start",
-        ),
-        9 => crate::log_buffer::maybe_worker_diagnostic_line(
-            "usb_memory_checkpoint",
-            "stage=statistics_started",
-        ),
-        10 => crate::log_buffer::maybe_worker_diagnostic_line(
-            "bwg_worker_start_failure",
-            "category=startup_failed",
-        ),
-        12 => crate::log_buffer::maybe_worker_diagnostic_line(
-            "usb_memory_checkpoint",
-            "stage=wifi_driver_prepare",
-        ),
-        13 => crate::log_buffer::maybe_worker_diagnostic_line(
-            "usb_memory_checkpoint",
-            "stage=wifi_driver_prepared",
-        ),
+        5 => CACHE.maybe_checkpoint_marker(Checkpoint::WorkerOwnerPrepare),
+        6 => CACHE.maybe_checkpoint_marker(Checkpoint::UsbInstall),
+        7 => CACHE.maybe_checkpoint_marker(Checkpoint::UsbInstalled),
+        8 => CACHE.maybe_checkpoint_marker(Checkpoint::StatisticsStart),
+        9 => CACHE.maybe_checkpoint_marker(Checkpoint::StatisticsStarted),
+        10 => CACHE.maybe_failure_marker(),
+        12 => CACHE.maybe_checkpoint_marker(Checkpoint::WifiDriverPrepare),
+        13 => CACHE.maybe_checkpoint_marker(Checkpoint::WifiDriverPrepared),
         16 => crate::storage_http_diagnostics::maybe_failure_marker(),
         17 => crate::storage_http_diagnostics::maybe_status_marker(),
         19 => Some(crate::preparation_evidence::marker(true)),

@@ -1,3 +1,4 @@
+use crate::boot_diagnostic_cache::{Checkpoint, StartFailure, CACHE};
 use crate::bwg_worker_usb::startup_diagnostics::{Stage as DiagnosticStage, PROGRESS};
 use bitaxe_api::panic_receipt::StartupStage;
 use bitaxe_core::{AsicTarget, BoardTarget, Phase1SafeState, StartupDebugText};
@@ -451,6 +452,14 @@ fn retain_usb_memory_checkpoint(stage: &str) {
     let internal_dma_caps = sys::MALLOC_CAP_INTERNAL | sys::MALLOC_CAP_DMA | sys::MALLOC_CAP_8BIT;
     let free_bytes = unsafe { sys::heap_caps_get_free_size(internal_dma_caps) };
     let largest_block_bytes = unsafe { sys::heap_caps_get_largest_free_block(internal_dma_caps) };
+    if let Some(checkpoint) = Checkpoint::maybe_from_label(stage) {
+        let _outcome = CACHE.record_checkpoint(
+            checkpoint,
+            free_bytes,
+            largest_block_bytes,
+            sys::CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL as usize,
+        );
+    }
     crate::info_retained(&format!(
         "usb_memory_checkpoint stage={stage} free_bytes={free_bytes} largest_block_bytes={largest_block_bytes} reserve_bytes={} redacted=true",
         sys::CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL,
@@ -459,22 +468,17 @@ fn retain_usb_memory_checkpoint(stage: &str) {
 
 fn retain_bwg_worker_start_failure(error: &anyhow::Error) {
     PROGRESS.fail(DiagnosticStage::WorkerControl);
+    let failure = bwg_worker_start_failure_detail(error);
+    let _first = CACHE.record_failure(failure);
     log::warn!("bwg_worker_control=unavailable category=startup_failed error={error:#}");
-    let detail = bwg_worker_start_failure_detail(error);
+    let detail = failure.label();
     crate::info_retained(&format!(
         "bwg_worker_start_failure category=startup_failed detail={detail} redacted=true"
     ));
 }
 
-fn bwg_worker_start_failure_detail(error: &anyhow::Error) -> &'static str {
-    let message = error.to_string();
-    if message.starts_with("owner_spawn:") {
-        "owner_spawn"
-    } else if message.starts_with("usb_install:") {
-        "usb_install"
-    } else {
-        "control_owner"
-    }
+fn bwg_worker_start_failure_detail(error: &anyhow::Error) -> StartFailure {
+    StartFailure::from_context(&error.to_string())
 }
 
 fn retain_previous_boot_failure() {

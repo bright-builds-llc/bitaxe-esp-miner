@@ -343,3 +343,84 @@ exclusive ordinal-17 preparation-2 assignment. This grants no authority from
 the failed preparation itself. Repeat all four qualification cycles and all
 three captures with fresh accounting before issuance. Recovery observations
 never substitute for those measurements or relax any acceptance criterion.
+
+## Ordinal 17 preparation 3: bounded retention correction
+
+This prospective amendment admits one fresh preparation after the sealed USB
+percentile failure in `cadence-017-preparation-2`. The immutable inventory is
+`2003dd26039daa1edad78057e88215a07fffab4883d955648b8a61ad12f8aacb`, produced by
+`f894edb393c176edc115e5408530a6ebe1045709f1b17543ca91450e19395c78`.
+That preparation passed four update cycles and idle, but USB achieved only
+89/95 intervals at most750ms. All12 probes completed; mining never armed and
+no allowance was issued or consumed. The full USB review remains in the
+journal; no collected USB phase file or successful result may be manufactured.
+The final closed journal and actual resource cleanup are preserved. Its last
+authenticated accounting was the cooling review before capture:
+next17/last16/1380000ms/pendingfalse. There is no post-failure ledger observation.
+
+The correction independently retains seven typed numeric boot-memory facts and
+the first closed Worker startup failure in a small boot-local cache. USB replay
+reads that cache without scanning or locking the circular log. These are actual
+producer observations, not assertions that a general-log append succeeded.
+General logs, atomic operator-pair retention and issuance remain unchanged.
+The target cache cost is116 bytes, with total diagnostic static storage at
+most2048 bytes. Preserve wire grammar, boot identity and uptime semantics,
+failure provenance, logging, stacks, task affinity and priorities, the500-ms
+sleep, heartbeat enforcement and every existing cadence threshold. Verify the
+actual replay path while the general log mutex is held, first-value retention,
+concurrent/incomplete publication, closed formatting and native storage/stack
+costs before publishing. Missing or corrupt cached facts cannot become valid
+zero-valued measurements.
+
+Use the new mutually exclusive
+`cadence-preflight --supersede-cadence-failure <sealed failed root>` with the
+same charged ordinal16 predecessor. Inspect it independently with
+`cadence-review-failure --private-root <sealed failed root>`. This read-only
+command accesses no hardware, credentials or signing authority. The reader must verify
+the exact inventory and producer, context and finite predecessor chain,
+13 artifact snapshots, five flash records, four cycles, passing idle, the
+specific USB percentile failure,12 probes, observer journal and actual cleanup.
+Require absence of issuance, consumption, loaded grants, work, renewals,
+heartbeat suppression and mining-phase evidence. Fan-only cooling is not work.
+Retain parent-observed failure provenance and `post_failure_ledger_observed:false`.
+No extra closure receipt or modification inside the sealed directory is needed.
+
+Require a verified software correction referencing that seal, changed clean
+published firmware and ELF, unchanged verified Gate/trust, canonical observer,
+same campaign and charged predecessor, and a fresh allowance identity. Bind
+`preparation_attempt:3` and
+`cadence_failure_predecessor:{root,failed_inventory_sha256}`. Reserve
+`ordinal-17-preparation-3.json` exclusively before creating or copying any child;
+an interrupted assignment remains reserved. Preserve existing ordinal and
+preparation markers. Reject duplicate successors, evidence drift, unsafe paths,
+recursive lineage, archived-task authority and serving sealed preparations.
+Permission-only, pre-mining and funded-result judges remain unchanged.
+
+The existing `--supersede-restart` exact-pair rule stays unchanged. StageB004
+remains transitive ancestry about F056/Gate722 and is not a restart-success
+claim for the cache image. Do not copy `restart_predecessor` into preparation3.
+This scoped amendment permits the changed image's full cadence qualification
+without another controlled restart because restart admission, ACK handling,
+reset execution and boot identity are outside the correction. Any change to
+those paths requires a new prospective review before effects.
+
+After ordered software/canonical/native verification, commit and publish the
+implementation and build the clean exact package. Bind firmware, Gate,
+observer, validator and artifacts before detector admission or writes. Perform
+one state-preserving installation and all four fresh update/reconnect cycles,
+then the unchanged idle, USB and mining phases, independent heartbeat shutdown,
+bounded cooling, fresh restoration review and resource cleanup. Use native
+foreground gestures, Web Serial as sole control owner, one passive subscriber
+with360-second lifetime, twelve serialized65536-byte probes five seconds apart,
+and the existing conservative mining profile. Fresh authenticated accounting
+must confirm next17/last16/1380000ms/pendingfalse before issuance. Consume one
+normal180000-ms reservation without refund; final expected accounting becomes
+next18/last17/1560000ms/pendingfalse. Unexpected accounting blocks continuation.
+
+All three complete60-device-second captures must meet the original criteria;
+the observer remains through heartbeat suppression plus at least five seconds.
+On failure preserve the earliest cause and complete cleanup; this amendment
+admits no automatic preparation4. Another attempt requires a verified targeted
+correction and a new bounded guard. On complete independent acceptance only,
+archive cadence, USB qualification and migration with exact evidence reviews;
+retain BWG/STR successor requirements and parity90/95 unchanged.

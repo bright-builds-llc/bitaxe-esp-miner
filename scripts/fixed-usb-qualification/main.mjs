@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { reviewCadenceFailure } from "./cadence-failure.mjs";
 import { restartPreflight } from "./reset-origin-restart-context.mjs";
 import { createRestartSupervisor } from "./reset-origin-restart-server.mjs";
 import { consumeRestartInstall, reviewRestartInstallation } from "./reset-origin-restart-install.mjs";
@@ -30,7 +31,7 @@ import { createSupervisor } from "./server.mjs";
 import { finishWindow, recordCycle } from "./store.mjs";
 import { protectedPath, QualificationError, readJson, requireCondition } from "./contract.mjs";
 
-const KEYS = { "--supersede-install-failure": "supersedeInstallFailure", "--supersede-restart": "supersedeRestart", "--stage-a-result": "stageAResult", "--observer-script": "observerScript", "--supersede-finalization": "supersedeFinalization", "--supersede-journal-failure": "supersedeJournalFailure", "--supersede-preparation-review": "supersedePreparationReview", "--supersede-unstarted": "supersedeUnstarted", "--supersede-startup": "supersedeStartup", "--supersede-premining": "supersedePremining", "--supersede-unissued": "supersedeUnissued", "--observer-binary": "observerBinary", "--recovery-phase": "recoveryPhase", "--original-campaign-record": "originalCampaignRecord", "--retained-runtime-from": "retainedRuntimeFrom", "--suggested-difficulty": "suggestedDifficulty", "--cycles-from": "cyclesFrom", "--purpose": "purpose", "--previous-receipt": "previousReceipt", "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
+const KEYS = { "--supersede-cadence-failure":"supersedeCadenceFailure", "--supersede-install-failure": "supersedeInstallFailure", "--supersede-restart": "supersedeRestart", "--stage-a-result": "stageAResult", "--observer-script": "observerScript", "--supersede-finalization": "supersedeFinalization", "--supersede-journal-failure": "supersedeJournalFailure", "--supersede-preparation-review": "supersedePreparationReview", "--supersede-unstarted": "supersedeUnstarted", "--supersede-startup": "supersedeStartup", "--supersede-premining": "supersedePremining", "--supersede-unissued": "supersedeUnissued", "--observer-binary": "observerBinary", "--recovery-phase": "recoveryPhase", "--original-campaign-record": "originalCampaignRecord", "--retained-runtime-from": "retainedRuntimeFrom", "--suggested-difficulty": "suggestedDifficulty", "--cycles-from": "cyclesFrom", "--purpose": "purpose", "--previous-receipt": "previousReceipt", "--firmware-root": "firmwareRoot", "--gate-root": "gateRoot", "--firmware-commit": "firmwareCommit", "--gate-commit": "gateCommit",
   "--manifest": "manifest", "--private-root": "privateRoot", "--authority-directory": "authorityDirectory", "--pool-credentials": "poolCredentials",
   "--cooling-input": "coolingInput", "--predecessor-root": "predecessorRoot", "--bun": "bun", "--port": "port", "--window": "window", "--input": "input",
   "--qualification-source-commit": "qualificationSourceCommit", "--gate-qualification-source-commit": "gateQualificationSourceCommit" };
@@ -55,7 +56,8 @@ export async function main(args, operations = {}) {
     "reset-origin-serve": ["privateRoot", "port", "bun"],
     "reset-origin-judge": ["privateRoot", "input"],
     "reset-origin-review": ["privateRoot"],
-    "cadence-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "authorityDirectory", "bun", "previousReceipt", "input", "suggestedDifficulty", "observerBinary", "supersedeUnissued", "supersedePremining", "supersedeStartup", "supersedeRestart"],
+    "cadence-review-failure": ["privateRoot"],
+    "cadence-preflight": ["supersedeCadenceFailure","firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "authorityDirectory", "bun", "previousReceipt", "input", "suggestedDifficulty", "observerBinary", "supersedeUnissued", "supersedePremining", "supersedeStartup", "supersedeRestart"],
     "cadence-startup-recovery-preflight": ["firmwareRoot", "gateRoot", "firmwareCommit", "gateCommit", "manifest", "privateRoot", "input", "originalCampaignRecord", "predecessorRoot", "previousReceipt"],
     "cadence-startup-recovery-serve": ["privateRoot", "port", "bun"],
     "cadence-startup-recovery-judge": ["privateRoot", "input"],
@@ -135,6 +137,7 @@ export async function main(args, operations = {}) {
     requireCondition(options.input, "input_required");
     return iterativeBootstrap(resolve(options.privateRoot), options.input);
   }
+  if (command === "cadence-review-failure") return reviewCadenceFailure(resolve(options.privateRoot),operations);
   if (command === "cadence-close-premining") return closePremining(resolve(options.privateRoot));
   if (command === "cadence-review-premining") return reviewPremining(resolve(options.privateRoot), operations);
   if (command === "cadence-close-unissued") {

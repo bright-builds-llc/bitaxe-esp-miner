@@ -4,6 +4,7 @@ mod application_log;
 mod asic_adapter;
 mod bap_adapter;
 mod bap_runtime;
+mod boot_diagnostic_cache;
 mod boot_evidence;
 mod boot_validation;
 mod boot_validation_plan;

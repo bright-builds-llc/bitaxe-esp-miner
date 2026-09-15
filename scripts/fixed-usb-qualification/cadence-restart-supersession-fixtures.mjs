@@ -1,3 +1,7 @@
+import { storageRestartFixture } from "./reset-origin-restart-storage-fixtures.mjs";
+import { knownFailureDiagnostics, statisticsActive, statisticsLine } from "./reset-origin-restart-successor-fixtures.mjs";
+import { savePreinstallFailure } from "./reset-origin-restart-preinstall.mjs";
+import { installRestartFixture } from "./reset-origin-restart-fixtures.mjs";
 import { resolve, dirname } from "node:path";
 import { digest, fileDigest, readJson, writeNew } from "./contract.mjs";
 import { installedRestartFixture, recordRestartFixture, restartPacket } from "./reset-origin-restart-fixtures.mjs";
@@ -25,7 +29,9 @@ async function completeRestart(f) {
     state: recoveryState(inner),
   });
   const diagnostics = (uptime) =>
-    resetDiagnostics(context, uptime).map((d) => (d.category === "boot" ? { ...d, boot_ordinal: 7, reset_reason: "software_cpu" } : d));
+    [...resetDiagnostics(context, uptime), ...(context.statistics_startup_required ? [statisticsActive()] : [])].map((d) =>
+      d.category === "boot" ? { ...d, boot_ordinal: 7, reset_reason: "software_cpu" } : d,
+    );
   const start = {
     schema: "fixed-usb-reset-origin-start-v1",
     context_sha256: hash,
@@ -68,8 +74,14 @@ async function completeRestart(f) {
     hostMonotonicMs: 130300,
   });
   await recordRestartFixture(scope, inner, { ...recoveryState(inner), status: "restarting", deviceBaselineConfirmed: false });
-  const packet = restartPacket(context),
-    ready = { ...recoveryState(inner), restart: packet.summary };
+  const packet = restartPacket(context);
+  if (context.statistics_startup_required) {
+    const hello = packet.lifecycle.at(-2);
+    packet.observations.push({ record: ++hello.record, atMs: hello.atMs - 1, diagnostic: statisticsActive() });
+    packet.lifecycle.at(-1).record++;
+    packet.summary.records++;
+  }
+  const ready = { ...recoveryState(inner), restart: packet.summary };
   await recordRestartFixture(scope, inner, ready);
   await writeNew(resolve(root, "restart-observation.json"), {
     schema: "fixed-usb-restart-observation-v1",
@@ -101,8 +113,19 @@ async function completeRestart(f) {
   await judgeRestart(root, cleanup, f.operations);
 }
 
-export async function cadenceRestartFixture(t) {
-  const f = await installedRestartFixture(t);
+async function installedFourthRestart(t) {
+  const f = await storageRestartFixture(t),
+    inner = restartInnerContext(f.root, f.context, "before-install"),
+    scope = resolve(f.root, "before-install"),
+    state = recoveryState(inner);
+  await recordRestartFixture(scope, inner, state);
+  await saveRestartAccounting(scope, inner, { stage: "before", ledger: f.ledger, original_budget: f.original, state });
+  await savePreinstallFailure(f.root, f.context, knownFailureDiagnostics(f.context));
+  await recordRestartFixture(scope, inner, recoveryState(inner, true));
+  return installRestartFixture(f, { additionalCapture: statisticsLine() });
+}
+export async function cadenceRestartFixture(t, { restartAttempt = 1 } = {}) {
+  const f = await (restartAttempt === 4 ? installedFourthRestart(t) : installedRestartFixture(t));
   await completeRestart(f);
   const receiptPath = resolve(f.root, "result.json"),
     input = resolve(f.base, "cadence-restart-progress.json");

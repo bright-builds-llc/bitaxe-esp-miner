@@ -956,6 +956,27 @@ rust_test(
 )
 
 rust_test(
+    name = "boot_diagnostic_cache_tests",
+    srcs = ["src/boot_diagnostic_cache_host_test.rs", "src/boot_diagnostic_cache.rs", "src/boot_diagnostic_cache/tests.rs", "src/startup.rs", "src/boot_evidence/worker_diagnostics.rs"],
+    crate_root = "src/boot_diagnostic_cache_host_test.rs",
+    edition = "2021",
+)
+
+rust_test(
+    name = "boot_diagnostic_replay_tests",
+    srcs = [
+        "src/boot_diagnostic_replay_host_test.rs",
+        "src/boot_diagnostic_cache.rs",
+        "src/boot_diagnostic_cache/tests.rs",
+        "src/boot_evidence/worker_diagnostics.rs",
+        "src/log_buffer.rs",
+    ],
+    crate_root = "src/boot_diagnostic_replay_host_test.rs",
+    edition = "2021",
+    deps = ["//crates/bitaxe-api:bitaxe_api", "//crates/bitaxe-core:bitaxe_core", "@crates//:log"],
+)
+
+rust_test(
     name = "retained_pair_production_tests",
     srcs = [
         "src/log_buffer.rs",
