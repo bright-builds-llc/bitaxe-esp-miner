@@ -4384,6 +4384,38 @@ Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/par
 
 ### task-str005-noise-auth-205 | 2026-08-28 | Prove Ultra 205 Noise authentication
 
+Current scope | 2026-09-16: This existing task owns the live qualification step
+of the new Noise work breakdown; do not create a duplicate hardware task.
+
+Status: Blocked on `task-str005-noise-successor-contract`,
+`task-str005-noise-runtime-readiness` and `task-str005-noise-fixture-evidence`.
+All three must be complete, verified and published before effects. The completed
+USB qualification supplies a baseline, not Noise evidence or permission to reuse
+a consumed attempt.
+
+- [ ] Admit a fresh bounded attempt under the published successor contract,
+      binding the clean firmware/Gate/package, fixture and validator identities.
+- [ ] Through the single current Web Serial owner, prove fresh TCP delivery,
+      Noise acts one and two, authenticated handshake completion and one
+      encrypted diagnostic exchange against the declared local fixture.
+- [ ] Independently verify the contract's restoration baseline, inactive leases,
+      mine-on-boot false, applicable unchanged accounting and complete resource
+      release; preserve the earliest failure if any proof is missing.
+- [ ] Seal and independently review exact-pair evidence, publish a redacted
+      report, and close this task only on a complete pass. Leave STR-005
+      promotion to its existing final evidence-composition task.
+
+Execution boundary: hardware access is serialized. This milestone excludes
+channel/job qualification, ASIC work, share submission, mining and external
+pools. The successor contract must define concrete commands, effect and retry
+bounds, privacy, recovery and stop conditions before any effect is eligible.
+This tracker update itself starts no hardware work.
+
+Historical record below: the earlier plan, authorization, command references,
+recovery-006 instructions and diagnostic-001 outcome are preserved for evidence
+interpretation. They are superseded as execution instructions and must not be
+resumed or treated as the new recovery contract.
+
 Migration dependency satisfied: completed `task-fixed-usb-serial-qualification`, with the current fixed-Serial/JTAG baseline and measured CPU0 cadence in [accepted cadence evidence](docs/parity/evidence/20260915-cpu0-cadence-qualified.md). September 8, September 11 and September 13 retain their separate exact-pair live-stop, Hello-recovery and reconciliation scopes. Qualification replaces the retired TinyUSB handoff/recovery006 mechanism requirement; it does not execute or validate this task's legacy plan. This task remains open and requires a verified/published current serial successor contract before effects. Independent authorization, replay, monotonicity, protocol, restoration and evidence requirements remain unresolved unless supported by their own evidence.
 
 - [x] After accepted TCP payload evidence, create a separate immutable plan.
@@ -4428,6 +4460,108 @@ Completion review: Pending. STR-005 remains `implemented` until the final
 promotion task succeeds.
 
 
+
+### task-str005-noise-successor-contract | 2026-09-16 | Define the current serial Noise qualification contract
+
+Status: Ready for specification work; no hardware effects in this task.
+
+Depends on: completed `task-fixed-usb-serial-qualification` and the
+[accepted CPU0 cadence baseline](docs/parity/evidence/20260915-cpu0-cadence-qualified.md).
+Feeds `task-str005-noise-runtime-readiness`,
+`task-str005-noise-fixture-evidence` and `task-str005-noise-auth-205`.
+
+Ownership: the new prospective Noise contract and shared acceptance/evidence
+interfaces. Preserve the immutable 2026-08-29 plan and failed diagnostic-001.
+
+- [ ] Map accepted TCP/USB/restoration evidence to its actual runtime pair and
+      identify which claims must be freshly proved on the successor pair.
+- [ ] Define fresh TCP delivery, Noise handshake and encrypted diagnostic
+      success criteria, required negative cases and independent verification.
+- [ ] Specify repo-owned commands, a fresh attempt namespace, exact artifact
+      identities, privacy, allowed/prohibited effects, time/resource budgets,
+      exclusive ownership, recovery, cleanup, retry and stop rules.
+- [ ] Define the current fixed-Serial/JTAG restoration baseline and its required
+      observations. Do not reuse recovery-006 instructions or transfer old-pair
+      recovery success to the new pair without the required fresh proof.
+- [ ] Freeze the firmware/Gate/fixture/validator interfaces so runtime readiness
+      and fixture/evidence work can proceed independently. Resolve the explicit
+      no-mining scope and applicable accounting checks before implementation.
+- [ ] Review for completeness, verify references/task gates/privacy under the
+      repository's required checks, then commit and push the contract before
+      its dependent implementation or any hardware qualification begins.
+
+Completion: a published, reviewable prospective contract with objective pass,
+failure and cleanup criteria and no unresolved interface decisions. Contract
+publication alone does not authorize running historical commands. BWG replay
+and monotonic-clock diagnostics remain a separate task and are not silently
+added to this milestone. No parity transition occurs here.
+
+### task-str005-noise-runtime-readiness | 2026-09-16 | Verify firmware and Gate readiness for Noise qualification
+
+Status: Blocked on `task-str005-noise-successor-contract`.
+
+Depends on: its verified and published contract. May run in parallel with
+`task-str005-noise-fixture-evidence` after their shared interfaces are frozen.
+Feeds the existing live task `task-str005-noise-auth-205`.
+
+Ownership: firmware V2 session/lifecycle adapters and Gate controller/recovery
+integration, with focused tests in their owning repositories. Later shared
+interface changes require a new linked contract-amendment task; never reopen an
+archived contract record. Fixture and evidence validators belong to the sibling
+task.
+
+- [ ] Audit existing V2 code against the current fixed-Serial/JTAG, possession
+      and qualified lifecycle interfaces; distinguish reusable behavior from
+      obsolete WebUSB/recovery assumptions.
+- [ ] Implement only demonstrated compatibility or lifecycle gaps required by
+      the contract, preserving single ownership, safety enforcement and scope.
+- [ ] Add deterministic regressions for readiness, cancellation/timeout,
+      session/identity conflicts, restoration and resource release, exercising
+      the production seams and preserving first-failure provenance.
+- [ ] Run required firmware/Gate, native package/storage/stack and ownership
+      checks as applicable; review and publish any changed Gate pin and runtime
+      implementation before handing off an exact candidate pair.
+
+Completion: published compatible runtime code with passing software/native
+evidence and documented limitations. No connected-device access, flashing, live
+authority signing or mining occurs in this preparation task; tests use synthetic
+credentials. Software success supplies no Noise hardware verification or parity
+promotion.
+
+### task-str005-noise-fixture-evidence | 2026-09-16 | Prepare the bounded Noise fixture and evidence validator
+
+Status: Blocked on `task-str005-noise-successor-contract`.
+
+Depends on: its verified and published contract. May run in parallel with
+`task-str005-noise-runtime-readiness` using the frozen interfaces.
+Final integration additionally needs that task's runtime candidate; fixture unit
+work can proceed independently. Feeds the existing live task
+`task-str005-noise-auth-205`.
+
+Ownership: the local V2 fixture, host qualification supervisor, evidence models
+and independent validator. Coordinate shared build wiring with the runtime
+task; do not duplicate firmware or Gate ownership.
+
+- [ ] Reuse or adapt the existing fixture and supervisor for the declared TCP,
+      Noise and encrypted diagnostic exchange, with bounded startup, operations,
+      failure handling and complete process/socket cleanup.
+- [ ] Bind firmware/Gate/package/fixture/validator identities and fresh attempt
+      assignment; reject stale or conflicting evidence, consumed contexts and
+      archived-task authority before effects.
+- [ ] Persist only contract-allowlisted evidence; test redaction, truncation,
+      identity conflicts, missing/contradictory observations and failure paths.
+- [ ] Test the independent judge against realistic positive and negative
+      fixtures. Require actual restoration and cleanup proof; process exit,
+      queue acceptance or a successful handshake alone cannot supply it.
+- [ ] Run applicable canonical, fixture, integration, privacy and ownership
+      checks, including integration with the completed runtime candidate; review,
+      commit and push before live qualification.
+
+Completion: a published bounded harness and independent validator whose exact
+identities can be frozen with the runtime pair. Synthetic/local loopback tests
+are permitted; connected-device access, live device credentials/signing and
+hardware effects remain in `task-str005-noise-auth-205`. This task does not
+qualify channel/jobs, accepted shares or STR-005 parity.
 
 ## Future
 
