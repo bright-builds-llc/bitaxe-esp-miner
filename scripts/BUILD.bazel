@@ -397,3 +397,29 @@ js_test(
     data = [":fixed_usb_qualification_sources"],
     entry_point = "fixed-usb-qualification/cadence-failure.test.mjs",
 )
+
+# Shape parsing and blocked admission only; no live Noise supervisor is enabled.
+filegroup(
+    name = "str005_noise_serial_sources",
+    srcs = glob(["str005-noise-serial/*.mjs"]),
+)
+
+js_binary(
+    name = "stratum_v2_noise_serial",
+    chdir = "..",
+    data = [":str005_noise_serial_sources"],
+    entry_point = "str005-noise-serial/main.mjs",
+    visibility = ["//visibility:public"],
+)
+
+js_test(
+    name = "str005_noise_serial_contract_test",
+    data = [":str005_noise_serial_sources"],
+    entry_point = "str005-noise-serial/contract.test.mjs",
+)
+
+js_test(
+    name = "str005_noise_serial_cli_test",
+    data = [":str005_noise_serial_sources"],
+    entry_point = "str005-noise-serial/main.test.mjs",
+)

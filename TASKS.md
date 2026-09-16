@@ -4406,6 +4406,12 @@ a consumed attempt.
       report, and close this task only on a complete pass. Leave STR-005
       promotion to its existing final evidence-composition task.
 
+Readiness blocker | 2026-09-16: The pinned synchronous Noise crypto path does
+not yet prove cancellation-to-quiescence within five seconds. No successor
+preflight, attempt assignment, installation or device diagnostic has occurred.
+Both implementation tasks remain active; the frozen acceptance bounds remain
+unchanged.
+
 Execution boundary: hardware access is serialized. This milestone excludes
 channel/job qualification, ASIC work, share submission, mining and external
 pools. The successor contract must define concrete commands, effect and retry
@@ -4464,7 +4470,7 @@ promotion task succeeds.
 
 ### task-str005-noise-runtime-readiness | 2026-09-16 | Verify firmware and Gate readiness for Noise qualification
 
-Status: Ready for software-only work after publication of the [published prospective contract](docs/hardware/str005-noise-serial-qualification.md).
+Status: Blocked on a bounded cancellable crypto implementation; software preparation remains in progress.
 No hardware effects are authorized by this preparation task.
 
 Depends on: completed `task-str005-noise-successor-contract`; freeze the
@@ -4483,7 +4489,7 @@ interface changes require a new linked contract-amendment task; never reopen an
 archived contract record. Fixture and evidence validators belong to the sibling
 task.
 
-- [ ] Audit existing V2 code against the current fixed-Serial/JTAG, possession
+- [x] Audit existing V2 code against the current fixed-Serial/JTAG, possession
       and qualified lifecycle interfaces; distinguish reusable behavior from
       obsolete WebUSB/recovery assumptions.
 - [ ] Implement only demonstrated compatibility or lifecycle gaps required by
@@ -4495,6 +4501,44 @@ task.
       checks as applicable; review and publish any changed Gate pin and runtime
       implementation before handing off an exact candidate pair.
 
+Execution plan | 2026-09-16: Implement the frozen interfaces in parallel with
+the sibling preparation task, then compose their production seams. Before
+publication, run ordered Cargo checks, applicable Gate/canonical tests, native
+resource/ownership checks, semantic privacy and reference checks. Preserve the
+contract bytes and historical evidence; live effects remain blocked until both
+preparation tasks pass and their exact sources are published.
+
+Readiness finding | 2026-09-16: The [source audit and production-seam characterization](docs/hardware/str005-noise-runtime-readiness.md) show that the pinned Noise API performs synchronous
+preparation and handshake completion, including an internal ElligatorSwift
+candidate search without an exposed cancellation seam. Independent authority
+revocation does not establish the required five-second worker quiescence. The
+production-seam regression and source audit distinguish this missing guarantee
+from any measured device timing violation. Do not admit hardware or implement a
+timeout wrapper as a substitute for actual cleanup. A bounded/cancellable crypto
+implementation and its native resource/cleanup qualification remain required.
+
+Software review | 2026-09-16: Two production-helper characterization tests
+pass. Gate parser/client slice is published at
+`0ac8fd9b7a528b204be06558f24e0cede05318fa` and pinned here: closed types,
+exact-pair possession checks, consumed Start, retained-history consistency and
+competing-effect guards. Gate verification passed ordered Cargo checks (352
+passed, two existing ignored), 687 browser-unit tests, typecheck, browser/headless
+build, package and standards checks. Firmware commands, same-page workflow,
+native combined-owner resource proof and live startup measurements remain
+unimplemented/unverified. The source audit supplies no measured crypto overrun.
+
+Verification | 2026-09-16: Ordered Cargo format/Clippy/build/tests passed
+(2258 passed; three ignored, including two watchdog helpers executed through
+parent tests). All 141 canonical Bazel targets passed. Native package, USB
+ownership/symbols, reference, semantic redaction, Bright Builds and read-only
+parity/progress checks passed. The generated ESP-IDF Python environment needed
+its supported reinstall after a missing package executable blocked the first
+native build; the repaired build passed. Ordinary native compilation does not
+prove the missing combined diagnostic owner fits or cancels safely. Contract,
+archive and 1299 historical files remain byte-identical; 233 task IDs are unique.
+Parity remains 90/95, with no checklist/history transition. No hardware attempt
+was allocated. This task remains open at the documented integration blocker.
+
 Completion: published compatible runtime code with passing software/native
 evidence and documented limitations. No connected-device access, flashing, live
 authority signing or mining occurs in this preparation task; tests use synthetic
@@ -4503,7 +4547,7 @@ promotion.
 
 ### task-str005-noise-fixture-evidence | 2026-09-16 | Prepare the bounded Noise fixture and evidence validator
 
-Status: Ready for software-only work after publication of the [published prospective contract](docs/hardware/str005-noise-serial-qualification.md).
+Status: In progress for independent software work; live composition is blocked on runtime readiness.
 No hardware effects are authorized by this preparation task.
 
 Depends on: completed `task-str005-noise-successor-contract`; freeze the
@@ -4536,6 +4580,42 @@ task; do not duplicate firmware or Gate ownership.
 - [ ] Run applicable canonical, fixture, integration, privacy and ownership
       checks, including integration with the completed runtime candidate; review,
       commit and push before live qualification.
+
+Execution plan | 2026-09-16: Implement the frozen interfaces in parallel with
+the sibling preparation task, then compose their production seams. Before
+publication, run ordered Cargo checks, applicable Gate/canonical tests, native
+resource/ownership checks, semantic privacy and reference checks. Preserve the
+contract bytes and historical evidence; live effects remain blocked until both
+preparation tasks pass and their exact sources are published.
+
+Integration boundary | 2026-09-16: Runtime readiness found no supported
+in-call crypto cancellation seam sufficient for the frozen cleanup bound. Finish
+and verify the independent fixture and closed evidence-schema slice, keeping
+new effect admission unavailable. Full supervisor, restoration, independent
+acceptance and runtime/Gate/fixture composition remain unfinished; schema
+validation alone is not evidence acceptance.
+
+Software review | 2026-09-16: The [fixture/evidence handoff](docs/hardware/str005-noise-fixture-readiness.md)
+records the implemented local `noise-serial` fixture, 39 passing Node
+schema/consistency/CLI tests and new canonical targets. The frozen CLI arguments
+are recognized, but every action rejects before input reads or effects. Retired
+Noise CLI and direct flash/restoration entry points reject before private input
+access or tool detection; historical parsers/finalizers/readers remain usable.
+No context, ordinal assignment, supervisor, independent result judge, finalizer,
+public projection or readiness receipt was created. Semantic redaction
+registration and full production composition remain pending.
+
+Verification | 2026-09-16: Ordered Cargo format/Clippy/build/tests passed
+(2258 passed; three ignored, including two watchdog helpers executed through
+parent tests). All 141 canonical Bazel targets passed. Native package, USB
+ownership/symbols, reference, semantic redaction, Bright Builds and read-only
+parity/progress checks passed. The generated ESP-IDF Python environment needed
+its supported reinstall after a missing package executable blocked the first
+native build; the repaired build passed. Ordinary native compilation does not
+prove the missing combined diagnostic owner fits or cancels safely. Contract,
+archive and 1299 historical files remain byte-identical; 233 task IDs are unique.
+Parity remains 90/95, with no checklist/history transition. No hardware attempt
+was allocated. This task remains open at the documented integration blocker.
 
 Completion: a published bounded harness and independent validator whose exact
 identities can be frozen with the runtime pair. Synthetic/local loopback tests

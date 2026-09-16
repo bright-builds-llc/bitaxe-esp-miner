@@ -134,6 +134,7 @@ fn main() -> Result<()> {
     if let CliCommand::DrainWorkerSerial(command) = &cli.command {
         return drain_worker_serial::run(command);
     }
+    require_current_noise_effect(&cli.command)?;
     let environment = match LocalFlashEnvironment::detect() {
         Ok(environment) => environment,
         Err(error) => {

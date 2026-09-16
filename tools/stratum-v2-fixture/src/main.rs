@@ -22,6 +22,7 @@ use serde::Serialize;
 
 mod noise_auth_inventory;
 mod noise_frame;
+mod noise_serial;
 #[cfg(test)]
 mod tcp_payload;
 mod tcp_payload_inventory;
@@ -58,6 +59,12 @@ struct Args {
     mode: FixtureMode,
     #[arg(long)]
     expected_peer_address: Option<IpAddr>,
+    #[arg(long)]
+    attempt_id: Option<String>,
+    #[arg(long)]
+    read_timeout_seconds: Option<u64>,
+    #[arg(long)]
+    lifetime_seconds: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ValueEnum)]
@@ -65,6 +72,7 @@ struct Args {
 enum FixtureMode {
     Pool,
     NoiseAuth,
+    NoiseSerial,
     TcpPayload,
 }
 
@@ -134,6 +142,15 @@ struct TerminalDocument<'a> {
 
 fn main() -> Result<()> {
     let args = Args::parse();
+    if args.mode == FixtureMode::NoiseSerial {
+        return noise_serial::run(&args);
+    }
+    if args.attempt_id.is_some()
+        || args.read_timeout_seconds.is_some()
+        || args.lifetime_seconds.is_some()
+    {
+        bail!("serial-only fixture options require noise-serial mode");
+    }
     validate_bounds(&args)?;
     create_private_root(&args.private_root)?;
     let mut progress = FixtureProgress::default();

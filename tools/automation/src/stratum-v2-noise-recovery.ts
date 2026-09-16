@@ -11,6 +11,7 @@ import type { RestoreBundle } from "./stratum-v2-restore-model.js";
 import { runManagedDiagnosticProcess } from "./stratum-v2-noise-diagnostic-process.js";
 import {
   NoiseDiagnosticError,
+  requireReadOnlyNoiseAction,
   type NoiseDiagnosticArgs,
 } from "./stratum-v2-noise-diagnostic.js";
 
@@ -156,6 +157,7 @@ export async function runNoiseAuthRecovery(
   workspace: string,
   args: NoiseDiagnosticArgs,
 ): Promise<JsonObject> {
+  requireReadOnlyNoiseAction("recover");
   const prepared = await prepareRecovery(workspace, args);
   const privateRoot = path.join(workspace, recoveryRoot);
   await mkdir(privateRoot, { mode: 0o700 });

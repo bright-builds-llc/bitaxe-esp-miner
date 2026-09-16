@@ -5,9 +5,14 @@ import path from "node:path";
 import test from "node:test";
 
 import {
+  inspectNoiseDiagnosticPreflight,
+  NoiseDiagnosticError,
   parseNoiseDiagnosticArgs,
+  requireReadOnlyNoiseAction,
+  runNoiseDiagnostic,
   runNoiseDiagnosticProcess,
 } from "./stratum-v2-noise-diagnostic.js";
+import { runNoiseAuthRecovery } from "./stratum-v2-noise-recovery.js";
 import { noiseDiagnosticValidatorArgs } from "./stratum-v2-noise-diagnostic-process.js";
 import { validateNoiseDiagnosticProjection } from "./stratum-v2-noise-diagnostic-validator.js";
 import {
@@ -283,4 +288,31 @@ test("diagnostic projection routes independent validation through Bazel", () => 
     source,
     "4",
   ]);
+});
+
+for (const [action, execute] of [
+  ["preflight", inspectNoiseDiagnosticPreflight],
+  ["start", runNoiseDiagnostic],
+  ["recover", runNoiseAuthRecovery],
+] as const) {
+  test(`retired Noise ${action} rejects before accessing private inputs`, async () => {
+    // Arrange: accessing even one argument must fail independently of file contents.
+    const args = new Proxy(parseNoiseDiagnosticArgs("start", exactArgs()), {
+      get() { throw new Error("unexpected_input_access"); },
+    });
+
+    // Act / Assert
+    await assert.rejects(execute("/absent-historical-workspace", args), (error: unknown) =>
+      error instanceof NoiseDiagnosticError && error.category === "authority_retired"
+      && error.checkpoint === "legacy_effect_admission");
+  });
+}
+
+test("historical Noise finalization stays available while effect actions are retired", () => {
+  // Arrange / Act / Assert
+  assert.doesNotThrow(() => requireReadOnlyNoiseAction("finalize"));
+  for (const action of ["preflight", "start", "recover", undefined]) {
+    assert.throws(() => requireReadOnlyNoiseAction(action), (error: unknown) =>
+      error instanceof NoiseDiagnosticError && error.category === "authority_retired");
+  }
 });

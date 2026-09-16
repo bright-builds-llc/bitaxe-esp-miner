@@ -89,6 +89,13 @@ export class NoiseDiagnosticError extends Error {
   }
 }
 
+/** Historical parsing/finalization remains usable; execution authority is retired. */
+export function requireReadOnlyNoiseAction(action: string | undefined): void {
+  if (action !== "finalize") {
+    throw new NoiseDiagnosticError("authority_retired", "legacy_effect_admission");
+  }
+}
+
 function fail(category: string, _message: string, checkpoint = "unclassified"): never {
   throw new NoiseDiagnosticError(category, checkpoint);
 }
@@ -414,6 +421,7 @@ export async function inspectNoiseDiagnosticPreflight(
   workspace: string,
   args: NoiseDiagnosticArgs,
 ): Promise<JsonObject> {
+  requireReadOnlyNoiseAction("preflight");
   await preflight(workspace, args);
   return {
     schema_version: "bitaxe-stratum-v2-noise-auth-preflight-v1",
@@ -428,6 +436,7 @@ export async function runNoiseDiagnostic(
   workspace: string,
   args: NoiseDiagnosticArgs,
 ): Promise<JsonObject> {
+  requireReadOnlyNoiseAction("start");
   const prepared = await preflight(workspace, args);
   const privateRoot = path.join(workspace, args.privateRoot);
   await mkdir(path.dirname(privateRoot), { recursive: true, mode: 0o700 });

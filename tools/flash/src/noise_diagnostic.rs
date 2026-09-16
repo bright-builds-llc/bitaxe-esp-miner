@@ -15,6 +15,36 @@ const INTENT_SCHEMA: &str = "bitaxe-stratum-v2-noise-auth-intent-v1";
 const DIAGNOSTIC_ORDINAL: u16 = 1;
 const CAPTURE_TIMEOUT_SECONDS: u64 = 120;
 
+/// Retired Noise workflows cannot acquire tooling, read secrets or touch USB.
+pub(crate) fn require_current_noise_effect(command: &CliCommand) -> Result<()> {
+    match command {
+        CliCommand::NoiseDiagnostic(_) => reject_legacy_noise_effect(),
+        CliCommand::RestoreInstalled(command) => {
+            require_current_noise_restore(&command.private_root)
+        }
+        _ => Ok(()),
+    }
+}
+
+pub(crate) fn require_current_noise_restore(private_root: &Utf8Path) -> Result<()> {
+    if [
+        NOISE_AUTH_PREFLIGHT_ROOT,
+        NOISE_AUTH_DIAGNOSTIC_RESTORE_ROOT,
+        NOISE_AUTH_RECOVERY_ROOT,
+        NOISE_DIAGNOSTIC_RESTORE_ROOT,
+    ]
+    .iter()
+    .any(|root| private_root == Utf8Path::new(root))
+    {
+        return reject_legacy_noise_effect();
+    }
+    Ok(())
+}
+
+fn reject_legacy_noise_effect() -> Result<()> {
+    bail!("noise_diagnostic=blocked reason=legacy_effect_retired");
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct NoiseDiagnosticIntent {
@@ -34,6 +64,7 @@ pub(crate) fn run_noise_diagnostic_command(
     command: &NoiseDiagnosticCommand,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
+    reject_legacy_noise_effect()?;
     ensure_ultra_205(command.board)?;
     if !command.redact_evidence || command.capture_timeout_seconds != CAPTURE_TIMEOUT_SECONDS {
         bail!("noise_diagnostic=blocked reason=command_contract");

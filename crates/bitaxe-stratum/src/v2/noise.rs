@@ -11,6 +11,9 @@ use super::StratumV2Error;
 mod preparation;
 pub use preparation::{NoisePreparationStage, PreparedNoiseInitiator};
 
+#[cfg(test)]
+mod cancellation_tests;
+
 pub const ACT_ONE_LEN: usize = 64;
 pub const ACT_TWO_LEN: usize = INITIATOR_EXPECTED_HANDSHAKE_MESSAGE_SIZE;
 pub const ENCRYPTED_HEADER_LEN: usize = FRAME_HEADER_LEN + noise_sv2::AEAD_MAC_LEN;

@@ -420,6 +420,7 @@ pub(crate) fn run_restore_installed(
     command: &RestoreInstalledCommand,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
+    require_current_noise_restore(&command.private_root)?;
     ensure_ultra_205(command.board)?;
     let (expected_root, expected_remediation_plan) =
         restore_invocation_contract(&command.private_root, command.admission_only);

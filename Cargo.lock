@@ -372,6 +372,7 @@ name = "bitaxe-stratum-v2-fixture"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64",
  "bitaxe-asic",
  "bitaxe-stratum",
  "clap",
@@ -380,6 +381,7 @@ dependencies = [
  "secp256k1",
  "serde",
  "serde_json",
+ "zeroize",
 ]
 
 [[package]]
