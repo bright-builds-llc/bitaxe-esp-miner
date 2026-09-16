@@ -15858,3 +15858,62 @@ Software correction verification | 2026-09-15: The real old replay reader failed
 
 
 Completion review | 2026-09-15 | Complete (satisfied): ordinal17 preparation3 passed under the published bounded retention-correction contract on firmware8af54d8d8919aeb0f309203f790269803365fb9a, Gate72235d884c3605ff77d484f210fcaa0d7218b47e and ELF35ea53e7a4153fb17f21b8bb8b64653506bb909be1bd9d61cb7e96b130820b6a. [accepted cadence evidence](docs/parity/evidence/20260915-cpu0-cadence-qualified.md) binds result75f62388727078793177d549e1fcc1a9eadef9fdbbdba8fcc4b0f47147b911c0, sealed inventoryfdc6db7219f6c3898b16cc63206da544e0120ed2d3b9b24dd72fd2a2222e48a9 and independent companione15c0baf90740cf0f2a10d8bab057808dbdeba147efa66f07285650de08b731a. All13 artifacts, five installations, four cycles, three60-second captures and twelve scheduled maximum probes passed; all298 intervals were<=750ms with zero integrity/publication failures. Terminal totals are34 dispatches,3 renewals and5 accepted shares; accepted shares were not required by this judge. Revocation/shutdown initiation were2802/2831ms; cooling, fresh restoration and browser/process/socket/serial cleanup passed. The full180000-ms reservation advanced accounting to next18/last17/1560000ms/pendingfalse, without refund; original240000ms/masks7 remains exhausted. Authorization high-water advanced during work and the post-work checkpoint matched; the pre-work authorization baseline is not claimed unchanged. Accepted StageB004 remains separate F056/Gate722 restart evidence and is not transferred to this cache image. Earlier unchecked execution rows retain their historical plan state; later accepted successor evidence satisfies or supersedes those obligations without converting failed attempts into successes. All prior seals, failures, native-analysis limitations and unmeasured broader-load/other-board claims remain intact. USB qualification/migration close; BWG/STR successor obligations and parity90/95 remain unchanged.
+
+### task-str005-noise-successor-contract | 2026-09-16 | Define the current serial Noise qualification contract
+
+Status: Complete (specification satisfied); published by this commit. No hardware
+effects occurred.
+
+Contract: [prospective serial Noise contract](docs/hardware/str005-noise-serial-qualification.md).
+Independent firmware and host reviews resolved response-shape, freshness,
+deadline/cleanup, recovery-baseline, installation-claim and timing ambiguities.
+The interfaces remain prospective; no runtime commands were implemented or run.
+
+Depends on: completed `task-fixed-usb-serial-qualification` and the
+[accepted CPU0 cadence baseline](docs/parity/evidence/20260915-cpu0-cadence-qualified.md).
+Feeds `task-str005-noise-runtime-readiness`,
+`task-str005-noise-fixture-evidence` and `task-str005-noise-auth-205`.
+
+Ownership: the new prospective Noise contract and shared acceptance/evidence
+interfaces. Preserve the immutable 2026-08-29 plan and failed diagnostic-001.
+
+- [x] Map accepted TCP/USB/restoration evidence to its actual runtime pair and
+      identify which claims must be freshly proved on the successor pair.
+- [x] Define fresh TCP delivery, Noise handshake and encrypted diagnostic
+      success criteria, required negative cases and independent verification.
+- [x] Specify repo-owned commands, a fresh attempt namespace, exact artifact
+      identities, privacy, allowed/prohibited effects, time/resource budgets,
+      exclusive ownership, recovery, cleanup, retry and stop rules.
+- [x] Define the current fixed-Serial/JTAG restoration baseline and its required
+      observations. Do not reuse recovery-006 instructions or transfer old-pair
+      recovery success to the new pair without the required fresh proof.
+- [x] Freeze the firmware/Gate/fixture/validator interfaces so runtime readiness
+      and fixture/evidence work can proceed independently. Resolve the explicit
+      no-mining scope and applicable accounting checks before implementation.
+- [x] Review for completeness, verify references/task gates/privacy under the
+      repository's required checks, then commit and push the contract before
+      its dependent implementation or any hardware qualification begins.
+
+Completion: a published, reviewable prospective contract with objective pass,
+failure and cleanup criteria and no unresolved interface decisions. Contract
+publication alone does not authorize running historical commands. BWG replay
+and monotonic-clock diagnostics remain a separate task and are not silently
+added to this milestone. No parity transition occurs here.
+
+Completion review | 2026-09-16: Complete (specification satisfied). The [published prospective contract](docs/hardware/str005-noise-serial-qualification.md)
+freezes `str005-noise-serial-v1`, SHA256 `0da417fc198a89042eb62902999ac822be5365a5f0333df8220f15afe3447a62`, for one positive
+hardware exchange with production-seam software negatives. It defines volatile
+possession-bound admission, exact Controller/Gate/fixture/evidence types, bounded
+ownership/deadlines, state-preserving continuity, recovery and cleanup, unchanged
+accounting, privacy and independent acceptance. Firmware and host reviewers'
+concrete findings were resolved; the declared type fragments compile and evidence
+links resolve. Ordered Cargo format/Clippy/build/tests, Bright Builds, Markdown,
+reference, semantic redaction, task/dependency integrity and read-only parity
+checks passed. The complete native record is archived with historical prefix
+bytes preserved. Runtime readiness and fixture preparation may now proceed in
+parallel after publication; live qualification remains blocked on both and its
+fresh hardware proof. Combined-owner fit and bounded crypto cleanup remain
+implementation/readiness obligations, not verified capabilities. Only specification
+and task records changed: no diagnostic commands or wire interfaces were implemented,
+no device was accessed, and no live authority or mining was used. Existing plans, failed evidence and parity90/95 remain unchanged. Later
+contract changes require a new linked amendment task.
