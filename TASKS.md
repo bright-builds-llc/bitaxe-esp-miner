@@ -4412,6 +4412,11 @@ preflight, attempt assignment, installation or device diagnostic has occurred.
 Both implementation tasks remain active; the frozen acceptance bounds remain
 unchanged.
 
+Owner scope decision | 2026-09-16: Dependency-level cancellation is deferred
+to future `task-str005-noise-cooperative-cancellation`, outside current parity
+work. This live task stays blocked under the unchanged successor contract. No
+new attempt, fork, hardware effect or parity claim follows from the backlog entry.
+
 Execution boundary: hardware access is serialized. This milestone excludes
 channel/job qualification, ASIC work, share submission, mining and external
 pools. The successor contract must define concrete commands, effect and retry
@@ -4470,7 +4475,8 @@ promotion task succeeds.
 
 ### task-str005-noise-runtime-readiness | 2026-09-16 | Verify firmware and Gate readiness for Noise qualification
 
-Status: Blocked on a bounded cancellable crypto implementation; software preparation remains in progress.
+Status: Blocked; bounded crypto cancellation is deferred outside current parity
+work to `task-str005-noise-cooperative-cancellation`.
 No hardware effects are authorized by this preparation task.
 
 Depends on: completed `task-str005-noise-successor-contract`; freeze the
@@ -4539,6 +4545,14 @@ archive and 1299 historical files remain byte-identical; 233 task IDs are unique
 Parity remains 90/95, with no checklist/history transition. No hardware attempt
 was allocated. This task remains open at the documented integration blocker.
 
+Owner scope decision | 2026-09-16: Track dependency-level cancellation as
+future backlog work in `task-str005-noise-cooperative-cancellation`, rather than
+expanding current parity work into maintaining cryptographic dependencies. This
+is a deferral, not a relaxed cleanup requirement or a completion claim. The
+five-second bound comes from the successor qualification contract; the source
+audit does not establish it as upstream parity behavior. Resuming under a changed
+contract requires a separate amendment task; the published contract is unchanged.
+
 Completion: published compatible runtime code with passing software/native
 evidence and documented limitations. No connected-device access, flashing, live
 authority signing or mining occurs in this preparation task; tests use synthetic
@@ -4547,7 +4561,9 @@ promotion.
 
 ### task-str005-noise-fixture-evidence | 2026-09-16 | Prepare the bounded Noise fixture and evidence validator
 
-Status: In progress for independent software work; live composition is blocked on runtime readiness.
+Status: Paused after the verified independent software slice; remaining
+composition is blocked on runtime readiness and deferred cancellation work in
+`task-str005-noise-cooperative-cancellation`.
 No hardware effects are authorized by this preparation task.
 
 Depends on: completed `task-str005-noise-successor-contract`; freeze the
@@ -4703,6 +4719,51 @@ Completion review: Pending. macOS remains the only production adapter. Standing
 task authorization permits ordinary implementation and task-gated evidence;
 credentials, network discovery, direct UART or pin work, and evidence promotion
 remain governed by their specific contracts.
+
+### task-str005-noise-cooperative-cancellation | 2026-09-16 | Explore bounded and cancellable Noise cryptography
+
+Status: Deferred by the owner; future backlog outside current parity work.
+Do not automatically select this dependency-engineering work while that scope
+deferral remains in force. A future scope decision is required to activate it.
+
+Origin: `task-str005-noise-runtime-readiness` and the
+[source/API readiness audit](docs/hardware/str005-noise-runtime-readiness.md).
+The pinned crypto calls lack supported in-call cancellation and a maximum
+ElligatorSwift search length. No five-second device overrun was measured.
+The five-second cleanup guarantee is a prospective qualification requirement,
+not established upstream parity behavior.
+
+Scope: Assess a supported upstream solution first. If none suffices, evaluate
+a narrow, reviewed dependency patch or maintained fork and its maintenance,
+cryptographic-review and provenance costs before committing to that approach.
+No fork or upstream contribution is commissioned by this backlog entry.
+
+- [ ] Reassess available upstream APIs and the required cancellation guarantee;
+      document whether a supported solution avoids a maintained fork.
+- [ ] If activated, bound scalar-generation retries and make the native
+      ElligatorSwift search cancellable/bounded without biased fallback keys,
+      partial-success results or changed wire/authentication semantics.
+- [ ] Propagate cancellation through act-one creation and act-two authentication;
+      preserve first failure and prove actual worker/socket cleanup and disposal
+      of owned secret buffers.
+- [ ] Verify real-operation cancellation, deadline boundaries, interoperability,
+      invalid inputs and failure cleanup; qualify indivisible native operation
+      timing, stacks and memory alongside ordinary runtime owners.
+- [ ] Review dependency source/provenance and publish exact tested pins before
+      handing software readiness back to `task-str005-noise-runtime-readiness`.
+
+Boundaries: Software investigation only after activation; no implicit dependency
+upgrade, fork publication, device access, flashing, mining or parity promotion.
+Do not edit downloaded registry sources. The frozen successor contract and all
+historical evidence remain unchanged. If a different qualification strategy is
+chosen, it requires a separate reviewed contract-amendment task; this deferral
+cannot authorize live qualification or silently remove its cleanup gate.
+
+Verification: Pending future activation. Existing characterization tests and
+readiness reports establish the gap, not a completed cancellation implementation.
+
+Completion review: Pending. Runtime readiness, fixture integration and live
+Noise qualification remain unresolved under the current contract.
 
 ## Effectful Hardware Task Gate
 
