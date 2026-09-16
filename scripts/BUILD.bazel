@@ -398,16 +398,18 @@ js_test(
     entry_point = "fixed-usb-qualification/cadence-failure.test.mjs",
 )
 
-# Shape parsing and blocked admission only; no live Noise supervisor is enabled.
-filegroup(
+# Versioned Noise qualification sources and declared transitive evidence readers.
+js_library(
     name = "str005_noise_serial_sources",
-    srcs = glob(["str005-noise-serial/*.mjs"]),
+    srcs = glob(["str005-noise-serial/*.mjs"]) + ["noise-native-readiness.mjs", "noise-native-calls.mjs", "noise-native-disassembly.mjs", "owner-stack-audit.mjs", "telemetry-stack-audit.mjs"],
+    deps = [":fixed_usb_qualification_sources", "//:str005_noise_serial_contract_inputs", "//firmware/bitaxe:noise_native_readiness_sources", "//tools/automation:noise_serial_redaction_sources"],
+    data = [":host_stall_sources"],
 )
 
 js_binary(
     name = "stratum_v2_noise_serial",
     chdir = "..",
-    data = [":str005_noise_serial_sources"],
+    data = [":str005_noise_serial_sources", ":host_stall_sources", "//tools/stratum-v2-fixture:noise_serial_build_identity"],
     entry_point = "str005-noise-serial/main.mjs",
     visibility = ["//visibility:public"],
 )
@@ -422,4 +424,94 @@ js_test(
     name = "str005_noise_serial_cli_test",
     data = [":str005_noise_serial_sources"],
     entry_point = "str005-noise-serial/main.test.mjs",
+)
+
+js_binary(
+    name = "noise_fixture_identity_writer",
+    entry_point = "str005-noise-serial/build-identity.mjs",
+    visibility = ["//tools/stratum-v2-fixture:__pkg__"],
+)
+
+js_test(
+    name = "noise_native_readiness_test",
+    entry_point = "noise-native-readiness.test.mjs",
+    data = ["noise-native-readiness.mjs", "noise-native-calls.mjs", "noise-native-disassembly.mjs", "owner-stack-audit.mjs", "telemetry-stack-audit.mjs"],
+)
+
+js_test(
+    name = "str005_noise_serial_version_test",
+    data = [":str005_noise_serial_sources"],
+    entry_point = "str005-noise-serial/version.test.mjs",
+)
+
+js_test(
+    name = "str005_noise_serial_context_test",
+    data = [":str005_noise_serial_sources"],
+    entry_point = "str005-noise-serial/context.test.mjs",
+)
+
+js_test(
+    name = "str005_noise_serial_server_test",
+    data = [":str005_noise_serial_sources"],
+    entry_point = "str005-noise-serial/server.test.mjs",
+)
+
+js_test(
+    name = "str005_noise_serial_fixture_owner_test",
+    data = [":str005_noise_serial_sources"],
+    entry_point = "str005-noise-serial/fixture-owner.test.mjs",
+)
+
+js_test(
+    name = "str005_noise_serial_finalize_test",
+    data = [":str005_noise_serial_sources"],
+    entry_point = "str005-noise-serial/finalize.test.mjs",
+)
+
+js_test(
+    name = "str005_noise_serial_client_test",
+    data = [":str005_noise_serial_sources"],
+    entry_point = "str005-noise-serial/client.test.mjs",
+)
+
+js_test(
+    name = "str005_noise_serial_operator_test",
+    data = [":str005_noise_serial_sources"],
+    entry_point = "str005-noise-serial/operator.test.mjs",
+)
+
+js_test(
+    name = "str005_noise_serial_operator_execution_test",
+    data = [":str005_noise_serial_sources"],
+    entry_point = "str005-noise-serial/operator-execution.test.mjs",
+)
+
+js_test(
+    name = "str005_noise_serial_operator_startup_test",
+    data = [":str005_noise_serial_sources"],
+    entry_point = "str005-noise-serial/operator-startup.test.mjs",
+)
+
+js_test(
+    name = "str005_noise_serial_pipeline_test",
+    data = [":str005_noise_serial_sources"],
+    entry_point = "str005-noise-serial/pipeline.test.mjs",
+)
+
+js_test(
+    name = "str005_noise_serial_build_identity_test",
+    data = [":str005_noise_serial_sources"],
+    entry_point = "str005-noise-serial/build-identity.test.mjs",
+)
+
+js_test(
+    name = "noise_native_calls_test",
+    entry_point = "noise-native-calls.test.mjs",
+    data = ["noise-native-calls.mjs", "noise-native-disassembly.mjs"],
+)
+
+js_test(
+    name = "noise_native_disassembly_test",
+    entry_point = "noise-native-disassembly.test.mjs",
+    data = ["noise-native-calls.mjs", "noise-native-disassembly.mjs", "telemetry-stack-audit.mjs"],
 )

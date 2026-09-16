@@ -11,7 +11,7 @@ pub(crate) fn status_evidence(
     let observations = crate::safety_adapter::observation_snapshot();
     let watchdog = crate::task_watchdog_observation::coherent_observation();
     let now_ms = crate::runtime_uptime::millis();
-    let timing = revocation::timing(now_ms)?;
+    let timing = revocation::timing(now_ms).or_else(revocation::idle_timing)?;
     let (budget_reserved_ms, budget_complete) =
         crate::worker_acceptance_budget::diagnostic_snapshot();
     let voltage =
@@ -55,6 +55,9 @@ pub(crate) fn status_evidence(
         "watchdog_alive": watchdog_alive,
         "mine_on_boot": crate::settings_adapter::start_mining_on_boot(),
     });
+    if timing.generation == 0 {
+        return Some(value);
+    }
     if let Some(attempt) = crate::worker_qualification_budget::observation(
         timing.generation,
         u64::from(timing.active_ms),

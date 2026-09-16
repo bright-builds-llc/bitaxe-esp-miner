@@ -20,6 +20,7 @@ mod scoreboard;
 pub(crate) mod shutdown_budget;
 mod status_publication;
 mod transport;
+pub(crate) use transport::borrow::NoiseBorrowHandle;
 pub(crate) mod watchdog;
 use self::asic_worker::{AsicWorker, AsicWorkerCommand, AsicWorkerEvent};
 use self::campaign_status::publication::CampaignStatusPublicationSchedule;

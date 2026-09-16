@@ -1,11 +1,15 @@
 //! Bounded per-pool TCP workers for the production mining owner.
 
+#[path = "transport/borrow.rs"]
+pub(crate) mod borrow;
+use borrow::{NoiseBorrowHandle, NoiseBorrowWorker};
+
 use super::revocation::{self, WorkPermit};
 use std::fmt;
 use std::io::{self, Read, Write};
 use std::net::{Shutdown, TcpStream, ToSocketAddrs};
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::mpsc::{self, Receiver, SyncSender, TrySendError};
+use std::sync::mpsc::{self, Receiver, TrySendError};
 use std::time::Duration;
 
 use bitaxe_stratum::v1::production_session::{
@@ -34,6 +38,7 @@ pub(super) enum PoolTransportCommand {
         transport_epoch: ProductionTransportEpoch,
     },
     Shutdown,
+    Diagnostic,
 }
 
 impl fmt::Debug for PoolTransportCommand {
@@ -58,6 +63,7 @@ impl fmt::Debug for PoolTransportCommand {
                 .field("transport_epoch", transport_epoch)
                 .finish(),
             Self::Shutdown => formatter.write_str("PoolTransportCommand::Shutdown"),
+            Self::Diagnostic => formatter.write_str("PoolTransportCommand::Diagnostic"),
         }
     }
 }
@@ -139,6 +145,12 @@ impl PoolTransportWorkers {
         let emit = std::sync::Arc::new(emit);
         let primary = spawn_worker(ProductionPool::Primary, emit.clone())?;
         let fallback = spawn_worker(ProductionPool::Fallback, emit)?;
+        if !crate::noise_serial_runtime::install_transport(
+            std::sync::Arc::downgrade(&primary.borrow),
+            std::sync::Arc::downgrade(&fallback.borrow),
+        ) {
+            return Err(io::Error::other("noise_borrow_registration"));
+        }
         Ok(Self { primary, fallback })
     }
 
@@ -148,8 +160,8 @@ impl PoolTransportWorkers {
         command: PoolTransportCommand,
     ) -> Result<(), TrySendError<PoolTransportCommand>> {
         match pool {
-            ProductionPool::Primary => self.primary.sender.try_send(command),
-            ProductionPool::Fallback => self.fallback.sender.try_send(command),
+            ProductionPool::Primary => self.primary.borrow.send(command),
+            ProductionPool::Fallback => self.fallback.borrow.send(command),
         }
     }
 
@@ -166,7 +178,7 @@ impl PoolTransportWorkers {
             .requested_close_epoch
             .store(epoch_word(transport_epoch), Ordering::Release);
         let command = PoolTransportCommand::Close { transport_epoch };
-        match worker.sender.try_send(command) {
+        match worker.borrow.send(command) {
             Ok(()) | Err(TrySendError::Full(_)) => Ok(()),
             Err(error @ TrySendError::Disconnected(_)) => Err(error),
         }
@@ -177,16 +189,16 @@ impl Drop for PoolTransportWorkers {
     fn drop(&mut self) {
         if self
             .primary
-            .sender
-            .try_send(PoolTransportCommand::Shutdown)
+            .borrow
+            .send(PoolTransportCommand::Shutdown)
             .is_err()
         {
             log::warn!("pool_transport_shutdown=degraded pool=primary");
         }
         if self
             .fallback
-            .sender
-            .try_send(PoolTransportCommand::Shutdown)
+            .borrow
+            .send(PoolTransportCommand::Shutdown)
             .is_err()
         {
             log::warn!("pool_transport_shutdown=degraded pool=fallback");
@@ -195,7 +207,7 @@ impl Drop for PoolTransportWorkers {
 }
 
 struct PoolTransportWorkerHandle {
-    sender: SyncSender<PoolTransportCommand>,
+    borrow: std::sync::Arc<NoiseBorrowHandle>,
     requested_close_epoch: std::sync::Arc<AtomicU32>,
 }
 
@@ -204,6 +216,8 @@ fn spawn_worker(
     emit: std::sync::Arc<impl Fn(PoolTransportEvent) + Send + Sync + 'static>,
 ) -> io::Result<PoolTransportWorkerHandle> {
     let (sender, receiver) = mpsc::sync_channel(COMMAND_CAPACITY);
+    let borrow = std::sync::Arc::new(NoiseBorrowHandle::new(sender));
+    let worker_borrow = borrow.worker();
     let requested_close_epoch = std::sync::Arc::new(AtomicU32::new(0));
     let worker_requested_close_epoch = requested_close_epoch.clone();
     std::thread::Builder::new()
@@ -217,39 +231,57 @@ fn spawn_worker(
                 pool,
                 receiver,
                 &worker_requested_close_epoch,
+                &worker_borrow,
                 move |event| emit(event),
             );
         })?;
     Ok(PoolTransportWorkerHandle {
-        sender,
+        borrow,
         requested_close_epoch,
     })
 }
 
+#[inline(never)]
 fn run_worker(
     pool: ProductionPool,
     receiver: Receiver<PoolTransportCommand>,
     requested_close_epoch: &AtomicU32,
+    borrow: &NoiseBorrowWorker,
     emit: impl Fn(PoolTransportEvent),
 ) {
     let mut maybe_connection: Option<PoolConnection> = None;
+    borrow.ready();
     loop {
         let command = if maybe_connection.is_some() {
             match receiver.recv_timeout(READ_TIMEOUT) {
                 Ok(command) => Some(command),
                 Err(mpsc::RecvTimeoutError::Timeout) => None,
-                Err(mpsc::RecvTimeoutError::Disconnected) => return,
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    borrow.unavailable();
+                    return;
+                }
             }
         } else {
             match receiver.recv() {
                 Ok(command) => Some(command),
-                Err(_) => return,
+                Err(_) => {
+                    borrow.unavailable();
+                    return;
+                }
             }
         };
 
         honor_requested_close(requested_close_epoch, &mut maybe_connection);
         if let Some(command) = command {
-            if !apply_command(pool, command, &mut maybe_connection, &emit) {
+            borrow.begin_command();
+            let keep_running = if matches!(command, PoolTransportCommand::Diagnostic) {
+                maybe_connection.is_none() && borrow.run_job()
+            } else {
+                apply_command(pool, command, &mut maybe_connection, &emit)
+            };
+            borrow.finish_command(maybe_connection.is_some());
+            if !keep_running {
+                borrow.unavailable();
                 return;
             }
         }
@@ -260,6 +292,7 @@ fn run_worker(
                 maybe_connection = None;
             }
         }
+        borrow.connection(maybe_connection.is_some());
     }
 }
 
@@ -286,6 +319,7 @@ struct PoolConnection {
     closed: bool,
 }
 
+#[inline(never)]
 fn apply_command(
     pool: ProductionPool,
     command: PoolTransportCommand,
@@ -363,6 +397,7 @@ fn apply_command(
                 close_connection(maybe_connection);
             }
         }
+        PoolTransportCommand::Diagnostic => return false,
         PoolTransportCommand::Shutdown => {
             close_connection(maybe_connection);
             return false;
@@ -427,6 +462,7 @@ fn connect(endpoint: &ProductionPoolEndpoint) -> io::Result<TcpStream> {
     }))
 }
 
+#[inline(never)]
 fn poll_connection(
     pool: ProductionPool,
     connection: &mut PoolConnection,

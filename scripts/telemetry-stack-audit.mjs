@@ -134,3 +134,6 @@ export function auditTelemetryStack(disassembly, sdkconfig) {
     nodes: worst.nodes.map((fn,index)=>({ symbol: fn.symbol, address: fn.address.toString(16), entry_bytes: worst.frames[index] })),
     edges: worst.edges.map(edge=>({ call_address: edge.call_address.toString(16), target: edge.target.toString(16) })) };
 }
+
+// Shared read-only Xtensa analysis; callers must state the subset of paths audited.
+export { functions as parseNativeFunctions, frame as nativeFrame };

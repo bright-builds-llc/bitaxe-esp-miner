@@ -32,6 +32,41 @@ pub trait LeaseAuthorizationVerifier {
 
 /// Sole mining-owner adapter; implementations must keep supplied credentials volatile.
 pub trait WorkerSession {
+    /// Current authenticated native observation; no endpoint discovery or effects.
+    fn noise_observation(
+        &self,
+    ) -> Result<Option<crate::noise::NoiseObservation>, WorkerSessionError> {
+        Ok(None)
+    }
+    /// Reads the retained boot-local job, including after logical-session recovery.
+    fn noise_status(&self) -> Result<Option<crate::noise::NoiseStatus>, WorkerSessionError> {
+        Ok(None)
+    }
+    /// Consumes the boot slot and native idle fence before reply preparation.
+    fn noise_admit(
+        &mut self,
+        _input: crate::noise::NoiseStart,
+    ) -> Result<crate::noise::NoiseStatus, WorkerSessionError> {
+        Err(WorkerSessionError::Rejected)
+    }
+    /// Starts only after true response delivery and a fresh logical/native recheck.
+    fn noise_dispatch(&mut self) -> Result<(), WorkerSessionError> {
+        Err(WorkerSessionError::Rejected)
+    }
+    /// Cancellation is nonblocking and never establishes worker completion.
+    fn noise_cancel(
+        &mut self,
+        _detail: crate::noise::NoiseDetail,
+    ) -> Result<(), WorkerSessionError> {
+        Ok(())
+    }
+    /// Supervises deadlines and only joins an actually completed worker.
+    fn noise_poll(&mut self) {}
+    /// Remains true through failed cleanup until native resources actually release.
+    fn noise_busy(&self) -> bool {
+        false
+    }
+
     /// Supplies only an exact idle native restart binding; unsupported adapters reject by default.
     fn qualification_restart_context(
         &self,

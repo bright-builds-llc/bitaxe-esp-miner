@@ -25,13 +25,16 @@ pub(super) fn handle_firmware_ota_update<'request, 'connection>(
         "Validation / Activation Error"
     );
 
+    let Some(mutation_guard) = crate::noise_serial_runtime::MutationGuard::acquire() else {
+        return send_text_error(request, 409, "Diagnostic owns configuration");
+    };
     let raw_request = (*request.connection()).handle();
     let result = crate::ota_update::stream_firmware_ota(raw_request, record_firmware_ota_status);
     match result {
         FirmwareOtaApplyResult::Complete { bytes_written } => {
             log::info!("firmware_ota_update=complete bytes_written={bytes_written}");
             send_public_response(request, plan.success_response)?;
-            schedule_firmware_ota_restart();
+            schedule_firmware_ota_restart(mutation_guard);
             Ok(())
         }
         FirmwareOtaApplyResult::ProtocolError { code } => {

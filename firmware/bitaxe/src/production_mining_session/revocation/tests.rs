@@ -497,3 +497,105 @@ fn cancelled_restart_releases_only_its_claimed_idle_generation() {
     assert!(!gate.abort_idle_restart(current));
     assert!(gate.is_idle(current));
 }
+
+#[test]
+fn network_diagnostic_heartbeat_revocation_never_becomes_mining_shutdown_work() {
+    // Arrange
+    let gate = GenerationGate::new();
+    let generation = gate.begin_link(0).expect("idle generation");
+    assert!(gate.claim_diagnostic(generation, 120_000));
+    // Act
+    gate.check_deadline(HEARTBEAT_CUTOFF_MS.into());
+    // Assert
+    assert!(!gate.diagnostic_live(generation));
+    assert!(!gate.permits(None));
+    assert!(!gate.permits(Some(generation)));
+    assert!(gate.maybe_revoked().is_none());
+    assert_eq!(
+        gate.diagnostic_reason(generation),
+        RevocationReason::HeartbeatTimeout
+    );
+    assert!(gate.begin_link(3_000).is_none());
+    assert!(gate.release_diagnostic(generation));
+    assert!(gate.begin_link(3_001).is_some());
+}
+#[test]
+fn diagnostic_release_preserves_idle_link_without_work_budget_or_counter_activation() {
+    // Arrange
+    let gate = GenerationGate::new();
+    let generation = gate.begin_link(0).expect("generation");
+    // Act
+    assert!(gate.claim_diagnostic(generation, 120_000));
+    assert!(!gate.begin_reservation(generation));
+    assert!(!gate.activate(generation));
+    // Assert
+    assert!(gate.release_diagnostic(generation));
+    assert!(gate.is_idle(generation));
+    assert!(gate.timing(1).is_none());
+}
+
+#[test]
+fn diagnostic_authority_expires_independently_with_fresh_heartbeats_and_no_worker_poll() {
+    // Arrange
+    let gate = GenerationGate::new();
+    let generation = gate.begin_link(0).expect("generation");
+    assert!(gate.claim_diagnostic(generation, 120_000));
+    // Act: the native clock owner remains independent of controller and crypto.
+    assert!(gate.heartbeat(generation, 119_999));
+    gate.check_deadline(120_000);
+    // Assert
+    assert!(!gate.diagnostic_live(generation));
+    assert_eq!(
+        gate.diagnostic_reason(generation),
+        RevocationReason::LeaseOrBudgetExpired
+    );
+    assert!(gate.maybe_revoked().is_none());
+    assert!(!gate.permits(None));
+    assert!(gate.release_diagnostic(generation));
+}
+
+#[test]
+fn idle_qualification_reads_boot_counters_without_creating_a_mining_generation() {
+    // Arrange
+    let gate = GenerationGate::new();
+    gate.submitted.store(2, Ordering::Release);
+    gate.accepted.store(1, Ordering::Release);
+    gate.dispatched.store(3, Ordering::Release);
+    let before_state = gate.state.load(Ordering::Acquire);
+    // Act
+    let idle = gate.idle_timing().expect("known no mining generation");
+    // Assert
+    assert_eq!(
+        (
+            idle.generation,
+            idle.submitted,
+            idle.accepted,
+            idle.work_dispatched
+        ),
+        (0, 2, 1, 3)
+    );
+    assert_eq!(idle.active_ms, 0);
+    assert_eq!(idle.active_limit_ms, None);
+    assert_eq!(idle.maybe_shutdown_started_ms, None);
+    assert!(!idle.shutdown_complete);
+    assert_eq!(gate.state.load(Ordering::Acquire), before_state);
+    assert!(gate.timing(1000).is_none());
+}
+#[test]
+fn idle_qualification_rejects_reservation_and_never_replaces_retained_real_generation() {
+    // Arrange
+    let gate = GenerationGate::new();
+    let generation = gate.begin_link(0).expect("link");
+    assert!(gate.begin_reservation(generation));
+    // Act / Assert
+    assert!(gate.idle_timing().is_none());
+    assert!(gate.admit_budget(generation, 120_000));
+    assert!(gate.activate(generation));
+    gate.revoke_at(generation, 100);
+    gate.finish_shutdown(generation);
+    assert!(gate.idle_timing().is_none());
+    assert_eq!(
+        gate.timing(200).expect("retained real timing").generation,
+        generation.raw()
+    );
+}

@@ -8,9 +8,13 @@ const ACTIVE: u32 = 2;
 const RESERVED: u32 = 3;
 const REVOKED: u32 = 4;
 const BUDGETED: u32 = 5;
+const DIAGNOSTIC: u32 = 6;
+const DIAGNOSTIC_REVOKED: u32 = 7;
 const FLAGS: u32 = 7;
 const GENERATION_SHIFT: u32 = 3;
 
+#[path = "revocation/diagnostic.rs"]
+mod diagnostic;
 #[path = "revocation/global.rs"]
 mod global;
 #[path = "revocation/reason.rs"]
@@ -64,6 +68,7 @@ impl WorkPermit {
 
 pub(crate) struct GenerationGate {
     state: AtomicU32,
+    diagnostic_reason: AtomicU32,
     next_generation: AtomicU32,
     heartbeat_ms: AtomicU32,
     work_epoch: AtomicU32,
@@ -102,6 +107,7 @@ impl GenerationGate {
     pub const fn new() -> Self {
         Self {
             state: AtomicU32::new(0),
+            diagnostic_reason: AtomicU32::new(0),
             next_generation: AtomicU32::new(1),
             heartbeat_ms: AtomicU32::new(0),
             work_epoch: AtomicU32::new(1),
@@ -191,6 +197,7 @@ impl GenerationGate {
             || state == generation.0 | RESERVED
             || state == generation.0 | BUDGETED
             || state == generation.0 | ACTIVE
+            || state == generation.0 | DIAGNOSTIC
     }
 
     /// Fences cleanup before any fallible durable reservation operation.
@@ -346,6 +353,26 @@ impl GenerationGate {
         now_ms: u64,
         reason: RevocationReason,
     ) -> bool {
+        if self.diagnostic_live(generation) {
+            let _first = self.diagnostic_reason.compare_exchange(
+                0,
+                reason as u32,
+                Ordering::AcqRel,
+                Ordering::Acquire,
+            );
+            if self
+                .state
+                .compare_exchange(
+                    generation.0 | DIAGNOSTIC,
+                    generation.0 | DIAGNOSTIC_REVOKED,
+                    Ordering::AcqRel,
+                    Ordering::Acquire,
+                )
+                .is_ok()
+            {
+                return true;
+            }
+        }
         // Only the winning CAS publishes a reason. A later cleanup cannot replace it.
         for flag in [ACTIVE, BUDGETED, RESERVED, LIVE, RESERVED, BUDGETED, ACTIVE] {
             let revoked_state = if flag == LIVE {
@@ -388,7 +415,10 @@ impl GenerationGate {
 
     pub fn check_deadline(&self, now_ms: u64) {
         let state = self.state.load(Ordering::Acquire);
-        if !matches!(state & FLAGS, LIVE | RESERVED | BUDGETED | ACTIVE) {
+        if !matches!(
+            state & FLAGS,
+            LIVE | RESERVED | BUDGETED | ACTIVE | DIAGNOSTIC
+        ) {
             return;
         }
         let now = now_ms as u32;

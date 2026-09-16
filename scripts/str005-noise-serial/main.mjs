@@ -1,3 +1,5 @@
+import { fstatSync } from "node:fs";
+import { once } from "node:events";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { requireValue as check } from "./contract.mjs";
@@ -29,16 +31,29 @@ export function parseArgs(argv) {
   return { action, options };
 }
 
-/** No effect admission exists until bounded native crypto cleanup is qualified. */
-export function main(argv) {
-  parseArgs(argv);
-  throw Object.assign(new Error("noise_runtime_readiness_unverified"), { code: "noise_runtime_readiness_unverified" });
+/** Canonical v2 workflow. Recovery remains unavailable before input-dependent effects. */
+export async function main(argv, operations = {}) {
+  const { action, options: raw } = parseArgs(argv);
+  if (action === "recover" || raw["recovery-receipt"] !== undefined)
+    check(false, "noise_recovery_unavailable");
+  const options = { privateRoot: raw["private-root"], firmwareRoot: raw["firmware-root"], gateRoot: raw["gate-root"],
+    manifest: raw["package-manifest"], fixtureBinary: raw["fixture-binary"], attemptOrdinal: raw["attempt-ordinal"], predecessorReceipt: raw["predecessor-receipt"] };
+  if (action === "preflight") return (await import("./context.mjs")).preflight(options, operations);
+  if (action === "finalize") return (await import("./finalize.mjs")).finalize(options.privateRoot, raw["cleanup-receipt"], operations);
+  if (action === "review") return (await import("./finalize.mjs")).review(options.privateRoot, operations);
+  const stdout = fstatSync(1);
+  check(stdout.isFile() && (stdout.mode & 0o777) === 0o600, "noise_protected_stdout_required");
+  const server = await (await import("./server.mjs")).createSupervisor(options, operations);
+  server.listen(Number(raw.port ?? 0), "127.0.0.1"); await once(server, "listening"); await server.qualificationReady;
+  process.stdout.write(`qualification_url=http://127.0.0.1:${server.address().port}/\n`);
+  for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, () => { server.close(); server.closeIdleConnections(); });
+  await once(server, "close"); await server.closeQualificationResources();
+  return { supervisor: "closed", device_effects: false, hardware_qualified: false };
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  try { main(process.argv.slice(2)); }
-  catch (error) {
+  main(process.argv.slice(2)).then((value) => process.stdout.write(`${JSON.stringify(value)}\n`)).catch((error) => {
     process.stdout.write(`${JSON.stringify({ ready: false, device_effects: false, hardware_qualified: false,
       error: typeof error.code === "string" && /^noise_[a-z_]+$/u.test(error.code) ? error.code : "noise_operation_rejected" })}\n`);
     process.exitCode = 1;
-  }
+  });
 }

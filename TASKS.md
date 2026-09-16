@@ -4387,9 +4387,10 @@ Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/par
 Current scope | 2026-09-16: This existing task owns the live qualification step
 of the new Noise work breakdown; do not create a duplicate hardware task.
 
-Status: Blocked on `task-str005-noise-runtime-readiness` and
-`task-str005-noise-fixture-evidence`. Both must be complete, verified and published
-before effects. The specification prerequisite
+Status: Ready for a fresh bounded v2 qualification after this implementation is
+published and its clean package passes preflight. `task-str005-noise-runtime-readiness`
+and `task-str005-noise-fixture-evidence` are complete and archived; their software
+results do not replace the required fresh hardware observations. The specification prerequisite
 `task-str005-noise-successor-contract` is complete; also require published `task-str005-noise-parity-scope-amendment`
 and use the [v2 parity-scope amendment](docs/hardware/str005-noise-parity-scope-amendment.md) with its unchanged v1 base. The completed
 USB qualification supplies a baseline, not Noise evidence or permission to reuse
@@ -4427,6 +4428,20 @@ Owner scope decision | 2026-09-16: Dependency-level cancellation is deferred
 to future `task-str005-noise-cooperative-cancellation`, outside current parity
 work. This live task stays blocked under the unchanged successor contract. No
 new attempt, fork, hardware effect or parity claim follows from the backlog entry.
+
+Live handoff | 2026-09-16: Use the [v2 operator workflow](scripts/str005-noise-serial/README.md)
+and [software readiness report](docs/hardware/str005-noise-v2-readiness.md). After
+publication, build the clean native package and fixture provenance, then run
+`just stratum-v2-noise-serial preflight` for the exclusively assigned
+`scratch/str005-noise-serial/attempt-001` with the accepted cadence result as
+predecessor. Fresh accounting must confirm next ordinal 18, last completed 17,
+1560000 ms charged and no pending reservation. Noise changes neither ledger.
+Capture the installed before-pair baseline before the initial write; perform the
+four fresh state-preserving continuity cycles, one positive network-only exchange,
+fresh restoration, actual resource cleanup and independent sealed review.
+Retain any failure; no context restart, implicit reset/rollback, allowance issue
+or reuse of historical authority is permitted. Subsequent channel/job and real
+mining remain separately authorized work under their own published contracts.
 
 Execution boundary: hardware access is serialized. This milestone excludes
 channel/job qualification, ASIC work, share submission, mining and external
@@ -4483,193 +4498,6 @@ Completion review: Pending. STR-005 remains `implemented` until the final
 promotion task succeeds.
 
 
-
-### task-str005-noise-runtime-readiness | 2026-09-16 | Verify firmware and Gate readiness for Noise qualification
-
-Status: Ready for software implementation after publication of the [v2 parity-scope amendment](docs/hardware/str005-noise-parity-scope-amendment.md).
-Cooperative dependency cancellation is not a prerequisite for v2.
-No hardware effects are authorized by this preparation task.
-
-Depends on: completed `task-str005-noise-successor-contract` and
-`task-str005-noise-parity-scope-amendment`. Bind both published contract files
-and their canonical combined digest in v2 implementation evidence. May run in parallel with
-`task-str005-noise-fixture-evidence` after their shared interfaces are frozen.
-Feeds the existing live task `task-str005-noise-auth-205`.
-
-Contract handoff: implement the amended v2 Controller/Gate types, volatile single-job
-fence, completed-response dispatch, endpoint freshness and v2 deadline/cleanup
-semantics. Use the existing synchronous crypto with cancellation at supported
-API boundaries; prove independent revocation and observed actual cleanup.
-Universal in-call cancellation and five-second firmware cleanup are excluded. Prove native combined-owner readiness in software; fresh startup/heap
-observations belong to the later live installation/cycles before diagnostic Start.
-
-Current scope | 2026-09-16, v2 amendment: The dated v1 blocker and deferral
-notes below remain historical. They no longer block this task under v2. Reuse
-the pinned crypto without a fork; migrate Gate/firmware schemas explicitly,
-keep effects fenced through real cleanup, and accept only a timely positive
-exchange with actual resource release. Native ordinary-owner fit and independent
-safety enforcement remain required. Dedicated automatic recovery is optional;
-normal restoration must work. No hardware authority belongs to this task.
-
-Ownership: firmware V2 session/lifecycle adapters and Gate controller/recovery
-integration, with focused tests in their owning repositories. Later shared
-interface changes require a new linked contract-amendment task; never reopen an
-archived contract record. Fixture and evidence validators belong to the sibling
-task.
-
-- [x] Audit existing V2 code against the current fixed-Serial/JTAG, possession
-      and qualified lifecycle interfaces; distinguish reusable behavior from
-      obsolete WebUSB/recovery assumptions.
-- [ ] Implement only demonstrated compatibility or lifecycle gaps required by
-      the contract, preserving single ownership, safety enforcement and scope.
-- [ ] Add deterministic regressions for readiness, cancellation/timeout,
-      session/identity conflicts, restoration and resource release, exercising
-      the production seams and preserving first-failure provenance.
-- [ ] Run required firmware/Gate, native package/storage/stack and ownership
-      checks as applicable; review and publish any changed Gate pin and runtime
-      implementation before handing off an exact candidate pair.
-
-Execution plan | 2026-09-16: Implement the frozen interfaces in parallel with
-the sibling preparation task, then compose their production seams. Before
-publication, run ordered Cargo checks, applicable Gate/canonical tests, native
-resource/ownership checks, semantic privacy and reference checks. Preserve the
-contract bytes and historical evidence; live effects remain blocked until both
-preparation tasks pass and their exact sources are published.
-
-Readiness finding | 2026-09-16: The [source audit and production-seam characterization](docs/hardware/str005-noise-runtime-readiness.md) show that the pinned Noise API performs synchronous
-preparation and handshake completion, including an internal ElligatorSwift
-candidate search without an exposed cancellation seam. Independent authority
-revocation does not establish the required five-second worker quiescence. The
-production-seam regression and source audit distinguish this missing guarantee
-from any measured device timing violation. Do not admit hardware or implement a
-timeout wrapper as a substitute for actual cleanup. A bounded/cancellable crypto
-implementation and its native resource/cleanup qualification remain required.
-
-Software review | 2026-09-16: Two production-helper characterization tests
-pass. Gate parser/client slice is published at
-`0ac8fd9b7a528b204be06558f24e0cede05318fa` and pinned here: closed types,
-exact-pair possession checks, consumed Start, retained-history consistency and
-competing-effect guards. Gate verification passed ordered Cargo checks (352
-passed, two existing ignored), 687 browser-unit tests, typecheck, browser/headless
-build, package and standards checks. Firmware commands, same-page workflow,
-native combined-owner resource proof and live startup measurements remain
-unimplemented/unverified. The source audit supplies no measured crypto overrun.
-
-Verification | 2026-09-16: Ordered Cargo format/Clippy/build/tests passed
-(2258 passed; three ignored, including two watchdog helpers executed through
-parent tests). All 141 canonical Bazel targets passed. Native package, USB
-ownership/symbols, reference, semantic redaction, Bright Builds and read-only
-parity/progress checks passed. The generated ESP-IDF Python environment needed
-its supported reinstall after a missing package executable blocked the first
-native build; the repaired build passed. Ordinary native compilation does not
-prove the missing combined diagnostic owner fits or cancels safely. Contract,
-archive and 1299 historical files remain byte-identical; 233 task IDs are unique.
-Parity remains 90/95, with no checklist/history transition. No hardware attempt
-was allocated. This task remains open at the documented integration blocker.
-
-Owner scope decision | 2026-09-16: Track dependency-level cancellation as
-future backlog work in `task-str005-noise-cooperative-cancellation`, rather than
-expanding current parity work into maintaining cryptographic dependencies. This
-is a deferral, not a relaxed cleanup requirement or a completion claim. The
-five-second bound comes from the successor qualification contract; the source
-audit does not establish it as upstream parity behavior. Resuming under a changed
-contract requires a separate amendment task; the published contract is unchanged.
-
-Completion: published compatible runtime code with passing software/native
-evidence and documented limitations. No connected-device access, flashing, live
-authority signing or mining occurs in this preparation task; tests use synthetic
-credentials. Software success supplies no Noise hardware verification or parity
-promotion.
-
-### task-str005-noise-fixture-evidence | 2026-09-16 | Prepare the bounded Noise fixture and evidence validator
-
-Status: Ready for remaining software implementation after publication of the
-[v2 parity-scope amendment](docs/hardware/str005-noise-parity-scope-amendment.md). Final composition needs the runtime candidate;
-deferred cooperative cancellation is not a dependency.
-No hardware effects are authorized by this preparation task.
-
-Depends on: completed `task-str005-noise-successor-contract` and
-`task-str005-noise-parity-scope-amendment`; bind the published base/amendment
-files and their canonical combined digest in v2 evidence. May run in parallel with
-`task-str005-noise-runtime-readiness` using the frozen interfaces.
-Final integration additionally needs that task's runtime candidate; fixture unit
-work can proceed independently. Feeds the existing live task
-`task-str005-noise-auth-205`.
-
-Contract handoff: implement the amended v2 host/status/result/projection
-interfaces, five exclusive installation claims, sticky admission failures,
-normal same-page restoration and independent cleanup-before-finalization.
-The dedicated recovery-only workflow may remain explicitly unsupported; it is
-not a prerequisite for the normal positive path. Register the new closed projection
-with semantic redaction; keep old effect commands retired and old readers intact.
-
-Current scope | 2026-09-16, v2 amendment: Preserve the independent fixture
-and schema slice, migrate changed timing semantics with explicit version checks,
-and implement the lean normal-path supervisor and independent judge. V1 readers
-remain strict and historical; old snapshots cannot become v2 proof. A failed
-normal restoration is unverified and stops the attempt. The dated v1 blocker
-and deferral notes below retain their earlier meaning, not current dependencies.
-
-Ownership: the local V2 fixture, host qualification supervisor, evidence models
-and independent validator. Coordinate shared build wiring with the runtime
-task; do not duplicate firmware or Gate ownership.
-
-- [ ] Reuse or adapt the existing fixture and supervisor for the declared TCP,
-      Noise and encrypted diagnostic exchange, with bounded startup, operations,
-      failure handling and complete process/socket cleanup.
-- [ ] Bind firmware/Gate/package/fixture/validator identities and fresh attempt
-      assignment; reject stale or conflicting evidence, consumed contexts and
-      archived-task authority before effects.
-- [ ] Persist only contract-allowlisted evidence; test redaction, truncation,
-      identity conflicts, missing/contradictory observations and failure paths.
-- [ ] Test the independent judge against realistic positive and negative
-      fixtures. Require actual restoration and cleanup proof; process exit,
-      queue acceptance or a successful handshake alone cannot supply it.
-- [ ] Run applicable canonical, fixture, integration, privacy and ownership
-      checks, including integration with the completed runtime candidate; review,
-      commit and push before live qualification.
-
-Execution plan | 2026-09-16: Implement the frozen interfaces in parallel with
-the sibling preparation task, then compose their production seams. Before
-publication, run ordered Cargo checks, applicable Gate/canonical tests, native
-resource/ownership checks, semantic privacy and reference checks. Preserve the
-contract bytes and historical evidence; live effects remain blocked until both
-preparation tasks pass and their exact sources are published.
-
-Integration boundary | 2026-09-16: Runtime readiness found no supported
-in-call crypto cancellation seam sufficient for the frozen cleanup bound. Finish
-and verify the independent fixture and closed evidence-schema slice, keeping
-new effect admission unavailable. Full supervisor, restoration, independent
-acceptance and runtime/Gate/fixture composition remain unfinished; schema
-validation alone is not evidence acceptance.
-
-Software review | 2026-09-16: The [fixture/evidence handoff](docs/hardware/str005-noise-fixture-readiness.md)
-records the implemented local `noise-serial` fixture, 39 passing Node
-schema/consistency/CLI tests and new canonical targets. The frozen CLI arguments
-are recognized, but every action rejects before input reads or effects. Retired
-Noise CLI and direct flash/restoration entry points reject before private input
-access or tool detection; historical parsers/finalizers/readers remain usable.
-No context, ordinal assignment, supervisor, independent result judge, finalizer,
-public projection or readiness receipt was created. Semantic redaction
-registration and full production composition remain pending.
-
-Verification | 2026-09-16: Ordered Cargo format/Clippy/build/tests passed
-(2258 passed; three ignored, including two watchdog helpers executed through
-parent tests). All 141 canonical Bazel targets passed. Native package, USB
-ownership/symbols, reference, semantic redaction, Bright Builds and read-only
-parity/progress checks passed. The generated ESP-IDF Python environment needed
-its supported reinstall after a missing package executable blocked the first
-native build; the repaired build passed. Ordinary native compilation does not
-prove the missing combined diagnostic owner fits or cancels safely. Contract,
-archive and 1299 historical files remain byte-identical; 233 task IDs are unique.
-Parity remains 90/95, with no checklist/history transition. No hardware attempt
-was allocated. This task remains open at the documented integration blocker.
-
-Completion: a published bounded harness and independent validator whose exact
-identities can be frozen with the runtime pair. Synthetic/local loopback tests
-are permitted; connected-device access, live device credentials/signing and
-hardware effects remain in `task-str005-noise-auth-205`. This task does not
-qualify channel/jobs, accepted shares or STR-005 parity.
 
 ## Future
 
@@ -4735,6 +4563,13 @@ remain excluded. Keep the tested candidate installed after safe restoration.
 Scope reconciliation | 2026-09-16: Network-only Noise relaxation does not relax
 mining safety, accepted-share proof or accounting. Its future contract must
 resolve these independently; no live authority is created by this tracker edit.
+
+Owner authorization | 2026-09-16: Real live mining is explicitly authorized
+for this continuation once preceding Noise/channel evidence and this task's
+bounded successor contract, safety/accounting gates and published implementation
+are ready. No additional per-attempt permission is required within that contract.
+Fresh authenticated ledger admission still determines the next reservation;
+this note does not issue one or authorize reuse of any historical context.
 
 Verification: Pending. Completion review: Pending; STR-005 stays implemented.
 

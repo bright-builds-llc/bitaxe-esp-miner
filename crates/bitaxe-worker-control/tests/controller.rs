@@ -8,6 +8,8 @@ mod cooling;
 mod fixture_session;
 #[path = "controller/liveness.rs"]
 mod liveness;
+#[path = "controller/noise.rs"]
+mod noise;
 #[path = "controller/restart.rs"]
 mod restart;
 #[path = "controller/serial_trace.rs"]
@@ -65,6 +67,7 @@ impl LeaseAuthorizationVerifier for FixtureVerifier {
 
 #[derive(Default)]
 struct FakeSession {
+    maybe_noise: Option<bitaxe_worker_control::noise::NoiseRecord>,
     maybe_restart_context: Option<bitaxe_worker_control::QualificationRestartContext>,
     prepared_probes: std::cell::RefCell<Vec<(usize, usize)>>,
     events: Vec<&'static str>,

@@ -22,6 +22,7 @@ struct FakeFlashEnvironment {
     maybe_execute_failure_offset: Option<String>,
     snapshot_write_failure: bool,
     list_ports_calls: Cell<usize>,
+    physical_inspection_ports: RefCell<Vec<String>>,
     read_string_paths: RefCell<Vec<Utf8PathBuf>>,
     written_files: RefCell<Vec<(Utf8PathBuf, String)>>,
     created_snapshot_paths: RefCell<Vec<Utf8PathBuf>>,
@@ -73,6 +74,7 @@ impl FakeFlashEnvironment {
             maybe_execute_failure_offset: None,
             snapshot_write_failure: false,
             list_ports_calls: Cell::new(0),
+            physical_inspection_ports: RefCell::new(Vec::new()),
             read_string_paths: RefCell::new(Vec::new()),
             written_files: RefCell::new(Vec::new()),
             created_snapshot_paths: RefCell::new(Vec::new()),
@@ -338,7 +340,8 @@ impl FlashEnvironment for FakeFlashEnvironment {
         Ok("6".repeat(64))
     }
 
-    fn current_usb_physical_identity_digest(&self, _port: &str) -> Result<String> {
+    fn current_usb_physical_identity_digest(&self, port: &str) -> Result<String> {
+        self.physical_inspection_ports.borrow_mut().push(port.to_owned());
         Ok("6".repeat(64))
     }
 

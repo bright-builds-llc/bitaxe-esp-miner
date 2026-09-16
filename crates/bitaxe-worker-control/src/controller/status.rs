@@ -37,6 +37,9 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
     }
 
     pub(super) fn status(&self, now: u64) -> Result<Value, WorkerControlError> {
+        if self.session.noise_busy() {
+            return Err(WorkerControlError::RestorationPending);
+        }
         if let Some(active) = self.maybe_active.as_ref() {
             return Ok(json!({
                 "protocolVersion": PROTOCOL_VERSION,

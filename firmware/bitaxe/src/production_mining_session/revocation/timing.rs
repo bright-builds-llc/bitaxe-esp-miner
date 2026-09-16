@@ -68,3 +68,52 @@ impl GenerationGate {
         (self.timing_generation.load(Ordering::Acquire) == generation).then_some(timing)
     }
 }
+
+impl GenerationGate {
+    /// Read-only boot counters when no mining generation or work reservation exists.
+    pub fn idle_timing(&self) -> Option<RevocationTiming> {
+        let state = self.state.load(Ordering::Acquire);
+        let eligible =
+            state == 0 || matches!(state & FLAGS, LIVE | DIAGNOSTIC | DIAGNOSTIC_REVOKED);
+        if !eligible
+            || self.timing_generation.load(Ordering::Acquire) != 0
+            || self.budget_generation.load(Ordering::Acquire) != 0
+        {
+            return None;
+        }
+        let counters = self.boot_counters();
+        let snapshot = RevocationTiming {
+            generation: 0,
+            revocation_reason: RevocationReason::NotRevoked,
+            last_valid_heartbeat_ms: self.heartbeat_ms.load(Ordering::Acquire),
+            maybe_gate_closed_ms: None,
+            maybe_shutdown_started_ms: None,
+            active_ms: 0,
+            generation_elapsed_ms: 0,
+            active_limit_ms: None,
+            shutdown_budget_ms: 0,
+            work_gate_remaining_ms: None,
+            shutdown_stage: 0,
+            shutdown_complete: false,
+            submitted: counters[0],
+            accepted: counters[1],
+            rejected: counters[2],
+            nonce_work_correlations: counters[3],
+            work_dispatched: counters[4],
+        };
+        (self.state.load(Ordering::Acquire) == state
+            && self.timing_generation.load(Ordering::Acquire) == 0
+            && self.budget_generation.load(Ordering::Acquire) == 0
+            && self.boot_counters() == counters)
+            .then_some(snapshot)
+    }
+    fn boot_counters(&self) -> [u32; 5] {
+        [
+            self.submitted.load(Ordering::Acquire),
+            self.accepted.load(Ordering::Acquire),
+            self.rejected.load(Ordering::Acquire),
+            self.correlated.load(Ordering::Acquire),
+            self.dispatched.load(Ordering::Acquire),
+        ]
+    }
+}

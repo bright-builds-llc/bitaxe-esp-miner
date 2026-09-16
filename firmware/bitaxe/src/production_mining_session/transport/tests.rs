@@ -93,6 +93,10 @@ fn loopback_worker_connects_writes_and_preserves_partial_bytes() {
             transport_epoch: epoch,
         }
     );
+    assert!(
+        !workers.primary.borrow.reserve(),
+        "connected worker cannot be borrowed"
+    );
     workers
         .try_send(
             ProductionPool::Primary,
@@ -182,4 +186,110 @@ fn write_debug_never_contains_pool_line() {
     // Assert
     assert!(!debug.contains("sensitive-owner-worker-value"));
     assert!(debug.contains("redacted"));
+}
+
+#[test]
+fn queued_or_inflight_ordinary_command_prevents_borrow_reservation() {
+    // Arrange: use the real enqueue/dequeue gate with a controlled receiver.
+    let (sender, receiver) = mpsc::sync_channel(8);
+    let handle = NoiseBorrowHandle::new(sender);
+    let worker = handle.worker();
+    worker.ready();
+    handle
+        .send(PoolTransportCommand::Close {
+            transport_epoch: next_epoch(),
+        })
+        .expect("queued");
+    // Act / Assert
+    assert!(!handle.reserve());
+    let _command = receiver.recv().expect("dequeued");
+    assert!(!handle.reserve());
+    worker.begin_command();
+    assert!(!handle.reserve());
+    worker.finish_command(false);
+    assert!(handle.reserve());
+    assert!(handle.send(PoolTransportCommand::Shutdown).is_err());
+    assert!(handle.release());
+}
+
+static BORROW_TEST: std::sync::OnceLock<std::sync::Mutex<Option<BorrowTest>>> =
+    std::sync::OnceLock::new();
+static JOB_DROPPED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static JOB_COMPLETED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+struct BorrowTest {
+    entered: mpsc::SyncSender<()>,
+    release: mpsc::Receiver<()>,
+}
+struct JobScope;
+impl Drop for JobScope {
+    fn drop(&mut self) {
+        JOB_DROPPED.store(true, Ordering::Release);
+    }
+}
+fn run_held_job() {
+    let _scope = JobScope;
+    let test = BORROW_TEST
+        .get()
+        .expect("test installed")
+        .lock()
+        .expect("test lock")
+        .take()
+        .expect("one job");
+    test.entered.send(()).expect("test observes entry");
+    test.release
+        .recv_timeout(Duration::from_secs(3))
+        .expect("bounded test release");
+}
+fn complete_held_job() {
+    assert!(JOB_DROPPED.load(Ordering::Acquire));
+    JOB_COMPLETED.store(true, Ordering::Release);
+}
+#[test]
+fn existing_pool_worker_observes_scoped_job_return_before_completion_and_release() {
+    // Arrange: actual twelve-KiB worker loop; no additional diagnostic thread.
+    let (entered_sender, entered_receiver) = mpsc::sync_channel(1);
+    let (release_sender, release_receiver) = mpsc::sync_channel(1);
+    assert!(BORROW_TEST
+        .set(std::sync::Mutex::new(Some(BorrowTest {
+            entered: entered_sender,
+            release: release_receiver
+        })))
+        .is_ok());
+    let workers = PoolTransportWorkers::spawn(|_| {}).expect("ordinary workers");
+    let deadline = std::time::Instant::now() + Duration::from_secs(2);
+    while !workers.primary.borrow.reserve() {
+        assert!(std::time::Instant::now() < deadline, "worker became idle");
+        thread::sleep(Duration::from_millis(2));
+    }
+    // Act
+    workers
+        .primary
+        .borrow
+        .dispatch(run_held_job, complete_held_job)
+        .expect("dispatch once");
+    let entered = entered_receiver.recv_timeout(Duration::from_secs(2));
+    let early_complete = JOB_COMPLETED.load(Ordering::Acquire);
+    let early_release = workers.primary.borrow.release();
+    let normal_rejected = workers
+        .try_send(
+            ProductionPool::Primary,
+            PoolTransportCommand::Connect {
+                transport_epoch: next_epoch(),
+                endpoint: ProductionPoolEndpoint {
+                    host: "127.0.0.1".into(),
+                    port: 9,
+                },
+            },
+        )
+        .is_err();
+    let released = release_sender.send(());
+    while !JOB_COMPLETED.load(Ordering::Acquire) && std::time::Instant::now() < deadline {
+        thread::sleep(Duration::from_millis(2));
+    }
+    // Assert
+    assert!(entered.is_ok() && released.is_ok());
+    assert!(!early_complete && !early_release && normal_rejected);
+    assert!(JOB_DROPPED.load(Ordering::Acquire));
+    assert!(JOB_COMPLETED.load(Ordering::Acquire));
+    assert!(workers.primary.borrow.release());
 }

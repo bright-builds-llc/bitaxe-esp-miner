@@ -6,10 +6,11 @@ mod model;
 #[cfg(test)]
 mod tests;
 
-use std::fs;
-use std::io::Read;
+use std::fs::{self, DirBuilder, OpenOptions};
+use std::io::{Read, Write};
 use std::net::{IpAddr, Shutdown, TcpListener};
-use std::os::unix::fs::PermissionsExt;
+use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
+use std::path::Path;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
@@ -23,7 +24,24 @@ use serde::Serialize;
 use zeroize::Zeroizing;
 
 use self::model::{Cause, Terminal};
-use super::{create_private_root, write_private_json, Args};
+use super::Args;
+
+// Polling consumers must never see an artifact while its JSON is still being written.
+fn write_serial_json(path: &Path, value: &impl Serialize) -> Result<()> {
+    let pending = path.with_extension("json.pending");
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(&pending)?;
+    serde_json::to_writer_pretty(&mut file, value)?;
+    file.write_all(b"\n")?;
+    file.sync_all()?;
+    drop(file);
+    fs::hard_link(&pending, path)?;
+    fs::remove_file(pending)?;
+    Ok(())
+}
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -109,7 +127,7 @@ pub(super) fn run(args: &Args) -> Result<()> {
     let (attempt, expected) = validate(args)?;
     let startup_deadline = Instant::now() + Duration::from_secs(5);
     let startup_guard = lifetime_guard(startup_deadline);
-    create_private_root(&args.private_root)?;
+    DirBuilder::new().mode(0o700).create(&args.private_root)?;
     let listener = TcpListener::bind(args.listen_address)?;
     listener.set_nonblocking(true)?;
     let address = listener.local_addr()?;
@@ -126,7 +144,7 @@ pub(super) fn run(args: &Args) -> Result<()> {
         bail!("noise_serial_startup_expired");
     }
     let _deadline_guard = lifetime_guard(began + Duration::from_secs(150));
-    write_private_json(&args.private_root.join("ready.json"), &ready)?;
+    write_serial_json(&args.private_root.join("ready.json"), &ready)?;
     if Instant::now() >= startup_deadline {
         bail!("noise_serial_startup_expired");
     }
@@ -150,7 +168,7 @@ pub(super) fn run(args: &Args) -> Result<()> {
     receipt.failure = result.err();
     // Every exchange-local stream has dropped before receipt publication.
     receipt.socket_closed = receipt.expected_peer_connection_count > 0;
-    write_private_json(&args.private_root.join("terminal.json"), &receipt)?;
+    write_serial_json(&args.private_root.join("terminal.json"), &receipt)?;
     if receipt.failure.is_some() {
         bail!("noise_serial_fixture_rejected");
     }

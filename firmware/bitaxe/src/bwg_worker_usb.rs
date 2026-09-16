@@ -252,6 +252,12 @@ fn process_frame<V>(
                     trace::event(correlation, SerialTraceStage::ReplyCreated, 0);
                     if writer::send_control(correlation, rejection.frame()).is_err() {
                         diagnostic("stale_response");
+                    } else if error.category() == "restoration_pending"
+                        && crate::noise_serial_runtime::busy()
+                    {
+                        // A closed pending cleanup receipt is not protocol corruption.
+                        // Keep only this authenticated diagnostic reply channel alive.
+                        return;
                     }
                 }
             }

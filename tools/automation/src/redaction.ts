@@ -1,7 +1,9 @@
+import { validateNoiseSerialProjection } from "./noise-serial-redaction.js";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 const semanticSchemas = new Set([
+  "bitaxe-stratum-v2-noise-serial-projection-v2",
   "fixed-usb-cycle-report-v1",
   "fixed-usb-window-report-v1",
   "bitaxe-hardware-attempt-v1",
@@ -107,6 +109,7 @@ export async function verifySemanticEvidenceRedaction(root: string): Promise<{ r
     const fields = value as Record<string, unknown>;
     const schema = fields["schema_version"] ?? fields["schema"];
     if (typeof schema !== "string" || !semanticSchemas.has(schema)) continue;
+    if (schema === "bitaxe-stratum-v2-noise-serial-projection-v2") validateNoiseSerialProjection(fields);
     checked += 1;
     for (const violation of inspectValue(value, "$", schema.startsWith("fixed-usb-"))) {
       violations.push(`${path.relative(root, file)} ${violation}`);

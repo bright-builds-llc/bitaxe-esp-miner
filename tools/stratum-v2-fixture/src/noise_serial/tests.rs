@@ -6,6 +6,43 @@ use bitaxe_stratum::v2::{
 use std::io::Write;
 use std::net::TcpStream;
 
+#[test]
+fn serial_json_is_complete_before_exclusive_publication() {
+    // Arrange
+    let root = std::env::temp_dir().join(format!("noise-serial-publish-{}", std::process::id()));
+    DirBuilder::new()
+        .mode(0o700)
+        .create(&root)
+        .expect("fresh private root");
+    let path = root.join("ready.json");
+    struct Observed<'a>(&'a Path);
+    impl Serialize for Observed<'_> {
+        fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+            assert!(
+                !self.0.exists(),
+                "final receipt absent during serialization"
+            );
+            serializer.serialize_str("complete")
+        }
+    }
+
+    // Act
+    write_serial_json(&path, &Observed(&path)).expect("publish completed receipt");
+
+    // Assert
+    assert_eq!(fs::read(&path).expect("receipt"), b"\"complete\"\n");
+    assert_eq!(
+        fs::metadata(&path).expect("mode").permissions().mode() & 0o777,
+        0o600
+    );
+    assert!(write_serial_json(&path, &"replacement").is_err());
+    assert_eq!(
+        fs::read(&path).expect("unchanged receipt"),
+        b"\"complete\"\n"
+    );
+    fs::remove_dir_all(root).expect("remove synthetic evidence");
+}
+
 fn with_fixture(client: impl FnOnce(TcpStream, [u8; 32])) -> Terminal {
     let listener = TcpListener::bind("127.0.0.1:0").expect("loopback fixture");
     listener.set_nonblocking(true).expect("nonblocking");
@@ -338,4 +375,103 @@ fn late_watchdog_child() {
     let _guard = lifetime_guard(Instant::now() - Duration::from_secs(1));
     std::thread::sleep(Duration::from_millis(250));
     panic!("expired watchdog did not terminate the child");
+}
+
+#[derive(Default)]
+struct ProductionObservation {
+    began: Option<Instant>,
+    events: Vec<bitaxe_stratum::v2::noise::diagnostic::Event>,
+    failures: Vec<(
+        bitaxe_stratum::v2::noise::diagnostic::Phase,
+        bitaxe_stratum::v2::noise::diagnostic::Failure,
+    )>,
+}
+impl bitaxe_stratum::v2::noise::diagnostic::Observer for ProductionObservation {
+    fn permitted(&mut self) -> bool {
+        self.began
+            .is_some_and(|at| at.elapsed() < Duration::from_secs(10))
+    }
+    fn now_us(&self) -> Option<u64> {
+        self.began
+            .and_then(|at| u64::try_from(at.elapsed().as_micros()).ok())
+    }
+    fn event(&mut self, event: bitaxe_stratum::v2::noise::diagnostic::Event) {
+        self.events.push(event);
+    }
+    fn failed(
+        &mut self,
+        phase: bitaxe_stratum::v2::noise::diagnostic::Phase,
+        failure: bitaxe_stratum::v2::noise::diagnostic::Failure,
+    ) {
+        self.failures.push((phase, failure));
+    }
+}
+fn production_exchange(wrong_authority: bool) -> (ProductionObservation, Terminal) {
+    let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
+    listener.set_nonblocking(true).expect("nonblocking");
+    let endpoint = listener.local_addr().expect("endpoint");
+    let (private, public) = generate_serial_authority().expect("authority");
+    let selected_key = if wrong_authority {
+        generate_serial_authority().expect("other authority").1
+    } else {
+        public
+    };
+    let server = std::thread::spawn(move || {
+        let mut receipt = Terminal::new(URL_SAFE_NO_PAD.encode([1; 16]));
+        let result = exchange(
+            listener,
+            endpoint.ip(),
+            &private,
+            &public,
+            Instant::now(),
+            Limits::production(),
+            &mut receipt,
+        );
+        receipt.failure = result.err();
+        receipt
+    });
+    let mut observer = ProductionObservation {
+        began: Some(Instant::now()),
+        ..Default::default()
+    };
+    bitaxe_stratum::v2::noise::diagnostic::run(endpoint, selected_key, &mut OsRng, &mut observer);
+    (observer, server.join().expect("fixture completion"))
+}
+#[test]
+fn native_shared_diagnostic_adapter_completes_the_actual_fixture_exchange() {
+    use bitaxe_stratum::v2::noise::diagnostic::{Event, Phase};
+    // Arrange / Act: exactly the shared adapter called by the native owner.
+    let (observed, fixture) = production_exchange(false);
+    // Assert
+    assert!(observed.failures.is_empty(), "{:?}", observed.failures);
+    assert!(fixture.failure.is_none(), "{:?}", fixture.failure);
+    assert!(fixture.encrypted_proof_exact && fixture.peer_closed);
+    assert!(observed.events.iter().any(|event| matches!(event, Event::SocketOpened(port) if *port == fixture.candidates[0].remote_port)));
+    assert!(observed.events.iter().any(|event| matches!(
+        event,
+        Event::Complete {
+            phase: Phase::Proof,
+            bytes: Some(22),
+            ..
+        }
+    )));
+}
+#[test]
+fn native_shared_diagnostic_rejects_the_wrong_fixture_authority_without_proof() {
+    use bitaxe_stratum::v2::noise::diagnostic::{Event, Failure, Phase};
+    let (observed, fixture) = production_exchange(true);
+    assert!(observed
+        .failures
+        .iter()
+        .any(|(phase, failure)| *phase == Phase::Authenticate
+            && matches!(failure, Failure::Authentication(_))));
+    assert!(!observed.events.iter().any(|event| matches!(
+        event,
+        Event::Complete {
+            phase: Phase::Proof,
+            ..
+        }
+    )));
+    assert_eq!(fixture.proof_bytes_received, 0);
+    assert!(!fixture.encrypted_proof_exact);
 }

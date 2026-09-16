@@ -7,8 +7,11 @@ static DEFERRED_EFFECT_QUEUE: OnceLock<DeferredEffectQueue<DeferredFirmwareEffec
     OnceLock::new();
 
 enum DeferredFirmwareEffect {
-    Settings(Vec<SettingsPersistenceEffect>),
-    Restart,
+    Settings(
+        Vec<SettingsPersistenceEffect>,
+        crate::noise_serial_runtime::MutationGuard,
+    ),
+    Restart(crate::noise_serial_runtime::MutationGuard),
 }
 
 pub(super) fn initialize_deferred_effect_worker() -> anyhow::Result<()> {
@@ -46,8 +49,10 @@ fn deferred_effect_queue() -> anyhow::Result<&'static DeferredEffectQueue<Deferr
 pub(super) fn prepare_settings_effects(
     effects: Vec<SettingsPersistenceEffect>,
 ) -> anyhow::Result<DeferredEffectLease> {
+    let guard = crate::noise_serial_runtime::MutationGuard::acquire()
+        .ok_or_else(|| anyhow::anyhow!("diagnostic owns configuration"))?;
     let effect_lease = deferred_effect_queue()?
-        .acquire(DeferredFirmwareEffect::Settings(effects))
+        .acquire(DeferredFirmwareEffect::Settings(effects, guard))
         .map_err(|_| anyhow::anyhow!("settings effect worker unavailable"))?;
     settings_patch_retained("axeos_settings_patch=effects_scheduled");
     Ok(effect_lease)
@@ -55,14 +60,14 @@ pub(super) fn prepare_settings_effects(
 
 fn execute_deferred_firmware_effect(effect: DeferredFirmwareEffect) {
     match effect {
-        DeferredFirmwareEffect::Settings(effects) => {
+        DeferredFirmwareEffect::Settings(effects, _guard) => {
             std::thread::sleep(Duration::from_millis(
                 SETTINGS_EFFECTS_POST_RESPONSE_DELAY_MS,
             ));
             apply_settings_effects(&effects);
             settings_patch_retained("axeos_settings_patch=effects_applied");
         }
-        DeferredFirmwareEffect::Restart => {
+        DeferredFirmwareEffect::Restart(_guard) => {
             std::thread::sleep(Duration::from_millis(RESTART_POST_RESPONSE_DELAY_MS));
             log::info!("axeos_command_effect=restart_after_response");
             unsafe { sys::esp_restart() };
@@ -171,8 +176,10 @@ pub(super) fn apply_command_effect(
 pub(super) fn prepare_restart_after_response() -> anyhow::Result<DeferredEffectLease> {
     // The process-lifetime worker owns the restart before success is serialized.
     // Its delay begins only after the handler schedules the public response.
+    let guard = crate::noise_serial_runtime::MutationGuard::acquire()
+        .ok_or_else(|| anyhow::anyhow!("diagnostic owns configuration"))?;
     deferred_effect_queue()?
-        .acquire(DeferredFirmwareEffect::Restart)
+        .acquire(DeferredFirmwareEffect::Restart(guard))
         .map_err(|_| anyhow::anyhow!("restart effect worker unavailable"))
 }
 
@@ -182,10 +189,13 @@ pub(super) fn record_firmware_ota_status(status: FirmwareOtaStatus) {
     log_buffer::append_runtime_log_line(&format!("firmware_ota_status={text}"));
 }
 
-pub(super) fn schedule_firmware_ota_restart() {
+pub(super) fn schedule_firmware_ota_restart(guard: crate::noise_serial_runtime::MutationGuard) {
+    let guard = std::sync::Arc::new(guard);
+    let worker_guard = std::sync::Arc::clone(&guard);
     let result = std::thread::Builder::new()
         .name("firmware-ota-restart".to_owned())
-        .spawn(|| {
+        .spawn(move || {
+            let _guard = worker_guard;
             std::thread::sleep(Duration::from_millis(1000));
             log::info!("firmware_ota_update=restart_now");
             unsafe { sys::esp_restart() };

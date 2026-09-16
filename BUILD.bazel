@@ -309,3 +309,14 @@ js_library(
     ],
     visibility = ["//tools/automation:__pkg__"],
 )
+
+js_library(
+    name = "str005_noise_serial_contract_inputs",
+    srcs = [
+        "Cargo.toml",
+        "Cargo.lock",
+        "MODULE.bazel",
+        "docs/hardware/str005-noise-serial-qualification.md",
+        "docs/hardware/str005-noise-parity-scope-amendment.md",
+    ],
+)

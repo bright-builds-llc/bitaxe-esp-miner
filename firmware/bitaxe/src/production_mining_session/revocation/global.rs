@@ -3,6 +3,19 @@ use super::{GenerationGate, RevocationReason, RevocationTiming, WorkPermit, Work
 
 static GATE: GenerationGate = GenerationGate::new();
 
+pub(crate) fn claim_diagnostic(generation: WorkerGeneration, deadline_ms: u64) -> bool {
+    GATE.claim_diagnostic(generation, deadline_ms)
+}
+pub(crate) fn diagnostic_live(generation: WorkerGeneration) -> bool {
+    GATE.diagnostic_live(generation)
+}
+pub(crate) fn release_diagnostic(generation: WorkerGeneration) -> bool {
+    GATE.release_diagnostic(generation)
+}
+pub(crate) fn diagnostic_reason(generation: WorkerGeneration) -> RevocationReason {
+    GATE.diagnostic_reason(generation)
+}
+
 pub fn begin_link(now_ms: u64) -> Option<WorkerGeneration> {
     GATE.begin_link(now_ms)
 }
@@ -24,6 +37,9 @@ pub(crate) fn set_lease_deadline(generation: WorkerGeneration, deadline_ms: u64)
 }
 pub(crate) fn note_shutdown(generation: WorkerGeneration, stage: u32, now_ms: u64) {
     GATE.note_shutdown(generation, stage, now_ms);
+}
+pub(crate) fn idle_timing() -> Option<RevocationTiming> {
+    GATE.idle_timing()
 }
 pub(crate) fn timing(now_ms: u64) -> Option<RevocationTiming> {
     GATE.timing(now_ms)

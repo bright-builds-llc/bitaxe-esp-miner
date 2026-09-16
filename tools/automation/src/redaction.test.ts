@@ -298,3 +298,28 @@ for (const schema of ["fixed-usb-cycle-report-v1", "fixed-usb-window-report-v1"]
     }
   });
 }
+
+test("Noise v2 public schema admits only closed safe fields and amended cleanup timing", async () => {
+  // Arrange
+  const root = await mkdtemp(path.join(tmpdir(), "noise-redaction-"));
+  const value = {
+    schema_version: "bitaxe-stratum-v2-noise-serial-projection-v2", status: "accepted", board: 205, diagnostic_ordinal: 1,
+    source_commit: "a".repeat(40), gate_commit: "b".repeat(40), reference_commit: "c".repeat(40),
+    provenance: Object.fromEntries(["app_elf", "package_manifest", "contract", "fixture", "evaluator", "sealed_inventory", "private_result"].map(key => [key, "d".repeat(64)])),
+    criteria: Object.fromEntries(["identity", "continuity", "authority", "tcp_delivery", "noise_authentication", "encrypted_proof", "no_new_work", "preservation", "accounting", "restoration", "cleanup", "privacy"].map(key => [key, true])),
+    timings_ms: { preparation: 100, connect: 10, act_one_write: 1, act_two_read: 20, proof_write: 1, diagnostic: 10000, device_cleanup: 6000, fixture_lifetime: 20000, host_cleanup: 100 },
+    counts: { exact_peer_connections: 1, unexpected_peer_connections: 0, act_one_written: 64, act_one_received: 64, proof_written: 22, proof_received: 22, new_work: 0, new_shares: 0 }, redaction_status: "passed",
+  };
+  const target = path.join(root, "projection.json");
+  try {
+    // Act / Assert
+    await writeFile(target, JSON.stringify(value));
+    assert.equal((await verifySemanticEvidenceRedaction(root)).checked, 1);
+    for (const extra of [{ endpoint: "sensitive" }, { observation: "unclassified" }, { private_fingerprint: "f".repeat(64) }]) {
+      await writeFile(target, JSON.stringify({ ...value, ...extra }));
+      await assert.rejects(verifySemanticEvidenceRedaction(root));
+    }
+    await writeFile(target, JSON.stringify({ ...value, timings_ms: { ...value.timings_ms, device_cleanup: 120001 } }));
+    await assert.rejects(verifySemanticEvidenceRedaction(root));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

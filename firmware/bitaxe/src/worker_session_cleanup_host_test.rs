@@ -75,6 +75,31 @@ mod qualification_restart {
         Err(WorkerSessionError::Rejected)
     }
 }
+// This ledger-cleanup fixture owns no network worker or diagnostic authority.
+mod noise_serial_runtime {
+    use super::{revocation::WorkerGeneration, WorkerSessionError};
+    use bitaxe_worker_control::noise::{NoiseDetail, NoiseObservation, NoiseStart, NoiseStatus};
+    pub fn observation(_generation: WorkerGeneration) -> Option<NoiseObservation> {
+        None
+    }
+    pub fn status(_generation: WorkerGeneration) -> Result<NoiseStatus, WorkerSessionError> {
+        Err(WorkerSessionError::Rejected)
+    }
+    pub fn admit(
+        _generation: WorkerGeneration,
+        _input: NoiseStart,
+    ) -> Result<NoiseStatus, WorkerSessionError> {
+        Err(WorkerSessionError::Rejected)
+    }
+    pub fn dispatch(_generation: WorkerGeneration) -> Result<(), WorkerSessionError> {
+        Err(WorkerSessionError::Rejected)
+    }
+    pub fn cancel(_detail: NoiseDetail) {}
+    pub fn poll() {}
+    pub fn busy() -> bool {
+        false
+    }
+}
 mod startup {
     pub struct BootMiningBaselineConfirmed;
 }
@@ -243,6 +268,37 @@ fn no_owner_stop_finalizes_reserved_window_without_refund() {
     assert_eq!(result, Ok(()));
     assert_eq!(ledger(), expected);
     assert_eq!(ledger().charged_milliseconds(), 180_000);
+}
+
+#[test]
+fn absent_noise_owner_rejects_effects_without_fabricating_status_or_touching_ledgers() {
+    // Arrange
+    let scope = Scope::new();
+    let mut session = bwg_worker_session::ProductionWorkerSession::default();
+    session.set_generation(scope.generation);
+    let input = serde_json::from_value(serde_json::json!({
+        "schema":"worker-noise-diagnostic-start-v2", "attemptId":"AQEBAQEBAQEBAQEBAQEBAQ",
+        "expectedBootOrdinal":1, "networkObservedAtUs":1_000_000,
+        "fixtureIpv4":"192.168.1.3", "fixturePort":12345,
+        "authorityPublicKey":"AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"
+    }))
+    .expect("synthetic input");
+    // Act / Assert
+    assert!(session
+        .noise_observation()
+        .expect("unavailable observation")
+        .is_none());
+    assert!(session.noise_status().is_err());
+    assert!(session.noise_admit(input).is_err());
+    assert_eq!(session.noise_dispatch(), Err(WorkerSessionError::Rejected));
+    session
+        .noise_cancel(bitaxe_worker_control::noise::NoiseDetail::CancelRequested)
+        .expect("nothing to cancel");
+    session.noise_poll();
+    assert!(!session.noise_busy());
+    assert!(revocation::is_idle(scope.generation));
+    assert!(LEDGER.lock().expect("ledger").is_none());
+    assert!(QUAL_LEDGER.lock().expect("qualification ledger").is_none());
 }
 
 #[test]

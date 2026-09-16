@@ -15965,3 +15965,268 @@ Gate, fixture code or effect admission was changed; no hardware attempt occurred
 Parity remains 90/95. Residual work: implement/version/verify/publish v2 adapters
 and the normal-path harness, qualify resource fit and startup, then obtain fresh
 accepted hardware evidence. This specification completion is not Noise parity.
+
+### task-str005-noise-runtime-readiness | 2026-09-16 | Verify firmware and Gate readiness for Noise qualification
+
+Status: Complete under the published [v2 parity-scope amendment](docs/hardware/str005-noise-parity-scope-amendment.md).
+Cooperative dependency cancellation is not a prerequisite for v2.
+No hardware effects are authorized by this preparation task.
+
+Depends on: completed `task-str005-noise-successor-contract` and
+`task-str005-noise-parity-scope-amendment`. Bind both published contract files
+and their canonical combined digest in v2 implementation evidence. May run in parallel with
+`task-str005-noise-fixture-evidence` after their shared interfaces are frozen.
+Feeds the existing live task `task-str005-noise-auth-205`.
+
+Contract handoff: implement the amended v2 Controller/Gate types, volatile single-job
+fence, completed-response dispatch, endpoint freshness and v2 deadline/cleanup
+semantics. Use the existing synchronous crypto with cancellation at supported
+API boundaries; prove independent revocation and observed actual cleanup.
+Universal in-call cancellation and five-second firmware cleanup are excluded. Prove native combined-owner readiness in software; fresh startup/heap
+observations belong to the later live installation/cycles before diagnostic Start.
+
+Current scope | 2026-09-16, v2 amendment: The dated v1 blocker and deferral
+notes below remain historical. They no longer block this task under v2. Reuse
+the pinned crypto without a fork; migrate Gate/firmware schemas explicitly,
+keep effects fenced through real cleanup, and accept only a timely positive
+exchange with actual resource release. Native ordinary-owner fit and independent
+safety enforcement remain required. Dedicated automatic recovery is optional;
+normal restoration must work. No hardware authority belongs to this task.
+
+Ownership: firmware V2 session/lifecycle adapters and Gate controller/recovery
+integration, with focused tests in their owning repositories. Later shared
+interface changes require a new linked contract-amendment task; never reopen an
+archived contract record. Fixture and evidence validators belong to the sibling
+task.
+
+- [x] Audit existing V2 code against the current fixed-Serial/JTAG, possession
+      and qualified lifecycle interfaces; distinguish reusable behavior from
+      obsolete WebUSB/recovery assumptions.
+- [x] Implement only demonstrated compatibility or lifecycle gaps required by
+      the contract, preserving single ownership, safety enforcement and scope.
+- [x] Add deterministic regressions for readiness, cancellation/timeout,
+      session/identity conflicts, restoration and resource release, exercising
+      the production seams and preserving first-failure provenance.
+- [x] Run required firmware/Gate, native package/storage/stack and ownership
+      checks as applicable; review and publish any changed Gate pin and runtime
+      implementation before handing off an exact candidate pair.
+
+Execution plan | 2026-09-16: Implement the frozen interfaces in parallel with
+the sibling preparation task, then compose their production seams. Before
+publication, run ordered Cargo checks, applicable Gate/canonical tests, native
+resource/ownership checks, semantic privacy and reference checks. Preserve the
+contract bytes and historical evidence; live effects remain blocked until both
+preparation tasks pass and their exact sources are published.
+
+Readiness finding | 2026-09-16: The [source audit and production-seam characterization](docs/hardware/str005-noise-runtime-readiness.md) show that the pinned Noise API performs synchronous
+preparation and handshake completion, including an internal ElligatorSwift
+candidate search without an exposed cancellation seam. Independent authority
+revocation does not establish the required five-second worker quiescence. The
+production-seam regression and source audit distinguish this missing guarantee
+from any measured device timing violation. Do not admit hardware or implement a
+timeout wrapper as a substitute for actual cleanup. A bounded/cancellable crypto
+implementation and its native resource/cleanup qualification remain required.
+
+Software review | 2026-09-16: Two production-helper characterization tests
+pass. Gate parser/client slice is published at
+`0ac8fd9b7a528b204be06558f24e0cede05318fa` and pinned here: closed types,
+exact-pair possession checks, consumed Start, retained-history consistency and
+competing-effect guards. Gate verification passed ordered Cargo checks (352
+passed, two existing ignored), 687 browser-unit tests, typecheck, browser/headless
+build, package and standards checks. Firmware commands, same-page workflow,
+native combined-owner resource proof and live startup measurements remain
+unimplemented/unverified. The source audit supplies no measured crypto overrun.
+
+Verification | 2026-09-16: Ordered Cargo format/Clippy/build/tests passed
+(2258 passed; three ignored, including two watchdog helpers executed through
+parent tests). All 141 canonical Bazel targets passed. Native package, USB
+ownership/symbols, reference, semantic redaction, Bright Builds and read-only
+parity/progress checks passed. The generated ESP-IDF Python environment needed
+its supported reinstall after a missing package executable blocked the first
+native build; the repaired build passed. Ordinary native compilation does not
+prove the missing combined diagnostic owner fits or cancels safely. Contract,
+archive and 1299 historical files remain byte-identical; 233 task IDs are unique.
+Parity remains 90/95, with no checklist/history transition. No hardware attempt
+was allocated. This task remains open at the documented integration blocker.
+
+Owner scope decision | 2026-09-16: Track dependency-level cancellation as
+future backlog work in `task-str005-noise-cooperative-cancellation`, rather than
+expanding current parity work into maintaining cryptographic dependencies. This
+is a deferral, not a relaxed cleanup requirement or a completion claim. The
+five-second bound comes from the successor qualification contract; the source
+audit does not establish it as upstream parity behavior. Resuming under a changed
+contract requires a separate amendment task; the published contract is unchanged.
+
+Execution checkpoint | 2026-09-16: Owner requested implementation and
+qualification, including later real live mining after its prerequisites. Complete
+this software task in parallel with its sibling, integrate real production
+boundaries, run ordered Cargo/Gate/canonical/native/resource/privacy checks,
+publish exact sources and build the clean package. Then hand off to the existing
+Noise live task; channel/job and actual V2 share work follow under their own
+published contracts. This software task grants no hardware or mining authority.
+
+Resource checkpoint | 2026-09-16: The first native preview compiled with a
+4182400-byte app and selected frames within their budgets. After correctness
+fixes, the second app was 4196944 bytes, exceeding the unchanged 4194304-byte
+slot by 2640 bytes. The accepted September 15 startup observations also retained
+only 7147 internal/DMA/8-bit heap bytes after required owners started, so an
+additional 24-KiB internal stack cannot be assumed to fit. Retire the replaced
+boot-time Noise activation from runtime linkage and reuse an existing idle
+transport owner if its unchanged stack can be qualified. Keep control, main,
+receive, production safety and watchdog owners responsive; use observed scoped
+job completion, not an invented OS-thread exit. Rebuild and audit before effects.
+No hardware attempt has occurred; partition, reserve and safety limits remain.
+
+Stack qualification checkpoint | 2026-09-16: The third native preview fits its
+flash slot but its selected authentication chain needs 15104 bytes. Outlining
+constructor and result-storage temporaries reduces the fourth chain to 12160;
+the measured pthread/Rust entry frames add 208, exceeding the unchanged 12288
+bytes. Fallible RNG and act-two storage reduce the fifth complete selected chain
+to 11888. Before any hardware test, the software guard requires a further
+512-byte margin for omitted platform overhead; 400 remaining bytes do not pass.
+Continue reducing overlapping wrapper temporaries, without a dependency fork,
+stack increase or threshold change. The read-only decoder now resolves actual
+branch starts through alignment padding, bounded alternative call targets and
+fixed spills; independent regressions reject false panic cutoffs and conditional
+store assumptions. Gate's terminal-session correction is published at
+`5dc5ed6f39834cab0144af0a05f6c2535a39d827`. Full final checks and publication of
+this runtime remain pending; no hardware attempt or mining reservation exists.
+
+Completion: published compatible runtime code with passing software/native
+evidence and documented limitations. No connected-device access, flashing, live
+authority signing or mining occurs in this preparation task; tests use synthetic
+credentials. Software success supplies no Noise hardware verification or parity
+promotion.
+
+Completion review | 2026-09-16: Complete under the frozen v2 amendment. The
+[v2 readiness report](docs/hardware/str005-noise-v2-readiness.md) records the
+possession-bound controller, independent revocation, actual scoped job completion,
+borrowed idle transport owner and published Gate
+`5dc5ed6f39834cab0144af0a05f6c2535a39d827`. Native preview 6 measures 11648 bytes
+including pthread/Rust entry frames on the unchanged 12288-byte stack, leaving
+640 bytes against the prospective 512-byte margin. App size is 4167728 of
+4194304 bytes; main telemetry's selected path remains 12560 of 16384. No new
+thread, dependency fork, stack/reserve increase or mining authority is introduced.
+Ordered Cargo checks pass (2285 tests; three existing ignored), all 159 canonical
+targets pass, and Gate, package, ownership, reference, redaction and standards
+checks pass. Parity stays 90/95 with unchanged checklist/history. The clean
+published package must be rebuilt and re-audited before effects; startup heap and
+real-device operation remain live obligations. Selected native paths are not a
+complete callgraph or hardware proof; universal in-call cancellation stays
+explicitly deferred. No hardware attempt or reservation was consumed here.
+
+### task-str005-noise-fixture-evidence | 2026-09-16 | Prepare the bounded Noise fixture and evidence validator
+
+Status: Complete under the published
+[v2 parity-scope amendment](docs/hardware/str005-noise-parity-scope-amendment.md). Runtime and fixture production seams are composed;
+deferred cooperative cancellation is not a dependency.
+No hardware effects are authorized by this preparation task.
+
+Depends on: completed `task-str005-noise-successor-contract` and
+`task-str005-noise-parity-scope-amendment`; bind the published base/amendment
+files and their canonical combined digest in v2 evidence. May run in parallel with
+`task-str005-noise-runtime-readiness` using the frozen interfaces.
+Final integration additionally needs that task's runtime candidate; fixture unit
+work can proceed independently. Feeds the existing live task
+`task-str005-noise-auth-205`.
+
+Contract handoff: implement the amended v2 host/status/result/projection
+interfaces, five exclusive installation claims, sticky admission failures,
+normal same-page restoration and independent cleanup-before-finalization.
+The dedicated recovery-only workflow may remain explicitly unsupported; it is
+not a prerequisite for the normal positive path. Register the new closed projection
+with semantic redaction; keep old effect commands retired and old readers intact.
+
+Current scope | 2026-09-16, v2 amendment: Preserve the independent fixture
+and schema slice, migrate changed timing semantics with explicit version checks,
+and implement the lean normal-path supervisor and independent judge. V1 readers
+remain strict and historical; old snapshots cannot become v2 proof. A failed
+normal restoration is unverified and stops the attempt. The dated v1 blocker
+and deferral notes below retain their earlier meaning, not current dependencies.
+
+Ownership: the local V2 fixture, host qualification supervisor, evidence models
+and independent validator. Coordinate shared build wiring with the runtime
+task; do not duplicate firmware or Gate ownership.
+
+- [x] Reuse or adapt the existing fixture and supervisor for the declared TCP,
+      Noise and encrypted diagnostic exchange, with bounded startup, operations,
+      failure handling and complete process/socket cleanup.
+- [x] Bind firmware/Gate/package/fixture/validator identities and fresh attempt
+      assignment; reject stale or conflicting evidence, consumed contexts and
+      archived-task authority before effects.
+- [x] Persist only contract-allowlisted evidence; test redaction, truncation,
+      identity conflicts, missing/contradictory observations and failure paths.
+- [x] Test the independent judge against realistic positive and negative
+      fixtures. Require actual restoration and cleanup proof; process exit,
+      queue acceptance or a successful handshake alone cannot supply it.
+- [x] Run applicable canonical, fixture, integration, privacy and ownership
+      checks, including integration with the completed runtime candidate; review,
+      commit and push before live qualification.
+
+Execution plan | 2026-09-16: Implement the frozen interfaces in parallel with
+the sibling preparation task, then compose their production seams. Before
+publication, run ordered Cargo checks, applicable Gate/canonical tests, native
+resource/ownership checks, semantic privacy and reference checks. Preserve the
+contract bytes and historical evidence; live effects remain blocked until both
+preparation tasks pass and their exact sources are published.
+
+Integration boundary | 2026-09-16: Runtime readiness found no supported
+in-call crypto cancellation seam sufficient for the frozen cleanup bound. Finish
+and verify the independent fixture and closed evidence-schema slice, keeping
+new effect admission unavailable. Full supervisor, restoration, independent
+acceptance and runtime/Gate/fixture composition remain unfinished; schema
+validation alone is not evidence acceptance.
+
+Software review | 2026-09-16: The [fixture/evidence handoff](docs/hardware/str005-noise-fixture-readiness.md)
+records the implemented local `noise-serial` fixture, 39 passing Node
+schema/consistency/CLI tests and new canonical targets. The frozen CLI arguments
+are recognized, but every action rejects before input reads or effects. Retired
+Noise CLI and direct flash/restoration entry points reject before private input
+access or tool detection; historical parsers/finalizers/readers remain usable.
+No context, ordinal assignment, supervisor, independent result judge, finalizer,
+public projection or readiness receipt was created. Semantic redaction
+registration and full production composition remain pending.
+
+Verification | 2026-09-16: Ordered Cargo format/Clippy/build/tests passed
+(2258 passed; three ignored, including two watchdog helpers executed through
+parent tests). All 141 canonical Bazel targets passed. Native package, USB
+ownership/symbols, reference, semantic redaction, Bright Builds and read-only
+parity/progress checks passed. The generated ESP-IDF Python environment needed
+its supported reinstall after a missing package executable blocked the first
+native build; the repaired build passed. Ordinary native compilation does not
+prove the missing combined diagnostic owner fits or cancels safely. Contract,
+archive and 1299 historical files remain byte-identical; 233 task IDs are unique.
+Parity remains 90/95, with no checklist/history transition. No hardware attempt
+was allocated. This task remains open at the documented integration blocker.
+
+Execution checkpoint | 2026-09-16: Owner requested implementation and
+qualification, including later real live mining after its prerequisites. Complete
+this software task in parallel with its sibling, integrate real production
+boundaries, run ordered Cargo/Gate/canonical/native/resource/privacy checks,
+publish exact sources and build the clean package. Then hand off to the existing
+Noise live task; channel/job and actual V2 share work follow under their own
+published contracts. This software task grants no hardware or mining authority.
+
+Completion: a published bounded harness and independent validator whose exact
+identities can be frozen with the runtime pair. Synthetic/local loopback tests
+are permitted; connected-device access, live device credentials/signing and
+hardware effects remain in `task-str005-noise-auth-205`. This task does not
+qualify channel/jobs, accepted shares or STR-005 parity.
+
+Completion review | 2026-09-16: Complete under the frozen v2 amendment. The
+[v2 readiness report](docs/hardware/str005-noise-v2-readiness.md) and
+[operator handoff](scripts/str005-noise-serial/README.md) describe clean-source and
+native admission, exclusive attempt/install claims, fresh maximum probes, the
+independent fixture, retained journals, unchanged accounting, normal restoration,
+actual cleanup and sealed finalization/review. Canonical host tests pass 82 cases,
+including real process/client/server/finalizer composition with explicitly
+synthetic device observations; real loopback cryptography is tested separately.
+Observer arming and fixture publication races, runfiles data ownership and the
+restricted Node launcher environment were corrected and regression-tested.
+Ordered Cargo checks pass (2285 tests; three existing ignored), all 159 canonical
+targets pass, and canonical fixture provenance/CLI, package, ownership, reference,
+semantic redaction and standards checks pass. Recovery remains explicitly
+unavailable; later attempt admission remains fail-closed pending concrete failed
+evidence and verified progress. Historical readers and retired effect rejection
+retain their meanings. No hardware qualification, mining reservation or parity
+promotion is claimed; the fresh live task owns those separate obligations.

@@ -146,8 +146,11 @@ pub(crate) fn run_detect(
     match environment.usb_profile(&port)? {
         UsbProfile::WorkerRuntime => bail!("legacy_tinyusb_requires_manual_bootstrap"),
         UsbProfile::SerialJtagRuntime if !command.retain_rom => {
+            let physical_identity = environment.current_usb_physical_identity_digest(&port)?;
             emit_line("port", &port)?;
             emit_line("usb_profile", "serial_jtag_runtime")?;
+            // Local detector output is protected operational evidence, not anonymized public data.
+            emit_line("physical_identity_sha256", &physical_identity)?;
             emit_line("execution_owner", "unknown")?;
             emit_line("rom_admitted", "false")?;
             return Ok(());

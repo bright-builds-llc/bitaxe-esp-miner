@@ -1,18 +1,19 @@
 mod confirmation;
+mod response_types;
+use response_types::PreparedEffect;
+pub use response_types::PreparedResponse;
 mod cooling;
 mod inspection;
+mod noise;
 mod probe;
 mod restart;
 mod status;
 mod wire;
 use status::response;
 
-use std::fmt;
-
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use thiserror::Error;
-use zeroize::Zeroize;
 
 use self::wire::{classify_json_error, ControllerRequest, FrameDiscriminator, RestorePayload};
 
@@ -85,54 +86,6 @@ impl From<PossessionError> for WorkerControlError {
     }
 }
 
-#[derive(Clone, Debug)]
-enum PreparedEffect {
-    QualificationRestart {
-        generation: u64,
-        token: u64,
-        context: crate::QualificationRestartContext,
-        expires_at_ms: u64,
-    },
-    Admit {
-        generation: u64,
-        token: u64,
-        established_at_monotonic_milliseconds: u64,
-        control_session_binding_sha256: String,
-    },
-    BootRestorationReported {
-        generation: u64,
-    },
-}
-
-/// Bounded response plus a send-confirmation effect; Debug never includes frame bytes.
-pub struct PreparedResponse {
-    frame: Vec<u8>,
-    maybe_effect: Option<PreparedEffect>,
-}
-
-impl PreparedResponse {
-    #[must_use]
-    pub fn frame(&self) -> &[u8] {
-        &self.frame
-    }
-}
-
-impl fmt::Debug for PreparedResponse {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter
-            .debug_struct("PreparedResponse")
-            .field("frame", &"[redacted]")
-            .field("has_effect", &self.maybe_effect.is_some())
-            .finish()
-    }
-}
-
-impl Drop for PreparedResponse {
-    fn drop(&mut self) {
-        self.frame.zeroize();
-    }
-}
-
 enum RestorationState {
     NotRequired,
     Pending,
@@ -175,6 +128,8 @@ pub struct WorkerControl<V, S> {
     maybe_cleanup_reason: Option<RestorationReason>,
     restoration: RestorationState,
     maybe_last_monotonic_milliseconds: Option<u64>,
+    maybe_noise_observation: Option<crate::noise::NoiseObservation>,
+    maybe_noise_generation: Option<u64>,
 }
 
 impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
@@ -221,6 +176,8 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             restoration: initial_restoration
                 .map_or(RestorationState::NotRequired, RestorationState::Confirmed),
             maybe_last_monotonic_milliseconds: None,
+            maybe_noise_observation: None,
+            maybe_noise_generation: None,
         })
     }
 
@@ -232,6 +189,9 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         if self.maybe_active.is_some() || self.effect_cleanup_required {
             return Err(WorkerControlError::InvalidTransition);
         }
+        self.session
+            .noise_cancel(crate::noise::NoiseDetail::SessionReplaced)
+            .map_err(|_| WorkerControlError::SessionFailed)?;
         self.invalidate_session();
         self.maybe_serial_binding = Some(binding);
         Ok(())
@@ -248,6 +208,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
     }
 
     fn invalidate_session(&mut self) {
+        self.maybe_noise_observation = None;
         self.authenticated_logical_session = false;
         self.maybe_serial_binding = None;
         self.generation = self.generation.saturating_add(1);
@@ -278,6 +239,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         frame: &[u8],
         monotonic_milliseconds: u64,
     ) -> Result<PreparedResponse, WorkerControlError> {
+        self.session.noise_poll();
         self.enforce_clock(monotonic_milliseconds)?;
         let json = strict_json_frame(frame).map_err(|_| WorkerControlError::InvalidFrame)?;
         let discriminator: FrameDiscriminator =
@@ -320,6 +282,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
     }
 
     pub fn tick(&mut self, monotonic_milliseconds: u64) -> Result<(), WorkerControlError> {
+        self.session.noise_poll();
         self.enforce_clock(monotonic_milliseconds)
     }
 
@@ -369,6 +332,36 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         request: ControllerRequest,
         now: u64,
     ) -> Result<PreparedResponse, WorkerControlError> {
+        if self.session.noise_busy()
+            && matches!(request.command.as_str(), "restore" | "pause" | "cancel")
+        {
+            if request.command == "restore" {
+                let _: RestorePayload = request.required_payload()?;
+            } else {
+                request.require_no_payload()?;
+            }
+            self.session
+                .noise_cancel(crate::noise::NoiseDetail::CancelRequested)
+                .map_err(|_| WorkerControlError::SessionFailed)?;
+            return Err(WorkerControlError::RestorationPending);
+        }
+        if matches!(
+            request.command.as_str(),
+            "noise_diagnostic_start" | "noise_diagnostic_status" | "noise_diagnostic_cancel"
+        ) {
+            return self.prepare_noise(&request, now);
+        }
+        if self.session.noise_busy()
+            && matches!(
+                request.command.as_str(),
+                "start_lease"
+                    | "qualification_restart"
+                    | "qualification_cooling"
+                    | "telemetry_cadence_arm"
+            )
+        {
+            return Err(WorkerControlError::InvalidTransition);
+        }
         if request.command == "qualification_restart" {
             return self.prepare_qualification_restart(&request, now);
         }
@@ -520,6 +513,13 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
     }
 
     fn safe_stop(&mut self, reason: RestorationReason, now: u64) -> Result<(), WorkerControlError> {
+        self.session
+            .noise_cancel(match reason {
+                RestorationReason::ConnectivityLost => crate::noise::NoiseDetail::SessionReplaced,
+                RestorationReason::MonotonicReset => crate::noise::NoiseDetail::ClockDiscontinuity,
+                _ => crate::noise::NoiseDetail::CancelRequested,
+            })
+            .map_err(|_| WorkerControlError::SessionFailed)?;
         self.maybe_admission = None;
         self.maybe_pending_admission_token = None;
         self.maybe_cleanup_reason = Some(reason);

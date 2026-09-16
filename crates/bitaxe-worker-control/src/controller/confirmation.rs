@@ -9,6 +9,16 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             return Ok(());
         };
         match effect {
+            PreparedEffect::NoiseObservation {
+                generation,
+                observation,
+            } => {
+                if generation != self.generation {
+                    return Err(WorkerControlError::StaleResponse);
+                }
+                self.maybe_noise_observation = Some(observation);
+            }
+            PreparedEffect::NoiseDispatch { .. } => return Err(WorkerControlError::StaleResponse),
             PreparedEffect::QualificationRestart { .. } => {
                 return Err(WorkerControlError::StaleResponse)
             }

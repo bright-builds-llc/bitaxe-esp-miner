@@ -381,6 +381,10 @@ fn ordinary_serial_jtag_detection_is_inspection_only() {
     // Assert
     assert!(environment.executed_commands().is_empty());
     assert_eq!(environment.cleanup_calls.get(), 0);
+    assert_eq!(
+        environment.physical_inspection_ports.borrow().as_slice(),
+        ["/dev/cu.usbmodem101"]
+    );
 }
 
 #[test]

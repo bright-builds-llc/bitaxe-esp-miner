@@ -609,3 +609,9 @@ js_test(
     ],
     entry_point = "test-dist/stratum-v2-tcp-payload.test.js",
 )
+
+js_library(
+    name = "noise_serial_redaction_sources",
+    srcs = ["src/redaction.ts", "src/noise-serial-redaction.ts"],
+    visibility = ["//scripts:__pkg__"],
+)

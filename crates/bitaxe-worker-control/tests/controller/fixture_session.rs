@@ -1,6 +1,69 @@
 use super::*;
 
 impl WorkerSession for FakeSession {
+    fn noise_observation(
+        &self,
+    ) -> Result<Option<bitaxe_worker_control::noise::NoiseObservation>, WorkerSessionError> {
+        Ok(Some(noise::observation()))
+    }
+    fn noise_status(
+        &self,
+    ) -> Result<Option<bitaxe_worker_control::noise::NoiseStatus>, WorkerSessionError> {
+        Ok(Some(self.maybe_noise.as_ref().map_or_else(
+            || bitaxe_worker_control::noise::NoiseStatus {
+                schema: "worker-noise-diagnostic-status-v2",
+                state: bitaxe_worker_control::noise::NoiseState::Idle,
+                observation: noise::observation(),
+                job: None,
+            },
+            |record| record.status(noise::observation()),
+        )))
+    }
+    fn noise_admit(
+        &mut self,
+        input: bitaxe_worker_control::noise::NoiseStart,
+    ) -> Result<bitaxe_worker_control::noise::NoiseStatus, WorkerSessionError> {
+        if self.maybe_noise.is_some() {
+            return Err(WorkerSessionError::Rejected);
+        }
+        self.maybe_noise = bitaxe_worker_control::noise::NoiseRecord::admit(
+            &input,
+            &noise::observation(),
+            input.input_sha256().ok_or(WorkerSessionError::Rejected)?,
+        );
+        self.events.push("noise_admitted");
+        self.noise_status()?.ok_or(WorkerSessionError::Rejected)
+    }
+    fn noise_dispatch(&mut self) -> Result<(), WorkerSessionError> {
+        if !self
+            .maybe_noise
+            .as_mut()
+            .is_some_and(|record| record.dispatch(1_000_001))
+        {
+            return Err(WorkerSessionError::Rejected);
+        }
+        self.events.push("noise_dispatched");
+        Ok(())
+    }
+    fn noise_cancel(
+        &mut self,
+        detail: bitaxe_worker_control::noise::NoiseDetail,
+    ) -> Result<(), WorkerSessionError> {
+        if let Some(record) = self.maybe_noise.as_mut() {
+            record.fail(bitaxe_worker_control::noise::NoiseFailure::new(
+                bitaxe_worker_control::noise::FailureStage::Cleanup,
+                bitaxe_worker_control::noise::NoiseCategory::AuthorityLost,
+                detail,
+                Some(1_000_002),
+            ));
+        }
+        Ok(())
+    }
+    fn noise_busy(&self) -> bool {
+        self.maybe_noise
+            .as_ref()
+            .is_some_and(bitaxe_worker_control::noise::NoiseRecord::active)
+    }
     fn qualification_restart_context(
         &self,
     ) -> Result<Option<bitaxe_worker_control::QualificationRestartContext>, WorkerSessionError>

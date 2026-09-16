@@ -21,6 +21,48 @@ impl ProductionWorkerSession {
 }
 
 impl WorkerSession for ProductionWorkerSession {
+    fn noise_observation(
+        &self,
+    ) -> Result<Option<bitaxe_worker_control::noise::NoiseObservation>, WorkerSessionError> {
+        Ok(self
+            .maybe_generation
+            .and_then(crate::noise_serial_runtime::observation))
+    }
+    fn noise_status(
+        &self,
+    ) -> Result<Option<bitaxe_worker_control::noise::NoiseStatus>, WorkerSessionError> {
+        crate::noise_serial_runtime::status(
+            self.maybe_generation.ok_or(WorkerSessionError::Rejected)?,
+        )
+        .map(Some)
+    }
+    fn noise_admit(
+        &mut self,
+        input: bitaxe_worker_control::noise::NoiseStart,
+    ) -> Result<bitaxe_worker_control::noise::NoiseStatus, WorkerSessionError> {
+        crate::noise_serial_runtime::admit(
+            self.maybe_generation.ok_or(WorkerSessionError::Rejected)?,
+            input,
+        )
+    }
+    fn noise_dispatch(&mut self) -> Result<(), WorkerSessionError> {
+        crate::noise_serial_runtime::dispatch(
+            self.maybe_generation.ok_or(WorkerSessionError::Rejected)?,
+        )
+    }
+    fn noise_cancel(
+        &mut self,
+        detail: bitaxe_worker_control::noise::NoiseDetail,
+    ) -> Result<(), WorkerSessionError> {
+        crate::noise_serial_runtime::cancel(detail);
+        Ok(())
+    }
+    fn noise_poll(&mut self) {
+        crate::noise_serial_runtime::poll();
+    }
+    fn noise_busy(&self) -> bool {
+        crate::noise_serial_runtime::busy()
+    }
     fn qualification_restart_context(
         &self,
     ) -> Result<Option<bitaxe_worker_control::QualificationRestartContext>, WorkerSessionError>

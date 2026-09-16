@@ -21,9 +21,12 @@ use esp_idf_svc::sys;
 static CURRENT_SETTINGS_SNAPSHOT: OnceLock<crate::settings_snapshot_store::ConfirmedSnapshotStore> =
     OnceLock::new();
 static SETTINGS_TRANSACTION_LOCK: Mutex<()> = Mutex::new(());
+
+mod noise_guard;
+pub(crate) use noise_guard::claim_noise_fence;
+
 const NETWORK_RECONNECT_PROBE_KEY: &str = "netreconprobe";
 
-mod noise_diagnostic;
 mod nvs_owner;
 pub(crate) mod preservation;
 mod production;
@@ -34,7 +37,6 @@ mod stratum_v2;
 mod tcp_payload_diagnostic;
 mod thermal_fault_stimulus;
 
-pub(crate) use noise_diagnostic::{load_noise_diagnostic_admission, NoiseDiagnosticAdmission};
 pub(crate) use production::{
     load_production_campaign_admission, read_production_pool_set, MiningCampaignStage,
 };
@@ -74,6 +76,7 @@ impl FirmwareSettingsAdapter {
 
 /// Exclusive settings transaction held from writable open through publication.
 pub struct FirmwareSettingsTransaction {
+    _mutation_guard: crate::noise_serial_runtime::MutationGuard,
     _transaction_guard: MutexGuard<'static, ()>,
     partition: EspDefaultNvsPartition,
     nvs: EspNvs<NvsDefault>,
@@ -124,6 +127,8 @@ impl SettingsPersistenceAdapter for FirmwareSettingsAdapter {
     }
 
     fn begin_transaction(&mut self) -> Result<Self::Transaction<'_>, SettingsAdapterFailure> {
+        let mutation_guard = crate::noise_serial_runtime::MutationGuard::acquire()
+            .ok_or_else(|| SettingsAdapterFailure::failed("diagnostic owns configuration"))?;
         let transaction_guard = SETTINGS_TRANSACTION_LOCK
             .lock()
             .map_err(|_| SettingsAdapterFailure::failed("settings transaction lock poisoned"))?;
@@ -131,6 +136,7 @@ impl SettingsPersistenceAdapter for FirmwareSettingsAdapter {
             EspNvs::new(self.partition.clone(), NVS_NAMESPACE, true).map_err(settings_failure)?;
 
         Ok(FirmwareSettingsTransaction {
+            _mutation_guard: mutation_guard,
             _transaction_guard: transaction_guard,
             partition: self.partition.clone(),
             nvs,
@@ -248,6 +254,8 @@ pub fn statistics_frequency_seconds() -> u16 {
 
 /// Persists and confirms the project-owned next-boot mining preference.
 pub fn persist_start_mining_on_boot(value: bool) -> Result<(), SettingsAdapterFailure> {
+    let _mutation_guard = crate::noise_serial_runtime::MutationGuard::acquire()
+        .ok_or_else(|| SettingsAdapterFailure::failed("diagnostic owns configuration"))?;
     let _transaction_guard = SETTINGS_TRANSACTION_LOCK
         .lock()
         .map_err(|_| SettingsAdapterFailure::failed("settings transaction lock poisoned"))?;
@@ -268,6 +276,8 @@ pub fn persist_start_mining_on_boot(value: bool) -> Result<(), SettingsAdapterFa
 
 /// Persists, independently reloads, reconciles, and publishes a theme update.
 pub fn persist_theme_update(plan: &ThemePostPlan) -> Result<(), SettingsAdapterFailure> {
+    let _mutation_guard = crate::noise_serial_runtime::MutationGuard::acquire()
+        .ok_or_else(|| SettingsAdapterFailure::failed("diagnostic owns configuration"))?;
     let _transaction_guard = SETTINGS_TRANSACTION_LOCK
         .lock()
         .map_err(|_| SettingsAdapterFailure::failed("settings transaction lock poisoned"))?;

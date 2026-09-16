@@ -1,3 +1,4 @@
+load(":provenance.bzl", "fixture_provenance")
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_test")
 load("@aspect_rules_js//js:defs.bzl", "js_library")
 
@@ -58,4 +59,10 @@ rust_test(
     name = "noise_serial_test",
     crate = ":stratum_v2_fixture",
     args = ["noise_serial"],
+)
+
+fixture_provenance(
+    name = "noise_serial_build_identity",
+    fixture = ":stratum_v2_fixture",
+    visibility = ["//visibility:public"],
 )

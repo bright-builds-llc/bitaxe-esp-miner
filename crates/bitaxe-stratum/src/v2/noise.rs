@@ -8,6 +8,8 @@ use rand::{CryptoRng, Rng};
 use super::frame::{Frame, FrameHeader, FRAME_HEADER_LEN};
 use super::StratumV2Error;
 
+mod completion;
+pub mod diagnostic;
 mod preparation;
 pub use preparation::{NoisePreparationStage, PreparedNoiseInitiator};
 
@@ -66,6 +68,8 @@ impl fmt::Debug for NoiseInitiator {
 }
 
 impl NoiseInitiator {
+    // Keep large upstream constructor scratch out of later authentication frames.
+    #[inline(never)]
     pub fn new<R: Rng + CryptoRng + ?Sized>(
         maybe_authority_public_key: Option<[u8; 32]>,
         rng: &mut R,

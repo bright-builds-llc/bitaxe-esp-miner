@@ -222,7 +222,7 @@ stratum-v2-restoration-finalize *args:
 stratum-v2-restore-recovery *args:
     bazel run //tools/automation:stratum_v2_restore_recovery -- {{ args }}
 
-# Prospective command remains fail-closed until runtime readiness is qualified.
+# Guarded serial Noise qualification; preflight requires published prerequisites.
 stratum-v2-noise-serial action *args:
     bazel run //scripts:stratum_v2_noise_serial -- {{ quote(action) }} {{ args }}
 

@@ -10,8 +10,8 @@ use crate::{
     fan_controller_runtime, filesystem, http_api, input_adapter, operator_sensor_runtime,
     production_mining_session, runtime_snapshot, runtime_uptime, safety_adapter,
     scoreboard_adapter, self_test_runtime, settings_adapter, statistics_runtime,
-    stratum_v2_noise_diagnostic, stratum_v2_session, stratum_v2_tcp_payload_diagnostic,
-    wifi_adapter, BOOT_LOG_LINE, RUST_TARGET, SAFE_STATE_LOG_LINE,
+    stratum_v2_session, stratum_v2_tcp_payload_diagnostic, wifi_adapter, BOOT_LOG_LINE,
+    RUST_TARGET, SAFE_STATE_LOG_LINE,
 };
 
 pub(crate) struct BootMiningBaselineConfirmed(());
@@ -61,6 +61,7 @@ fn run_startup() -> anyhow::Result<Option<http_api::PreparedHttpRuntime>> {
     };
     PROGRESS.enter(DiagnosticStage::RuntimeServices);
     crate::panic_evidence::enter_stage(StartupStage::RuntimeServices);
+    crate::noise_serial_runtime::prepare()?;
     let runtime_services = start_runtime_services(startup_diagnostics)?;
     PROGRESS.enter(DiagnosticStage::StorageHttp);
     crate::panic_evidence::enter_stage(StartupStage::StorageHttp);
@@ -350,21 +351,7 @@ fn start_runtime_services(
                 None
             }
         };
-    let maybe_noise_diagnostic_admission = if maybe_tcp_payload_admission.is_some() {
-        None
-    } else {
-        match settings_adapter::load_noise_diagnostic_admission() {
-            Ok(maybe_admission) => maybe_admission,
-            Err(error) => {
-                log::warn!(
-                    "stratum_v2_noise_admission=rejected category={}",
-                    error.category()
-                );
-                None
-            }
-        }
-    };
-    let maybe_self_test_admission = if maybe_noise_diagnostic_admission.is_some() {
+    let maybe_self_test_admission = if maybe_tcp_payload_admission.is_some() {
         None
     } else {
         match settings_adapter::load_self_test_admission() {
@@ -375,13 +362,10 @@ fn start_runtime_services(
             }
         }
     };
-    let serial_jtag_runtime = maybe_tcp_payload_admission.is_some()
-        || maybe_noise_diagnostic_admission.is_some()
-        || maybe_self_test_admission.is_some();
+    let serial_jtag_runtime =
+        maybe_tcp_payload_admission.is_some() || maybe_self_test_admission.is_some();
     if let Some(admission) = maybe_tcp_payload_admission {
         required_runtime_owner(stratum_v2_tcp_payload_diagnostic::start(admission))?;
-    } else if let Some(admission) = maybe_noise_diagnostic_admission {
-        required_runtime_owner(stratum_v2_noise_diagnostic::start(admission))?;
     } else if let Some(admission) = maybe_self_test_admission {
         required_runtime_owner(self_test_runtime::start(admission))?;
     } else {

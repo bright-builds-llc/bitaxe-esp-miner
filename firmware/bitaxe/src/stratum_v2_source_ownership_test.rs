@@ -2,11 +2,11 @@ const STARTUP: &str = include_str!("startup.rs");
 const MAIN: &str = include_str!("main.rs");
 const OWNER: &str = include_str!("stratum_v2_session.rs");
 const TRANSPORT: &str = include_str!("stratum_v2_session/transport.rs");
+const RETIRED_TRANSPORT: &str = include_str!("stratum_v2_session/retired_noise_diagnostic.rs");
 const DIAGNOSTIC: &str = include_str!("stratum_v2_noise_diagnostic.rs");
 const DIAGNOSTIC_ADMISSION: &str = include_str!("settings_adapter/noise_diagnostic.rs");
 const TCP_DIAGNOSTIC: &str = include_str!("stratum_v2_tcp_payload_diagnostic.rs");
-const TCP_DIAGNOSTIC_ADMISSION: &str =
-    include_str!("settings_adapter/tcp_payload_diagnostic.rs");
+const TCP_DIAGNOSTIC_ADMISSION: &str = include_str!("settings_adapter/tcp_payload_diagnostic.rs");
 const V1_OWNER: &str = include_str!("production_mining_session.rs");
 const SETTINGS: &str = include_str!("settings_adapter/stratum_v2.rs");
 
@@ -35,35 +35,30 @@ fn startup_selects_exactly_one_protocol_owner_before_fan_controller_start() {
     assert!(v2_start < fan_start);
     assert!(v1_start < fan_start);
     assert_eq!(STARTUP.matches("stratum_v2_session::start").count(), 1);
-    assert_eq!(STARTUP.matches("production_mining_session::start").count(), 1);
+    assert_eq!(
+        STARTUP.matches("production_mining_session::start").count(),
+        1
+    );
 }
 
 #[test]
-fn diagnostic_owner_precedes_other_owners_and_suppresses_the_fan() {
-    // Arrange
-    let diagnostic_admission = STARTUP
-        .find("load_noise_diagnostic_admission")
-        .expect("diagnostic admission");
-    let diagnostic_start = STARTUP
-        .find("stratum_v2_noise_diagnostic::start")
-        .expect("diagnostic start");
-    let self_test_start = STARTUP
-        .find("self_test_runtime::start")
-        .expect("self-test start");
-    let production_start = STARTUP
-        .find("production_mining_session::start")
-        .expect("production start");
-    let fan_start = STARTUP
-        .find("fan_controller_runtime::start")
-        .expect("fan start");
-
-    // Act / Assert
-    assert!(diagnostic_admission < diagnostic_start);
-    assert!(diagnostic_start < self_test_start);
-    assert!(diagnostic_start < production_start);
-    assert!(diagnostic_start < fan_start);
-    assert!(STARTUP.contains("if let Some(admission) = maybe_noise_diagnostic_admission"));
-    assert!(STARTUP.contains("} else if let Some(admission) = maybe_self_test_admission"));
+fn retired_boot_noise_cannot_be_selected_or_linked_by_current_startup() {
+    // Arrange / Act / Assert
+    assert!(!STARTUP.contains("load_noise_diagnostic_admission"));
+    assert!(!STARTUP.contains("stratum_v2_noise_diagnostic::start"));
+    assert!(!MAIN.contains("mod stratum_v2_noise_diagnostic;"));
+    assert!(!TRANSPORT.contains("run_noise_diagnostic"));
+    assert!(RETIRED_TRANSPORT.contains("run_noise_diagnostic"));
+    let wifi = STARTUP
+        .find("prepare_network_services(maybe_modem)")
+        .expect("Wi-Fi first");
+    let metadata = STARTUP
+        .find("noise_serial_runtime::prepare()")
+        .expect("metadata init");
+    let runtime = STARTUP
+        .find("start_runtime_services(startup_diagnostics)")
+        .expect("ordinary owners");
+    assert!(wifi < metadata && metadata < runtime);
 }
 
 #[test]
@@ -80,7 +75,10 @@ fn diagnostic_owner_cannot_reach_hardware_or_mining_adapters() {
 
     // Act / Assert
     for fragment in forbidden {
-        assert!(!DIAGNOSTIC.contains(fragment), "forbidden owner fragment {fragment}");
+        assert!(
+            !DIAGNOSTIC.contains(fragment),
+            "forbidden owner fragment {fragment}"
+        );
     }
     assert!(DIAGNOSTIC.contains("run_noise_diagnostic"));
     assert!(DIAGNOSTIC.contains("mining_started\\\":false"));
@@ -96,17 +94,17 @@ fn noise_auth_owner_replays_connection_send_and_exact_proof_evidence() {
     assert!(DIAGNOSTIC.contains("replay_deadline_ms"));
     assert!(DIAGNOSTIC.contains("transcript.replay()"));
     assert!(DIAGNOSTIC.contains("stratum_v2_noise_connection_private="));
-    assert!(TRANSPORT.contains(".local_addr()"));
-    assert!(TRANSPORT.contains(".set_nodelay(true)"));
-    assert!(TRANSPORT.contains(".flush()"));
-    assert!(TRANSPORT.contains("DIAGNOSTIC_PROOF_EXTENSION"));
-    assert!(TRANSPORT.contains("DIAGNOSTIC_PROOF_MESSAGE"));
-    assert!(TRANSPORT.contains("0xffff"));
-    assert!(TRANSPORT.contains("0xff"));
+    assert!(RETIRED_TRANSPORT.contains(".local_addr()"));
+    assert!(RETIRED_TRANSPORT.contains(".set_nodelay(true)"));
+    assert!(RETIRED_TRANSPORT.contains(".flush()"));
+    assert!(RETIRED_TRANSPORT.contains("DIAGNOSTIC_PROOF_EXTENSION"));
+    assert!(RETIRED_TRANSPORT.contains("DIAGNOSTIC_PROOF_MESSAGE"));
+    assert!(RETIRED_TRANSPORT.contains("0xffff"));
+    assert!(RETIRED_TRANSPORT.contains("0xff"));
 }
 
 #[test]
-fn tcp_payload_owner_precedes_noise_and_cannot_reach_noise_or_hardware() {
+fn tcp_payload_owner_cannot_reach_noise_or_hardware() {
     // Arrange
     let tcp_admission = STARTUP
         .find("load_tcp_payload_diagnostic_admission")
@@ -114,13 +112,8 @@ fn tcp_payload_owner_precedes_noise_and_cannot_reach_noise_or_hardware() {
     let tcp_start = STARTUP
         .find("stratum_v2_tcp_payload_diagnostic::start")
         .expect("TCP diagnostic start");
-    let noise_start = STARTUP
-        .find("stratum_v2_noise_diagnostic::start")
-        .expect("Noise diagnostic start");
-
     // Act / Assert
     assert!(tcp_admission < tcp_start);
-    assert!(tcp_start < noise_start);
     for forbidden in [
         "NoiseInitiator",
         "V2Session",
@@ -182,12 +175,20 @@ fn v2_owner_reuses_single_asic_actuation_watchdog_and_safe_stop_paths() {
 #[test]
 fn v2_transport_and_settings_diagnostics_are_value_free() {
     // Arrange
-    let forbidden_output = ["println!", "endpoint_host={", "user_identity={", "authority={"];
+    let forbidden_output = [
+        "println!",
+        "endpoint_host={",
+        "user_identity={",
+        "authority={",
+    ];
 
     // Act / Assert
     for source in [OWNER, TRANSPORT, SETTINGS] {
         for fragment in forbidden_output {
-            assert!(!source.contains(fragment), "forbidden output fragment {fragment}");
+            assert!(
+                !source.contains(fragment),
+                "forbidden output fragment {fragment}"
+            );
         }
     }
     assert!(TRANSPORT.contains("TransportCommand::Send(redacted)"));
@@ -195,29 +196,30 @@ fn v2_transport_and_settings_diagnostics_are_value_free() {
 }
 
 #[test]
-fn production_and_diagnostic_prepare_noise_before_connecting() {
+fn production_and_retained_diagnostic_prepare_noise_before_connecting() {
     // Arrange
-    let production_start = TRANSPORT.find("fn connect_and_run(").expect("production start");
-    let diagnostic_start = TRANSPORT
-        .find("pub(crate) fn run_noise_diagnostic(")
-        .expect("diagnostic start");
-    let encrypted_loop = TRANSPORT
+    let production_start = TRANSPORT
+        .find("fn connect_and_run(")
+        .expect("production start");
+    let production_end = TRANSPORT
         .find("fn run_encrypted_loop(")
         .expect("encrypted loop");
-    let production = &TRANSPORT[production_start..diagnostic_start];
-    let diagnostic = &TRANSPORT[diagnostic_start..encrypted_loop];
-
+    let production = &TRANSPORT[production_start..production_end];
     // Act / Assert
     assert!(
-        production.find("NoiseInitiator::prepare").expect("production preparation")
-            < production.find("connect_first(&addresses)").expect("production connect")
+        production
+            .find("NoiseInitiator::prepare")
+            .expect("preparation")
+            < production
+                .find("connect_first(&addresses)")
+                .expect("connect")
     );
     assert!(
-        diagnostic
+        RETIRED_TRANSPORT
             .find("NoiseInitiator::prepare_with_observer")
-            .expect("diagnostic preparation")
-            < diagnostic
+            .expect("retained preparation")
+            < RETIRED_TRANSPORT
                 .find("connect_first(&addresses)")
-                .expect("diagnostic connect")
+                .expect("retained connect")
     );
 }

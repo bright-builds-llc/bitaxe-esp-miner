@@ -93,6 +93,12 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         mut response: PreparedResponse,
         now: u64,
     ) -> Result<(), WorkerControlError> {
+        if matches!(
+            response.maybe_effect.as_ref(),
+            Some(PreparedEffect::NoiseDispatch { .. })
+        ) {
+            return self.confirm_noise_dispatch(response, now);
+        }
         if !matches!(
             response.maybe_effect.as_ref(),
             Some(PreparedEffect::QualificationRestart { .. })
