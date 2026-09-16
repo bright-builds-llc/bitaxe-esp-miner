@@ -4382,128 +4382,14 @@ from context rejection, and that seam is outside the standing authorization.
 
 Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/parity/evidence/20260908-worker-preparation-live-acceptance.md) proves real shares/renewal and foreground/heartbeat safe-stop on the exact fixed-USB pair. This broader task remains open: its Pause, independent expiry, USB-only disconnect, reboot/uncertain-time, negative authorization and credential-absence matrix still requires its own complete successor contract and evidence.
 
-### task-str005-noise-auth-205 | 2026-08-28 | Prove Ultra 205 Noise authentication
-
-Current scope | 2026-09-16: This existing task owns the live qualification step
-of the new Noise work breakdown; do not create a duplicate hardware task.
-
-Status: Ready for a fresh bounded v2 qualification after this implementation is
-published and its clean package passes preflight. `task-str005-noise-runtime-readiness`
-and `task-str005-noise-fixture-evidence` are complete and archived; their software
-results do not replace the required fresh hardware observations. The specification prerequisite
-`task-str005-noise-successor-contract` is complete; also require published `task-str005-noise-parity-scope-amendment`
-and use the [v2 parity-scope amendment](docs/hardware/str005-noise-parity-scope-amendment.md) with its unchanged v1 base. The completed
-USB qualification supplies a baseline, not Noise evidence or permission to reuse
-a consumed attempt.
-
-- [ ] Admit a fresh bounded attempt under the published successor contract,
-      binding the clean firmware/Gate/package, fixture and validator identities.
-- [ ] Through the single current Web Serial owner, prove fresh TCP delivery,
-      Noise acts one and two, authenticated handshake completion and one
-      encrypted diagnostic exchange against the declared local fixture.
-- [ ] Independently verify the contract's restoration baseline, inactive leases,
-      mine-on-boot false, applicable unchanged accounting and complete resource
-      release; preserve the earliest failure if any proof is missing.
-- [ ] Seal and independently review exact-pair evidence, publish a redacted
-      report, and close this task only on a complete pass. Leave STR-005
-      promotion to its existing final evidence-composition task.
-
-Current acceptance | 2026-09-16, v2 amendment: Qualify one positive
-configured-authority handshake and encrypted diagnostic exchange, actual cleanup
-within the 120-second admission envelope and normal candidate restoration. No
-universal in-call cancellation or five-second firmware cleanup guarantee is
-required. Independent heartbeat/safety enforcement, no mining, exact evidence,
-accounting, continuity and actual ownership release remain mandatory. Deferred
-crypto dependency work is not a prerequisite. The dated v1 blockers below are
-superseded for execution by v2; no currently implemented CLI becomes eligible
-until both preparation tasks pass the amended gates.
-
-Readiness blocker | 2026-09-16: The pinned synchronous Noise crypto path does
-not yet prove cancellation-to-quiescence within five seconds. No successor
-preflight, attempt assignment, installation or device diagnostic has occurred.
-Both implementation tasks remain active; the frozen acceptance bounds remain
-unchanged.
-
-Owner scope decision | 2026-09-16: Dependency-level cancellation is deferred
-to future `task-str005-noise-cooperative-cancellation`, outside current parity
-work. This live task stays blocked under the unchanged successor contract. No
-new attempt, fork, hardware effect or parity claim follows from the backlog entry.
-
-Live handoff | 2026-09-16: Use the [v2 operator workflow](scripts/str005-noise-serial/README.md)
-and [software readiness report](docs/hardware/str005-noise-v2-readiness.md). After
-publication, build the clean native package and fixture provenance, then run
-`just stratum-v2-noise-serial preflight` for the exclusively assigned
-`scratch/str005-noise-serial/attempt-001` with the accepted cadence result as
-predecessor. Fresh accounting must confirm next ordinal 18, last completed 17,
-1560000 ms charged and no pending reservation. Noise changes neither ledger.
-Capture the installed before-pair baseline before the initial write; perform the
-four fresh state-preserving continuity cycles, one positive network-only exchange,
-fresh restoration, actual resource cleanup and independent sealed review.
-Retain any failure; no context restart, implicit reset/rollback, allowance issue
-or reuse of historical authority is permitted. Subsequent channel/job and real
-mining remain separately authorized work under their own published contracts.
-
-Execution boundary: hardware access is serialized. This milestone excludes
-channel/job qualification, ASIC work, share submission, mining and external
-pools. The successor contract must define concrete commands, effect and retry
-bounds, privacy, recovery and stop conditions before any effect is eligible.
-This tracker update itself starts no hardware work.
-
-Historical record below: the earlier plan, authorization, command references,
-recovery-006 instructions and diagnostic-001 outcome are preserved for evidence
-interpretation. They are superseded as execution instructions and must not be
-resumed or treated as the new recovery contract.
-
-Migration dependency satisfied: completed `task-fixed-usb-serial-qualification`, with the current fixed-Serial/JTAG baseline and measured CPU0 cadence in [accepted cadence evidence](docs/parity/evidence/20260915-cpu0-cadence-qualified.md). September 8, September 11 and September 13 retain their separate exact-pair live-stop, Hello-recovery and reconciliation scopes. Qualification replaces the retired TinyUSB handoff/recovery006 mechanism requirement; it does not execute or validate this task's legacy plan. This task remains open and requires a verified/published current serial successor contract before effects. Independent authorization, replay, monotonicity, protocol, restoration and evidence requirements remain unresolved unless supported by their own evidence.
-
-- [x] After accepted TCP payload evidence, create a separate immutable plan.
-- [ ] Re-prove TCP delivery, then complete act one, act two, authenticated
-      Noise, and one encrypted diagnostic proof on the exact Ultra 205 peer.
-- [ ] Restore recovery-006 exactly and independently validate the closed
-      projection, cleanup, and redaction.
-
-Depends on: completed `task-str005-tcp-payload-205` with accepted evidence and
-completed `task-fixed-usb-serial-qualification` with the new fixed-Serial/JTAG baseline proof.
-
-Plan: `docs/parity/work-plans/20260829T143226Z-STR-005-NOISE-AUTH/PLAN.md`
-
-Authorization: plan and implementation commits must be separately verified and
-pushed before hardware. The exact ordinal-001 preflight/start commands, local
-same-subnet fixture, USB flash/monitor, protected evidence, recovery-006
-restoration, recovery-only continuation, signature-bounded retry rules, and
-stop conditions are defined by the immutable plan. The task-local hardware
-namespace begins at `diagnostic-001`. Channel/job handling, ASIC work, share
-submission, mining, external pools, direct UART/pins, raw NVS/coredump access,
-fault injection, OTA, erase, arbitrary writes, and STR-005 promotion remain
-excluded.
-
-Verification: software gates complete; exact hardware ordinal pending.
-
-Implementation progress: the no-mining Noise-auth owner, exact encrypted proof,
-bounded fixture inventory, tuple join, hardened recovery/finalizer path, closed
-projection validator, and command surface are software-complete. Full
-repository verification and the exact hardware ordinal remain pending.
-
-Diagnostic-001 outcome: `hardware_blocked:restoration`. Exact pushed source
-`0b690aa2` passed package, fresh detector, and no-effect preflight admission,
-then flashed successfully but never regained a stable accessible USB session.
-The diagnostic stopped before monitor attachment; the fixture observed zero
-connections, so it produced no TCP or Noise evidence. Fresh post-run detection
-found zero serial ports. Recovery-001 remains absent and unconsumed; physically
-restore the provided USB/barrel-power connection, run fresh detector admission,
-then execute recovery-001 only. No diagnostic retry is eligible until exact
-recovery-006 restoration and cleanup are proved.
-
-Completion review: Pending. STR-005 remains `implemented` until the final
-promotion task succeeds.
-
-
-
 ## Future
 
 ### task-str005-v2-channel-job-205 | 2026-08-28 | Prove Ultra 205 V2 channel and job receipt
 
-Status: Waiting for accepted `task-str005-noise-auth-205` v2 evidence.
+Status: Ready to define and publish the network-only successor contract.
+`task-str005-noise-auth-205` is complete with [accepted v2 evidence](docs/parity/evidence/20260916-str005-noise-serial-qualified.md).
+That exact-pair result supplies the prerequisite, not this task's channel/job
+proof or new hardware authority.
 
 - [ ] Create and publish a fresh bounded successor contract for channel/job
       qualification on the ordinary fixed-Serial/JTAG runtime.
