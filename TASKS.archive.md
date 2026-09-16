@@ -15917,3 +15917,51 @@ implementation/readiness obligations, not verified capabilities. Only specificat
 and task records changed: no diagnostic commands or wire interfaces were implemented,
 no device was accessed, and no live authority or mining was used. Existing plans, failed evidence and parity90/95 remain unchanged. Later
 contract changes require a new linked amendment task.
+
+### task-str005-noise-parity-scope-amendment | 2026-09-16 | Align Noise qualification with parity scope
+
+Status: Complete; owner-authorized specification and task reconciliation.
+
+Depends on: completed `task-str005-noise-successor-contract`. Preserve its
+published v1 bytes and archived record; publish a linked amendment rather than
+rewriting historical requirements. Cooperative crypto cancellation remains in
+`task-str005-noise-cooperative-cancellation`, outside current parity scope.
+
+- [x] Separate observed positive Noise interoperability from universal crypto
+      interruption and worst-case cleanup guarantees.
+- [x] Define cancellation at supported operation boundaries, independent
+      authority revocation, actual cleanup evidence and finite failed-attempt
+      observation without a dependency fork or unsafe thread termination.
+- [x] Version changed evidence semantics and reconcile runtime, fixture, live,
+      later STR-005 task dependencies and the deferred cancellation backlog.
+- [x] Review lifecycle consistency, preserved safety/identity/privacy gates,
+      native fit requirements, unchanged historical evidence and task IDs.
+- [x] Run required ordered Cargo and documentation/standards/reference/privacy/
+      parity checks, then archive this complete amendment record and publish.
+
+Boundary: Documentation and task records only. No runtime implementation,
+device access, fixture listener, flashing, mining, parity promotion or new
+attempt assignment. Existing commands remain blocked until coordinated software
+implementation and verification satisfy the amended contract.
+
+Completion review | 2026-09-16: Published the [v2 amendment](docs/hardware/str005-noise-parity-scope-amendment.md)
+with contract SHA-256 `64d086a8955f7715ce59b2e5ac7cf04d7cf3338b8cbd1e086ee762c117dcb121`. Existing pinned crypto and
+supported-operation cancellation replace the universal in-call/five-second
+firmware cleanup prerequisite. Positive acceptance still requires actual cleanup
+within 120 seconds; incomplete failed jobs remain fenced after the fixed
+125-second observation horizon. Dedicated recovery is optional and must reject
+when unavailable; normal restoration and independent finalization remain required.
+Runtime/fixture tasks are ready for amended software work, live qualification
+still waits for them, and cooperative crypto engineering remains deferred and
+non-blocking. Later channel/job/share tasks retain independent evidence and
+mining safety gates with current candidate restoration.
+
+Independent lifecycle review found no blocker. Ordered Cargo checks passed
+(2258 tests, three ignored, including two child-invoked watchdog helpers), as did
+canonical v1 schema/CLI guards, Markdown, standards, reference, semantic
+redaction and read-only parity/progress checks. The original v1 contract, source
+readiness reports, failed evidence and parity history are unchanged. No runtime,
+Gate, fixture code or effect admission was changed; no hardware attempt occurred.
+Parity remains 90/95. Residual work: implement/version/verify/publish v2 adapters
+and the normal-path harness, qualify resource fit and startup, then obtain fresh
+accepted hardware evidence. This specification completion is not Noise parity.
