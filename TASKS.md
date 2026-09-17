@@ -4384,8 +4384,8 @@ Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/par
 
 ### task-str005-v2-serial-qualification | 2026-09-16 | Qualify Ultra 205 V2 channel and accepted share
 
-Status: In progress: software verification passed; clean package and both live
-scopes remain pending. This task succeeds `task-str005-v2-channel-job-205` and
+Status: In progress: Channel001 stopped before Serial admission at browser
+permission. Guarded closure and a corrected fresh context precede continuation. This task succeeds `task-str005-v2-channel-job-205` and
 `task-str005-bm1366-share-205`; their unchecked obligations transfer here.
 
 Depends on: completed `task-str005-noise-auth-205` with [accepted Noise evidence](docs/parity/evidence/20260916-str005-noise-serial-qualified.md).
@@ -4504,6 +4504,60 @@ change, hardware attempt or new reservation has been introduced.
 
 Completion review: Pending.
 
+
+
+
+### task-str005-v2-permission-closure | 2026-09-16 | Close pre-open permission failure and guard its successor
+
+Status: Prospective amendment reviewed for publication; implementation remains
+pending. The failed preparation grants no continuation authority.
+
+Depends on: `task-str005-v2-serial-qualification`, the published base/clock
+contracts, and the immutable Channel001 preparation bound to candidate firmware
+`979f7ba2` and Gate `9251a1f`. The candidate was never installed.
+
+- [x] Freeze and publish the [narrow permission-closure amendment](docs/hardware/str005-v2-serial-permission-amendment.md) before code
+      changes or another device admission.
+- [ ] Add a V2-page-only trusted, visible, focused, actively initiated Connect
+      precondition; retain native chooser and ordinary SDK behavior.
+- [ ] Add effect-free sibling closure/review commands proving failure before
+      Serial open/Hello and actual host release without inventing a fresh
+      device baseline or unchanged-ledger observation.
+- [ ] Preserve v1 historical readers; admit only Channel002 through a verified
+      closure, changed clean pair and targeted correction. Keep the same
+      accepted Noise predecessor and exclusive markers; reject recursive,
+      duplicate, Share or general retry authority.
+- [ ] Test native gesture preconditions, exact no-admission classification,
+      mutation/path/mode/cleanup rejection, context lineage and fresh accounting
+      requirements; run ordered Cargo, Gate, canonical and repository checks.
+- [ ] Publish the correction, create/review the closure, build the exact clean
+      pair and hand the fresh Channel002 admission back to the qualification
+      task. Archive this amendment only after its implementation is verified.
+
+Observed failure: Channel001 never opened Serial or sent Hello. Its six
+before-phase states retain the permission-stage `operation_failed` and
+`connect_failed`; no installation, device record, fixture, accounting review,
+issuance or mining occurred. The actual tab and supervisor are closed, the
+supervisor exited zero, and live host inspection found no listener or serial
+holders. Browser selection/grant status and current device baseline/accounting
+were not observed and must not be fabricated. The initial detector performed
+read-only USB inspection. The browser-close witness was recorded separately
+from the parent's baseline-requiring branch, with actual CUA closure provenance.
+
+Authorization: software-only correction and evidence closure under the owner's
+standing iteration authorization. Only a verified new main-task preflight can
+admit effects; the closure does not authorize flashing, signing or mining.
+Expected fresh device accounting remains next ordinal 18 and 1560000 ms charged;
+no reservation was consumed here. Parity remains 90/95.
+
+Specification review | 2026-09-16: Runtime, Gate and evidence reviewers agree
+on the pre-open boundary, explicit unobserved facts, finite Channel002 lineage,
+closed v2 context and scoped immutable inventories. The exact permission-stage
+branches were reproduced against published Gate software without opening a
+port or sending frames. Ordered Cargo checks pass; implementation and fresh
+hardware admission remain pending.
+
+Completion review: Pending implementation and verification.
 
 
 ## Future
