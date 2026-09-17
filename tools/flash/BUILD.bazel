@@ -260,6 +260,7 @@ rust_binary(
         "src/evidence.rs",
         "src/evidence/tests.rs",
         "src/evidence_record.rs",
+        "src/evidence_output.rs",
         "src/execution_snapshot.rs",
         "src/flash_transfer.rs",
         "src/input_uat.rs",
@@ -382,4 +383,27 @@ rust_test(
         "//:docs/parity/work-plans/20260831T033840Z-NATIVE-USB-CONFIG-AP-RECOVERY-NVS-FIRST/PLAN.md",
         "//:docs/parity/work-plans/20260831T190744Z-NATIVE-USB-ROM-EXIT-DISCRIMINATOR/PLAN.md",
     ],
+)
+
+js_library(
+    name = "private_evidence_writer_sources",
+    srcs = [
+        "BUILD.bazel",
+        "src/evidence_output.rs",
+        "src/environment.rs",
+        "src/main.rs",
+    ],
+    visibility = ["//scripts:__pkg__"],
+)
+
+rust_binary(
+    name = "private_evidence_writer_test_fixture",
+    testonly = True,
+    visibility = ["//scripts:__pkg__"],
+    srcs = [
+        "src/evidence_output.rs",
+        "//scripts:v2_private_output_writer_source",
+    ],
+    crate_root = "//scripts:v2_private_output_writer_source",
+    edition = "2021",
 )

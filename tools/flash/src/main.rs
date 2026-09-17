@@ -48,6 +48,7 @@ mod drain_worker_serial;
 mod environment;
 mod esp32s3_image;
 mod evidence;
+mod evidence_output;
 mod evidence_record;
 mod execution_snapshot;
 mod flash_transfer;

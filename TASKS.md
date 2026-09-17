@@ -4640,21 +4640,21 @@ this software task.
 - [x] Review and publish the [install-review amendment](docs/hardware/str005-v2-serial-install-review-amendment.md)
       with exact failure anchors, available-observation limits, closed receipt
       and context v4 interfaces, fixed ordinal4/Share001 and unchanged bounds.
-- [ ] Correct real Rust installation evidence modes and restrictive owned-child
+- [x] Correct real Rust installation evidence modes and restrictive owned-child
       umask propagation without relaxing private-path validators or repairing
       arbitrary existing trees. Prove nested/atomic outputs are0700/0600 and
       original bytes remain unchanged; reject unsafe and partial paths.
-- [ ] Correct canonical Node/runfiles resolution under the filtered host-check
+- [x] Correct canonical Node/runfiles resolution under the filtered host-check
       environment; run the unchanged fixed regression argv through the actual
       canonical launcher, preserving bounds and real source-bound receipts.
-- [ ] Implement the exact sealed003 classifier, current-owner checks and v2
+- [x] Implement the exact sealed003 classifier, current-owner checks and v2
       successor receipt dispatch. Preserve v1–v3 historical behavior, original
       result/seal, initial-accounting provenance and missing after-baseline.
-- [ ] Bind context v4 Channel004 to expected installed0d2 and require fresh
+- [x] Bind context v4 Channel004 to expected installed0d2 and require fresh
       possession, safe baseline and both ledgers before any write. Retain full
       source/native/ancestry checks, bounded effect admission, exclusive
       assignments and same-pair accepted004 prerequisite for Share001.
-- [ ] Test supported forensic evidence and adverse modes/bytes/identity/ledger/
+- [x] Test supported forensic evidence and adverse modes/bytes/identity/ledger/
       owner cases, historical review, duplicate/interrupted claims, archived
       tasks and rejected Channel005. Run the real host lifecycle rehearsal.
 - [ ] Run ordered Cargo and canonical tests plus native/package, standards,
@@ -4680,6 +4680,23 @@ be absent while excluding only the external launcher ancestor. Remaining worker
 parent references, serial holders and the supervisor listener still fail closed.
 The original contract and all sealed evidence remain unchanged. Context v4 and
 checker inventories will bind both published documents before effects.
+
+Implementation review | 2026-09-17: The owned effect child creates descendants
+with umask077; the unchanged Rust evidence writer is shared with a real-process
+regression. The actual just/Bazel/Rust path produced0700/0600 with unchanged
+bytes from a022 parent. The host checker retains only the existing Node runfiles
+allowlist. Context v4 binds both published amendments, tagged initial accounting
+and the sole Channel004/Share001 continuation. Ten classifier/ownership tests
+and25 context-binding tests passed. A final evidence recheck closes a mutation
+race during checker inspection. Historical Channel002 review and the actual
+Channel003 classifier passed; current ownership inspection found51 recorded
+owners absent,2 serial nodes without holders and0 unresolved worker-parent
+references. These inspections created no readiness receipt or device effect.
+Ordered Cargo format/Clippy/build/tests (2346 passed,3 existing ignored),
+all200 canonical targets, native USB source/symbol ownership, reference,
+redaction, Bright Builds and parity/progress checks passed. The pinned Gate
+gesture/admission regressions passed15tests. Exact clean-package readiness and
+implementation publication remain pending. Parity remains90/95.
 
 Completion review: Pending. Channel003 remains unverified; initial accounting
 cannot establish its unobserved post-install state. The new live baseline must

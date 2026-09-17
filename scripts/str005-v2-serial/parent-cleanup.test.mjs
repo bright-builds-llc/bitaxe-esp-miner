@@ -9,7 +9,7 @@ import { sha256 } from "./values.mjs";
 import { completedFixture } from "./completed-fixture.mjs";
 import { finalize, review } from "./finalize.mjs";
 
-async function fixture(t, schema = "str005-v2-serial-context-v3") {
+async function fixture(t, schema = "str005-v2-serial-context-v4") {
   const root = await mkdtemp(join(tmpdir(), "v2-parent-cleanup-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   const context = { schema, scope: "channel" };
@@ -73,7 +73,7 @@ test("legacy disposition does not reinterpret an artifact introduced by v3", asy
 test("a parent failure prevents qualification even when complete cleanup receipts exist", async t => {
   // Arrange: otherwise complete software evidence, never a real hardware run.
   const f = await completedFixture(t);
-  assert.equal(f.context.schema, "str005-v2-serial-context-v3");
+  assert.equal(f.context.schema, "str005-v2-serial-context-v4");
   await writeNew(join(f.root, "parent-cleanup-failure.json"), {
     schema: "str005-v2-parent-cleanup-failure-v1", source: "parent-observed",
     contextSha256: sha256(JSON.stringify(f.context)), stage: "record",
@@ -85,4 +85,17 @@ test("a parent failure prevents qualification even when complete cleanup receipt
   assert.equal(result.status, "unverified"); assert.equal(result.hardware_qualified, false);
   assert.equal((await proof(f.root, "final-result.json")).value.firstFailure.source, "parent");
   assert.deepEqual(await review(f.root, f.operations), result);
+});
+
+
+test("historical v3 retains its parent failure interpretation", async t => {
+  // Arrange
+  const f = await fixture(t, "str005-v2-serial-context-v3");
+  await writeNew(join(f.root, "parent-cleanup-failure.json"), f.parent);
+  // Act
+  const result = await firstFailure(f.root, f.context, "v2_parent_cleanup_failed");
+  // Assert
+  assert.equal(result.source, "parent");
+  assert.equal(result.code, "v2_pool_listener_present");
+  assert.equal(result.ordering, "parent-observed");
 });

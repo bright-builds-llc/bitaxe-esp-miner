@@ -550,14 +550,17 @@ impl FlashEnvironment for LocalFlashEnvironment {
     }
 
     fn write_evidence(&self, path: &Utf8Path, contents: &str) -> Result<()> {
-        let maybe_parent = path.parent();
-        if let Some(parent) = maybe_parent {
-            fs::create_dir_all(parent.as_std_path())
-                .with_context(|| format!("failed to create evidence directory {parent}"))?;
-        }
-
-        fs::write(path.as_std_path(), contents)
-            .with_context(|| format!("failed to write evidence {path}"))
+        evidence_output::write(path.as_std_path(), contents).map_err(|failure| match failure {
+            evidence_output::WriteFailure::CreateDirectory(parent, error) => {
+                anyhow::Error::new(error).context(format!(
+                    "failed to create evidence directory {}",
+                    parent.display()
+                ))
+            }
+            evidence_output::WriteFailure::WriteFile(error) => {
+                anyhow::Error::new(error).context(format!("failed to write evidence {path}"))
+            }
+        })
     }
 }
 

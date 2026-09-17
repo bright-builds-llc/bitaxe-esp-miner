@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { resolve } from "node:path";
-import { readFile, stat, writeFile } from "node:fs/promises";
+import { readFile, stat, writeFile, mkdir, symlink, readdir } from "node:fs/promises";
 import { syntheticSupervisor } from "./effect-context-fixture.mjs";
 import { contextFixture } from "./context-fixtures.mjs";
 import { createJournal, saveAccounting } from "./journal.mjs";
@@ -146,4 +146,19 @@ test("detector freshness is checked after final supervisor lifecycle awaits", as
   // Act / Assert.
   await assert.rejects(admitExecution(f.root, "flash", 0, f.permit, f.operations), { code: "noise_detector_stale" });
   await assert.rejects(stat(resolve(f.root, "install-0")), { code: "ENOENT" });
+});
+
+
+for (const kind of ["partial", "symlink"]) test(`real final admission rejects an existing ${kind} installation tree without repair`, async t => {
+  // Arrange: the real permit/context/detector path has already been admitted.
+  const f = await flashFixture(t); f.setNow(f.finishedAt + 500);
+  const output = resolve(f.root, "install-0"), canary = resolve(f.root, "existing-canary");
+  await mkdir(canary, { mode: 0o700 }); await writeFile(resolve(canary, "retained"), "unchanged", { mode: 0o600 });
+  if (kind === "partial") await mkdir(output, { mode: 0o755 }); else await symlink(canary, output);
+  const before = (await stat(kind === "partial" ? output : canary)).mode;
+  // Act / Assert: restrictive creation is not authority to chmod or replace existing files.
+  await assert.rejects(admitExecution(f.root, "flash", 0, f.permit, f.operations), { code: "private_path_exists" });
+  assert.equal((await stat(kind === "partial" ? output : canary)).mode, before);
+  assert.equal(await readFile(resolve(canary, "retained"), "utf8"), "unchanged");
+  assert.deepEqual(await readdir(kind === "partial" ? output : canary), kind === "partial" ? [] : ["retained"]);
 });

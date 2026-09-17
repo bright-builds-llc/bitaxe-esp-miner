@@ -607,11 +607,12 @@ js_library(
 
 js_library(
     name = "str005_v2_serial_sources",
-    srcs = glob(["str005-v2-serial/*.mjs"]) + ["v2-native-paths.mjs", "v2-native-readiness.mjs"],
+    srcs = glob(["str005-v2-serial/*.mjs", "str005-v2-serial/*.rs"]) + ["v2-native-paths.mjs", "v2-native-readiness.mjs"],
     deps = [
         ":str005_noise_serial_sources",
         "//:str005_v2_serial_contract_inputs",
         "//crates/bitaxe-stratum:v2_qualification_vectors",
+        "//tools/flash:private_evidence_writer_sources",
     ],
 )
 
@@ -780,4 +781,32 @@ js_test(
     name = "noise_native_disassembly_test",
     entry_point = "noise-native-disassembly.test.mjs",
     data = ["noise-native-calls.mjs", "noise-native-disassembly.mjs", "telemetry-stack-audit.mjs"],
+)
+
+
+filegroup(
+    name = "v2_private_output_writer_source",
+    srcs = ["str005-v2-serial/operator-private-output-writer.rs"],
+    visibility = ["//tools/flash:__pkg__"],
+)
+
+js_test(
+    name = "str005_v2_serial_operator_private_output_test",
+    data = [
+        ":str005_v2_serial_sources",
+        "//tools/flash:private_evidence_writer_test_fixture",
+    ],
+    entry_point = "str005-v2-serial/operator-private-output.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_context_install_review_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/context-install-review.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_install_successor_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/install-successor.test.mjs",
 )

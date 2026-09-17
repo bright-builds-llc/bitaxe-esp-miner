@@ -50,7 +50,7 @@ async function deriveFirstFailure(root, context, code) {
   if (maybeDevice && maybeFixture) return observed("unresolved", "v2_producer_failures", null, null, null, available, "unproved");
   if (maybeDevice) return observed("device", "v2_device_failure", maybeDevice.record.firstFailure, maybeDevice.sequence, maybeDevice.atHostMs, available, "single-observed-producer");
   if (maybeFixture) return observed("fixture", "v2_fixture_failure", maybeFixture, null, null, available, "single-observed-producer");
-  if (context.schema === "str005-v2-serial-context-v3") {
+  if (["str005-v2-serial-context-v3", "str005-v2-serial-context-v4"].includes(context.schema)) {
     const maybeParent = (await maybeProof(root, "parent-cleanup-failure.json"))?.value;
     if (maybeParent) {
       object(maybeParent, ["schema", "source", "contextSha256", "stage", "code", "observedAtUnixMs"]);

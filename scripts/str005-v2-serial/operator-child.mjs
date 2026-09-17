@@ -12,6 +12,9 @@ process.send({ ready: true });
 const [message] = await once(process, "message");
 const { context, argv } = await admitExecution(root, mode, index, message);
 await missing(resolve(root, "failure.json"));
+// All newly created descendant evidence is private from its first byte.
+// This process is the owned effect child; the parent mask is unchanged.
+process.umask(0o077);
 const child = spawn("just", [argv[0], ...argv.slice(1).map(quoteJustArgument)], {
   cwd: context.firmware_root, stdio: ["ignore", "inherit", "inherit"], env: process.env,
 });

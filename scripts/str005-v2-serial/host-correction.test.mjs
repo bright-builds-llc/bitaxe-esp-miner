@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkHostCorrection, validateHostCorrection, HOST_CORRECTION_COMMAND, HOST_CORRECTION_CHECKER } from "./host-correction.mjs";
+import { nodeRuntimeEnvironment } from "../str005-noise-serial/node-runtime.mjs";
 import { CLEANUP_AMENDMENT_PATH, sha256 } from "./values.mjs";
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 async function setup(t) {
@@ -29,7 +31,7 @@ test("host correction runs the exact bounded command with filtered environment a
   f.operations.spawnSync = (program, args, options) => {
     calls++; assert.deepEqual([program, ...args], HOST_CORRECTION_COMMAND);
     assert.equal(options.cwd, f.context.firmware_root); assert.equal(options.timeout, 180000); assert.equal(options.maxBuffer, 65536);
-    assert.deepEqual(Object.keys(options.env).sort(), ["LANG", "LC_ALL", "PATH"]);
+    assert.deepEqual(Object.keys(options.env).sort(), ["LANG", "LC_ALL", "PATH", ...Object.keys(nodeRuntimeEnvironment())].sort());
     return { status: 0, signal: null, stdout: output, stderr: Buffer.alloc(0) };
   };
   // Act
@@ -75,4 +77,37 @@ test("retained host correction has a closed source-bound schema", async t => {
   for (const change of [{ command: ["node", "--test"] }, { exitCode: 1 }, { signal: "SIGTERM" }, { elapsedMs: 180001 },
     { checkerSha256: "0".repeat(64) }, { firmwareCommit: null }, { gateBundleSha256: "invalid" }, { rawOutput: "forbidden" }])
     assert.throws(() => validateHostCorrection({ ...receipt, ...change }, f.context));
+});
+
+
+test("canonical Node wrapper runtime keys survive while unrelated authority environment is filtered", async t => {
+  // Arrange: use all supported launcher fields without inheriting arbitrary environment.
+  const f = await setup(t), names = ["JS_BINARY__NODE_BINARY", "JS_BINARY__NODE_PATCHES", "JS_BINARY__NODE_WRAPPER",
+    "JS_BINARY__FS_PATCH_ROOTS", "JS_BINARY__PATCH_NODE_FS", "OPERATOR_PRIVATE_TOKEN"];
+  const previous = new Map(names.map(name => [name, process.env[name]]));
+  t.after(() => { for (const [name, value] of previous) { if (value === undefined) delete process.env[name]; else process.env[name] = value; } });
+  for (const name of names) process.env[name] = `synthetic-${name}`;
+  f.operations.spawnSync = (_program, _args, options) => {
+    for (const name of names.slice(0, -1)) assert.equal(options.env[name], process.env[name]);
+    assert.equal(options.env.OPERATOR_PRIVATE_TOKEN, undefined);
+    assert.deepEqual(Object.keys(options.env).sort(), ["PATH", "LANG", "LC_ALL", ...names.slice(0, -1)].sort());
+    return { status: 0, signal: null, stdout: Buffer.alloc(0), stderr: Buffer.alloc(0) };
+  };
+  // Act / Assert
+  assert.equal((await checkHostCorrection(f.context, f.operations)).exitCode, 0);
+});
+
+
+test("actual canonical Node wrapper launches with the filtered supported runtime environment", {
+  skip: process.env.JS_BINARY__NODE_WRAPPER === undefined,
+}, () => {
+  // Arrange: canonical runner puts its real generated Node wrapper on PATH.
+  const env = { PATH: process.env.PATH ?? "/usr/bin:/bin", LANG: "C", LC_ALL: "C", ...nodeRuntimeEnvironment() };
+  // Act: a real child startup crosses the same wrapper boundary as the fixed checker command.
+  const result = spawnSync("node", ["-e", "process.exit(0)"], {
+    env, timeout: 5000, maxBuffer: 4096, stdio: ["ignore", "pipe", "pipe"],
+  });
+  // Assert: do not expose wrapper output or any environment content on failure.
+  assert.equal(result.error?.code ?? null, null); assert.equal(result.status, 0); assert.equal(result.signal, null);
+  assert.equal(result.stdout.length + result.stderr.length, 0);
 });

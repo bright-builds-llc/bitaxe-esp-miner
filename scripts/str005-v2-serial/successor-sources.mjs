@@ -5,7 +5,9 @@ import { fileURLToPath } from "node:url";
 import { cleanPushed, git } from "../fixed-usb-qualification/contract.mjs";
 import { canonical } from "../str005-noise-serial/files.mjs";
 import { sourceInventory, validateSourcePath } from "./context-sources.mjs";
-import { AMENDMENT_PATH, CONTRACT_PATH, PERMISSION_AMENDMENT_PATH, CLEANUP_AMENDMENT_PATH, CLEANUP_AMENDMENT_SHA256, check, object, sha256 } from "./values.mjs";
+import { AMENDMENT_PATH, CONTRACT_PATH, PERMISSION_AMENDMENT_PATH, CLEANUP_AMENDMENT_PATH, CLEANUP_AMENDMENT_SHA256,
+  INSTALL_REVIEW_AMENDMENT_PATH, INSTALL_REVIEW_AMENDMENT_SHA256, INSTALL_OWNERSHIP_AMENDMENT_PATH,
+  INSTALL_OWNERSHIP_AMENDMENT_SHA256, check, object, sha256 } from "./values.mjs";
 
 export const SUCCESSOR_MODULES = ["successor-readiness.mjs", "successor-evidence.mjs", "successor-continuity.mjs", "successor-ownership.mjs", "successor-sources.mjs"]
   .map(name => `scripts/str005-v2-serial/${name}`);
@@ -16,8 +18,13 @@ const ROOTS = ["scripts/str005-v2-serial", "scripts/str005-noise-serial", "scrip
 const FILES = [CONTRACT_PATH, AMENDMENT_PATH, PERMISSION_AMENDMENT_PATH, CLEANUP_AMENDMENT_PATH, "Cargo.toml", "Cargo.lock", "MODULE.bazel",
   "firmware/bitaxe/bwg/deployment-trust.json", "tools/automation/src/redaction.ts", "scripts/str005-v2-serial/client.mjs",
   "scripts/str005-v2-serial/operator.mjs", "scripts/str005-v2-serial/observer-build-identity.mjs", "scripts/str005-v2-serial/permission-correction.mjs"];
+const INSTALL_FILES = [INSTALL_REVIEW_AMENDMENT_PATH, INSTALL_OWNERSHIP_AMENDMENT_PATH, "tools/flash/src/evidence_output.rs", "tools/flash/src/environment.rs",
+  "tools/flash/src/main.rs", "tools/flash/BUILD.bazel"];
+const INSTALL_MODULES = ["install-successor-evidence.mjs", "install-successor-ownership.mjs"].map(name => `scripts/str005-v2-serial/${name}`);
 const HERE = dirname(fileURLToPath(import.meta.url));
-function required(context) { return [...context.native_source_files, ...context.native_auditor_sources, ...SUCCESSOR_MODULES]; }
+function installClass(context) { return context.schema === "str005-v2-serial-context-v3"; }
+function required(context) { return [...context.native_source_files, ...context.native_auditor_sources, ...SUCCESSOR_MODULES,
+  ...(installClass(context) ? [...INSTALL_FILES, ...INSTALL_MODULES] : [])]; }
 
 function treePaths(root, commit, context) {
   try { return execFileSync("git", ["-C", root, "ls-tree", "-r", "--name-only", commit, "--", ...ROOTS, ...FILES, ...required(context)],
@@ -51,14 +58,20 @@ export async function inspectCheckerIdentity(value, context, operations = {}) {
   const sources = await (operations.publishedCheckerSources ?? treeSources)(context.firmware_root, value.firmwareCommit, paths);
   check(canonical(sources) === canonical(value.sources) && sources.find(row => row.path === CLEANUP_AMENDMENT_PATH)?.sha256 === CLEANUP_AMENDMENT_SHA256,
     "v2_successor_checker_source");
+  if (installClass(context)) check(sources.find(row => row.path === INSTALL_REVIEW_AMENDMENT_PATH)?.sha256 === INSTALL_REVIEW_AMENDMENT_SHA256 &&
+    sources.find(row => row.path === INSTALL_OWNERSHIP_AMENDMENT_PATH)?.sha256 === INSTALL_OWNERSHIP_AMENDMENT_SHA256,
+    "v2_successor_checker_source");
   return value;
 }
 
 export async function createCheckerIdentity(context, operations = {}) {
   const commit = (operations.git ?? git)(context.firmware_root, ["rev-parse", "HEAD"]);
   (operations.cleanPushed ?? cleanPushed)(context.firmware_root, commit);
-  const sources = await sourceInventory(context.firmware_root, required(context));
-  for (const path of SUCCESSOR_MODULES) check(sources.find(row => row.path === path)?.sha256 ===
+  const inventory = await sourceInventory(context.firmware_root, required(context));
+  // Preserve the v1 checker domain even when today's general evaluator includes
+  // the additional v2 producer files. Historical tree membership is versioned.
+  const sources = installClass(context) ? inventory : inventory.filter(row => !INSTALL_FILES.includes(row.path));
+  for (const path of [...SUCCESSOR_MODULES, ...(installClass(context) ? INSTALL_MODULES : [])]) check(sources.find(row => row.path === path)?.sha256 ===
     sha256(await readFile(resolve(HERE, path.split("/").at(-1)))), "v2_successor_running_checker_changed");
   const value = { firmwareCommit: commit, sources }; await inspectCheckerIdentity(value, context, operations);
   (operations.cleanPushed ?? cleanPushed)(context.firmware_root, commit); return value;

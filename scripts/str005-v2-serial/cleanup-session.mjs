@@ -15,7 +15,7 @@ export { PARENT_CLEANUP_CODES, PARENT_CLEANUP_STAGES };
  * observation; the helper never fabricates browser closure or device state.
  */
 export function createCleanupSession(root, context, { child, owner, operations = {} }) {
-  check(context.schema === "str005-v2-serial-context-v3", "v2_parent_cleanup_state");
+  check(context.schema === "str005-v2-serial-context-v4", "v2_parent_cleanup_state");
   const contextSha256 = sha256(JSON.stringify(context));
   check(child.pid === owner.pid && owner.pgid === owner.pid && child.exitCode === null && child.signalCode === null, "v2_parent_supervisor_identity");
   const exitObserver = observeOwnedExit(child, contextSha256, owner, "supervisor");

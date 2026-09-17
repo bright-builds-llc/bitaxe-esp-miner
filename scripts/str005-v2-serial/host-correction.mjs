@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BUNDLE, cleanPushed, fileDigest } from "../fixed-usb-qualification/contract.mjs";
+import { nodeRuntimeEnvironment } from "../str005-noise-serial/node-runtime.mjs";
 import { canonical } from "../str005-noise-serial/files.mjs";
 import { check, digest, object, uint, sha256, CLEANUP_AMENDMENT_PATH, CLEANUP_AMENDMENT_SHA256 } from "./values.mjs";
 
@@ -37,7 +38,7 @@ export async function checkHostCorrection(context, operations = {}) {
     result = (operations.spawnSync ?? spawnSync)(HOST_CORRECTION_COMMAND[0], HOST_CORRECTION_COMMAND.slice(1), {
       cwd: context.firmware_root, timeout: LIMIT_MS, killSignal: "SIGKILL", maxBuffer: OUTPUT_BYTES,
       stdio: ["ignore", "pipe", "pipe"], encoding: null,
-      env: { PATH: process.env.PATH ?? "/usr/bin:/bin", LANG: "C", LC_ALL: "C" },
+      env: { PATH: process.env.PATH ?? "/usr/bin:/bin", LANG: "C", LC_ALL: "C", ...nodeRuntimeEnvironment() },
     });
     const end = clock(); uint(end);
     const bytes = [result.stdout, result.stderr].reduce((sum, value) => sum + (value?.length ?? 0), 0);

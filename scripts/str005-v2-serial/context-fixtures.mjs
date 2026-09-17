@@ -4,13 +4,14 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { fixture as noiseFixture, ledger, original } from "../str005-noise-serial/test-fixture.mjs";
 import { NATIVE_AUDITOR_SOURCES } from "../noise-native-readiness.mjs";
-import { sha256, PERMISSION_AMENDMENT_PATH, CLEANUP_AMENDMENT_PATH } from "./values.mjs";
+import { sha256, PERMISSION_AMENDMENT_PATH, CLEANUP_AMENDMENT_PATH, INSTALL_REVIEW_AMENDMENT_PATH, INSTALL_OWNERSHIP_AMENDMENT_PATH } from "./values.mjs";
 import { nonce } from "../fixed-usb-qualification/contract.mjs";
 import { canonical, writeNew } from "../str005-noise-serial/files.mjs";
 import { createSnapshot } from "./snapshot.mjs";
 import { inspectSources, nativeInterface } from "./context-sources.mjs";
 import { AMENDMENT_PATH } from "./context-sources.mjs";
 import { ACCEPTED_NOISE_RESULT_SHA256, ACCEPTED_NOISE_SEAL_SHA256 } from "./predecessor.mjs";
+import { checkHostCorrection } from "./host-correction.mjs";
 import { checkPermissionCorrection } from "./permission-correction.mjs";
 import { loadContext, preflight } from "./context.mjs";
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -19,16 +20,18 @@ const NATIVE = ["firmware/bitaxe/src/noise_serial_runtime.rs", "firmware/bitaxe/
 const AUDITORS = ["scripts/v2-native-readiness.mjs", ...NATIVE_AUDITOR_SOURCES];
 
 /** Explicit synthetic filesystem/reader/auditor seam; never usable as live evidence. */
-export async function contextFixture(t, { scope = "channel", prepare = true, legacy = false, permission = false, beforeLegacySnapshot, maybeFixtureBytes } = {}) {
+export async function contextFixture(t, { scope = "channel", prepare = true, legacy = false, permission = false, cleanup = false, beforeLegacySnapshot, maybeFixtureBytes } = {}) {
   const base = await noiseFixture(t, { prepare: false });
   const { firmwareRoot, gateRoot } = base.options;
   await base.put(resolve(firmwareRoot, "TASKS.md"), "## Active\n### task-str005-v2-serial-qualification | synthetic qualification\n");
+  for (const path of [INSTALL_REVIEW_AMENDMENT_PATH, INSTALL_OWNERSHIP_AMENDMENT_PATH, "tools/flash/src/evidence_output.rs", "tools/flash/src/environment.rs", "tools/flash/src/main.rs", "tools/flash/BUILD.bazel"])
+    await base.put(resolve(firmwareRoot, path), await readFile(resolve(REPO, path)));
   await base.put(resolve(firmwareRoot, CLEANUP_AMENDMENT_PATH), await readFile(resolve(REPO, CLEANUP_AMENDMENT_PATH)));
   await base.put(resolve(firmwareRoot, PERMISSION_AMENDMENT_PATH), await readFile(resolve(REPO, PERMISSION_AMENDMENT_PATH)));
   await base.put(resolve(firmwareRoot, AMENDMENT_PATH), await readFile(resolve(REPO, AMENDMENT_PATH)));
   await base.put(resolve(firmwareRoot, "docs/hardware/str005-v2-serial-qualification.md"), await readFile(resolve(REPO, "docs/hardware/str005-v2-serial-qualification.md")));
   await base.put(resolve(firmwareRoot, "scripts/v2-native-readiness.mjs"), "// Explicit synthetic auditor; never a native proof.\n");
-  for (const name of await readdir(resolve(REPO, "scripts/str005-v2-serial"))) if (name.endsWith(".mjs"))
+  for (const name of await readdir(resolve(REPO, "scripts/str005-v2-serial"))) if (name.endsWith(".mjs") || name.endsWith(".rs"))
     await base.put(resolve(firmwareRoot, "scripts/str005-v2-serial", name), await readFile(resolve(REPO, "scripts/str005-v2-serial", name)));
   for (const name of ["client", "operator", "observer-build-identity"]) {
     const path = resolve(firmwareRoot, `scripts/str005-v2-serial/${name}.mjs`);
@@ -96,32 +99,40 @@ export async function contextFixture(t, { scope = "channel", prepare = true, leg
   }
   let maybeSuccessor;
   if (!legacy && !permission) {
-    const failedRoot = resolve(parent, "channel-002"), receiptPath = `${failedRoot}.successor-readiness.json`;
-    const failedContext = { schema: "str005-v2-serial-context-v2", scope: "channel", hostOrdinal: 2,
+    const inspectedReceipts = new Map();
+    for (const failedOrdinal of cleanup ? [2] : [2, 3]) {
+    const failedRoot = resolve(parent, failedOrdinal === 2 ? "channel-002" : "channel-003"), receiptPath = `${failedRoot}.successor-readiness.json`;
+    const failedContext = { schema: failedOrdinal === 2 ? "str005-v2-serial-context-v2" : "str005-v2-serial-context-v3", scope: "channel", hostOrdinal: failedOrdinal,
       firmware_commit: "f".repeat(40), app_elf_sha256: "f".repeat(64), manifest_sha256: "e".repeat(64), gate_commit: "b".repeat(40),
       evaluator: [{ path: "synthetic-old-source", sha256: "e".repeat(64), length: 1 }], original_campaign_id: previous.context.original_campaign_id,
       predecessor: { root: previous.root, resultSha256: previous.resultSha256, sealSha256: previous.sealSha256 },
       permissionSupersession: { failedRoot: resolve(parent, "channel-001"), closurePath } };
     await base.put(resolve(failedRoot, "context.json"), JSON.stringify({ context: failedContext, sha256: sha256(JSON.stringify(failedContext)) }));
-    await base.put(resolve(failedRoot, "final-result.json"), JSON.stringify({ synthetic: "unverified Channel002" }));
-    const inputs = await Promise.all(["context.json", "final-result.json"].map(async path => {
+    await base.put(resolve(failedRoot, "final-result.json"), JSON.stringify({ synthetic: `unverified Channel${failedOrdinal}` }));
+    let initialAccounting;
+    if (failedOrdinal === 3) {
+      const path = "accounting-before-install.json";
+      await base.put(resolve(failedRoot, path), JSON.stringify({ observedSequence: 5, ledger, original_budget: original }));
+      initialAccounting = { path, sha256: sha256(await readFile(resolve(failedRoot, path))), observedSequence: 5, ledger: structuredClone(ledger), original: structuredClone(original) };
+    }
+    const inputs = await Promise.all(["context.json", "final-result.json", ...(failedOrdinal === 3 ? ["accounting-before-install.json"] : [])].map(async path => {
       const data = await readFile(resolve(failedRoot, path)); return { path, sha256: sha256(data), length: data.length };
     }));
     await base.put(resolve(failedRoot, "sealed-inventory.json"), JSON.stringify({ files: inputs }));
     const resultSha256 = sha256(await readFile(resolve(failedRoot, "final-result.json"))), sealSha256 = sha256(await readFile(resolve(failedRoot, "sealed-inventory.json")));
     const checkerBytes = await readFile(resolve(firmwareRoot, "scripts/str005-v2-serial/context.mjs"));
     const checkerIdentity = { firmwareCommit: "a".repeat(40), sources: [{ path: "scripts/str005-v2-serial/context.mjs", sha256: sha256(checkerBytes), length: checkerBytes.length }] };
-    const value = { schema: "str005-v2-channel-successor-readiness-v1", failedRoot, failedContextSha256: sha256(JSON.stringify(failedContext)),
+    const value = { schema: failedOrdinal === 2 ? "str005-v2-channel-successor-readiness-v1" : "str005-v2-channel-successor-readiness-v2", failedRoot, failedContextSha256: sha256(JSON.stringify(failedContext)),
       failedResultSha256: resultSha256, failedSealSha256: sealSha256, inspectedInputs: inputs, checkerIdentity,
       status: "unverified", classification: "ready_for_fresh_channel", hardwareQualified: false, historicalCleanupComplete: false,
       beforeSource: { firmware_commit: failedContext.firmware_commit, app_elf_sha256: failedContext.app_elf_sha256 },
-      predecessor: failedContext.predecessor, ledger: structuredClone(ledger), original: structuredClone(original),
+      predecessor: failedContext.predecessor, ...(failedOrdinal === 2 ? { ledger: structuredClone(ledger), original: structuredClone(original) } : { initialAccounting, afterBaselineObserved: false }),
       synthetic: "readiness classifier test seam" };
     await base.put(receiptPath, JSON.stringify(value));
     const receiptSha256 = sha256(await readFile(receiptPath));
-    await writeNew(resolve(parent, "channel-ordinal-2.json"), { schema: "str005-v2-serial-assignment-v1", root: failedRoot,
+    await writeNew(resolve(parent, `channel-ordinal-${failedOrdinal}.json`), { schema: "str005-v2-serial-assignment-v1", root: failedRoot,
       scope: "channel", context_sha256: value.failedContextSha256 });
-    operations.inspectChannelSuccessor = async path => {
+    inspectedReceipts.set(receiptPath, async path => {
       if (path !== receiptPath || sha256(await readFile(path)) !== receiptSha256) throw Object.assign(Error("changed readiness"), { code: "v2_cleanup_receipt_changed" });
       for (const input of inputs) if (sha256(await readFile(resolve(failedRoot, input.path))) !== input.sha256)
         throw Object.assign(Error("changed failed input"), { code: "v2_cleanup_receipt_changed" });
@@ -130,25 +141,29 @@ export async function contextFixture(t, { scope = "channel", prepare = true, leg
       return { root: failedRoot, receiptPath, receiptSha256, context: failedContext, contextSha256: value.failedContextSha256, resultSha256, sealSha256,
         classification: "ready_for_fresh_channel", status: "unverified", hardwareQualified: false, historicalCleanupComplete: false,
         beforeSource: { firmware_commit: failedContext.firmware_commit, app_elf_sha256: failedContext.app_elf_sha256 },
-        predecessor: failedContext.predecessor, ledger: structuredClone(ledger), original: structuredClone(original),
+        predecessor: failedContext.predecessor, ...(failedOrdinal === 2 ? { ledger: structuredClone(ledger), original: structuredClone(original) } : { initialAccounting: structuredClone(initialAccounting), afterBaselineObserved: false }),
         checkerIdentity: structuredClone(checkerIdentity) };
-    };
+    });
     operations.checkCurrentSuccessorOwnership = async () => {};
     maybeSuccessor = receiptPath;
+    }
+    operations.inspectChannelSuccessor = async path => {
+      const inspect = inspectedReceipts.get(path); if (!inspect) throw Error("unexpected synthetic successor path"); return inspect(path);
+    };
   }
   if (beforeLegacySnapshot) {
-    if (!legacy && !permission) throw Error("historical fixture hook requires historical schema");
+    if (!legacy && !permission && !cleanup) throw Error("historical fixture hook requires historical schema");
     await beforeLegacySnapshot({ ...base, parent, operations, previous });
   }
   execFileSync("git", ["-C", firmwareRoot, "add", "."]);
-  const ordinal = legacy ? 1 : permission ? 2 : 3;
+  const ordinal = legacy ? 1 : permission ? 2 : cleanup ? 3 : 4;
   let predecessorReceipt = resolve(previousRoot, "final-result.json");
   if (scope === "share") {
     const channelOptions = { ...base.options, scope: "channel", privateRoot: resolve(parent, `channel-${String(ordinal).padStart(3, "0")}`), predecessorReceipt,
       ...(permission ? { supersedePermission: closurePath } : { supersedeChannel: maybeSuccessor }) };
-    if (permission) await historicalPreparation(channelOptions, operations, previous, "str005-v2-serial-context-v2");
+    if (permission || cleanup) await historicalPreparation(channelOptions, operations, previous, permission ? "str005-v2-serial-context-v2" : "str005-v2-serial-context-v3");
     else await preflight(channelOptions, operations);
-    const channel = await loadContext(channelOptions.privateRoot, { operations, historical: permission });
+    const channel = await loadContext(channelOptions.privateRoot, { operations, historical: permission || cleanup });
     await base.put(resolve(channelOptions.privateRoot, "final-result.json"), JSON.stringify({ synthetic: "accepted Channel prerequisite" }));
     const contextBytes = await readFile(resolve(channelOptions.privateRoot, "context.json"));
     await base.put(resolve(channelOptions.privateRoot, "sealed-inventory.json"), JSON.stringify({ files: [{ path: "context.json", sha256: sha256(contextBytes), length: contextBytes.length }] }));
@@ -162,27 +177,32 @@ export async function contextFixture(t, { scope = "channel", prepare = true, leg
     ...(scope === "channel" ? (permission ? { supersedePermission: closurePath } : !legacy ? { supersedeChannel: maybeSuccessor } : {}) : {}) };
   delete options.attemptOrdinal;
   if (prepare) {
-    if (legacy || permission) await historicalPreparation(options, operations,
-      await operations.inspectPredecessor(predecessorReceipt, scope), legacy ? "str005-v2-serial-context-v1" : "str005-v2-serial-context-v2");
+    if (legacy || permission || cleanup) await historicalPreparation(options, operations,
+      await operations.inspectPredecessor(predecessorReceipt, scope), legacy ? "str005-v2-serial-context-v1" : permission ? "str005-v2-serial-context-v2" : "str005-v2-serial-context-v3");
     else await preflight(options, operations);
   }
   return { ...base, parent, root: options.privateRoot, options, operations, previous,
-    context: prepare ? await loadContext(options.privateRoot, { operations, historical: legacy || permission }) : null };
+    context: prepare ? await loadContext(options.privateRoot, { operations, historical: legacy || permission || cleanup }) : null };
 }
 
 /** Fixture-only assembly of historical schemas. The live CLI cannot select this path. */
 async function historicalPreparation(options, operations, predecessor, schema) {
   const native = await nativeInterface(operations), source = await inspectSources(options, native, operations);
-  delete source.contracts.cleanup;
+  delete source.contracts.installReview;
+  delete source.contracts.installReviewOwnership;
+  if (schema !== "str005-v2-serial-context-v3") delete source.contracts.cleanup;
   if (schema === "str005-v2-serial-context-v1") delete source.contracts.permission;
   source.contractSha256 = sha256(canonical(source.contracts));
   const maybeClosure = schema === "str005-v2-serial-context-v2" && options.scope === "channel" ? await operations.inspectPermissionClosure(options.supersedePermission) : null;
-  const context = { schema, ...source, scope: options.scope, attemptId: nonce(), hostOrdinal: options.scope === "channel" && schema.endsWith("v2") ? 2 : 1,
+  const maybeSuccessor = schema === "str005-v2-serial-context-v3" && options.scope === "channel" ? await operations.inspectChannelSuccessor(options.supersedeChannel) : null;
+  const context = { schema, ...source, scope: options.scope, attemptId: nonce(), hostOrdinal: options.scope === "channel" ? (schema.endsWith("v3") ? 3 : schema.endsWith("v2") ? 2 : 1) : 1,
     predecessor: { root: predecessor.root, resultSha256: predecessor.resultSha256, sealSha256: predecessor.sealSha256 },
-    before_source: { firmware_commit: predecessor.context.firmware_commit, app_elf_sha256: predecessor.context.app_elf_sha256 },
+    before_source: maybeSuccessor ? structuredClone(maybeSuccessor.beforeSource) : { firmware_commit: predecessor.context.firmware_commit, app_elf_sha256: predecessor.context.app_elf_sha256 },
     original_campaign_id: predecessor.context.original_campaign_id, install_indices: options.scope === "channel" ? [0, 1, 2, 3, 4] : [1, 2, 3, 4],
-    ...(schema.endsWith("v2") ? { permissionSupersession: maybeClosure ? { failedRoot: maybeClosure.root, failedContextSha256: maybeClosure.contextSha256,
-      closurePath: maybeClosure.closurePath, closureSha256: maybeClosure.closureSha256 } : null } : {}) };
+    ...(schema !== "str005-v2-serial-context-v1" ? { permissionSupersession: maybeClosure ? { failedRoot: maybeClosure.root, failedContextSha256: maybeClosure.contextSha256,
+      closurePath: maybeClosure.closurePath, closureSha256: maybeClosure.closureSha256 } : null } : {}),
+    ...(schema.endsWith("v3") ? { cleanupSupersession: maybeSuccessor ? { failedRoot: maybeSuccessor.root, failedContextSha256: maybeSuccessor.contextSha256,
+      failedResultSha256: maybeSuccessor.resultSha256, failedSealSha256: maybeSuccessor.sealSha256, receiptPath: maybeSuccessor.receiptPath, receiptSha256: maybeSuccessor.receiptSha256 } : null } : {}) };
   if (options.scope === "share") {
     context.qualificationAttempt = { schema: "worker-qualification-attempt-v1", id: context.attemptId, ordinal: 18, purpose: "normal", maximumActiveMilliseconds: 180000 };
     context.expectedLedgerBefore = predecessor.ledger;
@@ -195,8 +215,11 @@ async function historicalPreparation(options, operations, predecessor, schema) {
   if (options.scope === "share") await writeNew(resolve(dirname(options.privateRoot), "qualification-ordinal-18.json"), marker);
   await mkdir(options.privateRoot, { mode: 0o700 });
   await writeNew(resolve(options.privateRoot, "context.json"), { context, sha256: hash });
-  const permissionCorrection = schema.endsWith("v2") ? await checkPermissionCorrection(context, operations) : undefined;
-  await createSnapshot(options.privateRoot, context, { permissionCorrection });
+  const permissionCorrection = schema !== "str005-v2-serial-context-v1" ? await checkPermissionCorrection(context, operations) : undefined;
+  const hostCorrection = schema.endsWith("v3") ? await checkHostCorrection(context, operations) : undefined;
+  await createSnapshot(options.privateRoot, context, { permissionCorrection, hostCorrection });
 }
 export function legacyContextFixture(t, options = {}) { return contextFixture(t, { ...options, scope: "channel", legacy: true }); }
 export function permissionContextFixture(t, options = {}) { return contextFixture(t, { ...options, permission: true }); }
+
+export function cleanupContextFixture(t, options = {}) { return contextFixture(t, { ...options, cleanup: true }); }

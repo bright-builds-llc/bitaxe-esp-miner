@@ -8,6 +8,10 @@ export const PERMISSION_AMENDMENT_PATH = "docs/hardware/str005-v2-serial-permiss
 export const PERMISSION_AMENDMENT_SHA256 = "e0ec62fd7248d202f85868cac848294cd8261ced3a63b129d25fa32777d285cd";
 export const CLEANUP_AMENDMENT_PATH = "docs/hardware/str005-v2-serial-cleanup-successor-amendment.md";
 export const CLEANUP_AMENDMENT_SHA256 = "803ac5382be372fdd9749dbebd0d5912782649c19007d52c795d40c2ca5c23ca";
+export const INSTALL_REVIEW_AMENDMENT_PATH = "docs/hardware/str005-v2-serial-install-review-amendment.md";
+export const INSTALL_REVIEW_AMENDMENT_SHA256 = "d4b3227353e01a7a1c0b52faf931a206489b2f28f06fb7d13a1d03d83b24fea6";
+export const INSTALL_OWNERSHIP_AMENDMENT_PATH = "docs/hardware/str005-v2-serial-install-ownership-amendment.md";
+export const INSTALL_OWNERSHIP_AMENDMENT_SHA256 = "564027bf7bd2ecefef9ee8446e46eef0c5e3420d326b31962136724e183ab85d";
 export const PROFILE = "bwg-worker-stratum-v2-standard/0.1";
 export const SCOPES = Object.freeze(["channel", "share"]);
 export const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");

@@ -103,7 +103,11 @@ export async function successorFixture(t) {
   const required = [...context.native_source_files, ...context.native_auditor_sources, ...SUCCESSOR_MODULES];
   // Current source is corrected; the sealed old evaluator copy remains byte-for-byte historical.
   await f.put(resolve(context.firmware_root, "scripts/str005-v2-serial/continuity-judge.mjs"), await readFile(new URL("./continuity-judge.mjs", import.meta.url)));
-  const publishedSources = await sourceInventory(context.firmware_root, required);
+  // This fixture models the frozen v1 checker domain, predating the install
+  // amendment's Rust-producer dependency expansion.
+  const publishedSources = (await sourceInventory(context.firmware_root, required)).filter(row =>
+    !["docs/hardware/str005-v2-serial-install-review-amendment.md", "docs/hardware/str005-v2-serial-install-ownership-amendment.md"].includes(row.path) &&
+    !row.path.startsWith("tools/flash/"));
   const operations = { ...f.operations,
     inspectHistoricalChannel: async path => ({ context: await loadContext(path, { historical: true, operations: f.operations }), reviewed: await review(path, f.operations) }),
     git: () => "f".repeat(40),

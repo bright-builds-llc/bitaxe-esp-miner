@@ -10,7 +10,7 @@ export async function syntheticRoot(root, maybeContext) {
     await realpath(root) === root, "v2_rehearsal_root_rejected");
   const stored = JSON.parse(await readFile(resolve(root, "context.json")));
   const context = stored.context;
-  check(context?.schema === "str005-v2-serial-context-v3" && context.scope === "channel" &&
+  check(context?.schema === "str005-v2-serial-context-v4" && context.scope === "channel" &&
     context.firmware_commit === "a".repeat(40) && context.gate_commit === "b".repeat(40) &&
     context.before_source?.firmware_commit === "f".repeat(40) && context.before_source?.app_elf_sha256 === "f".repeat(64) &&
     context.firmware_root.startsWith(`${temporary}${sep}`) && context.gate_root.startsWith(`${temporary}${sep}`) &&
