@@ -4457,6 +4457,10 @@ an accepted share. Any failed-attempt continuation needs a verified correction,
 a fresh ordinal/root and current-HEAD source/package qualification; there is no
 fixed attempt cap, no unchanged retry and no reuse of a consumed context.
 
+Clock correction: the [prospective amendment](docs/hardware/str005-v2-serial-clock-amendment.md)
+keeps the Share diagnostic deadline null until the existing guarded dispatch
+arms the reservation clock. It changes no mining budget, lease or safety limit.
+
 Verification | 2026-09-16: Contract lifecycle/interface/privacy review passed.
 Ordered Cargo format/Clippy/build/tests passed (2285 tests, 3 existing ignored);
 all 159 canonical Bazel targets, Bright Builds, formatting/link checks, reference,
@@ -4464,7 +4468,47 @@ redaction and read-only parity/progress checks passed. All 236 task IDs are uniq
 archive prefix and superseded unchecked obligations are preserved. No successor
 implementation, hardware attempt or mining reservation yet. Parity remains 90/95.
 
+Implementation progress | 2026-09-16: Contract published at `6a4a45f8`.
+Firmware/Gate/fixture implementation is underway. The host now has strict scoped
+input/status parsers, monotonic evidence checks, an independent integer-target/
+header/ASIC-payload verifier, and bounded memory-only fixture IPC with actual
+child cleanup tests. Initial focused host tests pass; these are software checks,
+not new hardware evidence. Native package, full composition, publication and
+both live scopes remain pending. No reservation has been issued.
+
 Completion review: Pending.
+
+
+### task-str005-v2-admission-clock-amendment | 2026-09-16 | Preserve the real V2 reservation clock
+
+Status: Specification reviewed for publication; implementation binding remains
+pending under the V2 qualification task. No runtime effects.
+
+Depends on: published `task-str005-v2-serial-qualification` contract at
+`6a4a45f8`; its implementation remains incomplete and no new reservation exists.
+
+- [x] Define the existing first guarded-dispatch arming behavior with a truthful
+      nullable Share diagnostic deadline, without moving a budget or lease clock.
+- [x] Review the exact nullable/immutable transition, millisecond provenance,
+      pre-work failures and unchanged fixture/safety bounds with runtime/Gate owners.
+- [x] Publish the [narrow amendment](docs/hardware/str005-v2-serial-clock-amendment.md).
+- [ ] Bind both contract digests and the amended producer/parser behavior in
+      implementation source/admission; verify the native clock transition tests.
+- [x] Run ordered Cargo and documentation/reference/privacy/standards checks;
+      preserve contract/evidence bytes, validate task IDs and unchanged parity.
+
+Authorization: specification and software verification only. This amendment
+issues no grant, reservation, network request to the device or hardware effect.
+
+Verification | 2026-09-16: Runtime, Gate and fixture reviewers found no
+remaining clock/interface contradiction. Ordered Cargo format/Clippy/build/tests
+passed on the exact documentation commit base in an isolated checkout; reference,
+redaction and read-only parity/progress checks passed after initializing that
+checkout's pinned nested reference dependency. Main implementation remains
+unfinished and was excluded from this documentation verification.
+
+Completion review: Pending implementation binding and clock-transition tests;
+keep this task active until those are verified. No reservation or effect issued.
 
 ## Future
 
