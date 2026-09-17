@@ -16543,3 +16543,77 @@ Native preview 8 retains the fixed stacks and sufficient selected-path margins.
 No lease, reservation, heartbeat limit or durable charge was changed. The main
 qualification task retains exact clean-package publication and both hardware
 scopes; these software results grant no independent effect authority.
+
+
+### task-str005-v2-permission-closure | 2026-09-16 | Close pre-open permission failure and guard its successor
+
+Status: Complete: software correction and guarded admission verified. Actual
+closure and successor hardware execution remain owned by the main task.
+
+Depends on: `task-str005-v2-serial-qualification`, the published base/clock
+contracts, and the immutable Channel001 preparation bound to candidate firmware
+`979f7ba2` and Gate `9251a1f`. The candidate was never installed.
+
+- [x] Freeze and publish the [narrow permission-closure amendment](docs/hardware/str005-v2-serial-permission-amendment.md) before code
+      changes or another device admission.
+- [x] Add a V2-page-only trusted, visible, focused, actively initiated Connect
+      precondition; retain native chooser and ordinary SDK behavior.
+- [x] Add effect-free sibling closure/review commands proving failure before
+      Serial open/Hello and actual host release without inventing a fresh
+      device baseline or unchanged-ledger observation.
+- [x] Preserve v1 historical readers; admit only Channel002 through a verified
+      closure, changed clean pair and targeted correction. Keep the same
+      accepted Noise predecessor and exclusive markers; reject recursive,
+      duplicate, Share or general retry authority.
+- [x] Test native gesture preconditions, exact no-admission classification,
+      mutation/path/mode/cleanup rejection, context lineage and fresh accounting
+      requirements; run ordered Cargo, Gate, canonical and repository checks.
+- [x] Publish the verified correction and hand its source-bound closure,
+      review and successor-admission commands to the main qualification task.
+      Archive this software amendment only after implementation is verified;
+      actual closure creation, clean packaging and Channel002 admission remain
+      main-task execution obligations.
+
+Observed failure: Channel001 never opened Serial or sent Hello. Its six
+before-phase states retain the permission-stage `operation_failed` and
+`connect_failed`; no installation, device record, fixture, accounting review,
+issuance or mining occurred. The actual tab and supervisor are closed, the
+supervisor exited zero, and live host inspection found no listener or serial
+holders. Browser selection/grant status and current device baseline/accounting
+were not observed and must not be fabricated. The initial detector performed
+read-only USB inspection. The browser-close witness was recorded separately
+from the parent's baseline-requiring branch, with actual CUA closure provenance.
+
+Authorization: software-only correction and evidence closure under the owner's
+standing iteration authorization. Only a verified new main-task preflight can
+admit effects; the closure does not authorize flashing, signing or mining.
+Expected fresh device accounting remains next ordinal 18 and 1560000 ms charged;
+no reservation was consumed here. Parity remains 90/95.
+
+Specification review | 2026-09-16: Runtime, Gate and evidence reviewers agree
+on the pre-open boundary, explicit unobserved facts, finite Channel002 lineage,
+closed v2 context and scoped immutable inventories. The exact permission-stage
+branches were reproduced against published Gate software without opening a
+port or sending frames. Ordered Cargo checks pass; implementation and fresh
+hardware admission remain pending.
+
+Completion review | 2026-09-17: The qualification-only Gate gesture correction
+is published at `e20c0fd52d2216596f904992ffa54fda33be9025`. The source-bound
+closure/review and closed context-v2 commands are implemented; Channel002 is
+the only permitted supersession, with unchanged Share001/device ordinal 18.
+Historical v1 contexts remain read-only. Interrupted closure publication and
+assignment, altered inventories, unobserved device/accounting facts, unsafe
+paths/modes and conflicting provenance fail closed. Timed effect gates compare
+exact pinned receipt/context bytes; complete evidence is revalidated before
+serving and during historical review, outside the protocol timing windows.
+
+Verification passed: 221 host tests, 2346 Cargo tests (three existing ignored),
+190 canonical targets, Gate 788 web tests and real headless gesture checks,
+Bright Builds, ownership, reference, redaction and parity checks. The native
+variants raced an ESP-IDF constraints-cache refresh on the first canonical run;
+sequential builds and the complete rerun passed without changing ESP-IDF files.
+Actual failed inputs remain untouched. The main task must create/review the
+closure after this publication, build the clean exact pair and establish fresh
+baseline/accounting before any successor effects. No closure, fresh context,
+flashing or mining result is claimed by this software completion. Parity stays
+90/95 and no reservation was consumed.

@@ -538,6 +538,24 @@ js_test(
     entry_point = "str005-v2-serial/start-observation.test.mjs",
 )
 
+js_test(
+    name = "str005_v2_serial_context_permission_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/context-permission.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_permission_closure_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/permission-closure.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_permission_correction_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/permission-correction.test.mjs",
+)
+
 # Versioned V2 qualification sources retain separate historical Noise readers.
 js_library(
     name = "v2_projection_validator",

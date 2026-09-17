@@ -329,5 +329,6 @@ js_library(
         "MODULE.bazel",
         "docs/hardware/str005-v2-serial-qualification.md",
         "docs/hardware/str005-v2-serial-clock-amendment.md",
+        "docs/hardware/str005-v2-serial-permission-amendment.md",
     ],
 )

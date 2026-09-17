@@ -2,14 +2,14 @@ import { basename, resolve } from "node:path";
 import { check, SCOPES } from "./values.mjs";
 
 export const TASK_ID = "task-str005-v2-serial-qualification";
-const ACTIONS = ["preflight", "serve", "recover", "finalize", "review"];
+const ACTIONS = ["preflight", "serve", "recover", "finalize", "review", "close-permission", "review-permission"];
 const PREFLIGHT = ["scope", "firmware-root", "gate-root", "package-manifest", "fixture-binary", "predecessor-receipt"];
 
 /** Validate all options before opening any path, allocating an attempt or reading signing material. */
 export function parseArgs(argv) {
   const [action, ...args] = argv;
   check(ACTIONS.includes(action), "v2_action_invalid");
-  const extra = action === "preflight" ? PREFLIGHT : action === "serve" ? ["authority-directory"] :
+  const extra = action === "preflight" ? [...PREFLIGHT, "supersede-permission"] : action === "serve" ? ["authority-directory"] :
     action === "finalize" ? ["cleanup-receipt"] : [];
   const allowed = new Set(["private-root", ...extra]), raw = {};
   check(args.length % 2 === 0, "v2_option_value_missing");
@@ -23,10 +23,12 @@ export function parseArgs(argv) {
   check(required.every((key) => Object.hasOwn(raw, key)), "v2_required_option");
   check(raw["private-root"] === resolve(raw["private-root"]), "v2_absolute_root_required");
   if (action === "preflight") check(SCOPES.includes(raw.scope), "v2_scope");
+  if (raw["supersede-permission"] !== undefined) check(raw.scope === "channel" &&
+    raw["supersede-permission"] === resolve(raw["supersede-permission"]), "v2_permission_scope");
   return { action, options: { privateRoot: raw["private-root"], scope: raw.scope,
     firmwareRoot: raw["firmware-root"], gateRoot: raw["gate-root"], manifest: raw["package-manifest"],
     fixtureBinary: raw["fixture-binary"], predecessorReceipt: raw["predecessor-receipt"],
-    authorityDirectory: raw["authority-directory"], cleanupReceipt: raw["cleanup-receipt"] } };
+    authorityDirectory: raw["authority-directory"], cleanupReceipt: raw["cleanup-receipt"], supersedePermission: raw["supersede-permission"] } };
 }
 
 export function attemptName(root, scope) {

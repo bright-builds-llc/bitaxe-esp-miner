@@ -4,6 +4,8 @@ export const CONTRACT_PATH = "docs/hardware/str005-v2-serial-qualification.md";
 export const CONTRACT_SHA256 = "d23220a4ac5021470b18d7e97cb4b82ba28232d9d5a0f8340389852b39841c79";
 export const AMENDMENT_PATH = "docs/hardware/str005-v2-serial-clock-amendment.md";
 export const AMENDMENT_SHA256 = "4fbdfc754610855c904c6434a4da6ef8506323c95582a0b23a6873a79bc3aaef";
+export const PERMISSION_AMENDMENT_PATH = "docs/hardware/str005-v2-serial-permission-amendment.md";
+export const PERMISSION_AMENDMENT_SHA256 = "e0ec62fd7248d202f85868cac848294cd8261ced3a63b129d25fa32777d285cd";
 export const PROFILE = "bwg-worker-stratum-v2-standard/0.1";
 export const SCOPES = Object.freeze(["channel", "share"]);
 export const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");

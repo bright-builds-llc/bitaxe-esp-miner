@@ -3,13 +3,13 @@ import { dirname, resolve } from "node:path";
 import { BUNDLE, PAGE, admitTrust, canonicalDirectory, cleanPushed, fileDigest, git, packageSnapshot, readJson } from "../fixed-usb-qualification/contract.mjs";
 import { canonical } from "../str005-noise-serial/files.mjs";
 import { requireActiveTask } from "./contract.mjs";
-import { AMENDMENT_PATH, AMENDMENT_SHA256, check, CONTRACT_PATH, CONTRACT_SHA256, object, sha256 } from "./values.mjs";
+import { AMENDMENT_PATH, AMENDMENT_SHA256, PERMISSION_AMENDMENT_PATH, PERMISSION_AMENDMENT_SHA256, check, CONTRACT_PATH, CONTRACT_SHA256, object, sha256 } from "./values.mjs";
 
 export { AMENDMENT_PATH, AMENDMENT_SHA256 } from "./values.mjs";
 const SOURCE_DIRS = ["scripts/str005-v2-serial", "scripts/str005-noise-serial", "scripts/fixed-usb-qualification", "scripts/host-stalls",
   "tools/stratum-v2-fixture", "tools/http-transport", "crates/bitaxe-stratum", "crates/bitaxe-worker-control", "firmware/bitaxe/src"];
-const SOURCE_FILES = [CONTRACT_PATH, AMENDMENT_PATH, "Cargo.toml", "Cargo.lock", "MODULE.bazel", "firmware/bitaxe/bwg/deployment-trust.json",
-  "tools/automation/src/redaction.ts", "scripts/str005-v2-serial/client.mjs", "scripts/str005-v2-serial/operator.mjs", "scripts/str005-v2-serial/observer-build-identity.mjs"];
+const SOURCE_FILES = [CONTRACT_PATH, AMENDMENT_PATH, PERMISSION_AMENDMENT_PATH, "Cargo.toml", "Cargo.lock", "MODULE.bazel", "firmware/bitaxe/bwg/deployment-trust.json",
+  "tools/automation/src/redaction.ts", "scripts/str005-v2-serial/client.mjs", "scripts/str005-v2-serial/operator.mjs", "scripts/str005-v2-serial/observer-build-identity.mjs", "scripts/str005-v2-serial/permission-correction.mjs"];
 
 /** Test injection is code-only; production cannot select an auditor through flags or environment. */
 export async function nativeInterface(operations = {}) {
@@ -21,7 +21,8 @@ export async function nativeInterface(operations = {}) {
   return { inspect: module.inspectV2NativeReadiness, sources: module.V2_NATIVE_SOURCE_FILES, auditors: module.V2_NATIVE_AUDITOR_SOURCES };
 }
 export async function readContractBinding(root) {
-  const binding = { base: { path: CONTRACT_PATH, sha256: CONTRACT_SHA256 }, amendment: { path: AMENDMENT_PATH, sha256: AMENDMENT_SHA256 } };
+  const binding = { base: { path: CONTRACT_PATH, sha256: CONTRACT_SHA256 }, amendment: { path: AMENDMENT_PATH, sha256: AMENDMENT_SHA256 },
+    permission: { path: PERMISSION_AMENDMENT_PATH, sha256: PERMISSION_AMENDMENT_SHA256 } };
   for (const item of Object.values(binding)) check(await fileDigest(resolve(root, item.path)) === item.sha256, "v2_contract_changed");
   return { contracts: binding, contractSha256: sha256(canonical(binding)) };
 }

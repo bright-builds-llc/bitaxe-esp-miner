@@ -4,10 +4,11 @@ import { BUNDLE, PAGE, readJson } from "../fixed-usb-qualification/contract.mjs"
 import { verifyArtifactSnapshot } from "../fixed-usb-qualification/snapshot.mjs";
 import { canonical, inventory, privateRoot, proof, protectedPath, retain, writeNew } from "../str005-noise-serial/files.mjs";
 import { requireNativeReadiness, validateSourcePath } from "./context-sources.mjs";
+import { validatePermissionCorrection } from "./permission-correction.mjs";
 import { check, object, sha256 } from "./values.mjs";
 
 /** Fresh thirteen-artifact snapshot, plus immutable source/native/fixture inputs. */
-export async function createSnapshot(root, context) {
+export async function createSnapshot(root, context, { permissionCorrection } = {}) {
   const files = [], manifest = await readJson(context.manifest);
   async function add(path, source) {
     const bytes = await readFile(source); await retain(resolve(root, "qualified-artifacts", path), bytes);
@@ -29,11 +30,14 @@ export async function createSnapshot(root, context) {
     check(sha256(bytes) === entry.sha256 && bytes.length === entry.length, "v2_evaluator_changed");
     await retain(resolve(root, "evaluator", entry.path), bytes);
   }
+  if (context.schema === "str005-v2-serial-context-v2") await writeNew(resolve(root, "permission-correction.json"),
+    validatePermissionCorrection(permissionCorrection, context));
   await verifySnapshot(root, context, { creating: true });
   await writeNew(resolve(root, "preflight-inventory.json"), { schema: "str005-v2-serial-preflight-inventory-v1", files: await inventory(root) });
 }
 export async function verifySnapshot(root, context, { creating = false } = {}) {
   await privateRoot(root); await verifyArtifactSnapshot(root, context);
+  if (context.schema === "str005-v2-serial-context-v2") validatePermissionCorrection((await proof(root, "permission-correction.json")).value, context);
   check(canonical((await proof(root, "native/readiness.json")).value) === canonical(context.native_readiness), "v2_native_snapshot_changed");
   requireNativeReadiness(context, context.native_readiness);
   object(context.cadence_observer, ["path", "sha256"]);
@@ -65,7 +69,7 @@ async function verifyPreflightInventory(root, context) {
   check(record.schema === "str005-v2-serial-preflight-inventory-v1" && Array.isArray(record.files), "v2_preflight_inventory");
   const artifact = (await proof(root, "artifact-snapshot.json")).value;
   const expected = new Set(["context.json", "artifact-snapshot.json", "observer/observer.bin", "observer/build-identity.json", "fixture/fixture.bin", "fixture/build-identity.json",
-    "native/readiness.json", "native/bitaxe-firmware.sdkconfig", ...artifact.files.map((item) => `qualified-artifacts/${item.path}`),
+    "native/readiness.json", "native/bitaxe-firmware.sdkconfig", ...(context.schema === "str005-v2-serial-context-v2" ? ["permission-correction.json"] : []), ...artifact.files.map((item) => `qualified-artifacts/${item.path}`),
     ...context.evaluator.map((item) => `evaluator/${item.path}`)]);
   for (const item of record.files) {
     object(item, ["path", "sha256", "length"]);

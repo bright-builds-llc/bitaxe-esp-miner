@@ -46,3 +46,21 @@ test("recovery accepts no reset, flash or historical attempt option", () => {
   assert.equal(parseArgs(["recover", "--private-root", "/private/channel-001"]).action, "recover");
   assert.throws(() => parseArgs(["recover", "--private-root", "/private/channel-001", "--attempt-root", "/old"]));
 });
+
+test("permission closure actions take only the source root and no effect inputs", () => {
+  // Arrange / Act / Assert
+  for (const action of ["close-permission", "review-permission"]) {
+    assert.equal(parseArgs([action, "--private-root", "/private/channel-001"]).action, action);
+    for (const flag of ["authority-directory", "cleanup-receipt", "endpoint", "supersede-permission", "output"])
+      assert.throws(() => parseArgs([action, "--private-root", "/private/channel-001", `--${flag}`, "/forbidden"]), { code: "v2_option_rejected" });
+  }
+});
+test("supersession is an optional Channel preflight path, never a Share or relative override", () => {
+  // Arrange / Act
+  const result = parseArgs([...preflight, "--supersede-permission", "/private/channel-001.permission-closure.json"]);
+  // Assert
+  assert.equal(result.options.supersedePermission, "/private/channel-001.permission-closure.json");
+  assert.throws(() => parseArgs([...preflight, "--supersede-permission", "relative.json"]), { code: "v2_permission_scope" });
+  const share = [...preflight]; share[2] = "share";
+  assert.throws(() => parseArgs([...share, "--supersede-permission", "/private/channel-001.permission-closure.json"]), { code: "v2_permission_scope" });
+});

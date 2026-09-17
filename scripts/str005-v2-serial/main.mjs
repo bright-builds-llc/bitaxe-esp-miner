@@ -9,6 +9,12 @@ import { check } from "./values.mjs";
 export async function main(argv, operations = {}) {
   const { action, options } = parseArgs(argv);
   check(action !== "recover", "v2_serial_recovery_unavailable");
+  if (["close-permission", "review-permission"].includes(action)) {
+    const module = await import("./permission-closure.mjs");
+    const result = await (action === "close-permission" ? module.closePermission : module.reviewPermission)(options.privateRoot, operations);
+    return { status: result.status, classification: result.classification, hardware_qualified: false, device_effects: false,
+      context_sha256: result.contextSha256, closure_sha256: result.closureSha256 };
+  }
   if (action === "preflight") return (await import("./context.mjs")).preflight(options, operations);
   if (action === "finalize") return (await import("./finalize.mjs")).finalize(options.privateRoot, options.cleanupReceipt, operations);
   if (action === "review") return (await import("./finalize.mjs")).review(options.privateRoot, operations);
