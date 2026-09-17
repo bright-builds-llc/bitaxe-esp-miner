@@ -33,9 +33,9 @@ pub use job_transition::{JobTransitionEvidence, JobTransitionState};
 pub use runtime::ProductionMiningSession;
 pub use types::{
     HardwareSafeStopPurpose, ProductionAsicFailure, ProductionPoolConfiguration,
-    ProductionPoolEndpoint, ProductionPoolSet, ProductionSessionEffect, ProductionSessionEvent,
-    ProductionSessionSnapshot, ProductionShareCounters, ProductionTransportEpoch,
-    ProductionTransportFailure,
+    ProductionPoolEndpoint, ProductionPoolSet, ProductionProtocolConfig, ProductionSessionEffect,
+    ProductionSessionEvent, ProductionSessionSnapshot, ProductionShareCounters,
+    ProductionTransportEpoch, ProductionTransportFailure, V2PoolConfig,
 };
 
 impl Default for ProductionMiningSession {

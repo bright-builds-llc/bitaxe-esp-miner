@@ -6,6 +6,7 @@ js_library(
     name = "tcp_payload_evaluator_sources",
     srcs = [
         "src/main.rs",
+        "src/cli.rs",
         "src/tcp_payload.rs",
         "src/tcp_payload_inventory.rs",
     ],
@@ -16,6 +17,7 @@ js_library(
     name = "noise_auth_evaluator_sources",
     srcs = [
         "src/main.rs",
+        "src/cli.rs",
         "src/noise_auth_inventory.rs",
         "src/noise_frame.rs",
     ],
@@ -26,6 +28,18 @@ rust_binary(
     name = "stratum_v2_fixture",
     srcs = [
         "src/main.rs",
+        "src/cli.rs",
+        "src/v2_serial.rs",
+        "src/v2_serial/input.rs",
+        "src/v2_serial/io.rs",
+        "src/v2_serial/job.rs",
+        "src/v2_serial/model.rs",
+        "src/v2_serial/oracle.rs",
+        "src/v2_serial/session.rs",
+        "src/v2_serial/wire.rs",
+        "src/v2_serial/tests.rs",
+        "src/v2_serial/tests/boundary.rs",
+        "src/v2_serial/tests/protocol.rs",
         "src/noise_serial.rs",
         "src/noise_serial/model.rs",
         "src/noise_serial/io.rs",
@@ -51,6 +65,7 @@ rust_binary(
         "@crates//:secp256k1",
         "@crates//:serde",
         "@crates//:serde_json",
+        "@crates//:sha2",
         "@crates//:zeroize",
     ],
 )
@@ -65,4 +80,35 @@ fixture_provenance(
     name = "noise_serial_build_identity",
     fixture = ":stratum_v2_fixture",
     visibility = ["//visibility:public"],
+)
+
+rust_test(
+    name = "v2_serial_test",
+    crate = ":stratum_v2_fixture",
+    args = ["v2_serial"],
+)
+
+fixture_provenance(
+    name = "v2_serial_build_identity",
+    fixture = ":stratum_v2_fixture",
+    writer = "//scripts:str005_v2_fixture_identity_writer",
+    output_name = "v2-serial-build-identity.json",
+    visibility = ["//visibility:public"],
+)
+
+js_library(
+    name = "v2_serial_evaluator_sources",
+    srcs = [
+        "Cargo.toml",
+        "BUILD.bazel",
+        "provenance.bzl",
+        "src/main.rs",
+        "src/cli.rs",
+        "src/v2_serial.rs",
+        "src/noise_serial.rs",
+        "src/noise_serial/inventory.rs",
+        "src/noise_serial/io.rs",
+        "src/noise_serial/model.rs",
+    ] + glob(["src/v2_serial/**/*.rs"]),
+    visibility = ["//scripts:__pkg__"],
 )

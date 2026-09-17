@@ -37,11 +37,13 @@ function terminalCall(instruction, reachable) {
  * Only selected functions are repaired; every reachable address must decode within its symbol.
  * The decoder is the exact bound native tool, never a handwritten instruction decoder.
  */
-export async function resolveNoiseInstructions(functions, disassembly, readRange) {
+export async function resolveNoiseInstructions(functions, disassembly, readRange,
+  { rootSymbols = ['bitaxe_noise_serial_owner_entry'], selectSymbol = selectedNoiseSymbol, compilerPrivateSpills = false } = {}) {
   const ordered = [...functions.values()].sort((a, b) => a.address - b.address);
   const rows = decode(disassembly), result = new Map(functions);
-  const candidates = ordered.filter(fn => fn.symbol === 'bitaxe_noise_serial_owner_entry');
-  check(candidates.length === 1, 'noise_native_decode_root');
+  const candidates = ordered.filter(fn => rootSymbols.includes(fn.symbol));
+  check(rootSymbols.length > 0 && new Set(rootSymbols).size === rootSymbols.length &&
+    rootSymbols.every(symbol => candidates.filter(fn => fn.symbol === symbol).length === 1), 'noise_native_decode_root');
   const completed = new Set();
   let ranges = 0, visited = 0;
   const unresolvedJumps = [];
@@ -85,7 +87,7 @@ export async function resolveNoiseInstructions(functions, disassembly, readRange
       }
       resolved = { ...fn, instructions: [...reachable.values()].sort((a, b) => a.address - b.address) };
       const edges = new Map();
-      for (const edge of noiseNativeCalls(resolved)) edges.set(edge.call_address, [...(edges.get(edge.call_address) ?? []), edge.target]);
+      for (const edge of noiseNativeCalls(resolved, { compilerPrivateSpills })) edges.set(edge.call_address, [...(edges.get(edge.call_address) ?? []), edge.target]);
       for (const [address, next] of provisional) {
         const candidates = edges.get(address);
         if (candidates?.length && candidates.every(target => noReturn(functions.get(target)?.symbol ?? ''))) continue;
@@ -94,9 +96,9 @@ export async function resolveNoiseInstructions(functions, disassembly, readRange
       }
     } while (pending.length);
     result.set(fn.address, resolved);
-    for (const edge of noiseNativeCalls(resolved)) {
+    for (const edge of noiseNativeCalls(resolved, { compilerPrivateSpills })) {
       const callee = functions.get(edge.target);
-      if (callee && selectedNoiseSymbol(callee.symbol)) candidates.push(callee);
+      if (callee && selectSymbol(callee.symbol)) candidates.push(callee);
     }
   }
   return { functions: result, supplementalRanges: ranges, unresolvedJumps };

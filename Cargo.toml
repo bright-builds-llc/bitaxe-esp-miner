@@ -76,3 +76,11 @@ esp-idf-sys = { git = "https://github.com/esp-rs/esp-idf-sys.git", rev = "f61656
 # Keep the application within the fixed 4 MiB slots without moving persistent partitions.
 [profile.release.package.bitaxe-firmware]
 opt-level = "z"
+
+# These bounded protocol/control crates share the firmware's size-oriented policy.
+# Native image and selected-stack gates qualify each resulting artifact.
+[profile.release.package.bitaxe-worker-control]
+opt-level = "z"
+
+[profile.release.package.bitaxe-stratum]
+opt-level = "z"

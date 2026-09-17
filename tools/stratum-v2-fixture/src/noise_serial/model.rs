@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 #[derive(Clone, Copy, Debug, Serialize)]
-pub(super) struct Cause {
+pub(crate) struct Cause {
     pub stage: &'static str,
     pub category: &'static str,
     pub detail: &'static str,
@@ -19,7 +19,7 @@ impl Cause {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct CandidateReceipt {
+pub(crate) struct CandidateReceipt {
     pub remote_port: u16,
     pub act_one_bytes: u16,
     pub read_outcome: &'static str,
@@ -27,7 +27,7 @@ pub(super) struct CandidateReceipt {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct Terminal {
+pub(crate) struct Terminal {
     pub schema: &'static str,
     pub attempt_id: String,
     pub outcome: &'static str,

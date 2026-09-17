@@ -1,4 +1,5 @@
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
+load("//tools/stratum-v2-fixture:provenance.bzl", "fixture_provenance")
 
 rust_library(
     name = "http_transport",
@@ -40,5 +41,13 @@ rust_binary(
     crate_name = "cadence_observer",
     edition = "2021",
     deps = [":http_transport"],
+    visibility = ["//visibility:public"],
+)
+
+fixture_provenance(
+    name = "v2_observer_build_identity",
+    fixture = ":cadence_observer",
+    output_name = "v2-observer-build-identity.json",
+    writer = "//scripts:str005_v2_observer_identity_writer",
     visibility = ["//visibility:public"],
 )

@@ -1,6 +1,9 @@
 mod asic;
 mod campaign_state;
+mod lifecycle;
+mod protocol;
 mod transport;
+mod v2;
 
 use super::asic_diagnostics::AsicBridgeDiagnosticsTracker;
 use super::campaign::{
@@ -33,6 +36,8 @@ pub struct ProductionMiningSession {
     pub(super) primary: Option<PoolRuntime>,
     pub(super) fallback: Option<PoolRuntime>,
     pub(super) bridge: BridgeOrchestrator,
+    pub(super) maybe_pending_v2_generation:
+        Option<(ProductionTransportEpoch, PoolSessionGeneration)>,
     pub(super) generation_cursor: PoolSessionGeneration,
     pub(super) transport_epoch_cursor: ProductionTransportEpoch,
     pub(super) maybe_primary_transport_epoch: Option<ProductionTransportEpoch>,
@@ -58,50 +63,11 @@ pub struct ProductionMiningSession {
 
 impl ProductionMiningSession {
     #[must_use]
-    pub fn new() -> Self {
-        Self {
-            recovery: RecoveryPolicy::new(),
-            maybe_pool_set: None,
-            primary: None,
-            fallback: None,
-            bridge: BridgeOrchestrator::new(2_000),
-            generation_cursor: PoolSessionGeneration::initial(),
-            transport_epoch_cursor: ProductionTransportEpoch::initial(),
-            maybe_primary_transport_epoch: None,
-            maybe_fallback_transport_epoch: None,
-            last_readiness: ProductionReadiness {
-                operator_intent: crate::v1::state::MiningOperatorIntent::Run,
-                network_ready: false,
-                stratum_v1_supported: false,
-                safety_prerequisites_fresh: false,
-                maybe_campaign_lease: None,
-                actuation_qualified: false,
-            },
-            hardware_state: MiningHardwareState::Unprepared,
-            campaign_state: MiningCampaignState::Unavailable,
-            maybe_lease: None,
-            maybe_consumed_lease_id: None,
-            maybe_prepared_at_ms: None,
-            maybe_activation_started_at_ms: None,
-            maybe_resumable_epoch_started_at_ms: None,
-            resumable_active_ms: 0,
-            maybe_active_since_ms: None,
-            resumable_pause_pending: false,
-            job_transition: JobTransitionTracker::default(),
-            asic_diagnostics: AsicBridgeDiagnosticsTracker::default(),
-            terminal_publication_pending: false,
-            maybe_retained_mining: None,
-            maybe_last_snapshot: None,
-            share_counters: super::types::ProductionShareCounters::default(),
-        }
-    }
-
-    #[must_use]
     pub fn snapshot(&self) -> ProductionSessionSnapshot {
         let projection = self.recovery.projection();
         let mut mining = self
             .maybe_runtime_for_projection(projection.maybe_active_pool)
-            .map(|session| session.runtime.state().clone())
+            .map(|session| session.protocol.state().clone())
             .or_else(|| self.maybe_retained_mining.clone())
             .unwrap_or_default();
         mining.set_operator_intent(self.last_readiness.operator_intent);
@@ -157,6 +123,46 @@ impl ProductionMiningSession {
             asic_bridge: self.asic_diagnostics.evidence(),
             mining,
             lifetime_share_counters: self.share_counters,
+        }
+    }
+
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            recovery: RecoveryPolicy::new(),
+            maybe_pool_set: None,
+            primary: None,
+            fallback: None,
+            bridge: BridgeOrchestrator::new(2_000),
+            maybe_pending_v2_generation: None,
+            generation_cursor: PoolSessionGeneration::initial(),
+            transport_epoch_cursor: ProductionTransportEpoch::initial(),
+            maybe_primary_transport_epoch: None,
+            maybe_fallback_transport_epoch: None,
+            last_readiness: ProductionReadiness {
+                operator_intent: crate::v1::state::MiningOperatorIntent::Run,
+                network_ready: false,
+                stratum_v1_supported: false,
+                safety_prerequisites_fresh: false,
+                maybe_campaign_lease: None,
+                actuation_qualified: false,
+            },
+            hardware_state: MiningHardwareState::Unprepared,
+            campaign_state: MiningCampaignState::Unavailable,
+            maybe_lease: None,
+            maybe_consumed_lease_id: None,
+            maybe_prepared_at_ms: None,
+            maybe_activation_started_at_ms: None,
+            maybe_resumable_epoch_started_at_ms: None,
+            resumable_active_ms: 0,
+            maybe_active_since_ms: None,
+            resumable_pause_pending: false,
+            job_transition: JobTransitionTracker::default(),
+            asic_diagnostics: AsicBridgeDiagnosticsTracker::default(),
+            terminal_publication_pending: false,
+            maybe_retained_mining: None,
+            maybe_last_snapshot: None,
+            share_counters: super::types::ProductionShareCounters::default(),
         }
     }
 
@@ -231,22 +237,83 @@ impl ProductionMiningSession {
                 transport_epoch,
                 failure,
                 now_ms,
-            } => match failure {
-                ProductionTransportFailure::Connect => {
-                    if self.maybe_pending_transport_epoch(pool) != Some(transport_epoch) {
-                        return Ok(effects);
-                    }
-                    self.take_pending_transport_epoch(pool);
-                    let actions = self.recovery.on_connection_result(pool, false, now_ms);
-                    self.apply_recovery_actions(actions, &mut effects)?;
+            } => {
+                let is_v2 = self
+                    .maybe_pool_set
+                    .as_ref()
+                    .and_then(|p| p.maybe_configuration(pool))
+                    .is_some_and(|c| {
+                        matches!(c.runtime, super::types::ProductionProtocolConfig::V2(_))
+                    });
+                if is_v2
+                    && (self.transport_epoch_is_active(pool, transport_epoch)
+                        || self.maybe_pending_transport_epoch(pool) == Some(transport_epoch))
+                {
+                    self.begin_terminal_safe_stop(
+                        Some(ProductionSessionBlocker::JobTransitionProtocolInconsistent),
+                        false,
+                        &mut effects,
+                    )?;
+                    return Ok(effects);
                 }
-                ProductionTransportFailure::Read | ProductionTransportFailure::Write => {
-                    if !self.transport_epoch_is_active(pool, transport_epoch) {
-                        return Ok(effects);
+                match failure {
+                    ProductionTransportFailure::Connect => {
+                        if self.maybe_pending_transport_epoch(pool) != Some(transport_epoch) {
+                            return Ok(effects);
+                        }
+                        self.take_pending_transport_epoch(pool);
+                        let actions = self.recovery.on_connection_result(pool, false, now_ms);
+                        self.apply_recovery_actions(actions, &mut effects)?;
                     }
-                    self.handle_transport_failure(pool, now_ms, &mut effects)?;
+                    ProductionTransportFailure::Read | ProductionTransportFailure::Write => {
+                        if !self.transport_epoch_is_active(pool, transport_epoch) {
+                            return Ok(effects);
+                        }
+                        self.handle_transport_failure(pool, now_ms, &mut effects)?;
+                    }
                 }
-            },
+            }
+            ProductionSessionEvent::FrameWritten {
+                pool,
+                transport_epoch,
+                sequence,
+                now_ms,
+            } => {
+                if self.transport_epoch_is_active(pool, transport_epoch) {
+                    if self
+                        .maybe_pool_runtime_mut(pool)
+                        .and_then(|r| r.protocol.maybe_v2_mut())
+                        .is_some_and(|v| v.session.written(sequence).is_err())
+                    {
+                        self.begin_terminal_safe_stop(
+                            Some(ProductionSessionBlocker::JobTransitionProtocolInconsistent),
+                            false,
+                            &mut effects,
+                        )?;
+                    }
+                    self.drive_bridge(now_ms, &mut effects)?;
+                }
+            }
+            ProductionSessionEvent::TransportFrame {
+                pool,
+                transport_epoch,
+                frame,
+                now_ms,
+            } => {
+                if !self.transport_epoch_is_active(pool, transport_epoch) {
+                    return Ok(effects);
+                }
+                self.apply_v2_frame(pool, frame, now_ms, &mut effects)?;
+                self.note_campaign_active(now_ms);
+                self.drive_bridge(now_ms, &mut effects)?;
+            }
+            ProductionSessionEvent::AsicDispatched {
+                generation,
+                job_id,
+                now_ms,
+            } => {
+                self.note_v2_dispatched(generation, job_id, now_ms, &mut effects)?;
+            }
             ProductionSessionEvent::TransportBytes {
                 pool,
                 transport_epoch,
@@ -385,112 +452,6 @@ impl ProductionMiningSession {
             self.maybe_last_snapshot = Some(snapshot.clone());
             effects.push(ProductionSessionEffect::Publish(Box::new(snapshot)));
         }
-    }
-
-    fn handle_wakeup(
-        &mut self,
-        wakeup: Option<ProductionSessionWakeup>,
-        readiness: ProductionReadiness,
-        now_ms: u64,
-        effects: &mut Vec<ProductionSessionEffect>,
-    ) -> Result<(), StratumV1Error> {
-        self.last_readiness = readiness;
-        let timing = MiningCampaignTiming {
-            maybe_prepared_at_ms: self.maybe_prepared_at_ms,
-            maybe_activation_started_at_ms: self.maybe_activation_started_at_ms,
-            maybe_resumable_epoch_started_at_ms: self.maybe_resumable_epoch_started_at_ms,
-            resumable_active_ms: self.resumable_active_ms,
-            maybe_active_since_ms: self.maybe_active_since_ms,
-        };
-        if let Some(expiration) = self
-            .maybe_lease
-            .and_then(|lease| lease.stop_condition().maybe_expiration(now_ms, timing))
-        {
-            let blocker = match expiration {
-                CampaignExpiration::ActivationTimedOut => {
-                    ProductionSessionBlocker::CampaignActivationTimedOut
-                }
-                CampaignExpiration::LeaseConsumed => {
-                    ProductionSessionBlocker::CampaignLeaseConsumed
-                }
-            };
-            return self.begin_terminal_safe_stop(Some(blocker), false, effects);
-        }
-        if matches!(wakeup, Some(ProductionSessionWakeup::ShutdownRequested)) {
-            return self.begin_terminal_safe_stop(None, true, effects);
-        }
-        if matches!(wakeup, Some(ProductionSessionWakeup::SettingsChanged))
-            && matches!(
-                self.hardware_state,
-                MiningHardwareState::Preparing | MiningHardwareState::Ready
-            )
-        {
-            return self.begin_terminal_safe_stop(
-                Some(ProductionSessionBlocker::CampaignLeaseConsumed),
-                false,
-                effects,
-            );
-        }
-        if let Some(blocker) = readiness.maybe_blocker() {
-            let actions = self.recovery.on_wakeup(wakeup, readiness, now_ms);
-            self.apply_recovery_actions(actions, effects)?;
-            self.resumable_pause_pending = blocker == ProductionSessionBlocker::OperatorPaused
-                && self
-                    .maybe_lease
-                    .is_some_and(|lease| lease.stop_condition().allows_operator_resume())
-                || self.is_resumable_reactivation_safety_lapse(blocker);
-            self.begin_hardware_safe_stop_if_needed(effects)?;
-            return Ok(());
-        }
-
-        let Some(lease) = readiness.maybe_campaign_lease else {
-            return Ok(());
-        };
-        if self
-            .maybe_consumed_lease_id
-            .is_some_and(|consumed| lease.id().raw() <= consumed.raw())
-        {
-            return self.begin_terminal_safe_stop(
-                Some(ProductionSessionBlocker::CampaignLeaseConsumed),
-                false,
-                effects,
-            );
-        }
-        if let Some(active_lease) = self.maybe_lease {
-            if active_lease.id() != lease.id() {
-                return self.begin_terminal_safe_stop(
-                    Some(ProductionSessionBlocker::CampaignLeaseConsumed),
-                    false,
-                    effects,
-                );
-            }
-        }
-
-        match self.hardware_state {
-            MiningHardwareState::Unprepared | MiningHardwareState::Stopped => {
-                self.maybe_lease = Some(lease);
-                self.maybe_activation_started_at_ms.get_or_insert(now_ms);
-                self.hardware_state = MiningHardwareState::Preparing;
-                self.campaign_state = MiningCampaignState::Preparing;
-                self.maybe_prepared_at_ms = None;
-                self.maybe_active_since_ms = None;
-                self.job_transition = JobTransitionTracker::default();
-                self.asic_diagnostics = AsicBridgeDiagnosticsTracker::default();
-                self.maybe_retained_mining = None;
-                effects.push(ProductionSessionEffect::PrepareHardware {
-                    lease_id: lease.id(),
-                    profile: lease.profile(),
-                });
-            }
-            MiningHardwareState::Ready => {
-                let actions = self.recovery.on_wakeup(wakeup, readiness, now_ms);
-                self.apply_recovery_actions(actions, effects)?;
-                self.note_campaign_active(now_ms);
-                self.drive_bridge(now_ms, effects)?;
-            }
-            MiningHardwareState::Preparing | MiningHardwareState::SafeStopping => {}
-        }
-        Ok(())
     }
 
     fn handle_hardware_prepared(

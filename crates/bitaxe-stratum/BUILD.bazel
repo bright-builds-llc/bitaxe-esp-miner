@@ -65,6 +65,7 @@ rust_library(
         "src/v1/production_session/runtime/campaign_state.rs",
         "src/v1/production_session/runtime/transport.rs",
         "src/v1/production_session/tests.rs",
+        "src/v1/production_session/tests/v2.rs",
         "src/v1/production_session/tests/block_found.rs",
         "src/v1/production_session/tests/bwg.rs",
         "src/v1/production_session/tests/campaign_timing.rs",
@@ -109,6 +110,13 @@ rust_library(
         "src/v2/session.rs",
         "src/v2/session/tests.rs",
         "src/v2/work.rs",
+        "src/v2/standard.rs",
+        "src/v2/standard/tests.rs",
+        "src/v2/standard_io.rs",
+        "src/v2/standard_io/tests.rs",
+        "src/v1/production_session/runtime/protocol.rs",
+        "src/v1/production_session/runtime/lifecycle.rs",
+        "src/v1/production_session/runtime/v2.rs",
     ],
     compile_data = glob(["fixtures/**"]),
     crate_name = "bitaxe_stratum",
@@ -132,4 +140,10 @@ rust_library(
 rust_test(
     name = "tests",
     crate = ":bitaxe_stratum",
+)
+
+js_library(
+    name = "v2_qualification_vectors",
+    srcs = ["fixtures/nonzero-version-known-answer/fixture.json"],
+    visibility = ["//scripts:__pkg__"],
 )

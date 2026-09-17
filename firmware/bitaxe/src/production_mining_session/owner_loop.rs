@@ -242,6 +242,11 @@ fn drive_session(
 
 fn effect_subphase(effect: &ProductionSessionEffect) -> TaskWatchdogOwnerSubphase {
     match effect {
+        ProductionSessionEffect::RecordV2Failure { .. }
+        | ProductionSessionEffect::RecordV2Frame { .. }
+        | ProductionSessionEffect::V2WorkReady { .. } => {
+            TaskWatchdogOwnerSubphase::SessionEvaluation
+        }
         ProductionSessionEffect::PrepareHardware { .. } => {
             TaskWatchdogOwnerSubphase::EffectPrepareHardware
         }
@@ -249,7 +254,8 @@ fn effect_subphase(effect: &ProductionSessionEffect) -> TaskWatchdogOwnerSubphas
             TaskWatchdogOwnerSubphase::EffectReadPoolConfiguration
         }
         ProductionSessionEffect::ConnectPool { .. } => TaskWatchdogOwnerSubphase::EffectConnectPool,
-        ProductionSessionEffect::WritePoolLine { .. } => {
+        ProductionSessionEffect::WritePoolLine { .. }
+        | ProductionSessionEffect::WritePoolFrame { .. } => {
             TaskWatchdogOwnerSubphase::EffectWritePoolLine
         }
         ProductionSessionEffect::ApplyVersionMask { .. } => {

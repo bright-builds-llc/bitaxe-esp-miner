@@ -28,8 +28,14 @@ impl ProductionMiningSession {
             return Ok(());
         }
 
-        let maybe_receipt = self
+        if self
             .maybe_pool_runtime_mut(active_pool)
+            .is_some_and(|p| p.protocol.maybe_v2_mut().is_some())
+        {
+            return self.handle_v2_nonce(active_pool, observation, now_ms, effects);
+        }
+        let maybe_receipt = self
+            .maybe_v1_pool_runtime_mut(active_pool)
             .map(|pool_runtime| {
                 pool_runtime
                     .runtime
@@ -84,6 +90,12 @@ impl ProductionMiningSession {
             .note_poll_completion(generation, completion, now_ms, is_current);
         if !is_current {
             return Ok(());
+        }
+        if let Some(v2) = maybe_active_pool
+            .and_then(|p| self.maybe_pool_runtime_mut(p))
+            .and_then(|p| p.protocol.maybe_v2_mut())
+        {
+            v2.poll_in_flight = false;
         }
         let _streak = self.bridge.note_poll_timeout();
         self.drive_bridge(now_ms, effects)

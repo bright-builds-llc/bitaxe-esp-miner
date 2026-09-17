@@ -15,6 +15,8 @@ function processObservation(value) {
     Number.isSafeInteger(value.started_at_unix_ms) && Number.isSafeInteger(value.finished_at_unix_ms) &&
     value.finished_at_unix_ms >= value.started_at_unix_ms, "noise_command_observation");
 }
+// Shared continuity facts retain their qualified readers; no Noise exchange authority is exported.
+export { detector as readFreshDetector, processObservation as validateCommandObservation };
 async function detector(root, index, operations) {
   const log = resolve(root, `install-${index}.detect.stdout.log`);
   await protectedPath(log);

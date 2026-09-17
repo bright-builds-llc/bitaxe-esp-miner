@@ -14,6 +14,7 @@ pub mod noise;
 mod restart;
 pub mod serial;
 mod session;
+pub mod v2;
 pub use restart::QualificationRestartContext;
 
 pub use authorization::{

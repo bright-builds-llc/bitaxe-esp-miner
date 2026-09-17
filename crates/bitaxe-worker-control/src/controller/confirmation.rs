@@ -9,6 +9,17 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             return Ok(());
         };
         match effect {
+            PreparedEffect::V2Observation {
+                generation,
+                scope,
+                observation,
+            } => {
+                if generation != self.generation {
+                    return Err(WorkerControlError::StaleResponse);
+                }
+                self.maybe_v2_observation = Some((scope, observation));
+            }
+            PreparedEffect::V2Dispatch { .. } => return Err(WorkerControlError::StaleResponse),
             PreparedEffect::NoiseObservation {
                 generation,
                 observation,
@@ -34,6 +45,8 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                     return Err(WorkerControlError::StaleResponse);
                 }
                 self.maybe_pending_admission_token = None;
+                self.maybe_v2_observation = None;
+                self.maybe_noise_observation = None;
                 self.authenticated_logical_session = true;
                 self.maybe_admission = Some(LogicalSessionAdmission {
                     generation,

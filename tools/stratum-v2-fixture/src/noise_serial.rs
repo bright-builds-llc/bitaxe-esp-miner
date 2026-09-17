@@ -1,8 +1,8 @@
 //! The new fixture is software-only until the independent Serial job is qualified.
 //! No historical fixture mode or evidence schema is changed here.
-mod inventory;
+pub(crate) mod inventory;
 mod io;
-mod model;
+pub(crate) mod model;
 #[cfg(test)]
 mod tests;
 
@@ -27,7 +27,7 @@ use self::model::{Cause, Terminal};
 use super::Args;
 
 // Polling consumers must never see an artifact while its JSON is still being written.
-fn write_serial_json(path: &Path, value: &impl Serialize) -> Result<()> {
+pub(crate) fn write_serial_json(path: &Path, value: &impl Serialize) -> Result<()> {
     let pending = path.with_extension("json.pending");
     let mut file = OpenOptions::new()
         .write(true)
@@ -107,7 +107,7 @@ fn lifetime_guard(deadline: Instant) -> mpsc::Sender<()> {
     sender
 }
 
-fn generate_serial_authority() -> Result<(Zeroizing<[u8; 32]>, [u8; 32])> {
+pub(crate) fn generate_serial_authority() -> Result<(Zeroizing<[u8; 32]>, [u8; 32])> {
     let secp = Secp256k1::new();
     let mut rng = OsRng;
     for _ in 0..16 {
@@ -116,9 +116,11 @@ fn generate_serial_authority() -> Result<(Zeroizing<[u8; 32]>, [u8; 32])> {
         let Ok(mut secret) = SecretKey::from_slice(private.as_ref()) else {
             continue;
         };
-        let keypair = Keypair::from_secret_key(&secp, &secret);
+        let mut keypair = Keypair::from_secret_key(&secp, &secret);
         secret.non_secure_erase();
-        return Ok((private, keypair.x_only_public_key().0.serialize()));
+        let public = keypair.x_only_public_key().0.serialize();
+        keypair.non_secure_erase();
+        return Ok((private, public));
     }
     bail!("noise_serial_authority_failed")
 }

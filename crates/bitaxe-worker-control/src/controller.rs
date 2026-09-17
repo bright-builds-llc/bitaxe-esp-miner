@@ -3,11 +3,13 @@ mod response_types;
 use response_types::PreparedEffect;
 pub use response_types::PreparedResponse;
 mod cooling;
+mod frame;
 mod inspection;
 mod noise;
 mod probe;
 mod restart;
 mod status;
+mod v2;
 mod wire;
 use status::response;
 
@@ -128,6 +130,8 @@ pub struct WorkerControl<V, S> {
     maybe_cleanup_reason: Option<RestorationReason>,
     restoration: RestorationState,
     maybe_last_monotonic_milliseconds: Option<u64>,
+    maybe_v2_observation: Option<(crate::v2::Scope, crate::v2::CurrentObservation)>,
+    maybe_v2_generation: Option<u64>,
     maybe_noise_observation: Option<crate::noise::NoiseObservation>,
     maybe_noise_generation: Option<u64>,
 }
@@ -176,6 +180,8 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             restoration: initial_restoration
                 .map_or(RestorationState::NotRequired, RestorationState::Confirmed),
             maybe_last_monotonic_milliseconds: None,
+            maybe_v2_observation: None,
+            maybe_v2_generation: None,
             maybe_noise_observation: None,
             maybe_noise_generation: None,
         })
@@ -186,7 +192,9 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         &mut self,
         binding: crate::serial::SerialSessionBinding,
     ) -> Result<(), WorkerControlError> {
-        if self.maybe_active.is_some() || self.effect_cleanup_required {
+        if (self.maybe_active.is_some() || self.effect_cleanup_required)
+            && !self.pending_v2_cleanup()
+        {
             return Err(WorkerControlError::InvalidTransition);
         }
         self.session
@@ -209,6 +217,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
 
     fn invalidate_session(&mut self) {
         self.maybe_noise_observation = None;
+        self.maybe_v2_observation = None;
         self.authenticated_logical_session = false;
         self.maybe_serial_binding = None;
         self.generation = self.generation.saturating_add(1);
@@ -232,32 +241,6 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
     #[must_use]
     pub const fn has_active_lease(&self) -> bool {
         self.maybe_active.is_some()
-    }
-
-    pub fn prepare_frame(
-        &mut self,
-        frame: &[u8],
-        monotonic_milliseconds: u64,
-    ) -> Result<PreparedResponse, WorkerControlError> {
-        self.session.noise_poll();
-        self.enforce_clock(monotonic_milliseconds)?;
-        let json = strict_json_frame(frame).map_err(|_| WorkerControlError::InvalidFrame)?;
-        let discriminator: FrameDiscriminator =
-            serde_json::from_str(json).map_err(classify_json_error)?;
-        if discriminator.profile.is_some() {
-            return self.prepare_possession(frame, monotonic_milliseconds);
-        }
-        let request: ControllerRequest =
-            serde_json::from_str(json).map_err(|_| WorkerControlError::InvalidRequest)?;
-        request.validate()?;
-        self.acknowledge_boot_restoration()?;
-        let is_probe = request.command == "transport_probe";
-        let prepared = self.prepare_controller(request, monotonic_milliseconds)?;
-        if is_probe {
-            self.session
-                .telemetry_cadence_probe_prepared(json.len(), prepared.frame.len() - 1);
-        }
-        Ok(prepared)
     }
 
     pub fn disconnect(&mut self, monotonic_milliseconds: u64) -> Result<(), WorkerControlError> {
@@ -301,11 +284,13 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             || self.seen_nonce_digests.contains(&nonce_digest)
             || self.seen_nonce_digests.len() >= MAXIMUM_SEEN_NONCES
             || self.maybe_pending_admission_token.is_some()
-            || self.maybe_active.is_some()
+            || (self.maybe_active.is_some() && !self.pending_v2_cleanup())
         {
             return Err(WorkerControlError::InvalidProof);
         }
-        self.acknowledge_boot_restoration()?;
+        if !self.pending_v2_cleanup() {
+            self.acknowledge_boot_restoration()?;
+        }
         self.seen_nonce_digests.push(nonce_digest);
         let response = self.identity.prove(
             &request,
@@ -332,6 +317,12 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         request: ControllerRequest,
         now: u64,
     ) -> Result<PreparedResponse, WorkerControlError> {
+        if matches!(
+            request.command.as_str(),
+            "stratum_v2_channel_start" | "stratum_v2_channel_cancel" | "stratum_v2_status"
+        ) {
+            return self.prepare_v2(&request, now);
+        }
         if self.session.noise_busy()
             && matches!(request.command.as_str(), "restore" | "pause" | "cancel")
         {
@@ -351,7 +342,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         ) {
             return self.prepare_noise(&request, now);
         }
-        if self.session.noise_busy()
+        if (self.session.noise_busy() || self.session.v2_scope_busy())
             && matches!(
                 request.command.as_str(),
                 "start_lease"
@@ -440,6 +431,9 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         if !grant.validate() {
             return Err(WorkerControlError::InvalidRequest);
         }
+        if grant.maybe_v2().is_some() {
+            self.validate_v2_share_observation()?;
+        }
         self.verifier
             .verify_start(&grant, &context)
             .map_err(|_| WorkerControlError::AuthenticationFailed)?;
@@ -453,6 +447,9 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             .mark_effect_pending()
             .map_err(|_| WorkerControlError::PersistenceFailed)?;
         self.effect_cleanup_required = true;
+        if grant.maybe_v2().is_some() {
+            self.maybe_v2_generation = Some(self.generation);
+        }
         self.maybe_active = Some(ActiveLease { grant, deadlines });
         self.restoration = RestorationState::Pending;
         let start_result = self
@@ -477,7 +474,14 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         now: u64,
     ) -> Result<Value, WorkerControlError> {
         let context = self.required_active_context()?.clone();
-        if !renewal.validate() {
+        if !renewal.validate()
+            || (self
+                .maybe_active
+                .as_ref()
+                .is_some_and(|a| a.grant.maybe_v2().is_some())
+                && (renewal.duration_milliseconds() != 60_000
+                    || renewal.renew_after_milliseconds() != 20_000))
+        {
             return Err(WorkerControlError::InvalidRequest);
         }
         let active = self
@@ -520,7 +524,9 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                 _ => crate::noise::NoiseDetail::CancelRequested,
             })
             .map_err(|_| WorkerControlError::SessionFailed)?;
-        self.maybe_admission = None;
+        if !self.session.v2_scope_busy() {
+            self.maybe_admission = None;
+        }
         self.maybe_pending_admission_token = None;
         self.maybe_cleanup_reason = Some(reason);
         self.restoration = RestorationState::Pending;
@@ -533,6 +539,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                 .map_err(|_| WorkerControlError::PersistenceFailed)?;
         }
         drop(self.maybe_active.take());
+        self.maybe_admission = None;
         self.effect_cleanup_required = false;
         self.maybe_cleanup_reason = None;
         self.restoration = RestorationState::Confirmed(reason);

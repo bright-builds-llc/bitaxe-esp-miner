@@ -20,12 +20,14 @@ use rand::{rngs::OsRng, RngCore};
 use secp256k1::{Keypair, Secp256k1, SecretKey};
 use serde::Serialize;
 
+mod cli;
 mod noise_auth_inventory;
 mod noise_frame;
 mod noise_serial;
 #[cfg(test)]
 mod tcp_payload;
 mod tcp_payload_inventory;
+mod v2_serial;
 
 #[cfg(test)]
 use noise_auth_inventory::inventory_noise_auth;
@@ -141,16 +143,14 @@ struct TerminalDocument<'a> {
 }
 
 fn main() -> Result<()> {
+    if let Some(result) = cli::maybe_v2_dispatch() {
+        return result;
+    }
     let args = Args::parse();
     if args.mode == FixtureMode::NoiseSerial {
         return noise_serial::run(&args);
     }
-    if args.attempt_id.is_some()
-        || args.read_timeout_seconds.is_some()
-        || args.lifetime_seconds.is_some()
-    {
-        bail!("serial-only fixture options require noise-serial mode");
-    }
+    cli::validate_legacy_options(&args)?;
     validate_bounds(&args)?;
     create_private_root(&args.private_root)?;
     let mut progress = FixtureProgress::default();

@@ -103,7 +103,14 @@ pub(crate) fn permits_work(permit: WorkPermit) -> bool {
 }
 
 pub(crate) fn begin_dispatch(permit: WorkPermit, now_ms: u64) -> bool {
-    GATE.begin_dispatch(permit, now_ms)
+    let (admitted, maybe_arming) = GATE.begin_dispatch_observed(permit, now_ms);
+    #[cfg(target_os = "espidf")]
+    if let Some((generation, epoch_ms, limit_ms)) = maybe_arming {
+        crate::v2_serial_runtime::budget_armed(generation, epoch_ms, limit_ms);
+    }
+    #[cfg(not(target_os = "espidf"))]
+    let _observation = maybe_arming;
+    admitted
 }
 pub(crate) fn note_asic_halted(now_ms: u64) {
     GATE.note_asic_halted(now_ms);

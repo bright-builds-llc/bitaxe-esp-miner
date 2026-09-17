@@ -16502,3 +16502,44 @@ and task completion follow the combined result or truthful stop. Preserve these
 unchecked execution items and all historical ordinals/plans; no device effect,
 allowance or parity claim was produced by supersession. Archived task IDs remain
 unavailable for effect admission.
+
+
+### task-str005-v2-admission-clock-amendment | 2026-09-16 | Preserve the real V2 reservation clock
+
+Status: Complete: published specification and implementation binding verified.
+No runtime effects were authorized or performed by this amendment.
+
+Depends on: published `task-str005-v2-serial-qualification` contract at
+`6a4a45f8`; its implementation remains incomplete and no new reservation exists.
+
+- [x] Define the existing first guarded-dispatch arming behavior with a truthful
+      nullable Share diagnostic deadline, without moving a budget or lease clock.
+- [x] Review the exact nullable/immutable transition, millisecond provenance,
+      pre-work failures and unchanged fixture/safety bounds with runtime/Gate owners.
+- [x] Publish the [narrow amendment](docs/hardware/str005-v2-serial-clock-amendment.md).
+- [x] Bind both contract digests and the amended producer/parser behavior in
+      implementation source/admission; verify the native clock transition tests.
+- [x] Run ordered Cargo and documentation/reference/privacy/standards checks;
+      preserve contract/evidence bytes, validate task IDs and unchanged parity.
+
+Authorization: specification and software verification only. This amendment
+issues no grant, reservation, network request to the device or hardware effect.
+
+Verification | 2026-09-16: Runtime, Gate and fixture reviewers found no
+remaining clock/interface contradiction. Ordered Cargo format/Clippy/build/tests
+passed on the exact documentation commit base in an isolated checkout; reference,
+redaction and read-only parity/progress checks passed after initializing that
+checkout's pinned nested reference dependency. Main implementation remains
+unfinished and was excluded from this documentation verification.
+
+Completion review | 2026-09-16: Both immutable contract digests now bind the
+V2 preflight context, source snapshot and validator. Runtime tests cover a null
+pre-work deadline, first guarded-dispatch arming, immutable absolute deadlines,
+clock errors and pre-work failures. The production Gate parser accepts all nine
+current Rust serializer cases. Ordered Cargo checks pass (2346 tests, three
+existing ignored); Gate's 778 web tests and final headless conformance pass.
+Gate implementation is published at `9251a1f1fbacb35093db0dc0a75a1a87206abcb0`.
+Native preview 8 retains the fixed stacks and sufficient selected-path margins.
+No lease, reservation, heartbeat limit or durable charge was changed. The main
+qualification task retains exact clean-package publication and both hardware
+scopes; these software results grant no independent effect authority.

@@ -252,7 +252,8 @@ fn read_pool_configuration(
             model: model.to_owned(),
             version: version.to_owned(),
             credentials: LivePoolCredentials { username, password },
-        },
+        }
+        .into(),
     }))
 }
 

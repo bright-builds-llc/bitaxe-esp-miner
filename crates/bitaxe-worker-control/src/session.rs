@@ -32,6 +32,25 @@ pub trait LeaseAuthorizationVerifier {
 
 /// Sole mining-owner adapter; implementations must keep supplied credentials volatile.
 pub trait WorkerSession {
+    fn v2_status(
+        &self,
+        _scope: crate::v2::Scope,
+    ) -> Result<Option<crate::v2::V2Status>, WorkerSessionError> {
+        Ok(None)
+    }
+    fn v2_admit(
+        &mut self,
+        _input: crate::v2::ChannelStart,
+    ) -> Result<crate::v2::V2Status, WorkerSessionError> {
+        Err(WorkerSessionError::Rejected)
+    }
+    fn v2_dispatch(&mut self) -> Result<(), WorkerSessionError> {
+        Err(WorkerSessionError::Rejected)
+    }
+    fn v2_cancel(&mut self) -> Result<(), WorkerSessionError> {
+        Ok(())
+    }
+
     /// Current authenticated native observation; no endpoint discovery or effects.
     fn noise_observation(
         &self,
@@ -63,6 +82,10 @@ pub trait WorkerSession {
     /// Supervises deadlines and only joins an actually completed worker.
     fn noise_poll(&mut self) {}
     /// Remains true through failed cleanup until native resources actually release.
+    /// Separate resource fence: active signed work can still report and renew.
+    fn v2_scope_busy(&self) -> bool {
+        false
+    }
     fn noise_busy(&self) -> bool {
         false
     }

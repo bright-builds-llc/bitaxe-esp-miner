@@ -71,3 +71,91 @@ test('unreachable padding resembling loop instructions never becomes executable 
 test('a reachable unknown loop bound fails instead of truncating analysis', () => {
   assert.throws(() => noiseNativeCalls(fn([[0x100, 'entry', 'a1, 32'], [0x103, 'loop', 'a2, 500 <elsewhere>']])), /noise_native_loop_unknown/u);
 });
+
+const privateCalls = rows => noiseNativeCalls(fn(rows), { compilerPrivateSpills: true });
+const hasSpill = rows => privateCalls(rows).some(edge => edge.target === 0x200 && edge.call_address === 0x122);
+const restore = [[0x116, 'l32r', 'a8, 80 <literal> (200 <callee>)'], [0x119, 's32i.n', 'a8, a1, 16']];
+
+test('private mode preserves an unexposed spill across an external store and loopback', () => {
+  const rows = [...spill, [0x110, 's32i.n', 'a2, a3, 0'], [0x113, 'bnez.n', 'a2, 110 <loop>'], ...finish];
+  assert(hasSpill(rows));
+  assert.deepEqual(noiseNativeCalls(fn(rows)), []);
+});
+test('private mode preserves a lower spill when a separate later stack buffer escaped', () => {
+  assert(hasSpill([...spill, [0x110, 'addi', 'a10, a1, 24'], [0x113, 'callx8', 'a9'],
+    [0x116, 's32i.n', 'a2, a3, 0'], ...finish]));
+});
+test('unknown calls cannot mutate private locals that were never exposed', () => {
+  assert(hasSpill([...spill, [0x110, 'callx8', 'a9'], ...finish]));
+});
+test('an externally stored stack pointer permanently exposes the spill tail', () => {
+  assert(!hasSpill([...spill, [0x10a, 'addi', 'a2, a1, 16'], [0x10d, 's32i.n', 'a2, a3, 0'],
+    ...restore, [0x11c, 's32i.n', 'a4, a5, 0'], ...finish]));
+});
+test('call exposure cannot be undone by restoring a literal into the same slot', () => {
+  assert(!hasSpill([...spill, [0x110, 'addi', 'a10, a1, 16'], [0x113, 'callx8', 'a9'],
+    ...restore, [0x11c, 'callx8', 'a9'], ...finish]));
+});
+test('passing a pointer-bearing local exposes its recursively reachable lower slot', () => {
+  assert(!hasSpill([...spill, [0x10a, 'addi', 'a2, a1, 16'], [0x10d, 's32i.n', 'a2, a1, 24'],
+    [0x110, 'addi', 'a10, a1, 24'], [0x113, 'callx8', 'a9'], ...finish]));
+});
+test('nested pointer spills are traversed before any facts are invalidated', () => {
+  assert(!hasSpill([...spill, [0x10a, 'addi', 'a2, a1, 16'], [0x10d, 's32i.n', 'a2, a1, 24'],
+    [0x110, 'addi', 'a2, a1, 24'], [0x113, 's32i.n', 'a2, a1, 32'],
+    [0x116, 'addi', 'a10, a1, 32'], [0x119, 'callx8', 'a9'], ...finish]));
+});
+test('pointer cycles terminate and still expose every reachable tail', () => {
+  assert(!hasSpill([...spill, [0x10a, 'addi', 'a2, a1, 24'], [0x10d, 's32i.n', 'a2, a1, 32'],
+    [0x110, 'addi', 'a2, a1, 16'], [0x113, 's32i.n', 'a2, a1, 24'],
+    [0x116, 'addi', 'a10, a1, 32'], [0x119, 'callx8', 'a9'], ...finish]));
+});
+test('a pointer written into a previously exposed local exposes its pointee immediately', () => {
+  assert(!hasSpill([...spill, [0x10a, 'addi', 'a10, a1, 24'], [0x10d, 'callx8', 'a9'],
+    [0x110, 'addi', 'a2, a1, 16'], [0x113, 's32i.n', 'a2, a1, 24'], ...finish]));
+});
+test('a nullable stack pointer stored externally cannot be classified as a heap value', () => {
+  assert(!hasSpill([...spill, [0x10a, 'movi.n', 'a2, 0'], [0x10c, 'bnez.n', 'a3, 112 <join>'],
+    [0x10e, 'addi', 'a2, a1, 16'], [0x112, 's32i.n', 'a2, a3, 0'], ...finish]));
+});
+test('exposure from either branch persists at joins and loop backedges', () => {
+  assert(!hasSpill([...spill, [0x10a, 'bnez.n', 'a3, 116 <restore>'],
+    [0x10d, 'addi', 'a2, a1, 16'], [0x110, 's32i.n', 'a2, a3, 0'], ...restore,
+    [0x11c, 'bnez.n', 'a3, 10a <loop>'], ...finish]));
+});
+test('partial pointer loads retain possible stack provenance', () => {
+  assert(!hasSpill([...spill, [0x10a, 'addi', 'a2, a1, 16'], [0x10d, 's32i.n', 'a2, a1, 24'],
+    [0x110, 'l8ui', 'a10, a1, 25'], [0x113, 'callx8', 'a9'], ...finish]));
+});
+test('unknown stack-derived arithmetic cannot become an external nonaliasing address', () => {
+  assert(!hasSpill([...spill, [0x10a, 'addi', 'a2, a1, 16'], [0x10d, 'xor', 'a3, a2, a4'],
+    [0x110, 's32i.n', 'a5, a3, 0'], ...finish]));
+});
+test('a conditional move retains a possible previous stack destination', () => {
+  assert(!hasSpill([...spill, [0x10a, 'addi', 'a10, a1, 16'], [0x10d, 'movnez', 'a10, a2, a3'],
+    [0x110, 'callx8', 'a9'], ...finish]));
+});
+test('an exposed byte overlapping the end of a spill invalidates all four bytes', () => {
+  assert(!hasSpill([...spill, [0x110, 'addi', 'a10, a1, 19'], [0x113, 'callx8', 'a9'], ...finish]));
+});
+test('unsupported conditional stores fail closed in private mode', () => {
+  assert(!hasSpill([...spill, [0x110, 's32c1i', 'a2, a3, 0'], ...restore, ...finish]));
+});
+test('unsupported register-bank transfers cannot launder stack provenance', () => {
+  assert(!hasSpill([...spill, [0x110, 'wfr', 'f0, a1'], ...restore, ...finish]));
+});
+test('a caller-owned slot beyond the entry frame is not a private compiler spill', () => {
+  const rows = spill.map(row => row[1] === 'entry' ? [row[0], row[1], 'a1, 16'] : row);
+  assert(!hasSpill([...rows, [0x110, 's32i.n', 'a2, a3, 0'], ...finish]));
+});
+
+test('a nullable local load cannot launder a pointer to an earlier private spill', () => {
+  assert(!hasSpill([...spill, [0x10a, 'addi', 'a2, a1, 16'], [0x10d, 's32i.n', 'a2, a1, 24'],
+    [0x110, 'movi.n', 'a3, 0'], [0x112, 'bnez.n', 'a5, 118 <join>'],
+    [0x115, 'addi', 'a3, a1, 24'], [0x118, 'l32i.n', 'a4, a3, 0'],
+    [0x11b, 's32i.n', 'a5, a4, 0'], ...finish]));
+});
+test('an inexact stack address plus a positive offset cannot narrow possible aliasing', () => {
+  assert(!hasSpill([...spill, [0x110, 'sub', 'a3, a1, a4'],
+    [0x113, 's32i.n', 'a2, a3, 100'], ...finish]));
+});

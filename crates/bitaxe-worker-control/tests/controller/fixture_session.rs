@@ -1,6 +1,53 @@
 use super::*;
 
 impl WorkerSession for FakeSession {
+    fn v2_status(
+        &self,
+        scope: bitaxe_worker_control::v2::Scope,
+    ) -> Result<Option<bitaxe_worker_control::v2::V2Status>, WorkerSessionError> {
+        let record = self.maybe_v2.as_ref().map(|r| r.snapshot());
+        Ok(Some(bitaxe_worker_control::v2::V2Status {
+            schema: "worker-stratum-v2-status-v1",
+            scope,
+            state: record
+                .as_ref()
+                .map_or(bitaxe_worker_control::v2::State::Idle, |r| r.state),
+            observation: v2::observation(),
+            maybe_connection: None,
+            maybe_record: record,
+        }))
+    }
+    fn v2_admit(
+        &mut self,
+        input: bitaxe_worker_control::v2::ChannelStart,
+    ) -> Result<bitaxe_worker_control::v2::V2Status, WorkerSessionError> {
+        if self.maybe_v2.is_some() || self.maybe_noise.is_some() {
+            return Err(WorkerSessionError::Rejected);
+        }
+        self.maybe_v2 = bitaxe_worker_control::v2::V2Record::admit(
+            bitaxe_worker_control::v2::Scope::Channel,
+            input.attempt_id,
+            &v2::observation(),
+            Some(121_000_000),
+        );
+        self.events.push("v2_admitted");
+        self.v2_status(bitaxe_worker_control::v2::Scope::Channel)?
+            .ok_or(WorkerSessionError::Rejected)
+    }
+    fn v2_dispatch(&mut self) -> Result<(), WorkerSessionError> {
+        self.events.push("v2_dispatched");
+        Ok(())
+    }
+    fn v2_cancel(&mut self) -> Result<(), WorkerSessionError> {
+        if let Some(r) = self.maybe_v2.as_mut() {
+            r.fail(
+                bitaxe_worker_control::v2::Stage::Revoked,
+                bitaxe_worker_control::v2::FailureCategory::Authority,
+                Some(1_000_003),
+            );
+        }
+        Ok(())
+    }
     fn noise_observation(
         &self,
     ) -> Result<Option<bitaxe_worker_control::noise::NoiseObservation>, WorkerSessionError> {
@@ -59,8 +106,15 @@ impl WorkerSession for FakeSession {
         }
         Ok(())
     }
+    fn v2_scope_busy(&self) -> bool {
+        self.v2_cleanup_blocked
+    }
     fn noise_busy(&self) -> bool {
-        self.maybe_noise
+        self.maybe_v2.as_ref().is_some_and(|r| {
+            r.scope() == bitaxe_worker_control::v2::Scope::Channel
+                && r.snapshot().resources.fence_retained
+        }) || self
+            .maybe_noise
             .as_ref()
             .is_some_and(bitaxe_worker_control::noise::NoiseRecord::active)
     }
@@ -160,10 +214,22 @@ impl WorkerSession for FakeSession {
     }
     fn start(
         &mut self,
-        _grant: &WorkerLeaseGrant,
+        grant: &WorkerLeaseGrant,
         _deadlines: LeaseDeadlines,
     ) -> Result<(), WorkerSessionError> {
         self.events.push("start");
+        if grant.maybe_v2().is_some() {
+            self.maybe_v2 = bitaxe_worker_control::v2::V2Record::admit(
+                bitaxe_worker_control::v2::Scope::Share,
+                grant
+                    .maybe_qualification_attempt()
+                    .expect("validated allowance")
+                    .id()
+                    .to_owned(),
+                &v2::observation(),
+                None,
+            );
+        }
         if self.fail_start {
             Err(WorkerSessionError::Rejected)
         } else {
@@ -182,6 +248,9 @@ impl WorkerSession for FakeSession {
 
     fn safe_stop(&mut self, reason: RestorationReason) -> Result<(), WorkerSessionError> {
         self.events.push(reason.category());
+        if self.v2_cleanup_blocked {
+            return Err(WorkerSessionError::SafeStopFailed);
+        }
         if self.remaining_safe_stop_failures > 0 {
             self.remaining_safe_stop_failures -= 1;
             Err(WorkerSessionError::SafeStopFailed)

@@ -4,7 +4,7 @@ use std::io::Read;
 use std::net::{IpAddr, TcpListener, TcpStream};
 use std::time::{Duration, Instant};
 
-pub(super) fn select(
+pub(crate) fn select(
     listener: &TcpListener,
     expected: IpAddr,
     accept_deadline: Instant,
@@ -150,7 +150,7 @@ pub(super) fn select(
 }
 
 /// Includes connections arriving during responder/proof I/O in ownership rejection.
-pub(super) fn reject_later_peers(
+pub(crate) fn reject_later_peers(
     listener: &TcpListener,
     expected: IpAddr,
     receipt: &mut Terminal,

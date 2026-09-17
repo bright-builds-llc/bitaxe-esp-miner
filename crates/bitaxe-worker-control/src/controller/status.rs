@@ -37,7 +37,10 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
     }
 
     pub(super) fn status(&self, now: u64) -> Result<Value, WorkerControlError> {
-        if self.session.noise_busy() {
+        if self.session.noise_busy()
+            || (self.session.v2_scope_busy()
+                && (self.maybe_active.is_none() || self.maybe_cleanup_reason.is_some()))
+        {
             return Err(WorkerControlError::RestorationPending);
         }
         if let Some(active) = self.maybe_active.as_ref() {

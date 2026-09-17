@@ -1,4 +1,4 @@
-const OWNER_SOURCE: &str = include_str!("production_mining_session.rs");
+const OWNER_SOURCE: &str = concat!(include_str!("production_mining_session.rs"),include_str!("production_mining_session/inbox.rs"));
 const OWNER_LOOP_SOURCE: &str = include_str!("production_mining_session/owner_loop.rs");
 const OWNER_PROGRESS_SOURCE: &str = include_str!("production_mining_session/owner_progress.rs");
 const WORKER_SOURCE: &str = include_str!("production_mining_session/asic_worker.rs");

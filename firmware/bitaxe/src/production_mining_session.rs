@@ -6,6 +6,7 @@ mod campaign_status;
 pub(crate) mod cooling;
 pub(crate) mod cooling_core;
 mod hashrate;
+mod inbox;
 pub(crate) mod mining_progress;
 mod notifications;
 mod owner_loop;
@@ -164,103 +165,6 @@ impl OrdinaryEspProductionSessionAdapter {
     }
 
     // Keep a distinct inbox-mapping boundary for native code-size and stack audits.
-    #[inline(never)]
-    fn event_from_inbox(
-        &mut self,
-        message: OwnerInboxMessage,
-        now_ms: u64,
-        snapshot: &ProductionSessionSnapshot,
-        maybe_next_lease_id: Option<bitaxe_stratum::v1::production_session::MiningCampaignLeaseId>,
-    ) -> ProductionSessionEvent {
-        match message {
-            OwnerInboxMessage::Wake(wakeup) => {
-                self.wake_event(Some(wakeup), now_ms, snapshot, false)
-            }
-            OwnerInboxMessage::Transport(event) => match event {
-                PoolTransportEvent::Connected {
-                    pool,
-                    transport_epoch,
-                } => ProductionSessionEvent::TransportConnected {
-                    pool,
-                    transport_epoch,
-                    now_ms,
-                },
-                PoolTransportEvent::Failed {
-                    pool,
-                    transport_epoch,
-                    failure,
-                } => ProductionSessionEvent::TransportFailed {
-                    pool,
-                    transport_epoch,
-                    failure,
-                    now_ms,
-                },
-                PoolTransportEvent::Bytes {
-                    pool,
-                    transport_epoch,
-                    bytes,
-                } => ProductionSessionEvent::TransportBytes {
-                    pool,
-                    transport_epoch,
-                    bytes,
-                    now_ms,
-                },
-                PoolTransportEvent::Closed {
-                    pool,
-                    transport_epoch,
-                } => ProductionSessionEvent::TransportClosed {
-                    pool,
-                    transport_epoch,
-                    now_ms,
-                },
-            },
-            OwnerInboxMessage::Asic(event) => match event {
-                AsicWorkerEvent::Result { generation, result } => {
-                    ProductionSessionEvent::AsicResult {
-                        observation: ProductionNonceObservation {
-                            observed_generation: generation,
-                            result,
-                        },
-                        now_ms,
-                    }
-                }
-                AsicWorkerEvent::PollTimedOut { generation } => {
-                    ProductionSessionEvent::AsicPollTimedOut { generation, now_ms }
-                }
-                AsicWorkerEvent::PollCompleted {
-                    generation,
-                    completion,
-                } => ProductionSessionEvent::AsicPollCompleted {
-                    generation,
-                    completion,
-                    now_ms,
-                },
-                AsicWorkerEvent::RegisterRead {
-                    generation,
-                    read,
-                    observed_at_us,
-                } => {
-                    self.hashrate.observe(read, observed_at_us);
-                    ProductionSessionEvent::AsicPollCompleted {
-                        generation,
-                        completion: AsicPollCompletion::RegisterRead,
-                        now_ms,
-                    }
-                }
-                AsicWorkerEvent::Failed {
-                    generation,
-                    failure,
-                } => ProductionSessionEvent::AsicInteractionFailed {
-                    generation,
-                    failure,
-                    now_ms,
-                },
-            },
-            OwnerInboxMessage::Bwg(command) => {
-                self.event(command, now_ms, snapshot, maybe_next_lease_id)
-            }
-        }
-    }
 
     fn maybe_execute(
         &mut self,
@@ -396,13 +300,84 @@ impl OrdinaryEspProductionSessionAdapter {
                 pool,
                 transport_epoch,
                 endpoint,
+                protocol,
+                maybe_pool_generation,
+            } => {
+                let command = match protocol {
+                    bitaxe_stratum::v1::production_session::ProductionProtocolConfig::V1(_) => {
+                        PoolTransportCommand::Connect {
+                            transport_epoch,
+                            endpoint,
+                        }
+                    }
+                    bitaxe_stratum::v1::production_session::ProductionProtocolConfig::V2(
+                        config,
+                    ) => {
+                        let Some(generation) = maybe_pool_generation else {
+                            return Some(ProductionSessionEvent::TransportFailed {
+                                pool,
+                                transport_epoch,
+                                failure: ProductionTransportFailure::Connect,
+                                now_ms,
+                            });
+                        };
+                        let Some(ipv4) = bitaxe_worker_control::v2::private_ipv4(&endpoint.host)
+                        else {
+                            return Some(ProductionSessionEvent::TransportFailed {
+                                pool,
+                                transport_epoch,
+                                failure: ProductionTransportFailure::Connect,
+                                now_ms,
+                            });
+                        };
+                        PoolTransportCommand::ConnectV2 {
+                            transport_epoch,
+                            endpoint: std::net::SocketAddrV4::new(ipv4, endpoint.port),
+                            authority: config.authority,
+                            generation,
+                            permit: revocation::stamp(
+                                self.maybe_bwg_session.as_ref().map(|s| s.generation),
+                            ),
+                        }
+                    }
+                };
+                self.try_send_transport(
+                    pool,
+                    transport_epoch,
+                    ProductionTransportFailure::Connect,
+                    command,
+                    now_ms,
+                )
+            }
+            ProductionSessionEffect::RecordV2Failure {
+                message_type,
+                reason,
+            } => {
+                crate::v2_serial_runtime::protocol_rejected(message_type, reason);
+                None
+            }
+            ProductionSessionEffect::RecordV2Frame { frame } => {
+                crate::v2_serial_runtime::validated_frame(&frame);
+                None
+            }
+            ProductionSessionEffect::V2WorkReady { work, commitment } => {
+                crate::v2_serial_runtime::work_ready(work, commitment);
+                None
+            }
+            ProductionSessionEffect::WritePoolFrame {
+                pool,
+                transport_epoch,
+                frame,
             } => self.try_send_transport(
                 pool,
                 transport_epoch,
-                ProductionTransportFailure::Connect,
-                PoolTransportCommand::Connect {
+                ProductionTransportFailure::Write,
+                PoolTransportCommand::WriteFrame {
                     transport_epoch,
-                    endpoint,
+                    frame,
+                    permit: revocation::stamp(
+                        self.maybe_bwg_session.as_ref().map(|s| s.generation),
+                    ),
                 },
                 now_ms,
             ),

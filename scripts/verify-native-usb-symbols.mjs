@@ -32,9 +32,11 @@ const candidates = readdirSync(toolRoot, { withFileTypes: true })
 if (candidates.length !== 1) {
   throw new Error("native USB symbol verification requires one managed Xtensa nm");
 }
-const outcome = spawnSync(candidates[0], ["-g", elf], { encoding: "utf8" });
+// Rust's longer generic symbol names can exceed Node's default 1-MiB pipe
+// buffer even while the application remains within the fixed 4-MiB image slot.
+const outcome = spawnSync(candidates[0], ["-g", elf], { encoding: "utf8", maxBuffer: 8 * 1024 * 1024, timeout: 30000 });
 if (outcome.status !== 0) {
-  throw new Error("native USB symbol inspection failed");
+  throw new Error(`native USB symbol inspection failed: ${outcome.error?.code ?? outcome.status ?? outcome.signal}`);
 }
 
 const symbols = outcome.stdout

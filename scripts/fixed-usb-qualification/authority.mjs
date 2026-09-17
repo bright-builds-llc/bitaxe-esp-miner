@@ -3,12 +3,14 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { canonicalBase64, exactObject, ignored, nonce, protectedPath, QualificationError, requireCondition, WINDOW_MS } from "./contract.mjs";
 
-export function authorityCall(gateRoot, directory, operation, input, program = "bun") {
+export function authorityCall(gateRoot, directory, operation, input, program = "bun", { maybeEnvironment, maybeObserveExit } = {}) {
   return new Promise((resolveResult, reject) => {
     const args = [resolve(gateRoot, "scripts/worker-development-authority.ts"), operation, "--directory", directory];
     if (operation !== "public-trust") args.push("--input", "-");
     args.push("--output", "-");
-    const child = spawn(program, args, { cwd: gateRoot, stdio: ["pipe", "pipe", "pipe"] });
+    const began = performance.now();
+    const child = spawn(program, args, { cwd: gateRoot, stdio: ["pipe", "pipe", "pipe"],
+      ...(maybeEnvironment === undefined ? {} : { env: maybeEnvironment }) });
     let bytes = Buffer.alloc(0), overflow = false, stderrBytes = 0, inputFailed = false;
     const timer = setTimeout(() => child.kill("SIGKILL"), 10000);
     child.stdout.on("data", (chunk) => {
@@ -21,8 +23,13 @@ export function authorityCall(gateRoot, directory, operation, input, program = "
       if (stderrBytes > 65536) { overflow = true; child.kill("SIGKILL"); }
     });
     child.once("error", () => { clearTimeout(timer); reject(new QualificationError("authority_unavailable")); });
-    child.once("close", (code) => {
+    child.once("close", async (code, signal) => {
       clearTimeout(timer);
+      if (maybeObserveExit) {
+        try { await maybeObserveExit({ pid: child.pid ?? null, code, signal,
+          elapsedMs: Math.ceil(performance.now() - began), stdoutBytes: bytes.length, stderrBytes, overflow, inputFailed }); }
+        catch { reject(new QualificationError("authority_exit_evidence")); return; }
+      }
       if (code !== 0 || overflow || inputFailed) { reject(new QualificationError("authority_failed")); return; }
       try { resolveResult(JSON.parse(bytes.toString("utf8"))); }
       catch { reject(new QualificationError("authority_output")); }

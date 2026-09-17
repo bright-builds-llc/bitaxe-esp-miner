@@ -76,6 +76,10 @@ impl core::fmt::Debug for AsicWorkerCommand {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum AsicWorkerEvent {
+    Dispatched {
+        generation: PoolSessionGeneration,
+        job_id: bitaxe_asic::bm1366::work::Bm1366JobId,
+    },
     Result {
         generation: PoolSessionGeneration,
         result: Bm1366NonceResult,
@@ -101,6 +105,7 @@ pub(super) enum AsicWorkerEvent {
 impl core::fmt::Debug for AsicWorkerEvent {
     fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
+            Self::Dispatched { .. } => formatter.write_str("AsicWorkerEvent::Dispatched"),
             Self::Result { generation, .. } => formatter
                 .debug_struct("AsicWorkerEvent::Result")
                 .field("generation", generation)
@@ -174,16 +179,21 @@ impl AsicWorker {
                             command,
                         } => match executor.maybe_execute_guarded(command, &valid_jobs, permit) {
                             Ok(Some(result)) => {
+                                note_v2_dispatch(generation, command, &emit);
+                                crate::v2_serial_runtime::nonce_observed(generation, result);
                                 note_successful_dispatch(
                                     permit.maybe_generation(),
                                     crate::runtime_uptime::millis(),
                                 );
                                 emit(AsicWorkerEvent::Result { generation, result });
                             }
-                            Ok(None) => note_successful_dispatch(
-                                permit.maybe_generation(),
-                                crate::runtime_uptime::millis(),
-                            ),
+                            Ok(None) => {
+                                note_v2_dispatch(generation, command, &emit);
+                                note_successful_dispatch(
+                                    permit.maybe_generation(),
+                                    crate::runtime_uptime::millis(),
+                                );
+                            }
                             Err(_) => emit(AsicWorkerEvent::Failed {
                                 generation,
                                 failure: ProductionAsicFailure::Dispatch,
@@ -197,6 +207,7 @@ impl AsicWorker {
                             .try_read_production_result(&valid_jobs, slice_ms.min(50))
                         {
                             Ok(ProductionReadOutcome::JobNonce(result)) => {
+                                crate::v2_serial_runtime::nonce_observed(generation, result);
                                 emit(AsicWorkerEvent::Result { generation, result });
                             }
                             Ok(ProductionReadOutcome::Pending) => {
@@ -296,5 +307,20 @@ fn note_successful_dispatch(maybe_generation: Option<WorkerGeneration>, now_ms: 
     if let Some(generation) = maybe_generation {
         crate::telemetry_cadence::RECORDER
             .successful_dispatch(generation.raw(), crate::telemetry_cadence::now_us());
+    }
+}
+
+fn note_v2_dispatch(
+    generation: PoolSessionGeneration,
+    command: Bm1366ProductionCommand,
+    emit: &impl Fn(AsicWorkerEvent),
+) {
+    if let Bm1366ProductionCommand::SendProductionWork(payload) = command {
+        if crate::v2_serial_runtime::dispatched(generation, &payload) {
+            emit(AsicWorkerEvent::Dispatched {
+                generation,
+                job_id: payload.job_id(),
+            });
+        }
     }
 }

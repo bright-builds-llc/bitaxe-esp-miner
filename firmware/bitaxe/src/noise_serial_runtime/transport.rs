@@ -5,7 +5,7 @@ mod failure_projection;
 #[path = "transport/input.rs"]
 mod input;
 #[path = "transport/rng.rs"]
-mod rng;
+pub(crate) mod rng;
 pub(super) use input::{maybe_prepare, PreparedInput};
 
 pub(super) fn run(shared: &Shared, input: PreparedInput) {

@@ -398,7 +398,213 @@ js_test(
     entry_point = "fixed-usb-qualification/cadence-failure.test.mjs",
 )
 
-# Versioned Noise qualification sources and declared transitive evidence readers.
+js_binary(
+    name = "stratum_v2_serial",
+    chdir = "..",
+    data = [":str005_v2_serial_sources", ":host_stall_sources", "//tools/stratum-v2-fixture:v2_serial_build_identity", "//tools/http-transport:v2_observer_build_identity"],
+    entry_point = "str005-v2-serial/main.mjs",
+    visibility = ["//visibility:public"],
+)
+
+js_test(
+    name = "str005_v2_serial_cleanup_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/cleanup.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_client_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/client.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_context_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/context.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_finalize_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/finalize.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_host_resources_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/host-resources.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_journal_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/journal.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_judge_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/judge.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_main_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/main.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_predecessor_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/predecessor.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_protocol_judge_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/protocol-judge.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_safety_judge_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/safety-judge.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_share_routes_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/share-routes.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_signing_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/signing.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_authority_process_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/authority-process.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_observer_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/observer.test.mjs",
+)
+
+js_test(
+    name = "v2_native_paths_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "v2-native-paths.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_execution_inspect_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/execution-inspect.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_execution_routes_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/execution-routes.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_operator_execution_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/operator-execution.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_server_composition_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/server-composition.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_supervisor_cleanup_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/supervisor-cleanup.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_start_observation_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/start-observation.test.mjs",
+)
+
+# Versioned V2 qualification sources retain separate historical Noise readers.
+js_library(
+    name = "v2_projection_validator",
+    srcs = ["str005-v2-serial/projection.mjs", "str005-v2-serial/projection.d.mts", "str005-v2-serial/values.mjs"],
+    visibility = ["//visibility:public"],
+)
+
+js_library(
+    name = "str005_v2_serial_sources",
+    srcs = glob(["str005-v2-serial/*.mjs"]) + ["v2-native-paths.mjs", "v2-native-readiness.mjs"],
+    deps = [
+        ":str005_noise_serial_sources",
+        "//:str005_v2_serial_contract_inputs",
+        "//crates/bitaxe-stratum:v2_qualification_vectors",
+    ],
+)
+
+js_binary(
+    name = "str005_v2_fixture_identity_writer",
+    entry_point = "str005-v2-serial/build-identity.mjs",
+    data = [
+        "str005-v2-serial/values.mjs",
+        "str005-noise-serial/build-identity.mjs",
+    ],
+    visibility = ["//tools/stratum-v2-fixture:__pkg__"],
+)
+
+js_binary(
+    name = "str005_v2_observer_identity_writer",
+    entry_point = "str005-v2-serial/observer-build-identity.mjs",
+    data = [
+        "str005-v2-serial/values.mjs",
+        "str005-noise-serial/build-identity.mjs",
+    ],
+    visibility = ["//tools/http-transport:__pkg__"],
+)
+
+js_test(
+    name = "str005_v2_serial_contract_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/contract.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_device_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/device.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_job_proof_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/job-proof.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_private_pipe_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/private-pipe.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_fixture_owner_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/fixture-owner.test.mjs",
+)
+
 js_library(
     name = "str005_noise_serial_sources",
     srcs = glob(["str005-noise-serial/*.mjs"]) + ["noise-native-readiness.mjs", "noise-native-calls.mjs", "noise-native-disassembly.mjs", "owner-stack-audit.mjs", "telemetry-stack-audit.mjs"],

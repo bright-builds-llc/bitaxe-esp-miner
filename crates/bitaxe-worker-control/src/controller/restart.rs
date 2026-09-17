@@ -76,7 +76,8 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
     }
 
     fn require_restart_idle(&self) -> Result<(), WorkerControlError> {
-        if self.maybe_active.is_some()
+        if self.session.v2_scope_busy()
+            || self.maybe_active.is_some()
             || self.maybe_pending_admission_token.is_some()
             || self.effect_cleanup_required
             || self.boot_restoration_clear_required
@@ -93,6 +94,12 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         mut response: PreparedResponse,
         now: u64,
     ) -> Result<(), WorkerControlError> {
+        if matches!(
+            response.maybe_effect.as_ref(),
+            Some(PreparedEffect::V2Dispatch { .. })
+        ) {
+            return self.confirm_v2_dispatch(response, now);
+        }
         if matches!(
             response.maybe_effect.as_ref(),
             Some(PreparedEffect::NoiseDispatch { .. })

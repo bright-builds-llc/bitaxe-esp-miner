@@ -23,3 +23,7 @@ pub const CHANNEL_MESSAGE_FLAG: u16 = 0x8000;
 pub const MAX_FRAME_PAYLOAD: usize = 2_048;
 pub const MAX_MERKLE_BRANCHES: usize = 20;
 pub const PENDING_JOB_CAPACITY: usize = 8;
+
+pub mod standard;
+
+pub mod standard_io;

@@ -40,6 +40,9 @@ impl DeterministicProductionSessionAdapter {
         while let Some(event) = events.pop_front() {
             let event_now_ms = match &event {
                 ProductionSessionEvent::Wake { now_ms, .. }
+                | ProductionSessionEvent::FrameWritten { now_ms, .. }
+                | ProductionSessionEvent::TransportFrame { now_ms, .. }
+                | ProductionSessionEvent::AsicDispatched { now_ms, .. }
                 | ProductionSessionEvent::TransportConnected { now_ms, .. }
                 | ProductionSessionEvent::TransportFailed { now_ms, .. }
                 | ProductionSessionEvent::TransportBytes { now_ms, .. }
@@ -98,7 +101,11 @@ impl DeterministicProductionSessionAdapter {
                     ProductionSessionEffect::Publish(snapshot) => {
                         self.snapshots.push(snapshot.as_ref().clone());
                     }
-                    ProductionSessionEffect::ApplyVersionMask { .. }
+                    ProductionSessionEffect::RecordV2Failure { .. }
+                    | ProductionSessionEffect::RecordV2Frame { .. }
+                    | ProductionSessionEffect::V2WorkReady { .. }
+                    | ProductionSessionEffect::WritePoolFrame { .. }
+                    | ProductionSessionEffect::ApplyVersionMask { .. }
                     | ProductionSessionEffect::PollAsic { .. }
                     | ProductionSessionEffect::RecordScoreboard { .. }
                     | ProductionSessionEffect::RecordBlockFound
@@ -238,7 +245,8 @@ fn pool(host: &str) -> ProductionPoolConfiguration {
                 username: "synthetic-user".to_owned(),
                 password: "synthetic-secret".to_owned(),
             },
-        },
+        }
+        .into(),
     }
 }
 
@@ -352,3 +360,13 @@ mod restart;
 mod scoreboard;
 mod share_counters;
 mod terminal_expiry;
+
+fn v1_config(config: &mut ProductionPoolConfiguration) -> &mut LiveRuntimeConfig {
+    match &mut config.runtime {
+        ProductionProtocolConfig::V1(v) => v,
+        _ => panic!("V1 fixture"),
+    }
+}
+
+#[path = "tests/v2.rs"]
+mod v2;

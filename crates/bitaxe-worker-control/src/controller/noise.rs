@@ -16,6 +16,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                 || self.effect_cleanup_required
                 || self.boot_restoration_clear_required
                 || self.session.noise_busy()
+                || self.session.v2_scope_busy()
                 || matches!(self.restoration, RestorationState::Pending)
             {
                 return Err(WorkerControlError::InvalidTransition);

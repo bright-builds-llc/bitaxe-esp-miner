@@ -14,31 +14,16 @@ const SETTINGS: &str = include_str!("settings_adapter/stratum_v2.rs");
 mod stratum_v2_tcp_payload_replay;
 
 #[test]
-fn startup_selects_exactly_one_protocol_owner_before_fan_controller_start() {
+fn startup_selects_the_shared_owner_without_linking_retired_boot_v2() {
     // Arrange
-    let selector = STARTUP
-        .find("configured_protocol_plan")
-        .expect("protocol selector");
-    let v2_start = STARTUP
-        .find("stratum_v2_session::start")
-        .expect("V2 owner start");
-    let v1_start = STARTUP
-        .find("production_mining_session::start")
-        .expect("V1 owner start");
-    let fan_start = STARTUP
-        .find("fan_controller_runtime::start")
-        .expect("fan controller start");
-
+    let selector=STARTUP.find("configured_protocol_plan").expect("validated settings");
+    let owner=STARTUP.find("production_mining_session::start").expect("ordinary owner");
+    let fan=STARTUP.find("fan_controller_runtime::start").expect("fan owner");
     // Act / Assert
-    assert!(selector < v2_start);
-    assert!(selector < v1_start);
-    assert!(v2_start < fan_start);
-    assert!(v1_start < fan_start);
-    assert_eq!(STARTUP.matches("stratum_v2_session::start").count(), 1);
-    assert_eq!(
-        STARTUP.matches("production_mining_session::start").count(),
-        1
-    );
+    assert!(selector<owner && owner<fan);
+    assert_eq!(STARTUP.matches("production_mining_session::start").count(),1);
+    assert!(!STARTUP.contains("stratum_v2_session::start"));
+    assert!(!MAIN.contains("mod stratum_v2_session;"));
 }
 
 #[test]

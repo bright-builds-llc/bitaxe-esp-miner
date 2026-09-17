@@ -46,18 +46,21 @@ export function auditNoiseEntry(disassembly, ownerSource, transportSource) {
 }
 
 /** Explicit resolved crypto paths plus the borrowed worker callers; unknown paths are not certified. */
-export function auditBorrowedNoisePaths(disassembly, ownerSource, transportSource, borrowSource, resolvedFunctions) {
+export function auditBorrowedNoisePaths(disassembly, ownerSource, transportSource, borrowSource, resolvedFunctions, { compilerPrivateSpills = false } = {}) {
+  const calls = (fn) => nativeCalls(fn, { compilerPrivateSpills });
   const entry = auditNoiseEntry(disassembly, ownerSource, transportSource);
-  check(ownerSource.includes('.dispatch(owner_entry, job_completed)') && transportSource.includes('borrow.run_job()')
+  const registered = ownerSource.includes('.dispatch(owner_entry, job_completed)') ||
+    /\.dispatch\(\s*if owner\.external \{\s*crate::v2_serial_runtime::channel_entry\s*\} else \{\s*owner_entry\s*\},\s*job_completed,\s*\)/u.test(ownerSource);
+  check(registered && transportSource.includes('borrow.run_job()')
     && borrowSource.includes('(callbacks.run)();') && borrowSource.includes('(callbacks.complete)();'), 'noise_native_callback_binding');
   const functions = resolvedFunctions ?? parseNativeFunctions(disassembly), all = [...functions.values()];
   const one = symbol => { const found = all.filter(fn => fn.symbol === symbol); check(found.length === 1, 'noise_native_path_symbol'); return found[0]; };
   const loop = one('bitaxe_firmware::production_mining_session::transport::run_worker');
   const dispatch = one('bitaxe_firmware::production_mining_session::transport::borrow::NoiseBorrowWorker::run_job');
-  check(nativeCalls(loop).some(edge => edge.target === dispatch.address), 'noise_native_borrow_edge');
+  check(calls(loop).some(edge => edge.target === dispatch.address), 'noise_native_borrow_edge');
   const caller = (callee, symbol) => {
     const found = all.filter(fn => fn.symbol === symbol && fn.instructions.some(instruction => instruction.args.includes(`${callee.address.toString(16)} <`))
-      && nativeCalls(fn).some(edge => edge.target === callee.address));
+      && calls(fn).some(edge => edge.target === callee.address));
     check(found.length === 1, 'noise_native_thread_caller'); return found[0];
   };
   const backtrace = caller(loop, 'std::sys::backtrace::__rust_begin_short_backtrace');
@@ -71,7 +74,7 @@ export function auditBorrowedNoisePaths(disassembly, ownerSource, transportSourc
     check(observed.size < 4096, 'noise_native_selected_bound');
     active.add(fn.address); observed.add(fn.symbol);
     let longest = [];
-    for (const edge of nativeCalls(fn)) {
+    for (const edge of calls(fn)) {
       const target = functions.get(edge.target);
       if (target && selectedNoiseSymbol(target.symbol)) { const path = visit(target); if (total(path) > total(longest)) longest = path; }
     }
@@ -108,7 +111,7 @@ function artifact(manifest, kind, expectedPath) {
 }
 
 /** Read-only inspection of the exact canonical native package, before attempt assignment. */
-export async function inspectNoiseNativeReadiness({ firmwareRoot, manifestPath, expectedSourceCommit, expectedElfSha256 }) {
+export async function inspectNoiseNativeReadiness({ firmwareRoot, manifestPath, expectedSourceCommit, expectedElfSha256 }, { compilerPrivateSpills = false } = {}) {
   check(/^[a-f0-9]{40}$/u.test(expectedSourceCommit) && /^[a-f0-9]{64}$/u.test(expectedElfSha256), 'noise_native_identity');
   const root = await realpath(firmwareRoot);
   const canonical = await realpath(join(root, 'bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json'));
@@ -145,8 +148,8 @@ export async function inspectNoiseNativeReadiness({ firmwareRoot, manifestPath, 
       timeout: Math.max(1, Math.floor(decodeDeadline - performance.now())), maxBuffer: 1024 * 1024,
       env: { PATH: '/usr/bin:/bin', LANG: 'C', LC_ALL: 'C' },
     }); return value.stdout;
-  });
-  const noise = { ...auditBorrowedNoisePaths(disassembly, noiseSource, transportSource, borrowSource, decoded.functions),
+  }, { compilerPrivateSpills });
+  const noise = { ...auditBorrowedNoisePaths(disassembly, noiseSource, transportSource, borrowSource, decoded.functions, { compilerPrivateSpills }),
     supplementalRanges: decoded.supplementalRanges, unresolvedJumps: decoded.unresolvedJumps };
   const production = auditOwnerStack(disassembly, productionSource);
   const telemetry = auditTelemetryStack(disassembly, sdkconfig);

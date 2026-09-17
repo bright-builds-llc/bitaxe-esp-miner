@@ -33,14 +33,35 @@ impl ProductionMiningSession {
             return Ok(());
         };
 
-        let generation = self.allocate_generation();
-        let mut pool_runtime = PoolRuntime::new(
-            transport_epoch,
-            LiveStratumRuntime::new_with_generation(config.runtime, generation),
-        );
-        let _started = pool_runtime.runtime.start();
-        self.set_pool_runtime(pool, Some(pool_runtime));
-        self.drain_runtime_actions(pool, effects)
+        match config.runtime {
+            super::types::ProductionProtocolConfig::V1(runtime) => {
+                let generation = self.allocate_generation();
+                let mut pool_runtime = PoolRuntime::new(
+                    transport_epoch,
+                    LiveStratumRuntime::new_with_generation(runtime, generation),
+                );
+                if let Some(v1) = pool_runtime.protocol.maybe_v1_mut() {
+                    let _started = v1.runtime.start();
+                }
+                self.set_pool_runtime(pool, Some(pool_runtime));
+                self.drain_runtime_actions(pool, effects)
+            }
+            super::types::ProductionProtocolConfig::V2(runtime) => {
+                let Some((epoch, generation)) = self.maybe_pending_v2_generation.take() else {
+                    return Ok(());
+                };
+                if epoch != transport_epoch {
+                    return Ok(());
+                }
+                self.start_v2_pool(
+                    pool,
+                    transport_epoch,
+                    generation,
+                    runtime.session_config(&config.endpoint),
+                    effects,
+                )
+            }
+        }
     }
 
     pub(super) fn apply_transport_bytes(
@@ -51,13 +72,14 @@ impl ProductionMiningSession {
         now_ms: u64,
         effects: &mut Vec<ProductionSessionEffect>,
     ) -> Result<(), StratumV1Error> {
+        if !self.transport_epoch_is_active(pool, transport_epoch) {
+            return Ok(());
+        }
         let lines = {
-            let Some(pool_runtime) = self.maybe_pool_runtime_mut(pool) else {
+            let Some(pool_runtime) = self.maybe_v1_pool_runtime_mut(pool) else {
                 return Ok(());
             };
-            if pool_runtime.transport_epoch != transport_epoch {
-                return Ok(());
-            }
+
             match pool_runtime.framer.push(bytes) {
                 Ok(lines) => lines,
                 Err(_) => {
@@ -92,16 +114,16 @@ impl ProductionMiningSession {
         }
 
         let generation_before = self
-            .maybe_pool_runtime(pool)
+            .maybe_v1_pool_runtime(pool)
             .map(|runtime| runtime.runtime.production_registry().generation());
         let maybe_event = {
-            let Some(pool_runtime) = self.maybe_pool_runtime_mut(pool) else {
+            let Some(pool_runtime) = self.maybe_v1_pool_runtime_mut(pool) else {
                 return Ok(());
             };
             pool_runtime.runtime.maybe_apply_server_message(message)?
         };
         let generation_after = self
-            .maybe_pool_runtime(pool)
+            .maybe_v1_pool_runtime(pool)
             .map(|runtime| runtime.runtime.production_registry().generation());
         if generation_before != generation_after {
             // Upstream dispatches jobs and receives ASIC results in independent
@@ -173,7 +195,7 @@ impl ProductionMiningSession {
             return Ok(());
         };
         let maybe_kind = self
-            .maybe_pool_runtime_mut(pool)
+            .maybe_v1_pool_runtime_mut(pool)
             .and_then(|runtime| runtime.requests.remove(&request_id));
         let Some(kind) = maybe_kind else {
             return Ok(());
@@ -182,13 +204,13 @@ impl ProductionMiningSession {
         match kind {
             PendingRequestKind::Submit => {
                 let maybe_pending = self
-                    .maybe_pool_runtime_mut(pool)
+                    .maybe_v1_pool_runtime_mut(pool)
                     .and_then(|runtime| runtime.submits.remove(&request_id));
                 let Some(pending) = maybe_pending else {
                     return Ok(());
                 };
                 let current_generation = self
-                    .maybe_pool_runtime(pool)
+                    .maybe_v1_pool_runtime(pool)
                     .map(|runtime| runtime.runtime.production_registry().generation());
                 if current_generation != Some(pending.intent.generation) {
                     return Ok(());
@@ -198,7 +220,7 @@ impl ProductionMiningSession {
                     request_id,
                     SubmitResponseObservation::Response(response),
                 );
-                if let Some(runtime) = self.maybe_pool_runtime_mut(pool) {
+                if let Some(runtime) = self.maybe_v1_pool_runtime_mut(pool) {
                     runtime.runtime.record_submit_classification(classification);
                 }
                 match classification {
@@ -223,7 +245,7 @@ impl ProductionMiningSession {
             }
             PendingRequestKind::Runtime(kind) => {
                 let maybe_event = {
-                    let Some(pool_runtime) = self.maybe_pool_runtime_mut(pool) else {
+                    let Some(pool_runtime) = self.maybe_v1_pool_runtime_mut(pool) else {
                         return Ok(());
                     };
                     pool_runtime
@@ -258,11 +280,8 @@ impl ProductionMiningSession {
         effects.push(ProductionSessionEffect::BlockSubmissions);
         let replacement_generation = self.allocate_generation();
         if let Some(fallback) = self.fallback.as_mut() {
-            fallback.runtime.invalidate_for_session_replacement();
-            fallback.runtime.rebase_generation(replacement_generation);
-            fallback.requests.clear();
-            fallback.submits.clear();
-            fallback.framer.clear();
+            fallback.protocol.invalidate();
+            fallback.protocol.rebase(replacement_generation);
         }
         effects.push(ProductionSessionEffect::InvalidateWorkAndSubmissions);
         effects.push(ProductionSessionEffect::StopAsicInteraction);
@@ -291,10 +310,7 @@ impl ProductionMiningSession {
         if maybe_active_pool.is_some() {
             if let Some(mut runtime) = self.maybe_take_pool_runtime(pool) {
                 let transport_epoch = runtime.transport_epoch;
-                runtime.runtime.invalidate_for_session_replacement();
-                runtime.requests.clear();
-                runtime.submits.clear();
-                runtime.framer.clear();
+                runtime.protocol.invalidate();
                 effects.push(ProductionSessionEffect::ClosePoolConnection {
                     pool,
                     transport_epoch,
@@ -317,11 +333,8 @@ impl ProductionMiningSession {
         };
         let transport_epoch = runtime.transport_epoch;
         let replacement_generation = self.allocate_generation();
-        runtime.runtime.invalidate_for_session_replacement();
-        runtime.runtime.rebase_generation(replacement_generation);
-        runtime.requests.clear();
-        runtime.submits.clear();
-        runtime.framer.clear();
+        runtime.protocol.invalidate();
+        runtime.protocol.rebase(replacement_generation);
         self.bridge.invalidate_session();
         self.asic_diagnostics.note_session_invalidation();
         effects.push(ProductionSessionEffect::BlockSubmissions);
@@ -354,8 +367,13 @@ impl ProductionMiningSession {
                         .maybe_pool_set
                         .as_ref()
                         .and_then(|set| set.maybe_configuration(pool))
-                        .map(|configuration| configuration.endpoint.clone());
-                    let Some(endpoint) = maybe_endpoint else {
+                        .map(|configuration| {
+                            (
+                                configuration.endpoint.clone(),
+                                configuration.runtime.clone(),
+                            )
+                        });
+                    let Some((endpoint, protocol)) = maybe_endpoint else {
                         continue;
                     };
                     if let Some(previous_epoch) = self.take_pending_transport_epoch(pool) {
@@ -366,10 +384,20 @@ impl ProductionMiningSession {
                     }
                     let transport_epoch = self.allocate_transport_epoch();
                     self.set_pending_transport_epoch(pool, transport_epoch);
+                    let maybe_pool_generation =
+                        if matches!(protocol, super::types::ProductionProtocolConfig::V2(_)) {
+                            let generation = self.allocate_generation();
+                            self.maybe_pending_v2_generation = Some((transport_epoch, generation));
+                            Some(generation)
+                        } else {
+                            None
+                        };
                     effects.push(ProductionSessionEffect::ConnectPool {
                         pool,
                         transport_epoch,
                         endpoint,
+                        protocol,
+                        maybe_pool_generation,
                     });
                 }
                 RecoveryAction::BlockSubmissions => {
@@ -377,9 +405,7 @@ impl ProductionMiningSession {
                         .into_iter()
                         .flatten()
                     {
-                        runtime
-                            .runtime
-                            .block_work_submission("production_session_safe_stop");
+                        runtime.protocol.block();
                     }
                     effects.push(ProductionSessionEffect::BlockSubmissions);
                 }
@@ -390,11 +416,8 @@ impl ProductionMiningSession {
                         }
                         let replacement_generation = self.allocate_generation();
                         if let Some(runtime) = self.maybe_pool_runtime_mut(pool) {
-                            runtime.runtime.invalidate_for_session_replacement();
-                            runtime.runtime.rebase_generation(replacement_generation);
-                            runtime.requests.clear();
-                            runtime.submits.clear();
-                            runtime.framer.clear();
+                            runtime.protocol.invalidate();
+                            runtime.protocol.rebase(replacement_generation);
                         }
                     }
                     self.bridge.invalidate_session();
@@ -446,14 +469,14 @@ impl ProductionMiningSession {
         effects: &mut Vec<ProductionSessionEffect>,
     ) -> Result<(), StratumV1Error> {
         let actions = self
-            .maybe_pool_runtime_mut(pool)
+            .maybe_v1_pool_runtime_mut(pool)
             .map(|runtime| runtime.runtime.drain_actions())
             .unwrap_or_default();
         for action in actions {
             match action {
                 LiveRuntimeAction::SendClientMessage(message) => {
                     if let Some((request_id, kind)) = maybe_runtime_request_kind(&message) {
-                        if let Some(runtime) = self.maybe_pool_runtime_mut(pool) {
+                        if let Some(runtime) = self.maybe_v1_pool_runtime_mut(pool) {
                             runtime
                                 .requests
                                 .insert(request_id, PendingRequestKind::Runtime(kind));
@@ -475,7 +498,7 @@ impl ProductionMiningSession {
                     request_id,
                     message,
                 } => {
-                    if let Some(runtime) = self.maybe_pool_runtime_mut(pool) {
+                    if let Some(runtime) = self.maybe_v1_pool_runtime_mut(pool) {
                         runtime
                             .requests
                             .insert(request_id, PendingRequestKind::Submit);
@@ -507,8 +530,14 @@ impl ProductionMiningSession {
         let Some(pool) = self.recovery.projection().maybe_active_pool else {
             return Ok(());
         };
-        if let Some(mask) = self
+        if self
             .maybe_pool_runtime_mut(pool)
+            .is_some_and(|p| p.protocol.maybe_v2_mut().is_some())
+        {
+            return self.drive_v2_bridge(pool, now_ms, effects);
+        }
+        if let Some(mask) = self
+            .maybe_v1_pool_runtime_mut(pool)
             .and_then(|runtime| runtime.runtime.maybe_take_pending_version_mask_reload())
         {
             if let Some(generation) = self.current_generation(pool) {
@@ -523,7 +552,7 @@ impl ProductionMiningSession {
             BridgeStep::Dispatch => self.dispatch_next(pool, now_ms, effects)?,
             BridgeStep::Regenerate => {
                 let regenerated = self
-                    .maybe_pool_runtime_mut(pool)
+                    .maybe_v1_pool_runtime_mut(pool)
                     .map(|runtime| runtime.runtime.regenerate_work())
                     .transpose();
                 if matches!(regenerated, Ok(Some(_))) {
@@ -535,7 +564,7 @@ impl ProductionMiningSession {
                 }
             }
             BridgeStep::Poll { slice_ms } => {
-                let maybe_context = self.maybe_pool_runtime(pool).map(|runtime| {
+                let maybe_context = self.maybe_v1_pool_runtime(pool).map(|runtime| {
                     let registry = runtime.runtime.production_registry();
                     (registry.generation(), registry.valid_jobs().clone())
                 });
@@ -562,7 +591,7 @@ impl ProductionMiningSession {
         effects: &mut Vec<ProductionSessionEffect>,
     ) -> Result<(), StratumV1Error> {
         let maybe_dispatch = self
-            .maybe_pool_runtime_mut(pool)
+            .maybe_v1_pool_runtime_mut(pool)
             .map(|runtime| runtime.runtime.production_registry_mut().dispatch_next())
             .transpose();
         match maybe_dispatch {
@@ -571,7 +600,7 @@ impl ProductionMiningSession {
                 self.asic_diagnostics
                     .note_dispatch(dispatch.generation, now_ms);
                 let valid_jobs = self
-                    .maybe_pool_runtime(pool)
+                    .maybe_v1_pool_runtime(pool)
                     .map(|runtime| runtime.runtime.production_registry().valid_jobs().clone())
                     .unwrap_or_default();
                 effects.push(ProductionSessionEffect::DispatchAsic {

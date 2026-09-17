@@ -323,3 +323,29 @@ test("Noise v2 public schema admits only closed safe fields and amended cleanup 
     await assert.rejects(verifySemanticEvidenceRedaction(root));
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+
+test("V2 serial projection uses its versioned closed parser before privacy scanning", async () => {
+  // Arrange
+  const root = await mkdtemp(path.join(tmpdir(), "v2-serial-redaction-")), target = path.join(root, "projection.json");
+  const value = {
+    schema: "str005-v2-serial-projection-v1", scope: "channel", status: "accepted", board: 205, hostOrdinal: 1,
+    sourceCommit: "a".repeat(40), gateCommit: "b".repeat(40),
+    provenance: { ...Object.fromEntries(["contract", "contracts", "appElf", "packageManifest", "evaluator", "fixture", "observer", "privateResult", "sealedInventory"].map(key => [key, "c".repeat(64)])), channelResult: null, channelSeal: null },
+    criteria: Object.fromEntries(["identity", "continuity", "authority", "standardChannel", "targetAndJob", "accounting", "preservation", "restoration", "cleanup", "privacy", "noAsicWork", "noReservation"].map(key => [key, true])),
+    counts: { installations: 5, continuityCycles: 4, connections: 1, deviceRecords: 3, submitted: 0, deviceAcknowledged: 0, workDispatched: 0 },
+    timings: { preparationUs: 10, maximumReadUs: 10, maximumWriteUs: 10, connectUs: 10, resourceReleaseUs: 10, hostCleanupMs: 10 },
+    nonClaims: ["external-pool-acceptance", "private-socket-tuple-reconstruction", "complete-native-callgraph-bound", "asic-mining", "accepted-share", "funded-work"], redactionStatus: "passed",
+  };
+  try {
+    // Act / Assert
+    await writeFile(target, JSON.stringify(value));
+    assert.equal((await verifySemanticEvidenceRedaction(root)).checked, 1);
+    for (const extra of [{ endpoint: "private" }, { attemptId: "private" }, { privateFingerprint: "d".repeat(64) }]) {
+      await writeFile(target, JSON.stringify({ ...value, ...extra }));
+      await assert.rejects(verifySemanticEvidenceRedaction(root));
+    }
+    await writeFile(target, JSON.stringify({ ...value, counts: { ...value.counts, submitted: 1 } }));
+    await assert.rejects(verifySemanticEvidenceRedaction(root));
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

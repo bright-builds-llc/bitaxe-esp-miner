@@ -5,18 +5,29 @@ use zeroize::Zeroizing;
 
 const PROTOCOL_VERSION: &str = "bwg-worker-controller/0.4";
 
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-struct WireStratumConfig {
+struct WireV1Stratum {
     endpoint: Zeroizing<String>,
     username: Zeroizing<String>,
     password: Zeroizing<String>,
-    #[serde(
-        default,
-        rename = "suggestedDifficulty",
-        deserialize_with = "suggested_difficulty"
-    )]
     maybe_suggested_difficulty: Option<u16>,
+}
+
+#[path = "lease/stratum.rs"]
+mod stratum;
+
+enum WireStratumConfig {
+    V2(crate::v2::V2Stratum),
+    V1(WireV1Stratum),
+}
+impl WireStratumConfig {
+    fn valid(&self) -> bool {
+        match self {
+            Self::V1(v) => {
+                secret(&v.username) && secret(&v.password) && stratum_endpoint(&v.endpoint)
+            }
+            Self::V2(v) => v.valid(),
+        }
+    }
 }
 
 /// Strict authenticated Start input whose secret fields are zeroized on drop.
@@ -50,9 +61,16 @@ impl WorkerLeaseGrant {
             && identifier(&self.lease_id)
             && identifier(&self.challenge_id)
             && secret(&self.authorization)
-            && secret(&self.stratum.username)
-            && secret(&self.stratum.password)
-            && stratum_endpoint(&self.stratum.endpoint)
+            && self.stratum.valid()
+            && (self.maybe_v2().is_none()
+                || (self.duration_milliseconds == 60_000
+                    && self.renew_after_milliseconds == 20_000
+                    && self
+                        .maybe_qualification_attempt
+                        .as_ref()
+                        .is_some_and(|attempt| {
+                            attempt.purpose() == crate::QualificationPurpose::Normal
+                        })))
             && valid_window(self.duration_milliseconds, self.renew_after_milliseconds)
             && !(self.maybe_acceptance_campaign.is_some()
                 && self.maybe_qualification_attempt.is_some())
@@ -83,23 +101,42 @@ impl WorkerLeaseGrant {
 
     #[must_use]
     pub fn stratum_endpoint(&self) -> &str {
-        &self.stratum.endpoint
+        match &self.stratum {
+            WireStratumConfig::V1(v) => &v.endpoint,
+            WireStratumConfig::V2(v) => &v.endpoint,
+        }
     }
 
     #[must_use]
     pub fn stratum_username(&self) -> &str {
-        &self.stratum.username
+        match &self.stratum {
+            WireStratumConfig::V1(v) => &v.username,
+            WireStratumConfig::V2(v) => &v.user_identity,
+        }
     }
 
     #[must_use]
     pub fn stratum_password(&self) -> &str {
-        &self.stratum.password
+        match &self.stratum {
+            WireStratumConfig::V1(v) => &v.password,
+            WireStratumConfig::V2(_) => "",
+        }
     }
 
     /// Signed advisory value; absent and zero both request no suggestion.
     #[must_use]
     pub const fn maybe_suggested_difficulty(&self) -> Option<u16> {
-        self.stratum.maybe_suggested_difficulty
+        match &self.stratum {
+            WireStratumConfig::V1(v) => v.maybe_suggested_difficulty,
+            WireStratumConfig::V2(_) => None,
+        }
+    }
+
+    pub fn maybe_v2(&self) -> Option<&crate::v2::V2Stratum> {
+        match &self.stratum {
+            WireStratumConfig::V2(v) => Some(v),
+            _ => None,
+        }
     }
 
     #[must_use]
@@ -130,11 +167,16 @@ impl WorkerLeaseGrant {
             lease_id: &self.lease_id,
             protocol_version: &self.protocol_version,
             renew_after_milliseconds: self.renew_after_milliseconds,
-            stratum: AuthorizationlessStratum {
-                endpoint: &self.stratum.endpoint,
-                password: &self.stratum.password,
-                maybe_suggested_difficulty: self.stratum.maybe_suggested_difficulty,
-                username: &self.stratum.username,
+            stratum: match &self.stratum {
+                WireStratumConfig::V1(v) => {
+                    AuthorizationlessProtocol::V1(AuthorizationlessStratum {
+                        endpoint: &v.endpoint,
+                        password: &v.password,
+                        maybe_suggested_difficulty: v.maybe_suggested_difficulty,
+                        username: &v.username,
+                    })
+                }
+                WireStratumConfig::V2(v) => AuthorizationlessProtocol::V2(v),
             },
         }
     }
@@ -188,7 +230,14 @@ struct AuthorizationlessGrant<'a> {
     )]
     maybe_qualification_attempt: Option<&'a crate::QualificationAttempt>,
     renew_after_milliseconds: u64,
-    stratum: AuthorizationlessStratum<'a>,
+    stratum: AuthorizationlessProtocol<'a>,
+}
+
+#[derive(Serialize)]
+#[serde(untagged)]
+enum AuthorizationlessProtocol<'a> {
+    V1(AuthorizationlessStratum<'a>),
+    V2(&'a crate::v2::V2Stratum),
 }
 
 #[derive(Serialize)]
@@ -357,12 +406,10 @@ fn qualification_attempt<'de, D: serde::Deserializer<'de>>(
     crate::QualificationAttempt::deserialize(deserializer).map(Some)
 }
 
-fn suggested_difficulty<'de, D: serde::Deserializer<'de>>(
-    deserializer: D,
-) -> Result<Option<u16>, D::Error> {
-    u16::deserialize(deserializer).map(Some)
-}
-
 #[cfg(test)]
 #[path = "lease/suggested_difficulty_tests.rs"]
 mod suggested_difficulty_tests;
+
+#[cfg(test)]
+#[path = "lease/v2_tests.rs"]
+mod v2_tests;

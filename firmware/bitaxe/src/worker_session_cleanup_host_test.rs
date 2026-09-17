@@ -498,3 +498,47 @@ fn budget_review_rejects_malformed_ledger_without_repair() {
 
 #[path = "worker_session_cleanup_host_test/qualification.rs"]
 mod qualification_tests;
+
+// Diagnostics remain unavailable in this cleanup fixture. Real budget/NVS
+// transitions above are exercised without fabricating native V2 observations.
+mod v2_serial_runtime {
+    use super::*;
+    use bitaxe_worker_control::v2::{ChannelStart, Scope, V2Status};
+    pub(crate) fn status(
+        _generation: revocation::WorkerGeneration,
+        _scope: Scope,
+    ) -> Result<V2Status, WorkerSessionError> {
+        Err(WorkerSessionError::Rejected)
+    }
+    pub(crate) fn admit(
+        _generation: revocation::WorkerGeneration,
+        _input: ChannelStart,
+    ) -> Result<V2Status, WorkerSessionError> {
+        Err(WorkerSessionError::Rejected)
+    }
+    pub(crate) fn dispatch(
+        _generation: revocation::WorkerGeneration,
+    ) -> Result<(), WorkerSessionError> {
+        Err(WorkerSessionError::Rejected)
+    }
+    pub(crate) fn cancel() {}
+    pub(crate) fn poll_safety_facts() {}
+    pub(crate) fn complete_never_started(_generation: revocation::WorkerGeneration) {}
+    pub(crate) fn restoration_completed(_generation: revocation::WorkerGeneration) {}
+    pub(crate) fn share_busy() -> bool {
+        false
+    }
+    pub(crate) fn waiting_for_network(_generation: revocation::WorkerGeneration) -> bool {
+        false
+    }
+    pub(crate) fn seed_share(
+        _generation: revocation::WorkerGeneration,
+        grant: &WorkerLeaseGrant,
+    ) -> Result<(), WorkerSessionError> {
+        if grant.maybe_v2().is_some() {
+            Err(WorkerSessionError::Rejected)
+        } else {
+            Ok(())
+        }
+    }
+}

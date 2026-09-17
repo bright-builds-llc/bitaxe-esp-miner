@@ -39,6 +39,11 @@ impl NoiseBorrowHandle {
             state: Arc::new(Mutex::new(State::default())),
         }
     }
+    pub(crate) fn is_idle(&self) -> bool {
+        self.state.try_lock().is_ok_and(|s| {
+            s.ready && s.queued == 0 && !s.in_flight && !s.connected && matches!(s.loan, Loan::Free)
+        })
+    }
     pub(crate) fn reserve(&self) -> bool {
         let Ok(mut state) = self.state.try_lock() else {
             return false;

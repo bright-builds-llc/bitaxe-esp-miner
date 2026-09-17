@@ -20,6 +20,8 @@ mod global;
 #[path = "revocation/reason.rs"]
 mod reason;
 pub(crate) use global::*;
+#[path = "revocation/budget_observation.rs"]
+mod budget_observation;
 #[path = "revocation/timing.rs"]
 mod timing;
 pub(crate) use reason::RevocationReason;
@@ -578,11 +580,6 @@ impl GenerationGate {
         self.first_dispatch_generation
             .store(generation.0, Ordering::Release);
         self.permits_work(permit)
-    }
-
-    #[cfg(test)]
-    pub fn note_first_dispatch(&self, maybe_generation: Option<WorkerGeneration>, now_ms: u64) {
-        let _ = self.begin_dispatch(self.stamp(maybe_generation), now_ms);
     }
 
     /// Records a successful hardware halt before any logging or cooling work.

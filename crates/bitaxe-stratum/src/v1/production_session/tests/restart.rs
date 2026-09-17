@@ -28,11 +28,7 @@ fn second_lease_after_terminal_stop_reloads_pool_configuration_before_connecting
     );
     let before = adapter.effects.len();
     let mut replacement = pools(false);
-    replacement
-        .primary
-        .as_mut()
-        .expect("synthetic primary")
-        .runtime
+    v1_config(replacement.primary.as_mut().expect("synthetic primary"))
         .credentials
         .username = "synthetic-second-owner".to_owned();
     adapter.pools = Some(replacement);

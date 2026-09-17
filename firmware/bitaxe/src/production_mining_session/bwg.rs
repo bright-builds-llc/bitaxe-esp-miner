@@ -3,7 +3,7 @@ use bitaxe_stratum::v1::production_session::{
     LivePoolCredentials, LiveRuntimeConfig, MiningCampaignLease, MiningCampaignLeaseId,
     MiningCampaignMonotonicDeadline, MiningCampaignState, MiningCampaignStopCondition,
     MiningHardwareProfilePreset, MiningHardwareState, ProductionPoolConfiguration,
-    ProductionPoolEndpoint, ProductionPoolSet,
+    ProductionPoolEndpoint, ProductionPoolSet, ProductionProtocolConfig, V2PoolConfig,
 };
 use bitaxe_worker_control::{LeaseDeadlines, WorkerLeaseGrant, WorkerLeaseRenewal};
 
@@ -201,14 +201,26 @@ fn pool_set(grant: &WorkerLeaseGrant) -> Result<ProductionPoolSet, Error> {
                 host: host.to_owned(),
                 port,
             },
-            runtime: LiveRuntimeConfig {
-                maybe_suggested_difficulty: grant.maybe_suggested_difficulty(),
-                model: "bitaxe-ultra".to_owned(),
-                version: crate::semantic_version().to_owned(),
-                credentials: LivePoolCredentials {
-                    username: grant.stratum_username().to_owned(),
-                    password: grant.stratum_password().to_owned(),
-                },
+            runtime: if let Some(v2) = grant.maybe_v2() {
+                ProductionProtocolConfig::V2(V2PoolConfig {
+                    authority: bitaxe_worker_control::noise::canonical_bytes::<32>(
+                        &v2.authority_public_key,
+                    )
+                    .ok_or(Error::Rejected)?,
+                    user_identity: v2.user_identity.to_string(),
+                    firmware: crate::semantic_version().to_owned(),
+                })
+            } else {
+                LiveRuntimeConfig {
+                    maybe_suggested_difficulty: grant.maybe_suggested_difficulty(),
+                    model: "bitaxe-ultra".to_owned(),
+                    version: crate::semantic_version().to_owned(),
+                    credentials: LivePoolCredentials {
+                        username: grant.stratum_username().to_owned(),
+                        password: grant.stratum_password().to_owned(),
+                    },
+                }
+                .into()
             },
         }),
         fallback: None,
@@ -504,6 +516,7 @@ impl OrdinaryEspProductionSessionAdapter {
                 owner_resources::Phase::ShutdownComplete,
             );
             revocation::finish_shutdown(session.generation);
+            crate::v2_serial_runtime::restoration_completed(session.generation);
             self.maybe_bwg_session = None;
             admission_diagnostics::stage(admission_diagnostics::Stage::Complete);
             return true;

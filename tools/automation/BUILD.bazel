@@ -91,6 +91,7 @@ ts_project(
     deps = [
         ":node_modules/@types/node",
         ":node_modules/undici-types",
+        "//scripts:v2_projection_validator",
     ],
 )
 
@@ -459,6 +460,7 @@ ts_project(
     deps = [
         ":node_modules/@types/node",
         ":node_modules/undici-types",
+        "//scripts:v2_projection_validator",
     ],
 )
 

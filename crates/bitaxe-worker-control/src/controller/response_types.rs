@@ -3,6 +3,14 @@ use zeroize::Zeroize;
 
 #[derive(Clone, Debug)]
 pub(super) enum PreparedEffect {
+    V2Observation {
+        generation: u64,
+        scope: crate::v2::Scope,
+        observation: crate::v2::CurrentObservation,
+    },
+    V2Dispatch {
+        generation: u64,
+    },
     NoiseObservation {
         generation: u64,
         observation: crate::noise::NoiseObservation,

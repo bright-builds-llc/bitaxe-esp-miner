@@ -1,12 +1,7 @@
 use super::*;
 fn adapter(hint: Option<u16>) -> DeterministicProductionSessionAdapter {
     let mut pools = pools(false);
-    pools
-        .primary
-        .as_mut()
-        .expect("primary")
-        .runtime
-        .maybe_suggested_difficulty = hint;
+    v1_config(pools.primary.as_mut().expect("primary")).maybe_suggested_difficulty = hint;
     let mut adapter = DeterministicProductionSessionAdapter::new(Some(pools));
     adapter.drive(wake(ready(), 0));
     adapter.connect(ProductionPool::Primary, 1);
@@ -144,18 +139,10 @@ fn each_new_pool_runtime_suggests_only_its_own_hint_after_authorization() {
         (ProductionPool::Fallback, 2000),
     ] {
         let mut configured = pools(pool_kind == ProductionPool::Fallback);
-        configured
-            .primary
-            .as_mut()
-            .expect("primary")
-            .runtime
-            .maybe_suggested_difficulty = Some(1000);
-        configured
-            .fallback
-            .as_mut()
-            .expect("fallback")
-            .runtime
-            .maybe_suggested_difficulty = Some(2000);
+        v1_config(configured.primary.as_mut().expect("primary")).maybe_suggested_difficulty =
+            Some(1000);
+        v1_config(configured.fallback.as_mut().expect("fallback")).maybe_suggested_difficulty =
+            Some(2000);
         let mut adapter = DeterministicProductionSessionAdapter::new(Some(configured));
         adapter.drive(wake(ready(), 0));
         adapter.connect(pool_kind, 1);
@@ -200,12 +187,8 @@ fn a_new_lease_runtime_gets_one_new_hint_after_its_own_authorization() {
 fn hint_reply_cannot_acknowledge_the_first_real_share() {
     // Arrange
     let mut configured = pools(false);
-    configured
-        .primary
-        .as_mut()
-        .expect("primary")
-        .runtime
-        .maybe_suggested_difficulty = Some(1000);
+    v1_config(configured.primary.as_mut().expect("primary")).maybe_suggested_difficulty =
+        Some(1000);
     let mut adapter = DeterministicProductionSessionAdapter::new(Some(configured));
     establish_active(&mut adapter);
     let observation = dispatched_observation(&adapter);

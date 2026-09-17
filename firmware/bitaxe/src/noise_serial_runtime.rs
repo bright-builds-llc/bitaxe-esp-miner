@@ -1,4 +1,5 @@
 //! One network-only work item borrowed from the existing idle primary pool worker.
+pub(crate) mod channel;
 mod transport;
 
 use crate::production_mining_session::revocation::{self, RevocationReason, WorkerGeneration};
@@ -10,6 +11,7 @@ use std::sync::{Arc, Mutex, OnceLock, Weak};
 
 static OWNER: OnceLock<Mutex<Owner>> = OnceLock::new();
 static EFFECT_OWNERS: EffectFence = EffectFence::new();
+static SHARE_SCOPE: AtomicBool = AtomicBool::new(false);
 
 /// Counts ordinary mutation owners through their deferred effects; no waiting lock.
 pub(crate) struct MutationGuard {
@@ -32,6 +34,7 @@ struct Shared {
 struct Owner {
     shared: Arc<Shared>,
     maybe_transport: Option<(Weak<NoiseBorrowHandle>, Weak<NoiseBorrowHandle>)>,
+    external: bool,
     dispatched: bool,
     completion_observed: bool,
     maybe_input: Option<NoiseStart>,
@@ -49,6 +52,7 @@ pub(crate) fn prepare() -> anyhow::Result<()> {
         .set(Mutex::new(Owner {
             shared,
             maybe_transport: None,
+            external: false,
             dispatched: false,
             completion_observed: false,
             maybe_input: None,
@@ -122,7 +126,14 @@ fn dispatch_job(owner: &mut Owner) -> Result<(), WorkerSessionError> {
         .and_then(|(primary, _)| Weak::upgrade(primary))
         .ok_or(WorkerSessionError::Rejected)?;
     transport
-        .dispatch(owner_entry, job_completed)
+        .dispatch(
+            if owner.external {
+                crate::v2_serial_runtime::channel_entry
+            } else {
+                owner_entry
+            },
+            job_completed,
+        )
         .map_err(|_| WorkerSessionError::Rejected)?;
     owner.dispatched = true;
     Ok(())
@@ -142,7 +153,7 @@ fn cancel_undispatched(owner: &mut Owner) {
 }
 
 pub(crate) fn busy() -> bool {
-    EFFECT_OWNERS.busy()
+    EFFECT_OWNERS.busy() && !share_busy()
 }
 
 pub(crate) fn observation(generation: WorkerGeneration) -> Option<NoiseObservation> {
@@ -283,7 +294,7 @@ pub(crate) fn dispatch(generation: WorkerGeneration) -> Result<(), WorkerSession
     if !permitted {
         return Err(WorkerSessionError::Rejected);
     }
-    if owner.maybe_input.is_none() {
+    if owner.external || owner.maybe_input.is_none() {
         return Err(WorkerSessionError::Rejected);
     }
     dispatch_job(&mut owner)
@@ -326,6 +337,9 @@ pub(crate) fn poll() {
     let Ok(mut owner) = owner.try_lock() else {
         return;
     };
+    if owner.external && owner.completion_observed {
+        return;
+    }
     let Some((generation, epoch)) = owner.maybe_binding else {
         return;
     };
@@ -340,6 +354,9 @@ pub(crate) fn poll() {
         );
     } else if crate::bwg_worker_usb::maybe_authenticated_epoch() != Some(epoch) {
         latch(&owner.shared, NoiseDetail::SessionReplaced);
+    }
+    if owner.external {
+        crate::v2_serial_runtime::channel_poll(generation, epoch);
     }
     observe_cancellation(&owner.shared);
     if let Ok(mut record) = owner.shared.record.lock() {
@@ -369,6 +386,10 @@ pub(crate) fn poll() {
         return;
     }
     owner.completion_observed = true;
+    if owner.external {
+        channel::observe_completion(&mut owner, generation);
+        return;
+    }
     let mut release_proved = false;
     if let Ok(mut record) = owner.shared.record.lock() {
         if let Some(record) = record.as_mut() {
@@ -469,4 +490,39 @@ fn allowed(shared: &Shared, stage: FailureStage) -> bool {
     };
     record.tick(now);
     record.permitted()
+}
+
+pub(crate) use transport::rng::{prepare as prepare_rng, Failure as RngFailure};
+
+pub(crate) fn ordinary_pools_idle() -> bool {
+    OWNER
+        .get()
+        .and_then(|o| o.try_lock().ok())
+        .and_then(|o| o.maybe_transport.clone())
+        .is_some_and(|(p, f)| {
+            p.upgrade()
+                .zip(f.upgrade())
+                .is_some_and(|(p, f)| p.is_idle() && f.is_idle())
+        })
+}
+
+pub(crate) fn share_busy() -> bool {
+    SHARE_SCOPE.load(Ordering::Acquire)
+}
+pub(crate) fn claim_share_fence() -> Result<(), WorkerSessionError> {
+    crate::settings_adapter::claim_noise_fence(|| {
+        if !EFFECT_OWNERS.claim_diagnostic() {
+            return false;
+        }
+        SHARE_SCOPE.store(true, Ordering::Release);
+        true
+    })
+    .map_err(|_| WorkerSessionError::Rejected)
+}
+pub(crate) fn release_share_fence() -> bool {
+    if !share_busy() || !EFFECT_OWNERS.release_diagnostic() {
+        return false;
+    }
+    SHARE_SCOPE.store(false, Ordering::Release);
+    true
 }

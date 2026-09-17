@@ -14,6 +14,8 @@ mod noise;
 mod restart;
 #[path = "controller/serial_trace.rs"]
 mod serial_trace;
+#[path = "controller/v2.rs"]
+mod v2;
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
 use bitaxe_worker_control::{
@@ -68,6 +70,8 @@ impl LeaseAuthorizationVerifier for FixtureVerifier {
 #[derive(Default)]
 struct FakeSession {
     maybe_noise: Option<bitaxe_worker_control::noise::NoiseRecord>,
+    maybe_v2: Option<bitaxe_worker_control::v2::V2Record>,
+    v2_cleanup_blocked: bool,
     maybe_restart_context: Option<bitaxe_worker_control::QualificationRestartContext>,
     prepared_probes: std::cell::RefCell<Vec<(usize, usize)>>,
     events: Vec<&'static str>,

@@ -320,3 +320,14 @@ js_library(
         "docs/hardware/str005-noise-parity-scope-amendment.md",
     ],
 )
+
+js_library(
+    name = "str005_v2_serial_contract_inputs",
+    srcs = [
+        "Cargo.toml",
+        "Cargo.lock",
+        "MODULE.bazel",
+        "docs/hardware/str005-v2-serial-qualification.md",
+        "docs/hardware/str005-v2-serial-clock-amendment.md",
+    ],
+)

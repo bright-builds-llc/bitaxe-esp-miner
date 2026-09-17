@@ -42,10 +42,53 @@ impl fmt::Debug for ProductionPoolEndpoint {
     }
 }
 
+/// Explicit protocol binding; V2 secrets are never interpreted as V1 credentials.
+#[derive(Clone, PartialEq, Eq)]
+pub enum ProductionProtocolConfig {
+    V1(LiveRuntimeConfig),
+    V2(V2PoolConfig),
+}
+#[derive(Clone, PartialEq, Eq)]
+pub struct V2PoolConfig {
+    pub authority: [u8; 32],
+    pub user_identity: String,
+    pub firmware: String,
+}
+impl Drop for V2PoolConfig {
+    fn drop(&mut self) {
+        self.authority.zeroize();
+        self.user_identity.zeroize();
+    }
+}
+impl From<LiveRuntimeConfig> for ProductionProtocolConfig {
+    fn from(value: LiveRuntimeConfig) -> Self {
+        Self::V1(value)
+    }
+}
+impl V2PoolConfig {
+    pub fn session_config(
+        &self,
+        endpoint: &ProductionPoolEndpoint,
+    ) -> crate::v2::session::SessionConfig {
+        crate::v2::session::SessionConfig {
+            endpoint_host: endpoint.host.clone(),
+            endpoint_port: endpoint.port,
+            vendor: "bitaxe".into(),
+            hardware_version: "205".into(),
+            firmware: self.firmware.clone(),
+            device_id: String::new(),
+            user_identity: self.user_identity.clone(),
+            nominal_hashrate: 400_000_000_000.0,
+            channel_kind: crate::v2::messages::ChannelKind::Standard,
+            minimum_extranonce_size: 0,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct ProductionPoolConfiguration {
     pub endpoint: ProductionPoolEndpoint,
-    pub runtime: LiveRuntimeConfig,
+    pub runtime: ProductionProtocolConfig,
 }
 
 impl fmt::Debug for ProductionPoolConfiguration {
@@ -181,6 +224,23 @@ pub enum ProductionSessionEvent {
         failure: ProductionTransportFailure,
         now_ms: u64,
     },
+    FrameWritten {
+        pool: ProductionPool,
+        transport_epoch: ProductionTransportEpoch,
+        sequence: u32,
+        now_ms: u64,
+    },
+    TransportFrame {
+        pool: ProductionPool,
+        transport_epoch: ProductionTransportEpoch,
+        frame: crate::v2::frame::Frame,
+        now_ms: u64,
+    },
+    AsicDispatched {
+        generation: PoolSessionGeneration,
+        job_id: bitaxe_asic::bm1366::work::Bm1366JobId,
+        now_ms: u64,
+    },
     TransportBytes {
         pool: ProductionPool,
         transport_epoch: ProductionTransportEpoch,
@@ -261,6 +321,9 @@ impl fmt::Debug for ProductionSessionEvent {
                 Self::TransportConnected { .. } => "ProductionSessionEvent::TransportConnected",
                 Self::TransportFailed { .. } => "ProductionSessionEvent::TransportFailed",
                 Self::TransportClosed { .. } => "ProductionSessionEvent::TransportClosed",
+                Self::FrameWritten { .. } => "ProductionSessionEvent::FrameWritten",
+                Self::TransportFrame { .. } => "ProductionSessionEvent::TransportFrame(redacted)",
+                Self::AsicDispatched { .. } => "ProductionSessionEvent::AsicDispatched",
                 Self::AsicResult { .. } => "ProductionSessionEvent::AsicResult(redacted)",
                 Self::AsicPollTimedOut { .. } => "ProductionSessionEvent::AsicPollTimedOut",
                 Self::AsicPollCompleted { .. } => "ProductionSessionEvent::AsicPollCompleted",
@@ -292,6 +355,24 @@ pub enum ProductionSessionEffect {
         pool: ProductionPool,
         transport_epoch: ProductionTransportEpoch,
         endpoint: ProductionPoolEndpoint,
+        protocol: ProductionProtocolConfig,
+        maybe_pool_generation: Option<PoolSessionGeneration>,
+    },
+    RecordV2Failure {
+        message_type: u8,
+        reason: crate::v2::standard::Rejected,
+    },
+    RecordV2Frame {
+        frame: crate::v2::frame::Frame,
+    },
+    V2WorkReady {
+        work: crate::v2::work::V2MiningWork,
+        commitment: String,
+    },
+    WritePoolFrame {
+        pool: ProductionPool,
+        transport_epoch: ProductionTransportEpoch,
+        frame: crate::v2::frame::Frame,
     },
     WritePoolLine {
         pool: ProductionPool,
@@ -343,6 +424,14 @@ impl fmt::Debug for ProductionSessionEffect {
                 .field("transport_epoch", transport_epoch)
                 .field("line", &"redacted")
                 .finish(),
+            Self::RecordV2Failure { .. }
+            | Self::RecordV2Frame { .. }
+            | Self::V2WorkReady { .. } => {
+                formatter.write_str("ProductionSessionEffect::V2Evidence(redacted)")
+            }
+            Self::WritePoolFrame { .. } => {
+                formatter.write_str("ProductionSessionEffect::WritePoolFrame(redacted)")
+            }
             Self::DispatchAsic { .. } => {
                 formatter.write_str("ProductionSessionEffect::DispatchAsic(redacted)")
             }
@@ -413,7 +502,12 @@ impl fmt::Debug for ProductionSessionEffect {
                     .debug_tuple("ProductionSessionEffect::Publish")
                     .field(snapshot)
                     .finish(),
-                Self::WritePoolLine { .. } | Self::DispatchAsic { .. } => unreachable!(),
+                Self::RecordV2Failure { .. }
+                | Self::RecordV2Frame { .. }
+                | Self::V2WorkReady { .. }
+                | Self::WritePoolLine { .. }
+                | Self::WritePoolFrame { .. }
+                | Self::DispatchAsic { .. } => unreachable!(),
             },
         }
     }

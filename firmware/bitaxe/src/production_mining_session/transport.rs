@@ -3,6 +3,8 @@
 #[path = "transport/borrow.rs"]
 pub(crate) mod borrow;
 use borrow::{NoiseBorrowHandle, NoiseBorrowWorker};
+#[path = "transport/v2.rs"]
+mod v2;
 
 use super::revocation::{self, WorkPermit};
 use std::fmt;
@@ -38,6 +40,18 @@ pub(super) enum PoolTransportCommand {
         transport_epoch: ProductionTransportEpoch,
     },
     Shutdown,
+    ConnectV2 {
+        transport_epoch: ProductionTransportEpoch,
+        endpoint: std::net::SocketAddrV4,
+        authority: [u8; 32],
+        permit: WorkPermit,
+        generation: bitaxe_stratum::v1::production_work::PoolSessionGeneration,
+    },
+    WriteFrame {
+        transport_epoch: ProductionTransportEpoch,
+        frame: bitaxe_stratum::v2::frame::Frame,
+        permit: WorkPermit,
+    },
     Diagnostic,
 }
 
@@ -64,12 +78,28 @@ impl fmt::Debug for PoolTransportCommand {
                 .finish(),
             Self::Shutdown => formatter.write_str("PoolTransportCommand::Shutdown"),
             Self::Diagnostic => formatter.write_str("PoolTransportCommand::Diagnostic"),
+            Self::ConnectV2 { .. } => {
+                formatter.write_str("PoolTransportCommand::ConnectV2(redacted)")
+            }
+            Self::WriteFrame { .. } => {
+                formatter.write_str("PoolTransportCommand::WriteFrame(redacted)")
+            }
         }
     }
 }
 
 #[derive(Clone, PartialEq, Eq)]
 pub(super) enum PoolTransportEvent {
+    FrameWritten {
+        pool: ProductionPool,
+        transport_epoch: ProductionTransportEpoch,
+        sequence: u32,
+    },
+    Frame {
+        pool: ProductionPool,
+        transport_epoch: ProductionTransportEpoch,
+        frame: bitaxe_stratum::v2::frame::Frame,
+    },
     Connected {
         pool: ProductionPool,
         transport_epoch: ProductionTransportEpoch,
@@ -93,6 +123,8 @@ pub(super) enum PoolTransportEvent {
 impl fmt::Debug for PoolTransportEvent {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::FrameWritten { .. } => formatter.write_str("PoolTransportEvent::FrameWritten"),
+            Self::Frame { .. } => formatter.write_str("PoolTransportEvent::Frame(redacted)"),
             Self::Bytes {
                 pool,
                 transport_epoch,
@@ -215,6 +247,12 @@ fn spawn_worker(
     pool: ProductionPool,
     emit: std::sync::Arc<impl Fn(PoolTransportEvent) + Send + Sync + 'static>,
 ) -> io::Result<PoolTransportWorkerHandle> {
+    // One reusable slot keeps large receive-result/command values off the
+    // persistent caller stack while the lane runs borrowed cryptography.
+    let mut command_slot = Vec::new();
+    command_slot
+        .try_reserve_exact(1)
+        .map_err(|_| io::Error::from(io::ErrorKind::OutOfMemory))?;
     let (sender, receiver) = mpsc::sync_channel(COMMAND_CAPACITY);
     let borrow = std::sync::Arc::new(NoiseBorrowHandle::new(sender));
     let worker_borrow = borrow.worker();
@@ -230,6 +268,7 @@ fn spawn_worker(
             run_worker(
                 pool,
                 receiver,
+                command_slot,
                 &worker_requested_close_epoch,
                 &worker_borrow,
                 move |event| emit(event),
@@ -245,6 +284,7 @@ fn spawn_worker(
 fn run_worker(
     pool: ProductionPool,
     receiver: Receiver<PoolTransportCommand>,
+    mut command_slot: Vec<PoolTransportCommand>,
     requested_close_epoch: &AtomicU32,
     borrow: &NoiseBorrowWorker,
     emit: impl Fn(PoolTransportEvent),
@@ -252,34 +292,40 @@ fn run_worker(
     let mut maybe_connection: Option<PoolConnection> = None;
     borrow.ready();
     loop {
-        let command = if maybe_connection.is_some() {
-            match receiver.recv_timeout(READ_TIMEOUT) {
-                Ok(command) => Some(command),
-                Err(mpsc::RecvTimeoutError::Timeout) => None,
-                Err(mpsc::RecvTimeoutError::Disconnected) => {
-                    borrow.unavailable();
-                    return;
-                }
-            }
-        } else {
-            match receiver.recv() {
-                Ok(command) => Some(command),
-                Err(_) => {
-                    borrow.unavailable();
-                    return;
-                }
+        let kind = match receive_command(&receiver, &mut command_slot, maybe_connection.is_some()) {
+            Ok(kind) => kind,
+            Err(()) => {
+                borrow.unavailable();
+                return;
             }
         };
 
         honor_requested_close(requested_close_epoch, &mut maybe_connection);
-        if let Some(command) = command {
+        if kind != NextCommand::Idle {
             borrow.begin_command();
-            let keep_running = if matches!(command, PoolTransportCommand::Diagnostic) {
-                maybe_connection.is_none() && borrow.run_job()
-            } else {
-                apply_command(pool, command, &mut maybe_connection, &emit)
+            let keep_running = match kind {
+                NextCommand::Diagnostic => maybe_connection.is_none() && borrow.run_job(),
+                NextCommand::V2 => {
+                    close_connection(&mut maybe_connection);
+                    v2::run(
+                        pool,
+                        command_slot.first().expect("classified V2 command"),
+                        &receiver,
+                        requested_close_epoch,
+                        borrow,
+                        &emit,
+                    )
+                }
+                NextCommand::Ordinary => {
+                    apply_stored_command(pool, &mut command_slot, &mut maybe_connection, &emit)
+                }
+                NextCommand::Idle => true,
             };
+            command_slot.clear();
             borrow.finish_command(maybe_connection.is_some());
+            if kind == NextCommand::V2 {
+                crate::v2_serial_runtime::share_completed();
+            }
             if !keep_running {
                 borrow.unavailable();
                 return;
@@ -294,6 +340,55 @@ fn run_worker(
         }
         borrow.connection(maybe_connection.is_some());
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum NextCommand {
+    Idle,
+    Diagnostic,
+    V2,
+    Ordinary,
+}
+#[inline(never)]
+fn receive_command(
+    receiver: &Receiver<PoolTransportCommand>,
+    slot: &mut Vec<PoolTransportCommand>,
+    connected: bool,
+) -> Result<NextCommand, ()> {
+    let maybe_command = if connected {
+        match receiver.recv_timeout(READ_TIMEOUT) {
+            Ok(c) => Some(c),
+            Err(mpsc::RecvTimeoutError::Timeout) => None,
+            Err(_) => return Err(()),
+        }
+    } else {
+        Some(receiver.recv().map_err(|_| ())?)
+    };
+    let Some(command) = maybe_command else {
+        return Ok(NextCommand::Idle);
+    };
+    if matches!(command, PoolTransportCommand::Diagnostic) {
+        return Ok(NextCommand::Diagnostic);
+    }
+    let kind = if matches!(command, PoolTransportCommand::ConnectV2 { .. }) {
+        NextCommand::V2
+    } else {
+        NextCommand::Ordinary
+    };
+    slot.push(command);
+    Ok(kind)
+}
+#[inline(never)]
+fn apply_stored_command(
+    pool: ProductionPool,
+    slot: &mut Vec<PoolTransportCommand>,
+    connection: &mut Option<PoolConnection>,
+    emit: &impl Fn(PoolTransportEvent),
+) -> bool {
+    let Some(command) = slot.pop() else {
+        return false;
+    };
+    apply_command(pool, command, connection, emit)
 }
 
 fn honor_requested_close(
@@ -396,6 +491,9 @@ fn apply_command(
             {
                 close_connection(maybe_connection);
             }
+        }
+        PoolTransportCommand::ConnectV2 { .. } | PoolTransportCommand::WriteFrame { .. } => {
+            return false
         }
         PoolTransportCommand::Diagnostic => return false,
         PoolTransportCommand::Shutdown => {

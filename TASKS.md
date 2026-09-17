@@ -4384,8 +4384,8 @@ Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/par
 
 ### task-str005-v2-serial-qualification | 2026-09-16 | Qualify Ultra 205 V2 channel and accepted share
 
-Status: In progress: successor contract reviewed and frozen; implementation
-follows publication. This task succeeds `task-str005-v2-channel-job-205` and
+Status: In progress: software verification passed; clean package and both live
+scopes remain pending. This task succeeds `task-str005-v2-channel-job-205` and
 `task-str005-bm1366-share-205`; their unchecked obligations transfer here.
 
 Depends on: completed `task-str005-noise-auth-205` with [accepted Noise evidence](docs/parity/evidence/20260916-str005-noise-serial-qualified.md).
@@ -4405,13 +4405,13 @@ remain mandatory.
       verifier, timing, accounting, cleanup and progress-backed retry rules.
 - [x] Review lifecycle, generation/epoch mapping, protocol flags/order, source
       admission and evidence completeness; publish this contract before code/effects.
-- [ ] Reuse the existing pool workers and production safety lifecycle. Factor
+- [x] Reuse the existing pool workers and production safety lifecycle. Factor
       authenticated Noise before Setup; add Standard V2 protocol handling and
       correlated dispatch/nonce/submission/acknowledgement without the old direct
       ASIC execution path or invented V1-style extranonce regeneration. Retire
       the still-linked boot V2 owner when its signed ordinary-owner replacement
       lands; preserve historical evidence/readers and reusable protocol logic.
-- [ ] Implement the bounded fixture, private runtime-input pipes, source-bound
+- [x] Implement the bounded fixture, private runtime-input pipes, source-bound
       collectors and independent closed judges; keep all endpoint/user/grant
       material out of evidence and separate live comparison from offline proof.
 - [ ] Exercise production seams, real processes, wrong fields/frames/targets,
@@ -4476,39 +4476,35 @@ child cleanup tests. Initial focused host tests pass; these are software checks,
 not new hardware evidence. Native package, full composition, publication and
 both live scopes remain pending. No reservation has been issued.
 
+Verification progress | 2026-09-16: The ordinary-owner implementation compiles
+and packages with the existing 4-MiB partition, worker stacks and safety
+deadlines. Preview 8 is 4161136 bytes, leaving 33168 bytes; selected native
+Channel/Share paths leave 704/608 bytes respectively, above the fixed 512-byte
+margin. These are dirty software previews, not an admitted hardware pair or a
+complete-callgraph claim. A fully authenticated acknowledgement remains
+observable across revocation without authorizing another read. Review corrected
+host shutdown ordering, pending-start cleanup, detector freshness at dispatch,
+secondary-failure classification and separate Start invocation/reply timing.
+
+Final software checks pass: ordered Cargo format/Clippy/build and 2346 tests
+(three existing ignored); all 187 canonical Bazel targets; Bright Builds,
+native ownership/symbols, reference and redaction checks. Gate's 778 web tests,
+nine actual Rust serializer cases and final headless conformance pass; its
+implementation is published and pinned at
+`9251a1f1fbacb35093db0dc0a75a1a87206abcb0`. Canonical fixes retain bounded Node
+process handling and accommodate the larger symbol inventory; failed software
+runs remain recorded locally. Parity remains 90/95 with no history transition.
+
+Software evidence limit: the frozen difficulty-1024 fixture has no known
+positive synthetic Share vector. Tests cover independent known-header proof of
+work, strict rejection at the real target, component joins, complete Channel
+sealing and safe Channel publication after failed Share cleanup. Only a genuine
+ASIC result can satisfy the full positive Share join. No bypass, threshold
+change, hardware attempt or new reservation has been introduced.
+
 Completion review: Pending.
 
 
-### task-str005-v2-admission-clock-amendment | 2026-09-16 | Preserve the real V2 reservation clock
-
-Status: Specification reviewed for publication; implementation binding remains
-pending under the V2 qualification task. No runtime effects.
-
-Depends on: published `task-str005-v2-serial-qualification` contract at
-`6a4a45f8`; its implementation remains incomplete and no new reservation exists.
-
-- [x] Define the existing first guarded-dispatch arming behavior with a truthful
-      nullable Share diagnostic deadline, without moving a budget or lease clock.
-- [x] Review the exact nullable/immutable transition, millisecond provenance,
-      pre-work failures and unchanged fixture/safety bounds with runtime/Gate owners.
-- [x] Publish the [narrow amendment](docs/hardware/str005-v2-serial-clock-amendment.md).
-- [ ] Bind both contract digests and the amended producer/parser behavior in
-      implementation source/admission; verify the native clock transition tests.
-- [x] Run ordered Cargo and documentation/reference/privacy/standards checks;
-      preserve contract/evidence bytes, validate task IDs and unchanged parity.
-
-Authorization: specification and software verification only. This amendment
-issues no grant, reservation, network request to the device or hardware effect.
-
-Verification | 2026-09-16: Runtime, Gate and fixture reviewers found no
-remaining clock/interface contradiction. Ordered Cargo format/Clippy/build/tests
-passed on the exact documentation commit base in an isolated checkout; reference,
-redaction and read-only parity/progress checks passed after initializing that
-checkout's pinned nested reference dependency. Main implementation remains
-unfinished and was excluded from this documentation verification.
-
-Completion review: Pending implementation binding and clock-transition tests;
-keep this task active until those are verified. No reservation or effect issued.
 
 ## Future
 

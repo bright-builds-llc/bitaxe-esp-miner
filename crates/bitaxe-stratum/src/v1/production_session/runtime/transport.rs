@@ -1,12 +1,10 @@
-use std::collections::HashMap;
-
 use crate::jsonrpc::StratumRequestId;
-use crate::v1::line_framer::StratumLineFramer;
 use crate::v1::live_runtime::{LiveStratumRuntime, RuntimeRequestKind};
 use crate::v1::messages::StratumV1ClientMessage;
 use crate::v1::production_work::{PoolSessionGeneration, SubmitIntent};
 use crate::v1::recovery_policy::ProductionPool;
 
+use super::protocol::{ProtocolRuntime, V1Runtime};
 use super::ProductionMiningSession;
 use crate::v1::production_session::types::ProductionTransportEpoch;
 
@@ -23,10 +21,7 @@ pub(in crate::v1::production_session) struct PendingSubmit {
 
 pub(in crate::v1::production_session) struct PoolRuntime {
     pub(in crate::v1::production_session) transport_epoch: ProductionTransportEpoch,
-    pub(in crate::v1::production_session) runtime: LiveStratumRuntime,
-    pub(in crate::v1::production_session) framer: StratumLineFramer,
-    pub(in crate::v1::production_session) requests: HashMap<StratumRequestId, PendingRequestKind>,
-    pub(in crate::v1::production_session) submits: HashMap<StratumRequestId, PendingSubmit>,
+    pub(in crate::v1::production_session) protocol: ProtocolRuntime,
 }
 
 impl PoolRuntime {
@@ -36,10 +31,7 @@ impl PoolRuntime {
     ) -> Self {
         Self {
             transport_epoch,
-            runtime,
-            framer: StratumLineFramer::default(),
-            requests: HashMap::new(),
-            submits: HashMap::new(),
+            protocol: ProtocolRuntime::v1(runtime),
         }
     }
 }
@@ -101,7 +93,7 @@ impl ProductionMiningSession {
         pool: ProductionPool,
     ) -> Option<PoolSessionGeneration> {
         self.maybe_pool_runtime(pool)
-            .map(|runtime| runtime.runtime.production_registry().generation())
+            .map(|runtime| runtime.protocol.generation())
     }
 
     pub(in crate::v1::production_session) fn rebase_runtime_generation(
@@ -110,7 +102,7 @@ impl ProductionMiningSession {
     ) {
         let generation = self.allocate_generation();
         if let Some(runtime) = self.maybe_pool_runtime_mut(pool) {
-            runtime.runtime.rebase_generation(generation);
+            runtime.protocol.rebase(generation);
         }
     }
 
@@ -121,7 +113,7 @@ impl ProductionMiningSession {
         maybe_active_pool
             .and_then(|pool| self.maybe_pool_runtime(pool))
             .map_or(self.generation_cursor, |runtime| {
-                runtime.runtime.production_registry().generation()
+                runtime.protocol.generation()
             })
     }
 
@@ -132,12 +124,25 @@ impl ProductionMiningSession {
         let Some(runtime) = self.maybe_pool_runtime_mut(pool) else {
             return;
         };
-        runtime.submits.clear();
-        runtime
-            .requests
-            .retain(|_, kind| *kind != PendingRequestKind::Submit);
+        if let Some(v1) = runtime.protocol.maybe_v1_mut() {
+            v1.submits.clear();
+            v1.requests
+                .retain(|_, kind| *kind != PendingRequestKind::Submit);
+        }
     }
 
+    pub(in crate::v1::production_session) fn maybe_v1_pool_runtime(
+        &self,
+        pool: ProductionPool,
+    ) -> Option<&V1Runtime> {
+        self.maybe_pool_runtime(pool)?.protocol.maybe_v1()
+    }
+    pub(in crate::v1::production_session) fn maybe_v1_pool_runtime_mut(
+        &mut self,
+        pool: ProductionPool,
+    ) -> Option<&mut V1Runtime> {
+        self.maybe_pool_runtime_mut(pool)?.protocol.maybe_v1_mut()
+    }
     pub(in crate::v1::production_session) fn maybe_runtime_for_projection(
         &self,
         maybe_pool: Option<ProductionPool>,

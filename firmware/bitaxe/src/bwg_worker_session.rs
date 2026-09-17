@@ -21,6 +21,34 @@ impl ProductionWorkerSession {
 }
 
 impl WorkerSession for ProductionWorkerSession {
+    fn v2_status(
+        &self,
+        scope: bitaxe_worker_control::v2::Scope,
+    ) -> Result<Option<bitaxe_worker_control::v2::V2Status>, WorkerSessionError> {
+        crate::v2_serial_runtime::status(
+            self.maybe_generation.ok_or(WorkerSessionError::Rejected)?,
+            scope,
+        )
+        .map(Some)
+    }
+    fn v2_admit(
+        &mut self,
+        input: bitaxe_worker_control::v2::ChannelStart,
+    ) -> Result<bitaxe_worker_control::v2::V2Status, WorkerSessionError> {
+        crate::v2_serial_runtime::admit(
+            self.maybe_generation.ok_or(WorkerSessionError::Rejected)?,
+            input,
+        )
+    }
+    fn v2_dispatch(&mut self) -> Result<(), WorkerSessionError> {
+        crate::v2_serial_runtime::dispatch(
+            self.maybe_generation.ok_or(WorkerSessionError::Rejected)?,
+        )
+    }
+    fn v2_cancel(&mut self) -> Result<(), WorkerSessionError> {
+        crate::v2_serial_runtime::cancel();
+        Ok(())
+    }
     fn noise_observation(
         &self,
     ) -> Result<Option<bitaxe_worker_control::noise::NoiseObservation>, WorkerSessionError> {
@@ -59,6 +87,10 @@ impl WorkerSession for ProductionWorkerSession {
     }
     fn noise_poll(&mut self) {
         crate::noise_serial_runtime::poll();
+        crate::v2_serial_runtime::poll_safety_facts();
+    }
+    fn v2_scope_busy(&self) -> bool {
+        crate::v2_serial_runtime::share_busy()
     }
     fn noise_busy(&self) -> bool {
         crate::noise_serial_runtime::busy()
@@ -175,6 +207,7 @@ impl WorkerSession for ProductionWorkerSession {
             admission_diagnostics::fail(Failure::Admission);
             WorkerSessionError::Rejected
         })?;
+        crate::v2_serial_runtime::seed_share(generation, grant)?;
         crate::production_mining_session::bwg_start(grant, deadlines, generation).map_err(|_| {
             admission_diagnostics::fail(Failure::Admission);
             WorkerSessionError::Rejected
@@ -192,6 +225,12 @@ impl WorkerSession for ProductionWorkerSession {
     }
 
     fn safe_stop(&mut self, reason: RestorationReason) -> Result<(), WorkerSessionError> {
+        if self
+            .maybe_generation
+            .is_some_and(crate::v2_serial_runtime::waiting_for_network)
+        {
+            return Err(WorkerSessionError::SafeStopFailed);
+        }
         admission_diagnostics::stage(Stage::Cleanup);
         if let Some(generation) = self.maybe_generation {
             use crate::production_mining_session::revocation::{self, RevocationReason};
@@ -217,6 +256,10 @@ impl WorkerSession for ProductionWorkerSession {
                 WorkerSessionError::SafeStopFailed
             })?;
             crate::production_mining_session::revocation::finish_shutdown(generation);
+            crate::v2_serial_runtime::restoration_completed(generation);
+        }
+        if crate::v2_serial_runtime::share_busy() {
+            return Err(WorkerSessionError::SafeStopFailed);
         }
         admission_diagnostics::stage(Stage::Complete);
         Ok(())
