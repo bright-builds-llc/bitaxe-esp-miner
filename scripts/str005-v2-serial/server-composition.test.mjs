@@ -1,3 +1,4 @@
+import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import { readFile } from "node:fs/promises";
@@ -74,4 +75,17 @@ test("actual HTTP Channel exposes no signing route and rejects cross-origin cont
   assert.equal(response.status, 400);
   await assert.rejects(readFile(resolve(f.root, "state-0001.json")), { code: "ENOENT" });
   await assert.rejects(f.request("/authorization-context", {}), { code: "v2_origin_rejected" });
+});
+
+test("bounded effect loader uses the actual admitted HTTP supervisor and rejects its closed listener", { skip: process.platform !== "darwin" }, async t => {
+  // Arrange: actual supervisor HTTP/process lifecycle with explicit synthetic cold prerequisites.
+  const f = await serving(t);
+  const { loadEffectContext } = await import("./context.mjs");
+  f.operations.spawnSync = spawnSync; // Actual lsof verifies this actual HTTP server's listener ownership.
+  for (const name of ["inspectPredecessor", "inspectChannelSuccessor", "inspectNative", "checkCurrentSuccessorOwnership"])
+    f.operations[name] = () => assert.fail("effect path cannot repeat a cold prerequisite");
+  // Act / Assert.
+  assert.deepEqual(await loadEffectContext(f.root, f.operations), f.context);
+  await f.server.closeQualificationResources();
+  await assert.rejects(loadEffectContext(f.root, f.operations), { code: "v2_effect_supervisor_unavailable" });
 });

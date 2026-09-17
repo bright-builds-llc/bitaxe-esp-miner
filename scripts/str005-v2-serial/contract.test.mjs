@@ -64,3 +64,23 @@ test("supersession is an optional Channel preflight path, never a Share or relat
   const share = [...preflight]; share[2] = "share";
   assert.throws(() => parseArgs([...share, "--supersede-permission", "/private/channel-001.permission-closure.json"]), { code: "v2_permission_scope" });
 });
+
+test("cleanup successor actions expose no source overrides, signing inputs or output destination", () => {
+  // Arrange / Act / Assert.
+  for (const action of ["prepare-channel-successor", "review-channel-successor"]) {
+    assert.equal(parseArgs([action, "--private-root", "/private/channel-002"]).action, action);
+    for (const flag of ["authority-directory", "cleanup-receipt", "endpoint", "supersede-channel", "supersede-permission", "output", "force"])
+      assert.throws(() => parseArgs([action, "--private-root", "/private/channel-002", `--${flag}`, "/forbidden"]), { code: "v2_option_rejected" });
+  }
+});
+
+test("cleanup supersession is Channel-only and mutually exclusive with permission supersession", () => {
+  // Arrange.
+  const path = "/private/channel-002.successor-readiness.json";
+  // Act / Assert.
+  assert.equal(parseArgs([...preflight, "--supersede-channel", path]).options.supersedeChannel, path);
+  assert.throws(() => parseArgs([...preflight, "--supersede-channel", "relative.json"]), { code: "v2_cleanup_scope" });
+  const share = [...preflight]; share[2] = "share";
+  assert.throws(() => parseArgs([...share, "--supersede-channel", path]), { code: "v2_cleanup_scope" });
+  assert.throws(() => parseArgs([...preflight, "--supersede-channel", path, "--supersede-permission", "/private/closure.json"]), { code: "v2_supersession_conflict" });
+});

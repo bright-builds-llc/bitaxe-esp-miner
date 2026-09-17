@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { missing } from "../fixed-usb-qualification/contract.mjs";
 import { canonical, privateRoot, proof, writeNew } from "../str005-noise-serial/files.mjs";
-import { loadContext, verifyEffectInputs } from "./context.mjs";
+import { loadContext, verifyCleanupInputs } from "./context.mjs";
 import { restoredBaseline, readDeviceJournal, readJournal } from "./journal.mjs";
 import { checkedOwner, installationResources, processSnapshot, requireGone, requireLsofAbsent, requireNoHolders,
   requirePoolListenerAbsent, sameProcess, signerExitProofs } from "./host-resources.mjs";
@@ -58,7 +58,7 @@ export async function prepareCleanup(root, context, operations = {}) {
   const validated = await loadContext(root, { historical: true, operations });
   check(canonical(validated) === canonical(context) && SCOPES.includes(context.scope), "v2_cleanup_context");
   for (const name of ["final-result.json", "sealed-inventory.json"]) await missing(resolve(root, name));
-  await verifyEffectInputs(context, operations);
+  await verifyCleanupInputs(context, operations);
   const sources = await helperSources(context), serverProof = await proof(root, "server-owner.json");
   const server = serverOwner(serverProof.value, context), readyProof = await proof(root, "fixture-ready.json"), ready = readyFacts(readyProof.value, context);
   const snapshot = operations.processSnapshot ?? processSnapshot;

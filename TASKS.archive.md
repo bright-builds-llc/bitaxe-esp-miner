@@ -16617,3 +16617,95 @@ closure after this publication, build the clean exact pair and establish fresh
 baseline/accounting before any successor effects. No closure, fresh context,
 flashing or mining result is claimed by this software completion. Parity stays
 90/95 and no reservation was consumed.
+
+
+### task-str005-v2-cleanup-successor-amendment | 2026-09-17 | Admit a fresh channel after sealed host-evidence failure
+
+Status: Complete. Software-only amendment prerequisite for
+`task-str005-v2-serial-qualification`; the owner's current request authorizes
+implementation and subsequent bounded Channel/Share work through that task.
+The immutable base contract requires an explicit amendment task for this change.
+
+Scope: preserve sealed Channel002 as unverified; add one guarded Channel003
+admission after verified host corrections and fresh current ownership checks.
+Keep accepted Noise ancestry distinct from the actually installed Channel002
+firmware baseline. No old private port reconstruction, historical acceptance,
+cycle credit, mining allowance change, protocol change or generic retry switch.
+
+- [x] Freeze/review/publish the [prospective cleanup-successor amendment](docs/hardware/str005-v2-serial-cleanup-successor-amendment.md) before
+      implementation, specifying evidence limits, present ownership proof,
+      exact context/command identities and finite Channel003/Share001 admission.
+- [x] Implement independent failed-result inspection and deterministic protected
+      sibling continuation receipt; preserve historical result/readers and
+      require fresh current host checks again at admission.
+- [x] Bind v3 contexts to the corrected source/package/validator, failed-result
+      seal and actual installed before-source. Reject changed evidence,
+      conflicting/duplicate assignments, recursive successors and archived tasks.
+- [x] Rehearse the full host lifecycle through real process/socket boundaries,
+      cleanup receipt, sealing and read-only review. Never label software
+      fixtures as hardware evidence; retain only allowlisted metadata.
+- [x] Verify bounded pre-effect checks after full admission, with live exact
+      supervisor proof and unchanged detector freshness; reject parent cleanup
+      failures as terminal without relabeling historical failures.
+- [x] Run ordered Cargo, relevant Gate/canonical/native/ownership/reference,
+      redaction, standards, task/archive and parity checks. Review the diff,
+      commit/push and archive this finalized software record before live effects.
+
+Execution ownership: the main qualification task retains detector admission,
+state-preserving initial installation and four Channel cycles, separate four
+Share cycles, fresh signed ordinal 18/180000-ms reservation subject to accounting,
+real accepted V2 share, heartbeat-loss shutdown and cooling. This amendment
+creates no permission to serve a consumed context or to repeat unchanged work.
+
+Contract review | 2026-09-17: Independent context, classifier and real-process
+rehearsal reviews agree on the finite interfaces. Preserve the earlier unclaimed
+launch's missing exit status and require fresh parent-reference absence. Ordered
+Cargo format/Clippy/build/tests pass (2346 tests, three existing ignored); all
+191 canonical targets, Bright Builds, reference, redaction, Markdown and
+read-only parity/progress checks pass. This publication defines requirements;
+implementation and all new effects remain pending.
+
+Implementation progress | 2026-09-17: Published contract `5340d12f` before
+code. v3 context/CLI tests pass for exclusive Channel003, historical-only v1/v2,
+actual installed before-source and inherited Share receipts. The independent
+classifier reads all 961 immutable failed files successfully without creating a
+receipt. An initial 88047-ms forensic check exposed redundant ancestry replay;
+full admission and bounded effect verification are being separated before any
+hardware effect, preserving the 60000-ms detector freshness limit. Parent-only
+cleanup provenance tests pass. Real process/socket rehearsal and full integrated
+checks remain pending. No new context, device access or grant has occurred.
+
+Completion review | 2026-09-17: Complete. Published the prospective amendment
+before implementing exact Channel002 inspection, protected sibling readiness,
+v3-only Channel003/Share001 admission, preserved historical readers, current
+ownership checks and complete source/correction binding. The shared parent
+cleanup helper and real process/socket rehearsal exercise success, incomplete
+proof, disconnect, force-reap and evidence-write failure. Parent failures retain
+their own provenance and prevent acceptance; cleanup remains permitted after a
+primary failure while new effects remain blocked.
+
+A bounded effect loader validates the assigned snapshot, current source/package,
+fixed evidence pins and exact live supervisor process/listener/HTTP response
+without replaying historical ancestry inside the detector window. Terminal and
+lifecycle checks run again at dispatch before the unchanged 60000-ms detector
+freshness check. Full preflight, serve and historical review retain complete
+verification. No caller test flag or generic retry route was added.
+
+Ordered Cargo format/Clippy/build and 2346 tests pass (three existing ignored).
+All 197 canonical Bazel targets, 15 Gate gesture/admission regressions, native
+USB ownership/symbols, reference, redaction, standards and read-only parity checks
+pass. The exact host-correction command passed 39 tests within 180 seconds and
+65536 output bytes. Initial full-run failures are retained: failure markers had
+incorrectly blocked cleanup, and the rehearsal child dropped Bazel's UTC setting.
+Both were corrected and regression-tested without relaxing identity or timing.
+All 239 task IDs remain unique; prior archive bytes and frozen documents remain
+unchanged. Simplification/peer review retained shared cleanup and source checks
+and identified/fixed late terminal and listener-ownership races.
+
+Residual limits: Channel002 remains unverified with its original result/seal;
+its missing private pool-port absence is never reconstructed. An observed
+transient current process/group conflict in a read-only check cleared on a
+subsequent identity-only observation; its cause is not inferred. Fresh ownership
+must pass before actual readiness/admission. No new readiness receipt, context,
+hardware attempt, Work Lease signing or reservation occurred in this software
+task. The main qualification task owns those next steps. Parity remains 90/95.

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { resolve } from "node:path";
-import { readFile, stat } from "node:fs/promises";
+import { readFile, stat, writeFile } from "node:fs/promises";
+import { syntheticSupervisor } from "./effect-context-fixture.mjs";
 import { contextFixture } from "./context-fixtures.mjs";
 import { createJournal, saveAccounting } from "./journal.mjs";
 import { installed } from "./completed-fixture.mjs";
@@ -13,6 +14,7 @@ import { sha256 } from "./values.mjs";
 async function fixture(t, scope = "channel", closed = true) {
   const f = await contextFixture(t, { scope }), journal = await createJournal(f.root, f.context);
   await journal.state("before", state(f.context, "before", closed), 1);
+  await syntheticSupervisor(f);
   return { ...f, permit: { kind: "execute", contextSha256: sha256(JSON.stringify(f.context)), claimSha256: null } };
 }
 
@@ -53,6 +55,7 @@ async function flashFixture(t) {
   await journal.state("before", state(f.context, "before", true), 2);
   const { claim, person } = await installed(f, 0, true);
   f.operations.pid = person.pid;
+  await syntheticSupervisor(f);
   const observed = (await proof(f.root, "install-0.detect.observation.json")).value;
   let now = f.operations.unixNow();
   f.operations.unixNow = () => now;
@@ -115,5 +118,32 @@ test("fresh changed detector identity cannot replace the parent-pinned physical 
   await assert.rejects(admitExecution(f.root, "flash", 0, f.permit, f.operations), { code: "v2_execute_detector" });
   assert.equal(f.holderChecks(), 0);
   assert.equal((await proof(f.root, "install-0.claim.json")).sha256, f.permit.claimSha256);
+  await assert.rejects(stat(resolve(f.root, "install-0")), { code: "ENOENT" });
+});
+
+
+test("late parent cleanup failure at dispatch recheck cannot return a flash command", async t => {
+  // Arrange.
+  const f = await flashFixture(t); f.setNow(f.finishedAt + 500);
+  const fetch = f.operations.fetch; let requests = 0;
+  f.operations.fetch = async (...args) => {
+    const response = await fetch(...args);
+    if (++requests === 2) await writeFile(resolve(f.root, "parent-cleanup-failure.json"), "{}\n", { mode: 0o600 });
+    return response;
+  };
+  // Act / Assert.
+  await assert.rejects(admitExecution(f.root, "flash", 0, f.permit, f.operations), { code: "private_path_exists" });
+  await assert.rejects(stat(resolve(f.root, "install-0")), { code: "ENOENT" });
+});
+
+test("detector freshness is checked after final supervisor lifecycle awaits", async t => {
+  // Arrange.
+  const f = await flashFixture(t); f.setNow(f.finishedAt + 59000);
+  const fetch = f.operations.fetch; let requests = 0;
+  f.operations.fetch = async (...args) => {
+    const response = await fetch(...args); if (++requests === 2) f.setNow(f.finishedAt + 60001); return response;
+  };
+  // Act / Assert.
+  await assert.rejects(admitExecution(f.root, "flash", 0, f.permit, f.operations), { code: "noise_detector_stale" });
   await assert.rejects(stat(resolve(f.root, "install-0")), { code: "ENOENT" });
 });

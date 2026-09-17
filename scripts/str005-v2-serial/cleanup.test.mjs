@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, writeFile, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
 import test from "node:test";
+import { verifyCleanupInputs, verifyEffectInputs } from "./context.mjs";
 import { contextFixture } from "./context-fixtures.mjs";
 import { state } from "../str005-noise-serial/test-fixture.mjs";
 import { proof, writeNew } from "../str005-noise-serial/files.mjs";
@@ -143,4 +144,33 @@ test("independent cleanup rejects a readiness observation outside the actual own
   const prepared = await prepareCleanup(f.root, f.context, f.operations); f.close();
   await prepared.record(await f.witnesses());
   await assert.rejects(inspectCleanup(f.root, f.context, `${f.root}.cleanup/receipt.json`, f.operations), { code: "v2_fixture_readiness_deadline" });
+});
+
+
+for (const name of ["failure.json", "parent-cleanup-failure.json"]) {
+  test(`cleanup after ${name} can finish while device effects remain forbidden`, async t => {
+    // Arrange: preserve the primary observation; cleanup proves resources only.
+    const f = await setup(t, "share"), path = resolve(f.root, name), failure = `${JSON.stringify({ synthetic: "preserved failure" })}\n`;
+    await f.put(path, failure);
+    await assert.rejects(verifyEffectInputs(f.context, f.operations), { code: "private_path_exists" });
+    // Act.
+    const prepared = await prepareCleanup(f.root, f.context, f.operations);
+    f.close(); await prepared.record(await f.witnesses());
+    const result = await inspectCleanup(f.root, f.context, `${f.root}.cleanup/receipt.json`, f.operations);
+    // Assert.
+    assert.equal(result.value.poolListenerAbsent, true);
+    assert.equal(await readFile(path, "utf8"), failure);
+    await assert.rejects(verifyEffectInputs(f.context, f.operations), { code: "private_path_exists" });
+  });
+}
+
+test("cleanup verification never reopens finalized or sealed results", async t => {
+  // Arrange.
+  const f = await contextFixture(t);
+  // Act / Assert.
+  for (const name of ["final-result.json", "sealed-inventory.json", "failed-inventory.json"]) {
+    await f.put(resolve(f.root, name), "{}\n");
+    await assert.rejects(verifyCleanupInputs(f.context, f.operations), { code: "private_path_exists" });
+    await unlink(resolve(f.root, name));
+  }
 });

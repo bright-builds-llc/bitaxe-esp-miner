@@ -6,7 +6,7 @@ import { admitTrust, nonce } from "../fixed-usb-qualification/contract.mjs";
 import { body, send } from "../fixed-usb-qualification/http.mjs";
 import { processSnapshot } from "../str005-noise-serial/host-resources.mjs";
 import { proof, writeNew } from "../str005-noise-serial/files.mjs";
-import { loadContext, recheckNative, verifyEffectInputs } from "./context.mjs";
+import { loadContext, recheckNative, recheckSuccessorOwnership, verifyEffectInputs } from "./context.mjs";
 import { requireAuthorityOption } from "./contract.mjs";
 import { failureRecorder } from "./failure.mjs";
 import { startFixture } from "./fixture-owner.mjs";
@@ -25,6 +25,7 @@ export async function createSupervisor(options, operations = {}) {
   const root = resolve(options.privateRoot), context = await loadContext(root, { operations });
   requireAuthorityOption(context.scope, options);
   await recheckNative(context, operations);
+  await recheckSuccessorOwnership(context, operations);
   const contextSha256 = sha256(JSON.stringify(context)), now = operations.now ?? (() => Math.floor(performance.now()));
   await writeNew(resolve(root, "server.claim.json"), { schema: "str005-v2-server-claim-v1", contextSha256 });
   const failures = failureRecorder(root, context, now), journal = await createJournal(root, context);

@@ -551,6 +551,42 @@ js_test(
 )
 
 js_test(
+    name = "str005_v2_serial_context_cleanup_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/context-cleanup.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_effect_context_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/effect-context.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_parent_cleanup_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/parent-cleanup.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_host_correction_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/host-correction.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_cleanup_rehearsal_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/cleanup-rehearsal.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_successor_readiness_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/successor-readiness.test.mjs",
+)
+
+js_test(
     name = "str005_v2_serial_permission_closure_test",
     data = [":str005_v2_serial_sources"],
     entry_point = "str005-v2-serial/permission-closure.test.mjs",

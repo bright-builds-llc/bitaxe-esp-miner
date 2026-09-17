@@ -14,6 +14,7 @@ export async function failedShareFixture(t, channel, channelResult) {
   const options = { ...channel.options, scope: "share", privateRoot: resolve(channel.parent, "share-001"),
     predecessorReceipt: resolve(channel.root, "final-result.json") };
   delete options.supersedePermission;
+  delete options.supersedeChannel;
   const predecessor = { root: channel.root, context: channel.context, resultSha256: channelResult.result_sha256,
     sealSha256: channelResult.sealed_inventory_sha256, ledger, original };
   const oldReader = channel.operations.inspectPredecessor;

@@ -9,6 +9,12 @@ import { check } from "./values.mjs";
 export async function main(argv, operations = {}) {
   const { action, options } = parseArgs(argv);
   check(action !== "recover", "v2_serial_recovery_unavailable");
+  if (["prepare-channel-successor", "review-channel-successor"].includes(action)) {
+    const module = await import("./successor-readiness.mjs");
+    const result = await (action === "prepare-channel-successor" ? module.prepareChannelSuccessor : module.reviewChannelSuccessor)(options.privateRoot, operations);
+    return { status: result.status, classification: result.classification, hardware_qualified: false, historical_cleanup_complete: false,
+      device_effects: false, context_sha256: result.contextSha256, receipt_sha256: result.receiptSha256 };
+  }
   if (["close-permission", "review-permission"].includes(action)) {
     const module = await import("./permission-closure.mjs");
     const result = await (action === "close-permission" ? module.closePermission : module.reviewPermission)(options.privateRoot, operations);

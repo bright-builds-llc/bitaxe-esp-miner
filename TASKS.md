@@ -4384,8 +4384,8 @@ Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/par
 
 ### task-str005-v2-serial-qualification | 2026-09-16 | Qualify Ultra 205 V2 channel and accepted share
 
-Status: In progress under `task-str005-v2-cleanup-successor-amendment`; hardware
-remains blocked until its guarded successor is published. After Channel002, the protocol exchange passed its independent
+Status: Ready for guarded Channel003 and separate Share001 through the completed
+`task-str005-v2-cleanup-successor-amendment`. After Channel002, the protocol exchange passed its independent
 checks, but canonical review remains unverified (`v2_baseline`) and the host
 cleanup collector failed on macOS listener records. Preserve both failures.
 This task succeeds `task-str005-v2-channel-job-205` and
@@ -4424,6 +4424,10 @@ remain mandatory.
 - [x] Create and independently review the published permission closure for
       Channel001, build the corrected clean pair and admit Channel002 through
       its verified supersession. Preserve Channel001 and both ledger expectations.
+- [ ] Prepare/review the exact Channel002 successor-readiness receipt, build the
+      clean published candidate and exclusively admit Channel003 through the
+      [cleanup-successor amendment](docs/hardware/str005-v2-serial-cleanup-successor-amendment.md).
+      Prove current ownership and the actually installed 097050c0 baseline fresh.
 - [ ] Detector-admit the candidate and complete fresh state-preserving continuity
       cycles. Seal and independently accept the channel stage with no ASIC work,
       signing or reservation, preserving both ledgers and safe restoration.
@@ -4584,60 +4588,22 @@ retry passed, and the fixture now matches that atomic publication. The final
 full canonical run passes; both earlier logs are retained. Gate and firmware
 runtime code were not changed by this correction.
 
-Completion review: Pending; complete Channel cleanup and accepted evidence remain
-missing. Another bounded attempt requires a prospectively published guarded
-successor with fresh ownership/baseline proof. The current command rejects it;
-no active hardware or mining continuation was attempted after sealing.
+Successor implementation | 2026-09-17: The separately published amendment and
+verified implementation now admit only fresh Channel003 and then accepted-pair
+Share001. All current acceptance, accounting, safety, cleanup and privacy limits
+remain. The bounded effect path avoids historical re-evaluation within detector
+freshness while retaining current source, evidence and live supervisor checks.
+The failed Channel002 remains immutable; no fresh receipt/context or device
+attempt has yet occurred. Keep the exact published pair unchanged between the
+new stages and finish full restoration/cleanup before publication.
+
+Completion review: Pending; accepted Channel and real V2 share evidence remain
+missing. This task owns the authorized bounded live continuation.
 
 
 
 
 
-
-### task-str005-v2-cleanup-successor-amendment | 2026-09-17 | Admit a fresh channel after sealed host-evidence failure
-
-Status: In progress. Software-only amendment prerequisite for
-`task-str005-v2-serial-qualification`; the owner's current request authorizes
-implementation and subsequent bounded Channel/Share work through that task.
-The immutable base contract requires an explicit amendment task for this change.
-
-Scope: preserve sealed Channel002 as unverified; add one guarded Channel003
-admission after verified host corrections and fresh current ownership checks.
-Keep accepted Noise ancestry distinct from the actually installed Channel002
-firmware baseline. No old private port reconstruction, historical acceptance,
-cycle credit, mining allowance change, protocol change or generic retry switch.
-
-- [x] Freeze/review/publish the [prospective cleanup-successor amendment](docs/hardware/str005-v2-serial-cleanup-successor-amendment.md) before
-      implementation, specifying evidence limits, present ownership proof,
-      exact context/command identities and finite Channel003/Share001 admission.
-- [ ] Implement independent failed-result inspection and deterministic protected
-      sibling continuation receipt; preserve historical result/readers and
-      require fresh current host checks again at admission.
-- [ ] Bind v3 contexts to the corrected source/package/validator, failed-result
-      seal and actual installed before-source. Reject changed evidence,
-      conflicting/duplicate assignments, recursive successors and archived tasks.
-- [ ] Rehearse the full host lifecycle through real process/socket boundaries,
-      cleanup receipt, sealing and read-only review. Never label software
-      fixtures as hardware evidence; retain only allowlisted metadata.
-- [ ] Run ordered Cargo, relevant Gate/canonical/native/ownership/reference,
-      redaction, standards, task/archive and parity checks. Review the diff,
-      commit/push and archive this finalized software record before live effects.
-
-Execution ownership: the main qualification task retains detector admission,
-state-preserving initial installation and four Channel cycles, separate four
-Share cycles, fresh signed ordinal 18/180000-ms reservation subject to accounting,
-real accepted V2 share, heartbeat-loss shutdown and cooling. This amendment
-creates no permission to serve a consumed context or to repeat unchanged work.
-
-Contract review | 2026-09-17: Independent context, classifier and real-process
-rehearsal reviews agree on the finite interfaces. Preserve the earlier unclaimed
-launch's missing exit status and require fresh parent-reference absence. Ordered
-Cargo format/Clippy/build/tests pass (2346 tests, three existing ignored); all
-191 canonical targets, Bright Builds, reference, redaction, Markdown and
-read-only parity/progress checks pass. This publication defines requirements;
-implementation and all new effects remain pending.
-
-Completion review: Pending. Parity remains 90/95.
 
 
 ## Future

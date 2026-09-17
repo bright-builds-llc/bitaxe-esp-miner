@@ -330,5 +330,6 @@ js_library(
         "docs/hardware/str005-v2-serial-qualification.md",
         "docs/hardware/str005-v2-serial-clock-amendment.md",
         "docs/hardware/str005-v2-serial-permission-amendment.md",
+        "docs/hardware/str005-v2-serial-cleanup-successor-amendment.md",
     ],
 )

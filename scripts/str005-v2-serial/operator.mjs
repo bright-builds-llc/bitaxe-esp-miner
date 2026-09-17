@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loadContext } from "./context.mjs";
+import { loadEffectContext } from "./context.mjs";
 import { baseline, readJournal } from "./journal.mjs";
 import { observeCommand, observeOwnedExit, monotonicHostMs } from "../str005-noise-serial/operator.mjs";
 import { proof } from "../str005-noise-serial/files.mjs";
@@ -9,7 +9,7 @@ export { observeOwnedExit, monotonicHostMs };
 
 /** Reuse the real process observer; the new child independently admits this scope and context. */
 export async function installCandidate(root, index, operations = {}) {
-  const context = await loadContext(root, { operations });
+  const context = await loadEffectContext(root, operations);
   check(context.install_indices.includes(index), "v2_install_index");
   const rows = await readJournal(root, context); baseline(rows.at(-1)?.state, true);
   const producer = { ...operations, childProgram: fileURLToPath(new URL("./operator-child.mjs", import.meta.url)) };

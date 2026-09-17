@@ -2,6 +2,7 @@ import { proof } from "../str005-noise-serial/files.mjs";
 import { readDeviceJournal } from "./journal.mjs";
 import { failure } from "./device-record.mjs";
 import { boolean, bytes, check, object, sha256, uint } from "./values.mjs";
+import { PARENT_CLEANUP_CODES, PARENT_CLEANUP_STAGES } from "./cleanup-session-values.mjs";
 
 export const judgmentCode = error => /^(?:v2|noise|iterative|original|observer)_[a-z_]+$/u.test(error?.code) ? error.code : "v2_evidence_incomplete";
 async function maybeProof(root, path) {
@@ -49,6 +50,18 @@ async function deriveFirstFailure(root, context, code) {
   if (maybeDevice && maybeFixture) return observed("unresolved", "v2_producer_failures", null, null, null, available, "unproved");
   if (maybeDevice) return observed("device", "v2_device_failure", maybeDevice.record.firstFailure, maybeDevice.sequence, maybeDevice.atHostMs, available, "single-observed-producer");
   if (maybeFixture) return observed("fixture", "v2_fixture_failure", maybeFixture, null, null, available, "single-observed-producer");
+  if (context.schema === "str005-v2-serial-context-v3") {
+    const maybeParent = (await maybeProof(root, "parent-cleanup-failure.json"))?.value;
+    if (maybeParent) {
+      object(maybeParent, ["schema", "source", "contextSha256", "stage", "code", "observedAtUnixMs"]);
+      check(maybeParent.schema === "str005-v2-parent-cleanup-failure-v1" && maybeParent.source === "parent-observed" &&
+        maybeParent.contextSha256 === sha256(JSON.stringify(context)) && PARENT_CLEANUP_STAGES.includes(maybeParent.stage) &&
+        PARENT_CLEANUP_CODES.includes(maybeParent.code), "v2_parent_cleanup_record");
+      uint(maybeParent.observedAtUnixMs);
+      // Parent wall time stays in its own artifact; it is not a supervisor monotonic timestamp.
+      return observed("parent", maybeParent.code, null, null, null, available, "parent-observed");
+    }
+  }
   return observed("judge", code, null, null, null, available, "no-producer-cause");
 }
 export async function firstFailure(root, context, code) {

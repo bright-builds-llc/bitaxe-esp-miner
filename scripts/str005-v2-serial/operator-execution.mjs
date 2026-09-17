@@ -4,7 +4,7 @@ import { missing } from "../fixed-usb-qualification/contract.mjs";
 import { flashArguments, quoteJustArgument } from "../str005-noise-serial/operator-execution.mjs";
 import { requireNoHolders, processSnapshot, sameProcess } from "../str005-noise-serial/host-resources.mjs";
 import { canonical, proof } from "../str005-noise-serial/files.mjs";
-import { loadContext } from "./context.mjs";
+import { loadEffectContext, recheckEffectAdmission } from "./context.mjs";
 import { readFreshDetector } from "../str005-noise-serial/install.mjs";
 import { baseline, readJournal } from "./journal.mjs";
 import { check, object, sha256 } from "./values.mjs";
@@ -14,11 +14,14 @@ export { flashArguments, quoteJustArgument };
 export async function admitExecution(root, mode, index, permit, operations = {}) {
   object(permit, ["kind", "contextSha256", "claimSha256"]);
   check(permit.kind === "execute" && ["detect", "flash"].includes(mode), "v2_execute_shape");
-  const context = await loadContext(root, { operations });
+  const context = await loadEffectContext(root, operations);
   check(context.install_indices.includes(index) && sha256(JSON.stringify(context)) === permit.contextSha256, "v2_execute_context");
   await missing(resolve(root, "failure.json"));
   const rows = await readJournal(root, context), last = rows.at(-1); baseline(last?.state, true);
-  if (mode === "detect") { check(permit.claimSha256 === null, "v2_detect_claim"); return { context, argv: ["detect-ultra205"] }; }
+  if (mode === "detect") {
+    check(permit.claimSha256 === null, "v2_detect_claim");
+    await recheckEffectAdmission(root, context, operations); return { context, argv: ["detect-ultra205"] };
+  }
   const p = await proof(root, `install-${index}.claim.json`), claim = p.value;
   check(p.sha256 === permit.claimSha256 && claim.contextSha256 === permit.contextSha256 && claim.index === index &&
     claim.beforeSequence === last.sequence && claim.beforeStateSha256 === sha256(canonical(last)), "v2_execute_claim");
@@ -41,7 +44,8 @@ export async function admitExecution(root, mode, index, permit, operations = {})
   const fresh = await readFreshDetector(root, index, operations);
   check(canonical(fresh) === canonical(claim.detector), "v2_execute_detector_changed");
   requireNoHolders(claim.detector.port, operations);
-  await missing(resolve(root, `install-${index}`)); await missing(resolve(root, "failure.json"));
+  await missing(resolve(root, `install-${index}`));
+  await recheckEffectAdmission(root, context, operations);
   const now = (operations.unixNow ?? Date.now)(), finished = observed.value.finished_at_unix_ms;
   check(now >= finished && now - finished <= 60000, "noise_detector_stale");
   return { context, argv: expected };

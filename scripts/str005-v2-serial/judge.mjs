@@ -14,6 +14,8 @@ const FINAL_FILES = new Set(["final-result.json", "sealed-inventory.json", "proj
 export async function judge(root, context, cleanupPath, operations = {}) {
   const beforeInventory = await inventory(root, FINAL_FILES);
   check(!(await readdir(root)).includes("failure.json"), "v2_recorded_failure");
+  if (context.schema === "str005-v2-serial-context-v3")
+    check(!(await readdir(root)).includes("parent-cleanup-failure.json"), "v2_parent_cleanup_failed");
   const finalNative = (await proof(root, "native/final-readiness.json")).value;
   check(canonical(finalNative) === canonical(context.native_readiness), "v2_native_final_drift");
   const states = await readJournal(root, context), devices = await readDeviceJournal(root, context);
