@@ -4384,10 +4384,11 @@ Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/par
 
 ### task-str005-v2-serial-qualification | 2026-09-16 | Qualify Ultra 205 V2 channel and accepted share
 
-Status: Ready for guarded Channel003 and separate Share001 through the completed
-`task-str005-v2-cleanup-successor-amendment`. After Channel002, the protocol exchange passed its independent
-checks, but canonical review remains unverified (`v2_baseline`) and the host
-cleanup collector failed on macOS listener records. Preserve both failures.
+Status: Blocked on `task-str005-v2-install-review-amendment` before fresh
+Channel004 and separate Share001. Channel003 installed the published candidate
+but stopped at installation0 review; its sealed result remains unverified and
+no post-install authenticated baseline was collected. Preserve Channel002's
+separate baseline/cleanup failures and Channel003's original supervisor failure.
 This task succeeds `task-str005-v2-channel-job-205` and
 `task-str005-bm1366-share-205`; their unchecked obligations transfer here.
 
@@ -4424,7 +4425,7 @@ remain mandatory.
 - [x] Create and independently review the published permission closure for
       Channel001, build the corrected clean pair and admit Channel002 through
       its verified supersession. Preserve Channel001 and both ledger expectations.
-- [ ] Prepare/review the exact Channel002 successor-readiness receipt, build the
+- [x] Prepare/review the exact Channel002 successor-readiness receipt, build the
       clean published candidate and exclusively admit Channel003 through the
       [cleanup-successor amendment](docs/hardware/str005-v2-serial-cleanup-successor-amendment.md).
       Prove current ownership and the actually installed 097050c0 baseline fresh.
@@ -4599,6 +4600,80 @@ new stages and finish full restoration/cleanup before publication.
 
 Completion review: Pending; accepted Channel and real V2 share evidence remain
 missing. This task owns the authorized bounded live continuation.
+
+Channel003 closure | 2026-09-17: The [unverified result report](docs/parity/evidence/20260917-str005-v2-channel-unverified.md)
+records original finalization and read-only review, which
+reproduce `unverified` / `stop_evidence_incomplete`, first failure supervisor
+`v2_operation_failed` and judgment `v2_recorded_failure`. Installation0 wrote
+firmware `0d2b6d06` / ELF `8e766fba` successfully with healthy trusted capture;
+post-install possession, baseline, accounting and restoration were not collected.
+The separate parent permission diagnosis records 0755/0644 Rust evidence outputs
+under a protected ancestor and byte-preserving hardening, without acceptance.
+Actual browser closure and supervisor/parent exit do not repair the missing
+device observation. No cycle, fixture, Channel diagnostic, signing, grant,
+reservation or mining followed the write. Context:
+`031552692b777c324b5633dfb5b1cbbc4625da4cdea1adedcd8c1c3ee0cbd1b1`;
+result: `cf219da3a6b6830f1818f03eeb7e3d88b0b912d589a99e6a4a1f8b8b0a02ad54`;
+seal: `5941810323f06e9bdf86d79bc8c9f4aed6ce3a2f105716153e68b101e7f79bf3`.
+The existing finite admission policy does not permit Channel004. The proposed
+[install-review amendment](docs/hardware/str005-v2-serial-install-review-amendment.md)
+must be reviewed/published and its corrections verified/published first. A new
+attempt must freshly authenticate the expected installed identity and both
+ledgers before any new write; no prior baseline or cycle credit transfers.
+
+### task-str005-v2-install-review-amendment | 2026-09-17 | Admit one fresh channel after installation review failure
+
+Status: Active; prospective contract reviewed for publication. Software-only until
+the amendment and verified implementation are separately published.
+
+Depends on: exact sealed unverified Channel003 evidence and completed
+`task-str005-v2-cleanup-successor-amendment`. The main
+`task-str005-v2-serial-qualification` retains ownership of later effects.
+
+Scope: preserve the original failure and missing post-install device baseline;
+correct private installation evidence creation and canonical filtered Node
+launch, then admit only Channel004 through a pinned failure classifier and
+fresh ownership/possession/baseline/accounting gates. No hardware, mining,
+generic retry, historical acceptance upgrade or parity promotion belongs to
+this software task.
+
+- [x] Review and publish the [install-review amendment](docs/hardware/str005-v2-serial-install-review-amendment.md)
+      with exact failure anchors, available-observation limits, closed receipt
+      and context v4 interfaces, fixed ordinal4/Share001 and unchanged bounds.
+- [ ] Correct real Rust installation evidence modes and restrictive owned-child
+      umask propagation without relaxing private-path validators or repairing
+      arbitrary existing trees. Prove nested/atomic outputs are0700/0600 and
+      original bytes remain unchanged; reject unsafe and partial paths.
+- [ ] Correct canonical Node/runfiles resolution under the filtered host-check
+      environment; run the unchanged fixed regression argv through the actual
+      canonical launcher, preserving bounds and real source-bound receipts.
+- [ ] Implement the exact sealed003 classifier, current-owner checks and v2
+      successor receipt dispatch. Preserve v1–v3 historical behavior, original
+      result/seal, initial-accounting provenance and missing after-baseline.
+- [ ] Bind context v4 Channel004 to expected installed0d2 and require fresh
+      possession, safe baseline and both ledgers before any write. Retain full
+      source/native/ancestry checks, bounded effect admission, exclusive
+      assignments and same-pair accepted004 prerequisite for Share001.
+- [ ] Test supported forensic evidence and adverse modes/bytes/identity/ledger/
+      owner cases, historical review, duplicate/interrupted claims, archived
+      tasks and rejected Channel005. Run the real host lifecycle rehearsal.
+- [ ] Run ordered Cargo and canonical tests plus native/package, standards,
+      ownership, reference, redaction, contract/link and parity checks. Review
+      the final diff; publish the verified software before any hardware effect.
+- [ ] Record completion and residual non-claims, archive this software record,
+      and hand the exact published commands to the still-open main task.
+
+Contract publication review | 2026-09-17: Lifecycle, failure provenance, missing
+post-install evidence and closed receipt/context interfaces reviewed. Ordered
+Cargo format/Clippy/build/tests and all 197 canonical Bazel targets passed,
+alongside Bright Builds, reference, redaction and read-only parity/progress.
+All 240 native task IDs are unique; existing archive bytes and failed003
+result/seal are unchanged. New document links and formatting checked. Parity
+remains 90/95. Implementation and fresh hardware evidence remain pending.
+
+Completion review: Pending. Channel003 remains unverified; initial accounting
+cannot establish its unobserved post-install state. The new live baseline must
+be obtained afresh, and Channel/Share hardware qualification remains missing.
 
 
 
