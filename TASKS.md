@@ -4384,8 +4384,8 @@ Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/par
 
 ### task-str005-v2-serial-qualification | 2026-09-16 | Qualify Ultra 205 V2 channel and accepted share
 
-Status: Blocked on `task-str005-v2-install-review-amendment` before fresh
-Channel004 and separate Share001. Channel003 installed the published candidate
+Status: Ready for guarded Channel004 and separate Share001 through completed
+`task-str005-v2-install-review-amendment`. Channel003 installed the published candidate
 but stopped at installation0 review; its sealed result remains unverified and
 no post-install authenticated baseline was collected. Preserve Channel002's
 separate baseline/cleanup failures and Channel003's original supervisor failure.
@@ -4429,6 +4429,11 @@ remain mandatory.
       clean published candidate and exclusively admit Channel003 through the
       [cleanup-successor amendment](docs/hardware/str005-v2-serial-cleanup-successor-amendment.md).
       Prove current ownership and the actually installed 097050c0 baseline fresh.
+- [ ] Prepare/review the exact Channel003 successor receipt, build the clean
+      published package and exclusively admit Channel004 under the
+      [install-review](docs/hardware/str005-v2-serial-install-review-amendment.md)
+      and [ownership](docs/hardware/str005-v2-serial-install-ownership-amendment.md)
+      amendments. Freshly authenticate installed0d2 and both ledgers before writes.
 - [ ] Detector-admit the candidate and complete fresh state-preserving continuity
       cycles. Seal and independently accept the channel stage with no ASIC work,
       signing or reservation, preserving both ledgers and safe restoration.
@@ -4620,92 +4625,6 @@ The existing finite admission policy does not permit Channel004. The proposed
 must be reviewed/published and its corrections verified/published first. A new
 attempt must freshly authenticate the expected installed identity and both
 ledgers before any new write; no prior baseline or cycle credit transfers.
-
-### task-str005-v2-install-review-amendment | 2026-09-17 | Admit one fresh channel after installation review failure
-
-Status: Active; prospective contract reviewed for publication. Software-only until
-the amendment and verified implementation are separately published.
-
-Depends on: exact sealed unverified Channel003 evidence and completed
-`task-str005-v2-cleanup-successor-amendment`. The main
-`task-str005-v2-serial-qualification` retains ownership of later effects.
-
-Scope: preserve the original failure and missing post-install device baseline;
-correct private installation evidence creation and canonical filtered Node
-launch, then admit only Channel004 through a pinned failure classifier and
-fresh ownership/possession/baseline/accounting gates. No hardware, mining,
-generic retry, historical acceptance upgrade or parity promotion belongs to
-this software task.
-
-- [x] Review and publish the [install-review amendment](docs/hardware/str005-v2-serial-install-review-amendment.md)
-      with exact failure anchors, available-observation limits, closed receipt
-      and context v4 interfaces, fixed ordinal4/Share001 and unchanged bounds.
-- [x] Correct real Rust installation evidence modes and restrictive owned-child
-      umask propagation without relaxing private-path validators or repairing
-      arbitrary existing trees. Prove nested/atomic outputs are0700/0600 and
-      original bytes remain unchanged; reject unsafe and partial paths.
-- [x] Correct canonical Node/runfiles resolution under the filtered host-check
-      environment; run the unchanged fixed regression argv through the actual
-      canonical launcher, preserving bounds and real source-bound receipts.
-- [x] Implement the exact sealed003 classifier, current-owner checks and v2
-      successor receipt dispatch. Preserve v1–v3 historical behavior, original
-      result/seal, initial-accounting provenance and missing after-baseline.
-- [x] Bind context v4 Channel004 to expected installed0d2 and require fresh
-      possession, safe baseline and both ledgers before any write. Retain full
-      source/native/ancestry checks, bounded effect admission, exclusive
-      assignments and same-pair accepted004 prerequisite for Share001.
-- [x] Test supported forensic evidence and adverse modes/bytes/identity/ledger/
-      owner cases, historical review, duplicate/interrupted claims, archived
-      tasks and rejected Channel005. Run the real host lifecycle rehearsal.
-- [ ] Run ordered Cargo and canonical tests plus native/package, standards,
-      ownership, reference, redaction, contract/link and parity checks. Review
-      the final diff; publish the verified software before any hardware effect.
-- [ ] Record completion and residual non-claims, archive this software record,
-      and hand the exact published commands to the still-open main task.
-
-Contract publication review | 2026-09-17: Lifecycle, failure provenance, missing
-post-install evidence and closed receipt/context interfaces reviewed. Ordered
-Cargo format/Clippy/build/tests and all 197 canonical Bazel targets passed,
-alongside Bright Builds, reference, redaction and read-only parity/progress.
-All 240 native task IDs are unique; existing archive bytes and failed003
-result/seal are unchanged. New document links and formatting checked. Parity
-remains 90/95. Implementation and fresh hardware evidence remain pending.
-
-Ownership review correction | 2026-09-17: Peer review found the published
-parent-reference wording did not explicitly stop at the detached campaign
-parent. The [prospective ownership correction](docs/hardware/str005-v2-serial-install-ownership-amendment.md)
-clarifies that boundary before implementation publication or Channel004
-assignment. It requires the detached parent/group and every owned descendant to
-be absent while excluding only the external launcher ancestor. Remaining worker
-parent references, serial holders and the supervisor listener still fail closed.
-The original contract and all sealed evidence remain unchanged. Context v4 and
-checker inventories will bind both published documents before effects.
-
-Implementation review | 2026-09-17: The owned effect child creates descendants
-with umask077; the unchanged Rust evidence writer is shared with a real-process
-regression. The actual just/Bazel/Rust path produced0700/0600 with unchanged
-bytes from a022 parent. The host checker retains only the existing Node runfiles
-allowlist. Context v4 binds both published amendments, tagged initial accounting
-and the sole Channel004/Share001 continuation. Ten classifier/ownership tests
-and25 context-binding tests passed. A final evidence recheck closes a mutation
-race during checker inspection. Historical Channel002 review and the actual
-Channel003 classifier passed; current ownership inspection found51 recorded
-owners absent,2 serial nodes without holders and0 unresolved worker-parent
-references. These inspections created no readiness receipt or device effect.
-Ordered Cargo format/Clippy/build/tests (2346 passed,3 existing ignored),
-all200 canonical targets, native USB source/symbol ownership, reference,
-redaction, Bright Builds and parity/progress checks passed. The pinned Gate
-gesture/admission regressions passed15tests. Exact clean-package readiness and
-implementation publication remain pending. Parity remains90/95.
-
-Completion review: Pending. Channel003 remains unverified; initial accounting
-cannot establish its unobserved post-install state. The new live baseline must
-be obtained afresh, and Channel/Share hardware qualification remains missing.
-
-
-
-
-
 
 
 ## Future
