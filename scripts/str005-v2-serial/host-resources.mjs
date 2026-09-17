@@ -11,16 +11,31 @@ export const LISTENER_ARGS = Object.freeze(["-nP", "-iTCP", "-sTCP:LISTEN", "-Fp
 export function parseListenerInventory(output) {
   check(typeof output === "string" && Buffer.byteLength(output) <= 1048576, "v2_listener_inventory_bound");
   const rows = output.split("\n").filter(Boolean); check(rows.length > 0 && rows.length <= 16384, "v2_listener_inventory_shape");
-  let maybePid = null; const listeners = [];
+  let maybePid = null, maybeFormat = null, needsName = false, groupHasName = false;
+  const listeners = [], descriptors = new Set();
+  const completeGroup = () => check(maybePid === null || (groupHasName && !needsName), "v2_listener_inventory_shape");
   for (const row of rows) {
-    if (/^p[1-9][0-9]*$/u.test(row)) { maybePid = uint(Number(row.slice(1)), 0x7fffffff); continue; }
+    if (/^p[1-9][0-9]*$/u.test(row)) {
+      completeGroup(); maybePid = uint(Number(row.slice(1)), 0x7fffffff); groupHasName = false;
+      continue;
+    }
+    if (/^f(?:0|[1-9][0-9]*)$/u.test(row)) {
+      check(maybePid !== null && maybeFormat !== "names" && !needsName, "v2_listener_inventory_shape");
+      const descriptor = uint(Number(row.slice(1)), 0x7fffffff), key = `${maybePid}:${descriptor}`;
+      check(!descriptors.has(key), "v2_listener_inventory_shape");
+      descriptors.add(key); maybeFormat = "descriptors"; needsName = true;
+      continue;
+    }
     const match = /^n(\*|(?:[0-9]{1,3}\.){3}[0-9]{1,3}|\[[0-9A-Za-z:.%_-]+\]):([1-9][0-9]*)$/u.exec(row);
-    check(maybePid !== null && match !== null, "v2_listener_inventory_shape");
+    check(maybePid !== null && match !== null && (maybeFormat !== "descriptors" || needsName), "v2_listener_inventory_shape");
     const address = match[1].replace(/^\[|\]$/gu, "").split("%")[0];
     check(address === "*" || isIP(address) !== 0, "v2_listener_inventory_shape");
     listeners.push({ pid: maybePid, port: port(Number(match[2])) });
+    // Some supported inventories contain only PID/name fields. Once descriptor
+    // records appear, every file must have its own name; never mix the grammars.
+    maybeFormat ??= "names"; needsName = false; groupHasName = true;
   }
-  check(listeners.length > 0, "v2_listener_inventory_shape");
+  completeGroup(); check(listeners.length > 0, "v2_listener_inventory_shape");
   return listeners;
 }
 /** The private port never enters argv, environment, diagnostics or the return value. */

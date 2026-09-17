@@ -21,7 +21,7 @@ export async function judge(root, context, cleanupPath, operations = {}) {
   const { inspectExecution } = await import("./execution-inspect.mjs");
   const execution = await inspectExecution(root, context, states, devices);
   const accounting = await judgeAccounting(root, context, states, execution.restoration);
-  const continuity = await judgeContinuity(root, context, states, accounting.before);
+  const continuity = await judgeContinuity(root, context, states, accounting.before, accounting.initial);
   check(accounting.initial.observedSequence < states.find(row => row.state.status === "closed")?.sequence,
     "v2_initial_accounting_order");
   const baselineId = accounting.initial.state.preservation.baseline_id;

@@ -449,6 +449,12 @@ js_test(
 )
 
 js_test(
+    name = "str005_v2_serial_continuity_baseline_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/continuity-baseline.test.mjs",
+)
+
+js_test(
     name = "str005_v2_serial_main_test",
     data = [":str005_v2_serial_sources"],
     entry_point = "str005-v2-serial/main.test.mjs",

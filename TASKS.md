@@ -4384,8 +4384,10 @@ Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/par
 
 ### task-str005-v2-serial-qualification | 2026-09-16 | Qualify Ultra 205 V2 channel and accepted share
 
-Status: In progress: Channel001 stopped before Serial admission at browser
-permission. Guarded closure and a corrected fresh context precede continuation. This task succeeds `task-str005-v2-channel-job-205` and
+Status: Blocked after Channel002: the protocol exchange passed its independent
+checks, but canonical review remains unverified (`v2_baseline`) and the host
+cleanup collector failed on macOS listener records. Preserve both failures.
+This task succeeds `task-str005-v2-channel-job-205` and
 `task-str005-bm1366-share-205`; their unchecked obligations transfer here.
 
 Depends on: completed `task-str005-noise-auth-205` with [accepted Noise evidence](docs/parity/evidence/20260916-str005-noise-serial-qualified.md).
@@ -4414,11 +4416,11 @@ remain mandatory.
 - [x] Implement the bounded fixture, private runtime-input pipes, source-bound
       collectors and independent closed judges; keep all endpoint/user/grant
       material out of evidence and separate live comparison from offline proof.
-- [ ] Exercise production seams, real processes, wrong fields/frames/targets,
+- [x] Exercise production seams, real processes, wrong fields/frames/targets,
       stale generations, ambiguous Start, expiry, privacy and actual cleanup.
       Run ordered Cargo, Gate, canonical, native resource, ownership, reference,
       standards, redaction and parity checks; publish and package the exact pair.
-- [ ] Create and independently review the published permission closure for
+- [x] Create and independently review the published permission closure for
       Channel001, build the corrected clean pair and admit Channel002 through
       its verified supersession. Preserve Channel001 and both ledger expectations.
 - [ ] Detector-admit the candidate and complete fresh state-preserving continuity
@@ -4458,7 +4460,10 @@ Public projection release
 must preserve a passed channel outcome if share later fails, without inventing
 an accepted share. Any failed-attempt continuation needs a verified correction,
 a fresh ordinal/root and current-HEAD source/package qualification; there is no
-fixed attempt cap, no unchanged retry and no reuse of a consumed context.
+fixed overall attempt cap, no unchanged retry and no reuse of a consumed context.
+That strategy confers no executable ordinal beyond the current admission class;
+the finite permission amendment requires a new published guarded admission
+before any Channel003 successor.
 
 Clock correction: the [prospective amendment](docs/hardware/str005-v2-serial-clock-amendment.md)
 keeps the Share diagnostic deadline null until the existing guarded dispatch
@@ -4505,7 +4510,83 @@ sealing and safe Channel publication after failed Share cleanup. Only a genuine
 ASIC result can satisfy the full positive Share join. No bypass, threshold
 change, hardware attempt or new reservation has been introduced.
 
-Completion review: Pending.
+Current correction plan | 2026-09-17:
+
+- [x] Finalize Channel002 with the original published validator and independently
+      review its immutable unverified result before changing collection code.
+- [x] Correct numeric `lsof` file-descriptor handling with malformed-group,
+      privacy and real local-listener regressions; preserve strict absence proof.
+- [x] Identify the canonical `v2_baseline` rejection separately from the
+      parent-observed cleanup-parser failure; record exact missing proof.
+- [x] Bind future continuity review to the authenticated initial accounting row,
+      with a realistic configured-before-ready regression and frozen historical
+      behavior for already sealed evidence.
+- [x] Correct the verification fixture's partial readiness-file publication to
+      match the real producer's atomic rename; retain the failed test log.
+- [x] Run ordered Cargo and relevant canonical, standards, reference, ownership,
+      redaction and parity checks; review, commit and push the truthful outcome.
+
+Hardware progress | 2026-09-17: The [unverified result report](docs/parity/evidence/20260917-str005-v2-channel-unverified.md)
+records the sealed observations and limits. Channel001 has a verified permission closure.
+Channel002 installed clean firmware `097050c0` with Gate `e20c0fd5`, completed
+five state-preserving installations and four maximum-exchange continuity cycles,
+and performed one authenticated Standard channel/job exchange without ASIC work.
+Independent protocol inspection accepted seven device records, eleven device
+events and eight fixture events from one connection; submissions and device
+acknowledgements were zero. The device reported network resource release after
+2013173 microseconds. This is protocol evidence, not full hardware qualification.
+
+Canonical finalization and read-only review both report `unverified` /
+`stop_evidence_incomplete`, with judge code `v2_baseline`. The separate earliest
+parent-observed cleanup failure is `v2_listener_inventory_shape`: the original
+collector rejects numeric file-descriptor fields emitted by macOS `lsof`.
+Actual browser and supervisor exit witnesses are retained, but no complete
+resource/cleanup receipt or fresh private pool-port absence proof was produced.
+The private port remained memory-only and was lost when the parent exited.
+The baseline rejection is a separate validator bug: it selects the first
+before-phase event (configured) instead of the authenticated ready state joined
+by initial accounting. Execution and accounting review pass; the required fresh
+baseline exists. Correct that selection for new evaluator identities while
+preserving the original sealed verdict.
+Neither a parser fix nor an administrative closure may upgrade those missing
+observations. The full frozen inventory includes the separately identified
+parent observation; no browser or device failure was manufactured.
+
+Channel002 result digest:
+`675230a92e4f6ebd78ca0cf1748019c364772b5f31742075dda3c3c38af7b4b0`;
+seal digest: `a12a3c25cc89c137d12ece4bc80c4896546f7f2d37bfaabf36109004b2b26c80`.
+No Share preparation, Work Lease authority signing, grant or reservation occurred. Fresh accounting
+before and after the channel exchange remains next ordinal 18, last completed
+17, total charged 1560000 ms and pending false. Share admission still requires
+an independently accepted Channel result; the finite permission amendment
+admits no Channel003. Parity remains 90/95.
+
+Correction review | 2026-09-17: The listener parser now handles numeric
+file-descriptor groups while rejecting malformed, mixed or incomplete inventories.
+All 27 focused tests pass, including a real macOS local-listener presence/absence
+regression that failed before the fix. Future continuity review selects the
+already joined authenticated initial-accounting row, rejecting stale, mismatched
+or missing pointers. Compatibility is limited to the exact frozen historical
+continuity evaluator digest and length. Read-only review after both corrections
+reproduces Channel002's original result and seal hashes and its `v2_baseline`
+verdict. No missing observation was reconstructed or acceptance limit relaxed.
+
+Verification | 2026-09-17: Ordered Cargo format/Clippy/build/tests pass
+(2346 tests, three existing ignored); all 248 V2 host tests and all 191 canonical
+Bazel targets pass. Bright Builds, native USB ownership/symbols, reference,
+redaction, report formatting/links and read-only parity/progress checks pass.
+All 238 task IDs remain unique, archive bytes and frozen contracts/checklist
+are unchanged. The first canonical run retained one failed assertion in an
+existing API-command-effects test; its fake readiness producer used a visible
+partial write while the real producer uses atomic publication. The isolated
+retry passed, and the fixture now matches that atomic publication. The final
+full canonical run passes; both earlier logs are retained. Gate and firmware
+runtime code were not changed by this correction.
+
+Completion review: Pending; complete Channel cleanup and accepted evidence remain
+missing. Another bounded attempt requires a prospectively published guarded
+successor with fresh ownership/baseline proof. The current command rejects it;
+no active hardware or mining continuation was attempted after sealing.
 
 
 

@@ -5,10 +5,43 @@ import { baseline } from "./journal.mjs";
 import { inspectProbe } from "./install.mjs";
 import { check, object, sha256, uint } from "./values.mjs";
 
+const SOURCE = "scripts/str005-v2-serial/continuity-judge.mjs";
+const HISTORICAL_SOURCE = { sha256: "d49635695c66849ab053343f32c5d681c20aea3ca144e4f100a673cb88b2b640", length: 3883 };
+
+async function initialBaseline(root, context, rows, beforeWork, initialAccounting) {
+  check(Array.isArray(context.evaluator), "v2_continuity_evaluator");
+  const entries = context.evaluator.filter(entry => entry?.path === SOURCE);
+  check(entries?.length === 1 && /^[a-f0-9]{64}$/u.test(entries[0].sha256) && Number.isSafeInteger(entries[0].length) &&
+    entries[0].length > 0, "v2_continuity_evaluator");
+  if (entries[0].sha256 === HISTORICAL_SOURCE.sha256) {
+    check(entries[0].length === HISTORICAL_SOURCE.length, "v2_continuity_evaluator");
+    // Both frozen 001/002 snapshots used this exact implementation. Preserve its verdict,
+    // including the sealed 002 baseline-selection rejection; never upgrade historical evidence.
+    const initial = rows.find(row => row.phase === "before");
+    check(initial, "v2_initial_baseline_missing"); baseline(initial.state); return initial;
+  }
+  const saved = (await proof(root, "accounting-before-install.json")).value;
+  const work = (await proof(root, "accounting-before.json")).value;
+  const keys = ["schema", "contextSha256", "observedSequence", "stage", "state", "ledger", "original_budget"];
+  object(saved, keys); object(work, keys);
+  const hash = sha256(JSON.stringify(context));
+  uint(saved.observedSequence); uint(work.observedSequence);
+  const initial = rows[saved.observedSequence - 1], workRow = rows[work.observedSequence - 1];
+  check(initialAccounting !== undefined && canonical(initialAccounting) === canonical(saved) && canonical(beforeWork) === canonical(work) &&
+    saved.schema === "str005-v2-accounting-v1" && work.schema === saved.schema && saved.contextSha256 === hash && work.contextSha256 === hash &&
+    saved.stage === "before-install" && work.stage === "before" && saved.observedSequence > 0 && saved.observedSequence < work.observedSequence &&
+    initial && initial.sequence === saved.observedSequence && initial.contextSha256 === hash && initial.phase === "before" &&
+    canonical(initial.state) === canonical(saved.state) && workRow && workRow.sequence === work.observedSequence &&
+    workRow.contextSha256 === hash && workRow.phase === "candidate" && canonical(workRow.state) === canonical(work.state) &&
+    Number.isSafeInteger(initial.atHostMs) && initial.atHostMs >= 0 && Number.isSafeInteger(workRow.atHostMs) &&
+    workRow.atHostMs >= initial.atHostMs, "v2_initial_accounting_join");
+  baseline(initial.state); return initial;
+}
+
 /** Re-derive each flash and fresh probe; recorded cycle pass flags alone confer no continuity. */
-export async function judgeContinuity(root, context, rows, beforeWork) {
-  const contextSha256 = sha256(JSON.stringify(context)), initial = rows.find((row) => row.phase === "before");
-  check(initial, "v2_initial_baseline_missing"); baseline(initial.state);
+export async function judgeContinuity(root, context, rows, beforeWork, initialAccounting) {
+  const contextSha256 = sha256(JSON.stringify(context));
+  const initial = await initialBaseline(root, context, rows, beforeWork, initialAccounting);
   const baselineId = initial.state.preservation.baseline_id;
   const predecessorClaim = await proof(context.predecessor.root, "install-0.claim.json");
   const predecessorSeal = (await proof(context.predecessor.root, "sealed-inventory.json")).value;

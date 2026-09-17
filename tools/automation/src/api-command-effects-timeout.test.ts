@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmod, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -15,8 +15,11 @@ import { createFakeProcessPort, type ProcessOutcome } from "./process.js";
 const ok = (): ProcessOutcome => ({ exitCode: 0, stdout: "", stderr: "", timedOut: false });
 
 async function privateJson(output: string, value: unknown): Promise<void> {
-  await writeFile(output, `${JSON.stringify(value)}\n`, { mode: 0o600 });
-  await chmod(output, 0o600);
+  // Match the real fixture: readiness becomes visible only after complete publication.
+  const pending = `${output}.pending`;
+  await writeFile(pending, `${JSON.stringify(value)}\n`, { flag: "wx", mode: 0o600 });
+  await chmod(pending, 0o600);
+  await rename(pending, output);
 }
 
 async function fixture(): Promise<{ root: string; options: ApiCommandEffectsOptions }> {

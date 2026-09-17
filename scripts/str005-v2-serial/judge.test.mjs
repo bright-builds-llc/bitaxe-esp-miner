@@ -14,7 +14,7 @@ test("fresh continuity independently rejects copied probe, changed flash and led
   const f = await completedFixture(t), rows = await readJournal(f.root, f.context);
   const restoration = (await proof(f.root, "restoration.json")).value;
   const accounting = await judgeAccounting(f.root, f.context, rows, restoration);
-  const inspect = () => judgeContinuity(f.root, f.context, rows, accounting.before);
+  const inspect = () => judgeContinuity(f.root, f.context, rows, accounting.before, accounting.initial);
   assert.equal((await inspect()).installations, 5);
   await requireChannelNoWork(f.root, rows, accounting.before, accounting.after);
   const cases = [
