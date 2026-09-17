@@ -4671,6 +4671,16 @@ All 240 native task IDs are unique; existing archive bytes and failed003
 result/seal are unchanged. New document links and formatting checked. Parity
 remains 90/95. Implementation and fresh hardware evidence remain pending.
 
+Ownership review correction | 2026-09-17: Peer review found the published
+parent-reference wording did not explicitly stop at the detached campaign
+parent. The [prospective ownership correction](docs/hardware/str005-v2-serial-install-ownership-amendment.md)
+clarifies that boundary before implementation publication or Channel004
+assignment. It requires the detached parent/group and every owned descendant to
+be absent while excluding only the external launcher ancestor. Remaining worker
+parent references, serial holders and the supervisor listener still fail closed.
+The original contract and all sealed evidence remain unchanged. Context v4 and
+checker inventories will bind both published documents before effects.
+
 Completion review: Pending. Channel003 remains unverified; initial accounting
 cannot establish its unobserved post-install state. The new live baseline must
 be obtained afresh, and Channel/Share hardware qualification remains missing.
