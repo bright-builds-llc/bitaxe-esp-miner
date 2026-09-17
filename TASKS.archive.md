@@ -16365,3 +16365,140 @@ by the v2 candidate-restoration contract. This is positive Noise hardware
 interoperability, not channel/job, mining, hardware-negative or universal
 cancellation evidence. Native stack analysis retains its selected-path limits.
 No mining allowance was issued and parity remains 90/95 with unchanged history.
+
+### task-str005-v2-channel-job-205 | 2026-08-28 | Prove Ultra 205 V2 channel and job receipt
+
+Status: Superseded prospectively by `task-str005-v2-serial-qualification`.
+No channel/job or accepted-share hardware obligation is satisfied by this
+administrative transfer. Original unchecked obligations remain below.
+
+- [ ] Create and publish a fresh bounded successor contract for channel/job
+      qualification on the ordinary fixed-Serial/JTAG runtime.
+- [ ] Re-prove TCP, configured-authority Noise, setup, channel opening,
+      target receipt and job receipt on the exact candidate.
+- [ ] Prove unchanged accounting/settings, inactive leases, mine-on-boot false,
+      healthy same-candidate restoration and actual resource cleanup.
+- [ ] Independently validate closed evidence and privacy before closure.
+
+Depends on: completed `task-str005-noise-auth-205` with accepted evidence.
+Cooperative crypto cancellation is not an automatic parity prerequisite; use
+supported-operation boundaries with independently enforced authority and actual
+cleanup. Define exact timing and stop conditions in this task's own contract.
+
+Authorization: Software planning only until the new contract and implementation
+are verified/published. No ASIC work, share submission or mining. Preserve all
+historical ordinals and failed evidence; legacy `session-001` and recovery-006
+instructions do not authorize a new attempt. Keep the tested candidate installed
+and reuse current state-preserving qualification mechanisms.
+
+Scope reconciliation | 2026-09-16: The owner-authorized Noise parity amendment
+removes dependency-fork work from this path. It does not supply channel/job
+hardware evidence or a new effect contract.
+
+Verification: Pending. Completion review: Pending; STR-005 stays implemented.
+
+Execution plan | 2026-09-16: Continue the owner-authorized parity work after
+accepted Noise evidence. Publish a prospective contract that separates this
+network-only campaign from `task-str005-bm1366-share-205`, while allowing their
+shared runtime capability to be implemented and qualified in one candidate.
+
+- [ ] Freeze Standard-channel interfaces, the explicit signed V2 grant variant,
+      independent fixture/job/share joins, privacy, timing, cleanup and failure
+      rules in `docs/hardware/str005-v2-serial-qualification.md`; review and publish
+      before implementation or effects.
+- [ ] Reuse the existing network worker and pure V2 session/work logic. Factor
+      authentication before the reserved Noise diagnostic proof; the channel
+      connection sends SetupConnection first. Never reuse boot/NVS activation or
+      the old direct ASIC execution path.
+- [ ] Preserve V1 canonical signing bytes; isolate crypto from the production
+      safety owner. Initial preparation must fit the existing signed lease of at
+      most 60000 ms; no preparing-renew or deadline extension is introduced.
+- [ ] Add an independent fixture verifier with a fixed meaningful target;
+      preserve all pool endpoint/user/grant inputs in memory only. Source-bound
+      live collectors compare socket identities without persisting forbidden
+      values; offline proof rechecks permitted job/header/share commitments.
+- [ ] Run production-seam and real process tests, ordered Cargo checks, Gate and
+      canonical checks, native package/stack/heap admission, ownership/privacy,
+      reference, standards and unchanged parity checks. Publish the exact pair.
+- [ ] Admit the fresh channel campaign, requalify four state-preserving cycles,
+      and stop at WorkReady without ASIC dispatch, shares, signing or reservation.
+      Seal/review restoration and unchanged ledgers before closing this task.
+- [ ] Hand the same qualified pair and cycle receipts to the separately scoped
+      live share task. Its fresh normal allowance is expected to be ordinal 18,
+      180000 ms reserved without refund, subject to fresh authenticated accounting.
+
+Planning decisions: Standard only; preserve 400 MHz/1100 mV/100% fan and existing
+safety/cooling limits for the later mining task. Use actual BM1366 work against a
+controlled local V2 fixture; external pools remain excluded. One meaningful
+accepted share and its acknowledgement must be joined to native dispatch/nonce
+proof. The later fault check keeps the fixture alive through independent
+heartbeat revocation/shutdown. No new hardware or mining authority is created by
+this planning entry; all limits and inputs must be frozen in the contract first.
+
+Supersession review | 2026-09-16: Transfer all current obligations, safety,
+privacy, accounting and evidence requirements to the single active successor
+`task-str005-v2-serial-qualification`. It retains separately sealed channel and
+share scopes and fresh share admission only after accepted channel restoration
+and cleanup. Keeping both dependent stages within one task lets their exact
+published HEAD/package remain unchanged without a new retained-runtime policy
+exception. The channel's intermediate accepted result stays private; publication
+and task completion follow the combined result or truthful stop. Preserve these
+unchecked execution items and all historical ordinals/plans; no device effect,
+allowance or parity claim was produced by supersession. Archived task IDs remain
+unavailable for effect admission.
+
+### task-str005-bm1366-share-205 | 2026-08-28 | Prove one accepted Ultra 205 V2 share
+
+Status: Superseded prospectively by `task-str005-v2-serial-qualification`.
+No channel/job or accepted-share hardware obligation is satisfied by this
+administrative transfer. Original unchecked obligations remain below.
+
+- [ ] Create and publish a separately bounded live-mining successor contract
+      using fresh authenticated device accounting and preserved attempt history.
+- [ ] On one exact candidate, prove TCP, configured-authority Noise, setup,
+      channel/target/job, BM1366 work, qualified nonce and an encrypted accepted
+      share from the declared fixture.
+- [ ] Prove independent work revocation/shutdown, bounded cooling, inactive
+      leases, mine-on-boot false, preservation and healthy same-candidate
+      restoration with complete resource cleanup.
+- [ ] Independently validate cumulative hardware evidence and redaction.
+
+Depends on: completed `task-str005-v2-channel-job-205` with accepted evidence.
+A crypto fork is not a parity prerequisite. Any synchronous crypto call must
+remain isolated from mining safety enforcement; the existing 2.8-second
+heartbeat cutoff and three-second actual work revocation/shutdown requirement
+remain mandatory regardless of crypto or network progress.
+
+Authorization: Software planning only until the new contract and implementation
+are verified/published. Retain the conservative 400 MHz, 1100 mV, 100% fan and
+at-most-180-second mining ceiling as constraints for that contract, not a fresh
+allowance. Verify both ledgers and reserve any new allowance through the then
+eligible task-owned mechanism; never reset/refund a ledger or reuse a consumed
+context. Historical `attempt-008` and recovery-006 references confer no current
+reservation or restoration authority. External pools and unrelated effects
+remain excluded. Keep the tested candidate installed after safe restoration.
+
+Scope reconciliation | 2026-09-16: Network-only Noise relaxation does not relax
+mining safety, accepted-share proof or accounting. Its future contract must
+resolve these independently; no live authority is created by this tracker edit.
+
+Owner authorization | 2026-09-16: Real live mining is explicitly authorized
+for this continuation once preceding Noise/channel evidence and this task's
+bounded successor contract, safety/accounting gates and published implementation
+are ready. No additional per-attempt permission is required within that contract.
+Fresh authenticated ledger admission still determines the next reservation;
+this note does not issue one or authorize reuse of any historical context.
+
+Verification: Pending. Completion review: Pending; STR-005 stays implemented.
+
+Supersession review | 2026-09-16: Transfer all current obligations, safety,
+privacy, accounting and evidence requirements to the single active successor
+`task-str005-v2-serial-qualification`. It retains separately sealed channel and
+share scopes and fresh share admission only after accepted channel restoration
+and cleanup. Keeping both dependent stages within one task lets their exact
+published HEAD/package remain unchanged without a new retained-runtime policy
+exception. The channel's intermediate accepted result stays private; publication
+and task completion follow the combined result or truthful stop. Preserve these
+unchecked execution items and all historical ordinals/plans; no device effect,
+allowance or parity claim was produced by supersession. Archived task IDs remain
+unavailable for effect admission.
