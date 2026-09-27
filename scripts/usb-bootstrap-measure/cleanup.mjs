@@ -92,6 +92,16 @@ export async function validateCleanup(root, context, value, operatorDirectory) {
   check(["serialHoldersAbsent", "supervisorListenerAbsent", "operatorSocketAbsent", "ownedGroupsAbsent"].every(key => value.absence[key] === true), "bootstrap_cleanup_absence");
   for (const owner of value.owners) { object(owner, ["role", "identity", "exitObservationSha256"]); checkedOwner(owner.identity); check(["daemon", "supervisor", "installation", "detector"].includes(owner.role), "bootstrap_cleanup_owner"); }
   if (!value.complete) return false;
+  await validateResourceCleanup(root, context, value, operatorDirectory);
+  await verifyAccounting(root, context);
+  for (const [key, name] of [["baselineReceiptSha256", "restoration.json"], ["accountingBeforeSha256", "accounting-before.json"], ["accountingAfterSha256", "accounting-after.json"]])
+    check(value[key] === (await proof(root, name)).sha256, "bootstrap_cleanup_restoration");
+  return true;
+}
+
+/** Resource observations stand independently of missing accounting; never promotes a receipt. */
+export async function validateResourceCleanup(root, context, value, operatorDirectory) {
+  const hash = contextHash(context);
   const facts = await ownedFacts(root, context), directory = operatorDirectory ?? `${root}.operator`;
   const disposition = await proof(directory, "disposition.json"), locator = await proof(directory, "locator.json"), stopped = await proof(directory, "stopped.json");
   check(disposition.sha256 === value.operatorDispositionSha256 && disposition.value.contextSha256 === hash && disposition.value.hostStopped === true && disposition.value.cleanupRecorded === true &&
@@ -122,8 +132,5 @@ export async function validateCleanup(root, context, value, operatorDirectory) {
   check(detector.schema === schema("detector-exit") && detector.contextSha256 === hash && detector.pid === detectorOwner.pid && detector.code === 0 && detector.signal === null,
     "bootstrap_cleanup_detector");
   await (await import("./capture-exit.mjs")).verifyCaptureExit(root, context, { requireComplete: false });
-  await verifyAccounting(root, context);
-  for (const [key, name] of [["baselineReceiptSha256", "restoration.json"], ["accountingBeforeSha256", "accounting-before.json"], ["accountingAfterSha256", "accounting-after.json"]])
-    check(value[key] === (await proof(root, name)).sha256, "bootstrap_cleanup_restoration");
   return true;
 }

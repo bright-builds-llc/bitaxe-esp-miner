@@ -4662,9 +4662,10 @@ new measurements, verified progress and a published guarded admission contract.
 
 ### task-usb-bootstrap-drain-observability | 2026-09-26 | Distinguish bootstrap reader delay from native TX completion failure
 
-Status: Active; attempt 001 remains an interrupted preflight. Measurement 002
-is sealed and independently reviewed; its ordinary capture reproduced the TX
-timeout. Device restoration and actual host cleanup passed. The owner explicitly requested
+Status: Active; sealed attempt 003 qualified its ordinary capture and passed all
+five timing/TX checks, but remains unverified after a restored-state accounting
+collector failure. Final ledger/export proof is missing; actual device restoration
+and resource release were observed. The owner explicitly requested
 implementation of the diagnostic, targeted-fix and qualification sequence. The exact
 Channel005 failure is preserved in the [result report](docs/parity/evidence/20260926-str005-v2-bootstrap-drain-unverified.md).
 Current evidence proves a 92-byte queue followed by a 2000-ms drain timeout, not
@@ -4792,11 +4793,11 @@ Correction plan | 2026-09-27: Follow the frozen prospective
 - [x] Start one bounded receive owner immediately after reset child exit and fresh
       candidate admission, retaining both full admission passes and quarantining
       bytes until they finish. Preserve one descriptor and physical lease.
-- [ ] Prove the actual path with PTY regressions, bounded cancellation/join,
+- [x] Prove the actual path with PTY regressions, bounded cancellation/join,
       source-bound software checks and versioned timing/independent judgments.
 - [x] Port evidence-write-safe cleanup to the older V2 daemon and verify real
       process failures without changing its historical schemas or authority.
-- [ ] Run ordered verification, publish and package the clean pair, then admit
+- [x] Run ordered verification, publish and package the clean pair, then admit
       exactly one fresh attempt 003. Preserve prior sealed evidence and limits.
 - [ ] Seal/review the actual outcome; close this task only on supported correction
       evidence. A subsequent V2 campaign requires its separate fresh contract.
@@ -4822,8 +4823,51 @@ parity remains 90/95 with no checklist/history transition. The review retained o
 buffer/thread and existing admission passes rather than adding another transport.
 Clean publication/package, actual clean-build proof and measurement 003 remain pending.
 
-Completion review: Pending. Earlier receiving must pass prospective measurement;
-no qualification or mining acceptance is transferred.
+Attempt 003 | 2026-09-27: Published `5bda5b91` / Gate `e20c0fd5` passed
+clean packaging and its actual source-bound proof, then completed one installation.
+[The sealed report](docs/parity/evidence/20260927-usb-bootstrap-reader-correction-unverified.md)
+records reader opening at 818.544 ms from reset-call start, first-bootstrap
+completion in one device millisecond, no observed TX failures and a qualified
+30-second capture. The assistant operator invoked Stop/Restore before accounting
+export. The resulting `baseline_confirmed` state hit the collector's ready-only
+check, recording `bootstrap_client_failed`. No after-ledger or restoration receipt
+was produced. Explicit restoration, preserved settings/identity and closed serial
+were observed; the supervisor exited zero in five milliseconds and kernel owner
+absence passed. The formal result and cleanup remain incomplete, unchanged and
+unverified. No new mining or reservation occurred; no fresh final-ledger claim is
+made.
+
+Completion follow-up plan | 2026-09-27: Freeze the
+[restored-accounting successor](docs/hardware/usb-bootstrap-restored-accounting-successor.md)
+before implementation. It admits only fresh attempt 004 after verified correction,
+publication and clean packaging; attempt 003 and all earlier evidence stay sealed.
+
+- [x] Add a phase-aware page/server accounting predicate: initial ready-only;
+      after requires explicit restoration plus connected ready/baseline_confirmed,
+      all existing preservation/idle gates and fresh unchanged ledgers.
+- [x] Test the production collector/server through Stop/Restore and actual status
+      transitions with clearly simulated device boundaries; retain old validators.
+- [x] Verify the exact failed-003 class and real resource cleanup without inventing
+      an after-ledger or upgrading its result. Require fresh authenticated next18 /
+      1,560,000-ms accounting before the one new write.
+- [ ] Run required verification, publish, package, perform one fresh full measurement
+      and independently seal/review. Keep every timing and safety limit unchanged.
+
+Restored-accounting verification | 2026-09-27: The exact production page/server
+receipt gap reproduced red and passes with the shared phase-aware predicate. Final
+export is disabled until restored and after successful collection. Source review
+of unchanged Gate `e20c0fd5` confirms fresh possession and ledger reads preserve
+restoration confirmation. All 161 Node tests and 19 affected canonical targets
+passed, including historical reader, resource, artifact-drift and negative-state
+cases. Ordered Cargo format/Clippy/build/tests passed; standards, reference,
+redaction, ownership and parity/progress checks passed. Independent review found
+no remaining blocker. Read-only reviews reproduce the exact measurement-002 and
+unverified-003 result/seal hashes. Clean publication, packaging and attempt 004
+remain pending; no fourth attempt has been allocated yet.
+
+Completion review: Pending; the host correction passed the measured boundary,
+but a complete accepted result still requires restored-state accounting and its
+formal cleanup joins. No qualification or mining acceptance is transferred.
 
 
 ## Future

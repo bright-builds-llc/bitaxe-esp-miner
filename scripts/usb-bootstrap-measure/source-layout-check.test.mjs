@@ -24,11 +24,11 @@ test("fixed regression executes the admitted Node and closed arguments before as
 test("failed correction cannot consume a new successor assignment", async t => {
   const f = await fixture(t, { prepare: false }); f.operations.runReaderRegression = () => ({ status: 1, signal: null, stdout: Buffer.alloc(0), stderr: Buffer.alloc(0) });
   await assert.rejects(preflight(f.options, f.operations), { code: "bootstrap_reader_test_failed" });
-  assert(!(await readdir(f.parent)).includes("attempt-ordinal-3.json"));
+  assert(!(await readdir(f.parent)).includes("attempt-ordinal-4.json"));
 });
 test("v1 closed context remains parseable but cannot reach a live loader", async t => {
   const f = await fixture(t), context = structuredClone(f.context); context.schema = "usb-bootstrap-measure-context-v1"; context.attempt.ordinal = 1;
-  delete context.correctionAmendment; context.beforeSource = BEFORE; context.predecessor = { root: resolve(context.firmwareRoot, "scratch/str005-v2-serial/channel-005"), ...PREDECESSOR }; context.originalCampaign.record.path = "accounting-before-install.json"; validate(context);
+  delete context.correctionAmendment; delete context.accountingAmendment; context.beforeSource = BEFORE; context.predecessor = { root: resolve(context.firmwareRoot, "scratch/str005-v2-serial/channel-005"), ...PREDECESSOR }; context.originalCampaign.record.path = "accounting-before-install.json"; validate(context);
   await writeFile(resolve(f.root, "context.json"), JSON.stringify({ context, sha256: contextHash(context) }));
   await assert.rejects(load(f.root, { operations: f.operations }), { code: "bootstrap_prior_context_read_only" });
 });
@@ -40,14 +40,14 @@ test("complete snapshots are checked in a non-authoritative staging directory be
     await writeFile(resolve(stage, "snapshot/source/unindexed.bin"), "unexpected", { mode: 0o600 });
   };
   await assert.rejects(preflight(f.options, f.operations)); assert(staged);
-  assert(!(await readdir(f.parent)).includes("attempt-ordinal-3.json"));
+  assert(!(await readdir(f.parent)).includes("attempt-ordinal-4.json"));
 });
 test("late final-directory collision cannot overwrite preexisting bytes", async t => {
   const f = await fixture(t, { prepare: false });
   f.operations.beforeCreate = async () => { await mkdir(f.root, { mode: 0o700 }); await writeFile(resolve(f.root, "sentinel"), "existing", { mode: 0o600 }); };
   await assert.rejects(preflight(f.options, f.operations), { code: "EEXIST" });
   assert.equal(await readFile(resolve(f.root, "sentinel"), "utf8"), "existing");
-  assert((await readdir(f.parent)).includes("attempt-ordinal-3.json"));
+  assert((await readdir(f.parent)).includes("attempt-ordinal-4.json"));
 });
 test("interrupted final publication remains assigned but cannot load without final inventory", async t => {
   const f = await fixture(t, { prepare: false }); f.operations.beforeInventoryPublish = () => { throw Error("publish interrupted"); };

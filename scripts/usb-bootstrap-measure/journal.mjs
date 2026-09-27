@@ -1,3 +1,5 @@
+import { accountingBaselineAllowed } from "./accounting-baseline.mjs";
+import { CONTEXT_V4 } from "./values.mjs";
 import { readdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { canonical, proof, writeNew } from "../str005-noise-serial/files.mjs";
@@ -34,9 +36,13 @@ export async function createJournal(root, context) {
     await writeNew(resolve(root, `state-${String(row.sequence).padStart(4, "0")}.json`), row); rows.push(row); last = row; return { recorded: true, sequence: row.sequence };
   } };
 }
+function accountingBaseline(state, context, stage) {
+  if (context.schema === CONTEXT_V4) check(accountingBaselineAllowed(state, stage), "bootstrap_accounting_baseline");
+  else baseline(state);
+}
 export async function saveAccounting(root, context, input, last) {
   object(input, ["stage", "ledger", "original", "state"]); check(["before", "after"].includes(input.stage), "bootstrap_accounting_stage");
-  requireIdleLedger(input.ledger, 18, 1560000); requireExhaustedOriginal(input.original); baseline(input.state);
+  requireIdleLedger(input.ledger, 18, 1560000); requireExhaustedOriginal(input.original); accountingBaseline(input.state, context, input.stage);
   check(last && last.phase === (input.stage === "before" ? "before" : "candidate") && canonical(last.state) === canonical(input.state), "bootstrap_accounting_join");
   check(canonical({ ledger: input.ledger, original: input.original }) === canonical(context.expectedAccounting), "bootstrap_ledger_changed");
   if (input.stage === "after") {
@@ -58,7 +64,7 @@ export async function verifyAccounting(root, context) {
     const row = rows[value.observedSequence - 1];
     check(value.schema === schema("accounting") && value.contextSha256 === contextHash(context) && value.stage === stage && row &&
       canonical(row.state) === canonical(value.state) && row.phase === (stage === "before" ? "before" : "candidate"), "bootstrap_accounting_join");
-    baseline(value.state); check(canonical({ ledger: value.ledger, original: value.original }) === canonical(context.expectedAccounting), "bootstrap_ledger_changed");
+    accountingBaseline(value.state, context, stage); check(canonical({ ledger: value.ledger, original: value.original }) === canonical(context.expectedAccounting), "bootstrap_ledger_changed");
   }
   check(before.state.preservation.baseline_id === after.state.preservation.baseline_id && after.observedSequence > before.observedSequence, "bootstrap_baseline_changed");
   for (const key of ["budget_reserved_ms", "submitted", "accepted", "rejected", "work_dispatched", "nonce_work_correlations"])

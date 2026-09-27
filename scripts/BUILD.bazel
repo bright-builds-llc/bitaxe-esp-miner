@@ -989,3 +989,15 @@ js_test(
     data = [":usb_bootstrap_measure_sources"],
     entry_point = "usb-bootstrap-measure/node-executable.test.mjs",
 )
+
+js_test(
+    name = "usb_bootstrap_measure_restored_predecessor_test",
+    data = [":usb_bootstrap_measure_sources"],
+    entry_point = "usb-bootstrap-measure/restored-predecessor.test.mjs",
+)
+
+js_test(
+    name = "usb_bootstrap_measure_restored_accounting_test",
+    data = [":usb_bootstrap_measure_sources"],
+    entry_point = "usb-bootstrap-measure/restored-accounting.test.mjs",
+)

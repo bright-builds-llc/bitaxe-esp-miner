@@ -12,6 +12,14 @@ import { claim, inspectCapture } from "./install.mjs";
 import { requireOperatorParent } from "./operator-parent.mjs";
 import { fail } from "./failure.mjs";
 import { check, object, schema, sha256, code } from "./values.mjs";
+const ACCOUNTING_ROUTES = new Set(["/record", "/accounting-context", "/accounting"]);
+/** The fixed accounting routes, shared with the simulated-device composition test. */
+export async function serverAccountingRoute(root, context, journal, phase, path, value) {
+  if (path === "/record") { object(value, ["state"]); return journal.record(phase, value.state); }
+  if (path === "/accounting-context") { object(value, []); return { campaignId: context.originalCampaign.id }; }
+  if (path === "/accounting") return saveAccounting(root, context, value, journal.last());
+  check(false, "bootstrap_route_unavailable");
+}
 export async function createSupervisor(options, operations = {}) {
   const root = resolve(options.privateRoot), context = await load(root, { operations, ancestry: true });
   const parent = await requireOperatorParent(root, context), hash = contextHash(context);
@@ -35,9 +43,10 @@ export async function createSupervisor(options, operations = {}) {
     if (request.method === "GET") {
       if (path === "/context") return send(response, 200, configuration());
       if (path === "/supervisor-state") return send(response, 200, { phase, miningAuthorized: false });
-      const source = path === "/" ? "snapshot/gate/page" : path === `/${BUNDLE}` ? "snapshot/gate/bundle" : path === "/bootstrap-client.mjs" ? "bootstrap-client" : null;
+      const source = path === "/" ? "snapshot/gate/page" : path === `/${BUNDLE}` ? "snapshot/gate/bundle" : path === "/bootstrap-client.mjs" ? "bootstrap-client" : path === "/accounting-baseline.mjs" ? "accounting-baseline" : null;
       if (source) {
-        let bytes = source === "bootstrap-client" ? await readSourceSnapshot(root, context, "scripts/usb-bootstrap-measure/client.mjs") : await readFile(resolve(root, source)); const expected = path === "/" ? context.gate.pageSha256 : path === `/${BUNDLE}` ? context.gate.bundleSha256 : context.sourceInventory.find(row => row.path === "scripts/usb-bootstrap-measure/client.mjs")?.sha256;
+        const maybeSourcePath = source === "bootstrap-client" ? "scripts/usb-bootstrap-measure/client.mjs" : source === "accounting-baseline" ? "scripts/usb-bootstrap-measure/accounting-baseline.mjs" : null;
+        let bytes = maybeSourcePath ? await readSourceSnapshot(root, context, maybeSourcePath) : await readFile(resolve(root, source)); const expected = path === "/" ? context.gate.pageSha256 : path === `/${BUNDLE}` ? context.gate.bundleSha256 : context.sourceInventory.find(row => row.path === maybeSourcePath)?.sha256;
         check(sha256(bytes) === expected, "bootstrap_asset_changed");
         if (path === "/") bytes = Buffer.from(`${bytes.toString()}\n<script type="module" src="/bootstrap-client.mjs"></script>`);
         return send(response, 200, bytes, path === "/" ? "text/html" : "text/javascript");
@@ -47,9 +56,7 @@ export async function createSupervisor(options, operations = {}) {
     if (request.method !== "POST") return send(response, 404, { error: "bootstrap_route_unavailable" });
     const value = await body(request); parent.check();
     if (path === "/activate") { object(value, []); return send(response, 200, { challengeId: `challenge_${nonce()}`, retentionExpiryUnixSeconds: Math.floor(Date.now() / 1000) + 86400 }); }
-    if (path === "/record") { object(value, ["state"]); return send(response, 200, await journal.record(phase, value.state)); }
-    if (path === "/accounting-context") { object(value, []); return send(response, 200, { campaignId: context.originalCampaign.id }); }
-    if (path === "/accounting") return send(response, 200, await saveAccounting(root, context, value, journal.last()));
+    if (ACCOUNTING_ROUTES.has(path)) return send(response, 200, await serverAccountingRoute(root, context, journal, phase, path, value));
     if (path === "/client-failure") { object(value, ["code"]); check(value.code === "bootstrap_client_failed", "bootstrap_client_failure"); await fail(root, context, "browser", "browser", value); return send(response, 200, { recorded: true }); }
     if (path === "/install/claim") { await load(root, { operations }); parent.check(); return send(response, 200, await claim(root, context, value, operations)); }
     if (path === "/install/review") {

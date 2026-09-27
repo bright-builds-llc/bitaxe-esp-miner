@@ -19,7 +19,7 @@ else {
   const { retain } = await import("../str005-noise-serial/files.mjs");
   await retain(resolve(root, "install-0/flash-monitor.log"), Buffer.from(log));
   await writeNew(resolve(root, "install-0/flash-command-evidence.json"), verdict);
-  if (mode !== "missing") await writeNew(resolve(root, `install-0/${hostTimingFile(context)}`), syntheticTiming(context.schema === CONTEXT_V3 ? 2 : 1));
+  if (mode !== "missing") await writeNew(resolve(root, `install-0/${hostTimingFile(context)}`), syntheticTiming([CONTEXT_V3, "usb-bootstrap-measure-context-v4"].includes(context.schema) ? 2 : 1));
   if (mode === "failed") process.exitCode = 1;
 }
 process.disconnect();

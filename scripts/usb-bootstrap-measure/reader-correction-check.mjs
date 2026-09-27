@@ -9,6 +9,7 @@ export const READER_COMMANDS = Object.freeze([
   ["usb::early_capture::tests::", "--test-threads=1"],
   ["--test", "--test-concurrency=1", "scripts/usb-bootstrap-measure/host-timing.test.mjs", "scripts/usb-bootstrap-measure/correction-judge.test.mjs"],
 ]);
+export const readerCommands = context => context.schema === "usb-bootstrap-measure-context-v4" ? [READER_COMMANDS[0], READER_COMMANDS[1], [...READER_COMMANDS[2], "scripts/usb-bootstrap-measure/restored-accounting.test.mjs", "scripts/usb-bootstrap-measure/restored-predecessor.test.mjs"]] : READER_COMMANDS;
 export const READER_RUNS = ["identity", "rust-capture", "node-judges"];
 function identity(value, context) {
   object(value, ["schema", "sourceCommit", "sourceDirty"]);
@@ -47,7 +48,7 @@ export async function runReaderCheck(context, operations = {}) {
   const path = resolve(context.firmwareRoot, "bazel-bin/tools/device-session/tests"), provenancePath = resolve(context.firmwareRoot, "bazel-bin/tools/device-session/reader-test-build.json");
   const bytes = await binary(path, true), provenanceBytes = await readFile(provenancePath), built = JSON.parse(provenanceBytes); provenance(built, context);
   const runs = []; let outputBytes = 0, embedded;
-  for (const [index, args] of READER_COMMANDS.entries()) {
+  for (const [index, args] of readerCommands(context).entries()) {
     const remaining = Math.floor(120000 - (performance.now() - started)); check(remaining > 0, "bootstrap_reader_test_timeout");
     check(outputBytes < 65536, "bootstrap_reader_test_failed");
     const execute = operations.runReaderRegression ?? (await import("./regression-process.mjs")).runRegression;
