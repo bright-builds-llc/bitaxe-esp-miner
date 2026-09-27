@@ -8,7 +8,7 @@ import { parseArgs } from "./main.mjs";
 test("one context binds the measurement and cannot be reassigned", async t => {
   const f = await fixture(t);
   assert.deepEqual(f.context.installIndices, [0]); assert.equal(f.context.miningAuthorized, false);
-  assert.equal((await load(f.root, { operations: f.operations })).attempt.ordinal, 1);
+  assert.equal((await load(f.root, { operations: f.operations })).attempt.ordinal, 2);
   await assert.rejects(preflight(f.options, f.operations));
 });
 test("unsupported authority, scope and unmanaged serve reject before any path read", () => {
@@ -18,7 +18,9 @@ test("unsupported authority, scope and unmanaged serve reject before any path re
 test("interrupted creation consumes the single assignment", async t => {
   const f = await fixture(t, { prepare: false }); f.operations.beforeCreate = () => { throw Error("interrupted"); };
   await assert.rejects(preflight(f.options, f.operations), /interrupted/u);
-  assert.deepEqual(await readdir(f.parent), ["attempt-ordinal-1.json"]); delete f.operations.beforeCreate;
+  const entries = await readdir(f.parent);
+  assert(entries.includes("attempt-ordinal-2.json")); assert(!entries.includes("attempt-002"));
+  assert.equal(entries.filter(name => name.startsWith("attempt-002.preparation-")).length, 1); delete f.operations.beforeCreate;
   await assert.rejects(preflight(f.options, f.operations));
 });
 

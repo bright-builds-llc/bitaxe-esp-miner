@@ -863,7 +863,7 @@ js_test(
 
 js_library(
     name = "usb_bootstrap_measure_sources",
-    srcs = glob(["usb-bootstrap-measure/*.mjs"]),
+    srcs = glob(["usb-bootstrap-measure/*.mjs"]) + ["phase28.1.1.1-synthetic-pool-credentials.mjs"],
     deps = [
         ":str005_v2_serial_sources",
         "//:usb_bootstrap_measure_contract_inputs",
@@ -926,4 +926,28 @@ js_test(
     name = "usb_bootstrap_measure_daemon_fault_test",
     data = [":usb_bootstrap_measure_sources"],
     entry_point = "usb-bootstrap-measure/daemon-fault.test.mjs",
+)
+
+js_test(
+    name = "usb_bootstrap_measure_source_snapshot_test",
+    data = [":usb_bootstrap_measure_sources"],
+    entry_point = "usb-bootstrap-measure/source-snapshot.test.mjs",
+)
+
+js_test(
+    name = "usb_bootstrap_measure_preflight_corpus_test",
+    data = [":usb_bootstrap_measure_sources"],
+    entry_point = "usb-bootstrap-measure/preflight-corpus.test.mjs",
+)
+
+js_test(
+    name = "usb_bootstrap_measure_preflight_closure_test",
+    data = [":usb_bootstrap_measure_sources"],
+    entry_point = "usb-bootstrap-measure/preflight-closure.test.mjs",
+)
+
+js_test(
+    name = "usb_bootstrap_measure_source_layout_check_test",
+    data = [":usb_bootstrap_measure_sources"],
+    entry_point = "usb-bootstrap-measure/source-layout-check.test.mjs",
 )

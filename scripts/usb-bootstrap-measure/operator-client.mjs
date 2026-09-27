@@ -14,8 +14,8 @@ async function locate(root, allowStopped = false) {
   const locator = (await proof(`${root}.operator`, "locator.json")).value;
   object(locator, ["schema", "contextSha256", "owner", "socketPath"]);
   const stored = (await proof(root, "context.json")).value; object(stored, ["context", "sha256"]);
-  check(stored.sha256 === sha256(JSON.stringify(stored.context)) && stored.context.schema === "usb-bootstrap-measure-context-v1" &&
-    root === resolve(stored.context.firmwareRoot, "scratch/usb-bootstrap-measure/attempt-001") &&
+  check(stored.sha256 === sha256(JSON.stringify(stored.context)) && stored.context.schema === "usb-bootstrap-measure-context-v2" &&
+    root === resolve(stored.context.firmwareRoot, "scratch/usb-bootstrap-measure/attempt-002") &&
     locator.schema === "usb-bootstrap-measure-operator-locator-v1" && locator.contextSha256 === stored.sha256, "bootstrap_operator_owner");
   checkedOwner(locator.owner);
   const current = (await processSnapshot()).some(row => sameProcess(row, locator.owner) && !/[ZT]/u.test(row.state));

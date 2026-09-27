@@ -1,3 +1,4 @@
+import { readSourceSnapshot } from "./source-snapshot.mjs";
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -34,9 +35,9 @@ export async function createSupervisor(options, operations = {}) {
     if (request.method === "GET") {
       if (path === "/context") return send(response, 200, configuration());
       if (path === "/supervisor-state") return send(response, 200, { phase, miningAuthorized: false });
-      const source = path === "/" ? "snapshot/gate/page" : path === `/${BUNDLE}` ? "snapshot/gate/bundle" : path === "/bootstrap-client.mjs" ? "snapshot/source/scripts/usb-bootstrap-measure/client.mjs" : null;
+      const source = path === "/" ? "snapshot/gate/page" : path === `/${BUNDLE}` ? "snapshot/gate/bundle" : path === "/bootstrap-client.mjs" ? "bootstrap-client" : null;
       if (source) {
-        let bytes = await readFile(resolve(root, source)); const expected = path === "/" ? context.gate.pageSha256 : path === `/${BUNDLE}` ? context.gate.bundleSha256 : context.sourceInventory.find(row => row.path === "scripts/usb-bootstrap-measure/client.mjs")?.sha256;
+        let bytes = source === "bootstrap-client" ? await readSourceSnapshot(root, context, "scripts/usb-bootstrap-measure/client.mjs") : await readFile(resolve(root, source)); const expected = path === "/" ? context.gate.pageSha256 : path === `/${BUNDLE}` ? context.gate.bundleSha256 : context.sourceInventory.find(row => row.path === "scripts/usb-bootstrap-measure/client.mjs")?.sha256;
         check(sha256(bytes) === expected, "bootstrap_asset_changed");
         if (path === "/") bytes = Buffer.from(`${bytes.toString()}\n<script type="module" src="/bootstrap-client.mjs"></script>`);
         return send(response, 200, bytes, path === "/" ? "text/html" : "text/javascript");

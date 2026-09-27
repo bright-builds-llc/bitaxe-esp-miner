@@ -1,24 +1,28 @@
+import { writeSnapshot, verifySnapshot } from "./snapshot.mjs";
+import { binding, validateBinding, requireSupersession, inspectBoundClosure, recheckBinding } from "./preflight-binding.mjs";
+import { runLayoutCheck } from "./source-layout-check.mjs";
 import { packageShape, nativeShape, sourceShape, hex } from "./shapes.mjs";
 import { inspectWriter, validateWriter } from "./native-writer.mjs";
-import { mkdir, readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rename, rmdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
-import { BUNDLE, PAGE, nonce, missing, ignored } from "../fixed-usb-qualification/contract.mjs";
-import { canonical, inventory, privateRoot, proof, protectedPath, retain, verifyInventory, writeNew } from "../str005-noise-serial/files.mjs";
+import { PAGE, nonce, missing, ignored } from "../fixed-usb-qualification/contract.mjs";
+import { canonical, privateRoot, proof, writeNew } from "../str005-noise-serial/files.mjs";
 import { requireIdleLedger, requireExhaustedOriginal } from "../fixed-usb-qualification/iterative-contract.mjs";
 import { requireOperatorStopped } from "../str005-v2-serial/operator-evidence.mjs";
 import { requireHostStopped } from "../str005-v2-serial/cleanup.mjs";
-import { inspectSources, verifyCurrent, validateTrust } from "./sources.mjs";
-import { BEFORE, CONTRACT, TASK, PREDECESSOR, check, object, schema, sha256 } from "./values.mjs";
+import { inspectSources, verifyCurrent } from "./sources.mjs";
+import { BEFORE, CONTRACT, TASK, PREDECESSOR, CONTEXT_V1, CONTEXT_V2, PREFLIGHT_AMENDMENT, check, object, schema, sha256 } from "./values.mjs";
 
 const KEYS = ["schema", "taskId", "contract", "attempt", "firmwareRoot", "gateRoot", "package", "beforeSource", "gate", "trustSha256", "predecessor", "sourceInventory", "nativeReadiness", "hostTools", "originalCampaign", "expectedAccounting", "installIndices", "miningAuthorized"];
 export const contextHash = context => sha256(JSON.stringify(context));
-export const effectRoot = context => resolve(context.firmwareRoot, "scratch/usb-bootstrap-measure/attempt-001");
+export const effectRoot = context => resolve(context.firmwareRoot, `scratch/usb-bootstrap-measure/attempt-${String(context.attempt.ordinal).padStart(3, "0")}`);
 export function validate(context) {
-  object(context, KEYS); packageShape(context.package); sourceShape(context.sourceInventory); nativeShape(context.nativeReadiness, context);
+  object(context, [...KEYS, ...(context?.schema === CONTEXT_V2 ? ["preflightAmendment", "preflightSupersession"] : [])]); packageShape(context.package); sourceShape(context.sourceInventory); nativeShape(context.nativeReadiness, context);
   hex(context.trustSha256); object(context.attempt, ["id", "ordinal"]); object(context.predecessor, ["root", ...Object.keys(PREDECESSOR)]);
-  check(context.schema === schema("context") && context.taskId === TASK && canonical(context.contract) === canonical(CONTRACT) &&
-    context.attempt.ordinal === 1 && /^[A-Za-z0-9_-]{22}$/u.test(context.attempt.id) && canonical(context.beforeSource) === canonical(BEFORE) &&
+  check([CONTEXT_V1, CONTEXT_V2].includes(context.schema) && context.taskId === TASK && canonical(context.contract) === canonical(CONTRACT) &&
+    context.attempt.ordinal === (context.schema === CONTEXT_V2 ? 2 : 1) && /^[A-Za-z0-9_-]{22}$/u.test(context.attempt.id) && canonical(context.beforeSource) === canonical(BEFORE) &&
     canonical(context.installIndices) === "[0]" && context.miningAuthorized === false, "bootstrap_context_policy");
+  if (context.schema === CONTEXT_V2) validateBinding(context);
   check(context.firmwareRoot === resolve(context.firmwareRoot) && context.gateRoot === resolve(context.gateRoot) && context.package.manifest === resolve(context.firmwareRoot, "bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json"), "bootstrap_context_paths");
   object(context.gate, ["commit", "bundleSha256", "pageSha256", "pageRelativePath"]);
   hex(context.gate.commit, 40); hex(context.gate.bundleSha256); hex(context.gate.pageSha256);
@@ -48,58 +52,48 @@ export async function predecessor(root, operations = {}, current = false) {
     record: { path: "accounting-before-install.json", sha256: accounting.sha256, length: accounting.bytes.length } },
     expectedAccounting: { ledger: accounting.value.ledger, original: accounting.value.original_budget } };
 }
-async function snapshot(root, context, writer) {
-  await retain(resolve(root, "snapshot/manifest.json"), await readFile(context.package.manifest));
-  await writeNew(resolve(root, "snapshot/native-writer.json"), writer);
-  const manifest = JSON.parse(await readFile(context.package.manifest));
-  for (const file of manifest.artifacts) await retain(resolve(root, "snapshot/package", file.kind), await readFile(resolve(file.kind === "partition_table" ? context.firmwareRoot : dirname(context.package.manifest), file.path)));
-  for (const [name, path] of [["page", context.gate.pageRelativePath], ["bundle", BUNDLE]]) await retain(resolve(root, "snapshot/gate", name), await readFile(resolve(context.gateRoot, path)));
-  await retain(resolve(root, "snapshot/trust.json"), await readFile(resolve(context.firmwareRoot, "firmware/bitaxe/bwg/deployment-trust.json")));
-  await writeNew(resolve(root, "snapshot/native.json"), context.nativeReadiness);
-  for (const file of context.sourceInventory) await retain(resolve(root, "snapshot/source", file.path), await readFile(resolve(context.firmwareRoot, file.path)));
-  await writeNew(resolve(root, "preflight-inventory.json"), { schema: schema("preflight-inventory"), files: await inventory(root) });
-}
 export async function preflight(options, operations = {}) {
   const root = resolve(options.privateRoot), parent = await privateRoot(dirname(root)); await missing(root);
+  check(typeof options.supersedePreflight === "string" && options.supersedePreflight === resolve(options.supersedePreflight), "bootstrap_preflight_closure_required");
   const source = await inspectSources(options, operations);
-  check(root === resolve(source.firmwareRoot, "scratch/usb-bootstrap-measure/attempt-001"), "bootstrap_namespace");
+  check(root === resolve(source.firmwareRoot, "scratch/usb-bootstrap-measure/attempt-002"), "bootstrap_namespace");
   (operations.ignored ?? ignored)(source.firmwareRoot, root);
   check(options.predecessorReceipt === resolve(source.firmwareRoot, "scratch/str005-v2-serial/channel-005/final-result.json"), "bootstrap_predecessor_path");
-  const prior = await (operations.predecessor ?? predecessor)(dirname(options.predecessorReceipt), operations, true);
-  const context = { schema: schema("context"), taskId: TASK, contract: CONTRACT, attempt: { id: nonce(), ordinal: 1 }, ...source,
+  const closure = await inspectBoundClosure(options.supersedePreflight, operations, true);
+  const prior = { binding: { root: dirname(options.predecessorReceipt), ...PREDECESSOR }, originalCampaign: closure.context.originalCampaign,
+    expectedAccounting: closure.context.expectedAccounting };
+  const context = { schema: CONTEXT_V2, taskId: TASK, contract: CONTRACT, attempt: { id: nonce(), ordinal: 2 }, ...source,
+    preflightAmendment: PREFLIGHT_AMENDMENT, preflightSupersession: binding(closure),
     beforeSource: BEFORE, predecessor: prior.binding, originalCampaign: prior.originalCampaign, expectedAccounting: prior.expectedAccounting, installIndices: [0], miningAuthorized: false };
-  validate(context); await verifyCurrent(context, operations);
+  validate(context); requireSupersession(context, closure); await verifyCurrent(context, operations);
   const writer = validateWriter(await inspectWriter(context, operations), context);
-  await writeNew(resolve(parent, "attempt-ordinal-1.json"), { schema: schema("assignment"), root, contextSha256: contextHash(context), attemptId: context.attempt.id });
+  const correction = await runLayoutCheck(context, operations);
+  await missing(resolve(parent, "attempt-ordinal-2.json"));
+  const stage = await mkdtemp(resolve(parent, "attempt-002.preparation-")); await privateRoot(stage);
+  await writeNew(resolve(stage, "context.json"), { context, sha256: contextHash(context) });
+  await writeSnapshot(stage, context, writer, correction, closure);
+  await operations.beforeSnapshotReview?.(stage);
+  await verifySnapshot(stage, context); await recheckBinding(context, operations); await verifyCurrent(context, operations);
+  await writeNew(resolve(parent, "attempt-ordinal-2.json"), { schema: schema("assignment"), root, contextSha256: contextHash(context), attemptId: context.attempt.id });
   await operations.beforeCreate?.(); await mkdir(root, { mode: 0o700 });
-  await writeNew(resolve(root, "context.json"), { context, sha256: contextHash(context) }); await snapshot(root, context, writer);
+  // Exclusive final-directory creation prevents replacement. The last rename is
+  // the admission-completion boundary; a partial publication cannot load.
+  await rename(resolve(stage, "snapshot"), resolve(root, "snapshot"));
+  await rename(resolve(stage, "context.json"), resolve(root, "context.json"));
+  await operations.beforeInventoryPublish?.(stage, root);
+  await rename(resolve(stage, "preflight-inventory.json"), resolve(root, "preflight-inventory.json")); await rmdir(stage);
   return { ready: true, contextSha256: contextHash(context), mining_authorized: false, hardware_qualified: false };
 }
 export async function load(root, { historical = false, operations = {}, ancestry = false } = {}) {
   root = await privateRoot(root); const stored = (await proof(root, "context.json")).value; object(stored, ["context", "sha256"]);
-  const context = stored.context; validate(context); check(root === effectRoot(context) && stored.sha256 === contextHash(context), "bootstrap_context_changed");
-  const marker = (await proof(dirname(root), "attempt-ordinal-1.json")).value;
+  const context = stored.context; validate(context);
+  if (!historical) check(context.schema === CONTEXT_V2, "bootstrap_v1_read_only");
+  check(root === effectRoot(context) && stored.sha256 === contextHash(context), "bootstrap_context_changed");
+  const marker = (await proof(dirname(root), `attempt-ordinal-${context.attempt.ordinal}.json`)).value;
   check(canonical(marker) === canonical({ schema: schema("assignment"), root, contextSha256: stored.sha256, attemptId: context.attempt.id }), "bootstrap_assignment_changed");
-  const frozen = (await proof(root, "preflight-inventory.json")).value;
-  check(frozen.schema === schema("preflight-inventory"), "bootstrap_snapshot");
-  for (const file of frozen.files) {
-    check(typeof file.path === "string" && !file.path.startsWith("/") && !file.path.split("/").includes(".."), "bootstrap_snapshot_path");
-    await protectedPath(resolve(root, file.path));
-    const data = await readFile(resolve(root, file.path)); check(data.length === file.length && sha256(data) === file.sha256, "bootstrap_snapshot_changed");
-  }
-  const expectedSnapshot = frozen.files.filter(file => file.path.startsWith("snapshot/")).map(file => ({ ...file, path: file.path.slice("snapshot/".length) }));
-  await verifyInventory(resolve(root, "snapshot"), expectedSnapshot);
-  for (const file of context.sourceInventory) {
-    const data = await readFile(resolve(root, "snapshot/source", file.path));
-    check(data.length === file.length && sha256(data) === file.sha256, "bootstrap_source_snapshot_changed");
-  }
-  check((await proof(root, "snapshot/manifest.json")).sha256 === context.package.manifest_sha256 &&
-    sha256(JSON.stringify((await proof(root, "snapshot/trust.json")).value)) === context.trustSha256 &&
-    canonical((await proof(root, "snapshot/native.json")).value) === canonical(context.nativeReadiness), "bootstrap_snapshot_binding");
-  for (const file of context.package.artifacts) check(sha256(await readFile(resolve(root, "snapshot/package", file.kind))) === file.sha256, "bootstrap_package_snapshot");
-  validateTrust((await proof(root, "snapshot/trust.json")).value);
-  validateWriter((await proof(root, "snapshot/native-writer.json")).value, context);
-  if (ancestry) {
+  await verifySnapshot(root, context);
+  if (context.schema === CONTEXT_V2) { await recheckBinding(context, operations); await verifyPredecessorPins(context, operations); }
+  if (ancestry && context.schema === CONTEXT_V1) {
     const prior = await (operations.predecessor ?? predecessor)(context.predecessor.root, operations, !historical);
     check(canonical(prior.originalCampaign) === canonical(context.originalCampaign) && canonical(prior.expectedAccounting) === canonical(context.expectedAccounting), "bootstrap_predecessor_accounting_changed");
   }
@@ -116,3 +110,13 @@ export async function loadEffectContext(root, operations = {}) {
   const context = await load(root, { operations }); await (await import("./install.mjs")).requireSupervisor(root, context, operations); return context;
 }
 export const verifyCleanupInputs = (context, operations = {}) => verifyCurrent(context, operations);
+
+/** Prior deep judgment remains bound by immutable exact root pins, not replayed inside hot deadlines. */
+export async function verifyPredecessorPins(context, operations = {}) {
+  if (operations.verifyPredecessorPins) return operations.verifyPredecessorPins(context);
+  const root = context.predecessor.root;
+  const [stored, result, seal, accounting] = await Promise.all([proof(root, "context.json"), proof(root, "final-result.json"), proof(root, "sealed-inventory.json"), proof(root, "accounting-before-install.json")]);
+  check(stored.value.sha256 === PREDECESSOR.contextSha256 && contextHash(stored.value.context) === PREDECESSOR.contextSha256 && result.sha256 === PREDECESSOR.resultSha256 &&
+    seal.sha256 === PREDECESSOR.sealSha256 && stored.value.context.original_campaign_id === context.originalCampaign.id && accounting.sha256 === context.originalCampaign.record.sha256 &&
+    accounting.bytes.length === context.originalCampaign.record.length && canonical({ ledger: accounting.value.ledger, original: accounting.value.original_budget }) === canonical(context.expectedAccounting), "bootstrap_predecessor_changed");
+}

@@ -2,17 +2,22 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { check, code } from "./values.mjs";
 export function parseArgs(argv) {
-  const [action, ...args] = argv; check(["preflight", "operator-start", "operator-request", "operator-status", "finalize", "review"].includes(action), "bootstrap_action");
+  const [action, ...args] = argv; check(["preflight", "operator-start", "operator-request", "operator-status", "finalize", "review", "close-preflight", "review-preflight"].includes(action), "bootstrap_action");
   const preflight = ["firmware-root", "gate-root", "package-manifest", "predecessor-receipt"];
   const required = ["private-root", ...(action === "preflight" ? preflight : action === "operator-request" ? ["request"] : [])];
-  const allowed = [...required, ...(action === "operator-status" ? ["request-id"] : [])], raw = {}; check(args.length % 2 === 0, "bootstrap_options");
+  const allowed = [...required, ...(action === "preflight" ? ["supersede-preflight"] : []), ...(action === "operator-status" ? ["request-id"] : [])], raw = {}; check(args.length % 2 === 0, "bootstrap_options");
   for (let i = 0; i < args.length; i += 2) { const [flag, value] = args.slice(i, i + 2); check(flag.startsWith("--") && allowed.includes(flag.slice(2)) && typeof value === "string" && value.length > 0 && !value.startsWith("--") && !Object.hasOwn(raw, flag.slice(2)), "bootstrap_options"); raw[flag.slice(2)] = value; }
   check(required.every(key => Object.hasOwn(raw, key)) && raw["private-root"] === resolve(raw["private-root"]), "bootstrap_options");
   return { action, options: { privateRoot: raw["private-root"], firmwareRoot: raw["firmware-root"], gateRoot: raw["gate-root"], manifest: raw["package-manifest"],
-    predecessorReceipt: raw["predecessor-receipt"], requestFile: raw.request, requestId: raw["request-id"] } };
+    predecessorReceipt: raw["predecessor-receipt"], requestFile: raw.request, requestId: raw["request-id"], supersedePreflight: raw["supersede-preflight"] } };
 }
 export async function main(argv, operations = {}) {
   const { action, options } = parseArgs(argv);
+  if (["close-preflight", "review-preflight"].includes(action)) {
+    const module = await import("./preflight-closure.mjs");
+    const value = await (action === "close-preflight" ? module.closePreflight : module.reviewPreflight)(options.privateRoot, operations);
+    return { status: value.status, classification: value.classification, contextSha256: value.contextSha256, closureSha256: value.closureSha256, nonClaims: value.nonClaims, hardware_qualified: false, device_effects: false };
+  }
   if (action === "preflight") return (await import("./context.mjs")).preflight(options, operations);
   if (["review", "finalize"].includes(action)) return (await import("./finalize.mjs"))[action](options.privateRoot, operations);
   return (await import("./operator-client.mjs"))[{ "operator-start": "operatorStart", "operator-request": "operatorRequest", "operator-status": "operatorStatus" }[action]](options, operations);

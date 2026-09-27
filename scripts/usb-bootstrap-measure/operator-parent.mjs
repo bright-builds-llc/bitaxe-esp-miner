@@ -25,7 +25,7 @@ export async function admitOperatorParent(root, binding) {
   admissions.set(root, { owner: locator.owner, contextSha256: binding.contextSha256, lifetime });
 }
 export async function requireOperatorParent(root, context) {
-  if (context.schema !== "usb-bootstrap-measure-context-v1") return;
+  check(context.schema === "usb-bootstrap-measure-context-v2", "bootstrap_v1_read_only");
   const binding = admissions.get(root); admissions.delete(root);
   check(binding && binding.contextSha256 === sha256(JSON.stringify(context)) && process.ppid === binding.owner.pid &&
     (await processSnapshot()).some(row => sameProcess(row, binding.owner)), "bootstrap_operator_owner");

@@ -339,5 +339,5 @@ js_library(
 
 js_library(
     name = "usb_bootstrap_measure_contract_inputs",
-    srcs = ["docs/hardware/usb-bootstrap-drain-measurement.md"],
+    srcs = ["docs/hardware/usb-bootstrap-drain-measurement.md", "docs/hardware/usb-bootstrap-preflight-successor.md"],
 )

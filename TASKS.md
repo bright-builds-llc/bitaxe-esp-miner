@@ -4662,8 +4662,9 @@ new measurements, verified progress and a published guarded admission contract.
 
 ### task-usb-bootstrap-drain-observability | 2026-09-26 | Distinguish bootstrap reader delay from native TX completion failure
 
-Status: Active; native frame-identity correction verified. No hardware attempt
-has been assigned or executed. The owner explicitly requested
+Status: Active; attempt 001 is an interrupted preflight, preserved unchanged.
+No hardware effects occurred. Successor software and its prospective amendment
+are verified; clean publication, closure and fresh admission remain pending. The owner explicitly requested
 implementation of the diagnostic, targeted-fix and qualification sequence. The exact
 Channel005 failure is preserved in the [result report](docs/parity/evidence/20260926-str005-v2-bootstrap-drain-unverified.md).
 Current evidence proves a 92-byte queue followed by a 2000-ms drain timeout, not
@@ -4739,6 +4740,38 @@ No hardware effects, ledgers or acceptance limits changed. The correction passed
 10 focused tests and validation of the actual compiled ELF: all 28 unique native
 addresses are retained, with the same 4,288-byte sum and 512-byte margin. Ordered
 Cargo checks, all eight affected canonical targets and standards checks passed.
+
+Interrupted preflight | 2026-09-26: Published `29cf472d` passed native admission,
+reserved host attempt 001 and copied its snapshots, then stopped because the
+generic inventory guard rejected the published synthetic-fixture source filename
+containing `credentials`. Read-only inspection verified the exact 1,773-file corpus,
+1,758 source snapshots and assignment; no operator or effect records exist. This
+preparation remains unverified and cannot be repaired or restarted.
+
+Successor plan | 2026-09-27: Follow the prospective
+[interrupted-preflight amendment](docs/hardware/usb-bootstrap-preflight-successor.md),
+SHA256 `8b596d6d2d2ce83f7815c0208c8e58755f7d3c687169168b8f46fde8049233df`.
+
+- [x] Freeze the exact failed inputs, provenance/non-claims, sibling closure,
+      version-2 source layout and exclusive attempt-002 boundary before coding.
+- [x] Implement and test encoded source snapshots while retaining the ordinary
+      private-evidence filename guard and version-1 historical interpretation.
+- [x] Implement effect-free interrupted-preflight closure/review, strict failed
+      corpus verification and one fresh source-bound successor admission.
+- [ ] Verify, publish and build the corrected clean pair; create/review the sibling
+      closure and fresh context before the single no-mining measurement.
+
+Successor verification | 2026-09-27: The encoded-layout regression passed 12
+cases, including the real published synthetic-source filename and unchanged
+credential-artifact rejection. A software-only 1,758-source snapshot benchmark
+verified the complete layout in 346 ms. The production read-only failed-corpus
+verifier passed six tests and reverified all 1,773 files, source Git blobs, modes
+and aliases against the unchanged inventory hash. The full Node suite passed 98 tests; all 12 affected canonical targets passed
+after test fixture/path corrections. The fixed regression runner now executes its
+real admitted Node command. Ordered Cargo, standards, static USB ownership,
+reference, redaction and parity/progress checks passed. Snapshot preparation and
+validation precede assignment, with the final inventory published last. No closure
+or successor assignment has been created yet.
 
 Review follow-up: the older V2 daemon has analogous evidence-write-before-
 socket-close ordering. Apply the verified cleanup hardening before a fresh V2

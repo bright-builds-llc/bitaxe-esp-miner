@@ -4,14 +4,14 @@ import { resolve } from "node:path";
 import { BUNDLE, PAGE, canonicalDirectory, cleanPushed, git, fileDigest, packageSnapshot, admitTrust } from "../fixed-usb-qualification/contract.mjs";
 import { canonical } from "../str005-noise-serial/files.mjs";
 import { nativeInterface } from "../str005-v2-serial/context-sources.mjs";
-import { CONTRACT, TASK, check, object, sha256 } from "./values.mjs";
-const ROOTS = ["scripts", "tools/flash", "tools/device-session", "tools/automation", "tools/stratum-v2-fixture", "tools/http-transport", "crates", "firmware/bitaxe", ".cargo", "docs/hardware", "Cargo.toml", "Cargo.lock", "MODULE.bazel", "BUILD.bazel", "Justfile"];
+import { CONTRACT, PREFLIGHT_AMENDMENT, CONTEXT_V2, TASK, check, object, sha256 } from "./values.mjs";
+export const SOURCE_ROOTS = ["scripts", "tools/flash", "tools/device-session", "tools/automation", "tools/stratum-v2-fixture", "tools/http-transport", "crates", "firmware/bitaxe", ".cargo", "docs/hardware", "Cargo.toml", "Cargo.lock", "MODULE.bazel", "BUILD.bazel", "Justfile"];
 export function requireTask(text) {
   const block = text.split(/^## /mu).find(part => part.startsWith("Active\n"));
   check(block && [...text.matchAll(new RegExp(`^### ${TASK}(?:\\s|$)`, "gmu"))].length === 1 && new RegExp(`^### ${TASK}(?:\\s|$)`, "mu").test(block), "bootstrap_task_inactive");
 }
 export async function sources(root) {
-  const paths = git(root, ["ls-files", "--", ...ROOTS]).split("\n").filter(Boolean).sort();
+  const paths = git(root, ["ls-files", "--", ...SOURCE_ROOTS]).split("\n").filter(Boolean).sort();
   check(paths.includes(CONTRACT.path) && paths.includes("scripts/usb-bootstrap-measure/main.mjs"), "bootstrap_source_inventory");
   return Promise.all(paths.map(async path => {
     const full = resolve(root, path), stat = await lstat(full); check(stat.isFile() && !stat.isSymbolicLink(), "bootstrap_source_alias");
@@ -35,7 +35,7 @@ export async function hostTools(root) {
 export async function inspectSources(options, operations = {}) {
   const firmwareRoot = await canonicalDirectory(options.firmwareRoot), gateRoot = await canonicalDirectory(options.gateRoot);
   requireTask(await readFile(resolve(firmwareRoot, "TASKS.md"), "utf8"));
-  check(await fileDigest(resolve(firmwareRoot, CONTRACT.path)) === CONTRACT.sha256, "bootstrap_contract_changed");
+  check(await fileDigest(resolve(firmwareRoot, CONTRACT.path)) === CONTRACT.sha256 && await fileDigest(resolve(firmwareRoot, PREFLIGHT_AMENDMENT.path)) === PREFLIGHT_AMENDMENT.sha256, "bootstrap_contract_changed");
   const commit = (operations.git ?? git)(firmwareRoot, ["rev-parse", "HEAD"]), gateCommit = (operations.git ?? git)(gateRoot, ["rev-parse", "HEAD"]);
   (operations.cleanPushed ?? cleanPushed)(firmwareRoot, commit); (operations.cleanPushed ?? cleanPushed)(gateRoot, gateCommit);
   const pins = [...(await readFile(resolve(firmwareRoot, "MODULE.bazel"), "utf8")).matchAll(/strip_prefix\s*=\s*"bitaxe-turnstile-system-([a-f0-9]{40})"/gu)];
@@ -51,6 +51,7 @@ export async function inspectSources(options, operations = {}) {
 }
 export async function verifyCurrent(context, operations = {}) {
   requireTask(await readFile(resolve(context.firmwareRoot, "TASKS.md"), "utf8"));
+  if (context.schema === CONTEXT_V2) check(await fileDigest(resolve(context.firmwareRoot, PREFLIGHT_AMENDMENT.path)) === PREFLIGHT_AMENDMENT.sha256, "bootstrap_contract_changed");
   (operations.cleanPushed ?? cleanPushed)(context.firmwareRoot, context.package.firmware_commit);
   (operations.cleanPushed ?? cleanPushed)(context.gateRoot, context.gate.commit);
   check(canonical(await sources(context.firmwareRoot)) === canonical(context.sourceInventory), "bootstrap_sources_changed");
