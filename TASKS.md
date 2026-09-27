@@ -4761,6 +4761,43 @@ size matches PERF-only, with 74,080-byte image headroom. Startup recovery is
 still unverified. The fresh recovery mode retains failed-installation and
 current-session-only continuity facts instead of manufacturing old preservation.
 
+Published correction `9be53f69`: clean package, native USB checks and real CLI
+dry-run passed. Independent current-recovery001 authenticated the installed
+`663d5314` / `58d657fa…` tuple despite failed HTTP startup, measured next 18 /
+last 17 / no pending reservation, restored and closed. Its full 952 KiB core
+region was erased and preserved (SHA-256
+`94a21164829c644f15d62317c52d9f42a0ef66bd084d5ffdeb007b375e210951`);
+read, application return and cleanup passed. Recovery seal:
+`1808ce8890ba3386a7c2fb82ad34e404206068dc11a4383a24fb802984bed66d`.
+
+Correction trial installation003 wrote and reported application return, but the
+480-second outer supervisor expired before a final capture receipt was saved.
+The 360-second observation plus write/bootstrap/cleanup exceeded that outer
+budget. The process group was killed/reaped and no serial holder remained.
+Startup success and exact installed identity remain unverified; do not infer
+them from the application-return marker. The attempt is sealed at
+`8276419ce8f111e819222c65089bcc6a81fd34ec2e276cb0977f25f0c29aa0f2`.
+No self-test or Start occurred. Preserve this timeout as an independent failure.
+
+Next boundary correction is host-only: admit read-only recovery from that exact
+sealed timeout/command/package lineage, obtain fresh signed current identity and
+accounting, and qualify the already-installed image for capture only if new
+current-boot diagnostics prove healthy startup. No repeated flash is needed or
+authorized by a missing final receipt. Fresh same-image before/candidate phases
+may then admit the one off-only self-test; original flash preservation and
+installation success remain unverified. Extend the future install supervisor
+to cover the actual composed operation bounds without retiming old evidence.
+
+Host-only continuation verification: 43 probe tests and actual read-only
+validation of both failed-installation forms and the sealed core-preservation
+format passed. New capture admission binds an empty preserved region and the
+expected boot following managed return, fresh healthy diagnostics and a
+120-second age measured from first observation. `other` remains a lossy reset
+category, explicitly unresolved; it is not relabeled. Panic/watchdog/brownout,
+extra boots and missing/nonempty core evidence block this off-only admission.
+Future install supervisors bind a 1,200-second outer cap; no new flash is
+planned. Original 480-second evidence remains unchanged.
+
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 
 Status: Proof blocked on recovery and verified panic correction.

@@ -8,6 +8,11 @@ import { parseDetector } from './detector.mjs';
 import { validateLedger, requireExhaustedOriginal } from '../fixed-usb-qualification/iterative-contract.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 
+// Deliberate outer cap: 1200s permits the listed ~990s component budget plus profile/cleanup margin.
+// Nested stage limits remain enforced; this is not their worst-case cumulative sum.
+// Sealed older invocations retain their recorded 480-second timeout outcome.
+export const INSTALL_TIMEOUT_MS = 1200000;
+
 export function admitRecovery(value, context, now = Date.now()) {
   check(value.schema === 'str005-current-recovery-proof-v1' && value.source_commit === context.commit &&
     value.gate_commit === context.gate_commit && value.firmware_commit === context.before_source.firmware_commit &&
@@ -23,7 +28,7 @@ export function flashArguments(root, context) {
     '--evidence-dir', resolve(root, 'install'), '--evidence-mode', 'dual', '--capture-timeout-seconds', '360'];
 }
 /** Bounded child ownership captures every byte privately and kills descendants on every exit. */
-export async function runChild(program, args, root, timeoutMs = 480000) {
+export async function runChild(program, args, root, timeoutMs = INSTALL_TIMEOUT_MS) {
   const stdout = await open(resolve(root, 'install.stdout.log'), 'wx', 0o600);
   let maybeStderr;
   try {
@@ -45,7 +50,7 @@ export async function runChild(program, args, root, timeoutMs = 480000) {
   } finally { await stdout.close(); await maybeStderr?.close(); }
 }
 export async function install(root, context) {
-  check(context.installEnabled === true, 'panic_install_disabled');
+  check(context.installEnabled === true && context.installTimeoutMs === INSTALL_TIMEOUT_MS, 'panic_install_disabled');
   const recovery = await proof(root, 'current-recovery.json'); admitRecovery(recovery.value, context);
   await missing(resolve(root, 'install')); await missing(resolve(root, 'install-runner.json'));
   const detectorPath = resolve(dirname(root), 'install-detector.stdout.log'); await protectedPath(detectorPath);
@@ -57,12 +62,12 @@ export async function install(root, context) {
   requireNoHolders(fresh.port);
   check(await fileDigest(context.flashBinary) === context.flashBinarySha256 && await fileDigest(context.manifest) === context.manifest_sha256, 'panic_install_input_changed');
   const args = flashArguments(root, runtimeContext), started = Date.now();
-  await writeNew(resolve(root, 'install-claim.json'), { schema: 'str005-panic-install-claim-v1', started_at_unix_ms: started,
+  await writeNew(resolve(root, 'install-claim.json'), { schema: 'str005-panic-install-claim-v1', timeout_ms: INSTALL_TIMEOUT_MS, started_at_unix_ms: started,
     context_sha256: (await proof(root, 'context.json')).sha256, recovery_sha256: recovery.sha256,
     detector_sha256: sha256(detector), physical_identity_sha256: fresh.physical, port: fresh.port, server_owner_sha256: (await proof(root, 'server-owner.json')).sha256, program: context.flashBinary, argv: args, command_sha256: sha256(JSON.stringify(args)), binary_sha256: context.flashBinarySha256 });
   const outcome = await runChild(context.flashBinary, args, root);
   let released = false; try { requireNoHolders(fresh.port); released = true; } catch { /* The terminal record must retain failed cleanup. */ }
-  await writeNew(resolve(root, 'install-runner.json'), { schema: 'str005-panic-install-runner-v1', ...outcome,
+  await writeNew(resolve(root, 'install-runner.json'), { schema: 'str005-panic-install-runner-v1', timeout_ms: INSTALL_TIMEOUT_MS, ...outcome,
     started_at_unix_ms: started, finished_at_unix_ms: Date.now(), command_sha256: sha256(JSON.stringify(args)),
     binary_sha256: context.flashBinarySha256, serial_holders_absent: released });
   check(outcome.code === 0 && !outcome.spawn_failed && !outcome.timed_out && !outcome.interrupted && released, 'panic_install_failed');
@@ -90,6 +95,7 @@ export async function inspectInstall(root, context) {
   const runtimeContext = { ...context, detector: { ...context.detector, port: claim.port } };
   check(claim.schema === 'str005-panic-install-claim-v1' && claim.context_sha256 === (await proof(root, 'context.json')).sha256 &&
     claim.recovery_sha256 === (await proof(root, 'current-recovery.json')).sha256 && runner.schema === 'str005-panic-install-runner-v1' &&
+    (claim.timeout_ms ?? 480000) === (context.installTimeoutMs ?? 480000) && (runner.timeout_ms ?? 480000) === (claim.timeout_ms ?? 480000) &&
     runner.code === 0 && runner.spawn_failed === false && runner.timed_out === false && runner.interrupted === false &&
     runner.serial_holders_absent === true && runner.started_at_unix_ms === claim.started_at_unix_ms &&
     runner.finished_at_unix_ms >= runner.started_at_unix_ms && runner.binary_sha256 === context.flashBinarySha256 &&

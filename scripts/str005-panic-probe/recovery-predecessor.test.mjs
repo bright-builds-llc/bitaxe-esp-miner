@@ -4,7 +4,7 @@ import { mkdtemp, realpath, chmod, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { validateFailedInstallation, recoveryPredecessor } from './recovery-predecessor.mjs';
+import { validateFailedInstallation, validateTimedOutInstallation, recoveryPredecessor } from './recovery-predecessor.mjs';
 import { flashArguments } from './install.mjs';
 import { sha256 } from '../str005-v2-serial/values.mjs';
 import { writeNew, retain, proof, inventory } from '../str005-noise-serial/files.mjs';
@@ -62,4 +62,18 @@ test('sealed predecessor is read-only and any changed retained byte rejects reco
   assert.equal((await proof(attempt, 'sealed-inventory.json')).sha256, before);
   await writeFile(resolve(attempt, 'install/flash-monitor.classifier-input.log'), 'changed');
   await assert.rejects(recoveryPredecessor(attempt, root));
+});
+
+
+test('bounded timeout after reported application return permits only fresh recovery', () => {
+  const value = input(); value.runner.code = null; value.runner.timed_out = true;
+  value.stdout = 'manifest: protected-operational\nflash_image: protected-operational\nflash_command: protected-operational\napplication_exit_transport: serial_jtag_runtime\n';
+  const result = validateTimedOutInstallation(value);
+  assert.equal(result.application_return_reported, true); assert.equal(result.installed_identity_authenticated, false);
+  assert.equal(result.installation_complete, false); assert.equal(result.recovery_only, true);
+  for (const change of [v => { v.stdout = ''; }, v => { v.stdout += 'application_exit_transport: serial_jtag_runtime\n'; },
+    v => { v.stdout = v.stdout.replace('flash_command: protected-operational', 'unrelated'); }, v => { v.stdout += 'nvs_seed_status: provided\n'; },
+    v => { v.runner.interrupted = true; }, v => { v.runner.serial_holders_absent = false; }, v => { v.claim.timeout_ms = 900000; }]) {
+    const invalid = structuredClone(value); change(invalid); assert.throws(() => validateTimedOutInstallation(invalid));
+  }
 });

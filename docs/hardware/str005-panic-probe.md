@@ -90,7 +90,7 @@ just str005-panic-probe install --private-root <parent/attempt>
 The installer checks proof freshness, exact physical identity, binary/package
 hashes and serial release. It invokes the prebuilt repo flash owner once with
 state-preserving segments, `--expected-physical-sha256`, dual private/redacted
-evidence and a 360-second capture limit. The child group has a 480-second limit;
+evidence and a 360-second capture limit. The child group has a 1,200-second outer limit;
 its claim, stdout/stderr, exit and cleanup results are retained independently.
 No Wi-Fi/pool credential input or seed/reset operation is accepted. Keep the
 original page open so it can compare its private preservation baseline after
@@ -219,3 +219,55 @@ explicit capability requirement. These eligible sizes are not measured reclaimed
 bytes—actual startup and capture must still pass. PSRAM heap contents remain
 outside the supported DRAM dump; the native task stacks and cutoff receipt stay
 internal. A valid core does not imply that every external heap object is captured.
+
+## Recovery from the sealed installation timeout
+
+Installation003 exhausted its 480-second supervisor after the program reported
+application return, before the final capture receipt was persisted. That marker
+permits only fresh read-only admission, never an installation-success claim.
+The recovery predecessor validator must bind the sealed command/context, pinned
+binary, timeout/cleanup result, protected stdout and retained package, and reject
+interruption, spawn failure, ambiguous markers or incomplete cleanup. Fresh Gate
+authentication must still establish the actual installed source and full ELF.
+
+Use recovery-only preflight with installation003 and its retained `build-9be53f69`
+manifest. Preserve the failed installation and current-session-only continuity
+labels. A missing capture receipt never authorizes another flash.
+
+After that recovery is sealed, capture qualification of the existing image uses:
+
+```sh
+just str005-panic-probe preflight --private-root <new-capture-parent/attempt> --gate-root <clean-Gate-root> --capture-recovery-root <sealed-current-recovery-attempt> --retained-manifest <private-build-9be53f69/bitaxe-ultra205-package.json>
+```
+
+This mode cannot install firmware. Its same-image before/candidate transition
+requires a new live baseline, fresh authenticated identity/accounting, current-
+boot healthy startup diagnostics, unchanged settings/identity, safe inactive
+state and actual Close. It records a separate capture-admission review, leaving
+installation completeness false. Failed, stale, missing or mixed-boot readiness
+blocks the self-test. The usual one-use off-only self-test, independent recovery,
+private dump inspection/cutoff verification and cleanup bounds then apply.
+No Start or work grant is available through this mode.
+
+Future installation supervisors use a 1,200-second outer bound while retaining
+the 360-second observation window. New context, claim and runner records bind
+that bound; legacy records without it retain their original 480-second meaning.
+The longer supervisor permits the listed stage budget with additional margin,
+but remains a deliberate outer stop if nested operations take longer. It does
+not change or authorize replay of installation003.
+
+Existing-image capture also requires `installed-core` evidence inside the sealed
+current-recovery root: a successful same-image core read, application return,
+cleanup and a full erased 952 KiB region. Preserve that region before sealing
+recovery. Admission binds those files and expects the next live boot ordinal to
+be exactly one beyond the recovery session observed before the managed ROM
+round trip. Any intervening boot, nonempty region or failed read/return blocks
+capture and requires inspecting the preserved evidence first.
+
+The firmware collapses several reset causes into `other`; do not relabel that
+value as a proven USB or software reset. For this off-only diagnostic, `other`
+is admissible only with the bound managed-return/empty-region evidence and
+fresh healthy, inactive current state. Record the raw-cause uncertainty. Panic,
+watchdog and brownout observations remain blockers here. This does not admit
+Start: the controlled self-test must independently yield the expected explicit
+panic observation, exact valid core and captured cutoff proof.

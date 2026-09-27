@@ -8,6 +8,9 @@ import { ledger, original, state } from '../str005-noise-serial/test-fixture.mjs
 const context = { commit: 'a'.repeat(40), gate_commit: 'b'.repeat(40), firmware_commit: 'a'.repeat(40), app_elf_sha256: 'c'.repeat(64),
   before_source: { firmware_commit: 'd'.repeat(40), app_elf_sha256: 'e'.repeat(64) }, detector: { physical: 'f'.repeat(64) }, scope: 'share' };
 const diagnostics = { schema: 'worker-diagnostic-export-v1', observations: [{ category: 'boot', authoritative: false, boot_ordinal: 3, reset_reason: 'software_cpu', uptime_ms: 10 }] };
+function preservedCore() { return { schema: 'str005-existing-core-preservation-v1', empty_core_dump: true, bytes: 974848,
+  expected_boot_ordinal: 3, firmware_commit: context.before_source.firmware_commit, app_elf_sha256: context.before_source.app_elf_sha256,
+  recovery_seal_sha256: '1'.repeat(64), result_sha256: '2'.repeat(64), dump_sha256: '3'.repeat(64), partition_table_sha256: '4'.repeat(64) }; }
 function idle() { return { schema: 'worker-stratum-v2-status-v1', scope: 'share', state: 'idle', connection: null, record: null,
   observation: { bootOrdinal: 3, workerGeneration: 0, serialTransportEpoch: 1, observedAtUs: 100, clockValid: true, stationIpv4: null, wifiConnected: false, socket: null } }; }
 function parts() { return { state: state(context, 'before'), closed: state(context, 'before', true), ledger, original_budget: original,
@@ -200,4 +203,107 @@ test('recovery mode flags cannot be silently ignored on an install action', asyn
   const { main } = await import('./main.mjs');
   await assert.rejects(main(['install', '--private-root', '/unused', '--recover-install-root', '/sealed']), /preflight_arguments_only/);
   await assert.rejects(main(['preflight', '--private-root', '/unused', '--gate-root', '/gate', '--manifest', '/candidate', '--retained-manifest', '/retained']), /retained_manifest_mode/);
+});
+
+test('existing capture requires advancing healthy readiness and exact current identity', async () => {
+  const { reviewExistingCapture, requireCurrentCaptureReview } = await import('./capture-existing.mjs');
+  const c = { ...context, firmware_commit: context.before_source.firmware_commit, app_elf_sha256: context.before_source.app_elf_sha256,
+    captureExisting: true, installEnabled: false, selfTestEnabled: true, corePreservation: preservedCore() };
+  const value = structuredClone(parts());
+  value.diagnostics.observations.push({ category: 'runtime_identity', firmware_commit: c.firmware_commit, app_elf_sha256: c.app_elf_sha256 },
+    { category: 'startup', stage: 'runtime_ready', state: 'complete', first_failure: 'none', uptime_ms: 100 },
+    { category: 'startup', stage: 'runtime_ready', state: 'complete', first_failure: 'none', uptime_ms: 200 });
+  for (const core of [undefined, { ...preservedCore(), empty_core_dump: false }, { ...preservedCore(), expected_boot_ordinal: 4 }, { ...preservedCore(), result_sha256: 'bad' }]) assert.throws(() => reviewExistingCapture(value, { ...c, corePreservation: core }, 1000));
+  const other = structuredClone(value); other.diagnostics.observations[0].reset_reason = 'other';
+  const otherReview = reviewExistingCapture(other, c, 1000); assert.equal(otherReview.reset_reason_unresolved, true);
+  assert.equal(otherReview.core_dump_sha256, c.corePreservation.dump_sha256);
+  const review = reviewExistingCapture(value, c, 1000);
+  assert.equal(review.reset_reason_unresolved, false);
+  assert.equal(review.installation_complete, false); assert.equal(Object.hasOwn(review, 'installation_verified'), false);
+  assert.doesNotThrow(() => requireCurrentCaptureReview(review, idle(), 121000));
+  assert.throws(() => requireCurrentCaptureReview(review, idle(), 121001));
+  assert.throws(() => requireCurrentCaptureReview(review, { observation: { bootOrdinal: 4 } }, 1000));
+  for (const mutate of [v => { v.diagnostics.observations.pop(); }, v => { v.diagnostics.observations.at(-1).uptime_ms = 100; },
+    v => { v.diagnostics.observations.at(-1).first_failure = 'storage_http'; }, v => { v.diagnostics.observations[1].app_elf_sha256 = '0'.repeat(64); },
+    v => { v.diagnostics.observations[0].reset_reason = 'panic'; }, v => { v.diagnostics.observations.push({ category: 'storage_http_failure' }); }, v => { v.diagnostics.observations.push(v.diagnostics.observations.shift()); }, v => { v.ledger = { ...ledger, pending: true }; }]) {
+    const bad = structuredClone(value); mutate(bad); assert.throws(() => reviewExistingCapture(bad, c, 1000));
+  }
+});
+
+test('existing-image capture transitions without install review only after fresh healthy baseline', async t => {
+  for (const healthy of [false, true]) {
+    const c = { ...context, firmware_commit: context.before_source.firmware_commit, app_elf_sha256: context.before_source.app_elf_sha256,
+      captureExisting: true, installEnabled: false, selfTestEnabled: true, corePreservation: preservedCore() }, reviews = [], claims = [];
+    const observed = structuredClone(diagnostics);
+    observed.observations.push({ category: 'runtime_identity', firmware_commit: c.firmware_commit, app_elf_sha256: c.app_elf_sha256 },
+      { category: 'startup', stage: 'runtime_ready', state: 'complete', first_failure: healthy ? 'none' : 'storage_http', uptime_ms: 100 },
+      { category: 'startup', stage: 'runtime_ready', state: 'complete', first_failure: healthy ? 'none' : 'storage_http', uptime_ms: 200 });
+    const server = createProbeServer({ root: '/unused', context: c, page: '', bundle: Buffer.from(''), client: Buffer.from(''), trust: {} },
+      { persist: async () => {}, persistProof: async () => {}, validateDiagnostics: async value => value, verifyNativeAudit: async () => {},
+        persistCapture: async value => reviews.push(value), persistClaim: async value => claims.push(value),
+        inspectInstall: async () => { throw Error('installation must not run'); }, persistCandidate: async () => { throw Error('must not synthesize installation review'); } });
+    server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.release());
+    const origin = `http://127.0.0.1:${server.address().port}`;
+    const post = (path, value) => fetch(`${origin}${path}`, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
+    assert.equal((await post('/self-test-claim', {})).status, 400);
+    await post('/diagnostic-export', observed);
+    for (const [stage, value] of Object.entries({ state: state(c, 'before'), ledger, original_budget: original, status: idle(), closed: state(c, 'before', true), finished: { failures: [] } })) assert.equal((await post('/part', { stage, value })).status, 200);
+    assert.equal((await post('/candidate', {})).status, healthy ? 200 : 400);
+    assert.equal((await post('/self-test-claim', { state: state(c), ledger, status: idle() })).status, healthy ? 200 : 400);
+    assert.equal(reviews.length, healthy ? 1 : 0); assert.equal(claims.length, healthy ? 1 : 0);
+    assert.equal((await post('/install', {})).status, 400);
+    if (healthy) assert.equal(reviews[0].installation_complete, false);
+  }
+});
+
+
+test('normal, predecessor-before, recovery-only and capture-existing modes select distinct package sources', async () => {
+  const { argumentsFor } = await import('./main.mjs');
+  const { resolvePreflightSources } = await import('./preflight-selection.mjs');
+  for (const mode of ['normal', 'before', 'recovery', 'capture']) {
+    const args = ['preflight', '--private-root', '/new', '--gate-root', '/gate'];
+    if (mode === 'normal' || mode === 'before') args.push('--manifest', '/canonical');
+    if (mode === 'before') args.push('--before-recovery-root', '/before');
+    if (mode === 'recovery') args.push('--recover-install-root', '/failed', '--retained-manifest', '/retained');
+    if (mode === 'capture') args.push('--capture-recovery-root', '/capture', '--retained-manifest', '/retained');
+    const { options } = argumentsFor(args), calls = [], predecessor = { context: { firmware_commit: 'old' } };
+    const result = await resolvePreflightSources(options, '/repo', 'current', {
+      packageSnapshot: async (_repo, manifest, commit) => { calls.push(['package', manifest, commit]); return { source: 'current' }; },
+      beforeRecovery: async root => { calls.push(['before', root]); return { predecessor, root, context: { synthetic: true } }; },
+      recoveryPredecessor: async root => { calls.push(['failed', root]); return predecessor; },
+      verifyCorePreservation: async (root, value) => { assert.equal(value.synthetic, true); calls.push(['preserved', root]); return preservedCore(); },
+      retainedPackage: async (manifest, value) => { assert.equal(value, predecessor); calls.push(['retained', manifest]); return { packaged: { source: 'retained' } }; },
+    });
+    assert.equal(result.captureExisting, mode === 'capture'); assert.equal(result.recoveryOnly, mode === 'recovery');
+    if (mode === 'normal') assert.deepEqual(calls, [['package', '/canonical', 'current']]);
+    if (mode === 'before') assert.deepEqual(calls, [['before', '/before'], ['package', '/canonical', 'current']]);
+    if (mode === 'recovery') assert.deepEqual(calls, [['failed', '/failed'], ['retained', '/retained']]);
+    if (mode === 'capture') assert.deepEqual(calls, [['before', '/capture'], ['retained', '/retained'], ['preserved', '/capture']]);
+  }
+});
+
+
+test('capture review cannot refresh an expired baseline or extend its original observation age', async t => {
+  for (const candidateExpired of [true, false]) {
+  let now = 1000;
+  const c = { ...context, firmware_commit: context.before_source.firmware_commit, app_elf_sha256: context.before_source.app_elf_sha256,
+    captureExisting: true, installEnabled: false, selfTestEnabled: true, corePreservation: preservedCore() };
+  const observed = structuredClone(diagnostics), saved = [];
+  observed.observations.push({ category: 'runtime_identity', firmware_commit: c.firmware_commit, app_elf_sha256: c.app_elf_sha256 },
+    { category: 'startup', stage: 'runtime_ready', state: 'complete', first_failure: 'none', uptime_ms: 100 },
+    { category: 'startup', stage: 'runtime_ready', state: 'complete', first_failure: 'none', uptime_ms: 200 });
+  const server = createProbeServer({ root: '/unused', context: c, page: '', bundle: Buffer.from(''), client: Buffer.from(''), trust: {} },
+    { now: () => now, persist: async () => {}, persistProof: async () => {}, validateDiagnostics: async value => value,
+      verifyNativeAudit: async () => {}, persistCapture: async value => saved.push(value) });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.release());
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const post = (path, value) => fetch(`${origin}${path}`, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
+  await post('/diagnostic-export', observed);
+  for (const [stage, value] of Object.entries({ state: state(c, 'before'), ledger, original_budget: original, status: idle(), closed: state(c, 'before', true), finished: { failures: [] } })) assert.equal((await post('/part', { stage, value })).status, 200);
+  now = candidateExpired ? 121001 : 120000;
+  assert.equal((await post('/candidate', {})).status, candidateExpired ? 400 : 200); assert.equal(saved.length, candidateExpired ? 0 : 1);
+  if (!candidateExpired) assert.equal(saved[0].observed_at_unix_ms, 1000);
+  now = 121001;
+  assert.equal((await post('/self-test-claim', { state: state(c), ledger, status: idle() })).status, 400);
+  }
 });

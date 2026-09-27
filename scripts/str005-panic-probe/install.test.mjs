@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { admitRecovery, runChild, validateFlashReceipt, flashArguments } from './install.mjs';
+import { admitRecovery, runChild, validateFlashReceipt, flashArguments, INSTALL_TIMEOUT_MS } from './install.mjs';
 import { ledger, original } from '../str005-noise-serial/test-fixture.mjs';
 const context = { commit: 'a'.repeat(40), firmware_commit: 'a'.repeat(40), gate_commit: 'b'.repeat(40), reference_commit: 'c'.repeat(40),
   before_source: { firmware_commit: 'd'.repeat(40), app_elf_sha256: 'e'.repeat(64) }, detector: { physical: 'f'.repeat(64), port: '/dev/synthetic' }, manifest: '/repo/package.json' };
@@ -47,3 +47,10 @@ test('flash receipt binds private log, firmware, successful monitoring and obser
 });
 
 import "./recovery-predecessor.test.mjs";
+
+test('future install supervisor budgets twenty minutes while capture stays six minutes', () => {
+  assert.equal(INSTALL_TIMEOUT_MS, 1200000);
+  assert.equal(flashArguments('/private/root', context).at(-1), '360');
+});
+
+import "./core-preservation.test.mjs";

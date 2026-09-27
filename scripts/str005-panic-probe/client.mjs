@@ -63,7 +63,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     catch { output.textContent = 'Partial baseline retained. Stop/Close remain available. Do not flash or Start.'; }
   });
   const candidate = document.createElement('button'), selfTest = document.createElement('button'), recover = document.createElement('button');
-  candidate.id = 'configure-panic-candidate'; candidate.textContent = 'Verify installation and configure candidate';
+  candidate.id = 'configure-panic-candidate'; candidate.textContent = context.captureExisting ? 'Qualify recovered image for capture' : 'Verify installation and configure candidate';
   selfTest.id = 'capture-core-self-test'; selfTest.textContent = 'Run one off-only core capture self-test';
   let candidateConfigured = false, selfTestUsed = false;
   recover.id = 'recover-panic-candidate'; recover.textContent = 'Collect candidate recovery and close';
@@ -90,7 +90,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     if (context.recoveryOnly) return;
     candidate.disabled = true;
     try { await gate.configure(await post('/candidate', {})); candidateConfigured = true; output.textContent = 'Candidate configured. Use native Connect Worker.'; }
-    catch { candidate.disabled = false; output.textContent = 'Candidate blocked: complete baseline and repo-owned installation first.'; }
+    catch { candidate.disabled = false; output.textContent = context.captureExisting ? 'Capture blocked: a fresh healthy baseline and preserved empty core are required.' : 'Candidate blocked: complete baseline and repo-owned installation first.'; }
   });
   selfTest.addEventListener('click', async () => {
     if (context.recoveryOnly || selfTestUsed || !candidateConfigured) return;

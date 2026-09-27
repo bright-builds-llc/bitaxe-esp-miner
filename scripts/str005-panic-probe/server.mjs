@@ -10,6 +10,7 @@ import { validateDiagnosticExport } from '../fixed-usb-qualification/diagnostic-
 import { writeNew, canonical } from '../str005-noise-serial/files.mjs';
 import { configuration } from '../str005-v2-serial/server-assets.mjs';
 import { check, object } from '../str005-v2-serial/values.mjs';
+import { reviewExistingCapture, requireCurrentCaptureReview } from './capture-existing.mjs';
 import { inspectInstall } from './install.mjs';
 import { validateState } from '../fixed-usb-qualification/judge.mjs';
 import { validateLedger } from '../fixed-usb-qualification/iterative-contract.mjs';
@@ -18,10 +19,11 @@ import { validatePart, validateFinished, baselineConclusion, currentProof, valid
 
 /** Stage A exposes read/close operations only; later stages require separate admission. */
 export function createProbeServer({ root, context, page, bundle, client, trust }, operations = {}) {
-  let queue = Promise.resolve(), finished = false, maybeFirstAt, candidateConfigured = false, selfTestClaimed = false, maybeSelfTestRequest;
+  const now = operations.now ?? Date.now;
+  let queue = Promise.resolve(), finished = false, maybeFirstAt, candidateConfigured = false, selfTestClaimed = false, maybeSelfTestRequest, maybeCaptureReview;
   const saved = new Set(), parts = {}, candidateSessions = new Set();
   let candidateRound = 0, maybeCandidateRound;
-  const scope = { challengeId: `challenge_${nonce()}`, retentionExpiryUnixSeconds: Math.floor(Date.now() / 1000) + 86400 };
+  const scope = { challengeId: `challenge_${nonce()}`, retentionExpiryUnixSeconds: Math.floor(now() / 1000) + 86400 };
   const persist = operations.persist ?? ((stage, value) => writeNew(resolve(root, `baseline-${stage}.json`), value));
   const server = createServer((request, response) => {
     const pending = queue.then(() => handle(request, response));
@@ -33,7 +35,7 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
   server.requestTimeout = 10000; server.headersTimeout = 10000;
   async function save(stage, value) {
     check(!finished && !saved.has(stage), 'panic_part_consumed');
-    await persist(stage, value); saved.add(stage); parts[stage] = value; maybeFirstAt ??= Date.now();
+    await persist(stage, value); saved.add(stage); parts[stage] = value; maybeFirstAt ??= now();
   }
   async function handle(request, response) {
     const host = `127.0.0.1:${server.address().port}`, origin = `http://${host}`;
@@ -50,12 +52,19 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
       (!request.headers.origin && request.headers['sec-fetch-site'] === 'same-origin')), 'panic_origin');
     const input = await body(request);
     if (path === '/activate') { object(input, []); return send(response, 200, scope); }
-    if (path === '/probe-context') { object(input, []); return send(response, 200, { originalCampaignId: context.original_campaign_id, recoveryOnly: context.recoveryOnly === true }); }
+    if (path === '/probe-context') { object(input, []); return send(response, 200, { originalCampaignId: context.original_campaign_id, recoveryOnly: context.recoveryOnly === true, captureExisting: context.captureExisting === true }); }
     if (context.recoveryOnly) check(!['/candidate', '/self-test-claim', '/self-test-result', '/candidate-recovery-begin', '/candidate-part', '/install'].includes(path), 'panic_recovery_only');
     if (path === '/candidate') {
-      object(input, []); check(context.installEnabled && finished && baselineConclusion(parts).complete && !candidateConfigured, 'panic_candidate_admission');
-      const reviewed = await (operations.inspectInstall ?? inspectInstall)(root, context);
-      await (operations.persistCandidate ?? (value => writeNew(resolve(root, 'candidate-install-review.json'), value)))(reviewed);
+      object(input, []); check((context.installEnabled || context.captureExisting) && finished && baselineConclusion(parts).complete && !candidateConfigured, 'panic_candidate_admission');
+      if (context.captureExisting) {
+        check(now() >= maybeFirstAt && now() - maybeFirstAt <= 120000, 'panic_capture_baseline_stale');
+        await (operations.verifyNativeAudit ?? verifyNativeAudit)(root, context);
+        maybeCaptureReview = reviewExistingCapture(parts, context, maybeFirstAt);
+        await (operations.persistCapture ?? (value => writeNew(resolve(root, 'capture-review.json'), value)))(maybeCaptureReview);
+      } else {
+        const reviewed = await (operations.inspectInstall ?? inspectInstall)(root, context);
+        await (operations.persistCandidate ?? (value => writeNew(resolve(root, 'candidate-install-review.json'), value)))(reviewed);
+      }
       candidateConfigured = true;
       return send(response, 200, { ...configuration(context, 'candidate', trust), coreDumpSelfTestQualification: true });
     }
@@ -64,6 +73,7 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
       check(context.selfTestEnabled && candidateConfigured && !selfTestClaimed, 'panic_self_test_admission');
       await (operations.verifyNativeAudit ?? verifyNativeAudit)(root, context);
       validateState(input.state, context); validateLedger(input.ledger); const status = parseStatus(input.status);
+      if (context.captureExisting) requireCurrentCaptureReview(maybeCaptureReview, status, now());
       check(input.state.status === 'ready' && input.state.connected && !input.state.running && input.state.deviceLeaseInactive === true &&
         input.state.deviceBaselineConfirmed === true && input.state.preservation?.baseline_id === parts.closed.preservation.baseline_id &&
         input.state.preservation.settings_match && input.state.preservation.device_identity_match && input.state.preservation.authorization_high_water_match &&
@@ -71,7 +81,7 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
         canonical(input.ledger) === canonical(parts.ledger), 'panic_candidate_preservation');
       const request = { requestNonce: nonce(), expectedBootOrdinal: status.observation.bootOrdinal };
       await (operations.persistClaim ?? (value => writeNew(resolve(root, 'self-test-claim.json'), value)))({ request,
-        state: input.state, status: validatePart('status', input.status, context), ledger: input.ledger, claimedAtUnixMs: Date.now() });
+        state: input.state, status: validatePart('status', input.status, context), ledger: input.ledger, claimedAtUnixMs: now() });
       selfTestClaimed = true; maybeSelfTestRequest = request; return send(response, 200, request);
     }
     if (path === '/candidate-recovery-begin') {
@@ -83,7 +93,7 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
       check(!candidateSessions.has(session), 'panic_recovery_fresh_session');
       const sequence = candidateRound + 1, relative = `candidate-recovery-${String(sequence).padStart(3, '0')}`;
       await (operations.createRecoveryRound ?? (path => mkdir(resolve(root, path), { mode: 0o700 })))(relative);
-      maybeCandidateRound = { sequence, relative, session, parts: {}, saved: new Set(), started: Date.now(), finished: false };
+      maybeCandidateRound = { sequence, relative, session, parts: {}, saved: new Set(), started: now(), finished: false };
       candidateRound = sequence; candidateSessions.add(session);
       return send(response, 200, { sequence, proofRelativePath: `${relative}/current-recovery.json` });
     }
@@ -99,10 +109,10 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
       if (input.stage === 'finished') {
         round.finished = true;
         if (baselineConclusion(round.parts).complete) {
-          check(Date.now() - round.started <= 120000 &&
+          check(now() - round.started <= 120000 &&
             `${round.parts.status.observation.bootOrdinal}:${round.parts.status.observation.serialTransportEpoch}` === round.session &&
             round.parts.state.preservation.baseline_id === parts.closed.preservation.baseline_id, 'panic_candidate_recovery_bound');
-          await (operations.persistCandidateProof ?? ((path, value) => writeNew(resolve(root, path), value)))(`${round.relative}/current-recovery.json`, currentProof(candidateContext, round.parts));
+          await (operations.persistCandidateProof ?? ((path, value) => writeNew(resolve(root, path), value)))(`${round.relative}/current-recovery.json`, currentProof(candidateContext, round.parts, now()));
         }
       }
       return send(response, 200, { recorded: true, proofRelativePath: `${round.relative}/current-recovery.json`, complete: round.finished && baselineConclusion(round.parts).complete });
@@ -131,8 +141,8 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
     if (input.stage === 'finished') {
       await save('finished', validateFinished(input.value)); finished = true;
       if (baselineConclusion(parts).complete) {
-        check(Date.now() - maybeFirstAt <= 120000, 'panic_observations_stale');
-        await (operations.persistProof ?? (value => writeNew(resolve(root, 'current-recovery.json'), value)))(currentProof(context, parts));
+        check(now() - maybeFirstAt <= 120000, 'panic_observations_stale');
+        await (operations.persistProof ?? (value => writeNew(resolve(root, 'current-recovery.json'), value)))(currentProof(context, parts, now()));
       }
     }
     else await save(input.stage, validatePart(input.stage, input.value, context));

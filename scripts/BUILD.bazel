@@ -449,6 +449,12 @@ js_test(
 )
 
 js_test(
+    name = "str005_panic_core_preservation_test",
+    data = [":str005_panic_probe_sources"],
+    entry_point = "str005-panic-probe/core-preservation.test.mjs",
+)
+
+js_test(
     name = "str005_panic_self_test_evidence_test",
     data = [":str005_panic_probe_sources"],
     entry_point = "str005-panic-probe/self-test-evidence.test.mjs",
