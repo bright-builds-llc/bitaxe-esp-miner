@@ -4384,9 +4384,14 @@ Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/par
 
 ### task-str005-v2-serial-qualification | 2026-09-16 | Qualify Ultra 205 V2 channel and accepted share
 
-Status: Active; the successor contract is published and its implementation has
-passed software verification. Clean implementation publication/package and fresh
-Channel006 admission remain pending; no live allowance has been issued. Channel005 remains
+Status: Blocked after Share002's Start-time panic observation; its sealed result
+is unverified/hardware-blocker. Channel006 passed private finalization and review
+on published `cf7a3f03` / `e20c0fd5`; Share002 completed four additional continuity
+cycles but did not prove a completed Start, accepted share or heartbeat shutdown.
+Ordinal18 was issued and delivery attempted; device consumption remains unknown
+without fresh post-failure accounting. No accepted projection was published.
+See the [failed successor report](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md).
+Channel005 remains
 sealed/unverified: installation4 wrote successfully but captured a two-second USB
 drain timeout; only three continuity cycles passed and no channel/mining ran.
 The durable operator prerequisite and `task-usb-bootstrap-drain-observability`
@@ -4441,7 +4446,7 @@ remain mandatory.
       [install-review](docs/hardware/str005-v2-serial-install-review-amendment.md)
       and [ownership](docs/hardware/str005-v2-serial-install-ownership-amendment.md)
       amendments. Freshly authenticate installed0d2 and both ledgers before writes.
-- [ ] Detector-admit the candidate and complete fresh state-preserving continuity
+- [x] Detector-admit the candidate and complete fresh state-preserving continuity
       cycles. Seal and independently accept the channel stage with no ASIC work,
       signing or reservation, preserving both ledgers and safe restoration.
 - [ ] Under a fresh separate share root/page/session, complete four additional
@@ -4487,9 +4492,9 @@ Successor implementation plan | 2026-09-27: Follow the reviewed
       monotonic Share recovery wait; preserve emergency-abort and high-water rules.
 - [x] Compose both real page/coordinator/accounting paths and test-key Share
       signer/fixture preparation, including early and late deadline failures.
-- [ ] Run ordered software/native checks; publish and build one clean candidate
+- [x] Run ordered software/native checks; publish and build one clean candidate
       with exact Gate/fixture/observer/evaluator identities before effects.
-- [ ] Complete the fresh channel stage, private finalization and independent review.
+- [x] Complete the fresh channel stage, private finalization and independent review.
 - [ ] Admit the same-pair Share stage separately, perform real accepted-share and
       safety testing, then seal/review and publish the truthful combined outcome.
 
@@ -4507,6 +4512,47 @@ Gate type checking and 788 tests, native package preview, Bright Builds, referen
 redaction, ownership and parity/progress checks passed. Independent review and the
 actual finite ancestry/current-absence inspection passed. These are software checks;
 no Channel006/Share002 effects or live reservation have occurred. Parity is90/95.
+
+Successor live outcome | 2026-09-27: Implementation `cf7a3f03` was published,
+then its clean package, fixture/observer identities and native checks passed.
+Channel006 completed five state-preserving installations, four fresh continuity
+cycles, the network-only channel exchange, restoration, unchanged accounting and
+actual cleanup; its independently reviewed accepted result remains private.
+Share002 separately completed four installations/cycles and fresh pre-issuance
+accounting. Start failed with `v2_client_start_operation_failed`; native UI
+diagnostics observed boot12 changing to boot13 with reset reason `panic`.
+The later fixture `setup_received` timeout is secondary. No successful Start,
+qualified share, heartbeat fault or post-work accounting is established.
+
+The host issued ordinal18 and attempted delivery without observing device
+reservation. The firmware can persist that reservation before replying to Start;
+do not infer it is unused or reuse it. Fresh recovery and Stop confirmed matching
+identity/settings, inactive leases and mine-on-boot false; the final journal is
+closed and serial ownership released. Browser, fixture, supervisor, operator,
+listeners and serial holders are gone. The failed native page disables restoration
+collection, leaving after-accounting and retained resource/status evidence absent;
+formal cleanup remains incomplete despite observed safe baseline/host release.
+Sealing and independent review retain `stop_hardware_blocker`; no accepted
+projection was published and parity stays90/95. Earlier progress entries remain
+historical. This task is unresolved and is not archived.
+
+Next bounded prerequisite: publish a recovery/diagnostic successor contract and
+verify a native failure-only collection path for authenticated ledgers and retained
+status without Start, issuance or flash authority. Obtain panic/preparation evidence
+bound to the exact installed ELF before attributing the reboot or choosing a fix.
+Verify the targeted correction and boundary regression before any fresh finite
+admission. The current amendment admits no Channel007 or Share003; no ledger reset,
+refund, same-context restart or threshold relaxation is permitted.
+
+Outcome verification | 2026-09-27: Independent read-only Channel006 and Share002
+reviews reproduced their separate dispositions. Ordered Cargo format, Clippy,
+build and tests passed (2366 tests, three existing ignores); Bright Builds,
+reference, redaction, native USB ownership/symbols and read-only parity/progress
+checks passed. All243 task IDs remain unique; archive, parity checklist and
+progress history are unchanged. Independent documentation review found no
+overclaims or private-field disclosure. No new hardware attempt was admitted
+after Share002. Residual blockers are the panic cause and missing authenticated
+after-accounting/resource evidence, not host-resource ownership.
 
 Execution plan: keep channel and share results independent but keep this task
 active between them. Channel finalization remains private so the repository and
