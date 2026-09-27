@@ -34,19 +34,76 @@ export function createRecoveryCollector({ gate, save, published, campaignId, att
   };
 }
 
-export function installRecoveryControls(document, collect) {
+/** Preserve Gate's required before-session baseline, close, then candidate reconnect. */
+export function createRecoveryBootstrap({ gate, published, candidateConfiguration, collect }) {
+  let consumed = false, prepared = false, maybeBaseline;
+  const admitted = () => {
+    const state = published(), preservation = state?.preservation;
+    return state?.status === "ready" && state.connected === true && state.running === false &&
+      state.serialOwnershipReleased === false && state.deviceBaselineConfirmed === true && state.deviceLeaseInactive === true &&
+      state.expectedFirmwareSourceCommit === candidateConfiguration.expectedFirmwareSourceCommit &&
+      state.expectedAppElfSha256 === candidateConfiguration.expectedAppElfSha256 &&
+      state.gateCommit === candidateConfiguration.expectedGateCommit && preservation?.settings_match === true &&
+      preservation.device_identity_match === true && preservation.authorization_high_water_match === true && preservation.mine_on_boot === false;
+  };
+  const canCollect = () => prepared && admitted() && published().preservation.baseline_id === maybeBaseline;
+  return {
+    canPrepare: () => !consumed && admitted(), canCollect,
+    async prepare() {
+      if (consumed || !admitted()) throw Error("recovery_before_baseline_required");
+      consumed = true; maybeBaseline = published().preservation.baseline_id;
+      let timer;
+      try {
+        await Promise.race([gate.close(), new Promise((_, reject) => { timer = setTimeout(() => reject(Error("recovery_close_timeout")), 150000); })]);
+      } finally { clearTimeout(timer); }
+      const closed = published();
+      if (closed.status !== "closed" || closed.connected !== false || closed.running !== false || closed.serialOwnershipReleased !== true)
+        throw Error("recovery_before_release_required");
+      await gate.configure(candidateConfiguration);
+      if (published().status !== "configured" || published().connected !== false) throw Error("recovery_candidate_configuration_failed");
+      prepared = true;
+      return { prepared: true, native_reconnect_required: true };
+    },
+    async collect() {
+      if (!canCollect()) throw Error("recovery_candidate_reconnect_required");
+      prepared = false;
+      return collect();
+    },
+  };
+}
+
+export function installRecoveryControls(document, collect, maybeBootstrap) {
   const button = document.createElement("button"), output = document.createElement("pre");
+  let used = false, preparing = false;
   button.id = "recover"; button.textContent = "Collect failure recovery and release";
   output.id = "recovery-result"; output.setAttribute("role", "status");
+  const maybePrepare = maybeBootstrap ? document.createElement("button") : undefined;
+  function update() {
+    button.disabled = used || preparing || (maybeBootstrap ? !maybeBootstrap.canCollect() : false);
+    if (maybePrepare) maybePrepare.disabled = preparing || !maybeBootstrap.canPrepare();
+  }
+  if (maybePrepare) {
+    maybePrepare.id = "prepare-recovery"; maybePrepare.textContent = "Prepare recovery after baseline connection";
+    maybePrepare.addEventListener("click", async () => {
+      if (maybePrepare.disabled) return;
+      preparing = true; update();
+      try { await maybeBootstrap.prepare(); output.textContent = "Recovery configured. Use Connect Worker again, then collect."; }
+      catch { output.textContent = "Recovery preparation failed. Retain evidence; Stop and Close remain available."; }
+      finally { preparing = false; update(); }
+    });
+    document.body.append(maybePrepare);
+  }
   button.addEventListener("click", async () => {
     if (button.disabled) return;
-    button.disabled = true; output.textContent = "Collecting recovery evidence";
+    used = true; update(); output.textContent = "Collecting recovery evidence";
     const maybeConnect = document.getElementById?.("connect");
     if (maybeConnect) maybeConnect.disabled = true;
     try { output.textContent = JSON.stringify(await collect()); }
     catch { output.textContent = "Recovery evidence incomplete; retain this page and artifacts."; }
   });
   document.body.append(button, output);
+  update();
+  return { update };
 }
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
@@ -65,6 +122,10 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     delete gate[key];
   for (const id of ["prepare", "load", "start", "arm-foreground", "suppress", "authorization-context", "probe", "configuration"]) document.getElementById(id)?.remove();
   const context = await request("/recovery-context", {});
-  installRecoveryControls(document, createRecoveryCollector({ gate: allowed, campaignId: context.campaignId, attemptId: context.attemptId,
-    published: () => gate.state(), save: (stage, value) => stage === "diagnostics" ? Promise.resolve() : request("/part", { stage, value }) }));
+  const collect = createRecoveryCollector({ gate: allowed, campaignId: context.campaignId, attemptId: context.attemptId,
+    published: () => gate.state(), save: (stage, value) => stage === "diagnostics" ? Promise.resolve() : request("/part", { stage, value }) });
+  const bootstrap = createRecoveryBootstrap({ gate, published: () => gate.state(), candidateConfiguration: context.candidateConfiguration, collect });
+  const controls = installRecoveryControls(document, () => bootstrap.collect(), bootstrap);
+  const output = document.getElementById("state");
+  if (output) new MutationObserver(controls.update).observe(output, { childList: true, subtree: true, characterData: true });
 }

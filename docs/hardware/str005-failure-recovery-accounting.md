@@ -39,8 +39,11 @@ with absolute paths, inspecting each exit before continuing:
    Serial/JTAG runtime profile and no existing serial holders.
 1. Open the emitted loopback recovery page in desktop Chrome, keep it visible,
    and use native Connect to obtain fresh exact identity and possession. No
-   deadline applies while waiting safely for permission. Click **Collect failure
-   recovery and release** once. Stop and Close remain available on failure.
+   deadline applies while waiting safely for permission. Click **Prepare recovery after baseline connection** to release the initial inspection session and configure the same
+   installed pair as the candidate. Use native Connect again, preserving this
+   page and its private baseline, then click **Collect failure recovery and
+   release** once. No installation cycle is claimed. Stop and Close remain
+   available on failure.
 1. Close the owned page after confirmed serial release; terminate the supervisor
    with SIGTERM and wait for exit. Run
    `just str005-failure-recovery finish --private-root <parent>/attempt`.
@@ -69,7 +72,7 @@ and both ledgers are preserved. No Start, mining, grant issuance/renewal, pool
 contact, flash, reset, ROM recovery, factory provisioning, electrical manipulation,
 heartbeat suppression or Share002 replay is authorized.
 
-One collection per fresh root/page. Reads have 30-second bounds; restoration and
+Two fresh native sessions (initial baseline, then recovery) and one collection per fresh root/page. Reads have 30-second bounds; restoration and
 Close each have 150-second bounds including cooling. Existing two-second serial
 record and 2.8-second device heartbeat deadlines remain. No blind retries. A new
 attempt requires a regression-tested boundary fix, renewed clean publication and

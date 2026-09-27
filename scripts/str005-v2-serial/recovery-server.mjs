@@ -13,6 +13,8 @@ import { check, object } from "./values.mjs";
 /** No signer, fixture, flash adapter or qualification supervisor exists in this server. */
 export function createRecoveryServer({ root, context, page, bundle, client, trust }, operations = {}) {
   let queue = Promise.resolve(), finished = false;
+  // Both sessions observe the installed pair; this is not an installation cycle.
+  const recoveryContext = { ...context, before_source: context };
   const saved = new Set();
   const scope = { challengeId: `challenge_${nonce()}`, retentionExpiryUnixSeconds: Math.floor(Date.now() / 1000) + 86400 };
   const persist = operations.persist ?? ((stage, value) => writeNew(resolve(root, `${stage}.json`), value));
@@ -34,7 +36,7 @@ export function createRecoveryServer({ root, context, page, bundle, client, trus
     check(request.headers.host === host, "recovery_host");
     const path = new URL(request.url, origin).pathname;
     if (request.method === "GET") {
-      if (path === "/context") return send(response, 200, configuration(context, "candidate", trust));
+      if (path === "/context") return send(response, 200, configuration(recoveryContext, "before", trust));
       if (path === "/") return send(response, 200, Buffer.from(`${page}\n<script type="module" src="/recovery-client.mjs"></script>`), "text/html");
       if (path === `/${BUNDLE}`) return send(response, 200, bundle, "text/javascript");
       if (path === "/recovery-client.mjs") return send(response, 200, client, "text/javascript");
@@ -45,7 +47,8 @@ export function createRecoveryServer({ root, context, page, bundle, client, trus
     const input = await body(request);
     if (path === "/activate") { object(input, []); return send(response, 200, scope); }
     if (path === "/recovery-context") {
-      object(input, []); return send(response, 200, { campaignId: context.original_campaign_id, attemptId: context.attemptId });
+      object(input, []); return send(response, 200, { campaignId: context.original_campaign_id, attemptId: context.attemptId,
+        candidateConfiguration: configuration(recoveryContext, "candidate", trust) });
     }
     if (path === "/diagnostic-export") {
       const value = await (operations.validateDiagnostics ?? validateDiagnosticExport)(input, context.gate_root);

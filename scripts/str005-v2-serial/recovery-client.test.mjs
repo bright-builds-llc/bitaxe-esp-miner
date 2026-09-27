@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createRecoveryCollector, installRecoveryControls } from "./recovery-client.mjs";
+import { createRecoveryBootstrap, createRecoveryCollector, installRecoveryControls } from "./recovery-client.mjs";
 
 function fixture(failedStage) {
   const calls = [], saved = [];
@@ -47,4 +47,29 @@ test("stale session rejection cannot become a retained status proof", async () =
   const result = await f.collect();
   assert.deepEqual(result.failures, ["status"]);
   assert.equal(f.saved.some(row => row.stage === "status"), false);
+});
+
+test("bootstrap requires connected before baseline and a separate native candidate reconnect", async () => {
+  // Arrange
+  const config = { expectedGateCommit: "gate", expectedFirmwareSourceCommit: "firmware", expectedAppElfSha256: "elf" };
+  const current = { status: "configured", connected: false, running: false, serialOwnershipReleased: true,
+    deviceBaselineConfirmed: true, deviceLeaseInactive: true, gateCommit: "gate", expectedFirmwareSourceCommit: "firmware",
+    expectedAppElfSha256: "elf", preservation: { settings_match: true, device_identity_match: true,
+      authorization_high_water_match: true, mine_on_boot: false, baseline_id: "same" } };
+  const calls = [];
+  const bootstrap = createRecoveryBootstrap({ candidateConfiguration: config, published: () => current,
+    gate: { async close() { calls.push("close"); Object.assign(current, { status: "closed", connected: false, serialOwnershipReleased: true }); },
+      configure() { calls.push("configure"); current.status = "configured"; } }, collect: async () => { calls.push("collect"); } });
+  // Act / Assert
+  await assert.rejects(bootstrap.prepare(), /before_baseline/u);
+  Object.assign(current, { status: "ready", connected: true, serialOwnershipReleased: false });
+  await bootstrap.prepare();
+  await assert.rejects(bootstrap.collect(), /reconnect_required/u);
+  Object.assign(current, { status: "ready", connected: true, serialOwnershipReleased: false });
+  current.preservation.baseline_id = "changed";
+  await assert.rejects(bootstrap.collect(), /reconnect_required/u);
+  current.preservation.baseline_id = "same";
+  await bootstrap.collect();
+  await assert.rejects(bootstrap.collect(), /reconnect_required/u);
+  assert.deepEqual(calls, ["close", "configure", "collect"]);
 });

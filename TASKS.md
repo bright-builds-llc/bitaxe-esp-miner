@@ -4444,6 +4444,16 @@ detector output exposed a colon-versus-equals parser mismatch. New regression
 uses the production colon format, rejects duplicate/stale/changed-device facts,
 and permits a fresh collection only after this fix is verified and published.
 No Start, reservation, reset or flash occurred; device consumption remains unknown.
+Collection002 on `e5164371` passed preflight/detection but the pinned Gate
+rejected initial candidate configuration before Connect. No serial connection or
+device command occurred. Its separate result is sealed unverified, with actual
+supervisor/listener/serial-holder release confirmed and all device criteria absent.
+Correction: establish the required same-pair before-session baseline, close,
+configure candidate, then reconnect natively; no flash or continuity credit.
+The production Gate configuration parser/transition is the regression boundary.
+All 32 focused tests and five recovery Bazel targets pass, including the actual
+Gate transition fixture; ordered Cargo checks, standards, redaction, Markdown
+and diff checks pass again. Native firmware/USB implementation is unchanged.
 Completion review: device accounting/resource/restoration measurement pending;
 no historical evidence modified and no parity promotion.
 

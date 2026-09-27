@@ -34,6 +34,20 @@ test("real recovery HTTP server rejects grant, Start and flash routes", async t 
   assert.deepEqual(fixture.stored, []);
 });
 
+test("bootstrap freezes the installed pair in before and candidate configurations", async t => {
+  // Arrange
+  const fixture = await setup(t);
+  // Act
+  const before = await (await fetch(`http://127.0.0.1:${fixture.port}/context`)).json();
+  const candidate = (await fixture.post("/recovery-context", {})).body.candidateConfiguration;
+  // Assert
+  assert.equal(before.stratumV2Qualification, "before");
+  assert.equal(candidate.stratumV2Qualification, "candidate");
+  assert.deepEqual(before.stratumV2Identities, candidate.stratumV2Identities);
+  assert.deepEqual(before.stratumV2Identities.before, before.stratumV2Identities.candidate);
+  assert.equal(before.expectedFirmwareSourceCommit, context.firmware_commit);
+});
+
 test("failed persistence does not poison later accounting and restoration collection", async t => {
   // Arrange
   const fixture = await setup(t, stage => { if (stage === "diagnostics") throw Error("synthetic_write_failure"); });

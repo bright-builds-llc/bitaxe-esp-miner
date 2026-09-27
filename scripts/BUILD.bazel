@@ -414,6 +414,14 @@ js_binary(
 )
 
 js_test(
+    name = "str005_recovery_configuration_test",
+    env_inherit = ["PATH"],
+    args = ["$(rootpath @bwg_gate_contract//:package_json_js)"],
+    data = [":str005_v2_serial_sources", "@bwg_gate_contract//:package_json_js", "@bwg_gate_contract//:share_authority_sources_js", "@bwg_gate_contract//:worker_deployment_trust_js"],
+    entry_point = "str005-v2-serial/recovery-configuration.test.mjs",
+)
+
+js_test(
     name = "str005_recovery_admission_test",
     data = [":str005_v2_serial_sources"],
     entry_point = "str005-v2-serial/recovery-admission.test.mjs",
@@ -638,7 +646,7 @@ js_library(
 
 js_library(
     name = "str005_v2_serial_sources",
-    srcs = glob(["usb-bootstrap-measure/*.mjs", "str005-v2-serial/*.mjs", "str005-v2-serial/*.rs", "str005-v2-serial/*.py"]) + ["v2-native-paths.mjs", "v2-native-readiness.mjs"],
+    srcs = glob(["usb-bootstrap-measure/*.mjs", "str005-v2-serial/*.mjs", "str005-v2-serial/*.rs", "str005-v2-serial/*.py"]) + ["str005-v2-serial/recovery-configuration.fixture.ts", "v2-native-paths.mjs", "v2-native-readiness.mjs"],
     deps = [
         ":str005_noise_serial_sources",
         "//:str005_v2_serial_contract_inputs",
