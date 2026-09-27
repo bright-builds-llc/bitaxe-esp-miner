@@ -50,6 +50,8 @@ Missing dependencies fail explicitly; analysis never falls back to reading flash
 Store the raw dump as mode 0600 below a mode-0700 gitignored development parent.
 Use absolute paths and a nonexistent output child under another protected ignored
 parent. The ELF may come from retained canonical build artifacts.
+Resolve Bazel output aliases with `realpath`, or use a byte-identical retained
+regular-file copy; the inspector rejects symlink components and hardlinked input.
 
 ```sh
 just core-dump inspect --dump <absolute-private-raw-dump> --elf <absolute-matching-elf> --elf-sha256 <full-64-hex-sha256> --private-root <absolute-new-private-child>

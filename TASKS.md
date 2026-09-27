@@ -4608,6 +4608,20 @@ qualification. Recovery prerequisites and fatal-handler safety/timing validation
 still govern installation/reproduction. Do not enable acquisition by rewriting
 its sentinel merely to bypass the missing historical-resource proof.
 
+Clean published candidate verified at `8f69978b`: ELF
+`f44a3927696fb1fb5870bed460e3cc1f915834218dd10a6b5587810603f751a1`, package
+manifest `c5061b5ef8c57eb603d32d7b0db2b9bdc638b71e51e374d4e2d916e68cb0264a`.
+Clean image size is 4,148,416 bytes (45,888 bytes of slot headroom), distinct
+from the earlier dirty compile above. Debug sidecar/package identities and
+source-line symbolization passed; protected artifact snapshot retained. Clean
+native USB ownership/symbol checks passed. Share002/recovery004 inventories
+remain unchanged. No device effects were attempted.
+
+Final software result: [implementation verification](docs/research/development-core-dump-implementation.md).
+Capture tooling and persistent authorization are complete. The overarching
+panic diagnosis remains unresolved/unarchived pending separately admitted real
+capture and the recovery prerequisite; no existing failure is reclassified.
+
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 
 Status: Proof blocked on recovery and verified panic correction.
