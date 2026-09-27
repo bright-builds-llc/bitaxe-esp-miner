@@ -66,7 +66,7 @@ pub(super) fn successful_command_recovery_policy(args: &[String]) -> RecoveryPha
 pub(super) fn is_flash_effect(args: &[String]) -> bool {
     matches!(
         args.first().map(String::as_str),
-        Some("write-bin" | "erase-flash")
+        Some("write-bin" | "erase-flash" | "erase-region")
     )
 }
 
@@ -245,4 +245,9 @@ pub(super) fn ineligible_retry_detail(
         );
     }
     "the supervised espflash command failed without an eligible state-changing retry".to_owned()
+}
+
+/// Archive-bound partition clearing never repeats an ambiguous erase command.
+pub(super) fn allows_command_retry(args: &[String]) -> bool {
+    args.first().map(String::as_str) != Some("erase-region")
 }

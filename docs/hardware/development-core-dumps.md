@@ -2,8 +2,9 @@
 
 [ADR-0030](../adr/0030-development-core-dumps.md) is the standing authorization
 for collecting, persisting and inspecting full private development dumps. This
-guide is the command contract for the implementation. STR-005 acquisition remains
-disabled until its independent recovery/effect prerequisites are satisfied.
+guide is the command contract for the implementation. [ADR-0031](../adr/0031-prospective-panic-diagnostics.md) and the
+[staged panic probe](str005-panic-probe.md) admit prospective acquisition only
+with a fresh current-state recovery proof and the published effect contract.
 
 ## Diagnostic firmware
 
@@ -28,8 +29,9 @@ Keep the matching artifacts together. Rebuilding from the same source is not a
 substitute for the ELF whose hash appears in the dump.
 
 The first dump is preserved. A nonblank previous dump can prevent later captures;
-collect and verify it before any separately authorized clearing operation. These
-commands never erase a dump or reset accounting. Enabling core capture changes
+collect and verify it before any separately authorized clearing operation. The read and offline
+commands never erase a dump or reset accounting. Explicit `core-dump-clear` is
+a separate effect requiring a verified private archive and fresh recovery proof. Enabling core capture changes
 native code, RAM use and fatal-handler timing; the build proves compilation and
 resource limits, not the device's safety or retention behavior under a real fault.
 Mining/fault qualification must separately account for that timing before use.
@@ -79,9 +81,8 @@ fails the suite rather than silently skipping the real decoder boundary.
 
 ## Device acquisition contract
 
-`just core-dump-read` is reset-capable. Its implementation is available, but the
-current task contains a disabled acquisition gate. Privacy authorization alone
-does not activate it. Before a future invocation, its active task must satisfy
+`just core-dump-read` is reset-capable. Privacy authorization alone does not
+activate it. Before invocation, its active task must satisfy
 recovery/safety/evidence prerequisites and publish the exact command, identities,
 evidence parent and allowed effects on clean pushed source. The sole active
 `task-str005-start-panic-diagnosis` block must then contain:
@@ -90,15 +91,16 @@ evidence parent and allowed effects on clean pushed source. The sole active
 Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
 ```
 
-Do not add that declaration merely to bypass the unresolved prerequisite. The
+The prospective prerequisite is ADR-0031 current-state proof, not a rewrite of
+Share002 historical evidence. The
 command checks active/unique task admission before environment or device discovery
 and checks clean pushed tooling plus an unmodified tracked task contract again
 before acquisition.
 
-Future admitted command shape:
+Admitted command shape:
 
 ```sh
-just core-dump-read --board 205 --port <fresh-detector-port> --expected-physical-sha256 <fresh-physical-identity> --expected-installed-source <40-hex-commit> --expected-installed-elf <64-hex-elf-sha256> --private-root <absolute-new-private-child>
+just core-dump-read --board 205 --port <fresh-detector-port> --expected-physical-sha256 <fresh-physical-identity> --expected-installed-source <40-hex-commit> --expected-installed-elf <64-hex-elf-sha256> --recovery-proof <absolute-fresh-current-proof> --private-root <absolute-new-private-child>
 ```
 
 Run `just detect-ultra205` first under the published task contract and preserve
@@ -108,7 +110,9 @@ separate mode-0600 siblings under the mode-0700 parent; leave the child absent.
 The expected installed image identifies the application to return to, not an
 inferred dump identity. Offline inspection independently checks the dump's ELF.
 
-The acquisition owns one existing repository physical-device lease. It admits
+The recovery proof is protected, exact-image/device-bound, nonpending and at
+most 120 seconds old. Future timestamps fail. The acquisition owns one existing
+repository physical-device lease. It admits
 ESP32-S3 ROM with bounded board-info before reading. It reads the actual partition
 table at `0x8000`, validates its integrity and nonoverlapping ranges, and reads
 only the unique unencrypted core-dump partition at `0xf12000`. Historical 64 KiB
@@ -120,7 +124,8 @@ After successful ROM admission, success or read failure attempts the existing
 guarded application return on the same device, then checks the expected runtime
 identity. Resource release runs even when return fails. A physical mismatch
 prohibits further reads/reset; failed ROM admission does not trigger a blind reset
-retry. The receipt preserves the first failure and separate read/return/cleanup
+retry. Admission can fail after a reset: the device may remain in ROM, restoration
+is unproven, and further effects stop until bounded same-device recovery is admitted. The receipt preserves the first failure and separate read/return/cleanup
 outcomes. Application identity is not a hardware-baseline proof: a future effect
 owner must additionally obtain fresh authenticated safe-baseline confirmation.
 
@@ -139,3 +144,19 @@ debug artifacts are usable and the host tools reject unsafe or mismatched input.
 It cannot manufacture Share002's missing panic bytes or retained-resource record.
 A future real crash must produce a valid, fully bound dump before a root cause
 or capture success can be claimed. Preserve all older seals and parity at 90/95.
+
+## Captured cutoff verification and explicit clearing
+
+`just core-dump verify-cutoff` accepts the same arguments as `inspect`. It checks
+the native checksum and full ELF identity, then reads the cutoff receipt only
+from captured core PT_LOAD bytes at the matching ELF symbol address. Safe pin
+configuration/output state and actual generation revocation are required. An
+off-only self-test additionally requires `self_test_marked: true`. Static image
+contents and default BSS cannot supply missing captured state.
+
+`just core-dump-clear` uses the read arguments plus `--preserved-dump` and
+`--preserved-sha256`. The private full-partition archive must match a fresh
+read byte-for-byte before erasure. It re-admits the held device without reset,
+erases only the validated core partition and reads back all erased bytes. The
+active task must explicitly enable clearing; no retry or NVS/accounting reset is
+implicit. See the staged probe contract for ordered commands and failure cleanup.

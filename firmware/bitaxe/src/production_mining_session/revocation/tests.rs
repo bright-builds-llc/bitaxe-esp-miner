@@ -599,3 +599,21 @@ fn idle_qualification_rejects_reservation_and_never_replaces_retained_real_gener
         generation.raw()
     );
 }
+
+#[test]
+fn native_panic_revokes_active_and_unleased_work_without_cleanup() {
+    // Arrange
+    let gate = GenerationGate::new();
+    let generation = gate.begin_link(0).expect("generation");
+    assert!(gate.admit_budget(generation, u64::MAX));
+    assert!(gate.activate(generation));
+    let permit = gate.stamp(Some(generation));
+    // Act
+    let observed_state = gate.panic_revoke_all();
+    // Assert
+    assert_eq!(observed_state, generation.0 | REVOKED);
+    assert!(!gate.permits_work(permit));
+    assert!(!gate.permits(None));
+    assert!(!gate.heartbeat(generation, 1));
+    assert!(gate.begin_link(2).is_none());
+}

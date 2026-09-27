@@ -39,8 +39,10 @@ the existing physical-device lease, ROM admission and cleanup protocol.
 
 Historical failure records remain immutable. A new diagnostic capture cannot fill
 missing fields in a sealed attempt or retroactively establish resource release.
-The unresolved STR-005 historical-resource prerequisite and parity status remain
-unchanged by this privacy authorization.
+This privacy authorization did not change the STR-005 historical-resource
+prerequisite. The owner's subsequent [ADR-0031](0031-prospective-panic-diagnostics.md)
+separately admits future diagnostics through fresh current-state proof while
+preserving the historical gap and parity status.
 
 ## Implementation direction
 

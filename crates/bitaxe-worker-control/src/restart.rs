@@ -7,3 +7,10 @@ pub struct QualificationRestartContext {
     pub worker_generation: u32,
     pub transport_epoch: u32,
 }
+
+/// Idle-only diagnostic operation. Neither variant grants work or reserves budget.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum QualificationResetKind {
+    Restart,
+    CoreDumpSelfTest,
+}

@@ -12,6 +12,7 @@ pub(crate) fn run_flash_with_wifi_mode(
     wifi_mode: WifiNvsSeedMode,
     environment: &impl FlashEnvironment,
 ) -> Result<FlashOutcome> {
+    validate_expected_physical(&command.common)?;
     let maybe_esptool = if command.common.dry_run {
         None
     } else {
@@ -31,6 +32,7 @@ pub(crate) fn run_flash_with_wifi_mode(
         let port = maybe_command_port(&execution_command)
             .context("usb_session=blocked reason=port_unavailable")?;
         environment.begin_usb_session(UsbOperation::Flash, &port)?;
+        require_expected_physical(&command.common, environment)?;
         let segmented = maybe_segmented_write
             .as_ref()
             .context("identity_admission=blocked reason=segmented_update_missing")?;
@@ -65,6 +67,7 @@ pub(crate) fn run_monitor(
         let port = maybe_command_port(&command_spec)
             .context("usb_session=blocked reason=port_unavailable")?;
         environment.begin_usb_session(UsbOperation::Monitor, &port)?;
+        require_expected_physical(&command.common, environment)?;
         let bytes = environment.receive_only(&command_spec, command.capture_timeout_seconds)?;
         write_receive_only_console(&bytes)?;
     }
@@ -167,6 +170,7 @@ fn run_receive_only_flash_monitor(
         let port = maybe_command_port(&monitor_command)
             .context("usb_session=blocked reason=port_unavailable")?;
         environment.begin_usb_session(UsbOperation::FlashMonitor, &port)?;
+        require_expected_physical(&command.common, environment)?;
         let bytes = environment.receive_only(&monitor_command, command.capture_timeout_seconds)?;
         write_receive_only_console(&bytes)?;
     }
@@ -213,6 +217,7 @@ fn run_evidence_flash_monitor(
         let port = maybe_command_port(&monitor_command)
             .context("usb_session=blocked reason=port_unavailable")?;
         environment.begin_usb_session(UsbOperation::FlashMonitor, &port)?;
+        require_expected_physical(&command.common, environment)?;
         let capture_result = environment
             .execute_capturing(
                 &monitor_command,
@@ -340,4 +345,46 @@ fn validate_evidence_capture(
             capture_outcome.runtime_attestation_status.label(),
         )
     );
+}
+
+fn validate_expected_physical(common: &CommonArgs) -> Result<()> {
+    if common
+        .maybe_expected_physical_sha256
+        .as_ref()
+        .is_some_and(|value| {
+            value.len() != 64
+                || !value
+                    .bytes()
+                    .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        })
+    {
+        bail!("physical_identity_binding_invalid");
+    }
+    Ok(())
+}
+
+fn require_expected_physical(
+    common: &CommonArgs,
+    environment: &impl FlashEnvironment,
+) -> Result<()> {
+    let Some(expected) = &common.maybe_expected_physical_sha256 else {
+        return Ok(());
+    };
+    let checked = (|| {
+        validate_expected_physical(common)?;
+        if environment.usb_physical_identity_digest()? != *expected
+            || environment.current_session_physical_identity_digest()? != *expected
+        {
+            bail!("physical_identity_binding_mismatch");
+        }
+        Ok(())
+    })();
+    if let Err(error) = checked {
+        let cleanup = environment.finish_usb_session();
+        if cleanup.is_err() {
+            return Err(error.context("physical_identity_cleanup_failed"));
+        }
+        return Err(error);
+    }
+    Ok(())
 }

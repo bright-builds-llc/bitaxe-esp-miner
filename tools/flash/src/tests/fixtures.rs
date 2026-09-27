@@ -1,5 +1,6 @@
 fn common_args() -> CommonArgs {
     CommonArgs {
+        maybe_expected_physical_sha256: None,
         board: BoardId::Ultra205,
         port: Some("/dev/cu.usbmodem101".to_owned()),
         dry_run: true,
@@ -280,6 +281,7 @@ fn run_explicit_image_admission(manifest: &Utf8Path, image: Utf8PathBuf) -> Resu
     let command = FlashCommand {
         factory_reset: false,
         common: CommonArgs {
+            maybe_expected_physical_sha256: None,
             port: None,
             dry_run: false,
             ..common_args()

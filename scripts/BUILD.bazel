@@ -399,6 +399,62 @@ js_test(
 )
 
 js_binary(
+    name = "str005_panic_probe",
+    chdir = "..",
+    data = [":str005_panic_probe_sources", "//tools/flash:flash"],
+    entry_point = "str005-panic-probe/main.mjs",
+)
+
+js_library(
+    name = "str005_panic_probe_sources",
+    srcs = glob(["str005-panic-probe/*.mjs"]),
+    deps = [":str005_v2_serial_sources", ":core_dump_sources"],
+)
+
+js_test(
+    name = "str005_panic_probe_test",
+    data = [":str005_panic_probe_sources"],
+    entry_point = "str005-panic-probe/probe.test.mjs",
+)
+
+js_test(
+    name = "str005_panic_audit_test",
+    data = [":str005_panic_probe_sources"],
+    entry_point = "str005-panic-probe/audit.test.mjs",
+)
+
+js_test(
+    name = "str005_panic_detector_test",
+    data = [":str005_panic_probe_sources"],
+    entry_point = "str005-panic-probe/detector.test.mjs",
+)
+
+js_test(
+    name = "str005_panic_install_test",
+    data = [":str005_panic_probe_sources"],
+    entry_point = "str005-panic-probe/install.test.mjs",
+)
+
+js_test(
+    name = "str005_panic_self_test_evidence_test",
+    data = [":str005_panic_probe_sources"],
+    entry_point = "str005-panic-probe/self-test-evidence.test.mjs",
+)
+
+js_binary(
+    name = "native_panic_audit",
+    chdir = "..",
+    data = [":core_dump_sources"],
+    entry_point = "core-dump/native-audit.mjs",
+)
+
+js_test(
+    name = "native_panic_audit_test",
+    data = [":core_dump_sources"],
+    entry_point = "core-dump/native-audit.test.mjs",
+)
+
+js_binary(
     name = "core_dump",
     chdir = "..",
     data = [":core_dump_sources"],

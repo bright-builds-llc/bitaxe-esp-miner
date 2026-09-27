@@ -45,8 +45,12 @@ pub(crate) trait FlashEnvironment {
     }
     fn usb_physical_identity_digest(&self) -> Result<String>;
     fn current_usb_physical_identity_digest(&self, port: &str) -> Result<String>;
+    fn current_session_physical_identity_digest(&self) -> Result<String>;
     fn execute(&self, command_spec: &CommandSpec) -> Result<()>;
     fn execute_esptool_write_flash(&self, command: &ManagedEsptoolWriteFlash) -> Result<()>;
+    fn execute_core_dump_erase(&self, _offset: u32, _size: u32) -> Result<()> {
+        bail!("core_dump_erase_adapter_unavailable")
+    }
     fn admit_flash_read(&self) -> Result<()> {
         Ok(())
     }

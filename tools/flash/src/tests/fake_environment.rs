@@ -17,13 +17,18 @@ struct FakeFlashEnvironment {
     capture_status: CaptureProcessStatus,
     log_contents: String,
     maybe_campaign_bytes: Option<Vec<u8>>,
+    core_dump_reads: RefCell<std::collections::VecDeque<Vec<u8>>>,
     current_provenance: BuildProvenance,
     source_replacement: Option<(Utf8PathBuf, Vec<u8>)>,
     execute_failure: bool,
+    maybe_execute_failure_command: Option<String>,
     maybe_execute_failure_offset: Option<String>,
     snapshot_write_failure: bool,
     list_ports_calls: Cell<usize>,
     physical_inspection_ports: RefCell<Vec<String>>,
+    session_port: RefCell<String>,
+    session_physical_digest: RefCell<String>,
+    maybe_rom_reenumeration: Option<(String, String)>,
     read_string_paths: RefCell<Vec<Utf8PathBuf>>,
     written_files: RefCell<Vec<(Utf8PathBuf, String)>>,
     created_snapshot_paths: RefCell<Vec<Utf8PathBuf>>,
@@ -146,7 +151,10 @@ impl FlashEnvironment for FakeFlashEnvironment {
         self.capture_lifecycle.borrow_mut().push("prepare");
         Ok(())
     }
-    fn begin_usb_session(&self, _operation: UsbOperation, _port: &str) -> Result<()> {
+    fn begin_usb_session(&self, _operation: UsbOperation, port: &str) -> Result<()> {
+        if self.session_port.borrow().is_empty() {
+            *self.session_port.borrow_mut() = port.to_owned();
+        }
         Ok(())
     }
 
@@ -196,11 +204,26 @@ impl FlashEnvironment for FakeFlashEnvironment {
         Ok("6".repeat(64))
     }
 
+    fn admit_flash_read(&self) -> Result<()> {
+        if let Some((port, digest)) = &self.maybe_rom_reenumeration {
+            *self.session_port.borrow_mut() = port.clone();
+            *self.session_physical_digest.borrow_mut() = digest.clone();
+        }
+        Ok(())
+    }
+
+    fn current_session_physical_identity_digest(&self) -> Result<String> {
+        self.current_usb_physical_identity_digest(&self.session_port.borrow())
+    }
+
     fn current_usb_physical_identity_digest(&self, port: &str) -> Result<String> {
         self.physical_inspection_ports
             .borrow_mut()
             .push(port.to_owned());
-        Ok("6".repeat(64))
+        if self.maybe_rom_reenumeration.is_some() && port != self.session_port.borrow().as_str() {
+            bail!("fixture_stale_port");
+        }
+        Ok(self.session_physical_digest.borrow().clone())
     }
 
     fn execute(&self, command_spec: &CommandSpec) -> Result<()> {
@@ -209,7 +232,7 @@ impl FlashEnvironment for FakeFlashEnvironment {
             .push(command_spec.clone());
         let is_write = matches!(
             command_spec.args.first().map(String::as_str),
-            Some("write-bin" | "erase-flash")
+            Some("write-bin" | "erase-flash" | "erase-region")
         );
         let offset_failure = self
             .maybe_execute_failure_offset
@@ -218,7 +241,12 @@ impl FlashEnvironment for FakeFlashEnvironment {
                 command_spec.args.first().map(String::as_str) == Some("write-bin")
                     && command_spec.args.iter().any(|argument| argument == offset)
             });
-        let should_fail = self.execute_failure || offset_failure;
+        let should_fail = self.execute_failure
+            || offset_failure
+            || self
+                .maybe_execute_failure_command
+                .as_ref()
+                .is_some_and(|command| command_spec.args.first() == Some(command));
         let diagnostic = fake_usb_command_diagnostic(
             UsbTerminalCategory::Ready,
             if is_write && !should_fail {
@@ -354,8 +382,24 @@ impl FlashEnvironment for FakeFlashEnvironment {
         })
     }
 
+    fn execute_core_dump_erase(&self, offset: u32, size: u32) -> Result<()> {
+        let proof = CommandSpec::new("espflash", installed_rom_probe_args("/dev/test-only"));
+        self.execute_with_output(&proof)?;
+        self.execute_with_output(&crate::core_dump::clearing::erase_command(
+            "/dev/test-only",
+            offset,
+            size,
+        ))?;
+        Ok(())
+    }
+
     fn execute_with_output(&self, command_spec: &CommandSpec) -> Result<Vec<u8>> {
         self.execute(command_spec)?;
+        if command_spec.args.first().map(String::as_str) == Some("read-flash") {
+            if let Some(bytes) = self.core_dump_reads.borrow_mut().pop_front() {
+                fs::write(command_spec.args.last().context("fixture output")?, bytes)?;
+            }
+        }
         Ok(b"Chip type: ESP32-S3\nMAC address: 02:00:00:00:A1:B1\n".to_vec())
     }
 

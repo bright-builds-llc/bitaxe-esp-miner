@@ -1,5 +1,11 @@
 # ADR-0029: Qualify STR-005 through independent checkpoints
 
+Prospective diagnostic admission is clarified by
+[ADR-0031](0031-prospective-panic-diagnostics.md): fresh current-state safety,
+accounting and release proof can admit new diagnostics while the historical
+Share002 resource-record gap remains unresolved. Original evidence and non-claims
+below are preserved.
+
 Accepted 2026-09-27 by explicit owner approval. This is a prospective task and
 acceptance strategy, not an executable hardware contract or a new evidence schema.
 `TASKS.md` remains the sole active tracker; this ADR records stable policy and the

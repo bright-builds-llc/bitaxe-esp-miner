@@ -18,6 +18,8 @@ struct State {
     boot: u64,
     now: u64,
     resets: u32,
+    panics: u32,
+    asic_off: bool,
 }
 impl Default for State {
     fn default() -> Self {
@@ -31,6 +33,8 @@ impl Default for State {
             boot: 2,
             now: 1000,
             resets: 0,
+            panics: 0,
+            asic_off: true,
         }
     }
 }
@@ -109,7 +113,18 @@ mod production_mining_session {
         }
     }
 }
+mod panic_cutoff {
+    pub fn mark_self_test() {}
+    pub fn asic_outputs_disabled() -> bool { super::read(|s| s.asic_off) }
+}
 pub mod sys {
+    /// # Safety
+    /// Synthetic native panic boundary only; never invokes a real process abort.
+    pub unsafe fn abort() -> ! {
+        super::change(|s| s.panics += 1);
+        panic!("synthetic native panic");
+    }
+
     /// Synthetic non-returning ESP boundary, caught only by the positive host test.
     /// # Safety
     /// Only called through the real restart adapter after its final idle claim.
@@ -224,4 +239,26 @@ fn native_cancellation_winning_the_commit_cas_releases_idle_without_reset() {
     assert!(result.is_err());
     assert!(read(|s| s.idle));
     assert_eq!(read(|s| s.resets), 0);
+}
+
+#[test]
+fn core_dump_self_test_requires_disabled_asic_outputs() {
+    // Arrange
+    change(|s| s.asic_off = false);
+    // Act / Assert
+    assert_eq!(qualification_restart::core_dump_context(WorkerGeneration(7)).expect("context"), None);
+    assert!(qualification_restart::core_dump_self_test(WorkerGeneration(7), context(), 2000).is_err());
+    assert_eq!(read(|s| s.panics), 0);
+}
+
+#[test]
+fn core_dump_self_test_claims_idle_epoch_before_native_abort() {
+    // Arrange / Act
+    let result = std::panic::catch_unwind(|| qualification_restart::core_dump_self_test(WorkerGeneration(7), context(), 2000));
+    // Assert
+    assert!(result.is_err());
+    assert_eq!(read(|s| s.panics), 1);
+    assert_eq!(read(|s| s.resets), 0);
+    assert_eq!(read(|s| s.maybe_epoch), None);
+    assert!(!read(|s| s.idle));
 }

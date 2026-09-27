@@ -47,7 +47,7 @@ export async function managedGdb(repo) {
 
 function argumentsFor(argv) {
   const [action, ...rest] = argv;
-  check(['inspect', 'analyze'].includes(action), 'action_required');
+  check(['inspect', 'analyze', 'verify-cutoff'].includes(action), 'action_required');
   const options = {};
   for (let index = 0; index < rest.length; index += 2) {
     const key = rest[index];
@@ -79,11 +79,12 @@ export async function main(argv) {
   const elfSha = await snapshot(options['--elf'], elf, false);
   check(elfSha === options['--elf-sha256'], 'elf_identity');
   await writeFile(join(root, 'inputs.json'), JSON.stringify({ schema: 'bitaxe-private-core-inputs/1', dump_sha256: dumpSha,
-    elf_sha256: elfSha, inspector_sha256: sha256(await readFile(join(sourceDirectory, 'decode_core.py'))) }), { flag: 'wx', mode: 0o600 });
+    elf_sha256: elfSha, inspector_sha256: sha256(await readFile(join(sourceDirectory, 'decode_core.py'))),
+    cutoff_verifier_sha256: sha256(await readFile(join(sourceDirectory, 'cutoff.py'))) }), { flag: 'wx', mode: 0o600 });
   const tools = await managedTools(repo);
   const tmp = join(root, 'tmp'); await mkdir(tmp, { mode: 0o700 });
   const env = { PATH: process.env.PATH, HOME: process.env.HOME, GDBHISTFILE: join(root, 'gdb-history'), TMPDIR: tmp, TMP: tmp, TEMP: tmp, PYTHONNOUSERSITE: '1', PYTHONDONTWRITEBYTECODE: '1', IDF_PATH: tools.idf };
-  await privateProcess(tools.python, [join(sourceDirectory, 'decode_core.py'), dump, elf, elfSha, join(root, 'inspection.json')], root, 'inspect', env);
+  await privateProcess(tools.python, [join(sourceDirectory, 'decode_core.py'), dump, elf, elfSha, join(root, 'inspection.json'), action], root, 'inspect', env);
   if (action === 'analyze') {
     const gdb = await managedGdb(repo);
     await privateProcess(gdb.path, ['--nx', '--batch', '--version'], root, 'gdb-version', env);
@@ -98,6 +99,7 @@ export async function main(argv) {
   check(sha256(await readFile(dump)) === dumpSha && sha256(await readFile(elf)) === elfSha, 'input_changed');
   const summary = JSON.parse(await readFile(join(root, 'inspection.json'), 'utf8'));
   check(summary.elf_sha256 === elfSha && summary.dump_sha256 === dumpSha && summary.full_elf_identity_verified === true, 'inspection_invalid');
+  if (action === 'verify-cutoff') check(summary.native_cutoff_verified === true && summary.captured_memory_verified === true && summary.generation_revoked === true && summary.asic_outputs_disabled === true, 'inspection_invalid');
   return { status: 'passed', action, ...summary };
 }
 

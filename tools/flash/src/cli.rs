@@ -13,6 +13,7 @@ pub(crate) struct Cli {
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum CliCommand {
+    CoreDumpClear(crate::core_dump::clearing::CoreDumpClearCommand),
     CoreDumpRead(crate::core_dump::CoreDumpReadCommand),
     #[command(name = "drain-worker-serial")]
     DrainWorkerSerial(crate::drain_worker_serial::DrainWorkerSerialCommand),
@@ -340,6 +341,10 @@ pub(crate) struct NvsRuntimeRestoreCommand {
 
 #[derive(Debug, Args, Clone)]
 pub(crate) struct CommonArgs {
+    /// Bind this invocation to an already observed physical USB device.
+    #[arg(long = "expected-physical-sha256", value_parser = parse_expected_physical_sha256)]
+    pub(crate) maybe_expected_physical_sha256: Option<String>,
+
     #[arg(long, default_value = "205", value_parser = parse_board)]
     pub(crate) board: BoardId,
 
@@ -598,4 +603,15 @@ impl fmt::Display for BoardId {
             Self::Ultra205 => formatter.write_str("205"),
         }
     }
+}
+
+fn parse_expected_physical_sha256(value: &str) -> std::result::Result<String, String> {
+    if value.len() != 64
+        || !value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+    {
+        return Err("expected physical identity must be a lowercase SHA-256 digest".to_owned());
+    }
+    Ok(value.to_owned())
 }

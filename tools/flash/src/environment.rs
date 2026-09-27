@@ -2,6 +2,7 @@ use crate::*;
 
 mod boot_chain;
 mod contract;
+mod core_dump;
 mod flash_transfer;
 mod installed_application;
 mod nvs_readback;
@@ -357,6 +358,14 @@ impl FlashEnvironment for LocalFlashEnvironment {
             .context("display_recovery=blocked reason=usb_session_missing")
     }
 
+    fn current_session_physical_identity_digest(&self) -> Result<String> {
+        let slot = self.usb_session.borrow();
+        let session = slot
+            .as_ref()
+            .context("physical_inspection_session_missing")?;
+        inspect_usb_profile(session.port()).map(|inspection| inspection.physical_identity_digest)
+    }
+
     fn current_usb_physical_identity_digest(&self, port: &str) -> Result<String> {
         inspect_usb_profile(port).map(|inspection| inspection.physical_identity_digest)
     }
@@ -397,6 +406,9 @@ impl FlashEnvironment for LocalFlashEnvironment {
     }
     fn execute_flash_read(&self, read: &ManagedFlashRead) -> Result<()> {
         flash_transfer::execute_read(self, read)
+    }
+    fn execute_core_dump_erase(&self, offset: u32, size: u32) -> Result<()> {
+        core_dump::erase(self, offset, size)
     }
     fn admit_flash_read(&self) -> Result<()> {
         self.ensure_bootloader()

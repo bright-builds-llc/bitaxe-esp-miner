@@ -21,10 +21,42 @@ pub(crate) fn context(
     }))
 }
 
+pub(crate) fn core_dump_context(
+    generation: WorkerGeneration,
+) -> Result<Option<QualificationRestartContext>, WorkerSessionError> {
+    if !crate::panic_cutoff::asic_outputs_disabled() {
+        return Ok(None);
+    }
+    context(generation)
+}
+
+pub(crate) fn core_dump_self_test(
+    generation: WorkerGeneration,
+    expected: QualificationRestartContext,
+    expires_at_ms: u64,
+) -> Result<(), WorkerSessionError> {
+    if core_dump_context(generation)? != Some(expected) {
+        return Err(WorkerSessionError::Rejected);
+    }
+    claim(generation, expected, expires_at_ms, true)?;
+    crate::panic_cutoff::mark_self_test();
+    unsafe { esp_idf_svc::sys::abort() }
+}
+
 pub(crate) fn restart(
     generation: WorkerGeneration,
     expected: QualificationRestartContext,
     expires_at_ms: u64,
+) -> Result<(), WorkerSessionError> {
+    claim(generation, expected, expires_at_ms, false)?;
+    unsafe { esp_idf_svc::sys::esp_restart() }
+}
+
+fn claim(
+    generation: WorkerGeneration,
+    expected: QualificationRestartContext,
+    expires_at_ms: u64,
+    core_dump: bool,
 ) -> Result<(), WorkerSessionError> {
     if context(generation)? != Some(expected)
         || crate::runtime_uptime::millis() >= expires_at_ms
@@ -33,7 +65,9 @@ pub(crate) fn restart(
     {
         return Err(WorkerSessionError::Rejected);
     }
-    if !crate::bwg_worker_usb::claim_restart_epoch(expected.transport_epoch) {
+    if (core_dump && !crate::panic_cutoff::asic_outputs_disabled())
+        || !crate::bwg_worker_usb::claim_restart_epoch(expected.transport_epoch)
+    {
         // Cancellation won the native epoch. Release only our claimed idle state;
         // no reservation, mining cleanup or new generation can be affected.
         let _released = revocation::abort_idle_restart(generation);
@@ -41,5 +75,5 @@ pub(crate) fn restart(
     }
     // The generation fence excludes work and the epoch CAS committed reset over
     // cancellation. There is no fallible operation or delayed task before reset.
-    unsafe { esp_idf_svc::sys::esp_restart() }
+    Ok(())
 }

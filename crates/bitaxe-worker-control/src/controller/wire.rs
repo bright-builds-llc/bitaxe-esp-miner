@@ -47,6 +47,7 @@ impl ControllerRequest {
                 | "qualification_attempt_review"
                 | "serial_trace_review"
                 | "qualification_restart"
+                | "qualification_core_dump_self_test"
                 | "telemetry_cadence_arm"
                 | "telemetry_cadence_review"
                 | "telemetry_cadence_endpoint"

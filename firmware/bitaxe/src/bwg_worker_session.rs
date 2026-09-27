@@ -112,6 +112,26 @@ impl WorkerSession for ProductionWorkerSession {
         crate::qualification_restart::restart(generation, context, expires_at_ms)
     }
 
+    fn core_dump_self_test_context(
+        &self,
+    ) -> Result<Option<bitaxe_worker_control::QualificationRestartContext>, WorkerSessionError>
+    {
+        crate::qualification_restart::core_dump_context(
+            self.maybe_generation.ok_or(WorkerSessionError::Rejected)?,
+        )
+    }
+    fn core_dump_self_test(
+        &mut self,
+        context: bitaxe_worker_control::QualificationRestartContext,
+        expires_at_ms: u64,
+    ) -> Result<(), WorkerSessionError> {
+        crate::qualification_restart::core_dump_self_test(
+            self.maybe_generation.ok_or(WorkerSessionError::Rejected)?,
+            context,
+            expires_at_ms,
+        )
+    }
+
     fn qualify_cooling(&mut self) -> Result<serde_json::Value, WorkerSessionError> {
         let generation = self.maybe_generation.ok_or(WorkerSessionError::Rejected)?;
         crate::production_mining_session::bwg_cooling(generation, false)

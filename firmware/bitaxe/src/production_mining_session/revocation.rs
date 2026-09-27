@@ -17,6 +17,8 @@ const GENERATION_SHIFT: u32 = 3;
 mod diagnostic;
 #[path = "revocation/global.rs"]
 mod global;
+#[path = "revocation/panic.rs"]
+mod panic;
 #[path = "revocation/reason.rs"]
 mod reason;
 pub(crate) use global::*;

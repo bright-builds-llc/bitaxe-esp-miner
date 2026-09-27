@@ -95,6 +95,7 @@ fn the_noise_fence_rejects_effectful_controller_commands() {
     for command in [
         "start_lease",
         "qualification_restart",
+        "qualification_core_dump_self_test",
         "qualification_cooling",
         "telemetry_cadence_arm",
     ] {

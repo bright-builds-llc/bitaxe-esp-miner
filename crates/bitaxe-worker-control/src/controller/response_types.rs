@@ -19,6 +19,7 @@ pub(super) enum PreparedEffect {
         generation: u64,
     },
     QualificationRestart {
+        kind: crate::QualificationResetKind,
         generation: u64,
         token: u64,
         context: crate::QualificationRestartContext,

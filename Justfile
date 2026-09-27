@@ -27,6 +27,15 @@ test-core-dump:
 core-dump-read *args:
     bazel run //tools/flash:flash -- core-dump-read {{ args }}
 
+core-dump-clear *args:
+    bazel run //tools/flash:flash -- core-dump-clear {{ args }}
+
+str005-panic-probe action *args:
+    bazel run //scripts:str005_panic_probe -- {{ action }} {{ args }}
+
+native-panic-audit *args:
+    bazel run //scripts:native_panic_audit -- {{ args }}
+
 observe-serial *args:
     bazel run //tools/automation:observe_serial -- {{ args }}
 

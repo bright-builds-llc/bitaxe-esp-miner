@@ -124,6 +124,23 @@ impl WorkerSession for FakeSession {
     {
         Ok(self.maybe_restart_context)
     }
+    fn core_dump_self_test_context(
+        &self,
+    ) -> Result<Option<bitaxe_worker_control::QualificationRestartContext>, WorkerSessionError>
+    {
+        Ok(self.maybe_restart_context)
+    }
+    fn core_dump_self_test(
+        &mut self,
+        context: bitaxe_worker_control::QualificationRestartContext,
+        _expires_at_ms: u64,
+    ) -> Result<(), WorkerSessionError> {
+        if self.maybe_restart_context != Some(context) {
+            return Err(WorkerSessionError::Rejected);
+        }
+        self.events.push("core_dump_self_test");
+        Ok(())
+    }
     fn qualification_restart(
         &mut self,
         context: bitaxe_worker_control::QualificationRestartContext,

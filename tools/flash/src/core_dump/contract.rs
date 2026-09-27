@@ -4,7 +4,17 @@ const TASK: &str = "task-str005-start-panic-diagnosis";
 const ENABLE: &str =
     "Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).";
 
+#[cfg(test)]
 pub(super) fn admit_task(tasks: &str) -> Result<()> {
+    admit_mode(tasks, false)
+}
+
+pub(super) fn admit_mode(tasks: &str, clear: bool) -> Result<()> {
+    let enable = if clear {
+        "Development core-dump clearing: enabled (private archive verified)."
+    } else {
+        ENABLE
+    };
     let mut active = false;
     let mut selected = false;
     let mut count = 0;
@@ -20,7 +30,7 @@ pub(super) fn admit_task(tasks: &str) -> Result<()> {
                 count += 1;
             }
         }
-        if selected && active && line.trim() == ENABLE {
+        if selected && active && line.trim() == enable {
             enabled = true;
         }
     }

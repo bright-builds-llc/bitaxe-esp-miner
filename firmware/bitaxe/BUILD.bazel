@@ -572,6 +572,7 @@ rust_test(
         "src/mining_actuation_cancellation_tests.rs",
         "src/production_mining_session/revocation.rs",
         "src/production_mining_session/revocation/global.rs",
+        "src/production_mining_session/revocation/panic.rs",
         "src/production_mining_session/revocation/diagnostic.rs",
         "src/production_mining_session/revocation/reason.rs",
         "src/production_mining_session/revocation/timing.rs",
@@ -601,6 +602,7 @@ rust_test(
         "src/production_mining_session/bwg.rs",
         "src/production_mining_session/revocation.rs",
         "src/production_mining_session/revocation/global.rs",
+        "src/production_mining_session/revocation/panic.rs",
         "src/production_mining_session/revocation/diagnostic.rs",
         "src/production_mining_session/revocation/reason.rs",
         "src/production_mining_session/revocation/timing.rs",
@@ -633,6 +635,7 @@ rust_test(
         "src/production_transport_host_test.rs",
         "src/production_mining_session/revocation.rs",
         "src/production_mining_session/revocation/global.rs",
+        "src/production_mining_session/revocation/panic.rs",
         "src/production_mining_session/revocation/diagnostic.rs",
         "src/production_mining_session/revocation/reason.rs",
         "src/production_mining_session/revocation/timing.rs",
@@ -1403,6 +1406,7 @@ rust_test(
         "src/worker_session_cleanup_host_test/qualification.rs",
         "src/production_mining_session/revocation.rs",
         "src/production_mining_session/revocation/global.rs",
+        "src/production_mining_session/revocation/panic.rs",
         "src/production_mining_session/revocation/diagnostic.rs",
         "src/production_mining_session/revocation/reason.rs",
         "src/production_mining_session/revocation/timing.rs",
@@ -1500,6 +1504,7 @@ rust_test(
         "src/production_mining_session/shutdown_budget.rs",
         "src/production_mining_session/revocation.rs",
         "src/production_mining_session/revocation/global.rs",
+        "src/production_mining_session/revocation/panic.rs",
         "src/production_mining_session/revocation/diagnostic.rs",
         "src/production_mining_session/revocation/reason.rs",
         "src/production_mining_session/revocation/timing.rs",
@@ -1553,4 +1558,12 @@ js_library(
         "src/usb_tx_measurement.rs",
     ],
     visibility = ["//scripts:__pkg__"],
+)
+
+# Pure latch admission rejects unconfigured, energized and released-reset states.
+rust_test(
+    name = "panic_cutoff_model_tests",
+    srcs = ["src/panic_cutoff_model.rs"],
+    crate_root = "src/panic_cutoff_model.rs",
+    edition = "2021",
 )

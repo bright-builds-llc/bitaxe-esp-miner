@@ -1,7 +1,9 @@
 //! Private development acquisition; task admission precedes every device effect.
 use crate::*;
 
+pub(crate) mod clearing;
 mod contract;
+mod proof;
 #[cfg(test)]
 mod tests;
 
@@ -19,19 +21,42 @@ pub(crate) struct CoreDumpReadCommand {
     pub(crate) expected_installed_elf: String,
     #[arg(long, value_parser = parse_utf8_path)]
     pub(crate) private_root: Utf8PathBuf,
+    #[arg(long, value_parser = parse_utf8_path)]
+    pub(crate) recovery_proof: Utf8PathBuf,
 }
 
-pub(crate) fn preflight() -> Result<()> {
+pub(crate) fn preflight(command: &CoreDumpReadCommand, clear: bool) -> Result<()> {
     let workspace = detect_workspace_dir()?;
-    contract::admit_task(&fs::read_to_string(workspace.join("TASKS.md"))?)
+    contract::admit_mode(&fs::read_to_string(workspace.join("TASKS.md"))?, clear)?;
+    let source = Command::new("git")
+        .current_dir(&workspace)
+        .args(["rev-parse", "HEAD"])
+        .output()?;
+    if !source.status.success() {
+        bail!("core_dump_source");
+    }
+    proof::admit(
+        command,
+        &workspace,
+        String::from_utf8(source.stdout)?.trim(),
+    )
 }
 
 pub(crate) fn run(
     command: &CoreDumpReadCommand,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
-    contract::admit_task(
+    run_mode(command, environment, None)
+}
+
+fn run_mode(
+    command: &CoreDumpReadCommand,
+    environment: &impl FlashEnvironment,
+    maybe_clear: Option<&clearing::CoreDumpClearCommand>,
+) -> Result<()> {
+    contract::admit_mode(
         &environment.read_to_string(&environment.workspace_path(Utf8Path::new("TASKS.md")))?,
+        maybe_clear.is_some(),
     )?;
     ensure_ultra_205(command.board)?;
     if command.port.trim().is_empty()
@@ -52,6 +77,14 @@ pub(crate) fn run(
         bail!("core_dump=blocked reason=source_not_clean_and_pushed");
     }
     contract::require_clean_contract(&environment.workspace_path(Utf8Path::new(".")))?;
+    proof::admit(
+        command,
+        &environment.workspace_path(Utf8Path::new(".")),
+        provenance.build_identity().source_commit(),
+    )?;
+    let maybe_archive = maybe_clear
+        .map(|clear| clearing::archive(clear, &environment.workspace_path(Utf8Path::new("."))))
+        .transpose()?;
     let esptool = environment.prepare_application_exit()?;
     let root = environment.workspace_path(&command.private_root);
     environment.approve_private_evidence_root(&root)?;
@@ -78,7 +111,7 @@ pub(crate) fn run(
         stage = "partition_table_validation";
         let (offset, size) = contract::dump_partition(&table)?;
         stage = "dump_read";
-        read_partition(
+        let dump = read_partition(
             command,
             environment,
             &root,
@@ -86,6 +119,26 @@ pub(crate) fn run(
             offset,
             size,
         )?;
+        if let Some(archive) = &maybe_archive {
+            stage = "preserved_dump_match";
+            if dump != *archive {
+                bail!("preserved_dump_drift");
+            }
+            stage = "dump_erase";
+            clearing::erase(command, environment, offset, size)?;
+            stage = "dump_erase_readback";
+            let cleared = read_partition(
+                command,
+                environment,
+                &root,
+                "cleared-core-dump.private.bin",
+                offset,
+                size,
+            )?;
+            if cleared.iter().any(|byte| *byte != 0xff) {
+                bail!("core_dump_erase_unverified");
+            }
+        }
         Ok(())
     })();
     let (returned, cleanup) = recover_and_release(
@@ -110,7 +163,8 @@ pub(crate) fn run(
         "complete"
     };
     let result = serde_json::json!({
-        "schema_version": "bitaxe-development-core-dump-read-v1",
+        "schema_version": if maybe_clear.is_some() { "bitaxe-development-core-dump-clear-v1" } else { "bitaxe-development-core-dump-read-v1" },
+        "clearing_complete": maybe_clear.is_some() && operation.is_ok(),
         "terminal_category": category,
         "first_failure_stage": if operation.is_err() { stage } else { category },
         "source_commit": provenance.build_identity().source_commit(),
@@ -122,10 +176,19 @@ pub(crate) fn run(
         "expected_installed_source": command.expected_installed_source,
         "expected_installed_elf": command.expected_installed_elf,
     });
-    write_private_new_bytes(
+    if write_private_new_bytes(
         &root.join("result.private.json"),
         &serde_json::to_vec_pretty(&result)?,
-    )?;
+    )
+    .is_err()
+    {
+        let first = if category == "complete" {
+            "result_write_failed"
+        } else {
+            category
+        };
+        bail!("core_dump=failed category={first} result_write_failed=true");
+    }
     emit_line("core_dump", category)?;
     if category != "complete" {
         bail!("core_dump=failed category={category}");
@@ -138,7 +201,7 @@ fn require_physical(
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
     if environment.usb_physical_identity_digest()? != command.expected_physical_sha256
-        || environment.current_usb_physical_identity_digest(&command.port)?
+        || environment.current_session_physical_identity_digest()?
             != command.expected_physical_sha256
     {
         bail!("core_dump=blocked reason=physical_identity_drift");

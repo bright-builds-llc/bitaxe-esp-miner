@@ -205,6 +205,7 @@ fn release_restore_flash_command(command: &ReleaseRecoveryCommand, port: &str) -
     FlashCommand {
         factory_reset: false,
         common: CommonArgs {
+            maybe_expected_physical_sha256: None,
             board: command.board,
             port: Some(port.to_owned()),
             dry_run: false,
@@ -220,6 +221,7 @@ fn release_restore_flash_command(command: &ReleaseRecoveryCommand, port: &str) -
 
 fn release_restore_monitor_common(command: &ReleaseRecoveryCommand, port: &str) -> CommonArgs {
     CommonArgs {
+        maybe_expected_physical_sha256: None,
         board: command.board,
         port: Some(port.to_owned()),
         dry_run: false,

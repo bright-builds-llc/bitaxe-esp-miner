@@ -20,6 +20,7 @@ impl<'d> AsicEnable<'d> {
 
         let mut enable = PinDriver::output(enable_pin)?;
         enable.set_high()?;
+        crate::panic_cutoff::mark_enable_configured();
         Ok(Self { enable })
     }
 
@@ -51,7 +52,9 @@ impl<'d> AsicReset<'d> {
         debug_assert_eq!(ASIC_RESET_GPIO, 1);
         debug_assert_eq!(ASIC_ENABLE_GPIO, 10);
 
-        let reset = PinDriver::output(reset_pin)?;
+        let mut reset = PinDriver::output(reset_pin)?;
+        reset.set_low()?;
+        crate::panic_cutoff::mark_reset_configured();
         Ok(Self { reset })
     }
 

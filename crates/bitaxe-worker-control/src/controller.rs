@@ -347,13 +347,17 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
                 request.command.as_str(),
                 "start_lease"
                     | "qualification_restart"
+                    | "qualification_core_dump_self_test"
                     | "qualification_cooling"
                     | "telemetry_cadence_arm"
             )
         {
             return Err(WorkerControlError::InvalidTransition);
         }
-        if request.command == "qualification_restart" {
+        if matches!(
+            request.command.as_str(),
+            "qualification_restart" | "qualification_core_dump_self_test"
+        ) {
             return self.prepare_qualification_restart(&request, now);
         }
         if request.command == "serial_trace_review" {

@@ -28,6 +28,7 @@ mod operator_sensor_runtime;
 mod operator_snapshot_publication;
 mod operator_snapshot_retention;
 mod ota_update;
+mod panic_cutoff;
 mod panic_evidence;
 mod platform_identity;
 mod preparation_evidence;

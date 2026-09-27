@@ -106,6 +106,22 @@ pub trait WorkerSession {
         Err(WorkerSessionError::Rejected)
     }
 
+    /// Requires native idle ownership plus current disabled ASIC outputs.
+    fn core_dump_self_test_context(
+        &self,
+    ) -> Result<Option<crate::QualificationRestartContext>, WorkerSessionError> {
+        Ok(None)
+    }
+
+    /// Triggers one native panic only after the authenticated reply has flushed.
+    fn core_dump_self_test(
+        &mut self,
+        _context: crate::QualificationRestartContext,
+        _expires_at_ms: u64,
+    ) -> Result<(), WorkerSessionError> {
+        Err(WorkerSessionError::Rejected)
+    }
+
     /// Returns only an allowlisted nonsecret-settings fingerprint and boot preference.
     fn settings_preservation(
         &self,

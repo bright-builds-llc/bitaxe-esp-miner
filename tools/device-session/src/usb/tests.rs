@@ -538,3 +538,28 @@ fn protected_recovery_summary_is_mode_0600_and_excludes_stability_key() {
 
 #[path = "line_admission_tests.rs"]
 mod line_admission_tests;
+
+#[test]
+fn partition_erasure_is_an_effect_without_automatic_retry() {
+    // Arrange
+    let args = vec!["erase-region".to_owned()];
+    let output = SupervisedOutput {
+        termination: SupervisedTermination::ExitedSuccess,
+        stdout: Vec::new(),
+        stderr: Vec::new(),
+    };
+    // Act
+    let state = advance_device_effect_state(
+        UsbDeviceEffectState::None,
+        &args,
+        &output,
+        UsbWriteDialect::Espflash,
+    );
+    // Assert
+    assert_eq!(state, UsbDeviceEffectState::Completed);
+    assert_eq!(
+        successful_command_recovery_policy(&args),
+        RecoveryPhase::PostFlash
+    );
+    assert!(!allows_command_retry(&args));
+}

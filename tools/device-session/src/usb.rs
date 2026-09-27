@@ -40,10 +40,10 @@ pub use policy::{retry_is_eligible, RetryContext};
 #[cfg(test)]
 use policy::EspflashConnectionSignature;
 use policy::{
-    classify_bootloader_diagnostic, classify_espflash_failure, classify_esptool_write_failure,
-    classify_probe_failure, espflash_diagnostic_filter, ineligible_retry_detail,
-    is_esptool_write_effect, is_flash_effect, successful_command_recovery_policy,
-    validate_recovery_snapshot,
+    allows_command_retry, classify_bootloader_diagnostic, classify_espflash_failure,
+    classify_esptool_write_failure, classify_probe_failure, espflash_diagnostic_filter,
+    ineligible_retry_detail, is_esptool_write_effect, is_flash_effect,
+    successful_command_recovery_policy, validate_recovery_snapshot,
 };
 
 #[derive(Clone, Copy)]
@@ -299,7 +299,7 @@ impl UsbSession {
                     .as_ref()
                     .is_some_and(|snapshot| snapshot.enumeration_token != enumeration_before),
                 same_physical_device: maybe_snapshot.is_some(),
-                immutable_operation: true,
+                immutable_operation: allows_command_retry(args),
                 repeated_boundary: false,
                 attempts: attempt,
             };

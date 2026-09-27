@@ -137,8 +137,12 @@ fn main() -> Result<()> {
     if let CliCommand::DrainWorkerSerial(command) = &cli.command {
         return drain_worker_serial::run(command);
     }
-    if matches!(&cli.command, CliCommand::CoreDumpRead(_)) {
-        core_dump::preflight()?;
+    match &cli.command {
+        CliCommand::CoreDumpRead(command) => core_dump::preflight(command, false)?,
+        CliCommand::CoreDumpClear(command) => {
+            core_dump::preflight(&command.common, true)?;
+        }
+        _ => {}
     }
     require_current_noise_effect(&cli.command)?;
     let maybe_timing_export = bootstrap_timing::prepare(&cli.command)?;
@@ -166,6 +170,7 @@ fn main() -> Result<()> {
 
         match cli.command {
             CliCommand::DrainWorkerSerial(command) => drain_worker_serial::run(&command),
+            CliCommand::CoreDumpClear(command) => core_dump::clearing::run(&command, &environment),
             CliCommand::CoreDumpRead(command) => core_dump::run(&command, &environment),
             CliCommand::Detect(command) => run_detect(&command, &environment),
             CliCommand::Flash(command) => run_flash(&command, &environment).map(|_| ()),

@@ -67,6 +67,12 @@ mod qualification_restart {
     {
         Ok(None)
     }
+    pub fn core_dump_context(generation: revocation::WorkerGeneration) -> Result<Option<bitaxe_worker_control::QualificationRestartContext>, WorkerSessionError> {
+        context(generation)
+    }
+    pub fn core_dump_self_test(generation: revocation::WorkerGeneration, context: bitaxe_worker_control::QualificationRestartContext, expires: u64) -> Result<(), WorkerSessionError> {
+        restart(generation, context, expires)
+    }
     pub fn restart(
         _generation: revocation::WorkerGeneration,
         _context: bitaxe_worker_control::QualificationRestartContext,

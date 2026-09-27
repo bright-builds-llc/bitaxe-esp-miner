@@ -4493,10 +4493,10 @@ no next mining ordinal is authorized, and parity remains 90/95.
 
 ### task-str005-start-panic-diagnosis | 2026-09-27 | Diagnose and correct the Start panic
 
-Status: Development capture implemented and software/native-build verified; panic cause and device qualification remain blocked.
+Status: Executing owner-approved staged hardware diagnostics under ADR-0031; no historical evidence promotion.
 Objective: identify the actual Start panic cause and verify a targeted correction.
-Depends on: `task-str005-failure-recovery-accounting` before new device evidence or
-choosing a fresh attempt; static code/existing-evidence review may proceed earlier.
+Depends on: fresh prospective recovery admission under ADR-0031 for new effects;
+`task-str005-failure-recovery-accounting` remains unresolved for historical proof.
 Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
 
 - [x] Inspect existing panic/preparation evidence against the installed ELF;
@@ -4571,7 +4571,7 @@ Development capture implementation (owner authorization 2026-09-27):
 - [x] Build native diagnostic candidate, run affected/required checks, review
       artifacts/diffs and publish truthful implementation and remaining blockers.
 
-Development core-dump acquisition: disabled (recovery evidence prerequisite).
+Prior implementation gate: acquisition was disabled pending a prospective contract.
 [ADR-0030](docs/adr/0030-development-core-dumps.md) authorizes raw development
 capture, persistence and inspection now and for future tasks; it does not erase
 the missing historical resource proof or authorize a Start/flash/reproduction.
@@ -4621,6 +4621,58 @@ Final software result: [implementation verification](docs/research/development-c
 Capture tooling and persistent authorization are complete. The overarching
 panic diagnosis remains unresolved/unarchived pending separately admitted real
 capture and the recovery prerequisite; no existing failure is reclassified.
+
+Owner-approved hardware continuation (2026-09-27):
+[ADR-0031](docs/adr/0031-prospective-panic-diagnostics.md) supersedes the
+historical-resource prerequisite for NEW diagnostics with fresh current-state
+proof. Earlier software-only scope and disabled-gate statements above describe
+completed work; they are not the prospective authority. Share002 remains
+unverified and the recovery task's historical criterion remains unresolved.
+
+- [ ] Publish and test a dedicated staged command contract and current-recovery
+      proof gate; retain both ledgers and full validated diagnostics before reset.
+- [ ] Preserve any existing core region through same-device ROM read/return,
+      then obtain fresh baseline proof and state-preservingly flash the candidate.
+- [ ] Verify exact candidate identity/settings/accounting and no-mining baseline;
+      perform one authenticated off-only core self-test; recover and inspect dump.
+- [ ] Prove native panic cutoff routing/IRAM/no-lock behavior and retained cutoff
+      state before admitting live Start. Preserve then separately clear test dump.
+- [ ] Issue one fresh ledger-derived normal V2 allowance (180,000 ms reservation,
+      one 60,000-ms grant, zero renewals); bound host startup observation and Stop.
+- [ ] On failure collect/decode the matching core, record exact cause or blocker,
+      recover/release, verify changes and commit/push the truthful outcome.
+
+No device effect begins before the new implementation/contract is verified and
+published. No old grant, ordinal assumption, factory reset, NVS erasure, external
+pool, direct pins or parity promotion. New evidence remains separate and sealed.
+
+Prospective execution contract: [staged panic probe](docs/hardware/str005-panic-probe.md).
+The following gates authorize only its verified staged effects after publication:
+
+Development panic probe: stage A enabled.
+Development panic probe: installation enabled.
+Development panic probe: self-test enabled.
+Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
+Development core-dump clearing: enabled (private archive verified).
+
+Every acquisition/clear still checks a fresh current-recovery proof; clearing also
+compares the archived full region before its exact erase. These declarations do
+not assert a completed hardware observation. Start/grant issuance remains absent
+from the published probe until actual capture/cutoff evidence admits that stage.
+
+Pre-effect software verification (2026-09-27): ordered workspace Cargo format,
+Clippy, build and tests passed (2,403 passed, three existing ignores). Protected
+real decoder/cutoff suite: 40 passed; staged probe: 18 passed; native audit: six
+passed. Affected firmware/controller/flash and probe Bazel tests, native package
+and fixed-USB checks, reference, redaction, Markdown and Bright Builds passed.
+Native cutoff audit checks the real optimized image (48 instructions) and proves
+static placement/routing only. Review tightened complete self-test evidence to
+require matched acknowledgement, fresh boot/readiness/identity and lifecycle
+correlation. Physical admission follows the held session's current node after
+re-enumeration. No device effect or capture success is claimed by these checks.
+Simplification review: reuse existing restart, physical lease and partition
+validation owners; keep the new panic boundary straight-line and independent of
+ordinary tasks. Start modules remain unpublished drafts until capture evidence.
 
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 

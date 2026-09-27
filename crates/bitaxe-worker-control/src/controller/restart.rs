@@ -36,9 +36,13 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         if self.restart_consumed {
             return Err(WorkerControlError::InvalidTransition);
         }
+        let kind = if request.command == "qualification_core_dump_self_test" {
+            crate::QualificationResetKind::CoreDumpSelfTest
+        } else {
+            crate::QualificationResetKind::Restart
+        };
         let context = self
-            .session
-            .qualification_restart_context()
+            .reset_context(kind)
             .map_err(|_| WorkerControlError::SessionFailed)?
             .ok_or(WorkerControlError::InvalidTransition)?;
         if context.boot_ordinal != payload.expected_boot_ordinal
@@ -63,16 +67,32 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         response(
             &request.request_id,
             serde_json::json!({
-                "schema":"worker-qualification-restart-v1", "requestNonce":payload.request_nonce,
+                "schema": match kind {
+                    crate::QualificationResetKind::Restart => "worker-qualification-restart-v1",
+                    crate::QualificationResetKind::CoreDumpSelfTest => "worker-qualification-core-dump-self-test-v1",
+                }, "requestNonce":payload.request_nonce,
                 "bootOrdinal": context.boot_ordinal, "nextBootOrdinal": context.boot_ordinal + 1
             }),
             Some(PreparedEffect::QualificationRestart {
+                kind,
                 generation: self.generation,
                 token: self.next_response_token,
                 context,
                 expires_at_ms,
             }),
         )
+    }
+
+    fn reset_context(
+        &self,
+        kind: crate::QualificationResetKind,
+    ) -> Result<Option<crate::QualificationRestartContext>, crate::WorkerSessionError> {
+        match kind {
+            crate::QualificationResetKind::Restart => self.session.qualification_restart_context(),
+            crate::QualificationResetKind::CoreDumpSelfTest => {
+                self.session.core_dump_self_test_context()
+            }
+        }
     }
 
     fn require_restart_idle(&self) -> Result<(), WorkerControlError> {
@@ -113,6 +133,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             return self.confirm_sent(response);
         }
         let Some(PreparedEffect::QualificationRestart {
+            kind,
             generation,
             token,
             context,
@@ -136,14 +157,19 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             return Err(WorkerControlError::StaleResponse);
         }
         let fresh = self
-            .session
-            .qualification_restart_context()
+            .reset_context(kind)
             .map_err(|_| WorkerControlError::SessionFailed)?;
         if fresh != Some(context) {
             return Err(WorkerControlError::StaleResponse);
         }
-        self.session
-            .qualification_restart(context, expires_at_ms)
-            .map_err(|_| WorkerControlError::SessionFailed)
+        match kind {
+            crate::QualificationResetKind::Restart => {
+                self.session.qualification_restart(context, expires_at_ms)
+            }
+            crate::QualificationResetKind::CoreDumpSelfTest => {
+                self.session.core_dump_self_test(context, expires_at_ms)
+            }
+        }
+        .map_err(|_| WorkerControlError::SessionFailed)
     }
 }

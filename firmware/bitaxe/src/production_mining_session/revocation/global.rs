@@ -1,6 +1,7 @@
 //! Boot-lifetime generation gate shared by the existing hardware owners.
 use super::{GenerationGate, RevocationReason, RevocationTiming, WorkPermit, WorkerGeneration};
 
+#[cfg_attr(target_os = "espidf", link_section = ".dram1.bitaxe_generation_gate")]
 static GATE: GenerationGate = GenerationGate::new();
 
 pub(crate) fn claim_diagnostic(generation: WorkerGeneration, deadline_ms: u64) -> bool {
@@ -125,4 +126,10 @@ pub(crate) fn claim_idle_restart(generation: WorkerGeneration) -> bool {
 
 pub(crate) fn abort_idle_restart(generation: WorkerGeneration) -> bool {
     GATE.abort_idle_restart(generation)
+}
+
+/// Only the native panic wrapper may call this after CPU stalling.
+#[inline(always)]
+pub(crate) fn panic_revoke_all() -> u32 {
+    GATE.panic_revoke_all()
 }

@@ -39,6 +39,7 @@ pub(crate) fn run_tcp_payload_diagnostic_command(
     }
     let seed = admit_tcp_payload_diagnostic(command, environment)?;
     let common = CommonArgs {
+        maybe_expected_physical_sha256: None,
         board: command.board,
         port: Some(command.port.clone()),
         dry_run: false,

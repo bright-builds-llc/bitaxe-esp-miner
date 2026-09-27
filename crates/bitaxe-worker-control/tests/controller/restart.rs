@@ -248,3 +248,79 @@ fn replacement_possession_pending_rejects_restart() {
     // Assert
     assert_eq!(worker.session().events, ["qualification_restart"]);
 }
+
+#[test]
+fn core_dump_self_test_is_distinct_and_fires_only_after_confirmation() {
+    // Arrange
+    let mut worker = ready();
+    let frame = request().replace("qualification_restart", "qualification_core_dump_self_test");
+    // Act
+    let response = worker
+        .prepare_frame(frame.as_bytes(), 1001)
+        .expect("prepare");
+    let value: serde_json::Value = serde_json::from_slice(response.frame()).expect("JSON");
+    // Assert
+    assert_eq!(
+        value["result"]["schema"],
+        "worker-qualification-core-dump-self-test-v1"
+    );
+    assert!(worker.session().events.is_empty());
+    assert!(!worker.has_active_lease());
+    // Act
+    worker.confirm_sent_at(response, 1002).expect("confirm");
+    // Assert
+    assert_eq!(worker.session().events, ["core_dump_self_test"]);
+    assert!(worker.prepare_frame(frame.as_bytes(), 1003).is_err());
+    assert!(worker.prepare_frame(request().as_bytes(), 1003).is_err());
+}
+
+#[test]
+fn core_dump_self_test_dropped_reply_has_no_effect() {
+    // Arrange
+    let mut worker = ready();
+    let frame = request().replace("qualification_restart", "qualification_core_dump_self_test");
+    // Act
+    drop(
+        worker
+            .prepare_frame(frame.as_bytes(), 1001)
+            .expect("prepare"),
+    );
+    // Assert
+    assert!(worker.session().events.is_empty());
+}
+
+#[test]
+fn core_dump_self_test_rechecks_native_context_at_confirmation() {
+    // Arrange
+    let mut worker = ready();
+    let frame = request().replace("qualification_restart", "qualification_core_dump_self_test");
+    let response = worker
+        .prepare_frame(frame.as_bytes(), 1001)
+        .expect("prepare");
+    worker.session_mut().maybe_restart_context = None;
+    // Act / Assert
+    assert!(worker.confirm_sent_at(response, 1002).is_err());
+    assert!(worker.session().events.is_empty());
+}
+
+#[test]
+fn core_dump_self_test_requires_fresh_possession_and_idle_work() {
+    // Arrange
+    let frame = request().replace("qualification_restart", "qualification_core_dump_self_test");
+    let mut unpossessed = worker();
+    unpossessed
+        .begin_serial_session(fixture_binding())
+        .expect("session");
+    let mut expired = ready();
+    let mut active = ready();
+    active
+        .prepare_frame(start_frame().as_bytes(), 1001)
+        .expect("start");
+    // Act / Assert
+    assert!(unpossessed.prepare_frame(frame.as_bytes(), 1001).is_err());
+    assert!(expired.prepare_frame(frame.as_bytes(), 61_001).is_err());
+    assert!(active.prepare_frame(frame.as_bytes(), 1002).is_err());
+    assert!(!active.session().events.contains(&"core_dump_self_test"));
+    assert!(unpossessed.session().events.is_empty());
+    assert!(expired.session().events.is_empty());
+}

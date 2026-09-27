@@ -188,3 +188,84 @@ fn factory_reset_is_an_explicit_cli_choice() {
     assert!(!ordinary.factory_reset);
     assert!(factory.factory_reset);
 }
+
+#[test]
+fn expected_physical_identity_mismatch_releases_before_any_write_or_reset() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let mut command = update_command(&dir);
+    command.common.maybe_expected_physical_sha256 = Some("7".repeat(64));
+    let environment = FakeFlashEnvironment::default();
+    // Act
+    let error = run_flash(&command, &environment).expect_err("physical identity mismatch");
+    // Assert
+    assert!(error
+        .to_string()
+        .contains("physical_identity_binding_mismatch"));
+    assert!(environment.observed_flashes().is_empty());
+    assert!(environment.executed_commands().is_empty());
+    assert!(environment.capture_lifecycle.borrow().is_empty());
+    assert_eq!(environment.cleanup_calls.get(), 1);
+}
+
+#[test]
+fn expected_physical_identity_match_allows_state_preserving_update() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let mut command = update_command(&dir);
+    command.common.maybe_expected_physical_sha256 = Some("6".repeat(64));
+    let environment = FakeFlashEnvironment::default();
+    // Act
+    run_flash(&command, &environment).expect("matching physical lease");
+    // Assert
+    assert_eq!(environment.observed_flashes().len(), 5);
+    assert_eq!(*environment.application_exit_write_counts.borrow(), [1]);
+}
+
+#[test]
+fn malformed_physical_binding_is_rejected_before_owned_effects() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let mut command = update_command(&dir);
+    command.common.maybe_expected_physical_sha256 = Some("invalid".to_owned());
+    let environment = FakeFlashEnvironment::default();
+    // Act
+    assert!(run_flash(&command, &environment).is_err());
+    // Assert
+    assert!(environment.observed_flashes().is_empty());
+    assert!(environment.executed_commands().is_empty());
+    assert_eq!(environment.cleanup_calls.get(), 0);
+}
+
+#[test]
+fn flash_monitor_binding_mismatch_releases_before_reset_and_capture() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let mut command = flash_monitor_fixture(&dir, dir_path(&dir).join("evidence"));
+    command.common.maybe_expected_physical_sha256 = Some("7".repeat(64));
+    let environment = FakeFlashEnvironment::default();
+    // Act
+    assert!(run_flash_monitor(&command, &environment).is_err());
+    // Assert
+    assert!(environment.observed_flashes().is_empty());
+    assert!(environment.executed_commands().is_empty());
+    assert!(environment.captured_commands().is_empty());
+    assert!(!environment.capture_lifecycle.borrow().contains(&"reset"));
+    assert_eq!(environment.cleanup_calls.get(), 1);
+}
+
+#[test]
+fn expected_physical_binding_rechecks_live_identity_instead_of_only_lease_cache() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let mut command = update_command(&dir);
+    command.common.maybe_expected_physical_sha256 = Some("6".repeat(64));
+    let environment = FakeFlashEnvironment::default();
+    *environment.session_physical_digest.borrow_mut() = "7".repeat(64);
+    // Act
+    assert!(run_flash(&command, &environment).is_err());
+    // Assert
+    assert!(environment.observed_flashes().is_empty());
+    assert!(environment.capture_lifecycle.borrow().is_empty());
+    assert_eq!(environment.cleanup_calls.get(), 1);
+}

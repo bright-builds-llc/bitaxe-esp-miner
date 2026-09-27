@@ -10,6 +10,9 @@ impl LocalFlashEnvironment {
             bail!("cleanup_failed: bootloader admission attempted without a repository session");
         };
         let inspection = inspect_usb_profile(session.port())?;
+        if inspection.physical_identity_digest != session.physical_identity_digest() {
+            bail!("physical_identity_drift");
+        }
         let intent = if session.operation() == UsbOperation::Recover {
             UsbIntent::Recover
         } else {
@@ -94,7 +97,7 @@ fn replace_option_value(args: &mut [String], option: &str, value: &str) -> Resul
 pub(super) fn requires_rom_downloader(command_spec: &CommandSpec) -> bool {
     matches!(
         command_spec.args.first().map(String::as_str),
-        Some("write-bin" | "erase-flash" | "flash")
+        Some("write-bin" | "erase-flash" | "erase-region" | "flash")
     )
 }
 

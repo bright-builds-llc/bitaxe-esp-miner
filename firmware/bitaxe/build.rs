@@ -5,6 +5,7 @@ use std::fs;
 fn main() {
     embuild::espidf::sysenv::output();
     assert_sdkconfig_contract();
+    println!("cargo:rustc-link-arg=-Wl,--wrap=esp_panic_handler");
     println!("cargo:rerun-if-env-changed=BITAXE_LINKER_MAP");
     let map = std::path::PathBuf::from(
         env::var_os("BITAXE_LINKER_MAP")
