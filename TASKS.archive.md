@@ -17147,3 +17147,35 @@ which private IDF wait timed out, provide universal host/board timing guarantees
 or transfer continuity, V2 channel/share, mining or parity credit. Attempts 001–003
 retain their exact original outcomes. All later effects require a separate active
 contract; archival keeps this task unavailable for effects. Parity remains 90/95.
+
+### task-str005-v2-bootstrap-successor-amendment | 2026-09-27 | Publish guarded V2 continuation after bootstrap correction
+
+Status: Complete; reviewed specification and publication. The user requests continuation
+through channel qualification and real live mining; the existing V2 qualification
+task owns those later effects. This amendment task grants no hardware authority.
+
+- [x] Freeze Channel006 admission joining sealed failed Channel005, accepted
+      bootstrap004 and the original accepted Noise ancestry.
+- [x] Freeze same-pair Share002 admission, preserving Share001 and its consumed
+      host/ordinal markers, with fresh device accounting before issuance.
+- [x] Specify version-only explicit restoration checks and the existing Share
+      recovery-wait UI gate; preserve old judges, limits and emergency-abort rules.
+- [x] Define composition tests for both actual workflow paths, independent
+      evidence/resource joins, signing/fixture preparation latency and history.
+- [x] Review, run required software/documentation/authority checks, publish the
+      contract, and archive this full finalized record in the same commit.
+
+Verification: Lifecycle, admission, accounting, safety and privacy reviews passed.
+Ordered Cargo format/Clippy/build/tests, Bright Builds, scoped Markdown/link checks,
+reference, redaction, task-ID uniqueness and read-only parity/progress passed.
+No successor context, fixture, grant or mining attempt has been admitted. Expected
+next mining ordinal 18 remains subject to fresh review.
+
+Completion review | 2026-09-27: The [prospective contract](docs/hardware/str005-v2-serial-bootstrap-successor-amendment.md),
+SHA256 `8ec6d668cdfd555cf58ccbfd018204caff6f9125f9bc58daf7f4e0279f3d9e4a`,
+freezes exact Channel005/bootstrap004 admission for Channel006 and same-pair
+Share002, preserving old failures and ordinal18 assignments. Version-only explicit
+restoration, monotonic UI waiting and composed signing/accounting regressions are
+required before effects. Implementation and both live scopes remain owned by
+`task-str005-v2-serial-qualification`; this archived specification grants no effects.
+Parity remains 90/95.

@@ -4468,6 +4468,30 @@ work is at most 164450 ms. Preserve 400 MHz, 1100 mV, fan 100%, existing voltage
 power/temperature limits, 2800-ms heartbeat expiry, actual revoke/shutdown within
 3000 ms, ordered stop and bounded cooling. No allowance has been issued here.
 
+Bootstrap successor work | 2026-09-27: The user explicitly requests the guarded
+successor, Channel and real-mining Share sequence. First publish the contract under
+`task-str005-v2-bootstrap-successor-amendment`; then implement/version admission and
+restoration checks, verify and publish one exact candidate, run both independent
+scopes without changing that pair, and seal/review before any promotion handoff.
+The V2 path restores automatically and requires fresh native reconnection before
+recording restoration. Manual Stop is emergency abort; do not import the bootstrap
+collector's manual Stop ordering into this workflow.
+
+Successor implementation plan | 2026-09-27: Follow the reviewed
+[bootstrap successor amendment](docs/hardware/str005-v2-serial-bootstrap-successor-amendment.md).
+
+- [ ] Implement v6-only Channel006/Share002 admission, exact failed/accepted
+      ancestry and same-pair bindings, preserving old source domains and markers.
+- [ ] Require explicit restored completion for v6 and gate the UI on the existing
+      monotonic Share recovery wait; preserve emergency-abort and high-water rules.
+- [ ] Compose both real page/coordinator/accounting paths and test-key Share
+      signer/fixture preparation, including early and late deadline failures.
+- [ ] Run ordered software/native checks; publish and build one clean candidate
+      with exact Gate/fixture/observer/evaluator identities before effects.
+- [ ] Complete the fresh channel stage, private finalization and independent review.
+- [ ] Admit the same-pair Share stage separately, perform real accepted-share and
+      safety testing, then seal/review and publish the truthful combined outcome.
+
 Execution plan: keep channel and share results independent but keep this task
 active between them. Channel finalization remains private so the repository and
 exact runtime HEAD do not change. Fresh share admission requires independently
