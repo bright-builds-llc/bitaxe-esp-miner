@@ -71,3 +71,14 @@ test("inspector exposes unresolved native jumps as a decoding limitation", async
   assert.equal(result.decodeComplete, false); assert.equal(result.unresolvedJumps.length, 1);
   assert.equal(result.completeCallgraphBound, false);
 });
+test("distinct monomorphized addresses preserve duplicate demangled names", () => {
+  // Arrange
+  const generic = "bitaxe_firmware::usb_runtime::write_measured_if";
+  const functions = parseNativeFunctions(body("1000", run) + body("2000", generic, 256) + body("3000", generic, 384));
+  // Act
+  const value = auditUsbWriterFrames(functions, source);
+  // Assert
+  assert.equal(value.selectedFrameSumBytes, 768); assert.equal(value.frames.length, 3);
+  assert.equal(new Set(value.frames.map(frame => frame.address)).size, 3);
+  assert.equal(value.frames.filter(frame => frame.symbol === generic).length, 2);
+});

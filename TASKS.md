@@ -4662,8 +4662,8 @@ new measurements, verified progress and a published guarded admission contract.
 
 ### task-usb-bootstrap-drain-observability | 2026-09-26 | Distinguish bootstrap reader delay from native TX completion failure
 
-Status: Active; measurement implementation verified. Clean published package and
-bounded hardware measurement are pending. The owner explicitly requested
+Status: Active; native frame-identity correction verified. No hardware attempt
+has been assigned or executed. The owner explicitly requested
 implementation of the diagnostic, targeted-fix and qualification sequence. The exact
 Channel005 failure is preserved in the [result report](docs/parity/evidence/20260926-str005-v2-bootstrap-drain-unverified.md).
 Current evidence proves a 92-byte queue followed by a 2000-ms drain timeout, not
@@ -4728,6 +4728,17 @@ runfiles were declared; 66 focused Node tests cover healthy, TX-failed and missi
 evidence outcomes, actual daemon publication failures and read-only mutation
 rejection. Clean published package verification and hardware evidence remain pending. The current reset subprocess and receive-only adapter do not support safe
 prearming together: that would create competing port owners. Preserve parity 90/95.
+
+Preflight | 2026-09-26: Published `def310ec` built a clean package, but admission
+stopped with `bootstrap_writer_audit` before writing any attempt assignment.
+The native frame validator incorrectly treated demangled Rust names as unique;
+three names identify multiple separately measured native functions. Bind frames
+to unique native addresses, retain every frame in the conservative stack sum,
+and verify the actual inspector output through its consumer before republishing.
+No hardware effects, ledgers or acceptance limits changed. The correction passed
+10 focused tests and validation of the actual compiled ELF: all 28 unique native
+addresses are retained, with the same 4,288-byte sum and 512-byte margin. Ordered
+Cargo checks, all eight affected canonical targets and standards checks passed.
 
 Review follow-up: the older V2 daemon has analogous evidence-write-before-
 socket-close ordering. Apply the verified cleanup hardening before a fresh V2

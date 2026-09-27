@@ -25,7 +25,7 @@ export const selectedUsbWriter = symbol => symbol.startsWith(WRITER) || symbol.s
 export function auditUsbWriterFrames(functions, ownerSource) {
   check(/\.name\("bwg-serial-writer"\.into\(\)\)\s*\.stack_size\(8192\)/u.test(ownerSource), "bootstrap_writer_stack_declaration");
   const selected = [...functions.values()].filter(fn => selectedUsbWriter(fn.symbol));
-  check(selected.length > 0 && selected.length <= 128 && selected.filter(fn => fn.symbol === ROLES.run).length === 1, "bootstrap_writer_stack_root");
+  check(selected.length > 0 && selected.length <= 128 && new Set(selected.map(fn => fn.address)).size === selected.length && selected.filter(fn => fn.symbol === ROLES.run).length === 1, "bootstrap_writer_stack_root");
   const active = new Set(), visited = new Set();
   const visit = fn => {
     check(!active.has(fn.address), "bootstrap_writer_stack_recursion"); if (visited.has(fn.address)) return;
@@ -36,7 +36,7 @@ export function auditUsbWriterFrames(functions, ownerSource) {
     active.delete(fn.address); visited.add(fn.address);
   };
   for (const fn of selected) visit(fn);
-  const frames = selected.map(fn => ({ symbol: fn.symbol,
+  const frames = selected.map(fn => ({ address: fn.address, symbol: fn.symbol,
     entryBytes: nativeFrame({ ...fn, instructions: noiseNativeInstructions(fn) }) }));
   const selectedFrameSumBytes = frames.reduce((sum, frame) => sum + frame.entryBytes, 0);
   check(selectedFrameSumBytes + 512 <= 8192, "bootstrap_writer_stack_budget");

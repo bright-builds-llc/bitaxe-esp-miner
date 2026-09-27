@@ -13,8 +13,8 @@ export function validateWriter(value, context) {
   object(value, ["schema", "stackBytes", "requiredMarginBytes", "selectedFrameSumBytes", "remainingBytes", "frames", "roles", "completeCallgraphBound", "hardwareFitVerified",
     "elfSha256", "objdumpSha256", "supplementalDecodeRanges", "unresolvedJumps", "decodeComplete", "sources"]);
   uint(value.selectedFrameSumBytes); uint(value.remainingBytes);
-  check(Array.isArray(value.frames) && value.frames.length > 0 && value.frames.length <= 128 && new Set(value.frames.map(row => row.symbol)).size === value.frames.length, "bootstrap_writer_audit");
-  for (const frame of value.frames) { object(frame, ["symbol", "entryBytes"]); check(typeof frame.symbol === "string" && selectedUsbWriter(frame.symbol), "bootstrap_writer_audit"); uint(frame.entryBytes); }
+  check(Array.isArray(value.frames) && value.frames.length > 0 && value.frames.length <= 128 && new Set(value.frames.map(row => row.address)).size === value.frames.length, "bootstrap_writer_audit");
+  for (const frame of value.frames) { object(frame, ["address", "symbol", "entryBytes"]); uint(frame.address); check(frame.address > 0 && frame.address <= 0xffffffff, "bootstrap_writer_audit"); check(typeof frame.symbol === "string" && selectedUsbWriter(frame.symbol), "bootstrap_writer_audit"); uint(frame.entryBytes); }
   check(value.frames.reduce((sum, frame) => sum + frame.entryBytes, 0) === value.selectedFrameSumBytes && value.frames.filter(row => row.symbol === "bitaxe_firmware::bwg_worker_usb::writer::run").length === 1, "bootstrap_writer_audit");
   object(value.roles, ["run", "emit", "write", "marker", "record"]);
   const symbols = { run: "bitaxe_firmware::bwg_worker_usb::writer::run", emit: "bitaxe_firmware::bwg_worker_usb::writer::emit",
