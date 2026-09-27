@@ -25,7 +25,9 @@ export async function runOperator(root, bootstrap, operations = {}) {
   await privateRoot(directory);
   check(context.scope === "share" ? typeof bootstrap.maybeAuthorityDirectory === "string" : bootstrap.maybeAuthorityDirectory === null, "v2_operator_request");
   const owner = await own(); check(owner && owner.pid === owner.pgid, "v2_operator_owner");
-  const socketDirectory = await mkdtemp(resolve(await realpath(tmpdir()), "v2op-")); await chmod(socketDirectory, 0o700);
+  const socketDirectory = await mkdtemp(resolve(await realpath(tmpdir()), "v2op-"));
+  try { await chmod(socketDirectory, 0o700); }
+  catch (error) { try { await rmdir(socketDirectory); } catch (cleanupError) { error.cause ??= cleanupError; } throw error; }
   const socketPath = resolve(socketDirectory, "s"), store = createRequestStore(directory, contextSha256, context.install_indices);
   let phase = "initializing", maybeRequest = null, maybeCode = null, maybeOrigin = null, lastSequence = null, lastStateSha256 = null;
   let maybeCleanup, maybeChild, maybeChildOwner, maybeActive, maybeCloseWrite, maybeChildClosed, closing = false, stoppingRequested = false, cleanupRecorded = false;
@@ -37,7 +39,8 @@ export async function runOperator(root, bootstrap, operations = {}) {
     try { const last = (await readJournal(root, context)).at(-1); if (last) { lastSequence = last.sequence; lastStateSha256 = digest(JSON.stringify(last)); } }
     catch (error) { if (error.code !== "ENOENT") throw error; }
   }
-  const server = await serveOperatorSocket(socketPath, async input => {
+  let server;
+  try { server = await serveOperatorSocket(socketPath, async input => {
     await refreshJournal();
     if (input.schema === "str005-v2-operator-query-v1") {
       queryShape(input, contextSha256); return input.maybeRequestId === null ? status() : store.get(input.maybeRequestId);
@@ -50,23 +53,39 @@ export async function runOperator(root, bootstrap, operations = {}) {
     }
     maybeRequest = input; phase = "busy";
     maybeActive = (async () => {
+      let stopAdmitted = false;
       try {
         let maybeOperationCode = null;
-        try { await execute(input); }
+        try { await execute(input); stopAdmitted = input.action === "stop"; }
         catch (error) { maybeOperationCode = operatorCode(error); maybeCode ??= maybeOperationCode; phase = "failed"; }
         await store.finish(input, maybeOperationCode);
         if (phase === "busy") phase = "ready";
-        if (input.action === "stop" && phase !== "failed") await close();
-      } catch (error) { maybeCode ??= operatorCode(error); phase = "failed"; }
-      finally { maybeActive = null; }
+
+      } catch (error) { recordFailure(error); }
+      finally {
+        if (stopAdmitted) { try { await close(); } catch (error) { recordFailure(error); } }
+        maybeActive = null;
+      }
     })();
     return accepted.value;
-  });
-  await writeNew(resolve(directory, "locator.json"), { schema: "str005-v2-operator-locator-v1", contextSha256, owner, socketPath });
-  if (process.connected) process.send(status(), error => {
-    // Launcher disappearance is not daemon authority loss or an operation failure.
-    if (error && error.code !== "ERR_IPC_CHANNEL_CLOSED") { maybeCode ??= "v2_operator_failed"; phase = "failed"; }
-  });
+  }); } catch (error) {
+    try { await rmdir(socketDirectory); } catch (cleanupError) { error.cause ??= cleanupError; }
+    throw error;
+  }
+  try {
+    await writeNew(resolve(directory, "locator.json"), { schema: "str005-v2-operator-locator-v1", contextSha256, owner, socketPath });
+    if (process.connected) await new Promise((done, reject) => process.send(status(), error => {
+      // Losing the reconnectable launcher does not revoke the durable owner.
+      if (error && error.code !== "ERR_IPC_CHANNEL_CLOSED") reject(error); else done();
+    }));
+  } catch (error) {
+    // No supervisor exists yet. Release the only live resource even when its locator is missing.
+    recordFailure(error);
+    try { await new Promise(done => server.close(done)); } catch (cleanupError) { recordFailure(cleanupError); }
+    try { await rmdir(socketDirectory); } catch (cleanupError) { recordFailure(cleanupError); }
+    if (process.connected) process.disconnect();
+    throw error;
+  }
   async function execute(input) {
     check((await processSnapshot()).some(row => sameProcess(row, owner)), "v2_operator_owner");
     if (input.action === "install") { await loadEffectContext(root, operations); const result = await (operations.installCandidate ?? installCandidate)(root, input.payload.index, operations); check(result.install_verified === true, "v2_operator_failed"); }
@@ -78,20 +97,34 @@ export async function runOperator(root, bootstrap, operations = {}) {
     }
     if (input.action === "stop") { await requireHostStopped(root, context, operations); phase = "stopping"; }
   }
+  function recordFailure(error) {
+    maybeCode ??= operatorCode(error); phase = "failed"; cleanupRecorded = false;
+    process.exitCode = 1;
+  }
   async function close() {
-    if (closing) return; closing = true;
+    if (closing) return;
+    // Failed evidence cannot strand a stopped owner, but live children still block closure.
     await requireHostStopped(root, context, operations);
-    if (maybeCloseWrite) await maybeCloseWrite;
-    await new Promise(done => server.close(done)); await rmdir(socketDirectory);
-    phase = "stopped"; await refreshJournal();
-    await writeNew(resolve(directory, "stopped.json"), status());
-    let maybeObservationSha256 = null;
-    try { maybeObservationSha256 = (await proof(root, "parent-cleanup-supervisor-observation.json")).sha256; }
-    catch (error) { if (error.code !== "ENOENT") throw error; }
-    await writeNew(resolve(directory, "disposition.json"), { schema: "str005-v2-operator-disposition-v1", contextSha256, owner,
-      sourceSha256: digest(await readFile(fileURLToPath(import.meta.url))), hostStopped: true, cleanupRecorded,
-      supervisorObservationSha256: maybeObservationSha256 });
-    if (process.connected) process.disconnect();
+    closing = true;
+    if (maybeCloseWrite) { try { await maybeCloseWrite; } catch (error) { recordFailure(error); } }
+    await new Promise(done => server.close(done));
+    try { await rmdir(socketDirectory); } catch (error) { recordFailure(error); }
+    try {
+      try { await refreshJournal(); } catch (error) { recordFailure(error); }
+      phase = "stopped";
+      try { await writeNew(resolve(directory, "stopped.json"), status()); } catch (error) { recordFailure(error); }
+      let maybeObservationSha256 = null;
+      try { maybeObservationSha256 = (await proof(root, "parent-cleanup-supervisor-observation.json")).sha256; }
+      catch (error) { if (error.code !== "ENOENT") recordFailure(error); }
+      try {
+        await writeNew(resolve(directory, "disposition.json"), { schema: "str005-v2-operator-disposition-v1", contextSha256, owner,
+          sourceSha256: digest(await readFile(fileURLToPath(import.meta.url))), hostStopped: true, cleanupRecorded,
+          supervisorObservationSha256: maybeObservationSha256 });
+      } catch (error) { recordFailure(error); }
+    } finally {
+      process.removeListener("SIGTERM", signalStop); process.removeListener("SIGINT", signalStop);
+      if (process.connected) process.disconnect();
+    }
   }
   async function signalStop() {
     if (closing || stoppingRequested) return;
@@ -121,7 +154,7 @@ export async function runOperator(root, bootstrap, operations = {}) {
         schema: "str005-v2-operator-child-exit-v1", source: "parent-observed", contextSha256,
         parent: owner, childPid: maybeChild.pid, code, signal, observedAtUnixMs: Date.now(),
       });
-      maybeCloseWrite.catch(() => { maybeCode ??= "v2_operator_failed"; phase = "failed"; });
+      maybeCloseWrite.catch(recordFailure);
     });
     maybeChild.once("error", () => { exited = true; });
     operations.onSupervisorSpawn?.(maybeChild);

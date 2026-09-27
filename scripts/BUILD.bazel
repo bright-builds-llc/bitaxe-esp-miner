@@ -874,8 +874,9 @@ js_library(
 
 js_binary(
     name = "usb_bootstrap_measure",
+    testonly = True,
     chdir = "..",
-    data = [":usb_bootstrap_measure_sources"],
+    data = [":usb_bootstrap_measure_sources", "//tools/device-session:tests", "//tools/device-session:reader_test_build_identity"],
     entry_point = "usb-bootstrap-measure/main.mjs",
     visibility = ["//visibility:public"],
 )
@@ -950,4 +951,41 @@ js_test(
     name = "usb_bootstrap_measure_source_layout_check_test",
     data = [":usb_bootstrap_measure_sources"],
     entry_point = "usb-bootstrap-measure/source-layout-check.test.mjs",
+)
+
+js_binary(
+    name = "usb_bootstrap_test_provenance_writer",
+    entry_point = "usb-bootstrap-measure/test-provenance.mjs",
+    data = ["usb-bootstrap-measure/values.mjs", "str005-v2-serial/values.mjs"],
+    visibility = ["//tools/device-session:__pkg__"],
+)
+
+js_test(
+    name = "usb_bootstrap_measure_correction_judge_test",
+    data = [":usb_bootstrap_measure_sources"],
+    entry_point = "usb-bootstrap-measure/correction-judge.test.mjs",
+)
+
+js_test(
+    name = "usb_bootstrap_measure_test_provenance_test",
+    data = [":usb_bootstrap_measure_sources"],
+    entry_point = "usb-bootstrap-measure/test-provenance.test.mjs",
+)
+
+js_test(
+    name = "usb_bootstrap_measure_reader_correction_check_test",
+    data = [":usb_bootstrap_measure_sources"],
+    entry_point = "usb-bootstrap-measure/reader-correction-check.test.mjs",
+)
+
+js_test(
+    name = "usb_bootstrap_measure_regression_process_test",
+    data = [":usb_bootstrap_measure_sources"],
+    entry_point = "usb-bootstrap-measure/regression-process.test.mjs",
+)
+
+js_test(
+    name = "usb_bootstrap_measure_node_executable_test",
+    data = [":usb_bootstrap_measure_sources"],
+    entry_point = "usb-bootstrap-measure/node-executable.test.mjs",
 )

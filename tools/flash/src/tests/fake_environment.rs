@@ -10,6 +10,7 @@ struct ObservedFlash {
 struct FakeFlashEnvironment {
     ports: String,
     workspace_dir: Utf8PathBuf,
+    capture_lifecycle: RefCell<Vec<&'static str>>,
     executed_commands: RefCell<Vec<CommandSpec>>,
     captured_commands: RefCell<Vec<CommandSpec>>,
     generated_nvs_partitions: RefCell<Vec<(Utf8PathBuf, Utf8PathBuf, String)>>,
@@ -49,166 +50,7 @@ impl Default for FakeFlashEnvironment {
     }
 }
 
-impl FakeFlashEnvironment {
-    fn with_ports(ports: &str) -> Self {
-        Self {
-            ports: ports.to_owned(),
-            workspace_dir: Utf8PathBuf::from_path_buf(env::current_dir().expect("current dir"))
-                .expect("utf8 current dir"),
-            executed_commands: RefCell::new(Vec::new()),
-            captured_commands: RefCell::new(Vec::new()),
-            generated_nvs_partitions: RefCell::new(Vec::new()),
-            capture_status: CaptureProcessStatus::ExitedSuccess,
-            log_contents: trusted_monitor_log(),
-            maybe_campaign_bytes: None,
-            current_provenance: BuildProvenance::new(
-                "0.1.0",
-                SOURCE_COMMIT,
-                false,
-                None::<&str>,
-                REFERENCE_COMMIT,
-            )
-            .expect("default provenance"),
-            source_replacement: None,
-            execute_failure: false,
-            maybe_execute_failure_offset: None,
-            snapshot_write_failure: false,
-            list_ports_calls: Cell::new(0),
-            physical_inspection_ports: RefCell::new(Vec::new()),
-            read_string_paths: RefCell::new(Vec::new()),
-            written_files: RefCell::new(Vec::new()),
-            created_snapshot_paths: RefCell::new(Vec::new()),
-            observed_flash: RefCell::new(Vec::new()),
-            private_root_admitted: true,
-            private_root_admission_calls: Cell::new(0),
-            phase35_stage_gates: RefCell::new(Vec::new()),
-            campaign_lease_id: 42,
-            campaign_observations: RefCell::new(Vec::new()),
-            input_uat_chunks: Vec::new(),
-            input_uat_interrupted: false,
-            cleanup_calls: Cell::new(0),
-            cleanup_failure: false,
-            application_exit_write_counts: RefCell::new(Vec::new()),
-            application_exit_failure: false,
-            installed_session_calls: Cell::new(0),
-            maybe_installed_bytes: None,
-            last_usb_command_diagnostic: RefCell::new(None),
-        }
-    }
-
-    fn executed_commands(&self) -> Vec<CommandSpec> {
-        self.executed_commands.borrow().clone()
-    }
-
-    fn captured_commands(&self) -> Vec<CommandSpec> {
-        self.captured_commands.borrow().clone()
-    }
-
-    fn generated_nvs_partitions(&self) -> Vec<(Utf8PathBuf, Utf8PathBuf, String)> {
-        self.generated_nvs_partitions.borrow().clone()
-    }
-
-    fn with_capture_status(mut self, capture_status: CaptureProcessStatus) -> Self {
-        self.capture_status = capture_status;
-        self
-    }
-
-    fn with_log_contents(mut self, log_contents: &str) -> Self {
-        self.log_contents = log_contents.to_owned();
-        self
-    }
-
-    fn with_campaign_bytes(mut self, campaign_bytes: Vec<u8>) -> Self {
-        self.maybe_campaign_bytes = Some(campaign_bytes);
-        self
-    }
-
-    fn with_workspace_dir(mut self, workspace_dir: Utf8PathBuf) -> Self {
-        self.workspace_dir = workspace_dir;
-        self
-    }
-
-    fn with_current_provenance(mut self, current_provenance: BuildProvenance) -> Self {
-        self.current_provenance = current_provenance;
-        self
-    }
-
-    fn with_source_replacement(mut self, path: Utf8PathBuf, bytes: Vec<u8>) -> Self {
-        self.source_replacement = Some((path, bytes));
-        self
-    }
-
-    fn with_execute_failure(mut self) -> Self {
-        self.execute_failure = true;
-        self
-    }
-
-    fn with_execute_failure_offset(mut self, offset: &str) -> Self {
-        self.maybe_execute_failure_offset = Some(offset.to_owned());
-        self
-    }
-
-    fn with_snapshot_write_failure(mut self) -> Self {
-        self.snapshot_write_failure = true;
-        self
-    }
-
-    fn with_private_root_rejected(mut self) -> Self {
-        self.private_root_admitted = false;
-        self
-    }
-
-    fn private_root_admission_calls(&self) -> usize {
-        self.private_root_admission_calls.get()
-    }
-
-    fn created_snapshot_paths(&self) -> std::cell::Ref<'_, Vec<Utf8PathBuf>> {
-        self.created_snapshot_paths.borrow()
-    }
-
-    fn list_ports_calls(&self) -> usize {
-        self.list_ports_calls.get()
-    }
-
-    fn read_string_paths(&self) -> std::cell::Ref<'_, Vec<Utf8PathBuf>> {
-        self.read_string_paths.borrow()
-    }
-
-    fn written_files(&self) -> std::cell::Ref<'_, Vec<(Utf8PathBuf, String)>> {
-        self.written_files.borrow()
-    }
-
-    fn observed_flashes(&self) -> std::cell::Ref<'_, Vec<ObservedFlash>> {
-        self.observed_flash.borrow()
-    }
-
-    fn phase35_stage_gates(&self) -> Vec<(String, String)> {
-        self.phase35_stage_gates.borrow().clone()
-    }
-
-    fn campaign_observations(&self) -> Vec<(MiningCampaignStage, CampaignCaptureLimit)> {
-        self.campaign_observations.borrow().clone()
-    }
-
-    fn cleanup_calls(&self) -> usize {
-        self.cleanup_calls.get()
-    }
-
-    fn with_cleanup_failure(mut self) -> Self {
-        self.cleanup_failure = true;
-        self
-    }
-
-    fn with_input_uat_chunks(mut self, chunks: Vec<Vec<u8>>) -> Self {
-        self.input_uat_chunks = chunks;
-        self
-    }
-
-    fn with_input_uat_interrupted(mut self) -> Self {
-        self.input_uat_interrupted = true;
-        self
-    }
-}
+include!("fake_environment_accessors.rs");
 
 impl FlashEnvironment for FakeFlashEnvironment {
     fn build_package(&self) -> Result<()> {
@@ -300,6 +142,10 @@ impl FlashEnvironment for FakeFlashEnvironment {
         Ok(())
     }
 
+    fn prepare_post_reset_capture(&self, _duration: Duration) -> Result<()> {
+        self.capture_lifecycle.borrow_mut().push("prepare");
+        Ok(())
+    }
     fn begin_usb_session(&self, _operation: UsbOperation, _port: &str) -> Result<()> {
         Ok(())
     }
@@ -309,19 +155,31 @@ impl FlashEnvironment for FakeFlashEnvironment {
     }
 
     fn begin_installed_session(&self, _port: &str, _root: &Utf8Path) -> Result<()> {
-        self.installed_session_calls.set(self.installed_session_calls.get() + 1);
+        self.installed_session_calls
+            .set(self.installed_session_calls.get() + 1);
         Ok(())
     }
 
     fn observe_installed_runtime(&self) -> Result<UsbRebootLoopObservation> {
-        let bytes = self.maybe_installed_bytes.as_deref().context("fixture_missing_observation")?;
+        let bytes = self
+            .maybe_installed_bytes
+            .as_deref()
+            .context("fixture_missing_observation")?;
         bitaxe_device_session::parse_usb_reboot_diagnostics(bytes, 1)
     }
 
     fn execute_application_exit(&self, _esptool: &Utf8Path) -> Result<InstalledApplicationExit> {
+        self.capture_lifecycle.borrow_mut().push("reset");
         self.application_exit_write_counts.borrow_mut().push(
-            self.executed_commands.borrow().iter()
-                .filter(|command| command.args.iter().any(|arg| arg == "write-bin" || arg == "write_flash"))
+            self.executed_commands
+                .borrow()
+                .iter()
+                .filter(|command| {
+                    command
+                        .args
+                        .iter()
+                        .any(|arg| arg == "write-bin" || arg == "write_flash")
+                })
                 .count(),
         );
         if self.application_exit_failure {
@@ -334,14 +192,14 @@ impl FlashEnvironment for FakeFlashEnvironment {
         })
     }
 
-
-
     fn usb_physical_identity_digest(&self) -> Result<String> {
         Ok("6".repeat(64))
     }
 
     fn current_usb_physical_identity_digest(&self, port: &str) -> Result<String> {
-        self.physical_inspection_ports.borrow_mut().push(port.to_owned());
+        self.physical_inspection_ports
+            .borrow_mut()
+            .push(port.to_owned());
         Ok("6".repeat(64))
     }
 
@@ -353,10 +211,13 @@ impl FlashEnvironment for FakeFlashEnvironment {
             command_spec.args.first().map(String::as_str),
             Some("write-bin" | "erase-flash")
         );
-        let offset_failure = self.maybe_execute_failure_offset.as_ref().is_some_and(|offset| {
-            command_spec.args.first().map(String::as_str) == Some("write-bin")
-                && command_spec.args.iter().any(|argument| argument == offset)
-        });
+        let offset_failure = self
+            .maybe_execute_failure_offset
+            .as_ref()
+            .is_some_and(|offset| {
+                command_spec.args.first().map(String::as_str) == Some("write-bin")
+                    && command_spec.args.iter().any(|argument| argument == offset)
+            });
         let should_fail = self.execute_failure || offset_failure;
         let diagnostic = fake_usb_command_diagnostic(
             UsbTerminalCategory::Ready,
@@ -407,45 +268,83 @@ impl FlashEnvironment for FakeFlashEnvironment {
     }
 
     fn execute_esptool_write_flash(&self, command: &ManagedEsptoolWriteFlash) -> Result<()> {
-        self.executed_commands.borrow_mut().push(CommandSpec::new(command.program().as_str(), command.args()));
+        self.capture_lifecycle.borrow_mut().push("write");
+        self.executed_commands
+            .borrow_mut()
+            .push(CommandSpec::new(command.program().as_str(), command.args()));
         if let Some((path, bytes)) = &self.source_replacement {
             std::fs::write(path.as_std_path(), bytes).expect("replace admitted package source");
         }
         let mut wrote = false;
-        for pair in command.args().windows(2).filter(|pair| pair[0].starts_with("0x")) {
-            if self.execute_failure || self.snapshot_write_failure || self.maybe_execute_failure_offset.as_ref() == Some(&pair[0]) {
-                self.last_usb_command_diagnostic.replace(Some(fake_usb_command_diagnostic(
-                    if wrote { UsbTerminalCategory::FlashFailedAfterTransfer } else { UsbTerminalCategory::FlashFailedBeforeTransfer },
-                    if wrote { UsbDeviceEffectState::ConfirmedPartial } else { UsbDeviceEffectState::None },
-                )));
+        for pair in command
+            .args()
+            .windows(2)
+            .filter(|pair| pair[0].starts_with("0x"))
+        {
+            if self.execute_failure
+                || self.snapshot_write_failure
+                || self.maybe_execute_failure_offset.as_ref() == Some(&pair[0])
+            {
+                self.last_usb_command_diagnostic
+                    .replace(Some(fake_usb_command_diagnostic(
+                        if wrote {
+                            UsbTerminalCategory::FlashFailedAfterTransfer
+                        } else {
+                            UsbTerminalCategory::FlashFailedBeforeTransfer
+                        },
+                        if wrote {
+                            UsbDeviceEffectState::ConfirmedPartial
+                        } else {
+                            UsbDeviceEffectState::None
+                        },
+                    )));
                 bail!("sentinel child failure");
             }
             let offset = u32::from_str_radix(&pair[0][2..], 16).expect("admitted flash address");
             let path = Utf8PathBuf::from(&pair[1]);
             let bytes = std::fs::read(path.as_std_path()).expect("admitted immutable snapshot");
             #[cfg(unix)]
-            let unix_mode = { use std::os::unix::fs::PermissionsExt; Some(std::fs::metadata(path.as_std_path()).expect("snapshot metadata").permissions().mode() & 0o777) };
+            let unix_mode = {
+                use std::os::unix::fs::PermissionsExt;
+                Some(
+                    std::fs::metadata(path.as_std_path())
+                        .expect("snapshot metadata")
+                        .permissions()
+                        .mode()
+                        & 0o777,
+                )
+            };
             #[cfg(not(unix))]
             let unix_mode = None;
-            self.observed_flash.borrow_mut().push(ObservedFlash { offset, path, bytes, unix_mode });
+            self.observed_flash.borrow_mut().push(ObservedFlash {
+                offset,
+                path,
+                bytes,
+                unix_mode,
+            });
             wrote = true;
         }
-        self.last_usb_command_diagnostic.replace(Some(fake_usb_command_diagnostic(UsbTerminalCategory::Ready, UsbDeviceEffectState::Completed)));
+        self.last_usb_command_diagnostic
+            .replace(Some(fake_usb_command_diagnostic(
+                UsbTerminalCategory::Ready,
+                UsbDeviceEffectState::Completed,
+            )));
         Ok(())
     }
 
     fn execute_flash_read(&self, command: &ManagedFlashRead) -> Result<()> {
         self.executed_commands.borrow_mut().push(CommandSpec::new(
-            command.program().as_str(), command.args("admitted"),
+            command.program().as_str(),
+            command.args("admitted"),
         ));
-        std::fs::write(command.output().as_std_path(), vec![0xff_u8; command.size() as usize])?;
+        std::fs::write(
+            command.output().as_std_path(),
+            vec![0xff_u8; command.size() as usize],
+        )?;
         Ok(())
     }
 
-    fn restore_application_runtime(
-        &self,
-        _esptool: &Utf8Path,
-    ) -> Result<ProfileObservationCounts> {
+    fn restore_application_runtime(&self, _esptool: &Utf8Path) -> Result<ProfileObservationCounts> {
         Ok(ProfileObservationCounts {
             absent: 1,
             same_worker: 2,
@@ -473,11 +372,7 @@ impl FlashEnvironment for FakeFlashEnvironment {
             })
     }
 
-    fn receive_only(
-        &self,
-        command_spec: &CommandSpec,
-        _timeout_seconds: u64,
-    ) -> Result<Vec<u8>> {
+    fn receive_only(&self, command_spec: &CommandSpec, _timeout_seconds: u64) -> Result<Vec<u8>> {
         self.executed_commands
             .borrow_mut()
             .push(command_spec.clone());
@@ -522,10 +417,7 @@ impl FlashEnvironment for FakeFlashEnvironment {
         })
     }
 
-    fn receive_input_uat(
-        &self,
-        stop: &mut dyn FnMut(&[u8]) -> bool,
-    ) -> Result<MonitorOutput> {
+    fn receive_input_uat(&self, stop: &mut dyn FnMut(&[u8]) -> bool) -> Result<MonitorOutput> {
         if self.execute_failure {
             bail!("sentinel input UAT observation failure");
         }

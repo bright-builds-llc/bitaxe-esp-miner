@@ -19,3 +19,18 @@ for (const [name, mutate] of Object.entries({
   unknown_failure: v => { v.earliestFailure = { stage: "read", category: "raw-error" }; },
 })) test(`rejects ${name}`, () => { const value = fixture(); mutate(value); assert.throws(() => validateHostTiming(value), /host_timing_/u); });
 test("observed clock failure survives as incomplete evidence", () => { const value = fixture(); value.events[2].elapsedUs = 0; value.clockDiscontinuity = true; value.captureComplete = false; value.earliestFailure = { stage: "clock", category: "clock_discontinuity" }; assert.equal(validateHostTiming(value).clockDiscontinuity, true); });
+
+import { validateHostTimingV2 } from "./host-timing-v2.mjs";
+import { syntheticTimingV2 } from "./measurement.fixture.mjs";
+test("early reader accepts quarantined bytes before admission with one full capture", () => { const value = syntheticTimingV2(); assert.equal(validateHostTimingV2(value), value); });
+for (const [name, mutate] of Object.entries({
+  retained_failure: v => { v.earliestFailure = { stage: "read", category: "monitor_failed" }; },
+  oversized_first_read: v => { v.firstReadBytes = 4097; v.capturedBytes = 8192; },
+  unsafe_duration: v => { v.captureDurationMs = Number.MAX_SAFE_INTEGER; },
+  reopened: v => { v.readerOpenCount = 2; },
+  overflow: v => { v.captureOverflow = true; },
+  unjoined: v => { v.readerJoined = false; },
+  unreleased: v => { v.quarantineReleased = false; },
+  extra_private: v => { v.port = "private"; },
+  release_after_deadline: v => { v.events.find(e => e.stage === "quarantine_released").elapsedUs = 30630000; v.events.find(e => e.stage === "capture_deadline_reached").elapsedUs = 31130000; v.events.find(e => e.stage === "reader_closed").elapsedUs = 31140000; v.events.find(e => e.stage === "reader_joined").elapsedUs = 31150000; },
+})) test(`v2 rejects ${name}`, () => { const value = syntheticTimingV2(); mutate(value); assert.throws(() => validateHostTimingV2(value)); });

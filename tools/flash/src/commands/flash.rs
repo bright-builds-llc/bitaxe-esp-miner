@@ -76,6 +76,16 @@ pub(crate) fn run_flash_monitor(
     command: &FlashMonitorCommand,
     environment: &impl FlashEnvironment,
 ) -> Result<()> {
+    if !command.common.dry_run
+        && !command.factory_reset
+        && command.wifi_credentials.is_none()
+        && !command.network_reconnect_probe
+        && command.thermal_fault_stimulus_intent.is_none()
+        && command.self_test_intent.is_none()
+    {
+        environment
+            .prepare_post_reset_capture(Duration::from_secs(command.capture_timeout_seconds))?;
+    }
     let resolved_dir = maybe_resolved_evidence_dir(&command.common, environment);
     if command.common.evidence_mode.is_some() && resolved_dir.is_none() {
         bail!("--evidence-mode dual requires --evidence-dir");

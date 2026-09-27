@@ -63,7 +63,11 @@ impl UsbSession {
         &mut self,
         duration: Duration,
     ) -> Result<MonitorOutput, UsbSessionError> {
-        let result = self.observe_receive_only_inner(Some(duration), true, false, |_| false);
+        let result = if self.capture.reset_reaped {
+            self.observe_early_capture()
+        } else {
+            self.observe_receive_only_inner(Some(duration), true, false, |_| false)
+        };
         if let Err(error) = &result {
             self.fail_once(error.category);
         }

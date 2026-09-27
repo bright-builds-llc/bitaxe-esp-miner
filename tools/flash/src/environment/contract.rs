@@ -27,6 +27,9 @@ pub(crate) trait FlashEnvironment {
         bin_path: &Utf8Path,
         size: &str,
     ) -> Result<()>;
+    fn prepare_post_reset_capture(&self, _duration: Duration) -> Result<()> {
+        Ok(())
+    }
     fn begin_usb_session(&self, operation: UsbOperation, port: &str) -> Result<()>;
     fn prepare_application_exit(&self) -> Result<Utf8PathBuf> {
         bail!("application_exit=blocked reason=adapter_unavailable")

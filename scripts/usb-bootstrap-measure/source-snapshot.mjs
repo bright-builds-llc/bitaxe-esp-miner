@@ -4,10 +4,10 @@ import { dirname, resolve } from "node:path";
 import { sourceShape } from "./shapes.mjs";
 import { check, sha256 } from "./values.mjs";
 import { inventory, privateRoot, protectedPath, retain, canonical } from "../str005-noise-serial/files.mjs";
-const V1 = "usb-bootstrap-measure-context-v1", V2 = "usb-bootstrap-measure-context-v2";
+const V1 = "usb-bootstrap-measure-context-v1", V2 = "usb-bootstrap-measure-context-v2", V3 = "usb-bootstrap-measure-context-v3";
 function mapping(context) {
-  check([V1, V2].includes(context.schema), "bootstrap_source_layout"); sourceShape(context.sourceInventory);
-  const rows = context.sourceInventory.map(row => ({ ...row, storage: context.schema === V2 ? `${sha256(Buffer.from(row.path, "utf8"))}.bin` : row.path }));
+  check([V1, V2, V3].includes(context.schema), "bootstrap_source_layout"); sourceShape(context.sourceInventory);
+  const rows = context.sourceInventory.map(row => ({ ...row, storage: context.schema !== V1 ? `${sha256(Buffer.from(row.path, "utf8"))}.bin` : row.path }));
   check(new Set(rows.map(row => row.storage)).size === rows.length, "bootstrap_source_storage_duplicate"); return rows;
 }
 /** Storage identity hashes the logical path, independently of the content digest. */
@@ -33,7 +33,7 @@ export async function readSourceSnapshot(root, context, logicalPath) {
 }
 /** Only new v2 contexts may create snapshots. Historical layouts are never rewritten. */
 export async function writeSourceSnapshot(root, context) {
-  check(context.schema === V2, "bootstrap_source_layout_readonly"); const rows = mapping(context);
+  check([V2, V3].includes(context.schema), "bootstrap_source_layout_readonly"); const rows = mapping(context);
   root = await privateRoot(root);
   for (const row of rows) {
     const path = resolve(context.firmwareRoot, row.path), stat = await lstat(path);

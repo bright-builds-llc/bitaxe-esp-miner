@@ -68,8 +68,15 @@ pub(super) fn run_owned_process(
     request: OwnedProcessRequest<'_>,
     lease: &mut DeviceLease,
 ) -> Result<SupervisedOutput, UsbSessionError> {
-    let _signal_supervisor = SignalSupervisor::acquire()?;
+    let signal_supervisor = SignalSupervisor::acquire()?;
+    run_owned_process_guarded(request, lease, &signal_supervisor)
+}
 
+pub(super) fn run_owned_process_guarded(
+    request: OwnedProcessRequest<'_>,
+    lease: &mut DeviceLease,
+    _signals: &SignalSupervisor,
+) -> Result<SupervisedOutput, UsbSessionError> {
     let executable_path = fs::canonicalize(request.program).map_err(|error| {
         session_error(
             UsbTerminalCategory::FlashFailedBeforeTransfer,
@@ -368,8 +375,16 @@ pub(super) struct SignalSupervisor {
 
 impl SignalSupervisor {
     pub(super) fn acquire() -> Result<Self, UsbSessionError> {
+        Self::acquire_with_reset(true)
+    }
+    pub(super) fn acquire_preserving_pending() -> Result<Self, UsbSessionError> {
+        Self::acquire_with_reset(false)
+    }
+    fn acquire_with_reset(reset: bool) -> Result<Self, UsbSessionError> {
         let lock = signal_handler_lock()?;
-        PENDING_SIGNAL.store(0, Ordering::SeqCst);
+        if reset {
+            PENDING_SIGNAL.store(0, Ordering::SeqCst);
+        }
         let guard = SignalGuard::install()?;
         Ok(Self {
             _lock: lock,
@@ -416,6 +431,16 @@ impl Drop for SignalGuard {
         }
         PENDING_SIGNAL.store(0, Ordering::SeqCst);
     }
+}
+
+#[cfg(test)]
+pub(super) fn raise_pending_at_boundary_for_test(signal: i32) {
+    // Used only in an isolated exact-test child, never beside parallel test owners.
+    let guard = SignalGuard::install().expect("isolated test signal handler");
+    assert_eq!(unsafe { libc::raise(signal) }, 0);
+    let pending = PENDING_SIGNAL.load(Ordering::SeqCst);
+    drop(guard);
+    PENDING_SIGNAL.store(pending, Ordering::SeqCst);
 }
 
 #[cfg(test)]

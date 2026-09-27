@@ -84,5 +84,6 @@ for (const mode of ["healthy", "failed", "missing"]) test(`real daemon, producti
   assert.equal(result.status, mode === "missing" ? "unverified" : "measurement_complete", JSON.stringify(saved));
   assert.equal(saved.capture.exitCode, mode === "failed" ? 1 : 0); assert.equal(saved.capture.qualified, mode !== "failed");
   if (mode === "failed") assert.equal(saved.firstFailure.code, "bootstrap_capture_unqualified");
+  assert.equal(saved.schema, "usb-bootstrap-measure-result-v2"); assert.equal(result.correction_accepted, mode === "healthy");
   assert.deepEqual(await review(f.root, ops), result); assert.equal(result.hardware_qualified, false);
 });

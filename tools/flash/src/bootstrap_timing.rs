@@ -37,13 +37,17 @@ pub(crate) fn prepare(command: &CliCommand) -> Result<Option<TimingExport>> {
     };
     fs::create_dir_all(&root)?;
     set_private_directory_mode(&root)?;
-    let path = root.join("bootstrap-host-timing-v1.json");
+    let path = root.join("bootstrap-host-timing-v2.json");
     if fs::symlink_metadata(&path).is_ok() {
         bail!("bootstrap_timing=blocked reason=sidecar_exists");
     }
     Ok(Some(TimingExport {
         path,
-        timing: BootstrapTiming::default(),
+        timing: {
+            let timing = BootstrapTiming::default();
+            timing.early_mode(Duration::from_secs(command.capture_timeout_seconds));
+            timing
+        },
     }))
 }
 impl TimingExport {

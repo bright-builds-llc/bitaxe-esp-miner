@@ -4662,9 +4662,9 @@ new measurements, verified progress and a published guarded admission contract.
 
 ### task-usb-bootstrap-drain-observability | 2026-09-26 | Distinguish bootstrap reader delay from native TX completion failure
 
-Status: Active; attempt 001 is an interrupted preflight, preserved unchanged.
-No hardware effects occurred. Successor software and its prospective amendment
-are verified; clean publication, closure and fresh admission remain pending. The owner explicitly requested
+Status: Active; attempt 001 remains an interrupted preflight. Measurement 002
+is sealed and independently reviewed; its ordinary capture reproduced the TX
+timeout. Device restoration and actual host cleanup passed. The owner explicitly requested
 implementation of the diagnostic, targeted-fix and qualification sequence. The exact
 Channel005 failure is preserved in the [result report](docs/parity/evidence/20260926-str005-v2-bootstrap-drain-unverified.md).
 Current evidence proves a 92-byte queue followed by a 2000-ms drain timeout, not
@@ -4758,7 +4758,7 @@ SHA256 `8b596d6d2d2ce83f7815c0208c8e58755f7d3c687169168b8f46fde8049233df`.
       private-evidence filename guard and version-1 historical interpretation.
 - [x] Implement effect-free interrupted-preflight closure/review, strict failed
       corpus verification and one fresh source-bound successor admission.
-- [ ] Verify, publish and build the corrected clean pair; create/review the sibling
+- [x] Verify, publish and build the corrected clean pair; create/review the sibling
       closure and fresh context before the single no-mining measurement.
 
 Successor verification | 2026-09-27: The encoded-layout regression passed 12
@@ -4777,8 +4777,53 @@ Review follow-up: the older V2 daemon has analogous evidence-write-before-
 socket-close ordering. Apply the verified cleanup hardening before a fresh V2
 qualification campaign; this measurement does not reopen its failed contexts.
 
-Completion review: Pending; reader delay and native completion signaling remain
-unresolved alternatives. No qualification or mining acceptance is transferred.
+Measurement | 2026-09-27: Published `3951a441` and Gate `e20c0fd5` completed
+one no-mining installation in fresh attempt 002, sealed with measurement_complete
+and no qualification credit. [The report](docs/parity/evidence/20260927-usb-bootstrap-reader-gap-measurement.md)
+records a 4,423.674-ms reset-return-to-reader gap and a fully queued 92-byte
+bootstrap record whose drain exhausted 2,001 device ms. Both ledgers, identity
+and settings remained unchanged; fresh possession, explicit restoration, native
+window release and actual process/socket/serial cleanup were independently checked.
+This is evidence for delayed receiving as the next target, not proof of a fix.
+
+Correction plan | 2026-09-27: Follow the frozen prospective
+[early-reader correction contract](docs/hardware/usb-bootstrap-reader-correction.md).
+
+- [x] Start one bounded receive owner immediately after reset child exit and fresh
+      candidate admission, retaining both full admission passes and quarantining
+      bytes until they finish. Preserve one descriptor and physical lease.
+- [ ] Prove the actual path with PTY regressions, bounded cancellation/join,
+      source-bound software checks and versioned timing/independent judgments.
+- [x] Port evidence-write-safe cleanup to the older V2 daemon and verify real
+      process failures without changing its historical schemas or authority.
+- [ ] Run ordered verification, publish and package the clean pair, then admit
+      exactly one fresh attempt 003. Preserve prior sealed evidence and limits.
+- [ ] Seal/review the actual outcome; close this task only on supported correction
+      evidence. A subsequent V2 campaign requires its separate fresh contract.
+
+Correction verification | 2026-09-27: The real-PTY 92-byte slow-admission
+regression failed with delayed opening and passed with the early receive owner.
+The implementation retains both admission passes, one descriptor/physical lock,
+a bounded quarantined buffer and continuous signal handling. A pending interrupt
+now prevents the reset child from starting. Parallel signal-test isolation and
+source-guard references were corrected without reducing coverage. Ordered Cargo
+format, Clippy, build and tests passed (2,366 passed; three existing ignored).
+Gate type checking and 788 tests passed; the measurement supervisor passed 120
+Node tests plus three final composition checks. V2 cleanup passed ten real-process
+rehearsals and healthy composition. Bright Builds, scoped documentation checks,
+unique task IDs and new evidence links passed. Read-only review of sealed
+measurement 002 retains its exact result/seal and unqualified non-claims.
+All 225 canonical test targets passed across the full run and corrective scoped
+rerun. The latter fixed canonical Node launch environments and added explicit
+fault-entry witnesses; validator regressions reject any retained host failure.
+The new proof binds the native Node executable rather than its Bazel shell shim.
+Reference, redaction, USB ownership and read-only parity/progress checks passed;
+parity remains 90/95 with no checklist/history transition. The review retained one
+buffer/thread and existing admission passes rather than adding another transport.
+Clean publication/package, actual clean-build proof and measurement 003 remain pending.
+
+Completion review: Pending. Earlier receiving must pass prospective measurement;
+no qualification or mining acceptance is transferred.
 
 
 ## Future

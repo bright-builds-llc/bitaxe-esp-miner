@@ -1,3 +1,4 @@
+load(":test_provenance.bzl", "reader_test_environment")
 load("@rules_rust//rust:defs.bzl", "rust_binary", "rust_library", "rust_test")
 load("@aspect_rules_js//js:defs.bzl", "js_library")
 
@@ -83,6 +84,8 @@ rust_library(
         "src/reboot_loop/diagnostics.rs",
         "src/transaction.rs",
         "src/usb.rs",
+        "src/usb/early_capture.rs",
+        "src/usb/early_capture/tests.rs",
         "src/usb/timing.rs",
         "src/usb/timing/tests.rs",
         "src/usb/drain.rs",
@@ -96,6 +99,7 @@ rust_library(
         "src/usb/profile_reacquire.rs",
         "src/usb/recovery.rs",
         "src/usb/tests.rs",
+        "src/usb/line_admission_tests.rs",
         "src/usb/probe.rs",
     ],
     crate_name = "bitaxe_device_session",
@@ -132,5 +136,19 @@ rust_binary(
 rust_test(
     name = "tests",
     crate = ":device_session_lib",
+    rustc_env_files = [":reader_test_environment"],
+    visibility = ["//scripts:__pkg__"],
     deps = ["@crates//:tempfile"],
+)
+
+reader_test_environment(
+    name = "reader_test_environment",
+    visibility = ["//scripts:__pkg__"],
+)
+
+filegroup(
+    name = "reader_test_build_identity",
+    srcs = [":reader_test_environment"],
+    output_group = "provenance",
+    visibility = ["//scripts:__pkg__"],
 )

@@ -11,6 +11,7 @@ pub(crate) struct UsbDeviceSnapshot {
     pub(crate) enumeration_token: String,
     pub(crate) accessible: bool,
     pub(crate) holder_count: u16,
+    pub(crate) profile: crate::UsbProfile,
 }
 
 // The unsupported adapter preserves the observation contract but never returns one.
@@ -58,6 +59,10 @@ impl Drop for ReceiveOnlyReader {
 impl ReceiveOnlyReader {
     pub(crate) fn open(_port: &str) -> Result<Self> {
         bail!("receive-only reader is unsupported on this platform")
+    }
+
+    pub(crate) fn metadata(&self) -> std::io::Result<std::fs::Metadata> {
+        Err(std::io::ErrorKind::Unsupported.into())
     }
 
     pub(crate) fn read_into(&mut self, _buffer: &mut [u8]) -> std::io::Result<usize> {

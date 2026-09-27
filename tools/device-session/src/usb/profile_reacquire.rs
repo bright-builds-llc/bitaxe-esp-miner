@@ -24,12 +24,25 @@ impl UsbSession {
     ) -> Result<(UsbProfile, bool), UsbSessionError> {
         let previous_enumeration = self.current_enumeration_token.clone();
         let snapshot = self.reacquire(RecoveryPhase::Handoff)?;
-        let profile = inspect_usb_profile(&snapshot.port)
-            .map(|inspection| inspection.profile)
-            .map_err(|error| UsbSessionError {
-                category: UsbTerminalCategory::RuntimeProfileUnknown,
-                detail: error.to_string(),
-            })?;
+        let inspected = inspect_usb_profile(&snapshot.port).map_err(|error| UsbSessionError {
+            category: UsbTerminalCategory::RuntimeProfileUnknown,
+            detail: error.to_string(),
+        })?;
+        if let Some(capture) = &self.capture.maybe_owner {
+            capture.check_profile(&inspected)?;
+            let deadline = Instant::now() + Duration::from_secs(5);
+            while !capture.opened() {
+                capture.health()?;
+                if Instant::now() >= deadline {
+                    return Err(session_error(
+                        UsbTerminalCategory::MonitorFailed,
+                        "admission_incomplete",
+                    ));
+                }
+                thread::sleep(Duration::from_millis(5));
+            }
+        }
+        let profile = inspected.profile;
         if !matches!(
             profile,
             UsbProfile::WorkerRuntime | UsbProfile::SerialJtagRuntime

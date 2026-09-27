@@ -70,6 +70,8 @@ const FLASH_ADMISSION_LAYOUT_TEST_SOURCE: &str =
 const FLASH_ADMISSION_FIXTURE_SOURCE: &str = include_str!("../../flash/src/tests/fixtures.rs");
 const FLASH_FAKE_ENVIRONMENT_SOURCE: &str =
     include_str!("../../flash/src/tests/fake_environment.rs");
+const FLASH_FAKE_ENVIRONMENT_ACCESSORS_SOURCE: &str =
+    include_str!("../../flash/src/tests/fake_environment_accessors.rs");
 const FLASH_ESP32S3_IMAGE_SOURCE: &str = include_str!("../../flash/src/esp32s3_image.rs");
 const FLASH_PACKAGE_ADMISSION_SOURCE: &str = include_str!("../../flash/src/package_admission.rs");
 

@@ -2,12 +2,12 @@
 use super::UsbTerminalCategory;
 use super::{SupervisedOutput, UsbSession, UsbSessionError};
 use serde::Serialize;
-use std::cell::RefCell;
 use std::path::Path;
-use std::rc::Rc;
+use std::sync::{Arc, Mutex};
+
 use std::time::{Duration, Instant};
 
-const STAGES: [&str; 10] = [
+const STAGES: [&str; 16] = [
     "reset_command_call_start",
     "reset_command_call_end",
     "handoff_start",
@@ -18,6 +18,12 @@ const STAGES: [&str; 10] = [
     "reader_opened",
     "first_nonempty_read",
     "reader_closed",
+    "candidate_observed",
+    "reader_bound",
+    "quarantine_released",
+    "capture_deadline_reached",
+    "reader_joined",
+    "cancellation_requested",
 ];
 #[derive(Clone, Copy, Debug)]
 pub enum TimingStage {
@@ -31,6 +37,12 @@ pub enum TimingStage {
     Opened,
     FirstRead,
     Closed,
+    CandidateObserved,
+    ReaderBound,
+    QuarantineReleased,
+    CaptureDeadlineReached,
+    ReaderJoined,
+    CancellationRequested,
 }
 #[derive(Clone, Copy, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -54,6 +66,9 @@ pub enum BootstrapFailureStage {
     Overflow,
     Cleanup,
     Evidence,
+    Binding,
+    Quarantine,
+    Join,
 }
 #[derive(Clone, Copy, Serialize)]
 struct Failure {
@@ -61,12 +76,19 @@ struct Failure {
     category: &'static str,
 }
 #[derive(Clone)]
-pub struct BootstrapTiming(Rc<RefCell<Recorder>>);
+pub struct BootstrapTiming(Arc<Mutex<Recorder>>);
 struct Recorder {
     origin: Option<Instant>,
     identity: Option<String>,
     nonce: Option<String>,
-    events: [Option<Event>; 16],
+    events: [Option<Event>; 24],
+    duration_ms: Option<u64>,
+    binding: Option<String>,
+    captured: usize,
+    quarantined: usize,
+    released: bool,
+    joined: bool,
+    capture_overflow: bool,
     count: usize,
     last: u64,
     reset: Option<u32>,
@@ -81,11 +103,18 @@ struct Recorder {
 }
 impl Default for BootstrapTiming {
     fn default() -> Self {
-        Self(Rc::new(RefCell::new(Recorder {
+        Self(Arc::new(Mutex::new(Recorder {
             origin: None,
             identity: None,
             nonce: None,
-            events: [None; 16],
+            events: [None; 24],
+            duration_ms: None,
+            binding: None,
+            captured: 0,
+            quarantined: 0,
+            released: false,
+            joined: false,
+            capture_overflow: false,
             count: 0,
             last: 0,
             reset: None,
@@ -103,19 +132,33 @@ impl Default for BootstrapTiming {
 impl BootstrapTiming {
     /// Binds the actual acquired session; never synthesizes a lease on failure.
     pub(crate) fn bind(&self, origin: Instant, identity: &str, nonce: &str) {
-        let mut r = self.0.borrow_mut();
+        let mut r = self
+            .0
+            .lock()
+            .expect("bounded recorder operations do not panic");
         r.origin = Some(origin);
         r.identity = Some(identity.to_owned());
         r.nonce = Some(super::sha256(nonce.as_bytes()));
     }
     pub fn event(&self, stage: TimingStage) {
-        let elapsed = self.0.borrow().origin.map(|o| o.elapsed().as_micros());
-        if let Some(us) = elapsed {
-            self.record(stage, us);
+        let mut r = self
+            .0
+            .lock()
+            .expect("bounded recorder operations do not panic");
+        if let Some(origin) = r.origin {
+            let us = origin.elapsed().as_micros();
+            Self::record_locked(&mut r, stage, us);
         }
     }
+    #[cfg(test)]
     fn record(&self, stage: TimingStage, us: u128) {
-        let mut r = self.0.borrow_mut();
+        let mut r = self
+            .0
+            .lock()
+            .expect("bounded recorder operations do not panic");
+        Self::record_locked(&mut r, stage, us);
+    }
+    fn record_locked(r: &mut Recorder, stage: TimingStage, us: u128) {
         let Ok(us) = u64::try_from(us) else {
             r.overflow = true;
             r.failure.get_or_insert(Failure {
@@ -164,11 +207,25 @@ impl BootstrapTiming {
         r.count += 1;
     }
     pub fn reset_sequence(&self, sequence: u32) {
-        self.0.borrow_mut().reset.get_or_insert(sequence);
+        self.0
+            .lock()
+            .expect("bounded recorder operations do not panic")
+            .reset
+            .get_or_insert(sequence);
     }
     pub fn first_read(&self, bytes: usize) {
-        if bytes > 0 && self.0.borrow().first.is_none() {
-            self.0.borrow_mut().first = Some(bytes);
+        if bytes > 0
+            && self
+                .0
+                .lock()
+                .expect("bounded recorder operations do not panic")
+                .first
+                .is_none()
+        {
+            self.0
+                .lock()
+                .expect("bounded recorder operations do not panic")
+                .first = Some(bytes);
             self.event(TimingStage::FirstRead);
         }
     }
@@ -176,21 +233,33 @@ impl BootstrapTiming {
         self.fail_label(stage, category.as_str());
     }
     pub fn preparation_failed(&self) {
-        if !self.0.borrow().capture {
+        if !self
+            .0
+            .lock()
+            .expect("bounded recorder operations do not panic")
+            .capture
+        {
             self.fail_label(BootstrapFailureStage::Preparation, "preparation_failed");
         }
     }
     fn fail_label(&self, stage: BootstrapFailureStage, category: &'static str) {
         self.0
-            .borrow_mut()
+            .lock()
+            .expect("bounded recorder operations do not panic")
             .failure
             .get_or_insert(Failure { stage, category });
     }
     pub fn capture_complete(&self) {
-        self.0.borrow_mut().capture = true;
+        self.0
+            .lock()
+            .expect("bounded recorder operations do not panic")
+            .capture = true;
     }
     pub fn cleanup_complete(&self, complete: bool) {
-        self.0.borrow_mut().cleanup = complete;
+        self.0
+            .lock()
+            .expect("bounded recorder operations do not panic")
+            .cleanup = complete;
         if !complete {
             self.failure(
                 BootstrapFailureStage::Cleanup,
@@ -200,13 +269,90 @@ impl BootstrapTiming {
     }
     /// Serializes only after the measured operation and cleanup attempts finish.
     pub fn snapshot(&self) -> serde_json::Value {
-        let r = self.0.borrow();
+        let r = self
+            .0
+            .lock()
+            .expect("bounded recorder operations do not panic");
         let events: Vec<_> = r.events.iter().flatten().collect();
-        let missing: Vec<_> = STAGES
+        let required = if r.duration_ms.is_some() {
+            &STAGES[..15]
+        } else {
+            &STAGES[..10]
+        };
+        let missing: Vec<_> = required
             .iter()
             .filter(|s| !events.iter().any(|e| e.stage == **s))
             .collect();
-        serde_json::json!({"schema":"bootstrap-host-timing-v1","clock":"host_monotonic","origin":r.origin.map(|_|"usb_session_acquired"),"physicalIdentityDigest":r.identity,"sessionNonceSha256":r.nonce,"events":events,"resetChildSequence":r.reset,"readerOpenCount":r.opens,"readerReopenCount":r.reopens,"firstReadBytes":r.first,"missingStages":missing,"overflow":r.overflow,"clockDiscontinuity":r.clock,"captureComplete":r.capture && missing.is_empty() && r.reopens==0 && !r.overflow && !r.clock,"cleanupComplete":r.cleanup,"earliestFailure":r.failure})
+        let mut value = serde_json::json!({"schema":"bootstrap-host-timing-v1","clock":"host_monotonic","origin":r.origin.map(|_|"usb_session_acquired"),"physicalIdentityDigest":r.identity,"sessionNonceSha256":r.nonce,"events":events,"resetChildSequence":r.reset,"readerOpenCount":r.opens,"readerReopenCount":r.reopens,"firstReadBytes":r.first,"missingStages":missing,"overflow":r.overflow,"clockDiscontinuity":r.clock,"captureComplete":r.capture && missing.is_empty() && r.reopens==0 && !r.overflow && !r.clock,"cleanupComplete":r.cleanup,"earliestFailure":r.failure});
+        if let Some(duration) = r.duration_ms {
+            let extra = serde_json::json!({"schema":"bootstrap-host-timing-v2", "captureMode":"early_quarantined", "captureDurationMs":duration,"readerBindingSha256":r.binding,"quarantinedBytes":if r.released {r.quarantined} else {r.captured},"capturedBytes":r.captured,"quarantineReleased":r.released,"readerJoined":r.joined,"captureOverflow":r.capture_overflow});
+            value
+                .as_object_mut()
+                .expect("object")
+                .extend(extra.as_object().expect("object").clone());
+            value["captureComplete"] = serde_json::json!(
+                r.capture
+                    && missing.is_empty()
+                    && r.opens == 1
+                    && !r.overflow
+                    && !r.clock
+                    && !r.capture_overflow
+                    && r.released
+                    && r.joined
+                    && r.failure.is_none()
+                    && !events.iter().any(|e| e.stage == "cancellation_requested")
+            );
+        }
+        value
+    }
+    pub fn early_mode(&self, duration: Duration) {
+        self.0.lock().expect("bounded recorder").duration_ms =
+            Some(duration.as_millis().min(u128::from(u64::MAX)) as u64);
+    }
+    pub(super) fn reader_bound(&self, binding: String) {
+        self.0.lock().expect("bounded recorder").binding = Some(binding);
+        self.event(TimingStage::ReaderBound);
+    }
+    pub(super) fn quarantine_released(&self, bytes: usize, deadline: Instant) -> bool {
+        let mut r = self.0.lock().expect("bounded recorder");
+        let now = Instant::now();
+        if now >= deadline {
+            return false;
+        }
+        r.released = true;
+        r.quarantined = bytes;
+        if let Some(origin) = r.origin {
+            Self::record_locked(
+                &mut r,
+                TimingStage::QuarantineReleased,
+                now.duration_since(origin).as_micros(),
+            );
+        }
+        true
+    }
+    pub(super) fn captured(&self, bytes: usize) {
+        self.0.lock().expect("bounded recorder").captured = bytes;
+    }
+    pub(super) fn reader_joined(&self) {
+        self.0.lock().expect("bounded recorder").joined = true;
+        self.event(TimingStage::ReaderJoined);
+    }
+    pub(super) fn capture_overflow(&self) {
+        self.0.lock().expect("bounded recorder").capture_overflow = true;
+        self.fail_label(BootstrapFailureStage::Quarantine, "capture_overflow");
+    }
+    pub(super) fn early_failure(&self, category: &'static str) {
+        let (stage, label) = match category {
+            "reader_binding_changed" => (BootstrapFailureStage::Binding, "reader_binding_changed"),
+            "reader_join_timeout" => (BootstrapFailureStage::Join, "reader_join_timeout"),
+            "capture_overflow" => (BootstrapFailureStage::Quarantine, "capture_overflow"),
+            "reader_open_failed" => (BootstrapFailureStage::Open, "monitor_failed"),
+            "reader_read_failed" | "capture_cancelled" => {
+                (BootstrapFailureStage::Read, "monitor_failed")
+            }
+            _ => (BootstrapFailureStage::Quarantine, "admission_incomplete"),
+        };
+        self.fail_label(stage, label);
     }
 }
 
@@ -273,6 +419,18 @@ impl UsbSession {
         args: &[String],
         timeout: Duration,
     ) -> Result<SupervisedOutput, UsbSessionError> {
+        if self.capture.maybe_intent.is_some() {
+            self.capture.maybe_signals =
+                Some(super::process::SignalSupervisor::acquire_preserving_pending()?);
+            if super::process::maybe_pending_signal().is_some() {
+                let error =
+                    super::session_error(UsbTerminalCategory::MonitorFailed, "capture_cancelled");
+                self.bootstrap_event(TimingStage::CancellationRequested);
+                self.bootstrap_failure(BootstrapFailureStage::Reset, &error);
+                self.fail_once(error.category);
+                return Err(error);
+            }
+        }
         if let Some(timing) = &self.maybe_timing {
             timing.reset_sequence(self.child_sequence.saturating_add(1));
         }
@@ -281,6 +439,8 @@ impl UsbSession {
         self.bootstrap_event(TimingStage::ResetEnd);
         if let Err(error) = &result {
             self.bootstrap_failure(BootstrapFailureStage::Reset, error);
+        } else if self.capture.maybe_intent.is_some() {
+            self.capture.reset_reaped = true;
         }
         result
     }

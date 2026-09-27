@@ -1,5 +1,6 @@
 // Synthetic device/timing fixture. It is not a measurement or accepted hardware evidence.
-export function syntheticTiming() {
+export function syntheticTiming(version = 1) {
+  if (version === 2) return syntheticTimingV2();
   const stages = ["reset_command_call_start", "reset_command_call_end", "handoff_start", "handoff_admitted", "monitor_admission_start", "monitor_admitted", "reader_open_start", "reader_opened", "first_nonempty_read", "reader_closed"];
   return { schema: "bootstrap-host-timing-v1", clock: "host_monotonic", origin: "usb_session_acquired", physicalIdentityDigest: "c".repeat(64), sessionNonceSha256: "b".repeat(64),
     events: stages.map((stage, i) => ({ stage, elapsedUs: (i + 1) * 1000 })), resetChildSequence: 1, readerOpenCount: 1, readerReopenCount: 0, firstReadBytes: 92,
@@ -19,4 +20,13 @@ export function syntheticCapture(context, failure = false) {
     nvs_seed_status: "not_provided", redaction_mode: "commit-redacted", capture_timeout_seconds: 30, commit_ready: !failure,
     fixed_serial_assessment: { execution_present: true, safe_baseline_confirmed: true, startup_complete: true, startup_failed: false, stable_boot: true, retained_failure_history: false, issues: failure ? ["error_diagnostic"] : [] } };
   return { log, verdict };
+}
+
+export function syntheticTimingV2() {
+  const value = syntheticTiming();
+  const pairs = [["reset_command_call_start", 0], ["reset_command_call_end", 100000], ["candidate_observed", 110000], ["reader_open_start", 120000], ["reader_opened", 130000],
+    ["reader_bound", 140000], ["handoff_start", 150000], ["first_nonempty_read", 160000], ["handoff_admitted", 500000], ["monitor_admission_start", 510000],
+    ["monitor_admitted", 900000], ["quarantine_released", 910000], ["capture_deadline_reached", 30130000], ["reader_closed", 30140000], ["reader_joined", 30150000]];
+  return { ...value, schema: "bootstrap-host-timing-v2", events: pairs.map(([stage, elapsedUs]) => ({ stage, elapsedUs })), captureMode: "early_quarantined", captureDurationMs: 30000,
+    readerBindingSha256: "e".repeat(64), quarantinedBytes: 92, capturedBytes: 4096, quarantineReleased: true, readerJoined: true, captureOverflow: false };
 }

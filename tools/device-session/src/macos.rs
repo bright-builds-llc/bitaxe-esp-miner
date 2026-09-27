@@ -34,6 +34,7 @@ pub(crate) struct UsbDeviceSnapshot {
     pub(crate) enumeration_token: String,
     pub(crate) accessible: bool,
     pub(crate) holder_count: u16,
+    pub(crate) profile: crate::UsbProfile,
 }
 
 pub(crate) enum PhysicalSnapshotObservation {
@@ -223,6 +224,12 @@ impl MacOsDeviceAdapter {
 
 fn snapshot(candidate: &Candidate) -> Result<UsbDeviceSnapshot> {
     Ok(UsbDeviceSnapshot {
+        profile: crate::classify_usb_profile(
+            parse_usb_value(&candidate.vendor),
+            parse_usb_value(&candidate.product),
+            candidate.product_name.as_deref(),
+            false,
+        ),
         port: candidate.port.clone(),
         physical_identity_digest: candidate.physical_identity_digest.clone(),
         enumeration_token: candidate.enumeration_token.clone(),
@@ -448,6 +455,15 @@ fn hex_lower(bytes: &[u8]) -> String {
         encoded.push(char::from(HEX[usize::from(byte & 0x0f)]));
     }
     encoded
+}
+
+fn parse_usb_value(value: &str) -> Option<u16> {
+    let value = value.trim();
+    if let Some(hex) = value.strip_prefix("0x") {
+        u16::from_str_radix(hex, 16).ok()
+    } else {
+        value.parse().ok()
+    }
 }
 
 #[cfg(test)]

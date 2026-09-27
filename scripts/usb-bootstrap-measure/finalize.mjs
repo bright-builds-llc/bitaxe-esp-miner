@@ -1,3 +1,5 @@
+import { validateHostTimingV2 } from "./host-timing-v2.mjs";
+import { correctionJudgment } from "./correction-judge.mjs";
 import { verifyCaptureExit } from "./capture-exit.mjs";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -8,19 +10,20 @@ import { inspectCapture } from "./install.mjs";
 import { deriveCleanup, validateCleanup, requireHostStopped, operatorAbsent, maybeProof } from "./cleanup.mjs";
 import { verifyAccounting } from "./journal.mjs";
 import { judgeOperator } from "./operator-disposition.mjs";
-import { check, object, schema, sha256, code } from "./values.mjs";
+import { CONTEXT_V3, hostTimingFile, check, object, schema, sha256, code } from "./values.mjs";
 
 async function observation(root, context) {
   const capture = await inspectCapture(root, context); await verifyCaptureExit(root, context);
   const { validateHostTiming } = await import("./host-timing.mjs");
   const { parseDeviceObservations } = await import("./device-observations.mjs");
-  const host = await proof(root, "install-0/bootstrap-host-timing-v1.json"); validateHostTiming(host.value);
+  const host = await proof(root, `install-0/${hostTimingFile(context)}`); (context.schema === CONTEXT_V3 ? validateHostTimingV2 : validateHostTiming)(host.value);
   check(host.value.physicalIdentityDigest === capture.claim.detector.physical, "bootstrap_timing_physical");
   const device = parseDeviceObservations(capture.log, { firmwareCommit: context.package.firmware_commit, appElfSha256: context.package.app_elf_sha256 });
   return { capture, host, device };
 }
 async function judgment(root, context, inputs) {
-  const result = { schema: schema("result"), contextSha256: contextHash(context), status: "unverified", firstFailure: null,
+  let maybeHost, maybeDevice, maybeFinalState;
+  const result = { schema: context.schema === CONTEXT_V3 ? "usb-bootstrap-measure-result-v2" : schema("result"), contextSha256: contextHash(context), status: "unverified", firstFailure: null,
     capture: { exitCode: null, flashVerdictSha256: null, qualified: false }, measurement: { hostTimingSha256: null, deviceObservationsSha256: null, complete: false },
     restoration: { receiptSha256: null, confirmed: false }, cleanup: { receiptSha256: null, complete: false }, inputs,
     hardware_qualified: false, mining_authorized: false, qualification_credit: "none" };
@@ -31,12 +34,13 @@ async function judgment(root, context, inputs) {
   try { const capture = await inspectCapture(root, context); result.capture = { exitCode: capture.exitCode, flashVerdictSha256: capture.flashVerdictSha256, qualified: capture.qualified }; }
   catch (error) { result.firstFailure ??= { source: "judge", stage: "capture", code: code(error), observationSha256: null }; }
   try {
-    const { capture, host, device } = await observation(root, context);
+    const { capture, host, device } = await observation(root, context); maybeHost = host.value; maybeDevice = device;
     result.capture = { exitCode: capture.exitCode, flashVerdictSha256: capture.flashVerdictSha256, qualified: capture.qualified };
     const saved = await proof(root, "device-observations.json"); check(canonical(saved.value) === canonical(device), "bootstrap_device_observations_changed");
     result.measurement = { hostTimingSha256: host.sha256, deviceObservationsSha256: saved.sha256,
       complete: host.value.captureComplete && host.value.cleanupComplete && !host.value.overflow && !host.value.clockDiscontinuity && host.value.missingStages.length === 0 && host.value.readerReopenCount === 0 && device.complete === true };
-    await verifyAccounting(root, context);
+    const accounting = await verifyAccounting(root, context); maybeFinalState = accounting.last.state;
+    if (context.schema === CONTEXT_V3) check(maybeFinalState.deviceRestorationConfirmed === true && host.value.captureDurationMs === 30000, "bootstrap_correction_restoration");
     result.restoration = { receiptSha256: (await proof(root, "restoration.json")).sha256, confirmed: true };
     const cleanup = await proof(root, "cleanup.json");
     check(cleanup.value.schema === schema("cleanup") && cleanup.value.contextSha256 === contextHash(context), "bootstrap_cleanup_changed");
@@ -45,6 +49,7 @@ async function judgment(root, context, inputs) {
     const tolerated = !result.firstFailure || result.firstFailure.code === "bootstrap_capture_unqualified";
     if (result.measurement.complete && result.cleanup.complete && tolerated) result.status = "measurement_complete";
   } catch (error) { result.firstFailure ??= { source: "judge", stage: "review", code: code(error), observationSha256: null }; }
+  if (context.schema === CONTEXT_V3) result.correction = correctionJudgment(result, maybeHost, maybeDevice, maybeFinalState);
   return result;
 }
 export async function finalize(root, operations = {}) {
@@ -72,5 +77,5 @@ export async function review(root, operations = {}) {
   const inputs = await inventory(root, new Set(["final-result.json", "sealed-inventory.json"]));
   check(canonical(await judgment(root, context, inputs)) === canonical(stored.value), "bootstrap_result_changed");
   return { status: stored.value.status, contextSha256: contextHash(context), resultSha256: stored.sha256, sealSha256: seal.sha256,
-    hardware_qualified: false, mining_authorized: false, qualification_credit: "none" };
+    hardware_qualified: false, mining_authorized: false, qualification_credit: "none", ...(context.schema === CONTEXT_V3 ? { correction_accepted: stored.value.correction.accepted } : {}) };
 }

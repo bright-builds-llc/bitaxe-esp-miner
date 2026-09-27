@@ -3,6 +3,7 @@ import { once } from "node:events";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { proof, writeNew } from "../str005-noise-serial/files.mjs";
+import { hostTimingFile, CONTEXT_V3 } from "./values.mjs";
 import { admit } from "./install.mjs";
 import { testOperations } from "./test-fixture.mjs";
 import { syntheticCapture, syntheticTiming } from "./measurement.fixture.mjs";
@@ -18,7 +19,7 @@ else {
   const { retain } = await import("../str005-noise-serial/files.mjs");
   await retain(resolve(root, "install-0/flash-monitor.log"), Buffer.from(log));
   await writeNew(resolve(root, "install-0/flash-command-evidence.json"), verdict);
-  if (mode !== "missing") await writeNew(resolve(root, "install-0/bootstrap-host-timing-v1.json"), syntheticTiming());
+  if (mode !== "missing") await writeNew(resolve(root, `install-0/${hostTimingFile(context)}`), syntheticTiming(context.schema === CONTEXT_V3 ? 2 : 1));
   if (mode === "failed") process.exitCode = 1;
 }
 process.disconnect();

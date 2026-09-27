@@ -2,6 +2,7 @@
 
 pub(crate) mod drain;
 pub use drain::SerialDrainMetadata;
+mod early_capture;
 mod lease;
 mod timing;
 pub use timing::{BootstrapFailureStage, BootstrapTiming, TimingStage};
@@ -53,6 +54,7 @@ enum UsbWriteDialect {
 
 pub struct UsbSession {
     maybe_timing: Option<BootstrapTiming>,
+    capture: early_capture::CaptureState,
     acquired_at: Instant,
     operation: UsbOperation,
     state: UsbLifecycleState,
@@ -110,6 +112,7 @@ impl UsbSession {
         lease.record_state(state, None)?;
         Ok(Self {
             maybe_timing: None,
+            capture: early_capture::CaptureState::default(),
             acquired_at: Instant::now(),
             operation,
             state,
@@ -332,7 +335,12 @@ impl UsbSession {
             trace_label: &trace_label,
             maybe_rust_log: espflash_diagnostic_filter(self.operation, args),
         };
-        let output = match run_owned_process(request, &mut self.lease) {
+        let execution = if let Some(signals) = &self.capture.maybe_signals {
+            process::run_owned_process_guarded(request, &mut self.lease, signals)
+        } else {
+            run_owned_process(request, &mut self.lease)
+        };
+        let output = match execution {
             Ok(output) => output,
             Err(error) => {
                 self.fail_once(error.category);
@@ -368,6 +376,7 @@ impl UsbSession {
     }
 
     pub fn finish(mut self) -> Result<ReflashReady, UsbSessionError> {
+        self.stop_early_capture()?;
         self.transition(UsbLifecycleEvent::BeginCleanup)?;
         let snapshot = self.reacquire(RecoveryPhase::FinalCleanup)?;
         self.transition(UsbLifecycleEvent::CleanupComplete)?;
@@ -411,6 +420,12 @@ impl UsbSession {
                     }
                 };
             if let Some(snapshot) = maybe_snapshot {
+                if matches!(
+                    phase,
+                    RecoveryPhase::Handoff | RecoveryPhase::MonitorAdmission
+                ) {
+                    self.early_candidate(&snapshot)?;
+                }
                 let same_device =
                     snapshot.physical_identity_digest == self.physical_identity_digest;
                 let sample = RecoverySample {

@@ -411,8 +411,11 @@ fn phase34_package_admission_layout_failures_stop_before_effects() {
         &required_layout_regressions,
         "parsed pre-effect layout regression",
     );
-    assert_contains_all(
-        FLASH_FAKE_ENVIRONMENT_SOURCE,
+    assert_contains_in_any(
+        &[
+            FLASH_FAKE_ENVIRONMENT_SOURCE,
+            FLASH_FAKE_ENVIRONMENT_ACCESSORS_SOURCE,
+        ],
         &required_effect_counters,
         "pre-effect fake-environment observation",
     );

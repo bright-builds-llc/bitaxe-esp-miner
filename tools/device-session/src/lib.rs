@@ -60,3 +60,17 @@ pub use usb_ownership::{
     ProfileObservationCounts, UsbExecutionOwner, UsbIntent, UsbOperationPlan, UsbOwnershipIdentity,
     UsbProfile, UsbProfileInspection,
 };
+
+#[cfg(test)]
+mod reader_correction_identity {
+    #[test]
+    fn reports_build_identity() {
+        let source = option_env!("BOOTSTRAP_TEST_SOURCE_COMMIT")
+            .filter(|value| value.len() == 40 && value.bytes().all(|b| b.is_ascii_hexdigit()));
+        let dirty = source.is_none() || option_env!("BOOTSTRAP_TEST_SOURCE_DIRTY") != Some("false");
+        println!(
+            "\n{}",
+            serde_json::json!({"schema":"usb-bootstrap-reader-test-identity-v1","sourceCommit":source,"sourceDirty":dirty})
+        );
+    }
+}

@@ -12,7 +12,7 @@ import { processSnapshot, requireGone, requireNoHolders, sameProcess } from "../
 import { load, contextHash, legacyView } from "./context.mjs";
 import { baseline, readJournal } from "./journal.mjs";
 import { fail } from "./failure.mjs";
-import { check, object, schema, sha256 } from "./values.mjs";
+import { CONTEXT_V3, check, object, schema, sha256 } from "./values.mjs";
 export const argumentsFor = (root, context, port) => [...flashArguments(root, legacyView(context), 0, port), "--capture-bootstrap-timing"];
 async function released(root, context) {
   const last = (await readJournal(root, context)).at(-1); baseline(last?.state, true);
@@ -23,7 +23,7 @@ async function released(root, context) {
 export async function claim(root, context, input, operations = {}) {
   object(input, ["index"]); check(input.index === 0, "bootstrap_install_index"); await missing(resolve(root, "failure.json")); await missing(resolve(root, "install-0"));
   const last = await released(root, context), detector = await readFreshDetector(root, 0, operations);
-  const previous = (await proof(context.predecessor.root, "install-4.claim.json")).value;
+  const previous = (await proof(context.predecessor.root, context.schema === CONTEXT_V3 ? "install-0.claim.json" : "install-4.claim.json")).value;
   check(detector.physical === previous.detector.physical, "bootstrap_physical_changed");
   const owner = await proof(root, "install-0.host-root.json"), armed = await proof(root, "install-0.observer-armed.json");
   check(sameProcess(owner.value, armed.value) && (await (operations.processSnapshot ?? processSnapshot)()).some(row => sameProcess(row, owner.value)), "bootstrap_install_owner");

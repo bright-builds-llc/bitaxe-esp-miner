@@ -1,3 +1,4 @@
+import { verifyReaderSnapshot } from "./reader-correction-check.mjs";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { BUNDLE } from "../fixed-usb-qualification/contract.mjs";
@@ -6,7 +7,7 @@ import { writeSourceSnapshot, verifySourceSnapshot } from "./source-snapshot.mjs
 import { validateWriter } from "./native-writer.mjs";
 import { validateTrust } from "./sources.mjs";
 import { validateLayoutCheck } from "./source-layout-check.mjs";
-import { CONTEXT_V2, check, schema, sha256 } from "./values.mjs";
+import { CONTEXT_V2, CONTEXT_V3, check, schema, sha256 } from "./values.mjs";
 export async function writeSnapshot(root, context, writer, correction, closure) {
   await retain(resolve(root, "snapshot/manifest.json"), await readFile(context.package.manifest));
   await writeNew(resolve(root, "snapshot/native-writer.json"), writer);
@@ -16,13 +17,20 @@ export async function writeSnapshot(root, context, writer, correction, closure) 
   await retain(resolve(root, "snapshot/trust.json"), await readFile(resolve(context.firmwareRoot, "firmware/bitaxe/bwg/deployment-trust.json")));
   await writeNew(resolve(root, "snapshot/native.json"), context.nativeReadiness);
   await writeSourceSnapshot(root, context);
-  await writeNew(resolve(root, "snapshot/source-layout-check.json"), correction);
-  await retain(resolve(root, "snapshot/preflight-closure.json"), (await proof(dirname(closure.closurePath), closure.closurePath)).bytes);
+  if (context.schema === CONTEXT_V3) {
+    await retain(resolve(root, "snapshot/reader-tests.bin"), correction.binary);
+    await retain(resolve(root, "snapshot/reader-test-build.json"), correction.provenance);
+    await writeNew(resolve(root, "snapshot/reader-correction-check.json"), correction.receipt);
+  } else {
+    await writeNew(resolve(root, "snapshot/source-layout-check.json"), correction);
+    await retain(resolve(root, "snapshot/preflight-closure.json"), (await proof(dirname(closure.closurePath), closure.closurePath)).bytes);
+  }
   await writeNew(resolve(root, "preflight-inventory.json"), { schema: schema("preflight-inventory"), files: await inventory(root) });
 }
 
 /** Verifies frozen bytes only; this does not admit a staged context for effects. */
 export async function verifySnapshot(root, context) {
+  if (context.schema === CONTEXT_V3) await verifyReaderSnapshot(root, context);
   const frozen = (await proof(root, "preflight-inventory.json")).value;
   check(frozen.schema === schema("preflight-inventory"), "bootstrap_snapshot");
   for (const file of frozen.files) {

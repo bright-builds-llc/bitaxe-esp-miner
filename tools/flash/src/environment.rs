@@ -16,6 +16,7 @@ pub(crate) struct LocalFlashEnvironment {
     pub(crate) espflash_bin: Utf8PathBuf,
     pub(crate) espflash_version: String,
     pub(crate) espflash_sha256: String,
+    pub(crate) maybe_early_capture_duration: RefCell<Option<Duration>>,
     pub(crate) bootstrap_timing: RefCell<Option<bitaxe_device_session::BootstrapTiming>>,
     pub(crate) usb_session: RefCell<Option<UsbSession>>,
 }
@@ -38,6 +39,7 @@ impl LocalFlashEnvironment {
             espflash_bin,
             espflash_version,
             espflash_sha256,
+            maybe_early_capture_duration: RefCell::new(None),
             bootstrap_timing: RefCell::new(None),
             usb_session: RefCell::new(None),
         })
@@ -265,6 +267,13 @@ impl FlashEnvironment for LocalFlashEnvironment {
         Ok(())
     }
 
+    fn prepare_post_reset_capture(&self, duration: Duration) -> Result<()> {
+        if duration.is_zero() {
+            bail!("capture_duration_invalid");
+        }
+        *self.maybe_early_capture_duration.borrow_mut() = Some(duration);
+        Ok(())
+    }
     fn begin_usb_session(&self, operation: UsbOperation, port: &str) -> Result<()> {
         if self.usb_session.borrow().is_some() {
             return Ok(());
@@ -291,6 +300,9 @@ impl FlashEnvironment for LocalFlashEnvironment {
             })?;
         if let Some(timing) = self.bootstrap_timing.borrow().as_ref() {
             session.enable_bootstrap_timing(timing.clone());
+        }
+        if let Some(duration) = *self.maybe_early_capture_duration.borrow() {
+            session.prepare_post_reset_capture(duration)?;
         }
         let version_validation = session
             .run_espflash_probe(

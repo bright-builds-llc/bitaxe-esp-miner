@@ -4,6 +4,7 @@ use std::os::fd::AsRawFd;
 use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
@@ -32,7 +33,7 @@ struct CrashJournal {
 }
 
 pub(super) struct DeviceLease {
-    _lock: File,
+    _lock: Arc<File>,
     journal_file: File,
     journal: CrashJournal,
     journal_path: PathBuf,
@@ -40,6 +41,9 @@ pub(super) struct DeviceLease {
 }
 
 impl DeviceLease {
+    pub(super) fn receiver_guard(&self) -> Arc<File> {
+        Arc::clone(&self._lock)
+    }
     pub(super) fn session_nonce(&self) -> &str {
         &self.journal.session_nonce
     }
@@ -81,7 +85,7 @@ impl DeviceLease {
             child: None,
         };
         let mut lease = Self {
-            _lock: lock,
+            _lock: Arc::new(lock),
             journal_file,
             journal,
             journal_path,

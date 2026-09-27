@@ -390,3 +390,38 @@ fn wifi_credentials_reject_invalid_lengths_without_secret_value() {
     assert!(error.contains("wifiPass length 64 is outside 0..=63"));
     assert!(!error.contains(&"p".repeat(64)));
 }
+
+#[test]
+fn ordinary_capture_prepares_reader_before_write_and_reset_without_diagnostic_flag() {
+    // Arrange
+    let dir = tempdir().expect("tempdir");
+    let command = flash_monitor_fixture(&dir, dir_path(&dir).join("evidence"));
+    let environment = FakeFlashEnvironment::default();
+    assert!(!command.capture_bootstrap_timing);
+    // Act: the synthetic transcript need not qualify to inspect production command ordering.
+    let _outcome = run_flash_monitor(&command, &environment);
+    // Assert
+    assert_eq!(
+        *environment.capture_lifecycle.borrow(),
+        ["prepare", "write", "reset"]
+    );
+}
+#[test]
+fn excluded_flash_monitor_modes_do_not_prepare_early_receiver() {
+    // Arrange / Act / Assert
+    for mode in 0..6 {
+        let dir = tempdir().expect("tempdir");
+        let mut command = flash_monitor_fixture(&dir, dir_path(&dir).join("evidence"));
+        match mode {
+            0 => command.common.dry_run = true,
+            1 => command.factory_reset = true,
+            2 => command.wifi_credentials = Some("synthetic-not-read.json".into()),
+            3 => command.network_reconnect_probe = true,
+            4 => command.thermal_fault_stimulus_intent = Some("synthetic-not-read.json".into()),
+            _ => command.self_test_intent = Some("synthetic-not-read.json".into()),
+        }
+        let environment = FakeFlashEnvironment::default();
+        let _outcome = run_flash_monitor(&command, &environment);
+        assert!(!environment.capture_lifecycle.borrow().contains(&"prepare"));
+    }
+}

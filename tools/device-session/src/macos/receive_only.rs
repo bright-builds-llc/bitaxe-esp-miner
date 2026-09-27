@@ -24,6 +24,10 @@ impl ReceiveOnlyReader {
         })
     }
 
+    pub(crate) fn metadata(&self) -> io::Result<std::fs::Metadata> {
+        self.file.metadata()
+    }
+
     pub(crate) fn read_into(&mut self, buffer: &mut [u8]) -> io::Result<usize> {
         self.file.read(buffer)
     }

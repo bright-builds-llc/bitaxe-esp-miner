@@ -10,3 +10,8 @@ export const schema = name => `${PREFIX}-${name}-v1`;
 export const CONTEXT_V1 = "usb-bootstrap-measure-context-v1";
 export const CONTEXT_V2 = "usb-bootstrap-measure-context-v2";
 export const PREFLIGHT_AMENDMENT = { path: "docs/hardware/usb-bootstrap-preflight-successor.md", sha256: "8b596d6d2d2ce83f7815c0208c8e58755f7d3c687169168b8f46fde8049233df" };
+export const CONTEXT_V3 = "usb-bootstrap-measure-context-v3";
+export const CORRECTION_CONTRACT = { path: "docs/hardware/usb-bootstrap-reader-correction.md", sha256: "beae6e0d7028d3c4ac31b9522dc7bfa456940b1bf1908163302e55c4cb085368" };
+export const BEFORE_V3 = { firmware_commit: "3951a441606115798ea47eba0de1052d6590b3a0", app_elf_sha256: "0b9d275b5c75c58b3e25f8221d0be7dbb909313c4d9083aba2faf480af7b283f" };
+export const MEASUREMENT_002 = { contextSha256: "80cf7437feb6df2efa6130a7c8f463e4b679506b96e911d439c57d7c0c864ee0", resultSha256: "6b3329af0d9188b7618377b18317646b4d24a2b13bcc13725fde2059f932470d", sealSha256: "a8ad2ef03819f3f413edb85c2fb85b8623c556fe0077ff01e7574f0265cb6386" };
+export const hostTimingFile = context => `bootstrap-host-timing-v${context.schema === CONTEXT_V3 ? 2 : 1}.json`;
