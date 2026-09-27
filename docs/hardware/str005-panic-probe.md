@@ -162,3 +162,60 @@ resource ownership. Preserve partial evidence and record the exact blocker.
 No blind retries; a demonstrated boundary fix needs verification and a new
 published contract/root. Do not archive the diagnosis until its actual criteria
 pass, and never amend historical sealed evidence to permit continuation.
+
+## Recovery after the observed HTTP startup failure
+
+The sealed installation002 write completed but its runtime capture reported
+`http_server` / `http_task`, stable boot and safe baseline, with incomplete
+startup. Its ordinary installation gate remains failed. A separate read-only
+mode binds that exact failure and its retained clean package before fresh USB
+admission; it cannot configure installation or bind/invoke the self-test API.
+
+```sh
+just str005-panic-probe preflight --private-root <new-recovery-parent/attempt> --gate-root <clean-Gate-root> --recover-install-root <sealed-installation002-attempt> --retained-manifest <private-build-663d5314/bitaxe-ultra205-package.json>
+```
+
+Use the usual fresh detector, serve, native Connect Worker, baseline collector,
+Stop/Close and finish sequence. The expected installed source/ELF come from the
+verified failed-installation lineage, while the host source is the current clean
+published revision. Full inventory, command, exit, package, native audit and
+private log digests must match. Only the observed HTTP task failure is admitted;
+identity drift, partial writes, missing cleanup, unsafe baseline and unrelated
+errors fail closed. Fresh authentication supplies the exact ELF and accounting.
+
+This page proves current-session continuity only. It does not manufacture the
+original page's lost before/after comparison or turn installation002 into a
+success. The result keeps `installation_complete: false` and labels that narrower
+continuity basis even when current recovery succeeds.
+
+A subsequent correction preflight may use its sealed current recovery as an
+identity anchor, together with the new canonical clean package:
+
+```sh
+just str005-panic-probe preflight --private-root <new-install-parent/attempt> --gate-root <clean-Gate-root> --manifest <repo/bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json> --before-recovery-root <sealed-current-recovery-attempt>
+```
+
+That historical anchor is not effect authority. A new live baseline and fresh
+120-second proof are still mandatory before the ordinary state-preserving
+installation command. Preserve/read the current core region before the trial.
+The correction pins IDF PERF and moves ordinary allocations larger than 2 KiB
+toward PSRAM through the standard IDF policy. Internal reserve, HTTP/task and
+core stacks, DMA requirements, partition/NVS policy and all effect gates remain
+unchanged. One no-mining correction trial follows verified software progress;
+failed startup again stops the sequence for more specific allocation evidence.
+
+Policy references: [ESP-IDF 5.5.4 external RAM allocation and reserve](https://docs.espressif.com/projects/esp-idf/en/v5.5.4/esp32s3/api-guides/external-ram.html)
+and [dedicated core-dump stack guidance](https://docs.espressif.com/projects/esp-idf/en/v5.5.4/esp32s3/api-guides/core_dump.html).
+Neither document establishes this firmware's measured headroom or permits
+moving cache-sensitive task stacks into PSRAM.
+
+The 2 KiB threshold targets known default-allocation sites in the pinned source:
+HTTP's 2,328-byte `httpd_data` and the 4,096-byte USB RX ring storage. The USB
+control structure uses explicit internal capabilities; its interrupt is registered
+with flags zero, so it is disabled during cache-disabled flash critical sections.
+The 2,048-byte TX storage remains internal-first at the threshold. Default
+allocations already permitted PSRAM fallback; this changes preference, not an
+explicit capability requirement. These eligible sizes are not measured reclaimed
+bytes—actual startup and capture must still pass. PSRAM heap contents remain
+outside the supported DRAM dump; the native task stacks and cutoff receipt stay
+internal. A valid core does not imply that every external heap object is captured.

@@ -45,3 +45,5 @@ test('flash receipt binds private log, firmware, successful monitoring and obser
     assert.throws(() => validateFlashReceipt({ ...f, [field]: 'invalid' }, context, runner, digest));
   }
 });
+
+import "./recovery-predecessor.test.mjs";

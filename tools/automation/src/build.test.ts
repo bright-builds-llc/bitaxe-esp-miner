@@ -5,6 +5,7 @@ import { rejectUnknownKconfigWarnings, requireResolvedUsbMemoryContract, require
 
 const resolved = [
   "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304",
+  "CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=2048",
   "CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384",
   "CONFIG_ESP_MAIN_TASK_AFFINITY=0x0",
   "CONFIG_PTHREAD_TASK_PRIO_DEFAULT=5",
@@ -71,6 +72,7 @@ const captureConfig = [
   "CONFIG_ESP_COREDUMP_FLASH_NO_OVERWRITE=y", "CONFIG_ESP_COREDUMP_CHECK_BOOT=y",
   "CONFIG_ESP_CONSOLE_UART_DEFAULT=y", "CONFIG_ESP_CONSOLE_SECONDARY_NONE=y",
   "CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y", "CONFIG_APP_RETRIEVE_LEN_ELF_SHA=64",
+  "CONFIG_COMPILER_OPTIMIZATION_PERF=y", "# CONFIG_COMPILER_OPTIMIZATION_DEBUG is not set",
   "# CONFIG_ESP_COREDUMP_ENABLE_TO_UART is not set", "# CONFIG_ESP_COREDUMP_ENABLE_TO_NONE is not set",
   "# CONFIG_ESP_COREDUMP_LOGS is not set",
 ].join("\n");
@@ -115,4 +117,24 @@ test("debug artifact gate rejects stripped ELF and empty linker map", () => {
   assert.throws(() => requireDebugArtifacts(sections.replace(".debug_info", ".comment"), map), /debug_info/u);
   assert.throws(() => requireDebugArtifacts(sections.replace("00000020", "00000000"), map), /debug_line/u);
   assert.throws(() => requireDebugArtifacts(sections, ""), /linker map/u);
+});
+
+test("Rust release DWARF cannot silently switch ESP-IDF to debug optimization", () => {
+  // Arrange: esp-idf-sys maps Cargo DEBUG=true to its generated -Og defaults.
+  const drifted = captureConfig.replace("CONFIG_COMPILER_OPTIMIZATION_PERF=y", "# CONFIG_COMPILER_OPTIMIZATION_PERF is not set")
+    .replace("# CONFIG_COMPILER_OPTIMIZATION_DEBUG is not set", "CONFIG_COMPILER_OPTIMIZATION_DEBUG=y");
+  // Act / Assert
+  assert.throws(() => requireResolvedCoreDumpContract(drifted), /COMPILER_OPTIMIZATION_PERF/u);
+  assert.throws(() => requireResolvedCoreDumpContract(captureConfig + "\nCONFIG_COMPILER_OPTIMIZATION_DEBUG=y"), /COMPILER_OPTIMIZATION_DEBUG/u);
+  assert.doesNotThrow(() => requireResolvedCoreDumpContract(captureConfig));
+});
+
+test("resolved default-allocation policy keeps 2 KiB cutoff and explicit internal reserve", () => {
+  // Arrange: only default malloc placement changes, not required internal task stacks.
+  const stale = resolved.replace("MALLOC_ALWAYSINTERNAL=2048", "MALLOC_ALWAYSINTERNAL=16384");
+  const reducedReserve = resolved.replace("MALLOC_RESERVE_INTERNAL=98304", "MALLOC_RESERVE_INTERNAL=32768");
+  // Act / Assert
+  assert.throws(() => requireResolvedUsbMemoryContract(stale), /MALLOC_ALWAYSINTERNAL/u);
+  assert.throws(() => requireResolvedUsbMemoryContract(reducedReserve), /MALLOC_RESERVE_INTERNAL/u);
+  assert.doesNotThrow(() => requireResolvedUsbMemoryContract(resolved));
 });

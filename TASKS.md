@@ -4691,8 +4691,8 @@ No holders remained; page/server cleanup passed and the attempt was sealed at
 Its sealed result is a baseline-only conclusion; it does not establish a
 successful installation. Fix the exact argv boundary and validate the generated
 command through the real CLI dry-run before publishing a fresh-root continuation.
-No self-test, Start, grant or mining occurred; installed firmware remains the
-original `cf7a3f03` tuple. Historical evidence and parity remain unchanged.
+No self-test, Start, grant or mining occurred; at that boundary installed firmware
+remained the original `cf7a3f03` tuple. Historical evidence and parity remain unchanged.
 
 Verified continuation fix: generated installation argv now uses only
 `--evidence-mode dual`. Preflight executes that exact argv plus `--dry-run`
@@ -4709,6 +4709,57 @@ correctly triggered `package_source_dirty`, before USB; retain this negative
 observation instead of relaxing admission. The explicit local integration
 command runs after the new clean publication/package, before any effect;
 pre-commit unit checks remain independent of this clean-package requirement.
+
+Installation002 outcome (`663d5314`, Gate `14d0e5b3`): clean-package CLI
+integration/preflight passed. State-preserving write and application return
+completed; observed source matched `663d5314`. The 360-second capture ended
+`timed_out_without_trusted_output`: stable boot and safe baseline were observed,
+but startup failed at `storage_http`, specifically `http_server` / `http_task`;
+SPIFFS was available and HTTP was not ready. Process exit 1 and all host/native
+resource release were retained. The failed attempt remains sealed at
+`a1702ab4f5dedb598384236ab83c24a6a9d8824112329b2e886269d24a2e2606`.
+Exact candidate ELF authentication/current accounting after this flash remain
+pending independent recovery. No self-test, Start, grant or mining occurred.
+
+New startup diagnosis: pinned non-SMP IDF source maps HTTP task failure to
+failed task-storage allocation (TCB or internal stack; the exact request was not
+recorded). Debug information unintentionally selected IDF `-Og`, differing from
+original `PERF` code generation. Explicit PERF restores 5,376 bytes of internal
+address budget while keeping DWARF, but leaves 7,072 bytes of added static
+pressure versus the old image; the old post-HTTP checkpoint had only 6,115
+DMA/internal free bytes. These are resource constraints, not Share002 cause proof.
+
+Continuation plan after sealing the failure:
+- [ ] Publish a distinct recovery-only predecessor mode, validate the actual
+      sealed failure/package and collect fresh authenticated current-state proof.
+      Its fresh page cannot establish lost before/after installation preservation.
+- [x] Pin intended IDF PERF and a 2 KiB ordinary-malloc internal preference
+      threshold; retain 98,304-byte reserve, 16 KiB internal HTTP stack and
+      4 KiB core stack. Verify effective config, native footprint and tests.
+- [ ] Preserve the installed core region and perform one fresh-root no-mining
+      state-preserving correction trial only after new current recovery proof.
+- [ ] Require successful startup and exact identity before the off-only core
+      self-test. If startup still fails, retain the blocker and require a new
+      allocation discriminator; no blind repeats or arbitrary stack reduction.
+
+The new allocator policy is a supported, bounded hypothesis: ordinary allocations
+over 2 KiB prefer PSRAM; explicit internal/DMA requirements remain unchanged.
+Hardware recovery and capture are not claimed by the software change.
+
+Pre-publication source review narrowed the allocator trial from 4 KiB to 2 KiB:
+the identified ordinary HTTP allocation is 2,328 bytes, so 4 KiB would not move
+it. The explicit internal HTTP/task stacks remain unchanged. No device trial
+was made with the intermediate 4 KiB policy; validate driver capability rules
+before admitting the 2 KiB candidate.
+
+Pre-effect correction checks passed: ordered Cargo format/Clippy/build/tests;
+30 probe tests plus the real sealed-predecessor/package read-only validation;
+affected Bazel and automation suites; canonical native package with effective
+PERF/2048/98304 and unchanged main/HTTP/core stack requirements; DWARF and
+48-instruction cutoff audit; standards, redaction and diff checks. Static internal
+size matches PERF-only, with 74,080-byte image headroom. Startup recovery is
+still unverified. The fresh recovery mode retains failed-installation and
+current-session-only continuity facts instead of manufacturing old preservation.
 
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 

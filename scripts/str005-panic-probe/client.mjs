@@ -41,8 +41,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   };
   const gate = window.workerAcceptance;
   const context = await post('/probe-context', {});
-  const coreDumpSelfTest = gate.coreDumpSelfTest.bind(gate);
-  const exportSelfTest = gate.exportCoreDumpSelfTestEvidence.bind(gate);
+  const coreDumpSelfTest = context.recoveryOnly ? undefined : gate.coreDumpSelfTest.bind(gate);
+  const exportSelfTest = context.recoveryOnly ? undefined : gate.exportCoreDumpSelfTestEvidence.bind(gate);
   const allowed = Object.fromEntries(['refresh', 'reviewQualificationAttempts', 'reviewBudget', 'exportDiagnostics', 'stratumV2Possession', 'stratumV2Status', 'stop', 'close']
     .map(key => [key, gate[key].bind(gate)]));
   // This stage cannot issue a grant, reserve an ordinal, trigger a panic or start mining.
@@ -87,12 +87,13 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     finally { recovering = false; updateCandidate(); }
   });
   candidate.addEventListener('click', async () => {
+    if (context.recoveryOnly) return;
     candidate.disabled = true;
     try { await gate.configure(await post('/candidate', {})); candidateConfigured = true; output.textContent = 'Candidate configured. Use native Connect Worker.'; }
     catch { candidate.disabled = false; output.textContent = 'Candidate blocked: complete baseline and repo-owned installation first.'; }
   });
   selfTest.addEventListener('click', async () => {
-    if (selfTestUsed || !candidateConfigured) return;
+    if (context.recoveryOnly || selfTestUsed || !candidateConfigured) return;
     selfTestUsed = true; selfTest.disabled = true;
     let maybeFailure;
     try {
@@ -109,9 +110,10 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     output.textContent = maybeFailure ? 'Self-test incomplete; evidence retained. Collect the dump and diagnose before any Start.' :
       'Self-test returned and closed. Core capture is unverified until offline dump analysis succeeds. Start remains unavailable.';
   });
-  const updateCandidate = () => { const state = gate.state(); selfTest.disabled = selfTestUsed || recovering || !candidateConfigured || state.status !== 'ready' || !state.connected || state.running;
+  const updateCandidate = () => { const state = gate.state(); selfTest.disabled = context.recoveryOnly || selfTestUsed || recovering || !candidateConfigured || state.status !== 'ready' || !state.connected || state.running;
     recover.disabled = recovering || recoveryCount >= 8 || !candidateConfigured || state.status !== 'ready' || !state.connected || state.running; };
-  document.body.append(button, candidate, selfTest, recover, output); update(); updateCandidate();
+  if (context.recoveryOnly) document.body.append(button, output);
+  else document.body.append(button, candidate, selfTest, recover, output); update(); updateCandidate();
   const originalUpdate = update;
 
   const stateOutput = document.getElementById('state');

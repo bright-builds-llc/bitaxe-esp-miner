@@ -53,6 +53,7 @@ export async function buildFirmware(
     BITAXE_BUILD_PROVENANCE_STAMP: provenanceStamp,
     BITAXE_BUILD_TIMESTAMP_UTC_FILE: buildTimestamp,
     CARGO_TARGET_DIR: cargoTargetDir,
+    // sdkconfig pins IDF -O2 independently of Cargo DEBUG=true for Rust DWARF.
     CARGO_PROFILE_RELEASE_DEBUG: "2",
     CARGO_PROFILE_RELEASE_STRIP: "none",
     BITAXE_LINKER_MAP: sourceMap,
@@ -139,6 +140,7 @@ export function requireResolvedUsbMemoryContract(sdkconfig: string): void {
   const lines = sdkconfig.split(/\r?\n/u);
   for (const required of [
     "CONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=98304",
+    "CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=2048",
     "CONFIG_ESP_MAIN_TASK_STACK_SIZE=16384",
     "CONFIG_ESP_MAIN_TASK_AFFINITY=0x0",
     "CONFIG_PTHREAD_TASK_PRIO_DEFAULT=5",
@@ -212,12 +214,13 @@ export function requireResolvedCoreDumpContract(sdkconfig: string): void {
     "CONFIG_ESP_COREDUMP_FLASH_NO_OVERWRITE=y", "CONFIG_ESP_COREDUMP_CHECK_BOOT=y",
     "CONFIG_ESP_CONSOLE_UART_DEFAULT=y", "CONFIG_ESP_CONSOLE_SECONDARY_NONE=y",
     "CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y", "CONFIG_APP_RETRIEVE_LEN_ELF_SHA=64",
+    "CONFIG_COMPILER_OPTIMIZATION_PERF=y",
   ]) {
     const prefix = required.slice(0, required.indexOf("=") + 1);
     const matches = lines.filter(line => line.startsWith(prefix));
     if (matches.length !== 1 || matches[0] !== required) throw new Error(`resolved core dump contract missing ${required}`);
   }
-  for (const key of ["CONFIG_ESP_COREDUMP_ENABLE_TO_UART", "CONFIG_ESP_COREDUMP_ENABLE_TO_NONE", "CONFIG_ESP_COREDUMP_LOGS"]) {
+  for (const key of ["CONFIG_ESP_COREDUMP_ENABLE_TO_UART", "CONFIG_ESP_COREDUMP_ENABLE_TO_NONE", "CONFIG_ESP_COREDUMP_LOGS", "CONFIG_COMPILER_OPTIMIZATION_DEBUG"]) {
     if (!lines.includes(`# ${key} is not set`) || lines.some(line => line.startsWith(`${key}=`))) {
       throw new Error(`resolved core dump contract requires disabled ${key}`);
     }

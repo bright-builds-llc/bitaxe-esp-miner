@@ -50,7 +50,8 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
       (!request.headers.origin && request.headers['sec-fetch-site'] === 'same-origin')), 'panic_origin');
     const input = await body(request);
     if (path === '/activate') { object(input, []); return send(response, 200, scope); }
-    if (path === '/probe-context') { object(input, []); return send(response, 200, { originalCampaignId: context.original_campaign_id }); }
+    if (path === '/probe-context') { object(input, []); return send(response, 200, { originalCampaignId: context.original_campaign_id, recoveryOnly: context.recoveryOnly === true }); }
+    if (context.recoveryOnly) check(!['/candidate', '/self-test-claim', '/self-test-result', '/candidate-recovery-begin', '/candidate-part', '/install'].includes(path), 'panic_recovery_only');
     if (path === '/candidate') {
       object(input, []); check(context.installEnabled && finished && baselineConclusion(parts).complete && !candidateConfigured, 'panic_candidate_admission');
       const reviewed = await (operations.inspectInstall ?? inspectInstall)(root, context);

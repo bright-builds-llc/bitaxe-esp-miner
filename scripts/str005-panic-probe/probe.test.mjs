@@ -3,7 +3,7 @@ import test from 'node:test';
 import { once } from 'node:events';
 import { createBaselineCollector } from './client.mjs';
 import { createProbeServer } from './server.mjs';
-import { baselineConclusion, currentProof, validatePart, applyInstallationOutcome } from './model.mjs';
+import { baselineConclusion, currentProof, validatePart, applyInstallationOutcome, applyRecoveryOnlyOutcome } from './model.mjs';
 import { ledger, original, state } from '../str005-noise-serial/test-fixture.mjs';
 const context = { commit: 'a'.repeat(40), gate_commit: 'b'.repeat(40), firmware_commit: 'a'.repeat(40), app_elf_sha256: 'c'.repeat(64),
   before_source: { firmware_commit: 'd'.repeat(40), app_elf_sha256: 'e'.repeat(64) }, detector: { physical: 'f'.repeat(64) }, scope: 'share' };
@@ -141,4 +141,63 @@ test('missing installation exit remains blocked independently of the completed b
   const result = { ...baselineConclusion(parts()), baseline_complete: true };
   applyInstallationOutcome(result, { claim: {} });
   assert.equal(result.complete, false); assert.deepEqual(result.blockers, ['installation_result_missing']);
+});
+
+test('recovery-only server stays before-phase and denies every effect even after complete baseline', async t => {
+  // Arrange
+  const c = { ...context, recoveryOnly: true, installEnabled: true, selfTestEnabled: true,
+    firmware_commit: context.before_source.firmware_commit, app_elf_sha256: context.before_source.app_elf_sha256 };
+  const proofs = [];
+  const server = createProbeServer({ root: '/unused', context: c, page: '', bundle: Buffer.from(''), client: Buffer.from(''), trust: {} },
+    { persist: async () => {}, persistProof: async value => proofs.push(value), validateDiagnostics: async value => value,
+      inspectInstall: async () => { throw Error('must not inspect effects'); } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.release());
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const post = (path, value) => fetch(`${origin}${path}`, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
+  // Act
+  const config = await (await fetch(`${origin}/context`)).json();
+  await post('/diagnostic-export', diagnostics);
+  for (const [stage, value] of Object.entries({ state: state(c, 'before'), ledger, original_budget: original, status: idle(), closed: state(c, 'before', true), finished: { failures: [] } })) assert.equal((await post('/part', { stage, value })).status, 200);
+  // Assert
+  assert.equal(config.stratumV2Qualification, 'before'); assert.equal(config.expectedFirmwareSourceCommit, c.firmware_commit);
+  assert.equal(proofs.length, 1); assert.equal(proofs[0].source_commit, context.commit); assert.equal(proofs[0].firmware_commit, c.firmware_commit);
+  for (const path of ['/candidate', '/self-test-claim', '/self-test-result', '/install', '/start', '/grant', '/candidate-recovery-begin']) assert.equal((await post(path, {})).status, 400);
+});
+
+test('recovery-only client never acquires a self-test capability or renders effect controls', async () => {
+  // Arrange
+  const previous = { window: globalThis.window, document: globalThis.document, fetch: globalThis.fetch };
+  const rendered = [], gate = { state: () => ({ status: 'ready', connected: true, running: false }) };
+  for (const name of ['refresh', 'reviewQualificationAttempts', 'reviewBudget', 'exportDiagnostics', 'stratumV2Possession', 'stratumV2Status', 'stop', 'close']) gate[name] = async () => {};
+  Object.defineProperty(gate, 'coreDumpSelfTest', { configurable: true, get() { throw Error('recovery acquired effect'); } });
+  Object.defineProperty(gate, 'exportCoreDumpSelfTestEvidence', { configurable: true, get() { throw Error('recovery acquired self-test evidence'); } });
+  globalThis.window = { workerAcceptance: gate };
+  globalThis.document = { createElement: () => ({ addEventListener() {}, setAttribute() {} }), getElementById: () => null,
+    body: { append: (...elements) => rendered.push(...elements) } };
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ recoveryOnly: true, originalCampaignId: 'fixture' }) });
+  try {
+    // Act
+    await import('./client.mjs?recovery-only-client-test');
+    // Assert
+    assert.deepEqual(rendered.map(element => element.id), ['capture-panic-baseline', 'panic-probe-result']);
+    assert.equal(Object.hasOwn(gate, 'coreDumpSelfTest'), false);
+  } finally {
+    for (const [key, value] of Object.entries(previous)) { if (value === undefined) delete globalThis[key]; else globalThis[key] = value; }
+  }
+});
+
+
+test('successful current-only recovery preserves failed installation and zero historical promotion', () => {
+  const result = applyRecoveryOnlyOutcome({ ...baselineConclusion(parts()), baseline_complete: true });
+  assert.equal(result.complete, true); assert.equal(result.baseline_complete, true);
+  assert.equal(result.installation_complete, false); assert.equal(result.predecessor_installation_failed, true);
+  assert.equal(result.self_test_permitted, false); assert.equal(result.core_capture_verified, false);
+  assert.equal(result.historical_resource_proof, false); assert.equal(result.parity_promotion, false);
+});
+
+
+test('recovery mode flags cannot be silently ignored on an install action', async () => {
+  const { main } = await import('./main.mjs');
+  await assert.rejects(main(['install', '--private-root', '/unused', '--recover-install-root', '/sealed']), /preflight_arguments_only/);
+  await assert.rejects(main(['preflight', '--private-root', '/unused', '--gate-root', '/gate', '--manifest', '/candidate', '--retained-manifest', '/retained']), /retained_manifest_mode/);
 });

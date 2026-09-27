@@ -13,10 +13,11 @@ import { validateSelfTest } from './self-test-evidence.mjs';
 import { main as runNativeAudit } from '../core-dump/native-audit.mjs';
 import { validateNativeAudit, verifyNativeAudit } from './audit.mjs';
 import { checkCommand, verifyCommandCheck } from './command-check.mjs';
-import { install } from './install.mjs';
+import { install, admitRecovery } from './install.mjs';
+import { recoveryPredecessor, retainedPackage, beforeRecovery } from './recovery-predecessor.mjs';
 import { createProbeServer } from './server.mjs';
 import { validateRecoveryParts } from '../str005-v2-serial/recovery-evidence.mjs';
-import { BASELINE_PARTS, baselineConclusion, validatePart, validateFinished, validateCandidateState, currentProof, applyInstallationOutcome } from './model.mjs';
+import { BASELINE_PARTS, baselineConclusion, validatePart, validateFinished, validateCandidateState, currentProof, applyInstallationOutcome, applyRecoveryOnlyOutcome } from './model.mjs';
 
 const task = 'task-str005-start-panic-diagnosis';
 const oldSeal = '14d2122208b2040f1482074c77328cd3a59c651e45bc17e7be7af2648d8f5950';
@@ -50,10 +51,12 @@ function argumentsFor(argv) {
   check(['preflight', 'serve', 'finish', 'install'].includes(action), 'panic_action');
   for (let i = 0; i < rest.length; i += 2) {
     const key = rest[i], value = rest[i + 1];
-    check(['--private-root', '--gate-root', '--manifest', '--flash-binary'].includes(key) && !Object.hasOwn(options, key) && typeof value === 'string' && resolve(value) === value, 'panic_arguments');
+    check(['--private-root', '--gate-root', '--manifest', '--flash-binary', '--recover-install-root', '--retained-manifest', '--before-recovery-root'].includes(key) && !Object.hasOwn(options, key) && typeof value === 'string' && resolve(value) === value, 'panic_arguments');
     options[key] = value;
   }
-  check(options['--private-root'] && (action !== 'preflight' || (options['--gate-root'] && options['--manifest'])), 'panic_arguments');
+  check(options['--private-root'] && (action !== 'preflight' || (options['--gate-root'] && (options['--recover-install-root'] ? options['--retained-manifest'] && !options['--manifest'] && !options['--flash-binary'] && !options['--before-recovery-root'] : options['--manifest']))), 'panic_arguments');
+  check(action === 'preflight' || Object.keys(options).length === 1, 'panic_preflight_arguments_only');
+  check(!options['--retained-manifest'] || options['--recover-install-root'], 'panic_retained_manifest_mode');
   return { action, options };
 }
 export async function main(argv) {
@@ -67,24 +70,35 @@ export async function main(argv) {
     cleanPushed(gateRoot, gateCommit);
     const pins = [...(await readFile(resolve(firmwareRoot, 'MODULE.bazel'), 'utf8')).matchAll(/strip_prefix\s*=\s*"bitaxe-turnstile-system-([a-f0-9]{40})"/gu)];
     check(pins.length === 1 && pins[0][1] === gateCommit, 'panic_gate_pin');
-    const packaged = await packageSnapshot(firmwareRoot, options['--manifest'], published.commit);
+    const recoveryOnly = Boolean(options['--recover-install-root']);
+    const failedInstall = recoveryOnly ? await recoveryPredecessor(options['--recover-install-root'], firmwareRoot) : undefined;
+    const before = options['--before-recovery-root'] ? await beforeRecovery(options['--before-recovery-root'], firmwareRoot) : undefined;
+    const retained = failedInstall ? await retainedPackage(options['--retained-manifest'], failedInstall, firmwareRoot) : undefined;
+    const packaged = retained?.packaged ?? await packageSnapshot(firmwareRoot, options['--manifest'], published.commit);
     const page = await readFile(resolve(gateRoot, PAGE)), bundle = await readFile(resolve(gateRoot, BUNDLE));
     check([gateCommit, 'stratumV2Status', 'coreDumpSelfTestQualification', 'coreDumpSelfTest'].every(marker => bundle.includes(marker)), 'panic_gate_capability');
     const trust = JSON.parse(await readFile(resolve(firmwareRoot, 'firmware/bitaxe/bwg/deployment-trust.json'), 'utf8'));
-    const flashBinary = await realpath(resolve(firmwareRoot, 'bazel-bin/tools/flash/flash'));
+    const flashBinary = recoveryOnly ? null : await realpath(resolve(firmwareRoot, 'bazel-bin/tools/flash/flash'));
     check(!options['--flash-binary'] || await realpath(options['--flash-binary']) === flashBinary, 'panic_flash_binary');
-    const context = { schema: 'str005-panic-probe-v1', ...published, ...packaged, firmware_commit: published.commit,
-      firmware_root: firmwareRoot, manifest: options['--manifest'], flashBinary, flashBinarySha256: await fileDigest(flashBinary), gate_root: gateRoot, gate_commit: gateCommit, scope: 'share',
-      before_source: { firmware_commit: prior.before.firmware_commit, app_elf_sha256: prior.before.app_elf_sha256 },
+    const context = { schema: 'str005-panic-probe-v1', ...published, ...packaged, firmware_commit: failedInstall?.context.firmware_commit ?? published.commit,
+      recoveryOnly, ...(recoveryOnly ? { installEnabled: false, selfTestEnabled: false, continuity_basis: 'current-session-only',
+        failedInstall: { root: failedInstall.root, seal_sha256: failedInstall.seal_sha256, context_sha256: failedInstall.context_sha256 }, retainedManifest: retained.retainedManifest } : {}),
+      ...(before ? { beforeRecovery: { root: before.root, seal_sha256: before.seal_sha256, context_sha256: before.context_sha256 } } : {}),
+      firmware_root: firmwareRoot, manifest: options['--manifest'], flashBinary, flashBinarySha256: flashBinary ? await fileDigest(flashBinary) : null, gate_root: gateRoot, gate_commit: gateCommit, scope: 'share',
+      before_source: failedInstall ? { firmware_commit: failedInstall.context.firmware_commit, app_elf_sha256: failedInstall.context.app_elf_sha256 } : before?.context.before_source ?? { firmware_commit: prior.before.firmware_commit, app_elf_sha256: prior.before.app_elf_sha256 },
       original_campaign_id: prior.before.original_campaign_id, attemptId: prior.before.attemptId,
-      detector: prior.detector, predecessorSeal: oldSeal, predecessorContext: oldContext,
+      detector: failedInstall?.context.detector ?? before?.context.detector ?? prior.detector, predecessorSeal: oldSeal, predecessorContext: oldContext,
       gatePageSha256: sha256(page), gateBundleSha256: sha256(bundle), trustSha256: sha256(JSON.stringify(trust)) };
     await mkdir(root, { mode: 0o700 });
-    context.candidateElf = resolve(dirname(options['--manifest']), 'bitaxe-ultra205.elf');
-    const nativeAudit = await runNativeAudit(['--elf', context.candidateElf, '--output', resolve(root, 'native-audit.json')]);
+    context.candidateElf = retained?.candidateElf ?? resolve(dirname(options['--manifest']), 'bitaxe-ultra205.elf');
+    if (recoveryOnly) {
+      await retain(resolve(root, 'native-audit.json'), failedInstall.audit.bytes);
+      await writeNew(resolve(root, 'failed-install-review.json'), { ...failedInstall.review, seal_sha256: failedInstall.seal_sha256, claim_sha256: failedInstall.claim_sha256, runner_sha256: failedInstall.runner_sha256, receipt_sha256: failedInstall.receipt_sha256, log_sha256: failedInstall.log_sha256 });
+    }
+    const nativeAudit = recoveryOnly ? failedInstall.audit.value : await runNativeAudit(['--elf', context.candidateElf, '--output', resolve(root, 'native-audit.json')]);
     validateNativeAudit(nativeAudit, context.app_elf_sha256);
     context.nativeAuditSha256 = await fileDigest(resolve(root, 'native-audit.json'));
-    context.commandCheckSha256 = (await checkCommand(root, context)).runner_sha256;
+    if (!recoveryOnly) context.commandCheckSha256 = (await checkCommand(root, context)).runner_sha256;
     await writeNew(resolve(root, 'context.json'), context);
     await retain(resolve(root, 'gate-page.html'), page); await retain(resolve(root, 'gate-bundle.js'), bundle);
     return { preflight: 'passed', stage: 'baseline', device_effects: false };
@@ -94,9 +108,19 @@ export async function main(argv) {
   check(context.schema === 'str005-panic-probe-v1' && context.commit === published.commit && context.contractSha256 === published.contractSha256 &&
     context.predecessorSeal === oldSeal && context.predecessorContext === oldContext, 'panic_source_changed');
   cleanPushed(context.gate_root, context.gate_commit);
+  if (context.recoveryOnly) {
+    const predecessor = await recoveryPredecessor(context.failedInstall.root, firmwareRoot);
+    check(predecessor.seal_sha256 === context.failedInstall.seal_sha256 && predecessor.context_sha256 === context.failedInstall.context_sha256, 'panic_recovery_predecessor_changed');
+    await retainedPackage(context.retainedManifest, predecessor, firmwareRoot);
+    check(context.installEnabled === false && context.selfTestEnabled === false && action !== 'install', 'panic_recovery_only');
+  }
+  if (context.beforeRecovery) {
+    const before = await beforeRecovery(context.beforeRecovery.root, firmwareRoot);
+    check(before.seal_sha256 === context.beforeRecovery.seal_sha256 && before.context_sha256 === context.beforeRecovery.context_sha256, 'panic_before_recovery_changed');
+  }
   if (action === 'finish') return finish(root, context);
   await verifyNativeAudit(root, context);
-  await verifyCommandCheck(root, context);
+  if (!context.recoveryOnly) await verifyCommandCheck(root, context);
   if (action === 'install') { check(published.installEnabled && context.installEnabled, 'panic_install_disabled'); return install(root, context); }
   for (const fd of [1, 2]) check(fstatSync(fd).isFile() && (fstatSync(fd).mode & 0o777) === 0o600, 'panic_protected_output');
   check(fstatSync(1).ino !== fstatSync(2).ino || fstatSync(1).dev !== fstatSync(2).dev, 'panic_distinct_output');
@@ -148,6 +172,17 @@ async function finish(root, context) {
   }
   result.baseline_complete = result.complete;
   result.core_capture_verified = false;
+  if (context.recoveryOnly) {
+    applyRecoveryOnlyOutcome(result);
+    if (result.complete) {
+      const current = (await proof(root, 'current-recovery.json')).value;
+      check(JSON.stringify(current) === JSON.stringify(currentProof(context, parts, current.observed_at_unix_ms)), 'panic_recovery_proof_changed');
+      admitRecovery(current, context, current.observed_at_unix_ms);
+    }
+    await writeNew(resolve(root, 'result.json'), result);
+    await writeNew(resolve(root, 'sealed-inventory.json'), { files: await inventory(root) });
+    return result;
+  }
   const installation = {};
   for (const [key, name] of [['claim', 'install-claim.json'], ['runner', 'install-runner.json'], ['review', 'candidate-install-review.json']]) {
     try { installation[key] = (await proof(root, name)).value; } catch (error) { if (error.code !== 'ENOENT') throw error; }
