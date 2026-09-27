@@ -4384,7 +4384,7 @@ Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/par
 
 ### task-str005-failure-recovery-accounting | 2026-09-27 | Collect failure recovery and durable accounting independently
 
-Status: Software verified; narrow recovery contract ready for publication and device collection.
+Status: Blocked on retained Share002 resource proof; software and fresh collection verified.
 Objective: collect authenticated ledgers and retained status after a failed attempt,
 prove restoration and release, and resolve Share002's reservation uncertainty.
 Depends on: no unfinished implementation task; preserve the archived qualification's evidence.
@@ -4396,16 +4396,18 @@ Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
       retained diagnostic/resource status and restoration in separate successor evidence.
 - [x] Test failure-latched UI, stale sessions, partial collection, privacy and
       actual release through production seams; run applicable software/native checks.
-- [ ] After verified publication, collect the installed device's actual accounting
+- [x] After verified publication, collect the installed device's actual accounting
       and recovery proof. Report an unresolved result if proof is unavailable;
       do not infer or reuse ordinal18, assume next19, or modify Share002's seal.
+- [ ] Supply authenticated retained Share002 resource proof. Fresh current status
+      is idle with no retained record; restoration/host cleanup cannot replace it.
 
 Evidence: [Share002 report](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md);
 private `scratch/str005-v2-serial/share-002`. Prior tested pair: `cf7a3f03` / `e20c0fd5`;
-successor identities/results pending. Complete only with authenticated accounting,
+final successor host `ea11eec9`, result/report below. Complete only with authenticated accounting,
 retained status/resource proof, confirmed restoration and actual host release.
 Invalidation: changes to accounting, possession, diagnostic projection or cleanup
-require affected checks again. Historical reservation uncertainty remains until measured.
+require affected checks again. Current durable accounting is now measured; transient pre-panic preparation remains unproved.
 Execution contract: [failure-only recovery](docs/hardware/str005-failure-recovery-accounting.md).
 Command: `just str005-failure-recovery preflight|serve|finish --private-root <fresh-child>`;
 run `just detect-ultra205` only after this implementation/contract is committed,
@@ -4417,7 +4419,7 @@ Plan (2026-09-27):
 - [x] Exercise stale sessions, partial failure, privacy and unconditional release;
       run canonical/native and ordered pre-commit checks.
 - [x] Publish and verify the narrow execution contract before detection/access.
-- [ ] Collect fresh device facts once, then record exact proof or blocker, seal
+- [x] Collect fresh device facts once, then record exact proof or blocker, seal
       successor evidence, and commit/push. Archive only on all criteria passing.
 
 Guidance: local AGENTS, Bright Builds sidecar/overrides, architecture, code-shape,
@@ -4470,8 +4472,24 @@ The new boundary checks pass with all 35 focused tests, five recovery Bazel
 targets, ordered Cargo checks, redaction, Bright Builds, Markdown and diff checks.
 Read-only review confirmed exact typed fallback and fail-closed conclusions.
 Fresh collection remains task-gated by clean publication and preflight.
-Completion review: retained resource proof still pending;
-no historical evidence modified and no parity promotion.
+Final collection004 on `ea11eec9` passed all collection operations and again
+measured next18/last17/1,560,000ms/pendingfalse; original campaign remains exhausted.
+Diagnostic export captured; authenticated status is idle with `record:null`.
+Restoration, leases inactive, mining disabled, same-page preservation and native
+Close all confirmed. Owned page closed; finish independently proved supervisor,
+listener and both serial-node holders absent. Result and inventory sealed and
+independently verified; Share002's original seal is unchanged.
+
+Outcome: `stop_hardware_blocker`; boundary `recovery_retained_record_unavailable`;
+no unchanged retry. Result:
+`cf5fbd71bb377e1c540605d8ebea8a7ea5d5bd0f07b582c351dfe97a525d38dd`; seal:
+`61a06aac4a2a1782b01471ae84da911d2723b7066e69b8784981bdda9a4ef01b`.
+Evidence: [failure-recovery report](docs/parity/evidence/20260927-str005-failure-recovery-accounting.md).
+Completion review: collector, accounting and restoration/host release are verified,
+but the device supplies no retained Share002 resource record. Do not infer old
+socket/worker/fence release from current idle state or reconstruct missing proof.
+Task remains blocked and unarchived; no Start/grants/mining/flash/replay occurred,
+no next mining ordinal is authorized, and parity remains 90/95.
 
 ### task-str005-start-panic-diagnosis | 2026-09-27 | Diagnose and correct the Start panic
 
