@@ -4384,17 +4384,17 @@ Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/par
 
 ### task-str005-failure-recovery-accounting | 2026-09-27 | Collect failure recovery and durable accounting independently
 
-Status: Ready for software/contract work; first actionable STR-005 successor.
+Status: Software verified; narrow recovery contract ready for publication and device collection.
 Objective: collect authenticated ledgers and retained status after a failed attempt,
 prove restoration and release, and resolve Share002's reservation uncertainty.
 Depends on: no unfinished implementation task; preserve the archived qualification's evidence.
 Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
 
-- [ ] Publish a narrow recovery-only command contract; permit no Start, issuance,
+- [x] Publish a narrow recovery-only command contract; permit no Start, issuance,
       flash or implicit retry. Make native collection usable after the failure latch.
-- [ ] Reuse possession/identity and cleanup components; collect both ledgers,
+- [x] Reuse possession/identity and cleanup components; collect both ledgers,
       retained diagnostic/resource status and restoration in separate successor evidence.
-- [ ] Test failure-latched UI, stale sessions, partial collection, privacy and
+- [x] Test failure-latched UI, stale sessions, partial collection, privacy and
       actual release through production seams; run applicable software/native checks.
 - [ ] After verified publication, collect the installed device's actual accounting
       and recovery proof. Report an unresolved result if proof is unavailable;
@@ -4406,8 +4406,40 @@ successor identities/results pending. Complete only with authenticated accountin
 retained status/resource proof, confirmed restoration and actual host release.
 Invalidation: changes to accounting, possession, diagnostic projection or cleanup
 require affected checks again. Historical reservation uncertainty remains until measured.
-Authorization: software/contract work now; new task record alone grants no effects.
-Verification: Pending. Completion review: Pending; no parity promotion.
+Execution contract: [failure-only recovery](docs/hardware/str005-failure-recovery-accounting.md).
+Command: `just str005-failure-recovery preflight|serve|finish --private-root <fresh-child>`;
+run `just detect-ultra205` only after this implementation/contract is committed,
+pushed and preflight passes. The contract fixes the installed pair, no-Start
+capabilities, privacy, one collection, bounds, restoration/cleanup and stop rules.
+No authority files, grants, pool connection, flash or replay are admitted.
+Plan (2026-09-27):
+- [x] Implement a separate failure-only collector and closed evidence projection.
+- [x] Exercise stale sessions, partial failure, privacy and unconditional release;
+      run canonical/native and ordered pre-commit checks.
+- [ ] Publish and verify the narrow execution contract before detection/access.
+- [ ] Collect fresh device facts once, then record exact proof or blocker, seal
+      successor evidence, and commit/push. Archive only on all criteria passing.
+
+Guidance: local AGENTS, Bright Builds sidecar/overrides, architecture, code-shape,
+verification/testing, language rules, ADR-0021/0023/0029, fixed USB ownership and
+privacy policy govern this work. Active lessons total 37,860 bytes (12,621 estimated
+tokens), above the startup budget; priority blocks were loaded. Audit baseline
+2026-08-30 has four subsequent repository lessons, no current audit trigger.
+Budget omissions: global reproduce-ci, zsh-path, macos-stalls, small-dedup;
+repository frontmatter, espflash-passivity, boot-replay-lifetime, manual-removal,
+cold-observer, HTTP-readiness, flash-versus-monitor, physical-checkpoint,
+ready-before-live, telemetry-ranges, wire-units, and plan-per-iteration blocks.
+Their applicable safety constraints remain supplied by AGENTS and USB policy.
+
+Verification before publication: 27 new collector/projection/real-HTTP tests;
+five affected Bazel targets; Gate's 18 production controller/page tests and type
+check; ordered Cargo format/Clippy/build/tests (2,366 passed, three existing
+ignores); native USB ownership/symbol checks; reference, redaction, Bright Builds,
+Markdown contract check and diff check. Parity remains 90/95. Simplification review:
+reuse the pinned Gate page, accounting/state parsers and host-resource checks;
+no new general campaign harness, signer or fixture.
+Completion review: device accounting/resource/restoration measurement pending;
+no historical evidence modified and no parity promotion.
 
 ### task-str005-start-panic-diagnosis | 2026-09-27 | Diagnose and correct the Start panic
 

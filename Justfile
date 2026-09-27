@@ -12,6 +12,9 @@ bootstrap-esp *args:
 detect-ultra205 *args:
     bazel run //tools/flash:flash -- detect {{ args }}
 
+str005-failure-recovery action *args:
+    bazel run //scripts:str005_failure_recovery -- {{ action }} {{ args }}
+
 observe-serial *args:
     bazel run //tools/automation:observe_serial -- {{ args }}
 

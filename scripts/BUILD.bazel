@@ -406,6 +406,31 @@ js_binary(
     visibility = ["//visibility:public"],
 )
 
+js_binary(
+    name = "str005_failure_recovery",
+    chdir = "..",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/recovery-main.mjs",
+)
+
+js_test(
+    name = "str005_recovery_evidence_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/recovery-evidence.test.mjs",
+)
+
+js_test(
+    name = "str005_recovery_client_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/recovery-client.test.mjs",
+)
+
+js_test(
+    name = "str005_recovery_server_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/recovery-server.test.mjs",
+)
+
 js_test(
     name = "str005_v2_serial_cleanup_test",
     data = [":str005_v2_serial_sources"],
