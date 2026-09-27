@@ -31,6 +31,12 @@ This index summarizes accepted decisions from the original project handoff.
 | PLAN-0001 | First milestone is project foundation plus Gamma 601 bring-up path.              | Superseded by ADR-0014                                  |
 | PLAN-0002 | First milestone is project foundation plus Ultra 205 safe-state boot/flash path. | Verified for safe-state boot/flash on 2026-06-26        |
 
+## Current qualification strategy
+
+[ADR-0029](../adr/0029-piecewise-str005-qualification.md) adopts independent STR-005
+checkpoints and reviewed change-impact reuse. Active successor tasks live only in
+`TASKS.md`; frozen historical contracts and evidence retain their original scope.
+
 ## Planning Implications
 
 - Full device-user parity is the overall project goal, not the first milestone.

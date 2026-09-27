@@ -4382,390 +4382,190 @@ from context rejection, and that seam is outside the standing authorization.
 
 Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/parity/evidence/20260908-worker-preparation-live-acceptance.md) proves real shares/renewal and foreground/heartbeat safe-stop on the exact fixed-USB pair. This broader task remains open: its Pause, independent expiry, USB-only disconnect, reboot/uncertain-time, negative authorization and credential-absence matrix still requires its own complete successor contract and evidence.
 
-### task-str005-v2-serial-qualification | 2026-09-16 | Qualify Ultra 205 V2 channel and accepted share
+### task-str005-failure-recovery-accounting | 2026-09-27 | Collect failure recovery and durable accounting independently
 
-Status: Blocked after Share002's Start-time panic observation; its sealed result
-is unverified/hardware-blocker. Channel006 passed private finalization and review
-on published `cf7a3f03` / `e20c0fd5`; Share002 completed four additional continuity
-cycles but did not prove a completed Start, accepted share or heartbeat shutdown.
-Ordinal18 was issued and delivery attempted; device consumption remains unknown
-without fresh post-failure accounting. No accepted projection was published.
-See the [failed successor report](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md).
-Channel005 remains
-sealed/unverified: installation4 wrote successfully but captured a two-second USB
-drain timeout; only three continuity cycles passed and no channel/mining ran.
-The durable operator prerequisite and `task-usb-bootstrap-drain-observability`
-are complete. [Accepted bootstrap correction evidence](docs/parity/evidence/20260927-usb-bootstrap-correction-accepted.md)
-on `77e2e4a4` / `e20c0fd5` resolves the host-reader and restored-accounting blockers.
-It provides no continuity-cycle, channel, share or mining credit and cannot reopen
-Channel005 or allocate Share002. Require a fresh bounded successor with current
-accounting and its own complete evidence chain.
-This task succeeds `task-str005-v2-channel-job-205` and
-`task-str005-bm1366-share-205`; their remaining obligations stay here. Earlier
-Channel002/003 and Share001 failures retain their original dispositions.
+Status: Ready for software/contract work; first actionable STR-005 successor.
+Objective: collect authenticated ledgers and retained status after a failed attempt,
+prove restoration and release, and resolve Share002's reservation uncertainty.
+Depends on: no unfinished implementation task; preserve the archived qualification's evidence.
+Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
 
-Depends on: completed `task-str005-noise-auth-205` with [accepted Noise evidence](docs/parity/evidence/20260916-str005-noise-serial-qualified.md).
-The accepted firmware/Gate pair is design evidence, not new channel/share proof.
+- [ ] Publish a narrow recovery-only command contract; permit no Start, issuance,
+      flash or implicit retry. Make native collection usable after the failure latch.
+- [ ] Reuse possession/identity and cleanup components; collect both ledgers,
+      retained diagnostic/resource status and restoration in separate successor evidence.
+- [ ] Test failure-latched UI, stale sessions, partial collection, privacy and
+      actual release through production seams; run applicable software/native checks.
+- [ ] After verified publication, collect the installed device's actual accounting
+      and recovery proof. Report an unresolved result if proof is unavailable;
+      do not infer or reuse ordinal18, assume next19, or modify Share002's seal.
 
-Scope: two independently judged stages on one exact published candidate:
-network-only Standard channel/target/job receipt, then actual guarded BM1366
-work, qualified nonce, encrypted submission and accepted share against one
-controlled local V2 fixture. External pools, boot/NVS campaigns, factory reset,
-recovery-006 and parity promotion remain excluded. No crypto fork or universal
-in-call cancellation guarantee is required; existing safety and truthful cleanup
-remain mandatory.
+Evidence: [Share002 report](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md);
+private `scratch/str005-v2-serial/share-002`. Prior tested pair: `cf7a3f03` / `e20c0fd5`;
+successor identities/results pending. Complete only with authenticated accounting,
+retained status/resource proof, confirmed restoration and actual host release.
+Invalidation: changes to accounting, possession, diagnostic projection or cleanup
+require affected checks again. Historical reservation uncertainty remains until measured.
+Authorization: software/contract work now; new task record alone grants no effects.
+Verification: Pending. Completion review: Pending; no parity promotion.
 
-- [x] Freeze the [prospective successor contract](docs/hardware/str005-v2-serial-qualification.md):
-      exact controller/Gate interfaces, closed signed V2 grant profile preserving
-      V1 bytes, stage ownership, memory-only pool inputs, independent target/header
-      verifier, timing, accounting, cleanup and progress-backed retry rules.
-- [x] Review lifecycle, generation/epoch mapping, protocol flags/order, source
-      admission and evidence completeness; publish this contract before code/effects.
-- [x] Reuse the existing pool workers and production safety lifecycle. Factor
-      authenticated Noise before Setup; add Standard V2 protocol handling and
-      correlated dispatch/nonce/submission/acknowledgement without the old direct
-      ASIC execution path or invented V1-style extranonce regeneration. Retire
-      the still-linked boot V2 owner when its signed ordinary-owner replacement
-      lands; preserve historical evidence/readers and reusable protocol logic.
-- [x] Implement the bounded fixture, private runtime-input pipes, source-bound
-      collectors and independent closed judges; keep all endpoint/user/grant
-      material out of evidence and separate live comparison from offline proof.
-- [x] Exercise production seams, real processes, wrong fields/frames/targets,
-      stale generations, ambiguous Start, expiry, privacy and actual cleanup.
-      Run ordered Cargo, Gate, canonical, native resource, ownership, reference,
-      standards, redaction and parity checks; publish and package the exact pair.
-- [x] Create and independently review the published permission closure for
-      Channel001, build the corrected clean pair and admit Channel002 through
-      its verified supersession. Preserve Channel001 and both ledger expectations.
-- [x] Prepare/review the exact Channel002 successor-readiness receipt, build the
-      clean published candidate and exclusively admit Channel003 through the
-      [cleanup-successor amendment](docs/hardware/str005-v2-serial-cleanup-successor-amendment.md).
-      Prove current ownership and the actually installed 097050c0 baseline fresh.
-- [x] Prepare/review the exact Channel003 successor receipt, build the clean
-      published package and exclusively admit Channel004 under the
-      [install-review](docs/hardware/str005-v2-serial-install-review-amendment.md)
-      and [ownership](docs/hardware/str005-v2-serial-install-ownership-amendment.md)
-      amendments. Freshly authenticate installed0d2 and both ledgers before writes.
-- [x] Detector-admit the candidate and complete fresh state-preserving continuity
-      cycles. Seal and independently accept the channel stage with no ASIC work,
-      signing or reservation, preserving both ledgers and safe restoration.
-- [ ] Under a fresh separate share root/page/session, complete four additional
-      same-candidate update/reconnect/maximum-exchange cycles using that page's
-      fresh private baseline, verify current accounting and consume one normal
-      180000-ms reservation. Expected ordinal is 18 after
-      1560000 ms charged; fresh authenticated evidence remains authoritative.
-- [ ] Prove the complete V2 chain through a real accepted BM1366 share and device
-      acknowledgement, then independent heartbeat revocation/shutdown, ordered
-      stop, cooling, unchanged identity/settings, correct post-work authorization
-      checkpoint and fully charged ledger completion without refund.
-- [ ] Seal/review both stages and actual resource cleanup, publish only permitted
-      projections, archive this record when complete, and hand promotion to
-      `task-str005-evidence-promotion`. Preserve any failure and exact non-claims.
+### task-str005-start-panic-diagnosis | 2026-09-27 | Diagnose and correct the Start panic
 
-Authorization: the owner explicitly authorizes real live mining and autonomous
-verified corrections within the published contract. Before that contract and
-implementation pass their gates, work is software-only. Channel acceptance
-cannot authorize mining by itself: share has separate task-owned signing,
-fresh possession, accounting and effect admission. The initial signed lease is
-60000 ms with renewal after 20000 ms; completed Start must also fit the existing
-30000-ms Gate reply limit. No preparing renewal or deadline extension is allowed.
-The generation's 180000-ms reservation keeps 15550 ms for shutdown, so admitted
-work is at most 164450 ms. Preserve 400 MHz, 1100 mV, fan 100%, existing voltage/
-power/temperature limits, 2800-ms heartbeat expiry, actual revoke/shutdown within
-3000 ms, ordered stop and bounded cooling. No allowance has been issued here.
+Status: Ready for static investigation; new device evidence blocked on recovery readiness.
+Objective: identify the actual Start panic cause and verify a targeted correction.
+Depends on: `task-str005-failure-recovery-accounting` before new device evidence or
+choosing a fresh attempt; static code/existing-evidence review may proceed earlier.
+Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
 
-Bootstrap successor work | 2026-09-27: The user explicitly requests the guarded
-successor, Channel and real-mining Share sequence. First publish the contract under
-`task-str005-v2-bootstrap-successor-amendment`; then implement/version admission and
-restoration checks, verify and publish one exact candidate, run both independent
-scopes without changing that pair, and seal/review before any promotion handoff.
-The V2 path restores automatically and requires fresh native reconnection before
-recording restoration. Manual Stop is emergency abort; do not import the bootstrap
-collector's manual Stop ordering into this workflow.
+- [ ] Inspect existing panic/preparation evidence against the installed ELF;
+      distinguish Rust panic, native exception, stack failure and allocation failure.
+- [ ] If evidence is insufficient, publish a narrowly bounded diagnostic contract
+      and collector before any new device action; preserve earliest-cause provenance.
+- [ ] Implement the demonstrated correction with a production-boundary regression
+      and applicable Gate/canonical/native resource checks; review change impact.
+- [ ] Verify the correction with the smallest necessary admitted reproduction;
+      retain unresolved diagnosis if evidence cannot distinguish causes.
 
-Successor implementation plan | 2026-09-27: Follow the reviewed
-[bootstrap successor amendment](docs/hardware/str005-v2-serial-bootstrap-successor-amendment.md).
+Evidence: [Share002 report](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md);
+private Share002 and installed ELF identity therein. Prior pair: `cf7a3f03` / `e20c0fd5`;
+correction identity/result pending. Startup heap values and a corrupt retained
+preparation receipt do not establish OOM or a failed preparation step.
+Invalidation: Start, preparation, memory layout, stacks or implicated dependencies
+require renewed correction/resource review. No accepted-share or shutdown claim here.
+Authorization: static/software work now; any reproduction needs published bounded
+admission and fresh accounting, never replay of Share002.
+Verification: Pending. Completion review: Pending.
 
-- [x] Implement v6-only Channel006/Share002 admission, exact failed/accepted
-      ancestry and same-pair bindings, preserving old source domains and markers.
-- [x] Require explicit restored completion for v6 and gate the UI on the existing
-      monotonic Share recovery wait; preserve emergency-abort and high-water rules.
-- [x] Compose both real page/coordinator/accounting paths and test-key Share
-      signer/fixture preparation, including early and late deadline failures.
-- [x] Run ordered software/native checks; publish and build one clean candidate
-      with exact Gate/fixture/observer/evaluator identities before effects.
-- [x] Complete the fresh channel stage, private finalization and independent review.
-- [ ] Admit the same-pair Share stage separately, perform real accepted-share and
-      safety testing, then seal/review and publish the truthful combined outcome.
+### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 
-Successor verification | 2026-09-27: Contract published at `179b272d`.
-V6 now joins exact failed Channel005 and accepted bootstrap004 without upgrading
-older evidence, and preserves Share001's historical checker and ordinal18 marker.
-Version-only restoration and monotonic UI waiting passed composed page/coordinator
-regressions. Real local fixture IPC plus production signing with generated test
-keys passed both ten-second windows and late-failure retention cases; no test grant
-is owner-authorized or usable by the installed device. Full V2 Node coverage is
-406 passing tests plus one standalone-only wrapper skip, covered canonically.
-All 68 affected canonical targets passed after isolated fixture/runfiles corrections
-and test-local Bun PATH configuration. Ordered Cargo format/Clippy/build/tests,
-Gate type checking and 788 tests, native package preview, Bright Builds, reference,
-redaction, ownership and parity/progress checks passed. Independent review and the
-actual finite ancestry/current-absence inspection passed. These are software checks;
-no Channel006/Share002 effects or live reservation have occurred. Parity is90/95.
+Status: Proof blocked on recovery and verified panic correction.
+Objective: prove completed Start and increasing work dispatch, followed by normal
+stop, restoration, accounting and cleanup; an accepted share is not required.
+Depends on: `task-str005-failure-recovery-accounting`, `task-str005-start-panic-diagnosis`.
+Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
 
-Successor live outcome | 2026-09-27: Implementation `cf7a3f03` was published,
-then its clean package, fixture/observer identities and native checks passed.
-Channel006 completed five state-preserving installations, four fresh continuity
-cycles, the network-only channel exchange, restoration, unchanged accounting and
-actual cleanup; its independently reviewed accepted result remains private.
-Share002 separately completed four installations/cycles and fresh pre-issuance
-accounting. Start failed with `v2_client_start_operation_failed`; native UI
-diagnostics observed boot12 changing to boot13 with reset reason `panic`.
-The later fixture `setup_received` timeout is secondary. No successful Start,
-qualified share, heartbeat fault or post-work accounting is established.
+- [ ] Define/publish a focused startup probe and bounded execution contract,
+      using the existing production owner and conservative signed mining profile.
+- [ ] Review continuity applicability and establish fresh identity, preservation,
+      possession and both ledgers; determine the next ordinal from actual evidence.
+- [ ] Test admission, completed-response barrier, duplicate/late Start, preparation
+      failure and failure cleanup through production seams; verify software/native gates.
+- [ ] Prove a completed Start and increasing dispatch, then normal ordered stop,
+      qualified cooling, authorization checkpoint, charged ledger completion and release.
 
-The host issued ordinal18 and attempted delivery without observing device
-reservation. The firmware can persist that reservation before replying to Start;
-do not infer it is unused or reuse it. Fresh recovery and Stop confirmed matching
-identity/settings, inactive leases and mine-on-boot false; the final journal is
-closed and serial ownership released. Browser, fixture, supervisor, operator,
-listeners and serial holders are gone. The failed native page disables restoration
-collection, leaving after-accounting and retained resource/status evidence absent;
-formal cleanup remains incomplete despite observed safe baseline/host release.
-Sealing and independent review retain `stop_hardware_blocker`; no accepted
-projection was published and parity stays90/95. Earlier progress entries remain
-historical. This task is unresolved and is not archived.
+Evidence: [Share002 report](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md)
+and recovery/panic successor results. Prior pair `cf7a3f03` / `e20c0fd5` is history;
+new tested identities, result and limitations must be recorded here before closure.
+Invalidation: Start/owner/dispatch, authorization, accounting, safety or relevant
+runtime changes require affected checks. No heartbeat-loss or accepted-share proof.
+Authorization: software preparation now; hardware only after dependency evidence,
+published command bounds and verified implementation. No budget reset or refund.
+Verification: Pending. Completion review: Pending.
 
-Next bounded prerequisite: publish a recovery/diagnostic successor contract and
-verify a native failure-only collection path for authenticated ledgers and retained
-status without Start, issuance or flash authority. Obtain panic/preparation evidence
-bound to the exact installed ELF before attributing the reboot or choosing a fix.
-Verify the targeted correction and boundary regression before any fresh finite
-admission. The current amendment admits no Channel007 or Share003; no ledger reset,
-refund, same-context restart or threshold relaxation is permitted.
+### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
-Outcome verification | 2026-09-27: Independent read-only Channel006 and Share002
-reviews reproduced their separate dispositions. Ordered Cargo format, Clippy,
-build and tests passed (2366 tests, three existing ignores); Bright Builds,
-reference, redaction, native USB ownership/symbols and read-only parity/progress
-checks passed. All243 task IDs remain unique; archive, parity checklist and
-progress history are unchanged. Independent documentation review found no
-overclaims or private-field disclosure. No new hardware attempt was admitted
-after Share002. Residual blockers are the panic cause and missing authenticated
-after-accounting/resource evidence, not host-resource ownership.
+Status: Live proof blocked on startup; focused software work may proceed independently.
+Objective: prove a correlated real ASIC result, encrypted submission, independent
+fixture acceptance and device acknowledgement, then restoration/accounting/cleanup.
+Depends on: `task-str005-mining-startup-probe` and applicable authenticated channel
+proof; Channel006 is private accepted evidence on its actual tested pair.
+Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
 
-Execution plan: keep channel and share results independent but keep this task
-active between them. Channel finalization remains private so the repository and
-exact runtime HEAD do not change. Fresh share admission requires independently
-accepted channel evidence and complete scope cleanup. Share uses its own four
-continuity cycles; it imports no private baseline or channel cycle credit.
-Public projection release
-must preserve a passed channel outcome if share later fails, without inventing
-an accepted share. Any failed-attempt continuation needs a verified correction,
-a fresh ordinal/root and current-HEAD source/package qualification; there is no
-fixed overall attempt cap, no unchanged retry and no reuse of a consumed context.
-That strategy confers no executable ordinal beyond the current admission class;
-the finite permission amendment requires a new published guarded admission
-before any Channel003 successor.
+- [ ] Publish a small accepted-share probe contract with the controlled local
+      fixture, conservative signed authority and explicit bounded stop conditions.
+- [ ] Review channel/continuity applicability; rerun affected protocol checks when
+      changes invalidate them, without relabeling Channel006 as new-image evidence.
+- [ ] Verify fixture target/header/nonce/submission/ack correlations, malformed or
+      mismatched input rejection, private runtime inputs and actual resource cleanup.
+- [ ] On fresh admission/accounting, prove one device-acknowledged accepted share;
+      stop normally and prove restoration, charged accounting and release. No heartbeat
+      fault is required here. Preserve partial observations if later cleanup fails.
 
-Clock correction: the [prospective amendment](docs/hardware/str005-v2-serial-clock-amendment.md)
-keeps the Share diagnostic deadline null until the existing guarded dispatch
-arms the reservation clock. It changes no mining budget, lease or safety limit.
+Evidence: private `scratch/str005-v2-serial/channel-006`,
+[Share002 report](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md),
+and startup successor result. Prior pair `cf7a3f03` / `e20c0fd5`; probe identities,
+result and limitations pending. Channel publication restrictions remain in force.
+Invalidation: protocol, crypto, job/target/nonce/submission logic, fixture/verifier
+or relevant runtime changes require affected acceptance/negative checks again.
+Authorization: software now; no live effect until published admission and dependency
+proof. No external pool, historical grant reuse or parity promotion.
+Verification: Pending. Completion review: Pending.
 
-Verification | 2026-09-16: Contract lifecycle/interface/privacy review passed.
-Ordered Cargo format/Clippy/build/tests passed (2285 tests, 3 existing ignored);
-all 159 canonical Bazel targets, Bright Builds, formatting/link checks, reference,
-redaction and read-only parity/progress checks passed. All 236 task IDs are unique;
-archive prefix and superseded unchecked obligations are preserved. No successor
-implementation, hardware attempt or mining reservation yet. Parity remains 90/95.
+### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
-Implementation progress | 2026-09-16: Contract published at `6a4a45f8`.
-Firmware/Gate/fixture implementation is underway. The host now has strict scoped
-input/status parsers, monotonic evidence checks, an independent integer-target/
-header/ASIC-payload verifier, and bounded memory-only fixture IPC with actual
-child cleanup tests. Initial focused host tests pass; these are software checks,
-not new hardware evidence. Native package, full composition, publication and
-both live scopes remain pending. No reservation has been issued.
+Status: Live proof blocked on startup; independent of accepted-share completion.
+Objective: prove device-local heartbeat revocation/shutdown and bounded cooling,
+followed by authenticated restoration/accounting and complete cleanup.
+Depends on: `task-str005-mining-startup-probe`; recovery readiness is inherited.
+Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
 
-Verification progress | 2026-09-16: The ordinary-owner implementation compiles
-and packages with the existing 4-MiB partition, worker stacks and safety
-deadlines. Preview 8 is 4161136 bytes, leaving 33168 bytes; selected native
-Channel/Share paths leave 704/608 bytes respectively, above the fixed 512-byte
-margin. These are dirty software previews, not an admitted hardware pair or a
-complete-callgraph claim. A fully authenticated acknowledgement remains
-observable across revocation without authorizing another read. Review corrected
-host shutdown ordering, pending-start cleanup, detector freshness at dispatch,
-secondary-failure classification and separate Start invocation/reply timing.
+- [ ] Publish a focused bounded shutdown probe using the existing qualified
+      heartbeat-suppression mechanism and observer; do not require an accepted share.
+- [ ] Verify fresh accounting, conservative work admission and remaining authority
+      before fault injection; retain the 2800-ms expiry and <=3000-ms actual
+      revocation/shutdown-initiation requirements, ordered stop and qualified cooling.
+- [ ] Test timing boundaries, stale observations, inadequate headroom, observer
+      loss, failure collection and cleanup; run relevant production/native checks.
+- [ ] Perform an independently admitted measurement with device-local timing,
+      fresh recovery, authorization checkpoint, charged ledgers and actual release.
 
-Final software checks pass: ordered Cargo format/Clippy/build and 2346 tests
-(three existing ignored); all 187 canonical Bazel targets; Bright Builds,
-native ownership/symbols, reference and redaction checks. Gate's 778 web tests,
-nine actual Rust serializer cases and final headless conformance pass; its
-implementation is published and pinned at
-`9251a1f1fbacb35093db0dc0a75a1a87206abcb0`. Canonical fixes retain bounded Node
-process handling and accommodate the larger symbol inventory; failed software
-runs remain recorded locally. Parity remains 90/95 with no history transition.
+Evidence: startup/recovery successor results and
+[Share002 non-claims](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md).
+No Share002 heartbeat test passed. Tested probe identities/results/limitations pending.
+Invalidation: heartbeat enforcement, clock, worker generation, shutdown/cooling,
+observer or relevant scheduling/resource changes require affected checks again.
+Authorization: software now; hardware only through the published bounded successor
+contract after dependencies. No deadline relaxation, refund or implicit retry.
+Verification: Pending. Completion review: Pending.
 
-Software evidence limit: the frozen difficulty-1024 fixture has no known
-positive synthetic Share vector. Tests cover independent known-header proof of
-work, strict rejection at the real target, component joins, complete Channel
-sealing and safe Channel publication after failed Share cleanup. Only a genuine
-ASIC result can satisfy the full positive Share join. No bypass, threshold
-change, hardware attempt or new reservation has been introduced.
+### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 
-Current correction plan | 2026-09-17:
+Status: Blocked on independent checkpoint results; no campaign is pre-authorized.
+Objective: establish cumulative requirement coverage and compatibility for the
+final candidate with only the additional integration measurement actually needed.
+Depends on: `task-str005-failure-recovery-accounting`, `task-str005-start-panic-diagnosis`,
+`task-str005-mining-startup-probe`, `task-str005-v2-accepted-share-probe`,
+`task-str005-heartbeat-shutdown-probe` and applicable channel/continuity evidence.
+Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
 
-- [x] Finalize Channel002 with the original published validator and independently
-      review its immutable unverified result before changing collection code.
-- [x] Correct numeric `lsof` file-descriptor handling with malformed-group,
-      privacy and real local-listener regressions; preserve strict absence proof.
-- [x] Identify the canonical `v2_baseline` rejection separately from the
-      parent-observed cleanup-parser failure; record exact missing proof.
-- [x] Bind future continuity review to the authenticated initial accounting row,
-      with a realistic configured-before-ready regression and frozen historical
-      behavior for already sealed evidence.
-- [x] Correct the verification fixture's partial readiness-file publication to
-      match the real producer's atomic rename; retain the failed test log.
-- [x] Run ordered Cargo and relevant canonical, standards, reference, ownership,
-      redaction and parity checks; review, commit and push the truthful outcome.
+- [ ] Map every protocol/authentication/work/share/safety/restoration/accounting
+      and cleanup obligation to its independent result and actual tested identities.
+- [ ] Review intervening changes and negative-test/native resource coverage;
+      document reuse rationale, invalidated checks and precise remaining gaps.
+- [ ] Reuse a qualifying final-candidate probe as integration smoke evidence.
+      Only for a concrete uncovered interaction, publish a narrow bounded contract,
+      verify its implementation and execute that missing check; no mandatory big-bang run.
+- [ ] Independently review evidence and publication eligibility. Keep failed roots
+      sealed and Channel006 private until its applicable recovery/cleanup and
+      prospective publication gates pass; hand eligible evidence to promotion.
 
-Hardware progress | 2026-09-17: The [unverified result report](docs/parity/evidence/20260917-str005-v2-channel-unverified.md)
-records the sealed observations and limits. Channel001 has a verified permission closure.
-Channel002 installed clean firmware `097050c0` with Gate `e20c0fd5`, completed
-five state-preserving installations and four maximum-exchange continuity cycles,
-and performed one authenticated Standard channel/job exchange without ASIC work.
-Independent protocol inspection accepted seven device records, eleven device
-events and eight fixture events from one connection; submissions and device
-acknowledgements were zero. The device reported network resource release after
-2013173 microseconds. This is protocol evidence, not full hardware qualification.
-
-Canonical finalization and read-only review both report `unverified` /
-`stop_evidence_incomplete`, with judge code `v2_baseline`. The separate earliest
-parent-observed cleanup failure is `v2_listener_inventory_shape`: the original
-collector rejects numeric file-descriptor fields emitted by macOS `lsof`.
-Actual browser and supervisor exit witnesses are retained, but no complete
-resource/cleanup receipt or fresh private pool-port absence proof was produced.
-The private port remained memory-only and was lost when the parent exited.
-The baseline rejection is a separate validator bug: it selects the first
-before-phase event (configured) instead of the authenticated ready state joined
-by initial accounting. Execution and accounting review pass; the required fresh
-baseline exists. Correct that selection for new evaluator identities while
-preserving the original sealed verdict.
-Neither a parser fix nor an administrative closure may upgrade those missing
-observations. The full frozen inventory includes the separately identified
-parent observation; no browser or device failure was manufactured.
-
-Channel002 result digest:
-`675230a92e4f6ebd78ca0cf1748019c364772b5f31742075dda3c3c38af7b4b0`;
-seal digest: `a12a3c25cc89c137d12ece4bc80c4896546f7f2d37bfaabf36109004b2b26c80`.
-No Share preparation, Work Lease authority signing, grant or reservation occurred. Fresh accounting
-before and after the channel exchange remains next ordinal 18, last completed
-17, total charged 1560000 ms and pending false. Share admission still requires
-an independently accepted Channel result; the finite permission amendment
-admits no Channel003. Parity remains 90/95.
-
-Correction review | 2026-09-17: The listener parser now handles numeric
-file-descriptor groups while rejecting malformed, mixed or incomplete inventories.
-All 27 focused tests pass, including a real macOS local-listener presence/absence
-regression that failed before the fix. Future continuity review selects the
-already joined authenticated initial-accounting row, rejecting stale, mismatched
-or missing pointers. Compatibility is limited to the exact frozen historical
-continuity evaluator digest and length. Read-only review after both corrections
-reproduces Channel002's original result and seal hashes and its `v2_baseline`
-verdict. No missing observation was reconstructed or acceptance limit relaxed.
-
-Verification | 2026-09-17: Ordered Cargo format/Clippy/build/tests pass
-(2346 tests, three existing ignored); all 248 V2 host tests and all 191 canonical
-Bazel targets pass. Bright Builds, native USB ownership/symbols, reference,
-redaction, report formatting/links and read-only parity/progress checks pass.
-All 238 task IDs remain unique, archive bytes and frozen contracts/checklist
-are unchanged. The first canonical run retained one failed assertion in an
-existing API-command-effects test; its fake readiness producer used a visible
-partial write while the real producer uses atomic publication. The isolated
-retry passed, and the fixture now matches that atomic publication. The final
-full canonical run passes; both earlier logs are retained. Gate and firmware
-runtime code were not changed by this correction.
-
-Successor implementation | 2026-09-17: The separately published amendment and
-verified implementation now admit only fresh Channel003 and then accepted-pair
-Share001. All current acceptance, accounting, safety, cleanup and privacy limits
-remain. The bounded effect path avoids historical re-evaluation within detector
-freshness while retaining current source, evidence and live supervisor checks.
-The failed Channel002 remains immutable; no fresh receipt/context or device
-attempt has yet occurred. Keep the exact published pair unchanged between the
-new stages and finish full restoration/cleanup before publication.
-
-Completion review: Pending; accepted Channel and real V2 share evidence remain
-missing. This task owns the authorized bounded live continuation.
-
-Channel003 closure | 2026-09-17: The [unverified result report](docs/parity/evidence/20260917-str005-v2-channel-unverified.md)
-records original finalization and read-only review, which
-reproduce `unverified` / `stop_evidence_incomplete`, first failure supervisor
-`v2_operation_failed` and judgment `v2_recorded_failure`. Installation0 wrote
-firmware `0d2b6d06` / ELF `8e766fba` successfully with healthy trusted capture;
-post-install possession, baseline, accounting and restoration were not collected.
-The separate parent permission diagnosis records 0755/0644 Rust evidence outputs
-under a protected ancestor and byte-preserving hardening, without acceptance.
-Actual browser closure and supervisor/parent exit do not repair the missing
-device observation. No cycle, fixture, Channel diagnostic, signing, grant,
-reservation or mining followed the write. Context:
-`031552692b777c324b5633dfb5b1cbbc4625da4cdea1adedcd8c1c3ee0cbd1b1`;
-result: `cf219da3a6b6830f1818f03eeb7e3d88b0b912d589a99e6a4a1f8b8b0a02ad54`;
-seal: `5941810323f06e9bdf86d79bc8c9f4aed6ce3a2f105716153e68b101e7f79bf3`.
-The existing finite admission policy does not permit Channel004. The proposed
-[install-review amendment](docs/hardware/str005-v2-serial-install-review-amendment.md)
-must be reviewed/published and its corrections verified/published first. A new
-attempt must freshly authenticate the expected installed identity and both
-ledgers before any new write; no prior baseline or cycle credit transfers.
-
-
-
-
-Continuation readiness | 2026-09-26: Completed and archived
-`task-str005-durable-operator-share-successor` provides the verified persistent
-operator, native controls and exact unissued-Share001 continuation rules in the
-[operator-survival amendment](docs/hardware/str005-v2-serial-operator-survival-amendment.md).
-After binding the final clean published package, prepare/review the protected
-Share001 sibling receipt, admit only Channel005 via `--supersede-share`, and
-then admit Share002 only from its accepted same-pair predecessor. Freshly prove
-installed0a9b29bf and next18/last17/1560000-ms/pending-false accounting before
-any new write; repeat all new continuity cycles and all live safety evidence.
-Channel005/Share002 have not been allocated, no new hardware effect occurred,
-and neither a reservation nor a parity transition has been made.
-
-
-Channel005 outcome | 2026-09-26: The [unverified bootstrap-drain report](docs/parity/evidence/20260926-str005-v2-bootstrap-drain-unverified.md)
-binds firmware `14f6d6d9` / Gate `e20c0fd5` and preserves first failure
-`noise_install_unqualified`. All five writes completed; four startup reviews
-and three maximum-size cycles passed. A retained first flush timeout reports
-92 bytes queued and no drain confirmation within 2000 ms. Its five replays are
-not five independently counted failures. The specific reader/completion cause
-is unresolved. Fresh post-failure baseline and inactive leases were observed;
-serial/browser/host owners were released. Full restoration accounting and a
-successful cleanup receipt remain unclaimed. No fixture or mining grant was
-started, and Share002 remains unallocated. Result
-`1b687eda11fe233677f77c4a77ee462912a6ddb5caf57ad9bfc7567fd4782c2e`;
-seal `3b77bd5d8b83433ba18b758a3ec579806a91c866e594cb0254656d7a313ea342`.
-Do not restart Channel005 or weaken its classifier. Another attempt requires
-new measurements, verified progress and a published guarded admission contract.
-
-
+Evidence: all named successors, private Channel006 and sealed Share002, and
+[failed successor report](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md).
+Final candidate/result/limitations pending. Close only when every substantive
+requirement has applicable evidence; unmet joins remain explicit blockers.
+Invalidation: any final-candidate or material fixture/validator change reopens the
+impact review for affected claims, not every completed task automatically.
+Authorization: evidence/software review now; no hardware merely from dependency
+edits. Any missing smoke requires its own published bounds. No parity transition.
+Verification: Pending. Completion review: Pending.
 
 ## Future
 
 ### task-str005-evidence-promotion | 2026-08-28 | Compose evidence and promote STR-005
 
 - [ ] Validate every accepted child projection and provenance relationship.
-- [ ] Require the final campaign to prove the complete cumulative chain in one
-      run; do not substitute earlier diagnostic projections for that proof.
+- [ ] Require independently reviewed cumulative coverage and final-candidate
+      compatibility from the piecewise integration review; diagnostics alone
+      do not substitute for acceptance evidence. No single cumulative run is required.
 - [ ] Create `RESULT.md`, transition only STR-005 to `verified` with
       `unit,golden,workflow,hardware-regression`, synchronize progress, and
       archive only finalized active native records in their completion commits;
       preserve already archived child records unchanged.
 
-Depends on: completed `task-str005-v2-serial-qualification` with independently
-accepted channel and full same-run share evidence, plus exact same-candidate
-restoration. The superseded channel/share task IDs supply history only. Deferred
+Depends on: completed `task-str005-piecewise-integration-review` under
+[ADR-0029](docs/adr/0029-piecewise-str005-qualification.md), including applicable
+channel, startup, accepted-share, shutdown, restoration, accounting and cleanup
+evidence. The superseded qualification/channel/share IDs supply history only. Deferred
 cooperative crypto cancellation is not a promotion prerequisite; protocol,
 authentication, work/share, safety and evidence requirements remain unchanged.
 
@@ -4776,7 +4576,7 @@ NVS, mining, or other device effect is permitted.
 Verification: Pending.
 
 Completion review: Pending. No promotion is eligible before every dependency
-and the final same-run evidence contract pass.
+and the piecewise compatibility, coverage and publication gates pass.
 
 ### task-cross-platform-device-session-adapters | 2026-07-22 | Qualify Linux and Windows ESP device sessions
 
