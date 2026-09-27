@@ -20,7 +20,7 @@ export function admitRecovery(value, context, now = Date.now()) {
 }
 export function flashArguments(root, context) {
   return ['flash-monitor', '--board', '205', '--port', context.detector.port, '--expected-physical-sha256', context.detector.physical, '--manifest', context.manifest,
-    '--evidence-dir', resolve(root, 'install'), '--evidence-mode', 'dual', '--redact-evidence', '--capture-timeout-seconds', '360'];
+    '--evidence-dir', resolve(root, 'install'), '--evidence-mode', 'dual', '--capture-timeout-seconds', '360'];
 }
 /** Bounded child ownership captures every byte privately and kills descendants on every exit. */
 export async function runChild(program, args, root, timeoutMs = 480000) {

@@ -24,7 +24,7 @@ test('installation argv cannot seed NVS, erase flash or invoke nested build', ()
   const args = flashArguments('/private/root', context);
   assert.equal(args[args.indexOf('--expected-physical-sha256') + 1], context.detector.physical);
   assert.equal(args[0], 'flash-monitor'); assert.equal(args.includes('--wifi-credentials'), false);
-  assert.equal(args.includes('--evidence-mode'), true); assert.equal(args.at(-1), '360');
+  assert.equal(args.includes('--evidence-mode'), true); assert.equal(args.includes('--redact-evidence'), false); assert.equal(args.at(-1), '360');
 });
 test('real child timeout terminates process group and keeps output private', async t => {
   const root = await mkdtemp(join(tmpdir(), 'panic-install-')); t.after(() => rm(root, { recursive: true, force: true }));

@@ -435,6 +435,13 @@ js_test(
     entry_point = "str005-panic-probe/install.test.mjs",
 )
 
+js_binary(
+    name = "str005_panic_command_check_test_local",
+    chdir = "..",
+    data = [":str005_panic_probe_sources", "//tools/flash:flash"],
+    entry_point = "str005-panic-probe/workspace-test.mjs",
+)
+
 js_test(
     name = "str005_panic_self_test_evidence_test",
     data = [":str005_panic_probe_sources"],

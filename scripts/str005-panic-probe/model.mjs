@@ -76,3 +76,19 @@ export function validateCandidateState(value, context, maybeRequest) {
   validateState(base, context);
   return structuredClone(value);
 }
+
+/** Installation is an independent outcome; a passed baseline cannot conceal a failed child. */
+export function applyInstallationOutcome(result, { claim, runner, review }) {
+  const attempted = claim !== undefined || runner !== undefined || review !== undefined;
+  if (!attempted) return result;
+  result.installation_attempted = true;
+  const exited = runner?.schema === 'str005-panic-install-runner-v1' && runner.code === 0 &&
+    runner.spawn_failed === false && runner.timed_out === false && runner.interrupted === false && runner.serial_holders_absent === true;
+  result.installation_complete = claim !== undefined && exited && review?.installation_verified === true;
+  if (!result.installation_complete) {
+    result.complete = false;
+    result.blockers.push(claim === undefined ? 'installation_claim_missing' : runner === undefined ? 'installation_result_missing' :
+      !exited ? 'installation_failed' : 'installation_review_missing');
+  }
+  return result;
+}

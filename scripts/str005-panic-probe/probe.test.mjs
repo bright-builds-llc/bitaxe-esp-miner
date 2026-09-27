@@ -3,7 +3,7 @@ import test from 'node:test';
 import { once } from 'node:events';
 import { createBaselineCollector } from './client.mjs';
 import { createProbeServer } from './server.mjs';
-import { baselineConclusion, currentProof, validatePart } from './model.mjs';
+import { baselineConclusion, currentProof, validatePart, applyInstallationOutcome } from './model.mjs';
 import { ledger, original, state } from '../str005-noise-serial/test-fixture.mjs';
 const context = { commit: 'a'.repeat(40), gate_commit: 'b'.repeat(40), firmware_commit: 'a'.repeat(40), app_elf_sha256: 'c'.repeat(64),
   before_source: { firmware_commit: 'd'.repeat(40), app_elf_sha256: 'e'.repeat(64) }, detector: { physical: 'f'.repeat(64) }, scope: 'share' };
@@ -125,4 +125,20 @@ test('current proof independently rejects mismatched published runtime identity 
     const value = parts(); value[key].expectedAppElfSha256 = '0'.repeat(64);
     assert.throws(() => currentProof(context, value), { code: 'panic_current_proof_identity' });
   }
+});
+
+test('failed installation without candidate review cannot inherit a successful baseline result', () => {
+  // Arrange
+  const result = { ...baselineConclusion(parts()), baseline_complete: true };
+  // Act
+  applyInstallationOutcome(result, { claim: {}, runner: { schema: 'str005-panic-install-runner-v1', code: 1,
+    spawn_failed: false, timed_out: false, interrupted: false, serial_holders_absent: true } });
+  // Assert
+  assert.equal(result.baseline_complete, true); assert.equal(result.complete, false); assert.equal(result.installation_complete, false);
+  assert.deepEqual(result.blockers, ['installation_failed']);
+});
+test('missing installation exit remains blocked independently of the completed baseline', () => {
+  const result = { ...baselineConclusion(parts()), baseline_complete: true };
+  applyInstallationOutcome(result, { claim: {} });
+  assert.equal(result.complete, false); assert.deepEqual(result.blockers, ['installation_result_missing']);
 });

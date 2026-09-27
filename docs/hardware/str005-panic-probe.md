@@ -18,7 +18,14 @@ verify the capture/cutoff prerequisites before the single Start stage in ADR-003
 Publish clean host source and the pinned Gate source before device access. Build
 `just package` and `bazel build //tools/flash:flash` from that clean pushed source.
 Preflight verifies canonical package/source identity, exact retained Gate assets,
-the immutable Share002 inventory, and the compiled native cutoff. Its audit
+the immutable Share002 inventory, and the compiled native cutoff. It also runs
+the generated installation command through the pinned real CLI with `--dry-run`
+in a separate protected directory. Both the exit and dry-run receipt must prove
+that no hardware branch executed; argument conflicts block preflight.
+`just test-panic-probe-command` exercises this actual CLI boundary, including the
+historical conflicting-flag rejection, with a nonexistent device node. This is
+a post-publication local integration check: run it after `just package` on clean
+pushed source; a dirty package is correctly refused even with `--dry-run`. Its audit
 checks the fatal-handler route, IRAM code/literals, internal-DRAM state, bounded
 straight-line instructions, safe GPIO latch writes and generation revocation
 before delegation to ESP-IDF. It is software evidence, not hardware proof.

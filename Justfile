@@ -33,6 +33,9 @@ core-dump-clear *args:
 str005-panic-probe action *args:
     bazel run //scripts:str005_panic_probe -- {{ action }} {{ args }}
 
+test-panic-probe-command:
+    bazel run //scripts:str005_panic_command_check_test_local
+
 native-panic-audit *args:
     bazel run //scripts:native_panic_audit -- {{ args }}
 

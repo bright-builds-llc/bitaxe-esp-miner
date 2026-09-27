@@ -12,10 +12,11 @@ import { validateDiagnosticExport } from '../fixed-usb-qualification/diagnostic-
 import { validateSelfTest } from './self-test-evidence.mjs';
 import { main as runNativeAudit } from '../core-dump/native-audit.mjs';
 import { validateNativeAudit, verifyNativeAudit } from './audit.mjs';
+import { checkCommand, verifyCommandCheck } from './command-check.mjs';
 import { install } from './install.mjs';
 import { createProbeServer } from './server.mjs';
 import { validateRecoveryParts } from '../str005-v2-serial/recovery-evidence.mjs';
-import { BASELINE_PARTS, baselineConclusion, validatePart, validateFinished, validateCandidateState, currentProof } from './model.mjs';
+import { BASELINE_PARTS, baselineConclusion, validatePart, validateFinished, validateCandidateState, currentProof, applyInstallationOutcome } from './model.mjs';
 
 const task = 'task-str005-start-panic-diagnosis';
 const oldSeal = '14d2122208b2040f1482074c77328cd3a59c651e45bc17e7be7af2648d8f5950';
@@ -83,6 +84,7 @@ export async function main(argv) {
     const nativeAudit = await runNativeAudit(['--elf', context.candidateElf, '--output', resolve(root, 'native-audit.json')]);
     validateNativeAudit(nativeAudit, context.app_elf_sha256);
     context.nativeAuditSha256 = await fileDigest(resolve(root, 'native-audit.json'));
+    context.commandCheckSha256 = (await checkCommand(root, context)).runner_sha256;
     await writeNew(resolve(root, 'context.json'), context);
     await retain(resolve(root, 'gate-page.html'), page); await retain(resolve(root, 'gate-bundle.js'), bundle);
     return { preflight: 'passed', stage: 'baseline', device_effects: false };
@@ -94,6 +96,7 @@ export async function main(argv) {
   cleanPushed(context.gate_root, context.gate_commit);
   if (action === 'finish') return finish(root, context);
   await verifyNativeAudit(root, context);
+  await verifyCommandCheck(root, context);
   if (action === 'install') { check(published.installEnabled && context.installEnabled, 'panic_install_disabled'); return install(root, context); }
   for (const fd of [1, 2]) check(fstatSync(fd).isFile() && (fstatSync(fd).mode & 0o777) === 0o600, 'panic_protected_output');
   check(fstatSync(1).ino !== fstatSync(2).ino || fstatSync(1).dev !== fstatSync(2).dev, 'panic_distinct_output');
@@ -145,6 +148,11 @@ async function finish(root, context) {
   }
   result.baseline_complete = result.complete;
   result.core_capture_verified = false;
+  const installation = {};
+  for (const [key, name] of [['claim', 'install-claim.json'], ['runner', 'install-runner.json'], ['review', 'candidate-install-review.json']]) {
+    try { installation[key] = (await proof(root, name)).value; } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
+  applyInstallationOutcome(result, installation);
   try {
     await proof(root, 'candidate-install-review.json');
     result.candidate_install_reviewed = true;

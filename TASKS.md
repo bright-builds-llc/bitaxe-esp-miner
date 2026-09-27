@@ -4629,7 +4629,7 @@ proof. Earlier software-only scope and disabled-gate statements above describe
 completed work; they are not the prospective authority. Share002 remains
 unverified and the recovery task's historical criterion remains unresolved.
 
-- [ ] Publish and test a dedicated staged command contract and current-recovery
+- [x] Publish and test a dedicated staged command contract and current-recovery
       proof gate; retain both ledgers and full validated diagnostics before reset.
 - [ ] Preserve any existing core region through same-device ROM read/return,
       then obtain fresh baseline proof and state-preservingly flash the candidate.
@@ -4673,6 +4673,42 @@ re-enumeration. No device effect or capture success is claimed by these checks.
 Simplification review: reuse existing restart, physical lease and partition
 validation owners; keep the new panic boundary straight-line and independent of
 ordinary tasks. Start modules remain unpublished drafts until capture evidence.
+
+First prospective device observations (published source `5244d445`, Gate
+`14d0e5b3`): protected baseline001 collected fresh authenticated next ordinal 18,
+last completed 17, no pending reservation, both ledgers, idle current status and
+validated diagnostics; restoration and native/host release passed. The existing
+64 KiB core region was entirely erased, privately preserved (SHA-256
+`71189f7fb6aed638640078fba3a35fda6c39c8962e74dcc75935aac948da9063`),
+and read/application-return/cleanup all passed. Baseline seal:
+`900f7a685ca623706d4dd32ccb1ad280a4beebded642a45d664276c611f338e7`.
+
+Installation001 collected a second fresh baseline, but its child CLI rejected
+`--evidence-mode dual` combined with mutually exclusive `--redact-evidence`.
+Exit 1 occurred during argument parsing, before USB admission or any flash.
+No holders remained; page/server cleanup passed and the attempt was sealed at
+`5dd7073440013da381a4cb8d54ef6ac2ad54264cc8ecc96ab239b1c538d3f5cc`.
+Its sealed result is a baseline-only conclusion; it does not establish a
+successful installation. Fix the exact argv boundary and validate the generated
+command through the real CLI dry-run before publishing a fresh-root continuation.
+No self-test, Start, grant or mining occurred; installed firmware remains the
+original `cf7a3f03` tuple. Historical evidence and parity remain unchanged.
+
+Verified continuation fix: generated installation argv now uses only
+`--evidence-mode dual`. Preflight executes that exact argv plus `--dry-run`
+through the pinned CLI/canonical package, validates the no-effect receipt and
+binds its digest; serve/install recheck it. A real CLI regression rejects the
+old flag combination and accepts the corrected command against a nonexistent
+node. Finish now distinguishes baseline success from attempted installation
+failure. A new protected root and fresh proof are required; no prior attempt
+record is edited or replayed.
+
+Command-check verification ordering: the real CLI check passed against the
+retained clean package. Rebuilding its prerequisite while source was dirty
+correctly triggered `package_source_dirty`, before USB; retain this negative
+observation instead of relaxing admission. The explicit local integration
+command runs after the new clean publication/package, before any effect;
+pre-commit unit checks remain independent of this clean-package requirement.
 
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 
