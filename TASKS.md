@@ -4384,12 +4384,16 @@ Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/par
 
 ### task-str005-v2-serial-qualification | 2026-09-16 | Qualify Ultra 205 V2 channel and accepted share
 
-Status: Blocked at Channel005 installation 4: the write completed, but startup
-capture retained a two-second USB drain-completion timeout. Three continuity
-cycles passed; the fourth cycle, channel exchange and mining did not run.
-The failed attempt is sealed and independently reviewed. The durable operator
-software prerequisite is complete. `task-usb-bootstrap-drain-observability`
-owns the missing measurements before another guarded qualification attempt.
+Status: Ready for guarded successor-contract preparation; fresh hardware effects
+remain blocked until that successor is published and admitted. Channel005 remains
+sealed/unverified: installation4 wrote successfully but captured a two-second USB
+drain timeout; only three continuity cycles passed and no channel/mining ran.
+The durable operator prerequisite and `task-usb-bootstrap-drain-observability`
+are complete. [Accepted bootstrap correction evidence](docs/parity/evidence/20260927-usb-bootstrap-correction-accepted.md)
+on `77e2e4a4` / `e20c0fd5` resolves the host-reader and restored-accounting blockers.
+It provides no continuity-cycle, channel, share or mining credit and cannot reopen
+Channel005 or allocate Share002. Require a fresh bounded successor with current
+accounting and its own complete evidence chain.
 This task succeeds `task-str005-v2-channel-job-205` and
 `task-str005-bm1366-share-205`; their remaining obligations stay here. Earlier
 Channel002/003 and Share001 failures retain their original dispositions.
@@ -4659,215 +4663,6 @@ seal `3b77bd5d8b83433ba18b758a3ec579806a91c866e594cb0254656d7a313ea342`.
 Do not restart Channel005 or weaken its classifier. Another attempt requires
 new measurements, verified progress and a published guarded admission contract.
 
-
-### task-usb-bootstrap-drain-observability | 2026-09-26 | Distinguish bootstrap reader delay from native TX completion failure
-
-Status: Active; sealed attempt 003 qualified its ordinary capture and passed all
-five timing/TX checks, but remains unverified after a restored-state accounting
-collector failure. Final ledger/export proof is missing; actual device restoration
-and resource release were observed. The owner explicitly requested
-implementation of the diagnostic, targeted-fix and qualification sequence. The exact
-Channel005 failure is preserved in the [result report](docs/parity/evidence/20260926-str005-v2-bootstrap-drain-unverified.md).
-Current evidence proves a 92-byte queue followed by a 2000-ms drain timeout, not
-which underlying mechanism caused it.
-
-- [x] Freeze a narrow prospective measurement contract and retry boundary before
-      implementation or hardware. Keep Channel005 sealed/unverified and retain
-      all earlier task IDs, ledgers and consumed host assignments.
-- [x] Record allowlisted host monotonic reset start/end, transport-admission,
-      reader-open and first-read timings through existing production seams.
-- [x] Retain first device write-failure category, start/end uptime and bounded
-      flush poll/return observations without allocation or extra waiting in the
-      recording path. Keep host/device clocks separate and preserve the existing
-      two-second deadline and first-failure retention.
-- [x] Assess optional read-only FIFO/interrupt state against pinned ESP-IDF.
-      Do not clear registers, inspect private structure offsets, fork the driver,
-      infer peer receipt from FIFO state or weaken the strict error classifier.
-- [x] Test actual native queue/drain seams with 92-byte writes and readiness below,
-      at and above the deadline, cancellation and never-ready cases. Test host
-      ordering, single-descriptor ownership and release through real PTYs.
-- [ ] Only after a complete published effect contract and verified implementation,
-      admit a fresh bounded no-mining measurement. A reset-and-capture redesign
-      must keep one descriptor/physical lease and prove no extra reset, ROM sync,
-      reopen or competing serial owner; it is not an assumed fix.
-- [ ] Identify and verify a targeted correction before resuming qualification;
-      run required Cargo, canonical, native/package, ownership, privacy, reference,
-      standards and parity checks. Publish truthful evidence and archive only
-      when this task is actually complete.
-
-Authorization: the published measurement contract defines one no-mining,
-state-preserving installation and capture through the dedicated repo command,
-only after verified implementation publication and clean-package native checks.
-No allowance, factory reset, old-context replay or qualification credit is granted.
-
-Plan | 2026-09-26: The [prospective measurement contract](docs/hardware/usb-bootstrap-drain-measurement.md)
-defines one standalone no-mining measurement, fixed host/device observations,
-real restoration/accounting and cleanup, and independent unqualified judgment.
-Implement host timing and native recorder in parallel after contract publication,
-then integrate the narrow supervisor, verify/publish and collect the measurement.
-The separate early sub-tick polling issue requires its own red/green regression;
-it is not the established cause of the historical 2000-ms timeout.
-
-Progress | 2026-09-26: Host timing and writer-owned bounded measurements are
-implemented. Production-seam regressions reproduce and fix premature sub-tick
-deadline termination while preserving the absolute two-second budget. The old
-TX failure marker and qualification classifier remain unchanged. Optional native
-register sampling was assessed and omitted: it cannot distinguish the private
-mutex/idle wait or establish peer receipt. Independent parsers cover retained
-observations, mixed boots, deadline boundaries and private-field rejection.
-
-Verification: Ordered Cargo format, Clippy, build and tests passed; Gate type
-checking and 788 software tests passed. Targeted firmware and real-PTY tests
-passed. Existing canonical targets passed after an atomic test-fixture publication
-fix and a two-job rerun of I/O-contended suites, without extending time limits.
-Provisional native packaging fits the existing slot (4,165,504 / 4,194,304 bytes);
-the selected writer-frame audit measured 4,288 / 8,192 bytes with complete selected
-instruction decoding, not a complete callgraph or hardware-fit claim. Ownership,
-reference, redaction, parity and progress checks passed. Channel005 read-only
-review preserves its original unverified result/seal hashes. All 216 canonical targets passed across the full run and corrective scoped
-reruns. The eight standalone Bazel test targets passed after their native source
-runfiles were declared; 66 focused Node tests cover healthy, TX-failed and missing-
-evidence outcomes, actual daemon publication failures and read-only mutation
-rejection. Clean published package verification and hardware evidence remain pending. The current reset subprocess and receive-only adapter do not support safe
-prearming together: that would create competing port owners. Preserve parity 90/95.
-
-Preflight | 2026-09-26: Published `def310ec` built a clean package, but admission
-stopped with `bootstrap_writer_audit` before writing any attempt assignment.
-The native frame validator incorrectly treated demangled Rust names as unique;
-three names identify multiple separately measured native functions. Bind frames
-to unique native addresses, retain every frame in the conservative stack sum,
-and verify the actual inspector output through its consumer before republishing.
-No hardware effects, ledgers or acceptance limits changed. The correction passed
-10 focused tests and validation of the actual compiled ELF: all 28 unique native
-addresses are retained, with the same 4,288-byte sum and 512-byte margin. Ordered
-Cargo checks, all eight affected canonical targets and standards checks passed.
-
-Interrupted preflight | 2026-09-26: Published `29cf472d` passed native admission,
-reserved host attempt 001 and copied its snapshots, then stopped because the
-generic inventory guard rejected the published synthetic-fixture source filename
-containing `credentials`. Read-only inspection verified the exact 1,773-file corpus,
-1,758 source snapshots and assignment; no operator or effect records exist. This
-preparation remains unverified and cannot be repaired or restarted.
-
-Successor plan | 2026-09-27: Follow the prospective
-[interrupted-preflight amendment](docs/hardware/usb-bootstrap-preflight-successor.md),
-SHA256 `8b596d6d2d2ce83f7815c0208c8e58755f7d3c687169168b8f46fde8049233df`.
-
-- [x] Freeze the exact failed inputs, provenance/non-claims, sibling closure,
-      version-2 source layout and exclusive attempt-002 boundary before coding.
-- [x] Implement and test encoded source snapshots while retaining the ordinary
-      private-evidence filename guard and version-1 historical interpretation.
-- [x] Implement effect-free interrupted-preflight closure/review, strict failed
-      corpus verification and one fresh source-bound successor admission.
-- [x] Verify, publish and build the corrected clean pair; create/review the sibling
-      closure and fresh context before the single no-mining measurement.
-
-Successor verification | 2026-09-27: The encoded-layout regression passed 12
-cases, including the real published synthetic-source filename and unchanged
-credential-artifact rejection. A software-only 1,758-source snapshot benchmark
-verified the complete layout in 346 ms. The production read-only failed-corpus
-verifier passed six tests and reverified all 1,773 files, source Git blobs, modes
-and aliases against the unchanged inventory hash. The full Node suite passed 98 tests; all 12 affected canonical targets passed
-after test fixture/path corrections. The fixed regression runner now executes its
-real admitted Node command. Ordered Cargo, standards, static USB ownership,
-reference, redaction and parity/progress checks passed. Snapshot preparation and
-validation precede assignment, with the final inventory published last. No closure
-or successor assignment has been created yet.
-
-Review follow-up: the older V2 daemon has analogous evidence-write-before-
-socket-close ordering. Apply the verified cleanup hardening before a fresh V2
-qualification campaign; this measurement does not reopen its failed contexts.
-
-Measurement | 2026-09-27: Published `3951a441` and Gate `e20c0fd5` completed
-one no-mining installation in fresh attempt 002, sealed with measurement_complete
-and no qualification credit. [The report](docs/parity/evidence/20260927-usb-bootstrap-reader-gap-measurement.md)
-records a 4,423.674-ms reset-return-to-reader gap and a fully queued 92-byte
-bootstrap record whose drain exhausted 2,001 device ms. Both ledgers, identity
-and settings remained unchanged; fresh possession, explicit restoration, native
-window release and actual process/socket/serial cleanup were independently checked.
-This is evidence for delayed receiving as the next target, not proof of a fix.
-
-Correction plan | 2026-09-27: Follow the frozen prospective
-[early-reader correction contract](docs/hardware/usb-bootstrap-reader-correction.md).
-
-- [x] Start one bounded receive owner immediately after reset child exit and fresh
-      candidate admission, retaining both full admission passes and quarantining
-      bytes until they finish. Preserve one descriptor and physical lease.
-- [x] Prove the actual path with PTY regressions, bounded cancellation/join,
-      source-bound software checks and versioned timing/independent judgments.
-- [x] Port evidence-write-safe cleanup to the older V2 daemon and verify real
-      process failures without changing its historical schemas or authority.
-- [x] Run ordered verification, publish and package the clean pair, then admit
-      exactly one fresh attempt 003. Preserve prior sealed evidence and limits.
-- [ ] Seal/review the actual outcome; close this task only on supported correction
-      evidence. A subsequent V2 campaign requires its separate fresh contract.
-
-Correction verification | 2026-09-27: The real-PTY 92-byte slow-admission
-regression failed with delayed opening and passed with the early receive owner.
-The implementation retains both admission passes, one descriptor/physical lock,
-a bounded quarantined buffer and continuous signal handling. A pending interrupt
-now prevents the reset child from starting. Parallel signal-test isolation and
-source-guard references were corrected without reducing coverage. Ordered Cargo
-format, Clippy, build and tests passed (2,366 passed; three existing ignored).
-Gate type checking and 788 tests passed; the measurement supervisor passed 120
-Node tests plus three final composition checks. V2 cleanup passed ten real-process
-rehearsals and healthy composition. Bright Builds, scoped documentation checks,
-unique task IDs and new evidence links passed. Read-only review of sealed
-measurement 002 retains its exact result/seal and unqualified non-claims.
-All 225 canonical test targets passed across the full run and corrective scoped
-rerun. The latter fixed canonical Node launch environments and added explicit
-fault-entry witnesses; validator regressions reject any retained host failure.
-The new proof binds the native Node executable rather than its Bazel shell shim.
-Reference, redaction, USB ownership and read-only parity/progress checks passed;
-parity remains 90/95 with no checklist/history transition. The review retained one
-buffer/thread and existing admission passes rather than adding another transport.
-Clean publication/package, actual clean-build proof and measurement 003 remain pending.
-
-Attempt 003 | 2026-09-27: Published `5bda5b91` / Gate `e20c0fd5` passed
-clean packaging and its actual source-bound proof, then completed one installation.
-[The sealed report](docs/parity/evidence/20260927-usb-bootstrap-reader-correction-unverified.md)
-records reader opening at 818.544 ms from reset-call start, first-bootstrap
-completion in one device millisecond, no observed TX failures and a qualified
-30-second capture. The assistant operator invoked Stop/Restore before accounting
-export. The resulting `baseline_confirmed` state hit the collector's ready-only
-check, recording `bootstrap_client_failed`. No after-ledger or restoration receipt
-was produced. Explicit restoration, preserved settings/identity and closed serial
-were observed; the supervisor exited zero in five milliseconds and kernel owner
-absence passed. The formal result and cleanup remain incomplete, unchanged and
-unverified. No new mining or reservation occurred; no fresh final-ledger claim is
-made.
-
-Completion follow-up plan | 2026-09-27: Freeze the
-[restored-accounting successor](docs/hardware/usb-bootstrap-restored-accounting-successor.md)
-before implementation. It admits only fresh attempt 004 after verified correction,
-publication and clean packaging; attempt 003 and all earlier evidence stay sealed.
-
-- [x] Add a phase-aware page/server accounting predicate: initial ready-only;
-      after requires explicit restoration plus connected ready/baseline_confirmed,
-      all existing preservation/idle gates and fresh unchanged ledgers.
-- [x] Test the production collector/server through Stop/Restore and actual status
-      transitions with clearly simulated device boundaries; retain old validators.
-- [x] Verify the exact failed-003 class and real resource cleanup without inventing
-      an after-ledger or upgrading its result. Require fresh authenticated next18 /
-      1,560,000-ms accounting before the one new write.
-- [ ] Run required verification, publish, package, perform one fresh full measurement
-      and independently seal/review. Keep every timing and safety limit unchanged.
-
-Restored-accounting verification | 2026-09-27: The exact production page/server
-receipt gap reproduced red and passes with the shared phase-aware predicate. Final
-export is disabled until restored and after successful collection. Source review
-of unchanged Gate `e20c0fd5` confirms fresh possession and ledger reads preserve
-restoration confirmation. All 161 Node tests and 19 affected canonical targets
-passed, including historical reader, resource, artifact-drift and negative-state
-cases. Ordered Cargo format/Clippy/build/tests passed; standards, reference,
-redaction, ownership and parity/progress checks passed. Independent review found
-no remaining blocker. Read-only reviews reproduce the exact measurement-002 and
-unverified-003 result/seal hashes. Clean publication, packaging and attempt 004
-remain pending; no fourth attempt has been allocated yet.
-
-Completion review: Pending; the host correction passed the measured boundary,
-but a complete accepted result still requires restored-state accounting and its
-formal cleanup joins. No qualification or mining acceptance is transferred.
 
 
 ## Future
