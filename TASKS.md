@@ -4660,6 +4660,60 @@ Do not restart Channel005 or weaken its classifier. Another attempt requires
 new measurements, verified progress and a published guarded admission contract.
 
 
+### task-usb-bootstrap-drain-observability | 2026-09-26 | Distinguish bootstrap reader delay from native TX completion failure
+
+Status: Active; contract and measurement design. The owner explicitly requested
+implementation of the diagnostic, targeted-fix and qualification sequence. The exact
+Channel005 failure is preserved in the [result report](docs/parity/evidence/20260926-str005-v2-bootstrap-drain-unverified.md).
+Current evidence proves a 92-byte queue followed by a 2000-ms drain timeout, not
+which underlying mechanism caused it.
+
+- [x] Freeze a narrow prospective measurement contract and retry boundary before
+      implementation or hardware. Keep Channel005 sealed/unverified and retain
+      all earlier task IDs, ledgers and consumed host assignments.
+- [ ] Record allowlisted host monotonic reset start/end, transport-admission,
+      reader-open and first-read timings through existing production seams.
+- [ ] Retain first device write-failure category, start/end uptime and bounded
+      flush poll/return observations without allocation or extra waiting in the
+      recording path. Keep host/device clocks separate and preserve the existing
+      two-second deadline and first-failure retention.
+- [ ] Assess optional read-only FIFO/interrupt state against pinned ESP-IDF.
+      Do not clear registers, inspect private structure offsets, fork the driver,
+      infer peer receipt from FIFO state or weaken the strict error classifier.
+- [ ] Test actual native queue/drain seams with 92-byte writes and readiness below,
+      at and above the deadline, cancellation and never-ready cases. Test host
+      ordering, single-descriptor ownership and release through real PTYs.
+- [ ] Only after a complete published effect contract and verified implementation,
+      admit a fresh bounded no-mining measurement. A reset-and-capture redesign
+      must keep one descriptor/physical lease and prove no extra reset, ROM sync,
+      reopen or competing serial owner; it is not an assumed fix.
+- [ ] Identify and verify a targeted correction before resuming qualification;
+      run required Cargo, canonical, native/package, ownership, privacy, reference,
+      standards and parity checks. Publish truthful evidence and archive only
+      when this task is actually complete.
+
+Authorization: software diagnosis and contract preparation under standing task
+permission. This record alone authorizes no device effect, flash, mining,
+allowance, factory reset or old-context replay. A future repo-owned command and
+prospective contract must define its exact bounded effects and cleanup first.
+
+Plan | 2026-09-26: The [prospective measurement contract](docs/hardware/usb-bootstrap-drain-measurement.md)
+defines one standalone no-mining measurement, fixed host/device observations,
+real restoration/accounting and cleanup, and independent unqualified judgment.
+Implement host timing and native recorder in parallel after contract publication,
+then integrate the narrow supervisor, verify/publish and collect the measurement.
+The separate early sub-tick polling issue requires its own red/green regression;
+it is not the established cause of the historical 2000-ms timeout.
+
+Verification: Existing current-transmit-failure and slow-drain production-seam
+tests define regression anchors; additional timing/discriminator coverage remains
+open. The current reset subprocess and receive-only adapter do not support safe
+prearming together: that would create competing port owners. Preserve parity 90/95.
+
+Completion review: Pending; reader delay and native completion signaling remain
+unresolved alternatives. No qualification or mining acceptance is transferred.
+
+
 ## Future
 
 ### task-str005-evidence-promotion | 2026-08-28 | Compose evidence and promote STR-005
@@ -4786,47 +4840,3 @@ boundaries in `AGENTS.md`.
   contract under the gate above.
 - Administrative closure, software verification, or task completion alone is
   never hardware or parity evidence.
-
-### task-usb-bootstrap-drain-observability | 2026-09-26 | Distinguish bootstrap reader delay from native TX completion failure
-
-Status: Future; prerequisite for further STR-005 qualification. The exact
-Channel005 failure is preserved in the [result report](docs/parity/evidence/20260926-str005-v2-bootstrap-drain-unverified.md).
-Current evidence proves a 92-byte queue followed by a 2000-ms drain timeout, not
-which underlying mechanism caused it.
-
-- [ ] Freeze a narrow prospective measurement contract and retry boundary before
-      implementation or hardware. Keep Channel005 sealed/unverified and retain
-      all earlier task IDs, ledgers and consumed host assignments.
-- [ ] Record allowlisted host monotonic reset start/end, transport-admission,
-      reader-open and first-read timings through existing production seams.
-- [ ] Retain first device write-failure category, start/end uptime and bounded
-      flush poll/return observations without allocation or extra waiting in the
-      recording path. Keep host/device clocks separate and preserve the existing
-      two-second deadline and first-failure retention.
-- [ ] Assess optional read-only FIFO/interrupt state against pinned ESP-IDF.
-      Do not clear registers, inspect private structure offsets, fork the driver,
-      infer peer receipt from FIFO state or weaken the strict error classifier.
-- [ ] Test actual native queue/drain seams with 92-byte writes and readiness below,
-      at and above the deadline, cancellation and never-ready cases. Test host
-      ordering, single-descriptor ownership and release through real PTYs.
-- [ ] Only after a complete published effect contract and verified implementation,
-      admit a fresh bounded no-mining measurement. A reset-and-capture redesign
-      must keep one descriptor/physical lease and prove no extra reset, ROM sync,
-      reopen or competing serial owner; it is not an assumed fix.
-- [ ] Identify and verify a targeted correction before resuming qualification;
-      run required Cargo, canonical, native/package, ownership, privacy, reference,
-      standards and parity checks. Publish truthful evidence and archive only
-      when this task is actually complete.
-
-Authorization: software diagnosis and contract preparation under standing task
-permission. This record alone authorizes no device effect, flash, mining,
-allowance, factory reset or old-context replay. A future repo-owned command and
-prospective contract must define its exact bounded effects and cleanup first.
-
-Verification: Existing current-transmit-failure and slow-drain production-seam
-tests define regression anchors; additional timing/discriminator coverage remains
-open. The current reset subprocess and receive-only adapter do not support safe
-prearming together: that would create competing port owners. Preserve parity 90/95.
-
-Completion review: Pending; reader delay and native completion signaling remain
-unresolved alternatives. No qualification or mining acceptance is transferred.
