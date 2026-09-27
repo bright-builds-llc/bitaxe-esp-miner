@@ -4493,13 +4493,13 @@ no next mining ordinal is authorized, and parity remains 90/95.
 
 ### task-str005-start-panic-diagnosis | 2026-09-27 | Diagnose and correct the Start panic
 
-Status: Ready for static investigation; new device evidence blocked on recovery readiness.
+Status: Static diagnosis/research complete; cause unresolved and hardware blocked on recovery readiness.
 Objective: identify the actual Start panic cause and verify a targeted correction.
 Depends on: `task-str005-failure-recovery-accounting` before new device evidence or
 choosing a fresh attempt; static code/existing-evidence review may proceed earlier.
 Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
 
-- [ ] Inspect existing panic/preparation evidence against the installed ELF;
+- [x] Inspect existing panic/preparation evidence against the installed ELF;
       distinguish Rust panic, native exception, stack failure and allocation failure.
 - [ ] If evidence is insufficient, publish a narrowly bounded diagnostic contract
       and collector before any new device action; preserve earliest-cause provenance.
@@ -4516,7 +4516,45 @@ Invalidation: Start, preparation, memory layout, stacks or implicated dependenci
 require renewed correction/resource review. No accepted-share or shutdown claim here.
 Authorization: static/software work now; any reproduction needs published bounded
 admission and fresh accounting, never replay of Share002.
-Verification: Pending. Completion review: Pending.
+Plan (2026-09-27):
+- [x] Inventory existing sanitized crash evidence and exact installed ELF/config;
+      identify whether a panic PC, backtrace or valid retained location exists.
+- [ ] Build an agent-runnable software feedback loop for any demonstrated
+      observability defect; do not label a nearby defect as the Start panic cause.
+- [x] Research primary Espressif, esp-rs and Bitaxe guidance; compare bounded
+      panic capture options against fixed USB ownership, retention and privacy.
+- [x] Apply only demonstrated corrections with production-boundary tests, or
+      record insufficient evidence. Specify prospective diagnostics and blockers;
+      verify source/artifact integrity, relevant checks and no parity change.
+
+Scope: no new device access, Start, grants, mining, flashing, reset or replay.
+Recovery measured current accounting and release, but historical retained
+resource proof remains absent. A reproducing hardware loop is not admitted.
+Findings: exact sealed ELF/config and all Share002 inventory entries verified
+unchanged. Native panic output is UART0, secondary USB console and core dump are
+disabled, and the ELF has symbols but no debug-line sections or sealed map.
+Existing runtime evidence supplies no native PC/backtrace/abort location. The
+Rust hook covers Rust panics only; startup heap and corrupt preparation receipt
+still cannot establish a cause. Source ordering places durable reservation before
+owner preparation; the measured unchanged ledger is not an instruction trace.
+
+Reports: [static diagnosis](docs/research/str005-start-panic-diagnosis.md) and
+[primary-source capture research](docs/research/str005-esp32-panic-capture.md).
+Recommended prospective work: matching debug ELF/map; bounded reset-retained
+native-fatal/Start-stage records; dedicated closed diagnostic export and offline
+symbolization. Blanket USB console logging, raw core dumps and debugger halts
+are not adopted. No execution contract or runtime instrumentation is claimed.
+
+Verification: existing API/receipt and preparation-writer Bazel tests passed;
+Gate diagnostic parsing/export: 33 passed. No red-capable loop reproduces the
+actual hardware panic; these passing tests are not a correction or causal proof.
+Ordered Cargo format/Clippy/build/tests passed (2,366 passed, three existing
+ignores), as did Bright Builds, redaction, Markdown, diff and parity checks.
+Independent review confirmed artifact identity, source ordering and non-claims.
+Completion review: `stop_hardware_blocker`; missing native panic-location
+information plus unresolved recovery dependency prevent a supported correction
+and new device reproduction. Task remains unarchived. No device access or
+runtime change; prior seals/accounting preserved and parity remains 90/95.
 
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 
