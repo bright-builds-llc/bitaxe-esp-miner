@@ -19,8 +19,10 @@ All NVS, application, filesystem and OTA-data locations remain unchanged.
 Ordinary update segments continue to exclude the core-dump region. The build
 checks the effective sdkconfig and generated binary table, rather than trusting
 requested defaults. This configuration captures the memory supported by IDF;
-external RAM is excluded from DRAM capture, and task/partition limits remain
-finite. A truncated or missing dump is a failed observation.
+the pinned writer walks used blocks from all 8-bit heaps, including PSRAM.
+External static sections are a separate limitation; do not infer that PSRAM
+heap allocations are excluded. Task/partition limits remain finite. A truncated
+or missing dump is a failed observation.
 
 The output directory includes the exact optimized firmware ELF with line-level
 debug information, its `.map`, resolved `.sdkconfig` and `.debug.json` digest
@@ -160,3 +162,18 @@ read byte-for-byte before erasure. It re-admits the held device without reset,
 erases only the validated core partition and reads back all erased bytes. The
 active task must explicitly enable clearing; no retry or NVS/accounting reset is
 implicit. See the staged probe contract for ordered commands and failure cleanup.
+
+## Current hardware qualification result
+
+The first controlled off-only panic produced no stored dump: the entire 952 KiB
+region remained erased. The [sealed outcome](../parity/evidence/20260927-str005-core-self-test-no-dump.md)
+records recovery and the remaining blocker. Current task effect gates are
+disabled; command examples above describe implementation interfaces, not new
+admission. Full private development capture remains authorized by ADR-0030.
+
+The pinned [ELF heap writer](https://github.com/espressif/esp-idf/blob/v5.5.4/components/espcoredump/src/core_dump_elf.c)
+captures used blocks from all 8-bit heaps. Its
+[flash writer](https://github.com/espressif/esp-idf/blob/v5.5.4/components/espcoredump/src/core_dump_flash.c)
+rejects excess length before erasing. Retain the actual store result and required
+length before changing scope or repeating the test. Empty flash does not prove
+which preflight check failed.

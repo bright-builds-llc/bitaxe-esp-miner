@@ -4493,7 +4493,7 @@ no next mining ordinal is authorized, and parity remains 90/95.
 
 ### task-str005-start-panic-diagnosis | 2026-09-27 | Diagnose and correct the Start panic
 
-Status: Executing owner-approved staged hardware diagnostics under ADR-0031; no historical evidence promotion.
+Status: Blocked — controlled panic/recovery passed, but the entire core partition remains erased; native capture/cutoff validation and Start remain unverified.
 Objective: identify the actual Start panic cause and verify a targeted correction.
 Depends on: fresh prospective recovery admission under ADR-0031 for new effects;
 `task-str005-failure-recovery-accounting` remains unresolved for historical proof.
@@ -4650,10 +4650,10 @@ Prospective execution contract: [staged panic probe](docs/hardware/str005-panic-
 The following gates authorize only its verified staged effects after publication:
 
 Development panic probe: stage A enabled.
-Development panic probe: installation enabled.
-Development panic probe: self-test enabled.
-Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
-Development core-dump clearing: enabled (private archive verified).
+Development panic probe: installation disabled (capture store failure unresolved).
+Development panic probe: self-test disabled (single admitted self-test exhausted; numeric store diagnostics required before another attempt).
+Development core-dump acquisition: disabled (capture outcome sealed; new effect contract required).
+Development core-dump clearing: disabled (region erased; capture unverified).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
 compares the archived full region before its exact erase. These declarations do
@@ -4821,6 +4821,53 @@ history-producer integration passed; affected Bazel, ordered Cargo, standards,
 redaction, Markdown and diff checks passed. Two real snapshot files and a fresh
 same-session status confirmation are digest-bound; no export-array chronology
 is inferred. The existing native panic-observer journal is unchanged.
+
+Final staged outcome (2026-09-27): controlled ASIC-off self-test was actually
+executed once on installed `9be53f69` / `075be768…`, using host `dae7fefb`
+and Gate `14d0e5b3`. Matched acknowledgement, panic reset 9→10, exact identity
+and healthy runtime were observed in 8,420 ms with uninterrupted native USB.
+Both independent recovery rounds passed. Final accounting: next ordinal 18,
+last completed 17, total charged 1,560,000 ms, pending false. Restoration,
+native Close, serial/process/listener cleanup all passed.
+
+Capture verification FAILED: the full 974,848-byte core region is all `0xff`,
+SHA-256 `94a21164829c644f15d62317c52d9f42a0ef66bd084d5ffdeb007b375e210951`.
+The vendor inspector rejected it; no valid core, backtrace, full dump identity
+or captured native cutoff receipt exists. No analysis/cutoff success, no Start,
+no grant, no mining, no dump clearing, and no Share002 replay is claimed.
+Capture seal: `d7074817eb7ab790b053674d6729d85b293ee98fd239e290b3566feef108d7d9`.
+The sealed baseline/reset result's scoped `complete` flag is not capture success;
+its `core_capture_verified` remains false.
+
+[Outcome and precise blocker](docs/parity/evidence/20260927-str005-core-self-test-no-dump.md).
+Exact-ELF review found the initializer, writer and panic route linked; wrapper
+ABI is consistent and abort does not bypass the writer. A normal 10-second
+panic watchdog expiry poorly matches the complete 8.42-second observation.
+None of this identifies the writer's actual early-return reason.
+
+Correction to the earlier memory-scope assumption: pinned IDF 5.5.4 walks used
+blocks across all 8-bit heaps, including PSRAM. The 512 KiB retained log and
+roughly 90 KiB statistics history alone make capacity a concrete concern.
+Capacity rejection precedes flash erasure, but required size/store status were
+not retained: capacity is a hypothesis, not a diagnosed cause.
+
+- [ ] Add panic-safe fixed numeric initialization/store result and required-length/
+      capacity evidence; verify native linkage and decoding before another fault.
+- [ ] Use that measured discriminator to select a supported capture policy or
+      correction, then publish a new bounded effect contract. No unchanged retry.
+
+Completion review: criteria do not pass. Task remains active/unarchived with
+precise blocker `core_partition_erased_after_controlled_panic`; Share002's cause
+and historical retained-resource gap remain unresolved. Reset/flash/self-test/
+clear gates are disabled pending new verified work; read-only baseline tooling
+remains available. Sealed evidence is unchanged and parity remains 90/95.
+
+Final verification: ordered Cargo checks passed again; reference, redaction,
+standards, Markdown and parity checks passed. All nine selected private
+inventories—including Share002 and recovery004—match their original seals.
+The disabled reset-capable acquisition gate was exercised with a nonexistent
+synthetic port and rejected before environment/device discovery or output-root
+creation. All effectful stages remain disabled; no finalization test opened USB.
 
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 

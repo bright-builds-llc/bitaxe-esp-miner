@@ -216,9 +216,10 @@ with flags zero, so it is disabled during cache-disabled flash critical sections
 The 2,048-byte TX storage remains internal-first at the threshold. Default
 allocations already permitted PSRAM fallback; this changes preference, not an
 explicit capability requirement. These eligible sizes are not measured reclaimed
-bytes—actual startup and capture must still pass. PSRAM heap contents remain
-outside the supported DRAM dump; the native task stacks and cutoff receipt stay
-internal. A valid core does not imply that every external heap object is captured.
+bytes—actual startup and capture must still pass. Source review after the
+failed self-test corrected the earlier scope assumption: pinned IDF also walks
+used PSRAM heap blocks. Account for them in capacity; external static sections
+are a different case. The native task stacks and cutoff receipt stay internal.
 
 ## Recovery from the sealed installation timeout
 
@@ -281,3 +282,13 @@ bounded observation window before Stop/Close. Both snapshot hashes are bound
 into the review. Missing, repeated, failed or mixed-boot observations block
 admission; failed collection still closes the session and retains partial files.
 The ordered native panic-observer journal remains a separate evidence source.
+
+## Terminal result of this admitted self-test
+
+The one controlled panic/reset completed, but the full core partition remained
+erased. [Capture qualification failed](../parity/evidence/20260927-str005-core-self-test-no-dump.md);
+Start was not admitted. The active task now disables installation, further
+self-test, reset-capable acquisition and clearing. The historical commands and
+sealed outcomes above are preserved; they do not authorize another fault.
+Only read-only baseline collection remains enabled until a new contract binds
+a verified store-result/required-length discriminator.
