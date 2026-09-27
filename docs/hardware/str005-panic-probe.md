@@ -30,7 +30,9 @@ named `attempt`. All raw browser diagnostics, manifests, account identifiers,
 core bytes and vendor output stay in ignored private files (0600). Keep each
 wrapper's stdout/stderr in distinct files outside an output child that must not
 exist yet. Never print raw memory or sensitive settings into public evidence.
-All paths below are absolute; resolve build-output aliases before passing them.
+All paths below are absolute. Preflight requires the canonical manifest path
+`<repo>/bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`; offline dump
+analysis requires a resolved regular ELF path or a byte-identical private copy.
 
 ```sh
 just str005-panic-probe preflight --private-root <parent/attempt> --gate-root <clean-Gate-root> --manifest <canonical-package-manifest>
