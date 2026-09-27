@@ -22,7 +22,7 @@ function decoder(onValue, onError) {
     try { onValue(JSON.parse(bytes.subarray(0, index).toString("utf8"))); } catch { onError(); }
   };
 }
-export async function serveOperatorSocket(path, handle) {
+export async function serveOperatorSocket(path, handle, operations = {}) {
   await socketPath(path, false);
   const server = createServer(socket => {
     socket.setTimeout(5000, () => socket.destroy());
@@ -35,9 +35,17 @@ export async function serveOperatorSocket(path, handle) {
       }, () => socket.destroy());
     }, () => socket.destroy()));
   });
-  await new Promise((done, reject) => { server.once("error", reject); server.listen(path, done); });
-  await chmod(path, 0o600);
-  return server;
+  try {
+    await new Promise((done, reject) => { server.once("error", reject); server.listen(path, done); });
+    await (operations.chmod ?? chmod)(path, 0o600);
+    return server;
+  } catch (error) {
+    await new Promise(done => server.close(closeError => {
+      if (closeError && closeError.code !== "ERR_SERVER_NOT_RUNNING") error.cause ??= closeError;
+      done();
+    }));
+    throw error;
+  }
 }
 export async function exchange(path, value) {
   await socketPath(path);

@@ -43,9 +43,15 @@ pub fn run_installed_application(
         esptool_bin,
         espflash_bin,
         |program, args, timeout| {
-            session
-                .run_espflash_probe(program, args, timeout)
-                .map(|output| output.stdout)
+            if program == espflash_bin {
+                session
+                    .run_bootstrap_reset(program, args, timeout)
+                    .map(|output| output.stdout)
+            } else {
+                session
+                    .run_espflash_probe(program, args, timeout)
+                    .map(|output| output.stdout)
+            }
         },
     )?;
     let (transport, reenumerated) = session.reacquire_application_transport()?;

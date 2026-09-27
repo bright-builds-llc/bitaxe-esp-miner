@@ -4662,7 +4662,8 @@ new measurements, verified progress and a published guarded admission contract.
 
 ### task-usb-bootstrap-drain-observability | 2026-09-26 | Distinguish bootstrap reader delay from native TX completion failure
 
-Status: Active; contract and measurement design. The owner explicitly requested
+Status: Active; measurement implementation verified. Clean published package and
+bounded hardware measurement are pending. The owner explicitly requested
 implementation of the diagnostic, targeted-fix and qualification sequence. The exact
 Channel005 failure is preserved in the [result report](docs/parity/evidence/20260926-str005-v2-bootstrap-drain-unverified.md).
 Current evidence proves a 92-byte queue followed by a 2000-ms drain timeout, not
@@ -4671,16 +4672,16 @@ which underlying mechanism caused it.
 - [x] Freeze a narrow prospective measurement contract and retry boundary before
       implementation or hardware. Keep Channel005 sealed/unverified and retain
       all earlier task IDs, ledgers and consumed host assignments.
-- [ ] Record allowlisted host monotonic reset start/end, transport-admission,
+- [x] Record allowlisted host monotonic reset start/end, transport-admission,
       reader-open and first-read timings through existing production seams.
-- [ ] Retain first device write-failure category, start/end uptime and bounded
+- [x] Retain first device write-failure category, start/end uptime and bounded
       flush poll/return observations without allocation or extra waiting in the
       recording path. Keep host/device clocks separate and preserve the existing
       two-second deadline and first-failure retention.
-- [ ] Assess optional read-only FIFO/interrupt state against pinned ESP-IDF.
+- [x] Assess optional read-only FIFO/interrupt state against pinned ESP-IDF.
       Do not clear registers, inspect private structure offsets, fork the driver,
       infer peer receipt from FIFO state or weaken the strict error classifier.
-- [ ] Test actual native queue/drain seams with 92-byte writes and readiness below,
+- [x] Test actual native queue/drain seams with 92-byte writes and readiness below,
       at and above the deadline, cancellation and never-ready cases. Test host
       ordering, single-descriptor ownership and release through real PTYs.
 - [ ] Only after a complete published effect contract and verified implementation,
@@ -4692,10 +4693,10 @@ which underlying mechanism caused it.
       standards and parity checks. Publish truthful evidence and archive only
       when this task is actually complete.
 
-Authorization: software diagnosis and contract preparation under standing task
-permission. This record alone authorizes no device effect, flash, mining,
-allowance, factory reset or old-context replay. A future repo-owned command and
-prospective contract must define its exact bounded effects and cleanup first.
+Authorization: the published measurement contract defines one no-mining,
+state-preserving installation and capture through the dedicated repo command,
+only after verified implementation publication and clean-package native checks.
+No allowance, factory reset, old-context replay or qualification credit is granted.
 
 Plan | 2026-09-26: The [prospective measurement contract](docs/hardware/usb-bootstrap-drain-measurement.md)
 defines one standalone no-mining measurement, fixed host/device observations,
@@ -4705,10 +4706,32 @@ then integrate the narrow supervisor, verify/publish and collect the measurement
 The separate early sub-tick polling issue requires its own red/green regression;
 it is not the established cause of the historical 2000-ms timeout.
 
-Verification: Existing current-transmit-failure and slow-drain production-seam
-tests define regression anchors; additional timing/discriminator coverage remains
-open. The current reset subprocess and receive-only adapter do not support safe
+Progress | 2026-09-26: Host timing and writer-owned bounded measurements are
+implemented. Production-seam regressions reproduce and fix premature sub-tick
+deadline termination while preserving the absolute two-second budget. The old
+TX failure marker and qualification classifier remain unchanged. Optional native
+register sampling was assessed and omitted: it cannot distinguish the private
+mutex/idle wait or establish peer receipt. Independent parsers cover retained
+observations, mixed boots, deadline boundaries and private-field rejection.
+
+Verification: Ordered Cargo format, Clippy, build and tests passed; Gate type
+checking and 788 software tests passed. Targeted firmware and real-PTY tests
+passed. Existing canonical targets passed after an atomic test-fixture publication
+fix and a two-job rerun of I/O-contended suites, without extending time limits.
+Provisional native packaging fits the existing slot (4,165,504 / 4,194,304 bytes);
+the selected writer-frame audit measured 4,288 / 8,192 bytes with complete selected
+instruction decoding, not a complete callgraph or hardware-fit claim. Ownership,
+reference, redaction, parity and progress checks passed. Channel005 read-only
+review preserves its original unverified result/seal hashes. All 216 canonical targets passed across the full run and corrective scoped
+reruns. The eight standalone Bazel test targets passed after their native source
+runfiles were declared; 66 focused Node tests cover healthy, TX-failed and missing-
+evidence outcomes, actual daemon publication failures and read-only mutation
+rejection. Clean published package verification and hardware evidence remain pending. The current reset subprocess and receive-only adapter do not support safe
 prearming together: that would create competing port owners. Preserve parity 90/95.
+
+Review follow-up: the older V2 daemon has analogous evidence-write-before-
+socket-close ordering. Apply the verified cleanup hardening before a fresh V2
+qualification campaign; this measurement does not reopen its failed contexts.
 
 Completion review: Pending; reader delay and native completion signaling remain
 unresolved alternatives. No qualification or mining acceptance is transferred.

@@ -3,6 +3,8 @@
 pub(crate) mod drain;
 pub use drain::SerialDrainMetadata;
 mod lease;
+mod timing;
+pub use timing::{BootstrapFailureStage, BootstrapTiming, TimingStage};
 mod line_admission;
 mod observation;
 mod process;
@@ -50,6 +52,8 @@ enum UsbWriteDialect {
 }
 
 pub struct UsbSession {
+    maybe_timing: Option<BootstrapTiming>,
+    acquired_at: Instant,
     operation: UsbOperation,
     state: UsbLifecycleState,
     lease: DeviceLease,
@@ -105,6 +109,8 @@ impl UsbSession {
         let state = reduce_lifecycle(UsbLifecycleState::Prepared, UsbLifecycleEvent::Admit)?;
         lease.record_state(state, None)?;
         Ok(Self {
+            maybe_timing: None,
+            acquired_at: Instant::now(),
             operation,
             state,
             lease,

@@ -168,6 +168,7 @@ rust_binary(
     name = "flash",
     srcs = [
         "src/drain_worker_serial.rs",
+        "src/bootstrap_timing.rs",
         "src/cli.rs",
         "src/campaign.rs",
         "src/campaign/admission.rs",

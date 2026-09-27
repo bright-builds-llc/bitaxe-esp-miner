@@ -35,6 +35,7 @@ fn runtime_attestation_log() -> String {
 fn flash_monitor_fixture(dir: &TempDir, evidence_dir: Utf8PathBuf) -> FlashMonitorCommand {
     let manifest = write_manifest_v4(dir, DEFAULT_ELF_NAME);
     FlashMonitorCommand {
+        capture_bootstrap_timing: false,
         factory_reset: false,
         common: CommonArgs {
             evidence_dir: Some(evidence_dir),

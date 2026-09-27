@@ -359,3 +359,7 @@ audit-telemetry-stack elf objdump sdkconfig:
 # Metadata-only bounded receive drain; never enters the downloader.
 drain-worker-serial *args:
     bazel run //tools/flash:flash -- drain-worker-serial {{ args }}
+
+# One protected, no-mining bootstrap drain measurement; no signing or fixture routes.
+usb-bootstrap-measure *args:
+    bazel run //scripts:usb_bootstrap_measure -- {{ args }}

@@ -89,3 +89,29 @@ test("interrupted result publication remains pending and cannot be republished",
   await assert.rejects(store.finish(request), { code: "EEXIST" });
   assert.equal((await lstat(resolve(root, `result-${id}.pending.json`))).mode & 0o777, 0o600);
 });
+
+test("chmod rejection closes the actual newly listening Unix socket", async t => {
+  // Arrange
+  const root = await fixture(t), path = resolve(root, "s"), failure = Object.assign(Error("injected chmod failure"), { code: "EACCES" });
+  let exchanged = false;
+  // Act: the code-only fault seam runs after a real socket is listening.
+  await assert.rejects(serveOperatorSocket(path, value => ({ received: value }), { async chmod(socketPath, mode) {
+    await chmod(socketPath, mode);
+    assert.deepEqual(await exchange(socketPath, { probe: true }), { received: { probe: true } });
+    exchanged = true; throw failure;
+  } }), error => error === failure);
+  // Assert: no filesystem socket or listener survives and the original failure is preserved.
+  assert.equal(exchanged, true);
+  await assert.rejects(lstat(path), { code: "ENOENT" });
+  const replacement = await serveOperatorSocket(path, value => value);
+  await new Promise(done => replacement.close(done));
+});
+
+test("listen rejection releases only the new server and retains the existing owner", async t => {
+  // Arrange
+  const root = await fixture(t), path = resolve(root, "s"), existing = await serveOperatorSocket(path, value => value);
+  t.after(() => new Promise(done => existing.close(done)));
+  // Act / Assert
+  await assert.rejects(serveOperatorSocket(path, () => null), { code: "EADDRINUSE" });
+  assert.deepEqual(await exchange(path, { retained: true }), { retained: true });
+});

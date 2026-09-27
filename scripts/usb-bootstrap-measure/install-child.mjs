@@ -1,0 +1,15 @@
+import { spawn } from "node:child_process";
+import { once } from "node:events";
+import { resolve } from "node:path";
+import { admit } from "./install.mjs";
+import { quoteJustArgument } from "../str005-noise-serial/operator-execution.mjs";
+import { check } from "./values.mjs";
+const [root, mode, index, ...extra] = process.argv.slice(2);
+check(process.connected && index === "0" && extra.length === 0, "bootstrap_execute");
+process.send({ ready: true });
+const [permit] = await once(process, "message"), { context, argv } = await admit(resolve(root), mode, permit);
+process.umask(0o077);
+const child = spawn("just", [argv[0], ...argv.slice(1).map(quoteJustArgument)], { cwd: context.firmwareRoot, stdio: ["ignore", "inherit", "inherit"], env: process.env });
+const [code, signal] = await once(child, "close");
+if (process.connected) process.send({ code, signal });
+process.disconnect(); process.exitCode = code === 0 && signal === null ? 0 : 1;

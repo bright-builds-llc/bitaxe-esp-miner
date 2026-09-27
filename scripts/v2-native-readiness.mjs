@@ -13,6 +13,10 @@ export const V2_NATIVE_AUDITOR_SOURCES = Object.freeze([
   "scripts/v2-native-readiness.mjs", "scripts/v2-native-paths.mjs", "scripts/str005-v2-serial/values.mjs", ...NATIVE_AUDITOR_SOURCES,
 ]);
 export const V2_NATIVE_SOURCE_FILES = Object.freeze([
+  "firmware/bitaxe/src/usb_runtime.rs",
+  "firmware/bitaxe/src/usb_tx_measurement.rs",
+  "firmware/bitaxe/src/usb_write_failure.rs",
+  "firmware/bitaxe/src/bwg_worker_usb/writer.rs",
   "firmware/bitaxe/src/noise_serial_runtime.rs",
   "firmware/bitaxe/src/noise_serial_runtime/channel.rs",
   "firmware/bitaxe/src/production_mining_session.rs",

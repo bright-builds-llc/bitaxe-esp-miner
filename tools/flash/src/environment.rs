@@ -16,6 +16,7 @@ pub(crate) struct LocalFlashEnvironment {
     pub(crate) espflash_bin: Utf8PathBuf,
     pub(crate) espflash_version: String,
     pub(crate) espflash_sha256: String,
+    pub(crate) bootstrap_timing: RefCell<Option<bitaxe_device_session::BootstrapTiming>>,
     pub(crate) usb_session: RefCell<Option<UsbSession>>,
 }
 impl LocalFlashEnvironment {
@@ -37,6 +38,7 @@ impl LocalFlashEnvironment {
             espflash_bin,
             espflash_version,
             espflash_sha256,
+            bootstrap_timing: RefCell::new(None),
             usb_session: RefCell::new(None),
         })
     }
@@ -279,7 +281,17 @@ impl FlashEnvironment for LocalFlashEnvironment {
                     .as_nanos()
             ));
         let mut session = UsbSession::acquire(operation, port, trace_root.as_std_path())
-            .map_err(|error| anyhow::anyhow!("{error}"))?;
+            .inspect_err(|error| {
+                if let Some(timing) = self.bootstrap_timing.borrow().as_ref() {
+                    timing.failure(
+                        bitaxe_device_session::BootstrapFailureStage::SessionAdmission,
+                        error.category,
+                    );
+                }
+            })?;
+        if let Some(timing) = self.bootstrap_timing.borrow().as_ref() {
+            session.enable_bootstrap_timing(timing.clone());
+        }
         let version_validation = session
             .run_espflash_probe(
                 self.espflash_bin.as_std_path(),

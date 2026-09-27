@@ -1272,9 +1272,10 @@ rust_test(
     srcs = [
         "src/usb_startup_diagnostics_host_test.rs",
         "src/usb_startup_diagnostics_host_test/statistics.rs",
+        "src/usb_startup_diagnostics_host_test/transport.rs",
         "src/statistics_runtime/diagnostics.rs",
         "src/statistics_runtime/diagnostics_tests.rs",
-        "src/usb_write_failure.rs",
+        "src/usb_write_failure.rs", "src/usb_tx_measurement.rs",
         "src/bwg_worker_usb/writer.rs",
         "src/bwg_worker_usb/rx_diagnostics.rs",
         "src/bwg_worker_usb/startup_diagnostics.rs",
@@ -1322,7 +1323,7 @@ rust_test(
 
 rust_test(
     name = "usb_runtime_tests",
-    srcs = ["src/usb_runtime_host_test.rs", "src/usb_runtime.rs", "src/usb_write_failure.rs", "src/bwg_worker_usb/trace.rs"],
+    srcs = ["src/usb_runtime_host_test.rs", "src/usb_runtime.rs", "src/usb_write_failure.rs", "src/usb_tx_measurement.rs", "src/bwg_worker_usb/trace.rs"],
     crate_root = "src/usb_runtime_host_test.rs",
     crate_name = "usb_runtime_tests",
     edition = "2021",
@@ -1529,4 +1530,15 @@ rust_test(
     crate_root = "src/noise_serial_runtime/transport/input.rs",
     edition = "2021",
     deps = ["//crates/bitaxe-worker-control:bitaxe_worker_control", "@crates//:base64"],
+)
+
+js_library(
+    name = "usb_bootstrap_writer_audit_sources",
+    srcs = [
+        "src/bwg_worker_usb.rs",
+        "src/bwg_worker_usb/writer.rs",
+        "src/usb_runtime.rs",
+        "src/usb_tx_measurement.rs",
+    ],
+    visibility = ["//scripts:__pkg__"],
 )

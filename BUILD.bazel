@@ -336,3 +336,8 @@ js_library(
         "docs/hardware/str005-v2-serial-operator-survival-amendment.md",
     ],
 )
+
+js_library(
+    name = "usb_bootstrap_measure_contract_inputs",
+    srcs = ["docs/hardware/usb-bootstrap-drain-measurement.md"],
+)

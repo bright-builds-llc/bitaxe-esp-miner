@@ -10,6 +10,18 @@ impl UsbSession {
     pub(crate) fn reacquire_application_transport(
         &mut self,
     ) -> Result<(UsbProfile, bool), UsbSessionError> {
+        self.bootstrap_event(TimingStage::HandoffStart);
+        let result = self.reacquire_application_transport_inner();
+        match &result {
+            Ok(_) => self.bootstrap_event(TimingStage::HandoffAdmitted),
+            Err(error) => self.bootstrap_failure(BootstrapFailureStage::Handoff, error),
+        }
+        result
+    }
+
+    fn reacquire_application_transport_inner(
+        &mut self,
+    ) -> Result<(UsbProfile, bool), UsbSessionError> {
         let previous_enumeration = self.current_enumeration_token.clone();
         let snapshot = self.reacquire(RecoveryPhase::Handoff)?;
         let profile = inspect_usb_profile(&snapshot.port)

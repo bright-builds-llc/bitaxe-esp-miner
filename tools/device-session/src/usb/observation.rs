@@ -3,10 +3,12 @@ use std::time::{Duration, Instant};
 
 use crate::macos::ReceiveOnlyReader;
 
+use super::timing::TimedReader;
 use super::{
     line_admission, process, session_error, write_private_trace, MonitorOutput, RecoveryPhase,
     UsbLifecycleEvent, UsbSession, UsbSessionError, UsbTerminalCategory,
 };
+use super::{BootstrapFailureStage, TimingStage};
 
 const MAX_MONITOR_BYTES: usize = 16 * 1024 * 1024;
 
@@ -130,12 +132,22 @@ impl UsbSession {
                 });
             }
             if maybe_reader.is_none() {
-                let snapshot = self.reacquire(RecoveryPhase::MonitorAdmission)?;
+                self.bootstrap_event(TimingStage::MonitorStart);
+                let snapshot = self
+                    .reacquire(RecoveryPhase::MonitorAdmission)
+                    .inspect_err(|error| {
+                        self.bootstrap_failure(BootstrapFailureStage::MonitorAdmission, error)
+                    })?;
+                self.bootstrap_event(TimingStage::MonitorAdmitted);
                 reenumerated |= snapshot.enumeration_token != self.initial_enumeration_token;
-                maybe_reader =
-                    Some(ReceiveOnlyReader::open(&snapshot.port).map_err(|error| {
-                        session_error(UsbTerminalCategory::MonitorFailed, error)
-                    })?);
+                self.bootstrap_event(TimingStage::OpenStart);
+                let reader = ReceiveOnlyReader::open(&snapshot.port)
+                    .map_err(|error| session_error(UsbTerminalCategory::MonitorFailed, error))
+                    .inspect_err(|error| {
+                        self.bootstrap_failure(BootstrapFailureStage::Open, error)
+                    })?;
+                self.bootstrap_event(TimingStage::Opened);
+                maybe_reader = Some(TimedReader::new(reader, self.maybe_timing.clone()));
                 line_admission.reset();
             }
             let Some(reader) = maybe_reader.as_mut() else {
@@ -147,6 +159,9 @@ impl UsbSession {
             let mut callback_was_polled = false;
             match reader.read_available() {
                 Ok(chunk) => {
+                    if let Some(timing) = &self.maybe_timing {
+                        timing.first_read(chunk.len());
+                    }
                     let should_stop = if feed_chunks {
                         line_admission.admit(&chunk).is_some_and(|admitted| {
                             callback_was_polled = true;
@@ -163,6 +178,12 @@ impl UsbSession {
                     }
                 }
                 Err(_) => {
+                    if let Some(timing) = &self.maybe_timing {
+                        timing.failure(
+                            BootstrapFailureStage::Read,
+                            UsbTerminalCategory::MonitorFailed,
+                        );
+                    }
                     maybe_reader = None;
                     reenumerated = true;
                 }
@@ -176,6 +197,11 @@ impl UsbSession {
             thread::sleep(Duration::from_millis(25));
         }
         drop(maybe_reader);
+        if maybe_deadline.is_some_and(|deadline| Instant::now() >= deadline) {
+            if let Some(timing) = &self.maybe_timing {
+                timing.capture_complete();
+            }
+        }
         if persist_trace {
             write_private_trace(&trace_path, &bytes)?;
         }

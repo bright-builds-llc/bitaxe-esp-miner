@@ -40,6 +40,10 @@ pub(super) struct DeviceLease {
 }
 
 impl DeviceLease {
+    pub(super) fn session_nonce(&self) -> &str {
+        &self.journal.session_nonce
+    }
+
     pub(super) fn acquire(
         physical_identity_digest: &str,
         operation: UsbOperation,

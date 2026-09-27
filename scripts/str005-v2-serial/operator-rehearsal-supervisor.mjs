@@ -1,5 +1,6 @@
 import { createServer } from "node:net";
 import { once } from "node:events";
+import { link, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
 import { loadOperatorContext } from "./context.mjs";
 import { admitOperatorParent, requireOperatorParent } from "./operator-parent.mjs";
@@ -12,7 +13,11 @@ process.once("message", async input => {
   try { startupLoss = (await proof(root, "synthetic-startup-loss.json")).value.enabled === true; }
   catch (error) { if (error.code !== "ENOENT") throw error; }
   if (startupLoss) {
-    await writeNew(resolve(root, "synthetic-startup-owner.json"), (await processSnapshot()).find(row => row.pid === process.pid));
+    // The polling parent must not observe a partially written readiness receipt.
+    const pending = resolve(root, "synthetic-startup-owner.pending.json");
+    await writeNew(pending, (await processSnapshot()).find(row => row.pid === process.pid));
+    await link(pending, resolve(root, "synthetic-startup-owner.json"));
+    await unlink(pending);
     const deadline = setTimeout(() => process.exit(1), 5000);
     await once(process, "disconnect"); clearTimeout(deadline);
   }

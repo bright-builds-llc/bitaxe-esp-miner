@@ -388,6 +388,9 @@ pub(crate) struct MonitorCommand {
 
 #[derive(Debug, Parser, Clone)]
 pub(crate) struct FlashMonitorCommand {
+    /// Retain bounded reset-to-reader timing, exported only after cleanup.
+    #[arg(long, requires_all = ["evidence_dir", "redact_evidence"], conflicts_with_all = ["factory_reset", "wifi_credentials", "network_reconnect_probe", "thermal_fault_stimulus_intent", "self_test_intent", "dry_run"])]
+    pub(crate) capture_bootstrap_timing: bool,
     /// Explicit factory installation erases NVS, including Device Identity and replay state.
     #[arg(long = "factory-reset")]
     pub(crate) factory_reset: bool,

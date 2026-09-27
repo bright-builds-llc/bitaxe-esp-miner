@@ -40,6 +40,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 mod boot_chain;
+mod bootstrap_timing;
 mod campaign;
 mod cli;
 mod commands;
@@ -136,51 +137,80 @@ fn main() -> Result<()> {
         return drain_worker_serial::run(command);
     }
     require_current_noise_effect(&cli.command)?;
+    let maybe_timing_export = bootstrap_timing::prepare(&cli.command)?;
     let environment = match LocalFlashEnvironment::detect() {
         Ok(environment) => environment,
         Err(error) => {
+            if let Some(export) = &maybe_timing_export {
+                if export.write_preparation_failure().is_err() {
+                    return Err(
+                        error.context("bootstrap_timing=failed reason=evidence_write_failed")
+                    );
+                }
+            }
             maybe_write_phase36_pre_effect_result("invocation_construction_failed")
                 .context("phase36_effect_result=failed reason=invocation_result_write_failed")?;
             return Err(error);
         }
     };
-    emit_line("espflash_version", ESPFLASH_EXPECTED_VERSION)?;
-    emit_line("espflash_executable_sha256", &environment.espflash_sha256)?;
+    if let Some(export) = &maybe_timing_export {
+        *environment.bootstrap_timing.borrow_mut() = Some(export.timing.clone());
+    }
+    let operation_result = (|| {
+        emit_line("espflash_version", ESPFLASH_EXPECTED_VERSION)?;
+        emit_line("espflash_executable_sha256", &environment.espflash_sha256)?;
 
-    let operation_result = match cli.command {
-        CliCommand::DrainWorkerSerial(command) => drain_worker_serial::run(&command),
-        CliCommand::Detect(command) => run_detect(&command, &environment),
-        CliCommand::Flash(command) => run_flash(&command, &environment).map(|_| ()),
-        CliCommand::Monitor(command) => run_monitor(&command, &environment),
-        CliCommand::FlashMonitor(command) => run_flash_monitor(&command, &environment),
-        CliCommand::FinalizeEvidence(command) => run_finalize_evidence(&command, &environment),
-        CliCommand::MiningCampaign(command) => run_mining_campaign(&command, &environment),
-        CliCommand::InputUat(command) => run_input_uat(&command, &environment),
-        CliCommand::SignalIdentify(command) => run_signal_identify(&command, &environment),
-        CliCommand::Phase35Probe(command) => run_phase35_probe(&command, &environment),
-        CliCommand::ReleaseRecovery(command) => run_release_recovery(&command, &environment),
-        CliCommand::RestoreInstalled(command) => run_restore_installed(&command, &environment),
-        CliCommand::NoiseDiagnostic(command) => {
-            run_noise_diagnostic_command(&command, &environment)
-        }
-        CliCommand::TcpPayloadDiagnostic(command) => {
-            run_tcp_payload_diagnostic_command(&command, &environment)
-        }
+        match cli.command {
+            CliCommand::DrainWorkerSerial(command) => drain_worker_serial::run(&command),
+            CliCommand::Detect(command) => run_detect(&command, &environment),
+            CliCommand::Flash(command) => run_flash(&command, &environment).map(|_| ()),
+            CliCommand::Monitor(command) => run_monitor(&command, &environment),
+            CliCommand::FlashMonitor(command) => run_flash_monitor(&command, &environment),
+            CliCommand::FinalizeEvidence(command) => run_finalize_evidence(&command, &environment),
+            CliCommand::MiningCampaign(command) => run_mining_campaign(&command, &environment),
+            CliCommand::InputUat(command) => run_input_uat(&command, &environment),
+            CliCommand::SignalIdentify(command) => run_signal_identify(&command, &environment),
+            CliCommand::Phase35Probe(command) => run_phase35_probe(&command, &environment),
+            CliCommand::ReleaseRecovery(command) => run_release_recovery(&command, &environment),
+            CliCommand::RestoreInstalled(command) => run_restore_installed(&command, &environment),
+            CliCommand::NoiseDiagnostic(command) => {
+                run_noise_diagnostic_command(&command, &environment)
+            }
+            CliCommand::TcpPayloadDiagnostic(command) => {
+                run_tcp_payload_diagnostic_command(&command, &environment)
+            }
 
-        CliCommand::DisplayRecoveryStart(command) => {
-            run_display_recovery_start(&command, &environment)
+            CliCommand::DisplayRecoveryStart(command) => {
+                run_display_recovery_start(&command, &environment)
+            }
+            CliCommand::NvsReadback(command) => run_nvs_readback(&command, &environment),
+            CliCommand::NvsRuntimeRestore(command) => {
+                run_nvs_runtime_restore(&command, &environment)
+            }
+            CliCommand::RomExitDiagnostic(command) => {
+                run_rom_exit_diagnostic(&command, &environment)
+            }
+            CliCommand::OwnerRecovery(command) => run_owner_recovery(command, &environment),
+            CliCommand::BootChainReadback(command) => {
+                run_boot_chain_readback(command, &environment)
+            }
+            CliCommand::UsbStabilityRead(command) => run_usb_stability_read(command, &environment),
+            CliCommand::StartInstalled(command) => run_start_installed(&command, &environment),
         }
-        CliCommand::NvsReadback(command) => run_nvs_readback(&command, &environment),
-        CliCommand::NvsRuntimeRestore(command) => run_nvs_runtime_restore(&command, &environment),
-        CliCommand::RomExitDiagnostic(command) => run_rom_exit_diagnostic(&command, &environment),
-        CliCommand::OwnerRecovery(command) => run_owner_recovery(command, &environment),
-        CliCommand::BootChainReadback(command) => run_boot_chain_readback(command, &environment),
-        CliCommand::UsbStabilityRead(command) => run_usb_stability_read(command, &environment),
-        CliCommand::StartInstalled(command) => run_start_installed(&command, &environment),
-    };
+    })();
     let device_effect_state = environment.device_effect_state();
     let cleanup_result = environment.finish_usb_session();
+    if let Some(export) = &maybe_timing_export {
+        export.timing.cleanup_complete(cleanup_result.is_ok());
+        if operation_result.is_err() {
+            export.timing.preparation_failed();
+        }
+    }
     let result = combine_operation_and_cleanup(operation_result, cleanup_result);
+    let export_result = maybe_timing_export
+        .as_ref()
+        .map_or(Ok(()), bootstrap_timing::TimingExport::write);
+    let result = combine_operation_and_cleanup(result, export_result);
     maybe_write_phase36_operation_result(result.is_ok(), device_effect_state)
         .context("phase36_effect_result=failed reason=operation_result_write_failed")?;
     result

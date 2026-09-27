@@ -119,6 +119,7 @@ fn phase35_probe_real_process_uses_private_sanitized_no_clobber_artifacts() {
     fs::set_permissions(espflash.as_std_path(), fs::Permissions::from_mode(0o700))
         .expect("fake espflash mode");
     let environment = LocalFlashEnvironment {
+        bootstrap_timing: RefCell::new(None),
         workspace_dir: workspace.clone(),
         espflash_bin: espflash.clone(),
         espflash_version: "espflash 4.5.0".to_owned(),

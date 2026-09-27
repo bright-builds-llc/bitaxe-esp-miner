@@ -1,6 +1,7 @@
 //! Single application output owner; diagnostics never block control or liveness.
 
 use super::*;
+use crate::usb_runtime::measurement::{Category, RecordKind, Retained};
 use bitaxe_worker_control::serial::SerialEnvelope;
 use serde_json::{value::RawValue, Value};
 use std::sync::atomic::AtomicUsize;
@@ -115,6 +116,7 @@ pub(super) fn run(
     diagnostics: Receiver<String>,
     progress: &startup_diagnostics::StartupProgress,
 ) {
+    let retained = &mut Retained::new();
     let mut epoch = 0;
     let mut session_id = String::new();
     let mut sequence = 0u32;
@@ -133,11 +135,13 @@ pub(super) fn run(
         {
             last_heartbeat = now;
             if let Err(error) = next_record(
+                retained,
                 OutputAdmission::active(epoch),
                 SerialKind::Heartbeat,
                 &session_id,
                 &mut sequence,
                 b"{}",
+                None,
                 None,
             ) {
                 retain_write_failure(&mut maybe_write_failure, &error);
@@ -146,9 +150,13 @@ pub(super) fn run(
         }
         // Credit is sampled independently of Worker commands and never waits for
         // a complete input record. Heartbeat authority has priority over progress.
-        if let Err(error) =
-            send_receive_credit(epoch, &session_id, &mut sequence, &mut credited_bytes)
-        {
+        if let Err(error) = send_receive_credit(
+            retained,
+            epoch,
+            &session_id,
+            &mut sequence,
+            &mut credited_bytes,
+        ) {
             retain_write_failure(&mut maybe_write_failure, &error);
             revoke_epoch(epoch);
         }
@@ -172,8 +180,17 @@ pub(super) fn run(
                     .map_err(anyhow::Error::from)
                     .and_then(|raw| {
                         let admission = OutputAdmission::active(epoch);
-                        crate::usb_runtime::resynchronize_if(|| admission.permits())?;
-                        emit(admission, SerialKind::Session, &session_id, 0, &raw, None)
+                        crate::usb_runtime::resynchronize_if(retained, || admission.permits())?;
+                        emit(
+                            retained,
+                            admission,
+                            SerialKind::Session,
+                            &session_id,
+                            0,
+                            &raw,
+                            None,
+                            Some((Category::Hello, RecordKind::Protocol)),
+                        )
                     });
                 if let Err(error) = result {
                     retain_write_failure(&mut maybe_write_failure, &error);
@@ -199,26 +216,35 @@ pub(super) fn run(
                     // An indivisible long record gets a fresh peer deadline before transmission.
                     last_heartbeat = crate::runtime_uptime::millis();
                     result = next_record(
+                        retained,
                         OutputAdmission::active(epoch),
                         SerialKind::Heartbeat,
                         &session_id,
                         &mut sequence,
                         b"{}",
                         None,
+                        None,
                     );
                 }
                 if current && result.is_ok() {
-                    result =
-                        send_receive_credit(epoch, &session_id, &mut sequence, &mut credited_bytes);
+                    result = send_receive_credit(
+                        retained,
+                        epoch,
+                        &session_id,
+                        &mut sequence,
+                        &mut credited_bytes,
+                    );
                 }
                 if current && result.is_ok() {
                     result = next_record(
+                        retained,
                         OutputAdmission::active(epoch),
                         SerialKind::Control,
                         &session_id,
                         &mut sequence,
                         &bytes.0,
                         Some(correlation),
+                        None,
                     );
                 }
                 if let Err(error) = &result {
@@ -236,33 +262,56 @@ pub(super) fn run(
                 }
             }
             Err(mpsc::RecvTimeoutError::Timeout) => {
-                if let Err(error) =
-                    send_receive_credit(epoch, &session_id, &mut sequence, &mut credited_bytes)
-                {
+                if let Err(error) = send_receive_credit(
+                    retained,
+                    epoch,
+                    &session_id,
+                    &mut sequence,
+                    &mut credited_bytes,
+                ) {
                     retain_write_failure(&mut maybe_write_failure, &error);
                     revoke_epoch(epoch);
                     continue;
                 }
                 let now = crate::runtime_uptime::millis();
                 let maybe_line = if now >= next_startup_marker {
-                    if let Err(error) = send_statistics_startup(epoch, &session_id, &mut sequence) {
+                    if let Err(error) =
+                        send_statistics_startup(retained, epoch, &session_id, &mut sequence)
+                    {
                         retain_write_failure(&mut maybe_write_failure, &error);
                         revoke_epoch(epoch);
                         continue;
                     }
                     next_startup_marker = now.saturating_add(500);
-                    Some(progress.marker(crate::runtime_uptime::millis()))
+                    Some((
+                        progress.marker(crate::runtime_uptime::millis()),
+                        RecordKind::StartupProgress,
+                        false,
+                    ))
                 } else if now >= next_admission_marker {
                     next_admission_marker = now.saturating_add(1000);
-                    Some(crate::production_mining_session::admission_diagnostics::marker())
+                    Some((
+                        crate::production_mining_session::admission_diagnostics::marker(),
+                        RecordKind::Admission,
+                        false,
+                    ))
                 } else {
-                    diagnostics.try_recv().ok()
+                    diagnostics
+                        .try_recv()
+                        .ok()
+                        .map(|line| (line, RecordKind::RetainedDiagnostic, false))
                 }
                 .or_else(|| {
                     if now.saturating_sub(last_replay) < 250 {
                         return None;
                     }
                     last_replay = now;
+                    if replay_slot == 21 {
+                        replay_slot = 0;
+                        return retained
+                            .marker()
+                            .map(|line| (line, RecordKind::TxObservation, true));
+                    }
                     let line = if replay_slot == 18 {
                         rx_diagnostics::FAILURE.marker()
                     } else if replay_slot == 15 {
@@ -272,13 +321,21 @@ pub(super) fn run(
                     } else {
                         crate::boot_evidence::maybe_worker_diagnostic_line(replay_slot)
                     };
-                    replay_slot = (replay_slot + 1) % 21;
-                    line
+                    replay_slot = (replay_slot + 1) % 22;
+                    line.map(|line| (line, RecordKind::RetainedDiagnostic, true))
                 });
-                let Some(line) = maybe_line else {
+                let Some((line, kind, replay)) = maybe_line else {
                     continue;
                 };
-                if let Err(error) = send_diagnostic_line(epoch, &session_id, &mut sequence, line) {
+                if let Err(error) = send_diagnostic_line(
+                    retained,
+                    epoch,
+                    &session_id,
+                    &mut sequence,
+                    line,
+                    kind,
+                    replay,
+                ) {
                     retain_write_failure(&mut maybe_write_failure, &error);
                     revoke_epoch(epoch);
                 }
@@ -288,30 +345,61 @@ pub(super) fn run(
     }
 }
 
-fn send_statistics_startup(epoch: u32, session_id: &str, sequence: &mut u32) -> anyhow::Result<()> {
+fn send_statistics_startup(
+    retained: &mut Retained,
+    epoch: u32,
+    session_id: &str,
+    sequence: &mut u32,
+) -> anyhow::Result<()> {
     let Some(marker) = crate::statistics_runtime::diagnostics::STARTUP.maybe_marker() else {
         return Ok(());
     };
     send_diagnostic_line(
+        retained,
         epoch,
         session_id,
         sequence,
         crate::boot_evidence::worker_usb_boot_marker(),
+        RecordKind::BootIdentity,
+        false,
     )?;
-    send_diagnostic_line(epoch, session_id, sequence, marker)
+    send_diagnostic_line(
+        retained,
+        epoch,
+        session_id,
+        sequence,
+        marker,
+        RecordKind::StatisticsStartup,
+        false,
+    )
 }
 
 fn send_diagnostic_line(
+    retained: &mut Retained,
     epoch: u32,
     session_id: &str,
     sequence: &mut u32,
     line: String,
+    kind: RecordKind,
+    replay: bool,
 ) -> anyhow::Result<()> {
+    let category = if replay {
+        Category::DiagnosticReplay
+    } else if epoch == 0 || CURRENT_SESSION.load(Ordering::Acquire) != epoch {
+        Category::BootstrapDiagnostic
+    } else {
+        Category::Diagnostic
+    };
     if CURRENT_SESSION.load(Ordering::Acquire) != epoch || epoch == 0 {
         let line = format!("{line}\n");
-        let result = crate::usb_runtime::write_if(line.as_bytes(), || {
-            CURRENT_SESSION.load(Ordering::Acquire) == 0
-        });
+        let result = crate::usb_runtime::write_measured_if(
+            retained,
+            line.as_bytes(),
+            || CURRENT_SESSION.load(Ordering::Acquire) == 0,
+            |_| {},
+            category,
+            kind,
+        );
         if result.is_err() {
             DROPPED_DIAGNOSTICS.fetch_add(1, Ordering::Relaxed);
         }
@@ -319,16 +407,19 @@ fn send_diagnostic_line(
     }
     let payload = serde_json::to_vec(&serde_json::json!({"line":line}))?;
     next_record(
+        retained,
         OutputAdmission::active(epoch),
         SerialKind::Diagnostic,
         session_id,
         sequence,
         &payload,
         None,
+        Some((category, kind)),
     )
 }
 
 fn send_receive_credit(
+    retained: &mut Retained,
     epoch: u32,
     session_id: &str,
     sequence: &mut u32,
@@ -356,12 +447,14 @@ fn send_receive_credit(
         "op": "receive_credit", "receivedBytes": received,
     }))?;
     let result = next_record(
+        retained,
         admission,
         SerialKind::Session,
         session_id,
         sequence,
         &payload,
         None,
+        Some((Category::ReceiveCredit, RecordKind::Protocol)),
     );
     if admission.terminal {
         RECEIVE_CREDIT.finish_terminal(epoch);
@@ -397,12 +490,14 @@ impl OutputAdmission {
 }
 
 fn next_record(
+    retained: &mut Retained,
     admission: OutputAdmission,
     kind: SerialKind,
     session_id: &str,
     sequence: &mut u32,
     bytes: &[u8],
     maybe_correlation: Option<SerialTraceCorrelation>,
+    maybe_measurement: Option<(Category, RecordKind)>,
 ) -> anyhow::Result<()> {
     anyhow::ensure!(admission.permits(), "serial_output_revoked");
     *sequence = sequence
@@ -410,22 +505,26 @@ fn next_record(
         .ok_or_else(|| anyhow::anyhow!("serial_sequence_exhausted"))?;
     let raw: Box<RawValue> = serde_json::from_slice(bytes)?;
     emit(
+        retained,
         admission,
         kind,
         session_id,
         *sequence,
         &raw,
         maybe_correlation,
+        maybe_measurement,
     )
 }
 
 fn emit(
+    retained: &mut Retained,
     admission: OutputAdmission,
     kind: SerialKind,
     session_id: &str,
     sequence: u32,
     payload: &RawValue,
     maybe_correlation: Option<SerialTraceCorrelation>,
+    maybe_measurement: Option<(Category, RecordKind)>,
 ) -> anyhow::Result<()> {
     anyhow::ensure!(admission.permits(), "serial_output_revoked");
     let bytes = zeroize::Zeroizing::new(SerialEnvelope::encode(
@@ -439,10 +538,20 @@ fn emit(
         request_sequence: 0,
     });
     trace::event(correlation, SerialTraceStage::WriterStarted, bytes.len());
-    crate::usb_runtime::write_observed_if(
+    let (category, record_kind) = maybe_measurement.unwrap_or((
+        match kind {
+            SerialKind::Heartbeat => Category::Heartbeat,
+            _ => Category::ControlReply,
+        },
+        RecordKind::Protocol,
+    ));
+    crate::usb_runtime::write_measured_if(
+        retained,
         &bytes,
         || admission.permits(),
         |observation| trace::observe(correlation, observation),
+        category,
+        record_kind,
     )
 }
 

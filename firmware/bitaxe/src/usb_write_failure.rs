@@ -7,7 +7,7 @@ pub(crate) enum WriteStage {
     Cancelled,
 }
 impl WriteStage {
-    fn label(self) -> &'static str {
+    pub(super) fn label(self) -> &'static str {
         match self {
             Self::Write => "write",
             Self::WriteTimeout => "write_timeout",
