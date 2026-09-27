@@ -4384,9 +4384,10 @@ Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/par
 
 ### task-str005-v2-serial-qualification | 2026-09-16 | Qualify Ultra 205 V2 channel and accepted share
 
-Status: Channel004 accepted on its exact pair; Share001 interrupted before
-mining. Blocked on `task-str005-durable-operator-share-successor` for a persistent
-operator and guarded fresh continuation. Channel003 installed the published candidate
+Status: Active; the durable operator software prerequisite is complete and
+archived. Channel004 remains accepted on its exact pair; Share001 remains
+interrupted and unverified before mining. Next are fresh Channel005 and
+same-pair Share002 under the published operator-survival amendment. Channel003 installed the published candidate
 but stopped at installation0 review; its sealed result remains unverified and
 no post-install authenticated baseline was collected. Preserve Channel002's
 separate baseline/cleanup failures and Channel003's original supervisor failure.
@@ -4430,7 +4431,7 @@ remain mandatory.
       clean published candidate and exclusively admit Channel003 through the
       [cleanup-successor amendment](docs/hardware/str005-v2-serial-cleanup-successor-amendment.md).
       Prove current ownership and the actually installed 097050c0 baseline fresh.
-- [ ] Prepare/review the exact Channel003 successor receipt, build the clean
+- [x] Prepare/review the exact Channel003 successor receipt, build the clean
       published package and exclusively admit Channel004 under the
       [install-review](docs/hardware/str005-v2-serial-install-review-amendment.md)
       and [ownership](docs/hardware/str005-v2-serial-install-ownership-amendment.md)
@@ -4629,102 +4630,18 @@ ledgers before any new write; no prior baseline or cycle credit transfers.
 
 
 
-### task-str005-durable-operator-share-successor | 2026-09-19 | Survive operator-client interruption and guard a fresh share attempt
 
-Status: Active; implementation and integration verification. Software-only until
-the verified implementation and exact native package are published. The existing
-`task-str005-v2-serial-qualification` retains ownership of hardware and mining.
-
-Evidence: Channel004 independently passed on firmware `0a9b29bf` / Gate
-`e20c0fd5`, result
-`68997b3cb71933a8aae0715f2f659e0d0c5253cfc9f33e95437572efc449b907`,
-seal `16fd7dddce80530c3b2f1b4b0b94ce6592a51c99ee5008b75bc4c602ab95beea`.
-Share001 completed installation1 but no cycle or mining operation. After an
-interruption its interactive parent was absent and its detached supervisor
-survived. The resumed operator closed the already-released browser page,
-stopped the exact orphaned supervisor and verified current resource absence.
-Original parent/supervisor exit codes and fresh post-install device baseline
-remain unobserved. Canonical finalization/read-only review preserved Share001
-as unverified, result
-`da7d9aa759a071febd83ec062fb046f360affe6c790dbc33d27ee65cc506c994`,
-seal `0449a33a703c9ccab27c92ed573156912449d9f67feabd8fb59d5c36aabc8aa1`.
-No issuance claim, grant, reservation, fixture or work was created. The initial
-ledger was next18/last17/1560000 ms/pending false; it is not a new current review.
-
-- [x] Reproduce loss of the interactive owner with a real-process test before
-      implementing its persistent replacement. Distinguish client loss,
-      operator loss, supervisor loss and incomplete evidence.
-- [x] Review the [prospective operator-survival amendment](docs/hardware/str005-v2-serial-operator-survival-amendment.md): detached
-      repo-owned operator, protected typed IPC, exclusive request IDs,
-      queryable pending/results and independently sourced browser witnesses.
-      No client disconnect may replay an effect or extend device authority.
-- [x] Add fixed native page controls over the existing coordinator APIs; keep
-      genuine foreground Connect gestures and avoid dependence on a debugger.
-      Preserve the same page's private baseline and reject replay/reload gaps.
-- [x] Add exact, effect-free interrupted-Share001 classification and protected
-      sibling readiness. Preserve all sealed bytes, unknown exits and missing
-      post-install observations; require no issuance claim or grant activity.
-- [x] Admit only a newly published pair's Channel005 and same-pair Share002.
-      Retain the existing provenance model rather than separating old runtime
-      from a new driver. Require fresh current identity and both ledgers before
-      writes, five Channel installations/four cycles and four new Share cycles.
-- [x] Preserve the original ordinal18 host marker; exclusively append a
-      successor assignment bound to the failed Share001, its marker and the
-      new Share002 identity. Require fresh unchanged device accounting again
-      before signing. Never reset either ledger or refund a reservation.
-- [x] Test real client loss/reconnection, one-shot operations, truthful child
-      exits, daemon death, unsafe IPC/paths, independent UI witnesses,
-      failed-history mutations, source drift, duplicate/interrupted assignment,
-      archived-task rejection and complete finalizer/reviewer composition.
-- [ ] Run ordered Cargo, canonical/Gate/native/package checks, source ownership,
-      reference, privacy, standards and unchanged parity/progress checks. Review,
-      publish and archive this software task before the bounded hardware run.
-
-Diagnosis | 2026-09-19: The unchanged historical parent was exercised twice
-through a real PTY with an actual detached TCP supervisor. Killing that parent
-left the same supervisor alive and removed its exit observer; the invariant
-failed in0.99s and0.75s as `operator_exit_observation_lost`. Both test actors were
-removed and verified absent. This reproduces the lifetime flaw; the historical
-parent exit signal and exact time remain unknown. The permanent repair will
-keep an actual operator parent alive independently of disposable CLI clients.
-
-Progress | 2026-09-23: Durable operator/client IPC, native page controls, guarded
-Share001 supersession and immutable operator finalization are implemented. Real
-PTY/client-loss and managed supervisor/fixture/finalizer composition tests pass.
-Ordered Cargo checks pass. The first canonical run passed 206 targets but the
-independent historical-fixture suite exhausted the default five-minute runner
-limit; its completed cases passed. That software-only suite is now classified
-as large; the canonical rerun passed all 207 targets, including all 13 cases
-in that suite. Final graph review registered the actual managed-operator
-composition test too; all 208 canonical targets now pass. No hardware
-acceptance deadline changed. The additional Gate
-controller/admission/flow/integrity checks passed 38 tests. Exact clean-package
-native verification remains pending before closure and hardware. USB ownership,
-reference integrity, redaction, Bright Builds and parity/progress checks pass;
-parity remains90/95 and the archive remains unchanged.
-
-Review finding | 2026-09-23: A killed durable operator could leave its detached
-supervisor serving further effectful requests. Publication is held while the
-supervisor gains a terminal parent/IPC-loss gate and bounded cleanup, covered
-by a real daemon-kill regression. Disposable client loss must remain harmless;
-operator loss must never imply a successful exit or authorize adoption. A
-second review finding requires cleanup to remain usable if writing a request
-result fails: clear the active-operation latch and reap actual owners even when
-awaiting the failed operation rejects. Both findings require real-process
-regressions before publication. The daemon-kill regression reproduced an
-accepted request after SIGKILL and now rejects it while closing real owners.
-Result-file-conflict regressions reproduced both permanently busy cleanup and
-SIGTERM failing to stop the owner; final settlement/cleanup regressions are
-complete and pass. Startup parent loss and parent loss during an incomplete
-HTTP body also reject admission. The final canonical run passed all 208 targets after these fixes. Under
-parallel load, two test harness issues were corrected: locator reads now wait
-for the real initialization acknowledgment, and cold ancestry setup has a
-bounded software-only budget. Result files publish atomically; interrupted
-publication stays pending/unverified. All earlier failed logs are retained.
-
-Completion review: Pending. No new hardware effect, allowance or parity
-promotion belongs to this software task. Accepted Channel004 remains valid for
-its actual pair; it cannot qualify a changed pair or replace same-run mining.
+Continuation readiness | 2026-09-26: Completed and archived
+`task-str005-durable-operator-share-successor` provides the verified persistent
+operator, native controls and exact unissued-Share001 continuation rules in the
+[operator-survival amendment](docs/hardware/str005-v2-serial-operator-survival-amendment.md).
+After binding the final clean published package, prepare/review the protected
+Share001 sibling receipt, admit only Channel005 via `--supersede-share`, and
+then admit Share002 only from its accepted same-pair predecessor. Freshly prove
+installed0a9b29bf and next18/last17/1560000-ms/pending-false accounting before
+any new write; repeat all new continuity cycles and all live safety evidence.
+Channel005/Share002 have not been allocated, no new hardware effect occurred,
+and neither a reservation nor a parity transition has been made.
 
 
 ## Future

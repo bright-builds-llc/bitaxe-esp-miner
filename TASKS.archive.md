@@ -16807,3 +16807,116 @@ No Channel004 context, new device effect, allowance or mining reservation was
 created by this software task. Fresh possession, baseline, accounting, four
 cycles and both Channel/Share acceptance remain with the active main task.
 Parity remains90/95.
+
+### task-str005-durable-operator-share-successor | 2026-09-19 | Survive operator-client interruption and guard a fresh share attempt
+
+Status: Complete; verified software published in `421aab78`. The existing
+`task-str005-v2-serial-qualification` retains ownership of hardware and mining.
+
+Evidence: Channel004 independently passed on firmware `0a9b29bf` / Gate
+`e20c0fd5`, result
+`68997b3cb71933a8aae0715f2f659e0d0c5253cfc9f33e95437572efc449b907`,
+seal `16fd7dddce80530c3b2f1b4b0b94ce6592a51c99ee5008b75bc4c602ab95beea`.
+Share001 completed installation1 but no cycle or mining operation. After an
+interruption its interactive parent was absent and its detached supervisor
+survived. The resumed operator closed the already-released browser page,
+stopped the exact orphaned supervisor and verified current resource absence.
+Original parent/supervisor exit codes and fresh post-install device baseline
+remain unobserved. Canonical finalization/read-only review preserved Share001
+as unverified, result
+`da7d9aa759a071febd83ec062fb046f360affe6c790dbc33d27ee65cc506c994`,
+seal `0449a33a703c9ccab27c92ed573156912449d9f67feabd8fb59d5c36aabc8aa1`.
+No issuance claim, grant, reservation, fixture or work was created. The initial
+ledger was next18/last17/1560000 ms/pending false; it is not a new current review.
+
+- [x] Reproduce loss of the interactive owner with a real-process test before
+      implementing its persistent replacement. Distinguish client loss,
+      operator loss, supervisor loss and incomplete evidence.
+- [x] Review the [prospective operator-survival amendment](docs/hardware/str005-v2-serial-operator-survival-amendment.md): detached
+      repo-owned operator, protected typed IPC, exclusive request IDs,
+      queryable pending/results and independently sourced browser witnesses.
+      No client disconnect may replay an effect or extend device authority.
+- [x] Add fixed native page controls over the existing coordinator APIs; keep
+      genuine foreground Connect gestures and avoid dependence on a debugger.
+      Preserve the same page's private baseline and reject replay/reload gaps.
+- [x] Add exact, effect-free interrupted-Share001 classification and protected
+      sibling readiness. Preserve all sealed bytes, unknown exits and missing
+      post-install observations; require no issuance claim or grant activity.
+- [x] Admit only a newly published pair's Channel005 and same-pair Share002.
+      Retain the existing provenance model rather than separating old runtime
+      from a new driver. Require fresh current identity and both ledgers before
+      writes, five Channel installations/four cycles and four new Share cycles.
+- [x] Preserve the original ordinal18 host marker; exclusively append a
+      successor assignment bound to the failed Share001, its marker and the
+      new Share002 identity. Require fresh unchanged device accounting again
+      before signing. Never reset either ledger or refund a reservation.
+- [x] Test real client loss/reconnection, one-shot operations, truthful child
+      exits, daemon death, unsafe IPC/paths, independent UI witnesses,
+      failed-history mutations, source drift, duplicate/interrupted assignment,
+      archived-task rejection and complete finalizer/reviewer composition.
+- [x] Run ordered Cargo, canonical/Gate/native/package checks, source ownership,
+      reference, privacy, standards and unchanged parity/progress checks. Review,
+      publish and archive this software task before the bounded hardware run.
+
+Diagnosis | 2026-09-19: The unchanged historical parent was exercised twice
+through a real PTY with an actual detached TCP supervisor. Killing that parent
+left the same supervisor alive and removed its exit observer; the invariant
+failed in0.99s and0.75s as `operator_exit_observation_lost`. Both test actors were
+removed and verified absent. This reproduces the lifetime flaw; the historical
+parent exit signal and exact time remain unknown. The permanent repair will
+keep an actual operator parent alive independently of disposable CLI clients.
+
+Progress | 2026-09-23: Durable operator/client IPC, native page controls, guarded
+Share001 supersession and immutable operator finalization are implemented. Real
+PTY/client-loss and managed supervisor/fixture/finalizer composition tests pass.
+Ordered Cargo checks pass. The first canonical run passed 206 targets but the
+independent historical-fixture suite exhausted the default five-minute runner
+limit; its completed cases passed. That software-only suite is now classified
+as large; the canonical rerun passed all 207 targets, including all 13 cases
+in that suite. Final graph review registered the actual managed-operator
+composition test too; all 208 canonical targets now pass. No hardware
+acceptance deadline changed. The additional Gate
+controller/admission/flow/integrity checks passed 38 tests. Exact clean-package
+native verification remains pending before closure and hardware. USB ownership,
+reference integrity, redaction, Bright Builds and parity/progress checks pass;
+parity remains90/95 and the archive remains unchanged.
+
+Review finding | 2026-09-23: A killed durable operator could leave its detached
+supervisor serving further effectful requests. Publication is held while the
+supervisor gains a terminal parent/IPC-loss gate and bounded cleanup, covered
+by a real daemon-kill regression. Disposable client loss must remain harmless;
+operator loss must never imply a successful exit or authorize adoption. A
+second review finding requires cleanup to remain usable if writing a request
+result fails: clear the active-operation latch and reap actual owners even when
+awaiting the failed operation rejects. Both findings require real-process
+regressions before publication. The daemon-kill regression reproduced an
+accepted request after SIGKILL and now rejects it while closing real owners.
+Result-file-conflict regressions reproduced both permanently busy cleanup and
+SIGTERM failing to stop the owner; final settlement/cleanup regressions are
+complete and pass. Startup parent loss and parent loss during an incomplete
+HTTP body also reject admission. The final canonical run passed all 208 targets after these fixes. Under
+parallel load, two test harness issues were corrected: locator reads now wait
+for the real initialization acknowledgment, and cold ancestry setup has a
+bounded software-only budget. Result files publish atomically; interrupted
+publication stays pending/unverified. All earlier failed logs are retained.
+
+Completion review | 2026-09-26: Satisfied as software-only work. Implementation
+`421aab78eb0ddd0df1baeab71b08d157550b49c6` is published. Ordered Cargo
+format/Clippy/build/tests passed (2346 tests, three existing ignored), as did all
+208 canonical targets, 38 focused Gate tests, Bright Builds, USB ownership and
+native symbols, reference integrity, redaction and unchanged parity/progress.
+The clean package passed selected native checks: ELF
+`967be55d3662b5299fdc74dc934aa4bc3134c6f81a8a0fe3f85e9d6d81451f09`,
+application4161024 bytes. The actual Share001 read-only classifier reproduced
+its original result/seal and missing post-install baseline. Review fixes and
+real-process regressions cover parent loss, in-flight admission, evidence-write
+failure, atomic result publication, cleanup and independent finalization.
+
+Residual limits: These are software/native-build results, not new hardware
+acceptance. Unexpected daemon death remains unverified and cannot be adopted or
+restarted. Channel004 still qualifies only its actual pair; Share001 remains
+unverified and ordinal18 remains unissued. The live task must bind the final
+clean published package after this metadata-only archival commit, then freshly
+qualify Channel005 and same-pair Share002 under the unchanged prospective
+contract. No old cycle/baseline transfers, no mining reservation is refunded,
+and parity remains90/95.
