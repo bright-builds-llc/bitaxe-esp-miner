@@ -4869,6 +4869,43 @@ The disabled reset-capable acquisition gate was exercised with a nonexistent
 synthetic port and rejected before environment/device discovery or output-root
 creation. All effectful stages remain disabled; no finalization test opened USB.
 
+Offline analytic review requested (2026-09-27), before further instrumentation:
+
+- [x] Separate original mining Start panic, subsequent HTTP startup regression,
+  and host timeout using existing evidence and exact source chronology.
+- [x] Compare recent additions and trace allocation/stack/lock dependencies in
+  the compiled Start path; rank falsifiable candidates with counterevidence.
+- [x] Record findings and the smallest discriminating checks; no device effects,
+  runtime edits, ordinal assumptions or hardware completion claims.
+
+The user explicitly requested static analysis, so analytical hypotheses may be
+reported without a new hardware reproduction. They remain unproven unless an
+existing trace or deterministic software boundary establishes the cause.
+Lesson startup loading was bounded: combined active inputs are 37,860 bytes
+(12,621 conservative estimated tokens); priority safety/evidence and relevant
+blocks plus the global file were read. Remaining unrelated blocks were omitted;
+the full inventory and budget notice were surfaced during this review. Existing
+audit baseline is retained; no new audit trigger or lesson append applies.
+
+Analytic completion review: [source and native-stack analysis](docs/research/str005-startup-code-analysis.md)
+separates the original Start panic from the corrected diagnostic HTTP boot
+regression and host timeout. The pre-V2 to Share002 compiled controller/owner/frame
+subtotal increased by 1,088 bytes; signed Start stack pressure is the leading
+static candidate. The resolved shim-through-Ed25519 frame sum is 16,320 bytes
+on a 16,384-byte control stack; two ABI-supported platform frames bring the
+consistent chain to 16,384 before RTOS/TLS overhead. This is not a captured
+backtrace or complete global bound. No confirmed self-deadlock was found. No hardware access or
+runtime change occurred. Cause remains unproven without a fault location; capture
+qualification remains blocked, all effectful gates remain disabled, and this task
+is not archived. Next: measure a narrowly outlined Start path offline before
+considering additional internal stack allocation or hardware instrumentation.
+
+Verification: ordered Cargo fmt, clippy, build and tests passed (2,403 passed,
+three existing ignores); standards, redaction, reference, parity, changed-block Markdown and
+diff checks passed. Whole-file TASKS formatting already fails at HEAD; unrelated
+historical blocks were preserved. Parity remains 90/95. This review supplies analytical evidence,
+not a hardware correction or new ordinal consumption measurement.
+
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 
 Status: Proof blocked on recovery and verified panic correction.
