@@ -13,5 +13,6 @@
         "--message-format=json-diagnostic-rendered-ansi",
         "--all-targets",
         "--keep-going"
-    ]
+    ],
+    "cmake.sourceDirectory": "/Users/peterryszkiewicz/Repos/bitaxe-esp-miner/reference/esp-miner"
 }
