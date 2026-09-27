@@ -73,7 +73,7 @@ export function clientFixture(scope = "channel") {
   };
   maybeCoordinator = createV2Coordinator({ gate, request, published: () => structuredClone(state), now: () => time,
     sleep: async ms => { sleeps.push(ms); time += ms; }, notice: text => notices.push(text) });
-  return { api: maybeCoordinator.supervisor, calls, counts, durable, notices, sleeps, state, gate, request,
+  return { abort: maybeCoordinator.abort, api: maybeCoordinator.supervisor, calls, counts, durable, notices, sleeps, state, gate, request,
     advance(ms) { time += ms; }, at: () => time,
     throwAt(name) { maybeThrowAt = name; }, recordFailure() { maybeRecordFailure = true; },
     nativeReconnect() { state.status = "ready"; state.connected = true; state.serialOwnershipReleased = false; state.running = false;

@@ -118,7 +118,8 @@ export async function installSuccessorFixture(t) {
   if (sealed.status !== "unverified" || (await proof(f.root, "judgment-failure.json")).value.code !== "v2_recorded_failure")
     throw new Error("synthetic original failure was not exercised");
   const required = [...f.context.native_source_files, ...f.context.native_auditor_sources, ...SUCCESSOR_MODULES];
-  const publishedSources = await sourceInventory(f.context.firmware_root, required);
+  const publishedSources = (await sourceInventory(f.context.firmware_root, required))
+    .filter(row => row.path !== "docs/hardware/str005-v2-serial-operator-survival-amendment.md");
   const operations = { ...f.operations,
     inspectHistoricalInstallChannel: async path => ({ context: await loadContext(path, { historical: true, operations: f.operations }), reviewed: await review(path, f.operations) }),
     git: () => "f".repeat(40), publishedCheckerPaths: async () => publishedSources.map(row => row.path),

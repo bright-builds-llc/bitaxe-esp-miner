@@ -2,14 +2,15 @@ import { basename, resolve } from "node:path";
 import { check, SCOPES } from "./values.mjs";
 
 export const TASK_ID = "task-str005-v2-serial-qualification";
-const ACTIONS = ["preflight", "serve", "recover", "finalize", "review", "close-permission", "review-permission", "prepare-channel-successor", "review-channel-successor"];
+const ACTIONS = ["preflight", "serve", "recover", "finalize", "review", "close-permission", "review-permission", "prepare-channel-successor", "review-channel-successor", "prepare-share-successor", "review-share-successor", "operator-start", "operator-request", "operator-status"];
 const PREFLIGHT = ["scope", "firmware-root", "gate-root", "package-manifest", "fixture-binary", "predecessor-receipt"];
 
 /** Validate all options before opening any path, allocating an attempt or reading signing material. */
 export function parseArgs(argv) {
   const [action, ...args] = argv;
   check(ACTIONS.includes(action), "v2_action_invalid");
-  const extra = action === "preflight" ? [...PREFLIGHT, "supersede-permission", "supersede-channel"] : action === "serve" ? ["authority-directory"] :
+  const extra = action === "preflight" ? [...PREFLIGHT, "supersede-permission", "supersede-channel", "supersede-share"] : ["serve", "operator-start"].includes(action) ? ["authority-directory"] :
+    action === "operator-request" ? ["request"] : action === "operator-status" ? ["request-id"] :
     action === "finalize" ? ["cleanup-receipt"] : [];
   const allowed = new Set(["private-root", ...extra]), raw = {};
   check(args.length % 2 === 0, "v2_option_value_missing");
@@ -19,19 +20,20 @@ export function parseArgs(argv) {
     check(typeof value === "string" && value.length > 0 && !value.startsWith("--"), "v2_option_value_missing");
     raw[name] = value;
   }
-  const required = ["private-root", ...(action === "preflight" ? PREFLIGHT : action === "finalize" ? ["cleanup-receipt"] : [])];
+  const required = ["private-root", ...(action === "preflight" ? PREFLIGHT : action === "finalize" ? ["cleanup-receipt"] : action === "operator-request" ? ["request"] : [])];
   check(required.every((key) => Object.hasOwn(raw, key)), "v2_required_option");
   check(raw["private-root"] === resolve(raw["private-root"]), "v2_absolute_root_required");
   if (action === "preflight") check(SCOPES.includes(raw.scope), "v2_scope");
-  check(!(raw["supersede-permission"] !== undefined && raw["supersede-channel"] !== undefined), "v2_supersession_conflict");
+  check(["supersede-permission", "supersede-channel", "supersede-share"].filter(key => raw[key] !== undefined).length <= 1, "v2_supersession_conflict");
   if (raw["supersede-channel"] !== undefined) check(raw.scope === "channel" &&
     raw["supersede-channel"] === resolve(raw["supersede-channel"]), "v2_cleanup_scope");
   if (raw["supersede-permission"] !== undefined) check(raw.scope === "channel" &&
     raw["supersede-permission"] === resolve(raw["supersede-permission"]), "v2_permission_scope");
+  if (raw["supersede-share"] !== undefined) check(raw.scope === "channel" && raw["supersede-share"] === resolve(raw["supersede-share"]), "v2_share_successor_scope");
   return { action, options: { privateRoot: raw["private-root"], scope: raw.scope,
     firmwareRoot: raw["firmware-root"], gateRoot: raw["gate-root"], manifest: raw["package-manifest"],
     fixtureBinary: raw["fixture-binary"], predecessorReceipt: raw["predecessor-receipt"],
-    authorityDirectory: raw["authority-directory"], cleanupReceipt: raw["cleanup-receipt"], supersedePermission: raw["supersede-permission"], supersedeChannel: raw["supersede-channel"] } };
+    authorityDirectory: raw["authority-directory"], cleanupReceipt: raw["cleanup-receipt"], supersedePermission: raw["supersede-permission"], supersedeChannel: raw["supersede-channel"], supersedeShare: raw["supersede-share"], requestFile: raw.request, requestId: raw["request-id"] } };
 }
 
 export function attemptName(root, scope) {

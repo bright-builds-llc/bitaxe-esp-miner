@@ -19,24 +19,32 @@ import { createSigner } from "./signing.mjs";
 import { createShareRoutes } from "./share-routes.mjs";
 import { configuration, serveAsset } from "./server-assets.mjs";
 import { check, object, sha256 } from "./values.mjs";
+import { requireOperatorParent } from "./operator-parent.mjs";
 
-/** This server owns host resources only; all device control stays on the admitted Gate page. */
-export async function createSupervisor(options, operations = {}) {
+/** Component seam for software composition; no public CLI selects this factory. */
+export function createSupervisor(options, operations = {}) { return supervisor(options, operations, false); }
+/** Public serve must prove its real daemon parent before authority inputs. */
+export function createManagedSupervisor(options, operations = {}) { return supervisor(options, operations, true); }
+async function supervisor(options, operations, managed) {
   const root = resolve(options.privateRoot), context = await loadContext(root, { operations });
+  const maybeParent = managed ? await requireOperatorParent(root, context) : null;
   requireAuthorityOption(context.scope, options);
   await recheckNative(context, operations);
   await recheckSuccessorOwnership(context, operations);
+  maybeParent?.check();
   const contextSha256 = sha256(JSON.stringify(context)), now = operations.now ?? (() => Math.floor(performance.now()));
   await writeNew(resolve(root, "server.claim.json"), { schema: "str005-v2-server-claim-v1", contextSha256 });
   const failures = failureRecorder(root, context, now), journal = await createJournal(root, context);
   const trust = JSON.parse(await readFile(resolve(context.firmware_root, "firmware/bitaxe/bwg/deployment-trust.json"), "utf8"));
   let phase = "before", maybeFixture = null, maybeFixtureStart = null, maybeScope = null, queue = Promise.resolve(), stopping = false;
-  const verify = () => verifyEffectInputs(context, operations);
-  const ready = () => check(!failures.failed() && !stopping, "v2_terminal_failure");
+  const verify = async () => { maybeParent?.check(); await verifyEffectInputs(context, operations); maybeParent?.check(); };
+  const ready = () => { maybeParent?.check(); check(!failures.failed() && !stopping, "v2_terminal_failure"); };
+  maybeParent?.onLoss(() => { stopping = true; failures.fail("v2_operator_owner"); });
   let maybeSigner = null;
   if (context.scope === "share") {
-    maybeSigner = await createSigner(root, context, options.authorityDirectory, failures.failed, operations);
-    admitTrust(trust, await maybeSigner("public-trust"));
+    ready(); maybeSigner = await createSigner(root, context, options.authorityDirectory, failures.failed, operations);
+    ready();
+    const publicTrust = await maybeSigner("public-trust"); ready(); admitTrust(trust, publicTrust);
   }
   const observer = createObserverRoutes(root, context, { now, ready, failed: failures.failed, fail: failures.fail, journal, operations });
   const share = createShareRoutes(root, context, { now, ready: () => { ready(); check(phase === "candidate", "v2_candidate_required"); },
@@ -63,7 +71,7 @@ export async function createSupervisor(options, operations = {}) {
   });
   server.requestTimeout = 60000; server.headersTimeout = 10000;
   async function handle(request, response) {
-    observer.observeFailure();
+    maybeParent?.check(); observer.observeFailure();
     const origin = `http://127.0.0.1:${server.address().port}`, path = new URL(request.url, origin).pathname;
     check(request.headers.host === `127.0.0.1:${server.address().port}`, "v2_host_rejected");
     if (request.method === "POST" || path === "/window-artifacts") check(request.headers.origin === origin ||
@@ -77,6 +85,7 @@ export async function createSupervisor(options, operations = {}) {
     send(response, 200, result);
   }
   async function route(path, input, method) {
+    maybeParent?.check();
     if (path === "/record") {
       object(input, ["state"]); const saved = await journal.state(phase, input.state, now());
       if (input.state.failure && !execution.expectedFault(input.state)) failures.fail("v2_browser_failed", null, saved.sequence);
@@ -161,5 +170,6 @@ export async function createSupervisor(options, operations = {}) {
     closeObserver: () => observer.finish(), settleQueue: () => queue,
     fail: failures.fail, settled: failures.settled,
   });
+  server.operatorParent = maybeParent;
   return server;
 }

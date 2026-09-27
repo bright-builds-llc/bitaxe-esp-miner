@@ -106,7 +106,7 @@ export async function successorFixture(t) {
   // This fixture models the frozen v1 checker domain, predating the install
   // amendment's Rust-producer dependency expansion.
   const publishedSources = (await sourceInventory(context.firmware_root, required)).filter(row =>
-    !["docs/hardware/str005-v2-serial-install-review-amendment.md", "docs/hardware/str005-v2-serial-install-ownership-amendment.md"].includes(row.path) &&
+    !["docs/hardware/str005-v2-serial-operator-survival-amendment.md", "docs/hardware/str005-v2-serial-install-review-amendment.md", "docs/hardware/str005-v2-serial-install-ownership-amendment.md"].includes(row.path) &&
     !row.path.startsWith("tools/flash/"));
   const operations = { ...f.operations,
     inspectHistoricalChannel: async path => ({ context: await loadContext(path, { historical: true, operations: f.operations }), reviewed: await review(path, f.operations) }),

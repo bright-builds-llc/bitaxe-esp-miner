@@ -8,6 +8,7 @@ import { collectInputs, snapshotCleanup } from "./inputs.mjs";
 import { firstFailure, failureOutcome, judgmentCode } from "./disposition.mjs";
 import { judge, inspectRestoredCleanup } from "./judge.mjs";
 import { projection } from "./projection.mjs";
+import { managedOperator, requireOperatorStopped, snapshotOperator } from "./operator-evidence.mjs";
 import { check, object, sha256 } from "./values.mjs";
 
 const SEAL_EXCLUSIONS = new Set(["sealed-inventory.json", "projection.json"]);
@@ -44,6 +45,7 @@ async function publishEligible(root, context, cleanupPath, maybeAccepted, operat
 export async function finalize(root, cleanupPath, operations = {}) {
   const context = await loadContext(root, { historical: true, operations });
   await requireHostStopped(root, context, operations);
+  await requireOperatorStopped(root, context, operations);
   for (const name of ["final-result.json", "sealed-inventory.json", "projection.json", "judgment-failure.json", "native/final-readiness.json", "final-inputs"])
     await missing(resolve(root, name));
   const initial = await inventory(root);
@@ -53,13 +55,15 @@ export async function finalize(root, cleanupPath, operations = {}) {
   await verifyInventory(root, initial);
   if (maybeNative) await writeNew(resolve(root, "native/final-readiness.json"), maybeNative);
   await snapshotCleanup(root, cleanupPath);
+  await snapshotOperator(root, context, operations);
   const options = { ...operations, cleanupSnapshot: true };
   const stable = await inventory(root);
   const classified = maybeNativeCode ? { maybeAccepted: null, maybeCode: maybeNativeCode } : await classify(root, context, cleanupPath, options);
   const { maybeAccepted, maybeCode } = classified;
   const maybeFailure = maybeAccepted ? null : await firstFailure(root, context, maybeCode);
-  const inputs = await collectInputs(root, { cleanupSnapshot: true });
+  const inputs = await collectInputs(root, { cleanupSnapshot: true, operatorSnapshot: managedOperator(context) });
   await requireHostStopped(root, context, operations);
+  await requireOperatorStopped(root, context, operations);
   await verifyInventory(root, stable);
   if (!maybeAccepted) await writeNew(resolve(root, "judgment-failure.json"), { schema: "str005-v2-judgment-failure-v1", code: maybeCode, nativeCode: maybeNativeCode });
   const result = { schema: "str005-v2-serial-result-v1", contextSha256: sha256(JSON.stringify(context)),
@@ -84,7 +88,7 @@ export async function review(root, operations = {}) {
   object(result, ["schema", "contextSha256", "status", "outcome", "firstFailure", "inputs", "scope"]);
   check(result.schema === "str005-v2-serial-result-v1" && result.contextSha256 === hash && result.scope === context.scope &&
     ["passed", "unverified"].includes(result.status), "v2_result_shape");
-  check(canonical(result.inputs) === canonical(await collectInputs(root, { cleanupSnapshot: true })), "v2_result_input_drift");
+  check(canonical(result.inputs) === canonical(await collectInputs(root, { cleanupSnapshot: true, operatorSnapshot: managedOperator(context) })), "v2_result_input_drift");
   const options = { ...operations, checkKernel: false, cleanupSnapshot: true }, cleanupPath = `${root}.cleanup/receipt.json`;
   if (result.status === "passed") {
     check(result.firstFailure === null && result.outcome === "complete", "v2_pass_disposition");

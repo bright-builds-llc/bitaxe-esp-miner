@@ -1,3 +1,4 @@
+import { completedOperatorFixture, syntheticBrowserWitness } from "./completed-operator.fixture.mjs";
 // Synthetic failed Share after a genuinely re-evaluated synthetic Channel.
 // No proof-of-work predicate is bypassed and this never represents hardware evidence.
 import { resolve } from "node:path";
@@ -11,10 +12,11 @@ import { state, ledger, original } from "../str005-noise-serial/test-fixture.mjs
 import { sha256 } from "./values.mjs";
 
 export async function failedShareFixture(t, channel, channelResult) {
-  const options = { ...channel.options, scope: "share", privateRoot: resolve(channel.parent, "share-001"),
+  const options = { ...channel.options, scope: "share", privateRoot: resolve(channel.parent, channel.context.schema === "str005-v2-serial-context-v5" ? "share-002" : "share-001"),
     predecessorReceipt: resolve(channel.root, "final-result.json") };
   delete options.supersedePermission;
   delete options.supersedeChannel;
+  delete options.supersedeShare;
   const predecessor = { root: channel.root, context: channel.context, resultSha256: channelResult.result_sha256,
     sealSha256: channelResult.sealed_inventory_sha256, ledger, original };
   const oldReader = channel.operations.inspectPredecessor;
@@ -72,9 +74,10 @@ export async function failedShareFixture(t, channel, channelResult) {
     scope: "share", attemptId: context.attemptId, fixtureInstanceId: instanceId, fixturePort: 54321 }));
   const cleanup = await prepareCleanup(root, context, operations); live = false;
   const last = journal.lastState();
-  await cleanup.record({ browser: { schema: "noise-serial-browser-closure-v2", source: "parent-observed", contextSha256, closed: true,
-    lastSequence: last.sequence, lastStateSha256: sha256(JSON.stringify(last)), observedAtUnixMs: Date.now() },
-  supervisor: { schema: "noise-serial-process-exit-v2", source: "parent-observed", contextSha256, owner: serverOwner, code: 0,
-    observedAtUnixMs: Date.now(), clock: "node-hrtime-ms-v1", stopRequestedAtMs: 1000, exitedAtMs: 1001 } });
+  const browser = syntheticBrowserWitness(context, last);
+  const supervisor = { schema: "noise-serial-process-exit-v2", source: "parent-observed", contextSha256, owner: serverOwner, code: 0,
+    observedAtUnixMs: Date.now(), clock: "node-hrtime-ms-v1", stopRequestedAtMs: 1000, exitedAtMs: 1001 };
+  await cleanup.record({ browser, supervisor });
+  await completedOperatorFixture(f, browser, supervisor);
   return f;
 }

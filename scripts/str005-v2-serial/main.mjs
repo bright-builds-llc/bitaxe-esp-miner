@@ -9,6 +9,16 @@ import { check } from "./values.mjs";
 export async function main(argv, operations = {}) {
   const { action, options } = parseArgs(argv);
   check(action !== "recover", "v2_serial_recovery_unavailable");
+  if (["operator-start", "operator-request", "operator-status"].includes(action)) {
+    const client = await import("./operator-client.mjs");
+    return client[{ "operator-start": "operatorStart", "operator-request": "operatorRequest", "operator-status": "operatorStatus" }[action]](options, operations);
+  }
+  if (["prepare-share-successor", "review-share-successor"].includes(action)) {
+    const module = await import("./share-successor-readiness.mjs");
+    const result = await (action === "prepare-share-successor" ? module.prepareShareSuccessor : module.reviewShareSuccessor)(options.privateRoot, operations);
+    return { status: result.status, classification: result.classification, hardware_qualified: false, historical_cleanup_complete: false,
+      device_effects: false, context_sha256: result.contextSha256, receipt_sha256: result.receiptSha256 };
+  }
   if (["prepare-channel-successor", "review-channel-successor"].includes(action)) {
     const module = await import("./successor-readiness.mjs");
     const result = await (action === "prepare-channel-successor" ? module.prepareChannelSuccessor : module.reviewChannelSuccessor)(options.privateRoot, operations);
@@ -26,7 +36,7 @@ export async function main(argv, operations = {}) {
   if (action === "review") return (await import("./finalize.mjs")).review(options.privateRoot, operations);
   const stdout = fstatSync(1);
   check(stdout.isFile() && (stdout.mode & 0o777) === 0o600, "v2_protected_stdout_required");
-  const server = await (await import("./server.mjs")).createSupervisor(options, operations);
+  const server = await (await import("./server.mjs")).createManagedSupervisor(options, operations);
   const closed = new Promise((done) => server.once("close", done));
   let maybeCleanup, maybeFailure = null;
   const stop = () => {
@@ -34,8 +44,12 @@ export async function main(argv, operations = {}) {
     // given cleanup. Closing active HTTP bodies happens inside this call.
     maybeCleanup ??= server.closeQualificationResources().then(() => null, (error) => error);
   };
+  const releaseParentLoss = server.operatorParent?.onLoss(() => {
+    maybeFailure ??= Object.assign(Error("v2_operator_owner"), { code: "v2_operator_owner" }); stop();
+  });
   for (const signal of ["SIGINT", "SIGTERM"]) process.once(signal, stop);
   try {
+    server.operatorParent?.check();
     server.listen(0, "127.0.0.1");
     await once(server, "listening"); await server.qualificationReady;
     process.stdout.write(`qualification_url=http://127.0.0.1:${server.address().port}/\n`);
@@ -44,6 +58,7 @@ export async function main(argv, operations = {}) {
   finally {
     for (const signal of ["SIGINT", "SIGTERM"]) process.removeListener(signal, stop);
     stop(); const cleanupFailure = await maybeCleanup; maybeFailure ??= cleanupFailure;
+    releaseParentLoss?.(); server.operatorParent?.dispose();
   }
   if (maybeFailure) throw maybeFailure;
   return { supervisor: "closed", hardware_qualified: false };

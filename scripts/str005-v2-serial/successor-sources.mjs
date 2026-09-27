@@ -67,7 +67,8 @@ export async function inspectCheckerIdentity(value, context, operations = {}) {
 export async function createCheckerIdentity(context, operations = {}) {
   const commit = (operations.git ?? git)(context.firmware_root, ["rev-parse", "HEAD"]);
   (operations.cleanPushed ?? cleanPushed)(context.firmware_root, commit);
-  const inventory = await sourceInventory(context.firmware_root, required(context));
+  const inventory = (await sourceInventory(context.firmware_root, required(context)))
+    .filter(row => row.path !== "docs/hardware/str005-v2-serial-operator-survival-amendment.md");
   // Preserve the v1 checker domain even when today's general evaluator includes
   // the additional v2 producer files. Historical tree membership is versioned.
   const sources = installClass(context) ? inventory : inventory.filter(row => !INSTALL_FILES.includes(row.path));

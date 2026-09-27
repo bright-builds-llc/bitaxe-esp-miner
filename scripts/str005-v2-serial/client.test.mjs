@@ -67,10 +67,11 @@ test("each maximum-exchange probe is scoped and account/config outputs remain me
   assert.deepEqual(await f.api.configureCandidate(), { configured: true });
 });
 test("bootstrap removes manual work controls and the binding textarea without requesting Serial permission", () => {
-  const removed = [], page = { workerAcceptance: {} }, notice = {};
-  const document = { getElementById: id => ({ remove: () => removed.push(id) }), createElement: () => notice, body: { append() {} }, querySelector: () => null };
+  const removed = [], page = { workerAcceptance: {} }, notice = { setAttribute() {}, addEventListener() {}, append() {} };
+  const document = { getElementById: id => ({ remove: () => removed.push(id), addEventListener() {} }), createElement: () => notice, body: { append() {} }, querySelector: () => null };
   installV2Coordinator(page, document, async () => { throw Error("unexpected_fetch"); });
-  assert.ok(removed.includes("authorization-context")); assert.ok(removed.includes("start")); assert.equal(removed.includes("connect"), false);
+  assert.ok(removed.includes("authorization-context")); assert.ok(removed.includes("start")); assert.equal(removed.includes("connect"), false); assert.equal(removed.includes("stop"), false);
+  assert.ok(removed.includes("probe")); assert.ok(removed.includes("close")); assert.ok(removed.includes("configuration"));
   assert.deepEqual(Object.keys(page.v2Supervisor), ["flush", "recordAccounting", "configureCandidate", "recordCycle", "run", "restoreAndRecord"]);
 });
 

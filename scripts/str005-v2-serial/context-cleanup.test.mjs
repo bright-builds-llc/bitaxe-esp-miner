@@ -45,7 +45,7 @@ test("retired v3 admission cannot consume another Channel003 assignment", async 
   // Arrange.
   const f = await cleanupContextFixture(t, { prepare: false }), before = await readdir(f.parent);
   // Act / Assert.
-  await assert.rejects(preflight(f.options, f.operations), { code: "v2_cleanup_successor_required" });
+  await assert.rejects(preflight(f.options, f.operations), { code: "v2_share_successor_required" });
   assert.deepEqual(await readdir(f.parent), before);
 });
 

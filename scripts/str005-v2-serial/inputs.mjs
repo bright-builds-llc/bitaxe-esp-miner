@@ -29,7 +29,7 @@ async function fileEntries(root, relative) {
   return [{ path: relative, sha256: sha256(bytes), length: bytes.length }];
 }
 /** Preserve every available named input, including malformed/partial bytes on an unverified result. */
-export async function collectInputs(root, { cleanupSnapshot = false } = {}) {
+export async function collectInputs(root, { cleanupSnapshot = false, operatorSnapshot = false } = {}) {
   await privateRoot(root); const names = (await readdir(root)).sort(), inputs = {};
   for (const [key, pattern] of Object.entries(GROUPS)) {
     const files = [];
@@ -44,6 +44,10 @@ export async function collectInputs(root, { cleanupSnapshot = false } = {}) {
   const cleanupRoot = cleanupSnapshot ? resolve(root, "final-inputs/cleanup") : `${root}.cleanup`;
   const maybeCleanupNames = await maybeDirectory(cleanupRoot);
   inputs.cleanup = maybeCleanupNames === null ? null : (await Promise.all(maybeCleanupNames.map((name) => fileEntries(cleanupRoot, name)))).flat();
+  if (operatorSnapshot) {
+    const operatorRoot = resolve(root, "final-inputs/operator"), names = await maybeDirectory(operatorRoot);
+    inputs.operator = names === null ? null : (await Promise.all(names.map(name => fileEntries(operatorRoot, name)))).flat();
+  }
   return inputs;
 }
 /** Snapshot only fixed safe parent witnesses, once, before classification. */

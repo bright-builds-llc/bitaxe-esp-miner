@@ -21,7 +21,7 @@ export async function inspectPredecessor(path, scope, operations = {}) {
     check(previous?.schema === "noise-serial-context-v2", "v2_noise_predecessor_required");
     reviewed = await reviewNoise(root);
   } else {
-    check(scope === "share" && ["str005-v2-serial-context-v1", "str005-v2-serial-context-v2", "str005-v2-serial-context-v3", "str005-v2-serial-context-v4"].includes(previous?.schema) && previous.scope === "channel", "v2_channel_predecessor_required");
+    check(scope === "share" && ["str005-v2-serial-context-v1", "str005-v2-serial-context-v2", "str005-v2-serial-context-v3", "str005-v2-serial-context-v4", "str005-v2-serial-context-v5"].includes(previous?.schema) && previous.scope === "channel", "v2_channel_predecessor_required");
     const reader = operations.reviewChannel ?? (await import("./finalize.mjs")).review;
     reviewed = await reader(root);
     check(reviewed.scope === "channel", "v2_channel_predecessor_scope");
@@ -51,7 +51,7 @@ export function requirePredecessorBinding(context, predecessor) {
     "v2_predecessor_changed");
   // v3/v4 Channel's expected installed image is independently joined to its failed
   // successor receipt. Older contexts and Share retain the exact ancestor rule.
-  if (!(["str005-v2-serial-context-v3", "str005-v2-serial-context-v4"].includes(context.schema) && context.scope === "channel"))
+  if (!(["str005-v2-serial-context-v3", "str005-v2-serial-context-v4", "str005-v2-serial-context-v5"].includes(context.schema) && context.scope === "channel"))
     check(context.before_source.firmware_commit === predecessor.context.firmware_commit &&
       context.before_source.app_elf_sha256 === predecessor.context.app_elf_sha256, "v2_before_source_changed");
   if (context.scope === "share") {

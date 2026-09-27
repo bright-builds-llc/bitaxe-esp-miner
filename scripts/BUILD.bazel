@@ -607,7 +607,7 @@ js_library(
 
 js_library(
     name = "str005_v2_serial_sources",
-    srcs = glob(["str005-v2-serial/*.mjs", "str005-v2-serial/*.rs"]) + ["v2-native-paths.mjs", "v2-native-readiness.mjs"],
+    srcs = glob(["str005-v2-serial/*.mjs", "str005-v2-serial/*.rs", "str005-v2-serial/*.py"]) + ["v2-native-paths.mjs", "v2-native-readiness.mjs"],
     deps = [
         ":str005_noise_serial_sources",
         "//:str005_v2_serial_contract_inputs",
@@ -809,4 +809,54 @@ js_test(
     name = "str005_v2_install_successor_test",
     data = [":str005_v2_serial_sources"],
     entry_point = "str005-v2-serial/install-successor.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_client_native_controls_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/client-native-controls.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_share_successor_test",
+    # Each corruption case independently reconstructs and reviews the sealed ancestry.
+    size = "large",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/share-successor.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_operator_ipc_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/operator-ipc.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_operator_rehearsal_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/operator-rehearsal.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_operator_composition_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/operator-composition.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_context_share_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/context-share.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_operator_managed_entry_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/operator-managed-entry.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_serial_operator_evidence_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/operator-evidence.test.mjs",
 )

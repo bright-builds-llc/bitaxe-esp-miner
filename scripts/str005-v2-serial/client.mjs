@@ -1,3 +1,4 @@
+import { installNativeControls } from "./client-native-controls.mjs";
 const fail = code => { throw new Error(code); };
 const token = value => typeof value === "string" && /^[A-Za-z0-9_-]{21}[AQgw]$/u.test(value);
 /** A timeout stops this coordinator; it never retries a possibly consumed command. */
@@ -27,6 +28,7 @@ function classification(error) {
 export function createV2Coordinator(operations) {
   const { gate, request, published, now, sleep } = operations;
   const notice = operations.notice ?? (() => {});
+  let abortRequested = false;
   let queue = Promise.resolve(), recordFailed = false, running = false, started = false, completed = false;
   let phase = "configuration", maybeScope, maybeBinding, maybeAttemptId, maybeFailure = null;
   let channelDelivered = false, connectionRecorded = false, maybeRestoreAfter = null, maybeFixtureRequestAt = null;
@@ -69,6 +71,7 @@ export function createV2Coordinator(operations) {
   }
   async function idle(binding) { return bounded(gate.stratumV2Status(maybeScope, null, binding), 30000); }
   async function fixture(status) {
+    if (abortRequested) fail("v2_client_aborted");
     phase = "fixture";
     maybeFixtureRequestAt = now();
     const result = await call("/fixture/start", { status });
@@ -83,6 +86,7 @@ export function createV2Coordinator(operations) {
     const input = await call("/start/claim", { status: fresh });
     if (input?.attemptId !== maybeAttemptId) fail("v2_client_shape");
     phase = "start"; const deadline = now() + 125000;
+    if (abortRequested) fail("v2_client_aborted");
     let status = await bounded(gate.stratumV2ChannelStart(input, maybeBinding), Math.min(30000, deadline - now()), "v2_client_horizon");
     channelDelivered = true;
     for (;;) {
@@ -111,14 +115,17 @@ export function createV2Coordinator(operations) {
     await fixture(await idle(maybeBinding));
     phase = "admission"; const fresh = await idle(maybeBinding);
     await call("/start/network", { status: fresh, controlSessionBindingSha256: maybeBinding });
+    if (abortRequested) fail("v2_client_aborted");
     const signed = await bounded(gate.prepareStartAuthorization(), 30000);
     if (signed?.controlSessionBindingSha256 !== maybeBinding) fail("v2_client_shape");
+    if (abortRequested) fail("v2_client_aborted");
     await bounded(gate.loadSignedWindow(), 30000); await flush();
     const finalFreshIdle = await idle(maybeBinding); // Refresh admission without another possession proof.
     phase = "start"; const deadline = now() + 240000;
     const startInvokedAtPageMs = now();
     if (maybeFixtureRequestAt === null || startInvokedAtPageMs < maybeFixtureRequestAt || startInvokedAtPageMs - maybeFixtureRequestAt > 10000)
       fail("v2_client_fixture_deadline");
+    if (abortRequested) fail("v2_client_aborted");
     await bounded(gate.startWindow(), 30000);
     const startRepliedAtPageMs = now();
     if (startRepliedAtPageMs < startInvokedAtPageMs || startRepliedAtPageMs - startInvokedAtPageMs > 30000) fail("v2_client_timeout");
@@ -203,6 +210,7 @@ export function createV2Coordinator(operations) {
       try {
         const info = await scopeState(); if (info.phase !== "candidate") fail("v2_client_candidate_required");
         if (maybeScope === "channel") await channel(); else await share();
+        if (abortRequested) fail("v2_client_aborted");
         completed = true;
         const remaining = maybeRestoreAfter === null ? 0 : Math.max(0, Math.ceil(maybeRestoreAfter - now()));
         notice("Phase recorded. Keep this page; reconnect through a native gesture after the required wait.");
@@ -225,14 +233,14 @@ export function createV2Coordinator(operations) {
       await accounting("after"); return { restoration_recorded: true, accounting_recorded: true, hardware_qualified: false };
     }),
   };
-  return { supervisor, observe };
+  return { supervisor, observe, abort() { abortRequested = true; void report(new Error("v2_client_aborted")); } };
 }
 
 /** Only the qualified Gate page owns Serial permission and device control. */
 export function installV2Coordinator(page, document, fetchImpl = fetch) {
-  for (const id of ["prepare", "load", "start", "arm-foreground", "suppress", "authorization-context"]) document.getElementById(id)?.remove();
+  for (const id of ["prepare", "load", "start", "arm-foreground", "suppress", "authorization-context", "probe", "close", "configuration"]) document.getElementById(id)?.remove();
   const notice = document.createElement("p"); notice.id = "v2-supervisor-status";
-  notice.textContent = "V2 qualification. Retain this page and its private baseline throughout this scope.";
+  notice.textContent = "V2 qualification. Configuration is supplied by this supervisor. Retain this page and its private baseline. Stop and restore remains available as an emergency abort.";
   document.body.append(notice);
   const published = () => {
     const text = document.querySelector("#state")?.textContent;
@@ -245,8 +253,10 @@ export function installV2Coordinator(page, document, fetchImpl = fetch) {
   };
   const coordinator = createV2Coordinator({ gate: page.workerAcceptance, request, published, now: () => performance.now(),
     sleep: ms => new Promise(resolveSleep => setTimeout(resolveSleep, ms)), notice: text => { notice.textContent = text; } });
+  const controls = installNativeControls(document, coordinator.supervisor, page.workerAcceptance, published, coordinator.abort);
   const output = document.querySelector("#state");
-  if (output) new MutationObserver(() => coordinator.observe(published())).observe(output, { childList: true, subtree: true, characterData: true });
+  const observe = () => { const state = published(); coordinator.observe(state); controls.observe(state); };
+  if (output) { new MutationObserver(observe).observe(output, { childList: true, subtree: true, characterData: true }); if (output.textContent) observe(); }
   page.v2Supervisor = coordinator.supervisor;
   return coordinator;
 }

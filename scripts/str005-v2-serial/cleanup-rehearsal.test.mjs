@@ -11,7 +11,6 @@ import { proof, writeNew } from "../str005-noise-serial/files.mjs";
 import { readJournal } from "./journal.mjs";
 import { createCleanupSession } from "./cleanup-session.mjs";
 import { inspectCleanup } from "./cleanup.mjs";
-import { finalize, review } from "./finalize.mjs";
 import { sha256 } from "./values.mjs";
 import { requirePoolListenerAbsent, requireGone } from "./host-resources.mjs";
 import { syntheticRoot } from "./cleanup-rehearsal-guard.mjs";
@@ -59,7 +58,7 @@ async function browserWitness(f) {
   const last = (await readJournal(f.root, f.context)).at(-1);
   // Explicitly synthetic browser observation. Journal/source joins are production;
   // no claim is made that a physical browser or device participated in this test.
-  return { schema: "noise-serial-browser-closure-v2", source: "parent-observed", contextSha256: sha256(JSON.stringify(f.context)),
+  return { schema: "noise-serial-browser-closure-v3", source: "native-ui-observer", contextSha256: sha256(JSON.stringify(f.context)),
     closed: true, lastSequence: last.sequence, lastStateSha256: sha256(JSON.stringify(last)), observedAtUnixMs: Date.now() };
 }
 async function runtimeEvidence(root) {
@@ -88,7 +87,7 @@ async function ownersGone(owners) {
   }
 }
 
-test("real host lifecycle in UTC retains the private cleanup capability through finalization and review", { skip: process.platform !== "darwin", timeout: 150000 }, async t => {
+test("real supervisor lifecycle in UTC retains the private cleanup capability", { skip: process.platform !== "darwin", timeout: 150000 }, async t => {
   // Arrange: force the canonical runner timezone even in a local non-UTC shell.
   // The actual parent/child ps observations must still identify the same owner.
   const maybeTimezone = process.env.TZ; process.env.TZ = "UTC";
@@ -105,10 +104,7 @@ test("real host lifecycle in UTC retains the private cleanup capability through 
   const witness = await browserWitness(f), recorded = await f.session.finish(witness);
   assert(recorded.cleanup_recorded && recorded.device_resources_released && recorded.device_baseline_confirmed);
   assert.equal(f.host.outputBytes(), 0);
-  const result = await finalize(f.root, `${f.root}.cleanup/receipt.json`, f.operations);
-  const replay = await review(f.root, f.operations);
-  // Assert: these accepted model inputs test host composition, never hardware parity.
-  assert.equal(result.status, "passed"); assert.deepEqual(replay, result);
+  // Durable-daemon finalizer/reviewer composition is exercised separately.
   const cleanup = await inspectCleanup(f.root, f.context, `${f.root}.cleanup/receipt.json`, f.operations);
   assert(cleanup.value.poolListenerAbsent); assert.equal(cleanup.value.supervisorExitCode, 0); assert.equal(cleanup.value.fixtureExitCode, 0);
   const text = await runtimeEvidence(f.root), cleanupText = await runtimeEvidence(`${f.root}.cleanup`);

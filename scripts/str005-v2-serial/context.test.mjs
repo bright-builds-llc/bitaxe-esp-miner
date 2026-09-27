@@ -22,15 +22,15 @@ test("missing native readiness cannot consume an assignment", async (t) => {
   const native = f.operations.inspectNative;
   f.operations.inspectNative = async (input) => ({ ...await native(input), result: "unverified" });
   await assert.rejects(preflight(f.options, f.operations), { code: "v2_native_readiness" });
-  assert.deepEqual(await readdir(f.parent), [".synthetic-parent", "channel-001", "channel-001.permission-closure.json", "channel-002", "channel-002.successor-readiness.json", "channel-003", "channel-003.successor-readiness.json", "channel-ordinal-1.json", "channel-ordinal-2.json", "channel-ordinal-3.json"]);
+  assert.deepEqual(await readdir(f.parent), [".synthetic-parent", "channel-001", "channel-001.permission-closure.json", "channel-002", "channel-002.successor-readiness.json", "channel-003", "channel-003.successor-readiness.json", "channel-ordinal-1.json", "channel-ordinal-2.json", "channel-ordinal-3.json", "qualification-ordinal-18.json", "share-001", "share-001.share-successor-readiness.json", "share-ordinal-1.json"]);
 });
 
 test("interruption before mkdir consumes host and qualification assignments permanently", async (t) => {
   const f = await contextFixture(t, { scope: "share", prepare: false });
   f.operations.beforeCreate = () => { throw new Error("synthetic interruption"); };
   await assert.rejects(preflight(f.options, f.operations), /synthetic interruption/u);
-  const names = await readdir(f.parent); assert(names.includes("share-ordinal-1.json")); assert(names.includes("qualification-ordinal-18.json"));
-  assert(!names.includes("share-001"));
+  const names = await readdir(f.parent); assert(names.includes("share-ordinal-2.json")); assert(names.includes("qualification-ordinal-18.successor-2.json"));
+  assert(!names.includes("share-002"));
   delete f.operations.beforeCreate;
   await assert.rejects(preflight(f.options, f.operations));
 });
@@ -42,7 +42,7 @@ test("archived task and contract drift reject before namespace mutation", async 
   await writeFile(resolve(f.options.firmwareRoot, "TASKS.md"), "## Active\n### task-str005-v2-serial-qualification | synthetic\n");
   await writeFile(resolve(f.options.firmwareRoot, AMENDMENT_PATH), "changed amendment");
   await assert.rejects(preflight(f.options, f.operations), { code: "v2_contract_changed" });
-  assert.deepEqual(await readdir(f.parent), [".synthetic-parent", "channel-001", "channel-001.permission-closure.json", "channel-002", "channel-002.successor-readiness.json", "channel-003", "channel-003.successor-readiness.json", "channel-ordinal-1.json", "channel-ordinal-2.json", "channel-ordinal-3.json"]);
+  assert.deepEqual(await readdir(f.parent), [".synthetic-parent", "channel-001", "channel-001.permission-closure.json", "channel-002", "channel-002.successor-readiness.json", "channel-003", "channel-003.successor-readiness.json", "channel-ordinal-1.json", "channel-ordinal-2.json", "channel-ordinal-3.json", "qualification-ordinal-18.json", "share-001", "share-001.share-successor-readiness.json", "share-ordinal-1.json"]);
 });
 
 test("fresh effect checks detect source drift independently on every call", async (t) => {
@@ -73,7 +73,7 @@ test("native auditor-source mismatch fails before reservation", async (t) => {
   const f = await contextFixture(t, { prepare: false }), native = f.operations.inspectNative;
   f.operations.inspectNative = async (input) => { const value = await native(input); value.auditorSources[0].sha256 = "0".repeat(64); return value; };
   await assert.rejects(preflight(f.options, f.operations), { code: "v2_native_source_join" });
-  assert.deepEqual(await readdir(f.parent), [".synthetic-parent", "channel-001", "channel-001.permission-closure.json", "channel-002", "channel-002.successor-readiness.json", "channel-003", "channel-003.successor-readiness.json", "channel-ordinal-1.json", "channel-ordinal-2.json", "channel-ordinal-3.json"]);
+  assert.deepEqual(await readdir(f.parent), [".synthetic-parent", "channel-001", "channel-001.permission-closure.json", "channel-002", "channel-002.successor-readiness.json", "channel-003", "channel-003.successor-readiness.json", "channel-ordinal-1.json", "channel-ordinal-2.json", "channel-ordinal-3.json", "qualification-ordinal-18.json", "share-001", "share-001.share-successor-readiness.json", "share-ordinal-1.json"]);
 });
 
 test("missing final preflight inventory cannot serve a partially created context", async (t) => {
@@ -87,7 +87,7 @@ test("Share rejects a different pair and unsigned native changes after Channel",
   const prior = f.operations.inspectPredecessor;
   f.operations.inspectPredecessor = async (...args) => { const p = await prior(...args); return { ...p, context: { ...p.context, gate_commit: "e".repeat(40) } }; };
   await assert.rejects(preflight(f.options, f.operations), { code: "v2_share_pair_changed" });
-  assert(!(await readdir(f.parent)).includes("share-ordinal-1.json"));
+  assert(!(await readdir(f.parent)).includes("share-ordinal-2.json"));
 });
 
 test("native auditing cannot race changed task or package into an assignment", async (t) => {
@@ -95,7 +95,7 @@ test("native auditing cannot race changed task or package into an assignment", a
   f.operations.inspectNative = async (input) => { const value = await audit(input);
     await writeFile(resolve(f.options.firmwareRoot, "TASKS.md"), "## Future\n### task-str005-v2-serial-qualification | moved\n"); return value; };
   await assert.rejects(preflight(f.options, f.operations), { code: "v2_live_task_inactive" });
-  assert.deepEqual(await readdir(f.parent), [".synthetic-parent", "channel-001", "channel-001.permission-closure.json", "channel-002", "channel-002.successor-readiness.json", "channel-003", "channel-003.successor-readiness.json", "channel-ordinal-1.json", "channel-ordinal-2.json", "channel-ordinal-3.json"]);
+  assert.deepEqual(await readdir(f.parent), [".synthetic-parent", "channel-001", "channel-001.permission-closure.json", "channel-002", "channel-002.successor-readiness.json", "channel-003", "channel-003.successor-readiness.json", "channel-ordinal-1.json", "channel-ordinal-2.json", "channel-ordinal-3.json", "qualification-ordinal-18.json", "share-001", "share-001.share-successor-readiness.json", "share-ordinal-1.json"]);
 });
 
 test("observer identity is mandatory before assignment and immutable in snapshot", async (t) => {
@@ -104,7 +104,7 @@ test("observer identity is mandatory before assignment and immutable in snapshot
   const original = await readFile(path), bad = JSON.parse(original); bad.sourceCommit = "f".repeat(40);
   await writeFile(path, JSON.stringify(bad));
   await assert.rejects(preflight(f.options, f.operations), { code: "v2_observer_build_identity" });
-  assert.deepEqual(await readdir(f.parent), [".synthetic-parent", "channel-001", "channel-001.permission-closure.json", "channel-002", "channel-002.successor-readiness.json", "channel-003", "channel-003.successor-readiness.json", "channel-ordinal-1.json", "channel-ordinal-2.json", "channel-ordinal-3.json"]);
+  assert.deepEqual(await readdir(f.parent), [".synthetic-parent", "channel-001", "channel-001.permission-closure.json", "channel-002", "channel-002.successor-readiness.json", "channel-003", "channel-003.successor-readiness.json", "channel-ordinal-1.json", "channel-ordinal-2.json", "channel-ordinal-3.json", "qualification-ordinal-18.json", "share-001", "share-001.share-successor-readiness.json", "share-ordinal-1.json"]);
   await writeFile(path, original); await preflight(f.options, f.operations);
   const context = await loadContext(f.root, { operations: f.operations });
   assert(context.cadence_observer.path.endsWith("/tools/http-transport/cadence_observer"));

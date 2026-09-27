@@ -1,3 +1,4 @@
+import { syntheticBrowserWitness } from "./completed-operator.fixture.mjs";
 import assert from "node:assert/strict";
 import { cp, mkdir, readFile, readdir, writeFile, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
@@ -41,8 +42,7 @@ async function setup(t, scope = "channel") {
   };
   async function witnesses() {
     const last = (await readJournal(f.root, f.context)).at(-1), now = Date.now();
-    return { browser: { schema: "noise-serial-browser-closure-v2", source: "parent-observed", contextSha256, closed: true,
-      lastSequence: last.sequence, lastStateSha256: sha256(JSON.stringify(last)), observedAtUnixMs: now },
+    return { browser: syntheticBrowserWitness(f.context, last, now),
     supervisor: { schema: "noise-serial-process-exit-v2", source: "parent-observed", contextSha256, owner: server,
       code: 0, observedAtUnixMs: now, clock: "node-hrtime-ms-v1", stopRequestedAtMs: 1000, exitedAtMs: 1100 } };
   }

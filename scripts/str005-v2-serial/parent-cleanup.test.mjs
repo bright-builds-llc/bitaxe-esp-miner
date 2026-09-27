@@ -1,3 +1,4 @@
+import { syntheticBrowserWitness } from "./completed-operator.fixture.mjs";
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -73,7 +74,7 @@ test("legacy disposition does not reinterpret an artifact introduced by v3", asy
 test("a parent failure prevents qualification even when complete cleanup receipts exist", async t => {
   // Arrange: otherwise complete software evidence, never a real hardware run.
   const f = await completedFixture(t);
-  assert.equal(f.context.schema, "str005-v2-serial-context-v4");
+  assert.equal(f.context.schema, "str005-v2-serial-context-v5");
   await writeNew(join(f.root, "parent-cleanup-failure.json"), {
     schema: "str005-v2-parent-cleanup-failure-v1", source: "parent-observed",
     contextSha256: sha256(JSON.stringify(f.context)), stage: "record",
@@ -98,4 +99,14 @@ test("historical v3 retains its parent failure interpretation", async t => {
   assert.equal(result.source, "parent");
   assert.equal(result.code, "v2_pool_listener_present");
   assert.equal(result.ordering, "parent-observed");
+});
+
+
+test("synthetic browser witnesses retain historical provenance and select native UI only for v5", () => {
+  for (const version of [1, 2, 3, 4, 5]) {
+    const context = { schema: `str005-v2-serial-context-v${version}` };
+    const witness = syntheticBrowserWitness(context, { sequence: 7 }, 1750000000000);
+    assert.equal(witness.schema, version === 5 ? "noise-serial-browser-closure-v3" : "noise-serial-browser-closure-v2");
+    assert.equal(witness.source, version === 5 ? "native-ui-observer" : "parent-observed");
+  }
 });

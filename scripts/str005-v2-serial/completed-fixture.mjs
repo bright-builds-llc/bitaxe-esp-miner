@@ -1,4 +1,5 @@
 // Explicit synthetic observations exercise the real V2 filesystem reader; never hardware evidence.
+import { completedOperatorFixture, syntheticBrowserWitness } from "./completed-operator.fixture.mjs";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { contextFixture } from "./context-fixtures.mjs";
@@ -97,7 +98,8 @@ export async function completedFixture(t) {
   vector.deviceRecords.forEach(record => { record.attemptId = context.attemptId; });
   vector.connectionComparison.attemptId = context.attemptId;
   const instanceId = vector.fixtureTerminal.instanceId;
-  const fixtureOwner = { pid: 81001, pgid: 81001, startedAt: "synthetic-fixture" }, serverOwner = { pid: 81000, pgid: 81000, startedAt: "synthetic-server" };
+  const fixtureOwner = { pid: 81001, pgid: 81001, startedAt: "synthetic-fixture" }, serverOwner = { pid: 81000, pgid: 81000, startedAt: "synthetic-server",
+    ...(context.schema === "str005-v2-serial-context-v5" ? { ppid: 81999 } : {}) };
   await writeNew(resolve(root, "server-owner.json"), { schema: "str005-v2-server-owner-v1", contextSha256, owner: serverOwner,
     origin: "http://127.0.0.1:32123", port: 32123, atHostMs: 0 });
   await writeNew(resolve(root, "fixture-owner.json"), { schema: "str005-v2-fixture-owner-v1", contextSha256, owner: fixtureOwner, atHostMs: ++f.time,
@@ -147,9 +149,10 @@ export async function completedFixture(t) {
     scope: "channel", attemptId: context.attemptId, fixtureInstanceId: instanceId, fixturePort: 54321 }));
   const cleanup = await prepareCleanup(root, context, f.operations); live = false;
   const last = journal.lastState();
-  await cleanup.record({ browser: { schema: "noise-serial-browser-closure-v2", source: "parent-observed", contextSha256, closed: true,
-    lastSequence: last.sequence, lastStateSha256: digest(JSON.stringify(last)), observedAtUnixMs: Date.now() },
-  supervisor: { schema: "noise-serial-process-exit-v2", source: "parent-observed", contextSha256, owner: serverOwner, code: 0,
-    observedAtUnixMs: Date.now(), clock: "node-hrtime-ms-v1", stopRequestedAtMs: 1000, exitedAtMs: 1001 } });
+  const browser = syntheticBrowserWitness(context, last);
+  const supervisor = { schema: "noise-serial-process-exit-v2", source: "parent-observed", contextSha256, owner: serverOwner, code: 0,
+    observedAtUnixMs: Date.now(), clock: "node-hrtime-ms-v1", stopRequestedAtMs: 1000, exitedAtMs: 1001 };
+  await cleanup.record({ browser, supervisor });
+  await completedOperatorFixture(f, browser, supervisor);
   return f;
 }

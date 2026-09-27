@@ -68,7 +68,7 @@ test("failed Share publishes only accepted Channel after actual restoration and 
     const channelName = `channel-${String(channel.context.hostOrdinal).padStart(3, "0")}.json`;
     if (cleanupComplete) assert.equal(JSON.parse(await readFile(resolve(publicRoot, channelName))).status, "accepted");
     else await assert.rejects(readFile(resolve(publicRoot, channelName)), { code: "ENOENT" });
-    await assert.rejects(readFile(resolve(publicRoot, "share-001.json")), { code: "ENOENT" });
+    await assert.rejects(readFile(resolve(publicRoot, `share-${String(f.context.hostOrdinal).padStart(3, "0")}.json`)), { code: "ENOENT" });
     await assert.rejects(readFile(resolve(f.root, "projection.json")), { code: "ENOENT" });
   }
 });

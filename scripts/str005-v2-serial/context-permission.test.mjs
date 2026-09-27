@@ -46,7 +46,7 @@ test("old permission flag cannot allocate a fresh Channel002 after the v3 policy
   // Arrange.
   const f = await permissionContextFixture(t, { prepare: false }), before = await readdir(f.parent);
   // Act / Assert.
-  await assert.rejects(preflight(f.options, f.operations), { code: "v2_cleanup_successor_required" });
+  await assert.rejects(preflight(f.options, f.operations), { code: "v2_share_successor_required" });
   assert.deepEqual(await readdir(f.parent), before);
 });
 

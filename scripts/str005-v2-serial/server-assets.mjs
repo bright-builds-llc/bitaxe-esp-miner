@@ -14,12 +14,14 @@ export function configuration(context, phase, trust) {
 }
 
 export async function serveAsset(root, context, pathname, response) {
-  if (!["/", `/${BUNDLE}`, "/v2-client.mjs"].includes(pathname)) return false;
+  if (!["/", `/${BUNDLE}`, "/v2-client.mjs", "/client-native-controls.mjs"].includes(pathname)) return false;
+  const controls = pathname === "/client-native-controls.mjs";
   const client = pathname === "/v2-client.mjs", page = pathname === "/";
-  const path = client ? resolve(context.firmware_root, "scripts/str005-v2-serial/client.mjs") :
+  const controlsPath = "scripts/str005-v2-serial/client-native-controls.mjs";
+  const path = controls ? resolve(context.firmware_root, controlsPath) : client ? resolve(context.firmware_root, "scripts/str005-v2-serial/client.mjs") :
     resolve(root, "qualified-artifacts/gate", page ? context.gate_page_relative_path : BUNDLE);
   let bytes = await readFile(path);
-  check(sha256(bytes) === (client ? context.client_sha256 : page ? context.gate_page_sha256 : context.gate_bundle_sha256), "v2_asset_changed");
+  check(sha256(bytes) === (controls ? context.evaluator.find(row => row.path === controlsPath)?.sha256 : client ? context.client_sha256 : page ? context.gate_page_sha256 : context.gate_bundle_sha256), "v2_asset_changed");
   if (page) bytes = Buffer.from(`${bytes.toString("utf8")}\n<script type="module" src="/v2-client.mjs"></script>`);
   send(response, 200, bytes, page ? "text/html" : "text/javascript"); return true;
 }

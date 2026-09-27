@@ -11,11 +11,11 @@ import { PARENT_CLEANUP_CODES, PARENT_CLEANUP_STAGES, parentCleanupCode } from "
 export { PARENT_CLEANUP_CODES, PARENT_CLEANUP_STAGES };
 
 /** One parent owns the private cleanup capability until it records completion or
- * a durable typed failure. The browser witness must come from actual parent
+ * a durable typed failure. The browser witness must come from an actual UI
  * observation; the helper never fabricates browser closure or device state.
  */
 export function createCleanupSession(root, context, { child, owner, operations = {} }) {
-  check(context.schema === "str005-v2-serial-context-v4", "v2_parent_cleanup_state");
+  check(context.schema === "str005-v2-serial-context-v5", "v2_parent_cleanup_state");
   const contextSha256 = sha256(JSON.stringify(context));
   check(child.pid === owner.pid && owner.pgid === owner.pid && child.exitCode === null && child.signalCode === null, "v2_parent_supervisor_identity");
   const exitObserver = observeOwnedExit(child, contextSha256, owner, "supervisor");
@@ -53,7 +53,7 @@ export function createCleanupSession(root, context, { child, owner, operations =
     object(witness, ["schema", "source", "contextSha256", "closed", "lastSequence", "lastStateSha256", "observedAtUnixMs"]);
     const last = (await readJournal(root, context)).at(-1);
     uint(witness.observedAtUnixMs);
-    check(witness.schema === "noise-serial-browser-closure-v2" && witness.source === "parent-observed" &&
+    check(witness.schema === "noise-serial-browser-closure-v3" && witness.source === "native-ui-observer" &&
       witness.contextSha256 === contextSha256 && witness.closed === true && witness.observedAtUnixMs <= Date.now() &&
       last && witness.lastSequence === last.sequence && witness.lastStateSha256 === sha256(JSON.stringify(last)) &&
       last.state.status === "closed" && last.state.connected === false && last.state.serialOwnershipReleased === true,

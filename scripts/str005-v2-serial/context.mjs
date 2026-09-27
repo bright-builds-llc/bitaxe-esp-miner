@@ -1,3 +1,4 @@
+import { shareMetadata, shareBinding, reviewedShare, currentShareOwnership, requireShareBinding, verifySharePins, successorOrdinalPath, ordinalSuccessor, publishOrdinalSuccessor } from "./context-share-binding.mjs";
 import { mkdir, readFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { BUNDLE, PAGE, canonicalBase64, cleanPushed, fileDigest, ignored, missing, nonce, packageSnapshot } from "../fixed-usb-qualification/contract.mjs";
@@ -9,7 +10,7 @@ import { requireLiveSupervisor } from "./effect-admission.mjs";
 import { inspectPredecessor, requirePredecessorBinding, ACCEPTED_NOISE_RESULT_SHA256, ACCEPTED_NOISE_SEAL_SHA256 } from "./predecessor.mjs";
 import { createSnapshot, verifySnapshot } from "./snapshot.mjs";
 import { check, digest, object, SCOPES, sha256, CONTRACT_PATH, CONTRACT_SHA256, AMENDMENT_PATH, AMENDMENT_SHA256,
-  PERMISSION_AMENDMENT_PATH, PERMISSION_AMENDMENT_SHA256, CLEANUP_AMENDMENT_PATH, CLEANUP_AMENDMENT_SHA256, INSTALL_REVIEW_AMENDMENT_PATH, INSTALL_REVIEW_AMENDMENT_SHA256, INSTALL_OWNERSHIP_AMENDMENT_PATH, INSTALL_OWNERSHIP_AMENDMENT_SHA256 } from "./values.mjs";
+  PERMISSION_AMENDMENT_PATH, PERMISSION_AMENDMENT_SHA256, CLEANUP_AMENDMENT_PATH, CLEANUP_AMENDMENT_SHA256, INSTALL_REVIEW_AMENDMENT_PATH, INSTALL_REVIEW_AMENDMENT_SHA256, INSTALL_OWNERSHIP_AMENDMENT_PATH, INSTALL_OWNERSHIP_AMENDMENT_SHA256, OPERATOR_AMENDMENT_PATH, OPERATOR_AMENDMENT_SHA256 } from "./values.mjs";
 import { requireExhaustedOriginal, requireIdleLedger } from "../fixed-usb-qualification/iterative-contract.mjs";
 import { installSupersessionMetadata, installSupersessionBinding, initialSuccessorAccounting } from "./context-install-binding.mjs";
 import { checkHostCorrection, validateHostCorrection } from "./host-correction.mjs";
@@ -18,7 +19,8 @@ import { checkPermissionCorrection, validatePermissionCorrection } from "./permi
 export const LEGACY_SCHEMA = "str005-v2-serial-context-v1";
 export const PERMISSION_SCHEMA = "str005-v2-serial-context-v2";
 export const CLEANUP_SCHEMA = "str005-v2-serial-context-v3";
-export const SCHEMA = "str005-v2-serial-context-v4";
+export const INSTALL_SCHEMA = "str005-v2-serial-context-v4";
+export const SCHEMA = "str005-v2-serial-context-v5";
 const hostMarker = (root, scope, ordinal) => resolve(dirname(root), `${scope}-ordinal-${ordinal}.json`);
 const qualificationMarker = (root, ordinal) => resolve(dirname(root), `qualification-ordinal-${ordinal}.json`);
 async function predecessorFor(path, scope, operations) { return (operations.inspectPredecessor ?? inspectPredecessor)(path, scope, operations); }
@@ -27,29 +29,32 @@ function validatePolicy(context) {
     "firmware_root", "gate_root", "firmware_commit", "gate_commit", "manifest", "cadence_observer", "observer_build_receipt_sha256", "fixture_binary", "fixture_sha256", "fixture_build_receipt_sha256",
     "gate_bundle_sha256", "gate_page_relative_path", "gate_page_sha256", "trust_sha256", "sdkconfig_sha256", "evaluator", "native_source_files",
     "native_auditor_sources", "client_sha256", "operator_sha256", "scope", "attemptId", "hostOrdinal", "predecessor", "before_source", "original_campaign_id", "install_indices",
-    ...([PERMISSION_SCHEMA, CLEANUP_SCHEMA, SCHEMA].includes(context?.schema) ? ["permissionSupersession"] : []),
-    ...([CLEANUP_SCHEMA, SCHEMA].includes(context?.schema) ? ["cleanupSupersession"] : []),
+    ...([PERMISSION_SCHEMA, CLEANUP_SCHEMA, INSTALL_SCHEMA, SCHEMA].includes(context?.schema) ? ["permissionSupersession"] : []),
+    ...([CLEANUP_SCHEMA, INSTALL_SCHEMA, SCHEMA].includes(context?.schema) ? ["cleanupSupersession"] : []),
+    ...(context?.schema === SCHEMA ? ["shareSupersession"] : []),
     ...(Object.hasOwn(context ?? {}, "native_readiness") ? ["native_readiness"] : []),
     ...(context?.scope === "share" ? ["qualificationAttempt", "expectedLedgerBefore"] : [])];
   object(context, keys);
-  check([LEGACY_SCHEMA, PERMISSION_SCHEMA, CLEANUP_SCHEMA, SCHEMA].includes(context?.schema) && SCOPES.includes(context.scope) && canonicalBase64(context.attemptId, 16) &&
+  check([LEGACY_SCHEMA, PERMISSION_SCHEMA, CLEANUP_SCHEMA, INSTALL_SCHEMA, SCHEMA].includes(context?.schema) && SCOPES.includes(context.scope) && canonicalBase64(context.attemptId, 16) &&
     context.install_indices?.join(",") === (context.scope === "channel" ? "0,1,2,3,4" : "1,2,3,4"), "v2_context_policy");
   // The original closed ordinal-one shape remains historical evidence only.
   if (context.schema === LEGACY_SCHEMA) check(context.hostOrdinal === 1, "v2_retry_progress_unverified");
   else {
-    check(context.hostOrdinal === (context.scope === "channel" ? (context.schema === SCHEMA ? 4 : context.schema === CLEANUP_SCHEMA ? 3 : 2) : 1), "v2_retry_progress_unverified");
-    if ([CLEANUP_SCHEMA, SCHEMA].includes(context.schema)) {
+    check(context.hostOrdinal === (context.scope === "channel" ? (context.schema === SCHEMA ? 5 : context.schema === INSTALL_SCHEMA ? 4 : context.schema === CLEANUP_SCHEMA ? 3 : 2) : context.schema === SCHEMA ? 2 : 1), "v2_retry_progress_unverified");
+    if ([CLEANUP_SCHEMA, INSTALL_SCHEMA, SCHEMA].includes(context.schema)) {
       check(context.permissionSupersession === null, "v2_permission_scope");
-      if (context.scope === "share") check(context.cleanupSupersession === null, "v2_cleanup_scope");
+      if (context.schema === SCHEMA) { check(context.cleanupSupersession === null, "v2_cleanup_scope"); shareMetadata(context.shareSupersession); }
+      else if (context.scope === "share") check(context.cleanupSupersession === null, "v2_cleanup_scope");
       else if (context.schema === CLEANUP_SCHEMA) cleanupMetadata(context.cleanupSupersession);
       else installSupersessionMetadata(context.cleanupSupersession);
     } else if (context.scope === "share") check(context.permissionSupersession === null, "v2_permission_scope");
     else permissionMetadata(context.permissionSupersession);
     const expected = { base: { path: CONTRACT_PATH, sha256: CONTRACT_SHA256 }, amendment: { path: AMENDMENT_PATH, sha256: AMENDMENT_SHA256 },
       permission: { path: PERMISSION_AMENDMENT_PATH, sha256: PERMISSION_AMENDMENT_SHA256 },
-      ...([CLEANUP_SCHEMA, SCHEMA].includes(context.schema) ? { cleanup: { path: CLEANUP_AMENDMENT_PATH, sha256: CLEANUP_AMENDMENT_SHA256 } } : {}),
-      ...(context.schema === SCHEMA ? { installReview: { path: INSTALL_REVIEW_AMENDMENT_PATH, sha256: INSTALL_REVIEW_AMENDMENT_SHA256 },
-        installReviewOwnership: { path: INSTALL_OWNERSHIP_AMENDMENT_PATH, sha256: INSTALL_OWNERSHIP_AMENDMENT_SHA256 } } : {}) };
+      ...([CLEANUP_SCHEMA, INSTALL_SCHEMA, SCHEMA].includes(context.schema) ? { cleanup: { path: CLEANUP_AMENDMENT_PATH, sha256: CLEANUP_AMENDMENT_SHA256 } } : {}),
+      ...([INSTALL_SCHEMA, SCHEMA].includes(context.schema) ? { installReview: { path: INSTALL_REVIEW_AMENDMENT_PATH, sha256: INSTALL_REVIEW_AMENDMENT_SHA256 },
+        installReviewOwnership: { path: INSTALL_OWNERSHIP_AMENDMENT_PATH, sha256: INSTALL_OWNERSHIP_AMENDMENT_SHA256 } } : {}),
+      ...(context.schema === SCHEMA ? { operatorSurvival: { path: OPERATOR_AMENDMENT_PATH, sha256: OPERATOR_AMENDMENT_SHA256 } } : {}) };
     check(canonical(context.contracts) === canonical(expected) && context.contractSha256 === sha256(canonical(expected)), "v2_contract_changed");
   }
   if (context.scope === "channel") check(!Object.hasOwn(context, "qualificationAttempt") && !Object.hasOwn(context, "expectedLedgerBefore"), "v2_channel_no_allowance");
@@ -101,7 +106,7 @@ async function currentOwnership(inspected, operations) {
   await verify(inspected, operations);
 }
 function cleanupBinding(context, inspected) {
-  if (context.schema === SCHEMA) return installSupersessionBinding(context, inspected);
+  if (context.schema === INSTALL_SCHEMA) return installSupersessionBinding(context, inspected);
   const expectedRoot = resolve(context.firmware_root, "scratch/str005-v2-serial/channel-002");
   check(inspected.status === "unverified" && inspected.classification === "ready_for_fresh_channel" && inspected.hardwareQualified === false &&
     inspected.historicalCleanupComplete === false && inspected.root === expectedRoot && inspected.receiptPath === `${expectedRoot}.successor-readiness.json` &&
@@ -129,7 +134,7 @@ async function verifyCleanupPin(context) {
   const [receipt, failed, result, seal] = await Promise.all([proof(dirname(pin.receiptPath), pin.receiptPath),
     proof(pin.failedRoot, "context.json"), proof(pin.failedRoot, "final-result.json"), proof(pin.failedRoot, "sealed-inventory.json")]);
   object(failed.value, ["context", "sha256"]);
-  check(receipt.sha256 === pin.receiptSha256 && receipt.value.schema === (context.schema === SCHEMA ? "str005-v2-channel-successor-readiness-v2" : "str005-v2-channel-successor-readiness-v1") &&
+  check(receipt.sha256 === pin.receiptSha256 && receipt.value.schema === (context.schema === INSTALL_SCHEMA ? "str005-v2-channel-successor-readiness-v2" : "str005-v2-channel-successor-readiness-v1") &&
     receipt.value.failedRoot === pin.failedRoot && receipt.value.failedContextSha256 === pin.failedContextSha256 &&
     receipt.value.failedResultSha256 === pin.failedResultSha256 && receipt.value.failedSealSha256 === pin.failedSealSha256 &&
     result.sha256 === pin.failedResultSha256 && seal.sha256 === pin.failedSealSha256 && failed.value.sha256 === pin.failedContextSha256 &&
@@ -140,7 +145,7 @@ async function verifyCleanupPin(context) {
     check(rows.length === 1 && rows[0].sha256 === value.sha256 && rows[0].length === value.bytes.length, "v2_cleanup_receipt_changed");
   }
   const value = receipt.value;
-  if (context.schema === SCHEMA) {
+  if (context.schema === INSTALL_SCHEMA) {
     initialSuccessorAccounting(value.initialAccounting);
     const accounting = await proof(pin.failedRoot, value.initialAccounting.path);
     const rows = value.inspectedInputs.filter(row => row.path === value.initialAccounting.path);
@@ -153,15 +158,16 @@ async function verifyCleanupPin(context) {
     resultSha256: pin.failedResultSha256, sealSha256: pin.failedSealSha256, receiptPath: pin.receiptPath, receiptSha256: receipt.sha256,
     status: value.status, classification: value.classification, hardwareQualified: value.hardwareQualified,
     historicalCleanupComplete: value.historicalCleanupComplete, beforeSource: value.beforeSource, predecessor: value.predecessor,
-    ...(context.schema === SCHEMA ? { initialAccounting: value.initialAccounting, afterBaselineObserved: value.afterBaselineObserved } :
+    ...(context.schema === INSTALL_SCHEMA ? { initialAccounting: value.initialAccounting, afterBaselineObserved: value.afterBaselineObserved } :
       { ledger: value.ledger, original: value.original }), checkerIdentity: value.checkerIdentity });
 }
 async function verifySuccessorPins(context) {
+  if (context.schema === SCHEMA) return verifySharePins(context);
   if (context.scope === "channel") return verifyCleanupPin(context);
   const root = await privateRoot(context.predecessor.root);
   const [previous, result, seal] = await Promise.all([proof(root, "context.json"), proof(root, "final-result.json"), proof(root, "sealed-inventory.json")]);
   object(previous.value, ["context", "sha256"]); const prior = previous.value.context; validatePolicy(prior);
-  check(prior.schema === SCHEMA && prior.scope === "channel" && prior.hostOrdinal === 4 &&
+  check(prior.schema === INSTALL_SCHEMA && prior.scope === "channel" && prior.hostOrdinal === 4 &&
     previous.value.sha256 === sha256(JSON.stringify(prior)) && result.sha256 === context.predecessor.resultSha256 &&
     seal.sha256 === context.predecessor.sealSha256 && Array.isArray(seal.value.files), "v2_channel_successor_changed");
   const rows = seal.value.files.filter(row => row.path === "context.json");
@@ -169,9 +175,9 @@ async function verifySuccessorPins(context) {
   requirePredecessorBinding(context, { ...context.predecessor, context: prior }); await verifyCleanupPin(prior);
 }
 function requireNewOrdinal(scope, ordinal, options) {
-  check(options.supersedePermission === undefined && (scope === "channel" ? ordinal === 4 && typeof options.supersedeChannel === "string" &&
-    options.supersedeChannel === resolve(options.supersedeChannel) : scope === "share" && ordinal === 1 && options.supersedeChannel === undefined),
-    "v2_cleanup_successor_required");
+  check(options.supersedePermission === undefined && options.supersedeChannel === undefined &&
+    (scope === "channel" ? ordinal === 5 && typeof options.supersedeShare === "string" && options.supersedeShare === resolve(options.supersedeShare) :
+      scope === "share" && ordinal === 2 && options.supersedeShare === undefined), "v2_share_successor_required");
 }
 
 /** Read-only prerequisites precede both exclusive assignments; failures never refund host claims. */
@@ -185,24 +191,22 @@ export async function preflight(options, operations = {}) {
   (operations.ignored ?? ignored)(source.firmware_root, root);
   const predecessor = await predecessorFor(resolve(options.predecessorReceipt), options.scope, operations);
   check(predecessor.root !== root, "v2_predecessor_cycle");
-  const maybeSuccessor = options.scope === "channel" ? await reviewedSuccessor(options.supersedeChannel, operations) : null;
+  const maybeSuccessor = await reviewedShare(options.scope === "channel" ? options.supersedeShare : predecessor.context.shareSupersession?.receiptPath, operations);
   const attemptId = nonce();
   const context = { schema: SCHEMA, ...source, scope: options.scope, attemptId, hostOrdinal,
     predecessor: { root: predecessor.root, resultSha256: predecessor.resultSha256, sealSha256: predecessor.sealSha256 },
-    before_source: maybeSuccessor ? structuredClone(maybeSuccessor.beforeSource) :
+    before_source: options.scope === "channel" ? structuredClone(maybeSuccessor.beforeSource) :
       { firmware_commit: predecessor.context.firmware_commit, app_elf_sha256: predecessor.context.app_elf_sha256 },
     original_campaign_id: predecessor.context.original_campaign_id,
     permissionSupersession: null,
-    cleanupSupersession: maybeSuccessor ? { failedRoot: maybeSuccessor.root, failedContextSha256: maybeSuccessor.contextSha256,
-      failedResultSha256: maybeSuccessor.resultSha256, failedSealSha256: maybeSuccessor.sealSha256,
-      receiptPath: maybeSuccessor.receiptPath, receiptSha256: maybeSuccessor.receiptSha256 } : null,
+    cleanupSupersession: null, shareSupersession: shareBinding(maybeSuccessor),
     install_indices: options.scope === "channel" ? [0, 1, 2, 3, 4] : [1, 2, 3, 4],
     ...(options.scope === "share" ? { qualificationAttempt: { schema: "worker-qualification-attempt-v1", id: attemptId, ordinal: 18, purpose: "normal", maximumActiveMilliseconds: 180000 },
       expectedLedgerBefore: predecessor.ledger } : {}) };
   validatePolicy(context); requirePredecessorBinding(context, predecessor);
-  if (maybeSuccessor) cleanupBinding(context, maybeSuccessor);
-  else check(predecessor.context.schema === SCHEMA && predecessor.context.hostOrdinal === 4 && predecessor.context.cleanupSupersession !== null,
-    "v2_channel_successor_required");
+  requireShareBinding(context, maybeSuccessor);
+  if (context.scope === "share") check(predecessor.context.schema === SCHEMA && predecessor.context.hostOrdinal === 5 &&
+    canonical(predecessor.context.shareSupersession) === canonical(context.shareSupersession), "v2_channel_successor_required");
   check(canonicalBase64(context.original_campaign_id, 16), "v2_original_campaign");
   context.native_readiness = await native.inspect({ firmwareRoot: context.firmware_root, manifestPath: context.manifest,
     expectedSourceCommit: context.firmware_commit, expectedElfSha256: context.app_elf_sha256 });
@@ -215,14 +219,14 @@ export async function preflight(options, operations = {}) {
   validateHostCorrection(hostCorrection, context);
   // Recheck publication, task and generated inputs after the auditor, before assignment.
   check(canonical(await inspectSources(options, native, operations)) === canonical(source), "v2_source_changed_during_preflight");
-  const maybeRecheckedSuccessor = maybeSuccessor ? await reviewedSuccessor(options.supersedeChannel, operations) : null;
-  if (maybeRecheckedSuccessor) cleanupBinding(context, maybeRecheckedSuccessor);
+  const maybeRecheckedSuccessor = await reviewedShare(context.shareSupersession.receiptPath, operations);
+  requireShareBinding(context, maybeRecheckedSuccessor);
   const marker = { schema: "str005-v2-serial-assignment-v1", root, scope: context.scope, context_sha256: sha256(JSON.stringify(context)) };
   await missing(hostMarker(root, context.scope, hostOrdinal));
-  if (context.scope === "share") await missing(qualificationMarker(root, context.qualificationAttempt.ordinal));
-  if (maybeRecheckedSuccessor) await currentOwnership(maybeRecheckedSuccessor, operations);
+  if (context.scope === "share") { await missing(successorOrdinalPath(root)); await missing(`${successorOrdinalPath(root)}.pending`); }
+  if (maybeRecheckedSuccessor) await currentShareOwnership(maybeRecheckedSuccessor, operations);
   await writeNew(hostMarker(root, context.scope, hostOrdinal), marker);
-  if (context.scope === "share") await writeNew(qualificationMarker(root, context.qualificationAttempt.ordinal), marker);
+  if (context.scope === "share") await publishOrdinalSuccessor(context, root);
   await (operations.beforeCreate ?? (() => {}))();
   await mkdir(root, { mode: 0o700 });
   await writeNew(resolve(root, "context.json"), { context, sha256: marker.context_sha256 });
@@ -236,7 +240,10 @@ async function assignedContext(root, historical) {
   if (!historical) check(context.schema === SCHEMA, "v2_legacy_context_read_only");
   check(stored.sha256 === sha256(JSON.stringify(context)) && attemptName(root, context.scope) === context.hostOrdinal, "v2_context_integrity");
   const paths = [hostMarker(root, context.scope, context.hostOrdinal)];
-  if (context.scope === "share") paths.push(qualificationMarker(root, context.qualificationAttempt.ordinal));
+  if (context.scope === "share" && context.schema !== SCHEMA) paths.push(qualificationMarker(root, context.qualificationAttempt.ordinal));
+  if (context.scope === "share" && context.schema === SCHEMA) await missing(`${successorOrdinalPath(root)}.pending`);
+  if (context.scope === "share" && context.schema === SCHEMA) check(canonical((await proof(dirname(root), successorOrdinalPath(root))).value) ===
+    canonical(await ordinalSuccessor(context, root)), "v2_assignment_changed");
   for (const path of paths) {
     const marker = (await proof(dirname(root), path)).value;
     object(marker, ["schema", "root", "scope", "context_sha256"]);
@@ -253,11 +260,15 @@ export async function loadContext(root, { historical = false, operations = {} } 
   const predecessor = await predecessorFor(resolve(context.predecessor.root, "final-result.json"), context.scope, operations);
   requirePredecessorBinding(context, predecessor);
   let maybeSuccessor = null;
-  if (context.schema === PERMISSION_SCHEMA) {
+  if (context.schema === SCHEMA) {
+    maybeSuccessor = await reviewedShare(context.shareSupersession.receiptPath, operations); requireShareBinding(context, maybeSuccessor);
+    if (context.scope === "share") check(predecessor.context.schema === SCHEMA && predecessor.context.hostOrdinal === 5 &&
+      canonical(predecessor.context.shareSupersession) === canonical(context.shareSupersession), "v2_channel_successor_required");
+  } else if (context.schema === PERMISSION_SCHEMA) {
     if (context.scope === "channel") permissionBinding(context, await reviewedPermission(context.permissionSupersession.closurePath, operations));
     else check(predecessor.context.schema === PERMISSION_SCHEMA && predecessor.context.hostOrdinal === 2 && predecessor.context.permissionSupersession !== null,
       "v2_channel_successor_required");
-  } else if ([CLEANUP_SCHEMA, SCHEMA].includes(context.schema)) {
+  } else if ([CLEANUP_SCHEMA, INSTALL_SCHEMA, SCHEMA].includes(context.schema)) {
     if (context.scope === "channel") {
       maybeSuccessor = await reviewedSuccessor(context.cleanupSupersession.receiptPath, operations); cleanupBinding(context, maybeSuccessor);
     } else check(predecessor.context.schema === context.schema && predecessor.context.hostOrdinal === (context.schema === CLEANUP_SCHEMA ? 3 : 4) && predecessor.context.cleanupSupersession !== null,
@@ -268,7 +279,7 @@ export async function loadContext(root, { historical = false, operations = {} } 
     const native = await nativeInterface(operations);
     const current = await inspectSources({ firmwareRoot: context.firmware_root, gateRoot: context.gate_root, manifest: context.manifest, fixtureBinary: context.fixture_binary }, native, operations);
     for (const key of Object.keys(current)) check(canonical(current[key]) === canonical(context[key]), "v2_live_source_drift");
-    if (maybeSuccessor) await currentOwnership(maybeSuccessor, operations);
+    if (maybeSuccessor) await (context.schema === SCHEMA ? currentShareOwnership : currentOwnership)(maybeSuccessor, operations);
   }
   return context;
 }
@@ -314,9 +325,8 @@ export async function recheckNative(context, operations = {}) {
 /** Fresh kernel ownership gate after native verification and before serving any device workflow. */
 export async function recheckSuccessorOwnership(context, operations = {}) {
   validatePolicy(context); check(context.schema === SCHEMA, "v2_legacy_context_read_only");
-  if (context.scope === "share") return;
-  const inspected = await reviewedSuccessor(context.cleanupSupersession.receiptPath, operations);
-  cleanupBinding(context, inspected); await currentOwnership(inspected, operations);
+  const inspected = await reviewedShare(context.shareSupersession.receiptPath, operations);
+  requireShareBinding(context, inspected); await currentShareOwnership(inspected, operations);
 }
 
 function effectRoot(context) {
@@ -356,4 +366,11 @@ export async function recheckEffectAdmission(root, context, operations = {}) {
   }
   await requireLiveSupervisor(root, context, operations);
   await requireEffectRootOpen(root, context);
+}
+
+/** Cheap daemon bootstrap: validates immutable inputs, never grants application authority. */
+export async function loadOperatorContext(root, operations = {}) {
+  root = await privateRoot(root); const context = await assignedContext(root, false);
+  await requireEffectRootOpen(root, context); await verifyCurrentInputs(context, operations);
+  await requireEffectRootOpen(root, context); return context;
 }

@@ -7,6 +7,7 @@ import { judgeContinuity } from "./continuity-judge.mjs";
 import { judgeAccounting, judgeIssuance, requireChannelNoWork } from "./accounting-judge.mjs";
 import { judgeObserver, judgeShareSafety } from "./safety-judge.mjs";
 import { check, sha256 } from "./values.mjs";
+import { judgeOperator } from "./operator-evidence.mjs";
 
 const FINAL_FILES = new Set(["final-result.json", "sealed-inventory.json", "projection.json", "judgment-failure.json"]);
 
@@ -14,8 +15,9 @@ const FINAL_FILES = new Set(["final-result.json", "sealed-inventory.json", "proj
 export async function judge(root, context, cleanupPath, operations = {}) {
   const beforeInventory = await inventory(root, FINAL_FILES);
   check(!(await readdir(root)).includes("failure.json"), "v2_recorded_failure");
-  if (["str005-v2-serial-context-v3", "str005-v2-serial-context-v4"].includes(context.schema))
+  if (["str005-v2-serial-context-v3", "str005-v2-serial-context-v4", "str005-v2-serial-context-v5"].includes(context.schema))
     check(!(await readdir(root)).includes("parent-cleanup-failure.json"), "v2_parent_cleanup_failed");
+  await judgeOperator(root, context, operations);
   const finalNative = (await proof(root, "native/final-readiness.json")).value;
   check(canonical(finalNative) === canonical(context.native_readiness), "v2_native_final_drift");
   const states = await readJournal(root, context), devices = await readDeviceJournal(root, context);
