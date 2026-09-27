@@ -25,9 +25,18 @@ export function createRecoveryCollector({ gate, save, published, campaignId, att
       await collect("state", async () => { await gate.stop(); await gate.refresh(); return published(); }, 150000);
       await collect("status", async () => {
         const binding = await gate.stratumV2Possession();
-        return gate.stratumV2Status("share", attemptId, binding);
+        try { return await gate.stratumV2Status("share", null, binding); }
+        catch (error) {
+          if (error?.category !== "v2_idle_correlation") throw error;
+          return gate.stratumV2Status("share", attemptId, binding);
+        }
       });
-      await collect("closed", async () => { await gate.close(); return published(); }, 150000);
+      let closeFailed = false;
+      await collect("closed", async () => {
+        try { await gate.close(); } catch { closeFailed = true; }
+        return published();
+      }, 150000);
+      if (closeFailed && !failures.includes("closed")) failures.push("closed");
     }
     await bounded(() => save("finished", { failures }));
     return { complete: failures.length === 0, failures };

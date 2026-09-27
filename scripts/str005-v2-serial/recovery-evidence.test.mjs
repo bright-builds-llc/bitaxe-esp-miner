@@ -94,7 +94,7 @@ test("partial collection reports each missing proof without inventing success", 
 
 test("diagnostics omit unknown private strings and retain only bounded boot categories", () => {
   // Arrange
-  const boot = { category: "boot", boot_ordinal: 13, reset_reason: "panic", uptime_ms: 2000 };
+  const boot = { category: "boot", authoritative: false, boot_ordinal: 13, reset_reason: "panic", uptime_ms: 2000 };
   const input = { schema: "worker-diagnostic-export-v1", observations: [boot, { category: "private", endpoint: "secret" }] };
   // Act
   const projected = projectRecoveryPart("diagnostics", input, context);

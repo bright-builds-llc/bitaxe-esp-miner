@@ -61,9 +61,9 @@ function projectDiagnostics(value) {
   for (const row of value.observations) {
     check(row !== null && typeof row === "object" && !Array.isArray(row), "recovery_diagnostics_shape");
     if (row.category !== "boot") continue;
-    object(row, ["category", "boot_ordinal", "reset_reason", "uptime_ms"]);
+    object(row, ["category", "authoritative", "boot_ordinal", "reset_reason", "uptime_ms"]);
     uint(row.boot_ordinal); uint(row.uptime_ms);
-    check(row.boot_ordinal > 0 && ["power_on", "software_cpu", "watchdog", "panic", "brownout", "other"].includes(row.reset_reason),
+    check(row.authoritative === false && row.boot_ordinal > 0 && ["power_on", "software_cpu", "watchdog", "panic", "brownout", "other"].includes(row.reset_reason),
       "recovery_diagnostics_shape");
     observations.push(structuredClone(row));
   }

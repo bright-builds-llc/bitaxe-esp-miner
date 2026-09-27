@@ -9,7 +9,7 @@ repair its sealed evidence, grant a mining ordinal, or promote parity (90/95).
 
 ## Objective and admission
 
-Collect fresh authenticated qualification and original campaign ledgers, retained
+Collect fresh authenticated qualification and original campaign ledgers, current/retained
 Share002 status/resource facts, bounded boot diagnostics, normal restoration and
 actual resource release. Read the current next/last/charged/pending values; neither
 ordinal18 reuse nor next19 is an input assumption. An absent retained record is a
@@ -24,6 +24,9 @@ transitive validation sources. Runtime firmware remains the installed old pair;
 host-only collector changes do not relabel it or require flashing.
 
 ## Commands and protected evidence
+
+Use foreground Chrome and native OS controls for the serial permission gesture;
+background browser automation does not establish permission.
 
 Create a fresh mode-0700 ignored parent below `scratch/str005-recovery/` and leave
 its `attempt` child absent. Create separate mode-0600 sibling wrapper stdout/stderr
@@ -54,6 +57,13 @@ scope, and validated recovery collection routes. Work controls are removed from
 the page. No credentials or authority directory are read. Possession's internal
 authorization-context operation is a non-issuing identity operation, never a
 Work Lease or grant.
+
+Status collection first asks for current idle state. Only Gate's exact typed
+`v2_idle_correlation` (a non-idle response) permits one query for Share002's exact
+retained attempt. An idle response with no record is retained as such and blocks
+historical resource proof; it never implies the old record's release. Other read
+errors do not trigger a second query. Even when Close rejects, its observed state
+is persisted separately from the retained failure, without claiming confirmation.
 
 Only closed, validated projections cross the persistence boundary. Network/socket
 tuples and raw proofs remain in memory; diagnostics retain only boot categories

@@ -4454,7 +4454,23 @@ The production Gate configuration parser/transition is the regression boundary.
 All 32 focused tests and five recovery Bazel targets pass, including the actual
 Gate transition fixture; ordered Cargo checks, standards, redaction, Markdown
 and diff checks pass again. Native firmware/USB implementation is unchanged.
-Completion review: device accounting/resource/restoration measurement pending;
+Collection003 on `9c4d2b68` measured authenticated next18/last17/1,560,000ms/
+pendingfalse and original campaign masks7/7/240,000ms/pendingfalse. Restoration
+was confirmed; no ordinal was issued or reused. Native foreground permission was
+required after background browser automation failed before serial opening.
+Separate result `2bc370e7338b08abf4be0d5862ea966bcd691eb3f427d5d83c781d893c96d50c`
+and seal `41532af9328f103b63969012c87be59f5dffd1a3044be1aad049089c82fc4c09`
+remain unverified: diagnostics/status/closed parts absent; actual supervisor,
+listener and serial-holder release confirmed after owned page closure.
+Targeted continuation: production Gate regressions now cover boot diagnostics'
+`authoritative:false`, current-idle discovery before exact retained lookup, and
+preserving observed Close state despite rejection. This changes the failed
+collection boundary; it never repairs sealed evidence or grants Work authority.
+The new boundary checks pass with all 35 focused tests, five recovery Bazel
+targets, ordered Cargo checks, redaction, Bright Builds, Markdown and diff checks.
+Read-only review confirmed exact typed fallback and fail-closed conclusions.
+Fresh collection remains task-gated by clean publication and preflight.
+Completion review: retained resource proof still pending;
 no historical evidence modified and no parity promotion.
 
 ### task-str005-start-panic-diagnosis | 2026-09-27 | Diagnose and correct the Start panic

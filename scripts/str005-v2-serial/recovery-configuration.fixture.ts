@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createRecoveryBootstrap } from "./recovery-client.mjs";
 import { configuration } from "./server-assets.mjs";
+import { projectRecoveryPart } from "./recovery-evidence.mjs";
 
 const gateRoot = process.argv[2];
 const configModule = await import(pathToFileURL(resolve(gateRoot, "web/worker-serial-acceptance-config.ts")).href);
@@ -38,4 +39,36 @@ await assert.rejects(bootstrap.collect(), /reconnect_required/u);
 Object.assign(state, { status: "ready", connected: true, serialOwnershipReleased: false });
 await bootstrap.collect();
 assert.deepEqual(calls, ["close", "configure", "collect"]);
+
+// Real Gate diagnostic parse/export adds its non-authority field before persistence.
+const diagnosticModule = await import(pathToFileURL(resolve(gateRoot, "web/worker-serial-diagnostics.ts")).href);
+const diagnosticExport = await import(pathToFileURL(resolve(gateRoot, "web/worker-diagnostic-export.ts")).href);
+const boot = diagnosticModule.maybeWorkerSerialDiagnostic("usb_reboot_discriminator schema=v1 boot_ordinal=13 reset_reason=panic uptime_ms=2000 redacted=true");
+assert.equal(boot.authoritative, false);
+const exported = diagnosticExport.parseWorkerDiagnosticExport({ schema: "worker-diagnostic-export-v1", observations: [boot] });
+const projected = projectRecoveryPart("diagnostics", exported, context);
+assert.equal(projected.observations.length, 1);
+assert.equal(projected.observations[0].boot_ordinal, 13);
+assert.equal(projected.authoritative, false);
+
+// Actual Gate control parser/correlation with a synthetic authenticated transport response.
+const controlModule = await import(pathToFileURL(resolve(gateRoot, "web/worker-v2-serial-control.ts")).href);
+const idle = { schema: "worker-stratum-v2-status-v1", scope: "share", state: "idle", connection: null, record: null,
+  observation: { bootOrdinal: 13, workerGeneration: 0, serialTransportEpoch: 1, observedAtUs: 2000000,
+    clockValid: true, stationIpv4: null, wifiConnected: false, socket: null } };
+let fresh = true, requests = 0;
+const control = new controlModule.WorkerV2SerialControl({
+  requireScope(scope, effect) { assert.equal(scope, "share"); assert.equal(effect, false); },
+  maybeBinding: () => "fresh-binding", possessionFresh: () => fresh,
+  async request(command) { assert.equal(command, "stratum_v2_status"); requests++; return idle; },
+});
+const currentIdle = await control.status("share", null, "fresh-binding");
+assert.equal(currentIdle.state, "idle"); assert.equal(currentIdle.record, null);
+await assert.rejects(control.status("share", Buffer.alloc(16, 1).toString("base64url"), "fresh-binding"),
+  error => error.category === "v2_attempt_correlation");
+const beforeStale = requests;
+await assert.rejects(control.status("share", null, "old-binding"), error => error.category === "v2_possession");
+fresh = false;
+await assert.rejects(control.status("share", null, "fresh-binding"), error => error.category === "v2_possession");
+assert.equal(requests, beforeStale);
 process.stdout.write("gate_configuration_boundary_passed\n");

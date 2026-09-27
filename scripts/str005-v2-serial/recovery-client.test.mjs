@@ -49,6 +49,32 @@ test("stale session rejection cannot become a retained status proof", async () =
   assert.equal(f.saved.some(row => row.stage === "status"), false);
 });
 
+test("idle discovery never demands a lost historical record after reboot", async () => {
+  const f = fixture(), queried = [];
+  f.gate.stratumV2Status = async (_, id) => { queried.push(id); return { state: "idle", record: null }; };
+  await f.collect();
+  assert.deepEqual(queried, [null]);
+  assert.equal(f.saved.find(row => row.stage === "status").value.record, null);
+});
+
+test("only the exact non-idle correlation failure admits one retained query", async () => {
+  const f = fixture(), queried = [];
+  f.gate.stratumV2Status = async (_, id) => {
+    queried.push(id);
+    if (id === null) throw Object.assign(Error("closed"), { category: "v2_idle_correlation" });
+    return { state: "terminal" };
+  };
+  await f.collect();
+  assert.deepEqual(queried, [null, "test"]);
+});
+
+test("Close failure still persists observed release state and keeps the failure", async () => {
+  const f = fixture("close");
+  const result = await f.collect();
+  assert.deepEqual(result.failures, ["closed"]);
+  assert.ok(f.saved.some(row => row.stage === "closed"));
+});
+
 test("bootstrap requires connected before baseline and a separate native candidate reconnect", async () => {
   // Arrange
   const config = { expectedGateCommit: "gate", expectedFirmwareSourceCommit: "firmware", expectedAppElfSha256: "elf" };
