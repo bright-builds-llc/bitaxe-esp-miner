@@ -414,6 +414,12 @@ js_binary(
 )
 
 js_test(
+    name = "str005_recovery_admission_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/recovery-admission.test.mjs",
+)
+
+js_test(
     name = "str005_recovery_evidence_test",
     data = [":str005_v2_serial_sources"],
     entry_point = "str005-v2-serial/recovery-evidence.test.mjs",

@@ -9,6 +9,7 @@ import { processSnapshot, requireLsofAbsent, requireNoHolders, sameProcess } fro
 import { createRecoveryServer, recoveryAssets } from "./recovery-server.mjs";
 import { recoveryConclusion, validateRecoveryParts } from "./recovery-evidence.mjs";
 import { check, sha256 } from "./values.mjs";
+import { validateRecoveryDetector } from "./recovery-admission.mjs";
 
 const task = "task-str005-failure-recovery-accounting";
 const oldSeal = "14d2122208b2040f1482074c77328cd3a59c651e45bc17e7be7af2648d8f5950";
@@ -64,11 +65,7 @@ export async function main(argv) {
   const detectorPath = resolve(dirname(root), "detector.stdout.log"); await protectedPath(detectorPath);
   const detected = await readFile(detectorPath, "utf8"), age = Date.now() - (await stat(detectorPath)).mtimeMs;
   const previous = (await proof(oldRoot, "install-4.claim.json")).value.detector;
-  for (const [key, value] of [["port", previous.port], ["physical_identity_sha256", previous.physical], ["usb_profile", "serial_jtag_runtime"]]) {
-    const found = [...detected.matchAll(new RegExp(`(?:^|\\n)${key}=(.+)`, "gu"))];
-    check(found.length === 1 && found[0][1].trim() === value, "recovery_detector_identity");
-  }
-  check(age >= 0 && age <= 60000, "recovery_detector_stale"); requireNoHolders(previous.port);
+  validateRecoveryDetector(detected, previous, age); requireNoHolders(previous.port);
   const server = createRecoveryServer({ root, context, ...assets });
   const done = new Promise(resolveDone => server.once("close", resolveDone));
   let maybeRelease;

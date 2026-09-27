@@ -4416,7 +4416,7 @@ Plan (2026-09-27):
 - [x] Implement a separate failure-only collector and closed evidence projection.
 - [x] Exercise stale sessions, partial failure, privacy and unconditional release;
       run canonical/native and ordered pre-commit checks.
-- [ ] Publish and verify the narrow execution contract before detection/access.
+- [x] Publish and verify the narrow execution contract before detection/access.
 - [ ] Collect fresh device facts once, then record exact proof or blocker, seal
       successor evidence, and commit/push. Archive only on all criteria passing.
 
@@ -4438,6 +4438,12 @@ ignores); native USB ownership/symbol checks; reference, redaction, Bright Build
 Markdown contract check and diff check. Parity remains 90/95. Simplification review:
 reuse the pinned Gate page, accounting/state parsers and host-resource checks;
 no new general campaign harness, signer or fixture.
+Published host contract: `51358c61`; preflight passed before detection.
+Collection001 stopped before browser/device control: inspection of successful
+detector output exposed a colon-versus-equals parser mismatch. New regression
+uses the production colon format, rejects duplicate/stale/changed-device facts,
+and permits a fresh collection only after this fix is verified and published.
+No Start, reservation, reset or flash occurred; device consumption remains unknown.
 Completion review: device accounting/resource/restoration measurement pending;
 no historical evidence modified and no parity promotion.
 
