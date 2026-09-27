@@ -4798,6 +4798,30 @@ extra boots and missing/nonempty core evidence block this off-only admission.
 Future install supervisors bind a 1,200-second outer cap; no new flash is
 planned. Original 480-second evidence remains unchanged.
 
+Current-recovery002 authenticated installed `9be53f69` /
+`075be768fc0c3789f8577917e2aadbbb28ef62d8ee1388f5cd46a54079135fde`.
+Current diagnostics show runtime-ready complete and first failure none: the
+HTTP startup allocation regression is resolved in this observed boot. The
+post-statistics DMA/internal checkpoint is 7,575 free bytes, largest block
+4,352 bytes. Ledger remains next 18 / last 17 / no pending; restoration and
+release passed. Full 952 KiB core preservation, application return and cleanup
+passed; the region is erased. Recovery seal:
+`30c7998908272a9a953297f2ac5010cf2b6943ce9c207d0ac19d2700d3cae326`.
+This is new current-state evidence, not a rewrite of installation003's timeout.
+
+A pre-effect production-interface review found Gate's diagnostic history keeps
+only the latest value per category/stage and preserves insertion order. One
+export cannot supply two chronological ready samples. Correct capture admission
+to collect two independently retained exports with advancing uptime, rather
+than synthesize history or weaken the discriminator. No self-test was attempted
+under the impossible single-export predicate.
+
+Two-export correction verified: 45 Node probe tests plus the actual pinned Gate
+history-producer integration passed; affected Bazel, ordered Cargo, standards,
+redaction, Markdown and diff checks passed. Two real snapshot files and a fresh
+same-session status confirmation are digest-bound; no export-array chronology
+is inferred. The existing native panic-observer journal is unchanged.
+
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 
 Status: Proof blocked on recovery and verified panic correction.

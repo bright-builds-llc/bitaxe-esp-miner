@@ -271,3 +271,13 @@ fresh healthy, inactive current state. Record the raw-cause uncertainty. Panic,
 watchdog and brownout observations remain blockers here. This does not admit
 Start: the controlled self-test must independently yield the expected explicit
 panic observation, exact valid core and captured cutoff proof.
+
+Readiness uses two separately retained Gate exports from the same live session,
+with the same current boot and exact identity and strictly advancing
+`runtime_ready` uptime. Gate coalesces observations by category/stage; one export
+contains only the latest ready sample and its array order is not wire chronology.
+Capture-only baseline collection therefore obtains a second export within the
+bounded observation window before Stop/Close. Both snapshot hashes are bound
+into the review. Missing, repeated, failed or mixed-boot observations block
+admission; failed collection still closes the session and retains partial files.
+The ordered native panic-observer journal remains a separate evidence source.

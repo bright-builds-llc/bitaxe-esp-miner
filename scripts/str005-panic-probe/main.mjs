@@ -17,6 +17,7 @@ import { install, admitRecovery, INSTALL_TIMEOUT_MS } from './install.mjs';
 import { resolvePreflightSources } from './preflight-selection.mjs';
 import { recoveryPredecessor, retainedPackage, beforeRecovery } from './recovery-predecessor.mjs';
 import { verifyCorePreservation } from './core-preservation.mjs';
+import { validateCaptureDiagnosticPair } from './capture-diagnostics.mjs';
 import { reviewExistingCapture } from './capture-existing.mjs';
 import { createProbeServer } from './server.mjs';
 import { validateRecoveryParts } from '../str005-v2-serial/recovery-evidence.mjs';
@@ -168,7 +169,20 @@ async function finish(root, context) {
         stage === 'finished' ? validateFinished(value) : stage === 'status' ? validateRecoveryParts({ status: value }, context).status : validatePart(stage, value, context);
     } catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
+  if (context.captureExisting) {
+    try {
+      parts.diagnostics_confirmation = await validateDiagnosticExport((await proof(root, 'baseline-diagnostics_confirmation.json')).value, context.gate_root);
+      const confirmation = (await proof(root, 'baseline-diagnostics_confirmation_status.json')).value;
+      validatePart('state', confirmation.state, context);
+      parts.diagnostics_confirmation_status = { state: confirmation.state, status: validateRecoveryParts({ status: confirmation.status }, context).status };
+    } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
   const result = { ...baselineConclusion(parts), host_resources_released: true, predecessor_unchanged: true };
+  if (context.captureExisting) {
+    try { validateCaptureDiagnosticPair(parts, context); }
+    catch { result.complete = false; result.blockers.push('capture_diagnostics_pair_incomplete'); }
+  }
+
   if (result.complete) {
     try { check((await proof(root, 'current-recovery.json')).value.schema === 'str005-current-recovery-proof-v1', 'panic_current_proof_missing'); }
     catch (error) { if (error.code !== 'ENOENT') throw error; result.complete = false; result.blockers.push('missing_current_proof'); }

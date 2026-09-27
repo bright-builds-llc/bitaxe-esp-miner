@@ -205,16 +205,28 @@ test('recovery mode flags cannot be silently ignored on an install action', asyn
   await assert.rejects(main(['preflight', '--private-root', '/unused', '--gate-root', '/gate', '--manifest', '/candidate', '--retained-manifest', '/retained']), /retained_manifest_mode/);
 });
 
+function healthySnapshot(c, uptime, healthy = true) {
+  return { ...structuredClone(diagnostics), observations: [...structuredClone(diagnostics.observations),
+    { category: 'runtime_identity', firmware_commit: c.firmware_commit, app_elf_sha256: c.app_elf_sha256 },
+    { category: 'startup', stage: 'runtime_ready', state: 'complete', first_failure: healthy ? 'none' : 'storage_http', uptime_ms: uptime }] };
+}
+async function postBaselinePair(post, c, healthy = true) {
+  for (const [stage, value] of Object.entries({ state: state(c, 'before'), ledger, original_budget: original, status: idle() })) assert.equal((await post('/part', { stage, value })).status, 200);
+  assert.equal((await post('/diagnostic-export', healthySnapshot(c, 100, healthy))).status, 200);
+  assert.equal((await post('/diagnostic-export', healthySnapshot(c, 200, healthy))).status, 200);
+  assert.equal((await post('/part', { stage: 'diagnostics_confirmation_status', value: { state: state(c, 'before'), status: idle() } })).status, healthy ? 200 : 400);
+  for (const [stage, value] of Object.entries({ closed: state(c, 'before', true), finished: { failures: healthy ? [] : ['diagnostics'] } })) assert.equal((await post('/part', { stage, value })).status, 200);
+}
+
 test('existing capture requires advancing healthy readiness and exact current identity', async () => {
   const { reviewExistingCapture, requireCurrentCaptureReview } = await import('./capture-existing.mjs');
   const c = { ...context, firmware_commit: context.before_source.firmware_commit, app_elf_sha256: context.before_source.app_elf_sha256,
     captureExisting: true, installEnabled: false, selfTestEnabled: true, corePreservation: preservedCore() };
   const value = structuredClone(parts());
-  value.diagnostics.observations.push({ category: 'runtime_identity', firmware_commit: c.firmware_commit, app_elf_sha256: c.app_elf_sha256 },
-    { category: 'startup', stage: 'runtime_ready', state: 'complete', first_failure: 'none', uptime_ms: 100 },
-    { category: 'startup', stage: 'runtime_ready', state: 'complete', first_failure: 'none', uptime_ms: 200 });
+  value.diagnostics = healthySnapshot(c, 100); value.diagnostics_confirmation = healthySnapshot(c, 200);
+  value.diagnostics_confirmation_status = { state: state(c, 'before'), status: structuredClone(value.status) };
   for (const core of [undefined, { ...preservedCore(), empty_core_dump: false }, { ...preservedCore(), expected_boot_ordinal: 4 }, { ...preservedCore(), result_sha256: 'bad' }]) assert.throws(() => reviewExistingCapture(value, { ...c, corePreservation: core }, 1000));
-  const other = structuredClone(value); other.diagnostics.observations[0].reset_reason = 'other';
+  const other = structuredClone(value); other.diagnostics.observations[0].reset_reason = 'other'; other.diagnostics_confirmation.observations[0].reset_reason = 'other';
   const otherReview = reviewExistingCapture(other, c, 1000); assert.equal(otherReview.reset_reason_unresolved, true);
   assert.equal(otherReview.core_dump_sha256, c.corePreservation.dump_sha256);
   const review = reviewExistingCapture(value, c, 1000);
@@ -223,9 +235,9 @@ test('existing capture requires advancing healthy readiness and exact current id
   assert.doesNotThrow(() => requireCurrentCaptureReview(review, idle(), 121000));
   assert.throws(() => requireCurrentCaptureReview(review, idle(), 121001));
   assert.throws(() => requireCurrentCaptureReview(review, { observation: { bootOrdinal: 4 } }, 1000));
-  for (const mutate of [v => { v.diagnostics.observations.pop(); }, v => { v.diagnostics.observations.at(-1).uptime_ms = 100; },
+  for (const mutate of [v => { v.diagnostics.observations.pop(); }, v => { v.diagnostics_confirmation.observations.at(-1).uptime_ms = 100; },
     v => { v.diagnostics.observations.at(-1).first_failure = 'storage_http'; }, v => { v.diagnostics.observations[1].app_elf_sha256 = '0'.repeat(64); },
-    v => { v.diagnostics.observations[0].reset_reason = 'panic'; }, v => { v.diagnostics.observations.push({ category: 'storage_http_failure' }); }, v => { v.diagnostics.observations.push(v.diagnostics.observations.shift()); }, v => { v.ledger = { ...ledger, pending: true }; }]) {
+    v => { v.diagnostics.observations[0].reset_reason = 'panic'; }, v => { v.diagnostics.observations.push({ category: 'storage_http_failure' }); }, v => { v.diagnostics_confirmation_status.status.observation.serialTransportEpoch += 1; }, v => { delete v.diagnostics_confirmation; }, v => { v.ledger = { ...ledger, pending: true }; }]) {
     const bad = structuredClone(value); mutate(bad); assert.throws(() => reviewExistingCapture(bad, c, 1000));
   }
 });
@@ -234,10 +246,6 @@ test('existing-image capture transitions without install review only after fresh
   for (const healthy of [false, true]) {
     const c = { ...context, firmware_commit: context.before_source.firmware_commit, app_elf_sha256: context.before_source.app_elf_sha256,
       captureExisting: true, installEnabled: false, selfTestEnabled: true, corePreservation: preservedCore() }, reviews = [], claims = [];
-    const observed = structuredClone(diagnostics);
-    observed.observations.push({ category: 'runtime_identity', firmware_commit: c.firmware_commit, app_elf_sha256: c.app_elf_sha256 },
-      { category: 'startup', stage: 'runtime_ready', state: 'complete', first_failure: healthy ? 'none' : 'storage_http', uptime_ms: 100 },
-      { category: 'startup', stage: 'runtime_ready', state: 'complete', first_failure: healthy ? 'none' : 'storage_http', uptime_ms: 200 });
     const server = createProbeServer({ root: '/unused', context: c, page: '', bundle: Buffer.from(''), client: Buffer.from(''), trust: {} },
       { persist: async () => {}, persistProof: async () => {}, validateDiagnostics: async value => value, verifyNativeAudit: async () => {},
         persistCapture: async value => reviews.push(value), persistClaim: async value => claims.push(value),
@@ -246,8 +254,7 @@ test('existing-image capture transitions without install review only after fresh
     const origin = `http://127.0.0.1:${server.address().port}`;
     const post = (path, value) => fetch(`${origin}${path}`, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
     assert.equal((await post('/self-test-claim', {})).status, 400);
-    await post('/diagnostic-export', observed);
-    for (const [stage, value] of Object.entries({ state: state(c, 'before'), ledger, original_budget: original, status: idle(), closed: state(c, 'before', true), finished: { failures: [] } })) assert.equal((await post('/part', { stage, value })).status, 200);
+    await postBaselinePair(post, c, healthy);
     assert.equal((await post('/candidate', {})).status, healthy ? 200 : 400);
     assert.equal((await post('/self-test-claim', { state: state(c), ledger, status: idle() })).status, healthy ? 200 : 400);
     assert.equal(reviews.length, healthy ? 1 : 0); assert.equal(claims.length, healthy ? 1 : 0);
@@ -288,22 +295,44 @@ test('capture review cannot refresh an expired baseline or extend its original o
   let now = 1000;
   const c = { ...context, firmware_commit: context.before_source.firmware_commit, app_elf_sha256: context.before_source.app_elf_sha256,
     captureExisting: true, installEnabled: false, selfTestEnabled: true, corePreservation: preservedCore() };
-  const observed = structuredClone(diagnostics), saved = [];
-  observed.observations.push({ category: 'runtime_identity', firmware_commit: c.firmware_commit, app_elf_sha256: c.app_elf_sha256 },
-    { category: 'startup', stage: 'runtime_ready', state: 'complete', first_failure: 'none', uptime_ms: 100 },
-    { category: 'startup', stage: 'runtime_ready', state: 'complete', first_failure: 'none', uptime_ms: 200 });
+  const saved = [];
   const server = createProbeServer({ root: '/unused', context: c, page: '', bundle: Buffer.from(''), client: Buffer.from(''), trust: {} },
     { now: () => now, persist: async () => {}, persistProof: async () => {}, validateDiagnostics: async value => value,
       verifyNativeAudit: async () => {}, persistCapture: async value => saved.push(value) });
   server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.release());
   const origin = `http://127.0.0.1:${server.address().port}`;
   const post = (path, value) => fetch(`${origin}${path}`, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
-  await post('/diagnostic-export', observed);
-  for (const [stage, value] of Object.entries({ state: state(c, 'before'), ledger, original_budget: original, status: idle(), closed: state(c, 'before', true), finished: { failures: [] } })) assert.equal((await post('/part', { stage, value })).status, 200);
+  await postBaselinePair(post, c);
   now = candidateExpired ? 121001 : 120000;
   assert.equal((await post('/candidate', {})).status, candidateExpired ? 400 : 200); assert.equal(saved.length, candidateExpired ? 0 : 1);
   if (!candidateExpired) assert.equal(saved[0].observed_at_unix_ms, 1000);
   now = 121001;
   assert.equal((await post('/self-test-claim', { state: state(c), ledger, status: idle() })).status, 400);
+  }
+});
+
+test('capture collector obtains two separate snapshots before Stop and Close', async () => {
+  const steps = [], saved = [];
+  const gate = { refresh: async () => {}, reviewQualificationAttempts: async () => ledger, reviewBudget: async () => original,
+    stratumV2Possession: async () => 'synthetic', stratumV2Status: async () => idle(), exportDiagnostics: async () => steps.push('export'),
+    stop: async () => steps.push('stop'), close: async () => steps.push('close') };
+  const result = await createBaselineCollector({ gate, published: () => state(context, 'before'), campaignId: 'synthetic', captureExisting: true,
+    wait: async milliseconds => { assert.equal(milliseconds, 2000); steps.push('wait'); }, save: async (stage, value) => saved.push({ stage, value }) })();
+  assert.deepEqual(steps, ['export', 'wait', 'export', 'stop', 'close']); assert.equal(result.complete, true);
+  assert.equal(saved.filter(row => row.stage === 'diagnostics_confirmation_status').length, 1);
+});
+test('capture sampling failure or timeout still closes and never starts a late second sample', async () => {
+  for (const failure of ['export', 'timeout', 'confirmation']) {
+    const steps = [], saved = [];
+    const gate = { refresh: async () => {}, reviewQualificationAttempts: async () => ledger, reviewBudget: async () => original,
+      stratumV2Possession: async () => 'synthetic', stratumV2Status: async () => idle(), exportDiagnostics: async () => { steps.push('export'); if (failure === 'export') throw Error('failed'); },
+      stop: async () => steps.push('stop'), close: async () => steps.push('close') };
+    const result = await createBaselineCollector({ gate, published: () => state(context, 'before'), campaignId: 'synthetic', captureExisting: true, timeoutMs: 20,
+      wait: async () => { if (failure === 'timeout') await new Promise(resolve => setTimeout(resolve, 40)); },
+      save: async (stage, value) => { saved.push({ stage, value }); if (failure === 'confirmation' && stage === 'diagnostics_confirmation_status') throw Error('not advancing'); } })();
+    await new Promise(resolve => setTimeout(resolve, 45));
+    assert.deepEqual(result.failures, ['diagnostics']); assert.deepEqual(steps.slice(-2), ['stop', 'close']);
+    assert.equal(steps.filter(step => step === 'export').length, failure === 'confirmation' ? 2 : 1);
+    assert.equal(saved.at(-1).stage, 'finished');
   }
 });

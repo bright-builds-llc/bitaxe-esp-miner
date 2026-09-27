@@ -10,12 +10,13 @@ import { validateDiagnosticExport } from '../fixed-usb-qualification/diagnostic-
 import { writeNew, canonical } from '../str005-noise-serial/files.mjs';
 import { configuration } from '../str005-v2-serial/server-assets.mjs';
 import { check, object } from '../str005-v2-serial/values.mjs';
+import { validateCaptureDiagnosticPair } from './capture-diagnostics.mjs';
 import { reviewExistingCapture, requireCurrentCaptureReview } from './capture-existing.mjs';
 import { inspectInstall } from './install.mjs';
 import { validateState } from '../fixed-usb-qualification/judge.mjs';
 import { validateLedger } from '../fixed-usb-qualification/iterative-contract.mjs';
 import { parseStatus } from '../str005-v2-serial/device.mjs';
-import { validatePart, validateFinished, baselineConclusion, currentProof, validateCandidateState } from './model.mjs';
+import { validatePart, validateFinished, baselineConclusion, currentProof, validateCandidateState, baselineIdentity } from './model.mjs';
 
 /** Stage A exposes read/close operations only; later stages require separate admission. */
 export function createProbeServer({ root, context, page, bundle, client, trust }, operations = {}) {
@@ -134,13 +135,24 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
           maybeCandidateRound.parts.diagnostics = value; maybeCandidateRound.saved.add('diagnostics');
         }
         await (operations.persistCandidateDiagnostics ?? (value => writeNew(resolve(root, `diagnostic-export-${nonce()}.json`), value)))(value);
-      } else await save('diagnostics', value);
+      } else {
+        const stage = context.captureExisting && saved.has('diagnostics') ? 'diagnostics_confirmation' : 'diagnostics';
+        await save(stage, value);
+      }
       return send(response, 200, { diagnostic_export_saved: true, review_file: 'diagnostic-export-baseline.json' });
     }
     check(path === '/part', 'panic_route_unavailable'); object(input, ['stage', 'value']);
+    if (input.stage === 'diagnostics_confirmation_status') {
+      check(context.captureExisting === true && !candidateConfigured, 'panic_capture_confirmation_mode');
+      object(input.value, ['state', 'status']); validateState(input.value.state, baselineIdentity(context));
+      await save(input.stage, { state: structuredClone(input.value.state), status: validatePart('status', input.value.status, context) });
+      validateCaptureDiagnosticPair(parts, context);
+      return send(response, 200, { recorded: true });
+    }
     if (input.stage === 'finished') {
       await save('finished', validateFinished(input.value)); finished = true;
       if (baselineConclusion(parts).complete) {
+        if (context.captureExisting) validateCaptureDiagnosticPair(parts, context);
         check(now() - maybeFirstAt <= 120000, 'panic_observations_stale');
         await (operations.persistProof ?? (value => writeNew(resolve(root, 'current-recovery.json'), value)))(currentProof(context, parts, now()));
       }

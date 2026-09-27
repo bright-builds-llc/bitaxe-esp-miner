@@ -1,24 +1,24 @@
 /** Independent read/close steps retain partial evidence without a test-success latch. */
-export function createBaselineCollector({ gate, published, save, campaignId, timeoutMs = 30000 }) {
+export function createBaselineCollector({ gate, published, save, campaignId, timeoutMs = 30000, captureExisting = false, wait = waitForDiagnosticAdvance }) {
   let consumed = false;
   return async () => {
     if (consumed) throw Error('panic_baseline_consumed');
     consumed = true;
     const failures = [];
     async function collect(stage, operation, limit = timeoutMs) {
-      let timer;
+      let timer; const controller = new AbortController();
       try {
-        await Promise.race([Promise.resolve().then(operation).then(value => save(stage, value)),
-          new Promise((_, reject) => { timer = setTimeout(() => reject(Error('timeout')), limit); })]);
+        await Promise.race([Promise.resolve().then(() => operation(controller.signal)).then(value => { controller.signal.throwIfAborted(); return save(stage, value); }),
+          new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(Error('timeout')); }, limit); })]);
       } catch { if (!failures.includes(stage)) failures.push(stage); }
-      finally { clearTimeout(timer); }
+      finally { clearTimeout(timer); controller.abort(); }
     }
     try {
       await collect('state', async () => { await gate.refresh(); return published(); });
       await collect('ledger', () => gate.reviewQualificationAttempts());
       await collect('original_budget', () => gate.reviewBudget(campaignId));
       await collect('status', async () => gate.stratumV2Status('share', null, await gate.stratumV2Possession()));
-      await collect('diagnostics', () => gate.exportDiagnostics());
+      await collect('diagnostics', signal => captureExisting ? collectCaptureDiagnostics({ gate, published, save, signal, wait }) : gate.exportDiagnostics());
     } finally {
       await collect('closed', async () => {
         let maybeStopError;
@@ -31,6 +31,23 @@ export function createBaselineCollector({ gate, published, save, campaignId, tim
     await save('finished', { failures });
     return { complete: failures.length === 0, failures };
   };
+}
+/** Both snapshots are produced by the Gate while the same serial owner remains open. */
+export async function collectCaptureDiagnostics({ gate, published, save, signal, wait = waitForDiagnosticAdvance }) {
+  await gate.exportDiagnostics(); signal.throwIfAborted();
+  await wait(2000, signal); signal.throwIfAborted();
+  await gate.exportDiagnostics(); signal.throwIfAborted();
+  const status = await gate.stratumV2Status('share', null, await gate.stratumV2Possession()); signal.throwIfAborted();
+  await save('diagnostics_confirmation_status', { state: published(), status });
+  return { diagnostic_exports: 2 };
+}
+function waitForDiagnosticAdvance(milliseconds, signal) {
+  return new Promise((resolve, reject) => {
+    const stop = () => { clearTimeout(timer); reject(Error('diagnostic_wait_cancelled')); };
+    const timer = setTimeout(() => { signal.removeEventListener('abort', stop); resolve(); }, milliseconds);
+    signal.addEventListener('abort', stop, { once: true });
+    if (signal.aborted) stop();
+  });
 }
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   const post = async (path, value) => {
@@ -54,7 +71,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   output.id = 'panic-probe-result'; output.setAttribute('role', 'status');
   let consumed = false;
   const update = () => { const state = gate.state(); button.disabled = consumed || state.status !== 'ready' || !state.connected || state.running; };
-  const collect = createBaselineCollector({ gate: allowed, published: () => gate.state(), campaignId: context.originalCampaignId,
+  const collect = createBaselineCollector({ gate: allowed, published: () => gate.state(), campaignId: context.originalCampaignId, captureExisting: context.captureExisting === true,
     save: (stage, value) => stage === 'diagnostics' ? Promise.resolve() : post('/part', { stage, value }) });
   button.addEventListener('click', async () => {
     if (button.disabled) return;
