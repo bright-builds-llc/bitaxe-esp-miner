@@ -168,6 +168,10 @@ js_library(
 rust_binary(
     name = "flash",
     srcs = [
+        "src/core_dump.rs",
+        "src/core_dump/contract.rs",
+        "src/core_dump/tests.rs",
+        "src/core_dump/run_tests.rs",
         "src/drain_worker_serial.rs",
         "src/bootstrap_timing.rs",
         "src/cli.rs",

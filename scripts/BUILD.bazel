@@ -399,6 +399,32 @@ js_test(
 )
 
 js_binary(
+    name = "core_dump",
+    chdir = "..",
+    data = [":core_dump_sources"],
+    entry_point = "core-dump/main.mjs",
+)
+
+js_binary(
+    name = "core_dump_tools",
+    chdir = "..",
+    data = [":core_dump_sources"],
+    entry_point = "core-dump/setup.mjs",
+)
+
+js_binary(
+    name = "core_dump_test_local",
+    chdir = "..",
+    data = [":core_dump_sources"],
+    entry_point = "core-dump/workspace-test.mjs",
+)
+
+js_library(
+    name = "core_dump_sources",
+    srcs = glob(["core-dump/*.mjs", "core-dump/*.py", "core-dump/*.c"]),
+)
+
+js_binary(
     name = "stratum_v2_serial",
     chdir = "..",
     data = [":str005_v2_serial_sources", ":host_stall_sources", "//tools/stratum-v2-fixture:v2_serial_build_identity", "//tools/http-transport:v2_observer_build_identity"],

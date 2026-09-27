@@ -15,7 +15,7 @@ const expectedPartitions: readonly PartitionRow[] = [
   ["ota_0", "app", "ota_0", "0x710000", "4M", ""],
   ["ota_1", "app", "ota_1", "0xb10000", "4M", ""],
   ["otadata", "data", "ota", "0xf10000", "8K", ""],
-  ["coredump", "data", "coredump", "", "64K", ""],
+  ["coredump", "data", "coredump", "0xf12000", "952K", ""],
 ] as const;
 
 function normalizedSize(value: string): string | undefined {

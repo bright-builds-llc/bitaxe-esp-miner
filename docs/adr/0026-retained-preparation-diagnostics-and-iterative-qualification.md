@@ -1,5 +1,10 @@
 # ADR-0026: Retained preparation diagnostics and iterative qualification
 
+Development core-dump authorization was superseded prospectively on 2026-09-27
+by [ADR-0030](0030-development-core-dumps.md). The original campaign and effect
+restrictions below retain their historical meaning; the raw-memory prohibition
+no longer blocks protected development core-dump capture or inspection.
+
 Accepted 2026-09-07 under the owner's explicit implementation authorization.
 Attempt-012 exhausted the original 240000-ms campaign and rebooted during
 preparation without identifying the failing step. Preserve that campaign and

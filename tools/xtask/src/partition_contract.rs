@@ -24,7 +24,18 @@ pub(crate) fn validate_ultra205_partition_contract(path: &Utf8Path) -> Result<()
     require_partition(&partitions, "ota_0", "app", "ota_0", "0x710000", "4M")?;
     require_partition(&partitions, "ota_1", "app", "ota_1", "0xb10000", "4M")?;
     require_partition(&partitions, "otadata", "data", "ota", "0xf10000", "8k")?;
-    require_partition(&partitions, "coredump", "data", "coredump", "", "64K")
+    require_partition(
+        &partitions,
+        "coredump",
+        "data",
+        "coredump",
+        "0xf12000",
+        "952K",
+    )?;
+    if partitions.len() != 8 {
+        bail!("Ultra 205 requires exactly eight partitions");
+    }
+    Ok(())
 }
 
 fn parse_partition_table(contents: &str) -> Result<Vec<PartitionRow>> {
@@ -43,6 +54,16 @@ fn parse_partition_table(contents: &str) -> Result<Vec<PartitionRow>> {
                 line_index + 1,
                 columns.len()
             );
+        }
+
+        if columns.len() > 6 || columns.get(5).is_some_and(|flags| !flags.is_empty()) {
+            bail!("partition flags are not allowed in the Ultra 205 development layout");
+        }
+        if partitions
+            .iter()
+            .any(|row: &PartitionRow| row.name == columns[0])
+        {
+            bail!("duplicate Ultra 205 partition {}", columns[0]);
         }
 
         partitions.push(PartitionRow {
@@ -118,7 +139,7 @@ mod tests {
              ota_0,app,ota_0,0x710000,4M\n\
              ota_1,app,ota_1,0xb10000,4M\n\
              otadata,data,ota,0xf10000,8k\n\
-             coredump,data,coredump,,64K\n",
+             coredump,data,coredump,0xf12000,952K\n",
         );
 
         // Act
@@ -142,7 +163,7 @@ mod tests {
              www,data,spiffs,0x410000,3M\n\
              ota_0,app,ota_0,0x710000,4M\n\
              ota_1,app,ota_1,0xb10000,4M\n\
-             coredump,data,coredump,,64K\n",
+             coredump,data,coredump,0xf12000,952K\n",
         );
 
         // Act
@@ -150,6 +171,23 @@ mod tests {
 
         // Assert
         assert!(format!("{result:#?}").contains("otadata"));
+    }
+
+    #[test]
+    fn partition_contract_rejects_dump_capacity_flags_and_duplicate_rows() {
+        // Arrange
+        let dir = tempdir().expect("tempdir");
+        let table = fs::read_to_string(checked_in_partition_table()).expect("checked-in table");
+        // Act / Assert
+        for invalid in [
+            table.replace("952K", "64K"),
+            table.replace("0xf12000", "0xf10000"),
+            table.replace("952K", "952K, encrypted"),
+            format!("{table}coredump,data,coredump,0xf12000,952K\n"),
+        ] {
+            let path = write_partition_table(&dir, &invalid);
+            assert!(validate_ultra205_partition_contract(&path).is_err());
+        }
     }
 
     fn checked_in_partition_table() -> Utf8PathBuf {

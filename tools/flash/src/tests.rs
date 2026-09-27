@@ -36,3 +36,6 @@ mod release_recovery;
 mod restore_installed;
 mod segmented_updates;
 mod workflow;
+
+#[path = "core_dump/run_tests.rs"]
+mod core_dump_run;

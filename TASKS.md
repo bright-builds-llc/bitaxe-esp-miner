@@ -4493,7 +4493,7 @@ no next mining ordinal is authorized, and parity remains 90/95.
 
 ### task-str005-start-panic-diagnosis | 2026-09-27 | Diagnose and correct the Start panic
 
-Status: Static diagnosis/research complete; cause unresolved and hardware blocked on recovery readiness.
+Status: Development capture implemented and software/native-build verified; panic cause and device qualification remain blocked.
 Objective: identify the actual Start panic cause and verify a targeted correction.
 Depends on: `task-str005-failure-recovery-accounting` before new device evidence or
 choosing a fresh attempt; static code/existing-evidence review may proceed earlier.
@@ -4555,6 +4555,58 @@ Completion review: `stop_hardware_blocker`; missing native panic-location
 information plus unresolved recovery dependency prevent a supported correction
 and new device reproduction. Task remains unarchived. No device access or
 runtime change; prior seals/accounting preserved and parity remains 90/95.
+
+Development capture implementation (owner authorization 2026-09-27):
+- [x] Persist standing permission for full private development core dumps and
+      inspection; update conflicting repo-local policy prospectively.
+- [x] Enable official ESP-IDF flash ELF dumps with supported internal DRAM,
+      full ELF hash, first-dump preservation and adequate reserved storage.
+- [x] Retain optimized debug ELF/link map and verify their identity/configuration
+      through canonical build outputs.
+- [x] Implement protected offline inspect/analyze commands using managed vendor
+      tooling; reject wrong/missing/truncated ELF identity and preserve failure
+      outputs privately. Test real parser/process/privacy boundaries.
+- [x] Implement bounded, task-gated acquisition through the existing physical
+      lease/ROM/read/return/cleanup owner; software-test without device effects.
+- [x] Build native diagnostic candidate, run affected/required checks, review
+      artifacts/diffs and publish truthful implementation and remaining blockers.
+
+Development core-dump acquisition: disabled (recovery evidence prerequisite).
+[ADR-0030](docs/adr/0030-development-core-dumps.md) authorizes raw development
+capture, persistence and inspection now and for future tasks; it does not erase
+the missing historical resource proof or authorize a Start/flash/reproduction.
+Prior research's privacy objections are superseded for protected development
+dumps; historical installed-image observations and sealed evidence remain valid.
+
+Implementation review: official ESP-IDF flash ELF capture now retains supported
+internal DRAM, full 64-character ELF identity and the first dump, with 952 KiB in the existing
+reserved flash tail. NVS/application/OTA offsets remain unchanged. Canonical
+optimized ELF has real source-line DWARF, map and digest sidecar. A targeted
+bitaxe-api optz policy preserves the 4 MiB image bound. Full private development
+capture/inspection is standing-authorized in AGENTS/policy/ADR-0030.
+
+`just core-dump inspect|analyze` snapshots private inputs and checks native dump
+checksum plus the exact 72-byte IDF 5.5.4 identity descriptor before GDB. Vendor
+stdout/stderr/temp memory remain private; GDB is pinned and process groups are
+bounded. `just core-dump-tools` installed official managed GDB 16.3_20250913.
+`just core-dump-read` uses the existing physical/ROM/read/return/release owner;
+its disabled contract was verified to reject before environment discovery.
+No actual device dump was captured, no device opened/reset/flashed, no Start
+issued, and no change to Share002/current recovery proofs or parity 90/95.
+
+Checks: 25 offline real-parser/process/ABI tests; 10 capture tests including
+production failure/return/release and identity-mismatch paths; automation/xtask/
+flash Bazel suites and TypeScript compilation; ordered Cargo format/Clippy/build/
+tests (2,377 passed, 3 existing ignores); native package plus USB ownership/symbol
+checks; reference, redaction, standards and diff checks. Native image fit verified
+at 4,148,480 bytes with 45,824-byte headroom; source line decoding verified. Exact
+clean post-publication package identity and final review will be recorded below.
+
+Contract/usage: [development core dumps](docs/hardware/development-core-dumps.md).
+This completes capture implementation, not panic diagnosis or hardware capture
+qualification. Recovery prerequisites and fatal-handler safety/timing validation
+still govern installation/reproduction. Do not enable acquisition by rewriting
+its sentinel merely to bypass the missing historical-resource proof.
 
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 

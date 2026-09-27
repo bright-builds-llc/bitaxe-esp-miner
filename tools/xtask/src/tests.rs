@@ -457,7 +457,7 @@ fn write_valid_partition_table(dir: &TempDir) -> Utf8PathBuf {
              ota_0, app, ota_0, 0x710000, 4M\n\
              ota_1, app, ota_1, 0xb10000, 4M\n\
              otadata, data, ota, 0xf10000, 8k\n\
-             coredump, data, coredump, , 64K\n",
+             coredump, data, coredump, 0xf12000, 952K\n",
     )
     .expect("write partition table");
     path

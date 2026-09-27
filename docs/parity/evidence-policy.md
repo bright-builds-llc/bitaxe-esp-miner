@@ -8,12 +8,31 @@ repository commands, CI, and every phase-specific evidence wrapper.
 
 Every evidence value belongs to exactly one class:
 
-| Class | Examples | Allowed sinks |
-| --- | --- | --- |
-| `NeverPersistRaw` | Passwords, tokens, credential contents, pool URLs, pool ports, pool users, workers, owner addresses, pool passwords, and NVS secrets | Memory only for the minimum authorized operation. Never disk, terminal, Git, or promoted evidence. |
-| `ProtectedOperational` | SSIDs, IP and MAC addresses, hostnames, device origins, USB identities and paths, PIDs, process paths, unredacted commands, settings, HTTP material, and detailed logs | Mode-`0600` files below a mode-`0700` repository-ignored root. Never terminal, Git, or admitted evidence. |
-| `ShareableFact` | Typed categories, booleans, bounded counts and durations, status classes, board categories, and outcomes | Terminal, Git, and admitted evidence after validation. |
-| `PublicProvenance` | Source and reference commits plus safely opaque package, artifact, and evidence-root digests | Terminal, Git, and admitted evidence. A digest of a low-entropy sensitive value is still sensitive and is not public provenance. |
+| Class                  | Examples                                                                                                                                                               | Allowed sinks                                                                                                                                                |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `NeverPersistRaw`      | Passwords, tokens, credential contents, pool URLs, pool ports, pool users, workers, owner addresses, pool passwords, and NVS secrets                                   | Memory only for the minimum authorized operation, except for the authorized development core-dump rule below. Never raw terminal, Git, or promoted evidence. |
+| `ProtectedOperational` | SSIDs, IP and MAC addresses, hostnames, device origins, USB identities and paths, PIDs, process paths, unredacted commands, settings, HTTP material, and detailed logs | Mode-`0600` files below a mode-`0700` repository-ignored root. Never terminal, Git, or admitted evidence.                                                    |
+| `ShareableFact`        | Typed categories, booleans, bounded counts and durations, status classes, board categories, and outcomes                                                               | Terminal, Git, and admitted evidence after validation.                                                                                                       |
+| `PublicProvenance`     | Source and reference commits plus safely opaque package, artifact, and evidence-root digests                                                                           | Terminal, Git, and admitted evidence. A digest of a low-entropy sensitive value is still sensitive and is not public provenance.                             |
+
+## Authorized development core dumps
+
+[ADR-0030](../adr/0030-development-core-dumps.md) gives agents standing permission
+to collect, persist and inspect full core dumps during current and future
+development. The dump, extracted memory/ELF, temporary files and unredacted
+decoder/debugger output may contain otherwise `NeverPersistRaw` material and
+remain authorized private artifacts. Use mode-0600 files under mode-0700 ignored
+roots; on-device crash storage is permitted. No additional approval is required
+for each development capture or local inspection.
+
+This narrow exception applies before sanitization and overrides the generic
+raw-persistence and child-output restrictions below for these artifacts. It does
+not authorize raw contents in inherited terminal output, Git or shared evidence.
+Publish only a separately redacted projection unless the owner explicitly
+authorizes sharing the raw dump. Keep acquisition/reset/flash/mining/cleanup and
+evidence-deletion authority separate from this permission.
+
+## General raw-value handling
 
 Redaction is not permission to persist a `NeverPersistRaw` value first.
 Processes must remove that class before the first write or terminal emission.

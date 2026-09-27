@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -28,6 +29,8 @@ export async function buildFirmware(
     workspaceRoot,
     rollbackProbe ? ".bazel-firmware-rollback-probe-target" : ".bazel-firmware-target",
   );
+  const sourceElf = path.join(cargoTargetDir, target, "release", packageName);
+  const sourceMap = `${sourceElf}.map`;
   const provenanceStamp = path.resolve(workspaceRoot, request.buildProvenanceStamp);
   const identityDefaults = path.resolve(workspaceRoot, request.identitySdkconfigDefaults);
   const buildTimestamp = path.resolve(workspaceRoot, request.buildTimestampUtc);
@@ -50,6 +53,9 @@ export async function buildFirmware(
     BITAXE_BUILD_PROVENANCE_STAMP: provenanceStamp,
     BITAXE_BUILD_TIMESTAMP_UTC_FILE: buildTimestamp,
     CARGO_TARGET_DIR: cargoTargetDir,
+    CARGO_PROFILE_RELEASE_DEBUG: "2",
+    CARGO_PROFILE_RELEASE_STRIP: "none",
+    BITAXE_LINKER_MAP: sourceMap,
     CC_xtensa_esp32s3_espidf: "xtensa-esp32s3-elf-gcc",
     CFLAGS_xtensa_esp32s3_espidf: "-mlongcalls",
     ESP_IDF_SDKCONFIG: outputSdkconfig,
@@ -75,7 +81,11 @@ export async function buildFirmware(
   }
   rejectUnknownKconfigWarnings(`${cargo.stdout}\n${cargo.stderr}`);
 
-  const sourceElf = path.join(cargoTargetDir, target, "release", packageName);
+  const sections = await processPort.run(internalCommandSpec(
+    "xtensa-esp32s3-elf-objdump", ["-h", sourceElf], (value) => value, espEnvironment,
+  ));
+  if (sections.timedOut || sections.exitCode !== 0) throw new Error("firmware debug section inspection failed");
+  requireDebugArtifacts(sections.stdout, await readFile(sourceMap, "utf8"));
   const disassembly = await processPort.run(internalCommandSpec(
     "xtensa-esp32s3-elf-objdump",
     ["-d", "-C", sourceElf],
@@ -88,8 +98,20 @@ export async function buildFirmware(
   verifyFirmwareStackBudget(disassembly.stdout);
   const buildLabel = await requiredStampField(provenanceStamp, "build_label");
   const generated = await findGeneratedIdfBuild(cargoTargetDir, buildLabel);
-  requireResolvedUsbMemoryContract(await readFile(path.join(generated, "sdkconfig"), "utf8"));
+  const sdkconfig = await readFile(path.join(generated, "sdkconfig"), "utf8");
+  requireResolvedUsbMemoryContract(sdkconfig);
+  requireResolvedCoreDumpContract(sdkconfig);
+  requireCoreDumpPartition(await readFile(path.join(generated, "build/partition_table/partition-table.bin")));
   await copyFile(sourceElf, path.join(outputDir, `${artifactPrefix}.elf`));
+  await copyFile(sourceMap, path.join(outputDir, `${artifactPrefix}.map`));
+  const digest = (bytes: Buffer | string) => createHash("sha256").update(bytes).digest("hex");
+  await writeFile(path.join(outputDir, `${artifactPrefix}.debug.json`), `${JSON.stringify({
+    schema: "bitaxe-firmware-debug-artifacts-v1",
+    elf: { path: `${artifactPrefix}.elf`, sha256: digest(await readFile(sourceElf)) },
+    map: { path: `${artifactPrefix}.map`, sha256: digest(await readFile(sourceMap)) },
+    sdkconfig: { path: `${artifactPrefix}.sdkconfig`, sha256: digest(sdkconfig) },
+    sourceProvenanceSha256: digest(await readFile(provenanceStamp)),
+  }, null, 2)}\n`);
   await Promise.all([
     copyFile(path.join(generated, "sdkconfig"), path.join(outputDir, `${artifactPrefix}.sdkconfig`)),
     copyFile(
@@ -178,4 +200,54 @@ async function findGeneratedIdfBuild(cargoTargetDir: string, buildLabel: string)
   const match = matches[0];
   if (match === undefined) throw new Error("generated ESP-IDF build disappeared");
   return match;
+}
+
+/** Fail closed on resolved capture settings; requested defaults are not evidence. */
+export function requireResolvedCoreDumpContract(sdkconfig: string): void {
+  const lines = sdkconfig.split(/\r?\n/u);
+  for (const required of [
+    "CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y", "CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF=y",
+    "CONFIG_ESP_COREDUMP_CHECKSUM_SHA256=y", "CONFIG_ESP_COREDUMP_CAPTURE_DRAM=y",
+    "CONFIG_ESP_COREDUMP_MAX_TASKS_NUM=64", "CONFIG_ESP_COREDUMP_STACK_SIZE=4096",
+    "CONFIG_ESP_COREDUMP_FLASH_NO_OVERWRITE=y", "CONFIG_ESP_COREDUMP_CHECK_BOOT=y",
+    "CONFIG_ESP_CONSOLE_UART_DEFAULT=y", "CONFIG_ESP_CONSOLE_SECONDARY_NONE=y",
+    "CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y", "CONFIG_APP_RETRIEVE_LEN_ELF_SHA=64",
+  ]) {
+    const prefix = required.slice(0, required.indexOf("=") + 1);
+    const matches = lines.filter(line => line.startsWith(prefix));
+    if (matches.length !== 1 || matches[0] !== required) throw new Error(`resolved core dump contract missing ${required}`);
+  }
+  for (const key of ["CONFIG_ESP_COREDUMP_ENABLE_TO_UART", "CONFIG_ESP_COREDUMP_ENABLE_TO_NONE", "CONFIG_ESP_COREDUMP_LOGS"]) {
+    if (!lines.includes(`# ${key} is not set`) || lines.some(line => line.startsWith(`${key}=`))) {
+      throw new Error(`resolved core dump contract requires disabled ${key}`);
+    }
+  }
+}
+
+/** Inspect the generated binary table so auto-offset changes cannot evade the gate. */
+export function requireCoreDumpPartition(table: Buffer): void {
+  let matches = 0;
+  for (let offset = 0; offset + 32 <= table.length; offset += 32) {
+    if (table.readUInt16LE(offset) !== 0x50aa) break;
+    const label = table.subarray(offset + 12, offset + 28).toString("ascii").replace(/\0.*$/u, "");
+    if (label !== "coredump") continue;
+    matches += 1;
+    if (table[offset + 2] !== 1 || table[offset + 3] !== 3 || table.readUInt32LE(offset + 4) !== 0xf12000 ||
+        table.readUInt32LE(offset + 8) !== 0xee000 || table.readUInt32LE(offset + 28) !== 0) {
+      throw new Error("generated core dump partition violates reserved tail contract");
+    }
+  }
+  if (matches !== 1) throw new Error("generated table requires one core dump partition");
+}
+
+/** Debug information is retained in the exact optimized firmware ELF, never a rebuilt surrogate. */
+export function requireDebugArtifacts(sections: string, map: string): void {
+  for (const section of [".debug_info", ".debug_line"]) {
+    const line = sections.split(/\r?\n/u).find(value => value.trim().split(/\s+/u)[1] === section);
+    const size = line?.trim().split(/\s+/u)[2];
+    if (size === undefined || !/^[0-9a-f]+$/iu.test(size) || Number.parseInt(size, 16) === 0) {
+      throw new Error(`firmware ELF lacks nonempty ${section}`);
+    }
+  }
+  if (!map.includes("Linker script and memory map") || !map.includes(".text")) throw new Error("firmware linker map missing");
 }

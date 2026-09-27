@@ -1054,6 +1054,8 @@ js_run_binary(
         "bitaxe-firmware-otadata-initial.bin",
         "bitaxe-firmware-partition-table.bin",
         "bitaxe-firmware.elf",
+        "bitaxe-firmware.map",
+        "bitaxe-firmware.debug.json",
         "bitaxe-firmware.sdkconfig",
     ],
     args = [
@@ -1116,6 +1118,8 @@ js_run_binary(
         "bitaxe-firmware-rollback-probe-otadata-initial.bin",
         "bitaxe-firmware-rollback-probe-partition-table.bin",
         "bitaxe-firmware-rollback-probe.elf",
+        "bitaxe-firmware-rollback-probe.map",
+        "bitaxe-firmware-rollback-probe.debug.json",
         "bitaxe-firmware-rollback-probe.sdkconfig",
     ],
     args = [
@@ -1195,6 +1199,12 @@ filegroup(
     visibility = ["//visibility:public"],
 )
 
+filegroup(
+    name = "firmware_debug_artifacts",
+    srcs = [":bitaxe-firmware.elf", ":bitaxe-firmware.map", ":bitaxe-firmware.debug.json", ":bitaxe-firmware.sdkconfig"],
+    visibility = ["//visibility:public"],
+)
+
 js_run_binary(
     name = "firmware_image",
     copy_srcs_to_bin = False,
@@ -1205,6 +1215,8 @@ js_run_binary(
         ":bitaxe-firmware-partition-table.bin",
         ":bitaxe-firmware.elf",
         ":bitaxe-firmware.sdkconfig",
+        ":bitaxe-firmware.map",
+        ":bitaxe-firmware.debug.json",
         ":build_provenance_stamp",
     ],
     outs = [

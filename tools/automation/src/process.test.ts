@@ -125,3 +125,10 @@ test("operator-gated process lifetime does not inherit the adapter timeout", asy
   assert.equal(outcome.timedOut, false, outcome.stderr);
   assert.equal(outcome.exitCode, 0, outcome.stderr);
 });
+
+test("canonical debug build variables survive the actual process environment boundary", () => {
+  // Arrange
+  const variables = { CARGO_PROFILE_RELEASE_DEBUG: "2", CARGO_PROFILE_RELEASE_STRIP: "none", BITAXE_LINKER_MAP: "/workspace/firmware.map" };
+  // Act / Assert
+  assert.deepEqual(allowedEnvironment(variables), variables);
+});

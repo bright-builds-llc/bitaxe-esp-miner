@@ -561,7 +561,7 @@
           "REPO_MAPPING:rules_rust+,rules_cc rules_cc+",
           "REPO_MAPPING:rules_rust+,rules_rust rules_rust+",
           "FILE:@@//Cargo.lock 63b0563a0a0288cf1df8cfbe002b7d19f053a3c545a62d641223469c23db312a",
-          "FILE:@@//Cargo.toml 9f204a957898de1dc30a726bf299331b4c8de8f34be29116c12af5cdf64b5cde",
+          "FILE:@@//Cargo.toml 564c4c1c47ba33002358dd7265e29485c9beda0192411c03dfc163aaddc6d79d",
           "FILE:@@//crates/bitaxe-api/Cargo.toml 65fb4b485ef0feb2f1d986f77d47cc5f25d39c3d3d61322d34664d8e2561b6ef",
           "FILE:@@//crates/bitaxe-asic/Cargo.toml 85fec13f5e02a93a553caf7b417fdff2c2431143f1dfecc47daf9e13244cd51a",
           "FILE:@@//crates/bitaxe-config/Cargo.toml 0505edb36ac976259149fa09a764e0ff2fb67c38c086f8f48c2bb797b2ec3755",

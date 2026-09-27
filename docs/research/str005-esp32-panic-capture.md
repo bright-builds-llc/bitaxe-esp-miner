@@ -4,6 +4,13 @@ Date: 2026-09-27. Scope: software-only research for
 `task-str005-start-panic-diagnosis`. No device access occurred for this research.
 This is guidance for prospective instrumentation, not an execution contract.
 
+Subsequent owner decision: [ADR-0030](../adr/0030-development-core-dumps.md)
+authorizes full private development dumps and inspection without repeated
+approval. It supersedes this initial note's privacy-based rejection of core
+dumps. The implemented [development capture guide](../hardware/development-core-dumps.md)
+now selects official flash dumps and matching debug artifacts. Technical limits
+and separate device-effect/qualification requirements remain.
+
 ## Finding and immediate recommendation
 
 Prefer an exact-ELF offline investigation followed by small, typed, reset-retained

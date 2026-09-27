@@ -5,6 +5,12 @@ use std::fs;
 fn main() {
     embuild::espidf::sysenv::output();
     assert_sdkconfig_contract();
+    println!("cargo:rerun-if-env-changed=BITAXE_LINKER_MAP");
+    let map = std::path::PathBuf::from(
+        env::var_os("BITAXE_LINKER_MAP")
+            .unwrap_or_else(|| panic!("canonical firmware build requires BITAXE_LINKER_MAP")),
+    );
+    println!("cargo:rustc-link-arg=-Wl,-Map={}", map.display());
     println!("cargo:rerun-if-env-changed=BITAXE_BUILD_PROVENANCE_STAMP");
     println!("cargo:rerun-if-env-changed=BITAXE_BUILD_TIMESTAMP_UTC_FILE");
     println!("cargo:rerun-if-env-changed=BITAXE_HARDWARE_EVIDENCE_ACK");

@@ -428,7 +428,14 @@ Agents executing current evidence wrappers with `blocked|hardware` modes must:
 
 ### Repository-Wide Evidence Privacy
 
-- Follow `docs/parity/evidence-policy.md`: `NeverPersistRaw` values never reach disk or terminal output; `ProtectedOperational` values remain only in mode-0600 files below ignored mode-0700 roots.
+- Development core dumps: collecting, persisting and inspecting full dumps is
+  standing-authorized now and for future development, without per-dump approval.
+  Before capture or analysis, read `docs/adr/0030-development-core-dumps.md` for
+  protected storage, private analysis and separate publication/effect controls.
+- Follow `docs/parity/evidence-policy.md`: outside the authorized development
+  core-dump exception, `NeverPersistRaw` values never reach disk or terminal
+  output; `ProtectedOperational` values remain only in mode-0600 files below
+  ignored mode-0700 roots.
 - Private classifiers consume an immutable secret-sanitized artifact before a distinct commit-redacted projection is derived. Cleanup never implies artifact deletion.
 - Before committing evidence-related changes, run `just verify-redaction`. CI must call the same command with an explicit base and head.
 - The active semantic redaction verifier has no exception mechanism. Inline,

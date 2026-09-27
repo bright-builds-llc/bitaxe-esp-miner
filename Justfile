@@ -15,6 +15,18 @@ detect-ultra205 *args:
 str005-failure-recovery action *args:
     bazel run //scripts:str005_failure_recovery -- {{ action }} {{ args }}
 
+core-dump action *args:
+    bazel run //scripts:core_dump -- {{ action }} {{ args }}
+
+core-dump-tools:
+    bazel run //scripts:core_dump_tools
+
+test-core-dump:
+    bazel run //scripts:core_dump_test_local
+
+core-dump-read *args:
+    bazel run //tools/flash:flash -- core-dump-read {{ args }}
+
 observe-serial *args:
     bazel run //tools/automation:observe_serial -- {{ args }}
 

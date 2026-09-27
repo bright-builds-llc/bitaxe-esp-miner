@@ -44,6 +44,7 @@ mod bootstrap_timing;
 mod campaign;
 mod cli;
 mod commands;
+mod core_dump;
 mod display_recovery;
 mod drain_worker_serial;
 mod environment;
@@ -136,6 +137,9 @@ fn main() -> Result<()> {
     if let CliCommand::DrainWorkerSerial(command) = &cli.command {
         return drain_worker_serial::run(command);
     }
+    if matches!(&cli.command, CliCommand::CoreDumpRead(_)) {
+        core_dump::preflight()?;
+    }
     require_current_noise_effect(&cli.command)?;
     let maybe_timing_export = bootstrap_timing::prepare(&cli.command)?;
     let environment = match LocalFlashEnvironment::detect() {
@@ -162,6 +166,7 @@ fn main() -> Result<()> {
 
         match cli.command {
             CliCommand::DrainWorkerSerial(command) => drain_worker_serial::run(&command),
+            CliCommand::CoreDumpRead(command) => core_dump::run(&command, &environment),
             CliCommand::Detect(command) => run_detect(&command, &environment),
             CliCommand::Flash(command) => run_flash(&command, &environment).map(|_| ()),
             CliCommand::Monitor(command) => run_monitor(&command, &environment),

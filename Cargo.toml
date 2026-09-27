@@ -84,3 +84,7 @@ opt-level = "z"
 
 [profile.release.package.bitaxe-stratum]
 opt-level = "z"
+
+# Keep full development crash capture within the unchanged firmware partitions.
+[profile.release.package.bitaxe-api]
+opt-level = "z"

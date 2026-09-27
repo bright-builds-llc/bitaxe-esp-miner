@@ -5,6 +5,13 @@ Disposition: **cause unresolved; `stop_hardware_blocker`**. Static investigation
 and primary-source research are complete. No corrective firmware change or new
 device action is justified by the available trace. The task remains unarchived.
 
+Subsequent owner decision: [ADR-0030](../adr/0030-development-core-dumps.md)
+permits full private development dumps. The resulting
+[capture implementation](../hardware/development-core-dumps.md) uses ESP-IDF flash
+dumps and exact debug artifacts instead of the proposed custom minimal native
+fatal recorder. This does not change the historical image audit or establish
+Share002's cause.
+
 ## What the evidence establishes
 
 Share002 attempted Start, did not receive a successful Start response, and the
