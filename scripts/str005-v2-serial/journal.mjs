@@ -30,6 +30,7 @@ export function baseline(state, closed = false) {
 }
 /** Expected signed-work advancement is proved separately; never rewrite the original comparison. */
 export function restoredBaseline(state, context, closed = false) {
+  if (context.schema === "str005-v2-serial-context-v6") check(state?.deviceRestorationConfirmed === true, "v2_baseline");
   if (context.scope !== "share" || state?.preservation?.authorization_high_water_match === true) return baseline(state, closed);
   const checkpoint = state?.authorizationRecovery;
   check(checkpoint?.matched === true && checkpoint.generation > 0 && checkpoint.generation === state.qualification?.generation,

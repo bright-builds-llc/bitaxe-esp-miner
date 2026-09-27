@@ -13,7 +13,7 @@ import { preflight, prepareContext, load, legacyView } from "./context.mjs";
 import { BEFORE, BEFORE_V4, MEASUREMENT_003, ACCOUNTING_AMENDMENT, CORRECTION_CONTRACT, PREDECESSOR, CONTRACT, PREFLIGHT_AMENDMENT, TASK, sha256, check } from "./values.mjs";
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 export async function fixture(t, { prepare = true } = {}) {
-  const f = await contextFixture(t, { prepare: false }), firmwareRoot = f.options.firmwareRoot;
+  const f = await contextFixture(t, { prepare: false, bootstrapArtifacts: false }), firmwareRoot = f.options.firmwareRoot;
   for (const name of await readdir(resolve(REPO, "scripts/usb-bootstrap-measure"))) if (name.endsWith(".mjs")) await f.put(resolve(firmwareRoot, "scripts/usb-bootstrap-measure", name), await readFile(resolve(REPO, "scripts/usb-bootstrap-measure", name)));
   for (const path of USB_STACK_AUDIT_SOURCES) await f.put(resolve(firmwareRoot, path), await readFile(resolve(REPO, path)));
   for (const publicFixture of ["scripts/phase28.1.1.1-synthetic-pool-credentials.mjs", "scripts/fixed-usb-qualification/contract.mjs"])

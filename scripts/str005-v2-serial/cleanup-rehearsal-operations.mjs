@@ -5,6 +5,7 @@ import { processSnapshot } from "../str005-noise-serial/host-resources.mjs";
 import { nodeRuntimeEnvironment } from "../str005-noise-serial/node-runtime.mjs";
 export function rehearsalOperations(context, request) {
   return {
+    bootstrapPins: root => request("bootstrapPins", [root]), currentBootstrapOwnership: value => request("currentBootstrapOwnership", [value]),
     cleanPushed() {}, ignored() {}, hostPlatform: "darwin",
     git: path => path === context.firmware_root ? context.firmware_commit : context.gate_commit,
     nativeSourceFiles: context.native_source_files, nativeAuditorSources: context.native_auditor_sources,

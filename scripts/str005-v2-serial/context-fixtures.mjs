@@ -1,3 +1,5 @@
+import { bootstrapBinding, BOOTSTRAP_BEFORE } from "./bootstrap-binding.mjs";
+import { shareBinding } from "./context-share-binding.mjs";
 import { shareSuccessorFixture } from "./context-share-fixtures.mjs";
 import { chmod, mkdir, readFile, readdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -5,7 +7,7 @@ import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 import { fixture as noiseFixture, ledger, original } from "../str005-noise-serial/test-fixture.mjs";
 import { NATIVE_AUDITOR_SOURCES } from "../noise-native-readiness.mjs";
-import { sha256, PERMISSION_AMENDMENT_PATH, CLEANUP_AMENDMENT_PATH, INSTALL_REVIEW_AMENDMENT_PATH, INSTALL_OWNERSHIP_AMENDMENT_PATH, OPERATOR_AMENDMENT_PATH } from "./values.mjs";
+import { sha256, BOOTSTRAP_AMENDMENT_PATH, PERMISSION_AMENDMENT_PATH, CLEANUP_AMENDMENT_PATH, INSTALL_REVIEW_AMENDMENT_PATH, INSTALL_OWNERSHIP_AMENDMENT_PATH, OPERATOR_AMENDMENT_PATH } from "./values.mjs";
 import { nonce } from "../fixed-usb-qualification/contract.mjs";
 import { canonical, writeNew } from "../str005-noise-serial/files.mjs";
 import { createSnapshot } from "./snapshot.mjs";
@@ -21,11 +23,11 @@ const NATIVE = ["firmware/bitaxe/src/noise_serial_runtime.rs", "firmware/bitaxe/
 const AUDITORS = ["scripts/v2-native-readiness.mjs", ...NATIVE_AUDITOR_SOURCES];
 
 /** Explicit synthetic filesystem/reader/auditor seam; never usable as live evidence. */
-export async function contextFixture(t, { scope = "channel", prepare = true, legacy = false, permission = false, cleanup = false, install = false, beforeLegacySnapshot, maybeFixtureBytes } = {}) {
+export async function contextFixture(t, { scope = "channel", prepare = true, legacy = false, permission = false, cleanup = false, install = false, beforeLegacySnapshot, maybeFixtureBytes, bootstrapArtifacts = true } = {}) {
   const base = await noiseFixture(t, { prepare: false });
   const { firmwareRoot, gateRoot } = base.options;
   await base.put(resolve(firmwareRoot, "TASKS.md"), "## Active\n### task-str005-v2-serial-qualification | synthetic qualification\n");
-  for (const path of [OPERATOR_AMENDMENT_PATH, INSTALL_REVIEW_AMENDMENT_PATH, INSTALL_OWNERSHIP_AMENDMENT_PATH, "tools/flash/src/evidence_output.rs", "tools/flash/src/environment.rs", "tools/flash/src/main.rs", "tools/flash/BUILD.bazel"])
+  for (const path of [BOOTSTRAP_AMENDMENT_PATH, OPERATOR_AMENDMENT_PATH, INSTALL_REVIEW_AMENDMENT_PATH, INSTALL_OWNERSHIP_AMENDMENT_PATH, "tools/flash/src/evidence_output.rs", "tools/flash/src/environment.rs", "tools/flash/src/main.rs", "tools/flash/BUILD.bazel"])
     await base.put(resolve(firmwareRoot, path), await readFile(resolve(REPO, path)));
   await base.put(resolve(firmwareRoot, CLEANUP_AMENDMENT_PATH), await readFile(resolve(REPO, CLEANUP_AMENDMENT_PATH)));
   await base.put(resolve(firmwareRoot, PERMISSION_AMENDMENT_PATH), await readFile(resolve(REPO, PERMISSION_AMENDMENT_PATH)));
@@ -153,16 +155,27 @@ export async function contextFixture(t, { scope = "channel", prepare = true, leg
     };
   }
   const maybeShareSuccessor = !legacy && !permission && !cleanup && !install ? await shareSuccessorFixture(base, parent, previous, operations) : null;
+  if (maybeShareSuccessor) {
+    const share = await operations.inspectShareSuccessor(maybeShareSuccessor);
+    const bootstrap = { binding: bootstrapBinding(firmwareRoot), beforeSource: BOOTSTRAP_BEFORE, shareSupersession: shareBinding(share), ledger, original,
+      failed: { original_campaign_id: previous.context.original_campaign_id, firmware_commit: "f".repeat(40), manifest_sha256: "e".repeat(64) }, accepted: {} };
+    operations.bootstrapPins = async () => structuredClone(bootstrap); operations.inspectBootstrap = async () => structuredClone(bootstrap); operations.currentBootstrapOwnership = async () => {};
+    if (bootstrapArtifacts) {
+    const claim = JSON.stringify({ detector: { physical: "c".repeat(64) } });
+    await base.put(resolve(bootstrap.binding.acceptedRoot, "install-0.claim.json"), claim);
+    await base.put(resolve(bootstrap.binding.acceptedRoot, "sealed-inventory.json"), JSON.stringify({ files: [{ path: "install-0.claim.json", sha256: sha256(claim), length: Buffer.byteLength(claim) }] }));
+    }
+  }
   if (beforeLegacySnapshot) {
     if (!legacy && !permission && !cleanup && !install) throw Error("historical fixture hook requires historical schema");
     await beforeLegacySnapshot({ ...base, parent, operations, previous });
   }
   execFileSync("git", ["-C", firmwareRoot, "add", "."]);
-  const ordinal = legacy ? 1 : permission ? 2 : cleanup ? 3 : install ? 4 : 5;
+  const ordinal = legacy ? 1 : permission ? 2 : cleanup ? 3 : install ? 4 : 6;
   let predecessorReceipt = resolve(previousRoot, "final-result.json");
   if (scope === "share") {
     const channelOptions = { ...base.options, scope: "channel", privateRoot: resolve(parent, `channel-${String(ordinal).padStart(3, "0")}`), predecessorReceipt,
-      ...(permission ? { supersedePermission: closurePath } : maybeShareSuccessor ? { supersedeShare: maybeShareSuccessor } : { supersedeChannel: maybeSuccessor }) };
+      ...(permission ? { supersedePermission: closurePath } : maybeShareSuccessor ? { bootstrapReceipt: resolve(firmwareRoot, "scratch/usb-bootstrap-measure/attempt-004/final-result.json") } : { supersedeChannel: maybeSuccessor }) };
     if (permission || cleanup || install) await historicalPreparation(channelOptions, operations, previous, permission ? "str005-v2-serial-context-v2" : cleanup ? "str005-v2-serial-context-v3" : "str005-v2-serial-context-v4");
     else await preflight(channelOptions, operations);
     const channel = await loadContext(channelOptions.privateRoot, { operations, historical: permission || cleanup || install });
@@ -179,7 +192,7 @@ export async function contextFixture(t, { scope = "channel", prepare = true, leg
     predecessorReceipt = resolve(channelOptions.privateRoot, "final-result.json");
   }
   const options = { ...base.options, scope, privateRoot: resolve(parent, `${scope}-${String(scope === "channel" ? ordinal : maybeShareSuccessor ? 2 : 1).padStart(3, "0")}`), predecessorReceipt,
-    ...(scope === "channel" ? (permission ? { supersedePermission: closurePath } : maybeShareSuccessor ? { supersedeShare: maybeShareSuccessor } : !legacy ? { supersedeChannel: maybeSuccessor } : {}) : {}) };
+    ...(scope === "channel" ? (permission ? { supersedePermission: closurePath } : maybeShareSuccessor ? { bootstrapReceipt: resolve(firmwareRoot, "scratch/usb-bootstrap-measure/attempt-004/final-result.json") } : !legacy ? { supersedeChannel: maybeSuccessor } : {}) : {}) };
   delete options.attemptOrdinal;
   if (prepare) {
     if (legacy || permission || cleanup || install) await historicalPreparation(options, operations,
@@ -193,7 +206,7 @@ export async function contextFixture(t, { scope = "channel", prepare = true, leg
 /** Fixture-only assembly of historical schemas. The live CLI cannot select this path. */
 async function historicalPreparation(options, operations, predecessor, schema) {
   const native = await nativeInterface(operations), source = await inspectSources(options, native, operations);
-  delete source.contracts.operatorSurvival;
+  delete source.contracts.bootstrapCorrection; delete source.contracts.operatorSurvival;
   if (!schema.endsWith("v4")) { delete source.contracts.installReview; delete source.contracts.installReviewOwnership; }
   if (!["str005-v2-serial-context-v3", "str005-v2-serial-context-v4"].includes(schema)) delete source.contracts.cleanup;
   if (schema === "str005-v2-serial-context-v1") delete source.contracts.permission;

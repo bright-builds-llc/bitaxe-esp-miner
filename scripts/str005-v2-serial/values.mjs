@@ -73,3 +73,6 @@ export function parseChannelStart(value) {
   check(value.expectedBootOrdinal > 0, "v2_boot"); parseStratum(value.stratum);
   return structuredClone(value);
 }
+export const BOOTSTRAP_AMENDMENT_PATH = "docs/hardware/str005-v2-serial-bootstrap-successor-amendment.md";
+export const BOOTSTRAP_AMENDMENT_SHA256 = "8ec6d668cdfd555cf58ccbfd018204caff6f9125f9bc58daf7f4e0279f3d9e4a";
+export const BOOTSTRAP_BEFORE = Object.freeze({ firmware_commit: "77e2e4a431663ab2c2948d1e81183472a04e385c", app_elf_sha256: "d32d799586a72bcdf58871e0905a756a6499442c23abcce4e9de346e1fafaf51" });

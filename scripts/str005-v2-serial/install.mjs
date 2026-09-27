@@ -11,7 +11,7 @@ import { bytes, check, digest, object, sha256, uint } from "./values.mjs";
 
 function admittedIndex(context, index) { check(Number.isInteger(index) && context.install_indices.includes(index), "v2_install_index"); }
 async function predecessorPhysical(context) {
-  const root = context.predecessor.root, sealed = (await proof(root, "sealed-inventory.json")).value;
+  const root = context.schema === "str005-v2-serial-context-v6" && context.scope === "channel" ? context.bootstrapCorrection.acceptedRoot : context.predecessor.root, sealed = (await proof(root, "sealed-inventory.json")).value;
   const claim = await proof(root, "install-0.claim.json");
   check(sealed.files.some((file) => file.path === "install-0.claim.json" && file.sha256 === claim.sha256), "v2_predecessor_physical_proof");
   return claim.value.detector.physical;

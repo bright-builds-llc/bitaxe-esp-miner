@@ -123,3 +123,29 @@ test("Share late successful Start reply remains unverified and never writes timi
   assert.equal(f.counts.shareStart, 1);
   assert.equal(f.calls.some(row => row.path === "/share/start-observed"), false);
 });
+
+test("restoration collection rejects missing explicit device confirmation", async () => {
+  const f = clientFixture(); await f.api.run(); f.nativeReconnect(); f.state.deviceRestorationConfirmed = false;
+  await assert.rejects(f.api.restoreAndRecord(), /v2_client_operation_failed/u);
+  assert.equal(f.calls.some(row => row.path === "/restoration"), false);
+});
+
+test("Share restoration requires explicit device confirmation after the recovery wait", async () => {
+  const f = clientFixture("share"); const result = await f.api.run(); f.advance(result.restoration_wait_remaining_ms); f.nativeReconnect(); f.state.deviceRestorationConfirmed = false;
+  const proofs = f.counts.proof; await assert.rejects(f.api.restoreAndRecord(), /v2_client_operation_failed/u);
+  assert.equal(f.counts.proof, proofs); assert.equal(f.calls.some(row => row.path === "/restoration"), false);
+});
+for (const stage of ["network", "sign", "load"]) test(`expired Share preparation at ${stage} never reaches the next irreversible step`, async () => {
+  const f = clientFixture("share"), reached = [];
+  if (stage === "network") {
+    const status = f.gate.stratumV2Status; let reads = 0;
+    f.gate.stratumV2Status = async (...args) => { const value = await status(...args); if (++reads === 2) f.advance(10001); return value; };
+  }
+  if (stage === "sign") { const sign = f.gate.prepareStartAuthorization; f.gate.prepareStartAuthorization = async () => { const value = await sign(); reached.push("issued"); f.advance(10001); return value; }; }
+  if (stage === "load") { const load = f.gate.loadSignedWindow; f.gate.loadSignedWindow = async () => { const value = await load(); reached.push("loaded"); f.advance(10001); return value; }; }
+  await assert.rejects(f.api.run(), /v2_client_operation_failed/u);
+  assert.equal(f.counts.shareStart, 0);
+  if (stage === "network") assert.equal(labels(f).includes("sign"), false);
+  if (stage === "sign") { assert.deepEqual(reached, ["issued"]); assert.equal(labels(f).includes("load"), false); }
+  if (stage === "load") { assert.deepEqual(reached, ["loaded"]); assert(f.calls.some(row => row.path === "/record" && row.input.state.status === "window_loaded")); }
+});

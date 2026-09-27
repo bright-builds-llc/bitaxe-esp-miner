@@ -17,14 +17,14 @@ async function eventually(action) {
 }
 async function fixture(t) {
   const base = await mkdtemp(resolve(await realpath("/tmp"), "v2op-rehearsal-")); await chmod(base, 0o700);
-  const root = resolve(base, "scratch/str005-v2-serial/channel-005"), modules = resolve(base, "scripts/str005-v2-serial"), noise = resolve(base, "scripts/str005-noise-serial");
+  const root = resolve(base, "scratch/str005-v2-serial/channel-006"), modules = resolve(base, "scripts/str005-v2-serial"), noise = resolve(base, "scripts/str005-noise-serial");
   for (const path of [root, modules, noise]) await mkdir(path, { recursive: true, mode: 0o700 });
   const copy = async (from, to) => writeFile(resolve(modules, to), await readFile(resolve(HERE, from)), { mode: 0o600 });
   for (const name of ["operator-client.mjs", "operator-daemon.mjs", "operator-ipc.mjs", "operator-state.mjs", "operator-parent.mjs", "operator-rehearsal-launch.mjs", "operator-rehearsal-request.mjs"]) await copy(name, name);
   for (const name of ["cleanup.mjs", "cleanup-session.mjs", "values.mjs", "journal.mjs", "host-resources.mjs", "operator-disposition.mjs"]) await writeFile(resolve(modules, name), `export * from ${JSON.stringify(new URL(name, import.meta.url).href)};\n`, { mode: 0o600 });
   for (const name of ["files.mjs", "host-resources.mjs", "node-runtime.mjs"]) await writeFile(resolve(noise, name), `export * from ${JSON.stringify(new URL(`../str005-noise-serial/${name}`, import.meta.url).href)};\n`, { mode: 0o600 });
   await copy("operator-rehearsal-context.mjs", "context.mjs"); await copy("operator-rehearsal-supervisor.mjs", "operator-supervisor.mjs"); await copy("operator-rehearsal-install.mjs", "operator.mjs");
-  const context = { schema: "str005-v2-serial-context-v5", scope: "channel", firmware_root: base, hostOrdinal: 5, install_indices: [0], evaluator: [{ path: "scripts/str005-v2-serial/operator-daemon.mjs", sha256: digest(await readFile(resolve(HERE, "operator-daemon.mjs"))) }] };
+  const context = { schema: "str005-v2-serial-context-v6", scope: "channel", firmware_root: base, hostOrdinal: 6, install_indices: [0], evaluator: [{ path: "scripts/str005-v2-serial/operator-daemon.mjs", sha256: digest(await readFile(resolve(HERE, "operator-daemon.mjs"))) }] };
   await writeNew(resolve(root, "synthetic-only.json"), { schema: "operator-loss-software-only-v1" }); await writeNew(resolve(root, "context.json"), { context, sha256: digest(JSON.stringify(context)) });
   t.after(async () => {
     for (const path of [[`${root}.operator`, "locator.json"], [root, "server-owner.json"]]) {

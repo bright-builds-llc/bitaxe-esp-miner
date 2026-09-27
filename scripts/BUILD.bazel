@@ -607,10 +607,13 @@ js_library(
 
 js_library(
     name = "str005_v2_serial_sources",
-    srcs = glob(["str005-v2-serial/*.mjs", "str005-v2-serial/*.rs", "str005-v2-serial/*.py"]) + ["v2-native-paths.mjs", "v2-native-readiness.mjs"],
+    srcs = glob(["usb-bootstrap-measure/*.mjs", "str005-v2-serial/*.mjs", "str005-v2-serial/*.rs", "str005-v2-serial/*.py"]) + ["v2-native-paths.mjs", "v2-native-readiness.mjs"],
     deps = [
         ":str005_noise_serial_sources",
         "//:str005_v2_serial_contract_inputs",
+        "//:usb_bootstrap_measure_contract_inputs",
+        "//firmware/bitaxe:usb_bootstrap_writer_audit_sources",
+        "//firmware/bitaxe:bwg_deployment_trust_js",
         "//crates/bitaxe-stratum:v2_qualification_vectors",
         "//tools/flash:private_evidence_writer_sources",
     ],
@@ -1000,4 +1003,18 @@ js_test(
     name = "usb_bootstrap_measure_restored_accounting_test",
     data = [":usb_bootstrap_measure_sources"],
     entry_point = "usb-bootstrap-measure/restored-accounting.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_bootstrap_binding_test",
+    data = [":str005_v2_serial_sources"],
+    entry_point = "str005-v2-serial/bootstrap-binding.test.mjs",
+)
+
+js_test(
+    name = "str005_v2_share_preparation_composition_test",
+    env_inherit = ["PATH"],
+    args = ["$(rootpath @bwg_gate_contract//:package_json_js)", "$(rootpath //tools/stratum-v2-fixture:stratum_v2_fixture)"],
+    data = [":str005_v2_serial_sources", "@bwg_gate_contract//:package_json_js", "@bwg_gate_contract//:share_authority_sources_js", "//tools/stratum-v2-fixture:stratum_v2_fixture"],
+    entry_point = "str005-v2-serial/share-preparation-composition.test.mjs",
 )

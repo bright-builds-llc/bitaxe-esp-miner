@@ -14,7 +14,7 @@ async function locate(root, allowStopped = false) {
   const locator = (await proof(`${root}.operator`, "locator.json")).value;
   object(locator, ["schema", "contextSha256", "owner", "socketPath"]);
   const stored = (await proof(root, "context.json")).value; object(stored, ["context", "sha256"]);
-  check(stored.sha256 === sha256(JSON.stringify(stored.context)) && stored.context.schema === "str005-v2-serial-context-v5" &&
+  check(stored.sha256 === sha256(JSON.stringify(stored.context)) && stored.context.schema === "str005-v2-serial-context-v6" &&
     root === resolve(stored.context.firmware_root, "scratch/str005-v2-serial", `${stored.context.scope}-${String(stored.context.hostOrdinal).padStart(3, "0")}`) &&
     locator.schema === "str005-v2-operator-locator-v1" && locator.contextSha256 === stored.sha256, "v2_operator_owner");
   checkedOwner(locator.owner);

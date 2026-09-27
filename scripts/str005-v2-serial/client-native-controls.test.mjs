@@ -7,7 +7,7 @@ function fixture(maybeComposed) {
   const stop = { addEventListener(_, fn) { this.observeAbort = fn; } };
   const document = { getElementById(id) { return id === "stop" ? stop : null; }, createElement() { const node = { setAttribute() {}, append() {}, addEventListener(_, fn) { this.click = fn; } }; nodes.push(node); return node; }, body: { append() {} } };
   const state = maybeComposed?.state ?? { status: "ready", expectedFirmwareSourceCommit: "a".repeat(40), connected: true, running: false,
-    deviceBaselineConfirmed: true, deviceLeaseInactive: true, preservation: { device_identity_match: true, settings_match: true, mine_on_boot: false } };
+    deviceBaselineConfirmed: true, deviceRestorationConfirmed: true, deviceLeaseInactive: true, preservation: { device_identity_match: true, settings_match: true, mine_on_boot: false } };
   const supervisor = maybeComposed?.api ?? {
     async recordAccounting(stage) { calls.push(stage); return { accounting_saved: true }; },
     async configureCandidate() { calls.push("configure"); return { configured: true }; },
@@ -17,7 +17,9 @@ function fixture(maybeComposed) {
     async flush() { calls.push("flush"); },
   };
   const gate = maybeComposed?.gate ?? { async close() { calls.push("close"); Object.assign(state, { status: "closed", connected: false, serialOwnershipReleased: true }); } };
-  const controls = installNativeControls(document, supervisor, gate, () => state, maybeComposed?.abort);
+  let time = 0; const timers = [];
+  const clock = { now: () => maybeComposed?.at() ?? time, schedule: (fn, ms) => {timers.push({ fn, at: clock.now() + ms });} };
+  const controls = installNativeControls(document, supervisor, gate, () => state, maybeComposed?.abort, clock);
   const button = action => nodes.find(node => node.id === `v2-${action}`);
   const result = () => JSON.parse(nodes.find(node => node.id === "v2-native-result").textContent);
   async function prepare() {
@@ -25,7 +27,7 @@ function fixture(maybeComposed) {
     await button("configure").click(); Object.assign(state, { status: "ready", connected: true }); controls.observe(state);
     for (let i = 0; i < 4; i++) await button("cycle").click();
   }
-  return { controls, state, supervisor, button, result, calls, prepare, stop };
+  return { controls, state, supervisor, button, result, calls, prepare, stop, advance(ms) { if(maybeComposed) maybeComposed.advance(ms); else time += ms; for (const timer of timers) if (timer.at <= clock.now()) timer.fn(); } };
 }
 test("native controls expose literal readiness and fixed ordered cycle arguments", async () => {
   const f = fixture();
@@ -105,4 +107,30 @@ test("emergency Stop bypasses UI mutex and prevents a pending Channel start", as
   assert.equal(composed.counts.channelStart, 0); assert.equal(f.result().status, "failed");
   assert.equal(f.result().run_consumed, true);
   assert.ok(composed.calls.some(row => row.path === "/client-failure"));
+});
+
+for (const scope of ["channel", "share"]) test(`native ${scope} restoration requires fresh ready and explicit confirmation after its original wait`, async () => {
+  // Arrange: real coordinator/native controls with simulated Gate/device boundaries.
+  const composed = clientFixture(scope), f = fixture(composed); await f.prepare(); await f.button("run").click();
+  const remaining = f.result().restoration_wait_remaining_ms, stops = composed.calls.filter(row => row.name === "stop").length;
+  composed.nativeReconnect(); f.controls.observe(f.state);
+  // Act / Assert: reconnecting and refreshing do not restart or shorten the wait.
+  if (remaining > 0) {
+    assert.equal(f.button("restore").disabled, true); await f.button("restore").click();
+    f.advance(remaining - 1); f.controls.observe(f.state); assert.equal(f.button("restore").disabled, true);
+    f.advance(1);
+  }
+  f.state.deviceRestorationConfirmed = false; f.controls.observe(f.state); assert.equal(f.button("restore").disabled, true);
+  f.state.deviceRestorationConfirmed = true; f.controls.observe(f.state); assert.equal(f.button("restore").disabled, false);
+  await f.button("restore").click(); await f.button("restore").click();
+  assert.equal(f.result().restoration_recorded, true); assert.equal(f.button("restore").disabled, true);
+  assert.equal(composed.calls.filter(row => row.path === "/restoration").length, 1);
+  assert.equal(composed.calls.filter(row => row.name === "stop").length, stops, "record collection must not issue another Stop");
+  if (scope === "share") assert.equal(f.state.preservation.authorization_high_water_match, false);
+  await f.button("close").click(); assert.equal(f.result().journal_flushed, true);
+});
+test("native restoration never widens ready to baseline_confirmed after emergency Stop", async () => {
+  const composed = clientFixture(), f = fixture(composed); await f.prepare(); await f.button("run").click(); composed.nativeReconnect();
+  f.stop.observeAbort(); await composed.gate.stop(); f.controls.observe(f.state); await f.button("restore").click();
+  assert.equal(f.button("restore").disabled, true); assert.equal(composed.calls.some(row => row.path === "/restoration"), false);
 });

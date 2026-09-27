@@ -12,11 +12,12 @@ import { state, ledger, original } from "../str005-noise-serial/test-fixture.mjs
 import { sha256 } from "./values.mjs";
 
 export async function failedShareFixture(t, channel, channelResult) {
-  const options = { ...channel.options, scope: "share", privateRoot: resolve(channel.parent, channel.context.schema === "str005-v2-serial-context-v5" ? "share-002" : "share-001"),
+  const options = { ...channel.options, scope: "share", privateRoot: resolve(channel.parent, ["str005-v2-serial-context-v5", "str005-v2-serial-context-v6"].includes(channel.context.schema) ? "share-002" : "share-001"),
     predecessorReceipt: resolve(channel.root, "final-result.json") };
   delete options.supersedePermission;
   delete options.supersedeChannel;
   delete options.supersedeShare;
+  delete options.bootstrapReceipt;
   const predecessor = { root: channel.root, context: channel.context, resultSha256: channelResult.result_sha256,
     sealSha256: channelResult.sealed_inventory_sha256, ledger, original };
   const oldReader = channel.operations.inspectPredecessor;
@@ -36,7 +37,7 @@ export async function failedShareFixture(t, channel, channelResult) {
   await writeNew(resolve(root, "failure.json"), { schema: "str005-v2-first-failure-v1", contextSha256, code: "v2_device_failure",
     atHostMs: ++f.time, deviceCause: failed.firstFailure, sourceSequence: 2 });
   const instanceId = Buffer.alloc(16, 5).toString("base64url"), fixtureOwner = { pid: 82001, pgid: 82001, startedAt: "synthetic-failed-fixture" };
-  const serverOwner = { pid: 82000, pgid: 82000, startedAt: "synthetic-share-server" };
+  const serverOwner = { pid: 82000, pgid: 82000, startedAt: "synthetic-share-server", ...(["str005-v2-serial-context-v5", "str005-v2-serial-context-v6"].includes(context.schema) ? { ppid: 81999 } : {}) };
   await writeNew(resolve(root, "server-owner.json"), { schema: "str005-v2-server-owner-v1", contextSha256, owner: serverOwner,
     origin: "http://127.0.0.1:32124", port: 32124, atHostMs: 0 });
   await writeNew(resolve(root, "fixture-owner.json"), { schema: "str005-v2-fixture-owner-v1", contextSha256, owner: fixtureOwner,

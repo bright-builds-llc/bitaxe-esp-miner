@@ -87,7 +87,7 @@ test("archived tasks, changed source and changed predecessor pins reject the bou
   const source = resolve(f.options.firmwareRoot, "scripts/str005-v2-serial/context.mjs"), before = await readFile(source);
   await writeFile(source, "changed source");
   await assert.rejects(loadEffectContext(f.root, f.operations), { code: "v2_effect_source_changed" }); await writeFile(source, before);
-  await writeFile(f.options.supersedeShare, "changed readiness");
+  await writeFile(f.context.shareSupersession.receiptPath, "changed readiness");
   await assert.rejects(loadEffectContext(f.root, f.operations));
 });
 

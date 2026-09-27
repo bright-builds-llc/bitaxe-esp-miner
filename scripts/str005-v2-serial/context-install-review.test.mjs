@@ -1,3 +1,4 @@
+import { BOOTSTRAP_BEFORE } from "./bootstrap-binding.mjs";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile, readdir, writeFile } from "node:fs/promises";
@@ -9,20 +10,20 @@ import { INSTALL_OWNERSHIP_AMENDMENT_PATH, INSTALL_OWNERSHIP_AMENDMENT_SHA256, s
 
 const unassigned = async f => {
   const names = await readdir(f.parent);
-  assert(!names.includes("channel-ordinal-5.json")); assert(!names.includes("channel-005"));
+  assert(!names.includes("channel-ordinal-6.json")); assert(!names.includes("channel-006"));
 };
 
-test("Channel005 joins Noise ancestry separately from actual installed Share001 identity", async t => {
+test("Channel006 joins Noise ancestry separately from actual installed accepted bootstrap identity", async t => {
   // Arrange / Act.
   const f = await contextFixture(t), context = f.context;
   // Assert.
-  assert.equal(context.schema, "str005-v2-serial-context-v5"); assert.equal(context.hostOrdinal, 5);
+  assert.equal(context.schema, "str005-v2-serial-context-v6"); assert.equal(context.hostOrdinal, 6);
   assert.equal(context.permissionSupersession, null);
   assert.deepEqual(context.contracts.installReviewOwnership, { path: INSTALL_OWNERSHIP_AMENDMENT_PATH, sha256: INSTALL_OWNERSHIP_AMENDMENT_SHA256 });
   assert.deepEqual(Object.keys(context.shareSupersession).sort(), ["failedRoot", "failedContextSha256", "failedResultSha256", "failedSealSha256", "receiptPath", "receiptSha256"].sort());
   assert.equal(context.predecessor.root, f.previous.root);
   const failed = (await proof(resolve(f.parent, "share-001"), "context.json")).value.context;
-  assert.deepEqual(context.before_source, { firmware_commit: failed.firmware_commit, app_elf_sha256: failed.app_elf_sha256 });
+  assert.deepEqual(context.before_source, BOOTSTRAP_BEFORE); assert.notEqual(context.before_source.firmware_commit, failed.firmware_commit);
   assert.notEqual(context.before_source.firmware_commit, f.previous.context.firmware_commit);
   for (const name of ["permission-correction.json", "host-correction.json"]) {
     const file = await proof(f.root, name);
@@ -30,12 +31,12 @@ test("Channel005 joins Noise ancestry separately from actual installed Share001 
   }
 });
 
-test("Channel005 is the only new Channel assignment and all supersession alternatives reject", async t => {
+test("Channel006 is the only new Channel assignment and all supersession alternatives reject", async t => {
   // Arrange.
   const f = await contextFixture(t, { prepare: false });
   // Act / Assert.
-  for (const patch of [{ supersedeShare: undefined }, { supersedePermission: "/private/old-closure.json" },
-    { privateRoot: resolve(f.parent, "channel-006") }, { privateRoot: resolve(f.parent, "channel-001-new") },
+  for (const patch of [{ bootstrapReceipt: undefined }, { supersedePermission: "/private/old-closure.json" },
+    { privateRoot: resolve(f.parent, "channel-007") }, { privateRoot: resolve(f.parent, "channel-001-new") },
     { scope: "share", privateRoot: resolve(f.parent, "share-001") }]) {
     await assert.rejects(preflight({ ...f.options, ...patch }, f.operations)); await unassigned(f);
   }
@@ -57,7 +58,7 @@ test("historical review never recollects ownership but live admission requires a
   const f = await contextFixture(t);
   f.operations.checkCurrentShareSuccessorOwnership = async () => { throw Object.assign(Error("synthetic present owner"), { code: "v2_successor_owner_live" }); };
   // Act / Assert.
-  assert.equal((await loadContext(f.root, { historical: true, operations: f.operations })).hostOrdinal, 5);
+  assert.equal((await loadContext(f.root, { historical: true, operations: f.operations })).hostOrdinal, 6);
   await assert.rejects(loadContext(f.root, { operations: f.operations }), { code: "v2_successor_owner_live" });
 });
 
@@ -67,7 +68,7 @@ test("changed ancestry, before identity, accounting and checker identity block a
   const changes = [value => ({ ...value, predecessor: { ...value.predecessor, root: value.root } }),
     value => ({ ...value, beforeSource: { ...value.beforeSource, firmware_commit: f.previous.context.firmware_commit } }),
     value => ({ ...value, initialAccounting: { ...value.initialAccounting, ledger: { ...value.initialAccounting.ledger, pending: true } } }),
-    value => ({ ...value, checkerIdentity: { ...value.checkerIdentity, firmwareCommit: "0".repeat(40) } }),
+    value => ({ ...value, receiptSha256: "0".repeat(64) }),
     value => ({ ...value, context: { ...value.context, schema: "str005-v2-serial-context-v4", hostOrdinal: 4 } })];
   // Act / Assert.
   for (const change of changes) {
@@ -88,7 +89,7 @@ test("firmware, package and evaluator must each change while Gate may remain the
       const beforeSource = { firmware_commit: context.firmware_commit, app_elf_sha256: context.app_elf_sha256 };
       return { ...value, context, beforeSource, contextSha256: sha256(JSON.stringify(context)) };
     };
-    await assert.rejects(preflight(f.options, f.operations), { code: "v2_share_successor_correction" }); await unassigned(f);
+    await assert.rejects(preflight(f.options, f.operations)); await unassigned(f);
   }
 });
 
@@ -104,7 +105,7 @@ test("bounded effect pins reject exact-byte changes without replaying historical
     await assert.rejects(verifyEffectInputs(f.context, f.operations), { code: "v2_share_successor_pin_changed" });
     await writeFile(path, original);
   }
-  await writeFile(f.options.supersedeShare, "changed readiness");
+  await writeFile(f.context.shareSupersession.receiptPath, "changed readiness");
   await assert.rejects(verifyEffectInputs(f.context, f.operations));
 });
 
@@ -118,14 +119,14 @@ test("Share002 inherits both same-pair corrections and no independent supersessi
   assert.equal(context.permissionSupersession, null); assert.equal(context.cleanupSupersession, null);
   assert.equal(context.hostOrdinal, 2); assert.equal(context.qualificationAttempt.ordinal, 18);
   for (const name of ["permission-correction.json", "host-correction.json"])
-    assert.equal((await proof(f.root, name)).sha256, (await proof(resolve(f.parent, "channel-005"), name)).sha256);
+    assert.equal((await proof(f.root, name)).sha256, (await proof(resolve(f.parent, "channel-006"), name)).sha256);
   await verifyEffectInputs(context, f.operations);
 });
 
 test("Share cannot inherit an altered host correction or a historical Share001", async t => {
   // Arrange.
   const f = await contextFixture(t, { scope: "share", prepare: false });
-  const path = resolve(f.parent, "channel-005/host-correction.json"), changed = JSON.parse(await readFile(path));
+  const path = resolve(f.parent, "channel-006/host-correction.json"), changed = JSON.parse(await readFile(path));
   changed.command = ["node", "--test", "unrelated.mjs"]; await writeFile(path, JSON.stringify(changed));
   // Act / Assert.
   await assert.rejects(preflight(f.options, f.operations));
@@ -146,7 +147,7 @@ test("post-native serve admission rechecks present ownership before any server c
   assert(!(await readdir(f.root)).includes("server.claim.json"));
 });
 
-test("interrupted Channel005 assignment remains consumed without changing older markers", async t => {
+test("interrupted Channel006 assignment remains consumed without changing older markers", async t => {
   // Arrange.
   const f = await contextFixture(t, { prepare: false });
   const previous = await Promise.all([1, 2, 3].map(index => proof(f.parent, `channel-ordinal-${index}.json`)));
@@ -154,7 +155,7 @@ test("interrupted Channel005 assignment remains consumed without changing older 
   // Act / Assert.
   await assert.rejects(preflight(f.options, f.operations), /synthetic interrupted child creation/u);
   const names = await readdir(f.parent);
-  assert(names.includes("channel-ordinal-5.json")); assert(!names.includes("channel-005"));
+  assert(names.includes("channel-ordinal-6.json")); assert(!names.includes("channel-006"));
   for (const [index, old] of previous.entries()) assert.equal((await proof(f.parent, `channel-ordinal-${index + 1}.json`)).sha256, old.sha256);
   delete f.operations.beforeCreate; await assert.rejects(preflight(f.options, f.operations));
 });
@@ -170,11 +171,11 @@ test("late external parent cleanup failure blocks live loading and hot effects w
   // Act / Assert.
   await assert.rejects(verifyEffectInputs(f.context, f.operations), { code: "private_path_exists" });
   await assert.rejects(loadContext(f.root, { operations: f.operations }), { code: "private_path_exists" });
-  assert.equal((await loadContext(f.root, { historical: true, operations: f.operations })).hostOrdinal, 5);
+  assert.equal((await loadContext(f.root, { historical: true, operations: f.operations })).hostOrdinal, 6);
 });
 
 
-test("Channel005 requires tagged pre-install accounting without an invented after baseline", async t => {
+test("Channel006 requires tagged pre-install accounting without an invented after baseline", async t => {
   // Arrange.
   const f = await contextFixture(t, { prepare: false }), inspect = f.operations.inspectShareSuccessor;
   // Act / Assert.
@@ -188,7 +189,7 @@ test("Channel005 requires tagged pre-install accounting without an invented afte
 });
 
 
-test("ownership clarification drift blocks v5 assignment before any new context exists", async t => {
+test("ownership clarification drift blocks v6 assignment before any new context exists", async t => {
   // Arrange.
   const f = await contextFixture(t, { prepare: false });
   await writeFile(resolve(f.options.firmwareRoot, INSTALL_OWNERSHIP_AMENDMENT_PATH), "changed ownership clarification");

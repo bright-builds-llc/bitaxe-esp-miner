@@ -99,7 +99,7 @@ export async function completedFixture(t) {
   vector.connectionComparison.attemptId = context.attemptId;
   const instanceId = vector.fixtureTerminal.instanceId;
   const fixtureOwner = { pid: 81001, pgid: 81001, startedAt: "synthetic-fixture" }, serverOwner = { pid: 81000, pgid: 81000, startedAt: "synthetic-server",
-    ...(context.schema === "str005-v2-serial-context-v5" ? { ppid: 81999 } : {}) };
+    ...(["str005-v2-serial-context-v5", "str005-v2-serial-context-v6"].includes(context.schema) ? { ppid: 81999 } : {}) };
   await writeNew(resolve(root, "server-owner.json"), { schema: "str005-v2-server-owner-v1", contextSha256, owner: serverOwner,
     origin: "http://127.0.0.1:32123", port: 32123, atHostMs: 0 });
   await writeNew(resolve(root, "fixture-owner.json"), { schema: "str005-v2-fixture-owner-v1", contextSha256, owner: fixtureOwner, atHostMs: ++f.time,

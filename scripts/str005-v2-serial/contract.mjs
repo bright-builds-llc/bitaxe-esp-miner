@@ -9,7 +9,7 @@ const PREFLIGHT = ["scope", "firmware-root", "gate-root", "package-manifest", "f
 export function parseArgs(argv) {
   const [action, ...args] = argv;
   check(ACTIONS.includes(action), "v2_action_invalid");
-  const extra = action === "preflight" ? [...PREFLIGHT, "supersede-permission", "supersede-channel", "supersede-share"] : ["serve", "operator-start"].includes(action) ? ["authority-directory"] :
+  const extra = action === "preflight" ? [...PREFLIGHT, "bootstrap-receipt", "supersede-permission", "supersede-channel", "supersede-share"] : ["serve", "operator-start"].includes(action) ? ["authority-directory"] :
     action === "operator-request" ? ["request"] : action === "operator-status" ? ["request-id"] :
     action === "finalize" ? ["cleanup-receipt"] : [];
   const allowed = new Set(["private-root", ...extra]), raw = {};
@@ -30,9 +30,10 @@ export function parseArgs(argv) {
   if (raw["supersede-permission"] !== undefined) check(raw.scope === "channel" &&
     raw["supersede-permission"] === resolve(raw["supersede-permission"]), "v2_permission_scope");
   if (raw["supersede-share"] !== undefined) check(raw.scope === "channel" && raw["supersede-share"] === resolve(raw["supersede-share"]), "v2_share_successor_scope");
+  if (raw["bootstrap-receipt"] !== undefined) check(raw.scope === "channel" && raw["bootstrap-receipt"] === resolve(raw["bootstrap-receipt"]) && ["supersede-permission", "supersede-channel", "supersede-share"].every(key => raw[key] === undefined), "v2_bootstrap_scope");
   return { action, options: { privateRoot: raw["private-root"], scope: raw.scope,
     firmwareRoot: raw["firmware-root"], gateRoot: raw["gate-root"], manifest: raw["package-manifest"],
-    fixtureBinary: raw["fixture-binary"], predecessorReceipt: raw["predecessor-receipt"],
+    bootstrapReceipt: raw["bootstrap-receipt"], fixtureBinary: raw["fixture-binary"], predecessorReceipt: raw["predecessor-receipt"],
     authorityDirectory: raw["authority-directory"], cleanupReceipt: raw["cleanup-receipt"], supersedePermission: raw["supersede-permission"], supersedeChannel: raw["supersede-channel"], supersedeShare: raw["supersede-share"], requestFile: raw.request, requestId: raw["request-id"] } };
 }
 

@@ -49,6 +49,6 @@ test("daemon bootstrap checks source and snapshot without live supervisor or rep
   // Act.
   const context = await loadOperatorContext(f.root, f.operations);
   // Assert.
-  assert.equal(context.schema, "str005-v2-serial-context-v5");
+  assert.equal(context.schema, "str005-v2-serial-context-v6");
   assert(!(await readdir(f.root)).includes("server.claim.json"));
 });

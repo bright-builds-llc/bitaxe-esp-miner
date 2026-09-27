@@ -334,6 +334,7 @@ js_library(
         "docs/hardware/str005-v2-serial-install-review-amendment.md",
         "docs/hardware/str005-v2-serial-install-ownership-amendment.md",
         "docs/hardware/str005-v2-serial-operator-survival-amendment.md",
+        "docs/hardware/str005-v2-serial-bootstrap-successor-amendment.md",
     ],
 )
 

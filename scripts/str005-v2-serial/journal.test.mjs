@@ -76,3 +76,22 @@ test("Share restoration uses its matched checkpoint without changing the origina
   restored.authorizationRecovery.generation = 8;
   assert.throws(() => restoredBaseline(restored, context), { code: "v2_authorization_restoration" });
 });
+
+test("v6 completion requires explicit restoration while historical baselines retain interpretation", async t => {
+  const { context } = await setup(t), restored = state(context); restored.deviceRestorationConfirmed = false;
+  assert.throws(() => restoredBaseline(restored, { ...context, schema: "str005-v2-serial-context-v6" }), { code: "v2_baseline" });
+  for (const v of [1, 2, 3, 4, 5]) assert.doesNotThrow(() => restoredBaseline(restored, { ...context, schema: `str005-v2-serial-context-v${v}` }));
+});
+
+test("v6 explicit restoration applies to connected and closed Share checkpoint completion", async t => {
+  const { context } = await setup(t, "share"), current = { ...context, schema: "str005-v2-serial-context-v6" }, restored = state(context);
+  restored.preservation.authorization_high_water_match = false; restored.qualification = { generation: 7 };
+  restored.authorizationRecovery = { matched: true, generation: 7 };
+  assert.doesNotThrow(() => restoredBaseline(restored, current));
+  restored.status = "closed"; restored.connected = false; restored.serialOwnershipReleased = true;
+  assert.doesNotThrow(() => restoredBaseline(restored, current, true));
+  restored.deviceRestorationConfirmed = false;
+  assert.throws(() => restoredBaseline(restored, current, true), { code: "v2_baseline" });
+  restored.deviceRestorationConfirmed = true; restored.authorizationRecovery.matched = false;
+  assert.throws(() => restoredBaseline(restored, current, true), { code: "v2_authorization_restoration" });
+});

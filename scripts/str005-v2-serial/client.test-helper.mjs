@@ -7,7 +7,7 @@ export function clientFixture(scope = "channel") {
   let time = 0, maybeCoordinator, failed = false, terminal = false, polls = 0, maybeFaultTime = null, maybeThrowAt, maybeRecordFailure = false;
   const calls = [], durable = [], notices = [], sleeps = [], counts = { channelStart: 0, shareStart: 0, connect: 0, cancel: 0, close: 0, proof: 0, suppress: 0 };
   const state = { schema: "worker-serial-acceptance-v1", expectedFirmwareSourceCommit: "a".repeat(40), status: "ready", connected: true,
-    running: false, heartbeatSuppressed: false, deviceLeaseInactive: true, deviceBaselineConfirmed: true, serialOwnershipReleased: false, renewalsConfirmed: 0,
+    running: false, heartbeatSuppressed: false, deviceLeaseInactive: true, deviceBaselineConfirmed: true, deviceRestorationConfirmed: false, serialOwnershipReleased: false, renewalsConfirmed: 0,
     qualification: { generation: 7 }, preservation: { baseline_id: NONCE, settings_match: true, device_identity_match: true, authorization_high_water_match: true, mine_on_boot: false } };
   const publish = () => maybeCoordinator?.observe(structuredClone(state));
   const status = (active = false) => ({ schema: "worker-stratum-v2-status-v1", scope, state: active ? (terminal ? "terminal" : "running") : "idle",
@@ -39,8 +39,8 @@ export function clientFixture(scope = "channel") {
     async startWindow() { event("share_start"); counts.shareStart++; state.running = true; state.status = "running"; state.deviceLeaseInactive = false; state.deviceBaselineConfirmed = false; state.preservation.authorization_high_water_match = false; publish(); return structuredClone(state); },
     async suppressHeartbeats() { event("suppress"); counts.suppress++; state.heartbeatSuppressed = true; state.authorizationRecovery = { matched: null, generation: 7 }; publish();
       return { schema: "worker-v2-fault-headroom-v1", workerGeneration: 7, headroomObservedAtDeviceUs: 1234000, leaseRemainingMs: 47000, workGateRemainingMs: 123000 }; },
-    async stop() { event("stop"); state.running = false; state.status = "baseline_confirmed"; state.deviceLeaseInactive = true; state.deviceBaselineConfirmed = true; publish(); return structuredClone(state); },
-    async close() { event("close"); counts.close++; state.status = "closed"; state.connected = false; state.running = false; state.serialOwnershipReleased = true; publish(); },
+    async stop() { event("stop"); state.running = false; state.status = "baseline_confirmed"; state.deviceRestorationConfirmed = true; state.deviceLeaseInactive = true; state.deviceBaselineConfirmed = true; publish(); return structuredClone(state); },
+    async close() { state.deviceRestorationConfirmed = true; event("close"); counts.close++; state.status = "closed"; state.connected = false; state.running = false; state.serialOwnershipReleased = true; publish(); },
     async connect() { counts.connect++; throw Error("client_must_not_connect"); },
   };
   const request = async (path, input, method) => {

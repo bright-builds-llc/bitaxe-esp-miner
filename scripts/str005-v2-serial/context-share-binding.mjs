@@ -34,9 +34,9 @@ export function requireShareBinding(context, inspected) {
   check(canonical(inspected.beforeSource) === canonical({ firmware_commit: inspected.context.firmware_commit, app_elf_sha256: inspected.context.app_elf_sha256 }) &&
     canonical(inspected.predecessor) === canonical(inspected.context.predecessor), "v2_share_successor_binding");
   requireIdleLedger(inspected.initialAccounting.ledger, 18, 1560000); requireExhaustedOriginal(inspected.initialAccounting.original);
-  if (context.scope === "channel") check(canonical(context.before_source) === canonical(inspected.beforeSource), "v2_share_successor_before_source");
-  check(inspected.checkerIdentity.firmwareCommit === context.firmware_commit && inspected.checkerIdentity.sources.length > 0 &&
-    inspected.checkerIdentity.sources.every(row => context.evaluator.some(entry => canonical(row) === canonical(entry))) &&
+  if (context.scope === "channel" && context.schema !== "str005-v2-serial-context-v6") check(canonical(context.before_source) === canonical(inspected.beforeSource), "v2_share_successor_before_source");
+  check((context.schema === "str005-v2-serial-context-v6" || inspected.checkerIdentity.firmwareCommit === context.firmware_commit && inspected.checkerIdentity.sources.length > 0 &&
+    inspected.checkerIdentity.sources.every(row => context.evaluator.some(entry => canonical(row) === canonical(entry)))) &&
     context.firmware_commit !== inspected.context.firmware_commit && context.manifest_sha256 !== inspected.context.manifest_sha256 &&
     canonical(context.evaluator) !== canonical(inspected.context.evaluator), "v2_share_successor_correction");
 }
@@ -45,10 +45,10 @@ export async function verifySharePins(context) {
     const previous = context.predecessor, [stored, result, seal] = await Promise.all([proof(previous.root, "context.json"),
       proof(previous.root, "final-result.json"), proof(previous.root, "sealed-inventory.json")]);
     const prior = stored.value.context;
-    check(prior.schema === "str005-v2-serial-context-v5" && prior.scope === "channel" && prior.hostOrdinal === 5 &&
+    check(prior.schema === context.schema && prior.scope === "channel" && prior.hostOrdinal === (context.schema === "str005-v2-serial-context-v6" ? 6 : 5) &&
       stored.value.sha256 === sha256(JSON.stringify(prior)) && result.sha256 === previous.resultSha256 && seal.sha256 === previous.sealSha256 &&
       seal.value.files?.some(row => row.path === "context.json" && row.sha256 === stored.sha256 && row.length === stored.bytes.length) &&
-      canonical(prior.shareSupersession) === canonical(context.shareSupersession), "v2_channel_successor_changed");
+      canonical(prior.shareSupersession) === canonical(context.shareSupersession) && (context.schema !== "str005-v2-serial-context-v6" || canonical(prior.bootstrapCorrection) === canonical(context.bootstrapCorrection)), "v2_channel_successor_changed");
     requirePredecessorBinding(context, { ...previous, context: prior });
   }
   const pin = context.shareSupersession; shareMetadata(pin); await missing(`${pin.receiptPath}.pending`);

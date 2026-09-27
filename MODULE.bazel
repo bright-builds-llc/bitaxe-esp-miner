@@ -92,6 +92,10 @@ js_library(
     srcs = glob(["web/**/*.ts"]) + ["package.json"],
 )
 js_library(
+    name = "share_authority_sources_js",
+    srcs = glob(["web/**/*.ts", "scripts/worker-development-authority*.ts"]) + ["package.json"],
+)
+js_library(
     name = "package_json_js",
     srcs = ["package.json"],
 )

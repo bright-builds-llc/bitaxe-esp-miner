@@ -4384,8 +4384,9 @@ Prerequisite evidence update | 2026-09-08: [Successor final acceptance](docs/par
 
 ### task-str005-v2-serial-qualification | 2026-09-16 | Qualify Ultra 205 V2 channel and accepted share
 
-Status: Ready for guarded successor-contract preparation; fresh hardware effects
-remain blocked until that successor is published and admitted. Channel005 remains
+Status: Active; the successor contract is published and its implementation has
+passed software verification. Clean implementation publication/package and fresh
+Channel006 admission remain pending; no live allowance has been issued. Channel005 remains
 sealed/unverified: installation4 wrote successfully but captured a two-second USB
 drain timeout; only three continuity cycles passed and no channel/mining ran.
 The durable operator prerequisite and `task-usb-bootstrap-drain-observability`
@@ -4480,17 +4481,32 @@ collector's manual Stop ordering into this workflow.
 Successor implementation plan | 2026-09-27: Follow the reviewed
 [bootstrap successor amendment](docs/hardware/str005-v2-serial-bootstrap-successor-amendment.md).
 
-- [ ] Implement v6-only Channel006/Share002 admission, exact failed/accepted
+- [x] Implement v6-only Channel006/Share002 admission, exact failed/accepted
       ancestry and same-pair bindings, preserving old source domains and markers.
-- [ ] Require explicit restored completion for v6 and gate the UI on the existing
+- [x] Require explicit restored completion for v6 and gate the UI on the existing
       monotonic Share recovery wait; preserve emergency-abort and high-water rules.
-- [ ] Compose both real page/coordinator/accounting paths and test-key Share
+- [x] Compose both real page/coordinator/accounting paths and test-key Share
       signer/fixture preparation, including early and late deadline failures.
 - [ ] Run ordered software/native checks; publish and build one clean candidate
       with exact Gate/fixture/observer/evaluator identities before effects.
 - [ ] Complete the fresh channel stage, private finalization and independent review.
 - [ ] Admit the same-pair Share stage separately, perform real accepted-share and
       safety testing, then seal/review and publish the truthful combined outcome.
+
+Successor verification | 2026-09-27: Contract published at `179b272d`.
+V6 now joins exact failed Channel005 and accepted bootstrap004 without upgrading
+older evidence, and preserves Share001's historical checker and ordinal18 marker.
+Version-only restoration and monotonic UI waiting passed composed page/coordinator
+regressions. Real local fixture IPC plus production signing with generated test
+keys passed both ten-second windows and late-failure retention cases; no test grant
+is owner-authorized or usable by the installed device. Full V2 Node coverage is
+406 passing tests plus one standalone-only wrapper skip, covered canonically.
+All 68 affected canonical targets passed after isolated fixture/runfiles corrections
+and test-local Bun PATH configuration. Ordered Cargo format/Clippy/build/tests,
+Gate type checking and 788 tests, native package preview, Bright Builds, reference,
+redaction, ownership and parity/progress checks passed. Independent review and the
+actual finite ancestry/current-absence inspection passed. These are software checks;
+no Channel006/Share002 effects or live reservation have occurred. Parity is90/95.
 
 Execution plan: keep channel and share results independent but keep this task
 active between them. Channel finalization remains private so the repository and

@@ -25,7 +25,7 @@ export async function admitOperatorParent(root, binding) {
   admissions.set(root, { owner: locator.owner, contextSha256: binding.contextSha256, lifetime });
 }
 export async function requireOperatorParent(root, context) {
-  if (context.schema !== "str005-v2-serial-context-v5") return;
+  if (!["str005-v2-serial-context-v5", "str005-v2-serial-context-v6"].includes(context.schema)) return;
   const binding = admissions.get(root); admissions.delete(root);
   check(binding && binding.contextSha256 === sha256(JSON.stringify(context)) && process.ppid === binding.owner.pid &&
     (await processSnapshot()).some(row => sameProcess(row, binding.owner)), "v2_operator_owner");

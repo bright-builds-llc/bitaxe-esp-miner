@@ -6,7 +6,7 @@ import { proof, writeNew } from "../str005-noise-serial/files.mjs";
 import { sha256 } from "./values.mjs";
 
 export function syntheticBrowserWitness(context, last, observedAtUnixMs = Date.now()) {
-  const managed = context.schema === "str005-v2-serial-context-v5";
+  const managed = ["str005-v2-serial-context-v5", "str005-v2-serial-context-v6"].includes(context.schema);
   return { schema: managed ? "noise-serial-browser-closure-v3" : "noise-serial-browser-closure-v2",
     source: managed ? "native-ui-observer" : "parent-observed", contextSha256: sha256(JSON.stringify(context)), closed: true,
     lastSequence: last.sequence, lastStateSha256: sha256(JSON.stringify(last)), observedAtUnixMs };
@@ -15,7 +15,7 @@ export function syntheticBrowserWitness(context, last, observedAtUnixMs = Date.n
 /** Complete the synthetic stopped daemon inventory joined to existing synthetic cleanup. */
 export async function completedOperatorFixture(f, browser, supervisor) {
   const { root, context } = f;
-  if (context.schema !== "str005-v2-serial-context-v5") return;
+  if (!["str005-v2-serial-context-v5", "str005-v2-serial-context-v6"].includes(context.schema)) return;
   const contextSha256 = sha256(JSON.stringify(context)), directory = `${root}.operator`;
   const owner = { pid: 81999, pgid: 81999, startedAt: "synthetic-operator" };
   await mkdir(directory, { mode: 0o700 });

@@ -85,7 +85,7 @@ export async function prepareCleanup(root, context, operations = {}) {
 }
 function browserWitness(value, context, last, now) {
   object(value, ["schema", "source", "contextSha256", "closed", "lastSequence", "lastStateSha256", "observedAtUnixMs"]);
-  const independent = context.schema === "str005-v2-serial-context-v5";
+  const independent = ["str005-v2-serial-context-v5", "str005-v2-serial-context-v6"].includes(context.schema);
   check(value.schema === (independent ? "noise-serial-browser-closure-v3" : "noise-serial-browser-closure-v2") &&
     value.source === (independent ? "native-ui-observer" : "parent-observed") && value.closed === true &&
     value.contextSha256 === contextHash(context) && last && value.lastSequence === last.sequence &&

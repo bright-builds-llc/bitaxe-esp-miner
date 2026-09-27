@@ -74,7 +74,7 @@ test("legacy disposition does not reinterpret an artifact introduced by v3", asy
 test("a parent failure prevents qualification even when complete cleanup receipts exist", async t => {
   // Arrange: otherwise complete software evidence, never a real hardware run.
   const f = await completedFixture(t);
-  assert.equal(f.context.schema, "str005-v2-serial-context-v5");
+  assert.equal(f.context.schema, "str005-v2-serial-context-v6");
   await writeNew(join(f.root, "parent-cleanup-failure.json"), {
     schema: "str005-v2-parent-cleanup-failure-v1", source: "parent-observed",
     contextSha256: sha256(JSON.stringify(f.context)), stage: "record",

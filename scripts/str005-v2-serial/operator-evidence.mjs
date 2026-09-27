@@ -5,7 +5,7 @@ import { readStoppedOperator, requireOperatorAbsent } from "./operator-dispositi
 import { readJournal } from "./journal.mjs";
 import { check, sha256 } from "./values.mjs";
 
-export const managedOperator = context => context.schema === "str005-v2-serial-context-v5";
+export const managedOperator = context => ["str005-v2-serial-context-v5", "str005-v2-serial-context-v6"].includes(context.schema);
 
 /** Even an unsuccessful campaign cannot seal while its operator can still write. */
 export async function requireOperatorStopped(root, context, operations = {}) {

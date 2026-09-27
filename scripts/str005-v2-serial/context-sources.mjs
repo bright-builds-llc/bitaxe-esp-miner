@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { BUNDLE, PAGE, admitTrust, canonicalDirectory, cleanPushed, fileDigest, git, packageSnapshot, readJson } from "../fixed-usb-qualification/contract.mjs";
 import { canonical } from "../str005-noise-serial/files.mjs";
 import { requireActiveTask } from "./contract.mjs";
-import { AMENDMENT_PATH, AMENDMENT_SHA256, PERMISSION_AMENDMENT_PATH, PERMISSION_AMENDMENT_SHA256, CLEANUP_AMENDMENT_PATH, CLEANUP_AMENDMENT_SHA256, INSTALL_REVIEW_AMENDMENT_PATH, INSTALL_REVIEW_AMENDMENT_SHA256, INSTALL_OWNERSHIP_AMENDMENT_PATH, INSTALL_OWNERSHIP_AMENDMENT_SHA256, OPERATOR_AMENDMENT_PATH, OPERATOR_AMENDMENT_SHA256, check, CONTRACT_PATH, CONTRACT_SHA256, object, sha256 } from "./values.mjs";
+import { AMENDMENT_PATH, AMENDMENT_SHA256, PERMISSION_AMENDMENT_PATH, PERMISSION_AMENDMENT_SHA256, CLEANUP_AMENDMENT_PATH, CLEANUP_AMENDMENT_SHA256, INSTALL_REVIEW_AMENDMENT_PATH, INSTALL_REVIEW_AMENDMENT_SHA256, INSTALL_OWNERSHIP_AMENDMENT_PATH, INSTALL_OWNERSHIP_AMENDMENT_SHA256, OPERATOR_AMENDMENT_PATH, OPERATOR_AMENDMENT_SHA256, BOOTSTRAP_AMENDMENT_PATH, BOOTSTRAP_AMENDMENT_SHA256, check, CONTRACT_PATH, CONTRACT_SHA256, object, sha256 } from "./values.mjs";
 
 export { AMENDMENT_PATH, AMENDMENT_SHA256 } from "./values.mjs";
 const SOURCE_DIRS = ["scripts/str005-v2-serial", "scripts/str005-noise-serial", "scripts/fixed-usb-qualification", "scripts/host-stalls",
@@ -26,7 +26,7 @@ export async function readContractBinding(root) {
     cleanup: { path: CLEANUP_AMENDMENT_PATH, sha256: CLEANUP_AMENDMENT_SHA256 },
     installReview: { path: INSTALL_REVIEW_AMENDMENT_PATH, sha256: INSTALL_REVIEW_AMENDMENT_SHA256 },
     installReviewOwnership: { path: INSTALL_OWNERSHIP_AMENDMENT_PATH, sha256: INSTALL_OWNERSHIP_AMENDMENT_SHA256 },
-    operatorSurvival: { path: OPERATOR_AMENDMENT_PATH, sha256: OPERATOR_AMENDMENT_SHA256 } };
+    operatorSurvival: { path: OPERATOR_AMENDMENT_PATH, sha256: OPERATOR_AMENDMENT_SHA256 }, bootstrapCorrection: { path: BOOTSTRAP_AMENDMENT_PATH, sha256: BOOTSTRAP_AMENDMENT_SHA256 } };
   for (const item of Object.values(binding)) check(await fileDigest(resolve(root, item.path)) === item.sha256, "v2_contract_changed");
   return { contracts: binding, contractSha256: sha256(canonical(binding)) };
 }
@@ -34,8 +34,9 @@ export function validateSourcePath(path) {
   check(typeof path === "string" && /^[A-Za-z0-9_./-]+$/u.test(path) && !path.startsWith("/") &&
     path.split("/").every((part) => part !== ".." && part !== "." && part.length > 0), "v2_evaluator_path");
 }
-export async function sourceInventory(root, required) {
-  const paths = git(root, ["ls-files", "--", ...SOURCE_DIRS, ...SOURCE_FILES, ...required]).split("\n").filter(Boolean).sort();
+export async function sourceInventory(root, required, schema = "str005-v2-serial-context-v5") {
+  const extra = schema === "str005-v2-serial-context-v6" ? ["scripts/usb-bootstrap-measure", "tools/device-session", "tools/flash", "firmware/bitaxe", ".cargo", "scripts/BUILD.bazel", "BUILD.bazel", "Justfile", BOOTSTRAP_AMENDMENT_PATH, "docs/hardware/usb-bootstrap-drain-measurement.md", "docs/hardware/usb-bootstrap-preflight-successor.md", "docs/hardware/usb-bootstrap-reader-correction.md", "docs/hardware/usb-bootstrap-restored-accounting-successor.md"] : [];
+  const paths = git(root, ["ls-files", "--", ...SOURCE_DIRS, ...SOURCE_FILES, ...required, ...extra]).split("\n").filter(Boolean).sort();
   check(paths.length > 0 && new Set(paths).size === paths.length && [...SOURCE_FILES, ...required].every((path) => paths.includes(path)), "v2_evaluator_membership");
   const entries = [];
   for (const path of paths) {
@@ -84,7 +85,7 @@ export async function inspectSources(options, native, operations = {}) {
     trust_sha256: sha256(JSON.stringify(trust)), sdkconfig_sha256: await fileDigest(resolve(dirname(manifest), "bitaxe-firmware.sdkconfig")),
     client_sha256: await fileDigest(resolve(firmwareRoot, "scripts/str005-v2-serial/client.mjs")),
     operator_sha256: await fileDigest(resolve(firmwareRoot, "scripts/str005-v2-serial/operator.mjs")),
-    evaluator: await sourceInventory(firmwareRoot, required), native_source_files: native.sources, native_auditor_sources: native.auditors };
+    evaluator: await sourceInventory(firmwareRoot, required, "str005-v2-serial-context-v6"), native_source_files: native.sources, native_auditor_sources: native.auditors };
 }
 export function requireNativeReadiness(context, receipt) {
   check(receipt?.schema === "str005-v2-native-readiness-v1" && receipt.result === "selected_native_checks_passed" &&

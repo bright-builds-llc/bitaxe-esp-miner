@@ -13,7 +13,7 @@ function baseline(state, scope, after = false, completed = false) {
   const authorizationMatches = preserved?.authorization_high_water_match ||
     (after && scope === "share" && recovered?.matched === true && recovered.generation === state.qualification?.generation);
   if (!state || state.status !== "ready" || !state.connected || state.running || state.failure ||
-    !state.deviceLeaseInactive || !state.deviceBaselineConfirmed || !preserved?.device_identity_match ||
+    !state.deviceLeaseInactive || !state.deviceBaselineConfirmed || (after && state.deviceRestorationConfirmed !== true) || !preserved?.device_identity_match ||
     !preserved.settings_match || !authorizationMatches || preserved.mine_on_boot ||
     (scope === "channel" && state.renewalsConfirmed !== 0) ||
     (after && scope === "share" && completed && (recovered?.matched !== true || recovered.generation !== state.qualification?.generation))) fail("v2_client_baseline");
@@ -101,6 +101,10 @@ export function createV2Coordinator(operations) {
     await call("/protocol/complete", {});
     await bounded(gate.stop(), 150000); await flush(); await bounded(gate.close(), 150000); await flush();
   }
+  function requireFixtureWindow() {
+    const current = now();
+    if (maybeFixtureRequestAt === null || current < maybeFixtureRequestAt || current - maybeFixtureRequestAt > 10000) fail("v2_client_fixture_deadline");
+  }
   async function share() {
     await accounting("before"); phase = "admission";
     await bounded(gate.submitCoolingReview(), 150000); await flush();
@@ -116,10 +120,14 @@ export function createV2Coordinator(operations) {
     phase = "admission"; const fresh = await idle(maybeBinding);
     await call("/start/network", { status: fresh, controlSessionBindingSha256: maybeBinding });
     if (abortRequested) fail("v2_client_aborted");
+    requireFixtureWindow();
     const signed = await bounded(gate.prepareStartAuthorization(), 30000);
+    requireFixtureWindow();
     if (signed?.controlSessionBindingSha256 !== maybeBinding) fail("v2_client_shape");
     if (abortRequested) fail("v2_client_aborted");
+    requireFixtureWindow();
     await bounded(gate.loadSignedWindow(), 30000); await flush();
+    requireFixtureWindow();
     const finalFreshIdle = await idle(maybeBinding); // Refresh admission without another possession proof.
     phase = "start"; const deadline = now() + 240000;
     const startInvokedAtPageMs = now();

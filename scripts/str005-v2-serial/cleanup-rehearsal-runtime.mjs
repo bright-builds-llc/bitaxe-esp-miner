@@ -8,7 +8,7 @@ import { proof } from "../str005-noise-serial/files.mjs";
 import { syntheticRoot } from "./cleanup-rehearsal-guard.mjs";
 import { nodeRuntimeEnvironment } from "../str005-noise-serial/node-runtime.mjs";
 
-const METHODS = new Set(["readNoiseAnchorProof", "inspectNative", "inspectPredecessor", "inspectPermissionClosure", "inspectChannelSuccessor", "checkCurrentSuccessorOwnership", "inspectShareSuccessor", "checkCurrentShareSuccessorOwnership"]);
+const METHODS = new Set(["bootstrapPins", "currentBootstrapOwnership", "readNoiseAnchorProof", "inspectNative", "inspectPredecessor", "inspectPermissionClosure", "inspectChannelSuccessor", "checkCurrentSuccessorOwnership", "inspectShareSuccessor", "checkCurrentShareSuccessorOwnership"]);
 export const wait = ms => new Promise(done => setTimeout(done, ms));
 export async function bound(promise, milliseconds = 30000) {
   let timer;

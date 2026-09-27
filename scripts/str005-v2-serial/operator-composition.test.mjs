@@ -17,7 +17,7 @@ import { exchange } from "./operator-ipc.mjs";
 import { readJournal } from "./journal.mjs";
 import { finalize, review } from "./finalize.mjs";
 import { sha256 } from "./values.mjs";
-const METHODS = new Set(["readNoiseAnchorProof", "inspectNative", "inspectPredecessor", "inspectPermissionClosure", "inspectChannelSuccessor", "checkCurrentSuccessorOwnership", "inspectShareSuccessor", "checkCurrentShareSuccessorOwnership"]);
+const METHODS = new Set(["bootstrapPins", "currentBootstrapOwnership", "readNoiseAnchorProof", "inspectNative", "inspectPredecessor", "inspectPermissionClosure", "inspectChannelSuccessor", "checkCurrentSuccessorOwnership", "inspectShareSuccessor", "checkCurrentShareSuccessorOwnership"]);
 async function eventually(operation, milliseconds = 30000) {
   const deadline = Date.now() + milliseconds;
   while (true) { const result = await operation(); if (result) return result; assert.ok(Date.now() < deadline, "composition deadline"); await wait(30); }

@@ -9,12 +9,13 @@ const safe = state => state?.status === "ready" && state.connected === true && s
   state.preservation?.mine_on_boot === false;
 
 /** Fixed native controls retain progress only in this document; no baseline leaves the Gate. */
-export function installNativeControls(document, supervisor, gate, published, abort = () => {}) {
+export function installNativeControls(document, supervisor, gate, published, abort = () => {}, clock = { now: () => performance.now(), schedule: (fn, ms) => setTimeout(fn, ms) }) {
   const section = document.createElement("section"), output = document.createElement("pre");
   section.id = "v2-native-controls"; output.id = "v2-native-result";
   output.setAttribute("role", "status"); output.setAttribute("aria-live", "polite");
   const buttons = new Map();
   let ready = false, busy = false, failed = false, accounted = false, configured = false;
+  let maybeRestoreDeadline = null, maybeScope;
   let cycles = 0, consumed = false, completed = false, restored = false;
   let result = { status: "initializing", action: null, code: null };
   function allowed(action) {
@@ -26,7 +27,9 @@ export function installNativeControls(document, supervisor, gate, published, abo
     if (action === "configure") return accounted && !configured && state?.status === "closed" && state.serialOwnershipReleased === true;
     if (action === "cycle") return configured && cycles < 4 && !consumed && safe(state);
     if (action === "run") return accounted && configured && cycles === 4 && !consumed && safe(state);
-    return completed && !restored && safe(state);
+    const checkpoint = state?.authorizationRecovery;
+    const authorization = maybeScope === "share" ? checkpoint?.matched === true && checkpoint.generation > 0 && checkpoint.generation === state.qualification?.generation : state?.preservation?.authorization_high_water_match === true;
+    return completed && !restored && safe(state) && state.deviceRestorationConfirmed === true && authorization && maybeRestoreDeadline !== null && clock.now() >= maybeRestoreDeadline;
   }
   function render() {
     for (const [action, button] of buttons) button.disabled = !allowed(action);
@@ -34,6 +37,11 @@ export function installNativeControls(document, supervisor, gate, published, abo
     output.textContent = JSON.stringify({ schema: "str005-v2-native-ui-v1", ...result,
       ready, busy, failure_observed: failed, initial_accounting_recorded: accounted, candidate_configured: configured,
       cycles_recorded: cycles, run_consumed: consumed, restoration_recorded: restored });
+  }
+  function refreshWait() {
+    render();
+    const remaining = maybeRestoreDeadline === null ? 0 : maybeRestoreDeadline - clock.now();
+    if (remaining > 0) { const timer = clock.schedule(refreshWait, Math.ceil(remaining)); timer?.unref?.(); }
   }
   async function execute(action) {
     // Consume admission synchronously, before any promise can allow a second click.
@@ -57,7 +65,9 @@ export function installNativeControls(document, supervisor, gate, published, abo
         if (value?.phase_complete !== true || !["channel", "share"].includes(value.scope) || value.hardware_qualified !== false ||
           value.requires_native_reconnect !== true || !Number.isSafeInteger(value.restoration_wait_remaining_ms) ||
           value.restoration_wait_remaining_ms < 0 || value.restoration_wait_remaining_ms > 145000) throw Error();
-        completed = true;
+        completed = true; maybeScope = value.scope;
+        maybeRestoreDeadline = clock.now() + value.restoration_wait_remaining_ms;
+        const timer = clock.schedule(refreshWait, value.restoration_wait_remaining_ms); timer?.unref?.();
       }
       result = { status: "succeeded", action, code: null };
       if (action === "run") Object.assign(result, { scope: value.scope, phase_complete: true, hardware_qualified: false,
