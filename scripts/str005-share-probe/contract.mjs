@@ -1,6 +1,6 @@
 import { resolve } from 'node:path';
 import { check } from '../str005-v2-serial/values.mjs';
-export const HARDWARE_ENABLED = true;
+export const HARDWARE_ENABLED = false;
 export const TASK = 'task-str005-v2-accepted-share-probe';
 export const CONTRACT = 'scripts/str005-share-probe/CONTRACT.md';
 export const STARTUP_SEAL = 'cc5bab7bd34da6f3b50388c31f5e1fc4aefb6a7faf12bd14678a6dc08593e7a1';

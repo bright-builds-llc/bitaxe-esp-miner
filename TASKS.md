@@ -5150,7 +5150,7 @@ No further Start, flash, clear or self-test is admitted by this consumed trial.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
-Status: Image, capture/cutoff, archive-bound clear and post-clear recovery qualified; one bounded accepted-share probe is admitted.
+Status: Blocked by share001 device panic after Start; sealed partial evidence retained, live gate disabled, no retry admitted.
 Objective: prove a correlated real ASIC result, encrypted submission, independent
 fixture acceptance and device acknowledgement, then restoration/accounting/cleanup.
 Depends on: `task-str005-mining-startup-probe` and applicable authenticated channel
@@ -5578,7 +5578,7 @@ blind retry. The accepted-share task remains active until its own criteria pass.
 
 Clear/post-clear completion and share001 execution contract | 2026-09-28:
 
-Share probe hardware: enabled.
+Share probe hardware: disabled.
 Share admission sha256: a56bb4b89f3d002a115562daa516f51c262dae5a603d066c187afc4e568b9cd6.
 
 Clear001 matched the actual archived dump, erased only its admitted974848-byte
@@ -5638,6 +5638,47 @@ override, firmware write, NVS/factory reset, budget reset/refund, Share002 repla
 implicit retry or parity promotion. A failure selects the exact blocker; any
 continuation requires verified progress and a new published contract. A recurrence
 after a targeted correction is a repeated-boundary stop, not another attempt.
+
+Share001 outcome | 2026-09-28:
+
+Published host c1b74104 ran the admitted single attempt on f000872f/full ELF
+a3e25741 with Gate9643. Fresh baseline measured boot15 and next20/last19/1920000,
+pending=false; Start subsequently reported ordinal20/generation3 and a180000-ms
+reservation. Start replied in10080.8ms; Stop was requested2547.7ms later. No
+accepted-share proof reached the collector and no renewal was confirmed in the
+retained browser state. The independent decoder has not inspected this new crash.
+Read-only production-page simulation reproduced the recovery gap: a rejected
+known-attempt query after reboot prevents independent ledger/budget collection.
+Fixture natural-completion failure is also conflated with successful forced
+resource release; both require targeted regressions before future admission.
+
+Fresh diagnostic evidence reported boot16, reset_reason=panic, uptime264ms after
+the active status operation timed out. This proves a new panic observation, not
+its cause or identity with historical Share002. Known-attempt status, fresh
+accounting, normal-stop checkpoint and terminal device resources remain unproven.
+Fresh reconnect briefly reported restoration, but collection failed before its
+round began; that UI observation cannot replace retained recovery evidence.
+The fixture did not finish naturally; cleanup terminated/reaped its exact owner.
+Final checks found server/fixture processes gone, admitted serial holder absent
+and supervisor listener absent. The sealed aggregate release flags remain false
+because fixture completion and complete recovery did not qualify.
+
+Private root `scratch/str005-share/share001/attempt`, immutable seal
+`1125f5d0dea1fa310ad3001cfa3c2aaa775924aacd1240a68555021ce559261e`.
+Result complete=false; earliest run phase=share, serial category=timeout;
+owner cleanup failure=startup_operation_rejected. See
+[the partial report](docs/parity/evidence/20260928-str005-share001-panic.md).
+No later Start, reset, flash, core read/clear or fault was performed. Existing
+core partition contents are untouched; their validity has not been measured.
+Current durable ordinal/completion must be measured, never inferred from20.
+
+Next work is a separately published failure-only recovery/acquisition contract:
+collect each authenticated ledger/status/restoration result independently even
+when a known-attempt record is lost across reboot, preserve every failure and
+acquire/decode the current core against the exact installed ELF before any new
+Start. No speculative idle substitution or historical restoration claim. The
+accepted-share task stays active and unarchived; heartbeat-loss execution is
+blocked by this failed prerequisite. All earlier seals and parity90/95 remain.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
