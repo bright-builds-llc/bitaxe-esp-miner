@@ -26,6 +26,9 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             return self.prepare_possession(frame, now);
         };
         self.acknowledge_boot_restoration()?;
+        if request.command == "start_lease" {
+            return self.prepare_start_controller(&request, now);
+        }
         let is_probe = request.command == "transport_probe";
         let prepared = self.prepare_controller(request, now)?;
         if is_probe {

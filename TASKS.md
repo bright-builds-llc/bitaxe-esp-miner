@@ -4650,9 +4650,9 @@ Prospective execution contract: [staged panic probe](docs/hardware/str005-panic-
 The following gates authorize only its verified staged effects after publication:
 
 Development panic probe: stage A enabled.
-Development panic probe: installation disabled (capture store failure unresolved).
+Development panic probe: installation enabled.
 Development panic probe: self-test disabled (single admitted self-test exhausted; numeric store diagnostics required before another attempt).
-Development core-dump acquisition: disabled (capture outcome sealed; new effect contract required).
+Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
 Development core-dump clearing: disabled (region erased; capture unverified).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
@@ -4905,6 +4905,50 @@ three existing ignores); standards, redaction, reference, parity, changed-block 
 diff checks passed. Whole-file TASKS formatting already fails at HEAD; unrelated
 historical blocks were preserved. Parity remains 90/95. This review supplies analytical evidence,
 not a hardware correction or new ordinal consumption measurement.
+
+Owner-approved stack correction and no-mining installation (2026-09-27):
+
+- [x] Separate signed Start from the large dispatch frame without changing
+  validation, signed authority, reservation ordering or response behavior.
+- [x] Add a native selected-call-chain regression that rejects the historical
+  stack budget and measures the candidate; run host and canonical checks.
+- [x] Publish a narrow state-preserving installation/recovery continuation,
+  keeping capture self-test, clearing, Start and mining disabled.
+- [ ] Package exact clean pushed source, preserve the current core region,
+  obtain fresh authenticated baseline, install once and verify preservation,
+  healthy startup, current accounting, restoration and actual cleanup.
+- [ ] Record measured software/hardware outcomes and any remaining blocker;
+  retain sealed evidence, task non-completion and parity 90/95 unless all
+  original diagnosis criteria are independently established.
+
+This continuation follows the user's explicit request to implement the frame
+separation and proceed through testing/flashing. Static budget improvement and
+healthy installation do not alone prove Share002's cause or qualify live Start.
+The failed core-capture prerequisite continues to block Start; installation is a
+separate no-mining effect with prospective current-state admission under ADR-0031.
+The prospective [contract continuation](docs/hardware/str005-panic-probe.md#no-mining-stack-correction-installation-continuation)
+limits the enabled sentinels to current-recovery-003 core preservation and
+installation004, followed by authenticated candidate recovery and unconditional
+cleanup. Earlier disabled-gate statements remain historical. Exact commands,
+private roots, 120-second fresh proof, 360-second capture, 1,200-second outer
+installer bound, preservation policy and stop conditions are in that contract.
+Self-test and clearing remain disabled; there is no Start/grant/mining command.
+Publish and verify the correction and native stack guard before any device use.
+
+Software measurement before publication: original exact Share002 chain rejects
+at 16,384 bytes. The initial outline exposed general-dispatch inlining into
+prepare_frame and rejected at 17,808 bytes. Keeping both dispatch paths out of
+line gives 13,264 bytes and 3,120 bytes unclaimed selected-path margin, without
+increasing stack allocation. The audit retains explicit platform-edge inference,
+partial-callgraph and non-hardware labels. Native compilation/package passed;
+clean published package measurements and hardware outcome are still pending.
+
+Pre-effect verification: ordered Cargo fmt/clippy/build/test passed (2,405
+passed, three existing ignores); all six affected Bazel targets and 54 JS tests
+passed. Native package and native USB ownership/symbol checks passed, as did
+standards, redaction, reference, parity and changed Markdown/diff checks.
+The explicit simplification review retains only the two required non-inlining
+boundaries and the early Start branch; no extra stack/heap allocation is added.
 
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 

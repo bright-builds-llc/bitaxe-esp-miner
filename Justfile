@@ -36,6 +36,9 @@ str005-panic-probe action *args:
 test-panic-probe-command:
     bazel run //scripts:str005_panic_command_check_test_local
 
+audit-signed-start-stack *args:
+    bazel run //scripts:audit_signed_start_stack -- {{ args }}
+
 native-panic-audit *args:
     bazel run //scripts:native_panic_audit -- {{ args }}
 

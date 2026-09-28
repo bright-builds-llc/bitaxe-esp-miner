@@ -1158,3 +1158,16 @@ js_test(
     data = [":str005_v2_serial_sources", "@bwg_gate_contract//:package_json_js", "@bwg_gate_contract//:share_authority_sources_js", "//tools/stratum-v2-fixture:stratum_v2_fixture"],
     entry_point = "str005-v2-serial/share-preparation-composition.test.mjs",
 )
+
+js_binary(
+    name = "audit_signed_start_stack",
+    entry_point = "audit-signed-start-stack.mjs",
+    data = ["signed-start-stack-audit.mjs", "telemetry-stack-audit.mjs", "noise-native-calls.mjs"],
+    visibility = ["//visibility:public"],
+)
+
+js_test(
+    name = "signed_start_stack_audit_test",
+    entry_point = "signed-start-stack-audit.test.mjs",
+    data = ["signed-start-stack-audit.mjs", "telemetry-stack-audit.mjs", "noise-native-calls.mjs"],
+)

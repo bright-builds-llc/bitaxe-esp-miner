@@ -21,7 +21,7 @@ import { validateCaptureDiagnosticPair } from './capture-diagnostics.mjs';
 import { reviewExistingCapture } from './capture-existing.mjs';
 import { createProbeServer } from './server.mjs';
 import { validateRecoveryParts } from '../str005-v2-serial/recovery-evidence.mjs';
-import { BASELINE_PARTS, baselineConclusion, validatePart, validateFinished, validateCandidateState, currentProof, applyInstallationOutcome, applyRecoveryOnlyOutcome } from './model.mjs';
+import { BASELINE_PARTS, baselineConclusion, validatePart, validateFinished, validateCandidateState, currentProof, applyInstallationOutcome, applyRecoveryOnlyOutcome, applySelfTestScope } from './model.mjs';
 
 const task = 'task-str005-start-panic-diagnosis';
 const oldSeal = '14d2122208b2040f1482074c77328cd3a59c651e45bc17e7be7af2648d8f5950';
@@ -241,17 +241,23 @@ async function finish(root, context) {
     }
     if (rounds.length === 0) { result.complete = false; result.blockers.push('candidate_recovery_missing'); }
 
-    try {
-      const evidence = await validateSelfTest((await proof(root, 'self-test-result.json')).value, context.gate_root,
-        (await proof(root, 'self-test-claim.json')).value.request, context);
-      result.self_test_reset_observed = evidence.summary?.stage === 'complete' && evidence.summary?.panicResetObserved === true;
-      if (!result.self_test_reset_observed) { result.complete = false; result.blockers.push('self_test_reset_incomplete'); }
-    } catch (error) { if (error.code !== 'ENOENT') throw error; result.complete = false; result.blockers.push('self_test_result_missing'); }
+    await finalizeSelfTestEvidence(root, context, result);
   } catch (error) { if (error.code !== 'ENOENT') throw error; }
   if (context.captureExisting && !result.capture_admission_reviewed) { result.complete = false; result.blockers.push('capture_review_missing'); }
   await writeNew(resolve(root, 'result.json'), result);
   await writeNew(resolve(root, 'sealed-inventory.json'), { files: await inventory(root) });
   return result;
+}
+/** Re-read immutable artifacts at finalization; disabled fault scope is not failed capture. */
+export async function finalizeSelfTestEvidence(root, context, result) {
+  let maybeClaim, maybeEvidence;
+  try { maybeClaim = await proof(root, 'self-test-claim.json'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  try { maybeEvidence = await proof(root, 'self-test-result.json'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  if (!applySelfTestScope(result, context, maybeClaim !== undefined, maybeEvidence !== undefined)) return;
+  if (!maybeClaim || !maybeEvidence) { result.complete = false; result.blockers.push('self_test_result_missing'); return; }
+  const evidence = await validateSelfTest(maybeEvidence.value, context.gate_root, maybeClaim.value.request, context);
+  result.self_test_reset_observed = evidence.summary?.stage === 'complete' && evidence.summary?.panicResetObserved === true;
+  if (!result.self_test_reset_observed) { result.complete = false; result.blockers.push('self_test_reset_incomplete'); }
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main(process.argv.slice(2)).then(value => process.stdout.write(`${JSON.stringify(value)}\n`)).catch(() => {

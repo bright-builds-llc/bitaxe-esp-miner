@@ -336,3 +336,80 @@ test('capture sampling failure or timeout still closes and never starts a late s
     assert.equal(saved.at(-1).stage, 'finished');
   }
 });
+
+test('actual artifact finalization permits no self-test only for explicitly disabled normal installation', async t => {
+  // Arrange
+  const { finalizeSelfTestEvidence } = await import('./main.mjs');
+  const { mkdtemp, rm } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os'); const { resolve } = await import('node:path');
+  const root = await mkdtemp(resolve(tmpdir(), 'install-only-')); t.after(() => rm(root, { recursive: true, force: true }));
+  const normal = { installEnabled: true, selfTestEnabled: false, captureExisting: false, recoveryOnly: false };
+  const result = { complete: true, installation_complete: true, candidate_recoveries: [{ complete: true }], blockers: [] };
+  // Act
+  await finalizeSelfTestEvidence(root, normal, result);
+  // Assert
+  assert.equal(result.complete, true); assert.equal(result.self_test_required, false); assert.equal(result.self_test_not_requested, true);
+  for (const change of [{ selfTestEnabled: true }, { selfTestEnabled: undefined }, { installEnabled: false }, { captureExisting: true }, { recoveryOnly: true }]) {
+    const strict = { complete: true, blockers: [] }; await finalizeSelfTestEvidence(root, { ...normal, ...change }, strict);
+    assert.equal(strict.complete, false); assert.equal(strict.self_test_required, true); assert.deepEqual(strict.blockers, ['self_test_result_missing']);
+  }
+  const failed = { complete: false, blockers: ['candidate_recovery_missing'] };
+  await finalizeSelfTestEvidence(root, normal, failed); assert.equal(failed.complete, false); assert.deepEqual(failed.blockers, ['candidate_recovery_missing']);
+});
+
+test('disabled self-test finalization rejects either unexpected claim or result artifact', async t => {
+  // Arrange
+  const { finalizeSelfTestEvidence } = await import('./main.mjs'); const { writeNew } = await import('../str005-noise-serial/files.mjs');
+  const { mkdtemp, rm } = await import('node:fs/promises'); const { tmpdir } = await import('node:os'); const { resolve } = await import('node:path');
+  for (const file of ['self-test-claim.json', 'self-test-result.json']) {
+    const root = await mkdtemp(resolve(tmpdir(), 'unexpected-selftest-')); t.after(() => rm(root, { recursive: true, force: true }));
+    await writeNew(resolve(root, file), {});
+    // Act
+    const result = { complete: true, blockers: [] }; await finalizeSelfTestEvidence(root, { installEnabled: true, selfTestEnabled: false }, result);
+    // Assert
+    assert.equal(result.complete, false); assert.deepEqual(result.blockers, ['unexpected_self_test_evidence']);
+  }
+});
+
+test('installation-only client cannot acquire or render the disabled self-test operation', async () => {
+  // Arrange
+  const previous = { window: globalThis.window, document: globalThis.document, fetch: globalThis.fetch };
+  const rendered = [], gate = { state: () => ({ status: 'ready', connected: true, running: false }) };
+  for (const name of ['refresh', 'reviewQualificationAttempts', 'reviewBudget', 'exportDiagnostics', 'stratumV2Possession', 'stratumV2Status', 'stop', 'close']) gate[name] = async () => {};
+  Object.defineProperty(gate, 'coreDumpSelfTest', { configurable: true, get() { throw Error('disabled effect acquired'); } });
+  Object.defineProperty(gate, 'exportCoreDumpSelfTestEvidence', { configurable: true, get() { throw Error('disabled evidence acquired'); } });
+  globalThis.window = { workerAcceptance: gate };
+  globalThis.document = { createElement: () => ({ addEventListener() {}, setAttribute() {} }), getElementById: () => null, body: { append: (...elements) => rendered.push(...elements) } };
+  globalThis.fetch = async () => ({ ok: true, json: async () => ({ recoveryOnly: false, captureExisting: false, selfTestEnabled: false, originalCampaignId: 'fixture' }) });
+  try {
+    // Act
+    await import('./client.mjs?installation-only-client-test');
+    // Assert
+    assert.deepEqual(rendered.map(element => element.id), ['capture-panic-baseline', 'configure-panic-candidate', 'recover-panic-candidate', 'panic-probe-result']);
+    assert.equal(Object.hasOwn(gate, 'coreDumpSelfTest'), false);
+  } finally { for (const [key, value] of Object.entries(previous)) { if (value === undefined) delete globalThis[key]; else globalThis[key] = value; } }
+});
+
+test('normal installation admits candidate recovery while self-test stays disabled', async t => {
+  // Arrange
+  const c = { ...context, installEnabled: true, selfTestEnabled: false }, proofs = [];
+  const server = createProbeServer({ root: '/unused', context: c, page: '', bundle: Buffer.from(''), client: Buffer.from(''), trust: {} }, {
+    persist: async () => {}, persistProof: async () => {}, validateDiagnostics: async value => value,
+    inspectInstall: async () => ({ installation_verified: true }), persistCandidate: async () => {},
+    createRecoveryRound: async () => {}, persistCandidatePart: async () => {}, persistCandidateDiagnostics: async () => {},
+    persistCandidateProof: async (_name, value) => proofs.push(value), verifyNativeAudit: async () => { throw Error('disabled self-test audited'); },
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(() => server.release());
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const post = (path, value) => fetch(`${origin}${path}`, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify(value) });
+  // Act
+  await post('/diagnostic-export', diagnostics);
+  for (const [stage, value] of Object.entries({ state: state(c, 'before'), ledger, original_budget: original, status: idle(), closed: state(c, 'before', true), finished: { failures: [] } })) assert.equal((await post('/part', { stage, value })).status, 200);
+  assert.equal((await post('/candidate', {})).status, 200);
+  assert.equal((await post('/self-test-claim', { state: state(c), ledger, status: idle() })).status, 400);
+  const round = await (await post('/candidate-recovery-begin', { state: state(c), status: idle() })).json();
+  assert.equal(round.sequence, 1); await post('/diagnostic-export', diagnostics);
+  for (const [stage, value] of Object.entries({ state: state(c), ledger, original_budget: original, status: idle(), closed: state(c, 'candidate', true), finished: { failures: [] } })) assert.equal((await post('/candidate-part', { sequence: 1, stage, value })).status, 200);
+  // Assert
+  assert.equal(proofs.length, 1); assert.equal(proofs[0].firmware_commit, c.firmware_commit);
+});

@@ -292,3 +292,70 @@ self-test, reset-capable acquisition and clearing. The historical commands and
 sealed outcomes above are preserved; they do not authorize another fault.
 Only read-only baseline collection remains enabled until a new contract binds
 a verified store-result/required-length discriminator.
+
+## No-mining stack-correction installation continuation
+
+Owner-authorized 2026-09-27 after the static signed-Start stack analysis. This
+prospective continuation admits a verified stack-frame correction and one
+state-preserving installation without a capture self-test. It supersedes the
+preceding installation/acquisition disablement only for this narrow sequence;
+the core-store failure and live Start prerequisite remain unresolved. It changes
+no task stack size, internal reserve, allocation policy, partition layout,
+USB ownership, heartbeat deadline, signed-authority or accounting rule.
+
+First reject the original Share002 signed-Start selected native chain against
+its 16 KiB budget with a 2 KiB minimum unclaimed margin, and require the outlined
+candidate to pass the same audit. The margin is a conservative selected-path
+engineering gate, not a proven whole-task maximum or runtime high-water result.
+Run `just audit-signed-start-stack --elf <exact-ELF> --output <new-audit-json>`
+and retain the report bound to the package ELF. Run behavioral regressions,
+canonical native package/resource checks and the
+actual flash CLI dry-run before device effects. Publish clean source and this
+contract before preflight/device access.
+
+Use fresh protected parents `scratch/str005-panic/current-recovery-003` and
+`scratch/str005-panic/installation004`, each with an absent `attempt` child and
+distinct protected sibling logs. The existing sealed installation003 and retained
+`build-9be53f69` package anchor installed identity only; their failed outcomes
+remain unchanged. Follow the recovery-only preflight above with that pair,
+collect fresh authenticated current baseline, then preserve the full existing
+core partition as `attempt/installed-core` using `just core-dump-read`. It must
+retain the same physical lease, current proof, exact installed identity, bounded
+ROM admission/read/application return and cleanup. Seal that recovery only after
+fresh cleanup detection and page/server release. Preserve nonempty contents;
+never clear the core region for this installation.
+
+Preflight installation004 with the canonical clean candidate manifest and
+`--before-recovery-root <current-recovery-003/attempt>`. The sealed historical
+proof is only an identity anchor. Collect a new live baseline in the installation
+page, close its serial owner, save fresh install detector evidence, and invoke
+`just str005-panic-probe install --private-root <installation004/attempt>` once
+within the proof's 120-second lifetime. Preserve the page's in-memory before
+state across installation. The existing 360-second runtime capture and
+1,200-second installer supervisor bounds apply; failed receipt, unexpected reset,
+identity/settings drift, pending ledger, unsafe state or unreleased ownership
+stops further effects.
+
+On a successful receipt, use **Verify installation and configure candidate**,
+connect freshly to the exact candidate and **Collect candidate recovery and
+close**. Require healthy startup, exact identity, unchanged settings/Device
+Identity/replay high-water and both measured ledgers, confirmed restoration,
+inactive authority and actual serial/page/process/listener release. Finish and
+seal the attempt. A no-self-test installation result must explicitly keep
+`core_capture_verified: false`; it cannot satisfy panic-capture qualification or
+establish the original panic cause. A missing candidate recovery is failure.
+
+Self-test, core clearing, signed Start, grants, mining, renewals, external pools,
+factory reset, NVS erasure, direct pins and Share002 replay remain unavailable.
+No qualification ordinal is consumed by this sequence. Report the next ordinal
+from fresh accounting without assuming its value. Four historical continuity
+cycles remain observations on their original package; this single update checks
+its own before/after preservation and does not claim new four-cycle/live parity.
+
+Failure collection and Stop/Close remain independent of the main operation.
+A failed install retains its typed earliest boundary and independent cleanup;
+only an already supported exact failed-install recovery mode may reopen the
+same device. A newly unsupported failure is a blocker requiring its own verified
+recovery implementation, not a reason to broaden an existing validator. No
+unchanged retry or second flash is admitted. A targeted verified fix may proceed
+under the repository progress policy with a fresh published ordinal/root.

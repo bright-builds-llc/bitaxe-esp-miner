@@ -106,6 +106,24 @@ fn the_noise_fence_rejects_effectful_controller_commands() {
     assert_eq!(worker.session().events, ["noise_admitted"]);
 }
 #[test]
+fn busy_diagnostic_rejects_start_before_parsing_its_payload() {
+    // Arrange
+    let mut worker = observed_worker();
+    worker
+        .prepare_frame(&start(), 1003)
+        .expect("diagnostic admitted");
+
+    // Act
+    let rejected = worker
+        .prepare_frame(&frame("start_lease", json!({})), 1004)
+        .expect_err("busy diagnostic must reject Start");
+
+    // Assert
+    assert_eq!(rejected.category(), "invalid_transition");
+    assert_eq!(worker.session().events, ["noise_admitted"]);
+}
+
+#[test]
 fn missing_query_attempt_field_is_not_accepted_as_explicit_null() {
     // Arrange
     let mut worker = admitted_worker();

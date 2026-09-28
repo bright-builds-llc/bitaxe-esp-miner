@@ -8,6 +8,7 @@ mod inspection;
 mod noise;
 mod probe;
 mod restart;
+mod start_dispatch;
 mod status;
 mod v2;
 mod wire;
@@ -312,6 +313,8 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         })
     }
 
+    // Keep this large frame off the early signed-Start dispatch path.
+    #[inline(never)]
     fn prepare_controller(
         &mut self,
         request: ControllerRequest,
@@ -345,8 +348,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         if (self.session.noise_busy() || self.session.v2_scope_busy())
             && matches!(
                 request.command.as_str(),
-                "start_lease"
-                    | "qualification_restart"
+                "qualification_restart"
                     | "qualification_core_dump_self_test"
                     | "qualification_cooling"
                     | "telemetry_cadence_arm"
@@ -382,7 +384,6 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             }
             "acceptance_budget_review" => self.review_acceptance_budget(&request, now)?,
             "qualification_cooling" => self.qualify_cooling(&request, now)?,
-            "start_lease" => self.start(request.required_payload()?, now)?,
             "renew_lease" => self.renew(request.required_payload()?, now)?,
             "status" => {
                 request.require_no_payload()?;

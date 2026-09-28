@@ -99,3 +99,17 @@ export function applyRecoveryOnlyOutcome(result) {
     predecessor_installation_failed: true, self_test_permitted: false, core_capture_verified: false,
     historical_resource_proof: false, parity_promotion: false });
 }
+
+/** Only an explicitly no-self-test normal installation can omit fault evidence. */
+export function applySelfTestScope(result, context, claimPresent, evidencePresent) {
+  const installationOnly = context.installEnabled === true && context.selfTestEnabled === false &&
+    context.captureExisting !== true && context.recoveryOnly !== true;
+  result.self_test_required = !installationOnly;
+  if (!installationOnly) return true;
+  result.self_test_not_requested = true;
+  if (claimPresent || evidencePresent) {
+    result.complete = false;
+    result.blockers.push('unexpected_self_test_evidence');
+  }
+  return false;
+}

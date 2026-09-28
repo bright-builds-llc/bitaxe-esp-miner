@@ -69,6 +69,7 @@ impl LeaseAuthorizationVerifier for FixtureVerifier {
 
 #[derive(Default)]
 struct FakeSession {
+    maybe_status_evidence: Option<serde_json::Value>,
     maybe_noise: Option<bitaxe_worker_control::noise::NoiseRecord>,
     maybe_v2: Option<bitaxe_worker_control::v2::V2Record>,
     v2_cleanup_blocked: bool,
@@ -78,6 +79,28 @@ struct FakeSession {
     fail_start: bool,
     fail_cooling: bool,
     remaining_safe_stop_failures: usize,
+}
+
+#[test]
+fn start_response_keeps_request_correlation_and_qualification_evidence() {
+    // Arrange
+    let mut worker = admitted_worker();
+    let evidence = json!({"schema":"fixture-qualification-v1","generation":7});
+    worker.session_mut().maybe_status_evidence = Some(evidence.clone());
+
+    // Act
+    let prepared = worker
+        .prepare_frame(start_frame().as_bytes(), 1_000)
+        .expect("admitted Start should succeed");
+    let response: serde_json::Value =
+        serde_json::from_slice(prepared.frame()).expect("response is JSON");
+
+    // Assert
+    assert_eq!(response["requestId"], "serial_v03_start");
+    assert_eq!(response["ok"], true);
+    assert_eq!(response["result"]["state"], "mining");
+    assert_eq!(response["result"]["qualification"], evidence);
+    assert_eq!(worker.session().events, ["start"]);
 }
 
 #[test]

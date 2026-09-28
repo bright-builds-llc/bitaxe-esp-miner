@@ -1,6 +1,10 @@
 use super::*;
 
 impl WorkerSession for FakeSession {
+    fn status_evidence(&self) -> Option<serde_json::Value> {
+        self.maybe_status_evidence.clone()
+    }
+
     fn v2_status(
         &self,
         scope: bitaxe_worker_control::v2::Scope,
