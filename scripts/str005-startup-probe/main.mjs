@@ -1,21 +1,17 @@
+import { preparedPreflight } from './prepared-preflight.mjs';
+import { sealed } from './capture.mjs';
 import { fstatSync } from 'node:fs';
-import { mkdir, readFile, stat } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { once } from 'node:events';
-import { PAGE, BUNDLE, git, cleanPushed, ignored, missing, fileDigest, nonce, protectedPath } from '../fixed-usb-qualification/contract.mjs';
-import { privateRoot, proof, writeNew, retain, inventory } from '../str005-noise-serial/files.mjs';
+import { git, cleanPushed, ignored, missing, fileDigest } from '../fixed-usb-qualification/contract.mjs';
+import { privateRoot, proof, writeNew } from '../str005-noise-serial/files.mjs';
 import { requireNoHolders, processSnapshot } from '../str005-v2-serial/host-resources.mjs';
-import { parseDetector } from '../str005-panic-probe/detector.mjs';
-import { main as decode } from '../core-dump/main.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { HARDWARE_ENABLED, TASK, CONTRACT, admitArguments, requireEnabled } from './contract.mjs';
-import { captureEvidence, sealed } from './capture.mjs';
-import { runClear } from './clear.mjs';
 import { createServerOwner } from './server.mjs';
 import { finalize } from './finish.mjs';
-import { canonicalTools } from './tools.mjs';
-import { verifyGateCompatibility } from './gate-compatibility.mjs';
 
 async function currentSource(root, effect) {
   if (effect) check(HARDWARE_ENABLED, 'startup_hardware_disabled');
@@ -35,46 +31,17 @@ export async function main(argv) {
   const firmwareRoot = process.env.BUILD_WORKSPACE_DIRECTORY ?? git(process.cwd(), ['rev-parse', '--show-toplevel']);
   const root = options['--private-root']; ignored(firmwareRoot, root);
   const source = await currentSource(firmwareRoot, action !== 'finish');
-  if (action === 'preflight') {
-    await missing(root); await privateRoot(dirname(root)); await protectedPath(options['--bindings']);
-    const bindings = JSON.parse(await readFile(options['--bindings'], 'utf8'));
-    const tools = await canonicalTools(firmwareRoot, options, source.source_commit);
-    const captured = await captureEvidence(firmwareRoot, bindings, source.captureSealSha256), gateRoot = options['--gate-root'];
-    cleanPushed(gateRoot, captured.identity.gate_commit);
-    const pins = [...(await readFile(resolve(firmwareRoot, 'MODULE.bazel'), 'utf8')).matchAll(/strip_prefix\s*=\s*"bitaxe-turnstile-system-([a-f0-9]{40})"/gu)];
-    check(pins.length === 1 && pins[0][1] === captured.identity.gate_commit, 'startup_gate_pin');
-    const detectorPath = resolve(dirname(root), 'detector.stdout.log'); await protectedPath(detectorPath);
-    const detector = parseDetector(await readFile(detectorPath, 'utf8'), captured.physical, Date.now() - (await stat(detectorPath)).mtimeMs);
-    requireNoHolders(detector.port);
-    await mkdir(root, { mode: 0o700 });
-    const freshDecode = await decode(['verify-cutoff', '--dump', resolve(bindings.archiveRoot, bindings.archiveRelative),
-      '--elf', resolve(bindings.decoderRoot, 'firmware.elf'), '--elf-sha256', captured.identity.app_elf_sha256, '--private-root', resolve(root, 'capture-verification')]);
-    check(freshDecode.status === 'passed' && freshDecode.self_test_marked === true && freshDecode.dump_sha256 === captured.archiveSha, 'startup_fresh_decode');
-    const assets = { page: await readFile(resolve(gateRoot, PAGE)), bundle: await readFile(resolve(gateRoot, BUNDLE)),
-      trust: await readFile(resolve(firmwareRoot, 'firmware/bitaxe/bwg/deployment-trust.json')) };
-    check([captured.identity.gate_commit, 'startWindow', 'loadSignedWindow'].every(marker => assets.bundle.includes(marker)), 'startup_gate_bundle');
-    const compatibility = await verifyGateCompatibility(gateRoot);
-    await writeNew(resolve(root, 'gate-compatibility.json'), compatibility);
-    for (const [name, bytes] of Object.entries(assets)) await retain(resolve(root, `gate-${name}`), bytes);
-    const context = { schema: 'str005-startup-context-v1', ...source, ...captured.identity, firmware_root: firmwareRoot, gate_root: gateRoot,
-      before_source: captured.identity, scope: 'share', attemptId: nonce(), bindings, captureSeals: captured.seals,
-      archiveSha: captured.archiveSha, physical: captured.physical, detector, captureVerified: true,
-      original_campaign_id: captured.originalCampaignId, ...tools,
-      assetHashes: Object.fromEntries(Object.entries(assets).map(([key, value]) => [key, sha256(value)])),
-      compatibilitySha256: await fileDigest(resolve(root, 'gate-compatibility.json')) };
-    await writeNew(resolve(root, 'context.json'), context); return { preflight: 'passed', start_issued: false };
-  }
+  if (action === 'preflight') return preparedPreflight(firmwareRoot, root, options, source);
   await privateRoot(root); await missing(resolve(root, 'sealed-inventory.json'));
   const context = (await proof(root, 'context.json')).value;
-  check(context.schema === 'str005-startup-context-v1' && context.source_commit === source.source_commit && context.contractSha256 === source.contractSha256,
+  check(context.schema === 'str005-startup-context-v2' && context.admission === 'prepared-normal-stop-v1' && context.source_commit === source.source_commit && context.contractSha256 === source.contractSha256,
     'startup_source_changed');
   const verify = async () => {
     await currentSource(firmwareRoot, true); cleanPushed(context.gate_root, context.gate_commit);
-    check(await fileDigest(context.fixture_binary) === context.fixture_sha256 && await fileDigest(context.fixture_receipt_path) === context.fixture_receipt_sha256 &&
-      await fileDigest(context.flash_binary) === context.flash_sha256, 'startup_tool_changed');
+    check(await fileDigest(context.fixture_binary) === context.fixture_sha256 && await fileDigest(context.fixture_receipt_path) === context.fixture_receipt_sha256, 'startup_tool_changed');
+    check(await sealed(context.preparationRoot) === context.preparationSealSha256, 'startup_preparation_changed');
     for (const [key, hash] of Object.entries(context.captureSeals)) check(await sealed(context.bindings[key]) === hash, 'startup_capture_changed');
   };
-  if (action === 'clear') { await verify(); await runClear(root, context); return { clear_complete: true, start_issued: false }; }
   if (action === 'finish') return finalize(root, context);
   await verify();
   for (const fd of [1, 2]) check(fstatSync(fd).isFile() && (fstatSync(fd).mode & 0o777) === 0o600, 'startup_private_output');

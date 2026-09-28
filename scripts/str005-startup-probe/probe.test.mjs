@@ -7,3 +7,4 @@ import './finish.test.mjs';
 import './tools.test.mjs';
 import './evidence.test.mjs';
 import './recovery.test.mjs';
+import './compatibility.test.mjs';

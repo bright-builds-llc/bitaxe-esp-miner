@@ -5176,7 +5176,7 @@ Verification: Pending. Completion review: Pending.
 
 Startup execution contract | 2026-09-28:
 
-Startup probe hardware: disabled (startup001 consumed).
+Startup probe hardware: enabled.
 Startup capture seal: 7131552c725c17c070b52b4238b2a92a742ccf34691ebadb5df2885ac3d5f925.
 
 - [x] Implement typed capture/archive/clear admission against existing producer
@@ -5323,6 +5323,69 @@ must precede any future qualification trial. The consumed recovery, Start, clear
 installation and self-test gates are disabled. Current device/host resources are
 released, original Share002 cause remains unproved, and parity remains 90/95.
 
+Normal-stop checkpoint continuation | 2026-09-28:
+
+- [x] Reproduce the missing checkpoint through real Gate Start/Stop/reconnect;
+  implement private original-baseline and post-authorization checkpoint capture
+  with stale/missing/generation/unexpected-advance rejection.
+- [x] Review normal Stop's rejected/authority or evidence terminal classification;
+  test the claim-specific boundary without promoting a pre-share cancellation.
+- [x] Separate historical capture identity from reviewed current Gate-only changes;
+  establish fresh safe idle admission without replaying consumed reset/clear plans.
+- [ ] Verify and publish the exact successor contract, then measure a fresh ordinal
+  and run one bounded Start/dispatch/Stop with complete checkpoint and recovery.
+- [ ] Seal truthfully, archive only if every criterion passes, commit and push.
+
+Owner approved the recommended sequence on 2026-09-28: checkpoint correction,
+startup qualification, then independently bounded accepted-share and heartbeat
+shutdown probes after prerequisites pass. Existing standing effect rules apply.
+Hardware gates remain disabled until each concrete contract and implementation
+is tested and published. Old partial seals and parity90/95 remain unchanged.
+
+Startup preparation hardware: enabled.
+
+Prospective execution (after this source is committed and pushed):
+[preparation contract](docs/hardware/str005-startup-preparation.md) and
+[normal-stop startup contract](docs/hardware/str005-normal-stop-startup.md).
+Use `just str005-startup-preparation preflight|serve|finish` with separate
+recovery/restart stages in `scratch/str005-startup/preparation001/attempt`,
+then `just str005-startup-probe preflight|serve|finish` in
+`scratch/str005-startup/startup002/attempt`. The original startup001, clearing,
+self-test and installation invocations remain consumed; the new startup accepts
+only sealed preparation and acquires no flash capability.
+
+Preparation may issue exactly one nonce-bound no-mining software restart after
+fresh same-device resource/accounting proof. Its independent observer requires
+matched ACK, explicit software reset, boot+1, exact identity and healthy admission
+within 30 seconds with at most one port reopen; same-page preservation and both
+ledgers must stay unchanged. Reads are bounded at 30 seconds, Stop/Close at 150
+seconds each. Release and seal each owner before the next stage. No replay or
+second reset after an ambiguous response. Keep private artifacts mode 0600 under
+mode 0700 ignored roots; promote only closed fields and hashes.
+
+Startup retains a freshly measured normal 180,000-ms reservation, one 60,000-ms
+signed lease and zero renewals. Reply≤30 seconds; Stop immediately after dispatch
+increase or failure, ≤5 seconds after reply and ≤35 seconds after invocation. Native
+heartbeat/safety/cooling bounds remain unchanged. Failure cannot skip independent
+recovery, Stop/Close, fixture reaping or ownership proof. A late reply never
+permits another Start. Seal incomplete results and stop at unchanged failures;
+only demonstrated, tested progress can admit a successor within published bounds.
+
+Current Gate: `bd26128788dd3f04842984e545fa2382c0b50561`; installed firmware stays
+`361425b9`, ELF `7f3ea3ce…7ebf2`. The [compatibility review](docs/hardware/str005-normal-stop-compatibility.md)
+and exact diff/tuple JSON distinguish historical capture Gate d3ac374. No new
+four-cycle durability, accepted-share, heartbeat-fault or original-panic-cause
+claim is made. Preparation and startup recheck actual installed ELF/native stack,
+USB ownership, erased-core boot lineage, fresh baseline and measured accounting.
+
+Software verification before publication: Gate 22 focused/840 web tests plus
+required Rust/browser/build/standards passed; root Rust 2,415 passed with 3 existing
+ignores. Canonical startup/restart and real generation-gate suites pass. The
+normal-stop evaluator went red on pre-Stop authority failure, then green with
+strict generation/native-time/release checks. Exact installed native stack and
+USB symbol/ownership audits passed. Hardware outcomes remain pending below.
+
+
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
 Status: Live proof blocked on startup; focused software work may proceed independently.
@@ -5352,6 +5415,39 @@ Authorization: software now; no live effect until published admission and depend
 proof. No external pool, historical grant reuse or parity promotion.
 Verification: Pending. Completion review: Pending.
 
+Approved staged continuation | 2026-09-28:
+
+- [ ] Reuse the qualified local fixture and independent header/target/share/ACK
+  validators behind a focused no-fault probe; do not reactivate the old combined
+  campaign or assume its ordinal, ledger, identity, or terminal outcome.
+- [ ] After startup qualifies, publish/test its bounded authority, normal-stop
+  checkpoint, failure recovery and cleanup before one fresh admitted share run.
+- [ ] Preserve actual accepted-share proof separately from later cleanup failures;
+  verify the full claim, archive only on pass, and commit/push the outcome.
+
+Software preparation is authorized now. Device effects require the startup
+prerequisite and a published task-scoped command. No parity promotion.
+
+Renewal prerequisite discovered | 2026-09-28:
+
+The exact installed ELF's selected signed-Renew ancestry uses 16,032 of 16,384
+stack bytes, leaving 352 bytes against the required 2,048-byte margin. This is
+compiled selected-path evidence, not an observed overflow or Share002 cause.
+Do not enable renewals on this image. The zero-renewal startup successor remains
+within its separately audited 13,264-byte selected path.
+
+- [ ] Isolate signed Renew from the large general dispatch frame; add a native
+  regression/audit equivalent to the signed-Start guard and verify both paths.
+- [ ] Build/publish the necessary new firmware, preserve current accounting and
+  evidence, and qualify its applicable identity/capture/cutoff/preservation checks
+  through a complete state-preserving installation contract before renewing work.
+- [ ] Then publish the bounded share probe: normal 180,000-ms reservation,
+  initial 60,000-ms grant and at most two signed renewals; Stop≤45 seconds after
+  completed Start reply (reply≤30 seconds), earlier on verified share or failure.
+  Record actual 0–2 renewals; no-share at the deadline is unverified, not retry
+  authority. Never weaken the native margin or silently use the unsafe Renew path.
+
+
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
 Status: Live proof blocked on startup; independent of accepted-share completion.
@@ -5378,6 +5474,20 @@ observer or relevant scheduling/resource changes require affected checks again.
 Authorization: software now; hardware only through the published bounded successor
 contract after dependencies. No deadline relaxation, refund or implicit retry.
 Verification: Pending. Completion review: Pending.
+
+Approved staged continuation | 2026-09-28:
+
+- [ ] Reuse the qualified passive observer and suppression/checkpoint seam, replacing
+  the old accepted-share prerequisite with fresh same-generation work evidence.
+- [ ] Test expiry/revocation/shutdown timing, remaining authority, observer loss,
+  post-revocation work exclusion and unconditional cleanup independently.
+- [ ] After startup qualifies, publish/test the exact bounded fault/recovery contract,
+  execute with fresh accounting, seal the result, and archive only on pass.
+
+No accepted share is required for this separate safety claim. Do not weaken
+2800-ms expiry or \<=3000-ms actual revocation/shutdown-initiation requirements.
+Hardware stays disabled until the new implementation and contract are published.
+
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 

@@ -1187,7 +1187,7 @@ js_test(
 
 js_library(
     name = "str005_startup_probe_sources",
-    srcs = glob(["str005-startup-probe/*.mjs"]),
+    srcs = glob(["str005-startup-probe/*.mjs", "str005-startup-preparation/*.mjs"]) + ["audit-signed-start-stack.mjs", "signed-start-stack-audit.mjs", "telemetry-stack-audit.mjs", "noise-native-calls.mjs", "verify-native-usb-symbols.mjs"],
     deps = [":str005_v2_serial_sources", ":str005_panic_probe_sources", ":core_dump_sources"],
 )
 
@@ -1213,4 +1213,29 @@ js_test(
         "@bwg_gate_contract//:share_authority_sources_js",
     ],
     entry_point = "str005-startup-probe/probe.test.mjs",
+)
+
+js_binary(
+    name = "str005_startup_preparation",
+    chdir = "..",
+    data = [":str005_startup_probe_sources"],
+    entry_point = "str005-startup-preparation/main.mjs",
+)
+
+js_test(
+    name = "str005_startup_preparation_test",
+    env_inherit = ["PATH"],
+    args = ["$(rootpath @bwg_gate_contract//:package_json_js)"],
+    data = [
+        ":str005_startup_probe_sources",
+        "@bwg_gate_contract//:package_json_js",
+        "@bwg_gate_contract//:restart_acceptance_sources_js",
+        "@bwg_gate_contract//:worker_deployment_trust_fixtures_js",
+        "@bwg_gate_contract//:worker_deployment_trust_js",
+        "@bwg_gate_contract//:ultra205_signed_capability_js",
+        "@bwg_gate_contract//:controller_v04_fixtures_js",
+        "@bwg_gate_contract//:worker_possession_fixtures_js",
+        "@bwg_gate_contract//:worker_serial_v02_fixtures_js",
+    ],
+    entry_point = "str005-startup-preparation/preparation.test.mjs",
 )

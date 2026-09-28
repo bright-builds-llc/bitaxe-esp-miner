@@ -1,9 +1,9 @@
 import { resolve } from 'node:path';
 import { check, object } from '../str005-v2-serial/values.mjs';
 export const TASK = 'task-str005-mining-startup-probe';
-export const CONTRACT = 'docs/hardware/str005-startup-probe.md';
+export const CONTRACT = 'docs/hardware/str005-normal-stop-startup.md';
 // Activation requires reviewed, published source and actual capture/clear evidence.
-export const HARDWARE_ENABLED = false;
+export const HARDWARE_ENABLED = true;
 export const LIMITS = Object.freeze({ replyMs: 30000, observeMs: 5000, stopRequestMs: 35000,
   readMs: 30000, stopMs: 150000, closeMs: 150000, fixtureCleanupMs: 5000, clearMs: 1200000 });
 export function requireEnabled(tasks, hardwareEnabled = HARDWARE_ENABLED) {
@@ -17,12 +17,12 @@ export function argumentsFor(argv) {
   check(['preflight', 'clear', 'serve', 'finish'].includes(action) && rest.length % 2 === 0, 'startup_arguments');
   for (let index = 0; index < rest.length; index += 2) {
     const key = rest[index], value = rest[index + 1];
-    check(['--private-root', '--bindings', '--gate-root', '--fixture-binary', '--authority-directory', '--flash-binary'].includes(key) &&
+    check(['--private-root', '--preparation-root', '--gate-root', '--fixture-binary', '--authority-directory'].includes(key) &&
       !Object.hasOwn(options, key) && typeof value === 'string' && resolve(value) === value, 'startup_arguments');
     options[key] = value;
   }
   check(options['--private-root'], 'startup_private_root');
-  if (action === 'preflight') check(options['--bindings'] && options['--gate-root'] && options['--fixture-binary'] && options['--flash-binary'], 'startup_preflight_arguments');
+  if (action === 'preflight') check(options['--preparation-root'] && options['--gate-root'] && options['--fixture-binary'] && Object.keys(options).length === 4, 'startup_preflight_arguments');
   else if (action === 'serve') check(options['--authority-directory'] && Object.keys(options).length === 2, 'startup_serve_arguments');
   else check(Object.keys(options).length === 1, 'startup_phase_arguments');
   return { action, options };
@@ -43,5 +43,6 @@ export function validateBindings(value) {
 export function admitArguments(argv, hardwareEnabled = HARDWARE_ENABLED) {
   const parsed = argumentsFor(argv);
   if (parsed.action !== 'finish') check(hardwareEnabled, 'startup_hardware_disabled');
+  check(parsed.action !== 'clear', 'startup_clear_consumed');
   return parsed;
 }

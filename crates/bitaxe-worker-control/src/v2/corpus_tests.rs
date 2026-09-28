@@ -209,3 +209,114 @@ fn accepted_and_secondary_clock_corpus_uses_actual_record_serializer() {
         .expect("explicit synthetic output");
     }
 }
+
+#[test]
+fn normal_stop_before_share_ack_is_rejected_evidence_despite_complete_release() {
+    // Arrange: startup dispatch does not satisfy an accepted-share contract.
+    let mut record = ready(Scope::Share);
+    assert!(record.budget_armed(2, 180_000, Some(2000)));
+    record.event(
+        Stage::AsicDispatch,
+        Some(2100),
+        Some(9),
+        Some(7),
+        None,
+        None,
+    );
+
+    // Act: a clean Stop can return without a concurrent cancelled network read.
+    record.event(Stage::Revoked, Some(3000), None, None, None, None);
+    record.event(Stage::Shutdown, Some(3001), None, None, None, None);
+    close(&mut record, 3010);
+
+    // Assert
+    let result = record.snapshot();
+    let failure = result.maybe_first_failure.expect("missing accepted share");
+    assert_eq!(result.maybe_outcome, Some(Outcome::Rejected));
+    assert_eq!(failure.stage, Stage::WorkerQuiescent);
+    assert_eq!(failure.category, FailureCategory::Evidence);
+    assert!(result.share_facts.is_empty());
+    assert!(result.resources.socket_closed);
+    assert!(result.resources.worker_quiescent);
+    assert!(!result.resources.fence_retained);
+}
+
+#[test]
+fn post_stop_cancellation_retains_authority_first_cause_through_release() {
+    // Arrange: actual native observer maps a cancelled read to this failure.
+    let mut record = ready(Scope::Share);
+    assert!(record.budget_armed(2, 180_000, Some(2000)));
+    record.event(
+        Stage::AsicDispatch,
+        Some(2100),
+        Some(9),
+        Some(7),
+        None,
+        None,
+    );
+    record.event(Stage::Revoked, Some(3000), None, None, None, None);
+    record.event(Stage::Shutdown, Some(3001), None, None, None, None);
+    record.fail(
+        Stage::WorkerQuiescent,
+        FailureCategory::Authority,
+        Some(3002),
+    );
+    let first = record.snapshot().maybe_first_failure;
+
+    // Act
+    close(&mut record, 3010);
+
+    // Assert: finish must not replace the first cause with absent-share evidence.
+    let result = record.snapshot();
+    assert_eq!(result.maybe_outcome, Some(Outcome::Rejected));
+    assert_eq!(result.maybe_first_failure, first);
+    assert!(result.secondary_failures.is_empty());
+    assert!(result.resources.socket_closed);
+    assert!(result.resources.worker_quiescent);
+    assert!(!result.resources.fence_retained);
+}
+
+#[test]
+fn pre_stop_authority_failure_is_not_retimed_as_normal_stop_cancellation() {
+    // Arrange
+    let mut record = ready(Scope::Share);
+    assert!(record.budget_armed(2, 180_000, Some(2000)));
+    record.event(
+        Stage::AsicDispatch,
+        Some(2100),
+        Some(9),
+        Some(7),
+        None,
+        None,
+    );
+    record.fail(
+        Stage::WorkerQuiescent,
+        FailureCategory::Authority,
+        Some(2500),
+    );
+    let first = record.snapshot().maybe_first_failure;
+
+    // Act: a subsequent requested Stop cannot explain an earlier loss of authority.
+    record.event(Stage::Revoked, Some(3000), None, None, None, None);
+    record.event(Stage::Shutdown, Some(3001), None, None, None, None);
+    record.fail(
+        Stage::WorkerQuiescent,
+        FailureCategory::Authority,
+        Some(3002),
+    );
+    close(&mut record, 3010);
+
+    // Assert
+    let result = record.snapshot();
+    assert_eq!(result.maybe_first_failure, first);
+    assert_eq!(
+        result
+            .maybe_first_failure
+            .expect("original failure")
+            .maybe_at_device_us,
+        Some(2500)
+    );
+    assert_eq!(result.maybe_outcome, Some(Outcome::Rejected));
+    assert!(result.resources.worker_quiescent);
+    assert!(!result.resources.fence_retained);
+}

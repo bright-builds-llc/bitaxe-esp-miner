@@ -12,11 +12,13 @@ function body(source, name) {
   }
   check(false, 'startup_gate_function_shape');
 }
-/** Executes the actual three Gate functions; hardware/clock/parser dependencies are test doubles. */
-export async function assessGateSource(source) {
+/** Executes actual Gate load/start/wrapper functions; parser/controller/checkpoint dependencies are test doubles. */
+export async function assessGateSource(source, authorizationSource) {
   const converted = stripTypeScriptTypes(source, { mode: 'transform' });
   const functions = ['loadWindow', 'loadSignedWindow', 'startWindow'].map(name => body(converted, name));
-  let time = 0, starts = 0, claims = 0;
+  functions.push(body(stripTypeScriptTypes(authorizationSource, { mode: 'transform' }), 'runWorkerNormalAuthorization'));
+  let time = 0, starts = 0, claims = 0, observations = 0;
+  const authorizationToken = {};
   const grant = { qualificationAttempt: { purpose: 'normal', maximumActiveMilliseconds: 180000 }, durationMilliseconds: 60000,
     renewAfterMilliseconds: 20000, leaseId: 'lease_synthetic', stratum: { profile: 'bwg-worker-stratum-v2-standard/0.1' } };
   const context = createContext({ maybeConfiguration: { stratumV2Qualification: 'candidate', stratumV2Scope: 'share' }, running: false,
@@ -27,6 +29,8 @@ export async function assessGateSource(source) {
     localJson: async path => { check(path === '/window-artifacts', 'startup_gate_artifacts_route'); return { grant, renewals: [] }; },
     state: () => ({}), publish() {}, v2ShareStartClaim: { consume() { check(++claims === 1, 'startup_gate_duplicate'); } },
     controller: () => ({ async startLease() { starts++; time = 7000; return { qualification: { generation: 7 } }; } }),
+    authorizationRecovery: { beginAuthorizedOperation: () => authorizationToken, completeAuthorizedOperation: token => { check(token === authorizationToken, 'startup_gate_checkpoint_token'); observations++; }, cancelAuthorizedOperation() { throw Error('startup_gate_checkpoint_cancelled'); } },
+    close: async () => { throw Error('startup_gate_unexpected_close'); },
     renewalProgress: { beginWindow() {} }, performance: { now: () => time }, enforceRunningHeadroom: async () => true,
     diagnosticInitialWorkCaptured: () => false, setInterval: () => 1, tick() {}, finishDiagnosticWork() {},
   });
@@ -34,11 +38,12 @@ export async function assessGateSource(source) {
   await context.loadSignedWindow();
   check(context.maybeWindow.renewals.length === 0, 'startup_gate_zero_renewals');
   await context.startWindow();
-  check(starts === 1 && context.began === 7000 && context.nextRenew === 27000 && context.running === true, 'startup_gate_renew_clock');
-  return { schema: 'str005-startup-gate-compatibility-v1', sourceSha256: sha256(source), functions: ['loadWindow', 'loadSignedWindow', 'startWindow'],
+  check(starts === 1 && observations === 1 && context.began === 7000 && context.nextRenew === 27000 && context.running === true, 'startup_gate_renew_clock');
+  return { schema: 'str005-startup-gate-compatibility-v2', sourceSha256: sha256(source), authorizationSourceSha256: sha256(authorizationSource), functions: ['loadWindow', 'loadSignedWindow', 'startWindow'],
     zeroRenewalsAccepted: true, renewalOrigin: 'completed-controller-start', renewAfterMilliseconds: 20000, hardwareExercised: false,
-    parserAndControllerMocked: true };
+    parserAndControllerMocked: true, privateCheckpointMocked: true };
 }
 export async function verifyGateCompatibility(gateRoot) {
-  return assessGateSource(await readFile(resolve(gateRoot, 'web/worker-serial-acceptance.ts'), 'utf8'));
+  return assessGateSource(await readFile(resolve(gateRoot, 'web/worker-serial-acceptance.ts'), 'utf8'),
+    await readFile(resolve(gateRoot, 'web/worker-normal-authorization.ts'), 'utf8'));
 }

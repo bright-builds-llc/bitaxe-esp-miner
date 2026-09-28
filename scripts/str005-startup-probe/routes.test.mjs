@@ -4,7 +4,7 @@ import { createRoutes } from './routes.mjs';
 import { state as fixtureState, ledger, original } from '../str005-noise-serial/test-fixture.mjs';
 function fixture() {
   const context = { source_commit: 'a'.repeat(40), firmware_commit: 'b'.repeat(40), app_elf_sha256: 'c'.repeat(64), gate_commit: 'd'.repeat(40),
-    detector: { physical: 'e'.repeat(64) }, scope: 'share', attemptId: Buffer.alloc(16, 1).toString('base64url') };
+    expectedBootOrdinal: 5, expectedLedger: structuredClone(ledger), detector: { physical: 'e'.repeat(64) }, scope: 'share', attemptId: Buffer.alloc(16, 1).toString('base64url') };
   const state = fixtureState(context), closed = fixtureState(context, 'candidate', true), saved = new Map(), calls = [];
   let time = 1000;
   const status = { schema: 'worker-stratum-v2-status-v1', scope: 'share', state: 'idle', record: null, connection: null,
@@ -59,4 +59,15 @@ test('fresh measured allowance signs once, after signer prewarm and fixture read
   await assert.rejects(f.routes.handle('/window-artifacts', undefined, 'GET'));
   await f.call('/startup/recovery', { sequence: 0, stage: 'ledger', value: ledger }); await f.call('/startup/release');
   assert.equal(f.calls.at(-1), 'release');
+});
+
+for (const [label, change] of [
+  ['unexpected reboot', f => { f.status.observation.bootOrdinal += 1; }],
+  ['accounting changed after preparation', f => { f.context.expectedLedger.total_charged_ms += 180000; }],
+]) test(`prepared startup rejects ${label} before candidate admission`, async () => {
+  // Arrange
+  const f = fixture(); change(f);
+  // Act / Assert
+  await assert.rejects(f.before(), { code: 'startup_prepared_baseline' });
+  assert.equal(f.saved.has('before.json'), false);
 });

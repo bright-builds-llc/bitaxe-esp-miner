@@ -400,3 +400,7 @@ usb-bootstrap-measure *args:
 # One startup trial admitted by published capture/clear proof and fresh accounting.
 str005-startup-probe action *args:
     bazel run //scripts:str005_startup_probe -- {{ action }} {{ args }}
+
+# Preserve retained evidence and perform one admitted no-mining software restart.
+str005-startup-preparation action *args:
+    bazel run //scripts:str005_startup_preparation -- {{ action }} {{ args }}

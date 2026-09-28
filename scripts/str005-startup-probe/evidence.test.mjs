@@ -6,7 +6,7 @@ import { projectRecoveryPart } from '../str005-v2-serial/recovery-evidence.mjs';
 import { judge } from './evidence.mjs';
 function fixture() {
   const record = channelFixture().deviceRecords.at(-1), generation = record.workerGeneration;
-  Object.assign(record, { scope: 'share', outcome: 'cancelled', authorityDeadlineDeviceUs: 180001000,
+  Object.assign(record, { scope: 'share', outcome: 'rejected', firstFailure: { stage: 'worker_quiescent', category: 'evidence', atDeviceUs: 13000 }, authorityDeadlineDeviceUs: 180001000,
     observationDeadlineDeviceUs: null, poolSessionGeneration: 2, poolTransportEpoch: 3 });
   record.events = record.events.filter(row => row.kind !== 'connected');
   record.events.splice(1, 0, { ...record.events[0], kind: 'asic_dispatch' });
@@ -16,7 +16,7 @@ function fixture() {
     budget_reserved_ms: 180000, submitted: 0, accepted: 0, rejected: 0, nonce_work_correlations: 0, work_dispatched: 2,
     last_valid_heartbeat_ms: 100, budget_complete: true, safe_stop_complete: true, voltage_fresh: true, power_fresh: true,
     temperature_fresh: true, fan_fresh: true, watchdog_alive: true, mine_on_boot: false, voltage_volts: 5, power_watts: 3,
-    chip_temp_celsius: 35, fan_rpm: 3000, gate_closed_ms: 100, shutdown_started_ms: 100, safe_stop_stage: 'fan_paused',
+    chip_temp_celsius: 35, fan_rpm: 3000, gate_closed_ms: 9, shutdown_started_ms: 9, safe_stop_stage: 'fan_paused',
     revocation_reason: 'restoration_requested', active_limit_ms: 180000, shutdown_budget_ms: 15550, work_gate_remaining_ms: 0 };
   const checkpoint = { schema: 'worker-authorization-recovery-v1', checkpointId: Buffer.alloc(16, 3).toString('base64url'), generation, matched: true };
   const restored = { ...state(context), qualification, authorizationRecovery: checkpoint };
@@ -46,4 +46,40 @@ for (const [label, mutate, blocker] of [
 ]) test(`startup evaluator rejects missing ${label}`, () => {
   const { parts, context } = fixture(); mutate(parts); const result = judge(parts, context);
   assert.equal(result.complete, false); assert.ok(result.blockers.includes(blocker));
+});
+
+test('startup cannot reinterpret an authority failure before requested Stop as cleanup', () => {
+  // Arrange
+  const { parts, context } = fixture();
+  parts.recovery.status.record.firstFailure = { stage: 'worker_quiescent', category: 'authority', atDeviceUs: 6000 };
+  // Act
+  const result = judge(parts, context);
+  // Assert
+  assert.equal(result.complete, false);
+  assert.ok(result.blockers.includes('startup_normal_stop_unproven'));
+});
+
+for (const [label, mutate] of [
+  ['different revocation reason', p => { p.recovery.state.qualification.revocation_reason = 'heartbeat_timeout'; }],
+  ['same-millisecond ambiguous failure', p => { p.recovery.status.record.firstFailure.atDeviceUs = 9500; }],
+  ['different native generation', p => { p.recovery.state.qualification.generation += 1; }],
+  ['earlier socket release', p => { p.recovery.status.record.resources.socketClosedAtUs = 8500; }],
+  ['nonterminal evidence failure after Stop', p => { p.recovery.status.record.firstFailure.atDeviceUs = 10001; }],
+  ['protocol failure after Stop', p => { p.recovery.status.record.firstFailure.category = 'protocol'; }],
+]) test(`normal Stop classification rejects ${label}`, () => {
+  // Arrange
+  const { parts, context } = fixture(); mutate(parts);
+  // Act
+  const result = judge(parts, context);
+  // Assert
+  assert.equal(result.complete, false); assert.ok(result.blockers.includes('startup_normal_stop_unproven'));
+});
+test('post-Stop authority cancellation may prove startup without changing rejected outcome', () => {
+  // Arrange
+  const { parts, context } = fixture();
+  parts.recovery.status.record.firstFailure = { stage: 'worker_quiescent', category: 'authority', atDeviceUs: 10000 };
+  // Act
+  const result = judge(parts, context);
+  // Assert
+  assert.equal(result.complete, true); assert.equal(parts.recovery.status.record.outcome, 'rejected');
 });

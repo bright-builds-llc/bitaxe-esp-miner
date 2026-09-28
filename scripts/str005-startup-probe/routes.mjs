@@ -6,7 +6,7 @@ import { check, object, bytes } from '../str005-v2-serial/values.mjs';
 import { freshAttempt, signStart } from './signing.mjs';
 import { currentProof } from '../str005-panic-probe/model.mjs';
 import { baseline, validateRun } from './evidence.mjs';
-const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+import { isDeepStrictEqual as same } from 'node:util';
 /** One fresh lifetime, with recovery routes outside the effect failure latch. */
 export function createRoutes(context, { verify, verifyEffect = verify, persist, sign, launch, release, prewarm = async () => {}, now = Date.now }) {
   let scope, before, review, cooling, budgetChallenge, coolingChallenge, fixture, network, artifacts, beforeDiagnostics, baselineChallenge;
@@ -54,6 +54,7 @@ export function createRoutes(context, { verify, verifyEffect = verify, persist, 
       check(baselineChallenge && input.nonce === baselineChallenge.nonce && now() >= baselineChallenge.at && now() - baselineChallenge.at <= 120000, 'startup_baseline_stale'); check(!before && scope, 'startup_baseline_consumed'); await verify();
       baseline(input.state, context); validateLedger(input.ledger); requireExhaustedOriginal(input.original_budget);
       const status = parseStatus(input.status); check(status.scope === 'share' && status.state === 'idle', 'startup_before_idle');
+      check(status.observation.bootOrdinal === context.expectedBootOrdinal && same(input.ledger, context.expectedLedger), 'startup_prepared_baseline');
       before = { observedAtUnixMs: baselineChallenge.at, state: input.state, ledger: input.ledger, original_budget: input.original_budget, status: projectRecoveryPart('status', status, context), attempt: freshAttempt(input.ledger) };
       await save('before.json', before); return { attemptId: before.attempt.id };
     }
@@ -95,7 +96,7 @@ export function createRoutes(context, { verify, verifyEffect = verify, persist, 
       object(input, ['status', 'controlSessionBindingSha256']); fresh(review);
       check(!fixture && !issued && input.controlSessionBindingSha256 === review.binding, 'startup_fixture_admission');
       const status = parseStatus(input.status), o = status.observation;
-      check(status.scope === 'share' && status.state === 'idle' && o.wifiConnected && o.stationIpv4, 'startup_network');
+      check(status.scope === 'share' && status.state === 'idle' && o.bootOrdinal === context.expectedBootOrdinal && o.wifiConnected && o.stationIpv4, 'startup_network');
       fixture = await launch({ ...context, attemptId: before.attempt.id, qualificationAttempt: before.attempt }, o.stationIpv4);
       network = { scope: scope.challengeId, at: now(), boot: o.bootOrdinal, generation: o.workerGeneration, transport: o.serialTransportEpoch };
       return { fixture_ready: true };

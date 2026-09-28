@@ -3,6 +3,7 @@ import { validateLedger, requireExhaustedOriginal } from '../fixed-usb-qualifica
 import { recoveryConclusion, validateRecoveryParts } from '../str005-v2-serial/recovery-evidence.mjs';
 import { check, object } from '../str005-v2-serial/values.mjs';
 import { LIMITS } from './contract.mjs';
+import { normalStopVerified } from './normal-stop.mjs';
 export function baseline(state, context) {
   validateState(state, context); const p = state.preservation;
   check(state.connected && !state.running && !state.heartbeatSuppressed && state.renewalsConfirmed === 0 &&
@@ -45,6 +46,7 @@ export function judge(parts, context) {
     blockers.push('startup_device_dispatch_unproven');
   if (run?.proof && recovery.state && (recovery.state.authorizationRecovery?.matched !== true ||
       recovery.state.authorizationRecovery.generation !== run.proof.generation)) blockers.push('startup_authorization_checkpoint_unproven');
+  if (run?.proof && !normalStopVerified(record, recovery.state, run.proof.generation)) blockers.push('startup_normal_stop_unproven');
   if (parts.hostReleased !== true) blockers.push('startup_host_release_unproven');
   return { schema: 'str005-startup-result-v1', complete: blockers.length === 0, blockers, parity_promotion: false,
     historical_resource_proof: false, start_proven: Boolean(run?.observedStart), dispatch_increased: Boolean(run?.proof),

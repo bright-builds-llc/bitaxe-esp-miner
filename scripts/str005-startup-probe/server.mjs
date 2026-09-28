@@ -12,7 +12,6 @@ import { validateDiagnosticExport } from '../fixed-usb-qualification/diagnostic-
 import { proof, writeNew } from '../str005-noise-serial/files.mjs';
 import { parseDetector } from '../str005-panic-probe/detector.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
-import { verifyClear } from './clear.mjs';
 import { createRoutes } from './routes.mjs';
 
 export async function createServerOwner({ root, context, assets, authorityDirectory, verify }, operations = {}) {
@@ -28,7 +27,7 @@ export async function createServerOwner({ root, context, assets, authorityDirect
     await persist('fixture-release.json', { schema: 'str005-startup-fixture-release-v1', complete: true });
   }
   const verifyEffect = async () => {
-    await verify(); await verifyClear(root, context);
+    await verify(); check(context.admission === 'prepared-normal-stop-v1', 'startup_prepared_admission');
     const path = resolve(dirname(root), 'startup-detector.stdout.log'); await protectedPath(path);
     const bytes = await readFile(path), age = Date.now() - (await stat(path)).mtimeMs;
     const detector = parseDetector(bytes.toString('utf8'), context.physical, age);

@@ -1,0 +1,19 @@
+{
+  "schema": "str005-normal-stop-compatibility-v1",
+  "firmwareCommit": "361425b902a3e214d6d0b052118c9e7a710458aa",
+  "elfSha256": "7f3ea3ce75bf3eb8eb4c9a23a5eb7de5110114e124c22341f5cd2a867f97ebf2",
+  "historicalGateCommit": "d3ac37435fbf98af76113fe5b962989e3616f707",
+  "currentGateCommit": "bd26128788dd3f04842984e545fa2382c0b50561",
+  "gateDiffSha256": "db47eba30d9a15f75ce1a2503a3bc0d878a6777bc6181f041e207be95c581a8b",
+  "changedGatePaths": [
+    ".scratch/core-dump-self-test/issues/03-normal-stop-checkpoint.md",
+    "docs/protocol/worker-normal-stop-authorization.md",
+    "web/worker-authorization-recovery.ts",
+    "web/worker-normal-authorization.test.ts",
+    "web/worker-normal-authorization.ts",
+    "web/worker-normal-stop-page.fixture.ts",
+    "web/worker-normal-stop-page.test.ts",
+    "web/worker-serial-acceptance.ts",
+    "web/worker-serial.test-support.ts"
+  ]
+}
