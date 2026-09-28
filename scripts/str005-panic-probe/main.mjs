@@ -42,6 +42,7 @@ async function source(root) {
     selfTestEnabled: lines.includes('Development panic probe: self-test enabled.'),
     installEnabled: lines.includes('Development panic probe: installation enabled.'),
     storeAuditRequired: lines.includes('Development panic probe: store diagnostics required.'),
+    cutoffUserRegionRequired: lines.includes('Development panic probe: task-stack capture required.'),
     contractSha256: sha256(await readFile(resolve(root, contract))) };
 }
 async function predecessor(root) {
@@ -89,7 +90,7 @@ export async function main(argv) {
     const flashBinary = retainedSource ? null : await realpath(resolve(firmwareRoot, 'bazel-bin/tools/flash/flash'));
     check(!options['--flash-binary'] || await realpath(options['--flash-binary']) === flashBinary, 'panic_flash_binary');
     const context = { schema: 'str005-panic-probe-v1', ...published, ...packaged, firmware_commit: retainedSource?.context.firmware_commit ?? published.commit,
-      recoveryOnly, captureExisting, storeAuditRequired: published.storeAuditRequired && !recoveryOnly, ...(captureExisting ? { corePreservation } : {}), ...(retainedSource ? { installEnabled: false, selfTestEnabled: captureExisting && published.selfTestEnabled, continuity_basis: 'current-session-only', retainedManifest: retained.retainedManifest } : {}),
+      recoveryOnly, captureExisting, storeAuditRequired: published.storeAuditRequired && !recoveryOnly, cutoffUserRegionRequired: published.cutoffUserRegionRequired && !recoveryOnly, ...(captureExisting ? { corePreservation } : {}), ...(retainedSource ? { installEnabled: false, selfTestEnabled: captureExisting && published.selfTestEnabled, continuity_basis: 'current-session-only', retainedManifest: retained.retainedManifest } : {}),
       ...(failedInstall ? { failedInstall: { root: failedInstall.root, seal_sha256: failedInstall.seal_sha256, context_sha256: failedInstall.context_sha256 } } : {}),
       ...(installed ? { installedAnchor: { root: installed.root, seal_sha256: installed.seal_sha256, context_sha256: installed.context_sha256, candidate_proof_sha256: installed.candidate_proof_sha256 } } : {}),
       ...(before ? { beforeRecovery: { root: before.root, seal_sha256: before.seal_sha256, context_sha256: before.context_sha256 } } : {}),
@@ -107,7 +108,7 @@ export async function main(argv) {
       await writeNew(resolve(root, 'failed-install-review.json'), { ...failedInstall.review, seal_sha256: failedInstall.seal_sha256, claim_sha256: failedInstall.claim_sha256, runner_sha256: failedInstall.runner_sha256, receipt_sha256: failedInstall.receipt_sha256, log_sha256: failedInstall.log_sha256, stdout_sha256: failedInstall.stdout_sha256 });
     }
     const nativeAudit = retainedSource ? retainedSource.audit.value : await runNativeAudit(['--elf', context.candidateElf, '--output', resolve(root, 'native-audit.json')]);
-    validateNativeAudit(nativeAudit, context.app_elf_sha256);
+    validateNativeAudit(nativeAudit, context.app_elf_sha256, context.cutoffUserRegionRequired);
     context.nativeAuditSha256 = await fileDigest(resolve(root, 'native-audit.json'));
     if (context.storeAuditRequired) {
       const store = await runStoreAudit(['--elf', context.candidateElf, '--output', resolve(root, 'store-audit.json')]);

@@ -8,8 +8,8 @@ const iram = address => address >= 0x40370000 && address < 0x403e0000;
 const dram = address => address >= 0x3fc80000 && address < 0x3fd00000;
 function symbols(text) {
   return text.split('\n').flatMap(line => {
-    const match = /^([a-f0-9]+)\s+([a-f0-9]+)\s+[A-Za-z]\s+(.+)$/u.exec(line);
-    return match ? [{ address: parseInt(match[1], 16), size: parseInt(match[2], 16), name: match[3] }] : [];
+    const match = /^([a-f0-9]+)(?:\s+([a-f0-9]+))?\s+([A-Za-z])\s+(.+)$/u.exec(line);
+    return match ? [{ address: parseInt(match[1], 16), size: match[2] ? parseInt(match[2], 16) : 0, binding: match[3], name: match[4] }] : [];
   });
 }
 function instructions(text) {
@@ -46,6 +46,17 @@ export function audit(elf, symbolText, wrapperText, portText) {
   for (const item of [receipt, gate, configured, selfTest])
     check(dram(item.address) && dram(item.address + item.size - 1), 'native_state_dram');
   check(receipt.size === 28, 'native_receipt_size');
+  const start = one(row => row.name === '_coredump_dram_start'), end = one(row => row.name === '_coredump_dram_end');
+  check(start.binding === 'A' && end.binding === 'A' && start.address % 4 === 0 && end.address > start.address &&
+    dram(start.address) && dram(end.address - 1) && receipt.address >= start.address && receipt.address + receipt.size <= end.address,
+  'native_receipt_user_region');
+  const regions = one(row => row.name === 's_memory_sections');
+  check(regions.size >= 16 && regions.size <= 64 && regions.size % 8 === 0, 'native_sdk_user_regions');
+  let matchedRegions = 0;
+  for (let offset = 0; offset < regions.size; offset += 8) {
+    if (wordAt(elf, regions.address + offset) === start.address && wordAt(elf, regions.address + offset + 4) === end.address) matchedRegions++;
+  }
+  check(matchedRegions === 1, 'native_sdk_user_regions');
   const code = instructions(wrapperText).filter(row => row.address >= wrapper.address && row.address < wrapper.address + wrapper.size);
   check(code.length > 0 && code.length <= 96 && code[0].op === 'entry' && /^a1, (?:16|32|48|64)$/u.test(code[0].args), 'native_frame');
   const regs = new Map(), stores = [], calls = [];
@@ -85,8 +96,8 @@ export function audit(elf, symbolText, wrapperText, portText) {
   }
   check(!port.some(row => /^call[048]|^call12|^j$/u.test(row.op) && row.args.includes('<esp_panic_handler>')), 'native_port_bypass');
   check(routes === 1, 'native_port_routing');
-  return { schema: 'str005-native-panic-cutoff-audit-v1', elf_sha256: sha256(elf), wrapper_iram: true, literals_iram: true,
-    state_internal_dram: true, safe_latches_before_delegate: true, generation_revoked_before_delegate: true,
+  return { schema: 'str005-native-panic-cutoff-audit-v2', elf_sha256: sha256(elf), wrapper_iram: true, literals_iram: true,
+    state_internal_dram: true, receipt_user_region: true, safe_latches_before_delegate: true, generation_revoked_before_delegate: true,
     no_calls_or_branches_before_cutoff: true, port_routes_wrapper: true, wrapper_instructions: code.length,
     hardware_verified: false };
 }

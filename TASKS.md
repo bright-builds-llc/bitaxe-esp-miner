@@ -4651,6 +4651,7 @@ The following gates authorize only its verified staged effects after publication
 
 Development panic probe: stage A enabled.
 Development panic probe: store diagnostics required.
+Development panic probe: task-stack capture required.
 Development panic probe: installation enabled.
 Development panic probe: self-test enabled.
 Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
@@ -5074,6 +5075,42 @@ immediate post-panic store observation before any managed ROM reset. Later
 recovery is explicitly outside the panic boot. Missing diagnostics never count
 as capture success. Simplification retained five SDK seams and the existing
 collector; no SDK edits, partition resize, heap suppression or stack increase.
+
+Measured capture boundary (installation006, source bfc2cbb0): controlled fault
+acknowledged and explicit panic boot1→2 returned in 8,355 ms with uninterrupted
+USB. Valid source/boot-bound receipt: init_result=0, requested=prepared=1,195,632,
+prepare_result=store_result=257 (NO_MEM), capacity=974,848, start/end unavailable.
+Pinned SDK alignment/checksum requires 1,195,680 bytes, exceeding capacity by
+220,832. Managed read preserved all 974,848 bytes: erased. Final boot3 recovery,
+unchanged ledgers, restoration and resource release passed. The outcome is
+confirmed capacity rejection before writing, not capture success. Sealed
+installation006 inventory: b1034a75f3927844fd98960b691064618a1850da866b3f91c5b0b045bc07c25f.
+
+Measured-cause correction and fresh trial:
+
+- [x] Use the official task-stack/register profile (bulk heap/DRAM capture off),
+  explicitly include the 28-byte cutoff receipt via the SDK user region,
+  and test resolved config plus native section containment and decoder rules.
+- [ ] Publish the exact profile/command contract and clean package; preserve
+  current state/core under current-recovery-007 from successful installation006.
+- [ ] Run installation007's one new ASIC-off self-test after verified progress;
+  collect immediate diagnostics, preserve/decode the actual dump and verify
+  captured cutoff, then independently recover and release all resources.
+- [ ] Admit no Start or clearing until checksum/full-ELF/cutoff criteria pass;
+  otherwise retain the exact new blocker without an unchanged retry.
+
+This changes capture content, not partition layout, stack sizes or safety limits.
+Task registers, TCBs and eligible stacks remain; bulk heap/PSRAM buffers are
+excluded explicitly. Full private capture remains authorized for development;
+this finite diagnostic profile does not claim complete physical memory. The
+new native cutoff audit v2 must prove receipt inclusion in the selected region;
+v1 historical records remain readable but cannot admit the new capture stage.
+
+Prospective correction contract: [measured-capacity trial](docs/hardware/str005-panic-probe.md#measured-capacity-correction-trial)
+uses current-recovery-007 and installation007. The one new fault follows measured
+capacity rejection plus the verified official profile correction. SDK selected-
+region native audit v2 passes on the dirty candidate, as do captured-byte decoder
+regressions; clean published audits and hardware capture remain pending.
 
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 

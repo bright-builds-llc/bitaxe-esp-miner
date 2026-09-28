@@ -13,10 +13,12 @@ function program(kind) {
   const strings = Buffer.from(`\0${kind === 'missing-symbol' ? 'ABSENT_CUTOFF_RECEIPT' : 'BITAXE_PANIC_CUTOFF_RECEIPT'}\0`);
   const symbol = Buffer.alloc(32); symbol.writeUInt32LE(1, 16); symbol.writeUInt32LE(address, 20);
   symbol.writeUInt32LE(28, 24); symbol[28] = 0x11; symbol.writeUInt16LE(1, 30);
-  const stringOffset = 84, symbolOffset = stringOffset + strings.length, shoff = symbolOffset + symbol.length;
+  // This tempting program-only receipt must never substitute for captured PT_LOAD bytes.
+  const initialized = kind === 'program-receipt-only' ? words([0x50434f32, 0x402, 0x402, 0x400, 7, (7 << 3) | 4, 0x53544631]) : Buffer.alloc(0);
+  const stringOffset = 84 + initialized.length, symbolOffset = stringOffset + strings.length, shoff = symbolOffset + symbol.length;
   // Deliberately no initialized receipt. Program NOBITS cannot provide captured memory.
-  return Buffer.concat([header(false, 1, shoff, 4), words([1, 84, address, address, 0, 28, 6, 4]), strings, symbol,
-    Buffer.alloc(40), words([0, 8, 3, address, 84, 28, 0, 0, 4, 0]),
+  return Buffer.concat([header(false, 1, shoff, 4), words([1, 84, address, address, initialized.length, 28, 6, 4]), initialized, strings, symbol,
+    Buffer.alloc(40), words([0, initialized.length ? 1 : 8, 3, address, 84, 28, 0, 0, 4, 0]),
     words([0, 3, 0, 0, stringOffset, strings.length, 0, 0, 1, 0]),
     words([0, 2, 0, 0, symbolOffset, symbol.length, 2, 1, 4, 16])]);
 }
@@ -34,7 +36,7 @@ export function cutoffFixture(kind = 'valid') {
   if (kind === 'unrevoked') values[5] = (7 << 3) | 2;
   if (kind === 'generation-mismatch') values[4] = 8;
   if (kind === 'marker-invalid') values[6] = 1;
-  const receipt = words(values), missing = kind === 'missing-memory', duplicate = kind === 'overlap';
+  const receipt = words(values), missing = ['missing-memory', 'program-receipt-only'].includes(kind), duplicate = kind === 'overlap';
   const phnum = missing ? 1 : duplicate ? 3 : 2, start = 52 + 32 * phnum;
   const data = kind === 'truncated' ? receipt.subarray(0, 24) : receipt;
   const loads = missing ? [] : [words([1, start + note.length, address, address, data.length, receipt.length, 6, 4])];

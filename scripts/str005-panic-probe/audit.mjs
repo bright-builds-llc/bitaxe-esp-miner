@@ -4,9 +4,11 @@ import { check, object } from '../str005-v2-serial/values.mjs';
 
 const flags = ['wrapper_iram', 'literals_iram', 'state_internal_dram', 'safe_latches_before_delegate',
   'generation_revoked_before_delegate', 'no_calls_or_branches_before_cutoff', 'port_routes_wrapper'];
-export function validateNativeAudit(report, elfSha256) {
-  object(report, ['schema', 'elf_sha256', ...flags, 'wrapper_instructions', 'hardware_verified']);
-  check(report.schema === 'str005-native-panic-cutoff-audit-v1' && report.elf_sha256 === elfSha256 &&
+export function validateNativeAudit(report, elfSha256, requireUserRegion = false) {
+  const userRegion = report.schema === 'str005-native-panic-cutoff-audit-v2';
+  object(report, ['schema', 'elf_sha256', ...flags, 'wrapper_instructions', 'hardware_verified', ...(userRegion ? ['receipt_user_region'] : [])]);
+  check((userRegion || report.schema === 'str005-native-panic-cutoff-audit-v1') && (!requireUserRegion || userRegion) &&
+    (!userRegion || report.receipt_user_region === true) && report.elf_sha256 === elfSha256 &&
     flags.every(key => report[key] === true) && report.hardware_verified === false &&
     Number.isSafeInteger(report.wrapper_instructions) && report.wrapper_instructions > 0 && report.wrapper_instructions <= 96,
   'panic_native_audit');
@@ -14,7 +16,7 @@ export function validateNativeAudit(report, elfSha256) {
 export async function verifyNativeAudit(root, context) {
   const saved = await proof(root, 'native-audit.json');
   check(saved.sha256 === context.nativeAuditSha256 && await fileDigest(context.candidateElf) === context.app_elf_sha256, 'panic_native_audit_changed');
-  validateNativeAudit(saved.value, context.app_elf_sha256);
+  validateNativeAudit(saved.value, context.app_elf_sha256, context.cutoffUserRegionRequired === true);
   if (context.storeAuditRequired) {
     const store = await proof(root, 'store-audit.json');
     check(store.sha256 === context.storeAuditSha256, 'panic_store_audit_changed');

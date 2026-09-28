@@ -13,7 +13,8 @@ static CONFIGURED_OUTPUTS: AtomicU32 = AtomicU32::new(0);
 // enable register, output latch, generation, revoked state, self-test marker.
 // Magic is committed last; values are evidence only when read from the core.
 #[no_mangle]
-#[link_section = ".dram1.bitaxe_panic_cutoff_receipt"]
+// IDF includes this bounded user region even when bulk heap capture is disabled.
+#[link_section = ".dram2.coredump.bitaxe_panic_cutoff"]
 pub static mut BITAXE_PANIC_CUTOFF_RECEIPT: [u32; 7] = [0; 7];
 
 #[link_section = ".dram1.bitaxe_core_self_test"]

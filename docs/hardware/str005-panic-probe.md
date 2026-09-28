@@ -526,3 +526,54 @@ proof pass, publish/test the separate archival/clear/Start contract before its
 first effect, select a new allowance from fresh accounting, and retain the full
 180,000-ms reservation rule. If they fail, record the precise measured blocker
 and verify a targeted correction before any fresh attempt. Parity stays 90/95.
+
+## Measured-capacity correction trial
+
+Installation006 produced an integrity-valid immediate previous-boot receipt:
+write initialization succeeded, raw requested/prepared length was 1,195,632 bytes,
+prepare and store returned NO_MEM (257), and capacity was 974,848 bytes. Pinned
+32-byte alignment plus SHA-256 requires 1,195,680 bytes. The full preserved
+partition remained erased. Startup, acknowledgement/panic/recovery and cleanup
+passed independently. This is a measured pre-write capacity boundary.
+
+The verified-fix continuation uses the official task-stack/register profile with
+`CONFIG_ESP_COREDUMP_CAPTURE_DRAM=n`. Bulk heap/PSRAM and ordinary DRAM data are
+excluded; eligible task stacks, TCBs, registers and the explicit 28-byte cutoff
+receipt remain. The receipt uses the SDK `.dram2.coredump.*` selected-user region.
+No partition, stack size, reserve, authority or hardware-safety limit changes.
+Native cutoff audit v2 must prove both linker containment and actual SDK memory-
+section table selection; a program-image default can never replace captured
+receipt bytes. Legacy v1 audits remain readable for recovery but cannot admit
+this profile's self-test.
+
+Publish/test the configuration, native inclusion/decoder regressions, stack/store
+and cutoff audits, exact package and real CLI dry-run. Then use fresh protected
+parents current-recovery-007 and installation007, each with an absent `attempt`
+child and distinct private sibling logs. The recovery-only selector is
+`--recover-installed-root <installation006/attempt>` with retained build-bfc2cbb0.
+That lineage supplies installed identity only; capture006 remains unverified.
+Freshly authenticate, measure accounting, Stop/Close and preserve the actual core
+region; verify application return/release and seal recovery007.
+
+Installation007 uses the new canonical package and
+`--before-recovery-root <current-recovery-007/attempt>`, with a new live same-page
+baseline, fresh detector, and one state-preserving flash. Retain the existing
+360-second capture and 1,200-second outer bound. After exact candidate identity,
+preservation and current ready-receipt checks, run one new ASIC-off self-test.
+This is progress-backed continuation after the demonstrated capacity correction,
+not an unchanged retry. Preserve the immediate post-panic store observation and
+fresh recovery proof before managed ROM acquisition of the full core region.
+
+Require actual vendor checksum, matching full ELF identity, private inspection
+and actual captured cutoff proof. Reconnect and collect independent current
+recovery after the managed read, then release page/server/process/listener/serial
+ownership and seal. SDK success or smaller requested length alone is insufficient.
+The same authoritative capacity signature recurring after this fix stops further
+faults; any different failure needs its own measured discriminator and verified
+correction. Preserve every earlier result and earliest failure.
+
+Clearing, Start, grants, mining, renewals, external pools, factory reset, NVS erase,
+direct pins and Share002 replay remain disabled in this stage. A separate verified
+contract must bind successful archive/checksum/cutoff proof before any clearing
+or fresh bounded Start. Full private dumps remain development-authorized, and
+all raw memory stays protected. Parity remains 90/95.

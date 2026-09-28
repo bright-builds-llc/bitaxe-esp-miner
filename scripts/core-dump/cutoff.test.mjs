@@ -18,7 +18,7 @@ async function run(t, kind) {
     '--elf-sha256', fixture.identity, '--private-root', join(root, 'result')], { cwd: repo, encoding: 'utf8' });
   return { root, result, fixture };
 }
-test('cutoff comes from captured native DRAM after real vendor checksum and ELF identity verification', async t => {
+test('cutoff comes from a captured 28-byte user region without bulk heap after vendor checksum and ELF identity verification', async t => {
   // Arrange / Act
   const { root, result, fixture } = await run(t, 'valid');
   // Assert
@@ -30,13 +30,13 @@ test('cutoff comes from captured native DRAM after real vendor checksum and ELF 
   assert.equal((await stat(join(root, 'result/inspection.json'))).mode & 0o777, 0o600);
   assert.doesNotMatch(result.stdout, /configuredMask|revokedState|50434f32|3fc90000/);
 });
-for (const kind of ['missing-symbol', 'missing-memory', 'truncated', 'overlap', 'unsafe', 'unconfigured', 'input-mode', 'bad-magic', 'unrevoked', 'generation-mismatch', 'marker-invalid', 'checksum']) test(`rejects ${kind} cutoff evidence`, async t => {
+for (const kind of ['missing-symbol', 'missing-memory', 'program-receipt-only', 'truncated', 'overlap', 'unsafe', 'unconfigured', 'input-mode', 'bad-magic', 'unrevoked', 'generation-mismatch', 'marker-invalid', 'checksum']) test(`rejects ${kind} cutoff evidence`, async t => {
   // Arrange / Act
   const { root, result } = await run(t, kind);
   // Assert
   assert.equal(result.status, 1); assert.equal(JSON.parse(result.stderr).category, 'decoder_failed');
   assert.equal(result.stdout, '');
-  const categories = { 'missing-symbol': 'cutoff_symbol', 'missing-memory': 'cutoff_mapping', truncated: 'cutoff_truncated',
+  const categories = { 'missing-symbol': 'cutoff_symbol', 'missing-memory': 'cutoff_mapping', 'program-receipt-only': 'cutoff_mapping', truncated: 'cutoff_truncated',
     overlap: 'cutoff_mapping', unsafe: 'cutoff_unsafe_outputs', unconfigured: 'cutoff_unsafe_outputs', 'input-mode': 'cutoff_unsafe_outputs',
     'bad-magic': 'cutoff_magic', unrevoked: 'cutoff_unrevoked', 'generation-mismatch': 'cutoff_unrevoked', 'marker-invalid': 'cutoff_self_test_marker' };
   if (categories[kind]) assert.match(await readFile(join(root, 'result/inspect.stderr'), 'utf8'), new RegExp(categories[kind]));
@@ -55,6 +55,7 @@ test('decoder constants agree with the actual native receipt ABI', async () => {
   const model = await readFile(join(repo, 'firmware/bitaxe/src/panic_cutoff_model.rs'), 'utf8');
   const revocation = await readFile(join(repo, 'firmware/bitaxe/src/production_mining_session/revocation.rs'), 'utf8');
   // Assert
+  assert.match(native, /link_section = "\.dram2\.coredump\.bitaxe_panic_cutoff"/);
   assert.match(native, /BITAXE_PANIC_CUTOFF_RECEIPT: \[u32; 7\]/);
   assert.match(native, /write_volatile\(receipt, 0x50434f32\)/);
   assert.match(native, /SELF_TEST_MARKER.store\(0x53544631/);

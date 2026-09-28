@@ -11,8 +11,10 @@ function fixture() {
   }
   [0x60004008, 0x6000400c, 0x3fc82000, 0x3fc81000, 0x50434f32, 0x42000100].forEach((value, i) => elf.writeUInt32LE(value, 0x1100 + i * 4));
   elf.writeUInt32LE(0x40370200, 0x2100);
+  elf.writeUInt32LE(0x3fc81000, 0x2208); elf.writeUInt32LE(0x3fc8101c, 0x220c);
   const symbols = [
     '40370200 00000200 T __wrap_esp_panic_handler', '42000100 00000100 T esp_panic_handler',
+    '3fc81000 A _coredump_dram_start', '3fc8101c A _coredump_dram_end', '42000200 00000010 r s_memory_sections',
     '3fc81000 0000001c D BITAXE_PANIC_CUTOFF_RECEIPT', '3fc82000 00000084 D revocation6global4GATE',
     '3fc83000 00000004 d panic_cutoff18CONFIGURED_OUTPUTS', '3fc83004 00000004 d panic_cutoff16SELF_TEST_MARKER',
   ].join('\n');
@@ -27,6 +29,7 @@ function fixture() {
 }
 test('native audit binds actual literal words, latch order and revocation expression', () => {
   const f = fixture(); const result = f.run();
+  assert.equal(result.schema, 'str005-native-panic-cutoff-audit-v2'); assert.equal(result.receipt_user_region, true);
   assert.equal(result.safe_latches_before_delegate, true); assert.equal(result.hardware_verified, false);
 });
 test('native audit rejects reversed enable polarity', () => {
@@ -51,4 +54,19 @@ test('native audit rejects bypassed or missing wrapper route', () => {
   const f = fixture(); f.elf.writeUInt32LE(0x42000100, 0x2100);
   assert.throws(() => f.run(), /native_port_bypass/);
   f.port = ''; assert.throws(() => f.run(), /native_port_routing/);
+});
+
+test('receipt must fit wholly in the dedicated user region', () => {
+  for (const symbols of [
+    ['3fc81000 A _coredump_dram_start', '3fc81004 A _coredump_dram_start'],
+    ['3fc8101c A _coredump_dram_end', '3fc81018 A _coredump_dram_end'],
+    ['3fc8101c A _coredump_dram_end', '3fc81000 A _coredump_dram_end'],
+  ]) {
+    const f = fixture(); f.symbols = f.symbols.replace(...symbols);
+    assert.throws(() => f.run(), /native_receipt_user_region/);
+  }
+});
+test('SDK memory-region table must actually reference the receipt section', () => {
+  const f = fixture(); f.elf.writeUInt32LE(0x3fc81020, 0x2208);
+  assert.throws(() => f.run(), /native_sdk_user_regions/);
 });

@@ -9,20 +9,27 @@ with a fresh current-state recovery proof and the published effect contract.
 ## Diagnostic firmware
 
 `just package` uses the canonical optimized firmware graph. It enables ESP-IDF
-5.5.4 flash ELF dumps with SHA-256 checksums, internal DRAM capture, up to 64 tasks,
+5.5.4 flash ELF dumps with SHA-256 checksums, eligible task stacks/registers and
+explicitly selected diagnostic memory, up to 64 tasks,
 a dedicated 4096-byte dump stack, full 64-character application ELF identity and
 first-dump preservation. Native console routing remains UART0 with no secondary
 console; browser Web Serial retains its existing ownership.
 
-Only the core-dump partition grows: offset `0xf12000`, size `0xee000` (952 KiB).
+The core-dump partition remains at offset `0xf12000`, size `0xee000` (952 KiB).
 All NVS, application, filesystem and OTA-data locations remain unchanged.
 Ordinary update segments continue to exclude the core-dump region. The build
 checks the effective sdkconfig and generated binary table, rather than trusting
-requested defaults. This configuration captures the memory supported by IDF;
-the pinned writer walks used blocks from all 8-bit heaps, including PSRAM.
-External static sections are a separate limitation; do not infer that PSRAM
-heap allocations are excluded. Task/partition limits remain finite. A truncated
-or missing dump is a failed observation.
+requested defaults. After measured capacity rejection in installation006, the
+current profile disables `CONFIG_ESP_COREDUMP_CAPTURE_DRAM`: bulk heap/PSRAM and
+ordinary DRAM data capture are excluded. The 28-byte panic-cutoff receipt uses the
+official `.dram2.coredump.*` selected-user region and must be proven present by
+native audit and actual dump decoding. TCBs, registers and eligible task stacks
+remain captured under the SDK's task-count and sanity limits.
+
+The earlier full-DRAM profile walked used blocks from all 8-bit heaps, including
+PSRAM, and requested more space than the partition. Full private development
+capture remains authorized; the current bounded profile does not claim complete
+physical memory. A truncated or missing dump is still a failed observation.
 
 The output directory includes the exact optimized firmware ELF with line-level
 debug information, its `.map`, resolved `.sdkconfig` and `.debug.json` digest

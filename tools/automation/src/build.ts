@@ -209,7 +209,7 @@ export function requireResolvedCoreDumpContract(sdkconfig: string): void {
   const lines = sdkconfig.split(/\r?\n/u);
   for (const required of [
     "CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y", "CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF=y",
-    "CONFIG_ESP_COREDUMP_CHECKSUM_SHA256=y", "CONFIG_ESP_COREDUMP_CAPTURE_DRAM=y",
+    "CONFIG_ESP_COREDUMP_CHECKSUM_SHA256=y",
     "CONFIG_ESP_COREDUMP_MAX_TASKS_NUM=64", "CONFIG_ESP_COREDUMP_STACK_SIZE=4096",
     "CONFIG_ESP_COREDUMP_FLASH_NO_OVERWRITE=y", "CONFIG_ESP_COREDUMP_CHECK_BOOT=y",
     "CONFIG_ESP_CONSOLE_UART_DEFAULT=y", "CONFIG_ESP_CONSOLE_SECONDARY_NONE=y",
@@ -220,7 +220,7 @@ export function requireResolvedCoreDumpContract(sdkconfig: string): void {
     const matches = lines.filter(line => line.startsWith(prefix));
     if (matches.length !== 1 || matches[0] !== required) throw new Error(`resolved core dump contract missing ${required}`);
   }
-  for (const key of ["CONFIG_ESP_COREDUMP_ENABLE_TO_UART", "CONFIG_ESP_COREDUMP_ENABLE_TO_NONE", "CONFIG_ESP_COREDUMP_LOGS", "CONFIG_COMPILER_OPTIMIZATION_DEBUG"]) {
+  for (const key of ["CONFIG_ESP_COREDUMP_ENABLE_TO_UART", "CONFIG_ESP_COREDUMP_ENABLE_TO_NONE", "CONFIG_ESP_COREDUMP_LOGS", "CONFIG_COMPILER_OPTIMIZATION_DEBUG", "CONFIG_ESP_COREDUMP_CAPTURE_DRAM"]) {
     if (!lines.includes(`# ${key} is not set`) || lines.some(line => line.startsWith(`${key}=`))) {
       throw new Error(`resolved core dump contract requires disabled ${key}`);
     }

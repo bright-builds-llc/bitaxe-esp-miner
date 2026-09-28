@@ -23,3 +23,13 @@ test('store audit requires every native prerequisite and a bounded added stack',
   assert.throws(()=>validateStoreAudit({...report,max_added_stack_bytes:272},hash));
   assert.throws(()=>validateStoreAudit(report,'b'.repeat(64)));
 });
+
+test('task-stack capture requires selected-user-region evidence while history remains readable', () => {
+  // Arrange
+  const selected = { ...valid, schema: 'str005-native-panic-cutoff-audit-v2', receipt_user_region: true };
+  // Act / Assert
+  assert.doesNotThrow(() => validateNativeAudit(valid,hash));
+  assert.throws(() => validateNativeAudit(valid,hash,true));
+  assert.doesNotThrow(() => validateNativeAudit(selected,hash,true));
+  assert.throws(() => validateNativeAudit({...selected,receipt_user_region:false},hash,true));
+});

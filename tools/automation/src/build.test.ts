@@ -67,7 +67,7 @@ test("main telemetry handoff rejects incompatible stack or scheduling configurat
 
 const captureConfig = [
   "CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y", "CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF=y",
-  "CONFIG_ESP_COREDUMP_CHECKSUM_SHA256=y", "CONFIG_ESP_COREDUMP_CAPTURE_DRAM=y",
+  "CONFIG_ESP_COREDUMP_CHECKSUM_SHA256=y", "# CONFIG_ESP_COREDUMP_CAPTURE_DRAM is not set",
   "CONFIG_ESP_COREDUMP_MAX_TASKS_NUM=64", "CONFIG_ESP_COREDUMP_STACK_SIZE=4096",
   "CONFIG_ESP_COREDUMP_FLASH_NO_OVERWRITE=y", "CONFIG_ESP_COREDUMP_CHECK_BOOT=y",
   "CONFIG_ESP_CONSOLE_UART_DEFAULT=y", "CONFIG_ESP_CONSOLE_SECONDARY_NONE=y",
@@ -86,6 +86,20 @@ test("resolved crash capture rejects missing, duplicate and weakened settings", 
   }
   assert.throws(() => requireResolvedCoreDumpContract(captureConfig.replace("FLASH_NO_OVERWRITE=y", "FLASH_NO_OVERWRITE=n")), /core dump contract/u);
   assert.throws(() => requireResolvedCoreDumpContract(`${captureConfig}\nCONFIG_ESP_COREDUMP_ENABLE_TO_UART=y`), /core dump contract/u);
+});
+
+test("resolved crash capture requires explicit heap capture disablement while retaining task capacity", () => {
+  // Arrange
+  const disabled = "# CONFIG_ESP_COREDUMP_CAPTURE_DRAM is not set";
+
+  // Act / Assert
+  assert.doesNotThrow(() => requireResolvedCoreDumpContract(captureConfig));
+  for (const replacement of ["", "CONFIG_ESP_COREDUMP_CAPTURE_DRAM=y", "CONFIG_ESP_COREDUMP_CAPTURE_DRAM=n"]) {
+    assert.throws(() => requireResolvedCoreDumpContract(captureConfig.replace(disabled, replacement)), /requires disabled CONFIG_ESP_COREDUMP_CAPTURE_DRAM/u);
+  }
+  assert.throws(() => requireResolvedCoreDumpContract(`${captureConfig}\nCONFIG_ESP_COREDUMP_CAPTURE_DRAM=y`), /requires disabled CONFIG_ESP_COREDUMP_CAPTURE_DRAM/u);
+  assert.throws(() => requireResolvedCoreDumpContract(captureConfig.replace("MAX_TASKS_NUM=64", "MAX_TASKS_NUM=32")), /core dump contract/u);
+  assert.throws(() => requireResolvedCoreDumpContract(captureConfig.replace("STACK_SIZE=4096", "STACK_SIZE=2048")), /core dump contract/u);
 });
 
 function corePartition(): Buffer {
