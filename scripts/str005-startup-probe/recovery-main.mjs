@@ -43,9 +43,10 @@ async function original(root) {
 }
 export function currentConclusion(parts, context, hostReleased) {
   const projected = Object.fromEntries(Object.entries(parts).filter(([key]) => !['stop', 'finished'].includes(key)));
-  if (parts.finished) projected.finished = { failures: validateFinished(parts.finished).failures.filter(row => row.stage !== 'stop').map(row => row.stage) };
+  if (parts.finished) projected.finished = { failures: validateFinished(parts.finished).failures.filter(row => !['stop', 'begin'].includes(row.stage)).map(row => row.stage) };
   validateRecoveryParts(projected, context); const result = recoveryConclusion(projected);
   const blockers = [...result.blockers];
+  if (parts.finished?.failures.some(row => row.stage === 'begin')) blockers.push('collection_begin_unconfirmed');
   if (parts.stop?.requested !== true || parts.finished?.failures.some(row => row.stage === 'stop')) blockers.push('current_stop_unconfirmed');
   if (parts.ledger && !equal(parts.ledger, context.expectedLedger)) blockers.push('accounting_changed_since_startup_seal');
   if (parts.status?.record && parts.status.record.workerGeneration !== context.originalGeneration) blockers.push('retained_generation_mismatch');

@@ -1,19 +1,20 @@
 import { readRecoveryStatus } from './retained-status.mjs';
 const categories = new Set(['timeout', 'command_rejected', 'closed', 'shape', 'session', 'io', 'write_failed', 'read_failed']);
 /** Independent current-state observations; no operation can issue new work authority. */
-export function createCurrentRecovery({ gate, attemptId, campaignId, save, readMs = 30000, cleanupMs = 150000 }) {
+export function createCurrentRecovery({ gate, attemptId, campaignId, save, begin = async () => {}, readMs = 30000, cleanupMs = 150000 }) {
   let consumed = false;
   return async () => {
     if (consumed) throw Error('recovery_consumed'); consumed = true;
     const failures = [];
-    async function collect(stage, operation, limit = readMs) {
+    async function collect(stage, operation, limit = readMs, persist = true) {
       let timer, active = true;
-      try { await Promise.race([Promise.resolve().then(operation).then(value => active ? save(stage, value) : undefined),
+      try { await Promise.race([Promise.resolve().then(operation).then(value => active && persist ? save(stage, value) : undefined),
         new Promise((_, reject) => { timer = setTimeout(() => reject(Object.assign(Error('timeout'), { category: 'timeout' })), limit); })]); }
       catch (error) { failures.push({ stage, category: categories.has(error?.category) ? error.category : 'operation_failed' }); }
       finally { active = false; clearTimeout(timer); }
     }
     try {
+      await collect('begin', begin, readMs, false);
       await collect('ledger', () => gate.reviewQualificationAttempts());
       await collect('original_budget', () => gate.reviewBudget(campaignId));
       await collect('diagnostics', async () => { await gate.exportDiagnostics(); return { exported: true }; });
@@ -38,6 +39,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) }); if (!result.ok) throw Error('recovery_request_rejected'); return result.json(); };
   const context = await post('/recovery-context', {});
   const collect = createCurrentRecovery({ gate, attemptId: context.attemptId, campaignId: context.campaignId,
+    begin: () => post('/recovery-begin', {}),
     save: (stage, value) => stage === 'diagnostics' ? Promise.resolve() : post('/recovery-part', { stage, value }) });
   const button = document.createElement('button'), output = document.createElement('pre');
   button.textContent = 'Collect current recovery and release'; output.id = 'current-recovery-result';

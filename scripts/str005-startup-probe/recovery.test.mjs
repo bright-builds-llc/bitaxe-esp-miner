@@ -59,3 +59,36 @@ test('recovery arguments exclude all authority and effect inputs before activati
   for (const key of ['--authority-directory', '--flash-binary', '--fixture-binary'])
     assert.throws(() => recoveryArguments(['recover-serve', '--private-root', '/unused', key, '/never-read'], true));
 });
+
+test('fresh collection begins after a delayed connection rather than at server launch', async () => {
+  // Arrange
+  let now = 1000; const persisted = new Map();
+  const server = createCurrentRecoveryServer({ root: '/unused', context: {}, assets: {} }, {
+    now: () => now, persist: async (name, value) => { persisted.set(name, value); },
+  });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); const origin = `http://127.0.0.1:${server.address().port}`;
+  try {
+    now = 181000;
+    // Act
+    const response = await fetch(`${origin}/recovery-begin`, { method: 'POST', headers: { origin, 'Content-Type': 'application/json' }, body: '{}' });
+    // Assert
+    assert.equal(response.status, 200);
+    assert.equal(persisted.get('collection-begin').startedAtUnixMs, 181000);
+    now += 60000;
+    const repeated = await fetch(`${origin}/recovery-begin`, { method: 'POST', headers: { origin, 'Content-Type': 'application/json' }, body: '{}' });
+    assert.equal(repeated.status, 400);
+    assert.equal(persisted.get('collection-begin').startedAtUnixMs, 181000);
+  } finally { await server.release(); }
+});
+
+test('existing observations cannot acquire a later fresh collection timestamp', async () => {
+  // Arrange
+  const server = createCurrentRecoveryServer({ root: '/unused', context: {}, assets: {} }, { persist: async () => {} });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); const origin = `http://127.0.0.1:${server.address().port}`;
+  const post = (path, body) => fetch(`${origin}${path}`, { method: 'POST', headers: { origin, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  try {
+    assert.equal((await post('/recovery-part', { stage: 'stop', value: { requested: true } })).status, 200);
+    // Act / Assert
+    assert.equal((await post('/recovery-begin', {})).status, 400);
+  } finally { await server.release(); }
+});

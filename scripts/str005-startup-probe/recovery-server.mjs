@@ -10,15 +10,16 @@ import { validateDiagnosticExport } from '../fixed-usb-qualification/diagnostic-
 import { check, object } from '../str005-v2-serial/values.mjs';
 export const RECOVERY_STAGES = ['ledger', 'original_budget', 'diagnostics', 'status', 'stop', 'state', 'closed'];
 export function validateFinished(value) {
-  object(value, ['failures']); check(Array.isArray(value.failures) && value.failures.length <= RECOVERY_STAGES.length, 'recovery_failure_bound');
+  object(value, ['failures']); check(Array.isArray(value.failures) && value.failures.length <= RECOVERY_STAGES.length + 1, 'recovery_failure_bound');
   const seen = new Set();
   for (const row of value.failures) { object(row, ['stage', 'category']);
-    check(RECOVERY_STAGES.includes(row.stage) && !seen.has(row.stage) && ['timeout', 'command_rejected', 'closed', 'shape', 'session', 'io', 'write_failed', 'read_failed', 'operation_failed'].includes(row.category), 'recovery_failure_shape'); seen.add(row.stage); }
+    check([...RECOVERY_STAGES, 'begin'].includes(row.stage) && !seen.has(row.stage) && ['timeout', 'command_rejected', 'closed', 'shape', 'session', 'io', 'write_failed', 'read_failed', 'operation_failed'].includes(row.category), 'recovery_failure_shape'); seen.add(row.stage); }
   return value;
 }
 /** No signer, fixture, clear adapter or funded Start route exists in this owner. */
 export function createCurrentRecoveryServer({ root, context, assets }, operations = {}) {
   let queue = Promise.resolve(), finished = false; const saved = new Set();
+  const now = operations.now ?? Date.now;
   const persist = operations.persist ?? ((stage, value) => writeNew(resolve(root, `${stage}.json`), value));
   const scope = { challengeId: `challenge_${nonce()}`, retentionExpiryUnixSeconds: Math.floor(Date.now() / 1000) + 86400 };
   const server = createServer((request, response) => { queue = queue.then(async () => {
@@ -36,6 +37,11 @@ export function createCurrentRecoveryServer({ root, context, assets }, operation
     const input = await body(request);
     if (path === '/activate') { object(input, []); return send(response, 200, scope); }
     if (path === '/recovery-context') { object(input, []); return send(response, 200, { attemptId: context.attemptId, campaignId: context.original_campaign_id }); }
+    if (path === '/recovery-begin') {
+      object(input, []); check(!finished && saved.size === 0, 'recovery_collection_consumed');
+      await persist('collection-begin', { schema: 'str005-recovery-collection-v1', startedAtUnixMs: now() });
+      saved.add('collection-begin'); return send(response, 200, { begun: true });
+    }
     let stage, value;
     if (path === '/diagnostic-export') { stage = 'diagnostics'; value = projectRecoveryPart(stage,
       await (operations.validateDiagnostics ?? validateDiagnosticExport)(input, context.gate_root), context); }

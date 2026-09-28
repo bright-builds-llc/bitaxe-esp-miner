@@ -45,7 +45,7 @@ export async function preparedEvidence(root) {
   const claim = (await proof(restartRoot, 'restart-claim.json')).value;
   check(claim.request.expectedBootOrdinal === context.before_boot_ordinal, 'startup_preparation_restart_boot');
   const recoveryResult = (await proof(recoveryRoot, 'result.json')).value;
-  const recoveryStarted = (await proof(recoveryRoot, 'serve-claim.json')).value.startedAtUnixMs;
+  const recoveryStarted = (await proof(recoveryRoot, 'collection-begin.json')).value.startedAtUnixMs;
   const restartStarted = (await proof(restartRoot, 'begin.json')).value.startedAtUnixMs;
   check(recoveryResult.current_recovery_complete === true && recoveryResult.startedAtUnixMs === recoveryStarted &&
     claim.beforeStartedAtUnixMs === restartStarted, 'startup_preparation_clock_binding');

@@ -61,6 +61,8 @@ async function recoveryReady(root, context, fresh) {
   const result = (await proof(child, 'result.json')).value, status = (await proof(child, 'status.json')).value;
   check(result.current_recovery_complete === true && status.observation.bootOrdinal === context.before_boot_ordinal &&
     status.record?.attemptId === context.attemptId, 'preparation_recovery_incomplete');
+  const collection = (await proof(child, 'collection-begin.json')).value;
+  check(collection.schema === 'str005-recovery-collection-v1' && collection.startedAtUnixMs === result.startedAtUnixMs, 'preparation_collection_binding');
   if (fresh) check(Date.now() >= result.startedAtUnixMs && Date.now() - result.startedAtUnixMs <= FRESH_MS, 'preparation_recovery_stale');
   return hash;
 }
@@ -116,9 +118,12 @@ async function finish(root, child, stage, context) {
   for (const port of new Set([owner.detector.port, current.port])) requireNoHolders(port); requireLsofAbsent(['-nP', `-iTCP:${owner.port}`, '-sTCP:LISTEN', '-t']);
   if (stage === 'recovery') {
     const observed = await parts(child, [...RECOVERY_STAGES, 'finished']), result = currentConclusion(observed, context, true);
-    result.startedAtUnixMs = (await proof(child, 'serve-claim.json')).value.startedAtUnixMs;
+    const collection = await parts(child, ['collection-begin']);
+    result.startedAtUnixMs = collection['collection-begin']?.startedAtUnixMs ?? null;
+    if (collection['collection-begin']?.schema !== 'str005-recovery-collection-v1' || !Number.isSafeInteger(result.startedAtUnixMs))
+      result.blockers.push('preparation_collection_unclaimed');
     if (observed.status?.observation.bootOrdinal !== context.before_boot_ordinal) result.blockers.push('preparation_boot_changed');
-    if (Date.now() - result.startedAtUnixMs > FRESH_MS) result.blockers.push('preparation_recovery_stale');
+    if (result.startedAtUnixMs === null || Date.now() < result.startedAtUnixMs || Date.now() - result.startedAtUnixMs > FRESH_MS) result.blockers.push('preparation_recovery_stale');
     result.current_recovery_complete = result.blockers.length === 0; await writeNew(resolve(child, 'result.json'), result);
     await writeNew(resolve(child, 'sealed-inventory.json'), { files: await inventory(child) });
     if (!result.current_recovery_complete) {

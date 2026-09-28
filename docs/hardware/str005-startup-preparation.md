@@ -121,3 +121,16 @@ They cover same-stream and one-reopen success, one-request consumption, mode
 guards, wrong nonce/boot/identity, panic instead of software reset, timing limits,
 partial packets, ledger/preservation drift and unconditional cleanup. They are
 software proof, not device results.
+
+## Collection-clock correction
+
+Preparation001 stopped before reset because its 120-second freshness bound began
+at server launch. Connection/UI setup used 86 seconds; the final check rejected
+130-second server age although the oldest collected ledger was only 44 seconds
+old. Its failed result stays sealed. Preparation002 follows a tested correction:
+a one-use `/recovery-begin` receipt is written immediately before authenticated
+reads. The timestamp cannot be recreated after any observation or on a second
+begin request. Server lifetime is not observation age. Both restart admission
+and independent startup consumption check that exact receipt and the original
+120-second freshness bound. No clock limit is extended and no old proof is
+retimestamped.

@@ -5348,7 +5348,7 @@ Prospective execution (after this source is committed and pushed):
 [preparation contract](docs/hardware/str005-startup-preparation.md) and
 [normal-stop startup contract](docs/hardware/str005-normal-stop-startup.md).
 Use `just str005-startup-preparation preflight|serve|finish` with separate
-recovery/restart stages in `scratch/str005-startup/preparation001/attempt`,
+recovery/restart stages in `scratch/str005-startup/preparation002/attempt`,
 then `just str005-startup-probe preflight|serve|finish` in
 `scratch/str005-startup/startup002/attempt`. The original startup001, clearing,
 self-test and installation invocations remain consumed; the new startup accepts
@@ -5384,6 +5384,22 @@ ignores. Canonical startup/restart and real generation-gate suites pass. The
 normal-stop evaluator went red on pre-Stop authority failure, then green with
 strict generation/native-time/release checks. Exact installed native stack and
 USB symbol/ownership audits passed. Hardware outcomes remain pending below.
+
+Preparation001 outcome and verified continuation | 2026-09-28:
+
+Fresh known-attempt recovery, both ledgers, restoration and release passed, but
+the preparation qualifier rejected server age 130 seconds as stale. Actual
+ledger/status writes preceded finish by 44 seconds; the clock incorrectly began
+at server launch, before 86 seconds of connection/UI setup. No restart claim,
+reset, grant or Start occurred. The failed root is sealed and unchanged. Inventory SHA-256:
+`7d3194d8855ecab5637d838fce4d18c0e9257d8447815dd94240e563bc890164`.
+
+The real HTTP regression first failed (missing collection-begin receipt), then
+passed with a one-use server timestamp immediately before reads. Repeated begin
+and beginning after already recorded observations are rejected. Preparation and
+startup independently bind that same receipt; the 120-second bound is unchanged.
+The verified fix admits new `preparation002/attempt` under the existing contract;
+startup002 remains unconsumed. Do not relabel preparation001 as successful.
 
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
