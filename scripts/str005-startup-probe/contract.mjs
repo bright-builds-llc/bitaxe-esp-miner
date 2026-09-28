@@ -3,7 +3,7 @@ import { check, object } from '../str005-v2-serial/values.mjs';
 export const TASK = 'task-str005-mining-startup-probe';
 export const CONTRACT = 'docs/hardware/str005-normal-stop-startup.md';
 // Activation requires reviewed, published source and actual capture/clear evidence.
-export const HARDWARE_ENABLED = true;
+export const HARDWARE_ENABLED = false;
 export const LIMITS = Object.freeze({ replyMs: 30000, observeMs: 5000, stopRequestMs: 35000,
   readMs: 30000, stopMs: 150000, closeMs: 150000, fixtureCleanupMs: 5000, clearMs: 1200000 });
 export function requireEnabled(tasks, hardwareEnabled = HARDWARE_ENABLED) {

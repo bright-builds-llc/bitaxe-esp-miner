@@ -13,7 +13,7 @@ import { createCurrentRecoveryServer, RECOVERY_STAGES } from '../str005-startup-
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { createRestartServer } from './server.mjs';
 import { conclusion, restartEvidence, STAGES, FRESH_MS } from './model.mjs';
-export const ENABLED = true;
+export const ENABLED = false;
 export const PARENT_SEALS = Object.freeze({ startup: '950a8e55b5efb468905a4edd2e739cfd02e47013797e026bf0218af955234cb7',
   recovery: 'cee3e1fa3d570774dc4f68c2cf576f7be5bee2bed31aafb3a277f3196366b07a' });
 const TASK = 'task-str005-mining-startup-probe', CONTRACT = 'docs/hardware/str005-startup-preparation.md';

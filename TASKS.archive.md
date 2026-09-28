@@ -17595,3 +17595,322 @@ qualification and this completed metadata task are archived in the same commit.
 Parity remains90/95. Residual risk: future probe contracts must implement reviewed
 change-impact reuse and keep every required safety/evidence gate; task creation
 alone cannot enable hardware effects.
+
+### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
+
+Status: Complete — startup003 passed independent qualification with fresh checkpoint, accounting, restoration and release.
+Objective: prove completed Start and increasing work dispatch, followed by normal
+stop, restoration, accounting and cleanup; an accepted share is not required.
+Depends on: `task-str005-failure-recovery-accounting`, `task-str005-start-panic-diagnosis`.
+Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
+
+- [x] Define/publish a focused startup probe and bounded execution contract,
+  using the existing production owner and conservative signed mining profile.
+- [x] Review continuity applicability and establish fresh identity, preservation,
+  possession and both ledgers; determine the next ordinal from actual evidence.
+- [x] Test admission, completed-response barrier, duplicate/late Start, preparation
+  failure and failure cleanup through production seams; verify software/native gates.
+- [x] Prove a completed Start and increasing dispatch, then normal ordered stop,
+  qualified cooling, authorization checkpoint, charged ledger completion and release.
+
+Evidence: [Share002 report](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md)
+and recovery/panic successor results. Prior pair `cf7a3f03` / `e20c0fd5` is history;
+new tested identities, result and limitations must be recorded here before closure.
+Invalidation: Start/owner/dispatch, authorization, accounting, safety or relevant
+runtime changes require affected checks. No heartbeat-loss or accepted-share proof.
+Authorization: software preparation now; hardware only after dependency evidence,
+published command bounds and verified implementation. No budget reset or refund.
+Verification: startup003 complete; see the timestamped completion review below.
+
+Startup execution contract | 2026-09-28:
+
+Startup probe hardware: disabled (startup003 completed).
+Startup capture seal: 7131552c725c17c070b52b4238b2a92a742ccf34691ebadb5df2885ac3d5f925.
+
+- [x] Implement typed capture/archive/clear admission against existing producer
+  schemas, plus a source-bound one-use wrapper for the official clear command.
+- [x] Implement one fresh normal V2 Start with zero renewals, dispatch observation,
+  bounded Stop requests, late-reply cleanup and failure-independent recovery.
+- [x] Test admission, accounting, timing, resource release and evidence failures
+  with software fixtures; verify the actual qualified Gate zero-renewal interface.
+- [ ] Publish and review the contract before enabling any device effects; supply
+  real captured cutoff/ELF/archive/clear proof and fresh physical/session admission.
+
+Execution is limited to [the startup contract](docs/hardware/str005-startup-probe.md)
+and `just str005-startup-probe preflight|serve|clear|finish`. New ignored private
+root: `scratch/str005-startup/startup001/attempt`; inputs bind sealed installation007.
+After publication, preserve the existing captured dump, clear only its verified
+region through the official owner, obtain fresh identity/preservation/ledgers,
+and issue one normal 180,000-ms reservation with a 60,000-ms lease and zero
+renewals. Measure the ordinal; do not assume 18. No flashing, external pool,
+Share002 replay, self-test, factory reset, NVS reset, refund or parity promotion.
+
+Require a Start reply within 30 seconds; request Stop at first increasing dispatch
+or failure, within 5 seconds after reply and 35 seconds after invocation. These are
+request deadlines, not physical-off claims. Stop/Close are each bounded at 150
+seconds, independent recovery reads at 30 seconds, fixture release at 5 seconds,
+and archive-bound clear at 1,200 seconds. The contract details recovery and
+process/listener/serial release even when the main test fails. Fresh-session
+recovery plus exact charge, retained resource release and restoration are required
+for completion. Seal partial evidence and record the first blocker otherwise.
+No unchanged-boundary retry; no task archival until its actual criteria pass.
+A future startup trial additionally requires an explicit, tested normal-stop
+authorization checkpoint capture path in Gate; the current normal flow cannot
+satisfy that evaluator criterion. Do not bypass it with a synthesized checkpoint.
+
+The prospective ADR-0031 recovery/capture proof admits this new trial without
+rewriting the unresolved historical Share002 resource proof or claiming the
+original panic cause. Installed source `361425b9` / ELF `7f3ea3ce` remains unchanged;
+the current host commit owns the command. The consumed panic installation and
+self-test gates stay disabled. Clearing is enabled only for this captured archive
+with fresh same-device proof; raw dump/vendor output remain private, mode 0600
+under mode 0700 roots. Only closed categories, measurements and hashes are promoted.
+
+Software review: 25 Node tests passed with the actual qualified Gate source,
+including late Start/read completion, recovery-round isolation, stale-baseline
+rejection, canonical tool admission and a real synthetic clear child process.
+Integrated verification: canonical startup build and all 25 Bazel Node tests
+passed. The synthetic CLI test was corrected to use the actual Bazel Node binary
+with a short shell launcher; the sandbox exposed wrapper-environment and shebang
+limitations before hardware. Ordered Cargo format/Clippy/build/tests passed
+(2,412 passed, three existing ignores). Standards, redaction, reference, Markdown
+and diff checks passed. Independent review confirmed session-generation and
+candidate preservation semantics against the actual pinned Gate/firmware.
+Actual sealed installation007 capture passed the new adapter. Remaining gates
+are publication and fresh pre-clear/candidate/recovery evidence. No mining-startup
+result or parity promotion is claimed.
+
+Startup001 partial result | 2026-09-28:
+
+- [x] Published and verified host 651b9a53, actual sealed capture adapter and
+  clean canonical tools; fresh baseline and exact archive-bound clear passed.
+- [x] One new Start completed in 10,182.5 ms; generation-matched dispatch 0→1.
+  Stop requested at 10,523.2 ms, 340.7 ms after reply; zero renewals.
+- [x] Same-session safe-stop/restoration and charged accounting measured:
+  next19/last18/1,740,000 ms/pending=false. No ordinal assumption or refund.
+- [x] Fixture, listener, browser, server and device-holder release verified;
+  partial inventory sealed 950a8e55b5efb468905a4edd2e739cfd02e47013797e026bf0218af955234cb7.
+- [ ] Fresh retained status/resource/authorization/restoration quorum: blocked.
+
+[Partial evidence](docs/parity/evidence/20260928-str005-startup001-partial.md).
+The collector's null-attempt query is invalid when the completed attempt is
+retained. Firmware rejection revokes the serial epoch before the expected local
+fallback, explaining status failure and Close failure. Fresh collection repeated
+that invalid query and saved no independent session record. Original same-session
+Stop state confirmed restoration, but final page flags did not; no success is
+inferred across the failed recovery. Additionally, normal Start/Stop never
+captures the Gate authorization recovery checkpoint required by the evaluator;
+that missing historical checkpoint cannot be reconstructed from public state.
+
+The main Start/dispatch result has first_failure=null; recovery remained incomplete.
+Start and clear gates are consumed and disabled. No repeat, reflash or new grant.
+Correct the known-attempt collector with a production-seam regression; any
+additional current-state recovery needs a published no-Start contract. Do not
+archive this task or promote parity 90/95. Original Share002 cause remains unproved.
+
+Current-only recovery continuation (2026-09-28):
+
+Startup recovery hardware: disabled (recovery001 completed).
+
+- [x] Reproduce the idle-versus-known attempt rejection through actual Gate
+  decoding/controller/page operations and correct confirmed-Start reads.
+- [x] Implement a recovery-only preflight/serve/finish continuation pinned to
+  startup001 seal 950a8e55b5efb468905a4edd2e739cfd02e47013797e026bf0218af955234cb7.
+- [x] Publish the narrow recovery contract, collect fresh current observations
+  and release resources; preserve historical authorization/preservation gaps.
+
+Contract: `docs/hardware/str005-startup-current-recovery.md`. No Start, signer,
+fixture, clearing, reset, flashing, renewal or mining is available in this mode.
+Current-only recovery can supplement evidence but cannot qualify startup001's
+missing historical authorization checkpoint. No additional Start is authorized
+by this continuation and parity remains 90/95.
+
+One new private child: `scratch/str005-startup/recovery001/attempt`. Commands:
+`just str005-startup-probe recover-preflight|recover-serve|recover-finish`.
+Only fresh authenticated reads and idempotent Stop/Close are permitted. Each
+read is bounded at 30 seconds, Stop/Close at 150 seconds each. Collect fresh
+same-physical detector evidence before connection and finalization; independently
+verify serial, process and listener release. No retry on the same failed boundary.
+Private raw evidence stays mode 0600 under mode 0700 ignored roots; promote only
+closed categories, measurements and hashes. Seal partial results when any current
+identity, accounting, restoration or resource proof is absent. Historical
+checkpoint absence remains a blocker even if current recovery succeeds.
+
+Integrated checks: 31 canonical Bazel Node tests passed, including actual Gate
+red-to-green retained-query regression and rejection of every effect route.
+Ordered Cargo format/Clippy/build/tests passed (2,412 passed, three existing
+ignores). Independent review confirmed the exact seal/attempt binding and
+current-only claims. Publication and the single current recovery remain pending.
+
+Current recovery result | 2026-09-28:
+
+- [x] Published recovery-only host `6bcc5c3d`; one fresh authenticated connection
+  queried startup001's confirmed attempt directly. No Start/grant/clear/flash.
+- [x] Independently collected both ledgers, diagnostics, retained status, current
+  restoration and Stop/Close; no collection failure. Fresh host/listener/serial
+  cleanup checks passed and the separate recovery evidence was sealed.
+- [x] Boot 8/current generation 3 observed original generation 1's terminal record:
+  socket closed, worker quiescent, fence not retained; `asic_dispatch` retained.
+  Terminal outcome is `rejected`, with `worker_quiescent/authority` at the normal
+  Stop revocation boundary; no accepted-share or panic-cause claim is inferred.
+- [x] Accounting unchanged: next19/last18/1,740,000 ms/pending=false; original
+  campaign remains exhausted at 240,000 ms. No ordinal consumption or refund.
+
+Inventory SHA-256:
+`cee3e1fa3d570774dc4f68c2cf576f7be5bee2bed31aafb3a277f3196366b07a`.
+Evidence: [current recovery](docs/parity/evidence/20260928-str005-startup-current-recovery.md).
+The current recovery quorum passes. Its result explicitly keeps historical
+checkpoint and preservation verification false: this new page cannot reconstruct
+the old private baseline/checkpoint. Original same-session restoration evidence
+and every earlier seal remain unchanged. Startup001's aggregate remains partial.
+
+Completion review: do not archive. Normal Start/Stop lacks the required Gate
+authorization checkpoint capture; that historical omission cannot be repaired
+retroactively. A prospective normal-stop checkpoint path and its verification
+must precede any future qualification trial. The consumed recovery, Start, clear,
+installation and self-test gates are disabled. Current device/host resources are
+released, original Share002 cause remains unproved, and parity remains 90/95.
+
+Normal-stop checkpoint continuation | 2026-09-28:
+
+- [x] Reproduce the missing checkpoint through real Gate Start/Stop/reconnect;
+  implement private original-baseline and post-authorization checkpoint capture
+  with stale/missing/generation/unexpected-advance rejection.
+- [x] Review normal Stop's rejected/authority or evidence terminal classification;
+  test the claim-specific boundary without promoting a pre-share cancellation.
+- [x] Separate historical capture identity from reviewed current Gate-only changes;
+  establish fresh safe idle admission without replaying consumed reset/clear plans.
+- [ ] Verify and publish the exact successor contract, then measure a fresh ordinal
+  and run one bounded Start/dispatch/Stop with complete checkpoint and recovery.
+- [ ] Seal truthfully, archive only if every criterion passes, commit and push.
+
+Owner approved the recommended sequence on 2026-09-28: checkpoint correction,
+startup qualification, then independently bounded accepted-share and heartbeat
+shutdown probes after prerequisites pass. Existing standing effect rules apply.
+Hardware gates remain disabled until each concrete contract and implementation
+is tested and published. Old partial seals and parity90/95 remain unchanged.
+
+Startup preparation hardware: disabled (preparation003 completed).
+
+Prospective execution (after this source is committed and pushed):
+[preparation contract](docs/hardware/str005-startup-preparation.md) and
+[normal-stop startup contract](docs/hardware/str005-normal-stop-startup.md).
+Use `just str005-startup-preparation preflight|serve|finish` with separate
+recovery/restart stages in `scratch/str005-startup/preparation003/attempt`,
+then `just str005-startup-probe preflight|serve|finish` in
+`scratch/str005-startup/startup003/attempt`. The original startup001, clearing,
+self-test and installation invocations remain consumed; the new startup accepts
+only sealed preparation and acquires no flash capability.
+
+Preparation may issue exactly one nonce-bound no-mining software restart after
+fresh same-device resource/accounting proof. Its independent observer requires
+matched ACK, explicit software reset, boot+1, exact identity and healthy admission
+within 30 seconds with at most one port reopen; same-page preservation and both
+ledgers must stay unchanged. Reads are bounded at 30 seconds, Stop/Close at 150
+seconds each. Release and seal each owner before the next stage. No replay or
+second reset after an ambiguous response. Keep private artifacts mode 0600 under
+mode 0700 ignored roots; promote only closed fields and hashes.
+
+Startup retains a freshly measured normal 180,000-ms reservation, one 60,000-ms
+signed lease and zero renewals. Reply≤30 seconds; Stop immediately after dispatch
+increase or failure, ≤5 seconds after reply and ≤35 seconds after invocation. Native
+heartbeat/safety/cooling bounds remain unchanged. Failure cannot skip independent
+recovery, Stop/Close, fixture reaping or ownership proof. A late reply never
+permits another Start. Seal incomplete results and stop at unchanged failures;
+only demonstrated, tested progress can admit a successor within published bounds.
+
+Current Gate: `bd26128788dd3f04842984e545fa2382c0b50561`; installed firmware stays
+`361425b9`, ELF `7f3ea3ce…7ebf2`. The [compatibility review](docs/hardware/str005-normal-stop-compatibility.md)
+and exact diff/tuple JSON distinguish historical capture Gate d3ac374. No new
+four-cycle durability, accepted-share, heartbeat-fault or original-panic-cause
+claim is made. Preparation and startup recheck actual installed ELF/native stack,
+USB ownership, erased-core boot lineage, fresh baseline and measured accounting.
+
+Software verification before publication: Gate 22 focused/840 web tests plus
+required Rust/browser/build/standards passed; root Rust 2,415 passed with 3 existing
+ignores. Canonical startup/restart and real generation-gate suites pass. The
+normal-stop evaluator went red on pre-Stop authority failure, then green with
+strict generation/native-time/release checks. Exact installed native stack and
+USB symbol/ownership audits passed. Hardware outcomes remain pending below.
+
+Preparation001 outcome and verified continuation | 2026-09-28:
+
+Fresh known-attempt recovery, both ledgers, restoration and release passed, but
+the preparation qualifier rejected server age 130 seconds as stale. Actual
+ledger/status writes preceded finish by 44 seconds; the clock incorrectly began
+at server launch, before 86 seconds of connection/UI setup. No restart claim,
+reset, grant or Start occurred. The failed root is sealed and unchanged. Inventory SHA-256:
+`7d3194d8855ecab5637d838fce4d18c0e9257d8447815dd94240e563bc890164`.
+
+The real HTTP regression first failed (missing collection-begin receipt), then
+passed with a one-use server timestamp immediately before reads. Repeated begin
+and beginning after already recorded observations are rejected. Preparation and
+startup independently bind that same receipt; the 120-second bound is unchanged.
+The verified fix admits new `preparation002/attempt` under the existing contract;
+startup002 remains unconsumed. Do not relabel preparation001 as successful.
+
+Preparation002 outcome and continuation | 2026-09-28:
+
+The corrected recovery clock and all current recovery checks passed. The next
+page's begin request arrived about 131 seconds after collection, beyond the
+unchanged 120-second limit, and no restart claim was issued. Source/timestamps
+identify the freshness rejection; its generic client failure did not retain the
+server's exact typed cause. Final Stop/Close released the port, but the server
+also rejected saving Close because begin had failed. Host/serial cleanup passed;
+the partial root remains sealed at SHA-256 `8700c7f4e020dc970934b9b56eaf1164f0e4d174cb6a2d353669f34ccbc30814`.
+
+The real HTTP regression reproduced that second defect (Close persistence 400),
+then passed after permitting only the cleanup record before begin. The first
+closed phase/category is now retained once; later cleanup cannot overwrite it.
+No admission/effect predicate is weakened. The next `preparation003` uses the
+same 120-second bound and batches collection completion, owner release, detector,
+finalization and restart-server startup to avoid unnecessary handoff delays.
+Native connection and readiness checks are similarly batched from fresh UI
+state. No old result is promoted and no reset, grant or Start has yet occurred.
+
+Preparation003 passed; startup002 pre-Start disposition | 2026-09-28:
+
+Preparation003 verified the one no-mining software restart boot 8→9 in 8,447 ms,
+matched acknowledgement, same-page preservation, unchanged ledgers and complete
+release. Seal: `5922c9cc8e39316924d5c9f3cfe607f6ecc6e97cd430ca4c67758a2e04d8a391`. Its proof remains reusable after host-only observer
+changes: the consumer verifies the ancestor producer commit/contract hash,
+unchanged firmware/Gate and fresh boot/ledger, not an assumed current-host identity.
+
+Startup002 independently passed preflight/native/capture/lineage checks. It then
+stopped in preparation before fixture, signing or Start. The detector was about
+64 seconds old at the failure against its 60-second bound; this is timestamp/source
+inference because the old owner did not retain its exact error category. Both
+ledgers stayed unchanged (next19/last18/1,740,000 ms/pending=false), and fresh
+recovery/restoration/host/device release passed. The partial root is sealed at
+`a4e992a88678358ee424687e5553447b184b6f90dfc5920632f6160f9df70150`; it consumed no allowance.
+
+The new real-route regression went red for lost first-cause evidence, then green
+with one retained closed phase/category and bounded detector-age measurement.
+Later recovery/release cannot overwrite it. Bounds remain unchanged. The driver
+now uses the observed `#state` DOM element for a tested direct readiness wait,
+then connects and invokes Run in one UI step after fresh detection. This removes
+unnecessary handoff round trips; it does not extend freshness or mine on stale
+proof. Startup003 uses the already sealed preparation003, with no second reset,
+flash, clear or self-test. Any repeated authoritative boundary after this
+instrumented continuation must remain a stop, not another blind attempt.
+
+Completion review | 2026-09-28:
+
+All startup criteria passed on installed 361425b9 / ELF 7f3ea3ce and Gate bd261287,
+host 482de031. Start replied in 10,108.6 ms; same-generation dispatch 0→1;
+Stop requested at 10,528.9 ms with zero renewals. Native reason was
+restoration_requested; safe stop/cooling completed at fan_paused. Original
+page baseline and actual post-authorization checkpoint survived Close and fresh
+reconnect; checkpoint matched through final Stop/Close. Retained socket/worker/
+fence release, unchanged settings/Device Identity, both ledgers and host ownership
+were verified independently. Ordinal 19 completed its full 180,000-ms charge:
+next20/last19/1,920,000 ms/pending=false; original 240,000-ms campaign unchanged.
+
+Result: complete with no blockers; sealed inventory
+`cc5bab7bd34da6f3b50388c31f5e1fc4aefb6a7faf12bd14678a6dc08593e7a1`.
+[Qualified startup evidence](docs/parity/evidence/20260928-str005-startup-qualified.md).
+Archive this full native record and remove it from active TASKS in the same
+commit. Earlier partial seals stay unchanged. No accepted-share, heartbeat-loss,
+four-cycle durability, historical checkpoint repair or original-panic-cause
+claim is made; parity remains 90/95. The separate Renew stack-margin prerequisite
+belongs to the accepted-share task; no renewal occurred here.
