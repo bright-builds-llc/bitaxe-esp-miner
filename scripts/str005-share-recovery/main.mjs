@@ -72,7 +72,7 @@ export async function main(argv) {
   } finally { stop(); await maybeClosing; for (const signal of ['SIGINT', 'SIGTERM']) process.removeListener(signal, stop); }
   return { server_released: true };
 }
-export async function finish(root, context) {
+export async function finish(root, context, operations = {}) {
   let owner;
   try {
     owner = (await proof(root, 'server-owner.json')).value;
@@ -88,7 +88,7 @@ export async function finish(root, context) {
     releasePhase = 'final_detector';
     const selected = await detect(root, context.physical, true);
     releasePhase = 'serial_release';
-    for (const port of new Set([owner.serialPort, selected.port])) requireNoHolders(port);
+    for (const port of new Set([owner.serialPort, selected.port])) (operations.requireNoHolders ?? requireNoHolders)(port);
     hostReleased = true;
   } catch { /* A missing or failed host release check is an explicit blocker. */ }
   const parts = {};

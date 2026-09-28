@@ -54,4 +54,34 @@ const consume = new Function('parseWorkerDiagnosticExport', 'localJson', 'localD
 assert.deepEqual(await consume(), receipt);
 receipt = { diagnostic_export_saved: true, review_file: 'diagnostics.json' };
 await assert.rejects(consume(), /diagnostic_export_receipt/u);
+// Execute the actual Gate Stop producer, then the production recovery judge.
+const stopMarker = 'async function stop() {';
+assert.equal(production.split(stopMarker).length, 2);
+const stopStart = production.indexOf(stopMarker), stopEnd = production.indexOf('\nasync function close()', stopStart);
+assert.ok(stopEnd > stopStart);
+const { restoreAcceptanceBaseline } = await load('web/worker-serial-acceptance-actions.ts');
+const { postStopState } = await import('./post-stop.fixture.mjs');
+const { conclusion, recoveryProof } = await import('./model.mjs');
+const { projectRecoveryPart } = await import('../str005-v2-serial/recovery-evidence.mjs');
+const initial = { ...postStopState(context), status: 'ready' };
+const stop = new Function('restoreAcceptanceBaseline', 'initial', 'assert', `
+  let status = initial.status, running = false, maybeQualification = initial.qualification, maybeWindow, maybeConfiguration;
+  let deviceBaselineConfirmed = true, deviceRestorationConfirmed = true;
+  const stopTimer = () => {}, publish = () => {}, authorizationRecovery = {captureNormalStop() {}};
+  const controller = () => ({restore: async reason => {assert.equal(reason, 'cancelled'); return {qualification: initial.qualification};}});
+  const state = () => ({...initial,status,running,qualification:maybeQualification,deviceBaselineConfirmed,deviceRestorationConfirmed});
+  ${production.slice(stopStart, stopEnd)}; return stop;
+`)(restoreAcceptanceBaseline, initial, assert);
+const stopped = await stop(); assert.equal(stopped.status, 'baseline_confirmed');
+const recorded = JSON.stringify(stopped);
+const proofContext = {...context,source_commit:'d'.repeat(40),physical:'e'.repeat(64)};
+const observed = {state:stopped,closed:postStopState(context,true),
+  ledger:{schema:'worker-qualification-ledger-v1',next_ordinal:21,last_completed_ordinal:20,total_charged_ms:2100000,pending:false},
+  original_budget:{schema:'worker-budget-review-v1',campaign_match:true,reserved_mask:7,completed_mask:7,charged_ms:240000,pending:false},
+  status:projectRecoveryPart('status',idle,context),
+  diagnostics:projectRecoveryPart('diagnostics',{schema:'worker-diagnostic-export-v1',observations:[boot]},context),
+  errors:{schema:'str005-recovery-errors-v1',firstFailure:null,errors:[]},finished:{failures:[]}};
+assert.equal(conclusion(observed,proofContext,true).current_safe_recovery,true);
+assert.equal(recoveryProof(observed,proofContext,1000,2000).current_v2_idle,true);
+assert.equal(JSON.stringify(stopped),recorded);
 process.stdout.write('share_recovery_gate_boundary_passed\n');

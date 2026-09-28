@@ -207,3 +207,70 @@ test('legacy diagnostic artifact is readable without rewriting historical eviden
   assert.deepEqual(await readRecoveryPart(root, 'diagnostics'), { fixture: true });
   assert.deepEqual(await readFile(resolve(root, 'diagnostics.json')), before);
 });
+
+test('recorded post-Stop baseline_confirmed passes the production judge without changing state', async () => {
+  // Arrange
+  const { postStopState } = await import('./post-stop.fixture.mjs');
+  const { baselineConclusion, currentProof } = await import('../str005-panic-probe/model.mjs');
+  const { validateState } = await import('../fixed-usb-qualification/judge.mjs');
+  const observed = parts(); observed.state = postStopState(context); observed.closed = postStopState(context, true);
+  const before = JSON.stringify(observed);
+  const legacy = { ...observed }; delete legacy.errors;
+  // Act
+  validateState(observed.state, context); validateState(observed.closed, context);
+  const result = conclusion(observed, context, true), proof = recoveryProof(observed, context, 1000, 2000);
+  // Assert
+  assert.equal(result.current_safe_recovery, true); assert.equal(proof.current_v2_idle, true);
+  assert.equal(JSON.stringify(observed), before); assert.equal(observed.state.status, 'baseline_confirmed');
+  assert.equal(baselineConclusion(legacy).complete, false);
+  assert.throws(() => currentProof({ ...context, commit: context.source_commit, before_source: context, detector: { physical: context.physical } }, legacy, 1000));
+});
+
+test('post-Stop opt-in retains restoration preservation authority and status guards', async () => {
+  // Arrange / Act / Assert
+  const { postStopState } = await import('./post-stop.fixture.mjs');
+  for (const status of ['ready', 'baseline_confirmed']) {
+    const observed = parts(); observed.state = { ...postStopState(context), status }; observed.closed = postStopState(context, true);
+    assert.equal(conclusion(observed, context, true).current_safe_recovery, true);
+    for (const mutate of [p => { p.state.deviceRestorationConfirmed = false; }, p => { p.state.deviceLeaseInactive = false; },
+      p => { p.state.deviceBaselineConfirmed = false; }, p => { p.state.running = true; }, p => { p.state.heartbeatSuppressed = true; },
+      p => { p.state.preservation.settings_match = false; }, p => { p.state.preservation.authorization_high_water_match = false; },
+      p => { p.state.preservation.device_identity_match = false; }, p => { p.state.preservation.mine_on_boot = true; },
+      p => { p.state.status = 'failed'; }]) {
+      const rejected = structuredClone(observed); mutate(rejected);
+      assert.throws(() => recoveryProof(rejected, context, 1000, 2000));
+    }
+  }
+});
+
+test('fresh finalization emits proof for unchanged recorded post-Stop state shape', async t => {
+  // Arrange
+  const { mkdtemp, realpath, mkdir, rm, writeFile, readFile } = await import('node:fs/promises');
+  const { tmpdir } = await import('node:os'), { resolve } = await import('node:path');
+  const { spawn } = await import('node:child_process'), { createServer } = await import('node:net');
+  const { processSnapshot } = await import('../str005-v2-serial/host-resources.mjs');
+  const { writeNew, proof, verifyInventory } = await import('../str005-noise-serial/files.mjs');
+  const { postStopState } = await import('./post-stop.fixture.mjs');
+  const { DIAGNOSTIC_FILE } = await import('./diagnostics.mjs');
+  const { finish } = await import('./main.mjs');
+  const parent = await realpath(await mkdtemp(resolve(tmpdir(), 'post-stop-finalize-'))), root = resolve(parent, 'attempt');
+  t.after(() => rm(parent, { recursive: true, force: true })); await mkdir(root, { mode: 0o700 });
+  const child = spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)'], { stdio: 'ignore' }); await once(child, 'spawn'); t.after(() => child.kill('SIGKILL'));
+  const owner = (await processSnapshot()).find(row => row.pid === child.pid); assert.ok(owner); child.kill('SIGTERM'); await once(child, 'exit');
+  const listener = createServer(); listener.listen(0, '127.0.0.1'); await once(listener, 'listening'); const port = listener.address().port; listener.close(); await once(listener, 'close');
+  await writeNew(resolve(root, 'server-owner.json'), { owner, port, serialPort: '/dev/test-only', physical: context.physical });
+  await writeFile(resolve(parent, 'final-detector.stdout.log'), `port: /dev/test-only\nphysical_identity_sha256: ${context.physical}\nusb_profile: serial_jtag_runtime\n`, { mode: 0o600 });
+  const observed = parts(); observed.state = postStopState(context); observed.closed = postStopState(context, true);
+  observed.ledger = { ...ledger, next_ordinal: 21, last_completed_ordinal: 20, total_charged_ms: 2100000 };
+  for (const [stage, value] of Object.entries(observed)) await writeNew(resolve(root, stage === 'diagnostics' ? DIAGNOSTIC_FILE : `${stage}.json`), value);
+  await writeNew(resolve(root, 'collection-begin.json'), { schema: 'str005-share-recovery-begin-v1', startedAtUnixMs: Date.now() });
+  const unchanged = await readFile(resolve(root, 'state.json'));
+  // Act
+  const result = await finish(root, context, { requireNoHolders: () => {} }); // Only serial absence is simulated; no device opens.
+  // Assert
+  assert.equal(result.current_safe_recovery, true); assert.equal(result.fresh_effect_proof, true);
+  assert.equal((await proof(root, 'current-recovery.json')).value.ledger.next_ordinal, 21);
+  assert.equal((await proof(root, 'state.json')).value.status, 'baseline_confirmed');
+  assert.deepEqual(await readFile(resolve(root, 'state.json')), unchanged);
+  const seal = await proof(root, 'sealed-inventory.json'); await verifyInventory(root, seal.value.files, new Set(['sealed-inventory.json']));
+});

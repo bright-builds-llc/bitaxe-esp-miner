@@ -5792,6 +5792,36 @@ launch a status operation after expiry. Independent review confirmed both repair
 and the unchanged recovery001 seal. Ordered Cargo checks pass2427 tests with3
 existing ignores; final scoped canonical/standards/redaction checks precede push.
 
+Recovery002 outcome and correction-bound recovery003 | 2026-09-28:
+
+On published ea33bd31 the receipt and fresh-possession corrections both passed:
+all collection stages succeeded, errors=[], actual V2 stateidle/boot16/recordnull,
+ledgernext21/last20/2100000 pendingfalse and original240000 unchanged. Restoration,
+preservation and Close passed, with independently verified host release. Seal
+`f84c36c07552787c84d983226116190ef3768382bbfe21a7bf91ec8cf7cc8419`.
+Finalizer result remains current_safe_recovery=false, fresh_effect_proof=false,
+blockerbaseline_unconfirmed: the reused baseline helper requires ready but actual
+Gate Stop publishes baseline_confirmed. No core read or other effect followed.
+
+Correct this new pure validation boundary with a collector-local opt-in that
+accepts actual confirmed baseline only when every existing restoration/identity/
+inactiveauthority/preservation check passes. Never rewrite the observed state or
+retrofit a proof into recovery002. Preserve legacy default admission and results.
+Reproduce from the actual retained parts offline and test the Gate post-Stop
+boundary before publication. After that verified correction only, execute the
+same recovery-only contract with new private
+`<repo>/scratch/str005-share-recovery/recovery003/attempt`. Measure again; no
+assumed boot or ordinal, no Start, core read/clear, reset or flash. Recurrence of
+the corrected boundary stops. No task is archived; parity remains90/95.
+
+Recovery003 software review: explicit collector-only confirmed-baseline admission
+passes actual recorded recovery002 parts offline and a production Gate Stop/state
+producer regression without changing state bytes. Legacy default remains ready-only;
+unsafe flags still reject. Fresh-finalizer regression passes with real writer/listener
+exit checks; production CLI retains real serial-holder checks. Independent review
+passed, and recovery002's seal/failed result remain unchanged. Ordered Cargo checks
+passed2427 tests with3 existing ignores before this publication.
+
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
 Status: Startup prerequisite passed; focused heartbeat-loss implementation and published live contract remain required.

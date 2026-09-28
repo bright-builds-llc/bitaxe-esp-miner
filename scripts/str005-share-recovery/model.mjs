@@ -25,7 +25,7 @@ export function conclusion(parts, context, hostReleased) {
   if (projected.finished) projected.finished = { failures: finished(projected.finished).failures.filter(stage => stage !== 'begin' && stage !== 'stop') };
   validateRecoveryParts(projected, context);
   const idle = parts.status?.state === 'idle' && parts.status.record === null;
-  const checked = idle ? baselineConclusion(projected) : recoveryConclusion(projected);
+  const checked = idle ? baselineConclusion(projected, { allowConfirmedBaseline: true }) : recoveryConclusion(projected);
   const blockers = [...checked.blockers];
   if (parts.finished?.failures.length) blockers.push('collection_failed');
   if (!hostReleased) blockers.push('host_resources_unreleased');
@@ -46,7 +46,7 @@ export function recoveryProof(parts, context, startedAtUnixMs, now = Date.now())
   check(Number.isSafeInteger(startedAtUnixMs) && now >= startedAtUnixMs && now - startedAtUnixMs <= 120000 &&
     conclusion(parts, context, true).current_safe_recovery, 'share_recovery_proof_incomplete');
   const normalized = { ...parts, finished: { failures: [] } }; delete normalized.errors;
-  const identity = { ...context, commit: context.source_commit, before_source: context, detector: { physical: context.physical } };
+  const identity = { ...context, allowConfirmedBaseline: true, commit: context.source_commit, before_source: context, detector: { physical: context.physical } };
   if (parts.status.state === 'idle') return currentProof(identity, normalized, startedAtUnixMs);
   const boots = parts.diagnostics.observations.filter(row => row.category === 'boot');
   check(boots.length > 0 && boots.at(-1).boot_ordinal === parts.status.observation.bootOrdinal, 'share_recovery_boot_correlation');

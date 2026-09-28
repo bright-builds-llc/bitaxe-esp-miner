@@ -9,9 +9,10 @@ export const BASELINE_PARTS = ['state', 'ledger', 'original_budget', 'diagnostic
 export function baselineIdentity(context) {
   return { ...context.before_source, gate_commit: context.gate_commit };
 }
-export function baselineReady(state) {
+export function baselineReady(state, allowConfirmedBaseline = false) {
   const p = state?.preservation;
-  return state?.status === 'ready' && state.connected === true && state.running === false &&
+  const statusReady = state?.status === 'ready' || (allowConfirmedBaseline && state?.status === 'baseline_confirmed');
+  return statusReady && (!allowConfirmedBaseline || state.deviceRestorationConfirmed === true) && state.connected === true && state.running === false &&
     state.deviceBaselineConfirmed === true && state.deviceLeaseInactive === true && state.serialOwnershipReleased === false &&
     state.heartbeatSuppressed === false && p?.settings_match === true && p.device_identity_match === true &&
     p.authorization_high_water_match === true && p.mine_on_boot === false;
@@ -43,7 +44,7 @@ export function baselineConclusion(parts, context = {}) {
   const blockers = BASELINE_PARTS.filter(stage => !parts[stage]).map(stage => `missing_${stage}`);
   if (!parts.finished) blockers.push('missing_finished');
   else { validateFinished(parts.finished, context); blockers.push(...parts.finished.failures.map(stage => `failed_${stage}`)); }
-  if (parts.state && !baselineReady(parts.state)) blockers.push('baseline_unconfirmed');
+  if (parts.state && !baselineReady(parts.state, context.allowConfirmedBaseline === true)) blockers.push('baseline_unconfirmed');
   if (parts.ledger?.pending) blockers.push('accounting_pending');
   if (parts.status && !(parts.status.state === 'idle' && parts.status.record === null && parts.status.observation.clockValid === true)) blockers.push('current_idle_unconfirmed');
   const closed = parts.closed;
