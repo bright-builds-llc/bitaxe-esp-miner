@@ -396,3 +396,7 @@ drain-worker-serial *args:
 # One protected, no-mining bootstrap drain measurement; no signing or fixture routes.
 usb-bootstrap-measure *args:
     bazel run //scripts:usb_bootstrap_measure -- {{ args }}
+
+# One startup trial admitted by published capture/clear proof and fresh accounting.
+str005-startup-probe action *args:
+    bazel run //scripts:str005_startup_probe -- {{ action }} {{ args }}

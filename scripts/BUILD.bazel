@@ -1184,3 +1184,32 @@ js_test(
     entry_point = "signed-start-stack-audit.test.mjs",
     data = ["signed-start-stack-audit.mjs", "telemetry-stack-audit.mjs", "noise-native-calls.mjs"],
 )
+
+js_library(
+    name = "str005_startup_probe_sources",
+    srcs = glob(["str005-startup-probe/*.mjs"]),
+    deps = [":str005_v2_serial_sources", ":str005_panic_probe_sources", ":core_dump_sources"],
+)
+
+js_binary(
+    name = "str005_startup_probe",
+    chdir = "..",
+    data = [
+        ":str005_startup_probe_sources",
+        "//tools/flash:flash",
+        "//tools/stratum-v2-fixture:stratum_v2_fixture",
+        "//tools/stratum-v2-fixture:v2_serial_build_identity",
+    ],
+    entry_point = "str005-startup-probe/main.mjs",
+)
+
+js_test(
+    name = "str005_startup_probe_test",
+    args = ["$(rootpath @bwg_gate_contract//:package_json_js)"],
+    data = [
+        ":str005_startup_probe_sources",
+        "@bwg_gate_contract//:package_json_js",
+        "@bwg_gate_contract//:share_authority_sources_js",
+    ],
+    entry_point = "str005-startup-probe/probe.test.mjs",
+)

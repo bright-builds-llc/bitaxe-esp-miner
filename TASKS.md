@@ -4493,7 +4493,7 @@ no next mining ordinal is authorized, and parity remains 90/95.
 
 ### task-str005-start-panic-diagnosis | 2026-09-27 | Diagnose and correct the Start panic
 
-Status: Blocked — stack correction installed with fresh healthy recovery; original panic cause, core capture/cutoff and live Start remain unverified.
+Status: Capture/cutoff verified; stack correction installed with fresh healthy recovery. Original Start panic cause and live Start remain unverified.
 Objective: identify the actual Start panic cause and verify a targeted correction.
 Depends on: fresh prospective recovery admission under ADR-0031 for new effects;
 `task-str005-failure-recovery-accounting` remains unresolved for historical proof.
@@ -4652,10 +4652,10 @@ The following gates authorize only its verified staged effects after publication
 Development panic probe: stage A enabled.
 Development panic probe: store diagnostics required.
 Development panic probe: task-stack capture required.
-Development panic probe: installation enabled.
-Development panic probe: self-test enabled.
+Development panic probe: installation disabled (installation007 completed).
+Development panic probe: self-test disabled (installation007 completed).
 Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
-Development core-dump clearing: disabled (region erased; capture unverified).
+Development core-dump clearing: enabled (private archive verified).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
 compares the archived full region before its exact erase. These declarations do
@@ -5112,22 +5112,48 @@ capacity rejection plus the verified official profile correction. SDK selected-
 region native audit v2 passes on the dirty candidate, as do captured-byte decoder
 regressions; clean published audits and hardware capture remain pending.
 
+Verified capture continuation | 2026-09-28:
+
+- [x] Published source `361425b9` and clean native audits; installed exact ELF
+  `7f3ea3ce75bf3eb8eb4c9a23a5eb7de5110114e124c22341f5cd2a867f97ebf2`.
+- [x] Installation007's one ASIC-off self-test acknowledged and returned explicit
+  panic boot5→6 in 9,112 ms, with uninterrupted USB and zero port reopens.
+- [x] Immediate retained diagnostics measured requested=88,668, prepared=88,704,
+  capacity=974,848 bytes; init/prepare/start/end/store results all zero.
+- [x] Preserved the full partition and verified the actual dump checksum, complete
+  ELF identity and cutoff receipt from captured memory: ASIC outputs disabled,
+  generation revoked and self-test marked. No program-image substitution.
+- [x] Independent post-ROM boot7 recovery confirmed healthy readiness, unchanged
+  ledgers (next18/last17/1,560,000 ms/pending=false; old campaign exhausted at
+  240,000 ms), restoration and released browser/server/device resources.
+
+Evidence: [verified capture](docs/parity/evidence/20260928-str005-core-capture-verified.md).
+Installation007 inventory SHA-256:
+`7131552c725c17c070b52b4238b2a92a742ccf34691ebadb5df2885ac3d5f925`.
+The generic observer result retains `core_capture_verified=false`; actual capture
+qualification comes from the separately produced checksum/ELF/captured-cutoff
+inspection artifacts. The sealed result is not rewritten. Capture failure is
+resolved for this profile; original Start cause remains unproved. No Start,
+grant, mining or clearing occurred. No parity promotion; 90/95 unchanged.
+The consumed installation/self-test gates are disabled. A separate published
+startup contract must admit clearing and one fresh ledger-derived Start.
+
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 
-Status: Proof blocked on recovery and verified panic correction.
+Status: Software implementation and Node verification complete; hardware disabled pending verified capture/cutoff and archived-dump clearing.
 Objective: prove completed Start and increasing work dispatch, followed by normal
 stop, restoration, accounting and cleanup; an accepted share is not required.
 Depends on: `task-str005-failure-recovery-accounting`, `task-str005-start-panic-diagnosis`.
 Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
 
 - [ ] Define/publish a focused startup probe and bounded execution contract,
-      using the existing production owner and conservative signed mining profile.
+  using the existing production owner and conservative signed mining profile.
 - [ ] Review continuity applicability and establish fresh identity, preservation,
-      possession and both ledgers; determine the next ordinal from actual evidence.
+  possession and both ledgers; determine the next ordinal from actual evidence.
 - [ ] Test admission, completed-response barrier, duplicate/late Start, preparation
-      failure and failure cleanup through production seams; verify software/native gates.
+  failure and failure cleanup through production seams; verify software/native gates.
 - [ ] Prove a completed Start and increasing dispatch, then normal ordered stop,
-      qualified cooling, authorization checkpoint, charged ledger completion and release.
+  qualified cooling, authorization checkpoint, charged ledger completion and release.
 
 Evidence: [Share002 report](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md)
 and recovery/panic successor results. Prior pair `cf7a3f03` / `e20c0fd5` is history;
@@ -5137,6 +5163,61 @@ runtime changes require affected checks. No heartbeat-loss or accepted-share pro
 Authorization: software preparation now; hardware only after dependency evidence,
 published command bounds and verified implementation. No budget reset or refund.
 Verification: Pending. Completion review: Pending.
+
+Startup execution contract | 2026-09-28:
+
+Startup probe hardware: enabled.
+Startup capture seal: 7131552c725c17c070b52b4238b2a92a742ccf34691ebadb5df2885ac3d5f925.
+
+- [x] Implement typed capture/archive/clear admission against existing producer
+  schemas, plus a source-bound one-use wrapper for the official clear command.
+- [x] Implement one fresh normal V2 Start with zero renewals, dispatch observation,
+  bounded Stop requests, late-reply cleanup and failure-independent recovery.
+- [x] Test admission, accounting, timing, resource release and evidence failures
+  with software fixtures; verify the actual qualified Gate zero-renewal interface.
+- [ ] Publish and review the contract before enabling any device effects; supply
+  real captured cutoff/ELF/archive/clear proof and fresh physical/session admission.
+
+Execution is limited to [the startup contract](docs/hardware/str005-startup-probe.md)
+and `just str005-startup-probe preflight|serve|clear|finish`. New ignored private
+root: `scratch/str005-startup/startup001/attempt`; inputs bind sealed installation007.
+After publication, preserve the existing captured dump, clear only its verified
+region through the official owner, obtain fresh identity/preservation/ledgers,
+and issue one normal 180,000-ms reservation with a 60,000-ms lease and zero
+renewals. Measure the ordinal; do not assume 18. No flashing, external pool,
+Share002 replay, self-test, factory reset, NVS reset, refund or parity promotion.
+
+Require a Start reply within 30 seconds; request Stop at first increasing dispatch
+or failure, within 5 seconds after reply and 35 seconds after invocation. These are
+request deadlines, not physical-off claims. Stop/Close are each bounded at 150
+seconds, independent recovery reads at 30 seconds, fixture release at 5 seconds,
+and archive-bound clear at 1,200 seconds. The contract details recovery and
+process/listener/serial release even when the main test fails. Fresh-session
+recovery plus exact charge, retained resource release and restoration are required
+for completion. Seal partial evidence and record the first blocker otherwise.
+No unchanged-boundary retry; no task archival until its actual criteria pass.
+
+The prospective ADR-0031 recovery/capture proof admits this new trial without
+rewriting the unresolved historical Share002 resource proof or claiming the
+original panic cause. Installed source `361425b9` / ELF `7f3ea3ce` remains unchanged;
+the current host commit owns the command. The consumed panic installation and
+self-test gates stay disabled. Clearing is enabled only for this captured archive
+with fresh same-device proof; raw dump/vendor output remain private, mode 0600
+under mode 0700 roots. Only closed categories, measurements and hashes are promoted.
+
+Software review: 25 Node tests passed with the actual qualified Gate source,
+including late Start/read completion, recovery-round isolation, stale-baseline
+rejection, canonical tool admission and a real synthetic clear child process.
+Integrated verification: canonical startup build and all 25 Bazel Node tests
+passed. The synthetic CLI test was corrected to use the actual Bazel Node binary
+with a short shell launcher; the sandbox exposed wrapper-environment and shebang
+limitations before hardware. Ordered Cargo format/Clippy/build/tests passed
+(2,412 passed, three existing ignores). Standards, redaction, reference, Markdown
+and diff checks passed. Independent review confirmed session-generation and
+candidate preservation semantics against the actual pinned Gate/firmware.
+Actual sealed installation007 capture passed the new adapter. Remaining gates
+are publication and fresh pre-clear/candidate/recovery evidence. No mining-startup
+result or parity promotion is claimed.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
