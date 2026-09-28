@@ -5150,7 +5150,7 @@ No further Start, flash, clear or self-test is admitted by this consumed trial.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
-Status: Installation002 qualified; exact-image core preservation and off-only capture/cutoff are the next prerequisites. Installation001 remains partial.
+Status: Installation002 and exact-image capture/cutoff qualified; archive-bound clear and fresh share admission remain required.
 Objective: prove a correlated real ASIC result, encrypted submission, independent
 fixture acceptance and device acknowledgement, then restoration/accounting/cleanup.
 Depends on: `task-str005-mining-startup-probe` and applicable authenticated channel
@@ -5238,10 +5238,10 @@ Renew-image installation001 execution contract | 2026-09-28:
 
 Renew image qualification: baseline enabled.
 Renew image qualification: installation disabled.
-Renew image qualification: self-test enabled.
-Renew image qualification: core clear disabled.
-Renew-image core-dump acquisition: enabled (fresh recovery required).
-Renew-image core-dump clearing: disabled (captured archive required).
+Renew image qualification: self-test disabled.
+Renew image qualification: core clear enabled.
+Renew-image core-dump acquisition: disabled (captured dump retained).
+Renew-image core-dump clearing: enabled (private archive verified).
 
 Objective: install the isolated Renew correction once without mining, preserving
 startup003's retained record before reset and proving the exact candidate identity,
@@ -5520,6 +5520,61 @@ read is admitted. The one ASIC-off self-test, fresh one-use dump-read proof, act
 SDK dump/cutoff inspection and independent cleanup remain required. All privacy,
 accounting, authority, non-claims and repeated-boundary stop rules remain unchanged.
 Do not reinterpret either pre-effect failure as a hardware capture or discard it.
+
+Capture003 qualification and clear001 contract | 2026-09-28:
+
+Renew image capture seal: 2233a555300f84f5d2802e8caf63ecb88e9e89ec3af9ad6d6353004fb3fd2333.
+
+Capture003 completed with independent raw-dump/cutoff verification on exact
+f000872f/a3e25741 and Gate9643e876, host53fdd67a. Matched nonce, explicit panic
+boot12→13 in8,571 ms, actual store77820/77856 bytes within974848 with all SDK
+results0; immediate recovery and later boot14 recovery passed unchanged20/19/1920000
+accounting. Full raw checksum/ELF/captured-memory/disabled-ASIC/revoked-generation/
+self-test-marker checks passed. Browser/server/serial resources released; captured
+raw SHA256 `bc8a8079d97fa2395f63bda78286be6d7c83aaeb39774199e643b8226e11288b`.
+[Verified capture](docs/parity/evidence/20260928-str005-renew-capture-verified.md).
+The generic observer false flag and original-cause non-claim are preserved;
+actual independent producer rejudgment passed. Earlier partial seals remain intact.
+Commit53fdd67a was created before final Rust completion was confirmed; that pass
+was confirmed before hardware. All later commits require confirmed completion of
+each prescribed check first.
+
+The self-test and raw acquisition gates are consumed and disabled. Objective now:
+clear only the verified archived core region, then independently establish fresh
+post-clear state. No installation, self-test, grant, mining or renewal is admitted.
+
+Fresh current-recovery003: use the published `renew-preflight|renew-serve|renew-finish`
+read-only command shape with new `<repo>/scratch/str005-renew/current-recovery003/attempt`,
+`--recover-installed-root <repo>/scratch/str005-renew/installation002/attempt`,
+retained `build-f000872f/bitaxe-ultra205-package.json` and the pinned clean Gate.
+Measure exact f000872f/a3e25741, expected current boot14, both ledgers, idle status,
+current preservation/restoration and release. Seal with final detector/owner checks.
+The clear launch must use this actual one-use proof while\<=120 seconds old.
+
+Clear001: `just str005-panic-probe renew-clear-preflight --private-root <repo>/scratch/str005-renew/clear001/attempt --capture-root <repo>/scratch/str005-renew/capture003/attempt --recovery-root <repo>/scratch/str005-renew/current-recovery003/attempt`,
+then `renew-clear` and `renew-clear-finish` with that new private root. The wrapper
+rejudges the sealed capture/decoder bytes, successful current-recovery producer,
+actual collection time and matching identity/ledgers, before the official
+archive-bound `core-dump-clear` call. Retain a fresh `clear-detector.stdout.log`
+in the new private parent immediately before launch. One erase only; physical
+lease and board-info required; preserve exact pre-erase bytes, verify bytewise
+archive match and all-FF readback, return to exact application and release.
+The one-use semantic proof claim survives failures and forbids read/clear replay.
+
+After clear, collect independent current-recovery004 with the same read-only
+shape and new `<repo>/scratch/str005-renew/current-recovery004/attempt`. Measure
+post-clear boot/identity, unchanged20/19/1920000 ledgers, current preservation,
+restoration and complete release; never infer baseline from the clear receipt.
+Successful clear and post-clear recovery are prerequisites to publishing a share
+admission manifest. They do not themselves authorize a Start.
+
+All roots ignored0700 with absent supervisor children and separate0600 siblings;
+raw dump/vendor data stay private. Fresh proof\<=120s, detector\<=60s, reads\<=30s,
+separate Stop/Close\<=150s, clear supervisor\<=1200s plus existing component bounds.
+No NVS/factory reset, refund, other partition write, external pool, replay, mining,
+authorization issuance or parity promotion. Preserve earliest failures and seal
+partial clear results. A repeated boundary after its correction is a stop; no
+blind retry. The accepted-share task remains active until its own criteria pass.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
