@@ -1,3 +1,4 @@
+import { admitRetainedProof, verifyRetainedInputs } from './renew-successor.mjs';
 import { spawn } from 'node:child_process';
 import { open, readFile, stat } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -14,11 +15,13 @@ import { check, sha256 } from '../str005-v2-serial/values.mjs';
 export const INSTALL_TIMEOUT_MS = 1200000;
 
 export function admitRecovery(value, context, now = Date.now()) {
-  check(value.schema === 'str005-current-recovery-proof-v1' && value.source_commit === context.commit &&
+  if (value.schema === 'str005-current-recovery-proof-v2') admitRetainedProof(value, context);
+  else check(value.schema === 'str005-current-recovery-proof-v1' && !context.retainedBaseline && value.current_v2_idle === true, 'panic_recovery_prerequisite');
+  check(value.source_commit === context.commit &&
     value.gate_commit === context.gate_commit && value.firmware_commit === context.before_source.firmware_commit &&
     value.app_elf_sha256 === context.before_source.app_elf_sha256 && value.physical_identity_sha256 === context.detector.physical &&
     Number.isSafeInteger(value.observed_at_unix_ms) && now >= value.observed_at_unix_ms && now - value.observed_at_unix_ms <= 120000 &&
-    ['safe_baseline', 'restoration_confirmed', 'device_lease_inactive', 'serial_ownership_released', 'preservation_matches', 'current_v2_idle']
+    ['safe_baseline', 'restoration_confirmed', 'device_lease_inactive', 'serial_ownership_released', 'preservation_matches']
       .every(key => value[key] === true) && value.mine_on_boot === false, 'panic_recovery_prerequisite');
   validateLedger(value.ledger); requireExhaustedOriginal(value.original_budget);
   check(value.ledger.pending === false, 'panic_pending_accounting');
@@ -52,6 +55,7 @@ export async function runChild(program, args, root, timeoutMs = INSTALL_TIMEOUT_
 export async function install(root, context) {
   check(context.installEnabled === true && context.installTimeoutMs === INSTALL_TIMEOUT_MS, 'panic_install_disabled');
   const recovery = await proof(root, 'current-recovery.json'); admitRecovery(recovery.value, context);
+  await verifyRetainedInputs(root, context, recovery.value);
   await missing(resolve(root, 'install')); await missing(resolve(root, 'install-runner.json'));
   const detectorPath = resolve(dirname(root), 'install-detector.stdout.log'); await protectedPath(detectorPath);
   const detector = await readFile(detectorPath, 'utf8');
@@ -91,6 +95,7 @@ export function validateFlashReceipt(f, context, runner, logDigest) {
 }
 export async function inspectInstall(root, context) {
   const claim = (await proof(root, 'install-claim.json')).value, runner = (await proof(root, 'install-runner.json')).value;
+  await verifyRetainedInputs(root, context, (await proof(root, 'current-recovery.json')).value);
   const owner = await proof(root, 'server-owner.json');
   check(claim.physical_identity_sha256 === context.detector.physical && owner.value.physicalIdentitySha256 === context.detector.physical &&
     claim.server_owner_sha256 === owner.sha256 && typeof claim.port === 'string' && /^\/dev\/[A-Za-z0-9._/-]+$/u.test(claim.port), 'panic_install_physical_binding');

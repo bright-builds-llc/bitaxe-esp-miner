@@ -176,6 +176,7 @@ rust_binary(
         "src/core_dump/clearing.rs",
         "src/core_dump/tests.rs",
         "src/core_dump/run_tests.rs",
+        "src/core_dump/replay_tests.rs",
         "src/drain_worker_serial.rs",
         "src/bootstrap_timing.rs",
         "src/cli.rs",

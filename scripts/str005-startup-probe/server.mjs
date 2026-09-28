@@ -19,15 +19,25 @@ export async function createServerOwner({ root, context, assets, authorityDirect
   const persist = (name, value) => writeNew(resolve(root, name), value);
   async function release() {
     if (released) return; released = true;
+    let maybeFailure;
     if (fixture) {
-      await fixture.close();
-      const owner = (await proof(root, 'fixture-owner.json')).value.owner;
-      await requireGone([owner]); requirePoolListenerAbsent(fixture.ready.listenPort);
+      try { if (operations.finishFixture) await operations.finishFixture(fixture); }
+      catch (error) { maybeFailure = error; }
+      try {
+        await fixture.close();
+        const owner = (await proof(root, 'fixture-owner.json')).value.owner;
+        await requireGone([owner]); requirePoolListenerAbsent(fixture.ready.listenPort);
+      } catch (error) { maybeFailure ??= error; }
     }
-    await persist('fixture-release.json', { schema: 'str005-startup-fixture-release-v1', complete: true });
+    try { if (operations.release) await operations.release(); }
+    catch (error) { maybeFailure ??= error; }
+    await persist('fixture-release.json', { schema: 'str005-startup-fixture-release-v1', complete: !maybeFailure });
+    if (maybeFailure) throw maybeFailure;
   }
   const verifyEffect = async () => {
-    await verify(); check(context.admission === 'prepared-normal-stop-v1', 'startup_prepared_admission');
+    await verify();
+    if (operations.admitContext) operations.admitContext(context);
+    else check(context.admission === 'prepared-normal-stop-v1', 'startup_prepared_admission');
     const path = resolve(dirname(root), 'startup-detector.stdout.log'); await protectedPath(path);
     const bytes = await readFile(path), age = Date.now() - (await stat(path)).mtimeMs;
     let detector;
@@ -38,12 +48,13 @@ export async function createServerOwner({ root, context, assets, authorityDirect
   };
   const prewarm = async () => {
     await verifyEffect();
+    if (operations.beforePrewarm) await operations.beforePrewarm();
     if (!maybeSigner) {
       maybeSigner = await (operations.createSigner ?? createSigner)(root, context, authorityDirectory, routes.failed);
       admitTrust(assets.trust, await maybeSigner('public-trust'));
     }
   };
-  const routes = createRoutes(context, { verify, verifyEffect, persist, release, prewarm,
+  const routes = createRoutes(context, { verify, verifyEffect, persist, release, prewarm, policy: operations.routePolicy,
     sign: async (...args) => {
       check(maybeSigner, 'startup_signer_not_prewarmed'); await verifyEffect();
       return maybeSigner(...args);
@@ -57,6 +68,7 @@ export async function createServerOwner({ root, context, assets, authorityDirect
       const host = `127.0.0.1:${server.address().port}`, origin = `http://${host}`;
       check(request.headers.host === host, 'startup_host'); const path = new URL(request.url, origin).pathname; requestPath = path;
       if (request.method === 'GET') {
+        if (operations.extraAssets?.has(path)) return send(response, 200, operations.extraAssets.get(path), 'text/javascript');
         if (path === '/context') return send(response, 200, { ...configuration(context, 'before', assets.trust), coreDumpSelfTestQualification: true });
         if (path === '/') return send(response, 200, Buffer.from(`${assets.page}\n<script type="module" src="/startup-page.mjs"></script>`), 'text/html');
         if (path === `/${BUNDLE}`) return send(response, 200, assets.bundle, 'text/javascript');

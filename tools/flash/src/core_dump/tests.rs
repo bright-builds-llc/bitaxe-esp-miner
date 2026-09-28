@@ -138,3 +138,24 @@ fn successful_return_does_not_hide_release_failure() {
     assert!(cleanup.is_err());
     assert!(*released.borrow());
 }
+
+#[test]
+fn successor_core_gate_requires_one_explicit_active_owner() {
+    // Arrange
+    let successor = "## Active\n### task-str005-v2-accepted-share-probe | fixture\nRenew-image core-dump acquisition: enabled (fresh recovery required).\n";
+    // Act / Assert
+    assert!(contract::admit_task(successor).is_ok());
+    assert!(contract::admit_mode(successor, true).is_err());
+    assert!(contract::admit_task(&successor.replace("Active", "Future")).is_err());
+    assert!(contract::admit_task(&(successor.to_owned() + &enabled_task("Active"))).is_err());
+    assert!(contract::admit_task(&(successor.to_owned() + successor)).is_err());
+}
+
+#[test]
+fn successor_core_clear_is_separately_scoped() {
+    // Arrange
+    let successor = "## Active\n### task-str005-v2-accepted-share-probe | fixture\nRenew-image core-dump clearing: enabled (private archive verified).\n";
+    // Act / Assert
+    assert!(contract::admit_mode(successor, true).is_ok());
+    assert!(contract::admit_task(successor).is_err());
+}

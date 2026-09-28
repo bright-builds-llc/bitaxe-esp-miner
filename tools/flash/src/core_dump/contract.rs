@@ -10,31 +10,53 @@ pub(super) fn admit_task(tasks: &str) -> Result<()> {
 }
 
 pub(super) fn admit_mode(tasks: &str, clear: bool) -> Result<()> {
-    let enable = if clear {
-        "Development core-dump clearing: enabled (private archive verified)."
-    } else {
-        ENABLE
-    };
+    let owners = [
+        (
+            TASK,
+            if clear {
+                "Development core-dump clearing: enabled (private archive verified)."
+            } else {
+                ENABLE
+            },
+        ),
+        (
+            "task-str005-v2-accepted-share-probe",
+            if clear {
+                "Renew-image core-dump clearing: enabled (private archive verified)."
+            } else {
+                "Renew-image core-dump acquisition: enabled (fresh recovery required)."
+            },
+        ),
+    ];
     let mut active = false;
-    let mut selected = false;
-    let mut count = 0;
-    let mut enabled = false;
+    let mut maybe_selected = None;
+    let mut counts = [0; 2];
+    let mut enabled = [false; 2];
     for line in tasks.lines() {
         if line.starts_with("## ") {
             active = line.trim() == "## Active";
-            selected = false;
+            maybe_selected = None;
         }
         if let Some(heading) = line.strip_prefix("### ") {
-            selected = heading.split([' ', '|']).next() == Some(TASK);
-            if selected {
-                count += 1;
+            maybe_selected = owners
+                .iter()
+                .position(|(task, _)| heading.split([' ', '|']).next() == Some(*task));
+            if let Some(index) = maybe_selected {
+                counts[index] += 1;
             }
         }
-        if selected && active && line.trim() == enable {
-            enabled = true;
+        if let Some(index) = maybe_selected {
+            if active && line.trim() == owners[index].1 {
+                enabled[index] = true;
+            }
         }
     }
-    if count != 1 || !enabled {
+    if enabled.iter().filter(|&&value| value).count() != 1
+        || enabled
+            .iter()
+            .enumerate()
+            .any(|(index, &value)| value && counts[index] != 1)
+    {
         bail!("core_dump=blocked reason=active_contract_disabled_or_ambiguous");
     }
     Ok(())

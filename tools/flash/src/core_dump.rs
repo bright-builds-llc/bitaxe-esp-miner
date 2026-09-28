@@ -88,6 +88,35 @@ fn run_mode(
     let esptool = environment.prepare_application_exit()?;
     let root = environment.workspace_path(&command.private_root);
     environment.approve_private_evidence_root(&root)?;
+    if root
+        .components()
+        .any(|part| matches!(part, camino::Utf8Component::ParentDir))
+    {
+        bail!("core_proof_output_path");
+    }
+    if fs::symlink_metadata(&root).is_ok() {
+        bail!("core_dump=blocked reason=private_root_exists");
+    }
+    let parent = root.parent().context("core_proof_output_parent")?;
+    let metadata = fs::symlink_metadata(parent)?;
+    if !metadata.is_dir()
+        || metadata.file_type().is_symlink()
+        || metadata.permissions().mode() & 0o777 != 0o700
+    {
+        bail!("core_proof_output_parent");
+    }
+    for ancestor in parent.ancestors() {
+        if fs::symlink_metadata(ancestor)?.file_type().is_symlink() {
+            bail!("core_proof_output_symlink");
+        }
+    }
+    proof::claim(
+        command,
+        &environment.workspace_path(Utf8Path::new(".")),
+        provenance.build_identity().source_commit(),
+        maybe_clear.is_some(),
+        &root,
+    )?;
     contract::create_root(&root)?;
     let mut rom_admitted = false;
     let mut stage = "session_admission";

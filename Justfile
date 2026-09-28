@@ -36,6 +36,9 @@ str005-panic-probe action *args:
 test-panic-probe-command:
     bazel run //scripts:str005_panic_command_check_test_local
 
+audit-signed-renew-stack *args:
+    bazel run //scripts:audit_signed_renew_stack -- {{ args }}
+
 audit-signed-start-stack *args:
     bazel run //scripts:audit_signed_start_stack -- {{ args }}
 
@@ -404,3 +407,12 @@ str005-startup-probe action *args:
 # Preserve retained evidence and perform one admitted no-mining software restart.
 str005-startup-preparation action *args:
     bazel run //scripts:str005_startup_preparation -- {{ action }} {{ args }}
+
+str005-share-probe action *args:
+    bazel run //scripts:str005_share_probe -- {{ action }} {{ args }}
+
+str005-heartbeat-probe action *args:
+    bazel run //scripts:str005_heartbeat_probe -- {{ action }} {{ args }}
+
+str005-heartbeat-preparation action *args:
+    bazel run //scripts:str005_heartbeat_preparation -- {{ action }} {{ args }}

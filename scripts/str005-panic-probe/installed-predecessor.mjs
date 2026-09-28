@@ -15,7 +15,7 @@ export function validateInstalledAnchor(context, result, candidate, baseline, cl
     Array.isArray(result.candidate_recoveries) && result.candidate_recoveries.length >= 1 &&
     result.candidate_recoveries.length <= 8 && result.candidate_recoveries.every(row => row.complete === true && row.blockers?.length === 0),
   'panic_installed_anchor_incomplete');
-  const expected = { ...context, before_source: { firmware_commit: context.firmware_commit, app_elf_sha256: context.app_elf_sha256 } };
+  const expected = { ...context, retainedBaseline: undefined, before_source: { firmware_commit: context.firmware_commit, app_elf_sha256: context.app_elf_sha256 } };
   admitRecovery(candidate, expected, candidate.observed_at_unix_ms);
   check(canonical(candidate.ledger) === canonical(baseline.ledger) && canonical(candidate.original_budget) === canonical(baseline.original_budget) &&
     closed.status === 'closed' && closed.connected === false && closed.serialOwnershipReleased === true &&

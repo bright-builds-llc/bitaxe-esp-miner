@@ -475,3 +475,96 @@ fn core_dump_reenumerated_physical_drift_rejects_before_read_or_erase() {
     assert_eq!(environment.cleanup_calls.get(), 1);
     assert_eq!(receipt(&environment)["clearing_complete"], false);
 }
+
+fn retained_proof_value() -> serde_json::Value {
+    let mut value = proof_value();
+    value
+        .as_object_mut()
+        .expect("proof object")
+        .remove("current_v2_idle");
+    value["schema"] = serde_json::json!("str005-current-recovery-proof-v2");
+    value["current_v2_released"] = serde_json::json!(true);
+    value["retained_attempt_id"] = serde_json::json!("b".repeat(22));
+    value["retained_status_sha256"] = serde_json::json!("c".repeat(64));
+    value
+}
+
+#[test]
+fn retained_recovery_proof_admits_dump_read() {
+    // Arrange
+    let (_directory, command, environment) = fixture();
+    fs::write(
+        &command.recovery_proof,
+        serde_json::to_vec(&retained_proof_value()).expect("JSON"),
+    )
+    .expect("proof");
+    // Act
+    let result = run(&command, &environment);
+    // Assert
+    assert!(result.is_err());
+    assert_eq!(
+        receipt(&environment)["first_failure_stage"],
+        "partition_table_read"
+    );
+    assert_eq!(environment.executed_commands().len(), 1);
+    assert_eq!(environment.cleanup_calls.get(), 1);
+}
+
+#[test]
+fn retained_recovery_proof_rejects_missing_or_contradictory_fields_before_usb() {
+    for field in [
+        "current_v2_released",
+        "retained_attempt_id",
+        "retained_status_sha256",
+        "current_v2_idle",
+    ] {
+        // Arrange
+        let (_directory, command, environment) = fixture();
+        let mut value = retained_proof_value();
+        if field == "current_v2_idle" {
+            value[field] = serde_json::json!(true);
+        } else {
+            value.as_object_mut().expect("object").remove(field);
+        }
+        fs::write(
+            &command.recovery_proof,
+            serde_json::to_vec(&value).expect("JSON"),
+        )
+        .expect("proof");
+        // Act / Assert
+        assert!(run(&command, &environment).is_err(), "accepted {field}");
+        assert!(environment.executed_commands().is_empty());
+        assert_eq!(environment.cleanup_calls.get(), 0);
+    }
+}
+
+#[test]
+fn retained_recovery_proof_rejects_invalid_release_and_record_bindings() {
+    for (field, invalid) in [
+        ("current_v2_released", serde_json::json!(false)),
+        ("retained_attempt_id", serde_json::json!("not-an-attempt")),
+        ("retained_status_sha256", serde_json::json!("c".repeat(63))),
+        ("current_v2_idle", serde_json::Value::Null),
+        (
+            "schema",
+            serde_json::json!("str005-current-recovery-proof-v1"),
+        ),
+    ] {
+        // Arrange
+        let (_directory, command, environment) = fixture();
+        let mut value = retained_proof_value();
+        value[field] = invalid;
+        fs::write(
+            &command.recovery_proof,
+            serde_json::to_vec(&value).expect("JSON"),
+        )
+        .expect("proof");
+        // Act / Assert
+        assert!(run(&command, &environment).is_err(), "accepted {field}");
+        assert!(environment.executed_commands().is_empty());
+        assert_eq!(environment.cleanup_calls.get(), 0);
+    }
+}
+
+#[path = "replay_tests.rs"]
+mod replay;

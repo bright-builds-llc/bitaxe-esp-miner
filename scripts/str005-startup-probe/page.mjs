@@ -1,5 +1,5 @@
 import { createCoordinator, collectRecovery, readRecoveryStatus } from './client.mjs';
-export function createPage(gate, post, notice) {
+export function createPage(gate, post, notice, options = {}) {
   let candidate = false, attemptId, binding, recoverySequence = 0, startState = 'not_invoked';
   const state = () => gate.state();
   const recovery = async sequence => {
@@ -7,15 +7,16 @@ export function createPage(gate, post, notice) {
     await collectRecovery({ gate, campaignId: context.originalCampaignId, attemptId, statusMode: startState,
       save: (stage, value) => post('/startup/recovery', { sequence, stage, value }) });
   };
-  const run = createCoordinator({ gate, prepare: async () => {
+  const run = (options.coordinator ?? createCoordinator)({ ...options.coordinatorOptions, gate, prepare: async () => {
     if (!candidate || !state().connected) throw Error('startup_candidate_required');
     await gate.submitCoolingReview(); await gate.submitBudgetReview();
-    binding = (await gate.stratumV2TelemetryEndpoint()).controlSessionBindingSha256;
+    const endpoint = await gate.stratumV2TelemetryEndpoint(); binding = endpoint.controlSessionBindingSha256;
+    if (options.beforeFixture) await options.beforeFixture({ gate, post, binding, endpoint });
     await post('/startup/fixture', { status: await gate.stratumV2Status('share', null, binding), controlSessionBindingSha256: binding });
     const signed = await gate.prepareStartAuthorization(); if (signed.controlSessionBindingSha256 !== binding) throw Error('startup_binding_changed');
     await gate.loadSignedWindow();
     const admitted = await post('/startup/start-admit', { state: state(), status: await gate.stratumV2Status('share', null, binding), controlSessionBindingSha256: binding });
-    attemptId = admitted.attemptId; return admitted;
+    attemptId = admitted.attemptId; return options.prepare ? options.prepare({ ...admitted, binding }) : { ...admitted, binding };
   }, record: async value => {
     if (Object.hasOwn(value, 'closed')) return post('/startup/recovery', { sequence: 0, stage: 'closed', value: value.closed });
     startState = value.observedStart ? 'confirmed' : value.startInvokedAt === null ? 'not_invoked' : 'unknown';
@@ -58,10 +59,10 @@ export function createPage(gate, post, notice) {
     },
   };
 }
-if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+export function installPage(options = {}) {
   const publicGate = window.workerAcceptance;
   const names = ['state', 'configure', 'refresh', 'close', 'stop', 'reviewQualificationAttempts', 'reviewBudget', 'stratumV2Possession', 'stratumV2Status',
-    'stratumV2TelemetryEndpoint', 'submitCoolingReview', 'submitBudgetReview', 'prepareStartAuthorization', 'loadSignedWindow', 'startWindow', 'exportDiagnostics'];
+    'stratumV2TelemetryEndpoint', 'submitCoolingReview', 'submitBudgetReview', 'prepareStartAuthorization', 'loadSignedWindow', 'startWindow', 'exportDiagnostics', ...(options.capabilities ?? [])];
   const gate = Object.fromEntries(names.map(name => [name, publicGate[name].bind(publicGate)]));
   for (const name of ['startWindow', 'loadWindow', 'loadSignedWindow', 'prepareStartAuthorization', 'suppressHeartbeats', 'armForegroundLoss',
     'coreDumpSelfTest', 'stratumV2ChannelStart', 'submitCoolingReview', 'proveCoolingForQualification', 'restoreCoolingBaseline']) delete publicGate[name];
@@ -69,10 +70,12 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   const output = document.createElement('pre'); output.id = 'startup-result'; document.body.append(output);
   const post = async (path, value) => { const result = await fetch(path, { method: 'POST', cache: 'no-store', redirect: 'error',
     headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(value) }); if (!result.ok) throw Error('startup_request_rejected'); return result.json(); };
-  const page = createPage(gate, post, value => { output.textContent = value; });
+  const page = createPage(gate, post, value => { output.textContent = value; }, { ...options, coordinatorOptions: { ...options.coordinatorOptions, post } });
   for (const [label, name] of [['Record baseline and configure candidate', 'baseline'], ['Run one startup probe', 'run'], ['Collect fresh recovery and close', 'recoverFresh']]) {
     const button = document.createElement('button'); button.textContent = label;
     button.addEventListener('click', async () => { button.disabled = true; try { await page[name](); }
       catch { output.textContent = 'Operation incomplete; retain evidence. Stop and Close remain available.'; } }); document.body.append(button);
   }
 }
+
+if (typeof window !== 'undefined' && typeof document !== 'undefined' && !globalThis.str005CustomPage) installPage();

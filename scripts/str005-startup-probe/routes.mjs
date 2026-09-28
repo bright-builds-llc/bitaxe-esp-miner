@@ -9,14 +9,19 @@ import { currentProof } from '../str005-panic-probe/model.mjs';
 import { baseline, validateRun } from './evidence.mjs';
 import { isDeepStrictEqual as same } from 'node:util';
 /** One fresh lifetime, with recovery routes outside the effect failure latch. */
-export function createRoutes(context, { verify, verifyEffect = verify, persist, sign, launch, release, prewarm = async () => {}, now = Date.now }) {
+export function createRoutes(context, { verify, verifyEffect = verify, persist, sign, launch, release, prewarm = async () => {}, now = Date.now, policy = {} }) {
+  const issueWindow = policy.issueWindow ?? signStart;
+  const issuanceCounts = policy.issuanceCounts ?? { authorizationCount: 1, renewalCount: 0 };
+  const validateResult = policy.validateRun ?? validateRun;
+  check([0, 1, 2].includes(issuanceCounts.renewalCount) && issuanceCounts.authorizationCount === issuanceCounts.renewalCount + 1, 'startup_issuance_policy');
   let scope, before, review, cooling, budgetChallenge, coolingChallenge, fixture, network, artifacts, beforeDiagnostics, baselineChallenge;
-  let failed = false, issued = false, delivered = false, candidate = false, recoveryRound = 0, activeRecovery = 0, startState = 'not_invoked';
+  let failed = false, issued = false, delivered = false, candidate = false, recoveryRound = 0, activeRecovery = 0, startState = 'not_invoked', startAdmitted = false;
   const stored = new Set(), sessions = new Set(); let firstFailureRecorded = false;
   const save = async (name, value) => { check(!stored.has(name), 'startup_record_consumed'); await persist(name, value); stored.add(name); };
   const fresh = value => check(value && scope && value.scope === scope.challengeId && now() >= value.at && now() - value.at <= 45000, 'startup_review_stale');
   const unchanged = value => { validateLedger(value); check(before && !value.pending && same(value, before.ledger), 'startup_accounting_changed'); };
   async function ready() { check(!failed && candidate && scope && before, 'startup_effect_admission'); await verifyEffect(); }
+  async function observeReady() { check(!failed && candidate && scope && before && startAdmitted, 'startup_observation_admission'); await verify(); }
   async function networkReady() { await ready(); fresh(review); fresh(network); check(fixture && now() - network.at <= 10000, 'startup_fixture_stale'); fixture.alive(); fixture.requireStartWindow(); }
   async function recordFailure(path, error) {
     if (firstFailureRecorded) return; firstFailureRecorded = true;
@@ -29,7 +34,7 @@ export function createRoutes(context, { verify, verifyEffect = verify, persist, 
     }
     if (path === '/startup/context') { object(input, []); return { originalCampaignId: context.original_campaign_id, attemptId: before?.attempt.id ?? null, startState }; }
     if (path === '/startup/release') { object(input, []); await release(); return { released: true }; }
-    if (path === '/startup/result') { const value = validateRun(input, context); if (value.firstFailure) failed = true; await save('run.json', value); startState = value.observedStart ? 'confirmed' : value.startInvokedAt === null ? 'not_invoked' : 'unknown'; return { recorded: true }; }
+    if (path === '/startup/result') { const value = validateResult(input, context); if (value.firstFailure) failed = true; await save('run.json', value); startState = value.observedStart ? 'confirmed' : value.startInvokedAt === null ? 'not_invoked' : 'unknown'; return { recorded: true }; }
     if (path === '/startup/recovery-begin') {
       object(input, ['state', 'status']); check(before && recoveryRound < 4, 'startup_recovery_bound');
       const status = parseStatus(input.status), key = `${status.observation.bootOrdinal}:${status.observation.serialTransportEpoch}`;
@@ -74,6 +79,10 @@ export function createRoutes(context, { verify, verifyEffect = verify, persist, 
       const recovery = currentProof({ ...context, commit: context.source_commit, before_source: context }, parts, before.observedAtUnixMs);
       await save('current-recovery.json', recovery); candidate = true; return { candidate: true };
     }
+    if (policy.extraRoute) {
+      const extra = await policy.extraRoute({ path, input, method, save, before, fixture, ready, observeReady, context });
+      if (extra?.handled === true) return extra.value;
+    }
     await ready();
     if (path === '/cooling-review-context' || path === '/budget-review-context') {
       object(input, []); check(!issued, 'startup_issuance_consumed');
@@ -110,8 +119,8 @@ export function createRoutes(context, { verify, verifyEffect = verify, persist, 
       object(input, ['controlSessionBindingSha256']); await networkReady();
       check(!issued && input.controlSessionBindingSha256 === review.binding, 'startup_issuance_consumed'); issued = true;
       await save('issuance-claim.json', { attempt: before.attempt, at: now(), deviceReservationObserved: false });
-      artifacts = await signStart({ attempt: before.attempt, challengeId: scope.challengeId, binding: review.binding, stratum: fixture.stratum, sign, verify: networkReady });
-      await save('issued.json', { attemptId: before.attempt.id, authorizationCount: 1, renewalCount: 0 }); return { ready: true };
+      artifacts = await issueWindow({ attempt: before.attempt, challengeId: scope.challengeId, binding: review.binding, stratum: fixture.stratum, sign, verify: networkReady });
+      await save('issued.json', { attemptId: before.attempt.id, ...issuanceCounts }); return { ready: true };
     }
     if (path === '/window-artifacts') {
       check(method === 'GET' && input === undefined && issued && !delivered && artifacts, 'startup_delivery_consumed'); await networkReady();
@@ -125,7 +134,7 @@ export function createRoutes(context, { verify, verifyEffect = verify, persist, 
       check(status.state === 'idle' && o.bootOrdinal === network.boot && o.workerGeneration === network.generation && o.serialTransportEpoch === network.transport, 'startup_start_session');
       fixture.validateStation(o.stationIpv4); sessions.add(`${o.bootOrdinal}:${o.serialTransportEpoch}`);
       await save('start-admitted.json', { state: input.state, status: projectRecoveryPart('status', status, context) });
-      return { generation: o.workerGeneration, attemptId: before.attempt.id };
+      startAdmitted = true; return { generation: o.workerGeneration, attemptId: before.attempt.id };
     }
     check(false, 'startup_route_unavailable');
   }

@@ -1,3 +1,4 @@
+import { retainedConclusion, releasedProofFields } from './renew-successor.mjs';
 import { validateSelfTestSummary } from './self-test-evidence.mjs';
 import { validateState } from '../fixed-usb-qualification/judge.mjs';
 import { validateLedger, requireExhaustedOriginal } from '../fixed-usb-qualification/iterative-contract.mjs';
@@ -23,16 +24,25 @@ export function validatePart(stage, value, context) {
   else validateState(value, baselineIdentity(context));
   return structuredClone(value);
 }
-export function validateFinished(value) {
-  object(value, ['failures']);
+export function validateFinished(value, context = {}) {
+  object(value, context.renewSuccessor && Object.hasOwn(value, 'first_failure') ? ['failures', 'first_failure'] : ['failures']);
+  if (Object.hasOwn(value, 'first_failure')) {
+    check(context.renewSuccessor === true, 'renew_failure_owner');
+    if (value.first_failure !== null) {
+      object(value.first_failure, ['phase', 'category']);
+      check(['begin', 'state', 'ledger', 'original_budget', 'status', 'diagnostics', 'stop', 'close'].includes(value.first_failure.phase) &&
+        ['timeout', 'operation_failed'].includes(value.first_failure.category) && value.failures.length > 0, 'renew_first_failure');
+    }
+  }
   check(Array.isArray(value.failures) && value.failures.length <= BASELINE_PARTS.length &&
     new Set(value.failures).size === value.failures.length && value.failures.every(stage => BASELINE_PARTS.includes(stage)), 'panic_failures');
   return structuredClone(value);
 }
-export function baselineConclusion(parts) {
+export function baselineConclusion(parts, context = {}) {
+  if (context.retainedBaseline) return retainedConclusion(parts, context);
   const blockers = BASELINE_PARTS.filter(stage => !parts[stage]).map(stage => `missing_${stage}`);
   if (!parts.finished) blockers.push('missing_finished');
-  else { validateFinished(parts.finished); blockers.push(...parts.finished.failures.map(stage => `failed_${stage}`)); }
+  else { validateFinished(parts.finished, context); blockers.push(...parts.finished.failures.map(stage => `failed_${stage}`)); }
   if (parts.state && !baselineReady(parts.state)) blockers.push('baseline_unconfirmed');
   if (parts.ledger?.pending) blockers.push('accounting_pending');
   if (parts.status && !(parts.status.state === 'idle' && parts.status.record === null && parts.status.observation.clockValid === true)) blockers.push('current_idle_unconfirmed');
@@ -47,7 +57,7 @@ export function baselineConclusion(parts) {
 }
 
 export function currentProof(context, parts, observedAtUnixMs = Date.now()) {
-  const result = baselineConclusion(parts);
+  const result = baselineConclusion(parts, context);
   check(result.complete, 'panic_baseline_incomplete');
   const expected = baselineIdentity(context);
   check(/^[0-9a-f]{40}$/u.test(expected.firmware_commit) && /^[0-9a-f]{64}$/u.test(expected.app_elf_sha256) &&
@@ -58,11 +68,14 @@ export function currentProof(context, parts, observedAtUnixMs = Date.now()) {
   const boot = parts.status.observation.bootOrdinal;
   const boots = parts.diagnostics.observations.filter(row => row.category === 'boot');
   check(boots.length > 0 && boots.at(-1).boot_ordinal === boot, 'panic_boot_correlation');
-  return { schema: 'str005-current-recovery-proof-v1', source_commit: context.commit, gate_commit: context.gate_commit,
+  const value = { schema: 'str005-current-recovery-proof-v1', source_commit: context.commit, gate_commit: context.gate_commit,
     firmware_commit: context.before_source.firmware_commit, app_elf_sha256: context.before_source.app_elf_sha256,
     physical_identity_sha256: context.detector.physical, observed_at_unix_ms: observedAtUnixMs,
     ledger: parts.ledger, original_budget: parts.original_budget, safe_baseline: true, restoration_confirmed: true,
     device_lease_inactive: true, serial_ownership_released: true, preservation_matches: true, mine_on_boot: false, current_v2_idle: true };
+  if (!context.retainedBaseline) return value;
+  delete value.current_v2_idle;
+  return { ...value, ...releasedProofFields(context, parts) };
 }
 
 /** Strip only explicitly validated new Gate metadata for the existing state validator. */

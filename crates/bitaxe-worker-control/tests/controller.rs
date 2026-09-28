@@ -10,6 +10,8 @@ mod fixture_session;
 mod liveness;
 #[path = "controller/noise.rs"]
 mod noise;
+#[path = "controller/renew_dispatch.rs"]
+mod renew_dispatch;
 #[path = "controller/restart.rs"]
 mod restart;
 #[path = "controller/serial_trace.rs"]

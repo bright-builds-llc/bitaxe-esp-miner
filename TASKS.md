@@ -4654,7 +4654,7 @@ Development panic probe: store diagnostics required.
 Development panic probe: task-stack capture required.
 Development panic probe: installation disabled (installation007 completed).
 Development panic probe: self-test disabled (installation007 completed).
-Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
+Development core-dump acquisition: disabled (successor owns new-image qualification).
 Development core-dump clearing: disabled (startup001 archived clear completed).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
@@ -5158,14 +5158,14 @@ proof; Channel006 is private accepted evidence on its actual tested pair.
 Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
 
 - [ ] Publish a small accepted-share probe contract with the controlled local
-      fixture, conservative signed authority and explicit bounded stop conditions.
+  fixture, conservative signed authority and explicit bounded stop conditions.
 - [ ] Review channel/continuity applicability; rerun affected protocol checks when
-      changes invalidate them, without relabeling Channel006 as new-image evidence.
+  changes invalidate them, without relabeling Channel006 as new-image evidence.
 - [ ] Verify fixture target/header/nonce/submission/ack correlations, malformed or
-      mismatched input rejection, private runtime inputs and actual resource cleanup.
+  mismatched input rejection, private runtime inputs and actual resource cleanup.
 - [ ] On fresh admission/accounting, prove one device-acknowledged accepted share;
-      stop normally and prove restoration, charged accounting and release. No heartbeat
-      fault is required here. Preserve partial observations if later cleanup fails.
+  stop normally and prove restoration, charged accounting and release. No heartbeat
+  fault is required here. Preserve partial observations if later cleanup fails.
 
 Evidence: private `scratch/str005-v2-serial/channel-006`,
 [Share002 report](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md),
@@ -5198,7 +5198,7 @@ compiled selected-path evidence, not an observed overflow or Share002 cause.
 Do not enable renewals on this image. The zero-renewal startup successor remains
 within its separately audited 13,264-byte selected path.
 
-- [ ] Isolate signed Renew from the large general dispatch frame; add a native
+- [x] Isolate signed Renew from the large general dispatch frame; add a native
   regression/audit equivalent to the signed-Start guard and verify both paths.
 - [ ] Build/publish the necessary new firmware, preserve current accounting and
   evidence, and qualify its applicable identity/capture/cutoff/preservation checks
@@ -5209,6 +5209,91 @@ within its separately audited 13,264-byte selected path.
   Record actual 0–2 renewals; no-share at the deadline is unverified, not retry
   authority. Never weaken the native margin or silently use the unsafe Renew path.
 
+Renew software verification | 2026-09-28:
+
+The isolated dispatch keeps signature verification outside the large general
+controller frame without changing lease semantics or the 16-KiB owner stack.
+Three real controller regressions cover response correlation/status evidence,
+authentication-failure restoration, and no active lease. The native guard rejects
+the prior 16,032-byte path (352-byte margin) and verifies explicit compiled call
+edges. A development build of the correction measured Renew at 11,760 bytes
+(4,624 margin) and Start unchanged at 13,264 (3,120 margin), each above the
+2,048-byte minimum. These are selected paths, not a complete callgraph bound or
+an observed original fault trace. Exact clean published candidate audits and
+new-image hardware evidence remain required; no Renew has run on the old image.
+
+New-image prerequisite plan:
+
+- [ ] Adapt the existing bounded installation/capture owner to this task with a
+  separate consumed-state gate and sealed startup003 identity/retained record.
+- [ ] Verify strict known-attempt release proof before reset; never query null
+  or relabel a retained stopped record as empty idle. Preserve both ledgers and
+  same-page settings/Device Identity/authorization baseline across installation.
+- [ ] Publish and verify the exact state-preserving installation, off-only capture,
+  archive-bound core clearing and failure cleanup contract before device access.
+- [ ] Re-audit exact clean candidate Start/Renew/cutoff/store paths and collect
+  real installation/capture/cutoff/restoration evidence before enabling sharing.
+
+Renew-image installation001 execution contract | 2026-09-28:
+
+Renew image qualification: baseline enabled.
+Renew image qualification: installation enabled.
+Renew image qualification: self-test disabled.
+Renew image qualification: core clear disabled.
+Renew-image core-dump acquisition: disabled (installation outcome required).
+Renew-image core-dump clearing: disabled (captured archive required).
+
+Objective: install the isolated Renew correction once without mining, preserving
+startup003's retained record before reset and proving the exact candidate identity,
+unchanged ledgers/settings/Device Identity/authorization high-water and cleanup.
+The source gate remains disabled until this implementation and contract pass
+verification and are committed/pushed. Candidate selection is the canonical
+`just package` output from that exact clean published HEAD; the reviewed
+preflight binds actual manifest/source/full ELF, tool binary and native audits
+before any device effect. Gate remains pinned to bd26128788dd3f04842984e545fa2382c0b50561.
+Installed before identity remains 361425b902a3e214d6d0b052118c9e7a710458aa / ELF
+7f3ea3ce75bf3eb8eb4c9a23a5eb7de5110114e124c22341f5cd2a867f97ebf2.
+
+Commands: `just package`, `just test-panic-probe-command`, exact-ELF
+`just audit-signed-start-stack` and `just audit-signed-renew-stack`, then
+`just str005-panic-probe renew-preflight|renew-serve|renew-install|renew-finish`
+with the absolute canonical manifest, pinned clean Gate root and new protected
+`scratch/str005-renew/installation001/attempt`. Follow the exact argument shapes
+and bounds in [the Renew image contract](docs/hardware/str005-renew-installation.md).
+Run `just detect-ultra205` before admission and immediately before installation;
+store separate 0600 detector/stdout/stderr siblings below the 0700 parent.
+The child must not exist at preflight. No credential-file reads or provisioning.
+
+Before ROM/reset: validate startup003's immutable inventory, then freshly measure
+its known retained attempt, boot9/generation6, closed socket/quiescent worker/no
+fence, restored inactive lease, same-page preservation and both ledgers. Compare
+against measured historical next20/last19/1920000 with no pending reservation;
+never copy that tuple as fresh proof. Freshness begins at one-use collection,
+not finalization. Reject any missing/changed evidence. Install one admitted
+disjoint state-preserving image through the existing owner; retain the same
+physical lease and require board-info before writing. Reconnect the original
+page to the candidate and independently confirm exact runtime identity and
+unchanged preservation/accounting, then Stop/Close and release every owner.
+
+Bounds: fresh proof \<=120 seconds, detector \<=60 seconds, individual reads and
+begin \<=30 seconds, separate Stop and Close \<=150 seconds each, installation
+\<=1200 seconds with the existing 360-second observation bound. Preserve earliest
+failure and immutable partial receipts; no blind reinstall/retry. A repeated
+boundary after a targeted correction is a stop under the hardware-attempt policy.
+Accepted outcomes: qualified installation or precise sealed blocker; incomplete
+capture, new-image startup, Renew execution, accepted share and heartbeat-loss
+remain unclaimed. Later capture and archive-bound clear require separately
+published stage changes and fresh evidence. No Start, mining, grant issuance,
+renewal, self-test, clear, factory/NVS reset, replay, refund or parity promotion
+is authorized by this installation stage. Parity stays 90/95.
+
+Software evidence: isolated native development build measured Start13264/3120
+and Renew11760/4624 bytes used/margin; exact published candidate must pass again.
+Core read/clear admission tests distinguish retained-v2 release from idle-v1,
+reject stale/invalid/mixed proofs before USB and require one explicit active
+owner. A durable private semantic-proof claim also rejects copied/reformatted
+proof replay and read-to-clear reuse before USB; fresh collection is required
+for each operation even after a failed attempt. Original Share002 cause and historical resource gaps remain unresolved.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
@@ -5219,14 +5304,14 @@ Depends on: `task-str005-mining-startup-probe`; recovery readiness is inherited.
 Policy: [ADR-0029](docs/adr/0029-piecewise-str005-qualification.md).
 
 - [ ] Publish a focused bounded shutdown probe using the existing qualified
-      heartbeat-suppression mechanism and observer; do not require an accepted share.
+  heartbeat-suppression mechanism and observer; do not require an accepted share.
 - [ ] Verify fresh accounting, conservative work admission and remaining authority
-      before fault injection; retain the 2800-ms expiry and <=3000-ms actual
-      revocation/shutdown-initiation requirements, ordered stop and qualified cooling.
+  before fault injection; retain the 2800-ms expiry and \<=3000-ms actual
+  revocation/shutdown-initiation requirements, ordered stop and qualified cooling.
 - [ ] Test timing boundaries, stale observations, inadequate headroom, observer
-      loss, failure collection and cleanup; run relevant production/native checks.
+  loss, failure collection and cleanup; run relevant production/native checks.
 - [ ] Perform an independently admitted measurement with device-local timing,
-      fresh recovery, authorization checkpoint, charged ledgers and actual release.
+  fresh recovery, authorization checkpoint, charged ledgers and actual release.
 
 Evidence: startup/recovery successor results and
 [Share002 non-claims](docs/parity/evidence/20260927-str005-v2-share-start-unverified.md).
@@ -5250,6 +5335,23 @@ No accepted share is required for this separate safety claim. Do not weaken
 2800-ms expiry or \<=3000-ms actual revocation/shutdown-initiation requirements.
 Hardware stays disabled until the new implementation and contract are published.
 
+Heartbeat software preparation | 2026-09-28:
+
+The disabled focused owner and separate no-mining preparation are implemented in
+`scripts/str005-heartbeat-probe/`. `just str005-heartbeat-probe` exposes the probe;
+`just str005-heartbeat-preparation` owns fresh known-attempt recovery and one
+software restart after independently rejudged, sealed accepted-share evidence.
+They do not reactivate consumed startup commands. The private passive observer
+is armed before Start, and the actual Gate suppression/checkpoint is exercised
+through a one-shot coordinator with independent Stop/Close/recovery/owner cleanup.
+
+Software tests cover exact native timing/headroom, post-cutoff work exclusion,
+retained first failures, actual recovery parsers, accounting/cooling/resource
+requirements, late Start, failed observations and cleanup. These tests do not
+claim hardware behavior. Both source gates remain disabled until the new image,
+share prerequisite and exact preparation seal are qualified and published.
+The implementation contract is `scripts/str005-heartbeat-probe/README.md`.
+No hardware, task archival or parity promotion is implied by software completion.
 
 ### task-str005-piecewise-integration-review | 2026-09-27 | Reconcile STR-005 checkpoints and remaining integration proof
 

@@ -29,6 +29,9 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         if request.command == "start_lease" {
             return self.prepare_start_controller(&request, now);
         }
+        if request.command == "renew_lease" {
+            return self.prepare_renew_controller(&request, now);
+        }
         let is_probe = request.command == "transport_probe";
         let prepared = self.prepare_controller(request, now)?;
         if is_probe {

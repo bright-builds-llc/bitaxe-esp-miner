@@ -7,6 +7,7 @@ mod frame;
 mod inspection;
 mod noise;
 mod probe;
+mod renew_dispatch;
 mod restart;
 mod start_dispatch;
 mod status;
@@ -313,7 +314,7 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
         })
     }
 
-    // Keep this large frame off the early signed-Start dispatch path.
+    // Keep this large frame off the early signed Start and Renew paths.
     #[inline(never)]
     fn prepare_controller(
         &mut self,
@@ -384,7 +385,6 @@ impl<V: LeaseAuthorizationVerifier, S: WorkerSession> WorkerControl<V, S> {
             }
             "acceptance_budget_review" => self.review_acceptance_budget(&request, now)?,
             "qualification_cooling" => self.qualify_cooling(&request, now)?,
-            "renew_lease" => self.renew(request.required_payload()?, now)?,
             "status" => {
                 request.require_no_payload()?;
                 self.status(now)?

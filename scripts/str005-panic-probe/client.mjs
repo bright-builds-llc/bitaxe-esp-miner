@@ -1,5 +1,6 @@
 /** Independent read/close steps retain partial evidence without a test-success latch. */
-export function createBaselineCollector({ gate, published, save, campaignId, timeoutMs = 30000, captureExisting = false, wait = waitForDiagnosticAdvance }) {
+export function createBaselineCollector({ gate, published, save, campaignId, timeoutMs = 30000, captureExisting = false, attemptId = null, begin, wait = waitForDiagnosticAdvance }) {
+  if (begin) return createRenewBaselineCollector({ gate, published, save, campaignId, timeoutMs, captureExisting, attemptId, begin, wait });
   let consumed = false;
   return async () => {
     if (consumed) throw Error('panic_baseline_consumed');
@@ -17,7 +18,7 @@ export function createBaselineCollector({ gate, published, save, campaignId, tim
       await collect('state', async () => { await gate.refresh(); return published(); });
       await collect('ledger', () => gate.reviewQualificationAttempts());
       await collect('original_budget', () => gate.reviewBudget(campaignId));
-      await collect('status', async () => gate.stratumV2Status('share', null, await gate.stratumV2Possession()));
+      await collect('status', async () => gate.stratumV2Status('share', attemptId, await gate.stratumV2Possession()));
       await collect('diagnostics', signal => captureExisting ? collectCaptureDiagnostics({ gate, published, save, signal, wait }) : gate.exportDiagnostics());
     } finally {
       await collect('closed', async () => {
@@ -30,6 +31,44 @@ export function createBaselineCollector({ gate, published, save, campaignId, tim
     }
     await save('finished', { failures });
     return { complete: failures.length === 0, failures };
+  };
+}
+/** Successor failure collection bounds begin, Stop and Close independently. */
+export function createRenewBaselineCollector({ gate, published, save, campaignId, timeoutMs = 30000,
+  cleanupMs = 150000, captureExisting = false, attemptId = null, begin, wait = waitForDiagnosticAdvance }) {
+  let consumed = false;
+  return async () => {
+    if (consumed) throw Error('panic_baseline_consumed'); consumed = true;
+    const failures = []; let firstFailure = null;
+    async function attempt(phase, operation, stage = phase, limit = timeoutMs) {
+      const controller = new AbortController(); let timer;
+      try {
+        await Promise.race([Promise.resolve().then(() => operation(controller.signal)).then(async value => {
+          controller.signal.throwIfAborted(); if (stage) await save(stage, value);
+        }), new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(Error('timeout')); }, limit); })]);
+        return true;
+      } catch (error) {
+        firstFailure ??= { phase, category: controller.signal.aborted ? 'timeout' : 'operation_failed' };
+        const failedStage = ['begin', 'state'].includes(phase) ? 'state' : ['stop', 'close'].includes(phase) ? 'closed' : phase;
+        if (!failures.includes(failedStage)) failures.push(failedStage);
+        return false;
+      } finally { clearTimeout(timer); controller.abort(); }
+    }
+    try {
+      if (await attempt('begin', begin, null)) {
+        await attempt('state', async () => { await gate.refresh(); return published(); });
+        await attempt('ledger', () => gate.reviewQualificationAttempts());
+        await attempt('original_budget', () => gate.reviewBudget(campaignId));
+        await attempt('status', async () => gate.stratumV2Status('share', attemptId, await gate.stratumV2Possession()));
+        await attempt('diagnostics', signal => captureExisting ? collectCaptureDiagnostics({ gate, published, save, signal, wait }) : gate.exportDiagnostics());
+      }
+    } finally {
+      await attempt('stop', () => gate.stop(), null, cleanupMs);
+      await attempt('close', async () => { await gate.close(); return published(); }, 'closed', cleanupMs);
+    }
+    const finished = { failures, first_failure: firstFailure };
+    await save('finished', finished);
+    return { complete: failures.length === 0, ...finished };
   };
 }
 /** Both snapshots are produced by the Gate while the same serial owner remains open. */
@@ -72,7 +111,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   output.id = 'panic-probe-result'; output.setAttribute('role', 'status');
   let consumed = false;
   const update = () => { const state = gate.state(); button.disabled = consumed || state.status !== 'ready' || !state.connected || state.running; };
-  const collect = createBaselineCollector({ gate: allowed, published: () => gate.state(), campaignId: context.originalCampaignId, captureExisting: context.captureExisting === true,
+  const collect = createBaselineCollector({ gate: allowed, published: () => gate.state(), campaignId: context.originalCampaignId, captureExisting: context.captureExisting === true, attemptId: context.retainedAttemptId ?? null,
+    begin: context.renewSuccessor ? () => post('/baseline-begin', {}) : undefined,
     save: (stage, value) => stage === 'diagnostics' ? Promise.resolve() : post('/part', { stage, value }) });
   button.addEventListener('click', async () => {
     if (button.disabled) return;
@@ -94,6 +134,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
       recoveryCount += 1;
       let maybeProofReceipt;
       const collect = createBaselineCollector({ gate: allowed, published: () => gate.state(), campaignId: context.originalCampaignId,
+        begin: context.renewSuccessor ? async () => {} : undefined,
         save: async (stage, value) => {
           if (stage === 'diagnostics') return;
           const receipt = await post('/candidate-part', { sequence: round.sequence, stage, value });

@@ -1,3 +1,6 @@
+import { main as auditSignedStart } from '../audit-signed-start-stack.mjs';
+import { main as auditSignedRenew } from '../audit-signed-renew-stack.mjs';
+import { renewSource, startupPredecessor } from './renew-successor.mjs';
 import { fstatSync } from 'node:fs';
 import { mkdir, readFile, stat, realpath, readdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -30,8 +33,9 @@ const task = 'task-str005-start-panic-diagnosis';
 const oldSeal = '14d2122208b2040f1482074c77328cd3a59c651e45bc17e7be7af2648d8f5950';
 const oldContext = 'a453de1753acc78bfa3eaeebfd9f42339528ec4fb41704fd50d390a1cd1ff5c4';
 const contract = 'docs/hardware/str005-panic-probe.md';
-async function source(root) {
+async function source(root, renewSuccessor = false) {
   const commit = git(root, ['rev-parse', 'HEAD']); cleanPushed(root, commit);
+  if (renewSuccessor) return { commit, ...await renewSource(root) };
   const tasks = await readFile(resolve(root, 'TASKS.md'), 'utf8');
   const active = tasks.split('## Active\n')[1]?.split(/^## /mu)[0] ?? '';
   check(active.includes(`### ${task} |`) && tasks.split(`### ${task} |`).length === 2, 'panic_task_inactive');
@@ -53,10 +57,12 @@ async function predecessor(root) {
   const wrapped = (await proof(oldRoot, 'context.json')).value;
   check(wrapped.sha256 === oldContext && sha256(JSON.stringify(wrapped.context)) === oldContext, 'panic_predecessor_context');
   const detector = (await proof(oldRoot, 'install-4.claim.json')).value.detector;
-  return { before: wrapped.context, detector };
+  return { before: wrapped.context, detector, seal: oldSeal, contextDigest: oldContext };
 }
 export function argumentsFor(argv) {
-  const [action, ...rest] = argv, options = {};
+  const [requestedAction, ...rest] = argv, options = {};
+  const renewSuccessor = requestedAction?.startsWith('renew-') === true;
+  const action = renewSuccessor ? requestedAction.slice(6) : requestedAction;
   check(['preflight', 'serve', 'finish', 'install'].includes(action), 'panic_action');
   for (let i = 0; i < rest.length; i += 2) {
     const key = rest[i], value = rest[i + 1];
@@ -70,13 +76,14 @@ export function argumentsFor(argv) {
     !options['--manifest'] && !options['--flash-binary'] && !options['--before-recovery-root'] && !(options['--recover-install-root'] && options['--capture-recovery-root']) : options['--manifest']))), 'panic_arguments');
   check(action === 'preflight' || Object.keys(options).length === 1, 'panic_preflight_arguments_only');
   check(!options['--retained-manifest'] || retainedMode, 'panic_retained_manifest_mode');
-  return { action, options };
+  return { action, options, ...(renewSuccessor ? { renewSuccessor } : {}) };
 }
 export async function main(argv) {
-  const { action, options } = argumentsFor(argv), root = options['--private-root'];
+  if (argv[0]?.startsWith('renew-clear')) return (await import('./renew-clear.mjs')).renewClearMain(argv);
+  const { action, options, renewSuccessor = false } = argumentsFor(argv), root = options['--private-root'];
   const firmwareRoot = process.env.BUILD_WORKSPACE_DIRECTORY ?? git(process.cwd(), ['rev-parse', '--show-toplevel']);
   ignored(firmwareRoot, root);
-  const published = await source(firmwareRoot), prior = await predecessor(firmwareRoot);
+  const published = await source(firmwareRoot, renewSuccessor), prior = renewSuccessor ? await startupPredecessor(firmwareRoot) : await predecessor(firmwareRoot);
   if (action === 'preflight') {
     await missing(root); await privateRoot(dirname(root));
     const gateRoot = options['--gate-root'], gateCommit = git(gateRoot, ['rev-parse', 'HEAD']);
@@ -84,12 +91,15 @@ export async function main(argv) {
     const pins = [...(await readFile(resolve(firmwareRoot, 'MODULE.bazel'), 'utf8')).matchAll(/strip_prefix\s*=\s*"bitaxe-turnstile-system-([a-f0-9]{40})"/gu)];
     check(pins.length === 1 && pins[0][1] === gateCommit, 'panic_gate_pin');
     const { corePreservation, recoveryOnly, captureExisting, before, failedInstall, installed, retainedSource, retained, packaged } = await resolvePreflightSources(options, firmwareRoot, published.commit);
+    check(!renewSuccessor || retainedSource || !before, 'renew_before_mode');
+    check(!renewSuccessor || !published.selfTestEnabled || captureExisting || recoveryOnly, 'renew_capture_requires_preserved_image');
     const page = await readFile(resolve(gateRoot, PAGE)), bundle = await readFile(resolve(gateRoot, BUNDLE));
     check([gateCommit, 'stratumV2Status', 'coreDumpSelfTestQualification', 'coreDumpSelfTest', ...(published.storeAuditRequired ? ['core_dump_store_receipt'] : [])].every(marker => bundle.includes(marker)), 'panic_gate_capability');
     const trust = JSON.parse(await readFile(resolve(firmwareRoot, 'firmware/bitaxe/bwg/deployment-trust.json'), 'utf8'));
     const flashBinary = retainedSource ? null : await realpath(resolve(firmwareRoot, 'bazel-bin/tools/flash/flash'));
     check(!options['--flash-binary'] || await realpath(options['--flash-binary']) === flashBinary, 'panic_flash_binary');
     const context = { schema: 'str005-panic-probe-v1', ...published, ...packaged, firmware_commit: retainedSource?.context.firmware_commit ?? published.commit,
+      ...(renewSuccessor && !retainedSource ? { retainedBaseline: prior.retainedBaseline } : {}),
       recoveryOnly, captureExisting, storeAuditRequired: published.storeAuditRequired && !recoveryOnly, cutoffUserRegionRequired: published.cutoffUserRegionRequired && !recoveryOnly, ...(captureExisting ? { corePreservation } : {}), ...(retainedSource ? { installEnabled: false, selfTestEnabled: captureExisting && published.selfTestEnabled, continuity_basis: 'current-session-only', retainedManifest: retained.retainedManifest } : {}),
       ...(failedInstall ? { failedInstall: { root: failedInstall.root, seal_sha256: failedInstall.seal_sha256, context_sha256: failedInstall.context_sha256 } } : {}),
       ...(installed ? { installedAnchor: { root: installed.root, seal_sha256: installed.seal_sha256, context_sha256: installed.context_sha256, candidate_proof_sha256: installed.candidate_proof_sha256 } } : {}),
@@ -98,7 +108,7 @@ export async function main(argv) {
       firmware_root: firmwareRoot, manifest: options['--manifest'], flashBinary, flashBinarySha256: flashBinary ? await fileDigest(flashBinary) : null, gate_root: gateRoot, gate_commit: gateCommit, scope: 'share',
       before_source: retainedSource ? { firmware_commit: retainedSource.context.firmware_commit, app_elf_sha256: retainedSource.context.app_elf_sha256 } : before?.context.before_source ?? { firmware_commit: prior.before.firmware_commit, app_elf_sha256: prior.before.app_elf_sha256 },
       original_campaign_id: prior.before.original_campaign_id, attemptId: prior.before.attemptId,
-      detector: retainedSource?.context.detector ?? before?.context.detector ?? prior.detector, predecessorSeal: oldSeal, predecessorContext: oldContext,
+      detector: retainedSource?.context.detector ?? before?.context.detector ?? prior.detector, predecessorSeal: prior.seal, predecessorContext: prior.contextDigest,
       gatePageSha256: sha256(page), gateBundleSha256: sha256(bundle), trustSha256: sha256(JSON.stringify(trust)) };
     await mkdir(root, { mode: 0o700 });
     context.candidateElf = retained?.candidateElf ?? resolve(dirname(options['--manifest']), 'bitaxe-ultra205.elf');
@@ -110,6 +120,15 @@ export async function main(argv) {
     const nativeAudit = retainedSource ? retainedSource.audit.value : await runNativeAudit(['--elf', context.candidateElf, '--output', resolve(root, 'native-audit.json')]);
     validateNativeAudit(nativeAudit, context.app_elf_sha256, context.cutoffUserRegionRequired);
     context.nativeAuditSha256 = await fileDigest(resolve(root, 'native-audit.json'));
+    if (renewSuccessor) {
+      context.signedPathAudits = {};
+      for (const [name, audit] of [['start', auditSignedStart], ['renew', auditSignedRenew]]) {
+        const path = resolve(root, `native-${name}-audit.json`);
+        const result = await audit(['--elf', context.candidateElf, '--output', path]);
+        check(result.result === 'selected_path_with_headroom' && result.elf_sha256 === context.app_elf_sha256, 'renew_native_path_audit');
+        context.signedPathAudits[name] = await fileDigest(path);
+      }
+    }
     if (context.storeAuditRequired) {
       const store = await runStoreAudit(['--elf', context.candidateElf, '--output', resolve(root, 'store-audit.json')]);
       validateStoreAudit(store, context.app_elf_sha256);
@@ -123,7 +142,7 @@ export async function main(argv) {
   await privateRoot(root); await missing(resolve(root, 'sealed-inventory.json'));
   const context = (await proof(root, 'context.json')).value;
   check(context.schema === 'str005-panic-probe-v1' && context.commit === published.commit && context.contractSha256 === published.contractSha256 &&
-    context.predecessorSeal === oldSeal && context.predecessorContext === oldContext, 'panic_source_changed');
+    context.predecessorSeal === prior.seal && context.predecessorContext === prior.contextDigest && Boolean(context.renewSuccessor) === renewSuccessor, 'panic_source_changed');
   cleanPushed(context.gate_root, context.gate_commit);
   if (context.recoveryOnly || context.captureExisting) {
     const anchor = context.installedAnchor ?? context.failedInstall;
@@ -140,6 +159,11 @@ export async function main(argv) {
     if (context.captureExisting) check(JSON.stringify(await verifyCorePreservation(before.root, before.context)) === JSON.stringify(context.corePreservation), 'panic_core_preservation_changed');
   }
   if (action === 'finish') return finish(root, context);
+  if (renewSuccessor) for (const name of ['start', 'renew']) {
+    const saved = await proof(root, `native-${name}-audit.json`);
+    check(saved.sha256 === context.signedPathAudits?.[name] && saved.value.result === 'selected_path_with_headroom' &&
+      saved.value.elf_sha256 === context.app_elf_sha256, 'renew_native_path_audit');
+  }
   await verifyNativeAudit(root, context);
   if (!context.recoveryOnly && !context.captureExisting) await verifyCommandCheck(root, context);
   if (action === 'install') { check(published.installEnabled && context.installEnabled, 'panic_install_disabled'); return install(root, context); }
@@ -155,7 +179,13 @@ export async function main(argv) {
   check(sha256(page) === context.gatePageSha256 && sha256(bundle) === context.gateBundleSha256, 'panic_asset_changed');
   const trust = JSON.parse(await readFile(resolve(firmwareRoot, 'firmware/bitaxe/bwg/deployment-trust.json'), 'utf8'));
   check(sha256(JSON.stringify(trust)) === context.trustSha256, 'panic_trust_changed');
-  const server = createProbeServer({ root, context: runtimeContext, page, bundle, trust, client: await readFile(resolve(firmwareRoot, 'scripts/str005-panic-probe/client.mjs')) });
+  const server = createProbeServer({ root, context: runtimeContext, page, bundle, trust, client: await readFile(resolve(firmwareRoot, 'scripts/str005-panic-probe/client.mjs')) }, {
+    verifyEffect: async () => {
+      const current = await source(firmwareRoot, renewSuccessor);
+      check(JSON.stringify(current) === JSON.stringify(published), 'renew_source_changed');
+      cleanPushed(context.gate_root, context.gate_commit);
+    },
+  });
   const done = new Promise(resolveDone => server.once('close', resolveDone)); let maybeRelease;
   const stop = () => { maybeRelease ??= server.release(); };
   for (const signal of ['SIGINT', 'SIGTERM']) process.once(signal, stop);
@@ -183,7 +213,7 @@ async function finish(root, context) {
     try {
       const value = (await proof(root, `baseline-${stage}.json`)).value;
       parts[stage] = stage === 'diagnostics' ? await validateDiagnosticExport(value, context.gate_root) :
-        stage === 'finished' ? validateFinished(value) : stage === 'status' ? validateRecoveryParts({ status: value }, context).status : validatePart(stage, value, context);
+        stage === 'finished' ? validateFinished(value, context) : stage === 'status' ? validateRecoveryParts({ status: value }, context).status : validatePart(stage, value, context);
     } catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
   if (context.captureExisting) {
@@ -194,14 +224,14 @@ async function finish(root, context) {
       parts.diagnostics_confirmation_status = { state: confirmation.state, status: validateRecoveryParts({ status: confirmation.status }, context).status };
     } catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
-  const result = { ...baselineConclusion(parts), host_resources_released: true, predecessor_unchanged: true };
+  const result = { ...baselineConclusion(parts, context), ...(context.renewSuccessor ? { first_failure: parts.finished?.first_failure ?? null } : {}), host_resources_released: true, predecessor_unchanged: true };
   if (context.captureExisting) {
     try { validateCaptureDiagnosticPair(parts, context); }
     catch { result.complete = false; result.blockers.push('capture_diagnostics_pair_incomplete'); }
   }
 
   if (result.complete) {
-    try { check((await proof(root, 'current-recovery.json')).value.schema === 'str005-current-recovery-proof-v1', 'panic_current_proof_missing'); }
+    try { check((await proof(root, 'current-recovery.json')).value.schema === (context.retainedBaseline ? 'str005-current-recovery-proof-v2' : 'str005-current-recovery-proof-v1'), 'panic_current_proof_missing'); }
     catch (error) { if (error.code !== 'ENOENT') throw error; result.complete = false; result.blockers.push('missing_current_proof'); }
   }
   result.baseline_complete = result.complete;
@@ -239,18 +269,22 @@ async function finish(root, context) {
     let maybeRequest;
     try { maybeRequest = (await proof(root, 'self-test-claim.json')).value.request; } catch (error) { if (error.code !== 'ENOENT') throw error; }
     for (const round of rounds) {
-      const collected = {}, candidateContext = { ...context, before_source: context };
+      const collected = {}, candidateContext = { ...context, retainedBaseline: undefined, before_source: context };
       for (const stage of [...BASELINE_PARTS, 'finished']) {
         try {
           const value = (await proof(root, `${round}/${stage}.json`)).value;
           collected[stage] = stage === 'diagnostics' ? await validateDiagnosticExport(value, context.gate_root) :
-            stage === 'finished' ? validateFinished(value) : stage === 'status' ? validateRecoveryParts({ status: value }, context).status :
+            stage === 'finished' ? validateFinished(value, context) : stage === 'status' ? validateRecoveryParts({ status: value }, context).status :
               ['state', 'closed'].includes(stage) ? validateCandidateState(value, context, maybeRequest) : validatePart(stage, value, candidateContext);
         } catch (error) { if (error.code !== 'ENOENT') throw error; }
       }
-      const assessed = baselineConclusion(collected);
+      const assessed = baselineConclusion(collected, candidateContext);
       try {
         const saved = (await proof(root, `${round}/current-recovery.json`)).value;
+        if (context.renewSuccessor) {
+          const begin = (await proof(root, `${round}/collection-begin.json`)).value;
+          check(begin.schema === 'str005-renew-candidate-begin-v1' && begin.startedAtUnixMs === saved.observed_at_unix_ms, 'renew_candidate_collection_binding');
+        }
         check(JSON.stringify(saved) === JSON.stringify(currentProof(candidateContext, collected, saved.observed_at_unix_ms)), 'panic_candidate_proof_changed');
       } catch (error) { if (error.code !== 'ENOENT') throw error; assessed.complete = false; assessed.blockers.push('missing_current_proof'); }
       const measured = context.storeAuditRequired ? recoveryStoreObservation(collected.diagnostics, collected.status, context, maybeRequest) : undefined;
@@ -289,8 +323,11 @@ export async function finalizeSelfTestEvidence(root, context, result) {
   result.self_test_reset_observed = evidence.summary?.stage === 'complete' && evidence.summary?.panicResetObserved === true;
   if (!result.self_test_reset_observed) { result.complete = false; result.blockers.push('self_test_reset_incomplete'); }
 }
+export function failureCategory(error) {
+  return /^(?:panic|renew)_[a-z_]+$/u.test(error?.code ?? '') ? error.code : 'panic_operation_rejected';
+}
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main(process.argv.slice(2)).then(value => process.stdout.write(`${JSON.stringify(value)}\n`)).catch(() => {
-    process.stdout.write('{"error":"panic_operation_rejected"}\n'); process.exitCode = 1;
+  main(process.argv.slice(2)).then(value => process.stdout.write(`${JSON.stringify(value)}\n`)).catch(error => {
+    process.stdout.write(`${JSON.stringify({ error: failureCategory(error) })}\n`); process.exitCode = 1;
   });
 }

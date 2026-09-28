@@ -407,7 +407,7 @@ js_binary(
 
 js_library(
     name = "str005_panic_probe_sources",
-    srcs = glob(["str005-panic-probe/*.mjs"]),
+    srcs = glob(["str005-panic-probe/*.mjs"]) + ["str005-startup-probe/capture.mjs", "str005-startup-probe/clear.mjs", "str005-startup-probe/contract.mjs", "audit-signed-start-stack.mjs", "signed-start-stack-audit.mjs", "audit-signed-renew-stack.mjs", "signed-renew-stack-audit.mjs", "telemetry-stack-audit.mjs", "noise-native-calls.mjs"],
     deps = [":str005_v2_serial_sources", ":core_dump_sources"],
 )
 
@@ -1184,6 +1184,18 @@ js_test(
     entry_point = "signed-start-stack-audit.test.mjs",
     data = ["signed-start-stack-audit.mjs", "telemetry-stack-audit.mjs", "noise-native-calls.mjs"],
 )
+js_binary(
+    name = "audit_signed_renew_stack",
+    entry_point = "audit-signed-renew-stack.mjs",
+    data = ["signed-renew-stack-audit.mjs", "telemetry-stack-audit.mjs", "noise-native-calls.mjs"],
+    visibility = ["//visibility:public"],
+)
+
+js_test(
+    name = "signed_renew_stack_audit_test",
+    entry_point = "signed-renew-stack-audit.test.mjs",
+    data = ["signed-renew-stack-audit.mjs", "telemetry-stack-audit.mjs", "noise-native-calls.mjs"],
+)
 
 js_library(
     name = "str005_startup_probe_sources",
@@ -1238,4 +1250,57 @@ js_test(
         "@bwg_gate_contract//:worker_serial_v02_fixtures_js",
     ],
     entry_point = "str005-startup-preparation/preparation.test.mjs",
+)
+
+js_test(
+    name = "str005_renew_successor_test",
+    data = [":str005_panic_probe_sources"],
+    entry_point = "str005-panic-probe/renew-successor.test.mjs",
+)
+
+js_library(
+    name = "str005_share_probe_sources",
+    srcs = glob(["str005-share-probe/*.mjs"]),
+    deps = [":str005_startup_probe_sources"],
+)
+
+js_binary(
+    name = "str005_share_probe",
+    chdir = "..",
+    data = [":str005_share_probe_sources"],
+    entry_point = "str005-share-probe/main.mjs",
+)
+
+js_library(
+    name = "str005_heartbeat_probe_sources",
+    srcs = glob(["str005-heartbeat-probe/*.mjs"]),
+    deps = [":str005_share_probe_sources"],
+)
+
+js_binary(
+    name = "str005_heartbeat_probe",
+    chdir = "..",
+    data = [":str005_heartbeat_probe_sources"],
+    entry_point = "str005-heartbeat-probe/main.mjs",
+)
+
+js_test(
+    name = "str005_share_probe_test",
+    env_inherit = ["PATH"],
+    args = ["$(rootpath @bwg_gate_contract//:package_json_js)"],
+    data = [":str005_share_probe_sources", "@bwg_gate_contract//:package_json_js", "@bwg_gate_contract//:share_authority_sources_js"],
+    entry_point = "str005-share-probe/probe.test.mjs",
+)
+
+js_test(
+    name = "str005_heartbeat_probe_test",
+    data = [":str005_heartbeat_probe_sources"],
+    entry_point = "str005-heartbeat-probe/probe.test.mjs",
+)
+
+js_binary(
+    name = "str005_heartbeat_preparation",
+    chdir = "..",
+    data = [":str005_heartbeat_probe_sources"],
+    entry_point = "str005-heartbeat-probe/preparation.mjs",
 )
