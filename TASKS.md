@@ -5150,7 +5150,7 @@ No further Start, flash, clear or self-test is admitted by this consumed trial.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
-Status: Collector corrections verified; installation001 remains partial pending fresh recovery and new-image qualification.
+Status: Collector corrections and fresh current recovery passed; installation002 is the bounded new-image qualification successor. Installation001 remains partial.
 Objective: prove a correlated real ASIC result, encrypted submission, independent
 fixture acceptance and device acknowledgement, then restoration/accounting/cleanup.
 Depends on: `task-str005-mining-startup-probe` and applicable authenticated channel
@@ -5237,7 +5237,7 @@ New-image prerequisite plan:
 Renew-image installation001 execution contract | 2026-09-28:
 
 Renew image qualification: baseline enabled.
-Renew image qualification: installation disabled.
+Renew image qualification: installation enabled.
 Renew image qualification: self-test disabled.
 Renew image qualification: core clear disabled.
 Renew-image core-dump acquisition: disabled (installation outcome required).
@@ -5352,6 +5352,51 @@ factory/NVS reset, budget refund, Share002 replay or parity promotion is enabled
 No automatic repeat: a new blocker requires discriminating evidence and verified
 progress under the unchanged-boundary policy. A passing current recovery does
 not repair installation001's historical gap or archive this accepted-share task.
+
+Current recovery and installation002 contract | 2026-09-28:
+
+Current-recovery001 passed independently on installed8d4e470e/ELFd0dd7753,
+Gate9643e876, hosta008afda: boot10, idle status, next20/last19/1920000,
+pending=false, both ledgers unchanged, current preservation/restoration and full
+release. Seal `3b1f5835eb3267b3bb00ce3122822d9c126511e53693d84c954782887c40a339`.
+[Current recovery evidence](docs/parity/evidence/20260928-str005-renew-current-recovery.md).
+Installation001's original partial seal and non-claims remain unchanged.
+
+Verified progress for this successor is the actual-page Gate history correction
+and regression-backed candidate prelude cleanup/first-cause recording. Objective:
+obtain a complete before/after preservation and fresh candidate recovery proof
+on a separately qualified update; do not relabel the first attempt. Only one
+state-preserving installation is enabled. Capture, self-test, core acquisition,
+clear, Start, grants, renewals, mining and parity promotion remain disabled.
+
+Build the canonical exact clean published HEAD package with `just package`, run
+`just test-panic-probe-command`, and require exact candidate Start/Renew/cutoff/
+store audits. Commands: `just str005-panic-probe renew-preflight` with absolute
+`--private-root <repo>/scratch/str005-renew/installation002/attempt`,
+`--gate-root <clean-pinned-Gate>`, `--manifest <repo>/bazel-bin/firmware/bitaxe/bitaxe-ultra205-package.json`
+and `--before-recovery-root <repo>/scratch/str005-renew/current-recovery001/attempt`;
+then `renew-serve`, `renew-install` and `renew-finish` with that private root.
+Before identity is exact8d4e470e/d0dd7753; Gate is9643e87664397a321c715a3a1b1bb6c1183b83ea.
+The immutable current-recovery root is lineage, not a substitute for newly
+measured before state, boot and both ledgers. Compare fresh accounting with the
+measured current recovery; stop on any unaccounted change or pending reservation.
+
+Use one absent supervisor child below a new ignored0700 parent, separate0600
+stdout/stderr siblings, fresh detector\<=60s before admission and immediately
+before writing, and the same physical lease plus board-info before any write.
+Fresh before proof\<=120s; individual prelude/read\<=30s; independent Stop/Close
+\<=150s each; whole candidate collection\<=600s; existing installation outer\<=1200s
+and runtime observation360s. Preserve the original browser baseline through
+before→candidate, then record actual candidate identity, boot, idle status,
+unchanged ledgers/preservation, restoration and release. A prelude failure now
+records its first phase/category and prevents another attempt in that page.
+
+No factory reset, NVS provisioning, evidence overwrite, old grant/ordinal reuse,
+refund or implicit recovery flash. Stop at a repeated authoritative boundary after
+this targeted correction; a new boundary needs its own discriminating evidence
+and verified progress. Seal partial evidence and retain exact failure otherwise.
+Disable this installation stage after its outcome; later capture and clearing
+require separately published scopes and fresh proofs. Parity remains90/95.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
