@@ -5150,7 +5150,7 @@ No further Start, flash, clear or self-test is admitted by this consumed trial.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
-Status: Collector corrections and fresh current recovery passed; installation002 is the bounded new-image qualification successor. Installation001 remains partial.
+Status: Installation002 qualified; exact-image core preservation and off-only capture/cutoff are the next prerequisites. Installation001 remains partial.
 Objective: prove a correlated real ASIC result, encrypted submission, independent
 fixture acceptance and device acknowledgement, then restoration/accounting/cleanup.
 Depends on: `task-str005-mining-startup-probe` and applicable authenticated channel
@@ -5237,10 +5237,10 @@ New-image prerequisite plan:
 Renew-image installation001 execution contract | 2026-09-28:
 
 Renew image qualification: baseline enabled.
-Renew image qualification: installation enabled.
-Renew image qualification: self-test disabled.
+Renew image qualification: installation disabled.
+Renew image qualification: self-test enabled.
 Renew image qualification: core clear disabled.
-Renew-image core-dump acquisition: disabled (installation outcome required).
+Renew-image core-dump acquisition: enabled (fresh recovery required).
 Renew-image core-dump clearing: disabled (captured archive required).
 
 Objective: install the isolated Renew correction once without mining, preserving
@@ -5397,6 +5397,73 @@ this targeted correction; a new boundary needs its own discriminating evidence
 and verified progress. Seal partial evidence and retain exact failure otherwise.
 Disable this installation stage after its outcome; later capture and clearing
 require separately published scopes and fresh proofs. Parity remains90/95.
+
+Installation002 completion and capture001 contract | 2026-09-28:
+
+Installation002 is complete with no blockers: source
+f000872f2e436aa7cdaa8cbfa41eee965a27731e, full ELF
+a3e257418d625aef5e9423fe28f598377f92b092b634264d3cc1e86b4e83e3c2,
+Gate9643e87664397a321c715a3a1b1bb6c1183b83ea. Fresh before boot10→candidate11,
+original same-page preservation and both ledgers unchanged (next20/last19/1920000,
+pending=false), candidate recovery and complete release passed. Install duration
+505,346 ms; exact native Start/Renew/cutoff/store audits and real CLI dry-run passed.
+Seal `c573087a0e1f327fbab4c2a638274fe5b2e7b40724710f781d79d34662699f09`.
+[Qualified installation evidence](docs/parity/evidence/20260928-str005-renew-installation-qualified.md).
+The installation gate is now consumed and disabled; installation001 stays partial.
+
+Objective: prove the capture pipeline and actual captured cutoff on this exact
+installed image with one ASIC-off self-test. First preserve and measure the existing
+core region; never assume it is empty. Only after verified all-FF preservation and
+fresh exact-image readiness may the self-test execute. Core clearing and all
+mining/grants/renewals remain disabled.
+
+Current-recovery002: use `just str005-panic-probe renew-preflight` with absolute
+`--private-root <repo>/scratch/str005-renew/current-recovery002/attempt`,
+`--recover-installed-root <repo>/scratch/str005-renew/installation002/attempt`,
+`--retained-manifest <repo>/scratch/development-core-dumps/build-f000872f/bitaxe-ultra205-package.json`
+and `--gate-root <pinned-clean-Gate>`; then `renew-serve|renew-finish` with that root.
+Run fresh `just detect-ultra205` before admission, serve and each ROM action.
+Collect one-use fresh authenticated idle baseline/accounting and Stop/Close, then
+invoke `just core-dump-read --board 205 --port <fresh admitted port> --expected-physical-sha256 <context physical> --expected-installed-source <exact f000872f full source> --expected-installed-elf <exact a3e25741 full ELF> --recovery-proof <root>/current-recovery.json --private-root <root>/installed-core` once while the proof is\<=120s old.
+The official owner retains the physical lease, requires board-info, preserves the
+actual partition table and full dump, returns to exact application identity and
+releases. Fresh output child must not exist. Read/return failure or a nonempty
+region blocks capture; retain and inspect it instead of overwriting it.
+Close the server, run final detector/owner checks and seal the recovery root.
+
+Capture001: `just str005-panic-probe renew-preflight` with absolute
+`--private-root <repo>/scratch/str005-renew/capture001/attempt`,
+`--capture-recovery-root <repo>/scratch/str005-renew/current-recovery002/attempt`,
+the same retained manifest and pinned Gate; then `renew-serve|renew-finish`.
+Preflight rejudges the sealed empty-region producer and exact native audits.
+On the new page collect fresh source/ELF, both ledgers, two current diagnostic
+snapshots and the expected post-read boot. Qualify the recovered image, reconnect
+on the original page and invoke its one off-only self-test. Require matched nonce
+ACK, explicit panic and next boot, exact image and healthy return. Preserve the
+immediate panic/store evidence and fresh candidate recovery before any ROM reset.
+
+Acquire actual captured bytes with `just core-dump-read` using the same exact
+identity flags, a fresh unused `<capture-root>/candidate-recovery-001/current-recovery.json`
+and new `<capture-root>/self-test-core` child. Offline run `just core-dump verify-cutoff`
+with that raw dump, exact retained full ELF/SHA and new `<capture-root>/cutoff-review`.
+Require actual checksum/full-ELF/captured user-region proof, disabled ASIC outputs,
+revoked generation and self-test marker. Collect fresh same-page candidate recovery
+after acquisition, Stop/Close, close browser/server, verify final ownership and seal.
+The generic observer's capture flag is not substituted for the independent decoder.
+
+Privacy: ignored0700 parents, absent supervisor children, separate0600 stdout/stderr;
+full dumps and vendor output remain private under ADR-0030. No secrets are promoted.
+Bounds: reads/prelude\<=30s, separate Stop/Close\<=150s, candidate collection\<=600s,
+self-test observation\<=30s with at most one admitted reopen, core read/return within
+its existing component bounds and outer1200s supervision. The existing
+`scripts/core-dump/process.mjs` supervisor may launch the canonical built flash
+backend with the identical `core-dump-read` arguments and that1200s cap; retain
+its distinct private sibling stdout/stderr. Each ROM operation
+consumes a fresh proof once; no copying, retimestamping, retry or grant refund.
+Failure stops dependent stages and is sealed with its first cause and release
+outcome. No flash, factory/NVS reset, clear, external pool, Start, mining, grant,
+renewal, Share002 replay or parity promotion. A successor requires verified
+progress under the unchanged-boundary policy, never an unchanged attempt.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
