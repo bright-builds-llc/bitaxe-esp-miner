@@ -1,3 +1,4 @@
+import { applyReadinessFailure } from './readiness.mjs';
 import { applyCandidateFailure, sealProbeResult } from './candidate-failure.mjs';
 import { main as auditSignedStart } from '../audit-signed-start-stack.mjs';
 import { main as auditSignedRenew } from '../audit-signed-renew-stack.mjs';
@@ -180,7 +181,7 @@ export async function main(argv) {
   check(sha256(page) === context.gatePageSha256 && sha256(bundle) === context.gateBundleSha256, 'panic_asset_changed');
   const trust = JSON.parse(await readFile(resolve(firmwareRoot, 'firmware/bitaxe/bwg/deployment-trust.json'), 'utf8'));
   check(sha256(JSON.stringify(trust)) === context.trustSha256, 'panic_trust_changed');
-  const server = createProbeServer({ root, context: runtimeContext, page, bundle, trust, client: await readFile(resolve(firmwareRoot, 'scripts/str005-panic-probe/client.mjs')) }, {
+  const server = createProbeServer({ root, context: runtimeContext, page, bundle, trust, client: await readFile(resolve(firmwareRoot, 'scripts/str005-panic-probe/client.mjs')), readinessClient: await readFile(resolve(firmwareRoot, 'scripts/str005-panic-probe/self-test-readiness.mjs')) }, {
     verifyEffect: async () => {
       const current = await source(firmwareRoot, renewSuccessor);
       check(JSON.stringify(current) === JSON.stringify(published), 'renew_source_changed');
@@ -238,6 +239,7 @@ async function finish(root, context) {
   result.baseline_complete = result.complete;
   try { applyCandidateFailure(result, (await proof(root, 'candidate-recovery-failure.json')).value); }
   catch (error) { if (error.code !== 'ENOENT') throw error; }
+  await applyReadinessFailure(root, result);
   result.core_capture_verified = false;
   if (context.recoveryOnly) {
     applyRecoveryOnlyOutcome(result, context.installedAnchor === undefined);

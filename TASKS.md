@@ -5491,6 +5491,36 @@ of this same authoritative boundary after its correction is a stop; do not retry
 The new captured dump acquisition, if self-test qualifies, still requires its own
 fresh unused candidate recovery proof and actual offline cutoff verification.
 
+Capture002 preclaim failure and capture003 contract | 2026-09-28:
+
+Capture002 passed its baseline and capture review on boot12, but its early
+candidate diagnostic exports lacked the current-boot core-store receipt. The
+existing strict guard rejected those actual saved inputs with
+`panic_store_receipt_missing_or_ambiguous`; no self-test claim or device fault
+occurred. Final blocker `self_test_result_missing`; fresh independent candidate
+recovery, unchanged20/19/1920000 accounting and full release passed. Seal
+`633e3b0d094ed5a29d39e49791d376d321d2cc1213b6c62d3e58b13ed2af25b0`.
+[Preserved outcome](docs/parity/evidence/20260928-str005-renew-capture002-partial.md).
+
+Verified progress: a bounded readiness coordinator now exports current diagnostics
+and queries a read-only guard until the actual current-boot receipt is present.
+Only genuine absence is pending; wrong/stale/conflicting source, boot, capacity,
+stage or metadata rejects. Monotonic total readiness bound\<=30 seconds, cadence250ms;
+claim/fault/evidence operations\<=30s and independent Stop/Close\<=150s. No nonce or
+fault is issued before readiness; final claim checks source and readiness again.
+Preclaim failure is persisted, blocks another fault and still permits independent
+candidate recovery. Missing observer evidence cannot become success.
+
+Capture003 is the one successor after this tested correction:
+`scratch/str005-renew/capture003/attempt`. Reuse the exact capture command shapes,
+installed f000872f/a3e25741, Gate9643e876, retained package and sealed empty-region
+producer current-recovery002 (`abc027bca50ae320ce22ba5f691317b5784d6a903dac85e10d56b8c6abf52117`).
+Fresh observation must again prove boot12; no additional reset, flash or preservation
+read is admitted. The one ASIC-off self-test, fresh one-use dump-read proof, actual
+SDK dump/cutoff inspection and independent cleanup remain required. All privacy,
+accounting, authority, non-claims and repeated-boundary stop rules remain unchanged.
+Do not reinterpret either pre-effect failure as a hardware capture or discard it.
+
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
 Status: Startup prerequisite passed; focused heartbeat-loss implementation and published live contract remain required.

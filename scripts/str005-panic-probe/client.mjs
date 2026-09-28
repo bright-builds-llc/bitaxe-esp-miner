@@ -1,3 +1,4 @@
+import { runReadySelfTest } from './self-test-readiness.mjs';
 /** Independent read/close steps retain partial evidence without a test-success latch. */
 export function createBaselineCollector({ gate, published, save, campaignId, timeoutMs = 30000, captureExisting = false, attemptId = null, begin, wait = waitForDiagnosticAdvance }) {
   if (begin) return createRenewBaselineCollector({ gate, published, save, campaignId, timeoutMs, captureExisting, attemptId, begin, wait });
@@ -206,21 +207,17 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   selfTest.addEventListener('click', async () => {
     if (!selfTestEnabled || selfTestUsed || !candidateConfigured) return;
     selfTestUsed = true; selfTest.disabled = true;
-    let maybeFailure;
     try {
-      await allowed.exportDiagnostics();
-      const request = await post('/self-test-claim', { state: gate.state(), ledger: await allowed.reviewQualificationAttempts(),
-        status: await allowed.stratumV2Status('share', null, await allowed.stratumV2Possession()) });
-      await coreDumpSelfTest(request);
-    } catch (error) { maybeFailure = error; }
-    finally {
-      try { const evidence = exportSelfTest(); if (evidence) await post('/self-test-result', { evidence }); } catch { maybeFailure ??= Error('evidence'); }
-      try { await allowed.exportDiagnostics(); } catch { maybeFailure ??= Error('diagnostics'); }
-      try { await allowed.stop(); } catch { maybeFailure ??= Error('stop'); }
-      try { await allowed.close(); } catch { maybeFailure ??= Error('close'); }
-    }
-    output.textContent = maybeFailure ? 'Self-test incomplete; evidence retained. Collect the dump and diagnose before any Start.' :
-      'Self-test returned and closed. Core capture is unverified until offline dump analysis succeeds. Start remains unavailable.';
+      const result = await runReadySelfTest({ gate: allowed, published: () => gate.state(),
+        readiness: async () => post('/self-test-readiness', { state: gate.state(), status: await allowed.stratumV2Status('share', null, await allowed.stratumV2Possession()) }),
+        claim: async () => post('/self-test-claim', { state: gate.state(), ledger: await allowed.reviewQualificationAttempts(),
+          status: await allowed.stratumV2Status('share', null, await allowed.stratumV2Possession()) }),
+        fault: coreDumpSelfTest, exportEvidence: exportSelfTest,
+        saveEvidence: evidence => post('/self-test-result', { evidence }), saveFailure: value => post('/self-test-readiness-failure', value) });
+      output.textContent = result.complete ? 'Self-test returned and closed. Offline dump verification remains required.' :
+        'Self-test preparation or capture failed; typed evidence retained and Stop/Close attempted. No retry is admitted.';
+    } catch { output.textContent = 'Readiness failure evidence could not be saved. Stop/Close were attempted; preserve this partial attempt.'; }
+
   });
   const updateCandidate = () => { const state = gate.state(); selfTest.disabled = recoverCandidate.blocked() || !selfTestEnabled || selfTestUsed || recovering || !candidateConfigured || state.status !== 'ready' || !state.connected || state.running;
     recover.disabled = recoverCandidate.blocked() || recovering || recoveryCount >= 8 || !candidateConfigured || state.status !== 'ready' || !state.connected || state.running; };

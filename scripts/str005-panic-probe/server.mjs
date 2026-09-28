@@ -1,3 +1,4 @@
+import { evaluateReadiness } from './readiness.mjs';
 import { validateCandidateFailure } from './candidate-failure.mjs';
 import { requireStoreReady, recoveryStoreObservation } from './store-diagnostics.mjs';
 import { verifyNativeAudit } from './audit.mjs';
@@ -21,11 +22,11 @@ import { parseStatus } from '../str005-v2-serial/device.mjs';
 import { validatePart, validateFinished, baselineConclusion, currentProof, validateCandidateState, baselineIdentity } from './model.mjs';
 
 /** Stage A exposes read/close operations only; later stages require separate admission. */
-export function createProbeServer({ root, context, page, bundle, client, trust }, operations = {}) {
+export function createProbeServer({ root, context, page, bundle, client, readinessClient, trust }, operations = {}) {
   const now = operations.now ?? Date.now;
   let queue = Promise.resolve(), finished = false, maybeFirstAt, candidateConfigured = false, selfTestClaimed = false, maybeSelfTestRequest, maybeCaptureReview;
   const saved = new Set(), parts = {}, candidateSessions = new Set();
-  let baselineBegan = false, candidateRecoveryFailed = false;
+  let baselineBegan = false, candidateRecoveryFailed = false, selfTestReadinessFailed = false;
   let candidateRound = 0, maybeCandidateRound, maybeCandidateDiagnostics;
   const scope = { challengeId: `challenge_${nonce()}`, retentionExpiryUnixSeconds: Math.floor(now() / 1000) + 86400 };
   const persist = operations.persist ?? ((stage, value) => writeNew(resolve(root, `baseline-${stage}.json`), value));
@@ -50,6 +51,7 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
       if (path === '/context') return send(response, 200, { ...configuration(context, 'before', trust), coreDumpSelfTestQualification: true });
       if (path === '/') return send(response, 200, Buffer.from(`${page}\n<script type="module" src="/panic-probe-client.mjs"></script>`), 'text/html');
       if (path === `/${BUNDLE}`) return send(response, 200, bundle, 'text/javascript');
+      if (path === '/self-test-readiness.mjs' && readinessClient) return send(response, 200, readinessClient, 'text/javascript');
       if (path === '/panic-probe-client.mjs') return send(response, 200, client, 'text/javascript');
       return send(response, 404, { error: 'panic_route_unavailable' });
     }
@@ -65,9 +67,9 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
     }
     if (path === '/probe-context') { object(input, []); return send(response, 200, { originalCampaignId: context.original_campaign_id, renewSuccessor: context.renewSuccessor === true, retainedAttemptId: context.retainedBaseline?.attemptId ?? null, recoveryOnly: context.recoveryOnly === true, captureExisting: context.captureExisting === true, selfTestEnabled: context.selfTestEnabled === true }); }
     if (context.recoveryOnly) check(!['/candidate', '/self-test-claim', '/self-test-result', '/candidate-recovery-begin', '/candidate-part', '/install'].includes(path), 'panic_recovery_only');
-    if (context.renewSuccessor && ['/candidate', '/self-test-claim'].includes(path)) {
-      check(typeof operations.verifyEffect === 'function', 'renew_effect_verifier_missing');
-      await operations.verifyEffect();
+    if (['/candidate', '/self-test-readiness', '/self-test-claim'].includes(path)) {
+      if (context.renewSuccessor) check(typeof operations.verifyEffect === 'function', 'renew_effect_verifier_missing');
+      if (operations.verifyEffect) await operations.verifyEffect();
     }
     if (path === '/candidate') {
       object(input, []); check((context.installEnabled || context.captureExisting) && finished && baselineConclusion(parts, context).complete && !candidateConfigured, 'panic_candidate_admission');
@@ -83,9 +85,33 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
       candidateConfigured = true;
       return send(response, 200, { ...configuration(context, 'candidate', trust), coreDumpSelfTestQualification: true });
     }
+    if (path === '/self-test-readiness') {
+      object(input, ['state', 'status']);
+      check(context.selfTestEnabled && candidateConfigured && !candidateRecoveryFailed && !selfTestReadinessFailed && !selfTestClaimed, 'panic_self_test_admission');
+      validateState(input.state, context); const status = parseStatus(input.status);
+      check(input.state.status === 'ready' && input.state.connected && !input.state.running && input.state.deviceLeaseInactive &&
+        input.state.deviceBaselineConfirmed && input.state.preservation?.baseline_id === parts.closed.preservation.baseline_id &&
+        input.state.preservation.settings_match && input.state.preservation.device_identity_match && input.state.preservation.authorization_high_water_match &&
+        input.state.preservation.mine_on_boot === false && status.state === 'idle', 'panic_candidate_preservation');
+      return send(response, 200, evaluateReadiness(maybeCandidateDiagnostics?.value, context, status, maybeCaptureReview, maybeCandidateDiagnostics?.at, now()));
+    }
+    if (path === '/self-test-readiness-failure') {
+      object(input, ['schema', 'first_failure', 'claim_created', 'stop_complete', 'close_complete', 'closed']);
+      object(input.first_failure, ['phase', 'category']);
+      check(candidateConfigured && context.selfTestEnabled && !selfTestReadinessFailed && input.schema === 'str005-self-test-readiness-failure-v1' &&
+        ['readiness', 'claim', 'self_test', 'evidence', 'diagnostics', 'stop', 'close'].includes(input.first_failure.phase) &&
+        ['timeout', 'rejected'].includes(input.first_failure.category) && typeof input.claim_created === 'boolean' && (!input.claim_created || selfTestClaimed) &&
+        typeof input.stop_complete === 'boolean' && typeof input.close_complete === 'boolean', 'panic_readiness_failure_shape');
+      let closed = false;
+      try { validateCandidateState(input.closed, context, maybeSelfTestRequest); closed = input.close_complete && input.closed.status === 'closed' && !input.closed.connected && input.closed.serialOwnershipReleased && input.closed.deviceLeaseInactive; } catch { /* Do not persist unvalidated page fields. */ }
+      selfTestReadinessFailed = true;
+      await (operations.persistReadinessFailure ?? (value => writeNew(resolve(root, 'self-test-readiness-failure.json'), value)))({
+        schema: input.schema, first_failure: input.first_failure, claim_created: selfTestClaimed, claim_acknowledged: input.claim_created, stop_complete: Boolean(closed && input.stop_complete && input.closed.deviceRestorationConfirmed && input.closed.deviceBaselineConfirmed), close_complete: Boolean(closed) });
+      return send(response, 200, { recorded: true, complete: false });
+    }
     if (path === '/self-test-claim') {
       object(input, ['state', 'status', 'ledger']);
-      check(context.selfTestEnabled && candidateConfigured && !candidateRecoveryFailed && !selfTestClaimed, 'panic_self_test_admission');
+      check(context.selfTestEnabled && candidateConfigured && !candidateRecoveryFailed && !selfTestReadinessFailed && !selfTestClaimed, 'panic_self_test_admission');
       await (operations.verifyNativeAudit ?? verifyNativeAudit)(root, context);
       validateState(input.state, context); validateLedger(input.ledger); const status = parseStatus(input.status);
       if (context.captureExisting) requireCurrentCaptureReview(maybeCaptureReview, status, now());
@@ -97,6 +123,7 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
       if (context.storeAuditRequired) {
         check(maybeCandidateDiagnostics && now() >= maybeCandidateDiagnostics.at && now() - maybeCandidateDiagnostics.at <= 30000, 'panic_store_diagnostics_stale');
         requireStoreReady(maybeCandidateDiagnostics.value, context, status.observation.bootOrdinal);
+        check(evaluateReadiness(maybeCandidateDiagnostics.value, context, status, maybeCaptureReview, maybeCandidateDiagnostics.at, now()).state === 'ready', 'panic_store_not_ready');
       }
       const request = { requestNonce: nonce(), expectedBootOrdinal: status.observation.bootOrdinal };
       await (operations.persistClaim ?? (value => writeNew(resolve(root, 'self-test-claim.json'), value)))({ request,
