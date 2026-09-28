@@ -6,7 +6,7 @@ import { check } from '../str005-v2-serial/values.mjs';
 export function reviewExistingCapture(parts, context, observedAtUnixMs = Date.now()) {
   check(context.captureExisting === true && context.installEnabled === false && context.selfTestEnabled === true &&
     context.before_source.firmware_commit === context.firmware_commit && context.before_source.app_elf_sha256 === context.app_elf_sha256 &&
-    baselineConclusion(parts).complete, 'panic_existing_capture_baseline');
+    baselineConclusion(parts, context).complete, 'panic_existing_capture_baseline');
   currentProof(context, parts, observedAtUnixMs);
   const boot = parts.status.observation.bootOrdinal;
   const preserved = context.corePreservation;

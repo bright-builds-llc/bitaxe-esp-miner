@@ -5465,6 +5465,32 @@ outcome. No flash, factory/NVS reset, clear, external pool, Start, mining, grant
 renewal, Share002 replay or parity promotion. A successor requires verified
 progress under the unchanged-boundary policy, never an unchanged attempt.
 
+Capture001 pre-effect failure and capture002 continuation | 2026-09-28:
+
+Current-recovery002 and its complete region read/return/release passed. Actual
+974,848-byte core contents were all0xFF; sealed inventory
+`abc027bca50ae320ce22ba5f691317b5784d6a903dac85e10d56b8c6abf52117`.
+Capture001 collected healthy boot12 and unchanged accounting, but capture review
+rejected the new collector metadata because `baselineConclusion` was called
+without its successor context. No self-test claim or device fault occurred.
+Failed root seal `014a1580a5612a112d3ac81d1fd18ef47b3123cf70a081649ac1c7fbbbffac99`;
+exact result blocker `capture_review_missing`, underlying reproduced category
+`v2_object_shape`. [Failure and correction](docs/parity/evidence/20260928-str005-renew-capture001-partial.md).
+
+The focused regression went red, then green when the caller supplied the context;
+reported failures and metadata under an old owner remain rejected. Re-evaluating
+the actual saved observations confirms the correction without changing that seal.
+Capture002 is now the one new eligible root after this verified progress:
+`scratch/str005-renew/capture002/attempt`. Use the same published capture001
+command shapes, exact f000872f/a3e25741 image, Gate9643e876, private retained
+manifest and sealed current-recovery002 empty-region input. Preflight and fresh
+baseline must prove boot12 again; no intervening reset is inferred. No extra
+preservation read, flash, grant or reservation is needed or authorized here.
+All capture, cleanup, privacy and stop bounds above remain unchanged. A recurrence
+of this same authoritative boundary after its correction is a stop; do not retry.
+The new captured dump acquisition, if self-test qualifies, still requires its own
+fresh unused candidate recovery proof and actual offline cutoff verification.
+
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
 Status: Startup prerequisite passed; focused heartbeat-loss implementation and published live contract remain required.

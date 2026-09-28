@@ -447,3 +447,22 @@ test('fault claim requires a fresh source and boot bound store-ready export', as
   assert.equal((await post('/self-test-claim',request)).status,200); assert.equal(claims,1);
   assert.equal((await post('/self-test-claim',request)).status,400); assert.equal(claims,1);
 });
+
+test('successor capture admits its bounded collector metadata without discarding failures', async () => {
+  // Arrange
+  const { reviewExistingCapture } = await import('./capture-existing.mjs');
+  const c = { ...context, renewSuccessor: true, firmware_commit: context.before_source.firmware_commit,
+    app_elf_sha256: context.before_source.app_elf_sha256, captureExisting: true, installEnabled: false,
+    selfTestEnabled: true, corePreservation: preservedCore() };
+  const value = structuredClone(parts());
+  value.finished = { failures: [], first_failure: null };
+  value.diagnostics = healthySnapshot(c, 100); value.diagnostics_confirmation = healthySnapshot(c, 200);
+  value.diagnostics_confirmation_status = { state: state(c, 'before'), status: structuredClone(value.status) };
+  // Act
+  const review = reviewExistingCapture(value, c, 1000);
+  // Assert
+  assert.equal(review.capture_admitted, true);
+  assert.throws(() => reviewExistingCapture({ ...value, finished: { failures: ['diagnostics'],
+    first_failure: { phase: 'diagnostics', category: 'timeout' } } }, c, 1000));
+  assert.throws(() => reviewExistingCapture(value, { ...c, renewSuccessor: false }, 1000));
+});
