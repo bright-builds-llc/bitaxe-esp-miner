@@ -4,7 +4,7 @@ import { cleanPushed, git } from '../fixed-usb-qualification/contract.mjs';
 import { proof, privateRoot, verifyInventory } from '../str005-noise-serial/files.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
 import { validateLedger, validateAttempt } from '../fixed-usb-qualification/iterative-contract.mjs';
-export const HARDWARE_ENABLED = true;
+export const HARDWARE_ENABLED = false;
 export const TASK = 'task-str005-v2-accepted-share-probe';
 export const CONTRACT = 'scripts/str005-share-recovery/CONTRACT.md';
 export const SHARE_SEAL = '1125f5d0dea1fa310ad3001cfa3c2aaa775924aacd1240a68555021ce559261e';

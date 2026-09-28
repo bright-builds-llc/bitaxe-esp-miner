@@ -5150,7 +5150,7 @@ No further Start, flash, clear or self-test is admitted by this consumed trial.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
-Status: Blocked by share001 device panic after Start; sealed partial evidence retained, live gate disabled, no retry admitted.
+Status: Failure-only recovery repaired and current safety verified; crash acquired/decoded, but faulting stack and cause unavailable. Qualification blocked; diagnostic/live gates disabled.
 Objective: prove a correlated real ASIC result, encrypted submission, independent
 fixture acceptance and device acknowledgement, then restoration/accounting/cleanup.
 Depends on: `task-str005-mining-startup-probe` and applicable authenticated channel
@@ -5240,7 +5240,7 @@ Renew image qualification: baseline disabled.
 Renew image qualification: installation disabled.
 Renew image qualification: self-test disabled.
 Renew image qualification: core clear disabled.
-Renew-image core-dump acquisition: enabled (fresh recovery required).
+Renew-image core-dump acquisition: disabled (Share001 crash archived).
 Renew-image core-dump clearing: disabled (clear001 completed).
 
 Objective: install the isolated Renew correction once without mining, preserving
@@ -5688,7 +5688,7 @@ Implementation continuation | 2026-09-28 | Failure-independent recovery and Shar
   late writes, persistence/cleanup failures and current-versus-historical proof.
 - [x] Publish a Share001-bound recovery-only command and verified contract before
   hardware; collect measured accounting/current status/restoration and seal.
-- [ ] Publish fresh-proof-gated core acquisition, preserve exact raw bytes and ELF,
+- [x] Publish fresh-proof-gated core acquisition, preserve exact raw bytes and ELF,
   decode privately and record direct findings separately from hypotheses.
 - [ ] Repair only a demonstrated panic boundary, then verify and publish the
   corrected image contract before state-preserving installation.
@@ -5697,13 +5697,12 @@ Implementation continuation | 2026-09-28 | Failure-independent recovery and Shar
 - [ ] Commit/push truthful outcomes, archive only passed criteria, preserve all
   predecessor seals and parity90/95. A precise unresolved blocker stops effects.
 
-Current stage: acquisition publication after verified current recovery. Start,
-grant, renewal, flash, self-test and core clearing remain disabled; only the
-explicit Stage2 reset-capable read below may follow a new fresh recovery proof.
+Current stage: recovery/acquisition completed; the missing fault provenance
+selected the diagnostic stop below. Every diagnostic and live gate is disabled.
 
 Share001 failure-only recovery001 contract | 2026-09-28:
 
-Share failure recovery hardware: enabled.
+Share failure recovery hardware: disabled.
 Share failure recovery seal: 1125f5d0dea1fa310ad3001cfa3c2aaa775924aacd1240a68555021ce559261e.
 
 Objective: collect fresh authenticated current accounting, status, restoration and
@@ -5870,6 +5869,44 @@ commit only reviewed redacted evidence and explicit limits. An offline
 `verify-cutoff` may inspect captured native safety atoms without any device effect.
 No clearing/self-test/flash/Start is admitted. Stop on incomplete safety/release,
 wrong image, missing/corrupt capture or undemonstrated cause; preserve exactblocker.
+
+Acquisition/decoding outcome and stop | 2026-09-28:
+
+On published e827baaf, fresh recovery004 passed boot16 and actual21/20/2100000
+pendingfalse. Official acquisition001 preserved all974848 core bytes, returned
+exactf000872f/full-a3e25741 and released. Table checksum/currentgeometry, rawlength
+and actual read/return/cleanup were independently verified and sealed. Post-return
+recovery005 passed boot17, idle, unchanged measured ledgers, current preservation/
+restoration and exact release. All stages were separate; no core clear/write occurred.
+
+Acquisition seal `3ec746b255da28290d8f1944e1cc375f7deea559f8d936bd49dea8e5ed6ad39b`;
+raw SHA `b665c154d35f43bf7a0ab9acfe0aab207ac9e36c6a1a10ce649f3863f880f29c`;
+post-return seal `49abc244d0efe12af30a7265cd5661dea0e735fa78baa1a7ff30b279cf3f39a6`.
+[Decoded crash and precise blocker](docs/parity/evidence/20260928-str005-share001-crash-decoded-blocker.md)
+records all identities, predecessor seals and non-claims.
+
+Checksum/fullELF/nativecutoff/capturedmemory checks passed; generationrevoked and
+ASICoutputsdisabled, self_test_marked=false. Official high-level analysis timed
+out120s and is preserved. Bounded offline managedGDB decoded26 task entries;
+independent SDK/layout review proved the crashed task has an intentional synthetic
+frame. Original panic frame/stack and CPU exception cause are unavailable. Its
+pthread name is not specific to a Rust owner. The8192-byte allocation receipt is
+non-authoritative, lacks caller identity and can describe recoverable failures;
+its sourcehash is a firmware fingerprint, not a callsite. No repairable cause was
+proved, so no speculative firmware repair or new hardware trial was performed.
+
+Outcome: stop_hardware_blocker, boundary
+crashed_task_stack_unavailable_cause_unproven. Recovery/acquisition source and task
+gates are consumed/disabled. Next work needs bounded allocation/task/call-location
+and panic-frame/stack-bound diagnostics, software regressions and a separately
+published observation contract. This is a new diagnostic gap, not permission to
+replay Share001 or Share002. Accepted-share/heartbeat tasks remain unverified and
+unarchived. Original historical resource gaps remain. Parity90/95 unchanged.
+
+Completion review: failure-only collection, measured accounting, restoration,
+resource release, private full-region acquisition and checksum/identity/cutoff
+analysis are verified. The planned firmware-cause repair and resumed qualification
+are blocked by missing fault provenance. No full dumps/debugger output were shared.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
