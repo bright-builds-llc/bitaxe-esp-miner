@@ -71,6 +71,12 @@ export async function restartEvidence(value, context, request, operations = {}) 
 }
 export function conclusion(parts, context, hostReleased) {
   const blockers = STAGES.filter(stage => !parts[stage]).map(stage => `missing_${stage}`);
+  if (parts.firstFailure) {
+    object(parts.firstFailure, ['schema', 'phase', 'category']);
+    check(parts.firstFailure.schema === 'str005-preparation-failure-v1' && ['begin', 'part', 'diagnostics', 'claim', 'evidence', 'finish', 'other'].includes(parts.firstFailure.phase) &&
+      /^preparation_[a-z_]+$/u.test(parts.firstFailure.category), 'preparation_failure_shape');
+    blockers.push('owner_request_failed');
+  }
   if (!parts.evidence || parts.evidenceVerified !== true) blockers.push('restart_evidence_unverified');
   if (!parts.finished || parts.finished.failures.length) blockers.push('collection_incomplete');
   if (!hostReleased) blockers.push('resources_unreleased');
@@ -85,7 +91,7 @@ export function conclusion(parts, context, hostReleased) {
   if (!parts.before_ledger || !parts.after_ledger || parts.before_ledger.pending || parts.after_ledger.pending ||
     !equal(parts.before_ledger, context.expectedLedger) || !equal(parts.before_ledger, parts.after_ledger)) blockers.push('accounting_changed');
   if (!equal(parts.before_budget, parts.after_budget) || !equal(parts.before_budget, context.originalBudget)) blockers.push('original_budget_changed');
-  return { schema: 'str005-startup-preparation-result-v1', complete: blockers.length === 0, blockers, evidence_failure: parts.evidenceFailure ?? null,
+  return { schema: 'str005-startup-preparation-result-v1', first_failure: parts.firstFailure ?? null, complete: blockers.length === 0, blockers, evidence_failure: parts.evidenceFailure ?? null,
     firmware_commit: context.firmware_commit, app_elf_sha256: context.app_elf_sha256, gate_commit: context.gate_commit,
     historical_gate_commit: context.historical_gate_commit, physical: context.physical, attemptId: context.attemptId,
     parentRoots: context.parentRoots, parentSeals: context.parentSeals, before_boot_ordinal: context.before_boot_ordinal,

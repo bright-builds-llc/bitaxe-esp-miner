@@ -51,6 +51,7 @@ export async function preparedEvidence(root) {
     claim.beforeStartedAtUnixMs === restartStarted, 'startup_preparation_clock_binding');
   validatePreparationTimeline(recoveryStarted, restartStarted, claim.claimedAtUnixMs);
   restart.evidence = await restartEvidence(restart.evidence, context, claim.request); restart.evidenceVerified = true;
+  try { restart.firstFailure = (await proof(restartRoot, 'first-failure.json')).value; } catch (error) { if (error.code !== 'ENOENT') throw error; }
   const derived = conclusion(restart, context, true), retained = (await proof(root, 'result.json')).value;
   check(derived.complete && Object.entries(derived).every(([key, value]) => equal(retained[key], value)) &&
     retained.recoverySealSha256 === recoverySeal && retained.restartEvidenceSha256 === await fileDigest(resolve(restartRoot, 'evidence.json')) &&

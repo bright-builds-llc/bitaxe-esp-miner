@@ -15,12 +15,13 @@ export function restartConfiguration(context, trust) {
 /** Separate owner/page: the restart-only contract never shares or downgrades a V2 configuration. */
 export function createRestartServer({ root, context, assets, verify }, operations = {}) {
   const now = operations.now ?? Date.now, persist = operations.persist ?? ((name, value) => writeNew(resolve(root, name), value));
-  let queue = Promise.resolve(), startedAt, request, claimed = false, finished = false;
+  let queue = Promise.resolve(), startedAt, request, claimed = false, finished = false, failureRecorded = false;
   const saved = new Set(), parts = {};
   const scope = { challengeId: `challenge_${nonce()}`, retentionExpiryUnixSeconds: Math.floor(now() / 1000) + 86400 };
   async function save(name, value) { check(!saved.has(name) && !finished, 'preparation_part_consumed'); await persist(name, value); saved.add(name); }
-  const server = createServer((req, res) => { queue = queue.then(async () => {
+  const server = createServer((req, res) => { let phase = 'other'; queue = queue.then(async () => {
     const host = `127.0.0.1:${server.address().port}`, origin = `http://${host}`, path = new URL(req.url, origin).pathname;
+    phase = new Map([['/begin', 'begin'], ['/part', 'part'], ['/diagnostic-export', 'diagnostics'], ['/restart-claim', 'claim'], ['/restart-evidence', 'evidence'], ['/finished', 'finish']]).get(path) ?? 'other';
     check(req.headers.host === host, 'preparation_host');
     if (req.method === 'GET') {
       if (path === '/') return send(res, 200, Buffer.from(`${assets.page}\n<script type="module" src="/restart-client.mjs"></script>`), 'text/html');
@@ -37,7 +38,7 @@ export function createRestartServer({ root, context, assets, verify }, operation
       await save('begin.json', { startedAtUnixMs: startedAt }); return send(res, 200, { begun: true }); }
     if (path === '/part') {
       object(input, ['stage', 'value']); const value = part(input.stage, input.value, context);
-      check(startedAt !== undefined, 'preparation_not_begun'); await save(`${input.stage}.json`, value); parts[input.stage] = value;
+      check(startedAt !== undefined || input.stage === 'closed', 'preparation_not_begun'); await save(`${input.stage}.json`, value); parts[input.stage] = value;
       return send(res, 200, { recorded: true });
     }
     if (path === '/diagnostic-export') {
@@ -67,7 +68,10 @@ export function createRestartServer({ root, context, assets, verify }, operation
       await save('finished.json', input); finished = true; return send(res, 200, { recorded: true });
     }
     check(false, 'preparation_route_unavailable');
-  }).catch(() => { if (!res.headersSent && !res.destroyed) send(res, 400, { error: 'preparation_rejected' }); else res.destroy(); }); });
+  }).catch(async error => {
+    if (!failureRecorded) { failureRecorded = true; await persist('first-failure.json', { schema: 'str005-preparation-failure-v1', phase,
+      category: /^preparation_[a-z_]+$/u.test(error.code ?? '') ? error.code : 'preparation_rejected' }); }
+    if (!res.headersSent && !res.destroyed) send(res, 400, { error: 'preparation_rejected' }); else res.destroy(); }); });
   server.requestTimeout = 10000; server.headersTimeout = 10000;
   server.release = async () => { const closed = server.listening ? once(server, 'close') : Promise.resolve(); server.close(); server.closeAllConnections(); await queue; await closed; };
   return server;

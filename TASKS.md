@@ -5348,7 +5348,7 @@ Prospective execution (after this source is committed and pushed):
 [preparation contract](docs/hardware/str005-startup-preparation.md) and
 [normal-stop startup contract](docs/hardware/str005-normal-stop-startup.md).
 Use `just str005-startup-preparation preflight|serve|finish` with separate
-recovery/restart stages in `scratch/str005-startup/preparation002/attempt`,
+recovery/restart stages in `scratch/str005-startup/preparation003/attempt`,
 then `just str005-startup-probe preflight|serve|finish` in
 `scratch/str005-startup/startup002/attempt`. The original startup001, clearing,
 self-test and installation invocations remain consumed; the new startup accepts
@@ -5401,6 +5401,44 @@ startup independently bind that same receipt; the 120-second bound is unchanged.
 The verified fix admits new `preparation002/attempt` under the existing contract;
 startup002 remains unconsumed. Do not relabel preparation001 as successful.
 
+Preparation002 outcome and continuation | 2026-09-28:
+
+The corrected recovery clock and all current recovery checks passed. The next
+page's begin request arrived about 131 seconds after collection, beyond the
+unchanged 120-second limit, and no restart claim was issued. Source/timestamps
+identify the freshness rejection; its generic client failure did not retain the
+server's exact typed cause. Final Stop/Close released the port, but the server
+also rejected saving Close because begin had failed. Host/serial cleanup passed;
+the partial root remains sealed at SHA-256 `8700c7f4e020dc970934b9b56eaf1164f0e4d174cb6a2d353669f34ccbc30814`.
+
+The real HTTP regression reproduced that second defect (Close persistence 400),
+then passed after permitting only the cleanup record before begin. The first
+closed phase/category is now retained once; later cleanup cannot overwrite it.
+No admission/effect predicate is weakened. The next `preparation003` uses the
+same 120-second bound and batches collection completion, owner release, detector,
+finalization and restart-server startup to avoid unnecessary handoff delays.
+Native connection and readiness checks are similarly batched from fresh UI
+state. No old result is promoted and no reset, grant or Start has yet occurred.
+
+
+Preparation002 outcome and continuation | 2026-09-28:
+
+The corrected recovery clock and all current recovery checks passed. The next
+page's begin request arrived about 131 seconds after collection, beyond the
+unchanged 120-second limit, and no restart claim was issued. Source/timestamps
+identify the freshness rejection; its generic client failure did not retain the
+server's exact typed cause. Final Stop/Close released the port, but the server
+also rejected saving Close because begin had failed. Host/serial cleanup passed;
+the partial root remains sealed at SHA-256 `8700c7f4e020dc970934b9b56eaf1164f0e4d174cb6a2d353669f34ccbc30814`.
+
+The real HTTP regression reproduced that second defect (Close persistence 400),
+then passed after permitting only the cleanup record before begin. The first
+closed phase/category is now retained once; later cleanup cannot overwrite it.
+No admission/effect predicate is weakened. The next `preparation003` uses the
+same 120-second bound and batches collection completion, owner release, detector,
+finalization and restart-server startup to avoid unnecessary handoff delays.
+Native connection and readiness checks are similarly batched from fresh UI
+state. No old result is promoted and no reset, grant or Start has yet occurred.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 

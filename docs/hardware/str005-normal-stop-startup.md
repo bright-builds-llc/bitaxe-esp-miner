@@ -46,7 +46,7 @@ or accounting change rejects admission.
 
 Use `scratch/str005-startup/startup002/attempt` as an absent child under an ignored
 mode-0700 parent. Keep stdout/stderr in distinct mode-0600 sibling files. The
-prepared evidence is at `scratch/str005-startup/preparation002/attempt`.
+prepared evidence is at `scratch/str005-startup/preparation003/attempt`.
 
 1. After preparation seals successfully, run `just detect-ultra205` into sibling
    `detector.stdout.log`. Require the same single physical device, supported

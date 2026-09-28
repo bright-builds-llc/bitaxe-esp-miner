@@ -134,3 +134,15 @@ begin request. Server lifetime is not observation age. Both restart admission
 and independent startup consumption check that exact receipt and the original
 120-second freshness bound. No clock limit is extended and no old proof is
 retimestamped.
+
+## Failure before begin and handoff
+
+Preparation002's recovery was valid, but the second page reached begin after its
+fresh proof expired; no reset was claimed. Its cleanup nevertheless released
+USB. A regression now ensures that failure before begin cannot prevent recording
+Close, and that the first closed server failure category survives cleanup.
+Preparation003 batches the existing owner-release/detector/finalization/handoff
+steps and native UI readiness checks; it retains the same 120-second freshness
+bound and requires a new live claim. Neither sealed failure is retimestamped or
+reclassified. The restart claim remains unavailable until every before-proof
+passes, irrespective of whether cleanup evidence was recorded.

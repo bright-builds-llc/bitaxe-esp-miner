@@ -87,3 +87,22 @@ for (const stale of [false, true]) test(`restart claim ${stale ? 'rejects stale 
     if (!stale) { assert.equal((await claim.json()).expectedBootOrdinal, 7); assert.equal((await post('/restart-claim', {})).status, 400); }
   } finally { await server.release(); }
 });
+
+test('rejected begin preserves its first cause and still records successful Close', async () => {
+  // Arrange
+  const stored = new Map(), closed = state(context, 'candidate', true);
+  const server = createRestartServer({ root: '/unused', context, assets: {},
+    verify: async () => { throw Object.assign(Error('stale'), { code: 'preparation_recovery_stale' }); } },
+  { persist: async (name, value) => { stored.set(name, value); } });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); const origin = `http://127.0.0.1:${server.address().port}`;
+  const post = (path, body) => fetch(`${origin}${path}`, { method: 'POST', headers: { origin, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  try {
+    // Act
+    assert.equal((await post('/begin', {})).status, 400);
+    const close = await post('/part', { stage: 'closed', value: closed });
+    // Assert
+    assert.equal(close.status, 200);
+    assert.equal(stored.get('closed.json').serialOwnershipReleased, true);
+    assert.deepEqual(stored.get('first-failure.json'), { schema: 'str005-preparation-failure-v1', phase: 'begin', category: 'preparation_recovery_stale' });
+  } finally { await server.release(); }
+});

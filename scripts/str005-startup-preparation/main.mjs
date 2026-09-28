@@ -132,11 +132,12 @@ async function finish(root, child, stage, context) {
     }
     return result;
   }
-  const observed = await parts(child, [...STAGES, 'finished', 'evidence']), claim = await parts(child, ['restart-claim']);
+  const observed = await parts(child, [...STAGES, 'finished', 'evidence', 'first-failure']), claim = await parts(child, ['restart-claim']);
   if (observed.evidence && claim['restart-claim']) {
     try { observed.evidence = await restartEvidence(observed.evidence, context, claim['restart-claim'].request); observed.evidenceVerified = true; }
     catch (error) { observed.evidenceVerified = false; observed.evidenceFailure = /^(restart|statistics|preparation)_[a-z_]+$/u.test(error.code ?? '') ? error.code : 'restart_evidence_unverified'; }
   }
+  observed.firstFailure = observed['first-failure'] ?? null;
   const result = conclusion(observed, context, true); result.recoverySealSha256 = await recoveryReady(root, context, false);
   result.restartEvidenceSha256 = observed.evidence ? await fileDigest(resolve(child, 'evidence.json')) : null;
   await writeNew(resolve(child, 'result.json'), result); await writeNew(resolve(child, 'sealed-inventory.json'), { files: await inventory(child) });
