@@ -392,3 +392,47 @@ session. Any mismatch, unsafe/pending state, failed collection or unreleased
 owner is a blocker; retain earliest failure and partial evidence. No reset,
 reflash, acquisition, clearing, self-test, grant or mining is admitted, and all
 corresponding task sentinels remain disabled. No unchanged recovery retry.
+
+## Receipt-corrected preservation trial
+
+The owner requested a fresh reflash after explanation of the receipt defect.
+The verified f4d6ee39 adapter fix is the progress basis. This prospectively
+re-enables installation and core preservation only for current-recovery-005 and
+installation005, under the existing no-mining stack-correction bounds. The
+reference marker remains unavailable unless actually observed; no old failed
+result is relabeled or edited.
+
+Publish this contract and exact clean source, build `just package` and the flash
+binary, pass `just test-panic-probe-command`, and retain a passing exact-ELF
+`just audit-signed-start-stack` report. Create fresh protected parents with absent
+`attempt` children and separate private stdout/stderr logs.
+
+For current-recovery-005, use recovery-only preflight anchored to sealed
+installation004 and retained build-2d81a9cd. Follow fresh detection, serve,
+native Connect, authenticated baseline/accounting and Close. Use its fresh
+120-second proof to preserve the full current core region with `core-dump-read`
+into `attempt/installed-core`. Require ROM admission, exact application return
+and cleanup; preserve any bytes without clearing. Close the page/server, obtain
+fresh cleanup detection and finish/seal. No effect proceeds on failed recovery.
+
+For installation005, use the new canonical package and
+`--before-recovery-root <current-recovery-005/attempt>`. Obtain a NEW live baseline
+on its page, release serial ownership, save fresh install detector output, and
+invoke `just str005-panic-probe install --private-root <installation005/attempt>`
+once. Keep the page and its private before-state in memory across the update.
+The 360-second capture and 1,200-second installer bound remain unchanged.
+Require the corrected successful receipt, then configure the candidate, connect
+freshly to the exact source/full ELF, and collect candidate recovery/Close on
+that same page. Verify before/after settings, Device Identity, replay high-water,
+mining-disabled state, both unchanged ledgers, restoration and actual release.
+Close page/server, collect cleanup detection and finish/seal the attempt.
+
+Stop on the same reference-validation boundary recurring after its verified fix,
+new identity/preservation/accounting/startup failure, unexpected reset, failed
+application return or incomplete cleanup. Preserve earliest failure; no second
+write is admitted. Existing supported read-only recovery may collect evidence
+independently; a new unsupported boundary needs its own verified recovery fix.
+No Start, grant, mining, self-test, clearing, factory reset, NVS erase, external
+pool or direct pins are authorized. Completion of this update proves only its
+preservation/current-health boundary, not Share002's cause or panic capture.
+Disable effectful sentinels again after the terminal outcome; parity stays 90/95.

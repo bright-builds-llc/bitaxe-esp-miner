@@ -4650,9 +4650,9 @@ Prospective execution contract: [staged panic probe](docs/hardware/str005-panic-
 The following gates authorize only its verified staged effects after publication:
 
 Development panic probe: stage A enabled.
-Development panic probe: installation disabled (one stack-correction write complete; read-only candidate recovery remains).
+Development panic probe: installation enabled.
 Development panic probe: self-test disabled (single admitted self-test exhausted; numeric store diagnostics required before another attempt).
-Development core-dump acquisition: disabled (pre-install region preserved; no further reset-capable read needed).
+Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
 Development core-dump clearing: disabled (region erased; capture unverified).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
@@ -4991,6 +4991,26 @@ comparison did not complete. No reflash or mining attempt followed. Original
 panic cause and empty-core/cutoff proof remain unresolved; no archive or parity
 promotion. All effectful sentinels remain disabled, and all owned hardware/UI/
 server resources are released. Parity stays 90/95.
+
+Owner-requested receipt-corrected reflash (2026-09-27):
+
+- [ ] Publish/verify this continuation and build exact clean pushed package.
+- [ ] Use current-recovery-005 to authenticate installed 2d81a9cd, measure both
+  ledgers, preserve the core region via managed read/return, and seal cleanup.
+- [ ] Use installation005 with a new live same-page baseline; flash once through
+  the corrected receipt validator, authenticate the exact candidate, compare
+  preserved settings/Device Identity/replay marks and accounting, and close.
+- [ ] Seal/report independent outcomes, disable effects and retain diagnosis
+  blockers unless independently resolved. No mining Start is admitted.
+
+Verified progress: f4d6ee39 corrects the demonstrated producer/validator mismatch
+and has real sealed-receipt plus negative regression coverage. This is one fresh
+`continue_after_verified_fix` attempt, not a replay of installation004. The
+[receipt-corrected contract](docs/hardware/str005-panic-probe.md#receipt-corrected-preservation-trial)
+owns exact commands, privacy, recovery, cleanup and stop conditions. No stack,
+allocation, partition, authority or runtime behavior change is intended beyond
+build identity. Self-test, clearing, grants, mining and Share002 replay remain
+disabled. Retain all previous seals, outcomes and parity 90/95.
 
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 
