@@ -4650,9 +4650,9 @@ Prospective execution contract: [staged panic probe](docs/hardware/str005-panic-
 The following gates authorize only its verified staged effects after publication:
 
 Development panic probe: stage A enabled.
-Development panic probe: installation enabled.
+Development panic probe: installation disabled (receipt-corrected preservation trial complete).
 Development panic probe: self-test disabled (single admitted self-test exhausted; numeric store diagnostics required before another attempt).
-Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
+Development core-dump acquisition: disabled (pre-update preservation complete; no further acquisition admitted).
 Development core-dump clearing: disabled (region erased; capture unverified).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
@@ -4994,13 +4994,13 @@ server resources are released. Parity stays 90/95.
 
 Owner-requested receipt-corrected reflash (2026-09-27):
 
-- [ ] Publish/verify this continuation and build exact clean pushed package.
-- [ ] Use current-recovery-005 to authenticate installed 2d81a9cd, measure both
+- [x] Publish/verify this continuation and build exact clean pushed package.
+- [x] Use current-recovery-005 to authenticate installed 2d81a9cd, measure both
   ledgers, preserve the core region via managed read/return, and seal cleanup.
-- [ ] Use installation005 with a new live same-page baseline; flash once through
+- [x] Use installation005 with a new live same-page baseline; flash once through
   the corrected receipt validator, authenticate the exact candidate, compare
   preserved settings/Device Identity/replay marks and accounting, and close.
-- [ ] Seal/report independent outcomes, disable effects and retain diagnosis
+- [x] Seal/report independent outcomes, disable effects and retain diagnosis
   blockers unless independently resolved. No mining Start is admitted.
 
 Verified progress: f4d6ee39 corrects the demonstrated producer/validator mismatch
@@ -5011,6 +5011,21 @@ owns exact commands, privacy, recovery, cleanup and stop conditions. No stack,
 allocation, partition, authority or runtime behavior change is intended beyond
 build identity. Self-test, clearing, grants, mining and Share002 replay remain
 disabled. Retain all previous seals, outcomes and parity 90/95.
+
+Receipt-corrected trial completion review: [verified result](docs/parity/evidence/20260927-str005-reflash-preservation.md).
+Installation005 complete=true, installation_complete=true, candidate recovery
+complete, blockers empty and actual host/serial release verified. The exact
+02197010 source/ELF is authenticated at boot15 with complete healthy startup.
+Same-page settings/Device Identity/replay high-water comparison passed; both
+ledgers are unchanged (next18, last17, 1,560,000 ms, pending=false; original
+campaign exhausted at 240,000 ms). No allowance was consumed.
+
+This new trial closes its own receipt/preservation boundary; installation004
+remains sealed failed. The selected signature stack chain remains 13,264 bytes
+on the unchanged 16 KiB stack. No Start, mining, self-test or dump clearing
+occurred. Effectful gates are disabled again. Original panic cause, core capture/
+cutoff qualification and live Start remain unverified, so the overarching task
+is not archived and parity remains 90/95. All owned resources are released.
 
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 
