@@ -1,3 +1,4 @@
+import { applyCandidateFailure, sealProbeResult } from './candidate-failure.mjs';
 import { main as auditSignedStart } from '../audit-signed-start-stack.mjs';
 import { main as auditSignedRenew } from '../audit-signed-renew-stack.mjs';
 import { renewSource, startupPredecessor } from './renew-successor.mjs';
@@ -91,7 +92,7 @@ export async function main(argv) {
     const pins = [...(await readFile(resolve(firmwareRoot, 'MODULE.bazel'), 'utf8')).matchAll(/strip_prefix\s*=\s*"bitaxe-turnstile-system-([a-f0-9]{40})"/gu)];
     check(pins.length === 1 && pins[0][1] === gateCommit, 'panic_gate_pin');
     const { corePreservation, recoveryOnly, captureExisting, before, failedInstall, installed, retainedSource, retained, packaged } = await resolvePreflightSources(options, firmwareRoot, published.commit);
-    check(!renewSuccessor || retainedSource || !before, 'renew_before_mode');
+    check(!renewSuccessor || retainedSource || !before || before.kind === 'partial_verified_write', 'renew_before_mode');
     check(!renewSuccessor || !published.selfTestEnabled || captureExisting || recoveryOnly, 'renew_capture_requires_preserved_image');
     const page = await readFile(resolve(gateRoot, PAGE)), bundle = await readFile(resolve(gateRoot, BUNDLE));
     check([gateCommit, 'stratumV2Status', 'coreDumpSelfTestQualification', 'coreDumpSelfTest', ...(published.storeAuditRequired ? ['core_dump_store_receipt'] : [])].every(marker => bundle.includes(marker)), 'panic_gate_capability');
@@ -99,7 +100,7 @@ export async function main(argv) {
     const flashBinary = retainedSource ? null : await realpath(resolve(firmwareRoot, 'bazel-bin/tools/flash/flash'));
     check(!options['--flash-binary'] || await realpath(options['--flash-binary']) === flashBinary, 'panic_flash_binary');
     const context = { schema: 'str005-panic-probe-v1', ...published, ...packaged, firmware_commit: retainedSource?.context.firmware_commit ?? published.commit,
-      ...(renewSuccessor && !retainedSource ? { retainedBaseline: prior.retainedBaseline } : {}),
+      ...(renewSuccessor && !retainedSource && !before ? { retainedBaseline: prior.retainedBaseline } : {}),
       recoveryOnly, captureExisting, storeAuditRequired: published.storeAuditRequired && !recoveryOnly, cutoffUserRegionRequired: published.cutoffUserRegionRequired && !recoveryOnly, ...(captureExisting ? { corePreservation } : {}), ...(retainedSource ? { installEnabled: false, selfTestEnabled: captureExisting && published.selfTestEnabled, continuity_basis: 'current-session-only', retainedManifest: retained.retainedManifest } : {}),
       ...(failedInstall ? { failedInstall: { root: failedInstall.root, seal_sha256: failedInstall.seal_sha256, context_sha256: failedInstall.context_sha256 } } : {}),
       ...(installed ? { installedAnchor: { root: installed.root, seal_sha256: installed.seal_sha256, context_sha256: installed.context_sha256, candidate_proof_sha256: installed.candidate_proof_sha256 } } : {}),
@@ -235,6 +236,8 @@ async function finish(root, context) {
     catch (error) { if (error.code !== 'ENOENT') throw error; result.complete = false; result.blockers.push('missing_current_proof'); }
   }
   result.baseline_complete = result.complete;
+  try { applyCandidateFailure(result, (await proof(root, 'candidate-recovery-failure.json')).value); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
   result.core_capture_verified = false;
   if (context.recoveryOnly) {
     applyRecoveryOnlyOutcome(result, context.installedAnchor === undefined);
@@ -243,9 +246,7 @@ async function finish(root, context) {
       check(JSON.stringify(current) === JSON.stringify(currentProof(context, parts, current.observed_at_unix_ms)), 'panic_recovery_proof_changed');
       admitRecovery(current, context, current.observed_at_unix_ms);
     }
-    await writeNew(resolve(root, 'result.json'), result);
-    await writeNew(resolve(root, 'sealed-inventory.json'), { files: await inventory(root) });
-    return result;
+    return sealProbeResult(root, result);
   }
   if (context.captureExisting) {
     result.continuity_basis = 'current-session-only'; result.installation_complete = false;
@@ -308,9 +309,7 @@ async function finish(root, context) {
     await finalizeSelfTestEvidence(root, context, result);
   } catch (error) { if (error.code !== 'ENOENT') throw error; }
   if (context.captureExisting && !result.capture_admission_reviewed) { result.complete = false; result.blockers.push('capture_review_missing'); }
-  await writeNew(resolve(root, 'result.json'), result);
-  await writeNew(resolve(root, 'sealed-inventory.json'), { files: await inventory(root) });
-  return result;
+  return sealProbeResult(root, result);
 }
 /** Re-read immutable artifacts at finalization; disabled fault scope is not failed capture. */
 export async function finalizeSelfTestEvidence(root, context, result) {

@@ -5150,7 +5150,7 @@ No further Start, flash, clear or self-test is admitted by this consumed trial.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 
-Status: Startup prerequisite passed; blocked on native Renew isolation and new-image qualification before the renewal-bearing share probe.
+Status: Collector corrections verified; installation001 remains partial pending fresh recovery and new-image qualification.
 Objective: prove a correlated real ASIC result, encrypted submission, independent
 fixture acceptance and device acknowledgement, then restoration/accounting/cleanup.
 Depends on: `task-str005-mining-startup-probe` and applicable authenticated channel
@@ -5237,7 +5237,7 @@ New-image prerequisite plan:
 Renew-image installation001 execution contract | 2026-09-28:
 
 Renew image qualification: baseline enabled.
-Renew image qualification: installation enabled.
+Renew image qualification: installation disabled.
 Renew image qualification: self-test disabled.
 Renew image qualification: core clear disabled.
 Renew-image core-dump acquisition: disabled (installation outcome required).
@@ -5294,6 +5294,64 @@ reject stale/invalid/mixed proofs before USB and require one explicit active
 owner. A durable private semantic-proof claim also rejects copied/reformatted
 proof replay and read-to-clear reuse before USB; fresh collection is required
 for each operation even after a failed attempt. Original Share002 cause and historical resource gaps remain unresolved.
+
+Installation001 outcome | 2026-09-28:
+
+The published 8d4e470e package/full ELF d0dd7753 installed successfully in
+511,496 ms with trusted stable safe-boot observation, no NVS provisioning and
+complete host release. Fresh before accounting remained next20/last19/1920000,
+pending=false. Exact native Start/Renew margins passed again. Candidate collection
+failed before its first round; original same-page UI showed preservation matches,
+but no candidate recovery proof or post-update ledger was persisted. Explicit
+Stop/Close completed after the collector's pre-begin failure. The immutable result
+is complete=false with `candidate_recovery_missing`; it cannot be promoted.
+
+Private root `scratch/str005-renew/installation001/attempt`, seal
+`8d6a89683e92b6d798b92a01b38882138b5db5f177058c3c0ed8f9a04b85a5ad`.
+[Partial installation evidence](docs/parity/evidence/20260928-str005-renew-installation001-partial.md).
+No mining, grant, renewal, self-test or clear occurred. The installation gate is
+consumed and disabled. Keep the task active and parity90/95 unchanged.
+
+Next verified progress: reproduce and correct the actual Gate page-history
+boundary across an intentional changed-image/new-boot transition while preserving
+old history and ordinary reconnect guards; correct unconditional Stop/Close and
+durable first-failure recording around candidate recovery's pre-begin operation.
+Admit this partial root only as exact installed identity/write lineage for fresh
+read-only recovery, never as successful historical preservation. Any new image
+qualification requires that recovery and a separately published successor scope;
+no unchanged retry or implicit reflash is admitted by this record.
+
+Verified collector correction and current-recovery001 contract | 2026-09-28:
+
+Gate 9643e87664397a321c715a3a1b1bb6c1183b83ea reproduces and corrects the
+planned-image history boundary through actual page/controller/WebCrypto tests.
+Independent review passed24 focused tests after adding old-idle and controlled
+self-test reboot cases; full Gate verification passed864 web tests plus Rust,
+browser, package and standards. The [compatibility review](docs/hardware/str005-image-transition-compatibility.md)
+binds the exact diff and unchanged protocol blobs. Firmware collector regression
+now proves that status/possession/begin failures still attempt independent
+Stop/Close, persist a closed typed first cause and block unchanged retries.
+
+Only fresh read-only recovery is enabled at this stage. Exact commands:
+`just str005-panic-probe renew-preflight --private-root <repo>/scratch/str005-renew/current-recovery001/attempt --gate-root <pinned-clean-Gate> --recover-install-root <repo>/scratch/str005-renew/installation001/attempt --retained-manifest <repo>/scratch/development-core-dumps/build-8d4e470e/bitaxe-ultra205-package.json`,
+then `just detect-ultra205` and `just str005-panic-probe renew-serve|renew-finish`
+with that private root. Run detection before admission as well; the serve detector
+must be fresh \<=60 seconds. The exact sealed partial-install validator binds
+8d6a8968 to the actual successful-write receipt and d0dd7753 ELF, without qualifying
+historical preservation. Current measurements, not the old record, establish
+boot, idle status, source/full ELF, both ledgers, safe baseline, same-session
+preservation, restoration and release.
+
+Create a new ignored0700 parent and absent child; keep separate0600 stdout/stderr
+siblings. Reads/begin\<=30 seconds; Stop and Close independently\<=150 seconds;
+proof freshness starts at one-use collection and remains\<=120 seconds. Close the
+browser and exact server owner, require fresh final detector/no-holder/listener
+checks, and seal the independent result even when incomplete. No Start, grants,
+renewals, mining, ROM entry, flash, self-test, raw dump acquisition, core clear,
+factory/NVS reset, budget refund, Share002 replay or parity promotion is enabled.
+No automatic repeat: a new blocker requires discriminating evidence and verified
+progress under the unchanged-boundary policy. A passing current recovery does
+not repair installation001's historical gap or archive this accepted-share task.
 
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 

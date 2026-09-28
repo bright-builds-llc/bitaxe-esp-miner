@@ -71,6 +71,57 @@ export function createRenewBaselineCollector({ gate, published, save, campaignId
     return { complete: failures.length === 0, ...finished };
   };
 }
+/** A candidate prelude is part of the owned attempt, including unconditional release. */
+export function createCandidateRecovery({ gate, published, begin, collect, failure, timeoutMs = 30000, cleanupMs = 150000, collectionMs = 600000 }) {
+  let failed = false, running = false;
+  const execute = async () => {
+    if (failed || running) throw Error('panic_candidate_recovery_consumed'); running = true;
+    let firstFailure = null, result, stopComplete = false, closeComplete = false;
+    async function bounded(phase, operation, limit = timeoutMs) {
+      let timer;
+      try { return await Promise.race([Promise.resolve().then(operation), new Promise((_, reject) => {
+        timer = setTimeout(() => reject(Object.assign(Error('timeout'), { boundedTimeout: true })), limit);
+      })]); }
+      catch (error) {
+        firstFailure ??= { phase, category: error?.boundedTimeout ? 'timeout' : error?.code === 'v2_retained_evidence' || error?.message === 'v2_retained_evidence' ? 'v2_retained_evidence' : 'operation_failed' };
+        throw error;
+      } finally { clearTimeout(timer); }
+    }
+    try {
+      const possession = await bounded('possession', () => gate.stratumV2Possession());
+      const status = await bounded('status', () => gate.stratumV2Status('share', null, possession));
+      const round = await bounded('begin', () => begin({ state: published(), status }));
+      result = await bounded('collection', () => collect(round), collectionMs);
+      if (result.complete !== true) firstFailure ??= result.first_failure ?? { phase: 'collection', category: 'operation_failed' };
+    } catch { firstFailure ??= { phase: 'collection', category: 'operation_failed' }; }
+    finally {
+      const alreadyClosed = () => { try { const value = published(); return value.status === 'closed' && value.connected === false && value.serialOwnershipReleased === true; } catch { return false; } };
+      if (alreadyClosed()) {
+        const closed = published();
+        stopComplete = closed.deviceRestorationConfirmed === true && closed.deviceLeaseInactive === true && closed.running === false;
+        closeComplete = true;
+        if (!stopComplete) firstFailure ??= { phase: 'stop', category: 'operation_failed' };
+      }
+      else {
+        try { await bounded('stop', () => gate.stop(), cleanupMs); stopComplete = true; } catch { /* Preserve first cause and still close. */ }
+        try { await bounded('close', () => gate.close(), cleanupMs); closeComplete = alreadyClosed(); } catch { /* Record unproved closure. */ }
+        if (!closeComplete) firstFailure ??= { phase: 'close', category: 'operation_failed' };
+      }
+      running = false;
+    }
+    if (firstFailure) {
+      failed = true;
+      let maybeClosed = null; try { maybeClosed = published(); } catch { /* No closure claim from unreadable page state. */ }
+      const value = { schema: 'str005-candidate-recovery-failure-v1', first_failure: firstFailure,
+        stop_complete: stopComplete, close_complete: closeComplete, closed: maybeClosed };
+      await bounded('failure_record', () => failure(value));
+      return { complete: false, first_failure: firstFailure };
+    }
+    return result;
+  };
+  execute.blocked = () => failed;
+  return execute;
+}
 /** Both snapshots are produced by the Gate while the same serial owner remains open. */
 export async function collectCaptureDiagnostics({ gate, published, save, signal, wait = waitForDiagnosticAdvance }) {
   await gate.exportDiagnostics(); signal.throwIfAborted();
@@ -126,13 +177,10 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   let candidateConfigured = false, selfTestUsed = false;
   recover.id = 'recover-panic-candidate'; recover.textContent = 'Collect candidate recovery and close';
   let recovering = false, recoveryCount = 0;
-  recover.addEventListener('click', async () => {
-    if (recover.disabled) return; recovering = true; recover.disabled = true;
-    try {
-      const round = await post('/candidate-recovery-begin', { state: gate.state(),
-        status: await allowed.stratumV2Status('share', null, await allowed.stratumV2Possession()) });
-      recoveryCount += 1;
-      let maybeProofReceipt;
+  const recoverCandidate = createCandidateRecovery({ gate: allowed, published: () => gate.state(),
+    begin: input => post('/candidate-recovery-begin', input), failure: value => post('/candidate-recovery-failure', value),
+    collect: async round => {
+      recoveryCount += 1; let maybeProofReceipt;
       const collect = createBaselineCollector({ gate: allowed, published: () => gate.state(), campaignId: context.originalCampaignId,
         begin: context.renewSuccessor ? async () => {} : undefined,
         save: async (stage, value) => {
@@ -141,8 +189,12 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
           if (stage === 'finished') maybeProofReceipt = receipt;
         } });
       const collected = await collect();
-      output.textContent = JSON.stringify({ ...collected, proofRelativePath: maybeProofReceipt?.complete ? round.proofRelativePath : null });
-    } catch { output.textContent = 'Candidate recovery partial; retain this attempt and close. No Start is available.'; }
+      return { ...collected, complete: collected.complete === true && maybeProofReceipt?.complete === true, proofRelativePath: maybeProofReceipt?.complete ? round.proofRelativePath : null };
+    } });
+  recover.addEventListener('click', async () => {
+    if (recover.disabled) return; recovering = true; recover.disabled = true;
+    try { output.textContent = JSON.stringify(await recoverCandidate()); }
+    catch { output.textContent = 'Candidate recovery partial; preserve evidence. Stop/Close were attempted independently.'; }
     finally { recovering = false; updateCandidate(); }
   });
   candidate.addEventListener('click', async () => {
@@ -170,8 +222,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     output.textContent = maybeFailure ? 'Self-test incomplete; evidence retained. Collect the dump and diagnose before any Start.' :
       'Self-test returned and closed. Core capture is unverified until offline dump analysis succeeds. Start remains unavailable.';
   });
-  const updateCandidate = () => { const state = gate.state(); selfTest.disabled = !selfTestEnabled || selfTestUsed || recovering || !candidateConfigured || state.status !== 'ready' || !state.connected || state.running;
-    recover.disabled = recovering || recoveryCount >= 8 || !candidateConfigured || state.status !== 'ready' || !state.connected || state.running; };
+  const updateCandidate = () => { const state = gate.state(); selfTest.disabled = recoverCandidate.blocked() || !selfTestEnabled || selfTestUsed || recovering || !candidateConfigured || state.status !== 'ready' || !state.connected || state.running;
+    recover.disabled = recoverCandidate.blocked() || recovering || recoveryCount >= 8 || !candidateConfigured || state.status !== 'ready' || !state.connected || state.running; };
   if (context.recoveryOnly) document.body.append(button, output);
   else document.body.append(button, candidate, ...(selfTestEnabled ? [selfTest] : []), recover, output); update(); updateCandidate();
   const originalUpdate = update;

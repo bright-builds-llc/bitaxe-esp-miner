@@ -1,3 +1,4 @@
+import { PARTIAL_INSTALL_SEAL, partialInstallPredecessor } from './partial-install.mjs';
 /** Failed installation admits observation only; it never becomes a successful install. */
 import { installedPredecessor } from './installed-predecessor.mjs';
 import { readFile, stat } from 'node:fs/promises';
@@ -81,6 +82,7 @@ export async function recoveryPredecessor(root, firmwareRoot) {
   ignored(firmwareRoot, root); await privateRoot(root);
   const seal = await proof(root, 'sealed-inventory.json');
   await verifyInventory(root, seal.value.files, new Set(['sealed-inventory.json']));
+  if (seal.sha256 === PARTIAL_INSTALL_SEAL) return partialInstallPredecessor(root, firmwareRoot);
   const context = await proof(root, 'context.json'), claim = await proof(root, 'install-claim.json');
   const runner = await proof(root, 'install-runner.json'), owner = await proof(root, 'server-owner.json');
   const recovery = await proof(root, 'current-recovery.json');

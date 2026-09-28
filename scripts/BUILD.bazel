@@ -1304,3 +1304,15 @@ js_binary(
     data = [":str005_heartbeat_probe_sources"],
     entry_point = "str005-heartbeat-probe/preparation.mjs",
 )
+
+js_test(
+    name = "str005_partial_install_test",
+    data = [":str005_panic_probe_sources"],
+    entry_point = "str005-panic-probe/partial-install.test.mjs",
+)
+
+js_test(
+    name = "str005_candidate_recovery_test",
+    data = [":str005_panic_probe_sources"],
+    entry_point = "str005-panic-probe/candidate-recovery.test.mjs",
+)

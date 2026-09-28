@@ -189,3 +189,33 @@ admission tests, canonical build/tests and native audits. Test wrong attempts,
 active/fenced records, changed ledgers, failed restoration/cleanup, stale or reused
 collection proofs, old consumed gates, independent install/capture scopes and
 retained-status digests. No tests contact a device.
+
+## Recovery from installation001 candidate-history rejection
+
+Installation001's sealed record
+`8d6a89683e92b6d798b92a01b38882138b5db5f177058c3c0ed8f9a04b85a5ad`
+contains a successful write and installation receipt but no candidate recovery
+round. It remains incomplete with `candidate_recovery_missing`. Its exact source
+`8d4e470e4cd3e18be510d3912586aeda65960275` and ELF
+`d0dd775335e55e9d009a0a779bc938bebf64e76fe78d8d7c8144a06ef1c9d88e`
+form a **partial write identity anchor**, not qualified preservation or recovery.
+
+The strict read-only anchor validator accepts only that seal, image and recorded
+failure boundary, verifies the write/monitor receipts and exact native audits,
+and preserves all original non-claims. `renew-preflight --recover-install-root <installation001> --retained-manifest <frozen-package> --gate-root <new-pinned-gate> --private-root <new-recovery>` may use it to prepare an independently authorized
+fresh current-state recovery. No installation, self-test, grant or mining is
+available in this recovery-only mode. Root task publication still owns effects.
+
+A completed and sealed fresh recovery from that anchor can supply
+`--before-recovery-root` to a separately published new installation. Fresh before
+measurements and same-page preservation are mandatory; do not reuse startup003's
+retained status after installation001 reset it. This lineage adapter never changes
+installation001's status, infers historical preservation, or enables an unchanged
+retry without demonstrated progress and a successor contract.
+
+Candidate recovery now owns its entire prelude: possession, status and HTTP begin
+are bounded. A status-history rejection before any HTTP round still triggers
+independently bounded Stop and Close. A typed first failure and actual closure
+assessment are persisted as `candidate-recovery-failure.json`, included in the
+immutable partial result, and disable further candidate recovery attempts in that
+page. Missing or malformed closure evidence cannot become a cleanup pass.

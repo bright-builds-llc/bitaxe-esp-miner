@@ -1,0 +1,36 @@
+{
+  "schema": "str005-image-transition-compatibility-v1",
+  "prior_gate_commit": "bd26128788dd3f04842984e545fa2382c0b50561",
+  "gate_commit": "9643e87664397a321c715a3a1b1bb6c1183b83ea",
+  "archive_sha256": "0203ba95ef6b72ad705e698cacf699242ed80e34060310bd7b241a0b4a5ebabd",
+  "bundle_sha256": "598fa81a5f7befbfc1dd44598e7b200eb0eb31f233cf4345280995098a9cd424",
+  "firmware_commit": "8d4e470e4cd3e18be510d3912586aeda65960275",
+  "app_elf_sha256": "d0dd775335e55e9d009a0a779bc938bebf64e76fe78d8d7c8144a06ef1c9d88e",
+  "gate_diff_raw_sha256": "bc08c439da16f3ba339b403669ca2fc294f204b63f1c38c069ebfb5a32c29c4b",
+  "changed_paths": [
+    ".scratch/core-dump-self-test/issues/08-planned-image-history.md",
+    "web/worker-image-transition-page.fixture.ts",
+    "web/worker-image-transition-page.test.ts",
+    "web/worker-restart.fixture.ts",
+    "web/worker-serial-acceptance.ts",
+    "web/worker-serial-identity.fixture.ts",
+    "web/worker-serial.test-support.ts",
+    "web/worker-v2-image-history.test.ts",
+    "web/worker-v2-image-history.ts",
+    "web/worker-v2-page.ts"
+  ],
+  "unchanged_blobs": {
+    "conformance/bwg-worker-controller-0.4/fixtures.json": "461b43d5e289ffb41215e7a640b04c20f6b25485",
+    "conformance/bwg-worker-possession-0.2/fixtures.json": "67ff74f668534d7a847895f13025eea75703673b",
+    "docs/protocol/bwg-worker-serial-0.2.md": "737ebe3c5b8bf2f5c5e3640463cd56b0dbc055a5",
+    "web/worker-serial-controller-runtime.ts": "dc7c20fe130e5570ab43b8407e0a808b15362fe6",
+    "web/worker-v2-serial-control.ts": "e6fda76eea22fd74e0335de07f99da82daf23392",
+    "web/worker-serial.ts": "8b39bd4396d3b529c71fa7f2621ec8b39a1e1c1c",
+    "Cargo.toml": "3f3974ac9402aa2baba16a74c70db5993361e79a",
+    "Cargo.lock": "9237a9a1da98a305af8e6aab7def4d540944b899",
+    "package.json": "c6bf04af19d2681786bca2b7dd1c7b7238048c77"
+  },
+  "hardware_qualified": false,
+  "historical_preservation_repaired": false,
+  "parity_promotion": false
+}

@@ -1,3 +1,4 @@
+import { validateCandidateFailure } from './candidate-failure.mjs';
 import { requireStoreReady, recoveryStoreObservation } from './store-diagnostics.mjs';
 import { verifyNativeAudit } from './audit.mjs';
 import { validateSelfTest } from './self-test-evidence.mjs';
@@ -24,7 +25,7 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
   const now = operations.now ?? Date.now;
   let queue = Promise.resolve(), finished = false, maybeFirstAt, candidateConfigured = false, selfTestClaimed = false, maybeSelfTestRequest, maybeCaptureReview;
   const saved = new Set(), parts = {}, candidateSessions = new Set();
-  let baselineBegan = false;
+  let baselineBegan = false, candidateRecoveryFailed = false;
   let candidateRound = 0, maybeCandidateRound, maybeCandidateDiagnostics;
   const scope = { challengeId: `challenge_${nonce()}`, retentionExpiryUnixSeconds: Math.floor(now() / 1000) + 86400 };
   const persist = operations.persist ?? ((stage, value) => writeNew(resolve(root, `baseline-${stage}.json`), value));
@@ -84,7 +85,7 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
     }
     if (path === '/self-test-claim') {
       object(input, ['state', 'status', 'ledger']);
-      check(context.selfTestEnabled && candidateConfigured && !selfTestClaimed, 'panic_self_test_admission');
+      check(context.selfTestEnabled && candidateConfigured && !candidateRecoveryFailed && !selfTestClaimed, 'panic_self_test_admission');
       await (operations.verifyNativeAudit ?? verifyNativeAudit)(root, context);
       validateState(input.state, context); validateLedger(input.ledger); const status = parseStatus(input.status);
       if (context.captureExisting) requireCurrentCaptureReview(maybeCaptureReview, status, now());
@@ -102,8 +103,22 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
         state: input.state, status: validatePart('status', input.status, context), ledger: input.ledger, claimedAtUnixMs: now() });
       selfTestClaimed = true; maybeSelfTestRequest = request; return send(response, 200, request);
     }
+    if (path === '/candidate-recovery-failure') {
+      check(candidateConfigured && !candidateRecoveryFailed, 'panic_candidate_failure_consumed');
+      validateCandidateFailure(input); candidateRecoveryFailed = true;
+      let valid = false;
+      try { validateCandidateState(input.closed, context, maybeSelfTestRequest); valid = true; }
+      catch { /* Keep the original cause without persisting unvalidated page fields. */ }
+      const closed = valid && input.close_complete && input.closed.status === 'closed' && input.closed.connected === false &&
+        input.closed.serialOwnershipReleased === true && input.closed.deviceLeaseInactive === true;
+      await (operations.persistCandidateFailure ?? (value => writeNew(resolve(root, 'candidate-recovery-failure.json'), value)))({
+        schema: input.schema, first_failure: input.first_failure,
+        stop_complete: Boolean(closed && input.stop_complete && input.closed.deviceRestorationConfirmed && input.closed.deviceBaselineConfirmed),
+        close_complete: Boolean(closed), closed_state_valid: valid });
+      return send(response, 200, { recorded: true, complete: false });
+    }
     if (path === '/candidate-recovery-begin') {
-      object(input, ['state', 'status']); check(candidateConfigured && candidateRound < 8 && (!maybeCandidateRound || maybeCandidateRound.finished), 'panic_recovery_round');
+      object(input, ['state', 'status']); check(candidateConfigured && !candidateRecoveryFailed && candidateRound < 8 && (!maybeCandidateRound || maybeCandidateRound.finished), 'panic_recovery_round');
       validateCandidateState(input.state, context, maybeSelfTestRequest); const status = parseStatus(input.status);
       check(input.state.status === 'ready' && input.state.connected && !input.state.running && input.state.deviceLeaseInactive &&
         input.state.preservation?.baseline_id === parts.closed.preservation.baseline_id && status.state === 'idle', 'panic_recovery_connection');
@@ -118,7 +133,7 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
     }
     if (path === '/candidate-part') {
       object(input, ['sequence', 'stage', 'value']); const round = maybeCandidateRound;
-      check(round && input.sequence === round.sequence && !round.finished && !round.saved.has(input.stage), 'panic_candidate_part');
+      check(!candidateRecoveryFailed && round && input.sequence === round.sequence && !round.finished && !round.saved.has(input.stage), 'panic_candidate_part');
       const candidateContext = { ...context, retainedBaseline: undefined, before_source: context };
       const value = input.stage === 'finished' ? validateFinished(input.value, context) : ['state', 'closed'].includes(input.stage) ?
         validateCandidateState(input.value, context, maybeSelfTestRequest) : validatePart(input.stage, input.value, candidateContext);
@@ -151,6 +166,7 @@ export function createProbeServer({ root, context, page, bundle, client, trust }
     if (path === '/diagnostic-export') {
       const value = await (operations.validateDiagnostics ?? validateDiagnosticExport)(input, context.gate_root);
       if (candidateConfigured) {
+        check(!candidateRecoveryFailed, 'panic_candidate_recovery_consumed');
         maybeCandidateDiagnostics = { value, at: now() };
         if (maybeCandidateRound && !maybeCandidateRound.finished) {
           check(!maybeCandidateRound.saved.has('diagnostics'), 'panic_part_consumed');
