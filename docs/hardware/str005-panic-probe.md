@@ -359,3 +359,36 @@ same device. A newly unsupported failure is a blocker requiring its own verified
 recovery implementation, not a reason to broaden an existing validator. No
 unchanged retry or second flash is admitted. A targeted verified fix may proceed
 under the repository progress policy with a fresh published ordinal/root.
+
+## Recovery after reference-observation rejection
+
+Installation004 completed its single write and trusted healthy startup capture,
+but the wrapper rejected the receipt before candidate configuration because the
+fixed-serial producer intentionally reports `observed_reference_commit` as
+`Unavailable`. The package reference is known; that does not make it an observed
+serial field. The corrected validator accepts only the exact unavailable marker
+or an exact reference match, retaining all other package, time, private-log,
+source and healthy-capture requirements. Mismatched observed references reject.
+
+The original installation004 remains sealed with its failed wrapper result and
+missing before/after candidate-preservation proof. It is not retroactively made
+successful. A new recovery predecessor case requires its exact zero-exit child,
+complete write, trusted healthy stable capture, unavailable reference marker,
+command/context/package/log digests and full release. It admits observation only,
+with `installation_complete: false` and `continuity_basis: current-session-only`.
+
+Publish and verify this host-only correction, then use a new mode-0700 parent
+`scratch/str005-panic/current-recovery-004` and absent `attempt` child. Invoke the
+existing recovery-only preflight with `--recover-install-root <installation004/attempt>`
+and `--retained-manifest <build-2d81a9cd/bitaxe-ultra205-package.json>`; use the
+pinned clean Gate. Collect fresh detector output, serve, native Connect Worker,
+**Capture baseline and accounting, then close**, close the page/server, collect
+cleanup detection, and finish/seal. Existing operation/cleanup bounds apply.
+
+Require fresh exact installed source/full ELF, safe inactive baseline, both
+measured ledgers without pending reservation, authenticated current idle status,
+healthy startup and restoration/release. No old proof timestamp authorizes this
+session. Any mismatch, unsafe/pending state, failed collection or unreleased
+owner is a blocker; retain earliest failure and partial evidence. No reset,
+reflash, acquisition, clearing, self-test, grant or mining is admitted, and all
+corresponding task sentinels remain disabled. No unchanged recovery retry.

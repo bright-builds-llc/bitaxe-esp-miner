@@ -4650,9 +4650,9 @@ Prospective execution contract: [staged panic probe](docs/hardware/str005-panic-
 The following gates authorize only its verified staged effects after publication:
 
 Development panic probe: stage A enabled.
-Development panic probe: installation enabled.
+Development panic probe: installation disabled (one stack-correction write complete; read-only candidate recovery remains).
 Development panic probe: self-test disabled (single admitted self-test exhausted; numeric store diagnostics required before another attempt).
-Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
+Development core-dump acquisition: disabled (pre-install region preserved; no further reset-capable read needed).
 Development core-dump clearing: disabled (region erased; capture unverified).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
@@ -4949,6 +4949,32 @@ passed. Native package and native USB ownership/symbol checks passed, as did
 standards, redaction, reference, parity and changed Markdown/diff checks.
 The explicit simplification review retains only the two required non-inlining
 boundaries and the early Start branch; no extra stack/heap allocation is added.
+
+Installation004 outcome: the flash child exited zero with trusted healthy stable
+startup, no issues and actual serial release. The wrapper rejected
+`panic_install_receipt` because `observed_reference_commit` is `Unavailable`.
+The fixed-serial producer in tools/flash/src/monitor.rs intentionally emits that
+value; the wrapper's equality requirement was incompatible with its producer.
+Seal installation004 as failed/unverified with `installation_review_missing`;
+never repeat the write or rewrite its receipt. Same-page post-install preservation
+was not completed. Core preservation and recovery003 passed independently.
+
+Read-only continuation plan:
+
+- [x] Reproduce the real sealed receipt rejection; test a narrow adapter correction
+  admitting the producer's exact unavailable marker but rejecting mismatches.
+- [x] Admit only this sealed healthy/zero-exit/fully-released predecessor for fresh
+  read-only recovery; retain installation_complete=false and current-session-only.
+- [ ] Publish the correction and run current-recovery-004 against retained exact
+  build-2d81a9cd, using preflight/one detector/serve/Connect/baseline/Close/finish.
+- [ ] Record actual installed identity, current ledger, healthy startup and cleanup;
+  preserve the failed installation and original panic/capture blockers.
+
+All effectful sentinels are disabled for this continuation. The new
+[read-only contract](docs/hardware/str005-panic-probe.md#recovery-after-reference-observation-rejection)
+allows fresh authenticated reads and Stop/Close only. No flash, reset, self-test,
+core clearing/acquisition, grant, Start or mining. Native stack measurements
+remain bound to installed 2d81a9cd; the new source is host-only recovery tooling.
 
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 

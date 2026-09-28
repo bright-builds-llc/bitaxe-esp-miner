@@ -41,6 +41,8 @@ test('flash receipt binds private log, firmware, successful monitoring and obser
     redaction_mode: 'dual', capture_timeout_seconds: 360, manifest_path: context.manifest, private_log_role: 'classifier-input-private', private_monitor_log_sha256: digest,
     timestamp: '1', fixed_serial_assessment: { execution_present: true, safe_baseline_confirmed: true, startup_complete: true, startup_failed: false, stable_boot: true, issues: [] } };
   assert.doesNotThrow(() => validateFlashReceipt(f, context, runner, digest));
+  assert.doesNotThrow(() => validateFlashReceipt({ ...f, observed_reference_commit: "Unavailable" }, context, runner, digest));
+  assert.throws(() => validateFlashReceipt({ ...f, observed_reference_commit: "f".repeat(40) }, context, runner, digest));
   for (const field of ['flash_status', 'observed_firmware_commit', 'private_monitor_log_sha256', 'nvs_seed_status']) {
     assert.throws(() => validateFlashReceipt({ ...f, [field]: 'invalid' }, context, runner, digest));
   }

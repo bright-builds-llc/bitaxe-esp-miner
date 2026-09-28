@@ -73,13 +73,15 @@ export async function install(root, context) {
   check(outcome.code === 0 && !outcome.spawn_failed && !outcome.timed_out && !outcome.interrupted && released, 'panic_install_failed');
   return inspectInstall(root, context);
 }
+// The fixed-serial producer intentionally does not observe the reference revision.
+// Keep package reference binding and exact source/ELF assessment independent.
 export function validateFlashReceipt(f, context, runner, logDigest) {
   const a = f.fixed_serial_assessment;
   check(f.command_kind === 'flash-monitor' && f.board === '205' && f.flash_status === 'completed' &&
     f.capture_mode === 'noninteractive' && ['completed', 'timed_out_after_trusted_output'].includes(f.capture_status) &&
     f.monitor_evidence_status === 'trusted' && f.trusted_output === true && f.firmware_commit === context.firmware_commit &&
     f.observed_firmware_commit === context.firmware_commit && f.reference_commit === context.reference_commit &&
-    f.observed_reference_commit === context.reference_commit && f.trust_basis === 'fixed_serial' && f.nvs_seed_status === 'not_provided' &&
+    [context.reference_commit, 'Unavailable'].includes(f.observed_reference_commit) && f.trust_basis === 'fixed_serial' && f.nvs_seed_status === 'not_provided' &&
     f.redaction_mode === 'dual' && f.capture_timeout_seconds === 360 && f.manifest_path === context.manifest &&
     f.private_log_role === 'classifier-input-private' && f.private_monitor_log_sha256 === logDigest &&
     typeof f.timestamp === 'string' && /^[0-9]+$/u.test(f.timestamp) && Number(f.timestamp) * 1000 + 999 >= runner.started_at_unix_ms &&

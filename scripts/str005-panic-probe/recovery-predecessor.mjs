@@ -4,10 +4,10 @@ import { dirname, resolve } from 'node:path';
 import { fileDigest, protectedPath, ignored, inspectPackage, missing } from '../fixed-usb-qualification/contract.mjs';
 import { privateRoot, proof, verifyInventory } from '../str005-noise-serial/files.mjs';
 import { check, sha256 } from '../str005-v2-serial/values.mjs';
-import { flashArguments, admitRecovery } from './install.mjs';
+import { flashArguments, admitRecovery, validateFlashReceipt } from './install.mjs';
 import { validateNativeAudit } from './audit.mjs';
 
-function validateInstallBinding({ context, contextDigest, claim, runner, ownerDigest, owner, recoveryDigest }, timedOut) {
+function validateInstallBinding({ context, contextDigest, claim, runner, ownerDigest, owner, recoveryDigest }, timedOut, expectedCode = 1) {
   check(context.schema === 'str005-panic-probe-v1' && /^[a-f0-9]{40}$/u.test(context.firmware_commit) &&
     /^[a-f0-9]{64}$/u.test(context.app_elf_sha256) && /^[a-f0-9]{40}$/u.test(context.reference_commit), 'panic_failed_install_identity');
   check(claim.schema === 'str005-panic-install-claim-v1' && claim.context_sha256 === contextDigest &&
@@ -17,7 +17,7 @@ function validateInstallBinding({ context, contextDigest, claim, runner, ownerDi
   const args = flashArguments(claim.root, { ...context, detector: { ...context.detector, port: claim.port } });
   check(runner.schema === 'str005-panic-install-runner-v1' &&
     (claim.timeout_ms ?? 480000) === (context.installTimeoutMs ?? 480000) && (runner.timeout_ms ?? 480000) === (claim.timeout_ms ?? 480000) &&
-    [480000, 1200000].includes(context.installTimeoutMs ?? 480000) && (timedOut ? runner.code === null : runner.code === 1) && runner.spawn_failed === false &&
+    [480000, 1200000].includes(context.installTimeoutMs ?? 480000) && (timedOut ? runner.code === null : runner.code === expectedCode) && runner.spawn_failed === false &&
     runner.timed_out === timedOut && runner.interrupted === false && runner.serial_holders_absent === true &&
     Number.isSafeInteger(runner.started_at_unix_ms) && runner.started_at_unix_ms === claim.started_at_unix_ms &&
     Number.isSafeInteger(runner.finished_at_unix_ms) && runner.finished_at_unix_ms >= runner.started_at_unix_ms &&
@@ -62,6 +62,20 @@ export function validateTimedOutInstallation(input) {
     installed_identity_authenticated: false, continuity_basis: 'current-session-only', historical_resource_proof: false, parity_promotion: false };
 }
 
+/** A healthy flash rejected by the old reference-field validator admits reads only. */
+export function validateUnobservedReferenceInstallation(input) {
+  validateInstallBinding(input, false, 0);
+  const outcome = input.finalization;
+  check(outcome?.complete === false && outcome.baseline_complete === true && outcome.installation_attempted === true &&
+    outcome.installation_complete === false && outcome.host_resources_released === true &&
+    JSON.stringify(outcome.blockers) === JSON.stringify(['installation_review_missing']) &&
+    input.receipt.observed_reference_commit === 'Unavailable', 'panic_unobserved_reference_boundary');
+  validateFlashReceipt(input.receipt, input.context, input.runner, input.logDigest);
+  return { installation_verified: false, installation_complete: false, recovery_only: true,
+    predecessor_failure: 'reference_observation_unavailable', runtime_capture_healthy: true,
+    continuity_basis: 'current-session-only', historical_resource_proof: false, parity_promotion: false };
+}
+
 export async function recoveryPredecessor(root, firmwareRoot) {
   ignored(firmwareRoot, root); await privateRoot(root);
   const seal = await proof(root, 'sealed-inventory.json');
@@ -84,7 +98,8 @@ export async function recoveryPredecessor(root, firmwareRoot) {
     const receipt = await proof(root, 'install/flash-command-evidence.private.json'); receiptDigest = receipt.sha256;
     const logPath = resolve(root, 'install/flash-monitor.classifier-input.log'); await protectedPath(logPath);
     logDigest = await fileDigest(logPath);
-    review = validateFailedInstallation({ ...input, receipt: receipt.value, logDigest, log: await readFile(logPath, 'utf8') });
+    const captured = { ...input, receipt: receipt.value, logDigest, log: await readFile(logPath, 'utf8') };
+    review = runner.value.code === 0 ? validateUnobservedReferenceInstallation({ ...captured, finalization: (await proof(root, 'result.json')).value }) : validateFailedInstallation(captured);
   }
   const audit = await proof(root, 'native-audit.json');
   check(audit.sha256 === context.value.nativeAuditSha256, 'panic_failed_install_audit_digest');

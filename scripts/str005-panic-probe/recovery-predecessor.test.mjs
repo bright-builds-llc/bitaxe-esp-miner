@@ -4,7 +4,7 @@ import { mkdtemp, realpath, chmod, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { validateFailedInstallation, validateTimedOutInstallation, recoveryPredecessor } from './recovery-predecessor.mjs';
+import { validateFailedInstallation, validateTimedOutInstallation, validateUnobservedReferenceInstallation, recoveryPredecessor } from './recovery-predecessor.mjs';
 import { flashArguments } from './install.mjs';
 import { sha256 } from '../str005-v2-serial/values.mjs';
 import { writeNew, retain, proof, inventory } from '../str005-noise-serial/files.mjs';
@@ -75,5 +75,24 @@ test('bounded timeout after reported application return permits only fresh recov
     v => { v.stdout = v.stdout.replace('flash_command: protected-operational', 'unrelated'); }, v => { v.stdout += 'nvs_seed_status: provided\n'; },
     v => { v.runner.interrupted = true; }, v => { v.runner.serial_holders_absent = false; }, v => { v.claim.timeout_ms = 900000; }]) {
     const invalid = structuredClone(value); change(invalid); assert.throws(() => validateTimedOutInstallation(invalid));
+  }
+});
+
+test('healthy capture with unavailable reference permits only current-state recovery', () => {
+  // Arrange
+  const value = input(); value.runner.code = 0;
+  value.finalization = { complete: false, baseline_complete: true, installation_attempted: true, installation_complete: false, host_resources_released: true, blockers: ["installation_review_missing"] };
+  Object.assign(value.receipt, { capture_status: 'timed_out_after_trusted_output', monitor_evidence_status: 'trusted', trusted_output: true, trust_basis: 'fixed_serial' });
+  Object.assign(value.receipt.fixed_serial_assessment, { startup_complete: true, startup_failed: false, issues: [] });
+  // Act
+  const result = validateUnobservedReferenceInstallation(value);
+  // Assert
+  assert.equal(result.runtime_capture_healthy, true); assert.equal(result.installation_complete, false);
+  assert.equal(result.recovery_only, true); assert.equal(result.continuity_basis, 'current-session-only');
+  for (const change of [v => { v.finalization.complete = true; }, v => { v.finalization.blockers.push('unrelated'); }, v => { v.runner.code = 1; }, v => { v.runner.serial_holders_absent = false; },
+    v => { v.receipt.observed_reference_commit = v.context.reference_commit; }, v => { v.receipt.reference_commit = '0'; },
+    v => { v.receipt.trusted_output = false; }, v => { v.receipt.fixed_serial_assessment.startup_failed = true; },
+    v => { v.receipt.fixed_serial_assessment.issues.push('identity_mismatch'); }, v => { v.receipt.private_monitor_log_sha256 = '0'; }]) {
+    const invalid = structuredClone(value); change(invalid); assert.throws(() => validateUnobservedReferenceInstallation(invalid));
   }
 });
