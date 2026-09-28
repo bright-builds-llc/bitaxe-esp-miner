@@ -5350,7 +5350,7 @@ Prospective execution (after this source is committed and pushed):
 Use `just str005-startup-preparation preflight|serve|finish` with separate
 recovery/restart stages in `scratch/str005-startup/preparation003/attempt`,
 then `just str005-startup-probe preflight|serve|finish` in
-`scratch/str005-startup/startup002/attempt`. The original startup001, clearing,
+`scratch/str005-startup/startup003/attempt`. The original startup001, clearing,
 self-test and installation invocations remain consumed; the new startup accepts
 only sealed preparation and acquires no flash capability.
 
@@ -5420,25 +5420,32 @@ finalization and restart-server startup to avoid unnecessary handoff delays.
 Native connection and readiness checks are similarly batched from fresh UI
 state. No old result is promoted and no reset, grant or Start has yet occurred.
 
+Preparation003 passed; startup002 pre-Start disposition | 2026-09-28:
 
-Preparation002 outcome and continuation | 2026-09-28:
+Preparation003 verified the one no-mining software restart boot 8→9 in 8,447 ms,
+matched acknowledgement, same-page preservation, unchanged ledgers and complete
+release. Seal: `5922c9cc8e39316924d5c9f3cfe607f6ecc6e97cd430ca4c67758a2e04d8a391`. Its proof remains reusable after host-only observer
+changes: the consumer verifies the ancestor producer commit/contract hash,
+unchanged firmware/Gate and fresh boot/ledger, not an assumed current-host identity.
 
-The corrected recovery clock and all current recovery checks passed. The next
-page's begin request arrived about 131 seconds after collection, beyond the
-unchanged 120-second limit, and no restart claim was issued. Source/timestamps
-identify the freshness rejection; its generic client failure did not retain the
-server's exact typed cause. Final Stop/Close released the port, but the server
-also rejected saving Close because begin had failed. Host/serial cleanup passed;
-the partial root remains sealed at SHA-256 `8700c7f4e020dc970934b9b56eaf1164f0e4d174cb6a2d353669f34ccbc30814`.
+Startup002 independently passed preflight/native/capture/lineage checks. It then
+stopped in preparation before fixture, signing or Start. The detector was about
+64 seconds old at the failure against its 60-second bound; this is timestamp/source
+inference because the old owner did not retain its exact error category. Both
+ledgers stayed unchanged (next19/last18/1,740,000 ms/pending=false), and fresh
+recovery/restoration/host/device release passed. The partial root is sealed at
+`a4e992a88678358ee424687e5553447b184b6f90dfc5920632f6160f9df70150`; it consumed no allowance.
 
-The real HTTP regression reproduced that second defect (Close persistence 400),
-then passed after permitting only the cleanup record before begin. The first
-closed phase/category is now retained once; later cleanup cannot overwrite it.
-No admission/effect predicate is weakened. The next `preparation003` uses the
-same 120-second bound and batches collection completion, owner release, detector,
-finalization and restart-server startup to avoid unnecessary handoff delays.
-Native connection and readiness checks are similarly batched from fresh UI
-state. No old result is promoted and no reset, grant or Start has yet occurred.
+The new real-route regression went red for lost first-cause evidence, then green
+with one retained closed phase/category and bounded detector-age measurement.
+Later recovery/release cannot overwrite it. Bounds remain unchanged. The driver
+now uses the observed `#state` DOM element for a tested direct readiness wait,
+then connects and invokes Run in one UI step after fresh detection. This removes
+unnecessary handoff round trips; it does not extend freshness or mine on stale
+proof. Startup003 uses the already sealed preparation003, with no second reset,
+flash, clear or self-test. Any repeated authoritative boundary after this
+instrumented continuation must remain a stop, not another blind attempt.
+
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 

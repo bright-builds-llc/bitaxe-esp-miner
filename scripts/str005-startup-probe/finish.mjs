@@ -1,3 +1,4 @@
+import { validateFailure } from './failure.mjs';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { proof, writeNew, inventory } from '../str005-noise-serial/files.mjs';
@@ -42,6 +43,9 @@ export async function finalize(root, context, operations = {}) {
     const value = await optionalProof(root, `recovery-${round}-${stage}.json`); if (value !== undefined) parts.recovery[stage] = value;
   }
   const result = judge(parts, context); result.blockers.push(...blockers); result.complete &&= blockers.length === 0;
+  const ownerFailure = await optionalProof(root, 'first-failure.json');
+  result.owner_first_failure = ownerFailure ? validateFailure(ownerFailure) : null;
+  if (ownerFailure) { result.blockers.push('startup_owner_failed'); result.complete = false; }
   result.first_failure = parts.run?.firstFailure ?? (await optionalProof(root, 'clear-failure.json'))?.firstFailure ?? null;
   if (!ownersGone) { await writeNew(resolve(root, `finish-blocker-${Date.now()}.json`), result); return { ...result, sealed: false }; }
   await writeNew(resolve(root, 'result.json'), result);

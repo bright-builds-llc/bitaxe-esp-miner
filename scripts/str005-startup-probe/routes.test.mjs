@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRoutes } from './routes.mjs';
 import { state as fixtureState, ledger, original } from '../str005-noise-serial/test-fixture.mjs';
-function fixture() {
+function fixture(maybeEffectError) {
   const context = { source_commit: 'a'.repeat(40), firmware_commit: 'b'.repeat(40), app_elf_sha256: 'c'.repeat(64), gate_commit: 'd'.repeat(40),
     expectedBootOrdinal: 5, expectedLedger: structuredClone(ledger), detector: { physical: 'e'.repeat(64) }, scope: 'share', attemptId: Buffer.alloc(16, 1).toString('base64url') };
   const state = fixtureState(context), closed = fixtureState(context, 'candidate', true), saved = new Map(), calls = [];
@@ -10,7 +10,7 @@ function fixture() {
   const status = { schema: 'worker-stratum-v2-status-v1', scope: 'share', state: 'idle', record: null, connection: null,
     observation: { bootOrdinal: 5, workerGeneration: 7, serialTransportEpoch: 8, observedAtUs: 1000000,
       clockValid: true, stationIpv4: '192.168.1.10', wifiConnected: true, socket: null } };
-  const routes = createRoutes(context, { verify: async () => {}, now: () => time,
+  const routes = createRoutes(context, { verify: async () => {}, verifyEffect: async () => { if (maybeEffectError) throw maybeEffectError; }, now: () => time,
     persist: async (name, value) => { assert.ok(!saved.has(name)); saved.set(name, value); }, release: async () => { calls.push('release'); },
     prewarm: async () => { calls.push('prewarm'); }, sign: async operation => { calls.push(operation);
       return { profile: 'bwg-worker-lease-authorization-artifact/0.1', operation, authorization: 'synthetic' }; },
@@ -70,4 +70,18 @@ for (const [label, change] of [
   // Act / Assert
   await assert.rejects(f.before(), { code: 'startup_prepared_baseline' });
   assert.equal(f.saved.has('before.json'), false);
+});
+
+test('the first physical-admission failure remains precise through recovery and release', async () => {
+  // Arrange
+  const f = fixture(Object.assign(Error('stale'), { code: 'panic_detector_stale', detectorAgeMs: 64000 }));
+  await f.candidate();
+  // Act
+  await assert.rejects(f.call('/cooling-review-context'), { code: 'panic_detector_stale' });
+  await assert.rejects(f.call('/budget-review-context'));
+  await f.call('/startup/recovery', { sequence: 0, stage: 'ledger', value: ledger });
+  await f.call('/startup/release');
+  // Assert
+  assert.deepEqual(f.saved.get('first-failure.json'), { schema: 'str005-startup-failure-v1', phase: 'cooling', category: 'panic_detector_stale', detector_age_ms: 64000 });
+  assert.ok(f.saved.has('recovery-0-ledger.json')); assert.ok(f.calls.includes('release'));
 });

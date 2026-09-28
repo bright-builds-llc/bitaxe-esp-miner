@@ -1,3 +1,4 @@
+import { failureRecord } from './failure.mjs';
 import { nonce } from '../fixed-usb-qualification/contract.mjs';
 import { validateLedger, requireExhaustedOriginal, validateCooling } from '../fixed-usb-qualification/iterative-contract.mjs';
 import { parseStatus } from '../str005-v2-serial/device.mjs';
@@ -11,12 +12,16 @@ import { isDeepStrictEqual as same } from 'node:util';
 export function createRoutes(context, { verify, verifyEffect = verify, persist, sign, launch, release, prewarm = async () => {}, now = Date.now }) {
   let scope, before, review, cooling, budgetChallenge, coolingChallenge, fixture, network, artifacts, beforeDiagnostics, baselineChallenge;
   let failed = false, issued = false, delivered = false, candidate = false, recoveryRound = 0, activeRecovery = 0, startState = 'not_invoked';
-  const stored = new Set(), sessions = new Set();
+  const stored = new Set(), sessions = new Set(); let firstFailureRecorded = false;
   const save = async (name, value) => { check(!stored.has(name), 'startup_record_consumed'); await persist(name, value); stored.add(name); };
   const fresh = value => check(value && scope && value.scope === scope.challengeId && now() >= value.at && now() - value.at <= 45000, 'startup_review_stale');
   const unchanged = value => { validateLedger(value); check(before && !value.pending && same(value, before.ledger), 'startup_accounting_changed'); };
   async function ready() { check(!failed && candidate && scope && before, 'startup_effect_admission'); await verifyEffect(); }
   async function networkReady() { await ready(); fresh(review); fresh(network); check(fixture && now() - network.at <= 10000, 'startup_fixture_stale'); fixture.alive(); fixture.requireStartWindow(); }
+  async function recordFailure(path, error) {
+    if (firstFailureRecorded) return; firstFailureRecorded = true;
+    await persist('first-failure.json', failureRecord(path, error));
+  }
   async function route(path, input, method) {
     if (path === '/activate') {
       object(input, []); await verify(); scope = { challengeId: `challenge_${nonce()}`, retentionExpiryUnixSeconds: Math.floor(now() / 1000) + 86400 };
@@ -126,8 +131,8 @@ export function createRoutes(context, { verify, verifyEffect = verify, persist, 
   }
   return { async handle(path, input, method = 'POST') {
     try { return await route(path, input, method); }
-    catch (error) { if (!path.startsWith('/startup/recovery') && path !== '/startup/release') failed = true; throw error; }
-  }, async diagnostics(value) {
+    catch (error) { await recordFailure(path, error); if (!path.startsWith('/startup/recovery') && path !== '/startup/release') failed = true; throw error; }
+  }, recordFailure, async diagnostics(value) {
     if (!candidate) { beforeDiagnostics = value; await save('before-diagnostics.json', value); return; }
     await save(`recovery-${activeRecovery}-diagnostics.json`, projectRecoveryPart('diagnostics', value, context));
   }, fail() { failed = true; }, failed: () => failed, get attemptId() { return before?.attempt.id; }, get recoverySequence() { return activeRecovery; } };

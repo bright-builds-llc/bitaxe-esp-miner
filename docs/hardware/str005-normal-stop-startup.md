@@ -44,7 +44,7 @@ or accounting change rejects admission.
 
 ## Commands and one-shot flow
 
-Use `scratch/str005-startup/startup002/attempt` as an absent child under an ignored
+Use `scratch/str005-startup/startup003/attempt` as an absent child under an ignored
 mode-0700 parent. Keep stdout/stderr in distinct mode-0600 sibling files. The
 prepared evidence is at `scratch/str005-startup/preparation003/attempt`.
 
@@ -96,3 +96,11 @@ attempt requires a tested targeted fix or objective permitted remediation and
 published contract coverage. No refunds, inferred ordinals, historical evidence
 repair or parity promotion. Accepted-share and heartbeat-loss qualification
 remain separate prerequisites for later integration.
+
+Startup002 passed preflight but issued no grant or Start: preparation stopped
+with a detector older than its unchanged 60-second bound. Its partial result and
+successful no-work recovery stay sealed. Startup003 reuses the verified
+preparation003 and measures fresh physical state. The driver batches native
+connect, direct DOM readiness and Run into one UI step. The owner retains the
+first closed failure phase/category and detector age, independently of cleanup.
+A repeated authoritative failure is not permission for a blind retry.

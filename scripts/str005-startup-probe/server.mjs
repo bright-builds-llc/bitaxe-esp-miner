@@ -30,7 +30,9 @@ export async function createServerOwner({ root, context, assets, authorityDirect
     await verify(); check(context.admission === 'prepared-normal-stop-v1', 'startup_prepared_admission');
     const path = resolve(dirname(root), 'startup-detector.stdout.log'); await protectedPath(path);
     const bytes = await readFile(path), age = Date.now() - (await stat(path)).mtimeMs;
-    const detector = parseDetector(bytes.toString('utf8'), context.physical, age);
+    let detector;
+    try { detector = parseDetector(bytes.toString('utf8'), context.physical, age); }
+    catch (error) { if (error.code === 'panic_detector_stale') error.detectorAgeMs = Math.floor(age); throw error; }
     const digest = sha256(bytes); check(!maybeDetectorSha || digest === maybeDetectorSha, 'startup_physical_changed');
     if (!maybeDetectorSha) { await persist('start-detector.json', { ...detector, sha256: digest, observedAtUnixMs: Date.now() }); maybeDetectorSha = digest; }
   };
@@ -50,9 +52,10 @@ export async function createServerOwner({ root, context, assets, authorityDirect
       fixture = await (operations.startFixture ?? startFixture)(root, attemptContext, station, () => routes.fail()); return fixture;
     } });
   const server = createServer((request, response) => {
+    let requestPath = 'other';
     queue = queue.then(async () => {
       const host = `127.0.0.1:${server.address().port}`, origin = `http://${host}`;
-      check(request.headers.host === host, 'startup_host'); const path = new URL(request.url, origin).pathname;
+      check(request.headers.host === host, 'startup_host'); const path = new URL(request.url, origin).pathname; requestPath = path;
       if (request.method === 'GET') {
         if (path === '/context') return send(response, 200, { ...configuration(context, 'before', assets.trust), coreDumpSelfTestQualification: true });
         if (path === '/') return send(response, 200, Buffer.from(`${assets.page}\n<script type="module" src="/startup-page.mjs"></script>`), 'text/html');
@@ -73,7 +76,7 @@ export async function createServerOwner({ root, context, assets, authorityDirect
       }
       const result = await routes.handle(path, input);
       return send(response, 200, path === '/startup/candidate' ? { ...configuration(context, 'candidate', assets.trust), coreDumpSelfTestQualification: true } : result);
-    }).catch(() => { routes.fail(); if (!response.headersSent && !response.destroyed) send(response, 400, { error: 'startup_request_rejected' }); else response.destroy(); });
+    }).catch(async error => { await routes.recordFailure(requestPath, error); routes.fail(); if (!response.headersSent && !response.destroyed) send(response, 400, { error: 'startup_request_rejected' }); else response.destroy(); });
   });
   server.requestTimeout = 10000; server.headersTimeout = 10000;
   server.release = async () => { routes.fail(); const closed = server.listening ? once(server, 'close') : Promise.resolve();
