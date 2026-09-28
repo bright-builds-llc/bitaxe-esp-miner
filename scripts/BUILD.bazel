@@ -1205,6 +1205,7 @@ js_binary(
 
 js_test(
     name = "str005_startup_probe_test",
+    env_inherit = ["PATH"],
     args = ["$(rootpath @bwg_gate_contract//:package_json_js)"],
     data = [
         ":str005_startup_probe_sources",

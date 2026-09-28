@@ -1,5 +1,9 @@
 # Bounded mining startup probe
 
+Current status: startup001 consumed this trial. Start and clearing are disabled.
+See [the partial result](../parity/evidence/20260928-str005-startup001-partial.md);
+a recovery-only continuation cannot qualify the missing historical checkpoint.
+
 Owner: `task-str005-mining-startup-probe`. The command and active task admit one
 trial only after this reviewed source is committed and pushed. Runtime capture,
 clear and fresh-session checks remain mandatory. The private root is

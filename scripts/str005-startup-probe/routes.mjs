@@ -10,7 +10,7 @@ const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 /** One fresh lifetime, with recovery routes outside the effect failure latch. */
 export function createRoutes(context, { verify, verifyEffect = verify, persist, sign, launch, release, prewarm = async () => {}, now = Date.now }) {
   let scope, before, review, cooling, budgetChallenge, coolingChallenge, fixture, network, artifacts, beforeDiagnostics, baselineChallenge;
-  let failed = false, issued = false, delivered = false, candidate = false, recoveryRound = 0, activeRecovery = 0;
+  let failed = false, issued = false, delivered = false, candidate = false, recoveryRound = 0, activeRecovery = 0, startState = 'not_invoked';
   const stored = new Set(), sessions = new Set();
   const save = async (name, value) => { check(!stored.has(name), 'startup_record_consumed'); await persist(name, value); stored.add(name); };
   const fresh = value => check(value && scope && value.scope === scope.challengeId && now() >= value.at && now() - value.at <= 45000, 'startup_review_stale');
@@ -22,9 +22,9 @@ export function createRoutes(context, { verify, verifyEffect = verify, persist, 
       object(input, []); await verify(); scope = { challengeId: `challenge_${nonce()}`, retentionExpiryUnixSeconds: Math.floor(now() / 1000) + 86400 };
       review = cooling = network = undefined; return scope;
     }
-    if (path === '/startup/context') { object(input, []); return { originalCampaignId: context.original_campaign_id, attemptId: before?.attempt.id ?? null }; }
+    if (path === '/startup/context') { object(input, []); return { originalCampaignId: context.original_campaign_id, attemptId: before?.attempt.id ?? null, startState }; }
     if (path === '/startup/release') { object(input, []); await release(); return { released: true }; }
-    if (path === '/startup/result') { const value = validateRun(input, context); if (value.firstFailure) failed = true; await save('run.json', value); return { recorded: true }; }
+    if (path === '/startup/result') { const value = validateRun(input, context); if (value.firstFailure) failed = true; await save('run.json', value); startState = value.observedStart ? 'confirmed' : value.startInvokedAt === null ? 'not_invoked' : 'unknown'; return { recorded: true }; }
     if (path === '/startup/recovery-begin') {
       object(input, ['state', 'status']); check(before && recoveryRound < 4, 'startup_recovery_bound');
       const status = parseStatus(input.status), key = `${status.observation.bootOrdinal}:${status.observation.serialTransportEpoch}`;

@@ -1,3 +1,5 @@
+import { readRecoveryStatus } from './retained-status.mjs';
+export { readRecoveryStatus } from './retained-status.mjs';
 /** Browser-only one-shot coordinator. Timers bound requests, never claim physical shutdown. */
 export function createCoordinator({ gate, prepare, record, recover, release, now = () => performance.now(),
   sleep = ms => new Promise(resolve => setTimeout(resolve, ms)), limits = {} }) {
@@ -68,14 +70,12 @@ export function createCoordinator({ gate, prepare, record, recover, release, now
 }
 
 /** Each read has its own failure boundary; a missing record never skips Close. */
-export async function collectRecovery({ gate, campaignId, attemptId, save, limitMs = 30000 }) {
+export async function collectRecovery({ gate, campaignId, attemptId, save, statusMode = 'unknown', limitMs = 30000 }) {
   const failures = [];
   for (const [stage, operation] of [
     ['state', async () => { await gate.refresh(); return gate.state(); }],
     ['ledger', () => gate.reviewQualificationAttempts()], ['original_budget', () => gate.reviewBudget(campaignId)],
-    ['status', async () => { const binding = await gate.stratumV2Possession();
-      try { return await gate.stratumV2Status('share', null, binding); }
-      catch (error) { if (error?.category !== 'v2_idle_correlation') throw error; return gate.stratumV2Status('share', attemptId, binding); } }],
+    ['status', () => readRecoveryStatus(gate, attemptId, statusMode)],
     ['diagnostics', () => gate.exportDiagnostics()],
   ]) {
     let timer; let active = true;

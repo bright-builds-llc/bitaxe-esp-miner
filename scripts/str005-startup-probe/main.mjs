@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { once } from 'node:events';
 import { PAGE, BUNDLE, git, cleanPushed, ignored, missing, fileDigest, nonce, protectedPath } from '../fixed-usb-qualification/contract.mjs';
-import { privateRoot, proof, writeNew, retain } from '../str005-noise-serial/files.mjs';
+import { privateRoot, proof, writeNew, retain, inventory } from '../str005-noise-serial/files.mjs';
 import { requireNoHolders, processSnapshot } from '../str005-v2-serial/host-resources.mjs';
 import { parseDetector } from '../str005-panic-probe/detector.mjs';
 import { main as decode } from '../core-dump/main.mjs';
@@ -28,6 +28,7 @@ async function currentSource(root, effect) {
   return { source_commit: source, captureSealSha256: pins[0][1], contractSha256: await fileDigest(resolve(root, CONTRACT)) };
 }
 export async function main(argv) {
+  if (argv[0]?.startsWith('recover-')) return (await import('./recovery-main.mjs')).recoveryMain(argv);
   const { action, options } = admitArguments(argv);
   // Reject before touching private inputs, authority directories, discovery or subprocesses.
   if (action !== 'finish') check(HARDWARE_ENABLED, 'startup_hardware_disabled');

@@ -45,7 +45,7 @@ test('failed recovery ledger read cannot suppress later independent status and d
     async reviewQualificationAttempts() { calls.push('ledger'); throw Error('read failed'); }, async reviewBudget() { calls.push('budget'); return {}; },
     async stratumV2Possession() { return 'binding'; }, async stratumV2Status() { calls.push('status'); return {}; },
     async exportDiagnostics() { calls.push('diagnostics'); } };
-  await assert.rejects(collectRecovery({ gate, campaignId: 'test', attemptId: 'test', save: async () => {} }), /recovery_incomplete/u);
+  await assert.rejects(collectRecovery({ gate, campaignId: 'test', attemptId: 'test', statusMode: 'not_invoked', save: async () => {} }), /recovery_incomplete/u);
   assert.deepEqual(calls, ['state', 'ledger', 'budget', 'status', 'diagnostics']);
 });
 
@@ -53,7 +53,7 @@ test('timed-out read cannot submit late evidence after its collection phase clos
   let resolveLedger; const saved = [];
   const gate = { async refresh() {}, state: () => ({}), reviewQualificationAttempts: () => new Promise(resolve => { resolveLedger = resolve; }),
     async reviewBudget() { return {}; }, async stratumV2Possession() { return 'binding'; }, async stratumV2Status() { return {}; }, async exportDiagnostics() {} };
-  await assert.rejects(collectRecovery({ gate, campaignId: 'test', attemptId: 'test', limitMs: 5, save: async stage => { saved.push(stage); } }));
+  await assert.rejects(collectRecovery({ gate, campaignId: 'test', attemptId: 'test', statusMode: 'not_invoked', limitMs: 5, save: async stage => { saved.push(stage); } }));
   resolveLedger({}); await new Promise(resolve => setTimeout(resolve, 10));
   assert.equal(saved.includes('ledger'), false); assert.ok(saved.includes('status'));
 });

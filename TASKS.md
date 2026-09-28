@@ -4493,7 +4493,7 @@ no next mining ordinal is authorized, and parity remains 90/95.
 
 ### task-str005-start-panic-diagnosis | 2026-09-27 | Diagnose and correct the Start panic
 
-Status: Capture/cutoff verified; stack correction installed with fresh healthy recovery. Original Start panic cause and live Start remain unverified.
+Status: Capture/cutoff and one corrected-image Start/dispatch verified. Original panic cause and complete startup recovery qualification remain unresolved.
 Objective: identify the actual Start panic cause and verify a targeted correction.
 Depends on: fresh prospective recovery admission under ADR-0031 for new effects;
 `task-str005-failure-recovery-accounting` remains unresolved for historical proof.
@@ -4655,7 +4655,7 @@ Development panic probe: task-stack capture required.
 Development panic probe: installation disabled (installation007 completed).
 Development panic probe: self-test disabled (installation007 completed).
 Development core-dump acquisition: enabled (recovery evidence prerequisite satisfied).
-Development core-dump clearing: enabled (private archive verified).
+Development core-dump clearing: disabled (startup001 archived clear completed).
 
 Every acquisition/clear still checks a fresh current-recovery proof; clearing also
 compares the archived full region before its exact erase. These declarations do
@@ -5138,6 +5138,16 @@ grant, mining or clearing occurred. No parity promotion; 90/95 unchanged.
 The consumed installation/self-test gates are disabled. A separate published
 startup contract must admit clearing and one fresh ledger-derived Start.
 
+Bounded Start continuation | 2026-09-28: startup001 observed a completed Start
+and increasing dispatch on the corrected image without a new panic. Normal
+safe stop and the full ordinal18 charge were measured. This is evidence that
+the startup path now executes; it does not retrospectively prove Share002's
+original cause. The separate startup task remains partial because its recovery
+collector sent an invalid null-attempt query and its normal flow never captured
+the required authorization recovery checkpoint. See the
+[startup001 report](docs/parity/evidence/20260928-str005-startup001-partial.md).
+No further Start, flash, clear or self-test is admitted by this consumed trial.
+
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 
 Status: Software implementation and Node verification complete; hardware disabled pending verified capture/cutoff and archived-dump clearing.
@@ -5166,7 +5176,7 @@ Verification: Pending. Completion review: Pending.
 
 Startup execution contract | 2026-09-28:
 
-Startup probe hardware: enabled.
+Startup probe hardware: disabled (startup001 consumed).
 Startup capture seal: 7131552c725c17c070b52b4238b2a92a742ccf34691ebadb5df2885ac3d5f925.
 
 - [x] Implement typed capture/archive/clear admission against existing producer
@@ -5196,6 +5206,9 @@ process/listener/serial release even when the main test fails. Fresh-session
 recovery plus exact charge, retained resource release and restoration are required
 for completion. Seal partial evidence and record the first blocker otherwise.
 No unchanged-boundary retry; no task archival until its actual criteria pass.
+A future startup trial additionally requires an explicit, tested normal-stop
+authorization checkpoint capture path in Gate; the current normal flow cannot
+satisfy that evaluator criterion. Do not bypass it with a synthesized checkpoint.
 
 The prospective ADR-0031 recovery/capture proof admits this new trial without
 rewriting the unresolved historical Share002 resource proof or claiming the
@@ -5218,6 +5231,68 @@ candidate preservation semantics against the actual pinned Gate/firmware.
 Actual sealed installation007 capture passed the new adapter. Remaining gates
 are publication and fresh pre-clear/candidate/recovery evidence. No mining-startup
 result or parity promotion is claimed.
+
+Startup001 partial result | 2026-09-28:
+
+- [x] Published and verified host 651b9a53, actual sealed capture adapter and
+  clean canonical tools; fresh baseline and exact archive-bound clear passed.
+- [x] One new Start completed in 10,182.5 ms; generation-matched dispatch 0→1.
+  Stop requested at 10,523.2 ms, 340.7 ms after reply; zero renewals.
+- [x] Same-session safe-stop/restoration and charged accounting measured:
+  next19/last18/1,740,000 ms/pending=false. No ordinal assumption or refund.
+- [x] Fixture, listener, browser, server and device-holder release verified;
+  partial inventory sealed 950a8e55b5efb468905a4edd2e739cfd02e47013797e026bf0218af955234cb7.
+- [ ] Fresh retained status/resource/authorization/restoration quorum: blocked.
+
+[Partial evidence](docs/parity/evidence/20260928-str005-startup001-partial.md).
+The collector's null-attempt query is invalid when the completed attempt is
+retained. Firmware rejection revokes the serial epoch before the expected local
+fallback, explaining status failure and Close failure. Fresh collection repeated
+that invalid query and saved no independent session record. Original same-session
+Stop state confirmed restoration, but final page flags did not; no success is
+inferred across the failed recovery. Additionally, normal Start/Stop never
+captures the Gate authorization recovery checkpoint required by the evaluator;
+that missing historical checkpoint cannot be reconstructed from public state.
+
+The main Start/dispatch result has first_failure=null; recovery remained incomplete.
+Start and clear gates are consumed and disabled. No repeat, reflash or new grant.
+Correct the known-attempt collector with a production-seam regression; any
+additional current-state recovery needs a published no-Start contract. Do not
+archive this task or promote parity 90/95. Original Share002 cause remains unproved.
+
+Current-only recovery continuation (2026-09-28):
+
+Startup recovery hardware: enabled.
+
+- [x] Reproduce the idle-versus-known attempt rejection through actual Gate
+  decoding/controller/page operations and correct confirmed-Start reads.
+- [x] Implement a recovery-only preflight/serve/finish continuation pinned to
+  startup001 seal 950a8e55b5efb468905a4edd2e739cfd02e47013797e026bf0218af955234cb7.
+- [ ] Publish the narrow recovery contract, collect fresh current observations
+  and release resources; preserve historical authorization/preservation gaps.
+
+Contract: `docs/hardware/str005-startup-current-recovery.md`. No Start, signer,
+fixture, clearing, reset, flashing, renewal or mining is available in this mode.
+Current-only recovery can supplement evidence but cannot qualify startup001's
+missing historical authorization checkpoint. No additional Start is authorized
+by this continuation and parity remains 90/95.
+
+One new private child: `scratch/str005-startup/recovery001/attempt`. Commands:
+`just str005-startup-probe recover-preflight|recover-serve|recover-finish`.
+Only fresh authenticated reads and idempotent Stop/Close are permitted. Each
+read is bounded at 30 seconds, Stop/Close at 150 seconds each. Collect fresh
+same-physical detector evidence before connection and finalization; independently
+verify serial, process and listener release. No retry on the same failed boundary.
+Private raw evidence stays mode 0600 under mode 0700 ignored roots; promote only
+closed categories, measurements and hashes. Seal partial results when any current
+identity, accounting, restoration or resource proof is absent. Historical
+checkpoint absence remains a blocker even if current recovery succeeds.
+
+Integrated checks: 31 canonical Bazel Node tests passed, including actual Gate
+red-to-green retained-query regression and rejection of every effect route.
+Ordered Cargo format/Clippy/build/tests passed (2,412 passed, three existing
+ignores). Independent review confirmed the exact seal/attempt binding and
+current-only claims. Publication and the single current recovery remain pending.
 
 ### task-str005-v2-accepted-share-probe | 2026-09-27 | Verify one complete ASIC-to-V2 accepted share
 

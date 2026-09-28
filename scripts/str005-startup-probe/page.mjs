@@ -1,10 +1,10 @@
-import { createCoordinator, collectRecovery } from './client.mjs';
+import { createCoordinator, collectRecovery, readRecoveryStatus } from './client.mjs';
 export function createPage(gate, post, notice) {
-  let candidate = false, attemptId, binding, recoverySequence = 0;
+  let candidate = false, attemptId, binding, recoverySequence = 0, startState = 'not_invoked';
   const state = () => gate.state();
   const recovery = async sequence => {
     const context = await post('/startup/context', {});
-    await collectRecovery({ gate, campaignId: context.originalCampaignId, attemptId,
+    await collectRecovery({ gate, campaignId: context.originalCampaignId, attemptId, statusMode: startState,
       save: (stage, value) => post('/startup/recovery', { sequence, stage, value }) });
   };
   const run = createCoordinator({ gate, prepare: async () => {
@@ -18,6 +18,7 @@ export function createPage(gate, post, notice) {
     attemptId = admitted.attemptId; return admitted;
   }, record: async value => {
     if (Object.hasOwn(value, 'closed')) return post('/startup/recovery', { sequence: 0, stage: 'closed', value: value.closed });
+    startState = value.observedStart ? 'confirmed' : value.startInvokedAt === null ? 'not_invoked' : 'unknown';
     return post('/startup/result', value);
   }, recover: async () => {
     let failures = [];
@@ -40,9 +41,10 @@ export function createPage(gate, post, notice) {
     async recoverFresh() {
       const failures = [];
       try {
-        const possession = await gate.stratumV2Possession(); let status;
-        try { status = await gate.stratumV2Status('share', null, possession); }
-        catch (error) { if (error?.category !== 'v2_idle_correlation') throw error; status = await gate.stratumV2Status('share', attemptId, possession); }
+        const context = await post('/startup/context', {});
+        attemptId ??= context.attemptId;
+        if (context.startState === 'confirmed') startState = 'confirmed';
+        const status = await readRecoveryStatus(gate, attemptId, startState);
         const round = await post('/startup/recovery-begin', { state: state(), status }); recoverySequence = round.sequence;
         await recovery(recoverySequence);
       } catch (error) { failures.push(...(error.failures ?? ['status'])); }
