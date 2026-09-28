@@ -4493,7 +4493,7 @@ no next mining ordinal is authorized, and parity remains 90/95.
 
 ### task-str005-start-panic-diagnosis | 2026-09-27 | Diagnose and correct the Start panic
 
-Status: Blocked — controlled panic/recovery passed, but the entire core partition remains erased; native capture/cutoff validation and Start remain unverified.
+Status: Blocked — stack correction installed with fresh healthy recovery; original panic cause, core capture/cutoff and live Start remain unverified.
 Objective: identify the actual Start panic cause and verify a targeted correction.
 Depends on: fresh prospective recovery admission under ADR-0031 for new effects;
 `task-str005-failure-recovery-accounting` remains unresolved for historical proof.
@@ -4917,7 +4917,7 @@ Owner-approved stack correction and no-mining installation (2026-09-27):
 - [ ] Package exact clean pushed source, preserve the current core region,
   obtain fresh authenticated baseline, install once and verify preservation,
   healthy startup, current accounting, restoration and actual cleanup.
-- [ ] Record measured software/hardware outcomes and any remaining blocker;
+- [x] Record measured software/hardware outcomes and any remaining blocker;
   retain sealed evidence, task non-completion and parity 90/95 unless all
   original diagnosis criteria are independently established.
 
@@ -4965,9 +4965,9 @@ Read-only continuation plan:
   admitting the producer's exact unavailable marker but rejecting mismatches.
 - [x] Admit only this sealed healthy/zero-exit/fully-released predecessor for fresh
   read-only recovery; retain installation_complete=false and current-session-only.
-- [ ] Publish the correction and run current-recovery-004 against retained exact
+- [x] Publish the correction and run current-recovery-004 against retained exact
   build-2d81a9cd, using preflight/one detector/serve/Connect/baseline/Close/finish.
-- [ ] Record actual installed identity, current ledger, healthy startup and cleanup;
+- [x] Record actual installed identity, current ledger, healthy startup and cleanup;
   preserve the failed installation and original panic/capture blockers.
 
 All effectful sentinels are disabled for this continuation. The new
@@ -4975,6 +4975,22 @@ All effectful sentinels are disabled for this continuation. The new
 allows fresh authenticated reads and Stop/Close only. No flash, reset, self-test,
 core clearing/acquisition, grant, Start or mining. Native stack measurements
 remain bound to installed 2d81a9cd; the new source is host-only recovery tooling.
+
+Stack-correction completion review: [exact result](docs/parity/evidence/20260927-str005-start-stack-correction.md).
+Clean installed firmware 2d81a9cd has a 13,264-byte selected signed-Start frame
+chain with 3,120 bytes unclaimed; image fits with 74,592-byte slot margin.
+Current-recovery-004 on host f4d6ee39 authenticates that exact ELF at boot13,
+healthy startup/HTTP, idle authority, both unchanged ledgers, restoration and
+actual resource release. Next18/last17/1,560,000 ms/pending=false are fresh
+measurements. Original budget remains exhausted at 240,000 ms.
+
+The installation child passed; its wrapper result remains sealed failed because
+of the now-corrected unavailable-reference adapter defect. The combined
+installation/preservation checklist remains unchecked: its same-page post-update
+comparison did not complete. No reflash or mining attempt followed. Original
+panic cause and empty-core/cutoff proof remain unresolved; no archive or parity
+promotion. All effectful sentinels remain disabled, and all owned hardware/UI/
+server resources are released. Parity stays 90/95.
 
 ### task-str005-mining-startup-probe | 2026-09-27 | Verify mining startup and normal stop independently
 
