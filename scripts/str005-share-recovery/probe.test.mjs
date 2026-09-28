@@ -67,7 +67,7 @@ test('missing cleanup errors pending accounting and old boot cannot create a saf
 test('typed-only current status fallback and independent failures preserve cleanup', async () => {
   // Arrange
   const ids = [], saved = []; let closed = false;
-  const gate = { reviewQualificationAttempts: async () => { throw Object.assign(Error('ledger'), { category: 'io' }); }, reviewBudget: async () => original,
+  const gate = { stratumV2Possession: async () => 'fresh-after-stop', reviewQualificationAttempts: async () => { throw Object.assign(Error('ledger'), { category: 'io' }); }, reviewBudget: async () => original,
     exportDiagnostics: async () => {}, stop: async () => {}, refresh: async () => {}, state: () => state(context, 'candidate', closed),
     stratumV2Status: async (_scope, id) => { ids.push(id); throw Object.assign(Error('reject'), { category: 'command_rejected' }); }, close: async () => { closed = true; } };
   // Act
@@ -161,4 +161,49 @@ test('empty or mismatched diagnostic boot becomes an explicit partial blocker', 
     assert.ok(result.blockers.includes('current_boot_correlation_missing'));
     assert.throws(() => recoveryProof(observed, context, 1000, 2000), { code: 'share_recovery_proof_incomplete' });
   }
+});
+
+test('actual diagnostic HTTP receipt names its private artifact and passes the production Gate consumer', async t => {
+  // Arrange
+  const { mkdtemp, realpath, rm } = await import('node:fs/promises'), { tmpdir } = await import('node:os');
+  const { dirname, resolve } = await import('node:path'), { fileURLToPath } = await import('node:url');
+  const { execFile } = await import('node:child_process'), { promisify } = await import('node:util');
+  const { writeNew, proof } = await import('../str005-noise-serial/files.mjs');
+  const { DIAGNOSTIC_FILE, readRecoveryPart } = await import('./diagnostics.mjs');
+  const here = dirname(fileURLToPath(import.meta.url)), gateRoot = process.argv[2] ? dirname(resolve(process.argv[2])) : resolve(here, '../../../bitaxe-turnstile-system');
+  const root = await realpath(await mkdtemp(resolve(tmpdir(), 'share-diagnostic-receipt-')));
+  const server = createRecoveryServer({ root, context: { ...context, gate_root: gateRoot }, assets: { page: '', bundle: Buffer.from(''), trust: {} }, verify: async () => {} });
+  server.listen(0, '127.0.0.1'); await once(server, 'listening'); t.after(async () => { await server.release(); await rm(root, { recursive: true, force: true }); });
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const post = (path, body) => fetch(`${origin}${path}`, { method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  await post('/recovery-prepare', { before: state(context), closed: state(context, 'candidate', true) });
+  const challenge = await (await post('/recovery-challenge', {})).json();
+  const begin = await (await post('/recovery-begin', { nonce: challenge.nonce, binding: Buffer.alloc(32, 1).toString('base64url'), state: state(context) })).json();
+  await post('/stage-begin', { collectionId: begin.collectionId, phase: 'diagnostics' });
+  // Act
+  const response = await post('/diagnostic-export', { schema: 'worker-diagnostic-export-v1', observations: [
+    { category: 'boot', authoritative: false, boot_ordinal: 16, reset_reason: 'panic', uptime_ms: 2000 }] });
+  assert.equal(response.status, 200);
+  const receipt = await response.json();
+  await writeNew(resolve(root, 'receipt.json'), receipt);
+  const consumed = await promisify(execFile)('bun', [resolve(here, 'gate.fixture.mjs'), gateRoot, resolve(root, 'receipt.json')], { timeout: 15000 });
+  // Assert
+  assert.deepEqual(receipt, { diagnostic_export_saved: true, review_file: DIAGNOSTIC_FILE });
+  assert.equal((await proof(root, receipt.review_file)).value.observations[0].boot_ordinal, 16);
+  assert.equal((await readRecoveryPart(root, 'diagnostics')).observations[0].boot_ordinal, 16);
+  assert.equal(consumed.stdout.trim(), 'share_recovery_gate_boundary_passed'); assert.equal(consumed.stderr, '');
+  await writeNew(resolve(root, 'diagnostics.json'), { historical: true });
+  await assert.rejects(readRecoveryPart(root, 'diagnostics'), { code: 'share_recovery_ambiguous_diagnostics' });
+});
+
+test('legacy diagnostic artifact is readable without rewriting historical evidence', async t => {
+  // Arrange
+  const { mkdtemp, realpath, rm, readFile } = await import('node:fs/promises'), { tmpdir } = await import('node:os'), { resolve } = await import('node:path');
+  const { writeNew } = await import('../str005-noise-serial/files.mjs');
+  const { readRecoveryPart } = await import('./diagnostics.mjs');
+  const root = await realpath(await mkdtemp(resolve(tmpdir(), 'share-diagnostic-legacy-'))); t.after(() => rm(root, { recursive: true, force: true }));
+  await writeNew(resolve(root, 'diagnostics.json'), { fixture: true }); const before = await readFile(resolve(root, 'diagnostics.json'));
+  // Act / Assert
+  assert.deepEqual(await readRecoveryPart(root, 'diagnostics'), { fixture: true });
+  assert.deepEqual(await readFile(resolve(root, 'diagnostics.json')), before);
 });

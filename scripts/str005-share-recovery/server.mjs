@@ -1,3 +1,4 @@
+import { DIAGNOSTIC_FILE } from './diagnostics.mjs';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { resolve } from 'node:path';
@@ -13,7 +14,7 @@ import { STAGES, finished as validateFinished, validateErrors } from './model.mj
 export function createRecoveryServer({ root, context, assets, verify }, operations = {}) {
   const now = operations.now ?? Date.now, saved = new Set(); let begun, preparation, recoveryChallenge, complete = false, queue = Promise.resolve();
   const stages = new Map(); let activeStage;
-  const persist = operations.persist ?? ((stage, value) => writeNew(resolve(root, `${stage}.json`), value));
+  const persist = operations.persist ?? ((stage, value) => writeNew(resolve(root, stage === 'diagnostics' ? DIAGNOSTIC_FILE : `${stage}.json`), value));
   const challenge = { challengeId: `challenge_${nonce()}`, retentionExpiryUnixSeconds: Math.floor(now() / 1000) + 86400 };
   const server = createServer((request, response) => { queue = queue.then(async () => {
     const host = `127.0.0.1:${server.address().port}`, origin = `http://${host}`;
@@ -85,7 +86,7 @@ export function createRecoveryServer({ root, context, assets, verify }, operatio
     check(['closed', 'errors', 'finished'].includes(stage) || (begun && activeStage?.phase === stage &&
       (stage === 'diagnostics' || input.ticket === activeStage.token) && now() >= activeStage.startedAtUnixMs && now() <= activeStage.deadlineUnixMs), 'share_recovery_collection_expired');
     await persist(stage, value); saved.add(stage); complete = stage === 'finished';
-    return send(response, 200, stage === 'diagnostics' ? { diagnostic_export_saved: true, review_file: 'diagnostics.json' } : { recorded: true });
+    return send(response, 200, stage === 'diagnostics' ? { diagnostic_export_saved: true, review_file: DIAGNOSTIC_FILE } : { recorded: true });
   }).catch(() => { if (!response.headersSent && !response.destroyed) send(response, 400, { error: 'share_recovery_rejected' }); else response.destroy(); }); });
   server.requestTimeout = 10000; server.headersTimeout = 10000;
   server.release = async () => { const closed = server.listening ? once(server, 'close') : Promise.resolve(); server.close(); server.closeAllConnections(); await queue; await closed; };

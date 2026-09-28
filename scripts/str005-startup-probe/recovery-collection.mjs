@@ -17,7 +17,7 @@ export function createRecoveryCollection({ gate, begin, save, beforeStage, after
         return await Promise.race([Promise.resolve().then(async () => {
           if (scoped && beforeStage) ticket = await beforeStage(phase, limit);
           if (!active) return;
-          return operation();
+          return operation(() => active);
         }).then(async value => {
           if (!active) return;
           if (persist) await save(phase, value, ticket);
@@ -42,10 +42,13 @@ export function createRecoveryCollection({ gate, begin, save, beforeStage, after
         await collect('diagnostics', () => gate.exportDiagnostics(), false);
         stopped = true; await collect('stop', () => gate.stop(), false, cleanupMs);
         await collect('state', async () => { await gate.refresh(); return gate.state(); });
-        await collect('status', () => {
-          if (admission.statusMode === 'discover_current') return discoverCurrentStatus(gate, admission.attemptId, admission.binding);
-          if (admission.statusMode === 'confirmed' && typeof admission.attemptId === 'string') return gate.stratumV2Status('share', admission.attemptId, admission.binding);
-          if (admission.statusMode === 'not_invoked') return gate.stratumV2Status('share', null, admission.binding);
+        await collect('status', async active => {
+          // Stop invalidates the controller's prepared context; collection admission is not status authority.
+          const binding = await gate.stratumV2Possession();
+          if (!active()) return;
+          if (admission.statusMode === 'discover_current') return discoverCurrentStatus(gate, admission.attemptId, binding);
+          if (admission.statusMode === 'confirmed' && typeof admission.attemptId === 'string') return gate.stratumV2Status('share', admission.attemptId, binding);
+          if (admission.statusMode === 'not_invoked') return gate.stratumV2Status('share', null, binding);
           throw Error('recovery_unknown_start');
         });
       }

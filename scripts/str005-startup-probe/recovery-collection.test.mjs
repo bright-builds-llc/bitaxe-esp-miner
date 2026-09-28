@@ -4,7 +4,7 @@ import { createRecoveryCollection } from './recovery-collection.mjs';
 import { discoverCurrentStatus } from './retained-status.mjs';
 function fixture() {
   const calls = [], saved = new Map();
-  const gate = { reviewQualificationAttempts: async () => { calls.push('ledger'); return {}; }, reviewBudget: async () => { calls.push('budget'); return {}; },
+  const gate = { stratumV2Possession: async () => 'fresh-status', reviewQualificationAttempts: async () => { calls.push('ledger'); return {}; }, reviewBudget: async () => { calls.push('budget'); return {}; },
     exportDiagnostics: async () => { calls.push('diagnostics'); }, stop: async () => { calls.push('stop'); },
     refresh: async () => { calls.push('state'); }, state: () => ({}), close: async () => { calls.push('close'); },
     stratumV2Status: async (_scope, id) => { calls.push(id === null ? 'idle' : 'known'); return {}; } };
@@ -70,4 +70,21 @@ test('all operation and stage-close errors retain an admissible earliest receipt
   const errors = f.saved.get('errors'); validateRecoveryErrors(errors);
   assert.ok(errors.errors.length > 10); assert.deepEqual(errors.firstFailure, { phase: 'ledger', category: 'timeout' });
   assert.deepEqual(result.firstFailure, errors.firstFailure); assert.ok(f.saved.has('finished'));
+});
+
+test('post-Stop possession failure stays in status phase and cannot skip Close', async () => {
+  const f = fixture();
+  f.gate.stratumV2Possession = async () => { throw Object.assign(Error('private'), { category: 'timeout' }); };
+  const result = await createRecoveryCollection(f.options)();
+  assert.deepEqual(result.firstFailure, { phase: 'status', category: 'timeout' });
+  assert.ok(f.calls.includes('stop')); assert.ok(f.calls.includes('close')); assert.equal(f.calls.includes('known'), false);
+  assert.ok(f.saved.has('ledger')); assert.ok(f.saved.has('closed'));
+});
+
+test('late post-Stop possession cannot launch a status read after its stage deadline', async () => {
+  const f = fixture(); let resolvePossession;
+  f.gate.stratumV2Possession = () => new Promise(resolve => { resolvePossession = resolve; });
+  const result = await createRecoveryCollection({ ...f.options, readMs: 5 })();
+  resolvePossession('late-binding'); await new Promise(resolve => setTimeout(resolve, 5));
+  assert.equal(result.firstFailure.category, 'timeout'); assert.equal(f.calls.includes('known'), false); assert.ok(f.saved.has('closed'));
 });

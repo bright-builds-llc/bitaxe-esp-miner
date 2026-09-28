@@ -5760,6 +5760,38 @@ Simplification: reuse the pinned Gate, shared collector, proof schemas, official
 core reader and offline decoder; no new firmware protocol, signer or campaign.
 The small offline full-region verifier keeps the generic legacy reader unchanged.
 
+Recovery001 outcome and correction-bound recovery002 | 2026-09-28:
+
+Host4b88644d measured fresh next21/last20/2100000 pending=false and original
+masks7/7/240000 pending=false. Current restoration/preservation/inactiveauthority
+and Close were retained, and exact host release passed. Boot16 panic diagnostics
+were saved. Status is missing: current_safe_recovery=false, fresh_effect_proof=false.
+Seal `d5f0ea17ef24002985f884266fcd0c2efd838a45c8453c3eeb9e04d3e827b337`.
+[Partial report](docs/parity/evidence/20260928-str005-share-recovery001-partial.md).
+
+Actual Gate receipt validation rejected the saved diagnostics filename; its
+consumer requires diagnostic-export-\*.json. Stop then invalidated the prepared
+possession context reused by status, producing v2_possession. These are separate
+software boundaries, not a new panic. Correct both with production-boundary
+regressions, reverify and publish before the next collection. Preserve this seal.
+
+After verified corrections only, execute the identical recovery-only contract
+with new private `<repo>/scratch/str005-share-recovery/recovery002/attempt`, same
+sealed Share001 predecessor and Gate. All original bounds and prohibitions apply;
+measure accounting and boot again rather than copying recovery001. No core
+acquisition/clear or Start is enabled. Repeated corrected-boundary failure stops.
+
+Recovery002 boundary verification | 2026-09-28:
+
+The exact production Gate diagnostic receipt consumer now accepts the actual
+persisted diagnostic-export-recovery.json artifact; legacy diagnostic files stay
+readable and conflicting duplicates reject. A production restore/context/V2
+control regression reproduces stale post-Stop possession rejection, then verifies
+fresh possession within the status deadline. Late possession completion cannot
+launch a status operation after expiry. Independent review confirmed both repairs
+and the unchanged recovery001 seal. Ordered Cargo checks pass2427 tests with3
+existing ignores; final scoped canonical/standards/redaction checks precede push.
+
 ### task-str005-heartbeat-shutdown-probe | 2026-09-27 | Verify heartbeat-loss shutdown independently
 
 Status: Startup prerequisite passed; focused heartbeat-loss implementation and published live contract remain required.

@@ -1,3 +1,4 @@
+import { readRecoveryPart } from './diagnostics.mjs';
 import { fstatSync } from 'node:fs';
 import { mkdir, readFile, stat } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
@@ -91,7 +92,7 @@ export async function finish(root, context) {
     hostReleased = true;
   } catch { /* A missing or failed host release check is an explicit blocker. */ }
   const parts = {};
-  for (const stage of STAGES) { try { parts[stage] = (await proof(root, `${stage}.json`)).value; } catch (error) { if (error.code !== 'ENOENT') throw error; } }
+  for (const stage of STAGES) { try { parts[stage] = await readRecoveryPart(root, stage); } catch (error) { if (error.code !== 'ENOENT') throw error; } }
   const result = { ...conclusion(parts, context, hostReleased), release_blocker: hostReleased ? null : releasePhase };
   if (result.current_safe_recovery) {
     try {

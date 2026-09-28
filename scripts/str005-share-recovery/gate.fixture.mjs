@@ -39,4 +39,19 @@ assert.equal(saved.find(row => row.stage === 'status').value.observation.bootOrd
 const diagnostics = await load('web/worker-serial-diagnostics.ts'), exporter = await load('web/worker-diagnostic-export.ts');
 const boot = diagnostics.maybeWorkerSerialDiagnostic('usb_reboot_discriminator schema=v1 boot_ordinal=16 reset_reason=panic uptime_ms=2000 redacted=true');
 assert.equal(exporter.parseWorkerDiagnosticExport({ schema: 'worker-diagnostic-export-v1', observations: [boot] }).observations[0].boot_ordinal, 16);
+// Execute the production page's exact receipt consumer, not a copied validation regex.
+const production = await readFile(resolve(root, 'web/worker-serial-acceptance.ts'), 'utf8');
+const marker = 'async function exportDiagnostics() {';
+assert.equal(production.split(marker).length, 2);
+const start = production.indexOf(marker), end = production.indexOf('\n}\n', start) + 2;
+assert.ok(end > start);
+let receipt = process.argv[3] ? JSON.parse(await readFile(process.argv[3], 'utf8')) :
+  { diagnostic_export_saved: true, review_file: 'diagnostic-export-recovery.json' };
+const consume = new Function('parseWorkerDiagnosticExport', 'localJson', 'localDiagnostics',
+  `${production.slice(start, end)}; return exportDiagnostics;`)(exporter.parseWorkerDiagnosticExport,
+  async (path, body) => { assert.equal(path, '/diagnostic-export'); assert.equal(body.schema, 'worker-diagnostic-export-v1'); return receipt; },
+  { values: () => [boot] });
+assert.deepEqual(await consume(), receipt);
+receipt = { diagnostic_export_saved: true, review_file: 'diagnostics.json' };
+await assert.rejects(consume(), /diagnostic_export_receipt/u);
 process.stdout.write('share_recovery_gate_boundary_passed\n');

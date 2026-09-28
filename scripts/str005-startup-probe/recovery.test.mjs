@@ -92,3 +92,10 @@ test('existing observations cannot acquire a later fresh collection timestamp', 
     assert.equal((await post('/recovery-begin', {})).status, 400);
   } finally { await server.release(); }
 });
+
+test('production Stop invalidates possession and fresh recovery reacquires it before status', { skip: !maybeGateRoot }, async () => {
+  // Arrange / Act: execute exact production restore/context methods and actual Gate V2 page/control.
+  const output = await promisify(execFile)('bun', [resolve(dirname(fileURLToPath(import.meta.url)), 'post-stop-possession.fixture.mjs'), maybeGateRoot], { timeout: 30000 });
+  // Assert
+  assert.equal(output.stdout.trim(), 'post_stop_possession_boundary_passed'); assert.equal(output.stderr, '');
+});
